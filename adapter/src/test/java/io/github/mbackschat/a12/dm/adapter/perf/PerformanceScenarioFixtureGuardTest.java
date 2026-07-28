@@ -6,16 +6,18 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.LinkedHashMap;
-import java.util.Set;
 
 import org.junit.jupiter.api.Test;
 
-import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.core.JsonGenerator;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ArrayNode;
-import com.fasterxml.jackson.databind.node.ObjectNode;
+import com.fasterxml.jackson.databind.cfg.JsonNodeFeature;
 
-import io.github.mbackschat.a12.dm.interpreter.gen.PlacementSink;
+import io.github.mbackschat.a12.dm.interpreter.eval.DocumentJsonKt;
+import io.github.mbackschat.a12.dm.interpreter.eval.DocumentKt;
+import io.github.mbackschat.a12.dm.interpreter.gen.DocumentSinkKt;
 
 /**
  * Freshness guard for the shared JVM/Node/native performance fixtures. The models come directly from
@@ -23,7 +25,15 @@ import io.github.mbackschat.a12.dm.interpreter.gen.PlacementSink;
  */
 class PerformanceScenarioFixtureGuardTest {
 
-    private static final ObjectMapper JSON = new ObjectMapper();
+    /**
+     * Comparison and re-indentation only. Configured so re-indenting can never re-normalize a number: a DEFAULT
+     * mapper would rewrite a canonical {@code 250.00} as {@code 250.0} and a beyond-double decimal as scientific
+     * notation, quietly making the committed fixture something the canonical writer never emits.
+     */
+    private static final ObjectMapper JSON = new ObjectMapper()
+            .enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS)
+            .configure(JsonNodeFeature.STRIP_TRAILING_BIGDECIMAL_ZEROES, false)
+            .enable(JsonGenerator.Feature.WRITE_BIGDECIMAL_AS_PLAIN);
     private static final String FIXTURE_DIR_PROPERTY = "performance.fixture.dir";
 
     @Test
@@ -57,81 +67,19 @@ class PerformanceScenarioFixtureGuardTest {
         }
     }
 
-    private static String instanceJson(PerfScenario scenario, int scale) throws IOException {
-        var sink = new InstanceJsonSink(scenario.getInterpModel().getRepeatableGroups());
-        scenario.getInstance().invoke(sink, scale, 0);
-        return JSON.writerWithDefaultPrettyPrinter().writeValueAsString(sink.result()) + System.lineSeparator();
-    }
-
-    private static final class InstanceJsonSink implements PlacementSink {
-        private final Set<String> repeatableGroups;
-        private final ObjectNode fields = JSON.createObjectNode();
-
-        private InstanceJsonSink(Set<String> repeatableGroups) {
-            this.repeatableGroups = Set.copyOf(repeatableGroups);
-        }
-
-        private ObjectNode result() {
-            return JSON.createObjectNode().set("fields", fields);
-        }
-
-        @Override
-        public void group(String path, int... reps) {
-            var segments = segments(path);
-            descend(segments, reps, segments.length);
-        }
-
-        @Override
-        public void field(String path, String value, int... reps) {
-            var segments = segments(path);
-            descend(segments, reps, segments.length - 1).put(segments[segments.length - 1], value);
-        }
-
-        @Override
-        public void emptyField(String path, int... reps) {
-            // An absent key is the document-instance representation of an unfilled field.
-        }
-
-        private ObjectNode descend(String[] segments, int[] reps, int count) {
-            var current = fields;
-            var groupPath = new StringBuilder();
-            for (int index = 0; index < count; index++) {
-                groupPath.append('/').append(segments[index]);
-                current = repeatableGroups.contains(groupPath.toString())
-                        ? row(arrayChild(current, segments[index]), reps[index])
-                        : objectChild(current, segments[index]);
-            }
-            return current;
-        }
-
-        private static ArrayNode arrayChild(ObjectNode parent, String name) {
-            if (parent.get(name) instanceof ArrayNode array) {
-                return array;
-            }
-            var array = JSON.createArrayNode();
-            parent.set(name, array);
-            return array;
-        }
-
-        private static ObjectNode objectChild(ObjectNode parent, String name) {
-            if (parent.get(name) instanceof ObjectNode object) {
-                return object;
-            }
-            var object = JSON.createObjectNode();
-            parent.set(name, object);
-            return object;
-        }
-
-        private static ObjectNode row(ArrayNode array, int repetition) {
-            var index = repetition - 1;
-            while (array.size() <= index) {
-                array.addObject();
-            }
-            return (ObjectNode) array.get(index);
-        }
-
-        private static String[] segments(String path) {
-            return path.substring(1).split("/");
-        }
+    /**
+     * The fixture is A12's canonical Document JSON, written by the ONE writer that shape has —
+     * {@code Document.toDocumentJson}. This guard used to carry its own near-identical sink; a second writer for
+     * a shape A12 defines is exactly what CLAUDE.md "NEVER invent a shape A12 already defines" forbids, so the
+     * generator now fills an interpreter {@code Document} and the interpreter's codec writes it.
+     */
+    private static String instanceJson(PerfScenario scenario, int scale) throws JsonProcessingException {
+        var document = DocumentKt.newDocument(scenario.getInterpModel());
+        scenario.getInstance().invoke(DocumentSinkKt.asSink(document), scale, 0);
+        var canonical = DocumentJsonKt.toDocumentJson(document, scenario.getInterpModel());
+        // Re-indented only so the committed fixture stays reviewable; the canonical writer emits compact JSON
+        // because A12 takes the pretty-printer as caller configuration, not as part of the format.
+        return JSON.writerWithDefaultPrettyPrinter().writeValueAsString(JSON.readTree(canonical))
+                + System.lineSeparator();
     }
 }

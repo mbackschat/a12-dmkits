@@ -2,17 +2,15 @@ package io.github.mbackschat.a12.dm.cli.rule;
 
 import io.github.mbackschat.a12.dm.cli.BaseCommand;
 import io.github.mbackschat.a12.dm.cli.CustomSupportOptions;
-import io.github.mbackschat.a12.dm.cli.DocInstance;
 import io.github.mbackschat.a12.dm.cli.ParamKind;
 import io.github.mbackschat.a12.dm.cli.ResultEnvelope;
 import io.github.mbackschat.a12.dm.cli.WorkspaceOption;
 import io.github.mbackschat.a12.dm.cli.interp.InterpreterEngine;
+import io.github.mbackschat.a12.dm.interpreter.DocumentInputError;
 import io.github.mbackschat.a12.dm.interpreter.ModelPreparationError;
 
-import java.io.IOException;
 import java.nio.file.Path;
 import java.util.List;
-import java.util.Map;
 
 import io.github.mbackschat.a12.dm.interpreter.UnsupportedModelTimeZoneException;
 import io.github.mbackschat.a12.dm.interpreter.InvalidModelTimeZoneException;
@@ -50,7 +48,8 @@ final class RuleEvalCommand extends BaseCommand {
     String rule;
 
     @Option(names = "--instance", required = true, paramLabel = "<document.json>",
-            description = "the document INSTANCE (field data) — a nested JSON tree under \"fields\". See `schema model eval`.")
+            description = "the document INSTANCE (field data) in A12's canonical Document JSON — a nested tree "
+                    + "mirroring the model, keyed by root group name. See `schema model eval`.")
     String instance;
 
     @Option(names = "--locale", defaultValue = "en_US", paramLabel = "<locale>",
@@ -77,13 +76,9 @@ final class RuleEvalCommand extends BaseCommand {
         if (json == null) {
             return 2;
         }
-        Map<String, Object> fields;
-        try {
-            fields = DocInstance.readFields(instance);
-        } catch (IllegalArgumentException badShape) {
-            return fail(badShape.getMessage());
-        } catch (IOException e) {
-            return fail("cannot read document: " + e.getMessage());
+        String documentJson = readInstanceJson(instance);
+        if (documentJson == null) {
+            return 2;
         }
         try {
             // Use the public portable workspace so included content is mounted before rule evaluation.
@@ -94,7 +89,7 @@ final class RuleEvalCommand extends BaseCommand {
                 return refuseNotFound("rule", "eval", RkCode.NO_SUCH_RULE,
                         "rule '" + rule + "' does not exist — refusing", rule, RkCode.NO_SUCH_RULE.fix());
             }
-            ObjectNode data = InterpreterEngine.ruleTestData(interpJson, fields, localeTag, rule,
+            ObjectNode data = InterpreterEngine.ruleTestData(interpJson, documentJson, localeTag, rule,
                     customSupport.predefinedTypes(), customSupport.customConditions(),
                     customSupport.customFieldTypes(), !noComputations);
             ResultEnvelope refusal = customSupport.strictRefusal("rule", "eval", data);
@@ -111,6 +106,8 @@ final class RuleEvalCommand extends BaseCommand {
         } catch (InvalidModelTimeZoneException e) {
             return refuseExplainedPrecheck("rule", "eval", RkCode.INVALID_CONFIG_VALUE, e.getMessage(),
                     modelPath, RkCode.INVALID_CONFIG_VALUE.fix());
+        } catch (DocumentInputError badDoc) {
+            return failInvalidInstance(badDoc);
         } catch (IllegalArgumentException badDoc) {
             return fail(badDoc.getMessage());
         } catch (ModelPreparationError e) {

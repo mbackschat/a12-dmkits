@@ -63,8 +63,8 @@ class DataSchemaConformanceTest {
         Path docDir = Files.createDirectories(dir.resolve("docs"));
         Path doc = docDir.resolve("doc.json");
         Files.writeString(doc, """
-                { "fields": { "Order": { "CustomerName": "Acme", "Quantity": "5",
-                                          "OrderDate": "2026-01-01", "DeliveryDate": "2026-01-10" } } }""");
+                { "Order": { "CustomerName": "Acme", "Quantity": "5",
+                                          "OrderDate": "2026-01-01", "DeliveryDate": "2026-01-10" } }""");
 
         // a model carrying a type definition, so `typedef read <id>` / `typedef read` produce both branches
         Path td = dir.resolve("td.dm.json");

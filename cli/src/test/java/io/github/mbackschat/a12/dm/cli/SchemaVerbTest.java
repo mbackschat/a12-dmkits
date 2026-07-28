@@ -111,8 +111,15 @@ class SchemaVerbTest {
             JsonNode c = MAPPER.readTree(CliTestSupport.run("schema", t[0], t[1]).out());
             assertEquals("DocumentInstance", c.path("docInput").path("title").asText(),
                     () -> verb + " contract surfaces the --instance document-instance schema: " + c);
-            assertTrue(c.path("docInput").path("properties").has("fields"),
-                    () -> verb + " docInput describes the `fields` instance tree: " + c);
+            // A12's canonical Document JSON has no wrapper key — a ROOT GROUP name is a top-level key — so the
+            // contract cannot name a required property; what it must carry is the shape narrative plus `id`,
+            // the serializer's document identity (the one top-level key that is NOT a model entity).
+            assertFalse(c.path("docInput").has("required"),
+                    () -> verb + " docInput must not require a wrapper key: " + c);
+            assertTrue(c.path("docInput").path("properties").has("id"),
+                    () -> verb + " docInput describes the root `id` document identity: " + c);
+            assertTrue(c.path("docInput").path("description").asText().contains("canonical Document JSON"),
+                    () -> verb + " docInput names the shape it is: " + c);
         }
     }
 

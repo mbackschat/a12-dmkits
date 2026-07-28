@@ -128,7 +128,7 @@ class IncludeResidualRefDiffTest {
         String benefits = benefitsWithRule().replace("FieldFilled(Coverage)", "GroupFilled(/Benefits)");
         assertTrue(benefits.contains("GroupFilled(/Benefits)"), "the fixture uses a bare root-group ref");
         Path model = ws(dir, policy(false), benefits);
-        Path instance = doc(dir, "{ \"fields\": { \"Policy\": { \"Cover\": { \"Coverage\": \"-5.00\" } } } }");
+        Path instance = doc(dir, "{ \"Policy\": { \"Cover\": { \"Coverage\": \"-5.00\" } } }");
 
         CliTestSupport.Result def = CliTestSupport.run("-m", model.toString(), "model", "eval", "--instance", instance.toString());
         CliTestSupport.Result ker = CliTestSupport.runKernel("-m", model.toString(), "model", "eval", "--instance", instance.toString());
@@ -146,7 +146,7 @@ class IncludeResidualRefDiffTest {
                 .replace("FieldFilled(Coverage)", "FieldFilled(/Benefits/Coverage)")
                 .replace("[Coverage] < 0", "[/Benefits/Coverage] < 0");
         Path model = ws(dir, policy(true), benefits);
-        Path instance = doc(dir, "{ \"fields\": { \"Policy\": { \"Cover\": { \"Benefits\": { \"Coverage\": \"-5.00\" } } } } }");
+        Path instance = doc(dir, "{ \"Policy\": { \"Cover\": { \"Benefits\": { \"Coverage\": \"-5.00\" } } } }");
 
         CliTestSupport.Result def = CliTestSupport.run("-m", model.toString(), "model", "eval", "--instance", instance.toString());
         CliTestSupport.Result ker = CliTestSupport.runKernel("-m", model.toString(), "model", "eval", "--instance", instance.toString());
@@ -162,7 +162,7 @@ class IncludeResidualRefDiffTest {
         String benefits = benefitsWithComputation();
         assertTrue(benefits.contains("[/Benefits/Base]"), "the fixture computation uses an absolute operand");
         Path model = ws(dir, policy(false), benefits);
-        Path instance = doc(dir, "{ \"fields\": { \"Policy\": { \"Cover\": { \"Base\": \"42.00\" } } } }");
+        Path instance = doc(dir, "{ \"Policy\": { \"Cover\": { \"Base\": \"42.00\" } } }");
 
         CliTestSupport.Result def = CliTestSupport.run("-m", model.toString(), "model", "compute", "--instance", instance.toString());
         CliTestSupport.Result ker = CliTestSupport.runKernel("-m", model.toString(), "model", "compute", "--instance", instance.toString());
@@ -177,7 +177,7 @@ class IncludeResidualRefDiffTest {
     void aGenuineUnknownAbsoluteReferenceProducesAStructuredRefusal(@TempDir Path dir) throws Exception {
         String benefits = benefitsWithRule().replace("[Coverage] < 0", "[/Unknown/Coverage] < 0");
         Path model = ws(dir, policy(false), benefits);
-        Path instance = doc(dir, "{ \"fields\": { \"Policy\": { \"Cover\": { \"Coverage\": \"-5.00\" } } } }");
+        Path instance = doc(dir, "{ \"Policy\": { \"Cover\": { \"Coverage\": \"-5.00\" } } }");
 
         CliTestSupport.Result result = CliTestSupport.run(
                 "-m", model.toString(), "model", "eval", "--instance", instance.toString());
@@ -194,7 +194,7 @@ class IncludeResidualRefDiffTest {
     void aPathLikeStringLiteralNeverProducesAFalseRefusal(@TempDir Path dir) throws Exception {
         Path model = ws(dir, policy(false), benefitsWithPathLikeLiteralRule());
         Path instance = doc(dir,
-                "{ \"fields\": { \"Policy\": { \"Cover\": { \"Kind\": \"(/Unknown/Value\" } } } }");
+                "{ \"Policy\": { \"Cover\": { \"Kind\": \"(/Unknown/Value\" } } }");
 
         CliTestSupport.Result result = CliTestSupport.run(
                 "-m", model.toString(), "model", "eval", "--instance", instance.toString());

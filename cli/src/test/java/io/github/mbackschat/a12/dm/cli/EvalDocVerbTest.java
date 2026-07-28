@@ -46,7 +46,7 @@ class EvalDocVerbTest {
     void firesWhenDeliveryIsBeforeOrder(@TempDir Path dir) throws Exception {
         Path model = CliTestSupport.orderRuled(dir);
         Path d = doc(dir, """
-                { "fields": { "Order": { "OrderDate": "2024-02-01", "DeliveryDate": "2024-01-01" } } }""");
+                { "Order": { "OrderDate": "2024-02-01", "DeliveryDate": "2024-01-01" } }""");
         var res = CliTestSupport.runKernel("-m", model.toString(), "model", "eval", "--instance", d.toString());
         assertEquals(0, res.code(), res::err);
         assertTrue(firedContains(res.out(), "DELIVERY_BEFORE_ORDER"),
@@ -60,7 +60,7 @@ class EvalDocVerbTest {
     void doesNotFireWhenDeliveryIsAfterOrder(@TempDir Path dir) throws Exception {
         Path model = CliTestSupport.orderRuled(dir);
         Path d = doc(dir, """
-                { "fields": { "Order": { "OrderDate": "2024-01-01", "DeliveryDate": "2024-02-01" } } }""");
+                { "Order": { "OrderDate": "2024-01-01", "DeliveryDate": "2024-02-01" } }""");
         var res = CliTestSupport.runKernel("-m", model.toString(), "model", "eval", "--instance", d.toString());
         assertEquals(0, res.code(), res::err);
         assertFalse(firedContains(res.out(), "DELIVERY_BEFORE_ORDER"),
@@ -71,9 +71,9 @@ class EvalDocVerbTest {
     void patternRuleFiresOnAMalformedPostalCodeOnly(@TempDir Path dir) throws Exception {
         Path model = CliTestSupport.orderRuled(dir);
         Path bad = doc(dir, """
-                { "fields": { "Order": { "BillingAddress": { "PostalCode": "1234" } } } }""");
+                { "Order": { "BillingAddress": { "PostalCode": "1234" } } }""");
         Path ok = doc(dir, """
-                { "fields": { "Order": { "BillingAddress": { "PostalCode": "12345" } } } }""");
+                { "Order": { "BillingAddress": { "PostalCode": "12345" } } }""");
         assertTrue(firedContains(CliTestSupport.runKernel("-m", model.toString(), "model", "eval", "--instance", bad.toString()).out(),
                 "POSTAL_CODE_MALFORMED"), "a 4-digit postal code violates the 5-digit pattern");
         assertFalse(firedContains(CliTestSupport.runKernel("-m", model.toString(), "model", "eval", "--instance", ok.toString()).out(),
@@ -84,9 +84,9 @@ class EvalDocVerbTest {
     void candidateRuleReportsWhetherItFired(@TempDir Path dir) throws Exception {
         Path model = CliTestSupport.orderRuled(dir);
         Path over = doc(dir, """
-                { "fields": { "Order": { "Quantity": "150" } } }""");
+                { "Order": { "Quantity": "150" } }""");
         Path under = doc(dir, """
-                { "fields": { "Order": { "Quantity": "50" } } }""");
+                { "Order": { "Quantity": "50" } }""");
         var fired = CliTestSupport.runKernel("-m", model.toString(), "model", "eval", "--instance", over.toString(),
                 "--field", "/Order/Quantity", "--condition", "[Quantity] > 100", "--code", "QTY_CAP");
         assertEquals(0, fired.code(), fired::err);
@@ -102,7 +102,7 @@ class EvalDocVerbTest {
     void targetedExistingRuleReportsFired(@TempDir Path dir) throws Exception {
         Path model = CliTestSupport.orderRuled(dir);
         Path d = doc(dir, """
-                { "fields": { "Order": { "OrderDate": "2024-02-01", "DeliveryDate": "2024-01-01" } } }""");
+                { "Order": { "OrderDate": "2024-02-01", "DeliveryDate": "2024-01-01" } }""");
         var res = CliTestSupport.runKernel("-m", model.toString(), "model", "eval", "--instance", d.toString(),
                 "--rule", "/Order/DeliveryNotBeforeOrder");
         assertEquals(0, res.code(), res::err);
@@ -119,7 +119,7 @@ class EvalDocVerbTest {
         // validates the stored (empty→0) value → does not fire. Both engines must agree.
         Path model = CliTestSupport.subscriptionComputed(dir);
         Path d = doc(dir, """
-                { "fields": { "Subscription": { "Billing": { "BaseFee": "10.00" } } } }""");
+                { "Subscription": { "Billing": { "BaseFee": "10.00" } } }""");
         String[] candidate = { "-m", model.toString(), "model", "eval", "--instance", d.toString(),
                 "--field", "/Subscription/Billing/EffectiveFee", "--condition", "[EffectiveFee] > 0", "--code", "EFF_POS" };
 
@@ -151,7 +151,7 @@ class EvalDocVerbTest {
         Path model = CliTestSupport.orderRuled(dir);
         // two Items rows (Sku supplied so the mandatory-field check is quiet); only row 2 (Count 80) violates "> 50"
         Path d = doc(dir, """
-                { "fields": { "Order": { "Items": [ { "Sku": "A", "Count": "10" }, { "Sku": "B", "Count": "80" } ] } } }""");
+                { "Order": { "Items": [ { "Sku": "A", "Count": "10" }, { "Sku": "B", "Count": "80" } ] } }""");
         // a per-row rule reaching THROUGH the repeatable Items is scoped to the PARENT group (/Order),
         // not Items itself (a rule whose group IS the repeatable group is rejected MVK_INVALID_ENTITY)
         var res = CliTestSupport.runKernel("-m", model.toString(), "model", "eval", "--instance", d.toString(),
@@ -176,7 +176,7 @@ class EvalDocVerbTest {
         // "formalePruefung" (no leading '/'), where an author rule's is its slash-path.
         Path model = CliTestSupport.orderRuled(dir);
         Path d = doc(dir, """
-                { "fields": { "Order": { "Quantity": "1.5" } } }""");
+                { "Order": { "Quantity": "1.5" } }""");
         var res = CliTestSupport.runKernel("-m", model.toString(), "model", "eval", "--instance", d.toString());
         assertEquals(0, res.code(), res::err);
         JsonNode messages = MAPPER.readTree(res.out()).get("data").get("messages");
@@ -190,7 +190,7 @@ class EvalDocVerbTest {
     void ruleAndConditionAreMutuallyExclusive(@TempDir Path dir) throws Exception {
         Path model = CliTestSupport.orderRuled(dir);
         Path d = doc(dir, """
-                { "fields": { "Order": { "Quantity": "1" } } }""");
+                { "Order": { "Quantity": "1" } }""");
         var res = CliTestSupport.runKernel("-m", model.toString(), "model", "eval", "--instance", d.toString(),
                 "--rule", "/Order/DeliveryNotBeforeOrder", "--condition", "[Quantity] > 0", "--field", "/Order/Quantity");
         assertNotEquals(0, res.code(), "--rule and a candidate are mutually exclusive");
@@ -200,7 +200,7 @@ class EvalDocVerbTest {
     void unknownRuleFails(@TempDir Path dir) throws Exception {
         Path model = CliTestSupport.orderRuled(dir);
         Path d = doc(dir, """
-                { "fields": { "Order": { "Quantity": "1" } } }""");
+                { "Order": { "Quantity": "1" } }""");
         var res = CliTestSupport.runKernel("-m", model.toString(), "model", "eval", "--instance", d.toString(), "--rule", "/Order/Nope");
         assertNotEquals(0, res.code(), "an unknown rule is an error");
         JsonNode j = MAPPER.readTree(res.out());   // structured refusal (F5), not a bare stderr line
@@ -213,7 +213,7 @@ class EvalDocVerbTest {
     void unknownPathInTheDocumentFails(@TempDir Path dir) throws Exception {
         Path model = CliTestSupport.orderRuled(dir);
         Path d = doc(dir, """
-                { "fields": { "Order": { "Nope": "x" } } }""");
+                { "Order": { "Nope": "x" } }""");
         var res = CliTestSupport.runKernel("-m", model.toString(), "model", "eval", "--instance", d.toString());
         assertNotEquals(0, res.code(), "an unknown path in the document is an error");
         assertTrue(res.err().contains("/Order/Nope"), () -> "names the bad path: " + res.err());
@@ -235,7 +235,7 @@ class EvalDocVerbTest {
         Path model = apps.resolve("storefront.dm.json");
         Files.writeString(model, storefront);
         Path d = doc(dir, """
-                { "fields": { "Storefront": { "StoreName": "Acme" } } }""");
+                { "Storefront": { "StoreName": "Acme" } }""");
 
         var withDir = CliTestSupport.runKernel("-m", model.toString(), "model", "eval", "--instance", d.toString(),
                 "-w", lib.toString());

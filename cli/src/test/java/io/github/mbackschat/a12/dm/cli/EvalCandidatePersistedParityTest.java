@@ -65,10 +65,10 @@ class EvalCandidatePersistedParityTest {
         Path model = CliTestSupport.orderRuled(dir);
         // three Items rows; only row 2 (Count 80) violates "> 50"
         Path inst = instance(dir, """
-                { "fields": { "Order": { "Items": [
+                { "Order": { "Items": [
                     { "Sku": "A", "Count": "10" },
                     { "Sku": "B", "Count": "80" },
-                    { "Sku": "C", "Count": "20" } ] } } }""");
+                    { "Sku": "C", "Count": "20" } ] } }""");
         String cond = "FieldFilled(Count) And [Count] > 50";
 
         var candidate = CliTestSupport.run("-m", model.toString(), "model", "eval", "--instance", inst.toString(),
@@ -93,10 +93,10 @@ class EvalCandidatePersistedParityTest {
     void starAggregateCandidateMatchesPersisted(@TempDir Path dir) throws Exception {
         Path model = CliTestSupport.orderRuled(dir);
         Path inst = instance(dir, """
-                { "fields": { "Order": { "Items": [
+                { "Order": { "Items": [
                     { "Sku": "A", "Count": "1" },
                     { "Sku": "B", "Count": "2" },
-                    { "Sku": "C", "Count": "3" } ] } } }""");
+                    { "Sku": "C", "Count": "3" } ] } }""");
         String cond = "Sum(/Order/Items*/Count) > -1";
 
         var candidate = CliTestSupport.run("-m", model.toString(), "model", "eval", "--instance", inst.toString(),

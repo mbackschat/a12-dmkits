@@ -27,7 +27,7 @@ class RuleTestVerbTest {
 
     private static Path doc(Path dir, String monthlyFee) throws Exception {
         Path file = dir.resolve("doc.json");
-        Files.writeString(file, "{\"fields\":{\"Subscription\":{\"Addons\":[{\"MonthlyFee\":\"" + monthlyFee + "\"}]}}}");
+        Files.writeString(file, "{\"Subscription\":{\"Addons\":[{\"MonthlyFee\":\"" + monthlyFee + "\"}]}}");
         return file;
     }
 

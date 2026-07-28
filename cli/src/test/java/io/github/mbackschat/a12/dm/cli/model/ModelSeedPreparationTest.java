@@ -95,7 +95,7 @@ class ModelSeedPreparationTest {
         CliTestSupport.Result seed = CliTestSupport.run("-m", model.toString(), "model", "seed");
 
         assertEquals(0, seed.code(), () -> "seed succeeds: " + seed.out() + seed.err());
-        JsonNode fields = M.readTree(seed.out()).path("fields");
+        JsonNode fields = M.readTree(seed.out());
         assertTrue(fields.path("Policy").hasNonNull("PolicyNo"),
                 () -> "seed emits the base field: " + seed.out());
         // Without preparation the raw (unexpanded) model reaches the loader, so the mounted Cover subtree is
@@ -112,7 +112,7 @@ class ModelSeedPreparationTest {
         CliTestSupport.Result seed = CliTestSupport.run("-m", model.toString(), "model", "seed");
 
         assertEquals(0, seed.code(), () -> "seed succeeds: " + seed.out() + seed.err());
-        JsonNode fields = M.readTree(seed.out()).path("fields");
+        JsonNode fields = M.readTree(seed.out());
         String price = fields.path("Storefront").path("Price").asText();
         // Preparation inlines the imported Money type, so Price is seeded as a NUMBER (a decimal literal).
         // Without it the TypeDefType flattens to STRING and Price would be a "s..." string token instead.
@@ -139,7 +139,7 @@ class ModelSeedPreparationTest {
 
         assertEquals(0, namePathSeed.code(), () -> "name-path seed succeeds: " + namePathSeed.out() + namePathSeed.err());
         assertEquals(0, opaqueSeed.code(), () -> "opaque-id seed succeeds: " + opaqueSeed.out() + opaqueSeed.err());
-        assertEquals(M.readTree(namePathSeed.out()).path("fields"), M.readTree(opaqueSeed.out()).path("fields"),
+        assertEquals(M.readTree(namePathSeed.out()), M.readTree(opaqueSeed.out()),
                 "opaque ids cross portable workspace preparation and preserve the model's structure and constraints");
     }
 

@@ -8,8 +8,8 @@ Five shapes for one A12 concept, found by sweep on 2026-07-28:
 
 | Where | Invented shape | In scope? |
 |---|---|---|
-| `:interpreter` public API | `DocumentInputV1{groups:[{path,coordinates}], fields:[{path,coordinates,raw}]}` | **yes** — boundary |
-| `:cli` (dmtool) `DocInstance` | `{"fields":{…}}` wrapper, text-only values | **yes** — boundary |
+| `:interpreter` public API | `DocumentInputV1{groups:[{path,coordinates}], fields:[{path,coordinates,raw}]}` | **yes** — boundary ✅ removed in step 2 |
+| `:cli` (dmtool) `DocInstance` | `{"fields":{…}}` wrapper, text-only values | **yes** — boundary ✅ removed in step 3 |
 | `:adapter` `FieldPointer` | `record(String path, List<Integer> reps)` | no — internal |
 | corpus cases | `placements:[{kind,path,reps}]` | no — internal (but see step 4) |
 | interpreter Kotlin/TS pointers | `path` + `coordinates[]` | no — internal |
@@ -46,29 +46,42 @@ Two by-products worth knowing for the remaining steps: the **read path stays exa
 
 The malformed pass-through survives ([A12K-3638]), and String/Enumeration stay untouched. New locks: `adapter.laws.A12JsonIngressKernelTest` (the kernel's own ingress, 49 rows) and `A12JsonIngressDiffTest` (ours against it, with an exhaustive named residual). Two gaps were opened by the measurement rather than by the change: **IG84** (no formal error for a malformed boolean/confirm token — pre-existing, both regimes) and **IG85** (A12's two renderings of one stored decimal, which a single stored text cannot both satisfy).
 
-### Step 3 — dmtool CLI document I/O
+### Step 3 — dmtool CLI document I/O ✅ DONE (2026-07-28)
 
-- `cli/.../DocInstance.java` — drop the `"fields"` wrapper (A12 has no wrapper; root group names are top-level keys), accept native JSON number/boolean.
-- `model seed` must **emit** the A12 shape.
-- Update every `examples/` demo and its expected output, then `./scripts/verify-demos.sh`.
-- Update the JSON schemas + their CI-executed `examples` blocks, and `skill/SKILL.md` if it shows a document (re-read the whole skill and verify every claim through the binary — the standing #1 skill rule).
+**Shipped: dmtool has no document codec of its own.** Both directions run through the interpreter's single implementation via the new model-level pair `ModelDef.readDocumentJson` / `Document.toDocumentJson` ([INTERPRETER-API-SPEC](INTERPRETER-API-SPEC.md) §4.4, [INTERPRETER-FINDINGS](INTERPRETER-FINDINGS.md) IF227 follow-up). `DocInstance`, `InterpreterModelLoader.walkInstance`, `JsonInstanceSink`, and the adapter fixture guard's third near-identical writer are **deleted**. The `"fields"` wrapper is gone from the code, the published schema, `verb-examples.json`, both demos, the eval judges' prompts, and every test; a document that still carries it fails as unknown model path `/fields` **plus** the migration corrective — a clean break, never a silent unwrap. Contract text: [CLI-SPEC](CLI-SPEC.md) "`--instance` is A12's canonical Document JSON".
 
-**Surveyed 2026-07-28 (source-read, before any edit) — the CLI is much closer to A12 than the sweep suggested, and the risk sits somewhere else than expected:**
+**The survey below was wrong on the one point that mattered, and the correction is the reusable lesson.** It concluded "no walker rewrite is needed — it is already the A12 shape", and pinned the only live defect on the CLI's Jackson mapper configuration. Both statements were true about the **shape** and blind to the **behaviour**: the walker stored the authored text verbatim, which is the kernel's V1 regime, not its Document-JSON regime. Measured through the `dmtool` binary on `/Order/Quantity` (`maxFractionalDigits: 0`) against the kernel rows of `A12JsonIngressKernelTest`:
 
-1. **The reader already consumes A12's tree.** `InterpreterModelLoader.walkInstance` maps a JSON array to rows at index+1, a nested object to a group at repetition 1, `null`/`""` to `emptyField`, and any scalar to `field(value.toString())`. No walker rewrite is needed — it is already the A12 shape.
-2. **The `"fields"` wrapper is already optional in CODE but mandatory in the CONTRACT.** `DocInstance.readFields` falls back to the root object (`root.has("fields") ? … : root`), while `document-instance.schema.json` declares `required: ["fields"]` with `additionalProperties: false`. So the code delta is deleting one fallback; the real change is the published schema (whose `examples` block is CI-executed) and the demos.
-3. **`model seed` already emits the tree shape.** `JsonInstanceSink` writes an array per repeatable group and pads short arrays with `{}` — canonical already. Three deltas remain: `result()` adds the wrapper; `field()` always writes a **string** (A12 writes native JSON for number/boolean, so the sink needs the field **kinds**, which it is not given today — it receives only `repeatableGroups`); and `emptyField()` **omits** the key where A12 writes `null` for a present-but-valueless cell.
-4. **A LIVE scale-loss defect in the instance reader — fix it in the same step.** *(Corrected 2026-07-28: first written as a latent trap that step 3 "would activate", with the fix pinned on the wrong line. Probe-measured on the pinned Jackson 2.18.2 — see the table below — it is neither latent nor located where I said.)* `DocInstance` parses with a **default `ObjectMapper`**, and nothing in the CLI rejects an unquoted number, so a document that already writes `"Quantity": 5.50` today reaches the document as `"5.5"`. The loss happens at **`readTree`**, not at the `convertValue` step: a default mapper builds a `DoubleNode`, and *both* `asText()` and `convertValue(...).toString()` then return the damaged text. Trailing zeros are the mild case; a decimal beyond double precision is mangled outright.
+| authored | dmtool before | A12's own ingress |
+|---|---|---|
+| `1e5` | `zahlHatUngueltigeZeichen` | stores `100000`, no code |
+| `"+5"` | `zahlMitPlus` | stores `5`, no code |
+| `"007"` | `zahlHatFuehrendeNullen` | stores `7`, no code |
+
+The tool reported formal errors on documents A12 accepts silently. **No mapper setting could have fixed that** — the missing piece was step 2b's value normalization, which lived in the codec the CLI was not using. *Matching a shape in a second implementation is not the same as matching its behaviour; the only durable fix is one implementation.* Locked end-to-end by `cli … DocumentInstanceIngressTest`, which also re-expresses the deleted `DocInstanceNumberFidelityTest`'s scale/precision assertions at the boundary that now owns them (a beyond-double decimal reaches the formal check intact; a small decimal stays plain rather than scientific; an authored trailing zero survives — the last being the known IG85 residual, where the kernel's runtime strips it).
+
+Three consequences of reading through the canonical codec, all deliberate. (1) The boundary is **strict where it was silent**: a declared group carrying a value (previously dropped, evaluating as if the group were absent), a field carrying an object, and an unknown key are now located by their canonical A12 pointer, and the decode ceilings apply. (2) An invalid instance stays on the plain-text `fail` channel (exit 2) that `cannot read model:` already uses — a structured `refused` envelope is for a precheck on a resolvable target, not for input that could not be read — so `diagnostic.schema.json` and the result envelope are untouched. (3) `model seed` output gains A12's canonical key order and native number/boolean values, and is pretty-printed by the CLI rather than by the codec, because A12 itself takes the pretty-printer as caller configuration.
+
+**`skill/SKILL.md` needed no edit — verified, not assumed:** it never mentions `--instance`, `model eval`, `model compute`, `model seed`, or a document instance at all (greps over the whole file for each). It carries no claim about this shape that could go stale, so the #1 skill re-read rule was not triggered by this step.
+
+<details>
+<summary>The pre-work survey (2026-07-28), kept for its measurements — read the correction above first</summary>
+
+1. **The reader already consumes A12's tree.** `InterpreterModelLoader.walkInstance` maps a JSON array to rows at index+1, a nested object to a group at repetition 1, `null`/`""` to `emptyField`, and any scalar to `field(value.toString())`. *(Shape-true, behaviour-blind — see the correction above.)*
+2. **The `"fields"` wrapper is already optional in CODE but mandatory in the CONTRACT.** `DocInstance.readFields` falls back to the root object (`root.has("fields") ? … : root`), while `document-instance.schema.json` declares `required: ["fields"]` with `additionalProperties: false`. Accurate: the published schema and the demos were the bulk of the wrapper work.
+3. **`model seed` already emits the tree shape.** `JsonInstanceSink` writes an array per repeatable group and pads short arrays with `{}`. The three named deltas (the wrapper, string-only values, an omitted empty key) were all real — and all disappeared rather than being re-implemented, because the canonical writer already consults the field kinds.
+4. **The instance reader's mapper configuration.** *(Fixed in commit `4b144f89`, before this step.)* A **default `ObjectMapper`** builds a `DoubleNode`, and *both* `asText()` and `convertValue(...).toString()` then return damaged text — probe-measured on the pinned Jackson 2.18.2:
 
    | value `250.00` / `1234567890123456789012.5` | node | `asText()` | `convertValue` → `toString()` |
    |---|---|---|---|
-   | **default mapper** (today's `DocInstance`) | `DoubleNode` | `250.0` | `250.0`, and `1.2345678901234568E21` |
+   | **default mapper** | `DoubleNode` | `250.0` | `250.0`, and `1.2345678901234568E21` |
    | **kernel-configured mapper** | `DecimalNode` | `250.00` | `250.00`, and `1234567890123456789012.5` |
 
-   So the **only** lever is the mapper configuration — `USE_BIG_DECIMAL_FOR_FLOATS` enabled **with `STRIP_TRAILING_BIGDECIMAL_ZEROES` disabled**. That is exactly `ObjectMapperProvider.createObjectMapperForDocSerializer()`, which the kernel annotates *"we want to preserve trailing zeroes and the scale of the value"*, and the same pair [KERNEL-FINDINGS](KERNEL-FINDINGS.md) §5 already requires for `dm.core.ModelReader`. Choosing `asText()` over `convertValue` is **not** an alternative fix and does nothing on its own. Lock it with a value of `250.00` on a scale-2 field plus one beyond double precision; integer-only cases cannot see either failure. *(Basis: Jackson probe on the 2.18.2 pin + source read of the three-step `readTree` → `convertValue` → `child.toString()` path. Not yet reproduced end-to-end through the `dmtool` binary — the confirming step for whoever lands step 3.)*
+   The lever is `USE_BIG_DECIMAL_FOR_FLOATS` enabled **with `STRIP_TRAILING_BIGDECIMAL_ZEROES` disabled** — exactly `ObjectMapperProvider.createObjectMapperForDocSerializer()`, which the kernel annotates *"we want to preserve trailing zeroes and the scale of the value"*, and the same pair [KERNEL-FINDINGS](KERNEL-FINDINGS.md) §5 already requires for `dm.core.ModelReader`. The CLI no longer parses a document at all, so this now applies only to the kernel-side test harness (which keeps it) and to `dm.core.ModelReader`. Calling this *the* live defect was the survey's error: it was one, and not the one that changed evaluation.
 
    Note the direction that is **not** a problem: A12 does not serialize numbers as strings. `DocumentJsonAndXmlSerializationInfoImpl.toJsonFieldNode` emits `factory.numberNode(BigDecimal)` / `booleanNode`, so a real A12 document carries `"Grams": 250` unquoted, and the kernel's reader copes only because of the mapper configuration above.
-5. `skill/SKILL.md` shows **no** document instance (no `"fields"` occurrence), so the skill's #1 re-read rule may not be triggered by this step at all — verify before assuming it is.
+
+</details>
 
 ### Step 4 — corpus conversion (after step 2, for coverage)
 
@@ -81,7 +94,10 @@ Not tidiness: once the ingress is A12 JSON, the corpus is the main regression ne
 
 ### Step 5 — audit the rest of the boundary
 
-Every remaining consumer-visible type: match it to an A12 counterpart or record that none exists. Known candidate: `ValidationSeverity` is `"error"|"warning"|"info"` while A12 model JSON writes `"severity": "ERROR"` — **unverified**, that casing is the rule *definition*, not the validation *result*; read A12's result types before claiming a divergence.
+Every remaining consumer-visible type: match it to an A12 counterpart or record that none exists. Two known candidates:
+
+- **`ValidationSeverity`** is `"error"|"warning"|"info"` while A12 model JSON writes `"severity": "ERROR"` — **unverified**, that casing is the rule *definition*, not the validation *result*; read A12's result types before claiming a divergence.
+- **`KernelAdapter.evaluate` / `compute` / `testRule` take `Map<String, Object>`** — a nested field map, i.e. the A12 tree *decoded into Java collections* rather than A12 Document JSON. Left alone by step 3 on purpose (owner call: different boundary, no shipped surface at risk) — production `:cli` no longer parses a document, so the map's only remaining callers are the kernel-side test harness `KernelEval` and `InterpreterRealModelDiffTest`'s kernel leg, both of which feed it the *same* canonical text the interpreter leg reads. The honest A12 route for a kernel-backed adapter is the kernel's **own** `IDocumentV2Serializer.deserializeV2` (already used by `RuntimeLaws.jsonIngress`), which would also put the kernel leg of the differential on A12's real ingress regime instead of the V1 string regime. Decide it as part of this audit, not before.
 
 ### Step 6 — release 0.9.2
 

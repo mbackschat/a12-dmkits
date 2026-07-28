@@ -53,7 +53,7 @@ class CustomConditionJsVerbTest {
 
     private static Path doc(Path dir, String customerName) throws Exception {
         Path d = dir.resolve("doc-" + customerName + ".json");
-        Files.writeString(d, "{ \"fields\": { \"Order\": { \"CustomerName\": \"" + customerName + "\" } } }");
+        Files.writeString(d, "{ \"Order\": { \"CustomerName\": \"" + customerName + "\" } }");
         return d;
     }
 

@@ -2,30 +2,31 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://github.com/mbackschat/a12-dmkits/schema/document-instance.schema.json",
   "title": "DocumentInstance",
-  "description": "The `--instance` payload for `model eval` / `model compute` / `rule eval`: a filled document INSTANCE (the data to evaluate), NOT the model. One object with a single key `fields`, holding a tree that mirrors the model's group/field structure: a non-repeatable group = a nested object keyed by child name; a repeatable group = an ARRAY of row objects; a field = its value as a STRING (\"\" or null = present-but-unfilled; an absent key = no instance for that field). Encode dates as ISO \"YYYY-MM-DD\", numbers/enums as their string form. Discover the model's structure with `model describe`.",
+  "description": "The `--instance` payload for `model eval` / `model compute` / `rule eval`: a filled document INSTANCE (the data to evaluate), NOT the model. This is A12's own canonical Document JSON — the shape the A12 kernel's document serializer reads and writes — so a document produced by an A12 application, or by `model seed`, is accepted verbatim. There is NO wrapper key: a ROOT GROUP name is a top-level key. The tree mirrors the model — a non-repeating group = a nested object keyed by child name; a repeating group = an ARRAY of row objects whose INDEX is the repetition (an unfilled row is `{}`); a present-but-empty group = `{}`; an omitted group or field = a MISSING key. A field is its value: native JSON for NUMBER and BOOLEAN/CONFIRM (`\"Grams\": 250`, `\"Express\": true`), a model-format string for the date family (DATE `\"2026-01-01\"`, DATE_TIME `\"2026-01-01T09:30:00\"`, TIME `\"09:30:00\"`), the S-value for an ENUMERATION, and `null` for a field that is PRESENT but carries no value (distinct from a missing key). A quoted number or boolean is accepted too and normalized exactly as A12 normalizes it (`\"1e5\"` and `1e5` both store `100000`); a value that cannot be converted to the declared kind is kept verbatim and reported by the formal check, never dropped. A root-level `id` is the document's identity, not a model field, and takes no part in evaluation. Discover the model's structure with `model describe`.",
   "type": "object",
-  "required": ["fields"],
-  "additionalProperties": false,
   "properties": {
-    "fields": {
-      "type": "object",
-      "description": "the instance tree, keyed by top-level group name (e.g. \"Order\"); nest groups/rows/values per the rules above",
-      "additionalProperties": true
+    "id": {
+      "type": ["string", "number"],
+      "description": "the document's own identity — A12's serializer special case, not a model field; ignored by evaluation"
     }
   },
+  "additionalProperties": true,
   "examples": [
     {
-      "fields": {
-        "Order": {
-          "CustomerName": "Acme Corp",
-          "Quantity": "5",
-          "OrderDate": "2026-01-01",
-          "DeliveryDate": "2026-01-10",
-          "Items": [
-            { "Sku": "A-100", "Count": "2" },
-            { "Sku": "B-200", "Count": "1" }
-          ]
-        }
+      "Order": {
+        "CustomerName": "Acme Corp",
+        "Quantity": 5,
+        "UnitPrice": 250.00,
+        "ExpressShipping": true,
+        "ProductCode": null,
+        "OrderDate": "2026-01-01",
+        "DeliveryDate": "2026-01-10",
+        "Priority": "EXPRESS",
+        "ShippingAddress": { "Street": "1 Market St", "City": "Springfield" },
+        "Items": [
+          { "Sku": "A-100", "Count": 2 },
+          { "Sku": "B-200", "Count": 1 }
+        ]
       }
     }
   ]

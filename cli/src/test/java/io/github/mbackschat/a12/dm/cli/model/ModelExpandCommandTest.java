@@ -75,7 +75,7 @@ class ModelExpandCommandTest {
         Path entry = dir.resolve("travel.dm.json");
         Files.writeString(entry, edit.toJson());
         Path instance = dir.resolve("instance.json");
-        Files.writeString(instance, "{\"fields\":{}}");
+        Files.writeString(instance, "{}");
 
         CliTestSupport.Result expanded = CliTestSupport.run(
                 "-m", entry.toString(), "model", "expand");

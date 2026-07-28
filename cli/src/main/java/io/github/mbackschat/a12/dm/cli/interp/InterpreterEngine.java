@@ -31,7 +31,7 @@ import io.github.mbackschat.a12.dm.core.ModelResolver;
 /**
  * The interpreter-backed engine behind the runtime verbs ({@code model eval} / {@code model compute} /
  * {@code rule eval}) — the sole runtime eval engine on every target, native-safe (no Groovy). It loads a
- * DM-JSON model + a {@code {"fields":{…}}} instance via {@link InterpreterModelLoader}, runs
+ * DM-JSON model + a document instance in A12's canonical Document JSON via {@link InterpreterModelLoader}, runs
  * {@link DmInterpreter}, and renders the canonical {@code data} shape. Two honest differences from the kernel
  * (the {@code :adapter} differential oracle): the {@code field} pointer is the resolved path (not the kernel's
  * verbose pointer object), and a rule using an unmodeled/external construct is reported under {@code
@@ -68,18 +68,18 @@ public final class InterpreterEngine {
     /** {@code model eval} over the whole model (optionally narrowing the {@code rule} verdict to {@code targetRule}).
      *  {@code applyComputations} runs the form-engine flow (compute → apply → validate, the default); false is the
      *  bare {@code validateFull} ({@code --no-computations}). */
-    public static ObjectNode evalData(String modelJson, Map<String, Object> fields, String locale, String targetRule,
+    public static ObjectNode evalData(String modelJson, String documentJson, String locale, String targetRule,
             Map<String, PredefinedType> predefinedTypes, Map<String, CustomCondition> customConditions,
             Map<String, CustomFieldType> customFieldTypes, boolean applyComputations) {
-        return evalData(modelJson, fields, locale, targetRule, predefinedTypes, customConditions,
+        return evalData(modelJson, documentJson, locale, targetRule, predefinedTypes, customConditions,
                 customFieldTypes, applyComputations, null);
     }
 
     /** Whole- or partial-document evaluation; non-null {@code relevantJson} selects {@code validatePart}. */
-    public static ObjectNode evalData(String modelJson, Map<String, Object> fields, String locale, String targetRule,
+    public static ObjectNode evalData(String modelJson, String documentJson, String locale, String targetRule,
             Map<String, PredefinedType> predefinedTypes, Map<String, CustomCondition> customConditions,
             Map<String, CustomFieldType> customFieldTypes, boolean applyComputations, String relevantJson) {
-        return evalFor(InterpreterModelLoader.load(modelJson), fields, locale, targetRule,
+        return evalFor(InterpreterModelLoader.load(modelJson), documentJson, locale, targetRule,
                 predefinedTypes, customConditions, customFieldTypes, applyComputations, relevantJson);
     }
 
@@ -90,23 +90,23 @@ public final class InterpreterEngine {
      * identical to persisting the rule (G42), never a single index-less collapse; {@code rule} narrows to it.
      * A candidate carries no message template, so it renders its {@code name} (matching the kernel's fallback).
      */
-    public static ObjectNode evalCandidateData(String modelJson, Map<String, Object> fields, String locale,
+    public static ObjectNode evalCandidateData(String modelJson, String documentJson, String locale,
             String group, String name, String errorEntityRelPath, String condition, String code, String severity,
             Map<String, PredefinedType> predefinedTypes, Map<String, CustomCondition> customConditions,
             Map<String, CustomFieldType> customFieldTypes, boolean applyComputations) {
-        return evalCandidateData(modelJson, fields, locale, group, name, errorEntityRelPath, condition, code,
+        return evalCandidateData(modelJson, documentJson, locale, group, name, errorEntityRelPath, condition, code,
                 severity, predefinedTypes, customConditions, customFieldTypes, applyComputations, null);
     }
 
     /** Candidate evaluation with optional partial-validation relevance. */
-    public static ObjectNode evalCandidateData(String modelJson, Map<String, Object> fields, String locale,
+    public static ObjectNode evalCandidateData(String modelJson, String documentJson, String locale,
             String group, String name, String errorEntityRelPath, String condition, String code, String severity,
             Map<String, PredefinedType> predefinedTypes, Map<String, CustomCondition> customConditions,
             Map<String, CustomFieldType> customFieldTypes, boolean applyComputations, String relevantJson) {
         RuleDef candidate = new RuleDef(group + "/" + name, group, condition, code, errorEntityRelPath,
                 Severity.valueOf(severity.toUpperCase()), Map.of(locale, name));
         ModelDef def = InterpreterModelLoader.load(modelJson).withRule(candidate);
-        return evalFor(def, fields, locale, candidate.getPath(),
+        return evalFor(def, documentJson, locale, candidate.getPath(),
                 predefinedTypes, customConditions, customFieldTypes, applyComputations, relevantJson);
     }
 
@@ -118,10 +118,10 @@ public final class InterpreterEngine {
      * fired}). Both the persisted-rule path ({@link #evalData}) and the injected-candidate path
      * ({@link #evalCandidateData}) end here, so candidate and persisted evaluation are bit-identical.
      */
-    private static ObjectNode evalFor(ModelDef def, Map<String, Object> fields, String locale, String targetRule,
+    private static ObjectNode evalFor(ModelDef def, String documentJson, String locale, String targetRule,
             Map<String, PredefinedType> predefinedTypes, Map<String, CustomCondition> customConditions,
             Map<String, CustomFieldType> customFieldTypes, boolean applyComputations, String relevantJson) {
-        Document doc = InterpreterModelLoader.document(fields, def);
+        Document doc = InterpreterModelLoader.document(documentJson, def);
         DmInterpreter interp = new DmInterpreter(def, null, predefinedTypes, customConditions, customFieldTypes);
         Document evalDoc = applyComputations ? interp.applyComputations(doc, locale) : doc;
         Set<RelevantEntity> relevant = relevantJson == null ? null : RelevantSelection.parse(relevantJson, def);
@@ -153,9 +153,9 @@ public final class InterpreterEngine {
     }
 
     /** {@code model compute}: each computed field's outcome (value / cleared / error). */
-    public static ObjectNode computeData(String modelJson, Map<String, Object> fields, String locale) {
+    public static ObjectNode computeData(String modelJson, String documentJson, String locale) {
         ModelDef def = InterpreterModelLoader.load(modelJson);
-        Document doc = InterpreterModelLoader.document(fields, def);
+        Document doc = InterpreterModelLoader.document(documentJson, def);
         List<Computed> computed = new DmInterpreter(def).compute(doc, locale);
 
         ObjectNode data = MAPPER.createObjectNode();
@@ -172,11 +172,11 @@ public final class InterpreterEngine {
     }
 
     /** {@code rule eval}: the FIRED / PASSED / SUPPRESSED verdict for one stored rule (or {@code unsupported}). */
-    public static ObjectNode ruleTestData(String modelJson, Map<String, Object> fields, String locale, String rulePath,
+    public static ObjectNode ruleTestData(String modelJson, String documentJson, String locale, String rulePath,
             Map<String, PredefinedType> predefinedTypes, Map<String, CustomCondition> customConditions,
             Map<String, CustomFieldType> customFieldTypes, boolean applyComputations) {
         ModelDef def = InterpreterModelLoader.load(modelJson);
-        Document doc = InterpreterModelLoader.document(fields, def);
+        Document doc = InterpreterModelLoader.document(documentJson, def);
         RuleResult result;
         try {
             DmInterpreter interp = new DmInterpreter(def, null, predefinedTypes, customConditions, customFieldTypes);

@@ -46,7 +46,7 @@ class InterpreterRealModelDiffTest {
     void orderRuledViolationFiresLikeKernel() {
         // delivery 2024-05-15 BEFORE order 2024-06-01 → DifferenceInDays(...) < 0 fires
         assertValidationMatches("models/order-ruled.dm.json",
-                "{ \"fields\": { \"Order\": { \"OrderDate\": \"2024-06-01\", \"DeliveryDate\": \"2024-05-15\" } } }",
+                "{ \"Order\": { \"OrderDate\": \"2024-06-01\", \"DeliveryDate\": \"2024-05-15\" } }",
                 Set.of("DELIVERY_BEFORE_ORDER"));
     }
 
@@ -54,7 +54,7 @@ class InterpreterRealModelDiffTest {
     void orderRuledCompliantFiresNothingLikeKernel() {
         // delivery after order → no supported rule fires
         assertValidationMatches("models/order-ruled.dm.json",
-                "{ \"fields\": { \"Order\": { \"OrderDate\": \"2024-06-01\", \"DeliveryDate\": \"2024-06-15\" } } }",
+                "{ \"Order\": { \"OrderDate\": \"2024-06-01\", \"DeliveryDate\": \"2024-06-15\" } }",
                 Set.of());
     }
 
@@ -65,7 +65,7 @@ class InterpreterRealModelDiffTest {
         // delivery-before-order doc — which would otherwise fire it — fires NOTHING. The interpreter's loader
         // must drop it too (IG16); before the fix it kept + fired the rule.
         assertValidationMatches("models/order-variant.dm.json",
-                "{ \"fields\": { \"Order\": { \"OrderDate\": \"2024-06-01\", \"DeliveryDate\": \"2024-05-15\" } } }",
+                "{ \"Order\": { \"OrderDate\": \"2024-06-01\", \"DeliveryDate\": \"2024-05-15\" } }",
                 Set.of());
     }
 
@@ -88,31 +88,30 @@ class InterpreterRealModelDiffTest {
     void postalCodePatternFiresLikeKernel() {
         // a malformed billing postal code trips PostalCodeFormat (PatternViolated), nested under BillingAddress
         assertValidationMatches("models/order-ruled.dm.json",
-                "{ \"fields\": { \"Order\": { \"BillingAddress\": { \"PostalCode\": \"12\" } } } }",
+                "{ \"Order\": { \"BillingAddress\": { \"PostalCode\": \"12\" } } }",
                 Set.of("POSTAL_CODE_MALFORMED"));
     }
 
     @Test
     void subscriptionComputeMatchesKernel() {
-        assertComputeMatches("{ \"fields\": { \"Subscription\": { \"Billing\": { \"BaseFee\": \"49.90\" } } } }", "49.9");
+        assertComputeMatches("{ \"Subscription\": { \"Billing\": { \"BaseFee\": \"49.90\" } } }", "49.9");
     }
 
     @Test
     void subscriptionComputeEmptyOperandMatchesKernel() {
         // BaseFee absent, Billing present but EMPTY ({}) — the loader must instantiate the empty group so the
         // computation runs and empty-as-0 yields "0" (the cli-runtime trap; a loader regression guard).
-        assertComputeMatches("{ \"fields\": { \"Subscription\": { \"Billing\": { } } } }", "0");
+        assertComputeMatches("{ \"Subscription\": { \"Billing\": { } } }", "0");
     }
 
     private void assertComputeMatches(String instanceJson, String expectedValue) {
         String model = resource("models/subscription-computed.dm.json");
-        Map<String, Object> fields = innerFields(instanceJson);
-
-        String kernelValue = KernelAdapter.ofJson(model).compute(fields, Locale.US).computed().stream()
+        String kernelValue = KernelAdapter.ofJson(model).compute(kernelFields(instanceJson), Locale.US)
+                .computed().stream()
                 .filter(c -> c.path().equals(EFF)).findFirst().flatMap(ComputedField::value).orElse(null);
 
         ModelDef def = InterpreterModelLoader.load(model);
-        Document doc = InterpreterModelLoader.document(fields, def);
+        Document doc = InterpreterModelLoader.document(instanceJson, def);
         String interpValue = new DmInterpreter(def).compute(doc, "en_US").stream()
                 .filter(c -> c.getPath().equals(EFF)).findFirst().map(Computed::getValue).orElse(null);
 
@@ -123,12 +122,11 @@ class InterpreterRealModelDiffTest {
     /** Assert the interpreter fires exactly the kernel's codes, restricted to the rules it supports. */
     private void assertValidationMatches(String modelResource, String instanceJson, Set<String> expectedSupportedFired) {
         String model = resource(modelResource);
-        Map<String, Object> fields = innerFields(instanceJson);
-
-        Set<String> kernelFired = KernelAdapter.ofJson(model).evaluate(fields, Locale.US).firedCodes();
+        Set<String> kernelFired =
+                KernelAdapter.ofJson(model).evaluate(kernelFields(instanceJson), Locale.US).firedCodes();
 
         ModelDef def = InterpreterModelLoader.load(model);
-        Document doc = InterpreterModelLoader.document(fields, def);
+        Document doc = InterpreterModelLoader.document(instanceJson, def);
         ValidationOutcome outcome = new DmInterpreter(def).validate(doc, "en_US");
 
         Set<String> unsupportedCodes = outcome.getUnsupported().stream()
@@ -152,11 +150,14 @@ class InterpreterRealModelDiffTest {
                 .map(RuleDef::getErrorCode).findFirst().orElse("");
     }
 
-    private static Map<String, Object> innerFields(String instanceJson) {
+    /**
+     * The KERNEL leg's document input. Both legs are fed the SAME canonical A12 Document JSON text; the
+     * interpreter leg reads it through the interpreter's codec, while {@link KernelAdapter}'s public API still
+     * takes a nested field map (a separate boundary — step 5 of docs/A12-SHAPE-CONSOLIDATION.md).
+     */
+    private static Map<String, Object> kernelFields(String instanceJson) {
         try {
-            JsonNode root = MAPPER.readTree(instanceJson);
-            JsonNode fields = root.has("fields") ? root.get("fields") : root;
-            return MAPPER.convertValue(fields, new TypeReference<Map<String, Object>>() { });
+            return MAPPER.convertValue(MAPPER.readTree(instanceJson), new TypeReference<Map<String, Object>>() { });
         } catch (Exception e) {
             throw new IllegalArgumentException("bad instance JSON", e);
         }

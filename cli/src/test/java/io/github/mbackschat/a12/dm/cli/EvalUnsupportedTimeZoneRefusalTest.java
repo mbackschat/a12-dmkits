@@ -37,7 +37,7 @@ class EvalUnsupportedTimeZoneRefusalTest {
 
     private static Path emptyDoc(Path dir) throws IOException {
         Path f = dir.resolve("doc.json");
-        Files.writeString(f, "{ \"fields\": {} }");
+        Files.writeString(f, "{}");
         return f;
     }
 

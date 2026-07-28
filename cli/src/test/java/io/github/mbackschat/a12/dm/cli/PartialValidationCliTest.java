@@ -32,7 +32,7 @@ class PartialValidationCliTest {
     void relevantPageRunsOnlyItsRulesPlusGlobalFields(@TempDir Path dir) throws Exception {
         Path model = model(dir);
         Path doc = document(dir, """
-                { "fields": { "Order": {} } }
+                { "Order": {} }
                 """);
 
         JsonNode full = data(CliTestSupport.run("-m", model.toString(), "model", "eval",
@@ -51,10 +51,10 @@ class PartialValidationCliTest {
     void concreteAndWildcardRepetitionIndicesMapToRelevantEntity(@TempDir Path dir) throws Exception {
         Path model = model(dir);
         Path doc = document(dir, """
-                { "fields": { "Order": { "Lines": [
+                { "Order": { "Lines": [
                   { "Quantity": "one" },
                   { "Quantity": "two" }
-                ] } } }
+                ] } }
                 """);
 
         JsonNode rowTwo = data(CliTestSupport.run("-m", model.toString(), "model", "eval",
@@ -74,7 +74,7 @@ class PartialValidationCliTest {
     @Test
     void malformedOrUnknownRelevantPointerRefusesBeforeEvaluation(@TempDir Path dir) throws Exception {
         Path model = model(dir);
-        Path doc = document(dir, "{ \"fields\": { \"Order\": {} } }");
+        Path doc = document(dir, "{ \"Order\": {} }");
 
         var malformed = CliTestSupport.run("-m", model.toString(), "model", "eval",
                 "--instance", doc.toString(), "--relevant", "[\"/Order/Lines[0]/Quantity\"]");

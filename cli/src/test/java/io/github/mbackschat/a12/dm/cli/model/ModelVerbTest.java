@@ -90,7 +90,7 @@ class ModelVerbTest {
     void evalReportsFiredRulesInData(@TempDir Path dir) throws Exception {
         Path model = CliTestSupport.modelWithRule(dir);
         Path docFile = dir.resolve("doc.json");
-        Files.writeString(docFile, "{ \"fields\": { \"Subscription\": { \"Addons\": [ { \"MonthlyFee\": \"2000\" } ] } } }");
+        Files.writeString(docFile, "{ \"Subscription\": { \"Addons\": [ { \"MonthlyFee\": \"2000\" } ] } }");
         var res = CliTestSupport.run("-m", model.toString(), "model", "eval", "--instance", docFile.toString());
         assertEquals(0, res.code(), res.err());
         JsonNode data = M.readTree(res.out()).get("data");
@@ -101,7 +101,7 @@ class ModelVerbTest {
     void computeReportsComputedFieldsInData(@TempDir Path dir) throws Exception {
         Path model = CliTestSupport.modelWithRuleAndComputation(dir);
         Path docFile = dir.resolve("compute.json");
-        Files.writeString(docFile, "{ \"fields\": { \"Subscription\": { \"Billing\": { \"BaseFee\": \"50\" } } } }");
+        Files.writeString(docFile, "{ \"Subscription\": { \"Billing\": { \"BaseFee\": \"50\" } } }");
         var res = CliTestSupport.run("-m", model.toString(), "model", "compute", "--instance", docFile.toString());
         assertEquals(0, res.code(), res.err());
         assertTrue(M.readTree(res.out()).get("data").has("computed"), "model compute carries computed[] in `data`");

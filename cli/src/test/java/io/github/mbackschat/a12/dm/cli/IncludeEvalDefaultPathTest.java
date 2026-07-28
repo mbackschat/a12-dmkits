@@ -123,7 +123,7 @@ class IncludeEvalDefaultPathTest {
 
     private static Path instanceField(Path dir, String field, String value) throws IOException {
         Path f = dir.resolve("doc.json");
-        Files.writeString(f, "{ \"fields\": { \"Policy\": { \"Cover\": { \"" + field + "\": \"" + value + "\" } } } }");
+        Files.writeString(f, "{ \"Policy\": { \"Cover\": { \"" + field + "\": \"" + value + "\" } } }");
         return f;
     }
 
@@ -230,7 +230,7 @@ class IncludeEvalDefaultPathTest {
 
     private static Path tierValueInstance(Path dir, String value) throws IOException {
         Path f = dir.resolve("doc.json");
-        Files.writeString(f, "{ \"fields\": { \"Policy\": { \"Cover\": { \"Tier\": { \"Value\": \"" + value + "\" } } } } }");
+        Files.writeString(f, "{ \"Policy\": { \"Cover\": { \"Tier\": { \"Value\": \"" + value + "\" } } } }");
         return f;
     }
 }

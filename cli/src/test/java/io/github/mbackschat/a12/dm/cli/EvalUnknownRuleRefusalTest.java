@@ -28,7 +28,7 @@ class EvalUnknownRuleRefusalTest {
 
     private static Path instance(Path dir) throws IOException {
         Path f = dir.resolve("doc.json");
-        Files.writeString(f, "{ \"fields\": {} }");
+        Files.writeString(f, "{}");
         return f;
     }
 

@@ -26,7 +26,7 @@ Here is a clearly-malformed IBAN. With no definition for the `Iban` type, the en
 
 ```bash
 cat > /tmp/ct-bad.json <<'JSON'
-{ "fields": { "Payment": { "AccountHolder": "Acme", "Iban": "NOT-AN-IBAN" } } }
+{ "Payment": { "AccountHolder": "Acme", "Iban": "NOT-AN-IBAN" } }
 JSON
 dmtool -m examples/models/payment-customtype.dm.json \
   model eval --instance /tmp/ct-bad.json \
@@ -79,7 +79,7 @@ A well-formed IBAN passes with the same registry — nothing fired, nothing unsu
 
 ```bash
 cat > /tmp/ct-ok.json <<'JSON'
-{ "fields": { "Payment": { "AccountHolder": "Acme", "Iban": "DE89370400440532013000" } } }
+{ "Payment": { "AccountHolder": "Acme", "Iban": "DE89370400440532013000" } }
 JSON
 dmtool -m examples/models/payment-customtype.dm.json \
   model eval --instance /tmp/ct-ok.json \
@@ -122,7 +122,7 @@ A `CustomCondition` is, by definition, logic the DSL can't express — so it's g
 
 ```bash
 cat > /tmp/ct-order.json <<'JSON'
-{ "fields": { "Order": { "CustomerName": "Acme" } } }
+{ "Order": { "CustomerName": "Acme" } }
 JSON
 dmtool -m examples/models/order-ruled.dm.json \
   rule eval /Order/EligibilityCheck --instance /tmp/ct-order.json \
@@ -161,7 +161,7 @@ export function validate(value, context) {
 }
 JS
 cat > /tmp/ct-fr.json <<'JSON'
-{ "fields": { "Payment": { "AccountHolder": "Acme", "Iban": "FR7630006000011234567890189" } } }
+{ "Payment": { "AccountHolder": "Acme", "Iban": "FR7630006000011234567890189" } }
 JSON
 dmtool -m examples/models/payment-customtype.dm.json \
   model eval --instance /tmp/ct-fr.json \

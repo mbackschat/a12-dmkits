@@ -54,7 +54,7 @@ class CustomTypeSupportVerbTest {
     void predefinedTypesValidatesACustomTypedFieldThatWouldOtherwiseBeSkipped(@TempDir Path dir) throws Exception {
         Path model = CliTestSupport.paymentCustomType(dir);
         Path bad = write(dir, "bad.json", """
-                { "fields": { "Payment": { "AccountHolder": "Acme", "Iban": "NOT-AN-IBAN" } } }""");
+                { "Payment": { "AccountHolder": "Acme", "Iban": "NOT-AN-IBAN" } }""");
         Path types = write(dir, "types.json", IBAN_TYPES);
         var res = CliTestSupport.run("-m", model.toString(), "model", "eval",
                 "--instance", bad.toString(), "--predefined-types", types.toString());
@@ -67,7 +67,7 @@ class CustomTypeSupportVerbTest {
     void aValidCustomTypedValuePasses(@TempDir Path dir) throws Exception {
         Path model = CliTestSupport.paymentCustomType(dir);
         Path good = write(dir, "good.json", """
-                { "fields": { "Payment": { "AccountHolder": "Acme", "Iban": "DE89370400440532013000" } } }""");
+                { "Payment": { "AccountHolder": "Acme", "Iban": "DE89370400440532013000" } }""");
         Path types = write(dir, "types.json", IBAN_TYPES);
         var res = CliTestSupport.run("-m", model.toString(), "model", "eval",
                 "--instance", good.toString(), "--predefined-types", types.toString());
@@ -80,7 +80,7 @@ class CustomTypeSupportVerbTest {
     void withoutPredefinedTypesTheCustomTypedFieldIsNotValidated(@TempDir Path dir) throws Exception {
         Path model = CliTestSupport.paymentCustomType(dir);
         Path bad = write(dir, "bad.json", """
-                { "fields": { "Payment": { "AccountHolder": "Acme", "Iban": "NOT-AN-IBAN" } } }""");
+                { "Payment": { "AccountHolder": "Acme", "Iban": "NOT-AN-IBAN" } }""");
         var res = CliTestSupport.run("-m", model.toString(), "model", "eval", "--instance", bad.toString());
         assertEquals(0, res.code(), res::err);
         assertFalse(fired(res.out(), "customFieldTypeInvalid"),
@@ -93,7 +93,7 @@ class CustomTypeSupportVerbTest {
     void evalSurfacesAnUnsupportedCustomTypedCell(@TempDir Path dir) throws Exception {
         Path model = CliTestSupport.paymentCustomType(dir);
         Path bad = write(dir, "bad.json", """
-                { "fields": { "Payment": { "AccountHolder": "Acme", "Iban": "NOT-AN-IBAN" } } }""");
+                { "Payment": { "AccountHolder": "Acme", "Iban": "NOT-AN-IBAN" } }""");
         var res = CliTestSupport.run("-m", model.toString(), "model", "eval", "--instance", bad.toString());
         assertEquals(0, res.code(), res::err);
         assertTrue(unsupported(res.out()).contains("/Payment[1]/Iban"),
@@ -104,7 +104,7 @@ class CustomTypeSupportVerbTest {
     void predefinedTypesClearsTheUnsupportedSurface(@TempDir Path dir) throws Exception {
         Path model = CliTestSupport.paymentCustomType(dir);
         Path good = write(dir, "good.json", """
-                { "fields": { "Payment": { "AccountHolder": "Acme", "Iban": "DE89370400440532013000" } } }""");
+                { "Payment": { "AccountHolder": "Acme", "Iban": "DE89370400440532013000" } }""");
         Path types = write(dir, "types.json", IBAN_TYPES);
         var res = CliTestSupport.run("-m", model.toString(), "model", "eval",
                 "--instance", good.toString(), "--predefined-types", types.toString());
@@ -117,7 +117,7 @@ class CustomTypeSupportVerbTest {
     void evalSurfacesAnUnsupportedCustomConditionRule(@TempDir Path dir) throws Exception {
         Path model = CliTestSupport.orderRuled(dir);   // /Order/EligibilityCheck uses CustomCondition ExternalEligibility
         Path d = write(dir, "doc.json", """
-                { "fields": { "Order": { "CustomerName": "Acme" } } }""");   // filled, so the CustomCondition is reached
+                { "Order": { "CustomerName": "Acme" } }""");   // filled, so the CustomCondition is reached
         var res = CliTestSupport.run("-m", model.toString(), "model", "eval", "--instance", d.toString());
         assertEquals(0, res.code(), res::err);
         assertTrue(unsupported(res.out()).contains("/Order/EligibilityCheck"),
@@ -128,7 +128,7 @@ class CustomTypeSupportVerbTest {
     void strictCustomRefusesWhenSomethingIsUnsupported(@TempDir Path dir) throws Exception {
         Path model = CliTestSupport.paymentCustomType(dir);
         Path bad = write(dir, "bad.json", """
-                { "fields": { "Payment": { "AccountHolder": "Acme", "Iban": "NOT-AN-IBAN" } } }""");
+                { "Payment": { "AccountHolder": "Acme", "Iban": "NOT-AN-IBAN" } }""");
         var res = CliTestSupport.run("-m", model.toString(), "model", "eval",
                 "--instance", bad.toString(), "--strict-custom");
         assertEquals(2, res.code(), () -> "--strict-custom must refuse (exit 2) on an unsupported construct: " + res.out());
@@ -140,7 +140,7 @@ class CustomTypeSupportVerbTest {
     void strictCustomPassesWhenEverythingIsSupported(@TempDir Path dir) throws Exception {
         Path model = CliTestSupport.paymentCustomType(dir);
         Path good = write(dir, "good.json", """
-                { "fields": { "Payment": { "AccountHolder": "Acme", "Iban": "DE89370400440532013000" } } }""");
+                { "Payment": { "AccountHolder": "Acme", "Iban": "DE89370400440532013000" } }""");
         Path types = write(dir, "types.json", IBAN_TYPES);
         var res = CliTestSupport.run("-m", model.toString(), "model", "eval",
                 "--instance", good.toString(), "--predefined-types", types.toString(), "--strict-custom");
@@ -151,7 +151,7 @@ class CustomTypeSupportVerbTest {
     void ruleTestReportsAnUnsupportedCustomConditionRule(@TempDir Path dir) throws Exception {
         Path model = CliTestSupport.orderRuled(dir);
         Path d = write(dir, "doc.json", """
-                { "fields": { "Order": { "CustomerName": "Acme" } } }""");
+                { "Order": { "CustomerName": "Acme" } }""");
         var res = CliTestSupport.run("-m", model.toString(), "rule", "eval", "/Order/EligibilityCheck",
                 "--instance", d.toString());
         assertEquals(0, res.code(), res::err);
@@ -163,7 +163,7 @@ class CustomTypeSupportVerbTest {
     void aMalformedPredefinedTypesFileFailsCleanly(@TempDir Path dir) throws Exception {
         Path model = CliTestSupport.paymentCustomType(dir);
         Path bad = write(dir, "bad.json", """
-                { "fields": { "Payment": { "Iban": "x" } } }""");
+                { "Payment": { "Iban": "x" } }""");
         Path types = write(dir, "types.json", """
                 { "Iban": { "bogusKey": 1 } }""");
         var res = CliTestSupport.run("-m", model.toString(), "model", "eval",

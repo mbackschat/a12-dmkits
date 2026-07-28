@@ -37,7 +37,7 @@ class ComputeDocVerbTest {
         Path model = CliTestSupport.modelWithRuleAndComputation(dir);
         Path doc = dir.resolve("doc.json");
         Files.writeString(doc, """
-                { "fields": { "Subscription": { "Billing": { "BaseFee": "50" } } } }""");
+                { "Subscription": { "Billing": { "BaseFee": "50" } } }""");
         var res = CliTestSupport.runKernel("-m", model.toString(), "model", "compute", "--instance", doc.toString());
         assertEquals(0, res.code(), res::err);
         JsonNode cw = computedFor(res.out(), "/Subscription/Billing/EffectiveFee");
@@ -53,7 +53,7 @@ class ComputeDocVerbTest {
         Path model = CliTestSupport.modelWithRuleAndComputation(dir);
         Path doc = dir.resolve("doc.json");
         Files.writeString(doc, """
-                { "fields": { "Subscription": { "Billing": { } } } }""");
+                { "Subscription": { "Billing": { } } }""");
         var res = CliTestSupport.runKernel("-m", model.toString(), "model", "compute", "--instance", doc.toString());
         assertEquals(0, res.code(), res::err);
         JsonNode cw = computedFor(res.out(), "/Subscription/Billing/EffectiveFee");
@@ -80,7 +80,7 @@ class ComputeDocVerbTest {
 
         Path doc = dir.resolve("empty.json");
         Files.writeString(doc, """
-                { "fields": { "Subscription": { "Billing": { } } } }""");
+                { "Subscription": { "Billing": { } } }""");
         var res = CliTestSupport.runKernel("-m", guarded.toString(), "model", "compute", "--instance", doc.toString());
         assertEquals(0, res.code(), res::err);
         assertNull(computedFor(res.out(), "/Subscription/Billing/EffectiveFee"),
@@ -92,7 +92,7 @@ class ComputeDocVerbTest {
         Path model = CliTestSupport.modelWithRuleAndComputation(dir);
         Path doc = dir.resolve("doc.json");
         Files.writeString(doc, """
-                { "fields": { "Subscription": { "Nope": "x" } } }""");
+                { "Subscription": { "Nope": "x" } }""");
         var res = CliTestSupport.runKernel("-m", model.toString(), "model", "compute", "--instance", doc.toString());
         assertNotEquals(0, res.code(), "an unknown path is an error");
         assertTrue(res.err().contains("Nope"), () -> "names the bad path: " + res.err());

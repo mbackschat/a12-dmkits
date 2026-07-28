@@ -2,7 +2,6 @@ package io.github.mbackschat.a12.dm.cli.model;
 
 import io.github.mbackschat.a12.dm.cli.BaseCommand;
 import io.github.mbackschat.a12.dm.cli.CustomSupportOptions;
-import io.github.mbackschat.a12.dm.cli.DocInstance;
 import io.github.mbackschat.a12.dm.cli.ParamKind;
 import io.github.mbackschat.a12.dm.cli.ResultEnvelope;
 import io.github.mbackschat.a12.dm.cli.WorkspaceOption;
@@ -12,8 +11,8 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
-import java.util.Map;
 
+import io.github.mbackschat.a12.dm.interpreter.DocumentInputError;
 import io.github.mbackschat.a12.dm.interpreter.UnsupportedModelTimeZoneException;
 import io.github.mbackschat.a12.dm.interpreter.InvalidModelTimeZoneException;
 import io.github.mbackschat.a12.dm.rulekit.validate.RkCode;
@@ -45,7 +44,8 @@ import picocli.CommandLine.Option;
 final class ModelEvalCommand extends BaseCommand {
 
     @Option(names = "--instance", required = true, paramLabel = "<document.json>",
-            description = "the document INSTANCE (field data) — a nested JSON tree under \"fields\". See `schema model eval`.")
+            description = "the document INSTANCE (field data) in A12's canonical Document JSON — a nested tree "
+                    + "mirroring the model, keyed by root group name. See `schema model eval`.")
     String instance;
 
     @ParamKind(ParamKind.Kind.RULE_PATH)
@@ -116,18 +116,14 @@ final class ModelEvalCommand extends BaseCommand {
             return fail("a candidate rule needs both --condition and --field");
         }
         String modelJson;
-        Map<String, Object> fields;
         try {
             modelJson = Files.readString(Path.of(model));
         } catch (IOException e) {
             return fail("cannot read model: " + e.getMessage());
         }
-        try {
-            fields = DocInstance.readFields(instance);
-        } catch (IllegalArgumentException badShape) {
-            return fail(badShape.getMessage());
-        } catch (IOException e) {
-            return fail("cannot read document: " + e.getMessage());
+        String documentJson = readInstanceJson(instance);
+        if (documentJson == null) {
+            return 2;
         }
         ModelResolver resolver = workspace.resolverFor(model);
 
@@ -155,7 +151,7 @@ final class ModelEvalCommand extends BaseCommand {
         ObjectNode data;
         try {
             if (candidate) {
-                data = InterpreterEngine.evalCandidateData(interpJson, fields, localeTag,
+                data = InterpreterEngine.evalCandidateData(interpJson, documentJson, localeTag,
                         effectiveGroup, name, errorEntityRelPath, condition, code, severity,
                         customSupport.predefinedTypes(), customSupport.customConditions(),
                         customSupport.customFieldTypes(), !noComputations, relevant);
@@ -166,7 +162,7 @@ final class ModelEvalCommand extends BaseCommand {
                     return refuseNotFound("model", "eval", RkCode.NO_SUCH_RULE,
                             "rule '" + ruleId + "' does not exist — refusing", ruleId, RkCode.NO_SUCH_RULE.fix());
                 }
-                data = InterpreterEngine.evalData(interpJson, fields, localeTag, ruleId,
+                data = InterpreterEngine.evalData(interpJson, documentJson, localeTag, ruleId,
                         customSupport.predefinedTypes(), customSupport.customConditions(),
                         customSupport.customFieldTypes(), !noComputations, relevant);
             }
@@ -176,6 +172,8 @@ final class ModelEvalCommand extends BaseCommand {
         } catch (InvalidModelTimeZoneException e) {
             return refuseExplainedPrecheck("model", "eval", RkCode.INVALID_CONFIG_VALUE, e.getMessage(),
                     model, RkCode.INVALID_CONFIG_VALUE.fix());
+        } catch (DocumentInputError badDoc) {
+            return failInvalidInstance(badDoc);
         } catch (IllegalArgumentException badDoc) {
             return fail(badDoc.getMessage());
         } catch (RuntimeException e) {

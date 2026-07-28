@@ -43,7 +43,7 @@ class CustomFieldTypeJsVerbTest {
 
     private static Path doc(Path dir, String iban) throws Exception {
         Path d = dir.resolve("doc-" + iban.hashCode() + ".json");
-        Files.writeString(d, "{ \"fields\": { \"Payment\": { \"Iban\": \"" + iban + "\" } } }");
+        Files.writeString(d, "{ \"Payment\": { \"Iban\": \"" + iban + "\" } }");
         return d;
     }
 

@@ -174,6 +174,19 @@ Every input defect A12 reports as an error-ranked notification is **fatal** here
 
 `encodeDocument` checks owner identity before writing. `isSnapshot` recognizes only authentic snapshots owned by that prepared model.
 
+### 4.4 The model-level codec pair — for a consumer that holds a `ModelDef`
+
+`PreparedModel.documents` is the **blessed** boundary: owner-bound, snapshot-returning, and the carrier of the root `id`. Beneath it, two functions expose the same codec one level down, at the level of the already public `ModelDef.newDocument()`:
+
+```kotlin
+fun ModelDef.readDocumentJson(json: String, limits: DocumentDecodeLimits = DocumentDecodeLimits.defaults()): Document
+fun Document.toDocumentJson(model: ModelDef): String
+```
+
+Same shape, same value normalization, same ceilings, same diagnostics — it is one implementation, not a second one. The pair carries **no document identity**: a root `id` is still *validated* on read (never reported as an unknown path) but nothing at this level can keep it, so a consumer that needs it uses the owner-bound surface. `toDocumentJson` emits **compact** JSON deliberately, because A12 itself takes the pretty-printer as caller configuration (`DocumentSerializationConfig.prettyJsonPrinter`) rather than as part of the format.
+
+It exists for a consumer that already works in `ModelDef`/`Document` — `dmtool`'s runtime verbs and `model seed` do — so that consumer is not tempted to write its own reader or writer for a shape A12 defines. Adding it removed three such duplicates (dmtool's instance walker and its seed sink, plus a near-identical sink in the adapter's performance-fixture guard). Locked by `interpreter … DocumentJsonCodecTest`; the CLI end of it by `cli … DocumentInstanceIngressTest`.
+
 ## 5. Interpreter lifecycle and evaluation
 
 `PreparedModel.createInterpreter` creates an active evaluator with an optional immutable `InterpreterConfiguration`. A prepared model contains no request document or callback instance. A document snapshot is immutable from the public surface.

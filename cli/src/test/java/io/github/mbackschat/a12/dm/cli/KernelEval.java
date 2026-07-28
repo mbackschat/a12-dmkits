@@ -10,7 +10,12 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 
+import com.fasterxml.jackson.core.JsonParser;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.DeserializationFeature;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.cfg.JsonNodeFeature;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 
@@ -49,7 +54,34 @@ final class KernelEval {
 
     private static final ObjectMapper MAPPER = new ObjectMapper();
 
+    /**
+     * Configured exactly like A12's own document mapper ({@code ObjectMapperProvider
+     * .createObjectMapperForDocSerializer()}): {@code USE_BIG_DECIMAL_FOR_FLOATS} with
+     * {@code STRIP_TRAILING_BIGDECIMAL_ZEROES} disabled, under the Kernel-team comment "we want to preserve
+     * trailing zeroes and the scale of the value", plus {@code ALLOW_COMMENTS} because A12 accepts them. On a
+     * DEFAULT mapper a native {@code 250.00} becomes a {@code DoubleNode} and reaches the document as
+     * {@code "250.0"} — the scale a NumberType's formal check and every comparison read.
+     */
+    private static final ObjectMapper DOCUMENT_MAPPER = new ObjectMapper()
+            .enable(JsonParser.Feature.ALLOW_COMMENTS)
+            .enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS)
+            .configure(JsonNodeFeature.STRIP_TRAILING_BIGDECIMAL_ZEROES, false);
+
     private KernelEval() {
+    }
+
+    /**
+     * A12 Document JSON → the nested field map {@link KernelAdapter} takes. Production {@code :cli} no longer
+     * parses a document at all (the interpreter's canonical codec does), but the kernel adapter's public API
+     * still consumes {@code Map<String, Object>} — a different boundary, recorded as a step-5 row in
+     * docs/A12-SHAPE-CONSOLIDATION.md, deliberately not changed here. This harness is its only remaining caller.
+     */
+    private static Map<String, Object> readInstanceFields(String docPath) throws IOException {
+        JsonNode root = DOCUMENT_MAPPER.readTree(Files.readString(Path.of(docPath)));
+        if (!root.isObject()) {
+            throw new IllegalArgumentException("a document instance is a JSON object keyed by root group name");
+        }
+        return DOCUMENT_MAPPER.convertValue(root, new TypeReference<Map<String, Object>>() { });
     }
 
     /** Run a runtime-eval verb on the kernel engine; returns the same {@code {code, out, err}} shape the CLI does. */
@@ -92,7 +124,7 @@ final class KernelEval {
             return fail(err, "cannot read model: " + e.getMessage());
         }
         try {
-            fields = DocInstance.readFields(a.instance());
+            fields = readInstanceFields(a.instance());
         } catch (IllegalArgumentException badShape) {
             return fail(err, badShape.getMessage());
         } catch (IOException e) {
@@ -173,7 +205,7 @@ final class KernelEval {
             return fail(err, "cannot read model: " + e.getMessage());
         }
         try {
-            fields = DocInstance.readFields(a.instance());
+            fields = readInstanceFields(a.instance());
         } catch (IllegalArgumentException badShape) {
             return fail(err, badShape.getMessage());
         } catch (IOException e) {
@@ -213,7 +245,7 @@ final class KernelEval {
         }
         Map<String, Object> fields;
         try {
-            fields = DocInstance.readFields(a.instance());
+            fields = readInstanceFields(a.instance());
         } catch (IllegalArgumentException badShape) {
             return fail(err, badShape.getMessage());
         } catch (IOException e) {

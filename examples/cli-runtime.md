@@ -3,7 +3,7 @@
 *2026-06-11T23:51:18Z by Showboat 0.6.1*
 <!-- showboat-id: bf4f1a1d-efae-4469-94a0-28e706b4a839 -->
 
-The previous tours operated on the **model** — its rules and computations as text. This one runs a document **instance** (actual field data) through the runtime engine and asks the *runtime* questions: which rules **fire** on this data, and what does a computed field **evaluate to**? Two read-only verbs, both `JSON-in / JSON-out`, both invoked through `dmtool` (the launcher shim) from the repo root; some steps also use `jq`. The document instance is a small JSON file — a nested `{"fields":{…}}` tree, grouped exactly like the model.
+The previous tours operated on the **model** — its rules and computations as text. This one runs a document **instance** (actual field data) through the runtime engine and asks the *runtime* questions: which rules **fire** on this data, and what does a computed field **evaluate to**? Two read-only verbs, both `JSON-in / JSON-out`, both invoked through `dmtool` (the launcher shim) from the repo root; some steps also use `jq`. The document instance is a small JSON file in **A12's own canonical Document JSON** — the shape the A12 kernel's document serializer reads and writes, so a document a real A12 application produced drops straight in. It is a nested tree grouped exactly like the model, with a **root group name as a top-level key** and no wrapper.
 
 **The engine.** These runtime verbs run on the **native-safe interpreter** — a from-scratch evaluator that reproduces the A12 kernel's runtime semantics without the kernel's on-the-fly Groovy, so they run in the GraalVM native image too; it is the sole runtime eval engine on every target. The interpreter is verified rule-for-rule against the kernel, so the two agree on which rules fire and what computes. Output blocks are captured by [showboat](https://github.com/simonw/showboat); re-check them with `uvx showboat@0.6.1 verify examples/cli-runtime.md` (exit 0 = output still matches the live CLI).
 
@@ -13,13 +13,13 @@ A model is a *schema*; the runtime needs *data*. The instance below is the small
 
 ```bash
 cat > /tmp/rt-order-violation.json <<'JSON'
-{ "fields": { "Order": { "OrderDate": "2024-06-01", "DeliveryDate": "2024-05-15" } } }
+{ "Order": { "OrderDate": "2024-06-01", "DeliveryDate": "2024-05-15" } }
 JSON
 cat /tmp/rt-order-violation.json
 ```
 
 ```output
-{ "fields": { "Order": { "OrderDate": "2024-06-01", "DeliveryDate": "2024-05-15" } } }
+{ "Order": { "OrderDate": "2024-06-01", "DeliveryDate": "2024-05-15" } }
 ```
 
 ## model eval — which rules fire?
@@ -97,7 +97,7 @@ Now the **empirical polarity check** — the same rule, the same model, a *compl
 
 ```bash
 cat > /tmp/rt-order-ok.json <<'JSON'
-{ "fields": { "Order": { "OrderDate": "2024-06-01", "DeliveryDate": "2024-06-15" } } }
+{ "Order": { "OrderDate": "2024-06-01", "DeliveryDate": "2024-06-15" } }
 JSON
 dmtool -m examples/models/order-ruled.dm.json \
   model eval \
@@ -203,7 +203,7 @@ dmtool -m examples/models/order-ruled.dm.json \
 
 ```bash
 cat > /tmp/rt-order-baddate.json <<'JSON'
-{ "fields": { "Order": { "OrderDate": "2024-06-01", "DeliveryDate": "not-a-date" } } }
+{ "Order": { "OrderDate": "2024-06-01", "DeliveryDate": "not-a-date" } }
 JSON
 dmtool -m examples/models/order-ruled.dm.json \
   rule eval /Order/DeliveryNotBeforeOrder \
@@ -240,7 +240,7 @@ You can also evaluate a rule that **isn't in the model** — `--condition "<DSL>
 
 ```bash
 cat > /tmp/rt-qty-over.json <<'JSON'
-{ "fields": { "Order": { "Quantity": "150" } } }
+{ "Order": { "Quantity": "150" } }
 JSON
 dmtool -m examples/models/order-ruled.dm.json \
   model eval \
@@ -310,7 +310,7 @@ We switch to the `subscription-computed` model, whose `EffectiveFeeComp` compute
 
 ```bash
 cat > /tmp/rt-sub-filled.json <<'JSON'
-{ "fields": { "Subscription": { "Billing": { "BaseFee": "49.90" } } } }
+{ "Subscription": { "Billing": { "BaseFee": "49.90" } } }
 JSON
 dmtool -m examples/models/subscription-computed.dm.json \
   model compute --instance /tmp/rt-sub-filled.json
@@ -342,7 +342,7 @@ Now the **empty-operand** case — the same computation, but `BaseFee` is absent
 
 ```bash
 cat > /tmp/rt-sub-empty.json <<'JSON'
-{ "fields": { "Subscription": { "Billing": { } } } }
+{ "Subscription": { "Billing": { } } }
 JSON
 dmtool -m examples/models/subscription-computed.dm.json \
   model compute --instance /tmp/rt-sub-empty.json
@@ -372,12 +372,12 @@ dmtool -m examples/models/subscription-computed.dm.json \
 
 ## model seed — generate a sample instance
 
-Writing instances by hand (as above) is fine for one check, but tedious for exploring a model. `model seed` **generates** a best-effort, model-derived **sample candidate** — every field a kind-appropriate value (numbers in scale, dates in their format, an enum a real member), repeatable groups populated — using the same kernel-free interpreter generator. It is **native-safe** (no kernel) and **deterministic** for a fixed `--seed`, and `--rows <group>:<n>` sets how many rows a repeatable group gets. Its output is the very `{"fields":{…}}` shape the runtime verbs consume.
+Writing instances by hand (as above) is fine for one check, but tedious for exploring a model. `model seed` **generates** a best-effort, model-derived **sample candidate** — every field a kind-appropriate value (numbers in scale, dates in their format, an enum a real member), repeatable groups populated — using the same kernel-free interpreter generator. It is **native-safe** (no kernel) and **deterministic** for a fixed `--seed`, and `--rows <group>:<n>` sets how many rows a repeatable group gets. Its output is the very shape the runtime verbs consume — the same canonical writer, so it round-trips by construction: a NUMBER and a BOOLEAN come back as native JSON, a repeatable group as an array.
 
 ```bash
 dmtool -m examples/models/order-ruled.dm.json \
   model seed --seed 1 --rows /Order/Items:2 \
-  | jq -c '.fields.Order | {topFields: (keys|length), items: (.Items|length), itemKeys: (.Items[0]|keys)}'
+  | jq -c '.Order | {topFields: (keys|length), items: (.Items|length), itemKeys: (.Items[0]|keys)}'
 ```
 
 ```output
@@ -401,14 +401,14 @@ dmtool -m examples/models/order-ruled.dm.json model eval --instance /tmp/rt-seed
 
 ## Recap
 
-Read-only runtime verbs over a nested `{"fields":{…}}` instance — and `model seed` to generate one:
+Read-only runtime verbs over a document instance in A12's canonical Document JSON — and `model seed` to generate one:
 
 | verb | question | answer rides | proof shown |
 |------|----------|--------------|-------------|
 | `model eval` | which rules fire on this data? | `data.fired` (codes) + `data.rule.{name,fired}` with `--rule` | violation fired, compliant did not (same rule, flipped date) |
 | `model eval --condition/--field` | would *this* candidate fire? | `data.rule.fired` | one-off `QTY_CAP` fired on `Quantity 150`, not persisted |
 | `model compute` | what does a computed field evaluate to? | `data.computed[].{field,value,outcome}` | `[BaseFee]` = `49.9`; empty operand = `0` (empty-as-0) |
-| `model seed` | give me a best-effort sample candidate | the `{"fields":{…}}` document itself | structure matches the model; round-trips into `eval` |
+| `model seed` | give me a best-effort sample candidate | the canonical document itself | structure matches the model; round-trips into `eval` |
 
 Neither verb writes (`written: false`) — they evaluate the *model* against the *instance*, no mutation. The instance carries only the fields a check needs; everything else is absent (and, for numbers, reads as `0`).
 
@@ -417,7 +417,7 @@ Neither verb writes (`written: false`) — they evaluate the *model* against the
 `model compute` showed `EffectiveFee` computes from `[BaseFee]`. Does `model eval` *see* that computed value? **By default, yes** — `model eval` runs the form-engine flow **compute → apply → validate**, so a rule (or a required check) over a computed field sees the computed value, exactly as the running application would. `--no-computations` drops to the kernel's bare `validateFull`, validating the *stored* values as-is. Watch a candidate rule `[EffectiveFee] > 0` flip between the two: `BaseFee` is `10`, `EffectiveFee` is left empty.
 
 ```bash
-printf '%s' '{ "fields": { "Subscription": { "Billing": { "BaseFee": "10.00" } } } }' > /tmp/rt-eff.json
+printf '%s' '{ "Subscription": { "Billing": { "BaseFee": "10.00" } } }' > /tmp/rt-eff.json
 dmtool -m examples/models/subscription-computed.dm.json \
   model eval --instance /tmp/rt-eff.json \
   --field /Subscription/Billing/EffectiveFee --condition "[EffectiveFee] > 0" --code EFF_POSITIVE \

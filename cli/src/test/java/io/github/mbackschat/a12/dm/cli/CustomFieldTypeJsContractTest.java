@@ -119,7 +119,7 @@ class CustomFieldTypeJsContractTest {
 
     private static Path doc(Path dir) throws Exception {
         Path doc = dir.resolve("instance.json");
-        Files.writeString(doc, "{ \"fields\": { \"Payment\": { \"Iban\": \"NOT-AN-IBAN\" } } }");
+        Files.writeString(doc, "{ \"Payment\": { \"Iban\": \"NOT-AN-IBAN\" } }");
         return doc;
     }
 

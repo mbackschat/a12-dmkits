@@ -31,7 +31,7 @@ It is **best-effort, model-derived** on purpose: the structure comes from the mo
                     PlacementSink                 ← the seam: one build, any backing
                     ├─ Document.asSink()          → the interpreter's general Document      (:interpreter)
                     ├─ KernelSink(RuntimeLaws.Doc)→ a kernel IDocument                       (:adapter, has the kernel)
-                    └─ JsonInstanceSink           → a DM-JSON sample candidate              (dmtool model seed, :cli)
+                    └─ Document.asSink()         → then Document.toDocumentJson(model)     (dmtool model seed, :cli)
 ```
 
 Each placement carries **one 1-based repetition index per path part** (group *and* field) — the exact addressing the interpreter's `Document` and the kernel's `IDocument` both use, so the sink is a thin pass-through on each side.
@@ -142,7 +142,7 @@ A failing fuzz seed prints `seed=N kernel-only=… interp-only=…`; reproduce i
 ## Relationship to the perf harness and the seed verb
 
 - **Perf harness** ([INTERPRETER-PERFORMANCE.md](INTERPRETER-PERFORMANCE.md)) — the *same* `SeedGenerator` + `PlacementSink` build the perf scenarios' instances into both engines; the fuzz net is the **correctness twin** of the perf differential (one asserts equality of outputs, the other measures time, both over generated real documents). The deterministic strategies there drive a known firing fraction; the fuzz strategy here is random.
-- **`dmtool model seed` verb** — shipped. The generator is placed kernel-free so the verb wires portable `ModelWorkspace` collection/assembly → strict expanded-input loading → `SeedGenerator.populate(JsonInstanceSink)` → serialization on the native image: workspace includes are mounted, imported typedefs become effective field types, ids are normalized to name paths, and a residual unmapped reference is refused rather than silently degraded. It then produces a best-effort model-derived sample candidate for the prepared model. The `PlacementSink` seam is the extension point — a third backing, no generator change.
+- **`dmtool model seed` verb** — shipped. The generator is placed kernel-free so the verb wires portable `ModelWorkspace` collection/assembly → strict expanded-input loading → `SeedGenerator.populate(Document.asSink())` → `Document.toDocumentJson` on the native image: workspace includes are mounted, imported typedefs become effective field types, ids are normalized to name paths, and a residual unmapped reference is refused rather than silently degraded. It then produces a best-effort model-derived sample candidate for the prepared model. The `PlacementSink` seam is the extension point — a further backing, no generator change. It has **two** backings, not three: JSON output is not a sink but a property of the document, written by the one canonical `Document.toDocumentJson` codec (2026-07-28), so `seed` cannot drift from what `--instance` reads.
 
 ## Companion harnesses — the probe-first loop
 
