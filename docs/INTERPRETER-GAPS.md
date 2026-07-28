@@ -12,7 +12,9 @@
 
 ## 1. Open (to fix)
 
-*Empty.* No open semantic or performance defect currently carries actionable work — every live item is dispositioned in §2 or §3 with its re-open trigger. An empty §1 is a real state, not an oversight: it means the next defect found gets a row here rather than joining a queue.
+- **IG86 — the KERNEL side of our harnesses ingests documents through paths that are not A12 Document JSON.** Two sites, one class. `KernelAdapter.evaluate`/`compute`/`testRule` take a nested `Map<String, Object>` (the A12 tree decoded into Java collections), and the corpus differential's kernel legs take placement records translated from the case document (`placementsForKernelLeg`). Neither is a **divergence today**: production `:cli` no longer parses a document at all, so the map's only callers are the kernel-side harness `KernelEval` and `InterpreterRealModelDiffTest`'s kernel leg, and every committed corpus value is canonical, so both ingestion paths store identical values (guarded by `CorpusDocumentCanonicalTest`). What it costs is **oracle symmetry**: the interpreter leg exercises A12's real ingress while the kernel leg does not, so an ingress-only divergence cannot be caught by the differential that exists to catch divergences. The honest route is A12's own `IDocumentV2Serializer.deserializeV2`, already used by `RuntimeLaws.jsonIngress` — so the recipe exists for `validateFull` and needs partial + compute peers. **Completion gate:** both kernel legs and `KernelAdapter` ingest via `deserializeV2`; all 34 corpus anchors reproduce **byte-identically** (a changed anchor means the change is not a no-op and must be understood before landing); the `placementsForKernelLeg` translation is deleted. Sized but not attempted 2026-07-28 — it rewrites the oracle's ingestion, so it needs its own evidence run rather than a tail-end edit. Graduated from step 5 of the retired shape-consolidation plan.
+
+That is the only open item; everything else live is dispositioned in §2 or §3 with its re-open trigger.
 
 New semantic or performance defects belong here only while they have actionable work and a defined completion gate.
 

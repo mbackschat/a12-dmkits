@@ -74,7 +74,7 @@ final class KernelEval {
      * A12 Document JSON → the nested field map {@link KernelAdapter} takes. Production {@code :cli} no longer
      * parses a document at all (the interpreter's canonical codec does), but the kernel adapter's public API
      * still consumes {@code Map<String, Object>} — a different boundary, recorded as a step-5 row in
-     * docs/A12-SHAPE-CONSOLIDATION.md, deliberately not changed here. This harness is its only remaining caller.
+     * INTERPRETER-GAPS IG86, deliberately not changed here. This harness is one of its two remaining callers.
      */
     private static Map<String, Object> readInstanceFields(String docPath) throws IOException {
         JsonNode root = DOCUMENT_MAPPER.readTree(Files.readString(Path.of(docPath)));

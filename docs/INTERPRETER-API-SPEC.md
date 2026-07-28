@@ -189,6 +189,10 @@ Same shape, same value normalization, same ceilings, same diagnostics — it is 
 
 It exists for a consumer that already works in `ModelDef`/`Document` — `dmtool`'s runtime verbs and `model seed` do — so that consumer is not tempted to write its own reader or writer for a shape A12 defines. Adding it removed three such duplicates (dmtool's instance walker and its seed sink, plus a near-identical sink in the adapter's performance-fixture guard). Locked by `interpreter … DocumentJsonCodecTest`; the CLI end of it by `cli … DocumentInstanceIngressTest`.
 
+### 4.5 Result types match A12's, and where they don't there is no A12 counterpart
+
+Audited 2026-07-28 against the kernel's runtime API. `ValidationSeverity{ERROR, WARNING, INFO}` is `IMessage.Severity{ERROR, WARNING, INFO}` — the same three names, so a consumer reading either sees one vocabulary. `ValidationFindingType{VALUE, OMISSION}` maps 1:1 onto `IMessage.MessageType{VALUE_ERROR, OMISSION_ERROR}`; the `_ERROR` suffix is dropped deliberately, because severity is an independent axis and `VALUE_ERROR` reads wrong on a `WARNING`-severity finding. The **TypeScript** `"error" | "warning" | "info"` union has no A12 counterpart at all — the kernel ships no TypeScript severity type — so its idiomatic lowercase casing is an own-surface choice, not a divergence.
+
 ## 5. Interpreter lifecycle and evaluation
 
 `PreparedModel.createInterpreter` creates an active evaluator with an optional immutable `InterpreterConfiguration`. A prepared model contains no request document or callback instance. A document snapshot is immutable from the public surface.

@@ -1,5 +1,12 @@
 # A12 shape consolidation — the migration plan
 
+> **ARCHIVED 2026-07-28 — this plan is complete and is kept only for its record of how the migration went wrong and was corrected.** Do not read it as a contract: every durable statement has graduated to its owning home — the format spec to [KERNEL-FINDINGS](../KERNEL-FINDINGS.md) "The canonical Document JSON and `DocumentPointer` string", the boundary contracts to [INTERPRETER-API-SPEC](../INTERPRETER-API-SPEC.md) §4, [CLI-SPEC](../CLI-SPEC.md) and [CONFORMANCE-CORPUS-SPEC](../CONFORMANCE-CORPUS-SPEC.md) §4, the standing rule to [CLAUDE.md](../../CLAUDE.md), and the full account to [INTERPRETER-FINDINGS](../INTERPRETER-FINDINGS.md) IF227–IF230.
+>
+> **Two items outlived the plan and are tracked, not lost:** the kernel-side ingress paths (plan step 5) are [INTERPRETER-GAPS](../INTERPRETER-GAPS.md) **IG86**, and the 0.9.2 release (plan step 6) is an ordinary release tracked by [INTERPRETER-RELEASE-SPEC](../INTERPRETER-RELEASE-SPEC.md) with its own [IRG2](../INTERPRETER-RELEASE-GAPS.md) row — a release does not need a migration plan to hold it open.
+>
+> **Why it is archived rather than deleted** (its own header said "deleted when the last step lands"): the reusable content here is not the plan but the *corrections* — a survey that was shape-true and behaviour-blind, a holdout mechanism budgeted and then measured away, and a mapper matched for one concern. Those are the lessons the next boundary migration should read first.
+
+
 **Goal.** Every document JSON at an **official API/CLI boundary** is A12's canonical shape. Owner directive, 2026-07-28: *"OUR PROJECT MUST NOT INVENT ITS OWN SHAPE"*, scoped to *"whenever document JSON is at official API/CLI boundary"*. The standing rule lives in [`../CLAUDE.md`](../CLAUDE.md) ("NEVER invent a shape A12 already defines"); the format spec lives in [`KERNEL-FINDINGS`](KERNEL-FINDINGS.md) ("The canonical Document JSON and `DocumentPointer` string"). **Read both before starting.** This document is only the ordered work plan; it is deleted when the last step lands.
 
 ## What was wrong

@@ -153,7 +153,7 @@ class InterpreterRealModelDiffTest {
     /**
      * The KERNEL leg's document input. Both legs are fed the SAME canonical A12 Document JSON text; the
      * interpreter leg reads it through the interpreter's codec, while {@link KernelAdapter}'s public API still
-     * takes a nested field map (a separate boundary — step 5 of docs/A12-SHAPE-CONSOLIDATION.md).
+     * takes a nested field map (a separate boundary — INTERPRETER-GAPS IG86).
      */
     private static Map<String, Object> kernelFields(String instanceJson) {
         try {
