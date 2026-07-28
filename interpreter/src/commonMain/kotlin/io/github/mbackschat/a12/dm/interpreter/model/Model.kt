@@ -483,6 +483,11 @@ data class ModelDef(
      *  directional-polarity input ([FieldDef.signed]). */
     val unsignedFields: Set<String> = fields.filter { !it.signed }.map { it.path }.toSet()
 
+    /** NUMBER fields declaring `leadingZerosAllowed` — the one number case A12's Document-JSON converter keeps
+     *  as TEXT instead of converting (`NumberUtil.createBigDecimalIfPossible` returns the original String), so
+     *  the transport's read normalization must skip exactly these ([FieldDef.leadingZerosAllowed]). */
+    val leadingZeroNumbers: Set<String> = fields.filter { it.leadingZerosAllowed }.map { it.path }.toSet()
+
     /** Each [Kind.DATE_RANGE] field's `(format, rangeSeparator)` — the [io.github.mbackschat.a12.dm.interpreter.eval.Document]'s
      *  format-aware range parsing input. */
     val rangeConfig: Map<String, Pair<String, String>> = fields

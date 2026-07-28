@@ -62,6 +62,48 @@ class A12NumberPlainFormTest {
         }
     }
 
+    /**
+     * The READ gate is A12's own converter, `new BigDecimal(String)` — a **broader** grammar than JSON's: a
+     * leading `+`, a bare `.5`, a trailing `5.`, and leading zeros all parse. Same oracle, same plain form.
+     */
+    private val converterOnlyLiterals = listOf(
+        "+5", "+250.00", "+1e5", ".5", "-.5", "+.5", "5.", "-5.", "007", "-007", "00.50", "0007e2", "+0.0",
+    )
+
+    @Test
+    fun everyLiteralA12sConverterAcceptsMatchesBigDecimalToPlainString() {
+        val mismatches = (literals + converterOnlyLiterals).mapNotNull { literal ->
+            val expected = BigDecimal(literal).toPlainString()
+            val actual = A12DocumentJson.canonicalNumberOrNull(literal)
+            if (actual == expected) null else "$literal -> expected '$expected' but was '$actual'"
+        }
+        assertEquals(emptyList(), mismatches, "the converter form diverged from BigDecimal.toPlainString")
+    }
+
+    @Test
+    fun theConverterGateRefusesExactlyWhatBigDecimalItselfRefuses() {
+        listOf("", " ", "1,5", "not-a-number", "NaN", "Infinity", "0x1f", "1e", "--1", "+", "-", ".", "5..0", "1 5")
+            .forEach { literal ->
+                val refusedByBigDecimal = runCatching { BigDecimal(literal) }.isFailure
+                assertEquals(
+                    refusedByBigDecimal,
+                    A12DocumentJson.canonicalNumberOrNull(literal) == null,
+                    "'$literal': our gate must accept exactly what java.math.BigDecimal accepts",
+                )
+            }
+    }
+
+    @Test
+    fun anAbsurdExponentIsRefUsedRatherThanExpandedIntoAGigabyteOfDigits() {
+        // A12 would expand it (`toPlainString`); we refuse instead, so a 12-character document value cannot
+        // allocate a billion characters at the public ingress. The value stays verbatim — A12's own
+        // pass-through shape — and can never produce invalid JSON.
+        listOf("1e999999999", "1e-999999999", "1e2147483648").forEach {
+            assertNull(A12DocumentJson.canonicalNumberOrNull(it), "'$it' must not be expanded")
+            assertNull(A12DocumentJson.plainNumberOrNull(it), "'$it' must not be expanded")
+        }
+    }
+
     @Test
     fun textThatIsNotAJsonNumberIsRefusedSoItCanBeWrittenAsAString() {
         // A12 keeps a value it could not convert and writes it back untouched; these must NOT become literals.

@@ -143,6 +143,24 @@ Kotlin, Java, and native callers pass the JSON **text**; TypeScript accepts eith
 
 One encode reaches the canonical fixed point: `encode(read(encode(read(x)))) == encode(read(x))`. Every row, empty cell, and unconverted raw value survives the round trip. The one document state A12's writer has no shape for — a non-repeatable group row above 1 — raises `DocumentEncodeError` naming the canonical pointer rather than silently dropping the row.
 
+### 4.2a Reading is VALUE-NORMALIZING, exactly as A12's is
+
+A12's document stores `String | Boolean | BigDecimal | Instant | InstantRange` and re-renders every consumer's text from that stored **value**, so an authored spelling does not survive ingestion. Reading reproduces that on the stored text, per kind:
+
+| kind | authored | stored after `readDocument` |
+|---|---|---|
+| NUMBER | `1e5`, `1.5e1`, `"+5"`, `"007"`, `-0.0` | `100000`, `15`, `5`, `7`, `0.0` — `BigDecimal.toPlainString()`, over A12's own converter grammar (broader than JSON's: a leading `+`, a bare `.5`, leading zeros) |
+| NUMBER, `leadingZerosAllowed` | `"007"` | `007` — A12's one number case that keeps the authored text |
+| BOOLEAN | `"TRUE"`, `"False"` | `true`, `false` (`equalsIgnoreCase`) |
+| CONFIRM | `"TRUE"` / anything else | `true` / verbatim — a confirm has no false, so even a native JSON `false` is a pass-through |
+| DATE, DATE_TIME, TIME, DATE_RANGE | any | verbatim — A12 parses non-leniently, so a non-canonical spelling *fails* conversion and a spelling that parses already is the model format |
+| STRING, Enumeration | any | verbatim |
+| any typed kind | `""` | the **empty cell**, written back as `null`; a STRING keeps its `""` |
+
+A value the converter cannot parse stays verbatim and is written back as a JSON string — A12's own `[A12K-3638]` pass-through, which also guarantees a malformed value can never produce invalid JSON. One deliberate difference: an absurd exponent (`1e999999999`) is *not* expanded — A12's `toPlainString` has no ceiling, and at a public ingress that is a twelve-character denial of service, so such a value takes the pass-through instead.
+
+The measurement is `adapter … A12JsonIngressKernelTest` (the kernel's own ingress) and `A12JsonIngressDiffTest` (ours against it, with the exhaustive characterized residual).
+
 ### 4.3 Strict reading
 
 `PreparedModel.documents.readDocument` validates the complete text before any document state exists:

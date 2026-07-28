@@ -13,9 +13,12 @@ This changelog covers the independently consumable interpreter packages, API doc
   - `DocumentInputError` diagnostics now locate each defect by its canonical A12 `DocumentPointer` string with the model path, declared entity kind, and JSON node type found, instead of an envelope index.
   - `DocumentDecodeLimits`: added `maxDocumentCodeUnits` (checked before parsing); removed `maxCoordinatesPerPlacement`, which duplicated `maxModelNestingDepth` once coordinates became structural; raised the group-row ceilings to match the field-cell ones (default 100,000, hard maximum 1,000,000) because every group row is now explicit in the document rather than materialized after validation.
 
+- **Reading a document is now value-normalizing, matching A12's own ingestion.** A12 stores `String | Boolean | BigDecimal | Instant | InstantRange` and re-renders every text from the stored value, so an authored spelling never survives it. `readDocument` reproduces that: a number becomes its plain form (`1e5` → `100000`, `"+5"` → `5`, `"007"` → `7`, `-0.0` → `0.0`, with `250.00` keeping its scale), a boolean becomes `true`/`false` case-insensitively, `""` on a typed field becomes the empty cell (written back as `null`), and a `leadingZerosAllowed` number, the date family, strings, and enumerations are left exactly as authored. A value A12's converter cannot parse stays verbatim and is written back as a string. Previously the authored text was stored unchanged, so a document could round-trip into a spelling A12 would never write.
+
 ### Fixed
 
-- Numbers are written in A12's **plain** form, matching the Kernel's `WRITE_BIGDECIMAL_AS_PLAIN` generator: never scientific notation, with the authored scale intact (`250.00` stays `250.00`, `1e5` becomes `100000`, `1.2e-3` becomes `0.0012`). Reading already retained the exact literal.
+- Numbers are written in A12's **plain** form, matching the Kernel's `WRITE_BIGDECIMAL_AS_PLAIN` generator: never scientific notation, with the authored scale intact (`250.00` stays `250.00`, `1e5` becomes `100000`, `1.2e-3` becomes `0.0012`).
+- A confirm field's `false` is written back as the string `"false"`, not as a JSON boolean: A12's converter accepts only `true` for a confirm, so `false` is a value it could not convert.
 - The canonical pointer utility (`A12PointerFormat`) constructed an invalid regular expression on Kotlin/JS, so parsing a pointer failed on that target.
 
 ## [0.9.1]

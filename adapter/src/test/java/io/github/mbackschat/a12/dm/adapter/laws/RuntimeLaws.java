@@ -5,6 +5,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.StringReader;
+import java.io.StringWriter;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
@@ -36,8 +37,11 @@ import javax.tools.SimpleJavaFileObject;
 import javax.tools.StandardJavaFileManager;
 import javax.tools.ToolProvider;
 
+import com.fasterxml.jackson.core.util.MinimalPrettyPrinter;
 import com.mgmtp.a12.kernel.core.customfieldtype.ICustomFieldTypeFactory;
 import com.mgmtp.a12.kernel.md.document.api.IDocument;
+import com.mgmtp.a12.kernel.md.document.api.services.DocumentDeserializationConfig;
+import com.mgmtp.a12.kernel.md.document.api.services.DocumentSerializationConfig;
 import com.mgmtp.a12.kernel.md.document.api.services.IDocumentFactory;
 import com.mgmtp.a12.kernel.md.document.apiV2.DocumentMultiPointer;
 import com.mgmtp.a12.kernel.md.document.apiV2.DocumentPointer;
@@ -46,6 +50,7 @@ import com.mgmtp.a12.kernel.md.document.apiV2.immutable.DocumentV2;
 import com.mgmtp.a12.kernel.md.document.apiV2.immutable.FieldInstanceV2;
 import com.mgmtp.a12.kernel.md.document.apiV2.immutable.GroupInstanceV2;
 import com.mgmtp.a12.kernel.md.document.apiV2.immutable.RepetitionsV2;
+import com.mgmtp.a12.kernel.md.document.apiV2.services.IDocumentV2Serializer;
 import io.github.mbackschat.a12.dm.interpreter.eval.PointerKt;
 import com.mgmtp.a12.kernel.md.facade.DocumentModelServiceFactory;
 import com.mgmtp.a12.kernel.md.facade.DocumentRtServiceFactory;
@@ -70,6 +75,7 @@ import com.mgmtp.a12.kernel.md.rt.api.ILabelProvider;
 import com.mgmtp.a12.kernel.md.rt.api.IMessage;
 import com.mgmtp.a12.kernel.md.rt.api.IModelCode;
 import com.mgmtp.a12.kernel.md.rt.api.IModelCodeCache;
+import com.mgmtp.a12.kernel.md.serializer.MDSerializerFactory;
 
 /**
  * The document-evaluating oracle for the <em>behavioral</em> kernel laws (F-LAW) — the runtime
@@ -387,6 +393,42 @@ public final class RuntimeLaws {
     /** Evaluate an explicit document instance; return every message (code + pointer) the kernel raised. */
     static List<Msg> messages(String modelJson, Doc doc) {
         return validate(modelJson, doc, Locale.US).getMessages().stream().map(RuntimeLaws::toMsg).toList();
+    }
+
+    // ---- A12's OWN Document-JSON ingress (the serializer path, not the V1-string path) -----------
+
+    /**
+     * One pass of a Document JSON through A12's own ingress: {@code rewritten} is what
+     * {@code IDocumentV2Serializer.serializeV2} writes back (compact), {@code codes} what the runtime then
+     * reports. The two together expose A12's <b>value normalization</b> — it stores
+     * {@code String | Boolean | BigDecimal | Instant | InstantRange} and re-renders each consumer's text from
+     * that value, so an authored spelling survives neither channel. See KERNEL-FINDINGS "The canonical Document
+     * JSON …".
+     */
+    record JsonIngress(String rewritten, List<String> codes) {
+    }
+
+    /**
+     * Deserialize {@code documentJson} with the kernel's own {@link IDocumentV2Serializer}, write it back, and
+     * validate it — the ingress the interpreter's public {@code readDocument} boundary reimplements. Distinct
+     * from every other oracle here, which builds a V1 instance from raw STRINGS and therefore never exercises
+     * A12's value conversion at all.
+     */
+    static JsonIngress jsonIngress(String modelJson, String documentJson) {
+        IDocumentModel model = expandedModel(modelJson);
+        IDocumentModelResolver resolver = id -> model;
+        IDocumentV2Serializer serializer = new MDSerializerFactory().createDocumentSerializerV2(resolver);
+        DocumentV2 v2 = serializer.deserializeV2(new StringReader(documentJson), modelId(modelJson),
+                DocumentDeserializationConfig.builder().build(), notification -> { });
+
+        StringWriter rewritten = new StringWriter();
+        serializer.serializeV2(v2, rewritten, DocumentSerializationConfig.builder()
+                .prettyJsonPrinter(new MinimalPrettyPrinter()).build());
+
+        IDocumentRtService rt = new DocumentRtServiceFactory(resolver).createDocumentRtService(dynamicConfig());
+        List<String> codes = rt.validateFull(v2, config(null, Locale.US)).getMessages().stream()
+                .map(IMessage::getErrorCode).sorted().toList();
+        return new JsonIngress(rewritten.toString(), codes);
     }
 
     /** Map a kernel {@link IMessage} to our {@link Msg} (code + raw pointer + type + the clean rich channels). */

@@ -68,6 +68,92 @@ class DocumentTransportTest {
     }
 
     @Test
+    fun readNormalizesEveryTypedValueTheWayA12sOwnConverterDoes() {
+        val documents = prepared().documents
+        // Every literal here is one measured row of `adapter … A12JsonIngressKernelTest`: A12 converts the
+        // stringified JSON value to `String | Boolean | BigDecimal | Instant` and re-renders from the VALUE, so
+        // a non-canonical spelling never survives ingestion. The transport reproduces that on its stored text.
+        val json = """
+            {"Order":{"Express":"TRUE","Signed":"True","Code":"007",
+              "Items":[{"Qty":"1e5"},{"Qty":"+5"},{"Qty":"007"}]}}
+        """.trimIndent()
+
+        val document = documents.readDocument(json).document()
+
+        assertEquals(
+            StoredCellState.PresentValue("true"),
+            document.cellStateAt("/Order/Express", listOf(1, 1)),
+            "A12 parses a boolean with `\"true\".equalsIgnoreCase(value)` and writes `booleanNode`",
+        )
+        assertEquals(StoredCellState.PresentValue("true"), document.cellStateAt("/Order/Signed", listOf(1, 1)))
+        assertEquals(
+            StoredCellState.PresentValue("007"),
+            document.cellStateAt("/Order/Code", listOf(1, 1)),
+            "`leadingZerosAllowed` is A12's one number case that keeps the AUTHORED text (it stores a String)",
+        )
+        assertEquals(
+            StoredCellState.PresentValue("100000"),
+            document.cellStateAt("/Order/Items/Qty", listOf(1, 1, 1)),
+            "scientific notation never survives: A12 stores the BigDecimal and every text it renders is plain",
+        )
+        assertEquals(
+            StoredCellState.PresentValue("5"),
+            document.cellStateAt("/Order/Items/Qty", listOf(1, 2, 1)),
+            "a leading `+` parses for A12's converter and is gone from every rendering of the value",
+        )
+        assertEquals(
+            StoredCellState.PresentValue("7"),
+            document.cellStateAt("/Order/Items/Qty", listOf(1, 3, 1)),
+            "leading zeros are NOT allowed on this field, so A12 converts and the zeros are gone",
+        )
+    }
+
+    @Test
+    fun aValueA12sConverterCannotParseStaysVerbatimAndAnEmptyTypedValueBecomesTheEmptyCell() {
+        val documents = prepared().documents
+        val json = """
+            {"Order":{"Express":"yes","Signed":false,"Code":"","Placed":"01.03.2026",
+              "Items":[{"Qty":"1,5","Note":""}]}}
+        """.trimIndent()
+
+        val snapshot = documents.readDocument(json)
+        val document = snapshot.document()
+
+        assertEquals(
+            StoredCellState.PresentValue("yes"),
+            document.cellStateAt("/Order/Express", listOf(1, 1)),
+            "A12 keeps a value its converter rejects verbatim and writes it back as a string ([A12K-3638])",
+        )
+        assertEquals(
+            StoredCellState.PresentValue("false"),
+            document.cellStateAt("/Order/Signed", listOf(1, 1)),
+            "a CONFIRM has no false: A12's `parseConfirm` accepts only `true`, so `false` is a pass-through",
+        )
+        assertEquals(
+            StoredCellState.PresentValue("01.03.2026"),
+            document.cellStateAt("/Order/Placed", listOf(1, 1)),
+            "the date family is NOT normalized — a spelling A12's parser rejects is kept, one it accepts is " +
+                "already the model format",
+        )
+        assertEquals(StoredCellState.PresentValue("1,5"), document.cellStateAt("/Order/Items/Qty", listOf(1, 1, 1)))
+        assertEquals(
+            StoredCellState.PresentEmpty,
+            document.cellStateAt("/Order/Code", listOf(1, 1)),
+            "A12 treats `\"\"` on a TYPED field like null — present with no value, written back as null",
+        )
+        // Both empties reach the same cell STATE (`""` is evaluation-empty here too); the difference is what
+        // comes back out — `null` for the typed field A12 converted to null, `""` for the STRING it kept.
+        assertEquals(StoredCellState.PresentEmpty, document.cellStateAt("/Order/Items/Note", listOf(1, 1, 1)))
+
+        assertEquals(
+            """{"Order":{"Code":null,"Express":"yes","Placed":"01.03.2026","Signed":"false",""" +
+                """"Items":[{"Note":"","Qty":"1,5"}]}}""",
+            documents.encodeDocument(snapshot),
+            "an unconvertible value is written back as a string — A12's own pass-through shape",
+        )
+    }
+
+    @Test
     fun encodeIsItsOwnFixedPointAcrossEveryValueState() {
         val documents = prepared().documents
         val json = """
@@ -88,24 +174,30 @@ class DocumentTransportTest {
     fun numbersAreWrittenInA12sPlainFormWithTheAuthoredScaleIntact() {
         val documents = prepared().documents
         // A12 runs its generator with WRITE_BIGDECIMAL_AS_PLAIN, so it never emits scientific notation and
-        // never drops a trailing zero. Reading keeps the literal text; writing normalizes it exactly as the
-        // Kernel does (KERNEL-FINDINGS "The canonical Document JSON …"; the oracle is A12NumberPlainFormTest).
+        // never drops a trailing zero. Reading normalizes the value the way A12's converter does, so the
+        // stored text is already plain and writing it is the identity (KERNEL-FINDINGS "The canonical Document
+        // JSON …"; the oracle is A12NumberPlainFormTest).
         val snapshot = documents.readDocument(
             """{"Order":{"Items":[{"Qty":250.00},{"Qty":1e5},{"Qty":1.2e-3}]}}""",
         )
         val document = snapshot.document()
 
-        assertEquals(StoredCellState.PresentValue("250.00"), document.cellStateAt("/Order/Items/Qty", listOf(1, 1, 1)))
-        assertEquals(StoredCellState.PresentValue("1e5"), document.cellStateAt("/Order/Items/Qty", listOf(1, 2, 1)))
+        assertEquals(
+            StoredCellState.PresentValue("250.00"),
+            document.cellStateAt("/Order/Items/Qty", listOf(1, 1, 1)),
+            "the authored scale survives — `toPlainString` keeps every trailing zero",
+        )
+        assertEquals(StoredCellState.PresentValue("100000"), document.cellStateAt("/Order/Items/Qty", listOf(1, 2, 1)))
 
         assertEquals(
             """{"Order":{"Items":[{"Qty":250.00},{"Qty":100000},{"Qty":0.0012}]}}""",
             documents.encodeDocument(snapshot),
         )
-        // Text that is not a JSON number stays a string — the Kernel's own pass-through for a value it could
-        // not convert — so a leading-zero or malformed value never becomes invalid JSON.
+        // Text that A12's converter cannot parse stays a string — its own pass-through for a value it could
+        // not convert — so a malformed value never becomes invalid JSON. A leading-zero value is NOT in that
+        // class on an ordinary field: the converter parses it and the zeros are gone.
         assertEquals(
-            """{"Order":{"Items":[{"Qty":"007"},{"Qty":"not-a-number"}]}}""",
+            """{"Order":{"Items":[{"Qty":7},{"Qty":"not-a-number"}]}}""",
             documents.encodeDocument(
                 documents.readDocument("""{"Order":{"Items":[{"Qty":"007"},{"Qty":"not-a-number"}]}}"""),
             ),
@@ -333,6 +425,14 @@ class DocumentTransportTest {
                     {
                       "type":"Field","id":"/Order/Placed","name":"Placed",
                       "Field":{"fieldType":{"type":"DateType"}}
+                    },
+                    {
+                      "type":"Field","id":"/Order/Signed","name":"Signed",
+                      "Field":{"fieldType":{"type":"ConfirmType"}}
+                    },
+                    {
+                      "type":"Field","id":"/Order/Code","name":"Code",
+                      "Field":{"fieldType":{"type":"NumberType","NumberType":{"leadingZerosAllowed":true}}}
                     },
                     {
                       "type":"Group","id":"/Order/Items","name":"Items",
