@@ -143,6 +143,8 @@ Kotlin, Java, and native callers pass the JSON **text**; TypeScript accepts eith
 
 One encode reaches the canonical fixed point: `encode(read(encode(read(x)))) == encode(read(x))`. Every row, empty cell, and unconverted raw value survives the round trip. The one document state A12's writer has no shape for — a non-repeatable group row above 1 — raises `DocumentEncodeError` naming the canonical pointer rather than silently dropping the row.
 
+Permissiveness extends to the **parse configuration**, which is part of A12's I/O behaviour and not a detail of ours: **JSON comments are accepted** in a document and in a DM-JSON model source alike, because A12 builds both of its mappers with `ALLOW_COMMENTS`, and a **trailing comma is refused**, because neither enables `ALLOW_TRAILING_COMMA`. Matching A12's ingress means matching its strictness too, so this is the accepted-input set, not a leniency we may extend (IF228).
+
 ### 4.2a Reading is VALUE-NORMALIZING, exactly as A12's is
 
 A12's document stores `String | Boolean | BigDecimal | Instant | InstantRange` and re-renders every consumer's text from that stored **value**, so an authored spelling does not survive ingestion. Reading reproduces that on the stored text, per kind:

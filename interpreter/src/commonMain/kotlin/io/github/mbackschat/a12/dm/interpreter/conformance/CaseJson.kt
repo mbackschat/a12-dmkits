@@ -1,5 +1,6 @@
 package io.github.mbackschat.a12.dm.interpreter.conformance
 
+import io.github.mbackschat.a12.dm.interpreter.A12_JSON
 import kotlin.jvm.JvmStatic
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json
@@ -32,7 +33,13 @@ object CaseJson {
 
     private val PRETTY = Json { prettyPrint = true }
 
-    /** Parse one case document. Throws [IllegalArgumentException] on malformed JSON or a missing required key. */
+    /**
+     * Parse one case document. Throws [IllegalArgumentException] on malformed JSON or a missing required key.
+     *
+     * The **case envelope is our own shape**, so it parses on the default `Json` — deliberately not `A12_JSON`.
+     * A12's comment leniency is a property of A12's formats; inheriting it here would widen our corpus format
+     * with no counterpart to cite. The DM-JSON a case *carries* is an A12 shape and does go through `A12_JSON`.
+     */
     @JvmStatic
     fun parse(text: String): ConformanceCase {
         val root = try {
@@ -83,7 +90,7 @@ object CaseJson {
      */
     @JvmStatic
     fun writeModel(dmJson: String, modelId: String): String {
-        val root = Json.parseToJsonElement(dmJson).jsonObject
+        val root = A12_JSON.parseToJsonElement(dmJson).jsonObject
         val withIdentity = buildJsonObject {
             for ((key, value) in root) when (key) {
                 "header" -> put("header", setMember(value.jsonObject, "id", modelId))
@@ -97,7 +104,7 @@ object CaseJson {
     /** The model identity of a DM-JSON model — its `header.id` (the SME workspace-item name); throws if absent. */
     @JvmStatic
     fun modelIdOf(dmJson: String): String =
-        Json.parseToJsonElement(dmJson).jsonObject.obj("header")["id"]?.jsonPrimitive?.contentOrNull
+        A12_JSON.parseToJsonElement(dmJson).jsonObject.obj("header")["id"]?.jsonPrimitive?.contentOrNull
             ?: throw IllegalArgumentException("DM-JSON model has no header.id")
 
     /**
@@ -122,7 +129,7 @@ object CaseJson {
                 else -> {}
             }
         }
-        walk(Json.parseToJsonElement(dmJson))
+        walk(A12_JSON.parseToJsonElement(dmJson))
         return out
     }
 

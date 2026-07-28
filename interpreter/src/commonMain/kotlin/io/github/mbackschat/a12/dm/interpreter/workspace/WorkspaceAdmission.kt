@@ -1,5 +1,6 @@
 package io.github.mbackschat.a12.dm.interpreter.workspace
 
+import io.github.mbackschat.a12.dm.interpreter.A12_JSON
 import io.github.mbackschat.a12.dm.interpreter.ModelPreparationDiagnostic
 import io.github.mbackschat.a12.dm.interpreter.ModelPreparationDiagnosticCode
 import io.github.mbackschat.a12.dm.interpreter.ModelPreparationError
@@ -7,7 +8,6 @@ import io.github.mbackschat.a12.dm.interpreter.ModelPreparationLimits
 import io.github.mbackschat.a12.dm.interpreter.ModelPreparationResource
 import io.github.mbackschat.a12.dm.interpreter.WorkspaceModelSource
 import kotlinx.serialization.SerializationException
-import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
@@ -262,7 +262,7 @@ internal object WorkspaceSourceAdmission {
         diagnostics: MutableList<ModelPreparationDiagnostic>,
     ): String? {
         val root = try {
-            Json.parseToJsonElement(source) as? JsonObject
+            A12_JSON.parseToJsonElement(source) as? JsonObject
         } catch (_: SerializationException) {
             null
         }

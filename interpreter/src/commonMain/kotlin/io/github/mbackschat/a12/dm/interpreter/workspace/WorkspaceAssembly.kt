@@ -1,12 +1,12 @@
 package io.github.mbackschat.a12.dm.interpreter.workspace
 
+import io.github.mbackschat.a12.dm.interpreter.A12_JSON
 import io.github.mbackschat.a12.dm.interpreter.ModelPreparationDiagnostic
 import io.github.mbackschat.a12.dm.interpreter.ModelPreparationDiagnosticCode
 import io.github.mbackschat.a12.dm.interpreter.ModelPreparationError
 import io.github.mbackschat.a12.dm.interpreter.ModelPreparationLimits
 import io.github.mbackschat.a12.dm.interpreter.ModelPreparationResource
 import io.github.mbackschat.a12.dm.interpreter.ModelReferenceStep
-import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 
@@ -164,7 +164,7 @@ internal class WorkspaceAssemblyContext(
 
     private fun parsed(source: AdmittedWorkspaceModelSource): ParsedWorkspaceSource =
         parsedSources.getOrPut(source.modelId) {
-            val root = Json.parseToJsonElement(source.json) as? JsonObject
+            val root = A12_JSON.parseToJsonElement(source.json) as? JsonObject
                 ?: error("admission accepted a non-object model source")
             ParsedWorkspaceSource(source, root)
         }

@@ -214,7 +214,7 @@ internal object A12DocumentJson {
 
     private fun parseRoot(json: String): JsonObject {
         val element = try {
-            Json.parseToJsonElement(json)
+            A12_JSON.parseToJsonElement(json)
         } catch (failure: Exception) {
             throw DocumentInputError.from(listOf(MalformedJsonDiagnostic(failure.message ?: "unparseable JSON")))
         }

@@ -1,8 +1,8 @@
 package io.github.mbackschat.a12.dm.interpreter.load
 
+import io.github.mbackschat.a12.dm.interpreter.A12_JSON
 import kotlin.jvm.JvmStatic
 import kotlinx.serialization.SerializationException
-import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonNull
@@ -36,7 +36,8 @@ import io.github.mbackschat.a12.dm.interpreter.workspace.requirePreparedGroupChi
  * (in `:cli`) is a thin JVM delegate over this.
  *
  * ## Approach — tree API, raw-text fidelity
- * The mapper reads via kotlinx-serialization-json's **tree API** ([Json.parseToJsonElement] + a hand-written
+ * The mapper reads via kotlinx-serialization-json's **tree API** (`A12_JSON.parseToJsonElement` — the shared
+ * A12-shape parse configuration, so a commented model source loads as it does in A12 — plus a hand-written
  * [JsonElement] → [ModelDef] walk) — no `@Serializable`, no compiler plugin (proposal §11 fork F1). A number's
  * **raw literal is preserved** verbatim ([JsonPrimitive.content], e.g. `100.50` stays `"100.50"`): the value is
  * never round-tripped through a `Double`/JS number, so a declared `minValue`/`maxValue` keeps its exact scale.
@@ -62,7 +63,7 @@ object ModelLoader {
     @JvmStatic
     fun load(dmJson: String): ModelDef {
         val root = try {
-            Json.parseToJsonElement(dmJson)
+            A12_JSON.parseToJsonElement(dmJson)
         } catch (e: SerializationException) {
             throw IllegalArgumentException("not valid DM-JSON", e)
         }

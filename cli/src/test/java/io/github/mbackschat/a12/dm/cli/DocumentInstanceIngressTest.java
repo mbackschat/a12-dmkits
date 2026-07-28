@@ -89,6 +89,30 @@ class DocumentInstanceIngressTest {
     }
 
     @Test
+    void aCommentedInstanceDocumentIsAcceptedBecauseA12AcceptsOne() throws Exception {
+        // A12 builds its document mapper with `JsonParser.Feature.ALLOW_COMMENTS`
+        // (`ObjectMapperProvider.createObjectMapperForDocSerializer`), so a commented document is a LEGAL A12
+        // artifact — refusing one would make a file A12 reads unreadable here. The retired `DocInstance` mapper
+        // configured this; the lock is restored at the boundary that now owns the parse.
+        Path model = CliTestSupport.orderRuled(dir);
+        Path instance = dir.resolve("commented.json");
+        Files.writeString(instance, """
+                {
+                  // the quantity ordered
+                  "Order": { "Quantity": 5 /* a block comment, after the value */ }
+                }
+                """);
+
+        CliTestSupport.Result res =
+                CliTestSupport.run("-m", model.toString(), "model", "eval", "--instance", instance.toString());
+
+        assertEquals(0, res.code(), () -> "a commented document reads: " + res.err());
+        assertEquals(firedForQuantity("5"), M.convertValue(
+                M.readTree(res.out()).path("data").path("fired"), new TypeReference<List<String>>() { }),
+                "and evaluates identically to the same document without comments");
+    }
+
+    @Test
     void theRetiredFieldsWrapperFailsWithTheMigrationCorrective() throws Exception {
         Path model = CliTestSupport.orderRuled(dir);
         Path instance = dir.resolve("wrapped.json");
