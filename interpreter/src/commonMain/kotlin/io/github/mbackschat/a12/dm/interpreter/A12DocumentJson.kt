@@ -130,7 +130,55 @@ internal object A12DocumentJson {
     }
 
     /**
-     * The stored text of one field cell as A12's own ingestion leaves it, or null for the empty cell.
+     * The **RUNTIME** rendering of an already-plain stored number — the text A12's `IData` hands every
+     * evaluation channel, as against [plainNumberOrNull]'s **serializer** text. A12 renders one stored decimal
+     * twice, and the two differ in BOTH directions: `FormatDefinitionZahl.convertFromBasicType` computes
+     * `bd.setScale(max(bd.stripTrailingZeros().scale(), minFractionalDigits)).toPlainString()`, so a fractional
+     * trailing zero beyond [minFractionalDigits] is **stripped** (`250.00` → `250`) and a value with fewer
+     * fractional digits than [minFractionalDigits] is **padded** (`250` → `250.00`). IF231; the measurement is
+     * KERNEL-FINDINGS "The canonical Document JSON …".
+     *
+     * Purely lexical, for the same reason [plainNumberOrNull] is: routing a transport value through a decimal
+     * type would impose the evaluation model's rounding on a rendering that must not have one. Nothing is ever
+     * rounded here — the destination scale is by construction at least the value's own significant scale, so
+     * only trailing zeros are added or dropped. Cross-checked against `java.math.BigDecimal` itself by
+     * `A12RuntimeNumberFormTest`.
+     *
+     * [plain] must already be in plain form (a [plainNumberOrNull] / [canonicalNumberOrNull] output): no
+     * exponent, no leading `+`, no leading zeros beyond a lone `0`.
+     */
+    internal fun runtimeNumberForm(plain: String, minFractionalDigits: Int): String {
+        val point = plain.indexOf('.')
+        val fractionPart = if (point < 0) "" else plain.substring(point + 1)
+        val significantFraction = fractionPart.trimEnd('0')
+        // Once no significant fractional digit survives, `stripTrailingZeros().scale()` is <= 0 (`250.00` strips
+        // to `2.5E+2`, scale -1; `0.00` to `0`, scale 0) — and `max(<= 0, minFractionalDigits)` is then just
+        // minFractionalDigits, which is why the two branches need no signed scale of their own.
+        val scale = if (significantFraction.isEmpty()) minFractionalDigits
+        else maxOf(significantFraction.length, minFractionalDigits)
+        if (scale == fractionPart.length) return plain
+        val integerPart = if (point < 0) plain else plain.substring(0, point)
+        return if (scale == 0) integerPart else integerPart + "." + significantFraction.padEnd(scale, '0')
+    }
+
+    /**
+     * One field cell's stored text in A12's **two renderings** — [stored] is what the serializer writes back,
+     * [evaluation] what the runtime hands every evaluation channel. `null` in both slots is the empty cell.
+     *
+     * They differ for exactly one thing: a **converted NUMBER** whose serializer and runtime renderings disagree
+     * (IF231). Every other kind — and A12's own pass-through of a value its converter rejects, which stays a
+     * `String` that `ValidationData.getValue` returns unchanged — carries one text in both slots.
+     */
+    private data class CellText(val evaluation: String?, val stored: String?) {
+        constructor(one: String?) : this(one, one)
+
+        companion object {
+            val EMPTY = CellText(null)
+        }
+    }
+
+    /**
+     * The stored text of one field cell as A12's own ingestion leaves it, in both renderings ([CellText]).
      *
      * A12's document is **value-normalizing**: `DocumentV2JsonReader` stringifies the JSON node (`asText()`),
      * `FieldValueConverter` converts that text to `String | Boolean | BigDecimal | Instant | InstantRange`, and
@@ -138,8 +186,9 @@ internal object A12DocumentJson {
      * stored VALUE, never from the authored text. Our cell stores text, so the ingestion normalization has to
      * happen here instead. Per kind, measured by `adapter … A12JsonIngressKernelTest`:
      *
-     * - **NUMBER** — [canonicalNumberOrNull], except the one case A12 keeps as text: a `leadingZerosAllowed`
-     *   field's leading-zero value, where `createBigDecimalIfPossible` returns the original String.
+     * - **NUMBER** — [canonicalNumberOrNull] for the serializer text, then [runtimeNumberForm] for the runtime
+     *   text; the one case A12 keeps as text is a `leadingZerosAllowed` field's leading-zero value, where
+     *   `createBigDecimalIfPossible` returns the original String and both renderings are that String.
      * - **BOOLEAN** — `"true".equalsIgnoreCase` / `"false".equalsIgnoreCase` → the canonical token; **CONFIRM**
      *   accepts only `true` (it has no false, so even a native JSON `false` is a pass-through).
      * - **the DATE family** — nothing to do: `SimpleDateFormat` is non-lenient, so every non-canonical spelling
@@ -150,26 +199,29 @@ internal object A12DocumentJson {
      *
      * A value the converter cannot parse stays verbatim ([A12K-3638]) and is written back as a JSON string.
      */
-    private fun ModelDef.normalizedCellValue(path: String, raw: String): String? = when (kinds[path]) {
+    private fun ModelDef.cellText(path: String, raw: String): CellText = when (kinds[path]) {
         Kind.NUMBER -> when {
-            raw.isEmpty() -> null
-            else -> canonicalNumberOrNull(raw)
-                ?.takeUnless { path in leadingZeroNumbers && hasLeadingZeros(raw) }
-                ?: raw
+            raw.isEmpty() -> CellText.EMPTY
+            else -> {
+                val converted = canonicalNumberOrNull(raw)
+                    ?.takeUnless { path in leadingZeroNumbers && hasLeadingZeros(raw) }
+                if (converted == null) CellText(raw)   // A12's pass-through: a String, read back unchanged
+                else CellText(runtimeNumberForm(converted, minFractionalDigitsOf(path)), converted)
+            }
         }
         Kind.BOOLEAN -> when {
-            raw.isEmpty() -> null
-            raw.equals(TRUE_LITERAL, ignoreCase = true) -> TRUE_LITERAL
-            raw.equals(FALSE_LITERAL, ignoreCase = true) -> FALSE_LITERAL
-            else -> raw
+            raw.isEmpty() -> CellText.EMPTY
+            raw.equals(TRUE_LITERAL, ignoreCase = true) -> CellText(TRUE_LITERAL)
+            raw.equals(FALSE_LITERAL, ignoreCase = true) -> CellText(FALSE_LITERAL)
+            else -> CellText(raw)
         }
         Kind.CONFIRM -> when {
-            raw.isEmpty() -> null
-            raw.equals(TRUE_LITERAL, ignoreCase = true) -> TRUE_LITERAL
-            else -> raw
+            raw.isEmpty() -> CellText.EMPTY
+            raw.equals(TRUE_LITERAL, ignoreCase = true) -> CellText(TRUE_LITERAL)
+            else -> CellText(raw)
         }
-        Kind.DATE, Kind.DATE_TIME, Kind.TIME, Kind.DATE_RANGE -> raw.ifEmpty { null }
-        Kind.STRING, null -> raw
+        Kind.DATE, Kind.DATE_TIME, Kind.TIME, Kind.DATE_RANGE -> CellText(raw.ifEmpty { null })
+        Kind.STRING, null -> CellText(raw)
     }
 
     /**
@@ -270,10 +322,13 @@ internal object A12DocumentJson {
             val document = model.newDocument()
             for (placement in pending) {
                 val coordinates = placement.coordinates.toIntArray()
+                val text = placement.text
                 when {
                     placement.isGroup -> document.group(placement.path, *coordinates)
-                    placement.raw == null -> document.emptyField(placement.path, *coordinates)
-                    else -> document.field(placement.path, placement.raw, *coordinates)
+                    text.stored == null -> document.emptyField(placement.path, *coordinates)
+                    else -> document.renderedField(
+                        placement.path, text.evaluation!!, text.stored, *coordinates,
+                    )
                 }
             }
             return Read(document, documentId)
@@ -286,7 +341,7 @@ internal object A12DocumentJson {
             when {
                 node === JsonNull -> {
                     countCell(pointer)
-                    pending += Pending(path, coordinates, raw = null, isGroup = false)
+                    pending += Pending(path, coordinates, CellText.EMPTY, isGroup = false)
                 }
                 node is JsonPrimitive -> {
                     countCell(pointer)
@@ -306,7 +361,7 @@ internal object A12DocumentJson {
                         resource = DocumentInputResource.TOTAL_RAW_CODE_UNITS,
                         pointer = pointer,
                     )
-                    pending += Pending(path, coordinates, model.normalizedCellValue(path, raw), isGroup = false)
+                    pending += Pending(path, coordinates, model.cellText(path, raw), isGroup = false)
                 }
                 else -> diagnostics += UnexpectedNodeTypeDiagnostic(
                     entityKind = ModelEntityKind.FIELD,
@@ -349,7 +404,7 @@ internal object A12DocumentJson {
                 maximum = limits.maxGroupPlacements.toLong(),
                 resource = DocumentInputResource.GROUP_PLACEMENTS,
             ) { A12PointerFormat.format(path, coordinates) }
-            pending += Pending(path, coordinates, raw = null, isGroup = true)
+            pending += Pending(path, coordinates, CellText.EMPTY, isGroup = true)
             walk(node, path, coordinates)
         }
 
@@ -378,7 +433,7 @@ internal object A12DocumentJson {
     private data class Pending(
         val path: String,
         val coordinates: List<Int>,
-        val raw: String?,
+        val text: CellText,
         val isGroup: Boolean,
     )
 

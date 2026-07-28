@@ -18,9 +18,13 @@ import org.junit.jupiter.api.Test
  * **`FieldValueAsNumber(string/numeric-enum field)`**, over `order.dm.json` (`/Order` is non-repeatable;
  * `/Order/Quantity` is a scale-0 number, `/Order/RushLevel` a numeric-valued enum `"1"/"2"/"3"`).
  *
- * Exact-match catches (kernel `feldWertAlsString` = the RAW stored value; `feldWertAlsZahl`):
- * - `FieldValueAsString` returns the field's **raw stored value** as a string (no re-canonicalization); an empty
- *   field → `""` → an empty-operand comparison does not fire;
+ * Exact-match catches (kernel `feldWertAlsString`; `feldWertAlsZahl`):
+ * - `FieldValueAsString` returns the field's stored value as a string; an empty field → `""` → an empty-operand
+ *   comparison does not fire. **"No re-canonicalization" is true of THIS regime only** (corrected 2026-07-29):
+ *   these documents are V1-built from raw Strings, which `ValidationData.getValue` returns unchanged. Through the
+ *   Document-JSON ingress the cell holds a converted value and the operator reads the runtime *rendering* instead
+ *   — `250.00` on a scale-2 field reads `"250"` — measured in `NumberRenderChannelKernelTest`, ours in
+ *   `NumberRenderChannelDiffTest` (IF231);
  * - `FieldValueAsNumber` parses the value to a number, and an **empty** field reads as **`0`** — so on a numeric
  *   enum the coercion equals its code's number. Firing must agree.
  */

@@ -78,14 +78,14 @@ class DocumentInstanceIngressTest {
     }
 
     @Test
-    void anAuthoredTrailingZeroSurvivesTheReadAndIsSeenByTheFormalCheck() throws Exception {
-        // The scale is retained, which is exactly why the separator check fires. NOTE the Kernel fires NOTHING
-        // here: its runtime strips the fractional trailing zeros to `250` while its serializer writes `250.00`,
-        // and one stored text cannot be both. That is IG85, a pre-existing residual of the interpreter's cell
-        // model (docs/INTERPRETER-GAPS.md), not something this boundary introduces — the row is characterized in
-        // `A12JsonIngressDiffTest.KNOWN_DIVERGENCES`. It is asserted here because a scale-LOSING read would
-        // store `250` and fire nothing, which is the failure this test must still catch.
-        assertEquals(List.of("zahlHatDezimalTrenner"), firedForQuantity("250.00"));
+    void anAuthoredTrailingZeroIsRetainedYetInvisibleToTheFormalCheckExactlyAsInA12() throws Exception {
+        // The Kernel fires NOTHING here, and so do we (IF231). A12 renders one stored decimal twice: its
+        // serializer writes `250.00` (the scale is genuinely retained — a scale-LOSING read could not write it
+        // back) while its runtime hands the formal check `250`, with no separator to complain about. The cell
+        // carries both texts, so this row agrees with the real Kernel instead of being a characterized residual.
+        // The anti-scale-loss duty moved to the two sibling tests above, whose codes are reachable only at full
+        // precision, and to `adapter … NumberRenderChannelDiffTest`'s byte-identical write-back.
+        assertEquals(List.of(), firedForQuantity("250.00"));
     }
 
     @Test

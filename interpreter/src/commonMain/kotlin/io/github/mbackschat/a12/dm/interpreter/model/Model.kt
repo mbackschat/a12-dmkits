@@ -618,6 +618,14 @@ data class ModelDef(
     /** The NUMBER field's declared scale (max fractional digits), or null when unknown / not a number. */
     fun scaleOf(path: String): Int? = scales[path]
 
+    /**
+     * The NUMBER field's declared `minFractionalDigits` (kernel default 0, and 0 for any non-number path) — the
+     * pad floor of A12's runtime number rendering (`A12DocumentJson.runtimeNumberForm`, IF231) as well as the
+     * `zahlOhneDezimalTrenner` / too-few-decimals constraint. A plain `Int` rather than the `Int?` [scaleOf]
+     * returns, because the kernel's own property is a primitive `int` with no "unset" state.
+     */
+    internal fun minFractionalDigitsOf(path: String): Int = fieldsByPath[path]?.minFractionalDigits ?: 0
+
     /** The exact format default used by `$field.value$` in the admitted canonical (dot-separator) display
      *  profile when the caller value is absent or empty. No alternate presentation profile is inferred. */
     internal fun messageDefaultOf(path: String): String {

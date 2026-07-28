@@ -96,8 +96,10 @@ class Document(internal val config: DocumentConfig) {
     private val timeZone = config.timeZone
     private val repeatableGroups = config.repeatableGroups
     private val effectiveGroupRepetitionMaximums = config.effectiveGroupRepetitionMaximums
-    /** [raw] is the ORIGINAL stored text ([value] before the eval-side CRLF→LF normalization, IF124) —
-     *  what [cellStateAt] reports; it defaults to [value] and is preserved by the normalizing `copy`. */
+    /** [raw] is the STORED text and [value] the EVALUATION text. They part for two independent reasons: the
+     *  eval-side CRLF→LF normalization (IF124), and A12's number conversion, which renders one stored decimal
+     *  twice (IF231 — set by [renderedField] at the Document-JSON ingress). [raw] is what [cellStateAt] and the
+     *  encoder report; it defaults to [value] and is preserved by the normalizing `copy`. */
     private data class Placement(val path: String, val reps: List<Int>, val value: String?, val isGroup: Boolean,
         val raw: String? = value)
 
@@ -123,14 +125,36 @@ class Document(internal val config: DocumentConfig) {
     /** A group row at the given 1-based indices (one per path part). */
     fun group(path: String, vararg reps: Int): Document = add(path, reps, null, true)
 
-    private fun add(path: String, reps: IntArray, value: String?, isGroup: Boolean): Document {
+    /**
+     * A field whose stored value was **converted at ingress**, so A12 renders it twice and the two texts differ:
+     * [evaluationValue] is what every evaluation channel reads (the kernel's `IData` rendering) and
+     * [storedValue] what the encoder writes back (the serializer rendering). A12's Document JSON ingress is the
+     * only caller — see `A12DocumentJson.runtimeNumberForm` and IF231.
+     *
+     * A plain [field] fill sets both to the one text it is given, which is exactly A12's **String-valued** cell:
+     * `ValidationData.getValue` returns such a value unchanged, so the authored text IS the evaluation text.
+     */
+    internal fun renderedField(
+        path: String,
+        evaluationValue: String,
+        storedValue: String,
+        vararg reps: Int,
+    ): Document = add(path, reps, evaluationValue, false, stored = storedValue)
+
+    private fun add(
+        path: String,
+        reps: IntArray,
+        value: String?,
+        isGroup: Boolean,
+        stored: String? = value,
+    ): Document {
         val r = reps.toList()
         if (isGroup) {
             if (instantiatedGroups.add(path to r)) placements += Placement(path, r, value, true)
         } else {
             ancestorGroups(path).forEachIndexed { i, g -> autoGroup(g, r.take(i + 1)) }
             val evaluationValue = if (value.isNullOrEmpty()) null else value
-            placements += Placement(path, r, evaluationValue, false, raw = value)
+            placements += Placement(path, r, evaluationValue, false, raw = stored)
         }
         invalidateDerivedCaches()   // every mutation clears ALL document-derived caches (IF142)
         return this

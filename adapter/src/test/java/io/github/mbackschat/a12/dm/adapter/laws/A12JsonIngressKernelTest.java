@@ -19,8 +19,14 @@ import org.junit.jupiter.api.Test;
  * <p>Each row records the two consumer-visible observables: what {@code serializeV2} writes back, and which
  * formal errors validation then reports. The second is what pins the runtime's text — for
  * {@code /Order/Quantity} (a {@code maxFractionalDigits: 0} field) {@code 250.00} draws <em>no</em>
- * decimal-separator error while {@code 0.0000001} does, which is only possible if the runtime sees
- * {@code bd.setScale(max(bd.stripTrailingZeros().scale(), minFractionalDigits)).toPlainString()}.
+ * decimal-separator error while {@code 0.0000001} does, so the runtime STRIPS a fractional trailing zero; and
+ * for {@code /Order/LineTotal} (a {@code minFractionalDigits: 2} field) a bare {@code 250} draws no
+ * missing-separator error, so it also PADS. Neither half of
+ * {@code bd.setScale(max(bd.stripTrailingZeros().scale(), minFractionalDigits)).toPlainString()} is discriminated
+ * by these rows ALONE, though: they fix the rendering only up to the codes they can fire. The lexical
+ * discrimination — a length bound counting the rendered characters — lives in
+ * {@code NumberRenderChannelKernelTest}, together with the measurement that every other evaluation channel reads
+ * this same one text.
  *
  * <p>Distinct from every other oracle in this package: those build a V1 instance from raw <em>strings</em>,
  * which {@code ValidationData.getValue} returns unchanged — a regime where no conversion happens at all. The
@@ -69,6 +75,17 @@ class A12JsonIngressKernelTest {
             row("UnitPrice", "2.5e2", "250"),
             row("UnitPrice", "250.0", "250.0"),
             row("UnitPrice", "0.005", "0.005", "zahlFalscheAnzahlNachkommastellen"),
+            // …and the PADDING direction, which needs a `minFractionalDigits` field to be reachable at all:
+            // /Order/LineTotal is minFrac 2 / maxFrac 2, so the runtime text of every value below is `250.00`
+            // even where the serializer writes `250`, `250.0`, or `250.5`. Without such a field in this model the
+            // whole class sat outside the matrix — an "exhaustive" residual set is only exhaustive over its
+            // generator (IF231, was IG87).
+            row("LineTotal", "250", "250"),
+            row("LineTotal", "250.0", "250.0"),
+            row("LineTotal", "250.5", "250.5"),
+            row("LineTotal", "250.00", "250.00"),
+            row("LineTotal", "250.555", "250.555", "zahlFalscheAnzahlNachkommastellen"),
+            row("LineTotal", "\"\"", "null"),
 
             // ── BOOLEAN / CONFIRM: `equalsIgnoreCase`, then `booleanNode` ──
             row("ExpressShipping", "\"TRUE\"", "true"),

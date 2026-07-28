@@ -44,16 +44,12 @@ class A12JsonIngressDiffTest {
     }
 
     private companion object {
-        val KNOWN_DIVERGENCES = setOf(
-            // A12 renders a number TWICE from one stored decimal, and the two renderings differ exactly when
-            // the value carries fractional trailing zeros: the serializer keeps them (`toPlainString`), the
-            // runtime strips them (`setScale(max(stripTrailingZeros().scale(), minFractionalDigits))`). Our
-            // cell holds ONE text, so it cannot satisfy both; it holds the write-faithful one, which keeps
-            // read→write identity on a document A12 itself wrote and leaves the eval side exactly as it was
-            // before value normalization existed. It only becomes observable where the stripped zeros would
-            // have changed a text-reading check — here a decimal point on a scale-0 field. INTERPRETER-GAPS
-            // IG85. (`UnitPrice=250.0` is NOT in this set: on a scale-2 field the kept zero breaks nothing.)
-            "Quantity=\"250.00\" EVAL kernel=[] interpreter=[zahlHatDezimalTrenner]",
-        )
+        // EMPTY, and that is the measured state — not an unwritten row. A12 renders one stored decimal twice
+        // (the serializer's `toPlainString()` versus the runtime's
+        // `setScale(max(stripTrailingZeros().scale(), minFractionalDigits))`), and the cell now carries BOTH:
+        // the stored text the encoder writes back, and the evaluation text every channel reads (IF231). The
+        // `Quantity="250.00"` row that stood here, and the whole PADDING direction this model could not even
+        // express before `/Order/LineTotal` existed, are gone rather than characterized.
+        val KNOWN_DIVERGENCES = emptySet<String>()
     }
 }

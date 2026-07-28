@@ -1,0 +1,214 @@
+{
+  "header": {
+    "id": "decimal-render",
+    "modelType": "document",
+    "modelVersion": "28.4.0",
+    "locales": [
+      {
+        "code": "en_US"
+      }
+    ],
+    "labels": [],
+    "annotations": [],
+    "modelReferences": []
+  },
+  "content": {
+    "modelInfo": {
+      "name": "decimal-render",
+      "variant": "cockpit",
+      "revision": "Arbeitsversion",
+      "baseYear": "2020",
+      "immutable": false
+    },
+    "modelConfig": {
+      "decimalSeparator": ".",
+      "timeZone": "Europe/Berlin",
+      "conditionLanguage": {
+        "code": "en_US"
+      },
+      "fieldRefByShortNameAllowed": true
+    },
+    "modelRoot": {
+      "rootGroups": [
+        {
+          "type": "Group",
+          "id": "/Shipment",
+          "name": "Shipment",
+          "Group": {
+            "repeatability": 1,
+            "elements": [
+              {
+                "type": "Field",
+                "id": "/Shipment/Reference",
+                "name": "Reference",
+                "Field": {
+                  "fieldType": {
+                    "type": "StringType"
+                  }
+                }
+              },
+              {
+                "type": "Field",
+                "id": "/Shipment/Weight",
+                "name": "Weight",
+                "Field": {
+                  "fieldType": {
+                    "type": "NumberType",
+                    "NumberType": {
+                      "maxFractionalDigits": 0
+                    }
+                  }
+                }
+              },
+              {
+                "type": "Field",
+                "id": "/Shipment/Price",
+                "name": "Price",
+                "Field": {
+                  "fieldType": {
+                    "type": "NumberType",
+                    "NumberType": {
+                      "maxFractionalDigits": 2
+                    }
+                  }
+                }
+              },
+              {
+                "type": "Field",
+                "id": "/Shipment/PriceCapped",
+                "name": "PriceCapped",
+                "Field": {
+                  "fieldType": {
+                    "type": "NumberType",
+                    "NumberType": {
+                      "maxFractionalDigits": 2,
+                      "maxLength": 3
+                    }
+                  }
+                }
+              },
+              {
+                "type": "Field",
+                "id": "/Shipment/PriceFloored",
+                "name": "PriceFloored",
+                "Field": {
+                  "fieldType": {
+                    "type": "NumberType",
+                    "NumberType": {
+                      "maxFractionalDigits": 2,
+                      "minLength": 4
+                    }
+                  }
+                }
+              },
+              {
+                "type": "Field",
+                "id": "/Shipment/Freight",
+                "name": "Freight",
+                "Field": {
+                  "fieldType": {
+                    "type": "NumberType",
+                    "NumberType": {
+                      "minFractionalDigits": 2,
+                      "maxFractionalDigits": 2
+                    }
+                  }
+                }
+              },
+              {
+                "type": "Field",
+                "id": "/Shipment/FreightCapped",
+                "name": "FreightCapped",
+                "Field": {
+                  "fieldType": {
+                    "type": "NumberType",
+                    "NumberType": {
+                      "minFractionalDigits": 2,
+                      "maxFractionalDigits": 2,
+                      "maxLength": 5
+                    }
+                  }
+                }
+              },
+              {
+                "type": "Group",
+                "id": "/Shipment/Parcels",
+                "name": "Parcels",
+                "Group": {
+                  "repeatability": 20,
+                  "indexFieldName": "Tag",
+                  "elements": [
+                    {
+                      "type": "Field",
+                      "id": "/Shipment/Parcels/Tag",
+                      "name": "Tag",
+                      "Field": {
+                        "fieldType": {
+                          "type": "NumberType",
+                          "NumberType": {
+                            "minFractionalDigits": 2,
+                            "maxFractionalDigits": 2
+                          }
+                        }
+                      }
+                    },
+                    {
+                      "type": "Field",
+                      "id": "/Shipment/Parcels/Load",
+                      "name": "Load",
+                      "Field": {
+                        "fieldType": {
+                          "type": "NumberType",
+                          "NumberType": {
+                            "maxFractionalDigits": 0
+                          }
+                        }
+                      }
+                    }
+                  ]
+                }
+              },
+              {
+                "type": "Group",
+                "id": "/Shipment/Crates",
+                "name": "Crates",
+                "Group": {
+                  "repeatability": 20,
+                  "indexFieldName": "Code",
+                  "elements": [
+                    {
+                      "type": "Field",
+                      "id": "/Shipment/Crates/Code",
+                      "name": "Code",
+                      "Field": {
+                        "fieldType": {
+                          "type": "NumberType",
+                          "NumberType": {
+                            "maxFractionalDigits": 2
+                          }
+                        }
+                      }
+                    },
+                    {
+                      "type": "Field",
+                      "id": "/Shipment/Crates/Units",
+                      "name": "Units",
+                      "Field": {
+                        "fieldType": {
+                          "type": "NumberType",
+                          "NumberType": {
+                            "maxFractionalDigits": 2
+                          }
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        }
+      ]
+    }
+  }
+}

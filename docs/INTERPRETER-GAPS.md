@@ -12,16 +12,7 @@
 
 ## 1. Open (to fix)
 
-- **IG87 — a `minFractionalDigits` field draws THREE false formal errors, because the kernel's runtime PADS a stored decimal and we do not** (found by independent review 2026-07-28, measured against the real kernel). IG85 recorded that A12 renders one stored decimal twice and claimed they "differ exactly on fractional trailing zeros beyond `minFractionalDigits`". That is only half the split: the runtime's `setScale(max(bd.stripTrailingZeros().scale(), minFractionalDigits))` also **pads** when the stored value has *fewer* fractional digits than `minFractionalDigits`, and `FormalError.kt` checks our stored text directly. On a `minFractionalDigits: 2` field:
-
-  | authored Document JSON | kernel | interpreter |
-  |---|---|---|
-  | `250` | — | `zahlOhneDezimalTrenner` |
-  | `250.0` | — | `zahlFalscheAnzahlNachkommastellen` |
-  | `250.5` | — | `zahlFalscheAnzahlNachkommastellen` |
-  | `250.00` | — | — |
-
-  **Why no guard caught it:** `A12JsonIngressDiffTest.KNOWN_DIVERGENCES` calls itself "the exhaustive, characterized residual", but it is exhaustive only over `A12JsonIngressKernelTest.rows()`, and **that model declares no `minFractionalDigits`** — so the whole padding direction is outside the matrix. An "exhaustive" set is only exhaustive over its generator. **Completion gate:** the ingress matrix gains a `minFractionalDigits` field so the class is *reachable*; the three rows above either pass or are named residuals; IG85's "differ exactly on trailing zeros" wording is corrected (its own quoted formula pads, which the prose called stripping). Related to IG85 but **not** the same residual — this one fires errors the kernel does not, on values a user would plainly write.
+(none)
 
 *No other* open semantic or performance defect currently carries actionable work — every live item is dispositioned in §2 or §3 with its re-open trigger. An empty §1 is a real state, not an oversight: it means the next defect found gets a row here rather than joining a queue.
 
@@ -34,8 +25,6 @@ New semantic or performance defects belong here only while they have actionable 
 Two kinds live here when present: a **deferred** item (parked or owner-accepted until its re-open trigger flips) and an **ongoing as-touched** refactor. A deferred item may be a safely guarded capability residual; it is not a silent semantic mismatch. A fully shipped item is deleted (its `IF<n>` finding + git are the record).
 
 - **IG83 — Route A: general portable timezone-id support (owner-accepted deferred capability; Route B completed as IF155/IF165/IF166).** The enforced evaluator contract supports exact `{UTC, GMT, Europe/Berlin}`; Berlin uses the independently locked legacy-`java.util.TimeZone` history, explicit invalid ids fail as configuration errors, and known kernel-legal zones outside the set fail with the precise supported-scope diagnostic. The kernel accepts a wider Java `TimeZone` id domain, so this remains an honest product limit, not full timezone parity. **Re-open trigger:** a real consumer needs a non-Berlin zone or a publication wave promises full timezone parity. Then build one portable, deterministically versioned tzdb for JVM + JS and pin its version relationship to the kernel's JDK tzdb.
-
-- **IG85 — A12 renders one stored decimal TWICE, and our single stored text can only match one of them (owner-deferred 2026-07-28).** Measured 2026-07-28 (KERNEL-FINDINGS "The canonical Document JSON …"): the serializer writes `bd.toPlainString()` while the runtime validates `bd.setScale(max(bd.stripTrailingZeros().scale(), minFractionalDigits)).toPlainString()`. They differ exactly on **fractional trailing zeros beyond `minFractionalDigits`** — `250.00` is written `250.00` and validated `250`. Our Document cell holds one text, so IF227's read normalization stores the write-faithful form: read→write identity on a document A12 itself wrote is preserved, and the eval side is left exactly where it stood before normalization existed (so this is a pre-existing residual, not one the change introduced). Observable only where the stripped zeros would change a text-reading check — locked as the single `Quantity="250.00"` row of `A12JsonIngressDiffTest.KNOWN_DIVERGENCES`. **Closing it requires a cell-model change** (carrying the converted value, or its two renderings, beside the text) in the interpreter's hottest data structure, which trades against the module's stated performance priority — an owner design call, not a local fix, which is why it sits here rather than in §1. **Re-open trigger:** a consumer hits it on real data, or the cell model is being reworked for another reason.
 
 ---
 
