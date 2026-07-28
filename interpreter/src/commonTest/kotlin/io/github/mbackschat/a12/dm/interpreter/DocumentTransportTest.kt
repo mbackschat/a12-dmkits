@@ -85,6 +85,34 @@ class DocumentTransportTest {
     }
 
     @Test
+    fun numbersAreWrittenInA12sPlainFormWithTheAuthoredScaleIntact() {
+        val documents = prepared().documents
+        // A12 runs its generator with WRITE_BIGDECIMAL_AS_PLAIN, so it never emits scientific notation and
+        // never drops a trailing zero. Reading keeps the literal text; writing normalizes it exactly as the
+        // Kernel does (KERNEL-FINDINGS "The canonical Document JSON …"; the oracle is A12NumberPlainFormTest).
+        val snapshot = documents.readDocument(
+            """{"Order":{"Items":[{"Qty":250.00},{"Qty":1e5},{"Qty":1.2e-3}]}}""",
+        )
+        val document = snapshot.document()
+
+        assertEquals(StoredCellState.PresentValue("250.00"), document.cellStateAt("/Order/Items/Qty", listOf(1, 1, 1)))
+        assertEquals(StoredCellState.PresentValue("1e5"), document.cellStateAt("/Order/Items/Qty", listOf(1, 2, 1)))
+
+        assertEquals(
+            """{"Order":{"Items":[{"Qty":250.00},{"Qty":100000},{"Qty":0.0012}]}}""",
+            documents.encodeDocument(snapshot),
+        )
+        // Text that is not a JSON number stays a string — the Kernel's own pass-through for a value it could
+        // not convert — so a leading-zero or malformed value never becomes invalid JSON.
+        assertEquals(
+            """{"Order":{"Items":[{"Qty":"007"},{"Qty":"not-a-number"}]}}""",
+            documents.encodeDocument(
+                documents.readDocument("""{"Order":{"Items":[{"Qty":"007"},{"Qty":"not-a-number"}]}}"""),
+            ),
+        )
+    }
+
+    @Test
     fun aJsonNullIsAPresentValuelessCellNotAnOmission() {
         val document = prepared().documents.readDocument("""{"Order":{"Ref":null}}""").document()
 

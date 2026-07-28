@@ -5,9 +5,12 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Map;
 
+import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.cfg.JsonNodeFeature;
 
 /**
  * Reads a document <b>instance</b> file — the {@code --instance} argument shared by {@code model eval},
@@ -18,7 +21,24 @@ import com.fasterxml.jackson.databind.ObjectMapper;
  */
 public final class DocInstance {
 
-    private static final ObjectMapper MAPPER = new ObjectMapper();
+    /**
+     * Configured EXACTLY like A12's own document mapper ({@code ObjectMapperProvider
+     * .createObjectMapperForDocSerializer()}), because this boundary must adopt kernel JSON I/O behaviour
+     * exactly. Two of the three settings are load-bearing rather than cosmetic:
+     * <ul>
+     *   <li>{@code USE_BIG_DECIMAL_FOR_FLOATS} + {@code STRIP_TRAILING_BIGDECIMAL_ZEROES=false} — the Kernel's
+     *       own comment is "we want to preserve trailing zeroes and the scale of the value". On a DEFAULT
+     *       mapper a native {@code 250.00} becomes a {@code DoubleNode} and reaches the document as
+     *       {@code "250.0"}, and a decimal beyond double precision is mangled to scientific notation. The
+     *       scale is not cosmetic: the formal check and every comparison read it.</li>
+     *   <li>{@code ALLOW_COMMENTS} — A12 accepts {@code //} and slash-star comments in a document, so refusing
+     *       them here would reject input the Kernel reads.</li>
+     * </ul>
+     */
+    private static final ObjectMapper MAPPER = new ObjectMapper()
+            .enable(JsonParser.Feature.ALLOW_COMMENTS)
+            .enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS)
+            .configure(JsonNodeFeature.STRIP_TRAILING_BIGDECIMAL_ZEROES, false);
 
     private DocInstance() {
     }

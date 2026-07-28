@@ -15,6 +15,7 @@ This changelog covers the independently consumable interpreter packages, API doc
 
 ### Fixed
 
+- Numbers are written in A12's **plain** form, matching the Kernel's `WRITE_BIGDECIMAL_AS_PLAIN` generator: never scientific notation, with the authored scale intact (`250.00` stays `250.00`, `1e5` becomes `100000`, `1.2e-3` becomes `0.0012`). Reading already retained the exact literal.
 - The canonical pointer utility (`A12PointerFormat`) constructed an invalid regular expression on Kotlin/JS, so parsing a pointer failed on that target.
 
 ## [0.9.1]

@@ -55,7 +55,39 @@ internal object A12DocumentJson {
     private val EMPTY_ROW = JsonObject(emptyMap())
 
     /** JSON's own number grammar — the gate for writing a stored number back as a native literal. */
-    private val JSON_NUMBER = Regex("-?(0|[1-9][0-9]*)(\\.[0-9]+)?([eE][-+]?[0-9]+)?")
+    private val JSON_NUMBER = Regex("(-?)(0|[1-9][0-9]*)(?:\\.([0-9]+))?(?:[eE]([-+]?[0-9]+))?")
+
+    /**
+     * [literal] in A12's **plain** number form, or null when it is not a JSON number at all.
+     *
+     * A12 never writes a number in scientific notation: its generator runs with
+     * `JsonGenerator.Feature.WRITE_BIGDECIMAL_AS_PLAIN`, so the emitted text is `BigDecimal.toPlainString()` —
+     * the point shifted out, the **scale preserved** (`250.00` stays `250.00`, `1e5` becomes `100000`,
+     * `1.2e-3` becomes `0.0012`). Negative zero collapses because `BigDecimal` has none. Matching this is what
+     * makes our encode byte-identical to the Kernel's for every legal numeric input, not merely equal in value.
+     *
+     * Purely lexical on purpose: a decimal *type* would impose a rounding/precision model the transport must
+     * not have. Cross-checked against `java.math.BigDecimal.toPlainString` by `A12NumberPlainFormTest`.
+     */
+    internal fun plainNumberOrNull(literal: String): String? {
+        val match = JSON_NUMBER.matchEntire(literal) ?: return null
+        val (sign, integerPart, fractionPart, exponentPart) = match.destructured
+        val exponent = if (exponentPart.isEmpty()) 0 else exponentPart.toIntOrNull() ?: return null
+        val digits = integerPart + fractionPart
+        val scale = fractionPart.length.toLong() - exponent
+        val plain = when {
+            // `BigDecimal.toPlainString` short-circuits zero at a negative scale: `0e5` is "0", not "000000".
+            scale <= 0 && digits.all { it == '0' } -> "0"
+            scale <= 0 -> digits + "0".repeat((-scale).toInt())
+            scale < digits.length -> {
+                val point = digits.length - scale.toInt()
+                digits.substring(0, point) + "." + digits.substring(point)
+            }
+            else -> "0." + "0".repeat((scale - digits.length).toInt()) + digits
+        }
+        // BigDecimal has no negative zero: `-0.0` reads back `0.0`.
+        return if (sign == "-" && digits.all { it == '0' }) plain else sign + plain
+    }
 
     /** One decoded document plus the root `id` the shape carries beside it. */
     internal data class Read(val document: Document, val documentId: String?)
@@ -333,8 +365,8 @@ internal object A12DocumentJson {
     private fun fieldToJson(model: ModelDef, path: String, raw: String?): JsonElement {
         if (raw == null) return JsonNull
         return when (model.kinds[path]) {
-            Kind.NUMBER ->
-                if (JSON_NUMBER.matchEntire(raw) != null) JsonUnquotedLiteral(raw) else JsonPrimitive(raw)
+            // A12 emits the PLAIN form, never scientific — see [plainNumberOrNull].
+            Kind.NUMBER -> plainNumberOrNull(raw)?.let { JsonUnquotedLiteral(it) } ?: JsonPrimitive(raw)
             Kind.BOOLEAN, Kind.CONFIRM ->
                 if (raw == TRUE_LITERAL || raw == FALSE_LITERAL) JsonUnquotedLiteral(raw) else JsonPrimitive(raw)
             // The date family and enumerations are model-format strings; `null` is the root `id` pseudo-field.
