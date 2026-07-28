@@ -1,16 +1,10 @@
 {
-  "version": 1,
-  "groups": [],
-  "fields": [
-    {
-      "path": "/Permit/ApplicationCode",
-      "coordinates": [1, 1],
-      "raw": "ABCDEFGHIJKLM"
-    },
-    {
-      "path": "/Permit/Review/Inspection/Score",
-      "coordinates": [1, 1, 1, 1],
-      "raw": "-1"
+  "Permit": {
+    "ApplicationCode": "ABCDEFGHIJKLM",
+    "Review": {
+      "Inspection": {
+        "Score": -1
+      }
     }
-  ]
+  }
 }

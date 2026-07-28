@@ -132,7 +132,10 @@ class InterpreterDocumentationTest {
         val build = Files.readString(repoFile("build.gradle"))
         val version = requireNotNull(Regex("""(?m)^version = '([^']+)'$""").find(build)).groupValues[1]
         val interpreterRoot = repoFile("interpreter")
-        val allowed = setOf(repoFile("interpreter/README.md"))
+        // The changelog is the ONE file whose literal version numbers are correct: the release mirror renders
+        // it straight through (no accumulation), so the source carries the released history. Its own rule is
+        // the sibling test below — the topmost entry must still be the derived placeholder.
+        val allowed = setOf(repoFile("interpreter/README.md"), repoFile("interpreter/CHANGELOG.md"))
         val failures = Files.walk(interpreterRoot).use { paths ->
             paths.filter(Files::isRegularFile)
                 .filter { !interpreterRoot.relativize(it).startsWith("build") }
@@ -145,6 +148,22 @@ class InterpreterDocumentationTest {
         assertTrue(
             failures.isEmpty(),
             "interpreter sources repeat repository version $version instead of deriving it:\n${failures.joinToString("\n")}",
+        )
+    }
+
+    @Test
+    fun theChangelogDerivesItsUpcomingEntryAndKeepsReleasedOnesLiteral() {
+        val changelog = Files.readString(repoFile("interpreter/CHANGELOG.md"))
+        val headings = Regex("""(?m)^## \[([^]]+)]$""").findAll(changelog).map { it.groupValues[1] }.toList()
+        assertTrue(headings.isNotEmpty(), "interpreter/CHANGELOG.md has no '## [version]' entry")
+        assertEquals(
+            "@VERSION@",
+            headings.first(),
+            "the topmost interpreter/CHANGELOG.md entry must derive its version from the build, not repeat it",
+        )
+        assertTrue(
+            headings.drop(1).none { it.contains('@') },
+            "a released interpreter/CHANGELOG.md entry must carry its literal version: ${headings.drop(1)}",
         )
     }
 

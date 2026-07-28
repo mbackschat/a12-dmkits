@@ -245,21 +245,11 @@ class ModelMetadata private constructor(
         return relevantPointer(pointer.path, coordinates)
     }
 
-    private fun entityKind(path: String): ModelEntityKind {
-        val model = prepared.definition()
-        return when (ModelAddressValidation.entityKind(model, path)) {
-            DocumentPlacementKind.GROUP -> ModelEntityKind.GROUP
-            DocumentPlacementKind.FIELD -> ModelEntityKind.FIELD
-            null -> throw UnknownModelPathError.of(path)
-        }
-    }
+    private fun entityKind(path: String): ModelEntityKind =
+        ModelAddressValidation.entityKind(prepared.definition(), path) ?: throw UnknownModelPathError.of(path)
 
     private fun requireCoordinates(path: String, kind: ModelEntityKind, coordinates: List<Int>) {
-        val placementKind = when (kind) {
-            ModelEntityKind.GROUP -> DocumentPlacementKind.GROUP
-            ModelEntityKind.FIELD -> DocumentPlacementKind.FIELD
-        }
-        ModelAddressValidation.violations(placementKind, path, coordinates)
+        ModelAddressValidation.violations(kind, path, coordinates)
             .firstOrNull()
             ?.let { throw coordinateError(path, it) }
     }

@@ -1,5 +1,16 @@
 # @mbackschat/a12-interpreter public TypeScript ABI
 
+## A12Document
+export type A12Document = A12DocumentGroup;
+
+## A12DocumentField
+export type A12DocumentField = string | number | boolean | null;
+
+## A12DocumentGroup
+export interface A12DocumentGroup {
+    readonly [name: string]: A12DocumentField | A12DocumentGroup | readonly A12DocumentGroup[];
+}
+
 ## A12Result
 export type A12Result<T, E extends Error> = {
     readonly ok: true;
@@ -84,9 +95,9 @@ export type DocumentCoordinateReasonCode = "coordinate-count-mismatch" | "coordi
 
 ## DocumentDecodeLimits
 export interface DocumentDecodeLimits {
+    readonly maxDocumentCodeUnits?: number;
     readonly maxGroupPlacements?: number;
     readonly maxFieldPlacements?: number;
-    readonly maxCoordinatesPerPlacement?: number;
     readonly maxPathCodeUnits?: number;
     readonly maxRawCodeUnitsPerField?: number;
     readonly maxTotalRawCodeUnits?: number;
@@ -98,15 +109,23 @@ export interface DocumentDecodeOptions {
     readonly limits?: DocumentDecodeLimits;
 }
 
+## DocumentEncodeError
+export declare class DocumentEncodeError extends Error {
+    readonly modelPath: string;
+    readonly pointer: string;
+    readonly code: "A12_DOCUMENT_NOT_REPRESENTABLE";
+    constructor(modelPath: string, pointer: string, message?: string);
+}
+
 ## DocumentInputDiagnostic
 export interface DocumentInputDiagnostic {
     readonly reasonCode: string;
-    readonly inputPath: readonly DocumentInputPathSegment[];
-    readonly modelPath?: string;
-    readonly placementKind?: DocumentPlacementKind;
-    readonly placementIndex?: number;
-    readonly coordinateIndex?: number;
     readonly message: string;
+    readonly pointer?: string;
+    readonly modelPath?: string;
+    readonly entityKind?: ModelEntityKind;
+    readonly nodeType?: DocumentJsonNodeType;
+    readonly inputPath?: readonly DocumentInputPathSegment[];
     readonly details?: Readonly<Record<string, unknown>>;
 }
 
@@ -120,15 +139,8 @@ export declare class DocumentInputError extends Error {
 ## DocumentInputPathSegment
 export type DocumentInputPathSegment = string | number;
 
-## DocumentInputV1
-export interface DocumentInputV1 {
-    readonly version: 1;
-    readonly groups: readonly GroupPlacementInput[];
-    readonly fields: readonly FieldPlacementInput[];
-}
-
-## DocumentPlacementKind
-export type DocumentPlacementKind = "group" | "field";
+## DocumentJsonNodeType
+export type DocumentJsonNodeType = "object" | "array" | "value" | "null";
 
 ## DocumentPointer
 export declare abstract class DocumentPointer {
@@ -142,22 +154,9 @@ export declare class DocumentSnapshot {
     private constructor();
 }
 
-## FieldPlacementInput
-export interface FieldPlacementInput {
-    readonly path: string;
-    readonly coordinates: readonly number[];
-    readonly raw: string;
-}
-
 ## FieldPointer
 export declare class FieldPointer extends DocumentPointer {
     private constructor();
-}
-
-## GroupPlacementInput
-export interface GroupPlacementInput {
-    readonly path: string;
-    readonly coordinates: readonly number[];
 }
 
 ## GroupPointer
@@ -196,9 +195,6 @@ export interface InterpreterSupportReport {
     readonly unsupported: readonly UnsupportedProgram[];
     readonly fullySupported: boolean;
 }
-
-## InvalidCoordinateReason
-export type InvalidCoordinateReason = "not-number" | "not-safe-integer" | "not-positive" | "outside-portable-range";
 
 ## ModelCollectionOptions
 export interface ModelCollectionOptions {
@@ -326,11 +322,10 @@ export declare class ModelWorkspace {
 export declare class PreparedDocumentApi {
     private readonly core;
     isSnapshot(value: unknown): value is DocumentSnapshot;
-    decodeDocument(input: unknown, options?: DocumentDecodeOptions): DocumentSnapshot;
-    tryDecodeDocument(input: unknown, options?: DocumentDecodeOptions): A12Result<DocumentSnapshot, DocumentInputError>;
-    readDocument(input: DocumentInputV1, options?: DocumentDecodeOptions): DocumentSnapshot;
-    encodeDocument(snapshot: DocumentSnapshot): DocumentInputV1;
-    private readBridgeDocument;
+    readDocument(document: A12Document | string, options?: DocumentDecodeOptions): DocumentSnapshot;
+    tryReadDocument(document: A12Document | string, options?: DocumentDecodeOptions): A12Result<DocumentSnapshot, DocumentInputError>;
+    encodeDocument(snapshot: DocumentSnapshot): A12Document;
+    encodeDocumentJson(snapshot: DocumentSnapshot): string;
 }
 
 ## PreparedModel

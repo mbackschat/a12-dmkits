@@ -29,18 +29,15 @@ final enum class io.github.mbackschat.a12.dm.interpreter/DocumentCoordinateReaso
 }
 
 final enum class io.github.mbackschat.a12.dm.interpreter/DocumentInputReasonCode : kotlin/Enum<io.github.mbackschat.a12.dm.interpreter/DocumentInputReasonCode> { // io.github.mbackschat.a12.dm.interpreter/DocumentInputReasonCode|null[0]
-    enum entry CONFLICTING_PLACEMENT // io.github.mbackschat.a12.dm.interpreter/DocumentInputReasonCode.CONFLICTING_PLACEMENT|null[0]
-    enum entry COORDINATE_COUNT_MISMATCH // io.github.mbackschat.a12.dm.interpreter/DocumentInputReasonCode.COORDINATE_COUNT_MISMATCH|null[0]
-    enum entry DUPLICATE_PLACEMENT // io.github.mbackschat.a12.dm.interpreter/DocumentInputReasonCode.DUPLICATE_PLACEMENT|null[0]
-    enum entry INVALID_COORDINATE // io.github.mbackschat.a12.dm.interpreter/DocumentInputReasonCode.INVALID_COORDINATE|null[0]
-    enum entry INVALID_FIELD_REPETITION // io.github.mbackschat.a12.dm.interpreter/DocumentInputReasonCode.INVALID_FIELD_REPETITION|null[0]
+    enum entry INVALID_DOCUMENT_ID // io.github.mbackschat.a12.dm.interpreter/DocumentInputReasonCode.INVALID_DOCUMENT_ID|null[0]
+    enum entry MALFORMED_JSON // io.github.mbackschat.a12.dm.interpreter/DocumentInputReasonCode.MALFORMED_JSON|null[0]
     enum entry RESOURCE_LIMIT_EXCEEDED // io.github.mbackschat.a12.dm.interpreter/DocumentInputReasonCode.RESOURCE_LIMIT_EXCEEDED|null[0]
+    enum entry UNEXPECTED_NODE_TYPE // io.github.mbackschat.a12.dm.interpreter/DocumentInputReasonCode.UNEXPECTED_NODE_TYPE|null[0]
     enum entry UNKNOWN_MODEL_PATH // io.github.mbackschat.a12.dm.interpreter/DocumentInputReasonCode.UNKNOWN_MODEL_PATH|null[0]
-    enum entry UNSUPPORTED_VERSION // io.github.mbackschat.a12.dm.interpreter/DocumentInputReasonCode.UNSUPPORTED_VERSION|null[0]
 }
 
 final enum class io.github.mbackschat.a12.dm.interpreter/DocumentInputResource : kotlin/Enum<io.github.mbackschat.a12.dm.interpreter/DocumentInputResource> { // io.github.mbackschat.a12.dm.interpreter/DocumentInputResource|null[0]
-    enum entry COORDINATES_PER_PLACEMENT // io.github.mbackschat.a12.dm.interpreter/DocumentInputResource.COORDINATES_PER_PLACEMENT|null[0]
+    enum entry DOCUMENT_CODE_UNITS // io.github.mbackschat.a12.dm.interpreter/DocumentInputResource.DOCUMENT_CODE_UNITS|null[0]
     enum entry FIELD_PLACEMENTS // io.github.mbackschat.a12.dm.interpreter/DocumentInputResource.FIELD_PLACEMENTS|null[0]
     enum entry GROUP_PLACEMENTS // io.github.mbackschat.a12.dm.interpreter/DocumentInputResource.GROUP_PLACEMENTS|null[0]
     enum entry MODEL_NESTING_DEPTH // io.github.mbackschat.a12.dm.interpreter/DocumentInputResource.MODEL_NESTING_DEPTH|null[0]
@@ -49,9 +46,11 @@ final enum class io.github.mbackschat.a12.dm.interpreter/DocumentInputResource :
     enum entry TOTAL_RAW_CODE_UNITS // io.github.mbackschat.a12.dm.interpreter/DocumentInputResource.TOTAL_RAW_CODE_UNITS|null[0]
 }
 
-final enum class io.github.mbackschat.a12.dm.interpreter/DocumentPlacementKind : kotlin/Enum<io.github.mbackschat.a12.dm.interpreter/DocumentPlacementKind> { // io.github.mbackschat.a12.dm.interpreter/DocumentPlacementKind|null[0]
-    enum entry FIELD // io.github.mbackschat.a12.dm.interpreter/DocumentPlacementKind.FIELD|null[0]
-    enum entry GROUP // io.github.mbackschat.a12.dm.interpreter/DocumentPlacementKind.GROUP|null[0]
+final enum class io.github.mbackschat.a12.dm.interpreter/DocumentJsonNodeType : kotlin/Enum<io.github.mbackschat.a12.dm.interpreter/DocumentJsonNodeType> { // io.github.mbackschat.a12.dm.interpreter/DocumentJsonNodeType|null[0]
+    enum entry ARRAY // io.github.mbackschat.a12.dm.interpreter/DocumentJsonNodeType.ARRAY|null[0]
+    enum entry NULL // io.github.mbackschat.a12.dm.interpreter/DocumentJsonNodeType.NULL|null[0]
+    enum entry OBJECT // io.github.mbackschat.a12.dm.interpreter/DocumentJsonNodeType.OBJECT|null[0]
+    enum entry VALUE // io.github.mbackschat.a12.dm.interpreter/DocumentJsonNodeType.VALUE|null[0]
 }
 
 final enum class io.github.mbackschat.a12.dm.interpreter/InterpreterIntegrationPhase : kotlin/Enum<io.github.mbackschat.a12.dm.interpreter/InterpreterIntegrationPhase> { // io.github.mbackschat.a12.dm.interpreter/InterpreterIntegrationPhase|null[0]
@@ -155,6 +154,8 @@ sealed interface io.github.mbackschat.a12.dm.interpreter/RelevantCoordinate // i
 
 sealed interface io.github.mbackschat.a12.dm.interpreter/RelevantEntityPointer : io.github.mbackschat.a12.dm.interpreter/ModelOwned // io.github.mbackschat.a12.dm.interpreter/RelevantEntityPointer|null[0]
 
+final class io.github.mbackschat.a12.dm.interpreter/A12Pointer // io.github.mbackschat.a12.dm.interpreter/A12Pointer|null[0]
+
 final class io.github.mbackschat.a12.dm.interpreter/ComputationReport // io.github.mbackschat.a12.dm.interpreter/ComputationReport|null[0]
 
 final class io.github.mbackschat.a12.dm.interpreter/ComputationResult // io.github.mbackschat.a12.dm.interpreter/ComputationResult|null[0]
@@ -175,17 +176,13 @@ final class io.github.mbackschat.a12.dm.interpreter/DocumentCoordinateError : ko
 
 final class io.github.mbackschat.a12.dm.interpreter/DocumentDecodeLimits // io.github.mbackschat.a12.dm.interpreter/DocumentDecodeLimits|null[0]
 
-final class io.github.mbackschat.a12.dm.interpreter/DocumentInputError : kotlin/RuntimeException // io.github.mbackschat.a12.dm.interpreter/DocumentInputError|null[0]
+final class io.github.mbackschat.a12.dm.interpreter/DocumentEncodeError : kotlin/RuntimeException // io.github.mbackschat.a12.dm.interpreter/DocumentEncodeError|null[0]
 
-final class io.github.mbackschat.a12.dm.interpreter/DocumentInputV1 // io.github.mbackschat.a12.dm.interpreter/DocumentInputV1|null[0]
+final class io.github.mbackschat.a12.dm.interpreter/DocumentInputError : kotlin/RuntimeException // io.github.mbackschat.a12.dm.interpreter/DocumentInputError|null[0]
 
 final class io.github.mbackschat.a12.dm.interpreter/DocumentSnapshot : io.github.mbackschat.a12.dm.interpreter/ModelOwned // io.github.mbackschat.a12.dm.interpreter/DocumentSnapshot|null[0]
 
-final class io.github.mbackschat.a12.dm.interpreter/FieldPlacementInput // io.github.mbackschat.a12.dm.interpreter/FieldPlacementInput|null[0]
-
 final class io.github.mbackschat.a12.dm.interpreter/FieldPointer : io.github.mbackschat.a12.dm.interpreter/DocumentPointer // io.github.mbackschat.a12.dm.interpreter/FieldPointer|null[0]
-
-final class io.github.mbackschat.a12.dm.interpreter/GroupPlacementInput // io.github.mbackschat.a12.dm.interpreter/GroupPlacementInput|null[0]
 
 final class io.github.mbackschat.a12.dm.interpreter/GroupPointer : io.github.mbackschat.a12.dm.interpreter/DocumentPointer // io.github.mbackschat.a12.dm.interpreter/GroupPointer|null[0]
 
@@ -234,3 +231,5 @@ final class io.github.mbackschat.a12.dm.interpreter/ValidationFinding // io.gith
 final class io.github.mbackschat.a12.dm.interpreter/ValidationReport // io.github.mbackschat.a12.dm.interpreter/ValidationReport|null[0]
 
 final class io.github.mbackschat.a12.dm.interpreter/WorkspaceModelSource // io.github.mbackschat.a12.dm.interpreter/WorkspaceModelSource|null[0]
+
+final object io.github.mbackschat.a12.dm.interpreter/A12PointerFormat // io.github.mbackschat.a12.dm.interpreter/A12PointerFormat|null[0]

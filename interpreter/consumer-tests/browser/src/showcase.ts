@@ -421,15 +421,14 @@ const withOperation = async (
 const snapshot = async (): Promise<{
   readonly scenario: Scenario;
   readonly state: PreparedState;
-  readonly value: ReturnType<PreparedModel["documents"]["decodeDocument"]>;
+  readonly value: ReturnType<PreparedModel["documents"]["readDocument"]>;
 }> => {
   const scenario = currentScenario();
   const state = await prepareWorkspace();
-  const parsed: unknown = JSON.parse(documentInput.value);
   return {
     scenario,
     state,
-    value: state.model.documents.decodeDocument(parsed),
+    value: state.model.documents.readDocument(documentInput.value),
   };
 };
 

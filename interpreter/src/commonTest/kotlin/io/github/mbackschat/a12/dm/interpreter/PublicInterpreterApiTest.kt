@@ -21,13 +21,7 @@ class PublicInterpreterApiTest {
             metadata.pointer("/Permit", listOf(1)),
         )
         val snapshot = prepared.documents.readDocument(
-            DocumentInputV1(
-                groups = listOf(GroupPlacementInput(permit.path, permit.coordinates)),
-                fields = listOf(
-                    FieldPlacementInput("/Permit/ApplicationNo", listOf(1, 1), "P-42"),
-                    FieldPlacementInput(requestedArea.path, requestedArea.coordinates, "120"),
-                ),
-            ),
+            """{"Permit":{"ApplicationNo":"P-42","RequestedArea":120}}""",
         )
         val interpreter = prepared.createInterpreter()
 
@@ -50,14 +44,7 @@ class PublicInterpreterApiTest {
     @Test
     fun partialValidationUsesModelOwnedRelevantPointers() {
         val prepared = preparedPermit()
-        val snapshot = prepared.documents.readDocument(
-            DocumentInputV1(
-                groups = listOf(GroupPlacementInput("/Permit", listOf(1))),
-                fields = listOf(
-                    FieldPlacementInput("/Permit/RequestedArea", listOf(1, 1), "120"),
-                ),
-            ),
-        )
+        val snapshot = prepared.documents.readDocument("""{"Permit":{"RequestedArea":120}}""")
         val relevant = prepared.model.relevantPointer(
             "/Permit/Note",
             listOf(RelevantCoordinate.exact(1), RelevantCoordinate.exact(1)),
@@ -73,9 +60,7 @@ class PublicInterpreterApiTest {
     fun pointerFactoriesAndRuntimeCallsRejectInvalidOrForeignObjects() {
         val first = preparedPermit()
         val second = preparedPermit()
-        val firstSnapshot = first.documents.readDocument(
-            DocumentInputV1(emptyList(), emptyList()),
-        )
+        val firstSnapshot = first.documents.readDocument("{}")
 
         assertEquals(
             DocumentCoordinateReason.COORDINATE_COUNT_MISMATCH,

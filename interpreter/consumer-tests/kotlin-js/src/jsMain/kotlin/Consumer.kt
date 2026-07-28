@@ -1,7 +1,4 @@
-import io.github.mbackschat.a12.dm.interpreter.FieldPlacementInput
-import io.github.mbackschat.a12.dm.interpreter.GroupPlacementInput
 import io.github.mbackschat.a12.dm.interpreter.ModelWorkspace
-import io.github.mbackschat.a12.dm.interpreter.DocumentInputV1
 import io.github.mbackschat.a12.dm.interpreter.WorkspaceModelSource
 
 @JsModule("node:fs")
@@ -18,13 +15,7 @@ fun main() {
     val source = WorkspaceModelSource.builder().json(modelJson).build()
     val prepared = ModelWorkspace.fromSources(listOf(source)).prepare("permit-basic")
     val snapshot = prepared.documents.readDocument(
-        DocumentInputV1(
-            groups = listOf(GroupPlacementInput("/Permit", listOf(1))),
-            fields = listOf(
-                FieldPlacementInput("/Permit/ApplicationNo", listOf(1, 1), "P-42"),
-                FieldPlacementInput("/Permit/RequestedArea", listOf(1, 1), "120"),
-            ),
-        ),
+        """{"Permit":{"ApplicationNo":"P-42","RequestedArea":120}}""",
     )
     val interpreter = prepared.createInterpreter()
 

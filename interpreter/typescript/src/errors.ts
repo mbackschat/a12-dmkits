@@ -1,5 +1,7 @@
 import type {InterpreterBridgeFailure} from "../internal/a12-interpreter-core.mjs";
 
+import type {ModelEntityKind} from "./model.js";
+
 /** Success or one native typed error without throwing. */
 export type A12Result<T, E extends Error> =
   | {readonly ok: true; readonly value: T}
@@ -72,26 +74,22 @@ export class ModelPreparationError extends Error {
   }
 }
 
-/** One object-key or array-index segment locating invalid Document input. */
+/** One object-key or array-index segment locating a supplied value that JSON cannot carry. */
 export type DocumentInputPathSegment = string | number;
-/** Whether a Document diagnostic refers to a group-row or field-cell entry. */
-export type DocumentPlacementKind = "group" | "field";
-/** Why one supplied coordinate cannot be represented by the portable Document boundary. */
-export type InvalidCoordinateReason =
-  | "not-number"
-  | "not-safe-integer"
-  | "not-positive"
-  | "outside-portable-range";
+/** What a JSON node at one document position actually is, when the model expected something else. */
+export type DocumentJsonNodeType = "object" | "array" | "value" | "null";
 
 /** Structured detail for one invalid part of supplied Document input. */
 export interface DocumentInputDiagnostic {
   readonly reasonCode: string;
-  readonly inputPath: readonly DocumentInputPathSegment[];
-  readonly modelPath?: string;
-  readonly placementKind?: DocumentPlacementKind;
-  readonly placementIndex?: number;
-  readonly coordinateIndex?: number;
   readonly message: string;
+  /** Canonical A12 `DocumentPointer` string of the offending document position. */
+  readonly pointer?: string;
+  readonly modelPath?: string;
+  readonly entityKind?: ModelEntityKind;
+  readonly nodeType?: DocumentJsonNodeType;
+  /** Path into the supplied JavaScript value, when the value itself is not JSON-representable. */
+  readonly inputPath?: readonly DocumentInputPathSegment[];
   readonly details?: Readonly<Record<string, unknown>>;
 }
 
@@ -102,6 +100,19 @@ export class DocumentInputError extends Error {
   constructor(readonly diagnostics: readonly DocumentInputDiagnostic[], message?: string) {
     super(message ?? diagnostics.map(({message: text}) => text).join("; "));
     this.name = "DocumentInputError";
+  }
+}
+
+/**
+ * The document holds state A12 Document JSON has no shape for — a non-repeatable group row above 1 — so
+ * encoding it would silently lose that row.
+ */
+export class DocumentEncodeError extends Error {
+  readonly code = "A12_DOCUMENT_NOT_REPRESENTABLE" as const;
+
+  constructor(readonly modelPath: string, readonly pointer: string, message?: string) {
+    super(message ?? `'${pointer}' cannot be written as A12 Document JSON`);
+    this.name = "DocumentEncodeError";
   }
 }
 
@@ -190,49 +201,16 @@ const freezeDiagnostic = (
       : {conflictingDiagnosticLabels: frozenArray(diagnostic.conflictingDiagnosticLabels)}),
   });
 
-const inputPathFor = (
-  diagnostic: Record<string, unknown>,
-): readonly DocumentInputPathSegment[] => {
-  const kind = diagnostic.placementKind;
-  const index = diagnostic.placementIndex;
-  if ((kind === "group" || kind === "field") && typeof index === "number") {
-    const base: DocumentInputPathSegment[] = [
-      kind === "group" ? "groups" : "fields",
-      index,
-    ];
-    if (typeof diagnostic.coordinateIndex === "number") {
-      return Object.freeze([...base, "coordinates", diagnostic.coordinateIndex]);
-    }
-    if (diagnostic.reasonCode === "unknown-model-path") {
-      return Object.freeze([...base, "path"]);
-    }
-    return Object.freeze(base);
-  }
-  if (diagnostic.reasonCode === "unsupported-version") {
-    return Object.freeze(["version"]);
-  }
-  return Object.freeze([]);
-};
-
 const documentDiagnostic = (
   diagnostic: Record<string, unknown>,
 ): DocumentInputDiagnostic => {
-  const {
-    reasonCode,
-    modelPath,
-    placementKind,
-    placementIndex,
-    coordinateIndex,
-    message,
-    ...details
-  } = diagnostic;
+  const {reasonCode, pointer, modelPath, entityKind, nodeType, message, ...details} = diagnostic;
   return Object.freeze({
     reasonCode: String(reasonCode),
-    inputPath: inputPathFor(diagnostic),
+    ...(typeof pointer === "string" ? {pointer} : {}),
     ...(typeof modelPath === "string" ? {modelPath} : {}),
-    ...(placementKind === "group" || placementKind === "field" ? {placementKind} : {}),
-    ...(typeof placementIndex === "number" ? {placementIndex} : {}),
-    ...(typeof coordinateIndex === "number" ? {coordinateIndex} : {}),
+    ...(entityKind === "group" || entityKind === "field" ? {entityKind} : {}),
+    ...(typeof nodeType === "string" ? {nodeType: nodeType as DocumentJsonNodeType} : {}),
     message: String(message),
     details: Object.freeze(details),
   });
@@ -261,6 +239,12 @@ const errorFromBridgeFailure = (
         failure.message,
       );
     }
+    case "A12_DOCUMENT_NOT_REPRESENTABLE":
+      return new DocumentEncodeError(
+        String(details.modelPath),
+        String(details.pointer),
+        failure.message,
+      );
     case "A12_MODEL_OWNER_MISMATCH":
       return new ModelOwnerMismatchError(failure.message);
     case "A12_UNKNOWN_MODEL_PATH":

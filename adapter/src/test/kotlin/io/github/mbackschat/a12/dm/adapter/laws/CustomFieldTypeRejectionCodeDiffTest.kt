@@ -1,5 +1,6 @@
 package io.github.mbackschat.a12.dm.adapter.laws
 
+import com.fasterxml.jackson.databind.ObjectMapper
 import com.mgmtp.a12.kernel.core.customfieldtype.ICustomFieldTypeCheckError
 import com.mgmtp.a12.kernel.core.customfieldtype.ICustomFieldTypeFactory
 import com.mgmtp.a12.kernel.core.customfieldtype.ICustomFieldTypeValidationParam
@@ -8,13 +9,10 @@ import io.github.mbackschat.a12.dm.interpreter.CustomFieldTypeRegistry
 import io.github.mbackschat.a12.dm.interpreter.CustomFieldTypeFactory
 import io.github.mbackschat.a12.dm.interpreter.CustomFieldValidationResult
 import io.github.mbackschat.a12.dm.interpreter.DmInterpreter
-import io.github.mbackschat.a12.dm.interpreter.FieldPlacementInput
-import io.github.mbackschat.a12.dm.interpreter.GroupPlacementInput
 import io.github.mbackschat.a12.dm.interpreter.InterpreterConfiguration
 import io.github.mbackschat.a12.dm.interpreter.InterpreterIntegrationError
 import io.github.mbackschat.a12.dm.interpreter.InterpreterIntegrationPhase
 import io.github.mbackschat.a12.dm.interpreter.InterpreterIntegrationReason
-import io.github.mbackschat.a12.dm.interpreter.DocumentInputV1
 import io.github.mbackschat.a12.dm.interpreter.PreparedModel
 import io.github.mbackschat.a12.dm.interpreter.eval.newDocument
 import io.github.mbackschat.a12.dm.interpreter.model.CustomFieldType
@@ -104,12 +102,7 @@ class CustomFieldTypeRejectionCodeDiffTest {
         val javaStatic = engine.messages(engine.instance(kDoc), factory).filter { it.field().contains("Code") }.map { it.code() }
         val interp = DmInterpreter(def, customFieldTypes = codeTypes).validate(iDoc).messages
             .filter { it.errorPath.contains("Code") }.map { it.code }
-        val publicSnapshot = publicPrepared.documents.readDocument(
-            DocumentInputV1(
-                groups = listOf(GroupPlacementInput("/Order", listOf(1))),
-                fields = listOf(FieldPlacementInput(CODE, listOf(1, 1), value)),
-            ),
-        )
+        val publicSnapshot = publicPrepared.documents.readDocument(orderJson(value))
         val public = publicInterpreter.validateFull(publicSnapshot).findings
             .filter { it.errorPath.contains("Code") }.map { it.code }
         val exp = listOfNotNull(expected)
@@ -163,12 +156,11 @@ class CustomFieldTypeRejectionCodeDiffTest {
     }
 
     private fun publicSnapshot(value: String) =
-        publicPrepared.documents.readDocument(
-            DocumentInputV1(
-                groups = listOf(GroupPlacementInput("/Order", listOf(1))),
-                fields = listOf(FieldPlacementInput(CODE, listOf(1, 1), value)),
-            ),
-        )
+        publicPrepared.documents.readDocument(orderJson(value))
+
+    /** The A12 Document JSON of one `/Order` row carrying [value] in its `Code` cell. */
+    private fun orderJson(value: String): String =
+        ObjectMapper().writeValueAsString(mapOf("Order" to mapOf("Code" to value)))
 
     private companion object {
         const val CODE = "/Order/Code"

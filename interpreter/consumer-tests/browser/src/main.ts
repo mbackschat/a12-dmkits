@@ -1,6 +1,6 @@
 import {
   ModelWorkspace,
-  type DocumentInputV1,
+  type A12Document,
   type ValidationFinding,
 } from "@mbackschat/a12-interpreter";
 
@@ -30,15 +30,10 @@ const firstAnswer = async (): Promise<number> => {
   const modelJson = await modelResponse.text();
   const prepared = ModelWorkspace.fromSources([{json: modelJson}])
     .prepare("permit-basic");
-  const document: DocumentInputV1 = {
-    version: 1,
-    groups: [{path: "/Permit", coordinates: [1]}],
-    fields: [
-      {path: "/Permit/ApplicationNo", coordinates: [1, 1], raw: "P-42"},
-      {path: "/Permit/RequestedArea", coordinates: [1, 1], raw: "120"},
-    ],
+  const document: A12Document = {
+    Permit: {ApplicationNo: "P-42", RequestedArea: 120},
   };
-  const snapshot = prepared.documents.decodeDocument(document);
+  const snapshot = prepared.documents.readDocument(document);
   const interpreter = prepared.createInterpreter();
   const findings: readonly ValidationFinding[] =
     interpreter.validateFull(snapshot).findings;

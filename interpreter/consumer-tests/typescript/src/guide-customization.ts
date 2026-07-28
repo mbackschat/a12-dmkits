@@ -1,12 +1,12 @@
 // tag::interpreter-typescript-customization[]
 import {
   PreparedModel,
-  type DocumentInputV1,
+  type A12Document,
 } from "@mbackschat/a12-interpreter";
 
 export function validateWithProjectCondition(
   expandedModelJson: string,
-  input: DocumentInputV1,
+  input: A12Document,
 ) {
   const prepared = PreparedModel.loadExpandedJson(expandedModelJson);
   const document = prepared.documents.readDocument(input);

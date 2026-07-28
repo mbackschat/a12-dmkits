@@ -1,8 +1,7 @@
 import {
   ModelWorkspace,
-  type DocumentInputV1,
-  type FieldPlacementInput,
-  type GroupPlacementInput,
+  type A12Document,
+  type A12DocumentGroup,
 } from "@mbackschat/a12-interpreter";
 
 export enum BrowserPerformanceScenario {
@@ -13,7 +12,7 @@ export enum BrowserPerformanceScenario {
 interface BrowserPerformanceCase {
   readonly rows: number;
   readonly expectedFindings: number;
-  readonly document: DocumentInputV1;
+  readonly document: A12Document;
 }
 
 export interface BrowserPerformanceMeasurement {
@@ -36,45 +35,25 @@ const fetchModel = async (): Promise<string> => {
   return response.text();
 };
 
-const stressFields = (rows: number): readonly FieldPlacementInput[] => {
-  const placements: FieldPlacementInput[] = [];
+/** One `/Perf/Lines` row per repetition — the array index IS the repetition in A12 Document JSON. */
+const stressDocument = (rows: number): A12Document => {
+  const lines: A12DocumentGroup[] = [];
   for (let row = 1; row <= rows; row += 1) {
-    placements.push(
-      {
-        path: "/Perf/Lines/LineKey",
-        coordinates: [1, row, 1],
-        raw: `K1_${row}_1`,
-      },
-      {
-        path: "/Perf/Lines/Qty",
-        coordinates: [1, row, 1],
-        raw: (row % 100).toString(),
-      },
-      {
-        path: "/Perf/Lines/Amount",
-        coordinates: [1, row, 1],
-        raw: "1",
-      },
-    );
+    lines.push({
+      LineKey: `K1_${row}_1`,
+      Qty: row % 100,
+      Amount: 1,
+    });
   }
-  return placements;
+  return {Perf: {Lines: lines}};
 };
 
-const representativeDocument = (): DocumentInputV1 => {
-  const groups: GroupPlacementInput[] = [];
-  const fields: FieldPlacementInput[] = [];
+const representativeDocument = (): A12Document => {
+  const lines: A12DocumentGroup[] = [];
   for (let row = 1; row <= 200; row += 1) {
-    groups.push({
-      path: "/Perf/Lines",
-      coordinates: [1, row],
-    });
-    fields.push({
-      path: "/Perf/Lines/LineKey",
-      coordinates: [1, row, 1],
-      raw: `K1_${row}_1`,
-    });
+    lines.push({LineKey: `K1_${row}_1`});
   }
-  return {version: 1, groups, fields};
+  return {Perf: {Lines: lines}};
 };
 
 const performanceCase = (
@@ -91,11 +70,7 @@ const performanceCase = (
       return {
         rows: 10_000,
         expectedFindings: 4_900,
-        document: {
-          version: 1,
-          groups: [],
-          fields: stressFields(10_000),
-        },
+        document: stressDocument(10_000),
       };
   }
 };

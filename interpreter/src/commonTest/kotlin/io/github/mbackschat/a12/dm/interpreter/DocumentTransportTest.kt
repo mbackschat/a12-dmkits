@@ -1,5 +1,6 @@
 package io.github.mbackschat.a12.dm.interpreter
 
+import io.github.mbackschat.a12.dm.interpreter.eval.StoredCellState
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFails
@@ -9,171 +10,171 @@ import kotlin.test.assertSame
 import kotlin.test.assertTrue
 
 /**
- * Public placement-transport contract (R2.8): the versioned envelope decodes through one shared validation
- * engine into a model-owned frozen [DocumentSnapshot], encodes back losslessly, aggregates every model-level
- * defect before construction, fails resource limits fast, and refuses foreign or stale snapshots by owner
- * identity. Coordinates above a declared maximum — a non-repeatable group's coordinate 2 included — stay
- * representable for formal validation (measured Kernel basis: `OverRepetitionFormalGateDiffTest`).
+ * Public Document transport contract: the boundary reads and writes **A12's canonical Document JSON** — the
+ * nested object tree the Kernel's `IDocumentV2Serializer` produces and consumes (KERNEL-FINDINGS "The canonical
+ * Document JSON and `DocumentPointer` string"; CLAUDE.md "NEVER invent a shape A12 already defines"). One shared
+ * engine validates the whole text before any document state exists, aggregates model-level defects, fails
+ * resource limits fast, locates every defect by its canonical A12 pointer, and refuses foreign or stale
+ * snapshots by owner identity.
  */
 class DocumentTransportTest {
 
     @Test
-    fun roundTripPreservesStatesRowsAndRawTextAndReachesItsFixedPoint() {
+    fun readMapsTheNestedTreeOntoRowsAndCellsAndEncodeReturnsTheCanonicalShape() {
         val documents = prepared().documents
-        val input = DocumentInputV1(
-            groups = listOf(
-                GroupPlacementInput("/Order", listOf(1)),
-                GroupPlacementInput("/Order/Items", listOf(1, 2)),
-                GroupPlacementInput("/Order/Attachments", listOf(1, 1)),
-            ),
-            fields = listOf(
-                FieldPlacementInput("/Order/Ref", listOf(1, 1), "ORD-7"),
-                FieldPlacementInput("/Order/Items/Qty", listOf(1, 1, 1), "2"),
-                FieldPlacementInput("/Order/Items/Note", listOf(1, 2, 1), ""),
-                FieldPlacementInput("/Order/Items/Qty", listOf(1, 3, 1), "not-a-number"),
-                FieldPlacementInput("/Order/Shipping/Mode", listOf(1, 1, 1), "express"),
-            ),
+        val json = """
+            {"Order":{"Ref":"ORD-7","Express":true,"Placed":"2026-03-01",
+              "Items":[{"Qty":250.00},{"Note":""},{}],
+              "Shipping":{"Mode":"express"},"Attachments":{}}}
+        """.trimIndent()
+
+        val snapshot = documents.readDocument(json)
+        val document = snapshot.document()
+
+        assertEquals(listOf(listOf(1)), document.instantiatedRows("/Order"))
+        assertEquals(
+            listOf(listOf(1, 1), listOf(1, 2), listOf(1, 3)),
+            document.instantiatedRows("/Order/Items"),
+            "an array index IS the repetition; an empty `{}` row stays a present row",
+        )
+        assertEquals(listOf(listOf(1, 1)), document.instantiatedRows("/Order/Shipping"))
+        assertEquals(
+            listOf(listOf(1, 1)),
+            document.instantiatedRows("/Order/Attachments"),
+            "a present-but-empty group is `{}` and instantiates its row",
         )
 
-        val snapshot = documents.readDocument(input)
-        val encoded = documents.encodeDocument(snapshot)
+        assertEquals(StoredCellState.PresentValue("ORD-7"), document.cellStateAt("/Order/Ref", listOf(1, 1)))
+        assertEquals(
+            StoredCellState.PresentValue("250.00"),
+            document.cellStateAt("/Order/Items/Qty", listOf(1, 1, 1)),
+            "a native JSON number keeps its authored scale — the Kernel's `asText()` stringification",
+        )
+        assertEquals(StoredCellState.PresentValue("true"), document.cellStateAt("/Order/Express", listOf(1, 1)))
+        assertEquals(StoredCellState.PresentValue("2026-03-01"), document.cellStateAt("/Order/Placed", listOf(1, 1)))
+        assertEquals(StoredCellState.PresentEmpty, document.cellStateAt("/Order/Items/Note", listOf(1, 2, 1)))
+        assertEquals(
+            StoredCellState.Absent,
+            document.cellStateAt("/Order/Items/Qty", listOf(1, 2, 1)),
+            "a missing key is an omission, never an empty cell",
+        )
 
         assertEquals(
-            listOf(
-                GroupPlacementInput("/Order", listOf(1)),
-                GroupPlacementInput("/Order/Items", listOf(1, 2)),
-                GroupPlacementInput("/Order/Attachments", listOf(1, 1)),
-                GroupPlacementInput("/Order/Items", listOf(1, 1)),
-                GroupPlacementInput("/Order/Items", listOf(1, 3)),
-                GroupPlacementInput("/Order/Shipping", listOf(1, 1)),
-            ),
-            encoded.groups,
-            "explicit rows keep their authored order; auto-instantiated ancestors follow in placement order",
+            """{"Order":{"Express":true,"Placed":"2026-03-01","Ref":"ORD-7",""" +
+                """"Attachments":{},"Items":[{"Qty":250.00},{"Note":""},{}],"Shipping":{"Mode":"express"}}}""",
+            documents.encodeDocument(snapshot),
+            "direct fields sorted by name, then subgroups sorted by name — the Kernel writer's key order",
         )
-        assertEquals(
-            listOf(
-                FieldPlacementInput("/Order/Ref", listOf(1, 1), "ORD-7"),
-                FieldPlacementInput("/Order/Items/Qty", listOf(1, 1, 1), "2"),
-                FieldPlacementInput("/Order/Items/Note", listOf(1, 2, 1), ""),
-                FieldPlacementInput("/Order/Items/Qty", listOf(1, 3, 1), "not-a-number"),
-                FieldPlacementInput("/Order/Shipping/Mode", listOf(1, 1, 1), "express"),
-            ),
-            encoded.fields,
-            "present-empty and malformed raw text survive verbatim; absent cells stay absent",
-        )
-        assertEquals(1, encoded.version)
-
-        val reEncoded = documents.encodeDocument(documents.readDocument(encoded))
-        assertEquals(encoded, reEncoded, "encode of decode(encode(...)) is the fixed point")
     }
 
     @Test
-    fun readAggregatesEveryModelLevelDefectBeforeConstruction() {
+    fun encodeIsItsOwnFixedPointAcrossEveryValueState() {
         val documents = prepared().documents
-        val input = DocumentInputV1(
-            groups = listOf(
-                GroupPlacementInput("/Order/Nowhere", listOf(1, 1)),
-                GroupPlacementInput("/Order/Items", listOf(1)),
-                GroupPlacementInput("/Order", listOf(1)),
-                GroupPlacementInput("/Order", listOf(1)),
-            ),
-            fields = listOf(
-                FieldPlacementInput("/Order/Missing", listOf(1, 1), "x"),
-                FieldPlacementInput("/Order/Ref", listOf(1, 0), "a"),
-                FieldPlacementInput("/Order/Items/Qty", listOf(1, 1, 1), "2"),
-                FieldPlacementInput("/Order/Items/Qty", listOf(1, 1, 1), "3"),
-            ),
-        )
+        val json = """
+            {"Order":{"Ref":null,"Items":[{"Qty":"not-a-number","Note":""},{"Qty":7}],"Shipping":{}}}
+        """.trimIndent()
 
-        val error = assertFailsWith<DocumentInputError> {
-            documents.readDocument(input)
-        }
+        val encoded = documents.encodeDocument(documents.readDocument(json))
 
-        val byReason = error.diagnostics.groupBy { it.reasonCode }
         assertEquals(
-            setOf(
-                DocumentInputReasonCode.UNKNOWN_MODEL_PATH,
-                DocumentInputReasonCode.COORDINATE_COUNT_MISMATCH,
-                DocumentInputReasonCode.INVALID_COORDINATE,
-                DocumentInputReasonCode.DUPLICATE_PLACEMENT,
-                DocumentInputReasonCode.CONFLICTING_PLACEMENT,
-            ),
-            byReason.keys,
+            """{"Order":{"Ref":null,"Items":[{"Note":"","Qty":"not-a-number"},{"Qty":7}],"Shipping":{}}}""",
+            encoded,
+            "a valueless cell writes `null`; malformed number text writes back untouched as a string",
         )
-        assertEquals(2, byReason.getValue(DocumentInputReasonCode.UNKNOWN_MODEL_PATH).size)
-
-        val unknownGroup = byReason.getValue(DocumentInputReasonCode.UNKNOWN_MODEL_PATH)
-            .single { it.placementKind == DocumentPlacementKind.GROUP }
-        assertEquals(0, unknownGroup.placementIndex)
-        assertEquals("/Order/Nowhere", unknownGroup.modelPath)
-
-        val arity = byReason.getValue(DocumentInputReasonCode.COORDINATE_COUNT_MISMATCH).single()
-        assertEquals(DocumentPlacementKind.GROUP, arity.placementKind)
-        assertEquals(1, arity.placementIndex)
-        assertEquals(2, arity.expectedCoordinateCount)
-        assertEquals(1, arity.actualCoordinateCount)
-
-        val coordinate = byReason.getValue(DocumentInputReasonCode.INVALID_COORDINATE).single()
-        assertEquals(DocumentPlacementKind.FIELD, coordinate.placementKind)
-        assertEquals(1, coordinate.placementIndex)
-        assertEquals(1, coordinate.coordinateIndex)
-
-        val duplicate = byReason.getValue(DocumentInputReasonCode.DUPLICATE_PLACEMENT).single()
-        assertEquals(DocumentPlacementKind.GROUP, duplicate.placementKind)
-        assertEquals(3, duplicate.placementIndex)
-        assertEquals(2, duplicate.firstPlacementIndex)
-
-        val conflict = byReason.getValue(DocumentInputReasonCode.CONFLICTING_PLACEMENT).single()
-        assertEquals(DocumentPlacementKind.FIELD, conflict.placementKind)
-        assertEquals(3, conflict.placementIndex)
-        assertEquals(2, conflict.firstPlacementIndex)
+        assertEquals(encoded, documents.encodeDocument(documents.readDocument(encoded)))
     }
 
     @Test
-    fun readRefusesPositiveFieldTerminalCoordinatesAboveOneWithDedicatedDiagnostic() {
-        val input = DocumentInputV1(
-            groups = emptyList(),
-            fields = listOf(
-                FieldPlacementInput("/Order/Ref", listOf(1, 2), "ORD-2"),
-                FieldPlacementInput("/Order/Items/Qty", listOf(1, 1, 3), "4"),
-            ),
-        )
-
-        val error = assertFailsWith<DocumentInputError> {
-            prepared().documents.readDocument(input)
-        }
+    fun aJsonNullIsAPresentValuelessCellNotAnOmission() {
+        val document = prepared().documents.readDocument("""{"Order":{"Ref":null}}""").document()
 
         assertEquals(
-            setOf(DocumentInputReasonCode.INVALID_FIELD_REPETITION),
-            error.diagnostics.map { it.reasonCode }.toSet(),
+            StoredCellState.PresentEmpty,
+            document.cellStateAt("/Order/Ref", listOf(1, 1)),
+            "the Kernel keeps a null-valued field as `FieldInstanceV2.ofValue(null)` — present, no value",
         )
+        assertEquals(StoredCellState.Absent, document.cellStateAt("/Order/Placed", listOf(1, 1)))
+    }
+
+    @Test
+    fun readAggregatesEveryModelLevelDefectAndLocatesItByCanonicalPointer() {
+        val json = """
+            {"Order":{"Nowhere":{},"Ref":{"nested":1},"Items":"not-an-array","Shipping":[{},7]}}
+        """.trimIndent()
+
+        val error = assertFailsWith<DocumentInputError> { prepared().documents.readDocument(json) }
+
         assertEquals(
             listOf(
-                Triple(0, 1, "/Order/Ref"),
-                Triple(1, 2, "/Order/Items/Qty"),
+                Triple(DocumentInputReasonCode.UNKNOWN_MODEL_PATH, "/Order/Nowhere", "Order/Nowhere"),
+                Triple(DocumentInputReasonCode.UNEXPECTED_NODE_TYPE, "/Order/Ref", "Order/Ref"),
+                Triple(DocumentInputReasonCode.UNEXPECTED_NODE_TYPE, "/Order/Items", "Order/Items"),
+                Triple(DocumentInputReasonCode.UNEXPECTED_NODE_TYPE, "/Order/Shipping", "Order/Shipping[2]"),
             ),
-            error.diagnostics.map { Triple(it.placementIndex, it.coordinateIndex, it.modelPath) },
+            error.diagnostics.map { Triple(it.reasonCode, it.modelPath, it.pointer) },
         )
-        assertTrue(error.diagnostics.all { it.placementKind == DocumentPlacementKind.FIELD })
+        assertEquals(
+            listOf(null, DocumentJsonNodeType.OBJECT, DocumentJsonNodeType.VALUE, DocumentJsonNodeType.VALUE),
+            error.diagnostics.map { it.nodeType },
+        )
+        assertEquals(
+            listOf(null, ModelEntityKind.FIELD, ModelEntityKind.GROUP, ModelEntityKind.GROUP),
+            error.diagnostics.map { it.entityKind },
+        )
     }
 
     @Test
-    fun readRejectsAnUnsupportedVersionAsTheSoleDiagnostic() {
+    fun malformedJsonAndANonObjectRootAreTheSoleDiagnostic() {
         val documents = prepared().documents
-        val error = assertFailsWith<DocumentInputError> {
-            documents.readDocument(
-                DocumentInputV1(
-                    groups = listOf(GroupPlacementInput("/Order/Nowhere", listOf(1))),
-                    fields = emptyList(),
-                    version = 2,
-                ),
-            )
+        for (source in listOf("""{"Order":}""", """["Order"]""", "7", "")) {
+            val error = assertFailsWith<DocumentInputError>(source) { documents.readDocument(source) }
+            val diagnostic = error.diagnostics.single()
+            assertEquals(DocumentInputReasonCode.MALFORMED_JSON, diagnostic.reasonCode, source)
+            assertNotNull(diagnostic.message, source)
         }
+    }
 
-        val diagnostic = error.diagnostics.single()
-        assertEquals(DocumentInputReasonCode.UNSUPPORTED_VERSION, diagnostic.reasonCode)
-        assertEquals(1, diagnostic.expectedVersion)
-        assertEquals(2, diagnostic.actualVersion)
+    @Test
+    fun theRootDocumentIdIsReadIgnoredForEvaluationAndWrittenBackAsText() {
+        val documents = prepared().documents
+
+        val snapshot = documents.readDocument("""{"id":"ORD-4711","Order":{"Ref":"a"}}""")
+
+        assertEquals("ORD-4711", snapshot.documentId)
+        assertEquals(
+            """{"id":"ORD-4711","Order":{"Ref":"a"}}""",
+            documents.encodeDocument(snapshot),
+            "the serializer's root `id` is a direct field of the root object, so it sorts before the groups",
+        )
+        assertEquals(
+            """{"id":"7","Order":{}}""",
+            documents.encodeDocument(documents.readDocument("""{"id":7,"Order":{}}""")),
+            "a numeric id is accepted and written as text, matching the Kernel's `fieldValue.toString()`",
+        )
+        val error = assertFailsWith<DocumentInputError> { documents.readDocument("""{"id":true}""") }
+        assertEquals(DocumentInputReasonCode.INVALID_DOCUMENT_ID, error.diagnostics.single().reasonCode)
+    }
+
+    @Test
+    fun anOverRepeatedRowStaysRepresentableAndANonRepeatableExcessRowRefusesToEncode() {
+        val documents = prepared().documents
+
+        val overRepeated = documents.readDocument("""{"Order":{"Items":[{},{},{},{},{"Qty":4}]}}""")
+        assertEquals(5, overRepeated.document().instantiatedRows("/Order/Items").size)
+        assertEquals(
+            """{"Order":{"Items":[{},{},{},{},{"Qty":4}]}}""",
+            documents.encodeDocument(overRepeated),
+            "a coordinate above the declared maximum survives the round trip — formal validation reports it",
+        )
+
+        // A12's reader accepts an array at ANY group (`DocumentV2JsonReader.repetitionsFromJson`), so a
+        // non-repeatable group's second row stays READABLE; A12's writer has no shape for it.
+        val excess = documents.readDocument("""{"Order":{"Shipping":[{},{"Mode":"courier"}]}}""")
+        assertEquals(2, excess.document().instantiatedRows("/Order/Shipping").size)
+        val refusal = assertFailsWith<DocumentEncodeError> { documents.encodeDocument(excess) }
+        assertEquals("/Order/Shipping", refusal.modelPath)
+        assertEquals("Order/Shipping[2]", refusal.pointer)
+        assertEquals("A12_DOCUMENT_NOT_REPRESENTABLE", refusal.code)
     }
 
     @Test
@@ -181,75 +182,45 @@ class DocumentTransportTest {
         val documents = prepared().documents
         val cases = listOf(
             Triple(
+                DocumentDecodeLimits.builder().maxDocumentCodeUnits(8).build(),
+                """{"Order":{"Ref":"a"}}""",
+                DocumentInputResource.DOCUMENT_CODE_UNITS,
+            ),
+            Triple(
                 DocumentDecodeLimits.builder().maxGroupPlacements(1).build(),
-                DocumentInputV1(
-                    groups = listOf(
-                        GroupPlacementInput("/Order", listOf(1)),
-                        GroupPlacementInput("/Order/Items", listOf(1, 1)),
-                    ),
-                    fields = emptyList(),
-                ),
+                """{"Order":{"Items":[{},{}]}}""",
                 DocumentInputResource.GROUP_PLACEMENTS,
             ),
             Triple(
                 DocumentDecodeLimits.builder().maxFieldPlacements(1).build(),
-                DocumentInputV1(
-                    groups = emptyList(),
-                    fields = listOf(
-                        FieldPlacementInput("/Order/Ref", listOf(1, 1), "a"),
-                        FieldPlacementInput("/Order/Shipping/Mode", listOf(1, 1), "b"),
-                    ),
-                ),
+                """{"Order":{"Ref":"a","Placed":"2026-03-01"}}""",
                 DocumentInputResource.FIELD_PLACEMENTS,
             ),
             Triple(
-                DocumentDecodeLimits.builder().maxCoordinatesPerPlacement(2).build(),
-                DocumentInputV1(
-                    groups = emptyList(),
-                    fields = listOf(FieldPlacementInput("/Order/Items/Qty", listOf(1, 1, 1), "2")),
-                ),
-                DocumentInputResource.COORDINATES_PER_PLACEMENT,
-            ),
-            Triple(
                 DocumentDecodeLimits.builder().maxPathCodeUnits(8).build(),
-                DocumentInputV1(
-                    groups = emptyList(),
-                    fields = listOf(FieldPlacementInput("/Order/Ref", listOf(1, 1), "a")),
-                ),
+                """{"Order":{"Ref":"a"}}""",
                 DocumentInputResource.PATH_CODE_UNITS,
             ),
             Triple(
                 DocumentDecodeLimits.builder().maxRawCodeUnitsPerField(3).build(),
-                DocumentInputV1(
-                    groups = emptyList(),
-                    fields = listOf(FieldPlacementInput("/Order/Ref", listOf(1, 1), "abcd")),
-                ),
+                """{"Order":{"Ref":"abcd"}}""",
                 DocumentInputResource.RAW_CODE_UNITS_PER_FIELD,
             ),
             Triple(
                 DocumentDecodeLimits.builder().maxTotalRawCodeUnits(5).build(),
-                DocumentInputV1(
-                    groups = emptyList(),
-                    fields = listOf(
-                        FieldPlacementInput("/Order/Ref", listOf(1, 1), "abc"),
-                        FieldPlacementInput("/Order/Shipping/Mode", listOf(1, 1), "def"),
-                    ),
-                ),
+                """{"Order":{"Ref":"abc","Shipping":{"Mode":"def"}}}""",
                 DocumentInputResource.TOTAL_RAW_CODE_UNITS,
             ),
             Triple(
                 DocumentDecodeLimits.builder().maxModelNestingDepth(1).build(),
-                DocumentInputV1(
-                    groups = emptyList(),
-                    fields = listOf(FieldPlacementInput("/Order/Ref", listOf(1, 1), "a")),
-                ),
+                """{"Order":{"Ref":"a"}}""",
                 DocumentInputResource.MODEL_NESTING_DEPTH,
             ),
         )
 
-        for ((limits, input, resource) in cases) {
+        for ((limits, json, resource) in cases) {
             val error = assertFailsWith<DocumentInputError>(resource.name) {
-                prepared().documents.readDocument(input, limits)
+                documents.readDocument(json, limits)
             }
             val diagnostic = error.diagnostics.single()
             assertEquals(DocumentInputReasonCode.RESOURCE_LIMIT_EXCEEDED, diagnostic.reasonCode, resource.name)
@@ -258,7 +229,7 @@ class DocumentTransportTest {
             assertNotNull(diagnostic.actual, resource.name)
         }
         // The touched instance stays untouched by the failing sibling cases above.
-        documents.readDocument(DocumentInputV1(emptyList(), emptyList()))
+        documents.readDocument("{}")
     }
 
     @Test
@@ -272,70 +243,30 @@ class DocumentTransportTest {
     }
 
     @Test
-    fun coordinatesAboveDeclaredMaximaStayRepresentableIncludingNonRepeatableGroups() {
-        val documents = prepared().documents
-        val input = DocumentInputV1(
-            groups = listOf(
-                GroupPlacementInput("/Order/Items", listOf(1, 5)),
-                GroupPlacementInput("/Order/Shipping", listOf(1, 2)),
-            ),
-            fields = listOf(
-                FieldPlacementInput("/Order/Shipping/Mode", listOf(1, 2, 1), "courier"),
-                FieldPlacementInput("/Order/Items/Qty", listOf(1, 9, 1), "4"),
-            ),
-        )
-
-        val encoded = documents.encodeDocument(documents.readDocument(input))
-
-        assertTrue(GroupPlacementInput("/Order/Shipping", listOf(1, 2)) in encoded.groups)
-        assertTrue(FieldPlacementInput("/Order/Items/Qty", listOf(1, 9, 1), "4") in encoded.fields)
-    }
-
-    @Test
     fun encodeRefusesForeignAndStaleSnapshotsByOwnerIdentity() {
         val first = prepared()
         val second = prepared()
-        val snapshot = first.documents.readDocument(
-            DocumentInputV1(
-                groups = listOf(GroupPlacementInput("/Order", listOf(1))),
-                fields = emptyList(),
-            ),
-        )
+        val snapshot = first.documents.readDocument("""{"Order":{}}""")
 
         assertSame(first.owner, snapshot.owner)
         assertSame(first.modelVersion, snapshot.modelVersion)
         first.documents.encodeDocument(snapshot)
 
-        val stale = assertFailsWith<ModelOwnerMismatchError> {
-            second.documents.encodeDocument(snapshot)
-        }
+        val stale = assertFailsWith<ModelOwnerMismatchError> { second.documents.encodeDocument(snapshot) }
         assertSame(second.owner, stale.expected)
         assertSame(first.owner, stale.actual)
 
         val foreign = PreparedModel.loadExpandedJson(foreignModel())
-        assertFailsWith<ModelOwnerMismatchError> {
-            foreign.documents.encodeDocument(snapshot)
-        }
+        assertFailsWith<ModelOwnerMismatchError> { foreign.documents.encodeDocument(snapshot) }
     }
 
     @Test
-    fun snapshotsAreImmuneToLaterInputMutationAndEncodeOutputIsRuntimeImmutable() {
+    fun anEmptyDocumentReadsAndWritesAsTheEmptyRootObject() {
         val documents = prepared().documents
-        val coordinates = mutableListOf(1, 1)
-        val fields = mutableListOf(FieldPlacementInput("/Order/Ref", coordinates, "ORD-9"))
-        val input = DocumentInputV1(groups = mutableListOf(), fields = fields)
+        val snapshot = documents.readDocument("{}")
 
-        val snapshot = documents.readDocument(input)
-        coordinates[1] = 7
-        fields.clear()
-
-        val encoded = documents.encodeDocument(snapshot)
-        assertEquals(
-            listOf(FieldPlacementInput("/Order/Ref", listOf(1, 1), "ORD-9")),
-            encoded.fields,
-        )
-        assertFails { (encoded.fields as MutableList<FieldPlacementInput>).clear() }
-        assertFails { (encoded.groups as MutableList<GroupPlacementInput>).clear() }
+        assertTrue(snapshot.document().valuedFields().isEmpty())
+        assertEquals("{}", documents.encodeDocument(snapshot))
     }
 
     private fun prepared(): PreparedModel = PreparedModel.loadExpandedJson(ORDER_MODEL)
@@ -366,6 +297,14 @@ class DocumentTransportTest {
                     {
                       "type":"Field","id":"/Order/Ref","name":"Ref",
                       "Field":{"fieldType":{"type":"StringType"}}
+                    },
+                    {
+                      "type":"Field","id":"/Order/Express","name":"Express",
+                      "Field":{"fieldType":{"type":"BooleanType"}}
+                    },
+                    {
+                      "type":"Field","id":"/Order/Placed","name":"Placed",
+                      "Field":{"fieldType":{"type":"DateType"}}
                     },
                     {
                       "type":"Group","id":"/Order/Items","name":"Items",

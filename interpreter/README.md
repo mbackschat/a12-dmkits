@@ -32,19 +32,14 @@ The Document shown below is decoded against the prepared model before evaluation
 ```ts
 import {
   ModelWorkspace,
-  type DocumentInputV1,
+  type A12Document,
 } from "@mbackschat/a12-interpreter";
 
 export function runInterpreter(rawModelJson: string) {
   const workspace = ModelWorkspace.fromSources([{json: rawModelJson}]);
   const prepared = workspace.prepare("permit-basic");
-  const input: DocumentInputV1 = {
-    version: 1,
-    groups: [{path: "/Permit", coordinates: [1]}],
-    fields: [
-      {path: "/Permit/ApplicationNo", coordinates: [1, 1], raw: "P-42"},
-      {path: "/Permit/RequestedArea", coordinates: [1, 1], raw: "120"},
-    ],
+  const input: A12Document = {
+    Permit: {ApplicationNo: "P-42", RequestedArea: 120},
   };
   const document = prepared.documents.readDocument(input);
   const interpreter = prepared.createInterpreter();
@@ -68,9 +63,6 @@ export function runInterpreter(rawModelJson: string) {
 <!-- snippet: interpreter-kotlin-start -->
 ```kotlin
 import io.github.mbackschat.a12.dm.interpreter.ComputationReport
-import io.github.mbackschat.a12.dm.interpreter.DocumentInputV1
-import io.github.mbackschat.a12.dm.interpreter.FieldPlacementInput
-import io.github.mbackschat.a12.dm.interpreter.GroupPlacementInput
 import io.github.mbackschat.a12.dm.interpreter.ModelWorkspace
 import io.github.mbackschat.a12.dm.interpreter.ValidationReport
 import io.github.mbackschat.a12.dm.interpreter.WorkspaceModelSource
@@ -84,13 +76,7 @@ fun runInterpreter(modelJson: String): InterpreterResult {
     val source = WorkspaceModelSource.builder().json(modelJson).build()
     val prepared = ModelWorkspace.fromSources(listOf(source)).prepare("permit-basic")
     val document = prepared.documents.readDocument(
-        DocumentInputV1(
-            groups = listOf(GroupPlacementInput("/Permit", listOf(1))),
-            fields = listOf(
-                FieldPlacementInput("/Permit/ApplicationNo", listOf(1, 1), "P-42"),
-                FieldPlacementInput("/Permit/RequestedArea", listOf(1, 1), "120"),
-            ),
-        ),
+        """{"Permit":{"ApplicationNo":"P-42","RequestedArea":120}}""",
     )
     val interpreter = prepared.createInterpreter()
     return InterpreterResult(

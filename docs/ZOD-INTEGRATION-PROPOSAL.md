@@ -20,6 +20,8 @@ Preferred structure: motivation, scope, public API, typed examples, semantics an
 > **End-state vision capture.** This is the full destination assembled from interview Q&A and accumulated wishes, kept deliberately complete so no requirement is lost — not a scoped build order. The original sequencing record is the [archived TS API MVP proposal](archived/TS-API-MVP-PROPOSAL.md); this proposal now owns the still-unbuilt `@mbackschat/a12-operators-zod` scalar codecs and error bridge (§16 steps 1–2). The interpreter publication does not by itself select a Zod package for release.
 >
 > **Why, and how much — the motivation this doc lacks:** the before/after worked study (the money-float and end-of-month bugs), the two-directional argument (Zod↔A12), and the open scope reading live in [TS-API-STUDY](TS-API-STUDY.md) §6 — the study that weighs this proposal alongside the Operator and Interpreter APIs as one family.
+>
+> **Superseded in one dimension (2026-07-28): every Document-transport schema below targets a shape that no longer exists.** The interpreter boundary now reads and writes A12's canonical Document JSON (a nested object tree), so `documentInputV1Schema`, `groupPlacementInputSchema`, `fieldPlacementInputSchema`, `createDocumentInputV1Schema`, and their `maxCoordinatesPerPlacement`-shaped limits describe the deleted placement envelope. The *scalar* codec argument (§ the operators package) is unaffected and remains the proposal's live core. A Document-schema revision would validate `A12Document`/`A12DocumentGroup`/`A12DocumentField` instead — and should first answer whether it adds anything over the engine's own model-aware validation, which now owns node types, unknown keys, and every resource ceiling. See [INTERPRETER-API-SPEC](INTERPRETER-API-SPEC.md) §4 and [INTERPRETER-FINDINGS](INTERPRETER-FINDINGS.md) IF227.
 
 This proposal defines optional Zod adapters for the TypeScript projections of the A12 Operator API and Interpreter API.
 
@@ -552,6 +554,8 @@ This is not required for the initial adapter. A future helper must accept an `A1
 `A12Evaluation<T>`, including division and power outcomes, is a value-result algebra and is never treated as a Zod predicate or refinement. Direct operator calls remain the preferred API.
 
 ## 7. Interpreter transport adapter
+
+> **§7 is superseded as written (2026-07-28)** — it targets the deleted placement envelope. See the Status banner: the live question is whether a Zod schema over `A12Document`/`A12DocumentGroup`/`A12DocumentField` adds anything beyond the engine's own model-aware validation. Kept verbatim as the requirement record, not as a buildable design.
 
 ### 7.1 Canonical portable input
 

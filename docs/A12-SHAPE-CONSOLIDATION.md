@@ -24,18 +24,16 @@ Steps 2 and 3 are the breaking ones and land together in **0.9.2** (owner approv
 
 `A12PointerFormat` in `interpreter/src/commonMain/.../A12PointerFormat.kt`, 13 tests green (`A12PointerFormatTest`). Parses/formats A12's `Group/Sub[3]/Field`: `[1]` implicit and omitted, `[0]` = wildcard on the last part only, leading `/` stripped, trailing `/` rejected. Used by later steps for any pointer string that crosses the boundary.
 
-### Step 2 — interpreter API reads and writes A12 Document JSON
+### Step 2 — interpreter API reads and writes A12 Document JSON ✅ DONE
 
-- **Add** `A12DocumentJson.read(model, json, limits): Document` in `commonMain`. Walk the object tree; `ModelAddressValidation.entityKind(model, path)` decides group vs field; `JsonObject` → one row at repetition 1; `JsonArray` → index *i* is repetition *i+1*; `{}` → present-but-unfilled row; field value → `JsonPrimitive.content` so `250.00` survives as `250.00` (matches the kernel's `asText()`); missing key → omitted. Feed the **existing** back end unchanged: `document.group(path, *coords)` / `document.field(path, raw, *coords)`.
-- **Add** the writer, model-driven: array vs object comes from declared repeatability, not from what happens to be populated.
-- **Delete** `DocumentInputV1` / `GroupPlacementInput` / `FieldPlacementInput` — clean cut, no deprecated bridge (owner: fail-fast over hidden shims; and 0.x permits it).
-- **Update** `TypeScriptBridge.kt`, `interpreter/typescript/src/documents.ts`, the 5 consumer-test suites, and the browser showcase (`consumer-tests/browser/src/{main,performance,qualification}.ts`).
-- **Regenerate** the API goldens (`./build.sh dumpKitApi` for the kits; the interpreter goldens under `interpreter/api/`) and review the diff.
+`A12DocumentJson` in `commonMain` reads and writes the canonical shape; `PreparedModel.documents.readDocument(json)` / `encodeDocument(snapshot)` are the boundary; `DocumentInputV1`/`GroupPlacementInput`/`FieldPlacementInput` are deleted with no bridge. Details + the design decisions recorded in [INTERPRETER-FINDINGS](INTERPRETER-FINDINGS.md) IF227, the contract in [INTERPRETER-API-SPEC](INTERPRETER-API-SPEC.md) §4.
 
-**Two open questions to settle first, by measurement not assumption:**
+Both open questions were settled by measurement, not assumption:
 
-1. **`Document` read accessors** — the test needs to assert what was read. Find the real accessors before writing assertions (a draft test invented `rawAt`/`hasGroupAt`; they may not exist).
-2. **`JsonNull` mapping** — the kernel keeps a null-valued field (`FieldInstanceV2.ofValue(null)` after `value.isNull() ? null : asText()`), but our `Document.field(path, value, …)` takes a non-null `String`. Verify against the kernel rather than guessing; note `DocumentDeserializationConfig.readEmptyAsNull` (deprecated) is adjacent.
+1. **`Document` read accessors** — the real ones are `cellStateAt(path, reps)` (`Absent`/`PresentEmpty`/`PresentValue(raw)`), `filledAt`, `valuedFields()` plus module-internal `instantiatedRows`/`placementsSnapshot`. There is no `rawAt`/`hasGroupAt`; the discarded draft had invented them.
+2. **`JsonNull`** — a null keeps the field **present with no value** (`FieldInstanceV2.ofValue(null)`, reached through `parseStringValueCommon`), which is `Document.emptyField`. No nullable `field(...)` overload was needed. Recorded in KERNEL-FINDINGS beside the format spec.
+
+Two by-products worth knowing for the remaining steps: the **read path stays exactly as permissive as A12's reader** (an array is accepted at a non-repeating group, so an over-repetition is still representable at the boundary — no capability was lost), and two duplicated surfaces were removed rather than migrated (`DocumentPlacementKind` → the existing `ModelEntityKind`; `maxCoordinatesPerPlacement` → `maxModelNestingDepth`, with a new pre-parse `maxDocumentCodeUnits`).
 
 ### Step 3 — dmtool CLI document I/O
 
@@ -46,7 +44,12 @@ Steps 2 and 3 are the breaking ones and land together in **0.9.2** (owner approv
 
 ### Step 4 — corpus conversion (after step 2, for coverage)
 
-Not tidiness: once the ingress is A12 JSON, the corpus is the main regression net for a reader that didn't exist before. If cases keep building documents through the internal path, the new ingress is the least-tested part of the system. **Holdout rule:** keep placement form for cases that deliberately test input A12 cannot represent (out-of-range coordinates, e.g. coordinate 2 on a non-repeatable group), and record the reason per holdout.
+Note from step 2: the browser qualification now lifts corpus placements into A12 JSON in `consumer-tests/browser/src/qualification.ts` (`documentInput`) so it can replay through the public ingress. That converter is **transitional** — delete it when the corpus itself carries A12 JSON.
+
+
+Not tidiness: once the ingress is A12 JSON, the corpus is the main regression net for a reader that didn't exist before. If cases keep building documents through the internal path, the new ingress is the least-tested part of the system.
+
+**Holdout rule — narrower than first written.** Step 2 measured that A12's reader accepts an array at a *non-repeating* group, so a non-repeatable group's coordinate 2 **is** representable in A12 JSON and needs no holdout (the browser qualification already replays such cases through the public ingress). A holdout is justified only for a coordinate the shape genuinely cannot address — a repetition below 1, or the `UNKNOWN_REP` sentinel — and each one records its reason.
 
 ### Step 5 — audit the rest of the boundary
 

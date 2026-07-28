@@ -362,20 +362,7 @@ await withStaticServer(async (url) => {
       name: "permit-input.json",
       mimeType: "application/json",
       buffer: Buffer.from(JSON.stringify({
-        version: 1,
-        groups: [{path: "/Permit", coordinates: [1]}],
-        fields: [
-          {
-            path: "/Permit/ApplicationNo",
-            coordinates: [1, 1],
-            raw: "P-UPLOAD",
-          },
-          {
-            path: "/Permit/RequestedArea",
-            coordinates: [1, 1],
-            raw: "120",
-          },
-        ],
+        Permit: {ApplicationNo: "P-UPLOAD", RequestedArea: 120},
       })),
     });
     await showcase.locator(

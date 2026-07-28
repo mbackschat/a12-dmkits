@@ -12,16 +12,16 @@ export interface ModelPreparationLimits {
 
 /** Optional resource ceilings applied before a Document snapshot is constructed. */
 export interface DocumentDecodeLimits {
+  readonly maxDocumentCodeUnits?: number;
   readonly maxGroupPlacements?: number;
   readonly maxFieldPlacements?: number;
-  readonly maxCoordinatesPerPlacement?: number;
   readonly maxPathCodeUnits?: number;
   readonly maxRawCodeUnitsPerField?: number;
   readonly maxTotalRawCodeUnits?: number;
   readonly maxModelNestingDepth?: number;
 }
 
-/** Options for strict unknown-input decoding or typed Document reading. */
+/** Options for reading A12 Document JSON. */
 export interface DocumentDecodeOptions {
   readonly limits?: DocumentDecodeLimits;
 }
@@ -66,64 +66,3 @@ export const documentLimitsJson = (
   limits: DocumentDecodeLimits | undefined,
 ): string | undefined =>
   normalizedOptions(limits as Readonly<Record<string, number | undefined>> | undefined);
-
-export const documentLimitDefaults = {
-  maxCoordinatesPerPlacement: 16,
-  maxFieldPlacements: 100_000,
-  maxGroupPlacements: 10_000,
-  maxModelNestingDepth: 32,
-  maxPathCodeUnits: 1_024,
-  maxRawCodeUnitsPerField: 1_000_000,
-  maxTotalRawCodeUnits: 16_000_000,
-} as const satisfies Required<DocumentDecodeLimits>;
-
-const documentLimitHardMaxima = {
-  maxCoordinatesPerPlacement: 64,
-  maxFieldPlacements: 1_000_000,
-  maxGroupPlacements: 100_000,
-  maxModelNestingDepth: 128,
-  maxPathCodeUnits: 4_096,
-  maxRawCodeUnitsPerField: 16_000_000,
-  maxTotalRawCodeUnits: 64_000_000,
-} as const satisfies Required<DocumentDecodeLimits>;
-
-const effectiveLimit = <K extends keyof DocumentDecodeLimits>(
-  name: K,
-  supplied: number | undefined,
-): number =>
-  Math.min(
-    supplied === undefined
-      ? documentLimitDefaults[name]
-      : requirePositivePortableInteger(supplied, name),
-    documentLimitHardMaxima[name],
-  );
-
-export const effectiveDocumentLimits = (
-  limits: DocumentDecodeLimits | undefined,
-): Required<DocumentDecodeLimits> => ({
-  maxCoordinatesPerPlacement: effectiveLimit(
-    "maxCoordinatesPerPlacement",
-    limits?.maxCoordinatesPerPlacement,
-  ),
-  maxFieldPlacements: effectiveLimit(
-    "maxFieldPlacements",
-    limits?.maxFieldPlacements,
-  ),
-  maxGroupPlacements: effectiveLimit(
-    "maxGroupPlacements",
-    limits?.maxGroupPlacements,
-  ),
-  maxModelNestingDepth: effectiveLimit(
-    "maxModelNestingDepth",
-    limits?.maxModelNestingDepth,
-  ),
-  maxPathCodeUnits: effectiveLimit("maxPathCodeUnits", limits?.maxPathCodeUnits),
-  maxRawCodeUnitsPerField: effectiveLimit(
-    "maxRawCodeUnitsPerField",
-    limits?.maxRawCodeUnitsPerField,
-  ),
-  maxTotalRawCodeUnits: effectiveLimit(
-    "maxTotalRawCodeUnits",
-    limits?.maxTotalRawCodeUnits,
-  ),
-});

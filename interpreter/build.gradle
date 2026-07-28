@@ -1934,7 +1934,9 @@ def publicKlibTypeNames = {
     def names = [] as Set
     def matcher = (
         committedKlibApi.getText('UTF-8') =~
-            /(?m)^(?:final |abstract |sealed )*(?:enum class|class|fun interface|interface) io\.github\.mbackschat\.a12\.dm\.interpreter\/([^\s:]+)/
+            // Keep this in lockstep with InterpreterApiDocumentationTest.klibTypeNames: `object` belongs here
+            // too, or a public Kotlin object silently drops out of the generated llms.txt inventory.
+            /(?m)^(?:final |abstract |sealed )*(?:enum class|class|fun interface|interface|object) io\.github\.mbackschat\.a12\.dm\.interpreter\/([^\s:]+)/
     )
     while (matcher.find()) {
         names += matcher.group(1)

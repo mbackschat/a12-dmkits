@@ -1,5 +1,6 @@
 package io.github.mbackschat.a12.dm.adapter.laws
 
+import com.fasterxml.jackson.databind.ObjectMapper
 import com.mgmtp.a12.kernel.core.rt.a12internal.validation.ICustomCondition
 import com.mgmtp.a12.kernel.md.document.api.IDocument
 import com.mgmtp.a12.kernel.md.document.api.IEntityInstance
@@ -8,14 +9,11 @@ import io.github.mbackschat.a12.dm.adapter.KernelCustomConditions
 import io.github.mbackschat.a12.dm.interpreter.CustomCondition as PublicCustomCondition
 import io.github.mbackschat.a12.dm.interpreter.CustomConditionRegistry
 import io.github.mbackschat.a12.dm.interpreter.DmInterpreter
-import io.github.mbackschat.a12.dm.interpreter.FieldPlacementInput
-import io.github.mbackschat.a12.dm.interpreter.GroupPlacementInput
 import io.github.mbackschat.a12.dm.interpreter.InterpreterConfiguration
 import io.github.mbackschat.a12.dm.interpreter.Interpreter
 import io.github.mbackschat.a12.dm.interpreter.InterpreterIntegrationError
 import io.github.mbackschat.a12.dm.interpreter.InterpreterIntegrationPhase
 import io.github.mbackschat.a12.dm.interpreter.InterpreterIntegrationReason
-import io.github.mbackschat.a12.dm.interpreter.DocumentInputV1
 import io.github.mbackschat.a12.dm.interpreter.PreparedModel
 import io.github.mbackschat.a12.dm.interpreter.ValidationFindingType
 import io.github.mbackschat.a12.dm.interpreter.eval.newDocument
@@ -108,13 +106,7 @@ class CustomConditionDiffTest {
         val i = DmInterpreter(def, customConditions = KernelCustomConditions.fromCore(mapOf("NameIsAcme" to coreNameIsAcme)))
             .validate(iDoc).messages.firstOrNull { it.code == "CC" }
             ?.type?.let { if (it == MsgType.OMISSION) "OMISSION_ERROR" else "VALUE_ERROR" }
-        val fields = name?.let { listOf(FieldPlacementInput(NAME, listOf(1, 1), it)) }.orEmpty()
-        val publicSnapshot = publicPrepared.documents.readDocument(
-            DocumentInputV1(
-                groups = listOf(GroupPlacementInput("/Order", listOf(1))),
-                fields = fields,
-            ),
-        )
+        val publicSnapshot = publicPrepared.documents.readDocument(orderJson(name))
         val public = publicInterpreter.validateFull(publicSnapshot).findings
             .firstOrNull { it.code == "CC" }
             ?.type
@@ -176,11 +168,12 @@ class CustomConditionDiffTest {
     }
 
     private fun publicSnapshot(name: String) =
-        publicPrepared.documents.readDocument(
-            DocumentInputV1(
-                groups = listOf(GroupPlacementInput("/Order", listOf(1))),
-                fields = listOf(FieldPlacementInput(NAME, listOf(1, 1), name)),
-            ),
+        publicPrepared.documents.readDocument(orderJson(name))
+
+    /** The A12 Document JSON of one `/Order` row, with or without a `CustomerName` cell. */
+    private fun orderJson(name: String?): String =
+        ObjectMapper().writeValueAsString(
+            mapOf("Order" to name?.let { mapOf("CustomerName" to it) }.orEmpty()),
         )
 
     private companion object {

@@ -1,73 +1,42 @@
 package io.github.mbackschat.a12.dm.interpreter
 
 import io.github.mbackschat.a12.dm.interpreter.eval.Document
-import io.github.mbackschat.a12.dm.interpreter.eval.newDocument
-import io.github.mbackschat.a12.dm.interpreter.model.ModelDef
 import io.github.mbackschat.a12.dm.interpreter.workspace.immutableListSnapshot
 import kotlin.jvm.JvmOverloads
 import kotlin.jvm.JvmStatic
 import kotlin.jvm.JvmSynthetic
-
-/** One explicit group row of the V1 Document input: one positive 1-based index per path part. */
-data class GroupPlacementInput(
-    val path: String,
-    val coordinates: List<Int>,
-)
-
-/**
- * One raw field cell of the V1 Document input. `raw` preserves exact lexical text: `""` is a present-empty
- * cell (deliberately different from omitting the placement), and malformed text stays present so formal
- * validation can report it. The terminal coordinate names the field rather than a repetition axis and must be
- * 1; Kernel document conversion refuses any other value before validation.
- */
-data class FieldPlacementInput(
-    val path: String,
-    val coordinates: List<Int>,
-    val raw: String,
-)
-
-/**
- * The versioned, behavior-free Document transport. Omission means absent; explicit group placements preserve
- * empty and sparse rows; coordinates carry one positive 1-based index per path part. Group coordinates above an
- * effective repetition maximum — a non-repeatable group's coordinate 2 included — remain representable and are
- * reported by formal validation. A field placement's terminal coordinate must be 1 because the Kernel document
- * boundary cannot represent a repeated field.
- */
-data class DocumentInputV1(
-    val groups: List<GroupPlacementInput>,
-    val fields: List<FieldPlacementInput>,
-    val version: Int = SUPPORTED_VERSION,
-) {
-    companion object {
-        const val SUPPORTED_VERSION = 1
-    }
-}
 
 /**
  * Resource bounds for Document decoding. Caller values are capped by the hard implementation maxima so an API
  * consumer cannot accidentally disable the browser-safe denial-of-service guards.
  */
 class DocumentDecodeLimits private constructor(
+    val maxDocumentCodeUnits: Int,
     val maxGroupPlacements: Int,
     val maxFieldPlacements: Int,
-    val maxCoordinatesPerPlacement: Int,
     val maxPathCodeUnits: Int,
     val maxRawCodeUnitsPerField: Int,
     val maxTotalRawCodeUnits: Int,
     val maxModelNestingDepth: Int,
 ) {
     companion object {
-        const val DEFAULT_MAX_GROUP_PLACEMENTS = 10_000
+        const val DEFAULT_MAX_DOCUMENT_CODE_UNITS = 32_000_000
+
+        /** Group rows and field cells share one pair of ceilings: in A12 Document JSON **every** row is
+         *  explicit (the old placement envelope left ancestors implicit and uncounted), so a document with N
+         *  repetitions of one group is N + its ancestors rows — the qualified 10,000-row browser stress
+         *  document alone is 10,001. A row ceiling below the cell ceiling would refuse documents whose cells
+         *  are admitted. */
+        const val DEFAULT_MAX_GROUP_PLACEMENTS = 100_000
         const val DEFAULT_MAX_FIELD_PLACEMENTS = 100_000
-        const val DEFAULT_MAX_COORDINATES_PER_PLACEMENT = 16
         const val DEFAULT_MAX_PATH_CODE_UNITS = 1_024
         const val DEFAULT_MAX_RAW_CODE_UNITS_PER_FIELD = 1_000_000
         const val DEFAULT_MAX_TOTAL_RAW_CODE_UNITS = 16_000_000
         const val DEFAULT_MAX_MODEL_NESTING_DEPTH = 32
 
-        const val HARD_MAX_GROUP_PLACEMENTS = 100_000
+        const val HARD_MAX_DOCUMENT_CODE_UNITS = 128_000_000
+        const val HARD_MAX_GROUP_PLACEMENTS = 1_000_000
         const val HARD_MAX_FIELD_PLACEMENTS = 1_000_000
-        const val HARD_MAX_COORDINATES_PER_PLACEMENT = 64
         const val HARD_MAX_PATH_CODE_UNITS = 4_096
         const val HARD_MAX_RAW_CODE_UNITS_PER_FIELD = 16_000_000
         const val HARD_MAX_TOTAL_RAW_CODE_UNITS = 64_000_000
@@ -81,18 +50,18 @@ class DocumentDecodeLimits private constructor(
     }
 
     class Builder internal constructor() {
+        private var maxDocumentCodeUnits = DEFAULT_MAX_DOCUMENT_CODE_UNITS
         private var maxGroupPlacements = DEFAULT_MAX_GROUP_PLACEMENTS
         private var maxFieldPlacements = DEFAULT_MAX_FIELD_PLACEMENTS
-        private var maxCoordinatesPerPlacement = DEFAULT_MAX_COORDINATES_PER_PLACEMENT
         private var maxPathCodeUnits = DEFAULT_MAX_PATH_CODE_UNITS
         private var maxRawCodeUnitsPerField = DEFAULT_MAX_RAW_CODE_UNITS_PER_FIELD
         private var maxTotalRawCodeUnits = DEFAULT_MAX_TOTAL_RAW_CODE_UNITS
         private var maxModelNestingDepth = DEFAULT_MAX_MODEL_NESTING_DEPTH
 
+        fun maxDocumentCodeUnits(value: Int) =
+            apply { maxDocumentCodeUnits = positive("maxDocumentCodeUnits", value) }
         fun maxGroupPlacements(value: Int) = apply { maxGroupPlacements = positive("maxGroupPlacements", value) }
         fun maxFieldPlacements(value: Int) = apply { maxFieldPlacements = positive("maxFieldPlacements", value) }
-        fun maxCoordinatesPerPlacement(value: Int) =
-            apply { maxCoordinatesPerPlacement = positive("maxCoordinatesPerPlacement", value) }
         fun maxPathCodeUnits(value: Int) = apply { maxPathCodeUnits = positive("maxPathCodeUnits", value) }
         fun maxRawCodeUnitsPerField(value: Int) =
             apply { maxRawCodeUnitsPerField = positive("maxRawCodeUnitsPerField", value) }
@@ -102,9 +71,9 @@ class DocumentDecodeLimits private constructor(
             apply { maxModelNestingDepth = positive("maxModelNestingDepth", value) }
 
         fun build(): DocumentDecodeLimits = DocumentDecodeLimits(
+            maxDocumentCodeUnits = minOf(maxDocumentCodeUnits, HARD_MAX_DOCUMENT_CODE_UNITS),
             maxGroupPlacements = minOf(maxGroupPlacements, HARD_MAX_GROUP_PLACEMENTS),
             maxFieldPlacements = minOf(maxFieldPlacements, HARD_MAX_FIELD_PLACEMENTS),
-            maxCoordinatesPerPlacement = minOf(maxCoordinatesPerPlacement, HARD_MAX_COORDINATES_PER_PLACEMENT),
             maxPathCodeUnits = minOf(maxPathCodeUnits, HARD_MAX_PATH_CODE_UNITS),
             maxRawCodeUnitsPerField = minOf(maxRawCodeUnitsPerField, HARD_MAX_RAW_CODE_UNITS_PER_FIELD),
             maxTotalRawCodeUnits = minOf(maxTotalRawCodeUnits, HARD_MAX_TOTAL_RAW_CODE_UNITS),
@@ -118,54 +87,49 @@ class DocumentDecodeLimits private constructor(
     }
 }
 
-enum class DocumentPlacementKind {
-    /** An entry of the envelope's `groups` array. */
-    GROUP,
+/** What a JSON node at one document position actually is, when the model expected something else. */
+enum class DocumentJsonNodeType {
+    /** A JSON object — a group instance in A12 Document JSON. */
+    OBJECT,
 
-    /** An entry of the envelope's `fields` array. */
-    FIELD,
+    /** A JSON array — the repetitions of a group in A12 Document JSON. */
+    ARRAY,
+
+    /** A JSON string, number, or boolean — a field value in A12 Document JSON. */
+    VALUE,
+
+    /** JSON `null` — a present field cell carrying no value. */
+    NULL,
 }
 
 enum class DocumentInputReasonCode {
-    /** The envelope's `version` is not the supported placement-transport version. */
-    UNSUPPORTED_VERSION,
+    /** The input is not parseable JSON, or its root is not the document's root object. */
+    MALFORMED_JSON,
 
-    /** A placement path names no declared field or group of the prepared model. */
+    /** A key names no declared field or group of the prepared model. */
     UNKNOWN_MODEL_PATH,
 
-    /** A placement does not carry exactly one coordinate per path part. */
-    COORDINATE_COUNT_MISMATCH,
+    /** The JSON node at a declared position cannot carry that model entity — see [DocumentJsonNodeType]. */
+    UNEXPECTED_NODE_TYPE,
 
-    /** A coordinate is not a positive 1-based repetition index. */
-    INVALID_COORDINATE,
-
-    /**
-     * A field placement's terminal coordinate is positive but not 1. The Kernel's document conversion refuses
-     * this class before either evaluation strategy can run; fields have no repeatability declaration.
-     */
-    INVALID_FIELD_REPETITION,
+    /** The serializer's root-level `id` is neither a string nor a number. */
+    INVALID_DOCUMENT_ID,
 
     /** Decoding exceeded one configured resource ceiling. */
     RESOURCE_LIMIT_EXCEEDED,
-
-    /** The same placement identity appears twice with the same content. */
-    DUPLICATE_PLACEMENT,
-
-    /** The same field-cell identity appears twice with different raw values. */
-    CONFLICTING_PLACEMENT,
 }
 
 enum class DocumentInputResource {
-    /** Entries of the envelope's `groups` array. */
+    /** UTF-16 code units of the whole Document JSON text, checked before parsing. */
+    DOCUMENT_CODE_UNITS,
+
+    /** Group instances (rows) the document creates. */
     GROUP_PLACEMENTS,
 
-    /** Entries of the envelope's `fields` array. */
+    /** Field cells the document creates. */
     FIELD_PLACEMENTS,
 
-    /** Coordinates carried by one placement. */
-    COORDINATES_PER_PLACEMENT,
-
-    /** UTF-16 code units of one placement path. */
+    /** UTF-16 code units of one model path. */
     PATH_CODE_UNITS,
 
     /** UTF-16 code units of one field's raw value. */
@@ -174,33 +138,29 @@ enum class DocumentInputResource {
     /** UTF-16 code units across every field's raw value. */
     TOTAL_RAW_CODE_UNITS,
 
-    /** Model path parts of one placement. */
+    /** Model path parts of one document position. */
     MODEL_NESTING_DEPTH,
 }
 
 /**
- * One structured placement-transport failure. Only properties meaningful for [reasonCode] are populated;
- * [message] is presentation text and is never the sole carrier of corrective data. [placementIndex] and
- * [firstPlacementIndex] are zero-based into the envelope array named by [placementKind].
+ * One structured Document-input failure. Only properties meaningful for [reasonCode] are populated; [message]
+ * is presentation text and is never the sole carrier of corrective data. [pointer] is the canonical A12
+ * `DocumentPointer` string of the offending position ([A12PointerFormat]), so a caller can address the defect in
+ * the same form the document itself uses.
  */
 interface DocumentInputDiagnostic {
     val reasonCode: DocumentInputReasonCode
-    val placementKind: DocumentPlacementKind? get() = null
-    val placementIndex: Int? get() = null
-    val coordinateIndex: Int? get() = null
+    val pointer: String? get() = null
     val modelPath: String? get() = null
-    val expectedVersion: Int? get() = null
-    val actualVersion: Int? get() = null
-    val expectedCoordinateCount: Int? get() = null
-    val actualCoordinateCount: Int? get() = null
+    val entityKind: ModelEntityKind? get() = null
+    val nodeType: DocumentJsonNodeType? get() = null
     val resource: DocumentInputResource? get() = null
     val maximum: Long? get() = null
     val actual: Long? get() = null
-    val firstPlacementIndex: Int? get() = null
     val message: String
 }
 
-/** Aggregate placement-transport failure; thrown before any document state is constructed. */
+/** Aggregate Document-input failure; thrown before any document state is constructed. */
 class DocumentInputError private constructor(
     diagnostics: List<DocumentInputDiagnostic>,
 ) : RuntimeException(diagnostics.joinToString("; ") { it.message }) {
@@ -211,6 +171,28 @@ class DocumentInputError private constructor(
         @JvmSynthetic
         internal fun from(diagnostics: List<DocumentInputDiagnostic>): DocumentInputError =
             DocumentInputError(diagnostics)
+    }
+}
+
+/**
+ * The document holds state A12 Document JSON has no shape for, so encoding would silently lose it. The one
+ * reachable case is a **non-repeatable group row above 1**: A12's reader accepts an array at any group (so such
+ * a row stays readable, and formal validation reports it), while A12's writer emits a non-repeatable group as a
+ * single object. `pointer` is the canonical A12 pointer of the offending row.
+ */
+class DocumentEncodeError private constructor(
+    val modelPath: String,
+    val pointer: String,
+) : RuntimeException(
+    "'$pointer' cannot be written as A12 Document JSON: '$modelPath' is not repeatable, " +
+        "so the shape addresses only its first row",
+) {
+    val code: String = "A12_DOCUMENT_NOT_REPRESENTABLE"
+
+    companion object {
+        @JvmSynthetic
+        internal fun nonRepeatableRow(modelPath: String, pointer: String): DocumentEncodeError =
+            DocumentEncodeError(modelPath, pointer)
     }
 }
 
@@ -234,11 +216,13 @@ class ModelOwnerMismatchError private constructor(
 
 /**
  * One frozen, model-owned document instance. It exposes no storage mutation or evaluation surface; the encode
- * verb on its owning [PreparedModel.documents] is the lossless read-back.
+ * verb on its owning [PreparedModel.documents] is the read-back. `documentId` is A12's root-level `id` — a
+ * serializer special case rather than a model field, so it takes no part in evaluation.
  */
 class DocumentSnapshot private constructor(
     override val owner: ModelOwnerIdentity,
     override val modelVersion: ModelVersionIdentity,
+    val documentId: String?,
     private val document: Document,
 ) : ModelOwned {
     @JvmSynthetic
@@ -249,327 +233,40 @@ class DocumentSnapshot private constructor(
         internal fun of(
             owner: ModelOwnerIdentity,
             modelVersion: ModelVersionIdentity,
+            documentId: String?,
             document: Document,
-        ): DocumentSnapshot = DocumentSnapshot(owner, modelVersion, document)
+        ): DocumentSnapshot = DocumentSnapshot(owner, modelVersion, documentId, document)
     }
 }
 
 /**
- * The Document transport of one [PreparedModel]. [readDocument] is the typed ingress: it validates the
- * complete envelope — version, resource limits, model paths, coordinate arity and positivity, duplicates, and
- * conflicts — and only then constructs the snapshot, so a failing input mutates nothing. [encodeDocument] is
- * the lossless owner-checked read-back and the transport's round-trip oracle.
+ * The Document transport of one [PreparedModel], speaking **A12's canonical Document JSON** on both sides.
+ * [readDocument] validates the complete text — parseability, resource limits, model paths,
+ * and node types — and only then constructs the snapshot, so a failing input mutates nothing. [encodeDocument]
+ * is the owner-checked read-back: every row, empty cell, and unconverted raw value survives it, and one encode
+ * reaches the canonical fixed point.
  */
 class PreparedDocumentApi internal constructor(
     private val prepared: PreparedModel,
 ) {
     /**
-     * Validate the complete V1 transport before constructing an immutable, owner-bound Document snapshot.
-     * Resource-limit failures are fail-fast; model-aware input diagnostics aggregate.
+     * Read A12 Document JSON into an immutable, owner-bound snapshot. Resource-limit failures are fail-fast;
+     * model-aware input diagnostics aggregate so a caller sees every defect at once.
      */
     @JvmOverloads
     fun readDocument(
-        input: DocumentInputV1,
+        json: String,
         limits: DocumentDecodeLimits = DocumentDecodeLimits.defaults(),
     ): DocumentSnapshot {
-        val document = DocumentReader.read(prepared.definition(), input, limits)
-        return DocumentSnapshot.of(prepared.owner, prepared.modelVersion, document)
+        val read = A12DocumentJson.read(prepared.definition(), json, limits)
+        return DocumentSnapshot.of(prepared.owner, prepared.modelVersion, read.documentId, read.document)
     }
 
-    /** Encode a snapshot from this prepared owner without losing empty cells, raw text, or explicit group rows. */
-    fun encodeDocument(snapshot: DocumentSnapshot): DocumentInputV1 {
+    /** Write a snapshot from this prepared owner back as canonical A12 Document JSON. */
+    fun encodeDocument(snapshot: DocumentSnapshot): String {
         if (snapshot.owner !== prepared.owner) {
             throw ModelOwnerMismatchError.of(expected = prepared.owner, actual = snapshot.owner)
         }
-        val groups = mutableListOf<GroupPlacementInput>()
-        val fields = mutableListOf<FieldPlacementInput>()
-        for (record in snapshot.document().placementsSnapshot()) {
-            val coordinates = immutableListSnapshot(record.reps)
-            if (record.isGroup) {
-                groups += GroupPlacementInput(record.path, coordinates)
-            } else {
-                fields += FieldPlacementInput(record.path, coordinates, record.raw.orEmpty())
-            }
-        }
-        return DocumentInputV1(
-            groups = immutableListSnapshot(groups),
-            fields = immutableListSnapshot(fields),
-        )
+        return A12DocumentJson.write(prepared.definition(), snapshot.document(), snapshot.documentId)
     }
-}
-
-/**
- * The one shared Document validation engine (both the typed ingress and the later unknown-shape decoder land
- * here). Resource ceilings fail fast; model-level defects aggregate so a caller sees every defect at once; the
- * document is constructed only after the complete envelope passed.
- */
-private object DocumentReader {
-
-    fun read(model: ModelDef, input: DocumentInputV1, limits: DocumentDecodeLimits): Document {
-        requireSupportedVersion(input.version)
-        val groups = input.groups.toList()
-        val fields = input.fields.toList()
-        requireCount(groups.size, limits.maxGroupPlacements, DocumentInputResource.GROUP_PLACEMENTS)
-        requireCount(fields.size, limits.maxFieldPlacements, DocumentInputResource.FIELD_PLACEMENTS)
-
-        val diagnostics = mutableListOf<DocumentInputDiagnostic>()
-        val firstByIdentity = mutableMapOf<PlacementIdentity, FirstOccurrence>()
-        var totalRawCodeUnits = 0L
-        groups.forEachIndexed { index, group ->
-            validatePlacement(
-                model = model,
-                limits = limits,
-                kind = DocumentPlacementKind.GROUP,
-                index = index,
-                path = group.path,
-                coordinates = group.coordinates,
-                raw = null,
-                diagnostics = diagnostics,
-                firstByIdentity = firstByIdentity,
-            )
-        }
-        fields.forEachIndexed { index, field ->
-            totalRawCodeUnits += field.raw.length
-            requireWithin(
-                actual = field.raw.length.toLong(),
-                maximum = limits.maxRawCodeUnitsPerField.toLong(),
-                resource = DocumentInputResource.RAW_CODE_UNITS_PER_FIELD,
-                kind = DocumentPlacementKind.FIELD,
-                index = index,
-            )
-            requireWithin(
-                actual = totalRawCodeUnits,
-                maximum = limits.maxTotalRawCodeUnits.toLong(),
-                resource = DocumentInputResource.TOTAL_RAW_CODE_UNITS,
-                kind = DocumentPlacementKind.FIELD,
-                index = index,
-            )
-            validatePlacement(
-                model = model,
-                limits = limits,
-                kind = DocumentPlacementKind.FIELD,
-                index = index,
-                path = field.path,
-                coordinates = field.coordinates,
-                raw = field.raw,
-                diagnostics = diagnostics,
-                firstByIdentity = firstByIdentity,
-            )
-        }
-        if (diagnostics.isNotEmpty()) {
-            throw DocumentInputError.from(diagnostics)
-        }
-
-        val document = model.newDocument()
-        groups.forEach { document.group(it.path, *it.coordinates.toIntArray()) }
-        fields.forEach { document.field(it.path, it.raw, *it.coordinates.toIntArray()) }
-        return document
-    }
-
-    private fun validatePlacement(
-        model: ModelDef,
-        limits: DocumentDecodeLimits,
-        kind: DocumentPlacementKind,
-        index: Int,
-        path: String,
-        coordinates: List<Int>,
-        raw: String?,
-        diagnostics: MutableList<DocumentInputDiagnostic>,
-        firstByIdentity: MutableMap<PlacementIdentity, FirstOccurrence>,
-    ) {
-        requireWithin(
-            actual = path.length.toLong(),
-            maximum = limits.maxPathCodeUnits.toLong(),
-            resource = DocumentInputResource.PATH_CODE_UNITS,
-            kind = kind,
-            index = index,
-        )
-        val parts = ModelAddressValidation.pathPartCount(path)
-        requireWithin(
-            actual = parts.toLong(),
-            maximum = limits.maxModelNestingDepth.toLong(),
-            resource = DocumentInputResource.MODEL_NESTING_DEPTH,
-            kind = kind,
-            index = index,
-        )
-        requireWithin(
-            actual = coordinates.size.toLong(),
-            maximum = limits.maxCoordinatesPerPlacement.toLong(),
-            resource = DocumentInputResource.COORDINATES_PER_PLACEMENT,
-            kind = kind,
-            index = index,
-        )
-
-        if (ModelAddressValidation.entityKind(model, path) != kind) {
-            diagnostics += UnknownModelPathDiagnostic(kind, index, path)
-        }
-        for (violation in ModelAddressValidation.violations(kind, path, coordinates)) {
-            when (violation.reason) {
-                ModelAddressViolationReason.COORDINATE_COUNT_MISMATCH ->
-                    diagnostics += CoordinateCountMismatchDiagnostic(
-                        placementKind = kind,
-                        placementIndex = index,
-                        modelPath = path,
-                        expectedCoordinateCount = checkNotNull(violation.expectedCoordinateCount),
-                        actualCoordinateCount = checkNotNull(violation.actualCoordinateCount),
-                    )
-                ModelAddressViolationReason.INVALID_COORDINATE -> {
-                    val coordinateIndex = checkNotNull(violation.coordinateIndex)
-                    diagnostics += InvalidCoordinateDiagnostic(
-                        placementKind = kind,
-                        placementIndex = index,
-                        coordinateIndex = coordinateIndex,
-                        modelPath = path,
-                        coordinate = coordinates[coordinateIndex],
-                    )
-                }
-                ModelAddressViolationReason.INVALID_FIELD_REPETITION -> {
-                    val coordinateIndex = checkNotNull(violation.coordinateIndex)
-                    diagnostics += InvalidFieldRepetitionDiagnostic(
-                        placementIndex = index,
-                        coordinateIndex = coordinateIndex,
-                        modelPath = path,
-                        coordinate = coordinates[coordinateIndex],
-                    )
-                }
-            }
-        }
-
-        val identity = PlacementIdentity(kind, path, coordinates.toList())
-        val first = firstByIdentity[identity]
-        when {
-            first == null -> firstByIdentity[identity] = FirstOccurrence(index, raw)
-            kind == DocumentPlacementKind.FIELD && first.raw != raw ->
-                diagnostics += ConflictingPlacementDiagnostic(kind, index, first.index, path)
-            else -> diagnostics += DuplicatePlacementDiagnostic(kind, index, first.index, path)
-        }
-    }
-
-    private fun requireSupportedVersion(version: Int) {
-        if (version != DocumentInputV1.SUPPORTED_VERSION) {
-            throw DocumentInputError.from(
-                listOf(
-                    UnsupportedVersionDiagnostic(
-                        expectedVersion = DocumentInputV1.SUPPORTED_VERSION,
-                        actualVersion = version,
-                    ),
-                ),
-            )
-        }
-    }
-
-    private fun requireCount(actual: Int, maximum: Int, resource: DocumentInputResource) {
-        requireWithin(actual.toLong(), maximum.toLong(), resource, kind = null, index = null)
-    }
-
-    private fun requireWithin(
-        actual: Long,
-        maximum: Long,
-        resource: DocumentInputResource,
-        kind: DocumentPlacementKind?,
-        index: Int?,
-    ) {
-        if (actual > maximum) {
-            throw DocumentInputError.from(
-                listOf(ResourceLimitExceededDiagnostic(resource, maximum, actual, kind, index)),
-            )
-        }
-    }
-
-    private data class PlacementIdentity(
-        val kind: DocumentPlacementKind,
-        val path: String,
-        val coordinates: List<Int>,
-    )
-
-    private data class FirstOccurrence(val index: Int, val raw: String?)
-}
-
-private data class UnsupportedVersionDiagnostic(
-    override val expectedVersion: Int,
-    override val actualVersion: Int,
-) : DocumentInputDiagnostic {
-    override val reasonCode = DocumentInputReasonCode.UNSUPPORTED_VERSION
-    override val message =
-        "Document version $actualVersion is not supported; this boundary reads version $expectedVersion"
-}
-
-private data class UnknownModelPathDiagnostic(
-    override val placementKind: DocumentPlacementKind,
-    override val placementIndex: Int,
-    override val modelPath: String,
-) : DocumentInputDiagnostic {
-    override val reasonCode = DocumentInputReasonCode.UNKNOWN_MODEL_PATH
-    override val message =
-        "${placementKind.name.lowercase()} placement $placementIndex names unknown model path '$modelPath'"
-}
-
-private data class CoordinateCountMismatchDiagnostic(
-    override val placementKind: DocumentPlacementKind,
-    override val placementIndex: Int,
-    override val modelPath: String,
-    override val expectedCoordinateCount: Int,
-    override val actualCoordinateCount: Int,
-) : DocumentInputDiagnostic {
-    override val reasonCode = DocumentInputReasonCode.COORDINATE_COUNT_MISMATCH
-    override val message = "${placementKind.name.lowercase()} placement $placementIndex at '$modelPath' carries " +
-        "$actualCoordinateCount coordinates; the path has $expectedCoordinateCount parts"
-}
-
-private data class InvalidCoordinateDiagnostic(
-    override val placementKind: DocumentPlacementKind,
-    override val placementIndex: Int,
-    override val coordinateIndex: Int,
-    override val modelPath: String,
-    private val coordinate: Int,
-) : DocumentInputDiagnostic {
-    override val reasonCode = DocumentInputReasonCode.INVALID_COORDINATE
-    override val message = "${placementKind.name.lowercase()} placement $placementIndex at '$modelPath' carries " +
-        "coordinate $coordinate at position $coordinateIndex; repetition indices are positive and 1-based"
-}
-
-private data class InvalidFieldRepetitionDiagnostic(
-    override val placementIndex: Int,
-    override val coordinateIndex: Int,
-    override val modelPath: String,
-    private val coordinate: Int,
-) : DocumentInputDiagnostic {
-    override val reasonCode = DocumentInputReasonCode.INVALID_FIELD_REPETITION
-    override val placementKind = DocumentPlacementKind.FIELD
-    override val message = "field placement $placementIndex at '$modelPath' carries terminal coordinate " +
-        "$coordinate; a field's terminal coordinate must be 1"
-}
-
-private data class ResourceLimitExceededDiagnostic(
-    override val resource: DocumentInputResource,
-    override val maximum: Long,
-    override val actual: Long,
-    override val placementKind: DocumentPlacementKind?,
-    override val placementIndex: Int?,
-) : DocumentInputDiagnostic {
-    override val reasonCode = DocumentInputReasonCode.RESOURCE_LIMIT_EXCEEDED
-    override val message =
-        "placement decoding exceeded ${resource.name.lowercase()} limit $maximum (actual $actual)"
-}
-
-private data class DuplicatePlacementDiagnostic(
-    override val placementKind: DocumentPlacementKind,
-    override val placementIndex: Int,
-    override val firstPlacementIndex: Int,
-    override val modelPath: String,
-) : DocumentInputDiagnostic {
-    override val reasonCode = DocumentInputReasonCode.DUPLICATE_PLACEMENT
-    override val message = "${placementKind.name.lowercase()} placement $placementIndex repeats " +
-        "placement $firstPlacementIndex at '$modelPath'"
-}
-
-private data class ConflictingPlacementDiagnostic(
-    override val placementKind: DocumentPlacementKind,
-    override val placementIndex: Int,
-    override val firstPlacementIndex: Int,
-    override val modelPath: String,
-) : DocumentInputDiagnostic {
-    override val reasonCode = DocumentInputReasonCode.CONFLICTING_PLACEMENT
-    override val message = "field placement $placementIndex stores a different raw value than " +
-        "placement $firstPlacementIndex at '$modelPath'"
 }

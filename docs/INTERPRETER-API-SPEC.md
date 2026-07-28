@@ -109,55 +109,52 @@ Coordinates are positive signed 32-bit integers. A field pointer's terminal coor
 
 ## 4. Document transport
 
-### 4.1 Versioned lossless envelope
+### 4.1 A12's canonical Document JSON — the one shape
 
-`DocumentInputV1` is the canonical portable document boundary:
+The boundary reads and writes **A12's own Document JSON**, the shape the Kernel's `IDocumentV2Serializer` produces and consumes. It is not a shape this project designed; the format is source-verified against Kernel 30.8.1 and recorded in [KERNEL-FINDINGS](KERNEL-FINDINGS.md) "The canonical Document JSON and `DocumentPointer` string". The standing rule is [CLAUDE.md](../CLAUDE.md) "NEVER invent a shape A12 already defines".
+
+A document is a **nested object tree mirroring the model**:
 
 ```ts
-interface DocumentInputV1 {
-  readonly version: 1;
-  readonly groups: readonly GroupPlacementInput[];
-  readonly fields: readonly FieldPlacementInput[];
+type A12DocumentField = string | number | boolean | null;
+
+interface A12DocumentGroup {
+  readonly [name: string]:
+    | A12DocumentField
+    | A12DocumentGroup
+    | readonly A12DocumentGroup[];
 }
 
-interface GroupPlacementInput {
-  readonly path: string;
-  readonly coordinates: readonly number[];
-}
-
-interface FieldPlacementInput {
-  readonly path: string;
-  readonly coordinates: readonly number[];
-  readonly raw: string;
-}
+type A12Document = A12DocumentGroup;
 ```
 
-The Document's flat placement records preserve:
+- a **non-repeating group** is a nested object; a **repeating group is an array** whose index *is* the repetition;
+- an **unfilled row** inside that array is `{}`, and a present-but-empty group is `{}`;
+- an **omitted entity is a missing key**; a **`null`** keeps the field present with no value (the Kernel's `FieldInstanceV2.ofValue(null)`);
+- a field carries **native JSON for number and boolean**, a **model-format string** for the date family, and the **S-value** for an enumeration — the reader stringifies every value and then parses model-driven, because only the model disambiguates a string from a date;
+- a value that fails conversion is **kept, not dropped** (the Kernel's `[A12K-3638]` pass-through), so malformed input is representable;
+- a root-level `id` is the serializer's document identity, not a model field; it is read into `DocumentSnapshot.documentId` and written back as text.
 
-- absent versus present-empty fields;
-- malformed but present raw field text;
-- explicit empty and sparse group rows;
-- one coordinate per path part;
-- source placement order, with canonical ancestor rows made explicit by encoding.
+Kotlin, Java, and native callers pass the JSON **text**; TypeScript accepts either a plain object or its text.
 
-Decode followed by encode reaches a fixed point after the first encode because field insertion materializes its required ancestor group rows.
+### 4.2 Reading is as permissive as A12's reader; writing is canonical
 
-### 4.2 Strict decoding
+`DocumentV2JsonReader.repetitionsFromJson` never consults repeatability, so **read** accepts an object at a repeating group (one row at repetition 1) and an array at a *non-repeating* group (rows 1..n) — which keeps an over-repetition readable so formal validation can report it. **Write** is model-driven: array versus object comes from *declared* repeatability, never from what happens to be populated, and direct fields precede subgroups with each group sorted by name (the Kernel writer's key order).
 
-`PreparedModel.documents.decodeDocument` accepts `unknown` on TypeScript and validates the complete envelope before constructing a `DocumentSnapshot`. `readDocument` is the typed fast path over the same validator; it is not a trust bypass.
+One encode reaches the canonical fixed point: `encode(read(encode(read(x)))) == encode(read(x))`. Every row, empty cell, and unconverted raw value survives the round trip. The one document state A12's writer has no shape for — a non-repeatable group row above 1 — raises `DocumentEncodeError` naming the canonical pointer rather than silently dropping the row.
 
-Decoding:
+### 4.3 Strict reading
 
-- checks the version and rejects unknown members;
-- applies hard-capped `DocumentDecodeLimits` before expensive allocation;
-- checks known model paths, entity kind, coordinate arity, the portable coordinate range, and the field-terminal coordinate rule;
-- rejects duplicate and conflicting placements;
-- aggregates model-aware input diagnostics;
-- performs no partial document mutation when validation fails.
+`PreparedModel.documents.readDocument` validates the complete text before any document state exists:
 
-`DocumentInputError` carries structured input paths plus optional model paths and placement/coordinate positions. `tryDecodeDocument` returns the same failure through `A12Result`.
+- applies hard-capped `DocumentDecodeLimits` (document text size first, then group rows, field cells, path length, per-field and total raw text, model nesting depth) before expensive allocation;
+- rejects unparseable JSON and a non-object root;
+- checks that every key names a declared field or group and that its JSON node type can carry that entity;
+- aggregates model-aware diagnostics and performs no partial document mutation when validation fails.
 
-`encodeDocument` checks owner identity and emits the lossless V1 representation. `isSnapshot` recognizes only authentic snapshots owned by that prepared model.
+Every input defect A12 reports as an error-ranked notification is **fatal** here; the Kernel's report-and-continue is a notification policy of its caller, not a difference in the shape. `DocumentInputError` diagnostics locate each defect by its canonical A12 `DocumentPointer` string plus the model path, the declared entity kind, and the JSON node type found. `tryReadDocument` returns the same failure through `A12Result` on TypeScript.
+
+`encodeDocument` checks owner identity before writing. `isSnapshot` recognizes only authentic snapshots owned by that prepared model.
 
 ## 5. Interpreter lifecycle and evaluation
 

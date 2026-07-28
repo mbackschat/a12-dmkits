@@ -1,7 +1,8 @@
 import {
+  type A12Document,
+  type A12DocumentGroup,
   type ComputationResult,
   ModelWorkspace,
-  type DocumentInputV1,
   type PreparedModel,
   type ValidationFinding,
 } from "@mbackschat/a12-interpreter";
@@ -85,21 +86,76 @@ const stringFieldPathsOf = (json: string): ReadonlySet<string> => {
   return paths;
 };
 
+interface DocumentTreeNode {
+  readonly fields: Record<string, string>;
+  readonly subgroups: Map<string, Map<number, DocumentTreeNode>>;
+}
+
+const treeNode = (): DocumentTreeNode => ({fields: {}, subgroups: new Map()});
+
+/**
+ * Lift the corpus's internal placement records into A12 Document JSON. Every group level is written as an
+ * array — the array index IS the repetition, and A12's reader takes an array at any group — so a
+ * non-repeatable level and an over-repetition both land on their exact coordinates. A gap is `{}`, the
+ * unfilled row of the canonical shape. (Transitional: the corpus itself moves to A12 JSON in a later step.)
+ */
 const documentInput = (
   placements: readonly CorpusPlacement[],
-): DocumentInputV1 => ({
-  version: 1,
-  groups: placements
-    .filter(({kind}) => kind === "GROUP")
-    .map(({path, reps}) => ({path, coordinates: reps})),
-  fields: placements
-    .filter(({kind}) => kind !== "GROUP")
-    .map(({kind, path, reps, value}) => ({
-      path,
-      coordinates: reps,
-      raw: kind === "EMPTY" ? "" : value ?? "",
-    })),
-});
+): A12Document => {
+  const root = treeNode();
+  const descend = (
+    parts: readonly string[],
+    reps: readonly number[],
+    depth: number,
+  ): DocumentTreeNode => {
+    let current = root;
+    for (let level = 0; level < depth; level += 1) {
+      const repetition = reps[level] as number;
+      if (!Number.isInteger(repetition) || repetition < 1) {
+        throw new Error(
+          `corpus placement carries repetition ${repetition}, which A12 Document JSON cannot address`,
+        );
+      }
+      const name = parts[level] as string;
+      let rows = current.subgroups.get(name);
+      if (rows === undefined) {
+        rows = new Map<number, DocumentTreeNode>();
+        current.subgroups.set(name, rows);
+      }
+      let row = rows.get(repetition);
+      if (row === undefined) {
+        row = treeNode();
+        rows.set(repetition, row);
+      }
+      current = row;
+    }
+    return current;
+  };
+  for (const placement of placements) {
+    const parts = placement.path.split("/").filter(Boolean);
+    const groupDepth = placement.kind === "GROUP" ? parts.length : parts.length - 1;
+    const target = descend(parts, placement.reps, groupDepth);
+    if (placement.kind === "GROUP") {
+      continue;
+    }
+    target.fields[parts[parts.length - 1] as string] =
+      placement.kind === "EMPTY" ? "" : placement.value ?? "";
+  }
+  const toJson = (node: DocumentTreeNode): A12DocumentGroup => {
+    const out: Record<string, string | readonly A12DocumentGroup[]> = {...node.fields};
+    for (const [name, rows] of node.subgroups) {
+      const highest = Math.max(...rows.keys());
+      const repetitions: A12DocumentGroup[] = [];
+      for (let repetition = 1; repetition <= highest; repetition += 1) {
+        const row = rows.get(repetition);
+        repetitions.push(row === undefined ? {} : toJson(row));
+      }
+      out[name] = repetitions;
+    }
+    return out;
+  };
+  return toJson(root);
+};
 
 const validationSignature = (
   finding: ValidationFinding,
@@ -185,7 +241,7 @@ const replayCorpusCase = async (
   const {prepared, stringFieldPaths} = await prepareCorpusModel(
     corpusCase.modelRef,
   );
-  const snapshot = prepared.documents.decodeDocument(
+  const snapshot = prepared.documents.readDocument(
     documentInput(corpusCase.placements),
   );
   const interpreter = prepared.createInterpreter();
@@ -309,21 +365,11 @@ const qualifyRawWorkspace = async (): Promise<void> => {
     );
   }
 
-  const snapshot = finite.documents.decodeDocument({
-    version: 1,
-    groups: [],
-    fields: [
-      {
-        path: "/Permit/ApplicationCode",
-        coordinates: [1, 1],
-        raw: "ABCDEFGHIJKLM",
-      },
-      {
-        path: "/Permit/Review/Inspection/Score",
-        coordinates: [1, 1, 1, 1],
-        raw: "-1",
-      },
-    ],
+  const snapshot = finite.documents.readDocument({
+    Permit: {
+      ApplicationCode: "ABCDEFGHIJKLM",
+      Review: {Inspection: {Score: -1}},
+    },
   });
   const findings = finite.createInterpreter().validateFull(snapshot).findings;
   assertSame(
@@ -340,24 +386,15 @@ const qualifyHostBoundaries = async (): Promise<void> => {
   const modelJson = await fetchText("models/permit-basic.dm.json");
   const prepared = ModelWorkspace.fromSources([{json: modelJson}])
     .prepare("permit-basic");
-  const snapshot = prepared.documents.decodeDocument({
-    version: 1,
-    groups: [],
-    fields: [
-      {path: "/Permit/Rate", coordinates: [1, 1], raw: "0.30"},
-      {path: "/Permit/PatternProbe", coordinates: [1, 1], raw: "12 34"},
-      {path: "/Permit/GraphemeProbe", coordinates: [1, 1], raw: "e\u0301"},
-      {
-        path: "/Permit/ReportedAt",
-        coordinates: [1, 1],
-        raw: "2024-03-31T01:30:00",
-      },
-      {
-        path: "/Permit/SettledAt",
-        coordinates: [1, 1],
-        raw: "2024-03-31T03:30:00",
-      },
-    ],
+  // Deliberately supplied as strings: these probes assert exact stored text on a host boundary.
+  const snapshot = prepared.documents.readDocument({
+    Permit: {
+      Rate: "0.30",
+      PatternProbe: "12 34",
+      GraphemeProbe: "e\u0301",
+      ReportedAt: "2024-03-31T01:30:00",
+      SettledAt: "2024-03-31T03:30:00",
+    },
   });
   const interpreter = prepared.createInterpreter();
   if (!interpreter.supportReport().fullySupported) {

@@ -16,20 +16,21 @@ internal data class ModelAddressViolation(
 )
 
 /**
- * The one exact-address classifier shared by placement ingress and public pointer construction. Group
+ * The one exact-address classifier: [entityKind] tells the A12 Document JSON reader and public pointer
+ * construction what the model declares at a path, and [violations] validates caller-supplied coordinates. Group
  * coordinates may exceed declared bounds because the Kernel represents them for formal validation; only
  * coordinate shape and the measured field-terminal invariant belong here.
  */
 internal object ModelAddressValidation {
-    fun entityKind(model: ModelDef, path: String): DocumentPlacementKind? =
+    fun entityKind(model: ModelDef, path: String): ModelEntityKind? =
         when {
-            path in model.kinds -> DocumentPlacementKind.FIELD
-            path in model.groupPaths -> DocumentPlacementKind.GROUP
+            path in model.kinds -> ModelEntityKind.FIELD
+            path in model.groupPaths -> ModelEntityKind.GROUP
             else -> null
         }
 
     fun violations(
-        kind: DocumentPlacementKind,
+        kind: ModelEntityKind,
         path: String,
         coordinates: List<Int>,
     ): List<ModelAddressViolation> = buildList {
@@ -54,7 +55,7 @@ internal object ModelAddressValidation {
             }
         }
         if (
-            kind == DocumentPlacementKind.FIELD &&
+            kind == ModelEntityKind.FIELD &&
             coordinates.size == expected &&
             coordinates.last() > 1
         ) {

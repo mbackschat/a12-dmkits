@@ -8,7 +8,7 @@ import {
   PreparedModel,
   type CustomCondition,
   type CustomFieldValidator,
-  type DocumentInputV1,
+  type A12Document,
   type ModelSourceProvider,
   type WorkspaceModelSource,
 } from "@mbackschat/a12-interpreter";
@@ -75,15 +75,10 @@ if (requested.includes("permit-basic") || new Set(requested).size !== requested.
 const prepared = PreparedModel.loadExpandedJson(
   finiteWorkspace.expand("permit-basic"),
 );
-const input: DocumentInputV1 = {
-  version: 1,
-  groups: [{path: "/Permit", coordinates: [1]}],
-  fields: [
-    {path: "/Permit/ApplicationNo", coordinates: [1, 1], raw: "P-1"},
-    {path: "/Permit/RequestedArea", coordinates: [1, 1], raw: "125"},
-  ],
+const input: A12Document = {
+  Permit: {ApplicationNo: "P-1", RequestedArea: 125},
 };
-const snapshot = prepared.documents.decodeDocument(input);
+const snapshot = prepared.documents.readDocument(input);
 const neverUsedCondition: CustomCondition = () => false;
 const neverUsedFieldValidator: CustomFieldValidator = () => ({accepted: true});
 const interpreter = prepared.createInterpreter({
@@ -103,37 +98,27 @@ if (computation.results.length !== 1 ||
   throw new Error("computation did not return the expected target value");
 }
 
-const canonical = prepared.documents.encodeDocument(snapshot);
-if (canonical.version !== 1 || canonical.fields.length !== 2) {
-  throw new Error("Document transport did not round-trip");
+const canonical = prepared.documents.encodeDocumentJson(snapshot);
+if (canonical !== '{"Permit":{"ApplicationNo":"P-1","RequestedArea":125}}') {
+  throw new Error(`Document transport did not round-trip: ${canonical}`);
 }
 
-const malformed = prepared.documents.tryDecodeDocument({
-  version: 1,
-  groups: [],
-  fields: [{
-    path: "/Permit/ApplicationNo",
-    coordinates: [1, 1],
-    raw: "P-2",
-    unexpected: true,
-  }],
+const unknownKey = prepared.documents.tryReadDocument({
+  Permit: {Unexpected: "P-2"},
 });
-if (malformed.ok ||
-    malformed.error.diagnostics[0]?.reasonCode !== "unknown-property" ||
-    malformed.error.diagnostics[0]?.inputPath.join("/") !== "fields/0/unexpected") {
-  throw new Error("unknown Document member did not produce a structured diagnostic");
+if (unknownKey.ok ||
+    unknownKey.error.diagnostics[0]?.reasonCode !== "unknown-model-path" ||
+    unknownKey.error.diagnostics[0]?.pointer !== "Permit/Unexpected") {
+  throw new Error("unknown Document key did not produce a structured diagnostic");
 }
 
 try {
-  prepared.documents.readDocument({
-    version: 1,
-    groups: [{path: "/Permit", coordinates: [2_147_483_648]}],
-    fields: [],
-  });
-  throw new Error("typed placement accepted a coordinate outside the portable range");
+  prepared.documents.readDocument({Permit: {RequestedArea: Number.NaN}});
+  throw new Error("Document reading accepted a value JSON cannot carry");
 } catch (error) {
   if (!(error instanceof DocumentInputError) ||
-      error.diagnostics[0]?.details?.reason !== "outside-portable-range") {
+      error.diagnostics[0]?.reasonCode !== "unrepresentable-native-value" ||
+      error.diagnostics[0]?.inputPath?.join("/") !== "Permit/RequestedArea") {
     throw error;
   }
 }
@@ -163,9 +148,7 @@ if (new InterpreterIntegrationError(
 
 const customPrepared = PreparedModel.loadExpandedJson(model("order-ruled"));
 const customSnapshot = customPrepared.documents.readDocument({
-  version: 1,
-  groups: [{path: "/Order", coordinates: [1]}],
-  fields: [{path: "/Order/CustomerName", coordinates: [1, 1], raw: "ACME"}],
+  Order: {CustomerName: "ACME"},
 });
 let conditionCalls = 0;
 const customized = customPrepared.createInterpreter({
@@ -188,15 +171,7 @@ if (conditionCalls !== 1 ||
 }
 const guideCustomization = validateWithProjectCondition(
   model("order-ruled"),
-  {
-    version: 1,
-    groups: [{path: "/Order", coordinates: [1]}],
-    fields: [{
-      path: "/Order/CustomerName",
-      coordinates: [1, 1],
-      raw: "ACME",
-    }],
-  },
+  {Order: {CustomerName: "ACME"}},
 );
 if (guideCustomization.findings.every(({code}) => code !== "INELIGIBLE_ORDER")) {
   throw new Error("customization guide example returned no authored finding");

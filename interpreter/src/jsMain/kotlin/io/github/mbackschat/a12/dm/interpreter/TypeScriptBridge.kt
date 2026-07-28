@@ -10,15 +10,14 @@ import io.github.mbackschat.a12.dm.interpreter.CustomFieldValidationResult as Co
 import io.github.mbackschat.a12.dm.interpreter.CustomFieldValidator as CoreCustomFieldValidator
 import io.github.mbackschat.a12.dm.interpreter.DocumentCoordinateError as CoreDocumentCoordinateError
 import io.github.mbackschat.a12.dm.interpreter.DocumentCoordinateReason as CoreDocumentCoordinateReason
+import io.github.mbackschat.a12.dm.interpreter.DocumentEncodeError as CoreDocumentEncodeError
 import io.github.mbackschat.a12.dm.interpreter.DocumentInputDiagnostic as CoreDocumentInputDiagnostic
 import io.github.mbackschat.a12.dm.interpreter.DocumentInputError as CoreDocumentInputError
 import io.github.mbackschat.a12.dm.interpreter.DocumentInputReasonCode as CoreDocumentInputReasonCode
 import io.github.mbackschat.a12.dm.interpreter.DocumentInputResource as CoreDocumentInputResource
-import io.github.mbackschat.a12.dm.interpreter.DocumentPlacementKind as CoreDocumentPlacementKind
+import io.github.mbackschat.a12.dm.interpreter.DocumentJsonNodeType as CoreDocumentJsonNodeType
 import io.github.mbackschat.a12.dm.interpreter.DocumentPointer as CoreDocumentPointer
 import io.github.mbackschat.a12.dm.interpreter.DocumentSnapshot as CoreDocumentSnapshot
-import io.github.mbackschat.a12.dm.interpreter.FieldPlacementInput as CoreFieldPlacementInput
-import io.github.mbackschat.a12.dm.interpreter.GroupPlacementInput as CoreGroupPlacementInput
 import io.github.mbackschat.a12.dm.interpreter.Interpreter as CoreInterpreter
 import io.github.mbackschat.a12.dm.interpreter.InterpreterConfiguration as CoreInterpreterConfiguration
 import io.github.mbackschat.a12.dm.interpreter.InterpreterIntegrationError as CoreInterpreterIntegrationError
@@ -35,7 +34,6 @@ import io.github.mbackschat.a12.dm.interpreter.ModelSourceProvider as CoreModelS
 import io.github.mbackschat.a12.dm.interpreter.ModelSourceProviderError as CoreModelSourceProviderError
 import io.github.mbackschat.a12.dm.interpreter.ModelSourceProviderFailureReason as CoreProviderFailureReason
 import io.github.mbackschat.a12.dm.interpreter.ModelWorkspace as CoreModelWorkspace
-import io.github.mbackschat.a12.dm.interpreter.DocumentInputV1 as CoreDocumentInput
 import io.github.mbackschat.a12.dm.interpreter.PreparedModel as CorePreparedModel
 import io.github.mbackschat.a12.dm.interpreter.RelevantCoordinate as CoreRelevantCoordinate
 import io.github.mbackschat.a12.dm.interpreter.RelevantEntityPointer as CoreRelevantEntityPointer
@@ -140,54 +138,6 @@ class InterpreterBridgeComputationResult internal constructor(
     val value: InterpreterBridgeComputationReport?,
     val failure: InterpreterBridgeFailure?,
 )
-
-@JsExport
-class InterpreterBridgeGroupPlacement(
-    val path: String,
-    val coordinates: Array<Int>,
-) {
-    internal fun toCore(): CoreGroupPlacementInput = CoreGroupPlacementInput(path, coordinates.toList())
-}
-
-@JsExport
-class InterpreterBridgeFieldPlacement(
-    val path: String,
-    val coordinates: Array<Int>,
-    val raw: String,
-) {
-    internal fun toCore(): CoreFieldPlacementInput = CoreFieldPlacementInput(path, coordinates.toList(), raw)
-}
-
-@JsExport
-class InterpreterBridgeDocumentInput(
-    val version: Int,
-    val groups: Array<InterpreterBridgeGroupPlacement>,
-    val fields: Array<InterpreterBridgeFieldPlacement>,
-) {
-    internal fun toCore(): CoreDocumentInput =
-        CoreDocumentInput(
-            version = version,
-            groups = groups.map(InterpreterBridgeGroupPlacement::toCore),
-            fields = fields.map(InterpreterBridgeFieldPlacement::toCore),
-        )
-
-    companion object {
-        internal fun fromCore(document: CoreDocumentInput): InterpreterBridgeDocumentInput =
-            InterpreterBridgeDocumentInput(
-                version = document.version,
-                groups = document.groups.map { group ->
-                    InterpreterBridgeGroupPlacement(group.path, group.coordinates.toTypedArray())
-                }.toTypedArray(),
-                fields = document.fields.map { field ->
-                    InterpreterBridgeFieldPlacement(
-                        field.path,
-                        field.coordinates.toTypedArray(),
-                        field.raw,
-                    )
-                }.toTypedArray(),
-            )
-    }
-}
 
 @JsExport
 class InterpreterBridgeWorkspace internal constructor(
@@ -304,13 +254,13 @@ class InterpreterBridgeDocuments internal constructor(
     private val prepared: CorePreparedModel,
 ) {
     fun readDocument(
-        input: InterpreterBridgeDocumentInput,
+        json: String,
         limitsJson: String?,
     ): InterpreterBridgeDocumentResult =
         try {
             InterpreterBridgeDocumentResult(
                 InterpreterBridgeDocumentSnapshot(
-                    prepared.documents.readDocument(input.toCore(), documentLimits(limitsJson)),
+                    prepared.documents.readDocument(json, documentLimits(limitsJson)),
                 ),
                 null,
             )
@@ -318,10 +268,12 @@ class InterpreterBridgeDocuments internal constructor(
             InterpreterBridgeDocumentResult(null, documentInputFailure(error))
         }
 
-    fun encodeDocument(
-        snapshot: InterpreterBridgeDocumentSnapshot,
-    ): InterpreterBridgeDocumentInput =
-        InterpreterBridgeDocumentInput.fromCore(prepared.documents.encodeDocument(snapshot.core))
+    fun encodeDocument(snapshot: InterpreterBridgeDocumentSnapshot): InterpreterBridgeStringResult =
+        try {
+            InterpreterBridgeStringResult(prepared.documents.encodeDocument(snapshot.core), null)
+        } catch (error: CoreDocumentEncodeError) {
+            InterpreterBridgeStringResult(null, documentEncodeFailure(error))
+        }
 
     fun isSnapshot(snapshot: InterpreterBridgeDocumentSnapshot?): Boolean =
         snapshot != null && snapshot.core.owner === prepared.owner
@@ -675,9 +627,9 @@ private fun documentLimits(json: String?): io.github.mbackschat.a12.dm.interpret
     if (json.isNullOrEmpty()) return io.github.mbackschat.a12.dm.interpreter.DocumentDecodeLimits.defaults()
     val values = Json.parseToJsonElement(json).jsonObject
     val builder = io.github.mbackschat.a12.dm.interpreter.DocumentDecodeLimits.builder()
+    values.intOrNull("maxDocumentCodeUnits")?.let(builder::maxDocumentCodeUnits)
     values.intOrNull("maxGroupPlacements")?.let(builder::maxGroupPlacements)
     values.intOrNull("maxFieldPlacements")?.let(builder::maxFieldPlacements)
-    values.intOrNull("maxCoordinatesPerPlacement")?.let(builder::maxCoordinatesPerPlacement)
     values.intOrNull("maxPathCodeUnits")?.let(builder::maxPathCodeUnits)
     values.intOrNull("maxRawCodeUnitsPerField")?.let(builder::maxRawCodeUnitsPerField)
     values.intOrNull("maxTotalRawCodeUnits")?.let(builder::maxTotalRawCodeUnits)
@@ -772,20 +724,25 @@ private fun documentInputFailure(error: CoreDocumentInputError): InterpreterBrid
 private fun documentInputDiagnostic(diagnostic: CoreDocumentInputDiagnostic): JsonObject =
     buildJsonObject {
         put("reasonCode", diagnostic.reasonCode.wireName())
-        putOptional("placementKind", diagnostic.placementKind?.wireName())
-        putOptional("placementIndex", diagnostic.placementIndex)
-        putOptional("coordinateIndex", diagnostic.coordinateIndex)
+        putOptional("pointer", diagnostic.pointer)
         putOptional("modelPath", diagnostic.modelPath)
-        putOptional("expectedVersion", diagnostic.expectedVersion)
-        putOptional("actualVersion", diagnostic.actualVersion)
-        putOptional("expectedCoordinateCount", diagnostic.expectedCoordinateCount)
-        putOptional("actualCoordinateCount", diagnostic.actualCoordinateCount)
+        putOptional("entityKind", diagnostic.entityKind?.wireName())
+        putOptional("nodeType", diagnostic.nodeType?.wireName())
         putOptional("resource", diagnostic.resource?.wireName())
         putOptional("maximum", diagnostic.maximum)
         putOptional("actual", diagnostic.actual)
-        putOptional("firstPlacementIndex", diagnostic.firstPlacementIndex)
         put("message", diagnostic.message)
     }
+
+private fun documentEncodeFailure(error: CoreDocumentEncodeError): InterpreterBridgeFailure =
+    InterpreterBridgeFailure(
+        code = error.code,
+        message = error.message.orEmpty(),
+        detailsJson = buildJsonObject {
+            put("modelPath", error.modelPath)
+            put("pointer", error.pointer)
+        }.toString(),
+    )
 
 private fun ownerMismatchFailure(error: CoreModelOwnerMismatchError): InterpreterBridgeFailure =
     InterpreterBridgeFailure(error.code, error.message.orEmpty(), "{}")
@@ -868,26 +825,25 @@ private fun CoreModelPreparationResource.wireName(): String = when (this) {
     CoreModelPreparationResource.PREPARED_ELEMENTS -> "prepared-elements"
 }
 
-private fun CoreDocumentPlacementKind.wireName(): String = when (this) {
-    CoreDocumentPlacementKind.GROUP -> "group"
-    CoreDocumentPlacementKind.FIELD -> "field"
+private fun CoreDocumentInputReasonCode.wireName(): String = when (this) {
+    CoreDocumentInputReasonCode.MALFORMED_JSON -> "malformed-json"
+    CoreDocumentInputReasonCode.UNKNOWN_MODEL_PATH -> "unknown-model-path"
+    CoreDocumentInputReasonCode.UNEXPECTED_NODE_TYPE -> "unexpected-node-type"
+    CoreDocumentInputReasonCode.INVALID_DOCUMENT_ID -> "invalid-document-id"
+    CoreDocumentInputReasonCode.RESOURCE_LIMIT_EXCEEDED -> "resource-limit-exceeded"
 }
 
-private fun CoreDocumentInputReasonCode.wireName(): String = when (this) {
-    CoreDocumentInputReasonCode.UNSUPPORTED_VERSION -> "unsupported-version"
-    CoreDocumentInputReasonCode.UNKNOWN_MODEL_PATH -> "unknown-model-path"
-    CoreDocumentInputReasonCode.COORDINATE_COUNT_MISMATCH -> "coordinate-count-mismatch"
-    CoreDocumentInputReasonCode.INVALID_COORDINATE -> "invalid-coordinate"
-    CoreDocumentInputReasonCode.INVALID_FIELD_REPETITION -> "invalid-field-repetition"
-    CoreDocumentInputReasonCode.RESOURCE_LIMIT_EXCEEDED -> "resource-limit-exceeded"
-    CoreDocumentInputReasonCode.DUPLICATE_PLACEMENT -> "duplicate-placement"
-    CoreDocumentInputReasonCode.CONFLICTING_PLACEMENT -> "conflicting-placement"
+private fun CoreDocumentJsonNodeType.wireName(): String = when (this) {
+    CoreDocumentJsonNodeType.OBJECT -> "object"
+    CoreDocumentJsonNodeType.ARRAY -> "array"
+    CoreDocumentJsonNodeType.VALUE -> "value"
+    CoreDocumentJsonNodeType.NULL -> "null"
 }
 
 private fun CoreDocumentInputResource.wireName(): String = when (this) {
+    CoreDocumentInputResource.DOCUMENT_CODE_UNITS -> "document-code-units"
     CoreDocumentInputResource.GROUP_PLACEMENTS -> "group-placements"
     CoreDocumentInputResource.FIELD_PLACEMENTS -> "field-placements"
-    CoreDocumentInputResource.COORDINATES_PER_PLACEMENT -> "coordinates-per-placement"
     CoreDocumentInputResource.PATH_CODE_UNITS -> "path-code-units"
     CoreDocumentInputResource.RAW_CODE_UNITS_PER_FIELD -> "raw-code-units-per-field"
     CoreDocumentInputResource.TOTAL_RAW_CODE_UNITS -> "total-raw-code-units"

@@ -1,4 +1,5 @@
 export {
+  DocumentEncodeError,
   DocumentInputError,
   DocumentCoordinateError,
   InterpreterIntegrationError,
@@ -12,8 +13,7 @@ export type {
   DocumentCoordinateReasonCode,
   DocumentInputDiagnostic,
   DocumentInputPathSegment,
-  DocumentPlacementKind,
-  InvalidCoordinateReason,
+  DocumentJsonNodeType,
   InterpreterIntegrationReason,
   ModelPreparationDiagnostic,
   ModelReferenceStep,
@@ -35,9 +35,9 @@ export {
   PreparedDocumentApi,
 } from "./documents.js";
 export type {
-  FieldPlacementInput,
-  GroupPlacementInput,
-  DocumentInputV1,
+  A12Document,
+  A12DocumentField,
+  A12DocumentGroup,
 } from "./documents.js";
 
 export {Interpreter} from "./evaluation.js";

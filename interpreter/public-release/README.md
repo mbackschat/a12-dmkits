@@ -44,24 +44,21 @@ pnpm add https://github.com/mbackschat/a12-interpreter-releases/releases/downloa
 ```ts
 import {
   ModelWorkspace,
-  type DocumentInputV1,
+  type A12Document,
 } from "@mbackschat/a12-interpreter";
 
 const workspace = ModelWorkspace.fromSources([{json: rawModelJson}]);
 const prepared = workspace.prepare("permit-basic");
-const input: DocumentInputV1 = {
-  version: 1,
-  groups: [{path: "/Permit", coordinates: [1]}],
-  fields: [
-    {path: "/Permit/ApplicationNo", coordinates: [1, 1], raw: "P-42"},
-    {path: "/Permit/RequestedArea", coordinates: [1, 1], raw: "120"},
-  ],
+const input: A12Document = {
+  Permit: {ApplicationNo: "P-42", RequestedArea: 120},
 };
 const document = prepared.documents.readDocument(input);
 const result = prepared.createInterpreter().validateFull(document);
 ```
 
-Keep the prepared model and interpreter when a form validates repeated edits; decode a new immutable Document snapshot for each change.
+Documents are A12's own Document JSON — the shape the A12 Kernel serializes: a nested object tree, a repeating group as an array whose index is the repetition, native JSON for numbers and booleans.
+
+Keep the prepared model and interpreter when a form validates repeated edits; read a new immutable Document snapshot for each change.
 
 ## Kotlin and Java
 
@@ -81,7 +78,9 @@ dependencies {
 ```kotlin
 val source = WorkspaceModelSource.builder().json(rawModelJson).build()
 val prepared = ModelWorkspace.fromSources(listOf(source)).prepare("permit-basic")
-val document = prepared.documents.readDocument(input)
+val document = prepared.documents.readDocument(
+    """{"Permit":{"ApplicationNo":"P-42","RequestedArea":120}}""",
+)
 val report = prepared.createInterpreter().validateFull(document)
 ```
 

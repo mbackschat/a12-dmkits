@@ -27,7 +27,10 @@ object A12PointerFormat {
     /** A12's wildcard repetition — "all repetitions", legal only on the last path part. */
     const val WILDCARD: Int = 0
 
-    private val PART = Regex("([\\w_-]+)(\\[(\\d+)?])?")
+    // The closing bracket MUST stay escaped: Kotlin/JS compiles a Regex in unicode (`u`) mode, where a lone
+    // `]` is a SyntaxError — the pattern would fail to construct and every use would see an uninitialized
+    // object. Harmless on the JVM, required on JS (the multiplatform `:interpreter:check` is what catches it).
+    private val PART = Regex("([\\w_-]+)(\\[(\\d+)?\\])?")
 
     /**
      * Render [path] (with or without a leading `/`) and its positional [repetitions] as the canonical string.
