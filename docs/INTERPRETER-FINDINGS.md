@@ -2331,7 +2331,7 @@ The interpreter had **no formal check for a boolean or confirm token at all**: `
 
 | authored token (internal path) | kernel |
 |---|---|
-| boolean `true`, `false` *(the DEFAULT tokens — see the scope limit below)* | clean |
+| boolean `true`, `false` | clean |
 | boolean `TRUE`, `FALSE`, `True` | `feldJaNeinFalsch` |
 | boolean `yes`, `1`, `0`, `wahr` | `feldJaNeinFalsch` |
 | confirm `true` | clean |
@@ -2345,7 +2345,18 @@ The gate IG84 set is met, with one correction to its own text: it asked for "the
 
 **Ledger-hygiene note: `IG84` names two different gaps in this repository's history.** IF137 ("the numerical NFR contract") also graduated from an IG84 — the earlier occupant of the code — and the boolean gap was later minted under the same number. Both citations are live in the docs, so a bare "IG84" is ambiguous: prefer the `IF` number. This is recorded rather than renumbered, because a finding is never renumbered and the gap rows themselves are deleted on completion.
 
-*Locked:* `adapter.laws.BooleanTokenFormalDiffTest` — a 15-row token matrix on the **internal** path (programmatic `Document`), each row's kernel verdict compared against the interpreter's, with an empty divergence set so a new disagreement and a regression both fail. The ingress path stays locked by `A12JsonIngressDiffTest`.
+**Amended 2026-07-29 — the token set is `true`/`false` for EVERY A12 model, not just a "default profile".** A review of `FormatDefinitionJaNein` (which `.equals()`-compares against `jaWert`/`neinWert`, overridable via `DarstellungsInformationIntern.getWahrWert()`) read this finding's "lowercase is literal" as over-generalized from one fixture, and raised our hard-coded check as a refusal broader than its measured basis — the second gap numbered IG88, now **withdrawn**. The discriminating case refutes it. On a model whose `BooleanType` declares `notInDCustomTrueValue: "Y"` / `notInDCustomFalseValue: "N"` and whose `ConfirmType` declares `"Y"`:
+
+| authored token, on a model DECLARING `Y`/`N` | kernel |
+|---|---|
+| boolean `true`, `false` | clean |
+| boolean `Y`, `N` | `feldJaNeinFalsch` |
+| confirm `true` | clean |
+| confirm `Y`, `false` | `feldJaFalsch` |
+
+Byte-identical to a model that declares nothing — so implementing the gate IG88 asked for (load the tokens, compare against them) would have *introduced* a divergence, in the name of removing one. The mechanism, its three links, and the recall limit of the enumeration live in KERNEL-FINDINGS §2 "Value-token representation" (the kernel fact's home): the keys are `@NotInD` — "ignored while generating the validation code" — `TypeConverter` gates them behind a `considerNotInD` that only an out-of-tree ExtMP caller sets, and the runtime override lane has no channel on `DocumentProcessingConfig` and is explicitly nulled by the md-runtime service. **What made the wrong reading credible is worth keeping:** every individual source observation in it was correct. It failed as a *reachability* claim, because the links between "this comparison is configurable" and "a model can configure it" were never attacked — the oracle-by-claim-kind rule's last row, and the same shape as this finding's original layer-confusion lesson, one level up. Two near-misses in the measurement itself: the first probe run was **vacuous** (an injection that silently failed to match the pretty-printed model compared a model with itself and "confirmed" agreement), and a probe that only ran the kernel could not tell "the key is ignored by validation" from "the key was dropped by the reader" — both are now assertions in the lock rather than steps in a transcript.
+
+*Locked:* `adapter.laws.BooleanTokenFormalDiffTest` — a 15-row token matrix on the **internal** path (programmatic `Document`), each row's kernel verdict compared against the interpreter's, with an empty divergence set so a new disagreement and a regression both fail; plus `tokensDeclaredByTheModelDoNotMoveTheFormalCheck`, the declared-token matrix over the `models/return-tokens.dm.json` fixture, which first proves the fixture's tokens survive A12's own model round trip (else the test is vacuous) and that the model is kernel-CONSISTENT, then pins the kernel's verdicts and compares the interpreter's. Verified load-bearing: teaching `formalError` to accept `Y`/`N` — the change IG88 requested — turns it red on the differential arm. The ingress path stays locked by `A12JsonIngressDiffTest`.
 
 ### IF230 — the conformance corpus carries A12 Document JSON, so the corpus finally tests the READER a reimplementation must get right (SHIPPED 2026-07-28)
 

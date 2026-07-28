@@ -1,0 +1,74 @@
+{
+  "header": {
+    "id": "return-tokens",
+    "modelType": "document",
+    "modelVersion": "28.4.0",
+    "locales": [
+      {
+        "code": "en_US"
+      }
+    ],
+    "labels": [],
+    "annotations": [],
+    "modelReferences": []
+  },
+  "content": {
+    "modelInfo": {
+      "name": "return-tokens",
+      "variant": "cockpit",
+      "revision": "Arbeitsversion",
+      "baseYear": "2020",
+      "immutable": false
+    },
+    "modelConfig": {
+      "decimalSeparator": ".",
+      "timeZone": "Europe/Berlin",
+      "conditionLanguage": {
+        "code": "en_US"
+      },
+      "fieldRefByShortNameAllowed": true
+    },
+    "modelRoot": {
+      "rootGroups": [
+        {
+          "type": "Group",
+          "id": "/Return",
+          "name": "Return",
+          "Group": {
+            "repeatability": 1,
+            "elements": [
+              {
+                "type": "Field",
+                "id": "/Return/GiftWrapped",
+                "name": "GiftWrapped",
+                "Field": {
+                  "fieldType": {
+                    "type": "BooleanType",
+                    "BooleanType": {
+                      "notInDCustomTrueValue": "Y",
+                      "notInDCustomFalseValue": "N"
+                    }
+                  }
+                }
+              },
+              {
+                "type": "Field",
+                "id": "/Return/PolicyAccepted",
+                "name": "PolicyAccepted",
+                "Field": {
+                  "fieldType": {
+                    "type": "ConfirmType",
+                    "ConfirmType": {
+                      "notInDCustomTrueValue": "Y"
+                    }
+                  }
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "typeDefinitions": []
+    }
+  }
+}

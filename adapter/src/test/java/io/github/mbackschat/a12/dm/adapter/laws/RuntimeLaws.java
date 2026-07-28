@@ -1379,6 +1379,24 @@ public final class RuntimeLaws {
         return out;
     }
 
+    /**
+     * The model JSON as A12's OWN model serializer rewrites it (deserialize → serialize). Its use is to prove a
+     * hand-authored fixture key genuinely BINDS in the kernel's model tree: a key the deserializer ignored would
+     * be absent from the rewrite, so a test that reads a verdict "on a model declaring X" can show that the model
+     * really does declare X rather than that the key was silently dropped.
+     */
+    static String modelRoundTrip(String modelJson) {
+        IDocumentModelSerializer serializer = new DocumentModelServiceFactory().createDocumentModelSerializer();
+        try {
+            IDocumentModel model = serializer.deserialize(new StringReader(modelJson));
+            StringWriter out = new StringWriter();
+            serializer.serialize(model, out, n -> { });
+            return out.toString();
+        } catch (Exception e) {
+            throw new RuntimeException("failed to round-trip model", e);
+        }
+    }
+
     /** Deserialize + expand (self-contained) the model JSON. */
     private static IDocumentModel expandedModel(String modelJson) {
         var factory = new DocumentModelServiceFactory();

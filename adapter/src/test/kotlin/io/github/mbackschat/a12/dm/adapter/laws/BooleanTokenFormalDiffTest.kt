@@ -27,11 +27,28 @@ import org.junit.jupiter.api.Test
  * the **ingress converter**, a different layer, whose rows live in `A12JsonIngressKernelTest`; asserting it here
  * imported the mechanism this very test disproves for the stored-token layer. Caught by review — it is the same
  * layer-confusion IF229 exists to record, committed in the file that records it.)
+ *
+ * **The token set is `true`/`false` for EVERY A12 DocumentModel, including one that declares its own tokens.**
+ * `BooleanType`/`ConfirmType` do carry `notInDCustomTrueValue`/`notInDCustomFalseValue` in DM-JSON, and a review
+ * of the kernel's `FormatDefinitionJaNein` (which compares against configurable `jaWert`/`neinWert`) read that as
+ * our hard-coded tokens being a refusal broader than its basis (raised as IG88 — the *second* gap to carry that
+ * code, after IF151's — withdrawn 2026-07-29; IF229 holds the amendment). Measurement refuted it: those
+ * keys are `@NotInD` — "ignored while generating the validation code" — and `TypeConverter.convertBoolean` gates
+ * them behind `considerNotInD`, which every kernel caller leaves `false` (only the no-arg
+ * `ExternalDocumentModelService()` is ever constructed), so codegen emits `FormatDefinitionJaNein("true","false")`
+ * whatever the model says. The runtime override lane (`DarstellungsInformationIntern.getWahrWert()`) needs a
+ * `PresentationInformation` that `DocumentProcessingConfig` has no channel for and that the md-runtime service
+ * explicitly nulls ("the document values always use the canonical format", `LowKernelApiUtils`).
+ * [tokensDeclaredByTheModelDoNotMoveTheFormalCheck] is that measurement, kept as the lock for IF229's scope.
  */
 class BooleanTokenFormalDiffTest {
 
     private val orderJson = RuntimeLaws.model("models/order.dm.json")
     private val def by lazy { ModelLoader.load(orderJson) }
+
+    /** A model whose BOOLEAN / CONFIRM fields declare non-default tokens (`Y`/`N`) in DM-JSON. */
+    private val tokensJson = RuntimeLaws.model("models/return-tokens.dm.json")
+    private val tokensDef by lazy { ModelLoader.load(tokensJson) }
 
     @Test
     fun everyBooleanAndConfirmTokenAgreesWithTheKernelOnFormalValidity() {
@@ -74,9 +91,59 @@ class BooleanTokenFormalDiffTest {
         }
     }
 
+    /**
+     * The discriminating case for IG88: a model that DECLARES `Y`/`N` as its boolean tokens (and `Y` for the
+     * confirm). IG88's mechanism predicts the kernel is clean on `Y` and fires on `true`; the measured mechanism
+     * predicts no change at all. Both engines are asked, so this is a differential and a kernel pin at once.
+     *
+     * The fixture's tokens are proven to BIND first — a key the kernel's deserializer ignored would make every
+     * verdict below agree for the uninteresting reason that the model never declared anything. (The first run of
+     * this probe was exactly that vacuous: an injection that silently failed to match compared a model with
+     * itself.)
+     */
+    @Test
+    fun tokensDeclaredByTheModelDoNotMoveTheFormalCheck() {
+        assertEquals(
+            listOf("notInDCustomFalseValue=N", "notInDCustomTrueValue=Y", "notInDCustomTrueValue=Y"),
+            Regex(""""(notInDCustom(?:True|False)Value)"\s*:\s*"([^"]*)"""")
+                .findAll(RuntimeLaws.modelRoundTrip(tokensJson))
+                .map { "${it.groupValues[1]}=${it.groupValues[2]}" }.sorted().toList(),
+            "the fixture's declared tokens must survive A12's own model round trip — otherwise this test is vacuous",
+        )
+        assertEquals(emptyList<String>(), RuntimeLaws.consistencyMessages(tokensJson),
+            "the token-declaring fixture must be a CONSISTENT A12 model, not merely a parseable one")
+
+        val expected = mapOf(
+            // The DEFAULT tokens stay clean even though the model declares Y/N…
+            (DECL_BOOLEAN to "true") to emptyList<String>(),
+            (DECL_BOOLEAN to "false") to emptyList(),
+            // …and the DECLARED tokens are formal errors, exactly as on a model that declares nothing.
+            (DECL_BOOLEAN to "Y") to listOf("feldJaNeinFalsch"),
+            (DECL_BOOLEAN to "N") to listOf("feldJaNeinFalsch"),
+            (DECL_CONFIRM to "true") to emptyList(),
+            (DECL_CONFIRM to "Y") to listOf("feldJaFalsch"),
+            (DECL_CONFIRM to "false") to listOf("feldJaFalsch"),
+        )
+
+        val divergences = expected.mapNotNull { (key, kernelVerdict) ->
+            val (field, token) = key
+            val kernel = RuntimeLaws.firedCodes(tokensJson, setOf("/Return"), mapOf(field to token)).sorted()
+            assertEquals(kernelVerdict, kernel,
+                "the KERNEL's verdict for a model-DECLARED token changed at $field=\"$token\" — re-read IF229")
+
+            val document = tokensDef.newDocument().field(field, token, 1, 1)
+            val interpreter = DmInterpreter(tokensDef).validateFull(document).map { it.code }.sorted()
+            if (kernel == interpreter) null else "$field=\"$token\" kernel=$kernel interp=$interpreter"
+        }.toSet()
+
+        assertEquals(emptySet<String>(), divergences, "declared-token formal validity diverged")
+    }
+
     private companion object {
         const val BOOLEAN = "/Order/ExpressShipping"
         const val CONFIRM = "/Order/TermsConfirmed"
+        const val DECL_BOOLEAN = "/Return/GiftWrapped"
+        const val DECL_CONFIRM = "/Return/PolicyAccepted"
 
         /** Every (field, authored token) pair probed against the real Kernel. */
         val MATRIX = listOf(
