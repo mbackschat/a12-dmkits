@@ -32,8 +32,10 @@ class CorpusSchemaGuardTest {
         val text = schema.readText()
         // Cross-check: the published schema mentions the keys/enums the code (CaseJson) requires, so the two
         // cannot silently drift (a deleted key or renamed enum token trips here).
-        listOf("\"meta\"", "\"modelRef\"", "models/", "\"placements\"", "\"op\"", "fuzz-seed", "curated",
-            "validateFull", "validatePart", "compute", "GROUP", "FIELD", "EMPTY").forEach {
+        // The placement-kind tokens (GROUP/FIELD/EMPTY) are deliberately gone: a case carries A12's canonical
+        // Document JSON, whose encoding the schema describes in prose rather than as an enum (IF230).
+        listOf("\"meta\"", "\"modelRef\"", "models/", "\"document\"", "\"op\"", "fuzz-seed", "curated",
+            "validateFull", "validatePart", "compute").forEach {
             assertTrue(it in text) { "corpus/case.schema.json is missing expected token $it" }
         }
     }

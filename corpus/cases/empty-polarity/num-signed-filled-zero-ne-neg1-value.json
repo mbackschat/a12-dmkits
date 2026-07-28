@@ -17,33 +17,12 @@
         "notes": "a filled 0 (not empty) fires `!= -1` as VALUE; the filled-state pair of num-signed-empty-ne-neg1-omission (same signed rule, only empty→filled differs, flipping OMISSION→VALUE)"
     },
     "modelRef": "models/order-qty-ne-neg-one.json",
-    "placements": [
-        {
-            "kind": "GROUP",
-            "path": "/Order",
-            "reps": [
-                1
-            ]
-        },
-        {
-            "kind": "FIELD",
-            "path": "/Order/CustomerName",
-            "reps": [
-                1,
-                1
-            ],
-            "value": "Acme"
-        },
-        {
-            "kind": "FIELD",
-            "path": "/Order/Quantity",
-            "reps": [
-                1,
-                1
-            ],
-            "value": "0"
+    "document": {
+        "Order": {
+            "CustomerName": "Acme",
+            "Quantity": 0
         }
-    ],
+    },
     "op": {
         "kind": "validateFull"
     },

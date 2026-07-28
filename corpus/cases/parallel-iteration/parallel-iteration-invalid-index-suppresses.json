@@ -13,98 +13,26 @@
         "notes": "an EMPTY Department cell makes Supply's index invalid: references into Supply read 3VL UNKNOWN, suppressing the negative operator for Sales — only Ops (a valid Supply-only key) fires at Demand[-5]; the empty index cell itself draws the formal mandatoryField"
     },
     "modelRef": "models/staffing-coverage-pair.json",
-    "placements": [
-        {
-            "kind": "GROUP",
-            "path": "/Staffing",
-            "reps": [
-                1
+    "document": {
+        "Staffing": {
+            "PlanName": "Q3",
+            "Demand": [
+                {
+                    "Department": "Sales",
+                    "Headcount": 5
+                }
+            ],
+            "Supply": [
+                {
+                    "Department": "Ops",
+                    "Headcount": 2
+                },
+                {
+                    "Headcount": 4
+                }
             ]
-        },
-        {
-            "kind": "FIELD",
-            "path": "/Staffing/PlanName",
-            "reps": [
-                1,
-                1
-            ],
-            "value": "Q3"
-        },
-        {
-            "kind": "GROUP",
-            "path": "/Staffing/Demand",
-            "reps": [
-                1,
-                1
-            ]
-        },
-        {
-            "kind": "FIELD",
-            "path": "/Staffing/Demand/Department",
-            "reps": [
-                1,
-                1,
-                1
-            ],
-            "value": "Sales"
-        },
-        {
-            "kind": "FIELD",
-            "path": "/Staffing/Demand/Headcount",
-            "reps": [
-                1,
-                1,
-                1
-            ],
-            "value": "5"
-        },
-        {
-            "kind": "GROUP",
-            "path": "/Staffing/Supply",
-            "reps": [
-                1,
-                1
-            ]
-        },
-        {
-            "kind": "FIELD",
-            "path": "/Staffing/Supply/Department",
-            "reps": [
-                1,
-                1,
-                1
-            ],
-            "value": "Ops"
-        },
-        {
-            "kind": "FIELD",
-            "path": "/Staffing/Supply/Headcount",
-            "reps": [
-                1,
-                1,
-                1
-            ],
-            "value": "2"
-        },
-        {
-            "kind": "GROUP",
-            "path": "/Staffing/Supply",
-            "reps": [
-                1,
-                2
-            ]
-        },
-        {
-            "kind": "FIELD",
-            "path": "/Staffing/Supply/Headcount",
-            "reps": [
-                1,
-                2,
-                1
-            ],
-            "value": "4"
         }
-    ],
+    },
     "op": {
         "kind": "validateFull"
     },

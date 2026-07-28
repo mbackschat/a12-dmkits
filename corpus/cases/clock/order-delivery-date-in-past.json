@@ -14,24 +14,11 @@
     },
     "modelRef": "models/order-delivery-past.json",
     "clock": "2026-07-06T12:00:00",
-    "placements": [
-        {
-            "kind": "GROUP",
-            "path": "/Order",
-            "reps": [
-                1
-            ]
-        },
-        {
-            "kind": "FIELD",
-            "path": "/Order/DeliveryDate",
-            "reps": [
-                1,
-                1
-            ],
-            "value": "2020-01-01"
+    "document": {
+        "Order": {
+            "DeliveryDate": "2020-01-01"
         }
-    ],
+    },
     "op": {
         "kind": "validateFull"
     },

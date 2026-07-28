@@ -54,7 +54,12 @@ object CaseJson {
                     "conformance case is missing required 'modelRef' — expected a corpus-root-relative model path " +
                         "like \"models/<name>.json\"",
                 ),
-            placements = root.arr("placements").map { parsePlacement(it.jsonObject) },
+            document = (
+                root["document"] ?: throw IllegalArgumentException(
+                    "conformance case is missing required 'document' — expected A12's canonical Document JSON " +
+                        "(a root group name is a top-level key; the retired 'placements' array is gone)",
+                )
+                ).toString(),
             op = parseOp(root.obj("op")),
             clock = root["clock"]?.jsonPrimitive?.contentOrNull,
             expected = root["expected"]?.jsonArray?.strings(),
@@ -175,7 +180,7 @@ object CaseJson {
         put("meta", metaJson(case.meta))
         put("modelRef", case.modelRef)
         case.clock?.let { put("clock", it) }
-        putJsonArray("placements") { case.placements.forEach { p -> add(placementJson(p)) } }
+        put("document", Json.parseToJsonElement(case.document))
         put("op", opJson(case.op))
         case.expected?.let { putStrings("expected", it) }
         case.computeExpected?.let { putStrings("computeExpected", it) }

@@ -14,91 +14,22 @@
         "notes": "the filter keeps NO row — the empty keep-set folds to the Sum identity 0, so `== 0` fires"
     },
     "modelRef": "models/order-no-light-items.json",
-    "placements": [
-        {
-            "kind": "GROUP",
-            "path": "/Order",
-            "reps": [
-                1
+    "document": {
+        "Order": {
+            "Items": [
+                {
+                    "Count": 3,
+                    "Sku": "A",
+                    "UnitWeight": 2.0
+                },
+                {
+                    "Count": 10,
+                    "Sku": "B",
+                    "UnitWeight": 2.0
+                }
             ]
-        },
-        {
-            "kind": "GROUP",
-            "path": "/Order/Items",
-            "reps": [
-                1,
-                1
-            ]
-        },
-        {
-            "kind": "FIELD",
-            "path": "/Order/Items/Sku",
-            "reps": [
-                1,
-                1,
-                1
-            ],
-            "value": "A"
-        },
-        {
-            "kind": "FIELD",
-            "path": "/Order/Items/Count",
-            "reps": [
-                1,
-                1,
-                1
-            ],
-            "value": "3"
-        },
-        {
-            "kind": "FIELD",
-            "path": "/Order/Items/UnitWeight",
-            "reps": [
-                1,
-                1,
-                1
-            ],
-            "value": "2.00"
-        },
-        {
-            "kind": "GROUP",
-            "path": "/Order/Items",
-            "reps": [
-                1,
-                2
-            ]
-        },
-        {
-            "kind": "FIELD",
-            "path": "/Order/Items/Sku",
-            "reps": [
-                1,
-                2,
-                1
-            ],
-            "value": "B"
-        },
-        {
-            "kind": "FIELD",
-            "path": "/Order/Items/Count",
-            "reps": [
-                1,
-                2,
-                1
-            ],
-            "value": "10"
-        },
-        {
-            "kind": "FIELD",
-            "path": "/Order/Items/UnitWeight",
-            "reps": [
-                1,
-                2,
-                1
-            ],
-            "value": "2.00"
         }
-    ],
+    },
     "op": {
         "kind": "validateFull"
     },

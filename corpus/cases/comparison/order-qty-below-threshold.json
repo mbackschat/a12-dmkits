@@ -12,24 +12,11 @@
         "notes": "a number comparison firing on a below-threshold value"
     },
     "modelRef": "models/order-qty-low.json",
-    "placements": [
-        {
-            "kind": "GROUP",
-            "path": "/Order",
-            "reps": [
-                1
-            ]
-        },
-        {
-            "kind": "FIELD",
-            "path": "/Order/Quantity",
-            "reps": [
-                1,
-                1
-            ],
-            "value": "5"
+    "document": {
+        "Order": {
+            "Quantity": 5
         }
-    ],
+    },
     "op": {
         "kind": "validateFull"
     },

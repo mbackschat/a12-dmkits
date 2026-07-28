@@ -1,8 +1,11 @@
 package io.github.mbackschat.a12.dm.interpreter.conformance
 
+import io.github.mbackschat.a12.dm.interpreter.eval.Document
 import io.github.mbackschat.a12.dm.interpreter.eval.formatPointer
 import io.github.mbackschat.a12.dm.interpreter.model.Kind
 import io.github.mbackschat.a12.dm.interpreter.model.ModelDef
+import io.github.mbackschat.a12.dm.interpreter.eval.newDocument
+import io.github.mbackschat.a12.dm.interpreter.gen.asSink
 
 /**
  * Project the interpreter's report-ALL compute signatures onto the **kernel's three-channel change projection**,
@@ -21,7 +24,7 @@ import io.github.mbackschat.a12.dm.interpreter.model.ModelDef
  * library contract, and result-envelope granularity is not behavior-parity territory (the compute-granularity
  * ruling — KERNEL-FINDINGS "compute reporting granularity", CONFORMANCE-CORPUS-SPEC §7) — so
  * every comparison surface that diffs the interpreter against a kernel-granularity multiset projects through
- * this function first, diffing the interpreter's outcomes against the input placements.
+ * this function first, diffing the interpreter's outcomes against the document's supplied cells.
  *
  * On a placement-built input document the cell values are raw **strings**, so the kernel's typed change
  * equality can hold only for a **STRING-kind** target (a number/date/boolean computes to a typed value —
@@ -48,14 +51,11 @@ class KernelComputeProjection private constructor(private val seeded: Map<String
 
     companion object {
         /** Build the immutable input side once when a reusable document instance is materialized. */
-        fun prepare(placements: List<Placement>, model: ModelDef): KernelComputeProjection {
+        fun prepare(document: Document, model: ModelDef): KernelComputeProjection {
             val seeded = HashMap<String, SeededCell>()
-            for (placement in placements) {
-                if (placement.kind == PlacementKind.FIELD && !placement.value.isNullOrEmpty()) {
-                    seeded[formatPointer(placement.path, placement.reps)] = SeededCell(
-                        placement.value,
-                        model.kinds[placement.path],
-                    )
+            for (cell in document.placementsSnapshot()) {
+                if (!cell.isGroup && !cell.raw.isNullOrEmpty()) {
+                    seeded[formatPointer(cell.path, cell.reps)] = SeededCell(cell.raw, model.kinds[cell.path])
                 }
             }
             return KernelComputeProjection(seeded)
@@ -66,5 +66,10 @@ class KernelComputeProjection private constructor(private val seeded: Map<String
 }
 
 /** One-shot compatibility form; repeated callers should prepare [KernelComputeProjection] once. */
+fun kernelComputeGranularity(signatures: List<String>, document: Document, model: ModelDef): List<String> =
+    KernelComputeProjection.prepare(document, model).project(signatures)
+
+/** Capture-side overload: project against a placement scenario, before a committed case (and its document) exists. */
 fun kernelComputeGranularity(signatures: List<String>, placements: List<Placement>, model: ModelDef): List<String> =
-    KernelComputeProjection.prepare(placements, model).project(signatures)
+    kernelComputeGranularity(signatures, model.newDocument().also { placements.replayInto(it.asSink()) }, model)
+

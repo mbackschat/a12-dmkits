@@ -220,7 +220,7 @@ object InterpreterPerfEngine : PerfEngine {
                 val placements = ArrayList<Placement>()
                 scenario.instance(CapturingDocumentSink(doc.asSink(), placements), n, variant)
                 val computeProjection = if (scenario.op == PerfOp.COMPUTE) {
-                    KernelComputeProjection.prepare(placements, model)
+                    KernelComputeProjection.prepare(doc, model)
                 } else {
                     null
                 }

@@ -18,32 +18,12 @@
         "notes": "Length is grow-only, so an always-true `>= 0` fires as VALUE (filling only lengthens); the comparison-direction pair of str-empty-length-lt-omission"
     },
     "modelRef": "models/order-code-length-ge.json",
-    "placements": [
-        {
-            "kind": "GROUP",
-            "path": "/Order",
-            "reps": [
-                1
-            ]
-        },
-        {
-            "kind": "FIELD",
-            "path": "/Order/CustomerName",
-            "reps": [
-                1,
-                1
-            ],
-            "value": "Acme"
-        },
-        {
-            "kind": "EMPTY",
-            "path": "/Order/ProductCode",
-            "reps": [
-                1,
-                1
-            ]
+    "document": {
+        "Order": {
+            "CustomerName": "Acme",
+            "ProductCode": null
         }
-    ],
+    },
     "op": {
         "kind": "validateFull"
     },

@@ -1,6 +1,6 @@
 # Conformance corpus — case format & runner contract
 
-The portable, kernel-independent record of A12 document-model **runtime semantics as data**: each case is one JSON file holding a reference to a document model, one document instance, one operation, and the kernel-verified expected outcome — the models themselves are **standalone DM-JSON files** the cases share. Any engine that claims kernel-compatible evaluation — the in-repo interpreter (JVM and JS), a kernel codegen strategy, or a third-party reimplementation — demonstrates it by replaying the corpus and matching the expectations. The contract below is what a runner implements; the *why* behind the program lives in the [formalization proposal §7](archived/SEMANTICS-FORMALIZATION-PROPOSAL.md).
+The portable, kernel-independent record of A12 document-model **runtime semantics as data**: each case is one JSON file holding a reference to a document model, one document instance in A12's canonical Document JSON, one operation, and the kernel-verified expected outcome — the models themselves are **standalone DM-JSON files** the cases share. Any engine that claims kernel-compatible evaluation — the in-repo interpreter (JVM and JS), a kernel codegen strategy, or a third-party reimplementation — demonstrates it by replaying the corpus and matching the expectations. The contract below is what a runner implements; the *why* behind the program lives in the [formalization proposal §7](archived/SEMANTICS-FORMALIZATION-PROPOSAL.md).
 
 Contract fixed 2026-07-06 (WI-3a); amended 2026-07-06 (owner): models moved out of the case files into standalone `models/*.json` referenced by `modelRef` — envelope-free, so they open in the A12 modeling tools and feed `dmtool` directly, and one model serves many cases. The reference capture harness and JVM runner are specified as obligations in [§13](#13-reference-implementation-obligations); the proposal's §4 tracks what is built.
 
@@ -44,7 +44,7 @@ corpus/
 | `meta.notes` | no | One human sentence on what the case pins. |
 | `modelRef` | yes | Corpus-root-relative path of the case's model file (e.g. `"models/order-basic.json"`). The file is **expanded, self-contained DM-JSON** (includes resolved upstream by the kernel's `expand()`), valid at `meta.kernelVersion`, with rules/computations embedded as stored-English condition strings. |
 | `clock` | iff needed | Present exactly when evaluation touches `Today`/`Now` — see [§9](#9-the-clock). |
-| `placements` | yes | The document instance as an ordered placement list — see [§4](#4-placements). |
+| `document` | yes | The document instance as **A12's canonical Document JSON** — see [§4](#4-the-document). |
 | `op` | yes | The operation to run — see [§8](#8-operations). |
 | `expected` | for validate ops | Sorted signature multiset — see [§6](#6-validation-expectations--signatures). An **empty array is a real assertion** (nothing may fire). |
 | `computeExpected` | for `compute` | Sorted compute-outcome multiset — see [§7](#7-compute-expectations). |
@@ -66,11 +66,9 @@ Illustrative example (shape-normative; the values are not a captured expectation
   // a scale-2 number Amount, and a rule CLAIM_MIN with error field Claims-star Amount
   // storing the English condition  MinValue(Claims*/Amount) < 50
   "modelRef": "models/policy-claims.json",
-  "placements": [
-    { "kind": "GROUP", "path": "/Policy", "reps": [1] },
-    { "kind": "GROUP", "path": "/Policy/Claims", "reps": [1, 1] },
-    { "kind": "FIELD", "path": "/Policy/Claims/Amount", "reps": [1, 1, 1], "value": "20.00" }
-  ],
+  "document": {
+    "Policy": { "Claims": [ { "Amount": 20.00 } ] }
+  },
   "op": { "kind": "validateFull" },
   "expected": [
     "CLAIM_MIN|VALUE_ERROR|/Policy[1]/Claims[1]/Amount"
@@ -78,22 +76,27 @@ Illustrative example (shape-normative; the values are not a captured expectation
 }
 ```
 
-## 4. Placements
+## 4. The document
 
-A placement list is the serialized form of the engine-neutral `PlacementSink` protocol (`interpreter/…/gen/PlacementSink.kt`): one group row or field cell at a time, each addressed by **one 1-based repetition index per path segment — the addressed segment included**.
+A case's instance is **A12's canonical Document JSON** — the shape the A12 Kernel's document serializer reads and writes, specified in [KERNEL-FINDINGS](KERNEL-FINDINGS.md) "The canonical Document JSON and `DocumentPointer` string". A runner feeds it to its own public document reader; it does not translate it first.
 
-| `kind` | Meaning | `reps` | `value` |
-|---|---|---|---|
-| `GROUP` | Instantiate a group row | One index per path segment; the last index is the new row's | — |
-| `FIELD` | A field cell with a value | One index per path segment (the field's own trailing index is `1` — fields do not repeat) | The stored-form value string |
-| `EMPTY` | A **present-but-valueless** field cell | As `FIELD` | — |
+| Construct | Encoding |
+|---|---|
+| a root group | a **top-level key** — there is no wrapper object |
+| a non-repeating group | a nested object keyed by child name |
+| a repeating group | an **array**, whose INDEX is the repetition; an unfilled row is `{}` |
+| an omitted group or field | a **missing key** |
+| a field present with no value | `null` |
+| a field value | native JSON for NUMBER and BOOLEAN/CONFIRM, a model-format string for the date family, the S-value for an enumeration |
 
 Rules a runner must honor:
 
-- **Every group row is placed explicitly — the root and non-repeatable groups included** (their single row carries index `1`). A case's placements are self-contained; nothing is implied.
-- **Order matters: parent row before its contents.** A `GROUP` placement precedes every placement addressed beneath that row. Replay is sequential.
-- `EMPTY` materializes the field instance without a value — it is how a case distinguishes an *instantiated-empty* cell from an absent one (the content-bearing-row semantics of KERNEL-FINDINGS §2 / interpreter findings IF53–IF54 hang on this distinction).
-- `value` is the stored-form string exactly as a document holds it (`"20.00"`, `"13.07.2026"`, `"true"`, an enum key, …). Runners pass it through verbatim; no re-formatting.
+- **The reader is deliberately permissive, and a case may rely on it.** An object at a repeating group is one row at repetition 1, and an **array at a non-repeating group is rows 1..n** — which is how a case addresses an over-repetition so the formal gate can report it. Both readings are A12's (`DocumentV2JsonReader.repetitionsFromJson` never consults repeatability).
+- **`null` is not an omission.** It is a present-but-valueless cell, which is how a case distinguishes an *instantiated-empty* cell from an absent one (the content-bearing-row semantics of KERNEL-FINDINGS §2 / interpreter findings IF53–IF54 hang on this distinction). `""` reaches the same evaluation state while keeping its own distinct raw text.
+- **Committed documents are canonical**, i.e. the codec's fixed point: array-versus-object follows *declared* repeatability, and direct fields precede subgroups with each sorted by name. Because the reader is permissive this cannot fail at replay time, so it is guarded directly (`interpreter … CorpusDocumentCanonicalTest`).
+- Values are **stored-form**: a runner passes them through without re-formatting. Reading normalizes exactly as A12's own ingestion does (a number to its plain form, a boolean case-insensitively) — see [KERNEL-FINDINGS](KERNEL-FINDINGS.md); every committed value is already in that form, so replay is unaffected by it.
+
+> **History.** Until 2026-07-28 a case carried `placements[]` — an ordered list of `{kind, path, reps, value}` records, the serialized `PlacementSink` protocol. That was a shape this project invented for a concept A12 already defines, and it meant the corpus exercised an *internal* construction path while the public reader — the part a third-party reimplementation must get right — went untested by the corpus. Step 4 of the A12 shape consolidation converted every case through the codec itself. The `PlacementSink` protocol remains, in its proper place: capture builds a scenario with it *before* a case exists, then serializes the resulting document canonically.
 
 ## 5. The pointer format
 
@@ -163,7 +166,7 @@ On a placement-built input the cell values are raw strings, so the typed change-
 
 `validatePart` semantics a runner must honor:
 
-- Each `relevant` entry is a **concrete instance pointer** in placement addressing (path + one index per segment, as [§4](#4-placements)).
+- Each `relevant` entry is a **concrete instance pointer** (path + one 1-based index per segment, the addressed segment included).
 - A relevant **group** row makes everything beneath it relevant (the kernel's group expansion ⇄ the interpreter's ancestor-prefix match).
 - A relevant pointer **may be phantom** (name a row absent from the instance) — the kernel evaluates relevant instances regardless of content (IF54), which is exactly the partial-only semantics these cases exist to pin.
 - Partial cases carry `meta.tags: ["partial", …]`.
@@ -204,7 +207,7 @@ Engine mapping for the in-repo runners: the interpreter takes `EvalClock(today =
 A conformance runner, per case:
 
 1. Resolve `modelRef` against the corpus root and parse the model file (DM-JSON **including its stored condition strings** — a parse failure is a FAIL, not a SKIP: parser conformance is in scope by design; an unresolvable `modelRef` is a corpus defect, not a runner verdict).
-2. Build the instance by replaying `placements` in order ([§4](#4-placements)).
+2. Read the `document` through the engine's own **public** document reader ([§4](#4-the-document)) — the reader is part of what the corpus tests, so a runner must not bypass it with an internal construction path.
 3. Inject `clock` if present ([§9](#9-the-clock)).
 4. Execute `op`, render the outcome as signatures ([§6](#6-validation-expectations--signatures)/[§7](#7-compute-expectations)), sort, compare.
 5. Report one verdict: **PASS** (multiset equal) · **FAIL** (any difference) · **SKIP** (a named construct the engine declaredly does not support, with the reason).
@@ -219,7 +222,7 @@ What the in-repo reference capture + runners must satisfy (beyond the runner con
 |---|---|
 | **Capture source** | The kernel Groovy-dynamic service (the `RuntimeLaws` harness in `:adapter`), routed through the modern `DocumentV2` + `DocumentProcessingConfig` path ([§9](#9-the-clock)). |
 | **Tri-verification before commit** | Every case is verified `interpreter == kernel-groovy-dynamic == kernel-java-static` at capture time; a java-static split becomes a `divergences` entry, an interpreter split blocks the case (it is a bug to fix first). |
-| **Serializable placements** | The capture seam's placement record is promoted to a public serializable type (today `FuzzDiagnostics.Place`, private). |
+| **Serializable capture scenario** | The capture seam's placement record is promoted to a public serializable type (today `FuzzDiagnostics.Place`, private). Capture-side only: a committed case carries A12 Document JSON, so this shape never reaches the corpus. |
 | **Per-row compute identity** | The interpreter exposes repetition indices on its compute outcomes (internally present as `ComputedInstance`), and kernel compute paths are normalized to the [§5](#5-the-pointer-format) form — replacing the index-strip comparison ([§7](#7-compute-expectations)). |
 | **Build discipline** | Corpus-reading tests run in a dedicated Gradle task with the corpus files as **declared inputs** (the `docGuardTest` pattern, [TESTING-SPEC](TESTING-SPEC.md)) — no false green, no full-suite re-runs on a case edit. |
 | **Schema & id guard** | A machine-readable case schema (`corpus/case.schema.json`) plus a guard: every case validates, `meta.id` equals the file stem, ids unique, `partial` tag ⇔ `validatePart`, every `modelRef` resolves, every model file loads as a model, its `header.id` equals the file stem (unique workspace-item name), its date-field `format`s are SME-canonical, and no model file is orphaned. |

@@ -13,71 +13,20 @@
         "notes": "a per-row computation over a repeatable group — per-row identity"
     },
     "modelRef": "models/order-stock-compute.json",
-    "placements": [
-        {
-            "kind": "GROUP",
-            "path": "/Order",
-            "reps": [
-                1
+    "document": {
+        "Order": {
+            "Items": [
+                {
+                    "Count": 2,
+                    "Sku": "A"
+                },
+                {
+                    "Count": 3,
+                    "Sku": "B"
+                }
             ]
-        },
-        {
-            "kind": "GROUP",
-            "path": "/Order/Items",
-            "reps": [
-                1,
-                1
-            ]
-        },
-        {
-            "kind": "FIELD",
-            "path": "/Order/Items/Sku",
-            "reps": [
-                1,
-                1,
-                1
-            ],
-            "value": "A"
-        },
-        {
-            "kind": "FIELD",
-            "path": "/Order/Items/Count",
-            "reps": [
-                1,
-                1,
-                1
-            ],
-            "value": "2"
-        },
-        {
-            "kind": "GROUP",
-            "path": "/Order/Items",
-            "reps": [
-                1,
-                2
-            ]
-        },
-        {
-            "kind": "FIELD",
-            "path": "/Order/Items/Sku",
-            "reps": [
-                1,
-                2,
-                1
-            ],
-            "value": "B"
-        },
-        {
-            "kind": "FIELD",
-            "path": "/Order/Items/Count",
-            "reps": [
-                1,
-                2,
-                1
-            ],
-            "value": "3"
         }
-    ],
+    },
     "op": {
         "kind": "compute"
     },

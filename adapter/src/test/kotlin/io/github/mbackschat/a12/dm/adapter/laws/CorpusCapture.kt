@@ -7,6 +7,7 @@ import io.github.mbackschat.a12.dm.interpreter.conformance.Op
 import io.github.mbackschat.a12.dm.interpreter.conformance.Placement
 import io.github.mbackschat.a12.dm.interpreter.conformance.kernelComputeGranularity
 import io.github.mbackschat.a12.dm.interpreter.load.ModelLoader
+import io.github.mbackschat.a12.dm.interpreter.conformance.documentJsonOf
 
 /**
  * **Conformance corpus capture** (CONFORMANCE-CORPUS-SPEC §13) — turns a scenario `(model, placements, op,
@@ -59,7 +60,7 @@ object CorpusCapture {
         return ConformanceCase(
             meta = meta.copy(kernelVersion = CorpusEngines.KERNEL_VERSION),
             modelRef = modelRefOf(modelName),
-            placements = placements,
+            document = documentJsonOf(placements, ModelLoader.load(modelJson)),
             op = op,
             clock = clock,
             expected = if (isCompute) null else anchor,

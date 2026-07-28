@@ -10,13 +10,6 @@ import {
 const EXPECTED_CORPUS_CASES = 33;
 const DEFERRED_CLOCK_CASE = "order-delivery-date-in-past";
 
-interface CorpusPlacement {
-  readonly kind: "GROUP" | "FIELD" | "EMPTY";
-  readonly path: string;
-  readonly reps: readonly number[];
-  readonly value?: string;
-}
-
 type CorpusOperation =
   | {readonly kind: "validateFull"}
   | {
@@ -32,7 +25,7 @@ interface CorpusCase {
   readonly meta: {readonly id: string};
   readonly modelRef: string;
   readonly clock?: string;
-  readonly placements: readonly CorpusPlacement[];
+  readonly document: A12Document;
   readonly op: CorpusOperation;
   readonly expected?: readonly string[];
   readonly computeExpected?: readonly string[];
@@ -86,75 +79,39 @@ const stringFieldPathsOf = (json: string): ReadonlySet<string> => {
   return paths;
 };
 
-interface DocumentTreeNode {
-  readonly fields: Record<string, string>;
-  readonly subgroups: Map<string, Map<number, DocumentTreeNode>>;
-}
-
-const treeNode = (): DocumentTreeNode => ({fields: {}, subgroups: new Map()});
-
 /**
- * Lift the corpus's internal placement records into A12 Document JSON. Every group level is written as an
- * array — the array index IS the repetition, and A12's reader takes an array at any group — so a
- * non-repeatable level and an over-repetition both land on their exact coordinates. A gap is `{}`, the
- * unfilled row of the canonical shape. (Transitional: the corpus itself moves to A12 JSON in a later step.)
+ * The document's FILLED cells, keyed by canonical pointer — the input side the kernel's compute reporting
+ * granularity is diffed against (a value equal to its seeded input is not reported as a change).
+ *
+ * This walks the document the case already carries; it does not re-implement A12's shape. The converter that
+ * used to live here lifted the retired `placements[]` array into A12 Document JSON and is gone with it — the
+ * corpus now stores the canonical shape, so the reader under test receives it verbatim. That converter also
+ * mapped an unfilled cell to `""`; the corpus encodes it as `null`, which is A12's "present with no value".
  */
-const documentInput = (
-  placements: readonly CorpusPlacement[],
-): A12Document => {
-  const root = treeNode();
-  const descend = (
-    parts: readonly string[],
+const seededCells = (document: A12Document): ReadonlyMap<string, string> => {
+  const seeded = new Map<string, string>();
+  const walk = (
+    node: A12DocumentGroup,
+    path: string,
     reps: readonly number[],
-    depth: number,
-  ): DocumentTreeNode => {
-    let current = root;
-    for (let level = 0; level < depth; level += 1) {
-      const repetition = reps[level] as number;
-      if (!Number.isInteger(repetition) || repetition < 1) {
-        throw new Error(
-          `corpus placement carries repetition ${repetition}, which A12 Document JSON cannot address`,
-        );
+  ): void => {
+    for (const [name, value] of Object.entries(node)) {
+      if (path === "" && name === "id") {
+        continue;   // the serializer's root document identity, not a model element
       }
-      const name = parts[level] as string;
-      let rows = current.subgroups.get(name);
-      if (rows === undefined) {
-        rows = new Map<number, DocumentTreeNode>();
-        current.subgroups.set(name, rows);
+      const childPath = `${path}/${name}`;
+      if (Array.isArray(value)) {
+        value.forEach((row, index) =>
+          walk(row as A12DocumentGroup, childPath, [...reps, index + 1]));
+      } else if (value !== null && typeof value === "object") {
+        walk(value as A12DocumentGroup, childPath, [...reps, 1]);
+      } else if (value !== null && value !== "") {
+        seeded.set(formattedPointer(childPath, [...reps, 1]), String(value));
       }
-      let row = rows.get(repetition);
-      if (row === undefined) {
-        row = treeNode();
-        rows.set(repetition, row);
-      }
-      current = row;
     }
-    return current;
   };
-  for (const placement of placements) {
-    const parts = placement.path.split("/").filter(Boolean);
-    const groupDepth = placement.kind === "GROUP" ? parts.length : parts.length - 1;
-    const target = descend(parts, placement.reps, groupDepth);
-    if (placement.kind === "GROUP") {
-      continue;
-    }
-    target.fields[parts[parts.length - 1] as string] =
-      placement.kind === "EMPTY" ? "" : placement.value ?? "";
-  }
-  const toJson = (node: DocumentTreeNode): A12DocumentGroup => {
-    const out: Record<string, string | readonly A12DocumentGroup[]> = {...node.fields};
-    for (const [name, rows] of node.subgroups) {
-      const highest = Math.max(...rows.keys());
-      const repetitions: A12DocumentGroup[] = [];
-      for (let repetition = 1; repetition <= highest; repetition += 1) {
-        const row = rows.get(repetition);
-        repetitions.push(row === undefined ? {} : toJson(row));
-      }
-      out[name] = repetitions;
-    }
-    return out;
-  };
-  return toJson(root);
+  walk(document as unknown as A12DocumentGroup, "", []);
+  return seeded;
 };
 
 const validationSignature = (
@@ -208,22 +165,19 @@ const requireSupported = (
 
 const projectComputeResult = (
   result: ComputationResult,
-  placements: readonly CorpusPlacement[],
+  seeded: ReadonlyMap<string, string>,
   stringFieldPaths: ReadonlySet<string>,
 ): string | undefined => {
   const pointer = formattedPointer(
     result.pointer.path,
     result.pointer.coordinates,
   );
-  const seed = placements.find((placement) =>
-    placement.kind === "FIELD" &&
-    placement.value !== "" &&
-    formattedPointer(placement.path, placement.reps) === pointer);
+  const seed = seeded.get(pointer);
   switch (result.outcome) {
     case "value":
       if (
         stringFieldPaths.has(result.pointer.path) &&
-        seed?.value === result.value
+        seed === result.value
       ) {
         return undefined;
       }
@@ -241,9 +195,7 @@ const replayCorpusCase = async (
   const {prepared, stringFieldPaths} = await prepareCorpusModel(
     corpusCase.modelRef,
   );
-  const snapshot = prepared.documents.readDocument(
-    documentInput(corpusCase.placements),
-  );
+  const snapshot = prepared.documents.readDocument(corpusCase.document);
   const interpreter = prepared.createInterpreter();
   switch (corpusCase.op.kind) {
     case "validateFull": {
@@ -261,13 +213,9 @@ const replayCorpusCase = async (
     case "compute": {
       const report = interpreter.compute(snapshot);
       requireSupported(corpusCase.meta.id, report);
+      const seeded = seededCells(corpusCase.document);   // indexed once, not per result
       return report.results
-        .map((result) =>
-          projectComputeResult(
-            result,
-            corpusCase.placements,
-            stringFieldPaths,
-          ))
+        .map((result) => projectComputeResult(result, seeded, stringFieldPaths))
         .filter((signature): signature is string => signature !== undefined)
         .sort();
     }

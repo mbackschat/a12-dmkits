@@ -13,15 +13,9 @@
         "notes": "partial validation fires on a relevant row absent from the instance (IF54)"
     },
     "modelRef": "models/order-stock-low.json",
-    "placements": [
-        {
-            "kind": "GROUP",
-            "path": "/Order",
-            "reps": [
-                1
-            ]
-        }
-    ],
+    "document": {
+        "Order": {}
+    },
     "op": {
         "kind": "validatePart",
         "relevant": [

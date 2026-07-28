@@ -1,12 +1,17 @@
 package io.github.mbackschat.a12.dm.interpreter.conformance
 
 import io.github.mbackschat.a12.dm.interpreter.gen.PlacementSink
+import io.github.mbackschat.a12.dm.interpreter.eval.newDocument
+import io.github.mbackschat.a12.dm.interpreter.eval.readDocumentJson
+import io.github.mbackschat.a12.dm.interpreter.eval.toDocumentJson
+import io.github.mbackschat.a12.dm.interpreter.gen.asSink
+import io.github.mbackschat.a12.dm.interpreter.model.ModelDef
 
 /**
  * The portable **conformance case** — a reference to a document model, one instance, one operation, and the
  * kernel-verified expected outcome, all as data (CONFORMANCE-CORPUS-SPEC). It is engine-neutral and kernel-free:
- * a runner resolves [modelRef] against the corpus root, loads that standalone DM-JSON file, replays [placements],
- * injects [clock], runs [op], and compares its rendered outcome to [expected] / [computeExpected]. This is the
+ * a runner resolves [modelRef] against the corpus root, loads that standalone DM-JSON file, reads [document]
+ * through the public A12 Document JSON reader, injects [clock], runs [op], and compares its rendered outcome to [expected] / [computeExpected]. This is the
  * in-memory twin of a `corpus/cases/…` file; (de)serialization is [CaseJson].
  *
  * The model lives **outside** the case: [modelRef] is the corpus-root-relative path of a shared `models/<name>.json`
@@ -23,7 +28,9 @@ import io.github.mbackschat.a12.dm.interpreter.gen.PlacementSink
 data class ConformanceCase(
     val meta: CaseMeta,
     val modelRef: String,
-    val placements: List<Placement>,
+    /** The case's document as **A12's canonical Document JSON** — the shape the public ingress reads, so replay
+     *  exercises that reader rather than an internal construction path (step 4 of the shape consolidation). */
+    val document: String,
     val op: Op,
     val clock: String? = null,
     val expected: List<String>? = null,
@@ -126,3 +133,37 @@ fun List<Placement>.replayInto(sink: PlacementSink) {
         PlacementKind.EMPTY -> sink.emptyField(p.path, *p.reps.toIntArray())
     }
 }
+
+/**
+ * The canonical A12 Document JSON for a capture-time placement scenario — the form a committed case stores.
+ *
+ * Capture legitimately works in [Placement] records (a generator builds a scenario before any case exists), and
+ * this is the one place that scenario becomes the committed shape. It goes through the codec, so the stored bytes
+ * are exactly what A12's own writer would produce (IF230).
+ */
+fun documentJsonOf(placements: List<Placement>, model: ModelDef): String =
+    model.newDocument().also { placements.replayInto(it.asSink()) }.toDocumentJson(model)
+
+/**
+ * A committed case's document as placement records — the form the **kernel legs** of the corpus differential
+ * still take (they build a kernel document from it).
+ *
+ * The interpreter leg does NOT use this: it reads [ConformanceCase.document] through the public A12 Document JSON
+ * reader, which is the point of storing the canonical shape (IF230). This is a harness translation for the oracle
+ * side only. Moving the kernel legs onto A12's own `IDocumentV2Serializer.deserializeV2` — so both sides share one
+ * ingress regime — is step 5 of the shape consolidation, not a residual of this one.
+ */
+fun ConformanceCase.placementsForKernelLeg(model: ModelDef): List<Placement> =
+    model.readDocumentJson(document).placementsSnapshot().map { cell ->
+        Placement(
+            kind = when {
+                cell.isGroup -> PlacementKind.GROUP
+                cell.raw == null -> PlacementKind.EMPTY
+                else -> PlacementKind.FIELD
+            },
+            path = cell.path,
+            reps = cell.reps,
+            value = cell.raw,
+        )
+    }
+

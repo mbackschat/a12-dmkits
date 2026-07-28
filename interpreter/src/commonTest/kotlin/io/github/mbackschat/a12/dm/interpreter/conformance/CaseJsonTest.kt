@@ -23,12 +23,7 @@ class CaseJsonTest {
             meta = CaseMeta("claim-min-001", "30.8.1", CaseSource.CURATED, listOf("§9"),
                 tags = listOf("aggregates"), notes = "MinValue over one filled row"),
             modelRef = modelRef,
-            placements = listOf(
-                Placement(PlacementKind.GROUP, "/Policy", listOf(1)),
-                Placement(PlacementKind.GROUP, "/Policy/Claims", listOf(1, 1)),
-                Placement(PlacementKind.FIELD, "/Policy/Claims/Amount", listOf(1, 1, 1), "20.00"),
-                Placement(PlacementKind.EMPTY, "/Policy/Claims/Note", listOf(1, 1, 1)),
-            ),
+            document = """{"Policy":{"Claims":[{"Amount":"20.00","Note":null}]}}""",
             op = Op.ValidateFull,
             expected = listOf("CLAIM_MIN|VALUE_ERROR|/Policy[1]/Claims[1]/Amount"),
         )
@@ -41,7 +36,7 @@ class CaseJsonTest {
             meta = CaseMeta("phantom-row-002", "30.8.1", CaseSource.FUZZ_SEED, listOf("§10"),
                 tags = listOf("partial", "phantom-row"), seed = 42, scenario = "policyClaims"),
             modelRef = modelRef,
-            placements = listOf(Placement(PlacementKind.GROUP, "/Policy", listOf(1))),
+            document = """{"Policy":{}}""",
             op = Op.ValidatePart(listOf(RelevantPointer("/Policy/Claims/Amount", listOf(1, 1, 1)))),
             clock = "2026-07-06T12:00:00",
             expected = listOf("CLAIM_MIN|VALUE_ERROR|/Policy[1]/Claims[1]/Amount"),
@@ -55,7 +50,7 @@ class CaseJsonTest {
         val case = ConformanceCase(
             meta = CaseMeta("compute-perrow-003", "30.8.1", CaseSource.CURATED, listOf("§2")),
             modelRef = modelRef,
-            placements = listOf(Placement(PlacementKind.GROUP, "/Order", listOf(1))),
+            document = """{"Order":{}}""",
             op = Op.Compute,
             computeExpected = listOf("/Order[1]/Items[1]/StockQty|VALUE|20", "/Order[1]/Items[2]/StockQty|VALUE|30"),
         )
@@ -68,7 +63,7 @@ class CaseJsonTest {
             {
               "meta": { "id": "c", "kernelVersion": "30.8.1", "source": "curated", "sections": ["§9"] },
               "modelRef": "models/policy.json",
-              "placements": [ { "kind": "GROUP", "path": "/Policy", "reps": [1] } ],
+              "document": { "Policy": {} },
               "op": { "kind": "validateFull" },
               "expected": []
             }
@@ -87,7 +82,7 @@ class CaseJsonTest {
     @Test
     fun missingModelRefThrowsCorrectiveError() {
         val text = """{"meta":{"id":"c","kernelVersion":"30.8.1","source":"curated","sections":["§9"]},
-            "placements":[],"op":{"kind":"validateFull"},"expected":[]}"""
+            "document":{},"op":{"kind":"validateFull"},"expected":[]}"""
         val ex = assertFailsWith<IllegalArgumentException> { CaseJson.parse(text) }
         assertTrue("modelRef" in (ex.message ?: ""), "the error names the missing modelRef key")
     }
@@ -116,7 +111,7 @@ class CaseJsonTest {
     @Test
     fun unknownSourceThrows() {
         val text = """{"meta":{"id":"c","kernelVersion":"30.8.1","source":"nope","sections":[]},
-            "modelRef":"models/x.json","placements":[],"op":{"kind":"validateFull"},"expected":[]}"""
+            "modelRef":"models/x.json","document":{},"op":{"kind":"validateFull"},"expected":[]}"""
         assertFailsWith<IllegalArgumentException> { CaseJson.parse(text) }
     }
 }

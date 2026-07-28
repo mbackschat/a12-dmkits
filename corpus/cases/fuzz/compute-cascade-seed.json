@@ -15,73 +15,17 @@
         "notes": "a pinned computation-cascade fuzz seed"
     },
     "modelRef": "models/calc-cascade.json",
-    "placements": [
-        {
-            "kind": "GROUP",
-            "path": "/Calc",
-            "reps": [
-                1
-            ]
-        },
-        {
-            "kind": "FIELD",
-            "path": "/Calc/B0",
-            "reps": [
-                1,
-                1
-            ],
-            "value": "23"
-        },
-        {
-            "kind": "FIELD",
-            "path": "/Calc/B1",
-            "reps": [
-                1,
-                1
-            ],
-            "value": "10"
-        },
-        {
-            "kind": "EMPTY",
-            "path": "/Calc/C0",
-            "reps": [
-                1,
-                1
-            ]
-        },
-        {
-            "kind": "EMPTY",
-            "path": "/Calc/C1",
-            "reps": [
-                1,
-                1
-            ]
-        },
-        {
-            "kind": "EMPTY",
-            "path": "/Calc/C2",
-            "reps": [
-                1,
-                1
-            ]
-        },
-        {
-            "kind": "EMPTY",
-            "path": "/Calc/C3",
-            "reps": [
-                1,
-                1
-            ]
-        },
-        {
-            "kind": "EMPTY",
-            "path": "/Calc/C4",
-            "reps": [
-                1,
-                1
-            ]
+    "document": {
+        "Calc": {
+            "B0": 23,
+            "B1": 10,
+            "C0": null,
+            "C1": null,
+            "C2": null,
+            "C3": null,
+            "C4": null
         }
-    ],
+    },
     "op": {
         "kind": "compute"
     },

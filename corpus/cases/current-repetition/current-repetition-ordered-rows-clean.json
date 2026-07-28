@@ -14,99 +14,24 @@
         "notes": "strictly increasing quantities stay clean — including row 1, whose EMPTY predecessor set folds MaxValue to 0 (0 >= 3 is false), not to a fire or a suppression"
     },
     "modelRef": "models/cart-qty-order.json",
-    "placements": [
-        {
-            "kind": "GROUP",
-            "path": "/Cart",
-            "reps": [
-                1
+    "document": {
+        "Cart": {
+            "Lines": [
+                {
+                    "ItemId": "K1",
+                    "Qty": 3
+                },
+                {
+                    "ItemId": "K2",
+                    "Qty": 4
+                },
+                {
+                    "ItemId": "K3",
+                    "Qty": 5
+                }
             ]
-        },
-        {
-            "kind": "GROUP",
-            "path": "/Cart/Lines",
-            "reps": [
-                1,
-                1
-            ]
-        },
-        {
-            "kind": "FIELD",
-            "path": "/Cart/Lines/ItemId",
-            "reps": [
-                1,
-                1,
-                1
-            ],
-            "value": "K1"
-        },
-        {
-            "kind": "FIELD",
-            "path": "/Cart/Lines/Qty",
-            "reps": [
-                1,
-                1,
-                1
-            ],
-            "value": "3"
-        },
-        {
-            "kind": "GROUP",
-            "path": "/Cart/Lines",
-            "reps": [
-                1,
-                2
-            ]
-        },
-        {
-            "kind": "FIELD",
-            "path": "/Cart/Lines/ItemId",
-            "reps": [
-                1,
-                2,
-                1
-            ],
-            "value": "K2"
-        },
-        {
-            "kind": "FIELD",
-            "path": "/Cart/Lines/Qty",
-            "reps": [
-                1,
-                2,
-                1
-            ],
-            "value": "4"
-        },
-        {
-            "kind": "GROUP",
-            "path": "/Cart/Lines",
-            "reps": [
-                1,
-                3
-            ]
-        },
-        {
-            "kind": "FIELD",
-            "path": "/Cart/Lines/ItemId",
-            "reps": [
-                1,
-                3,
-                1
-            ],
-            "value": "K3"
-        },
-        {
-            "kind": "FIELD",
-            "path": "/Cart/Lines/Qty",
-            "reps": [
-                1,
-                3,
-                1
-            ],
-            "value": "5"
         }
-    ],
+    },
     "op": {
         "kind": "validateFull"
     },

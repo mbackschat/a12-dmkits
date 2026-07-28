@@ -18,32 +18,12 @@
         "notes": "an unsigned empty number is 0 and CAN grow to 1, so `!= 1` fires as OMISSION; the literal-direction pair of num-unsigned-empty-ne-neg1-value (same field/sign, only the literal moves from below to above 0)"
     },
     "modelRef": "models/order-stock-ne-one.json",
-    "placements": [
-        {
-            "kind": "GROUP",
-            "path": "/Order",
-            "reps": [
-                1
-            ]
-        },
-        {
-            "kind": "FIELD",
-            "path": "/Order/CustomerName",
-            "reps": [
-                1,
-                1
-            ],
-            "value": "Acme"
-        },
-        {
-            "kind": "EMPTY",
-            "path": "/Order/StockOnHand",
-            "reps": [
-                1,
-                1
-            ]
+    "document": {
+        "Order": {
+            "CustomerName": "Acme",
+            "StockOnHand": null
         }
-    ],
+    },
     "op": {
         "kind": "validateFull"
     },

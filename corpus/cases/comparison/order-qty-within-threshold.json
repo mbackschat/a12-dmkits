@@ -12,24 +12,11 @@
         "notes": "nothing fires — an empty expected multiset is a real assertion"
     },
     "modelRef": "models/order-qty-low.json",
-    "placements": [
-        {
-            "kind": "GROUP",
-            "path": "/Order",
-            "reps": [
-                1
-            ]
-        },
-        {
-            "kind": "FIELD",
-            "path": "/Order/Quantity",
-            "reps": [
-                1,
-                1
-            ],
-            "value": "20"
+    "document": {
+        "Order": {
+            "Quantity": 20
         }
-    ],
+    },
     "op": {
         "kind": "validateFull"
     },

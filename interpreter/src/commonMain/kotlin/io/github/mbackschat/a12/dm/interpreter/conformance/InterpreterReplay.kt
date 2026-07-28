@@ -2,10 +2,13 @@ package io.github.mbackschat.a12.dm.interpreter.conformance
 
 import io.github.mbackschat.a12.dm.interpreter.DmInterpreter
 import io.github.mbackschat.a12.dm.interpreter.eval.formatPointer
+import io.github.mbackschat.a12.dm.interpreter.eval.Document
 import io.github.mbackschat.a12.dm.interpreter.eval.newDocument
+import io.github.mbackschat.a12.dm.interpreter.eval.readDocumentJson
 import io.github.mbackschat.a12.dm.interpreter.gen.asSink
 import io.github.mbackschat.a12.dm.interpreter.load.ModelLoader
 import io.github.mbackschat.a12.dm.interpreter.model.Computed
+import io.github.mbackschat.a12.dm.interpreter.model.ModelDef
 import io.github.mbackschat.a12.dm.interpreter.model.ComputeOutcome
 import io.github.mbackschat.a12.dm.interpreter.model.EvalClock
 import io.github.mbackschat.a12.dm.interpreter.model.Message
@@ -16,7 +19,7 @@ import io.github.mbackschat.a12.dm.interpreter.model.UnsupportedRule
 /**
  * The **one** interpreter-leg replay of a [ConformanceCase] (CONFORMANCE-CORPUS-SPEC §12), kernel-free and
  * multiplatform. The runner resolves [ConformanceCase.modelRef] to the model's DM-JSON text and passes it in; this
- * loads it with the [ModelLoader], replays [ConformanceCase.placements], injects [ConformanceCase.clock], runs
+ * loads it with the [ModelLoader], reads [ConformanceCase.document] through the public A12 Document JSON reader, injects [ConformanceCase.clock], runs
  * [ConformanceCase.op], and renders the outcome to corpus signatures (§6/§7). It is shared by:
  *
  * - the JVM three-engine runner (`:adapter` `CorpusEngines`/`CorpusReplay`) — its interpreter leg IS this, and
@@ -42,12 +45,20 @@ object InterpreterReplay {
     data class Outcome(val signatures: List<String>, val unsupported: List<String>)
 
     /** Replay [case] (its model already resolved to [modelJson]) on the interpreter and render its [Outcome]. */
-    fun run(case: ConformanceCase, modelJson: String): Outcome = run(modelJson, case.placements, case.op, case.clock)
+    fun run(case: ConformanceCase, modelJson: String): Outcome {
+        val def = ModelLoader.load(modelJson)
+        return run(def, def.readDocumentJson(case.document), case.op, case.clock)
+    }
 
     /** Replay a raw scenario (used by capture, before a [ConformanceCase] exists) and render its [Outcome]. */
     fun run(modelJson: String, placements: List<Placement>, op: Op, clock: String? = null): Outcome {
         val def = ModelLoader.load(modelJson)
-        val doc = def.newDocument().also { placements.replayInto(it.asSink()) }
+        return run(def, def.newDocument().also { placements.replayInto(it.asSink()) }, op, clock)
+    }
+
+    /** The shared engine step, once a document exists — reached from A12 Document JSON (a committed case) or from
+     *  a capture-time placement scenario (before a case exists). */
+    private fun run(def: ModelDef, doc: Document, op: Op, clock: String?): Outcome {
         val engine = DmInterpreter(def, evalClock(clock))
         return when (op) {
             is Op.ValidateFull -> engine.validate(doc)
@@ -65,7 +76,10 @@ object InterpreterReplay {
         val outcome = run(case, modelJson)
         if (outcome.unsupported.isNotEmpty()) return Result(Verdict.SKIP, outcome.unsupported.joinToString("; "))
         val actual =
-            if (case.op is Op.Compute) kernelComputeGranularity(outcome.signatures, case.placements, ModelLoader.load(modelJson))
+            if (case.op is Op.Compute) {
+                val def = ModelLoader.load(modelJson)
+                kernelComputeGranularity(outcome.signatures, def.readDocumentJson(case.document), def)
+            }
             else outcome.signatures
         return compare(actual, anchorOf(case))
     }

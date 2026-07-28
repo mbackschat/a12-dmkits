@@ -17,23 +17,11 @@
         "notes": "an ALL-EMPTY row (no sibling value) is not evaluated, so nothing fires; the row-eligibility control for str-empty-length-lt-omission (varied axis = the content-bearing sibling)"
     },
     "modelRef": "models/order-code-length-lt.json",
-    "placements": [
-        {
-            "kind": "GROUP",
-            "path": "/Order",
-            "reps": [
-                1
-            ]
-        },
-        {
-            "kind": "EMPTY",
-            "path": "/Order/ProductCode",
-            "reps": [
-                1,
-                1
-            ]
+    "document": {
+        "Order": {
+            "ProductCode": null
         }
-    ],
+    },
     "op": {
         "kind": "validateFull"
     },

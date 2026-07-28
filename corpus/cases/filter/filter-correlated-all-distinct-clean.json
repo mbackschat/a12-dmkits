@@ -14,99 +14,24 @@
         "notes": "all counts distinct — the self-excluded value join keeps no row for any outer row, nothing fires"
     },
     "modelRef": "models/order-duplicate-count.json",
-    "placements": [
-        {
-            "kind": "GROUP",
-            "path": "/Order",
-            "reps": [
-                1
+    "document": {
+        "Order": {
+            "Items": [
+                {
+                    "Count": 5,
+                    "Sku": "A"
+                },
+                {
+                    "Count": 6,
+                    "Sku": "B"
+                },
+                {
+                    "Count": 9,
+                    "Sku": "C"
+                }
             ]
-        },
-        {
-            "kind": "GROUP",
-            "path": "/Order/Items",
-            "reps": [
-                1,
-                1
-            ]
-        },
-        {
-            "kind": "FIELD",
-            "path": "/Order/Items/Sku",
-            "reps": [
-                1,
-                1,
-                1
-            ],
-            "value": "A"
-        },
-        {
-            "kind": "FIELD",
-            "path": "/Order/Items/Count",
-            "reps": [
-                1,
-                1,
-                1
-            ],
-            "value": "5"
-        },
-        {
-            "kind": "GROUP",
-            "path": "/Order/Items",
-            "reps": [
-                1,
-                2
-            ]
-        },
-        {
-            "kind": "FIELD",
-            "path": "/Order/Items/Sku",
-            "reps": [
-                1,
-                2,
-                1
-            ],
-            "value": "B"
-        },
-        {
-            "kind": "FIELD",
-            "path": "/Order/Items/Count",
-            "reps": [
-                1,
-                2,
-                1
-            ],
-            "value": "6"
-        },
-        {
-            "kind": "GROUP",
-            "path": "/Order/Items",
-            "reps": [
-                1,
-                3
-            ]
-        },
-        {
-            "kind": "FIELD",
-            "path": "/Order/Items/Sku",
-            "reps": [
-                1,
-                3,
-                1
-            ],
-            "value": "C"
-        },
-        {
-            "kind": "FIELD",
-            "path": "/Order/Items/Count",
-            "reps": [
-                1,
-                3,
-                1
-            ],
-            "value": "9"
         }
-    ],
+    },
     "op": {
         "kind": "validateFull"
     },

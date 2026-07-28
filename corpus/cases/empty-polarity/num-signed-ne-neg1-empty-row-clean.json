@@ -17,23 +17,11 @@
         "notes": "an ALL-EMPTY row is not evaluated, so the empty-as-0 substitution never occurs and nothing fires; the row-eligibility control for num-signed-empty-ne-neg1-omission"
     },
     "modelRef": "models/order-qty-ne-neg-one.json",
-    "placements": [
-        {
-            "kind": "GROUP",
-            "path": "/Order",
-            "reps": [
-                1
-            ]
-        },
-        {
-            "kind": "EMPTY",
-            "path": "/Order/Quantity",
-            "reps": [
-                1,
-                1
-            ]
+    "document": {
+        "Order": {
+            "Quantity": null
         }
-    ],
+    },
     "op": {
         "kind": "validateFull"
     },

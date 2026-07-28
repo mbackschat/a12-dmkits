@@ -20,32 +20,12 @@
         "notes": "Length of an empty String is a fillable 0 (0 < 5 → OMISSION); the operator pair of str-empty-eq-suppressed and the direction pair of str-empty-length-ge-value (varied axis = the comparison direction)"
     },
     "modelRef": "models/order-code-length-lt.json",
-    "placements": [
-        {
-            "kind": "GROUP",
-            "path": "/Order",
-            "reps": [
-                1
-            ]
-        },
-        {
-            "kind": "FIELD",
-            "path": "/Order/CustomerName",
-            "reps": [
-                1,
-                1
-            ],
-            "value": "Acme"
-        },
-        {
-            "kind": "EMPTY",
-            "path": "/Order/ProductCode",
-            "reps": [
-                1,
-                1
-            ]
+    "document": {
+        "Order": {
+            "CustomerName": "Acme",
+            "ProductCode": null
         }
-    ],
+    },
     "op": {
         "kind": "validateFull"
     },

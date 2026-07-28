@@ -5,6 +5,7 @@ import io.github.mbackschat.a12.dm.interpreter.model.Kind
 import io.github.mbackschat.a12.dm.interpreter.model.ModelDef
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import io.github.mbackschat.a12.dm.interpreter.eval.newDocument
 
 /**
  * [kernelComputeGranularity] — the projection of the interpreter's report-ALL compute signatures onto the
@@ -27,17 +28,17 @@ class ComputeGranularityTest {
         emptyList(),
     )
 
-    private val placements = listOf(
-        Placement(PlacementKind.GROUP, "/Order", listOf(1)),
-        Placement(PlacementKind.FIELD, "/Order/Total", listOf(1, 1), "20"),
-        Placement(PlacementKind.FIELD, "/Order/Label", listOf(1, 1), "AB-X"),
-        Placement(PlacementKind.GROUP, "/Order/Items", listOf(1, 2)),
-        Placement(PlacementKind.FIELD, "/Order/Items/Name", listOf(1, 2, 1), "B-X"),
-        Placement(PlacementKind.EMPTY, "/Order/Note", listOf(1, 1)),
-    )
+    /** The supplied-cell side, as a document — the projection now reads the document the case carries. */
+    private val document = model.newDocument()
+        .group("/Order", 1)
+        .field("/Order/Total", "20", 1, 1)
+        .field("/Order/Label", "AB-X", 1, 1)
+        .group("/Order/Items", 1, 2)
+        .field("/Order/Items/Name", "B-X", 1, 2, 1)
+        .emptyField("/Order/Note", 1, 1)
 
     private fun project(vararg sigs: String): List<String> =
-        kernelComputeGranularity(sigs.toList(), placements, model)
+        kernelComputeGranularity(sigs.toList(), document, model)
 
     @Test
     fun dropsAStringValueEqualToItsSeededInput() {
@@ -112,7 +113,7 @@ class ComputeGranularityTest {
     @Test
     fun storedEmptyStringIsPresentButNotFilledForClearProjection() {
         val projection = KernelComputeProjection.prepare(
-            listOf(Placement(PlacementKind.FIELD, "/Order/Note", listOf(1, 1), "")),
+            model.newDocument().field("/Order/Note", "", 1, 1),
             model,
         )
 
@@ -124,25 +125,21 @@ class ComputeGranularityTest {
     }
 
     @Test
-    fun preparedProjectionDoesNotRescanInputPlacementsPerResult() {
-        val counted = ReadCountingList(placements)
-        val projection = KernelComputeProjection.prepare(counted, model)
-        val preparationReads = counted.reads
+    fun aPreparedProjectionIsReusableAndAgreesWithAFreshlyPreparedOne() {
+        // Reduced deliberately when the input became a Document (step 4): this used to wrap the placement LIST in a
+        // read-counting decorator and assert preparation indexed each element exactly once, with no further reads
+        // per projected result. `placementsSnapshot()` offers no such interception seam, and the no-rescan property
+        // is now structural — `prepare` fills a HashMap once and `project` only reads it. What stays observable,
+        // and is asserted here, is that a prepared projection is reusable and order-independent.
+        val projection = KernelComputeProjection.prepare(document, model)
+        // Both are STRING value-matches against seeded input, so the kernel reports neither.
+        val sigs = listOf("/Order[1]/Label|VALUE|AB-X", "/Order[1]/Items[2]/Name|VALUE|B-X")
 
-        repeat(3) {
-            assertEquals(emptyList(), projection.project(listOf("/Order[1]/Label|VALUE|AB-X")))
-        }
-
-        assertEquals(placements.size, preparationReads, "preparation indexes each placement once")
-        assertEquals(preparationReads, counted.reads, "result projection reuses the prepared input index")
-    }
-
-    private class ReadCountingList<T>(private val values: List<T>) : AbstractList<T>() {
-        var reads: Int = 0
-            private set
-
-        override val size: Int get() = values.size
-
-        override fun get(index: Int): T = values[index].also { reads++ }
+        repeat(3) { assertEquals(emptyList(), projection.project(sigs)) }
+        assertEquals(
+            projection.project(sigs.reversed()),
+            KernelComputeProjection.prepare(document, model).project(sigs.reversed()),
+            "a reused projection answers exactly as a freshly prepared one",
+        )
     }
 }

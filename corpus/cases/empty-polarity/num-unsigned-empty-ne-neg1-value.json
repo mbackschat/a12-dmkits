@@ -19,32 +19,12 @@
         "notes": "an unsigned empty number is 0 and can't shrink to -1, so `!= -1` fires as VALUE; the signedness pair of num-signed-empty-ne-neg1-omission and the literal-direction pair of num-unsigned-empty-ne-1-omission"
     },
     "modelRef": "models/order-stock-ne-neg-one.json",
-    "placements": [
-        {
-            "kind": "GROUP",
-            "path": "/Order",
-            "reps": [
-                1
-            ]
-        },
-        {
-            "kind": "FIELD",
-            "path": "/Order/CustomerName",
-            "reps": [
-                1,
-                1
-            ],
-            "value": "Acme"
-        },
-        {
-            "kind": "EMPTY",
-            "path": "/Order/StockOnHand",
-            "reps": [
-                1,
-                1
-            ]
+    "document": {
+        "Order": {
+            "CustomerName": "Acme",
+            "StockOnHand": null
         }
-    ],
+    },
     "op": {
         "kind": "validateFull"
     },

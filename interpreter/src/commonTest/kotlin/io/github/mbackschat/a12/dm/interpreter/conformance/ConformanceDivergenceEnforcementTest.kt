@@ -35,15 +35,12 @@ class ConformanceDivergenceEnforcementTest {
             ] } } ] } } }
     """.trimIndent()
 
-    private val placements = listOf(
-        Placement(PlacementKind.GROUP, "/Order", listOf(1)),
-        Placement(PlacementKind.FIELD, "/Order/Quantity", listOf(1, 1), "5"),
-    )
+    private val documentJson = """{"Order":{"Quantity":5}}"""
 
     private fun caseWith(expected: List<String>, staticJavaSplit: List<String>?) = ConformanceCase(
         meta = CaseMeta("ig76-oracle-enforce", "30.8.1", CaseSource.CURATED, listOf("§1")),
         modelRef = "models/ig76-oracle.json",   // unused: replay(case, modelJson) takes the resolved model text
-        placements = placements,
+        document = documentJson,
         op = Op.ValidateFull,
         expected = expected,
         divergences = staticJavaSplit?.let { listOf(Divergence("kernel-java-static", expected = it)) } ?: emptyList(),
@@ -52,7 +49,8 @@ class ConformanceDivergenceEnforcementTest {
     @Test
     fun interpreterAssertsTheGroovyDynamicAnchorAndNeverAdoptsAStaticJavaDivergence() {
         // The interpreter's real output IS the dynamic anchor (it is the engine the corpus captures against).
-        val anchor = InterpreterReplay.run(modelJson, placements, Op.ValidateFull).signatures
+        // `run` ignores the anchor fields, so a probe case supplies the document without pre-deciding expected.
+        val anchor = InterpreterReplay.run(caseWith(emptyList(), null), modelJson).signatures
         assertTrue(anchor.isNotEmpty(), "sanity: [Quantity] == 5 fires, so there is an anchor to defend")
 
         // A recorded static-Java split that says something ELSE must not change the interpreter's verdict.

@@ -13,33 +13,12 @@
         "notes": "a computed STRING equal to its seeded input — a kernel non-change; report-all engines project (§7)"
     },
     "modelRef": "models/order-name-compute.json",
-    "placements": [
-        {
-            "kind": "GROUP",
-            "path": "/Order",
-            "reps": [
-                1
-            ]
-        },
-        {
-            "kind": "FIELD",
-            "path": "/Order/ProductCode",
-            "reps": [
-                1,
-                1
-            ],
-            "value": "AB"
-        },
-        {
-            "kind": "FIELD",
-            "path": "/Order/CustomerName",
-            "reps": [
-                1,
-                1
-            ],
-            "value": "AB-X"
+    "document": {
+        "Order": {
+            "CustomerName": "AB-X",
+            "ProductCode": "AB"
         }
-    ],
+    },
     "op": {
         "kind": "compute"
     },

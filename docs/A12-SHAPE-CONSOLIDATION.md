@@ -85,14 +85,17 @@ Three consequences of reading through the canonical codec, all deliberate. (1) T
 
 </details>
 
-### Step 4 — corpus conversion (after step 2, for coverage)
+### Step 4 — corpus conversion ✅ DONE (2026-07-28)
 
-Note from step 2: the browser qualification now lifts corpus placements into A12 JSON in `consumer-tests/browser/src/qualification.ts` (`documentInput`) so it can replay through the public ingress. That converter is **transitional** — delete it when the corpus itself carries A12 JSON.
+**Shipped: every committed case carries `document`, A12's canonical Document JSON, and the transitional converter is deleted.** The corpus used to store `placements[]`, so a runner built the instance through an *internal* construction path — meaning the corpus, the artifact a third-party reimplementation replays, exercised everything except the **public document reader**. Rationale + the full account: [INTERPRETER-FINDINGS](INTERPRETER-FINDINGS.md) IF230; the case contract is [CONFORMANCE-CORPUS-SPEC](CONFORMANCE-CORPUS-SPEC.md) §4.
 
+- **Migrated through the codec**, not a converter: each case's placements were replayed on the internal path and re-encoded with `toDocumentJson`, so the committed bytes are what A12's own writer produces (and array-vs-object comes from *declared* repeatability, which a hand-rolled converter cannot know).
+- **The holdout mechanism was never needed.** A scan of all 34 cases found **zero** unaddressable coordinates — no repetition below 1, no `UNKNOWN_REP` — so the narrowed rule below collapsed to nothing. Recorded because the plan budgeted for it.
+- **`consumer-tests/browser/src/qualification.ts`**: `documentInput` and the `CorpusPlacement` type are deleted; the reader receives the committed bytes verbatim. Its `EMPTY → ""` approximation is corrected to A12's `null`.
+- **`PlacementSink` stays, in its proper place** — capture builds a scenario before a case exists, then serializes canonically (`documentJsonOf`). The kernel legs of the differential still take placement records (`placementsForKernelLeg`); moving them onto A12's own `deserializeV2` is step 5, not a residual here.
+- **New standing guard**: `CorpusDocumentCanonicalTest` — every committed document is the codec's fixed point. Needed because the reader is permissive, so a non-canonical encoding would replay green and drift invisibly.
 
-Not tidiness: once the ingress is A12 JSON, the corpus is the main regression net for a reader that didn't exist before. If cases keep building documents through the internal path, the new ingress is the least-tested part of the system.
-
-**Holdout rule — narrower than first written.** Step 2 measured that A12's reader accepts an array at a *non-repeating* group, so a non-repeatable group's coordinate 2 **is** representable in A12 JSON and needs no holdout (the browser qualification already replays such cases through the public ingress). A holdout is justified only for a coordinate the shape genuinely cannot address — a repetition below 1, or the `UNKNOWN_REP` sentinel — and each one records its reason.
+**Verification.** Interpreter Kotlin on JVM and Kotlin/JS; the corpus replay through the real kernel (all 34 cases, tri-engine); the full `:adapter:test` estate including the timing floors; `:cli:test`; the corpus schema, semantics-map, and doc guards; and `:interpreter:check` — whose browser lane reported *"Packed interpreter browser qualification passed: 33 corpus cases"*, replaying the corpus in Chrome against the packed artifact through the rewritten `qualification.ts`. (The npm registry returned `ECONNRESET` on two earlier attempts, so that lane needed a retry; it is a flaky registry, not a property of the change.)
 
 ### Step 5 — audit the rest of the boundary
 

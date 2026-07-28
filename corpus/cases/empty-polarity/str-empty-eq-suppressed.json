@@ -16,32 +16,12 @@
         "notes": "a direct == over an empty String is not evaluated; pairs with str-empty-length-lt-omission on the varied axis = the operator applied to the same empty ProductCode"
     },
     "modelRef": "models/order-code-equals.json",
-    "placements": [
-        {
-            "kind": "GROUP",
-            "path": "/Order",
-            "reps": [
-                1
-            ]
-        },
-        {
-            "kind": "FIELD",
-            "path": "/Order/CustomerName",
-            "reps": [
-                1,
-                1
-            ],
-            "value": "Acme"
-        },
-        {
-            "kind": "EMPTY",
-            "path": "/Order/ProductCode",
-            "reps": [
-                1,
-                1
-            ]
+    "document": {
+        "Order": {
+            "CustomerName": "Acme",
+            "ProductCode": null
         }
-    ],
+    },
     "op": {
         "kind": "validateFull"
     },

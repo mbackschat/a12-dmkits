@@ -15,490 +15,84 @@
         "notes": "a pinned model-validation fuzz seed"
     },
     "modelRef": "models/iteration-groups.json",
-    "placements": [
-        {
-            "kind": "GROUP",
-            "path": "/M",
-            "reps": [
-                1
+    "document": {
+        "M": {
+            "G1": [
+                {
+                    "Key1": "K0",
+                    "N1": 86,
+                    "G2": [
+                        {
+                            "Key2": "K1",
+                            "N2": null,
+                            "G3": [
+                                {
+                                    "Key3": null,
+                                    "N3": 66
+                                },
+                                {
+                                    "Key3": "K1",
+                                    "N3": 63
+                                }
+                            ]
+                        },
+                        {
+                            "Key2": "K2",
+                            "N2": null
+                        }
+                    ]
+                },
+                {
+                    "Key1": null,
+                    "N1": 45,
+                    "G2": [
+                        {
+                            "Key2": "K1",
+                            "N2": 42,
+                            "G3": [
+                                {
+                                    "Key3": null,
+                                    "N3": null
+                                }
+                            ]
+                        },
+                        {
+                            "Key2": null,
+                            "N2": 4,
+                            "G3": [
+                                {
+                                    "Key3": "K0",
+                                    "N3": 41
+                                },
+                                {
+                                    "Key3": "K2",
+                                    "N3": 66
+                                },
+                                {
+                                    "Key3": "K2",
+                                    "N3": 82
+                                }
+                            ]
+                        },
+                        {
+                            "Key2": "K2",
+                            "N2": null,
+                            "G3": [
+                                {
+                                    "Key3": "K1",
+                                    "N3": 64
+                                },
+                                {
+                                    "Key3": "K0",
+                                    "N3": 66
+                                }
+                            ]
+                        }
+                    ]
+                }
             ]
-        },
-        {
-            "kind": "GROUP",
-            "path": "/M/G1",
-            "reps": [
-                1,
-                1
-            ]
-        },
-        {
-            "kind": "FIELD",
-            "path": "/M/G1/Key1",
-            "reps": [
-                1,
-                1,
-                1
-            ],
-            "value": "K0"
-        },
-        {
-            "kind": "FIELD",
-            "path": "/M/G1/N1",
-            "reps": [
-                1,
-                1,
-                1
-            ],
-            "value": "86"
-        },
-        {
-            "kind": "GROUP",
-            "path": "/M/G1/G2",
-            "reps": [
-                1,
-                1,
-                1
-            ]
-        },
-        {
-            "kind": "FIELD",
-            "path": "/M/G1/G2/Key2",
-            "reps": [
-                1,
-                1,
-                1,
-                1
-            ],
-            "value": "K1"
-        },
-        {
-            "kind": "EMPTY",
-            "path": "/M/G1/G2/N2",
-            "reps": [
-                1,
-                1,
-                1,
-                1
-            ]
-        },
-        {
-            "kind": "GROUP",
-            "path": "/M/G1/G2/G3",
-            "reps": [
-                1,
-                1,
-                1,
-                1
-            ]
-        },
-        {
-            "kind": "EMPTY",
-            "path": "/M/G1/G2/G3/Key3",
-            "reps": [
-                1,
-                1,
-                1,
-                1,
-                1
-            ]
-        },
-        {
-            "kind": "FIELD",
-            "path": "/M/G1/G2/G3/N3",
-            "reps": [
-                1,
-                1,
-                1,
-                1,
-                1
-            ],
-            "value": "66"
-        },
-        {
-            "kind": "GROUP",
-            "path": "/M/G1/G2/G3",
-            "reps": [
-                1,
-                1,
-                1,
-                2
-            ]
-        },
-        {
-            "kind": "FIELD",
-            "path": "/M/G1/G2/G3/Key3",
-            "reps": [
-                1,
-                1,
-                1,
-                2,
-                1
-            ],
-            "value": "K1"
-        },
-        {
-            "kind": "FIELD",
-            "path": "/M/G1/G2/G3/N3",
-            "reps": [
-                1,
-                1,
-                1,
-                2,
-                1
-            ],
-            "value": "63"
-        },
-        {
-            "kind": "GROUP",
-            "path": "/M/G1/G2",
-            "reps": [
-                1,
-                1,
-                2
-            ]
-        },
-        {
-            "kind": "FIELD",
-            "path": "/M/G1/G2/Key2",
-            "reps": [
-                1,
-                1,
-                2,
-                1
-            ],
-            "value": "K2"
-        },
-        {
-            "kind": "EMPTY",
-            "path": "/M/G1/G2/N2",
-            "reps": [
-                1,
-                1,
-                2,
-                1
-            ]
-        },
-        {
-            "kind": "GROUP",
-            "path": "/M/G1",
-            "reps": [
-                1,
-                2
-            ]
-        },
-        {
-            "kind": "EMPTY",
-            "path": "/M/G1/Key1",
-            "reps": [
-                1,
-                2,
-                1
-            ]
-        },
-        {
-            "kind": "FIELD",
-            "path": "/M/G1/N1",
-            "reps": [
-                1,
-                2,
-                1
-            ],
-            "value": "45"
-        },
-        {
-            "kind": "GROUP",
-            "path": "/M/G1/G2",
-            "reps": [
-                1,
-                2,
-                1
-            ]
-        },
-        {
-            "kind": "FIELD",
-            "path": "/M/G1/G2/Key2",
-            "reps": [
-                1,
-                2,
-                1,
-                1
-            ],
-            "value": "K1"
-        },
-        {
-            "kind": "FIELD",
-            "path": "/M/G1/G2/N2",
-            "reps": [
-                1,
-                2,
-                1,
-                1
-            ],
-            "value": "42"
-        },
-        {
-            "kind": "GROUP",
-            "path": "/M/G1/G2/G3",
-            "reps": [
-                1,
-                2,
-                1,
-                1
-            ]
-        },
-        {
-            "kind": "EMPTY",
-            "path": "/M/G1/G2/G3/Key3",
-            "reps": [
-                1,
-                2,
-                1,
-                1,
-                1
-            ]
-        },
-        {
-            "kind": "EMPTY",
-            "path": "/M/G1/G2/G3/N3",
-            "reps": [
-                1,
-                2,
-                1,
-                1,
-                1
-            ]
-        },
-        {
-            "kind": "GROUP",
-            "path": "/M/G1/G2",
-            "reps": [
-                1,
-                2,
-                2
-            ]
-        },
-        {
-            "kind": "EMPTY",
-            "path": "/M/G1/G2/Key2",
-            "reps": [
-                1,
-                2,
-                2,
-                1
-            ]
-        },
-        {
-            "kind": "FIELD",
-            "path": "/M/G1/G2/N2",
-            "reps": [
-                1,
-                2,
-                2,
-                1
-            ],
-            "value": "4"
-        },
-        {
-            "kind": "GROUP",
-            "path": "/M/G1/G2/G3",
-            "reps": [
-                1,
-                2,
-                2,
-                1
-            ]
-        },
-        {
-            "kind": "FIELD",
-            "path": "/M/G1/G2/G3/Key3",
-            "reps": [
-                1,
-                2,
-                2,
-                1,
-                1
-            ],
-            "value": "K0"
-        },
-        {
-            "kind": "FIELD",
-            "path": "/M/G1/G2/G3/N3",
-            "reps": [
-                1,
-                2,
-                2,
-                1,
-                1
-            ],
-            "value": "41"
-        },
-        {
-            "kind": "GROUP",
-            "path": "/M/G1/G2/G3",
-            "reps": [
-                1,
-                2,
-                2,
-                2
-            ]
-        },
-        {
-            "kind": "FIELD",
-            "path": "/M/G1/G2/G3/Key3",
-            "reps": [
-                1,
-                2,
-                2,
-                2,
-                1
-            ],
-            "value": "K2"
-        },
-        {
-            "kind": "FIELD",
-            "path": "/M/G1/G2/G3/N3",
-            "reps": [
-                1,
-                2,
-                2,
-                2,
-                1
-            ],
-            "value": "66"
-        },
-        {
-            "kind": "GROUP",
-            "path": "/M/G1/G2/G3",
-            "reps": [
-                1,
-                2,
-                2,
-                3
-            ]
-        },
-        {
-            "kind": "FIELD",
-            "path": "/M/G1/G2/G3/Key3",
-            "reps": [
-                1,
-                2,
-                2,
-                3,
-                1
-            ],
-            "value": "K2"
-        },
-        {
-            "kind": "FIELD",
-            "path": "/M/G1/G2/G3/N3",
-            "reps": [
-                1,
-                2,
-                2,
-                3,
-                1
-            ],
-            "value": "82"
-        },
-        {
-            "kind": "GROUP",
-            "path": "/M/G1/G2",
-            "reps": [
-                1,
-                2,
-                3
-            ]
-        },
-        {
-            "kind": "FIELD",
-            "path": "/M/G1/G2/Key2",
-            "reps": [
-                1,
-                2,
-                3,
-                1
-            ],
-            "value": "K2"
-        },
-        {
-            "kind": "EMPTY",
-            "path": "/M/G1/G2/N2",
-            "reps": [
-                1,
-                2,
-                3,
-                1
-            ]
-        },
-        {
-            "kind": "GROUP",
-            "path": "/M/G1/G2/G3",
-            "reps": [
-                1,
-                2,
-                3,
-                1
-            ]
-        },
-        {
-            "kind": "FIELD",
-            "path": "/M/G1/G2/G3/Key3",
-            "reps": [
-                1,
-                2,
-                3,
-                1,
-                1
-            ],
-            "value": "K1"
-        },
-        {
-            "kind": "FIELD",
-            "path": "/M/G1/G2/G3/N3",
-            "reps": [
-                1,
-                2,
-                3,
-                1,
-                1
-            ],
-            "value": "64"
-        },
-        {
-            "kind": "GROUP",
-            "path": "/M/G1/G2/G3",
-            "reps": [
-                1,
-                2,
-                3,
-                2
-            ]
-        },
-        {
-            "kind": "FIELD",
-            "path": "/M/G1/G2/G3/Key3",
-            "reps": [
-                1,
-                2,
-                3,
-                2,
-                1
-            ],
-            "value": "K0"
-        },
-        {
-            "kind": "FIELD",
-            "path": "/M/G1/G2/G3/N3",
-            "reps": [
-                1,
-                2,
-                3,
-                2,
-                1
-            ],
-            "value": "66"
         }
-    ],
+    },
     "op": {
         "kind": "validateFull"
     },

@@ -4,28 +4,66 @@
   "title": "Conformance corpus case",
   "description": "One portable conformance case: a reference to a standalone document model (modelRef), an instance (placements), an operation, and the kernel-verified expected outcome. The normative contract is docs/CONFORMANCE-CORPUS-SPEC.md; this schema is its machine-readable shape. Executable validation of every committed case is CorpusSchemaGuardTest (which parses each file through the same reference (de)serializer a runner uses, resolves every modelRef, and loads every models/*.json).",
   "type": "object",
-  "required": ["meta", "modelRef", "placements", "op"],
+  "required": [
+    "meta",
+    "modelRef",
+    "document",
+    "op"
+  ],
   "additionalProperties": false,
   "properties": {
     "meta": {
       "type": "object",
-      "required": ["id", "kernelVersion", "source", "sections"],
+      "required": [
+        "id",
+        "kernelVersion",
+        "source",
+        "sections"
+      ],
       "additionalProperties": false,
       "properties": {
-        "id": { "type": "string", "description": "Unique case id; equals the file stem." },
-        "kernelVersion": { "type": "string", "description": "The kernel version the expectations were captured against." },
-        "source": { "enum": ["fuzz-seed", "curated", "facet-generated"] },
+        "id": {
+          "type": "string",
+          "description": "Unique case id; equals the file stem."
+        },
+        "kernelVersion": {
+          "type": "string",
+          "description": "The kernel version the expectations were captured against."
+        },
+        "source": {
+          "enum": [
+            "fuzz-seed",
+            "curated",
+            "facet-generated"
+          ]
+        },
         "sections": {
-          "type": "array", "minItems": 1, "items": { "type": "string" },
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string"
+          },
           "description": "The KERNEL-SEMANTICS taxonomy sections the case exercises (the navigation join key)."
         },
         "tags": {
-          "type": "array", "items": { "type": "string" },
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
           "description": "Free labels. A case with a validatePart op MUST carry \"partial\"."
         },
-        "seed": { "type": "integer", "description": "fuzz-seed provenance: the generator seed." },
-        "scenario": { "type": "string", "description": "fuzz-seed provenance: the generator scenario." },
-        "notes": { "type": "string", "description": "One human sentence on what the case pins." }
+        "seed": {
+          "type": "integer",
+          "description": "fuzz-seed provenance: the generator seed."
+        },
+        "scenario": {
+          "type": "string",
+          "description": "fuzz-seed provenance: the generator scenario."
+        },
+        "notes": {
+          "type": "string",
+          "description": "One human sentence on what the case pins."
+        }
       }
     },
     "modelRef": {
@@ -38,37 +76,44 @@
       "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}$",
       "description": "A single local wall-clock instant (yyyy-MM-dd'T'HH:mm:ss, no zone); present iff evaluation touches Today/Now."
     },
-    "placements": {
-      "type": "array",
-      "description": "The instance as an ordered placement list (a serialized PlacementSink); parent row before its contents.",
-      "items": {
-        "type": "object",
-        "required": ["kind", "path", "reps"],
-        "additionalProperties": false,
-        "properties": {
-          "kind": { "enum": ["GROUP", "FIELD", "EMPTY"] },
-          "path": { "type": "string" },
-          "reps": { "type": "array", "items": { "type": "integer" }, "description": "One 1-based index per path segment, the addressed segment included." },
-          "value": { "type": "string", "description": "The stored-form value string (FIELD only)." }
-        }
-      }
+    "document": {
+      "type": "object",
+      "description": "The instance as A12's CANONICAL Document JSON — the shape the A12 Kernel's document serializer reads and writes, and the shape the public ingress under test receives verbatim. A root group name is a top-level key (no wrapper); a repeating group is an array whose INDEX is the repetition with `{}` for an unfilled row; an omitted entity is a missing key; `null` is a field present with no value; a NUMBER/BOOLEAN is native JSON. Replaced the invented `placements[]` array in step 4 of the A12 shape consolidation, so replay exercises the real reader rather than an internal construction path. Every committed document is the codec's fixed point (CorpusDocumentCanonicalTest)."
     },
     "op": {
       "type": "object",
-      "required": ["kind"],
+      "required": [
+        "kind"
+      ],
       "additionalProperties": false,
       "properties": {
-        "kind": { "enum": ["validateFull", "validatePart", "compute"] },
+        "kind": {
+          "enum": [
+            "validateFull",
+            "validatePart",
+            "compute"
+          ]
+        },
         "relevant": {
           "type": "array",
           "description": "validatePart only: the relevant instance pointers (path + one index per segment).",
           "items": {
             "type": "object",
-            "required": ["path", "reps"],
+            "required": [
+              "path",
+              "reps"
+            ],
             "additionalProperties": false,
             "properties": {
-              "path": { "type": "string" },
-              "reps": { "type": "array", "items": { "type": "integer" } }
+              "path": {
+                "type": "string"
+              },
+              "reps": {
+                "type": "array",
+                "items": {
+                  "type": "integer"
+                }
+              }
             }
           }
         }
@@ -76,12 +121,16 @@
     },
     "expected": {
       "type": "array",
-      "items": { "type": "string" },
+      "items": {
+        "type": "string"
+      },
       "description": "validate ops: the sorted code|type|pointer signature multiset (an empty array is a real assertion)."
     },
     "computeExpected": {
       "type": "array",
-      "items": { "type": "string" },
+      "items": {
+        "type": "string"
+      },
       "description": "compute op: the sorted pointer|VALUE|value / pointer|CLEARED / pointer|ERRORED multiset."
     },
     "divergences": {
@@ -89,12 +138,26 @@
       "description": "Per-strategy expectation overrides against the groovy-dynamic anchor (full replacement, the op's key).",
       "items": {
         "type": "object",
-        "required": ["strategy"],
+        "required": [
+          "strategy"
+        ],
         "additionalProperties": false,
         "properties": {
-          "strategy": { "type": "string" },
-          "expected": { "type": "array", "items": { "type": "string" } },
-          "computeExpected": { "type": "array", "items": { "type": "string" } }
+          "strategy": {
+            "type": "string"
+          },
+          "expected": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "computeExpected": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
         }
       }
     }

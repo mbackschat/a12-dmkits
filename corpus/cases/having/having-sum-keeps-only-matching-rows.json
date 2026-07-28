@@ -13,129 +13,27 @@
         "notes": "the filter keeps only the weight-1 rows (3+4=7 > 5) — the excluded 10 never enters the sum; star-only, so ONE fire at the pinned first-row anchor (IF127)"
     },
     "modelRef": "models/order-light-sum.json",
-    "placements": [
-        {
-            "kind": "GROUP",
-            "path": "/Order",
-            "reps": [
-                1
+    "document": {
+        "Order": {
+            "Items": [
+                {
+                    "Count": 3,
+                    "Sku": "A",
+                    "UnitWeight": 1.0
+                },
+                {
+                    "Count": 10,
+                    "Sku": "B",
+                    "UnitWeight": 2.0
+                },
+                {
+                    "Count": 4,
+                    "Sku": "C",
+                    "UnitWeight": 1.0
+                }
             ]
-        },
-        {
-            "kind": "GROUP",
-            "path": "/Order/Items",
-            "reps": [
-                1,
-                1
-            ]
-        },
-        {
-            "kind": "FIELD",
-            "path": "/Order/Items/Sku",
-            "reps": [
-                1,
-                1,
-                1
-            ],
-            "value": "A"
-        },
-        {
-            "kind": "FIELD",
-            "path": "/Order/Items/Count",
-            "reps": [
-                1,
-                1,
-                1
-            ],
-            "value": "3"
-        },
-        {
-            "kind": "FIELD",
-            "path": "/Order/Items/UnitWeight",
-            "reps": [
-                1,
-                1,
-                1
-            ],
-            "value": "1.00"
-        },
-        {
-            "kind": "GROUP",
-            "path": "/Order/Items",
-            "reps": [
-                1,
-                2
-            ]
-        },
-        {
-            "kind": "FIELD",
-            "path": "/Order/Items/Sku",
-            "reps": [
-                1,
-                2,
-                1
-            ],
-            "value": "B"
-        },
-        {
-            "kind": "FIELD",
-            "path": "/Order/Items/Count",
-            "reps": [
-                1,
-                2,
-                1
-            ],
-            "value": "10"
-        },
-        {
-            "kind": "FIELD",
-            "path": "/Order/Items/UnitWeight",
-            "reps": [
-                1,
-                2,
-                1
-            ],
-            "value": "2.00"
-        },
-        {
-            "kind": "GROUP",
-            "path": "/Order/Items",
-            "reps": [
-                1,
-                3
-            ]
-        },
-        {
-            "kind": "FIELD",
-            "path": "/Order/Items/Sku",
-            "reps": [
-                1,
-                3,
-                1
-            ],
-            "value": "C"
-        },
-        {
-            "kind": "FIELD",
-            "path": "/Order/Items/Count",
-            "reps": [
-                1,
-                3,
-                1
-            ],
-            "value": "4"
-        },
-        {
-            "kind": "FIELD",
-            "path": "/Order/Items/UnitWeight",
-            "reps": [
-                1,
-                3,
-                1
-            ],
-            "value": "1.00"
         }
-    ],
+    },
     "op": {
         "kind": "validateFull"
     },
