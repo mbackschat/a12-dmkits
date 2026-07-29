@@ -1,14 +1,16 @@
-# a12-dmkits — Model Review & Diff (gaps)
+# Model Review & Diff — gaps
 
-> **What this is** — the open-issues tracker for the model **review & inspection** surface (the `-GAPS` family, peer of [`FEATURE-GAPS.md`](FEATURE-GAPS.md) / [`INTERPRETER-GAPS.md`](INTERPRETER-GAPS.md)). The **contract + rationale** are in [`MODEL-REVIEW-SPEC.md`](MODEL-REVIEW-SPEC.md) (rationale in its §9). **Records only OPEN work** — a shipped gap is **deleted** (git + the SPEC section / its finding are the record, no "shipped" list). `MR<n>` ids are stable so a code comment or SPEC ref resolves. §1 open (tractable, to build), §2 deferred (with a re-open trigger each), §3 out-of-scope (won't build).
+> **What this is.** The `-GAPS` tracker for the model **review & inspection** surface (peer of [`FEATURE-GAPS.md`](FEATURE-GAPS.md) / [`INTERPRETER-GAPS.md`](INTERPRETER-GAPS.md)). The **contract + rationale** live in [`MODEL-REVIEW-SPEC.md`](MODEL-REVIEW-SPEC.md) (rationale in its §9). `MR<n>` ids are stable, so a code comment or SPEC ref resolves.
+>
+> **Lifecycle.** A gap lives here only while open: §1 open (tractable, to build), §2 deferred (with a re-open trigger each), §3 out-of-scope (won't build). When a gap ships its row is **deleted** in the same commit and its rationale graduates to the SPEC section or its finding — git is the *what/when*. There is no "shipped" list. New gaps land in §1 only when they are open and actionable.
+>
+> **Current state.** §1 is drained. The implemented change model and completeness contract live in [`MODEL-REVIEW-SPEC.md`](MODEL-REVIEW-SPEC.md) §5.
 
-## 1. Open — tractable, to build
+## 1. Open
 
 _None open._
 
-The implemented change model and completeness contract live in [`MODEL-REVIEW-SPEC.md`](MODEL-REVIEW-SPEC.md) §5. New gaps land here only when they are open and actionable.
-
-## 2. Deferred — with a re-open trigger
+## 2. Deferred — with re-open triggers
 
 Built only when the trigger fires (the disposition is expected to change; it lives here, not as a durable "why").
 
@@ -18,7 +20,7 @@ Built only when the trigger fires (the disposition is expected to change; it liv
 - **MCP Apps HTML widget.** In-chat interactive HTML via the official MCP Apps standard (sandboxed iframe). *Re-open when* dmtool ships as an MCP server (today it is a CLI invoked over Bash, so the standard doesn't apply).
 - **Risk-policy configurability.** A knob to reclassify reason codes per team. *Re-open when* a consumer needs it (consumer-exists discipline); v1 is a fixed taxonomy (SPEC §5b).
 
-## 3. Out-of-scope — won't build
+## 3. Out of scope
 
 - **A bespoke HTML report app** (outside the MCP Apps standard). It is a maintenance/rot surface, hard to CI-gate, and pins one consumption context — the research (Playwright structured-text-first; Neo4j data-modeling emits mermaid *text*, not an app) and the trust principle argue against it. The text/markdown + narrow-mermaid surface (SPEC §6) covers the chosen contexts; standardized in-chat HTML is the deferred MCP Apps path (§2).
 - **Byte-matching the A12 editor's exact formatting.** Brittle and not worth it; the answer is the deliberate `model normalize` (SPEC §2c), not chasing a foreign formatter.

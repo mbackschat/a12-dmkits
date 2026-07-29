@@ -1,8 +1,10 @@
-# schemakit — import gaps
+# schemakit import — gaps
 
 > **What this is** — the `-GAPS`-family tracker for the **`:schemakit` JSON-Schema importer**, a peer of [`DEV-API-GAPS.md`](DEV-API-GAPS.md) / [`INTERPRETER-GAPS.md`](INTERPRETER-GAPS.md) / [`FEATURE-GAPS.md`](FEATURE-GAPS.md). It records the importer's **open build queue (§1)**, a recorded **semantic decision (§2)**, the constraints that are **feasible but deliberately not built (§3)**, and what has **no a12 form at all (§4)**. The stable mapping contract lives in [`SCHEMAKIT-SPEC.md`](SCHEMAKIT-SPEC.md) §4; this ledger holds the moving edge.
 >
-> **No-history policy** (like its siblings): a shipped gap is **deleted**, never kept as a "shipped" list — git is the *what/when*, and the gap's home is the SCHEMAKIT-SPEC §4 "built" row (its *why*). The `else` branch and `not {pattern}`/`{minimum}`/`{maximum}` shipped this way and so are **not** here.
+> **Lifecycle.** Like its siblings: a shipped gap is **deleted**, never kept as a "shipped" list — git is the *what/when*, and the gap's home is the SCHEMAKIT-SPEC §4 "built" row (its *why*). The `else` branch and `not {pattern}`/`{minimum}`/`{maximum}` shipped this way and so are **not** here.
+>
+> **Current state.** §1 is drained. The queue is empty: the `minItems` synthesis shipped 2026-07-09 (`NumberOfFilledGroups(G*) < N`, in-group anchored + unguarded, round-trip-projected — SCHEMAKIT-SPEC §4f, `MinItemsSynthesisTest`), and the earlier synthesis backlog drained 2026-06-29 (coverage in SCHEMAKIT-SPEC §4d/§4f). The feasible-but-not-worthwhile constraints sit in **§3** with re-open triggers, the impossible ones in **§4**. A gap lands here only when it is both feasible **and** queued — a reader never sees a "TODO" nobody intends to do.
 >
 > **The dispositions, by feasibility × intent** — an item sits in exactly one:
 >
@@ -16,11 +18,9 @@
 
 ---
 
-## 1. Open gaps
+## 1. Open
 
 _None open._
-
-The queue is empty: the `minItems` synthesis shipped 2026-07-09 (`NumberOfFilledGroups(G*) < N`, in-group anchored + unguarded, round-trip-projected — SCHEMAKIT-SPEC §4f, `MinItemsSynthesisTest`), and the earlier synthesis backlog drained 2026-06-29 (coverage in SCHEMAKIT-SPEC §4d/§4f). The feasible-but-not-worthwhile constraints sit in **§3** with re-open triggers, the impossible ones in **§4**. A gap lands here only when it is both feasible **and** queued — a reader never sees a "TODO" nobody intends to do.
 
 ---
 

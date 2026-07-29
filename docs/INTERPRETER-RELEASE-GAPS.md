@@ -1,8 +1,12 @@
-# Interpreter release gaps
+# Interpreter release — gaps
 
-This document tracks only open or trigger-gated work in the interpreter publication boundary. Implemented release behavior belongs in [INTERPRETER-RELEASE-SPEC](INTERPRETER-RELEASE-SPEC.md); a closed gap is deleted rather than retained as status history.
+> **What this is.** The `-GAPS` tracker for the interpreter publication boundary. Implemented release behavior belongs in [INTERPRETER-RELEASE-SPEC](INTERPRETER-RELEASE-SPEC.md). `IRG<n>` ids are stable, so a code comment or spec ref resolves.
+>
+> **Lifecycle.** A gap lives here only while open: §1 open, §2 deferred (trigger-gated), §3 out of scope. When a gap ships its row is **deleted** rather than retained as status history — git is the *what/when* and the graduated spec section is the *why*.
+>
+> **Current state.** §1 carries one open item (IRG2), which the next release closes by regenerating the mirror from source.
 
-## Open
+## 1. Open
 
 ### IRG2 — publish the showcase semantics badge <a id="irg2"></a>
 
@@ -12,7 +16,7 @@ The browser showcase names the A12 Kernel semantics target beside the package ve
 
 **Completion:** the deployed showcase renders the semantics target and the Pages showcase tree matches that release's showcase asset.
 
-## Trigger-gated
+## 2. Deferred — with re-open triggers
 
 ### IRG1 — publish the separate Kernel drop-in artifact <a id="irg1"></a>
 
@@ -32,7 +36,7 @@ The API and runtime compatibility work is owned by [IAG2 in INTERPRETER-API-GAPS
 
 **Completion:** the real host consumer, source/license checks, dependency and bytecode scans, complete interface projection, customization lifecycle, validation/computation differentials, and publication smoke all pass. Closing this gap also closes or narrows IAG2 in the same commit.
 
-## Out of scope
+## 3. Out of scope
 
 - Publishing first-party packages to npmjs.org, Maven Central, or GitHub Packages.
 - Mirroring third-party dependency registries.

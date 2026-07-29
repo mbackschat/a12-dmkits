@@ -1,16 +1,16 @@
-# Interpreter public API gaps
+# Interpreter public API — gaps
 
 > **What this is.** This is the `-GAPS` tracker for the public interpreter product family. The stable implemented contract lives in [INTERPRETER-API-SPEC](INTERPRETER-API-SPEC.md); evaluator semantics and implementation gaps remain in [INTERPRETER-SPEC](INTERPRETER-SPEC.md) and [INTERPRETER-GAPS](INTERPRETER-GAPS.md). This ledger records only open, deferred, and explicitly excluded public-API work.
 >
-> **No-history policy.** A shipped gap is deleted. Its stable contract graduates into [INTERPRETER-API-SPEC](INTERPRETER-API-SPEC.md) in the same commit, while git and an appropriate numbered finding retain the history and rationale.
+> **Lifecycle.** A shipped gap is deleted. Its stable contract graduates into [INTERPRETER-API-SPEC](INTERPRETER-API-SPEC.md) in the same commit, while git and an appropriate numbered finding retain the history and rationale.
+
+> **Current state.** §1 is drained. The public v1 surface, browser qualification, and anonymous publication are complete as IF224–IF226, so this ledger tracks only later API products, not release delivery.
 
 ## 1. Open
 
 _None open._
 
-The public v1 surface, browser qualification, and anonymous publication are complete as IF224–IF226. This ledger therefore tracks only later API products, not release delivery.
-
-## 2. Deferred with re-open triggers
+## 2. Deferred — with re-open triggers
 
 ### IAG1 — Kernel-shaped TypeScript import replacement <a id="iag1"></a>
 
@@ -112,7 +112,7 @@ The adapters preserve factory lookup and lifecycle, stored/display mode, effecti
 
 **Acceptance:** the compatibility artifact is separately licensed EUPL-1.2, contains no Kernel implementation bytecode, performs no Kernel evaluation, adds no adapter work to the no-customization path, and preserves every used callback's observable invocation and result behavior.
 
-## 3. Explicit exclusions
+## 3. Out of scope
 
 - **Kernel-generated evaluator execution or translation.** The interpreter remains clean-room and kernel-free.
 - **Implicit I/O or a virtual filesystem.** Hosts implement source acquisition through `ModelSourceProvider`; the core sees a finite immutable closure.

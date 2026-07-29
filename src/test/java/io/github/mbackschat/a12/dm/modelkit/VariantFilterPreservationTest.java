@@ -17,7 +17,7 @@ import io.github.mbackschat.a12.dm.core.ModelLoader;
 
 /**
  * The kernel's {@code variantFilter} is OUT OF SCOPE for authoring (dmkits never sets or interprets it —
- * DEV-API-GAPS §4), but an EXISTING document model may carry it. So it must survive a modelkit load → edit
+ * DEV-API-GAPS §3), but an EXISTING document model may carry it. So it must survive a modelkit load → edit
  * → save <b>untouched</b> — the "preserve the unknown" invariant: {@link ModelDocument} edits the raw
  * DM-JSON tree, so a slot it doesn't model is neither stripped nor rewritten. This guard locks both halves:
  * such a model loads through the real kernel, and its {@code variantFilter} is byte-identical after an

@@ -76,9 +76,9 @@ public class StaleGapReferenceGuardTest {
     private Set<Integer> liveGapRows() throws IOException {
         assertTrue(Files.isRegularFile(LEDGER), "missing interpreter gap ledger: " + LEDGER);
         List<String> lines = Files.readAllLines(LEDGER);
-        assertTrue(!lines.isEmpty() && lines.getFirst().equals("# interpreter — gaps & open issues"),
+        assertTrue(!lines.isEmpty() && lines.getFirst().equals("# interpreter — gaps"),
                 "unexpected interpreter gap ledger title/shape: " + LEDGER);
-        assertTrue(lines.contains("## 1. Open (to fix)")
+        assertTrue(lines.contains("## 1. Open")
                         && lines.stream().anyMatch(line -> line.startsWith("## 2. "))
                         && lines.stream().anyMatch(line -> line.startsWith("## 3. ")),
                 "interpreter gap ledger must retain its three lifecycle sections");

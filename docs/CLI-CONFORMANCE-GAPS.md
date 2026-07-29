@@ -1,18 +1,22 @@
-# dmtool CLI conformance — open gaps
+# dmtool CLI conformance — gaps
 
-> **What this is.** Open and deferred gaps on the **agent-facing conformance axis** — the *self-explain* + *diagnostic* contract that [`CLI-CONFORMANCE-SPEC.md`](CLI-CONFORMANCE-SPEC.md) owns (its sibling spec [`CLI-SPEC.md`](CLI-SPEC.md) owns the verb surface + safety gate). It is the CLI-conformance peer of [`FEATURE-GAPS.md`](FEATURE-GAPS.md): that tracker holds the **BA-authoring** ergonomics of the BA+agent loop, while this one holds what a *cold agent* needs to **select, risk-assess, and recover from** a verb using the tool's own output. Same `-GAPS` discipline as its siblings ([`DEV-API-GAPS.md`](DEV-API-GAPS.md), [`INTERPRETER-GAPS.md`](INTERPRETER-GAPS.md), …): **OPEN-only** — a shipped gap is **deleted**, not kept as a "shipped" list (git is the *what/when*; the graduated `CLI-CONFORMANCE-SPEC` matrix column / `CLI-SPEC` section is the *why*).
+> **What this is.** Open and deferred gaps on the **agent-facing conformance axis** — the *self-explain* + *diagnostic* contract that [`CLI-CONFORMANCE-SPEC.md`](CLI-CONFORMANCE-SPEC.md) owns (its sibling spec [`CLI-SPEC.md`](CLI-SPEC.md) owns the verb surface + safety gate). It is the CLI-conformance peer of [`FEATURE-GAPS.md`](FEATURE-GAPS.md): that tracker holds the **BA-authoring** ergonomics of the BA+agent loop, while this one holds what a *cold agent* needs to **select, risk-assess, and recover from** a verb using the tool's own output.
+>
+> **Lifecycle.** Same `-GAPS` discipline as its siblings ([`DEV-API-GAPS.md`](DEV-API-GAPS.md), [`INTERPRETER-GAPS.md`](INTERPRETER-GAPS.md), …): a gap lives here only while open — §1 open, §2 deferred (with re-open triggers), §3 out of scope. A shipped gap is **deleted**, not kept as a "shipped" list (git is the *what/when*; the graduated `CLI-CONFORMANCE-SPEC` matrix column / `CLI-SPEC` section is the *why*).
+>
+> **Current state.** §1 is drained. A **2026-07-21 cold-agent probe** (bare tool, self-description only) found the two candidate axes in §2 are **largely self-explaining already**, so both are demoted there with the evidence rather than built. Two concrete sub-findings from that probe shipped **directly** as one-line `--help` fixes — a `rule eval` ↔ `model eval --rule` cross-reference, and surfacing `field modify`'s retype-cascade — recorded in git, not here. New gaps land in §1 as found.
 >
 > **Provenance.** A 2026-06-28 review of dmtool against a general "CLI tools for LLM agents" best-practices note found that dmtool already meets or beats ~80% of it — JSON-default output, a picocli-**derived** manifest that can't drift, the result envelope, the `refused`/referrers safety gate, the exit-code taxonomy, CI-executed examples. The rows below are the residual deltas, and — in §2/§3 — the ones we considered and are **not** taking, each with a re-open trigger so the decision carries its own expiry.
 
 ---
 
-## 1. Open backlog
+## 1. Open
 
-_None open._ A **2026-07-21 cold-agent probe** (bare tool, self-description only) found the two candidate axes below are **largely self-explaining already**, so both are demoted to §2 with the evidence rather than built. Two concrete sub-findings from that probe shipped **directly** as one-line `--help` fixes — a `rule eval` ↔ `model eval --rule` cross-reference, and surfacing `field modify`'s retype-cascade — recorded in git, not here. New gaps land here as found.
+_None open._
 
 ---
 
-## 2. Deferred — considered, not now (with re-open triggers)
+## 2. Deferred — with re-open triggers
 
 - **Per-verb `sideEffect` / `readOnly` axis in the manifest.** *(Demoted from open — 2026-07-21 cold-agent probe.)* Side-effect proved **reliably inferable** for 5/6 sampled verbs from `--help` alone (a `--dry-run`/`-o` flag + prose like "write the model back" vs "into `data`"), so a full typed `SideEffect` enum + manifest field + a matrix gate across ~50 verbs is **not yet justified**. The one blind spot found — `field modify`'s retype-cascade on dependent rules — was closed directly in `--help`. **Re-open when** a fuller probe/eval shows an agent actually mis-judging a verb's blast radius, or a safety incident argues for making the inferred axis explicit (it's a guardrail, so the bar to proceed is lower than for a pure-clarity feature).
 
@@ -30,6 +34,6 @@ _None open._ A **2026-07-21 cold-agent probe** (bare tool, self-description only
 
 ---
 
-## 3. Out of scope — the remote / async operation model
+## 3. Out of scope
 
 A cluster of the note's recommendations presuppose a **resident or remote** tool: idempotency keys (§14), long-running operations with `operationId` / resume / poll (§15), the preview-id + confirmation-token lifecycle (§13), profiles / `--target-env` / auth status (§16), `--trace-id` + a correlated audit log (§16/§21), and cursor/pagination for large result sets (§17). dmtool is **local, synchronous, single-file, stateless-per-call** — the model file is the durable state, and git is the audit trail + undo. These recommendations **void** unless a resident mode lands, and that mode — **`dmtool serve`** — is already an examined **non-goal with its own re-open triggers** in [`FEATURE-GAPS.md`](FEATURE-GAPS.md) §4. They are pointed at, not re-litigated here.

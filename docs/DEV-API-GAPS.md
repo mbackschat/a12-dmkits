@@ -1,6 +1,14 @@
-# dmkits — DSL-API gaps (developer perspective)
+# dmkits DSL-API (developer perspective) — gaps
 
 > **What this is** — the developer-perspective peer of [`FEATURE-GAPS.md`](FEATURE-GAPS.md), one persona over. dmkits (rulekit + modelkit) is also driven directly as a **typed Java library** by a **developer working inside their own JVM project** — binding a model, authoring rules/computations as typed code the compiler steers, editing structure, reading foreign rules back, and testing against sample documents, all kernel-confirmed. A 2026-06-14 review against the kernel team's developer reference (`a12-kernel/documentation/_merged/kernel-dev.md`, consult-only) surfaced the first batch. **This ledger records only OPEN work** — like its sibling [`INTERPRETER-GAPS.md`](INTERPRETER-GAPS.md), a shipped gap is **deleted**, not kept as a "shipped" list (git is the *what/when*; the gap's **API-FINDINGS finding** is the *why*). **Every implementable `DGn` gap has shipped** (DG1–DG15 and DG17–DG18; DG16 was declined as out of scope — §3) and so is gone from here; their durable *why* lives in the [API design findings](API-FINDINGS.md) (and API-GUIDE §5c for the editor-ergonomics pair DG11/DG12) — and because each finding back-references its `DGn`, a code comment citing `DEV-API-GAPS DGn` resolves via the finding. The doc keeps the review's framing (§1), the open backlog (§2), and the out-of-scope decisions (§3).
+>
+> **Lifecycle.** §2 holds the live, unfinished work as a table. (Shipped gaps are **not** recorded here — a closed gap is no longer a gap; git is the history of *what/when*, its **API-FINDINGS finding** is the *why*, and DG1–DG14 all shipped this way — a code comment citing `DEV-API-GAPS DGn` resolves via the back-referencing finding, DG11/DG12 via API-GUIDE §5c.)
+>
+> **Current state.** §2 is drained. The backlog drained again on 2026-07-22. The four WI-T typed shapes (date `Min`/`Max`, indexed-cell presence, starred value-list, `RuleGroup`) and a computation's `errorCodesToSuppress` shipped as findings 58–61; the Dsl consistency batch shipped as findings 63–65; the cross-component interpreter review tail—typed indexed-construct read-back, bare-group fill catalog parity, multi-star correlation guidance, `RepetitionNotUnique` authoring semantics, and atomic combined-grapheme charset authoring—shipped as findings 74–78; DG18 completed typed TIME/DATETIME operand-list `Min`/`Max` plus DATE/TIME/DATETIME adapter read-back as finding 92; the 2026-07-23 00:21 CEST SPEC-13 audit surfaced and closed DG19, the missing typed `FieldValueAsNumber(Enum -> Category)` source/read shape, as finding 93; the 2026-07-23 01:15 CEST SPEC-04 correction surfaced and closed DG20, `Abs` losing the numeric call-site role of polymorphic `BaseYear`, as finding 94; DG21 — `Dsl.numberOfValueInFields` unable to author the kernel-legal single-list form — shipped as finding 97 (the `value × FieldListRef` overloads); and interpreter workspace dogfooding on 2026-07-26 surfaced and closed DG22, the draft gate overlooking include-contributed typedefs, as finding 99, DG23, group `usageType` being inaccessible through typed navigation, as finding 100, and DG24, typed rule/computation writes always rendering English even for a German-language destination model, as finding 101. (The briefly queued DG18 row accidentally reused the already-shipped DG15 semantic-index identifier; finding 92 is the durable correction.)
+>
+> Interpreter R2.8 differential dogfooding later the same day surfaced and closed DG25: relative rendering attempted to cross a root-group boundary; finding 102 records the absolute cross-root path contract.
+>
+> A row lands here only when a new developer-facing authoring friction is both surfaced and queued.
 >
 > **Scope — the filter that matters.** dmkits has **model-authoring scope**: it defines, edits, validates, reads, and tests a document **model** — its fields/groups/type-defs/includes/config and its **rules + computations** (the condition-language DSL). It is **not** a runtime form engine, a document-instance data-binding layer, a rendering/UI toolkit, or a persistence/service layer. The kernel dev doc is ~80% about the *runtime consumer* (manipulating document *instances*); those concerns are deliberately **out of scope** (§3).
 
@@ -30,17 +38,9 @@ The gaps below were the **ergonomic and consistency remainder** — what added f
 
 ---
 
-## 2. Open backlog
+## 2. Open
 
 _None open._
-
-The live, unfinished work as a table. (Shipped gaps are **not** recorded here — a closed gap is no longer a gap; git is the history of *what/when*, its **API-FINDINGS finding** is the *why*, and DG1–DG14 all shipped this way — a code comment citing `DEV-API-GAPS DGn` resolves via the back-referencing finding, DG11/DG12 via API-GUIDE §5c.)
-
-The backlog drained again on 2026-07-22. The four WI-T typed shapes (date `Min`/`Max`, indexed-cell presence, starred value-list, `RuleGroup`) and a computation's `errorCodesToSuppress` shipped as findings 58–61; the Dsl consistency batch shipped as findings 63–65; the cross-component interpreter review tail—typed indexed-construct read-back, bare-group fill catalog parity, multi-star correlation guidance, `RepetitionNotUnique` authoring semantics, and atomic combined-grapheme charset authoring—shipped as findings 74–78; DG18 completed typed TIME/DATETIME operand-list `Min`/`Max` plus DATE/TIME/DATETIME adapter read-back as finding 92; the 2026-07-23 00:21 CEST SPEC-13 audit surfaced and closed DG19, the missing typed `FieldValueAsNumber(Enum -> Category)` source/read shape, as finding 93; the 2026-07-23 01:15 CEST SPEC-04 correction surfaced and closed DG20, `Abs` losing the numeric call-site role of polymorphic `BaseYear`, as finding 94; DG21 — `Dsl.numberOfValueInFields` unable to author the kernel-legal single-list form — shipped as finding 97 (the `value × FieldListRef` overloads); and interpreter workspace dogfooding on 2026-07-26 surfaced and closed DG22, the draft gate overlooking include-contributed typedefs, as finding 99, DG23, group `usageType` being inaccessible through typed navigation, as finding 100, and DG24, typed rule/computation writes always rendering English even for a German-language destination model, as finding 101. (The briefly queued DG18 row accidentally reused the already-shipped DG15 semantic-index identifier; finding 92 is the durable correction.)
-
-Interpreter R2.8 differential dogfooding later the same day surfaced and closed DG25: relative rendering attempted to cross a root-group boundary; finding 102 records the absolute cross-root path contract.
-
-A row lands here only when a new developer-facing authoring friction is both surfaced and queued.
 
 ---
 
