@@ -105,6 +105,7 @@ tasks.named('test') {
     // doc/marker/golden/script-only edit cannot leave a stale-green `test` (TESTING-SPEC "Tests that read
     // repo files at runtime").
     filter {
+        excludeTestsMatching 'io.github.mbackschat.a12.dm.ApiFindingsNumberingGuardTest'
         excludeTestsMatching 'io.github.mbackschat.a12.dm.DocSnippetFreshnessTest'
         excludeTestsMatching 'io.github.mbackschat.a12.dm.BuildPerformancePolicyTest'
         excludeTestsMatching 'io.github.mbackschat.a12.dm.GateTierWiringTest'
@@ -189,6 +190,7 @@ tasks.register('docGuardTest', Test) {
     testClassesDirs = sourceSets.test.output.classesDirs
     classpath = sourceSets.test.runtimeClasspath
     filter {
+        includeTestsMatching 'io.github.mbackschat.a12.dm.ApiFindingsNumberingGuardTest'
         includeTestsMatching 'io.github.mbackschat.a12.dm.DocSnippetFreshnessTest'
         includeTestsMatching 'io.github.mbackschat.a12.dm.BuildPerformancePolicyTest'
         includeTestsMatching 'io.github.mbackschat.a12.dm.GateTierWiringTest'
@@ -197,6 +199,9 @@ tasks.register('docGuardTest', Test) {
     }
     guardInputs(it, [
             'docs/API-GUIDE.md': file('docs/API-GUIDE.md'),
+            // ApiFindingsNumberingGuardTest reads the findings list at runtime: the ordinals are public
+            // anchors ("finding N", cited from production sources), so a prose-only edit must re-run it.
+            'docs/API-FINDINGS.md': file('docs/API-FINDINGS.md'),
             // VersionMentionFreshnessTest reads each of these at runtime; undeclared, a prose-only edit left
             // the broad `test` task UP-TO-DATE and the drift guard silently unrun.
             'version mentions' : files(
