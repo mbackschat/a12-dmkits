@@ -53,8 +53,14 @@ class DocAnchorResolveGuardTest {
 
     private static final Pattern HEADING = Pattern.compile("^#{1,6}\\s+(.*?)\\s*$", Pattern.MULTILINE);
 
+    /** An interpreter finding's heading, whose {@code IF<n>} id is the cited address. */
+    private static final Pattern FINDING_HEADING = Pattern.compile("^### IF(\\d+) .*$", Pattern.MULTILINE);
+
     /** Sanity floor: the live tree has ~55 docs. A scan finding almost none is checking nothing. */
     private static final int MIN_DOCS = 30;
+
+    /** Sanity floor: the findings record carries ~229 entries. */
+    private static final int MIN_FINDINGS = 200;
 
     @Test
     void everyIntraDocAnchorResolves() throws IOException {
@@ -70,6 +76,36 @@ class DocAnchorResolveGuardTest {
         assertTrue(violations.isEmpty(), () -> "intra-doc anchors that do NOT resolve — a retitled heading "
                 + "breaks a generated slug, so give the heading an explicit `<a id=\"...\"></a>` and link that "
                 + "instead:\n  " + String.join("\n  ", violations));
+    }
+
+    /**
+     * <b>Every {@code IF<n>} finding carries its stable anchor.</b> The findings are cited by id from the
+     * docs, the tests, and production sources, and their headings are amended as claims sharpen — so the
+     * generated slug is not a durable address. Requiring {@code <a id="ifNN"></a>} on the heading makes
+     * {@code #ifNN} permanent, and makes a <i>new</i> finding that forgets one fail here rather than
+     * silently shipping an unlinkable entry.
+     */
+    @Test
+    void everyInterpreterFindingHeadingCarriesItsStableAnchor() throws IOException {
+        String markdown = Files.readString(DOCS.resolve("INTERPRETER-FINDINGS.md"));
+        Matcher heading = FINDING_HEADING.matcher(markdown);
+
+        List<String> missing = new ArrayList<>();
+        int total = 0;
+        while (heading.find()) {
+            total++;
+            String number = heading.group(1);
+            if (!heading.group(0).contains("<a id=\"if" + number + "\">")) {
+                missing.add("IF" + number);
+            }
+        }
+
+        int seen = total;
+        assertTrue(seen >= MIN_FINDINGS,
+                () -> "found only " + seen + " `### IF<n>` headings (floor " + MIN_FINDINGS
+                        + ") — wrong working dir or a changed heading shape? The guard would check nothing.");
+        assertTrue(missing.isEmpty(), () -> "findings whose heading lacks its stable anchor — append "
+                + "`<a id=\"ifNN\"></a>` so a retitle cannot move the address:\n  " + String.join(", ", missing));
     }
 
     /**
@@ -141,7 +177,10 @@ class DocAnchorResolveGuardTest {
 
     /** GitHub's heading-slug rule, enough of it: strip HTML, keep word/space/-/_, lowercase, spaces → '-'. */
     private static String slug(String headingText) {
-        String text = headingText.replaceAll("<[^>]*>", "");
+        // Strip inline HTML, then TRIM: an explicit `<a id>` anchor is written after a space, and leaving
+        // that space behind would append a phantom trailing hyphen to the slug (it briefly did, and broke
+        // two links that GitHub resolves fine — GitHub trims the heading text before slugging).
+        String text = headingText.replaceAll("<[^>]*>", "").strip();
         StringBuilder out = new StringBuilder(text.length());
         for (char c : text.toLowerCase().toCharArray()) {
             if (Character.isLetterOrDigit(c) && c < 128) {
