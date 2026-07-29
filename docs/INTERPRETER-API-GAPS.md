@@ -6,7 +6,7 @@
 
 ## 1. Open
 
-_None._
+_None open._
 
 The public v1 surface, browser qualification, and anonymous publication are complete as IF224–IF226. This ledger therefore tracks only later API products, not release delivery.
 

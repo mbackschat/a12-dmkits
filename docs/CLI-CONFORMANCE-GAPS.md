@@ -8,7 +8,7 @@
 
 ## 1. Open backlog
 
-_None currently._ A **2026-07-21 cold-agent probe** (bare tool, self-description only) found the two candidate axes below are **largely self-explaining already**, so both are demoted to §2 with the evidence rather than built. Two concrete sub-findings from that probe shipped **directly** as one-line `--help` fixes — a `rule eval` ↔ `model eval --rule` cross-reference, and surfacing `field modify`'s retype-cascade — recorded in git, not here. New gaps land here as found.
+_None open._ A **2026-07-21 cold-agent probe** (bare tool, self-description only) found the two candidate axes below are **largely self-explaining already**, so both are demoted to §2 with the evidence rather than built. Two concrete sub-findings from that probe shipped **directly** as one-line `--help` fixes — a `rule eval` ↔ `model eval --rule` cross-reference, and surfacing `field modify`'s retype-cascade — recorded in git, not here. New gaps land here as found.
 
 ---
 

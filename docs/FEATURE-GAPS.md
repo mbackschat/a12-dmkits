@@ -27,6 +27,8 @@ So a code/doc comment citing **`FEATURE-GAPS §N`** / **`Gn`** (including legacy
 
 ## 3. Open backlog
 
+_None open._
+
 Everything else has shipped — the review's ergonomic gaps, the custom-type/condition cluster, and the 2026-07-06 CLI-coverage sweep — each deleted from here on ship, its *why* recorded in its home (an **API-FINDINGS** finding for a DSL/API gap, a **CLI-SPEC** section for a `dmtool` gap, named by its `Gn` so code refs resolve) and its *what/when* in git. The CLI-coverage class is guarded against regrowth by `CliCoverageParityTest` (every `EditSession`/`ModelDocument` mutator has a `dmtool` path). Deferred and out-of-scope decisions are in §4.
 
 **Lifecycle — keep this section OPEN-only.** A gap lives here only while open; when it ships, **delete its row in the same commit** and record its *why* in its home. There is **no "shipped" list** anywhere in this doc — git is the *what/when*, the finding/spec is the *why*. Never leave a shipped item here, and never re-add a "shipped" sub-list.
