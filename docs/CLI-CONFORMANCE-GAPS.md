@@ -34,6 +34,6 @@ _None open._
 
 ---
 
-## 3. Out of scope
+## 3. Out of scope — the remote / async operation model
 
 A cluster of the note's recommendations presuppose a **resident or remote** tool: idempotency keys (§14), long-running operations with `operationId` / resume / poll (§15), the preview-id + confirmation-token lifecycle (§13), profiles / `--target-env` / auth status (§16), `--trace-id` + a correlated audit log (§16/§21), and cursor/pagination for large result sets (§17). dmtool is **local, synchronous, single-file, stateless-per-call** — the model file is the durable state, and git is the audit trail + undo. These recommendations **void** unless a resident mode lands, and that mode — **`dmtool serve`** — is already an examined **non-goal with its own re-open triggers** in [`FEATURE-GAPS.md`](FEATURE-GAPS.md) §4. They are pointed at, not re-litigated here.
