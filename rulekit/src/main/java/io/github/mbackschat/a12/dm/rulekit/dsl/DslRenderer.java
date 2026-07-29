@@ -416,11 +416,11 @@ public final class DslRenderer {
             case DateExtraction e -> keyword(e.operatorId()) + "(" + renderArg(e.source()) + ")";
             case DateTimePart e -> keyword(e.operatorId()) + "(" + renderArg(e.source()) + ")";
             case SumOfProducts s -> keyword(s.operatorId()) + "(" + operand(s.left()) + ", " + operand(s.right()) + ")";
-            case DateConstruction dc -> keyword(dc.operatorId()) + "(" + renderArg(dc.day()) + ", "
-                    + renderArg(dc.month()) + ", " + renderArg(dc.year1())
-                    + dc.year2().map(y -> ", " + renderArg(y)).orElse("") + ")";
-            case TimeConstruction tc -> keyword(tc.operatorId()) + "(" + renderArg(tc.hour()) + ", "
-                    + renderArg(tc.minute()) + ", " + renderArg(tc.second()) + ")";
+            case DateConstruction dc -> keyword(dc.operatorId()) + "(" + renderDateParam(dc.day()) + ", "
+                    + renderDateParam(dc.month()) + ", " + renderDateParam(dc.year1())
+                    + dc.year2().map(y -> ", " + renderDateParam(y)).orElse("") + ")";
+            case TimeConstruction tc -> keyword(tc.operatorId()) + "(" + renderDateParam(tc.hour()) + ", "
+                    + renderDateParam(tc.minute()) + ", " + renderDateParam(tc.second()) + ")";
             case DateTimeConstruction dtc -> keyword(dtc.operatorId()) + "(" + renderArg(dtc.date()) + ", "
                     + renderArg(dtc.time()) + ")";
             case DateRangeConstruction dr -> keyword(dr.operatorId()) + "(" + renderArg(dr.start()) + ", "
@@ -445,6 +445,20 @@ public final class DslRenderer {
      * Renders a value in <em>argument position</em>: a date/field reference is the bare entity path
      * (as in {@code DifferenceInDays(A, B)}), not the bracketed value form used in comparisons.
      */
+    /**
+     * A {@code datumParam} position — a {@code Date(...)} / {@code Time(...)} component. The kernel grammar
+     * admits only {@code entitySpec | datumExtractOp | StringLiteral} there, with NO bare-number alternative,
+     * so a numeric constant component must render QUOTED. Rendering it bare produces
+     * {@code MVK_INVALID_ENTITY} at {@code rule check} (measured 2026-07-29): the kernel reads the digits as an
+     * entity name. Fields render bare and extractors as their call, exactly as elsewhere.
+     */
+    private String renderDateParam(Calculation value) {
+        if (value instanceof NumberLiteral n) {
+            return quote(n.value().toPlainString());
+        }
+        return renderArg(value);
+    }
+
     private String renderArg(Calculation value) {
         if (value instanceof FieldValue v) {
             return path(v.field().path());

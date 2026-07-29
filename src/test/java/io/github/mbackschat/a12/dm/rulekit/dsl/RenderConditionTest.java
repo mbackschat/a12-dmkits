@@ -131,6 +131,25 @@ class RenderConditionTest {
                 new DslRenderer().render(m.num("/Subscription/Billing/BaseFee").eq(m.num("/Subscription/Billing/EffectiveFee"))));
     }
 
+    /**
+     * A {@code Date(...)} / {@code Time(...)} component sits in the kernel's {@code datumParam} position, whose
+     * grammar is {@code entitySpec | datumExtractOp | StringLiteral} — there is NO bare-number alternative. So a
+     * numeric-literal component renders QUOTED; rendering it bare draws {@code MVK_INVALID_ENTITY} at
+     * {@code rule check} (the kernel reads the digits as an entity name), which is what the typed surface used
+     * to emit. Kernel-locked in {@code validate.laws.DateComponentConstantLawsTest}.
+     */
+    @Test
+    void rendersConstantDateAndTimeComponentsQuoted() {
+        assertEquals("Date(\"30\", \"9\", \"1916\")", new DslRenderer().render(
+                Dsl.date(Dsl.number("30"), Dsl.number("9"), Dsl.number("1916")).expression()));
+        assertEquals("Date(\"1\", \"1\", \"19\", \"63\")", new DslRenderer().render(
+                Dsl.date(Dsl.number("1"), Dsl.number("1"), Dsl.number("19"), Dsl.number("63")).expression()));
+        // Time was never exposed to the defect: `Dsl.time` takes STRINGS, so its components are already
+        // StringLiterals. Locked here so the sibling pair stays consistent.
+        assertEquals("Time(\"10\", \"30\", \"45\")", new DslRenderer().render(
+                Dsl.time("10", "30", "45").expression()));
+    }
+
     @Test
     void rendersLengthFunctionBilingually() {
         Condition c = m.str(NAME).length().gt(10);
