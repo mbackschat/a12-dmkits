@@ -901,37 +901,39 @@ private fun legacyCalendarYearLandingInstant(instant: Long, years: Int, tz: Mode
     val shiftedTime = if (sourceParts.second == 2 && sourceParts.third == 28 &&
         isGregorianLeapYear(sourceParts.first) && !isGregorianLeapYear(targetYear)) 0L else sourceTime
     val nominal = legacyEpochDay(shiftedDate)!! * 86_400L + shiftedTime
-    return calendarLandingInstant(nominal, years, tz)
+    return fieldMutationLandingInstant(nominal, tz)
 }
 
-/** Resolve one legacy-calendar landing. [direction] chooses the no-overshoot side of a gap/overlap. */
-private fun calendarLandingInstant(nominal: Long, direction: Int, tz: ModelTimeZone): Long {
+/**
+ * A `Calendar.MONTH` / `Calendar.YEAR` landing — resolved at COMPUTE time from the nominal civil label alone
+ * and INDEPENDENTLY of the sign of the mutation (SPEC-2026-07-29-01). Unlike the day arm
+ * ([wallDayLandingInstant]) this carries no source instant: `GregorianCalendar` re-resolves the mutated
+ * fields, so an **overlap** label takes the LATER instant and a **gap** label normalizes to the POST-gap
+ * label (`02:30` → `03:30`, one hour past the transition).
+ *
+ * Evidence split, stated because the two halves are not equally established: the GAP half is
+ * differentially separated — `DifferenceInDays(2003-03-31T02:30, 2024-03-31T03:00)` is **7670** on both
+ * kernel strategies because the 21-year candidate's post-gap landing falls after the later endpoint and is
+ * rejected, where the previous direction-selected pre-gap landing admitted it and produced 7671. The OVERLAP
+ * half rides on the same `Calendar` resolution rather than on its own separator: the day loop only ever adds,
+ * so an overlap-induced seed difference self-corrects and is not observable on the maintained surface.
+ */
+private fun fieldMutationLandingInstant(nominal: Long, tz: ModelTimeZone): Long {
     if (tz == ModelTimeZone.UTC) return nominal
 
-    var earliestConsistent = Long.MAX_VALUE
     var latestConsistent = Long.MIN_VALUE
-    var gapAfterOffset = Long.MIN_VALUE
     var gapBeforeOffset = Long.MIN_VALUE
     for (offset in BERLIN_OFFSETS) {
         val instant = nominal - offset
         val actualOffset = berlinOffsetSeconds(instant)
-        if (actualOffset == offset) {
-            earliestConsistent = minOf(earliestConsistent, instant)
-            latestConsistent = maxOf(latestConsistent, instant)
-        } else if (actualOffset < offset && gapAfterOffset == Long.MIN_VALUE) {
-            gapAfterOffset = offset
-        } else if (actualOffset > offset) {
-            gapBeforeOffset = offset
-        }
+        if (actualOffset == offset) latestConsistent = maxOf(latestConsistent, instant)
+        else if (actualOffset > offset) gapBeforeOffset = offset   // the PRE-transition offset brackets the gap
     }
-    if (earliestConsistent != Long.MAX_VALUE) {
-        // No overshoot: a FORWARD add takes the DAYLIGHT (earliest) instant, a BACKWARD add the STANDARD (latest).
-        return if (direction > 0) earliestConsistent else latestConsistent
+    if (latestConsistent != Long.MIN_VALUE) return latestConsistent
+    // The gap: no consistent instant. Assuming the pre-gap offset lands one transition-delta past the gap,
+    // which IS the post-gap wall label the lenient field resolution produces.
+    check(gapBeforeOffset != Long.MIN_VALUE) {
+        "Berlin field-mutation landing has no consistent or bracketing offset for local=$nominal"
     }
-    // The gap: no consistent instant. The bracketing transition is oBefore→oAfter (oAfter the larger offset);
-    // forward straddles to the daylight (earlier) instant `nominal − oAfter`, backward to the standard `nominal − oBefore`.
-    check(gapAfterOffset != Long.MIN_VALUE && gapBeforeOffset != Long.MIN_VALUE) {
-        "Berlin wall-day landing has no consistent or bracketing offset for local=$nominal"
-    }
-    return if (direction > 0) nominal - gapAfterOffset else nominal - gapBeforeOffset
+    return nominal - gapBeforeOffset
 }

@@ -39,6 +39,25 @@ class CalendarStepDifferenceInDaysDiffTest {
         assertDifference(fixture, "2023-04-01T02:30:00", "2024-04-05T02:30:00", 369, true)
     }
 
+    /**
+     * The long spring-gap separator for the YEAR arm (a12-kernel-lean SPEC-2026-07-29-01). The 21-year
+     * candidate's landing falls in the 2024 spring gap, and the two rival resolutions put it on opposite sides
+     * of the later endpoint (2024-03-31T03:00 = 01:00Z):
+     *
+     *  - sign-independent compute-time resolution → the **post-gap** label 03:30 (01:30Z), which is AFTER the
+     *    endpoint, so the 21-year candidate is rejected and the count is **7670**;
+     *  - the direction-selected forward resolution → the **pre-gap** label 01:30 (00:30Z), which admits the
+     *    candidate and freezes the seed one day high, giving **7671**.
+     *
+     * Unlike the one-year overlap construction, the day loop cannot self-correct here: it only ever adds, so an
+     * admitted-but-overshooting seed is unrecoverable. That is what makes this a real discriminator.
+     */
+    @Test
+    fun theLongSpringGapYearCandidateSeparatesTheTwoResolutions() {
+        val fixture = fixture("Europe/Berlin")
+        assertDifference(fixture, "2003-03-31T02:30:00", "2024-03-31T03:00:00", 7670, true)
+    }
+
     @Test
     fun utcOrdinaryControlsStayTimeOfDayAware() {
         val fixture = fixture("UTC")
@@ -127,7 +146,7 @@ class CalendarStepDifferenceInDaysDiffTest {
         const val CODE_PREFIX = "CALENDAR_DAYS_"
         // 368..370 bracket SPEC-2026-07-29-01's whole-year-seed composite, so the fixture can DISCRIMINATE
         // the value rather than merely fail to match one candidate.
-        val EXPECTED_VALUES = listOf(-1, 0, 1, 2, 368, 369, 370)
+        val EXPECTED_VALUES = listOf(-1, 0, 1, 2, 368, 369, 370, 7670, 7671)
 
         val BASE: String = DocumentModelDraft.named("itinerary").locale("en_US")
             .rootGroup("Itinerary") { group ->
