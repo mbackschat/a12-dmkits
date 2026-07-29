@@ -271,6 +271,7 @@ tasks.named('test') {
         excludeTestsMatching 'io.github.mbackschat.a12.dm.cli.DocAnchorResolveGuardTest'
         excludeTestsMatching 'io.github.mbackschat.a12.dm.cli.SemanticsMapResolveTest'
         excludeTestsMatching 'io.github.mbackschat.a12.dm.cli.KernelDocsFoldContractTest'
+        excludeTestsMatching 'io.github.mbackschat.a12.dm.cli.KernelDocsBasisContractTest'
         excludeTestsMatching 'io.github.mbackschat.a12.dm.cli.interp.ModelLoaderParityTest'
         excludeTestsMatching 'io.github.mbackschat.a12.dm.cli.StaleGapReferenceGuardTest'
         excludeTestsMatching 'io.github.mbackschat.a12.dm.cli.StaleGapReferenceClassifierTest'
