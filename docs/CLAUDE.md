@@ -63,6 +63,7 @@ _None open._          ← when drained: the marker ALONE, nothing else
 - **Put the claim, the oracle, and the date in the heading.** It is what grep shows; a terse heading retrieves worse than a long descriptive one.
 - **Give a new finding its anchor** in the same edit (`<a id="ifNN"></a>` / `<a id="kfNN"></a>`, trailing).
 - **Cite by id**, never by a slug you constructed and never by `§n` alone.
+- **Write a new finding at skeleton weight** — claim, provenance, lock, and only the **discriminating** cases (the ones that would have falsified a rival reading). The existing long entries are deliberately *not* being retro-compressed (see the KERNEL-FINDINGS fold-status preamble for why), so the way volume stays bounded is at authoring time, not by a later sweep.
 - **Amend in place.** Correct an existing entry where it lives, marked (`Corrected <date>: …`); never mint a new entry to supersede one.
 
 ## What is mechanically enforced (and what is not)
