@@ -979,7 +979,7 @@ Model-derived schema caches must use an exact immutable model version or verifie
 
 If an A12 application-facing adapter later accepts caller-provided validation libraries, the [Standard Schema interface](https://standardschema.dev/schema) is preferable to exposing Zod-specific types at that generic boundary. Zod implements Standard Schema.
 
-Standard Schema neither implements the interpreter’s native customization SPI nor adapts existing Kernel extensions. The implemented callback contract lives in [INTERPRETER-API-SPEC](INTERPRETER-API-SPEC.md) §6; the later Kernel-shaped TypeScript adapter is tracked in [INTERPRETER-API-GAPS](INTERPRETER-API-GAPS.md#iag1--kernel-shaped-typescript-import-replacement).
+Standard Schema neither implements the interpreter’s native customization SPI nor adapts existing Kernel extensions. The implemented callback contract lives in [INTERPRETER-API-SPEC](INTERPRETER-API-SPEC.md) §6; the later Kernel-shaped TypeScript adapter is tracked in [INTERPRETER-API-GAPS](INTERPRETER-API-GAPS.md#iag1).
 
 Any Standard Schema integration with the synchronous Interpreter path must:
 
@@ -1014,7 +1014,7 @@ canonical detached A12 report
     └── optional form or transport projection
 ```
 
-The A12 service remains responsible for model versions, aliases, configuration identity, active instances, exclusivity, backpressure, lifecycle, and metrics. That service layer is deferred in [INTERPRETER-API-GAPS](INTERPRETER-API-GAPS.md#iag5--registered-services-pools-version-switching-and-worker-coordination).
+The A12 service remains responsible for model versions, aliases, configuration identity, active instances, exclusivity, backpressure, lifecycle, and metrics. That service layer is deferred in [INTERPRETER-API-GAPS](INTERPRETER-API-GAPS.md#iag5).
 
 ### 12.2 Worker-local schemas and adapters
 

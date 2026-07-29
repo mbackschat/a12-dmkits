@@ -53,7 +53,7 @@ Interpreter production sources ship with the library:
 
 Shipping sources is the current publication contract. MIT, Maven, and npm do not require it, but changing this developer-experience policy is an explicit later release decision rather than an in-place artifact edit.
 
-The separately licensed Kernel drop-in is not part of the MIT core; its release gap is [IRG1](INTERPRETER-RELEASE-GAPS.md#irg1--publish-the-separate-kernel-drop-in-artifact).
+The separately licensed Kernel drop-in is not part of the MIT core; its release gap is [IRG1](INTERPRETER-RELEASE-GAPS.md#irg1).
 
 ## 5. Consumption
 

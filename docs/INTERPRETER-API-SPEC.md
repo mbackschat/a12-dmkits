@@ -234,7 +234,7 @@ Custom conditions are synchronous Boolean error conditions: `true` means the own
 
 Thrown callbacks become `InterpreterIntegrationError` with phase and stable reason. Recursive same-lane evaluation and thenable returns fail explicitly; the evaluator never implicitly awaits a callback or corrupts the active call.
 
-The implemented core API is intentionally Kernel-shaped only in semantic jobs such as `validateFull`, `validatePart`, and `compute`. It does not currently export the A12 Kernel TypeScript interface names, nested `Document` shape, global registration services, or result objects. That later compatibility product is tracked in [INTERPRETER-API-GAPS](INTERPRETER-API-GAPS.md#iag1--kernel-shaped-typescript-import-replacement).
+The implemented core API is intentionally Kernel-shaped only in semantic jobs such as `validateFull`, `validatePart`, and `compute`. It does not currently export the A12 Kernel TypeScript interface names, nested `Document` shape, global registration services, or result objects. That later compatibility product is tracked in [INTERPRETER-API-GAPS](INTERPRETER-API-GAPS.md#iag1).
 
 ## 7. Compatibility and evidence
 

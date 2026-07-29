@@ -6,8 +6,10 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -29,10 +31,11 @@ import org.junit.jupiter.api.io.TempDir;
  * fragment resolves to <i>either</i> an explicit {@code <a id>}/{@code <a name>} or a current heading slug,
  * so both styles are legal and only a dangling one fails.
  *
- * <p>Scope is deliberately the <b>intra-doc</b> fragment ({@code ](#…)}), the class that actually broke and
- * the one whose expected result is verifiable at zero: cross-file {@code ](OTHER.md#…)} links would widen
- * the surface (and the slug-algorithm risk) without a demonstrated defect behind it. {@code docs/archived/}
- * is excluded — archived docs are a frozen record, not a maintained surface.
+ * <p>Both directions are covered, because both rotted: the <b>intra-doc</b> fragment ({@code ](#…)}) that
+ * broke on IF96, and the <b>cross-doc</b> fragment ({@code ](OTHER.md#…)}) — where the same retitle rot had
+ * silently broken a link to {@code IAG4} after its heading gained a word. Together with the per-record
+ * anchor checks below, the durable fix is that every cited entry owns an explicit id, so a heading may be
+ * amended freely. {@code docs/archived/} is excluded — a frozen record, not a maintained surface.
  *
  * <p>The slug rule mirrors GitHub's: strip inline HTML, drop every character that is not alphanumeric,
  * space, hyphen or underscore (so backticks, emphasis, {@code §}, em dashes and commas vanish), lowercase,
@@ -48,6 +51,9 @@ class DocAnchorResolveGuardTest {
     /** An intra-doc fragment link: {@code [label](#slug)}. Cross-file targets are out of scope (see above). */
     private static final Pattern FRAGMENT = Pattern.compile("\\]\\(#([^)\\s]+)\\)");
 
+    /** A cross-doc fragment link: {@code [label](OTHER.md#slug)}. */
+    private static final Pattern CROSS_DOC_FRAGMENT = Pattern.compile("\\]\\(([A-Za-z0-9._-]+\\.md)#([^)\\s]+)\\)");
+
     /** An explicit anchor a retitle cannot move. */
     private static final Pattern EXPLICIT = Pattern.compile("<a\\s+(?:id|name)=\"([^\"]+)\"");
 
@@ -61,6 +67,15 @@ class DocAnchorResolveGuardTest {
 
     /** Sanity floor: the findings record carries ~229 entries. */
     private static final int MIN_FINDINGS = 200;
+
+    /** A kernel finding's heading — h2, plus the h3s of the date-family subtree. */
+    private static final Pattern KERNEL_FINDING_HEADING = Pattern.compile("^#{2,3} .*$", Pattern.MULTILINE);
+
+    /** Its assigned address. Trailing, so the §-tag stays at the start of the heading (see the test). */
+    private static final Pattern KF_ANCHOR = Pattern.compile("<a id=\"kf(\\d+)\">");
+
+    /** Sanity floor: the kernel-findings record carries ~165 entries. */
+    private static final int MIN_KERNEL_FINDINGS = 140;
 
     @Test
     void everyIntraDocAnchorResolves() throws IOException {
@@ -109,6 +124,116 @@ class DocAnchorResolveGuardTest {
     }
 
     /**
+     * <b>Every kernel finding carries a unique {@code KF<n>} anchor.</b> KERNEL-FINDINGS was the one findings
+     * record with <i>no</i> per-entry address: it is cited by quoted heading text (which a retitle breaks) or
+     * by {@code §n}, which is a section-<i>class</i> — {@code ## §9 supplement} alone matches 25 entries. The
+     * ids are assigned once in document order and are <b>dense</b>, which is what makes a silent deletion
+     * visible; the contract is that a finding is never deleted or renumbered.
+     *
+     * <p>The anchor is <b>trailing</b>, never a title prefix, and that is load-bearing:
+     * {@code KernelDocsFoldContractTest} and {@code SemanticsMapResolveTest} both pin the §-tag with
+     * {@code ^#{2,3} §(\d+)}, so a prefix would silently blind the §-mirror on ~110 headings.
+     */
+    @Test
+    void everyKernelFindingHeadingCarriesAUniqueStableAnchor() throws IOException {
+        String markdown = Files.readString(DOCS.resolve("KERNEL-FINDINGS.md"));
+
+        List<String> unanchored = new ArrayList<>();
+        List<Integer> ids = new ArrayList<>();
+        Matcher heading = KERNEL_FINDING_HEADING.matcher(markdown);
+        while (heading.find()) {
+            Matcher id = KF_ANCHOR.matcher(heading.group(0));
+            if (id.find()) {
+                ids.add(Integer.parseInt(id.group(1)));
+            } else {
+                unanchored.add(heading.group(0).replaceAll("^#+ ", "").substring(0, 60));
+            }
+        }
+
+        int seen = ids.size() + unanchored.size();
+        assertTrue(seen >= MIN_KERNEL_FINDINGS,
+                () -> "found only " + seen + " KERNEL-FINDINGS headings (floor " + MIN_KERNEL_FINDINGS
+                        + ") — wrong working dir or a changed heading shape? The guard would check nothing.");
+        assertTrue(unanchored.isEmpty(), () -> "kernel findings whose heading lacks a `KF<n>` anchor — append "
+                + "`<a id=\"kfN\"></a>` (TRAILING, never before the §-tag):\n  "
+                + String.join("\n  ", unanchored));
+
+        List<Integer> sorted = new ArrayList<>(ids);
+        sorted.sort(null);
+        List<String> broken = new ArrayList<>();
+        for (int i = 0; i < sorted.size(); i++) {
+            if (sorted.get(i) != i + 1) {
+                broken.add("expected kf" + (i + 1) + " but the sorted ids jump to kf" + sorted.get(i));
+                break;
+            }
+        }
+        assertTrue(broken.isEmpty(), () -> "KF ids must be dense 1..N and unique (a finding is never deleted "
+                + "or renumbered):\n  " + String.join("\n  ", broken));
+    }
+
+    /**
+     * <b>Cross-doc fragments resolve too.</b> The canonical KERNEL-SEMANTICS prose cites its verification as
+     * {@code §n / IFm}, whose two halves live in <i>different</i> docs — the link named KERNEL-FINDINGS while
+     * the precise {@code IFm} address resolves in INTERPRETER-FINDINGS, so following it landed a reader in
+     * the wrong file. Those 107 cites now link explicitly, which is only safe if something checks them.
+     */
+    @Test
+    void everyCrossDocAnchorResolves() throws IOException {
+        Map<String, String> byName = new LinkedHashMap<>();
+        for (Path doc : docs()) {
+            byName.put(doc.getFileName().toString(), Files.readString(doc));
+        }
+        assertTrue(byName.size() >= MIN_DOCS,
+                () -> "found only " + byName.size() + " docs (floor " + MIN_DOCS + ") — the guard would check nothing.");
+        assertTrue(crossDocViolations(byName).isEmpty(),
+                () -> "cross-doc anchors that do NOT resolve in the target doc — give the target heading an "
+                        + "explicit `<a id=\"...\"></a>` and link that:\n  "
+                        + String.join("\n  ", crossDocViolations(byName)));
+    }
+
+    /**
+     * Does-fire proof for the cross-doc arm, against a fabricated pair of docs. A stale slug into a peer must
+     * fire; a live slug, an explicit id, and a link to a doc outside the scanned set must not.
+     */
+    @Test
+    void theCrossDocArmFiresOnlyOnAStaleFragmentIntoAScannedPeer() {
+        Map<String, String> docs = Map.of(
+                "A.md", """
+                        [stale](B.md#gone) [live](B.md#kept-heading) [pinned](B.md#anchored) [outside](../README.md#x)
+                        """,
+                "B.md", """
+                        ## Kept Heading
+
+                        ### Something renamed <a id="anchored"></a>
+                        """);
+
+        List<String> found = crossDocViolations(docs);
+        assertTrue(found.size() == 1 && found.get(0).contains("#gone"),
+                () -> "expected only the stale cross-doc fragment to fire, got " + found);
+    }
+
+    /** One violation per cross-doc fragment that does not resolve in its (scanned) target doc. */
+    private static List<String> crossDocViolations(Map<String, String> docsByName) {
+        Map<String, Set<String>> targetsByDoc = new LinkedHashMap<>();
+        docsByName.forEach((name, markdown) -> targetsByDoc.put(name, targets(markdown)));
+
+        List<String> violations = new ArrayList<>();
+        docsByName.forEach((name, markdown) -> {
+            Matcher link = CROSS_DOC_FRAGMENT.matcher(withoutCode(markdown));
+            while (link.find()) {
+                Set<String> targets = targetsByDoc.get(link.group(1));
+                if (targets == null) {
+                    continue;   // not a scanned docs/*.md peer (e.g. ../README.md) — file existence is another guard
+                }
+                if (!targets.contains(link.group(2).toLowerCase())) {
+                    violations.add(name + " → " + link.group(1) + "#" + link.group(2));
+                }
+            }
+        });
+        return violations;
+    }
+
+    /**
      * Does-fire proof against a fabricated doc, exercising {@link #audit(String, String)} — the same method
      * the real check calls. A stale slug must fire; a live slug and an explicit anchor must not.
      */
@@ -133,8 +258,8 @@ class DocAnchorResolveGuardTest {
                         + "fragment inside a code span must all stay silent), got " + found);
     }
 
-    /** One violation per fragment that names neither an explicit anchor nor a current heading slug. */
-    private static List<String> audit(String name, String markdown) {
+    /** Every address a doc offers: its explicit anchors plus its current heading slugs. */
+    private static Set<String> targets(String markdown) {
         Set<String> targets = new LinkedHashSet<>();
         Matcher explicit = EXPLICIT.matcher(markdown);
         while (explicit.find()) {
@@ -144,6 +269,12 @@ class DocAnchorResolveGuardTest {
         while (heading.find()) {
             targets.add(slug(heading.group(1)));
         }
+        return targets;
+    }
+
+    /** One violation per fragment that names neither an explicit anchor nor a current heading slug. */
+    private static List<String> audit(String name, String markdown) {
+        Set<String> targets = targets(markdown);
 
         // Fragments are scanned WITHOUT code spans: several docs discuss the link syntax itself (a literal
         // `](#…)` inside backticks in DOC-DISCIPLINE / TESTING-SPEC), which is prose about a link, not a

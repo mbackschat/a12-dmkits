@@ -12,7 +12,7 @@ The public v1 surface, browser qualification, and anonymous publication are comp
 
 ## 2. Deferred with re-open triggers
 
-### IAG1 — Kernel-shaped TypeScript import replacement
+### IAG1 — Kernel-shaped TypeScript import replacement <a id="iag1"></a>
 
 An existing TypeScript application should be able to replace its A12 Kernel imports with a separately packaged interpreter adapter while retaining its document, validation, computation, result-handling, and custom-extension code.
 
@@ -60,7 +60,7 @@ Package, host, and license: a separate EUPL-1.2 compatibility artifact, tentativ
 
 **Acceptance:** changing imports plus the explicit model-initialization seam compiles the real project without modifying its document, validation/computation, result, or custom-extension implementations; behavior is differentially locked against the pinned Kernel contract on every used method; the compatibility package contains no Kernel implementation or generated-model bytecode.
 
-### IAG2 — JVM `IDocumentRtService` drop-in
+### IAG2 — JVM `IDocumentRtService` drop-in <a id="iag2"></a>
 
 A separate JVM-only EUPL-1.2 artifact implements the complete pinned Kernel 30.8.1 `IDocumentRtService` contract and delegates evaluation to the MIT interpreter core. It preserves `DocumentV2`, `DocumentProcessingConfig`, full/partial validation, computation/application, precompile/cache behavior, model-code identifiers, custom extensions, results, and required deprecated overloads.
 
@@ -68,7 +68,7 @@ The artifact is not the broad internal `:adapter`, contains no Kernel bytecode, 
 
 **Re-open trigger:** the core `v0.9.1` release is public and a real JVM host is available for unchanged substitution. The release-program R10 gate owns its build and publication sequence.
 
-### IAG3 — richer document values, storage, inspection, and persistent editing
+### IAG3 — richer document values, storage, inspection, and persistent editing <a id="iag3"></a>
 
 The archived vision includes typed A12 scalar values, typed document writes, direct lossless storage reads, complete formal inspection, display/internal conversion, row enumeration, a mutable builder, and a persistent structural-sharing editor suitable for form state.
 
@@ -76,25 +76,25 @@ The A12 Document JSON transport and immutable `DocumentSnapshot` deliberately pr
 
 **Re-open trigger:** a real form or import consumer needs programmatic editing or typed reads that cannot be expressed cleanly as Document read/encode. The first increment must identify one consumer workflow and prove that its structural sharing and cache retention improve repeated-edit validation without leaking owner state.
 
-### IAG4 — stored, targeted, and candidate program APIs
+### IAG4 — stored, targeted, and candidate program APIs <a id="iag4"></a>
 
 The evaluator internally supports stored single-rule/single-computation work, but the v1 public package exposes only full/partial validation and whole-model computation. Stored-rule outcome details, targeted field computation, compute-and-apply, compute-and-validate, prepared candidate rules, symbolic expressions, candidate computations, and direct program handles remain unbuilt.
 
 **Re-open trigger:** a rule preview, debugger, authoring tool, or expression consumer requires one of these operations. Implement only the demanded program kind and give it a model-owned prepared handle, typed preparation diagnostics, unsupported reporting, and exact differential evidence.
 
-### IAG5 — registered services, pools, version switching, and Worker coordination
+### IAG5 — registered services, pools, version switching, and Worker coordination <a id="iag5"></a>
 
 The archived vision describes caller-owned model registration, aliases, version switching, bounded warm interpreter pools, backpressure, lifecycle, metrics, and a Node Worker coordinator. The core intentionally exposes prepared models and active interpreters instead of embedding that deployment policy.
 
 **Re-open trigger:** a multi-model server or Worker application demonstrates that direct ownership is insufficient and supplies concrete concurrency, cancellation, capacity, and lifecycle requirements. Do not build a general registry or pool from hypothetical load.
 
-### IAG6 — broader metadata and application-owned annotations
+### IAG6 — broader metadata and application-owned annotations <a id="iag6"></a>
 
 The v1 `ModelMetadata` creates checked model-owned pointers but does not publish the complete traversable group/field/type/rule/computation graph or an application-metadata attachment layer.
 
 **Re-open trigger:** a consumer needs model navigation or model-associated data without re-reading DM-JSON. Add only the metadata required by that consumer, keeping evaluation caches and caller metadata separate.
 
-### IAG7 — broader evaluation configuration and conversion helpers
+### IAG7 — broader evaluation configuration and conversion helpers <a id="iag7"></a>
 
 The v1 configuration surface binds custom field and condition callbacks and accepts per-call locale. The archived vision additionally proposed an injected evaluation clock, legal-charset and predefined-type configuration, evaluation-time capture, custom field display/internal conversion, optional-date resolution, and direct formal document inspection.
 
@@ -102,7 +102,7 @@ Document inspection and typed value conversion overlap [IAG3](#iag3--richer-docu
 
 **Re-open trigger:** a consumer must control time deterministically, reuse predefined types, or perform display/internal conversion through the public package. Implement only the required configuration input and its immediately consumed operation, then lock JVM, Node, and browser projection parity.
 
-### IAG8 — callback-only Kernel extension compatibility adapters
+### IAG8 — callback-only Kernel extension compatibility adapters <a id="iag8"></a>
 
 Separate TypeScript and JVM compatibility artifacts may adapt existing Kernel `ICustomFieldTypeFactory` and `ICustomConditionFactory` implementations into the interpreter's native registries without exposing Kernel documents or runtime-service interfaces. These are narrower than [IAG1](#iag1--kernel-shaped-typescript-import-replacement) and [IAG2](#iag2--jvm-idocumentrtservice-drop-in): they translate callbacks only and keep validation/computation on the MIT public API.
 

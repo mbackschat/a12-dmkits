@@ -8,7 +8,7 @@ Kernel-behavior facts **verified by experiment against kernel `30.8.1`**; we **c
 
 > **Fold status (the two-doc contract, 2026-07-11).** Every finding heading below carries a fold-status line as its first body line: `> Fold: folded → §n.` (the finding's canonical claim now lives in that [KERNEL-SEMANTICS](KERNEL-SEMANTICS.md) section — the entry here keeps the claim, the provenance, and the lock pointers; several targets join with ` + `), `> Fold: not-foldable — <reason>.` (nothing to fold — an authoring/structure/serialization/toolchain fact outside KERNEL-SEMANTICS's evaluation scope, or pure provenance), or `> Fold: pending — <reason>.` (genuinely unsettled content). A **folded** finding MAY be compressed to its evidence skeleton — claim + provenance (date, oracle, kernel version) + locks — but a finding is **never deleted or renumbered**: `-GAPS` deletions, code comments, and the SEMANTICS-MAP resolve through these headings, and the kernel-upgrade workflow re-verifies findings on a pin bump. A `folded` marker is a **live claim**: appending a new paragraph to an already-folded finding either folds the new claim upstream in the same commit or flips the marker back to `pending — <what still needs folding>`. The contract — markers, targets, the §-mirror, and the canonical **anchor set** (the 14 section slugs + the field-types table, every intra-doc link resolving) — is enforced by `cli … KernelDocsFoldContractTest` (the `semanticsMapGuardTest` lane).
 
-## The canonical Document JSON and `DocumentPointer` string — A12 already defines both (source-verified 2026-07-28)
+## The canonical Document JSON and `DocumentPointer` string — A12 already defines both (source-verified 2026-07-28) <a id="kf1"></a>
 
 > Fold: not-foldable — serialization/addressing format, outside KERNEL-SEMANTICS's runtime-evaluation scope.
 
@@ -73,13 +73,13 @@ Two further reader facts, source-verified the same day and material to any reimp
 
 **Why this is recorded so prominently:** we had invented three parallel shapes for it — the interpreter's `DocumentInputV1` placement transport, dmtool's `{"fields":{…}}` wrapper, and the corpus's `placements[]` — plus a `DocumentPointer` class reusing A12's *name* with a `path` + `coordinates[]` representation. See the CLAUDE.md rule "NEVER invent a shape A12 already defines". **All three are gone as of 2026-07-28** (INTERPRETER-FINDINGS IF227 / IF230 and the CLI consolidation): one codec, one shape, and the corpus stores it too — so the reader a reimplementation must get right is finally the reader the regression net exercises.
 
-## Terminology — the kernel has NO "cell" noun; a repetition's value is a `FeldWert` / "field value" (source-verified 2026-07-11)
+## Terminology — the kernel has NO "cell" noun; a repetition's value is a `FeldWert` / "field value" (source-verified 2026-07-11) <a id="kf2"></a>
 
 > Fold: folded → §3.
 
 "Cell" (with "cell state" and "index column") is a house coinage, not kernel vocabulary: the kernel says *field value* (`FeldWert`) at a *repetition* (`Kontext`/`Kontextnummer`) and has no single noun for the pair, nor for a field's values across the repetitions; the value-state taxonomy maps to the predicates `isWertAngegeben` / not-specified / `nichtPruefungsrelevant`, not a named type. The surviving house terms are declared once in the KERNEL-SEMANTICS §3 house↔kernel vocabulary table; agent-facing surfaces use the kernel wording. *(Provenance: source sweep of the consult-only `../a12-kernel` checkout + the merged BA/dev docs, 2026-07-11, kernel 30.8.1. A vocabulary finding, no behavior; license-safe — no expression copied.)*
 
-## DocumentModel expansion — include mounting, imported type-definitions, the synthetic RootGroup (source-verified 2026-07-11)
+## DocumentModel expansion — include mounting, imported type-definitions, the synthetic RootGroup (source-verified 2026-07-11) <a id="kf3"></a>
 
 > Fold: not-foldable — model-assembly/structure semantics, outside KERNEL-SEMANTICS's runtime-evaluation scope; the clean-room reimplementation is the decoupling Stage 2 reader.
 
@@ -97,19 +97,19 @@ Two further reader facts, source-verified the same day and material to any reimp
 
 *(Provenance: source sweep of `DocumentModelExpandService`, `TypeDefCache`, `Field.getEffectiveType`, `EntityReferenceResolverVisitor`, `DocumentModelRoot`, `ElementUtils`, kernel 30.8.1, 2026-07-11; the reference-update mechanism from `DocumentModelExpandService.RuleAndComputationConditionUpdaterVisitor` + `EntityPathsRelativizer`, 2026-07-12; out-of-tree header/Field-body record probes against kernel 30.8.1, 2026-07-26. Clean-room reimplemented kernel-free as `dm.core.ModelReader`; legal structural mounting, including `MODEL_ROOT`, a nested include at the discarded provider root, and `SINGLE_RG` attachment shielding, is locked by the Java-reader/Kernel `WorkspacePreparationParityTest` matrix. `WorkspaceIncludeStructureKernelTest` locks the malformed-include accept/refuse matrix, both malformed-exclusion coercions, the out-of-tree record refusals, and the `SINGLE_RG` root constraints; `WorkspaceSourceUnicodeKernelTest` locks escaped-surrogate acceptance. Reference movement is locked by `IncludeReferenceRemapTest`, `IncludeReferenceBindingTest`, `IncludeResidualRefDiffTest`, and tri-engine `IncludeAssemblyStrategyDiffTest`. The kernel remains the oracle; R3 `checkConsistency` is untouched.)*
 
-## §5 supplement — a NumberType's minValue/maxValue read back at the AUTHORED LITERAL's exact scale (parity-surfaced 2026-07-12)
+## §5 supplement — a NumberType's minValue/maxValue read back at the AUTHORED LITERAL's exact scale (parity-surfaced 2026-07-12) <a id="kf4"></a>
 
 > Fold: not-foldable — a read-back representation fact, outside KERNEL-SEMANTICS's evaluation scope.
 
 The kernel's `INumberType.getMinValue()`/`getMaxValue()` return the bound **at the authored literal's exact scale** — the deserialized `BigDecimal` keeps the JSON literal verbatim, NOT the field's `maxFractionalDigits`: `10` reads back `10`, `0.00` reads back `0.00`, `50.00` reads back `50.00` (all on a scale-2 field). Surfaced by the Stage-2 parity net (`adapter.ModelIndexParityTest`) over the workspaces corpus. To match, the kernel-free `dm.core.ModelReader` parses numbers with `USE_BIG_DECIMAL_FOR_FLOATS` **and `STRIP_TRAILING_BIGDECIMAL_ZEROES` disabled** (Jackson 2.15+ strips trailing zeros by default — `50.00` → `5E+1` — which would diverge); `ModelIndex.numberMin/numberMax` then returns the node's `BigDecimal` unrescaled. *(Provenance: differential vs the live kernel over authored own-domain fixtures + the workspaces + `a12-kernel-mm` corpora, kernel 30.8.1, 2026-07-12. Locked `adapter.ModelIndexParityTest`.)*
 
-## §6 supplement — `DifferenceIn{Hours,Minutes,Seconds}` is instant subtraction; DST is a model-`timeZone` axis, NOT a codegen-target axis (source-verified 2026-07-12, refutes the old §6 note)
+## §6 supplement — `DifferenceIn{Hours,Minutes,Seconds}` is instant subtraction; DST is a model-`timeZone` axis, NOT a codegen-target axis (source-verified 2026-07-12, refutes the old §6 note) <a id="kf5"></a>
 
 > Fold: folded → §6.
 
 The Java runtime service and Java/Groovy codegen reduce the operation to `floor(|instant₂ − instant₁| / unit)` with the sign from operand order: the runtime subtracts epoch-millisecond instants (`BedingungsOperatorHelper.getDifferenceIn*`), and the generated targets call that same runtime controller instead of inlining target-specific arithmetic. The earlier claim that Java/Groovy results depend on the generated-code target was therefore mechanically wrong (IG62). DST enters through `content.modelConfig.timeZone` (copied internally as `IMetaKeysInternal.MODEL_TIME_ZONE`, default `UTC`) at parse time. The documentation emphasizes `UTC` and `Europe/Berlin`, but code does not whitelist those two: `NoMetaModelChecks.checkTimeZone` accepts Java `TimeZone` ids except unknown ids that collapse to GMT (literal GMT is valid), and runtime parsing passes the accepted id to `TimeZone.getTimeZone`. Plain DATE values are zoned too—a `yyyy-MM-dd` value is midnight in the model zone. Under UTC the wall-clock and instant gaps agree; under Berlin, `2024-03-31T01:30:00` CET → `03:30:00` CEST is one elapsed hour. **Interpreter status:** IF128 modeled UTC/GMT and the modern 1996+ Berlin regime; it did not close the kernel's wider accepted zone-id/full-history domain, now IG83. Locked for the exercised Berlin cases by `adapter.laws.DstTimeZoneDiffTest` + `adapter.laws.WallDayArithmeticDiffTest` and kernel-free JVM+JS `ModelTimeZoneTest`. *(Provenance: source sweep of `BedingungsOperatorHelper`/`RuntimeController`/`ValidationDateParser`/the codegen `DateDiffOperation` templates, kernel 30.8.1, 2026-07-12; accepted-id re-audit of `NoMetaModelChecks`, 2026-07-19. The canonical correction is in KERNEL-SEMANTICS §6.)*
 
-## §6 supplement — the Berlin DST edge hours, calendar-step day differences, and wall-day addition (kernel-probed 2026-07-18; corrected 2026-07-20)
+## §6 supplement — the Berlin DST edge hours, calendar-step day differences, and wall-day addition (kernel-probed 2026-07-18; corrected 2026-07-20) <a id="kf6"></a>
 
 > Fold: folded → §6.
 
@@ -123,7 +123,7 @@ Probe-verified against the real kernel (`RuntimeLaws` over a Berlin-zoned model,
 - **Operand gates** (`MVK_WRONG_DATE_FORMAT_FOR_OP`): `DifferenceIn{Hours,Minutes,Seconds}` REJECT a plain DATE operand; `DifferenceIn{Months,Years}`, `AddMonths`, and `AddYears` REJECT a DATE_TIME operand — so those unprobed combinations are unreachable in a valid model.
 - **Historical status:** this was the modern-only IF128 state. IF155/IF165 now pin and exhaustively lock the full legacy-`java.util.TimeZone` Berlin history described in the §6 supplement below. The kernel's own JS/TS runtime (luxon) may resolve edge hours differently from its Java strategies; per IF136 the interpreter follows dynamic Groovy and records a static-strategy split rather than adopting it.
 
-## §6 supplement — the Berlin FULL history is a pinned `java.util.TimeZone` step function; the kernel path DROPS the pre-1916 LMT; offsets are {CET, CEST, CEMT} (source + probe 2026-07-20, the IG83 characterization)
+## §6 supplement — the Berlin FULL history is a pinned `java.util.TimeZone` step function; the kernel path DROPS the pre-1916 LMT; offsets are {CET, CEST, CEMT} (source + probe 2026-07-20, the IG83 characterization) <a id="kf7"></a>
 
 > Fold: folded → §6.
 
@@ -137,25 +137,25 @@ The kernel parses every DATE/DATE_TIME with `ValidationDateParser` = `SimpleDate
 
 **Interpreter status:** these facts shipped as **IF155**, review-completed by **IF165/IF166** — a Berlin transition table pinned to the JDK 21.0.11 / tzdb 2026a observation profile (the 62 `java.util` transitions above, offsets {3600, 7200, 10800}, pre-1916 flat CET, the recurring EU rule for 1998+), replacing the 1996+-only hand rule. Exact `{UTC, GMT, Europe/Berlin}` is the enforced supported set; explicit invalid ids are configuration errors, while known kernel-legal outside-set ids receive `RK_INTERPRETER_TIMEZONE_UNSUPPORTED`. The wider zone-id domain remains IG83 Route A, owner-deferred. *(Provenance: `NoMetaModelChecks.checkTimeZone` source, kernel 30.8.1; `java.util.TimeZone`/`SimpleDateFormat`/`java.time.ZoneRules` probes on JDK 21.0.11 tzdb 2026a, 2026-07-20. `BerlinHistoricalTzTest` locks the independent pinned vector and mutation classes; `BerlinTransitionOracleDiffTest` compares before/at/after every transition against both executing kernel strategies and reports the active profile.)*
 
-## §7 supplement — `Length` (and string min/maxLength) count UTF-16 code units (source + lock, 2026-07-12, graduates IG63)
+## §7 supplement — `Length` (and string min/maxLength) count UTF-16 code units (source + lock, 2026-07-12, graduates IG63) <a id="kf8"></a>
 
 > Fold: folded → §7.
 
 The kernel measures string length in **UTF-16 code units** in every length-bearing path, with no code-point folding or grapheme clustering: `Length(field)` returns the value's UTF-16-unit count (runtime `BigDecimalUtils.laenge` → the platform string length — Java `String.length()` / TS `string.length`; the Groovy/Java/JS codegen reuse the same runtime helper, so no strategy diverges), and the `minLength`/`maxLength` formal checks (`stringZuKurz`/`stringZuLang`) compare that same count. So a **decomposed combining sequence** `e` + `U+0301` counts as **2** (the sense in which §7 says a combining sequence is "several characters"), not 1 grapheme. Grapheme clustering appears only in the *legal-charset / DIN-91379* acceptance check (IF43), never in the count. **Interpreter parity:** the interpreter counts with Kotlin `String.length` = UTF-16 units on both JVM + JS, matching the kernel; the combining case is differential-locked (`adapter.laws.AbsLengthDiffTest` — Length == 2, ≠ 1) + multiplatform (`interpreter … LengthUnicodeCountTest`). **Residual (recorded, unreachable in practice):** a supplementary-plane / astral character (`U+1F600`, a surrogate pair) is `String.length` 2 and the kernel would count 2 under a permissive charset, but the interpreter currently reads a supplementary-plane string as a non-plain operand (its `Length` is *unknown*, so a `Length == 2` rule does not fire) — a divergence that is unreachable under any realistic charset (the default is BMP, and DIN 91379 excludes astral chars, so such a value is itself an illegal-character formal error). Not locked; characterized here. *(Provenance: source read of the kernel `Length`/`FormatDefinitionString` paths + codegen templates, kernel 30.8.1, 2026-07-12; interpreter divergence probe-confirmed the same day.)*
 
-## §1 supplement — Boolean/Confirm comparability codes
+## §1 supplement — Boolean/Confirm comparability codes <a id="kf9"></a>
 
 > Fold: folded → §1.
 
 The Boolean≠Confirm split is enforced at parse time with distinct codes: a Boolean compares only to `True`/`False` or another Boolean — anything else (e.g. a string) is **`MVK_INVALID_COMPARE_TO_YESNO`**; a Confirm compares only to `True` or another Confirm — `[Confirm] == False` and Boolean↔Confirm cross-comparisons are **`MVK_INVALID_COMPARE_TO_YES`**. "Not confirmed" is written `[Confirm] != True` (an unset confirm counts as not confirmed). *(Locked: `validate.laws.BooleanConfirmLawsTest`.)*
 
-## §1 supplement — Boolean three-state matrix (runtime, 2026-06-06)
+## §1 supplement — Boolean three-state matrix (runtime, 2026-06-06) <a id="kf10"></a>
 
 > Fold: folded → §1.
 
 Runtime-verified in a filled row: an unset Boolean satisfies neither `== True` nor `== False`; `FieldFilled` holds for both values — so `[Flag] == True` ≠ `FieldFilled(Flag)` and `[Flag] == False` ≠ "unchecked". Contrast a Confirm, whose unset value *is* `False` in comparisons. *(Locked: `adapter.laws.BooleanThreeStateLawsTest`.)*
 
-## §1 supplement — the "not …" field-list quantifiers are not complements (runtime, 2026-06-06)
+## §1 supplement — the "not …" field-list quantifiers are not complements (runtime, 2026-06-06) <a id="kf11"></a>
 
 > Fold: folded → §1 + §12.
 
@@ -167,7 +167,7 @@ The three negative fill-quantifiers disagree at the edges; the trap is the all-e
 
 **Group-list quantifier asterisk bar (source + probe, 2026-06-17).** The *group*-list quantifiers `NotAllGroupsFilled`/`GroupsNotCollectivelyFilled`/`AllGroupsFilled` reject an **asterisk** argument — `NotAllGroupsFilled(Items*, ShippingAddress)` draws **`MVK_NO_WILDCARDS_G_ALLOWED`** (source `CheckEntityListenUtils.checkNoWildCardsInGroup`, fired on `ref.hasWildCardsInGroup()`). **Group-list quantifier rootGroup bar (source + accept/reject lock, 2026-07-12; graduates IG65).** The **same three** also **bar any rootGroup argument**: `CheckKontextListenBedingungImpl` (A12 path) routes them through `CheckEntityListenUtils.checkNotRootGroupReferenced`, firing **`MVK_ROOT_GROUP_REFERENCED`** ("no Vordruck/root group may be referenced") when any arg is a top-level group — ahead of the arity/asterisk checks. The **other two** (`NoGroupFilled`/`AtLeastOneGroupFilled`) instead route through `checkNoRootGroupWhenMoreThanOneParameter`: a **sole** rootGroup is **accepted**; a rootGroup **with a second parameter** draws **`MVK_ROOT_GROUP_WITH_OTHER_PARAMETERS`** ("a root group may only be the sole parameter"). Confirmed on a **two-non-repeatable-root** fixture (`/Policy` + `/Claim`) — the single-root order fixture couldn't reach it (a rootGroup + sibling trips `MVK_DUPLICATE_PARAM2` first), and a *repeatable* root can't be referenced bare (it demands an asterisk, itself barred). *(Locked: `validate.laws.GroupQuantifierLawsTest` — the asterisk bar, the three→`MVK_ROOT_GROUP_REFERENCED`, the two accept a sole root + reject root+other→`MVK_ROOT_GROUP_WITH_OTHER_PARAMETERS`.)*
 
-## §1 supplement — the FIXED group-list quantifiers consume one common field-or-group entity list (source + tri-lock, 2026-07-23; SPEC-2026-07-23-09)
+## §1 supplement — the FIXED group-list quantifiers consume one common field-or-group entity list (source + tri-lock, 2026-07-23; SPEC-2026-07-23-09) <a id="kf12"></a>
 
 > Fold: folded → §1.
 
@@ -182,7 +182,7 @@ The typed surface carries this as the `GroupListOperand` sum (`FieldRef` | `Grou
 
 **In a COMPUTATION precondition the read is ORDER-observable and a starred group scope may be MIXED into the list (dual-kernel-route + JVM/Node, SPEC-2026-07-23-09 compute supplement, 2026-07-24).** The compute-phase `…EntityAngegeben` read is the same order-driven scan as the field-fill quantifiers (§8/IF85), not a full tally: the operands are read in list order and the scan STOPS at its deciding operand (`AtLeastOne` at the first filled, `No` at the first filled, `All`/`NotAll` at the first empty), so a formally-invalid FIELD operand AFTER the deciding one is never read and cannot poison — `AtLeastOneGroupFilled(filledField, malformedField)` and `AtLeastOneGroupFilled(filledGroup, malformedField)` both COMPUTE (a value), never clear. A FIELD operand read poisons on a formally-invalid value (`getWertXML` → `CalculationFieldException`, "fehlerhaft berechnet" — the reading computation clears and its dependents' reads poison transitively); an **absent** field is a plain clear (the precondition is FALSE → empty-as-0 downstream, IF77). A GROUP operand is **structural presence, never poison** — a malformed-ONLY group is FILLED (so `AtLeastOneGroupFilled(malformedGroup)` computes and `NoGroupFilled(malformedGroup)` is a plain clear), because a group's presence read does not read a cell value. A STARRED group scope (`NoGroupFilled(G*)`/`AtLeastOneGroupFilled(G*)`, the only forms the kernel lets carry a `*`) may be MIXED with plain operands (`AtLeastOneGroupFilled(field, Coverages*)`), contributing one FILLED per instantiated row; an un-instantiated star contributes nothing. This is [IF219](INTERPRETER-FINDINGS.md) on the interpreter side. *(Locked: tri-engine `adapter.laws.GroupListEntityOperandComputeDiffTest` (field/group clean·invalid·absent, read-order stop, mixed starred scope — dynamic-Groovy ∧ static-Java ∧ interpreter, discriminated by a dependent `Audit = [Payout]`), mixed-star validation in `adapter.laws.StarredGroupQuantifierDiffTest`, JVM+Node `interpreter.GroupListFieldOperandComputeTest`.)*
 
-## §1 supplement — a STARRED single-group quantifier counts the group's INSTANTIATED repetitions (probe-verified, both strategies, 2026-07-07)
+## §1 supplement — a STARRED single-group quantifier counts the group's INSTANTIATED repetitions (probe-verified, both strategies, 2026-07-07) <a id="kf13"></a>
 
 > Fold: folded → §1.
 
@@ -196,19 +196,19 @@ All four claims below are canonical in §1 "How the fill quantifiers count"; the
 
 **In unfiltered VALIDATION, a formally unavailable star cell remains in the range but enters neither fill bucket (source + differential 2026-07-08/20).** Malformed and declared-constraint-invalid cells behave identically: they contribute to `n` but to neither known-filled `t` nor known-empty `f`. The seven formulas can still fire from a sufficient known witness—for example `MoreThanOneFieldFilled` and the VALUE arm of `NotExactlyOneFieldFilled` hold at `t=2,u=1`, while `FieldsNotCollectivelyFilled` holds OMISSION at `t=1,e=1,u=1`. Without such a witness the leaf exposes only the collapsed `FALSE_OR_UNKNOWN`; an invalid-only range makes both `AtLeastOneFieldFilled` and `NoFieldFilled` silent. Computation is different: a reached invalid cell poisons per the §11 finding below. Any invalid element makes a value aggregate non-evaluable. *(IF84/IF188; locked `ValidationFillQuantifierProjectionDiffTest`, `StarQuantifierInvalidCellDiffTest`, and `AggMalformedDiffTest`.)*
 
-## §1 supplement — `MaxValue`/`MinValue` over an EMPTY operand set = 0, not undefined (runtime, probe-confirmed 2026-07-06)
+## §1 supplement — `MaxValue`/`MinValue` over an EMPTY operand set = 0, not undefined (runtime, probe-confirmed 2026-07-06) <a id="kf14"></a>
 
 > Fold: folded → §2.
 
 One empty operand is dropped from the fold (`MaxValue(-5, empty) == -5` — no `0` folded in); an **entirely empty** selection folds to the fillable `0`, the same empty identity as `Sum` — distinct from a malformed operand, which suppresses. With no present value, that identity is fillable in **both directions regardless of field signedness or aggregate operator**; `Sum`/`MaxValue`/`MinValue` apply their ordinary directions only after a present value enters the fold. Canonical §2 "aggregate identities" carries both, including why the identity stayed latent under most thresholds (`0` and "suppressed" coincide until a shape like `MinValue(...) < 10` separates them). *(Locked: `adapter.laws.MultiFieldAggregateDiffTest` + `NumericAggregatePolarityDiffTest`.)*
 
-## §1 supplement — the COUNT aggregates are monotonic non-decreasing → grow-only polarity (runtime, probe-confirmed 2026-07-06)
+## §1 supplement — the COUNT aggregates are monotonic non-decreasing → grow-only polarity (runtime, probe-confirmed 2026-07-06) <a id="kf15"></a>
 
 > Fold: folded → §12.
 
 Filling can only raise a count, so a fired `count >= n` / `> n` is VALUE while `< n` / `== n` stays OMISSION — a count types like an unsigned `Sum` (canGrow while a fillable operand remains, never canShrink); a static per-operator polarity is wrong. Canonical §12 "the counts can only grow". Latent until the `>=` direction was pinned. *(Locked: `adapter.laws.MultiFieldAggregateDiffTest.firedPolarityMatchesKernel` + `NumberOfFilledDiffTest`.)*
 
-## Stored conditions are usually canonical English; configured German storage is also kernel-legal (corrected 2026-07-26)
+## Stored conditions are usually canonical English; configured German storage is also kernel-legal (corrected 2026-07-26) <a id="kf16"></a>
 
 > Fold: not-foldable — a serialization-tier fact (the stored form of conditions), outside the canonical doc's evaluation scope.
 
@@ -218,7 +218,7 @@ A DM-JSON model whose `content.modelConfig.conditionLanguage.code` is `de_DE` an
 
 **Include boundary:** expansion does not create a per-rule language slot; the final model is checked under its entry model's one `conditionLanguage`. A German-localized provider mounted through English intermediate and entry models is consequently rejected with `MVK_UNEXPECTED_TOKEN`; the fixture establishes model-level rejection, not a notification for every retained executable. Configuration inequality alone is not illegal: the matched control uses a `de_DE` provider with language-neutral `[Note] == "x"` syntax under an `en_US` entry and passes consistency plus Java-reader parity. *(Locked as a measured refusal/control pair in `adapter.WorkspacePreparationFixtureGuardTest`; portable treatment in INTERPRETER-FINDINGS IF223.)*
 
-## §2 supplement — empty-as-0 is a *filled-row* behavior (runtime, 2026-06-06)
+## §2 supplement — empty-as-0 is a *filled-row* behavior (runtime, 2026-06-06) <a id="kf17"></a>
 
 > Fold: folded → §2.
 
@@ -234,13 +234,13 @@ Refinements, each canonical in §2 (or where noted):
 
   **Corrected 2026-07-29: the tokens are NOT configurable on the A12 path — this bullet previously said they were.** Reading `FormatDefinitionJaNein.validiereFormat` (it `.equals()`-compares against `jaWert`/`neinWert`, each overridable by `DarstellungsInformationIntern.getWahrWert()`/`getFalschWert()`) supports "configurable" *locally*, and on that basis the bullet asserted lowercase was merely a "default profile" and our hard-coded check a refusal broader than its basis (INTERPRETER-GAPS IG88, withdrawn). **The discriminating case refutes it**: on a model whose `BooleanType` declares `notInDCustomTrueValue: "Y"` / `notInDCustomFalseValue: "N"` (and whose `ConfirmType` declares `"Y"`), the kernel's verdicts are byte-identical to a model declaring nothing — `true`/`false` clean, `Y`/`N` → `feldJaNeinFalsch`, confirm `Y` → `feldJaFalsch`. The keys are not ignored by the *reader* (A12's own model serializer round-trips them), so the model genuinely declares them; validation simply does not consult them. Three source links, each now confirmed by that measurement: (1) `IBooleanType.getNotInDCustomTrueValue()` is `@NotInD`, whose javadoc says the property "will be ignored while generating the validation code and therefore is not relevant for the validation"; (2) `TypeConverter.convertBoolean`/`convertConfirm` gate the declared tokens behind `considerNotInD`, emitting the literals `"true"`/`"false"` when it is false — and **every** kernel construction is the no-arg `new ExternalDocumentModelService()`, which passes `false` (the `boolean` ctor exists for an out-of-tree ExtMP caller; enumerated by grep over `../a12-kernel` `*.java`/`*.groovy` excluding `/build/` and delombok, so an external consumer could still pass `true`); (3) the runtime override lane needs a `PresentationInformation`, which `DocumentProcessingConfig` has no channel for and which the md-runtime service explicitly nulls — `LowKernelApiUtils.configureValidationMode`: *"never pass diverging number and date format here because the document values always use the canonical format"*. The model-level fallback (`metaData.getDefaultPresentationInformation()`) cannot carry the keys either: it is built from `IProjectLanguageSettings`, which has no true/false member. **The lesson is the oracle-by-claim-kind rule:** a locally correct source read of one class ("this comparison is configurable") was promoted to a reachability claim ("so a model can configure it") without attacking the links between them — and the links are where it fails. The `ExtMP` lane (`considerNotInD = true`) is the grain of truth and is outside the A12 DM-JSON contract the interpreter implements.
 
-## §2 supplement — empty operand in a *computation* operation ⇒ no value (stale cleared) (runtime, 2026-06-08)
+## §2 supplement — empty operand in a *computation* operation ⇒ no value (stale cleared) (runtime, 2026-06-08) <a id="kf18"></a>
 
 > Fold: folded → §11.
 
 A DATE-family operation over an empty operand is not evaluated: the computed field gets no value and a stale stored value is CLEARED (probed via `DateRange(OrderDate, DeliveryDate)` on `IDocumentRtService.compute`). Consequence: an `AllFieldsFilled` guard over DATE operands is **redundant** (a false precondition clears exactly as the unevaluated operation does — this settled the 2026-06-08 T13 judge split), but the redundancy is per-type — it does NOT hold for strings-in-concatenation (empty concats as `""`) or numbers (empty-as-0); canonical §11 "one operation, three outcomes" carries the full per-kind table and the guard consequence. *(Locked: `adapter.laws.DateRangeComputationLawsTest`, via the `RuntimeLaws.compute` oracle.)*
 
-## §11 supplement — compute(): an out-of-range value is ERRORED; a computation reading an errored dependency is SKIPPED (runtime, 2026-06-26)
+## §11 supplement — compute(): an out-of-range value is ERRORED; a computation reading an errored dependency is SKIPPED (runtime, 2026-06-26) <a id="kf19"></a>
 
 > Fold: folded → §11.
 
@@ -265,7 +265,7 @@ A **computed NUMBER stores PADDED to the target's `minFractionalDigits` — and 
 
 **The computed-NUMBER store path in full — scale-19 pre-round, an UNCAPPED fit render, a length-bounded no-fit arm; the stored form is never re-rounded to fit the 15-digit check** (source + quad-differential, 2026-07-09). `CalculationController.handleBerechnetenWert(VkBigDecimal, id)` — both strategies — does, in order: **(1)** `setScale(19, HALF_UP)` (`VkBigDecimal.DEFAULT_SCALE` — observable only for a quotient/product whose scale exceeds 19); **(2)** if the value's natural (stripped) scale **fits** the target's `maxFractionalDigits`: render at `max(naturalScale, minFractionalDigits)` with **NO length cap**, run the formal check on that string (`checkField`), and store it — so a computed `RoundAccounting(product-of-many, 2)` worth `354027231847478.01` (17 digits) stores in FULL, trips `stelligkeitZuLang` (>15 digits, sign excluded), and the cell is **ERRORED with the full value** (`getComputedFieldInstancesWithErrors` carries it); **(3)** if the natural scale does **not fit** (`minScale > maxNachkommaMeta`): render length-bounded to **16 significant digits** (`BigDecimalUtils.toStringWertLaengenBeschraenkt(v19, 16)` — ≤ 16 significant digits → canonical; longer → `setScale(max(0, 16 − integerDigits), HALF_UP)`), store it, and mark **"fehlerhaft berechnet" unconditionally** (ERRORED even when the bounded string is formally valid — e.g. a scale-4 product `2.4723` into a maxFrac-2 target). The no-fit arm is reachable on a legal model **only** through the computation's **`errorCodesToSuppress: ["MVK_INVALID_COMPARE_DEC_PLACES"]`** (`IComputation.getErrorCodesToSuppress` — the kernel's own model-level escape hatch for the static assignment-scale gate); without it the codegen REJECTS a scale-mismatched assignment — the gate is an **ERROR** for computations, riding the implicit `[target] != <op>` comparison check (differentially pinned: `[A]*[B]` of scale-2 operands has static scale **4**, a bare division static scale **"?"**, both rejected into a scale-2 target). *(Interpreter: `storedComputedNumber` (commonMain) reproduces all three steps and `toComputed` reports a no-fit cell ERRORED into the IF85 poison set; locked `adapter.laws.ComputedNumberDigitOverflowDiffTest` — a QUAD-check incl. the suppressed no-fit arm and the rejected-without-suppression control — and multiplatform `interpreter … ComputedNumberDigitOverflowTest`; INTERPRETER-FINDINGS IF92.)*
 
-## §11 supplement — TIERED computations: alternatives are selected in order by precondition; `commonPrecondition` gates the whole (source + probe-verified 2026-06-25)
+## §11 supplement — TIERED computations: alternatives are selected in order by precondition; `commonPrecondition` gates the whole (source + probe-verified 2026-06-25) <a id="kf20"></a>
 
 > Fold: folded → §11.
 
@@ -299,13 +299,13 @@ The **interpreter models this in full** (fixed 2026-06-26, INTERPRETER-FINDINGS 
 
 **A computation is scoped to its COMPUTED FIELD, and a non-repeatable group is implicitly present (source + differential 2026-07-09).** A computation iterates over its **computed field's** repetition scope — where it *writes*, not the group it is *declared* in (a `*_Rules`/subtype container group can declare a computation whose `computedFieldRelPath` reaches into a different subtree). When the computed field has **no repeatable ancestor** (an all-non-repeatable target), the kernel computes exactly **one** instance — and it does so **regardless of instantiation**, because a non-repeatable group is always present (index 1). Differentially confirmed in BOTH strategies (groovy-dynamic + java-static): a constant computation declared in an uninstantiated container group targeting an all-non-repeatable field in another subtree computes its single value on an instantiated document AND on an empty one. *(Interpreter: the compute scope anchors to the target's parent group and `Document.computeContexts` yields the implicit single context for an all-non-repeatable uninstantiated scope — compute-local; locked `adapter.laws.CrossGroupConstantComputeScopeDiffTest` + `interpreter … CrossGroupConstantComputeScopeTest`, INTERPRETER-FINDINGS IF89.)*
 
-## §11 supplement — a single-alternative `commonPrecondition` reads back FOLDED onto the alternative (probe + source-verified 2026-07-17)
+## §11 supplement — a single-alternative `commonPrecondition` reads back FOLDED onto the alternative (probe + source-verified 2026-07-17) <a id="kf21"></a>
 
 > Fold: not-foldable — a stored-form/read-back representation fact (the kernel's normalized computation form), outside the canonical doc's evaluation scope.
 
 The DM-JSON `commonPrecondition` key survives the WRITE (the model file carries it verbatim), but the kernel stores a computation as ONE rule condition in its "normalized form" and re-derives the common/per-alternative split on extraction (`CalculationService.extractCalculationInfo` → `NormalisierteBerechnungsFormHelper`, whose per-alternative precondition parts absorb the common parts — mechanism read from source, no expression copied). With a SINGLE unconditional alternative the split has no structural anchor, so the gate reads back as that alternative's own precondition: writing `{commonPrecondition: "[Subtotal] > 0", alternatives: [{operation: "[BaseShipping]"}]}` reads back `commonPrecondition = null` + one alternative `{precondition: "[Subtotal] > 0", operation: "[BaseShipping]"}`. **Semantically identical** (a whole-computation gate over one unconditional alternative ≡ that alternative guarded by the gate — both compute iff the gate holds, else cleared, per the tiered selection semantics above), so `commonPrecondition` survives a round-trip **distinctly only with ≥2 alternatives**. Consumer-visible wherever read-back serves: `computation read`, `model report` (MODEL-REVIEW-SPEC §4a). *(Locked: `adapter.ComputationCommonPreconditionFoldTest`; probe + source read, kernel 30.8.1, 2026-07-17.)*
 
-## §11 supplement — compute reporting granularity: the RESULT has five channels; VALUE/CLEARED/ERRORED is the three-channel CHANGE PROJECTION we select (source + probe, 2026-07-08; five-channel framing corrected 2026-07-22, SPEC-2026-07-22-08)
+## §11 supplement — compute reporting granularity: the RESULT has five channels; VALUE/CLEARED/ERRORED is the three-channel CHANGE PROJECTION we select (source + probe, 2026-07-08; five-channel framing corrected 2026-07-22, SPEC-2026-07-22-08) <a id="kf22"></a>
 
 > Fold: folded → §11.
 
@@ -328,7 +328,7 @@ Those classifications are fixed **against the computation source**. `applyTo(Doc
 
 **Consequence for us:** `DmInterpreter.compute` deliberately reports **every** computed instance (report-all — the more useful library contract; result-envelope granularity is not behavior-parity territory, the IG47 BEST-gate ruling), so **every comparison surface** that diffs the interpreter against a kernel compute report projects the interpreter side first — `interpreter.conformance.kernelComputeGranularity`, used by the corpus capture/replay (JVM + JS), the real-corpus sweep, the model shrinker, and the compute fuzz oracle. *(Locked: `adapter.laws.ComputeResultChannelsLawsTest` (the five channels, the `WithChanges ⊆ WithoutErrors` subset, and the `noErrorOccurred` predicate) + `interpreter … conformance.ComputeGranularityTest` (JVM+JS) + `adapter.laws.CorpusCaptureTest` (string vs number seed-equal capture) + the committed corpus guard case `compute/order-name-seed-equal` (empty `computeExpected` must PASS). Contract: CONFORMANCE-CORPUS-SPEC §7.)*
 
-## §11 supplement — compute eagerly formal-validates operands, WITHOUT a global abort (source + differential, 2026-07-22, SPEC-2026-07-22-12)
+## §11 supplement — compute eagerly formal-validates operands, WITHOUT a global abort (source + differential, 2026-07-22, SPEC-2026-07-22-12) <a id="kf23"></a>
 
 > Fold: folded → §11.
 
@@ -342,7 +342,7 @@ Then, **regardless of the collected errors, computation processing continues** �
 
 **Consequence for us:** the interpreter's public `compute` is report-all outcomes and does **not** surface the eager operand-error inventory (a kernel result-envelope channel), but it matches the focused downstream witnesses — the direct consumer is CLEARED, the unrelated computation produces a VALUE, and each represented instance carries a single outcome (ERRORED, never also CLEARED). No interpreter change was needed for THIS entry's witnesses; the SPEC-2026-07-23-15 supplement below sharpens the index-field half (which indexes the inventory SELECTS, the shared default staging, and the preliminary index poison the -15 differential exposed on the interpreter). *(Locked: `adapter.laws.ComputationEagerPrepassLawsTest` — invalid-operand reporting + direct-consumer classification + continued processing + interpreter parity, required-empty silence, empty/non-unique index reporting, and errored-not-cleared; the five channels themselves by `adapter.laws.ComputeResultChannelsLawsTest`.)*
 
-## §11 supplement — computation SELECTS operand index fields (direct + induced) and applies full validation's index-default staging (source + dual-strategy differential, 2026-07-23, SPEC-2026-07-23-15)
+## §11 supplement — computation SELECTS operand index fields (direct + induced) and applies full validation's index-default staging (source + dual-strategy differential, 2026-07-23, SPEC-2026-07-23-15) <a id="kf24"></a>
 
 > Fold: folded → §11.
 
@@ -357,13 +357,13 @@ The inventory is neither a runtime read trace nor a dependency schedule — whet
 
 **Interpreter reconciliation (SPEC-2026-07-23-15):** compute stages the same eligible index defaults as full validation (call-local, never mutating the document), and the compute path's formal gate now carries the kernel's preliminary index invalidation — a DUPLICATED index cell is invalid for a reading computation, and an EMPTY index cell poisons its reader (unlike an ordinary required-empty field) — the class the -15 differential exposed (two sibling instances: empty and duplicate; INTERPRETER-FINDINGS). The eager `formalErrorsInOperands` channel itself stays kernel-only (the report-all projection documents outcomes, not envelope channels). *(Locked: `adapter.laws.ComputationEagerPrepassLawsTest` — the SPEC-15 arms: selected-vs-unused, iteration/group-ref/semantic-index/parallel-iteration/filter induction, absent + present-empty default staging with value parity, ineligible multi-row/admitted-explicit controls, channel separation, and the empty/duplicate poison projections — dynamic-Groovy · static-Java · interpreter; `interpreter.ComputationIndexDefaultMultiplatformTest` — the pure engine on JVM + Node.)*
 
-## §9/§11 supplement — computations PARALLEL-ITERATE over sibling indexed groups; an invalid index anywhere marks every instance incorrectly calculated (source + differential, both strategies, 2026-07-09)
+## §9/§11 supplement — computations PARALLEL-ITERATE over sibling indexed groups; an invalid index anywhere marks every instance incorrectly calculated (source + differential, both strategies, 2026-07-09) <a id="kf25"></a>
 
 > Fold: folded → §11.
 
 A computation whose operands reference OUT-OF-SCOPE sibling repeatable groups (all joined groups carrying the same-named INDEX field) runs the §9 parallel iteration: the target row keyed K reads each sibling's row with the SAME key — join-by-key, never physical row position (differentially pinned with scrambled row orders). An **unmatched side reads EMPTY** (empty-as-0 for a missing key row and for a wholly-uninstantiated side group — the calc still computes). Two calc-specific rules: the calc **never creates a repetition** (`CalculationController.isWiederholungGesetzt` — "no additional repetitions should be created by calculation"; a side-only key computes nothing), and an **INVALID index in ANY joined group** (a duplicated or empty key cell, target or side) marks **EVERY instance** of the computation "incorrectly calculated" — `CalculationCache.markFieldsUsingInvalidIndexGroupsAsIncorrectlyCalculated`, deliberately *"marking more field instances as invalid than strictly necessary"* — so even clean-keyed instances CLEAR (and poison dependents). Both strategies agree (tri-checked). *(Interpreter: the compute path reuses the rule-side `parallelIterationContexts` anchored on the TARGET's scope + an `invalidIndexGroup` all-instances guard; locked `adapter.laws.ComputeParallelIterationDiffTest` + multiplatform `interpreter … ComputeParallelIterationTest`; INTERPRETER-FINDINGS IF96.)*
 
-## §11/§12 supplement — validateFull does NOT run computations — validate and compute are separate operations (runtime, 2026-06-09)
+## §11/§12 supplement — validateFull does NOT run computations — validate and compute are separate operations (runtime, 2026-06-09) <a id="kf26"></a>
 
 > Fold: folded → §11.
 
@@ -389,25 +389,25 @@ The errored branch's guard exists precisely because `withFieldValue(ptr, null)` 
 
 **Consequence for us:** a *bare* `validateFull` sees a **computed field** as whatever the instance supplies — **empty** if absent (verified: `FieldFilled(CoverageWindow)` does **not** fire when only the `DateRange` operands are present), so a required-or-referenced computed field false-fires `mandatoryField` / misses its value. The **form-engine** answer applies the computation first. So our runtime-validate verbs **compose by default**: `model eval` / `rule eval` run **compute → applyTo → validateFull** (the form-engine flow), and **`--no-computations`** drops to the bare `validateFull`. The interpreter mirrors `applyTo` as the clean-room `DmInterpreter.applyComputations(doc)` (VALUE set, ERRORED/CLEARED emptied — INTERPRETER-FINDINGS IF45), the kernel side (the differential oracle) as `KernelAdapter.evaluateApplied`. `model compute` stays the pure `compute` (what does a field compute to?); the document file is never mutated by any verb (read-only — `compute`/eval report, never write `--instance`). The **engine-level** `DmInterpreter.validate == validateFull` parity stays foundational (the differentials rest on it); the *composed* path has its own differential. *(Locked: `adapter.laws.EvalDocSeamLawsTest.validationDoesNotRunComputations` (the engine split) + `adapter.laws.ComputeApplyDiffTest` (interp compute-then-validate == kernel `compute().applyTo().validateFull()`).)*
 
-## §12 supplement — Full vs Partial validation — `model eval` is FULL; partial may skip `*`-all-reps + `Having` rules (BA appendix; filter skip source + differential locked 2026-07-21)
+## §12 supplement — Full vs Partial validation — `model eval` is FULL; partial may skip `*`-all-reps + `Having` rules (BA appendix; filter skip source + differential locked 2026-07-21) <a id="kf27"></a>
 
 > Fold: folded → §12.
 
 The kernel has two validation modes (BA "Full Validation and Partial Validation", L5303-5321). **Full validation** — our `model eval` = `validateFull` — formal-validates all fields and evaluates every rule. **Partial validation** is a page-level pre-check over an app-specified *relevant-field* set: it guarantees never to report an error fixable only *outside* that set, but **does NOT guarantee complete checking of the relevant fields** — some checks are skipped (performance/simplicity). Named skip examples: rules referencing **all repetitions** via `*` when only some are relevant (explicitly incl. `NotAllFieldsFilled`, `FieldsNotCollectivelyFilled`), and **`Having`-filter** rules. The exact skip-set is an **unstable implementation detail** (may change any release; projects must not depend on it). **Consequence:** every law we lock and every catalog example we ship is *full-validation* behaviour — a rule that fires under full validation may *not* fire under a partial page pre-check. For the pinned kernel 30.8.1, the filter case is exact and executable: every rule containing a `Having` filter is skipped before iteration or condition evaluation, even when its error field and every referenced repetition are relevant (`PartialValidationFilterSkipDiffTest`). A future kernel upgrade must re-check the source templates and differential rather than treating this versioned skip as a permanent public promise. Related: the mandatory-"star" in a field's label (BA "the star method") is a *separate decidable heuristic* over a fixed allow-list of presence constructs — a UI affordance outside rulekit's scope.
 
-## §3 supplement — a fired message's `getErrorText` is the *interpolated* end-user text (runtime, 2026-06-14)
+## §3 supplement — a fired message's `getErrorText` is the *interpolated* end-user text (runtime, 2026-06-14) <a id="kf28"></a>
 
 > Fold: folded → §13.
 
 `IMessage.getErrorText()` returns the message with its tokens already resolved against the evaluated document, not the authored template (`$<fieldname>$` → the display string, `$<field.value>$` → the display value; no other substitution). Only the runtime can produce it. Treatment: `KernelAdapter.evaluate` surfaces it per message; the CLI returns it as `data.messages[].message` / `data.message` (FEATURE-GAPS G1). *(Locked: `adapter.MessageInterpolationTest`; CLI surfacing by `cli.RuleTestVerbTest.firesOnAViolatingInstance`.)*
 
-## §3 supplement — `$field$` is the field's *display name*, and the kernel sources it from a caller-supplied `ILabelProvider` (runtime, 2026-06-23)
+## §3 supplement — `$field$` is the field's *display name*, and the kernel sources it from a caller-supplied `ILabelProvider` (runtime, 2026-06-23) <a id="kf29"></a>
 
 > Fold: folded → §13.
 
 The token resolves through a three-step cascade. The caller-registered `ILabelProvider` (`IDocumentDynamicServiceConfig.getLabelProvider()`) is consulted first, and a present result wins **exactly, including the empty string**. If the provider is absent or returns no result, a nonempty localized model label wins; only then does the kernel emit the resolved `fullName/idx.idx` path+index debug fallback. dmtool deliberately supplies its label-or-name provider profile; a standalone interpreter consumer may select a different profile or no provider. *(Locked: `adapter.laws.DisplayNameDiffTest`; multiplatform `MessageDisplayPolicyTest`; source-grounded provider/fallback cascade.)*
 
-## §3 supplement — a formal error silently suppresses the author's rule (runtime, 2026-06-06)
+## §3 supplement — a formal error silently suppresses the author's rule (runtime, 2026-06-06) <a id="kf30"></a>
 
 > Fold: folded → §3.
 
@@ -418,7 +418,7 @@ All four claims are canonical in §3 ("Suppression is branch-scoped — and it r
 - **Branch-scoped, not rule-scoped** (RT-semantics drain, probe-corrected 2026-06-10): `healthyTrue Or [broken] > 0` still fires; the `And` twin is absorbed. *(Locked: `adapter.laws.FormalErrorScopeLawsTest`.)*
 - **Even a presence check is UNKNOWN on a not-check-relevant field** (fuzz-caught 2026-06-24): `isWertAngegeben` backs `FieldFilled`/`FieldNotFilled` AND the fill quantifiers, so a malformed operand makes them undecidable — the quantifier tally counts UNKNOWN in neither bucket. *(Interpreter fixed at the shared root — `filledTri` + the 3-state `quantCount`; locked: `adapter.laws.CurrentRepetitionDiffTest.malformedErrorFieldAtFiringRow` + `QuantifierMalformedDiffTest`.)*
 
-## §3 supplement — two more NUMBER sign formal errors: signed-zero and leading-plus (runtime, 2026-06-23)
+## §3 supplement — two more NUMBER sign formal errors: signed-zero and leading-plus (runtime, 2026-06-23) <a id="kf31"></a>
 
 > Fold: folded → §3.
 
@@ -430,7 +430,7 @@ Surfaced by the **differential fuzz net** (`adapter.perf.InterpreterKernelFuzzTe
 
 Both ride `formalePruefung` (the sentinel rule path) like the other formal errors, and suppress a referencing author rule (branch-scoped). *(Locked: `adapter.laws.NumberSignFormalDiffTest` — interp vs kernel over a scale-2 and a scale-0 field; the precedence is part of the lock.)*
 
-## §3 supplement — BASELINE value checks run for EVERY kind before the type format: charset + leading/trailing blank (probe + source, 2026-06-26)
+## §3 supplement — BASELINE value checks run for EVERY kind before the type format: charset + leading/trailing blank (probe + source, 2026-06-26) <a id="kf32"></a>
 
 > Fold: folded → §3.
 
@@ -443,7 +443,7 @@ Order: charset → leading → trailing → (type format). This **corrects** the
 
 **Is the charset customizable? Yes — but at the CODEGEN/PROJECT level, not via the DM model.** A restricted charset *can* be declared (`KernelUtils.validateCharset`/`simplifyCharset` process a `restrictedCharset`), and the legal codepoints are **baked into the generated meta-model** by the codegen templates (`CodeGenMetaModel.st`) from the project's programming-language config — they do NOT travel with the DM-JSON model. The real-world case is a standard restricted set such as **DIN 91379** (the EU public-administration / e-government character set for names & addresses) — far NARROWER than the BMP: it would make `中文`/many symbols illegal. The probe confirms a DM-JSON model gets the **full-BMP default, NOT DIN** (`é`/`ü`/`€`/`™`/`中文` all legal), so a project-configured DIN charset is genuinely a separate input. A model loaded purely from DM-JSON (the interpreter's path **and** the dynamic-codegen `RuntimeLaws` differential) gets the BMP default, and the interpreter's BMP check matches the kernel for every such model. **That trigger has FIRED:** the interpreter carries the **`LegalCharset` SPI** (IF43 — default BMP, matching the DM-JSON-only kernel; a consumer-supplied set such as DIN 91379 is enforced instead), the `legalCodepoints` half of the customization-surface parity rule. *(Interpreter: a single cross-kind `baselineValueError` in `eval/FormalError.kt`, IF43; locked `adapter.laws.BaselineValueFormalDiffTest`.)*
 
-## §3 supplement — DECLARED field-type CONSTRAINTS are formal errors too (range / length / pattern / digit-count / enum-domain), source + probe-verified 2026-06-25
+## §3 supplement — DECLARED field-type CONSTRAINTS are formal errors too (range / length / pattern / digit-count / enum-domain), source + probe-verified 2026-06-25 <a id="kf33"></a>
 
 > Fold: folded → §3.
 
@@ -474,7 +474,7 @@ The constraints are declared on the field type (kernel `IStringType` / `INumberT
 
 This is the same class as §94/§98 (format-error suppression) — only the trigger differs (a declared constraint / kernel default vs raw well-formedness). The **interpreter now models this dimension** (the per-cell family + the two defaults) — INTERPRETER-FINDINGS IF20, differential-locked by `adapter.laws.FieldConstraintFormalDiffTest`.
 
-## §3 supplement — CRLF is normalized to LF at EVAL INGESTION — the format measure, rule reads, and compute reads all see `\n` (source + tri-differential, both strategies, 2026-07-15; feedback F12 → IG70 → IF124)
+## §3 supplement — CRLF is normalized to LF at EVAL INGESTION — the format measure, rule reads, and compute reads all see `\n` (source + tri-differential, both strategies, 2026-07-15; feedback F12 → IG70 → IF124) <a id="kf34"></a>
 
 > Fold: folded → §3.
 
@@ -485,7 +485,7 @@ One normalization, `RuntimeUtils.normalizeLinebreaks` = replace the `"\r\n"` PAI
 
 *(Interpreter: the twin locus is the `Document` eval-INDEX ingestion — value-bearing placements are CRLF-normalized once at index build, so the format measure (`stringConstraintError`, whose newline gate now also precedes the enum-domain arm), rule operands, and compute operands read `\n`, while the consumer's raw placements stay untouched (`copy()` reproduces them verbatim; the compute delta projection keeps comparing against the RAW seed, matching the kernel's change-vs-input-document equality). Rule-message `$field.value$` is the deliberate sibling channel: it reads the immutable input's raw display bytes and therefore retains `\r\n`. Locked `adapter.laws.CrlfLengthNormalizationDiffTest` — the evaluation matrix — plus `MessageValueDisplayPolicyDiffTest` and multiplatform `CrlfNormalizationTest`/`MessageDisplayPolicyTest`; INTERPRETER-FINDINGS IF124/IF201.)*
 
-## §3 supplement — raw-type (`noValueValidation`) fields: EVERY value window is model-closed; the one allowed `Length` shape is an ELIMINATED max-length declaration (source + tri-differential, both strategies, 2026-07-15; IG71 → IF125)
+## §3 supplement — raw-type (`noValueValidation`) fields: EVERY value window is model-closed; the one allowed `Length` shape is an ELIMINATED max-length declaration (source + tri-differential, both strategies, 2026-07-15; IG71 → IF125) <a id="kf35"></a>
 
 > Fold: folded → §3.
 
@@ -499,7 +499,7 @@ A `noValueValidation` STRING field (nvv is an `IStringType`-only property — `F
 
 *(Interpreter: the mechanism-exact twin is RULE ELIMINATION, not a per-read np value state — `DmInterpreter.rowOutcomes` returns no rows for the eliminated shape (`eliminatedNvvMetaLengthRule`: whole-condition GT/LT-mirrored `Length` of a `noValueValidation`-constrained field vs a numeric literal), so it never fires and `testRule` reports PASSED; presence/content paths untouched. On kernel-legal inputs every other value read is unreachable (the MVK gates above), so no `Val` change is needed. Locked `adapter.laws.NvvRawTypeDiffTest` (tri-check: the three eliminated arms, presence, quantifiers, the count aggregate, partial validation) + `validate.laws.NvvRawTypeLawsTest` (the accept/reject tier incl. the `>=` precision arm and the computation rejects) + multiplatform `interpreter … NvvEliminatedLengthRuleTest` + the `ModelFuzz.nvvModel` fuzz family (mutation-checked: the gate disabled diverges on 26/200 (model, doc) pairs); INTERPRETER-FINDINGS IF125.)*
 
-## §3 supplement — the two DISTINCT number-digit checks: generic `stelligkeitZuLang` (> 15 total) vs the integer-cap `zahlZuvieleVorkommastellen` (source + probe-verified 2026-07-07)
+## §3 supplement — the two DISTINCT number-digit checks: generic `stelligkeitZuLang` (> 15 total) vs the integer-cap `zahlZuvieleVorkommastellen` (source + probe-verified 2026-07-07) <a id="kf36"></a>
 
 > Fold: folded → §3.
 
@@ -514,7 +514,7 @@ Corrects the earlier attribution (which wrongly gave `trait:"amount"` its own `s
 
 **STRING `noValueValidation` DISABLES the whole string format check** (source + probe-verified 2026-06-26). When `StringType.noValueValidation:true`, the kernel's `FormatDefinitionString.validiereFormat` returns `Valid` *immediately* — pattern, length, and the default newline check are all skipped. The key is MVK-constrained: it **forbids** `pattern`/`minLength` (`MVK_STRING_TYPE_PARAMS_INCONSISTENT` — only `maxLength` may accompany it) and **requires** `lineBreaksPermitted:true` (`MVK_STRING_TYPE_NO_VAL_AND_NO_LINE_BREAK`). So on a *kernel-valid* model the single observable runtime effect is that a declared **`maxLength` is NOT enforced** (a longer value is clean). Reachable on shipped A12 Tools StringType fields (Country/City/Person). The interpreter models it — INTERPRETER-FINDINGS IF29.
 
-## §3 supplement — the full NUMBER formal-error PRECEDENCE order (source `FormatDefinitionZahl.validiereFormat`, 2026-07-07)
+## §3 supplement — the full NUMBER formal-error PRECEDENCE order (source `FormatDefinitionZahl.validiereFormat`, 2026-07-07) <a id="kf37"></a>
 
 > Fold: folded → §3.
 
@@ -540,13 +540,13 @@ The number format checks fire in ONE fixed sequence (the kernel returns on the f
 
 Two traps this order encodes (probe-verified, IF70): **zero-not-allowed (10) fires AFTER the decimal (7-8) and integer-cap (9) checks** — so a `0` on a `zeroNotAllowed`+`minFractionalDigits` field is `zahlOhneDezimalTrenner`, not `zahlIstNull`; and **leading-zeros (11) is the LAST format check** — every earlier check beats it (`07.5` on a scale-0 field is `zahlHatDezimalTrenner`, not `zahlHatFuehrendeNullen`; `0007` over an integer cap is `zahlZuvieleVorkommastellen`). Interpreter: INTERPRETER-FINDINGS IF70 (reordered `numberConstraintError` to this sequence, moved `leadingZeros` out of the parse-level `numberFormalError`), differential-locked by `adapter.laws.FieldConstraintFormalDiffTest` (the precedence matrix, each case pinning the kernel winner) + multiplatform `interpreter.NumberDigitFormalTest`.
 
-## §3 supplement — a DATE value is stored and formal-checked in the field's DECLARED format, not ISO (runtime, 2026-06-23)
+## §3 supplement — a DATE value is stored and formal-checked in the field's DECLARED format, not ISO (runtime, 2026-06-23) <a id="kf38"></a>
 
 > Fold: folded → §6.
 
 Also surfaced by the **fuzz net**. A `DateType` field's value is the date **rendered in that field's `format`** — `OrderDate` (`yyyy-MM-dd`) holds `2024-06-15`, but `ApproxDate` (`dd.MM.yyyy`) holds `15.06.2024`. The formal check is **against the declared format**: a value in the field's own format is well-formed; a value in a *different* format is `datumFormatFalsch` (verified both ways — `ApproxDate = "2024-06-15"` → `datumFormatFalsch`; `OrderDate = "15.06.2024"` → `datumFormatFalsch`). So there is **no single canonical wire format** — a consumer must read each field's `format` to parse/validate its dates (the same is already known for `DateRangeType`, IF12). The interpreter canonicalizes every date to ISO internally via the declared format. *(Locked: `adapter.laws.PlainDateDiffTest`.)*
 
-## §3 supplement — a DATE value has an always-on lower bound: `Constants.DATE_FROM = 1583-10-16` (source + differential, 2026-07-09)
+## §3 supplement — a DATE value has an always-on lower bound: `Constants.DATE_FROM = 1583-10-16` (source + differential, 2026-07-09) <a id="kf39"></a>
 
 > Fold: folded → §6.
 
@@ -554,7 +554,7 @@ A well-formed date VALUE that resolves to a **real calendar date before 1583-10-
 
 This is **distinct from the opt-in "younger than 1900" additional check** (`Constants.DATE_FROM_FOR_ADDITIONAL_CHECK = "01.01.1900"`, gated on the field's `Zusatzpruefung` meta = `IDateType.isYoungerThan1900Check()`, **default false**): the always-on floor is 1583-10-16, so **1899 is valid** while 1000 / 1583-10-15 are not. Boundary pinned exactly by the differential — 1583-10-15 errors, 1583-10-16 is valid (strict `Date.before`). A **DAY_OPTIONAL** date completes an omitted day to `01` **before** the floor check (`PartiallyKnownDatesUtil.replaceUnknownDateParts` runs ahead of `dateInvalid`), so `00.10.1583` (→ 1583-10-**01**) errors while `00.11.1583` (→ 1583-11-01) is valid — kernel-differential-pinned. A computed date below the floor is bucketed **with-errors** (`getComputedFieldInstancesWithErrors`) → reported ERRORED; a stored one is a `validateFull` formal error that **suppresses** a referencing rule. **Both kernel strategies apply it** (the runtime format-definition + the codegen `CodeGenDateTypeImpl` that wraps it — java-static tri-checked). Interpreter treatment + lock: [INTERPRETER-FINDINGS](INTERPRETER-FINDINGS.md) IF88. *(Locked: `adapter.laws.ComputedDateGregorianFloorDiffTest`, both strategies.)*
 
-## §6 supplement — the RUNTIME tolerates any date `format`, but AUTHORING (SME) accepts only 3 canonical ones (source-verified 2026-07-07)
+## §6 supplement — the RUNTIME tolerates any date `format`, but AUTHORING (SME) accepts only 3 canonical ones (source-verified 2026-07-07) <a id="kf40"></a>
 
 > Fold: folded → §6.
 
@@ -565,7 +565,7 @@ This is **distinct from the opt-in "younger than 1900" additional check** (`Cons
 
 **Consequence for us.** Openability is a stricter bar than runtime-validity: `dmtool model describe` / `rule check` use the lenient runtime read path, so they are *not* a faithful SME proxy for this class (they accept `dd.MM.yyyy`). A model meant to open in the modeling tools must keep `format` in the canonical set. The conformance corpus therefore **canonicalizes date `format`s when it writes a standalone model** (`CaseJson.writeModel` → `CANONICAL_DATE_FORMAT`) and a guard rejects any non-canonical one (`CorpusSchemaGuardTest` via `CaseJson.unsupportedDateFormats`); the shared *differential fixture* keeps its `dd.MM.yyyy` fields (they test the runtime and are never SME-opened). *(Locked: `adapter.laws.CorpusSchemaGuardTest`.)*
 
-## §4 supplement — the "required" property and its two modes (runtime, 2026-06-06)
+## §4 supplement — the "required" property and its two modes (runtime, 2026-06-06) <a id="kf41"></a>
 
 > Fold: folded → §4.
 
@@ -587,7 +587,7 @@ This is **distinct from the opt-in "younger than 1900" additional check** (`Cons
 
 The **gotcha resolves by the parent's repeatability** (the `GroupFilled` split, §9 below): for a **repeatable** parent a *created-but-empty* row already counts as filled (the row index is content) → the field IS required; for a **non-repeatable** parent a formally admitted filled descendant counts. **What "a filled descendant" means was refined 2026-07-06 and again 2026-07-21:** it includes an INSTANTIATED repeatable descendant ROW, not only a valued field, but it excludes a value rejected by formal conversion. Thus an invalid-only non-repeatable parent does not activate a `relativeToParent` sibling; an admitted sibling or instantiated repeatable descendant does. So this is the SAME admitted-content notion as the §9 `GroupFilled` operator — requiredness and `GroupFilled` share it (they diverge only in that requiredness's *absolute* mode ignores it). And the "unknown" is **branch-scoped, not whole-rule** (§3 refinement): a required-empty operand makes its *comparison* unknown, so `[ReqNum] < 100` is suppressed but `[ReqNum] < 100 Or <true>` still fires. *(Interpreter parity locked: `adapter.laws.RequirednessDiffTest` + `adapter.laws.GroupPresenceFormalInvalidDiffTest`; branch-scoped field unknown by `adapter.laws.SuppressionDiffTest`.)*
 
-## §4/§8 supplement — field-level custom error messages live in a per-locale `errorMessage` array (source-verified, 2026-06-21)
+## §4/§8 supplement — field-level custom error messages live in a per-locale `errorMessage` array (source-verified, 2026-06-21) <a id="kf42"></a>
 
 > Fold: not-foldable — a DM-JSON model-structure/serialization fact (where the custom texts live), outside the evaluation scope.
 
@@ -603,7 +603,7 @@ A field carries **two** kinds of custom validation error text, both the "Use Def
 
 Source-read from the kernel (`IField.IRequirednessConfig.getErrorMessage`, `FieldErrorTextParser.hasValidErrorTextInRequirednessConfig`); rulekit's treatment (the `requiredMessages` / `enum.errorMessages` field-spec keys, G23) is in KERNEL-INTEGRATION-NOTES. *(Locked: `cli.field.FieldAddSpecTest` — per-locale enum + required messages round-trip; `modelkit.FieldConfigExtrasTest` reads the enum message back.)*
 
-## §5 supplement — the numeric equality scale gate is asymmetric
+## §5 supplement — the numeric equality scale gate is asymmetric <a id="kf43"></a>
 
 > Fold: folded → §5.
 
@@ -617,7 +617,7 @@ Differing known scales are accepted only when the numerically smaller-scale side
 
 **Runtime semantics (corrected from the 2026-06-24 probe by the source-backed SPEC-2026-07-19-13 discriminator).** The kernel independently normalizes both numeric operands to scale 19 `HALF_UP`, then fires iff `|R₁₉(a) − R₁₉(b)| > N`; the band is **STRICT**. This ordering matters: with `ε = 49 / 10²¹`, `a = 1 + ε`, `b = −ε`, and range 1, both operands normalize to `1` and `0`, so the rule does not fire; subtracting first and rounding the completed difference would wrongly fire. An **empty** numeric operand reads as **0** and a malformed operand suppresses the rule. Polarity is the same directional rule as numeric `!=`, not equality-like: for a firing gap, only movement of the normalized smaller side upward or the larger side downward can close the band. Thus an empty unsigned `0` against `+2` is OMISSION, but against `−2` is VALUE. The dedicated `Cond.Tolerance` node remains necessary because both its strict band truth and its directional typing differ from a generic `Abs(a-b) > N` composition. *(Locked: `adapter.laws.ToleranceExactnessDiffTest` against Groovy-dynamic + generated Java, multiplatform `ToleranceOpsTest`, the boundary law, and the broader `ToleranceDiffTest`.)*
 
-## §5 supplement — a NUMBER field type is ALWAYS scale-bounded; `maxFractionalDigits` is mandatory (no unbounded decimal) (source + metamodel + probe, 2026-06-28)
+## §5 supplement — a NUMBER field type is ALWAYS scale-bounded; `maxFractionalDigits` is mandatory (no unbounded decimal) (source + metamodel + probe, 2026-06-28) <a id="kf44"></a>
 
 > Fold: folded → §5.
 
@@ -629,7 +629,7 @@ An a12 `NumberType` carries a **mandatory** decimal scale — there is **no unbo
 
 Consequences: modelkit emitting `maxFractionalDigits` with a `null → 0` default is **correct** (it makes the implicit kernel default explicit), and a bare JSON-Schema `number` (no scale signal) has **no faithful import** — schemakit omits it by default rather than silently coercing a decimal to an integer (SCHEMAKIT-SPEC §4b). *(Locked: `modelkit.NumberScaleKernelLawTest`. This resolves the DEV-API-GAPS "unbounded-scale NUMBER" investigation — a kernel fact, not a modelkit gap.)*
 
-## §5 supplement — power-operator parse laws + the quiet non-execution edges (source-read + 2026-06-17)
+## §5 supplement — power-operator parse laws + the quiet non-execution edges (source-read + 2026-06-17) <a id="kf45"></a>
 
 > Fold: folded → §5.
 
@@ -637,7 +637,7 @@ The `^` power operator (parser `CheckOperationImpl`) has two separate structural
 
 **Power runtime value mechanism (source + dual-route differential, corrected 2026-07-20).** Positive power follows OpenJDK 21's X3.274 `BigDecimal.pow(int, MathContext)` numeric-value algorithm, keeping binary-exponentiation intermediates at precision `50 + decimalDigits(exponent) + 1` before the final precision-50 `HALF_UP` round; `0.473471768303411 ^ 7` ends in `…3319`, while exact rational power plus one final round ends in `…3318`. Negative power is kernel-specific reciprocal-first: round `1/base` at precision 50, then apply the positive algorithm to `−exponent`; `3 ^ -3` ends in `…7036`, not the reciprocal-after-power `…7037`. The admitted endpoints `±1000` execute, `±1001` and `0^-1` are runtime-invalid, and `0^0 = 1`; fractional exponents are authoring-rejected before either runtime strategy. On the **rule side** the two runtime-invalid integral regions make a comparison quiet (project to UNKNOWN). On the **computation side** they are the same `INVALID_NUMBER` domain failure as zero division (`CalculationController.handleBerechnetenWert`): a legal `RoundAccounting(0 ^ -1, 2)` / `RoundAccounting(2 ^ 1001, 2)` target has no stored value, carries `berechnungsWertFehler`, and poisons a dependent read — numeric `Abs`/`Min`/`Max`/rounding wrappers preserve it, exactly as for division (IF177 for division, IF203 for power). *(Locked: multiplatform `DecimalHostParityTest`; Groovy-dynamic/generated-Java/interpreter `DecimalPrecisionParityDiffTest` (rule side) and `PowerDomainFailureComputationDiffTest` (computation side).)*
 
-## §7 supplement — pattern-comparison slot rules and the limited kernel regex gate (2026-06-04 experiments; portability corrected 2026-07-19)
+## §7 supplement — pattern-comparison slot rules and the limited kernel regex gate (2026-06-04 experiments; portability corrected 2026-07-19) <a id="kf46"></a>
 
 > Fold: folded → §7.
 
@@ -650,19 +650,19 @@ The `^` power operator (parser `CheckOperationImpl`) has two separate structural
 
 *(Locked for the slot rules/lookbehind discriminator: `validate.laws.PatternLawsTest` + N7 `PatternMatched`/`PatternViolated` examples. Live acceptance probes for `(?i)`, `\R`, and `\h`: 2026-07-19. IF154 was the selected-escape increment; IF164 completes the admitted cross-platform dialect.)*
 
-## §7 supplement — string-literal escaping is quote-doubling, not backslashes
+## §7 supplement — string-literal escaping is quote-doubling, not backslashes <a id="kf47"></a>
 
 > Fold: not-foldable — concrete-syntax/grammar tier; the canonical doc defers grammar pitfalls to the origin project's grammar doc.
 
 The condition lexer's rule is `StringLiteral : '"' ( '""' | ~["] )* '"'` — an embedded quote is **doubled** (`"say ""hi"""`), and **backslash is a plain character** (no escape sequences; regex classes like `\d` are written as-is). Backslash-escaping a quote (`\"`) is a parse error (`MVK_UNEXPECTED_TOKEN`). Found while building the pattern operators: rulekit's renderer had C-style escaping and would have emitted wrong regexes for any pattern containing `\` — fixed and locked. *(Locked: `validate.laws.PatternLawsTest` + `RenderConditionTest.quotesStringLiteralsTheKernelWay`.)*
 
-## §8 supplement — a category's `description` is an editor-level note the kernel tolerates (probe + source, 2026-06-21)
+## §8 supplement — a category's `description` is an editor-level note the kernel tolerates (probe + source, 2026-06-21) <a id="kf48"></a>
 
 > Fold: not-foldable — an editor/tooling model attribute the kernel ignores; no evaluation behavior.
 
 An enumeration category's **optional `description`** (SME 1133 — "an optional description can be set") is **not** modeled by the kernel core: both `IEnumerationType.getCategoryValues()` and the a12internal `IEnumerationDataTable` expose categories as `name → values` only. A `description` key on a category node is **tolerated** by `checkConsistency` (probe: injected into a category, `model check` → `valid: true`, no diagnostic) — it's an editor/tool attribute the kernel ignores. Per the owner rule (*what's editable is part of the model, unless workspace-related*), it belongs **in the model** (the category node), not workspace settings — so rulekit writes it there (`EnumCategory.description`), preserved by the generic-tree round-trip and harmless to the kernel. *(Locked: `cli.field.FieldAddSpecTest.enumCategoryCarriesAnOptionalDescription`.)*
 
-## §8 supplement — `FieldValueIncludedInValueList` rides the 3VL: an empty operand is UNKNOWN (runtime, 2026-06-23)
+## §8 supplement — `FieldValueIncludedInValueList` rides the 3VL: an empty operand is UNKNOWN (runtime, 2026-06-23) <a id="kf49"></a>
 
 > Fold: folded → §2.
 
@@ -670,7 +670,7 @@ On an empty field the membership check is UNKNOWN, not "absent from the list" �
 
 The **authoring-side** constraints are already in the MVK ledger, not repeated here: members are type-matched to the field — number field → number literals, string/enum → string literals; mixing them is `MVK_INVALID_TYPES_FOR_COMPARISON` (ledger: *erased*), and a boolean/confirm field has no value-list (`MVK_ONLY_STRING_ENUM_NUMBER_ALLOWED`, ledger: *erased*). For `GroupFilled`/`GroupNotFilled`: a repeatable group reference needs the `*` aggregate form (`MVK_NO_WILDCARD`, ledger: *kernel-delegated*) and the error field must be referenced — a `GroupFilled(G)` reference covers `G`'s members *indirectly* (`MVK_ERROR_FIELD_NOT_REFERENCED`, ledger: *pre-checked*).
 
-## §8 supplement — enum-category codes and the positional mapping
+## §8 supplement — enum-category codes and the positional mapping <a id="kf50"></a>
 
 > Fold: folded → §8.
 
@@ -680,7 +680,7 @@ In DM-JSON, a category's `values` list pairs **positionally** with the enumerati
 
 *(Interpreter, probe-reconfirmed 2026-06-24: `Expr.EnumCategory(path, category)`, parsed in the `[...]` atom via the `->` arrow (same symbol in every language). `EvalContext.enumCategory` maps the stored value to its category value by POSITION in the enum's value list (`FieldDef.enumValues`/`enumCategories`, loaded from `EnumerationType.{values,categories}`); the comparison is string-based. An **empty** enum → `Val.Unknown` (the empty-string compare rule → no fire); a value **not in the enum** → `Val.Unknown` (the kernel emits `stringFalschesMuster` and suppresses — the interpreter's out-of-enum→Unknown reproduces the same no-fire). Polarity is always VALUE when it fires (the enum is filled). Locked: `adapter.laws.EnumCategoryDiffTest` — EXPRESS/OVERNIGHT→FAST, STANDARD→NORMAL, empty/out-of-enum no-fire, the `!=` direction.)*
 
-## §8 supplement — predefined-type validity (`ValidType`/`InvalidType`) is a runtime CLIENT SPI, not kernel-core behavior (probe + source, 2026-06-24)
+## §8 supplement — predefined-type validity (`ValidType`/`InvalidType`) is a runtime CLIENT SPI, not kernel-core behavior (probe + source, 2026-06-24) <a id="kf51"></a>
 
 > Fold: not-foldable — client-SPI registration/wiring mechanics (the operator form itself is canonical in §6/the field-types table).
 
@@ -690,7 +690,7 @@ In DM-JSON, a category's `values` list pairs **positionally** with the enumerati
 
 *(Interpreter, SUPPORTED 2026-06-24: the interpreter mirrors the client SPI with a **consumer-supplied registry** — `PredefinedType(minLength,maxLength,pattern)` (the kernel's `LENGTH_AND_PATTERN_CHECK`) keyed by name, injected into `DmInterpreter`, default the built-in `PredefinedTypeRegistry.DEFAULT` (`EMail`; no tax/gov). `Valid(field,"Name")`/`Invalid(...)` dispatch by arity off the date-construct `Valid`/`Invalid`; an EMPTY field is "not specified" → `UNKNOWN`/no-fire; an **unregistered** type name → the rule is reported **unsupported** (fail-fast), never a silent no-op. Differential-locked by `adapter.laws.PredefinedTypeValidityDiffTest`, which registers the SAME validator in BOTH engines via the SPI so the test verifies the operator semantics (firing/polarity/empty), not the regex. Checksum types (IBAN mod-97 — `PROVIDED_VALIDATION_CODE`) are a future function-valued-registry extension.)*
 
-## CustomCondition — a runtime CLIENT SPI with TWO API levels; the interpreter must support it (probe + source, 2026-06-24)
+## CustomCondition — a runtime CLIENT SPI with TWO API levels; the interpreter must support it (probe + source, 2026-06-24) <a id="kf52"></a>
 
 > Fold: folded → §14.
 
@@ -714,7 +714,7 @@ In DM-JSON, a category's `values` list pairs **positionally** with the enumerati
 
 **Interpreter design (kernel-free multiplatform SPI; decided 2026-06-24 — JVM AND JS/TS, prefer modern APIs):** the core defines a **multiplatform pure SPI** in `commonMain` mirroring the **`IData`-based** `ICustomCondition` contract (`CustomCondition.check` over pure `IData`/`IIdentifier`-shaped interfaces: `getValue(path,indices)`, the relevant + formally-incorrect sets, the error entity), so it compiles to JVM **and** JS and existing **Java core** AND **TS** impls plug in (their shapes already match). A project's JVM **md `DocumentV2`** impl is adapted via a thin JVM-only `DocumentV2`→`IData`-view adapter if needed. **"Prefer modern APIs"** applies to the **oracle/runtime path** (`validateFull(DocumentV2, DocumentProcessingConfig.customConditionFactory(...))`, not the deprecated `Locale`/static-service path), NOT to the SPI *contract* (which must be the cross-platform `IData`-based one). `CustomCondition X` parses to `Cond.Custom(name)`; unregistered name → reported unsupported (fail-fast). Implementation: INTERPRETER-ARCHITECTURE.md §7 (custom conditions).
 
-## Custom-extensibility surface — the kernel registers exactly TWO custom things (conditions + field types); there is NO custom computation/function (source-verified 2026-06-26)
+## Custom-extensibility surface — the kernel registers exactly TWO custom things (conditions + field types); there is NO custom computation/function (source-verified 2026-06-26) <a id="kf53"></a>
 
 > Fold: folded → §14.
 
@@ -727,7 +727,7 @@ The umbrella over the two SPI findings above (§8 predefined-type validity, and 
 
 So the kernel's custom escape hatches are for **conditions** and **field types** only. (Challenged + re-verified 2026-06-26 across kernel source, BA/semantics docs, the grammar, and this registration API.) rulekit/CLI treatment: a computation's operation is the closed `Calculation` sealed set; the interpreter's treatment (an unknown function fails loud) is INTERPRETER-FINDINGS IF22.
 
-## §8 supplement — a CUSTOM-typed field is validated by FULL DELEGATION to a registered validator; an unregistered one THROWS (source-verified 2026-06-26)
+## §8 supplement — a CUSTOM-typed field is validated by FULL DELEGATION to a registered validator; an unregistered one THROWS (source-verified 2026-06-26) <a id="kf54"></a>
 
 > Fold: folded → the field-types table.
 
@@ -744,7 +744,7 @@ How the kernel validates a field declared with a **`CustomFieldType{name, minLen
 
 This is the kernel truth behind the interpreter's treatment (auto-validate each filled custom cell against the consumer-registered predefined type; unregistered → report unsupported + degrade leniently, since the native runtime cannot host the validator) — INTERPRETER-FINDINGS IF26. JS/TS identical, so a Kotlin/JS consumer mirrors it.
 
-## §12 supplement — a starred VALUE-LIST quantifier's complete extent needs wildcard coverage (source + differential, 2026-07-22, SPEC-2026-07-22-09)
+## §12 supplement — a starred VALUE-LIST quantifier's complete extent needs wildcard coverage (source + differential, 2026-07-22, SPEC-2026-07-22-09) <a id="kf55"></a>
 
 > Fold: folded → §12.
 
@@ -752,7 +752,7 @@ In partial validation a starred value-list quantifier entry carries a **complete
 
 **Interpreter:** the fix reuses the existing `starRelevant` wildcard-extent seam (IF42) — `ValueListQuantEval` sets a `VlqOperand.extentUnknown` bit from `starRelevant(starPath)` (null in full validation → never set → the full path is byte-identical) and routes it through the same side-specific arms (since IF218 the fields-side gate for `No` sits at the operand's position in the ordered scan); per-cell relevance and formal-cell classification are unchanged. *(Locked: `adapter.laws.PartialValidationValueListDiffTest` — dynamic-Groovy vs static-Java vs interpreter, the three extent-sensitive cases plus fields-side-`NotAll`/`AtLeastOne`/non-repeatable controls — + multiplatform `interpreter … PartialValidationValueListExtentTest`; INTERPRETER-FINDINGS IF42.)*
 
-## §4/§12 supplement — an eligible empty INDEX field's declared S-value: FULL validation stages it, PARTIAL silently suppresses the cell (source + dual-strategy differential, 2026-07-23, SPEC-2026-07-23-14)
+## §4/§12 supplement — an eligible empty INDEX field's declared S-value: FULL validation stages it, PARTIAL silently suppresses the cell (source + dual-strategy differential, 2026-07-23, SPEC-2026-07-23-14) <a id="kf56"></a>
 
 > Fold: folded → §4 + §12.
 
@@ -769,7 +769,7 @@ An ordinary closed **Enumeration may declare one stored token as its S-value** (
 - **A `$field.value$` message interpolation over a STAGED index cell renders as if the cell were EMPTY** (→ the field's format default, `""` for an enum, `0` for a number) — even though the same staged token DECIDED the firing condition. Mechanism (source): the staging writes only into the transient `ValidationCache.datenCache` (which `getWertXML` / condition reads consult), while `MainValidatorController.getReplacementForParam` reads the **original caller data** — `validationCache.getDaten().getValueForDisplay(id)` — which never sees that cache; an empty display then falls to `IFormatDefinition.getDefaultValue`. So the split is between the eval cache (staged) and the caller document (`getDaten`, original). *(Locked dual-route + interpreter: `adapter.laws.StagedIndexDefaultInterpolationDiffTest`, `interpreter.StagedIndexDefaultInterpolationMultiplatformTest` (JVM+Node); interpreter reconciliation IF221.)*
 - **An enum `sValue` OUTSIDE its declared value domain is a MODEL-consistency error, `MVK_S_VALUE_INVALID`** ("The s-value '…' is not contained in the list of XML-values for the enumeration"), reported by `checkConsistency` — and **BOTH kernel strategies REFUSE to generate validation code** (dynamic-Groovy throws `DocumentValidationException`; static-Java's `generateValidationCode` returns null). There is no runtime "staged-formal-check" path: an out-of-domain S-value model is simply not kernel-consistent and never runs. *(Locked: `adapter.laws.OutOfDomainEnumSValueRejectionTest` (kernel MVK stance + the interpreter loader's matching loud refusal), `interpreter.load.EnumSValueLoadTest` (JVM+Node); interpreter reconciliation IF221.)*
 
-## §12 supplement — Partial validation (`validatePart`) — rule-gating + 3VL relevance (source + probe-confirmed 2026-06-24)
+## §12 supplement — Partial validation (`validatePart`) — rule-gating + 3VL relevance (source + probe-confirmed 2026-06-24) <a id="kf57"></a>
 
 > Fold: folded → §12.
 
@@ -792,7 +792,7 @@ This is exactly the runtime `isWertAngegeben` 3VL (a non-relevant cell read is U
 
 The oracle path is the modern `validatePart(DocumentV2, …, config)` (`RuntimeLaws.firedCodesPart`/`messagesPart`). Global fields are auto-relevant (IF37, above); a `CustomCondition` receives the relevant set (null for full, the subset for partial — IF38, source `MainValidatorController` → `getAllPruefungsrelevanteEntitiesExtern`; the set is the caller's *external* pointers **as passed** — wildcards preserved, groups NOT expanded — plus the auto-added globals); and uniqueness needs the duplicate **partner** relevant too (IF39 — the kernel's duplicate caches are built from the relevant fields only, `befuelleCacheMitRelevantenFeldern`). *(Locked: `adapter/…/laws/PartialValidationDiffTest` + `interpreter/commonTest/PartialValidationTest`; the rule-level `Having` skip by `PartialValidationFilterSkipDiffTest`; subset-repetition aggregates by `PartialValidationSubsetRepDiffTest` (IF35, non-directional); global fields by `PartialValidationGlobalFieldDiffTest` (IF37); custom-condition relevant-set propagation by `PartialValidationCustomConditionDiffTest` (IF38); subset uniqueness by `PartialValidationUniqueIndexDiffTest` + `PartialValidationRepetitionNotUniqueDiffTest` (IF39); per-operator starred-aggregate relevance by `PartialValidationAggregateDiffTest` (IF42, above); and a randomized `PartialValidationFuzzDiffTest` sweeps (document × relevant-subset) combinations across the whole partial surface. The interpreter matches the pinned kernel across that exercised surface.)*
 
-## §9 supplement — `validateFull` also emits STRUCTURAL over-repetition errors — `zuGrosseZeile` / `zuGrosseKontextnummer` / `zuGrosseLfdNummer` (model-fuzz finding, 2026-06-24; non-repeatable increment 2026-07-26)
+## §9 supplement — `validateFull` also emits STRUCTURAL over-repetition errors — `zuGrosseZeile` / `zuGrosseKontextnummer` / `zuGrosseLfdNummer` (model-fuzz finding, 2026-06-24; non-repeatable increment 2026-07-26) <a id="kf58"></a>
 
 > Fold: folded → §9.
 
@@ -813,13 +813,13 @@ The check is per **entity instance** (`FormalChecker.checkIndicesLessOrEqualThan
 
 Interpreter reconciliation (SPEC-2026-07-23-13): the per-cell gate order + ancestry walk already matched (the phase separators landed as agreement locks). The original **observed divergence** was that over-limit repeatable rows leaked into the interpreter's star-aggregate row domain; the parallel-iteration join was the same class. Both were fixed at the shared document-owned row-domain root. The 2026-07-26 R2.8 increment measured the non-repeatable sibling and generalized the same decision from authored `declaredReps` to one group-only effective-bound map: a declared cap for bounded repeatable groups, implicit 1 for non-repeatable groups, and no entry for unbounded repeatable groups or field terminals. That map now drives exact structural-code selection, ordinary-check suppression, and aggregate/join exclusion. A field's terminal coordinate remains outside runtime semantics because Kernel document conversion refuses it before validation; placement decoding owns that gate. *(Locked: `adapter.laws.OverRepetitionFormalGateDiffTest` — phase separators, fixed-group emission, and repeatable/fixed aggregate-exclusion siblings across dynamic-Groovy · static-Java · interpreter; `interpreter.OverRepetitionFormalGateMultiplatformTest` on JVM + Node; the parallel-iteration domain by `adapter.laws.OverLimitParallelIterationDiffTest` and `interpreter.OverLimitParallelIterationTest`.)*
 
-## `mandatoryGroup` (`FEHLER_PFLICHTKONTEXT`) is a DEAD code in 30.8.1 — defined but never emitted; a group cannot be declared mandatory (source-verified 2026-06-26)
+## `mandatoryGroup` (`FEHLER_PFLICHTKONTEXT`) is a DEAD code in 30.8.1 — defined but never emitted; a group cannot be declared mandatory (source-verified 2026-06-26) <a id="kf59"></a>
 
 > Fold: not-foldable — a dead-code inventory fact (defined, never emitted) with its re-open trigger; nothing to fold.
 
 The runtime formal-error code **`mandatoryGroup`** (`IFormaleFehlerConstants.FEHLER_PFLICHTKONTEXT`, "auto generated rule: mandatory group") is **referenced nowhere** in the kernel `30.8.1` source except its own constant definition (Java + the TS twin) — **no code, codegen template, or generated validator emits it**. And **no DM-JSON property declares a *group* mandatory**: the md-serializer and the `a12-kernel-mm` metamodels carry mandatory/`requirednessConfig` only on **fields** (→ the `mandatoryField` rules `AutogeneratedRulesService` generates, KERNEL-FINDINGS §4), not on groups. So `mandatoryGroup` **cannot fire on any loadable DM model** — an unemitted code over an undeclarable property (a probe accordingly returned empty). The interpreter correctly never emits it; this is **parity by construction**, not a gap. *Re-open trigger:* a kernel upgrade that wires `FEHLER_PFLICHTKONTEXT` to an emission site **and** a group-mandatory declaration (re-check on the next [`KERNEL-UPGRADE`](KERNEL-UPGRADE.md)).
 
-## `multiSelect` value uniqueness (`FEHLER_MULTI_SELECT` = `uniqueValue`) is DEAD code in 30.8.1 — generated by NEITHER strategy (source-verified 2026-06-27)
+## `multiSelect` value uniqueness (`FEHLER_MULTI_SELECT` = `uniqueValue`) is DEAD code in 30.8.1 — generated by NEITHER strategy (source-verified 2026-06-27) <a id="kf60"></a>
 
 > Fold: not-foldable — a dead-code inventory fact (generated by neither strategy) with its re-open trigger; nothing to fold.
 
@@ -845,19 +845,19 @@ So `usageType: "multi-select"` drives only the UI checkbox-list widget + the `ch
 
 `uniqueValue` is therefore **vestigial** — the runtime-and-codegen sibling of the dead `mandatoryGroup` above. Both kernel strategies produce nothing, so the interpreter (matching BOTH per the CLAUDE.md #1 rule) correctly does **not** fire it — **parity by construction**, NOT a gap, and NOT a runtime-vs-codegen divergence (they agree: dead in both). **Corroborated from the model side (2026-06-27 sweep):** all **6** real multi-select groups in the 2025.06-ext5 workspaces are the minimal shape (`repeatability` + `usageType: "multi-select"` + one field — **no** `indexFieldName` / `unique` / extra property that could trigger a uniqueness rule), and the **`a12-kernel-mm` MM_Group metamodel** defines `multi-select` as merely a `usageType` **enum value** (beside `attachment`/`complexType`) with **no uniqueness constraint attached** (zero `uniqueValue`/`FEHLER_MULTI_SELECT` anywhere in the metamodels). Source + runtime + codegen + real models + metamodel all agree. The kernel's *consistency/editor* layer still validates the multi-select group **shape** (`MultiSelectGroupRule`) and the UI widget still prevents duplicate selection — but neither produces a `validateFull`/runtime `uniqueValue` message. *Re-open trigger:* a kernel upgrade that adds a multi-select method to `AutogeneratedRulesService` **or** an `IAutogeneratedRule` returning `UNIQUE_VALUE` (re-check on the next [`KERNEL-UPGRADE`](KERNEL-UPGRADE.md)). *(Locked: `adapter.laws.MultiSelectUniquenessDiffTest`.)*
 
-## `IRule.getCustomRefErrorEntitiesIfFilled/IfNotFilled` (modeler-defined error-entity attribution) is UNWIRED in 30.8.1 (source-verified 2026-06-26)
+## `IRule.getCustomRefErrorEntitiesIfFilled/IfNotFilled` (modeler-defined error-entity attribution) is UNWIRED in 30.8.1 (source-verified 2026-06-26) <a id="kf61"></a>
 
 > Fold: not-foldable — an unwired kernel API slot (feature not supported in 30.8.1) with its re-open trigger; nothing to fold.
 
 A rule can, *in the metamodel*, carry **custom-ref error entities** (`MM_Common_v2` defines a `CustomRefErrorEntities` slot with `CustomRefErrorEntityIfFilled`/`IfNotFilled`) — modeler-defined relative paths that refine **which field(s) a fired rule blames**, chosen by the referenced field's filled-state (the "nichtangabe-fehlerfelder"). But the feature is **not supported in kernel 30.8.1**: the md-model rule mapping (`kernel-md-model/.../mapping/Rule.java`) returns `List.of()` for both accessors, commented *"update implementation when customRefErrorEntities get supported in A12"* (A12K-2281 / A12K-2361); the `IRule` default and every autogenerated rule impl (Mandatory / UniqueField / SolitaryField) also return empty; and `RuleParser` short-circuits the candidate-relpath expansion whenever both are empty — i.e. **always**. So a loaded rule **never** carries custom-ref error entities, and the kernel **always** uses its default automatic error-entity attribution. The interpreter attributing a fired rule to its declared error entity is therefore **parity by construction** (the default path the kernel always takes); the modeler-defined refinement is moot until the kernel wires it. *Re-open trigger:* a kernel upgrade that lands A12K-2281/2361 (re-check on the next [`KERNEL-UPGRADE`](KERNEL-UPGRADE.md)).
 
-## §8 supplement — the ==/!= string-enum compatibility matrix (display-texts, probe-confirmed 2026-06-17)
+## §8 supplement — the ==/!= string-enum compatibility matrix (display-texts, probe-confirmed 2026-06-17) <a id="kf62"></a>
 
 > Fold: folded → §8.
 
 For `==`/`!=` between direct string/enum fields, the kernel first classifies each Enumeration by its **effective display remapping** (`IEnumerationType.hasDisplayValues`), not by whether label nodes were authored. No labels and identity-only labels (display equals stored token for every value) are effectively textless; either may compare with a plain String or another effectively textless Enumeration. A genuinely display-bearing Enumeration is incompatible with those profiles (`MVK_INVALID_COMPARE_ENUM_TO_STRING`). Two display-bearing Enumerations need not have identical declarations: disjoint and partially overlapping maps are accepted, but in every shared locale their overlap must be a partial bijection — a shared stored token cannot map to different displays and a shared display cannot denote different stored tokens (`MVK_INVALID_COMPARE_ENUM_TO_ENUM`). An identity pair still participates in that consistency test once another member makes both profiles display-bearing. Literal-domain checking and category projection remain separate. (Source `IEnumerationType.hasDisplayValues`, `FieldUtils.isEnumWithDisplayValues`, `CheckVergleichsBedingungImpl.checkEnumVsStringType`, and `CheckEntityListenUtils.checkDisplayValues`; a category comparison is exempt.) *(Locked: `validate.laws.EnumComparabilityLawsTest`.)*
 
-## §8 supplement — three enum-ish kinds: "extensible enum" is an IStringType quality, NOT a field type (source-verified 2026-06-17)
+## §8 supplement — three enum-ish kinds: "extensible enum" is an IStringType quality, NOT a field type (source-verified 2026-06-17) <a id="kf63"></a>
 
 > Fold: not-foldable — a type-system/model-structure classification (what is a field type vs a client-SPI quality), outside the evaluation scope.
 
@@ -869,7 +869,7 @@ Three distinct concepts, easy to conflate:
 
 (The model/editor metamodel `MM_Common` carries an "ExtensibleEnumerationType" config — maxLength/displayValues — and form-model/UI notions like `fieldConfigurationEntry`/`externalEnumeration` exist, but those are **tooling/FM layers outside rulekit's DM-JSON scope**, not runtime DM field types.) *(Corrects an earlier draft that wrongly called extensible enums "un-buildable" and cited `IEnumerationType.isExtensible` — it conflated the extensible `IStringType` quality with the dynamic/table-backed enum.)*
 
-## §9 supplement — ordinary-iteration negative admission is level- and OPERAND-sensitive, and the host conversion is the separator (probed 2026-07-25; a12-kernel-lean SPEC-2026-07-24-02)
+## §9 supplement — ordinary-iteration negative admission is level- and OPERAND-sensitive, and the host conversion is the separator (probed 2026-07-25; a12-kernel-lean SPEC-2026-07-24-02) <a id="kf64"></a>
 
 > Fold: folded → §9.
 
@@ -908,7 +908,7 @@ Three distinct concepts, easy to conflate:
 
 **The ±1 pair straddling 2^32 is the sharpest control of the three separators**, and better than the ±0.5 pair: two literals differing by one, both astronomically far from zero, land on opposite sides of the whole partition. A widening or saturating conversion admits both, so the pair pins 32-bit truncation specifically *(locked: `RuleGroupIterationLawsTest.theThirtyTwoBitNarrowingIsObservable`)*.
 
-## §9 supplement — the seven digit gates, named once (glossary, 2026-07-25)
+## §9 supplement — the seven digit gates, named once (glossary, 2026-07-25) <a id="kf65"></a>
 
 > Fold: not-foldable — a naming aid for the surrounding entries, not a kernel law of its own.
 
@@ -926,7 +926,7 @@ Three distinct concepts, easy to conflate:
 
 Two traps the naming prevents: `enteredValueTotalDigits` (15) is **not** a literal-length gate — it bounds *entered values*, so it never explains a literal being accepted or refused; and the 55/57-character exact decimal of `½−2⁻⁵⁵` is a **notation artifact**, not a required digit count — any decimal in the interval works, and the shortest needs 17.
 
-## §9 supplement — the host conversion's PARSE step lifts a below-half decimal onto one half, and the witness IS authorable via the suppressible dec-places gate (measured 2026-07-25; answers a12-kernel-lean SPEC-2026-07-25-02)
+## §9 supplement — the host conversion's PARSE step lifts a below-half decimal onto one half, and the witness IS authorable via the suppressible dec-places gate (measured 2026-07-25; answers a12-kernel-lean SPEC-2026-07-25-02) <a id="kf66"></a>
 
 > Fold: folded → §9.
 
@@ -966,7 +966,7 @@ With the gate suppressed against a scale-14 field, two 17-digit literals differi
 
 So the conflation is real but confined to **one** caller in the **mandatory-information** subsystem, which this project does not model at all (no reference anywhere in `:adapter`/`:interpreter`/`:cli`/`:rulekit`) — and every colliding literal makes the comparison itself degenerate (`AnzahlAngegebeneFelder >= -1` is trivially true; the large ones are unsatisfiable), so no meaningful mandatory-set derivation is at stake. Recorded as a characterized kernel-internal hazard with its locus named; **not** a hypothesis and **not** an open item. *(Whether it manifests in mandatory-information OUTPUT is unprobed — we drive no such surface — but the source classification above is complete.)*
 
-## §11 supplement — the parallel-iteration computation route replaces the read-time index gate with post-loop marking, whose blast radius depends on WHICH index group is malformed (differential, 2026-07-25; answers a12-kernel-lean EXP-2026-07-25-03)
+## §11 supplement — the parallel-iteration computation route replaces the read-time index gate with post-loop marking, whose blast radius depends on WHICH index group is malformed (differential, 2026-07-25; answers a12-kernel-lean EXP-2026-07-25-03) <a id="kf67"></a>
 
 > Fold: pending — the route split needs a deliberate edit to the §11 computation prose.
 
@@ -987,7 +987,7 @@ Observed on a two-sibling-row document: with all keys distinct both targets comp
 
 *(Locked: `adapter.laws.ParallelIterationIndexMarkingDiffTest` — all three cases assert dynamic-Groovy and static-Java. Our interpreter initially diverged on the on-path case, clearing the sibling the kernel keeps — one coordinate-blind root with a second reproduced symptom (the same key under two parents read as a duplicate); fixed as [IF222](INTERPRETER-FINDINGS.md), and all four cases now assert all three engines.)*
 
-## §5 supplement — the value-list quantifiers have TWO emission routes, and the fields-presence prepass belongs to only one (source, 2026-07-25; a12-kernel-lean SPEC-2026-07-25-01)
+## §5 supplement — the value-list quantifiers have TWO emission routes, and the fields-presence prepass belongs to only one (source, 2026-07-25; a12-kernel-lean SPEC-2026-07-25-01) <a id="kf68"></a>
 
 > Fold: folded → §5.
 
@@ -1001,7 +1001,7 @@ The routes differ exactly as follows — `nichtAlleFeldWerteInWerteListeFL` open
 
 **Coverage status — the OL route is now EXERCISED and agrees (2026-07-25, closing the coverage gap rather than documenting it).** No corpus fixture reaches either threshold, so `adapter.laws.ValueListOptimizedRouteDiffTest` authors the shape: **the fields side must be NON-STARRED** (a star is a WILDCARD, contributing to `getLengthAsList` and *not* to `getNumberOfIterations`), which makes the rule an ordinary iterating rule and therefore also requires a positive per-row guard against `MVK_NEG_CONDITION_IN_ITERATION` — that interaction is why the shape is near-impossible to reach by accident. It **proves route engagement from the emitted source** (`…WerteListeOL(` at/above the thresholds, `…WerteListeFL(` below, for both quantifier names) and then confirms the two routes agree on all three engines across the prepass case (an instantiated row with an empty code), a no-row document, a firing row, a matching row, and a wholly-empty values side. **No divergence** — the equivalence argument above holds observationally, not just by construction. *(`ValueListQuantifierOrderDiffTest` still cannot separate prepass from no-prepass — both accounts predict its outcomes — and its header says so.)*
 
-## §8 supplement — table-backed (dynamic) enums are NOT DM-JSON-serializable ⇒ `ValueNotConsistent` is un-buildable (2026-06-08)
+## §8 supplement — table-backed (dynamic) enums are NOT DM-JSON-serializable ⇒ `ValueNotConsistent` is un-buildable (2026-06-08) <a id="kf69"></a>
 
 > Fold: not-foldable — a serialization/infrastructure limit (what a self-contained DM-JSON can express) plus a codegen capability gate (which strategy may lower it), both outside the evaluation scope.
 
@@ -1013,7 +1013,7 @@ The routes differ exactly as follows — `nichtAlleFeldWerteInWerteListeFL` open
 
 **Even where a table enum IS reachable, only static-Java can lower it — so the normative oracle structurally cannot observe `ValueNotConsistent` (source, 2026-07-25).** Three facts compose: **(1)** the grammar's mixed value-list production has exactly one condition name — `fieldAndValueListConditionName: 'WertNichtKonsistent'` — and its sole creator (`FieldAndValueListConditionCreator`) *always* populates the mixed list (`new EntityListAndValueListConditionImpl(name, ids, null, null, mixedList)`), so **every** parsed `ValueNotConsistent` becomes the `EntityListAndValueConditionMixedList` codegen bean (the string/field-list beans belong to the sibling `feldListeUndWerteListenBedingung` family instead); **(2)** codegen resolves a template by `getClass().getSimpleName()` within the dialect's own dir (`STParameterClassBase`), and `conditionsDir/EntityListAndValueConditionMixedList.st` **exists only under `validation/java`** — as does `operationsDir/ConsistentValueOp.st` (the dynamic-enum value op, emitting `controller.getUiXmlValuesForTableEnum(…)` via `CodeGenDynamicEnumerationBuilder`); **(3)** this is not an accidental gap but a **declared, diagnosed restriction** — `NoMetaModelChecks.checkEnumTables()` rejects any table-enum field for `GROOVY` and `JAVA_SCRIPT_VK` with `MVK_TABLE_ENUMS_NOT_ALLOWED_FOR_PROGRAMMING_LANGUAGE`. **Consequence — and the correction that matters (a12-kernel-lean, 2026-07-25; verified here): the region has NO witness on ANY dialect, so "static-Java is the only witness" was too generous.** The ADO accessor `IEnumerationType.getTableName()` is abstract and its **sole implementor** — `kernel-md-model`'s `EnumerationTypeImpl` — returns `Optional.empty()` unconditionally (as does `getColumnName()`), and the md public API has no table concept at all. So `getTableName().isPresent()` is never true: the Groovy/JS rejection `MVK_TABLE_ENUMS_NOT_ALLOWED_FOR_PROGRAMMING_LANGUAGE` can never fire, the java-only `ConsistentValueOp`/`MixedList` templates are never instantiated, and `RuntimeController.wertNichtKonsistentML` is unreachable. The static-Java lowering *capability* is real but **dead**; there is no witness to promote, so no doctrine exception is needed — the region is simply unreachable at 30.8.1 (a12-kernel-lean reports the same at 31.1.0, and voided its EXP-2026-07-25-02 on that basis rather than conceding a region). The front-end-reach scoping above stands unchanged; only the witness claim needed narrowing. *(Source-read; the template asymmetry was the candidate and the check code + error code is the independent confirmation — the template-layer routing rule, DOC-DISCIPLINE §1. Not probe-locked: unreachable from any authorable fixture.)* **Re-verified 2026-07-25 with anchored `build/` exclusions**, because the whole claim rests on two completeness searches an unanchored exclusion would silently break (trap (3), DOC-DISCIPLINE §1): `getTableName()` has exactly **one** implementor of `IEnumerationType` — `kernel-md-model`'s `EnumerationTypeImpl`, returning `Optional.empty()` unconditionally (the other hits are callers, or `CodeGenEnumerationTypeImpl`/`CodeGenTableCompressed`, unrelated hierarchies) — and **no serialized `tableName`/`columnName` property exists** anywhere in md, so there is no DM-JSON key to author one. `getDependentColumns()` returns `Collections.emptyList()` on that same sole implementor, which kills the dependent-column cascade independently of the table name.
 
-## Header `modelVersion` compatibility — same-major and not-newer than the kernel's model-format (probed 2026-06-12)
+## Header `modelVersion` compatibility — same-major and not-newer than the kernel's model-format (probed 2026-06-12) <a id="kf70"></a>
 
 > Fold: not-foldable — a model-header compatibility policy (structure/versioning), outside the evaluation scope.
 
@@ -1028,7 +1028,7 @@ The kernel polices a document's `header.modelVersion` during `checkConsistency` 
 
 So the kernel is **tolerant of an older same-major model and fail-fast on a newer/different-major one**, with a clear message — exactly the posture we want, enforced upstream. rulekit only *classifies* this verdict (it does not re-derive the rule): the un-coded kernel ERROR is enriched to **`RK_MODEL_VERSION_INCOMPATIBLE`** (+ a fix), and an accepted-but-off-reference model gets a tolerant INFO **`RK_MODEL_VERSION_SKEW`**. The reference is `core.ModelFormat.VERSION` (`28.4.0`), bumped in lockstep with the kernel pin (KERNEL-UPGRADE). *(Locked: `cli.ModelVersionPolicyTest` — the band's tolerant/exact/fail-fast cases + the message pattern via `validate.ModelVersion.isVersionMismatch`; the no-implicit-bump round-trip is in the same test.)*
 
-## §1/§3 supplement — value-vs-omission typing is DIRECTIONAL and sign-aware (source + runtime, 2026-06-23)
+## §1/§3 supplement — value-vs-omission typing is DIRECTIONAL and sign-aware (source + runtime, 2026-06-23) <a id="kf71"></a>
 
 > Fold: folded → §12.
 
@@ -1054,7 +1054,7 @@ The naive star-omission notion (`starOmission`: any empty cell / short tail) is 
 
 **Arithmetic fill is executable, not merely “sign-dependent/parity” (source-completed + dual-route discriminator 2026-07-20).** With `(g,s)` = can-grow/can-shrink, addition is `(a.g∨b.g, a.s∨b.s)` and subtraction is `(a.g∨b.s, a.s∨b.g)`. Multiplication grow is `(a.g∧b.g) ∨ (a.s∧b.s) ∨ (b>0∧a.g) ∨ (b<0∧a.s) ∨ (a>0∧b.g) ∨ (a<0∧b.s)`; shrink is `(a.g∧b.s) ∨ (a.s∧b.g) ∨ (b>0∧a.s) ∨ (b<0∧a.g) ∨ (a>0∧b.s) ∨ (a<0∧b.g)`. The joint terms survive when both current signs are zero. Division first rejects current zero, then multiplies by reciprocal fill `(b.s∨(b<0∧b.g), b.g∨(b>0∧b.s))`. Power is deliberately conservative: negative exponents recurse through reciprocal-first staging; fixed exponent, fixed base, and both-variable branches split around exponent zero, base `−1/0/1`, and parity; only the both-variable `base>1`/neither-shrink case is grow-only, otherwise it may return both directions. This is policy rather than exact reachable-set analysis: with the same `0^0` value, `0 ^ empty-unsigned > 0` fires OMISSION while `0 ^ empty-signed > 0` fires VALUE in both kernel strategies. Quiet-invalid power domains never reach comparison typing as an ordinary fixed value, and fractional exponents are rejected during authoring. *(Locked: `ArithmeticFillPolarityDiffTest` zero-base tri-check + multiplatform `ArithmeticFillBranchTest` full branch matrix.)*
 
-## §5 supplement — tolerance boundary + comparison rescaling (runtime, 2026-06-10, RT-semantics drain)
+## §5 supplement — tolerance boundary + comparison rescaling (runtime, 2026-06-10, RT-semantics drain) <a id="kf72"></a>
 
 > Fold: folded → §5.
 
@@ -1065,7 +1065,7 @@ The naive star-omission notion (`starOmission`: any empty cell / short tail) is 
 - **A scale-19 `HALF_UP` pre-rounding precedes every target-scale rounding** — observable with three separate thirds: `RoundDown([q]/3 + [q]/3 + [q]/3, 0) == [q]` fires for `q=1` because the independently precision-50-rounded thirds sum to `1−10⁻⁵⁰`, then pre-round to 1 before the floor. The former multiplied-third example is not a discriminator: the one-pass division rewrite makes that product exact first. *(Locked: `adapter.laws.RoundingLawsTest` + `ArithmeticLoweringDiffTest`.)*
 - **Interpreter status: the full `Round*` family is reproduced** — the operand-list `RoundDown`/`RoundUp`/`RoundAccounting([expr][, n])` and their bare-field `*Value(field[, n])` siblings. **The decimal-places argument is OPTIONAL on BOTH forms** (grammar `rundenOperOp`/`rundenOp` — `(',' ZiffernFolge)?`; an absent `n` is the integer round, places 0; kernel-pinned 2026-07-10, IF102 — a real workspace model carries the 1-arg `RoundDown([X])`). `Dec.roundTo(places, mode)` replays `BigDecimalUtils.runden`'s two-step exactly (pre-round to scale 19 HALF_UP, then `setScale(places, FLOOR/CEILING/HALF_UP)`); on JS, big.js has no native FLOOR/CEILING, so they are emulated by sign (away-from-zero for negatives under FLOOR, the mirror for CEILING) — `toward −∞ / +∞`. *(Interpreter-locked: `adapter.laws.RoundDiffTest` — the negative-boundary FLOOR/CEILING + the `.5` HALF_UP catchers, against the live kernel; the cross-platform `interpreter.RoundToTest` re-asserts the values on JS; the fuzz net adds three round rules — `PerfCatalog.fuzz()`.)*
 
-## §2 supplement — patterns skip empties; operand-list `Min`/`Max` do not (runtime, 2026-06-10, RT-semantics drain)
+## §2 supplement — patterns skip empties; operand-list `Min`/`Max` do not (runtime, 2026-06-10, RT-semantics drain) <a id="kf73"></a>
 
 > Fold: folded → §2.
 
@@ -1077,13 +1077,13 @@ Two more edges of the §2 empty-value table (all three now canonical in §2's ov
 
 *(Locked: `adapter.laws.EmptyValueLawsTest` — `emptyStringDoesNotViolateAPattern` / `operandListMinSeesAnEmptyNumberAsZero` / `anEmptyFieldIsNeverInAValueList` / `anEmptyListEntryFieldNeverMatches_noZeroSubstitution`.)*
 
-## §2 supplement — `Length("")` is 0, evaluated (runtime, 2026-06-10, RT-semantics drain)
+## §2 supplement — `Length("")` is 0, evaluated (runtime, 2026-06-10, RT-semantics drain) <a id="kf74"></a>
 
 > Fold: folded → §2.
 
 `Length` coerces to NUMBER and reads an empty string as `0` rather than the unknown state (`BigDecimalUtils.laenge`), so `Length(F) < 5` fires on an empty `F` in a filled row — the string family's own empty-as-0 backdoor, canonical in §2's override table. *(Locked: `adapter.laws.EmptyValueLawsTest.lengthOfAnEmptyStringIsZero_evaluatedUnlikeAComparison`.)*
 
-## Condition directives — `@SuppressWarning` + `RuleGroup` (2026-06-10, grammar-ledger drain)
+## Condition directives — `@SuppressWarning` + `RuleGroup` (2026-06-10, grammar-ledger drain) <a id="kf75"></a>
 
 > Fold: folded → §5 + §10.
 
@@ -1094,7 +1094,7 @@ Two raw-DSL forms the grammar carries outside the operator surface (productions 
 
 *(Locked: `validate.laws.DirectiveLawsTest`.)*
 
-## Condition lexing — keyword case-variant families; whitespace rides a hidden channel; a bare name is never an arithmetic operand (source `LexerTerminals_en` + grammar, differential-locked 2026-07-06/09)
+## Condition lexing — keyword case-variant families; whitespace rides a hidden channel; a bare name is never an arithmetic operand (source `LexerTerminals_en` + grammar, differential-locked 2026-07-06/09) <a id="kf76"></a>
 
 > Fold: not-foldable — concrete-syntax/lexer tier; the canonical doc defers grammar shape to the origin project's grammar doc.
 
@@ -1104,7 +1104,7 @@ Three lexer/grammar-tier facts about the condition DSL's concrete syntax (they h
 - **Whitespace (and `;;` comments, below) ride the lexer's HIDDEN channel** — insignificant between ANY two tokens. Observable in path syntax, where a naive parser is tempted to read spacing as structure: `Group* / Field` ≡ `Group*/Field`, `.. / seg` ≡ `../seg`, and whitespace **within a `..` up-run** (`.. ..` ≡ `....`) is insignificant too. *(Interpreter: INTERPRETER-FINDINGS IF75/IF91; locked `interpreter … PathWhitespaceParseTest` + `ParentUpWhitespaceParseTest` (JVM+JS).)*
 - **A bare identifier is never an arithmetic operand**, so `/` and `*` after a bare path segment are always PATH syntax (separator / wildcard), never division/multiplication: the grammar's arithmetic atoms (`einfacheOperation`) are **bracketed** `[entity]` references, constants, or named functions — a bare name cannot start one. This is what makes the whitespace insensitivity above unambiguous.
 
-## Condition comments — `;;` line comments are concrete syntax: tolerated; rulekit authors them and preserves the leading one (grammar + 2026-06-12)
+## Condition comments — `;;` line comments are concrete syntax: tolerated; rulekit authors them and preserves the leading one (grammar + 2026-06-12) <a id="kf77"></a>
 
 > Fold: not-foldable — concrete-syntax tier + rulekit treatment record; comments are not carried in the parsed AST, so there is no evaluation claim.
 
@@ -1114,7 +1114,7 @@ rulekit's treatment of this kernel fact (detail: KERNEL-INTEGRATION-NOTES "Condi
 
 *(Locked: `adapter.ConditionCommentLossinessTest` — a leading comment is preserved (carried in `diff.after`, not flagged lossy) and an inline/trailing one is dropped with the loss disclosed; `adapter.CommentRoundTripTest` — read→modify→write-back keeps the leading comment with no manual sourcing; `rulekit.dsl.CommentRenderTest`/`RuleCommentTest` — the side-channel render + typed authoring; `rulekit.dsl.ComputationAuthoringTest` — comments on a computation's operations + preconditions, kernel-accepted. rulekit treatment: KERNEL-INTEGRATION-NOTES "Condition comments"; kernel API: KERNEL-RULE-API-SURVEY `stripComments`.)*
 
-## §6 supplement — the date family (corpus item 9 slice 9a, 2026-06-04 experiments)
+## §6 supplement — the date family (corpus item 9 slice 9a, 2026-06-04 experiments) <a id="kf78"></a>
 
 > Fold: folded → §2 + §6.
 
@@ -1133,7 +1133,7 @@ rulekit's treatment of this kernel fact (detail: KERNEL-INTEGRATION-NOTES "Condi
 
 *(Locked: N7 examples of Today + all three Difference*/Add* operators + the `Today` number-vs-date invalid; `dsl.operators.DateConditionTest` for rendering + the non-date-field handle rejection. The order fixture gained `OrderDate`/`DeliveryDate` DateType fields.)*
 
-### §6 supplement — malformed date-ish VALUES: the `datumBereich*` code trio, calendar validity, malformed TIME/DATE_TIME (probe, 2026-06-25)
+### §6 supplement — malformed date-ish VALUES: the `datumBereich*` code trio, calendar validity, malformed TIME/DATE_TIME (probe, 2026-06-25) <a id="kf79"></a>
 
 > Fold: folded → §3 + §6.
 
@@ -1148,7 +1148,7 @@ rulekit's treatment of this kernel fact (detail: KERNEL-INTEGRATION-NOTES "Condi
 
 *(Interpreter treatment: INTERPRETER-FINDINGS IF8/IF12 — `formalError(DATE_RANGE …)`, `parseRangeToIso`, calendar-checking `buildIso`. Locked: `adapter.laws.DateRangeFormalDiffTest` (trio + `calendarInvalidPlainDateMatchesKernel`) + `TimeDateTimeFormalDiffTest` (formal message + suppression).)*
 
-### §6 supplement — date-range overlap: `DateRangesOverlap` any-pair, `AtLeastOneDateRangeOverlaps` scalar-vs-list, the predicate-arg `Having` keep-law, filter-derived polarity (probe + source, 2026-07-08)
+### §6 supplement — date-range overlap: `DateRangesOverlap` any-pair, `AtLeastOneDateRangeOverlaps` scalar-vs-list, the predicate-arg `Having` keep-law, filter-derived polarity (probe + source, 2026-07-08) <a id="kf80"></a>
 
 > Fold: folded → §6.
 
@@ -1163,7 +1163,7 @@ Clean-roomed from `RuntimeController.datumsBereicheUeberlappend` / `mindestensEi
 
 *(Locked: `adapter.laws.DateRangeOverlapSemanticsDiffTest` tri-checks the any-pair/scalar-vs-list shape split, empty and malformed-scalar early exits, inverted-range defense, predicate-argument keep-law, and both reached-filter polarity scans against Groovy-dynamic, generated Java, and the interpreter; `FieldValuesNotUniqueDiffTest` covers that operator's Having cases; multiplatform `interpreter.DateRangeOverlapTest` covers parser/evaluator parity on JVM+JS. Interpreter treatment: INTERPRETER-FINDINGS IF72.)*
 
-### §6 supplement — DATE/DATERANGE/TIME field *format strings* are a fixed lowercase allowlist, locale-independent (probe 08, 2026-06-22)
+### §6 supplement — DATE/DATERANGE/TIME field *format strings* are a fixed lowercase allowlist, locale-independent (probe 08, 2026-06-22) <a id="kf81"></a>
 
 > Fold: not-foldable — authoring-tier format-declaration rules (what `field add`/consistency accepts), outside the evaluation scope.
 
@@ -1179,7 +1179,7 @@ A field's declared date **format** must be a **lowercase Java date pattern** fro
 
 **Caveat (don't conflate two validators):** the kernel-rt **runtime value** validator `…rt._30_8.internal.formatdef.FormatDefinitionDatum#validiereFormat` *does* key off the language (`convertPruefFormat2FehlermeldungFormat(pruefFormat, param.getSprache())`, German `'d'→'T'`/`'y'→'J'`) — but that validates a date **value** entered against a format at form-fill time, NOT the field-format **declaration** at model-consistency time (the `field add` check here), which is locale-independent. An earlier "language-keyed" reading of this was a measurement artifact (a reused field name made later iterations fail on `RK_NAME_EXISTS`, misread as a format rejection). Found by probe `08-booking-date-ranges`, where an agent burned 23 `field add` attempts brute-forcing the format because the `field-add` schema mislabeled the editor presets as usable `format` values (now corrected: the schema states the lowercase fixed-set rule and ships a CI-executed working example). *(Locked: the `field-add.schema` dateRange example `dd.MM.yyyy`+`-` is CI-executed by `SchemaExamplesGuardTest`; the reject + locale-independence facts by `FieldVerbTest.dateAndTimeFieldFormatsAreFixedAndLocaleIndependent`.)*
 
-### §6 supplement — `Now` is a date-time; its date-field rejection is a CODE-GENERATION check, not a parse check (probe, 2026-06-24)
+### §6 supplement — `Now` is a date-time; its date-field rejection is a CODE-GENERATION check, not a parse check (probe, 2026-06-24) <a id="kf82"></a>
 
 > Fold: folded → §6.
 
@@ -1189,7 +1189,7 @@ The non-obvious part — and the trap: **that rejection fires at CODE GENERATION
 
 `Now` renders with whole-second syntax but retains the validation clock's exact **epoch-millisecond identity**. `RuntimeController` copies `ValidationMode.currentDateForTest()` into its zone-set calendar without clearing milliseconds and returns that `Date` through `getJetzt`; `VkDate` equality/order delegate to the `Date`, and `BedingungsOperatorHelper.getDifferenceIn*` divides its `getTimeInMillis()` deltas by the selected unit in milliseconds. Therefore a stored `12:00:00` is earlier than `Now = 12:00:00.999` even though their rendered whole second matches, a ±999 ms `DifferenceInSeconds` truncates to zero, and a sub-day shift of `Now` preserves the `.999` remainder. Stored and constructed temporal values remain whole-second. *(Source-verified in `RuntimeController`, `VkDate`, and `BedingungsOperatorHelper`, with both generator strategies checked through their source templates; locked across dynamic Groovy, generated Java, JVM, and Node by `adapter.laws.NowMillisecondIdentityDiffTest` + `interpreter.NowMillisecondIdentityTest`. Interpreter treatment: IF206.)*
 
-### §6 supplement — date-time sub-unit arithmetic: day-carry on add, TRUNCATE-toward-zero on difference (probe, 2026-06-24)
+### §6 supplement — date-time sub-unit arithmetic: day-carry on add, TRUNCATE-toward-zero on difference (probe, 2026-06-24) <a id="kf83"></a>
 
 > Fold: folded → §6.
 
@@ -1200,7 +1200,7 @@ The date-time arithmetic family over DATE_TIME operands — `AddHours`/`AddMinut
 
 *(Interpreter: `DateMath.epochSecond`/`isoFromEpochSecond`/`addDateTimeSeconds` + `Interpreter.dateTimeShift`/`dateTimeDiff`. Locked: `adapter.laws.DateTimeArithmeticDiffTest` — the add day-carry cases + the forward/reverse difference sign cases.)*
 
-### §6 supplement — `Date(...)` construction value + `Valid`/`Invalid` 3VL & polarity (probe, 2026-06-24)
+### §6 supplement — `Date(...)` construction value + `Valid`/`Invalid` 3VL & polarity (probe, 2026-06-24) <a id="kf84"></a>
 
 > Fold: folded → §6.
 
@@ -1215,7 +1215,7 @@ So the interpreter classifies a `Date(...)` construction as REAL / UNREAL_PRESEN
 
 *(Interpreter: `Interpreter.analyzeDate`/`dateStatusOf` + constructor-specific `DateMath.isConstructibleDate`; locked by `adapter.laws.DateConstructionDiffTest`, `DateExtractDiffTest`, `ConstructedDateCalendarDiffTest`, and multiplatform `ConstructedDateCalendarTest`.)*
 
-### §6 supplement — `Date(...)` reality and every legal direct consumer use the model-zone legacy hybrid calendar (source + both-strategy differential, 2026-07-20)
+### §6 supplement — `Date(...)` reality and every legal direct consumer use the model-zone legacy hybrid calendar (source + both-strategy differential, 2026-07-20) <a id="kf85"></a>
 
 > Fold: folded → §6.
 
@@ -1225,7 +1225,7 @@ The resulting `VkDate` is an instant, so legacy-calendar provenance must survive
 
 **4-arg century form `Date(day, month, century, year)`** (probe-verified 2026-06-26): the year is split into a 2-digit century + 2-digit year, full year = `century*100 + year` (`Date(15,6,20,24)` → 2024). The grammar accepts up to 4 `datumParam` (`datumKonstrukt`), and the runtime evaluates it as a real date through the same REAL/UNREAL/HAS_EMPTY/MALFORMED classification. **Operand constraints:** each `Date` param must be a **field reference** (integer literals are rejected), and the field must carry a **date-compatible NumberType range** or the model fails to build (`MVK_WRONG_DATE_FORMAT_FOR_OP`). Interpreter: arity-flexible `analyzeDate` (IF31); locked by `adapter.laws.Date4ArgConstructionDiffTest`.
 
-### §6 supplement — `BaseYear` is polymorphic by the other operand: base-year-START date vs the year number (probe, 2026-06-24)
+### §6 supplement — `BaseYear` is polymorphic by the other operand: base-year-START date vs the year number (probe, 2026-06-24) <a id="kf86"></a>
 
 > Fold: folded → §6.
 
@@ -1246,7 +1246,7 @@ VALUE polarity (a constant, not fillable). It is **model config, not the clock**
 - **Date extraction source** (`YearFromDate`/`MonthFromDate`/…): `Today`, `Now`, and `BaseYear` are all valid — `YearFromDate(BaseYear)` (kernel short-circuits a `YEAR` extraction when a base year is declared), `MonthFromDate(Now)` (Now is a date-time, so it has a month). The converter resolves any `IPointInTimeOperation` extraction source via the shared date-operand path.
 - **Date-range source** (`StartOfDateRange`/`EndOfDateRange`): **`BaseYear` is the ONE point-in-time the grammar allows here** (`datumBereichAngabe: entitySpec | konstanteReferenzjahr`). It reads the base year as a range: **`StartOfDateRange(BaseYear)` = 01.01, `EndOfDateRange(BaseYear)` = 31.12** of the reference year (kernel `CodeGenCreator` picks the `monatTag`). The discriminator is the enum `operatorName == BaseYear` — its `getType()` reports NUMBER in the range-source position (vs DATE in the extraction-source position), so never branch on the type there. rulekit authoring: `Dsl.startOfBaseYear()`/`endOfBaseYear()`. *(Locked: `adapter.PointInTimeSourceReadTest` — kernel-valid + round-trip for both extraction and range sources.)*
 
-### §6 supplement — a quoted date LITERAL is typed by its own SYNTAX, not by context (probe, 2026-06-24)
+### §6 supplement — a quoted date LITERAL is typed by its own SYNTAX, not by context (probe, 2026-06-24) <a id="kf87"></a>
 
 > Fold: folded → §6.
 
@@ -1258,7 +1258,7 @@ A German-format date literal (`"15.06.2024"`, `dd.MM.yyyy`) is typed a **DATE co
 
 **Interpreter consequence:** since a date literal in a *valid* comparison always faces a date, the interpreter canonicalizes a `dd.MM.yyyy` `StrLit` to ISO exactly where it is used as a date — opposite a date-producing operand (`Interpreter.evalCmpOperand` + `producesDate`, which reads the new `EvalContext.declaredKind`) and inside the date functions' date-arg reads (`coerceDate` in `epochOf`/`dateComponent`/`dateShift`). An ISO-format literal (`"2022-01-01"`) is a string (kernel `MVK_INVALID_TYPE_FOR_COMPARISON`), so `coerceDate` only rewrites the German form. The **omitted-year** form (`"13.07."`, day.month., trailing dot) IS modeled (IF52): it is a **reference-year** feature — the kernel injects the model's `baseYear`, so `"13.07."` means `13.07.<baseYear>` (probe-confirmed: on `baseYear = 2020`, `[OrderDate] > "13.07."` fires for 2024/2020-07-20 but not 2019-07-20 or 2020-07-10 — exactly `baseYear`, **not** a floor). A model with NO base year **rejects** it at validation (`MVK_INVALID_COMPARE_TO_DATE`), so the interpreter only sees it with a base year present; `coerceDate` appends `baseYear` before the ISO parse. *(Locked: `adapter.laws.DateLiteralDiffTest` — ==, ordering, arg-position, the value-list non-canonicalization guard — + `adapter.laws.OmittedYearDateDiffTest` for the omitted-year base-year injection.)*
 
-### §6 supplement — partial dates: the `00.MM.yyyy` form and `ValueAsDate`/`FirstDay`/`LastDay` (probe, 2026-06-24)
+### §6 supplement — partial dates: the `00.MM.yyyy` form and `ValueAsDate`/`FirstDay`/`LastDay` (probe, 2026-06-24) <a id="kf88"></a>
 
 > Fold: folded → §6.
 
@@ -1270,7 +1270,7 @@ A `DateType` with `datePrecision: DAY_OPTIONAL` (the order fixture's `ApproxDate
 
 **Interpreter consequence:** a `DAY_OPTIONAL` field's day-omitted value is well-formed (precision-aware `formalError`) but is **not a single concrete date**, so a direct reference resolves to `Val.Unknown` — only `ValueAsDate` resolves it (off the field's RAW value + format, via `DateMath.resolvePartialDate`). `FieldDef.datePrecision` + `EvalContext.dateFormatOf` carry the inputs. *(Locked: `adapter.laws.ValueAsDateDiffTest` — FirstDay/LastDay of a partial, ordering vs a literal, and full→itself.)*
 
-### §6 supplement — `AddYears`/`AddMonths` calendar corrections (runtime, 2026-06-10, RT-semantics drain)
+### §6 supplement — `AddYears`/`AddMonths` calendar corrections (runtime, 2026-06-10, RT-semantics drain) <a id="kf89"></a>
 
 > Fold: folded → §6.
 
@@ -1281,7 +1281,7 @@ KERNEL-SEMANTICS §6 carries the exact corrections; the drained source (`Bedingu
 
 *(Locked: `adapter.laws.DateArithmeticLawsTest`.)*
 
-### §6 supplement — date ranges are closed intervals: touching ranges overlap (runtime, 2026-06-10, RT-semantics drain)
+### §6 supplement — date ranges are closed intervals: touching ranges overlap (runtime, 2026-06-10, RT-semantics drain) <a id="kf90"></a>
 
 > Fold: folded → §6.
 
@@ -1295,13 +1295,13 @@ KERNEL-SEMANTICS §6 carries the exact corrections; the drained source (`Bedingu
 
 *(Locked: `adapter.laws.DateRangeOverlapLawsTest`.)*
 
-### §6 supplement — partially-known-date extraction gating + the *FromDate date-time source (source + probe, 2026-06-17)
+### §6 supplement — partially-known-date extraction gating + the *FromDate date-time source (source + probe, 2026-06-17) <a id="kf91"></a>
 
 > Fold: not-foldable — authoring-tier gating (parse/consistency codes over precision × operator), outside the evaluation scope; the datetime-source acceptance is canonical in §6.
 
 `DayFromDate`/`MonthFromDate`/`YearFromDate`/`QuarterFromDate`, `AddDays`, and `DifferenceInDays` accept a **DateTime** source, not only a Date (kernel date table: "X can be Date or DateTime"); `DifferenceInDays` also accepts mixed date/date-time pairs. `DifferenceInMonths`/`DifferenceInYears` and `AddYears`/`AddMonths` stay Date-only. On a **partially-known date** (a `DateType` carrying a `datePrecision` other than FULL): **`DayFromDate` is rejected outright** — `MVK_INVALID_DATE_TYPE` (probed on a DAY_OPTIONAL field; distinct from `ValueAsDate`'s `MVK_INVALID_DATE_TYPE_FOR_OP`) — while `MonthFromDate`/`YearFromDate`/`QuarterFromDate` are **accepted on a DAY_OPTIONAL** date (probed). **The full precision gradient is now source-confirmed and locked** (was BA-stated, IG66→graduated): `DateUtils.checkOperationConsistentToPartialKnown` rejects extracting a component the field's `datePrecision` allows to be unknown, keyed on the fragment (`d`/`m`/`y`). The 4×3 matrix (op × precision, all rejects `MVK_INVALID_DATE_TYPE`): **DayFromDate** — rejected on DAY/MONTH/YEAR_OPTIONAL (never usable on a partial date); **MonthFromDate** & **QuarterFromDate** (Quarter maps to the MONTH component) — accept DAY_OPTIONAL only, reject MONTH/YEAR_OPTIONAL; **YearFromDate** — accepts DAY_OPTIONAL + MONTH_OPTIONAL, rejects YEAR_OPTIONAL. Monotone: a component is extractable iff guaranteed present under the declared optionality (MONTH_OPTIONAL ⇒ day also unknown; YEAR_OPTIONAL ⇒ all unknown), so YEAR_OPTIONAL rejects every extraction. Confirms BA L4123-4125 exactly. **Add\* on a date fragment is gated by the format's granularity** — `AddDays` needs a day, `AddMonths` a month, `AddYears` a year, else **`MVK_WRONG_DATE_FORMAT_FOR_OP`** (probed: `AddMonths(MM-fragment)` and `AddYears(yyyy-fragment)` accept, `AddDays(MM-fragment)` rejects; BA L4076-4091). **Source:** the extract gating is `CheckDatumExtractOpImpl` → `DateUtils.checkOperationConsistentToPartialKnown` (rejects extracting the field's *optional* component → `MVK_INVALID_DATE_TYPE`); the Add\* granularity is `CheckDatumAddOpImpl.check` → `DateUtils.checkOperationConsistentToDateFormat`, gated on `format.hasComponent(dateFragment)` → `MVK_WRONG_DATE_FORMAT_FOR_OP`. *(Locked: `validate.laws.DateExtractionLawsTest` + `validate.laws.DateFragmentArithmeticLawsTest` + `adapter.laws.DateFunctionsOverDateTimeDiffTest`.)*
 
-### §6 supplement — Valid/Invalid truth projections are exact complements; full verdict polarity is not derivable (runtime, corrected 2026-07-20)
+### §6 supplement — Valid/Invalid truth projections are exact complements; full verdict polarity is not derivable (runtime, corrected 2026-07-20) <a id="kf92"></a>
 
 > Fold: folded → §6.
 
@@ -1309,7 +1309,7 @@ KERNEL-SEMANTICS §6 carries the exact corrections; the drained source (`Bedingu
 
 **The BA's "1583 Gregorian floor" (L3833) is NOT a runtime `Date(...)`-construct criterion (probed 2026-06-17, probe-evidence).** `Invalid(Date(1,1,1500))` does **not** fire — the runtime treats `01.01.1500` as a valid constructed date (the same rule fires for an impossible date, so the mechanism works). The floor **is** enforced — at the *value* tier: the later §3 supplement ("a DATE value has an always-on lower bound", 2026-07-09) verified and locked the formal check on stored/computed values (`datumFalsch`, `ComputedDateGregorianFloorDiffTest`). (A 4th BA-vs-source/runtime discrepancy found this review, after `INVALID_INTERVAL`, the semantic-index operator, and the fragment-comparison code.)
 
-### §6 supplement — date-fragment comparability partition (probe-confirmed, 2026-06-17)
+### §6 supplement — date-fragment comparability partition (probe-confirmed, 2026-06-17) <a id="kf93"></a>
 
 > Fold: folded → §6.
 
@@ -1325,7 +1325,7 @@ Without a base year, two date(-fragment) values compare (`==`/`!=`/ordering) **o
 
 *(Interpreter: `DatePrecision.FRAGMENT` + `DateMath.completeFragmentToIso` + `Document.resolveValue`/`FormalError` — IF57. Locked: `adapter.laws.DateFragmentComparisonDiffTest` — the three-way differential incl. the java-static codegen leg — + multiplatform `interpreter.DateFragmentEvalTest`.)*
 
-### §6 supplement — TIME and DATE_TIME value kinds (implemented 2026-06-07)
+### §6 supplement — TIME and DATE_TIME value kinds (implemented 2026-06-07) <a id="kf94"></a>
 
 > Fold: folded → §6.
 
@@ -1348,7 +1348,7 @@ rulekit models the numeric ones as `DateExtraction` (kind NUMBER), the part-extr
 
 **Sub-day time arithmetic over date-times (implemented 2026-06-07, family 2).** The kernel's `Add*`/`DifferenceIn*` families each carry three sub-day members alongside the date ones: `AddHours`/`AddMinutes`/`AddSeconds` (DE `Addiere{Stunden,Minuten,Sekunden}`) and `DifferenceInHours`/`DifferenceInMinutes`/`DifferenceInSeconds` (DE `DifferenzIn{Stunden,Minuten,Sekunden}`). They operate on **DATE_TIME** operands: `Add*` shifts a date-time and **returns a date-time** (it can roll the calendar day over — distinct from the date-returning `AddDays`/`AddMonths`/`AddYears`) while preserving an exact millisecond remainder supplied by `Now`; `DifferenceIn*` returns the signed epoch-millisecond delta divided by the unit in milliseconds, truncated toward zero. The shifted date-time composes as an extraction source — `HoursFromTime(AddHours(ScheduledAt, 2))` is kernel-valid. Modeled by widening `DateShift.Unit`/`DateDifference.Unit` with the three sub-day members (the shift unit carries its result kind, DATE vs DATE_TIME); the converter routes a DATE_TIME field through a `temporalOperand` helper (a `DateTimeRef` is a `TemporalOperand`, so it renders bare in argument position) and `convertTemporalSource` now accepts a shift as the extraction source. Authored via `Dsl.addHours`/`differenceInHours`/… over a `TemporalOperand` (the date `Add*`/`DifferenceIn*` factories widened from `DateOperand` to `TemporalOperand` too). *(Locked: `adapter.DateTimeExprReadTest.roundTripsSubDayTimeArithmetic`, `adapter.laws.DateTimeArithmeticDiffTest`, `NowMillisecondIdentityDiffTest`, `dsl.operators.DateConditionTest.rendersSubDayTimeArithmeticBilingually`, and N7 catalog examples.)*
 
-## §6 supplement — min/max over DATE, TIME, and DATETIME ride a dedicated `DateCombiner`: NULL-date empty identity, valueless-operand skip, symmetric omission (source + differential, 2026-07-07; TIME/DATETIME added 2026-07-22 / SPEC-2026-07-21-07)
+## §6 supplement — min/max over DATE, TIME, and DATETIME ride a dedicated `DateCombiner`: NULL-date empty identity, valueless-operand skip, symmetric omission (source + differential, 2026-07-07; TIME/DATETIME added 2026-07-22 / SPEC-2026-07-21-07) <a id="kf95"></a>
 
 > Fold: folded → §2 + §12.
 
@@ -1364,7 +1364,7 @@ The **typed surface** covers both temporal extremum shapes. For a repetition-lis
 
 Comparison **typing** stays static and nominal: a quoted literal beside a date-valued min/max is a DATE literal (`"20.03.2026"`), and no date/text-vs-number comparison is authorable at all (`MVK_INVALID_COMPARE_TO_DATE` / `MVK_INVALID_TYPE_FOR_COMPARISON`) — so a runtime date-vs-number pair can only ever be evaluator-made, never input-legal. *(Interpreter: kind-aware fold identity + `minMaxOperandVals` + the `starFill` date branch + `producesDate` over the min/max family; the operand-list temporal fold keys a pure TIME by its decoded time-of-day and any dated value by its instant, IF204; locked by `adapter.laws.DateAggregateDiffTest` incl. a codegen tri-check — IF58 — and `adapter.laws.TemporalExtremaDiffTest` for the TIME/DATETIME extension incl. the Berlin overlap.)*
 
-## §6 supplement — direct temporal comparison (coarse) vs temporal-extremum admission (exact) are TWO gates (source + kernel-route laws, 2026-07-22 / SPEC-2026-07-22-01)
+## §6 supplement — direct temporal comparison (coarse) vs temporal-extremum admission (exact) are TWO gates (source + kernel-route laws, 2026-07-22 / SPEC-2026-07-22-01) <a id="kf96"></a>
 
 > Fold: folded → §6.
 
@@ -1375,7 +1375,7 @@ The admission format check for a temporal comparison and for a temporal **extrem
 
 This is an authoring-admission distinction only; it does not touch resolved chronology or the extremum fold (that fold is the §6 min/max supplement + IF204). a12-dmkits **delegates both gates to the kernel** (the DSL's single-field extremum scope cannot express the multi-format operand list that trips the exact gate). *(Locked: `validate.laws.TemporalComparabilityGateLawsTest` — the coarse/exact separator, date-vs-date-time ordering-vs-equality, date-vs-time rejection, and Base-Year supplementation, all against the real kernel; neighbor `DateFragmentComparabilityLawsTest` owns the year-presence partition.)*
 
-## §14 supplement — CustomCondition's two forbidden contexts (corpus item 8, 2026-06-04 experiments)
+## §14 supplement — CustomCondition's two forbidden contexts (corpus item 8, 2026-06-04 experiments) <a id="kf97"></a>
 
 > Fold: folded → §14.
 
@@ -1387,7 +1387,7 @@ This is an authoring-admission distinction only; it does not touch resolved chro
 
 *(Locked: N7 `CustomCondition` valid; `dsl.operators.CustomConditionTest` for both bans + the bare-identifier name rule. DE keyword pairing verified from the lexer bundle (can't N7 against the en_US fixture — model condition-language gates parsing).)*
 
-## §2 supplement — the filled-count aggregates (2026-06-04 experiments)
+## §2 supplement — the filled-count aggregates (2026-06-04 experiments) <a id="kf98"></a>
 
 > Fold: folded → §2 + §12.
 
@@ -1409,7 +1409,7 @@ The behavioral half is canonical (§2's count-family override row; §12's grow-o
 
 **Generalizes to every NUMERIC COMBINER (2026-06-23, fuzz-found):** a malformed element makes the **whole combiner non-evaluable → rule suppressed**, not just counts. Probed: `Sum(Lines* / Price) > 100` with one `"abc"` element fires **only** `zahlHatUngueltigeZeichen`, never the rule. Holds for the starred aggregates (`Sum`/`MaxValue`/`MinValue`/`NumberOfDifferentValues`) and the operand-list `Min`/`Max` alike — a formal-error operand is "unknown", and an aggregate over an unknown is unknown. (Empties are different: the star drops absent/empty cells, so an empty row is *skipped*, not a suppressor; only a FILLED-but-malformed value suppresses.) **"Malformed" means FORMALLY invalid, not merely unparseable** — a fuzz seed caught that `-0` (a signed zero) *parses* as `0` yet is a formal error, so `Sum` over a `-0` element must suppress (the kernel does); the interpreter therefore decides aggregate-element validity by the **formal check**, not by parseability. *(Locked: `adapter.laws.AggMalformedDiffTest`.)*
 
-## §4 supplement — index-field uniqueness: `uniqueIndex` flags EVERY duplicate participant, scoped per parent (runtime, 2026-06-23)
+## §4 supplement — index-field uniqueness: `uniqueIndex` flags EVERY duplicate participant, scoped per parent (runtime, 2026-06-23) <a id="kf99"></a>
 
 > Fold: folded → §4.
 
@@ -1419,13 +1419,13 @@ Canonical in §4 "The index field's auto-generated checks"; the evidence skeleto
 
 **…and it makes an AGGREGATE / COUNT over a starred index field NON-EVALUABLE too (differential + source, 2026-07-08).** An index field's not-check-relevant cell — mandatory-empty OR duplicated — suppresses an aggregate/count over `Group* / indexField` exactly as a malformed cell does: the shared loop `RuntimeController.combineFeldListe` (and the count `anzahlAngegebenerFelder`) returns `NICHT_PRUEF_REL_ZAHL` on the first such cell; the fill quantifiers count it in neither bucket. Both strategies share these runtime methods ⟹ codegen-parity. An index field can be numeric (a `Sum` over one is authorable). *(IF86; locked: `adapter.laws.IndexAggregateDiffTest` + `interpreter … IndexAggregateTest`.)*
 
-## §4 supplement — `FieldValuesNotUnique`: a duplicate among the operands' values, plain-list OR starred (probe, 2026-06-24)
+## §4 supplement — `FieldValuesNotUnique`: a duplicate among the operands' values, plain-list OR starred (probe, 2026-06-24) <a id="kf100"></a>
 
 > Fold: folded → §9.
 
 Canonical in §9 "Other repetition rules"; the evidence skeleton: two operand shapes with identical semantics — a plain field list (distinctness across named siblings) and a starred operand (distinctness across a repetition's rows; the no-`--group` alternative to `RepetitionNotUnique` on a non-index field — on an index field the auto `uniqueIndex` fires first and suppresses it). Fires iff two present values are EQUAL (typed comparison — scale-0 `5` equals scale-2 `5.00`), VALUE-typed; empties are skipped (two empties are not a duplicate); a formally-invalid operand suppresses; the error field must be referenced (`MVK_ERROR_FIELD_NOT_REFERENCED`). *(Locked: `adapter.laws.FieldValuesNotUniqueDiffTest` — plain + starred — + a fuzz rule `FU`.)*
 
-## §9 supplement — `RepetitionNotUnique`: per-row cross-row composite-key uniqueness (probe, 2026-06-24)
+## §9 supplement — `RepetitionNotUnique`: per-row cross-row composite-key uniqueness (probe, 2026-06-24) <a id="kf101"></a>
 
 > Fold: folded → §9.
 
@@ -1455,7 +1455,7 @@ The two rejecting rows never reach the reference rule at all, and both are close
 
 *(Interpreter: `PredicateOp.REPETITION_NOT_UNIQUE` is an ordinary 3VL leaf in the normal boolean walk (IF149), not a top-level recognizer. `RepetitionNotUniqueEvaluator` builds the call-scoped duplicate cache once over the full scope, and `evalPred`/`predType` consume its per-row result wherever the leaf is composed; branch guards therefore affect combination/firing but never membership in the duplicate relation. The cache drops a row when any key cell is formally invalid, including `MANDATORY_FIELD`. Locked: `adapter.laws.RepetitionNotUniqueCompositionDiffTest` for nested/And/Or composition and `testRule`, plus `RepetitionNotUniqueDiffTest`, `RepetitionNotUniqueNestedDiffTest`, `RepetitionNotUniqueGuardedDiffTest`, and `RepetitionNotUniqueFormalKeyDiffTest` for scope, polarity, optional-empty participation, and invalid-key exclusion.)*
 
-## §9 supplement — `SemanticIndex` (`[field For "value"]`): keyed row lookup, absent → empty value (probe, 2026-06-24)
+## §9 supplement — `SemanticIndex` (`[field For "value"]`): keyed row lookup, absent → empty value (probe, 2026-06-24) <a id="kf102"></a>
 
 > Fold: folded → §10.
 
@@ -1466,7 +1466,7 @@ The two rejecting rows never reach the reference rule at all, and both are close
 
 *(Interpreter: `Expr.SemanticIndex(path, indexValue)` (parsed in the `[...]` atom via a `For "…"` clause); `EvalContext.indexedCell` scans the target's repetition rows in scope for the sibling index match, returning the resolved cell or null (→ the kind's empty value). The group's index field is resolved from the threaded `indexFields`; the polarity rides the standard `fill` (fillable iff the cell is absent/empty). Locked: `adapter.laws.SemanticIndexDiffTest` — matched value, other key, and the empty/missing OMISSION cases.)*
 
-## §9 supplement — `SemanticIndex` PRESENCE: absent row ≡ empty cell (FALSE), malformed cell / invalid key → UNKNOWN (source + differential, 2026-07-07)
+## §9 supplement — `SemanticIndex` PRESENCE: absent row ≡ empty cell (FALSE), malformed cell / invalid key → UNKNOWN (source + differential, 2026-07-07) <a id="kf103"></a>
 
 > Fold: folded → §10.
 
@@ -1478,7 +1478,7 @@ An indexed ref is also a legal **presence operand** — `FieldFilled(Count For "
 
 `FieldValueAsString` over an indexed cell reads the matched cell's stored value; absent/empty reads as `""` (which the `vergleicheSTRING` empty rule then suppresses in a comparison). *(Interpreter: `semanticIndexPresence` behind the shared `presenceTri`; locked by `adapter.laws.SemanticIndexPresenceDiffTest` — IF59.)*
 
-## §9 supplement — `Having`: a per-row filter on a starred aggregate (probe, 2026-06-24)
+## §9 supplement — `Having`: a per-row filter on a starred aggregate (probe, 2026-06-24) <a id="kf104"></a>
 
 > Fold: folded → §9.
 
@@ -1488,7 +1488,7 @@ Correlation does not exclude the current row implicitly: a same-group filter inc
 
 *(Interpreter: `Expr.Star` gained an optional `having: Cond?` (parsed from a `Having` clause on the starred operand in `readArgs`); `Interpreter.starVals` evaluates the filter in each per-row context (`EvalContext.rowContexts` → the Document's scoped `RowContext`s) and keeps the matching rows' filled values. Locked: `adapter.laws.HavingDiffTest`.)*
 
-## §9/§11 supplement — the computation-phase filtered iterator PREFETCHES ONE KEPT SUCCESSOR before the current target is consumed (source + differential, both strategies, 2026-07-23; SPEC-2026-07-23-10/-11)
+## §9/§11 supplement — the computation-phase filtered iterator PREFETCHES ONE KEPT SUCCESSOR before the current target is consumed (source + differential, both strategies, 2026-07-23; SPEC-2026-07-23-10/-11) <a id="kf105"></a>
 
 > Fold: folded → §9 + §11.
 
@@ -1501,7 +1501,7 @@ Filter and target reads of a filtered field list are **interleaved by one kept-c
 
 *(Interpreter: one shared lazy `keptRowsWithSuccessorLookahead` sequence in `ExprEval` now serves both consumers — `firstFilledScan` keeps the prefix stop, `starOperandVals` keeps the full fold; locked `adapter.laws.FirstFilledValueKeptSuccessorDiffTest` (red→green on the successor-filter poison) + `adapter.laws.AggregateKeptSuccessorDiffTest` (the aggregate agreement locks) + multiplatform `FirstFilledValueKeptSuccessorTest`/`AggregateKeptSuccessorTest`; INTERPRETER-FINDINGS IF214.)*
 
-## §9 supplement — the star-binding anchor: the `*`-marked level ALWAYS iterates fully; only levels STRICTLY ABOVE the star bind to the enclosing row (differential, both strategies, 2026-07-09)
+## §9 supplement — the star-binding anchor: the `*`-marked level ALWAYS iterates fully; only levels STRICTLY ABOVE the star bind to the enclosing row (differential, both strategies, 2026-07-09) <a id="kf106"></a>
 
 > Fold: folded → §9.
 
@@ -1519,7 +1519,7 @@ A starred operand read from an ITERATING row (a per-row rule, or a per-row compu
 
 **…and the same first-star boundary governs declared-tail polarity at every reopened level (tri-differential, both strategies, 2026-07-21).** For `A*/B*/C*/F`, the aggregate remains fillable/OMISSION-typed when any in-scope `A` capacity is missing, any actual `A` lacks a declared `B`, any actual `A/B` lacks a declared `C`, or an instantiated leaf cell is empty. An unbounded starred repetition always retains that open tail. A flattened `leafRowCount < C.repeatability` test is therefore wrong: it loses missing outer and middle branches. Repeatable levels strictly above the first `*` remain bound and their unused declared tail does not taint the aggregate. *(Interpreter: a cached per-scope hierarchical child-count proof, O(actual rows × star depth) with no Cartesian enumeration; locked by `MultiStarDeclaredTailPolarityDiffTest` + `StarOnlyIterationScopeDiffTest`; INTERPRETER-FINDINGS IF194.)*
 
-## §9 supplement — a STAR-ONLY condition scopes at the star's BINDING levels; with no repeatable reference level the rule fires ONCE, root-content-gated, at the pinned first-row anchor (source + differential, both strategies, 2026-07-18)
+## §9 supplement — a STAR-ONLY condition scopes at the star's BINDING levels; with no repeatable reference level the rule fires ONCE, root-content-gated, at the pinned first-row anchor (source + differential, both strategies, 2026-07-18) <a id="kf107"></a>
 
 > Fold: folded → §9.
 > (2026-07-24, with the reference-driven rewrite: the headline scope law — star binding levels iterate, the starred level collapses — and the once-evaluation anchor are canonical; the 16-arm evidence, root-content gate, and phantom-anchor pinning stay here.)
@@ -1532,13 +1532,13 @@ The star-only completion of the reference-driven iteration law above: when a rul
 
 *(Interpreter: `IterationScopes.iterationContexts` derives tier-2 scope from `starRefs`' binding levels (`Expr.Star.bindDepth`) and the tier-3 once-context from the error path's root group — whose `evaluated` flag IS the root content gate — replacing the declaring-group fallback and subsuming the IF103 error-parent re-anchor; locked `adapter.laws.StarOnlyIterationScopeDiffTest` (tri-check, 16 arms) + multiplatform `interpreter … StarOnlyIterationScopeTest`; INTERPRETER-FINDINGS IF127.)*
 
-## §6 supplement — DATE_TIME rides the DATE format definition: the date extractors + date diffs accept a datetime operand (source + differential, both strategies, 2026-07-09)
+## §6 supplement — DATE_TIME rides the DATE format definition: the date extractors + date diffs accept a datetime operand (source + differential, both strategies, 2026-07-09) <a id="kf108"></a>
 
 > Fold: folded → §6.
 
 The kernel has **no datetime-specific format definition** — a DATE_TIME field is a `FormatDefinitionDatum` whose format string carries the time (`yyyy-MM-dd'T'HH:mm:ss`), so `feldWertAlsDatum` parses the full value into a `VkDate`. `DayFromDate`/`MonthFromDate`/`YearFromDate`/`QuarterFromDate` accept DATE_TIME and read its date fields (an EMPTY datetime → the fillable 0). `DifferenceInDays` also accepts DATE_TIME, but retains the operand clock and counts model-zone legacy-calendar day steps, so times can change the result. `DifferenceInMonths`/`DifferenceInYears` use calendar date fields only for legal DATE operands; they reject DATE_TIME, as do `AddMonths`/`AddYears`. *(IF95's original date-part claim is superseded for `DifferenceInDays` by IF186; locked by `DateFunctionsOverDateTimeDiffTest` + `CalendarStepDifferenceInDaysDiffTest`.)*
 
-## §8 supplement — the value-list membership family (2026-06-04 experiments)
+## §8 supplement — the value-list membership family (2026-06-04 experiments) <a id="kf109"></a>
 
 > Fold: folded → §8 + §12.
 
@@ -1575,14 +1575,14 @@ The kernel has **no datetime-specific format definition** — a DATE_TIME field 
 
 *(Interpreter: the dedicated `Cond.ValueListQuant` node, evaluated by the per-OPERAND encounter-ordered `vlqOperands` expansion + the single-pass `vlqRes` — ONE evaluator whose dispatch owns the three pass structures, truth + witness-specific polarity in one scan (IF218). The starred operand is filtered via `havingInterp`, only kept rows classified; an `Expr.EnumCategory` cell classifies three-way via the underlying field's `filledTri` — an empty enum → EMPTY, not a present Unknown (SPEC-2026-07-22-05). Locked by `adapter.laws.ValueListQuantifierDiffTest` (plain literal form), `EntityValueListDiffTest` (values star), `ValueListQuantifierStarDiffTest` (starred fields, malformed asymmetry, empty members, index-local errors, polarity — IF60), `ValueListQuantifierHavingDiffTest` (the filter keep-law, tri-checked — IF74/IG48), `ValueListQuantifierOrderDiffTest` (the six SPEC-2026-07-23-16 separator families: encounter order + witness-specific polarity, tri-checked incl. java-static polarity signatures), `EnumValueListUnionDiffTest` (union + category firing/polarity, tri-checked) + multiplatform `interpreter … EnumCategoryValueListEvalTest` / `ValueListQuantifierOrderEvalTest` (JVM+Node polarity twins + the decided-vs-suppressed internal-verdict pins); authoring/read locked by `dsl.operators.EnumValueListUnionTest`, `validate.laws.EnumValueListUnionLawsTest`, `adapter.EnumCategoryValueListReadTest`.)*
 
-## field-level numeric functions + mixed-scope field-fill (corpus tail, 2026-06-07)
+## field-level numeric functions + mixed-scope field-fill (corpus tail, 2026-06-07) <a id="kf110"></a>
 
 > Fold: folded → §1.
 
 - **Field-level rounding/abs** — `RoundDownValue(f[, n])`/`RoundUpValue(f[, n])`/`RoundAccountingValue(f[, n])` and `AbsValue(f)`: the kernel's `FieldIdOperationWithParameters` numeric ops, **distinct from the operand-list `RoundDown(expr[, n])`**. Both rounding forms accept **0..14 inclusive** and omission means zero; the value forms honor a present places argument rather than being integer-only. They take one bare field before that optional parameter. The kernel parse representation stores only an integer places value defaulted to zero, so persisted explicit `, 0` reads back canonically as omission; a positive places argument is retained. Modeled as `FieldRounding`; locked by `adapter.FieldRoundingReadTest`, `adapter.FieldRoundingPlacesReadTest`, and `adapter.laws.SingleArgRoundDiffTest`.
 - **A field-fill quantifier accepts a *mixed* group+field scope** — `FieldsNotCollectivelyFilled(Section, Other/Note)` (a group operand alongside a field): the kernel expands each group to every descendant field recursively. Read makes that explicit (a field-list quantifier over the flattened fields); nested descendants are locked by `adapter.RecursiveGroupOperandExpansionReadTest` and the direct-child control by `adapter.MixedScopeFieldFillReadTest`.
 
-## §5 supplement — numeric coercions (family 4, completed 2026-07-23)
+## §5 supplement — numeric coercions (family 4, completed 2026-07-23) <a id="kf111"></a>
 
 > Fold: folded → §5.
 
@@ -1602,7 +1602,7 @@ Modeled as `FieldValueAsNumber`/`RangeAsNumber` (Calculation, kind NUMBER), the 
 
 **Interpreter status — the value coercions `FieldValueAsString`/`FieldValueAsNumber` (completed 2026-07-23).** `feldWertAlsString` returns the field's **RAW stored value** as a string (no re-canonicalization — `"5.00"` stays `"5.00"`), empty → `""`. `feldWertAlsZahl` projects the exact stored/category token and parses it to a number; an **empty** source reads as symmetric-fillable **`0`**, a present value is fixed, and a formally unavailable source stays Unknown in validation and poisons a reached computation read. The interpreter uses the same category projection as ordinary enum-category evaluation, iterates UTF-16 `char` units (Kotlin `Char`) and normalizes each host decimal digit — the same `Character.isDigit(char)` class as the kernel, so a supplementary-plane decimal code point is rejected (its surrogate halves each fail the digit test), not admitted as a Unicode scalar (SPEC-2026-07-23-07) — before its cross-platform decimal parser, and feeds the result through the existing rounding/`Abs` value and fill mechanisms without a wrapper-specific conversion path. *(Tri-engine locked by `FieldValueAsNumberDomainDiffTest`, `FieldValueAsNumberWrapperDiffTest`, and the existing direct-enum `FieldValueCoercionDiffTest`; JVM/Node locked by `FieldValueAsNumberDomainTest` and `FieldValueAsNumberWrapperTest`.)*
 
-## operand-list math: Abs / Min / Max (family 5, 2026-06-07)
+## operand-list math: Abs / Min / Max (family 5, 2026-06-07) <a id="kf112"></a>
 
 > Fold: folded → §2.
 
@@ -1612,7 +1612,7 @@ The kernel's `IOpListOperation` (`OpListOperationName`) has two groups: the roun
 
 Operation-form `Abs` admits a direct numeric field-list aggregate: `Sum`, `MinValue`, `MaxValue`, or numeric `NumberOfDifferentValues`. The aggregate performs its ordinary encounter-ordered fold first; `Abs` then transforms the single folded number and its directional fillability, retaining the aggregate's derived scale. Thus `Abs(Sum(-3.25, 1.00))` is `2.25`, not `4.25`; all-empty Sum/extremum zero changes from bidirectional to grow-only magnitude, while all-empty distinct-count zero was already grow-only and stays so. A formally unavailable aggregate member remains unknown in validation and poisons the wrapped computation and dependent reads. This is the ordinary numeric-child gate and wrapper evaluator, not operand-list `Min`/`Max` syntax or a separate aggregate fold. *(Source-verified in `CheckFeldListenOpImpl`/`CheckFeldListenAnzahlOpImpl`/`CheckFeldOperOpImpl`; dynamic Groovy + generated Java + interpreter locked by `AggregateAbsDiffTest`, JVM/Node by `AggregateAbsTest`.)*
 
-## NumberOfValueInFields (family 6, 2026-06-07)
+## NumberOfValueInFields (family 6, 2026-06-07) <a id="kf113"></a>
 
 > Fold: folded → §2.
 
@@ -1625,7 +1625,7 @@ Operation-form `Abs` admits a direct numeric field-list aggregate: `Sum`, `MinVa
 **`ValueAsDate` is implemented (2026-06-07) — the third coercion, the partially-known-date resolver.** `ValueAsDate(field, FirstDay|LastDay)` resolves a **partially known date** to a concrete date (the earliest / latest real date matching the known parts; e.g. `ValueAsDate(00.02.2024, FirstDay) = 01.02.2024`, `LastDay = 29.02.2024`). A *partially known date* is a `DateType` field whose **date precision** is other than `FULL` — the kernel `IDateType.DatePrecision` enum `{FULL, DAY_OPTIONAL, MONTH_OPTIONAL, YEAR_OPTIONAL}`, serialized as the DM-JSON key `datePrecision` on the `DateType` object (omitted for `FULL`). A plain `DateType` and a `DATE_FRAGMENT` both draw `MVK_INVALID_DATE_TYPE_FOR_OP`. The kernel node is an **`IFieldIdOperationWithParameters`** with `getOperatorName() == ValueAsDate` and `isFirstDay()` carrying the day specification (`FirstDay`/`LastDay`, DE `ErsterTag`/`LetzterTag` — localized keywords). Returns a DATE, comparable like any date. To author the fixture, **modelkit gained date-precision support**: `dateField(…, d -> d.datePrecision(DatePrecision.DAY_OPTIONAL))` (a new `modelkit.DatePrecision` enum) emits `datePrecision` in the `DateType` JSON. Modeled as `ValueAsDate` (Calculation, kind DATE); authored via `Dsl.valueAsDateFirstDay`/`valueAsDateLastDay`. *(Locked: `adapter.DateTimeExprReadTest.roundTripsValueAsDate` + BA-corpus `ValueAsDateRule`; N7 catalog examples for `ValueAsDate`/`FirstDay`/`LastDay`. The order fixture gained a `DAY_OPTIONAL` date field `ApproxDate`.)*
 - **Date-range bound extraction** — `StartOfDateRange(range)`/`EndOfDateRange(range)` (the kernel's `IDateRangeExtractionOperation`) yield the interval's bound **dates**, which compare or feed a date component extraction (`DayFromDate(EndOfDateRange(range))`). A `DATE_RANGE` field is an interval of two dates; a **valid kernel format** pairs a single date format with a `rangeSeparator` that can't be confused with it (e.g. `dd.MM.yyyy` + `-`; `yyyy-MM-dd` + `-` is ambiguous and rejected). Modeled as `DateRangeBound` (a DATE-valued Calculation) + `DateRangeRef` source (`BoundModel.dateRange`). The **overlap predicates** are modeled too: `DateRangesOverlap(r1, r2, …)` (a field-list predicate, reusing `FieldListPredicate`) and `AtLeastOneDateRangeOverlaps(range IN r1, r2, …)` (a field-vs-field-list predicate, reusing `FieldListEntityListCondition`). All locked by `adapter.DateRangeReadTest`. The `BaseYear` point-in-time as a range source (`StartOfDateRange(BaseYear)` = 01.01, `EndOfDateRange(BaseYear)` = 31.12 of the reference year) is also modeled — `Dsl.startOfBaseYear()`/`endOfBaseYear()`, §6 supplement, `adapter.PointInTimeSourceReadTest`.
 
-## §9 supplement — per-row iteration + aggregation of missing rows (runtime, 2026-06-06)
+## §9 supplement — per-row iteration + aggregation of missing rows (runtime, 2026-06-06) <a id="kf114"></a>
 
 > Fold: folded → §9.
 
@@ -1642,7 +1642,7 @@ The first **runtime** (fires/does-not-fire) checks of §9, via the multi-row `Ru
   - **An INVALID index value (duplicate or empty) is a 3VL corner.** A duplicate value still sits in the index cache (last write wins) and the union, but the kernel marks the group's index *invalid* for that parent (`IndexFieldCache.isIndexGroupInvalidForOneRepetition`); references into a group with an invalid index then read as **3-valued UNKNOWN** for unmatched values — which *suppresses* a negative operator like `FieldsNotCollectivelyFilled` (it fires only on a definite "not filled"). Probed asymmetry: a clean A-only value (error field filled, sibling missing) fires, but the same shape with an invalid index in the *sibling* group does **not** (the sibling's reference is UNKNOWN, not "empty"). Operator-specific, but fully reproducible — the interpreter models it exactly (`Document.parallelContexts` marks a group invalid for a parent when it has a duplicate/empty index there, and `ParallelRowContext` reads that group's unmatched references as `Val.Unknown` / `presenceUnknown` → the Kleene logic suppresses the negative operator). See INTERPRETER-FINDINGS IF19 for the interpreter treatment.
   - **Topology laws (probed 2026-06-25):** non-repeatable **intermediate** groups between the join and the keyed groups are transparent — wrapped and asymmetric-depth shapes are valid, and the kernel renders the transparent level as `[1]` in the pointer; a **repeatable non-indexed FRAME** above exactly ONE joined group is kernel-valid too. The probed **invalid** shapes: a repeatable frame above the non-error joined group → `MVK_NO_WILDCARD`; an **indexed** repeatable intermediate → `MVK_MULTIPLE_INDEX_FIELDS`; a negative operator over a frame → `MVK_NEG_CONDITION_IN_ITERATION`; a joined group **without an index field** is rejected (no key to join on). *(Locked via `adapter.laws.ParallelIterationDiffTest`'s shape matrix; interpreter treatment IF19.)*
 
-## §9 supplement — a rule/computation's ITERATION SCOPE is its set of referenced repeatable fields, not its node placement (corrected + matrix-verified, 2026-06-21)
+## §9 supplement — a rule/computation's ITERATION SCOPE is its set of referenced repeatable fields, not its node placement (corrected + matrix-verified, 2026-06-21) <a id="kf115"></a>
 
 > Fold: folded → §9.
 
@@ -1660,19 +1660,19 @@ Consequence for a reference-rewriting **`field move`** of F (matrix-verified, sy
 
 So a `field move` is rejected **only** when it would genuinely split a rule/computation across two cardinalities — and that case is **not mechanically fixable**: relocating the node ("co-move") leaves the cross-scope operand reference intact, and the *only* valid repair is to **rewrite the rule's logic** (e.g. wrap the per-row operand in an aggregate: `X = [Rep/P] * 2` → `X = Sum(Rep*/P)`), a modeling decision the tool must not invent. The existing reference-rewriting `field move` therefore already accepts every *semantically valid* cross-boundary move and correctly refuses the genuinely-broken ones; **`field move` co-move adds no capability → non-goal** (CLI-SPEC §6; FEATURE-GAPS §4). *(All behavior here is the kernel's; rulekit just lets the kernel's gate refuse the split, with `model check` as backstop.)*
 
-## §9 supplement — the kernel tolerates an index field on a non-repeatable group (probe-observed, 2026-06-21)
+## §9 supplement — the kernel tolerates an index field on a non-repeatable group (probe-observed, 2026-06-21) <a id="kf116"></a>
 
 > Fold: not-foldable — a structural tolerance we deliberately refuse to consume (prose-only by design); no canonical evaluation claim.
 
 A group's `indexFieldName` (the repetition row-key) is **not** kernel-gated on repeatability: a `repeatability: 1` (single) group carrying an `indexFieldName` that names a direct-child field passes `checkConsistency` (probed via raw DM-JSON + `model check` → `valid: true`). But it is a **degenerate** row-key — with no repetitions, the uniqueness check (`RepetitionNotUnique`) it would arm is vacuous and parallel iteration has nothing to iterate. So **modelkit/CLI deliberately forbid it** (`ModelDocument.setIndexField` / `group modify --index-field` require a repeatable group): the index field only earns its keep on a repetition list. **Prose-only by design** (the consumer for the kernel-tolerance fact is nobody — we refuse the degenerate case; *our* behavior is locked by `GroupModifyVerbTest.indexFieldOnANonRepeatableGroupIsRejected`, the G24 surface). This resolves the SME 1184 question (the non-repeatable allowance) — the kernel allows it, we don't, on purpose.
 
-## §9 supplement — field/group predicates are type-directional
+## §9 supplement — field/group predicates are type-directional <a id="kf117"></a>
 
 > Fold: not-foldable — authoring-tier type-direction codes; the enclosing-group-reference half is canonical in §9's error-field rule.
 
 `GroupFilled(field)` → **`MVK_NO_FIELDS_ALLOWED`** ("Only groups or root groups are allowed"); `FieldFilled(group)` → **`MVK_NO_GROUPS_ALLOWED`**. Also re-confirmed experimentally: an enclosing group reference (`GroupFilled(G)`) satisfies the error-field-referenced rule for a field inside `G` — a bare `GroupFilled(ShippingAddress)` condition with error field `ShippingAddress/Street` validates. *(Locked: N7 `GroupFilled`/`FieldFilled` invalid examples + `RuleAuthoringTest.acceptsAnEnclosingGroupReferenceAsErrorFieldReference`.)*
 
-## §9 supplement — repeatability interactions (2026-06-04 experiments)
+## §9 supplement — repeatability interactions (2026-06-04 experiments) <a id="kf118"></a>
 
 > Fold: not-foldable — authoring-tier rejection codes; the guarded-negativity and asterisk laws they evidence are canonical in §9/§10.
 
@@ -1682,7 +1682,7 @@ A group's `indexFieldName` (the repetition row-key) is **not** kernel-gated on r
 
 *(Lock status (sweep 2026-06-10, was "no locks yet"): the `MVK_NO_WILDCARD` position law is locked in `validate.laws.IterationLawsTest` (and slice 7f showed a naive missing-asterisk pre-check would false-positive under parallel iteration — deliberately kernel-delegated); the unguarded-negativity case is pre-warned by the linter (`lint.LinterTest`) and stays kernel-delegated per the §"negativity law" note; both codes are classified in `MVK-LEDGER.md`.)*
 
-## §9 supplement — `GroupFilled` splits on repeatability (source-read `GroupFillCache` + differential, 2026-06-23)
+## §9 supplement — `GroupFilled` splits on repeatability (source-read `GroupFillCache` + differential, 2026-06-23) <a id="kf119"></a>
 
 > Fold: folded → §9.
 
@@ -1693,13 +1693,13 @@ A group's `indexFieldName` (the repetition row-key) is **not** kernel-gated on r
 
 This is why the `relativeToParent` requiredness gotcha (§4) flips by parent repeatability, and it resolves the earlier "GroupFilled on an empty created repeat row" open edge (interpreter was descendant-filled-only; now matches). *(Interpreter parity locked via the requiredness gate: `adapter.laws.RequirednessDiffTest` (the created-empty-repeat-row case fires `mandatoryField`; the non-repeatable empty-parent case does not).)*
 
-## §4/§9 supplement — group content and group error are independent validation dimensions (source + tri-differential, 2026-07-21)
+## §4/§9 supplement — group content and group error are independent validation dimensions (source + tri-differential, 2026-07-21) <a id="kf120"></a>
 
 > Fold: folded → §4 + §9.
 
 The validation pipeline admits a field value to the evaluation/group-fill cache only after formal conversion succeeds, while it records rejected values separately as erroneous entities. Consequently a non-repeatable group is not described by one Boolean. Under full relevance the exact matrix is: clean empty → `GroupFilled` FALSE and `GroupNotFilled` TRUE; invalid-only → FALSE and UNKNOWN; valid-only → TRUE and FALSE; valid plus invalid → TRUE and UNKNOWN. Positive group-list quantifiers count admitted content; negative tallies count only clean empty groups, leaving erroneous groups in neither bucket. The plain multi-group `NumberOfFilledGroups` is stricter: any erroneous group makes the count unavailable rather than silently counting only the admitted subset. A duplicate index value is admitted before uniqueness marks it erroneous, so it contributes content and error simultaneously. In partial validation, one relevant descendant makes each ancestor partially relevant: that is enough to prove positive presence, but an empty group proves negative presence only when the whole group is relevant (an explicit group/ancestor selection or complete descendant coverage). A created repeatable row remains structural ancestor content even when over-limit; the over-limit diagnostics and ordinary-row suppression are separate. The same admitted-content cache gates `relativeToParent`: an invalid-only parent does not activate an empty required sibling. *(Locked across dynamic Groovy, generated Java, and the interpreter by `GroupPresenceFormalInvalidDiffTest` + `GroupPresenceAdmissionDiffTest`.)*
 
-## §9 supplement — wildcard slot laws (slice 7a, 2026-06-04 experiments)
+## §9 supplement — wildcard slot laws (slice 7a, 2026-06-04 experiments) <a id="kf121"></a>
 
 > Fold: not-foldable — authoring-tier slot laws (which slots accept a star); the propagation and negativity laws they evidence are canonical in §9/§10.
 
@@ -1719,7 +1719,7 @@ The `*` suffix is per path segment (grammar `idNameRef: idName '*'?`) and builds
 
 *(Locked: `validate.laws.IterationLawsTest`; rulekit treatment: `FieldOperand` = `FieldRef` | `FieldListRef`, list slots take the operand union, scalar slots take `FieldRef` — `BoundModel.flatten(starPath)` validates star placement.)*
 
-## §9 supplement — `CurrentRepetition` + the index-field/semantic-index cluster (slices 7e/7f, 2026-06-04 experiments; retitled 2026-06-10 — the constant-form semantic index IS supported, only the entity/`$` forms stay kernel-delegated)
+## §9 supplement — `CurrentRepetition` + the index-field/semantic-index cluster (slices 7e/7f, 2026-06-04 experiments; retitled 2026-06-10 — the constant-form semantic index IS supported, only the entity/`$` forms stay kernel-delegated) <a id="kf122"></a>
 
 > Fold: folded → §10.
 
@@ -1744,13 +1744,13 @@ The `*` suffix is per path segment (grammar `idNameRef: idName '*'?`) and builds
 
 *(Locked: N7 `CurrentRepetition` valid (iterating) + invalid (non-iterating `MVK_NO_WILDCARD`); the iterating-position law in `validate.laws.IterationLawsTest`. Groups-only is structural.)*
 
-## §9 supplement — parallel iteration forbids a pure-negative condition (probe, 2026-06-17)
+## §9 supplement — parallel iteration forbids a pure-negative condition (probe, 2026-06-17) <a id="kf123"></a>
 
 > Fold: folded → §9.
 
 In a **parallel iteration** (a rule referencing two repeatable groups that share an index field), a **pure negative** condition is rejected with **`MVK_PARALLEL_ITERATION_INVALID`** — `NoFieldFilled(/Shipment/Lines/OrderedQty, /Shipment/Picks/PickedQty)` over the two index-keyed groups fails (probed on the logistics fixture). BA L919: a negative is allowed in a parallel iteration only **combined with a positive** condition (else it would require a value for every joined iteration) — the positive-bearing `FieldsNotCollectivelyFilled` form *is* accepted (locked alongside). Note the code is the parallel-specific `MVK_PARALLEL_ITERATION_INVALID`, **not** the ordinary-iteration `MVK_NEG_CONDITION_IN_ITERATION`. (Source `ParserService` raises it when `IterationNotValidVisitor.testParallelIteration` returns false — the `IterationType.PARALLEL` traversal whose `erlaubt` flag encodes the positive-required rule; the check is short-circuited for non-parallel conditions.) *(Locked: `validate.laws.IterationLawsTest.aPureNegativeInParallelIterationIsRejected`.)*
 
-## §9 supplement — the `Having` filter and `$` correlation (slice 7d, 2026-06-04 experiments)
+## §9 supplement — the `Having` filter and `$` correlation (slice 7d, 2026-06-04 experiments) <a id="kf124"></a>
 
 > Fold: folded → §9.
 
@@ -1766,7 +1766,7 @@ In a **parallel iteration** (a rule referencing two repeatable groups that share
 
 *(Locked: N7 `Having` valid + `MVK_DISALLOWED_CONSTRUCT_IN_FILTER_CONDITION` invalid + `FieldListRef.having` pre-checks — `dsl.operators.IterationConditionTest`. `$` authoring kernel-valid — `adapter.OuterCorrelationAuthoringTest`; read round-trips — `adapter.OuterCorrelationReadTest`/`OuterCorrelationQuantifierReadTest`; the N8 count-check that keeps an un-threaded construct Opaque — `adapter.OuterCorrelationBackstopTest`; the **runtime behavior** — `adapter.laws.CorrelationLawsTest`. `Having`'s starred-field law stays structural (only `FieldListRef` offers it).)*
 
-## §9 supplement — list-aggregate slot laws (slice 7c, 2026-06-04 experiments)
+## §9 supplement — list-aggregate slot laws (slice 7c, 2026-06-04 experiments) <a id="kf125"></a>
 
 > Fold: not-foldable — authoring-tier slot laws; the missing-row semantics they accompany are canonical in §9.
 
@@ -1780,7 +1780,7 @@ In a **parallel iteration** (a rule referencing two repeatable groups that share
 
 *(Locked: N7 examples of all four operators incl. three invalids; the pre-checks live in `ListAggregate`/`CountAggregate` — `dsl.operators.AggregateConditionTest`. The date variant of Max/Min landed with the date family — `DateListAggregate` via `Dsl.latestOf`/`earliestOf`, locked `adapter.DateAggregateReadTest` (stale "rides item 9" flipped 2026-06-10).)*
 
-## §9 supplement — aggregate uncertainty + `FirstFilledValue` prefix sensitivity (runtime, 2026-06-10, RT-semantics drain)
+## §9 supplement — aggregate uncertainty + `FirstFilledValue` prefix sensitivity (runtime, 2026-06-10, RT-semantics drain) <a id="kf126"></a>
 
 > Fold: folded → §12.
 
@@ -1795,7 +1795,7 @@ The aggregate combiners track whether their result *could still change if more f
 
 **Interpreter status: `FirstFilledValue` is reproduced by one ordered short-circuit scan shared by value and polarity.** It visits operands and star rows in authored order, observes a slot's filter immediately before scanning that slot, and returns at the first filled or formally unavailable value. A later malformed cell or filtered slot is therefore never consulted. *(Interpreter-locked: `adapter.laws.FirstFilledValueDiffTest` + `adapter.laws.FirstFilledValueFilterEncounterDiffTest`; the fuzz net adds a `FirstFilledValue` rule — `PerfCatalog.fuzz()`.)*
 
-## §9 supplement — SumOfProducts same-group requirement (source + probe, 2026-06-17)
+## §9 supplement — SumOfProducts same-group requirement (source + probe, 2026-06-17) <a id="kf127"></a>
 
 > Fold: folded → §9.
 
@@ -1803,7 +1803,7 @@ The aggregate combiners track whether their result *could still change if more f
 
 **Runtime semantics + interpreter status (2026-06-24).** Source-read `RuntimeController.summeVonProdukten`: it **zips the two fields' row iterators** and sums `aᵢ·bᵢ` per row (`while both hasNext`) — both fields share the group, so the rows align. Each cell is `feldWertAlsZahl`, so an **empty cell reads as 0** (its product is 0). A malformed cell is suppressed by the formal mechanism (the rule references the field). The interpreter reproduces this with a new **row-aligned star accessor** `EvalContext.starAll(path)` (one entry per group row, empty → the kind's empty value, malformed → Unknown) — `Interpreter.sumOfProducts` pairs the two `starAll` lists and yields Unknown if any cell is Unknown. *(Interpreter-locked: `adapter.laws.SumOfProductsDiffTest` — the row-alignment catcher (26 vs a mis-paired 22) + empty-as-0 + malformed-suppression, against the live kernel; the fuzz net adds a `SumOfProducts` rule — `PerfCatalog.fuzz()`.)*
 
-## §9 supplement — `RepetitionNotUnique` slot laws (slice 7b, 2026-06-04 experiments)
+## §9 supplement — `RepetitionNotUnique` slot laws (slice 7b, 2026-06-04 experiments) <a id="kf128"></a>
 
 > Fold: not-foldable — authoring-tier slot laws (key shapes, placement codes); the runtime semantics are canonical in §9 "RepetitionNotUnique, precisely".
 
@@ -1816,7 +1816,7 @@ The aggregate combiners track whether their result *could still change if more f
 
 *(Locked: `validate.laws.IterationLawsTest` + N7 `RepetitionNotUnique`/`FromScope`/`FieldValuesNotUnique` examples; `@From` repeatability pre-checked in `RepetitionNotUniqueCondition.from`.)*
 
-## §11 supplement — computation alternatives and the calculated-field ban
+## §11 supplement — computation alternatives and the calculated-field ban <a id="kf129"></a>
 
 > Fold: folded → §11.
 
@@ -1830,7 +1830,7 @@ The aggregate combiners track whether their result *could still change if more f
 
 *(Locked: `ComputationAuthoringTest`; the BA-doc worked-example shapes — concat, tiered+rounding, division/grouping, common-precondition concat, current-repetition, parallel-iteration — transferred to own domains in `adapter.BaComputationCorpusTest`.)*
 
-## §11/§12 supplement — every computation is ALSO a validation rule (runtime, 2026-06-17)
+## §11/§12 supplement — every computation is ALSO a validation rule (runtime, 2026-06-17) <a id="kf130"></a>
 
 > Fold: folded → §11.
 
@@ -1842,7 +1842,7 @@ The kernel auto-generates, per computation, an **implicit validation rule** `Fie
 
 **Where the implicit rule FIRES — the pointer follows the computed field, even across subtrees and roots (differential, both strategies, 2026-07-07).** The generated rule's error entity is the computed FIELD's absolute location: the kernel resolves the DM-JSON `computedFieldRelPath` from the computation NODE (so `../../header/modelType` reaches a *sibling root*), independent of the computation's iteration group. On a multi-root (`header`+`content`) or sibling-subtree model the message therefore lands at the target's own pointer (e.g. `/header[1]/modelType`), never at a path mangled relative to the declaring group. *(Interpreter: INTERPRETER-FINDINGS IF66 — the general relative-path resolution to the absolute target; locked `adapter.laws.MultiRootComputationPointerDiffTest` — cross-root + sibling-subtree + compute pointer + a static-JAVA tri-check.)*
 
-## §12 supplement — every fired message is typed value-vs-omission (runtime, 2026-06-10, RT-semantics drain)
+## §12 supplement — every fired message is typed value-vs-omission (runtime, 2026-06-10, RT-semantics drain) <a id="kf131"></a>
 
 > Fold: folded → §12.
 
@@ -1862,7 +1862,7 @@ A dimension KERNEL-SEMANTICS doesn't cover (it presents the logic as two-valued)
 
 **A fired STRING comparison is OMISSION iff an operand carries the NOT-GIVEN flag — and a CONCATENATION ORs the flag across its parts (source + differential, both strategies, 2026-07-10).** `RuntimeController.vergleicheSTRING(op, v1, v2, isNichtAngegeben)` types a fired `==`/`!=` `TRUE_AF` → `OMISSION_ERROR` when either operand is flagged `nichtAngegeben`, else `TRUE_WF` → `VALUE_ERROR`; `VkString.add` (the `+` concat) ORs the flags of its parts, so a concat containing ANY not-given read — an empty check-relevant field, a no-match/empty-cell semantic-index read, a not-given `FieldValueAsString`, a flag-preserving `Substring`/`RangeAsString` — keeps the whole concatenated value "not given": a fired mismatch against it is OMISSION ("filling could still change it"), even though the concatenated string itself is non-empty. A fully-given concat mismatch is VALUE. This drives the implicit computation-validation of concat operations (a stored value vs a computed concat over a no-match indexed read fires OMISSION). *(Interpreter: `arithFill`'s concat arm carries the flag (`concatNotGiven`); locked `adapter.laws.ConcatNotGivenPolarityDiffTest` + multiplatform twin; INTERPRETER-FINDINGS IF113.)*
 
-## The pre-`checkConsistency` tiers — the write path's output contract (instrument 4, 2026-06-04)
+## The pre-`checkConsistency` tiers — the write path's output contract (instrument 4, 2026-06-04) <a id="kf132"></a>
 
 > Fold: not-foldable — serializer/deserializer-tier gates (the write path's output contract), outside the evaluation scope.
 
@@ -1874,7 +1874,7 @@ Two structural gates fire *outside* `checkConsistency`, found while scoping the 
 
 rulekit's authoring builders already satisfy the rule/computation subset (`ERROR_*`, `COMPUTED_FIELD/OPERATION`, `LOCALIZED_TEXT_ELEMENT`) by construction; the rest are model-structure concerns rulekit doesn't author (it only *adds rules/computations to an already-valid model*). *(Locked: `SerializerTierParityTest` — reflective parity over the category enum, so a kernel upgrade adding a category fails loudly.)*
 
-## `formatConditionText` is lossy for a `$` correlation (2026-06-06)
+## `formatConditionText` is lossy for a `$` correlation (2026-06-06) <a id="kf133"></a>
 
 > Fold: not-foldable — a kernel formatter-tool defect record (canonical-text lossiness), not evaluation behavior.
 
@@ -1886,7 +1886,7 @@ FieldFilled(CustomerName) And Sum(Items*/Count Having [$/Order/Quantity] == [Ite
 
 — formats back to just `FieldFilled(CustomerName)`. The `$`-bearing `Sum(… Having …)` conjunct is silently dropped. (`hasValidConditionText` still returns `true` for the rule.) So the canonical form is **not a safe verbatim source** for such rules. *(Consequence for rulekit: `ReadResult.Opaque` preserves the **raw stored** `getErrorConditionText()`, not the canonical form — see KERNEL-INTEGRATION-NOTES. Observed while building the `$`-correlation read guard; not separately locked — the dependent behavior is locked by `adapter.OuterCorrelationReadTest`.)*
 
-## The condition formatter knows exactly two languages — `Locale.US` / `Locale.GERMANY`; anything else silently falls back to German (2026-06-13)
+## The condition formatter knows exactly two languages — `Locale.US` / `Locale.GERMANY`; anything else silently falls back to German (2026-06-13) <a id="kf134"></a>
 
 > Fold: not-foldable — formatter/tooling locale behavior (condition-text rendering), not evaluation behavior.
 
@@ -1901,7 +1901,7 @@ So the language is keyed by **country**, not just language: `Locale.US` (en_US) 
 
 *Consequence for rulekit:* the adapter's translate seam takes rulekit's **`ConditionLanguage`** (EN/DE), not a raw `Locale`, and maps `EN → Locale.US` / `DE → Locale.GERMANY` internally — the silent-German footgun is made unrepresentable at the N8 boundary. *(Locked: `adapter.KernelAdapterFormatTest` — EN must yield English keywords, DE German; a kernel change to the supported-locale set would surface as a German fallback the EN assertion catches.)*
 
-## A model's condition language is independent of its display locale — and English is the convention (2026-06-20)
+## A model's condition language is independent of its display locale — and English is the convention (2026-06-20) <a id="kf135"></a>
 
 > Fold: not-foldable — model-config/serialization fact (which keyword language is parsed and stored), outside the evaluation scope.
 
@@ -1920,7 +1920,7 @@ Verified (experiment + the **a12-kernel-mm** corpus):
 
 *Consequence for rulekit:* a from-scratch model defaults `conditionLanguage` to **en_US regardless of the display locale** (it used to derive it from the first display locale — breaking English conditions on a `de_DE` model; surfaced by probe `01-de`). Treatment + the single-source guard in [`KERNEL-INTEGRATION-NOTES.md`](KERNEL-INTEGRATION-NOTES.md). *(Locked: `DocumentModelDraftTest.conditionLanguageDefaultsToEnglishRegardlessOfDisplayLocale` — a de_DE draft keeps en_US and the kernel accepts it; `ModelNewVerbTest.aGermanLocaleModelStillAcceptsEnglishDslKeywords` — English DSL validates end-to-end on a de_DE model; `ModelNewVerbTest.aGermanLocaleModelAlsoAcceptsEnglishKeywordComputationsAndPreconditions` — the sibling lock proving the model-level fix covers computation operations + preconditions, not just rule conditions.)*
 
-## A mount group's local elements SHADOW the include — the kernel does not expand it, and stays valid (2026-06-20)
+## A mount group's local elements SHADOW the include — the kernel does not expand it, and stays valid (2026-06-20) <a id="kf136"></a>
 
 > Fold: not-foldable — include/expansion mechanics, explicitly outside the canonical doc's scope.
 
@@ -1928,7 +1928,7 @@ A group that mounts an include carries `Group.modelAlias`. If that same group **
 
 *Consequence for rulekit:* a routine `field add`/`group add` whose target group is a mount used to write a local element and report `applied`, silently discarding the entire mounted include. rulekit now **refuses** an element-add into a mount group (`RK_MOUNT_NOT_EDITABLE`) — see KERNEL-INTEGRATION-NOTES; the kernel's silent-override behavior itself is the finding here. *(Surfaced by probe `01-de`; locked by `MountEditRefusalTest`.)*
 
-## An include's locales must be a superset of the base's — not the reverse (2026-06-13)
+## An include's locales must be a superset of the base's — not the reverse (2026-06-13) <a id="kf137"></a>
 
 > Fold: not-foldable — include/expansion locale constraint, explicitly outside the canonical doc's scope.
 
@@ -1939,19 +1939,19 @@ The kernel's include locale-compatibility rule, pinned by experiment, runs in th
 
 So a one-line "locale superset" note is ambiguous about direction; the constraint is *include ⊇ base*, enforced by the kernel on expand (not at the modelkit build tier). *(Locked: `modelkit.IncludeConstraintsTest`.)* Cycles and the single-root rule are likewise the kernel's to enforce on expand — modelkit doesn't re-implement them.
 
-## A group's index field auto-generates its uniqueness + mandatory rules (2026-06-13)
+## A group's index field auto-generates its uniqueness + mandatory rules (2026-06-13) <a id="kf138"></a>
 
 > Fold: folded → §4.
 
 Declaring `indexFieldName` is all the authoring needed — the kernel auto-generates the uniqueness and mandatory checks (canonical §4 "The index field's auto-generated checks"); modelkit's `indexField(name)` must **not** also emit the pair (the kernel would double them). *(BA §"Index Fields", runtime-confirmed; locked: `adapter.laws.IndexFieldLawsTest` — differential, so it doesn't depend on the generated rules' kernel-internal error codes.)*
 
-## The DM-JSON deserializer ignores unknown field-config keys — a round-trip must read the value *back* (2026-06-13)
+## The DM-JSON deserializer ignores unknown field-config keys — a round-trip must read the value *back* (2026-06-13) <a id="kf139"></a>
 
 > Fold: not-foldable — a deserializer-tier tolerance (ignore-unknown keys), outside the evaluation scope.
 
 The kernel's DM-JSON `JsonMapper` is annotated **`@JsonIgnoreProperties(ignoreUnknown = true)`** (`kernel-md-serializer`). So a misspelled or unsupported field-type key (e.g. `maxFractionDigits` for the real `maxFractionalDigits`, or a guessed `unit`) is **silently dropped** — the model still loads and validates clean, but the slot has *no effect*. Consequence for verifying a new field-config slot (FEATURE-GAPS): **"emit + load-valid" proves nothing about whether the engine honored the key** — only reading the value back through the kernel's typed field-type API (`INumberType.isZeroNotAllowed()`, `IStringType.getHintList()`, `IEnumerationType.getErrorMessage()`, …) proves it. rulekit's field-config round-trip tests therefore read back via `ModelIndex.fieldType(path)` rather than trusting a clean load. *(Locked: `modelkit.FieldConfigExtrasTest` — every field-config slot asserted via the kernel getter, not the emitted JSON.)*
 
-## The number `trait`/unit slot is a clean lowercase field attribute — `AmountWithCent` is a *separate* derived category (2026-06-13, corrects an earlier deferral)
+## The number `trait`/unit slot is a clean lowercase field attribute — `AmountWithCent` is a *separate* derived category (2026-06-13, corrects an earlier deferral) <a id="kf140"></a>
 
 > Fold: not-foldable — a field-attribute/serialization fact; its one evaluation-adjacent consequence (the trait does not interpolate) is canonical in §13.
 
@@ -1964,7 +1964,7 @@ This **corrects an earlier (same-day) deferral** that called the trait "inconsis
 
 So there is no inconsistency for the slot itself; modeling it is just `trait:"amount|percent|permille"`. The 0-or-2-decimal "with/without cent" distinction is the kernel's *derived cross-field* concern, not a field-level constraint we pre-check. **The trait does NOT render into message interpolation** (probe 2026-06-26, INTERPRETER-FINDINGS IF22): `$field.value$` of a `trait:"percent"` field interpolates the bare `5` (not `5%`), an `amount` field the bare `5.00` (no currency symbol) — the unit is a UI concern, invisible to §13 interpolation. *(Locked: `modelkit.FieldConfigExtrasTest.numberUnitTraitRoundTripsThroughTheKernel`.)* Modeled via `NumberFieldBuilder.unit(NumberTrait)`.
 
-## `modelConfig.supportedCharacters` is enforced at runtime, not just authored — out-of-set values raise `ZeichenNichtImZeichensatz` (2026-06-13)
+## `modelConfig.supportedCharacters` is enforced at runtime, not just authored — out-of-set values raise `ZeichenNichtImZeichensatz` (2026-06-13) <a id="kf141"></a>
 
 > Fold: folded → §3.
 
@@ -1972,7 +1972,7 @@ The model-config **allowed-character set** (`content.modelConfig.supportedCharac
 
 **The source mechanism — the slot IS the §3 `legalCodepoints` (pinned from source 2026-07-11, definition boundary completed 2026-07-19 for IF151).** The model slot and the §3 project/codegen charset are **one effective charset**, not two composed ones: `ExternalDocumentModelService.createCodeGeneratorParameters` passes `getDocumentModelConfig().getSupportedCharacters()` straight into `CodeGeneratorParameters`, the codegen bakes it into the generated meta-model's `getLegalCodepoints()`, and `FormalChecker` is the single check that raises `ZeichenNichtImZeichensatz`; singleton/range membership uses `LegalCharTester.rangeSearch`, while combined entries use the trie-backed path. In the dynamic-codegen path the slot is the sole source of the legal charset — `DocumentProcessingConfig` carries no charset override. `CharsetUtil.parse` classifies an entry as a range iff `length()==3 && charAt(1)=='-'`, a singleton iff `length()==1`, else a combined sequence. `KernelUtils.validateCharset` rejects an empty entry, a surrogate-bearing entry, a reversed range, a plain multi-character string with no combined grapheme, a combined entry over three UTF-16 units, and its specific ambiguous-overlap class. Non-ambiguous shared prefixes and a complete sequence that is also a terminal prefix of a longer entry are legal. Validation happens before either evaluation strategy runs; both strategies then use the same prepared trie behavior. **Empty list ⇒ BMP**: `LegalCharTester.noCharsetDefined()` makes a value legal iff it carries no surrogate. **Locks:** `SupportedCharactersDefinitionDiffTest` pins the structural accept/reject boundary; `SupportedCharactersGraphemeDiffTest` tri-checks the legal shared/terminal-prefix runtime cases; `LegalCharsetDefinitionTest` and `LegalCharsetGrowthTest` lock the interpreter boundary and bounded matcher on JVM and Node.
 
-## An include mount can exclude the included model's rules/computations — `excludeRules`/`excludeComputations`, applied at expand (2026-06-13)
+## An include mount can exclude the included model's rules/computations — `excludeRules`/`excludeComputations`, applied at expand (2026-06-13) <a id="kf142"></a>
 
 > Fold: not-foldable — include/expansion mechanics, explicitly outside the canonical doc's scope.
 
@@ -1980,7 +1980,7 @@ A mount group (one carrying `modelAlias`) may set the booleans **`excludeRules`*
 
 The kernel ties the flag to a mount — metamodel rule **`EXCLUDE_RULES_INVALID`** (`MM_Group_1`): `FieldFilled(excludeRules) And FieldNotFilled(modelAlias)` is an error ("excludeRules filled and modelAlias not filled"), with a twin `EXCLUDE_COMPUTATIONS_INVALID`. So the slot is meaningful only where there's a `modelAlias`; our API only emits it on a mount, so that refusal is structurally unreachable from rulekit. *(Locked: `edit.IncludeExcludeRulesTest` — plain mount keeps the rule, `excludeRules` drops it but keeps the fields, via the kernel's own expand.)* Modeled via `MountOptions.single().excludingRules()` → `ModelDocument.mount(...)` / `IncludeEditor.mount(...)` / CLI `include add --exclude-rules`.
 
-## A type-def-only model is just a root-less `document` model; a consumer imports it with `purpose: "typeDefinitions"` (2026-06-13)
+## A type-def-only model is just a root-less `document` model; a consumer imports it with `purpose: "typeDefinitions"` (2026-06-13) <a id="kf143"></a>
 
 > Fold: not-foldable — model-reference/import mechanics, outside the evaluation scope.
 
@@ -1992,7 +1992,7 @@ Consequence for authoring: a consumer's `typedefField` may reference an **import
 
 Kernel 30.8.1 collision measurements distinguish local declarations from imported providers. Two local declarations with the same id are rejected during load. Two imported providers declaring the same id are accepted, whether their payloads differ or are byte-equivalent; with differing string lengths, the consuming field resolves to the first provider's length. This is an observed acceptance/selection result, not authority for a portable host to preserve traversal-order selection: the standalone workspace contract rejects distinct-provider ownership collisions explicitly. *(Locked: `WorkspaceTypeDefinitionCollisionKernelTest`.)*
 
-## Attachment & Multi-Select are `usageType` group templates with kernel-validated canonical compositions (2026-06-13, source-verified)
+## Attachment & Multi-Select are `usageType` group templates with kernel-validated canonical compositions (2026-06-13, source-verified) <a id="kf144"></a>
 
 > Fold: not-foldable — model-structure templates validated at consistency time; no evaluation behavior beyond the ordinary rules they mandate.
 
@@ -2032,7 +2032,7 @@ So **attachment is a heavy fixed template** (no user input beyond the group name
 
 Removal: a composite group's internal rules live inside its subtree, so `group remove` takes them with it — the safe-delete gate **excludes in-subtree referrers** so it doesn't demand `--cascade` for rules the author never wrote (CLI-SPEC §6; `cli.GroupAttachmentVerbTest`).
 
-## Descriptions + annotations are element-wide (`IElement`/`IFieldTypeDefinition` are `IDescribed`+`IAnnotated`); the model carries a `comment` (2026-06-13)
+## Descriptions + annotations are element-wide (`IElement`/`IFieldTypeDefinition` are `IDescribed`+`IAnnotated`); the model carries a `comment` (2026-06-13) <a id="kf145"></a>
 
 > Fold: not-foldable — element-metadata/serialization structure, outside the evaluation scope.
 
@@ -2045,7 +2045,7 @@ Separately, the model has a free-text **`comment`** at `content.modelInfo.commen
 
 rulekit treatment: a shared **`ElementMeta<SELF>` builder mixin** (`annotation` + `internalDescription` + `externalDescription`) that `FieldAttrs`, `GroupBuilder`, and `TypeDefBuilder` extend (author side); the edit-path locator resolves field/group/**rule** by name-path and **type-def by id**, so one metadata API (`ModelDocument.setInternalDescription`/`setAnnotation`/`remove…`, the editors, and the CLI **`meta <ref>`** verb) does CRUD across them all; the model comment rides `config modify --comment`. *(Locked: `modelkit.ElementDescriptionTest`, `edit.ElementMetadataEditTest`, `modelkit.TypeDefAndModelCommentTest`, `cli.MetaVerbTest` — read-back via `IElement.getInternalDescription()` / the kernel deserialize→serialize round-trip.)*
 
-## How `checkConsistency` actually works — structural laws ARE metamodel rules (2026-06-04)
+## How `checkConsistency` actually works — structural laws ARE metamodel rules (2026-06-04) <a id="kf146"></a>
 
 > Fold: not-foldable — a consistency-machinery mechanism (the metamodel rules ARE the structural laws); the MVK ledger is its consumer.
 
@@ -2058,7 +2058,7 @@ Consequences:
 
 **Supplement (2026-06-10, sweep of the whole clone):** the MVK-coded rules live in **exactly one model** — `MM_Common_v2/codegen-mm_common-v2-19.8.json` carries **134 rules covering exactly the 105 distinct codes** (some codes have several rules); none of the other document models in `../a12-kernel-mm/documentModels` (MM_Computation, MM_SMM_FieldTypeChecks, SelectionModel, the CT_* models, …) carries any `MVK_*` errorCode. Two consequences: `MvkLedgerTest`'s single-model parity check covers the entire metamodel corpus, and each metamodel-section ledger code is resolvable by explaining its carrier rule(s) — the resolution paths are mapped in [`MVK-LEDGER.md`](MVK-LEDGER.md) §"How the queue resolves".
 
-## Rule-condition polarity is fixed — `errorCondition` fires on TRUE, no configuration (2026-06-05 investigation)
+## Rule-condition polarity is fixed — `errorCondition` fires on TRUE, no configuration (2026-06-05 investigation) <a id="kf147"></a>
 
 > Fold: folded → the preamble.
 
@@ -2071,7 +2071,7 @@ A validation rule's condition has **one fixed polarity**: the sole condition slo
 
 **Consequence (the silent trap):** writing the requirement *positively* (e.g. `FieldFilled(X)` as the errorCondition) is structurally valid and the kernel accepts it — but it encodes the **opposite** rule (fires when X *is* filled). The kernel cannot catch this (both polarities are valid conditions). rulekit's job: teach negation (skill) and flag likely inversion (`RK_INVERTED_REQUIREDNESS` lint — AST-based, so it needs a structured/read rule, not raw condition text). Source: `a12-kernel/documentation/ba/validation_language_guide_en.adoc` (§"A Rule always describes the error condition"; "no generic negation operator"; severity is UI-only); `IRule` (md `getErrorCondition`; tool `getErrorConditionText`); `RuleSerializer` slot set; `MM_Common_v2` Rules group; `IComputation.getPrecondition` (computation-only).
 
-## `checkConsistency` runs runtime code generation — the AOT / native-image constraint (2026-06-05 investigation)
+## `checkConsistency` runs runtime code generation — the AOT / native-image constraint (2026-06-05 investigation) <a id="kf148"></a>
 
 > Fold: not-foldable — build/AOT toolchain constraint (runtime code generation), outside the evaluation scope.
 
@@ -2100,7 +2100,7 @@ A validation rule's condition has **one fixed polarity**: the sole condition slo
 
 **Source anchors** (kernel-internal, consult-only — from the `a12-kernel` checkout): `StringTemplateUtil.getTemplate` (the error string) + `getActCodeGroup` (`STGroupFile`); `STParameterClassBase` / `StringParameter` (`@StringTemplateGroup("/common/$programmingLanguage$/base")`); `CodeGenerationRule.checkModel` → `ExternalDocumentModelService.generateValidationCode` (the trigger); `ModelGroovyCode` (`GroovyClassLoader.parseClass`) and `OnTheFlyTestingValidatorGenerator` (`GroovyShell`) for the execution-only Groovy wall. Templates ship in `kernel-core-codegen-base` under `internal/templates/{common,validation}/{groovy,java,…}/`.
 
-## `checkConsistency` notification granularity — `getSource()` is the `IRule` (2026-06-04 probe)
+## `checkConsistency` notification granularity — `getSource()` is the `IRule` (2026-06-04 probe) <a id="kf149"></a>
 
 > Fold: not-foldable — a diagnostics-API granularity fact (notification source), outside the evaluation scope.
 
@@ -2109,7 +2109,7 @@ A validation rule's condition has **one fixed polarity**: the sole condition slo
 - `getSource()` is the offending **`IRule`** element (concrete class `…internal.wrapper.RuleWrapper`, but it implements the **public** `IRule` — so consuming it is N8-safe). It carries `errorCondition`/`errorEntity`/`errorCode`, i.e. **rule granularity**.
 - It does **not** point at the offending *operator/node* inside the condition, and there is no character offset or span — so it gives nothing finer than `where.rule`, which rulekit already fills. Useful instead for **rule attribution** when checking a model with many rules at once (which problem belongs to which rule); the F4a span-pointing operator-pin therefore stays the AST↔catalog set-intersection heuristic (`lint.SpanResolver`). **Scope correction (the gap is kernel→node, identical in both phases):** *character-precise* spans for rulekit-**authored** rules are achievable in **Phase 1** — the renderer already produces the text, so a node→`[start,end)` emit-map plus node-instance localization would highlight the exact substring without read. Only *foreign*-rule spans truly need read: no AST exists until the text is parsed, and the kernel's parser (unlike `checkConsistency`) may carry token positions for its own diagnostics. *(Documented, not locked — it concerns a notification field rulekit doesn't consume; precedent: the deserialize-tier entry.)*
 
-## Runtime kernel-version detection — the jar manifest, via `Package` (F11 spike, 2026-06-04)
+## Runtime kernel-version detection — the jar manifest, via `Package` (F11 spike, 2026-06-04) <a id="kf150"></a>
 
 > Fold: not-foldable — a jar-manifest/version-detection mechanism, outside the evaluation scope.
 
@@ -2119,7 +2119,7 @@ The kernel jars carry standard Maven manifest attributes, and the JVM exposes th
 - These come from the jar's `META-INF/MANIFEST.MF` main attributes — present on every kernel module checked (`kernel-core-parser`, `kernel-core-service`, `kernel-md-model`, …). So any class rulekit already imports works as the version source; no dependency on a kernel constant or service.
 - **Treatment (F11):** rulekit reads this once at validation time and compares to the catalog's stamped `verifiedAgainst` floor; a mismatch is a single INFO/WARNING, never an error. The verification floor only rises (oldest supported = current), so the live concern is newer-than-floor skew.
 
-## Parsetree construct-name enums — the kernel's machine-readable operator inventory (N3 reverse anchor, 2026-06-04)
+## Parsetree construct-name enums — the kernel's machine-readable operator inventory (N3 reverse anchor, 2026-06-04) <a id="kf151"></a>
 
 > Fold: not-foldable — the kernel's machine-readable operator inventory (parity-anchor provenance), consumed by the ledgers/guardians, not canonical prose.
 
@@ -2131,7 +2131,7 @@ The package `…core.parsetree.a12internal.api.types` holds ~18 construct-name e
 - **`RootGroupConditionName` is multi-form (Vordruck/USB) scope — and the BA doc doesn't document it (kernel↔BA-doc disparity, 2026-06-08).** The members — `MindestensEinVordruckAngegeben`, `KeinVordruckAngegeben`, `VordruckNichtFortlaufend`, `UsbNichtFortlaufend`, plus `FieldIdOperationName.AktuelleVordruckNummer` — model **multi-form documents** (a document holding several numbered *Vordrucke*/forms, with *USB* sub-units), **outside rulekit's single-document-model scope**. rulekit converts only the two that degrade to single-root-group presence (`MindestensEinVordruckAngegeben`→`GroupFilled`, `KeinVordruckAngegeben`→`GroupNotFilled`); the rest stay excluded (`KernelConstructParityTest`). **The gap:** the merged BA doc `a12-kernel/documentation/_merged/kernel-ba.md` has **zero** occurrences of "Vordruck" — it documents the common *single-model* DSL, not multi-form. So the BA doc is **not exhaustive of kernel constructs**; the construct-enum + lexer inventory (the parity guardians `KernelConstructParityTest` / `KeywordReverseParityTest`) is the authoritative list of what the kernel actually supports. **Lesson:** an absence in the BA doc is *not* evidence the kernel lacks a construct — confirm against the enums/lexer (the kernel's own machine-readable surface), not the prose alone.
 - **The enums carry the full coverage backlog**, machine-readably: families rulekit hasn't modeled (date extraction, sub-day date add/diff, op-list math, tolerance comparisons, value coercions) appear as enum members with no catalog counterpart — exactly the operators a future increment (or a kernel upgrade) would add. `KernelConstructParityTest`'s exclusion list enumerates them with reasons.
 
-## Parsing a condition to the AST — shapes for the F10 converter (2026-06-04 probe)
+## Parsing a condition to the AST — shapes for the F10 converter (2026-06-04 probe) <a id="kf152"></a>
 
 > Fold: not-foldable — parse-tree API shapes for the F10 converter (kernel API survey material), outside the evaluation scope.
 
@@ -2145,13 +2145,13 @@ Verified by parsing rulekit-authored conditions via `IMVK_Service.parseBedingung
 - **Aggregate operands** (`Sum`/`MaxValue`/`MinValue`/`NumberOfDifferentValues`/…) are `IEntityListOperation` (`getOperatorName()` → `EntityListOperationName`, `getEntityList()` → `IEntityIdList`), appearing as the left operand of an `IComparisonCondition`. For a wildcard scope like `Sum(Items*/Count)`, the single entity's `getFullName()` is `/Order/Items/Count` (**the `*` is dropped**) and `getIndices()` is `[1, 0, 1]` — the **`0` is `IParseTreeEntity.WILDCARD`**, marking which path segment was flattened (here `Items`). So the rulekit `*`-path is rebuilt by re-inserting `*` after each segment whose index is `WILDCARD`. A **`Having` filter** rides on that entity as `getFilterCondition()` → a nested `ICondition` (e.g. the `[Items/Sku] == "A"` comparison), which converts recursively and attaches via `FieldListRef.having(...)`.
 - **Iteration operands/conditions.** `CurrentRepetition(group)` is an `IGroupOperation` (`getOperatorName()` → `GroupOperationName.CurrentRepetition`, `getGroup()` → the group `IEntityId`), a numeric operand of a comparison. `RepetitionNotUnique`/`FieldValuesNotUnique` are `IEntityListCondition`s (those names in `EntityListConditionName`): the key entities carry the **`ITERATION` (-1) index** at the repeatable level (e.g. `/Subscription/Addons/Name` → indices `[1, -1, 1]`), and a `… From <group>` scope, when present, rides on `getAdditionalGroupReference()` (absent → empty).
 
-## `variantFilter` — a Field/Rule/Computation is omitted by variant (source-verified 2026-06-26)
+## `variantFilter` — a Field/Rule/Computation is omitted by variant (source-verified 2026-06-26) <a id="kf153"></a>
 
 > Fold: not-foldable — a variant-filtering model mechanism dmkits passes through; the null-variant behavior is a loader concern, not language semantics.
 
 A Field, Rule, or Computation may carry a `variantFilter` (serialized `{ "filterType": "ONLY" | "ALL_EXCEPT", "variants": [<names>] }`, in the element's type sub-object — `RuleSerializer`/`FieldSerializer`/`ComputationSerializer`). When the validation model is built for a given **variant**, `VariantFiltering.filterAcceptsVariant` decides membership (`ValidationModelConverter` gates `addChildEntity`): `ONLY` keeps the element iff the active variant is in `variants`; `ALL_EXCEPT` keeps it iff it is NOT. So with **variant == null** (the differential oracle's setting and dmtool's default), an `ONLY`-filtered element is **dropped** (no variant can match) and an `ALL_EXCEPT`-filtered element is **kept**. A dropped rule never fires; a dropped field/computation is absent from validation/compute. Interpreter treatment: the loader mirrors the null-variant decision (IF36). dmkits does **not author or interpret** `variantFilter` — it is **out of scope** (DEV-API-GAPS §3): a **pass-through** preserved verbatim on a modelkit load→edit→save (the raw-JSON tree surgery never strips an unmodeled slot), so an existing model that carries one keeps it. Locked by `modelkit.VariantFilterPreservationTest`.
 
-## Schema oracle — what the kernel-mm metamodels formalize (instrument 3, 2026-06-04)
+## Schema oracle — what the kernel-mm metamodels formalize (instrument 3, 2026-06-04) <a id="kf154"></a>
 
 > Fold: not-foldable — metamodel-corpus mining provenance (the schema oracle), not a semantics claim.
 
@@ -2164,7 +2164,7 @@ Read-only mining of the sibling `a12-kernel-mm` canonical set (own-words summary
 - **`CT_MODEL_HEADER` formalizes the DM header itself**: `header{id, modelType, modelVersion, description, locales[]{code}, labels[]{locale,text}, annotations[]{name,value}, modelReferences[]{alias, modelType, purpose, reference}}` — i.e. the *reference scheme* Corpus-1 workspace models use (`alias`/`purpose`/`reference`) is documented here for the future resolver work, and `locales.code` is a **typedef** (the format constraint that fails at deserialize — KERNEL-FINDINGS §13). Its one rule: a model id must not start with `xml` (`[id] PatternMatched "[xX][mM][lL].*"` — `HEADER_ID_STARTS_WITH_XML`).
 - **Constraint-rule topics** (per-operator occurrences across the 547 conditions): `FieldFilled` 293 / `FieldNotFilled` 246, `RepetitionNotUnique` 90, `CustomCondition` 53, `PatternViolated`/`PatternMatched` 55, `GroupFilled` 41, `Length` 7 — re-confirming the corpus backlog's priority of patterns, value-lists, `RepetitionNotUnique`, and `CustomCondition`.
 
-## §10 supplement — the model-include (`modelAlias`) mechanism + the mount-suffix path (2026-06-04)
+## §10 supplement — the model-include (`modelAlias`) mechanism + the mount-suffix path (2026-06-04) <a id="kf155"></a>
 
 > Fold: not-foldable — model include/expansion mechanics, explicitly outside the canonical doc's scope.
 
@@ -2180,7 +2180,7 @@ How a DM includes another (the workspace `purpose:"include"` scheme, adapted to 
 
 rulekit treatment + the write-separation guarantee live in `KERNEL-INTEGRATION-NOTES.md`. *(Locked: `IncludesWritePathTest`, `ModifyIncludedRuleTest`, `ExtractAsIncludeProbeTest`, `ExtractGroupAsIncludeTest`.)*
 
-## Serialization shape — a childless group's `elements` array is omitted (2026-06-13)
+## Serialization shape — a childless group's `elements` array is omitted (2026-06-13) <a id="kf156"></a>
 
 > Fold: not-foldable — a serializer shape quirk (omitted empty collections), outside the evaluation scope.
 
@@ -2188,13 +2188,13 @@ The kernel's `IDocumentModelSerializer` **omits the `Group.elements` array entir
 
 Consequence for any code that *inserts into* a group by walking the JSON: "no `elements` array" must be read as "an empty container," not "no such group." It bit `field`/`group move` **into a freshly-added empty group**: the move rewrites references through the kernel serializer first (dropping the destination's empty `elements`), then the node relocation looked up the destination's `elements` and found none → a spurious "no group at path". rulekit's treatment (materialize the empty array on a matched childless group) lives in `KERNEL-INTEGRATION-NOTES.md`. *(Locked: `MoveVerbTest.movesAFieldIntoAChildlessGroup` + `ApplyRefactorTest.theGateSeesPriorOpsEffects_moveIntoAJustAddedGroup`.)*
 
-## §13 supplement — exact message display policy + the interpolated-field-in-condition law (differential + source, corrected 2026-07-21)
+## §13 supplement — exact message display policy + the interpolated-field-in-condition law (differential + source, corrected 2026-07-21) <a id="kf157"></a>
 
 > Fold: folded → §13.
 
 `$Field.value$` reads the immutable input document's **display** route, not the normalized evaluation cache. A caller-supplied display value is used verbatim when nonempty; both missing and explicit-empty display values select the referenced field format's exact active default. For a Number that default includes its declared minimum fractional digits. The current modern `DocumentV2` route uses `.` for that default even with `Locale.GERMANY` and even when `modelConfig.decimalSeparator` is `,`; the proposed comma-by-model-config rule was probe-refuted in both kernel strategies. A String default is empty. Consequently a CRLF-bearing String is normalized to LF for rule/computation evaluation but retains CRLF in the rendered message. The earlier `0 for Number / empty for every other kind` statement was only the scale-zero/String slice and is superseded by this format-owned rule. A different presentation-information route is a separate profile and must be characterized before support rather than guessed. **A separate model-validity law remains:** a field interpolated in a rule's error text **must be referenced in the rule's condition** — otherwise `checkConsistency`/codegen rejects the model with `INVALID_FIELD` ("the referenced field '…' is … not used in the rule condition"). *(Locked: `adapter.laws.MessageValueDisplayPolicyDiffTest` and the retained `UnspecifiedValueInterpolationDiffTest`/`CrlfLengthNormalizationDiffTest`; multiplatform `interpreter … MessageDisplayPolicyTest`. Interpreter treatment: IF201, correcting IF121/IF124.)*
 
-## §13 supplement — the message-locale law
+## §13 supplement — the message-locale law <a id="kf158"></a>
 
 > Fold: not-foldable — authoring/model-structure locale laws (declaration coverage, blank texts, duplicates), outside the evaluation scope.
 
@@ -2216,19 +2216,19 @@ Header `locales` are **arbitrary** valid Java locale codes (`fr_FR` is fine; a m
 
 *(Locked: `RuleAuthoringTest.requiresAMessageForEveryDeclaredLocale` / `rejectsMessagesForUndeclaredLocales`.)*
 
-## Dormant MVK codes — declared but never fired in 30.8.1 (source-verified 2026-06-10)
+## Dormant MVK codes — declared but never fired in 30.8.1 (source-verified 2026-06-10) <a id="kf159"></a>
 
 > Fold: not-foldable — a dead-code inventory fact (declared, never fired); nothing to fold.
 
 An exhaustive grep of the kernel-tool sources (during the MVK-ledger drain) found **four codes with no firing site**: `MVK_INVALID_PREDEFINED_TYPE`, `MVK_NOT_ON_ERRORFIELD_PATH`, `MVK_ONLY_STRING_ENUM_NUMBER_CMP_DATE_ALLOWED_NO_FIELD` (ParserErrorTypesEnum) and `MVK_CALCULATION_FIELD_AND_NO_CALCULATION_RULE` (CalculationErrorType). They exist only as enum members — nothing to pre-check or delegate; a kernel bump re-activating one would surface through the ledger's classified rows. *(Source-level fact, not a behavior finding — no probe possible by definition.)*
 
-## Reserved rule-name prefix — `vk_vk` is the kernel's namespace (probe-verified 2026-06-10)
+## Reserved rule-name prefix — `vk_vk` is the kernel's namespace (probe-verified 2026-06-10) <a id="kf160"></a>
 
 > Fold: not-foldable — an authoring-tier reserved-namespace rule, outside the evaluation scope.
 
 `checkConsistency` rejects any rule whose **name** begins with `vk_vk` in any letter case (`MVK_RULE_NAME_INVALID`, an MM_Common metamodel rule) — the prefix is reserved by the kernel. Found while resolving the MVK ledger's metamodel section via the rule-explanation dogfood; confirmed by a live probe: `cli add` with `name: "vk_vk_probe"` is rejected pre-persist by the F4 validation with exactly this code, and nothing is written. Since 2026-06-10 `Rule.build()` pre-checks the prefix with the code named. *(Kernel law locked: `validate.laws.RuleSlotLawsTest`; pre-check locked: `RuleAuthoringTest`.)*
 
-## Structure-authoring consistency laws — field types & requiredness (modelkit M1/M2, 2026-06-05)
+## Structure-authoring consistency laws — field types & requiredness (modelkit M1/M2, 2026-06-05) <a id="kf161"></a>
 
 > Fold: not-foldable — model-structure authoring laws (modelkit's kind-B oracle), outside the evaluation scope.
 
@@ -2253,7 +2253,7 @@ Supporting structural shapes verified along the way (own-words; for the modelkit
 
 rulekit treatment: the `structure` package emits all of the above; modelkit's own checks (label completeness, min≤max, pattern⇔message, enum non-empty, repeatable≥2) fail fast *before* the kernel, turning these into clear authoring errors rather than cryptic `MVK_*`. *(Locked: `structure.DocumentModelDraftTest`, `structure.FieldConfigTest`.)*
 
-## §10 supplement — relative path forms accepted in conditions (fork #9, 2026-06-04 probe)
+## §10 supplement — relative path forms accepted in conditions (fork #9, 2026-06-04 probe) <a id="kf162"></a>
 
 > Fold: folded → §10.
 
@@ -2261,7 +2261,7 @@ Conditions accept paths **relative to the rule's group**, not only absolute — 
 
 **`..Name` (named-ancestor / turning-point) paths — the label names, it never navigates (clean-room from `CheckRelativeUpImpl`, 2026-07-06):** in a `..Name/rest` path the up-count comes ONLY from the number of `..` tokens; the trailing `Name` merely **names the ancestor landed on** — the kernel validates the name against that ancestor (`MVK_INVALID_ENTITY` on mismatch) but it never changes the target, so a matching `..Name/rest` resolves exactly like `../rest`. *(Interpreter: INTERPRETER-FINDINGS IF55; behavior-locked against the real kernel by `adapter.laws.NamedAncestorPathDiffTest` + parse-locked by `interpreter … NamedAncestorPathParseTest` (JVM+JS).)*
 
-## §9 supplement — group cardinality (minItems-style "at least N rows") IS expressible via the starred single-group count (probe + source 2026-06-28, CORRECTED 2026-07-09)
+## §9 supplement — group cardinality (minItems-style "at least N rows") IS expressible via the starred single-group count (probe + source 2026-06-28, CORRECTED 2026-07-09) <a id="kf163"></a>
 
 > Fold: folded → §9.
 
@@ -2272,7 +2272,7 @@ The JSON-Schema `minItems`/`maxItems` analog — "a repeatable group must have a
 
 **CORRECTION (2026-07-09) — the STARRED single-group form makes "at least N rows" expressible.** `NumberOfFilledGroups(G*)` counts ONE repeatable group's **instantiated** rows, including **0** (the §1 starred-count supplement / IF46), so a minItems rule works: `NumberOfFilledGroups(Items*) < N` is kernel-valid and **fires at 0…N−1 rows**, in **both anchorings** — the error field **inside** the counted group, unguarded (the aggregate-consumed star does not put the rule into per-row iteration, so it fires even at **zero** rows), or an **outside** error field behind a `FieldFilled` guard (then conditioned on the guard being filled). Probed 2026-07-09 (`rule check` + `model eval` at 0/1/2 rows, kernel == interpreter). The "at most N rows" side was always structural (`repeatability`). The 2026-06-28 "Net: not expressible" conclusion is retired; what stands from it: a **group** error entity still does not help (fact 1), so `errorField(GroupReference)` stays out of rulekit. Consumer consequence: the JSON-Schema importer's `minItems` "not feasible" classification is superseded — now an open synthesis gap ([SCHEMAKIT-GAPS](SCHEMAKIT-GAPS.md) §1). *(Locked: accept tier `validate.laws.RootGroupCountLawsTest` (both anchorings), firing tier `adapter.laws.NumberOfFilledGroupsStarDiffTest` (fires at 0/1, silent at 2, both engines); the two `MVK_*` rejections above stay probe-evidence.)*
 
-## The condition FORMATTER is German-canonical — rendering ANY language reads the German terminal map (source-verified 2026-06-30)
+## The condition FORMATTER is German-canonical — rendering ANY language reads the German terminal map (source-verified 2026-06-30) <a id="kf164"></a>
 
 > Fold: not-foldable — formatter/native-image locale mechanics, outside the evaluation scope.
 
@@ -2282,7 +2282,7 @@ Default language: the no-locale `formatConditionText` renders in the model's `co
 
 **Native-image impact (the v0.8.0 Linux-only `rule format` defect).** GraalVM bundles only the **build host's default locale** (+ `en`) into the image's resolvable locales unless `-H:IncludeLocales` is set. A binary built on a **`de_DE`** host (the maintainer's Mac) carries the German terminal data → `rule format` works; one built on an **`en`/`C`** host (Linux CI) does **not** → `getMapOfLocalizedTerminalIDs().get(Locale.GERMANY)` is empty → `rule format`'s English render fails with *"The german token name 'Und' is unknown"* (or `ExceptionInInitializerError`). The output was never going to *be* German (target = `en_US`); it crashed for lack of the German **source**. Only an explicit `--lang DE` short-circuits the German-map read — which is why `rule format --lang DE` passed on Linux while the default did not. **Fix:** pin `-H:IncludeLocales=en,de` so every build is locale-complete and host-independent ([NATIVE-IMAGE-GRAALVM §3.2](NATIVE-IMAGE-GRAALVM.md)). *(Reconstruct: a forced-`en` builder via `-J-Duser.language=en` reproduces the crash on macOS; adding `-H:IncludeLocales=en,de` restores the English render. Locked at runtime by the Linux native gate over `examples/cli-jsonschema.md`.)*
 
-## §7 supplement — pattern regexes are Java `Pattern` on JVM but raw `new RegExp` on the kernel's own JS target (source, 2026-07-20)
+## §7 supplement — pattern regexes are Java `Pattern` on JVM but raw `new RegExp` on the kernel's own JS target (source, 2026-07-20) <a id="kf165"></a>
 
 > Fold: pending — newly recorded pattern-dialect fact; folds into §7 (patterns) on the next canonical KERNEL-SEMANTICS pass.
 
