@@ -157,6 +157,7 @@ tasks.register('docGuardTest', Test) {
         includeTestsMatching 'io.github.mbackschat.a12.dm.cli.SharedReadmeRegionTest'
         includeTestsMatching 'io.github.mbackschat.a12.dm.cli.DocsIndexGuardTest'
         includeTestsMatching 'io.github.mbackschat.a12.dm.cli.GapLedgerOpenMarkerGuardTest'
+        includeTestsMatching 'io.github.mbackschat.a12.dm.cli.DocAnchorResolveGuardTest'
         includeTestsMatching 'io.github.mbackschat.a12.dm.cli.interp.ModelLoaderParityTest'
     }
     // guardInputs (root ext, kernel-decoupling §3b #17) declares these runtime-read files as inputs AND fails
@@ -261,6 +262,7 @@ tasks.named('test') {
         excludeTestsMatching 'io.github.mbackschat.a12.dm.cli.SharedReadmeRegionTest'
         excludeTestsMatching 'io.github.mbackschat.a12.dm.cli.DocsIndexGuardTest'
         excludeTestsMatching 'io.github.mbackschat.a12.dm.cli.GapLedgerOpenMarkerGuardTest'
+        excludeTestsMatching 'io.github.mbackschat.a12.dm.cli.DocAnchorResolveGuardTest'
         excludeTestsMatching 'io.github.mbackschat.a12.dm.cli.SemanticsMapResolveTest'
         excludeTestsMatching 'io.github.mbackschat.a12.dm.cli.KernelDocsFoldContractTest'
         excludeTestsMatching 'io.github.mbackschat.a12.dm.cli.interp.ModelLoaderParityTest'
