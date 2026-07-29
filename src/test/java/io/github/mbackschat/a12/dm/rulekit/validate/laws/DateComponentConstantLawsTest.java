@@ -49,6 +49,26 @@ class DateComponentConstantLawsTest {
         accepts("AddDays(OrderDate, 1) == Date(\"1\", \"10\", \"1916\")");
     }
 
+    /**
+     * The digit repertoire is per UTF-16 CODE UNIT: {@code StringUtils.isNumeric} loops
+     * {@code Character.isDigit(char)}, so a BMP non-ASCII digit qualifies while a supplementary-plane digit's
+     * surrogate halves do not. Measured 2026-07-29 — this is the boundary SPEC-2026-07-27-11 names, and it is
+     * the reason a code-POINT digit predicate would wrongly admit the supplementary form.
+     */
+    @Test
+    void theDigitRepertoireIsPerCodeUnit() {
+        accepts("[OrderDate] == Date(\"\u0661\u0660\", \"1\", \"1963\")");          // Arabic-Indic 1,0 — BMP
+        rejects("[OrderDate] == Date(\"\uD835\uDFCE\uD835\uDFCF\", \"1\", \"1963\")",
+                "MVK_WRONG_DATE_FORMAT_FOR_OP");                                       // bold digits — supplementary
+    }
+
+    /** A TIME literal uses a different gate entirely — exact ASCII {@code HH:mm:ss} — so the same BMP digits
+     *  are REFUSED there. The two gates are not one rule, and this pair is what keeps them apart. */
+    @Test
+    void theTimeLiteralGateIsAsciiOnlyUnlikeTheComponentGate() {
+        rejects("[PickupTime] == \"\u0661\u0660:\u0663\u0660:\u0664\u0665\"", "MVK_INVALID_COMPARE_TO_DATE");
+    }
+
     private static void accepts(String condition) {
         KernelLaws.acceptsOrder("/Order", "../CustomerName", "FieldFilled(CustomerName) And " + condition);
     }
