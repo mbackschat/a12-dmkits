@@ -140,7 +140,8 @@ tasks.withType(Test).configureEach {
 // examples/*.md; CommandReferencesResolveTest reads the source + public READMEs, skill/SKILL.md, the Codex
 // AGENTS.md, the eval workflow JS, and the operator catalog; SharedReadmeRegionTest reads both public
 // READMEs; ModelLoaderParityTest reads both fixture-model roots; DocsIndexGuardTest reads the whole docs/
-// tree + its index. They run in THIS
+// tree + its index; DirectoryIndexGuardTest reads the scripts/ + examples/ trees + their indexes.
+// They run in THIS
 // dedicated task with those files declared as ITS inputs, so the win is scoped: editing a demo/doc/model
 // re-runs ONLY these classes (not the ~620-test suite), and such a change can no longer go up-to-date /
 // restore from the BUILD CACHE into a FALSE GREEN locally while CI (a fresh checkout) fails. `test` dependsOn
@@ -156,6 +157,7 @@ tasks.register('docGuardTest', Test) {
         includeTestsMatching 'io.github.mbackschat.a12.dm.cli.CliSpecVerbTableTest'
         includeTestsMatching 'io.github.mbackschat.a12.dm.cli.SharedReadmeRegionTest'
         includeTestsMatching 'io.github.mbackschat.a12.dm.cli.DocsIndexGuardTest'
+        includeTestsMatching 'io.github.mbackschat.a12.dm.cli.DirectoryIndexGuardTest'
         includeTestsMatching 'io.github.mbackschat.a12.dm.cli.GapLedgerTemplateGuardTest'
         includeTestsMatching 'io.github.mbackschat.a12.dm.cli.DocAnchorResolveGuardTest'
         includeTestsMatching 'io.github.mbackschat.a12.dm.cli.interp.ModelLoaderParityTest'
@@ -164,6 +166,9 @@ tasks.register('docGuardTest', Test) {
     // loudly if any tree goes empty — so a moved folder can't silently turn this guard into a false green.
     rootProject.guardInputs(it, [
             'examples/*.md'      : rootProject.fileTree('examples') { include '**/*.md' },
+            // DirectoryIndexGuardTest reads scripts/ + its index (examples/ rides the *.md tree above), so an
+            // added/renamed/removed script must re-run the guard that checks its index row.
+            'scripts tree'       : rootProject.fileTree('scripts'),
             'README.md'          : rootProject.file('README.md'),
             'plugin/README.md'   : rootProject.file('plugin/README.md'),
             'skill/SKILL.md'     : rootProject.file('skill/SKILL.md'),
@@ -261,6 +266,7 @@ tasks.named('test') {
         excludeTestsMatching 'io.github.mbackschat.a12.dm.cli.CliSpecVerbTableTest'
         excludeTestsMatching 'io.github.mbackschat.a12.dm.cli.SharedReadmeRegionTest'
         excludeTestsMatching 'io.github.mbackschat.a12.dm.cli.DocsIndexGuardTest'
+        excludeTestsMatching 'io.github.mbackschat.a12.dm.cli.DirectoryIndexGuardTest'
         excludeTestsMatching 'io.github.mbackschat.a12.dm.cli.GapLedgerTemplateGuardTest'
         excludeTestsMatching 'io.github.mbackschat.a12.dm.cli.DocAnchorResolveGuardTest'
         excludeTestsMatching 'io.github.mbackschat.a12.dm.cli.SemanticsMapResolveTest'
