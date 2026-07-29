@@ -70,7 +70,7 @@ Finally, setting big.js `PE`/`NE` to `±1,000,000` does not make rendering uncon
 
 **Required correction:** Describe IF153 as the accepted partial increment listed above, keep IG89 live until issue 1 is complete, and sweep only the direct IF153/IG89 claims so no document or test comment says the entire decimal contract is closed or differentially proved.
 
-**Acceptance checks:** `rg` finds no “IG89 closed,” “JS decimal parity shipped,” “full MathContext parity,” or equivalent claim outside explicitly historical review text while IG89 remains open. Every evidence statement names whether it is a common JVM/Node primitive lock or a real-kernel tri-engine differential.
+**Acceptance checks:** `rg` finds no “IG89 closed,” “JS decimal parity shipped,” “full MathContext parity,” or equivalent claim outside explicitly historical review text while IG89 was open at the time. Every evidence statement names whether it is a common JVM/Node primitive lock or a real-kernel tri-engine differential.
 
 **Resolution:** Fixed by `c8d2ab9b`. IF153 is retained as the accepted first increment and IF163 records the completed contract; IG89 was deleted. The architecture, specification, certificate, performance contract, kernel finding, build comment, and direct finding/gap references now distinguish common JVM/Node primitive evidence from the real-kernel tri-engine differential.
 
