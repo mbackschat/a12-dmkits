@@ -17,7 +17,7 @@ import org.junit.jupiter.api.io.TempDir;
  * with a single grep, because the answer is spread over eight ledgers and most of them are empty. Before
  * this guard the empty state was written five different ways — {@code _None currently._}, {@code _None._},
  * {@code (none)}, {@code _None open._}, and twice as bare prose with no explicit statement at all — so
- * {@code grep -H '^_None open._' docs/*GAPS*.md} returned four of eight files and silently under-reported.
+ * {@code grep -H '^_None open._' docs/*GAPS*.md} returned two of eight files and silently under-reported.
  *
  * <p>The contract: <b>every {@code docs/*-GAPS.md} open section either lists at least one item or carries
  * the exact marker {@code _None open._}</b>. That makes the roll-up grep exact and, just as importantly,

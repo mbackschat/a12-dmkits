@@ -6,7 +6,7 @@
 
 ## These docs are read by grep + sed, never whole
 
-The knowledge docs total ~1.5 MB (~380k tokens); `INTERPRETER-FINDINGS` alone is 687 KB. Never `Read` one end to end. A finding's **heading line is the retrieval preview** — it deliberately carries claim + oracle + date, so a grep over headings is usually enough to decide what to fetch.
+The knowledge docs total ~1.5 MB (~380k tokens); `INTERPRETER-FINDINGS` alone is ~690 KB. Never `Read` one end to end. A finding's **heading line is the retrieval preview** — it deliberately carries claim + oracle + date, so a grep over headings is usually enough to decide what to fetch.
 
 | you need… | run |
 |---|---|
