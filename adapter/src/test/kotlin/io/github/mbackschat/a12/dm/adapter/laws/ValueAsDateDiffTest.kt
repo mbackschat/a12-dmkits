@@ -100,6 +100,54 @@ class ValueAsDateDiffTest {
         assertEquals(k, i, "$msg ($approx, $stamp)")
     }
 
+    /**
+     * BOTH kernel strategies must admit and evaluate the nested placements identically — dynamic-Groovy is
+     * normative (IF136) and static-Java is the co-evidence. `ValueAsDate` lowers through
+     * `FieldIdOperationWithParameters.st`, which has a per-dialect template, so codegen parity is not implied
+     * by the shared runtime and has to be measured. Each placement is tri-checked (groovy / java-static /
+     * interpreter) over the day-omitted value and one negative control.
+     */
+    @Test fun bothKernelStrategiesAgreeOnEveryNestedPlacement() {
+        val cases = listOf(
+            Triple("shift base (+1 day → the 2nd)", true, render(m.field(AD).filled().and(
+                Dsl.addDays(Dsl.valueAsDateFirstDay(m.field(AD)), 1L).eq(Dsl.dateValue("02.06.2024"))))),
+            Triple("shift base, negative control", false, render(m.field(AD).filled().and(
+                Dsl.addDays(Dsl.valueAsDateFirstDay(m.field(AD)), 1L).eq(Dsl.dateValue("03.06.2024"))))),
+            Triple("both difference operands (29 steps)", true, render(m.field(AD).filled().and(
+                Dsl.differenceInDays(Dsl.valueAsDateFirstDay(m.field(AD)), Dsl.valueAsDateLastDay(m.field(AD)))
+                    .eq(Dsl.number(29L))))),
+            Triple("difference, negative control", false, render(m.field(AD).filled().and(
+                Dsl.differenceInDays(Dsl.valueAsDateFirstDay(m.field(AD)), Dsl.valueAsDateLastDay(m.field(AD)))
+                    .eq(Dsl.number(30L))))),
+        )
+        for ((label, fires, cond) in cases) triCheck(cond, partial, label, fires)
+        // The DateTime composition needs a filled DATE_TIME comparand, so it carries its own document.
+        triCheck(render(m.field(AD).filled().and(
+            m.dateTime(SA).eq(Dsl.dateTime(Dsl.valueAsDateFirstDay(m.field(AD)), Dsl.timeValue("09:30:00"))))),
+            partial, "DateTime date argument", fires = true, stamp = "2024-06-01T09:30:00")
+        triCheck(render(m.field(AD).filled().and(
+            m.dateTime(SA).eq(Dsl.dateTime(Dsl.valueAsDateLastDay(m.field(AD)), Dsl.timeValue("09:30:00"))))),
+            partial, "DateTime date argument, negative control", fires = false, stamp = "2024-06-01T09:30:00")
+    }
+
+    private fun triCheck(cond: String, approx: String, msg: String, fires: Boolean, stamp: String? = null) {
+        val model = RuntimeLaws.withRule(order, "/Order", "R", "../ApproxDate", "VA", cond)
+        val doc = RuntimeLaws.doc().group("/Order", 1).field(AD, approx, 1, 1)
+        stamp?.let { doc.field(SA, it, 1, 1) }
+        val groovy = RuntimeLaws.messages(model, doc).filter { it.code() == "VA" }.map { it.code() }.sorted()
+        val engine = RuntimeLaws.kernelJavaEngine(model)
+        val javaStatic = engine.messages(engine.instance(doc)).filter { it.code() == "VA" }
+            .map { it.code() }.sorted()
+        val def = ModelDef(fields + FieldDef(SA, Kind.DATE_TIME, format = "yyyy-MM-dd'T'HH:mm:ss"),
+            listOf(RuleDef("/Order/R", "/Order", cond, "VA", "../ApproxDate")))
+        val iDoc = def.newDocument().field(AD, approx, 1, 1).also { d -> stamp?.let { d.field(SA, it, 1, 1) } }
+        val interp = DmInterpreter(def).validate(iDoc).messages.filter { it.code == "VA" }.map { it.code }.sorted()
+        // Pin the kernel outcome too, so a case can never agree by all three engines returning nothing.
+        assertEquals(fires, groovy.isNotEmpty(), "$msg — the kernel outcome moved (groovy=$groovy)")
+        assertEquals(groovy, javaStatic, "$msg (java-static≠groovy)\n  groovy=$groovy\n  java=$javaStatic")
+        assertEquals(groovy, interp, "$msg (interp≠groovy)\n  groovy=$groovy\n  interp=$interp")
+    }
+
     private companion object {
         const val AD = "/Order/ApproxDate"
         const val SA = "/Order/ScheduledAt"
