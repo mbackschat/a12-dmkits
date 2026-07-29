@@ -923,8 +923,15 @@ private fun Interpreter.evalTemporal(e: Expr): Evaluated<TemporalValue> {
 private fun Interpreter.evaluateDateConstruction(args: List<Expr>): Evaluated<TemporalValue> {
     val analysis = analyzeDate(args)
     return when (analysis.status) {
+        // A constructed Date retains the instant its FRESH resolution selected (SPEC-2026-07-29-01): over an
+        // ambiguous midnight — Berlin's only one is 1916-10-01 — that is the LATER copy, which a comparison
+        // against a shifted Date must be able to tell apart from the shift's own landing.
         DateStatus.REAL -> Evaluated.Present(
-            TemporalValue(analysis.iso!!, DateCalendarBasis.LEGACY_HYBRID),
+            TemporalValue(
+                analysis.iso!!,
+                DateCalendarBasis.LEGACY_HYBRID,
+                freshDateInstant(analysis.iso, timeZone, DateCalendarBasis.LEGACY_HYBRID)?.times(1_000L),
+            ),
         )
         DateStatus.UNREAL_PRESENT, DateStatus.HAS_EMPTY -> Evaluated.NoValue(NoValueReason.NOT_GIVEN)
         DateStatus.MALFORMED -> Evaluated.NoValue(NoValueReason.NON_RELEVANT)
@@ -1095,17 +1102,25 @@ private fun Interpreter.shiftTemporal(e: Expr.Func): Evaluated<TemporalValue> {
         } else {
             val date = if (value.basis == DateCalendarBasis.LEGACY_HYBRID)
                 addLegacyCalendarDays(value.date, n) else addDays(value.date, n)
-            date?.let { TemporalValue(it, value.basis) }
+            // The civil label stays label arithmetic (it owns the legacy-hybrid rendering); the retained
+            // instant is the SOURCE-instant landing, so a day shift keeps the offset season it started in.
+            date?.let {
+                TemporalValue(it, value.basis,
+                    wallDayLandingInstant(value.instantSeconds(timeZone), n, timeZone) * 1_000L)
+            }
         }
+        // Month and year mutate CIVIL FIELDS, so their landing is resolved at compute time from the resulting
+        // label — sign-independently, taking the later copy of an overlap (SPEC-2026-07-29-01). That is a
+        // different mechanism from the day arm above, which carries the source instant.
         FunctionOp.ADD_MONTHS -> {
             val date = if (value.basis == DateCalendarBasis.LEGACY_HYBRID)
                 addLegacyCalendarMonths(value.date, n) else addMonths(value.date, n)
-            date?.let { TemporalValue(it, value.basis) }
+            date?.let { TemporalValue(it, value.basis, fieldMutationInstantOfDate(it, timeZone, value.basis)?.times(1_000L)) }
         }
         FunctionOp.ADD_YEARS -> {
             val date = if (value.basis == DateCalendarBasis.LEGACY_HYBRID)
                 addLegacyCalendarYears(value.date, n) else addYears(value.date, n)
-            date?.let { TemporalValue(it, value.basis) }
+            date?.let { TemporalValue(it, value.basis, fieldMutationInstantOfDate(it, timeZone, value.basis)?.times(1_000L)) }
         }
         FunctionOp.ADD_HOURS, FunctionOp.ADD_MINUTES, FunctionOp.ADD_SECONDS -> {
             val unit = when (FunctionOp.byName(e.name)) {
@@ -1177,6 +1192,17 @@ private fun pad2(n: Int): String = n.toString().padStart(2, '0')
 /** Exact instant identity of a legal date-time expression, carried by [evalTemporal] through composition. */
 internal fun Interpreter.dateTimeInstant(e: Expr): Long? =
     (evalTemporal(e) as? Evaluated.Present)?.value?.takeIf { it.isDateTime }?.instantMillis(timeZone)
+
+/**
+ * Exact instant identity of a legal DATE expression — the date twin of [dateTimeInstant], read structurally so
+ * a constructed or shifted Date keeps the instant its own resolution selected instead of having its rendered
+ * label re-resolved (SPEC-2026-07-29-01). A plain field read has no retained instant and derives one by the
+ * ordinary parse resolution, which is exactly what the kernel's `VkDate` carries for it.
+ */
+internal fun Interpreter.dateInstant(e: Expr): Long? =
+    (evalTemporal(e) as? Evaluated.Present)?.value
+        ?.takeIf { !it.isDateTime && !it.isTimeOnly }
+        ?.instantMillis(timeZone)
 
 /** `ValueAsDate(field, FirstDay|LastDay)` — resolve a (DAY_OPTIONAL) date field's raw value to a concrete
  *  date: a specified day → itself, an omitted `00` day → the month's first (`FirstDay`) or last (`LastDay`)

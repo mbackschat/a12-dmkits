@@ -955,6 +955,28 @@ class Interpreter(
                 CmpOp.GE -> Tri.of(li >= ri)
             }
         }
+        // A DATE comparison under a non-UTC model zone likewise compares zone-resolved INSTANTS, for the same
+        // reason and by the same structural route: a Date-valued shift retains the instant ITS mutation selected,
+        // and over an ambiguous midnight that can differ from the instant the equal-looking label re-resolves to
+        // (SPEC-2026-07-29-01). Both sides can always produce an instant — a field read derives one by the
+        // ordinary parse resolution, which is what the kernel's `VkDate` holds for it — so this is not gated on
+        // retention; gating it on retention would compare a shifted Date against a field by LABEL and diverge.
+        // The footprint is provably one date: wherever midnight is unambiguous the derived instant and the label
+        // order agree, and Berlin's pinned history has exactly one ambiguous midnight (1916-10-01).
+        if (l is Val.Txt && r is Val.Txt && isIsoDate(l.v) && isIsoDate(r.v) && timeZone != ModelTimeZone.UTC) {
+            val li = dateInstant(c.left)
+            val ri = dateInstant(c.right)
+            if (li != null && ri != null) {
+                return when (c.op) {
+                    CmpOp.EQ -> Tri.of(li == ri)
+                    CmpOp.NE -> Tri.of(li != ri)
+                    CmpOp.LT -> Tri.of(li < ri)
+                    CmpOp.LE -> Tri.of(li <= ri)
+                    CmpOp.GT -> Tri.of(li > ri)
+                    CmpOp.GE -> Tri.of(li >= ri)
+                }
+            }
+        }
         return when (c.op) {
             CmpOp.EQ -> Tri.of(ValCompare.equal(l, r))
             CmpOp.NE -> Tri.of(!ValCompare.equal(l, r))

@@ -601,6 +601,10 @@ private fun buildIso(values: List<String>, comps: List<Char>): String? {
  *  value carries; the datetime-comparison dispatch keys on it. */
 fun isIsoDateTime(s: String): Boolean = ISO_DATE_TIME.matches(s)
 
+/** Whether [s] is a canonical ISO DATE (`yyyy-MM-dd`, no time part) — the shape every resolved DATE value
+ *  carries; the date-comparison instant dispatch keys on it. */
+fun isIsoDate(s: String): Boolean = ISO.matches(s)
+
 // ---- model-timezone (DST) instant math — the Europe/Berlin axis (IF155 → KERNEL-FINDINGS §6) -------------
 //
 // The kernel parses every DATE/DATE_TIME with a zone-set formatter, so under a `Europe/Berlin` model wall
@@ -911,13 +915,38 @@ private fun legacyCalendarYearLandingInstant(instant: Long, years: Int, tz: Mode
  * fields, so an **overlap** label takes the LATER instant and a **gap** label normalizes to the POST-gap
  * label (`02:30` → `03:30`, one hour past the transition).
  *
- * Evidence split, stated because the two halves are not equally established: the GAP half is
- * differentially separated — `DifferenceInDays(2003-03-31T02:30, 2024-03-31T03:00)` is **7670** on both
- * kernel strategies because the 21-year candidate's post-gap landing falls after the later endpoint and is
- * rejected, where the previous direction-selected pre-gap landing admitted it and produced 7671. The OVERLAP
- * half rides on the same `Calendar` resolution rather than on its own separator: the day loop only ever adds,
- * so an overlap-induced seed difference self-corrects and is not observable on the maintained surface.
+ * Both halves are now differentially separated. The GAP half:
+ * `DifferenceInDays(2003-03-31T02:30, 2024-03-31T03:00)` is **7670** on both kernel strategies, because the
+ * 21-year candidate's post-gap landing falls after the later endpoint and is rejected, where the previous
+ * direction-selected pre-gap landing admitted it and produced 7671. The OVERLAP half: direct Date equality
+ * over the one ambiguous midnight — `AddMonths(Date("1","9","1916"), 1) == Date("1","10","1916")` and the
+ * `AddYears` twin are both **true** while the `AddDays` shape is **false**, so taking the LATER copy here is
+ * observed rather than assumed (`ConstructedDateInstantDiffTest`). A `DifferenceInDays` construction cannot
+ * show the overlap half — its day loop only ever adds, so a seed difference self-corrects — which is why the
+ * observer has to be a comparison that introduces no second calendar mutation.
  */
+/**
+ * The landing instant of a `Calendar.MONTH`/`Calendar.YEAR` mutation that produced the civil DATE label
+ * [isoDate] — midnight of that label, resolved by [fieldMutationLandingInstant]. A Date-valued month/year
+ * shift retains this so a consumer observes the instant the mutation selected rather than re-resolving the
+ * label (SPEC-2026-07-29-01). Null when the label is not a real date under [basis].
+ */
+internal fun fieldMutationInstantOfDate(isoDate: String, tz: ModelTimeZone, basis: DateCalendarBasis): Long? {
+    val day = calendarEpochDay(isoDate, basis) ?: return null
+    return fieldMutationLandingInstant(day * 86_400L, tz)
+}
+
+/**
+ * The instant of a FRESHLY CONSTRUCTED / parsed DATE label — midnight resolved the way the kernel's
+ * non-lenient zone parse resolves it ([localToInstant]): an overlap takes the smaller (after) offset, i.e.
+ * the LATER copy. Retained on a constructed Date so a comparison against a shifted Date can observe that the
+ * two selected different sides of one overlap. Null for a gap label (which the kernel rejects formally).
+ */
+internal fun freshDateInstant(isoDate: String, tz: ModelTimeZone, basis: DateCalendarBasis): Long? {
+    val day = calendarEpochDay(isoDate, basis) ?: return null
+    return localToInstant(day * 86_400L, tz)
+}
+
 private fun fieldMutationLandingInstant(nominal: Long, tz: ModelTimeZone): Long {
     if (tz == ModelTimeZone.UTC) return nominal
 

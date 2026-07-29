@@ -30,9 +30,18 @@ class NowMillisecondIdentityDiffTest {
                 Dsl.differenceInSeconds(Dsl.now(), Dsl.addSeconds(Dsl.now(), 1)).eq(1),
             )),
             rule(model, "ShiftedBefore", model.dateTime(FIELD).before(Dsl.addSeconds(Dsl.now(), 1))),
+            // SPEC-2026-07-29-01's millisecond arm: a DAY shift must carry the source instant's sub-second
+            // remainder, not just its clock. CompletedAt is the exact second one day out, so it is BEFORE the
+            // shifted Now iff the .999 survived, and EQUAL to it iff the remainder was dropped.
+            rule(model, "DayShiftKeepsMillis", model.dateTime(FIELD).filled()
+                .and(model.dateTime(COMPLETED).before(Dsl.addDays(Dsl.now(), 1)))),
+            rule(model, "DayShiftDroppedMillis", model.dateTime(FIELD).filled()
+                .and(model.dateTime(COMPLETED).eq(Dsl.addDays(Dsl.now(), 1)))),
         )
         val modelJson = rules.fold(base, TypedRules::inject)
-        val kernelDocument = RuntimeLaws.doc().group(ROOT, 1).field(FIELD, "2025-06-23T12:00:00", 1, 1)
+        val kernelDocument = RuntimeLaws.doc().group(ROOT, 1)
+            .field(FIELD, "2025-06-23T12:00:00", 1, 1)
+            .field(COMPLETED, "2025-06-24T12:00:00", 1, 1)
         val clock = Date.from(Instant.parse("2025-06-23T10:00:00.999Z"))
 
         val dynamic = RuntimeLaws.messagesModern(modelJson, kernelDocument, clock).map { it.code() }.toSet()
@@ -42,12 +51,14 @@ class NowMillisecondIdentityDiffTest {
         val definition = ModelLoader.load(modelJson)
         val interpreterDocument = definition.newDocument().group(ROOT, 1)
             .field(FIELD, "2025-06-23T12:00:00", 1, 1)
+            .field(COMPLETED, "2025-06-24T12:00:00", 1, 1)
         val interpreted = DmInterpreter(
             definition,
             EvalClock(today = "2025-06-23", now = "2025-06-23T12:00:00.999"),
         ).validateFull(interpreterDocument).map { it.code }.toSet()
 
-        val expected = setOf("BeforeExactNow", "ForwardResidual", "ReverseResidual", "OneSecondShift", "ShiftedBefore")
+        val expected = setOf("BeforeExactNow", "ForwardResidual", "ReverseResidual", "OneSecondShift",
+            "ShiftedBefore", "DayShiftKeepsMillis")
         assertEquals(expected, dynamic, "normative dynamic-Groovy")
         assertEquals(dynamic, generated, "generated Java")
         assertEquals(dynamic, interpreted, "interpreter")
@@ -66,5 +77,6 @@ class NowMillisecondIdentityDiffTest {
     private companion object {
         const val ROOT = "/Order"
         const val FIELD = "/Order/ScheduledAt"
+        const val COMPLETED = "/Order/CompletedAt"
     }
 }
