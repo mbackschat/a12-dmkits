@@ -1070,8 +1070,11 @@ private fun Interpreter.mapTemporal(
 private fun Interpreter.shiftTemporal(e: Expr.Func): Evaluated<TemporalValue> {
     val source = evalTemporal(e.args[0])
     val amountValue = evalExpr(e.args[1])
-    val amount = (amountValue as? Val.Num)?.v?.display()?.toLongOrNull()
-    val amountState: Evaluated<Long> = when {
+    // Java `BigDecimal.intValue()`: truncate toward zero, then keep the low signed 32 bits — the kernel's
+    // `VkBigDecimal.intValue` (SPEC-2026-07-27-04). So `1.9` shifts by 1 and an out-of-range amount WRAPS;
+    // neither is rejected, and neither is saturated. A domain failure supplies no amount at all.
+    val amount = (amountValue as? Val.Num)?.v?.display()?.let(::plainDecimalAsJavaInt)
+    val amountState: Evaluated<Int> = when {
         amount != null -> Evaluated.Present(amount)
         malformedField(e.args[1]) -> Evaluated.NoValue(NoValueReason.NON_RELEVANT)
         emptyCheckRelevant(e.args[1]) -> Evaluated.NoValue(NoValueReason.NOT_GIVEN)
@@ -1082,7 +1085,7 @@ private fun Interpreter.shiftTemporal(e: Expr.Func): Evaluated<TemporalValue> {
     val n = (amountState as Evaluated.Present).value
     val shifted = when (FunctionOp.byName(e.name)) {
         FunctionOp.ADD_DAYS -> if (value.isDateTime) {
-            val landing = wallDayLandingInstant(instantToLocal(value.instantSeconds(timeZone), timeZone), n.toInt(), timeZone)
+            val landing = wallDayLandingInstant(instantToLocal(value.instantSeconds(timeZone), timeZone), n, timeZone)
             val landingMillis = landing * 1_000L + value.instantMillis(timeZone).mod(1_000L)
             TemporalValue(
                 isoFromCalendarInstant(landing, timeZone, value.basis),
@@ -1091,17 +1094,17 @@ private fun Interpreter.shiftTemporal(e: Expr.Func): Evaluated<TemporalValue> {
             )
         } else {
             val date = if (value.basis == DateCalendarBasis.LEGACY_HYBRID)
-                addLegacyCalendarDays(value.date, n.toInt()) else addDays(value.date, n.toInt())
+                addLegacyCalendarDays(value.date, n) else addDays(value.date, n)
             date?.let { TemporalValue(it, value.basis) }
         }
         FunctionOp.ADD_MONTHS -> {
             val date = if (value.basis == DateCalendarBasis.LEGACY_HYBRID)
-                addLegacyCalendarMonths(value.date, n.toInt()) else addMonths(value.date, n.toInt())
+                addLegacyCalendarMonths(value.date, n) else addMonths(value.date, n)
             date?.let { TemporalValue(it, value.basis) }
         }
         FunctionOp.ADD_YEARS -> {
             val date = if (value.basis == DateCalendarBasis.LEGACY_HYBRID)
-                addLegacyCalendarYears(value.date, n.toInt()) else addYears(value.date, n.toInt())
+                addLegacyCalendarYears(value.date, n) else addYears(value.date, n)
             date?.let { TemporalValue(it, value.basis) }
         }
         FunctionOp.ADD_HOURS, FunctionOp.ADD_MINUTES, FunctionOp.ADD_SECONDS -> {
@@ -1110,7 +1113,7 @@ private fun Interpreter.shiftTemporal(e: Expr.Func): Evaluated<TemporalValue> {
                 FunctionOp.ADD_MINUTES -> 60_000L
                 else -> 1_000L
             }
-            val instantMillis = value.instantMillis(timeZone) + n * unit
+            val instantMillis = value.instantMillis(timeZone) + n.toLong() * unit
             TemporalValue(
                 isoFromCalendarInstant(instantMillis.floorDiv(1_000L), timeZone, value.basis),
                 value.basis,

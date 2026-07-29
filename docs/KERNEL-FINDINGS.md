@@ -2319,3 +2319,22 @@ Anchoring: `^(?:…)$` (the non-capturing group is load-bearing — a naive `^�
 **Consequence (owner decision, IF164, graduated from IG90).** The normative semantics are **dynamic-Groovy = Java `Pattern`** (IF136); the kernel-TS raw-`new RegExp` limitation is a recorded, never-adopted strategy divergence. IF164 reproduces the admitted dialect through one ES2018 parser/translator and one engine-owned distinct-pattern registry.
 
 **Relevant to AUTHORING too (rulekit / modelkit / dmtool).** A Java-invalid or kernel-rejected condition/declared-field pattern gets `MVK_INVALID_PATTERN` at `rule check` / `model check`. `KernelPatternPolicy` single-sources the typed rulekit/modelkit preflight; the catalog, schemas, and diagnostic enrichment explain the same boundary without claiming portability (API-FINDINGS finding 73).
+
+## §6 supplement — a Date/DateTime `Add*` AMOUNT is Java `BigDecimal.intValue()`: truncate toward zero, then keep the low signed 32 bits (source + differential, 2026-07-29) <a id="kf166"></a>
+
+> Fold: pending — newly recorded date-arithmetic fact; folds into §6 (dates and time) on the next canonical KERNEL-SEMANTICS pass.
+
+The shift amount of `AddDays`/`AddMonths`/`AddYears`/`AddHours`/`AddMinutes`/`AddSeconds` is not a bounded integer literal: grammar `datumAddOp` keeps it as a complete `operation` and `CheckDatumAddOpImpl` only requires the result type to be Number. The runtime then converts that decimal in **two stages** — `BedingungsOperatorHelper.addTime` → `VkBigDecimal.intValue`, which delegates straight to `java.math.BigDecimal.intValue()`:
+
+1. **truncate toward zero** — the fractional digits are discarded, never rounded (`1.9` → `1`, `-1.9` → `-1`, `0.9` → `0`);
+2. **keep the low signed 32 bits** — an amount outside `int` is neither rejected nor saturated (`2147483648` → `-2147483648`, `-2147483649` → `2147483647`).
+
+The boundary is observable **inside** the Date domain, which is what makes it lockable: `AddDays(d, 4294967303)` (= 2³² + 7) lands exactly 7 days later, and `AddDays(d, 4294967296)` lands on `d` itself. Statically every one of these amounts is accepted (`rule check`, order fixture), so nothing warns.
+
+Three neighbouring behaviors were measured in the same differential rather than reasoned about, because each had a plausible rival reading:
+
+- **An empty direct Number amount field supplies a concrete `0`**, so the source date is stored unchanged — it does *not* make the result valueless. Kernel and interpreter agree on the stored value.
+- **An empty field inside an amount expression supplies a concrete result** — `AddDays(d, [Shift] + 1)` with `Shift` empty stores `d + 1`, not "no value".
+- **A domain-invalid amount supplies no amount at all** — `AddDays(d, [Shift] / 0)` leaves the target valueless (distinct from the two cases above).
+
+*(Interpreter: `eval/IntNarrowing.plainDecimalAsJavaInt`, applied in `ExprEval.shiftTemporal`; the sub-day units narrow **before** multiplying by the unit. Before this the amount was parsed with Kotlin `toLongOrNull()`, so a fractional amount became NO VALUE and the sub-day units multiplied the un-narrowed `Long`. Locked: `adapter.laws.DateShiftAmountDiffTest` (7 dual-engine cases, each also pinning the kernel value so agreement can't be two nulls) + `interpreter DateShiftAmountTest` (JVM+JS) + `A12ShiftAmountNarrowingTest`, which oracles the lexical narrowing against `java.math.BigDecimal.intValue` itself over 26 literals including the wrap boundaries and amounts beyond every host integer type. Reconciles lean SPEC-2026-07-27-04.)*
