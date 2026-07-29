@@ -1,8 +1,12 @@
 package io.github.mbackschat.a12.dm.cli.interp;
 
+import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.cfg.JsonNodeFeature;
+import com.fasterxml.jackson.databind.json.JsonMapper;
 
 import io.github.mbackschat.a12.dm.interpreter.InvalidModelTimeZoneException;
 import io.github.mbackschat.a12.dm.interpreter.UnsupportedModelTimeZoneException;
@@ -28,7 +32,13 @@ import io.github.mbackschat.a12.dm.modelkit.ModelTimeZoneContract;
  */
 public final class InterpreterModelLoader {
 
-    private static final ObjectMapper MAPPER = new ObjectMapper();
+    private static final ObjectMapper MAPPER = JsonMapper.builder()
+            // This is an A12 DM-JSON read boundary even though it selects only timeZone: comments are legal and
+            // number-node fidelity must not depend on which member today's code happens to inspect (IF228).
+            .enable(JsonParser.Feature.ALLOW_COMMENTS)
+            .enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS)
+            .disable(JsonNodeFeature.STRIP_TRAILING_BIGDECIMAL_ZEROES)
+            .build();
 
     private InterpreterModelLoader() {
     }

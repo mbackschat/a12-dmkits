@@ -180,7 +180,9 @@ object CaseJson {
         put("meta", metaJson(case.meta))
         put("modelRef", case.modelRef)
         case.clock?.let { put("clock", it) }
-        put("document", Json.parseToJsonElement(case.document))
+        // The case envelope is ours, but this member is A12 Document JSON: use the same codec decision as every
+        // other A12-shape parse (IF228), including its comment acceptance.
+        put("document", A12_JSON.parseToJsonElement(case.document))
         put("op", opJson(case.op))
         case.expected?.let { putStrings("expected", it) }
         case.computeExpected?.let { putStrings("computeExpected", it) }

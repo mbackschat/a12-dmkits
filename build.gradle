@@ -98,6 +98,7 @@ dependencies {
 tasks.named('test') {
     useJUnitPlatform()
     dependsOn 'docGuardTest'
+    dependsOn 'jsonConstructionGuardTest'
     dependsOn 'apiGuardTest'
     dependsOn 'interpreterReleaseGuardTest'
     // Repo-file-reading guards run in input-declared dedicated tasks; keep them out of the broad suite so a
@@ -109,10 +110,39 @@ tasks.named('test') {
         excludeTestsMatching 'io.github.mbackschat.a12.dm.GateTierWiringTest'
         excludeTestsMatching 'io.github.mbackschat.a12.dm.VersionMentionFreshnessTest'
         excludeTestsMatching 'io.github.mbackschat.a12.dm.rulekit.catalog.DslCatalogBridgeTest'
+        excludeTestsMatching 'io.github.mbackschat.a12.dm.A12JsonConstructionGuardTest'
         excludeTestsMatching 'io.github.mbackschat.a12.dm.api.PublicApiGuardTest'
         excludeTestsMatching 'io.github.mbackschat.a12.dm.InterpreterReleaseMirrorAssemblerTest'
         excludeTestsMatching 'io.github.mbackschat.a12.dm.InterpreterReleasePublisherRehearsalTest'
     }
+}
+
+// A12 JSON construction is a ROLE boundary, not a module boundary (API-FINDINGS 103 / IF228): this guard reads
+// every production Java/Kotlin source tree that can parse or emit DM-JSON / Document JSON and requires each
+// ObjectMapper / default kotlinx Json site to carry an exact, reasoned classification. Its own task gives those
+// runtime-read source trees the docGuardTest treatment: a source-only edit re-runs this one guard, not ~150 root
+// integration tests, and build-cache reuse cannot leave the enumeration stale.
+tasks.register('jsonConstructionGuardTest', Test) {
+    description = 'Role-basis allowlist for every production ObjectMapper/default-kotlinx-Json construction.'
+    group = 'verification'
+    useJUnitPlatform()
+    testClassesDirs = sourceSets.test.output.classesDirs
+    classpath = sourceSets.test.runtimeClasspath
+    filter {
+        includeTestsMatching 'io.github.mbackschat.a12.dm.A12JsonConstructionGuardTest'
+    }
+    guardInputs(it, [
+            'core main sources'       : fileTree('core/src/main') { include '**/*.java', '**/*.kt' },
+            'modelkit main sources'   : fileTree('modelkit/src/main') { include '**/*.java', '**/*.kt' },
+            'rulekit main sources'    : fileTree('rulekit/src/main') { include '**/*.java', '**/*.kt' },
+            'edit main sources'       : fileTree('edit/src/main') { include '**/*.java', '**/*.kt' },
+            'schemakit main sources'  : fileTree('schemakit/src/main') { include '**/*.java', '**/*.kt' },
+            'cli main sources'        : fileTree('cli/src/main') { include '**/*.java', '**/*.kt' },
+            'adapter main sources'    : fileTree('adapter/src/main') { include '**/*.java', '**/*.kt' },
+            'interpreter commonMain'  : fileTree('interpreter/src/commonMain') { include '**/*.java', '**/*.kt' },
+            'interpreter jvmMain'     : fileTree('interpreter/src/jvmMain') { include '**/*.java', '**/*.kt' },
+            'interpreter jsMain'      : fileTree('interpreter/src/jsMain') { include '**/*.java', '**/*.kt' },
+    ])
 }
 
 // --- Guard-input non-empty assertion (kernel-decoupling §3b #17, the silent-empty-fileTree class-fix) -----

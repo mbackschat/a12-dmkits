@@ -3,12 +3,10 @@ package io.github.mbackschat.a12.dm.cli;
 import java.util.ArrayList;
 import java.util.List;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import io.github.mbackschat.a12.dm.core.ModelResolver;
-
-import io.github.mbackschat.a12.dm.rulekit.read.ReadResult;
 import io.github.mbackschat.a12.dm.adapter.KernelAdapter;
+import io.github.mbackschat.a12.dm.core.ModelResolver;
+import io.github.mbackschat.a12.dm.modelkit.ModelDocument;
+import io.github.mbackschat.a12.dm.rulekit.read.ReadResult;
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel;
 import io.github.mbackschat.a12.dm.rulekit.dsl.LocalizedText;
 import io.github.mbackschat.a12.dm.rulekit.lint.Linter;
@@ -24,8 +22,6 @@ import io.github.mbackschat.a12.dm.rulekit.write.ModelWriter;
  * a kernel-valid rule.
  */
 public final class LintBackstop {
-
-    private static final ObjectMapper MAPPER = new ObjectMapper();
 
     private LintBackstop() {
     }
@@ -67,14 +63,11 @@ public final class LintBackstop {
     private static List<LocalizedText> placeholderMessages(String modelJson, String text) {
         List<LocalizedText> messages = new ArrayList<>();
         try {
-            JsonNode root = MAPPER.readTree(modelJson);
-            for (JsonNode locale : root.path("header").path("locales")) {
-                String code = locale.path("code").asText(null);
-                if (code != null && !code.isBlank()) {
-                    messages.add(new LocalizedText(code, text));
-                }
-            }
-        } catch (Exception ignored) {
+            ModelDocument.read(modelJson).locales().stream()
+                    .filter(code -> code != null && !code.isBlank())
+                    .map(code -> new LocalizedText(code, text))
+                    .forEach(messages::add);
+        } catch (RuntimeException ignored) {
             // fall through to the default below
         }
         if (messages.isEmpty()) {

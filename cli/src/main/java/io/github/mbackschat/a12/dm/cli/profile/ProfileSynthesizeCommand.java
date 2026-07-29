@@ -4,8 +4,6 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 
@@ -13,6 +11,7 @@ import io.github.mbackschat.a12.dm.adapter.profile.ModelSynthesizer;
 import io.github.mbackschat.a12.dm.cli.BaseCommand;
 import io.github.mbackschat.a12.dm.cli.ParamKind;
 import io.github.mbackschat.a12.dm.cli.ResultEnvelope;
+import io.github.mbackschat.a12.dm.modelkit.ModelDocument;
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Option;
 
@@ -76,9 +75,8 @@ final class ProfileSynthesizeCommand extends BaseCommand {
 
     private static String modelId(String modelJson) {
         try {
-            JsonNode model = JSON.readTree(modelJson);
-            return model.path("header").path("id").asText();
-        } catch (JsonProcessingException e) {
+            return ModelDocument.read(modelJson).id();
+        } catch (RuntimeException e) {
             throw new IllegalStateException("the synthesized model is not valid JSON", e);
         }
     }

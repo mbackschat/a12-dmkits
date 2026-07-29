@@ -13,11 +13,9 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
-
 import io.github.mbackschat.a12.dm.core.ModelResolver;
 import io.github.mbackschat.a12.dm.core.UnresolvedReferenceException;
+import io.github.mbackschat.a12.dm.modelkit.ModelDocument;
 
 /**
  * Materializes a model file's content at a git {@code <ref>} — the baseline for {@code model diff --since}
@@ -26,8 +24,6 @@ import io.github.mbackschat.a12.dm.core.UnresolvedReferenceException;
  * {@link GitBaselineException} on every failure mode the caller turns into a corrective message.
  */
 final class GitBaseline {
-
-    private static final ObjectMapper JSON = new ObjectMapper();
 
     private GitBaseline() {}
 
@@ -219,14 +215,14 @@ final class GitBaseline {
 
     private static void indexDocumentModel(Map<String, String> byId, String content) {
         try {
-            JsonNode header = JSON.readTree(content).path("header");
-            if ("document".equals(header.path("modelType").asText())) {
-                String id = header.path("id").asText();
+            ModelDocument model = ModelDocument.read(content);
+            if ("document".equals(model.modelType())) {
+                String id = model.id();
                 if (!id.isEmpty()) {
                     byId.putIfAbsent(id, content);
                 }
             }
-        } catch (IOException | RuntimeException ignored) {
+        } catch (RuntimeException ignored) {
             // A JSON file that is not a document model is not resolvable, matching the current-worktree index.
         }
     }

@@ -6,7 +6,6 @@ import io.github.mbackschat.a12.dm.interpreter.eval.newDocument
 import io.github.mbackschat.a12.dm.interpreter.model.Kind
 import io.github.mbackschat.a12.dm.interpreter.model.ModelDef
 import kotlinx.serialization.ExperimentalSerializationApi
-import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonNull
@@ -261,7 +260,10 @@ internal object A12DocumentJson {
         val root = WriteNode()
         document.placementsSnapshot().forEach { root.place(it) }
         if (documentId != null) root.fields[DOCUMENT_ID_KEY] = documentId
-        return Json.encodeToString(JsonObject.serializer(), root.toJson(model, path = "", coordinates = emptyList()))
+        return A12_JSON.encodeToString(
+            JsonObject.serializer(),
+            root.toJson(model, path = "", coordinates = emptyList()),
+        )
     }
 
     private fun parseRoot(json: String): JsonObject {

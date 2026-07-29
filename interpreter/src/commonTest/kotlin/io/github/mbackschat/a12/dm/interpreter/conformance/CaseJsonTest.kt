@@ -58,6 +58,28 @@ class CaseJsonTest {
     }
 
     @Test
+    fun writingACaseParsesItsDocumentMemberWithTheSharedA12Codec() {
+        val case = ConformanceCase(
+            meta = CaseMeta("commented-document-004", "30.8.1", CaseSource.CURATED, listOf("§2")),
+            modelRef = modelRef,
+            document = """
+                {
+                  // A12 accepts comments in Document JSON; the case envelope itself remains strict.
+                  "Policy": {"Note": "kept"}
+                }
+            """.trimIndent(),
+            op = Op.ValidateFull,
+            expected = emptyList(),
+        )
+
+        assertEquals(
+            """{"Policy":{"Note":"kept"}}""",
+            CaseJson.parse(CaseJson.write(case)).document,
+            "the A12 member loses only comment syntax and retains its value",
+        )
+    }
+
+    @Test
     fun parsesTheSpecShapeAndKeepsOptionalsAbsent() {
         val text = """
             {

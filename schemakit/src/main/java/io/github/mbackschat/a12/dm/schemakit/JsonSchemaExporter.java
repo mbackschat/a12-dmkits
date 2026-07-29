@@ -1,7 +1,11 @@
 package io.github.mbackschat.a12.dm.schemakit;
 
+import com.fasterxml.jackson.core.JsonParser;
+import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.cfg.JsonNodeFeature;
+import com.fasterxml.jackson.databind.json.JsonMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import io.github.mbackschat.a12.dm.modelkit.ModelDocument;
@@ -24,7 +28,13 @@ import java.util.TreeSet;
  */
 public final class JsonSchemaExporter {
 
-    private static final ObjectMapper JSON = new ObjectMapper();
+    private static final ObjectMapper JSON = JsonMapper.builder()
+            // Export parses the source DM-JSON for lossless rule/computation carriage. It is therefore an A12
+            // model boundary even though its output is a JSON Schema (API-FINDINGS 103 / IF228).
+            .enable(JsonParser.Feature.ALLOW_COMMENTS)
+            .enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS)
+            .disable(JsonNodeFeature.STRIP_TRAILING_BIGDECIMAL_ZEROES)
+            .build();
 
     public record ExportResult(String jsonSchema, TranscodeReport report) {}
 

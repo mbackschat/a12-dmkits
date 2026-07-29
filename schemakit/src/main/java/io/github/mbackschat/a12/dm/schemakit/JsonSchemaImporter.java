@@ -47,7 +47,11 @@ public final class JsonSchemaImporter {
             .enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS)
             .disable(JsonNodeFeature.STRIP_TRAILING_BIGDECIMAL_ZEROES)
             .build();
-    private static final ObjectMapper YAML = new ObjectMapper(new YAMLFactory());   // OpenAPI specs are often YAML
+    private static final ObjectMapper YAML = new ObjectMapper(new YAMLFactory())
+            // Same semantic bound path as JSON above: OpenAPI/YAML `minimum: 0.50` must reach DM-JSON with the
+            // declared scale intact, rather than becoming a DoubleNode before the importer sees it.
+            .enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS)
+            .configure(JsonNodeFeature.STRIP_TRAILING_BIGDECIMAL_ZEROES, false);   // OpenAPI specs are often YAML
     private static final String DEFAULT_MODEL_ID = "ImportedModel";
     private static final String ROOT_GROUP = "Root";
     private static final String LOCALE = "en_US";
