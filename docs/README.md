@@ -115,6 +115,7 @@ Agent-first router: find your job, follow the links. The per-doc entries below d
 
 ## Doc workflow
 
+- **[CLAUDE.md](CLAUDE.md)** (+ the [`AGENTS.md`](AGENTS.md) symlink) — the **retrieval manual for this tree**, auto-loaded for work under `docs/`: the grep/sed recipes that answer *what exists · where is it · how certain is it · what remains* without reading a 687 KB doc end to end, the per-doc addressing schemes (`IF<n>`, the ordinal `finding N`, and why `§n` is a section-class hint rather than an address), and the short list of what is mechanically guarded versus hand-verified. Deliberately **not** a rules doc — procedure lives in DOC-DISCIPLINE below.
 - **[DOC-DISCIPLINE.md](DOC-DISCIPLINE.md)** — the **doc-workflow spec** (extracted 2026-07-09 from CLAUDE.md, which keeps the iron rules + the trigger table): where a finding lands (the finding homes, the KERNEL-SEMANTICS layer split, the source-over-jars golden rule with its traps), the kernel-coverage ledgers, every living surface's same-commit triggers (ARCHITECTURE, README, API-GUIDE, demos, index READMEs), writing style, the doc lifecycle (spec / proposal / `-GAPS` / `-LEDGER`; rationale-vs-disposition), and the full-sweep checklist.
 
 ## Archived
