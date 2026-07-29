@@ -12,12 +12,14 @@ import org.junit.jupiter.api.Test
 /**
  * Differential — IF87 (graduated from the IG44 residual): a computed field targeted by MULTIPLE computations
  * (the composed base + subtype-override shape — a single flat model rejects duplicate computations, so this only
- * arises via model composition/includes). The kernel processes a field's computations in DOCUMENT (group-declaration)
- * order and the FIRST that yields a NON-EMPTY outcome (a VALUE or a POISON) wins; an empty/clearing computation
- * (precondition-false / no matching alternative) is a NO-OP and control falls through to the next
- * (`CalculationController.handleBerechnetenWert` — *"for empty values, do like no calculation was done"*). The
- * interpreter formerly DEDUPED by target path (`computationsInDependencyOrder`), keeping only the FIRST computation
- * and using its outcome even when EMPTY — so an empty base calc masked a later value/poison override.
+ * arises via model composition/includes). Code generation FLATTENS a field's computations, in DOCUMENT
+ * (group-declaration) order, into ONE per-field first-match method, and the first **SELECTED** alternative ends
+ * that scan — whether or not its operation stores a value (SPEC-2026-07-26-03). Only a computation that was never
+ * selected (common precondition false / no guard matched) is a NO-OP that control falls through. The store-level
+ * *"for empty values, do like no calculation was done"* (`CalculationController.handleBerechnetenWert`) decides
+ * STORAGE and cannot resurrect the scan. The interpreter formerly DEDUPED by target path, keeping only the FIRST
+ * computation even when EMPTY; it then over-corrected to first-NON-EMPTY-wins, which let a later computation
+ * overwrite a selected-but-empty earlier result — the divergence the selection cases below separate.
  *
  * Both kernel strategies share the runtime calc controller ⟹ codegen-parity (static-JAVA tri-checked).
  *
@@ -30,7 +32,8 @@ class MultiComputationFieldDiffTest {
             q.numberField("Price") { it.fractionDigits(2) }        // the shared computed target
             q.numberField("Warn") { }                              // a dependent computed field (scale 0)
             q.stringField("Flag") { }                              // a gate for the base calc's precondition
-            q.group("Base") { g -> g.numberField("BaseAmt") { it.fractionDigits(2) }; g.numberField("BadBase") { it.fractionDigits(2, 2) } }
+            q.stringField("Note") { }                              // a shared STRING computed target
+            q.group("Base") { g -> g.numberField("BaseAmt") { it.fractionDigits(2) }; g.numberField("BadBase") { it.fractionDigits(2, 2) }; g.stringField("BaseText") { } }
             q.group("Sub") { g -> g.numberField("SubAmt") { it.fractionDigits(2) }; g.numberField("BadSub") { it.fractionDigits(2, 2) } }
         }.build().toJson()
 
@@ -110,6 +113,54 @@ class MultiComputationFieldDiffTest {
         agree(m, "Base invalid-operand poison is document-first → wins; the later Sub value is never reached", mapOf("/Quote/Price" to "CLEARED")) { d ->
             seedPriceRows(d); d.field("/Quote/Base/BadBase", "5", 1, 1, 1); d.field("/Quote/Sub/SubAmt", "20.00", 1, 1, 1)
         }
+    }
+
+    // ── SPEC-2026-07-26-03's discriminator: a SELECTED first computation that stores NO value ───────────────
+    // Every case above makes its empty-first computation empty by a FALSE GUARD, i.e. UNSELECTED — and both
+    // rival accounts agree there. The separating shape needs the first computation SELECTED (unguarded) with an
+    // operation that yields no storable value: a bare copy of an empty STRING source (`VkString.hasValue()` is
+    // non-empty text, so an empty String result stores nothing — KERNEL-FINDINGS §11). Number targets cannot
+    // show it: a number renders empty-as-0 and stores a real 0.
+    private fun noteUncond(m: String, group: String, name: String, op: String) =
+        RuntimeLaws.withComputation(m, group, name, "../../Note", op)
+    private fun noteGuarded(m: String, group: String, name: String, guard: String, op: String) =
+        RuntimeLaws.withTieredComputation(m, group, name, "../../Note", guard, listOf(RuntimeLaws.CompAlt(null, op)))
+
+    private fun seedNoteRows(d: Both) {
+        d.group("/Quote", 1).field("/Quote/Note", "STALE", 1, 1)
+        d.group("/Quote/Base", 1, 1); d.group("/Quote/Sub", 1, 1)
+    }
+
+    @Test fun selectedButEmptyFirstComputationEndsTheScan() {
+        val m = noteUncond(noteUncond(base, "/Quote/Base", "NA", "[BaseText]"), "/Quote/Sub", "NB", "\"OVERRIDE\"")
+        agree(m, "Base copies an EMPTY string (selected, stores nothing) → the scan ends; Sub never stores",
+            mapOf("/Quote/Note" to "CLEARED")) { d -> seedNoteRows(d) }
+    }
+
+    @Test fun aFalseGuardStillFallsThroughAcrossComputationBoundaries() {
+        val m = noteUncond(noteGuarded(base, "/Quote/Base", "NA", "FieldFilled(../Flag)", "[BaseText]"),
+            "/Quote/Sub", "NB", "\"OVERRIDE\"")
+        agree(m, "Base precondition FALSE (never selected) → Sub's literal wins — the opposite control",
+            mapOf("/Quote/Note" to "VALUE|OVERRIDE")) { d -> seedNoteRows(d) }
+    }
+
+    @Test fun aSelectedFirstComputationWithAValueStillWins() {
+        val m = noteUncond(noteUncond(base, "/Quote/Base", "NA", "[BaseText]"), "/Quote/Sub", "NB", "\"OVERRIDE\"")
+        agree(m, "Base copies a NONEMPTY string → it wins, as it already did", mapOf("/Quote/Note" to "VALUE|FIRST")) { d ->
+            seedNoteRows(d); d.field("/Quote/Base/BaseText", "FIRST", 1, 1, 1)
+        }
+    }
+
+    /**
+     * The same discriminator through an all-empty CONCATENATION rather than a bare copy — the exact shape
+     * IF123 is about. It is measured, not inferred from the copy case, because IF123's own fall-through
+     * consequence was inherited from IF87 rather than observed and turned out to be wrong.
+     */
+    @Test fun aSelectedAllEmptyConcatenationAlsoEndsTheScan() {
+        val m = noteUncond(noteUncond(base, "/Quote/Base", "NA", "[BaseText] + [BaseText]"),
+            "/Quote/Sub", "NB", "\"OVERRIDE\"")
+        agree(m, "Base concatenates two empty strings (selected, stores nothing) → the scan ends",
+            mapOf("/Quote/Note" to "CLEARED")) { d -> seedNoteRows(d) }
     }
 
     // ── the corpus shape: empty base + poisoning subtype → Price POISONED → a FieldNotFilled(Price) dependent cascades ──

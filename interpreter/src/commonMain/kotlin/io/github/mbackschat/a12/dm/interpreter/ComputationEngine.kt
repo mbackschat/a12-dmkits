@@ -111,11 +111,13 @@ internal class ComputationEngine(
         // a computed target, so it never reaches an outcome or an applied document.
         val indexDefaults = checks.eligibleIndexDefaults(rawDoc)
         val doc = if (indexDefaults.isEmpty()) rawDoc else rawDoc.withComputed(indexDefaults)
-        // A field may be targeted by MULTIPLE computations (a composed base + subtype override — IF87): they run in
-        // document order and the FIRST NON-EMPTY outcome (a VALUE or a POISON) wins per cell; an empty/clearing one is
-        // a no-op and control falls through to the next (the kernel's `CalculationController.handleBerechnetenWert` —
+        // A field may be targeted by MULTIPLE computations (a composed base + subtype override — IF87): codegen
+        // FLATTENS them, in document order, into one per-field first-match table, so the first SELECTED alternative
+        // ends the scan for that cell even when it stores nothing; only an UNSELECTED computation (common
+        // precondition false / no guard matched) falls through (the kernel's `CalculationController.handleBerechnetenWert` —
         // "for empty values, do like no calculation was done"). [outcomeByCell] keeps the winner per target cell
-        // (insertion-ordered), [decided] marks the cells a non-empty outcome has already claimed.
+        // (insertion-ordered), [decided] marks the cells whose flattened scan has ENDED — every SELECTED
+        // alternative ends it, whether or not it stored a value (SPEC-2026-07-26-03).
         val outcomeByCell = LinkedHashMap<Pair<String, List<Int>>, Computed>()
         val decided = HashSet<Pair<String, List<Int>>>()
         val overlay = HashMap<Pair<String, List<Int>>, Val>()
@@ -206,12 +208,18 @@ internal class ComputationEngine(
                     // dependent that never actually reads the poisoned target (a short-circuit skipped it) computes
                     // normally — there is no static dependency pre-skip.
                     val computed = try {
-                        val v = evalComputation(parsed, interp)
+                        val selection = evalComputation(parsed, interp)
+                        val v = selection.value
                         // ERRORED: poison the target + do NOT overlay — a dependent's READ of it must poison, not read
-                        // the bad value. A resolved VALUE overlays (dependents read the computed result) and DECIDES the
-                        // cell. A CLEARED — an EMPTY (Unknown) result, or a final empty TEXT (IF123: the kernel's
-                        // no-value store decision) — is a no-op (IF87): recorded as a tentative clear (dependents read
-                        // it EMPTY, IF77) but NOT decided, so a later computation for the SAME cell can still win.
+                        // the bad value. A resolved VALUE overlays (dependents read the computed result). Either way
+                        // the cell is DECIDED.
+                        //
+                        // A CLEARED result splits on SELECTION, which is the whole of SPEC-2026-07-26-03: an
+                        // alternative that WAS selected but stored nothing (an Unknown result, or a final empty TEXT —
+                        // IF123's no-value store decision) still ENDS the flattened per-target scan, so the cell is
+                        // decided and stays cleared; only a computation that was never selected (common precondition
+                        // false, or no guard matched) falls through, recorded as a tentative clear (dependents read it
+                        // EMPTY, IF77) that a later computation for the SAME cell can still win.
                         toComputed(comp, v, targetKey.second).also { c ->
                             if (v is Val.DomainFailure) {
                                 // No stored value/delta distinguishes a domain failure from an ordinary clear,
@@ -223,7 +231,10 @@ internal class ComputationEngine(
                                 when (c.outcome) {
                                     ComputeOutcome.ERRORED -> { poisoned += targetKey; cleared -= targetKey; decided += targetKey }
                                     ComputeOutcome.VALUE -> { overlay[targetKey] = v; cleared -= targetKey; decided += targetKey }
-                                    ComputeOutcome.CLEARED -> cleared += targetKey
+                                    ComputeOutcome.CLEARED -> {
+                                        cleared += targetKey
+                                        if (selection.selected) decided += targetKey
+                                    }
                                 }
                             }
                         }
@@ -231,7 +242,7 @@ internal class ComputationEngine(
                         poisoned += targetKey; cleared -= targetKey; decided += targetKey
                         Computed(comp.targetPath, ComputeOutcome.CLEARED, indices = targetKey.second)
                     }
-                    outcomeByCell[targetKey] = computed   // a decided cell is skipped above → a value/poison overwrites a prior tentative clear
+                    outcomeByCell[targetKey] = computed   // a decided cell is skipped above → a later computation overwrites only a tentative (unselected) clear
                 }
 
                 // PARALLEL ITERATION for computations (IF96): operands referencing OUT-OF-SCOPE sibling repeatable
@@ -350,12 +361,27 @@ internal class ComputationEngine(
      * holds, the field computes nothing ([Val.Unknown] → CLEARED). A precondition "holds" iff it evaluates to
      * three-valued TRUE — an UNKNOWN/FALSE precondition (e.g. over an empty operand) does not select its branch.
      */
-    private fun evalComputation(parsed: ParsedComputation, interp: Interpreter): Val {
-        if (parsed.commonPrecondition != null && interp.eval(parsed.commonPrecondition) != Tri.TRUE) return Val.Unknown
-        for (alt in parsed.alternatives) {
-            if (alt.precondition == null || interp.eval(alt.precondition) == Tri.TRUE) return interp.evalExpression(alt.operation)
+    /**
+     * Whether an alternative was SELECTED, and the value it produced. The two are independent: a selected
+     * alternative may still yield no storable value. Code generation flattens every computation targeting one
+     * field into a single per-field first-match method, and a **selected** alternative ends that scan
+     * unconditionally — so SELECTION, not the stored value, is what decides the cell (SPEC-2026-07-26-03).
+     */
+    private class Selection(val selected: Boolean, val value: Val) {
+        companion object {
+            /** No alternative was reached — the common precondition was false, or no guard matched. */
+            val NONE = Selection(false, Val.Unknown)
         }
-        return Val.Unknown
+    }
+
+    private fun evalComputation(parsed: ParsedComputation, interp: Interpreter): Selection {
+        if (parsed.commonPrecondition != null && interp.eval(parsed.commonPrecondition) != Tri.TRUE) return Selection.NONE
+        for (alt in parsed.alternatives) {
+            if (alt.precondition == null || interp.eval(alt.precondition) == Tri.TRUE) {
+                return Selection(true, interp.evalExpression(alt.operation))
+            }
+        }
+        return Selection.NONE
     }
 
     /** One computed-field outcome for [comp] at target-cell [reps] from its evaluated [v]: VALUE (resolved,
@@ -423,7 +449,7 @@ internal class ComputationEngine(
      * (root = one field). Recurses into the targets a computation reads BEFORE emitting it,
      * so a target is ordered after every target it depends on. A field can be targeted by MULTIPLE computations
      * (a composed base + subtype override — IF87), emitted together in DOCUMENT order ([groupBy] preserves
-     * encounter order — the order [computeOver]'s first-non-empty-wins consumes). A cyclic dependency (which the
+     * encounter order — the order [computeOver]'s first-selected scan consumes). A cyclic dependency (which the
      * kernel rejects at codegen) throws.
      */
     private fun orderedFrom(roots: List<String>): List<ComputationDef> {

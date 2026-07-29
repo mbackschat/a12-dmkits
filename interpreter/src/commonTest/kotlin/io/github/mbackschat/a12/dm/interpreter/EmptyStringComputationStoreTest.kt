@@ -41,7 +41,8 @@ class EmptyStringComputationStoreTest {
         computations = comps.toList(),
     )
 
-    private fun label(op: String) = ComputationDef(LABEL, "/Policy", listOf(ComputationAlternative(null, op)))
+    private fun label(op: String, guard: String? = null) =
+        ComputationDef(LABEL, "/Policy", listOf(ComputationAlternative(null, op)), commonPrecondition = guard)
 
     private fun outcomes(m: ModelDef, build: (Document) -> Unit): Map<String, String> {
         val doc = m.newDocument().group("/Policy", 1); build(doc)
@@ -74,11 +75,19 @@ class EmptyStringComputationStoreTest {
         mapOf(LABEL to "VALUE|-GOLD"),
         outcomes(model(label("[HolderName] + \"-GOLD\""))) { })
 
-    // "Like no calculation was done" (IF87 fall-through): an all-empty concat is a NO-OP for the cell, so a
-    // LATER computation targeting the same cell still wins. Storing `VALUE ""` would wrongly decide the cell.
-    @Test fun emptyConcatFallsThroughToLaterComputation() = assertEquals(
-        mapOf(LABEL to "VALUE|FALLBACK"),
+    // "Like no calculation was done" is about STORAGE, not selection. This computation IS selected (unguarded),
+    // so it ends the flattened per-target scan and the later computation never stores — CORRECTED 2026-07-29,
+    // measured on both kernel strategies (SPEC-2026-07-26-03). The original expectation here was `VALUE|FALLBACK`,
+    // inherited from IF87's fall-through without ever being measured for a SELECTED empty computation; the
+    // fall-through itself survives, but only for an UNSELECTED one (see the guarded control below).
+    @Test fun aSelectedEmptyConcatEndsTheScanRatherThanFallingThrough() = assertEquals(
+        mapOf(LABEL to "CLEARED"),
         outcomes(model(label("[HolderName] + [RiderCode]"), label("\"FALLBACK\""))) { })
+
+    @Test fun anUnselectedFirstComputationStillFallsThrough() = assertEquals(
+        mapOf(LABEL to "VALUE|FALLBACK"),
+        outcomes(model(label("[HolderName] + [RiderCode]", guard = "FieldFilled(HolderName)"),
+            label("\"FALLBACK\""))) { })
 
     // Cascade: a dependent of the empty-concat-cleared target reads it EMPTY (never the stale stored text).
     @Test fun dependentReadsEmptyConcatTargetAsEmpty() = assertEquals(

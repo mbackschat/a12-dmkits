@@ -13,10 +13,11 @@ import kotlin.test.assertEquals
 
 /**
  * Multiplatform (JVM + JS) lock for IF87 — a field targeted by MULTIPLE computations (a composed base + subtype
- * override): the computations run in DOCUMENT order and the FIRST NON-EMPTY outcome (a VALUE or a POISON) wins;
- * an empty/clearing computation is a no-op and control falls through to the next. The kernel differential
- * (tri-check, both strategies) is `adapter.laws.MultiComputationFieldDiffTest`; this pins the interpreter's
- * outcomes on both platforms.
+ * override). Code generation flattens them, in document order, into ONE per-field first-match table, and a
+ * **SELECTED** alternative ends that scan unconditionally — including when its operation stores no value
+ * (SPEC-2026-07-26-03). Only a computation that was never selected (common precondition false, or no guard
+ * matched) is a no-op that control falls through. The kernel differential (tri-check, both strategies) is
+ * `adapter.laws.MultiComputationFieldDiffTest`; this pins the interpreter's outcomes on both platforms.
  */
 class MultiComputationFieldTest {
 
@@ -80,5 +81,46 @@ class MultiComputationFieldTest {
             ComputationDef("/Quote/Warn", "/Quote", listOf(ComputationAlternative("FieldNotFilled(Price)", "1"))),
         )) {
             it.field("/Quote/Base/BaseAmt", "10.00", 1, 1, 1); it.field("/Quote/Sub/BadSub", "5", 1, 1, 1)
+        })
+
+    // ── selection vs storage (SPEC-2026-07-26-03) ────────────────────────────────────────────────────────────
+    // Every case above makes its empty-first computation empty by a FALSE GUARD — i.e. UNSELECTED — where both
+    // the old first-non-empty account and the flattened first-SELECTED account agree. These separate them: the
+    // first computation is unguarded (selected) but stores nothing, which only a STRING target can show — a
+    // number renders empty-as-0 and stores a real 0. Kernel-measured on both strategies in the differential.
+
+    private fun note(group: String, op: String, guard: String? = null) =
+        ComputationDef("/Quote/Note", group, listOf(ComputationAlternative(null, op)), commonPrecondition = guard)
+
+    private fun noteModel(vararg comps: ComputationDef) = ModelDef(
+        fields = listOf(
+            FieldDef("/Quote/Note", Kind.STRING),
+            FieldDef("/Quote/Flag", Kind.STRING),
+            FieldDef("/Quote/Base/BaseText", Kind.STRING),
+        ),
+        rules = emptyList(),
+        computations = comps.toList(),
+    )
+
+    @Test fun aSelectedButEmptyFirstComputationEndsTheScan() = assertEquals(
+        mapOf("/Quote/Note" to "CLEARED"),
+        outcomes(noteModel(note("/Quote/Base", "[BaseText]"), note("/Quote/Sub", "\"OVERRIDE\""))) { },
+        "the unguarded copy of an empty string was SELECTED, so the later literal never stores")
+
+    @Test fun aSelectedAllEmptyConcatenationAlsoEndsTheScan() = assertEquals(
+        mapOf("/Quote/Note" to "CLEARED"),
+        outcomes(noteModel(note("/Quote/Base", "[BaseText] + [BaseText]"), note("/Quote/Sub", "\"OVERRIDE\""))) { },
+        "the same holds for an all-empty concatenation — the shape IF123 is about")
+
+    @Test fun anUnselectedFirstComputationStillFallsThrough() = assertEquals(
+        mapOf("/Quote/Note" to "VALUE|OVERRIDE"),
+        outcomes(noteModel(note("/Quote/Base", "[BaseText]", guard = "FieldFilled(../Flag)"),
+            note("/Quote/Sub", "\"OVERRIDE\""))) { },
+        "a FALSE precondition is never selected, so the fall-through survives — the opposite control")
+
+    @Test fun aSelectedFirstComputationWithAValueStillWins() = assertEquals(
+        mapOf("/Quote/Note" to "VALUE|FIRST"),
+        outcomes(noteModel(note("/Quote/Base", "[BaseText]"), note("/Quote/Sub", "\"OVERRIDE\""))) {
+            it.field("/Quote/Base/BaseText", "FIRST", 1, 1, 1)
         })
 }
