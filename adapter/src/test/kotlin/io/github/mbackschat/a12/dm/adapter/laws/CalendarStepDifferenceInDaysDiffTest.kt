@@ -28,6 +28,17 @@ class CalendarStepDifferenceInDaysDiffTest {
         assertDifference(fixture, "2024-03-30T02:30:00", "2024-04-01T02:00:00", 2, true)
     }
 
+    /**
+     * SPEC-2026-07-29-01's named composite: the whole-year seed lands its candidate through the legacy YEAR
+     * helper, and each subsequent day step uses its OWN current instant as the source — so a seed landing that
+     * falls in the spring gap changes the carried clock and the total is 369, not the naive 370.
+     */
+    @Test
+    fun theWholeYearSeedCompositeIsThreeHundredSixtyNine() {
+        val fixture = fixture("Europe/Berlin")
+        assertDifference(fixture, "2023-04-01T02:30:00", "2024-04-05T02:30:00", 369, true)
+    }
+
     @Test
     fun utcOrdinaryControlsStayTimeOfDayAware() {
         val fixture = fixture("UTC")
@@ -114,7 +125,9 @@ class CalendarStepDifferenceInDaysDiffTest {
         const val OBSERVED = "$ROOT/ObservedAt"
         const val COMPARED = "$ROOT/ComparedAt"
         const val CODE_PREFIX = "CALENDAR_DAYS_"
-        val EXPECTED_VALUES = listOf(-1, 0, 1, 2)
+        // 368..370 bracket SPEC-2026-07-29-01's whole-year-seed composite, so the fixture can DISCRIMINATE
+        // the value rather than merely fail to match one candidate.
+        val EXPECTED_VALUES = listOf(-1, 0, 1, 2, 368, 369, 370)
 
         val BASE: String = DocumentModelDraft.named("itinerary").locale("en_US")
             .rootGroup("Itinerary") { group ->

@@ -771,16 +771,33 @@ fun isGapLocal(iso: String, tz: ModelTimeZone): Boolean =
     tz != ModelTimeZone.UTC && epochSecond(iso)?.let { localToInstant(it, tz) == null } == true
 
 /**
- * The landing instant of a WALL-day add over a date-time: nominal wall = [localSeconds] + [n]·86 400 (the
- * kernel's zone-calendar `add(DAY_OF_MONTH)` keeps the clock time). A nominal landing with one consistent
- * offset resolves to it; a landing in a **special hour** resolves so the step never OVERSHOOTS the direction
- * of travel (kernel-probed on all four combinations, KERNEL-FINDINGS §6): a **forward** add takes the
- * DAYLIGHT (earlier) instant — the gap landing renders `01:30` CET, the ambiguous landing keeps CEST — and a
- * **backward** add takes the STANDARD (later) instant.
+ * The landing instant of a `Calendar.DAY_OF_MONTH` add — the kernel's `BedingungsOperatorHelper.addTime` day
+ * arm, which is `GregorianCalendar.add(DAY_OF_MONTH, n)` on a model-zone calendar.
+ *
+ * The mechanism is **source-instant-based and direction-INDEPENDENT** (SPEC-2026-07-29-01; the earlier account
+ * here resolved a nominal wall LABEL by direction of travel, which agrees on adjacent ±1-day steps and
+ * diverges once the source and the landing sit in different offset seasons):
+ *
+ *  1. add the raw elapsed span — `[sourceInstant] + n·86 400`, so the source's offset AND its sub-second
+ *     remainder ride along;
+ *  2. if the offset at that instant differs from the source's, **re-fit** by the offset delta so the wall
+ *     clock is preserved;
+ *  3. keep the re-fit **only when it preserves the landing's civil date** — otherwise the raw instant stands.
+ *
+ * Two adjacent additions can therefore select different sides of one overlap: `AddDays` reaching 1916-10-01
+ * from a CEST September source lands on the daylight side, while a 214-day add from a CET March source lands
+ * on the fresh CET side — same civil label, one hour apart.
  */
-fun wallDayLandingInstant(localSeconds: Long, n: Int, tz: ModelTimeZone): Long {
-    val nominal = localSeconds + n * 86_400L
-    return calendarLandingInstant(nominal, n, tz)
+fun wallDayLandingInstant(sourceInstant: Long, n: Int, tz: ModelTimeZone): Long {
+    val raw = sourceInstant + n * 86_400L
+    if (tz == ModelTimeZone.UTC) return raw
+    val sourceOffset = berlinOffsetSeconds(sourceInstant)
+    val rawOffset = berlinOffsetSeconds(raw)
+    if (rawOffset == sourceOffset) return raw
+    val refit = raw + (sourceOffset - rawOffset)
+    val rawDay = instantToLocal(raw, tz).floorDiv(86_400L)
+    val refitDay = instantToLocal(refit, tz).floorDiv(86_400L)
+    return if (refitDay == rawDay) refit else raw
 }
 
 /**
@@ -841,14 +858,14 @@ internal fun calendarDayDifferenceDetail(
     var count = wholeYears * 365
     var residualSteps = 0
     var cursor = if (count == 0) earlier
-        else wallDayLandingInstant(instantToLocal(earlier, tz), count, tz)
+        else wallDayLandingInstant(earlier, count, tz)
     // The repeated +1 is intentionally stateful. A Berlin gap landing can change the clock (02:30→01:30),
     // and subsequent Calendar.DAY additions retain that changed clock; replacing the loop by one ordinal jump
     // is observably wrong. The runtime's 365-day year seed bounds this residual to the accumulated leap days
     // (fewer than 2,800 successful iterations over the full four-digit label domain, including the final
     // partial year), rather than total elapsed days.
     while (true) {
-        val next = wallDayLandingInstant(instantToLocal(cursor, tz), 1, tz)
+        val next = wallDayLandingInstant(cursor, 1, tz)
         if (next > later) break
         cursor = next
         count++

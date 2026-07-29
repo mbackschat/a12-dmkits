@@ -1085,7 +1085,7 @@ private fun Interpreter.shiftTemporal(e: Expr.Func): Evaluated<TemporalValue> {
     val n = (amountState as Evaluated.Present).value
     val shifted = when (FunctionOp.byName(e.name)) {
         FunctionOp.ADD_DAYS -> if (value.isDateTime) {
-            val landing = wallDayLandingInstant(instantToLocal(value.instantSeconds(timeZone), timeZone), n, timeZone)
+            val landing = wallDayLandingInstant(value.instantSeconds(timeZone), n, timeZone)
             val landingMillis = landing * 1_000L + value.instantMillis(timeZone).mod(1_000L)
             TemporalValue(
                 isoFromCalendarInstant(landing, timeZone, value.basis),
