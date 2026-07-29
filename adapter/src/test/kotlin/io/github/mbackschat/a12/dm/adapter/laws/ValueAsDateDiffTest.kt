@@ -59,7 +59,49 @@ class ValueAsDateDiffTest {
     @Test fun fullValueFirstDayIsItself() = agree(firstDay("15.06.2024"), full, "a full date's FirstDay is itself")
     @Test fun fullValueLastDayIsItself() = agree(lastDay("15.06.2024"), full, "a full date's LastDay is itself")
 
+    // --- SPEC-2026-07-27-02: the three NESTED positions the kernel grammar's `datumAngabe2` admits.
+    // Placement legality is locked in `rulekit.validate.laws.ValueAsDatePlacementLawsTest`; these are the
+    // RUNTIME halves — the resolved partial date must flow through the nesting consumer identically.
+
+    @Test fun nestedInADateShift() = agree(
+        render(m.field(AD).filled().and(
+            Dsl.addDays(Dsl.valueAsDateFirstDay(m.field(AD)), 1L).eq(Dsl.dateValue("02.06.2024")))),
+        partial, "FirstDay of a day-omitted June, shifted +1 day, is the 2nd")
+
+    @Test fun nestedInADateShiftDoesNotDriftFromTheResolvedDay() = agree(
+        render(m.field(AD).filled().and(
+            Dsl.addDays(Dsl.valueAsDateLastDay(m.field(AD)), 1L).eq(Dsl.dateValue("01.07.2024")))),
+        partial, "LastDay of June, shifted +1 day, crosses into July")
+
+    @Test fun nestedInADateDifference() = agree(
+        render(m.field(AD).filled().and(
+            Dsl.differenceInDays(Dsl.valueAsDateFirstDay(m.field(AD)), Dsl.valueAsDateLastDay(m.field(AD)))
+                .eq(Dsl.number(29L)))),
+        partial, "first to last day of June is 29 calendar steps")
+
+    @Test fun nestedInTheDateArgumentOfDateTime() = agreeWithStamp(
+        render(m.field(AD).filled().and(
+            m.dateTime(SA).eq(Dsl.dateTime(Dsl.valueAsDateFirstDay(m.field(AD)), Dsl.timeValue("09:30:00"))))),
+        partial, "2024-06-01T09:30:00", "the resolved FirstDay composes into a date-time")
+
+    @Test fun nestedInTheDateArgumentOfDateTimeSeparatesTheDay() = agreeWithStamp(
+        render(m.field(AD).filled().and(
+            m.dateTime(SA).eq(Dsl.dateTime(Dsl.valueAsDateLastDay(m.field(AD)), Dsl.timeValue("09:30:00"))))),
+        partial, "2024-06-01T09:30:00", "LastDay does NOT compose to the 1st")
+
+    /** [agree] plus a filled DATE_TIME operand — for the `DateTime(date, time)` composition cases. */
+    private fun agreeWithStamp(cond: String, approx: String, stamp: String, msg: String) {
+        val k = RuntimeLaws.fires(RuntimeLaws.withRule(order, "/Order", "R", "../ApproxDate", "VA", cond), "VA",
+            RuntimeLaws.doc().group("/Order", 1).field(AD, approx, 1, 1).field(SA, stamp, 1, 1))
+        val def = ModelDef(fields + FieldDef(SA, Kind.DATE_TIME, format = "yyyy-MM-dd'T'HH:mm:ss"),
+            listOf(RuleDef("/Order/R", "/Order", cond, "VA", "../ApproxDate")))
+        val iDoc = def.newDocument().field(AD, approx, 1, 1).field(SA, stamp, 1, 1)
+        val i = DmInterpreter(def).validate(iDoc).messages.any { it.code == "VA" }
+        assertEquals(k, i, "$msg ($approx, $stamp)")
+    }
+
     private companion object {
         const val AD = "/Order/ApproxDate"
+        const val SA = "/Order/ScheduledAt"
     }
 }

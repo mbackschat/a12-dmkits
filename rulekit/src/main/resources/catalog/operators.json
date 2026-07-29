@@ -3259,7 +3259,15 @@
     "meaning": "Resolves a partially known date field (a DateType with a date precision other than FULL) to a concrete date — the earliest (FirstDay) or latest (LastDay) real date matching the known parts.",
     "constraints": [
       "the field must be a partially known date (date precision DAY_OPTIONAL / MONTH_OPTIONAL / YEAR_OPTIONAL), else MVK_INVALID_DATE_TYPE_FOR_OP",
-      "the second argument is the FirstDay or LastDay keyword"
+      "the second argument is the FirstDay or LastDay keyword",
+      "admitted in four positions only: a direct comparison, a Add*(date, n) base, either DifferenceIn* operand, and the DATE argument of DateTime(date, time)"
+    ],
+    "gotchas": [
+      {
+        "text": "it is NOT usable wherever a date is expected \u2014 the kernel gives it its own operand alternative, so an extractor (DayFromDate(ValueAsDate(F, FirstDay))), the TIME argument of DateTime, a Date(...) component, and a Min/Max operand all draw MVK_UNEXPECTED_TOKEN; AddHours is in position but draws MVK_WRONG_DATE_FORMAT_FOR_OP because a date carries no sub-day component",
+        "kind": "AUTHORING",
+        "seeAlso": ["AddDays", "DifferenceInDays", "DateTime", "DayFromDate"]
+      }
     ],
     "validExample": { "dsl": "FieldFilled(ApproxDate) And ValueAsDate(ApproxDate, FirstDay) > \"01.01.2020\"", "note": "fires when the earliest possible date is after the start of 2020" },
     "sinceKernel": "30.8.x"
