@@ -1,6 +1,7 @@
 package io.github.mbackschat.a12.dm.interpreter
 
 import io.github.mbackschat.a12.dm.interpreter.eval.newDocument
+import io.github.mbackschat.a12.dm.interpreter.model.DatePrecision
 import io.github.mbackschat.a12.dm.interpreter.model.FieldDef
 import io.github.mbackschat.a12.dm.interpreter.model.Kind
 import io.github.mbackschat.a12.dm.interpreter.model.ModelDef
@@ -23,24 +24,27 @@ import kotlin.test.assertEquals
  */
 class TimeLiteralCarrierTest {
 
-    private fun fires(condition: String, zone: ModelTimeZone): Boolean {
+    private fun fires(condition: String, zone: ModelTimeZone, stamp: String): Boolean {
         val def = ModelDef(
             fields = listOf(
                 FieldDef(STAMP_FIELD, Kind.DATE_TIME, format = "yyyy-MM-dd'T'HH:mm:ss"),
                 FieldDef(CLOCK_FIELD, Kind.TIME, format = "HH:mm:ss"),
+                FieldDef(APPROX_FIELD, Kind.DATE, format = "dd.MM.yyyy",
+                    datePrecision = DatePrecision.DAY_OPTIONAL),
             ),
             rules = listOf(RuleDef("/Order/R", "/Order", condition, "TC", "../ScheduledAt")),
             timeZone = zone,
         )
         val doc = def.newDocument()
-            .field(STAMP_FIELD, "2024-06-01T10:30:45", 1, 1)
+            .field(STAMP_FIELD, stamp, 1, 1)
             .field(CLOCK_FIELD, "10:30:45", 1, 1)
+            .field(APPROX_FIELD, "00.06.2024", 1, 1)
         return DmInterpreter(def).validate(doc).messages.any { it.code == "TC" }
     }
 
-    private fun bothZones(condition: String, expected: Boolean, msg: String) {
-        assertEquals(expected, fires(condition, ModelTimeZone.EUROPE_BERLIN), "$msg [Europe/Berlin]")
-        assertEquals(expected, fires(condition, ModelTimeZone.UTC), "$msg [UTC]")
+    private fun bothZones(condition: String, expected: Boolean, msg: String, stamp: String = STAMP) {
+        assertEquals(expected, fires(condition, ModelTimeZone.EUROPE_BERLIN, stamp), "$msg [Europe/Berlin]")
+        assertEquals(expected, fires(condition, ModelTimeZone.UTC, stamp), "$msg [UTC]")
     }
 
     private fun wallClock(literal: String) =
@@ -57,8 +61,28 @@ class TimeLiteralCarrierTest {
         bothZones("FieldFilled($CLOCK_FIELD) And [$CLOCK_FIELD] == \"08:30:45\"", false, "and a shifted one does not")
     }
 
+    /**
+     * The entry's named composition: a Time LITERAL as the time argument beside a resolved partial date. It
+     * exercises the literal's decoding and the carrier's irrelevance in one shape — and the negative control
+     * uses the OTHER day boundary, so a composition that silently dropped the resolution would fail.
+     */
+    @Test fun aTimeLiteralComposesWithAResolvedPartialDate() {
+        val composed = { day: String ->
+            "FieldFilled($APPROX_FIELD) And [$STAMP_FIELD] == " +
+                "DateTime(ValueAsDate($APPROX_FIELD, $day), \"09:30:00\")"
+        }
+        bothZones(composed("LastDay"), true, "LastDay of June at 09:30 is the stored stamp",
+            stamp = "2024-06-30T09:30:00")
+        bothZones(composed("FirstDay"), false, "FirstDay does not compose to the 30th",
+            stamp = "2024-06-30T09:30:00")
+    }
+
     private companion object {
         const val STAMP_FIELD = "/Order/ScheduledAt"
         const val CLOCK_FIELD = "/Order/PickupTime"
+        const val APPROX_FIELD = "/Order/ApproxDate"
+
+        /** 2024-06-01 is CEST (+2) under Europe/Berlin, so this wall time's instant is 08:30:45Z. */
+        const val STAMP = "2024-06-01T10:30:45"
     }
 }
