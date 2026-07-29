@@ -504,8 +504,15 @@ private fun Interpreter.predType(p: Cond.Pred): MsgType {
     // (add a row) while `AtLeastOneGroupFilled(G*)` is VALUE (adding never clears it) (IF68). For a fixed-arity
     // quantifier each fill moves a FALSE operand to TRUE: (t, f) → (t+j, f-j). (UNKNOWN operands aren't
     // "fillable" — they need correcting, not filling — so they don't enter this.)
-    val fillable = if (op.countsGroups && p.args.singleOrNull() is Expr.Star) !quantifierFires(op, t + 1, f, n + 1)
-        else (1..f).any { j -> !quantifierFires(op, t + j, f - j, n) }
+    //
+    // The two moves are available INDEPENDENTLY, so a list that mixes them offers both: the add-a-row move
+    // comes from ANY starred operand, not only a sole one. That mattered once the kernel's duplicate gate was
+    // found to skip wildcarded operands (SPEC-2026-07-23-09), which makes `NoGroupFilled(G*, G*)` legal: at
+    // zero rows every operand contributes nothing, so `f` is 0, the fixed-arity range `1..f` is empty, and
+    // requiring a SOLE star typed the firing VALUE where the kernel says OMISSION.
+    val fillable = if (op.countsGroups && p.args.any { it is Expr.Star })
+        !quantifierFires(op, t + 1, f, n + 1) || (1..f).any { j -> !quantifierFires(op, t + j, f - j, n) }
+    else (1..f).any { j -> !quantifierFires(op, t + j, f - j, n) }
     return if (fillable) MsgType.OMISSION else MsgType.VALUE
 }
 

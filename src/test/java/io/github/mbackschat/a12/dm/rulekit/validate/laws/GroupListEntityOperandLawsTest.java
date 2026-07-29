@@ -120,6 +120,39 @@ class GroupListEntityOperandLawsTest {
         rejects("NoGroupFilled(IncidentNote, Vehicle, Vehicle/Vin)", "MVK_DUPLICATE_PARAM2");
     }
 
+    // --- wildcards: the duplicate gate SKIPS them, so the SAME starred group may repeat ---------
+    // `CheckEntityListenUtils.checkDuplicatesInDirectRefs` continues past `ref.hasWildCards()`, so the
+    // direct-duplicate bar below does not reach a wildcarded operand (SPEC-2026-07-23-09 follow-up; the same
+    // exemption the aggregate entity-list family already carries, KERNEL-FINDINGS §9). Only the two operators
+    // that admit a wildcard at all can show it — the ≥2-arity family is refused by the wildcard bar first.
+
+    @Test
+    void aRepeatedStarredGroupOperandIsAdmittedByTheCountZeroPair() {
+        accepts("NoGroupFilled(Damages*, Damages*)");
+        accepts("AtLeastOneGroupFilled(Damages*, Damages*)");
+    }
+
+    @Test
+    void aRepeatedStarredGroupOperandStaysBarredFromTheAllFamily() {
+        // The wildcard bar fires before any duplicate consideration — a different code, so the two gates
+        // cannot be confused for one another.
+        rejects("AllGroupsFilled(Damages*, Damages*)", "MVK_NO_WILDCARDS_G_ALLOWED");
+        rejects("NotAllGroupsFilled(Damages*, Damages*)", "MVK_NO_WILDCARDS_G_ALLOWED");
+    }
+
+    @Test
+    void theExemptionIsWildcardOnlyNotADuplicateAmnesty() {
+        // Same operator, same shape, no star: still MVK_DUPLICATE_PARAM1. And the INDIRECT gate is untouched.
+        rejects("NoGroupFilled(Handler, Handler)", "MVK_DUPLICATE_PARAM1");
+        rejects("NoGroupFilled(Vehicle, Vehicle/Vin)", "MVK_DUPLICATE_PARAM2");
+    }
+
+    @Test
+    void aStarredGroupMayRepeatBesideAPlainOperand() {
+        accepts("NoGroupFilled(Damages*, Damages*, Handler)");
+        accepts("AtLeastOneGroupFilled(IncidentNote, Damages*, Damages*)");
+    }
+
     // --- wildcards: a starred field operand is barred from the ≥2-arity family -----------------
 
     @Test

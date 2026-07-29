@@ -38,7 +38,8 @@ class GroupListEntityOperandReadTest {
             .rootGroup("Claim", claim -> claim
                     .stringField("PolicyNumber", ignored -> { })
                     .stringField("IncidentNote", ignored -> { })
-                    .group("Vehicle", vehicle -> vehicle.stringField("Vin", ignored -> { })))
+                    .group("Vehicle", vehicle -> vehicle.stringField("Vin", ignored -> { }))
+                    .group("Damages", damages -> damages.repeatable(5).stringField("Detail", ignored -> { })))
             .build().toJson());
 
     @Test
@@ -93,6 +94,33 @@ class GroupListEntityOperandReadTest {
         GroupListPredicate read = readBack("SingleOne", authored);
 
         assertEquals(List.of(model.field("/Claim/IncidentNote")), read.operands());
+    }
+
+    /**
+     * SPEC-2026-07-23-09 follow-up — the kernel's direct-duplicate gate skips a wildcarded operand, so the same
+     * starred group may occupy several authored slots. BOTH occurrences must survive rendering and read-back:
+     * the operand list is the evaluator's input, and silently collapsing it to one would change the tally the
+     * kernel computes. ({@link #readBack} additionally asserts the rendered forms match, so a dropped occurrence
+     * fails on the text too.)
+     */
+    @Test
+    void aRepeatedStarredGroupRetainsBothOccurrences() {
+        GroupListRef damages = model.flattenGroup("/Claim/Damages*");
+        Condition authored = model.field("/Claim/PolicyNumber").filled()
+                .and(Dsl.noGroupFilled(damages, damages));
+        GroupListPredicate read = readBack("RepeatedStarNone", authored);
+
+        assertEquals(List.of(damages, damages), read.operands());
+    }
+
+    @Test
+    void aRepeatedStarredGroupRetainsBothOccurrencesForTheCountAtLeastOne() {
+        GroupListRef damages = model.flattenGroup("/Claim/Damages*");
+        Condition authored = model.field("/Claim/PolicyNumber").filled()
+                .and(Dsl.atLeastOneGroupFilled(damages, damages));
+        GroupListPredicate read = readBack("RepeatedStarOne", authored);
+
+        assertEquals(List.of(damages, damages), read.operands());
     }
 
     private GroupListPredicate readBack(String name, Condition authored) {

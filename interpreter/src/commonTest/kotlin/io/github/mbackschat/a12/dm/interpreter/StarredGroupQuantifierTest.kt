@@ -46,4 +46,25 @@ class StarredGroupQuantifierTest {
     @Test fun atLeastOneFilledFiresValue() = assertEquals("VALUE", sig("AtLeastOneGroupFilled(Active*)", 1), "a filled row → fires VALUE")
     @Test fun atLeastOneInstantiatedEmptyFiresValue() = assertEquals("VALUE", sig("AtLeastOneGroupFilled(Active*)", -1), "an instantiated-empty row counts → fires VALUE")
     @Test fun atLeastOneZeroRowsNoFire() = assertEquals(null, sig("AtLeastOneGroupFilled(Active*)", 0), "0 rows → no fire")
+
+    // SPEC-2026-07-23-09 follow-up — the kernel's direct-duplicate gate SKIPS a wildcarded operand, so the same
+    // starred group may occupy several authored slots of `NoGroupFilled`/`AtLeastOneGroupFilled` (admission is
+    // kernel-locked in `rulekit.validate.laws.GroupListEntityOperandLawsTest`; `AllGroupsFilled` can't be
+    // exercised — the wildcard bar rejects it). Both truth AND polarity are kernel-measured in
+    // `adapter.laws.StarredGroupQuantifierDiffTest`: they equal the single-operand form. The polarity half was a
+    // real divergence — at zero rows the repeated form typed VALUE because the add-a-row fillability move
+    // required a SOLE starred operand.
+    @Test fun aRepeatedStarredOperandMatchesTheSingleForm() {
+        for (rows in listOf(0, 1, -1, 3)) {
+            assertEquals(sig("NoGroupFilled(Active*)", rows), sig("NoGroupFilled(Active*, Active*)", rows),
+                "NoGroupFilled repeated star at rows=$rows")
+            assertEquals(sig("AtLeastOneGroupFilled(Active*)", rows),
+                sig("AtLeastOneGroupFilled(Active*, Active*)", rows),
+                "AtLeastOneGroupFilled repeated star at rows=$rows")
+        }
+    }
+
+    @Test fun aRepeatedStarredOperandKeepsTheAddARowPolarity() =
+        assertEquals("OMISSION", sig("NoGroupFilled(Active*, Active*)", 0),
+            "zero rows still means ADD a row, not a wrong value")
 }

@@ -100,6 +100,31 @@ class StarredGroupQuantifierDiffTest {
     @Test fun mixedNoGroupFilledFieldBlocks() =
         agree(noMixed("Waived", 0), "mixed: filled field + 0 star rows → the field is filled → no fire")
 
+    // ── SPEC-2026-07-23-09 follow-up: the SAME starred group may occupy several authored slots ────────────────
+    // The kernel's direct-duplicate gate (`checkDuplicatesInDirectRefs`) continues past a wildcarded operand,
+    // so `NoGroupFilled(G*, G*)` and `AtLeastOneGroupFilled(G*, G*)` are ADMITTED (locked against the real
+    // kernel in `rulekit.validate.laws.GroupListEntityOperandLawsTest`); `AllGroupsFilled` cannot be exercised
+    // because the wildcard bar rejects it outright. Repeating the witness is truth-idempotent, but the POLARITY
+    // and the row tally are not idempotent by construction, so the kernel — not the single-operand form — is
+    // what settles the repeated shape.
+    private fun noActiveTwice(a: Int, w: Int) =
+        scenario("[Choice] == \"Waived\" And NoGroupFilled(Active*, Active*)", a, w)
+    @Test fun repeatedStarNoGroupFilledZeroRows() =
+        agree(noActiveTwice(0, 1), "NoGroupFilled(Active*, Active*): 0 rows")
+    @Test fun repeatedStarNoGroupFilledFilledRow() =
+        agree(noActiveTwice(1, 1), "NoGroupFilled(Active*, Active*): a filled row")
+    @Test fun repeatedStarNoGroupFilledThreeRows() =
+        agree(noActiveTwice(3, 1), "NoGroupFilled(Active*, Active*): three filled rows")
+
+    private fun atLeastActiveTwice(a: Int, w: Int) =
+        scenario("[Choice] == \"Waived\" And AtLeastOneGroupFilled(Active*, Active*)", a, w)
+    @Test fun repeatedStarAtLeastOneZeroRows() =
+        agree(atLeastActiveTwice(0, 1), "AtLeastOneGroupFilled(Active*, Active*): 0 rows")
+    @Test fun repeatedStarAtLeastOneFilledRow() =
+        agree(atLeastActiveTwice(1, 1), "AtLeastOneGroupFilled(Active*, Active*): a filled row")
+    @Test fun repeatedStarAtLeastOneInstantiatedEmptyRow() =
+        agree(atLeastActiveTwice(-1, 1), "AtLeastOneGroupFilled(Active*, Active*): an instantiated-empty row")
+
     // ── both strategies: the group-count tally is runtime-shared; static-JAVA codegen must agree ──────────────
     @Test fun codegenTalliesStarredGroupIdentically() {
         val s = defaultShape(0, 1)
