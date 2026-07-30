@@ -127,6 +127,8 @@ The Pages root links the browser showcase, rendered developer guide, TypeScript 
 
 The browser showcase is a real consumer of the packed TypeScript artifact. It supports built-in and locally selected workspaces and Documents, include/typedef resolution, full or partial validation, computation, provider failures, integrity and cancellation diagnostics, repeated operations over one prepared model/interpreter, and opt-in offline Cache Storage.
 
+The showcase displays the package version and exact A12 Kernel/A12 Tools semantics target from release metadata generated from the repository's version and semantics pins. The Chrome showcase gate asserts the rendered values, and the Pages showcase tree for a release must match that release's immutable `dm-interpreter-<version>-showcase.zip` asset.
+
 Selected user files remain local to the browser. The static site loads no remote font, analytics, advertising, or social embed, sets no cookie, and performs no explicit client-storage write before the user opts into offline use. The site-specific privacy notice names the actual operator and GitHub Pages host.
 
 The versioned API archive contains the canonical README and tested guide plus generated references derived from the shipped Maven/npm contracts. Displayed TypeScript, Kotlin, and Java examples are locked to consumer programs that compile and execute against the packed or staged artifacts.

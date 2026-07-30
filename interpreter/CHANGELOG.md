@@ -4,6 +4,10 @@ This changelog covers the independently consumable interpreter packages, API doc
 
 ## [@VERSION@]
 
+No unreleased changes.
+
+## [0.10.0]
+
 ### Changed — BREAKING
 
 - **The Document boundary now speaks A12's own Document JSON**, the shape the A12 Kernel's document serializer produces and consumes: a nested object tree mirroring the model, a repeating group as a JSON array whose index is the repetition, `{}` for an unfilled or empty group row, a missing key for an omission, `null` for a present field with no value, and native JSON for numbers and booleans. The previous placement envelope was a shape this project had invented for a concept A12 already defines, so it is removed rather than deprecated.
