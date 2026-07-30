@@ -6,7 +6,7 @@ import org.junit.jupiter.api.Test;
  * KERNEL-FINDINGS §6 — the EXTRACTOR component forms of {@code Date(...)} and {@code Time(...)}, and the
  * {@code TimeFromDateTime} operand gate. Closes the static halves of a12-kernel-lean SPEC-2026-07-27-12,
  * SPEC-2026-07-27-09 and SPEC-2026-07-27-07; these matrices were measured 2026-07-29 and recorded in
- * INTERPRETER-GAPS IG108, and are promoted here to maintained cases.
+ * INTERPRETER-FINDINGS IF235, and are promoted here to maintained cases.
  *
  * <p>Two things make the account falsifiable rather than merely descriptive. First, the extractor's operand is
  * the <em>ordinary nonliteral temporal grammar</em>, not "a direct field": a nested shift, a dynamic

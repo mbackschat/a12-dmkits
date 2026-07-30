@@ -817,9 +817,14 @@ private fun Interpreter.analyzeDate(parts: List<Expr>): DateAnalysis {
     var hasEmpty = false
     val nums = IntArray(parts.size)
     for (i in parts.indices) {
-        val e = parts[i]
-        if (e is Expr.Field && !ctx.filled(e.path)) { hasEmpty = true; continue }
-        nums[i] = dateConstructionComponentInt(e) ?: return DateAnalysis(DateStatus.MALFORMED, null)
+        when (val component = temporalConstructionComponentInt(parts[i])) {
+            is Evaluated.Present -> nums[i] = component.value
+            is Evaluated.NoValue -> when (component.reason) {
+                NoValueReason.NOT_GIVEN -> hasEmpty = true
+                NoValueReason.PRESENT_NO_VALUE -> nums[i] = 0
+                NoValueReason.NON_RELEVANT -> return DateAnalysis(DateStatus.MALFORMED, null)
+            }
+        }
     }
     if (hasEmpty) return DateAnalysis(DateStatus.HAS_EMPTY, null)
     val d = nums[0]; val m = nums[1]
@@ -831,17 +836,70 @@ private fun Interpreter.analyzeDate(parts: List<Expr>): DateAnalysis {
 }
 
 /**
- * Numeric conversion for one statically admitted Date component. Most sources already evaluate to a Number
- * (Number fields, constants, extractors); a digit-pattern String evaluates to its stored text. The one Date
- * exception is exact `yyyy` at complete Year: ordinary Date evaluation cannot represent a year-only value,
- * so read its stored display text here, at the constructor boundary where the kernel retags it as Number.
+ * Numeric conversion for one statically admitted Date/Time component, preserving the source evaluation reason.
+ * Direct Number/String fields and constants already evaluate to Number/text. Matching extractors need the
+ * stronger path: an empty nested temporal source is still a missing component, a formal source is unavailable,
+ * and a reached temporal expression with no value projects to fixed zero. The one Date field exception is exact
+ * `yyyy` at complete Year: ordinary Date evaluation cannot represent a year-only value, so its stored display
+ * text is read only at this constructor boundary where the kernel retags it as Number.
  */
-private fun Interpreter.dateConstructionComponentInt(e: Expr): Int? =
+private fun Interpreter.temporalConstructionComponentInt(e: Expr): Evaluated<Int> {
+    if (malformedField(e)) return Evaluated.NoValue(NoValueReason.NON_RELEVANT)
+    if (emptyCheckRelevant(e)) return Evaluated.NoValue(NoValueReason.NOT_GIVEN)
     if (e is Expr.Field && ctxOf(e).declaredKind(e.path) == Kind.DATE && ctxOf(e).dateFormatOf(e.path) == "yyyy") {
-        ctxOf(e).displayValue(e.path)?.toIntOrNull()
-    } else {
-        valToInt(evalExpr(e))
+        return ctxOf(e).displayValue(e.path)?.toIntOrNull()?.let { Evaluated.Present(it) }
+            ?: Evaluated.NoValue(NoValueReason.NON_RELEVANT)
     }
+    if (e is Expr.Func) {
+        return when (FunctionOp.byName(e.name)) {
+            FunctionOp.YEAR_FROM_DATE -> extractedDateComponent(e) { year, _, _ -> year }
+            FunctionOp.MONTH_FROM_DATE -> extractedDateComponent(e) { _, month, _ -> month }
+            FunctionOp.DAY_FROM_DATE -> extractedDateComponent(e) { _, _, day -> day }
+            FunctionOp.HOURS_FROM_TIME -> extractedTimeComponent(e) { hour, _, _ -> hour }
+            FunctionOp.MINUTES_FROM_TIME -> extractedTimeComponent(e) { _, minute, _ -> minute }
+            FunctionOp.SECONDS_FROM_TIME -> extractedTimeComponent(e) { _, _, second -> second }
+            else -> evaluatedComponentInt(evalExpr(e))
+        }
+    }
+    return evaluatedComponentInt(evalExpr(e))
+}
+
+private fun Interpreter.extractedDateComponent(
+    extraction: Expr.Func,
+    pick: (Int, Int, Int) -> Int,
+): Evaluated<Int> = when (val source = evalTemporal(extraction.args.single())) {
+    is Evaluated.Present -> calendarDateParts(source.value.date, source.value.basis)
+        ?.let { Evaluated.Present(pick(it.first, it.second, it.third)) }
+        ?: Evaluated.NoValue(NoValueReason.NON_RELEVANT)
+    is Evaluated.NoValue -> source.asConstructionComponent()
+}
+
+private fun Interpreter.extractedTimeComponent(
+    extraction: Expr.Func,
+    pick: (Int, Int, Int) -> Int,
+): Evaluated<Int> = when (val source = evalTime(extraction.args.single())) {
+    is Evaluated.Present -> TIME.matchEntire(source.value)
+        ?.let { match ->
+            Evaluated.Present(
+                pick(
+                    match.groupValues[1].toInt(),
+                    match.groupValues[2].toInt(),
+                    match.groupValues[3].toInt(),
+                ),
+            )
+        }
+        ?: Evaluated.NoValue(NoValueReason.NON_RELEVANT)
+    is Evaluated.NoValue -> source.asConstructionComponent()
+}
+
+private fun Evaluated.NoValue.asConstructionComponent(): Evaluated<Int> =
+    if (reason == NoValueReason.PRESENT_NO_VALUE) Evaluated.Present(0) else this
+
+private fun evaluatedComponentInt(value: Val): Evaluated<Int> = when (value) {
+    is Val.DomainFailure -> Evaluated.Present(0)
+    else -> valToInt(value)?.let { Evaluated.Present(it) }
+        ?: Evaluated.NoValue(NoValueReason.NON_RELEVANT)
+}
 
 /**
  * One evaluated temporal value, carrying the information the kernel's `VkDate` keeps but a plain ISO string
@@ -853,8 +911,11 @@ private sealed interface Evaluated<out T> {
 }
 
 private enum class NoValueReason {
-    /** Empty or present-but-unreal: numeric temporal consumers receive their fillable default `0`. */
+    /** An empty source: numeric temporal consumers receive `0`, retaining fillable/missing provenance. */
     NOT_GIVEN,
+
+    /** A reached temporal expression with no value (unreal date or domain failure): its numeric projection is fixed `0`. */
+    PRESENT_NO_VALUE,
 
     /** Malformed/formally-invalid: the expression is not check-relevant and numeric consumers suppress. */
     NON_RELEVANT,
@@ -898,15 +959,17 @@ private fun Evaluated<String>.asTimeVal(): Val = when (this) {
 }
 
 private fun Evaluated.NoValue.numericDefault(): Val =
-    if (reason == NoValueReason.NOT_GIVEN) Val.Num(DEC_ZERO) else Val.Unknown
+    if (reason == NoValueReason.NON_RELEVANT) Val.Unknown else Val.Num(DEC_ZERO)
 
-/** NON_RELEVANT dominates NOT_GIVEN, matching the runtime's not-check-relevant precedence. */
+/** NON_RELEVANT dominates NOT_GIVEN, which dominates a reached-but-valueless result. */
 private fun dominantNoValue(vararg values: Evaluated<*>): Evaluated.NoValue? {
     val absent = values.filterIsInstance<Evaluated.NoValue>()
     return when {
         absent.any { it.reason == NoValueReason.NON_RELEVANT } ->
             Evaluated.NoValue(NoValueReason.NON_RELEVANT)
-        absent.isNotEmpty() -> Evaluated.NoValue(NoValueReason.NOT_GIVEN)
+        absent.any { it.reason == NoValueReason.NOT_GIVEN } ->
+            Evaluated.NoValue(NoValueReason.NOT_GIVEN)
+        absent.isNotEmpty() -> Evaluated.NoValue(NoValueReason.PRESENT_NO_VALUE)
         else -> null
     }
 }
@@ -946,7 +1009,8 @@ private fun Interpreter.evaluateDateConstruction(args: List<Expr>): Evaluated<Te
                 freshDateInstant(analysis.iso, timeZone, DateCalendarBasis.LEGACY_HYBRID)?.times(1_000L),
             ),
         )
-        DateStatus.UNREAL_PRESENT, DateStatus.HAS_EMPTY -> Evaluated.NoValue(NoValueReason.NOT_GIVEN)
+        DateStatus.UNREAL_PRESENT -> Evaluated.NoValue(NoValueReason.PRESENT_NO_VALUE)
+        DateStatus.HAS_EMPTY -> Evaluated.NoValue(NoValueReason.NOT_GIVEN)
         DateStatus.MALFORMED -> Evaluated.NoValue(NoValueReason.NON_RELEVANT)
     }
 }
@@ -1005,6 +1069,8 @@ private fun Interpreter.temporalText(
 private fun Interpreter.composeDateTime(args: List<Expr>): Evaluated<TemporalValue> {
     if (args.size != 2) return Evaluated.NoValue(NoValueReason.NON_RELEVANT)
     val date = evalTemporal(args[0])
+    // The generated constructor evaluates Date first and a formally unavailable Date stops before the Time arm.
+    if (date is Evaluated.NoValue && date.reason == NoValueReason.NON_RELEVANT) return date
     val time = evalTime(args[1])
     dominantNoValue(date, time)?.let { return it }
     val dateValue = (date as Evaluated.Present).value
@@ -1056,18 +1122,13 @@ private fun Interpreter.evaluateTimeConstruction(args: List<Expr>): Evaluated<St
     var hasMalformed = false
     val components = IntArray(3)
     for (i in args.indices) {
-        val arg = args[i]
-        if (malformedField(arg)) {
-            hasMalformed = true
-            continue
-        }
-        if (emptyCheckRelevant(arg)) {
-            hasEmpty = true
-            continue
-        }
-        components[i] = valToInt(evalExpr(arg)) ?: run {
-            hasMalformed = true
-            0
+        when (val component = temporalConstructionComponentInt(args[i])) {
+            is Evaluated.Present -> components[i] = component.value
+            is Evaluated.NoValue -> when (component.reason) {
+                NoValueReason.NOT_GIVEN -> hasEmpty = true
+                NoValueReason.PRESENT_NO_VALUE -> components[i] = 0
+                NoValueReason.NON_RELEVANT -> hasMalformed = true
+            }
         }
     }
     if (hasMalformed) return Evaluated.NoValue(NoValueReason.NON_RELEVANT)
@@ -1096,6 +1157,7 @@ private fun Interpreter.shiftTemporal(e: Expr.Func): Evaluated<TemporalValue> {
     val amount = (amountValue as? Val.Num)?.v?.display()?.let(::plainDecimalAsJavaInt)
     val amountState: Evaluated<Int> = when {
         amount != null -> Evaluated.Present(amount)
+        amountValue is Val.DomainFailure -> Evaluated.NoValue(NoValueReason.PRESENT_NO_VALUE)
         malformedField(e.args[1]) -> Evaluated.NoValue(NoValueReason.NON_RELEVANT)
         emptyCheckRelevant(e.args[1]) -> Evaluated.NoValue(NoValueReason.NOT_GIVEN)
         else -> Evaluated.NoValue(NoValueReason.NON_RELEVANT)
