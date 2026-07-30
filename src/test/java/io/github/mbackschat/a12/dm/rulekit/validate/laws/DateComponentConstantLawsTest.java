@@ -20,6 +20,8 @@ import org.junit.jupiter.api.Test;
  */
 class DateComponentConstantLawsTest {
 
+    private static final String WRONG_FORMAT = "MVK_WRONG_DATE_FORMAT_FOR_OP";
+
     @Test
     void aQuotedNumericComponentIsAdmitted() {
         accepts("[OrderDate] == Date(\"1\", \"10\", \"1916\")");
@@ -47,6 +49,66 @@ class DateComponentConstantLawsTest {
     void bothHalvesAreIndependentlyAdmitted() {
         accepts("AddDays(Date(\"30\", \"9\", \"1916\"), 1) == [OrderDate]");
         accepts("AddDays(OrderDate, 1) == Date(\"1\", \"10\", \"1916\")");
+    }
+
+    /**
+     * Constants MIX with field components — the kernel checks each `datumParam` position independently, so a
+     * construction may draw one component from a field and another from a literal.
+     */
+    @Test
+    void aConstantMixesWithFieldComponents() {
+        accepts("[OrderDate] == Date(BirthDay, \"01\", \"1963\")");
+        accepts("[OrderDate] == Date(\"01\", BirthMonth, BirthYear)");
+        accepts("[OrderDate] == Date(BirthDay, BirthMonth, \"1963\")");
+    }
+
+    /**
+     * Each position's range, pinned on BOTH sides so the bound itself is located rather than merely exceeded.
+     * `CheckDatumKonstruktImpl` supplies `[1,32)` for Day, `[1,13)` for Month, `[1800,2200)` for the complete
+     * Year, `[18,22)` for Century and `[0,100)` for Short-Year; every refusal is one code.
+     */
+    @Test
+    void theDayRangeIsOneToThirtyOne() {
+        accepts("[OrderDate] == Date(\"31\", \"01\", \"1963\")");
+        rejects("[OrderDate] == Date(\"32\", \"01\", \"1963\")", WRONG_FORMAT);
+        rejects("[OrderDate] == Date(\"0\", \"01\", \"1963\")", WRONG_FORMAT);
+    }
+
+    @Test
+    void theMonthRangeIsOneToTwelve() {
+        accepts("[OrderDate] == Date(\"01\", \"12\", \"1963\")");
+        rejects("[OrderDate] == Date(\"01\", \"13\", \"1963\")", WRONG_FORMAT);
+        rejects("[OrderDate] == Date(\"01\", \"0\", \"1963\")", WRONG_FORMAT);
+    }
+
+    @Test
+    void theCompleteYearRangeIsEighteenHundredToTwentyOneNinetyNine() {
+        accepts("[OrderDate] == Date(\"01\", \"01\", \"1800\")");
+        accepts("[OrderDate] == Date(\"01\", \"01\", \"2199\")");
+        rejects("[OrderDate] == Date(\"01\", \"01\", \"2200\")", WRONG_FORMAT);
+        rejects("[OrderDate] == Date(\"01\", \"01\", \"1799\")", WRONG_FORMAT);
+    }
+
+    /** The complete Year is width-gated at exactly four code units — unlike Day and Month, which have none. */
+    @Test
+    void theCompleteYearWidthIsExactlyFour() {
+        rejects("[OrderDate] == Date(\"01\", \"01\", \"196\")", WRONG_FORMAT);
+        rejects("[OrderDate] == Date(\"01\", \"01\", \"19634\")", WRONG_FORMAT);
+    }
+
+    @Test
+    void theCenturyRangeIsEighteenToTwentyOneAtWidthTwo() {
+        accepts("[OrderDate] == Date(\"01\", \"01\", \"18\", \"00\")");
+        accepts("[OrderDate] == Date(\"01\", \"01\", \"21\", \"99\")");
+        rejects("[OrderDate] == Date(\"01\", \"01\", \"22\", \"00\")", WRONG_FORMAT);
+        rejects("[OrderDate] == Date(\"01\", \"01\", \"17\", \"00\")", WRONG_FORMAT);
+        rejects("[OrderDate] == Date(\"01\", \"01\", \"9\", \"00\")", WRONG_FORMAT);
+    }
+
+    /** An empty component is not a zero — the digit sequence must be nonempty. */
+    @Test
+    void anEmptyComponentIsRefused() {
+        rejects("[OrderDate] == Date(\"\", \"01\", \"1963\")", WRONG_FORMAT);
     }
 
     /**
