@@ -98,7 +98,7 @@ Status legend: **GREEN** = differentially proven identical to the kernel · **DO
 
 | capability | status | the exact lock | residual |
 |---|---|---|---|
-| rule/computation message: value interpolation `$field.value$` | GREEN | `MessageValueDisplayPolicyDiffTest`, `LocalizedMessageDiffTest`, `UnspecifiedValueInterpolationDiffTest` (IF201: raw display channel; null/empty ⇒ exact admitted format default) | — |
+| rule/computation message: value interpolation `$field.value$` + literal-dollar `$$` | GREEN | `MessageValueDisplayPolicyDiffTest`, `LocalizedMessageDiffTest`, `UnspecifiedValueInterpolationDiffTest` (IF201: raw display channel; null/empty ⇒ exact admitted format default; `$$` decodes in the same opaque pass) | — |
 | rule/computation message: display-name `$field$` | GREEN | `DisplayNameDiffTest` + multiplatform `MessageDisplayPolicyTest` (IF201: provider result, including empty, then model label, then indexed debug path) | — |
 | field-owned String-pattern / requiredness custom message text | GAP | `FieldConstraintFormalDiffTest` (exact `en_US` grammar, `$$` refusal, opaque insertion) + `RequirednessDiffTest` (dual-strategy accepted/preserved `$$`) | IG109 — `ModelLoader` does not retain either template channel |
 | rich message channels (`referenced` operands, `fillToFix` for OMISSION, polarity VALUE/OMISSION) | GREEN | `RichMessageDiffTest`, `FullMessageFuzzDiffTest` (trips on wrong polarity / right-code-wrong-row) | — |

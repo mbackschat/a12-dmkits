@@ -75,6 +75,14 @@ class MessageDisplayPolicyTest {
         assertEquals("\$Value\$", message(model, doc))
     }
 
+    @Test
+    fun literalDollarDecodesWithoutReparsingTheReplacement() {
+        val model = model(Kind.STRING, "FieldFilled(Value)", "Cost \$\$ [\$Value.value\$]")
+        val doc = model.newDocument().field(VALUE, "\$Value\$", 1, 1)
+
+        assertEquals("Cost \$ [\$Value\$]", message(model, doc))
+    }
+
     private fun model(
         kind: Kind,
         condition: String,

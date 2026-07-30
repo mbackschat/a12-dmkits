@@ -39,6 +39,25 @@ class MessageValueDisplayPolicyDiffTest {
         agree(model, kernelDocument, definition, interpreterDocument, NOTE_CODE, CRLF, Locale.US, "en_US")
     }
 
+    @Test
+    fun literalDollarDecodesWithoutReparsingTheInterpolatedValue() {
+        val model = model()
+        val kernelDocument = RuntimeLaws.doc().group(ROOT, 1).field(ANCHOR, "\$Note\$", 1, 1)
+        val definition = ModelLoader.load(model)
+        val interpreterDocument = definition.newDocument().field(ANCHOR, "\$Note\$", 1, 1)
+
+        agree(
+            model,
+            kernelDocument,
+            definition,
+            interpreterDocument,
+            LITERAL_DOLLAR_CODE,
+            "Cost \$ [\$Note\$]",
+            Locale.US,
+            "en_US",
+        )
+    }
+
     private fun agree(
         model: String,
         kernelDocument: RuntimeLaws.Doc,
@@ -82,6 +101,15 @@ class MessageValueDisplayPolicyDiffTest {
                     .`when`(note.length().eq(5)).severity(Severity.ERROR)
                     .message(Dsl.en("\$Note.value\$"), Dsl.de("\$Note.value\$")).build()
             }
+            edit.addRule { bound ->
+                val anchor = bound.str(ANCHOR)
+                bound.rule(bound.group(ROOT)).name("LiteralDollar").code(LITERAL_DOLLAR_CODE).errorField(anchor)
+                    .`when`(anchor.filled()).severity(Severity.ERROR)
+                    .message(
+                        Dsl.en("Cost \$\$ [\$Anchor.value\$]"),
+                        Dsl.de("Cost \$\$ [\$Anchor.value\$]"),
+                    ).build()
+            }
             edit.validate()
         }.toJson()
     }
@@ -93,6 +121,7 @@ class MessageValueDisplayPolicyDiffTest {
         const val NOTE = "$ROOT/Note"
         const val AMOUNT_CODE = "MISSING_AMOUNT"
         const val NOTE_CODE = "NORMALIZED_NOTE"
+        const val LITERAL_DOLLAR_CODE = "LITERAL_DOLLAR"
         const val CRLF = "AB\r\nCD"
     }
 }
