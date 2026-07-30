@@ -8,11 +8,14 @@ import io.github.mbackschat.a12.dm.interpreter.model.Kind
 import io.github.mbackschat.a12.dm.interpreter.model.ModelDef
 import io.github.mbackschat.a12.dm.interpreter.model.Requiredness
 import io.github.mbackschat.a12.dm.interpreter.model.RuleDef
+import io.github.mbackschat.a12.dm.edit.EditSession
+import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel
 import io.github.mbackschat.a12.dm.rulekit.dsl.Condition
 import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
+import java.util.Locale
 
 /**
  * Differential — **requiredness** (`mandatoryField`, KERNEL-FINDINGS §4). A required-but-empty field
@@ -34,6 +37,26 @@ class RequirednessDiffTest {
     // SETUP (the `require(...)` model rewrite + the `Requiredness` field configs) is unchanged.
     private val m = BoundModel.ofJson(order)
     private fun render(c: Condition): String = DslRenderer().render(c)
+
+    @Test
+    fun fieldOwnedRequirednessTextPreservesLiteralDollarOnBothKernelStrategies() {
+        val base = DocumentModelDraft.named("required-message").locale("en_US")
+            .rootGroup("Order") { order ->
+                order.stringField("Code") { it.required() }
+            }
+            .build().toJson()
+        val edit = EditSession.read(base)
+        edit.field("/Order/Code").setRequiredErrorMessages(mapOf("en_US" to "Cost \$\$ \$field\$"))
+        val model = edit.toJson()
+        assertEquals(emptyList<String>(), RuntimeLaws.consistencyMessages(model), "requiredness template is accepted")
+        val document = RuntimeLaws.doc().group("/Order", 1).emptyField("/Order/Code", 1, 1)
+        val dynamic = RuntimeLaws.errorTextOf(model, "mandatoryField", document, Locale.US).orElseThrow()
+        val java = RuntimeLaws.kernelJavaEngine(model)
+        val generated = java.errorTextOf(java.instance(document), "mandatoryField", Locale.US).orElseThrow()
+
+        assertEquals("Cost \$\$ Code", dynamic, "dynamic Groovy")
+        assertEquals(dynamic, generated, "generated Java")
+    }
 
     // ---- absolute requiredness on a root-level NUMBER (Quantity) -----------------------------------
 

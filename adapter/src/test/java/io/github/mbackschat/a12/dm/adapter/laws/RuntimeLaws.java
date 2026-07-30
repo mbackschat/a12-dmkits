@@ -1336,7 +1336,7 @@ public final class RuntimeLaws {
         return new IDocumentStaticServiceConfig() {
             public Optional<String> getModelPackage(String id) { return Optional.ofNullable(idToPackage.getProperty(id)); }
             public Optional<ClassLoader> getModelCodeClassLoader(String id) { return Optional.of(codeLoader); }
-            public Optional<ILabelProvider> getLabelProvider() { return Optional.empty(); }
+            public Optional<ILabelProvider> getLabelProvider() { return Optional.of(LABEL_OR_NAME); }
             public Optional<String> getVariant() { return Optional.empty(); }
         };
     }
@@ -1456,15 +1456,16 @@ public final class RuntimeLaws {
             // The $field$ display-name resolver — label-for-locale (non-blank) else the field name. Mirrors
             // KernelAdapter's provider, so a differential compares the interpreter's render to the kernel's
             // label-aware render (not the path+index fallback the kernel emits with no provider).
-            public Optional<ILabelProvider> getLabelProvider() {
-                return Optional.of((field, locale) -> {
-                    String label = field.getLabel().get(locale);
-                    return Optional.of(label != null && !label.isBlank() ? label : field.getName());
-                });
-            }
+            public Optional<ILabelProvider> getLabelProvider() { return Optional.of(LABEL_OR_NAME); }
             public Optional<IDocumentModelIdProvider> getModelIdProvider() { return Optional.empty(); }
         };
     }
+
+    /** One explicit display-name profile on both kernel strategies, so a differential isolates generated code. */
+    private static final ILabelProvider LABEL_OR_NAME = (field, locale) -> {
+        String label = field.getLabel().get(locale);
+        return Optional.of(label != null && !label.isBlank() ? label : field.getName());
+    };
 
     private static String modelId(String modelJson) {
         Matcher m = HEADER_ID.matcher(modelJson);

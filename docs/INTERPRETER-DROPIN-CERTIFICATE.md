@@ -100,6 +100,7 @@ Status legend: **GREEN** = differentially proven identical to the kernel · **DO
 |---|---|---|---|
 | rule/computation message: value interpolation `$field.value$` | GREEN | `MessageValueDisplayPolicyDiffTest`, `LocalizedMessageDiffTest`, `UnspecifiedValueInterpolationDiffTest` (IF201: raw display channel; null/empty ⇒ exact admitted format default) | — |
 | rule/computation message: display-name `$field$` | GREEN | `DisplayNameDiffTest` + multiplatform `MessageDisplayPolicyTest` (IF201: provider result, including empty, then model label, then indexed debug path) | — |
+| field-owned String-pattern / requiredness custom message text | GAP | `FieldConstraintFormalDiffTest` (exact `en_US` grammar, `$$` refusal, opaque insertion) + `RequirednessDiffTest` (dual-strategy accepted/preserved `$$`) | IG109 — `ModelLoader` does not retain either template channel |
 | rich message channels (`referenced` operands, `fillToFix` for OMISSION, polarity VALUE/OMISSION) | GREEN | `RichMessageDiffTest`, `FullMessageFuzzDiffTest` (trips on wrong polarity / right-code-wrong-row) | — |
 | **formal-error** message TEXT | DOC-EQUIV | `FormalErrorMessageDiffTest` — code + pointer + severity + type match the kernel as a SET; the human TEXT is the interpreter's OWN wording (Option A) | R7 (§3) |
 | output: `field` pointer shape | DOC-EQUIV | `InterpreterEngine` renders the resolved *path*, not the kernel's verbose pointer object | R3 (§3) |

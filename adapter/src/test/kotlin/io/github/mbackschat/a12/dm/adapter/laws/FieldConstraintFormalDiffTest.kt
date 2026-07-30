@@ -1,5 +1,6 @@
 package io.github.mbackschat.a12.dm.adapter.laws
 
+import com.mgmtp.a12.kernel.md.rt.api.DocumentValidationException
 import io.github.mbackschat.a12.dm.interpreter.DmInterpreter
 import io.github.mbackschat.a12.dm.interpreter.eval.newDocument
 import io.github.mbackschat.a12.dm.interpreter.eval.FORMAL_RULE_PATH
@@ -7,8 +8,11 @@ import io.github.mbackschat.a12.dm.interpreter.model.FieldDef
 import io.github.mbackschat.a12.dm.interpreter.model.Kind
 import io.github.mbackschat.a12.dm.interpreter.model.ModelDef
 import io.github.mbackschat.a12.dm.interpreter.model.RuleDef
+import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertThrows
 import org.junit.jupiter.api.Test
+import java.util.Locale
 
 /**
  * Differential for the IF20 declared field-type CONSTRAINT checks — string length/pattern, enum value-domain,
@@ -20,6 +24,83 @@ import org.junit.jupiter.api.Test
 class FieldConstraintFormalDiffTest {
 
     private val order = RuntimeLaws.model("models/order.dm.json")
+
+    /**
+     * EXP-2026-07-30-01 — field-owned templates have a locale-fixed token grammar distinct from rule messages.
+     * Keep this on the typed modelkit surface: the experiment is about the kernel's text checker and runtime
+     * renderer, not about whether hand-written DM-JSON happens to bind.
+     */
+    @Test
+    fun fieldOwnedErrorTextStaticEnglishTokenMatrix() {
+        val observed = listOf("\$field\$", "\$field.value\$", "\$Field\$", "\$Code\$").associateWith {
+            RuntimeLaws.consistencyMessages(fieldMessageModel(it))
+        }
+
+        assertEquals(
+            mapOf(
+                "\$field\$" to emptyList(),
+                "\$field.value\$" to emptyList(),
+                "\$Field\$" to listOf(
+                    "ERROR: Field with path '/Order/Code': Field '/Order/Code' is invalid: " +
+                        "The error text parameter 'Field' is not valid. [INVALID_PARAMETER]",
+                ),
+                "\$Code\$" to listOf(
+                    "ERROR: Field with path '/Order/Code': Field '/Order/Code' is invalid: " +
+                        "The error text parameter 'Code' is not valid. [INVALID_PARAMETER]",
+                ),
+            ),
+            observed,
+        )
+    }
+
+    @Test
+    fun fieldOwnedPatternTextRejectsLiteralDollarAsAnEmptyParameter() {
+        val model = fieldMessageModel("Cost \$\$ \$field\$")
+        val diagnostic = "Field with path '/Order/Code': Field '/Order/Code' is invalid: " +
+            "The error text parameter '' is not valid. [INVALID_PARAMETER]"
+        assertEquals(
+            listOf("ERROR: $diagnostic"),
+            RuntimeLaws.consistencyMessages(model),
+        )
+
+        val document = RuntimeLaws.doc().group("/Order", 1).field("/Order/Code", "bad", 1, 1)
+        val dynamic = assertThrows(DocumentValidationException::class.java) {
+            RuntimeLaws.errorTextOf(model, "stringFalschesMuster", document, Locale.US)
+        }
+        val generated = assertThrows(IllegalStateException::class.java) {
+            RuntimeLaws.kernelJavaEngine(model)
+        }
+        assertEquals("Following errors were found while generating code: $diagnostic", dynamic.message)
+        assertEquals(
+            "generateValidationCode(JAVA) returned null; notifications=[" +
+                "ERROR: Field '/Order/Code' is invalid: The error text parameter '' is not valid. " +
+                "[INVALID_PARAMETER]]",
+            generated.message,
+        )
+    }
+
+    @Test
+    fun fieldOwnedPatternValueReplacementIsStagedOnce() {
+        assertFieldErrorText("Value [\$field.value\$]", "\$field\$", "Value [\$field\$]")
+    }
+
+    private fun assertFieldErrorText(template: String, value: String, expected: String) {
+        val model = fieldMessageModel(template)
+        val document = RuntimeLaws.doc().group("/Order", 1).field("/Order/Code", value, 1, 1)
+        val dynamic = RuntimeLaws.errorTextOf(model, "stringFalschesMuster", document, Locale.US).orElseThrow()
+        val java = RuntimeLaws.kernelJavaEngine(model)
+        val generated = java.errorTextOf(java.instance(document), "stringFalschesMuster", Locale.US).orElseThrow()
+
+        assertEquals(expected, dynamic, "$template — dynamic Groovy")
+        assertEquals(dynamic, generated, "$template — generated Java")
+    }
+
+    private fun fieldMessageModel(template: String): String =
+        DocumentModelDraft.named("field-message").locale("en_US")
+            .rootGroup("Order") { order ->
+                order.stringField("Code") { it.pattern("[A-Z]+", template) }
+            }
+            .build().toJson()
 
     /** Splice [fieldJson] into /Order's elements (the kernel side) and return the model JSON. */
     private fun withField(fieldJson: String): String {
