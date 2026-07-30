@@ -156,7 +156,7 @@ sealed interface io.github.mbackschat.a12.dm.interpreter/RelevantEntityPointer :
 
 final class io.github.mbackschat.a12.dm.interpreter/A12Pointer // io.github.mbackschat.a12.dm.interpreter/A12Pointer|null[0]
 
-final class io.github.mbackschat.a12.dm.interpreter/ComputationReport // io.github.mbackschat.a12.dm.interpreter/ComputationReport|null[0]
+final class io.github.mbackschat.a12.dm.interpreter/ComputationReport : io.github.mbackschat.a12.dm.interpreter/ModelOwned // io.github.mbackschat.a12.dm.interpreter/ComputationReport|null[0]
 
 final class io.github.mbackschat.a12.dm.interpreter/ComputationResult // io.github.mbackschat.a12.dm.interpreter/ComputationResult|null[0]
 

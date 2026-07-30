@@ -3,13 +3,14 @@ package io.github.mbackschat.a12.dm.interpreter.eval
 /**
  * The stored state of one field cell — the [Document.cellStateAt] result. ABSENT, PRESENT-EMPTY, and
  * PRESENT-VALUE are kept distinct (never collapsed), mirroring the three states the kernel's
- * apply-to-a-fresh-`DocumentV2` route leaves per cell (`IDocumentComputationResult.applyTo`;
+ * application routes leave per cell (`IDocumentComputationResult.applyTo`;
  * KERNEL-FINDINGS §11 "post-application cell state"):
  *
  * - a computed VALUE is set (creating the cell — missing ancestor rows included — when absent);
- * - a CLEARED or ERRORED instance **empties a present cell but never creates one** — the kernel mints a
- *   cleared instance only for an input-filled cell, and applies an errored one only when the instance
- *   exists, so an absent target stays [Absent];
+ * - a source-classified CLEARED action creates a present-empty destination cell and any addressed missing
+ *   ancestry, while ERRORED clears only an existing destination cell;
+ * - on same-document compute-and-apply, CLEARED can only come from an input-filled target, so that route
+ *   empties a cell already present in the source;
  * - an untouched cell keeps its placement state.
  *
  * [PresentValue.raw] is the raw **stored** text exactly as placed or computed — the eval-side CRLF→LF

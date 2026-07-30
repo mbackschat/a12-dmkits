@@ -4,6 +4,7 @@ import {
   DocumentCoordinateError,
   DocumentInputError,
   InterpreterIntegrationError,
+  ModelOwnerMismatchError,
   ModelWorkspace,
   PreparedModel,
   type CustomCondition,
@@ -93,9 +94,31 @@ if (validation.findings.length !== 1 ||
 }
 const computation = interpreter.compute(snapshot, {locale: "en_US"});
 if (computation.results.length !== 1 ||
+    computation.actions.length !== 1 ||
     computation.results[0]?.pointer.path !== "/Permit/ReviewedArea" ||
     computation.results[0]?.value !== "125") {
   throw new Error("computation did not return the expected target value");
+}
+const applied = computation.applyTo(prepared.documents.readDocument({Permit: {}}));
+if (prepared.documents.encodeDocumentJson(applied) !==
+    '{"Permit":{"ReviewedArea":125}}' ||
+    prepared.documents.encodeDocumentJson(interpreter.applyComputations(snapshot)) !==
+    '{"Permit":{"ApplicationNo":"P-1","RequestedArea":125,"ReviewedArea":125}}') {
+  throw new Error("retained computation application returned an unexpected Document");
+}
+const unchanged = interpreter.compute(prepared.documents.readDocument({
+  Permit: {ApplicationNo: "P-1", RequestedArea: 125, ReviewedArea: 125},
+}));
+if (unchanged.actions.length !== 0) {
+  throw new Error("a typed source-equal Number became a retained VALUE action");
+}
+try {
+  computation.applyTo(preparedIncluded.documents.readDocument({}));
+  throw new Error("retained computation accepted a foreign model owner");
+} catch (error) {
+  if (!(error instanceof ModelOwnerMismatchError)) {
+    throw error;
+  }
 }
 
 const canonical = prepared.documents.encodeDocumentJson(snapshot);

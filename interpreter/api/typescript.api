@@ -26,8 +26,10 @@ export type ComputationOutcome = "value" | "cleared" | "errored";
 ## ComputationReport
 export interface ComputationReport {
     readonly results: readonly ComputationResult[];
+    readonly actions: readonly ComputationResult[];
     readonly unsupported: readonly UnsupportedProgram[];
     readonly fullySupported: boolean;
+    applyTo(destination: DocumentSnapshot): DocumentSnapshot;
 }
 
 ## ComputationResult
@@ -171,6 +173,7 @@ export declare class Interpreter {
     validateFull(snapshot: DocumentSnapshot, options?: ValidationOptions): ValidationReport;
     validatePart(snapshot: DocumentSnapshot, relevant: readonly RelevantEntityPointer[], options?: ValidationOptions): ValidationReport;
     compute(snapshot: DocumentSnapshot, options?: ComputeOptions): ComputationReport;
+    applyComputations(snapshot: DocumentSnapshot, options?: ComputeOptions): DocumentSnapshot;
 }
 
 ## InterpreterConfiguration

@@ -77,13 +77,23 @@ export function runInterpreter(rawModelJson: string) {
 }
 ```
 
-`validateFull` evaluates the whole Document. `validatePart` evaluates the model-defined effects of the supplied concrete or `"ALL"` relevance pointers; a passing partial result does not imply that full validation passes. `compute` returns detached outcomes and does not mutate the snapshot.
+`validateFull` evaluates the whole Document. `validatePart` evaluates the model-defined effects of the supplied concrete or `"ALL"` relevance pointers; a passing partial result does not imply that full validation passes. `compute` returns an immutable retained result and does not mutate the snapshot.
 
 Each report has an explicit `unsupported` collection and `fullySupported` flag. Validation additionally separates `noErrorOccurred` from support: a report can contain no error-severity finding and still be incomplete because a program is unsupported.
 
+### Retain once, apply to the same or another Document
+
+`ComputationReport.results` reports every computed cell. `ComputationReport.actions` is the source-relative subset retained for application: changed VALUE, source-filled CLEARED, and ERRORED outcomes. `report.applyTo(destination)` applies that fixed subset without recomputing against the destination. VALUE and CLEARED create the addressed target and any missing repeatable ancestry; ERRORED clears only an existing target; no action leaves the destination unchanged.
+
+The source and destination may be different immutable snapshots but must belong to the same `PreparedModel` owner. A foreign owner fails with `ModelOwnerMismatchError` before application. This is an interpreter API safety boundary; Kernel model compatibility is a caller precondition. If computation is unsupported, the report has no complete action set and applying it returns the destination unchanged.
+
+The contract is the same in TypeScript, Kotlin, and Java: retain with `val retained = interpreter.compute(source)` (or TypeScript/Java's equivalent), apply separately with `retained.applyTo(destination)`, or use `interpreter.applyComputations(source)` for the same-document route.
+
+`applyComputations(source)` is exactly the one-call convenience for `compute(source).applyTo(source)`. All routes leave both input snapshots unchanged.
+
 ## 4. Reuse for form input
 
-Keep one `PreparedModel` and one configured `Interpreter` for a form or request scope. After an input change, decode the new Document state and validate the resulting snapshot against the retained interpreter. Model parsing, executable preparation, and bounded model-owned caches are reused; each evaluation call owns its transient state and detached result.
+Keep one `PreparedModel` and one configured `Interpreter` for a form or request scope. After an input change, decode the new Document state and validate the resulting snapshot against the retained interpreter. Model parsing, executable preparation, and bounded model-owned caches are reused; each evaluation call owns its transient state and immutable result.
 
 This is optional state reuse at the application boundary, not a mutable editing session. The public Document snapshot remains immutable, and a snapshot or pointer from another preparation fails with `ModelOwnerMismatchError`.
 

@@ -1,6 +1,7 @@
 package io.github.mbackschat.a12.dm.interpreter
 
 import io.github.mbackschat.a12.dm.interpreter.model.ComputeOutcome as EngineComputeOutcome
+import io.github.mbackschat.a12.dm.interpreter.eval.ComputationApplication
 import io.github.mbackschat.a12.dm.interpreter.model.CustomCondition as EngineCustomCondition
 import io.github.mbackschat.a12.dm.interpreter.model.CustomConditionData as EngineCustomConditionData
 import io.github.mbackschat.a12.dm.interpreter.model.CustomConditionFieldPointer
@@ -387,21 +388,69 @@ data class ComputationResult(
     val value: String?,
 )
 
-/** Detached report for the model's computations; unsupported work never fabricates a computed value. */
+/**
+ * Immutable retained result for one source computation. `results` remains the report-all observation; `actions`
+ * is its source-relative application subset. Applying to another snapshot never recomputes against that
+ * destination.
+ *
+ * Compatibility is the interpreter's existing model-ownership safety contract: [applyTo] accepts only a
+ * snapshot from the same [PreparedModel] owner. The Kernel treats model compatibility as a caller precondition;
+ * this explicit refusal is a stronger library boundary, not a claimed Kernel rejection.
+ */
 class ComputationReport private constructor(
     results: List<ComputationResult>,
+    actions: List<ComputationResult>,
     unsupported: List<UnsupportedProgram>,
-) {
+    override val owner: ModelOwnerIdentity,
+    override val modelVersion: ModelVersionIdentity,
+) : ModelOwned {
     val results: List<ComputationResult> = immutableListSnapshot(results)
+    val actions: List<ComputationResult> = immutableListSnapshot(actions)
     val unsupported: List<UnsupportedProgram> = immutableListSnapshot(unsupported)
     val fullySupported: Boolean get() = unsupported.isEmpty()
+
+    /**
+     * Apply the actions already classified against the computation source to [destination]. VALUE and CLEARED
+     * materialize a missing addressed target and ancestry; ERRORED clears only an existing destination target.
+     * Unsupported computation is atomic: with no complete action set, the destination snapshot is returned
+     * unchanged.
+     *
+     * @throws ModelOwnerMismatchError when [destination] belongs to another prepared owner.
+     */
+    fun applyTo(destination: DocumentSnapshot): DocumentSnapshot {
+        if (destination.owner !== owner) {
+            throw ModelOwnerMismatchError.of(expected = owner, actual = destination.owner)
+        }
+        if (!fullySupported || actions.isEmpty()) return destination
+        val applications = actions.map { action ->
+            ComputationApplication(
+                path = action.pointer.path,
+                reps = action.pointer.coordinates,
+                outcome = when (action.outcome) {
+                    ComputationOutcome.VALUE -> EngineComputeOutcome.VALUE
+                    ComputationOutcome.CLEARED -> EngineComputeOutcome.CLEARED
+                    ComputationOutcome.ERRORED -> EngineComputeOutcome.ERRORED
+                },
+                value = action.value,
+            )
+        }
+        return DocumentSnapshot.of(
+            owner = owner,
+            modelVersion = modelVersion,
+            documentId = destination.documentId,
+            document = destination.document().withComputationApplications(applications),
+        )
+    }
 
     companion object {
         @JvmSynthetic
         internal fun create(
             results: List<ComputationResult>,
+            actions: List<ComputationResult>,
             unsupported: List<UnsupportedProgram>,
-        ): ComputationReport = ComputationReport(results, unsupported)
+            owner: ModelOwnerIdentity,
+            modelVersion: ModelVersionIdentity,
+        ): ComputationReport = ComputationReport(results, actions, unsupported, owner, modelVersion)
     }
 }
 
@@ -746,7 +795,8 @@ class Interpreter private constructor(
     fun compute(snapshot: DocumentSnapshot, locale: String = "en_US"): ComputationReport =
         evaluate(snapshot) {
             try {
-                val results = engine.compute(snapshot.document(), locale).map { computed ->
+                val retained = engine.retainedComputations(snapshot.document(), locale)
+                val results = retained.results.map { computed ->
                     ComputationResult(
                         pointer = metadata.pointer(computed.path, computed.indices) as FieldPointer,
                         outcome = when (computed.outcome) {
@@ -757,14 +807,34 @@ class Interpreter private constructor(
                         value = computed.value,
                     )
                 }
-                ComputationReport.create(results, emptyList())
+                val byCell = results.associateBy { it.pointer.path to it.pointer.coordinates }
+                val actions = retained.applications.map { action ->
+                    checkNotNull(byCell[action.path to action.reps]) {
+                        "retained computation action has no report-all result at ${action.path}"
+                    }
+                }
+                ComputationReport.create(
+                    results = results,
+                    actions = actions,
+                    unsupported = emptyList(),
+                    owner = owner,
+                    modelVersion = modelVersion,
+                )
             } catch (error: UnsupportedConstructException) {
                 ComputationReport.create(
                     results = emptyList(),
+                    actions = emptyList(),
                     unsupported = listOf(UnsupportedProgram("<compute>", error.message.orEmpty())),
+                    owner = owner,
+                    modelVersion = modelVersion,
                 )
             }
         }
+
+    /** Same-document compute-and-apply convenience, defined as one retained [compute] followed by [ComputationReport.applyTo]. */
+    @JvmOverloads
+    fun applyComputations(snapshot: DocumentSnapshot, locale: String = "en_US"): DocumentSnapshot =
+        compute(snapshot, locale).applyTo(snapshot)
 
     private fun validationReport(outcome: ValidationOutcome): ValidationReport =
         ValidationReport.create(

@@ -23,6 +23,10 @@ This changelog covers the independently consumable interpreter packages, API doc
 - A confirm field's `false` is written back as the string `"false"`, not as a JSON boolean: A12's converter accepts only `true` for a confirm, so `false` is a value it could not convert.
 - The canonical pointer utility (`A12PointerFormat`) constructed an invalid regular expression on Kotlin/JS, so parsing a pointer failed on that target.
 
+### Added
+
+- **Computation results are retained and can be applied to another immutable Document snapshot.** `ComputationReport.results` remains report-all, while `actions` exposes the source-relative application subset and `applyTo(destination)` consumes it without recomputing. VALUE and CLEARED create an addressed missing target and ancestry; ERRORED clears only an existing target. Kotlin, Java, and TypeScript also expose `Interpreter.applyComputations(source)` as the same-document convenience. A destination from another prepared owner fails with `ModelOwnerMismatchError`.
+
 ## [0.9.1]
 
 Initial public release.

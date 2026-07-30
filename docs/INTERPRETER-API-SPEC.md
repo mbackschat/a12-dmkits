@@ -197,18 +197,19 @@ Audited 2026-07-28 against the kernel's runtime API. `ValidationSeverity{ERROR, 
 
 `PreparedModel.createInterpreter` creates an active evaluator with an optional immutable `InterpreterConfiguration`. A prepared model contains no request document or callback instance. A document snapshot is immutable from the public surface.
 
-Callers may retain one prepared model and interpreter and validate successive document snapshots, which is the ordinary dynamic-form use case. Model parsing, executable preparation, and bounded model-owned caches are reused; each validation or computation call owns its transient evaluation state and detached result.
+Callers may retain one prepared model and interpreter and validate successive document snapshots, which is the ordinary dynamic-form use case. Model parsing, executable preparation, and bounded model-owned caches are reused; each validation or computation call owns its transient evaluation state and immutable result.
 
 The v1 API provides:
 
 - `supportReport()` for configuration-aware model support without evaluating a document;
 - `validateFull(snapshot, options?)`;
 - `validatePart(snapshot, relevant, options?)`;
-- `compute(snapshot, options?)`.
+- `compute(snapshot, options?)`, whose retained `ComputationReport` exposes report-all `results`, source-relative `actions`, and `applyTo(destination)`;
+- `applyComputations(snapshot, options?)`, the exact same-document convenience for `compute(snapshot).applyTo(snapshot)`.
 
 Validation returns detached `ValidationFinding` records with code, rule path, error path, severity, value/omission type, rendered text, referenced paths, and fill-to-fix paths. `noErrorOccurred` depends on error severity, while `fullySupported` is independent and is false whenever an admitted program could not be evaluated.
 
-Computation returns detached field-pointer outcomes of `"value"`, `"cleared"`, or `"errored"` plus the same explicit unsupported axis. The public convenience methods never silently discard unsupported programs.
+Computation returns retained field-pointer outcomes of `"value"`, `"cleared"`, or `"errored"` plus the same explicit unsupported axis. `results` contains every computed cell; `actions` is the fixed application subset classified against the source. Applying that result to another immutable snapshot never recomputes against the destination. Both snapshots must share the same prepared-model owner or application fails with `ModelOwnerMismatchError`; unsupported computation applies atomically as a no-op. The public convenience methods never silently discard unsupported programs.
 
 Partial validation preserves the Kernel-grounded relevance contract:
 

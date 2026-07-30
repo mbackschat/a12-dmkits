@@ -184,6 +184,48 @@ kotlin.sourceSets.commonTest.kotlin.srcDir(generatedFootprintFixtureDir)
 tasks.named('compileTestKotlinJvm') { dependsOn generateFootprintFixtureSource }
 tasks.named('compileTestKotlinJs') { dependsOn generateFootprintFixtureSource }
 
+// The retained-result differential model follows the same typed-author → committed serialization → common
+// JVM/Node embedding route as the footprint fixtures. Its author and freshness guard live in :adapter.
+def retainedComputationFixture = file(
+    'src/commonTest/resources/retained-result/order-clear-actions.dm.json',
+)
+def generatedRetainedComputationFixtureDir = layout.buildDirectory
+    .dir('generated/retainedComputationFixture/commonTest/kotlin')
+    .get()
+    .asFile
+def generatedRetainedComputationFixtureSource = new File(
+    generatedRetainedComputationFixtureDir,
+    'io/github/mbackschat/a12/dm/interpreter/retained/RetainedComputationModelFixture.kt',
+)
+def generateRetainedComputationFixtureSource = tasks.register('generateRetainedComputationFixtureSource') {
+    group = 'build'
+    description = 'Embed the typed-authored retained-result model for common JVM/Node tests.'
+    inputs.file(retainedComputationFixture)
+        .withPropertyName('typedRetainedComputationModel')
+        .withPathSensitivity(org.gradle.api.tasks.PathSensitivity.RELATIVE)
+    outputs.file(generatedRetainedComputationFixtureSource)
+    doLast {
+        if (!retainedComputationFixture.isFile()) {
+            throw new GradleException(
+                "missing typed retained-result model; run :adapter:syncRetainedComputationFixture")
+        }
+        def literal = groovy.json.JsonOutput.toJson(
+            retainedComputationFixture.getText('UTF-8'),
+        ).replace('$', '\\$')
+        generatedRetainedComputationFixtureSource.parentFile.mkdirs()
+        generatedRetainedComputationFixtureSource.text = """\
+package io.github.mbackschat.a12.dm.interpreter.retained
+
+internal object RetainedComputationModelFixture {
+    const val JSON: String = ${literal}
+}
+"""
+    }
+}
+kotlin.sourceSets.commonTest.kotlin.srcDir(generatedRetainedComputationFixtureDir)
+tasks.named('compileTestKotlinJvm') { dependsOn generateRetainedComputationFixtureSource }
+tasks.named('compileTestKotlinJs') { dependsOn generateRetainedComputationFixtureSource }
+
 // Typed performance models follow the same boundary as the footprint fixtures: :adapter authors and
 // freshness-checks them through the kits; common JVM/Node workers consume one generated source without adding
 // a kit dependency to the standalone interpreter.

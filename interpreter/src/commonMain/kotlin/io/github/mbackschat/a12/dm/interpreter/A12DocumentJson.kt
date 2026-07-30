@@ -1,6 +1,7 @@
 package io.github.mbackschat.a12.dm.interpreter
 
 import io.github.mbackschat.a12.dm.interpreter.eval.Document
+import io.github.mbackschat.a12.dm.interpreter.eval.DecimalObjectIdentity
 import io.github.mbackschat.a12.dm.interpreter.eval.DocumentPlacementRecord
 import io.github.mbackschat.a12.dm.interpreter.eval.newDocument
 import io.github.mbackschat.a12.dm.interpreter.model.Kind
@@ -165,11 +166,17 @@ internal object A12DocumentJson {
      * [evaluation] what the runtime hands every evaluation channel. `null` in both slots is the empty cell.
      *
      * They differ for exactly one thing: a **converted NUMBER** whose serializer and runtime renderings disagree
-     * (IF231). Every other kind — and A12's own pass-through of a value its converter rejects, which stays a
-     * `String` that `ValidationData.getValue` returns unchanged — carries one text in both slots.
+     * (IF231). That Number also retains [numberIdentity], because source-relative computation classification
+     * compares its converted coefficient and scale rather than either text. Every other kind — and A12's own
+     * pass-through of a value its converter rejects, which stays a `String` that `ValidationData.getValue`
+     * returns unchanged — carries one text in both slots.
      */
-    private data class CellText(val evaluation: String?, val stored: String?) {
-        constructor(one: String?) : this(one, one)
+    private data class CellText(
+        val evaluation: String?,
+        val stored: String?,
+        val numberIdentity: DecimalObjectIdentity? = null,
+    ) {
+        constructor(one: String?) : this(one, one, null)
 
         companion object {
             val EMPTY = CellText(null)
@@ -205,7 +212,11 @@ internal object A12DocumentJson {
                 val converted = canonicalNumberOrNull(raw)
                     ?.takeUnless { path in leadingZeroNumbers && hasLeadingZeros(raw) }
                 if (converted == null) CellText(raw)   // A12's pass-through: a String, read back unchanged
-                else CellText(runtimeNumberForm(converted, minFractionalDigitsOf(path)), converted)
+                else CellText(
+                    runtimeNumberForm(converted, minFractionalDigitsOf(path)),
+                    converted,
+                    DecimalObjectIdentity.parse(raw),
+                )
             }
         }
         Kind.BOOLEAN -> when {
@@ -329,7 +340,11 @@ internal object A12DocumentJson {
                     placement.isGroup -> document.group(placement.path, *coordinates)
                     text.stored == null -> document.emptyField(placement.path, *coordinates)
                     else -> document.renderedField(
-                        placement.path, text.evaluation!!, text.stored, *coordinates,
+                        path = placement.path,
+                        evaluationValue = text.evaluation!!,
+                        storedValue = text.stored,
+                        numberIdentity = text.numberIdentity,
+                        reps = coordinates,
                     )
                 }
             }

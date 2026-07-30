@@ -431,6 +431,24 @@ public final class RuntimeLaws {
     }
 
     /**
+     * Render an explicit placement fixture through A12's own V1→V2 converter and canonical V2 serializer.
+     * Retained-result differentials use this to feed the identical document to the standalone public JSON
+     * boundary without maintaining a second, invented placement-to-tree encoder.
+     */
+    static String canonicalDocumentJson(String modelJson, Doc doc) {
+        IDocumentModel model = expandedModel(modelJson);
+        IDocumentModelResolver resolver = id -> model;
+        DocumentServiceFactory dsf = new DocumentServiceFactory(resolver);
+        DocumentV2 v2 = dsf.createDocumentV1V2Converter().ofDocumentV1(
+                buildInstance(modelJson, dsf.createDocumentFactory(), doc));
+        IDocumentV2Serializer serializer = new MDSerializerFactory().createDocumentSerializerV2(resolver);
+        StringWriter rewritten = new StringWriter();
+        serializer.serializeV2(v2, rewritten, DocumentSerializationConfig.builder()
+                .prettyJsonPrinter(new MinimalPrettyPrinter()).build());
+        return rewritten.toString();
+    }
+
+    /**
      * Read A12's own nested Document JSON into its established {@link DocumentV2} domain type. This is the
      * narrow typed-source seam for laws whose observation depends on the stored V2 value class or decimal scale;
      * ordinary runtime laws keep using the {@link Doc} builder's deliberate V1/String profile.

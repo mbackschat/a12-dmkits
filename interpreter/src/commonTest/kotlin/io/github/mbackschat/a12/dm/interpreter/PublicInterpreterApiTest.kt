@@ -77,6 +77,31 @@ class PublicInterpreterApiTest {
     }
 
     @Test
+    fun retainedNumberActionsUseTheTypedSourceCoefficientAndScale() {
+        val prepared = preparedPermit()
+        val interpreter = prepared.createInterpreter()
+
+        val same = interpreter.compute(
+            prepared.documents.readDocument(
+                """{"Permit":{"ApplicationNo":"P-1","RequestedArea":100,"ReviewedArea":100}}""",
+            ),
+        )
+        val negativeScale = interpreter.compute(
+            prepared.documents.readDocument(
+                """{"Permit":{"ApplicationNo":"P-1","RequestedArea":100,"ReviewedArea":1e2}}""",
+            ),
+        )
+
+        assertTrue(same.results.single().outcome == ComputationOutcome.VALUE)
+        assertTrue(same.actions.isEmpty(), "BigDecimal(100) equals the computed BigDecimal(100)")
+        assertEquals(
+            listOf(ComputationOutcome.VALUE),
+            negativeScale.actions.map(ComputationResult::outcome),
+            "BigDecimal(1e2) has scale -2 and is not object-equal to computed BigDecimal(100) scale 0",
+        )
+    }
+
+    @Test
     fun explicitCustomizationRegistriesRejectEmptyAndDuplicateNames() {
         assertEquals(
             CustomizationRegistrationReason.EMPTY_NAME,

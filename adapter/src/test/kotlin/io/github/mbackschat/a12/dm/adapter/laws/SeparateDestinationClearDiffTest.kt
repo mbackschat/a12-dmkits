@@ -1,8 +1,6 @@
 package io.github.mbackschat.a12.dm.adapter.laws
 
-import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft
-import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel
-import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl
+import io.github.mbackschat.a12.dm.interpreter.PreparedModel
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertTrue
@@ -13,32 +11,14 @@ import org.junit.jupiter.api.Test
  * another compatible destination. A source-classified CLEARED action is therefore tested against absent
  * destination topology, separately from same-document compute/application.
  *
- * Dynamic Groovy and generated Java use the existing retained-result `applyTo(destination)` route. The
- * interpreter is deliberately absent: its public `applyComputations(document)` computes and applies one
- * document and cannot retain a source result for application to another destination.
+ * Dynamic Groovy, generated Java, and the standalone interpreter use their retained-result
+ * `compute(source).applyTo(destination)` routes.
  */
 class SeparateDestinationClearDiffTest {
 
-    private val model = run {
-        val base = DocumentModelDraft.named("order-clear-actions").locale("en_US")
-            .rootGroup("Order") { order ->
-                order.group("Lines") { lines ->
-                    lines.repeatable(5)
-                        .numberField("Candidate") { it.fractionDigits(0) }
-                        .numberField("Amount") { it.fractionDigits(0).max("9") }
-                }
-            }
-            .build()
-            .toJson()
-        val bound = BoundModel.ofJson(base)
-        val computation = bound.computation(bound.num(AMOUNT)).name("AmountProjection")
-            .commonPrecondition(bound.num(CANDIDATE).filled())
-            .calc(bound.num(CANDIDATE).value())
-            .message(Dsl.en("Project the selected amount."))
-            .build()
-        TypedRules.inject(base, computation)
-    }
+    private val model = RetainedComputationFixture.modelJson()
     private val java = RuntimeLaws.kernelJavaEngine(model)
+    private val prepared = PreparedModel.loadExpandedJson(model)
     private val probe = listOf(RuntimeLaws.CellProbe(AMOUNT, CELL))
 
     @Test
@@ -116,9 +96,25 @@ class SeparateDestinationClearDiffTest {
         val expected = listOf("$AMOUNT|$expectedState")
         val dynamic = RuntimeLaws.appliedStatesToDestination(model, source, destination, probe)
         val generated = java.appliedStatesToDestination(source, destination, probe)
+        val standalone = interpreterState(source, destination)
 
         assertEquals(expected, dynamic, "$label — dynamic Groovy")
         assertEquals(dynamic, generated, "$label — generated Java")
+        assertEquals(dynamic, standalone, "$label — standalone interpreter")
+    }
+
+    private fun interpreterState(source: RuntimeLaws.Doc, destination: RuntimeLaws.Doc): List<String> {
+        val sourceSnapshot = prepared.documents.readDocument(RuntimeLaws.canonicalDocumentJson(model, source))
+        val destinationSnapshot = prepared.documents.readDocument(RuntimeLaws.canonicalDocumentJson(model, destination))
+        val report = prepared.createInterpreter().compute(sourceSnapshot)
+        val applied = report.applyTo(destinationSnapshot)
+        val encoded = prepared.documents.encodeDocument(applied)
+        val state = when {
+            "\"Amount\":null" in encoded -> "presentEmpty"
+            "\"Amount\":7" in encoded -> "presentValue|7"
+            else -> "absent"
+        }
+        return listOf("$AMOUNT|$state")
     }
 
     private fun rows(count: Int): RuntimeLaws.Doc = RuntimeLaws.doc().group(ROOT, 1).also { doc ->
@@ -128,10 +124,10 @@ class SeparateDestinationClearDiffTest {
     }
 
     private companion object {
-        const val ROOT = "/Order"
-        const val LINES = "$ROOT/Lines"
-        const val CANDIDATE = "$LINES/Candidate"
-        const val AMOUNT = "$LINES/Amount"
-        val CELL = listOf(1, 2, 1)
+        const val ROOT = RetainedComputationFixture.ROOT
+        const val LINES = RetainedComputationFixture.LINES
+        const val CANDIDATE = RetainedComputationFixture.CANDIDATE
+        const val AMOUNT = RetainedComputationFixture.AMOUNT
+        val CELL = RetainedComputationFixture.CELL
     }
 }

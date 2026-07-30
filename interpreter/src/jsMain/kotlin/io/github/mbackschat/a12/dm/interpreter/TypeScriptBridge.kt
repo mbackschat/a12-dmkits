@@ -408,24 +408,35 @@ class InterpreterBridgeComputedField internal constructor(
 
 @JsExport
 class InterpreterBridgeComputationReport internal constructor(
-    val results: Array<InterpreterBridgeComputedField>,
-    val unsupported: Array<InterpreterBridgeUnsupportedProgram>,
-    val fullySupported: Boolean,
+    private val core: CoreComputationReport,
 ) {
+    val results: Array<InterpreterBridgeComputedField> = core.results.map(::computedField).toTypedArray()
+    val actions: Array<InterpreterBridgeComputedField> = core.actions.map(::computedField).toTypedArray()
+    val unsupported: Array<InterpreterBridgeUnsupportedProgram> = core.unsupported.map { unsupported ->
+        InterpreterBridgeUnsupportedProgram(unsupported.path, unsupported.reason)
+    }.toTypedArray()
+    val fullySupported: Boolean = core.fullySupported
+
+    fun applyTo(destination: InterpreterBridgeDocumentSnapshot): InterpreterBridgeDocumentResult =
+        try {
+            InterpreterBridgeDocumentResult(
+                InterpreterBridgeDocumentSnapshot(core.applyTo(destination.core)),
+                null,
+            )
+        } catch (error: CoreModelOwnerMismatchError) {
+            InterpreterBridgeDocumentResult(null, ownerMismatchFailure(error))
+        }
+
     companion object {
         internal fun fromCore(report: CoreComputationReport): InterpreterBridgeComputationReport =
-            InterpreterBridgeComputationReport(
-                results = report.results.map { result ->
-                    InterpreterBridgeComputedField(
-                        pointer = InterpreterBridgePointer(result.pointer),
-                        outcome = result.outcome.wireName(),
-                        value = result.value,
-                    )
-                }.toTypedArray(),
-                unsupported = report.unsupported.map { unsupported ->
-                    InterpreterBridgeUnsupportedProgram(unsupported.path, unsupported.reason)
-                }.toTypedArray(),
-                fullySupported = report.fullySupported,
+            InterpreterBridgeComputationReport(report)
+
+        private fun computedField(result: io.github.mbackschat.a12.dm.interpreter.ComputationResult):
+            InterpreterBridgeComputedField =
+            InterpreterBridgeComputedField(
+                pointer = InterpreterBridgePointer(result.pointer),
+                outcome = result.outcome.wireName(),
+                value = result.value,
             )
     }
 }

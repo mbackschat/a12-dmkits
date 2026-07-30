@@ -8,6 +8,7 @@ import io.github.mbackschat.a12.dm.interpreter.ast.Val
 import io.github.mbackschat.a12.dm.interpreter.ast.emptyValue
 import io.github.mbackschat.a12.dm.interpreter.ast.typedValue
 import io.github.mbackschat.a12.dm.interpreter.model.CustomConditionData
+import io.github.mbackschat.a12.dm.interpreter.model.ComputeOutcome
 import io.github.mbackschat.a12.dm.interpreter.model.DatePrecision
 import io.github.mbackschat.a12.dm.interpreter.model.CustomConditionFieldPointer
 import io.github.mbackschat.a12.dm.interpreter.model.Kind
@@ -100,8 +101,14 @@ class Document(internal val config: DocumentConfig) {
      *  eval-side CRLF→LF normalization (IF124), and A12's number conversion, which renders one stored decimal
      *  twice (IF231 — set by [renderedField] at the Document-JSON ingress). [raw] is what [cellStateAt] and the
      *  encoder report; it defaults to [value] and is preserved by the normalizing `copy`. */
-    private data class Placement(val path: String, val reps: List<Int>, val value: String?, val isGroup: Boolean,
-        val raw: String? = value)
+    private data class Placement(
+        val path: String,
+        val reps: List<Int>,
+        val value: String?,
+        val isGroup: Boolean,
+        val raw: String? = value,
+        val numberIdentity: DecimalObjectIdentity? = null,
+    )
 
     /** One declared-tail decision for a starred field in a bound row scope (IF194). */
     private data class StarOmissionKey(val path: String, val bindDepth: Int, val scope: List<Int>)
@@ -129,7 +136,9 @@ class Document(internal val config: DocumentConfig) {
      * A field whose stored value was **converted at ingress**, so A12 renders it twice and the two texts differ:
      * [evaluationValue] is what every evaluation channel reads (the kernel's `IData` rendering) and
      * [storedValue] what the encoder writes back (the serializer rendering). A12's Document JSON ingress is the
-     * only caller — see `A12DocumentJson.runtimeNumberForm` and IF231.
+     * only caller — see `A12DocumentJson.runtimeNumberForm` and IF231. [numberIdentity] retains the converted
+     * Number object's coefficient and scale for source-relative change classification, including a negative
+     * scale that [storedValue]'s plain rendering cannot recover.
      *
      * A plain [field] fill sets both to the one text it is given, which is exactly A12's **String-valued** cell:
      * `ValidationData.getValue` returns such a value unchanged, so the authored text IS the evaluation text.
@@ -138,8 +147,9 @@ class Document(internal val config: DocumentConfig) {
         path: String,
         evaluationValue: String,
         storedValue: String,
+        numberIdentity: DecimalObjectIdentity? = null,
         vararg reps: Int,
-    ): Document = add(path, reps, evaluationValue, false, stored = storedValue)
+    ): Document = add(path, reps, evaluationValue, false, stored = storedValue, numberIdentity = numberIdentity)
 
     private fun add(
         path: String,
@@ -147,6 +157,7 @@ class Document(internal val config: DocumentConfig) {
         value: String?,
         isGroup: Boolean,
         stored: String? = value,
+        numberIdentity: DecimalObjectIdentity? = null,
     ): Document {
         val r = reps.toList()
         if (isGroup) {
@@ -154,7 +165,7 @@ class Document(internal val config: DocumentConfig) {
         } else {
             ancestorGroups(path).forEachIndexed { i, g -> autoGroup(g, r.take(i + 1)) }
             val evaluationValue = if (value.isNullOrEmpty()) null else value
-            placements += Placement(path, r, evaluationValue, false, raw = stored)
+            placements += Placement(path, r, evaluationValue, false, raw = stored, numberIdentity = numberIdentity)
         }
         invalidateDerivedCaches()   // every mutation clears ALL document-derived caches (IF142)
         return this
@@ -350,8 +361,7 @@ class Document(internal val config: DocumentConfig) {
                     overrides[key]?.let { copy.field(p.path, it, *p.reps.toIntArray()) }
                         ?: copy.emptyField(p.path, *p.reps.toIntArray())
                 }
-                p.value != null -> copy.field(p.path, p.value, *p.reps.toIntArray())
-                else -> copy.emptyField(p.path, *p.reps.toIntArray())
+                else -> copy.copyField(p)
             }
         }
         // A value computed into a cell with no prior placement (an empty computed field never present as a
@@ -360,6 +370,80 @@ class Document(internal val config: DocumentConfig) {
             if (key !in applied && value != null) copy.field(key.first, value, *key.second.toIntArray())
         }
         return copy
+    }
+
+    /**
+     * Apply retained, source-relative computation actions to this destination. VALUE and CLEARED are writes and
+     * therefore materialize their exact addressed ancestry; ERRORED is destination-presence-guarded. No action
+     * means no destination-relative inference.
+     */
+    internal fun withComputationApplications(actions: List<ComputationApplication>): Document {
+        val byCell = actions.associateBy { it.path to it.reps }
+        val copy = emptyCopy()
+        val applied = HashSet<Pair<String, List<Int>>>()
+        for (placement in placements) {
+            if (placement.isGroup) {
+                copy.group(placement.path, *placement.reps.toIntArray())
+                continue
+            }
+            val key = placement.path to placement.reps
+            val action = byCell[key]
+            when {
+                action == null -> copy.copyField(placement)
+                key in applied -> copy.copyField(placement)
+                else -> {
+                    applied += key
+                    when (action.outcome) {
+                        ComputeOutcome.VALUE -> copy.computedField(action)
+                        ComputeOutcome.CLEARED, ComputeOutcome.ERRORED ->
+                            copy.emptyField(action.path, *action.reps.toIntArray())
+                    }
+                }
+            }
+        }
+        for (action in actions) {
+            val key = action.path to action.reps
+            if (key in applied) continue
+            when (action.outcome) {
+                ComputeOutcome.VALUE -> copy.computedField(action)
+                ComputeOutcome.CLEARED -> copy.emptyField(action.path, *action.reps.toIntArray())
+                ComputeOutcome.ERRORED -> Unit
+            }
+        }
+        return copy
+    }
+
+    /** Whether this source cell's stored V2 object equals a clean computed value. */
+    internal fun computedValueEquals(path: String, reps: List<Int>, computed: String): Boolean {
+        val placement = valueAt(path, reps) ?: return false
+        return when (kinds[path]) {
+            Kind.TIME -> false
+            Kind.NUMBER -> placement.numberIdentity == DecimalObjectIdentity.parse(computed)
+            else -> placement.raw == computed
+        }
+    }
+
+    private fun Document.copyField(placement: Placement) {
+        add(
+            path = placement.path,
+            reps = placement.reps.toIntArray(),
+            value = placement.value,
+            isGroup = false,
+            stored = placement.raw,
+            numberIdentity = placement.numberIdentity,
+        )
+    }
+
+    private fun Document.computedField(action: ComputationApplication) {
+        val value = checkNotNull(action.value) { "a VALUE computation action must carry its stored value" }
+        add(
+            path = action.path,
+            reps = action.reps.toIntArray(),
+            value = value,
+            isGroup = false,
+            stored = value,
+            numberIdentity = if (kinds[action.path] == Kind.NUMBER) DecimalObjectIdentity.parse(value) else null,
+        )
     }
 
     /** An empty document carrying this one's [config] but no placements. Passing the single immutable

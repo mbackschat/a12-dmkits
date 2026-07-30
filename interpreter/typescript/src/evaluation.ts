@@ -61,11 +61,16 @@ export interface ComputationResult {
   readonly value?: string;
 }
 
-/** Detached computation outcomes and the independent support status. */
+/** Retained computation result: report-all outcomes, source-relative actions, and support status. */
 export interface ComputationReport {
+  /** Every computed cell, including successful values unchanged from the computation source. */
   readonly results: readonly ComputationResult[];
+  /** Source-relative VALUE/CLEARED/ERRORED actions retained for application. */
+  readonly actions: readonly ComputationResult[];
   readonly unsupported: readonly UnsupportedProgram[];
   readonly fullySupported: boolean;
+  /** Apply the retained source actions to another snapshot owned by the same prepared model. */
+  applyTo(destination: DocumentSnapshot): DocumentSnapshot;
 }
 
 /** Per-call locale for full or partial validation. */
@@ -113,9 +118,11 @@ const validationReport = (
 
 const computationReport = (
   report: InterpreterBridgeComputationReport,
-): ComputationReport =>
-  Object.freeze({
-    results: Object.freeze(report.results.map((result) => {
+): ComputationReport => {
+  const computedFields = (
+    values: typeof report.results,
+  ): readonly ComputationResult[] =>
+    Object.freeze(values.map((result) => {
       const pointer = pointerFromBridge(result.pointer);
       if (pointer.entityKind !== "field") {
         throw new Error("computation bridge returned a non-field target");
@@ -127,10 +134,24 @@ const computationReport = (
           ? {}
           : {value: result.value}),
       });
-    })),
+    }));
+  return Object.freeze({
+    results: computedFields(report.results),
+    actions: computedFields(report.actions),
     unsupported: unsupportedPrograms(report.unsupported),
     fullySupported: report.fullySupported,
+    applyTo(destination: DocumentSnapshot): DocumentSnapshot {
+      const result = report.applyTo(destination.bridgeValue());
+      if (result.failure !== null && result.failure !== undefined) {
+        throwBridgeFailure(result.failure);
+      }
+      if (result.value === null || result.value === undefined) {
+        throw new Error("interpreter bridge returned no applied document");
+      }
+      return DocumentSnapshot.fromBridge(result.value);
+    },
   });
+};
 
 /** Reusable evaluator bound to one prepared model and callback configuration. */
 export class Interpreter {
@@ -196,5 +217,13 @@ export class Interpreter {
       throw new Error("interpreter bridge returned no computation report");
     }
     return computationReport(result.value);
+  }
+
+  /** Compute once and apply that retained result back to the same immutable snapshot. */
+  applyComputations(
+    snapshot: DocumentSnapshot,
+    options?: ComputeOptions,
+  ): DocumentSnapshot {
+    return this.compute(snapshot, options).applyTo(snapshot);
   }
 }

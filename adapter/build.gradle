@@ -250,6 +250,7 @@ tasks.named('test') {
         dependsOn 'footprintFixtureGuardTest'
         dependsOn 'performanceFixtureGuardTest'
         dependsOn 'profileFixtureGuardTest'
+        dependsOn 'retainedComputationFixtureGuardTest'
         dependsOn 'workspacePreparationFixtureGuardTest'
     }
     dependsOn 'perfScriptGuardTest'
@@ -267,6 +268,7 @@ tasks.named('test') {
         excludeTestsMatching 'io.github.mbackschat.a12.dm.adapter.profile.ComputationPreconditionFidelityTest'
         excludeTestsMatching 'io.github.mbackschat.a12.dm.adapter.profile.ModelSynthesisFidelityTest'
         excludeTestsMatching 'io.github.mbackschat.a12.dm.adapter.profile.ProfileFixtureGuardTest'
+        excludeTestsMatching 'io.github.mbackschat.a12.dm.adapter.laws.RetainedComputationFixtureGuardTest'
         excludeTestsMatching 'io.github.mbackschat.a12.dm.adapter.WorkspacePreparationFixtureGuardTest'
     }
 }
@@ -415,6 +417,38 @@ tasks.register('syncFootprintFixtures', Test) {
         includeTestsMatching 'io.github.mbackschat.a12.dm.adapter.perf.FootprintScenarioFixtureGuardTest'
     }
     outputs.files(footprintFixtureOutputs)
+    outputs.upToDateWhen { false }
+}
+
+def retainedComputationFixture = rootProject.file(
+    'interpreter/src/commonTest/resources/retained-result/order-clear-actions.dm.json',
+)
+
+tasks.register('retainedComputationFixtureGuardTest', Test) {
+    description = 'Verify the shared JVM/Node retained-result model matches its typed kit author.'
+    group = 'verification'
+    testClassesDirs = sourceSets.test.output.classesDirs
+    classpath = sourceSets.test.runtimeClasspath
+    useJUnitPlatform()
+    systemProperty 'retained.computation.fixture', retainedComputationFixture.absolutePath
+    filter {
+        includeTestsMatching 'io.github.mbackschat.a12.dm.adapter.laws.RetainedComputationFixtureGuardTest'
+    }
+    rootProject.guardInputs(it, ['typed retained-result model fixture': files(retainedComputationFixture)])
+}
+
+tasks.register('syncRetainedComputationFixture', Test) {
+    description = 'Regenerate the shared JVM/Node retained-result model through modelkit/rulekit.'
+    group = 'verification'
+    testClassesDirs = sourceSets.test.output.classesDirs
+    classpath = sourceSets.test.runtimeClasspath
+    useJUnitPlatform()
+    systemProperty 'retained.computation.fixture', retainedComputationFixture.absolutePath
+    systemProperty 'retained.computation.fixture.fix', 'true'
+    filter {
+        includeTestsMatching 'io.github.mbackschat.a12.dm.adapter.laws.RetainedComputationFixtureGuardTest'
+    }
+    outputs.file(retainedComputationFixture)
     outputs.upToDateWhen { false }
 }
 

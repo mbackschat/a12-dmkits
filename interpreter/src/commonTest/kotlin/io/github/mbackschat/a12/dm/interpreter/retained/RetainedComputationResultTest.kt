@@ -1,0 +1,156 @@
+package io.github.mbackschat.a12.dm.interpreter.retained
+
+import io.github.mbackschat.a12.dm.interpreter.ComputationOutcome
+import io.github.mbackschat.a12.dm.interpreter.ModelOwnerMismatchError
+import io.github.mbackschat.a12.dm.interpreter.PreparedModel
+import kotlin.test.Test
+import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
+import kotlin.test.assertSame
+
+/**
+ * JVM + Node lock for IF239's public retained-result boundary. The model is authored through modelkit/rulekit
+ * in :adapter and embedded into commonTest, so both runtimes consume one maintained A12 model serialization.
+ */
+class RetainedComputationResultTest {
+
+    @Test
+    fun retainedClearCreatesTheMissingTargetAndRepeatableRow() {
+        assertApplied(
+            source = """{"Order":{"Lines":[{},{"Amount":9}]}}""",
+            destination = """{"Order":{"Lines":[{},{}]}}""",
+            expected = """{"Order":{"Lines":[{},{"Amount":null}]}}""",
+            expectedAction = ComputationOutcome.CLEARED,
+        )
+        assertApplied(
+            source = """{"Order":{"Lines":[{},{"Amount":9}]}}""",
+            destination = "{}",
+            expected = """{"Order":{"Lines":[{},{"Amount":null}]}}""",
+            expectedAction = ComputationOutcome.CLEARED,
+        )
+    }
+
+    @Test
+    fun silenceErrorValueAndFilledClearKeepTheirSeparateApplicationRules() {
+        assertApplied(
+            source = """{"Order":{"Lines":[{},{}]}}""",
+            destination = "{}",
+            expected = "{}",
+            expectedAction = null,
+        )
+        assertApplied(
+            source = """{"Order":{"Lines":[{},{"Candidate":10}]}}""",
+            destination = "{}",
+            expected = "{}",
+            expectedAction = ComputationOutcome.ERRORED,
+        )
+        assertApplied(
+            source = """{"Order":{"Lines":[{},{"Candidate":7}]}}""",
+            destination = "{}",
+            expected = """{"Order":{"Lines":[{},{"Amount":7}]}}""",
+            expectedAction = ComputationOutcome.VALUE,
+        )
+        assertApplied(
+            source = """{"Order":{"Lines":[{},{"Amount":9}]}}""",
+            destination = """{"Order":{"Lines":[{},{"Amount":8}]}}""",
+            expected = """{"Order":{"Lines":[{},{"Amount":null}]}}""",
+            expectedAction = ComputationOutcome.CLEARED,
+        )
+    }
+
+    @Test
+    fun classificationStaysSourceRelativeAndNeverRecomputesOnTheDestination() {
+        val prepared = prepared()
+        val source = prepared.documents.readDocument("""{"Order":{"Lines":[{},{"Amount":9}]}}""")
+        val destination = prepared.documents.readDocument("""{"Order":{"Lines":[{},{"Candidate":7}]}}""")
+
+        val report = prepared.createInterpreter().compute(source)
+        val applied = report.applyTo(destination)
+
+        assertEquals(
+            """{"Order":{"Lines":[{},{"Amount":null,"Candidate":7}]}}""",
+            prepared.documents.encodeDocument(applied),
+            "the source-classified clear wins; applying must not recompute Candidate=7 on the destination",
+        )
+    }
+
+    @Test
+    fun aTypedSourceEqualNumberIsReportedButNotRetainedAsAnAction() {
+        val prepared = prepared()
+        val source = prepared.documents.readDocument(
+            """{"Order":{"Lines":[{},{"Amount":7,"Candidate":7}]}}""",
+        )
+        val destination = prepared.documents.readDocument(
+            """{"Order":{"Lines":[{},{"Amount":8}]}}""",
+        )
+
+        val report = prepared.createInterpreter().compute(source)
+        val amountResult = report.results.single { it.pointer.path == AMOUNT && it.pointer.coordinates == CELL }
+
+        assertEquals(ComputationOutcome.VALUE, amountResult.outcome)
+        assertEquals(emptyList(), report.actions.filter { it.pointer.path == AMOUNT })
+        assertSame(destination, report.applyTo(destination))
+        assertEquals(
+            """{"Order":{"Lines":[{},{"Amount":8}]}}""",
+            prepared.documents.encodeDocument(destination),
+        )
+    }
+
+    @Test
+    fun compatibilityIsTheExistingPreparedOwnerBoundary() {
+        val first = prepared()
+        val second = prepared()
+        val report = first.createInterpreter().compute(
+            first.documents.readDocument("""{"Order":{"Lines":[{},{"Amount":9}]}}"""),
+        )
+        val foreign = second.documents.readDocument("{}")
+
+        assertFailsWith<ModelOwnerMismatchError> {
+            report.applyTo(foreign)
+        }
+    }
+
+    @Test
+    fun sameDocumentConvenienceIsExactlyRetainThenApplyAndLeavesTheSourceImmutable() {
+        val prepared = prepared()
+        val sourceJson = """{"Order":{"Lines":[{},{"Amount":9}]}}"""
+        val source = prepared.documents.readDocument(sourceJson)
+        val interpreter = prepared.createInterpreter()
+
+        val explicit = interpreter.compute(source).applyTo(source)
+        val convenience = interpreter.applyComputations(source)
+
+        assertEquals(
+            prepared.documents.encodeDocument(explicit),
+            prepared.documents.encodeDocument(convenience),
+        )
+        assertEquals(sourceJson, prepared.documents.encodeDocument(source))
+    }
+
+    private fun assertApplied(
+        source: String,
+        destination: String,
+        expected: String,
+        expectedAction: ComputationOutcome?,
+    ) {
+        val prepared = prepared()
+        val sourceSnapshot = prepared.documents.readDocument(source)
+        val destinationSnapshot = prepared.documents.readDocument(destination)
+        val beforeSource = prepared.documents.encodeDocument(sourceSnapshot)
+        val beforeDestination = prepared.documents.encodeDocument(destinationSnapshot)
+        val report = prepared.createInterpreter().compute(sourceSnapshot)
+
+        val targetActions = report.actions.filter { it.pointer.path == AMOUNT && it.pointer.coordinates == CELL }
+        assertEquals(expectedAction?.let(::listOf) ?: emptyList(), targetActions.map { it.outcome })
+        assertEquals(expected, prepared.documents.encodeDocument(report.applyTo(destinationSnapshot)))
+        assertEquals(beforeSource, prepared.documents.encodeDocument(sourceSnapshot))
+        assertEquals(beforeDestination, prepared.documents.encodeDocument(destinationSnapshot))
+    }
+
+    private fun prepared(): PreparedModel = PreparedModel.loadExpandedJson(RetainedComputationModelFixture.JSON)
+
+    private companion object {
+        const val AMOUNT = "/Order/Lines/Amount"
+        val CELL = listOf(1, 2, 1)
+    }
+}

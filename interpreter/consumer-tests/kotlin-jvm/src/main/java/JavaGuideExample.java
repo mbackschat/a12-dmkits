@@ -33,3 +33,25 @@ public final class JavaGuideExample {
     }
 }
 // end::interpreter-java-start[]
+
+final class JavaRetainedResultConsumer {
+    static void verify(String modelJson) {
+        var source = WorkspaceModelSource.builder().json(modelJson).build();
+        var prepared = ModelWorkspace.fromSources(List.of(source)).prepare("permit-basic");
+        var snapshot = prepared.getDocuments().readDocument("""
+                {"Permit":{"ApplicationNo":"P-42","RequestedArea":120}}""");
+        var interpreter = prepared.createInterpreter();
+        var retained = interpreter.compute(snapshot);
+        if (retained.getActions().size() != 1) {
+            throw new AssertionError("Java retained computation action is missing");
+        }
+        var applied = retained.applyTo(snapshot);
+        if (!prepared.getDocuments().encodeDocument(applied).contains("\"ReviewedArea\":120")) {
+            throw new AssertionError("Java retained computation application failed");
+        }
+        if (!prepared.getDocuments().encodeDocument(interpreter.applyComputations(snapshot))
+                .equals(prepared.getDocuments().encodeDocument(applied))) {
+            throw new AssertionError("Java same-document convenience diverged");
+        }
+    }
+}

@@ -88,13 +88,36 @@ class ComputedTimeTargetTest {
         assertEquals(StoredCellState.PresentValue("10:30:45"), applied.cellStateAt(PROJECTED, CELL))
     }
 
-    private fun validDocument(model: ModelDef, hour: String = "10") = model.newDocument().group(ROOT, 1)
+    @Test
+    fun evenASourceEqualClockRemainsARetainedValueAction() {
+        val model = model(ModelTimeZone.EUROPE_BERLIN)
+        val source = validDocument(model, target = "10:30:45", projected = "10:30:45")
+        val destination = validDocument(model, target = "08:15:00", projected = "08:15:00")
+
+        val retained = DmInterpreter(model).retainedComputations(source)
+        val applied = retained.applyTo(destination)
+
+        assertTrue(
+            retained.applications.filter { it.path == TARGET || it.path == PROJECTED }
+                .all { it.outcome == ComputeOutcome.VALUE },
+            "Time is the measured same-clock exception to ordinary typed source equality",
+        )
+        assertEquals(StoredCellState.PresentValue("10:30:45"), applied.cellStateAt(TARGET, CELL))
+        assertEquals(StoredCellState.PresentValue("10:30:45"), applied.cellStateAt(PROJECTED, CELL))
+    }
+
+    private fun validDocument(
+        model: ModelDef,
+        hour: String = "10",
+        target: String = "09:00:00",
+        projected: String = "09:00:00",
+    ) = model.newDocument().group(ROOT, 1)
         .field(HOUR, hour, 1, 1)
         .field(MINUTE, "30", 1, 1)
         .field(SECOND, "45", 1, 1)
         .field(SCHEDULED_AT, "2024-06-01T10:30:45", 1, 1)
-        .field(TARGET, "09:00:00", 1, 1)
-        .field(PROJECTED, "09:00:00", 1, 1)
+        .field(TARGET, target, 1, 1)
+        .field(PROJECTED, projected, 1, 1)
 
     private companion object {
         const val ROOT = "/Clock"

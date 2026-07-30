@@ -4,6 +4,7 @@ import io.github.mbackschat.a12.dm.interpreter.ast.CmpOp
 import io.github.mbackschat.a12.dm.interpreter.ast.Cond
 import io.github.mbackschat.a12.dm.interpreter.ast.Expr
 import io.github.mbackschat.a12.dm.interpreter.eval.Document
+import io.github.mbackschat.a12.dm.interpreter.eval.ComputationApplication
 import io.github.mbackschat.a12.dm.interpreter.eval.EvalConfig
 import io.github.mbackschat.a12.dm.interpreter.eval.EvalContext
 import io.github.mbackschat.a12.dm.interpreter.eval.FunctionOp
@@ -329,11 +330,41 @@ class DmInterpreter @JvmOverloads constructor(
      * formal errors; KERNEL-FINDINGS §11 five-channel supplement); our corpus/differential compares against
      * its **change projection** (changed values / clears of input-filled cells). Report-all is the more useful
      * library contract ("what does this field compute to?"), and result-envelope granularity is not
-     * behavior-parity territory — a comparison against a kernel-granularity expectation projects via
+     * behavior-parity territory. The public [ComputationReport] retains the source-relative action subset beside
+     * these report-all results; a comparison against a kernel-granularity expectation projects via
      * [io.github.mbackschat.a12.dm.interpreter.conformance.kernelComputeGranularity].
      */
     fun compute(doc: Document, locale: String = "en_US"): List<Computed> =
-        observeCaches(doc) { engine.computeInstances(doc, locale) }
+        retainedComputations(doc, locale).results
+
+    /** One compute pass retaining the source-relative actions consumed by both application surfaces. */
+    internal fun retainedComputations(doc: Document, locale: String = "en_US"): RetainedComputationRun =
+        observeCaches(doc) {
+            val results = engine.computeInstances(doc, locale)
+            val applications = results.mapNotNull { computed ->
+                val retain = when (computed.outcome) {
+                    ComputeOutcome.VALUE ->
+                        !doc.computedValueEquals(
+                            computed.path,
+                            computed.indices,
+                            checkNotNull(computed.value),
+                        )
+                    ComputeOutcome.CLEARED -> doc.filledAt(computed.path, computed.indices)
+                    ComputeOutcome.ERRORED -> true
+                }
+                if (retain) {
+                    ComputationApplication(
+                        path = computed.path,
+                        reps = computed.indices,
+                        outcome = computed.outcome,
+                        value = computed.value,
+                    )
+                } else {
+                    null
+                }
+            }
+            RetainedComputationRun(results, applications)
+        }
 
     /**
      * Evaluate a SINGLE computed field against the instance — the single-computation twin of [testRule], the
@@ -365,14 +396,7 @@ class DmInterpreter @JvmOverloads constructor(
      * runs, so it is not a false `mandatoryField`).
      */
     fun applyComputations(doc: Document, locale: String = "en_US"): Document =
-        observeCaches(doc) {
-            val overrides = HashMap<Pair<String, List<Int>>, String?>()
-            for (computed in engine.computeInstances(doc, locale)) {
-                overrides[computed.path to computed.indices] =
-                    if (computed.outcome == ComputeOutcome.VALUE) computed.value else null
-            }
-            doc.withComputed(overrides)
-        }
+        retainedComputations(doc, locale).applyTo(doc)
 
     private fun evalRule(rule: RuleDef, doc: Document, locale: String): RuleResult = observeCaches(doc) {
         // A single-rule pass (fresh formal-status memo, everything relevant) — the testRule/evalCandidate shape.

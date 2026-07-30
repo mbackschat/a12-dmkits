@@ -27,10 +27,14 @@ public final class io/github/mbackschat/a12/dm/interpreter/ComputationOutcome : 
 	public static fun values ()[Lio/github/mbackschat/a12/dm/interpreter/ComputationOutcome;
 }
 
-public final class io/github/mbackschat/a12/dm/interpreter/ComputationReport {
+public final class io/github/mbackschat/a12/dm/interpreter/ComputationReport : io/github/mbackschat/a12/dm/interpreter/ModelOwned {
 	public static final field Companion Lio/github/mbackschat/a12/dm/interpreter/ComputationReport$Companion;
-	public synthetic fun <init> (Ljava/util/List;Ljava/util/List;Lkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public synthetic fun <init> (Ljava/util/List;Ljava/util/List;Ljava/util/List;Lio/github/mbackschat/a12/dm/interpreter/ModelOwnerIdentity;Lio/github/mbackschat/a12/dm/interpreter/ModelVersionIdentity;Lkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun applyTo (Lio/github/mbackschat/a12/dm/interpreter/DocumentSnapshot;)Lio/github/mbackschat/a12/dm/interpreter/DocumentSnapshot;
+	public final fun getActions ()Ljava/util/List;
 	public final fun getFullySupported ()Z
+	public fun getModelVersion ()Lio/github/mbackschat/a12/dm/interpreter/ModelVersionIdentity;
+	public fun getOwner ()Lio/github/mbackschat/a12/dm/interpreter/ModelOwnerIdentity;
 	public final fun getResults ()Ljava/util/List;
 	public final fun getUnsupported ()Ljava/util/List;
 }
@@ -301,6 +305,9 @@ public final class io/github/mbackschat/a12/dm/interpreter/GroupPointer : io/git
 public final class io/github/mbackschat/a12/dm/interpreter/Interpreter : io/github/mbackschat/a12/dm/interpreter/ModelOwned {
 	public static final field Companion Lio/github/mbackschat/a12/dm/interpreter/Interpreter$Companion;
 	public synthetic fun <init> (Lio/github/mbackschat/a12/dm/interpreter/PreparedModel;Lio/github/mbackschat/a12/dm/interpreter/InterpreterConfiguration;Lkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun applyComputations (Lio/github/mbackschat/a12/dm/interpreter/DocumentSnapshot;)Lio/github/mbackschat/a12/dm/interpreter/DocumentSnapshot;
+	public final fun applyComputations (Lio/github/mbackschat/a12/dm/interpreter/DocumentSnapshot;Ljava/lang/String;)Lio/github/mbackschat/a12/dm/interpreter/DocumentSnapshot;
+	public static synthetic fun applyComputations$default (Lio/github/mbackschat/a12/dm/interpreter/Interpreter;Lio/github/mbackschat/a12/dm/interpreter/DocumentSnapshot;Ljava/lang/String;ILjava/lang/Object;)Lio/github/mbackschat/a12/dm/interpreter/DocumentSnapshot;
 	public final fun compute (Lio/github/mbackschat/a12/dm/interpreter/DocumentSnapshot;)Lio/github/mbackschat/a12/dm/interpreter/ComputationReport;
 	public final fun compute (Lio/github/mbackschat/a12/dm/interpreter/DocumentSnapshot;Ljava/lang/String;)Lio/github/mbackschat/a12/dm/interpreter/ComputationReport;
 	public static synthetic fun compute$default (Lio/github/mbackschat/a12/dm/interpreter/Interpreter;Lio/github/mbackschat/a12/dm/interpreter/DocumentSnapshot;Ljava/lang/String;ILjava/lang/Object;)Lio/github/mbackschat/a12/dm/interpreter/ComputationReport;

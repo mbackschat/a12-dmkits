@@ -20,6 +20,14 @@ fun main() {
     val interpreter = prepared.createInterpreter()
 
     check(interpreter.validateFull(snapshot).findings.map { it.code } == listOf("AREA_NEEDS_NOTE"))
-    check(interpreter.compute(snapshot).results.single().value == "120")
+    val retained = interpreter.compute(snapshot)
+    check(retained.results.single().value == "120")
+    check(retained.actions.single().value == "120")
+    val applied = retained.applyTo(snapshot)
+    check(prepared.documents.encodeDocument(applied).contains("\"ReviewedArea\":120"))
+    check(
+        prepared.documents.encodeDocument(interpreter.applyComputations(snapshot)) ==
+            prepared.documents.encodeDocument(applied),
+    )
     println("staged Maven Kotlin/JS interpreter consumer passed")
 }

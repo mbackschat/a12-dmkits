@@ -9,7 +9,7 @@ The interpreter prepares model workspaces, resolves includes and imported type d
 - Finite in-memory workspaces and on-demand model providers
 - Self-contained model expansion, separate from evaluator preparation
 - Lossless, versioned Document JSON with structured input diagnostics
-- Full and partial validation, computations, support reports, and model-owned pointers
+- Full and partial validation, retained computation application, support reports, and model-owned pointers
 - Synchronous custom field validators and custom conditions
 - Explicit resource limits, integrity checks, cancellation, and immutable prepared models
 - The same Kotlin implementation on JVM, Node.js, and browser targets
@@ -57,6 +57,8 @@ export function runInterpreter(rawModelJson: string) {
   };
 }
 ```
+
+`interpreter.compute(source)` returns report-all `results` plus source-relative `actions`. Retain that report and call `applyTo(destination)` to apply it without recomputing; source and destination must belong to the same `PreparedModel`. `interpreter.applyComputations(source)` is the same-document convenience. Every snapshot remains immutable.
 
 ## Kotlin
 
