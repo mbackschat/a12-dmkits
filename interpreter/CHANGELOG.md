@@ -26,6 +26,14 @@ This changelog covers the independently consumable interpreter packages, API doc
 ### Added
 
 - **Computation results are retained and can be applied to another immutable Document snapshot.** `ComputationReport.results` remains report-all, while `actions` exposes the source-relative application subset and `applyTo(destination)` consumes it without recomputing. VALUE and CLEARED create an addressed missing target and ancestry; ERRORED clears only an existing target. Kotlin, Java, and TypeScript also expose `Interpreter.applyComputations(source)` as the same-document convenience. A destination from another prepared owner fails with `ModelOwnerMismatchError`.
+- **All A12 partial-Date precisions are supported.** `DAY_OPTIONAL`, `MONTH_OPTIONAL`, and `YEAR_OPTIONAL` retain their monotone omitted-component domain; `ValueAsDate` resolves known-year boundaries while an unknown year stays non-relevant. The opt-in `youngerThan1900Check` is honored for stored and authorable computed targets.
+- **Temporal constructors match the complete Kernel operand surface.** `Time()` through `Time(hour, minute, second)` default omitted trailing components to zero, and Date/Time components accept the measured String, Number, Date, and extractor sources with exact no-value provenance and model-zone wall-clock projection.
+- **The browser showcase names the exact A12 Kernel and A12 Tools semantics target** beside the interpreter package version.
+
+### Changed
+
+- Field-owned String-pattern and requiredness messages now use their producer-specific token grammars. Pattern templates accept only `$field$` and `$field.value$` with one-pass insertion; requiredness preserves its measured doubled-dollar text.
+- Calendar Date shifts, constructed-Date comparisons, starred-group polarity, multi-computation selection, dependency poison, and source-value change classification now match the maintained dual-Kernel matrices.
 
 ## [0.9.1]
 

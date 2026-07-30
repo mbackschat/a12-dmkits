@@ -18,11 +18,11 @@ The package does not author models, render forms, persist Documents, provide a v
 
 ## Install
 
-Version `0.9.1` is distributed from the public `a12-interpreter-releases` repository.
+Version `0.10.0` is distributed from the public `a12-interpreter-releases` repository.
 
-For TypeScript or JavaScript, install the release tarball with `pnpm add https://github.com/mbackschat/a12-interpreter-releases/releases/download/v0.9.1/a12-interpreter-0.9.1.tgz`.
+For TypeScript or JavaScript, install the release tarball with `pnpm add https://github.com/mbackschat/a12-interpreter-releases/releases/download/v0.10.0/a12-interpreter-0.10.0.tgz`.
 
-For Kotlin or Java, add the Maven repository `https://mbackschat.github.io/a12-interpreter-releases/maven` and dependency `io.github.mbackschat.a12.dm:dm-interpreter:0.9.1`. Public third-party dependencies continue to resolve from Maven Central or npm.
+For Kotlin or Java, add the Maven repository `https://mbackschat.github.io/a12-interpreter-releases/maven` and dependency `io.github.mbackschat.a12.dm:dm-interpreter:0.10.0`. Public third-party dependencies continue to resolve from Maven Central or npm.
 
 ## TypeScript
 
@@ -100,11 +100,11 @@ Preparation rejects ambiguous or incomplete workspaces instead of choosing a sou
 
 The clean-room implementation is tested against the normative dynamic-Groovy Kernel strategy and against static Java wherever both Kernel strategies agree. JVM, Node.js, and packed-package Chrome consumers run the same portable behavior corpus.
 
-The core is MIT-licensed and contains no Kernel bytecode or runtime dependency. Supported model time zones are `UTC`, `GMT`, and `Europe/Berlin`; optional-month and optional-year date precisions remain outside the evaluator boundary. `supportReport()` and the `unsupported` members on validation and computation results keep unsupported programs explicit.
+The core is MIT-licensed and contains no Kernel bytecode or runtime dependency. Supported model time zones are `UTC`, `GMT`, and `Europe/Berlin`; all four A12 Date precisions are supported. `supportReport()` and the `unsupported` members on validation and computation results keep unsupported programs explicit.
 
 ## Documentation
 
-- [Developer API guide](https://github.com/mbackschat/a12-interpreter-releases/blob/v0.9.1/site/api/v0.9.1/INTERPRETER-API-GUIDE.md)
-- Version-matched Kotlin and TypeScript references plus `llms.txt` are packaged in `dm-interpreter-0.9.1-api-docs.zip` under `api/v0.9.1/`
+- [Developer API guide](https://github.com/mbackschat/a12-interpreter-releases/blob/v0.10.0/site/api/v0.10.0/INTERPRETER-API-GUIDE.md)
+- Version-matched Kotlin and TypeScript references plus `llms.txt` are packaged in `dm-interpreter-0.10.0-api-docs.zip` under `api/v0.10.0/`
 - Browser showcase: `https://mbackschat.github.io/a12-interpreter-releases/showcase/`
-- [MIT license](https://github.com/mbackschat/a12-interpreter-releases/blob/v0.9.1/LICENSE)
+- [MIT license](https://github.com/mbackschat/a12-interpreter-releases/blob/v0.10.0/LICENSE)

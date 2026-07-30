@@ -7,8 +7,8 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 REHEARSAL_ROOT="$(mktemp -d)"
 trap 'rm -rf "$REHEARSAL_ROOT"' EXIT
 
-SOURCE_TAG="interpreter-v0.9.1"
-RELEASE_TAG="v0.9.1"
+SOURCE_TAG="interpreter-v0.10.0"
+RELEASE_TAG="v0.10.0"
 BACKEND="$ROOT/scripts/interpreter-release-rehearsal-host.sh"
 PUBLISHER="$ROOT/scripts/publish-interpreter-release.sh"
 
@@ -98,7 +98,7 @@ EOF
 }
 
 create_fixture() {
-  local name="$1" build_version="${2:-0.9.1}" tag_version="${3:-0.9.1}"
+  local name="$1" build_version="${2:-0.10.0}" tag_version="${3:-0.10.0}"
   FIXTURE="$REHEARSAL_ROOT/$name"
   SOURCE="$FIXTURE/source"
   SOURCE_ORIGIN="$FIXTURE/source-origin.git"
@@ -241,7 +241,7 @@ create_fixture dirty-source
 printf '%s\n' dirty >> "$SOURCE/build.gradle"
 expect_refusal "dirty source" "source working tree is dirty" publisher
 
-create_fixture version-mismatch 0.9.2 0.9.1
+create_fixture version-mismatch 0.10.1 0.10.0
 expect_refusal "source tag/version mismatch" "source tag/version mismatch" publisher
 
 create_fixture sha-mismatch
@@ -249,7 +249,7 @@ printf '%s\n' '# moved tag' >> "$SOURCE/build.gradle"
 git -C "$SOURCE" add build.gradle
 git -C "$SOURCE" commit --quiet -m "move remote tag"
 git -C "$SOURCE" push --quiet origin main
-git -C "$SOURCE" push --quiet --force origin HEAD:refs/tags/0.9.1
+git -C "$SOURCE" push --quiet --force origin HEAD:refs/tags/0.10.0
 git -C "$SOURCE_ORIGIN" update-ref "refs/tags/$SOURCE_TAG" "$(git -C "$SOURCE" rev-parse HEAD)"
 expect_refusal "source tag/SHA mismatch" "source tag/SHA mismatch" publisher
 
@@ -282,7 +282,7 @@ seed_mirror_commit \
   "mbackschat@mail.de" \
   "Martin Backschat" \
   "mbackschat@mail.de" \
-  "site/api/v0.9.1/index.html"
+  "site/api/v0.10.0/index.html"
 expect_refusal "existing immutable version" "already exists" publisher
 
 create_fixture missing-dts
@@ -339,10 +339,10 @@ publisher --go-live >/dev/null
 echo "PASS published consumer smoke resumes"
 
 create_fixture prerelease
-"$SOURCE/build.sh" -PinterpreterReleaseTag=v0.9.1-rc.1 >/dev/null
-publisher --release-tag v0.9.1-rc.1 >/dev/null
-publisher --release-tag v0.9.1-rc.1 --go-live >/dev/null
-[[ "$(cat "$STATE/releases/v0.9.1-rc.1/state")" == "published" ]]
+"$SOURCE/build.sh" -PinterpreterReleaseTag=v0.10.0-rc.1 >/dev/null
+publisher --release-tag v0.10.0-rc.1 >/dev/null
+publisher --release-tag v0.10.0-rc.1 --go-live >/dev/null
+[[ "$(cat "$STATE/releases/v0.10.0-rc.1/state")" == "published" ]]
 [[ ! -e "$STATE/latest" ]]
 assert_public_identities
 echo "PASS prerelease remains non-latest"
