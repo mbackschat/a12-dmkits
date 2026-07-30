@@ -57,13 +57,12 @@ import io.github.mbackschat.a12.dm.rulekit.dsl.TimeRef;
  * editor is immediately referenceable by name — the create→reference flow the dropped L2b codegen could
  * never do, since the new field exists only at runtime. Obtain an editor from {@link EditSession#group(String)}.
  */
-public final class GroupEditor implements GroupReference {
+public final class GroupEditor extends ElementMetadataEditor<GroupEditor> implements GroupReference {
 
-    private final EditSession session;
     private final GroupRef location;
 
     GroupEditor(EditSession session, GroupRef location) {
-        this.session = session;
+        super(session, location.path());
         this.location = location;
     }
 
@@ -316,30 +315,6 @@ public final class GroupEditor implements GroupReference {
      *  {@link #addComputation(FieldRef, Function)}. */
     public Computation computation(FieldRef computed, Function<Computation.Builder, Computation> body) {
         return body.apply(session.boundModel().computation(computed));
-    }
-
-    /** Set a name/value annotation on this group. Chains. */
-    public GroupEditor setAnnotation(String name, String value) {
-        session.setAnnotation(location.path(), name, value);
-        return this;
-    }
-
-    /** Remove the annotation {@code name} from this group. Chains. */
-    public GroupEditor removeAnnotation(String name) {
-        session.removeAnnotation(location.path(), name);
-        return this;
-    }
-
-    /** Upsert one per-locale internal description (authoring/maintenance text) on this group. Chains. */
-    public GroupEditor setInternalDescription(String locale, String text) {
-        session.setInternalDescription(location.path(), locale, text);
-        return this;
-    }
-
-    /** Upsert one per-locale external description (end-user-facing text) on this group. Chains. */
-    public GroupEditor setExternalDescription(String locale, String text) {
-        session.setExternalDescription(location.path(), locale, text);
-        return this;
     }
 
     /** Set this group's per-locale display labels (once any locale is set, all declared ones are required). Chains. */

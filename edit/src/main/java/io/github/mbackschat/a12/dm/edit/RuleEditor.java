@@ -17,71 +17,43 @@ import io.github.mbackschat.a12.dm.rulekit.dsl.Severity;
  * <p>Renaming a rule is the {@link EditSession#renameRule} refactor (it has no references to rewrite, but
  * shares the safety-gate path); it isn't an editor method.
  */
-public final class RuleEditor {
-
-    private final EditSession session;
-    private final String fullName;
+public final class RuleEditor extends ElementMetadataEditor<RuleEditor> {
 
     RuleEditor(EditSession session, String fullName) {
-        this.session = session;
-        this.fullName = fullName;
+        super(session, fullName);
     }
 
     /** This rule's full name (group-path + name). */
     public String name() {
-        return fullName;
+        return elementPath;
     }
 
     /** Re-express this rule's condition via the typed DSL builder. Chains. */
     public RuleEditor modify(Function<BoundModel, Condition> condition) {
-        session.modifyRule(fullName, condition);
+        session.modifyRule(elementPath, condition);
         return this;
     }
 
     /** Re-express this rule's condition from raw DSL text (the {@code apply}/spec path). Chains. */
     public RuleEditor modify(String conditionText) {
-        session.modifyRule(fullName, conditionText);
+        session.modifyRule(elementPath, conditionText);
         return this;
     }
 
     /** Re-set this rule's severity in place (condition + messages untouched, FEATURE-GAPS). Chains. */
     public RuleEditor severity(Severity severity) {
-        session.modifyRuleSeverity(fullName, severity);
+        session.modifyRuleSeverity(elementPath, severity);
         return this;
     }
 
     /** Replace this rule's per-locale messages in place (condition + severity untouched). Chains. */
     public RuleEditor messages(LocalizedText... messages) {
-        session.modifyRuleMessages(fullName, List.of(messages));
-        return this;
-    }
-
-    /** Set a name/value annotation on this rule. Chains. */
-    public RuleEditor setAnnotation(String name, String value) {
-        session.setAnnotation(fullName, name, value);
-        return this;
-    }
-
-    /** Remove the annotation {@code name} from this rule. Chains. */
-    public RuleEditor removeAnnotation(String name) {
-        session.removeAnnotation(fullName, name);
-        return this;
-    }
-
-    /** Upsert one per-locale internal description (authoring/maintenance text) on this rule. Chains. */
-    public RuleEditor setInternalDescription(String locale, String text) {
-        session.setInternalDescription(fullName, locale, text);
-        return this;
-    }
-
-    /** Upsert one per-locale external description (end-user-facing text) on this rule. Chains. */
-    public RuleEditor setExternalDescription(String locale, String text) {
-        session.setExternalDescription(fullName, locale, text);
+        session.modifyRuleMessages(elementPath, List.of(messages));
         return this;
     }
 
     /** Remove this rule; returns the session (the rule no longer exists, so the editor is spent). */
     public EditSession remove() {
-        return session.removeRule(fullName);
+        return session.removeRule(elementPath);
     }
 }

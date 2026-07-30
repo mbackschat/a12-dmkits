@@ -16,13 +16,12 @@ import io.github.mbackschat.a12.dm.rulekit.dsl.FieldRef;
  * <p>A field is a leaf, so there is no navigation; for a typed operand in a rule, navigate from the
  * enclosing group via {@code GroupEditor} (which yields the typed {@code NumberRef}/{@code StringRef}/…).
  */
-public final class FieldEditor {
+public final class FieldEditor extends ElementMetadataEditor<FieldEditor> {
 
-    private final EditSession session;
     private final FieldRef location;
 
     FieldEditor(EditSession session, FieldRef location) {
-        this.session = session;
+        super(session, location.path());
         this.location = location;
     }
 
@@ -40,30 +39,6 @@ public final class FieldEditor {
     /** Set this field's per-locale display labels (once any locale is set, all declared ones are required). Chains. */
     public FieldEditor setLabel(Map<String, String> localeToText) {
         session.setLabel(location.path(), localeToText);
-        return this;
-    }
-
-    /** Set a name/value annotation on this field. Chains. */
-    public FieldEditor setAnnotation(String name, String value) {
-        session.setAnnotation(location.path(), name, value);
-        return this;
-    }
-
-    /** Remove the annotation {@code name} from this field. Chains. */
-    public FieldEditor removeAnnotation(String name) {
-        session.removeAnnotation(location.path(), name);
-        return this;
-    }
-
-    /** Upsert one per-locale internal description (authoring/maintenance text) on this field. Chains. */
-    public FieldEditor setInternalDescription(String locale, String text) {
-        session.setInternalDescription(location.path(), locale, text);
-        return this;
-    }
-
-    /** Upsert one per-locale external description (end-user-facing text) on this field. Chains. */
-    public FieldEditor setExternalDescription(String locale, String text) {
-        session.setExternalDescription(location.path(), locale, text);
         return this;
     }
 

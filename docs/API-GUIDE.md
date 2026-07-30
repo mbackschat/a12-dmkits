@@ -1124,6 +1124,17 @@ order.addComputation(order.str("CustomerName"), c -> c.name("NameComp")
 
 *(Surfaced by dogfooding the conformance corpus: its string-concat guard case couldn't be authored through the editor while only the `NumberRef` overload existed. Test-backed by `RuleComputationEditorTest.authorsAStringComputationThroughTheEditor`.)*
 
+**Every held field, group, rule, and computation editor carries the same element-metadata contract.** Their shared `ElementMetadataEditor` base exposes annotation set/remove plus internal- and external-description set/remove, so a caller that has already selected `/Permit/CalculateFee` never drops back to the flat session or repeats that path just to describe it:
+
+<!-- teaser -->
+```java
+s.computation("/Permit/CalculateFee")
+    .setExternalDescription("en_US", "Calculates the permit fee from the requested area.")
+    .setAnnotation("owner", "permit-pricing");
+```
+
+The complete fluent set is `setAnnotation` / `removeAnnotation`, `setInternalDescription` / `removeInternalDescription`, and `setExternalDescription` / `removeExternalDescription`. This is the typed peer of A12's common element-metadata contract rather than a special rule/computation feature. (`EditSessionEditorParityTest`, `ElementMetadataEditTest`; DEV-API-GAPS DG29.)
+
 The same **per-type field builders** as the from-scratch builder are on the editor too (DG1) — configure scale/bounds/pattern/enum-domain + metadata fluently while editing, instead of dropping to a hand-built `FieldTypeSpec` (a field added this way is byte-identical to one built from scratch — one shared `FieldAttrs.toField` assembly):
 
 <!-- snippet: editor-number-field -->

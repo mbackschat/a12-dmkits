@@ -1,4 +1,4 @@
-public final class io.github.mbackschat.a12.dm.edit.ComputationEditor
+public final class io.github.mbackschat.a12.dm.edit.ComputationEditor extends io.github.mbackschat.a12.dm.edit.ElementMetadataEditor<io.github.mbackschat.a12.dm.edit.ComputationEditor>
   public io.github.mbackschat.a12.dm.edit.ComputationEditor modify(java.util.function.Function<io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel, io.github.mbackschat.a12.dm.rulekit.dsl.Computation>)
   public java.lang.String name()
   public io.github.mbackschat.a12.dm.edit.EditSession remove()
@@ -110,22 +110,26 @@ public final class io.github.mbackschat.a12.dm.edit.EditSession
   public io.github.mbackschat.a12.dm.edit.EditSession validate()
   public void writeTo(java.nio.file.Path)
 
-public final class io.github.mbackschat.a12.dm.edit.FieldEditor
+public abstract sealed class io.github.mbackschat.a12.dm.edit.ElementMetadataEditor<E extends io.github.mbackschat.a12.dm.edit.ElementMetadataEditor<E>>
+  public final E removeAnnotation(java.lang.String)
+  public final E removeExternalDescription(java.lang.String)
+  public final E removeInternalDescription(java.lang.String)
+  public final E setAnnotation(java.lang.String, java.lang.String)
+  public final E setExternalDescription(java.lang.String, java.lang.String)
+  public final E setInternalDescription(java.lang.String, java.lang.String)
+
+public final class io.github.mbackschat.a12.dm.edit.FieldEditor extends io.github.mbackschat.a12.dm.edit.ElementMetadataEditor<io.github.mbackschat.a12.dm.edit.FieldEditor>
   public io.github.mbackschat.a12.dm.edit.FieldEditor modify(io.github.mbackschat.a12.dm.modelkit.FieldModification)
   public io.github.mbackschat.a12.dm.rulekit.dsl.FieldRef ref()
-  public io.github.mbackschat.a12.dm.edit.FieldEditor removeAnnotation(java.lang.String)
-  public io.github.mbackschat.a12.dm.edit.FieldEditor setAnnotation(java.lang.String, java.lang.String)
-  public io.github.mbackschat.a12.dm.edit.FieldEditor setExternalDescription(java.lang.String, java.lang.String)
   public io.github.mbackschat.a12.dm.edit.FieldEditor setGlobal(boolean)
   public io.github.mbackschat.a12.dm.edit.FieldEditor setHelperText(java.util.Map<java.lang.String, java.lang.String>)
-  public io.github.mbackschat.a12.dm.edit.FieldEditor setInternalDescription(java.lang.String, java.lang.String)
   public io.github.mbackschat.a12.dm.edit.FieldEditor setLabel(java.util.Map<java.lang.String, java.lang.String>)
   public io.github.mbackschat.a12.dm.edit.FieldEditor setRequiredErrorMessages(java.util.Map<java.lang.String, java.lang.String>)
   public io.github.mbackschat.a12.dm.edit.FieldEditor setRequiredness(io.github.mbackschat.a12.dm.modelkit.Requiredness)
   public io.github.mbackschat.a12.dm.edit.FieldEditor setTransient(boolean)
   public io.github.mbackschat.a12.dm.edit.FieldEditor setType(io.github.mbackschat.a12.dm.modelkit.FieldTypeSpec)
 
-public final class io.github.mbackschat.a12.dm.edit.GroupEditor implements io.github.mbackschat.a12.dm.rulekit.dsl.GroupReference
+public final class io.github.mbackschat.a12.dm.edit.GroupEditor extends io.github.mbackschat.a12.dm.edit.ElementMetadataEditor<io.github.mbackschat.a12.dm.edit.GroupEditor> implements io.github.mbackschat.a12.dm.rulekit.dsl.GroupReference
   public io.github.mbackschat.a12.dm.edit.GroupEditor addComputation(io.github.mbackschat.a12.dm.rulekit.dsl.FieldRef, java.util.function.Function<io.github.mbackschat.a12.dm.rulekit.dsl.Computation.Builder, io.github.mbackschat.a12.dm.rulekit.dsl.Computation>)
   public io.github.mbackschat.a12.dm.edit.GroupEditor addComputation(io.github.mbackschat.a12.dm.rulekit.dsl.NumberRef, java.util.function.Function<io.github.mbackschat.a12.dm.rulekit.dsl.Computation.Builder, io.github.mbackschat.a12.dm.rulekit.dsl.Computation>)
   public io.github.mbackschat.a12.dm.edit.GroupEditor addComputation(io.github.mbackschat.a12.dm.rulekit.dsl.StringRef, java.util.function.Function<io.github.mbackschat.a12.dm.rulekit.dsl.Computation.Builder, io.github.mbackschat.a12.dm.rulekit.dsl.Computation>)
@@ -159,12 +163,8 @@ public final class io.github.mbackschat.a12.dm.edit.GroupEditor implements io.gi
   public io.github.mbackschat.a12.dm.rulekit.dsl.NumberRef num(java.lang.String)
   public io.github.mbackschat.a12.dm.edit.GroupEditor numberField(java.lang.String, java.util.function.Consumer<io.github.mbackschat.a12.dm.modelkit.NumberFieldBuilder>)
   public io.github.mbackschat.a12.dm.rulekit.dsl.GroupRef ref()
-  public io.github.mbackschat.a12.dm.edit.GroupEditor removeAnnotation(java.lang.String)
   public io.github.mbackschat.a12.dm.rulekit.dsl.Rule rule(java.util.function.Function<io.github.mbackschat.a12.dm.rulekit.dsl.Rule.Builder, io.github.mbackschat.a12.dm.rulekit.dsl.Rule>)
-  public io.github.mbackschat.a12.dm.edit.GroupEditor setAnnotation(java.lang.String, java.lang.String)
-  public io.github.mbackschat.a12.dm.edit.GroupEditor setExternalDescription(java.lang.String, java.lang.String)
   public io.github.mbackschat.a12.dm.edit.GroupEditor setIndexField(java.lang.String)
-  public io.github.mbackschat.a12.dm.edit.GroupEditor setInternalDescription(java.lang.String, java.lang.String)
   public io.github.mbackschat.a12.dm.edit.GroupEditor setLabel(java.util.Map<java.lang.String, java.lang.String>)
   public io.github.mbackschat.a12.dm.edit.GroupEditor setNonRepeatable()
   public io.github.mbackschat.a12.dm.edit.GroupEditor setRepeatable(int)
@@ -183,16 +183,12 @@ public final class io.github.mbackschat.a12.dm.edit.IncludeEditor
   public io.github.mbackschat.a12.dm.edit.IncludeEditor rename(java.lang.String)
   public io.github.mbackschat.a12.dm.edit.IncludeEditor setReference(java.lang.String)
 
-public final class io.github.mbackschat.a12.dm.edit.RuleEditor
+public final class io.github.mbackschat.a12.dm.edit.RuleEditor extends io.github.mbackschat.a12.dm.edit.ElementMetadataEditor<io.github.mbackschat.a12.dm.edit.RuleEditor>
   public io.github.mbackschat.a12.dm.edit.RuleEditor messages(io.github.mbackschat.a12.dm.rulekit.dsl.LocalizedText[])
   public io.github.mbackschat.a12.dm.edit.RuleEditor modify(java.lang.String)
   public io.github.mbackschat.a12.dm.edit.RuleEditor modify(java.util.function.Function<io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel, io.github.mbackschat.a12.dm.rulekit.dsl.Condition>)
   public java.lang.String name()
   public io.github.mbackschat.a12.dm.edit.EditSession remove()
-  public io.github.mbackschat.a12.dm.edit.RuleEditor removeAnnotation(java.lang.String)
-  public io.github.mbackschat.a12.dm.edit.RuleEditor setAnnotation(java.lang.String, java.lang.String)
-  public io.github.mbackschat.a12.dm.edit.RuleEditor setExternalDescription(java.lang.String, java.lang.String)
-  public io.github.mbackschat.a12.dm.edit.RuleEditor setInternalDescription(java.lang.String, java.lang.String)
   public io.github.mbackschat.a12.dm.edit.RuleEditor severity(io.github.mbackschat.a12.dm.rulekit.dsl.Severity)
 
 public final class io.github.mbackschat.a12.dm.edit.TypeDefEditor

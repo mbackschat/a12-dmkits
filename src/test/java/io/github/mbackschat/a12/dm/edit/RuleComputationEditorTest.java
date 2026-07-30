@@ -203,6 +203,32 @@ class RuleComputationEditorTest {
     }
 
     @Test
+    void editsAComputationsElementMetadataByHeldReference() {
+        EditSession s = EditSession.read(Fixtures.subscriptionJson());
+        GroupEditor billing = s.group("/Subscription/Billing");
+        NumberRef baseFee = billing.num("BaseFee");
+        NumberRef effectiveFee = billing.num("EffectiveFee");
+        billing.addComputation(effectiveFee, c -> c.name("EffFeeComp")
+                .calc(baseFee.value()).message(Dsl.en("equals base"), Dsl.de("entspricht Basis")).build());
+
+        s.computation("/Subscription/Billing/EffFeeComp")
+                .setAnnotation("owner", "pricing-team")
+                .setAnnotation("temporary", "remove-me")
+                .removeAnnotation("temporary")
+                .setInternalDescription("en_US", "The maintained pricing formula.")
+                .setExternalDescription("en_US", "Copies the base fee into the effective fee.");
+        s.validate();
+
+        String json = s.toJson();
+        assertTrue(json.contains("pricing-team"), () -> "the annotation is written: " + json);
+        assertFalse(json.contains("remove-me"), () -> "the removed annotation is absent: " + json);
+        assertTrue(json.contains("The maintained pricing formula."),
+                () -> "the internal description is written: " + json);
+        assertTrue(json.contains("Copies the base fee into the effective fee."),
+                () -> "the external description is written: " + json);
+    }
+
+    @Test
     void preservesARulesElementMetadataOnModify() {
         // the in-place sibling — rule modify mutates the node, so metadata was never at risk; locked here so the
         // metadata-survives-modify contract covers BOTH the rule and computation modify paths.

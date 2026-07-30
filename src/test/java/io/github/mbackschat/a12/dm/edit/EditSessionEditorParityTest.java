@@ -64,12 +64,22 @@ class EditSessionEditorParityTest {
     void theEditorsExposeEveryElementAttributeSessionVerb() {
         // a FIELD is an element with type + metadata; its attribute edits must all be reachable from FieldEditor
         assertEditorHas(FieldEditor.class, "setType", "setLabel", "setAnnotation", "removeAnnotation",
-                "setInternalDescription", "setExternalDescription", "setRequiredness", "setHelperText",
+                "setInternalDescription", "removeInternalDescription",
+                "setExternalDescription", "removeExternalDescription", "setRequiredness", "setHelperText",
                 "setGlobal", "setTransient", "setRequiredErrorMessages", "modify");
         // a GROUP carries labels/metadata + list config (repeatability, index field, sort fields)
         assertEditorHas(GroupEditor.class, "setLabel", "setAnnotation", "removeAnnotation",
-                "setInternalDescription", "setExternalDescription", "setRepeatable", "setNonRepeatable",
+                "setInternalDescription", "removeInternalDescription",
+                "setExternalDescription", "removeExternalDescription", "setRepeatable", "setNonRepeatable",
                 "setIndexField", "setSortFields");
+        // rules and computations are both Kernel elements; neither held editor may force metadata edits
+        // back through a full path on EditSession
+        assertEditorHas(RuleEditor.class, "setAnnotation", "removeAnnotation",
+                "setInternalDescription", "removeInternalDescription",
+                "setExternalDescription", "removeExternalDescription");
+        assertEditorHas(ComputationEditor.class, "setAnnotation", "removeAnnotation",
+                "setInternalDescription", "removeInternalDescription",
+                "setExternalDescription", "removeExternalDescription");
     }
 
     // ── reflection helpers ────────────────────────────────────────────────────────────────────────────
@@ -100,7 +110,7 @@ class EditSessionEditorParityTest {
 
     private static void assertEditorHas(Class<?> editor, String... names) {
         Set<String> have = new TreeSet<>();
-        for (Method m : editor.getDeclaredMethods()) {
+        for (Method m : editor.getMethods()) {
             if (isPublicInstance(m)) {
                 have.add(m.getName());
             }
