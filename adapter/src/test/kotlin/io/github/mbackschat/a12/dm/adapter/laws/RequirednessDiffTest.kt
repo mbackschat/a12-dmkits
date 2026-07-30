@@ -3,6 +3,7 @@ package io.github.mbackschat.a12.dm.adapter.laws
 import io.github.mbackschat.a12.dm.interpreter.DmInterpreter
 import io.github.mbackschat.a12.dm.interpreter.eval.Document
 import io.github.mbackschat.a12.dm.interpreter.eval.newDocument
+import io.github.mbackschat.a12.dm.interpreter.load.ModelLoader
 import io.github.mbackschat.a12.dm.interpreter.model.FieldDef
 import io.github.mbackschat.a12.dm.interpreter.model.Kind
 import io.github.mbackschat.a12.dm.interpreter.model.ModelDef
@@ -53,9 +54,16 @@ class RequirednessDiffTest {
         val dynamic = RuntimeLaws.errorTextOf(model, "mandatoryField", document, Locale.US).orElseThrow()
         val java = RuntimeLaws.kernelJavaEngine(model)
         val generated = java.errorTextOf(java.instance(document), "mandatoryField", Locale.US).orElseThrow()
+        val definition = ModelLoader.load(model)
+        val interpreterDocument = definition.newDocument()
+            .group("/Order", 1)
+            .emptyField("/Order/Code", 1, 1)
+        val interpreter = DmInterpreter(definition).validate(interpreterDocument).messages
+            .single { it.code == "mandatoryField" }.text
 
         assertEquals("Cost \$\$ Code", dynamic, "dynamic Groovy")
         assertEquals(dynamic, generated, "generated Java")
+        assertEquals(dynamic, interpreter, "dynamic Groovy vs interpreter")
     }
 
     // ---- absolute requiredness on a root-level NUMBER (Quantity) -----------------------------------

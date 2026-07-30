@@ -6,7 +6,7 @@
 >
 > **Section invariant (the placement rule):** every section holds exactly one **live** status — **§1 = open, §2 = deferred / ongoing-incremental, §3 = out-of-scope**. A FULLY-shipped/graduated entry belongs in **none** of them: completing it *deletes* its row (see the lifecycle). So §1 reads `_None open._` whenever nothing is open — the marker every `-GAPS` ledger uses, so one grep rolls up the whole family (`GapLedgerTemplateGuardTest`) — and a fully-FIXED entry **anywhere** in this ledger is a bug in *this doc* — git already records the fix. (A partially-shipped *ongoing* refactor in §2 is not "fixed" — it stays until all of it lands.)
 >
-> **Current state.** §1 carries one row as of 2026-07-30: IG109 records the measured field-owned message channel exposed by `EXP-2026-07-30-01`. Every row names its real-kernel basis and completion gate. Every other live item is dispositioned in §2 or §3 with its re-open trigger. New semantic or performance defects belong in §1 only while they have actionable work and a defined completion gate.
+> **Current state.** §1 is empty as of 2026-07-30. Every live item is dispositioned in §2 or §3 with its re-open trigger. New semantic or performance defects belong in §1 only while they have actionable work and a defined completion gate.
 >
 > **Scope.** `:interpreter` only — the kernel-free Kotlin evaluator (parser, evaluation semantics, model loader, the differential/perf harnesses' interpreter side). dmkit (rulekit/modelkit/edit) authoring gaps go to [`DEV-API-GAPS.md`](DEV-API-GAPS.md); kernel-coverage classification stays in the MVK / RT-semantics / grammar ledgers.
 
@@ -14,9 +14,7 @@
 
 ## 1. Open
 
-One row, **measured** against the real kernel rather than inferred. IG109 is an unmodelled output channel whose two kernel producers cannot be collapsed to the existing rule-message renderer.
-
-- **IG109 — field-owned custom error templates are not retained or rendered.** `ModelLoader` retains neither a String type's invalid-pattern `errorMessage` nor `requirednessConfig.errorMessage`, so interpreter formal messages cannot surface the model author's text. EXP-2026-07-30-01 proves this is not safely implementable by reusing `renderMessage`: an `en_US` String-pattern template accepts only lowercase `$field$`/`$field.value$`, rejects `$$` as an empty invalid parameter, and inserts values once; the measured requiredness template instead accepts and preserves `$$` on both kernel strategies. **Completion gate:** retain the two declarations as distinct model channels, reproduce the dynamic-Groovy anchor for each measured legal form on JVM and Node, keep inserted bytes opaque, refuse unsupported producer/locale forms loudly rather than applying the rule grammar, and add dual-kernel differentials without changing rule/computation message rendering.
+_None open._
 
 ---
 

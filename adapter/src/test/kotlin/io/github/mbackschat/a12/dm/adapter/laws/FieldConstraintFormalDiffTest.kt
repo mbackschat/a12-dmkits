@@ -4,6 +4,7 @@ import com.mgmtp.a12.kernel.md.rt.api.DocumentValidationException
 import io.github.mbackschat.a12.dm.interpreter.DmInterpreter
 import io.github.mbackschat.a12.dm.interpreter.eval.newDocument
 import io.github.mbackschat.a12.dm.interpreter.eval.FORMAL_RULE_PATH
+import io.github.mbackschat.a12.dm.interpreter.load.ModelLoader
 import io.github.mbackschat.a12.dm.interpreter.model.FieldDef
 import io.github.mbackschat.a12.dm.interpreter.model.Kind
 import io.github.mbackschat.a12.dm.interpreter.model.ModelDef
@@ -90,9 +91,16 @@ class FieldConstraintFormalDiffTest {
         val dynamic = RuntimeLaws.errorTextOf(model, "stringFalschesMuster", document, Locale.US).orElseThrow()
         val java = RuntimeLaws.kernelJavaEngine(model)
         val generated = java.errorTextOf(java.instance(document), "stringFalschesMuster", Locale.US).orElseThrow()
+        val definition = ModelLoader.load(model)
+        val interpreterDocument = definition.newDocument()
+            .group("/Order", 1)
+            .field("/Order/Code", value, 1, 1)
+        val interpreter = DmInterpreter(definition).validate(interpreterDocument).messages
+            .single { it.code == "stringFalschesMuster" }.text
 
         assertEquals(expected, dynamic, "$template — dynamic Groovy")
         assertEquals(dynamic, generated, "$template — generated Java")
+        assertEquals(dynamic, interpreter, "$template — dynamic Groovy vs interpreter")
     }
 
     private fun fieldMessageModel(template: String): String =

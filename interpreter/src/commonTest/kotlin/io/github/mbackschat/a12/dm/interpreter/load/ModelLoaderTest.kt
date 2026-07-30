@@ -92,6 +92,30 @@ class ModelLoaderTest {
     }
 
     @Test
+    fun retainsPatternAndRequirednessMessagesAsDistinctChannels() {
+        val source = """
+            { "header": { "id": "m", "modelType": "document" }, "content": { "modelRoot": { "rootGroups": [
+              { "type": "Group", "id": "/G", "name": "G", "Group": { "repeatability": 1, "elements": [
+                { "type": "Field", "id": "/G/Code", "name": "Code", "Field": {
+                  "requirednessConfig": {
+                    "mode": "absoluteOrRelativeToNextRepAncestor",
+                    "errorMessage": [ {"locale":"en_US","text":"Required ${'$'}${'$'} ${'$'}field${'$'}"} ]
+                  },
+                  "fieldType": { "type": "StringType", "StringType": {
+                    "pattern": "[A-Z]+",
+                    "errorMessage": [ {"locale":"en_US","text":"Value [${'$'}field.value${'$'}]"} ]
+                  } }
+                } }
+              ] } } ] } } }
+        """.trimIndent()
+
+        val field = ModelLoader.load(source).fields.single()
+
+        assertEquals(mapOf("en_US" to "Value [\$field.value\$]"), field.patternMessages)
+        assertEquals(mapOf("en_US" to "Required \$\$ \$field\$"), field.requiredMessages)
+    }
+
+    @Test
     fun numberTypeWithoutMaxFractionalDigitsIsScaleZero() {
         // The kernel's NumberType.maxFractionalDigits is a primitive int defaulting to 0, so a NumberType that
         // omits it is scale-0 (an integer: a decimal separator is zahlHatDezimalTrenner). The loader must

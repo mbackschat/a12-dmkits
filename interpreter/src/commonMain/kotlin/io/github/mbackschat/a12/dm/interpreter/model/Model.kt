@@ -256,6 +256,12 @@ data class FieldDef(
      *  caller's relevant set before validating — so a rule whose error field is global RUNS even when the
      *  caller's relevant set omits it ([ModelDef.globalFields] → [io.github.mbackschat.a12.dm.interpreter.DmInterpreter.validatePart]). No effect on full validation. */
     val global: Boolean = false,
+    /** A STRING pattern's field-owned invalid-value text (`StringType.errorMessage`), keyed by locale. This is
+     *  NOT a rule template: the kernel gives it a smaller, locale-fixed token grammar (EXP-2026-07-30-01). */
+    val patternMessages: Map<String, String> = emptyMap(),
+    /** The field-owned empty-required text (`requirednessConfig.errorMessage`), keyed by locale. This is a
+     *  separate producer from [patternMessages]: notably, its measured route preserves `$$` verbatim. */
+    val requiredMessages: Map<String, String> = emptyMap(),
 )
 
 /**

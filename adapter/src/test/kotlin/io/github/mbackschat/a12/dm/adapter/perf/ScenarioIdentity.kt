@@ -1,8 +1,11 @@
 package io.github.mbackschat.a12.dm.adapter.perf
 
 import io.github.mbackschat.a12.dm.interpreter.gen.PlacementSink
+import io.github.mbackschat.a12.dm.interpreter.model.ComputationDef
+import io.github.mbackschat.a12.dm.interpreter.model.FieldDef
 import io.github.mbackschat.a12.dm.interpreter.model.ModelDef
 import io.github.mbackschat.a12.dm.interpreter.model.ModelTimeZone
+import io.github.mbackschat.a12.dm.interpreter.model.RuleDef
 import java.nio.charset.StandardCharsets
 import java.security.MessageDigest
 
@@ -218,7 +221,7 @@ private object ScenarioFingerprint {
     fun compute(id: ScenarioId, scenario: PerfScenario, n: Int): String {
         require(n > 0) { "${id.id}: benchmark scale must be positive" }
         val digest = CanonicalDigest()
-        digest.put("format", "a12-perf-scenario-v1")
+        digest.put("format", "a12-perf-scenario-v2")
         digest.put("id", id.id)
         digest.put("op", id.op.name)
         digest.put("result-regime", id.resultRegime.name)
@@ -276,18 +279,105 @@ private class CanonicalDigest {
     }
 
     fun putModel(model: ModelDef) {
-        model.fields.forEach { put("interp-field", it.toString()) }
-        model.rules.forEach { rule ->
-            put("interp-rule", rule.copy(messages = rule.messages.toSortedMap()).toString())
-        }
-        model.computations.forEach { put("interp-computation", it.toString()) }
+        model.fields.forEach(::putField)
+        model.rules.forEach(::putRule)
+        model.computations.forEach(::putComputation)
         put("interp-repeatable", model.repeatableGroups.sorted().joinToString(","))
         model.declaredReps.toSortedMap().forEach { (path, count) -> put("interp-declared-reps:$path", count.toString()) }
         put("interp-index-fields", model.indexFields.sorted().joinToString(","))
+        put("interp-group-paths", model.groupPaths.sorted().joinToString(","))
         put("interp-base-year", model.baseYear?.toString() ?: "<absent>")
         put("interp-short-names", model.fieldRefByShortNameAllowed.toString())
         put("interp-legal-charset", model.legalCharset?.toString() ?: "<absent>")
         put("interp-time-zone", model.timeZone.name)
+        put("interp-condition-language", model.conditionLanguage.name)
+    }
+
+    /**
+     * Fingerprint semantic fields explicitly. Data-class `toString()` is not a stable format: adding a defaulted
+     * property used to invalidate every reviewed scenario even when its content stayed absent.
+     */
+    private fun putField(field: FieldDef) {
+        put("interp-field-path", field.path)
+        put("interp-field-kind", field.kind.name)
+        putMap("interp-field-label", field.labels)
+        putNullable("interp-field-scale", field.scale)
+        put("interp-field-signed", field.signed.toString())
+        put("interp-field-required", field.required.name)
+        putNullable("interp-field-format", field.format)
+        putNullable("interp-field-range-separator", field.rangeSeparator)
+        put("interp-field-date-precision", field.datePrecision.name)
+        putList("interp-field-enum-value", field.enumValues)
+        putNestedMap("interp-field-enum-category", field.enumCategories)
+        putNullable("interp-field-enum-s-value", field.enumSValue)
+        putNullable("interp-field-custom-type-name", field.customType?.name)
+        putNullable("interp-field-custom-type-min-length", field.customType?.minLength)
+        putNullable("interp-field-custom-type-max-length", field.customType?.maxLength)
+        putNullable("interp-field-min-length", field.minLength)
+        putNullable("interp-field-max-length", field.maxLength)
+        putNullable("interp-field-pattern", field.pattern)
+        put("interp-field-no-value-validation", field.noValueValidation.toString())
+        putNullable("interp-field-min-value", field.minValue)
+        putNullable("interp-field-max-value", field.maxValue)
+        putNullable("interp-field-min-fractional-digits", field.minFractionalDigits)
+        put("interp-field-line-breaks-permitted", field.lineBreaksPermitted.toString())
+        put("interp-field-leading-zeros-allowed", field.leadingZerosAllowed.toString())
+        put("interp-field-zero-not-allowed", field.zeroNotAllowed.toString())
+        putNullable("interp-field-max-integer-digits", field.maxIntegerDigits)
+        put("interp-field-amount-trait", field.amountTrait.toString())
+        putNullable("interp-field-number-min-length", field.numberMinLength)
+        putNullable("interp-field-number-max-length", field.numberMaxLength)
+        put("interp-field-global", field.global.toString())
+        putMap("interp-field-pattern-message", field.patternMessages)
+        putMap("interp-field-required-message", field.requiredMessages)
+    }
+
+    private fun putRule(rule: RuleDef) {
+        put("interp-rule-path", rule.path)
+        put("interp-rule-group", rule.group)
+        put("interp-rule-condition", rule.conditionText)
+        put("interp-rule-code", rule.errorCode)
+        put("interp-rule-error-path", rule.errorEntityRelPath)
+        put("interp-rule-severity", rule.severity.name)
+        putMap("interp-rule-message", rule.messages)
+    }
+
+    private fun putComputation(computation: ComputationDef) {
+        put("interp-computation-target", computation.targetPath)
+        put("interp-computation-group", computation.group)
+        putNullable("interp-computation-common-precondition", computation.commonPrecondition)
+        putNullable("interp-computation-name", computation.name)
+        put("interp-computation-alternative-count", computation.alternatives.size.toString())
+        computation.alternatives.forEach { alternative ->
+            putNullable("interp-computation-precondition", alternative.precondition)
+            put("interp-computation-operation", alternative.operation)
+            putNullable("interp-computation-tolerance", alternative.tolerance?.name)
+        }
+    }
+
+    private fun putMap(label: String, values: Map<String, String>) {
+        put("$label-count", values.size.toString())
+        values.toSortedMap().forEach { (key, value) ->
+            put("$label-key", key)
+            put("$label-value", value)
+        }
+    }
+
+    private fun putNestedMap(label: String, values: Map<String, List<String>>) {
+        put("$label-count", values.size.toString())
+        values.toSortedMap().forEach { (key, members) ->
+            put("$label-key", key)
+            putList("$label-value", members)
+        }
+    }
+
+    private fun putList(label: String, values: List<String>) {
+        put("$label-count", values.size.toString())
+        values.forEach { put(label, it) }
+    }
+
+    private fun putNullable(label: String, value: Any?) {
+        put(label, value?.toString() ?: "<absent>")
     }
 
     fun hex(): String = digest.digest().joinToString("") { "%02x".format(it) }

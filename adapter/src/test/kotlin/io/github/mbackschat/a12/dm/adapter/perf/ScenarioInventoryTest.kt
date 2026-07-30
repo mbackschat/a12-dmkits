@@ -108,13 +108,17 @@ class ScenarioInventoryTest {
 
     @Test
     fun reviewedFingerprintsAndExpectedCardinalitiesMatchCurrentContent() {
+        val reviewedFingerprints = linkedMapOf<String, String>()
+        val actualFingerprints = linkedMapOf<String, String>()
         PerfInventory.cases.forEach { case ->
             val scenario = case.unboundScenario()
             val count = InterpreterPerfEngine.build(scenario).instance(case.n).outcome().signatures.size
             assertEquals(case.id.expectedResultCardinality, listOf(count),
                 "${case.id.id}: update the scenario version, expected cardinality, and reviewed fingerprint together")
-            assertEquals(case.id.reviewedFingerprint, case.id.fingerprintFor(scenario, case.n),
-                "${case.id.id}: update the scenario version and reviewed fingerprint together")
+            reviewedFingerprints[case.id.id] = case.id.reviewedFingerprint
+            actualFingerprints[case.id.id] = case.id.fingerprintFor(scenario, case.n)
         }
+        assertEquals(reviewedFingerprints, actualFingerprints,
+            "update every changed scenario version and reviewed fingerprint together")
     }
 }

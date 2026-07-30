@@ -83,7 +83,15 @@ class DmInterpreter @JvmOverloads constructor(
     private val paths = ModelPathIndex(model)
 
     /** The auto-check emitter + formal-status oracle — the call-invariant I2 seam collaborator (IF117). */
-    private val checks = AutoChecks(model, effectiveLegalCharset, predefinedTypes, customFieldTypes, patterns, paths)
+    private val checks = AutoChecks(
+        model,
+        effectiveLegalCharset,
+        predefinedTypes,
+        customFieldTypes,
+        patterns,
+        paths,
+        ::messageLabel,
+    )
 
     /** The iteration-scope machinery + the RepetitionNotUnique evaluator — call-invariant I2 seam collaborators (IF117). */
     private val scopes = IterationScopes(model)
@@ -252,7 +260,7 @@ class DmInterpreter @JvmOverloads constructor(
             // that degrades to unsupported per cell rather than crashing the whole validation.
             val unsupported = checks.customTypeUnsupported(call, isRelevant).toMutableList()
             val messages = (checks.formalErrors(call, locale, isRelevant, formalResults, unsupported) +
-                    checks.mandatoryErrors(call, locale, isRelevant, formalResults)
+                    checks.mandatoryErrors(call, locale, isRelevant, formalResults, unsupported)
                     + checks.uniquenessMessages(call, dup, locale, isRelevant)
                     + checks.overRepetitionMessages(call, locale, isRelevant)).toMutableList()
             // The per-call seam (IF117): the formal-status memo spans ALL rules of this validation (the doc is
@@ -549,10 +557,13 @@ class DmInterpreter @JvmOverloads constructor(
     }
 
     private fun messageLabel(path: String, locale: String, ctx: EvalContext): String {
+        return messageLabel(path, locale, ctx.repsOf(path))
+    }
+
+    private fun messageLabel(path: String, locale: String, repetitions: List<Int>): String {
         val supplied = model.fieldOf(path)?.let { field -> messageLabelProvider?.label(field, locale) }
         if (supplied != null) return supplied
         model.declaredLabelOf(path, locale)?.takeIf { it.isNotEmpty() }?.let { return it }
-        val repetitions = ctx.repsOf(path)
         return if (repetitions.isEmpty()) path else "$path/${repetitions.joinToString(".")}"
     }
 

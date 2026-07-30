@@ -4,6 +4,7 @@ import io.github.mbackschat.a12.dm.interpreter.eval.CUSTOM_TYPE_INVALID
 import io.github.mbackschat.a12.dm.interpreter.eval.Document
 import io.github.mbackschat.a12.dm.interpreter.eval.EvalContext
 import io.github.mbackschat.a12.dm.interpreter.eval.FORMAL_RULE_PATH
+import io.github.mbackschat.a12.dm.interpreter.eval.FormalErrorCode
 import io.github.mbackschat.a12.dm.interpreter.eval.MANDATORY_FIELD
 import io.github.mbackschat.a12.dm.interpreter.eval.OVER_REPETITION_CONTEXT
 import io.github.mbackschat.a12.dm.interpreter.eval.OVER_REPETITION_FIXED
@@ -15,6 +16,8 @@ import io.github.mbackschat.a12.dm.interpreter.eval.formalErrorCached
 import io.github.mbackschat.a12.dm.interpreter.eval.formalErrorText
 import io.github.mbackschat.a12.dm.interpreter.eval.mandatoryFieldText
 import io.github.mbackschat.a12.dm.interpreter.eval.overRepetitionText
+import io.github.mbackschat.a12.dm.interpreter.eval.renderPatternFieldMessage
+import io.github.mbackschat.a12.dm.interpreter.eval.renderRequiredFieldMessage
 import io.github.mbackschat.a12.dm.interpreter.eval.uniqueIndexText
 import io.github.mbackschat.a12.dm.interpreter.model.CustomFieldType
 import io.github.mbackschat.a12.dm.interpreter.model.CustomFieldValidationContext
@@ -44,6 +47,7 @@ internal class AutoChecks(
     private val customFieldTypes: Map<String, CustomFieldType>,
     private val patterns: PatternRegistry,
     private val paths: ModelPathIndex,
+    private val messageLabel: (String, String, List<Int>) -> String,
 ) {
 
     /**
@@ -65,14 +69,23 @@ internal class AutoChecks(
                     null
                 }
                 is FormalResult.Invalid -> when (val failure = result.failure) {
-                    is FormalFailure.Format -> Message(
-                        failure.code,
-                        FORMAL_RULE_PATH,
-                        doc.formattedPointer(vf.path, vf.reps),
-                        Severity.ERROR,
-                        MsgType.VALUE,
-                        formalErrorText(failure.error, locale, model.scaleOf(vf.path)),
-                    )
+                    is FormalFailure.Format -> {
+                        val pointer = doc.formattedPointer(vf.path, vf.reps)
+                        val text = try {
+                            formatMessage(failure.error, vf.path, vf.reps, vf.raw, locale)
+                        } catch (e: UnsupportedConstructException) {
+                            customUnsupported += UnsupportedRule(pointer, e.message ?: "unsupported field-owned message")
+                            return@mapNotNull null
+                        }
+                        Message(
+                            failure.code,
+                            FORMAL_RULE_PATH,
+                            pointer,
+                            Severity.ERROR,
+                            MsgType.VALUE,
+                            text,
+                        )
+                    }
                     is FormalFailure.Custom -> Message(
                         failure.code,
                         FORMAL_RULE_PATH,
@@ -98,21 +111,27 @@ internal class AutoChecks(
      * - otherwise (absolute under a repeatable ancestor, or relative-to-parent): checked per instantiated row
      *   of the field's [emissionScope], gated by [requiredEmpty]'s `GroupFilled(relativeTo)`.
      */
-    fun mandatoryErrors(doc: Document, locale: String, isRelevant: Relevance, cache: FormalResultCache): List<Message> {
+    fun mandatoryErrors(
+        doc: Document,
+        locale: String,
+        isRelevant: Relevance,
+        cache: FormalResultCache,
+        unsupported: MutableList<UnsupportedRule>,
+    ): List<Message> {
         val out = mutableListOf<Message>()
         for (path in model.requiredFieldPaths) {
             if (model.requirednessOf(path) == Requiredness.ABSOLUTE && lowestRepeatableAncestor(path) == null) {
                 val reps = List(pathParts(path).size) { 1 }
                 val ctx = doc.onceContextFor(rootGroupOf(path)).single()
                 if (isRelevant(path, reps) && cache.failureAt(path, reps, ctx)?.code == MANDATORY_FIELD) {
-                    out += mandatoryMessage(doc, path, reps, locale)
+                    mandatoryMessage(doc, path, reps, locale, unsupported)?.let(out::add)
                 }
             } else {
                 for (ctx in doc.contextsFor(emissionScope(path))) {
                     val r = ctx.repsOf(path)
                     // An over-limit row's mandatory check is suppressed (it carries the over-repetition code instead).
                     if (isRelevant(path, r) && cache.failureAt(path, r, ctx)?.code == MANDATORY_FIELD) {
-                        out += mandatoryMessage(doc, path, r, locale)
+                        mandatoryMessage(doc, path, r, locale, unsupported)?.let(out::add)
                     }
                 }
             }
@@ -212,10 +231,53 @@ internal class AutoChecks(
                 uniqueIndexText(locale))
         }
 
-    private fun mandatoryMessage(doc: Document, path: String, reps: List<Int>, locale: String): Message {
+    private fun mandatoryMessage(
+        doc: Document,
+        path: String,
+        reps: List<Int>,
+        locale: String,
+        unsupported: MutableList<UnsupportedRule>,
+    ): Message? {
         val ptr = doc.formattedPointer(path, reps)
+        val declared = model.fieldOf(path)?.requiredMessages.orEmpty()
+        val text = if (declared.isEmpty()) {
+            mandatoryFieldText(locale)
+        } else {
+            val template = declared[locale]
+            if (template == null) {
+                unsupported += UnsupportedRule(
+                    ptr,
+                    "requiredness field-owned error template has no exact '$locale' declaration",
+                )
+                return null
+            }
+            try {
+                renderRequiredFieldMessage(template, locale, messageLabel(path, locale, reps))
+            } catch (e: UnsupportedConstructException) {
+                unsupported += UnsupportedRule(ptr, e.message ?: "unsupported requiredness field-owned message")
+                return null
+            }
+        }
         return Message(MANDATORY_FIELD, mandatoryRulePath(path), ptr, Severity.ERROR, MsgType.OMISSION,
-            mandatoryFieldText(locale), listOf(ptr), listOf(ptr))
+            text, listOf(ptr), listOf(ptr))
+    }
+
+    private fun formatMessage(
+        error: FormalErrorCode,
+        path: String,
+        reps: List<Int>,
+        raw: String,
+        locale: String,
+    ): String {
+        val declared = model.fieldOf(path)?.patternMessages.orEmpty()
+        if (error != FormalErrorCode.PATTERN || declared.isEmpty()) {
+            return formalErrorText(error, locale, model.scaleOf(path))
+        }
+        val template = declared[locale]
+            ?: throw UnsupportedConstructException(
+                "String-pattern field-owned error template has no exact '$locale' declaration",
+            )
+        return renderPatternFieldMessage(template, locale, messageLabel(path, locale, reps), raw)
     }
 
     /**
