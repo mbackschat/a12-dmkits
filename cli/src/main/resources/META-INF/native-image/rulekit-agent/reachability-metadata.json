@@ -6626,6 +6626,12 @@
           "parameterTypes": [
             "java.lang.String"
           ]
+        },
+        {
+          "name": "setYoungerThan1900Check",
+          "parameterTypes": [
+            "boolean"
+          ]
         }
       ]
     },
@@ -6678,6 +6684,12 @@
           "name": "setValues",
           "parameterTypes": [
             "java.util.List"
+          ]
+        },
+        {
+          "name": "setsValue",
+          "parameterTypes": [
+            "java.lang.String"
           ]
         }
       ]
@@ -6811,6 +6823,18 @@
           ]
         },
         {
+          "name": "setMaxIntegerDigits",
+          "parameterTypes": [
+            "java.lang.Integer"
+          ]
+        },
+        {
+          "name": "setMaxLength",
+          "parameterTypes": [
+            "java.lang.Integer"
+          ]
+        },
+        {
           "name": "setMaxValue",
           "parameterTypes": [
             "java.math.BigDecimal"
@@ -6820,6 +6844,12 @@
           "name": "setMinFractionalDigits",
           "parameterTypes": [
             "int"
+          ]
+        },
+        {
+          "name": "setMinLength",
+          "parameterTypes": [
+            "java.lang.Integer"
           ]
         },
         {
@@ -9679,10 +9709,19 @@
           "name": "baseFile"
         },
         {
+          "name": "baseWorkspace"
+        },
+        {
           "name": "headFile"
         },
         {
+          "name": "headWorkspace"
+        },
+        {
           "name": "since"
+        },
+        {
+          "name": "workspace"
         }
       ],
       "methods": [
@@ -9730,6 +9769,23 @@
         },
         {
           "name": "severity"
+        },
+        {
+          "name": "workspace"
+        }
+      ],
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "io.github.mbackschat.a12.dm.cli.model.ModelExpandCommand",
+      "fields": [
+        {
+          "name": "outputPath"
         },
         {
           "name": "workspace"
@@ -11946,6 +12002,15 @@
     },
     {
       "type": "jdk.internal.vm.annotation.Stable"
+    },
+    {
+      "type": "kotlin.SafePublicationLazyImpl"
+    },
+    {
+      "type": "kotlin.coroutines.SafeContinuation"
+    },
+    {
+      "type": "kotlin.reflect.jvm.internal.ReflectionFactoryImpl"
     },
     {
       "type": "long[]"

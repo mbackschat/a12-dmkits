@@ -4,6 +4,27 @@ All notable changes to the **publicly released `dmtool` artifacts** — the nati
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versioning is [SemVer](https://semver.org/) plus **A12 Kernel compatibility metadata** (the kernel each release targets is recorded per entry, never folded into the version string).
 
+## [0.10.0] — kernel 30.8.1 (A12 Tools 2025.06-ext5)
+
+The runtime document boundary now uses A12's own Document JSON shape and I/O behavior end to end. The built-in interpreter also gains partial temporal values and closes the kernel-semantics corrections measured since 0.9.1.
+
+### Changed
+
+- **BREAKING:** `model eval`, `rule eval`, and `model compute` now read and write A12's canonical nested Document JSON: groups are objects, repeated groups are arrays, and omitted fields are absent. The former `{groups:[...], fields:[...]}` placement envelope is removed.
+- Document values are normalized through A12's model-driven ingress behavior. JSON comments are accepted at the same reader sites as the kernel, unparseable values retain their source text, and numbers preserve their lexical scale while emitting in Java `BigDecimal.toPlainString` form.
+
+### Added
+
+- Runtime support for all four A12 Date precisions, zero-to-three-component Time construction, declared temporal components, and the pre-1900 Date validation option.
+- Authoring support for number text bounds and optional Month/Year component declarations.
+
+### Fixed
+
+- Computation application now preserves retained-result source state, including the separate-destination distinction between a source-classified clear and direct no-value application.
+- Field-owned error messages now use the kernel's producer-specific staging and literal-dollar decoding.
+- Date shifts, date comparisons, starred iteration, computation selection, temporal extraction, and component construction now match the maintained dual-kernel matrices.
+- Model edits no longer rewrite stored numeric literals merely by reading and writing the model.
+
 ## [0.9.1] — kernel 30.8.1
 
 Maintenance release — **no functional change to the `dmtool` CLI** (binaries are identical to v0.9.0). Hardens the release build's reproducibility by pinning the kernel bootstrap to exact upstream release sources.
