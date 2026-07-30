@@ -23,7 +23,8 @@ import org.junit.jupiter.api.Test
  *
  * Own-domain (benefit enrollment): a rule over `/Enrollment` referencing the sibling `Choice` field (so the error
  * field is referenced — `MVK_ERROR_FIELD_NOT_REFERENCED`) and the two repeatable subgroups `Active`/`Waived`.
- * Conditions are stored-form (starred group quantifiers are not typed-DSL-authorable here — DEV-API-GAPS).
+ * This older runtime owner stores its conditions directly; typed `GroupListRef` authoring and read-back are
+ * covered by `NonRepeatableGroupBelowStarDiffTest` and `WildcardGroupFillQuantifierReadTest`.
  */
 class StarredGroupQuantifierDiffTest {
 

@@ -227,6 +227,19 @@ interface EvalContext {
         throw UnsupportedConstructException("bare-group compute scan needs the general Document context, not $this")
 }
 
+/**
+ * Internal narrow seam for a starred GROUP-list operand whose terminal may be non-repeatable. It reuses the
+ * document's first-star row topology without changing [EvalContext.rowContexts], whose group argument remains
+ * the actual aggregate/Having row group. Non-document contexts retain the terminal-repeatable fallback.
+ */
+internal interface GroupListEnvironmentProvider {
+    fun groupListEnvironments(groupPath: String, bindDepth: Int): List<EvalContext>
+}
+
+internal fun EvalContext.groupListEnvironments(groupPath: String, bindDepth: Int): List<EvalContext> =
+    (this as? GroupListEnvironmentProvider)?.groupListEnvironments(groupPath, bindDepth)
+        ?: rowContexts(groupPath, bindDepth)
+
 /** A cell's COMPUTE-mode read state ([EvalContext.cellState], IF85) — a visited [INVALID] cell poisons the
  *  reading computation instance ([PoisonedReadException]). "Cell" (a repetition's field value) is a HOUSE
  *  term — the kernel has no cell noun; it is declared once in KERNEL-SEMANTICS "House ↔ kernel vocabulary",

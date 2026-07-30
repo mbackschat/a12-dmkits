@@ -26,7 +26,7 @@ internal class OverlayContext(
     // NEVER cached — the overlay for that column changes as the cascade lands, so it is rebuilt fresh every read.
     private val views: OverlayViews,
     private val selfTarget: String,
-) : EvalContext by d {
+) : EvalContext by d, GroupListEnvironmentProvider {
     private fun overlaid(path: String): Val? = overlay[path to d.repsOf(path)]
     private fun isCleared(path: String): Boolean = path to d.repsOf(path) in cleared
     // A POISONED cascade target (an errored value / an itself-poisoned instance) poisons EVERY read — value,
@@ -127,6 +127,10 @@ internal class OverlayContext(
     // poisoning read (IF85) — the raw delegation read the STALE stored cell (IF98).
     override fun rowContexts(groupPath: String, bindDepth: Int): List<EvalContext> =
         d.rowContexts(groupPath, bindDepth).map { OverlayContext(it, overlay, cleared, poisoned, emptyOf, minFracOf, views, selfTarget) }
+
+    override fun groupListEnvironments(groupPath: String, bindDepth: Int): List<EvalContext> =
+        d.groupListEnvironments(groupPath, bindDepth)
+            .map { OverlayContext(it, overlay, cleared, poisoned, emptyOf, minFracOf, views, selfTarget) }
 
     // The `$`-join buckets must read joined values through the overlay — rebuilt from the wrapped rows (the
     // Document-side cache is scope-keyed on RAW reads; a cascade overlay is per-compute-pass). But within a step

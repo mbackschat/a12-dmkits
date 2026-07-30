@@ -642,7 +642,7 @@ class Document(internal val config: DocumentConfig) {
         private val group: String,
         private val rowReps: List<Int>,
         override val evaluated: Boolean,
-    ) : EvalContext {
+    ) : EvalContext, GroupListEnvironmentProvider {
 
         /**
          * Resolve a referenced field to its placement (or null) ONCE per path, cached for this row context —
@@ -836,6 +836,19 @@ class Document(internal val config: DocumentConfig) {
         // prefix (take(n) with n ≥ this depth ≡ rowReps), so it stays scoped to this row — unchanged.
         override fun rowContexts(groupPath: String, bindDepth: Int): List<EvalContext> =
             rowContextsScoped(groupPath, groupScopePrefix(groupPath, bindDepth))
+
+        /**
+         * Reuse the first-star row topology, but choose its deepest repeatable ANCESTOR environment when the
+         * addressed terminal is non-repeatable. Resolving [groupPath] from that row keeps the complete ancestry,
+         * so [GroupPresenceState] remains the sole terminal product owner (SPEC-2026-07-26-02).
+         */
+        override fun groupListEnvironments(groupPath: String, bindDepth: Int): List<EvalContext> {
+            var environment = groupPath
+            while (environment !in repeatableGroups && partsOf(environment).size > bindDepth) {
+                environment = parentGroup(environment)
+            }
+            return rowContextsScoped(environment, groupScopePrefix(environment, bindDepth))
+        }
 
         // The declared fields under a group path, recursively and in model declaration order. Numeric `Sum`
         // observes this order because every addition rounds at precision 50; compute scans share this same plan.

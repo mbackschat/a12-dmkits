@@ -584,19 +584,24 @@ class Interpreter(
      *  - a bare GROUP contributes the IF193 product state (`definitelyFilled` → TRUE, `definitelyEmpty` → FALSE,
      *    else UNKNOWN) — structural in compute (`erroneous`=false, so a malformed-only group is FILLED, never
      *    poison);
-     *  - a STARRED repeatable GROUP scope (`NoGroupFilled(G*)`/`AtLeastOneGroupFilled(G*)`, the only forms the
-     *    kernel lets carry a `*`) yields one FILLED per instantiated (Having-kept) row — a created row is content
-     *    (IF46/IF68); an un-instantiated star contributes nothing, so `n` is not fixed at `args.size`.
+     *  - a STARRED GROUP scope (`NoGroupFilled`/`AtLeastOneGroupFilled`, the only forms the kernel lets carry a
+     *    `*`) yields one state per selected environment: a repeatable terminal row is FILLED structurally
+     *    (IF46/IF68), while a non-repeatable terminal below starred ancestors retains its ordinary group-product
+     *    state (SPEC-2026-07-26-02);
      * Yielded lazily so a compute-mode consumer that decides early never reads (and never poisons on) a later
      * operand — the kernel's ordered `…EntityAngegeben` read.
      */
     private fun groupFillStates(args: List<Expr>): Sequence<Tri> = sequence {
         for (arg in args) when {
             arg is Expr.Star -> {
-                for (rc in ctxOf(arg).rowContexts(arg.path, arg.bindDepth)) {
-                    if (!groupPresence(rc, arg.path).definitelyFilled) continue
+                for (rc in ctxOf(arg).groupListEnvironments(arg.path, arg.bindDepth)) {
                     if (arg.having != null && !havingInterp(rc).fires(arg.having)) continue
-                    yield(Tri.TRUE)
+                    val state = groupPresence(rc, arg.path)
+                    yield(when {
+                        state.definitelyFilled -> Tri.TRUE
+                        state.definitelyEmpty -> Tri.FALSE
+                        else -> Tri.UNKNOWN
+                    })
                 }
             }
             ctxOf(arg).declaredKind(pathOf(arg)) != null -> yield(presenceTri(arg))
@@ -612,8 +617,8 @@ class Interpreter(
     }
 
     /** The quantifier's `(TRUE, FALSE, N)` tally. The GROUP-fill family folds [groupFillStates] (a checked field,
-     *  a group's product state, and one FILLED per instantiated starred-group row — so a STARRED group scope may
-     *  be MIXED with other operands, and `n` is the yielded count, not `args.size`). A single-star FIELD-fill
+     *  a group's product state, and one state per starred-group environment — so a STARRED group scope may be
+     *  MIXED with other operands, and `n` is the yielded count, not `args.size`). A single-star FIELD-fill
      *  operand expands to its filtered rows ([starQuantTally]); else a plain field list ([quantTally]). */
     internal fun quantCounts(op: PredicateOp, args: List<Expr>): Triple<Int, Int, Int> {
         if (op.countsGroups) {
