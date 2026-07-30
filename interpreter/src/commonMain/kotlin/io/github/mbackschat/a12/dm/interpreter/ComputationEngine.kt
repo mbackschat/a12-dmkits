@@ -134,6 +134,9 @@ internal class ComputationEngine(
         // field's poison gate wrongly flags it `zahlFalscheAnzahlNachkommastellen` →
         // poisons a downstream computation the kernel computes fine (IF90).
         val minFracOf: (String) -> Int = { p -> model.constraintsOf(p).minFractionalDigits ?: 0 }
+        // Cause-blind by contract (SPEC-2026-07-26-04): once invalid, a computed cell contributes only its
+        // identity to dependent reads. Never retain the failed payload, exception subtype, message, or producer
+        // cause here; every such producer class must collapse to the same poisoned-membership observation.
         val poisoned = HashSet<Pair<String, List<Int>>>()
         // The kernel's PRELIMINARY index invalidation reaches the compute path (SPEC-2026-07-23-15): a
         // DUPLICATED index cell is formally invalid for a reading computation (the `uniqueIndex` prepass),
@@ -238,7 +241,9 @@ internal class ComputationEngine(
                                 }
                             }
                         }
-                    } catch (p: PoisonedReadException) {
+                    } catch (_: PoisonedReadException) {
+                        // The immediate read path is useful only inside expression-order locks. At the computation
+                        // boundary even that path is erased: the reader becomes an identity-only poisoned target.
                         poisoned += targetKey; cleared -= targetKey; decided += targetKey
                         Computed(comp.targetPath, ComputeOutcome.CLEARED, indices = targetKey.second)
                     }

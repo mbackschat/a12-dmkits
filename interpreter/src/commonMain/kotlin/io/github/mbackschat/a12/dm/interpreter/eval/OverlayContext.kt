@@ -31,7 +31,8 @@ internal class OverlayContext(
     private fun isCleared(path: String): Boolean = path to d.repsOf(path) in cleared
     // A POISONED cascade target (an errored value / an itself-poisoned instance) poisons EVERY read — value,
     // presence, or display (IF85; the kernel's CalculationCache.getWertXML/isEntityFilled throw for an
-    // invalid-marked field). A CLEARED target instead reads as EMPTY (IF77) — the two clear-causes differ.
+    // invalid-marked field). The set carries cell identity only: producer cause/payload/message is deliberately
+    // unavailable to the dependent (SPEC-2026-07-26-04). A CLEARED target instead reads as EMPTY (IF77).
     private fun poisonIfPoisoned(path: String) {
         if (path to d.repsOf(path) in poisoned) throw PoisonedReadException(path)
     }
