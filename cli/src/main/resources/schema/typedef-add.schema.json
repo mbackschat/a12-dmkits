@@ -26,6 +26,9 @@
       "properties": {
         "minFractionalDigits": { "type": "integer" }, "maxFractionalDigits": { "type": "integer", "description": "the decimal scale; together they bound the fraction-digit range" },
         "min": { "type": "string", "description": "minimum value (decimal as a string). seeAlso: the LessThan/GreaterThan comparison operators — rule-level bounds" }, "max": { "type": "string", "description": "maximum value (decimal as a string)" },
+        "minLength": { "type": "integer", "description": "minimum character length of the rendered stored-number text; sign and decimal separator count" },
+        "maxLength": { "type": "integer", "description": "maximum character length of the rendered stored-number text; this is the Date/Time component declaration gate, not maxIntegerDigits" },
+        "maxIntegerDigits": { "type": "integer", "description": "maximum digits before the decimal separator; sign and fractional digits do not count" },
         "zeroNotAllowed": { "type": "boolean" }, "leadingZerosAllowed": { "type": "boolean" },
         "unit": { "type": "string", "description": "AMOUNT | PERCENT | PERMILLE (the kernel `trait`)" }
       }
@@ -88,6 +91,10 @@
     {
       "kind": "STRING",
       "string": { "pattern": "[^@]+@[^@]+", "patternMessage": "must be an email address" }
+    },
+    {
+      "kind": "NUMBER",
+      "number": { "minLength": 1, "maxLength": 2, "maxIntegerDigits": 2 }
     }
   ]
 }

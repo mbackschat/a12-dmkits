@@ -245,9 +245,18 @@ public final class FieldSpec {
     private static FieldTypeSpec number(JsonNode n) {
         NumberTrait trait = n.hasNonNull("unit")
                 ? NumberTrait.valueOf(n.get("unit").asText().toUpperCase(java.util.Locale.ROOT)) : null;
-        return new FieldTypeSpec.NumberSpec(intOrNull(n, "minFractionalDigits"), intOrNull(n, "maxFractionalDigits"),
-                decimalOrNull(n, "min"), decimalOrNull(n, "max"),
-                n.path("zeroNotAllowed").asBoolean(false), n.path("leadingZerosAllowed").asBoolean(false), trait);
+        return FieldTypeSpec.NumberSpec.builder()
+                .minFractionalDigits(intOrNull(n, "minFractionalDigits"))
+                .maxFractionalDigits(intOrNull(n, "maxFractionalDigits"))
+                .minValue(decimalOrNull(n, "min"))
+                .maxValue(decimalOrNull(n, "max"))
+                .zeroNotAllowed(n.path("zeroNotAllowed").asBoolean(false))
+                .leadingZerosAllowed(n.path("leadingZerosAllowed").asBoolean(false))
+                .trait(trait)
+                .minLength(intOrNull(n, "minLength"))
+                .maxLength(intOrNull(n, "maxLength"))
+                .maxIntegerDigits(intOrNull(n, "maxIntegerDigits"))
+                .build();
     }
 
     private static FieldTypeSpec enumeration(JsonNode e) {

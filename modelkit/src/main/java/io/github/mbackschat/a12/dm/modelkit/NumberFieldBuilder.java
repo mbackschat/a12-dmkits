@@ -2,7 +2,7 @@ package io.github.mbackschat.a12.dm.modelkit;
 
 import java.math.BigDecimal;
 
-/** Configures a number field (decimal-place range, optional value range, zero/leading-zero flags). */
+/** Configures a number field (scale/value/text-length/digit bounds, zero/leading-zero flags, and unit). */
 public final class NumberFieldBuilder extends FieldAttrs<NumberFieldBuilder> {
     private Integer minFractionalDigits;
     private Integer maxFractionalDigits;
@@ -11,6 +11,9 @@ public final class NumberFieldBuilder extends FieldAttrs<NumberFieldBuilder> {
     private boolean zeroNotAllowed;
     private boolean leadingZerosAllowed;
     private NumberTrait trait;
+    private Integer minLength;
+    private Integer maxLength;
+    private Integer maxIntegerDigits;
 
     /** Fix the maximum scale (0..{@code n} decimal places); the minimum stays 0. */
     public NumberFieldBuilder fractionDigits(int n) {
@@ -53,8 +56,36 @@ public final class NumberFieldBuilder extends FieldAttrs<NumberFieldBuilder> {
         return this;
     }
 
+    /** Set the minimum length of the rendered stored-number text. */
+    public NumberFieldBuilder minLength(int n) {
+        this.minLength = n;
+        return this;
+    }
+
+    /** Set the maximum length of the rendered stored-number text. */
+    public NumberFieldBuilder maxLength(int n) {
+        this.maxLength = n;
+        return this;
+    }
+
+    /** Cap the digits before the decimal separator; sign and fractional digits do not count. */
+    public NumberFieldBuilder maxIntegerDigits(int n) {
+        this.maxIntegerDigits = n;
+        return this;
+    }
+
     protected FieldTypeSpec spec() {
-        return new FieldTypeSpec.NumberSpec(minFractionalDigits, maxFractionalDigits, minValue, maxValue,
-                zeroNotAllowed, leadingZerosAllowed, trait);
+        return FieldTypeSpec.NumberSpec.builder()
+                .minFractionalDigits(minFractionalDigits)
+                .maxFractionalDigits(maxFractionalDigits)
+                .minValue(minValue)
+                .maxValue(maxValue)
+                .zeroNotAllowed(zeroNotAllowed)
+                .leadingZerosAllowed(leadingZerosAllowed)
+                .trait(trait)
+                .minLength(minLength)
+                .maxLength(maxLength)
+                .maxIntegerDigits(maxIntegerDigits)
+                .build();
     }
 }

@@ -12,7 +12,7 @@
   "properties": {
     "typedef": { "type": "string", "description": "(one) the type definition's id" },
     "kind": { "type": "string", "description": "(one) the value kind — the SAME vocabulary the `typedef add` `kind` key / `field read` / `model describe` use (STRING | NUMBER | BOOLEAN | CONFIRM | DATE | DATE_TIME | TIME | DATE_FRAGMENT | DATE_RANGE | ENUMERATION | CUSTOM | UNKNOWN), never the raw kernel discriminator" },
-    "number": { "type": "object", "description": "(one, NUMBER) min/max/unit/scale config, the shape `typedef add` accepts" },
+    "number": { "type": "object", "description": "(one, NUMBER) min/max/unit/scale/rendered-length/integer-digit config, the shape `typedef add` accepts" },
     "string": { "type": "object", "description": "(one, STRING) pattern/length/patternMessages/suggestions config" },
     "enum": { "type": "object", "description": "(one, ENUMERATION) the allowed values + labels" },
     "date": { "type": "object", "description": "(one, DATE) format/precision config" },

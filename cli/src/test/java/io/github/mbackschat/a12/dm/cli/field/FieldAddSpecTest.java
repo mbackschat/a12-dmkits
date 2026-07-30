@@ -32,10 +32,14 @@ class FieldAddSpecTest {
     void richNumberSpecWithUnitRangeFlagsAndMetadata(@TempDir Path dir) throws Exception {
         String written = Files.readString(run(dir, """
             {"group":"/Order","name":"Fee","kind":"NUMBER","required":true,"label":{"en_US":"Fee"},
-             "number":{"minFractionalDigits":2,"maxFractionalDigits":2,"unit":"AMOUNT","zeroNotAllowed":true,"min":"0"},
+             "number":{"minFractionalDigits":2,"maxFractionalDigits":2,"maxIntegerDigits":4,
+                       "minLength":4,"maxLength":8,"unit":"AMOUNT","zeroNotAllowed":true,"min":"0"},
              "global":true,"helperText":{"en_US":"the order fee"}}"""));
         assertTrue(written.contains("\"trait\" : \"amount\""), () -> "unit emitted: " + written);
         assertTrue(written.contains("\"minFractionalDigits\" : 2"), "frac-range emitted");
+        assertTrue(written.contains("\"minLength\" : 4"), "minimum rendered length emitted");
+        assertTrue(written.contains("\"maxLength\" : 8"), "maximum rendered length emitted");
+        assertTrue(written.contains("\"maxIntegerDigits\" : 4"), "integer-digit cap emitted");
         assertTrue(written.contains("\"zeroNotAllowed\" : true"), "flag emitted");
         assertTrue(written.contains("\"global\" : true"), "metadata emitted");
         assertTrue(written.contains("helperText"), "helper text emitted");

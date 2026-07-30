@@ -441,6 +441,15 @@ public final class DocumentModelDraft {
                 if (n.trait() != null) {
                     inner.put("trait", n.trait().json());
                 }
+                if (n.minLength() != null) {
+                    inner.put("minLength", n.minLength());
+                }
+                if (n.maxLength() != null) {
+                    inner.put("maxLength", n.maxLength());
+                }
+                if (n.maxIntegerDigits() != null) {
+                    inner.put("maxIntegerDigits", n.maxIntegerDigits());
+                }
             }
             case FieldTypeSpec.DateSpec d -> {
                 ObjectNode inner = fieldType.putObject("DateType");
@@ -568,6 +577,9 @@ public final class DocumentModelDraft {
                 if (c.hasNonNull("trait")) b.put("unit", c.get("trait").asText().toUpperCase(java.util.Locale.ROOT));
                 copyInt(c, "minFractionalDigits", b, "minFractionalDigits");
                 copyInt(c, "maxFractionalDigits", b, "maxFractionalDigits");
+                copyInt(c, "minLength", b, "minLength");
+                copyInt(c, "maxLength", b, "maxLength");
+                copyInt(c, "maxIntegerDigits", b, "maxIntegerDigits");
                 if (c.path("zeroNotAllowed").asBoolean(false)) b.put("zeroNotAllowed", true);
                 if (c.path("leadingZerosAllowed").asBoolean(false)) b.put("leadingZerosAllowed", true);
                 if (!b.isEmpty()) out.set("number", b);
@@ -1266,7 +1278,8 @@ public final class DocumentModelDraft {
 
         private ElementDraft.Field sizeField() {
             BigDecimal max = maxSizeBytes == null ? null : BigDecimal.valueOf(maxSizeBytes);
-            return new ElementDraft.Field("size", new FieldTypeSpec.NumberSpec(0, null, max),
+            return new ElementDraft.Field("size", FieldTypeSpec.NumberSpec.builder()
+                    .maxFractionalDigits(0).maxValue(max).build(),
                     Requiredness.OPTIONAL);
         }
 
@@ -1349,7 +1362,7 @@ public final class DocumentModelDraft {
     static FieldTypeSpec bareSpec(FieldKind kind) {
         return switch (kind) {
             case STRING -> new FieldTypeSpec.StringSpec(null, null, null, null);
-            case NUMBER -> new FieldTypeSpec.NumberSpec(null, null, null);
+            case NUMBER -> FieldTypeSpec.NumberSpec.builder().build();
             case DATE -> new FieldTypeSpec.DateSpec(null, "FULL");
             case BOOLEAN -> new FieldTypeSpec.BooleanSpec();
             case CONFIRM -> new FieldTypeSpec.ConfirmSpec();

@@ -17,7 +17,7 @@
     "internalDescription": { "type": "object", "description": "(one field) the internal description, locale → text" },
     "externalDescription": { "type": "object", "description": "(one field) the external/help description, locale → text" },
     "annotations": { "type": "object", "description": "(one field) the field's annotations, name → value" },
-    "number": { "type": "object", "description": "(one field, NUMBER) min/max/unit/scale config, the shape `field add` accepts" },
+    "number": { "type": "object", "description": "(one field, NUMBER) min/max/unit/scale/rendered-length/integer-digit config, the shape `field add` accepts" },
     "string": { "type": "object", "description": "(one field, STRING) pattern/length/patternMessages/suggestions/lineBreaks/noValueValidation config" },
     "enum": { "type": "object", "description": "(one field, ENUMERATION) the allowed values + labels, plus any categories and per-locale invalid-value errorMessages" },
     "date": { "type": "object", "description": "(one field, DATE) format/precision config" },

@@ -21,6 +21,8 @@ class FieldConfigRoundTripTest {
         String json = DocumentModelDraft.named("policy").locale("en_US")
                 .rootGroup("Policy", p -> p
                         .stringField("Blob", s -> s.noValueValidation().lineBreaks())
+                        .numberField("Sequence", n -> n
+                                .minLength(1).maxLength(4).maxIntegerDigits(3))
                         .enumField("Coverage", e -> e
                                 .value("BASIC").value("PREMIUM")
                                 .category("Tier", "entry", "top")
@@ -44,6 +46,15 @@ class FieldConfigRoundTripTest {
         JsonNode blob = config("/Policy/Blob");
         assertTrue(blob.path("string").path("noValueValidation").asBoolean(false),
                 () -> "the written string noValueValidation must round-trip on read: " + blob);
+    }
+
+    @Test
+    void numberLengthAndIntegerDigitBoundsRoundTripOnRead() {
+        JsonNode sequence = config("/Policy/Sequence").path("number");
+
+        assertEquals(1, sequence.path("minLength").asInt(), sequence::toPrettyString);
+        assertEquals(4, sequence.path("maxLength").asInt(), sequence::toPrettyString);
+        assertEquals(3, sequence.path("maxIntegerDigits").asInt(), sequence::toPrettyString);
     }
 
     @Test

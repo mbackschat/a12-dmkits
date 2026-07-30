@@ -75,4 +75,19 @@ class ModelDocumentAuthoredStateTest {
         assertEquals("Maintained by purchasing", group.meta().internalDescription().get("en_US"));
         assertEquals("Purchased items", group.meta().externalDescription().get("en_US"));
     }
+
+    @Test
+    void readsCompleteNumberLengthAndIntegerDigitState() {
+        String json = DocumentModelDraft.named("components").locale("en_US")
+                .rootGroup("Parts", parts -> parts.numberField("Month", number -> number
+                        .minLength(1).maxLength(2).maxIntegerDigits(2)))
+                .build().toJson();
+
+        FieldTypeSpec.NumberSpec number = (FieldTypeSpec.NumberSpec) ModelDocument.read(json)
+                .authoredState().fields().get("/Parts/Month").type();
+
+        assertEquals(1, number.minLength());
+        assertEquals(2, number.maxLength());
+        assertEquals(2, number.maxIntegerDigits());
+    }
 }

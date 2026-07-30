@@ -38,6 +38,9 @@
       "properties": {
         "minFractionalDigits": { "type": "integer" }, "maxFractionalDigits": { "type": "integer", "description": "the decimal scale; together they bound the fraction-digit range" },
         "min": { "type": "string", "description": "minimum value (decimal as a string). seeAlso: the LessThan/GreaterThan comparison operators — rule-level bounds" }, "max": { "type": "string", "description": "maximum value (decimal as a string)" },
+        "minLength": { "type": "integer", "description": "minimum character length of the rendered stored-number text; sign and decimal separator count" },
+        "maxLength": { "type": "integer", "description": "maximum character length of the rendered stored-number text; this is the Date/Time component declaration gate, not maxIntegerDigits" },
+        "maxIntegerDigits": { "type": "integer", "description": "maximum digits before the decimal separator; sign and fractional digits do not count" },
         "zeroNotAllowed": { "type": "boolean" }, "leadingZerosAllowed": { "type": "boolean" },
         "unit": { "type": "string", "description": "AMOUNT | PERCENT | PERMILLE (the kernel `trait`)" }
       }
@@ -99,7 +102,7 @@
       "kind": "NUMBER",
       "required": true,
       "label": { "en_US": "Surcharge", "de_DE": "Zuschlag" },
-      "number": { "minFractionalDigits": 2, "maxFractionalDigits": 2, "unit": "AMOUNT", "zeroNotAllowed": true, "min": "0" },
+      "number": { "minFractionalDigits": 2, "maxFractionalDigits": 2, "maxIntegerDigits": 4, "minLength": 4, "maxLength": 8, "unit": "AMOUNT", "zeroNotAllowed": true, "min": "0" },
       "global": true,
       "helperText": { "en_US": "the monthly surcharge", "de_DE": "der monatliche Zuschlag" }
     },

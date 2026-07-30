@@ -68,6 +68,20 @@ class FieldConfigExtrasTest {
     }
 
     @Test
+    void numberLengthAndIntegerDigitBoundsRoundTripThroughTheKernel() throws Exception {
+        DocumentModelDraft draft = permit()
+                .rootGroup("Permit", p -> p
+                        .numberField("Component", n -> n
+                                .minLength(1).maxLength(2).maxIntegerDigits(2)))
+                .build();
+        INumberType number = (INumberType) fieldTypeAfterRoundTrip(draft, "/Permit/Component");
+
+        assertEquals(1, number.getMinLength().orElseThrow(), "minLength honored");
+        assertEquals(2, number.getMaxLength().orElseThrow(), "maxLength honored");
+        assertEquals(2, number.getMaxIntegerDigits().orElseThrow(), "maxIntegerDigits honored");
+    }
+
+    @Test
     void stringSuggestionsLineBreaksAndSortingRoundTripThroughTheKernel() throws Exception {
         DocumentModelDraft draft = permit()
                 .rootGroup("Permit", p -> p

@@ -48,10 +48,18 @@ final class FieldTypeSpecReader {
     }
 
     private static FieldTypeSpec.NumberSpec number(JsonNode config) {
-        return new FieldTypeSpec.NumberSpec(integer(config, "minFractionalDigits"),
-                integer(config, "maxFractionalDigits"), decimal(config, "minValue"), decimal(config, "maxValue"),
-                config.path("zeroNotAllowed").asBoolean(false),
-                config.path("leadingZerosAllowed").asBoolean(false), numberTrait(text(config, "trait")));
+        return FieldTypeSpec.NumberSpec.builder()
+                .minFractionalDigits(integer(config, "minFractionalDigits"))
+                .maxFractionalDigits(integer(config, "maxFractionalDigits"))
+                .minValue(decimal(config, "minValue"))
+                .maxValue(decimal(config, "maxValue"))
+                .zeroNotAllowed(config.path("zeroNotAllowed").asBoolean(false))
+                .leadingZerosAllowed(config.path("leadingZerosAllowed").asBoolean(false))
+                .trait(numberTrait(text(config, "trait")))
+                .minLength(integer(config, "minLength"))
+                .maxLength(integer(config, "maxLength"))
+                .maxIntegerDigits(integer(config, "maxIntegerDigits"))
+                .build();
     }
 
     private static FieldTypeSpec.EnumSpec enumeration(JsonNode config) {

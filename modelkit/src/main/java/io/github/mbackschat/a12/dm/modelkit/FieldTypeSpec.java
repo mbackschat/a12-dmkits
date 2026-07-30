@@ -112,11 +112,13 @@ public sealed interface FieldTypeSpec {
      * A number field: the decimal scale as a {@code [minFractionalDigits, maxFractionalDigits]} range (the
      * single-arg form fixes only the max, min defaulting to 0 — FEATURE-GAPS), optional value bounds,
      * the two kernel flags {@code zeroNotAllowed} (the engine emits a dedicated zero-not-allowed error) and
-     * {@code leadingZerosAllowed}, and the optional unit {@code trait} (amount/percent/permille).
+     * {@code leadingZerosAllowed}, the optional unit {@code trait} (amount/percent/permille), rendered-text
+     * length bounds, and the integer-digit cap. Use {@link #builder()} for direct construction: the canonical
+     * constructor's adjacent numeric slots are intentionally not the authoring idiom.
      */
     record NumberSpec(Integer minFractionalDigits, Integer maxFractionalDigits, BigDecimal minValue,
-            BigDecimal maxValue, boolean zeroNotAllowed, boolean leadingZerosAllowed, NumberTrait trait)
-            implements FieldTypeSpec {
+            BigDecimal maxValue, boolean zeroNotAllowed, boolean leadingZerosAllowed, NumberTrait trait,
+            Integer minLength, Integer maxLength, Integer maxIntegerDigits) implements FieldTypeSpec {
 
         /** The kernel's cap on a number field's declared scale (measured: 15 is refused at model check). */
         static final int MAX_SCALE = 14;
@@ -150,14 +152,94 @@ public sealed interface FieldTypeSpec {
             }
         }
 
+        /** Fluent construction avoids the record's ten-position, same-typed canonical constructor. */
+        public static Builder builder() {
+            return new Builder();
+        }
+
+        /** Backward-compatible pre-length form; new internal callers use {@link #builder()}. */
+        public NumberSpec(Integer minFractionalDigits, Integer maxFractionalDigits, BigDecimal minValue,
+                BigDecimal maxValue, boolean zeroNotAllowed, boolean leadingZerosAllowed, NumberTrait trait) {
+            this(minFractionalDigits, maxFractionalDigits, minValue, maxValue, zeroNotAllowed,
+                    leadingZerosAllowed, trait, null, null, null);
+        }
+
         /** The earlier form: a max-scale (0..{@code fractionDigits}) number with an optional value range. */
         public NumberSpec(Integer fractionDigits, BigDecimal minValue, BigDecimal maxValue) {
-            this(null, fractionDigits, minValue, maxValue, false, false, null);
+            this(null, fractionDigits, minValue, maxValue, false, false, null, null, null, null);
         }
 
         @Override
         public String jsonType() {
             return "NumberType";
+        }
+
+        public static final class Builder {
+            private Integer minFractionalDigits;
+            private Integer maxFractionalDigits;
+            private BigDecimal minValue;
+            private BigDecimal maxValue;
+            private boolean zeroNotAllowed;
+            private boolean leadingZerosAllowed;
+            private NumberTrait trait;
+            private Integer minLength;
+            private Integer maxLength;
+            private Integer maxIntegerDigits;
+
+            public Builder minFractionalDigits(Integer value) {
+                this.minFractionalDigits = value;
+                return this;
+            }
+
+            public Builder maxFractionalDigits(Integer value) {
+                this.maxFractionalDigits = value;
+                return this;
+            }
+
+            public Builder minValue(BigDecimal value) {
+                this.minValue = value;
+                return this;
+            }
+
+            public Builder maxValue(BigDecimal value) {
+                this.maxValue = value;
+                return this;
+            }
+
+            public Builder zeroNotAllowed(boolean value) {
+                this.zeroNotAllowed = value;
+                return this;
+            }
+
+            public Builder leadingZerosAllowed(boolean value) {
+                this.leadingZerosAllowed = value;
+                return this;
+            }
+
+            public Builder trait(NumberTrait value) {
+                this.trait = value;
+                return this;
+            }
+
+            public Builder minLength(Integer value) {
+                this.minLength = value;
+                return this;
+            }
+
+            public Builder maxLength(Integer value) {
+                this.maxLength = value;
+                return this;
+            }
+
+            public Builder maxIntegerDigits(Integer value) {
+                this.maxIntegerDigits = value;
+                return this;
+            }
+
+            public NumberSpec build() {
+                return new NumberSpec(minFractionalDigits, maxFractionalDigits, minValue, maxValue,
+                        zeroNotAllowed, leadingZerosAllowed, trait, minLength, maxLength, maxIntegerDigits);
+            }
         }
     }
 
