@@ -325,7 +325,7 @@ record ConditionComplexity(int nodeCount, int depth, int maxBooleanArity,
                 case TimeConstruction tc -> {
                     op(tc.operatorId());
                     constructs.add(Construct.DATE_MATH);
-                    yield 1 + Math.max(depth(tc.hour()), Math.max(depth(tc.minute()), depth(tc.second())));
+                    yield 1 + tc.components().stream().mapToInt(this::depth).max().orElse(0);
                 }
                 case DateTimeConstruction dtc -> {
                     op(dtc.operatorId());

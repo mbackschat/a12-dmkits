@@ -32,6 +32,18 @@ class DateComponentConstantTest {
         return DmInterpreter(def).validateFull(doc).any { it.code == "DCC" }
     }
 
+    private fun firesTime(construction: String, pickupTime: String): Boolean {
+        val time = "/Order/PickupTime"
+        val def = ModelDef(
+            fields = listOf(FieldDef(NAME, Kind.STRING), FieldDef(time, Kind.TIME, format = "HH:mm:ss")),
+            rules = listOf(RuleDef("/Order/R", "/Order",
+                "FieldFilled($NAME) And [$time] == $construction", "DCC", "../CustomerName")),
+        )
+        val doc = def.newDocument().group("/Order", 1)
+            .field(NAME, "anyone", 1, 1).field(time, pickupTime, 1, 1)
+        return DmInterpreter(def).validateFull(doc).any { it.code == "DCC" }
+    }
+
     @Test fun theDayPositionHasNoWidthGate() {
         assertEquals(true, fires("""Date("0001", "1", "1963")""", "1963-01-01"))
         assertEquals(false, fires("""Date("0001", "1", "1963")""", "1963-01-02"))
@@ -51,6 +63,13 @@ class DateComponentConstantTest {
         assertEquals(true, fires("""Date("١٠", "1", "1963")""", "1963-01-10"),
             "Arabic-Indic digits decode to 10 — the host-sensitive row")
         assertEquals(false, fires("""Date("١٠", "1", "1963")""", "1963-01-01"))
+    }
+
+    @Test fun omittedTimeComponentsDefaultToZero() {
+        assertEquals(true, firesTime("Time()", "00:00:00"))
+        assertEquals(false, firesTime("Time()", "00:00:01"))
+        assertEquals(true, firesTime("""Time("10", "30")""", "10:30:00"))
+        assertEquals(false, firesTime("""Time("10", "30")""", "10:30:01"))
     }
 
     private companion object {

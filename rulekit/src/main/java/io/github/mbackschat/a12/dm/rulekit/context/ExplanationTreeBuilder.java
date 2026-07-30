@@ -168,7 +168,7 @@ final class ExplanationTreeBuilder {
                             concat(operand(dc.year1()), dc.year2().map(this::operand).orElse(List.of())))));
             case RootGroupCount c -> List.of(leaf(c.operatorId(), c));
             case TimeConstruction tc -> List.of(new RuleExplanation.Node(tc.operatorId(), renderer.render(tc),
-                    concat(concat(operand(tc.hour()), operand(tc.minute())), operand(tc.second()))));
+                    tc.components().stream().flatMap(component -> operand(component).stream()).toList()));
             case DateTimeConstruction dtc -> List.of(new RuleExplanation.Node(dtc.operatorId(), renderer.render(dtc),
                     concat(operand(dtc.date()), operand(dtc.time()))));
             case DateRangeConstruction dr -> List.of(new RuleExplanation.Node(dr.operatorId(), renderer.render(dr),

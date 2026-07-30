@@ -1865,8 +1865,7 @@ final class ConditionConverter {
         }
         // Time(hour, minute, second) — a constructed time-of-day (components are quoted constants or fields)
         if (op instanceof ITimeConstructionOperation tc) {
-            return new TimeExpr(new TimeConstruction(convertDateComponent(tc.getHour(), tc),
-                    convertDateComponent(tc.getMinute(), tc), convertDateComponent(tc.getSecond(), tc)));
+            return new TimeExpr(convertTimeConstruction(tc));
         }
         if (op instanceof IOpListOperation operandList && operandList.getType() == OperationType.DATE) {
             return new TimeExpr(convertTemporalOperandList(operandList, TemporalKind.TIME));
@@ -1881,6 +1880,20 @@ final class ConditionConverter {
             return new TimeExpr(temporalListAggregate(aggregate));
         }
         throw unsupported("time operand " + op.getClass().getSimpleName(), origin);
+    }
+
+    private TimeConstruction convertTimeConstruction(ITimeConstructionOperation time) {
+        List<Calculation> components = new ArrayList<>(3);
+        if (time.getHour() != null) {
+            components.add(convertDateComponent(time.getHour(), time));
+        }
+        if (time.getMinute() != null) {
+            components.add(convertDateComponent(time.getMinute(), time));
+        }
+        if (time.getSecond() != null) {
+            components.add(convertDateComponent(time.getSecond(), time));
+        }
+        return new TimeConstruction(components);
     }
 
     /**

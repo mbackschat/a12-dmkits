@@ -190,9 +190,7 @@ public record ConditionReferences(Set<String> fieldPaths, Set<String> groupPaths
                 dc.year2().ifPresent(y -> collect(y, fields, groups));
             }
             case TimeConstruction tc -> {
-                collect(tc.hour(), fields, groups);
-                collect(tc.minute(), fields, groups);
-                collect(tc.second(), fields, groups);
+                tc.components().forEach(component -> collect(component, fields, groups));
             }
             case DateTimeConstruction dtc -> {
                 collect(dtc.date(), fields, groups);

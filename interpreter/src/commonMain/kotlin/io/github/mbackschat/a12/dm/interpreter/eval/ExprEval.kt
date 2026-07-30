@@ -1038,7 +1038,7 @@ private fun timePart(value: Evaluated<TemporalValue>): Evaluated<String> = when 
 }
 
 private fun Interpreter.evaluateTimeConstruction(args: List<Expr>): Evaluated<String> {
-    if (args.size != 3) return Evaluated.NoValue(NoValueReason.NON_RELEVANT)
+    if (args.size > 3) return Evaluated.NoValue(NoValueReason.NON_RELEVANT)
     var hasEmpty = false
     var hasMalformed = false
     val components = IntArray(3)

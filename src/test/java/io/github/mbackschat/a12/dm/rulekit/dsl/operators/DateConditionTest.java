@@ -51,10 +51,14 @@ class DateConditionTest {
 
     @Test
     void rendersTimeAndDateTimeConstruction() {
-        // family 3: Time(h, m, s) (quoted components) and DateTime(date, time) combining a date + time.
+        // family 3: Time accepts a 0..3 component prefix; omitted trailing components default to zero.
+        assertEquals("Time()", new DslRenderer().render(Dsl.time().expression()));
+        assertEquals("Time(\"10\")", new DslRenderer().render(Dsl.time("10").expression()));
+        assertEquals("Time(\"10\", \"30\")", new DslRenderer().render(Dsl.time("10", "30").expression()));
         Condition time = m.time("/Order/PickupTime").eq(Dsl.time("10", "30", "50"));
         assertEquals("[/Order/PickupTime] == Time(\"10\", \"30\", \"50\")", new DslRenderer().render(time));
         assertEquals("[/Order/PickupTime] == Zeit(\"10\", \"30\", \"50\")", new DslRenderer(ConditionLanguage.DE).render(time));
+        assertEquals("Zeit()", new DslRenderer(ConditionLanguage.DE).render(Dsl.time().expression()));
         Condition dt = m.dateTime("/Order/ScheduledAt").eq(Dsl.dateTime(m.date(ORDER), m.time("/Order/PickupTime")));
         assertEquals("[/Order/ScheduledAt] == DateTime(/Order/OrderDate, /Order/PickupTime)",
                 new DslRenderer().render(dt));

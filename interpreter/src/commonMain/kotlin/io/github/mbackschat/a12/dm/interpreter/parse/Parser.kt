@@ -216,7 +216,7 @@ private class ConditionParser(
                                 require(quoted || !language.isForeignKeyword(authoredName)) {
                                     "parser: '$authoredName' is not a function keyword in ${language.code}"
                                 }
-                                Expr.Func(keyword ?: authoredName, readArgs())
+                                Expr.Func(keyword ?: authoredName, readArgs(allowEmpty = keyword == "Time"))
                             } else {
                                 entitySuffix(pathFrom(authoredName))
                             }
@@ -391,8 +391,13 @@ private class ConditionParser(
         return Cond.ValueListQuant(op, fields, values)
     }
 
-    private fun readArgs(): List<Expr> {
+    private fun readArgs(allowEmpty: Boolean = false): List<Expr> {
         expect('(')
+        skipWs()
+        if (allowEmpty && peek() == ')') {
+            next()
+            return emptyList()
+        }
         val args = mutableListOf(parseArg())
         skipWs()
         // An infix grammar literal separating arg0 from the rest: `In` for `NumberOfValueInFields(value In f1, …)`

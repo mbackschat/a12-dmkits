@@ -419,8 +419,8 @@ public final class DslRenderer {
             case DateConstruction dc -> keyword(dc.operatorId()) + "(" + renderDateParam(dc.day()) + ", "
                     + renderDateParam(dc.month()) + ", " + renderDateParam(dc.year1())
                     + dc.year2().map(y -> ", " + renderDateParam(y)).orElse("") + ")";
-            case TimeConstruction tc -> keyword(tc.operatorId()) + "(" + renderDateParam(tc.hour()) + ", "
-                    + renderDateParam(tc.minute()) + ", " + renderDateParam(tc.second()) + ")";
+            case TimeConstruction tc -> keyword(tc.operatorId()) + "(" + tc.components().stream()
+                    .map(this::renderDateParam).collect(java.util.stream.Collectors.joining(", ")) + ")";
             case DateTimeConstruction dtc -> keyword(dtc.operatorId()) + "(" + renderArg(dtc.date()) + ", "
                     + renderArg(dtc.time()) + ")";
             case DateRangeConstruction dr -> keyword(dr.operatorId()) + "(" + renderArg(dr.start()) + ", "

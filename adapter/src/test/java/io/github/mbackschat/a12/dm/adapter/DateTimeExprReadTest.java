@@ -8,6 +8,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
+import java.util.List;
 
 import org.junit.jupiter.api.Test;
 
@@ -110,15 +111,25 @@ class DateTimeExprReadTest {
 
     @Test
     void roundTripsTimeAndDateTimeConstruction() {
-        // family 3: Time("h","m","s") compared to a time field, and DateTime(date, time) to a date-time field.
+        // family 3: Time accepts a 0..3 component prefix, and DateTime combines a date + time.
         BoundModel m = order();
-        Condition time = m.time("/Order/PickupTime").eq(Dsl.time("10", "30", "50"));
+        List<Condition> times = List.of(
+                m.time("/Order/PickupTime").eq(Dsl.time()),
+                m.time("/Order/PickupTime").eq(Dsl.time("10")),
+                m.time("/Order/PickupTime").eq(Dsl.time("10", "30")),
+                m.time("/Order/PickupTime").eq(Dsl.time("10", "30", "50")));
         Condition dt = m.dateTime("/Order/ScheduledAt").eq(Dsl.dateTime(m.date("/Order/OrderDate"), m.time("/Order/PickupTime")));
 
-        KernelAdapter adapter = KernelAdapter.of(m
-                .add(orderRule(m, "TimeCtorRule", "/Order/PickupTime", time))
-                .add(orderRule(m, "DateTimeCtorRule", "/Order/ScheduledAt", dt)));
-        assertEquals(RENDER.render(time), RENDER.render(converted(adapter.read("/Order/TimeCtorRule"))));
+        BoundModel authored = m;
+        for (int i = 0; i < times.size(); i++) {
+            authored = authored.add(orderRule(authored, "TimeCtor" + i, "/Order/PickupTime", times.get(i)));
+        }
+        KernelAdapter adapter = KernelAdapter.of(authored
+                .add(orderRule(authored, "DateTimeCtorRule", "/Order/ScheduledAt", dt)));
+        for (int i = 0; i < times.size(); i++) {
+            assertEquals(RENDER.render(times.get(i)),
+                    RENDER.render(converted(adapter.read("/Order/TimeCtor" + i))));
+        }
         assertEquals(RENDER.render(dt), RENDER.render(converted(adapter.read("/Order/DateTimeCtorRule"))));
     }
 

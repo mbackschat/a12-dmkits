@@ -44,6 +44,25 @@ class DateComponentConstantDiffTest {
         assertEquals(groovy, interp, "$clue (interp≠groovy) groovy=$groovy interp=$interp")
     }
 
+    private fun triCheckTime(construction: String, pickupTime: String, fires: Boolean, msg: String) {
+        val cond = "FieldFilled(CustomerName) And [PickupTime] == $construction"
+        val model = RuntimeLaws.withRule(order, "/Order", "R", "../CustomerName", CODE, cond)
+        val doc = RuntimeLaws.doc().group("/Order", 1)
+            .field(NAME, "anyone", 1, 1).field(TIME, pickupTime, 1, 1)
+        val groovy = RuntimeLaws.messages(model, doc).filter { it.code() == CODE }.map { it.code() }.sorted()
+        val engine = RuntimeLaws.kernelJavaEngine(model)
+        val javaStatic = engine.messages(engine.instance(doc)).filter { it.code() == CODE }
+            .map { it.code() }.sorted()
+        val def = ModelLoader.load(model)
+        val iDoc = def.newDocument().group("/Order", 1)
+            .field(NAME, "anyone", 1, 1).field(TIME, pickupTime, 1, 1)
+        val interp = DmInterpreter(def).validateFull(iDoc).filter { it.code == CODE }.map { it.code }.sorted()
+        val clue = "$msg — $construction vs $pickupTime"
+        assertEquals(fires, groovy.isNotEmpty(), "$clue — the kernel outcome moved (groovy=$groovy)")
+        assertEquals(groovy, javaStatic, "$clue (java-static≠groovy) groovy=$groovy java=$javaStatic")
+        assertEquals(groovy, interp, "$clue (interp≠groovy) groovy=$groovy interp=$interp")
+    }
+
     @Test fun theDayPositionHasNoWidthGate() {
         triCheck("""Date("0001", "1", "1963")""", "1963-01-01", true, "leading zeros still mean the 1st")
         triCheck("""Date("0001", "1", "1963")""", "1963-01-02", false, "and not the 2nd")
@@ -70,9 +89,17 @@ class DateComponentConstantDiffTest {
         triCheck("""Date("١٠", "1", "1963")""", "1963-01-01", false, "and not to 1")
     }
 
+    @Test fun omittedTimeComponentsDefaultToZero() {
+        triCheckTime("Time()", "00:00:00", true, "all omitted means midnight")
+        triCheckTime("Time()", "00:00:01", false, "midnight has zero seconds")
+        triCheckTime("""Time("10", "30")""", "10:30:00", true, "omitted seconds means zero")
+        triCheckTime("""Time("10", "30")""", "10:30:01", false, "omitted seconds is not one")
+    }
+
     private companion object {
         const val CODE = "DCC"
         const val NAME = "/Order/CustomerName"
         const val DATE = "/Order/OrderDate"
+        const val TIME = "/Order/PickupTime"
     }
 }

@@ -131,6 +131,20 @@ class DateComponentConstantLawsTest {
         rejects("[PickupTime] == \"\u0661\u0660:\u0663\u0660:\u0664\u0665\"", "MVK_INVALID_COMPARE_TO_DATE");
     }
 
+    @Test
+    void timeAcceptsZeroToThreePrefixComponents() {
+        accepts("[PickupTime] == Time()");
+        accepts("[PickupTime] == Time(\"1\")");
+        accepts("[PickupTime] == Time(\"1\", \"2\")");
+        accepts("[PickupTime] == Time(\"1\", \"2\", \"3\")");
+    }
+
+    @Test
+    void aTimeConstantUsesTheClockRangeWithoutAWidthGate() {
+        accepts("[PickupTime] == Time(\"1\")");
+        rejects("[PickupTime] == Time(\"24\")", WRONG_FORMAT);
+    }
+
     private static void accepts(String condition) {
         KernelLaws.acceptsOrder("/Order", "../CustomerName", "FieldFilled(CustomerName) And " + condition);
     }

@@ -161,9 +161,7 @@ public final class OperatorUsage {
             }
             case TimeConstruction tc -> {
                 ops.add(tc.operatorId());
-                collect(tc.hour(), ops);
-                collect(tc.minute(), ops);
-                collect(tc.second(), ops);
+                tc.components().forEach(component -> collect(component, ops));
             }
             case DateTimeConstruction dtc -> {
                 ops.add(dtc.operatorId());

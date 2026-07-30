@@ -556,19 +556,46 @@ public final class Dsl {
                 century.expression(), java.util.Optional.of(decade.expression())));
     }
 
+    /** {@code Time()} — midnight: every omitted trailing component defaults to zero. catalog:Time */
+    public static TimeExpr time() {
+        return new TimeExpr(new TimeConstruction(List.of()));
+    }
+
+    /** {@code Time("10")} — 10:00:00; omitted minute and second default to zero. catalog:Time */
+    public static TimeExpr time(String hour) {
+        return new TimeExpr(new TimeConstruction(List.of(new StringLiteral(hour))));
+    }
+
+    /** {@code Time("10", "30")} — 10:30:00; the omitted second defaults to zero. catalog:Time */
+    public static TimeExpr time(String hour, String minute) {
+        return new TimeExpr(new TimeConstruction(List.of(
+                new StringLiteral(hour), new StringLiteral(minute))));
+    }
+
     /**
      * {@code Time("10", "30", "50")} — construct a time-of-day from hour/minute/second constants (a
      * comparable time). The kernel takes the components as quoted constants here (a bracketed value
      * {@code [H]} is rejected); for field components use {@link #time(FieldRef, FieldRef, FieldRef)}. catalog:Time
      */
     public static TimeExpr time(String hour, String minute, String second) {
-        return new TimeExpr(new TimeConstruction(new StringLiteral(hour), new StringLiteral(minute),
-                new StringLiteral(second)));
+        return new TimeExpr(new TimeConstruction(List.of(
+                new StringLiteral(hour), new StringLiteral(minute), new StringLiteral(second))));
     }
 
-    /** {@code Time(H, M, S)} — construct a time-of-day from three number fields (rendered as bare entity refs). */
+    /** {@code Time(H)} — construct an hour with minute/second zero from a bare number field. catalog:Time */
+    public static TimeExpr time(FieldRef hour) {
+        return new TimeExpr(new TimeConstruction(List.of(new FieldValue(hour))));
+    }
+
+    /** {@code Time(H, M)} — construct hour/minute with second zero from bare number fields. catalog:Time */
+    public static TimeExpr time(FieldRef hour, FieldRef minute) {
+        return new TimeExpr(new TimeConstruction(List.of(new FieldValue(hour), new FieldValue(minute))));
+    }
+
+    /** {@code Time(H, M, S)} — construct a time from three bare number fields. catalog:Time */
     public static TimeExpr time(FieldRef hour, FieldRef minute, FieldRef second) {
-        return new TimeExpr(new TimeConstruction(new FieldValue(hour), new FieldValue(minute), new FieldValue(second)));
+        return new TimeExpr(new TimeConstruction(List.of(
+                new FieldValue(hour), new FieldValue(minute), new FieldValue(second))));
     }
 
     /** {@code DateTime(date, time)} — combine a date and a time into a comparable date-time. catalog:DateTime */

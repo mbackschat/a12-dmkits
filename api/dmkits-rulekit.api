@@ -1318,7 +1318,12 @@ public final class io.github.mbackschat.a12.dm.rulekit.dsl.Dsl
   public static io.github.mbackschat.a12.dm.rulekit.dsl.NumberExpr sumOfProducts(io.github.mbackschat.a12.dm.rulekit.dsl.FieldOperand, io.github.mbackschat.a12.dm.rulekit.dsl.FieldOperand)
   public static io.github.mbackschat.a12.dm.rulekit.dsl.StringExpr text(java.lang.String)
   public static io.github.mbackschat.a12.dm.rulekit.dsl.LocalizedText text(java.lang.String, java.lang.String)
+  public static io.github.mbackschat.a12.dm.rulekit.dsl.TimeExpr time()
+  public static io.github.mbackschat.a12.dm.rulekit.dsl.TimeExpr time(io.github.mbackschat.a12.dm.rulekit.dsl.FieldRef)
+  public static io.github.mbackschat.a12.dm.rulekit.dsl.TimeExpr time(io.github.mbackschat.a12.dm.rulekit.dsl.FieldRef, io.github.mbackschat.a12.dm.rulekit.dsl.FieldRef)
   public static io.github.mbackschat.a12.dm.rulekit.dsl.TimeExpr time(io.github.mbackschat.a12.dm.rulekit.dsl.FieldRef, io.github.mbackschat.a12.dm.rulekit.dsl.FieldRef, io.github.mbackschat.a12.dm.rulekit.dsl.FieldRef)
+  public static io.github.mbackschat.a12.dm.rulekit.dsl.TimeExpr time(java.lang.String)
+  public static io.github.mbackschat.a12.dm.rulekit.dsl.TimeExpr time(java.lang.String, java.lang.String)
   public static io.github.mbackschat.a12.dm.rulekit.dsl.TimeExpr time(java.lang.String, java.lang.String, java.lang.String)
   public static io.github.mbackschat.a12.dm.rulekit.dsl.TimeExpr timeFromDateTime(io.github.mbackschat.a12.dm.rulekit.dsl.DateTimeOperand)
   public static io.github.mbackschat.a12.dm.rulekit.dsl.TimeExpr timeValue(java.lang.String)
@@ -2178,13 +2183,12 @@ public sealed interface io.github.mbackschat.a12.dm.rulekit.dsl.TemporalOperand
 
 public record io.github.mbackschat.a12.dm.rulekit.dsl.TimeConstruction implements io.github.mbackschat.a12.dm.rulekit.dsl.Calculation
   public TimeConstruction(io.github.mbackschat.a12.dm.rulekit.dsl.Calculation, io.github.mbackschat.a12.dm.rulekit.dsl.Calculation, io.github.mbackschat.a12.dm.rulekit.dsl.Calculation)
+  public TimeConstruction(java.util.List<io.github.mbackschat.a12.dm.rulekit.dsl.Calculation>)
+  public java.util.List<io.github.mbackschat.a12.dm.rulekit.dsl.Calculation> components()
   public final boolean equals(java.lang.Object)
   public final int hashCode()
-  public io.github.mbackschat.a12.dm.rulekit.dsl.Calculation hour()
   public io.github.mbackschat.a12.dm.core.ValueKind kind()
-  public io.github.mbackschat.a12.dm.rulekit.dsl.Calculation minute()
   public java.lang.String operatorId()
-  public io.github.mbackschat.a12.dm.rulekit.dsl.Calculation second()
   public final java.lang.String toString()
 
 public record io.github.mbackschat.a12.dm.rulekit.dsl.TimeExpr implements io.github.mbackschat.a12.dm.rulekit.dsl.TimeOperand

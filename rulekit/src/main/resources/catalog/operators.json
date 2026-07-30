@@ -3316,10 +3316,10 @@
     "dslEntry": ["time"],
     "kind": "function",
     "keywords": { "en": "Time", "de": "Zeit" },
-    "operands": [ { "type": "number" }, { "type": "number" }, { "type": "number" } ],
+    "operands": [ { "type": "number", "optional": true }, { "type": "number", "optional": true }, { "type": "number", "optional": true } ],
     "returns": "time",
-    "meaning": "Constructs a time-of-day from hour, minute, and second operands — a comparable time.",
-    "constraints": [ "components are bare number fields or quoted constants (Time(\"10\", \"30\", \"50\")); a bracketed value [H] is rejected" ],
+    "meaning": "Constructs a comparable time-of-day from a zero-to-three-component hour/minute/second prefix; omitted trailing components default to zero.",
+    "constraints": [ "components are a prefix in hour, minute, second order and are bare number fields or quoted constants (Time(), Time(\"10\"), Time(\"10\", \"30\"), Time(\"10\", \"30\", \"50\")); a bracketed value [H] is rejected" ],
     "validExample": { "dsl": "FieldFilled(PickupTime) And [PickupTime] == Time(\"10\", \"30\", \"50\")", "note": "fires when pickup is exactly 10:30:50" },
     "sinceKernel": "30.8.x"
   },

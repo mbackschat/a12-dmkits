@@ -434,7 +434,7 @@ The exact calendar corrections, pinned: `AddYears` corrects the Feb-28 boundary 
 
 ### Constructing dates, and checking validity
 
-`Date(Day, Month, Year)` builds a date from numeric parts (there are also a two-argument form that supplies the year from the model **Base Year**, and a four-argument century form); `Time(...)` and `DateTime(...)` construct the corresponding values. A constructed date is **invalid** if any referenced part is unfilled, or the parts don't form a real calendar date — `Date(31, 11, 2000)` (November has 30 days) or 30 February. `Valid(...)` / `Invalid(...)` test exactly that:
+`Date(Day, Month, Year)` builds a date from numeric parts (there are also a two-argument form that supplies the year from the model **Base Year**, and a four-argument century form); `Time(hour?, minute?, second?)` takes a zero-to-three-component prefix and defaults every omitted trailing component to zero; `DateTime(...)` combines a date and time. A constructed date is **invalid** if any referenced part is unfilled, or the parts don't form a real calendar date — `Date(31, 11, 2000)` (November has 30 days) or 30 February. `Valid(...)` / `Invalid(...)` test exactly that:
 
 ```
 Invalid(Date(Day, Month, Year))   ;; fires on 31.11, 30.02, an unfilled part, …

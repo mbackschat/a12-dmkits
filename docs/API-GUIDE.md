@@ -574,6 +574,8 @@ DateTimeExpr latestInstant = Dsl.max(m.dateTime("/Order/ScheduledAt"),
         m.dateTime("/Order/CompletedAt"));
 ```
 
+**Time construction uses a prefix.** `Dsl.time()` through `Dsl.time(hour, minute, second)` preserve the kernel's four legal arities. Omitted trailing components are fixed zero: `Dsl.time()` is midnight, `Dsl.time("10")` is 10:00:00, and `Dsl.time("10", "30")` is 10:30:00. The same overloads accept typed `FieldRef` components. The public `TimeConstruction` node therefore carries a copied `List<Calculation>` rather than three mandatory record slots; its former three-argument constructor remains as the source-compatible full-form convenience (finding 105 / IG105).
+
 **Rounding with an optional scale.** Both the expression `roundDown`/`roundUp`/`roundAccounting` family and its bare-field `…Value` siblings retain the kernel's optional decimal-places argument on the typed AST. The domain is `0..14`; every one-argument form means zero places. `RoundDown` is floor, `RoundUp` is ceiling, and accounting is `HALF_UP`, each after the kernel's scale-19 pre-round:
 
 <!-- snippet: field-rounding -->
