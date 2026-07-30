@@ -158,6 +158,16 @@ class ModelLoaderTest {
     }
 
     @Test
+    fun mapsDateBefore1900Check() {
+        val loaded = ModelLoader.load(model.replace(
+            "\"datePrecision\":\"DAY_OPTIONAL\"",
+            "\"datePrecision\":\"DAY_OPTIONAL\",\"youngerThan1900Check\":true",
+        ))
+
+        assertTrue(loaded.fields.first { it.path == "/Order/When" }.rejectBefore1900)
+    }
+
+    @Test
     fun mapsEveryKernelDatePrecision() {
         for (precision in listOf("FULL", "DAY_OPTIONAL", "MONTH_OPTIONAL", "YEAR_OPTIONAL")) {
             val loaded = ModelLoader.load(model.replace("DAY_OPTIONAL", precision))

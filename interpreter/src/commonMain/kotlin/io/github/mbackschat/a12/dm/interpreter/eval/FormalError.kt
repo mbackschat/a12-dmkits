@@ -336,6 +336,8 @@ internal fun typeFormatErrorCached(
                 parts == null -> FormalErrorCode.DATE_FORMAT
                 // The kernel's always-on Gregorian floor (IF88): a real date before 1583-10-16 is `datumFalsch`.
                 beforeGregorianStart(parts.first, parts.second, parts.third) -> FormalErrorCode.DATE_TOO_EARLY
+                // The field-owned additional check runs after partial-date completion and the ordinary floor.
+                constraints.rejectBefore1900 && parts.first < 1900 -> FormalErrorCode.DATE_TOO_EARLY
                 else -> null
             }
         }

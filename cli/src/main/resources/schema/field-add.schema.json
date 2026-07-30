@@ -71,7 +71,7 @@
     },
     "date": {
       "type": "object", "description": "(kind DATE) config", "additionalProperties": false,
-      "properties": { "format": { "type": "string", "description": "a LOWERCASE Java date pattern from a fixed allowed set (independent of locale): yyyy-MM-dd or dd.MM.yyyy. The A12 editor's UPPERCASE labels (YYYY-MM-DD) are display labels, NOT valid format values. Default yyyy-MM-dd." }, "precision": { "type": "string", "description": "FULL (default) | a partial-date precision" } }
+      "properties": { "format": { "type": "string", "description": "a LOWERCASE Java date pattern from a fixed allowed set (independent of locale): yyyy-MM-dd or dd.MM.yyyy. The A12 editor's UPPERCASE labels (YYYY-MM-DD) are display labels, NOT valid format values. Default yyyy-MM-dd." }, "precision": { "type": "string", "description": "FULL (default) | DAY_OPTIONAL | MONTH_OPTIONAL | YEAR_OPTIONAL; every precision still admits fully known dates" }, "rejectBefore1900": { "type": "boolean", "description": "when true, enable A12 DateType.youngerThan1900Check: stored and computed dates before 1900-01-01 are invalid; default false" } }
     },
     "time": {
       "type": "object", "description": "(kind TIME) config", "additionalProperties": false,
@@ -111,6 +111,12 @@
       "name": "PromoWindow",
       "kind": "DATERANGE",
       "dateRange": { "format": "dd.MM.yyyy", "separator": "-" }
+    },
+    {
+      "group": "/Subscription/Addons",
+      "name": "FoundedOn",
+      "kind": "DATE",
+      "date": { "format": "yyyy-MM-dd", "precision": "YEAR_OPTIONAL", "rejectBefore1900": true }
     }
   ]
 }

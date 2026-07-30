@@ -29,6 +29,7 @@ class DateGregorianFloorFormalTest {
     private val isoDate = FieldDef("/G/D", Kind.DATE, format = "yyyy-MM-dd")
     private val germanDate = FieldDef("/G/D", Kind.DATE, format = "dd.MM.yyyy")
     private val dayOptional = FieldDef("/G/D", Kind.DATE, format = "dd.MM.yyyy", datePrecision = DatePrecision.DAY_OPTIONAL)
+    private val rejectBefore1900 = FieldDef("/G/D", Kind.DATE, format = "yyyy-MM-dd", rejectBefore1900 = true)
     private val range = FieldDef("/G/D", Kind.DATE_RANGE, format = "yyyy-MM-dd", rangeSeparator = "/")
 
     // ── DATE: the floor at 1583-10-16 (datumFalsch), format-aware ──────────────────────────────────────────
@@ -38,6 +39,10 @@ class DateGregorianFloorFormalTest {
     @Test fun dayAfterFloorIsValid() = assertEquals(null, code(isoDate, "1583-10-17"), "1583-10-17 → valid")
     // The floor is NOT the opt-in "< 1900" additional check — a plain date field accepts 1899.
     @Test fun year1899IsValid() = assertEquals(null, code(isoDate, "1899-12-31"), "1899 is above the Gregorian floor")
+    @Test fun optInYear1899IsTooEarly() =
+        assertEquals("datumFalsch", code(rejectBefore1900, "1899-12-31"), "opt-in additional check rejects 1899")
+    @Test fun optInYear1900IsValid() =
+        assertEquals(null, code(rejectBefore1900, "1900-01-01"), "opt-in additional check admits its boundary")
     @Test fun modernDateIsValid() = assertEquals(null, code(isoDate, "2024-06-15"), "a modern date → valid")
     // The floor does not shadow a genuine format/calendar error (a wrong month is still datumFormatFalsch).
     @Test fun malformedStaysFormatError() = assertEquals("datumFormatFalsch", code(isoDate, "2024-13-01"), "month 13 → format error")

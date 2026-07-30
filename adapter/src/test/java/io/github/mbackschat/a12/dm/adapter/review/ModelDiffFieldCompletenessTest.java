@@ -59,6 +59,20 @@ class ModelDiffFieldCompletenessTest {
     }
 
     @Test
+    void detectsDateBefore1900ConstraintDirection() {
+        String unrestricted = date(false);
+        String restricted = date(true);
+
+        ElementChange tightened = change(ModelDiff.between(unrestricted, restricted), "/Invoice/DueOn");
+        assertEquals("false", delta(tightened, "rejectBefore1900").before());
+        assertEquals("true", delta(tightened, "rejectBefore1900").after());
+        assertTrue(tightened.reasons().contains("CONSTRAINT_TIGHTENED"));
+
+        ElementChange loosened = change(ModelDiff.between(restricted, unrestricted), "/Invoice/DueOn");
+        assertTrue(loosened.reasons().contains("CONSTRAINT_LOOSENED"));
+    }
+
+    @Test
     void enumAdditionLoosensAndRemovalTightens() {
         String two = enumeration("OPEN", "CLOSED");
         String three = enumeration("OPEN", "CLOSED", "ON_HOLD");
@@ -131,6 +145,17 @@ class ModelDiffFieldCompletenessTest {
     private static String date(String format) {
         return DocumentModelDraft.named("invoice").locale("en_US")
                 .rootGroup("Invoice", invoice -> invoice.dateField("DueOn", date -> date.format(format)))
+                .build().toJson();
+    }
+
+    private static String date(boolean rejectBefore1900) {
+        return DocumentModelDraft.named("invoice").locale("en_US")
+                .rootGroup("Invoice", invoice -> invoice.dateField("DueOn", date -> {
+                    date.format("yyyy-MM-dd");
+                    if (rejectBefore1900) {
+                        date.rejectBefore1900();
+                    }
+                }))
                 .build().toJson();
     }
 

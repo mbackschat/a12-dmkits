@@ -458,6 +458,9 @@ public final class DocumentModelDraft {
                 if (d.datePrecision() != null && !d.datePrecision().equals("FULL")) {
                     inner.put("datePrecision", d.datePrecision());
                 }
+                if (d.rejectBefore1900()) {
+                    inner.put("youngerThan1900Check", true);
+                }
             }
             case FieldTypeSpec.TimeSpec t ->
                     fieldType.putObject("TimeType").put("format", t.format() != null ? t.format() : "HH:mm:ss");
@@ -612,6 +615,7 @@ public final class DocumentModelDraft {
                 ObjectNode b = MAPPER.createObjectNode();
                 copyText(c, "format", b, "format");
                 copyText(c, "datePrecision", b, "precision");
+                if (c.path("youngerThan1900Check").asBoolean(false)) b.put("rejectBefore1900", true);
                 if (!b.isEmpty()) out.set("date", b);
             }
             case "TimeType" -> {

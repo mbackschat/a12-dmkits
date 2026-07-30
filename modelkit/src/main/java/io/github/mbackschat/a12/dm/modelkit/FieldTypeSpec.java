@@ -248,7 +248,11 @@ public sealed interface FieldTypeSpec {
      * A precision other than {@code FULL} makes it a <em>partially known date</em> (a day/month/year part may
      * be unknown, e.g. {@code 00.02.2024}) — the field {@code ValueAsDate} resolves to a concrete date.
      */
-    record DateSpec(String format, String datePrecision) implements FieldTypeSpec {
+    record DateSpec(String format, String datePrecision, boolean rejectBefore1900) implements FieldTypeSpec {
+        public DateSpec(String format, String datePrecision) {
+            this(format, datePrecision, false);
+        }
+
         @Override
         public String jsonType() {
             return "DateType";

@@ -262,6 +262,9 @@ data class FieldDef(
     /** The field-owned empty-required text (`requirednessConfig.errorMessage`), keyed by locale. This is a
      *  separate producer from [patternMessages]: notably, its measured route preserves `$$` verbatim. */
     val requiredMessages: Map<String, String> = emptyMap(),
+    /** A DateType's opt-in `youngerThan1900Check`: a concrete value before 1900-01-01 is `datumFalsch`.
+     *  Distinct from the always-on Gregorian floor at 1583-10-16. */
+    val rejectBefore1900: Boolean = false,
 )
 
 /**
@@ -357,6 +360,8 @@ data class FieldConstraints(
     val numberMinLength: Int? = null,
     /** NUMBER `maxLength` — value-string length above it → `zahlZuLang`. */
     val numberMaxLength: Int? = null,
+    /** DATE `youngerThan1900Check` — values before 1900-01-01 are `datumFalsch`; default false. */
+    val rejectBefore1900: Boolean = false,
 ) {
     /** Whether this field carries any NON-DEFAULT constraint, so it must be stored (else [NONE] — whose false
      *  booleans already encode the kernel defaults — is used). The `*Allowed`/`*NotAllowed` flags count only when
@@ -364,7 +369,8 @@ data class FieldConstraints(
     val any: Boolean = minLength != null || maxLength != null || pattern != null ||
         enumValues.isNotEmpty() || minValue != null || maxValue != null || (minFractionalDigits ?: 0) > 0 ||
         lineBreaksPermitted || leadingZerosAllowed || zeroNotAllowed || noValueValidation ||
-        maxIntegerDigits != null || amountMaxIntegerDigits != null || numberMinLength != null || numberMaxLength != null
+        maxIntegerDigits != null || amountMaxIntegerDigits != null || numberMinLength != null ||
+        numberMaxLength != null || rejectBefore1900
 
     companion object {
         val NONE = FieldConstraints()
@@ -558,12 +564,24 @@ data class ModelDef(
     val fieldConstraints: Map<String, FieldConstraints> = fields
         .associate {
             it.path to FieldConstraints(
-                it.minLength, it.maxLength, it.pattern, it.enumValues, it.minValue, it.maxValue, it.minFractionalDigits,
-                it.lineBreaksPermitted, it.leadingZerosAllowed, it.zeroNotAllowed, it.noValueValidation,
-                it.maxIntegerDigits,
+                minLength = it.minLength,
+                maxLength = it.maxLength,
+                pattern = it.pattern,
+                enumValues = it.enumValues,
+                minValue = it.minValue,
+                maxValue = it.maxValue,
+                minFractionalDigits = it.minFractionalDigits,
+                lineBreaksPermitted = it.lineBreaksPermitted,
+                leadingZerosAllowed = it.leadingZerosAllowed,
+                zeroNotAllowed = it.zeroNotAllowed,
+                noValueValidation = it.noValueValidation,
+                maxIntegerDigits = it.maxIntegerDigits,
                 // trait:"amount" → an implicit integer-digit cap of 15 − scale, but only when no explicit maxIntegerDigits.
-                if (it.amountTrait && it.maxIntegerDigits == null) 15 - (it.scale ?: 0) else null,
-                it.numberMinLength, it.numberMaxLength,
+                amountMaxIntegerDigits =
+                    if (it.amountTrait && it.maxIntegerDigits == null) 15 - (it.scale ?: 0) else null,
+                numberMinLength = it.numberMinLength,
+                numberMaxLength = it.numberMaxLength,
+                rejectBefore1900 = it.rejectBefore1900,
             )
         }
         .filterValues { it.any }

@@ -64,6 +64,20 @@ class ScenarioIdentityFingerprintTest {
         )
         assertThrows<IllegalStateException> { reviewed.bind(changedFieldMessage, n = 4) }
 
+        val changedDateConstraint = PerfScenario(
+            scenario.name,
+            scenario.kernelModel,
+            scenario.interpModel.copy(
+                fields = scenario.interpModel.fields.mapIndexed { index, field ->
+                    if (index == 0) field.copy(rejectBefore1900 = true) else field
+                },
+            ),
+            scenario.op,
+            scenario.locale,
+            scenario.instance,
+        )
+        assertThrows<IllegalStateException> { reviewed.bind(changedDateConstraint, n = 4) }
+
         val changedValue = PerfScenario(
             scenario.name,
             scenario.kernelModel,

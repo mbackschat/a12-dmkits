@@ -1026,7 +1026,18 @@ A label must cover every declared locale (fails fast otherwise); the add/re-type
 
 A Number has three distinct textual-size declarations in addition to scale and value bounds: `minLength(n)` / `maxLength(n)` count the rendered stored-number text (including sign and decimal separator), while `maxIntegerDigits(n)` counts only digits before the separator. Do not substitute the latter for `maxLength`: the kernel's `Date(...)` / `Time(...)` component gate consults `maxLength`. The same keys are accepted by the CLI's `number` block and returned by `field read` / `typedef read`; direct `FieldTypeSpec.NumberSpec` construction uses its fluent builder rather than a ten-position constructor (finding 104 / DG26).
 
-A Date field's `DatePrecision` is monotone: `DAY_OPTIONAL` allows an exact `00` day, `MONTH_OPTIONAL` additionally allows month zero only after day zero, and `YEAR_OPTIONAL` additionally allows year zero only after both. Modelkit already authors all three through `DateFieldBuilder.datePrecision`; the interpreter now loads the same complete A12 enum and `ValueAsDate` resolves known-year earliest/latest boundaries without substituting year 2000 for an unknown year (IF233 / IG106).
+A Date field's `DatePrecision` is monotone: `DAY_OPTIONAL` allows an exact `00` day, `MONTH_OPTIONAL` additionally allows month zero only after day zero, and `YEAR_OPTIONAL` additionally allows year zero only after both. Modelkit authors all three through `DateFieldBuilder.datePrecision`; the interpreter loads the same complete A12 enum and `ValueAsDate` resolves known-year earliest/latest boundaries without substituting year 2000 for an unknown year (IF233). A separate opt-in constraint rejects concrete values before 1900:
+
+<!-- snippet: date-before-1900 -->
+```java
+DocumentModelDraft draft = permit()
+        .rootGroup("Permit", group -> group
+                .dateField("IssuedOn", d -> d.format("yyyy-MM-dd").rejectBefore1900())
+                .dateField("ObservedOn", d -> d.format("yyyy-MM-dd")))
+        .build();
+```
+
+This emits A12's `DateType.youngerThan1900Check`; the CLI peer is `"date":{"rejectBefore1900":true}`. It applies to stored values and any authorable computed target. Do not infer that a computation may target the partial precision shown above: kernel 30.8.1 rejects `DAY_OPTIONAL`, `MONTH_OPTIONAL`, and `YEAR_OPTIONAL` computation targets because the computation's generated implicit comparison reads the partial target as a value (`MVK_INVALID_DATE_TYPE`), and that code is not suppressible (finding 108 / IF237).
 
 A **group** carries a display label too — it is the kernel's `ILabeled` via `IEntity`, exactly like a field. The from-scratch builder authors it (`GroupBuilder.label("en_US", "Order lines").label("de_DE", "Bestellzeilen")`), the edit path sets it on an existing group (`setLabel(groupPath, …)`, CLI `meta <groupPath> --label`), and the same cover-every-declared-locale rule applies to both (finding 56 / DG17). *Locked by `modelkit.GroupLabelTest` (kernel read-back).*
 

@@ -7,6 +7,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import org.junit.jupiter.api.Test;
 
 import com.mgmtp.a12.kernel.md.model.api.fieldtypes.ICustomFieldType;
+import com.mgmtp.a12.kernel.md.model.api.fieldtypes.IDateType;
 import com.mgmtp.a12.kernel.md.model.api.fieldtypes.IEnumerationType;
 import com.mgmtp.a12.kernel.md.model.api.fieldtypes.IFieldType;
 import com.mgmtp.a12.kernel.md.model.api.fieldtypes.INumberType;
@@ -79,6 +80,22 @@ class FieldConfigExtrasTest {
         assertEquals(1, number.getMinLength().orElseThrow(), "minLength honored");
         assertEquals(2, number.getMaxLength().orElseThrow(), "maxLength honored");
         assertEquals(2, number.getMaxIntegerDigits().orElseThrow(), "maxIntegerDigits honored");
+    }
+
+    @Test
+    void dateBefore1900CheckRoundTripsThroughTheKernel() {
+        // tag::date-before-1900[]
+        DocumentModelDraft draft = permit()
+                .rootGroup("Permit", group -> group
+                        .dateField("IssuedOn", d -> d.format("yyyy-MM-dd").rejectBefore1900())
+                        .dateField("ObservedOn", d -> d.format("yyyy-MM-dd")))
+                .build();
+        // end::date-before-1900[]
+
+        IDateType issuedOn = (IDateType) fieldTypeAfterRoundTrip(draft, "/Permit/IssuedOn");
+        IDateType observedOn = (IDateType) fieldTypeAfterRoundTrip(draft, "/Permit/ObservedOn");
+        assertTrue(issuedOn.isYoungerThan1900Check(), "opt-in youngerThan1900Check honored");
+        assertFalse(observedOn.isYoungerThan1900Check(), "kernel default remains off");
     }
 
     @Test

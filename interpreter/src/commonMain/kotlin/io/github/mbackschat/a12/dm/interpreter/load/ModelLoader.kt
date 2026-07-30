@@ -373,6 +373,7 @@ object ModelLoader {
         format = formatOf(node),
         rangeSeparator = rangeSeparatorOf(node),
         datePrecision = datePrecisionOf(node, id),
+        rejectBefore1900 = typedBool(node, "DateType", "youngerThan1900Check"),
         enumValues = enumValuesOf(node),
         enumCategories = enumCategoriesOf(node),
         enumSValue = enumSValueOf(node),

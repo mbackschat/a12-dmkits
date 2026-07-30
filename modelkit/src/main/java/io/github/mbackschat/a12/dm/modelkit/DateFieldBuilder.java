@@ -4,6 +4,7 @@ package io.github.mbackschat.a12.dm.modelkit;
 public final class DateFieldBuilder extends FieldAttrs<DateFieldBuilder> {
     private String format;
     private DatePrecision datePrecision = DatePrecision.FULL;
+    private boolean rejectBefore1900;
 
     public DateFieldBuilder format(String format) {
         this.format = format;
@@ -20,7 +21,16 @@ public final class DateFieldBuilder extends FieldAttrs<DateFieldBuilder> {
         return this;
     }
 
+    /**
+     * Reject values before 1900-01-01 through A12's {@code DateType.youngerThan1900Check}.
+     * The check applies to stored and computed values; it is off by default.
+     */
+    public DateFieldBuilder rejectBefore1900() {
+        this.rejectBefore1900 = true;
+        return this;
+    }
+
     protected FieldTypeSpec spec() {
-        return new FieldTypeSpec.DateSpec(format, datePrecision.jsonValue());
+        return new FieldTypeSpec.DateSpec(format, datePrecision.jsonValue(), rejectBefore1900);
     }
 }

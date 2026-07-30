@@ -77,6 +77,9 @@ final class FieldDiffProjector {
         if (aspect.equals("pattern")) {
             return ModelDiff.patternChangeReason(delta);
         }
+        if (aspect.equals("rejectBefore1900")) {
+            return Boolean.parseBoolean(delta.after()) ? "CONSTRAINT_TIGHTENED" : "CONSTRAINT_LOOSENED";
+        }
         if (aspect.equals("scale") || aspect.equals("minFractionalDigits")) {
             return "SCALE_CHANGED";
         }
@@ -138,6 +141,7 @@ final class FieldDiffProjector {
             case FieldTypeSpec.DateSpec date -> {
                 put(aspects, "format", date.format());
                 put(aspects, "datePrecision", date.datePrecision());
+                aspects.put("rejectBefore1900", Boolean.toString(date.rejectBefore1900()));
             }
             case FieldTypeSpec.TimeSpec time -> put(aspects, "format", time.format());
             case FieldTypeSpec.DateTimeSpec dateTime -> put(aspects, "format", dateTime.format());

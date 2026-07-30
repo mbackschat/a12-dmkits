@@ -330,6 +330,7 @@ private class CanonicalDigest {
         put("interp-field-global", field.global.toString())
         putMap("interp-field-pattern-message", field.patternMessages)
         putMap("interp-field-required-message", field.requiredMessages)
+        put("interp-field-reject-before-1900", field.rejectBefore1900.toString())
     }
 
     private fun putRule(rule: RuleDef) {

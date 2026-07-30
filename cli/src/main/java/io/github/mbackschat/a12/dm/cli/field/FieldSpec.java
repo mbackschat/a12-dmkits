@@ -214,7 +214,8 @@ public final class FieldSpec {
             case "ENUM", "ENUMERATION" -> enumeration(spec.path("enum"));
             case "CUSTOM" -> custom(spec.path("custom"));
             case "DATE" -> new FieldTypeSpec.DateSpec(text(spec.path("date"), "format"),
-                    textOr(spec.path("date"), "precision", "FULL"));
+                    textOr(spec.path("date"), "precision", "FULL"),
+                    spec.path("date").path("rejectBefore1900").asBoolean(false));
             case "TIME" -> new FieldTypeSpec.TimeSpec(text(spec.path("time"), "format"));
             case "DATETIME", "DATE_TIME" -> new FieldTypeSpec.DateTimeSpec(text(spec.path("dateTime"), "format"));
             case "DATERANGE", "DATE_RANGE" -> new FieldTypeSpec.DateRangeSpec(

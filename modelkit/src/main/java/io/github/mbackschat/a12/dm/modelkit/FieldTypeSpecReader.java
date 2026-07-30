@@ -21,7 +21,8 @@ final class FieldTypeSpecReader {
         return switch (discriminator) {
             case "StringType" -> string(config);
             case "NumberType" -> number(config);
-            case "DateType" -> new FieldTypeSpec.DateSpec(text(config, "format"), text(config, "datePrecision"));
+            case "DateType" -> new FieldTypeSpec.DateSpec(text(config, "format"), text(config, "datePrecision"),
+                    config.path("youngerThan1900Check").asBoolean(false));
             case "TimeType" -> new FieldTypeSpec.TimeSpec(text(config, "format"));
             case "DateTimeType" -> new FieldTypeSpec.DateTimeSpec(text(config, "format"));
             case "DateRangeType" -> new FieldTypeSpec.DateRangeSpec(
