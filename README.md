@@ -10,8 +10,8 @@ Author, read, and safely edit the **rules** and **structure** of A12 Kernel docu
 - **modelkit** — the model's **structure**, the same way: fields, groups, type definitions, includes, document config
 - **dm.edit** — `EditSession`: structure + rule edits on one in-memory model, behind a single kernel gate
 - **schemakit** — JSON Schema / OpenAPI ⇄ document model, import and export
-- **the interpreter** — kernel-free runtime evaluation (validate / compute); one engine for the JVM, the native binary, and JS
-- **`dmtool`** — the CLI over all of it: self-describing, JSON in / JSON out, agent-first
+- **the interpreter** — **[PUBLIC RELEASE REPOSITORY →](https://github.com/mbackschat/a12-interpreter-releases)** — kernel-free runtime evaluation (validate / compute); one engine for the JVM, the native binary, and JS
+- **`dmtool`** — **[PUBLIC RELEASE REPOSITORY →](https://github.com/mbackschat/a12-dmtool-releases)** — the CLI over all of it: self-describing, JSON in / JSON out, agent-first
 
 ---
 
