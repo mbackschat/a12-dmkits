@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import io.github.mbackschat.a12.dm.Fixtures;
 import io.github.mbackschat.a12.dm.ModelDrafts;
+import io.github.mbackschat.a12.dm.rulekit.dsl.Rule;
 import io.github.mbackschat.a12.dm.rulekit.validate.DraftRule;
 import io.github.mbackschat.a12.dm.rulekit.validate.RuleValidator;
 import io.github.mbackschat.a12.dm.rulekit.validate.ValidationResult;
@@ -74,6 +75,11 @@ final class KernelLaws {
         assertAccepts(json, group, errorField, condition);
     }
 
+    /** Typed-rule variant: every path and the rendered condition derive from the rulekit object. */
+    static void acceptsModel(String json, Rule rule) {
+        assertAccepts(json, rule);
+    }
+
     /** Rejection on a caller-supplied model without pinning a code — for kernel checks that carry no MVK code. */
     static void rejectsModel(String json, String group, String errorField, String condition) {
         ValidationResult r = check(json, group, errorField, condition);
@@ -84,9 +90,19 @@ final class KernelLaws {
         assertRejects(json, group, errorField, condition, expectedCode);
     }
 
+    /** Typed-rule variant: every path and the rendered condition derive from the rulekit object. */
+    static void rejectsModel(String json, Rule rule, String expectedCode) {
+        assertRejects(json, rule, expectedCode);
+    }
+
     private static void assertAccepts(String json, String group, String errorField, String condition) {
         ValidationResult r = check(json, group, errorField, condition);
         assertTrue(r.ok(), () -> "expected acceptance of '" + condition + "', got: " + r.diagnostics());
+    }
+
+    private static void assertAccepts(String json, Rule rule) {
+        ValidationResult r = VALIDATOR.check(json, rule.draft());
+        assertTrue(r.ok(), () -> "expected acceptance of '" + rule.render() + "', got: " + r.diagnostics());
     }
 
     private static void assertRejects(String json, String group, String errorField, String condition, String code) {
@@ -94,6 +110,13 @@ final class KernelLaws {
         assertFalse(r.ok(), () -> "expected rejection of '" + condition + "'");
         assertTrue(r.diagnostics().stream().anyMatch(p -> p.code().filter(code::equals).isPresent()),
                 () -> "expected " + code + " for '" + condition + "', got: " + r.diagnostics());
+    }
+
+    private static void assertRejects(String json, Rule rule, String code) {
+        ValidationResult r = VALIDATOR.check(json, rule.draft());
+        assertFalse(r.ok(), () -> "expected rejection of '" + rule.render() + "'");
+        assertTrue(r.diagnostics().stream().anyMatch(p -> p.code().filter(code::equals).isPresent()),
+                () -> "expected " + code + " for '" + rule.render() + "', got: " + r.diagnostics());
     }
 
     private static ValidationResult check(String json, String group, String errorField, String condition) {
