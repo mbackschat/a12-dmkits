@@ -418,8 +418,7 @@ public final class RuntimeLaws {
         IDocumentModel model = expandedModel(modelJson);
         IDocumentModelResolver resolver = id -> model;
         IDocumentV2Serializer serializer = new MDSerializerFactory().createDocumentSerializerV2(resolver);
-        DocumentV2 v2 = serializer.deserializeV2(new StringReader(documentJson), modelId(modelJson),
-                DocumentDeserializationConfig.builder().build(), notification -> { });
+        DocumentV2 v2 = deserializeV2(serializer, modelJson, documentJson);
 
         StringWriter rewritten = new StringWriter();
         serializer.serializeV2(v2, rewritten, DocumentSerializationConfig.builder()
@@ -429,6 +428,24 @@ public final class RuntimeLaws {
         List<String> codes = rt.validateFull(v2, config(null, Locale.US)).getMessages().stream()
                 .map(IMessage::getErrorCode).sorted().toList();
         return new JsonIngress(rewritten.toString(), codes);
+    }
+
+    /**
+     * Read A12's own nested Document JSON into its established {@link DocumentV2} domain type. This is the
+     * narrow typed-source seam for laws whose observation depends on the stored V2 value class or decimal scale;
+     * ordinary runtime laws keep using the {@link Doc} builder's deliberate V1/String profile.
+     */
+    static DocumentV2 documentV2(String modelJson, String documentJson) {
+        IDocumentModel model = expandedModel(modelJson);
+        IDocumentModelResolver resolver = id -> model;
+        return deserializeV2(
+                new MDSerializerFactory().createDocumentSerializerV2(resolver), modelJson, documentJson);
+    }
+
+    private static DocumentV2 deserializeV2(
+            IDocumentV2Serializer serializer, String modelJson, String documentJson) {
+        return serializer.deserializeV2(new StringReader(documentJson), modelId(modelJson),
+                DocumentDeserializationConfig.builder().build(), notification -> { });
     }
 
     /** Map a kernel {@link IMessage} to our {@link Msg} (code + raw pointer + type + the clean rich channels). */
@@ -669,7 +686,10 @@ public final class RuntimeLaws {
         IDocumentRtService rt = new DocumentRtServiceFactory(resolver).createDocumentRtService(dynamicConfig());
         DocumentV2 v2 = dsf.createDocumentV1V2Converter().ofDocumentV1(
                 buildInstance(modelJson, dsf.createDocumentFactory(), doc));
-        IDocumentComputationResult result = rt.compute(v2, config(null, Locale.US));
+        return resultChannelsOf(rt.compute(v2, config(null, Locale.US)));
+    }
+
+    private static ResultChannels resultChannelsOf(IDocumentComputationResult result) {
         return new ResultChannels(
                 pointers(result.getComputedFieldInstancesWithoutErrors()),
                 pointers(result.getComputedFieldInstancesWithChanges()),
@@ -961,6 +981,11 @@ public final class RuntimeLaws {
                 Map<String, ICustomCondition> customConditions, ICustomFieldTypeFactory fieldTypeFactory) {
             return computeSignaturesSorted(rt, instance, config(clock, locale, customConditions, fieldTypeFactory));
         }
+
+        /** The full five-channel computation result over an already-built typed source document. */
+        ResultChannels resultChannels(DocumentV2 instance) {
+            return resultChannelsOf(rt.compute(instance, config(null, Locale.US)));
+        }
     }
 
     public static KernelEngine kernelEngine(String modelJson) {
@@ -1107,6 +1132,11 @@ public final class RuntimeLaws {
         public List<String> computationSignaturesSorted(DocumentV2 instance, Locale locale, Date clock,
                 Map<String, ICustomCondition> customConditions, ICustomFieldTypeFactory fieldTypeFactory) {
             return computeSignaturesSorted(rt, instance, config(clock, locale, customConditions, fieldTypeFactory));
+        }
+
+        /** The full five-channel computation result over an already-built typed source document. */
+        ResultChannels resultChannels(DocumentV2 instance) {
+            return resultChannelsOf(rt.compute(instance, config(null, Locale.US)));
         }
 
         /**

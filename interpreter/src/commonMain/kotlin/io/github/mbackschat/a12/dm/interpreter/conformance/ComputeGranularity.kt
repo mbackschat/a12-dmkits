@@ -26,10 +26,13 @@ import io.github.mbackschat.a12.dm.interpreter.gen.asSink
  * every comparison surface that diffs the interpreter against a kernel-granularity multiset projects through
  * this function first, diffing the interpreter's outcomes against the document's supplied cells.
  *
- * On a placement-built input document the cell values are raw **strings**, so the kernel's typed change
- * equality can hold only for a **STRING-kind** target (a number/date/boolean computes to a typed value —
- * `BigDecimal`/`Instant`/`Boolean` — never equal to the raw seed string; kernel-probe-verified,
- * KERNEL-FINDINGS "compute reporting granularity"). Hence:
+ * This projection deliberately serves the conformance harness's **V1/String placement profile**. On such an
+ * input the cell values are raw strings, so the kernel's V2-object change equality can hold only for a
+ * **STRING-kind** target (a number/date/boolean computes to `BigDecimal`/`Instant`/`Boolean`, never equal to
+ * the raw seed string; kernel-probe-verified, KERNEL-FINDINGS "compute reporting granularity"). A typed
+ * `DocumentV2` Number source follows the separate full identity rule: coefficient + scale must both agree,
+ * while an equal-looking source String or negative-scale decimal is changed (`NumberResultSourceIdentityLawsTest`).
+ * This raw-placement projection must not reconstruct that typed identity from text. Hence:
  * - a `VALUE` equal to the cell's placement value is dropped iff the target is [Kind.STRING];
  * - a `CLEARED` on a cell no placement filled (unseeded, [PlacementKind.EMPTY], or an empty/null field value)
  *   is dropped;
@@ -72,4 +75,3 @@ fun kernelComputeGranularity(signatures: List<String>, document: Document, model
 /** Capture-side overload: project against a placement scenario, before a committed case (and its document) exists. */
 fun kernelComputeGranularity(signatures: List<String>, placements: List<Placement>, model: ModelDef): List<String> =
     kernelComputeGranularity(signatures, model.newDocument().also { placements.replayInto(it.asSink()) }, model)
-
