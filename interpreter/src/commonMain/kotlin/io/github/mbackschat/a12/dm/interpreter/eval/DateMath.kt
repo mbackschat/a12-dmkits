@@ -1,5 +1,6 @@
 package io.github.mbackschat.a12.dm.interpreter.eval
 
+import io.github.mbackschat.a12.dm.interpreter.model.DatePrecision
 import io.github.mbackschat.a12.dm.interpreter.model.ModelTimeZone
 
 /**
@@ -338,21 +339,46 @@ fun beforeGregorianStart(year: Int, month: Int, day: Int): Boolean =
     year < 1583 || (year == 1583 && (month < 10 || (month == 10 && day < 16)))
 
 /**
- * Parse a **DAY_OPTIONAL** date value rendered in [format] — like [parseDateToIso] but the DAY may be the
- * sentinel `00` (day omitted). Returns `(year, month, day)` with `day == 0` for an omitted day, or null if
- * malformed (bad month, an out-of-range real day, or the format has no day component). The basis for the
- * `DAY_OPTIONAL` formal check and `ValueAsDate`.
+ * Parse a partial DateType value rendered in [format], retaining each exact zero omission marker. Legal
+ * omissions form a suffix: day; then month only with day; then year only with month and day. Wider precisions
+ * include every narrower legal value and a fully known date. Null means malformed or outside [precision].
  */
-fun dayOptionalParts(raw: String, format: String): Triple<Int, Int, Int>? {
+internal fun partialDateParts(raw: String, format: String, precision: DatePrecision): Triple<Int, Int, Int>? {
+    val (y, mo, d) = partialDateRawParts(raw, format) ?: return null
+    if (mo > 12) return null
+    if (d > 0 && mo > 0 && y > 0 && d > daysInMonth(y, mo)) return null
+
+    val dayMayBeUnknown = precision != DatePrecision.FULL && precision != DatePrecision.FRAGMENT
+    val monthMayBeUnknown = precision == DatePrecision.MONTH_OPTIONAL || precision == DatePrecision.YEAR_OPTIONAL
+    val yearMayBeUnknown = precision == DatePrecision.YEAR_OPTIONAL
+    if (d == 0 && !dayMayBeUnknown) return null
+    if (mo == 0 && (!monthMayBeUnknown || d != 0)) return null
+    if (y == 0 && (!yearMayBeUnknown || mo != 0 || d != 0)) return null
+    return Triple(y, mo, d)
+}
+
+private fun partialDateRawParts(raw: String, format: String): Triple<Int, Int, Int>? {
     val (frag, comps) = dateFragment(format) ?: return null
     val m = Regex("^$frag$").matchEntire(raw) ?: return null
     val g = m.groupValues.drop(1)
     var y = -1; var mo = -1; var d = -1
     comps.forEachIndexed { i, c -> val v = g[i].toInt(); when (c) { 'y' -> y = v; 'M' -> mo = v; 'd' -> d = v } }
-    if (y < 0 || mo < 1 || mo > 12 || d < 0) return null            // year/month required; format must carry a day
-    if (d != 0 && d > daysInMonth(y, mo)) return null               // a specified day must be real
+    if (y < 0 || mo < 0 || d < 0) return null
     return Triple(y, mo, d)
 }
+
+/** Whether an otherwise lexically-shaped partial date violates the day→month→year omission suffix. */
+internal fun invalidPartialDateOmissionShape(raw: String, format: String, precision: DatePrecision): Boolean {
+    val (year, month, day) = partialDateRawParts(raw, format) ?: return false
+    val monthMayBeUnknown = precision == DatePrecision.MONTH_OPTIONAL || precision == DatePrecision.YEAR_OPTIONAL
+    val yearMayBeUnknown = precision == DatePrecision.YEAR_OPTIONAL
+    return (month == 0 && (!monthMayBeUnknown || day != 0)) ||
+        (year == 0 && (!yearMayBeUnknown || month != 0 || day != 0))
+}
+
+/** Backward-compatible narrow parser for the original DAY_OPTIONAL owner. */
+fun dayOptionalParts(raw: String, format: String): Triple<Int, Int, Int>? =
+    partialDateParts(raw, format, DatePrecision.DAY_OPTIONAL)
 
 /**
  * Complete a **date FRAGMENT** value (rendered in its `getFormatOfFragment` [format], one of `yyyy-MM`,
@@ -378,15 +404,21 @@ fun completeFragmentToIso(raw: String, format: String, baseYear: Int): String? {
 }
 
 /**
- * Resolve a DAY_OPTIONAL date value to a concrete ISO date: a specified day → that exact date; an omitted
- * day (`00`) → day 01 ([lastDay] = false) or the month's last day ([lastDay] = true). Null if malformed. The
- * `ValueAsDate(field, FirstDay\|LastDay)` resolution.
+ * Resolve a partial DateType value to its concrete ISO boundary. An unknown month selects January/December
+ * before an unknown day selects day 1/month-end. An unknown year stays non-relevant and returns null rather
+ * than borrowing the formal checker's temporary year 2000.
  */
-fun resolvePartialDate(raw: String, format: String, lastDay: Boolean): String? {
-    val (y, mo, d) = dayOptionalParts(raw, format) ?: return null
-    val day = if (d != 0) d else if (lastDay) daysInMonth(y, mo) else 1
-    return iso(y, mo, day)
+fun resolvePartialDate(raw: String, format: String, precision: DatePrecision, lastDay: Boolean): String? {
+    val (y, storedMonth, storedDay) = partialDateParts(raw, format, precision) ?: return null
+    if (y == 0) return null
+    val month = if (storedMonth != 0) storedMonth else if (lastDay) 12 else 1
+    val day = if (storedDay != 0) storedDay else if (lastDay) daysInMonth(y, month) else 1
+    return iso(y, month, day)
 }
+
+/** Source-compatible DAY_OPTIONAL overload retained for consumers of the original helper. */
+fun resolvePartialDate(raw: String, format: String, lastDay: Boolean): String? =
+    resolvePartialDate(raw, format, DatePrecision.DAY_OPTIONAL, lastDay)
 
 /** The canonical ISO `yyyy-MM-dd` for (year, month, day) — zero-padded; the `Date(...)` constructor's value. */
 fun isoDate(year: Int, month: Int, day: Int): String = iso(year, month, day)

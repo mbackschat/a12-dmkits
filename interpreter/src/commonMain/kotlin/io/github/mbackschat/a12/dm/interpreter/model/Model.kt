@@ -17,9 +17,12 @@ enum class Kind { NUMBER, STRING, BOOLEAN, CONFIRM, DATE, TIME, DATE_RANGE, DATE
  * How complete a [Kind.DATE] field's value is — the kernel's "teilbekannt" (partially-known) axis, which the
  * kernel unifies for a `DateType`'s optional day AND a `DateFragmentType`'s missing components:
  * - [FULL] — a complete `DateType` (all of year/month/day present & required).
- * - [DAY_OPTIONAL] — a `DateType` whose **day** may be omitted (entered as `00`, `00.06.2024`): well-formed
- *   but not a single concrete date, so a *direct* reference resolves to `Val.Unknown`; only
- *   `ValueAsDate(field, FirstDay\|LastDay)` resolves it.
+ * - [DAY_OPTIONAL] — a `DateType` whose **day** may be omitted (entered as `00`, `00.06.2024`).
+ * - [MONTH_OPTIONAL] — widens that domain so month may also be omitted, but only after day (`00.00.2024`).
+ * - [YEAR_OPTIONAL] — widens it again so year may be omitted only after day and month (`00.00.0000`).
+ *   Every partial value is well-formed but not a single concrete date, so a direct value resolution is
+ *   `Val.Unknown`; `ValueAsDate(field, FirstDay\|LastDay)` selects its concrete boundary unless the year is
+ *   unknown, which remains non-relevant.
  * - [FRAGMENT] — a `DateFragmentType`: the field's format itself carries only a proper SUBSET of the date
  *   components (`getFormatOfFragment` ∈ {`yyyy-MM`, `yyyy`, `MM`, `MM-dd`}). Unlike [DAY_OPTIONAL], a
  *   fragment DOES resolve for a direct comparison: the kernel collapses it to a plain `Date` by completing the
@@ -32,7 +35,7 @@ enum class Kind { NUMBER, STRING, BOOLEAN, CONFIRM, DATE, TIME, DATE_RANGE, DATE
  *   valid model carries only legal combos, so the interpreter evaluates only those and does not re-enforce
  *   the gates (KERNEL-FINDINGS §6 "a date fragment IS a DateOperand").
  */
-enum class DatePrecision { FULL, DAY_OPTIONAL, FRAGMENT }
+enum class DatePrecision { FULL, DAY_OPTIONAL, MONTH_OPTIONAL, YEAR_OPTIONAL, FRAGMENT }
 
 /**
  * The evaluation reference clock — the "current point in time" the kernel reads for the clock constants
@@ -504,8 +507,8 @@ data class ModelDef(
     /** The DATE field's declared format (ISO default), or null for a non-date field. */
     fun dateFormatOf(path: String): String? = dateFormats[path]
 
-    /** Each [Kind.DATE] field's [DatePrecision] — the partial-date (`DAY_OPTIONAL`) input for the formal check
-     *  and `ValueAsDate`. */
+    /** Each [Kind.DATE] field's [DatePrecision] — the partial-date suffix input for the formal check and
+     *  `ValueAsDate`. */
     val datePrecisions: Map<String, DatePrecision> = fields
         .filter { it.kind == Kind.DATE }
         .associate { it.path to it.datePrecision }

@@ -1204,15 +1204,19 @@ internal fun Interpreter.dateInstant(e: Expr): Long? =
         ?.takeIf { !it.isDateTime && !it.isTimeOnly }
         ?.instantMillis(timeZone)
 
-/** `ValueAsDate(field, FirstDay|LastDay)` — resolve a (DAY_OPTIONAL) date field's raw value to a concrete
- *  date: a specified day → itself, an omitted `00` day → the month's first (`FirstDay`) or last (`LastDay`)
- *  day. Unknown when the field is empty/formally-invalid or the value doesn't parse. */
+/** `ValueAsDate(field, FirstDay|LastDay)` — select a partial DateType value's concrete boundary. Unknown
+ *  when the field is empty/formally-invalid, its year is unknown, or the value doesn't parse. */
 private fun Interpreter.valueAsDate(args: List<Expr>): Val {
     val path = pathOf(args[0])
     if (invalid(path)) return Val.Unknown
     val raw = ctx.displayValue(path) ?: return Val.Unknown
     val lastDay = (args[1] as? Expr.Const)?.name == "LastDay"
-    return resolvePartialDate(raw, ctx.dateFormatOf(path) ?: "yyyy-MM-dd", lastDay)?.let { Val.Txt(it) } ?: Val.Unknown
+    return resolvePartialDate(
+        raw,
+        ctx.dateFormatOf(path) ?: "yyyy-MM-dd",
+        ctx.datePrecisionOf(path),
+        lastDay,
+    )?.let { Val.Txt(it) } ?: Val.Unknown
 }
 
 /**

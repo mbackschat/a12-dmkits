@@ -479,8 +479,8 @@ object ModelLoader {
     }
 
     /** A DATE field's precision: a `DateFragmentType` is [DatePrecision.FRAGMENT] (its format carries only some
-     *  components — the eval completes the rest); a `DateType` accepts an absent/`FULL` precision or
-     *  `DAY_OPTIONAL`. The Kernel refuses null, malformed, and unknown values, so they must never silently default. */
+     *  components — the eval completes the rest); a `DateType` accepts the kernel's complete four-value enum.
+     *  The Kernel refuses null, malformed, and unknown values, so they must never silently default. */
     private fun datePrecisionOf(fieldNode: JsonElement?, path: String): DatePrecision {
         val type = fieldNode.path("Field").path("fieldType")
         val typeName = type.path("type").asText()
@@ -502,7 +502,8 @@ object ModelLoader {
         return when (precision) {
             "FULL" -> DatePrecision.FULL
             "DAY_OPTIONAL" -> DatePrecision.DAY_OPTIONAL
-            in UNSUPPORTED_DATE_PRECISIONS -> throw UnsupportedDatePrecisionException(path, precision)
+            "MONTH_OPTIONAL" -> DatePrecision.MONTH_OPTIONAL
+            "YEAR_OPTIONAL" -> DatePrecision.YEAR_OPTIONAL
             else -> throw InvalidPreparedModelSourceException(
                 path,
                 "unknown datePrecision '$precision' at '$path'",
@@ -528,9 +529,6 @@ object ModelLoader {
         val max = type.path("NumberType").path("maxFractionalDigits")
         return if (max.isIntNode()) max.asInt(0) else 0
     }
-
-    private val UNSUPPORTED_DATE_PRECISIONS =
-        setOf("MONTH_OPTIONAL", "YEAR_OPTIONAL")
 
     /** Whether a NUMBER field is signed (unsigned iff `NumberType.positivesOnly`); non-number defaults to signed. */
     private fun signed(fieldNode: JsonElement?): Boolean =

@@ -3,6 +3,7 @@ package io.github.mbackschat.a12.dm.interpreter.eval
 import io.github.mbackschat.a12.dm.interpreter.UnsupportedConstructException
 import io.github.mbackschat.a12.dm.interpreter.ast.Val
 import io.github.mbackschat.a12.dm.interpreter.model.CustomConditionData
+import io.github.mbackschat.a12.dm.interpreter.model.DatePrecision
 import io.github.mbackschat.a12.dm.interpreter.model.Kind
 
 /**
@@ -92,6 +93,9 @@ interface EvalContext {
     /** A [Kind.DATE] field's declared rendering format (its `DateType.format`), or null. Lets `ValueAsDate`
      *  parse the field's RAW partial value (`00.MM.yyyy`) in its own format. */
     fun dateFormatOf(path: String): String? = null
+
+    /** A [Kind.DATE] field's partial precision, used with [dateFormatOf] by `ValueAsDate`. */
+    fun datePrecisionOf(path: String): DatePrecision = DatePrecision.FULL
 
     /** The resolved value of [targetPath] in the repetition (within scope) whose [indexField] cell equals
      *  [indexValue] — the `SemanticIndex` (`[field For "value"]`) lookup. Null when no row matches OR the

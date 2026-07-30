@@ -785,6 +785,9 @@ class Document(internal val config: DocumentConfig) {
 
         override fun dateFormatOf(path: String): String? = dateFormats[path]
 
+        override fun datePrecisionOf(path: String): DatePrecision =
+            datePrecisions[path] ?: DatePrecision.FULL
+
         /**
          * SemanticIndex `[F For "v"]`: the value of [targetPath] in the in-scope row whose sibling [indexField]
          * cell equals [indexValue]. The kernel's `IndexFieldCache` analog — an `indexValue → row` memo built
@@ -1116,6 +1119,9 @@ class Document(internal val config: DocumentConfig) {
 
         override fun dateFormatOf(path: String): String? = dateFormats[path]
 
+        override fun datePrecisionOf(path: String): DatePrecision =
+            datePrecisions[path] ?: DatePrecision.FULL
+
         // A parallel group is "filled" for this iteration iff it has a matching row.
         override fun groupFilled(groupPath: String): Boolean =
             if (groupPath in groups) matches[groupPath] != null
@@ -1246,15 +1252,21 @@ class Document(internal val config: DocumentConfig) {
             //  - FRAGMENT: the format carries only some components — complete the rest to the earliest concrete
             //    date (missing month/day → 01, missing year → base year), so it compares/shifts/extracts like a
             //    plain date (KERNEL-FINDINGS §6 "a date fragment IS a DateOperand"; the kernel's feldWertAlsDatum).
-            //  - DAY_OPTIONAL: a day-omitted value (`00.MM.yyyy`) is well-formed but NOT a single concrete date →
-            //    Unknown for a direct reference (only `ValueAsDate` resolves it).
+            //  - partial DateType: a value carrying any admitted zero component is well-formed but not a single
+            //    concrete date → Unknown for a direct reference (`ValueAsDate` selects its boundary).
             //  - FULL: a plain full date.
             Kind.DATE -> {
                 val fmt = dateFormats[path] ?: "yyyy-MM-dd"
                 when {
                     precision == DatePrecision.FRAGMENT ->
                         completeFragmentToIso(raw, fmt, baseYear ?: 2000)?.let { Val.Txt(it) } ?: Val.Unknown
-                    precision == DatePrecision.DAY_OPTIONAL && dayOptionalParts(raw, fmt)?.third == 0 -> Val.Unknown
+                    precision == DatePrecision.DAY_OPTIONAL ||
+                        precision == DatePrecision.MONTH_OPTIONAL ||
+                        precision == DatePrecision.YEAR_OPTIONAL -> {
+                        val parts = partialDateParts(raw, fmt, precision) ?: return Val.Unknown
+                        if (parts.first == 0 || parts.second == 0 || parts.third == 0) Val.Unknown
+                        else Val.Txt(isoDate(parts.first, parts.second, parts.third))
+                    }
                     else -> parseDateToIso(raw, fmt)?.let { Val.Txt(it) } ?: Val.Unknown
                 }
             }

@@ -106,6 +106,10 @@ enum class FormalErrorCode(val id: String) {
     /** A DATE value that is not `YYYY-MM-DD`. */
     DATE_FORMAT("datumFormatFalsch"),
 
+    /** A lexically well-shaped partial Date whose zero components do not form the required day→month→year
+     *  suffix. The kernel uses the same `datumFalsch` id as its concrete-date validity failure. */
+    PARTIAL_DATE_INVALID("datumFalsch"),
+
     /** A well-formed DATE value that resolves to a real calendar date but is BEFORE the kernel's always-on
      *  floor `Constants.DATE_FROM = 1583-10-16` (the start of the Gregorian calendar). The kernel flags it
      *  `datumFalsch` (FEHLER_DATUM) for every stored OR computed date, independent of the opt-in "< 1900"
@@ -295,19 +299,32 @@ internal fun typeFormatErrorCached(
     return when (kind) {
         // Format-aware: a value valid for the field's DECLARED format is well-formed (a `dd.MM.yyyy` field's
         // `15.06.2024` is fine — not ISO, but valid for its format). Null format defaults to ISO (KERNEL-FINDINGS
-        // plain-date locale handling, PlainDateDiffTest). Precision widens what "valid" means: DAY_OPTIONAL also
-        // accepts a day-omitted `00.MM.yyyy`; a FRAGMENT is well-formed iff its value parses in its (partial)
-        // format with real components (`completeFragmentToIso`) — a `2024-13` yyyy-MM is `datumFormatFalsch`.
+        // plain-date locale handling, PlainDateDiffTest). Precision widens what "valid" means: partial DateType
+        // omissions form the day→month→year suffix; a FRAGMENT is well-formed iff its value parses in its
+        // (partial) format with real components (`completeFragmentToIso`) — a `2024-13` yyyy-MM is malformed.
         Kind.DATE -> {
             val fmt = format ?: ISO_FORMAT
-            // The resolved (year, month, day), with a partial precision's omitted day → 01 (the kernel's
-            // replaceUnknownDateParts before its date checks); null iff the value is not well-formed.
+            val invalidPartialShape = when (datePrecision) {
+                DatePrecision.DAY_OPTIONAL,
+                DatePrecision.MONTH_OPTIONAL,
+                DatePrecision.YEAR_OPTIONAL,
+                -> invalidPartialDateOmissionShape(raw, fmt, datePrecision)
+                DatePrecision.FULL, DatePrecision.FRAGMENT -> false
+            }
+            // The formal check temporarily replaces every admitted unknown component with 2000/01/01 before
+            // the ordinary date checks. Evaluation never receives that synthetic year.
             val parts = when (datePrecision) {
-                DatePrecision.DAY_OPTIONAL -> dayOptionalParts(raw, fmt)?.let { (y, m, d) -> Triple(y, m, if (d == 0) 1 else d) }
+                DatePrecision.DAY_OPTIONAL,
+                DatePrecision.MONTH_OPTIONAL,
+                DatePrecision.YEAR_OPTIONAL,
+                -> partialDateParts(raw, fmt, datePrecision)?.let { (y, m, d) ->
+                    Triple(if (y == 0) 2000 else y, if (m == 0) 1 else m, if (d == 0) 1 else d)
+                }
                 DatePrecision.FRAGMENT -> completeFragmentToIso(raw, fmt, baseYear)?.let { dateParts(it) }
                 DatePrecision.FULL -> parseDateToIso(raw, fmt)?.let { dateParts(it) }
             }
             when {
+                invalidPartialShape -> FormalErrorCode.PARTIAL_DATE_INVALID
                 parts == null -> FormalErrorCode.DATE_FORMAT
                 // The kernel's always-on Gregorian floor (IF88): a real date before 1583-10-16 is `datumFalsch`.
                 beforeGregorianStart(parts.first, parts.second, parts.third) -> FormalErrorCode.DATE_TOO_EARLY
@@ -516,6 +533,8 @@ fun formalErrorText(code: FormalErrorCode, locale: String, scale: Int? = null): 
             if (de) "Wert ist kein gültiges Datum (erwartet JJJJ-MM-TT)." else "Value is not a valid date (expected YYYY-MM-DD)."
         FormalErrorCode.DATE_TOO_EARLY ->
             if (de) "Datum liegt vor dem Beginn des gregorianischen Kalenders (16.10.1583)." else "Date is before the start of the Gregorian calendar (1583-10-16)."
+        FormalErrorCode.PARTIAL_DATE_INVALID ->
+            if (de) "Unbekannte Datumsbestandteile müssen Tag, Monat und Jahr als Suffix bilden." else "Unknown date components must form a day, month, year suffix."
         FormalErrorCode.DATE_RANGE_TOO_EARLY ->
             if (de) "Datumsbereich: Startdatum liegt vor dem 16.10.1583." else "Date range: the start date is before 1583-10-16."
         FormalErrorCode.LEADING_BLANK ->

@@ -212,38 +212,20 @@ class PreparationApiTest {
     }
 
     @Test
-    fun expansionStopsBeforeInterpreterEvaluabilityChecks() {
-        val unsupportedSources = buildList {
-            add(
-                preparedModel(
-                    id = "unsupported-zone",
-                    modelConfig = """"timeZone":"Europe/Paris"""",
-                    fieldType = """{"type":"StringType"}""",
-                ),
-            )
-            for (precision in listOf("MONTH_OPTIONAL", "YEAR_OPTIONAL")) {
-                add(
-                    preparedModel(
-                        id = precision.lowercase(),
-                        modelConfig = "",
-                        fieldType = """
-                            {"type":"DateType","DateType":{"format":"dd.MM.yyyy","datePrecision":"$precision"}}
-                        """.trimIndent(),
-                    ),
-                )
-            }
-        }
+    fun expansionStopsBeforeTheRemainingInterpreterEvaluabilityCheck() {
+        val json = preparedModel(
+            id = "unsupported-zone",
+            modelConfig = """"timeZone":"Europe/Paris"""",
+            fieldType = """{"type":"StringType"}""",
+        )
+        val modelId = source(json, "unsupported").modelIdHint()
+        val workspace = ModelWorkspace.fromSources(listOf(source(json, "unsupported")))
+        val expanded = workspace.expand(modelId)
+        val attempted = assertIs<ModelExpansionResult.Success>(workspace.tryExpand(modelId))
 
-        for (json in unsupportedSources) {
-            val modelId = source(json, "unsupported").modelIdHint()
-            val workspace = ModelWorkspace.fromSources(listOf(source(json, "unsupported")))
-            val expanded = workspace.expand(modelId)
-            val attempted = assertIs<ModelExpansionResult.Success>(workspace.tryExpand(modelId))
-
-            assertEquals(expanded, attempted.json)
-            assertTrue(expanded.contains(""""id":"$modelId""""))
-            assertIs<ModelPreparationResult.Failure>(workspace.tryPrepare(modelId))
-        }
+        assertEquals(expanded, attempted.json)
+        assertTrue(expanded.contains(""""id":"$modelId""""))
+        assertIs<ModelPreparationResult.Failure>(workspace.tryPrepare(modelId))
     }
 
     @Test
@@ -368,7 +350,7 @@ class PreparationApiTest {
     }
 
     @Test
-    fun expandedFastPathClassifiesInvalidSourceDatePrecisionAndTimeZone() {
+    fun expandedFastPathAdmitsEveryDatePrecisionAndClassifiesInvalidSourceAndTimeZone() {
         val invalidJson = assertIs<ModelPreparationResult.Failure>(
             PreparedModel.tryLoadExpandedJson("{"),
         )
@@ -378,7 +360,7 @@ class PreparationApiTest {
         )
 
         for (precision in listOf("MONTH_OPTIONAL", "YEAR_OPTIONAL")) {
-            val unsupportedPrecision = assertIs<ModelPreparationResult.Failure>(
+            val supportedPrecision = assertIs<ModelPreparationResult.Success>(
                 PreparedModel.tryLoadExpandedJson(
                     preparedModel(
                         id = precision.lowercase(),
@@ -389,11 +371,7 @@ class PreparationApiTest {
                     ),
                 ),
             )
-            assertEquals(
-                ModelPreparationDiagnosticCode.UNSUPPORTED_DATE_PRECISION,
-                unsupportedPrecision.error.diagnostics.single().code,
-            )
-            assertEquals(precision, unsupportedPrecision.error.diagnostics.single().reference)
+            assertEquals(precision, supportedPrecision.model.definition().datePrecisionOf("/Root/Value").name)
         }
 
         val unsupportedTimeZone = assertIs<ModelPreparationResult.Failure>(

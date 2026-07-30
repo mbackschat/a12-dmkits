@@ -3,7 +3,6 @@ package io.github.mbackschat.a12.dm.interpreter
 import io.github.mbackschat.a12.dm.interpreter.load.InvalidPreparedModelSourceException
 import io.github.mbackschat.a12.dm.interpreter.load.ModelLoader
 import io.github.mbackschat.a12.dm.interpreter.load.UnpreparedModelResidueException
-import io.github.mbackschat.a12.dm.interpreter.load.UnsupportedDatePrecisionException
 import io.github.mbackschat.a12.dm.interpreter.model.ModelDef
 import io.github.mbackschat.a12.dm.interpreter.workspace.AdmittedWorkspace
 import io.github.mbackschat.a12.dm.interpreter.workspace.FingerprintSource
@@ -218,17 +217,6 @@ class PreparedModel private constructor(
                             code = ModelPreparationDiagnosticCode.UNPREPARED_MODEL_RESIDUE,
                             path = error.path,
                             reason = error.residue,
-                            message = error.message.orEmpty(),
-                        ),
-                    ),
-                )
-            } catch (error: UnsupportedDatePrecisionException) {
-                throw ModelPreparationError.from(
-                    listOf(
-                        PreparedInputDiagnostic(
-                            code = ModelPreparationDiagnosticCode.UNSUPPORTED_DATE_PRECISION,
-                            path = error.path,
-                            reference = error.precision,
                             message = error.message.orEmpty(),
                         ),
                     ),

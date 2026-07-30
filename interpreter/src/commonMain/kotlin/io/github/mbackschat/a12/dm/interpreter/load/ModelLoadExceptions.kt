@@ -10,10 +10,3 @@ internal class UnpreparedModelResidueException(
     val residue: String,
     message: String,
 ) : IllegalArgumentException(message)
-
-internal class UnsupportedDatePrecisionException(
-    val path: String,
-    val precision: String,
-) : IllegalArgumentException(
-    "unsupported date precision '$precision' at '$path'; this interpreter release supports FULL and DAY_OPTIONAL",
-)
