@@ -574,7 +574,21 @@ DateTimeExpr latestInstant = Dsl.max(m.dateTime("/Order/ScheduledAt"),
         m.dateTime("/Order/CompletedAt"));
 ```
 
-**Time construction uses a prefix.** `Dsl.time()` through `Dsl.time(hour, minute, second)` preserve the kernel's four legal arities. Omitted trailing components are fixed zero: `Dsl.time()` is midnight, `Dsl.time("10")` is 10:00:00, and `Dsl.time("10", "30")` is 10:30:00. The same overloads accept typed `FieldRef` components. The public `TimeConstruction` node therefore carries a copied `List<Calculation>` rather than three mandatory record slots; its former three-argument constructor remains as the source-compatible full-form convenience (finding 105 / IG105).
+**Date/Time construction uses a model-checked component union.** A supplied component is a `TemporalComponent`: a typed `FieldRef`, a numeric expression such as the matching date/time extractor, or a quoted lexical component from `Dsl.temporalComponent`. The lexical factory is deliberate: `Dsl.temporalComponent("01")` preserves `"01"` where routing through a numeric literal would normalize it. The real kernel validates a field's declaration for its position, so the typed surface keeps model-dependent legality authorable without pretending every field kind works everywhere: bounded Number fields, exact-width digit-pattern String fields, and an exact-`yyyy` Date field in the complete-year position are admitted. `Dsl.date` accepts three or four components.
+
+<!-- teaser -->
+```java
+TemporalComponent day = m.field("/Parts/DayText");       // STRING: maxLength 2 + digit-only pattern
+TemporalComponent year = m.field("/Parts/Year");         // DATE: exact format yyyy
+DateExpr firstOfJanuary = Dsl.date(day, Dsl.temporalComponent("01"), year);
+
+TimeExpr capturedClock = Dsl.time(
+        m.field("/Parts/HourText"),
+        Dsl.temporalComponent("30"),
+        Dsl.secondsFromTime(m.time("/Parts/SourceTime")));
+```
+
+**Time construction uses a prefix.** `Dsl.time()` through `Dsl.time(hour, minute, second)` preserve the kernel's four legal arities. Omitted trailing components are fixed zero: `Dsl.time()` is midnight, `Dsl.time(Dsl.temporalComponent("10"))` is 10:00:00, and the two-component form is 10:30:00. The public `TimeConstruction` node therefore carries a copied `List<Calculation>` rather than three mandatory record slots; its former three-argument constructor remains as the source-compatible full-form convenience (findings 105–106 / IF232–IF234).
 
 **Rounding with an optional scale.** Both the expression `roundDown`/`roundUp`/`roundAccounting` family and its bare-field `…Value` siblings retain the kernel's optional decimal-places argument on the typed AST. The domain is `0..14`; every one-argument form means zero places. `RoundDown` is floor, `RoundUp` is ceiling, and accounting is `HALF_UP`, each after the kernel's scale-19 pre-round:
 

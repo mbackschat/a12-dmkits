@@ -10,8 +10,8 @@ import io.github.mbackschat.a12.dm.core.ValueKind;
  * {@code ITimeConstructionOperation}). A {@link Calculation} of {@link ValueKind#TIME}; wrap in a
  * {@link TimeExpr} to compare it. Omitted trailing components default to zero. Each present component renders
  * in argument position — a field bare ({@code Time(H, M, S)}), a constant as a quoted literal
- * ({@code Time("10", "30", "50")}). The kernel rejects a bracketed value ({@code [H]}) here, so components
- * are bare fields or quoted constants only.
+ * ({@code Time("10", "30", "50")}), or a matching time extractor as its call. The kernel rejects a bracketed
+ * value ({@code [H]}) here; the renderer therefore preserves the constructor's bare-field syntax.
  */
 public record TimeConstruction(List<Calculation> components) implements Calculation {
 

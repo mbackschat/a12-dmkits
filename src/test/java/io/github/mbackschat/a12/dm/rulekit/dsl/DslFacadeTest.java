@@ -8,6 +8,9 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
+import java.util.Arrays;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -127,6 +130,23 @@ class DslFacadeTest {
                 new DslRenderer().render(m.num(MONTHLY_FEE).ge(Dsl.number(new java.math.BigDecimal("0.00")))));
         assertEquals(new DslRenderer().render(m.num(MONTHLY_FEE).gt(Dsl.number("13"))),
                 new DslRenderer().render(m.num(MONTHLY_FEE).gt(Dsl.number(13L))));
+    }
+
+    @Test
+    void temporalComponentFactoriesAdmitMixedKernelComponentSources() {
+        Set<String> signatures = Arrays.stream(Dsl.class.getDeclaredMethods())
+                .filter(method -> method.getName().equals("date") || method.getName().equals("time"))
+                .map(method -> method.getName() + Arrays.stream(method.getParameterTypes())
+                        .map(Class::getSimpleName)
+                        .collect(Collectors.joining(",", "(", ")")))
+                .collect(Collectors.toSet());
+
+        assertEquals(true, signatures.contains("date(TemporalComponent,TemporalComponent,TemporalComponent)"));
+        assertEquals(true, signatures.contains(
+                "date(TemporalComponent,TemporalComponent,TemporalComponent,TemporalComponent)"));
+        assertEquals(true, signatures.contains("time(TemporalComponent)"));
+        assertEquals(true, signatures.contains("time(TemporalComponent,TemporalComponent)"));
+        assertEquals(true, signatures.contains("time(TemporalComponent,TemporalComponent,TemporalComponent)"));
     }
 
     private static String fixture(String classpathLocation) {

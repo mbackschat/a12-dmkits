@@ -321,7 +321,15 @@ internal fun typeFormatErrorCached(
                     Triple(if (y == 0) 2000 else y, if (m == 0) 1 else m, if (d == 0) 1 else d)
                 }
                 DatePrecision.FRAGMENT -> completeFragmentToIso(raw, fmt, baseYear)?.let { dateParts(it) }
-                DatePrecision.FULL -> parseDateToIso(raw, fmt)?.let { dateParts(it) }
+                DatePrecision.FULL -> {
+                    // A DateType with exact format `yyyy` is a kernel-legal complete-Year component source.
+                    // It is not a DateFragmentType, but its own field value must pass the formal gate before
+                    // Date(...) can route the stored year through numeric conversion (SPEC-2026-07-27-13).
+                    // Keep the exception exact: other incomplete DateType formats are not inferred here.
+                    val iso = if (fmt == "yyyy") completeFragmentToIso(raw, fmt, baseYear)
+                    else parseDateToIso(raw, fmt)
+                    iso?.let { dateParts(it) }
+                }
             }
             when {
                 invalidPartialShape -> FormalErrorCode.PARTIAL_DATE_INVALID

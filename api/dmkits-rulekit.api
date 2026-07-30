@@ -1169,6 +1169,8 @@ public final class io.github.mbackschat.a12.dm.rulekit.dsl.Dsl
   public static io.github.mbackschat.a12.dm.rulekit.dsl.Condition customCondition(java.lang.String)
   public static io.github.mbackschat.a12.dm.rulekit.dsl.DateExpr date(io.github.mbackschat.a12.dm.rulekit.dsl.NumberExpr, io.github.mbackschat.a12.dm.rulekit.dsl.NumberExpr, io.github.mbackschat.a12.dm.rulekit.dsl.NumberExpr)
   public static io.github.mbackschat.a12.dm.rulekit.dsl.DateExpr date(io.github.mbackschat.a12.dm.rulekit.dsl.NumberExpr, io.github.mbackschat.a12.dm.rulekit.dsl.NumberExpr, io.github.mbackschat.a12.dm.rulekit.dsl.NumberExpr, io.github.mbackschat.a12.dm.rulekit.dsl.NumberExpr)
+  public static io.github.mbackschat.a12.dm.rulekit.dsl.DateExpr date(io.github.mbackschat.a12.dm.rulekit.dsl.TemporalComponent, io.github.mbackschat.a12.dm.rulekit.dsl.TemporalComponent, io.github.mbackschat.a12.dm.rulekit.dsl.TemporalComponent)
+  public static io.github.mbackschat.a12.dm.rulekit.dsl.DateExpr date(io.github.mbackschat.a12.dm.rulekit.dsl.TemporalComponent, io.github.mbackschat.a12.dm.rulekit.dsl.TemporalComponent, io.github.mbackschat.a12.dm.rulekit.dsl.TemporalComponent, io.github.mbackschat.a12.dm.rulekit.dsl.TemporalComponent)
   public static io.github.mbackschat.a12.dm.rulekit.dsl.DateExpr dateFromDateTime(io.github.mbackschat.a12.dm.rulekit.dsl.DateTimeOperand)
   public static io.github.mbackschat.a12.dm.rulekit.dsl.DateRangeConstruction dateRange(io.github.mbackschat.a12.dm.rulekit.dsl.DateOperand, io.github.mbackschat.a12.dm.rulekit.dsl.DateOperand)
   public static io.github.mbackschat.a12.dm.rulekit.dsl.Condition dateRangesOverlap(io.github.mbackschat.a12.dm.rulekit.dsl.FieldOperand, io.github.mbackschat.a12.dm.rulekit.dsl.FieldOperand[])
@@ -1316,12 +1318,16 @@ public final class io.github.mbackschat.a12.dm.rulekit.dsl.Dsl
   public static io.github.mbackschat.a12.dm.rulekit.dsl.DateExpr startOfDateRange(io.github.mbackschat.a12.dm.rulekit.dsl.DateRangeRef)
   public static io.github.mbackschat.a12.dm.rulekit.dsl.NumberExpr sum(io.github.mbackschat.a12.dm.rulekit.dsl.FieldOperand, io.github.mbackschat.a12.dm.rulekit.dsl.FieldOperand[])
   public static io.github.mbackschat.a12.dm.rulekit.dsl.NumberExpr sumOfProducts(io.github.mbackschat.a12.dm.rulekit.dsl.FieldOperand, io.github.mbackschat.a12.dm.rulekit.dsl.FieldOperand)
+  public static io.github.mbackschat.a12.dm.rulekit.dsl.TemporalComponent temporalComponent(java.lang.String)
   public static io.github.mbackschat.a12.dm.rulekit.dsl.StringExpr text(java.lang.String)
   public static io.github.mbackschat.a12.dm.rulekit.dsl.LocalizedText text(java.lang.String, java.lang.String)
   public static io.github.mbackschat.a12.dm.rulekit.dsl.TimeExpr time()
   public static io.github.mbackschat.a12.dm.rulekit.dsl.TimeExpr time(io.github.mbackschat.a12.dm.rulekit.dsl.FieldRef)
   public static io.github.mbackschat.a12.dm.rulekit.dsl.TimeExpr time(io.github.mbackschat.a12.dm.rulekit.dsl.FieldRef, io.github.mbackschat.a12.dm.rulekit.dsl.FieldRef)
   public static io.github.mbackschat.a12.dm.rulekit.dsl.TimeExpr time(io.github.mbackschat.a12.dm.rulekit.dsl.FieldRef, io.github.mbackschat.a12.dm.rulekit.dsl.FieldRef, io.github.mbackschat.a12.dm.rulekit.dsl.FieldRef)
+  public static io.github.mbackschat.a12.dm.rulekit.dsl.TimeExpr time(io.github.mbackschat.a12.dm.rulekit.dsl.TemporalComponent)
+  public static io.github.mbackschat.a12.dm.rulekit.dsl.TimeExpr time(io.github.mbackschat.a12.dm.rulekit.dsl.TemporalComponent, io.github.mbackschat.a12.dm.rulekit.dsl.TemporalComponent)
+  public static io.github.mbackschat.a12.dm.rulekit.dsl.TimeExpr time(io.github.mbackschat.a12.dm.rulekit.dsl.TemporalComponent, io.github.mbackschat.a12.dm.rulekit.dsl.TemporalComponent, io.github.mbackschat.a12.dm.rulekit.dsl.TemporalComponent)
   public static io.github.mbackschat.a12.dm.rulekit.dsl.TimeExpr time(java.lang.String)
   public static io.github.mbackschat.a12.dm.rulekit.dsl.TimeExpr time(java.lang.String, java.lang.String)
   public static io.github.mbackschat.a12.dm.rulekit.dsl.TimeExpr time(java.lang.String, java.lang.String, java.lang.String)
@@ -1518,12 +1524,13 @@ public record io.github.mbackschat.a12.dm.rulekit.dsl.FieldPresenceCondition imp
   public java.lang.String operatorId()
   public final java.lang.String toString()
 
-public record io.github.mbackschat.a12.dm.rulekit.dsl.FieldRef implements io.github.mbackschat.a12.dm.rulekit.dsl.FieldOperand, io.github.mbackschat.a12.dm.rulekit.dsl.GroupListOperand, io.github.mbackschat.a12.dm.rulekit.dsl.NumericTextSource
+public record io.github.mbackschat.a12.dm.rulekit.dsl.FieldRef implements io.github.mbackschat.a12.dm.rulekit.dsl.FieldOperand, io.github.mbackschat.a12.dm.rulekit.dsl.GroupListOperand, io.github.mbackschat.a12.dm.rulekit.dsl.NumericTextSource, io.github.mbackschat.a12.dm.rulekit.dsl.TemporalComponent
   public FieldRef(java.lang.String, io.github.mbackschat.a12.dm.core.ValueKind)
   public FieldRef(java.lang.String, io.github.mbackschat.a12.dm.core.ValueKind, io.github.mbackschat.a12.dm.rulekit.dsl.PathStyle)
   public FieldRef(java.lang.String, io.github.mbackschat.a12.dm.core.ValueKind, io.github.mbackschat.a12.dm.rulekit.dsl.PathStyle, boolean)
   public boolean correlated()
   public final boolean equals(java.lang.Object)
+  public io.github.mbackschat.a12.dm.rulekit.dsl.Calculation expression()
   public io.github.mbackschat.a12.dm.rulekit.dsl.FieldRef field()
   public java.lang.String fieldPath()
   public io.github.mbackschat.a12.dm.rulekit.dsl.Condition filled()
@@ -1774,7 +1781,7 @@ public record io.github.mbackschat.a12.dm.rulekit.dsl.Now implements io.github.m
   public java.lang.String operatorId()
   public final java.lang.String toString()
 
-public final class io.github.mbackschat.a12.dm.rulekit.dsl.NumberExpr
+public final class io.github.mbackschat.a12.dm.rulekit.dsl.NumberExpr implements io.github.mbackschat.a12.dm.rulekit.dsl.TemporalComponent
   public NumberExpr(io.github.mbackschat.a12.dm.rulekit.dsl.Calculation)
   public io.github.mbackschat.a12.dm.rulekit.dsl.Condition differsWithTolerance(io.github.mbackschat.a12.dm.rulekit.dsl.Tolerance, io.github.mbackschat.a12.dm.rulekit.dsl.NumberExpr)
   public io.github.mbackschat.a12.dm.rulekit.dsl.NumberExpr dividedBy(io.github.mbackschat.a12.dm.rulekit.dsl.NumberExpr)
@@ -2177,6 +2184,17 @@ public record io.github.mbackschat.a12.dm.rulekit.dsl.SumOfProducts implements i
   public java.lang.String operatorId()
   public io.github.mbackschat.a12.dm.rulekit.dsl.FieldOperand right()
   public final java.lang.String toString()
+
+public sealed interface io.github.mbackschat.a12.dm.rulekit.dsl.TemporalComponent
+  public abstract io.github.mbackschat.a12.dm.rulekit.dsl.Calculation expression()
+
+public record io.github.mbackschat.a12.dm.rulekit.dsl.TemporalComponentLiteral implements io.github.mbackschat.a12.dm.rulekit.dsl.TemporalComponent
+  public TemporalComponentLiteral(java.lang.String)
+  public final boolean equals(java.lang.Object)
+  public io.github.mbackschat.a12.dm.rulekit.dsl.Calculation expression()
+  public final int hashCode()
+  public final java.lang.String toString()
+  public java.lang.String value()
 
 public sealed interface io.github.mbackschat.a12.dm.rulekit.dsl.TemporalOperand
   public abstract io.github.mbackschat.a12.dm.rulekit.dsl.Calculation expression()

@@ -65,6 +65,23 @@ class DateConditionTest {
     }
 
     @Test
+    void rendersMixedTemporalComponentsWithoutDroppingBareFieldSyntax() {
+        DateExpr date = Dsl.date(
+                m.field("/Order/BirthDay"),
+                Dsl.temporalComponent("01"),
+                Dsl.yearFromDate(m.date(ORDER)));
+        assertEquals("Date(/Order/BirthDay, \"01\", YearFromDate(/Order/OrderDate))",
+                new DslRenderer().render(date.expression()));
+
+        TimeExpr time = Dsl.time(
+                m.field("/Order/BirthMonth"),
+                Dsl.temporalComponent("30"),
+                Dsl.secondsFromTime(m.time("/Order/PickupTime")));
+        assertEquals("Time(/Order/BirthMonth, \"30\", SecondsFromTime(/Order/PickupTime))",
+                new DslRenderer().render(time.expression()));
+    }
+
+    @Test
     void rendersSubDayTimeArithmeticBilingually() {
         // family 2: DifferenceInHours/Minutes/Seconds and AddHours/Minutes/Seconds over date-times.
         Condition diff = Dsl.differenceInHours(m.dateTime("/Order/ScheduledAt"), m.dateTime("/Order/CompletedAt")).gt(24);

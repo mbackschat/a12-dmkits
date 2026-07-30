@@ -556,6 +556,30 @@ public final class Dsl {
                 century.expression(), java.util.Optional.of(decade.expression())));
     }
 
+    /**
+     * A quoted Date/Time component literal whose lexical digits are retained exactly. Prefer this over
+     * {@link #number(String)} when a component's width is significant, such as {@code "00"} Short-Year.
+     */
+    public static TemporalComponent temporalComponent(String digits) {
+        return new TemporalComponentLiteral(digits);
+    }
+
+    /**
+     * {@code Date(day, month, year)} with the kernel's complete component union: a bounded Number field, an
+     * exact digit-pattern String field, a matching extractor/constant, or an exact {@code yyyy} Date field at
+     * the Year position. The kernel validates each field declaration against its position. catalog:Date
+     */
+    public static DateExpr date(TemporalComponent day, TemporalComponent month, TemporalComponent year) {
+        return new DateExpr(new DateConstruction(day.expression(), month.expression(), year.expression()));
+    }
+
+    /** Four-component century/short-year form over the same mixed component union. */
+    public static DateExpr date(TemporalComponent day, TemporalComponent month,
+            TemporalComponent century, TemporalComponent shortYear) {
+        return new DateExpr(new DateConstruction(day.expression(), month.expression(),
+                century.expression(), java.util.Optional.of(shortYear.expression())));
+    }
+
     /** {@code Time()} — midnight: every omitted trailing component defaults to zero. catalog:Time */
     public static TimeExpr time() {
         return new TimeExpr(new TimeConstruction(List.of()));
@@ -596,6 +620,22 @@ public final class Dsl {
     public static TimeExpr time(FieldRef hour, FieldRef minute, FieldRef second) {
         return new TimeExpr(new TimeConstruction(List.of(
                 new FieldValue(hour), new FieldValue(minute), new FieldValue(second))));
+    }
+
+    /** {@code Time(component)} over a field, quoted numeric constant, or matching Hour extractor. catalog:Time */
+    public static TimeExpr time(TemporalComponent hour) {
+        return new TimeExpr(new TimeConstruction(List.of(hour.expression())));
+    }
+
+    /** {@code Time(hour, minute)} over a mixed prefix of legal temporal components. catalog:Time */
+    public static TimeExpr time(TemporalComponent hour, TemporalComponent minute) {
+        return new TimeExpr(new TimeConstruction(List.of(hour.expression(), minute.expression())));
+    }
+
+    /** {@code Time(hour, minute, second)} over a mixed prefix of legal temporal components. catalog:Time */
+    public static TimeExpr time(TemporalComponent hour, TemporalComponent minute, TemporalComponent second) {
+        return new TimeExpr(new TimeConstruction(List.of(
+                hour.expression(), minute.expression(), second.expression())));
     }
 
     /** {@code DateTime(date, time)} — combine a date and a time into a comparable date-time. catalog:DateTime */

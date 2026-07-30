@@ -13,7 +13,7 @@ import java.util.Objects;
  * independent multiplicative-constant capability. Only a capable smaller-scale side may be padded;
  * ordering deliberately bypasses this gate.
  */
-public final class NumberExpr {
+public final class NumberExpr implements TemporalComponent {
 
     private final Calculation expression;
     private final NumericScaleSummary scaleSummary;

@@ -10,7 +10,7 @@ import io.github.mbackschat.a12.dm.core.ValueKind;
  * (always {@link PathStyle#CANONICAL}); the read converter constructs the hinted form.
  */
 public record FieldRef(String path, ValueKind kind, PathStyle styleHint, boolean correlated)
-        implements FieldOperand, NumericTextSource, GroupListOperand {
+        implements FieldOperand, NumericTextSource, GroupListOperand, TemporalComponent {
 
     /** A builder-made reference — no authored style; the renderer decides the path form. */
     public FieldRef(String path, ValueKind kind) {
@@ -58,6 +58,11 @@ public record FieldRef(String path, ValueKind kind, PathStyle styleHint, boolean
     /** This field's value as an operand ({@code [path]}; {@code [$path]} if outer-correlated). */
     public FieldValue value() {
         return new FieldValue(this, correlated);
+    }
+
+    @Override
+    public Calculation expression() {
+        return value();
     }
 
     /**

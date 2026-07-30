@@ -819,7 +819,7 @@ private fun Interpreter.analyzeDate(parts: List<Expr>): DateAnalysis {
     for (i in parts.indices) {
         val e = parts[i]
         if (e is Expr.Field && !ctx.filled(e.path)) { hasEmpty = true; continue }
-        nums[i] = valToInt(evalExpr(e)) ?: return DateAnalysis(DateStatus.MALFORMED, null)
+        nums[i] = dateConstructionComponentInt(e) ?: return DateAnalysis(DateStatus.MALFORMED, null)
     }
     if (hasEmpty) return DateAnalysis(DateStatus.HAS_EMPTY, null)
     val d = nums[0]; val m = nums[1]
@@ -829,6 +829,19 @@ private fun Interpreter.analyzeDate(parts: List<Expr>): DateAnalysis {
     return if (componentGate && isConstructibleDate(y, m, d, timeZone)) DateAnalysis(DateStatus.REAL, isoDate(y, m, d))
     else DateAnalysis(DateStatus.UNREAL_PRESENT, null)
 }
+
+/**
+ * Numeric conversion for one statically admitted Date component. Most sources already evaluate to a Number
+ * (Number fields, constants, extractors); a digit-pattern String evaluates to its stored text. The one Date
+ * exception is exact `yyyy` at complete Year: ordinary Date evaluation cannot represent a year-only value,
+ * so read its stored display text here, at the constructor boundary where the kernel retags it as Number.
+ */
+private fun Interpreter.dateConstructionComponentInt(e: Expr): Int? =
+    if (e is Expr.Field && ctxOf(e).declaredKind(e.path) == Kind.DATE && ctxOf(e).dateFormatOf(e.path) == "yyyy") {
+        ctxOf(e).displayValue(e.path)?.toIntOrNull()
+    } else {
+        valToInt(evalExpr(e))
+    }
 
 /**
  * One evaluated temporal value, carrying the information the kernel's `VkDate` keeps but a plain ISO string
