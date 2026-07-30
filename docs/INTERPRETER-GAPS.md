@@ -25,7 +25,7 @@ Four rows, all found while reconciling the lean project's `SPEC-2026-07-27-*` qu
   - **`TimeFromDateTime`** needs a complete DateTime operand — a Date or Time source is `MVK_WRONG_DATE_FORMAT_FOR_OP` — and composes under `DateTime(ValueAsDate(…), TimeFromDateTime(…))` ✓. *(Reconciles the static half of SPEC-2026-07-27-07; its wall-clock projection is a runtime claim needing a differential.)*
   - **Bonus, unrequested:** the two-parameter `Date("01","01")` form is legal **when the model declares a base year** (`CheckDatumKonstruktImpl` refuses it with `MVK_MISSING_YEAR` otherwise), producing a year-less date. Not in the lean queue and not modelled here.
 
-  **Completion gate:** these matrices become static accept/reject law cases, and the extractor form gets JVM/Node + dual-kernel runtime coverage for source-before-extractor order and the empty/formal source propagation.
+  **Static halves CLOSED 2026-07-30** — the constant, extractor and `TimeFromDateTime` matrices are now maintained cases (`DateComponentConstantLawsTest`, `TemporalExtractorComponentLawsTest`), including the three distinct extractor refusal codes and the `MVK_NO_CONST` direct-literal arm. **Completion gate for what remains:** the extractor form still needs JVM/Node + dual-kernel RUNTIME coverage for source-before-extractor order and the empty/formal source propagation, and `TimeFromDateTime` its wall-clock projection.
 
 ---
 
