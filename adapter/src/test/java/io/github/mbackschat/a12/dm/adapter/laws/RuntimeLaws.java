@@ -849,7 +849,7 @@ public final class RuntimeLaws {
 
     /** Compute against {@code source}, apply that already-classified result to a separate model-compatible
      *  {@code destination}, and inspect the destination. This distinguishes source-relative result classification
-     *  from recomputing change equality at application time (SPEC-2026-07-22-08). */
+     *  from recomputing classification at application time (SPEC-2026-07-22-08; EXP-2026-07-30-02). */
     static List<String> appliedStatesToDestination(
             String modelJson, Doc source, Doc destination, List<CellProbe> probes) {
         IDocumentModel model = expandedModel(modelJson);
@@ -1201,6 +1201,17 @@ public final class RuntimeLaws {
         List<String> appliedStates(Doc doc, List<CellProbe> probes) {
             DocumentV2 v2 = instance(doc);
             DocumentV2 applied = rt.compute(v2, config(null, Locale.US)).applyTo(v2);
+            return probes.stream().map(p -> p.path() + "|" + appliedStateAt(applied, p)).toList();
+        }
+
+        /** Compute against {@code source} and apply the retained static-Java result to a separate compatible
+         *  {@code destination}; the twin of
+         *  {@link RuntimeLaws#appliedStatesToDestination(String, Doc, Doc, List)}. */
+        List<String> appliedStatesToDestination(
+                Doc source, Doc destination, List<CellProbe> probes) {
+            DocumentV2 sourceV2 = instance(source);
+            DocumentV2 destinationV2 = instance(destination);
+            DocumentV2 applied = rt.compute(sourceV2, config(null, Locale.US)).applyTo(destinationV2);
             return probes.stream().map(p -> p.path() + "|" + appliedStateAt(applied, p)).toList();
         }
 

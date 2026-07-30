@@ -6,7 +6,7 @@
 >
 > **Section invariant (the placement rule):** every section holds exactly one **live** status — **§1 = open, §2 = deferred / ongoing-incremental, §3 = out-of-scope**. A FULLY-shipped/graduated entry belongs in **none** of them: completing it *deletes* its row (see the lifecycle). So §1 reads `_None open._` whenever nothing is open — the marker every `-GAPS` ledger uses, so one grep rolls up the whole family (`GapLedgerTemplateGuardTest`) — and a fully-FIXED entry **anywhere** in this ledger is a bug in *this doc* — git already records the fix. (A partially-shipped *ongoing* refactor in §2 is not "fixed" — it stays until all of it lands.)
 >
-> **Current state.** §1 is empty as of 2026-07-30. Every live item is dispositioned in §2 or §3 with its re-open trigger. New semantic or performance defects belong in §1 only while they have actionable work and a defined completion gate.
+> **Current state.** §1 contains one API-boundary gap as of 2026-07-30: IG110, surfaced by EXP-2026-07-30-02. New semantic or performance defects belong in §1 only while they have actionable work and a defined completion gate.
 >
 > **Scope.** `:interpreter` only — the kernel-free Kotlin evaluator (parser, evaluation semantics, model loader, the differential/perf harnesses' interpreter side). dmkit (rulekit/modelkit/edit) authoring gaps go to [`DEV-API-GAPS.md`](DEV-API-GAPS.md); kernel-coverage classification stays in the MVK / RT-semantics / grammar ledgers.
 
@@ -14,7 +14,7 @@
 
 ## 1. Open
 
-_None open._
+- **IG110 — no retained computation result can be applied to a separate destination.** The kernel classifies a result against one source and permits `result.applyTo(otherCompatibleDocument)`. EXP-2026-07-30-02 proved that this is not reducible to recomputing on the destination: a source-classified CLEARED action creates a present-empty absent destination target and missing repeatable row, while no source action and ERRORED leave it absent. `DmInterpreter.compute` returns report-all outcomes and `applyComputations(document)` recomputes/applies only that document, so neither can express the transition without inventing a different operation. **Completion gate:** design a public immutable retained-result/action type whose classification remains source-relative, apply it to a separately supplied compatible `Document`, reproduce the dual-kernel CLEARED/no-action/ERRORED/VALUE/fill matrix including repeatable ancestor creation on JVM and Node, define compatibility refusal, and preserve the existing same-document convenience as composition over that owner. Detail: [INTERPRETER-FINDINGS.md](INTERPRETER-FINDINGS.md) IF126, corrected 2026-07-30.
 
 ---
 
