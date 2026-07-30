@@ -125,7 +125,11 @@ public record Diagnostic(
     static Diagnostic fromKernel(Notification notification, String rulePath) {
         String message = notification.message() == null ? "" : notification.message();
         Matcher matcher = MVK.matcher(message);
-        Optional<String> code = matcher.find() ? Optional.of(matcher.group()) : Optional.empty();
+        String terminalCode = null;
+        while (matcher.find()) {
+            terminalCode = matcher.group();
+        }
+        Optional<String> code = Optional.ofNullable(terminalCode);
         return new Diagnostic(notification.severity(), DiagnosticSource.KERNEL, code, message,
                 Where.rule(rulePath), Optional.empty(), Optional.empty());
     }

@@ -7,6 +7,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import org.junit.jupiter.api.Test;
 
 import io.github.mbackschat.a12.dm.core.Severity;
+import io.github.mbackschat.a12.dm.core.Notification;
 
 import io.github.mbackschat.a12.dm.Fixtures;
 
@@ -58,6 +59,17 @@ class DiagnosticTest {
         assertTrue(json.contains("MVK_INVALID_TYPE_FOR_COMPARISON"), json);
         assertTrue(json.contains("\"fix\""), json);
         assertTrue(json.contains("\"where\""), json);
+    }
+
+    @Test
+    void actualTerminalCodeWinsOverQuotedMvKArgument() {
+        Diagnostic diagnostic = Diagnostic.fromKernel(
+                new Notification(Severity.ERROR,
+                        "The warning to be suppressed 'MVK_INVALID_DATE_TYPE' is not supported. "
+                                + "[MVK_INVALID_SUPPRESSED_WARNING]"),
+                "/Calendar/DayOptionalComp");
+
+        assertEquals("MVK_INVALID_SUPPRESSED_WARNING", diagnostic.code().orElseThrow());
     }
 
     private static Diagnostic firstWithCode(ValidationResult result, String code) {

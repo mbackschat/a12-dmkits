@@ -29,12 +29,11 @@ class DirectiveLawsTest {
 
     @Test
     void onlyTheScaleGateIsSuppressible() {
-        // quirk (probe-corrected expectation): the rejection's diagnostic CODE is the attempted
-        // warning name itself — the MVK_INVALID_SUPPRESSED_WARNING text arrives as the message only
-        // ("The warning to be suppressed 'MVK_NO_WILDCARD' …")
+        // The attempted warning name is quoted in the message; the terminal bracketed token is the
+        // rejection's actual diagnostic code.
         KernelLaws.rejectsOrder("/Order", "../Quantity",
                 "@SuppressWarning(MVK_NO_WILDCARD) [Quantity] == [UnitPrice]",
-                "MVK_NO_WILDCARD");
+                "MVK_INVALID_SUPPRESSED_WARNING");
     }
 
     @Test
