@@ -60,6 +60,28 @@ import io.github.mbackschat.a12.dm.rulekit.catalog.OperatorEntry;
  * {@link DiagnosticEnricher} passes the code's catalog <em>documenters</em>, so the message can only pick among
  * operators already known to raise this code; {@code lint.SpanResolver} passes the operators the condition's AST
  * actually <em>uses</em>, and uses the result to <b>veto</b> a pin rather than to make one.
+ *
+ * <h2>How big the collision surface actually is (measured, not estimated)</h2>
+ *
+ * <p>The residual worry after the value-collision fix was that a second delimited span — an entity or value spelled
+ * like an operator — could still cost a correct attribution. It can, in a <b>bounded</b> way, and the bound is worth
+ * stating because it is much smaller than it looks (full enumeration + the probes: KERNEL-FINDINGS {@code kf169}):
+ *
+ * <ul>
+ *   <li>of 144 EN templates carrying a {@code %s}, <b>52</b> carry more than one, and only <b>7</b> of those are
+ *       codes with ≥2 catalog documenters — the only case where a second span can produce two candidates and thus
+ *       de-elect;</li>
+ *   <li>a field whose name equals an operator <b>keyword</b> is <b>unreferenceable</b>: the lexer takes it as the
+ *       keyword, so {@code [Date]} on a field named {@code Date} is {@code MVK_UNEXPECTED_TOKEN}. Only the
+ *       <b>13</b> ids that differ from their keyword ({@code Equal}, {@code Arithmetic}, {@code SemanticIndex},
+ *       {@code ValidType}, …) can legally name a field;</li>
+ *   <li>{@code '+'} — whose {@code byKeyword} lookup is ambiguous between {@code Arithmetic} and
+ *       {@code Concatenation} — is never delimited by any code the catalog can join, so that ambiguity is not
+ *       user-visible;</li>
+ *   <li>the failure direction is always <b>losing</b> specificity (the hedged, code-level corrective) or
+ *       withholding a pin, never asserting a wrong owner. That asymmetry is by construction: {@link #namedAmong}
+ *       can only narrow, and {@link #contradicts} can only remove.</li>
+ * </ul>
  */
 public final class KernelMessageOperands {
 
