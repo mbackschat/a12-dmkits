@@ -386,7 +386,7 @@ data class ComputationResult(
     val pointer: FieldPointer,
     val outcome: ComputationOutcome,
     val value: String?,
-    /** Target-owned formal diagnostic; present exactly when [outcome] is [ComputationOutcome.ERRORED]. */
+    /** Target-owned formal diagnostic; present exactly when [ComputationResult.outcome] is [ComputationOutcome.ERRORED]. */
     val diagnostic: ValidationFinding? = null,
 )
 
