@@ -84,7 +84,7 @@ class ComputationToleranceCliTest {
 
         var apply = CliTestSupport.run("-m", model.toString(), "apply", operations.toString());
         assertEquals(0, apply.code(), apply::err);
-        assertTrue(MAPPER.readTree(apply.out()).path("committed").asBoolean(), apply::out);
+        assertTrue(MAPPER.readTree(apply.out()).path("data").path("committed").asBoolean(), apply::out);
         assertTrue(Files.readString(model).contains("\"toleranceRangeOp\" : \"DiffersWithToleranceRange5\""));
     }
 

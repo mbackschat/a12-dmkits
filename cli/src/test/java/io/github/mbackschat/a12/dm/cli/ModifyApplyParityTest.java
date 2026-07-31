@@ -53,7 +53,7 @@ class ModifyApplyParityTest {
                    "supported-character":["A-Z","0-9"]} ]""");
         var apply = CliTestSupport.run("-m", viaApply.toString(), "apply", ops.toString());
         assertEquals(0, apply.code(), apply::err);
-        assertTrue(M.readTree(apply.out()).path("committed").asBoolean(), apply::out);
+        assertTrue(M.readTree(apply.out()).path("data").path("committed").asBoolean(), apply::out);
 
         assertEquals(modelTree(viaVerb), modelTree(viaApply),
                 "config modify (standalone) and apply CONFIG_MODIFY must yield an identical model");
@@ -86,7 +86,7 @@ class ModifyApplyParityTest {
                    "internal-description":{"en_US":"internal note"},"external-description":{"en_US":"shown"}} ]""");
         var apply = CliTestSupport.run("-m", viaApply.toString(), "apply", ops.toString());
         assertEquals(0, apply.code(), apply::err);
-        assertTrue(M.readTree(apply.out()).path("committed").asBoolean(), apply::out);
+        assertTrue(M.readTree(apply.out()).path("data").path("committed").asBoolean(), apply::out);
 
         assertEquals(modelTree(viaVerb), modelTree(viaApply),
                 "group modify (standalone) and apply GROUP_MODIFY must yield an identical model");

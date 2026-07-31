@@ -79,6 +79,17 @@ public final class ResultEnvelope {
         COMPARISON,
         /** A write, a preview of one, or a staged step of a transaction. */
         MUTATION,
+        /**
+         * Every child of a stateless multi-verb dispatch was run. The aggregate reports that it dispatched them
+         * all; each child's own exit rides its item and <b>never</b> determines the outer one.
+         *
+         * <p>Its own family because "we ran everything you asked" is not any of the others: not a mutation (the
+         * children own their writes), not a verdict, and not a failure just because a child failed. The outer exit
+         * stays 0, which is the measured pre-existing contract for {@code batch} — a caller reads per-child results
+         * from the items, and collapsing them into one code would destroy exactly the information a batch exists to
+         * return.
+         */
+        DISPATCH,
         /** A safety gate refused before mutating (CLI-SPEC §6) — exit 2, nothing written. */
         REFUSAL,
         /** The input was rejected — by the kernel gate, or by the CLI's own pre-flight. Exit 1. */
@@ -88,7 +99,7 @@ public final class ResultEnvelope {
     }
 
     /** The execution result class as published on the wire (distinct from the subject's validity). */
-    enum Outcome { APPLIED, PREVIEW, REFUSED, REJECTED, READ, STAGED, ERROR }
+    enum Outcome { APPLIED, PREVIEW, REFUSED, REJECTED, READ, STAGED, COMPLETED, ERROR }
 
     private static final ObjectMapper MAPPER = new ObjectMapper();
 
@@ -299,6 +310,22 @@ public final class ResultEnvelope {
                 .build();
     }
 
+    /**
+     * Every child of a stateless multi-verb dispatch ran — {@code batch}. {@code data} carries the per-child items;
+     * the aggregate exits <b>0</b> whatever the children returned.
+     *
+     * <p>This is deliberate, and it is the one place an aggregate does <em>not</em> derive its status from its parts.
+     * A batch's product IS the item list: a caller reads each child's exit from its item, and folding them into a
+     * single code would discard the very information the verb exists to return. It also preserves the measured
+     * pre-existing behaviour. Contrast {@code apply}, whose children are steps of ONE transaction with one
+     * all-or-nothing outcome, and which therefore does derive its exit from that transaction.
+     */
+    public static ResultEnvelope dispatchCompleted(String target, String op, String summary, JsonNode data) {
+        return new Draft(Family.DISPATCH, target, op, Outcome.COMPLETED, summary)
+                .data(data)
+                .build();
+    }
+
     // --- 5. mutation ----------------------------------------------------------------------------------
 
     /**
@@ -369,6 +396,23 @@ public final class ResultEnvelope {
     public static ResultEnvelope staged(String target, String op, String summary, JsonNode changed,
             List<Diagnostic> diagnostics) {
         return mutation(MutationDisposition.STAGED, target, op, summary, changed, diagnostics).build();
+    }
+
+    /**
+     * A <b>transaction</b>'s outcome — {@code apply} — whose payload rides {@code data} rather than {@code changed}.
+     *
+     * <p>The distinction is not cosmetic. {@code changed} is "the delta this op made"; a transaction report
+     * ({@code ops}, {@code committed}, {@code failedAt}, and the per-op envelopes) is a <em>payload about the run</em>,
+     * which is what {@code data} is for. Without this factory the aggregate had to be squeezed into
+     * {@link #applied}'s {@code changed} parameter — and that is exactly what happened on the first attempt: the
+     * argument landed in the neighbouring slot, {@code data} came out absent, and every success assertion failed. The
+     * two are adjacent {@code JsonNode} parameters, i.e. precisely the silent-swap shape this class was built to
+     * eliminate, still live inside the class itself. Naming the case removes the hazard rather than documenting it.
+     */
+    public static ResultEnvelope transaction(String target, String op, String summary, JsonNode data,
+            MutationDisposition disposition, String output) {
+        Draft draft = new Draft(Family.MUTATION, target, op, disposition.outcome(), summary).data(data);
+        return (output == null ? draft : draft.writtenTo(output)).build();
     }
 
     private static Draft mutation(MutationDisposition disposition, String target, String op, String summary,
@@ -505,7 +549,7 @@ public final class ResultEnvelope {
     /** {@code ok} = the operation executed as asked — NOT the subject's validity (that is {@link #valid()}). */
     boolean ok() {
         return switch (family) {
-            case QUERY, VERDICT, RUNTIME_OBSERVATION, COMPARISON, MUTATION -> true;
+            case QUERY, VERDICT, RUNTIME_OBSERVATION, COMPARISON, MUTATION, DISPATCH -> true;
             case REFUSAL, REJECTION, INTERNAL_ERROR -> false;
         };
     }
@@ -527,7 +571,7 @@ public final class ResultEnvelope {
             case REJECTION -> 1;
             case VERDICT -> Boolean.FALSE.equals(valid) ? 1 : 0;
             case COMPARISON -> comparison.exitCode();
-            case QUERY, RUNTIME_OBSERVATION, MUTATION -> 0;
+            case QUERY, RUNTIME_OBSERVATION, MUTATION, DISPATCH -> 0;
         };
     }
 

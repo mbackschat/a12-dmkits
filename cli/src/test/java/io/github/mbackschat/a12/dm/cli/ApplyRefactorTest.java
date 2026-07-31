@@ -73,9 +73,9 @@ class ApplyRefactorTest {
                 [ {"target":"field","op":"rename","fieldPathInModel":"/Order/Shipping/Zip","to":"Postal"} ]""");
 
         assertEquals(0, j.path("_exit").asInt(), () -> "committed apply exits 0: " + j);
-        assertTrue(j.path("committed").asBoolean());
-        assertEquals("staged", j.path("results").get(0).path("outcome").asText());
-        assertEquals("/Order/Shipping/Postal", j.path("results").get(0).path("changed").path("to").asText());
+        assertTrue(j.path("data").path("committed").asBoolean());
+        assertEquals("staged", j.path("data").path("results").get(0).path("outcome").asText());
+        assertEquals("/Order/Shipping/Postal", j.path("data").path("results").get(0).path("changed").path("to").asText());
         // the referrer was rewritten, so the written model still validates (a dangle would fail)
         assertTrue(Files.readString(model).contains("/Order/Shipping/Postal"));
         assertEquals(0, CliTestSupport.run("-m", model.toString(), "model", "check").code(),
@@ -95,8 +95,8 @@ class ApplyRefactorTest {
                    "messages":[{"locale":"en_US","text":"Discount must not be negative."}]} ]""");
 
         assertEquals(0, j.path("_exit").asInt(), () -> "committed: " + j);
-        assertTrue(j.path("committed").asBoolean());
-        assertEquals(3, j.path("results").size());
+        assertTrue(j.path("data").path("committed").asBoolean());
+        assertEquals(3, j.path("data").path("results").size());
         assertEquals(0, CliTestSupport.run("-m", model.toString(), "model", "check").code());
         assertTrue(Files.readString(model).contains("/Order/Shipping/Postal"));
     }
@@ -111,8 +111,8 @@ class ApplyRefactorTest {
                   {"target":"field","op":"move","fieldPathInModel":"/Order/Note","to":"/Order/Archive"} ]""");
 
         assertEquals(0, j.path("_exit").asInt(), () -> "committed: " + j);
-        assertTrue(j.path("committed").asBoolean());
-        assertEquals("/Order/Archive/Note", j.path("results").get(1).path("changed").path("to").asText());
+        assertTrue(j.path("data").path("committed").asBoolean());
+        assertEquals("/Order/Archive/Note", j.path("data").path("results").get(1).path("changed").path("to").asText());
         assertTrue(Files.readString(model).contains("/Order/Archive/Note"));
     }
 
@@ -125,7 +125,7 @@ class ApplyRefactorTest {
                 [ {"target":"group","op":"move","groupPathInModel":"/Order/Shipping","to":"/Order/Billing"} ]""");
 
         assertEquals(0, j.path("_exit").asInt(), () -> "committed: " + j);
-        assertTrue(j.path("committed").asBoolean());
+        assertTrue(j.path("data").path("committed").asBoolean());
         assertTrue(Files.readString(model).contains("/Order/Billing/Shipping/Zip"));
         assertEquals(0, CliTestSupport.run("-m", model.toString(), "model", "check").code());
     }
@@ -137,7 +137,7 @@ class ApplyRefactorTest {
                 [ {"target":"rule","op":"rename","rulePathInModel":"/Order/ZipGuard","to":"ZipRequired"} ]""");
 
         assertEquals(0, j.path("_exit").asInt(), () -> "committed: " + j);
-        assertTrue(j.path("committed").asBoolean());
+        assertTrue(j.path("data").path("committed").asBoolean());
         assertTrue(Files.readString(model).contains("ZipRequired"));
         assertEquals(0, CliTestSupport.run("-m", model.toString(), "model", "check").code());
     }
@@ -149,7 +149,7 @@ class ApplyRefactorTest {
                 [ {"target":"typedef","op":"rename","typeDefId":"Money","to":"Currency"} ]""");
 
         assertEquals(0, j.path("_exit").asInt(), () -> "committed: " + j);
-        assertTrue(j.path("committed").asBoolean());
+        assertTrue(j.path("data").path("committed").asBoolean());
         assertEquals(0, CliTestSupport.run("-m", model.toString(), "model", "check").code(),
                 "every using field was repointed to the new id");
     }
@@ -164,11 +164,13 @@ class ApplyRefactorTest {
                 [ {"target":"field","op":"add","group":"/Order","name":"Fee","kind":"NUMBER"},
                   {"target":"field","op":"rename","fieldPathInModel":"/Order/Note","to":"Shipping"} ]""");
 
-        assertEquals(1, j.path("_exit").asInt(), () -> "a rolled-back apply exits 1: " + j);
-        assertFalse(j.path("committed").asBoolean());
-        assertEquals(1, j.path("failedAt").asInt());
+        // exit 2, not 1: the sequence stopped at a §6 SAFETY GATE, and the aggregate now reports the kind of stop that actually happened. The old `committed ? 0 : 1` collapsed every failure into 1, so a refusal reported the code for "input rejected".
+        assertEquals(2, j.path("_exit").asInt(), () -> "a refused refactor rolls back with exit 2: " + j);
+        assertEquals("refused", j.path("outcome").asText(), () -> "the aggregate names the kind of stop: " + j);
+        assertFalse(j.path("data").path("committed").asBoolean());
+        assertEquals(1, j.path("data").path("failedAt").asInt());
         assertFalse(j.path("written").asBoolean());
-        JsonNode failed = j.path("results").get(1);
+        JsonNode failed = j.path("data").path("results").get(1);
         assertEquals("refused", failed.path("outcome").asText(), () -> "the gate refused: " + failed);
         assertEquals("RK_NAME_EXISTS", failed.path("diagnostics").get(0).path("code").asText());
         assertEquals(before, Files.readString(model), "the model is untouched after rollback");

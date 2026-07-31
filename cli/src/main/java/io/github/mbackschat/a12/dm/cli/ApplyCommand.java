@@ -178,12 +178,18 @@ final class ApplyCommand extends BaseCommand {
 
         ArrayNode results = MAPPER.createArrayNode();
         Integer failedAt = null;
+        // WHICH KIND of failure stopped the sequence, not merely that one did. The three mid-sequence exits are not
+        // interchangeable: a bad arg and an op that threw are input REJECTIONS (exit 1), a §6 safety gate is a
+        // REFUSAL (exit 2). The aggregate has to mirror the failing op, because collapsing them is what made the old
+        // `committed ? 0 : 1` report "input rejected" for a refusal.
+        Stoppage stoppage = null;
         int i = 0;
         for (JsonNode op : ops) {
             List<Diagnostic> argProblems = validateArgs(op);
             if (!argProblems.isEmpty()) {
                 results.add(argRejection(op, i, argProblems).toJson());
                 failedAt = i;
+                stoppage = Stoppage.REJECTED;
                 break; // a typo'd/unknown arg self-corrects via the diagnostic — roll back, write nothing
             }
             try {
@@ -193,10 +199,12 @@ final class ApplyCommand extends BaseCommand {
             } catch (OperationRefused r) {
                 results.add(r.envelope().toJson());   // the §6 safety gate refused — same corrective diagnostics
                 failedAt = i;
+                stoppage = Stoppage.REFUSED;
                 break; // rollback — the refactor's gate stops the sequence, nothing written
             } catch (RuntimeException e) {
                 results.add(opFailure(op, i, e).toJson());
                 failedAt = i;
+                stoppage = Stoppage.REJECTED;
                 break; // rollback — stop the sequence, write nothing
             }
             i++;
@@ -205,6 +213,7 @@ final class ApplyCommand extends BaseCommand {
         boolean committed = false;
         boolean written = false;
         String output = null;
+        ModelConsistencyException gateRejection = null;
         if (failedAt == null) {
             try {
                 String resultJson = session.validate().toJson();   // the ONE terminal kernel gate
@@ -215,37 +224,79 @@ final class ApplyCommand extends BaseCommand {
                     written = true;
                 }
             } catch (ModelConsistencyException e) {
+                gateRejection = e;
                 results.add(gateRejection(e).toJson());   // terminal gate rejected the committed sequence → rollback
             } catch (IOException e) {
                 return fail("cannot write output: " + e.getMessage());
             }
         }
 
-        ObjectNode summary = MAPPER.createObjectNode();
-        summary.put("verb", "apply");
-        summary.put("ops", ops.size());
-        summary.put("committed", committed);
+        // `data` carries the aggregate facts and the per-op envelopes. `written`/`output` are deliberately NOT
+        // repeated here — they are members of the standard envelope this now returns.
+        ObjectNode data = MAPPER.createObjectNode();
+        data.put("ops", ops.size());
+        data.put("committed", committed);
+        if (failedAt != null) {
+            data.put("failedAt", failedAt);
+        } else {
+            data.putNull("failedAt");
+        }
+        data.set("results", results);
+
         // The net effect in one human line — every per-op result is `staged`/`written:false` (the write is
         // ATOMIC at this wrapper, not per op), which misreads as "nothing happened". `committed`/`written` are
         // the authoritative signals; this restates them so an agent doesn't infer failure from a per-op flag.
-        summary.put("summary", committed
+        String summary = committed
                 ? (written ? ops.size() + " op(s) committed, written to " + output
                            : ops.size() + " op(s) committed (dry-run — nothing written)")
                 : (failedAt != null ? "rolled back at op " + failedAt + " — nothing written (atomic: all-or-nothing)"
-                                    : "the terminal kernel gate rejected the sequence — rolled back, nothing written"));
-        if (failedAt != null) {
-            summary.put("failedAt", failedAt);
-        } else {
-            summary.putNull("failedAt");
-        }
-        summary.put("written", written);
-        if (output != null) {
-            summary.put("output", output);
-        }
-        summary.set("results", results);
-        out().print(summary.toPrettyString() + "\n");
-        return committed ? 0 : 1;
+                                    : "the terminal kernel gate rejected the sequence — rolled back, nothing written");
+        ResultEnvelope env = aggregate(summary, data, committed, written, output, stoppage, gateRejection);
+        out().print(env.toJsonString());
+        return env.exitCode();
     }
+
+    /**
+     * The transaction's own outcome as one standard envelope.
+     *
+     * <p>{@code apply} used to print a bespoke object — {@code {verb, ops, committed, summary, failedAt, written,
+     * output, results[]}} — with no {@code outcome} key at all. That made it the one verb an agent had to learn a
+     * second output shape for, and it silently disabled {@code --text}, whose renderer requires an object carrying a
+     * textual {@code outcome}: {@code apply --text} emitted raw JSON, in both flag placements and on both success and
+     * failure.
+     *
+     * <p><b>Unlike {@code batch}, this DOES derive its status from its parts</b> — because the parts are steps of one
+     * transaction with a single all-or-nothing result, not independent invocations. So a mid-sequence gate refusal is
+     * a {@code refused} aggregate and a terminal kernel rejection is a {@code rejected} one carrying
+     * {@code valid:false} plus the gate that decided it. <b>That moves the refusal case's exit from 1 to 2</b>, which
+     * is intended: the previous {@code committed ? 0 : 1} collapsed every failure into 1, so a refusal reported the
+     * code for "input rejected". Preserving that would require the outer {@code outcome} to say {@code refused} while
+     * the exit said otherwise.
+     */
+    private ResultEnvelope aggregate(String summary, ObjectNode data, boolean committed, boolean written,
+            String output, Stoppage stoppage, ModelConsistencyException gateRejection) {
+        if (committed) {
+            return ResultEnvelope.transaction("apply", "run", summary, data,
+                    written ? ResultEnvelope.MutationDisposition.APPLIED
+                            : ResultEnvelope.MutationDisposition.PREVIEW,
+                    written ? output : null);
+        }
+        if (gateRejection != null) {
+            // The one gate apply runs, and it rejected: valid:false plus the arbitrator that decided it.
+            return ResultEnvelope.rejected("apply", "run", summary, data, List.of(),
+                    RejectionBasis.kernel(ConsistencyEvidence.of(gateRejection)));
+        }
+        // A mid-sequence stop never reached the terminal gate, so it carries neither a verdict nor evidence —
+        // only the KIND of stop, which decides the exit code.
+        return switch (stoppage == null ? Stoppage.REJECTED : stoppage) {
+            case REFUSED -> ResultEnvelope.refused("apply", "run", summary, data, List.of());
+            case REJECTED -> ResultEnvelope.rejected("apply", "run", summary, data, List.of(),
+                    RejectionBasis.preflight());
+        };
+    }
+
+    /** Why the sequence stopped before the terminal gate — a refusal and a rejection exit differently. */
+    private enum Stoppage { REFUSED, REJECTED }
 
     /**
      * Apply one op-record to the shared session and return its {@code changed} delta. Throws on a bad op

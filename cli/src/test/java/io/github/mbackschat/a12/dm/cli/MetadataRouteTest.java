@@ -46,7 +46,7 @@ class MetadataRouteTest {
                 CliTestSupport.run("-m", model.toString(), "apply", ops.toString());
 
         assertEquals(0, result.code(), result::out);
-        assertTrue(M.readTree(result.out()).path("committed").asBoolean(), result::out);
+        assertTrue(M.readTree(result.out()).path("data").path("committed").asBoolean(), result::out);
         assertMeta(model, "/Subscription/Billing/BaseFee", "billing", "field note", "");
         assertMeta(model, "/Subscription/Billing", "billing", "", "group hint");
         assertMeta(model, "/Subscription/Addons/FeeCapRule", "risk", "rule note", "");
@@ -89,7 +89,7 @@ class MetadataRouteTest {
         CliTestSupport.Result refused =
                 CliTestSupport.run("-m", model.toString(), "apply", empty.toString());
         assertEquals(1, refused.code(), refused::out);
-        assertFalse(M.readTree(refused.out()).path("committed").asBoolean(), refused::out);
+        assertFalse(M.readTree(refused.out()).path("data").path("committed").asBoolean(), refused::out);
         assertEquals(before, Files.readString(model), "an empty meta op rolls the whole sequence back");
     }
 
@@ -109,11 +109,13 @@ class MetadataRouteTest {
         CliTestSupport.Result result =
                 CliTestSupport.run("-m", model.toString(), "apply", ops.toString());
 
-        assertEquals(1, result.code(), result::out);
         JsonNode envelope = M.readTree(result.out());
-        assertFalse(envelope.path("committed").asBoolean(), result::out);
+        // exit follows the kind of stop; the per-op outcome pins which kind that is
+        assertEquals("refused", envelope.path("data").path("results").path(1).path("outcome").asText(), result::out);
+        assertEquals(2, result.code(), result::out);
+        assertFalse(envelope.path("data").path("committed").asBoolean(), result::out);
         assertEquals("RK_LABEL_NOT_SUPPORTED",
-                envelope.path("results").path(1).path("diagnostics").path(0).path("code").asText(), result::out);
+                envelope.path("data").path("results").path(1).path("diagnostics").path(0).path("code").asText(), result::out);
         assertEquals(before, Files.readString(model), "the preceding staged mutation is rolled back");
     }
 
@@ -131,7 +133,7 @@ class MetadataRouteTest {
 
         assertEquals(1, result.code(), result::out);
         JsonNode diagnostic = M.readTree(result.out())
-                .path("results").path(0).path("diagnostics").path(0);
+                .path("data").path("results").path(0).path("diagnostics").path(0);
         assertEquals("RK_INVALID_VALUE", diagnostic.path("code").asText(), result::out);
         assertEquals("annotation", diagnostic.path("where").path("arg").asText(), result::out);
     }
@@ -179,7 +181,7 @@ class MetadataRouteTest {
         CliTestSupport.Result result =
                 CliTestSupport.run("-m", model.toString(), "apply", ops.toString());
         JsonNode diagnostic = M.readTree(result.out())
-                .path("results").path(0).path("diagnostics").path(0);
+                .path("data").path("results").path(0).path("diagnostics").path(0);
         assertEquals("RK_UNKNOWN_ARG", diagnostic.path("code").asText(), result::out);
         assertMoved(diagnostic.path("fix").asText(), route);
     }

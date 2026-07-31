@@ -67,7 +67,7 @@ class SchemaExamplesGuardTest {
             Files.writeString(ops, ex.toString());
             CliTestSupport.Result res = CliTestSupport.run("-m", model.toString(), "apply", ops.toString(), "--dry-run");
             assertEquals(0, res.code(), () -> "apply frame example rejected: " + res.err() + res.out());
-            assertTrue(MAPPER.readTree(res.out()).path("committed").asBoolean(),
+            assertTrue(MAPPER.readTree(res.out()).path("data").path("committed").asBoolean(),
                     () -> "the apply frame example commits cleanly: " + res.out());
         }
     }

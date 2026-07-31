@@ -43,7 +43,7 @@ class ApplyReadPayloadParityTest {
               {"target":"config","op":"read"},
               {"target":"typedef","op":"read"} ]""");
         JsonNode results = M.readTree(CliTestSupport.run("-m", model.toString(), "apply", ops.toString()).out())
-                .path("results");
+                .path("data").path("results");
 
         assertEquals(stdGroup, results.get(0).path("data"), "apply group read == standalone group read");
         assertEquals(stdConfig, results.get(1).path("data"), "apply config read == standalone config read");

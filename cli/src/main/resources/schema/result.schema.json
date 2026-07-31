@@ -32,13 +32,14 @@
         "rejected",
         "read",
         "staged",
+        "completed",
         "error"
       ],
-      "description": "the execution result class; `error` = the tool itself failed (an unexpected throwable caught at the boundary, exit 70), distinct from `rejected` (input rejected, exit 1). `read` covers EVERY non-mutating result class — a query, a verdict, a runtime observation, a comparison — which is why `outcome` alone does not tell you whether `valid` may be present"
+      "description": "the execution result class; `error` = the tool itself failed (an unexpected throwable caught at the boundary, exit 70), distinct from `rejected` (input rejected, exit 1). `read` covers EVERY non-mutating result class — a query, a verdict, a runtime observation, a comparison — which is why `outcome` alone does not tell you whether `valid` may be present. `completed` is `batch`'s successful outcome: every child was dispatched, and the aggregate exits 0 whatever the children returned — a batch's product IS the item list, so each child's exit rides its item and folding them into one code would discard exactly that. Contrast `apply`, whose ops are steps of ONE transaction and which therefore does derive its outcome and exit from that transaction"
     },
     "ok": {
       "type": "boolean",
-      "description": "the operation executed as asked (outcome in applied | preview | read | staged); false for refused | rejected | error"
+      "description": "the operation executed as asked (outcome in applied | preview | read | staged | completed); false for refused | rejected | error"
     },
     "valid": {
       "type": "boolean",

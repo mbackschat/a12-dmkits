@@ -74,8 +74,12 @@ class SupportedCharactersVerbTest {
                 [{"target":"config","op":"modify","supported-character":["ab"]}]
                 """);
         var result = CliTestSupport.run("-m", applied.toString(), "apply", ops.toString());
-        assertEquals(1, result.code(), result.err());
-        JsonNode diagnostic = MAPPER.readTree(result.out()).path("results").get(0).path("diagnostics").get(0);
+        JsonNode envelope = MAPPER.readTree(result.out());
+        // The aggregate now reports the KIND of stop, and its exit follows from that rather than from a blanket
+        // "not committed -> 1". Asserting the per-op outcome alongside pins WHY this exit is the right one.
+        assertEquals("refused", envelope.path("data").path("results").get(0).path("outcome").asText(), result::out);
+        assertEquals(2, result.code(), result::err);
+        JsonNode diagnostic = envelope.path("data").path("results").get(0).path("diagnostics").get(0);
         assertCorrective(diagnostic);
     }
 

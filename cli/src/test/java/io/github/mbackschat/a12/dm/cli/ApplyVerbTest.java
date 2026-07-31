@@ -43,11 +43,11 @@ class ApplyVerbTest {
         var res = CliTestSupport.run("-m", model.toString(), "apply", ops.toString());
         assertEquals(0, res.code(), res.err());
         JsonNode j = M.readTree(res.out());
-        assertTrue(j.path("committed").asBoolean(), () -> "committed: " + res.out());
-        assertEquals(2, j.path("ops").asInt());
+        assertTrue(j.path("data").path("committed").asBoolean(), () -> "committed: " + res.out());
+        assertEquals(2, j.path("data").path("ops").asInt());
         assertTrue(j.path("written").asBoolean());
-        assertEquals(2, j.path("results").size());
-        assertEquals("staged", j.path("results").get(0).path("outcome").asText());
+        assertEquals(2, j.path("data").path("results").size());
+        assertEquals("staged", j.path("data").path("results").get(0).path("outcome").asText());
         // the wrapper carries a human net-effect summary — per-op results are staged/written:false (the write is
         // ATOMIC at the wrapper, not per op), so an agent reads `summary`/`committed`, not the per-op flags (eval).
         assertTrue(j.path("summary").asText().contains("committed") && j.path("summary").asText().contains("written"),
@@ -71,7 +71,7 @@ class ApplyVerbTest {
         var res = CliTestSupport.run("-m", model.toString(), "apply", ops.toString());
         assertNotEquals(0, res.code(), () -> "the duplicate must be rejected: " + res.out());
         JsonNode j = M.readTree(res.out());
-        assertFalse(j.path("committed").asBoolean());
+        assertFalse(j.path("data").path("committed").asBoolean());
         assertFalse(j.path("written").asBoolean());
         assertTrue(res.out().contains("the same name"),
                 () -> "the apply terminal-gate rejection must surface the kernel cause, not a bare 'not kernel-valid': "
@@ -93,7 +93,7 @@ class ApplyVerbTest {
 
         var res = CliTestSupport.run("-m", model.toString(), "apply", ops.toString());
         assertEquals(0, res.code(), res.err());
-        assertTrue(M.readTree(res.out()).path("committed").asBoolean(), () -> "committed: " + res.out());
+        assertTrue(M.readTree(res.out()).path("data").path("committed").asBoolean(), () -> "committed: " + res.out());
         // the three edits all landed in one write
         assertEquals("Name", M.readTree(CliTestSupport.run("-m", model.toString(),
                 "group", "read", "/Subscription/Addons").out()).path("data").path("indexField").asText());
@@ -113,7 +113,7 @@ class ApplyVerbTest {
                   {"target":"typedef","op":"modify","id":"Money","kind":"NUMBER","number":{"maxFractionalDigits":3,"unit":"AMOUNT"}} ]""");
         var res = CliTestSupport.run("-m", model.toString(), "apply", ops.toString());
         assertEquals(0, res.code(), res.err());
-        assertTrue(M.readTree(res.out()).path("committed").asBoolean(), () -> "committed: " + res.out());
+        assertTrue(M.readTree(res.out()).path("data").path("committed").asBoolean(), () -> "committed: " + res.out());
         JsonNode cfg = M.readTree(CliTestSupport.run("-m", model.toString(), "typedef", "read", "Money").out())
                 .path("data").path("number");
         assertEquals(3, cfg.path("maxFractionalDigits").asInt(), "the typedef modify op landed in-session");
@@ -133,9 +133,9 @@ class ApplyVerbTest {
         var res = CliTestSupport.run("-m", model.toString(), "apply", ops.toString());
         assertEquals(0, res.code(), res.err());
         JsonNode j = M.readTree(res.out());
-        assertTrue(j.path("committed").asBoolean(), () -> "committed: " + res.out());
-        assertEquals(2, j.path("ops").asInt());
-        assertEquals("staged", j.path("results").get(1).path("outcome").asText());
+        assertTrue(j.path("data").path("committed").asBoolean(), () -> "committed: " + res.out());
+        assertEquals(2, j.path("data").path("ops").asInt());
+        assertEquals("staged", j.path("data").path("results").get(1).path("outcome").asText());
         assertTrue(Files.readString(model).contains("[0-9]{5}"),
                 "the re-type is persisted in the same transaction");
     }
@@ -152,7 +152,7 @@ class ApplyVerbTest {
         var res = CliTestSupport.run("-m", model.toString(), "apply", ops.toString());
         assertEquals(0, res.code(), res.err());
         JsonNode j = M.readTree(res.out());
-        assertTrue(j.path("committed").asBoolean(), () -> "committed: " + res.out());
+        assertTrue(j.path("data").path("committed").asBoolean(), () -> "committed: " + res.out());
         assertTrue(Files.readString(model).contains("Postal code"),
                 "apply's meta modify must apply the label, not silently drop it");
     }
@@ -172,8 +172,8 @@ class ApplyVerbTest {
         var res = CliTestSupport.run("-m", model.toString(), "apply", ops.toString());
         assertEquals(1, res.code(), () -> "the empty modify rolls the sequence back: " + res.out());
         JsonNode j = M.readTree(res.out());
-        assertFalse(j.path("committed").asBoolean());
-        String diag = j.path("results").get(1).path("diagnostics").get(0).path("summary").asText();
+        assertFalse(j.path("data").path("committed").asBoolean());
+        String diag = j.path("data").path("results").get(1).path("diagnostics").get(0).path("summary").asText();
         assertTrue(diag.contains("STRING") && diag.contains("REPLACES"),
                 () -> "the failing op names the kind to add + warns it replaces the type: " + diag);
     }
@@ -190,9 +190,9 @@ class ApplyVerbTest {
         var res = CliTestSupport.run("-m", model.toString(), "apply", ops.toString());
         assertNotEquals(0, res.code(), "a nested config typo in an apply op must fail, not silently drop");
         JsonNode j = M.readTree(res.out());
-        assertFalse(j.path("committed").asBoolean(), "nothing committed when an op has an unknown nested key");
+        assertFalse(j.path("data").path("committed").asBoolean(), "nothing committed when an op has an unknown nested key");
         boolean unknownArg = false;
-        for (JsonNode r : j.path("results")) {
+        for (JsonNode r : j.path("data").path("results")) {
             for (JsonNode d : r.path("diagnostics")) {
                 unknownArg |= "RK_UNKNOWN_ARG".equals(d.path("code").asText());
             }
@@ -215,8 +215,8 @@ class ApplyVerbTest {
         var res = CliTestSupport.run("-m", model.toString(), "apply", ops.toString());
         assertEquals(0, res.code(), res.err());
         JsonNode j = M.readTree(res.out());
-        assertTrue(j.path("committed").asBoolean(), () -> "committed: " + res.out());
-        assertEquals("staged", j.path("results").get(0).path("outcome").asText());
+        assertTrue(j.path("data").path("committed").asBoolean(), () -> "committed: " + res.out());
+        assertEquals("staged", j.path("data").path("results").get(0).path("outcome").asText());
         String written = Files.readString(model);
         assertTrue(written.contains("[0-9]{5}"), "the STRING pattern is persisted by the rich add (not add-then-modify)");
         assertTrue(written.contains("Fee"), "the constrained NUMBER field is persisted");
@@ -239,7 +239,7 @@ class ApplyVerbTest {
         assertNotEquals(70, res.code(), () -> "apply must not crash on incomplete locale coverage: " + res.out());
         assertEquals(1, res.code(), () -> "the bad op rolls the sequence back: " + res.out());
         JsonNode j = M.readTree(res.out());
-        assertFalse(j.path("committed").asBoolean(), "nothing committed");
+        assertFalse(j.path("data").path("committed").asBoolean(), "nothing committed");
         assertFalse(res.out().contains("RK_INTERNAL_ERROR"), () -> "clean rejection, not internal error: " + res.out());
         assertFalse(Files.readString(m).contains("Title"), "nothing written on the rolled-back sequence");
     }
@@ -257,7 +257,7 @@ class ApplyVerbTest {
                   {"target":"field","op":"read","fieldPathInModel":"/Doc/Fee"} ]""");
         var res = CliTestSupport.run("-m", m.toString(), "apply", ops.toString());
         assertEquals(0, res.code(), res.err());
-        JsonNode readData = M.readTree(res.out()).path("results").get(1).path("data");
+        JsonNode readData = M.readTree(res.out()).path("data").path("results").get(1).path("data");
         // the in-session read reports the clean ValueKind name too — one vocabulary across standalone + apply
         assertEquals("NUMBER", readData.path("kind").asText(), () -> "in-session read reports kind: " + res.out());
         assertEquals("0", readData.path("number").path("min").asText(), () -> "in-session read surfaces config: " + res.out());
@@ -277,8 +277,8 @@ class ApplyVerbTest {
         var res = CliTestSupport.run("-m", model.toString(), "apply", ops.toString());
         assertEquals(1, res.code(), () -> "a rolled-back apply exits 1: " + res.out());
         JsonNode j = M.readTree(res.out());
-        assertFalse(j.path("committed").asBoolean());
-        assertEquals(1, j.path("failedAt").asInt());
+        assertFalse(j.path("data").path("committed").asBoolean());
+        assertEquals(1, j.path("data").path("failedAt").asInt());
         assertFalse(j.path("written").asBoolean());
         assertEquals(before, Files.readString(model), "the model is untouched after a rollback");
     }
@@ -297,10 +297,10 @@ class ApplyVerbTest {
         var res = CliTestSupport.run("-m", model.toString(), "apply", ops.toString());
         assertEquals(0, res.code(), res.err());
         JsonNode j = M.readTree(res.out());
-        assertTrue(j.path("committed").asBoolean(), () -> "committed: " + res.out());
+        assertTrue(j.path("data").path("committed").asBoolean(), () -> "committed: " + res.out());
         assertTrue(j.path("written").asBoolean());
-        assertEquals("staged", j.path("results").get(1).path("outcome").asText());
-        assertEquals("/Order/DISCOUNT_NEGATIVE", j.path("results").get(1).path("changed").path("rule").asText());
+        assertEquals("staged", j.path("data").path("results").get(1).path("outcome").asText());
+        assertEquals("/Order/DISCOUNT_NEGATIVE", j.path("data").path("results").get(1).path("changed").path("rule").asText());
         String written = Files.readString(model);
         assertTrue(written.contains("Discount") && written.contains("DISCOUNT_NEGATIVE"));
     }
@@ -317,9 +317,9 @@ class ApplyVerbTest {
         var res = CliTestSupport.run("-m", model.toString(), "apply", ops.toString());
         assertEquals(1, res.code());
         JsonNode j = M.readTree(res.out());
-        assertFalse(j.path("committed").asBoolean());
-        assertEquals(0, j.path("failedAt").asInt());
-        JsonNode diag = j.path("results").get(0).path("diagnostics").get(0);
+        assertFalse(j.path("data").path("committed").asBoolean());
+        assertEquals(0, j.path("data").path("failedAt").asInt());
+        JsonNode diag = j.path("data").path("results").get(0).path("diagnostics").get(0);
         assertEquals("RK_UNKNOWN_ARG", diag.path("code").asText());
         assertEquals("grop", diag.path("where").path("arg").asText());
         assertTrue(diag.path("fix").asText().contains("group"), () -> "did-you-mean suggests 'group': " + diag);
@@ -335,7 +335,7 @@ class ApplyVerbTest {
 
         var res = CliTestSupport.run("-m", model.toString(), "apply", ops.toString());
         assertEquals(1, res.code());
-        JsonNode diag = M.readTree(res.out()).path("results").get(0).path("diagnostics").get(0);
+        JsonNode diag = M.readTree(res.out()).path("data").path("results").get(0).path("diagnostics").get(0);
         assertEquals("RK_UNKNOWN_OP", diag.path("code").asText());
     }
 
@@ -349,7 +349,7 @@ class ApplyVerbTest {
 
         var res = CliTestSupport.run("-m", model.toString(), "apply", ops.toString());
         assertEquals(1, res.code());
-        JsonNode diag = M.readTree(res.out()).path("results").get(0).path("diagnostics").get(0);
+        JsonNode diag = M.readTree(res.out()).path("data").path("results").get(0).path("diagnostics").get(0);
         assertEquals("RK_WRONG_BATCH_KIND", diag.path("code").asText());
         assertTrue(diag.path("fix").asText().contains("batch"), () -> "points at `batch`: " + diag);
     }
@@ -367,10 +367,10 @@ class ApplyVerbTest {
         var res = CliTestSupport.run("-m", model.toString(), "apply", ops.toString());
         assertEquals(0, res.code(), res.err());
         JsonNode j = M.readTree(res.out());
-        assertTrue(j.path("committed").asBoolean(), () -> "committed: " + res.out());
-        assertEquals("staged", j.path("results").get(0).path("outcome").asText());
+        assertTrue(j.path("data").path("committed").asBoolean(), () -> "committed: " + res.out());
+        assertEquals("staged", j.path("data").path("results").get(0).path("outcome").asText());
         assertEquals("/Subscription/Billing/EffectiveFeeComp",
-                j.path("results").get(0).path("changed").path("computation").asText());
+                j.path("data").path("results").get(0).path("changed").path("computation").asText());
     }
 
     @Test
@@ -384,9 +384,9 @@ class ApplyVerbTest {
         var res = CliTestSupport.run("-m", model.toString(), "apply", ops.toString());
         assertEquals(0, res.code(), res.err());
         JsonNode j = M.readTree(res.out());
-        assertTrue(j.path("committed").asBoolean(), () -> "committed: " + res.out());
-        assertEquals("MoneyAmount", j.path("results").get(0).path("changed").path("added").asText());
-        assertEquals(",", j.path("results").get(1).path("changed").path("decimalSeparator").asText());
+        assertTrue(j.path("data").path("committed").asBoolean(), () -> "committed: " + res.out());
+        assertEquals("MoneyAmount", j.path("data").path("results").get(0).path("changed").path("added").asText());
+        assertEquals(",", j.path("data").path("results").get(1).path("changed").path("decimalSeparator").asText());
         assertTrue(Files.readString(model).contains("MoneyAmount"));
     }
 
@@ -405,8 +405,8 @@ class ApplyVerbTest {
         var res = CliTestSupport.run("-m", model.toString(), "apply", ops.toString(), "-w", dir.toString());
         assertEquals(0, res.code(), res.err());
         JsonNode j = M.readTree(res.out());
-        assertTrue(j.path("committed").asBoolean(), () -> "committed (resolved via -w/--workspace): " + res.out());
-        assertEquals("catalog", j.path("results").get(0).path("changed").path("added").asText());
+        assertTrue(j.path("data").path("committed").asBoolean(), () -> "committed (resolved via -w/--workspace): " + res.out());
+        assertEquals("catalog", j.path("data").path("results").get(0).path("changed").path("added").asText());
         assertTrue(Files.readString(model).contains("modelAlias"));
     }
 
@@ -423,11 +423,11 @@ class ApplyVerbTest {
         var res = CliTestSupport.run("-m", model.toString(), "apply", ops.toString());
         assertEquals(0, res.code(), res.err());
         JsonNode j = M.readTree(res.out());
-        assertTrue(j.path("committed").asBoolean(), () -> "committed: " + res.out());
-        JsonNode fieldRead = j.path("results").get(1);
+        assertTrue(j.path("data").path("committed").asBoolean(), () -> "committed: " + res.out());
+        JsonNode fieldRead = j.path("data").path("results").get(1);
         assertEquals("read", fieldRead.path("outcome").asText());
         assertEquals("/Order/Discount", fieldRead.path("data").path("field").asText());
-        JsonNode configRead = j.path("results").get(2);
+        JsonNode configRead = j.path("data").path("results").get(2);
         assertEquals("read", configRead.path("outcome").asText());
         assertTrue(configRead.path("data").has("decimalSeparator"), () -> "config read returns the config: " + configRead);
     }
@@ -443,7 +443,7 @@ class ApplyVerbTest {
         var res = CliTestSupport.run("-m", model.toString(), "apply", ops.toString(), "--dry-run");
         assertEquals(0, res.code(), res.err());
         JsonNode j = M.readTree(res.out());
-        assertTrue(j.path("committed").asBoolean(), "a clean preview still 'commits' the validation verdict");
+        assertTrue(j.path("data").path("committed").asBoolean(), "a clean preview still 'commits' the validation verdict");
         assertFalse(j.path("written").asBoolean());
         assertEquals(before, Files.readString(model), "--dry-run writes nothing");
     }
@@ -461,9 +461,9 @@ class ApplyVerbTest {
         var res = CliTestSupport.run("-m", model.toString(), "apply", ops.toString());
         assertEquals(0, res.code(), res.err());
         JsonNode j = M.readTree(res.out());
-        assertTrue(j.path("committed").asBoolean(), () -> "committed: " + res.out());
+        assertTrue(j.path("data").path("committed").asBoolean(), () -> "committed: " + res.out());
         assertTrue(j.path("written").asBoolean());
-        assertEquals("/Order/EligibilityCheck", j.path("results").get(0).path("changed").path("removed").asText());
+        assertEquals("/Order/EligibilityCheck", j.path("data").path("results").get(0).path("changed").path("removed").asText());
         assertFalse(Files.readString(model).contains("EligibilityCheck"), "the rule is gone from the model");
     }
 
@@ -483,7 +483,7 @@ class ApplyVerbTest {
         var res = CliTestSupport.run("-m", model.toString(), "apply", ops.toString());
         assertEquals(0, res.code(), res.err());
         JsonNode j = M.readTree(res.out());
-        assertTrue(j.path("committed").asBoolean(), () -> "committed: " + res.out());
+        assertTrue(j.path("data").path("committed").asBoolean(), () -> "committed: " + res.out());
         assertTrue(Files.readString(model).contains("DUPLICATE_SKU"), "the rule persisted with the group override");
     }
 
@@ -505,8 +505,8 @@ class ApplyVerbTest {
         var res = CliTestSupport.run("-m", model.toString(), "apply", ops.toString());
         assertEquals(0, res.code(), res.err());
         JsonNode j = M.readTree(res.out());
-        assertTrue(j.path("committed").asBoolean(), () -> "committed: " + res.out());
-        assertEquals("WARNING", j.path("results").get(1).path("changed").path("severity").asText());
+        assertTrue(j.path("data").path("committed").asBoolean(), () -> "committed: " + res.out());
+        assertEquals("WARNING", j.path("data").path("results").get(1).path("changed").path("severity").asText());
         String written = Files.readString(model);
         assertTrue(written.contains("Please confirm auto-renew."), "the en_US message was updated");
         assertTrue(written.contains("Verlaengerung bestaetigen."),
@@ -527,7 +527,7 @@ class ApplyVerbTest {
 
         var res = CliTestSupport.run("-m", model.toString(), "apply", ops.toString());
         assertEquals(0, res.code(), res.err());
-        assertTrue(M.readTree(res.out()).path("committed").asBoolean(), () -> "scalar add-locale/role bind: " + res.out());
+        assertTrue(M.readTree(res.out()).path("data").path("committed").asBoolean(), () -> "scalar add-locale/role bind: " + res.out());
         String written = Files.readString(model);
         assertTrue(written.contains("de_DE"), "the scalar add-locale was applied, not dropped");
         assertTrue(written.contains("admin"), "the scalar role was applied");
@@ -552,7 +552,7 @@ class ApplyVerbTest {
 
         var res = CliTestSupport.run("-m", model.toString(), "apply", ops.toString());
         assertEquals(0, res.code(), () -> "locale-then-message commits (Issue B): " + res.out());
-        assertTrue(M.readTree(res.out()).path("committed").asBoolean(), () -> "committed: " + res.out());
+        assertTrue(M.readTree(res.out()).path("data").path("committed").asBoolean(), () -> "committed: " + res.out());
         String written = Files.readString(model);
         assertTrue(written.contains("negativ") && written.contains("neg"),
                 "both the kept en_US and the merged de_DE message are present");
@@ -572,9 +572,9 @@ class ApplyVerbTest {
         var res = CliTestSupport.run("-m", model.toString(), "apply", ops.toString());
         assertEquals(0, res.code(), res.err());
         JsonNode j = M.readTree(res.out());
-        assertTrue(j.path("committed").asBoolean(), () -> "committed: " + res.out());
+        assertTrue(j.path("data").path("committed").asBoolean(), () -> "committed: " + res.out());
         assertEquals("/Subscription/Billing/EffectiveFeeComp",
-                j.path("results").get(0).path("changed").path("modified").asText());
+                j.path("data").path("results").get(0).path("changed").path("modified").asText());
     }
 
     @Test
@@ -587,8 +587,8 @@ class ApplyVerbTest {
         var res = CliTestSupport.run("-m", model.toString(), "apply", ops.toString());
         assertEquals(0, res.code(), res.err());
         JsonNode j = M.readTree(res.out());
-        assertTrue(j.path("committed").asBoolean(), () -> "committed: " + res.out());
-        assertEquals("/Order/Eligibility", j.path("results").get(0).path("changed").path("to").asText());
+        assertTrue(j.path("data").path("committed").asBoolean(), () -> "committed: " + res.out());
+        assertEquals("/Order/Eligibility", j.path("data").path("results").get(0).path("changed").path("to").asText());
     }
 
     @Test
@@ -613,7 +613,7 @@ class ApplyVerbTest {
             var res = CliTestSupport.run("-m", model.toString(), "apply", ops.toString());
             // the op may fail for OTHER reasons (a missing `to`, no such element) — but NEVER because the
             // manifest-advertised locator key is unknown to apply.
-            for (JsonNode r : M.readTree(res.out()).path("results")) {
+            for (JsonNode r : M.readTree(res.out()).path("data").path("results")) {
                 for (JsonNode d : r.path("diagnostics")) {
                     if ("RK_UNKNOWN_ARG".equals(d.path("code").asText())) {
                         assertNotEquals(key, d.path("where").path("arg").asText(),
@@ -651,8 +651,8 @@ class ApplyVerbTest {
         var res = CliTestSupport.run("-m", model.toString(), "apply", ops.toString());
         assertEquals(1, res.code());
         JsonNode j = M.readTree(res.out());
-        assertFalse(j.path("committed").asBoolean());
-        JsonNode diag = j.path("results").get(0).path("diagnostics").get(0);
+        assertFalse(j.path("data").path("committed").asBoolean());
+        JsonNode diag = j.path("data").path("results").get(0).path("diagnostics").get(0);
         assertEquals("RK_UNKNOWN_ARG", diag.path("code").asText());
         assertEquals("rule", diag.path("where").path("arg").asText());
     }
@@ -673,8 +673,8 @@ class ApplyVerbTest {
         var res = CliTestSupport.run("-m", model.toString(), "apply", ops.toString());
         assertEquals(0, res.code(), res.err());
         JsonNode j = M.readTree(res.out());
-        assertTrue(j.path("committed").asBoolean(), () -> "committed: " + res.out());
-        JsonNode removeResult = j.path("results").get(1);
+        assertTrue(j.path("data").path("committed").asBoolean(), () -> "committed: " + res.out());
+        JsonNode removeResult = j.path("data").path("results").get(1);
         assertEquals("/Subscription/Billing", removeResult.path("changed").path("removed").asText());
         assertTrue(removeResult.path("changed").path("cascaded").toString().contains("/Subscription/BILLING_GUARD"),
                 () -> "the referring rule is reported as cascaded: " + removeResult);
@@ -697,11 +697,13 @@ class ApplyVerbTest {
                   {"target":"group","op":"remove","groupPathInModel":"/Subscription/Billing"} ]""");
 
         var res = CliTestSupport.run("-m", model.toString(), "apply", ops.toString());
-        assertEquals(1, res.code());
+        // exit 2, not 1: the sequence stopped at a §6 SAFETY GATE, and the aggregate now reports the kind of stop that actually happened. The old `committed ? 0 : 1` collapsed every failure into 1, so a refusal reported the code for "input rejected".
+        assertEquals(2, res.code(), res::out);
         JsonNode j = M.readTree(res.out());
-        assertFalse(j.path("committed").asBoolean());
-        assertEquals(1, j.path("failedAt").asInt());
-        JsonNode refusal = j.path("results").get(1);
+        assertEquals("refused", j.path("outcome").asText(), res::out);
+        assertFalse(j.path("data").path("committed").asBoolean());
+        assertEquals(1, j.path("data").path("failedAt").asInt());
+        JsonNode refusal = j.path("data").path("results").get(1);
         assertEquals("refused", refusal.path("outcome").asText(), () -> "the gate refuses: " + refusal);
         assertEquals("RK_REFERENCED", refusal.path("diagnostics").get(0).path("code").asText());
         assertTrue(refusal.path("data").path("referencedBy").path("rules").toString().contains("/Subscription/BILLING_GUARD"),
@@ -730,7 +732,7 @@ class ApplyVerbTest {
 
         var res = CliTestSupport.run("-m", model.toString(), "apply", ops.toString(), "-w", dir.toString());
         assertEquals(0, res.code(), res.err());
-        JsonNode changed = M.readTree(res.out()).path("results").get(0).path("changed");
+        JsonNode changed = M.readTree(res.out()).path("data").path("results").get(0).path("changed");
         assertEquals(5, changed.path("repeatability").asInt(), () -> "repeatability honored: " + res.out());
         assertTrue(changed.path("excludeRules").asBoolean(), "exclude-rules honored");
         assertTrue(changed.path("excludeComputations").asBoolean(), "exclude-computations honored");
@@ -757,7 +759,7 @@ class ApplyVerbTest {
 
         var res = CliTestSupport.run("-m", model.toString(), "apply", ops.toString());
         assertEquals(0, res.code(), res.err());
-        assertTrue(M.readTree(res.out()).path("committed").asBoolean(), () -> "committed: " + res.out());
+        assertTrue(M.readTree(res.out()).path("data").path("committed").asBoolean(), () -> "committed: " + res.out());
         JsonNode supported = M.readTree(CliTestSupport.run("-m", model.toString(), "config", "read").out())
                 .path("data").path("supportedCharacters");
         assertTrue(supported.toString().contains("A-Z") && supported.toString().contains("0-9"),
@@ -799,7 +801,7 @@ class ApplyVerbTest {
             var res = CliTestSupport.run("-m", model.toString(), "apply", ops.toString(), "-w", dir.toString());
             // the op may fail for OTHER reasons (a bad value, a missing element) — but NEVER because a
             // manifest-advertised settable flag is unknown to apply.
-            for (JsonNode r : M.readTree(res.out()).path("results")) {
+            for (JsonNode r : M.readTree(res.out()).path("data").path("results")) {
                 for (JsonNode d : r.path("diagnostics")) {
                     if ("RK_UNKNOWN_ARG".equals(d.path("code").asText())) {
                         String arg = d.path("where").path("arg").asText();

@@ -41,8 +41,8 @@ class ConfigTimeZoneContractTest {
         var apply = CliTestSupport.run("-m", model.toString(), "apply", ops.toString());
         assertEquals(1, apply.code(), apply::err);
         JsonNode applyJson = MAPPER.readTree(apply.out());
-        assertTrue(!applyJson.path("committed").asBoolean(), apply::out);
-        assertCorrectiveInvalid(applyJson.path("results").get(applyJson.path("results").size() - 1));
+        assertTrue(!applyJson.path("data").path("committed").asBoolean(), apply::out);
+        assertCorrectiveInvalid(applyJson.path("data").path("results").get(applyJson.path("data").path("results").size() - 1));
 
         String invalid = Files.readString(model).replace("\"Europe/Berlin\"", "\"Europe/Berln\"");
         Files.writeString(model, invalid);
@@ -76,8 +76,8 @@ class ConfigTimeZoneContractTest {
         var result = CliTestSupport.run("-m", model.toString(), "apply", ops.toString());
         assertEquals(0, result.code(), result::err);
         JsonNode json = MAPPER.readTree(result.out());
-        assertTrue(json.path("committed").asBoolean(), result::out);
-        assertScopeWarning(json.path("results").path(0).path("diagnostics").path(0));
+        assertTrue(json.path("data").path("committed").asBoolean(), result::out);
+        assertScopeWarning(json.path("data").path("results").path(0).path("diagnostics").path(0));
     }
 
     @Test

@@ -52,12 +52,21 @@ final class BatchCommand extends BaseCommand {
         for (JsonNode op : ops) {
             results.add(runOp(op, index++, batchModel));
         }
-        try {
-            out().print(MAPPER.writerWithDefaultPrettyPrinter().writeValueAsString(results) + "\n");
-            return 0;
-        } catch (com.fasterxml.jackson.core.JsonProcessingException e) {
-            return fail("cannot write batch results: " + e.getMessage());
-        }
+        // The standard envelope, with the items under `data.results`. It used to print a bare JSON ARRAY, which is
+        // why `batch --text` emitted raw JSON: the renderer needs an object carrying a textual `outcome`, and an
+        // array has neither. The items themselves are unchanged.
+        ObjectNode data = MAPPER.createObjectNode();
+        data.put("ops", results.size());
+        data.set("results", results);
+        // `completed` — a NEW outcome, and the aggregate exits 0 whatever the children returned. That is the
+        // measured pre-existing contract and it is the right one: a batch's product IS the item list, so a caller
+        // reads each child's exit from its item. Folding them into one code would discard exactly what the verb
+        // exists to return, and there is no single code that could stand for a mixed run. Contrast `apply`, whose
+        // ops are steps of ONE transaction and which therefore does derive its exit from that transaction.
+        ResultEnvelope env = ResultEnvelope.dispatchCompleted("batch", "run",
+                "dispatched " + results.size() + " op" + (results.size() == 1 ? "" : "s"), data);
+        out().print(env.toJsonString());
+        return env.exitCode();
     }
 
     private static ObjectNode runOp(JsonNode op, int index, String batchModel) {
