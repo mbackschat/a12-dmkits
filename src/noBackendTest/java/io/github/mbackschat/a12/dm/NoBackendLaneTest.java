@@ -68,13 +68,23 @@ class NoBackendLaneTest {
     @Test
     void modelLoadAndIndexIsFullStructural_bindingIsStructuralOnly() {
         BoundModel m = BoundModel.ofJson(policyModel());
-        assertEquals(Verification.STRUCTURAL_ONLY, m.verification(),
-                "a gated bind with no backend must carry STRUCTURAL_ONLY, never KERNEL_CONFIRMED");
+        assertEquals(java.util.Optional.of(Verification.STRUCTURAL_ONLY), m.consistencyGate(),
+                "a gated bind with no backend must carry STRUCTURAL_ONLY, never KERNEL_CONFIRMED — and the "
+                        + "receipt must be PRESENT, because the gate did run; only an ungated bind has none");
         // the kernel-free index is fully available
         assertTrue(m.groupAt("/Policy/Coverages").isPresent(), "the index reads groups structurally");
         assertTrue(m.maxRepetitions("/Policy/Coverages") >= 2, "repeatability is read structurally");
         assertTrue(m.fieldAt("/Policy/Premium").isPresent(), "field paths read structurally");
         m.num("/Policy/Premium");   // the typed handle resolves — the field is a NUMBER (num() throws otherwise)
+
+        // This lane is where the receipt's THIRD state earns its keep: with no backend a gated bind and a lenient
+        // bind both reduce to "not kernel-confirmed", so under the old bare-Verification accessor they were
+        // literally indistinguishable — and a consumer could publish STRUCTURAL_ONLY provenance for a path that
+        // never gated. The gate that ran is present-and-degraded; the gate that never ran is absent.
+        assertEquals(java.util.Optional.empty(),
+                io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel.ofJsonLenient(policyModel(),
+                        io.github.mbackschat.a12.dm.core.ReferenceResolvers.selfContained()).consistencyGate(),
+                "an ungated bind must be distinguishable from a gated-but-unbacked one, even here");
     }
 
     /** §2c row 3 — the structural prechecks are FULL (a bad group path is rejected with RK_NO_SUCH_GROUP). */

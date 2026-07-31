@@ -37,9 +37,11 @@ import io.github.mbackschat.a12.dm.rulekit.read.ReadResult;
 import io.github.mbackschat.a12.dm.rulekit.validate.PrecheckException;
 import io.github.mbackschat.a12.dm.rulekit.validate.RkCode;
 import io.github.mbackschat.a12.dm.rulekit.validate.ValidationResult;
+import io.github.mbackschat.a12.dm.core.Backends;
 import io.github.mbackschat.a12.dm.core.ReferenceResolvers;
 import io.github.mbackschat.a12.dm.core.ModelIndex;
 import io.github.mbackschat.a12.dm.core.ModelResolver;
+import io.github.mbackschat.a12.dm.core.Verification;
 
 import java.util.Arrays;
 import java.util.HashMap;
@@ -106,14 +108,17 @@ public final class KernelAdapter {
     private final IMVK_Service mvk;
     private final ElementContainer elements;
     private final BoundModel model;
+    /** The gate receipt: null for the deliberately unchecked {@link #of} path, else how the gate was arbitrated. */
+    private final Verification consistencyGate;
     private ICalculationService calc;   // lazily built (from the MVK service, which is its config) — only computations need it
     private long referenceParses;       // observability seam: count of kernel condition-parses (getDirectlyReferencedEntities)
     private Map<String, IRule> ruleIndex;                    // lazily built name→rule index (kills the per-lookup O(R) scan)
     private Map<String, ICalculationRule> calcIndex;         // lazily built name→computation index (the ICalculationRule peer)
 
-    private KernelAdapter(IMVK_Service mvk, BoundModel model) {
+    private KernelAdapter(IMVK_Service mvk, BoundModel model, Verification consistencyGate) {
         this.mvk = mvk;
         this.model = model;
+        this.consistencyGate = consistencyGate;
         IEC iec = mvk.getIEC();
         if (!(iec instanceof ElementContainer container)) {
             throw new IllegalStateException(
@@ -126,7 +131,9 @@ public final class KernelAdapter {
     public static KernelAdapter of(BoundModel model) {
         ModelResolver resolver =
                 model.resolver() != null ? model.resolver() : ReferenceResolvers.selfContained();
-        return new KernelAdapter(buildService(model.toJson(), resolver, ConsistencyGate.SKIP), model);
+        // Deliberately unchecked (a candidate-rule inspection may pass a lenient binding), so NO gate receipt —
+        // any consistency evidence this adapter's consumer publishes must come from a path that actually gated.
+        return new KernelAdapter(buildService(model.toJson(), resolver, ConsistencyGate.SKIP), model, null);
     }
 
     /**
@@ -137,7 +144,18 @@ public final class KernelAdapter {
     public static KernelAdapter checkAndOpen(BoundModel model) {
         ModelResolver resolver =
                 model.resolver() != null ? model.resolver() : ReferenceResolvers.selfContained();
-        return new KernelAdapter(buildService(model.toJson(), resolver, ConsistencyGate.REQUIRED), model);
+        return new KernelAdapter(buildService(model.toJson(), resolver, ConsistencyGate.REQUIRED), model,
+                Backends.verification());
+    }
+
+    /**
+     * The consistency gate's <b>receipt</b> — empty for the deliberately unchecked {@link #of(BoundModel)} path,
+     * else how {@link #checkAndOpen} arbitrated it. The adapter twin of
+     * {@link BoundModel#consistencyGate()}: two factories of the same type run different gates, so the receipt
+     * (never the factory name, and never a per-verb table) is what a consumer publishes evidence from.
+     */
+    public java.util.Optional<Verification> consistencyGate() {
+        return java.util.Optional.ofNullable(consistencyGate);
     }
 
     /** Open an adapter over a model given as DM-JSON: deserialize + expand, then bootstrap the MVK service. */

@@ -23,19 +23,20 @@ public final class BoundModel {
     // preserved verbatim, never inlined. The resolver is kept so re-binding a model with includes works.
     private final String sourceJson;
     private final ModelResolver resolver;
-    // The verification mode captured at bind time (a property of the binding, KERNEL-DECOUPLING-PROPOSAL
-    // §2b): KERNEL_CONFIRMED only for a gated ofJson bind with a backend present; STRUCTURAL_ONLY otherwise.
-    private final Verification verification;
+    // The consistency gate's RECEIPT, captured at bind time (KERNEL-DECOUPLING-PROPOSAL §2b): null when no gate
+    // ran for this binding at all, else how it was arbitrated (KERNEL_CONFIRMED with a backend present,
+    // STRUCTURAL_ONLY without). Null and STRUCTURAL_ONLY are DIFFERENT facts — see #consistencyGate().
+    private final Verification consistencyGate;
 
-    private BoundModel(ModelIndex index, String sourceJson, ModelResolver resolver, Verification verification) {
+    private BoundModel(ModelIndex index, String sourceJson, ModelResolver resolver, Verification consistencyGate) {
         this.index = index;
         this.sourceJson = sourceJson;
         this.resolver = resolver;
-        this.verification = verification;
+        this.consistencyGate = consistencyGate;
     }
 
     public static BoundModel of(ModelIndex index) {
-        return new BoundModel(index, null, null, Verification.STRUCTURAL_ONLY);
+        return new BoundModel(index, null, null, null);   // no gate ran — an index is not a verdict
     }
 
     /**
@@ -82,9 +83,9 @@ public final class BoundModel {
      */
     public static BoundModel ofJsonLenient(String modelJson, ModelResolver resolver) {
         // No consistency gate — the kernel-free reader expands (includes / imported type-defs) and indexes;
-        // it makes no validity promise, exactly as the expand-only path did (Stage 2). It never ran the
-        // kernel, so the binding is STRUCTURAL_ONLY regardless of whether a backend is present.
-        return new BoundModel(ModelIndex.of(modelJson, resolver), modelJson, resolver, Verification.STRUCTURAL_ONLY);
+        // it makes no validity promise, exactly as the expand-only path did (Stage 2). No gate ran, so there is
+        // NO receipt: a consumer must not be able to read this binding as verified in any mode.
+        return new BoundModel(ModelIndex.of(modelJson, resolver), modelJson, resolver, null);
     }
 
     // --- write path (F6) — every write yields a NEW binding (snapshot semantics, F0) -----------
@@ -197,14 +198,21 @@ public final class BoundModel {
     }
 
     /**
-     * How this binding was verified (KERNEL-DECOUPLING-PROPOSAL §2c): {@link Verification#KERNEL_CONFIRMED}
-     * when a kernel backend arbitrated the {@link #ofJson(String, ModelResolver) gated} bind, else
-     * {@link Verification#STRUCTURAL_ONLY} (no backend, or a lenient/index-only binding). The CLI always
-     * bundles the backend, so a gated bind there is always {@code KERNEL_CONFIRMED}; a library consumer
-     * without the backend gets {@code STRUCTURAL_ONLY} and must not read a successful bind as kernel-valid.
+     * The consistency gate's <b>receipt</b> for this binding (KERNEL-DECOUPLING-PROPOSAL §2c) — <b>empty when no
+     * gate ran</b>, else how it was arbitrated: {@link Verification#KERNEL_CONFIRMED} when a kernel backend
+     * arbitrated the {@link #ofJson(String, ModelResolver) gated} bind, {@link Verification#STRUCTURAL_ONLY} when
+     * that same gated bind found no backend (a library consumer's degraded posture — never read a successful bind
+     * as kernel-valid). The CLI always bundles the backend, so a gated bind there is always
+     * {@code KERNEL_CONFIRMED}.
+     *
+     * <p><b>Empty is a third, distinct answer</b> and the reason this returns an {@link java.util.Optional}:
+     * {@link #ofJsonLenient} and {@link #of(ModelIndex)} never invoke the gate, so they have nothing to attest.
+     * The predecessor accessor returned a bare {@code Verification} and reported {@code STRUCTURAL_ONLY} for both
+     * "gate ran, unbacked" and "gate never ran", which let a consumer publish verification provenance for an
+     * invocation that was never gated. Only ever attach evidence you were handed here.
      */
-    public Verification verification() {
-        return verification;
+    public java.util.Optional<Verification> consistencyGate() {
+        return java.util.Optional.ofNullable(consistencyGate);
     }
 
     /** A generic handle to the field at {@code path} (any kind). Throws if the path is not a field. */

@@ -575,6 +575,7 @@ public final class io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel
   public io.github.mbackschat.a12.dm.rulekit.dsl.Computation.Builder computation(io.github.mbackschat.a12.dm.rulekit.dsl.StringRef)
   public io.github.mbackschat.a12.dm.rulekit.dsl.Computation.Builder computation(io.github.mbackschat.a12.dm.rulekit.dsl.TimeRef)
   public io.github.mbackschat.a12.dm.rulekit.dsl.ConfirmRef confirm(java.lang.String)
+  public java.util.Optional<io.github.mbackschat.a12.dm.core.Verification> consistencyGate()
   public io.github.mbackschat.a12.dm.rulekit.dsl.StringRef custom(java.lang.String)
   public io.github.mbackschat.a12.dm.rulekit.dsl.DateRef date(java.lang.String)
   public io.github.mbackschat.a12.dm.rulekit.dsl.DateFragmentRef dateFragment(java.lang.String)
@@ -614,7 +615,6 @@ public final class io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel
   public io.github.mbackschat.a12.dm.rulekit.dsl.StringRef str(java.lang.String)
   public io.github.mbackschat.a12.dm.rulekit.dsl.TimeRef time(java.lang.String)
   public java.lang.String toJson()
-  public io.github.mbackschat.a12.dm.core.Verification verification()
   public void writeTo(java.nio.file.Path)
 
 public sealed interface io.github.mbackschat.a12.dm.rulekit.dsl.Calculation
