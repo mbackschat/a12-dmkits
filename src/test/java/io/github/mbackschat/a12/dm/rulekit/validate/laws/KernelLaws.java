@@ -52,6 +52,26 @@ final class KernelLaws {
         assertRejects(ORDER, group, errorField, condition, expectedCode);
     }
 
+    /**
+     * As {@link #rejectsOrder}, and additionally that {@code preemptedCode} is <b>absent</b> — for a law whose
+     * claim is that one gate fires <em>instead of</em> another.
+     *
+     * <p>Needed because the ordinary assertion is an {@code anyMatch} over the diagnostics: it proves the expected
+     * code is present and says nothing about what else is. An exclusivity law asserted that way passes whether or
+     * not the gate it claims is pre-empted also fired, so it does not test its own statement — the presence-shaped
+     * blind spot, inside the law tier that exists to be property-shaped.
+     */
+    static void rejectsOrderInsteadOf(String group, String errorField, String condition,
+            String expectedCode, String preemptedCode) {
+        ValidationResult r = check(ORDER, group, errorField, condition);
+        assertFalse(r.ok(), () -> "expected rejection of '" + condition + "'");
+        assertTrue(r.diagnostics().stream().anyMatch(p -> p.code().filter(expectedCode::equals).isPresent()),
+                () -> "expected " + expectedCode + " for '" + condition + "', got: " + r.diagnostics());
+        assertFalse(r.diagnostics().stream().anyMatch(p -> p.code().filter(preemptedCode::equals).isPresent()),
+                () -> preemptedCode + " must be PRE-EMPTED for '" + condition + "' — if both fire, the ordering "
+                        + "claim is not what was measured: " + r.diagnostics());
+    }
+
     /** Logistics-fixture variant (two index-keyed repeatable groups) — authored via modelkit, not JSON. */
     static void acceptsLogistics(String group, String errorField, String condition) {
         assertAccepts(LOGISTICS, group, errorField, condition);

@@ -1,6 +1,7 @@
 package io.github.mbackschat.a12.dm.rulekit.validate;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Stream;
 
@@ -124,12 +125,13 @@ final class DiagnosticEnricher {
     }
 
     /**
-     * The <b>single owning operator</b>, or empty when ownership cannot be established. Two evidence sources,
-     * strongest first, and both must yield <em>exactly one</em> candidate:
+     * The <b>single owning operator</b>, or empty when ownership cannot be established. Three evidence sources,
+     * strongest first, and each must yield <em>exactly one</em> candidate:
      *
      * <ol>
      *   <li><b>structured</b> — {@code where.operator}, the AST operator id, when the producing stage set it;</li>
-     *   <li><b>the operand the kernel NAMED in its message</b> — see {@link KernelMessageOperands}.</li>
+     *   <li><b>the operand the kernel NAMED in its message</b> — see {@link KernelMessageOperands};</li>
+     *   <li><b>a code whose kernel raise site is unique</b> — see {@link #SOLE_RAISE_SITE}.</li>
      * </ol>
      *
      * <p>Resolution runs <b>only among the code's documenters</b>. Widening it to the whole catalog — on the
@@ -159,8 +161,41 @@ final class DiagnosticEnricher {
             }
         }
         List<OperatorEntry> named = KernelMessageOperands.namedAmong(catalog, diagnostic.summary(), documenters);
-        return named.size() == 1 ? Optional.of(named.get(0)) : Optional.empty();
+        if (named.size() == 1) {
+            return Optional.of(named.get(0));
+        }
+        return diagnostic.code()
+                .map(SOLE_RAISE_SITE::get)
+                .flatMap(operatorId -> documenters.stream()
+                        .filter(entry -> entry.id().equals(operatorId))
+                        .findFirst());
     }
+
+    /**
+     * Codes the kernel raises from <b>exactly one</b> site, so the code alone identifies the construct — the third
+     * evidence source, and the only sound way to own a code whose message names no operator.
+     *
+     * <p><b>Not the sole-documenter shortcut in disguise.</b> That one reasoned from <em>our catalog's</em> coverage,
+     * which is a partial map, so "one entry documents this code" was equally consistent with an undocumented sibling
+     * having raised it. This reasons from the <em>kernel's</em> source: an enumerated, anchored search of the
+     * consult-only checkout showing one raise site and no other. The two are different claims about different
+     * artifacts, and only the second establishes anything.
+     *
+     * <p><b>Admission bar, per entry:</b> a shown enumeration over the kernel source — every hit classified as the
+     * raise site, the {@code ParserErrorTypesEnum} declaration, or a message-bundle/documentation template — with
+     * {@code /build/} and {@code delombok} trees excluded. Add an entry only with that evidence recorded beside it.
+     * Widening this map on a hunch reproduces defect (4) with extra steps.
+     *
+     * <p>{@code MVK_NO_INDEX_FIELD} is the first entry, and it exists because tightening election to
+     * <em>positively established</em> ownership dropped an {@code explain} that had been <b>right</b>: the unsound
+     * sole-documenter rule happened to name the correct owner here. A correct outcome from unsound reasoning is not
+     * a reason to keep the reasoning — but it is a reason to look for a sound basis for the same outcome, and there
+     * was one. Measured 2026-08-01 in kernel 30.8.1: the single raise site is
+     * {@code CheckSemanticIndexImpl:125}; the EN template is {@code For '%s' there is no repeatable group with index
+     * field.}, whose delimited operand is a <em>path</em>, which is precisely why the message-based source cannot
+     * reach it.
+     */
+    private static final Map<String, String> SOLE_RAISE_SITE = Map.of("MVK_NO_INDEX_FIELD", "SemanticIndex");
 
 
 

@@ -53,11 +53,17 @@ class TemporalLiteralFormatGateLawsTest {
     /**
      * The pair, on ONE extractor so the extractor cannot be the variable. This is the case that falsifies the
      * shipped claim: the same {@code YearFromDate} yields both codes, chosen by the literal alone.
+     *
+     * <p>Asserted <b>exclusively</b> in both directions, because the law is an ordering claim ("the string gate
+     * fires first and the constant rule is never reached") and the ordinary assertion is an {@code anyMatch} that
+     * cannot see it. As first written this method would have passed had the ISO cell raised {@code MVK_NO_CONST}
+     * too — i.e. it did not test the sentence it was named after. Review found it, which is fitting: the finding it
+     * locks is itself about a claim that outran what was measured.
      */
     @Test
     void aDateExtractorsLiteralGateIsChosenByTheLiteralsFormat() {
-        rejects("Date(\"01\", \"01\", YearFromDate(\"01.01.2019\"))", NO_CONST);
-        rejects("Date(\"01\", \"01\", YearFromDate(\"2019-01-01\"))", INVALID_DATE_STRING);
+        rejectsInsteadOf("Date(\"01\", \"01\", YearFromDate(\"01.01.2019\"))", NO_CONST, INVALID_DATE_STRING);
+        rejectsInsteadOf("Date(\"01\", \"01\", YearFromDate(\"2019-01-01\"))", INVALID_DATE_STRING, NO_CONST);
     }
 
     /** Every date extractor takes the model-format literal to the SAME constant gate — not a family of its own. */
@@ -71,8 +77,8 @@ class TemporalLiteralFormatGateLawsTest {
     /** The time extractors sit on the same two gates — so the extractor's family is not the discriminator. */
     @Test
     void theTimeExtractorsShowTheSameTwoGates() {
-        rejects("Time(HoursFromTime(\"10:30:45\"), \"30\", \"45\")", NO_CONST);
-        rejects("Time(HoursFromTime(\"2019-01-01\"), \"30\", \"45\")", INVALID_DATE_STRING);
+        rejectsInsteadOf("Time(HoursFromTime(\"10:30:45\"), \"30\", \"45\")", NO_CONST, INVALID_DATE_STRING);
+        rejectsInsteadOf("Time(HoursFromTime(\"2019-01-01\"), \"30\", \"45\")", INVALID_DATE_STRING, NO_CONST);
     }
 
     /**
@@ -89,5 +95,11 @@ class TemporalLiteralFormatGateLawsTest {
     private static void rejects(String comparand, String code) {
         KernelLaws.rejectsOrder("/Order", "../CustomerName",
                 "FieldFilled(CustomerName) And [DeliveryDate] > " + comparand, code);
+    }
+
+    /** The exclusive form — {@code code} fires and {@code preempted} does not, which is what an ordering law claims. */
+    private static void rejectsInsteadOf(String comparand, String code, String preempted) {
+        KernelLaws.rejectsOrderInsteadOf("/Order", "../CustomerName",
+                "FieldFilled(CustomerName) And [DeliveryDate] > " + comparand, code, preempted);
     }
 }

@@ -148,6 +148,44 @@ class EnricherOwnershipEvidenceTest {
                         java.util.Optional.empty(), java.util.Optional.empty()));
     }
 
+    /**
+     * <b>A unique kernel raise site IS evidence, and it is the only sound way to own a message that names no
+     * operator.</b> The counterpart to the case above: tightening election to positively-established ownership
+     * dropped this {@code explain}, which had been <em>correct</em> — the unsound sole-documenter rule happened to
+     * name the right owner. A right answer from wrong reasoning is not a reason to keep the reasoning, but it is a
+     * reason to look for a sound basis, and here there was one.
+     *
+     * <p>What makes this basis different from the sole-<em>documenter</em> shortcut: that reasoned from <em>our
+     * catalog's</em> coverage, a partial map, so one documenter was equally consistent with an undocumented sibling
+     * having raised the code. This reasons from the <em>kernel's source</em> — an enumerated search over the
+     * consult-only checkout (kernel 30.8.1) finding exactly one raise site, {@code CheckSemanticIndexImpl:125},
+     * with every other hit being the {@code ParserErrorTypesEnum} declaration or a message/documentation template.
+     *
+     * <p>Discriminating by construction: the EN template is {@code For '%s' there is no repeatable group with index
+     * field.}, so the only delimited span is a <b>path</b>. The message-based source therefore cannot reach this
+     * code, and the structured source has no operator either — remove the {@code SOLE_RAISE_SITE} entry and this
+     * test fails. (The unquoted {@code For} in that sentence is {@code SemanticIndex}'s English keyword, which is
+     * exactly the boilerplate the first case above proves is not evidence: the right owner, for a reason that would
+     * be wrong anywhere else.)
+     */
+    @Test
+    void aCodeWithAUniqueKernelRaiseSiteIsOwnedByThatConstruct() {
+        ValidationResult result = check(
+                "FieldFilled(CustomerName) And [BillingAddress/PostalCode For \"x\"] == \"y\"");
+
+        Diagnostic d = coded(result, "MVK_NO_INDEX_FIELD");
+        assertFalse(d.summary().contains("'SemanticIndex'") || d.summary().contains("'For'"),
+                () -> "precondition: the kernel delimits a PATH here, never the operator — so the message-based "
+                        + "source cannot establish this owner: " + d);
+        assertEquals(
+                io.github.mbackschat.a12.dm.rulekit.catalog.OperatorCatalog.load().byId("SemanticIndex")
+                        .orElseThrow().meaning(),
+                d.explain().orElse(""),
+                () -> "the code has one raise site, so the construct is established and its meaning may ride: " + d);
+        assertFalse(d.fix().orElse("").contains("if that is what you used"),
+                () -> "an established owner gets its own corrective, not the hedge: " + d);
+    }
+
     private static ValidationResult check(String condition) {
         return new RuleValidator().check(Fixtures.orderJson(),
                 new DraftRule("/Order", "ProbeRule", "../CustomerName", condition, "PROBE", "ERROR"));
