@@ -4,6 +4,7 @@ import {dirname} from "node:path";
 import process from "node:process";
 
 import {
+  closeChrome,
   launchChrome,
   openCheckedPage,
   withDeadline,
@@ -108,7 +109,7 @@ await withStaticServer(async (url) => {
           documentBytes = observedDocumentBytes;
           samples.push(value);
         } finally {
-          await withDeadline("Chrome shutdown", browser.close());
+          await closeChrome(browser);
         }
       }
       console.log(

@@ -1,6 +1,7 @@
 import {resolve} from "node:path";
 
 import {
+  closeChrome,
   launchChrome,
   openCheckedPage,
   PAGES_BASE,
@@ -901,7 +902,7 @@ await withStaticServer(async (url) => {
     throw error;
   } finally {
     try {
-      await withDeadline("Chrome shutdown", browser.close());
+      await closeChrome(browser);
     } catch (closeError) {
       if (primaryFailure === undefined) {
         throw closeError;

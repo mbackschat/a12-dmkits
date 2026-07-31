@@ -14,12 +14,14 @@ import {
 
 export const PAGES_BASE = "/a12-interpreter-releases/showcase/";
 export const DEADLINE_MILLIS = 10_000;
+export const CHROME_SHUTDOWN_DEADLINE_MILLIS = 30_000;
 
 const distribution = resolve("dist");
 
 export const withDeadline = async <T>(
   label: string,
   operation: PromiseLike<T>,
+  deadlineMillis = DEADLINE_MILLIS,
 ): Promise<T> => {
   let timeout: ReturnType<typeof setTimeout> | undefined;
   try {
@@ -27,8 +29,8 @@ export const withDeadline = async <T>(
       operation,
       new Promise<T>((_, reject) => {
         timeout = setTimeout(
-          () => reject(new Error(`${label} exceeded ${DEADLINE_MILLIS} ms`)),
-          DEADLINE_MILLIS,
+          () => reject(new Error(`${label} exceeded ${deadlineMillis} ms`)),
+          deadlineMillis,
         );
       }),
     ]);
@@ -113,6 +115,13 @@ export const launchChrome = async (): Promise<Browser> =>
       executablePath: await chromeExecutable(),
       headless: true,
     }),
+  );
+
+export const closeChrome = async (browser: Browser): Promise<void> =>
+  withDeadline(
+    "Chrome shutdown",
+    browser.close(),
+    CHROME_SHUTDOWN_DEADLINE_MILLIS,
   );
 
 export const withStaticServer = async <T>(
