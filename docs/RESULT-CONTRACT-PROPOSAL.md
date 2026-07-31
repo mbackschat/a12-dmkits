@@ -73,7 +73,17 @@ Timeline, against the last full eval run (**2026-07-09**): the catalog gap postd
 
 ## 3. The evidence vocabulary <a id="evidence"></a>
 
-**Required:** two orthogonal keys, never merged.
+**Required:** orthogonal keys, never merged, emitted **flat on the envelope** — not nested under an `evidence` object *(owner ruling 2026-07-31, given as the shape below)*:
+
+```json
+{
+  "engine": "DM_INTERPRETER",
+  "engineVersion": "0.10.1",
+  "toolVersion": "0.10.1"
+}
+```
+
+They are equal today, which is precisely why both must be emitted rather than one inferred from the other.
 
 - `verification: KERNEL_CONFIRMED | STRUCTURAL_ONLY` — *how a consistency verdict was arbitrated*. Attached to **every invocation that actually ran the gate**, derived from the executed path (`BoundModel.ofJson` / `checkAndOpen` = gated; `ofJsonLenient` / `ModelIndex`-only = not), **never** from a per-verb table. This adds evidence to seven currently-silent read verbs.
 - `engine: A12_KERNEL | DM_INTERPRETER` + **`engineVersion`** — *which implementation produced the semantic observation*: the `:interpreter` module version for `DM_INTERPRETER`, the **actual runtime kernel** version for `A12_KERNEL` (dmtool already separates built-vs-runtime kernel in `--version`, so reuse that distinction).
