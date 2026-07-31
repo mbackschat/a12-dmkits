@@ -97,6 +97,7 @@ const expectedSeededFields = [
   "GraphemeProbe",
   "ReportedAt",
   "SettledAt",
+  "SiteSections",
 ].sort();
 if (
   seededPermit === null ||
@@ -107,6 +108,21 @@ if (
 ) {
   throw new Error(
     `prepared Document seed omitted model fields: ${
+      JSON.stringify(seededDocument)
+    }`,
+  );
+}
+const seededSections = (seededPermit as Record<string, unknown>).SiteSections;
+if (
+  !Array.isArray(seededSections) ||
+  seededSections.length !== 1 ||
+  typeof seededSections[0] !== "object" ||
+  seededSections[0] === null ||
+  !Object.hasOwn(seededSections[0], "SectionName") ||
+  !Object.hasOwn(seededSections[0], "Area")
+) {
+  throw new Error(
+    `prepared Document seed omitted its repeatable group row: ${
       JSON.stringify(seededDocument)
     }`,
   );
