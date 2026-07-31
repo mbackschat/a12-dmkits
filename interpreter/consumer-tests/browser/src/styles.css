@@ -621,8 +621,33 @@ a:focus-visible {
 }
 
 .validation-scope-control {
-  flex: 0 1 260px;
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 12px;
   margin-left: auto;
+}
+
+.validation-scope-control > span {
+  color: var(--muted);
+  font-size: 0.9rem;
+  font-weight: 700;
+}
+
+.validation-scope-control label {
+  display: inline-flex;
+  flex: none;
+  flex-direction: row;
+  align-items: center;
+  gap: 5px;
+  color: var(--ink);
+  font-weight: 600;
+}
+
+.validation-scope-control input {
+  width: auto;
+  margin: 0;
+  accent-color: var(--blue-dark);
 }
 
 .operation-runs-control {

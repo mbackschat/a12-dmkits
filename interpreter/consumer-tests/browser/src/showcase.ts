@@ -80,7 +80,7 @@ interface RetainedComputation {
 }
 
 interface ValidationOperation {
-  readonly scope: "full" | "relevant";
+  readonly scope: "full" | "partial";
   run(snapshot: DocumentSnapshot): ValidationReport;
 }
 
@@ -164,9 +164,13 @@ const entryModelControl = requiredElement(
   "#entry-model-control",
   HTMLLabelElement,
 );
-const validationScopeSelect = requiredElement(
-  "#validation-scope",
-  HTMLSelectElement,
+const validationScopeFull = requiredElement(
+  "#validation-scope-full",
+  HTMLInputElement,
+);
+const validationScopePartial = requiredElement(
+  "#validation-scope-partial",
+  HTMLInputElement,
 );
 const providerFailureSelect = requiredElement(
   "#provider-failure",
@@ -236,7 +240,8 @@ const operationControls: readonly (
   operationRuns,
   scenarioSelect,
   workspaceModeSelect,
-  validationScopeSelect,
+  validationScopeFull,
+  validationScopePartial,
   providerFailureSelect,
   relevantPath,
   relevantCoordinates,
@@ -531,7 +536,7 @@ const snapshot = async (): Promise<{
 };
 
 const selectedValidation = (state: PreparedState): ValidationOperation => {
-  if (validationScopeSelect.value === "full") {
+  if (validationScopeFull.checked) {
     return {
       scope: "full",
       run: (document) => state.interpreter.validateFull(document),
@@ -544,7 +549,7 @@ const selectedValidation = (state: PreparedState): ValidationOperation => {
     ),
   ];
   return {
-    scope: "relevant",
+    scope: "partial",
     run: (document) => state.interpreter.validatePart(document, relevant),
   };
 };
@@ -745,9 +750,11 @@ export const startShowcase = async (): Promise<void> => {
   scenarioSelect.addEventListener("change", () => {
     void withOperation(selectScenario);
   });
-  validationScopeSelect.addEventListener("change", () => {
-    relevantSelection.hidden = validationScopeSelect.value !== "relevant";
-  });
+  for (const scope of [validationScopeFull, validationScopePartial]) {
+    scope.addEventListener("change", () => {
+      relevantSelection.hidden = validationScopeFull.checked;
+    });
+  }
   workspaceModeSelect.addEventListener("change", () => {
     invalidatePreparedState();
   });
@@ -846,7 +853,7 @@ export const startShowcase = async (): Promise<void> => {
       status.dataset.state = "passed";
       status.textContent = validation.scope === "full"
         ? "Full validation completed."
-        : "Relevant validation completed.";
+        : "Partial validation completed.";
     }),
   );
   requiredElement("#compute", HTMLButtonElement).addEventListener(
@@ -956,7 +963,7 @@ export const startShowcase = async (): Promise<void> => {
       status.dataset.state = "passed";
       status.textContent = validation.scope === "full"
         ? "Computations applied and full validation completed."
-        : "Computations applied and relevant validation completed.";
+        : "Computations applied and partial validation completed.";
     }),
   );
 

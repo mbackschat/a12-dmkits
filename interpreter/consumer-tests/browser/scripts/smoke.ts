@@ -207,17 +207,51 @@ await withStaticServer(async (url) => {
         ?.closest("#entry-model-control") !== null,
       validationScope: document.querySelector("#validation-scope")
         ?.closest(".actions") !== null,
+      validationRadios: Array.from(
+        document.querySelectorAll<HTMLInputElement>(
+          'input[name="validation-scope"]',
+        ),
+      ).map(({id, value, checked}) => ({id, value, checked})),
+      validationBeforeRuns: (() => {
+        const validation = document.querySelector("#validation-scope");
+        const runs = document.querySelector(".operation-runs-control");
+        return validation !== null &&
+          runs !== null &&
+          (validation.compareDocumentPosition(runs) &
+            Node.DOCUMENT_POSITION_FOLLOWING) !== 0;
+      })(),
     }));
     if (
       controlHierarchy.legacyControlBar ||
       !controlHierarchy.scenario ||
       !controlHierarchy.workspaceMode ||
       !controlHierarchy.entryModel ||
-      !controlHierarchy.validationScope
+      !controlHierarchy.validationScope ||
+      JSON.stringify(controlHierarchy.validationRadios) !== JSON.stringify([
+        {id: "validation-scope-full", value: "full", checked: true},
+        {id: "validation-scope-partial", value: "partial", checked: false},
+      ]) ||
+      !controlHierarchy.validationBeforeRuns
     ) {
       throw new Error(
         `showcase controls have no task hierarchy: ${
           JSON.stringify(controlHierarchy)
+        }`,
+      );
+    }
+    const buttonTooltips = await showcase.locator("button").evaluateAll(
+      (buttons) => buttons.map((button) => ({
+        id: button.id,
+        title: button.getAttribute("title")?.trim() ?? "",
+      })),
+    );
+    const buttonsWithoutTooltips = buttonTooltips.filter(
+      ({id, title}) => id.length === 0 || title.length === 0,
+    );
+    if (buttonsWithoutTooltips.length > 0) {
+      throw new Error(
+        `showcase buttons lack explanatory tooltips: ${
+          JSON.stringify(buttonsWithoutTooltips)
         }`,
       );
     }
@@ -358,8 +392,8 @@ await withStaticServer(async (url) => {
       "workspace folder",
       "Finite file map",
       "On-demand provider",
-      "Full document",
-      "Relevant scenario group",
+      "Full validates",
+      "Partial validates",
       "same prepared interpreter and Document",
       "multiple runs report p95",
       "model-shaped starter",
@@ -552,12 +586,12 @@ await withStaticServer(async (url) => {
     await assertTiming(1, "elapsed", "validation");
 
     await showcase.selectOption("#scenario", "firing");
-    await showcase.selectOption("#validation-scope", "relevant");
+    await showcase.check("#validation-scope-partial");
     await operationRuns.fill("5");
     await showcase.click("#validate");
-    await assertOutput("validate-relevant", ["AREA_NEEDS_NOTE"]);
+    await assertOutput("validate-partial", ["AREA_NEEDS_NOTE"]);
     await assertTiming(5, "p95", "validation");
-    await showcase.selectOption("#validation-scope", "full");
+    await showcase.check("#validation-scope-full");
 
     await showcase.selectOption("#scenario", "formal-invalid");
     await showcase.click("#validate");
