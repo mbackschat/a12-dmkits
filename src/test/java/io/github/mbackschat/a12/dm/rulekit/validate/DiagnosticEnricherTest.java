@@ -148,6 +148,28 @@ class DiagnosticEnricherTest {
     }
 
     @Test
+    void anOperatorScopedMessageNarrowsTheUnionToTheOperatorTheKernelNamed() {
+        // MVK_NO_CONST is documented by SEVEN operators with differing correctives (the four operand-list
+        // numeric wrappers + the three time-component extractors — KERNEL-FINDINGS kf167), so the sound union
+        // would concatenate all seven AND answer with an arbitrary documenter's meaning. But the kernel names
+        // the construct in the summary, so the join narrows to it. The summary below is the REAL kernel text,
+        // missing separator included.
+        Diagnostic rejected = Diagnostic.precheck(Optional.of("MVK_NO_CONST"),
+                "Rule with path '/Order/CheckRule': At 'Abs'It is not allowed to use constants. [MVK_NO_CONST]",
+                new Diagnostic.Where((String) null, Optional.empty()), Optional.empty(), Optional.empty());
+
+        Diagnostic enriched = ENRICHER.enrich(rejected);
+
+        String fix = enriched.fix().orElse("");
+        assertFalse(fix.contains("more than one construct"),
+                () -> "an operator-scoped message must narrow, not fall back to the union: " + fix);
+        assertTrue(fix.contains("Abs([UnitPrice] - 1)"),
+                () -> "must carry Abs's own corrective: " + fix);
+        assertTrue(enriched.explain().orElse("").contains("absolute value"),
+                () -> "explain must be Abs's meaning, not another documenter's: " + enriched.explain());
+    }
+
+    @Test
     void noCrossOperatorCodeSilentlyDropsACorrective() {
         // GUARD (anti-whack-a-mole, catalog-derived so it covers siblings we never probed): for EVERY kernel
         // code documented by >1 operator whose invalidExample fixes DISAGREE, the enriched fix must carry

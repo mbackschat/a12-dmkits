@@ -1664,8 +1664,10 @@
     "gotchas": [
       { "text": "distinct from the field-only RoundDownValue family — this operand-list form rounds the result of an expression", "kind": "AUTHORING" }
     , { "text": "rounds toward minus infinity (floor), not toward zero: RoundDown(-1.4, 0) = -2", "kind": "SURPRISE" }
+    , { "text": "an IMMEDIATE numeric literal as the FIRST operand is refused — RoundDown(1.250, 1) is MVK_NO_CONST. It is a position gate on the immediate child, not a ban on literals below it: a literal inside an independently admitted subtree (RoundDown([UnitPrice] * 2, 1)) is legal, and so is a literal as a sibling operand of an outer call, subject to that operator's own one-literal budget. The decimal-places operand is a separate grammar branch and stays a literal", "kind": "AUTHORING", "seeAlso": ["Abs", "RoundUp", "RoundAccounting"] }
     , { "text": "direct numeric BaseYear is legal here: it is a separate grammar branch, not an immediate numeric literal", "kind": "AUTHORING" } ],
     "validExample": { "dsl": "FieldFilled(UnitPrice) And RoundDown([UnitPrice], 0) < 1", "note": "fires when the unit price rounds down to less than one whole currency unit" },
+    "invalidExample": { "dsl": "RoundDown(1.250, 1) < [Quantity]", "error": "MVK_NO_CONST", "fix": "the first operand may not be an immediate literal — round a field or an expression over one: RoundDown([UnitPrice] * 2, 1) < [Quantity]" },
     "sinceKernel": "30.8.x"
   },
   {
@@ -1727,12 +1729,14 @@
     "operands": [ { "type": "number" } ],
     "returns": "number",
     "meaning": "The absolute value of a numeric expression — the operand-list form (Abs([A] - [B])), distinct from the field-only AbsValue.",
-    "constraints": [ "exactly one numeric value expression (a field, arithmetic, or other numeric function)" ],
+    "constraints": [ "exactly one numeric value expression (a field, arithmetic, or other numeric function) — but NOT an immediate numeric literal" ],
     "gotchas": [
-      { "text": "Abs([Field]) and AbsValue(Field) are equivalent; Abs also accepts an arbitrary expression", "kind": "SURPRISE" },
+      { "text": "Abs([Field]) and AbsValue(Field) are equivalent; Abs also accepts an arbitrary numeric expression — except an immediate literal, which is MVK_NO_CONST", "kind": "SURPRISE" },
+      { "text": "an IMMEDIATE numeric literal is refused — Abs(1.250) is MVK_NO_CONST. It is a position gate on the immediate child, not a ban on literals below it: a literal inside an independently admitted subtree (Abs([UnitPrice] - 1)) is legal, and so is a literal as a sibling operand of an outer call (Min(Abs([UnitPrice]), [Quantity], 1.250)) subject to that operator's own one-literal budget. \"The source must be a field\" is too broad in both directions", "kind": "AUTHORING", "seeAlso": ["RoundDown", "RoundUp", "RoundAccounting"] },
       { "text": "direct numeric BaseYear is legal here: it is a separate grammar branch, not an immediate numeric literal", "kind": "AUTHORING" }
     ],
     "validExample": { "dsl": "AllFieldsFilled(Quantity, UnitPrice) And Abs([Quantity] - [UnitPrice]) < 1", "note": "fires when quantity and unit price are within 1 of each other" },
+    "invalidExample": { "dsl": "Abs(1.250) < [Quantity]", "error": "MVK_NO_CONST", "fix": "the immediate operand may not be a literal — wrap a field or an expression over one: Abs([UnitPrice] - 1) < [Quantity]" },
     "sinceKernel": "30.8.x"
   },
   {
@@ -1920,9 +1924,11 @@
     ],
     "gotchas": [
       { "text": "rounds toward plus infinity (ceiling): RoundUp(-1.4, 0) = -1", "kind": "SURPRISE" },
+      { "text": "an IMMEDIATE numeric literal as the FIRST operand is refused — RoundUp(1.250, 1) is MVK_NO_CONST. It is a position gate on the immediate child, not a ban on literals below it: a literal inside an independently admitted subtree (RoundUp([UnitPrice] * 2, 1)) is legal, and so is a literal as a sibling operand of an outer call, subject to that operator's own one-literal budget. The decimal-places operand is a separate grammar branch and stays a literal", "kind": "AUTHORING", "seeAlso": ["Abs", "RoundDown", "RoundAccounting"] },
       { "text": "direct numeric BaseYear is legal here: it is a separate grammar branch, not an immediate numeric literal", "kind": "AUTHORING" }
     ],
     "validExample": { "dsl": "FieldFilled(UnitPrice) And RoundUp([UnitPrice], 1) > 1000", "note": "fires when the unit price rounded up to one decimal exceeds 1000" },
+    "invalidExample": { "dsl": "RoundUp(1.250, 1) < [Quantity]", "error": "MVK_NO_CONST", "fix": "the first operand may not be an immediate literal — round a field or an expression over one: RoundUp([UnitPrice] * 2, 1) < [Quantity]" },
     "sinceKernel": "30.8.x"
   },
   {
@@ -1938,9 +1944,11 @@
     ],
     "gotchas": [
       { "text": "half-up, away from zero on the .5 boundary in both signs: RoundAccounting(-2.5, 0) = -3", "kind": "SURPRISE" },
+      { "text": "an IMMEDIATE numeric literal as the FIRST operand is refused — RoundAccounting(1.250, 1) is MVK_NO_CONST. It is a position gate on the immediate child, not a ban on literals below it: a literal inside an independently admitted subtree (RoundAccounting([UnitPrice] * [Quantity], 2)) is legal, and so is a literal as a sibling operand of an outer call, subject to that operator's own one-literal budget. The decimal-places operand is a separate grammar branch and stays a literal", "kind": "AUTHORING", "seeAlso": ["Abs", "RoundDown", "RoundUp"] },
       { "text": "direct numeric BaseYear is legal here: it is a separate grammar branch, not an immediate numeric literal", "kind": "AUTHORING" }
     ],
     "validExample": { "dsl": "AllFieldsFilled(Quantity, UnitPrice) And RoundAccounting([UnitPrice] * [Quantity], 2) > 10000", "note": "fires when the commercially-rounded line total exceeds 10000" },
+    "invalidExample": { "dsl": "RoundAccounting(1.250, 1) < [Quantity]", "error": "MVK_NO_CONST", "fix": "the first operand may not be an immediate literal — round a field or an expression over one: RoundAccounting([UnitPrice] * [Quantity], 2) < [Quantity]" },
     "sinceKernel": "30.8.x"
   },
   {
@@ -2930,7 +2938,11 @@
     "returns": "number",
     "meaning": "The hour-of-day component (0-23) of a time or date-time, as a number.",
     "constraints": [ "the operand is a time or date-time (a field or expression), rendered as a bare entity ref" ],
+    "gotchas": [
+      { "text": "the operand is the ordinary NONLITERAL temporal grammar — a direct temporal literal is refused: HoursFromTime(\"10:30:00\") is MVK_NO_CONST. Fields, shifts (AddHours(...)), and dynamic Now/Today are all admitted. This shares its code with the numeric wrappers (Abs/Round*) but is a DIFFERENT operand gate; the date extractors refuse a quoted literal as MVK_INVALID_DATE_STRING instead", "kind": "AUTHORING", "seeAlso": ["MinutesFromTime", "SecondsFromTime"] }
+    ],
     "validExample": { "dsl": "FieldFilled(PickupTime) And HoursFromTime(PickupTime) < 9", "note": "fires for pickups before 9am" },
+    "invalidExample": { "dsl": "HoursFromTime(\"10:30:00\") > HoursFromTime(PickupTime)", "error": "MVK_NO_CONST", "fix": "extract from a field or a temporal expression, never a literal: HoursFromTime(PickupTime) > 10" },
     "semantics": {
       "polarity": {
         "value": "SYMMETRIC",
@@ -2978,7 +2990,11 @@
     "returns": "number",
     "meaning": "The minute component (0-59) of a time or date-time, as a number.",
     "constraints": [ "the operand is a time or date-time (a field or expression)" ],
+    "gotchas": [
+      { "text": "the operand is the ordinary NONLITERAL temporal grammar — a direct temporal literal is refused: MinutesFromTime(\"10:30:00\") is MVK_NO_CONST. Fields, shifts, and dynamic Now/Today are all admitted. This shares its code with the numeric wrappers (Abs/Round*) but is a DIFFERENT operand gate", "kind": "AUTHORING", "seeAlso": ["HoursFromTime", "SecondsFromTime"] }
+    ],
     "validExample": { "dsl": "FieldFilled(PickupTime) And MinutesFromTime(PickupTime) != 0", "note": "fires when the pickup minute is not on the hour" },
+    "invalidExample": { "dsl": "MinutesFromTime(\"10:30:00\") > MinutesFromTime(PickupTime)", "error": "MVK_NO_CONST", "fix": "extract from a field or a temporal expression, never a literal: MinutesFromTime(PickupTime) > 30" },
     "semantics": {
       "polarity": {
         "value": "SYMMETRIC",
@@ -3026,7 +3042,11 @@
     "returns": "number",
     "meaning": "The second component (0-59) of a time or date-time, as a number.",
     "constraints": [ "the operand is a time or date-time (a field or expression)" ],
+    "gotchas": [
+      { "text": "the operand is the ordinary NONLITERAL temporal grammar — a direct temporal literal is refused: SecondsFromTime(\"10:30:00\") is MVK_NO_CONST. Fields, shifts, and dynamic Now/Today are all admitted. This shares its code with the numeric wrappers (Abs/Round*) but is a DIFFERENT operand gate", "kind": "AUTHORING", "seeAlso": ["HoursFromTime", "MinutesFromTime"] }
+    ],
     "validExample": { "dsl": "FieldFilled(PickupTime) And SecondsFromTime(PickupTime) == 0", "note": "fires when the pickup time has no seconds offset" },
+    "invalidExample": { "dsl": "SecondsFromTime(\"10:30:00\") > SecondsFromTime(PickupTime)", "error": "MVK_NO_CONST", "fix": "extract from a field or a temporal expression, never a literal: SecondsFromTime(PickupTime) > 0" },
     "semantics": {
       "polarity": {
         "value": "SYMMETRIC",

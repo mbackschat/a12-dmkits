@@ -23,7 +23,11 @@ import io.github.mbackschat.a12.dm.rulekit.catalog.OperatorEntry;
  * <ul>
  *   <li><b>cross-operator</b> — when {@code >1} operator documents a code with <em>differing</em>
  *       correctives, the join attaches the <em>union</em> of them (never one) — so no construct is
- *       mis-stamped. One documenter (or several that agree) attaches the single corrective, unchanged.</li>
+ *       mis-stamped. One documenter (or several that agree) attaches the single corrective, unchanged.
+ *       <b>Refined 2026-07-31:</b> the claim above that the disambiguator "is empty at enrich time" holds for
+ *       {@code where.operator} but <em>not</em> for the message — an operator-scoped MVK summary names the
+ *       construct as {@code At '<Operator>'}, so {@link #narrowToNamedOperator} selects that documenter and the
+ *       union survives only as the fallback. Measured on {@code MVK_NO_CONST}, which 7 operators document.</li>
  *   <li><b>cross-context</b> — a code whose catalog documenter's fix is wrong for <em>another</em> real
  *       trigger ({@code MVK_NO_WILDCARD} from an aggregate; {@code MVK_INVALID_COMPARE_DEC_PLACES} from a
  *       computed-field scale) is carried by {@link StructuralKernelFix}, which is consulted <b>first</b>.</li>
@@ -50,7 +54,8 @@ final class DiagnosticEnricher {
         }
         List<OperatorEntry> documenters = diagnostic.code().map(catalog::operatorsForError).orElse(List.of());
         if (!documenters.isEmpty()) {
-            return diagnostic.withFix(joinFix(documenters), firstMeaning(documenters));
+            List<OperatorEntry> scoped = narrowToNamedOperator(diagnostic.summary(), documenters);
+            return diagnostic.withFix(joinFix(scoped), firstMeaning(scoped));
         }
         // last resort — a content-free KERNEL rejection with a message but no MVK_ code (e.g. the date/time
         // field-format reject); attach a message-matched hint so it isn't left fix-less (probe 08).
@@ -85,6 +90,43 @@ final class DiagnosticEnricher {
         }
         return Optional.of("this code is raised by more than one construct; the corrective depends on which "
                 + "you used — " + String.join("; ", distinct));
+    }
+
+    /**
+     * Narrow the documenters to the operator <b>the kernel itself named</b>, when it did. An operator-scoped
+     * MVK message carries an {@code At '<Operator>'} prefix — {@code "At 'Abs'It is not allowed to use
+     * constants."} — so for exactly those codes the disambiguator the union works around <em>is</em> present at
+     * enrich time, in the summary rather than in {@code where.operator}. Selecting by it is a <b>narrowing of
+     * the sound union, not a guess</b>: the kernel says which construct rejected.
+     *
+     * <p>It matters most for {@code explain}: without it a 7-documenter code (`MVK_NO_CONST`) answered an
+     * {@code Abs} rejection with {@code RoundDown}'s meaning and all seven correctives concatenated. Degrades
+     * to the union whenever the summary names nothing, or names an operator that does not document the code.
+     */
+    private static List<OperatorEntry> narrowToNamedOperator(String summary, List<OperatorEntry> documenters) {
+        if (summary == null || documenters.size() < 2) {
+            return documenters;
+        }
+        java.util.regex.Matcher named = AT_OPERATOR.matcher(summary);
+        if (!named.find()) {
+            return documenters;
+        }
+        List<OperatorEntry> scoped = documenters.stream()
+                .filter(entry -> namesOperator(entry, named.group(1)))
+                .toList();
+        return scoped.isEmpty() ? documenters : scoped;
+    }
+
+    /** The kernel's operator-scoped message prefix; the keyword is the model's condition language, so match both. */
+    private static final java.util.regex.Pattern AT_OPERATOR = java.util.regex.Pattern.compile("At '([\\w-]+)'");
+
+    private static boolean namesOperator(OperatorEntry entry, String named) {
+        if (named.equalsIgnoreCase(entry.id())) {
+            return true;
+        }
+        OperatorEntry.Keywords keywords = entry.keywords();
+        return keywords != null
+                && (named.equalsIgnoreCase(keywords.en()) || named.equalsIgnoreCase(keywords.de()));
     }
 
     private static Optional<String> firstMeaning(List<OperatorEntry> documenters) {
