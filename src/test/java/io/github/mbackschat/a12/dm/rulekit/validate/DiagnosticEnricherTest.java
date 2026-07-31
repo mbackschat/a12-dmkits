@@ -166,8 +166,13 @@ class DiagnosticEnricherTest {
     void anUnestablishedOwnerYieldsNoExplainAtAll() {
         // The union fixed the `fix` but kept a firstMeaning() `explain`, so an ambiguous join still asserted an
         // owner. Reproduced by review with LessThan/LessOrEqual: a LessThan rejection was explained as
-        // "less than or equal". Here the summary names NO operator (the shape of the kernel's default bundle,
-        // which renders MVK_NO_CONST as "Kein Fehler definiert!"), so ownership is unestablished.
+        // "less than or equal". Here the summary names no operator, so ownership is unestablished.
+        //
+        // This comment used to justify the operator-free summary by claiming the kernel's default bundle renders
+        // MVK_NO_CONST as "Kein Fehler definiert!". That is true only of the base STUB properties file; the
+        // populated German bundle does name the operator (see DiagnosticEnricher's javadoc). The case below is
+        // still worth locking on its own terms — plenty of real templates substitute a path or a digit count
+        // rather than an operator — but it is a constructed shape, not that bundle's behaviour.
         Diagnostic enriched = ENRICHER.enrich(raw("MVK_NO_CONST"));
 
         assertTrue(enriched.explain().isEmpty(),

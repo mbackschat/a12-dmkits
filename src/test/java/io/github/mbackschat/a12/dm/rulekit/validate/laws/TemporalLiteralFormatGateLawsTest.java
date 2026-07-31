@@ -6,7 +6,7 @@ import org.junit.jupiter.api.Test;
  * KERNEL-FINDINGS §6 supplement — <b>which of the two gates a quoted literal beneath a temporal extractor
  * trips is decided by the literal's FORMAT, not by the extractor's family.</b>
  *
- * <p>Recorded because the opposite was asserted, and shipped. {@link org.junit.jupiter.api.Test kf167} and the
+ * <p>Recorded because the opposite was asserted, and shipped. KERNEL-FINDINGS {@code kf167} and the
  * {@code MVK-LEDGER} row both claimed the <em>date</em> extractors ({@code YearFromDate}, {@code MonthFromDate},
  * {@code DayFromDate}) refuse a quoted literal as {@code MVK_INVALID_DATE_STRING} <em>rather than</em>
  * {@code MVK_NO_CONST}, and the operator catalog served that to users through
@@ -37,6 +37,13 @@ import org.junit.jupiter.api.Test;
  * <p>What survives from kf167 is the conclusion, not its premise: the code alone still cannot tell you which
  * construct rejected, which remains the real reason operator coverage is keyed on
  * <em>operator + operand shape + code + consumer context</em>. There is no "third, date-extractor gate".
+ *
+ * <p><b>Authored as condition strings, deliberately.</b> The project's dogfood rule prefers the typed
+ * surface, and the numeric sibling ({@code NumericWrapperConstantLawsTest}) uses it — but here it is
+ * <em>impossible</em>: {@code DateOperand} is a sealed interface that does not permit {@code DateLiteral},
+ * so {@code Dsl.dayFromDate(new DateLiteral("01.01.2020"))} does not compile. The typed builder already
+ * makes this refusal unrepresentable, which is why only a string can reach the kernel's own gate
+ * (API-FINDINGS finding 110).
  */
 class TemporalLiteralFormatGateLawsTest {
 

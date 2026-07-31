@@ -3,16 +3,20 @@ package io.github.mbackschat.a12.dm.rulekit.validate.laws;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.util.LinkedHashMap;
+import java.util.Map;
 import java.util.function.UnaryOperator;
 
 import org.junit.jupiter.api.Test;
 
 import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft;
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel;
+import io.github.mbackschat.a12.dm.rulekit.dsl.Condition;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl;
 import io.github.mbackschat.a12.dm.rulekit.dsl.NumberExpr;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Rule;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Severity;
+import io.github.mbackschat.a12.dm.rulekit.validate.DraftComputation;
 import io.github.mbackschat.a12.dm.rulekit.validate.RuleValidator;
 
 /**
@@ -60,7 +64,10 @@ class NumericWrapperConstantLawsTest {
 
     @Test
     void everyNumericWrapperRefusesAnImmediateLiteralInAComputationOperation() {
-        wrappers(1).forEach((name, wrap) -> {
+        // TARGET_SCALE, not 1: at any other scale the assignment-scale gate (MVK_INVALID_COMPARE_DEC_PLACES) can
+        // co-fire, so the case would not isolate the constant boundary it is named for. It passed either way
+        // (anyMatch), which is exactly why the mismatch with the fixture javadoc went unnoticed.
+        wrappers(TARGET_SCALE).forEach((name, wrap) -> {
             var result = new RuleValidator().check(modelJson, computation(name + "LiteralComp", wrap.apply(Dsl.number(1))));
             assertFalse(result.ok(), () -> name + " must refuse an immediate literal operand");
             assertTrue(result.diagnostics().stream()
@@ -117,15 +124,19 @@ class NumericWrapperConstantLawsTest {
      * an unrelated gate. So the computation cases round to the target's own scale (2) to isolate the constant
      * boundary; a rule condition imposes no such scale, so 1 is fine there.
      */
-    private static java.util.Map<String, UnaryOperator<NumberExpr>> wrappers(int digits) {
-        return new java.util.LinkedHashMap<>(java.util.Map.of(
-                "Abs", Dsl::abs,
-                "RoundDown", operand -> Dsl.roundDown(operand, digits),
-                "RoundUp", operand -> Dsl.roundUp(operand, digits),
-                "RoundAccounting", operand -> Dsl.roundAccounting(operand, digits)));
+    private static Map<String, UnaryOperator<NumberExpr>> wrappers(int digits) {
+        // Insertion-ordered on purpose (a failure message should name the wrappers in a stable order). Note that
+        // `new LinkedHashMap<>(Map.of(...))` would NOT achieve that: Map.of's iteration order is unspecified and
+        // deliberately randomized per JVM, so the copy inherits an arbitrary order the source text does not show.
+        Map<String, UnaryOperator<NumberExpr>> wrappers = new LinkedHashMap<>();
+        wrappers.put("Abs", Dsl::abs);
+        wrappers.put("RoundDown", operand -> Dsl.roundDown(operand, digits));
+        wrappers.put("RoundUp", operand -> Dsl.roundUp(operand, digits));
+        wrappers.put("RoundAccounting", operand -> Dsl.roundAccounting(operand, digits));
+        return wrappers;
     }
 
-    private Rule rule(String name, io.github.mbackschat.a12.dm.rulekit.dsl.Condition condition) {
+    private Rule rule(String name, Condition condition) {
         return model.rule(model.group("/Policy"))
                 .name(name)
                 .errorField(model.num(BASE_PREMIUM))
@@ -136,7 +147,7 @@ class NumericWrapperConstantLawsTest {
                 .build();
     }
 
-    private io.github.mbackschat.a12.dm.rulekit.validate.DraftComputation computation(String name, NumberExpr operation) {
+    private DraftComputation computation(String name, NumberExpr operation) {
         return model.computation(model.num(ADJUSTMENT))
                 .name(name)
                 .calc(operation.expression())

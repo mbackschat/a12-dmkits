@@ -39,7 +39,7 @@ class DiagnosticTest {
     }
 
     @Test
-    void catalogJoinSuppliesFixAndExplain() {
+    void catalogJoinSuppliesTheSharedFixButNoUnearnedExplain() {
         Diagnostic d = firstWithCode(orderingTwoStrings(), "MVK_INVALID_TYPE_FOR_COMPARISON");
 
         assertTrue(d.fix().isPresent(), "catalog-join should reuse the operator's curated fix");
