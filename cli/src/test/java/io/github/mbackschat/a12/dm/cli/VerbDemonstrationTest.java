@@ -120,8 +120,10 @@ class VerbDemonstrationTest {
         switch (expect) {
             case "read", "preview" -> {
                 assertEquals(0, res.code(), () -> verb + " demo failed (" + command + "): " + res.err() + res.out());
-                assertEquals(expect, M.readTree(res.out()).path("outcome").asText(),
+                JsonNode env = M.readTree(res.out());
+                assertEquals(expect, env.path("outcome").asText(),
                         () -> verb + " demo expected outcome=" + expect + ": " + res.out());
+                assertEnvelopeIdentifiesItsOwnVerb(verb, env, res);
             }
             case "raw" -> {
                 // a non-envelope verb (export renders an artifact; model new emits a brand-new model document)
@@ -130,6 +132,32 @@ class VerbDemonstrationTest {
             }
             default -> throw new AssertionError(verb + " has an unknown expect '" + expect + "'");
         }
+    }
+
+    /**
+     * The envelope must identify the verb it came from — {@code target}/{@code op} are the command path, not free
+     * prose: a two-token verb {@code X Y} reports {@code target=X, op=Y}, and a top-level verb ({@code meta},
+     * {@code where-used}) reports itself as the target with {@code op=read}. Verified across every demonstrated
+     * verb rather than per verb, because the hazard is uniform: <b>every</b> {@link ResultEnvelope} factory opens
+     * with three adjacent {@code String}s ({@code target, op, summary}), so at ~150 call sites a swapped pair
+     * compiles, runs, and mis-attributes the result with nothing to catch it.
+     *
+     * <p>This is the property guard for that shape, and it is deliberately here rather than solved by changing the
+     * signatures: collapsing the pair into a value object would touch every call site while leaving the third
+     * {@code String} adjacent anyway, and deriving the identity from the live command spec — which would make the
+     * swap *unrepresentable*, the outcome the project's style rules prefer — is a cross-cutting refactor of every
+     * factory and its static callers. Recorded as such in CLI-CONFORMANCE-GAPS; until then the invariant is
+     * checked rather than assumed, over the surface the demonstration corpus already executes.
+     */
+    private static void assertEnvelopeIdentifiesItsOwnVerb(String verb, JsonNode env, CliTestSupport.Result res) {
+        String[] path = verb.split(" ");
+        String expectedTarget = path[0];
+        String expectedOp = path.length > 1 ? path[1] : "read";
+        assertEquals(expectedTarget, env.path("target").asText(),
+                () -> verb + ": the envelope must echo its own target — a swapped target/op mis-attributes the "
+                        + "whole result and compiles cleanly: " + res.out());
+        assertEquals(expectedOp, env.path("op").asText(),
+                () -> verb + ": the envelope must echo its own op: " + res.out());
     }
 
     private static Path writeResource(String classpath, Path dir) throws Exception {

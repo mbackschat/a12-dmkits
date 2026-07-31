@@ -106,7 +106,9 @@ Every verb and every batch op emits the same shape. It **embeds the existing dia
 | `target`, `op` | echo the request — self-identifying, never mis-attributed |
 | `outcome` | `applied · preview · refused · rejected · read · staged · error` (the execution result class; `error` = the **tool itself** failed) |
 | `ok` | the operation executed as asked (`outcome ∈ {applied, preview, read, staged}`) |
-| `valid` | *(validate/check, and after a mutating op)* the **subject model** is kernel-valid — **distinct from `ok`** |
+| `valid` | *(consistency verdicts + a kernel rejection)* the **subject model** is kernel-valid — **distinct from `ok`**. Present only where a gate produced a verdict: `model/rule/workspace check`, and a `rejected` the kernel itself made. **Not** on a read, a runtime observation, or a mutation — a successful write asserts that the edit passed the gate, which is `ok`, not a standing claim about the model *(corrected 2026-08-01: this row read "and after a mutating op", which the typed algebra had already stopped doing)* |
+| `verification` | *(exactly where `valid` is, plus a nested per-model verdict)* **which gate arbitrated this invocation** — `KERNEL_CONFIRMED` or `STRUCTURAL_ONLY`. Orthogonal to the verdict: it says who decided, never what they decided, so it stays present on a rejection. Emitted only from a gate's own receipt, never from "a backend is installed" |
+| `engine`, `engineVersion`, `toolVersion` | *(runtime observations — `model eval`, `model compute`, `rule eval`)* who executed the document: the evaluator, its version, and the dmtool version. A runtime observation carries **no** `valid`, because evaluating an instance produces fired rules and computed values, not a verdict about the model |
 | `summary` | one human-readable line (the agent's quick read / log line) |
 | `changed` | *(mutations)* the delta on success — e.g. `{added, kind}`, a refactor's rewritten refs |
 | `data` | *(reads/queries)* the op's payload — explanation tree · model card · fired-list · … ; shape is op-specific (`schema <target> <op>`) |

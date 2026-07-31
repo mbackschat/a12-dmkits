@@ -60,6 +60,28 @@ import io.github.mbackschat.a12.dm.rulekit.validate.ValidationResult;
  * family compiles and publishes whatever members its factory happens to set. The factories are what constrain that,
  * so a new one must be read against this list, not trusted to be caught.
  *
+ * <h2>What this refactor did NOT fix: the leading {@code (target, op, summary)}</h2>
+ *
+ * <p>Every factory below opens with <b>three adjacent {@code String}s</b> — the exact shape the project's own
+ * long-parameter-list rule names as worst (several same-typed parameters, silently swap-prone), and the shape whose
+ * {@code boolean valid} neighbour caused the defect this class exists to close. Saying so plainly matters, because the
+ * builder rule was cited to justify the private {@link Draft} while the public surface kept the smell.
+ *
+ * <p>It is not closed here, and the reason is that the two available fixes are differently sized:
+ * <ul>
+ *   <li><b>A value object for the pair</b> ({@code Verb.of("field", "read")}) touches ~150 call sites, still leaves
+ *       {@code summary} adjacent to it, and makes every call noisier — it moves the smell rather than removing it.</li>
+ *   <li><b>Deriving the identity</b> from the live picocli spec, so a verb never states its own name, would make the
+ *       swap <em>unrepresentable</em> — the outcome the style rules actually prefer. That is a cross-cutting change to
+ *       every factory plus the static callers ({@code BaseCommand.kernelRejectionEnvelope}, {@code Cli}'s exception
+ *       seam) that hold no command instance, so it is a design call to take deliberately, not a side effect of this
+ *       one.</li>
+ * </ul>
+ *
+ * <p>Until then the invariant is <b>checked instead of assumed</b>: {@code VerbDemonstrationTest} asserts that every
+ * demonstrated verb's envelope echoes its own command path, so a swapped pair fails the build across the surface even
+ * though it still compiles. Tracked in {@code CLI-CONFORMANCE-GAPS}.
+ *
  * @see ConsistencyEvidence the gate receipt that gates the {@code verification} key
  * @see RuntimeEvidence the engine/version triple every runtime observation carries
  */

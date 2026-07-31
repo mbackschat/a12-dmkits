@@ -74,10 +74,13 @@ Recorded because the same class of defect this proposal exists to fix recurred w
 
 | factory | emits | may NOT emit |
 |---|---|---|
-| `queryResult(target, op, summary, data)` | `ok`, `data` | `valid` |
-| `consistencyVerdict(target, op, summary, valid, diagnostics, data, Verification)` | `valid` **and** its kernel evidence, structurally inseparable — **plus verdict-associated `data`** | — |
-| `runtimeObservation(target, op, summary, data, engine, engineVersion, toolVersion)` | `data` + execution evidence | `valid` |
-| existing `applied`/`preview`/`refused`/`rejected`/`internalError` | unchanged | — |
+| `queryResult(target, op, summary, data, ConsistencyEvidence)` | `ok`, `data`, and `verification` **iff** the read's own path gated | `valid` |
+| `consistencyVerdict(target, op, summary, valid, diagnostics, data, ConsistencyEvidence)` | `valid` **and** its kernel evidence, structurally inseparable — **plus verdict-associated `data`** | — |
+| `runtimeObservation(target, op, summary, data, RuntimeEvidence)` | `data` + execution evidence | `valid` |
+| `dispatchCompleted` (aggregate `batch`) · `transaction` (aggregate `apply`) | the aggregate's own disposition + `data.results[]` of per-item envelopes | a verdict of its own, except where the transaction's terminal gate produced one |
+| existing `applied`/`preview`/`staged`/`refused`/`rejected`/`internalError` | unchanged | — |
+
+*Signatures corrected 2026-08-01 — implementing this changed three of them, and the table still specified the intentions the code had rejected.* `queryResult` **must** take evidence: a read may legitimately have gated (`model read` binds strictly), and the original signature made the gated reads unable to say so — the same silence the contract exists to remove, in the other direction. `consistencyVerdict` takes `ConsistencyEvidence`, never a bare `Verification`: a nameable mode is the forgery this design removes, so the parameter type *is* the enforcement. `runtimeObservation` takes one `RuntimeEvidence` rather than three adjacent strings, per the builder rule — three same-typed parameters are the swap-prone shape the whole refactor is about, and reproducing it in the replacement would have been the joke telling itself.
 
 **Required semantics.**
 
