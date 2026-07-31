@@ -190,6 +190,17 @@ final class OperatorsCommand extends BaseCommand {
             ex.put("error", e.invalidExample().error());
             ex.put("fix", e.invalidExample().fix());
         }
+        // The COMPUTATION consumer, when the catalog has one. It was carried in `operators.json` and CI-executed by
+        // `CatalogComputationExamplesAreKernelValidTest`, but never served here — so a kernel-verified example of the
+        // operator in a computation was invisible to the surface whose whole job is to show it. An operator that
+        // behaves differently in the two consumers (the numeric wrappers additionally meet the assignment-scale
+        // gate) is exactly where an author needs to see both.
+        if (e.computationExample() != null) {
+            ObjectNode ex = n.putObject("computationExample");
+            ex.put("operation", e.computationExample().operation());
+            ex.put("computedField", e.computationExample().computedField());
+            ex.put("note", e.computationExample().note());
+        }
         if (e.sinceKernel() != null) {
             n.put("sinceKernel", e.sinceKernel());
         }
