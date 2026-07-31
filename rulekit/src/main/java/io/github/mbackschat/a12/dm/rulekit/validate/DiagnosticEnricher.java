@@ -140,7 +140,8 @@ final class DiagnosticEnricher {
      *
      * <p>The message must never be parsed by <em>sentence shape</em>: the kernel's text is a localized properties
      * value, so any {@code At '(\w+)'}-style extraction is an accident of one bundle. Matching the quoted operand is
-     * localization-independent, because every bundle inherits the same {@code '%s'} delimiters from the template.
+     * strictly better than parsing its sentence — though NOT localization-independent, and not the whole basis:
+     * see {@link KernelMessageOperands} for what the delimiters do and do not establish.
      */
     private Optional<OperatorEntry> resolveOwner(Diagnostic diagnostic, List<OperatorEntry> documenters) {
         // NO sole-documenter shortcut. The catalog is a PARTIAL map of code → operators, so "exactly one entry

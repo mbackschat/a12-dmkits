@@ -55,6 +55,26 @@ class FilterNestedComparisonTest {
                 () -> "the filter's comparison is the only candidate and must be reachable: " + withFilter);
     }
 
+    /**
+     * A filter on a <b>predicate's</b> starred argument, which is a different unwalked node
+     * ({@code Cond.Pred}) from the comparison case above ({@code Cond.Cmp}'s operand).
+     *
+     * <p>Both were hidden by the same thing: a {@code default -> { }} over a sealed hierarchy, which silences the
+     * exhaustiveness check that would have named them. That is why this file locks two variants rather than one —
+     * the walk has now missed three times ({@code Pattern}/{@code Tolerance}, then {@code Star.having}, then
+     * {@code Pred}/{@code ValueListQuant}), and each miss was one comment away from being a compile error.
+     * {@code AllFieldsFilled} is a parser {@code PREDICATE}, and its args go through the same {@code parseArg} that
+     * attaches a trailing {@code Having} to a starred operand — so this is a legal, kernel-accepted shape.
+     */
+    @Test
+    void aComparisonInsideAFilterOnAPredicateArgumentIsAlsoFound() {
+        Diagnostic enriched = enrichAgainst(
+                "AllFieldsFilled(/Order/Items*/Sku Having ([/Order/Items/Sku] < [/Order/Items/Sku]))");
+
+        assertEquals(Optional.of("LessThan"), enriched.where().operator(),
+                () -> "a filter under a PREDICATE arg is as reachable as one under a comparison operand: " + enriched);
+    }
+
     /** Having found it, the stage owes the operand-matched corrective and that operator's meaning — not the union. */
     @Test
     void theFilterComparisonGetsItsOperandMatchedCorrective() {
@@ -63,8 +83,12 @@ class FilterNestedComparisonTest {
 
         assertTrue(enriched.fix().orElse("").contains("== / !="),
                 () -> "string-vs-string ordering gets the ==/!= corrective, not the hedged union: " + enriched);
-        assertTrue(enriched.explain().isPresent(),
-                () -> "an established owner obliges recomputing the meaning too: " + enriched);
+        assertEquals(
+                io.github.mbackschat.a12.dm.rulekit.catalog.OperatorCatalog.load().byId("LessThan").orElseThrow()
+                        .meaning(),
+                enriched.explain().orElse(""),
+                () -> "and THAT operator's meaning — `isPresent()` alone would pass with the wrong one, which is the "
+                        + "defect this whole area keeps producing: " + enriched);
     }
 
     private static final String UNION_FIX =

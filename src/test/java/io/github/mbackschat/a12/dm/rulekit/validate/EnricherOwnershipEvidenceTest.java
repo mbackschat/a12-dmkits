@@ -30,17 +30,16 @@ import io.github.mbackschat.a12.dm.Fixtures;
  *       {@code For} is {@code SemanticIndex}'s English keyword.</li>
  * </ul>
  *
- * <p><b>The root fix is a mechanism, not another special case.</b> The kernel <em>delimits what it substitutes</em>:
- * 146 of the 148 templates carrying a {@code %s} wrap it in quotes, and the two that do not substitute a group path
- * or a digit count — never an operator name. So only a <b>quoted</b> token is evidence of the construct at fault;
- * unquoted words are fixed prose that says nothing about this invocation. That kills both cases above while keeping
- * the true positive ({@code At 'Abs'It is not allowed to use constants.}), and it degrades to "unestablished"
- * rather than to a wrong owner.
+ * <p><b>The fix has two halves, and the first alone was worse than the defect.</b> Only a <em>delimited</em> token is
+ * evidence about this invocation — unquoted words are fixed prose, identical for every occurrence of the code. That
+ * kills both cases above while keeping the true positive ({@code At 'Abs'It is not allowed to use constants.}). But
+ * the first attempt also <em>widened</em> the electable set to the whole catalog, and the kernel delimits
+ * <b>values</b> too, so a quoted enum S-value spelled like an operator name elected that operator. Election stays
+ * restricted to the code's documenters; the delimiters only narrow it.
  *
- * <p>It also makes a <b>stronger</b> claim available, which closes review's separate finding: when the message
- * quotes an operator that is <em>not</em> among the documenters, the evidence in hand does not merely fail to
- * establish the documenter — it <b>positively excludes</b> it. Then even the hedged code-level corrective must be
- * withheld, because the tool would otherwise name an operator its own input contradicts.
+ * <p>A <b>stronger</b> claim was briefly attempted and withdrawn: that naming a non-documenter positively
+ * <em>excludes</em> the documenters, so even the hedge should be withheld. It cannot be established from a message
+ * alone, precisely because a delimited span may be a value.
  */
 class EnricherOwnershipEvidenceTest {
 

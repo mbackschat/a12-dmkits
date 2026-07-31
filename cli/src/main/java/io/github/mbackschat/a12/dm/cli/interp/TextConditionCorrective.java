@@ -153,7 +153,12 @@ public final class TextConditionCorrective {
             case Cond.Not n -> collect(n.getC(), out);
             case Cond.Pattern p -> { collectIn(p.getValue(), out); collectIn(p.getPattern(), out); }
             case Cond.Tolerance t -> { collectIn(t.getLeft(), out); collectIn(t.getRight(), out); }
-            default -> { }   // Pred / ValueListQuant / Custom carry no nested expression
+            case Cond.Pred pred -> pred.getArgs().forEach(arg -> collectIn(arg, out));
+            case Cond.ValueListQuant q -> {
+                q.getFields().forEach(field -> collectIn(field, out));
+                q.getValues().forEach(value -> collectIn(value, out));
+            }
+            case Cond.Custom ignored -> { }   // an opaque host predicate: a name, no sub-tree
         }
     }
 
@@ -170,6 +175,12 @@ public final class TextConditionCorrective {
      * union fix — a defect turned back into an honest "I don't know".
      */
     private void collectIn(Expr e, Map<String, List<Cond.Cmp>> out) {
+        // NOTE the absence of `default`. Both switches here used to have one, and that is the mechanism behind three
+        // successive misses: `Cond` and `Expr` are SEALED, so an exhaustive switch would have named every variant the
+        // walk was skipping — but `default -> { }` silences exactly that check and turns each omission into a comment
+        // asserting the variants "carry no nested expression". They did. `Pattern`/`Tolerance` were missed first,
+        // then `Star.having`, then `Pred`/`ValueListQuant` — three rounds of the same defect, each one a comment away
+        // from being impossible. Adding a variant upstream must now break this file, which is the point.
         switch (e) {
             case Expr.Star star -> {
                 if (star.getHaving() != null) {
@@ -178,7 +189,13 @@ public final class TextConditionCorrective {
             }
             case Expr.Arith arith -> { collectIn(arith.getLeft(), out); collectIn(arith.getRight(), out); }
             case Expr.Func func -> func.getArgs().forEach(arg -> collectIn(arg, out));
-            default -> { }   // Field / literals / Const / SemanticIndex / EnumCategory hold no sub-expression
+            case Expr.Field ignored -> { }
+            case Expr.NumLit ignored -> { }
+            case Expr.StrLit ignored -> { }
+            case Expr.BoolLit ignored -> { }
+            case Expr.Const ignored -> { }
+            case Expr.SemanticIndex ignored -> { }
+            case Expr.EnumCategory ignored -> { }
         }
     }
 
