@@ -82,8 +82,14 @@ class CatalogOperatorStrategyDiffTest {
             .filter { it.validExample() != null && it.id() !in SPECIALISTS }
             .map { it.id() }
             .toSet()
+        // Computation-ONLY means exactly that: no rule-context example, so this lane is the only one covering it.
+        // Keying on `computationExample() != null` alone conflated the lane with the EVIDENCE — an operator may
+        // legitimately carry both, and seven of them now do (the kf167 numeric wrappers and time extractors gained
+        // computation examples so their MVK_NO_CONST boundary is executed in both consumer contexts). That made this
+        // partition claim false while every lane's actual coverage was intact: the premise "a computation example
+        // implies computation-only" was true when written and silently stopped being true.
         val computationOnly = catalog.entries()
-            .filter { it.computationExample() != null }
+            .filter { it.computationExample() != null && it.validExample() == null }
             .map { it.id() }
             .toSet()
 
