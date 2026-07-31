@@ -26,7 +26,6 @@ import io.github.mbackschat.a12.dm.cli.interp.TextConditionCorrective;
 import io.github.mbackschat.a12.dm.rulekit.validate.Diagnostic;
 import io.github.mbackschat.a12.dm.rulekit.validate.DraftComputation;
 import io.github.mbackschat.a12.dm.rulekit.validate.DraftRule;
-import io.github.mbackschat.a12.dm.rulekit.validate.KernelDiagnostics;
 import io.github.mbackschat.a12.dm.rulekit.validate.RkCode;
 import io.github.mbackschat.a12.dm.rulekit.validate.RuleValidator;
 import io.github.mbackschat.a12.dm.rulekit.validate.ValidationResult;
@@ -285,7 +284,10 @@ final class PatternsCommand extends BaseCommand {
         } catch (ModelConsistencyException e) {
             valid = false;
             evidence = ConsistencyEvidence.of(e);
-            diagnostics = e.notifications().stream().map(n -> KernelDiagnostics.enriched(n, null)).toList();
+            // The shared mapping, not a local notifications().map(): the gate can refuse BEFORE checkConsistency
+            // names an MVK_* code, and this site's own version then produced `diagnostics: []` with the summary
+            // "0 finding(s)" — a rejection that threw away its own cause.
+            diagnostics = gateRejectionDiagnostics(e, evidence);
         }
         final String resultJson = validated;
 

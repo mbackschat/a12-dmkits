@@ -304,18 +304,33 @@ public abstract class BaseCommand implements Callable<Integer> {
      */
     static ResultEnvelope kernelRejectionEnvelope(String target, String op, String summary, ModelConsistencyException e) {
         ConsistencyEvidence evidence = ConsistencyEvidence.of(e);
+        return ResultEnvelope.rejected(target, op, summary, gateRejectionDiagnostics(e, evidence),
+                RejectionBasis.kernel(evidence));
+    }
+
+    /**
+     * A consistency gate's rejection as diagnostics — its enriched {@code MVK_*} notifications, or, when the gate
+     * refused <em>before</em> {@code checkConsistency} could name one, a single {@link Diagnostic#gateRefusal} carrying
+     * the gate's own message.
+     *
+     * <p><b>Extracted because three copies had drifted apart, and each lost something different.</b>
+     * {@code kernelRejectionEnvelope} handled the notification-free tier as a {@code PRECHECK} diagnostic — a
+     * rulekit-precheck origin published beside {@code verification: KERNEL_CONFIRMED} on the same rejection.
+     * {@code ApplyCommand}'s terminal gate was a verbatim copy of that, so fixing one did not fix the other.
+     * {@code PatternsCommand} mapped the notifications and nothing else, so the notification-free tier came out as
+     * {@code diagnostics: []} with the summary "0 finding(s)" — a rejection that discarded its own cause. One
+     * source, three consumers, and the tier that carries no code is the one they all got wrong.
+     */
+    static List<Diagnostic> gateRejectionDiagnostics(ModelConsistencyException e, ConsistencyEvidence evidence) {
         List<Diagnostic> diagnostics = new ArrayList<>();
         for (Notification n : e.notifications()) {
             diagnostics.add(KernelDiagnostics.enriched(n, null));
         }
         if (diagnostics.isEmpty()) {
-            // The deserialize/expand tier: refused before checkConsistency could name an MVK_* code, so the
-            // gate's own message is all there is. Sourced from the gate that ran — labelling it PRECHECK put a
-            // rulekit-precheck origin next to `verification: KERNEL_CONFIRMED` on the same rejection.
             diagnostics.add(Diagnostic.gateRefusal(evidence.gate(), e.getMessage(),
                     new Diagnostic.Where((String) null, Optional.empty())));
         }
-        return ResultEnvelope.rejected(target, op, summary, diagnostics, RejectionBasis.kernel(evidence));
+        return List.copyOf(diagnostics);
     }
 
     /**

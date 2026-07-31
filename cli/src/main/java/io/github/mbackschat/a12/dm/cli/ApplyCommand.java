@@ -21,7 +21,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import io.github.mbackschat.a12.dm.core.ModelResolver;
-import io.github.mbackschat.a12.dm.core.Notification;
 
 import io.github.mbackschat.a12.dm.adapter.KernelAdapter;
 import io.github.mbackschat.a12.dm.core.ModelConsistencyException;
@@ -35,7 +34,6 @@ import io.github.mbackschat.a12.dm.rulekit.dsl.LocalizedText;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Severity;
 import io.github.mbackschat.a12.dm.rulekit.write.ModelWriter;
 import io.github.mbackschat.a12.dm.rulekit.validate.Diagnostic;
-import io.github.mbackschat.a12.dm.rulekit.validate.KernelDiagnostics;
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Mixin;
 import picocli.CommandLine.Option;
@@ -926,19 +924,13 @@ final class ApplyCommand extends BaseCommand {
     }
 
     /** The terminal gate rejected the committed sequence — surface the kernel's diagnostics; nothing written. */
+    /**
+     * The terminal gate's rejection: {@code valid:false} plus the arbitrator that decided it (the previous shape
+     * reported the verdict but never who reached it). Built by the shared {@link BaseCommand} path — this method was a
+     * verbatim copy of it, so a correction to the notification-free tier landed there and not here.
+     */
     private ResultEnvelope gateRejection(ModelConsistencyException e) {
-        List<Diagnostic> diagnostics = new ArrayList<>();
-        for (Notification n : e.notifications()) {
-            diagnostics.add(KernelDiagnostics.enriched(n, null));
-        }
-        if (diagnostics.isEmpty()) {
-            diagnostics.add(Diagnostic.precheck(Optional.empty(), e.getMessage(),
-                    new Diagnostic.Where((String) null, Optional.empty()), Optional.empty(), Optional.empty()));
-        }
-        // The one gate apply runs, and it just rejected: valid:false plus the arbitrator that decided it. The
-        // previous shape reported the verdict but never who reached it.
-        return ResultEnvelope.rejected("model", "validate",
-                "the terminal kernel gate rejected the sequence — rolled back", diagnostics,
-                RejectionBasis.kernel(ConsistencyEvidence.of(e)));
+        return BaseCommand.kernelRejectionEnvelope("model", "validate",
+                "the terminal kernel gate rejected the sequence — rolled back", e);
     }
 }
