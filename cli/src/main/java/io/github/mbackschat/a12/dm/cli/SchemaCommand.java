@@ -71,7 +71,14 @@ final class SchemaCommand extends BaseCommand {
             "config modify",
             "time-zone has four domains: absence defaults UTC; exact UTC, GMT, Europe/Berlin are "
                     + "interpreter-supported; another kernel-valid Java id is accepted with an evaluator-scope "
-                    + "warning; explicit null/blank/unknown ids are rejected");
+                    + "warning; explicit null/blank/unknown ids are rejected",
+            "patterns",
+            "four routes, one envelope. `patterns` lists the idioms and `patterns <id>` details one — both reads "
+                    + "with the catalog in `data`. `patterns <id> --arg k=v` (needs -m) scaffolds a rule-spec and "
+                    + "kernel-checks it: a VERDICT carrying `valid` + `verification` + `diagnostics`, so a rejected "
+                    + "scaffold exits 1 while the spec still rides `data.spec` for inspection. Adding --apply makes "
+                    + "it a write: a kernel-rejected spec becomes `rejected`, --dry-run a preview, and a committed "
+                    + "one an applied result naming where it wrote (-o redirects). See `schema result`");
 
     /** Read ops whose {@code data} payload has a published schema → surfaced so the agent learns the output shape. */
     static final Map<String, String> DATA_SCHEMA = Map.ofEntries(
@@ -117,7 +124,9 @@ final class SchemaCommand extends BaseCommand {
             Map.entry("manifest", "emits the verb/param map itself — run it"),
             Map.entry("schema", "emits schemas itself — run it"),
             Map.entry("operators", "emits the operator catalog itself — run it"),
-            Map.entry("patterns", "emits the validation-idiom catalog (and a scaffolded rule-spec) itself — run it"),
+            // `patterns` was here with that same reason until it joined the result envelope; the reason then
+            // became false and `schema patterns` was a dead end for a verb with four documented routes. Its
+            // contract is now derived like any envelope verb, with the routes in CONTRACT_NOTES.
             Map.entry("diagnostics", "emits the diagnostic registry itself — run it"),
             Map.entry("export", "renders an artifact (model card / dot / …), not the result envelope"),
             Map.entry("model new", "emits a brand-new model document (an artifact) to stdout; with -o stdout carries "
