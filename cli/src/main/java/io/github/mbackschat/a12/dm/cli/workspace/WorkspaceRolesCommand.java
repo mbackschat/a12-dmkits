@@ -9,6 +9,7 @@ import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 
 import io.github.mbackschat.a12.dm.cli.BaseCommand;
+import io.github.mbackschat.a12.dm.cli.ConsistencyEvidence;
 import io.github.mbackschat.a12.dm.cli.ResultEnvelope;
 import io.github.mbackschat.a12.dm.modelkit.RolesFile;
 import io.github.mbackschat.a12.dm.modelkit.UsersFile;
@@ -102,8 +103,10 @@ final class WorkspaceRolesCommand extends BaseCommand {
         data.set("findings", findingsJson(findings));
 
         String summary = summary(resolution, models.size(), warnings, infos);
-        // advisory only — never blocks: valid is always true, so the verb always exits 0
-        ResultEnvelope env = ResultEnvelope.read("workspace", "roles", summary, true, List.of(), data);
+        // Advisory only — never blocks. As a QUERY that is now STRUCTURAL: the family holds no verdict, so
+        // exitCode() cannot return anything but 0, rather than relying on a hard-coded `valid:true`.
+        ResultEnvelope env = ResultEnvelope.queryResult("workspace", "roles", summary, data,
+                ConsistencyEvidence.none());
         out().print(env.toJsonString());
         return env.exitCode(); // always 0 — a roles finding informs, never gates
     }

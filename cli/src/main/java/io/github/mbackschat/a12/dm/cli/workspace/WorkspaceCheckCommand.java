@@ -1,6 +1,7 @@
 package io.github.mbackschat.a12.dm.cli.workspace;
 
 import io.github.mbackschat.a12.dm.cli.BaseCommand;
+import io.github.mbackschat.a12.dm.cli.ConsistencyEvidence;
 import io.github.mbackschat.a12.dm.cli.ResultEnvelope;
 
 import java.io.IOException;
@@ -81,8 +82,14 @@ final class WorkspaceCheckCommand extends BaseCommand {
         data.put("count", models.size());
         ArrayNode arr = MAPPER.createArrayNode();
         int invalid = 0;
+        // The aggregate's evidence is whichever gate actually ran; a model whose FILE could not even be read was
+        // never gated and contributes none, so an all-unreadable (or empty) scan honestly attests nothing.
+        ConsistencyEvidence evidence = ConsistencyEvidence.none();
         for (Workspace.Model m : models) {
             ModelVerdict v = validateOne(root, resolver, m);
+            if (v.evidence().gateRan()) {
+                evidence = v.evidence();
+            }
             if (!v.valid()) {
                 invalid++;
             }
@@ -99,40 +106,53 @@ final class WorkspaceCheckCommand extends BaseCommand {
         String summary = allValid
                 ? "all " + models.size() + " model" + (models.size() == 1 ? "" : "s") + " valid"
                 : invalid + " of " + models.size() + " model" + (models.size() == 1 ? "" : "s") + " invalid";
-        ResultEnvelope env = ResultEnvelope.read("workspace", "check", summary, allValid, List.of(), data);
+        // Not one gate but N, so "did a gate run at all" is what decides the family. With at least one model
+        // gated this is a real aggregate verdict; with none — an empty directory, or every file unreadable —
+        // there is nothing to have a verdict ABOUT, and claiming `valid:true` there would be the very
+        // fabrication this contract removes. The per-model verdicts ride `data` either way, and a nested
+        // verdict never reaches the exit code.
+        ResultEnvelope env = evidence.gateRan()
+                ? ResultEnvelope.consistencyVerdict("workspace", "check", summary, allValid, List.of(), data,
+                        evidence)
+                : ResultEnvelope.queryResult("workspace", "check", summary, data, ConsistencyEvidence.none());
         out().print(env.toJsonString());
         return env.exitCode();   // 0 when all valid, 1 when any model is invalid (the gate)
     }
 
-    private record ModelVerdict(boolean valid, List<Diagnostic> diagnostics) {}
+    private record ModelVerdict(boolean valid, List<Diagnostic> diagnostics, ConsistencyEvidence evidence) {}
 
     /** Validate one model through the real kernel, capturing its rich diagnostics — the {@code model check} path. */
     private ModelVerdict validateOne(Path root, ModelResolver resolver, Workspace.Model m) {
         List<Diagnostic> diagnostics = new ArrayList<>();
         boolean valid;
+        ConsistencyEvidence evidence;
         String json;
         try {
             json = Files.readString(root.resolve(m.path()));
         } catch (IOException e) {
-            return new ModelVerdict(false, List.of(precheck("cannot read model: " + e.getMessage())));
+            // never reached the gate — no receipt to give
+            return new ModelVerdict(false, List.of(precheck("cannot read model: " + e.getMessage())),
+                    ConsistencyEvidence.none());
         }
         try {
-            BoundModel.ofJson(json, resolver);
+            evidence = ConsistencyEvidence.of(BoundModel.ofJson(json, resolver));
             valid = true;
         } catch (ModelConsistencyException e) {
             valid = false;
+            evidence = ConsistencyEvidence.of(e);   // the gate ran and rejected — its notifications ARE the verdict
             for (Notification n : e.notifications()) {
                 diagnostics.add(KernelDiagnostics.enriched(n, null));
             }
         } catch (RuntimeException e) {
             // a non-consistency failure (e.g. an unparseable condition the deserializer accepted) — surface it,
-            // don't crash the whole gate run.
+            // don't crash the whole gate run. We cannot tell how far the gate got, so we claim nothing.
             valid = false;
+            evidence = ConsistencyEvidence.none();
             diagnostics.add(precheck(e.getMessage()));
         }
         // version awareness, identical to `model check`: classify a version mismatch as an ERROR/INFO.
         diagnostics = ModelVersion.classify(json, diagnostics);
-        return new ModelVerdict(valid, diagnostics);
+        return new ModelVerdict(valid, diagnostics, evidence);
     }
 
     private static Diagnostic precheck(String message) {

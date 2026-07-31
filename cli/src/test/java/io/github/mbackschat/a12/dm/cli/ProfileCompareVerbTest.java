@@ -33,7 +33,10 @@ class ProfileCompareVerbTest {
         assertEquals("profile", envelope.path("target").asText());
         assertEquals("compare", envelope.path("op").asText());
         assertEquals("read", envelope.path("outcome").asText());
-        assertTrue(envelope.path("valid").asBoolean());
+        // Reclassified 2026-07-31: profile equality is not model validity, and no consistency gate runs on this
+        // path — so the top-level `valid` is gone while the published `data.matches` and the exit codes are
+        // unchanged (see ComparisonOutcome).
+        assertFalse(envelope.has("valid"), () -> "a comparison is not a validity verdict: " + result.out());
         assertTrue(envelope.path("data").path("matches").asBoolean());
         assertTrue(envelope.path("data").path("axes").size() > 1, "every classified axis is visible");
     }
@@ -52,10 +55,13 @@ class ProfileCompareVerbTest {
         CliTestSupport.Result result = CliTestSupport.run(
                 "profile", "compare", "--target", target.toString(), "--actual", actual.toString());
 
+        // exit 1 on `differs` is PRESERVED by the reclassification — CI branches on it. What changed is only
+        // that the outcome is a typed comparison rather than a mislabelled validity verdict.
         assertEquals(1, result.code(), result::err);
         JsonNode envelope = JSON.readTree(result.out());
         assertEquals("read", envelope.path("outcome").asText());
-        assertFalse(envelope.path("valid").asBoolean());
+        assertTrue(envelope.path("ok").asBoolean(), "the comparison itself executed as asked");
+        assertFalse(envelope.has("valid"), () -> "profile equality is not model validity: " + result.out());
         assertFalse(envelope.path("data").path("matches").asBoolean());
         JsonNode failed = findAxis(envelope.path("data"), "structure.maxNestingDepth");
         assertEquals("EXACT", failed.path("policy").asText());

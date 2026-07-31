@@ -1,6 +1,7 @@
 package io.github.mbackschat.a12.dm.cli.typedef;
 
 import io.github.mbackschat.a12.dm.cli.BaseCommand;
+import io.github.mbackschat.a12.dm.cli.ConsistencyEvidence;
 import io.github.mbackschat.a12.dm.cli.ReadPayloads;
 import io.github.mbackschat.a12.dm.cli.ResultEnvelope;
 
@@ -82,15 +83,15 @@ final class TypedefReadCommand extends BaseCommand {
                 // accepts — so a constraint on a reusable type is verifiable through `read` alone (read-gap
                 // fix B, the typedef sibling), never the raw model JSON
                 doc.typeDefinitionConfigJson(id).ifPresent(cfg -> data.setAll(ReadPayloads.configNode(cfg)));
-                ResultEnvelope env = ResultEnvelope.read("typedef", "read",
-                        "read type definition " + id, true, List.of(), data);
+                ResultEnvelope env = ResultEnvelope.queryResult("typedef", "read",
+                        "read type definition " + id, data, ConsistencyEvidence.none());
                 out().print(env.toJsonString());
                 return env.exitCode();
             }
             // T3: the shared no-arg list shape (typedefs + importedFrom), same as `apply` TYPEDEF_READ
             ObjectNode data = ReadPayloads.typedefList(doc);
-            ResultEnvelope env = ResultEnvelope.read("typedef", "read",
-                    "read " + ids.size() + " local type definition(s)", true, List.of(), data);
+            ResultEnvelope env = ResultEnvelope.queryResult("typedef", "read",
+                    "read " + ids.size() + " local type definition(s)", data, ConsistencyEvidence.none());
             out().print(env.toJsonString());
             return env.exitCode();
         } catch (RuntimeException e) {

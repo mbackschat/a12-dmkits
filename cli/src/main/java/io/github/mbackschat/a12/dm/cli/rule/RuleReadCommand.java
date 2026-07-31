@@ -1,6 +1,7 @@
 package io.github.mbackschat.a12.dm.cli.rule;
 
 import io.github.mbackschat.a12.dm.cli.BaseCommand;
+import io.github.mbackschat.a12.dm.cli.ConsistencyEvidence;
 import io.github.mbackschat.a12.dm.cli.ModelPaths;
 import io.github.mbackschat.a12.dm.cli.ResultEnvelope;
 import io.github.mbackschat.a12.dm.cli.WorkspaceOption;
@@ -70,7 +71,7 @@ final class RuleReadCommand extends BaseCommand {
         try {
             KernelAdapter adapter = KernelAdapter.ofJson(json, workspace.resolverFor(model));
             if (rule == null) {
-                return readNameIndex("rule", "rules", adapter.ruleFullNames());
+                return readNameIndex("rule", "rules", adapter.ruleFullNames(), ConsistencyEvidence.of(adapter));
             }
             String problem = ModelPaths.ruleProblem(adapter.ruleFullNames(), adapter.computationFullNames(), rule);
             if (problem != null) {
@@ -94,9 +95,9 @@ final class RuleReadCommand extends BaseCommand {
             putIfNotEmpty(data, "annotations", doc.annotations(rule));
             putIfNotEmpty(data, "internalDescription", doc.internalDescription(rule));
             putIfNotEmpty(data, "externalDescription", doc.externalDescription(rule));
-            ResultEnvelope env = ResultEnvelope.read("rule", "read",
+            ResultEnvelope env = ResultEnvelope.queryResult("rule", "read",
                     read instanceof ReadResult.Converted ? "read " + rule : "read " + rule + " (Opaque)",
-                    true, List.of(), data);
+                    data, ConsistencyEvidence.of(adapter));
             out().print(env.toJsonString());
             return env.exitCode();
         } catch (RuntimeException e) {

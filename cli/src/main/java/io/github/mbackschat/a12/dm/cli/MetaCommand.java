@@ -123,7 +123,10 @@ final class MetaCommand extends BaseCommand {
             putMap(data.putObject("internalDescription"), doc.internalDescription(ref));
             putMap(data.putObject("externalDescription"), doc.externalDescription(ref));
             putMap(data.putObject("annotations"), doc.annotations(ref));
-            ResultEnvelope env = ResultEnvelope.read("meta", "read", "read metadata of " + ref, true, List.of(), data);
+            // ModelDocument.read parses and indexes; no consistency gate runs on this path, so no verdict and no
+            // provenance are claimed (this verb was one of the seven measured reporting a fabricated valid:true).
+            ResultEnvelope env = ResultEnvelope.queryResult("meta", "read", "read metadata of " + ref, data,
+                    ConsistencyEvidence.none());
             out().print(env.toJsonString());
             return env.exitCode();
         }

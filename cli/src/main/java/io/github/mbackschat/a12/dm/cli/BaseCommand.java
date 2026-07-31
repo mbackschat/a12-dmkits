@@ -126,13 +126,17 @@ public abstract class BaseCommand implements Callable<Integer> {
      * lean (names only): it is the navigation handle to then {@code <target> read <name>} for one — distinct
      * from {@code model read} (full DSL of everything) and {@code export} (a takeaway artifact).
      */
-    protected int readNameIndex(String target, String plural, Collection<String> names) {
+    protected int readNameIndex(String target, String plural, Collection<String> names,
+            ConsistencyEvidence evidence) {
         ObjectNode data = JSON.createObjectNode();
         ArrayNode arr = data.putArray(plural);
         names.forEach(arr::add);
         data.put("count", names.size());
         String summary = names.size() + " " + target + (names.size() == 1 ? "" : "s");
-        ResultEnvelope env = ResultEnvelope.read(target, "read", summary, true, List.of(), data);
+        // Evidence is the CALLER's, not this helper's: `rule`/`computation read` reach their names through a gated
+        // KernelAdapter while `field`/`group read` only parse the document. One shared payload shape, two honest
+        // provenance answers — a single hard-coded value here would have been wrong for one pair or the other.
+        ResultEnvelope env = ResultEnvelope.queryResult(target, "read", summary, data, evidence);
         out().print(env.toJsonString());
         return env.exitCode();
     }
@@ -219,7 +223,8 @@ public abstract class BaseCommand implements Callable<Integer> {
         if (problems.isEmpty()) {
             return Optional.empty();
         }
-        ResultEnvelope env = ResultEnvelope.rejected(target, op, specProblemSummary(problems), problems);
+        ResultEnvelope env = ResultEnvelope.rejected(target, op, specProblemSummary(problems), problems,
+                RejectionBasis.preflight());
         out().print(env.toJsonString());
         return Optional.of(env.exitCode());
     }
@@ -285,7 +290,8 @@ public abstract class BaseCommand implements Callable<Integer> {
             diagnostics.add(Diagnostic.precheck(Optional.empty(), e.getMessage(),
                     new Diagnostic.Where((String) null, Optional.empty()), Optional.empty(), Optional.empty()));
         }
-        return ResultEnvelope.rejected(target, op, summary, diagnostics);
+        return ResultEnvelope.rejected(target, op, summary, diagnostics,
+                RejectionBasis.kernel(ConsistencyEvidence.of(e)));
     }
 
     /**
@@ -301,7 +307,8 @@ public abstract class BaseCommand implements Callable<Integer> {
                 Optional.of(RkCode.UNRESOLVED_REFERENCE.fix()),
                 Optional.empty());
         return ResultEnvelope.rejected(target, op,
-                "a model reference could not be resolved: " + e.reference(), List.of(d));
+                "a model reference could not be resolved: " + e.reference(), List.of(d),
+                RejectionBasis.preflight());
     }
 
     /** Convert every portable workspace diagnostic into the CLI's corrective, self-describing refusal shape. */

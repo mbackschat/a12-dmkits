@@ -1,6 +1,7 @@
 package io.github.mbackschat.a12.dm.cli.computation;
 
 import io.github.mbackschat.a12.dm.cli.BaseCommand;
+import io.github.mbackschat.a12.dm.cli.ConsistencyEvidence;
 import io.github.mbackschat.a12.dm.cli.ResultEnvelope;
 import io.github.mbackschat.a12.dm.cli.WorkspaceOption;
 
@@ -66,7 +67,8 @@ final class ComputationReadCommand extends BaseCommand {
         try {
             KernelAdapter adapter = KernelAdapter.ofJson(json, workspace.resolverFor(model));
             if (computation == null) {
-                return readNameIndex("computation", "computations", adapter.computationFullNames());
+                return readNameIndex("computation", "computations", adapter.computationFullNames(),
+                        ConsistencyEvidence.of(adapter));
             }
             if (!adapter.computationFullNames().contains(computation)) {
                 return refuseNotFound("computation", "read", RkCode.NO_SUCH_COMPUTATION,
@@ -104,8 +106,8 @@ final class ComputationReadCommand extends BaseCommand {
                 data.put("converted", false);
                 data.put("reason", ((ReadComputation.Opaque) read).reason());
             }
-            ResultEnvelope env = ResultEnvelope.read("computation", "read", "read " + computation,
-                    true, List.of(), data);
+            ResultEnvelope env = ResultEnvelope.queryResult("computation", "read", "read " + computation,
+                    data, ConsistencyEvidence.of(adapter));
             out().print(env.toJsonString());
             return env.exitCode();
         } catch (RuntimeException e) {

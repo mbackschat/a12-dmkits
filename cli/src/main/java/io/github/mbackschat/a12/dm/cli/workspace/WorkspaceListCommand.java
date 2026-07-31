@@ -1,6 +1,7 @@
 package io.github.mbackschat.a12.dm.cli.workspace;
 
 import io.github.mbackschat.a12.dm.cli.BaseCommand;
+import io.github.mbackschat.a12.dm.cli.ConsistencyEvidence;
 import io.github.mbackschat.a12.dm.cli.ResultEnvelope;
 
 import java.io.IOException;
@@ -18,6 +19,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 
 import io.github.mbackschat.a12.dm.core.ModelResolver;
 
+import io.github.mbackschat.a12.dm.core.ModelConsistencyException;
 import io.github.mbackschat.a12.dm.core.ModelLoader;
 import io.github.mbackschat.a12.dm.core.ReferenceResolvers;
 import io.github.mbackschat.a12.dm.modelkit.Workspace;
@@ -77,7 +79,7 @@ final class WorkspaceListCommand extends BaseCommand {
         } catch (RuntimeException e) {
             return fail("scan failed: " + e.getMessage());
         }
-        Map<String, Boolean> validity = validate ? validateAll(root, models) : Map.of();
+        Map<String, EntryVerdict> validity = validate ? validateAll(root, models) : Map.of();
 
         if (format.equalsIgnoreCase("table")) {
             out().print(table(models, validity));
@@ -89,14 +91,42 @@ final class WorkspaceListCommand extends BaseCommand {
         data.put("count", models.size());
         ArrayNode arr = data.putArray("models");
         models.forEach(m -> arr.add(entry(m, validity)));
-        ResultEnvelope env = ResultEnvelope.read("workspace", "list",
+        // The OUTER envelope stays an ungated query even under --validate. No single top-level marker can
+        // characterise a mixed workspace, and the listing itself is what executed; the per-model verdicts ride
+        // `data` and — structurally — a nested verdict never reaches the exit code.
+        ResultEnvelope env = ResultEnvelope.queryResult("workspace", "list",
                 "listed " + models.size() + " model" + (models.size() == 1 ? "" : "s") + " under " + dir,
-                true, List.of(), data);
+                data, ConsistencyEvidence.none());
         out().print(env.toJsonString());
         return env.exitCode();
     }
 
-    private ObjectNode entry(Workspace.Model m, Map<String, Boolean> validity) {
+    /**
+     * One model's {@code --validate} outcome. Three states, because the previous {@code Map<String, Boolean>} could
+     * express only two — and its {@code getOrDefault(path, false)} read made the third indistinguishable from the
+     * second: a model whose FILE could not be read reported exactly the same {@code valid:false} as a model the
+     * kernel examined and rejected. Those are different facts and lead to different fixes.
+     *
+     * @param valid the kernel's verdict; {@code null} when the gate was never reached
+     * @param problem what went wrong before the gate, when {@code valid} is {@code null}
+     */
+    private record EntryVerdict(Boolean valid, String problem) {
+
+        static EntryVerdict kernelValid() {
+            return new EntryVerdict(true, null);
+        }
+
+        static EntryVerdict kernelInvalid() {
+            return new EntryVerdict(false, null);
+        }
+
+        /** Never reached the gate — so it reports NEITHER a verdict nor a verification, only why. */
+        static EntryVerdict notReached(String problem) {
+            return new EntryVerdict(null, problem);
+        }
+    }
+
+    private ObjectNode entry(Workspace.Model m, Map<String, EntryVerdict> validity) {
         ObjectNode n = MAPPER.createObjectNode();
         n.put("id", m.id());
         n.put("path", m.path());
@@ -125,24 +155,46 @@ final class WorkspaceListCommand extends BaseCommand {
         n.put("groups", m.groups());
         n.put("fields", m.fields());
         if (validate) {
-            n.put("valid", validity.getOrDefault(m.path(), false));
+            EntryVerdict verdict = validity.get(m.path());
+            // Three states, one shape each: valid + its verification · invalid + its verification · not reached,
+            // which carries NEITHER key and says why instead. Publishing the gate mode per entry is what makes
+            // the middle case distinguishable from the third at all.
+            if (verdict == null || verdict.valid() == null) {
+                n.put("checked", false);
+                n.put("problem", verdict == null ? "the model was not checked" : verdict.problem());
+            } else {
+                n.put("checked", true);
+                n.put("valid", verdict.valid());
+                n.put("verification", io.github.mbackschat.a12.dm.core.Backends.verification().name());
+            }
         }
         return n;
     }
 
     /** Kernel-validate each model, resolving its references against the whole directory tree. */
-    private Map<String, Boolean> validateAll(Path root, List<Workspace.Model> models) {
+    private Map<String, EntryVerdict> validateAll(Path root, List<Workspace.Model> models) {
         ModelResolver resolver = ReferenceResolvers.directory(root);
-        Map<String, Boolean> out = new LinkedHashMap<>();
+        Map<String, EntryVerdict> out = new LinkedHashMap<>();
         for (Workspace.Model m : models) {
-            boolean valid;
+            String json;
             try {
-                ModelLoader.loadAndCheck(Files.readString(root.resolve(m.path())), resolver);
-                valid = true;
-            } catch (IOException | RuntimeException invalid) {
-                valid = false;
+                json = Files.readString(root.resolve(m.path()));
+            } catch (IOException unreadable) {
+                // Never reached the gate. Collapsing this into `valid:false` is what made an unreadable file
+                // indistinguishable from a kernel rejection.
+                out.put(m.path(), EntryVerdict.notReached("cannot read model: " + unreadable.getMessage()));
+                continue;
             }
-            out.put(m.path(), valid);
+            try {
+                ModelLoader.loadAndCheck(json, resolver);
+                out.put(m.path(), EntryVerdict.kernelValid());
+            } catch (ModelConsistencyException rejected) {
+                out.put(m.path(), EntryVerdict.kernelInvalid());
+            } catch (RuntimeException failed) {
+                // A non-consistency failure (unparseable JSON, an unresolvable reference): the gate did not
+                // return a verdict, so we report the obstacle rather than inventing one.
+                out.put(m.path(), EntryVerdict.notReached(String.valueOf(failed.getMessage())));
+            }
         }
         return out;
     }
@@ -152,7 +204,7 @@ final class WorkspaceListCommand extends BaseCommand {
     }
 
     /** Render the index as an aligned text table (the {@code --format table} human view of the same facts). */
-    private String table(List<Workspace.Model> models, Map<String, Boolean> validity) {
+    private String table(List<Workspace.Model> models, Map<String, EntryVerdict> validity) {
         List<String> headers = new ArrayList<>(List.of("ID", "TYPE", "ABSTRACT", "SUPERTYPES", "INCLUDES", "IMPORTS", "PATH"));
         if (validate) {
             headers.add("VALID");
@@ -163,7 +215,11 @@ final class WorkspaceListCommand extends BaseCommand {
                     m.id(), m.modelType(), m.isAbstract() ? "yes" : "",
                     String.join(",", m.superTypes()), refs(m.includes()), refs(m.typedefImports()), m.path()));
             if (validate) {
-                row.add(Boolean.TRUE.equals(validity.get(m.path())) ? "valid" : "INVALID");
+                // the human column mirrors the three JSON states, so the table cannot say INVALID about a
+                // model the kernel never got to look at
+                EntryVerdict verdict = validity.get(m.path());
+                row.add(verdict == null || verdict.valid() == null ? "?"
+                        : verdict.valid() ? "valid" : "INVALID");
             }
             rows.add(row);
         }

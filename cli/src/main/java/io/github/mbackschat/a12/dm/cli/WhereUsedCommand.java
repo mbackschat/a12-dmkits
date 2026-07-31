@@ -79,8 +79,8 @@ final class WhereUsedCommand extends BaseCommand {
             computations.forEach(compsArr::add);
             int count = rules.size() + computations.size();
             data.put("count", count);
-            ResultEnvelope env = ResultEnvelope.read("where-used", "read",
-                    count + " referrer(s) of " + entity, true, List.of(), data);
+            ResultEnvelope env = ResultEnvelope.queryResult("where-used", "read",
+                    count + " referrer(s) of " + entity, data, ConsistencyEvidence.of(adapter));
             out().print(env.toJsonString());
             return env.exitCode();
         } catch (RuntimeException e) {

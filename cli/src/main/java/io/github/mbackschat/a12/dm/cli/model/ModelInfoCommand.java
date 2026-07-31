@@ -1,6 +1,7 @@
 package io.github.mbackschat.a12.dm.cli.model;
 
 import io.github.mbackschat.a12.dm.cli.BaseCommand;
+import io.github.mbackschat.a12.dm.cli.ConsistencyEvidence;
 import io.github.mbackschat.a12.dm.cli.ResultEnvelope;
 import io.github.mbackschat.a12.dm.cli.WorkspaceOption;
 
@@ -93,8 +94,11 @@ final class ModelInfoCommand extends BaseCommand {
         counts.put("computations", doc.computationCount());
         counts.put("typeDefinitions", self.providesTypedefs().size());
 
-        ResultEnvelope env = ResultEnvelope.read("model", "info", "read model info for " + self.id(),
-                true, List.of(), data);
+        // Header + kernel-free index only: no gate runs here, which is why the old hard-coded `valid:true`
+        // was measurably FALSE on a model the kernel rejects. Nothing replaces it — an identity read has no
+        // verdict to give.
+        ResultEnvelope env = ResultEnvelope.queryResult("model", "info", "read model info for " + self.id(), data,
+                ConsistencyEvidence.none());
         out().print(env.toJsonString());
         return env.exitCode();
     }

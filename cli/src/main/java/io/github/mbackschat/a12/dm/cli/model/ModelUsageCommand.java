@@ -1,6 +1,7 @@
 package io.github.mbackschat.a12.dm.cli.model;
 
 import io.github.mbackschat.a12.dm.cli.BaseCommand;
+import io.github.mbackschat.a12.dm.cli.ConsistencyEvidence;
 import io.github.mbackschat.a12.dm.cli.ResultEnvelope;
 import io.github.mbackschat.a12.dm.cli.WorkspaceOption;
 
@@ -70,9 +71,9 @@ final class ModelUsageCommand extends BaseCommand {
                     unreferenced.add(field);
                 }
             }
-            ResultEnvelope env = ResultEnvelope.read("model", "usage",
+            ResultEnvelope env = ResultEnvelope.queryResult("model", "usage",
                     "usage of " + fields.size() + " field(s); " + unreferenced.size() + " unreferenced",
-                    true, List.of(), data);
+                    data, ConsistencyEvidence.of(adapter));
             out().print(env.toJsonString());
             return env.exitCode();
         } catch (RuntimeException e) {

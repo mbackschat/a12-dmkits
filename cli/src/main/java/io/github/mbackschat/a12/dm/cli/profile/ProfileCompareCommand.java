@@ -11,6 +11,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 
 import io.github.mbackschat.a12.dm.adapter.profile.ModelProfiles;
 import io.github.mbackschat.a12.dm.cli.BaseCommand;
+import io.github.mbackschat.a12.dm.cli.ComparisonOutcome;
 import io.github.mbackschat.a12.dm.cli.ParamKind;
 import io.github.mbackschat.a12.dm.cli.ResultEnvelope;
 import picocli.CommandLine.Command;
@@ -56,9 +57,13 @@ final class ProfileCompareCommand extends BaseCommand {
         } catch (JsonProcessingException e) {
             throw new IllegalStateException("the profile comparison is not valid JSON", e);
         }
-        boolean matches = comparison.path("matches").asBoolean();
-        ResultEnvelope env = ResultEnvelope.read("profile", "compare",
-                matches ? "profiles match" : "profiles differ", matches, List.of(), comparison);
+        // Classify ONCE into the typed outcome, then let it own both the reported result and the exit code. The
+        // published `data.comparison.matches` key is unchanged, and `differs` still exits 1 — this is a
+        // reclassification of what the result is CALLED (profile equality was never model validity), not a change
+        // to anything a caller observes.
+        ComparisonOutcome outcome = ComparisonOutcome.of(comparison.path("matches").asBoolean());
+        ResultEnvelope env = ResultEnvelope.comparisonResult("profile", "compare",
+                outcome.matches() ? "profiles match" : "profiles differ", outcome, comparison);
         out().print(env.toJsonString());
         return env.exitCode();
     }

@@ -1,6 +1,7 @@
 package io.github.mbackschat.a12.dm.cli.model;
 
 import io.github.mbackschat.a12.dm.cli.BaseCommand;
+import io.github.mbackschat.a12.dm.cli.ConsistencyEvidence;
 import io.github.mbackschat.a12.dm.cli.ResultEnvelope;
 import io.github.mbackschat.a12.dm.cli.WorkspaceOption;
 
@@ -51,7 +52,8 @@ final class ModelReadCommand extends BaseCommand {
             return fail("cannot read model: " + e.getMessage());
         }
         try {
-            ModelRead m = KernelAdapter.ofJson(json, workspace.resolverFor(model)).readModel();
+            KernelAdapter adapter = KernelAdapter.ofJson(json, workspace.resolverFor(model));
+            ModelRead m = adapter.readModel();
             ObjectNode data = MAPPER.createObjectNode();
             ObjectNode rules = data.putObject("rules");
             for (Map.Entry<String, ReadResult> e : m.rules().entrySet()) {
@@ -67,9 +69,12 @@ final class ModelReadCommand extends BaseCommand {
             summary.put("computations", m.computations().size());
             summary.put("convertedComputations", m.convertedComputations());
             summary.put("fullyTyped", m.fullyTyped());
-            ResultEnvelope env = ResultEnvelope.read("model", "read",
+            // This verb WAS gated all along (KernelAdapter.ofJson -> checkAndOpen), so its old `valid:true` was
+            // coincidentally correct — it had already bailed on an inconsistent model. Coincidence is not a
+            // contract: the gate is now reported as provenance and the unearned verdict is gone.
+            ResultEnvelope env = ResultEnvelope.queryResult("model", "read",
                     "read " + m.rules().size() + " rule(s), " + m.computations().size() + " computation(s)",
-                    true, List.of(), data);
+                    data, ConsistencyEvidence.of(adapter));
             out().print(env.toJsonString());
             return env.exitCode();
         } catch (RuntimeException e) {

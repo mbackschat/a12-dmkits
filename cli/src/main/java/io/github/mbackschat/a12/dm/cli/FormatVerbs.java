@@ -34,6 +34,8 @@ public final class FormatVerbs {
         data.put(target, fullName);
         data.put("lang", lang == null ? "model" : lang.name().toLowerCase(Locale.ROOT));
         data.put("canonical", canonical);
-        return ResultEnvelope.read(target, "format", "formatted " + fullName, true, List.of(), data);
+        // The adapter attests: `format` reaches it through KernelAdapter.ofJson → checkAndOpen, so the gate ran.
+        return ResultEnvelope.queryResult(target, "format", "formatted " + fullName, data,
+                ConsistencyEvidence.of(adapter));
     }
 }

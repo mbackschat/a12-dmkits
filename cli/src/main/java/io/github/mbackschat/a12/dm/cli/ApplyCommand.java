@@ -614,8 +614,8 @@ final class ApplyCommand extends BaseCommand {
     /** A staged mutation carrying nonblocking authoring diagnostics. */
     private static Applied staged(
             Op which, ObjectNode changed, List<Diagnostic> diagnostics, EditSession session) {
-        return new Applied(new ResultEnvelope(which.target, which.op, ResultEnvelope.Outcome.STAGED,
-                "staged " + which.label(), changed, null, diagnostics, null, false, null, null), session);
+        return new Applied(ResultEnvelope.staged(which.target, which.op, "staged " + which.label(), changed,
+                diagnostics), session);
     }
 
     /** The clean ValueKind name of a just-staged field, read back from the session — the SAME resolver
@@ -632,8 +632,10 @@ final class ApplyCommand extends BaseCommand {
 
     /** A read op's per-op envelope — its payload (the current session state) rides {@code data}. */
     private static Applied readEnv(Op which, ObjectNode data, EditSession session) {
-        return new Applied(ResultEnvelope.read(which.target, which.op, "read " + which.label(), true, List.of(), data),
-                session);
+        // A read of the TRANSIENT session state; apply defers validation to one terminal gate, so this step
+        // has no gate of its own to attest to.
+        return new Applied(ResultEnvelope.queryResult(which.target, which.op, "read " + which.label(), data,
+                ConsistencyEvidence.none()), session);
     }
 
     /**
@@ -658,8 +660,8 @@ final class ApplyCommand extends BaseCommand {
         changed.put("to", r.newPath());
         ArrayNode refs = changed.putArray("rewroteReferences");
         rewrote.forEach(refs::add);
-        return new Applied(new ResultEnvelope(r.target(), r.op(), ResultEnvelope.Outcome.STAGED,
-                "staged " + r.target() + " " + r.op(), changed, null, List.of(), null, false, null, null), next);
+        return new Applied(ResultEnvelope.staged(r.target(), r.op(), "staged " + r.target() + " " + r.op(),
+                changed, List.of()), next);
     }
 
     /**
@@ -764,9 +766,9 @@ final class ApplyCommand extends BaseCommand {
 
     /** A failing op-arg envelope (the offending op rolled the sequence back). */
     private ResultEnvelope argRejection(JsonNode op, int index, List<Diagnostic> diagnostics) {
-        return new ResultEnvelope(op.path("target").asText(), op.path("op").asText(),
-                ResultEnvelope.Outcome.REJECTED, "op " + index + " has an invalid arg — sequence rolled back",
-                null, null, diagnostics, null, false, null, null);
+        return ResultEnvelope.rejected(op.path("target").asText(), op.path("op").asText(),
+                "op " + index + " has an invalid arg — sequence rolled back", diagnostics,
+                RejectionBasis.preflight());
     }
 
 
@@ -868,8 +870,8 @@ final class ApplyCommand extends BaseCommand {
                 new Diagnostic.Where((String) null, Optional.empty()),
                 Optional.of("fix this op and re-run; the whole sequence rolled back (nothing was written)"),
                 Optional.empty());
-        return new ResultEnvelope(target, name, ResultEnvelope.Outcome.REJECTED,
-                "op " + index + " failed — sequence rolled back", null, null, List.of(d), null, false, null, null);
+        return ResultEnvelope.rejected(target, name, "op " + index + " failed — sequence rolled back", List.of(d),
+                RejectionBasis.preflight());
     }
 
     /** The terminal gate rejected the committed sequence — surface the kernel's diagnostics; nothing written. */
@@ -882,7 +884,10 @@ final class ApplyCommand extends BaseCommand {
             diagnostics.add(Diagnostic.precheck(Optional.empty(), e.getMessage(),
                     new Diagnostic.Where((String) null, Optional.empty()), Optional.empty(), Optional.empty()));
         }
-        return new ResultEnvelope("model", "validate", ResultEnvelope.Outcome.REJECTED,
-                "the terminal kernel gate rejected the sequence — rolled back", null, null, diagnostics, false, false, null, null);
+        // The one gate apply runs, and it just rejected: valid:false plus the arbitrator that decided it. The
+        // previous shape reported the verdict but never who reached it.
+        return ResultEnvelope.rejected("model", "validate",
+                "the terminal kernel gate rejected the sequence — rolled back", diagnostics,
+                RejectionBasis.kernel(ConsistencyEvidence.of(e)));
     }
 }

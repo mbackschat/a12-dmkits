@@ -7,6 +7,7 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Supplier;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -27,6 +28,7 @@ import io.github.mbackschat.a12.dm.rulekit.validate.Diagnostic;
 import io.github.mbackschat.a12.dm.rulekit.validate.DraftComputation;
 import io.github.mbackschat.a12.dm.rulekit.validate.DraftRule;
 import io.github.mbackschat.a12.dm.rulekit.validate.KernelDiagnostics;
+import io.github.mbackschat.a12.dm.rulekit.validate.RkCode;
 import io.github.mbackschat.a12.dm.rulekit.validate.RuleValidator;
 import io.github.mbackschat.a12.dm.rulekit.validate.ValidationResult;
 import io.github.mbackschat.a12.dm.rulekit.write.ModelWriter;
@@ -94,15 +96,17 @@ final class PatternsCommand extends BaseCommand {
     @Override
     public Integer call() {
         if (id == null) {
-            return emit(list());
+            return emitQuery("read", CATALOG.size() + " validation idiom(s)", list());
         }
         PatternEntry pattern = CATALOG.byId(id).orElse(null);
         if (pattern == null) {
-            return fail("no pattern '" + id + "' — known patterns: "
-                    + CATALOG.entries().stream().map(PatternEntry::id).toList());
+            return refusePrecheck("patterns", "read", RkCode.NO_SUCH_ELEMENT,
+                    "no pattern '" + id + "'", id,
+                    "pass a known pattern id (list them with `dmtool patterns`): "
+                            + CATALOG.entries().stream().map(PatternEntry::id).toList());
         }
         if (args.isEmpty()) {
-            return emit(detail(pattern));
+            return emitQuery("read", "read validation idiom " + pattern.id(), detail(pattern));
         }
         return scaffold(pattern);
     }
@@ -201,34 +205,9 @@ final class PatternsCommand extends BaseCommand {
         spec.put("code", errorCode);
         ArrayNode specMsgs = spec.putArray("messages");
         msgs.forEach(m -> specMsgs.addObject().put("locale", m.locale()).put("text", m.text()));
-        root.put("valid", check.ok());
-        root.set("diagnostics", diagnostics(ruleDiagnostics));
-
-        if (!apply) {
-            return emit(root);                       // review the spec (+ kernel verdict), then `rule add`
-        }
-        if (!check.ok()) {
-            root.put("applied", false);
-            root.put("reason", "the scaffolded rule is rejected by the kernel — fix the diagnostics before --apply");
-            return emit(root, 1);
-        }
-        String persisted = ModelWriter.addRule(modelJson, group, ruleName, rel, errorCode,
-                inst.condition(), "ERROR", msgs);
-        if (dryRun) {
-            root.put("applied", false);
-            root.put("previewed", true);
-            return emit(root);
-        }
-        String dest = outputPath != null ? outputPath : model;
-        try {
-            Files.writeString(Path.of(dest), persisted);
-        } catch (IOException e) {
-            return fail("cannot write output: " + e.getMessage());
-        }
-        root.put("applied", true);
-        root.put("written", dest);
-        root.put("rule", group + "/" + ruleName);
-        return emit(root);
+        return emitScaffold("rule", root, ruleDiagnostics, check, group + "/" + ruleName, model,
+                () -> ModelWriter.addRule(modelJson, group, ruleName, rel, errorCode, inst.condition(), "ERROR",
+                        msgs));
     }
 
     /**
@@ -267,33 +246,9 @@ final class PatternsCommand extends BaseCommand {
         }
         ArrayNode specMsgs = spec.putArray("messages");
         msgs.forEach(m -> specMsgs.addObject().put("locale", m.locale()).put("text", m.text()));
-        root.put("valid", check.ok());
-        root.set("diagnostics", diagnostics(check));
-
-        if (!apply) {
-            return emit(root);                       // review the computation-spec (+ kernel verdict), then `computation add`
-        }
-        if (!check.ok()) {
-            root.put("applied", false);
-            root.put("reason", "the scaffolded computation is rejected by the kernel — fix the diagnostics before --apply");
-            return emit(root, 1);
-        }
-        String persisted = ModelWriter.addComputation(modelJson, draft, msgs);
-        if (dryRun) {
-            root.put("applied", false);
-            root.put("previewed", true);
-            return emit(root);
-        }
-        String dest = outputPath != null ? outputPath : model;
-        try {
-            Files.writeString(Path.of(dest), persisted);
-        } catch (IOException e) {
-            return fail("cannot write output: " + e.getMessage());
-        }
-        root.put("applied", true);
-        root.put("written", dest);
-        root.put("computation", draft.groupPath() + "/" + compName);
-        return emit(root);
+        return emitScaffold("computation", root, check.diagnostics(), check,
+                draft.groupPath() + "/" + compName, model,
+                () -> ModelWriter.addComputation(modelJson, draft, msgs));
     }
 
     /**
@@ -321,47 +276,86 @@ final class PatternsCommand extends BaseCommand {
         }
 
         boolean valid;
-        com.fasterxml.jackson.databind.JsonNode diagnostics;
-        String resultJson = null;
+        List<Diagnostic> diagnostics = List.of();
+        ConsistencyEvidence evidence;
+        String validated = null;
         try {
-            resultJson = doc.validate(resolver).toJson();
+            validated = doc.validate(resolver).toJson();
             valid = true;
-            diagnostics = MAPPER.createArrayNode();
+            evidence = ConsistencyEvidence.of(BoundModel.ofJson(validated, resolver));
         } catch (ModelConsistencyException e) {
             valid = false;
-            diagnostics = MAPPER.valueToTree(e.notifications().stream()
-                    .map(n -> KernelDiagnostics.enriched(n, null)).toList());
+            evidence = ConsistencyEvidence.of(e);
+            diagnostics = e.notifications().stream().map(n -> KernelDiagnostics.enriched(n, null)).toList();
         }
+        final String resultJson = validated;
 
         ObjectNode root = MAPPER.createObjectNode();
         root.put("pattern", pattern.id());
         root.set("spec", fieldSpec);
-        root.put("valid", valid);
-        root.set("diagnostics", diagnostics);
+        return emitScaffoldOutcome("field", root, diagnostics, valid, evidence, target, model,
+                () -> resultJson);
+    }
 
+    /**
+     * The scaffold routes' shared emitter, for a kind whose gate is a {@link ValidationResult}.
+     *
+     * <p>All three scaffold kinds had the same four-route shape hand-written three times over a raw Jackson node,
+     * with {@code valid}/{@code applied}/{@code previewed}/{@code reason} keys of their own invention and no
+     * envelope at all — even though this verb runs the real kernel and, under {@code --apply}, writes the model.
+     * An agent therefore had to learn a second output contract for one verb. One emitter, one envelope.
+     */
+    private Integer emitScaffold(String kind, ObjectNode payload, List<Diagnostic> diagnostics,
+            ValidationResult check, String scaffolded, String model, Supplier<String> persist) {
+        return emitScaffoldOutcome(kind, payload, diagnostics, check.ok(), ConsistencyEvidence.of(check),
+                scaffolded, model, persist);
+    }
+
+    /**
+     * The scaffold contract itself: <b>review</b> (no {@code --apply}) is a kernel-backed verdict about the
+     * candidate; a kernel-rejected {@code --apply} is a kernel rejection; {@code --dry-run} is a preview; and a
+     * committed {@code --apply} is a mutation that reports where it wrote.
+     */
+    private Integer emitScaffoldOutcome(String kind, ObjectNode payload, List<Diagnostic> diagnostics,
+            boolean valid, ConsistencyEvidence evidence, String scaffolded, String model,
+            Supplier<String> persist) {
         if (!apply) {
-            return emit(root);                   // review the field-spec (+ kernel verdict), then `field add`
+            // review the spec + the kernel's verdict on it, then run the ordinary `<kind> add`
+            return print(ResultEnvelope.consistencyVerdict("patterns", "scaffold",
+                    valid ? "scaffolded a kernel-valid " + kind
+                            : "the scaffolded " + kind + " is rejected by the kernel (" + diagnostics.size()
+                                    + " finding(s))",
+                    valid, diagnostics, payload, evidence));
         }
         if (!valid) {
-            root.put("applied", false);
-            root.put("reason", "the scaffolded field is rejected by the kernel — fix the diagnostics before --apply");
-            return emit(root, 1);
+            return print(ResultEnvelope.rejected("patterns", "scaffold",
+                    "the scaffolded " + kind + " is rejected by the kernel — fix the diagnostics before --apply",
+                    payload, diagnostics, RejectionBasis.kernel(evidence)));
         }
+        String persisted = persist.get();
         if (dryRun) {
-            root.put("applied", false);
-            root.put("previewed", true);
-            return emit(root);
+            return print(ResultEnvelope.preview("patterns", "scaffold",
+                    "would add " + kind + " " + scaffolded, payload, diagnostics));
         }
         String dest = outputPath != null ? outputPath : model;
         try {
-            Files.writeString(Path.of(dest), resultJson);
+            Files.writeString(Path.of(dest), persisted);
         } catch (IOException e) {
             return fail("cannot write output: " + e.getMessage());
         }
-        root.put("applied", true);
-        root.put("written", dest);
-        root.put("field", target);
-        return emit(root);
+        payload.put(kind, scaffolded);
+        return print(ResultEnvelope.applied("patterns", "scaffold", "added " + kind + " " + scaffolded, payload,
+                diagnostics, dest));
+    }
+
+    /** A catalog read — the bundled idiom catalog, no model and no gate. */
+    private Integer emitQuery(String op, String summary, ObjectNode payload) {
+        return print(ResultEnvelope.queryResult("patterns", op, summary, payload, ConsistencyEvidence.none()));
+    }
+
+    private Integer print(ResultEnvelope env) {
+        out().print(env.toJsonString());
+        return env.exitCode();
     }
 
     /** The per-locale messages — the caller's {@code --message locale=text}, with a placeholder for any gap. */
@@ -377,18 +371,6 @@ final class PatternsCommand extends BaseCommand {
         return out;
     }
 
-    private com.fasterxml.jackson.databind.JsonNode diagnostics(ValidationResult check) {
-        return diagnostics(check.diagnostics());
-    }
-
-    private com.fasterxml.jackson.databind.JsonNode diagnostics(List<Diagnostic> diagnostics) {
-        try {
-            return MAPPER.readTree(ValidationResult.of(diagnostics).toJson()).path("diagnostics");
-        } catch (JsonProcessingException e) {
-            return MAPPER.createArrayNode();
-        }
-    }
-
     /** "date-order" → "DateOrderRule" — a readable default rule name. */
     private static String derivedName(String patternId) {
         StringBuilder b = new StringBuilder();
@@ -400,16 +382,4 @@ final class PatternsCommand extends BaseCommand {
         return b.append("Rule").toString();
     }
 
-    private Integer emit(ObjectNode node) {
-        return emit(node, 0);
-    }
-
-    private Integer emit(ObjectNode node, int exitCode) {
-        try {
-            out().print(MAPPER.writerWithDefaultPrettyPrinter().writeValueAsString(node) + "\n");
-            return exitCode;
-        } catch (JsonProcessingException e) {
-            return fail("cannot serialize patterns output: " + e.getMessage());
-        }
-    }
 }

@@ -1,6 +1,7 @@
 package io.github.mbackschat.a12.dm.cli.rule;
 
 import io.github.mbackschat.a12.dm.cli.BaseCommand;
+import io.github.mbackschat.a12.dm.cli.ConsistencyEvidence;
 import io.github.mbackschat.a12.dm.cli.ParamKind;
 import io.github.mbackschat.a12.dm.cli.Refusal;
 import io.github.mbackschat.a12.dm.cli.ResultEnvelope;
@@ -74,7 +75,8 @@ final class RuleExplainCommand extends BaseCommand {
             }
             ObjectNode data = RuleExplainData.build(adapter, bound, rule);
             String summary = RuleExplainData.isOpaque(data) ? rule + " is Opaque (not modeled)" : "explained " + rule;
-            ResultEnvelope env = ResultEnvelope.read("rule", "explain", summary, true, List.of(), data);
+            ResultEnvelope env = ResultEnvelope.queryResult("rule", "explain", summary, data,
+                    ConsistencyEvidence.of(bound));
             out().print(env.toJsonString());
             return env.exitCode();
         } catch (RuntimeException e) {

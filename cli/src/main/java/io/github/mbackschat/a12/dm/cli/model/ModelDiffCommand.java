@@ -12,6 +12,7 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import io.github.mbackschat.a12.dm.adapter.review.ModelDiff;
 import io.github.mbackschat.a12.dm.rulekit.dsl.ConditionEditScript;
 import io.github.mbackschat.a12.dm.cli.BaseCommand;
+import io.github.mbackschat.a12.dm.cli.ConsistencyEvidence;
 import io.github.mbackschat.a12.dm.cli.ResultEnvelope;
 import io.github.mbackschat.a12.dm.cli.WorkspaceOption;
 import io.github.mbackschat.a12.dm.cli.model.GitBaseline.GitBaselineException;
@@ -172,7 +173,10 @@ final class ModelDiffCommand extends BaseCommand {
                     + (relocated > 0 ? ", " + relocated + " renamed/moved" : "")
                     + (reordered > 0 ? ", " + reordered + " reordered" : "")
                     + (highRisk > 0 ? " (" + highRisk + " high-risk)" : "");
-            ResultEnvelope env = ResultEnvelope.read("model", "diff", summary, true, List.of(), data);
+            // ModelDiff loads BOTH sides through KernelAdapter.checkAndOpen, so the diff object's existence
+            // witnesses two gates having run.
+            ResultEnvelope env = ResultEnvelope.queryResult("model", "diff", summary, data,
+                    ConsistencyEvidence.of(diff));
             out().print(env.toJsonString());
             return env.exitCode();
         } catch (RuntimeException e) {

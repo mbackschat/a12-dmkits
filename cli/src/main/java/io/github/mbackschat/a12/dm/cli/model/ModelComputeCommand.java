@@ -2,6 +2,7 @@ package io.github.mbackschat.a12.dm.cli.model;
 
 import io.github.mbackschat.a12.dm.cli.BaseCommand;
 import io.github.mbackschat.a12.dm.cli.ResultEnvelope;
+import io.github.mbackschat.a12.dm.cli.RuntimeEvidence;
 import io.github.mbackschat.a12.dm.cli.WorkspaceOption;
 import io.github.mbackschat.a12.dm.cli.interp.InterpreterEngine;
 import io.github.mbackschat.a12.dm.interpreter.DocumentInputError;
@@ -84,8 +85,8 @@ final class ModelComputeCommand extends BaseCommand {
             return fail("computation failed: " + e.getMessage());
         }
 
-        ResultEnvelope env = ResultEnvelope.read("model", "compute",
-                "computed " + data.get("computed").size() + " field(s)", true, List.of(), data);
+        ResultEnvelope env = ResultEnvelope.runtimeObservation("model", "compute",
+                "computed " + data.get("computed").size() + " field(s)", data, RuntimeEvidence.interpreter());
         out().print(env.toJsonString());
         return env.exitCode();
     }

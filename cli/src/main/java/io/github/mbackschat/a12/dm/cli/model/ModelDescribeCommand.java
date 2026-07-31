@@ -1,6 +1,7 @@
 package io.github.mbackschat.a12.dm.cli.model;
 
 import io.github.mbackschat.a12.dm.cli.BaseCommand;
+import io.github.mbackschat.a12.dm.cli.ConsistencyEvidence;
 import io.github.mbackschat.a12.dm.cli.ResultEnvelope;
 import io.github.mbackschat.a12.dm.cli.WorkspaceOption;
 
@@ -40,7 +41,8 @@ final class ModelDescribeCommand extends BaseCommand {
         try {
             BoundModel m = BoundModel.ofJson(Files.readString(Path.of(model)), workspace.resolverFor(model));
             JsonNode card = MAPPER.readTree(new ModelContext(m).describe().toJson());
-            ResultEnvelope env = ResultEnvelope.read("model", "describe", "model card", true, List.of(), card);
+            ResultEnvelope env = ResultEnvelope.queryResult("model", "describe", "model card", card,
+                    ConsistencyEvidence.of(m));
             out().print(env.toJsonString());
             return env.exitCode();
         } catch (IOException e) {

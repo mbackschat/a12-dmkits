@@ -1,6 +1,7 @@
 package io.github.mbackschat.a12.dm.cli.field;
 
 import io.github.mbackschat.a12.dm.cli.BaseCommand;
+import io.github.mbackschat.a12.dm.cli.ConsistencyEvidence;
 import io.github.mbackschat.a12.dm.cli.ReadPayloads;
 import io.github.mbackschat.a12.dm.cli.ResultEnvelope;
 
@@ -71,7 +72,7 @@ final class FieldReadCommand extends BaseCommand {
         try {
             ModelDocument doc = ModelDocument.read(json);
             if (fieldPath == null) {
-                return readNameIndex("field", "fields", doc.fieldPaths());
+                return readNameIndex("field", "fields", doc.fieldPaths(), ConsistencyEvidence.none());
             }
             Optional<String> kind = doc.fieldKind(fieldPath);
             if (kind.isEmpty()) {
@@ -88,7 +89,9 @@ final class FieldReadCommand extends BaseCommand {
                         fieldPath, fix);
             }
             ObjectNode data = ReadPayloads.field(doc, fieldPath);
-            ResultEnvelope env = ResultEnvelope.read("field", "read", "read " + fieldPath, true, List.of(), data);
+            // Parse-and-index only — no consistency gate on this path, so no verdict and no provenance.
+            ResultEnvelope env = ResultEnvelope.queryResult("field", "read", "read " + fieldPath, data,
+                    ConsistencyEvidence.none());
             out().print(env.toJsonString());
             return env.exitCode();
         } catch (RuntimeException e) {

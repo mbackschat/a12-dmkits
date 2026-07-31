@@ -1,6 +1,7 @@
 package io.github.mbackschat.a12.dm.cli.group;
 
 import io.github.mbackschat.a12.dm.cli.BaseCommand;
+import io.github.mbackschat.a12.dm.cli.ConsistencyEvidence;
 import io.github.mbackschat.a12.dm.cli.ReadPayloads;
 import io.github.mbackschat.a12.dm.cli.ResultEnvelope;
 
@@ -55,14 +56,16 @@ final class GroupReadCommand extends BaseCommand {
         try {
             ModelDocument doc = ModelDocument.read(json);
             if (group == null) {
-                return readNameIndex("group", "groups", doc.groupPaths());
+                return readNameIndex("group", "groups", doc.groupPaths(), ConsistencyEvidence.none());
             }
             if (!doc.groupPaths().contains(group)) {
                 return refuseNotFound("group", "read", RkCode.NO_SUCH_GROUP, "no group at '" + group + "'",
                         group, "pass an existing group's full name-path (see `model describe` or `group read` — no arg)");
             }
             ObjectNode data = ReadPayloads.group(doc, group);   // T3: the one shared shape, same as `apply` GROUP_READ
-            ResultEnvelope env = ResultEnvelope.read("group", "read", "read " + group, true, List.of(), data);
+            // Parse-and-index only — no consistency gate on this path, so no verdict and no provenance.
+            ResultEnvelope env = ResultEnvelope.queryResult("group", "read", "read " + group, data,
+                    ConsistencyEvidence.none());
             out().print(env.toJsonString());
             return env.exitCode();
         } catch (RuntimeException e) {

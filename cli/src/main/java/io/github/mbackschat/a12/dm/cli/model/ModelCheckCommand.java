@@ -1,6 +1,7 @@
 package io.github.mbackschat.a12.dm.cli.model;
 
 import io.github.mbackschat.a12.dm.cli.BaseCommand;
+import io.github.mbackschat.a12.dm.cli.ConsistencyEvidence;
 import io.github.mbackschat.a12.dm.cli.ResultEnvelope;
 import io.github.mbackschat.a12.dm.cli.WorkspaceOption;
 
@@ -55,11 +56,16 @@ final class ModelCheckCommand extends BaseCommand {
 
         List<Diagnostic> diagnostics = new ArrayList<>();
         boolean valid;
+        // The gate's own receipt, on BOTH branches: a successful bind hands one out, and a rejection carries one
+        // through its exception. The verdict and its provenance are therefore produced together — never a
+        // Backends.verification() stamped on afterwards, which would have said KERNEL_CONFIRMED regardless.
+        ConsistencyEvidence evidence;
         try {
-            BoundModel.ofJson(json, workspace.resolverFor(model));
+            evidence = ConsistencyEvidence.of(BoundModel.ofJson(json, workspace.resolverFor(model)));
             valid = true;
         } catch (ModelConsistencyException e) {
             valid = false;
+            evidence = ConsistencyEvidence.of(e);
             for (Notification n : e.notifications()) {
                 diagnostics.add(KernelDiagnostics.enriched(n, null));
             }
@@ -71,8 +77,8 @@ final class ModelCheckCommand extends BaseCommand {
 
         long errors = diagnostics.stream().filter(d -> d.severity() == Severity.ERROR).count();
         String summary = valid ? "model is valid" : "model has " + errors + " error(s)";
-        ResultEnvelope env = ResultEnvelope.read("model", "check", summary, valid, diagnostics, null)
-                .withVerification(io.github.mbackschat.a12.dm.core.Backends.verification());
+        ResultEnvelope env = ResultEnvelope.consistencyVerdict("model", "check", summary, valid, diagnostics, null,
+                evidence);
         out().print(env.toJsonString());
         return env.exitCode();
     }

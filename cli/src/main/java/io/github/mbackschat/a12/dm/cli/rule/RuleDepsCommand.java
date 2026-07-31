@@ -1,6 +1,7 @@
 package io.github.mbackschat.a12.dm.cli.rule;
 
 import io.github.mbackschat.a12.dm.cli.BaseCommand;
+import io.github.mbackschat.a12.dm.cli.ConsistencyEvidence;
 import io.github.mbackschat.a12.dm.cli.ParamKind;
 import io.github.mbackschat.a12.dm.cli.Refusal;
 import io.github.mbackschat.a12.dm.cli.ResultEnvelope;
@@ -95,7 +96,10 @@ final class RuleDepsCommand extends BaseCommand {
                 data.put("canonicalText", opaque.canonicalText());
                 summary = rule + " is Opaque (not modeled) — use `where-used` for the robust inverse";
             }
-            ResultEnvelope env = ResultEnvelope.read("rule", "deps", summary, true, List.of(), data);
+            // `bound` is a gated ofJson bind; the adapter beside it is KernelAdapter.of (gate SKIPped), so the
+            // BINDING is the witness here — the discriminating pair the derivation rule exists for.
+            ResultEnvelope env = ResultEnvelope.queryResult("rule", "deps", summary, data,
+                    ConsistencyEvidence.of(bound));
             out().print(env.toJsonString());
             return env.exitCode();
         } catch (IOException e) {

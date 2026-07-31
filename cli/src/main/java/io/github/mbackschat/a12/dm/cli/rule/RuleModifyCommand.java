@@ -1,6 +1,9 @@
 package io.github.mbackschat.a12.dm.cli.rule;
 
 import io.github.mbackschat.a12.dm.cli.BaseCommand;
+import io.github.mbackschat.a12.dm.cli.ConsistencyEvidence;
+import io.github.mbackschat.a12.dm.cli.RejectionBasis;
+import io.github.mbackschat.a12.dm.core.ModelConsistencyException;
 import io.github.mbackschat.a12.dm.cli.ParamKind;
 import io.github.mbackschat.a12.dm.cli.Refusal;
 import io.github.mbackschat.a12.dm.cli.ResultEnvelope;
@@ -144,7 +147,13 @@ final class RuleModifyCommand extends BaseCommand {
             Diagnostic d = Diagnostic.precheck(Optional.empty(),
                     "the edit is rejected by the kernel (use `rule check` for diagnostics): " + e.getMessage(),
                     new Diagnostic.Where(rule, Optional.empty()), Optional.empty(), Optional.empty());
-            ResultEnvelope env = ResultEnvelope.rejected("rule", "modify", "edit rejected by the kernel", List.of(d));
+            // One broad catch used to serve two different bases. A ModelConsistencyException IS the gate's verdict,
+            // so it reports valid:false with its arbitrator; any other RuntimeException (a parse/render failure)
+            // means we cannot say the gate reached a verdict at all, so it claims neither.
+            ResultEnvelope env = ResultEnvelope.rejected("rule", "modify", "edit rejected by the kernel", List.of(d),
+                    e instanceof ModelConsistencyException rejection
+                            ? RejectionBasis.kernel(ConsistencyEvidence.of(rejection))
+                            : RejectionBasis.preflight());
             out().print(env.toJsonString());
             return env.exitCode();
         }

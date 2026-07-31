@@ -1,6 +1,7 @@
 package io.github.mbackschat.a12.dm.cli.workspace;
 
 import io.github.mbackschat.a12.dm.cli.BaseCommand;
+import io.github.mbackschat.a12.dm.cli.ConsistencyEvidence;
 import io.github.mbackschat.a12.dm.cli.ResultEnvelope;
 
 import java.nio.file.Files;
@@ -96,9 +97,10 @@ final class WorkspaceGraphCommand extends BaseCommand {
                     edgeArr.addObject().put("subtype", e.subtype()).put("supertype", e.supertype())
                             .put("resolved", e.resolved());
                 }
-                ResultEnvelope env = ResultEnvelope.read("workspace", "graph",
+                // a directory scan + header parse; no model is loaded through the consistency gate
+                ResultEnvelope env = ResultEnvelope.queryResult("workspace", "graph",
                         models.size() + " model(s), " + edges.size() + " inheritance edge(s) under " + dir,
-                        true, List.of(), data);
+                        data, ConsistencyEvidence.none());
                 out().print(env.toJsonString());
                 return env.exitCode();
             }

@@ -4,6 +4,7 @@ import io.github.mbackschat.a12.dm.cli.BaseCommand;
 import io.github.mbackschat.a12.dm.cli.CustomSupportOptions;
 import io.github.mbackschat.a12.dm.cli.ParamKind;
 import io.github.mbackschat.a12.dm.cli.ResultEnvelope;
+import io.github.mbackschat.a12.dm.cli.RuntimeEvidence;
 import io.github.mbackschat.a12.dm.cli.WorkspaceOption;
 import io.github.mbackschat.a12.dm.cli.interp.InterpreterEngine;
 
@@ -185,8 +186,8 @@ final class ModelEvalCommand extends BaseCommand {
             out().print(refusal.toJsonString());
             return refusal.exitCode();
         }
-        ResultEnvelope env = ResultEnvelope.read("model", "eval",
-                data.get("fired").size() + " rule(s) fired", true, List.of(), data);
+        ResultEnvelope env = ResultEnvelope.runtimeObservation("model", "eval",
+                data.get("fired").size() + " rule(s) fired", data, RuntimeEvidence.interpreter());
         out().print(env.toJsonString());
         return env.exitCode();
     }

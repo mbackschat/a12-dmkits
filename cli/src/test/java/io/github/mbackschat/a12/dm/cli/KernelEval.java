@@ -160,7 +160,7 @@ final class KernelEval {
                 if (!check.ok()) {
                     ResultEnvelope env = ResultEnvelope.rejected("model", "eval",
                             "the candidate rule is rejected by the kernel (use `rule check` for diagnostics)",
-                            check.diagnostics());
+                            check.diagnostics(), RejectionBasis.kernel(ConsistencyEvidence.of(check)));
                     out.append(env.toJsonString());
                     return env.exitCode();
                 }
@@ -187,8 +187,8 @@ final class KernelEval {
             return fail(err, "evaluation failed: " + e.getMessage());
         }
 
-        ResultEnvelope env = ResultEnvelope.read("model", "eval",
-                data.get("fired").size() + " rule(s) fired", true, List.of(), data);
+        ResultEnvelope env = ResultEnvelope.runtimeObservation("model", "eval",
+                data.get("fired").size() + " rule(s) fired", data, RuntimeEvidence.kernel());
         out.append(env.toJsonString());
         return env.exitCode();
     }
@@ -227,8 +227,8 @@ final class KernelEval {
         } catch (RuntimeException e) {
             return fail(err, "computation failed: " + e.getMessage());
         }
-        ResultEnvelope env = ResultEnvelope.read("model", "compute",
-                "computed " + data.get("computed").size() + " field(s)", true, List.of(), data);
+        ResultEnvelope env = ResultEnvelope.runtimeObservation("model", "compute",
+                "computed " + data.get("computed").size() + " field(s)", data, RuntimeEvidence.kernel());
         out.append(env.toJsonString());
         return env.exitCode();
     }
@@ -261,7 +261,8 @@ final class KernelEval {
                 return refuse(out, "rule", "eval", refusal.get());
             }
             ObjectNode data = ruleTestData(adapter.testRule(a.rulePath(), fields, locale(a), !a.noComputations()));
-            ResultEnvelope env = ResultEnvelope.read("rule", "eval", ruleSummary(data), true, List.of(), data);
+            ResultEnvelope env = ResultEnvelope.runtimeObservation("rule", "eval", ruleSummary(data), data,
+                    RuntimeEvidence.kernel());
             out.append(env.toJsonString());
             return env.exitCode();
         } catch (IllegalArgumentException badDoc) {

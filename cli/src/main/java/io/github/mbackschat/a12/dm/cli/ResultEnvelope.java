@@ -2,6 +2,7 @@ package io.github.mbackschat.a12.dm.cli;
 
 import java.util.List;
 import java.util.Locale;
+import java.util.Optional;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -16,46 +17,326 @@ import io.github.mbackschat.a12.dm.rulekit.validate.ValidationResult;
  * The uniform result envelope every {@code dmtool} verb (and every {@code apply} op) emits — CLI-SPEC §3b.
  * One op-record {@code {target, op, args}} in, one envelope out, so an agent learns a single output shape.
  *
- * <p>It embeds the existing {@link Diagnostic} array <b>verbatim</b> (via {@link ValidationResult}); the new
- * part is only the wrapper. The {@code ok}/{@code valid} split fixes a real overload: {@code ok} is "the
- * operation executed as asked", {@code valid} (present for validate/check) is "the subject model is
- * kernel-valid" — a {@code model check} that finds the model invalid is {@code ok:true, valid:false}.
+ * <p>It embeds the existing {@link Diagnostic} array <b>verbatim</b> (via {@link ValidationResult}); the wrapper
+ * adds the three orthogonal axes an agent must not conflate:
+ *
+ * <ul>
+ *   <li>{@code ok} — <b>the operation executed as asked</b>. A property of the invocation, never of the subject.</li>
+ *   <li>{@code valid} — <b>the subject model is kernel-valid</b>. A consistency <em>verdict</em>, so it exists only
+ *       where a gate produced one: {@code model check} that finds the model invalid is {@code ok:true, valid:false}.</li>
+ *   <li>{@code verification} / {@code engine}+{@code engineVersion}+{@code toolVersion} — <b>who vouches</b> for
+ *       the verdict, and which implementation produced a semantic observation. See {@link ConsistencyEvidence} and
+ *       {@link RuntimeEvidence}.</li>
+ * </ul>
+ *
+ * <h2>Why this is a closed class with eight factories</h2>
+ *
+ * <p>The predecessor was a {@code record} with a public canonical constructor and a
+ * {@code read(target, op, summary, boolean valid, diagnostics, data)} factory. Both were defect generators, and the
+ * 2026-07-31 field feedback is what they generated:
+ *
+ * <ul>
+ *   <li>the {@code boolean valid} sat in a long, largely same-typed parameter list, and <b>35 call sites passed a
+ *       literal</b> — overwhelmingly {@code true}. Seven of them ({@code model info}, {@code field read},
+ *       {@code group read}, {@code config read}, {@code meta}, {@code model compute}, {@code model eval}) were
+ *       measured reporting {@code valid:true} on a model the kernel <b>rejects</b>. Nothing was lying on purpose:
+ *       the parameter simply had to be given a value, and {@code true} is what one writes for a read that
+ *       succeeded;</li>
+ *   <li>the public constructor meant any new route could assemble any combination of members, so no invariant
+ *       about the shape could be relied on downstream;</li>
+ *   <li>{@code withVerification} let evidence be bolted on <em>after</em> the fact, by a caller who by then no
+ *       longer held the gate that would have justified it.</li>
+ * </ul>
+ *
+ * <p>So the wrong claim is now <b>unrepresentable</b> rather than merely discouraged. Construction is private; every
+ * route picks the one factory that matches what it actually did, and that choice fixes which members may appear.
+ * A read cannot mention {@code valid} because {@link #queryResult} takes no such argument; a verdict cannot omit its
+ * provenance because {@link #consistencyVerdict} demands a {@link ConsistencyEvidence} that only a real gate hands
+ * out. {@code withVerification} is gone.
+ *
+ * <p>{@link Family} is the discriminator, and it drives {@link #ok()}, {@link #exitCode()} and serialization through
+ * exhaustive switches — so a ninth family cannot be added without deciding, at the compiler's insistence, what it
+ * exits with and what it publishes.
+ *
+ * @see ConsistencyEvidence the gate receipt that gates the {@code verification} key
+ * @see RuntimeEvidence the engine/version triple every runtime observation carries
  */
-public record ResultEnvelope(
-        String target,
-        String op,
-        Outcome outcome,
-        String summary,
-        JsonNode changed,
-        JsonNode data,
-        List<Diagnostic> diagnostics,
-        Boolean valid,
-        boolean written,
-        String output,
-        Verification verification) {
+public final class ResultEnvelope {
 
-    /** The execution result class (distinct from the subject's validity). */
+    /**
+     * What kind of result this is — the discriminator every downstream decision switches on exhaustively.
+     * Deliberately NOT the same axis as {@link Outcome}: {@code Outcome} is the wire value an agent reads, and four
+     * different families all legitimately serialize as {@code read}.
+     */
+    enum Family {
+        /** A read/inspection payload. Carries no verdict, so it can never exit nonzero. */
+        QUERY,
+        /** A consistency verdict about a subject model, with the gate receipt that produced it. */
+        VERDICT,
+        /** A runtime evaluation observation, attributed to the engine that computed it. */
+        RUNTIME_OBSERVATION,
+        /** A comparison of two like artifacts; owns its own exit code and is not a validity claim. */
+        COMPARISON,
+        /** A write, a preview of one, or a staged step of a transaction. */
+        MUTATION,
+        /** A safety gate refused before mutating (CLI-SPEC §6) — exit 2, nothing written. */
+        REFUSAL,
+        /** The input was rejected — by the kernel gate, or by the CLI's own pre-flight. Exit 1. */
+        REJECTION,
+        /** The tool itself failed (an unexpected throwable at the command boundary) — exit 70. */
+        INTERNAL_ERROR
+    }
+
+    /** The execution result class as published on the wire (distinct from the subject's validity). */
     enum Outcome { APPLIED, PREVIEW, REFUSED, REJECTED, READ, STAGED, ERROR }
 
     private static final ObjectMapper MAPPER = new ObjectMapper();
 
-    public ResultEnvelope {
-        diagnostics = diagnostics == null ? List.of() : List.copyOf(diagnostics);
+    private final Family family;
+    private final String target;
+    private final String op;
+    private final Outcome outcome;
+    private final String summary;
+    private final JsonNode changed;
+    private final JsonNode data;
+    private final List<Diagnostic> diagnostics;
+    private final Boolean valid;
+    private final boolean written;
+    private final String output;
+    private final Verification verification;
+    private final RuntimeEvidence runtimeEvidence;
+    private final ComparisonOutcome comparison;
+
+    private ResultEnvelope(Draft draft) {
+        this.family = draft.family;
+        this.target = draft.target;
+        this.op = draft.op;
+        this.outcome = draft.outcome;
+        this.summary = draft.summary;
+        this.changed = draft.changed;
+        this.data = draft.data;
+        this.diagnostics = draft.diagnostics == null ? List.of() : List.copyOf(draft.diagnostics);
+        this.valid = draft.valid;
+        this.written = draft.written;
+        this.output = draft.output;
+        this.verification = draft.verification;
+        this.runtimeEvidence = draft.runtimeEvidence;
+        this.comparison = draft.comparison;
     }
 
     /**
-     * A copy tagged with how a <em>verdict</em> was verified (KERNEL-DECOUPLING-PROPOSAL §2c): the verb
-     * checked the subject under {@link Verification#KERNEL_CONFIRMED} (a kernel backend arbitrated — dmtool
-     * always) or {@link Verification#STRUCTURAL_ONLY} (no backend; the verdict is structural-only, never
-     * kernel-green). Attach it on the check/validate verbs so a library consumer's degraded posture is
-     * visible even though the CLI itself always bundles the backend.
+     * The internal assembly step. Private because the eight factories are the whole public construction surface;
+     * fluent because the envelope has twelve members of which four are {@code String} and two are {@code JsonNode},
+     * and a positional constructor over those is the silent-swap smell the project's builder rule exists to
+     * forbid — most of all here, where a swap would misattribute a verdict.
      */
-    public ResultEnvelope withVerification(Verification verification) {
-        return new ResultEnvelope(target, op, outcome, summary, changed, data, diagnostics,
-                valid, written, output, verification);
+    private static final class Draft {
+        private final Family family;
+        private final String target;
+        private final String op;
+        private final Outcome outcome;
+        private final String summary;
+        private JsonNode changed;
+        private JsonNode data;
+        private List<Diagnostic> diagnostics = List.of();
+        private Boolean valid;
+        private boolean written;
+        private String output;
+        private Verification verification;
+        private RuntimeEvidence runtimeEvidence;
+        private ComparisonOutcome comparison;
+
+        private Draft(Family family, String target, String op, Outcome outcome, String summary) {
+            this.family = family;
+            this.target = target;
+            this.op = op;
+            this.outcome = outcome;
+            this.summary = summary;
+        }
+
+        private Draft changed(JsonNode value) {
+            this.changed = value;
+            return this;
+        }
+
+        private Draft data(JsonNode value) {
+            this.data = value;
+            return this;
+        }
+
+        private Draft diagnostics(List<Diagnostic> value) {
+            this.diagnostics = value;
+            return this;
+        }
+
+        private Draft valid(boolean value) {
+            this.valid = value;
+            return this;
+        }
+
+        private Draft writtenTo(String path) {
+            this.written = true;
+            this.output = path;
+            return this;
+        }
+
+        private Draft verification(Verification value) {
+            this.verification = value;
+            return this;
+        }
+
+        private Draft runtimeEvidence(RuntimeEvidence value) {
+            this.runtimeEvidence = value;
+            return this;
+        }
+
+        private Draft comparison(ComparisonOutcome value) {
+            this.comparison = value;
+            return this;
+        }
+
+        private ResultEnvelope build() {
+            return new ResultEnvelope(this);
+        }
     }
 
-    /** A mutating op that succeeded and wrote the model. */
+    // --- 1. query -------------------------------------------------------------------------------------
+
+    /**
+     * A read/inspection payload: the op executed and {@code data} carries what it read (a model card, an
+     * explanation tree, a name index, …).
+     *
+     * <p><b>Emits no {@code valid}, ever.</b> A read is not a verdict; the seven verbs that used to claim
+     * {@code valid:true} here were claiming a validity they had not established — and on a kernel-invalid model
+     * some of them were flatly wrong. When the route DID gate (most model-loading reads do, via
+     * {@code BoundModel.ofJson}), that fact is published as {@code verification} instead: honest provenance without
+     * a fabricated verdict.
+     *
+     * @param evidence the gate receipt, or {@link ConsistencyEvidence#none()} — required explicitly, so an ungated
+     *                 read is a decision on the record rather than a forgotten argument
+     */
+    public static ResultEnvelope queryResult(String target, String op, String summary, JsonNode data,
+            ConsistencyEvidence evidence) {
+        return new Draft(Family.QUERY, target, op, Outcome.READ, summary)
+                .data(data)
+                .verification(evidence.verification().orElse(null))
+                .build();
+    }
+
+    /** A query carrying advisory diagnostics alongside its payload (e.g. a version-skew note on a read). */
+    public static ResultEnvelope queryResult(String target, String op, String summary, JsonNode data,
+            List<Diagnostic> diagnostics, ConsistencyEvidence evidence) {
+        return new Draft(Family.QUERY, target, op, Outcome.READ, summary)
+                .data(data)
+                .diagnostics(diagnostics)
+                .verification(evidence.verification().orElse(null))
+                .build();
+    }
+
+    // --- 2. consistency verdict ----------------------------------------------------------------------
+
+    /**
+     * A genuine consistency verdict about a subject — {@code model check}, {@code rule check},
+     * {@code workspace check}. The <em>only</em> family that publishes envelope-level {@code valid}, and it
+     * publishes {@code valid} and its provenance <b>inseparably</b>: the gate that produced the verdict is a
+     * required argument, so a verdict without evidence cannot be built.
+     *
+     * <p>A verdict may carry {@code data}: {@code workspace check} returns per-model entries and
+     * {@code rule check --suggest-error-field} returns a candidate list beside its verdict. Omitting {@code data}
+     * here would push both onto {@link #queryResult} and re-create the read/verdict conflation being removed.
+     *
+     * @throws IllegalStateException if {@code evidence} attests no gate — a verdict with nothing behind it is a
+     *                               programming error, not a shape to serialize
+     */
+    public static ResultEnvelope consistencyVerdict(String target, String op, String summary, boolean valid,
+            List<Diagnostic> diagnostics, JsonNode data, ConsistencyEvidence evidence) {
+        if (!evidence.gateRan()) {
+            throw new IllegalStateException("a consistency verdict for `" + target + " " + op + "` must carry the "
+                    + "gate that produced it — no gate ran on this path, so there is no verdict to report "
+                    + "(use queryResult if this route only reads)");
+        }
+        return new Draft(Family.VERDICT, target, op, Outcome.READ, summary)
+                .valid(valid)
+                .diagnostics(diagnostics)
+                .data(data)
+                .verification(evidence.verification().orElseThrow())
+                .build();
+    }
+
+    // --- 3. runtime observation ----------------------------------------------------------------------
+
+    /**
+     * A runtime evaluation result — {@code model eval}, {@code model compute}, {@code rule eval}. The observation
+     * rides {@code data}, attributed to the engine that computed it.
+     *
+     * <p><b>Emits no {@code valid}.</b> Evaluating a document against a model produces fired rules and computed
+     * values, not a verdict about the model; these verbs are also the ones that were measured claiming
+     * {@code valid:true} while the model was kernel-invalid. What they can honestly state is who computed the
+     * answer, which {@link RuntimeEvidence} makes mandatory rather than optional.
+     */
+    public static ResultEnvelope runtimeObservation(String target, String op, String summary, JsonNode data,
+            RuntimeEvidence evidence) {
+        return new Draft(Family.RUNTIME_OBSERVATION, target, op, Outcome.READ, summary)
+                .data(data)
+                .runtimeEvidence(evidence)
+                .build();
+    }
+
+    // --- 4. comparison --------------------------------------------------------------------------------
+
+    /**
+     * A comparison of two like artifacts — {@code profile compare}. The typed {@link ComparisonOutcome} owns both
+     * the reported result and the exit code, so neither is recovered by re-reading serialized JSON.
+     *
+     * <p>Profile equality is not model validity: this family exists so {@code compare} stops calling it
+     * {@code valid} while <b>keeping exit 1 for {@code differs}</b> exactly as before.
+     */
+    public static ResultEnvelope comparisonResult(String target, String op, String summary,
+            ComparisonOutcome outcome, JsonNode data) {
+        return new Draft(Family.COMPARISON, target, op, Outcome.READ, summary)
+                .comparison(outcome)
+                .data(data)
+                .build();
+    }
+
+    // --- 5. mutation ----------------------------------------------------------------------------------
+
+    /**
+     * The three mutation dispositions. This enum is the single authority for how a mutation maps onto the wire
+     * {@code outcome} and {@code written} — the mapping used to be re-derived at each factory.
+     *
+     * <p>Exposed through the three named factories {@link #applied}/{@link #preview}/{@link #staged} rather than as
+     * a parameter: the name states the disposition at the call site, which reads better and cannot be passed the
+     * wrong constant, while the enum keeps the mapping single-sourced and exhaustive.
+     */
+    enum MutationDisposition {
+        /** Written to disk. */
+        APPLIED(Outcome.APPLIED),
+        /** {@code --dry-run}: computed, nothing written. */
+        PREVIEW(Outcome.PREVIEW),
+        /** A step of an {@code apply} transaction — staged in the session, committed only by the terminal gate. */
+        STAGED(Outcome.STAGED);
+
+        private final Outcome outcome;
+
+        MutationDisposition(Outcome outcome) {
+            this.outcome = outcome;
+        }
+
+        Outcome outcome() {
+            return outcome;
+        }
+    }
+
+    /**
+     * A mutating op that succeeded and wrote the model.
+     *
+     * <p><b>Publishes no evidence yet.</b> The edit verbs <em>do</em> run the real consistency oracle before writing
+     * — a write that would break the model fails there — so this family has a receipt it could publish, and §2 says
+     * it should. Threading it through the ~75 mutation call sites is a separate, purely additive change with its own
+     * commit; this one closes the fabricated-{@code valid} defect. Until then a mutation stays silent about
+     * provenance, which is the pre-existing shape and never a false claim.
+     */
     public static ResultEnvelope applied(String target, String op, String summary, JsonNode changed, String output) {
         return applied(target, op, summary, changed, List.of(), output);
     }
@@ -63,7 +344,9 @@ public record ResultEnvelope(
     /** A mutating op that succeeded, carrying advisory diagnostics (e.g. lint warnings) alongside the write. */
     public static ResultEnvelope applied(String target, String op, String summary, JsonNode changed,
             List<Diagnostic> diagnostics, String output) {
-        return new ResultEnvelope(target, op, Outcome.APPLIED, summary, changed, null, diagnostics, null, true, output, null);
+        return mutation(MutationDisposition.APPLIED, target, op, summary, changed, diagnostics)
+                .writtenTo(output)
+                .build();
     }
 
     /** A mutating op previewed under {@code --dry-run} — nothing written. */
@@ -74,66 +357,178 @@ public record ResultEnvelope(
     /** A mutating op previewed under {@code --dry-run} — nothing written — carrying advisory diagnostics. */
     public static ResultEnvelope preview(String target, String op, String summary, JsonNode changed,
             List<Diagnostic> diagnostics) {
-        return new ResultEnvelope(target, op, Outcome.PREVIEW, summary, changed, null, diagnostics, null, false, null, null);
+        return mutation(MutationDisposition.PREVIEW, target, op, summary, changed, diagnostics).build();
     }
+
+    /**
+     * One staged step of an {@code apply} transaction: the edit is in the session but nothing is written, and the
+     * sequence's single terminal gate decides whether it ever will be. Individually ungated <em>by design</em> —
+     * deferring validation to one terminal check is {@code apply}'s invariant — so a staged step passes
+     * {@link ConsistencyEvidence#none()} and the aggregate carries the evidence.
+     */
+    public static ResultEnvelope staged(String target, String op, String summary, JsonNode changed,
+            List<Diagnostic> diagnostics) {
+        return mutation(MutationDisposition.STAGED, target, op, summary, changed, diagnostics).build();
+    }
+
+    private static Draft mutation(MutationDisposition disposition, String target, String op, String summary,
+            JsonNode changed, List<Diagnostic> diagnostics) {
+        return new Draft(Family.MUTATION, target, op, disposition.outcome(), summary)
+                .changed(changed)
+                .diagnostics(diagnostics);
+    }
+
+    // --- 6. refusal -----------------------------------------------------------------------------------
 
     /** A refactor/cascade safety gate refused (CLI-SPEC §6) — nothing written, exit 2. */
     public static ResultEnvelope refused(String target, String op, String summary, List<Diagnostic> diagnostics) {
         return refused(target, op, summary, null, diagnostics);
     }
 
-    /** A gate refused, carrying structured {@code data} (e.g. the referrers) — nothing written, exit 2. */
+    /**
+     * A gate refused, carrying structured {@code data} (e.g. the referrers) — nothing written, exit 2.
+     *
+     * <p>A refusal is the CLI declining to proceed, so it asserts nothing about the subject: no {@code valid}, and
+     * no {@code verification} — the kernel was never asked for a verdict here.
+     */
     public static ResultEnvelope refused(String target, String op, String summary, JsonNode data,
             List<Diagnostic> diagnostics) {
-        return new ResultEnvelope(target, op, Outcome.REFUSED, summary, null, data, diagnostics, null, false, null, null);
+        return new Draft(Family.REFUSAL, target, op, Outcome.REFUSED, summary)
+                .data(data)
+                .diagnostics(diagnostics)
+                .build();
     }
 
-    /** The kernel rejected the op (an invalid candidate/edit) — nothing written, exit 1. */
-    public static ResultEnvelope rejected(String target, String op, String summary, List<Diagnostic> diagnostics) {
-        return new ResultEnvelope(target, op, Outcome.REJECTED, summary, null, null, diagnostics, null, false, null, null);
+    // --- 7. rejection ---------------------------------------------------------------------------------
+
+    /**
+     * The input was rejected — nothing written, exit 1. The {@link RejectionBasis} decides the shape:
+     *
+     * <ul>
+     *   <li>{@link RejectionBasis.KernelRejection} — the gate ran and refused, so {@code valid:false} <b>and</b>
+     *       {@code verification}. Previously an invalid-model rejection published neither, which was the sharpest
+     *       form of the provenance defect: the kernel had just arbitrated, and the envelope said nothing about
+     *       it;</li>
+     *   <li>{@link RejectionBasis.PreflightRejection} — the CLI's own input gate refused first, so neither.</li>
+     * </ul>
+     */
+    public static ResultEnvelope rejected(String target, String op, String summary, List<Diagnostic> diagnostics,
+            RejectionBasis basis) {
+        return rejected(target, op, summary, null, diagnostics, basis);
     }
+
+    /**
+     * A rejection carrying structured {@code data} — the corrective payload a verb had already computed and that
+     * stays useful precisely because the input was rejected ({@code rule check --suggest-error-field}'s candidate
+     * list is the case: it exists to answer "then what should I have written?").
+     */
+    public static ResultEnvelope rejected(String target, String op, String summary, JsonNode data,
+            List<Diagnostic> diagnostics, RejectionBasis basis) {
+        Draft draft = new Draft(Family.REJECTION, target, op, Outcome.REJECTED, summary)
+                .data(data)
+                .diagnostics(diagnostics);
+        return switch (basis) {
+            case RejectionBasis.KernelRejection kernel ->
+                    draft.valid(false).verification(kernel.verification()).build();
+            case RejectionBasis.PreflightRejection ignored -> draft.build();
+        };
+    }
+
+    // --- 8. internal error ----------------------------------------------------------------------------
 
     /**
      * The tool itself failed — an unexpected throwable caught at the command boundary (CLI-CONFORMANCE: no
      * raw stack trace escapes a verb), NOT a kernel rejection of input. {@code ok:false}, exit 70, nothing
      * written; the carried {@code RK_INTERNAL_ERROR} diagnostic names the failure (full trace on stderr).
      */
-    public static ResultEnvelope internalError(String target, String op, String summary, List<Diagnostic> diagnostics) {
-        return new ResultEnvelope(target, op, Outcome.ERROR, summary, null, null, diagnostics, null, false, null, null);
+    public static ResultEnvelope internalError(String target, String op, String summary,
+            List<Diagnostic> diagnostics) {
+        return new Draft(Family.INTERNAL_ERROR, target, op, Outcome.ERROR, summary)
+                .diagnostics(diagnostics)
+                .build();
     }
 
-    /**
-     * A read-only op (read/validate/check/explain): the op executed; {@code valid} reports the subject,
-     * {@code data} carries the read payload (an explanation tree, model card, fired-list, …) or {@code null}.
-     */
-    public static ResultEnvelope read(String target, String op, String summary, boolean valid,
-            List<Diagnostic> diagnostics, JsonNode data) {
-        return new ResultEnvelope(target, op, Outcome.READ, summary, null, data, diagnostics, valid, false, null, null);
+    // --- accessors (record-style) ---------------------------------------------------------------------
+
+    Family family() {
+        return family;
     }
 
-    /** {@code ok} = the operation executed as asked — NOT the subject's validity (that is {@link #valid}). */
+    public String target() {
+        return target;
+    }
+
+    public String op() {
+        return op;
+    }
+
+    Outcome outcome() {
+        return outcome;
+    }
+
+    public String summary() {
+        return summary;
+    }
+
+    public JsonNode changed() {
+        return changed;
+    }
+
+    public JsonNode data() {
+        return data;
+    }
+
+    public List<Diagnostic> diagnostics() {
+        return diagnostics;
+    }
+
+    /** The consistency verdict, present only on a verdict or a kernel rejection. */
+    public Optional<Boolean> valid() {
+        return Optional.ofNullable(valid);
+    }
+
+    public boolean written() {
+        return written;
+    }
+
+    public Optional<String> output() {
+        return Optional.ofNullable(output);
+    }
+
+    /** How a consistency gate arbitrated THIS invocation — empty when no gate ran. */
+    public Optional<Verification> verification() {
+        return Optional.ofNullable(verification);
+    }
+
+    // --- derived contract -----------------------------------------------------------------------------
+
+    /** {@code ok} = the operation executed as asked — NOT the subject's validity (that is {@link #valid()}). */
     boolean ok() {
-        return switch (outcome) {
-            case APPLIED, PREVIEW, READ, STAGED -> true;
-            case REFUSED, REJECTED, ERROR -> false;
+        return switch (family) {
+            case QUERY, VERDICT, RUNTIME_OBSERVATION, COMPARISON, MUTATION -> true;
+            case REFUSAL, REJECTION, INTERNAL_ERROR -> false;
         };
     }
 
-    /** 0 = ok and not invalid; 1 = rejected, or a read that found the subject invalid; 2 = refused; 70 = internal tool error. */
+    /**
+     * 0 = executed with nothing to report against it; 1 = rejected, or a verdict/comparison that came out negative;
+     * 2 = refused; 70 = internal tool error.
+     *
+     * <p>Dispatching on {@link Family} rather than inspecting members is what makes two contract rules structural
+     * instead of conventional. A {@code QUERY} <b>cannot</b> exit 1, because it holds no verdict to be negative
+     * about. And a <b>nested</b> verdict — {@code workspace list --validate}'s per-model {@code valid}, a batch
+     * child's — can never leak into the process's exit status, because nested verdicts live inside {@code data} and
+     * nothing here reads {@code data}.
+     */
     public int exitCode() {
-        if (outcome == Outcome.ERROR) {
-            return 70; // EX_SOFTWARE — the tool itself failed (distinct from rejected=1 / refused=2)
-        }
-        if (outcome == Outcome.REFUSED) {
-            return 2;
-        }
-        if (outcome == Outcome.REJECTED) {
-            return 1;
-        }
-        if (Boolean.FALSE.equals(valid)) {
-            return 1;
-        }
-        return 0;
+        return switch (family) {
+            case INTERNAL_ERROR -> 70;   // EX_SOFTWARE — the tool failed, distinct from rejected=1 / refused=2
+            case REFUSAL -> 2;
+            case REJECTION -> 1;
+            case VERDICT -> Boolean.FALSE.equals(valid) ? 1 : 0;
+            case COMPARISON -> comparison.exitCode();
+            case QUERY, RUNTIME_OBSERVATION, MUTATION -> 0;
+        };
     }
 
     JsonNode toJson() {
@@ -147,6 +542,9 @@ public record ResultEnvelope(
         }
         if (verification != null) {
             root.put("verification", verification.name());
+        }
+        if (runtimeEvidence != null) {
+            runtimeEvidence.writeTo(root);
         }
         root.put("summary", summary);
         if (changed != null && !changed.isNull()) {

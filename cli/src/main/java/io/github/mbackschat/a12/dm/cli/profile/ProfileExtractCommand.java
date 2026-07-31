@@ -12,6 +12,7 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 
 import io.github.mbackschat.a12.dm.adapter.profile.ModelProfiles;
 import io.github.mbackschat.a12.dm.cli.BaseCommand;
+import io.github.mbackschat.a12.dm.cli.ConsistencyEvidence;
 import io.github.mbackschat.a12.dm.cli.ParamKind;
 import io.github.mbackschat.a12.dm.cli.ResultEnvelope;
 import io.github.mbackschat.a12.dm.cli.WorkspaceOption;
@@ -61,8 +62,9 @@ final class ProfileExtractCommand extends BaseCommand {
         }
 
         if (outputPath == null) {
-            ResultEnvelope env = ResultEnvelope.read("profile", "extract",
-                    "extracted model performance profile", true, List.of(), profile);
+            // SynthesisProfile binds through BoundModel.ofJsonLenient — expand-only, no gate (measured).
+            ResultEnvelope env = ResultEnvelope.queryResult("profile", "extract",
+                    "extracted model performance profile", profile, ConsistencyEvidence.none());
             out().print(env.toJsonString());
             return env.exitCode();
         }

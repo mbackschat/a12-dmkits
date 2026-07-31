@@ -1,6 +1,7 @@
 package io.github.mbackschat.a12.dm.cli.computation;
 
 import io.github.mbackschat.a12.dm.cli.BaseCommand;
+import io.github.mbackschat.a12.dm.cli.ConsistencyEvidence;
 import io.github.mbackschat.a12.dm.cli.ParamKind;
 import io.github.mbackschat.a12.dm.cli.Refusal;
 import io.github.mbackschat.a12.dm.cli.ResultEnvelope;
@@ -82,7 +83,8 @@ final class ComputationExplainCommand extends BaseCommand {
                 data = d;
                 summary = computation + " is Opaque (not modeled)";
             }
-            ResultEnvelope env = ResultEnvelope.read("computation", "explain", summary, true, List.of(), data);
+            ResultEnvelope env = ResultEnvelope.queryResult("computation", "explain", summary, data,
+                    ConsistencyEvidence.of(bound));
             out().print(env.toJsonString());
             return env.exitCode();
         } catch (IOException e) {

@@ -1,6 +1,8 @@
 package io.github.mbackschat.a12.dm.cli.computation;
 
 import io.github.mbackschat.a12.dm.cli.BaseCommand;
+import io.github.mbackschat.a12.dm.cli.ConsistencyEvidence;
+import io.github.mbackschat.a12.dm.cli.RejectionBasis;
 import io.github.mbackschat.a12.dm.cli.ParamKind;
 import io.github.mbackschat.a12.dm.cli.ResultEnvelope;
 import io.github.mbackschat.a12.dm.cli.WorkspaceOption;
@@ -87,7 +89,7 @@ final class ComputationAddCommand extends BaseCommand {
             diagnostics.addAll(lints);
             ResultEnvelope env = ResultEnvelope.rejected("computation", "add",
                     "computation rejected by the kernel (" + check.diagnostics().size() + " finding(s))",
-                    diagnostics);
+                    diagnostics, RejectionBasis.kernel(ConsistencyEvidence.of(check)));
             out().print(env.toJsonString());
             return env.exitCode();
         }

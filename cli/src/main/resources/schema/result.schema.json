@@ -2,47 +2,197 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://github.com/mbackschat/a12-dmkits/schema/result.schema.json",
   "title": "ResultEnvelope",
-  "description": "The uniform OUTPUT of every `dmtool` verb and every `apply` op (CLI-SPEC §3b): one op-record in, one envelope out, so an agent learns a single output shape. `ok` = the operation executed as asked; `valid` (validate/check) = the subject model is kernel-valid — distinct from `ok`. Optional keys (valid/changed/output) are omitted when not applicable.",
+  "description": "The uniform OUTPUT of every `dmtool` verb and every `apply` op (CLI-SPEC §3b): one op-record in, one envelope out, so an agent learns a single output shape. THREE ORTHOGONAL AXES, never conflated: `ok` = the operation executed as asked (about the invocation); `valid` = the subject model is kernel-valid (a consistency VERDICT, so it appears only where a gate produced one); `verification`/`engine` = who vouches for it. A read that succeeded is `ok:true` and carries NO `valid` — it established no verdict, so claiming one would be fabrication. Optional keys are omitted when not applicable, and WHICH may appear is decided by what the invocation actually did, never by which verb it was.",
   "type": "object",
-  "required": ["target", "op", "outcome", "ok", "summary", "diagnostics", "written"],
+  "required": [
+    "target",
+    "op",
+    "outcome",
+    "ok",
+    "summary",
+    "diagnostics",
+    "written"
+  ],
   "additionalProperties": false,
   "properties": {
-    "target": { "type": "string", "description": "the element family acted on: model | rule | computation | field | group | typedef | include | config | workspace" },
-    "op": { "type": "string", "description": "the operation: add | read | modify | remove | validate | check | explain | describe | export | eval | compute | …" },
-    "outcome": { "type": "string", "enum": ["applied", "preview", "refused", "rejected", "read", "staged", "error"], "description": "the execution result class; `error` = the tool itself failed (an unexpected throwable caught at the boundary, exit 70), distinct from `rejected` (input rejected, exit 1)" },
-    "ok": { "type": "boolean", "description": "the operation executed as asked (outcome in applied | preview | read | staged); false for refused | rejected | error" },
-    "valid": { "type": "boolean", "description": "validate/check (and after a mutating op): the subject model is kernel-valid — distinct from `ok`" },
-    "verification": { "type": "string", "enum": ["KERNEL_CONFIRMED", "STRUCTURAL_ONLY"], "description": "(check/validate verdicts) how the verdict was reached: KERNEL_CONFIRMED = the kernel backend arbitrated (the CLI always bundles it); STRUCTURAL_ONLY = no backend, so `valid` reflects structural prechecks only and must NOT be read as kernel-green (a library-consumer posture; the CLI surfaces it for visibility)" },
-    "summary": { "type": "string", "description": "one human-readable line (the agent's quick read / log line)" },
-    "changed": { "type": "object", "description": "(mutations) the delta on success — e.g. {added, kind}, a refactor's rewritten references" },
-    "data": { "description": "(reads/queries) the op's payload — explanation tree, model card, fired-list, …; shape is op-specific (see `schema <target> <op>`)" },
-    "diagnostics": { "type": "array", "items": { "$ref": "https://github.com/mbackschat/a12-dmkits/schema/diagnostic.schema.json" }, "description": "structured findings — see `schema diagnostic`" },
-    "written": { "type": "boolean", "description": "whether the model was written to disk" },
-    "output": { "type": "string", "description": "the path the model was written to; absent for read/preview/refused/rejected" }
+    "target": {
+      "type": "string",
+      "description": "the element family acted on: model | rule | computation | field | group | typedef | include | config | workspace | patterns | profile | where-used | meta"
+    },
+    "op": {
+      "type": "string",
+      "description": "the operation: add | read | modify | remove | validate | check | explain | describe | export | eval | compute | compare | scaffold | …"
+    },
+    "outcome": {
+      "type": "string",
+      "enum": [
+        "applied",
+        "preview",
+        "refused",
+        "rejected",
+        "read",
+        "staged",
+        "error"
+      ],
+      "description": "the execution result class; `error` = the tool itself failed (an unexpected throwable caught at the boundary, exit 70), distinct from `rejected` (input rejected, exit 1). `read` covers EVERY non-mutating result class — a query, a verdict, a runtime observation, a comparison — which is why `outcome` alone does not tell you whether `valid` may be present"
+    },
+    "ok": {
+      "type": "boolean",
+      "description": "the operation executed as asked (outcome in applied | preview | read | staged); false for refused | rejected | error"
+    },
+    "valid": {
+      "type": "boolean",
+      "description": "the subject model is kernel-valid — a consistency VERDICT, distinct from `ok`. PRESENT ONLY on a genuine verdict (`model check`, `rule check`, `workspace check`, a `patterns` scaffold review) and on a rejection the kernel gate produced (then `false`). ABSENT on every read, runtime evaluation, comparison, mutation, refusal, and pre-flight rejection — none of those establishes a verdict. A per-entry `valid` nested inside `data` (`workspace list --validate`, `workspace check`) is a different, model-scoped fact and never affects the exit code"
+    },
+    "verification": {
+      "type": "string",
+      "enum": [
+        "KERNEL_CONFIRMED",
+        "STRUCTURAL_ONLY"
+      ],
+      "description": "how a consistency gate arbitrated THIS invocation: KERNEL_CONFIRMED = a kernel backend ran the gate (the CLI always bundles one); STRUCTURAL_ONLY = the gate ran with NO backend, so a verdict beside it reflects structural prechecks only and must not be read as kernel-green (a library-consumer posture). PRESENT on every invocation that actually ran the gate — including a `rejected` one, because KERNEL_CONFIRMED means the kernel ARBITRATED, not that the model was valid. ABSENT when no gate ran. It is therefore per-INVOCATION and never per-verb: `model report` carries it while `model report --tree` does not, because only the former loads the model through the gate"
+    },
+    "engine": {
+      "type": "string",
+      "enum": [
+        "A12_KERNEL",
+        "DM_INTERPRETER"
+      ],
+      "description": "(runtime evaluation only) which implementation produced the semantic observation. `model eval`/`model compute`/`rule eval` evaluate through the kernel-free DM_INTERPRETER. Orthogonal to `verification`: an evaluation yields observations, not a verdict, so a runtime envelope carries `engine` and never `valid`"
+    },
+    "engineVersion": {
+      "type": "string",
+      "description": "(with `engine`) the build of the engine that computed the observation — the `:interpreter` release for DM_INTERPRETER, the kernel actually on the classpath (never the built-against pin) for A12_KERNEL"
+    },
+    "toolVersion": {
+      "type": "string",
+      "description": "(with `engine`) the `dmtool` build that projected and serialized the observation. Emitted alongside `engineVersion` rather than inferred from it: evaluation semantics can move in the engine while pointer spelling, summaries, or envelope shape move independently in the tool, so one version cannot identify what produced a retained result"
+    },
+    "summary": {
+      "type": "string",
+      "description": "one human-readable line (the agent's quick read / log line)"
+    },
+    "changed": {
+      "type": "object",
+      "description": "(mutations) the delta on success — e.g. {added, kind}, a refactor's rewritten references"
+    },
+    "data": {
+      "description": "(reads/queries/verdicts/comparisons) the op's payload — explanation tree, model card, fired-list, per-model verdicts, a profile comparison, …; shape is op-specific (see `schema <target> <op>`)"
+    },
+    "diagnostics": {
+      "type": "array",
+      "items": {
+        "$ref": "https://github.com/mbackschat/a12-dmkits/schema/diagnostic.schema.json"
+      },
+      "description": "structured findings — see `schema diagnostic`"
+    },
+    "written": {
+      "type": "boolean",
+      "description": "whether the model was written to disk"
+    },
+    "output": {
+      "type": "string",
+      "description": "the path the model was written to; absent for read/preview/refused/rejected"
+    }
   },
   "examples": [
     {
-      "target": "field", "op": "add", "outcome": "applied", "ok": true,
+      "target": "field",
+      "op": "add",
+      "outcome": "applied",
+      "ok": true,
       "summary": "added field /Order/Discount",
-      "changed": { "added": "/Order/Discount", "kind": "NUMBER" },
-      "diagnostics": [], "written": true, "output": "/path/to/order.dm.json"
+      "changed": {
+        "added": "/Order/Discount",
+        "kind": "NUMBER"
+      },
+      "diagnostics": [],
+      "written": true,
+      "output": "/path/to/order.dm.json"
     },
     {
-      "target": "field", "op": "read", "outcome": "read", "ok": true, "valid": true,
+      "target": "field",
+      "op": "read",
+      "outcome": "read",
+      "ok": true,
       "summary": "read /Order/Quantity",
-      "data": { "field": "/Order/Quantity", "kind": "NUMBER", "required": true },
-      "diagnostics": [], "written": false
+      "data": {
+        "field": "/Order/Quantity",
+        "kind": "NUMBER",
+        "required": true
+      },
+      "diagnostics": [],
+      "written": false
     },
     {
-      "target": "field", "op": "remove", "outcome": "refused", "ok": false,
+      "target": "field",
+      "op": "remove",
+      "outcome": "refused",
+      "ok": false,
       "summary": "/Order/DeliveryDate is referenced — refusing to remove",
-      "data": { "referencedBy": { "rules": ["/Order/DeliveryNotBeforeOrder"], "computations": [] } },
-      "diagnostics": [ {
-        "severity": "WARNING", "source": "PRECHECK", "code": "RK_REFERENCED",
-        "summary": "/Order/DeliveryDate is referenced by 1 element(s); removing it would dangle them",
-        "where": { "path": "/Order/DeliveryDate" },
-        "fix": "pass --cascade to remove the referrers too, or remove them first"
-      } ],
+      "data": {
+        "referencedBy": {
+          "rules": [
+            "/Order/DeliveryNotBeforeOrder"
+          ],
+          "computations": []
+        }
+      },
+      "diagnostics": [
+        {
+          "severity": "WARNING",
+          "source": "PRECHECK",
+          "code": "RK_REFERENCED",
+          "summary": "/Order/DeliveryDate is referenced by 1 element(s); removing it would dangle them",
+          "where": {
+            "path": "/Order/DeliveryDate"
+          },
+          "fix": "pass --cascade to remove the referrers too, or remove them first"
+        }
+      ],
+      "written": false
+    },
+    {
+      "target": "model",
+      "op": "check",
+      "outcome": "read",
+      "ok": true,
+      "valid": false,
+      "verification": "KERNEL_CONFIRMED",
+      "summary": "model has 1 error(s)",
+      "diagnostics": [
+        {
+          "severity": "ERROR",
+          "source": "KERNEL",
+          "code": "MVK_NO_CONST",
+          "summary": "At 'Abs'It is not allowed to use constants.",
+          "where": {
+            "rule": "/Order/AbsRule"
+          },
+          "fix": "wrap a field or an expression, not an immediate literal"
+        }
+      ],
+      "written": false
+    },
+    {
+      "target": "model",
+      "op": "compute",
+      "outcome": "read",
+      "ok": true,
+      "engine": "DM_INTERPRETER",
+      "engineVersion": "0.10.1",
+      "toolVersion": "0.10.1",
+      "summary": "computed 1 field(s)",
+      "data": {
+        "computed": [
+          {
+            "field": "Order/Lines[2]/LineTotal",
+            "declaration": "/Order/Lines/LineTotal",
+            "value": "250.00"
+          }
+        ]
+      },
+      "diagnostics": [],
       "written": false
     }
   ]

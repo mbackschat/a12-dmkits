@@ -11,6 +11,7 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 
 import io.github.mbackschat.a12.dm.adapter.review.ModelReport;
 import io.github.mbackschat.a12.dm.cli.BaseCommand;
+import io.github.mbackschat.a12.dm.cli.ConsistencyEvidence;
 import io.github.mbackschat.a12.dm.cli.ResultEnvelope;
 import io.github.mbackschat.a12.dm.cli.WorkspaceOption;
 import io.github.mbackschat.a12.dm.core.ModelResolver;
@@ -87,20 +88,25 @@ final class ModelReportCommand extends BaseCommand {
                             "pass an existing field/group path" + hint + " (see `model describe`)");
                 }
                 ObjectNode summary = (ObjectNode) projection.data().path("summary");
-                ResultEnvelope env = ResultEnvelope.read("model", "report",
+                // --tree is an UNGATED projection, and stays one. Running the kernel here just to make the two
+                // shapes uniform would turn an inspection path into one that REJECTS inconsistent models — the
+                // opposite of what an inspection verb is for. So it honestly claims no verification, while the
+                // report below carries KERNEL_CONFIRMED: one verb, two evidence classes, which is exactly why
+                // evidence is derived per invocation and never from a verb table.
+                ResultEnvelope env = ResultEnvelope.queryResult("model", "report",
                         summary.path("fields").asInt() + " field(s), "
                                 + summary.path("groups").asInt() + " group(s), "
                                 + summary.path("rules").asInt() + " rule(s), "
                                 + summary.path("computations").asInt() + " computation(s)",
-                        true, List.of(), projection.data());
+                        projection.data(), ConsistencyEvidence.none());
                 out().print(env.toJsonString());
                 return env.exitCode();
             }
             ModelReport report = ModelReport.of(json, resolver);
-            ResultEnvelope env = ResultEnvelope.read("model", "report",
+            ResultEnvelope env = ResultEnvelope.queryResult("model", "report",
                     report.rules().size() + " rule(s), " + report.computations().size() + " computation(s); "
                             + report.usage().unreferenced().size() + " unreferenced field(s)",
-                    true, List.of(), toData(report));
+                    toData(report), ConsistencyEvidence.of(report));
             out().print(env.toJsonString());
             return env.exitCode();
         } catch (RuntimeException e) {

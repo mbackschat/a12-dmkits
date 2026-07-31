@@ -1,6 +1,9 @@
 package io.github.mbackschat.a12.dm.cli.computation;
 
 import io.github.mbackschat.a12.dm.cli.BaseCommand;
+import io.github.mbackschat.a12.dm.cli.ConsistencyEvidence;
+import io.github.mbackschat.a12.dm.cli.RejectionBasis;
+import io.github.mbackschat.a12.dm.core.ModelConsistencyException;
 import io.github.mbackschat.a12.dm.cli.ParamKind;
 import io.github.mbackschat.a12.dm.cli.Refusal;
 import io.github.mbackschat.a12.dm.cli.ResultEnvelope;
@@ -107,8 +110,13 @@ final class ComputationModifyCommand extends BaseCommand {
             Diagnostic d = Diagnostic.precheck(Optional.empty(),
                     "the re-expression is rejected by the kernel: " + e.getMessage(),
                     new Diagnostic.Where(computation, Optional.empty()), Optional.empty(), Optional.empty());
+            // See RuleModifyCommand: a ModelConsistencyException is the gate's own verdict (valid:false + its
+            // arbitrator); any other RuntimeException means no verdict was reached, so neither is claimed.
             ResultEnvelope env = ResultEnvelope.rejected("computation", "modify",
-                    "re-expression rejected by the kernel", List.of(d));
+                    "re-expression rejected by the kernel", List.of(d),
+                    e instanceof ModelConsistencyException rejection
+                            ? RejectionBasis.kernel(ConsistencyEvidence.of(rejection))
+                            : RejectionBasis.preflight());
             out().print(env.toJsonString());
             return env.exitCode();
         }

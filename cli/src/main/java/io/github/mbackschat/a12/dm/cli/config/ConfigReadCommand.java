@@ -1,6 +1,7 @@
 package io.github.mbackschat.a12.dm.cli.config;
 
 import io.github.mbackschat.a12.dm.cli.BaseCommand;
+import io.github.mbackschat.a12.dm.cli.ConsistencyEvidence;
 import io.github.mbackschat.a12.dm.cli.ReadPayloads;
 import io.github.mbackschat.a12.dm.cli.ResultEnvelope;
 
@@ -44,7 +45,9 @@ final class ConfigReadCommand extends BaseCommand {
         try {
             ModelDocument doc = ModelDocument.read(json);
             ObjectNode data = ReadPayloads.config(doc);   // T3: the one shared shape, same as `apply` CONFIG_READ
-            ResultEnvelope env = ResultEnvelope.read("config", "read", "read document config", true, List.of(), data);
+            // Parse-and-index only — no consistency gate on this path, so no verdict and no provenance.
+            ResultEnvelope env = ResultEnvelope.queryResult("config", "read", "read document config", data,
+                    ConsistencyEvidence.none());
             out().print(env.toJsonString());
             return env.exitCode();
         } catch (RuntimeException e) {

@@ -1,8 +1,10 @@
 package io.github.mbackschat.a12.dm.cli.rule;
 
 import io.github.mbackschat.a12.dm.cli.BaseCommand;
+import io.github.mbackschat.a12.dm.cli.ConsistencyEvidence;
 import io.github.mbackschat.a12.dm.cli.LintBackstop;
 import io.github.mbackschat.a12.dm.cli.ModelPaths;
+import io.github.mbackschat.a12.dm.cli.RejectionBasis;
 import io.github.mbackschat.a12.dm.cli.interp.TextConditionCorrective;
 import io.github.mbackschat.a12.dm.cli.ResultEnvelope;
 import io.github.mbackschat.a12.dm.cli.WorkspaceOption;
@@ -121,9 +123,14 @@ final class RuleCheckCommand extends BaseCommand {
         }
 
         List<Diagnostic> findings = new ArrayList<>();
+        // The validator run is this verb's gate receipt. It stays empty when the validator THREW, because then no
+        // kernel verdict was ever reached — the previous shape derived the marker from ValidationResult.of(findings),
+        // i.e. from the ambient backend, so it published KERNEL_CONFIRMED on exactly that path too.
+        ConsistencyEvidence evidence = ConsistencyEvidence.none();
         try {
             DraftRule draft = new DraftRule(effectiveGroup, name, errorEntityRelPath, condition, code, severity);
             ValidationResult result = new RuleValidator().check(json, draft, resolver);
+            evidence = ConsistencyEvidence.of(result);
             // G30: upgrade a rejected text candidate's union fix to the operand-matched corrective (the typed
             // path's SpanResolver has no AST here) by classifying operands via the interpreter parser + ModelIndex.
             findings.addAll(TextConditionCorrective.enrich(result.diagnostics(), condition, effectiveGroup, json, resolver));
@@ -142,10 +149,16 @@ final class RuleCheckCommand extends BaseCommand {
                 : null;
 
         ValidationResult merged = ValidationResult.of(findings);
-        ResultEnvelope env = ResultEnvelope.read("rule", "check",
-                merged.ok() ? "candidate is kernel-valid" : "candidate has " + findings.size() + " finding(s)",
-                merged.ok(), findings, data)
-                .withVerification(merged.verification());
+        // With a receipt this is a real verdict about the candidate. Without one the validator never returned, so
+        // the only honest report is a rejection the CLI itself made — same exit 1, no invented verdict. `data`
+        // rides along either way: the candidate list is exactly what a rejected author needs next.
+        ResultEnvelope env = evidence.gateRan()
+                ? ResultEnvelope.consistencyVerdict("rule", "check",
+                        merged.ok() ? "candidate is kernel-valid" : "candidate has " + findings.size() + " finding(s)",
+                        merged.ok(), findings, data, evidence)
+                : ResultEnvelope.rejected("rule", "check",
+                        "the candidate could not be checked — " + findings.size() + " finding(s)", data, findings,
+                        RejectionBasis.preflight());
         out().print(env.toJsonString());
         return env.exitCode();
     }
