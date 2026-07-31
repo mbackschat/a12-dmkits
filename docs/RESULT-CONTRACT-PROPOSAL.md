@@ -29,7 +29,7 @@ External field feedback (2026-07-31) reported seven user-visible defects; an acc
 ### 1b. Corrections — analysis claims that are wrong <a id="corrections"></a>
 
 1. **`model read` does run the kernel consistency oracle.** `KernelAdapter.ofJson` → `checkAndOpen` → `ConsistencyGate.REQUIRED` → `requireConsistent()`. On an inconsistent model `model read` returns `outcome: rejected`, exit 1. Its `valid:true` is a hard-coded literal that is *coincidentally* correct because the command already bailed — fragile, not false.
-2. **The fabricating verbs are different ones.** Measured on a kernel-invalid model: **`model info`, `field read`, `group read`, `config read`, `meta`, `model compute`, `model eval`** report `valid:true`; **`model read`, `model describe`, `computation read`, `model usage`, `computation explain`, `model report`, `where-used`** are gated (honest, but never report `verification`). Sharper still: **`model report` is gated and `model report --tree` is not** — one verb, two evidence classes, because it has two `ResultEnvelope.read` sites. This is why evidence must be derived from the executed path and never from a per-verb list.
+2. **The fabricating verbs are different ones.** Measured on a kernel-invalid model: **`model info`, `field read`, `group read`, `config read`, `meta`, `model compute`, `model eval`** report `valid:true`; **`model read`, `model describe`, `computation read`, `model usage`, `computation explain`, `model report`, `where-used`** are gated (honest, but never report `verification`) — and that list was **incomplete**: review added `rule read`, `rule explain`, `rule deps`, `rule format`, and `computation format`, of which `rule read`, `rule deps`, and `computation format` are measured gated (2026-07-31) while `rule explain` and `rule format` are asserted-not-yet-measured. The inventory is therefore **not** the contract; the executed path is, and Phase 1 derives it rather than transcribing any list — including this one. Sharper still: **`model report` is gated and `model report --tree` is not** — one verb, two evidence classes, because it has two `ResultEnvelope.read` sites. This is why evidence must be derived from the executed path and never from a per-verb list.
 3. **The `Abs`/Round fact was not already recorded.** The only `MVK_NO_CONST` entry in KERNEL-FINDINGS was the **temporal** extractor case (§6, locked by `TemporalExtractorComponentLawsTest`). The numeric-wrapper instance was undocumented and unlocked; only `MVK-LEDGER`'s row gestured at "rounding", in wording that was itself wrong. Now [kf167](KERNEL-FINDINGS.md#kf167) + `NumericWrapperConstantLawsTest`.
 4. **The pointer correction is right, but it is a breaking change the analysis did not flag.** Canonical A12 is `Order/Items[2]/Count` — no leading slash, `[1]` omitted (source-verified against `DocumentPointerImpl`, this section's grammar). The current `/Order[1]/Items[1]/…` is **our** `interpreter/eval/Pointer.kt` rendering; `adapter … RuntimeLaws.fmtPointer` re-renders the kernel pointer's *components* through it, so the `[1]`-explicit string in that differential is ours, not the kernel's. Converging is correct **and** breaks published output.
 
@@ -52,8 +52,8 @@ Timeline, against the last full eval run (**2026-07-09**): the catalog gap postd
 | factory | emits | may NOT emit |
 |---|---|---|
 | `queryResult(target, op, summary, data)` | `ok`, `data` | `valid` |
-| `consistencyVerdict(target, op, summary, valid, diagnostics, Verification)` | `valid` **and** its kernel evidence, structurally inseparable | — |
-| `runtimeObservation(target, op, summary, data, engine, engineVersion)` | `data` + execution evidence | `valid` |
+| `consistencyVerdict(target, op, summary, valid, diagnostics, data, Verification)` | `valid` **and** its kernel evidence, structurally inseparable — **plus verdict-associated `data`** | — |
+| `runtimeObservation(target, op, summary, data, engine, engineVersion, toolVersion)` | `data` + execution evidence | `valid` |
 | existing `applied`/`preview`/`refused`/`rejected`/`internalError` | unchanged | — |
 
 **Required semantics.**
@@ -63,6 +63,9 @@ Timeline, against the last full eval run (**2026-07-09**): the catalog gap postd
 - `profile compare` is **reclassified, not re-behaved**: it keeps exit 1 for "differs" and stops calling profile equality `valid`.
 - `PatternsCommand` performs real kernel validation and emits **no** `ResultEnvelope` at all (it prints a raw node). It either joins the envelope or is classified in `SchemaCommand.CONTRACT_EXEMPT` with a reason.
 - `exitCode()` keeps `Boolean.FALSE.equals(valid)` → 1 for verdict routes only.
+- **A verdict may carry data.** `workspace check` returns per-model entries and `rule check --suggest-error-field` returns a suggestion alongside its verdict, so the verdict factory takes `data`; a signature without it would force those two back onto the query factory and re-create the very conflation being removed.
+- **Mutation and preview routes that execute a kernel gate must state their evidence too.** `rule add`, `computation add`, their `--modify` siblings and every `--dry-run` preview run the real consistency oracle before writing, so `applied`/`preview`/`rejected` carry `verification` on the same per-invocation basis as a read. The taxonomy previously ruled only on query/verdict/runtime, which left the largest kernel-touching family unclassified.
+- **`profile compare` gets a typed comparison result, not a verdict.** Profile equality is not model validity, so it emits a comparison outcome (`equivalent` | `differs`) in `data` and **keeps exit 1 for `differs`** — a reclassification, never a change of exit semantics, because CI almost certainly depends on that code.
 
 **Excluded:** no deprecation alias for the removed key. The break is declared, not shimmed.
 
@@ -73,7 +76,8 @@ Timeline, against the last full eval run (**2026-07-09**): the catalog gap postd
 **Required:** two orthogonal keys, never merged.
 
 - `verification: KERNEL_CONFIRMED | STRUCTURAL_ONLY` — *how a consistency verdict was arbitrated*. Attached to **every invocation that actually ran the gate**, derived from the executed path (`BoundModel.ofJson` / `checkAndOpen` = gated; `ofJsonLenient` / `ModelIndex`-only = not), **never** from a per-verb table. This adds evidence to seven currently-silent read verbs.
-- `engine: A12_KERNEL | DM_INTERPRETER` + `engineVersion` — *which engine produced the semantic result*. Co-required.
+- `engine: A12_KERNEL | DM_INTERPRETER` + **`engineVersion`** — *which implementation produced the semantic observation*: the `:interpreter` module version for `DM_INTERPRETER`, the **actual runtime kernel** version for `A12_KERNEL` (dmtool already separates built-vs-runtime kernel in `--version`, so reuse that distinction).
+- **`toolVersion`** — dmtool, which *projected and serialized* that observation. **Both are required**, not one: semantics can change in the engine while pointers, summaries, or result shape change independently in dmtool, so a single version cannot identify what produced a retained result. *(Owner ruling 2026-07-31.)*
 
 **`Verification` must not gain `INTERPRETER_OBSERVED`.** An interpreter run produces no verdict, so the value would read as "the interpreter verified something" — a category error.
 
@@ -83,7 +87,9 @@ Timeline, against the last full eval run (**2026-07-09**): the catalog gap postd
 - `model seed` emits canonical A12 Document JSON and therefore carries **no** provenance keys inside the document — inventing one would break the shape rule it exists to honour. Its engine is exposed through `schema`/`manifest`/help.
 - A mixed-engine `batch` has no single aggregate engine; evidence stays on its children.
 
-**Open:** `engineVersion` must be defined as the interpreter module version or the dmtool version. They are coupled today (`interpreter-v0.10.1` / dmtool `0.10.1`), which is exactly when an ambiguity ships unnoticed.
+**`KERNEL_CONFIRMED` means "the kernel arbitrated THIS invocation" — never "the model was valid"** *(owner ruling 2026-07-31)*. The two are independent, so the marker must remain meaningful on a **rejected** envelope: today `model read` on an inconsistent model returns `outcome: rejected` with **no** `verification`, even though the kernel is precisely what rejected it. Verdict and evidence are orthogonal — `valid:false` + `KERNEL_CONFIRMED` is the correct shape, as `model check` already emits.
+
+**The `model report` / `--tree` split is the worked case, and is LOCKED rather than normalized away** *(owner ruling 2026-07-31)*. `verification` records evidence actually obtained, not a capability of the verb, so `model report` carries `KERNEL_CONFIRMED` and `model report --tree` carries no `verification` key. Do **not** run the kernel merely to make the shapes uniform: that converts `--tree` from an ungated inspection path into one that *rejects* inconsistent models. Splitting it into a separate verb adds migration cost without improving correctness. Instead the **conditional presence** is documented in the schema and locked against one invalid model: `model report` must take the kernel-rejection path while `--tree` retains its projection behaviour and makes no verification claim.
 
 ---
 
@@ -133,8 +139,11 @@ corpus expectations migrate by **mechanical re-render**, with the per-case `(out
 ## 7. Acceptance gate <a id="gate"></a>
 
 - [ ] No envelope emits top-level `valid` unless a consistency gate ran in *that invocation*; nested verdicts preserved; `PatternsCommand` and `profile compare` reclassified with exit codes unchanged.
-- [ ] `verification` present on every kernel-gated invocation, derived from the executed path; `model report` vs `--tree` differ honestly; no static verb→evidence map is asserted anywhere.
-- [ ] Every runtime envelope carries `engine` + a defined `engineVersion`; `model seed`'s Document JSON carries no provenance keys; mixed-engine `batch` keeps evidence on children.
+- [ ] `verification` present on every kernel-gated invocation, derived from the executed path — **including on `rejected` envelopes**, since `KERNEL_CONFIRMED` means the kernel arbitrated the invocation, not that the model was valid.
+- [ ] `model report` vs `model report --tree` differ honestly, the conditional presence is documented in the schema, and both are locked against one invalid model; no static verb→evidence map is asserted anywhere.
+- [ ] Mutation and preview routes that run a kernel gate carry its evidence; `profile compare` emits a typed comparison result and still exits 1 on `differs`.
+- [ ] Every runtime envelope carries `engine`, `engineVersion` (the `:interpreter` module, or the **runtime** kernel version for `A12_KERNEL`), and `toolVersion`; `model seed`'s Document JSON carries no provenance keys; mixed-engine `batch` keeps evidence on children.
+- [ ] A verdict route may carry `data` (`workspace check`, `rule check --suggest-error-field`) without reverting to a query envelope.
 - [ ] Every repeated compute result carries its canonical A12 `field` plus `declaration`; no second pointer spelling; non-canonical input still accepted and normalized.
 - [ ] Compute summaries count declarations and instances separately, asserted on ≥2 declarations × multiple rows spanning `VALUE`/`CLEARED`/`ERRORED`.
 - [ ] `apply --text` and `batch --text` render human-readable output for success and failure; both JSON shapes conform to published schemas; batch child exits unchanged.
