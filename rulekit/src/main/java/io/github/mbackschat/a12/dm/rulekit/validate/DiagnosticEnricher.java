@@ -26,8 +26,7 @@ import io.github.mbackschat.a12.dm.rulekit.catalog.OperatorEntry;
  *       {@code explain} may be emitted only once exactly ONE owning operator has been established</b>
  *       ({@link #resolveOwner} — structured {@code where.operator} first, then the operand the kernel NAMED,
  *       via {@link KernelMessageOperands}). Unestablished ownership yields a <em>code-level</em> corrective that
- *       enumerates the candidates and <b>no {@code explain} at all</b>; a message that names some OTHER operator
- *       withholds even that, because the documenters are then positively excluded.
+ *       enumerates the candidates and <b>no {@code explain} at all</b>.
  *       <p><b>Corrected 2026-07-31, four times — each repair narrowing the previous case and leaving the next.</b>
  *       (1) {@code findFirst} stamped whichever documenter came first in {@code operators.json}, mis-stamping every
  *       other construct (probe F06-2 / dec-places). (2) The union fixed the {@code fix} but kept a
@@ -35,8 +34,12 @@ import io.github.mbackschat.a12.dm.rulekit.catalog.OperatorEntry;
  *       {@code where.operator = LessThan} rejection was explained as "less than or equal". (3) A
  *       {@code documenters.size() == 1} shortcut treated a sole documenter as proven, though the catalog is a
  *       PARTIAL map: a {@code MinValue} rejection got MaxValue's meaning. (4) Whole-message identifier matching let
- *       the kernel's own <em>boilerplate</em> elect an operator — see {@link KernelMessageOperands} for the two
- *       measured cases and the delimiter mechanism that closes the class.
+ *       the kernel's own <em>boilerplate</em> elect an operator. (5) The repair for (4) then <em>widened</em> the
+ *       electable set from the documenters to the whole catalog, on the reasoning that whoever the kernel names is
+ *       who rejected — which was worse than (4): the kernel quotes <b>values</b> too, so an enum comparison against
+ *       the S-value {@code "Max"} elected the {@code Max} operator, explained an enum-value error with {@code Max}'s
+ *       meaning, and suppressed the correct corrective. Election is once again restricted to the documenters, and
+ *       {@link KernelMessageOperands} can now only ever NARROW a candidate set the caller supplies.
  *       <p>An intermediate repair was also justified by a <b>false</b> claim, recorded here as measured: that the
  *       default bundle renders {@code MVK_NO_CONST} as {@code "Kein Fehler definiert!"} and so names no operator.
  *       That is true only of the base stub {@code error_messages.properties}; the populated
@@ -73,19 +76,10 @@ final class DiagnosticEnricher {
         if (!documenters.isEmpty()) {
             Optional<OperatorEntry> owner = resolveOwner(diagnostic, documenters);
             if (owner.isPresent()) {
-                // The owner is established, so its MEANING is always safe — it says which construct rejected. Its
-                // curated FIX is only safe if this owner is one of the code's documenters: another operator's
-                // invalidExample is a corrective for a DIFFERENT code and would be advice about the wrong problem.
-                boolean documentsThisCode = documenters.contains(owner.get());
-                return diagnostic.withFix(
-                        documentsThisCode ? owner.flatMap(DiagnosticEnricher::ownFix) : Optional.empty(),
+                // The owner is one of the documenters (resolveOwner cannot return anything else), so both its curated
+                // fix and its meaning are about THIS code.
+                return diagnostic.withFix(owner.flatMap(DiagnosticEnricher::ownFix),
                         owner.flatMap(DiagnosticEnricher::ownMeaning));
-            }
-            if (namesAnUndocumentingOperator(diagnostic, documenters)) {
-                // The message QUOTES an operator we know, and it is not any of the documenters — so they are
-                // positively EXCLUDED, not merely unestablished, and even the hedged corrective must be withheld.
-                // Emitting it would name an operator this diagnostic's own text contradicts.
-                return diagnostic;
             }
             // OWNERSHIP UNESTABLISHED → a generic, code-level corrective that ENUMERATES the possibilities, and
             // deliberately NO explain: an operator meaning is a claim about which construct rejected, so
@@ -138,9 +132,11 @@ final class DiagnosticEnricher {
      *   <li><b>the operand the kernel NAMED in its message</b> — see {@link KernelMessageOperands}.</li>
      * </ol>
      *
-     * <p>Resolution runs against the <b>whole catalog</b>, not just the code's documenters: whoever the kernel names
-     * is who rejected, whether or not our catalog happens to document that pairing. Being a documenter decides only
-     * whether a curated <em>fix</em> may ride along ({@link #enrich}).
+     * <p>Resolution runs <b>only among the code's documenters</b>. Widening it to the whole catalog — on the
+     * reasoning that whoever the kernel names is who rejected — produced a worse defect than the one it fixed: the
+     * kernel quotes <em>values</em> as well as operators, so an enum comparison against the S-value {@code "Max"}
+     * elected the {@code Max} operator, explained an enum-value error with {@code Max}'s meaning, and suppressed the
+     * correct corrective. Restricting the electable set is the safety property; see {@link KernelMessageOperands}.
      *
      * <p>The message must never be parsed by <em>sentence shape</em>: the kernel's text is a localized properties
      * value, so any {@code At '(\w+)'}-style extraction is an accident of one bundle. Matching the quoted operand is
@@ -161,17 +157,8 @@ final class DiagnosticEnricher {
                 return Optional.of(byId.get(0));
             }
         }
-        List<OperatorEntry> named = KernelMessageOperands.namedOperators(catalog, diagnostic.summary());
+        List<OperatorEntry> named = KernelMessageOperands.namedAmong(catalog, diagnostic.summary(), documenters);
         return named.size() == 1 ? Optional.of(named.get(0)) : Optional.empty();
-    }
-
-    /**
-     * Whether the message names a known operator that is <b>none of</b> {@code documenters} — in which case the
-     * documenters are positively excluded rather than merely unestablished.
-     */
-    private boolean namesAnUndocumentingOperator(Diagnostic diagnostic, List<OperatorEntry> documenters) {
-        List<OperatorEntry> named = KernelMessageOperands.namedOperators(catalog, diagnostic.summary());
-        return !named.isEmpty() && named.stream().noneMatch(documenters::contains);
     }
 
 

@@ -121,7 +121,7 @@ final class RuleAddCommand extends BaseCommand {
                     TextConditionCorrective.enrich(check.diagnostics(), condition, group, modelJson, resolver);
             ResultEnvelope env = ResultEnvelope.rejected("rule", "add",
                     "condition rejected by the kernel (" + diagnostics.size() + " finding(s))",
-                    diagnostics, RejectionBasis.kernel(ConsistencyEvidence.of(check)));
+                    diagnostics, RejectionBasis.from(ConsistencyEvidence.of(check)));
             out().print(env.toJsonString());
             return env.exitCode();
         }

@@ -52,4 +52,19 @@ public sealed interface RejectionBasis {
     static RejectionBasis preflight() {
         return new PreflightRejection();
     }
+
+    /**
+     * <b>Derive</b> the basis from the evidence: a gate that ran arbitrated the rejection, one that did not means the
+     * CLI rejected on its own. For the routes where <em>either</em> can happen and the caller cannot know which.
+     *
+     * <p>These routes are why this exists rather than a caller-chosen basis. A validator run can reject two ways —
+     * the consistency oracle refused, or an add-time precheck fired before the oracle was reached
+     * ({@code RK_NO_SUCH_GROUP}, a duplicate name) — and {@code rule add}, {@code computation add},
+     * {@code rule check} and {@code patterns} all asserted the kernel basis unconditionally. That published
+     * {@code verification: KERNEL_CONFIRMED} beside a {@code PRECHECK}-sourced diagnostic: an envelope contradicting
+     * itself about a kernel run that never happened. Deriving removes the choice, so the mistake is not available.
+     */
+    static RejectionBasis from(ConsistencyEvidence evidence) {
+        return evidence.verification().<RejectionBasis>map(KernelRejection::new).orElseGet(PreflightRejection::new);
+    }
 }

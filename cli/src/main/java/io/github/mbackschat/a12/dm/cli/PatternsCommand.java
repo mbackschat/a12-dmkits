@@ -330,7 +330,7 @@ final class PatternsCommand extends BaseCommand {
         if (!valid) {
             return print(ResultEnvelope.rejected("patterns", "scaffold",
                     "the scaffolded " + kind + " is rejected by the kernel — fix the diagnostics before --apply",
-                    payload, diagnostics, RejectionBasis.kernel(evidence)));
+                    payload, diagnostics, RejectionBasis.from(evidence)));
         }
         String persisted = persist.get();
         if (dryRun) {

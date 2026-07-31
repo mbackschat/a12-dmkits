@@ -90,11 +90,15 @@ public final class SpanResolver {
         // The kernel's own message gets a VETO over this inference. Intersecting the code's documenters with the
         // operators the condition uses is not sound on its own, because the catalog is a PARTIAL map: a rule using
         // both MaxValue and MinValue, where only MaxValue documents MVK_NOT_SORTABLE, would pin MaxValue and explain
-        // "the largest of the listed values" — while the message in hand says `At 'MinValue'`. So when the kernel
-        // NAMED someone else, we pin nothing. Deliberately one-directional: naming nobody (most templates substitute
-        // a path or a digit count, not an operator) leaves this inference standing, so the operand-aware corrective
-        // keeps working. A veto can only withhold a claim, never manufacture one.
-        if (KernelMessageOperands.contradicts(catalog, diagnostic.summary(), operator)) {
+        // "the largest of the listed values" — while the message in hand says `At 'MinValue'`.
+        //
+        // The veto is corroborated against `used`, the operators the AST actually contains, and that is what makes it
+        // sound: a quoted span is not necessarily an operator (the kernel quotes enum S-values and enum names too), so
+        // a condition comparing against the value "Max" must not veto a correct pin just because `Max` is also an
+        // operator name. Requiring the named operator to be PRESENT in the condition rules that out. Deliberately
+        // one-directional — naming nobody leaves the inference standing, so the operand-aware corrective keeps
+        // working; a veto can only withhold a claim, never manufacture one.
+        if (KernelMessageOperands.contradicts(catalog, diagnostic.summary(), operator, usedEntries(used))) {
             return diagnostic;
         }
         Optional<String> fix = correctiveFix(operator, diagnostic.code().get(), rendered)
@@ -112,6 +116,11 @@ public final class SpanResolver {
         }
         return new Diagnostic(diagnostic.severity(), diagnostic.source(), diagnostic.code(),
                 diagnostic.summary(), where, fix, explain);
+    }
+
+    /** The catalog entries for the operators the condition uses — the veto's independent corroboration. */
+    private List<OperatorEntry> usedEntries(Set<String> used) {
+        return used.stream().map(catalog::byId).flatMap(Optional::stream).toList();
     }
 
     /**

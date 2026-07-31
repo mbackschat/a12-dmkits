@@ -64,7 +64,13 @@ class EnricherOwnershipEvidenceTest {
                 () -> "an unestablished owner gets the hedge, never an asserted one: " + d);
     }
 
-    /** The true positive must survive: the kernel QUOTES the operand it substituted, and that is real evidence. */
+    /**
+     * The true positive must survive: the kernel quotes the operand it substituted, and that is real evidence.
+     *
+     * <p>Paired below with the case that makes it revert-sensitive. On its own this test passes against the old
+     * whole-message regex too — {@code \bAbs\b} matches inside {@code At 'Abs'It…} — so it locks the outcome without
+     * locking the mechanism, which is how it was found to be vacuous.
+     */
     @Test
     void aQuotedIdentifierIsEvidence() {
         ValidationResult result = check("FieldFilled(UnitPrice) And Abs(-5) > [UnitPrice]");
@@ -78,30 +84,69 @@ class EnricherOwnershipEvidenceTest {
     }
 
     /**
-     * The positive-exclusion case (review finding). {@code MVK_NOT_SORTABLE} is documented for {@code MaxValue} and
-     * <em>not</em> for {@code MinValue}, so a {@code MinValue} rejection used to be corrected with MaxValue's advice
-     * — while the kernel message in hand said {@code At 'MinValue'}. The quoted evidence excludes the documenter, so
-     * no operator may be named at all.
+     * A rejection whose message names an operator the catalog does <b>not</b> document for that code stays
+     * <em>unestablished</em> — it gets the hedged, code-level corrective and no meaning.
+     *
+     * <p>An earlier version asserted something stronger: that naming a non-documenter positively <em>excluded</em> the
+     * documenters, so even the hedge was withheld. That is unsound and was withdrawn. It required electing from the
+     * whole catalog, which is exactly what let a quoted enum S-value elect an operator (see
+     * {@link #aQuotedEnumValueSpelledLikeAnOperatorDoesNotElectIt}) — the message alone cannot distinguish an
+     * operator from a value, so "the message named someone else" is not a fact it can establish. The hedge is the
+     * honest disposition: it says which constructs the code is documented for and that the corrective applies only if
+     * that is what you used.
      */
     @Test
-    void aQuotedOperatorThatIsNotTheDocumenterExcludesItRatherThanBeingIgnored() {
+    void aQuotedNonDocumenterLeavesOwnershipUnestablished() {
         ValidationResult result = check("FieldFilled(UnitPrice) And MinValue(CustomerName, ProductCode) > 0");
 
         Diagnostic d = result.diagnostics().stream()
                 .filter(x -> x.summary().contains("'MinValue'"))
                 .findFirst()
                 .orElseThrow(() -> new AssertionError("expected a MinValue rejection, got: " + result.diagnostics()));
-        assertFalse(d.fix().orElse("").contains("MaxValue"),
-                () -> "the message names MinValue, so MaxValue is EXCLUDED, not merely unestablished — and its "
-                        + "curated corrective is advice about a different code: " + d);
-        // Resolving against the WHOLE catalog rather than only the documenters buys something the finding did not
-        // ask for: the quoted operator IS the culprit, so ITS meaning is correct to attach even though it documents
-        // no example for this code. Being a documenter gates the `fix`, not the identification.
-        assertEquals(
-                io.github.mbackschat.a12.dm.rulekit.catalog.OperatorCatalog.load().byId("MinValue").orElseThrow()
-                        .meaning(),
-                d.explain().orElse(""),
-                () -> "the operator the kernel QUOTED is the one explained: " + d);
+        assertTrue(d.explain().isEmpty(),
+                () -> "no owner was established, so no operator meaning may be asserted: " + d);
+        assertTrue(d.fix().orElse("").contains("if that is what you used"),
+                () -> "the corrective is offered HEDGED, naming the constructs the code is documented for: " + d);
+    }
+
+    /**
+     * <b>A quoted span is not necessarily an operator.</b> The fifth instance of this defect class, and the one that
+     * made the fourth repair strictly worse than the defect it fixed.
+     *
+     * <p>{@code MVK_INVALID_STRING_CONSTANT_FOR_ENUM_COMPARISON}'s template is
+     * {@code '%s' is not valid in the used enumeration.} and the kernel substitutes the <em>author's enum
+     * S-value</em>. When ownership resolution was widened from the code's documenters to the whole catalog, an enum
+     * comparison against an ordinary value like {@code "Max"} therefore elected the {@code Max} <em>operator</em>:
+     * the diagnostic gained {@code Max}'s meaning as the explanation of an enum-value error, and lost the correct
+     * {@code EnumCategory} corrective (withheld because {@code Max} documents no example for this code). Worse on
+     * both fields than the ambiguous-but-honest behaviour it replaced.
+     *
+     * <p>The control is what makes this a discriminating pair rather than a snapshot: the two cases differ <em>only</em>
+     * in how the invalid constant is spelled. If the message could still elect from the whole catalog, the corrective
+     * would flip between them — so the assertion that they agree is the assertion that the widening is gone.
+     */
+    @Test
+    void aQuotedEnumValueSpelledLikeAnOperatorDoesNotElectIt() {
+        Diagnostic collides = enrichKernel("MVK_INVALID_STRING_CONSTANT_FOR_ENUM_COMPARISON",
+                "Rule with path '/Order/ProbeRule': 'Max' is not valid in the used enumeration.");
+        Diagnostic control = enrichKernel("MVK_INVALID_STRING_CONSTANT_FOR_ENUM_COMPARISON",
+                "Rule with path '/Order/ProbeRule': 'NOPE' is not valid in the used enumeration.");
+
+        assertTrue(collides.explain().isEmpty(),
+                () -> "'Max' here is an enum VALUE, not the Max operator — nothing may be explained: " + collides);
+        assertEquals(control.fix(), collides.fix(),
+                () -> "the corrective must not depend on how the invalid value happens to be spelled: "
+                        + collides + " vs " + control);
+        assertTrue(collides.fix().isPresent(),
+                () -> "and the code's documenter still owes its hedged corrective: " + collides);
+    }
+
+    /** The enricher over a verbatim kernel message — the real input shape, with nothing else varying. */
+    private static Diagnostic enrichKernel(String code, String summary) {
+        return new DiagnosticEnricher(io.github.mbackschat.a12.dm.rulekit.catalog.OperatorCatalog.load())
+                .enrich(Diagnostic.precheck(java.util.Optional.of(code), summary,
+                        new Diagnostic.Where((String) null, java.util.Optional.empty()),
+                        java.util.Optional.empty(), java.util.Optional.empty()));
     }
 
     private static ValidationResult check(String condition) {

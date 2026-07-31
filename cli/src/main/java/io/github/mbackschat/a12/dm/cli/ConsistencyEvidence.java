@@ -89,11 +89,19 @@ public final class ConsistencyEvidence {
     }
 
     /**
-     * A validator run's receipt — for the candidate verbs ({@code rule check}) that never hold a gated binding
-     * because the gate's <em>rejection</em> is the result they report.
+     * A validator run's receipt — for the candidate verbs ({@code rule check}, {@code rule add}) that never hold a
+     * gated binding because the gate's <em>rejection</em> is the result they report.
+     *
+     * <p>Reads {@link ValidationResult#consistencyGate()}, which is <b>empty</b> when the validator rejected before
+     * consulting the oracle. An earlier version read the result's mode field directly, which was stamped from
+     * {@code Backends.verification()} — the <em>environment</em>, unconditionally {@code KERNEL_CONFIRMED} in the CLI
+     * — so a rule whose group did not exist was published as {@code valid:false} with
+     * {@code verification: KERNEL_CONFIRMED} beside a {@code PRECHECK}-sourced diagnostic. The envelope contradicted
+     * itself, and the receipt was forged by exactly the ambient-mode mistake this class exists to prevent: the hole
+     * was one layer down, in the type being trusted as a witness.
      */
     public static ConsistencyEvidence of(ValidationResult result) {
-        return result == null ? NONE : new ConsistencyEvidence(result.verification());
+        return result == null ? NONE : from(result.consistencyGate());
     }
 
     /**

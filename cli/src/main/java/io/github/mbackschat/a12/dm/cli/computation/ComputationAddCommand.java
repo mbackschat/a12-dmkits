@@ -89,7 +89,7 @@ final class ComputationAddCommand extends BaseCommand {
             diagnostics.addAll(lints);
             ResultEnvelope env = ResultEnvelope.rejected("computation", "add",
                     "computation rejected by the kernel (" + check.diagnostics().size() + " finding(s))",
-                    diagnostics, RejectionBasis.kernel(ConsistencyEvidence.of(check)));
+                    diagnostics, RejectionBasis.from(ConsistencyEvidence.of(check)));
             out().print(env.toJsonString());
             return env.exitCode();
         }

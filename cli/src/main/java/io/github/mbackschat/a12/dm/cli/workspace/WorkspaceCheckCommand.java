@@ -2,6 +2,7 @@ package io.github.mbackschat.a12.dm.cli.workspace;
 
 import io.github.mbackschat.a12.dm.cli.BaseCommand;
 import io.github.mbackschat.a12.dm.cli.ConsistencyEvidence;
+import io.github.mbackschat.a12.dm.cli.RejectionBasis;
 import io.github.mbackschat.a12.dm.cli.ResultEnvelope;
 
 import java.io.IOException;
@@ -25,6 +26,7 @@ import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel;
 import io.github.mbackschat.a12.dm.rulekit.validate.Diagnostic;
 import io.github.mbackschat.a12.dm.rulekit.validate.KernelDiagnostics;
 import io.github.mbackschat.a12.dm.rulekit.validate.ModelVersion;
+import io.github.mbackschat.a12.dm.rulekit.validate.RkCode;
 import io.github.mbackschat.a12.dm.rulekit.validate.ValidationResult;
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Option;
@@ -35,7 +37,7 @@ import picocli.CommandLine.Parameters;
  * directory (resolving each one's references against the whole tree) and report per-model {@code {valid,
  * diagnostics[]}}, the same rich {@code MVK_*}-enriched diagnostics {@code model check} gives for one model.
  * It is a read (it never mutates), but it gates on the aggregate verdict: {@code valid} is true only when every
- * model is valid, and the process <b>exits 1 if any model is invalid</b> (0 when all pass) — so a pre-commit
+ * model is valid AND was actually checked, and the process <b>exits nonzero if any model is invalid or could not be checked at all</b> (0 only when every model passed) — so a pre-commit
  * hook or CI step can call it directly. {@code workspace list --validate} only flags validity (a boolean per
  * model, no diagnostics); this verb is the one that surfaces <em>why</em> and fails the build.
  *
@@ -106,17 +108,40 @@ final class WorkspaceCheckCommand extends BaseCommand {
         String summary = allValid
                 ? "all " + models.size() + " model" + (models.size() == 1 ? "" : "s") + " valid"
                 : invalid + " of " + models.size() + " model" + (models.size() == 1 ? "" : "s") + " invalid";
-        // Not one gate but N, so "did a gate run at all" is what decides the family. With at least one model
-        // gated this is a real aggregate verdict; with none — an empty directory, or every file unreadable —
-        // there is nothing to have a verdict ABOUT, and claiming `valid:true` there would be the very
-        // fabrication this contract removes. The per-model verdicts ride `data` either way, and a nested
-        // verdict never reaches the exit code.
-        ResultEnvelope env = evidence.gateRan()
-                ? ResultEnvelope.consistencyVerdict("workspace", "check", summary, allValid, List.of(), data,
-                        evidence)
-                : ResultEnvelope.queryResult("workspace", "check", summary, data, ConsistencyEvidence.none());
+        // Not one gate but N, so the family turns on what actually happened across the scan — but THE VERB IS A
+        // GATE, and it must never report success for a workspace it could not clear. Three cases:
+        //
+        //  * at least one model gated → a real aggregate verdict, exit 0/1 on `allValid`;
+        //  * models exist but NONE reached the oracle → there is no verdict to give, yet the workspace plainly did
+        //    not pass, so this is a REJECTION (exit 1) with no fabricated verdict and no provenance. Reachable, and
+        //    it was briefly a silent regression: a single-model directory whose `include` names an id absent from
+        //    the tree throws UnresolvedReferenceException — a RuntimeException, not ModelConsistencyException — so
+        //    `validateOne` counts it invalid with no receipt. Routing that through a QUERY made exitCode()
+        //    structurally 0, i.e. a CI gate that passes a workspace it never managed to check;
+        //  * NO models at all → nothing was asked of the gate; a query, exit 0, unchanged.
+        //
+        // The per-model verdicts ride `data` in every case, and a nested verdict never reaches the exit code.
+        ResultEnvelope env;
+        if (evidence.gateRan()) {
+            env = ResultEnvelope.consistencyVerdict("workspace", "check", summary, allValid, List.of(), data,
+                    evidence);
+        } else if (models.isEmpty()) {
+            env = ResultEnvelope.queryResult("workspace", "check", summary, data, ConsistencyEvidence.none());
+        } else {
+            env = ResultEnvelope.rejected("workspace", "check",
+                    "no model could be checked — " + summary, data,
+                    List.of(Diagnostic.precheck(java.util.Optional.of(RkCode.MODEL_PREPARATION_FAILED.code()),
+                            "not one of the " + models.size() + " model(s) reached the consistency gate, so this "
+                                    + "workspace cannot be reported as passing",
+                            Diagnostic.Where.path(dir),
+                            java.util.Optional.of("read the per-model `problem` entries in `data.models` — a "
+                                    + "typical cause is an include or type-def reference that names an id absent "
+                                    + "from the scanned tree"),
+                            java.util.Optional.empty())),
+                    RejectionBasis.preflight());
+        }
         out().print(env.toJsonString());
-        return env.exitCode();   // 0 when all valid, 1 when any model is invalid (the gate)
+        return env.exitCode();   // 0 only when every model was checked AND valid — this verb is the project gate
     }
 
     private record ModelVerdict(boolean valid, List<Diagnostic> diagnostics, ConsistencyEvidence evidence) {}

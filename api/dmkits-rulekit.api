@@ -2480,8 +2480,8 @@ public final class io.github.mbackschat.a12.dm.rulekit.validate.KernelDiagnostic
   public static io.github.mbackschat.a12.dm.rulekit.validate.Diagnostic enriched(io.github.mbackschat.a12.dm.core.Notification, java.lang.String)
 
 public final class io.github.mbackschat.a12.dm.rulekit.validate.KernelMessageOperands
-  public static boolean contradicts(io.github.mbackschat.a12.dm.rulekit.catalog.OperatorCatalog, java.lang.String, io.github.mbackschat.a12.dm.rulekit.catalog.OperatorEntry)
-  public static java.util.List<io.github.mbackschat.a12.dm.rulekit.catalog.OperatorEntry> namedOperators(io.github.mbackschat.a12.dm.rulekit.catalog.OperatorCatalog, java.lang.String)
+  public static boolean contradicts(io.github.mbackschat.a12.dm.rulekit.catalog.OperatorCatalog, java.lang.String, io.github.mbackschat.a12.dm.rulekit.catalog.OperatorEntry, java.util.Collection<io.github.mbackschat.a12.dm.rulekit.catalog.OperatorEntry>)
+  public static java.util.List<io.github.mbackschat.a12.dm.rulekit.catalog.OperatorEntry> namedAmong(io.github.mbackschat.a12.dm.rulekit.catalog.OperatorCatalog, java.lang.String, java.util.Collection<io.github.mbackschat.a12.dm.rulekit.catalog.OperatorEntry>)
   public static java.util.List<java.lang.String> operands(java.lang.String)
 
 public record io.github.mbackschat.a12.dm.rulekit.validate.KernelVersion
@@ -2592,6 +2592,9 @@ public static record io.github.mbackschat.a12.dm.rulekit.validate.StructuralKern
 
 public record io.github.mbackschat.a12.dm.rulekit.validate.ValidationResult
   public ValidationResult(boolean, java.util.List<io.github.mbackschat.a12.dm.rulekit.validate.Diagnostic>, io.github.mbackschat.a12.dm.core.Verification)
+  public static io.github.mbackschat.a12.dm.rulekit.validate.ValidationResult beforeTheGate(java.util.List<io.github.mbackschat.a12.dm.rulekit.validate.Diagnostic>)
+  public java.util.Optional<io.github.mbackschat.a12.dm.core.Verification> consistencyGate()
+  public io.github.mbackschat.a12.dm.core.Verification consistencyGateMode()
   public java.util.List<io.github.mbackschat.a12.dm.rulekit.validate.Diagnostic> diagnostics()
   public final boolean equals(java.lang.Object)
   public final int hashCode()
@@ -2600,7 +2603,6 @@ public record io.github.mbackschat.a12.dm.rulekit.validate.ValidationResult
   public boolean ok()
   public java.lang.String toJson()
   public final java.lang.String toString()
-  public io.github.mbackschat.a12.dm.core.Verification verification()
 
 public final class io.github.mbackschat.a12.dm.rulekit.write.ModelWriter
   public static java.lang.String addAll(java.lang.String, java.util.List<io.github.mbackschat.a12.dm.rulekit.dsl.Rule>, java.util.List<io.github.mbackschat.a12.dm.rulekit.dsl.Computation>)

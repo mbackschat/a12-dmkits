@@ -90,13 +90,16 @@ public final class RuleValidator {
         String fullName = groupPath + "/" + name;
         Optional<Diagnostic> precheck = addPrecheck(modelJson, groupPath, name, kind);
         if (precheck.isPresent()) {
-            return ValidationResult.of(List.of(precheck.get()));
+            // Rejected BEFORE the oracle was consulted, so no receipt: a caller must not publish kernel provenance
+            // for a group that simply does not exist.
+            return ValidationResult.beforeTheGate(List.of(precheck.get()));
         }
         try {
             return checkInjected(injector.get(), fullName, resolver);
         } catch (RuntimeException e) {
             String why = e.getMessage() != null ? e.getMessage() : e.getClass().getSimpleName();
-            return ValidationResult.of(List.of(Diagnostic.precheck(Optional.empty(),
+            // The kernel threw during conversion, so it reached no verdict — again no receipt.
+            return ValidationResult.beforeTheGate(List.of(Diagnostic.precheck(Optional.empty(),
                     "the kernel could not process the candidate " + kind + " '" + fullName + "': " + why,
                     Diagnostic.Where.path(fullName),
                     Optional.of("review the " + kind + " against the model's structure"

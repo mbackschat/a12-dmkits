@@ -109,7 +109,7 @@ class NoBackendLaneTest {
                 "FieldFilled(Limit) And [Limit] <= 0", "LIMIT_POSITIVE", "ERROR");
         ValidationResult result = new RuleValidator().check(policyModel(), wellFormed);
 
-        assertEquals(Verification.STRUCTURAL_ONLY, result.verification(),
+        assertEquals(java.util.Optional.of(Verification.STRUCTURAL_ONLY), result.consistencyGate(),
                 "the consistency gate did not run — the verdict is structural-only");
         assertTrue(hasCode(result, "RK_NO_KERNEL_BACKEND"),
                 () -> "a STRUCTURAL_ONLY consistency-gate result carries the RK_NO_KERNEL_BACKEND advisory, got: "
@@ -117,7 +117,7 @@ class NoBackendLaneTest {
         // ok() keeps meaning "no ERROR among the checks that ran" — but it is NOT kernel-green, and the only
         // honest signal of that is verification(); the lane's core promise is that they can never be conflated.
         assertTrue(result.ok(), "no structural ERROR ran, so ok() is true");
-        assertFalse(result.verification() == Verification.KERNEL_CONFIRMED,
+        assertFalse(result.consistencyGate().filter(Verification.KERNEL_CONFIRMED::equals).isPresent(),
                 "NO FAKE GREEN: with no backend an ok() result must never claim KERNEL_CONFIRMED");
     }
 
@@ -133,7 +133,7 @@ class NoBackendLaneTest {
         DraftRule candidate = new DraftRule("/Policy", "PremiumCheck", "Premium",
                 "[/Policy/Coverages/Limit] <= 0", "BAD", "ERROR");
         ValidationResult result = new RuleValidator().check(policyModel(), candidate);
-        assertEquals(Verification.STRUCTURAL_ONLY, result.verification(),
+        assertEquals(java.util.Optional.of(Verification.STRUCTURAL_ONLY), result.consistencyGate(),
                 "no backend ran, so whatever ok() says, the verdict is structural-only — not kernel-green");
     }
 
