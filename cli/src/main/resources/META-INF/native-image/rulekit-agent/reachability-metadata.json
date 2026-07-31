@@ -6310,6 +6310,12 @@
           "parameterTypes": []
         },
         {
+          "name": "setAnnotations",
+          "parameterTypes": [
+            "java.util.List"
+          ]
+        },
+        {
           "name": "setFieldType",
           "parameterTypes": [
             "com.mgmtp.a12.kernel.md.model.a12internal.fieldtypes.FieldType"
@@ -6319,6 +6325,12 @@
           "name": "setId",
           "parameterTypes": [
             "java.lang.String"
+          ]
+        },
+        {
+          "name": "setInternalDescription",
+          "parameterTypes": [
+            "com.mgmtp.a12.kernel.md.model.api.ILocalizedTextMap"
           ]
         },
         {
@@ -9297,9 +9309,6 @@
       "type": "io.github.mbackschat.a12.dm.cli.group.GroupModifyCommand",
       "fields": [
         {
-          "name": "annotations"
-        },
-        {
           "name": "clearIndexField"
         },
         {
@@ -9309,34 +9318,16 @@
           "name": "dryRun"
         },
         {
-          "name": "externalDescriptions"
-        },
-        {
           "name": "group"
         },
         {
           "name": "indexField"
         },
         {
-          "name": "internalDescriptions"
-        },
-        {
-          "name": "labels"
-        },
-        {
           "name": "nonRepeatable"
         },
         {
           "name": "outputPath"
-        },
-        {
-          "name": "removeAnnotations"
-        },
-        {
-          "name": "removeExternalDescriptions"
-        },
-        {
-          "name": "removeInternalDescriptions"
         },
         {
           "name": "repeatable"
@@ -10258,9 +10249,6 @@
       "type": "io.github.mbackschat.a12.dm.cli.rule.RuleModifyCommand",
       "fields": [
         {
-          "name": "annotations"
-        },
-        {
           "name": "comment"
         },
         {
@@ -10270,25 +10258,10 @@
           "name": "dryRun"
         },
         {
-          "name": "externalDescriptions"
-        },
-        {
-          "name": "internalDescriptions"
-        },
-        {
           "name": "messages"
         },
         {
           "name": "outputPath"
-        },
-        {
-          "name": "removeAnnotations"
-        },
-        {
-          "name": "removeExternalDescriptions"
-        },
-        {
-          "name": "removeInternalDescriptions"
         },
         {
           "name": "rule"
@@ -18418,10 +18391,16 @@
       "glob": "schema/field-add.schema.json"
     },
     {
+      "glob": "schema/field-modify.schema.json"
+    },
+    {
       "glob": "schema/field-read.schema.json"
     },
     {
       "glob": "schema/group-read.schema.json"
+    },
+    {
+      "glob": "schema/meta-read.schema.json"
     },
     {
       "glob": "schema/model-diff.schema.json"
