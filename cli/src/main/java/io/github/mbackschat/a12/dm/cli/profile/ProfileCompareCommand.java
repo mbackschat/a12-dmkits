@@ -58,7 +58,7 @@ final class ProfileCompareCommand extends BaseCommand {
             throw new IllegalStateException("the profile comparison is not valid JSON", e);
         }
         // Classify ONCE into the typed outcome, then let it own both the reported result and the exit code. The
-        // published `data.comparison.matches` key is unchanged, and `differs` still exits 1 — this is a
+        // published `data.matches` key is unchanged, and `differs` still exits 1 — this is a
         // reclassification of what the result is CALLED (profile equality was never model validity), not a change
         // to anything a caller observes.
         ComparisonOutcome outcome = ComparisonOutcome.of(comparison.path("matches").asBoolean());

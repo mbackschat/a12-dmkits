@@ -34,7 +34,7 @@ public enum ComparisonOutcome {
         return matches ? EQUIVALENT : DIFFERS;
     }
 
-    /** The published {@code data.comparison.matches} boolean — the key consumers already read. */
+    /** The published {@code data.matches} boolean — the key consumers already read (top level, not nested). */
     public boolean matches() {
         return matches;
     }
@@ -44,8 +44,4 @@ public enum ComparisonOutcome {
         return exitCode;
     }
 
-    /** The wire value in {@code data}. */
-    public String wire() {
-        return name().toLowerCase(java.util.Locale.ROOT);
-    }
 }

@@ -176,19 +176,26 @@ class ResultAlgebraTest {
 
     // --- 4. comparison: its own kind of result, with its own exit code --------------------------------
 
+    /**
+     * The exit code is the contract here, and it comes from the typed outcome rather than from the payload.
+     *
+     * <p>An earlier version of this test hand-built {@code data.comparison.matches=false} and asserted it back — which
+     * locked its own fixture, not the envelope, and would have passed with an <em>empty</em> {@code data}, because
+     * {@code path()} on a missing node returns a {@code MissingNode} whose {@code asBoolean()} is {@code false}. It
+     * also enshrined a key that does not exist: {@code profile compare} publishes {@code matches} at the top of
+     * {@code data}. What is actually this class's business is that {@code DIFFERS} exits 1 and claims no validity;
+     * the payload's shape belongs to {@code ProfileCompareVerbTest}, which reads the real verb's output.
+     */
     @Test
-    void aComparisonReportsMatchesAndKeepsExitOneOnDiffers() {
-        ObjectNode data = M.createObjectNode();
-        data.putObject("comparison").put("matches", false);
-
+    void aComparisonKeepsExitOneOnDiffersAndClaimsNoValidity() {
         ResultEnvelope differs = ResultEnvelope.comparisonResult("profile", "compare", "profiles differ",
-                ComparisonOutcome.DIFFERS, data);
+                ComparisonOutcome.DIFFERS, M.createObjectNode());
 
         assertEquals(1, differs.exitCode(), "CI branches on this code — the reclassification must not move it");
+        assertFalse(ComparisonOutcome.DIFFERS.matches(), "and the typed outcome, not the payload, is what says so");
         JsonNode j = differs.toJson();
         assertTrue(j.get("ok").asBoolean(), "the comparison executed as asked");
         assertFalse(j.has("valid"), "profile equality is not model validity");
-        assertFalse(j.path("data").path("comparison").path("matches").asBoolean());
     }
 
     @Test

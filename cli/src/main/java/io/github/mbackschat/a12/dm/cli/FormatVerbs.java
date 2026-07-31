@@ -26,7 +26,8 @@ public final class FormatVerbs {
      * The read envelope for formatting {@code fullName}: the kernel's canonical text — in {@code lang}'s
      * keywords, or the model's own language when {@code lang} is {@code null} — under {@code data.canonical}.
      */
-    public static ResultEnvelope envelope(String target, KernelAdapter adapter, String fullName, ConditionLanguage lang) {
+    public static ResultEnvelope envelope(String target, KernelAdapter adapter, String fullName,
+            ConditionLanguage lang, ConsistencyEvidence evidence) {
         String canonical = lang == null
                 ? adapter.canonicalConditionText(fullName)
                 : adapter.canonicalConditionText(fullName, lang);
@@ -34,8 +35,10 @@ public final class FormatVerbs {
         data.put(target, fullName);
         data.put("lang", lang == null ? "model" : lang.name().toLowerCase(Locale.ROOT));
         data.put("canonical", canonical);
-        // The adapter attests: `format` reaches it through KernelAdapter.ofJson → checkAndOpen, so the gate ran.
-        return ResultEnvelope.queryResult(target, "format", "formatted " + fullName, data,
-                ConsistencyEvidence.of(adapter));
+        // The evidence comes from the CALLER's binding, not from this adapter. Both format verbs bind with
+        // BoundModel.ofJson (gated) and then open KernelAdapter.of — the deliberately UNCHECKED factory, whose
+        // receipt is empty. A comment here previously claimed the adapter attested "through checkAndOpen", which was
+        // simply the wrong factory: the gate had run one line earlier and its receipt was being thrown away.
+        return ResultEnvelope.queryResult(target, "format", "formatted " + fullName, data, evidence);
     }
 }

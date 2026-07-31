@@ -54,9 +54,11 @@ import io.github.mbackschat.a12.dm.rulekit.validate.ValidationResult;
  * provenance because {@link #consistencyVerdict} demands a {@link ConsistencyEvidence} that only a real gate hands
  * out. {@code withVerification} is gone.
  *
- * <p>{@link Family} is the discriminator, and it drives {@link #ok()}, {@link #exitCode()} and serialization through
- * exhaustive switches — so a ninth family cannot be added without deciding, at the compiler's insistence, what it
- * exits with and what it publishes.
+ * <p>{@link Family} is the discriminator, and it drives {@link #ok()} and {@link #exitCode()} through exhaustive
+ * switches — so a new family cannot be added without deciding, at the compiler's insistence, what it exits with.
+ * <b>Serialization is member-driven, not family-driven</b>, and deliberately stated here rather than implied: a new
+ * family compiles and publishes whatever members its factory happens to set. The factories are what constrain that,
+ * so a new one must be read against this list, not trusted to be caught.
  *
  * @see ConsistencyEvidence the gate receipt that gates the {@code verification} key
  * @see RuntimeEvidence the engine/version triple every runtime observation carries

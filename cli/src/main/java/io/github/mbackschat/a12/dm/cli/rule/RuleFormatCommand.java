@@ -1,6 +1,7 @@
 package io.github.mbackschat.a12.dm.cli.rule;
 
 import io.github.mbackschat.a12.dm.cli.BaseCommand;
+import io.github.mbackschat.a12.dm.cli.ConsistencyEvidence;
 import io.github.mbackschat.a12.dm.cli.FormatVerbs;
 import io.github.mbackschat.a12.dm.cli.ParamKind;
 import io.github.mbackschat.a12.dm.cli.Refusal;
@@ -77,7 +78,8 @@ final class RuleFormatCommand extends BaseCommand {
             if (refusal.isPresent()) {
                 return refuse("rule", "format", refusal.get());
             }
-            ResultEnvelope env = FormatVerbs.envelope("rule", adapter, rule, lang);
+            ResultEnvelope env = FormatVerbs.envelope("rule", adapter, rule, lang,
+                    ConsistencyEvidence.of(bound));
             out().print(env.toJsonString());
             return env.exitCode();
         } catch (RuntimeException e) {

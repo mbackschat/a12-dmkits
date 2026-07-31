@@ -1,6 +1,7 @@
 package io.github.mbackschat.a12.dm.cli.computation;
 
 import io.github.mbackschat.a12.dm.cli.BaseCommand;
+import io.github.mbackschat.a12.dm.cli.ConsistencyEvidence;
 import io.github.mbackschat.a12.dm.cli.FormatVerbs;
 import io.github.mbackschat.a12.dm.cli.ParamKind;
 import io.github.mbackschat.a12.dm.cli.Refusal;
@@ -68,7 +69,8 @@ final class ComputationFormatCommand extends BaseCommand {
             if (refusal.isPresent()) {
                 return refuse("computation", "format", refusal.get());
             }
-            ResultEnvelope env = FormatVerbs.envelope("computation", adapter, computation, lang);
+            ResultEnvelope env = FormatVerbs.envelope("computation", adapter, computation, lang,
+                    ConsistencyEvidence.of(bound));
             out().print(env.toJsonString());
             return env.exitCode();
         } catch (RuntimeException e) {
