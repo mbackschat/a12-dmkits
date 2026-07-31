@@ -142,11 +142,43 @@ public final class TextConditionCorrective {
 
     private void collect(Cond c, Map<String, List<Cond.Cmp>> out) {
         switch (c) {
-            case Cond.Cmp cmp -> out.computeIfAbsent(operatorId(cmp.getOp()), k -> new ArrayList<>()).add(cmp);
+            case Cond.Cmp cmp -> {
+                out.computeIfAbsent(operatorId(cmp.getOp()), k -> new ArrayList<>()).add(cmp);
+                // …and into its OPERANDS: a comparison can be nested inside one, via a starred operand's filter.
+                collectIn(cmp.getLeft(), out);
+                collectIn(cmp.getRight(), out);
+            }
             case Cond.And a -> { collect(a.getLeft(), out); collect(a.getRight(), out); }
             case Cond.Or o -> { collect(o.getLeft(), out); collect(o.getRight(), out); }
             case Cond.Not n -> collect(n.getC(), out);
-            default -> { }   // Pred / Pattern / Tolerance / ValueListQuant / Custom carry no ordering corrective
+            case Cond.Pattern p -> { collectIn(p.getValue(), out); collectIn(p.getPattern(), out); }
+            case Cond.Tolerance t -> { collectIn(t.getLeft(), out); collectIn(t.getRight(), out); }
+            default -> { }   // Pred / ValueListQuant / Custom carry no nested expression
+        }
+    }
+
+    /**
+     * Descend into an <b>expression</b> for the comparisons it contains. A {@code Cond} is not the only place one
+     * lives: a starred operand carries an optional per-row {@code Having} filter, which is a {@code Cond} hanging
+     * off an {@code Expr}.
+     *
+     * <p>Missing this made the uniqueness test — "the operator appears exactly once, so it must be the culprit" —
+     * unsound rather than merely incomplete. With a filter's comparison uncounted, a condition using {@code <} both
+     * outside and inside the filter looked like it used {@code <} once, so the OUTER comparison was pinned and given
+     * the operand-matched corrective plus its operator's meaning, even when the filter's comparison was what the
+     * kernel refused. Counting them makes the case correctly ambiguous, and an ambiguous case keeps the hedged
+     * union fix — a defect turned back into an honest "I don't know".
+     */
+    private void collectIn(Expr e, Map<String, List<Cond.Cmp>> out) {
+        switch (e) {
+            case Expr.Star star -> {
+                if (star.getHaving() != null) {
+                    collect(star.getHaving(), out);
+                }
+            }
+            case Expr.Arith arith -> { collectIn(arith.getLeft(), out); collectIn(arith.getRight(), out); }
+            case Expr.Func func -> func.getArgs().forEach(arg -> collectIn(arg, out));
+            default -> { }   // Field / literals / Const / SemanticIndex / EnumCategory hold no sub-expression
         }
     }
 
