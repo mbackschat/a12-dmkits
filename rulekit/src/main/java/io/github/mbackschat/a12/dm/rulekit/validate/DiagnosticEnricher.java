@@ -24,17 +24,27 @@ import io.github.mbackschat.a12.dm.rulekit.catalog.OperatorEntry;
  * <ul>
  *   <li><b>cross-operator</b> — governed by one invariant: <b>an operator-specific {@code fix} or
  *       {@code explain} may be emitted only once exactly ONE owning operator has been established</b>
- *       ({@link #resolveOwner} — structured {@code where.operator} first, then whole-token identifier
- *       intersection over the message). Unestablished ownership yields a <em>code-level</em> corrective that
- *       enumerates the candidates and <b>no {@code explain} at all</b>.
- *       <p><b>Corrected 2026-07-31, twice.</b> First the old {@code findFirst} mis-stamped every non-first
- *       construct (probe F06-2 / dec-places), and the union fixed the {@code fix} — but kept a
- *       {@code firstMeaning()} {@code explain}, so an ambiguous join still asserted an owner: a
- *       {@code where.operator = LessThan} rejection was explained as "less than or equal". Then a first repair
- *       extracted the owner from the message with an {@code At '(\w+)'} regex, which is English-only — the
- *       default bundle renders {@code MVK_NO_CONST} as {@code "Kein Fehler definiert!"}, naming no operator —
- *       so it silently fell back to the ambiguous path it was meant to remove. Ownership is now evidence-based
- *       and localization-independent.</li>
+ *       ({@link #resolveOwner} — structured {@code where.operator} first, then the operand the kernel NAMED,
+ *       via {@link KernelMessageOperands}). Unestablished ownership yields a <em>code-level</em> corrective that
+ *       enumerates the candidates and <b>no {@code explain} at all</b>; a message that names some OTHER operator
+ *       withholds even that, because the documenters are then positively excluded.
+ *       <p><b>Corrected 2026-07-31, four times — each repair narrowing the previous case and leaving the next.</b>
+ *       (1) {@code findFirst} stamped whichever documenter came first in {@code operators.json}, mis-stamping every
+ *       other construct (probe F06-2 / dec-places). (2) The union fixed the {@code fix} but kept a
+ *       {@code firstMeaning()} {@code explain}, so an ambiguous join still asserted an owner — a
+ *       {@code where.operator = LessThan} rejection was explained as "less than or equal". (3) A
+ *       {@code documenters.size() == 1} shortcut treated a sole documenter as proven, though the catalog is a
+ *       PARTIAL map: a {@code MinValue} rejection got MaxValue's meaning. (4) Whole-message identifier matching let
+ *       the kernel's own <em>boilerplate</em> elect an operator — see {@link KernelMessageOperands} for the two
+ *       measured cases and the delimiter mechanism that closes the class.
+ *       <p>An intermediate repair was also justified by a <b>false</b> claim, recorded here as measured: that the
+ *       default bundle renders {@code MVK_NO_CONST} as {@code "Kein Fehler definiert!"} and so names no operator.
+ *       That is true only of the base stub {@code error_messages.properties}; the populated
+ *       {@code error_messages_de.properties} shipped in {@code kernel-core-parser} reads
+ *       {@code "Bei '%s' darf keine Konstante verwendet werden."} and <em>does</em> name it — verified live on a
+ *       {@code de_DE} model, where ownership resolved correctly. (The file is ISO-8859-1, so a plain {@code grep}
+ *       treats it as binary and finds nothing, which is the likely origin of the error.) The <em>conclusion</em>
+ *       stands on other grounds — never parse a localized sentence — but the evidence for it did not.</li>
  *   <li><b>cross-context</b> — a code whose catalog documenter's fix is wrong for <em>another</em> real
  *       trigger ({@code MVK_NO_WILDCARD} from an aggregate; {@code MVK_INVALID_COMPARE_DEC_PLACES} from a
  *       computed-field scale) is carried by {@link StructuralKernelFix}, which is consulted <b>first</b>.</li>
@@ -63,7 +73,19 @@ final class DiagnosticEnricher {
         if (!documenters.isEmpty()) {
             Optional<OperatorEntry> owner = resolveOwner(diagnostic, documenters);
             if (owner.isPresent()) {
-                return diagnostic.withFix(owner.flatMap(DiagnosticEnricher::ownFix), owner.flatMap(DiagnosticEnricher::ownMeaning));
+                // The owner is established, so its MEANING is always safe — it says which construct rejected. Its
+                // curated FIX is only safe if this owner is one of the code's documenters: another operator's
+                // invalidExample is a corrective for a DIFFERENT code and would be advice about the wrong problem.
+                boolean documentsThisCode = documenters.contains(owner.get());
+                return diagnostic.withFix(
+                        documentsThisCode ? owner.flatMap(DiagnosticEnricher::ownFix) : Optional.empty(),
+                        owner.flatMap(DiagnosticEnricher::ownMeaning));
+            }
+            if (namesAnUndocumentingOperator(diagnostic, documenters)) {
+                // The message QUOTES an operator we know, and it is not any of the documenters — so they are
+                // positively EXCLUDED, not merely unestablished, and even the hedged corrective must be withheld.
+                // Emitting it would name an operator this diagnostic's own text contradicts.
+                return diagnostic;
             }
             // OWNERSHIP UNESTABLISHED → a generic, code-level corrective that ENUMERATES the possibilities, and
             // deliberately NO explain: an operator meaning is a claim about which construct rejected, so
@@ -113,17 +135,18 @@ final class DiagnosticEnricher {
      *
      * <ol>
      *   <li><b>structured</b> — {@code where.operator}, the AST operator id, when the producing stage set it;</li>
-     *   <li><b>the message</b>, matched WITHOUT parsing its sentence: intersect the documenting candidates with
-     *       the operator identifiers (id + either keyword) that occur in the summary as whole tokens.</li>
+     *   <li><b>the operand the kernel NAMED in its message</b> — see {@link KernelMessageOperands}.</li>
      * </ol>
      *
-     * <p>The message must never be parsed by <em>sentence shape</em>. The kernel's text is localized per bundle
-     * — {@code error_messages_en.properties} renders {@code MVK_NO_CONST} as {@code "At '%s'It is not allowed to
-     * use constants."} while the default bundle renders it {@code "Kein Fehler definiert!"} with <b>no operator
-     * at all</b> — so an {@code At '(\w+)'} extraction is an English-only accident that silently degrades
-     * elsewhere. Token intersection degrades to "unestablished", which is honest, instead of to a wrong owner.
+     * <p>Resolution runs against the <b>whole catalog</b>, not just the code's documenters: whoever the kernel names
+     * is who rejected, whether or not our catalog happens to document that pairing. Being a documenter decides only
+     * whether a curated <em>fix</em> may ride along ({@link #enrich}).
+     *
+     * <p>The message must never be parsed by <em>sentence shape</em>: the kernel's text is a localized properties
+     * value, so any {@code At '(\w+)'}-style extraction is an accident of one bundle. Matching the quoted operand is
+     * localization-independent, because every bundle inherits the same {@code '%s'} delimiters from the template.
      */
-    private static Optional<OperatorEntry> resolveOwner(Diagnostic diagnostic, List<OperatorEntry> documenters) {
+    private Optional<OperatorEntry> resolveOwner(Diagnostic diagnostic, List<OperatorEntry> documenters) {
         // NO sole-documenter shortcut. The catalog is a PARTIAL map of code → operators, so "exactly one entry
         // documents this code" is not evidence that this rejection came from that operator — it is equally
         // consistent with an undocumented sibling having raised it. Measured: the catalog documents
@@ -138,26 +161,20 @@ final class DiagnosticEnricher {
                 return Optional.of(byId.get(0));
             }
         }
-        List<OperatorEntry> mentioned = documenters.stream()
-                .filter(entry -> mentionedIn(diagnostic.summary(), entry))
-                .toList();
-        return mentioned.size() == 1 ? Optional.of(mentioned.get(0)) : Optional.empty();
+        List<OperatorEntry> named = KernelMessageOperands.namedOperators(catalog, diagnostic.summary());
+        return named.size() == 1 ? Optional.of(named.get(0)) : Optional.empty();
     }
 
-    /** Whether any of {@code entry}'s identifiers occurs in {@code text} as a whole token (never a substring:
-     *  {@code Abs} must not match inside {@code AbsValue}). */
-    private static boolean mentionedIn(String text, OperatorEntry entry) {
-        if (text == null || text.isBlank()) {
-            return false;
-        }
-        for (String identifier : identifiers(entry)) {
-            if (java.util.regex.Pattern.compile("\\b" + java.util.regex.Pattern.quote(identifier) + "\\b")
-                    .matcher(text).find()) {
-                return true;
-            }
-        }
-        return false;
+    /**
+     * Whether the message names a known operator that is <b>none of</b> {@code documenters} — in which case the
+     * documenters are positively excluded rather than merely unestablished.
+     */
+    private boolean namesAnUndocumentingOperator(Diagnostic diagnostic, List<OperatorEntry> documenters) {
+        List<OperatorEntry> named = KernelMessageOperands.namedOperators(catalog, diagnostic.summary());
+        return !named.isEmpty() && named.stream().noneMatch(documenters::contains);
     }
+
+
 
     private static List<String> identifiers(OperatorEntry entry) {
         OperatorEntry.Keywords keywords = entry.keywords();

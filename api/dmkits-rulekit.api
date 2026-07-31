@@ -2479,6 +2479,11 @@ public record io.github.mbackschat.a12.dm.rulekit.validate.DraftRule
 public final class io.github.mbackschat.a12.dm.rulekit.validate.KernelDiagnostics
   public static io.github.mbackschat.a12.dm.rulekit.validate.Diagnostic enriched(io.github.mbackschat.a12.dm.core.Notification, java.lang.String)
 
+public final class io.github.mbackschat.a12.dm.rulekit.validate.KernelMessageOperands
+  public static boolean contradicts(io.github.mbackschat.a12.dm.rulekit.catalog.OperatorCatalog, java.lang.String, io.github.mbackschat.a12.dm.rulekit.catalog.OperatorEntry)
+  public static java.util.List<io.github.mbackschat.a12.dm.rulekit.catalog.OperatorEntry> namedOperators(io.github.mbackschat.a12.dm.rulekit.catalog.OperatorCatalog, java.lang.String)
+  public static java.util.List<java.lang.String> operands(java.lang.String)
+
 public record io.github.mbackschat.a12.dm.rulekit.validate.KernelVersion
   public KernelVersion(java.util.Optional<java.lang.String>, java.lang.String)
   public java.util.Optional<io.github.mbackschat.a12.dm.rulekit.validate.Diagnostic> advisory()

@@ -18,6 +18,7 @@ import io.github.mbackschat.a12.dm.rulekit.dsl.OperatorUsage;
 import io.github.mbackschat.a12.dm.rulekit.dsl.StringLiteral;
 import io.github.mbackschat.a12.dm.rulekit.validate.Diagnostic;
 import io.github.mbackschat.a12.dm.rulekit.validate.DiagnosticSource;
+import io.github.mbackschat.a12.dm.rulekit.validate.KernelMessageOperands;
 import io.github.mbackschat.a12.dm.rulekit.validate.Span;
 
 /**
@@ -86,6 +87,16 @@ public final class SpanResolver {
             return diagnostic;
         }
         OperatorEntry operator = pinned.get(0);
+        // The kernel's own message gets a VETO over this inference. Intersecting the code's documenters with the
+        // operators the condition uses is not sound on its own, because the catalog is a PARTIAL map: a rule using
+        // both MaxValue and MinValue, where only MaxValue documents MVK_NOT_SORTABLE, would pin MaxValue and explain
+        // "the largest of the listed values" — while the message in hand says `At 'MinValue'`. So when the kernel
+        // NAMED someone else, we pin nothing. Deliberately one-directional: naming nobody (most templates substitute
+        // a path or a digit count, not an operator) leaves this inference standing, so the operand-aware corrective
+        // keeps working. A veto can only withhold a claim, never manufacture one.
+        if (KernelMessageOperands.contradicts(catalog, diagnostic.summary(), operator)) {
+            return diagnostic;
+        }
         Optional<String> fix = correctiveFix(operator, diagnostic.code().get(), rendered)
                 .or(() -> Optional.ofNullable(operator.invalidExample())
                         .map(OperatorEntry.InvalidExample::fix)
