@@ -160,6 +160,18 @@ public final class Cli {
                         offending.usage(w);
                     }
                     return offending.getCommandSpec().exitCodeOnInvalidInput();
+                })
+                // An unknown subcommand beats a help request. picocli honours `--help` during parsing and skips the
+                // unmatched-argument check when it fires, so a group plus an unknown verb plus `--help` printed the
+                // GROUP's help and exited 0 — while the same line WITHOUT `--help` correctly exited 2. The exit code
+                // therefore turned on a flag unrelated to whether the verb exists, and 0 is the one answer an agent
+                // reads as "that verb is fine": it goes on to use a verb that does not exist, and parent help never
+                // says otherwise, because group help is a plausible reply to a request nobody flagged as malformed.
+                // Both behaviours are right on their own; only the PRECEDENCE was wrong, and the unknown verb has to
+                // win because there is no command whose help was asked for.
+                .setExecutionStrategy(parseResult -> {
+                    rejectUnknownSubcommand(parseResult);
+                    return new CommandLine.RunLast().execute(parseResult);
                 });
         if (nativeProfile) {
             hideJvmOnlyVerbs(cli);
@@ -196,6 +208,25 @@ public final class Cli {
      */
     /** The {@code (target, op)} names below the root for a parse result — e.g. {@code {"rule","modify"}};
      *  {@code op} is {@code ""} for a single-token verb. Used to stamp the load-failure {@code rejected} envelope. */
+    /**
+     * Throw the {@code UnmatchedArgumentException} picocli suppressed because a help option was also present, so an
+     * unknown subcommand is a usage error regardless of {@code --help}.
+     *
+     * <p>Walks the whole {@code ParseResult} chain: the unmatched token belongs to the deepest command that saw it,
+     * and a group's help option is declared on the group, so the two are not necessarily at the same level. The
+     * exception is thrown rather than handled here so it lands in the existing parameter-exception handler and gets
+     * the same message, did-you-mean suggestions, and exit code as an unknown subcommand without {@code --help} —
+     * one rejection path, not a second one that could drift from it.
+     */
+    private static void rejectUnknownSubcommand(CommandLine.ParseResult parseResult) {
+        for (CommandLine.ParseResult pr = parseResult; pr != null; pr = pr.subcommand()) {
+            List<String> unmatched = pr.unmatched();
+            if (!unmatched.isEmpty()) {
+                throw new CommandLine.UnmatchedArgumentException(pr.commandSpec().commandLine(), unmatched);
+            }
+        }
+    }
+
     private static String[] targetOp(CommandLine.ParseResult pr) {
         List<String> names = new ArrayList<>();
         for (CommandLine.ParseResult cur = pr.subcommand(); cur != null; cur = cur.subcommand()) {
