@@ -2518,6 +2518,7 @@ public enum io.github.mbackschat.a12.dm.rulekit.validate.RkCode
   public static final io.github.mbackschat.a12.dm.rulekit.validate.RkCode INVALID_VALUE
   public static final io.github.mbackschat.a12.dm.rulekit.validate.RkCode INVERTED_REQUIREDNESS
   public static final io.github.mbackschat.a12.dm.rulekit.validate.RkCode KERNEL_VERSION_SKEW
+  public static final io.github.mbackschat.a12.dm.rulekit.validate.RkCode LABEL_NOT_SUPPORTED
   public static final io.github.mbackschat.a12.dm.rulekit.validate.RkCode MODEL_PREPARATION_FAILED
   public static final io.github.mbackschat.a12.dm.rulekit.validate.RkCode MODEL_VERSION_INCOMPATIBLE
   public static final io.github.mbackschat.a12.dm.rulekit.validate.RkCode MODEL_VERSION_SKEW

@@ -21,7 +21,7 @@ import org.junit.jupiter.api.io.TempDir;
  */
 class InterpreterReleaseMirrorAssemblerTest {
 
-    private static final String VERSION = "0.10.0";
+    private static final String VERSION = "0.10.1";
     private static final String SOURCE_SHA = "0123456789abcdef0123456789abcdef01234567";
 
     @TempDir
@@ -96,7 +96,7 @@ class InterpreterReleaseMirrorAssemblerTest {
         assemble(inputs, mirror, assets);
 
         Files.writeString(mirror.resolve("unexpected.txt"), "injected\n");
-        var unexpected = runAssembler(releaseInputs("0.10.1"), mirror, assets);
+        var unexpected = runAssembler(releaseInputs("0.10.2"), mirror, assets);
         assertEquals(1, unexpected.exitCode());
         assertTrue(unexpected.output().contains("public file inventory"), unexpected::output);
 

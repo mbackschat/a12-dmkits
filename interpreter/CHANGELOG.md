@@ -8,6 +8,11 @@ This changelog covers the independently consumable interpreter packages, API doc
 
 - **Computation reports now explain unsuccessful computation.** `formalErrorsInOperands` carries eager operand diagnostics, each ERRORED result carries its target-owned `diagnostic`, and `noErrorOccurred` matches the Kernel predicate while remaining independent of `fullySupported`. Kotlin, Java, Kotlin/JS, packed TypeScript, and the browser showcase consume the same detached `ValidationFinding` projection.
 - **Prepared Documents can produce a model-shaped starter.** `prepared.documents.seedDocument()` includes every declared group and field and one row per repeatable group, using the same deterministic generator as `dmtool model seed`.
+- **The browser showcase is now a complete interpreter workflow consumer.** It can inspect the loaded Document Models, generate and edit model-shaped Documents, choose full or partial validation, compute, apply retained computation actions, and run compute-then-validate. The built-in permit model demonstrates required fields, computations, and repeating groups with prepared rows.
+
+### Changed
+
+- The showcase separates runtime actions from workspace utilities, keeps the model/result panels collapsible, and expands with the browser width so model and Document JSON remain usable on wide screens.
 
 ## [0.10.0]
 

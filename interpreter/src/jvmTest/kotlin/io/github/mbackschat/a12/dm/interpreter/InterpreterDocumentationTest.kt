@@ -137,6 +137,7 @@ class InterpreterDocumentationTest {
     fun interpreterSourcesDoNotRepeatTheRepositoryVersion() {
         val build = Files.readString(repoFile("build.gradle"))
         val version = requireNotNull(Regex("""(?m)^version = '([^']+)'$""").find(build)).groupValues[1]
+        val literalVersion = Regex("""(?<!\d)${Regex.escape(version)}(?!\d)""")
         val interpreterRoot = repoFile("interpreter")
         // The changelog is the ONE file whose literal version numbers are correct: the release mirror renders
         // it straight through (no accumulation), so the source carries the released history. Its own rule is
@@ -147,7 +148,7 @@ class InterpreterDocumentationTest {
                 .filter { !interpreterRoot.relativize(it).startsWith("build") }
                 .filter { it.fileName.toString().substringAfterLast('.', "") in TEXT_EXTENSIONS }
                 .filter { it !in allowed }
-                .filter { Files.readString(it).contains(version) }
+                .filter { literalVersion.containsMatchIn(Files.readString(it)) }
                 .map { repoRoot().relativize(it).toString() }
                 .toList()
         }

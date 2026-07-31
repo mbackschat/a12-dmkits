@@ -19,11 +19,11 @@ The package does not author models, render forms, persist Documents, provide a v
 
 ## Install
 
-Version `0.10.0` is distributed from the public `a12-interpreter-releases` repository.
+Version `0.10.1` is distributed from the public `a12-interpreter-releases` repository.
 
-For TypeScript or JavaScript, install the release tarball with `pnpm add https://github.com/mbackschat/a12-interpreter-releases/releases/download/v0.10.0/a12-interpreter-0.10.0.tgz`.
+For TypeScript or JavaScript, install the release tarball with `pnpm add https://github.com/mbackschat/a12-interpreter-releases/releases/download/v0.10.1/a12-interpreter-0.10.1.tgz`.
 
-For Kotlin or Java, add the Maven repository `https://mbackschat.github.io/a12-interpreter-releases/maven` and dependency `io.github.mbackschat.a12.dm:dm-interpreter:0.10.0`. Public third-party dependencies continue to resolve from Maven Central or npm.
+For Kotlin or Java, add the Maven repository `https://mbackschat.github.io/a12-interpreter-releases/maven` and dependency `io.github.mbackschat.a12.dm:dm-interpreter:0.10.1`. Public third-party dependencies continue to resolve from Maven Central or npm.
 
 ## TypeScript
 
@@ -116,7 +116,7 @@ The core is MIT-licensed and contains no Kernel bytecode or runtime dependency. 
 
 ## Documentation
 
-- [Developer API guide](https://github.com/mbackschat/a12-interpreter-releases/blob/v0.10.0/site/api/v0.10.0/INTERPRETER-API-GUIDE.md)
-- Version-matched Kotlin and TypeScript references plus `llms.txt` are packaged in `dm-interpreter-0.10.0-api-docs.zip` under `api/v0.10.0/`
+- [Developer API guide](https://github.com/mbackschat/a12-interpreter-releases/blob/v0.10.1/site/api/v0.10.1/INTERPRETER-API-GUIDE.md)
+- Version-matched Kotlin and TypeScript references plus `llms.txt` are packaged in `dm-interpreter-0.10.1-api-docs.zip` under `api/v0.10.1/`
 - Browser showcase: `https://mbackschat.github.io/a12-interpreter-releases/showcase/`
-- [MIT license](https://github.com/mbackschat/a12-interpreter-releases/blob/v0.10.0/LICENSE)
+- [MIT license](https://github.com/mbackschat/a12-interpreter-releases/blob/v0.10.1/LICENSE)

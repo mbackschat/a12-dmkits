@@ -180,8 +180,6 @@ class A12JsonConstructionGuardTest {
                     + "::jackson-object-mapper#1", CLI_OWNED_JSON),
             entry("cli/src/main/java/io/github/mbackschat/a12/dm/cli/field/FieldModifyCommand.java"
                     + "::jackson-object-mapper#1", CLI_OWNED_JSON),
-            entry("cli/src/main/java/io/github/mbackschat/a12/dm/cli/field/FieldReadCommand.java"
-                    + "::jackson-object-mapper#1", CLI_OWNED_JSON),
             entry("cli/src/main/java/io/github/mbackschat/a12/dm/cli/field/FieldRemoveCommand.java"
                     + "::jackson-object-mapper#1", CLI_OWNED_JSON),
 
