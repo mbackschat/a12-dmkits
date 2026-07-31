@@ -184,7 +184,9 @@ public final class WorkspacePreparationFixtures {
                                 "/Permit/PatternProbe",
                                 "/Permit/GraphemeProbe",
                                 "/Permit/ReportedAt",
-                                "/Permit/SettledAt"))
+                                "/Permit/SettledAt",
+                                "/Permit/SiteSections/SectionName",
+                                "/Permit/SiteSections/Area"))
                         .expectedRules(Set.of(
                                 "/Permit/AreaNeedsNote",
                                 "/Permit/DecimalPrecisionControl",
@@ -512,7 +514,19 @@ public final class WorkspacePreparationFixtures {
                         .field("PatternProbe", FieldKind.STRING)
                         .field("GraphemeProbe", FieldKind.STRING)
                         .dateTimeField("ReportedAt", dateTime -> dateTime.format("yyyy-MM-dd'T'HH:mm:ss"))
-                        .dateTimeField("SettledAt", dateTime -> dateTime.format("yyyy-MM-dd'T'HH:mm:ss")))
+                        .dateTimeField("SettledAt", dateTime -> dateTime.format("yyyy-MM-dd'T'HH:mm:ss"))
+                        .group("SiteSections", sections -> sections
+                                .repeatable(20)
+                                .stringField("SectionName", text -> text
+                                        .maxLength(60)
+                                        .required()
+                                        .label("en_US", "Section name"))
+                                .numberField("Area", number -> number
+                                        .fractionDigits(0)
+                                        .min("1")
+                                        .max("1000")
+                                        .required()
+                                        .label("en_US", "Section area (m²)"))))
                 .build()
                 .toJson();
         var session = EditSession.read(structure);

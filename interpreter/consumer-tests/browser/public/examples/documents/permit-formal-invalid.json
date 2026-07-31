@@ -13,6 +13,16 @@
     "PatternProbe": "permit",
     "GraphemeProbe": null,
     "ReportedAt": "2026-07-17T09:00:00",
-    "SettledAt": "2026-07-17T12:00:00"
+    "SettledAt": "2026-07-17T12:00:00",
+    "SiteSections": [
+      {
+        "SectionName": "Living area",
+        "Area": 70
+      },
+      {
+        "SectionName": "Utility room",
+        "Area": 10
+      }
+    ]
   }
 }

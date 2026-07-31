@@ -352,6 +352,7 @@ await withStaticServer(async (url) => {
     for (const expected of [
       '"id": "permit-basic"',
       '"ApplicantName"',
+      '"id": "/Permit/SiteSections"',
       '"mode": "absoluteOrRelativeToNextRepAncestor"',
       '"CalculateEstimatedFee"',
       '"externalDescription"',
@@ -364,7 +365,7 @@ await withStaticServer(async (url) => {
         );
       }
     }
-    const expectedPermitFields = [
+    const expectedPermitMembers = [
       "ApplicationNo",
       "ApplicantName",
       "PermitType",
@@ -379,14 +380,41 @@ await withStaticServer(async (url) => {
       "GraphemeProbe",
       "ReportedAt",
       "SettledAt",
+      "SiteSections",
     ].sort();
+    type PermitDocument = {Permit?: Record<string, unknown>};
+    const assertPopulatedSiteSections = (
+      document: PermitDocument,
+      context: string,
+      expectedRows: number,
+    ): void => {
+      const sections = document.Permit?.SiteSections;
+      if (
+        !Array.isArray(sections) ||
+        sections.length !== expectedRows ||
+        sections.some((row) =>
+          typeof row !== "object" ||
+          row === null ||
+          !Object.hasOwn(row, "SectionName") ||
+          !Object.hasOwn(row, "Area") ||
+          (row as Record<string, unknown>).SectionName === null ||
+          (row as Record<string, unknown>).Area === null
+        )
+      ) {
+        throw new Error(
+          `${context} lacks ${expectedRows} populated SiteSections rows: ${
+            JSON.stringify(document)
+          }`,
+        );
+      }
+    };
     const builtInDocument = JSON.parse(
       await showcase.locator("#document-input").inputValue(),
-    ) as {Permit?: Record<string, unknown>};
+    ) as PermitDocument;
     if (
       builtInDocument.Permit === undefined ||
       Object.keys(builtInDocument.Permit).sort().join(",") !==
-        expectedPermitFields.join(",")
+        expectedPermitMembers.join(",")
     ) {
       throw new Error(
         `the built-in Document omits model fields: ${
@@ -394,6 +422,30 @@ await withStaticServer(async (url) => {
         }`,
       );
     }
+    assertPopulatedSiteSections(builtInDocument, "built-in Document", 2);
+    const bundledPermitDocuments = await showcase.evaluate(async () => {
+      const paths = [
+        "examples/documents/permit-valid.json",
+        "examples/documents/permit-rule-firing.json",
+        "examples/documents/permit-formal-invalid.json",
+        "examples/documents/permit-computation.json",
+        "examples/documents/permit-computed-error.json",
+      ];
+      return await Promise.all(paths.map(async (path) => {
+        const response = await fetch(path);
+        if (!response.ok) {
+          throw new Error(`${path} failed with HTTP ${response.status}`);
+        }
+        return await response.json();
+      }));
+    }) as PermitDocument[];
+    bundledPermitDocuments.forEach((document, index) =>
+      assertPopulatedSiteSections(
+        document,
+        `bundled permit Document ${index + 1}`,
+        2,
+      )
+    );
     const starterButton = showcase.locator("#seed-document");
     if (
       await starterButton.count() !== 1 ||
@@ -565,11 +617,11 @@ await withStaticServer(async (url) => {
     await showcase.click("#seed-document");
     const explicitSeed = JSON.parse(
       await showcase.locator("#document-input").inputValue(),
-    ) as {Permit?: Record<string, unknown>};
+    ) as PermitDocument;
     if (
       explicitSeed.Permit === undefined ||
       Object.keys(explicitSeed.Permit).sort().join(",") !==
-        expectedPermitFields.join(",")
+        expectedPermitMembers.join(",")
     ) {
       throw new Error(
         `explicit model-shaped seed omitted fields: ${
@@ -577,6 +629,7 @@ await withStaticServer(async (url) => {
         }`,
       );
     }
+    assertPopulatedSiteSections(explicitSeed, "model-shaped starter", 1);
     if (
       explicitSeed.Permit.ReviewedArea !== null ||
       explicitSeed.Permit.EstimatedFee !== null

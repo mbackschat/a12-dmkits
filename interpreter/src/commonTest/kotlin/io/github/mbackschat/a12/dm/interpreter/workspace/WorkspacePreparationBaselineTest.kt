@@ -36,9 +36,13 @@ class WorkspacePreparationBaselineTest {
                 "/Permit/GraphemeProbe",
                 "/Permit/ReportedAt",
                 "/Permit/SettledAt",
+                "/Permit/SiteSections/SectionName",
+                "/Permit/SiteSections/Area",
             ),
             model.fields.map { it.path }.toSet(),
         )
+        assertEquals(setOf("/Permit/SiteSections"), model.repeatable)
+        assertEquals(20, model.declaredReps.getValue("/Permit/SiteSections"))
         assertEquals(
             setOf(
                 "/Permit/AreaNeedsNote",

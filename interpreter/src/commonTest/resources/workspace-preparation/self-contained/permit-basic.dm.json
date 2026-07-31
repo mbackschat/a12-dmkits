@@ -248,6 +248,54 @@
               }
             }
           }, {
+            "type" : "Group",
+            "id" : "/Permit/SiteSections",
+            "name" : "SiteSections",
+            "Group" : {
+              "repeatability" : 20,
+              "elements" : [ {
+                "type" : "Field",
+                "id" : "/Permit/SiteSections/SectionName",
+                "name" : "SectionName",
+                "Field" : {
+                  "fieldType" : {
+                    "type" : "StringType",
+                    "StringType" : {
+                      "maxLength" : 60
+                    }
+                  },
+                  "requirednessConfig" : {
+                    "mode" : "absoluteOrRelativeToNextRepAncestor"
+                  },
+                  "label" : [ {
+                    "locale" : "en_US",
+                    "text" : "Section name"
+                  } ]
+                }
+              }, {
+                "type" : "Field",
+                "id" : "/Permit/SiteSections/Area",
+                "name" : "Area",
+                "Field" : {
+                  "fieldType" : {
+                    "type" : "NumberType",
+                    "NumberType" : {
+                      "maxFractionalDigits" : 0,
+                      "minValue" : 1,
+                      "maxValue" : 1000
+                    }
+                  },
+                  "requirednessConfig" : {
+                    "mode" : "absoluteOrRelativeToNextRepAncestor"
+                  },
+                  "label" : [ {
+                    "locale" : "en_US",
+                    "text" : "Section area (m²)"
+                  } ]
+                }
+              } ]
+            }
+          }, {
             "type" : "Rule",
             "id" : "/Permit/AreaNeedsNote",
             "name" : "AreaNeedsNote",

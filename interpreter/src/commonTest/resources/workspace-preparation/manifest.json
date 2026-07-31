@@ -91,6 +91,20 @@
             "format" : "yyyy-MM-dd'T'HH:mm:ss"
           }
         },
+        "/Permit/SiteSections/Area" : {
+          "type" : "NumberType",
+          "NumberType" : {
+            "maxFractionalDigits" : 0,
+            "minValue" : 1,
+            "maxValue" : 1000
+          }
+        },
+        "/Permit/SiteSections/SectionName" : {
+          "type" : "StringType",
+          "StringType" : {
+            "maxLength" : 60
+          }
+        },
         "/Permit/SubmittedOn" : {
           "type" : "DateType",
           "DateType" : {
@@ -364,6 +378,60 @@
             "annotations" : [ ]
           }
         },
+        "/Permit/SiteSections" : {
+          "elementType" : "Group",
+          "facts" : {
+            "group" : true,
+            "kind" : null,
+            "scale" : null,
+            "min" : null,
+            "max" : null,
+            "minLength" : null,
+            "maxLength" : null,
+            "pattern" : null,
+            "enumValues" : null,
+            "enumCategories" : null,
+            "repeatability" : 20,
+            "usageType" : null,
+            "annotations" : [ ]
+          }
+        },
+        "/Permit/SiteSections/Area" : {
+          "elementType" : "Field",
+          "facts" : {
+            "group" : false,
+            "kind" : "NUMBER",
+            "scale" : 0,
+            "min" : "1",
+            "max" : "1000",
+            "minLength" : null,
+            "maxLength" : null,
+            "pattern" : null,
+            "enumValues" : null,
+            "enumCategories" : null,
+            "repeatability" : null,
+            "usageType" : null,
+            "annotations" : [ ]
+          }
+        },
+        "/Permit/SiteSections/SectionName" : {
+          "elementType" : "Field",
+          "facts" : {
+            "group" : false,
+            "kind" : "STRING",
+            "scale" : null,
+            "min" : null,
+            "max" : null,
+            "minLength" : null,
+            "maxLength" : 60,
+            "pattern" : null,
+            "enumValues" : null,
+            "enumCategories" : null,
+            "repeatability" : null,
+            "usageType" : null,
+            "annotations" : [ ]
+          }
+        },
         "/Permit/SubmittedOn" : {
           "elementType" : "Field",
           "facts" : {
@@ -500,6 +568,18 @@
         },
         "/Permit/SettledAt" : {
           "id" : "/Permit/SettledAt",
+          "elementType" : "Field"
+        },
+        "/Permit/SiteSections" : {
+          "id" : "/Permit/SiteSections",
+          "elementType" : "Group"
+        },
+        "/Permit/SiteSections/Area" : {
+          "id" : "/Permit/SiteSections/Area",
+          "elementType" : "Field"
+        },
+        "/Permit/SiteSections/SectionName" : {
+          "id" : "/Permit/SiteSections/SectionName",
           "elementType" : "Field"
         },
         "/Permit/SubmittedOn" : {

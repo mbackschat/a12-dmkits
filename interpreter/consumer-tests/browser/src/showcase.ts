@@ -92,7 +92,7 @@ const scenarios: Readonly<Record<ScenarioId, Scenario>> = {
   clean: {
     workspace: "permit-basic",
     entryModelId: "permit-basic",
-    note: "A valid permit uses required fields, labels, an enum, a date, rules, and two computations without producing findings.",
+    note: "A valid permit uses required fields, labels, an enum, a date, populated repeatable site-section rows, rules, and two computations without producing findings.",
     inputPath: "examples/documents/permit-valid.json",
     relevantPath: "/Permit",
     relevantCoordinates: [1],
