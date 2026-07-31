@@ -85,6 +85,13 @@ Recorded because the same class of defect this proposal exists to fix recurred w
 
 **Excluded:** no deprecation alias for the removed key. The break is declared, not shimmed.
 
+**What implementing this added to the design** (2026-07-31, recorded because each was discovered by a call site the taxonomy could not classify as written):
+
+- **A gate attests through its EXCEPTION, not only through a bound object.** The check verbs learn a model is invalid by catching `ModelConsistencyException`, so on that branch they hold no binding at all — yet the gate unambiguously ran and its notifications *are* the verdict. Without a witness for that branch the negative half of every verdict would have had to fabricate its evidence, which is the same defect one layer along. Hence `ConsistencyEvidence.of(ModelConsistencyException)`.
+- **Two routes choose their FAMILY at runtime, and both are honest.** `workspace check` runs N gates, so "did any gate run" decides whether there is an aggregate verdict at all — an empty directory has nothing to be valid *about*, and claiming `valid:true` there is the very fabrication being removed. `rule check` is a verdict when the validator returned and a pre-flight rejection when it threw. A family is a property of what happened, not of the verb.
+- **A rejection may need `data`.** `rule check --suggest-error-field`'s candidate list is most useful precisely when the candidate was rejected — it answers "then what should I have written?". So `rejected` gained a `data`-bearing overload, mirroring `refused`.
+- **`data.comparison.matches` was wrong in this document.** `profile compare` publishes `matches` at the *top* of `data`, not nested under a `comparison` object. The published shape is unchanged; the doc's description of it was not accurate.
+
 ---
 
 ## 3. The evidence vocabulary <a id="evidence"></a>
@@ -149,7 +156,7 @@ corpus expectations migrate by **mechanical re-render**, with the per-case `(out
 | phase | content | gate before proceeding |
 |---|---|---|
 | 0 | contract definitions; schemas written as failing tests; non-envelope verbs enumerated with reasons | schemas red for the right reason |
-| 1 | §2 taxonomy + §4 pointers | targeted `:cli:test` + adapter differentials |
+| 1 | §2 taxonomy + §4 pointers | targeted `:cli:test` + adapter differentials — **§2 taxonomy LANDED** (`3425061d` the gate receipt, `d6fa4350` the algebra + all 35 read sites): `ResultEnvelope` is a closed class with eight factories, `verification` comes only from a `ConsistencyEvidence` receipt, `exitCode()`/`ok()` dispatch on an exhaustive `Family`. Mutation-route evidence is split out as its own additive change (~75 sites), and §4 pointers are still open |
 | 2 | §5 aggregates | `--text` renders for both, schemas conform |
 | 3 | totality guards + description↔behaviour column | guards fail on a reverted fix |
 | 4 | catalog / ledger / enricher for [kf167](KERNEL-FINDINGS.md#kf167) — **landed early** (`36f76aa0`, `4c955556`, `637f1997`): non-breaking and independent of the contract, so it did not need to wait | `CatalogExamplesAreKernelValidTest` kernel-executes 160 examples, of which the 7 new ones are named — **not** "0 skipped", which its `@TestFactory` makes structurally always true by filtering before it generates (the §1c blind spot; a MISSING example is what needs a guard, tracked in [`CLI-CONFORMANCE-GAPS`](CLI-CONFORMANCE-GAPS.md) §1) |
