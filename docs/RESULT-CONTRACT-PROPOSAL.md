@@ -124,7 +124,7 @@ corpus expectations migrate by **mechanical re-render**, with the per-case `(out
 | 5 | corpus → examples → probe gold → eval → **skill last** | `verify-demos.sh`; skill claims re-run against the RC |
 | 6 | native build, deterministic gates, probes, Codex activation | release gates green |
 
-**Stop line.** If a phase slips, the release cuts **after Phase 3** (contract + guards) and Phases 4–5 move to the next one. Phase 5 may never precede Phases 1–3: those surfaces currently encode the defects, so regenerating them early would turn the fix into a green build that proves nothing.
+**No early release boundary.** The phases are an *ordering*, not a set of optional tiers: the release addresses the **complete** feedback set, so every phase is mandatory and none may be deferred to a later release. *(An earlier draft of this section proposed cutting the release after Phase 3 if a phase slipped; the owner removed that boundary on 2026-07-31.)* The ordering constraint that remains is one-directional: Phase 5 may never precede Phases 1–3, because those surfaces currently **encode** the defects — regenerating them early would turn the fix into a green build that proves nothing.
 
 **Execution.** Multi-session, so it runs under the `run-master-session` protocol — one active session per worktree, sets matching the phases, a review gate on every landing. Tracking is the §7 gate plus the [`CLI-CONFORMANCE-GAPS`](CLI-CONFORMANCE-GAPS.md) rows, which are **deleted on ship**; no separate tracker.
 

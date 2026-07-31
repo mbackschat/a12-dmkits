@@ -112,16 +112,18 @@ class TemporalExtractorComponentLawsTest {
      * must be TIME-bearing, so dynamic {@code Now} and a datetime shift are admitted while {@code Today} — a
      * DATE — is refused by a <em>different</em> gate ({@code MVK_WRONG_DATE_FORMAT_FOR_OP}) than the literal one.
      * The catalog first claimed "Now/Today are all admitted"; N7 executes examples, not gotcha prose, so nothing
-     * caught it. Three gates, three codes, one operand position.
+     * caught it. Two rejection gates with two distinct codes share this one operand position, which is why
+     * coverage is keyed per extractor rather than per code — and why the acceptance half is executed for ALL
+     * THREE extractors, not just the one the catalog example happens to use.
      */
     @Test
     void theTimeExtractorSourceAdmitsNowAndShiftsButNotTheDateOnlyToday() {
-        accepts("HoursFromTime(Now) > HoursFromTime(PickupTime)");
-        accepts("HoursFromTime(AddHours(ScheduledAt, 1)) > HoursFromTime(PickupTime)");
-        rejects("HoursFromTime(Today) > HoursFromTime(PickupTime)", WRONG_FORMAT);
-        rejects("MinutesFromTime(Today) > MinutesFromTime(PickupTime)", WRONG_FORMAT);
-        rejects("SecondsFromTime(Today) > SecondsFromTime(PickupTime)", WRONG_FORMAT);
-        rejects("HoursFromTime(\"10:30:00\") > HoursFromTime(PickupTime)", NO_CONST);
+        for (String extractor : java.util.List.of("HoursFromTime", "MinutesFromTime", "SecondsFromTime")) {
+            accepts(extractor + "(Now) > " + extractor + "(PickupTime)");
+            accepts(extractor + "(AddHours(ScheduledAt, 1)) > " + extractor + "(PickupTime)");
+            rejects(extractor + "(Today) > " + extractor + "(PickupTime)", WRONG_FORMAT);
+            rejects(extractor + "(\"10:30:00\") > " + extractor + "(PickupTime)", NO_CONST);
+        }
     }
 
     private static void accepts(String condition) {

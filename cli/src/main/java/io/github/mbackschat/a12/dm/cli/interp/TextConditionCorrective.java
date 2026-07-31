@@ -114,7 +114,16 @@ public final class TextConditionCorrective {
         }
         Diagnostic.Where where = d.where().operator().isPresent()
                 ? d.where() : new Diagnostic.Where(d.where().rule(), Optional.of(pinned.get(0)));
-        return new Diagnostic(d.severity(), d.source(), d.code(), d.summary(), where, fix, d.explain());
+        // Establishing the owner obliges us to recompute BOTH fields. The enricher deliberately withholds
+        // `explain` while ownership is unresolved, so passing the incoming one through would preserve that
+        // emptiness on the very path that just resolved it (and, before the enricher was made honest, would have
+        // preserved an explanation chosen while ambiguous). Same recompute `lint.SpanResolver` does on the
+        // typed-AST path.
+        Optional<String> explain = catalog.byId(pinned.get(0))
+                .map(OperatorEntry::meaning)
+                .filter(meaning -> meaning != null && !meaning.isBlank())
+                .or(d::explain);
+        return new Diagnostic(d.severity(), d.source(), d.code(), d.summary(), where, fix, explain);
     }
 
     /** Every comparison node of the (tolerantly parsed) condition, grouped by its catalog operator-id. Empty
