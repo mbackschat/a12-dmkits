@@ -2,6 +2,8 @@
 
 Executable, `verify`-able demos of the `dmtool` CLI (authored with [showboat](https://github.com/simonw/showboat)). Each `*.md` here is documentation *and* a doc-drift test.
 
+> ⚠️ **These demos are EXPECTED to fail verification right now, and that is tracked work — not drift to chase.** The result-contract change ([`docs/RESULT-CONTRACT-PROPOSAL.md`](../docs/RESULT-CONTRACT-PROPOSAL.md)) removed the fabricated `valid:true` from read envelopes and reshaped several verbs' output; the captures here still hold the old shape, so `verify-demos.sh` reports mismatches. Regeneration is deliberately the **last** phase (§6 Phase 5) so it happens once, against the final contract, rather than repeatedly against a moving one. Until it lands, a mismatch in a captured envelope key is the *known* state; a mismatch in anything else is real and worth reading. This note goes when the regeneration does.
+
 **The method — how to run, verify, and extend these — lives in [`docs/CLI-TOUR-SPEC.md`](../docs/CLI-TOUR-SPEC.md).** Quick check (from the repo root, with the repo `bin/` on PATH so the bare `dmtool` resolves):
 
 ```bash
