@@ -40,6 +40,8 @@ class NumericWrapperConstantLawsTest {
     private static final String NO_CONST = "MVK_NO_CONST";
     private static final String BASE_PREMIUM = "/Policy/BasePremium";
     private static final String ADJUSTMENT = "/Policy/Adjustment";
+    /** Adjustment's declared scale — the computed target's, which the operation must match. */
+    private static final int TARGET_SCALE = 2;
 
     private final String modelJson = DocumentModelDraft.named("premium-audit").locale("en_US")
             .rootGroup("Policy", group -> group
@@ -52,13 +54,13 @@ class NumericWrapperConstantLawsTest {
 
     @Test
     void everyNumericWrapperRefusesAnImmediateLiteralInARuleCondition() {
-        wrappers().forEach((name, wrap) ->
+        wrappers(1).forEach((name, wrap) ->
                 KernelLaws.rejectsModel(modelJson, rule(name + "Literal", wrap.apply(Dsl.number(1)).lt(5)), NO_CONST));
     }
 
     @Test
     void everyNumericWrapperRefusesAnImmediateLiteralInAComputationOperation() {
-        wrappers().forEach((name, wrap) -> {
+        wrappers(1).forEach((name, wrap) -> {
             var result = new RuleValidator().check(modelJson, computation(name + "LiteralComp", wrap.apply(Dsl.number(1))));
             assertFalse(result.ok(), () -> name + " must refuse an immediate literal operand");
             assertTrue(result.diagnostics().stream()
@@ -71,7 +73,7 @@ class NumericWrapperConstantLawsTest {
 
     @Test
     void everyNumericWrapperAdmitsAFieldOperand() {
-        wrappers().forEach((name, wrap) ->
+        wrappers(1).forEach((name, wrap) ->
                 KernelLaws.acceptsModel(modelJson,
                         rule(name + "Field", wrap.apply(model.num(BASE_PREMIUM).asNumber()).lt(5))));
     }
@@ -79,25 +81,48 @@ class NumericWrapperConstantLawsTest {
     /** The discriminator: the operand is an expression, so a literal inside admitted arithmetic stays legal. */
     @Test
     void aLiteralInsideAnAdmittedArithmeticSubtreeIsLegal() {
-        wrappers().forEach((name, wrap) -> KernelLaws.acceptsModel(modelJson,
+        wrappers(1).forEach((name, wrap) -> KernelLaws.acceptsModel(modelJson,
                 rule(name + "Arith", wrap.apply(model.num(BASE_PREMIUM).asNumber().minus(1)).lt(5))));
     }
 
+    /** The literal is the POINT of this case — it rides beside a completed wrapper inside the outer call. */
     @Test
     void aLiteralIsAlsoLegalAsASiblingOperandOfAnOuterCall() {
         KernelLaws.acceptsModel(modelJson, rule("MinSibling",
-                Dsl.min(Dsl.abs(model.num(BASE_PREMIUM).asNumber()), model.num(ADJUSTMENT).asNumber()).lt(5)));
+                Dsl.min(Dsl.abs(model.num(BASE_PREMIUM).asNumber()),
+                        model.num(ADJUSTMENT).asNumber(),
+                        Dsl.number("1.250")).lt(5)));
+    }
+
+    /** The same boundary holds in the COMPUTATION context, on the accepting side as well as the refusing one. */
+    @Test
+    void theAdmittedFormsAreAlsoAcceptedAsAComputationOperation() {
+        var validator = new RuleValidator();
+        wrappers(TARGET_SCALE).forEach((name, wrap) -> {
+            var field = validator.check(modelJson, computation(name + "FieldComp", wrap.apply(model.num(BASE_PREMIUM).asNumber())));
+            assertTrue(field.ok(), () -> name + " over a field must be accepted as an operation: " + field.diagnostics());
+            var arith = validator.check(modelJson,
+                    computation(name + "ArithComp", wrap.apply(model.num(BASE_PREMIUM).asNumber().minus(1))));
+            assertTrue(arith.ok(),
+                    () -> name + " over arithmetic containing a literal must be accepted: " + arith.diagnostics());
+        });
     }
 
     // --- fixtures ---------------------------------------------------------------------------------
 
-    /** The four operand-list numeric wrappers, each as its single-operand form. */
-    private static java.util.Map<String, UnaryOperator<NumberExpr>> wrappers() {
+    /**
+     * The four operand-list numeric wrappers, each as its single-operand form, rounded to {@code digits}.
+     * The digit count is a PARAMETER because a computation additionally meets the assignment-scale gate: an
+     * operation whose static scale differs from the computed target's is {@code MVK_INVALID_COMPARE_DEC_PLACES},
+     * an unrelated gate. So the computation cases round to the target's own scale (2) to isolate the constant
+     * boundary; a rule condition imposes no such scale, so 1 is fine there.
+     */
+    private static java.util.Map<String, UnaryOperator<NumberExpr>> wrappers(int digits) {
         return new java.util.LinkedHashMap<>(java.util.Map.of(
                 "Abs", Dsl::abs,
-                "RoundDown", operand -> Dsl.roundDown(operand, 1),
-                "RoundUp", operand -> Dsl.roundUp(operand, 1),
-                "RoundAccounting", operand -> Dsl.roundAccounting(operand, 1)));
+                "RoundDown", operand -> Dsl.roundDown(operand, digits),
+                "RoundUp", operand -> Dsl.roundUp(operand, digits),
+                "RoundAccounting", operand -> Dsl.roundAccounting(operand, digits)));
     }
 
     private Rule rule(String name, io.github.mbackschat.a12.dm.rulekit.dsl.Condition condition) {

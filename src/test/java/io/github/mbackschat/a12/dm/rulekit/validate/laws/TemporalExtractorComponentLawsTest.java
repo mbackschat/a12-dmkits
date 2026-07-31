@@ -107,6 +107,23 @@ class TemporalExtractorComponentLawsTest {
         accepts("[ScheduledAt] > DateTime(ValueAsDate(ApproxDate, LastDay), TimeFromDateTime(ScheduledAt))");
     }
 
+    /**
+     * The TIME extractors' source domain, locked because the operator catalog asserts it (kf167): the operand
+     * must be TIME-bearing, so dynamic {@code Now} and a datetime shift are admitted while {@code Today} — a
+     * DATE — is refused by a <em>different</em> gate ({@code MVK_WRONG_DATE_FORMAT_FOR_OP}) than the literal one.
+     * The catalog first claimed "Now/Today are all admitted"; N7 executes examples, not gotcha prose, so nothing
+     * caught it. Three gates, three codes, one operand position.
+     */
+    @Test
+    void theTimeExtractorSourceAdmitsNowAndShiftsButNotTheDateOnlyToday() {
+        accepts("HoursFromTime(Now) > HoursFromTime(PickupTime)");
+        accepts("HoursFromTime(AddHours(ScheduledAt, 1)) > HoursFromTime(PickupTime)");
+        rejects("HoursFromTime(Today) > HoursFromTime(PickupTime)", WRONG_FORMAT);
+        rejects("MinutesFromTime(Today) > MinutesFromTime(PickupTime)", WRONG_FORMAT);
+        rejects("SecondsFromTime(Today) > SecondsFromTime(PickupTime)", WRONG_FORMAT);
+        rejects("HoursFromTime(\"10:30:00\") > HoursFromTime(PickupTime)", NO_CONST);
+    }
+
     private static void accepts(String condition) {
         KernelLaws.acceptsOrder("/Order", "../CustomerName", "FieldFilled(CustomerName) And " + condition);
     }

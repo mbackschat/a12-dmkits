@@ -147,6 +147,38 @@ class DiagnosticEnricherTest {
                 () -> "the raw-type Length fix should name the sole allowed shape AND warn it is eliminated, got: " + fix);
     }
 
+    /** The invariant: an operator-specific fix/explain only after ONE owner is established. */
+    @Test
+    void anUnestablishedOwnerYieldsNoExplainAtAll() {
+        // The union fixed the `fix` but kept a firstMeaning() `explain`, so an ambiguous join still asserted an
+        // owner. Reproduced by review with LessThan/LessOrEqual: a LessThan rejection was explained as
+        // "less than or equal". Here the summary names NO operator (the shape of the kernel's default bundle,
+        // which renders MVK_NO_CONST as "Kein Fehler definiert!"), so ownership is unestablished.
+        Diagnostic enriched = ENRICHER.enrich(raw("MVK_NO_CONST"));
+
+        assertTrue(enriched.explain().isEmpty(),
+                () -> "no owner established → must not assert one via explain, got: " + enriched.explain());
+        assertTrue(enriched.fix().orElse("").contains("more than one construct"),
+                () -> "should still offer the enumerated code-level corrective: " + enriched.fix());
+    }
+
+    @Test
+    void structuredOperatorEvidenceEstablishesOwnershipWithoutReadingTheMessage() {
+        // where.operator is the AST operator id — language-independent, unlike the message. The summary here is
+        // deliberately operator-free, so only the structured evidence can resolve it.
+        Diagnostic rejected = Diagnostic.precheck(Optional.of("MVK_NO_CONST"),
+                "Kein Fehler definiert!",
+                new Diagnostic.Where(null, Optional.of("RoundUp"), Optional.empty()),
+                Optional.empty(), Optional.empty());
+
+        Diagnostic enriched = ENRICHER.enrich(rejected);
+
+        assertTrue(enriched.fix().orElse("").contains("RoundUp("),
+                () -> "must carry RoundUp's own corrective: " + enriched.fix());
+        assertTrue(enriched.explain().orElse("").contains("plus infinity"),
+                () -> "explain must be RoundUp's meaning: " + enriched.explain());
+    }
+
     @Test
     void anOperatorScopedMessageNarrowsTheUnionToTheOperatorTheKernelNamed() {
         // MVK_NO_CONST is documented by SEVEN operators with differing correctives (the four operand-list

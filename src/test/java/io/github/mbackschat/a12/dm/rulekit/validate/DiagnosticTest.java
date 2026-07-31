@@ -45,7 +45,16 @@ class DiagnosticTest {
         assertTrue(d.fix().isPresent(), "catalog-join should reuse the operator's curated fix");
         assertTrue(d.fix().get().contains("compare strings with"),
                 () -> "unexpected fix: " + d.fix().get());
-        assertTrue(d.explain().isPresent(), "catalog-join should reuse the operator meaning");
+        // NO explain here, deliberately — corrected 2026-07-31. MVK_INVALID_TYPE_FOR_COMPARISON is documented
+        // by FOUR ordering operators whose fixes AGREE (so the fix above is safe without knowing the owner) but
+        // whose MEANINGS differ. The old join emitted firstMeaning() = LessThanOrEqual's "less than or equal",
+        // which is a false claim about which construct rejected — review reproduced exactly that on a LessThan
+        // rejection. An operator meaning may be emitted only once ONE owner is established, which at this stage
+        // it is not; `lint.SpanResolver` intersects with the rule's USED operators and, when that pins exactly
+        // one, recomputes BOTH fix and explain.
+        assertTrue(d.explain().isEmpty(),
+                () -> "ownership is unestablished at enrich time, so no operator meaning may be asserted, got: "
+                        + d.explain());
     }
 
     @Test

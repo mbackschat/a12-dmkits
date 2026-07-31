@@ -2939,7 +2939,7 @@
     "meaning": "The hour-of-day component (0-23) of a time or date-time, as a number.",
     "constraints": [ "the operand is a time or date-time (a field or expression), rendered as a bare entity ref" ],
     "gotchas": [
-      { "text": "the operand is the ordinary NONLITERAL temporal grammar — a direct temporal literal is refused: HoursFromTime(\"10:30:00\") is MVK_NO_CONST. Fields, shifts (AddHours(...)), and dynamic Now/Today are all admitted. This shares its code with the numeric wrappers (Abs/Round*) but is a DIFFERENT operand gate; the date extractors refuse a quoted literal as MVK_INVALID_DATE_STRING instead", "kind": "AUTHORING", "seeAlso": ["MinutesFromTime", "SecondsFromTime"] }
+      { "text": "the operand is the ordinary NONLITERAL temporal grammar — a direct temporal literal is refused: HoursFromTime(\"10:30:00\") is MVK_NO_CONST. Fields, temporal shifts (AddHours(...)), and dynamic Now are admitted; Today is NOT \u2014 it is a DATE, so all three time extractors refuse it with MVK_WRONG_DATE_FORMAT_FOR_OP, a different gate. This shares its code with the numeric wrappers (Abs/Round*) but is a DIFFERENT operand gate; the date extractors refuse a quoted literal as MVK_INVALID_DATE_STRING instead", "kind": "AUTHORING", "seeAlso": ["MinutesFromTime", "SecondsFromTime"] }
     ],
     "validExample": { "dsl": "FieldFilled(PickupTime) And HoursFromTime(PickupTime) < 9", "note": "fires for pickups before 9am" },
     "invalidExample": { "dsl": "HoursFromTime(\"10:30:00\") > HoursFromTime(PickupTime)", "error": "MVK_NO_CONST", "fix": "extract from a field or a temporal expression, never a literal: HoursFromTime(PickupTime) > 10" },
@@ -2991,7 +2991,7 @@
     "meaning": "The minute component (0-59) of a time or date-time, as a number.",
     "constraints": [ "the operand is a time or date-time (a field or expression)" ],
     "gotchas": [
-      { "text": "the operand is the ordinary NONLITERAL temporal grammar — a direct temporal literal is refused: MinutesFromTime(\"10:30:00\") is MVK_NO_CONST. Fields, shifts, and dynamic Now/Today are all admitted. This shares its code with the numeric wrappers (Abs/Round*) but is a DIFFERENT operand gate", "kind": "AUTHORING", "seeAlso": ["HoursFromTime", "SecondsFromTime"] }
+      { "text": "the operand is the ordinary NONLITERAL temporal grammar — a direct temporal literal is refused: MinutesFromTime(\"10:30:00\") is MVK_NO_CONST. Fields, temporal shifts, and dynamic Now are admitted; Today is NOT \u2014 it is a DATE, so this extractor refuses it with MVK_WRONG_DATE_FORMAT_FOR_OP, a different gate. This shares its code with the numeric wrappers (Abs/Round*) but is a DIFFERENT operand gate", "kind": "AUTHORING", "seeAlso": ["HoursFromTime", "SecondsFromTime"] }
     ],
     "validExample": { "dsl": "FieldFilled(PickupTime) And MinutesFromTime(PickupTime) != 0", "note": "fires when the pickup minute is not on the hour" },
     "invalidExample": { "dsl": "MinutesFromTime(\"10:30:00\") > MinutesFromTime(PickupTime)", "error": "MVK_NO_CONST", "fix": "extract from a field or a temporal expression, never a literal: MinutesFromTime(PickupTime) > 30" },
@@ -3043,7 +3043,7 @@
     "meaning": "The second component (0-59) of a time or date-time, as a number.",
     "constraints": [ "the operand is a time or date-time (a field or expression)" ],
     "gotchas": [
-      { "text": "the operand is the ordinary NONLITERAL temporal grammar — a direct temporal literal is refused: SecondsFromTime(\"10:30:00\") is MVK_NO_CONST. Fields, shifts, and dynamic Now/Today are all admitted. This shares its code with the numeric wrappers (Abs/Round*) but is a DIFFERENT operand gate", "kind": "AUTHORING", "seeAlso": ["HoursFromTime", "MinutesFromTime"] }
+      { "text": "the operand is the ordinary NONLITERAL temporal grammar — a direct temporal literal is refused: SecondsFromTime(\"10:30:00\") is MVK_NO_CONST. Fields, temporal shifts, and dynamic Now are admitted; Today is NOT \u2014 it is a DATE, so this extractor refuses it with MVK_WRONG_DATE_FORMAT_FOR_OP, a different gate. This shares its code with the numeric wrappers (Abs/Round*) but is a DIFFERENT operand gate", "kind": "AUTHORING", "seeAlso": ["HoursFromTime", "MinutesFromTime"] }
     ],
     "validExample": { "dsl": "FieldFilled(PickupTime) And SecondsFromTime(PickupTime) == 0", "note": "fires when the pickup time has no seconds offset" },
     "invalidExample": { "dsl": "SecondsFromTime(\"10:30:00\") > SecondsFromTime(PickupTime)", "error": "MVK_NO_CONST", "fix": "extract from a field or a temporal expression, never a literal: SecondsFromTime(PickupTime) > 0" },

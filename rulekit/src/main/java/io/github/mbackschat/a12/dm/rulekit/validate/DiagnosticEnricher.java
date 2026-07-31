@@ -2,6 +2,7 @@ package io.github.mbackschat.a12.dm.rulekit.validate;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Stream;
 
 import io.github.mbackschat.a12.dm.rulekit.catalog.OperatorCatalog;
 import io.github.mbackschat.a12.dm.rulekit.catalog.OperatorEntry;
@@ -21,13 +22,19 @@ import io.github.mbackschat.a12.dm.rulekit.catalog.OperatorEntry;
  * pass). That mis-stamped every other construct (probe findings F06-2 / dec-places). Resolution split
  * by the two faces of the flaw:
  * <ul>
- *   <li><b>cross-operator</b> — when {@code >1} operator documents a code with <em>differing</em>
- *       correctives, the join attaches the <em>union</em> of them (never one) — so no construct is
- *       mis-stamped. One documenter (or several that agree) attaches the single corrective, unchanged.
- *       <b>Refined 2026-07-31:</b> the claim above that the disambiguator "is empty at enrich time" holds for
- *       {@code where.operator} but <em>not</em> for the message — an operator-scoped MVK summary names the
- *       construct as {@code At '<Operator>'}, so {@link #narrowToNamedOperator} selects that documenter and the
- *       union survives only as the fallback. Measured on {@code MVK_NO_CONST}, which 7 operators document.</li>
+ *   <li><b>cross-operator</b> — governed by one invariant: <b>an operator-specific {@code fix} or
+ *       {@code explain} may be emitted only once exactly ONE owning operator has been established</b>
+ *       ({@link #resolveOwner} — structured {@code where.operator} first, then whole-token identifier
+ *       intersection over the message). Unestablished ownership yields a <em>code-level</em> corrective that
+ *       enumerates the candidates and <b>no {@code explain} at all</b>.
+ *       <p><b>Corrected 2026-07-31, twice.</b> First the old {@code findFirst} mis-stamped every non-first
+ *       construct (probe F06-2 / dec-places), and the union fixed the {@code fix} — but kept a
+ *       {@code firstMeaning()} {@code explain}, so an ambiguous join still asserted an owner: a
+ *       {@code where.operator = LessThan} rejection was explained as "less than or equal". Then a first repair
+ *       extracted the owner from the message with an {@code At '(\w+)'} regex, which is English-only — the
+ *       default bundle renders {@code MVK_NO_CONST} as {@code "Kein Fehler definiert!"}, naming no operator —
+ *       so it silently fell back to the ambiguous path it was meant to remove. Ownership is now evidence-based
+ *       and localization-independent.</li>
  *   <li><b>cross-context</b> — a code whose catalog documenter's fix is wrong for <em>another</em> real
  *       trigger ({@code MVK_NO_WILDCARD} from an aggregate; {@code MVK_INVALID_COMPARE_DEC_PLACES} from a
  *       computed-field scale) is carried by {@link StructuralKernelFix}, which is consulted <b>first</b>.</li>
@@ -54,8 +61,14 @@ final class DiagnosticEnricher {
         }
         List<OperatorEntry> documenters = diagnostic.code().map(catalog::operatorsForError).orElse(List.of());
         if (!documenters.isEmpty()) {
-            List<OperatorEntry> scoped = narrowToNamedOperator(diagnostic.summary(), documenters);
-            return diagnostic.withFix(joinFix(scoped), firstMeaning(scoped));
+            Optional<OperatorEntry> owner = resolveOwner(diagnostic, documenters);
+            if (owner.isPresent()) {
+                return diagnostic.withFix(owner.flatMap(DiagnosticEnricher::ownFix), owner.flatMap(DiagnosticEnricher::ownMeaning));
+            }
+            // OWNERSHIP UNESTABLISHED → a generic, code-level corrective that ENUMERATES the possibilities, and
+            // deliberately NO explain: an operator meaning is a claim about which construct rejected, so
+            // emitting one here would assert an ownership we could not establish.
+            return diagnostic.withFix(genericFix(documenters), Optional.empty());
         }
         // last resort — a content-free KERNEL rejection with a message but no MVK_ code (e.g. the date/time
         // field-format reject); attach a message-matched hint so it isn't left fix-less (probe 08).
@@ -70,11 +83,11 @@ final class DiagnosticEnricher {
     }
 
     /**
-     * The corrective for a code from the operators that document it: ONE documenter (or several that
-     * AGREE) → that single fix; several that DISAGREE → the <em>union</em>, so no construct is mis-stamped
-     * by an arbitrary {@code findFirst}. Distinct fixes are sorted for a deterministic message.
+     * The <b>code-level</b> corrective used when no single owner could be established: documenters that AGREE
+     * → their one shared fix (safe without ownership); documenters that DISAGREE → the enumerated
+     * <em>union</em>, so the reader chooses rather than being mis-stamped. Sorted for a deterministic message.
      */
-    private static Optional<String> joinFix(List<OperatorEntry> documenters) {
+    private static Optional<String> genericFix(List<OperatorEntry> documenters) {
         List<String> distinct = documenters.stream()
                 .map(OperatorEntry::invalidExample)
                 .filter(e -> e != null && e.fix() != null && !e.fix().isBlank())
@@ -93,46 +106,74 @@ final class DiagnosticEnricher {
     }
 
     /**
-     * Narrow the documenters to the operator <b>the kernel itself named</b>, when it did. An operator-scoped
-     * MVK message carries an {@code At '<Operator>'} prefix — {@code "At 'Abs'It is not allowed to use
-     * constants."} — so for exactly those codes the disambiguator the union works around <em>is</em> present at
-     * enrich time, in the summary rather than in {@code where.operator}. Selecting by it is a <b>narrowing of
-     * the sound union, not a guess</b>: the kernel says which construct rejected.
+     * The <b>single owning operator</b>, or empty when ownership cannot be established. Two evidence sources,
+     * strongest first, and both must yield <em>exactly one</em> candidate:
      *
-     * <p>It matters most for {@code explain}: without it a 7-documenter code (`MVK_NO_CONST`) answered an
-     * {@code Abs} rejection with {@code RoundDown}'s meaning and all seven correctives concatenated. Degrades
-     * to the union whenever the summary names nothing, or names an operator that does not document the code.
+     * <ol>
+     *   <li><b>structured</b> — {@code where.operator}, the AST operator id, when the producing stage set it;</li>
+     *   <li><b>the message</b>, matched WITHOUT parsing its sentence: intersect the documenting candidates with
+     *       the operator identifiers (id + either keyword) that occur in the summary as whole tokens.</li>
+     * </ol>
+     *
+     * <p>The message must never be parsed by <em>sentence shape</em>. The kernel's text is localized per bundle
+     * — {@code error_messages_en.properties} renders {@code MVK_NO_CONST} as {@code "At '%s'It is not allowed to
+     * use constants."} while the default bundle renders it {@code "Kein Fehler definiert!"} with <b>no operator
+     * at all</b> — so an {@code At '(\w+)'} extraction is an English-only accident that silently degrades
+     * elsewhere. Token intersection degrades to "unestablished", which is honest, instead of to a wrong owner.
      */
-    private static List<OperatorEntry> narrowToNamedOperator(String summary, List<OperatorEntry> documenters) {
-        if (summary == null || documenters.size() < 2) {
-            return documenters;
+    private static Optional<OperatorEntry> resolveOwner(Diagnostic diagnostic, List<OperatorEntry> documenters) {
+        if (documenters.size() == 1) {
+            return Optional.of(documenters.get(0)); // the catalog itself establishes sole ownership
         }
-        java.util.regex.Matcher named = AT_OPERATOR.matcher(summary);
-        if (!named.find()) {
-            return documenters;
+        Optional<String> structured = diagnostic.where() == null ? Optional.empty() : diagnostic.where().operator();
+        if (structured.isPresent()) {
+            List<OperatorEntry> byId = documenters.stream()
+                    .filter(entry -> namesOperator(entry, structured.get()))
+                    .toList();
+            if (byId.size() == 1) {
+                return Optional.of(byId.get(0));
+            }
         }
-        List<OperatorEntry> scoped = documenters.stream()
-                .filter(entry -> namesOperator(entry, named.group(1)))
+        List<OperatorEntry> mentioned = documenters.stream()
+                .filter(entry -> mentionedIn(diagnostic.summary(), entry))
                 .toList();
-        return scoped.isEmpty() ? documenters : scoped;
+        return mentioned.size() == 1 ? Optional.of(mentioned.get(0)) : Optional.empty();
     }
 
-    /** The kernel's operator-scoped message prefix; the keyword is the model's condition language, so match both. */
-    private static final java.util.regex.Pattern AT_OPERATOR = java.util.regex.Pattern.compile("At '([\\w-]+)'");
+    /** Whether any of {@code entry}'s identifiers occurs in {@code text} as a whole token (never a substring:
+     *  {@code Abs} must not match inside {@code AbsValue}). */
+    private static boolean mentionedIn(String text, OperatorEntry entry) {
+        if (text == null || text.isBlank()) {
+            return false;
+        }
+        for (String identifier : identifiers(entry)) {
+            if (java.util.regex.Pattern.compile("\\b" + java.util.regex.Pattern.quote(identifier) + "\\b")
+                    .matcher(text).find()) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private static List<String> identifiers(OperatorEntry entry) {
+        OperatorEntry.Keywords keywords = entry.keywords();
+        return Stream.of(entry.id(), keywords == null ? null : keywords.en(), keywords == null ? null : keywords.de())
+                .filter(s -> s != null && !s.isBlank())
+                .distinct()
+                .toList();
+    }
 
     private static boolean namesOperator(OperatorEntry entry, String named) {
-        if (named.equalsIgnoreCase(entry.id())) {
-            return true;
-        }
-        OperatorEntry.Keywords keywords = entry.keywords();
-        return keywords != null
-                && (named.equalsIgnoreCase(keywords.en()) || named.equalsIgnoreCase(keywords.de()));
+        return identifiers(entry).stream().anyMatch(named::equalsIgnoreCase);
     }
 
-    private static Optional<String> firstMeaning(List<OperatorEntry> documenters) {
-        return documenters.stream()
-                .map(OperatorEntry::meaning)
-                .filter(s -> s != null && !s.isBlank())
-                .findFirst();
+    private static Optional<String> ownFix(OperatorEntry entry) {
+        OperatorEntry.InvalidExample example = entry.invalidExample();
+        return example == null || example.fix() == null || example.fix().isBlank()
+                ? Optional.empty() : Optional.of(example.fix());
+    }
+
+    private static Optional<String> ownMeaning(OperatorEntry entry) {
+        return entry.meaning() == null || entry.meaning().isBlank() ? Optional.empty() : Optional.of(entry.meaning());
     }
 }
