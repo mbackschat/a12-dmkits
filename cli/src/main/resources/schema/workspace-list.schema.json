@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://github.com/mbackschat/a12-dmkits/schema/workspace-list.schema.json",
   "title": "WorkspaceList",
-  "description": "Output of `dmtool workspace list <dir>` — a kernel-free per-model index of a directory of document models. Each model carries its identity, the super/subtype convention (the `abstract`/`superTypes`/`subTypes` header annotations), and every model reference (an `include` or a type-def import) cross-resolved to its file WITHIN the scan: `resolvedPath` is the referenced model's relative path, or null when no scanned model has that id (dangling, or out of the scan's scope — widen with --recursive). `valid` is present per model only under --validate.",
+  "description": "Output of `dmtool workspace list <dir>` — a kernel-free per-model index of a directory of document models. Each model carries its identity, the super/subtype convention (the `abstract`/`superTypes`/`subTypes` header annotations), and every model reference (an `include` or a type-def import) cross-resolved to its file WITHIN the scan: `resolvedPath` is the referenced model's relative path, or null when no scanned model has that id (dangling, or out of the scan's scope — widen with --recursive). Under --validate each model additionally reports whether it reached the consistency gate: `checked:true` carries `valid` plus the `verification` mode that arbitrated it, `checked:false` carries `problem` instead — an unreadable or unresolvable model is NOT reported as `valid:false`, because no verdict was reached.",
   "type": "object",
   "required": ["root", "recursive", "count", "models"],
   "additionalProperties": false,
@@ -44,7 +44,10 @@
         "providesTypedefs": { "type": "array", "items": { "type": "string" }, "description": "the reusable type-def ids this model declares (what an importer can reference)" },
         "groups": { "type": "integer", "description": "number of groups in the model's own structure" },
         "fields": { "type": "integer", "description": "number of fields in the model's own structure" },
-        "valid": { "type": "boolean", "description": "kernel-valid? present only under --validate" }
+        "checked": { "type": "boolean", "description": "did this model reach the consistency gate? present only under --validate. false means no verdict was produced — see `problem`" },
+        "valid": { "type": "boolean", "description": "kernel-valid? present only under --validate, and only when `checked` is true" },
+        "verification": { "type": "string", "enum": ["KERNEL_CONFIRMED", "STRUCTURAL_ONLY"], "description": "which gate arbitrated this model's verdict; present exactly when `valid` is" },
+        "problem": { "type": "string", "description": "why the model never reached the gate (unreadable, unparseable, an unresolvable reference); present exactly when `checked` is false — never a substitute for `valid:false`, which is a verdict" }
       }
     },
     "include": {

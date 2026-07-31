@@ -63,15 +63,16 @@ public final class SpecKeys {
                 throw new IllegalStateException(
                         "input schema not found on the classpath: schema/" + resourceName + ".schema.json");
             }
-            JsonNode schema = MAPPER.readTree(in);
+            JsonNode root = MAPPER.readTree(in);
+            JsonNode schema = root;
             if (!pointer.isEmpty()) {
-                schema = schema.at(pointer);
+                schema = root.at(pointer);
                 if (schema.isMissingNode()) {
                     throw new IllegalStateException(
                             "subschema not found: schema/" + resourceName + ".schema.json#" + pointer);
                 }
             }
-            return new SpecKeys(Node.from(schema));
+            return new SpecKeys(Node.from(schema, root, new LinkedHashMap<>()));
         } catch (IOException e) {
             throw new UncheckedIOException("failed to read schema/" + resourceName + ".schema.json", e);
         }
@@ -102,7 +103,7 @@ public final class SpecKeys {
         List<Diagnostic> out = new ArrayList<>();
         if (root != null && input.isObject()) {
             input.fields().forEachRemaining(entry -> {
-                Node child = root.children().get(entry.getKey());
+                Node child = root.children.get(entry.getKey());
                 if (child != null) {
                     child.validate(entry.getValue(), entry.getKey(), Set.of(), out);
                 }
@@ -125,12 +126,45 @@ public final class SpecKeys {
      * {@code properties}, e.g. a locale→text map) is a NON-null node carrying only {@code type=object}: its value
      * must be an object, but its keys stay unrestricted (no {@code children}, not {@code closed}).
      */
-    private record Node(String type, List<JsonNode> enumValues, boolean closed,
-            Map<String, Node> children, Node arrayItem) {
+    private static final class Node {
 
-        static Node from(JsonNode schema) {
+        private final String type;
+        private final List<JsonNode> enumValues;
+        private final boolean closed;
+        // Populated immediately after the node is memoized, so a self-referential $ref (explain's tree node) can
+        // point back at the node being built instead of recursing forever.
+        private final Map<String, Node> children = new LinkedHashMap<>();
+        private Node arrayItem;
+
+        private Node(String type, List<JsonNode> enumValues, boolean closed) {
+            this.type = type;
+            this.enumValues = enumValues;
+            this.closed = closed;
+        }
+
+        /**
+         * The validation tree for {@code schema}, resolving any {@code $ref} against {@code root}.
+         *
+         * <p><b>An unresolvable {@code $ref} throws.</b> Before this, {@code $ref} was not handled at all, so a
+         * node consisting only of one silently produced "nothing to enforce" — and since a {@code $ref} is how
+         * every non-trivial schema factors out its item shape, the closed-keys walk stopped at the reference in 9
+         * bundled schemas. That is how three undeclared keys shipped under {@code workspace-list}'s
+         * {@code additionalProperties:false}: the guard was not lenient about them, it never saw them. A silent
+         * degrade in a guard is worse than no guard, because it reads as coverage.
+         *
+         * @param memo pointer → node for every {@code $ref} already built, so a recursive shape shares one node
+         */
+        static Node from(JsonNode schema, JsonNode root, Map<String, Node> memo) {
+            return build(schema, root, memo, null);
+        }
+
+        private static Node build(JsonNode schema, JsonNode root, Map<String, Node> memo, String memoKey) {
             if (schema == null || !schema.isObject()) {
                 return null;
+            }
+            JsonNode ref = schema.get("$ref");
+            if (ref != null && ref.isTextual()) {
+                return fromRef(ref.asText(), root, memo);
             }
             String type = schema.path("type").isTextual() ? schema.get("type").asText() : null;
             List<JsonNode> enumValues = null;
@@ -139,28 +173,55 @@ public final class SpecKeys {
                 enumValues = new ArrayList<>();
                 en.forEach(enumValues::add);
             }
+            Map<String, List<JsonNode>> declarations = new LinkedHashMap<>();
+            collectProperties(schema, declarations);
             Map<String, JsonNode> props = new LinkedHashMap<>();
-            collectProperties(schema, props);
-            boolean closed = false;
-            Map<String, Node> children = new LinkedHashMap<>();
-            if (!props.isEmpty()) {
-                JsonNode ap = schema.path("additionalProperties");
-                closed = ap.isBoolean() && !ap.booleanValue();
-                props.forEach((key, sub) -> children.put(key, from(sub)));
-            }
+            declarations.forEach((key, declared) -> props.put(key, agreedDeclaration(declared)));
             JsonNode items = schema.get("items");
-            Node arrayItem = items != null && items.isObject() ? from(items) : null;
-            if (type == null && enumValues == null && props.isEmpty() && arrayItem == null) {
+            boolean hasItems = items != null && items.isObject();
+            if (type == null && enumValues == null && props.isEmpty() && !hasItems) {
                 return null; // nothing to enforce — open, unrestricted
             }
-            return new Node(type, enumValues, closed, children, arrayItem);
+            JsonNode ap = schema.path("additionalProperties");
+            Node node = new Node(type, enumValues, !props.isEmpty() && ap.isBoolean() && !ap.booleanValue());
+            if (memoKey != null) {
+                // Published BEFORE the children are walked: that ordering is what lets a self-referential $ref
+                // (explain's tree node) resolve to this very node instead of recursing without end.
+                memo.put(memoKey, node);
+            }
+            props.forEach((key, sub) -> node.children.put(key, build(sub, root, memo, null)));
+            if (hasItems) {
+                node.arrayItem = build(items, root, memo, null);
+            }
+            return node;
         }
 
-        /** Properties of this node plus any {@code oneOf}/{@code anyOf}/{@code allOf} branch (the union of allowed keys). */
-        private static void collectProperties(JsonNode schema, Map<String, JsonNode> into) {
+        /** Resolve a local {@code #/…} reference, sharing one node per pointer so a recursive shape terminates. */
+        private static Node fromRef(String pointer, JsonNode root, Map<String, Node> memo) {
+            if (!pointer.startsWith("#")) {
+                throw new IllegalStateException("only local $ref pointers are supported, got: " + pointer);
+            }
+            String path = pointer.substring(1);
+            if (memo.containsKey(path)) {
+                return memo.get(path);
+            }
+            JsonNode target = root.at(path);
+            if (target.isMissingNode() || !target.isObject()) {
+                throw new IllegalStateException("unresolvable $ref in a bundled schema: " + pointer);
+            }
+            return build(target, root, memo, path);
+        }
+
+        /**
+         * Every declaration of every property, this node's own plus each {@code oneOf}/{@code anyOf}/{@code allOf}
+         * branch's — keyed by property, so a key declared differently per branch is <b>visible as such</b> rather
+         * than collapsed onto whichever branch came first.
+         */
+        private static void collectProperties(JsonNode schema, Map<String, List<JsonNode>> into) {
             JsonNode properties = schema.get("properties");
             if (properties != null && properties.isObject()) {
-                properties.fields().forEachRemaining(e -> into.putIfAbsent(e.getKey(), e.getValue()));
+                properties.fields().forEachRemaining(
+                        e -> into.computeIfAbsent(e.getKey(), k -> new ArrayList<>()).add(e.getValue()));
             }
             for (String branch : List.of("oneOf", "anyOf", "allOf")) {
                 JsonNode arr = schema.get(branch);
@@ -168,6 +229,22 @@ public final class SpecKeys {
                     arr.forEach(b -> collectProperties(b, into));
                 }
             }
+        }
+
+        /**
+         * The one declaration a property has across every union branch, or {@code null} when the branches disagree.
+         *
+         * <p>The union is over <b>allowed keys</b>, and that is all it can be: in a tagged union like
+         * {@code model-diff}'s {@code deltaValue}, {@code value} is a {@code string} in the {@code TEXT} branch and a
+         * {@code boolean}/{@code integer}/{@code number}/array in the others, so no single value-shape gate is
+         * correct for it and applying the first branch's would reject four legal shapes. Which branch applies is
+         * decided by a sibling {@code const} tag this walk does not interpret, so the honest answer is to enforce the
+         * key and leave its value unconstrained. (Collapsing with {@code putIfAbsent} hid this until {@code $ref}
+         * resolution made the union reachable at all.)
+         */
+        private static JsonNode agreedDeclaration(List<JsonNode> declared) {
+            JsonNode first = declared.get(0);
+            return declared.stream().allMatch(first::equals) ? first : null;
         }
 
         void validate(JsonNode input, String path, Set<String> ignore, List<Diagnostic> out) {

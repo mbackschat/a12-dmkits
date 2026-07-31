@@ -19,9 +19,11 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 
 import io.github.mbackschat.a12.dm.core.ModelResolver;
 
+import io.github.mbackschat.a12.dm.core.Backends;
 import io.github.mbackschat.a12.dm.core.ModelConsistencyException;
 import io.github.mbackschat.a12.dm.core.ModelLoader;
 import io.github.mbackschat.a12.dm.core.ReferenceResolvers;
+import io.github.mbackschat.a12.dm.core.Verification;
 import io.github.mbackschat.a12.dm.modelkit.Workspace;
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Option;
@@ -108,21 +110,19 @@ final class WorkspaceListCommand extends BaseCommand {
      * kernel examined and rejected. Those are different facts and lead to different fixes.
      *
      * @param valid the kernel's verdict; {@code null} when the gate was never reached
+     * @param gate the gate that produced that verdict — carried, never re-derived, so the per-entry
+     *     {@code verification} is the receipt of the run rather than an ambient {@code Backends} read
      * @param problem what went wrong before the gate, when {@code valid} is {@code null}
      */
-    private record EntryVerdict(Boolean valid, String problem) {
+    private record EntryVerdict(Boolean valid, Verification gate, String problem) {
 
-        static EntryVerdict kernelValid() {
-            return new EntryVerdict(true, null);
-        }
-
-        static EntryVerdict kernelInvalid() {
-            return new EntryVerdict(false, null);
+        static EntryVerdict reachedGate(boolean valid, Verification gate) {
+            return new EntryVerdict(valid, gate, null);
         }
 
         /** Never reached the gate — so it reports NEITHER a verdict nor a verification, only why. */
         static EntryVerdict notReached(String problem) {
-            return new EntryVerdict(null, problem);
+            return new EntryVerdict(null, null, problem);
         }
     }
 
@@ -165,7 +165,11 @@ final class WorkspaceListCommand extends BaseCommand {
             } else {
                 n.put("checked", true);
                 n.put("valid", verdict.valid());
-                n.put("verification", io.github.mbackschat.a12.dm.core.Backends.verification().name());
+                // The gate this model actually passed through, carried out of validateAll. Reading
+                // Backends.verification() here instead was the ambient bypass ConsistencyEvidence exists to
+                // forbid: true today only because the CLI always bundles a backend, and receipt-free the moment
+                // an entry stops being gated.
+                n.put("verification", verdict.gate().name());
             }
         }
         return n;
@@ -186,10 +190,11 @@ final class WorkspaceListCommand extends BaseCommand {
                 continue;
             }
             try {
-                ModelLoader.loadAndCheck(json, resolver);
-                out.put(m.path(), EntryVerdict.kernelValid());
+                out.put(m.path(), EntryVerdict.reachedGate(true, ModelLoader.loadAndCheck(json, resolver)));
             } catch (ModelConsistencyException rejected) {
-                out.put(m.path(), EntryVerdict.kernelInvalid());
+                // The gate ran and refused, so this entry has a verdict AND a receipt — the mode is the one that
+                // arbitrated the refusal, which is what the exception witnesses.
+                out.put(m.path(), EntryVerdict.reachedGate(false, Backends.verification()));
             } catch (RuntimeException failed) {
                 // A non-consistency failure (unparseable JSON, an unresolvable reference): the gate did not
                 // return a verdict, so we report the obstacle rather than inventing one.

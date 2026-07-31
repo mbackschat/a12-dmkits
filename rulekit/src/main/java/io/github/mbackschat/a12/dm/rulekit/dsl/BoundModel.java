@@ -61,8 +61,10 @@ public final class BoundModel {
         // checkConsistency; throws on ERROR). With no backend it degrades to a STRUCTURAL_ONLY expand — no
         // MVK verdict is fabricated — and the binding carries that mode (KERNEL-DECOUPLING-PROPOSAL §2c). The
         // index/read surface is kernel-free either way (decoupling Stage 2).
-        ModelLoader.loadAndCheck(modelJson, resolver);
-        return new BoundModel(ModelIndex.of(modelJson, resolver), modelJson, resolver, Backends.verification());
+        // The receipt comes from the gate that just ran, not from a second ambient read of Backends — the two
+        // agree today, but only the former is still true if this path ever stops gating.
+        Verification gate = ModelLoader.loadAndCheck(modelJson, resolver);
+        return new BoundModel(ModelIndex.of(modelJson, resolver), modelJson, resolver, gate);
     }
 
     /** Bind from a DM-JSON file on disk — sugar for {@code ofJson(Files.readString(path))}. The source is

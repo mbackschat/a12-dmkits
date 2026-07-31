@@ -1,0 +1,13 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "BrokenRef",
+  "description": "TEST FIXTURE ONLY (SpecKeysRefResolutionTest). A schema whose $ref names a $def that does not exist — the input that must fail loudly instead of degrading to 'nothing to enforce'. Not served by any verb; lives in test resources so no shipped schema has to be broken to prove the guard fires.",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "items": { "type": "array", "items": { "$ref": "#/$defs/nowhere" } }
+  },
+  "$defs": {
+    "somethingElse": { "type": "object", "properties": { "a": { "type": "string" } } }
+  }
+}

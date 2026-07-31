@@ -29,8 +29,8 @@ public final class ModelLoader {
      * the model does reference a separate artifact, this fails fast (the self-contained resolver refuses).
      * Sugar for {@link #loadAndCheck(String, ModelResolver)} with {@link ReferenceResolvers#selfContained()}.
      */
-    public static void loadSelfContained(String dmJson) {
-        loadAndCheck(dmJson, ReferenceResolvers.selfContained());
+    public static Verification loadSelfContained(String dmJson) {
+        return loadAndCheck(dmJson, ReferenceResolvers.selfContained());
     }
 
     /**
@@ -38,14 +38,20 @@ public final class ModelLoader {
      * {@code resolver}. Backend present: throws {@link ModelConsistencyException} on any {@code ERROR}-severity
      * notification. No backend: performs the structural expand only (still throws on a structural failure),
      * never a fabricated verdict.
+     *
+     * @return the gate that ran — the <b>receipt</b>, so a caller that needs to publish how a verdict was
+     *     arbitrated reads it from the run rather than from {@link Backends#verification()}. The ambient call
+     *     answers "is a backend on the classpath", which is unconditionally true in the CLI and therefore says
+     *     nothing about whether this model was checked; every consumer that re-read it was one refactor away
+     *     from reporting a gate that had not run.
      */
-    public static void loadAndCheck(String dmJson, ModelResolver resolver) {
+    public static Verification loadAndCheck(String dmJson, ModelResolver resolver) {
         Optional<ConsistencyOracle> oracle = Backends.consistencyOracle();
         if (oracle.isEmpty()) {
             // Degraded (structural-only): the kernel-free reader is the structural gate — it throws on
             // malformed JSON or an unresolvable reference; it makes no consistency/MVK promise.
             ModelReader.expand(dmJson, resolver);
-            return;
+            return Verification.STRUCTURAL_ONLY;
         }
         List<Notification> errors = oracle.get().checkConsistency(dmJson, resolver).stream()
                 .filter(n -> n.severity() == Severity.ERROR)
@@ -53,5 +59,6 @@ public final class ModelLoader {
         if (!errors.isEmpty()) {
             throw new ModelConsistencyException(errors);
         }
+        return Verification.KERNEL_CONFIRMED;
     }
 }

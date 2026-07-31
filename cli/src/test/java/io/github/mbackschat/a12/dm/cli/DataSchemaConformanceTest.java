@@ -133,7 +133,11 @@ class DataSchemaConformanceTest {
                 new Run("typedef-read", new String[]{"-m", td.toString(), "typedef", "read"}),
                 new Run("eval-doc", new String[]{"-m", order.toString(), "model", "eval", "--instance", doc.toString()}),
                 new Run("compute-doc", new String[]{"-m", order.toString(), "model", "compute", "--instance", doc.toString()}),
-                new Run("workspace-list", new String[]{"workspace", "list", dir.toString()}));
+                new Run("workspace-list", new String[]{"workspace", "list", dir.toString()}),
+                // --validate is a SEPARATE shape (per-entry checked/valid/verification or checked/problem), and
+                // running only the bare form is why three undeclared keys shipped against an
+                // additionalProperties:false schema — the closed-keys walk had nothing to walk.
+                new Run("workspace-list", new String[]{"workspace", "list", dir.toString(), "--validate"}));
 
         for (Run run : runs) {
             CliTestSupport.Result res = CliTestSupport.run(run.args());
@@ -150,8 +154,10 @@ class DataSchemaConformanceTest {
             // forward: every emitted key is declared by the schema (closed-keys walk)
             List<Diagnostic> undeclared = SpecKeys.forSchema(run.schema()).validate(data);
             for (Diagnostic d : undeclared) {
-                violations.add(run.schema + ".schema.json does not declare a key the verb emits — "
-                        + d.where().path().orElse("?") + "  (run: " + String.join(" ", run.args()) + ")");
+                // The locus rides `where.arg` (SpecKeys builds `Where.arg(null, path)`); reading `where.path`
+                // rendered every violation as "?", so the guard could name that it failed but not where.
+                violations.add(run.schema + ".schema.json disagrees with real output — " + d.summary()
+                        + " at " + d.where().arg().orElse("?") + "  (run: " + String.join(" ", run.args()) + ")");
             }
             emitted.computeIfAbsent(run.schema(), k -> new ArrayList<>()).add(data);
         }

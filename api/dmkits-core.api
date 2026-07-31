@@ -134,8 +134,8 @@ public final class io.github.mbackschat.a12.dm.core.ModelIndex
   public java.util.Optional<java.lang.String> usageTypeOfGroup(java.lang.String)
 
 public final class io.github.mbackschat.a12.dm.core.ModelLoader
-  public static void loadAndCheck(java.lang.String, io.github.mbackschat.a12.dm.core.ModelResolver)
-  public static void loadSelfContained(java.lang.String)
+  public static io.github.mbackschat.a12.dm.core.Verification loadAndCheck(java.lang.String, io.github.mbackschat.a12.dm.core.ModelResolver)
+  public static io.github.mbackschat.a12.dm.core.Verification loadSelfContained(java.lang.String)
 
 public final class io.github.mbackschat.a12.dm.core.ModelReader
   public static io.github.mbackschat.a12.dm.core.ModelReader expand(java.lang.String, io.github.mbackschat.a12.dm.core.ModelResolver)
