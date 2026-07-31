@@ -220,6 +220,31 @@ await withStaticServer(async (url) => {
           (validation.compareDocumentPosition(runs) &
             Node.DOCUMENT_POSITION_FOLLOWING) !== 0;
       })(),
+      workspaceToolsLabel: document.querySelector(
+        ".model-workspace-actions > span",
+      )?.textContent?.trim(),
+      workspaceToolButtons: Array.from(
+        document.querySelectorAll<HTMLButtonElement>(
+          ".model-workspace-actions button",
+        ),
+      ).map(({id}) => id),
+      documentActionButtons: Array.from(
+        document.querySelectorAll<HTMLButtonElement>(".actions button"),
+      ).map(({id}) => id),
+      workspaceToolsBetweenConfigurationAndDocumentActions: (() => {
+        const configuration = document.querySelector(".advanced-controls");
+        const workspaceTools = document.querySelector(
+          ".model-workspace-actions",
+        );
+        const documentActions = document.querySelector(".actions");
+        return configuration !== null &&
+          workspaceTools !== null &&
+          documentActions !== null &&
+          (configuration.compareDocumentPosition(workspaceTools) &
+            Node.DOCUMENT_POSITION_FOLLOWING) !== 0 &&
+          (workspaceTools.compareDocumentPosition(documentActions) &
+            Node.DOCUMENT_POSITION_FOLLOWING) !== 0;
+      })(),
     }));
     if (
       controlHierarchy.legacyControlBar ||
@@ -231,7 +256,18 @@ await withStaticServer(async (url) => {
         {id: "validation-scope-full", value: "full", checked: true},
         {id: "validation-scope-partial", value: "partial", checked: false},
       ]) ||
-      !controlHierarchy.validationBeforeRuns
+      !controlHierarchy.validationBeforeRuns ||
+      controlHierarchy.workspaceToolsLabel !== "Model workspace:" ||
+      JSON.stringify(controlHierarchy.workspaceToolButtons) !==
+        JSON.stringify(["prepare", "check-support"]) ||
+      JSON.stringify(controlHierarchy.documentActionButtons) !==
+        JSON.stringify([
+          "validate",
+          "compute",
+          "apply-computations",
+          "compute-apply-validate",
+        ]) ||
+      !controlHierarchy.workspaceToolsBetweenConfigurationAndDocumentActions
     ) {
       throw new Error(
         `showcase controls have no task hierarchy: ${

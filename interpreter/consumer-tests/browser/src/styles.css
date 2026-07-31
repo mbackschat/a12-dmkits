@@ -178,6 +178,7 @@ h1 {
 .section-heading,
 .example-picker,
 .advanced-controls,
+.model-workspace-actions,
 .actions,
 .workspace-summary {
   padding-inline: clamp(20px, 4vw, 44px);
@@ -278,6 +279,30 @@ h2 {
   margin: 10px 0 0;
   font-size: 1rem;
   line-height: 1.5;
+}
+
+.model-workspace-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding-top: 11px;
+  padding-bottom: 12px;
+  border-block: 1px solid var(--line);
+  background: #f7fafc;
+}
+
+.model-workspace-actions > span {
+  margin-right: 4px;
+  color: var(--muted);
+  font-size: 0.9rem;
+  font-weight: 800;
+}
+
+.model-workspace-actions button {
+  padding: 7px 11px;
+  background: transparent;
+  font-size: 0.9rem;
 }
 
 .details-body button {

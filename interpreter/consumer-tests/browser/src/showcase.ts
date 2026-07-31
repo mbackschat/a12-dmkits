@@ -223,7 +223,9 @@ const livePerformance = requiredElement(
   HTMLOutputElement,
 );
 const operationButtons = Array.from(
-  document.querySelectorAll<HTMLButtonElement>(".actions button"),
+  document.querySelectorAll<HTMLButtonElement>(
+    ".actions button, .model-workspace-actions button",
+  ),
 );
 const fileInputs = Array.from(
   document.querySelectorAll<HTMLInputElement>('input[type="file"]'),

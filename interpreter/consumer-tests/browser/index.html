@@ -123,6 +123,12 @@
           </details>
         </div>
 
+        <div class="model-workspace-actions" aria-label="Model workspace operations">
+          <span>Model workspace:</span>
+          <button id="prepare" type="button" title="Resolve and prepare the selected DocumentModel workspace.">Prepare workspace</button>
+          <button id="check-support" type="button" title="Report rules and computations unsupported by this interpreter configuration.">Check model support</button>
+        </div>
+
         <div class="actions" aria-label="Interpreter operations">
           <p class="operation-help">
             <strong>Validate checks the current Document as-is.</strong>
@@ -132,8 +138,6 @@
           <button id="compute" type="button" title="Compute all model computations without changing the Document.">Compute</button>
           <button id="apply-computations" type="button" title="Apply the retained computation actions to the current Document." disabled>Apply results</button>
           <button id="compute-apply-validate" class="workflow" type="button" title="Compute, apply the retained actions, then validate the updated Document.">Compute → Apply → Validate</button>
-          <button id="prepare" type="button" title="Resolve and prepare the selected DocumentModel workspace.">Prepare workspace</button>
-          <button id="check-support" type="button" title="Report rules and computations unsupported by this interpreter configuration.">Check model support</button>
           <div id="validation-scope" class="validation-scope-control" role="radiogroup" aria-labelledby="validation-scope-label">
             <span id="validation-scope-label">Validation:</span>
             <label>
