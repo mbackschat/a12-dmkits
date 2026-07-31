@@ -1,6 +1,6 @@
-# dmtool — A12 rule authoring (Codex context)
+# dmtool — A12 DocumentModel authoring (Codex context)
 
-`dmtool` is a self-describing CLI for authoring and validating **A12 Kernel** document-model validation rules. This plugin loads the rule-authoring **skill** (which teaches the judgment that the tool's help can't — condition *polarity*, error-field paths, iteration scope) and bundles an installer the skill runs **on demand** to download the native binary the first time you need it.
+`dmtool` is a self-describing CLI for authoring, inspecting, and validating whole **A12 Kernel** DocumentModels — model structure (groups, fields, type definitions, includes), **validation rules**, and **computations** — plus runtime evaluation over a document instance. This plugin loads the dmtool **skill** (which teaches the judgment the tool's help can't — condition *polarity*, error-field paths, iteration scope) and bundles an installer the skill runs **on demand** to download the native binary the first time you need it.
 
 > This file is also a ready-made template: copy it into your project's `AGENTS.md` if you want dmtool guidance always in context (not only when the skill is invoked).
 

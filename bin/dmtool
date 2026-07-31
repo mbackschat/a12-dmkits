@@ -29,8 +29,45 @@ if [[ "${RK_NATIVE:-}" == "1" ]]; then
   )
 fi
 candidates+=("$ROOT/cli/build/install/dmtool/bin/dmtool")  # installDist launcher — the default
+
+# Validate the Java the installDist launcher will pick BEFORE delegating, and fail with a recovery hint.
+# The generated Gradle start script trusts $JAVA_HOME blindly, so a stale versioned Homebrew Cellar path
+# (routine after `brew upgrade openjdk`) dies inside that script before dmtool can diagnose anything. The
+# native image needs no Java at all, so this gate only applies to the JVM route.
+# Supported development JDK: 21 (the build's pin). A newer JDK still runs, with a caveat: on 26+ Jackson's
+# reflective deserialization of a kernel final field emits a mutation WARNING on stderr — stdout stays
+# clean JSON, so the machine contract holds, but the announced future block would not.
+require_supported_java() {
+  local hint="set JAVA_HOME to a JDK 21 installation, or unset it to use the system default.
+  On macOS:  export JAVA_HOME=\$(/usr/libexec/java_home -v 21)"
+  if [[ -n "${JAVA_HOME:-}" && ! -x "${JAVA_HOME}/bin/java" ]]; then
+    printf 'dmtool: JAVA_HOME points at a directory with no java executable:\n  %s\n%s\n' \
+      "$JAVA_HOME" "$hint" >&2
+    printf '  (a versioned Homebrew Cellar path breaks on every `brew upgrade openjdk`)\n' >&2
+    return 2
+  fi
+  local java_bin="${JAVA_HOME:+${JAVA_HOME}/bin/}java"
+  if ! command -v "${java_bin:-java}" >/dev/null 2>&1; then
+    printf 'dmtool: no java found on PATH and JAVA_HOME is unset.\n%s\n' "$hint" >&2
+    return 2
+  fi
+  local major
+  major="$("${java_bin:-java}" -version 2>&1 | sed -n '1s/.*version "\([0-9]*\).*/\1/p')"
+  if [[ -n "$major" && "$major" -lt 21 ]]; then
+    printf 'dmtool: Java %s is too old — the supported development JDK is 21.\n%s\n' "$major" "$hint" >&2
+    return 2
+  fi
+  return 0
+}
+
 for c in "${candidates[@]}"; do
-  if [[ -n "$c" && -x "$c" ]]; then exec "$c" "$@"; fi
+  if [[ -n "$c" && -x "$c" ]]; then
+    # Only the JVM launcher depends on a JDK; a native binary is self-contained.
+    if [[ "$c" == *"/install/dmtool/bin/dmtool" ]]; then
+      require_supported_java || exit 2
+    fi
+    exec "$c" "$@"
+  fi
 done
 
 cat >&2 <<'EOF'
