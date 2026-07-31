@@ -51,19 +51,56 @@ require_supported_java() {
     printf 'dmtool: no java found on PATH and JAVA_HOME is unset.\n%s\n' "$hint" >&2
     return 2
   fi
+  # Capture the banner and the JVM's OWN exit status separately. Both matter, and both were previously lost:
+  #   - a FAILING `java -version` left `major` empty and the gate returned success (the launcher then died with
+  #     the child's status, so the failure surfaced with no dmtool diagnostic and no recovery hint);
+  #   - an UNPARSEABLE banner did the same, and dmtool exited 0 with empty stdout — the worst outcome for an
+  #     agent, which reads 0 + no output as "ran fine, nothing to report".
+  local banner status
+  set +e
+  banner="$("${java_bin:-java}" -version 2>&1)"
+  status=$?
+  set -e
+  if (( status != 0 )); then
+    printf 'dmtool: `%s -version` failed (exit %s) — this Java is not usable:\n%s\n%s\n' \
+      "${java_bin:-java}" "$status" "$banner" "$hint" >&2
+    return 2
+  fi
+  # Match the version on ANY line, not the first. A JVM prepends "Picked up JAVA_TOOL_OPTIONS: …" (and the
+  # _JAVA_OPTIONS twin) whenever those are set — routine in CI, containers, and IDE-spawned shells — so anchoring
+  # to line 1 yielded an empty version there and the `-n "$major"` test then short-circuited the whole comparison.
+  # That made the gate silently inert in exactly the environments it was written to protect, and it is why the
+  # version is now REQUIRED rather than treated as optional.
   local major
-  major="$("${java_bin:-java}" -version 2>&1 | sed -n '1s/.*version "\([0-9]*\).*/\1/p')"
-  if [[ -n "$major" && "$major" -lt 21 ]]; then
-    printf 'dmtool: Java %s is too old — the supported development JDK is 21.\n%s\n' "$major" "$hint" >&2
+  major="$(printf '%s\n' "$banner" | sed -n 's/.*version "\([0-9][0-9]*\).*/\1/p' | head -n 1)"
+  if [[ -z "$major" ]]; then
+    printf 'dmtool: cannot read a Java version from `%s -version` — refusing rather than guessing:\n%s\n%s\n' \
+      "${java_bin:-java}" "$banner" "$hint" >&2
+    return 2
+  fi
+  if (( major < 21 )); then
+    printf 'dmtool: Java %s is too old — the supported development JDK is 21 (a NEWER JDK also runs).\n%s\n' \
+      "$major" "$hint" >&2
     return 2
   fi
   return 0
 }
 
+# Whether $1 will need a JDK: a Gradle/jlink start script is a shell script that resolves `java` through
+# JAVA_HOME/JAVACMD, while a native image is a self-contained binary. Deciding by CONTENT rather than by path
+# fixes a bypass: the gate used to apply only to a path ending `/install/dmtool/bin/dmtool`, so an explicit
+# $DMTOOL_CLI pointing at any other JVM launcher (a distTar unpack, a jlink image) skipped it entirely — while
+# the comment beside it claimed only the JVM launcher depends on a JDK, which was the intent, not the behaviour.
+needs_jdk() {
+  head -c 2 -- "$1" 2>/dev/null | grep -q '#!' || return 1
+  grep -qE 'JAVA_HOME|JAVACMD' -- "$1" 2>/dev/null
+}
+
 for c in "${candidates[@]}"; do
   if [[ -n "$c" && -x "$c" ]]; then
-    # Only the JVM launcher depends on a JDK; a native binary is self-contained.
-    if [[ "$c" == *"/install/dmtool/bin/dmtool" ]]; then
+    # Only a JVM launcher depends on a JDK; a native binary is self-contained. Detected by content (needs_jdk),
+    # so an explicit $DMTOOL_CLI pointing at a JVM launcher is gated too.
+    if needs_jdk "$c"; then
       require_supported_java || exit 2
     fi
     exec "$c" "$@"
