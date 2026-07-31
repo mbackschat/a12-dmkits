@@ -3,8 +3,8 @@ package io.github.mbackschat.a12.dm.interpreter
 import io.github.mbackschat.a12.dm.interpreter.workspace.immutableListSnapshot
 
 /**
- * One parsed A12 pointer: the path part names and their repetitions, positionally paired. Repetition `0` is
- * A12's wildcard ("all repetitions") and is legal only on the last part.
+ * One parsed **exact** A12 `DocumentPointer`: the path part names and their repetitions, positionally paired.
+ * Repetition `0` is legal only on the last part, where it addresses A12's `RepetitionsV2` slot.
  */
 data class A12Pointer(val names: List<String>, val repetitions: List<Int>) {
     init {
@@ -20,12 +20,28 @@ data class A12Pointer(val names: List<String>, val repetitions: List<Int>) {
  * KERNEL-FINDINGS: parts joined by `/`, each part `name` optionally followed by `[n]`. An absent bracket means
  * repetition 1 and the canonical form *omits* `[1]`, so `Recipe/Ingredients[3]/Name` is canonical and a field
  * part carries no bracket. A leading `/` is accepted and stripped as redundant; a trailing `/` is rejected.
- * `[0]` is the wildcard and is legal only on the last part.
+ * `[0]` on the LAST part addresses `RepetitionsV2`; on an earlier part it is rejected, exactly as
+ * `DocumentPointerImpl`'s constructor rejects it ("All repetition indexes must be >= 1, the last repetition can
+ * also be 0").
+ *
+ * <b>This type models the EXACT pointer only, and the distinction is load-bearing.</b> A12 has a second
+ * addressing type, `DocumentMultiPointer`, where `0` genuinely IS a wildcard meaning "all repetitions" — and there
+ * it is legal at **every** part (the kernel's own example is `a[0]/b[2]`, wildcard on the first). This file used to
+ * call `0` "the wildcard" while enforcing the exact pointer's position rule, i.e. borrow one type's vocabulary for
+ * the other type's constraint. That cost real time: a canonical findings entry read the mismatch as an
+ * over-rejection and declared a correct, test-locked refusal a defect. The refusal is right; the NAME was wrong.
+ * A multipointer parser, should one ever be needed, is a separate type with the wildcard-at-every-part rule — not
+ * a relaxation of this one. Note that on BOTH types an omitted bracket means repetition **1**, never "all".
  */
 object A12PointerFormat {
 
-    /** A12's wildcard repetition — "all repetitions", legal only on the last path part. */
-    const val WILDCARD: Int = 0
+    /**
+     * The repetition value A12 permits only on an exact pointer's LAST part, where it addresses `RepetitionsV2`.
+     *
+     * Deliberately NOT named `WILDCARD`: that is `DocumentMultiPointer`'s meaning for the same digit, and conflating
+     * the two is what made this type's constraint look like a bug.
+     */
+    const val LAST_PART_ZERO: Int = 0
 
     // The closing bracket MUST stay escaped: Kotlin/JS compiles a Regex in unicode (`u`) mode, where a lone
     // `]` is a SyntaxError — the pattern would fail to construct and every use would see an uninitialized
@@ -57,7 +73,8 @@ object A12PointerFormat {
         }
         for (i in 0 until repetitions.size - 1) {
             require(repetitions[i] >= 1) {
-                "all repetitions must be >= 1, only the last may be the ${WILDCARD} wildcard, in pointer '$pointer'"
+                "all repetition indexes must be >= 1; only the last may be $LAST_PART_ZERO, in pointer " +
+                    "'$pointer' (an exact DocumentPointer — a multipointer wildcard is a different type)"
             }
         }
         return A12Pointer(immutableListSnapshot(names), immutableListSnapshot(repetitions))

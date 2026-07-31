@@ -13,7 +13,7 @@ public final class io/github/mbackschat/a12/dm/interpreter/A12Pointer {
 
 public final class io/github/mbackschat/a12/dm/interpreter/A12PointerFormat {
 	public static final field INSTANCE Lio/github/mbackschat/a12/dm/interpreter/A12PointerFormat;
-	public static final field WILDCARD I
+	public static final field LAST_PART_ZERO I
 	public final fun format (Ljava/lang/String;Ljava/util/List;)Ljava/lang/String;
 	public final fun parse (Ljava/lang/String;)Lio/github/mbackschat/a12/dm/interpreter/A12Pointer;
 }
