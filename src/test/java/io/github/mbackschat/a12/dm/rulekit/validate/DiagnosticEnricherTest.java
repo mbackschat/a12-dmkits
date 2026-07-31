@@ -147,6 +147,20 @@ class DiagnosticEnricherTest {
                 () -> "the raw-type Length fix should name the sole allowed shape AND warn it is eliminated, got: " + fix);
     }
 
+    @Test
+    void aSoleCatalogDocumenterIsNotEvidenceOfOwnership() {
+        // The catalog is a PARTIAL map of code → operators, so "exactly one entry documents this code" is equally
+        // consistent with an UNDOCUMENTED SIBLING having raised it. Measured by review: MVK_NOT_SORTABLE is
+        // documented for MaxValue and not for MinValue, so a real `MinValue(...)` rejection was explained as
+        // "The largest of the listed values". A sole-documenter shortcut is therefore not a shortcut but a guess.
+        Diagnostic enriched = ENRICHER.enrich(raw("MVK_NOT_SORTABLE"));
+
+        assertTrue(enriched.explain().isEmpty(),
+                () -> "a lone documenter must not be treated as the established owner, got: " + enriched.explain());
+        assertTrue(enriched.fix().orElse("").contains("if that is what you used"),
+                () -> "the corrective must be hedged, since it names an operator nobody established: " + enriched.fix());
+    }
+
     /** The invariant: an operator-specific fix/explain only after ONE owner is established. */
     @Test
     void anUnestablishedOwnerYieldsNoExplainAtAll() {

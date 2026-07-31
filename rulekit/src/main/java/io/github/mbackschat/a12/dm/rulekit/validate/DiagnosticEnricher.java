@@ -98,11 +98,13 @@ final class DiagnosticEnricher {
         if (distinct.isEmpty()) {
             return Optional.empty();
         }
-        if (distinct.size() == 1) {
-            return Optional.of(distinct.get(0));
-        }
-        return Optional.of("this code is raised by more than one construct; the corrective depends on which "
-                + "you used — " + String.join("; ", distinct));
+        // Every catalog corrective NAMES its operator, so even a single one is an ownership claim when nobody
+        // established the owner. Hedge it rather than assert it — the catalog may simply not document the
+        // sibling that actually rejected.
+        String lead = distinct.size() == 1
+                ? "this code is documented for the construct(s) below; the corrective applies if that is what you used — "
+                : "this code is raised by more than one construct; the corrective depends on which you used — ";
+        return Optional.of(lead + String.join("; ", distinct));
     }
 
     /**
@@ -122,9 +124,11 @@ final class DiagnosticEnricher {
      * elsewhere. Token intersection degrades to "unestablished", which is honest, instead of to a wrong owner.
      */
     private static Optional<OperatorEntry> resolveOwner(Diagnostic diagnostic, List<OperatorEntry> documenters) {
-        if (documenters.size() == 1) {
-            return Optional.of(documenters.get(0)); // the catalog itself establishes sole ownership
-        }
+        // NO sole-documenter shortcut. The catalog is a PARTIAL map of code → operators, so "exactly one entry
+        // documents this code" is not evidence that this rejection came from that operator — it is equally
+        // consistent with an undocumented sibling having raised it. Measured: the catalog documents
+        // MVK_NOT_SORTABLE for MaxValue and not for MinValue, so a MinValue rejection was explained as "the
+        // largest of the listed values". Ownership must be positively established or left unestablished.
         Optional<String> structured = diagnostic.where() == null ? Optional.empty() : diagnostic.where().operator();
         if (structured.isPresent()) {
             List<OperatorEntry> byId = documenters.stream()
