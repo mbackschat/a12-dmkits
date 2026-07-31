@@ -1,6 +1,18 @@
 {
   "Permit": {
-    "ApplicationNo": "P-42",
-    "RequestedArea": 80
+    "ApplicationNo": "P-2026-0042",
+    "ApplicantName": "Mira Jensen",
+    "PermitType": "COMMERCIAL",
+    "SubmittedOn": "2026-07-15",
+    "RequestedArea": 80,
+    "UnitFee": 2.50,
+    "ReviewedArea": null,
+    "EstimatedFee": null,
+    "Note": "Traffic review completed.",
+    "Rate": 1,
+    "PatternProbe": "permit",
+    "GraphemeProbe": null,
+    "ReportedAt": "2026-07-15T09:00:00",
+    "SettledAt": "2026-07-15T12:00:00"
   }
 }

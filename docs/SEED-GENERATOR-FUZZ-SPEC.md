@@ -2,12 +2,12 @@
 
 Two coupled pieces that share one engine:
 
-1. **The model-driven seed generator** (`SeedGenerator`, package `…dm.interpreter.gen`) — given a document model, it produces a **best-effort, model-derived sample candidate** document instance. Requested row counts are structurally bounded by each declared repeatability, but local value generation does not prove whole-model acceptance. Kernel-free and multiplatform, so the same code serves three consumers.
+1. **The model-driven seed generator** (`SeedGenerator`, package `…dm.interpreter.gen`) — given a document model, it produces a **best-effort, model-derived sample candidate** document instance. Requested row counts are structurally bounded by each declared repeatability, but local value generation does not prove whole-model acceptance. Kernel-free and multiplatform, so the same code serves four consumers.
 2. **The differential fuzz net** (`adapter.perf.InterpreterKernelFuzzTest`) — built on the generator: it generates many random documents and asserts the **interpreter agrees with the real kernel** on every one. This is the strongest gate for the interpreter's #1 rule — *match the kernel exactly* ([INTERPRETER-FINDINGS](INTERPRETER-FINDINGS.md) IF0).
 
 Around these sit a few **companion harnesses** that make the exact-match loop fast: a **kernel probe battery** (learn the kernel's behavior *before* implementing), **fuzz divergence localization** (pinpoint *which* row/code diverged), and a **catalog-parity meter** (guard against unhandled operators). They're documented in "[Companion harnesses](#companion-harnesses--the-probe-first-loop)" below.
 
-This doc is the **stable method**. The generator's *consumers* have their own homes — [INTERPRETER-PERFORMANCE.md](INTERPRETER-PERFORMANCE.md) for the perf harness, the `dmtool model seed` verb ([CLI-SPEC.md](CLI-SPEC.md) §5). Which operators the interpreter handles is the **catalog-parity meter** (`adapter.laws.CatalogParityTest`, build-checked — 109/109), not a hand-maintained map here.
+This doc is the **stable method**. The generator's *consumers* have their own homes — [INTERPRETER-PERFORMANCE.md](INTERPRETER-PERFORMANCE.md) for the perf harness, the `dmtool model seed` verb ([CLI-SPEC.md](CLI-SPEC.md) §5), and `PreparedModel.documents.seedDocument()` in the [public API spec](INTERPRETER-API-SPEC.md#44-model-shaped-document-seeding). Which operators the interpreter handles is the **catalog-parity meter** (`adapter.laws.CatalogParityTest`, build-checked — 109/109), not a hand-maintained map here.
 
 ## Why a generator at all
 
@@ -30,15 +30,16 @@ It is **best-effort, model-derived** on purpose: the structure comes from the mo
                           ▼
                     PlacementSink                 ← the seam: one build, any backing
                     ├─ Document.asSink()          → the interpreter's general Document      (:interpreter)
-                    ├─ KernelSink(RuntimeLaws.Doc)→ a kernel IDocument                       (:adapter, has the kernel)
-                    └─ Document.asSink()         → then Document.toDocumentJson(model)     (dmtool model seed, :cli)
+                    │                              ├─ owner-bound seed snapshot              (public API / showcase)
+                    │                              └─ then Document.toDocumentJson(model)     (dmtool model seed, :cli)
+                    └─ KernelSink(RuntimeLaws.Doc)→ a kernel IDocument                       (:adapter, has the kernel)
 ```
 
 Each placement carries **one 1-based repetition index per path part** (group *and* field) — the exact addressing the interpreter's `Document` and the kernel's `IDocument` both use, so the sink is a thin pass-through on each side.
 
 ## The seed generator
 
-`SeedGenerator(model: ModelDef)` precomputes the group tree (child groups, fields-per-group, roots) from the field paths + declared repeatable groups. Then:
+`SeedGenerator(model: ModelDef)` precomputes the group tree (child groups, fields-per-group, roots) from the model's complete declared `groupPaths` inventory, with field ancestors and repeatable ancestors retained as defensive closure. A declared non-repeatable group with no fields is therefore still materialized. Then:
 
 ```kotlin
 gen.populate(
@@ -62,7 +63,8 @@ gen.populateExactLeafRows(
 | **`RowsFn`** = `(group, parentReps, rnd) -> Int` | How many rows to instantiate for a repeatable group under a given parent row. A non-repeatable group always gets exactly one row. Counts may vary per parent and per run (the RNG is passed in), must be non-negative, and may not exceed a present `declaredReps` cap; an absent cap is unbounded. |
 | **Exact leaf-row scale** | `populateExactLeafRows` produces exactly the requested number of instances of one selected repeatable group. It uses the target's complete repeatable ancestor chain, chooses the minimum legal row count at each level, and splits each parent's remaining quota by balanced quotient/remainder. Repeatables outside the chain use the configurable `unrelatedRows` default (normally `1`). |
 | **`ValueStrategy`** = `(field, reps, rnd) -> String?` | The value for one field instance; **`null` leaves it empty** (present-but-unfilled). |
-| **`ValidValues`** (the default strategy) | A **best-effort, constraint-aware** value for each `Kind` (a per-field local heuristic, **not** a whole-document validity guarantee): NUMBER respects its declared **`min/maxFractionalDigits` interval**, sign (never a signed zero — that is a formal error), and **`min/maxValue` range** (draws a declared bound, exercising both ends across seeds), STRING respects its declared **`min/maxLength`**, dates/times/ranges render in the field's format, a CONFIRM is `true` or empty only. A STRING **`pattern`** is cheaply satisfied (always verified against the real regex) or the field is **left empty** (the sanctioned leave-empty fallback) — the one case `ValidValues` returns `null`. Staying inside a field's declared constraints keeps the kernel's per-cell formal checks from firing and *suppressing the rules a differential means to exercise* (WI-7 / S2). Otherwise never empties a field — compose a wrapper for that. |
+| **`ValidValues`** (the generic default strategy) | A **best-effort, constraint-aware** value for each `Kind` (a per-field local heuristic, **not** a whole-document validity guarantee): NUMBER respects the universal **15-total-digit** gate, its declared **`min/maxFractionalDigits` interval**, sign (never a signed zero — that is a formal error), and **`min/maxValue` range** (draws a declared bound, exercising both ends across seeds), STRING respects its declared **`min/maxLength`**, dates/times/ranges render in the field's format, a CONFIRM is `true` or empty only. A STRING **`pattern`** is cheaply satisfied (always verified against the real regex) or the field is **left empty** (the sanctioned leave-empty fallback) — the one case `ValidValues` returns `null`. Staying inside a field's declared constraints keeps the kernel's per-cell formal checks from firing and *suppressing the rules a differential means to exercise* (WI-7 / S2). Otherwise never empties a field — compose a wrapper for that. |
+| **Authoring preset values** | The fixed Java/CLI overload used by `dmtool model seed` and `PreparedModel.documents.seedDocument()` wraps `ValidValues`: an editable source field receives its generated value, while a computation-owned target receives `null` (present-empty). Generic fuzz/performance `populate(..., value = …)` remains able to fill computed targets deliberately. |
 
 **Structural refusal is atomic at the sink boundary.** `populate` first plans the complete variable-count topology, rejects a negative count or any count above that group's declared repeatability, and only then emits placements. This includes a late sibling and a nested group's second parent row: neither can leave an earlier valid branch in the sink. A missing `declaredReps` entry means that repeatable group is unbounded. The fixed Java/CLI overload validates every explicit/default count up front and rejects an explicit path that is not a declared repeatable group.
 
@@ -70,7 +72,7 @@ The exact-scale overload applies the same atomic boundary before emission. It re
 
 **Determinism is the contract that makes the dual-engine differential work.** `populate` walks in a fixed order and owns independent deterministic row-topology and value streams derived from the same seed, so two calls with the same generator instance and seed produce the **identical** document without speculatively generating values during structural preflight. The fuzz net relies on this: it materializes seed *s* into the interpreter and into the kernel from the same generator, and any divergence is therefore a real semantic difference, not a generation artefact — and a failing seed is exactly reproducible.
 
-**Kernel-free + multiplatform.** `…interpreter.gen` imports no kernel/Groovy/`java.*` (the `verifyInterpreterPurity` lint enforces it), so the generator rides the native image and the JS artifact. That is what lets the *same* generator back the shipped `dmtool model seed` verb on the native binary — the kernel is touched only by the fuzz net's oracle, which lives in `:adapter`.
+**Kernel-free + multiplatform.** `…interpreter.gen` imports no kernel/Groovy/`java.*` (the `verifyInterpreterPurity` lint enforces it), so the generator rides the native image and the JS artifact. That is what lets the *same* generator back the shipped `dmtool model seed` verb on the native binary and `PreparedModel.documents.seedDocument()` in JVM/Node/browser applications — the kernel is touched only by the fuzz net's oracle, which lives in `:adapter`.
 
 ## The differential fuzz net
 
@@ -139,10 +141,11 @@ The fuzz step is one line: add a `FuzzRule(group, code, errorRel, condition)` to
 
 A failing fuzz seed prints `seed=N kernel-only=… interp-only=…`; reproduce it in isolation by pinning that seed, then write the minimal `*DiffTest` that captures the divergence before fixing (red/green).
 
-## Relationship to the perf harness and the seed verb
+## Relationship to the perf harness and the two authoring surfaces
 
 - **Perf harness** ([INTERPRETER-PERFORMANCE.md](INTERPRETER-PERFORMANCE.md)) — the *same* `SeedGenerator` + `PlacementSink` build the perf scenarios' instances into both engines; the fuzz net is the **correctness twin** of the perf differential (one asserts equality of outputs, the other measures time, both over generated real documents). The deterministic strategies there drive a known firing fraction; the fuzz strategy here is random.
-- **`dmtool model seed` verb** — shipped. The generator is placed kernel-free so the verb wires portable `ModelWorkspace` collection/assembly → strict expanded-input loading → `SeedGenerator.populate(Document.asSink())` → `Document.toDocumentJson` on the native image: workspace includes are mounted, imported typedefs become effective field types, ids are normalized to name paths, and a residual unmapped reference is refused rather than silently degraded. It then produces a best-effort model-derived sample candidate for the prepared model. The `PlacementSink` seam is the extension point — a further backing, no generator change. It has **two** backings, not three: JSON output is not a sink but a property of the document, written by the one canonical `Document.toDocumentJson` codec (2026-07-28), so `seed` cannot drift from what `--instance` reads.
+- **`dmtool model seed` verb** — shipped. The generator is placed kernel-free so the verb wires portable `ModelWorkspace` collection/assembly → strict expanded-input loading → `SeedGenerator.populate(Document.asSink())` → `Document.toDocumentJson` on the native image: workspace includes are mounted, imported typedefs become effective field types, ids are normalized to name paths, and a residual unmapped reference is refused rather than silently degraded. Its authoring values fill editable source fields and leave computation-owned targets present-empty. Its defaults are seed `0` and one row per repeatable group; `--seed`, `--rows`, and `--rows-default` expose the parameterized CLI form. The `PlacementSink` seam is the extension point — a further backing, no generator change. It has **two** backings, not three: JSON output is not a sink but a property of the document, written by the one canonical `Document.toDocumentJson` codec (2026-07-28), so `seed` cannot drift from what `--instance` reads.
+- **`PreparedModel.documents.seedDocument()`** — shipped as the stable authoring preset for library consumers: deterministic seed `0`, every declared group and field, computation-owned targets present-empty, and one row per repeatable group. It returns the same immutable owner-bound `DocumentSnapshot` as `readDocument`; `encodeDocument` produces canonical A12 Document JSON. This is the showcase's model-shaped starter and is intentionally a preset rather than a second configurable generator contract.
 
 ## Companion harnesses — the probe-first loop
 

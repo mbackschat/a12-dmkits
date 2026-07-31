@@ -1,7 +1,18 @@
 {
   "Permit": {
-    "ApplicationNo": "P-42",
+    "ApplicationNo": "P-2026-0045",
+    "ApplicantName": "Luca Meyer",
+    "PermitType": "COMMERCIAL",
+    "SubmittedOn": "2026-07-18",
     "RequestedArea": 125,
-    "Note": "manual review"
+    "UnitFee": 2.50,
+    "ReviewedArea": null,
+    "EstimatedFee": null,
+    "Note": "Manual review approved.",
+    "Rate": 1,
+    "PatternProbe": "permit",
+    "GraphemeProbe": null,
+    "ReportedAt": "2026-07-18T09:00:00",
+    "SettledAt": "2026-07-18T12:00:00"
   }
 }

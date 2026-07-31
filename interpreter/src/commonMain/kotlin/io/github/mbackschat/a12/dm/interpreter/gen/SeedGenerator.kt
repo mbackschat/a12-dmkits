@@ -11,16 +11,17 @@ import kotlin.random.Random
 /**
  * Generates a **best-effort, model-derived sample candidate** document instance from a [ModelDef] into a
  * [PlacementSink]. It walks
- * the model's group tree (derived from the field paths + the declared repeatable groups), instantiates the
+ * the model's complete declared group tree, instantiates the
  * requested number of rows per repeatable group, and emits a value per field from a [ValueStrategy] — by
  * default a best-effort in-format value for the field's [Kind] (respecting NUMBER scale/sign, date/time/range
  * formats). It is a candidate, **not** a model-acceptance guarantee: placements are addressable and row counts
  * respect declared repeatability, but a local value heuristic cannot prove whole-model rule consistency.
  *
- * Kernel-free and multiplatform — so it serves three consumers from one place:
+ * Kernel-free and multiplatform — so it serves four consumers from one place:
  * - the **`:adapter` differential fuzz** net (random generated documents, assert interp == kernel);
  * - the **perf harness** (deterministic strategies that drive a known firing fraction);
- * - the **`dmtool model seed`** verb on the native image (model → best-effort sample candidate → JSON).
+ * - the **`dmtool model seed`** verb on the native image (model → best-effort sample candidate → JSON);
+ * - the public [io.github.mbackschat.a12.dm.interpreter.PreparedDocumentApi.seedDocument] authoring preset.
  *
  * **Determinism:** [populate] builds its own `Random(seed)` and walks in a fixed order, so two calls with the
  * same `seed` (and the same generator instance) produce the **identical** document — which is exactly how the
@@ -31,6 +32,13 @@ class SeedGenerator(private val model: ModelDef) {
 
     /** Owner-scoped preparation for the model-static patterns used by the default value strategy. */
     private val validValues = ValidValues.prepared()
+    /** A user-authored candidate leaves engine-owned computation targets present but unfilled. */
+    private val authoringValues = run {
+        val computedTargets = model.computations.mapTo(mutableSetOf()) { it.targetPath }
+        ValueStrategy { field, reps, rnd ->
+            if (field.path in computedTargets) null else validValues.value(field, reps, rnd)
+        }
+    }
     /** Group path -> its child group paths (document order, then sorted for cross-call determinism). */
     private val childGroups: Map<String, List<String>>
     /** Group path -> the fields declared directly under it, in declaration order. */
@@ -42,6 +50,7 @@ class SeedGenerator(private val model: ModelDef) {
         val allGroups = buildSet {
             model.fields.forEach { f -> addAll(prefixes(f.path).dropLast(1)) }   // a field's ancestor groups
             model.repeatable.forEach { addAll(prefixes(it)) }                    // repeatable groups + ancestors
+            model.groupPaths.forEach { addAll(prefixes(it)) }                    // fieldless groups + ancestors
         }
         childGroups = allGroups.filter { depth(it) > 1 }.groupBy { parentGroup(it) }
             .mapValues { (_, v) -> v.sorted() }
@@ -74,8 +83,9 @@ class SeedGenerator(private val model: ModelDef) {
     /**
      * Java-friendly convenience (the shape `dmtool model seed` drives): populate with **fixed** per-group row counts
      * — a repeatable group listed in [rowsByGroup] gets that many rows, any other gets [defaultRows] — and the
-     * default [ValidValues] strategy (a best-effort per-field heuristic, not a validity guarantee). Avoids passing a Kotlin function/`Random`
-     * from Java.
+     * authoring strategy: editable source fields use [ValidValues], while computation-owned targets remain
+     * present-but-empty for the engine to fill. This is a best-effort candidate, not a validity guarantee.
+     * Avoids passing a Kotlin function/[Random] from Java.
      */
     fun populate(sink: PlacementSink, seed: Long, rowsByGroup: Map<String, Int>, defaultRows: Int) {
         rowsByGroup.keys.sorted().firstOrNull { it !in model.repeatable }?.let { unknown ->
@@ -86,7 +96,7 @@ class SeedGenerator(private val model: ModelDef) {
         model.repeatable.sorted().forEach { group ->
             validateRowCount(group, rowsByGroup[group] ?: defaultRows)
         }
-        populate(sink, seed, { group, _, _ -> rowsByGroup[group] ?: defaultRows }, ValidValues)
+        populate(sink, seed, { group, _, _ -> rowsByGroup[group] ?: defaultRows }, authoringValues)
     }
 
     /**
@@ -344,6 +354,8 @@ fun interface ValueStrategy {
  * net's fill-or-empty strategy).
  */
 object ValidValues : ValueStrategy {
+    private const val MAX_TOTAL_DIGITS = 15
+
     override fun value(field: FieldDef, reps: List<Int>, rnd: Random): String? =
         value(field, reps, rnd) { pattern -> patternSample(pattern) { sample -> compilePattern(pattern).matches(sample) } }
 
@@ -400,15 +412,26 @@ object ValidValues : ValueStrategy {
             }
             return if (minFractionalDigits == 0) bound else dec(bound).display(minFractionalDigits)
         }
-        val whole = rnd.nextInt(0, 1000)
+        // Every entered number has the kernel's declaration-independent 15-total-digit gate. Reserve the
+        // declared minimum fractional width first, then keep the legacy 0..999 range wherever it still fits.
+        // The second cap accounts for the concrete whole drawn before choosing an optional fractional width.
+        val maximumWholeDigits = minOf(3, MAX_TOTAL_DIGITS - minFractionalDigits).coerceAtLeast(1)
+        val whole = rnd.nextInt(0, powerOfTen(maximumWholeDigits))
+        val availableFractionalDigits = minOf(
+            maxFractionalDigits,
+            MAX_TOTAL_DIGITS - whole.toString().length,
+        )
         val frac = if (minFractionalDigits == 0) {
-            if (maxFractionalDigits > 0 && rnd.nextBoolean()) {
-                "." + (1..(1 + rnd.nextInt(maxFractionalDigits))).joinToString("") { rnd.nextInt(0, 10).toString() }
+            if (availableFractionalDigits > 0 && rnd.nextBoolean()) {
+                "." + (1..(1 + rnd.nextInt(availableFractionalDigits))).joinToString("") {
+                    rnd.nextInt(0, 10).toString()
+                }
             } else {
                 ""
             }
         } else {
-            val digits = minFractionalDigits + rnd.nextInt(maxFractionalDigits - minFractionalDigits + 1)
+            val digits =
+                minFractionalDigits + rnd.nextInt(availableFractionalDigits - minFractionalDigits + 1)
             "." + (1..digits).joinToString("") { rnd.nextInt(0, 10).toString() }
         }
         val magnitude = "$whole$frac"
@@ -416,6 +439,12 @@ object ValidValues : ValueStrategy {
         // `-0`/`-0.00` would be a formal error; ValidValues avoids emitting the values it models as formal errors.
         val sign = if (field.signed && rnd.nextBoolean() && magnitude.any { it in '1'..'9' }) "-" else ""
         return "$sign$magnitude"
+    }
+
+    private fun powerOfTen(exponent: Int): Int {
+        var result = 1
+        repeat(exponent) { result *= 10 }
+        return result
     }
 
     /**

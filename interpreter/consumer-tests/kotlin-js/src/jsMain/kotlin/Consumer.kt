@@ -21,8 +21,11 @@ fun main() {
 
     check(interpreter.validateFull(snapshot).findings.map { it.code } == listOf("AREA_NEEDS_NOTE"))
     val retained = interpreter.compute(snapshot)
-    check(retained.results.single().value == "120")
-    check(retained.actions.single().value == "120")
+    check(retained.results.single { it.pointer.path == "/Permit/ReviewedArea" }.value == "120")
+    check(retained.actions.single { it.pointer.path == "/Permit/ReviewedArea" }.value == "120")
+    check(retained.noErrorOccurred)
+    check(retained.formalErrorsInOperands.isEmpty())
+    check(retained.results.all { it.diagnostic == null })
     val applied = retained.applyTo(snapshot)
     check(prepared.documents.encodeDocument(applied).contains("\"ReviewedArea\":120"))
     check(

@@ -38,8 +38,84 @@
             "name" : "ApplicationNo",
             "Field" : {
               "fieldType" : {
-                "type" : "StringType"
-              }
+                "type" : "StringType",
+                "StringType" : {
+                  "maxLength" : 20
+                }
+              },
+              "requirednessConfig" : {
+                "mode" : "absoluteOrRelativeToNextRepAncestor"
+              },
+              "label" : [ {
+                "locale" : "en_US",
+                "text" : "Application number"
+              } ]
+            }
+          }, {
+            "type" : "Field",
+            "id" : "/Permit/ApplicantName",
+            "name" : "ApplicantName",
+            "Field" : {
+              "fieldType" : {
+                "type" : "StringType",
+                "StringType" : {
+                  "maxLength" : 80
+                }
+              },
+              "label" : [ {
+                "locale" : "en_US",
+                "text" : "Applicant"
+              } ]
+            }
+          }, {
+            "type" : "Field",
+            "id" : "/Permit/PermitType",
+            "name" : "PermitType",
+            "Field" : {
+              "fieldType" : {
+                "type" : "EnumerationType",
+                "EnumerationType" : {
+                  "values" : [ {
+                    "value" : "RESIDENTIAL",
+                    "label" : [ {
+                      "locale" : "en_US",
+                      "text" : "Residential"
+                    } ]
+                  }, {
+                    "value" : "COMMERCIAL",
+                    "label" : [ {
+                      "locale" : "en_US",
+                      "text" : "Commercial"
+                    } ]
+                  }, {
+                    "value" : "PUBLIC",
+                    "label" : [ {
+                      "locale" : "en_US",
+                      "text" : "Public"
+                    } ]
+                  } ]
+                }
+              },
+              "label" : [ {
+                "locale" : "en_US",
+                "text" : "Permit type"
+              } ]
+            }
+          }, {
+            "type" : "Field",
+            "id" : "/Permit/SubmittedOn",
+            "name" : "SubmittedOn",
+            "Field" : {
+              "fieldType" : {
+                "type" : "DateType",
+                "DateType" : {
+                  "format" : "yyyy-MM-dd"
+                }
+              },
+              "label" : [ {
+                "locale" : "en_US",
+                "text" : "Submitted on"
+              } ]
             }
           }, {
             "type" : "Field",
@@ -49,9 +125,35 @@
               "fieldType" : {
                 "type" : "NumberType",
                 "NumberType" : {
-                  "maxFractionalDigits" : 0
+                  "maxFractionalDigits" : 0,
+                  "minValue" : 1,
+                  "maxValue" : 1000
                 }
-              }
+              },
+              "requirednessConfig" : {
+                "mode" : "absoluteOrRelativeToNextRepAncestor"
+              },
+              "label" : [ {
+                "locale" : "en_US",
+                "text" : "Requested area (m²)"
+              } ]
+            }
+          }, {
+            "type" : "Field",
+            "id" : "/Permit/UnitFee",
+            "name" : "UnitFee",
+            "Field" : {
+              "fieldType" : {
+                "type" : "NumberType",
+                "NumberType" : {
+                  "maxFractionalDigits" : 2,
+                  "minValue" : 0
+                }
+              },
+              "label" : [ {
+                "locale" : "en_US",
+                "text" : "Fee per m²"
+              } ]
             }
           }, {
             "type" : "Field",
@@ -64,6 +166,22 @@
                   "maxFractionalDigits" : 0
                 }
               }
+            }
+          }, {
+            "type" : "Field",
+            "id" : "/Permit/EstimatedFee",
+            "name" : "EstimatedFee",
+            "Field" : {
+              "fieldType" : {
+                "type" : "NumberType",
+                "NumberType" : {
+                  "maxFractionalDigits" : 2
+                }
+              },
+              "label" : [ {
+                "locale" : "en_US",
+                "text" : "Estimated fee"
+              } ]
             }
           }, {
             "type" : "Field",
@@ -142,7 +260,11 @@
                 "locale" : "en_US",
                 "text" : "A large requested area needs a note."
               } ]
-            }
+            },
+            "externalDescription" : [ {
+              "locale" : "en_US",
+              "text" : "Flags a permit when its requested area exceeds 100 m² and no review note is present. Uses And, FieldFilled, >, FieldNotFilled over /Permit/Note, /Permit/RequestedArea."
+            } ]
           }, {
             "type" : "Computation",
             "id" : "/Permit/CopyRequestedArea",
@@ -157,7 +279,30 @@
                 "locale" : "en_US",
                 "text" : "The reviewed area follows the request."
               } ]
-            }
+            },
+            "externalDescription" : [ {
+              "locale" : "en_US",
+              "text" : "Copies the requested area into the reviewed-area output. Computes /Permit/ReviewedArea 1 alternative."
+            } ]
+          }, {
+            "type" : "Computation",
+            "id" : "/Permit/CalculateEstimatedFee",
+            "name" : "CalculateEstimatedFee",
+            "Computation" : {
+              "computedFieldRelPath" : "../EstimatedFee",
+              "computationAlternatives" : [ {
+                "precondition" : "FieldFilled(RequestedArea) And FieldFilled(UnitFee)",
+                "operation" : "[RequestedArea] * [UnitFee]"
+              } ],
+              "errorMessage" : [ {
+                "locale" : "en_US",
+                "text" : "The estimated permit fee is area multiplied by the unit fee."
+              } ]
+            },
+            "externalDescription" : [ {
+              "locale" : "en_US",
+              "text" : "Calculates the estimated permit fee as requested area multiplied by the fee per m². Computes /Permit/EstimatedFee 1 alternative."
+            } ]
           }, {
             "type" : "Rule",
             "id" : "/Permit/DecimalPrecisionControl",
@@ -171,7 +316,11 @@
                 "locale" : "en_US",
                 "text" : "The decimal control discriminator fires."
               } ]
-            }
+            },
+            "externalDescription" : [ {
+              "locale" : "en_US",
+              "text" : "Exercises the maintained high-precision arithmetic control used by the browser conformance gate. Uses And, FieldFilled, > over /Permit/Rate."
+            } ]
           }, {
             "type" : "Rule",
             "id" : "/Permit/DecimalPrecisionSplit",
@@ -185,7 +334,11 @@
                 "locale" : "en_US",
                 "text" : "The decimal precision discriminator must stay silent."
               } ]
-            }
+            },
+            "externalDescription" : [ {
+              "locale" : "en_US",
+              "text" : "Guards the browser's high-precision arithmetic boundary and normally remains silent. Uses And, FieldFilled, > over /Permit/Rate."
+            } ]
           }, {
             "type" : "Rule",
             "id" : "/Permit/PatternDialect",
@@ -199,7 +352,11 @@
                 "locale" : "en_US",
                 "text" : "Java horizontal whitespace matched."
               } ]
-            }
+            },
+            "externalDescription" : [ {
+              "locale" : "en_US",
+              "text" : "Exercises Java-compatible horizontal-whitespace matching when PatternProbe is supplied. Uses PatternMatched over /Permit/PatternProbe."
+            } ]
           }, {
             "type" : "Rule",
             "id" : "/Permit/GraphemeDialect",
@@ -213,7 +370,11 @@
                 "locale" : "en_US",
                 "text" : "The extended grapheme matched."
               } ]
-            }
+            },
+            "externalDescription" : [ {
+              "locale" : "en_US",
+              "text" : "Exercises extended-grapheme matching when GraphemeProbe is supplied. Uses PatternMatched over /Permit/GraphemeProbe."
+            } ]
           }, {
             "type" : "Rule",
             "id" : "/Permit/BerlinSpringHour",
@@ -227,7 +388,11 @@
                 "locale" : "en_US",
                 "text" : "The Berlin spring-forward pair is one real hour apart."
               } ]
-            }
+            },
+            "externalDescription" : [ {
+              "locale" : "en_US",
+              "text" : "Recognizes a one-hour real-time interval across Berlin's spring daylight-saving transition. Uses And, FieldFilled, ==, DifferenceInHours over /Permit/ReportedAt, /Permit/SettledAt."
+            } ]
           } ]
         }
       } ]

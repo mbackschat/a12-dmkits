@@ -4,7 +4,10 @@ This changelog covers the independently consumable interpreter packages, API doc
 
 ## [@VERSION@]
 
-No unreleased changes.
+### Added
+
+- **Computation reports now explain unsuccessful computation.** `formalErrorsInOperands` carries eager operand diagnostics, each ERRORED result carries its target-owned `diagnostic`, and `noErrorOccurred` matches the Kernel predicate while remaining independent of `fullySupported`. Kotlin, Java, Kotlin/JS, packed TypeScript, and the browser showcase consume the same detached `ValidationFinding` projection.
+- **Prepared Documents can produce a model-shaped starter.** `prepared.documents.seedDocument()` includes every declared group and field and one row per repeatable group, using the same deterministic generator as `dmtool model seed`.
 
 ## [0.10.0]
 

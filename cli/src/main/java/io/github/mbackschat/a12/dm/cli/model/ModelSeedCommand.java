@@ -31,8 +31,9 @@ import picocli.CommandLine.Option;
 
 /**
  * {@code dmtool model seed} — generate a best-effort, model-derived sample candidate document INSTANCE (JSON)
- * from the model (structure-shaped, not guaranteed model-accepted), using the
- * kernel-free interpreter generator ({@code SeedGenerator} + {@code ValidValues}). The output is
+ * from the model (every declared group and field, one row per repeatable group by default, computation targets
+ * present-empty, not guaranteed model-accepted), using the kernel-free interpreter generator
+ * ({@code SeedGenerator} + constraint-aware authoring values). The output is
  * A12's canonical Document JSON (see {@code schema model eval}) that round-trips straight into
  * {@code model eval}/{@code compute}/{@code rule eval} as {@code --instance}. Native-safe (no kernel); deterministic
  * for a fixed {@code --seed}. Emits the document JSON directly (an artifact, not the result envelope).
@@ -51,7 +52,8 @@ import picocli.CommandLine.Option;
  */
 @Command(name = "seed", mixinStandardHelpOptions = true,
         description = "Generate a best-effort, model-derived sample candidate document INSTANCE (JSON) from the model "
-                + "(structure-shaped, not guaranteed model-accepted) — kernel-free, "
+                + "(every declared group and field; computation targets present-empty; one row per repeatable "
+                + "group by default; not guaranteed model-accepted) — kernel-free, "
                 + "native-safe, deterministic per --seed; feed it to `model eval`/`compute`/`rule eval` as --instance.")
 final class ModelSeedCommand extends BaseCommand {
 

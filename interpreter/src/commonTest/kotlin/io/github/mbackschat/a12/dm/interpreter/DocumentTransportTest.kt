@@ -381,6 +381,38 @@ class DocumentTransportTest {
     }
 
     @Test
+    fun seedDocumentBuildsACompleteModelShapedCanonicalCandidate() {
+        val prepared = prepared()
+
+        val snapshot = prepared.documents.seedDocument()
+        val document = snapshot.document()
+        val placements = document.placementsSnapshot()
+
+        assertEquals(
+            prepared.definition().groupPaths,
+            placements.filter { it.isGroup }.map { it.path }.toSet(),
+            "the seed carries every declared group, including a fieldless non-repeatable group",
+        )
+        assertEquals(
+            prepared.definition().fields.map { it.path }.toSet(),
+            placements.filterNot { it.isGroup }.map { it.path }.toSet(),
+            "the seed carries every declared field",
+        )
+        assertEquals(
+            listOf(listOf(1, 1)),
+            document.instantiatedRows("/Order/Items"),
+            "the authoring seed instantiates one row of each repeatable group",
+        )
+
+        val encoded = prepared.documents.encodeDocument(snapshot)
+        assertEquals(
+            encoded,
+            prepared.documents.encodeDocument(prepared.documents.readDocument(encoded)),
+            "the seed is A12's canonical Document JSON, not a showcase-only shape",
+        )
+    }
+
+    @Test
     fun anEmptyDocumentReadsAndWritesAsTheEmptyRootObject() {
         val documents = prepared().documents
         val snapshot = documents.readDocument("{}")

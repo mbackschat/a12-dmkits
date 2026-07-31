@@ -109,4 +109,29 @@ internal fun exprRefs(expr: Expr): List<String> = when (expr) {
     else -> emptyList()
 }
 
+/** Every semantic-index lookup target in an expression, including lookups nested in a `Having` filter. The
+ * target's index field is an eager computation operand even when the lookup key is a literal, so this walk is
+ * kept separate from [referencedFieldPaths], whose ordinary dependency view needs only the value path and an
+ * optional field-valued key. */
+internal fun semanticIndexTargets(expr: Expr): List<String> = when (expr) {
+    is Expr.SemanticIndex -> listOf(expr.path)
+    is Expr.Star -> expr.having?.let(::semanticIndexTargets).orEmpty()
+    is Expr.Func -> expr.args.flatMap(::semanticIndexTargets)
+    is Expr.Arith -> semanticIndexTargets(expr.left) + semanticIndexTargets(expr.right)
+    else -> emptyList()
+}
+
+/** Condition twin of [semanticIndexTargets]. */
+internal fun semanticIndexTargets(cond: Cond): List<String> = when (cond) {
+    is Cond.Cmp -> semanticIndexTargets(cond.left) + semanticIndexTargets(cond.right)
+    is Cond.Tolerance -> semanticIndexTargets(cond.left) + semanticIndexTargets(cond.right)
+    is Cond.ValueListQuant -> (cond.fields + cond.values).flatMap(::semanticIndexTargets)
+    is Cond.And -> semanticIndexTargets(cond.left) + semanticIndexTargets(cond.right)
+    is Cond.Or -> semanticIndexTargets(cond.left) + semanticIndexTargets(cond.right)
+    is Cond.Not -> semanticIndexTargets(cond.c)
+    is Cond.Pred -> cond.args.flatMap(::semanticIndexTargets)
+    is Cond.Pattern -> semanticIndexTargets(cond.value) + semanticIndexTargets(cond.pattern)
+    is Cond.Custom -> emptyList()
+}
+
 internal fun condRefsOrEmpty(cond: Cond?): List<String> = cond?.let { nonStarredRefs(it) } ?: emptyList()

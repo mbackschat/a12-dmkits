@@ -224,6 +224,126 @@ await withStaticServer(async (url) => {
     if (!(await showcase.locator("#entry-model-control").isHidden())) {
       throw new Error("entry model control is visible before custom files");
     }
+    const modelInspector = showcase.locator(
+      ".result-panel > details#model-inspector",
+    );
+    if (await modelInspector.count() !== 1) {
+      throw new Error(
+        "the prepared DocumentModel inspector is not inside the result panel",
+      );
+    }
+    if (await modelInspector.getAttribute("open") !== null) {
+      throw new Error("the DocumentModel inspector is expanded by default");
+    }
+    const modelInspectorOrder = await showcase.evaluate(() => {
+      const inspector = document.querySelector("#model-inspector");
+      const resultTitle = document.querySelector("#result-title");
+      return inspector !== null && resultTitle !== null &&
+        Boolean(inspector.compareDocumentPosition(resultTitle) &
+          Node.DOCUMENT_POSITION_FOLLOWING);
+    });
+    if (!modelInspectorOrder) {
+      throw new Error("the DocumentModel inspector is not above Result");
+    }
+    await showcase.setViewportSize({width: 1_800, height: 1_000});
+    const wideWorkbench = await showcase.evaluate(() => {
+      const rectangle = (selector: string): DOMRect => {
+        const element = document.querySelector(selector);
+        if (!(element instanceof HTMLElement)) {
+          throw new Error(`wide-layout element '${selector}' is missing`);
+        }
+        return element.getBoundingClientRect();
+      };
+      const workbench = rectangle(".workbench");
+      const editor = rectangle(".editor-panel");
+      const result = rectangle(".result-panel");
+      const input = rectangle("#document-input");
+      return {
+        workbenchWidth: workbench.width,
+        editorWidth: editor.width,
+        resultWidth: result.width,
+        inputWidth: input.width,
+      };
+    });
+    if (
+      wideWorkbench.workbenchWidth < 1_700 ||
+      wideWorkbench.editorWidth < 800 ||
+      wideWorkbench.resultWidth < 800 ||
+      wideWorkbench.inputWidth < wideWorkbench.editorWidth * 0.8
+    ) {
+      throw new Error(
+        `the editor workbench remains width-capped in a wide browser: ${
+          JSON.stringify(wideWorkbench)
+        }`,
+      );
+    }
+    const builtInModelJson = await modelInspector.locator("#model-json")
+      .textContent();
+    for (const expected of [
+      '"id": "permit-basic"',
+      '"ApplicantName"',
+      '"mode": "absoluteOrRelativeToNextRepAncestor"',
+      '"CalculateEstimatedFee"',
+      '"externalDescription"',
+    ]) {
+      if (!builtInModelJson?.includes(expected)) {
+        throw new Error(
+          `the built-in DocumentModel inspector lacks ${
+            JSON.stringify(expected)
+          }: ${builtInModelJson}`,
+        );
+      }
+    }
+    const expectedPermitFields = [
+      "ApplicationNo",
+      "ApplicantName",
+      "PermitType",
+      "SubmittedOn",
+      "RequestedArea",
+      "UnitFee",
+      "ReviewedArea",
+      "EstimatedFee",
+      "Note",
+      "Rate",
+      "PatternProbe",
+      "GraphemeProbe",
+      "ReportedAt",
+      "SettledAt",
+    ].sort();
+    const builtInDocument = JSON.parse(
+      await showcase.locator("#document-input").inputValue(),
+    ) as {Permit?: Record<string, unknown>};
+    if (
+      builtInDocument.Permit === undefined ||
+      Object.keys(builtInDocument.Permit).sort().join(",") !==
+        expectedPermitFields.join(",")
+    ) {
+      throw new Error(
+        `the built-in Document omits model fields: ${
+          JSON.stringify(builtInDocument)
+        }`,
+      );
+    }
+    const starterButton = showcase.locator("#seed-document");
+    if (
+      await starterButton.count() !== 1 ||
+      await starterButton.textContent() !== "Use model-shaped starter"
+    ) {
+      throw new Error("showcase does not expose the model-shaped Document seed");
+    }
+    const applyButton = showcase.locator("#apply-computations");
+    const formFlowButton = showcase.locator("#compute-apply-validate");
+    if (
+      await applyButton.count() !== 1 ||
+      await applyButton.textContent() !== "Apply results" ||
+      !(await applyButton.isDisabled()) ||
+      await formFlowButton.count() !== 1 ||
+      await formFlowButton.textContent() !== "Compute → Apply → Validate"
+    ) {
+      throw new Error(
+        "showcase does not expose the retained-result and form-engine computation workflows",
+      );
+    }
     const manual = showcase.locator("details.manual");
     if (await manual.count() !== 1) {
       throw new Error("showcase does not expose a single instruction section");
@@ -242,6 +362,10 @@ await withStaticServer(async (url) => {
       "Relevant scenario group",
       "same prepared interpreter and Document",
       "multiple runs report p95",
+      "model-shaped starter",
+      "Validate checks the current Document as-is",
+      "implicit consistency rule",
+      "Compute → Apply → Validate",
       "Nothing is uploaded",
     ]) {
       if (!manualText?.includes(expected)) {
@@ -305,6 +429,20 @@ await withStaticServer(async (url) => {
         `#result[data-operation='${operation}']`,
       );
       await withDeadline(`${operation} result`, output.waitFor());
+      await withDeadline(
+        `${operation} expected output`,
+        showcase.waitForFunction(
+          ({operation, expected}) => {
+            const output = document.querySelector(
+              `#result[data-operation='${operation}']`,
+            );
+            return output !== null &&
+              expected.every((fragment) =>
+                output.textContent?.includes(fragment) === true);
+          },
+          {operation, expected},
+        ),
+      );
       const text = await output.textContent();
       for (const fragment of expected) {
         if (!text?.includes(fragment)) {
@@ -328,7 +466,7 @@ await withStaticServer(async (url) => {
     const assertTiming = async (
       samples: number,
       metric: "elapsed" | "p95",
-      operation: "validation" | "computation",
+      operation: "validation" | "computation" | "form-flow",
     ): Promise<void> => {
       const timing = showcase.locator(
         `#operation-timing[data-samples='${samples}'][data-metric='${metric}'][data-operation='${operation}']`,
@@ -353,7 +491,41 @@ await withStaticServer(async (url) => {
       }
     };
 
+    await showcase.locator("#document-input").fill("{}");
+    await showcase.click("#seed-document");
+    const explicitSeed = JSON.parse(
+      await showcase.locator("#document-input").inputValue(),
+    ) as {Permit?: Record<string, unknown>};
+    if (
+      explicitSeed.Permit === undefined ||
+      Object.keys(explicitSeed.Permit).sort().join(",") !==
+        expectedPermitFields.join(",")
+    ) {
+      throw new Error(
+        `explicit model-shaped seed omitted fields: ${
+          JSON.stringify(explicitSeed)
+        }`,
+      );
+    }
+    if (
+      explicitSeed.Permit.ReviewedArea !== null ||
+      explicitSeed.Permit.EstimatedFee !== null
+    ) {
+      throw new Error(
+        `model-shaped seed filled computation-owned targets: ${
+          JSON.stringify(explicitSeed)
+        }`,
+      );
+    }
+    await showcase.click("#validate");
+    await assertOutput("validate-full", ['"findings": []']);
+
     await showcase.selectOption("#scenario", "clean");
+    await showcase.click("#check-support");
+    await assertOutput("support-report", [
+      '"unsupported": []',
+      '"fullySupported": true',
+    ]);
     await showcase.click("#validate");
     await assertOutput("validate-full", ['"findings": []']);
     await assertTiming(1, "elapsed", "validation");
@@ -362,7 +534,14 @@ await withStaticServer(async (url) => {
       name: "permit-input.json",
       mimeType: "application/json",
       buffer: Buffer.from(JSON.stringify({
-        Permit: {ApplicationNo: "P-UPLOAD", RequestedArea: 120},
+        Permit: {
+          ApplicationNo: "P-UPLOAD",
+          ApplicantName: "Uploaded Applicant",
+          PermitType: "PUBLIC",
+          SubmittedOn: "2026-07-19",
+          RequestedArea: 120,
+          UnitFee: 1.5,
+        },
       })),
     });
     await showcase.locator(
@@ -383,17 +562,86 @@ await withStaticServer(async (url) => {
     await showcase.selectOption("#scenario", "formal-invalid");
     await showcase.click("#validate");
     await assertOutput("validate-full", ["zahlHatUngueltigeZeichen"]);
+    await showcase.click("#compute");
+    await assertOutput("compute", [
+      '"formalErrorsInOperands"',
+      '"zahlHatUngueltigeZeichen"',
+      '"errorPath": "/Permit[1]/RequestedArea"',
+      '"noErrorOccurred": false',
+    ]);
+
+    await showcase.selectOption("#scenario", "computed-error");
+    await showcase.click("#compute");
+    await assertOutput("compute", [
+      '"outcome": "errored"',
+      '"diagnostic"',
+      '"stelligkeitZuLang"',
+      '"errorPath": "/Permit[1]/EstimatedFee"',
+      '"formalErrorsInOperands": []',
+      '"noErrorOccurred": false',
+    ]);
 
     await showcase.selectOption("#scenario", "computation");
     await operationRuns.fill("3");
     await showcase.click("#compute");
-    await assertOutput("compute", ["/Permit/ReviewedArea", '"value": "125"']);
+    await assertOutput("compute", [
+      "/Permit/ReviewedArea",
+      "/Permit/EstimatedFee",
+      '"value": "125"',
+    ]);
     await assertTiming(3, "p95", "computation");
-    await operationRuns.fill("1");
+    if (await applyButton.isDisabled()) {
+      throw new Error("a retained computation result cannot be applied");
+    }
+    await showcase.click("#apply-computations");
+    await assertOutput("apply-computations", [
+      '"ReviewedArea": 125',
+      '"EstimatedFee": 312.5',
+      '"appliedActions": 2',
+    ]);
+    const appliedDocument = JSON.parse(
+      await showcase.locator("#document-input").inputValue(),
+    ) as {Permit?: Record<string, unknown>};
+    if (
+      appliedDocument.Permit?.ReviewedArea !== 125 ||
+      appliedDocument.Permit?.EstimatedFee !== 312.5 ||
+      !(await applyButton.isDisabled())
+    ) {
+      throw new Error(
+        `applying computation results did not update the editable Document exactly once: ${
+          JSON.stringify(appliedDocument)
+        }`,
+      );
+    }
+    await showcase.click("#validate");
+    await assertOutput("validate-full", ['"findings": []']);
 
+    await showcase.selectOption("#scenario", "computation");
+    await operationRuns.fill("1");
+    await showcase.click("#compute-apply-validate");
+    await assertOutput("compute-apply-validate-full", [
+      '"ReviewedArea": 125',
+      '"EstimatedFee": 312.5',
+      '"findings": []',
+      '"appliedActions": 2',
+    ]);
+    await assertTiming(1, "elapsed", "form-flow");
+    const formFlowDocument = JSON.parse(
+      await showcase.locator("#document-input").inputValue(),
+    ) as {Permit?: Record<string, unknown>};
+    if (
+      formFlowDocument.Permit?.ReviewedArea !== 125 ||
+      formFlowDocument.Permit?.EstimatedFee !== 312.5
+    ) {
+      throw new Error(
+        `form-engine workflow did not retain its applied Document: ${
+          JSON.stringify(formFlowDocument)
+        }`,
+      );
+    }
     await showcase.click(".workspace-controls summary");
     await showcase.selectOption("#workspace-mode", "file-map");
-    await showcase.selectOption("#scenario", "include-typedef");
+    await showcase.selectOption("#scenario", "clean");
     await showcase.locator("#workspace-folder-upload").setInputFiles(
       resolve("dist/workspace"),
     );
@@ -405,6 +653,78 @@ await withStaticServer(async (url) => {
     }
     await showcase.selectOption("#entry-model-select", "permit-single");
     await showcase.click("#prepare");
+    const uploadedModelJson = await modelInspector.locator("#model-json")
+      .textContent();
+    for (const expected of [
+      '"id": "permit-single"',
+      '"NegativeScore"',
+      '"CopyScore"',
+    ]) {
+      if (!uploadedModelJson?.includes(expected)) {
+        throw new Error(
+          `the expanded uploaded DocumentModel lacks ${
+            JSON.stringify(expected)
+          }: ${uploadedModelJson}`,
+        );
+      }
+    }
+    const uploadedSeed = JSON.parse(
+      await showcase.locator("#document-input").inputValue(),
+    ) as {
+      Permit?: {
+        Review?: {
+          Inspection?: Record<string, unknown>;
+          [name: string]: unknown;
+        };
+        [name: string]: unknown;
+      };
+    };
+    const seededReview = uploadedSeed.Permit?.Review;
+    const seededInspection = seededReview?.Inspection;
+    for (const expected of [
+      "ApplicationCode",
+      "InspectionDisposition",
+      "Review",
+    ]) {
+      if (!Object.hasOwn(uploadedSeed.Permit ?? {}, expected)) {
+        throw new Error(
+          `uploaded model seed lacks Permit.${expected}: ${
+            JSON.stringify(uploadedSeed)
+          }`,
+        );
+      }
+    }
+    for (const expected of ["Name", "Inspection"]) {
+      if (!Object.hasOwn(seededReview ?? {}, expected)) {
+        throw new Error(
+          `uploaded model seed lacks Permit.Review.${expected}: ${
+            JSON.stringify(uploadedSeed)
+          }`,
+        );
+      }
+    }
+    for (const expected of ["Score", "Summary", "Disposition", "Result"]) {
+      if (!Object.hasOwn(seededInspection ?? {}, expected)) {
+        throw new Error(
+          `uploaded model seed lacks Permit.Review.Inspection.${expected}: ${
+            JSON.stringify(uploadedSeed)
+          }`,
+        );
+      }
+    }
+    await showcase.locator("#document-upload").setInputFiles({
+      name: "permit-workspace-invalid.json",
+      mimeType: "application/json",
+      buffer: Buffer.from(JSON.stringify({
+        Permit: {
+          ApplicationCode: "ABCDEFGHIJKLM",
+          Review: {Inspection: {Score: -1}},
+        },
+      })),
+    });
+    await showcase.locator(
+      "#status[data-state=passed]",
+    ).filter({hasText: "Document loaded"}).waitFor();
     await showcase.click("#validate");
     await assertOutput(
       "validate-full",

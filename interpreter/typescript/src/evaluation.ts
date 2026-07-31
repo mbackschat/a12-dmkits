@@ -59,6 +59,8 @@ export interface ComputationResult {
   readonly pointer: FieldPointer;
   readonly outcome: ComputationOutcome;
   readonly value?: string;
+  /** Target-owned formal diagnostic; present exactly when outcome is "errored". */
+  readonly diagnostic?: ValidationFinding;
 }
 
 /** Retained computation result: report-all outcomes, source-relative actions, and support status. */
@@ -67,7 +69,11 @@ export interface ComputationReport {
   readonly results: readonly ComputationResult[];
   /** Source-relative VALUE/CLEARED/ERRORED actions retained for application. */
   readonly actions: readonly ComputationResult[];
+  /** Eager formal diagnostics from selected computation operands. */
+  readonly formalErrorsInOperands: readonly ValidationFinding[];
   readonly unsupported: readonly UnsupportedProgram[];
+  /** True exactly when there are no errored targets and no formal operand errors. */
+  readonly noErrorOccurred: boolean;
   readonly fullySupported: boolean;
   /** Apply the retained source actions to another snapshot owned by the same prepared model. */
   applyTo(destination: DocumentSnapshot): DocumentSnapshot;
@@ -96,21 +102,34 @@ const supportReport = (
     fullySupported: report.fullySupported,
   });
 
+const validationFinding = (
+  finding: {
+    readonly code: string;
+    readonly rulePath: string;
+    readonly errorPath: string;
+    readonly severity: string;
+    readonly type: string;
+    readonly text: string;
+    readonly referenced: readonly string[];
+    readonly fillToFix: readonly string[];
+  },
+): ValidationFinding =>
+  Object.freeze({
+    code: finding.code,
+    rulePath: finding.rulePath,
+    errorPath: finding.errorPath,
+    severity: finding.severity as ValidationSeverity,
+    type: finding.type as ValidationFindingType,
+    text: finding.text,
+    referenced: Object.freeze([...finding.referenced]),
+    fillToFix: Object.freeze([...finding.fillToFix]),
+  });
+
 const validationReport = (
   report: InterpreterBridgeValidationReport,
 ): ValidationReport =>
   Object.freeze({
-    findings: Object.freeze(report.findings.map((finding) =>
-      Object.freeze({
-        code: finding.code,
-        rulePath: finding.rulePath,
-        errorPath: finding.errorPath,
-        severity: finding.severity as ValidationSeverity,
-        type: finding.type as ValidationFindingType,
-        text: finding.text,
-        referenced: Object.freeze([...finding.referenced]),
-        fillToFix: Object.freeze([...finding.fillToFix]),
-      }))),
+    findings: Object.freeze(report.findings.map(validationFinding)),
     unsupported: unsupportedPrograms(report.unsupported),
     noErrorOccurred: report.noErrorOccurred,
     fullySupported: report.fullySupported,
@@ -133,12 +152,19 @@ const computationReport = (
         ...(result.value === null || result.value === undefined
           ? {}
           : {value: result.value}),
+        ...(result.diagnostic === null || result.diagnostic === undefined
+          ? {}
+          : {diagnostic: validationFinding(result.diagnostic)}),
       });
     }));
   return Object.freeze({
     results: computedFields(report.results),
     actions: computedFields(report.actions),
+    formalErrorsInOperands: Object.freeze(
+      report.formalErrorsInOperands.map(validationFinding),
+    ),
     unsupported: unsupportedPrograms(report.unsupported),
+    noErrorOccurred: report.noErrorOccurred,
     fullySupported: report.fullySupported,
     applyTo(destination: DocumentSnapshot): DocumentSnapshot {
       const result = report.applyTo(destination.bridgeValue());

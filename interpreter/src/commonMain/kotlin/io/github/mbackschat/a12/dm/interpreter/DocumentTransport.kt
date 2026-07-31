@@ -1,6 +1,9 @@
 package io.github.mbackschat.a12.dm.interpreter
 
 import io.github.mbackschat.a12.dm.interpreter.eval.Document
+import io.github.mbackschat.a12.dm.interpreter.eval.newDocument
+import io.github.mbackschat.a12.dm.interpreter.gen.SeedGenerator
+import io.github.mbackschat.a12.dm.interpreter.gen.asSink
 import io.github.mbackschat.a12.dm.interpreter.workspace.immutableListSnapshot
 import kotlin.jvm.JvmOverloads
 import kotlin.jvm.JvmStatic
@@ -242,13 +245,32 @@ class DocumentSnapshot private constructor(
 /**
  * The Document transport of one [PreparedModel], speaking **A12's canonical Document JSON** on both sides.
  * [readDocument] validates the complete text — parseability, resource limits, model paths,
- * and node types — and only then constructs the snapshot, so a failing input mutates nothing. [encodeDocument]
- * is the owner-checked read-back: every row, empty cell, and unconverted raw value survives it, and one encode
- * reaches the canonical fixed point.
+ * and node types — and only then constructs the snapshot, so a failing input mutates nothing. [seedDocument]
+ * creates the deterministic, complete model-shaped candidate also exposed by `dmtool model seed`.
+ * [encodeDocument] is the owner-checked read-back: every row, empty cell, and unconverted raw value survives it,
+ * and one encode reaches the canonical fixed point.
  */
 class PreparedDocumentApi internal constructor(
     private val prepared: PreparedModel,
 ) {
+    /**
+     * Create a deterministic, best-effort model-derived candidate Document. It carries every declared group and
+     * field, including fieldless groups, and instantiates one row of every repeatable group. Editable source
+     * fields receive generated values that respect local formats and bounds where possible; computation-owned
+     * targets remain present-empty for the engine to fill. Whole-model rule acceptance is not guaranteed.
+     */
+    fun seedDocument(): DocumentSnapshot {
+        val definition = prepared.definition()
+        val document = definition.newDocument()
+        SeedGenerator(definition).populate(
+            sink = document.asSink(),
+            seed = 0L,
+            rowsByGroup = emptyMap(),
+            defaultRows = 1,
+        )
+        return DocumentSnapshot.of(prepared.owner, prepared.modelVersion, documentId = null, document)
+    }
+
     /**
      * Read A12 Document JSON into an immutable, owner-bound snapshot. Resource-limit failures are fail-fast;
      * model-aware input diagnostics aggregate so a caller sees every defect at once.

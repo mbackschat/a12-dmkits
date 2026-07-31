@@ -24,6 +24,15 @@ import io.github.mbackschat.a12.dm.interpreter.regex.compilePattern
 /** The kernel's sentinel rule path for a formal (format) check — distinct from any author rule's slash-path. */
 const val FORMAL_RULE_PATH = "formalePruefung"
 
+/** The kernel's formal code for a numeric computation that produced no domain value, or for the numeric
+ * no-fit store arm whose attempted text has no more specific target-format error. */
+const val COMPUTED_VALUE_ERROR = "berechnungsWertFehler"
+
+/** Kernel-free end-user wording for [COMPUTED_VALUE_ERROR]. */
+fun computedValueErrorText(locale: String, pointer: String): String =
+    if (locale.startsWith("de")) "Der berechnete Wert für $pointer ist ungültig."
+    else "The computed value for $pointer is invalid."
+
 /**
  * The kernel's error code for a **required-but-empty** field (KERNEL-FINDINGS §4). Like a format error it
  * makes the field **"unknown"** for rule evaluation (the operand resolves to `Val.Unknown`, so the 3VL

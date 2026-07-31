@@ -9,6 +9,7 @@ The interpreter prepares model workspaces, resolves includes and imported type d
 - Finite in-memory workspaces and on-demand model providers
 - Self-contained model expansion, separate from evaluator preparation
 - Lossless, versioned Document JSON with structured input diagnostics
+- Deterministic model-shaped Document seeds containing every declared group and field
 - Full and partial validation, retained computation application, support reports, and model-owned pointers
 - Synchronous custom field validators and custom conditions
 - Explicit resource limits, integrity checks, cancellation, and immutable prepared models
@@ -26,11 +27,13 @@ For Kotlin or Java, add the Maven repository `https://mbackschat.github.io/a12-i
 
 ## TypeScript
 
-The Document shown below is decoded against the prepared model before evaluation. A prepared model and interpreter can be retained while a form creates a new immutable Document snapshot after each change.
+The Document shown below is decoded against the prepared model before evaluation. When its structure is not yet known, `prepared.documents.seedDocument()` creates a best-effort candidate with every declared group and field and one row per repeatable group; computation-owned targets remain present-empty for the engine to fill. A prepared model and interpreter can be retained while a form creates a new immutable Document snapshot after each change.
 
 <!-- snippet: interpreter-typescript-start -->
 ```ts
 import {
+  type DocumentSnapshot,
+  type Interpreter,
   ModelWorkspace,
   type A12Document,
 } from "@mbackschat/a12-interpreter";
@@ -38,6 +41,9 @@ import {
 export function runInterpreter(rawModelJson: string) {
   const workspace = ModelWorkspace.fromSources([{json: rawModelJson}]);
   const prepared = workspace.prepare("permit-basic");
+  const starter = prepared.documents.encodeDocument(
+    prepared.documents.seedDocument(),
+  );
   const input: A12Document = {
     Permit: {ApplicationNo: "P-42", RequestedArea: 120},
   };
@@ -52,13 +58,16 @@ export function runInterpreter(rawModelJson: string) {
     full: interpreter.validateFull(document),
     partial: interpreter.validatePart(document, [relevant]),
     computation: interpreter.compute(document),
+    starter,
     document,
     prepared,
   };
 }
 ```
 
-`interpreter.compute(source)` returns report-all `results` plus source-relative `actions`. Retain that report and call `applyTo(destination)` to apply it without recomputing; source and destination must belong to the same `PreparedModel`. `interpreter.applyComputations(source)` is the same-document convenience. Every snapshot remains immutable.
+`interpreter.compute(source)` returns report-all `results`, target diagnostics for ERRORED results, eager `formalErrorsInOperands`, Kernel-equivalent `noErrorOccurred`, and source-relative `actions`. Retain that report and call `applyTo(destination)` to apply it without recomputing; source and destination must belong to the same `PreparedModel`. `unsupported` remains an independent support axis. `interpreter.applyComputations(source)` is the same-document convenience. Every snapshot remains immutable.
+
+The ordinary form-engine sequence is explicit and Kernel-shaped: `const computation = interpreter.compute(document); const applied = computation.applyTo(document); const validation = interpreter.validateFull(applied);`. The form retains `applied`.
 
 ## Kotlin
 
@@ -70,6 +79,7 @@ import io.github.mbackschat.a12.dm.interpreter.ValidationReport
 import io.github.mbackschat.a12.dm.interpreter.WorkspaceModelSource
 
 data class InterpreterResult(
+    val starterJson: String,
     val validation: ValidationReport,
     val computation: ComputationReport,
 )
@@ -77,11 +87,13 @@ data class InterpreterResult(
 fun runInterpreter(modelJson: String): InterpreterResult {
     val source = WorkspaceModelSource.builder().json(modelJson).build()
     val prepared = ModelWorkspace.fromSources(listOf(source)).prepare("permit-basic")
+    val starterJson = prepared.documents.encodeDocument(prepared.documents.seedDocument())
     val document = prepared.documents.readDocument(
         """{"Permit":{"ApplicationNo":"P-42","RequestedArea":120}}""",
     )
     val interpreter = prepared.createInterpreter()
     return InterpreterResult(
+        starterJson = starterJson,
         validation = interpreter.validateFull(document),
         computation = interpreter.compute(document),
     )

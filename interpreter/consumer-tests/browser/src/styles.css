@@ -35,9 +35,13 @@ a {
 }
 
 .site-header,
-main,
 footer {
   width: min(1120px, calc(100% - 40px));
+  margin-inline: auto;
+}
+
+main {
+  width: calc(100% - 40px);
   margin-inline: auto;
 }
 
@@ -343,6 +347,12 @@ select,
   font-size: 1.25rem;
 }
 
+.document-seed {
+  flex: 0 0 auto;
+  padding: 7px 11px;
+  white-space: nowrap;
+}
+
 .panel-heading > span {
   max-width: 240px;
   color: var(--muted);
@@ -353,6 +363,34 @@ select,
 
 .result-panel .panel-heading > span {
   color: #9bb4c6;
+}
+
+.model-inspector {
+  margin-bottom: 24px;
+  padding-bottom: 18px;
+  border-bottom: 1px solid #284861;
+}
+
+.model-inspector summary {
+  cursor: pointer;
+  color: #dff6ff;
+  font-weight: 800;
+}
+
+.model-inspector > p {
+  margin: 12px 0;
+  color: #9bb4c6;
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+
+.model-inspector #model-json {
+  min-height: 0;
+  max-height: 340px;
+  padding: 14px;
+  border-color: #284861;
+  background: #031a2d;
+  font-size: 0.82rem;
 }
 
 .upload-row {
@@ -524,6 +562,17 @@ pre {
   padding-bottom: 20px;
 }
 
+.operation-help {
+  flex-basis: 100%;
+  margin-bottom: 6px;
+  color: var(--muted);
+  line-height: 1.5;
+}
+
+.operation-help strong {
+  color: var(--ink);
+}
+
 button {
   padding: 10px 16px;
   border: 1px solid #aebfca;
@@ -542,6 +591,11 @@ button.primary {
   border-color: var(--ink);
   background: var(--ink);
   color: white;
+}
+
+button.workflow {
+  border-color: var(--blue-dark);
+  color: var(--blue-dark);
 }
 
 button:disabled {
@@ -717,6 +771,10 @@ footer nav {
 
   .panel-heading {
     display: block;
+  }
+
+  .document-seed {
+    margin-top: 10px;
   }
 
   .panel-heading > span {

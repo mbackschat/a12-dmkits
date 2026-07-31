@@ -80,6 +80,114 @@
                 }
               } ]
             }
+          }, {
+            "type" : "Field",
+            "id" : "/Order/Numerator",
+            "name" : "Numerator",
+            "Field" : {
+              "fieldType" : {
+                "type" : "NumberType",
+                "NumberType" : {
+                  "maxFractionalDigits" : 0
+                }
+              }
+            }
+          }, {
+            "type" : "Field",
+            "id" : "/Order/Divisor",
+            "name" : "Divisor",
+            "Field" : {
+              "fieldType" : {
+                "type" : "NumberType",
+                "NumberType" : {
+                  "maxFractionalDigits" : 0
+                }
+              }
+            }
+          }, {
+            "type" : "Field",
+            "id" : "/Order/Quotient",
+            "name" : "Quotient",
+            "Field" : {
+              "fieldType" : {
+                "type" : "NumberType",
+                "NumberType" : {
+                  "maxFractionalDigits" : 2,
+                  "minFractionalDigits" : 2
+                }
+              }
+            }
+          }, {
+            "type" : "Group",
+            "id" : "/Order/IndexedLines",
+            "name" : "IndexedLines",
+            "Group" : {
+              "repeatability" : 5,
+              "indexFieldName" : "Code",
+              "elements" : [ {
+                "type" : "Field",
+                "id" : "/Order/IndexedLines/Code",
+                "name" : "Code",
+                "Field" : {
+                  "fieldType" : {
+                    "type" : "StringType"
+                  }
+                }
+              }, {
+                "type" : "Field",
+                "id" : "/Order/IndexedLines/Source",
+                "name" : "Source",
+                "Field" : {
+                  "fieldType" : {
+                    "type" : "NumberType",
+                    "NumberType" : {
+                      "maxFractionalDigits" : 0
+                    }
+                  }
+                }
+              }, {
+                "type" : "Field",
+                "id" : "/Order/IndexedLines/Projection",
+                "name" : "Projection",
+                "Field" : {
+                  "fieldType" : {
+                    "type" : "NumberType",
+                    "NumberType" : {
+                      "maxFractionalDigits" : 0
+                    }
+                  }
+                }
+              }, {
+                "type" : "Computation",
+                "id" : "/Order/IndexedLines/IndexedProjection",
+                "name" : "IndexedProjection",
+                "Computation" : {
+                  "computedFieldRelPath" : "../Projection",
+                  "computationAlternatives" : [ {
+                    "operation" : "[Source]"
+                  } ],
+                  "errorMessage" : [ {
+                    "locale" : "en_US",
+                    "text" : "Project the indexed source."
+                  } ]
+                }
+              } ]
+            }
+          }, {
+            "type" : "Computation",
+            "id" : "/Order/QuotientProjection",
+            "name" : "QuotientProjection",
+            "Computation" : {
+              "computedFieldRelPath" : "../Quotient",
+              "commonPrecondition" : "FieldFilled(Numerator) And FieldFilled(Divisor)",
+              "computationAlternatives" : [ {
+                "operation" : "RoundAccounting([Numerator] / [Divisor], 2)"
+              } ],
+              "errorMessage" : [ {
+                "locale" : "en_US",
+                "text" : "Calculate the rounded quotient."
+              } ]
+            }
           } ]
         }
       } ]

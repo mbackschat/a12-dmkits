@@ -14,16 +14,26 @@ import io.github.mbackschat.a12.dm.interpreter.eval.CellState
 import io.github.mbackschat.a12.dm.interpreter.eval.UNKNOWN_REP
 import io.github.mbackschat.a12.dm.interpreter.eval.renderDateToFormat
 import io.github.mbackschat.a12.dm.interpreter.eval.storedComputedNumber
-import io.github.mbackschat.a12.dm.interpreter.eval.typeFormatErrorCached
 import io.github.mbackschat.a12.dm.interpreter.model.ComputationDef
 import io.github.mbackschat.a12.dm.interpreter.model.Computed
 import io.github.mbackschat.a12.dm.interpreter.model.ComputeOutcome
 import io.github.mbackschat.a12.dm.interpreter.model.CustomFieldType
 import io.github.mbackschat.a12.dm.interpreter.model.EvalClock
 import io.github.mbackschat.a12.dm.interpreter.model.Kind
+import io.github.mbackschat.a12.dm.interpreter.model.Message
 import io.github.mbackschat.a12.dm.interpreter.model.ModelDef
 import io.github.mbackschat.a12.dm.interpreter.model.PredefinedType
+import io.github.mbackschat.a12.dm.interpreter.model.UnsupportedRule
 import io.github.mbackschat.a12.dm.interpreter.regex.PatternRegistry
+
+/** Complete internal computation envelope. Diagnostics stay detached from [Computed], which remains the
+ * legacy report-all value projection. */
+internal class ComputationEngineRun(
+    val results: List<Computed>,
+    val formalErrorsInOperands: List<Message>,
+    val computedErrors: Map<Pair<String, List<Int>>, Message>,
+    val unsupported: List<UnsupportedRule>,
+)
 
 /**
  * The computation engine — the cascade (overlay / poison / cleared), the parallel join-by-key iteration,
@@ -71,6 +81,10 @@ internal class ComputationEngine(
      * computations in dependency order.
      */
     fun computeInstances(doc: Document, locale: String): List<Computed> =
+        computeRun(doc, locale).results
+
+    /** Whole-model result retaining the explanatory channels consumed by the public API. */
+    fun computeRun(doc: Document, locale: String): ComputationEngineRun =
         computeOver(doc, allComputations.value, locale)
 
     /**
@@ -83,7 +97,7 @@ internal class ComputationEngine(
      * [fieldPath] has an empty closure → empty list; the public [DmInterpreter.computeField] guards that up front.
      */
     fun computeField(fieldPath: String, doc: Document, locale: String): List<Computed> =
-        computeOver(doc, dependencyClosureOf(fieldPath), locale).filter { it.path == fieldPath }
+        computeOver(doc, dependencyClosureOf(fieldPath), locale).results.filter { it.path == fieldPath }
 
     /**
      * The cascade engine over a GIVEN dependency-ordered [comps] list — the shared worker of [computeInstances]
@@ -102,7 +116,7 @@ internal class ComputationEngine(
      * `CalculationFieldException` → "fehlerhaft berechnet"): no value, reported CLEARED (report-all), and its
      * own dependents' reads poison transitively. Read-driven, so evaluation order/short-circuits decide.
      */
-    private fun computeOver(rawDoc: Document, comps: List<ComputationDef>, locale: String): List<Computed> {
+    private fun computeOver(rawDoc: Document, comps: List<ComputationDef>, locale: String): ComputationEngineRun {
         // Computation applies the SAME full-call index-default staging as full validation, after formal
         // ingestion and before its preliminary rules (SPEC-2026-07-23-15; the kernel's inherited
         // `formalePruefung` tail): an eligible clean-empty enum index reads its declaration-owned S-value,
@@ -146,6 +160,18 @@ internal class ComputationEngine(
         val dup = checks.duplicateIndexCells(doc)
         val emptyIndexCells = checks.preliminaryEmptyIndexCells(doc)
         val formalResults = FormalResultCache(checks, locale, dup)
+        val operands = operandSelection(comps)
+        val operandRelevant: Relevance = { path, _ -> path in operands.fields }
+        val selectedIndexRelevant: Relevance = { path, _ -> path in operands.indexFields }
+        val unsupported = checks.customTypeUnsupported(doc, operandRelevant).toMutableList()
+        val formalErrorsInOperands = LinkedHashMap<Pair<String, String>, Message>()
+        (
+            checks.formalErrors(doc, locale, operandRelevant, formalResults, unsupported) +
+                checks.mandatoryErrors(doc, locale, selectedIndexRelevant, formalResults, unsupported) +
+                checks.uniquenessMessages(doc, dup, locale, selectedIndexRelevant) +
+                checks.overRepetitionMessages(doc, locale, operandRelevant)
+        ).forEach { formalErrorsInOperands[it.code to it.errorPath] = it }
+        val computedErrors = LinkedHashMap<Pair<String, List<Int>>, Message>()
         // The compute-invariant config, built once for every instance's Interpreter (computeMode; no
         // CustomCondition / relevance seams on the compute path). Only the per-instance `invalid` poison gate
         // varies (it closes over the instance context), so it stays an Interpreter constructor arg.
@@ -223,7 +249,12 @@ internal class ComputationEngine(
                         // decided and stays cleared; only a computation that was never selected (common precondition
                         // false, or no guard matched) falls through, recorded as a tentative clear (dependents read it
                         // EMPTY, IF77) that a later computation for the SAME cell can still win.
-                        toComputed(comp, v, targetKey.second).also { c ->
+                        toComputed(comp, v, targetKey.second, doc, locale).also { attempt ->
+                            val c = attempt.result
+                            attempt.computedError?.let { computedErrors[targetKey] = it }
+                            attempt.formalOperandError?.let {
+                                formalErrorsInOperands[it.code to it.errorPath] = it
+                            }
                             if (v is Val.DomainFailure) {
                                 // No stored value/delta distinguishes a domain failure from an ordinary clear,
                                 // but the target is invalid for the rest of this computation cascade.
@@ -240,7 +271,7 @@ internal class ComputationEngine(
                                     }
                                 }
                             }
-                        }
+                        }.result
                     } catch (_: PoisonedReadException) {
                         // The immediate read path is useful only inside expression-order locks. At the computation
                         // boundary even that path is erased: the reader becomes an identity-only poisoned target.
@@ -302,7 +333,12 @@ internal class ComputationEngine(
                 views.release()
             }
         }
-        return outcomeByCell.values.toList()
+        return ComputationEngineRun(
+            results = outcomeByCell.values.toList(),
+            formalErrorsInOperands = formalErrorsInOperands.values.toList(),
+            computedErrors = computedErrors,
+            unsupported = unsupported,
+        )
     }
 
     /**
@@ -395,7 +431,19 @@ internal class ComputationEngine(
      *  the kernel's store-and-flag, IF34/IF92). A numeric domain failure has no value and therefore retains
      *  the public CLEARED/no-value delta while its target is internally poisoned for dependent reads.
      *  [reps] rides onto [Computed.indices] for the per-row identity (§7). */
-    private fun toComputed(comp: ComputationDef, v: Val, reps: List<Int>): Computed {
+    private data class ComputedAttempt(
+        val result: Computed,
+        val computedError: Message? = null,
+        val formalOperandError: Message? = null,
+    )
+
+    private fun toComputed(
+        comp: ComputationDef,
+        v: Val,
+        reps: List<Int>,
+        doc: Document,
+        locale: String,
+    ): ComputedAttempt {
         // Render the computed value to the TARGET field's stored form: a Num → canonical decimal; a DATE Txt →
         // the field's date format (IF33; `AddYears(...)` into `dd.MM.yyyy` → `30.06.2026`); a date-RANGE → the
         // field's (format, separator). An Unknown computes nothing → CLEARED.
@@ -410,7 +458,17 @@ internal class ComputationEngine(
             is Val.Num -> {
                 val stored = storedComputedNumber(v.v, model.constraintsOf(comp.targetPath).minFractionalDigits ?: 0,
                     model.scaleOf(comp.targetPath) ?: Int.MAX_VALUE)
-                if (!stored.fits) return Computed(comp.targetPath, ComputeOutcome.ERRORED, stored.rendered, reps)
+                if (!stored.fits) {
+                    val result = Computed(comp.targetPath, ComputeOutcome.ERRORED, stored.rendered, reps)
+                    return ComputedAttempt(
+                        result,
+                        computedError = checkNotNull(
+                            checks.computedError(
+                                doc, comp.targetPath, reps, stored.rendered, locale, genericWhenValid = true,
+                            ),
+                        ),
+                    )
+                }
                 stored.rendered
             }
             // A final EMPTY text is NO computed value (IF123) — the kernel's second root-store decision
@@ -418,26 +476,32 @@ internal class ComputationEngine(
             // was done"), taken BEFORE the format check (an empty result is never checked, so never ERRORED).
             // Same decision as a bare empty copy; a poisoned/ERRORED result never reaches this arm.
             is Val.Txt -> renderScalarValue(v.v, comp.targetPath)
-                .ifEmpty { return Computed(comp.targetPath, ComputeOutcome.CLEARED, indices = reps) }
+                .ifEmpty {
+                    return ComputedAttempt(Computed(comp.targetPath, ComputeOutcome.CLEARED, indices = reps))
+                }
             is Val.Bool -> v.v.toString()
             is Val.Range -> renderRange(v, comp.targetPath)
-            is Val.Unknown -> return Computed(comp.targetPath, ComputeOutcome.CLEARED, indices = reps)
-            is Val.DomainFailure -> return Computed(comp.targetPath, ComputeOutcome.CLEARED, indices = reps)
+            is Val.Unknown ->
+                return ComputedAttempt(Computed(comp.targetPath, ComputeOutcome.CLEARED, indices = reps))
+            is Val.DomainFailure -> {
+                val result = Computed(comp.targetPath, ComputeOutcome.CLEARED, indices = reps)
+                return ComputedAttempt(
+                    result,
+                    formalOperandError = checks.computedDomainError(doc, comp.targetPath, reps, locale),
+                )
+            }
         }
-        return Computed(comp.targetPath, computedOutcome(comp.targetPath, rendered), rendered, reps)
-    }
-
-    /** A computed value's bucket: ERRORED when it is formally INVALID for the target field (e.g. a number out of
-     *  the declared range — the kernel returns the value but flags it `getComputedFieldInstancesWithErrors`, IF34);
-     *  else VALUE. The value is returned either way. Runs the TYPE-format check only (the kernel's
-     *  `checkFieldValueFormatBasic` — a computed value skips the baseline charset/blank checks a stored INPUT
-     *  value gets, so a computed string may legally start/end with a blank). */
-    private fun computedOutcome(targetPath: String, rendered: String): ComputeOutcome {
-        val kind = model.kinds[targetPath] ?: return ComputeOutcome.VALUE
-        val invalid = typeFormatErrorCached(kind, rendered, model.scaleOf(targetPath), model.dateLikeFormatOf(targetPath),
-            model.datePrecisionOf(targetPath), model.rangeSeparatorOf(targetPath), model.constraintsOf(targetPath),
-            model.baseYear ?: 2000, model.timeZone, patterns::matches) != null
-        return if (invalid) ComputeOutcome.ERRORED else ComputeOutcome.VALUE
+        val error = checks.computedError(doc, comp.targetPath, reps, rendered, locale)
+        val result = Computed(
+            comp.targetPath,
+            if (error == null) ComputeOutcome.VALUE else ComputeOutcome.ERRORED,
+            rendered,
+            reps,
+        )
+        return ComputedAttempt(
+            result,
+            computedError = error,
+        )
     }
 
     /**
@@ -494,6 +558,58 @@ internal class ComputationEngine(
         if (model.kinds[targetPath] == Kind.DATE)
             model.dateFormats[targetPath]?.let { renderDateToFormat(iso, it) } ?: iso
         else iso
+
+    private data class OperandSelection(
+        val fields: Set<String>,
+        val indexFields: Set<String>,
+    )
+
+    /**
+     * The eager formal-input inventory that precedes computation scheduling. It is intentionally wider than a
+     * runtime read trace: all statically referenced non-computed fields are selected; a group reference expands
+     * to its contained fields; and index fields join the inventory when target iteration, semantic lookup, or
+     * cross-group parallel iteration requires them. Merely reading a sibling field does not select its index.
+     */
+    private fun operandSelection(comps: List<ComputationDef>): OperandSelection {
+        val computedTargets = model.computations.mapTo(HashSet()) { it.targetPath }
+        val fields = LinkedHashSet<String>()
+        val indexes = LinkedHashSet<String>()
+
+        fun selectIndexesBelow(groups: Collection<String>) {
+            model.indexFields.filterTo(indexes) { parentGroup(it) in groups }
+        }
+
+        for (comp in comps) {
+            val parsed = preparedModel.computation(comp)
+            val dependencies = computationDepRefs(parsed)
+            dependencies.filterTo(fields) { it in model.kinds && it !in computedTargets }
+            dependencies.filterTo(indexes) { it in model.indexFields }
+
+            val targetIndexGroups = ancestorGroups(comp.targetPath)
+                .filter { group -> group in model.repeatable && model.indexFields.any { parentGroup(it) == group } }
+            selectIndexesBelow(targetIndexGroups)
+
+            val semanticTargets =
+                parsed.commonPrecondition?.let(::semanticIndexTargets).orEmpty() +
+                    parsed.alternatives.flatMap { alternative ->
+                        alternative.precondition?.let(::semanticIndexTargets).orEmpty() +
+                            semanticIndexTargets(alternative.operation)
+                    }
+            selectIndexesBelow(
+                semanticTargets.flatMap(::ancestorGroups).filter { it in model.repeatable },
+            )
+
+            val scopeRefs = computationScopeRefs(parsed)
+            val targetScope = scopes.scopeFromRefs(listOf(comp.targetPath), parentGroup(comp.targetPath))
+            val parallelGroups = scopeRefs
+                .flatMap { ancestorGroups(it).filter { group -> group in model.repeatable } }
+                .distinct()
+                .filter { it != targetScope && !targetScope.startsWith("$it/") }
+            selectIndexesBelow(parallelGroups)
+        }
+        fields += indexes
+        return OperandSelection(fields, indexes)
+    }
 
     /** Non-starred refs of a whole tiered computation — its iteration SCOPE input: each operation's non-starred
      *  expr refs plus each precondition's + the common precondition's refs (a starred aggregate is evaluated

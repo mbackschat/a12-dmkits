@@ -337,6 +337,8 @@ const qualifyHostBoundaries = async (): Promise<void> => {
   // Deliberately supplied as strings: these probes assert exact stored text on a host boundary.
   const snapshot = prepared.documents.readDocument({
     Permit: {
+      ApplicationNo: "P-HOST",
+      RequestedArea: 80,
       Rate: "0.30",
       PatternProbe: "12 34",
       GraphemeProbe: "e\u0301",

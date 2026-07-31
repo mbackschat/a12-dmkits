@@ -5,8 +5,10 @@ import io.github.mbackschat.a12.dm.interpreter.ModelOwnerMismatchError
 import io.github.mbackschat.a12.dm.interpreter.PreparedModel
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertFailsWith
 import kotlin.test.assertSame
+import kotlin.test.assertTrue
 
 /**
  * JVM + Node lock for IF239's public retained-result boundary. The model is authored through modelkit/rulekit
@@ -125,6 +127,143 @@ class RetainedComputationResultTest {
             prepared.documents.encodeDocument(convenience),
         )
         assertEquals(sourceJson, prepared.documents.encodeDocument(source))
+    }
+
+    @Test
+    fun invalidOperandCarriesItsFormalDiagnosticAndFailsTheComputationStatus() {
+        val prepared = prepared()
+        val report = prepared.createInterpreter().compute(
+            prepared.documents.readDocument(
+                """{"Order":{"Lines":[{},{"Candidate":5.1,"Amount":9}]}}""",
+            ),
+        )
+
+        assertEquals(
+            listOf("zahlHatDezimalTrenner@/Order[1]/Lines[2]/Candidate"),
+            report.formalErrorsInOperands.map { "${it.code}@${it.errorPath}" },
+        )
+        assertEquals(
+            ComputationOutcome.CLEARED,
+            report.results.single { it.pointer.coordinates == CELL }.outcome,
+        )
+        assertFalse(report.noErrorOccurred)
+        assertTrue(report.fullySupported, "diagnostics and unsupported-program reporting are independent")
+    }
+
+    @Test
+    fun invalidComputedTargetCarriesItsDiagnosticAndFailsTheComputationStatus() {
+        val prepared = prepared()
+        val report = prepared.createInterpreter().compute(
+            prepared.documents.readDocument(
+                """{"Order":{"Lines":[{},{"Candidate":10}]}}""",
+            ),
+        )
+        val result = report.results.single { it.pointer.coordinates == CELL }
+
+        assertEquals(ComputationOutcome.ERRORED, result.outcome)
+        assertEquals("10", result.value)
+        assertEquals("zahlZuGross", result.diagnostic?.code)
+        assertEquals("/Order[1]/Lines[2]/Amount", result.diagnostic?.errorPath)
+        assertTrue(result.diagnostic?.text.orEmpty().isNotBlank())
+        assertEquals(emptyList(), report.formalErrorsInOperands)
+        assertFalse(report.noErrorOccurred)
+        assertTrue(report.fullySupported)
+    }
+
+    @Test
+    fun computedTargetAndValidationUseTheSameFormalDiagnosticProjection() {
+        val prepared = prepared()
+        val document = prepared.documents.readDocument(
+            """{"Order":{"Lines":[{},{"Amount":10,"Candidate":10}]}}""",
+        )
+        val interpreter = prepared.createInterpreter()
+
+        val computed = interpreter.compute(document).results
+            .single { it.pointer.path == AMOUNT && it.pointer.coordinates == CELL }
+            .diagnostic
+        val validated = interpreter.validateFull(document).findings
+            .single { it.code == "zahlZuGross" && it.errorPath == "/Order[1]/Lines[2]/Amount" }
+
+        assertEquals(validated, computed)
+    }
+
+    @Test
+    fun cleanComputationHasNoDiagnosticsAndReportsSuccess() {
+        val prepared = prepared()
+        val report = prepared.createInterpreter().compute(
+            prepared.documents.readDocument(
+                """{"Order":{"Lines":[{},{"Candidate":7}]}}""",
+            ),
+        )
+
+        assertTrue(report.results.all { it.diagnostic == null })
+        assertEquals(emptyList(), report.formalErrorsInOperands)
+        assertTrue(report.noErrorOccurred)
+    }
+
+    @Test
+    fun numericDomainFailureIsAFormalOperandDiagnosticOnTheComputedTarget() {
+        val prepared = prepared()
+        val report = prepared.createInterpreter().compute(
+            prepared.documents.readDocument(
+                """{"Order":{"Numerator":10,"Divisor":0}}""",
+            ),
+        )
+
+        assertEquals(
+            listOf("berechnungsWertFehler@/Order[1]/Quotient"),
+            report.formalErrorsInOperands.map { "${it.code}@${it.errorPath}" },
+        )
+        assertEquals(ComputationOutcome.CLEARED, report.results.single().outcome)
+        assertFalse(report.noErrorOccurred)
+    }
+
+    @Test
+    fun selectedEmptyAndDuplicateIndexesCarryTheirGeneratedDiagnostics() {
+        val prepared = prepared()
+        val interpreter = prepared.createInterpreter()
+        val empty = interpreter.compute(
+            prepared.documents.readDocument(
+                """{"Order":{"IndexedLines":[{"Source":3}]}}""",
+            ),
+        )
+        assertEquals(
+            listOf("mandatoryField@/Order[1]/IndexedLines[1]/Code"),
+            empty.formalErrorsInOperands.map { "${it.code}@${it.errorPath}" },
+        )
+
+        val duplicate = interpreter.compute(
+            prepared.documents.readDocument(
+                """{"Order":{"IndexedLines":[{"Code":"A","Source":3},{"Code":"A","Source":4}]}}""",
+            ),
+        )
+        assertEquals(
+            listOf(
+                "uniqueIndex@/Order[1]/IndexedLines[1]/Code",
+                "uniqueIndex@/Order[1]/IndexedLines[2]/Code",
+            ),
+            duplicate.formalErrorsInOperands.map { "${it.code}@${it.errorPath}" },
+        )
+    }
+
+    @Test
+    fun formalOperandAndErroredTargetChannelsCanBothBePopulated() {
+        val prepared = prepared()
+        val report = prepared.createInterpreter().compute(
+            prepared.documents.readDocument(
+                """{"Order":{"Lines":[{"Candidate":10}],"Numerator":10,"Divisor":0}}""",
+            ),
+        )
+
+        assertEquals(
+            setOf("berechnungsWertFehler"),
+            report.formalErrorsInOperands.mapTo(linkedSetOf()) { it.code },
+        )
+        assertEquals(
+            setOf("zahlZuGross"),
+            report.results.mapNotNullTo(linkedSetOf()) { it.diagnostic?.code },
+        )
+        assertFalse(report.noErrorOccurred)
     }
 
     private fun assertApplied(

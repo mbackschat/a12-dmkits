@@ -694,7 +694,8 @@ public final class RuntimeLaws {
      *  (KERNEL-FINDINGS §11 five-channel supplement). The instance channels are rendered as {@code fmtPointer}
      *  strings; {@code withChanges} is a subset of {@code withoutErrors}. */
     record ResultChannels(List<String> withoutErrors, List<String> withChanges, List<String> withErrors,
-            List<String> cleared, List<Msg> formalErrorsInOperands, boolean noErrorOccurred) {
+            List<String> cleared, List<Msg> formalErrorsInOperands, List<Msg> computedErrors,
+            boolean noErrorOccurred) {
     }
 
     static ResultChannels resultChannels(String modelJson, Doc doc) {
@@ -714,6 +715,9 @@ public final class RuntimeLaws {
                 pointers(result.getComputedFieldInstancesWithErrors()),
                 pointers(result.getClearedFieldInstances()),
                 result.getFormalErrorsInOperands().stream().map(RuntimeLaws::toMsg).toList(),
+                result.getComputedFieldInstancesWithErrors().stream()
+                        .map(c -> c.getErrorMessage().map(RuntimeLaws::toMsg).orElseThrow())
+                        .toList(),
                 result.noErrorOccurred());
     }
 

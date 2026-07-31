@@ -4,7 +4,7 @@
 >
 > **Lifecycle.** A shipped gap is deleted. Its stable contract graduates into [INTERPRETER-API-SPEC](INTERPRETER-API-SPEC.md) in the same commit, while git and an appropriate numbered finding retain the history and rationale.
 
-> **Current state.** §1 is drained. The public v1 surface, browser qualification, and anonymous publication are complete as IF224–IF226, so this ledger tracks only later API products, not release delivery.
+> **Current state.** The public v1 surface, browser qualification, anonymous publication, and computation diagnostics are complete as IF224–IF226 and IF241. §1 is drained; §2 tracks later API products.
 
 ## 1. Open
 
@@ -78,7 +78,7 @@ The A12 Document JSON transport and immutable `DocumentSnapshot` deliberately pr
 
 ### IAG4 — stored, targeted, and candidate program APIs <a id="iag4"></a>
 
-The evaluator internally supports stored single-rule/single-computation work, but the v1 public package exposes only full/partial validation and whole-model computation. Stored-rule outcome details, targeted field computation, compute-and-apply, compute-and-validate, prepared candidate rules, symbolic expressions, candidate computations, and direct program handles remain unbuilt.
+The evaluator internally supports stored single-rule/single-computation work, but the v1 public package exposes only full/partial validation and whole-model computation. Whole-model compute-and-apply is shipped as `ComputationReport.applyTo`/`Interpreter.applyComputations`, and an application composes compute → apply → validate directly. Stored-rule outcome details, targeted field computation, prepared candidate rules, symbolic expressions, candidate computations, and direct program handles remain unbuilt.
 
 **Re-open trigger:** a rule preview, debugger, authoring tool, or expression consumer requires one of these operations. Implement only the demanded program kind and give it a model-owned prepared handle, typed preparation diagnostics, unsupported reporting, and exact differential evidence.
 

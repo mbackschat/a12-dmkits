@@ -47,9 +47,13 @@ Repeated `expand` or `prepare` calls rerun preparation; `ModelWorkspace` has no 
 
 The public Document JSON distinguishes absent fields, present-empty fields, malformed raw values, explicit group rows, and sparse repetitions. Decoding validates the complete input before constructing an immutable `DocumentSnapshot`.
 
+When the caller does not yet know the model's tree, start with `prepared.documents.seedDocument()`. It returns a deterministic, best-effort candidate containing every declared group and field and one row per repeatable group. Editable source fields receive useful local values; computation-owned targets are present-empty for the engine to fill. Encode that snapshot to display or edit canonical A12 Document JSON. The seed respects local field constraints where possible but does not guarantee that cross-field business rules pass. This is the same generator as `dmtool model seed`; `profile` describes model performance shape and is unrelated to Document authoring.
+
 <!-- snippet: interpreter-typescript-start -->
 ```ts
 import {
+  type DocumentSnapshot,
+  type Interpreter,
   ModelWorkspace,
   type A12Document,
 } from "@mbackschat/a12-interpreter";
@@ -57,6 +61,9 @@ import {
 export function runInterpreter(rawModelJson: string) {
   const workspace = ModelWorkspace.fromSources([{json: rawModelJson}]);
   const prepared = workspace.prepare("permit-basic");
+  const starter = prepared.documents.encodeDocument(
+    prepared.documents.seedDocument(),
+  );
   const input: A12Document = {
     Permit: {ApplicationNo: "P-42", RequestedArea: 120},
   };
@@ -71,6 +78,7 @@ export function runInterpreter(rawModelJson: string) {
     full: interpreter.validateFull(document),
     partial: interpreter.validatePart(document, [relevant]),
     computation: interpreter.compute(document),
+    starter,
     document,
     prepared,
   };
@@ -79,17 +87,36 @@ export function runInterpreter(rawModelJson: string) {
 
 `validateFull` evaluates the whole Document. `validatePart` evaluates the model-defined effects of the supplied concrete or `"ALL"` relevance pointers; a passing partial result does not imply that full validation passes. `compute` returns an immutable retained result and does not mutate the snapshot.
 
-Each report has an explicit `unsupported` collection and `fullySupported` flag. Validation additionally separates `noErrorOccurred` from support: a report can contain no error-severity finding and still be incomplete because a program is unsupported.
+Each report has an explicit `unsupported` collection and `fullySupported` flag. Validation and computation both separate `noErrorOccurred` from support: a report can contain no error and still be incomplete because a program is unsupported.
 
 ### Retain once, apply to the same or another Document
 
-`ComputationReport.results` reports every computed cell. `ComputationReport.actions` is the source-relative subset retained for application: changed VALUE, source-filled CLEARED, and ERRORED outcomes. `report.applyTo(destination)` applies that fixed subset without recomputing against the destination. VALUE and CLEARED create the addressed target and any missing repeatable ancestry; ERRORED clears only an existing target; no action leaves the destination unchanged.
+`ComputationReport.results` reports every computed cell. An ERRORED result carries a target-owned `diagnostic` with the same `ValidationFinding` shape as validation. `formalErrorsInOperands` separately explains selected inputs that were already invalid, including selected empty or duplicate index fields and computation domain failures. `noErrorOccurred` is true exactly when neither channel contains an error; `unsupported` and `fullySupported` remain independent.
+
+`ComputationReport.actions` is the source-relative subset retained for application: changed VALUE, source-filled CLEARED, and ERRORED outcomes. `report.applyTo(destination)` applies that fixed subset without recomputing against the destination. VALUE and CLEARED create the addressed target and any missing repeatable ancestry; ERRORED clears only an existing target; no action leaves the destination unchanged.
 
 The source and destination may be different immutable snapshots but must belong to the same `PreparedModel` owner. A foreign owner fails with `ModelOwnerMismatchError` before application. This is an interpreter API safety boundary; Kernel model compatibility is a caller precondition. If computation is unsupported, the report has no complete action set and applying it returns the destination unchanged.
 
 The contract is the same in TypeScript, Kotlin, and Java: retain with `val retained = interpreter.compute(source)` (or TypeScript/Java's equivalent), apply separately with `retained.applyTo(destination)`, or use `interpreter.applyComputations(source)` for the same-document route.
 
 `applyComputations(source)` is exactly the one-call convenience for `compute(source).applyTo(source)`. All routes leave both input snapshots unchanged.
+
+Validating before computation checks the Document exactly as supplied. Because each computation contributes an implicit consistency rule, a filled calculated target that differs from its expected value can appear as a validation finding. The ordinary form-engine pass computes first, applies the retained actions, and then validates the resulting Document.
+
+<!-- snippet: interpreter-typescript-form-pass -->
+```ts
+export function computeApplyValidate(
+  interpreter: Interpreter,
+  document: DocumentSnapshot,
+) {
+  const computation = interpreter.compute(document);
+  const applied = computation.applyTo(document);
+  const validation = interpreter.validateFull(applied);
+  return {computation, applied, validation};
+}
+```
+
+This is intentionally composition rather than a different evaluator mode. The Kernel also keeps `compute`, result application, and `validateFull` separate; the final `applied` snapshot is the Document a form retains.
 
 ## 4. Reuse for form input
 
@@ -139,6 +166,7 @@ import io.github.mbackschat.a12.dm.interpreter.ValidationReport
 import io.github.mbackschat.a12.dm.interpreter.WorkspaceModelSource
 
 data class InterpreterResult(
+    val starterJson: String,
     val validation: ValidationReport,
     val computation: ComputationReport,
 )
@@ -146,11 +174,13 @@ data class InterpreterResult(
 fun runInterpreter(modelJson: String): InterpreterResult {
     val source = WorkspaceModelSource.builder().json(modelJson).build()
     val prepared = ModelWorkspace.fromSources(listOf(source)).prepare("permit-basic")
+    val starterJson = prepared.documents.encodeDocument(prepared.documents.seedDocument())
     val document = prepared.documents.readDocument(
         """{"Permit":{"ApplicationNo":"P-42","RequestedArea":120}}""",
     )
     val interpreter = prepared.createInterpreter()
     return InterpreterResult(
+        starterJson = starterJson,
         validation = interpreter.validateFull(document),
         computation = interpreter.compute(document),
     )
@@ -177,15 +207,18 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 
 public final class JavaGuideExample {
-    public record Result(ValidationReport validation, ComputationReport computation) {}
+    public record Result(String starterJson, ValidationReport validation, ComputationReport computation) {}
 
     public static Result run(String modelJson) {
         var source = WorkspaceModelSource.builder().json(modelJson).build();
         var prepared = ModelWorkspace.fromSources(List.of(source)).prepare("permit-basic");
+        var starterJson = prepared.getDocuments().encodeDocument(
+                prepared.getDocuments().seedDocument());
         var document = prepared.getDocuments().readDocument("""
                 {"Permit":{"ApplicationNo":"P-42","RequestedArea":120}}""");
         var interpreter = prepared.createInterpreter();
         return new Result(
+                starterJson,
                 interpreter.validateFull(document),
                 interpreter.compute(document));
     }

@@ -35,6 +35,12 @@ class InterpreterDocumentationTest {
             "ts",
         ),
         SnippetLock(
+            "interpreter-typescript-form-pass",
+            "docs/INTERPRETER-API-GUIDE.md",
+            "interpreter/consumer-tests/typescript/src/guide-finite.ts",
+            "ts",
+        ),
+        SnippetLock(
             "interpreter-typescript-provider",
             "docs/INTERPRETER-API-GUIDE.md",
             "interpreter/consumer-tests/typescript/src/guide-provider.ts",

@@ -41,10 +41,12 @@ const firstAnswer = async (): Promise<number> => {
     throw new Error("browser validation did not return AREA_NEEDS_NOTE");
   }
   const computation = interpreter.compute(snapshot).results;
+  const reviewedArea = computation.find(({pointer}) =>
+    pointer.path === "/Permit/ReviewedArea"
+  );
   if (
-    computation.length !== 1 ||
-    computation[0]?.pointer.path !== "/Permit/ReviewedArea" ||
-    computation[0]?.value !== "120"
+    computation.length !== 2 ||
+    reviewedArea?.value !== "120"
   ) {
     throw new Error("browser computation did not return the reviewed area");
   }

@@ -21,11 +21,15 @@ import io.github.mbackschat.a12.dm.edit.EditSession;
 import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft;
 import io.github.mbackschat.a12.dm.modelkit.FieldKind;
 import io.github.mbackschat.a12.dm.modelkit.MountOptions;
+import io.github.mbackschat.a12.dm.rulekit.context.ModelContext;
+import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel;
+import io.github.mbackschat.a12.dm.rulekit.dsl.Computation;
 import io.github.mbackschat.a12.dm.rulekit.dsl.ConditionLanguage;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl;
 import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer;
 import io.github.mbackschat.a12.dm.rulekit.dsl.FieldRef;
 import io.github.mbackschat.a12.dm.rulekit.dsl.NumberRef;
+import io.github.mbackschat.a12.dm.rulekit.dsl.Rule;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Severity;
 import io.github.mbackschat.a12.dm.rulekit.validate.DraftComputation;
 import io.github.mbackschat.a12.dm.rulekit.write.ModelWriter;
@@ -168,8 +172,13 @@ public final class WorkspacePreparationFixtures {
                         .sources(sources(selfContained))
                         .expectedFields(Set.of(
                                 "/Permit/ApplicationNo",
+                                "/Permit/ApplicantName",
+                                "/Permit/PermitType",
+                                "/Permit/SubmittedOn",
                                 "/Permit/RequestedArea",
+                                "/Permit/UnitFee",
                                 "/Permit/ReviewedArea",
+                                "/Permit/EstimatedFee",
                                 "/Permit/Note",
                                 "/Permit/Rate",
                                 "/Permit/PatternProbe",
@@ -183,7 +192,9 @@ public final class WorkspacePreparationFixtures {
                                 "/Permit/PatternDialect",
                                 "/Permit/GraphemeDialect",
                                 "/Permit/BerlinSpringHour"))
-                        .expectedComputations(Map.of("/Permit/CopyRequestedArea", "/Permit/ReviewedArea"))
+                        .expectedComputations(Map.of(
+                                "/Permit/CopyRequestedArea", "/Permit/ReviewedArea",
+                                "/Permit/CalculateEstimatedFee", "/Permit/EstimatedFee"))
                         .build(),
                 FixtureCase.builder()
                         .id("local-typedef")
@@ -467,9 +478,35 @@ public final class WorkspacePreparationFixtures {
     private static String selfContained() {
         var structure = DocumentModelDraft.named(SELF_CONTAINED_ID).locale("en_US")
                 .rootGroup("Permit", permit -> permit
-                        .field("ApplicationNo", FieldKind.STRING)
-                        .numberField("RequestedArea", number -> number.fractionDigits(0))
+                        .stringField("ApplicationNo", text -> text
+                                .maxLength(20)
+                                .required()
+                                .label("en_US", "Application number"))
+                        .stringField("ApplicantName", text -> text
+                                .maxLength(80)
+                                .label("en_US", "Applicant"))
+                        .enumField("PermitType", type -> type
+                                .value("RESIDENTIAL", label -> label.label("en_US", "Residential"))
+                                .value("COMMERCIAL", label -> label.label("en_US", "Commercial"))
+                                .value("PUBLIC", label -> label.label("en_US", "Public"))
+                                .label("en_US", "Permit type"))
+                        .dateField("SubmittedOn", date -> date
+                                .format("yyyy-MM-dd")
+                                .label("en_US", "Submitted on"))
+                        .numberField("RequestedArea", number -> number
+                                .fractionDigits(0)
+                                .min("1")
+                                .max("1000")
+                                .required()
+                                .label("en_US", "Requested area (m²)"))
+                        .numberField("UnitFee", number -> number
+                                .fractionDigits(2)
+                                .min("0")
+                                .label("en_US", "Fee per m²"))
                         .numberField("ReviewedArea", number -> number.fractionDigits(0))
+                        .numberField("EstimatedFee", number -> number
+                                .fractionDigits(2)
+                                .label("en_US", "Estimated fee"))
                         .field("Note", FieldKind.STRING)
                         .numberField("Rate", number -> number.fractionDigits(0, 14))
                         .field("PatternProbe", FieldKind.STRING)
@@ -483,7 +520,9 @@ public final class WorkspacePreparationFixtures {
         var permit = session.group("/Permit");
         var applicationNo = permit.str("ApplicationNo");
         var requestedArea = permit.num("RequestedArea");
+        var unitFee = permit.num("UnitFee");
         var reviewedArea = permit.num("ReviewedArea");
+        var estimatedFee = permit.num("EstimatedFee");
         var note = permit.str("Note");
         var rate = permit.num("Rate");
         var patternProbe = permit.str("PatternProbe");
@@ -491,27 +530,38 @@ public final class WorkspacePreparationFixtures {
         var reportedAt = permit.dateTime("ReportedAt");
         var settledAt = permit.dateTime("SettledAt");
 
-        permit.addRule(rule -> rule.name("AreaNeedsNote")
+        Rule areaNeedsNote = permit.rule(rule -> rule.name("AreaNeedsNote")
                 .errorField(note)
                 .when(requestedArea.filled().and(requestedArea.gt(100)).and(note.notFilled()))
                 .code("AREA_NEEDS_NOTE")
                 .severity(Severity.ERROR)
                 .message(en("A large requested area needs a note."))
                 .build());
-        permit.addComputation(reviewedArea, computation -> computation.name("CopyRequestedArea")
+        session.addRule(ignored -> areaNeedsNote);
+        Computation copyRequestedArea = permit.computation(reviewedArea,
+                computation -> computation.name("CopyRequestedArea")
                 .when(applicationNo.filled())
                 .calc(requestedArea.value())
                 .message(en("The reviewed area follows the request."))
                 .build());
+        session.addComputation(ignored -> copyRequestedArea);
+        Computation calculateEstimatedFee = permit.computation(estimatedFee,
+                computation -> computation.name("CalculateEstimatedFee")
+                        .when(requestedArea.filled().and(unitFee.filled()))
+                        .calc(requestedArea.asNumber().times(unitFee.asNumber()).expression())
+                        .message(en("The estimated permit fee is area multiplied by the unit fee."))
+                        .build());
+        session.addComputation(ignored -> calculateEstimatedFee);
         var reciprocalPower = rate.asNumber().toThePowerOf(Dsl.number("-64"));
-        permit.addRule(rule -> rule.name("DecimalPrecisionControl")
+        Rule decimalPrecisionControl = permit.rule(rule -> rule.name("DecimalPrecisionControl")
                 .errorField(rate)
                 .when(rate.filled().and(reciprocalPower.gt("1000000")))
                 .code("DECIMAL_CONTROL")
                 .severity(Severity.ERROR)
                 .message(en("The decimal control discriminator fires."))
                 .build());
-        permit.addRule(rule -> rule.name("DecimalPrecisionSplit")
+        session.addRule(ignored -> decimalPrecisionControl);
+        Rule decimalPrecisionSplit = permit.rule(rule -> rule.name("DecimalPrecisionSplit")
                 .errorField(rate)
                 .when(rate.filled().and(reciprocalPower.gt(
                         "2912324058756262786433368781182555.3552912554484015")))
@@ -519,21 +569,24 @@ public final class WorkspacePreparationFixtures {
                 .severity(Severity.ERROR)
                 .message(en("The decimal precision discriminator must stay silent."))
                 .build());
-        permit.addRule(rule -> rule.name("PatternDialect")
+        session.addRule(ignored -> decimalPrecisionSplit);
+        Rule patternDialect = permit.rule(rule -> rule.name("PatternDialect")
                 .errorField(patternProbe)
                 .when(patternProbe.matches("\\d+\\h\\d+"))
                 .code("PATTERN_DIALECT")
                 .severity(Severity.ERROR)
                 .message(en("Java horizontal whitespace matched."))
                 .build());
-        permit.addRule(rule -> rule.name("GraphemeDialect")
+        session.addRule(ignored -> patternDialect);
+        Rule graphemeDialect = permit.rule(rule -> rule.name("GraphemeDialect")
                 .errorField(graphemeProbe)
                 .when(graphemeProbe.matches("\\X"))
                 .code("GRAPHEME_DIALECT")
                 .severity(Severity.ERROR)
                 .message(en("The extended grapheme matched."))
                 .build());
-        permit.addRule(rule -> rule.name("BerlinSpringHour")
+        session.addRule(ignored -> graphemeDialect);
+        Rule berlinSpringHour = permit.rule(rule -> rule.name("BerlinSpringHour")
                 .errorField(reportedAt)
                 .when(reportedAt.filled()
                         .and(Dsl.differenceInHours(reportedAt, settledAt).eq(1)))
@@ -541,7 +594,39 @@ public final class WorkspacePreparationFixtures {
                 .severity(Severity.ERROR)
                 .message(en("The Berlin spring-forward pair is one real hour apart."))
                 .build());
+        session.addRule(ignored -> berlinSpringHour);
+
+        ModelContext explanations = new ModelContext(BoundModel.ofJson(session.toJson()));
+        describeRule(session, explanations, areaNeedsNote,
+                "Flags a permit when its requested area exceeds 100 m² and no review note is present.");
+        describeRule(session, explanations, decimalPrecisionControl,
+                "Exercises the maintained high-precision arithmetic control used by the browser conformance gate.");
+        describeRule(session, explanations, decimalPrecisionSplit,
+                "Guards the browser's high-precision arithmetic boundary and normally remains silent.");
+        describeRule(session, explanations, patternDialect,
+                "Exercises Java-compatible horizontal-whitespace matching when PatternProbe is supplied.");
+        describeRule(session, explanations, graphemeDialect,
+                "Exercises extended-grapheme matching when GraphemeProbe is supplied.");
+        describeRule(session, explanations, berlinSpringHour,
+                "Recognizes a one-hour real-time interval across Berlin's spring daylight-saving transition.");
+        describeComputation(session, explanations, copyRequestedArea,
+                "Copies the requested area into the reviewed-area output.");
+        describeComputation(session, explanations, calculateEstimatedFee,
+                "Calculates the estimated permit fee as requested area multiplied by the fee per m².");
+
         return session.validate().toJson();
+    }
+
+    private static void describeRule(EditSession session, ModelContext explanations, Rule rule, String plainText) {
+        session.rule(rule.group().path() + "/" + rule.name())
+                .setExternalDescription("en_US", plainText + " " + explanations.explain(rule.condition()).gloss());
+    }
+
+    private static void describeComputation(EditSession session, ModelContext explanations,
+            Computation computation, String plainText) {
+        session.computation(computation.groupPath() + "/" + computation.name())
+                .setExternalDescription("en_US",
+                        plainText + " " + explanations.explainComputation(computation).gloss());
     }
 
     private static String collectionSharedTypes() {

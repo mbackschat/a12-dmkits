@@ -1,7 +1,10 @@
 import {
+  type ComputationReport,
+  type DocumentSnapshot,
   ModelWorkspace,
   type PreparedModel,
   type RelevantCoordinate,
+  type ValidationReport,
   type WorkspaceModelSource,
 } from "@mbackschat/a12-interpreter";
 import {
@@ -17,9 +20,11 @@ type ScenarioId =
   | "firing"
   | "formal-invalid"
   | "computation"
+  | "computed-error"
   | "include-typedef";
 type WorkspaceMode = "file-map" | "provider";
 type WorkspaceId = "permit-basic" | "permit-workspace";
+type DocumentOrigin = "scenario" | "seed" | "file" | "edited";
 type ProviderFailure =
   | "none"
   | "integrity-mismatch"
@@ -51,6 +56,8 @@ interface BundleSize {
 
 interface PreparedState {
   readonly key: string;
+  readonly shapeKey: string;
+  readonly expandedModelJson: string;
   readonly model: PreparedModel;
   readonly interpreter: ReturnType<PreparedModel["createInterpreter"]>;
   readonly requests: readonly string[];
@@ -66,7 +73,18 @@ interface TimedOperation<T> {
   readonly samplesMillis: readonly number[];
 }
 
-type TimedOperationName = "validation" | "computation";
+interface RetainedComputation {
+  readonly state: PreparedState;
+  readonly sourceJson: string;
+  readonly report: ComputationReport;
+}
+
+interface ValidationOperation {
+  readonly scope: "full" | "relevant";
+  run(snapshot: DocumentSnapshot): ValidationReport;
+}
+
+type TimedOperationName = "validation" | "computation" | "form-flow";
 
 const MAX_OPERATION_RUNS = 100_000;
 
@@ -74,7 +92,7 @@ const scenarios: Readonly<Record<ScenarioId, Scenario>> = {
   clean: {
     workspace: "permit-basic",
     entryModelId: "permit-basic",
-    note: "A valid permit that should produce no findings.",
+    note: "A valid permit uses required fields, labels, an enum, a date, rules, and two computations without producing findings.",
     inputPath: "examples/documents/permit-valid.json",
     relevantPath: "/Permit",
     relevantCoordinates: [1],
@@ -98,8 +116,16 @@ const scenarios: Readonly<Record<ScenarioId, Scenario>> = {
   computation: {
     workspace: "permit-basic",
     entryModelId: "permit-basic",
-    note: "The computation copies RequestedArea into ReviewedArea.",
+    note: "Two computations copy RequestedArea into ReviewedArea and calculate EstimatedFee from area × unit fee.",
     inputPath: "examples/documents/permit-computation.json",
+    relevantPath: "/Permit",
+    relevantCoordinates: [1],
+  },
+  "computed-error": {
+    workspace: "permit-basic",
+    entryModelId: "permit-basic",
+    note: "Valid operands produce an EstimatedFee that exceeds the target format, so Compute attaches a target-owned diagnostic.",
+    inputPath: "examples/documents/permit-computed-error.json",
     relevantPath: "/Permit",
     relevantCoordinates: [1],
   },
@@ -160,7 +186,16 @@ const relevantCoordinates = requiredElement(
   HTMLInputElement,
 );
 const documentInput = requiredElement("#document-input", HTMLTextAreaElement);
+const seedDocumentButton = requiredElement(
+  "#seed-document",
+  HTMLButtonElement,
+);
+const applyComputationsButton = requiredElement(
+  "#apply-computations",
+  HTMLButtonElement,
+);
 const scenarioNote = requiredElement("#scenario-note", HTMLSpanElement);
+const modelJson = requiredElement("#model-json", HTMLPreElement);
 const result = requiredElement("#result", HTMLPreElement);
 const resultSummary = requiredElement("#result-summary", HTMLDivElement);
 const operationRuns = requiredElement("#operation-runs", HTMLInputElement);
@@ -186,9 +221,26 @@ const livePerformance = requiredElement(
 const operationButtons = Array.from(
   document.querySelectorAll<HTMLButtonElement>(".actions button"),
 );
-const operationControls: readonly (HTMLButtonElement | HTMLInputElement)[] = [
+const fileInputs = Array.from(
+  document.querySelectorAll<HTMLInputElement>('input[type="file"]'),
+);
+const operationControls: readonly (
+  | HTMLButtonElement
+  | HTMLInputElement
+  | HTMLSelectElement
+  | HTMLTextAreaElement
+)[] = [
   ...operationButtons,
+  ...fileInputs,
+  seedDocumentButton,
   operationRuns,
+  scenarioSelect,
+  workspaceModeSelect,
+  validationScopeSelect,
+  providerFailureSelect,
+  relevantPath,
+  relevantCoordinates,
+  documentInput,
 ];
 
 let preparedState: PreparedState | undefined;
@@ -196,9 +248,23 @@ let uploadedWorkspace: UploadedWorkspace | undefined;
 let uploadRevision = 0;
 let bundledManifest: ShowcaseManifest | undefined;
 let bundledDelivery: BundledWorkspaceDelivery | undefined;
+let documentOrigin: DocumentOrigin = "scenario";
+let documentShapeKey: string | undefined;
+let retainedComputation: RetainedComputation | undefined;
 
 const currentScenario = (): Scenario =>
   scenarios[scenarioSelect.value as ScenarioId];
+
+const invalidateRetainedComputation = (): void => {
+  retainedComputation = undefined;
+  applyComputationsButton.disabled = true;
+};
+
+const invalidatePreparedState = (): void => {
+  invalidateRetainedComputation();
+  preparedState = undefined;
+  modelJson.textContent = "Prepare a workspace to inspect its DocumentModel.";
+};
 
 const fetchText = async (path: string): Promise<string> => {
   const response = await fetch(`${import.meta.env.BASE_URL}${path}`, {
@@ -219,6 +285,17 @@ const modelIdOf = (json: string): string => {
   return parsed.header.id;
 };
 
+const seedDocumentInput = (state: PreparedState): unknown => {
+  invalidateRetainedComputation();
+  const document = state.model.documents.encodeDocument(
+    state.model.documents.seedDocument(),
+  );
+  documentInput.value = JSON.stringify(document, null, 2);
+  documentOrigin = "seed";
+  documentShapeKey = state.shapeKey;
+  return document;
+};
+
 const prepareWorkspace = async (): Promise<PreparedState> => {
   const scenario = currentScenario();
   const mode = workspaceModeSelect.value as WorkspaceMode;
@@ -229,6 +306,7 @@ const prepareWorkspace = async (): Promise<PreparedState> => {
   const selectedEntryModelId = uploadedWorkspace === undefined
     ? scenario.entryModelId
     : entryModelSelect.value;
+  const shapeKey = `${workspaceIdentity}:${selectedEntryModelId}`;
   const key = `${mode}:${workspaceIdentity}:${selectedEntryModelId}:${failure}`;
   if (preparedState?.key === key) {
     return preparedState;
@@ -269,14 +347,23 @@ const prepareWorkspace = async (): Promise<PreparedState> => {
         return source;
       },
     }, collectionOptions);
+  const expandedModelJson = workspace.expand(selectedEntryModelId);
   const model = workspace.prepare(selectedEntryModelId);
   preparedState = {
     key,
+    shapeKey,
+    expandedModelJson,
     model,
     interpreter: model.createInterpreter(),
     requests,
   };
   renderSummary(selectedEntryModelId, preparedState);
+  if (
+    (documentOrigin === "scenario" || documentOrigin === "seed") &&
+    documentShapeKey !== shapeKey
+  ) {
+    seedDocumentInput(preparedState);
+  }
   status.dataset.state = "passed";
   status.textContent = "Workspace prepared. The model and interpreter are reusable.";
   return preparedState;
@@ -295,6 +382,11 @@ const renderSummary = (
   summary.dataset.fingerprint = state.model.fingerprint;
   summary.dataset.requestCount = state.requests.length.toString();
   summary.dataset.manifestRevision = bundledDelivery?.revision;
+  modelJson.textContent = JSON.stringify(
+    JSON.parse(state.expandedModelJson) as unknown,
+    null,
+    2,
+  );
   manifestRevision.textContent = uploadedWorkspace === undefined
     ? bundledDelivery?.revision ?? "—"
     : "local files";
@@ -309,8 +401,9 @@ const summarizeResult = (
   label: string,
   count: number,
   noun: string,
+  nonzeroTone: "success" | "attention" = "attention",
 ): void => {
-  resultSummary.dataset.tone = count === 0 ? "success" : "attention";
+  resultSummary.dataset.tone = count === 0 ? "success" : nonzeroTone;
   resultSummary.textContent = `${label}: ${count} ${noun}${
     count === 1 ? "" : "s"
   }. Complete structured output follows.`;
@@ -368,7 +461,11 @@ const renderOperationTiming = (
   const milliseconds = metric === "elapsed"
     ? samplesMillis[0]!
     : p95Of(samplesMillis);
-  const label = operation === "validation" ? "Validation" : "Computation";
+  const label = operation === "validation"
+    ? "Validation"
+    : operation === "computation"
+    ? "Computation"
+    : "Compute → Apply → Validate";
   const runs = samplesMillis.length === 1
     ? "one run"
     : `${samplesMillis.length} runs`;
@@ -415,6 +512,7 @@ const withOperation = async (
     operationControls.forEach((control) => {
       control.disabled = false;
     });
+    applyComputationsButton.disabled = retainedComputation === undefined;
   }
 };
 
@@ -432,6 +530,47 @@ const snapshot = async (): Promise<{
   };
 };
 
+const selectedValidation = (state: PreparedState): ValidationOperation => {
+  if (validationScopeSelect.value === "full") {
+    return {
+      scope: "full",
+      run: (document) => state.interpreter.validateFull(document),
+    };
+  }
+  const relevant = [
+    state.model.model.relevantPointer(
+      relevantPath.value,
+      selectedRelevantCoordinates(),
+    ),
+  ];
+  return {
+    scope: "relevant",
+    run: (document) => state.interpreter.validatePart(document, relevant),
+  };
+};
+
+const computationResultsOutput = (
+  entries: ComputationReport["results"],
+) =>
+  entries.map((entry) => ({
+    pointer: {
+      path: entry.pointer.path,
+      coordinates: entry.pointer.coordinates,
+    },
+    outcome: entry.outcome,
+    value: entry.value,
+    diagnostic: entry.diagnostic,
+  }));
+
+const computationOutput = (report: ComputationReport) => ({
+  results: computationResultsOutput(report.results),
+  actions: computationResultsOutput(report.actions),
+  formalErrorsInOperands: report.formalErrorsInOperands,
+  noErrorOccurred: report.noErrorOccurred,
+  unsupported: report.unsupported,
+  fullySupported: report.fullySupported,
+});
+
 const selectScenario = async (): Promise<void> => {
   const scenario = currentScenario();
   uploadedWorkspace = undefined;
@@ -443,10 +582,12 @@ const selectScenario = async (): Promise<void> => {
     null,
     2,
   );
+  documentOrigin = "scenario";
+  documentShapeKey = `${scenario.workspace}:${scenario.entryModelId}`;
   scenarioNote.textContent = scenario.note;
   relevantPath.value = scenario.relevantPath;
   relevantCoordinates.value = JSON.stringify(scenario.relevantCoordinates);
-  preparedState = undefined;
+  invalidatePreparedState();
   entryModel.textContent = scenario.entryModelId;
   dependencyCount.textContent = "—";
   providerRequests.textContent = "—";
@@ -480,7 +621,7 @@ const loadWorkspaceFiles = async (files: FileList): Promise<void> => {
   const admitted = ModelWorkspace.fromSources(sources);
   uploadRevision += 1;
   uploadedWorkspace = {sources, revision: uploadRevision};
-  preparedState = undefined;
+  invalidatePreparedState();
   entryModelSelect.replaceChildren(
     ...admitted.modelIds.map((modelId) => new Option(modelId, modelId)),
   );
@@ -494,7 +635,10 @@ const loadWorkspaceFiles = async (files: FileList): Promise<void> => {
 
 const loadDocumentFile = async (file: File): Promise<void> => {
   const parsed: unknown = JSON.parse(await file.text());
+  invalidateRetainedComputation();
   documentInput.value = JSON.stringify(parsed, null, 2);
+  documentOrigin = "file";
+  documentShapeKey = undefined;
   status.dataset.state = "passed";
   status.textContent = "Document loaded locally and remains editable.";
 };
@@ -594,6 +738,10 @@ const enableOfflineUse = async (): Promise<void> => {
 };
 
 export const startShowcase = async (): Promise<void> => {
+  documentInput.addEventListener("input", () => {
+    invalidateRetainedComputation();
+    documentOrigin = "edited";
+  });
   scenarioSelect.addEventListener("change", () => {
     void withOperation(selectScenario);
   });
@@ -601,19 +749,32 @@ export const startShowcase = async (): Promise<void> => {
     relevantSelection.hidden = validationScopeSelect.value !== "relevant";
   });
   workspaceModeSelect.addEventListener("change", () => {
-    preparedState = undefined;
+    invalidatePreparedState();
   });
   providerFailureSelect.addEventListener("change", () => {
     if (providerFailureSelect.value !== "none") {
       workspaceModeSelect.value = "provider";
     }
-    preparedState = undefined;
+    invalidatePreparedState();
   });
   entryModelSelect.addEventListener("change", () => {
-    preparedState = undefined;
+    invalidatePreparedState();
   });
   enableOfflineButton.addEventListener("click", () => {
     void withOperation(enableOfflineUse);
+  });
+  seedDocumentButton.addEventListener("click", () => {
+    void withOperation(async () => {
+      const state = await prepareWorkspace();
+      const document = seedDocumentInput(state);
+      renderResult("seed-document", document);
+      resultSummary.dataset.tone = "success";
+      resultSummary.textContent =
+        "Created a model-shaped Document candidate with every declared field and group.";
+      delete resultSummary.dataset.count;
+      status.dataset.state = "passed";
+      status.textContent = "Model-shaped Document starter created.";
+    });
   });
   for (const selector of ["#workspace-folder-upload", "#workspace-upload"]) {
     requiredElement(selector, HTMLInputElement).addEventListener(
@@ -653,33 +814,37 @@ export const startShowcase = async (): Promise<void> => {
         state.model.dependencies.length.toString();
     }),
   );
+  requiredElement("#check-support", HTMLButtonElement).addEventListener(
+    "click",
+    () => void withOperation(async () => {
+      const state = await prepareWorkspace();
+      const report = state.interpreter.supportReport();
+      renderResult("support-report", report);
+      summarizeResult(
+        "Model support checked",
+        report.unsupported.length,
+        "unsupported program",
+        report.fullySupported ? "success" : "attention",
+      );
+      status.dataset.state = "passed";
+      status.textContent = report.fullySupported
+        ? "The prepared model is fully supported."
+        : "The prepared model contains unsupported programs.";
+    }),
+  );
   requiredElement("#validate", HTMLButtonElement).addEventListener(
     "click",
     () => void withOperation(async () => {
       const document = await snapshot();
       const runs = selectedOperationRuns();
-      const validationScope = validationScopeSelect.value;
-      const relevantPointers = validationScope === "full"
-        ? undefined
-        : [
-          document.state.model.model.relevantPointer(
-            relevantPath.value,
-            selectedRelevantCoordinates(),
-          ),
-        ];
-      const validate = () => relevantPointers === undefined
-        ? document.state.interpreter.validateFull(document.value)
-        : document.state.interpreter.validatePart(
-          document.value,
-          relevantPointers,
-        );
-      const timed = timeOperation(runs, validate);
+      const validation = selectedValidation(document.state);
+      const timed = timeOperation(runs, () => validation.run(document.value));
       const report = timed.value;
-      renderResult(`validate-${validationScope}`, report);
+      renderResult(`validate-${validation.scope}`, report);
       summarizeResult("Validation complete", report.findings.length, "finding");
       renderOperationTiming("validation", timed.samplesMillis);
       status.dataset.state = "passed";
-      status.textContent = validationScope === "full"
+      status.textContent = validation.scope === "full"
         ? "Full validation completed."
         : "Relevant validation completed.";
     }),
@@ -693,21 +858,105 @@ export const startShowcase = async (): Promise<void> => {
         () => document.state.interpreter.compute(document.value),
       );
       const report = timed.value;
-      renderResult("compute", {
-        ...report,
-        results: report.results.map((entry) => ({
-          pointer: {
-            path: entry.pointer.path,
-            coordinates: entry.pointer.coordinates,
-          },
-          outcome: entry.outcome,
-          value: entry.value,
-        })),
-      });
-      summarizeResult("Computation complete", report.results.length, "result");
+      retainedComputation = {
+        state: document.state,
+        sourceJson: documentInput.value,
+        report,
+      };
+      renderResult("compute", computationOutput(report));
+      summarizeResult(
+        "Computation complete",
+        report.results.length,
+        "result",
+        "success",
+      );
       renderOperationTiming("computation", timed.samplesMillis);
       status.dataset.state = "passed";
-      status.textContent = "Computation completed.";
+      status.textContent =
+        "Computation completed. Its retained actions can now be applied.";
+    }),
+  );
+  applyComputationsButton.addEventListener(
+    "click",
+    () => void withOperation(async () => {
+      const retained = retainedComputation;
+      if (retained === undefined) {
+        throw new Error("Compute the current Document before applying results.");
+      }
+      const document = await snapshot();
+      if (
+        retained.state !== document.state ||
+        retained.sourceJson !== documentInput.value
+      ) {
+        invalidateRetainedComputation();
+        throw new Error(
+          "The model or Document changed after computation; compute it again before applying.",
+        );
+      }
+      const applied = retained.report.applyTo(document.value);
+      const encoded = document.state.model.documents.encodeDocument(applied);
+      documentInput.value = JSON.stringify(encoded, null, 2);
+      documentOrigin = "edited";
+      documentShapeKey = document.state.shapeKey;
+      const appliedActions = retained.report.actions.length;
+      invalidateRetainedComputation();
+      renderResult("apply-computations", {
+        document: encoded,
+        appliedActions,
+      });
+      summarizeResult(
+        "Computation applied",
+        appliedActions,
+        "action",
+        "success",
+      );
+      status.dataset.state = "passed";
+      status.textContent =
+        "Retained computation actions were applied to the editable Document.";
+    }),
+  );
+  requiredElement(
+    "#compute-apply-validate",
+    HTMLButtonElement,
+  ).addEventListener(
+    "click",
+    () => void withOperation(async () => {
+      const document = await snapshot();
+      const validation = selectedValidation(document.state);
+      const timed = timeOperation(selectedOperationRuns(), () => {
+        const computation = document.state.interpreter.compute(document.value);
+        const applied = computation.applyTo(document.value);
+        return {
+          computation,
+          applied,
+          validation: validation.run(applied),
+        };
+      });
+      const encoded = document.state.model.documents.encodeDocument(
+        timed.value.applied,
+      );
+      documentInput.value = JSON.stringify(encoded, null, 2);
+      documentOrigin = "edited";
+      documentShapeKey = document.state.shapeKey;
+      invalidateRetainedComputation();
+      renderResult(`compute-apply-validate-${validation.scope}`, {
+        document: encoded,
+        computation: {
+          ...computationOutput(timed.value.computation),
+          appliedActions: timed.value.computation.actions.length,
+        },
+        validation: timed.value.validation,
+      });
+      summarizeResult(
+        "Computed, applied, and validated",
+        timed.value.validation.findings.length,
+        "finding",
+      );
+      renderOperationTiming("form-flow", timed.samplesMillis);
+      status.dataset.state = "passed";
+      status.textContent = validation.scope === "full"
+        ? "Computations applied and full validation completed."
+        : "Computations applied and relevant validation completed.";
     }),
   );
 

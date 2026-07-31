@@ -34,10 +34,11 @@ class PublicInterpreterApiTest {
         assertEquals(listOf("AREA_NEEDS_NOTE"), validation.findings.map(ValidationFinding::code))
         assertFalse(validation.noErrorOccurred)
         assertTrue(validation.fullySupported)
-        assertEquals(1, computation.results.size)
-        assertEquals("/Permit/ReviewedArea", computation.results.single().pointer.path)
-        assertEquals(ComputationOutcome.VALUE, computation.results.single().outcome)
-        assertEquals("120", computation.results.single().value)
+        val resultsByPath = computation.results.associateBy { it.pointer.path }
+        assertEquals(setOf("/Permit/ReviewedArea", "/Permit/EstimatedFee"), resultsByPath.keys)
+        assertEquals(ComputationOutcome.VALUE, resultsByPath.getValue("/Permit/ReviewedArea").outcome)
+        assertEquals("120", resultsByPath.getValue("/Permit/ReviewedArea").value)
+        assertEquals(ComputationOutcome.CLEARED, resultsByPath.getValue("/Permit/EstimatedFee").outcome)
         assertTrue(computation.fullySupported)
     }
 
@@ -92,11 +93,16 @@ class PublicInterpreterApiTest {
             ),
         )
 
-        assertTrue(same.results.single().outcome == ComputationOutcome.VALUE)
+        assertTrue(
+            same.results.single { it.pointer.path == "/Permit/ReviewedArea" }.outcome ==
+                ComputationOutcome.VALUE,
+        )
         assertTrue(same.actions.isEmpty(), "BigDecimal(100) equals the computed BigDecimal(100)")
         assertEquals(
             listOf(ComputationOutcome.VALUE),
-            negativeScale.actions.map(ComputationResult::outcome),
+            negativeScale.actions
+                .filter { it.pointer.path == "/Permit/ReviewedArea" }
+                .map(ComputationResult::outcome),
             "BigDecimal(1e2) has scale -2 and is not object-equal to computed BigDecimal(100) scale 0",
         )
     }

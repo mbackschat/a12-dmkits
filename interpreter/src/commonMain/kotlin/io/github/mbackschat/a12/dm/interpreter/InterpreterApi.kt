@@ -386,6 +386,8 @@ data class ComputationResult(
     val pointer: FieldPointer,
     val outcome: ComputationOutcome,
     val value: String?,
+    /** Target-owned formal diagnostic; present exactly when [outcome] is [ComputationOutcome.ERRORED]. */
+    val diagnostic: ValidationFinding? = null,
 )
 
 /**
@@ -400,13 +402,17 @@ data class ComputationResult(
 class ComputationReport private constructor(
     results: List<ComputationResult>,
     actions: List<ComputationResult>,
+    formalErrorsInOperands: List<ValidationFinding>,
     unsupported: List<UnsupportedProgram>,
     override val owner: ModelOwnerIdentity,
     override val modelVersion: ModelVersionIdentity,
 ) : ModelOwned {
     val results: List<ComputationResult> = immutableListSnapshot(results)
     val actions: List<ComputationResult> = immutableListSnapshot(actions)
+    val formalErrorsInOperands: List<ValidationFinding> = immutableListSnapshot(formalErrorsInOperands)
     val unsupported: List<UnsupportedProgram> = immutableListSnapshot(unsupported)
+    val noErrorOccurred: Boolean
+        get() = results.none { it.outcome == ComputationOutcome.ERRORED } && formalErrorsInOperands.isEmpty()
     val fullySupported: Boolean get() = unsupported.isEmpty()
 
     /**
@@ -447,10 +453,12 @@ class ComputationReport private constructor(
         internal fun create(
             results: List<ComputationResult>,
             actions: List<ComputationResult>,
+            formalErrorsInOperands: List<ValidationFinding>,
             unsupported: List<UnsupportedProgram>,
             owner: ModelOwnerIdentity,
             modelVersion: ModelVersionIdentity,
-        ): ComputationReport = ComputationReport(results, actions, unsupported, owner, modelVersion)
+        ): ComputationReport =
+            ComputationReport(results, actions, formalErrorsInOperands, unsupported, owner, modelVersion)
     }
 }
 
@@ -805,6 +813,8 @@ class Interpreter private constructor(
                             EngineComputeOutcome.ERRORED -> ComputationOutcome.ERRORED
                         },
                         value = computed.value,
+                        diagnostic = retained.computedErrors[computed.path to computed.indices]
+                            ?.let(::validationFinding),
                     )
                 }
                 val byCell = results.associateBy { it.pointer.path to it.pointer.coordinates }
@@ -816,7 +826,10 @@ class Interpreter private constructor(
                 ComputationReport.create(
                     results = results,
                     actions = actions,
-                    unsupported = emptyList(),
+                    formalErrorsInOperands = retained.formalErrorsInOperands.map(::validationFinding),
+                    unsupported = retained.unsupported.map {
+                        UnsupportedProgram(it.rulePath, it.reason)
+                    },
                     owner = owner,
                     modelVersion = modelVersion,
                 )
@@ -824,6 +837,7 @@ class Interpreter private constructor(
                 ComputationReport.create(
                     results = emptyList(),
                     actions = emptyList(),
+                    formalErrorsInOperands = emptyList(),
                     unsupported = listOf(UnsupportedProgram("<compute>", error.message.orEmpty())),
                     owner = owner,
                     modelVersion = modelVersion,

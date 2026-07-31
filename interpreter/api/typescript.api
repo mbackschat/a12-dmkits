@@ -27,7 +27,9 @@ export type ComputationOutcome = "value" | "cleared" | "errored";
 export interface ComputationReport {
     readonly results: readonly ComputationResult[];
     readonly actions: readonly ComputationResult[];
+    readonly formalErrorsInOperands: readonly ValidationFinding[];
     readonly unsupported: readonly UnsupportedProgram[];
+    readonly noErrorOccurred: boolean;
     readonly fullySupported: boolean;
     applyTo(destination: DocumentSnapshot): DocumentSnapshot;
 }
@@ -37,6 +39,7 @@ export interface ComputationResult {
     readonly pointer: FieldPointer;
     readonly outcome: ComputationOutcome;
     readonly value?: string;
+    readonly diagnostic?: ValidationFinding;
 }
 
 ## ComputeOptions
@@ -324,6 +327,7 @@ export declare class ModelWorkspace {
 ## PreparedDocumentApi
 export declare class PreparedDocumentApi {
     private readonly core;
+    seedDocument(): DocumentSnapshot;
     isSnapshot(value: unknown): value is DocumentSnapshot;
     readDocument(document: A12Document | string, options?: DocumentDecodeOptions): DocumentSnapshot;
     tryReadDocument(document: A12Document | string, options?: DocumentDecodeOptions): A12Result<DocumentSnapshot, DocumentInputError>;

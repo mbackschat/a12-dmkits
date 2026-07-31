@@ -1,6 +1,18 @@
 {
   "Permit": {
-    "ApplicationNo": "P-42",
-    "RequestedArea": "not-a-number"
+    "ApplicationNo": "P-2026-0044",
+    "ApplicantName": "Samira Cole",
+    "PermitType": "RESIDENTIAL",
+    "SubmittedOn": "2026-07-17",
+    "RequestedArea": "not-a-number",
+    "UnitFee": 2.25,
+    "ReviewedArea": null,
+    "EstimatedFee": null,
+    "Note": "Applicant will correct the requested area.",
+    "Rate": 1,
+    "PatternProbe": "permit",
+    "GraphemeProbe": null,
+    "ReportedAt": "2026-07-17T09:00:00",
+    "SettledAt": "2026-07-17T12:00:00"
   }
 }

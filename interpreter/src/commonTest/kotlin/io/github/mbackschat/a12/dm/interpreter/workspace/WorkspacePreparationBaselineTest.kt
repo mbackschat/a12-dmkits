@@ -23,8 +23,13 @@ class WorkspacePreparationBaselineTest {
         assertEquals(
             setOf(
                 "/Permit/ApplicationNo",
+                "/Permit/ApplicantName",
+                "/Permit/PermitType",
+                "/Permit/SubmittedOn",
                 "/Permit/RequestedArea",
+                "/Permit/UnitFee",
                 "/Permit/ReviewedArea",
+                "/Permit/EstimatedFee",
                 "/Permit/Note",
                 "/Permit/Rate",
                 "/Permit/PatternProbe",
@@ -46,7 +51,10 @@ class WorkspacePreparationBaselineTest {
             model.rules.map { it.path }.toSet(),
         )
         assertEquals(
-            mapOf("/Permit/CopyRequestedArea" to "/Permit/ReviewedArea"),
+            mapOf(
+                "/Permit/CopyRequestedArea" to "/Permit/ReviewedArea",
+                "/Permit/CalculateEstimatedFee" to "/Permit/EstimatedFee",
+            ),
             model.computations.associate {
                 "${it.group}/${requireNotNull(it.name)}" to it.targetPath
             },
@@ -58,12 +66,14 @@ class WorkspacePreparationBaselineTest {
         val interpreter = DmInterpreter(model)
 
         assertEquals(listOf("AREA_NEEDS_NOTE"), interpreter.validateFull(document).map { it.code })
-        val computed = interpreter.compute(document).single()
-        assertEquals("/Permit/ReviewedArea", computed.path)
-        assertEquals(ComputeOutcome.VALUE, computed.outcome)
-        assertEquals("150", computed.value)
+        val computed = interpreter.compute(document).associateBy { it.path }
+        assertEquals(ComputeOutcome.VALUE, computed.getValue("/Permit/ReviewedArea").outcome)
+        assertEquals("150", computed.getValue("/Permit/ReviewedArea").value)
+        assertEquals(ComputeOutcome.CLEARED, computed.getValue("/Permit/EstimatedFee").outcome)
 
         val hostBoundary = model.newDocument()
+            .field("/Permit/ApplicationNo", "P-HOST", 1, 1)
+            .field("/Permit/RequestedArea", "80", 1, 1)
             .field("/Permit/Rate", "0.30", 1, 1)
             .field("/Permit/PatternProbe", "12 34", 1, 1)
             .field("/Permit/GraphemeProbe", "e\u0301", 1, 1)

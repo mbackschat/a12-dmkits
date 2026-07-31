@@ -253,6 +253,9 @@ class InterpreterBridgeModelDependency internal constructor(
 class InterpreterBridgeDocuments internal constructor(
     private val prepared: CorePreparedModel,
 ) {
+    fun seedDocument(): InterpreterBridgeDocumentSnapshot =
+        InterpreterBridgeDocumentSnapshot(prepared.documents.seedDocument())
+
     fun readDocument(
         json: String,
         limitsJson: String?,
@@ -404,6 +407,7 @@ class InterpreterBridgeComputedField internal constructor(
     val pointer: InterpreterBridgePointer,
     val outcome: String,
     val value: String?,
+    val diagnostic: InterpreterBridgeValidationFinding?,
 )
 
 @JsExport
@@ -412,9 +416,12 @@ class InterpreterBridgeComputationReport internal constructor(
 ) {
     val results: Array<InterpreterBridgeComputedField> = core.results.map(::computedField).toTypedArray()
     val actions: Array<InterpreterBridgeComputedField> = core.actions.map(::computedField).toTypedArray()
+    val formalErrorsInOperands: Array<InterpreterBridgeValidationFinding> =
+        core.formalErrorsInOperands.map(::validationFinding).toTypedArray()
     val unsupported: Array<InterpreterBridgeUnsupportedProgram> = core.unsupported.map { unsupported ->
         InterpreterBridgeUnsupportedProgram(unsupported.path, unsupported.reason)
     }.toTypedArray()
+    val noErrorOccurred: Boolean = core.noErrorOccurred
     val fullySupported: Boolean = core.fullySupported
 
     fun applyTo(destination: InterpreterBridgeDocumentSnapshot): InterpreterBridgeDocumentResult =
@@ -437,6 +444,7 @@ class InterpreterBridgeComputationReport internal constructor(
                 pointer = InterpreterBridgePointer(result.pointer),
                 outcome = result.outcome.wireName(),
                 value = result.value,
+                diagnostic = result.diagnostic?.let(::validationFinding),
             )
     }
 }

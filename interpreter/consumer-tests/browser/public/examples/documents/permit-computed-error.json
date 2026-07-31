@@ -1,0 +1,18 @@
+{
+  "Permit": {
+    "ApplicationNo": "P-2026-0046",
+    "ApplicantName": "Noah Fischer",
+    "PermitType": "COMMERCIAL",
+    "SubmittedOn": "2026-07-19",
+    "RequestedArea": 1000,
+    "UnitFee": 9999999999999.99,
+    "ReviewedArea": null,
+    "EstimatedFee": null,
+    "Note": "The operands are valid; the computed fee exceeds the target format.",
+    "Rate": 1,
+    "PatternProbe": "permit",
+    "GraphemeProbe": null,
+    "ReportedAt": "2026-07-19T09:00:00",
+    "SettledAt": "2026-07-19T12:00:00"
+  }
+}

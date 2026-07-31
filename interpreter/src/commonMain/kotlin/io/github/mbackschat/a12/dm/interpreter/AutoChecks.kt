@@ -1,6 +1,7 @@
 package io.github.mbackschat.a12.dm.interpreter
 
 import io.github.mbackschat.a12.dm.interpreter.eval.CUSTOM_TYPE_INVALID
+import io.github.mbackschat.a12.dm.interpreter.eval.COMPUTED_VALUE_ERROR
 import io.github.mbackschat.a12.dm.interpreter.eval.Document
 import io.github.mbackschat.a12.dm.interpreter.eval.EvalContext
 import io.github.mbackschat.a12.dm.interpreter.eval.FORMAL_RULE_PATH
@@ -11,6 +12,7 @@ import io.github.mbackschat.a12.dm.interpreter.eval.OVER_REPETITION_FIXED
 import io.github.mbackschat.a12.dm.interpreter.eval.OVER_REPETITION_ROW
 import io.github.mbackschat.a12.dm.interpreter.eval.UNIQUE_INDEX
 import io.github.mbackschat.a12.dm.interpreter.eval.customTypeInvalidText
+import io.github.mbackschat.a12.dm.interpreter.eval.computedValueErrorText
 import io.github.mbackschat.a12.dm.interpreter.eval.fixedRepetitionText
 import io.github.mbackschat.a12.dm.interpreter.eval.formalErrorCached
 import io.github.mbackschat.a12.dm.interpreter.eval.formalErrorText
@@ -19,6 +21,7 @@ import io.github.mbackschat.a12.dm.interpreter.eval.overRepetitionText
 import io.github.mbackschat.a12.dm.interpreter.eval.renderPatternFieldMessage
 import io.github.mbackschat.a12.dm.interpreter.eval.renderRequiredFieldMessage
 import io.github.mbackschat.a12.dm.interpreter.eval.uniqueIndexText
+import io.github.mbackschat.a12.dm.interpreter.eval.typeFormatErrorCached
 import io.github.mbackschat.a12.dm.interpreter.model.CustomFieldType
 import io.github.mbackschat.a12.dm.interpreter.model.CustomFieldValidationContext
 import io.github.mbackschat.a12.dm.interpreter.model.CustomTypeRejection
@@ -230,6 +233,53 @@ internal class AutoChecks(
             Message(UNIQUE_INDEX, uniqueRulePath(path), doc.formattedPointer(path, reps), Severity.ERROR, MsgType.VALUE,
                 uniqueIndexText(locale))
         }
+
+    /**
+     * The target-owned diagnostic for an attempted computed value. This is the computation twin of
+     * [formalErrors]: it deliberately runs only the BASIC target-format checks, because the Kernel does not
+     * apply input-only charset/edge-blank checks to computed text. [genericWhenValid] covers the numeric
+     * no-fit arm, which is errored even when its bounded attempted text has no more specific format error.
+     */
+    fun computedError(
+        doc: Document,
+        path: String,
+        reps: List<Int>,
+        raw: String,
+        locale: String,
+        genericWhenValid: Boolean = false,
+    ): Message? {
+        val error = model.kinds[path]?.let { kind ->
+            typeFormatErrorCached(
+                kind, raw, model.scaleOf(path), model.dateLikeFormatOf(path), model.datePrecisionOf(path),
+                model.rangeSeparatorOf(path), model.constraintsOf(path), model.baseYear ?: 2000, model.timeZone,
+                patterns::matches,
+            )
+        }
+        if (error == null && !genericWhenValid) return null
+        val pointer = doc.formattedPointer(path, reps)
+        return Message(
+            code = error?.id ?: COMPUTED_VALUE_ERROR,
+            rulePath = FORMAL_RULE_PATH,
+            errorPath = pointer,
+            severity = Severity.ERROR,
+            type = MsgType.VALUE,
+            text = error?.let { formatMessage(it, path, reps, raw, locale) }
+                ?: computedValueErrorText(locale, pointer),
+        )
+    }
+
+    /** Domain-failure diagnostic: a no-value computed target belongs to the formal-operand channel. */
+    fun computedDomainError(doc: Document, path: String, reps: List<Int>, locale: String): Message {
+        val pointer = doc.formattedPointer(path, reps)
+        return Message(
+            code = COMPUTED_VALUE_ERROR,
+            rulePath = FORMAL_RULE_PATH,
+            errorPath = pointer,
+            severity = Severity.ERROR,
+            type = MsgType.VALUE,
+            text = computedValueErrorText(locale, pointer),
+        )
+    }
 
     private fun mandatoryMessage(
         doc: Document,

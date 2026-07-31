@@ -340,8 +340,8 @@ class DmInterpreter @JvmOverloads constructor(
     /** One compute pass retaining the source-relative actions consumed by both application surfaces. */
     internal fun retainedComputations(doc: Document, locale: String = "en_US"): RetainedComputationRun =
         observeCaches(doc) {
-            val results = engine.computeInstances(doc, locale)
-            val applications = results.mapNotNull { computed ->
+            val run = engine.computeRun(doc, locale)
+            val applications = run.results.mapNotNull { computed ->
                 val retain = when (computed.outcome) {
                     ComputeOutcome.VALUE ->
                         !doc.computedValueEquals(
@@ -363,7 +363,13 @@ class DmInterpreter @JvmOverloads constructor(
                     null
                 }
             }
-            RetainedComputationRun(results, applications)
+            RetainedComputationRun(
+                results = run.results,
+                applications = applications,
+                formalErrorsInOperands = run.formalErrorsInOperands,
+                computedErrors = run.computedErrors,
+                unsupported = run.unsupported,
+            )
         }
 
     /**

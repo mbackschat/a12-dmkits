@@ -176,7 +176,21 @@ Every input defect A12 reports as an error-ranked notification is **fatal** here
 
 `encodeDocument` checks owner identity before writing. `isSnapshot` recognizes only authentic snapshots owned by that prepared model.
 
-### 4.4 The model-level codec pair — for a consumer that holds a `ModelDef`
+### 4.4 Model-shaped Document seeding
+
+`PreparedModel.documents.seedDocument()` creates an immutable owner-bound `DocumentSnapshot` from the prepared model itself. It is the public-library authoring preset over the existing kernel-free `SeedGenerator`, not a second document shape or a showcase-specific mapper:
+
+- deterministic seed `0`;
+- every declared group, including a non-repeatable fieldless container;
+- every declared field, using a constraint-aware local value for an editable source field when one can be generated and a present-empty `null` otherwise;
+- every computation-owned target as present-empty `null`, because the engine—not the authoring preset—owns its value;
+- one row under each repeatable group occurrence.
+
+This guarantees a complete **model-shaped candidate**, not a valid business Document. Local generation respects kinds, formats, ranges, lengths, patterns, and the universal Number total-digit gate where possible, but cannot satisfy or refute arbitrary whole-model rules. Encoding the snapshot uses the same canonical A12 Document JSON writer as every other snapshot.
+
+The same generator powers `dmtool model seed`, whose `--seed`, `--rows`, and `--rows-default` options expose the parameterized CLI form. A model performance `profile` is a separate concept: it describes or synthesizes an identifier-free model workload and never creates a Document instance.
+
+### 4.5 The model-level codec pair — for a consumer that holds a `ModelDef`
 
 `PreparedModel.documents` is the **blessed** boundary: owner-bound, snapshot-returning, and the carrier of the root `id`. Beneath it, two functions expose the same codec one level down, at the level of the already public `ModelDef.newDocument()`:
 
@@ -189,7 +203,7 @@ Same shape, same value normalization, same ceilings, same diagnostics — it is 
 
 It exists for a consumer that already works in `ModelDef`/`Document` — `dmtool`'s runtime verbs and `model seed` do — so that consumer is not tempted to write its own reader or writer for a shape A12 defines. Adding it removed three such duplicates (dmtool's instance walker and its seed sink, plus a near-identical sink in the adapter's performance-fixture guard). Locked by `interpreter … DocumentJsonCodecTest`; the CLI end of it by `cli … DocumentInstanceIngressTest`.
 
-### 4.5 Result types match A12's, and where they don't there is no A12 counterpart
+### 4.6 Validation result vocabulary matches A12's
 
 Audited 2026-07-28 against the kernel's runtime API. `ValidationSeverity{ERROR, WARNING, INFO}` is `IMessage.Severity{ERROR, WARNING, INFO}` — the same three names, so a consumer reading either sees one vocabulary. `ValidationFindingType{VALUE, OMISSION}` maps 1:1 onto `IMessage.MessageType{VALUE_ERROR, OMISSION_ERROR}`; the `_ERROR` suffix is dropped deliberately, because severity is an independent axis and `VALUE_ERROR` reads wrong on a `WARNING`-severity finding. The **TypeScript** `"error" | "warning" | "info"` union has no A12 counterpart at all — the kernel ships no TypeScript severity type — so its idiomatic lowercase casing is an own-surface choice, not a divergence.
 
@@ -204,12 +218,29 @@ The v1 API provides:
 - `supportReport()` for configuration-aware model support without evaluating a document;
 - `validateFull(snapshot, options?)`;
 - `validatePart(snapshot, relevant, options?)`;
-- `compute(snapshot, options?)`, whose retained `ComputationReport` exposes report-all `results`, source-relative `actions`, and `applyTo(destination)`;
+- `compute(snapshot, options?)`, whose retained `ComputationReport` exposes report-all `results`, source-relative `actions`, formal operand diagnostics, target diagnostics, status, and `applyTo(destination)`;
 - `applyComputations(snapshot, options?)`, the exact same-document convenience for `compute(snapshot).applyTo(snapshot)`.
+
+### 5.1 Kernel API correspondence and deliberate differences
+
+Audited 2026-07-31 against Kernel 30.8.1's Java `IDocumentRtService`/`IDocumentComputationResult` and TypeScript `DocumentRtService`/`DocumentComputationResult`:
+
+| Kernel 30.8.1 | Native interpreter API | Disposition |
+|---|---|---|
+| `validateFull`, `validatePart`, `compute` | same three semantic jobs | Matched intentionally. Validation and computation remain separate calls. |
+| Java result `applyTo(DocumentV2)`; TypeScript result `appliedTo(Document)` | `ComputationReport.applyTo(DocumentSnapshot)` | Same immutable result-application semantics. `applyTo` keeps Kotlin/Java/TypeScript façade symmetry and matches the current Java Kernel name; the deferred TypeScript drop-in adapter [IAG1](INTERPRETER-API-GAPS.md#iag1) must expose `appliedTo`. |
+| caller must supply a compatible destination model | destination must have the same `PreparedModel` owner | Deliberately stronger library safety. `ModelOwnerMismatchError` prevents applying unvalidated addresses to an incompatible model; it is not presented as a Kernel rejection. |
+| result retains its source `Document` | report retains detached results/actions, not the source snapshot | Deliberate immutability and retention boundary. Application classification is fixed against the source, but the source Document need not remain alive. |
+| successful, changed, errored, cleared, and formal-operand-error buckets | report-all `results`, source-relative `actions`, and `formalErrorsInOperands` | Deliberate projection for three questions: “what did every field compute?”, “what exact delta is applicable?”, and “which selected inputs were already invalid?”. `actions` is Kernel's changed VALUE + source-classified CLEARED + ERRORED application set. |
+| `noErrorOccurred` and each errored computed instance's message | `noErrorOccurred` and `ComputationResult.diagnostic` | Matched intentionally. The target diagnostic reuses validation's detached `ValidationFinding` shape and is present exactly for an ERRORED result. |
+| no combined form-engine call | `applyComputations(snapshot)` plus ordinary method composition | `applyComputations` is a convenience exactly equal to `compute(snapshot).applyTo(snapshot)`. Compute → apply → validate remains explicit composition, preserving the Kernel's operation boundary. |
+| generated-code service/factory lifecycle | raw/expanded DM-JSON → `PreparedModel` → `Interpreter` | Deliberate clean-room boundary. The MIT core cannot execute or translate Kernel-generated evaluator code; source-compatible adapters are separate deferred products ([IAG1](INTERPRETER-API-GAPS.md#iag1), [IAG2](INTERPRETER-API-GAPS.md#iag2)). |
 
 Validation returns detached `ValidationFinding` records with code, rule path, error path, severity, value/omission type, rendered text, referenced paths, and fill-to-fix paths. `noErrorOccurred` depends on error severity, while `fullySupported` is independent and is false whenever an admitted program could not be evaluated.
 
-Computation returns retained field-pointer outcomes of `"value"`, `"cleared"`, or `"errored"` plus the same explicit unsupported axis. `results` contains every computed cell; `actions` is the fixed application subset classified against the source. Applying that result to another immutable snapshot never recomputes against the destination. Both snapshots must share the same prepared-model owner or application fails with `ModelOwnerMismatchError`; unsupported computation applies atomically as a no-op. The public convenience methods never silently discard unsupported programs.
+Computation returns retained field-pointer outcomes of `"value"`, `"cleared"`, or `"errored"` plus explanatory and support channels. `results` contains every computed cell, and an ERRORED result carries its target-owned formal `diagnostic`. `formalErrorsInOperands` carries eager diagnostics for selected ordinary, index, and domain-failing operands even when unrelated computations continue. Both diagnostic channels use the same detached `ValidationFinding` projection as validation. `noErrorOccurred` is true exactly when no result is ERRORED and `formalErrorsInOperands` is empty; `fullySupported` remains independent.
+
+`actions` is the fixed application subset classified against the source. Applying that result to another immutable snapshot never recomputes against the destination. Both snapshots must share the same prepared-model owner or application fails with `ModelOwnerMismatchError`; unsupported computation applies atomically as a no-op. The public convenience methods never silently discard unsupported programs.
 
 Partial validation preserves the Kernel-grounded relevance contract:
 

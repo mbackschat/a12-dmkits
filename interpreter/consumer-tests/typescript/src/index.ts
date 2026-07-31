@@ -31,7 +31,9 @@ const sourcesById = new Map<string, WorkspaceModelSource>([
 
 const guideResult = runInterpreter(model("permit-basic"));
 if (guideResult.full.findings.map(({code}) => code).join(",") !== "AREA_NEEDS_NOTE" ||
-    guideResult.computation.results[0]?.value !== "120" ||
+    guideResult.computation.results.find(({pointer}) =>
+      pointer.path === "/Permit/ReviewedArea"
+    )?.value !== "120" ||
     !guideResult.partial.fullySupported) {
   throw new Error("finite-workspace guide example returned an unexpected result");
 }
@@ -76,6 +78,39 @@ if (requested.includes("permit-basic") || new Set(requested).size !== requested.
 const prepared = PreparedModel.loadExpandedJson(
   finiteWorkspace.expand("permit-basic"),
 );
+const seededDocument = prepared.documents.encodeDocument(
+  prepared.documents.seedDocument(),
+);
+const seededPermit = seededDocument.Permit;
+const expectedSeededFields = [
+  "ApplicationNo",
+  "ApplicantName",
+  "PermitType",
+  "SubmittedOn",
+  "RequestedArea",
+  "UnitFee",
+  "ReviewedArea",
+  "EstimatedFee",
+  "Note",
+  "Rate",
+  "PatternProbe",
+  "GraphemeProbe",
+  "ReportedAt",
+  "SettledAt",
+].sort();
+if (
+  seededPermit === null ||
+  typeof seededPermit !== "object" ||
+  Array.isArray(seededPermit) ||
+  Object.keys(seededPermit).sort().join(",") !==
+    expectedSeededFields.join(",")
+) {
+  throw new Error(
+    `prepared Document seed omitted model fields: ${
+      JSON.stringify(seededDocument)
+    }`,
+  );
+}
 const input: A12Document = {
   Permit: {ApplicationNo: "P-1", RequestedArea: 125},
 };
@@ -93,11 +128,46 @@ if (validation.findings.length !== 1 ||
   throw new Error("validation did not return the expected authored finding");
 }
 const computation = interpreter.compute(snapshot, {locale: "en_US"});
-if (computation.results.length !== 1 ||
-    computation.actions.length !== 1 ||
-    computation.results[0]?.pointer.path !== "/Permit/ReviewedArea" ||
-    computation.results[0]?.value !== "125") {
+if (computation.results.length !== 2 ||
+    computation.results.find(({pointer}) =>
+      pointer.path === "/Permit/ReviewedArea"
+    )?.value !== "125" ||
+    !computation.noErrorOccurred ||
+    computation.formalErrorsInOperands.length !== 0 ||
+    computation.results.some(({diagnostic}) => diagnostic !== undefined)) {
   throw new Error("computation did not return the expected target value");
+}
+const invalidOperandComputation = interpreter.compute(
+  prepared.documents.readDocument({
+    Permit: {ApplicationNo: "P-1", RequestedArea: "not-a-number"},
+  }),
+);
+if (
+  invalidOperandComputation.noErrorOccurred ||
+  invalidOperandComputation.formalErrorsInOperands
+    .map(({code}) => code).join(",") !== "zahlHatUngueltigeZeichen"
+) {
+  throw new Error("computation did not expose its formal operand diagnostic");
+}
+const invalidTargetComputation = interpreter.compute(
+  prepared.documents.readDocument({
+    Permit: {
+      ApplicationNo: "P-1",
+      RequestedArea: 1000,
+      UnitFee: "9999999999999.99",
+    },
+  }),
+);
+const estimatedFeeError = invalidTargetComputation.results.find(
+  ({pointer}) => pointer.path === "/Permit/EstimatedFee",
+);
+if (
+  invalidTargetComputation.noErrorOccurred ||
+  invalidTargetComputation.formalErrorsInOperands.length !== 0 ||
+  estimatedFeeError?.outcome !== "errored" ||
+  estimatedFeeError.diagnostic?.code !== "stelligkeitZuLang"
+) {
+  throw new Error("computation did not attach its target-owned diagnostic");
 }
 const applied = computation.applyTo(prepared.documents.readDocument({Permit: {}}));
 if (prepared.documents.encodeDocumentJson(applied) !==

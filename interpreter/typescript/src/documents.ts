@@ -135,6 +135,16 @@ export class PreparedDocumentApi {
   /** @internal */
   constructor(private readonly core: InterpreterBridgeDocuments) {}
 
+  /**
+   * Create a deterministic, best-effort model-derived Document candidate. It carries every declared group and
+   * field and instantiates one row of every repeatable group. Local field formats and bounds guide editable
+   * source values; computation-owned targets remain present-empty for the engine to fill. Whole-model rule
+   * acceptance is not guaranteed.
+   */
+  seedDocument(): DocumentSnapshot {
+    return DocumentSnapshot.fromBridge(this.core.seedDocument());
+  }
+
   /** Test whether a value is a Document snapshot owned by this prepared model. */
   isSnapshot(value: unknown): value is DocumentSnapshot {
     return value instanceof DocumentSnapshot &&

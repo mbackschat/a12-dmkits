@@ -78,6 +78,7 @@
               <option value="firing">Permit that fires a rule</option>
               <option value="formal-invalid">Permit with an invalid number</option>
               <option value="computation">Permit computation input</option>
+              <option value="computed-error">Permit with a computed target error</option>
               <option value="include-typedef">Included model + typedef input</option>
             </select>
           </label>
@@ -123,9 +124,16 @@
         </div>
 
         <div class="actions" aria-label="Interpreter operations">
+          <p class="operation-help">
+            <strong>Validate checks the current Document as-is.</strong>
+            Each computation also contributes an implicit consistency rule, so a filled calculated field that differs from its computed value appears as a finding. Compute previews results; Apply results writes the retained actions into the editable Document; Compute → Apply → Validate runs the form-engine flow.
+          </p>
           <button id="validate" class="primary" type="button">Validate</button>
           <button id="compute" type="button">Compute</button>
+          <button id="apply-computations" type="button" disabled>Apply results</button>
+          <button id="compute-apply-validate" class="workflow" type="button">Compute → Apply → Validate</button>
           <button id="prepare" type="button">Prepare workspace</button>
+          <button id="check-support" type="button">Check model support</button>
           <label class="operation-runs-control">
             Runs
             <input
@@ -161,9 +169,10 @@
           <section class="editor-panel" aria-labelledby="document-title">
             <div class="panel-heading">
               <h3 id="document-title">Document</h3>
+              <button id="seed-document" class="document-seed" type="button">Use model-shaped starter</button>
             </div>
             <label class="editor-label" for="document-input">Document JSON</label>
-            <p class="editor-help">This editable JSON is the Document passed to Validate or Compute. Choosing a demo Document or loading a Document file replaces it.</p>
+            <p class="editor-help">This editable JSON is the Document passed to Validate or Compute. A model-shaped starter includes every declared field and group, with one row per repeatable group.</p>
             <textarea id="document-input" spellcheck="false"></textarea>
             <h4>Use your own files</h4>
             <p class="upload-intro">
@@ -216,6 +225,11 @@
           </section>
 
           <section class="result-panel" aria-labelledby="result-title">
+            <details id="model-inspector" class="model-inspector">
+              <summary>Prepared DocumentModel JSON</summary>
+              <p>This is the expanded A12 DocumentModel used by the operations below, including its rules, computations, and descriptions.</p>
+              <pre id="model-json" tabindex="0">Prepare a workspace to inspect its DocumentModel.</pre>
+            </details>
             <div class="panel-heading">
               <h3 id="result-title">Result</h3>
               <span>Selected files stay in this browser.</span>
@@ -268,7 +282,7 @@
           </li>
           <li>
             <h3>Use your own files</h3>
-            <p>Use Load workspace folder for a directory of related models, or Choose model files to select them individually. Then choose the entry model. Load Document replaces the editable JSON input.</p>
+            <p>Use Load workspace folder for a directory of related models, or Choose model files to select them individually. Then choose the entry model. Preparing a different model replaces stale demo input with a model-shaped starter; Use model-shaped starter regenerates it explicitly. Load Document replaces the editable JSON input.</p>
           </li>
           <li>
             <h3>Choose how the workspace is read</h3>
@@ -276,7 +290,7 @@
           </li>
           <li>
             <h3>Prepare, validate, or compute</h3>
-            <p>Prepare workspace resolves the selected model and shows its dependencies. Validate and Compute prepare automatically when the model selection has changed. Runs repeats validation or computation against the same prepared interpreter and Document; one run reports elapsed time and multiple runs report p95.</p>
+            <p>Prepare workspace resolves the selected model and shows its dependencies. Check model support reports admitted rules or computations that the configured interpreter cannot evaluate without reading the Document. Validate checks the current Document as-is; each computation has an implicit consistency rule, so a stale filled target appears as a validation finding. Compute retains a result without changing the Document, Apply results writes those exact actions into the editable Document, and Compute → Apply → Validate runs that form-engine sequence in one step. Runs repeats validation, computation, or the complete form flow against the same prepared interpreter and Document source; one run reports elapsed time and multiple runs report p95.</p>
           </li>
           <li>
             <h3>Choose the validation scope</h3>
