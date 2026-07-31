@@ -275,6 +275,27 @@ public abstract class BaseCommand implements Callable<Integer> {
     }
 
     /**
+     * The edit-gate twin of {@link #failOrRethrowDomainRejection}: fail with the gate's own message, but let an
+     * {@link UnresolvedReferenceException} escape to {@link Cli}'s seam, which owns its documented contract
+     * (a corrective {@code RK_UNRESOLVED_REFERENCE} rejection at exit 1 — CLI-SPEC §"exception seam").
+     *
+     * <p><b>Why a second helper rather than the one above.</b> An edit command must keep handling
+     * {@link ModelConsistencyException} <em>itself</em>, because the rejection of an edited candidate is the
+     * result it reports — so it cannot use a helper that rethrows that type. What it must not do is swallow a
+     * <em>different</em> rejection into an unstructured {@code fail}, which is what a bare
+     * {@code catch (RuntimeException e) -> fail(e.getMessage())} did at all 23 edit gates: a plain stderr line at
+     * exit 2 in place of the corrective envelope the same model gets on the read path. Before that, the wrap in
+     * {@code ModelDocument.validate} had hidden the whole class by relabelling our resolver's refusal as a
+     * consistency failure — which is why the two fixes only make sense together.
+     */
+    protected int failEditGate(RuntimeException failure) {
+        if (failure instanceof UnresolvedReferenceException) {
+            throw failure;
+        }
+        return fail(failure.getMessage());
+    }
+
+    /**
      * Build (don't print) the {@code rejected} envelope for a kernel consistency failure — its {@code MVK_*}
      * notifications as enriched {@link Diagnostic}s. Static + shared so the {@link Cli} execution-exception
      * handler can map an <em>escaped</em> {@link ModelConsistencyException} (a verb that LOADS an
@@ -282,16 +303,19 @@ public abstract class BaseCommand implements Callable<Integer> {
      * surface as a raw stack trace.
      */
     static ResultEnvelope kernelRejectionEnvelope(String target, String op, String summary, ModelConsistencyException e) {
+        ConsistencyEvidence evidence = ConsistencyEvidence.of(e);
         List<Diagnostic> diagnostics = new ArrayList<>();
         for (Notification n : e.notifications()) {
             diagnostics.add(KernelDiagnostics.enriched(n, null));
         }
         if (diagnostics.isEmpty()) {
-            diagnostics.add(Diagnostic.precheck(Optional.empty(), e.getMessage(),
-                    new Diagnostic.Where((String) null, Optional.empty()), Optional.empty(), Optional.empty()));
+            // The deserialize/expand tier: refused before checkConsistency could name an MVK_* code, so the
+            // gate's own message is all there is. Sourced from the gate that ran — labelling it PRECHECK put a
+            // rulekit-precheck origin next to `verification: KERNEL_CONFIRMED` on the same rejection.
+            diagnostics.add(Diagnostic.gateRefusal(evidence.gate(), e.getMessage(),
+                    new Diagnostic.Where((String) null, Optional.empty())));
         }
-        return ResultEnvelope.rejected(target, op, summary, diagnostics,
-                RejectionBasis.kernel(ConsistencyEvidence.of(e)));
+        return ResultEnvelope.rejected(target, op, summary, diagnostics, RejectionBasis.kernel(evidence));
     }
 
     /**

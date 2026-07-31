@@ -142,7 +142,7 @@ final class FieldModifyCommand extends BaseCommand {
         } catch (ModelConsistencyException e) {
             return emitKernelRejection("field", "modify", "the change is rejected by the kernel", e);
         } catch (RuntimeException e) {
-            return fail(e.getMessage());
+            return failEditGate(e);
         }
         if (dryRun) {
             ResultEnvelope env = ResultEnvelope.preview("field", "modify", "would modify " + fieldPath, changed, advisories);

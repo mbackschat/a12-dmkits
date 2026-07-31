@@ -75,7 +75,7 @@ final class TypedefInlineCommand extends BaseCommand {
         } catch (ModelConsistencyException e) {
             return emitKernelRejection("typedef", "inline", "inline left the model invalid", e);
         } catch (RuntimeException e) {
-            return fail(e.getMessage());
+            return failEditGate(e);
         }
 
         ObjectNode changed = MAPPER.createObjectNode();

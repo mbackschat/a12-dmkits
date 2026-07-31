@@ -28,8 +28,8 @@ import io.github.mbackschat.a12.dm.rulekit.validate.ValidationResult;
  *       {@code ofJson}, <b>absent for {@code ofJsonLenient}</b>. A caller that switches to a lenient bind loses
  *       the evidence automatically, with no second edit and no way to forget.</li>
  *   <li>{@link #of(KernelAdapter)} — the adapter twin: present for {@code checkAndOpen}, absent for {@code of}.</li>
- *   <li>{@link #of(ModelReport)} — the report's <em>existence</em> is the witness: it can only be built by
- *       {@code ModelReport.of}, which always runs {@code checkAndOpen}. Nothing about the report needs to change.</li>
+ *   <li>{@link #of(ModelReport)} / {@link #of(ModelDiff)} — a review artefact stores the gate it was assembled
+ *       over, so it attests exactly as a binding does; both are closed types, so the receipt cannot be hand-built.</li>
  *   <li>{@link #of(ValidationResult)} — a validator run attests for the candidate verbs, which hold no binding.</li>
  *   <li>{@link #of(ModelConsistencyException)} — a gate that ran and <em>rejected</em> attests through its own
  *       exception, which is the only thing a check verb holds on that branch.</li>
@@ -70,22 +70,27 @@ public final class ConsistencyEvidence {
     }
 
     /**
-     * A comprehension report's receipt. {@code ModelReport.of} runs {@code KernelAdapter.checkAndOpen}
-     * unconditionally, so holding a report <em>is</em> proof the gate ran on this invocation; only the mode has to
-     * be read from the environment. Contrast {@code model report --tree}, which builds no report and must pass
+     * A comprehension report's receipt — the gate the report was <em>assembled over</em>
+     * ({@link ModelReport#consistencyGate()}), not the ambient mode. {@code ModelReport.of} runs
+     * {@code KernelAdapter.checkAndOpen}, so the receipt is present there and absent for an assembly over the
+     * unchecked adapter. Contrast {@code model report --tree}, which builds no report and must pass
      * {@link #none()}.
+     *
+     * <p>This used to read {@code Backends.verification()} on the grounds that holding a report proves the gate
+     * ran, so "only the mode" came from the environment. Both halves failed: the mode is exactly the claim being
+     * published, and the report was a {@code public record}, so the proof was one constructor call away from
+     * being forged.
      */
     public static ConsistencyEvidence of(ModelReport report) {
-        return report == null ? NONE : new ConsistencyEvidence(Backends.verification());
+        return report == null ? NONE : from(report.consistencyGate());
     }
 
     /**
-     * A model diff's receipt, on the same witness-by-type basis as {@link #of(ModelReport)}: {@code ModelDiff}
-     * loads <em>both</em> sides through {@code KernelAdapter.checkAndOpen}, so a diff object cannot exist without
-     * two gates having run.
+     * A model diff's receipt, on the same basis as {@link #of(ModelReport)} — read from the diff, which records
+     * the gate <b>both</b> sides passed through and leaves it empty when they disagree or either went ungated.
      */
     public static ConsistencyEvidence of(ModelDiff diff) {
-        return diff == null ? NONE : new ConsistencyEvidence(Backends.verification());
+        return diff == null ? NONE : from(diff.consistencyGate());
     }
 
     /**
@@ -107,8 +112,21 @@ public final class ConsistencyEvidence {
     /**
      * The receipt carried by a consistency gate's own <b>rejection</b>. The check verbs learn a model is invalid by
      * catching this exception, so on that branch they hold no binding at all — but the gate unambiguously ran, and
-     * its notifications <em>are</em> the verdict. Without this witness the negative branch of a verdict would have
-     * had to fabricate its evidence, which is the defect one layer along.
+     * the ambient mode is what arbitrated it. Without this witness the negative branch of a verdict would have had
+     * to fabricate its evidence, which is the defect one layer along.
+     *
+     * <p><b>Two tiers, one receipt — and why that is sound here.</b> The exception has a second, notification-free
+     * constructor for a refusal that came <em>before</em> {@code checkConsistency} (deserialize/expand), so its
+     * notifications are not always the verdict; a claim that they are was wrong. The receipt still holds, because
+     * either tier means the load ran and refused, and {@code Backends.verification()} names which engine did it —
+     * the kernel oracle, or our own reader in the backend-free mode. What does <em>not</em> transfer is the
+     * diagnostic's origin, which is why the notification-free tier derives it from this receipt rather than
+     * defaulting to {@code PRECHECK}
+     * ({@link io.github.mbackschat.a12.dm.rulekit.validate.Diagnostic#gateRefusal}).
+     *
+     * <p>This is only sound because the gates no longer funnel <em>our own</em> failures into this type: an
+     * {@code UnresolvedReferenceException} from our resolver now escapes both edit gates unwrapped, since a
+     * refusal we made ourselves would otherwise be published with the kernel's receipt on it.
      */
     public static ConsistencyEvidence of(ModelConsistencyException rejection) {
         return rejection == null ? NONE : new ConsistencyEvidence(Backends.verification());
@@ -126,5 +144,18 @@ public final class ConsistencyEvidence {
     /** Whether a gate ran at all — what the verdict factories require. */
     public boolean gateRan() {
         return verification != null;
+    }
+
+    /**
+     * The gate that ran, for a receipt already known to carry one — what a diagnostic needs when its origin
+     * depends on which engine refused ({@link io.github.mbackschat.a12.dm.rulekit.validate.Diagnostic#gateRefusal}).
+     * Fails loudly rather than substituting a mode, since a fabricated one is the defect this class prevents.
+     */
+    Verification gate() {
+        if (verification == null) {
+            throw new IllegalStateException(
+                    "no gate ran, so there is no arbitration mode to read — check gateRan() first");
+        }
+        return verification;
     }
 }

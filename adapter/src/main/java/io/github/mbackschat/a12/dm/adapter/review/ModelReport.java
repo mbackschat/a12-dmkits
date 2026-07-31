@@ -7,6 +7,7 @@ import java.util.Objects;
 import java.util.Set;
 
 import io.github.mbackschat.a12.dm.adapter.KernelAdapter;
+import io.github.mbackschat.a12.dm.core.Verification;
 import io.github.mbackschat.a12.dm.rulekit.read.ReadComputation;
 import io.github.mbackschat.a12.dm.rulekit.read.ReadResult;
 import io.github.mbackschat.a12.dm.modelkit.ModelDocument;
@@ -37,8 +38,58 @@ import io.github.mbackschat.a12.dm.rulekit.validate.DraftComputation;
  * <p>Tool-computed and deterministic (the trust principle); tolerant of conditions rulekit reads as
  * {@code Opaque} (reported {@code explained:false} with the kernel-canonical text, never dropped).
  */
-public record ModelReport(Identity identity, ModelCard structure, Usage usage,
-        List<RuleEntry> rules, List<ComputationEntry> computations) {
+public final class ModelReport {
+
+    private final Identity identity;
+    private final ModelCard structure;
+    private final Usage usage;
+    private final List<RuleEntry> rules;
+    private final List<ComputationEntry> computations;
+    // The receipt of the gate that assembled this report, taken from the adapter — null iff none ran. NOT read
+    // from Backends: that describes the environment, so an ungated assembly would still have looked confirmed.
+    private final Verification consistencyGate;
+
+    // Private on purpose: the report doubles as the CLI's proof that a consistency gate ran, and a receipt
+    // anyone can construct is not proof. As a public record its canonical constructor could not be narrowed.
+    private ModelReport(Identity identity, ModelCard structure, Usage usage,
+            List<RuleEntry> rules, List<ComputationEntry> computations, Verification consistencyGate) {
+        this.identity = identity;
+        this.structure = structure;
+        this.usage = usage;
+        this.rules = List.copyOf(rules);
+        this.computations = List.copyOf(computations);
+        this.consistencyGate = consistencyGate;
+    }
+
+    public Identity identity() {
+        return identity;
+    }
+
+    public ModelCard structure() {
+        return structure;
+    }
+
+    public Usage usage() {
+        return usage;
+    }
+
+    public List<RuleEntry> rules() {
+        return rules;
+    }
+
+    public List<ComputationEntry> computations() {
+        return computations;
+    }
+
+    /**
+     * The consistency gate that produced this report — {@link KernelAdapter#consistencyGate()} of the adapter it
+     * was assembled over, so it is empty exactly when the assembly went through the unchecked
+     * {@link KernelAdapter#of} rather than {@link KernelAdapter#checkAndOpen}. The CLI publishes the envelope's
+     * {@code verification} from this and from nothing else.
+     */
+    public java.util.Optional<Verification> consistencyGate() {
+        return java.util.Optional.ofNullable(consistencyGate);
+    }
 
     /** The fixed polarity fact — an A12 rule condition is TRUE on the violation, not the requirement. */
     public static final Polarity VIOLATION_POLARITY = new Polarity("violation",
@@ -323,7 +374,8 @@ public record ModelReport(Identity identity, ModelCard structure, Usage usage,
         ModelContext context = new ModelContext(model);
         ModelCard structure = context.describe();
         return new ModelReport(identity, structure, usage(adapter, structure),
-                ruleCatalog(adapter, context), computationCatalog(adapter, context));
+                ruleCatalog(adapter, context), computationCatalog(adapter, context),
+                adapter.consistencyGate().orElse(null));
     }
 
     /** The dead-field set — served from the whole-model reference inverse ({@link KernelAdapter#referrersByEntity},

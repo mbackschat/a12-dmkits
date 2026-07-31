@@ -65,7 +65,7 @@ final class TypedefImportCommand extends BaseCommand {
         } catch (ModelConsistencyException e) {
             return emitKernelRejection("typedef", "import", "the type-def import is rejected by the kernel", e);
         } catch (RuntimeException e) {
-            return fail(e.getMessage());
+            return failEditGate(e);
         }
         ObjectNode changed = MAPPER.createObjectNode();
         changed.put("imported", reference);

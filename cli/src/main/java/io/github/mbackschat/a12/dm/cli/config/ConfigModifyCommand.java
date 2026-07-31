@@ -187,7 +187,7 @@ final class ConfigModifyCommand extends BaseCommand {
         } catch (ModelConsistencyException e) {
             return emitKernelRejection("config", "modify", "the config change is rejected by the kernel", e);
         } catch (RuntimeException e) {
-            return fail(e.getMessage());
+            return failEditGate(e);
         }
         var advisories = mod.advisories();
         if (dryRun) {

@@ -13,6 +13,7 @@ import java.util.Optional;
 import java.util.Set;
 
 import io.github.mbackschat.a12.dm.adapter.KernelAdapter;
+import io.github.mbackschat.a12.dm.core.Verification;
 import io.github.mbackschat.a12.dm.modelkit.ModelDocument;
 import io.github.mbackschat.a12.dm.rulekit.read.ReadResult;
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel;
@@ -41,8 +42,45 @@ import io.github.mbackschat.a12.dm.rulekit.dsl.ConditionPolarity;
  * into one {@link Refactor} (§5g), and a changed condition carries a located {@link ConditionEditScript}
  * (which clause/operand moved, §5e).
  */
-public record ModelDiff(List<ElementChange> changes, List<Refactor> refactors,
-        Map<String, ConditionEditScript> conditionEdits) {
+public final class ModelDiff {
+
+    private final List<ElementChange> changes;
+    private final List<Refactor> refactors;
+    private final Map<String, ConditionEditScript> conditionEdits;
+    // The gate both sides passed through, taken from the adapters — null iff either side went ungated. NOT read
+    // from Backends, which describes the environment rather than a gate (see ReviewGateReceiptTest).
+    private final Verification consistencyGate;
+
+    // Private on purpose: the diff doubles as the CLI's proof that both sides were gated, and a receipt anyone
+    // can construct is not proof. As a public record its canonical constructor could not be narrowed.
+    private ModelDiff(List<ElementChange> changes, List<Refactor> refactors,
+            Map<String, ConditionEditScript> conditionEdits, Verification consistencyGate) {
+        this.changes = List.copyOf(changes);
+        this.refactors = List.copyOf(refactors);
+        this.conditionEdits = Map.copyOf(conditionEdits);
+        this.consistencyGate = consistencyGate;
+    }
+
+    public List<ElementChange> changes() {
+        return changes;
+    }
+
+    public List<Refactor> refactors() {
+        return refactors;
+    }
+
+    public Map<String, ConditionEditScript> conditionEdits() {
+        return conditionEdits;
+    }
+
+    /**
+     * The consistency gate <b>both</b> sides passed through, or empty if either did not — the receipt the CLI
+     * publishes the envelope's {@code verification} from. Present only when the two sides agree, since a diff
+     * arbitrated by two different modes has no single one to report.
+     */
+    public Optional<Verification> consistencyGate() {
+        return Optional.ofNullable(consistencyGate);
+    }
 
     /** The element families currently projected into the structural diff. */
     public enum ElementKind { FIELD, GROUP, RULE, COMPUTATION, TYPEDEF, INCLUDE, CONFIG }
@@ -164,7 +202,14 @@ public record ModelDiff(List<ElementChange> changes, List<Refactor> refactors,
         detectReorders(authoredOrder(baseState.authored()), authoredOrder(headState.authored()), changes);
         RelocationMatcher.pair(changes, baseRules, headRules);
         return new ModelDiff(List.copyOf(changes), groupRefactors(changes, baseRules, headRules),
-                locatedConditionEdits(changes, baseRules, headRules));
+                locatedConditionEdits(changes, baseRules, headRules), sharedGate(baseRules, headRules));
+    }
+
+    /** The receipt the two sides agree on, or {@code null} when they don't — including when either went ungated. */
+    private static Verification sharedGate(KernelAdapter base, KernelAdapter head) {
+        Optional<Verification> baseGate = base.consistencyGate();
+        Optional<Verification> headGate = head.consistencyGate();
+        return baseGate.isPresent() && baseGate.equals(headGate) ? baseGate.get() : null;
     }
 
     /**

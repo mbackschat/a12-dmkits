@@ -120,7 +120,7 @@ final class IncludeAddCommand extends BaseCommand {
         } catch (ModelConsistencyException e) {
             return emitKernelRejection("include", "add", "the include is rejected by the kernel", e);
         } catch (RuntimeException e) {
-            return fail(e.getMessage());
+            return failEditGate(e);
         }
         ObjectNode changed = MAPPER.createObjectNode();
         changed.put("added", alias);

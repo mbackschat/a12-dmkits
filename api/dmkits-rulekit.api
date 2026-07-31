@@ -2400,6 +2400,7 @@ public record io.github.mbackschat.a12.dm.rulekit.validate.Diagnostic
   public final boolean equals(java.lang.Object)
   public java.util.Optional<java.lang.String> explain()
   public java.util.Optional<java.lang.String> fix()
+  public static io.github.mbackschat.a12.dm.rulekit.validate.Diagnostic gateRefusal(io.github.mbackschat.a12.dm.core.Verification, java.lang.String, io.github.mbackschat.a12.dm.rulekit.validate.Diagnostic.Where)
   public final int hashCode()
   public static io.github.mbackschat.a12.dm.rulekit.validate.Diagnostic internal(java.util.Optional<java.lang.String>, java.lang.String, io.github.mbackschat.a12.dm.rulekit.validate.Diagnostic.Where, java.util.Optional<java.lang.String>)
   public static io.github.mbackschat.a12.dm.rulekit.validate.Diagnostic precheck(java.util.Optional<java.lang.String>, java.lang.String, io.github.mbackschat.a12.dm.rulekit.validate.Diagnostic.Where, java.util.Optional<java.lang.String>, java.util.Optional<java.lang.String>)

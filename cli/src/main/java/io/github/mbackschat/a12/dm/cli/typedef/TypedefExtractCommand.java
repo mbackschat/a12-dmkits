@@ -82,7 +82,7 @@ final class TypedefExtractCommand extends BaseCommand {
         } catch (ModelConsistencyException e) {
             return emitKernelRejection("typedef", "extract", "extract left the model invalid", e);
         } catch (RuntimeException e) {
-            return fail(e.getMessage());
+            return failEditGate(e);
         }
 
         ObjectNode changed = MAPPER.createObjectNode();

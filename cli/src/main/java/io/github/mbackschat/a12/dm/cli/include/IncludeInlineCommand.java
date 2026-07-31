@@ -83,7 +83,7 @@ final class IncludeInlineCommand extends BaseCommand {
         } catch (ModelConsistencyException e) {
             return emitKernelRejection("include", "inline", "inline left the model invalid", e);
         } catch (RuntimeException e) {
-            return fail(e.getMessage());
+            return failEditGate(e);
         }
 
         ObjectNode changed = MAPPER.createObjectNode();

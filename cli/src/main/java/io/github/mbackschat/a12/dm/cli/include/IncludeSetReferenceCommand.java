@@ -77,7 +77,7 @@ final class IncludeSetReferenceCommand extends BaseCommand {
         } catch (ModelConsistencyException e) {
             return emitKernelRejection("include", "set-reference", "the new reference left the model invalid", e);
         } catch (RuntimeException e) {
-            return fail(e.getMessage());
+            return failEditGate(e);
         }
         ObjectNode changed = MAPPER.createObjectNode();
         changed.put("alias", alias).put("reference", reference);

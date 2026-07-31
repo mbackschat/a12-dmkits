@@ -71,7 +71,7 @@ final class TypedefRemoveCommand extends BaseCommand {
         } catch (ModelConsistencyException e) {
             return emitKernelRejection("typedef", "remove", "removal left the model invalid", e);
         } catch (RuntimeException e) {
-            return fail(e.getMessage());
+            return failEditGate(e);
         }
         ObjectNode changed = MAPPER.createObjectNode();
         changed.put("removed", id);

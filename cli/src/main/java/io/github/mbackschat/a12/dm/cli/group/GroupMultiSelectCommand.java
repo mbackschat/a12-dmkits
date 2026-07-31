@@ -115,7 +115,7 @@ final class GroupMultiSelectCommand extends BaseCommand {
         } catch (ModelConsistencyException e) {
             return emitKernelRejection("group", "multiselect", "the multi-select group is rejected by the kernel", e);
         } catch (RuntimeException e) {
-            return fail(e.getMessage());
+            return failEditGate(e);
         }
         ObjectNode changed = MAPPER.createObjectNode();
         changed.put("added", target);

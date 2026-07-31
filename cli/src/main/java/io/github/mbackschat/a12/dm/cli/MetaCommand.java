@@ -140,7 +140,7 @@ final class MetaCommand extends BaseCommand {
         } catch (ModelConsistencyException e) {
             return emitKernelRejection("meta", "modify", "the metadata change is rejected by the kernel", e);
         } catch (RuntimeException e) {
-            return fail(e.getMessage());
+            return failEditGate(e);
         }
         if (dryRun) {
             ResultEnvelope env = ResultEnvelope.preview("meta", "modify", "would change metadata of " + ref, changed);

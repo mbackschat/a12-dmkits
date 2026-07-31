@@ -13,6 +13,7 @@ import io.github.mbackschat.a12.dm.core.ModelConsistencyException;
 import io.github.mbackschat.a12.dm.core.ModelLoader;
 import io.github.mbackschat.a12.dm.core.ModelResolver;
 import io.github.mbackschat.a12.dm.core.ReferenceResolvers;
+import io.github.mbackschat.a12.dm.core.UnresolvedReferenceException;
 import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft;
 import io.github.mbackschat.a12.dm.modelkit.ElementDraft;
 import io.github.mbackschat.a12.dm.modelkit.FieldKind;
@@ -563,6 +564,11 @@ public final class EditSession {
         try {
             ModelLoader.loadAndCheck(json, resolver);
         } catch (ModelConsistencyException e) {
+            throw e;
+        } catch (UnresolvedReferenceException e) {
+            // OUR resolver refused, not the gate — it has its own contract at the CLI seam. Rethrown for the
+            // same reason as at the per-edit gate (ModelDocument.validate): wrapping it made an envelope claim
+            // the kernel arbitrated a refusal we made ourselves.
             throw e;
         } catch (RuntimeException e) {
             // deserialize/expand tier — surface the cause via the shared factory (probe 07: the terminal

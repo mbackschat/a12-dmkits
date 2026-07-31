@@ -28,6 +28,7 @@ import io.github.mbackschat.a12.dm.core.ModelConsistencyException;
 import io.github.mbackschat.a12.dm.core.ModelLoader;
 import io.github.mbackschat.a12.dm.core.ModelResolver;
 import io.github.mbackschat.a12.dm.core.ReferenceResolvers;
+import io.github.mbackschat.a12.dm.core.UnresolvedReferenceException;
 import io.github.mbackschat.a12.dm.core.ValueKind;
 
 /**
@@ -2028,10 +2029,18 @@ public final class ModelDocument {
     /** As {@link #validate()}, resolving includes / type-def imports via a <b>kernel-free</b>
      *  {@link ModelResolver} ({@code id → DM-JSON}). */
     public ModelDocument validate(ModelResolver resolver) {
+        // OUTSIDE the try on purpose: serializing our own edited tree is not a gate, so a failure here is a
+        // tool defect and must not be relabelled as "the edited model is not kernel-valid" (see the catch below).
+        String json = toJson();
         try {
-            ModelLoader.loadAndCheck(toJson(), resolver);
+            ModelLoader.loadAndCheck(json, resolver);
         } catch (ModelConsistencyException e) {
             throw e; // checkConsistency tier — already the uniform "model invalid" type
+        } catch (UnresolvedReferenceException e) {
+            // OUR resolver refused, not the gate. It has its own documented contract at the CLI seam
+            // (RK_UNRESOLVED_REFERENCE, exit 1), so wrapping it published a kernel arbitration that never
+            // happened — verification: KERNEL_CONFIRMED over a refusal we made ourselves.
+            throw e;
         } catch (RuntimeException e) {
             // deserialize/expand tier (e.g. a duplicate element id surfaces as IllegalArgumentException):
             // funnel into the same type so a caller sees one "invalid edit" signal regardless of tier — and

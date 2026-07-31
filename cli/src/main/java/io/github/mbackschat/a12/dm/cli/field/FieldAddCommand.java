@@ -166,7 +166,7 @@ final class FieldAddCommand extends BaseCommand {
         } catch (ModelConsistencyException e) {
             return emitKernelRejection("field", "add", "the field is rejected by the kernel", e);
         } catch (RuntimeException e) {
-            return fail(e.getMessage());
+            return failEditGate(e);
         }
         if (dryRun) {
             ResultEnvelope env = ResultEnvelope.preview("field", "add", "would add field " + target, changed);

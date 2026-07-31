@@ -6,6 +6,7 @@ import java.util.regex.Pattern;
 
 import io.github.mbackschat.a12.dm.core.Notification;
 import io.github.mbackschat.a12.dm.core.Severity;
+import io.github.mbackschat.a12.dm.core.Verification;
 
 /**
  * One structured finding about a rule, modelled on LSP's {@code Diagnostic} so the same shape serves
@@ -106,6 +107,27 @@ public record Diagnostic(
     public static Diagnostic precheckWarning(Optional<String> code, String summary, Where where,
             Optional<String> fix, Optional<String> explain) {
         return new Diagnostic(Severity.WARNING, DiagnosticSource.PRECHECK, code, summary, where, fix, explain);
+    }
+
+    /**
+     * A consistency gate's refusal that produced <b>no notification</b> — the deserialize/expand tier, which
+     * fails before {@code checkConsistency} can report an {@code MVK_*} code, so all it can carry is the
+     * refusing engine's own message.
+     *
+     * <p>The origin is <b>derived from which gate ran</b> rather than fixed, because the two modes are refused
+     * by different engines: with a backend the kernel deserializer refused ({@link DiagnosticSource#KERNEL}),
+     * without one our kernel-free reader did ({@link DiagnosticSource#PRECHECK}). Hard-coding either makes the
+     * envelope contradict its own {@code verification} in the other mode, which is exactly the defect this
+     * replaces — a {@code PRECHECK}-sourced diagnostic published beside {@code verification: KERNEL_CONFIRMED}
+     * for a refusal the kernel had in fact made.
+     */
+    public static Diagnostic gateRefusal(Verification gate, String summary, Where where) {
+        DiagnosticSource source = switch (gate) {
+            case KERNEL_CONFIRMED -> DiagnosticSource.KERNEL;
+            case STRUCTURAL_ONLY -> DiagnosticSource.PRECHECK;
+        };
+        return new Diagnostic(Severity.ERROR, source, Optional.empty(), summary, where,
+                Optional.empty(), Optional.empty());
     }
 
     /**

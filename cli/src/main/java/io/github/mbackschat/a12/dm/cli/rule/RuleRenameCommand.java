@@ -77,7 +77,7 @@ final class RuleRenameCommand extends BaseCommand {
         } catch (ModelConsistencyException e) {
             return emitKernelRejection("rule", "rename", "rename left the model invalid", e);
         } catch (RuntimeException e) {
-            return fail(e.getMessage());
+            return failEditGate(e);
         }
         ObjectNode changed = MAPPER.createObjectNode();
         changed.put("renamed", rule);

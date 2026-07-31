@@ -82,7 +82,7 @@ final class TypedefRenameCommand extends BaseCommand {
         } catch (ModelConsistencyException e) {
             return emitKernelRejection("typedef", "rename", "rename left the model invalid", e);
         } catch (RuntimeException e) {
-            return fail(e.getMessage());
+            return failEditGate(e);
         }
 
         ObjectNode changed = MAPPER.createObjectNode();
