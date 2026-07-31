@@ -43,6 +43,17 @@ Timeline, against the last full eval run (**2026-07-09**): the catalog gap postd
 
 **One sentence:** every harness is anchored either to previously-observed output or to the presence of text; none is anchored to an independently-stated invariant — which is why adding harnesses did not help.
 
+### 1d. What review found wrong in THIS work <a id="self-corrections"></a>
+
+Recorded because the same class of defect this proposal exists to fix recurred while fixing it.
+
+1. **A message-pattern owner extraction was English-only.** The first enricher repair regexed `At '(\w+)'` out of the kernel summary — but that text is a localized properties value, and the default bundle renders `MVK_NO_CONST` as `Kein Fehler definiert!`, naming no operator at all. Replaced by evidence-based resolution.
+2. **The ambiguous fallback still asserted an owner.** The union fixed `fix` but kept a `firstMeaning()` `explain`, so a `LessThan` rejection was explained as "less than or equal". A passing test (`DiagnosticTest.catalogJoinSuppliesFixAndExplain`) was *asserting* that defect.
+3. **Ownership was recomputed on only one of two paths.** `lint.SpanResolver` recomputed both fields; `interp.TextConditionCorrective` pinned the operator and left `explain` untouched.
+4. **A catalog gotcha claimed `Today` is admitted by the time extractors.** The kernel refuses it (`MVK_WRONG_DATE_FORMAT_FOR_OP`). N7 executes *examples*, not gotcha prose, so nothing caught it — the same presence-shaped-guard gap as §1c.
+5. **A law did not lock what its finding claimed.** The sibling-literal case contained no literal.
+6. **A status word did work no action backed.** This document was reported as having the Phase-3 stop line removed while the sentence was still live in §6.
+
 ---
 
 ## 2. The result taxonomy <a id="taxonomy"></a>
@@ -136,7 +147,7 @@ corpus expectations migrate by **mechanical re-render**, with the per-case `(out
 | 1 | §2 taxonomy + §4 pointers | targeted `:cli:test` + adapter differentials |
 | 2 | §5 aggregates | `--text` renders for both, schemas conform |
 | 3 | totality guards + description↔behaviour column | guards fail on a reverted fix |
-| 4 | catalog / ledger / enricher for [kf167](KERNEL-FINDINGS.md#kf167) | `CatalogExamplesAreKernelValidTest` executes the new examples |
+| 4 | catalog / ledger / enricher for [kf167](KERNEL-FINDINGS.md#kf167) — **landed early** (`36f76aa0`, `4c955556`, `637f1997`): non-breaking and independent of the contract, so it did not need to wait | `CatalogExamplesAreKernelValidTest` executes the new examples (160, 0 skipped) |
 | 5 | corpus → examples → probe gold → eval → **skill last** | `verify-demos.sh`; skill claims re-run against the RC |
 | 6 | native build, deterministic gates, probes, Codex activation | release gates green |
 
@@ -163,7 +174,7 @@ corpus expectations migrate by **mechanical re-render**, with the per-case `(out
 - [ ] Unknown subcommand + `--help` is rejected consistently across all command groups; `computation check` points to `computation add --dry-run` and `schema computation add`.
 - [ ] Totality guards green: `--text` renderability, pointer canonicity (including `examples/*.md` and `probe/tasks/*.md`), verdict provenance.
 - [ ] Corpus migrated by mechanical re-render with per-case `(outcome, value)` multisets proven unchanged.
-- [ ] `bin/dmtool` diagnoses a stale `JAVA_HOME` and selects or requires the supported dev JDK; native no-Java smoke green; no `--enable-final-field-mutation`.
+- [ ] `bin/dmtool` diagnoses a stale `JAVA_HOME`, **explicitly rejects a failing `java -version` and output from which no major version can be parsed** (both currently return success, and the child's exit code leaks), and selects or requires the supported dev JDK; launcher tests cover both failure paths; the docs are consistent about whether 21 is exact or a minimum; native no-Java smoke green; no `--enable-final-field-mutation`.
 - [ ] Demos, probe gold, eval docs/tasks, and plugin scope text regenerated **after** the contract; skill updated last with every claim re-run; plugin assets re-synced.
 - [ ] Clean Codex install + fresh session lists and triggers the skill; Codex/plugin versions recorded in [`RELEASE-SPEC`](RELEASE-SPEC.md).
 - [ ] Breaking commits and release notes marked; one downstream migration.
