@@ -66,6 +66,20 @@ class DataSchemaConformanceTest {
                 { "Order": { "CustomerName": "Acme", "Quantity": "5",
                                           "OrderDate": "2026-01-01", "DeliveryDate": "2026-01-10" } }""");
 
+        // Populate OPTIONAL read properties so the forward drift check covers them, not just the lean branch.
+        Path fieldProps = dir.resolve("field-props.json");
+        Files.writeString(fieldProps, """
+                {"group":"/Order","name":"Quantity","helperText":{"en_US":"whole units"}}""");
+        assertTrue(CliTestSupport.run("-m", order.toString(), "field", "modify", fieldProps.toString()).code() == 0);
+        assertTrue(CliTestSupport.run("-m", order.toString(), "meta", "/Order/Quantity",
+                "--label", "en_US=Quantity", "--annotation", "owner=sales",
+                "--internal-description", "en_US=field note",
+                "--external-description", "en_US=field hint").code() == 0);
+        assertTrue(CliTestSupport.run("-m", order.toString(), "meta", "/Order/Items",
+                "--label", "en_US=Items", "--annotation", "owner=sales",
+                "--internal-description", "en_US=group note",
+                "--external-description", "en_US=group hint").code() == 0);
+
         // a model carrying a type definition, so `typedef read <id>` / `typedef read` produce both branches
         Path td = dir.resolve("td.dm.json");
         CliTestSupport.run("model", "new", "--id", "td", "--locale", "en_US", "--root", "R", "-o", td.toString());
@@ -108,6 +122,9 @@ class DataSchemaConformanceTest {
                 new Run("read", new String[]{"-m", sub.toString(), "rule", "read"}),
                 new Run("explain", new String[]{"-m", sub.toString(), "rule", "explain", CliTestSupport.RULE_FULL_NAME}),
                 new Run("where-used", new String[]{"-m", order.toString(), "where-used", "/Order/Quantity"}),
+                new Run("meta-read", new String[]{"-m", order.toString(), "meta", "/Order/Quantity"}),
+                new Run("meta-read", new String[]{"-m", reportModel.toString(), "meta",
+                        "/Subscription/Billing/EffectiveFeeComp"}),
                 new Run("field-read", new String[]{"-m", order.toString(), "field", "read", "/Order/Quantity"}),
                 new Run("field-read", new String[]{"-m", order.toString(), "field", "read"}),
                 new Run("group-read", new String[]{"-m", order.toString(), "group", "read", "/Order/Items"}),
@@ -212,7 +229,7 @@ class DataSchemaConformanceTest {
     @Test
     void everyDataSchemaIsCoveredOrExempt() {
         Set<String> covered = Set.of("model-info", "describe", "model-diff", "model-report", "model-usage", "profile",
-                "profile-comparison", "read", "explain", "where-used", "field-read", "group-read", "typedef-read",
+                "profile-comparison", "read", "explain", "where-used", "meta-read", "field-read", "group-read", "typedef-read",
                 "eval-doc", "compute-doc", "workspace-list");
         List<String> uncovered = new ArrayList<>();
         for (String schema : SchemaCommand.DATA_SCHEMA.values()) {

@@ -50,15 +50,30 @@ public final class SpecKeys {
         this.root = root;
     }
 
-    /** Build the validator from the bundled {@code schema/<name>.schema.json} (e.g. {@code "field-add"}, {@code "add"}). */
+    /**
+     * Build the validator from bundled {@code schema/<name>.schema.json}, optionally selecting a published
+     * subschema with a JSON Pointer after {@code #} (for example {@code apply#/$defs/metaModify}).
+     */
     public static SpecKeys forSchema(String name) {
-        try (InputStream in = SpecKeys.class.getResourceAsStream("/schema/" + name + ".schema.json")) {
+        int hash = name.indexOf('#');
+        String resourceName = hash < 0 ? name : name.substring(0, hash);
+        String pointer = hash < 0 ? "" : name.substring(hash + 1);
+        try (InputStream in = SpecKeys.class.getResourceAsStream("/schema/" + resourceName + ".schema.json")) {
             if (in == null) {
-                throw new IllegalStateException("input schema not found on the classpath: schema/" + name + ".schema.json");
+                throw new IllegalStateException(
+                        "input schema not found on the classpath: schema/" + resourceName + ".schema.json");
             }
-            return new SpecKeys(Node.from(MAPPER.readTree(in)));
+            JsonNode schema = MAPPER.readTree(in);
+            if (!pointer.isEmpty()) {
+                schema = schema.at(pointer);
+                if (schema.isMissingNode()) {
+                    throw new IllegalStateException(
+                            "subschema not found: schema/" + resourceName + ".schema.json#" + pointer);
+                }
+            }
+            return new SpecKeys(Node.from(schema));
         } catch (IOException e) {
-            throw new UncheckedIOException("failed to read schema/" + name + ".schema.json", e);
+            throw new UncheckedIOException("failed to read schema/" + resourceName + ".schema.json", e);
         }
     }
 

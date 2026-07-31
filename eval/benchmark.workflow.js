@@ -219,7 +219,7 @@ element, a name/value ANNOTATION on an element, or a model-level COMMENT. Assume
   - the model file: ${MODEL_FILE(task)}${skillBlock()}
 Do NOT read any rulekit source, docs, tests, or other *.md files (beyond the authoring skill named above, if any). Requirement: "${task.intent}".
 Decide the single metadata edit that satisfies it and return ONLY JSON, using ONE of these shapes:
-  - DESCRIBE an element (field/group/rule by path): {"op":"describe","kind":"internal"|"external","ref":"<element path, e.g. /Order/X>","locale":"<code, e.g. en_US>","text":"<the description>"}
+  - DESCRIBE an element (field/group/rule/computation by path, type definition by id): {"op":"describe","kind":"internal"|"external","ref":"<element path or type-definition id, e.g. /Order/X>","locale":"<code, e.g. en_US>","text":"<the description>"}
   - ANNOTATE an element with a name/value pair:     {"op":"annotate","ref":"<element path>","name":"<name>","value":"<value>"}
   - set the model-level COMMENT:                     {"op":"comment","text":"<the comment>"}
 (An "internal" description is maintainer-facing; "external" is end-user-facing.)`

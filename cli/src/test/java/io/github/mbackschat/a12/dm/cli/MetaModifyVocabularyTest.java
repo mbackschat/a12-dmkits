@@ -12,12 +12,8 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
 /**
- * T1 — the {@code meta} verb and the {@code rule}/{@code group} {@code modify} verbs edit the same metadata
- * (annotations + internal/external descriptions) but had drifted vocabularies: {@code meta} used
- * {@code --annotate}/{@code --internal}/{@code --external} + a full removal set, while {@code modify} used
- * {@code --annotation}/{@code --internal-description}/{@code --external-description} and could not remove a
- * description. Reconciled: {@code meta} accepts the modify vocabulary as discoverable aliases, and
- * {@code modify} gained the description-removal peers.
+ * G45/T1 — {@code meta} is the sole post-creation metadata writer. Its explicit long names are canonical in
+ * the manifest; the shorter names remain ergonomic synonyms on that same route.
  */
 class MetaModifyVocabularyTest {
 
@@ -28,7 +24,7 @@ class MetaModifyVocabularyTest {
     }
 
     @Test
-    void metaAcceptsTheModifyVocabularyAsAliases(@TempDir Path dir) throws Exception {
+    void metaAcceptsLongCanonicalNames(@TempDir Path dir) throws Exception {
         Path model = CliTestSupport.orderRuled(dir);
         var set = CliTestSupport.run("-m", model.toString(), "meta", "/Order",
                 "--annotation", "owner=team", "--internal-description", "en_US=note");
@@ -46,26 +42,26 @@ class MetaModifyVocabularyTest {
     }
 
     @Test
-    void ruleModifyCanRemoveADescription(@TempDir Path dir) throws Exception {
+    void shortAliasesWorkForRuleMetadata(@TempDir Path dir) throws Exception {
         Path model = CliTestSupport.orderRuled(dir);
-        assertEquals(0, CliTestSupport.run("-m", model.toString(), "rule", "modify", "/Order/EligibilityCheck",
-                "--internal-description", "en_US=note").code());
-        var rm = CliTestSupport.run("-m", model.toString(), "rule", "modify", "/Order/EligibilityCheck",
-                "--remove-internal-description", "en_US");
+        assertEquals(0, CliTestSupport.run("-m", model.toString(), "meta", "/Order/EligibilityCheck",
+                "--internal", "en_US=note").code());
+        var rm = CliTestSupport.run("-m", model.toString(), "meta", "/Order/EligibilityCheck",
+                "--remove-internal", "en_US");
         assertEquals(0, rm.code(), rm::err);
         assertTrue(metaData(model, "/Order/EligibilityCheck").path("internalDescription").isEmpty(),
-                "rule modify removed the internal description");
+                "the short meta aliases removed the rule's internal description");
     }
 
     @Test
-    void groupModifyCanRemoveADescription(@TempDir Path dir) throws Exception {
+    void shortAliasesWorkForGroupMetadata(@TempDir Path dir) throws Exception {
         Path model = CliTestSupport.orderRuled(dir);
-        assertEquals(0, CliTestSupport.run("-m", model.toString(), "group", "modify", "/Order/ShippingAddress",
-                "--external-description", "en_US=addr").code());
-        var rm = CliTestSupport.run("-m", model.toString(), "group", "modify", "/Order/ShippingAddress",
-                "--remove-external-description", "en_US");
+        assertEquals(0, CliTestSupport.run("-m", model.toString(), "meta", "/Order/ShippingAddress",
+                "--external", "en_US=addr").code());
+        var rm = CliTestSupport.run("-m", model.toString(), "meta", "/Order/ShippingAddress",
+                "--remove-external", "en_US");
         assertEquals(0, rm.code(), rm::err);
         assertTrue(metaData(model, "/Order/ShippingAddress").path("externalDescription").isEmpty(),
-                "group modify removed the external description");
+                "the short meta aliases removed the group's external description");
     }
 }

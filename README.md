@@ -422,9 +422,12 @@ dmtool -m order.dm.json group attachment \
   --parent /Order --name Invoice \
   --max-size-bytes 10000000 --allowed-mime application/pdf
 
-# label/describe/annotate any element (field/group/rule by path, type-def by id); `meta /Order/Total` reads it back
+# label/describe/annotate any element (field/group/rule/computation by path, type-def by id); reads it back
 dmtool -m order.dm.json meta /Order/Total \
   --label en_US="Order Total" --internal en_US="the order total" --annotate owner=orders-team
+
+# transactional metadata uses the same polymorphic ref (including computations and type definitions)
+dmtool -m order.dm.json apply metadata-ops.json
 
 # severity/message edit, condition untouched
 dmtool -m order.dm.json rule modify /Order/SomeRule \

@@ -51,7 +51,7 @@ final class SchemaCommand extends BaseCommand {
             "computation add", "add",
             "computation modify", "add",
             "field add", "field-add",
-            "field modify", "field-add",
+            "field modify", "field-modify",
             "typedef add", "typedef-add",
             "typedef modify", "typedef-add",
             "profile synthesize", "profile");
@@ -83,6 +83,7 @@ final class SchemaCommand extends BaseCommand {
             Map.entry("profile extract", "profile"),
             Map.entry("profile compare", "profile-comparison"),
             Map.entry("where-used", "where-used"),
+            Map.entry("meta", "meta-read"),
             Map.entry("field read", "field-read"),
             Map.entry("group read", "group-read"),
             Map.entry("typedef read", "typedef-read"),

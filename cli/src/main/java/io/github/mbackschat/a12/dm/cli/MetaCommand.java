@@ -14,6 +14,7 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import io.github.mbackschat.a12.dm.core.ModelResolver;
 
 import io.github.mbackschat.a12.dm.core.ModelConsistencyException;
+import io.github.mbackschat.a12.dm.edit.EditSession;
 import io.github.mbackschat.a12.dm.modelkit.ModelDocument;
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Mixin;
@@ -23,7 +24,7 @@ import picocli.CommandLine.Parameters;
 /**
  * {@code dmtool meta <ref>} — read or edit an element's <b>label + descriptions + annotations</b> (the
  * kernel's {@code ILabelled}/{@code IDescribed}/{@code IAnnotated}). {@code <ref>} is any describable: a
- * field/group/rule by full name-path, or a type definition by id. With <b>no write flags</b> it reads (the
+ * field/group/rule/computation by full name-path, or a type definition by id. With <b>no write flags</b> it reads (the
  * current label + internal/external descriptions + annotations into {@code data}); with write flags it
  * sets/removes them, re-binds through the kernel, and writes back ({@code -o}/{@code --dry-run}). The display
  * {@code --label} applies only to a field/group (the only describables that carry one); on a
@@ -32,14 +33,15 @@ import picocli.CommandLine.Parameters;
  * inline {@code ;;} condition comments are authored in the rule/computation DSL.)
  */
 @Command(name = "meta", mixinStandardHelpOptions = true,
-        description = "Read or edit an element's label + descriptions + annotations (field/group/rule by path, type-def by id).")
+        description = "Read or edit an element's label + descriptions + annotations "
+                + "(field/group/rule/computation by path, type-def by id).")
 final class MetaCommand extends BaseCommand {
 
     private static final ObjectMapper MAPPER = new ObjectMapper();
 
     @ParamKind(ParamKind.Kind.ELEMENT_REF)
     @Parameters(index = "0", paramLabel = "<ref>",
-            description = "the element's full name-path (field/group/rule) or a type-definition id")
+            description = "the element's full name-path (field/group/rule/computation) or a type-definition id")
     String ref;
 
     @ParamKind(ParamKind.Kind.SCALAR)
@@ -48,9 +50,8 @@ final class MetaCommand extends BaseCommand {
                     + "element's existing labels, so a one-locale edit keeps the rest")
     Map<String, String> label = new LinkedHashMap<>();
 
-    // T1: meta accepts the rule/group modify vocabulary as discoverable aliases (--internal-description,
-    // --external-description, --annotation, and the two removal peers), so an agent who learned the modify
-    // flags reaches for the same names here and they work.
+    // G45: the explicit long names are the manifest's canonical spellings; the shorter forms remain ergonomic
+    // synonyms on this ONE metadata route, not aliases for any target-specific modifier.
     @ParamKind(ParamKind.Kind.SCALAR)
     @Option(names = {"--internal", "--internal-description"}, paramLabel = "<locale>=<text>",
             description = "set the INTERNAL description — a maintenance/technical note shown read-only to Form modelers, never to end users — for a locale (repeatable), e.g. --internal en_US=\"…\"")
@@ -90,9 +91,9 @@ final class MetaCommand extends BaseCommand {
     @Mixin
     WorkspaceOption workspace = new WorkspaceOption();
 
-    private boolean hasWrites() {
-        return !label.isEmpty() || !internal.isEmpty() || !external.isEmpty() || !annotate.isEmpty()
-                || !removeInternal.isEmpty() || !removeExternal.isEmpty() || !removeAnnotation.isEmpty();
+    private MetaModification modification() {
+        return new MetaModification(label, annotate, removeAnnotation, internal, external,
+                removeInternal, removeExternal);
     }
 
     @Override
@@ -104,15 +105,18 @@ final class MetaCommand extends BaseCommand {
         }
         ModelResolver resolver = workspace.resolverFor(model);
         ModelDocument doc = ModelDocument.read(modelJson);
+        MetaModification modification = modification();
+        boolean hasWrites = !modification.isEmpty();
 
         Optional<Refusal> refusal = new SafetyGate()
                 .require(SafetyChecks.elementExists(doc, ref))
+                .require(SafetyChecks.labelSupported(doc, ref, !modification.labels().isEmpty()))
                 .firstFailure();
         if (refusal.isPresent()) {
-            return refuse("meta", hasWrites() ? "modify" : "read", refusal.get());
+            return refuse("meta", hasWrites ? "modify" : "read", refusal.get());
         }
 
-        if (!hasWrites()) {
+        if (!hasWrites) {
             ObjectNode data = MAPPER.createObjectNode();
             // label rides only for a field/group (the only describables that carry one)
             doc.labels(ref).ifPresent(labels -> putMap(data.putObject("label"), labels));
@@ -124,32 +128,12 @@ final class MetaCommand extends BaseCommand {
             return env.exitCode();
         }
 
-        if (!label.isEmpty()) {
-            Optional<Map<String, String>> existing = doc.labels(ref);
-            if (existing.isEmpty()) {
-                return fail("a label applies only to a field or group; " + ref
-                        + " is a rule/computation/type definition (it has no display label)");
-            }
-        }
-
         ObjectNode changed = MAPPER.createObjectNode();
         String resultJson;
         try {
-            if (!label.isEmpty()) {
-                // MERGE with the element's existing labels so a one-locale edit keeps the rest (G17 rule);
-                // setLabel still enforces full locale coverage, so an under-specified fresh label fails loudly
-                Map<String, String> merged = new LinkedHashMap<>(doc.labels(ref).orElseThrow());
-                merged.putAll(label);
-                doc.setLabel(ref, merged);
-                label.forEach((loc, text) -> changed.put("label." + loc, text));
-            }
-            internal.forEach((loc, text) -> { doc.setInternalDescription(ref, loc, text); changed.put("internal." + loc, text); });
-            external.forEach((loc, text) -> { doc.setExternalDescription(ref, loc, text); changed.put("external." + loc, text); });
-            annotate.forEach((name, value) -> { doc.setAnnotation(ref, name, value); changed.put("annotation." + name, value); });
-            removeInternal.forEach(loc -> { doc.removeInternalDescription(ref, loc); changed.put("removed.internal." + loc, true); });
-            removeExternal.forEach(loc -> { doc.removeExternalDescription(ref, loc); changed.put("removed.external." + loc, true); });
-            removeAnnotation.forEach(name -> { doc.removeAnnotation(ref, name); changed.put("removed.annotation." + name, true); });
-            resultJson = doc.validate(resolver).toJson();
+            EditSession session = EditSession.read(modelJson, resolver);
+            modification.applyTo(ref, doc, session, changed);
+            resultJson = session.validate().toJson();
         } catch (ModelConsistencyException e) {
             return emitKernelRejection("meta", "modify", "the metadata change is rejected by the kernel", e);
         } catch (RuntimeException e) {

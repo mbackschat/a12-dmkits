@@ -50,19 +50,25 @@ public final class FieldSpec {
             TYPE_KEYS.stream().filter(k -> !k.equals("kind") && !k.equals("typedef"))
                     .collect(java.util.stream.Collectors.toUnmodifiableSet());
 
-    /** The field-level metadata keys {@link #parse} reads (requiredness, labels, descriptions, flags). */
-    public static final Set<String> METADATA_KEYS = Set.of("required", "label", "annotations",
-            "global", "transient", "internalDescription", "externalDescription", "helperText", "requiredMessages");
+    /** Common element metadata accepted only at creation and by the post-creation {@code meta} route (G45). */
+    public static final Set<String> COMMON_METADATA_KEYS =
+            Set.of("label", "annotations", "internalDescription", "externalDescription");
+
+    /** Field-specific properties that remain on {@code field modify}. */
+    public static final Set<String> FIELD_PROPERTY_KEYS = Set.of(
+            "required", "global", "transient", "helperText", "requiredMessages");
+
+    /** All field metadata/properties accepted by {@link #parse} at creation. */
+    public static final Set<String> METADATA_KEYS = union(COMMON_METADATA_KEYS, FIELD_PROPERTY_KEYS);
 
     /** Every key a rich {@code field add} spec may carry (locator + type + metadata) — the apply FIELD_ADD op surface. */
     public static final Set<String> ADD_KEYS = union(LOCATOR_KEYS, TYPE_KEYS, METADATA_KEYS);
 
     /**
-     * The keys a {@code field modify} op reads. It is the <b>full</b> set: a modify is a partial, in-place
-     * edit of an existing field's type <em>and/or</em> its metadata — so it accepts every key {@code add}
-     * does (only the locator is required), and any present aspect is applied (never silently dropped).
+     * The semantic keys a {@code field modify} reads. Common labels/descriptions/annotations deliberately
+     * live only on {@code meta <ref>} after creation (G45).
      */
-    public static final Set<String> MODIFY_KEYS = ADD_KEYS;
+    public static final Set<String> MODIFY_KEYS = union(LOCATOR_KEYS, TYPE_KEYS, FIELD_PROPERTY_KEYS);
 
     @SafeVarargs
     private static Set<String> union(Set<String>... sets) {
@@ -105,9 +111,8 @@ public final class FieldSpec {
     /**
      * Parse a {@code field modify} spec as a <b>partial</b> edit: only the aspects the spec actually carries
      * become present in the returned {@link FieldModification} (a {@code kind}/{@code typedef} ⇒ a re-type;
-     * any metadata key ⇒ that metadata change), so an absent aspect is left untouched and a present one is
-     * never silently dropped. Unlike {@link #parse}, a {@code kind} is NOT required — a metadata-only edit
-     * (e.g. just a {@code label}) is valid.
+     * any field-specific property key ⇒ that property change), so an absent aspect is left untouched and a
+     * present one is never silently dropped. Unlike {@link #parse}, a {@code kind} is NOT required.
      */
     public static ModificationSpec parseModification(JsonNode spec) {
         String group = text(spec, "group");
@@ -122,20 +127,8 @@ public final class FieldSpec {
         if (spec.hasNonNull("required")) {
             mod.requiredness(requiredness(spec));
         }
-        if (spec.hasNonNull("label")) {
-            mod.label(textMap(spec.get("label")));
-        }
         if (spec.hasNonNull("helperText")) {
             mod.helperText(textMap(spec.get("helperText")));
-        }
-        if (spec.hasNonNull("internalDescription")) {
-            mod.internalDescription(textMap(spec.get("internalDescription")));
-        }
-        if (spec.hasNonNull("externalDescription")) {
-            mod.externalDescription(textMap(spec.get("externalDescription")));
-        }
-        if (spec.hasNonNull("annotations")) {
-            mod.annotations(annotations(spec.get("annotations")));
         }
         if (spec.hasNonNull("requiredMessages")) {
             mod.requiredMessages(textMap(spec.get("requiredMessages")));
@@ -186,8 +179,9 @@ public final class FieldSpec {
                     + "\" so the block takes effect. NOTE: modify REPLACES the field's type, so include the FULL \""
                     + block + "\" block (every key to keep), not only the changed one.";
         }
-        return "nothing to modify — give a \"kind\"/\"typedef\" to re-type, or a metadata key "
-                + "(required/label/helperText/internalDescription/externalDescription/annotations/global/transient)";
+        return "nothing to modify — give a \"kind\"/\"typedef\" to re-type, or a field property "
+                + "(required/helperText/requiredMessages/global/transient); use `dmtool meta <ref>` for "
+                + "labels, descriptions, and annotations";
     }
 
     /**

@@ -36,17 +36,17 @@ import picocli.CommandLine.Parameters;
  * {@code dmtool field modify <spec.json>} — change an existing field <b>in place</b> and write the model
  * back. The field is located by the spec's {@code group} + {@code name}; it is a <b>partial</b> edit — every
  * aspect the spec carries is applied, every absent one is left untouched: a {@code kind}/{@code typedef}
- * re-types it (add a STRING {@code pattern}, tighten a NUMBER's scale, …), and any metadata key changes that
- * metadata (requiredness, label, helper text, descriptions, annotations, the global/transient flags). So a
- * constraint <em>or</em> a label can be changed <em>without delete-and-recreate</em>, and an aspect the spec
- * carries is never silently dropped (a spec that would change nothing is refused). Same rich spec shape as
- * {@code field add} ({@code schema field modify}), only the locator is required; the result is re-bound
+ * re-types it (add a STRING {@code pattern}, tighten a NUMBER's scale, …), and field-specific properties
+ * change requiredness, helper text, required messages, or the global/transient flags. Common metadata uses
+ * {@code meta <ref>} (G45). An aspect the spec carries is never silently dropped (a spec that would change
+ * nothing is refused). Its directional contract is {@code schema field modify}; the result is re-bound
  * through the kernel, so a kernel-invalid change is a {@code rejected} envelope (nothing written). In place
  * by default; {@code -o} redirects, {@code --dry-run} previews.
  */
 @Command(name = "modify", mixinStandardHelpOptions = true,
-        description = "Change a field in place via a <spec.json> — re-type (kind + config) and/or edit metadata "
-                + "(required/label/helperText/…); partial, no delete-and-recreate; -o redirects, --dry-run previews. "
+        description = "Change a field in place via a <spec.json> — re-type (kind + config) and/or edit field "
+                + "properties (required/helperText/requiredMessages/global/transient); use `meta <ref>` for "
+                + "common metadata. Partial, no delete-and-recreate; -o redirects, --dry-run previews. "
                 + "A KIND change warns which rules/computations read the field.")
 final class FieldModifyCommand extends BaseCommand {
 
@@ -90,7 +90,7 @@ final class FieldModifyCommand extends BaseCommand {
         List<Diagnostic> advisories;
         try {
             JsonNode spec = MAPPER.readTree(Files.readString(Path.of(specPath)));
-            Optional<Integer> rejected = rejectUnknownKeys("field", "modify", "field-add", spec);
+            Optional<Integer> rejected = rejectUnknownKeys("field", "modify", "field-modify", spec);
             if (rejected.isPresent()) {
                 return rejected.get();
             }
@@ -112,7 +112,7 @@ final class FieldModifyCommand extends BaseCommand {
             if (refusal.isPresent()) {
                 return refuse("field", "modify", refusal.get());
             }
-            // a KIND change (vs a within-kind config tweak or a metadata-only edit) can invalidate conditions
+            // a KIND change (vs a within-kind config tweak or a field-property-only edit) can invalidate conditions
             // that read the field; surface the readers up front — only when re-typing. The kernel re-validate
             // stays the hard gate (§6).
             advisories = mod.type().isPresent()

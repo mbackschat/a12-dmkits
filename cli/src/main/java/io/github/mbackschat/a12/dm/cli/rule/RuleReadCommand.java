@@ -87,7 +87,7 @@ final class RuleReadCommand extends BaseCommand {
             adapter.ruleErrorField(rule).ifPresent(f -> data.put("errorField", f));
             putRuleOutcome(data, read);
             RuleMessages.putInto(data, adapter.ruleMessages(rule));
-            // echo the rule's metadata (G39) so a `rule modify --annotation/--*-description` round-trips
+            // target-specific reads retain their metadata projection (G45); `meta` is the write owner
             // (rules have no label slot). Read from ModelDocument — the metadata sits on the element node,
             // not the KernelAdapter's condition/message view.
             ModelDocument doc = ModelDocument.read(json);

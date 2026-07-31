@@ -63,18 +63,16 @@ class GroupModifyVerbTest {
 
     @Test
     void setsAndReadsBackGroupMetadata(@TempDir Path dir) throws Exception {
-        // G38 — a group's label / annotation / descriptions, the group peer of the field-metadata edits.
+        // G38 metadata remains readable from group read; G45 centralizes its post-creation write under meta.
         Path m = subscription(dir);
         // the kernel requires a label to cover EVERY declared model locale (here en_US + de_DE), so supply both.
-        var res = CliTestSupport.run("-m", m.toString(), "group", "modify", "/Subscription/Billing",
+        var res = CliTestSupport.run("-m", m.toString(), "meta", "/Subscription/Billing",
                 "--label", "en_US=Billing details", "--label", "de_DE=Rechnungsdaten",
                 "--annotation", "owner=billing-team",
                 "--internal-description", "en_US=internal note",
                 "--external-description", "en_US=shown to users");
         assertEquals(0, res.code(), res::err);
-        JsonNode changed = M.readTree(res.out()).path("changed");
-        assertEquals("Billing details", changed.path("label.en_US").asText());
-        assertEquals("billing-team", changed.path("annotation.owner").asText());
+        assertEquals("applied", M.readTree(res.out()).path("outcome").asText());
         // the edit round-trips through group read (the read-side of G38)
         var read = CliTestSupport.run("-m", m.toString(), "group", "read", "/Subscription/Billing");
         JsonNode data = M.readTree(read.out()).path("data");
@@ -87,9 +85,9 @@ class GroupModifyVerbTest {
     @Test
     void removesAGroupAnnotation(@TempDir Path dir) throws Exception {
         Path m = subscription(dir);
-        assertEquals(0, CliTestSupport.run("-m", m.toString(), "group", "modify", "/Subscription/Billing",
+        assertEquals(0, CliTestSupport.run("-m", m.toString(), "meta", "/Subscription/Billing",
                 "--annotation", "owner=billing-team").code());
-        var res = CliTestSupport.run("-m", m.toString(), "group", "modify", "/Subscription/Billing",
+        var res = CliTestSupport.run("-m", m.toString(), "meta", "/Subscription/Billing",
                 "--remove-annotation", "owner");
         assertEquals(0, res.code(), res::err);
         var read = CliTestSupport.run("-m", m.toString(), "group", "read", "/Subscription/Billing");

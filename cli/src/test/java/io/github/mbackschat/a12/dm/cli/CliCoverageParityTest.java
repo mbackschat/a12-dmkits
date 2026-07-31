@@ -28,8 +28,8 @@ import org.junit.jupiter.api.Test;
  * <p>This is the CLI peer of {@code adapter.laws.CatalogParityTest} (operator catalog ↔ fuzz coverage) and the
  * interpreter's renderer-modifier net — the same "enumerate the surface, classify every member, fail on
  * unclassified" pattern. It guards <b>method-level</b> coverage (a whole mutator with no CLI path); a mutator that
- * is polymorphic over entity kinds and covered for only SOME (e.g. {@code setLabel} covers a FIELD via
- * {@code field modify} but a GROUP/RULE label is the open G38/G39) is noted in its classification, not separately
+ * is polymorphic over entity kinds and covered for only SOME (e.g. labels apply only to fields/groups) is
+ * noted in its classification, not separately
  * enforced here.
  */
 class CliCoverageParityTest {
@@ -67,16 +67,14 @@ class CliCoverageParityTest {
             Map.entry("setHelperText", "field add/modify (helperText in the field spec)"),
             Map.entry("setGlobal", "field add/modify (global in the field spec)"),
             Map.entry("setTransient", "field add/modify (transient in the field spec)"),
-            // field/group/rule metadata (polymorphic): FIELDS via field modify (FieldSpec), GROUPS via group
-            // modify (G38), RULES via rule modify + rule add + apply RULE_* (G39). A rule has no label slot, so
-            // setLabel stays field/group only (correct by construction).
-            Map.entry("setLabel", "field modify --label + group modify --label (rules have no label slot)"),
-            Map.entry("setAnnotation", "field/group/rule modify --annotation (G39)"),
-            Map.entry("removeAnnotation", "field/group/rule modify --remove-annotation (G39)"),
-            Map.entry("setInternalDescription", "field/group/rule modify --internal-description (G39)"),
-            Map.entry("setExternalDescription", "field/group/rule modify --external-description (G39)"),
-            Map.entry("removeInternalDescription", "field modify (group/rule modify have no remove-description flag)"),
-            Map.entry("removeExternalDescription", "field modify (group/rule modify have no remove-description flag)"),
+            // common element metadata is polymorphic and has one post-creation CLI owner (G45).
+            Map.entry("setLabel", "meta <ref> --label (field/group only) + apply META_MODIFY"),
+            Map.entry("setAnnotation", "meta <ref> --annotation + apply META_MODIFY"),
+            Map.entry("removeAnnotation", "meta <ref> --remove-annotation + apply META_MODIFY"),
+            Map.entry("setInternalDescription", "meta <ref> --internal-description + apply META_MODIFY"),
+            Map.entry("setExternalDescription", "meta <ref> --external-description + apply META_MODIFY"),
+            Map.entry("removeInternalDescription", "meta <ref> --remove-internal-description + apply META_MODIFY"),
+            Map.entry("removeExternalDescription", "meta <ref> --remove-external-description + apply META_MODIFY"),
             // ── groups ──
             Map.entry("addGroup", "group add"),
             Map.entry("addRepeatableGroup", "group add --repeatable"),

@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://github.com/mbackschat/a12-dmkits/schema/field-add.schema.json",
   "title": "field-add-spec",
-  "description": "INPUT of `dmtool -m <model> field add <spec.json>` — a field to add, with its full per-kind config (FEATURE-GAPS) and field-level metadata. The simpler `field add --group --name (--kind|--typedef)` flags cover a bare field; this spec covers everything the typed builders express. The SAME shape is the input of `field modify`, where it is a PARTIAL edit of an existing field: only `group`+`name` are required, and every aspect present is applied (a `kind`/`typedef` re-types; any metadata key changes that metadata) while absent aspects are left untouched — nothing the spec carries is silently dropped. `additionalProperties:false` here is ENFORCED on input: an undeclared/typo'd key is rejected with RK_UNKNOWN_ARG, not silently ignored. Validated against the real kernel before writing. (The flags and this spec are mutually exclusive.)",
+  "description": "INPUT of `dmtool -m <model> field add <spec.json>` — a field to add, with its full per-kind config and creation-time field metadata. The simpler `field add --group --name (--kind|--typedef)` flags cover a bare field; this spec covers everything the typed builders express. Post-creation field semantics use the narrower `schema field modify`; labels, descriptions, and annotations use `dmtool meta <ref>` (G45). `additionalProperties:false` is enforced: an undeclared/typo'd key is rejected with RK_UNKNOWN_ARG, not silently ignored. Validated against the real kernel before writing.",
   "type": "object",
   "required": ["group", "name"],
   "additionalProperties": false,

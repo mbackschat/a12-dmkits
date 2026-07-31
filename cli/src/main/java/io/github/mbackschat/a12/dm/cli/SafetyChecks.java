@@ -233,6 +233,21 @@ public final class SafetyChecks {
                 : Optional.of(notFound(RkCode.NO_SUCH_ELEMENT, "element or type definition", pathOrTypeDefId));
     }
 
+    /** Refuse a label write on a describable that has no label slot (rules, computations, and type definitions). */
+    public static SafetyCheck labelSupported(ModelDocument doc, String pathOrTypeDefId, boolean labelRequested) {
+        return () -> {
+            if (!labelRequested || doc.labels(pathOrTypeDefId).isPresent()) {
+                return Optional.empty();
+            }
+            Diagnostic diagnostic = Diagnostic.precheck(Optional.of(RkCode.LABEL_NOT_SUPPORTED.code()),
+                    "a label applies only to a field or group; '" + pathOrTypeDefId + "' has no display-label slot",
+                    Diagnostic.Where.path(pathOrTypeDefId),
+                    Optional.of(RkCode.LABEL_NOT_SUPPORTED.fix()), Optional.empty());
+            return Optional.of(new Refusal(
+                    "the target does not support a display label — refusing", null, diagnostic));
+        };
+    }
+
     /** Refuse an include refactor whose target alias is not a declared model include (RK_NO_SUCH_INCLUDE). */
     public static SafetyCheck includeExists(ModelDocument doc, String alias) {
         return () -> doc.includes().stream().anyMatch(i -> i.alias().equals(alias))

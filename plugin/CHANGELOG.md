@@ -4,6 +4,17 @@ All notable changes to the **publicly released `dmtool` artifacts** — the nati
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versioning is [SemVer](https://semver.org/) plus **A12 Kernel compatibility metadata** (the kernel each release targets is recorded per entry, never folded into the version string).
 
+## [Unreleased]
+
+### Changed
+
+- **BREAKING:** `dmtool meta <ref>` is now the sole post-creation writer for labels, annotations, and internal/external descriptions across fields, groups, rules, computations, and type definitions. The duplicated metadata keys and flags are removed from `field modify`, `group modify`, `rule modify`, and their `apply` records; each refusal points to the canonical `meta` route.
+- `apply` adds transactional `{target:"meta",op:"modify",ref,…}` metadata edits, including the previously unreachable computation and type-definition cases. Target-specific reads keep their complete metadata projections.
+
+### Fixed
+
+- `field read` now returns `helperText`, including through an in-session `apply` read, and the field/group/meta read schemas cover every emitted metadata key.
+
 ## [0.10.0] — kernel 30.8.1 (A12 Tools 2025.06-ext5)
 
 The runtime document boundary now uses A12's own Document JSON shape and I/O behavior end to end. The built-in interpreter also gains partial temporal values and closes the kernel-semantics corrections measured since 0.9.1.

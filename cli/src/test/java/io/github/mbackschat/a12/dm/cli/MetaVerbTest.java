@@ -12,7 +12,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
 /**
- * {@code meta <ref>} — read/edit an element's descriptions + annotations (field/group/rule by path, type-def
+ * {@code meta <ref>} — read/edit an element's descriptions + annotations (field/group/rule/computation by path, type-def
  * by id). Dual-mode: no write flags reads; flags set/remove. An unknown reference is a {@code refused}
  * envelope ({@code RK_NO_SUCH_ELEMENT}).
  */
@@ -90,12 +90,15 @@ class MetaVerbTest {
 
     @Test
     void labelOnANonLabelableRefIsRefused(@TempDir Path dir) throws Exception {
-        // rules/computations/type-defs have no display label; --label on one fails with a clear message
+        // G45: as the sole route, label refusal is a structured, coded envelope — never bare stderr.
         Path model = CliTestSupport.orderRuled(dir);
         var res = CliTestSupport.run("-m", model.toString(), "meta", "/Order/EligibilityCheck",
                 "--label", "en_US=x");
-        assertTrue(res.code() != 0, "a label on a rule is an error");
-        assertTrue((res.out() + res.err()).toLowerCase().contains("label"),
-                () -> "names the label problem: " + res.out() + res.err());
+        assertEquals(2, res.code(), "a label on a rule is refused");
+        JsonNode envelope = M.readTree(res.out());
+        assertEquals("refused", envelope.path("outcome").asText(), res::out);
+        assertEquals("RK_LABEL_NOT_SUPPORTED",
+                envelope.path("diagnostics").path(0).path("code").asText(), res::out);
+        assertTrue(res.err().isEmpty(), () -> "the refusal belongs in stdout's envelope: " + res.err());
     }
 }

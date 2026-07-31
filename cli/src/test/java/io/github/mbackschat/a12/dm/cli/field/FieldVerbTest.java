@@ -150,10 +150,8 @@ class FieldVerbTest {
         // 05-fr: a targeted `field read` must surface metadata (the label) so an agent confirms a label edit
         // without exporting the whole model — and never reading the raw model JSON.
         Path model = CliTestSupport.orderRuled(dir);   // en_US-only
-        Path spec = dir.resolve("label.json");
-        Files.writeString(spec, """
-                {"group":"/Order","name":"Quantity","label":{"en_US":"Quantity ordered"}}""");
-        assertEquals(0, CliTestSupport.run("-m", model.toString(), "field", "modify", spec.toString()).code(),
+        assertEquals(0, CliTestSupport.run("-m", model.toString(), "meta", "/Order/Quantity",
+                "--label", "en_US=Quantity ordered").code(),
                 "set a label to read back");
         var res = CliTestSupport.run("-m", model.toString(), "field", "read", "/Order/Quantity");
         assertEquals(0, res.code(), res.err());
@@ -313,20 +311,19 @@ class FieldVerbTest {
 
     @Test
     void modifyRejectsAnOrphanConfigBlockEvenWithACoPresentAspect(@TempDir Path dir) throws Exception {
-        // 05-modify-drop (SILENT DROP): a kind-less `string` config block + a co-present `label` reported
-        // success (aspects:[label]) and silently DROPPED the pattern. It must now be rejected — the block can't
-        // take effect without `kind` — and NOTHING is applied (atomic), so the label isn't written either.
+        // 05-modify-drop (SILENT DROP): a kind-less `string` config block + a co-present field property could
+        // report success and silently drop the pattern. It must be rejected and NOTHING applied.
         Path m = CliTestSupport.orderRuled(dir);
         Path spec = dir.resolve("orphan.json");
         Files.writeString(spec, """
-                {"group":"/Order/Items","name":"Sku","label":{"en_US":"Product SKU"},"string":{"pattern":"X[0-9]+","patternMessage":"bad"}}""");
+                {"group":"/Order/Items","name":"Sku","required":true,"string":{"pattern":"X[0-9]+","patternMessage":"bad"}}""");
         var res = CliTestSupport.run("-m", m.toString(), "field", "modify", spec.toString());
         assertNotEquals(0, res.code(), () -> "an orphaned config block must be rejected even with a co-present aspect: " + res.out());
         assertTrue(res.err().contains("kind") && res.err().contains("re-type"),
                 () -> "the corrective names the missing kind: " + res.err());
         String written = Files.readString(m);
         assertFalse(written.contains("X[0-9]+"), "the orphaned pattern was NOT silently applied");
-        assertFalse(written.contains("Product SKU"), "nothing applied — the modify is atomic; the label isn't written either");
+        assertFalse(written.contains("requirednessConfig"), "nothing applied — the modify is atomic");
     }
 
     @Test

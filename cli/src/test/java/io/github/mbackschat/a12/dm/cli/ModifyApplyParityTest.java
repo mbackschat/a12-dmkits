@@ -13,8 +13,8 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
 /**
- * T4 parity: the {@code config modify} / {@code group modify} setter cascades are single-sourced
- * (through {@code ConfigModification} / {@code GroupModification}), so the standalone verb and the
+ * T4 parity: the {@code config modify}, {@code group modify}, and G45 {@code meta} setter cascades are
+ * single-sourced, so the standalone verbs and the
  * {@code apply} op-record must produce a <b>byte-identical resulting model</b> over the full flag matrix.
  * Running the same directives through both surfaces onto two copies of one fixture and asserting the two
  * outputs are structurally equal is the lock that the two paths can't drift.
@@ -65,21 +65,23 @@ class ModifyApplyParityTest {
         Path viaApply = copyModel(dir, "group-apply.dm.json");
 
         // /Subscription/Addons is repeatable with child fields Name + MonthlyFee; the model declares en_US + de_DE
-        // (so a label must cover both). This exercises repeatability, index field, multi-key sort, and every
-        // metadata directive in one op.
+        // This exercises group semantics plus the canonical metadata route through both standalone/apply forms.
         var verb = CliTestSupport.run("-m", viaVerb.toString(), "group", "modify", "/Subscription/Addons",
                 "--repeatable", "15", "--index-field", "Name",
-                "--sort-field", "MonthlyFee:desc", "--sort-field", "Name",
+                "--sort-field", "MonthlyFee:desc", "--sort-field", "Name");
+        assertEquals(0, verb.code(), verb::err);
+        assertEquals("applied", M.readTree(verb.out()).path("outcome").asText(), verb::out);
+        var meta = CliTestSupport.run("-m", viaVerb.toString(), "meta", "/Subscription/Addons",
                 "--label", "en_US=Add-ons", "--label", "de_DE=Zusaetze",
                 "--annotation", "owner=fulfilment",
                 "--internal-description", "en_US=internal note", "--external-description", "en_US=shown");
-        assertEquals(0, verb.code(), verb::err);
-        assertEquals("applied", M.readTree(verb.out()).path("outcome").asText(), verb::out);
+        assertEquals(0, meta.code(), meta::err);
 
         Path ops = dir.resolve("group-ops.json");
         Files.writeString(ops, """
                 [ {"target":"group","op":"modify","groupPathInModel":"/Subscription/Addons",
-                   "repeatable":15,"index-field":"Name","sort-field":["MonthlyFee:desc","Name"],
+                   "repeatable":15,"index-field":"Name","sort-field":["MonthlyFee:desc","Name"]},
+                  {"target":"meta","op":"modify","ref":"/Subscription/Addons",
                    "label":{"en_US":"Add-ons","de_DE":"Zusaetze"},"annotation":{"owner":"fulfilment"},
                    "internal-description":{"en_US":"internal note"},"external-description":{"en_US":"shown"}} ]""");
         var apply = CliTestSupport.run("-m", viaApply.toString(), "apply", ops.toString());

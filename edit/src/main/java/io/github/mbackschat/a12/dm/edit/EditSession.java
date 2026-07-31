@@ -134,12 +134,12 @@ public final class EditSession {
         return editStructure(d -> d.setAnnotation(elementPath, name, value));
     }
 
-    /** Remove the annotation {@code name} from the element (field/group/rule) at {@code elementPath}. */
+    /** Remove the annotation {@code name} from a describable element/type definition. */
     public EditSession removeAnnotation(String elementPath, String name) {
         return editStructure(d -> d.removeAnnotation(elementPath, name));
     }
 
-    /** Upsert one per-locale {@code internalDescription} on the element (field/group/rule) at {@code elementPath}. */
+    /** Upsert one per-locale {@code internalDescription} on a describable element/type definition. */
     public EditSession setInternalDescription(String elementPath, String locale, String text) {
         return editStructure(d -> d.setInternalDescription(elementPath, locale, text));
     }

@@ -32,7 +32,7 @@ public @interface ParamKind {
         COMPUTATION_PATH(true, "/__rk_absent__/__computation__", null),
         TYPEDEF_ID(true, "__rk_absent_typedef__", null),
         INCLUDE_ALIAS(true, "__rk_absent_alias__", null),
-        // a reference to ANY describable element by name-path (field/group/rule) or type-def id
+        // a reference to ANY describable element by name-path (field/group/rule/computation) or type-def id
         ELEMENT_REF(true, "/__rk_absent__/__element__", null),
 
         // --- values the caller supplies (not references; the fuzzer fills them benignly) -----------------

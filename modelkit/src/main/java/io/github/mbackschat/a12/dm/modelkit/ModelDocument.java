@@ -695,7 +695,7 @@ public final class ModelDocument {
         return this;
     }
 
-    /** Set a name/value annotation on any element — field, group, or rule (replacing any same-named entry). */
+    /** Set a name/value annotation on any describable element or type definition (replacing a same-named entry). */
     public ModelDocument setAnnotation(String elementPath, String name, String value) {
         ObjectNode element = metaElement(elementPath);
         ArrayNode annotations = element.has(DmKeys.ANNOTATIONS)
@@ -719,7 +719,8 @@ public final class ModelDocument {
 
     /**
      * Upsert one per-locale {@code internalDescription} entry on the element at {@code elementPath} — a
-     * field, group, or rule (the kernel's {@code IDescribed}, authoring/maintenance text). Replaces the
+     * field, group, rule, computation, or type definition (the kernel's {@code IDescribed},
+     * authoring/maintenance text). Replaces the
      * text for an existing locale.
      */
     public ModelDocument setInternalDescription(String elementPath, String locale, String text) {
@@ -979,7 +980,7 @@ public final class ModelDocument {
     }
 
     /**
-     * Locate any describable node by its name-path or type-def id: a field, group, or rule (by name-path,
+     * Locate any describable node by its name-path or type-def id: a field, group, rule, or computation (by name-path,
      * broader than {@link #element}, which {@code walk} limits to fields/groups), or a <b>type definition</b>
      * (by id, since type-defs live in {@code content.typeDefinitions}, not the element tree). All carry the
      * same element-level {@code internalDescription}/{@code externalDescription}/{@code annotations} shape, so
@@ -999,7 +1000,7 @@ public final class ModelDocument {
     }
 
     /**
-     * Whether a describable node exists at {@code pathOrTypeDefId} — a field/group/rule by name-path, or a
+     * Whether a describable node exists at {@code pathOrTypeDefId} — a field/group/rule/computation by name-path, or a
      * type definition by id. The pre-check for the metadata edit verbs (so a bogus reference refuses cleanly).
      */
     public boolean describableExists(String pathOrTypeDefId) {

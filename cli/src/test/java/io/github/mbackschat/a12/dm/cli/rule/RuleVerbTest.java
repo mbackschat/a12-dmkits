@@ -366,18 +366,16 @@ class RuleVerbTest {
     }
 
     @Test
-    void modifySetsAndReadsBackRuleMetadata(@TempDir Path dir) throws Exception {
+    void metaSetsAndRuleReadProjectsRuleMetadata(@TempDir Path dir) throws Exception {
         // G39 — a rule's annotation + internal/external descriptions (the rule peer of group metadata; rules
         // have no label slot). Metadata-only modify needs no condition/severity/message.
         Path model = CliTestSupport.modelWithRule(dir);
-        var res = CliTestSupport.run("-m", model.toString(), "rule", "modify", CliTestSupport.RULE_FULL_NAME,
+        var res = CliTestSupport.run("-m", model.toString(), "meta", CliTestSupport.RULE_FULL_NAME,
                 "--annotation", "owner=risk-team",
                 "--internal-description", "en_US=why this cap exists",
                 "--external-description", "en_US=your fee is capped");
         assertEquals(0, res.code(), res::err);
-        JsonNode changed = M.readTree(res.out()).path("changed");
-        assertEquals("risk-team", changed.path("annotation.owner").asText());
-        assertEquals("why this cap exists", changed.path("internalDescription.en_US").asText());
+        assertEquals("applied", M.readTree(res.out()).path("outcome").asText());
         // round-trips through rule read (the read-side of G39)
         var read = CliTestSupport.run("-m", model.toString(), "rule", "read", CliTestSupport.RULE_FULL_NAME);
         JsonNode data = M.readTree(read.out()).path("data");
@@ -387,12 +385,12 @@ class RuleVerbTest {
     }
 
     @Test
-    void modifyMetadataLeavesTheConditionIntact(@TempDir Path dir) throws Exception {
+    void metaModificationLeavesTheRuleConditionIntact(@TempDir Path dir) throws Exception {
         // a metadata edit must not disturb the rule's condition/severity (only whitespace may re-serialize)
         Path model = CliTestSupport.modelWithRule(dir);
         String before = M.readTree(CliTestSupport.run("-m", model.toString(), "rule", "read",
                 CliTestSupport.RULE_FULL_NAME).out()).path("data").path("condition").asText();
-        assertEquals(0, CliTestSupport.run("-m", model.toString(), "rule", "modify", CliTestSupport.RULE_FULL_NAME,
+        assertEquals(0, CliTestSupport.run("-m", model.toString(), "meta", CliTestSupport.RULE_FULL_NAME,
                 "--annotation", "owner=risk-team").code());
         JsonNode after = M.readTree(CliTestSupport.run("-m", model.toString(), "rule", "read",
                 CliTestSupport.RULE_FULL_NAME).out()).path("data");
@@ -400,11 +398,11 @@ class RuleVerbTest {
     }
 
     @Test
-    void modifyRemovesARuleAnnotation(@TempDir Path dir) throws Exception {
+    void metaRemovesARuleAnnotation(@TempDir Path dir) throws Exception {
         Path model = CliTestSupport.modelWithRule(dir);
-        assertEquals(0, CliTestSupport.run("-m", model.toString(), "rule", "modify", CliTestSupport.RULE_FULL_NAME,
+        assertEquals(0, CliTestSupport.run("-m", model.toString(), "meta", CliTestSupport.RULE_FULL_NAME,
                 "--annotation", "owner=risk-team").code());
-        var res = CliTestSupport.run("-m", model.toString(), "rule", "modify", CliTestSupport.RULE_FULL_NAME,
+        var res = CliTestSupport.run("-m", model.toString(), "meta", CliTestSupport.RULE_FULL_NAME,
                 "--remove-annotation", "owner");
         assertEquals(0, res.code(), res::err);
         var read = CliTestSupport.run("-m", model.toString(), "rule", "read", CliTestSupport.RULE_FULL_NAME);
@@ -416,6 +414,6 @@ class RuleVerbTest {
     void modifyWithNoDirectiveIsAUsageError(@TempDir Path dir) throws Exception {
         Path model = CliTestSupport.modelWithRule(dir);
         assertEquals(2, CliTestSupport.run("-m", model.toString(), "rule", "modify", CliTestSupport.RULE_FULL_NAME).code(),
-                "no condition/severity/message/metadata is a usage error");
+                "no condition/severity/message is a usage error");
     }
 }

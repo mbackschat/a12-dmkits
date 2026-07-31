@@ -14,18 +14,18 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
 /**
- * The "applied ⇒ effected" round-trip guard for field metadata — the deterministic complement to the probe,
+ * The "applied ⇒ effected" round-trip guard for field properties and metadata — the deterministic complement to the probe,
  * for the silent-drop / false-{@code applied} class. Two invariants, both for every writable metadata aspect:
  * <ul>
  *   <li><b>effected</b> — a schema-correct value reported {@code applied} must actually land in the model
- *       (write → read back; the original {@code field modify} metadata bug + the requiredness/annotations
+ *       (write → read back; field-specific properties use {@code field modify}, common metadata uses
+ *       {@code meta} (G45), and the original requiredness/annotations
  *       drop the probe's round-trip work surfaced);</li>
  *   <li><b>rejected</b> — a recognized key carrying a <em>wrong-shaped</em> value must be refused, NOT silently
  *       coerced to a default/empty and falsely reported {@code applied}. The schema-driven {@code SpecKeys}
  *       gate now validates key <em>values</em> as well as <em>names</em> (Follow-on B), so a wrong shape is a
- *       structured {@code RK_INVALID_VALUE} — not a plain {@code fail} — end-to-end: {@code required:"MANDATORY"}
- *       (outside the declared enum), {@code annotations:[…]} (array vs object), {@code label/helperText:"…"}
- *       (string vs locale map). The {@code FieldSpec} parsers keep a fail-fast invariant behind the gate.</li>
+ *       structured {@code RK_INVALID_VALUE} — not a plain {@code fail} — end-to-end for field properties.
+ *       A retired common-metadata key instead gets {@code RK_UNKNOWN_ARG} with a relocation to {@code meta}.</li>
  * </ul>
  */
 class FieldMetadataRoundTripTest {
@@ -45,11 +45,13 @@ class FieldMetadataRoundTripTest {
         Path spec = dir.resolve("mod.json");
         Files.writeString(spec, """
                 { "group":"/R", "name":"F", "required":true,
-                  "label":{"en_US":"MARK_LABEL"}, "helperText":{"en_US":"MARK_HELPER"},
-                  "internalDescription":{"en_US":"MARK_INT"}, "externalDescription":{"en_US":"MARK_EXT"},
-                  "annotations":{"mark_anno":"MARK_ANNO"}, "global":true, "transient":true }""");
+                  "helperText":{"en_US":"MARK_HELPER"}, "global":true, "transient":true }""");
         var res = CliTestSupport.run("-m", m.toString(), "field", "modify", spec.toString());
         assertEquals(0, res.code(), res::err);
+        var meta = CliTestSupport.run("-m", m.toString(), "meta", "/R/F",
+                "--label", "en_US=MARK_LABEL", "--internal-description", "en_US=MARK_INT",
+                "--external-description", "en_US=MARK_EXT", "--annotation", "mark_anno=MARK_ANNO");
+        assertEquals(0, meta.code(), meta::err);
 
         // every aspect the verb reported applied must be visible in the written model — no false `applied`
         String written = Files.readString(m);
@@ -73,15 +75,14 @@ class FieldMetadataRoundTripTest {
     }
 
     @Test
-    void wrongShapedAnnotationsIsRejectedNotSilentlyApplied(@TempDir Path dir) throws Exception {
+    void retiredAnnotationsKeyPointsToMeta(@TempDir Path dir) throws Exception {
         Path m = modelWithField(dir);
         Path bad = dir.resolve("bad.json");
-        // the array shape (vs the schema's object {name:value}) used to parse to an empty list → silent drop
         Files.writeString(bad, "{ \"group\":\"/R\", \"name\":\"F\", \"annotations\":[{\"name\":\"a\",\"value\":\"v\"}] }");
         var res = CliTestSupport.run("-m", m.toString(), "field", "modify", bad.toString());
-        assertNotEquals(0, res.code(), () -> "annotations as an array must be rejected, not silently dropped: " + res.out());
-        assertTrue(res.out().contains("RK_INVALID_VALUE"),
-                () -> "rejected with the structured value-shape code, not a plain fail: " + res.out());
+        assertNotEquals(0, res.code(), () -> "retired annotations must be rejected: " + res.out());
+        assertTrue(res.out().contains("RK_UNKNOWN_ARG") && res.out().contains("dmtool meta <ref> --annotation"),
+                () -> "the retired key points to the canonical route: " + res.out());
     }
 
     @Test

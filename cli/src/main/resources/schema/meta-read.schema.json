@@ -1,0 +1,44 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/mbackschat/a12-dmkits/schema/meta-read.schema.json",
+  "title": "meta-read-data",
+  "description": "The `data` payload of `dmtool meta <ref>` with no write flags. This is the complete common-metadata read for a field, group, rule, computation, or type definition. `label` is present only for fields/groups that carry labels; descriptions and annotations are always objects and may be empty.",
+  "type": "object",
+  "required": ["internalDescription", "externalDescription", "annotations"],
+  "additionalProperties": false,
+  "properties": {
+    "label": {
+      "type": "object",
+      "additionalProperties": { "type": "string" },
+      "description": "locale → display label; fields/groups only, omitted for rules/computations/type definitions"
+    },
+    "internalDescription": {
+      "type": "object",
+      "additionalProperties": { "type": "string" },
+      "description": "locale → maintenance/technical description"
+    },
+    "externalDescription": {
+      "type": "object",
+      "additionalProperties": { "type": "string" },
+      "description": "locale → end-user-facing description"
+    },
+    "annotations": {
+      "type": "object",
+      "additionalProperties": { "type": "string" },
+      "description": "annotation name → value"
+    }
+  },
+  "examples": [
+    {
+      "label": { "en_US": "Monthly fee" },
+      "internalDescription": { "en_US": "Owned by billing" },
+      "externalDescription": {},
+      "annotations": { "owner": "billing-team" }
+    },
+    {
+      "internalDescription": {},
+      "externalDescription": { "en_US": "Calculated automatically" },
+      "annotations": { "owner": "pricing" }
+    }
+  ]
+}

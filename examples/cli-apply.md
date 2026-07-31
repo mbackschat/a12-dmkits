@@ -160,6 +160,7 @@ dmtool -m /tmp/apply-midread.dm.json apply /tmp/apply-midread-ops.json
     "data" : {
       "field" : "/Order/Discount",
       "kind" : "NUMBER",
+      "required" : false,
       "number" : {
         "maxFractionalDigits" : 0
       }
@@ -338,6 +339,75 @@ dmtool -m /tmp/apply-xtype.dm.json apply /tmp/apply-xtype-ops.json 2>&1; echo "(
 ```
 
 → `RK_WRONG_BATCH_KIND` names the mistake (`verb/argv` → it's a `batch` op-record) and the `fix` points at the right verb. `apply` and `batch` are siblings — *session surgery* vs *stateless dispatch* — and the tool tells you when you've reached for the wrong one. Discover the apply frame anytime with `dmtool schema apply` (the first section).
+
+## Common metadata in a session — one route for every element kind
+
+`meta modify` is the transaction peer of standalone `meta <ref>`. It is the sole post-creation route for labels, descriptions, and annotations; `ref` can be a field/group/rule/computation path or a type-definition id. Here one op annotates and describes an existing field. The same op works for the element kinds that have no target-specific metadata modifier, so computations and type definitions no longer need a non-atomic second call.
+
+```bash
+cp examples/models/order-ruled.dm.json /tmp/apply-meta.dm.json
+cat > /tmp/apply-meta-ops.json <<'JSON'
+[ {"target":"meta","op":"modify","ref":"/Order/Quantity",
+    "annotation":{"owner":"pricing"},
+    "internal-description":{"en_US":"Quantity requested by the customer."}} ]
+JSON
+dmtool -m /tmp/apply-meta.dm.json apply /tmp/apply-meta-ops.json
+```
+
+```output
+{
+  "verb" : "apply",
+  "ops" : 1,
+  "committed" : true,
+  "summary" : "1 op(s) committed, written to /tmp/apply-meta.dm.json",
+  "failedAt" : null,
+  "written" : true,
+  "output" : "/tmp/apply-meta.dm.json",
+  "results" : [ {
+    "target" : "meta",
+    "op" : "modify",
+    "outcome" : "staged",
+    "ok" : true,
+    "summary" : "staged meta modify",
+    "changed" : {
+      "ref" : "/Order/Quantity",
+      "annotation.owner" : "pricing",
+      "internalDescription.en_US" : "Quantity requested by the customer."
+    },
+    "diagnostics" : [ ],
+    "written" : false
+  } ]
+}
+```
+
+```bash
+dmtool -m /tmp/apply-meta.dm.json meta /Order/Quantity
+```
+
+```output
+{
+  "target" : "meta",
+  "op" : "read",
+  "outcome" : "read",
+  "ok" : true,
+  "valid" : true,
+  "summary" : "read metadata of /Order/Quantity",
+  "data" : {
+    "label" : { },
+    "internalDescription" : {
+      "en_US" : "Quantity requested by the customer."
+    },
+    "externalDescription" : { },
+    "annotations" : {
+      "owner" : "pricing"
+    }
+  },
+  "diagnostics" : [ ],
+  "written" : false
+}
+```
+
+→ The wrapper commits once, and the complete `meta` read confirms both values. Target-specific reads retain their convenient metadata projections, but writes have one contract: standalone `meta <ref>` or this identical `meta modify` op inside `apply`.
 
 ## Refactor ops in a session — a rename rewrites references, atomically
 

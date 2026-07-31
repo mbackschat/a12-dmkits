@@ -143,7 +143,10 @@ public final class Cli {
                     // The instance-flag hint wins over the locator hint: `rule eval` takes BOTH an --instance
                     // and a positional <rulePathInModel>, so a wrong --doc must be corrected to --instance, not
                     // sent to the positional. Fall back to the locator corrective otherwise.
-                    String hint = instanceFlagHint(ex, parsedArgs);
+                    String hint = metadataRelocationHint(ex);
+                    if (hint == null) {
+                        hint = instanceFlagHint(ex, parsedArgs);
+                    }
                     if (hint == null) {
                         hint = locatorPositionalHint(ex);
                     }
@@ -234,6 +237,21 @@ public final class Cli {
             }
         }
         return null;
+    }
+
+    /** Point a retired G45 metadata flag at the canonical {@code meta <ref>} route. */
+    private static String metadataRelocationHint(CommandLine.ParameterException ex) {
+        if (!(ex instanceof CommandLine.UnmatchedArgumentException unmatched)) {
+            return null;
+        }
+        String flag = unmatched.getUnmatched().stream()
+                .filter(arg -> arg.startsWith("--"))
+                .map(arg -> arg.split("=", 2)[0])
+                .findFirst()
+                .orElse(null);
+        return flag == null ? null
+                : MetadataRelocation.flagHint(ex.getCommandLine().getCommandSpec().qualifiedName(), flag)
+                        .orElse(null);
     }
 
     private static String locatorPositionalHint(CommandLine.ParameterException ex) {

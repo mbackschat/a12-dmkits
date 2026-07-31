@@ -1,0 +1,128 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/mbackschat/a12-dmkits/schema/field-modify.schema.json",
+  "title": "field-modify-spec",
+  "description": "INPUT of `dmtool -m <model> field modify <spec.json>` — a PARTIAL semantic edit of an existing field. `group` + `name` locate the field; a `kind`/`typedef` re-types it, and required/helperText/requiredMessages/global/transient edit field-specific properties. Labels, descriptions, and annotations moved to `dmtool meta <ref>` (G45). Every present aspect is applied and absent aspects are left untouched. `additionalProperties:false` is enforced: a retired metadata key gets RK_UNKNOWN_ARG with the canonical meta relocation.",
+  "type": "object",
+  "required": ["group", "name"],
+  "additionalProperties": false,
+  "properties": {
+    "group": { "type": "string", "description": "the existing field's parent-group ABSOLUTE name-path" },
+    "name": { "type": "string", "description": "the existing field's name" },
+    "kind": { "type": "string", "description": "STRING | NUMBER | DATE | TIME | DATETIME | DATERANGE | DATEFRAGMENT | BOOLEAN | CONFIRM | ENUM | CUSTOM (omit when `typedef` is given)" },
+    "typedef": { "type": "string", "description": "re-type the field through an existing type-definition id (wins over `kind`)" },
+    "required": { "enum": [true, false, "ifParentPresent"], "description": "true (always required) | false (optional) | \"ifParentPresent\"" },
+    "global": { "type": "boolean", "description": "the kernel `global` flag (relevant to partial validation)" },
+    "transient": { "type": "boolean", "description": "the kernel `transient` flag (present at runtime, not persisted)" },
+    "helperText": { "type": "object", "description": "replace the per-locale inline UI help, { \"<locale>\": \"<text>\" }" },
+    "requiredMessages": { "type": "object", "description": "replace the per-locale custom required-field error text; needs a required field and every declared locale" },
+    "string": {
+      "type": "object", "description": "(kind STRING) complete replacement config", "additionalProperties": false,
+      "properties": {
+        "minLength": { "type": "integer", "description": "minimum character length. seeAlso: the Length operator (`operators Length`)" },
+        "maxLength": { "type": "integer", "description": "maximum character length" },
+        "pattern": { "type": "string", "description": "anchored Java Pattern; REQUIRES patternMessage. Authoring first requires Java syntax, then the kernel 30.8.x restrictions: the finite A12K-30 blacklist (possessive quantifiers, (?<… / (?>…), \\A \\G \\Z \\z \\a \\e \\p \\Q \\E, nested unescaped [) plus the typed/full-model \\P rejection. Passing them does not prove JavaScript portability. seeAlso: PatternViolated/PatternMatched" },
+        "patternMessage": { "type": "string", "description": "required base/fallback error text whenever pattern is set" },
+        "patternMessages": { "type": "object", "additionalProperties": { "type": "string" }, "description": "optional per-locale overrides; patternMessage remains required" },
+        "lineBreaks": { "type": "boolean", "description": "permit multi-line input" },
+        "noValueValidation": { "type": "boolean", "description": "skip per-value validation; requires lineBreaks:true" },
+        "alphabeticalSorting": { "type": "boolean" },
+        "suggestions": { "type": "object", "description": "per-locale hint list, { \"<locale>\": [\"…\"] }" }
+      }
+    },
+    "number": {
+      "type": "object", "description": "(kind NUMBER) complete replacement config", "additionalProperties": false,
+      "properties": {
+        "minFractionalDigits": { "type": "integer" },
+        "maxFractionalDigits": { "type": "integer", "description": "the decimal scale" },
+        "min": { "type": "string", "description": "minimum decimal value as a string" },
+        "max": { "type": "string", "description": "maximum decimal value as a string" },
+        "minLength": { "type": "integer", "description": "minimum rendered stored-number length" },
+        "maxLength": { "type": "integer", "description": "maximum rendered stored-number length" },
+        "maxIntegerDigits": { "type": "integer", "description": "maximum digits before the decimal separator" },
+        "zeroNotAllowed": { "type": "boolean" },
+        "leadingZerosAllowed": { "type": "boolean" },
+        "unit": { "type": "string", "description": "AMOUNT | PERCENT | PERMILLE" }
+      }
+    },
+    "enum": {
+      "type": "object", "description": "(kind ENUM) complete replacement config", "additionalProperties": false,
+      "required": ["values"],
+      "properties": {
+        "values": {
+          "type": "array", "description": "at least one stored value with optional labels",
+          "items": {
+            "type": "object", "required": ["value"], "additionalProperties": false,
+            "properties": {
+              "value": { "type": "string" },
+              "labels": { "type": "object", "description": "per-locale labels" }
+            }
+          }
+        },
+        "categories": {
+          "type": "array", "description": "named classifications aligned with values",
+          "items": {
+            "type": "object", "required": ["name", "values"], "additionalProperties": false,
+            "properties": {
+              "name": { "type": "string" },
+              "description": { "type": "string" },
+              "values": { "type": "array", "items": { "type": "string" } }
+            }
+          }
+        },
+        "alphabeticalSorting": { "type": "boolean" },
+        "sValue": { "type": "string", "description": "stored-token default for an index enum" },
+        "invalidValueMessage": { "type": "string" },
+        "errorMessages": { "type": "object", "description": "per-locale invalid-value text" }
+      }
+    },
+    "custom": {
+      "type": "object", "description": "(kind CUSTOM) complete replacement config", "additionalProperties": false,
+      "required": ["typeName"],
+      "properties": {
+        "typeName": { "type": "string" },
+        "minLength": { "type": "integer" },
+        "maxLength": { "type": "integer" }
+      }
+    },
+    "date": {
+      "type": "object", "description": "(kind DATE) complete replacement config", "additionalProperties": false,
+      "properties": {
+        "format": { "type": "string", "description": "yyyy-MM-dd or dd.MM.yyyy" },
+        "precision": { "type": "string", "description": "FULL | DAY_OPTIONAL | MONTH_OPTIONAL | YEAR_OPTIONAL" },
+        "rejectBefore1900": { "type": "boolean" }
+      }
+    },
+    "time": {
+      "type": "object", "description": "(kind TIME) complete replacement config", "additionalProperties": false,
+      "properties": { "format": { "type": "string", "description": "the kernel requires HH:mm:ss" } }
+    },
+    "dateTime": {
+      "type": "object", "description": "(kind DATETIME) complete replacement config", "additionalProperties": false,
+      "properties": { "format": { "type": "string" } }
+    },
+    "dateRange": {
+      "type": "object", "description": "(kind DATERANGE) complete replacement config", "additionalProperties": false,
+      "required": ["format", "separator"],
+      "properties": {
+        "format": { "type": "string", "description": "verified: dd.MM.yyyy or yyyy-MM-dd" },
+        "separator": { "type": "string", "description": "paired separator: - or /" }
+      }
+    },
+    "dateFragment": {
+      "type": "object", "description": "(kind DATEFRAGMENT) complete replacement config", "additionalProperties": false,
+      "required": ["format"],
+      "properties": { "format": { "type": "string", "description": "verified: MM, yyyy, yyyy-MM, MM-dd" } }
+    }
+  },
+  "examples": [
+    {
+      "group": "/Subscription/Addons",
+      "name": "MonthlyFee",
+      "kind": "NUMBER",
+      "number": { "minFractionalDigits": 2, "maxFractionalDigits": 2, "unit": "AMOUNT" },
+      "required": true,
+      "helperText": { "en_US": "the recurring monthly fee", "de_DE": "die monatliche Gebuehr" }
+    }
+  ]
+}

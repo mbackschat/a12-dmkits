@@ -111,7 +111,7 @@ class FieldModifyCommandTest {
     }
 
     @Test
-    void changesLabelInPlaceWithoutReTyping(@TempDir Path dir) throws Exception {
+    void labelMovedToMeta(@TempDir Path dir) throws Exception {
         Path m = freshModel(dir);                       // /Adresse/PLZ STRING
         Path spec = dir.resolve("label.json");
         Files.writeString(spec, """
@@ -119,10 +119,9 @@ class FieldModifyCommandTest {
 
         CliTestSupport.Result res = CliTestSupport.run("-m", m.toString(), "field", "modify", spec.toString());
 
-        assertEquals(0, res.code(), res::err);
-        assertEquals("applied", MAPPER.readTree(res.out()).path("outcome").asText());
-        assertTrue(Files.readString(m).contains("Postal code"),
-                "field modify must APPLY the label, not silently drop it");
+        assertNotEquals(0, res.code(), "field modify no longer owns common metadata");
+        assertTrue(res.out().contains("dmtool meta <ref> --label"), res::out);
+        assertFalse(Files.readString(m).contains("Postal code"), "the retired route writes nothing");
     }
 
     @Test
@@ -136,7 +135,7 @@ class FieldModifyCommandTest {
 
         assertEquals(0, res.code(), res::err);
         assertTrue(Files.readString(m).contains("requirednessConfig"),
-                "field modify must set requiredness with no kind given (a metadata-only edit)");
+                "field modify must set requiredness with no kind given (a field-property-only edit)");
     }
 
     @Test
@@ -148,7 +147,8 @@ class FieldModifyCommandTest {
 
         CliTestSupport.Result res = CliTestSupport.run("-m", m.toString(), "field", "modify", spec.toString());
 
-        assertNotEquals(0, res.code(), "a modify with neither a re-type nor any metadata must fail, not no-op-succeed");
+        assertNotEquals(0, res.code(),
+                "a modify with neither a re-type nor any field property must fail, not no-op-succeed");
     }
 
     @Test

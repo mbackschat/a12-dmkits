@@ -26,6 +26,32 @@ public final class ReadPayloads {
     private ReadPayloads() {
     }
 
+    /** The full targeted {@code field read} payload, shared by the standalone and embedded apply routes. */
+    public static ObjectNode field(ModelDocument doc, String field) {
+        ObjectNode data = MAPPER.createObjectNode();
+        data.put("field", field);
+        data.put("kind", doc.fieldKind(field).orElseThrow(
+                () -> new IllegalArgumentException("no field '" + field + "' in the model")));
+        doc.requiredness(field).ifPresent(requiredness -> {
+            switch (requiredness) {
+                case OPTIONAL -> data.put("required", false);
+                case REQUIRED -> data.put("required", true);
+                case REQUIRED_IF_PARENT_PRESENT -> data.put("required", "ifParentPresent");
+            }
+        });
+        doc.labels(field).ifPresent(labels -> putIfNotEmpty(data, "label", labels));
+        putIfNotEmpty(data, "helperText", doc.helperText(field));
+        putIfNotEmpty(data, "internalDescription", doc.internalDescription(field));
+        putIfNotEmpty(data, "externalDescription", doc.externalDescription(field));
+        putIfNotEmpty(data, "annotations", doc.annotations(field));
+        doc.fieldConfigJson(field).ifPresent(config -> data.setAll(configNode(config)));
+        if (data.hasNonNull("typedef")) {
+            doc.typeDefinitionConfigJson(data.get("typedef").asText())
+                    .ifPresent(config -> data.set("resolvedType", configNode(config)));
+        }
+        return data;
+    }
+
     /** The full {@code group read} data for one group ({@code doc} must contain {@code group}). */
     public static ObjectNode group(ModelDocument doc, String group) {
         ObjectNode data = MAPPER.createObjectNode();
@@ -54,7 +80,7 @@ public final class ReadPayloads {
         doc.fieldPaths().stream()
                 .filter(p -> p.startsWith(prefix) && p.indexOf('/', prefix.length()) < 0)
                 .forEach(fields::add);
-        // the group's metadata (G38) so a `group modify --label/--annotation/--*-description` round-trips
+        // target-specific reads retain their metadata projection (G45); `meta` is the write owner
         doc.labels(group).ifPresent(m -> putIfNotEmpty(data, "label", m));
         putIfNotEmpty(data, "annotations", doc.annotations(group));
         putIfNotEmpty(data, "internalDescription", doc.internalDescription(group));

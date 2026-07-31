@@ -78,9 +78,8 @@ final class ApplyCommand extends BaseCommand {
         GROUP_REMOVE("group", "remove", Set.of("groupPathInModel", "cascade")),
         RULE_ADD("rule", "add", Set.of("field", "group", "condition", "comment", "code", "severity", "name", "messages",
                 "allowDifferingDecimals", "annotation", "internal-description", "external-description")),
-        RULE_MODIFY("rule", "modify", Set.of("rulePathInModel", "condition", "comment", "severity", "messages",
-                "annotation", "remove-annotation", "internal-description", "external-description",
-                "remove-internal-description", "remove-external-description")),
+        RULE_MODIFY("rule", "modify",
+                Set.of("rulePathInModel", "condition", "comment", "severity", "messages")),
         RULE_REMOVE("rule", "remove", Set.of("rulePathInModel")),
         COMPUTATION_ADD("computation", "add", Set.of("computedField", "alternatives", "commonPrecondition", "comment", "name", "messages")),
         COMPUTATION_MODIFY("computation", "modify", Set.of("computationPathInModel", "computedField", "alternatives", "commonPrecondition", "comment", "name", "messages")),
@@ -94,6 +93,7 @@ final class ApplyCommand extends BaseCommand {
         INCLUDE_SET_REFERENCE("include", "set-reference", Set.of("alias", "reference")),
         INCLUDE_RENAME("include", "rename", Set.of("alias", "to")),
         INCLUDE_REMOVE("include", "remove", Set.of("alias")),
+        META_MODIFY("meta", "modify", withLocator("ref", MetaModification.KEYS)),
         CONFIG_MODIFY("config", "modify", ConfigModification.KEYS),
         FIELD_RENAME("field", "rename", Set.of("fieldPathInModel", "to")),
         FIELD_MOVE("field", "move", Set.of("fieldPathInModel", "to")),
@@ -319,7 +319,7 @@ final class ApplyCommand extends BaseCommand {
                 yield staged(which, changed, session);
             }
             case GROUP_MODIFY -> {
-                // the same repeatability (G15) + index-field (G24) + metadata (G38) edits as the standalone
+                // the same repeatability (G15) + index-field (G24) + row-sort edits as the standalone
                 // `group modify` — the setter cascade + `changed` report is single-sourced through
                 // GroupModification (T4); only the exclusivity/empty guards' apply-worded messages live here.
                 String path = req(op, "groupPathInModel");
@@ -335,8 +335,7 @@ final class ApplyCommand extends BaseCommand {
                 }
                 if (mod.isEmpty()) {
                     throw new IllegalArgumentException("group modify needs one of repeatable / non-repeatable / "
-                            + "index-field / clear-index-field / sort-field / clear-sort-fields / label / "
-                            + "annotation / remove-annotation / internal-description / external-description");
+                            + "index-field / clear-index-field / sort-field / clear-sort-fields");
                 }
                 mod.applyTo(path, session, changed);
                 yield staged(which, changed, session);
@@ -421,13 +420,8 @@ final class ApplyCommand extends BaseCommand {
                     provided.forEach(t -> m.addObject().put("locale", t.locale()).put("text", t.text()));
                     any = true;
                 }
-                // G39: rule metadata (annotation / remove-annotation / internal-/external-description)
-                if (metadataOps(op, session, rule, changed)) {
-                    any = true;
-                }
                 if (!any) {
-                    throw new IllegalArgumentException(
-                            "rule modify needs one of condition / severity / messages / metadata");
+                    throw new IllegalArgumentException("rule modify needs one of condition / severity / messages");
                 }
                 changed.put("modified", rule);
                 yield staged(which, changed, session);
@@ -527,6 +521,25 @@ final class ApplyCommand extends BaseCommand {
                 changed.put("removed", alias);
                 yield staged(which, changed, session);
             }
+            case META_MODIFY -> {
+                String ref = req(op, "ref");
+                MetaModification modification = MetaModification.fromJson(op);
+                if (modification.isEmpty()) {
+                    throw new IllegalArgumentException("meta modify needs one of label, annotation, "
+                            + "remove-annotation, internal-description, external-description, "
+                            + "remove-internal-description, remove-external-description");
+                }
+                ModelDocument current = ModelDocument.read(session.toJson());
+                Optional<Refusal> refusal = new SafetyGate()
+                        .require(SafetyChecks.elementExists(current, ref))
+                        .require(SafetyChecks.labelSupported(current, ref, !modification.labels().isEmpty()))
+                        .firstFailure();
+                if (refusal.isPresent()) {
+                    throw new OperationRefused("meta", "modify", refusal.get());
+                }
+                modification.applyTo(ref, current, session, changed);
+                yield staged(which, changed, session);
+            }
             case CONFIG_MODIFY -> {
                 // the setter cascade + `changed` report is single-sourced with the standalone `config modify`
                 // through ConfigModification (T4); only the empty-guard's apply-worded message lives here.
@@ -560,16 +573,7 @@ final class ApplyCommand extends BaseCommand {
             case FIELD_READ -> {
                 String path = req(op, "fieldPathInModel");
                 ModelDocument doc = ModelDocument.read(session.toJson());
-                String kind = doc.fieldKind(path)
-                        .orElseThrow(() -> new IllegalArgumentException("no field '" + path + "' in the model"));
-                ObjectNode data = MAPPER.createObjectNode();
-                data.put("field", path);
-                // mirror the standalone `field read`: the clean ValueKind name (not the kernel discriminator)
-                data.put("kind", kind);
-                // surface the per-kind config so a read INSIDE a session verifies a staged constraint the
-                // same way (the read-gap fix is consistent across both paths)
-                doc.fieldConfigJson(path).ifPresent(cfg -> data.setAll(ReadPayloads.configNode(cfg)));
-                yield readEnv(which, data, session);
+                yield readEnv(which, ReadPayloads.field(doc, path), session);
             }
             case GROUP_READ -> {
                 String path = req(op, "groupPathInModel");
@@ -723,11 +727,13 @@ final class ApplyCommand extends BaseCommand {
                 continue;
             }
             String near = Suggestions.nearest(f, valid);
+            Optional<String> relocation = MetadataRelocation.fix(which.target, which.op, f);
             out.add(Diagnostic.precheck(Optional.of("RK_UNKNOWN_ARG"),
                     "unknown arg '" + f + "' for op '" + label + "'",
                     Diagnostic.Where.arg(null, f),
-                    Optional.of(near != null ? "did you mean '" + near + "'?"
-                            : "valid args: " + String.join(", ", new TreeSet<>(valid))),
+                    relocation.isPresent() ? relocation
+                            : Optional.of(near != null ? "did you mean '" + near + "'?"
+                                    : "valid args: " + String.join(", ", new TreeSet<>(valid))),
                     Optional.empty()));
         }
         // the flat key-set above covers the op-record's TOP level; for ops with a rich nested spec, add the
@@ -742,9 +748,10 @@ final class ApplyCommand extends BaseCommand {
 
     /** Ops whose spec has nested objects worth schema-validating beyond the flat top-level key-set above. */
     private static final java.util.Map<Op, String> NESTED_SCHEMA = java.util.Map.of(
-            Op.FIELD_ADD, "field-add", Op.FIELD_MODIFY, "field-add",
+            Op.FIELD_ADD, "field-add", Op.FIELD_MODIFY, "field-modify",
             Op.RULE_ADD, "add", Op.RULE_MODIFY, "add", Op.COMPUTATION_ADD, "add", Op.COMPUTATION_MODIFY, "add",
-            Op.TYPEDEF_ADD, "typedef-add", Op.TYPEDEF_MODIFY, "typedef-add");
+            Op.TYPEDEF_ADD, "typedef-add", Op.TYPEDEF_MODIFY, "typedef-add",
+            Op.META_MODIFY, "apply#/$defs/metaModify");
 
     /** The supported {@code target op} labels, sorted — for the unknown-op diagnostic. */
     private static String supportedOps() {
@@ -792,27 +799,18 @@ final class ApplyCommand extends BaseCommand {
     }
 
     /**
-     * Apply the shared element-metadata op keys — {@code annotation} / {@code remove-annotation} /
-     * {@code internal-description} / {@code external-description} — from {@code op} to {@code session} at
-     * {@code path} (a field / group / rule name-path), recording each under {@code changed}. Returns whether any
-     * metadata key was present (so a rule modify can count it toward its at-least-one-directive gate). The
-     * {@code label} key is element-specific (groups/config only) and stays inline at its call site.
+     * Apply optional add-time rule metadata from {@code op}. Post-creation metadata is owned exclusively by
+     * {@code META_MODIFY} (G45); this helper remains only because creation metadata is part of one complete
+     * {@code RULE_ADD} operation.
      */
-    private static boolean metadataOps(JsonNode op, EditSession session, String path, ObjectNode changed) {
-        boolean any = false;
+    private static void metadataOps(JsonNode op, EditSession session, String path, ObjectNode changed) {
         if (op.hasNonNull("annotation")) {
             var it = op.get("annotation").fields();
             while (it.hasNext()) {
                 var e = it.next();
                 session.setAnnotation(path, e.getKey(), e.getValue().asText());
                 changed.put("annotation." + e.getKey(), e.getValue().asText());
-                any = true;
             }
-        }
-        for (String name : stringValues(op, "remove-annotation")) {
-            session.removeAnnotation(path, name);
-            changed.putNull("annotation." + name);
-            any = true;
         }
         if (op.hasNonNull("internal-description")) {
             var it = op.get("internal-description").fields();
@@ -820,7 +818,6 @@ final class ApplyCommand extends BaseCommand {
                 var e = it.next();
                 session.setInternalDescription(path, e.getKey(), e.getValue().asText());
                 changed.put("internalDescription." + e.getKey(), e.getValue().asText());
-                any = true;
             }
         }
         if (op.hasNonNull("external-description")) {
@@ -829,20 +826,8 @@ final class ApplyCommand extends BaseCommand {
                 var e = it.next();
                 session.setExternalDescription(path, e.getKey(), e.getValue().asText());
                 changed.put("externalDescription." + e.getKey(), e.getValue().asText());
-                any = true;
             }
         }
-        for (String locale : stringValues(op, "remove-internal-description")) {
-            session.removeInternalDescription(path, locale);
-            changed.putNull("internalDescription." + locale);
-            any = true;
-        }
-        for (String locale : stringValues(op, "remove-external-description")) {
-            session.removeExternalDescription(path, locale);
-            changed.putNull("externalDescription." + locale);
-            any = true;
-        }
-        return any;
     }
 
     /** Parse a severity arg, with a clean corrective for a bad value (not the raw enum-{@code valueOf} message). */

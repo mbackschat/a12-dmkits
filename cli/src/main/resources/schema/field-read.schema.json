@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://github.com/mbackschat/a12-dmkits/schema/field-read.schema.json",
   "title": "FieldRead",
-  "description": "Output of `field read`. With a `<fieldPathInModel>` argument: one field read back — its value `kind`, friendly `required` state, metadata (`label`/descriptions/`annotations`), and the per-kind CONFIG block in the SAME shape `field add` accepts (`number`/`string`/`enum`/`date`/…). A typedef-typed field also carries the `typedef` id and the `resolvedType` (the type definition's own config). With NO argument: a lean name-index — `fields` (every field's full path) + `count` — the handle to then read one.",
+  "description": "Output of `field read`. With a `<fieldPathInModel>` argument: one field read back — its value `kind`, friendly `required` state, metadata (`label`/descriptions/`annotations`), field-specific `helperText`, and the per-kind CONFIG block in the SAME shape `field add` accepts (`number`/`string`/`enum`/`date`/…). A typedef-typed field also carries the `typedef` id and the `resolvedType` (the type definition's own config). With NO argument: a lean name-index — `fields` (every field's full path) + `count` — the handle to then read one.",
   "type": "object",
   "additionalProperties": false,
   "oneOf": [
@@ -14,6 +14,7 @@
     "kind": { "type": "string", "description": "(one field) the value kind — the SAME vocabulary the `field add` `kind` key takes and `model describe` reports (STRING | NUMBER | BOOLEAN | CONFIRM | DATE | DATE_TIME | TIME | DATE_FRAGMENT | DATE_RANGE | ENUMERATION | CUSTOM | UNKNOWN); a typedef-typed field reports its resolved underlying kind (never the raw kernel discriminator), with the `typedef` pointer below" },
     "required": { "enum": [true, false, "ifParentPresent"], "description": "(one field) the friendly requiredness — `true`/`false`, or `\"ifParentPresent\"`; same vocabulary the `required` write key takes" },
     "label": { "type": "object", "description": "(one field) the field's label, locale → text" },
+    "helperText": { "type": "object", "description": "(one field) per-locale inline UI help; the read peer of field add/modify helperText" },
     "internalDescription": { "type": "object", "description": "(one field) the internal description, locale → text" },
     "externalDescription": { "type": "object", "description": "(one field) the external/help description, locale → text" },
     "annotations": { "type": "object", "description": "(one field) the field's annotations, name → value" },

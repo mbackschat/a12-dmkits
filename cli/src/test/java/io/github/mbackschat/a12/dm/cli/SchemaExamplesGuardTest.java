@@ -112,6 +112,48 @@ class SchemaExamplesGuardTest {
     }
 
     @Test
+    void fieldModifyExamplesAreAcceptedByTheTool(@TempDir Path dir) throws Exception {
+        Path model = dir.resolve("subscription.dm.json");
+        Files.writeString(model, CliTestSupport.subscriptionJson());
+
+        JsonNode examples = schema("field-modify").path("examples");
+        assertTrue(examples.isArray() && !examples.isEmpty(), "field-modify.schema declares examples");
+        int i = 0;
+        for (JsonNode example : examples) {
+            Path spec = dir.resolve("field-modify-" + i++ + ".json");
+            Files.writeString(spec, example.toString());
+            CliTestSupport.Result result = CliTestSupport.run(
+                    "-m", model.toString(), "field", "modify", spec.toString(), "--dry-run");
+            assertEquals(0, result.code(), () -> "field modify rejected its schema example: "
+                    + result.err() + result.out());
+            assertEquals("preview", MAPPER.readTree(result.out()).path("outcome").asText());
+        }
+    }
+
+    @Test
+    void fieldModifyPerKindBlocksMatchFieldAdd() throws Exception {
+        JsonNode fieldAdd = schema("field-add").path("properties");
+        JsonNode fieldModify = schema("field-modify").path("properties");
+        for (String kindBlock : List.of("string", "number", "enum", "custom",
+                "date", "time", "dateTime", "dateRange", "dateFragment")) {
+            assertEquals(withoutDocumentation(fieldAdd.path(kindBlock)),
+                    withoutDocumentation(fieldModify.path(kindBlock)),
+                    () -> "field-modify '" + kindBlock
+                            + "' must retain field-add's exact structural contract");
+        }
+    }
+
+    @Test
+    void metaReadExamplesUseOnlyPublishedKeys() throws Exception {
+        JsonNode examples = schema("meta-read").path("examples");
+        assertTrue(examples.isArray() && !examples.isEmpty(), "meta-read.schema declares examples");
+        for (JsonNode example : examples) {
+            assertTrue(SpecKeys.forSchema("meta-read").validate(example).isEmpty(),
+                    () -> "meta-read example conforms to its schema: " + example);
+        }
+    }
+
+    @Test
     void typedefAddExamplesAreAcceptedByTheTool(@TempDir Path dir) throws Exception {
         Path model = dir.resolve("subscription.dm.json");
         Files.writeString(model, CliTestSupport.subscriptionJson());
@@ -249,6 +291,22 @@ class SchemaExamplesGuardTest {
             array.forEach(n -> out.add(n.asText()));
         }
         return out;
+    }
+
+    /** Remove prose-only schema keys before comparing two contracts used in different command contexts. */
+    private static JsonNode withoutDocumentation(JsonNode source) {
+        JsonNode copy = source.deepCopy();
+        stripDocumentation(copy);
+        return copy;
+    }
+
+    private static void stripDocumentation(JsonNode node) {
+        if (node.isObject()) {
+            ((com.fasterxml.jackson.databind.node.ObjectNode) node).remove(List.of("description", "title"));
+            node.elements().forEachRemaining(SchemaExamplesGuardTest::stripDocumentation);
+        } else if (node.isArray()) {
+            node.elements().forEachRemaining(SchemaExamplesGuardTest::stripDocumentation);
+        }
     }
 
     private static JsonNode schema(String name) throws Exception {
