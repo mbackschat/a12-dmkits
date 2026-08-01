@@ -71,10 +71,11 @@ import io.github.mbackschat.a12.dm.rulekit.catalog.OperatorEntry;
  *   <li>of 144 EN templates carrying a {@code %s}, <b>52</b> carry more than one, and only <b>7</b> of those are
  *       codes with ≥2 catalog documenters — the only case where a second span can produce two candidates and thus
  *       de-elect;</li>
- *   <li>a field whose name equals an operator <b>keyword</b> is <b>unreferenceable</b>: the lexer takes it as the
- *       keyword, so {@code [Date]} on a field named {@code Date} is {@code MVK_UNEXPECTED_TOKEN}. Only the
- *       <b>13</b> ids that differ from their keyword ({@code Equal}, {@code Arithmetic}, {@code SemanticIndex},
- *       {@code ValidType}, …) can legally name a field;</li>
+ *   <li>the entity-position span is a <b>resolved path</b> — {@code At 'HoursFromTime': Wrong date format at
+ *       '/Order/Date'.} — and a path contains {@code /}, so it can never match {@link OperatorCatalog#byId} or
+ *       {@code byKeyword}, which take bare identifiers. That closes the entity half for every such template,
+ *       whatever the field is named. (A field named after a keyword is perfectly referenceable, quoted:
+ *       {@code ['Date']}. An earlier note here claimed otherwise from probing only unquoted forms.);</li>
  *   <li>{@code '+'} — whose {@code byKeyword} lookup is ambiguous between {@code Arithmetic} and
  *       {@code Concatenation} — is never delimited by any code the catalog can join, so that ambiguity is not
  *       user-visible;</li>
