@@ -1,6 +1,7 @@
 package io.github.mbackschat.a12.dm.cli.model;
 
 import io.github.mbackschat.a12.dm.cli.ConsistencyEvidence;
+import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel;
 import io.github.mbackschat.a12.dm.cli.BaseCommand;
 import io.github.mbackschat.a12.dm.cli.ParamKind;
 import io.github.mbackschat.a12.dm.cli.ResultEnvelope;
@@ -61,6 +62,17 @@ final class ModelExportJsonschemaCommand extends BaseCommand {
         if (dmJson == null) {
             return 2;
         }
+        // The export unconditionally gates the INPUT model: TierAProjection reads every condition back through
+        // the kernel ConditionReadBack backend, which binds via KernelAdapter.ofJson → checkAndOpen. That port
+        // returns no receipt, and widening a published SPI for a provenance concern is a bigger decision than
+        // this one — so the verb performs the gate it reports, over the same model, in the same invocation. The
+        // claim is therefore true rather than inferred, at the cost of one extra bind.
+        BoundModel gated;
+        try {
+            gated = BoundModel.ofJson(dmJson);
+        } catch (RuntimeException e) {
+            return failOrRethrowDomainRejection("cannot export the model: ", e);
+        }
         Dialect resolvedDialect = dialect != null ? dialect : Dialect.JSON_SCHEMA;
         JsonSchemaExporter.ExportResult result;
         try {
@@ -78,7 +90,7 @@ final class ModelExportJsonschemaCommand extends BaseCommand {
             ObjectNode changed = MAPPER.createObjectNode();
             changed.set("report", JsonSchemaCli.reportNode(MAPPER, result.report()));   // structured dispositions in the envelope
             ResultEnvelope env = ResultEnvelope.applied("model", "export-jsonschema",
-                    "exported model → JSON Schema", changed, outputPath, ConsistencyEvidence.none());
+                    "exported model → JSON Schema", changed, outputPath, ConsistencyEvidence.of(gated));
             out().print(env.toJsonString());
             return env.exitCode();
         }

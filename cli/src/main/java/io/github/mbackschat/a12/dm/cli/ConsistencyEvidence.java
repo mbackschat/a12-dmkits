@@ -4,7 +4,9 @@ import java.util.Optional;
 
 import io.github.mbackschat.a12.dm.adapter.KernelAdapter;
 import io.github.mbackschat.a12.dm.adapter.review.ModelDiff;
+import io.github.mbackschat.a12.dm.adapter.profile.ModelSynthesizer;
 import io.github.mbackschat.a12.dm.adapter.review.ModelReport;
+import io.github.mbackschat.a12.dm.schemakit.JsonSchemaImporter;
 import io.github.mbackschat.a12.dm.core.Backends;
 import io.github.mbackschat.a12.dm.core.ModelConsistencyException;
 import io.github.mbackschat.a12.dm.core.Verification;
@@ -94,6 +96,28 @@ public final class ConsistencyEvidence {
      */
     public static ConsistencyEvidence of(EditSession session) {
         return session == null ? NONE : from(session.consistencyGate());
+    }
+
+    /**
+     * A synthesized model's receipt — {@code profile synthesize} assembles through {@code BoundModel.addAll},
+     * which re-binds through the oracle, so the model it writes has been gated.
+     *
+     * <p>This route was classified ungated on first reading and was not: the gate ran one frame away, inside a
+     * helper that returned only text. That is the shape API-FINDINGS 111 names — a gate that hands back nothing
+     * forces its consumer to guess — and guessing here produced a silent {@code none()} rather than a wrong
+     * claim, which is why only a review caught it.
+     */
+    public static ConsistencyEvidence of(ModelSynthesizer.Synthesized synthesized) {
+        return synthesized == null ? NONE : new ConsistencyEvidence(synthesized.consistencyGate());
+    }
+
+    /**
+     * A JSON-Schema import's receipt — present only when Tier-A+ rule synthesis both ran (it assembles through
+     * {@code BoundModel}) and was not followed by carriage injection rewriting the tree. A purely structural
+     * transcode binds nothing and correctly attests nothing.
+     */
+    public static ConsistencyEvidence of(JsonSchemaImporter.ImportResult result) {
+        return result == null ? NONE : from(result.consistencyGate());
     }
 
     /**

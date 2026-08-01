@@ -60,7 +60,16 @@ public final class JsonSchemaImporter {
     private static final Set<String> ANNOTATION_KEYWORDS = Set.of(
             "$comment", "title", "description", "default", "deprecated", "readOnly", "writeOnly", "examples");
 
-    public record ImportResult(String dmJson, TranscodeReport report) {}
+    /**
+     * A transcoded model, its report, and the gate that cleared it.
+     *
+     * <p>{@code consistencyGate} is present only when rule synthesis ran <em>and</em> nothing rewrote the tree
+     * afterwards: Tier-A+ synthesis assembles through {@code BoundModel}, which re-binds through the oracle, but a
+     * purely structural transcode never binds at all and carriage injection edits the JSON after the bind. So the
+     * receipt tracks what actually happened to <em>this</em> model rather than what the importer usually does.
+     */
+    public record ImportResult(String dmJson, TranscodeReport report,
+                               java.util.Optional<io.github.mbackschat.a12.dm.core.Verification> consistencyGate) {}
 
     /** Per-transcode state threaded through the recursion: the whole document {@code root} (for JSON-Pointer
      *  {@code $ref} resolution), the resolved {@code dialect}, the reusable-definitions pool, the inline stack
@@ -249,13 +258,18 @@ public final class JsonSchemaImporter {
             // authoritative — drop the projected-keyword need (SCHEMAKIT-SPEC §4f).
             needs = needs.stream().filter(n -> !(n instanceof RuleSynthesis.MinItemsCount)).toList();
         }
-        String dmJson = RuleSynthesis.apply(s.dmJson(), needs, report, ruleResolver);   // Tier A+
+        RuleSynthesis.Applied synthesized = RuleSynthesis.applied(s.dmJson(), needs, report, ruleResolver); // Tier A+
+        String dmJson = synthesized.dmJson();
+        var gate = synthesized.consistencyGate();
         if (rootSchema.has(Carriage.X_RULE) || rootSchema.has(Carriage.X_COMPUTATION)) {
             ObjectNode tree = (ObjectNode) parse(dmJson);     // restore carried rules/computations (Tier B/C)
             Carriage.inject(tree, rootSchema, report);
             dmJson = tree.toString();
+            // Carriage rewrote the tree AFTER the gate, so the receipt no longer describes what we return.
+            // Dropping it under-reports; keeping it would attest a model the oracle never saw.
+            gate = java.util.Optional.empty();
         }
-        return new ImportResult(dmJson, report.build());
+        return new ImportResult(dmJson, report.build(), gate);
     }
 
     /** {@link Dialect#AUTO} → sniff the document: the OpenAPI {@code openapi:} version field, else JSON Schema. */

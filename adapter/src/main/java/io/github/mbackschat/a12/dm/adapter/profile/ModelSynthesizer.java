@@ -3,6 +3,7 @@ package io.github.mbackschat.a12.dm.adapter.profile;
 import java.util.List;
 import java.util.Set;
 
+import io.github.mbackschat.a12.dm.core.Verification;
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Computation;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Rule;
@@ -20,10 +21,31 @@ public final class ModelSynthesizer {
 
     /** Synthesize from the one current bare profile artifact or a normal extraction envelope. */
     public static String synthesize(String profileJson, long seed) {
-        return synthesize(ModelProfileJson.read(profileJson), seed);
+        return synthesized(profileJson, seed).dmJson();
     }
 
+    /**
+     * Synthesis with its gate <b>receipt</b> — the synthesized model is assembled through
+     * {@link BoundModel#addAll}, which re-binds through the consistency oracle, so the model this returns has
+     * been gated and a consumer publishing provenance must be able to say so.
+     *
+     * <p>Added because the plain {@link #synthesize(String, long)} returns only text: the gate ran and the
+     * receipt was thrown away one frame later, leaving {@code profile synthesize} to publish an <em>ungated</em>
+     * write over a model the kernel had just confirmed. Same shape as {@code ModelLoader.loadAndCheck}
+     * (API-FINDINGS 111) — a gate hands out a receipt; a consumer never reconstructs one.
+     */
+    public static Synthesized synthesized(String profileJson, long seed) {
+        return synthesized(ModelProfileJson.read(profileJson), seed);
+    }
+
+    /** A synthesized model and the gate that cleared it. */
+    public record Synthesized(String dmJson, Verification consistencyGate) {}
+
     static String synthesize(SynthesisProfile profile, long seed) {
+        return synthesized(profile, seed).dmJson();
+    }
+
+    static Synthesized synthesized(SynthesisProfile profile, long seed) {
         if (profile.structure().repeatability().unboundedCount() > 0) {
             throw new IllegalArgumentException(
                     "profile synthesis requires bounded repeatable groups");
@@ -49,6 +71,10 @@ public final class ModelSynthesizer {
                 reservation,
                 profile.computations(),
                 seed);
-        return model.addAll(rules, computations).toJson();
+        BoundModel assembled = model.addAll(rules, computations);
+        return new Synthesized(
+                assembled.toJson(),
+                assembled.consistencyGate().orElseThrow(() -> new IllegalStateException(
+                        "addAll re-binds through the gate, so its result must carry a receipt")));
     }
 }

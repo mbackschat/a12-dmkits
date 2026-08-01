@@ -334,9 +334,20 @@ final class PatternsCommand extends BaseCommand {
                     payload, diagnostics, RejectionBasis.from(evidence)));
         }
         String persisted = persist.get();
+        // `evidence` gated the CANDIDATE, and the candidate is not what gets written: the rule/computation routes
+        // validate a draft carrying the validator's placeholder messages, then persist the caller's. Publishing
+        // the candidate's receipt over that JSON attests a model the oracle never saw — real receipt, wrong
+        // subject, and invisible because both are KERNEL_CONFIRMED. So the write and its preview re-bind what
+        // they are about to write, exactly as `rule add` and `computation add` already do.
+        ConsistencyEvidence written;
+        try {
+            written = ConsistencyEvidence.of(BoundModel.ofJson(persisted, workspace.resolverFor(model)));
+        } catch (RuntimeException e) {
+            return failOrRethrowDomainRejection("the scaffolded " + kind + " does not persist cleanly: ", e);
+        }
         if (dryRun) {
             return print(ResultEnvelope.preview("patterns", "scaffold",
-                    "would add " + kind + " " + scaffolded, payload, diagnostics, evidence));
+                    "would add " + kind + " " + scaffolded, payload, diagnostics, written));
         }
         String dest = outputPath != null ? outputPath : model;
         try {
@@ -346,7 +357,7 @@ final class PatternsCommand extends BaseCommand {
         }
         payload.put(kind, scaffolded);
         return print(ResultEnvelope.applied("patterns", "scaffold", "added " + kind + " " + scaffolded, payload,
-                diagnostics, dest, evidence));
+                diagnostics, dest, written));
     }
 
     /** A catalog read — the bundled idiom catalog, no model and no gate. */

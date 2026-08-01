@@ -176,12 +176,20 @@ final class ModelImportJsonschemaCommand extends BaseCommand {
             ObjectNode changed = MAPPER.createObjectNode();
             changed.set("report", JsonSchemaCli.reportNode(MAPPER, result.report()));   // the agent's to-do list, structured
             ResultEnvelope env = ResultEnvelope.applied("model", "import-jsonschema",
-                    "imported JSON Schema → model", changed, outputPath, ConsistencyEvidence.none());
+                    "imported JSON Schema → model", changed, outputPath, ConsistencyEvidence.of(result));
             out().print(env.toJsonString());
             return env.exitCode();
         }
         out().print(result.dmJson());
         return 0;
+    }
+
+    /** The gate every component of {@code bundle} passed, or {@link ConsistencyEvidence#none()} if they differ. */
+    private static ConsistencyEvidence sharedEvidence(JsonSchemaImporter.BundleResult bundle) {
+        var gates = bundle.models().values().stream().map(JsonSchemaImporter.ImportResult::consistencyGate)
+                .distinct().toList();
+        return gates.size() == 1 ? ConsistencyEvidence.of(bundle.models().values().iterator().next())
+                : ConsistencyEvidence.none();
     }
 
     /** Import the whole OpenAPI document as a bundle → one {@code <out-dir>/<Component>.dm.json} per component,
@@ -214,9 +222,12 @@ final class ModelImportJsonschemaCommand extends BaseCommand {
             m.put("file", file.toString());
             m.set("report", JsonSchemaCli.reportNode(MAPPER, entry.getValue().report()));
         }
+        // One receipt per component, so the bundle can attest only what ALL of them agree on: a bundle whose
+        // components gated differently (some synthesized rules, some purely structural) has no single answer,
+        // and picking one component's would attest a model the others never went through.
         ResultEnvelope env = ResultEnvelope.applied("model", "import-jsonschema",
                 "imported OpenAPI bundle → " + bundle.models().size() + " models", changed, outDir,
-                    ConsistencyEvidence.none());
+                sharedEvidence(bundle));
         out().print(env.toJsonString());
         return env.exitCode();
     }

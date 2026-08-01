@@ -44,9 +44,11 @@ final class ProfileSynthesizeCommand extends BaseCommand {
     @Override
     public Integer call() {
         String modelJson;
+        ModelSynthesizer.Synthesized synthesized;
         try {
-            modelJson = ModelSynthesizer.synthesize(
+            synthesized = ModelSynthesizer.synthesized(
                     Files.readString(Path.of(inputPath)), seed);
+            modelJson = synthesized.dmJson();
         } catch (IOException e) {
             return fail("cannot read input: " + e.getMessage());
         } catch (RuntimeException e) {
@@ -70,7 +72,7 @@ final class ProfileSynthesizeCommand extends BaseCommand {
         changed.put("seed", seed);
         ResultEnvelope envelope = ResultEnvelope.applied(
                 "profile", "synthesize", "synthesized model from performance profile", changed, outputPath,
-                    ConsistencyEvidence.none());
+                ConsistencyEvidence.of(synthesized));
         out().print(envelope.toJsonString());
         return envelope.exitCode();
     }

@@ -143,10 +143,19 @@ final class RuleSynthesis {
     /** {@code not: {enum}}: the field must NOT be one of {@code values} (error fires when it is — a string field). */
     record ForbiddenEnum(String fieldPath, List<String> values) implements Need {}
 
+    /** The synthesized model plus the gate that cleared it — empty when nothing was synthesized, so nothing gated. */
+    record Applied(String dmJson, java.util.Optional<io.github.mbackschat.a12.dm.core.Verification> consistencyGate) {}
+
     static String apply(String dmJson, List<Need> needs, TranscodeReport.Builder report,
                         io.github.mbackschat.a12.dm.core.ModelResolver resolver) {
+        return applied(dmJson, needs, report, resolver).dmJson();
+    }
+
+    static Applied applied(String dmJson, List<Need> needs, TranscodeReport.Builder report,
+                        io.github.mbackschat.a12.dm.core.ModelResolver resolver) {
         if (needs.isEmpty()) {
-            return dmJson;
+            // Nothing to synthesize, so no bind and no gate — the structural transcode alone is ungated.
+            return new Applied(dmJson, java.util.Optional.empty());
         }
         // a bundle component may mount a sibling (an include) — then loading it to author the typed rule needs a
         // resolver for that sibling; a single self-contained model passes resolver == null.
@@ -159,7 +168,7 @@ final class RuleSynthesis {
                 report.mapped(source(need), describe(need), TranscodeReport.Tier.TIER_A_PLUS);
             }
         }
-        return m.toJson();
+        return new Applied(m.toJson(), m.consistencyGate());
     }
 
     /** Build the rule for {@code need}, or {@link Optional#empty()} when it cannot be synthesized (reported). */

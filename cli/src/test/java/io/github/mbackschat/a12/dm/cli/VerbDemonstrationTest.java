@@ -97,11 +97,22 @@ class VerbDemonstrationTest {
         assertTrue(n >= 55, () -> "the --text column must cover the envelope surface; checked=" + n);
     }
 
-    /** True when {@code out} is the machine envelope rather than rendered text — i.e. the renderer passed through. */
+    /**
+     * True when {@code out} is machine JSON rather than rendered text — <b>any</b> parsed container, not just the
+     * standard envelope.
+     *
+     * <p>The distinction is the whole guard, and the first version got it backwards. It returned true only for an
+     * object carrying a textual {@code outcome}, so a bespoke object <em>without</em> {@code outcome} and a bare
+     * array both returned false and satisfied the assertion — and those are exactly the two shapes {@code apply}
+     * and {@code batch} used to emit, which the guard's own doc comment cites as the regression it exists to
+     * catch. It would have passed on the defect, for the same reason the renderer test could not see it: both
+     * were phrased in terms of a well-formed envelope, which is precisely what the broken verbs were not
+     * producing. Testing "is this JSON at all" is the only phrasing that covers the shapes nobody anticipated.
+     */
     private static boolean looksLikeTheJsonEnvelope(String out) {
         try {
             JsonNode n = M.readTree(out);
-            return n.isObject() && n.path("outcome").isTextual();
+            return n.isObject() || n.isArray();
         } catch (Exception notJson) {
             return false;
         }
