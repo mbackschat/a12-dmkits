@@ -38,8 +38,34 @@ public final class ModelSynthesizer {
         return synthesized(ModelProfileJson.read(profileJson), seed);
     }
 
-    /** A synthesized model and the gate that cleared it. */
-    public record Synthesized(String dmJson, Verification consistencyGate) {}
+    /**
+     * A synthesized model and the gate that cleared it.
+     *
+     * <p>The constructor is private because this type is a gate <b>witness</b>:
+     * {@code ConsistencyEvidence.of(Synthesized)} publishes the receipt as provenance, so a value anyone can
+     * construct would let a caller claim {@code KERNEL_CONFIRMED} over JSON no oracle ever saw. Same reason, and
+     * the same shape, as {@code ModelReport}/{@code ModelDiff} — see {@code WitnessTypesAreUnforgeableTest}.
+     */
+    public static final class Synthesized {
+
+        private final String dmJson;
+        private final Verification consistencyGate;
+
+        private Synthesized(String dmJson, Verification consistencyGate) {
+            this.dmJson = dmJson;
+            this.consistencyGate = consistencyGate;
+        }
+
+        /** The synthesized DM-JSON. */
+        public String dmJson() {
+            return dmJson;
+        }
+
+        /** The gate that cleared {@link #dmJson()} — {@code addAll} re-binds through the oracle, so it always ran. */
+        public Verification consistencyGate() {
+            return consistencyGate;
+        }
+    }
 
     static String synthesize(SynthesisProfile profile, long seed) {
         return synthesized(profile, seed).dmJson();

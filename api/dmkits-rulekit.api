@@ -2591,19 +2591,14 @@ public static record io.github.mbackschat.a12.dm.rulekit.validate.StructuralKern
   public final int hashCode()
   public final java.lang.String toString()
 
-public record io.github.mbackschat.a12.dm.rulekit.validate.ValidationResult
-  public ValidationResult(boolean, java.util.List<io.github.mbackschat.a12.dm.rulekit.validate.Diagnostic>, io.github.mbackschat.a12.dm.core.Verification)
+public final class io.github.mbackschat.a12.dm.rulekit.validate.ValidationResult
   public static io.github.mbackschat.a12.dm.rulekit.validate.ValidationResult beforeTheGate(java.util.List<io.github.mbackschat.a12.dm.rulekit.validate.Diagnostic>)
   public java.util.Optional<io.github.mbackschat.a12.dm.core.Verification> consistencyGate()
-  public io.github.mbackschat.a12.dm.core.Verification consistencyGateMode()
   public java.util.List<io.github.mbackschat.a12.dm.rulekit.validate.Diagnostic> diagnostics()
-  public final boolean equals(java.lang.Object)
-  public final int hashCode()
   public static io.github.mbackschat.a12.dm.rulekit.validate.ValidationResult of(java.util.List<io.github.mbackschat.a12.dm.rulekit.validate.Diagnostic>)
   public static io.github.mbackschat.a12.dm.rulekit.validate.ValidationResult of(java.util.List<io.github.mbackschat.a12.dm.rulekit.validate.Diagnostic>, io.github.mbackschat.a12.dm.core.Verification)
   public boolean ok()
   public java.lang.String toJson()
-  public final java.lang.String toString()
 
 public final class io.github.mbackschat.a12.dm.rulekit.write.ModelWriter
   public static java.lang.String addAll(java.lang.String, java.util.List<io.github.mbackschat.a12.dm.rulekit.dsl.Rule>, java.util.List<io.github.mbackschat.a12.dm.rulekit.dsl.Computation>)

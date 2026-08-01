@@ -67,9 +67,40 @@ public final class JsonSchemaImporter {
      * afterwards: Tier-A+ synthesis assembles through {@code BoundModel}, which re-binds through the oracle, but a
      * purely structural transcode never binds at all and carriage injection edits the JSON after the bind. So the
      * receipt tracks what actually happened to <em>this</em> model rather than what the importer usually does.
+     *
+     * <p>The constructor is private because this type is a gate <b>witness</b>:
+     * {@code ConsistencyEvidence.of(ImportResult)} publishes the receipt as provenance, so a value anyone can
+     * construct would let a caller claim {@code KERNEL_CONFIRMED} over an untranscoded model. Same reason, and
+     * the same shape, as {@code ModelReport}/{@code ModelDiff} — see {@code WitnessTypesAreUnforgeableTest}.
      */
-    public record ImportResult(String dmJson, TranscodeReport report,
-                               java.util.Optional<io.github.mbackschat.a12.dm.core.Verification> consistencyGate) {}
+    public static final class ImportResult {
+
+        private final String dmJson;
+        private final TranscodeReport report;
+        private final java.util.Optional<io.github.mbackschat.a12.dm.core.Verification> consistencyGate;
+
+        private ImportResult(String dmJson, TranscodeReport report,
+                             java.util.Optional<io.github.mbackschat.a12.dm.core.Verification> consistencyGate) {
+            this.dmJson = dmJson;
+            this.report = report;
+            this.consistencyGate = consistencyGate;
+        }
+
+        /** The transcoded DM-JSON. */
+        public String dmJson() {
+            return dmJson;
+        }
+
+        /** What the transcode did, kept, and dropped. */
+        public TranscodeReport report() {
+            return report;
+        }
+
+        /** The gate that cleared {@link #dmJson()} — empty unless rule synthesis bound it and nothing rewrote it. */
+        public java.util.Optional<io.github.mbackschat.a12.dm.core.Verification> consistencyGate() {
+            return consistencyGate;
+        }
+    }
 
     /** Per-transcode state threaded through the recursion: the whole document {@code root} (for JSON-Pointer
      *  {@code $ref} resolution), the resolved {@code dialect}, the reusable-definitions pool, the inline stack

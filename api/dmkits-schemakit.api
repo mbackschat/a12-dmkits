@@ -35,14 +35,10 @@ public static record io.github.mbackschat.a12.dm.schemakit.JsonSchemaImporter.Bu
   public java.util.Map<java.lang.String, io.github.mbackschat.a12.dm.schemakit.JsonSchemaImporter.ImportResult> models()
   public final java.lang.String toString()
 
-public static record io.github.mbackschat.a12.dm.schemakit.JsonSchemaImporter.ImportResult
-  public ImportResult(java.lang.String, io.github.mbackschat.a12.dm.schemakit.TranscodeReport, java.util.Optional<io.github.mbackschat.a12.dm.core.Verification>)
+public static final class io.github.mbackschat.a12.dm.schemakit.JsonSchemaImporter.ImportResult
   public java.util.Optional<io.github.mbackschat.a12.dm.core.Verification> consistencyGate()
   public java.lang.String dmJson()
-  public final boolean equals(java.lang.Object)
-  public final int hashCode()
   public io.github.mbackschat.a12.dm.schemakit.TranscodeReport report()
-  public final java.lang.String toString()
 
 public record io.github.mbackschat.a12.dm.schemakit.MappingProfile
   public MappingProfile(io.github.mbackschat.a12.dm.schemakit.MappingProfile.NumberScale, int, io.github.mbackschat.a12.dm.schemakit.MappingProfile.ArrayOfScalar, io.github.mbackschat.a12.dm.schemakit.MappingProfile.MapStrategy, io.github.mbackschat.a12.dm.schemakit.MappingProfile.UnionStrategy, io.github.mbackschat.a12.dm.schemakit.MappingProfile.FormatStrategy, io.github.mbackschat.a12.dm.schemakit.MappingProfile.BooleanKind, io.github.mbackschat.a12.dm.schemakit.MappingProfile.EnumLabels, int, int)

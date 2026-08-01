@@ -28,12 +28,32 @@ import io.github.mbackschat.a12.dm.core.Verification;
  * contradicting its own {@code PRECHECK}-sourced diagnostic. Same shape as
  * {@link io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel#consistencyGate()}, and for the same reason.
  */
-public record ValidationResult(boolean ok, List<Diagnostic> diagnostics, Verification consistencyGateMode) {
+public final class ValidationResult {
 
     private static final ObjectMapper MAPPER = new ObjectMapper();
 
-    public ValidationResult {
-        diagnostics = List.copyOf(diagnostics);
+    private final boolean ok;
+    private final List<Diagnostic> diagnostics;
+    private final Verification consistencyGateMode;
+
+    // Private on purpose: this type is a gate WITNESS — ConsistencyEvidence.of(ValidationResult) publishes the
+    // receipt below as provenance, so a result anyone can construct would let a caller mint KERNEL_CONFIRMED for
+    // a check that never ran. As a public record its canonical constructor could not be narrowed
+    // (WitnessTypesAreUnforgeableTest). The two factories below are the only ways in, and each states its tier.
+    private ValidationResult(boolean ok, List<Diagnostic> diagnostics, Verification consistencyGateMode) {
+        this.ok = ok;
+        this.diagnostics = List.copyOf(diagnostics);
+        this.consistencyGateMode = consistencyGateMode;
+    }
+
+    /** Whether the check passed — no {@code ERROR}-severity diagnostic was reported. */
+    public boolean ok() {
+        return ok;
+    }
+
+    /** Every finding, including the sub-{@code ERROR} ones that leave {@link #ok()} true. */
+    public List<Diagnostic> diagnostics() {
+        return diagnostics;
     }
 
     /** Build a result for a check the consistency oracle ARBITRATED, carrying the mode it ran in. */
