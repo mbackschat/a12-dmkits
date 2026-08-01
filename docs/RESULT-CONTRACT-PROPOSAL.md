@@ -149,6 +149,15 @@ They are equal today, which is precisely why both must be emitted rather than on
 **Required migration order** (identity is spelling-only, so it must be provable):
 corpus expectations migrate by **mechanical re-render**, with the per-case `(outcome, value)` multiset proven unchanged in the same commit — so the spelling moves and nothing else can. Then examples, then probe gold.
 
+**Landed 2026-08-01 — and the scoping finding that made it small.** `formatPointer` turned out to have **two roles**, of which only one is a contract: it is the *internal comparison key* for the conformance corpus (CONFORMANCE-CORPUS-SPEC §7), the differential (`RuntimeLaws` renders the **kernel's** pointer through it so both sides compare), and the published interpreter library's `Message.errorPath`, which its JVM/JS/TS consumers already read. Migrating *that* would have churned the whole differential estate for no user-visible gain. So the house form stays where it is, and the canonical form is produced at the single CLI projection seam (`cli.interp.A12Pointers`, used by `InterpreterEngine`) — which is exactly what "unreachable from CLI projection" asks for. The conversion goes **through the type** (`parse` → `A12Pointer` → `format`), not by string surgery: `A12PointerFormat.parse` already accepts the house form, since a leading `/` is stripped as redundant and an explicit `[1]` is legal.
+
+Two things the implementation forced, both recorded rather than worked around:
+
+- **A12's `UNKNOWN_REPETITION` had to be named.** A parallel iteration leaves `-5` — `IIdentifier.UNKNOWN`, source-verified in kernel 30.8.1 — on a level with no matching row, and the kernel renders such pointers itself. The exact-pointer format now accepts it *at any part*, which is not a loosening of the `[0]` rule: the two brackets share a syntax and mean unrelated things, and `[0]` on an earlier part is still refused (locked in `A12PointerFormatTest`).
+- **The kernel-side projection was lossy one layer deeper than the CLI's.** `ComputedField` (`:adapter`) dropped `IComputedFieldInstance.getRepetitions()` entirely, so fixing `KernelEval` meant carrying repetitions through the adapter first. That is the §1c mechanism made concrete: the test-side kernel projection and the CLI's published shape have to be the *same* contract, or a CLI-level differential compares two lossy projections and agrees.
+
+**A consequence worth stating, because it reads as a gap and is not one:** canonical A12 omits `[1]`, so the **first row's** instance pointer and the declaration coincide as strings (`Order/Lines/LineTotal`). An absent bracket *means* repetition 1 — which is also precisely why an omitted index can never be read as "all rows" (§4a).
+
 ---
 
 ## 5. Aggregate uniformity <a id="aggregates"></a>

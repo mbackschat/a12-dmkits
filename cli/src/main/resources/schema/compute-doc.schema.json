@@ -2,26 +2,35 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://github.com/mbackschat/a12-dmkits/schema/compute-doc.schema.json",
   "title": "ComputeDocResult",
-  "description": "Output of `model compute` — the runtime computation over a document INSTANCE: what each computed field becomes (compute), via the native-safe interpreter (the sole runtime eval engine on every target). Read-only — the input --instance is never modified. The INPUT --instance is the same nested tree `model eval` takes (under \"fields\": repeatable group = array of rows, field = its text value).",
+  "description": "Output of `model compute` — the runtime computation over a document INSTANCE: what each computed field becomes, evaluated by the native-safe dm interpreter (the sole runtime eval engine on every target; the envelope's `engine` names it). Read-only — the input --instance is never modified. The INPUT --instance is the same nested tree `model eval` takes (repeatable group = array of rows, field = its text value).",
   "type": "object",
-  "required": ["computed"],
+  "required": ["computed", "declarations", "instances"],
   "additionalProperties": false,
   "properties": {
     "computed": {
       "type": "array",
       "items": { "$ref": "#/$defs/computedField" },
-      "description": "each computed field and what the kernel made of it, in kernel order"
+      "description": "one entry per computed field INSTANCE — a repeated computed field yields one per row — in evaluation order"
+    },
+    "declarations": {
+      "type": "integer",
+      "description": "how many distinct computations ran. This is the count that answers 'which computations does this model have'; the array length answers a different question"
+    },
+    "instances": {
+      "type": "integer",
+      "description": "how many field instances they produced (= computed.length). Separate from `declarations` because neither implies the other: 2 computations over 5 rows is 2 and 10, and a summary reporting one number is wrong about the other"
     }
   },
   "$defs": {
     "computedField": {
       "type": "object",
-      "required": ["field", "outcome"],
+      "required": ["field", "declaration", "outcome"],
       "additionalProperties": false,
       "properties": {
-        "field": { "type": "string", "description": "the computed field's absolute path" },
-        "outcome": { "type": "string", "description": "value (computed a value) | cleared (computed nothing, e.g. an empty operand) | error" },
-        "value": { "type": "string", "description": "the computed value when outcome is 'value' (or a partial on 'error'); absent when cleared" }
+        "field": { "type": "string", "description": "the canonical A12 pointer to the computed cell INSTANCE — `Order/Items[2]/Total`: no leading slash, `[1]` omitted, one repetition per part. Identifies the ROW, so a repeated computed field's entries are distinguishable without relying on list position" },
+        "declaration": { "type": "string", "description": "the canonical A12 path of the computation's target with no repetition — `Order/Items/Total`. Group by this to fold a repeated computed field's rows back into the one computation that produced them" },
+        "outcome": { "type": "string", "enum": ["value", "cleared", "error"], "description": "value (computed a value) | cleared (computed nothing, e.g. an empty operand) | error" },
+        "value": { "type": "string", "description": "the computed value when outcome is 'value' (or the attempted value on 'error'); absent when cleared" }
       }
     }
   }

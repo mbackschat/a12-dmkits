@@ -168,9 +168,9 @@ class IncludeResidualRefDiffTest {
         CliTestSupport.Result ker = CliTestSupport.runKernel("-m", model.toString(), "model", "compute", "--instance", instance.toString());
 
         assertEquals(0, def.code(), () -> "the default path computes the included computation: " + def.out() + def.err());
-        String defTotal = computedValue(def.out(), "/Policy/Cover/Total");
+        String defTotal = computedValue(def.out(), "Policy/Cover/Total");
         assertEquals("42", defTotal, () -> "the remapped computation computes Total from Base: " + def.out());
-        assertEquals(computedValue(ker.out(), "/Policy/Cover/Total"), defTotal, () -> "matches the kernel: " + def.out());
+        assertEquals(computedValue(ker.out(), "Policy/Cover/Total"), defTotal, () -> "matches the kernel: " + def.out());
     }
 
     @Test

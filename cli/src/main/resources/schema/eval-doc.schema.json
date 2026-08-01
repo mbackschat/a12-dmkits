@@ -20,7 +20,7 @@
     "messages": {
       "type": "array",
       "items": { "$ref": "#/$defs/message" },
-      "description": "every message the kernel raised, in kernel order"
+      "description": "every message the evaluation raised, in evaluation order. Evaluated by the dm interpreter — the envelope's `engine` names who produced these"
     },
     "rule": {
       "type": "object",
@@ -54,11 +54,11 @@
       "properties": {
         "code": { "type": "string", "description": "the rule's error code, or a kernel formal-error code" },
         "rule": { "type": "string", "description": "the firing rule's full slash-path (e.g. /Order/X); a kernel FORMAL check reports the sentinel 'formalePruefung' — a leading '/' is the author-rule discriminator" },
-        "field": { "type": "string", "description": "the offending field's instance pointer — path with the repetition index on each group segment, e.g. /Order[1]/Items[2]/Count — the row it hit" },
+        "field": { "type": "string", "description": "the offending field's instance pointer in canonical A12 form — no leading slash, [1] omitted, one repetition per part, e.g. Order/Items[2]/Count — the row it hit. Paste-compatible with A12 addressing" },
         "severity": { "type": "string", "description": "ERROR | WARNING | INFO" },
         "type": { "type": "string", "description": "VALUE_ERROR | OMISSION_ERROR" },
         "message": { "type": "string", "description": "the INTERPOLATED end-user text — the authored message with $Field$/$Field.value$ tokens resolved against this document (what the user actually reads, G1)" },
-        "referenced": { "type": "array", "items": { "type": "string" }, "description": "the fields the rule READ (its operands), as instance pointers — the kernel's referencedFields" },
+        "referenced": { "type": "array", "items": { "type": "string" }, "description": "the fields the rule READ (its operands), as canonical A12 instance pointers — A12's referencedFields" },
         "fillToFix": { "type": "array", "items": { "type": "string" }, "description": "for an OMISSION error, the operand fields that — if filled/changed — would clear it (the kernel's refOmissionErrorResponsible); absent for a VALUE error" }
       }
     }

@@ -160,14 +160,25 @@ public final class InterpreterEngine {
 
         ObjectNode data = MAPPER.createObjectNode();
         ArrayNode arr = data.putArray("computed");
+        java.util.Set<String> declarations = new java.util.LinkedHashSet<>();
         for (Computed c : computed) {
             ObjectNode cn = arr.addObject();
-            cn.put("field", c.getPath());
+            // `field` identifies the ROW; `declaration` identifies the computation. Publishing only the
+            // declaration — as this did — made four rows of one repeated computed field indistinguishable except
+            // by list position, while the engine had the indices all along.
+            cn.put("field", A12Pointers.canonicalInstance(c.getPath(), c.getIndices()));
+            cn.put("declaration", A12Pointers.declaration(c.getPath()));
             cn.put("outcome", outcomeName(c.getOutcome()));
             if (c.getValue() != null) {
                 cn.put("value", c.getValue());
             }
+            declarations.add(c.getPath());
         }
+        // The two counts a summary needs and cannot derive from each other: a run over 2 declarations × 5 rows is
+        // neither "2" nor "10" alone. Emitted here so the verb's summary states both instead of calling instances
+        // "field(s)" — which was wrong on both axes.
+        data.put("declarations", declarations.size());
+        data.put("instances", computed.size());
         return data;
     }
 
@@ -204,7 +215,7 @@ public final class InterpreterEngine {
             ArrayNode arr = data.putArray("suppressedBy");
             result.getSuppressedBy().forEach(s -> {
                 ObjectNode n = arr.addObject();
-                n.put("field", s.getField());
+                n.put("field", A12Pointers.canonical(s.getField()));
                 n.put("formalErrorCode", s.getFormalErrorCode());
             });
         }
@@ -229,7 +240,9 @@ public final class InterpreterEngine {
     private static void addMessage(ObjectNode mn, Message m) {
         mn.put("code", m.getCode());
         mn.put("rule", m.getRulePath());
-        mn.put("field", m.getErrorPath());   // path + repetition indices (formatPointer form)
+        // Canonical A12, not the interpreter's house form — see A12Pointers for why the two exist and which is a
+        // contract. A pointer copied out of this output has to be one A12 accepts back.
+        mn.put("field", A12Pointers.canonical(m.getErrorPath()));
         mn.put("severity", m.getSeverity().name());
         mn.put("type", typeError(m.getType()));
         mn.put("message", m.getText());
@@ -240,7 +253,7 @@ public final class InterpreterEngine {
     }
 
     private static void putPointers(ArrayNode arr, java.util.List<String> pointers) {
-        pointers.forEach(arr::add);
+        A12Pointers.canonical(pointers).forEach(arr::add);
     }
 
     /** Map the interpreter's polarity to the kernel's message-type vocabulary. */

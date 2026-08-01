@@ -85,8 +85,14 @@ final class ModelComputeCommand extends BaseCommand {
             return fail("computation failed: " + e.getMessage());
         }
 
+        // Two counts, because one cannot stand for the other: 2 declarations over 5 rows is neither "2 field(s)"
+        // nor "10 field(s)". The old summary counted INSTANCES and called them fields, so it was wrong on both
+        // axes at once — and the list it summarized mixes declarations, so position was ambiguous too.
+        int declarations = data.path("declarations").asInt();
+        int instances = data.path("instances").asInt();
         ResultEnvelope env = ResultEnvelope.runtimeObservation("model", "compute",
-                "computed " + data.get("computed").size() + " field(s)", data, RuntimeEvidence.interpreter());
+                "computed " + declarations + " computation(s) over " + instances + " field instance(s)",
+                data, RuntimeEvidence.interpreter());
         out().print(env.toJsonString());
         return env.exitCode();
     }

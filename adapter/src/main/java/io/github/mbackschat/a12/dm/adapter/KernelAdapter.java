@@ -854,12 +854,17 @@ public final class KernelAdapter {
         DocRuntime runtime = prepare(fields);
         IDocumentComputationResult result = runtime.rt().compute(runtime.document(), config(locale));
         List<ComputedField> computed = new ArrayList<>();
+        // Carry each instance's repetitions through: the kernel exposes the row identity on every channel, and
+        // dropping it here is what made a repeated computed field's rows indistinguishable downstream.
         result.getComputedFieldInstancesWithChanges()
-                .forEach(c -> computed.add(new ComputedField(c.getPath(), "value", c.getStringValue())));
+                .forEach(c -> computed.add(
+                        ComputedField.of(c.getPath(), "value", c.getStringValue(), c.getRepetitions())));
         result.getComputedFieldInstancesWithErrors()
-                .forEach(c -> computed.add(new ComputedField(c.getPath(), "error", c.getStringValue())));
+                .forEach(c -> computed.add(
+                        ComputedField.of(c.getPath(), "error", c.getStringValue(), c.getRepetitions())));
         result.getClearedFieldInstances()
-                .forEach(c -> computed.add(new ComputedField(c.getPath(), "cleared", Optional.empty())));
+                .forEach(c -> computed.add(
+                        ComputedField.of(c.getPath(), "cleared", Optional.empty(), c.getRepetitions())));
         return new ComputeResult(computed);
     }
 

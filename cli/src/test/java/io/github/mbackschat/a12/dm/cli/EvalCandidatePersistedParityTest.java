@@ -17,7 +17,7 @@ import org.junit.jupiter.api.io.TempDir;
 /**
  * G42 — {@code model eval --condition/--field} (the injected candidate) must assemble its runtime messages
  * through the SAME per-row path as the persisted equivalent: one <b>row-indexed</b> message per firing
- * ({@code /Order[1]/Items[2]/Count}), never a single index-less collapse ({@code /Order/Items/Count}). The
+ * ({@code Order/Items[2]/Count}), never a single index-less collapse ({@code Order/Items/Count}). The
  * lock is a parity: for the same model + instance + rule, the candidate's {@code (code, field)} message
  * multiset is IDENTICAL to persisting that rule and running whole-model {@code model eval} — and, where the
  * interpreter matches the kernel, identical to the kernel's own candidate eval.
@@ -79,7 +79,7 @@ class EvalCandidatePersistedParityTest {
         var persistedEval = CliTestSupport.run("-m", persisted.toString(), "model", "eval", "--instance", inst.toString());
 
         // the correct row-indexed attachment: one message, on row 2
-        assertEquals(List.of("/Order[1]/Items[2]/Count"), fieldsOf(persistedEval.out(), "COUNT_CAP").get("COUNT_CAP"),
+        assertEquals(List.of("Order/Items[2]/Count"), fieldsOf(persistedEval.out(), "COUNT_CAP").get("COUNT_CAP"),
                 () -> "persisted fires row 2 only: " + persistedEval.out());
         // candidate assembles identically to persisted …
         assertEquals(fieldsOf(persistedEval.out(), "COUNT_CAP"), fieldsOf(candidate.out(), "COUNT_CAP"),

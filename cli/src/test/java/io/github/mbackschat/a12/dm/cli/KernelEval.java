@@ -28,6 +28,7 @@ import io.github.mbackschat.a12.dm.adapter.KernelAdapter;
 import io.github.mbackschat.a12.dm.adapter.RuleTestOutcome;
 import io.github.mbackschat.a12.dm.core.ModelResolver;
 import io.github.mbackschat.a12.dm.core.ReferenceResolvers;
+import io.github.mbackschat.a12.dm.cli.interp.A12Pointers;
 import io.github.mbackschat.a12.dm.interpreter.eval.PointerKt;
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel;
 import io.github.mbackschat.a12.dm.rulekit.validate.DraftRule;
@@ -216,19 +217,28 @@ final class KernelEval {
             ComputeResult result = KernelAdapter.ofJson(modelJson, resolver(a)).compute(fields, locale(a));
             data = MAPPER.createObjectNode();
             ArrayNode computed = data.putArray("computed");
+            java.util.Set<String> declarations = new java.util.LinkedHashSet<>();
             for (ComputedField c : result.computed()) {
                 ObjectNode cn = computed.addObject();
-                cn.put("field", c.path());
+                // The SAME projection the CLI publishes. Rendering the kernel side any other way is how a
+                // CLI-level differential ends up comparing two different contracts and agreeing (§1c).
+                cn.put("field", A12Pointers.canonicalInstance(c.path(), c.repetitions()));
+                cn.put("declaration", A12Pointers.declaration(c.path()));
                 cn.put("outcome", c.outcome());
                 c.value().ifPresent(v -> cn.put("value", v));
+                declarations.add(c.path());
             }
+            data.put("declarations", declarations.size());
+            data.put("instances", result.computed().size());
         } catch (IllegalArgumentException badDoc) {
             return fail(err, badDoc.getMessage());
         } catch (RuntimeException e) {
             return fail(err, "computation failed: " + e.getMessage());
         }
         ResultEnvelope env = ResultEnvelope.runtimeObservation("model", "compute",
-                "computed " + data.get("computed").size() + " field(s)", data, RuntimeEvidence.kernel());
+                "computed " + data.path("declarations").asInt() + " computation(s) over "
+                        + data.path("instances").asInt() + " field instance(s)",
+                data, RuntimeEvidence.kernel());
         out.append(env.toJsonString());
         return env.exitCode();
     }
@@ -333,8 +343,14 @@ final class KernelEval {
         };
     }
 
+    /**
+     * The kernel side of a CLI-level differential must be projected the way the <b>CLI</b> publishes, not the way
+     * the interpreter renders internally — otherwise both sides get the same lossy projection and agree by
+     * construction (RESULT-CONTRACT-PROPOSAL §1c names this as one of the three harnesses that defended the defect
+     * rather than catching it). So this renders canonical A12, through the same boundary converter the CLI uses.
+     */
     private static String pointer(FieldPointer p) {
-        return PointerKt.formatPointer(p.path(), p.reps());
+        return A12Pointers.canonical(PointerKt.formatPointer(p.path(), p.reps()));
     }
 
     // ---- shared emit helpers (match BaseCommand.fail / refuse) ----

@@ -43,10 +43,23 @@ object A12PointerFormat {
      */
     const val LAST_PART_ZERO: Int = 0
 
+    /**
+     * A12's **unknown** repetition — `IIdentifier.UNKNOWN`, source-verified as `-5` in kernel 30.8.1
+     * (`kernel-core-runtime-api/.../IIdentifier.java:118`). It is not an index and not a wildcard: it marks a level
+     * the engine could not resolve to a row, which is what a parallel iteration produces when one joined group has
+     * no row carrying the current index value. The kernel renders such a pointer as `…/Demand[-5]/Headcount`, so a
+     * consumer meets it in real output and a renderer that cannot express it would have to invent something.
+     *
+     * Accepted at **any** part, unlike [LAST_PART_ZERO]: "no row here" can occur at any joined level, whereas the
+     * last-part `0` addresses a specific slot. The two are different concepts that happen to share a bracket.
+     */
+    const val UNKNOWN_REPETITION: Int = -5
+
     // The closing bracket MUST stay escaped: Kotlin/JS compiles a Regex in unicode (`u`) mode, where a lone
     // `]` is a SyntaxError — the pattern would fail to construct and every use would see an uninitialized
     // object. Harmless on the JVM, required on JS (the multiplatform `:interpreter:check` is what catches it).
-    private val PART = Regex("([\\w_-]+)(\\[(\\d+)?\\])?")
+    // The optional `-` admits UNKNOWN_REPETITION only; every other negative is rejected below.
+    private val PART = Regex("([\\w_-]+)(\\[(-?\\d+)?\\])?")
 
     /**
      * Render [path] (with or without a leading `/`) and its positional [repetitions] as the canonical string.
@@ -71,9 +84,12 @@ object A12PointerFormat {
             names.add(match.groupValues[1])
             repetitions.add(match.groupValues[3].takeIf { it.isNotEmpty() }?.toInt() ?: 1)
         }
-        for (i in 0 until repetitions.size - 1) {
-            require(repetitions[i] >= 1) {
-                "all repetition indexes must be >= 1; only the last may be $LAST_PART_ZERO, in pointer " +
+        for (i in repetitions.indices) {
+            val rep = repetitions[i]
+            val lastPartZero = rep == LAST_PART_ZERO && i == repetitions.size - 1
+            require(rep >= 1 || rep == UNKNOWN_REPETITION || lastPartZero) {
+                "all repetition indexes must be >= 1; only the last may be $LAST_PART_ZERO, and " +
+                    "$UNKNOWN_REPETITION (A12's unknown repetition) may appear at any part, in pointer " +
                     "'$pointer' (an exact DocumentPointer — a multipointer wildcard is a different type)"
             }
         }

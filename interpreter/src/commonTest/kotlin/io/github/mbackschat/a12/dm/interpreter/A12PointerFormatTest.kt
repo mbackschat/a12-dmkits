@@ -85,6 +85,34 @@ class A12PointerFormatTest {
         assertFailsWith<IllegalArgumentException> { A12PointerFormat.parse("Recipe/Ingredients[3]x") }
     }
 
+    // ---- A12's unknown repetition (IIdentifier.UNKNOWN = -5) ------------------------------------
+
+    /**
+     * `-5` is not an index and not a wildcard — it marks a level the engine could not resolve to a row, which a
+     * parallel iteration produces whenever one joined group has no row for the current index value. The kernel
+     * emits such pointers, so this format must express one rather than force an invention at the boundary.
+     */
+    @Test
+    fun parsesAndRendersTheUnknownRepetitionAtAnyPart() {
+        val parsed = A12PointerFormat.parse("Plan/Demand[-5]/Headcount")
+        assertEquals(listOf(1, -5, 1), parsed.repetitions)
+        assertEquals("Plan/Demand[-5]/Headcount", A12PointerFormat.format("Plan/Demand/Headcount", parsed.repetitions))
+    }
+
+    /**
+     * The distinction that keeps this from being a loosening: `[0]` stays refused on an earlier part. The two
+     * brackets share a syntax and mean unrelated things — the last-part `0` addresses `RepetitionsV2`, `-5` says
+     * "no row here" — so admitting one says nothing about the other.
+     */
+    @Test
+    fun butAnEarlierZeroIsStillRejectedAndSoIsAnyOtherNegative() {
+        assertFailsWith<IllegalArgumentException> { A12PointerFormat.parse("Plan/Demand[0]/Headcount") }
+        assertFailsWith<IllegalArgumentException> { A12PointerFormat.parse("Plan/Demand[-1]/Headcount") }
+        assertFailsWith<IllegalArgumentException> { A12PointerFormat.parse("Plan/Demand[-4]") }
+        // …while -5 stays legal wherever it appears, last part included.
+        assertEquals(listOf(1, -5), A12PointerFormat.parse("Plan/Demand[-5]").repetitions)
+    }
+
     // ---- round trip ---------------------------------------------------------------------------
 
     @Test

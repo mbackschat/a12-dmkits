@@ -40,7 +40,7 @@ class ComputeDocVerbTest {
                 { "Subscription": { "Billing": { "BaseFee": "50" } } }""");
         var res = CliTestSupport.runKernel("-m", model.toString(), "model", "compute", "--instance", doc.toString());
         assertEquals(0, res.code(), res::err);
-        JsonNode cw = computedFor(res.out(), "/Subscription/Billing/EffectiveFee");
+        JsonNode cw = computedFor(res.out(), "Subscription/Billing/EffectiveFee");
         assertTrue(cw != null && cw.get("outcome").asText().equals("value") && cw.get("value").asText().equals("50"),
                 () -> "EffectiveFee computes to BaseFee (50): " + res.out());
     }
@@ -56,7 +56,7 @@ class ComputeDocVerbTest {
                 { "Subscription": { "Billing": { } } }""");
         var res = CliTestSupport.runKernel("-m", model.toString(), "model", "compute", "--instance", doc.toString());
         assertEquals(0, res.code(), res::err);
-        JsonNode cw = computedFor(res.out(), "/Subscription/Billing/EffectiveFee");
+        JsonNode cw = computedFor(res.out(), "Subscription/Billing/EffectiveFee");
         assertTrue(cw != null && cw.get("outcome").asText().equals("value") && cw.get("value").asText().equals("0"),
                 () -> "an empty number operand is substituted with 0 in a computation: " + res.out());
     }
@@ -83,7 +83,7 @@ class ComputeDocVerbTest {
                 { "Subscription": { "Billing": { } } }""");
         var res = CliTestSupport.runKernel("-m", guarded.toString(), "model", "compute", "--instance", doc.toString());
         assertEquals(0, res.code(), res::err);
-        assertNull(computedFor(res.out(), "/Subscription/Billing/EffectiveFee"),
+        assertNull(computedFor(res.out(), "Subscription/Billing/EffectiveFee"),
                 () -> "a guarded number computation computes nothing on an empty operand: " + res.out());
     }
 

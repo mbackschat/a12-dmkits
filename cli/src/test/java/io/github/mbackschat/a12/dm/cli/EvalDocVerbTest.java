@@ -165,8 +165,8 @@ class EvalDocVerbTest {
                 countCap.append(m.get("field").asText()).append('\n');
             }
         }
-        assertTrue(countCap.toString().contains("/Order[1]/Items[2]/Count"), () -> "the candidate fires on row 2: " + res.out());
-        assertFalse(countCap.toString().contains("/Order[1]/Items[1]/Count"), () -> "the candidate does not fire on row 1: " + res.out());
+        assertTrue(countCap.toString().contains("Order/Items[2]/Count"), () -> "the candidate fires on row 2: " + res.out());
+        assertFalse(countCap.toString().contains("Order/Items[1]/Count"), () -> "the candidate does not fire on row 1: " + res.out());
     }
 
     @Test
