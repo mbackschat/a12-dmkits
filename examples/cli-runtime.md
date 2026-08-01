@@ -62,21 +62,24 @@ dmtool -m examples/models/order-ruled.dm.json \
   "op" : "eval",
   "outcome" : "read",
   "ok" : true,
-  "valid" : true,
+  "engine" : "DM_INTERPRETER",
+  "engineVersion" : "0.10.1",
+  "toolVersion" : "0.10.1",
   "summary" : "1 rule(s) fired",
   "data" : {
     "fired" : [ "DELIVERY_BEFORE_ORDER" ],
     "messages" : [ {
       "code" : "DELIVERY_BEFORE_ORDER",
       "rule" : "/Order/DeliveryNotBeforeOrder",
-      "field" : "/Order[1]/DeliveryDate",
+      "field" : "Order/DeliveryDate",
       "severity" : "ERROR",
       "type" : "VALUE_ERROR",
       "message" : "The delivery date must not be earlier than the order date.",
-      "referenced" : [ "/Order[1]/OrderDate", "/Order[1]/DeliveryDate" ]
+      "referenced" : [ "Order/OrderDate", "Order/DeliveryDate" ]
     } ],
     "unsupported" : [ {
       "name" : "/Order/EligibilityCheck",
+      "subject" : "element",
       "reason" : "unregistered custom condition \"ExternalEligibility\" — register it in the custom-condition registry"
     } ],
     "rule" : {
@@ -111,13 +114,16 @@ dmtool -m examples/models/order-ruled.dm.json \
   "op" : "eval",
   "outcome" : "read",
   "ok" : true,
-  "valid" : true,
+  "engine" : "DM_INTERPRETER",
+  "engineVersion" : "0.10.1",
+  "toolVersion" : "0.10.1",
   "summary" : "0 rule(s) fired",
   "data" : {
     "fired" : [ ],
     "messages" : [ ],
     "unsupported" : [ {
       "name" : "/Order/EligibilityCheck",
+      "subject" : "element",
       "reason" : "unregistered custom condition \"ExternalEligibility\" — register it in the custom-condition registry"
     } ],
     "rule" : {
@@ -186,7 +192,9 @@ dmtool -m examples/models/order-ruled.dm.json \
   "op" : "eval",
   "outcome" : "read",
   "ok" : true,
-  "valid" : true,
+  "engine" : "DM_INTERPRETER",
+  "engineVersion" : "0.10.1",
+  "toolVersion" : "0.10.1",
   "summary" : "/Order/DeliveryNotBeforeOrder FIRED on this instance (a violation)",
   "data" : {
     "rule" : "/Order/DeliveryNotBeforeOrder",
@@ -216,14 +224,16 @@ dmtool -m examples/models/order-ruled.dm.json \
   "op" : "eval",
   "outcome" : "read",
   "ok" : true,
-  "valid" : true,
+  "engine" : "DM_INTERPRETER",
+  "engineVersion" : "0.10.1",
+  "toolVersion" : "0.10.1",
   "summary" : "/Order/DeliveryNotBeforeOrder was NOT evaluated — a referenced field is formally invalid",
   "data" : {
     "rule" : "/Order/DeliveryNotBeforeOrder",
     "fired" : false,
     "verdict" : "suppressed",
     "suppressedBy" : [ {
-      "field" : "/Order/DeliveryDate",
+      "field" : "Order/DeliveryDate",
       "formalErrorCode" : "datumFormatFalsch"
     } ]
   },
@@ -256,21 +266,24 @@ dmtool -m examples/models/order-ruled.dm.json \
   "op" : "eval",
   "outcome" : "read",
   "ok" : true,
-  "valid" : true,
+  "engine" : "DM_INTERPRETER",
+  "engineVersion" : "0.10.1",
+  "toolVersion" : "0.10.1",
   "summary" : "1 rule(s) fired",
   "data" : {
     "fired" : [ "QTY_CAP" ],
     "messages" : [ {
       "code" : "QTY_CAP",
       "rule" : "/Order/EvalDocCandidate",
-      "field" : "/Order[1]/Quantity",
+      "field" : "Order/Quantity",
       "severity" : "ERROR",
       "type" : "VALUE_ERROR",
       "message" : "EvalDocCandidate",
-      "referenced" : [ "/Order[1]/Quantity" ]
+      "referenced" : [ "Order/Quantity" ]
     } ],
     "unsupported" : [ {
       "name" : "/Order/EligibilityCheck",
+      "subject" : "element",
       "reason" : "unregistered custom condition \"ExternalEligibility\" — register it in the custom-condition registry"
     } ],
     "rule" : {
@@ -301,7 +314,9 @@ dmtool schema model compute \
   "consumes": "DocumentInstance",
   "dataPayload": "ComputeDocResult",
   "dataKeys": [
-    "computed"
+    "computed",
+    "declarations",
+    "instances"
   ]
 }
 ```
@@ -322,14 +337,19 @@ dmtool -m examples/models/subscription-computed.dm.json \
   "op" : "compute",
   "outcome" : "read",
   "ok" : true,
-  "valid" : true,
-  "summary" : "computed 1 field(s)",
+  "engine" : "DM_INTERPRETER",
+  "engineVersion" : "0.10.1",
+  "toolVersion" : "0.10.1",
+  "summary" : "computed 1 computation(s) over 1 field instance(s)",
   "data" : {
     "computed" : [ {
-      "field" : "/Subscription/Billing/EffectiveFee",
+      "field" : "Subscription/Billing/EffectiveFee",
+      "declaration" : "Subscription/Billing/EffectiveFee",
       "outcome" : "value",
       "value" : "49.9"
-    } ]
+    } ],
+    "declarations" : 1,
+    "instances" : 1
   },
   "diagnostics" : [ ],
   "written" : false
@@ -354,14 +374,19 @@ dmtool -m examples/models/subscription-computed.dm.json \
   "op" : "compute",
   "outcome" : "read",
   "ok" : true,
-  "valid" : true,
-  "summary" : "computed 1 field(s)",
+  "engine" : "DM_INTERPRETER",
+  "engineVersion" : "0.10.1",
+  "toolVersion" : "0.10.1",
+  "summary" : "computed 1 computation(s) over 1 field instance(s)",
   "data" : {
     "computed" : [ {
-      "field" : "/Subscription/Billing/EffectiveFee",
+      "field" : "Subscription/Billing/EffectiveFee",
+      "declaration" : "Subscription/Billing/EffectiveFee",
       "outcome" : "value",
       "value" : "0"
-    } ]
+    } ],
+    "declarations" : 1,
+    "instances" : 1
   },
   "diagnostics" : [ ],
   "written" : false

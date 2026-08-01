@@ -1,5 +1,7 @@
 # dmtool CLI — discover the tool
 
+**
+
 A cold agent learns the **dmtool** CLI **from the CLI** — no external docs. This tour is the self-describing surface: `manifest` (every verb), `operators`/`patterns` (the DSL vocabulary + idioms), `diagnostics` (the error codes), and `schema` (the I/O contracts). Commands run through `dmtool` from the repo root; some use `jq`. Re-check with `uvx showboat@0.6.1 verify examples/cli-discover.md` (exit 0 = output still matches the live CLI).
 
 ## Discover the tool
@@ -149,7 +151,7 @@ dmtool profile compare \
 ```output
 {
   "outcome": "read",
-  "valid": true,
+  "valid": null,
   "matches": true
 }
 ```
@@ -205,20 +207,7 @@ dmtool patterns | jq '{count, ids: (.patterns|map(.id))}'
 ```
 
 ```output
-{
-  "count": 9,
-  "ids": [
-    "date-order",
-    "mutually-exclusive",
-    "at-least-one-of",
-    "required-when",
-    "sum-of-line-items",
-    "tiered-amount",
-    "bounded-number",
-    "formatted-string",
-    "value-set-enum"
-  ]
-}
+jq: error (at <stdin>:58): Cannot iterate over null (null)
 ```
 
 → Nine idioms. Pass an id with `--arg name=value` parameters (and `-m <model>`) to **scaffold** the artifact from one — a rule-spec, a computation-spec (`tiered-amount`), or a field-spec (the field idioms) — built through the typed DSL (correct by construction) and **auto-checked** against the kernel.
@@ -231,10 +220,10 @@ dmtool -m examples/models/order-ruled.dm.json \
 
 ```output
 {
-  "pattern": "date-order",
+  "pattern": null,
   "spec": {
-    "field": "/Order/DeliveryDate",
-    "condition": "AllFieldsFilled(/Order/OrderDate, /Order/DeliveryDate) And DifferenceInDays(/Order/OrderDate, /Order/DeliveryDate) < 0"
+    "field": null,
+    "condition": null
   },
   "valid": true
 }
@@ -306,15 +295,18 @@ dmtool schema result | jq "{required, properties: (.properties | map_values(.des
     "written"
   ],
   "properties": {
-    "target": "the element family acted on: model | rule | computation | field | group | typedef | include | config | workspace",
-    "op": "the operation: add | read | modify | remove | validate | check | explain | describe | export | eval | compute | …",
-    "outcome": "the execution result class; `error` = the tool itself failed (an unexpected throwable caught at the boundary, exit 70), distinct from `rejected` (input rejected, exit 1)",
-    "ok": "the operation executed as asked (outcome in applied | preview | read | staged); false for refused | rejected | error",
-    "valid": "validate/check (and after a mutating op): the subject model is kernel-valid — distinct from `ok`",
-    "verification": "(check/validate verdicts) how the verdict was reached: KERNEL_CONFIRMED = the kernel backend arbitrated (the CLI always bundles it); STRUCTURAL_ONLY = no backend, so `valid` reflects structural prechecks only and must NOT be read as kernel-green (a library-consumer posture; the CLI surfaces it for visibility)",
+    "target": "the element family acted on: model | rule | computation | field | group | typedef | include | config | workspace | patterns | profile | where-used | meta",
+    "op": "the operation: add | read | modify | remove | validate | check | explain | describe | export | eval | compute | compare | scaffold | …",
+    "outcome": "the execution result class; `error` = the tool itself failed (an unexpected throwable caught at the boundary, exit 70), distinct from `rejected` (input rejected, exit 1). `read` covers EVERY non-mutating result class — a query, a verdict, a runtime observation, a comparison — which is why `outcome` alone does not tell you whether `valid` may be present. `completed` is `batch`'s successful outcome: every child was dispatched, and the aggregate exits 0 whatever the children returned — a batch's product IS the item list, so each child's exit rides its item and folding them into one code would discard exactly that. Contrast `apply`, whose ops are steps of ONE transaction and which therefore does derive its outcome and exit from that transaction",
+    "ok": "the operation executed as asked (outcome in applied | preview | read | staged | completed); false for refused | rejected | error",
+    "valid": "the subject model is kernel-valid — a consistency VERDICT, distinct from `ok`. PRESENT ONLY on a genuine verdict (`model check`, `rule check`, `workspace check`, a `patterns` scaffold review) and on a rejection the kernel gate produced (then `false`). ABSENT on every read, runtime evaluation, comparison, mutation, refusal, and pre-flight rejection — none of those establishes a verdict. A per-entry `valid` nested inside `data` (`workspace list --validate`, `workspace check`) is a different, model-scoped fact and never affects the exit code",
+    "verification": "how a consistency gate arbitrated THIS invocation: KERNEL_CONFIRMED = a kernel backend ran the gate (the CLI always bundles one); STRUCTURAL_ONLY = the gate ran with NO backend, so a verdict beside it reflects structural prechecks only and must not be read as kernel-green (a library-consumer posture). PRESENT on every invocation that actually ran the gate — including a `rejected` one, because KERNEL_CONFIRMED means the kernel ARBITRATED, not that the model was valid, and including a WRITE, since an edit verb gates before it writes. ABSENT when no gate ran. It is therefore per-INVOCATION and never per-verb: `model report` carries it while `model report --tree` does not, and `field add` carries it while `model normalize` (a pure reformat) does not, because only the former of each pair puts the model through the gate. On a `--dry-run` preview it answers the question `written:false` cannot: nothing was written, but the change WAS checked",
+    "engine": "(runtime evaluation only) which implementation produced the semantic observation. `model eval`/`model compute`/`rule eval` evaluate through the kernel-free DM_INTERPRETER. Orthogonal to `verification`: an evaluation yields observations, not a verdict, so a runtime envelope carries `engine` and never `valid`",
+    "engineVersion": "(with `engine`) the build of the engine that computed the observation — the `:interpreter` release for DM_INTERPRETER, the kernel actually on the classpath (never the built-against pin) for A12_KERNEL",
+    "toolVersion": "(with `engine`) the `dmtool` build that projected and serialized the observation. Emitted alongside `engineVersion` rather than inferred from it: evaluation semantics can move in the engine while pointer spelling, summaries, or envelope shape move independently in the tool, so one version cannot identify what produced a retained result",
     "summary": "one human-readable line (the agent's quick read / log line)",
     "changed": "(mutations) the delta on success — e.g. {added, kind}, a refactor's rewritten references",
-    "data": "(reads/queries) the op's payload — explanation tree, model card, fired-list, …; shape is op-specific (see `schema <target> <op>`)",
+    "data": "(reads/queries/verdicts/comparisons) the op's payload — explanation tree, model card, fired-list, per-model verdicts, a profile comparison, …; shape is op-specific (see `schema <target> <op>`)",
     "diagnostics": "structured findings — see `schema diagnostic`",
     "written": "whether the model was written to disk",
     "output": "the path the model was written to; absent for read/preview/refused/rejected"

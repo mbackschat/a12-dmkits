@@ -66,37 +66,44 @@ dmtool -m /tmp/apply-atomic.dm.json apply /tmp/apply-atomic-ops.json
 
 ```output
 {
-  "verb" : "apply",
-  "ops" : 2,
-  "committed" : true,
+  "target" : "apply",
+  "op" : "run",
+  "outcome" : "applied",
+  "ok" : true,
+  "verification" : "KERNEL_CONFIRMED",
   "summary" : "2 op(s) committed, written to /tmp/apply-atomic.dm.json",
-  "failedAt" : null,
+  "data" : {
+    "ops" : 2,
+    "committed" : true,
+    "failedAt" : null,
+    "results" : [ {
+      "target" : "field",
+      "op" : "add",
+      "outcome" : "staged",
+      "ok" : true,
+      "summary" : "staged field add",
+      "changed" : {
+        "added" : "/Order/Discount",
+        "kind" : "NUMBER"
+      },
+      "diagnostics" : [ ],
+      "written" : false
+    }, {
+      "target" : "rule",
+      "op" : "add",
+      "outcome" : "staged",
+      "ok" : true,
+      "summary" : "staged rule add",
+      "changed" : {
+        "rule" : "/Order/DISCOUNT_NOT_NEGATIVE"
+      },
+      "diagnostics" : [ ],
+      "written" : false
+    } ]
+  },
+  "diagnostics" : [ ],
   "written" : true,
-  "output" : "/tmp/apply-atomic.dm.json",
-  "results" : [ {
-    "target" : "field",
-    "op" : "add",
-    "outcome" : "staged",
-    "ok" : true,
-    "summary" : "staged field add",
-    "changed" : {
-      "added" : "/Order/Discount",
-      "kind" : "NUMBER"
-    },
-    "diagnostics" : [ ],
-    "written" : false
-  }, {
-    "target" : "rule",
-    "op" : "add",
-    "outcome" : "staged",
-    "ok" : true,
-    "summary" : "staged rule add",
-    "changed" : {
-      "rule" : "/Order/DISCOUNT_NOT_NEGATIVE"
-    },
-    "diagnostics" : [ ],
-    "written" : false
-  } ]
+  "output" : "/tmp/apply-atomic.dm.json"
 }
 ```
 
@@ -131,43 +138,49 @@ dmtool -m /tmp/apply-midread.dm.json apply /tmp/apply-midread-ops.json
 
 ```output
 {
-  "verb" : "apply",
-  "ops" : 2,
-  "committed" : true,
+  "target" : "apply",
+  "op" : "run",
+  "outcome" : "applied",
+  "ok" : true,
+  "verification" : "KERNEL_CONFIRMED",
   "summary" : "2 op(s) committed, written to /tmp/apply-midread.dm.json",
-  "failedAt" : null,
+  "data" : {
+    "ops" : 2,
+    "committed" : true,
+    "failedAt" : null,
+    "results" : [ {
+      "target" : "field",
+      "op" : "add",
+      "outcome" : "staged",
+      "ok" : true,
+      "summary" : "staged field add",
+      "changed" : {
+        "added" : "/Order/Discount",
+        "kind" : "NUMBER"
+      },
+      "diagnostics" : [ ],
+      "written" : false
+    }, {
+      "target" : "field",
+      "op" : "read",
+      "outcome" : "read",
+      "ok" : true,
+      "summary" : "read field read",
+      "data" : {
+        "field" : "/Order/Discount",
+        "kind" : "NUMBER",
+        "required" : false,
+        "number" : {
+          "maxFractionalDigits" : 0
+        }
+      },
+      "diagnostics" : [ ],
+      "written" : false
+    } ]
+  },
+  "diagnostics" : [ ],
   "written" : true,
-  "output" : "/tmp/apply-midread.dm.json",
-  "results" : [ {
-    "target" : "field",
-    "op" : "add",
-    "outcome" : "staged",
-    "ok" : true,
-    "summary" : "staged field add",
-    "changed" : {
-      "added" : "/Order/Discount",
-      "kind" : "NUMBER"
-    },
-    "diagnostics" : [ ],
-    "written" : false
-  }, {
-    "target" : "field",
-    "op" : "read",
-    "outcome" : "read",
-    "ok" : true,
-    "valid" : true,
-    "summary" : "read field read",
-    "data" : {
-      "field" : "/Order/Discount",
-      "kind" : "NUMBER",
-      "required" : false,
-      "number" : {
-        "maxFractionalDigits" : 0
-      }
-    },
-    "diagnostics" : [ ],
-    "written" : false
-  } ]
+  "output" : "/tmp/apply-midread.dm.json"
 }
 ```
 
@@ -188,40 +201,46 @@ dmtool -m /tmp/apply-rollback.dm.json apply /tmp/apply-rollback-ops.json 2>&1; e
 
 ```output
 {
-  "verb" : "apply",
-  "ops" : 2,
-  "committed" : false,
+  "target" : "apply",
+  "op" : "run",
+  "outcome" : "rejected",
+  "ok" : false,
   "summary" : "rolled back at op 1 — nothing written (atomic: all-or-nothing)",
-  "failedAt" : 1,
-  "written" : false,
-  "results" : [ {
-    "target" : "field",
-    "op" : "add",
-    "outcome" : "staged",
-    "ok" : true,
-    "summary" : "staged field add",
-    "changed" : {
-      "added" : "/Order/Discount",
-      "kind" : "NUMBER"
-    },
-    "diagnostics" : [ ],
-    "written" : false
-  }, {
-    "target" : "field",
-    "op" : "add",
-    "outcome" : "rejected",
-    "ok" : false,
-    "summary" : "op 1 failed — sequence rolled back",
-    "diagnostics" : [ {
-      "severity" : "ERROR",
-      "source" : "PRECHECK",
-      "code" : "RK_APPLY_OP_FAILED",
-      "summary" : "op 1 (field add) failed: no group at path: /Order/NoSuchGroup",
-      "where" : { },
-      "fix" : "fix this op and re-run; the whole sequence rolled back (nothing was written)"
-    } ],
-    "written" : false
-  } ]
+  "data" : {
+    "ops" : 2,
+    "committed" : false,
+    "failedAt" : 1,
+    "results" : [ {
+      "target" : "field",
+      "op" : "add",
+      "outcome" : "staged",
+      "ok" : true,
+      "summary" : "staged field add",
+      "changed" : {
+        "added" : "/Order/Discount",
+        "kind" : "NUMBER"
+      },
+      "diagnostics" : [ ],
+      "written" : false
+    }, {
+      "target" : "field",
+      "op" : "add",
+      "outcome" : "rejected",
+      "ok" : false,
+      "summary" : "op 1 failed — sequence rolled back",
+      "diagnostics" : [ {
+        "severity" : "ERROR",
+        "source" : "PRECHECK",
+        "code" : "RK_APPLY_OP_FAILED",
+        "summary" : "op 1 (field add) failed: no group at path: /Order/NoSuchGroup",
+        "where" : { },
+        "fix" : "fix this op and re-run; the whole sequence rolled back (nothing was written)"
+      } ],
+      "written" : false
+    } ]
+  },
+  "diagnostics" : [ ],
+  "written" : false
 }
 (exit 1)
 ```
@@ -250,30 +269,36 @@ dmtool -m /tmp/apply-typo.dm.json apply /tmp/apply-typo-ops.json 2>&1; echo "(ex
 
 ```output
 {
-  "verb" : "apply",
-  "ops" : 1,
-  "committed" : false,
+  "target" : "apply",
+  "op" : "run",
+  "outcome" : "rejected",
+  "ok" : false,
   "summary" : "rolled back at op 0 — nothing written (atomic: all-or-nothing)",
-  "failedAt" : 0,
-  "written" : false,
-  "results" : [ {
-    "target" : "field",
-    "op" : "add",
-    "outcome" : "rejected",
-    "ok" : false,
-    "summary" : "op 0 has an invalid arg — sequence rolled back",
-    "diagnostics" : [ {
-      "severity" : "ERROR",
-      "source" : "PRECHECK",
-      "code" : "RK_UNKNOWN_ARG",
-      "summary" : "unknown arg 'grop' for op 'field add'",
-      "where" : {
-        "arg" : "grop"
-      },
-      "fix" : "did you mean 'group'?"
-    } ],
-    "written" : false
-  } ]
+  "data" : {
+    "ops" : 1,
+    "committed" : false,
+    "failedAt" : 0,
+    "results" : [ {
+      "target" : "field",
+      "op" : "add",
+      "outcome" : "rejected",
+      "ok" : false,
+      "summary" : "op 0 has an invalid arg — sequence rolled back",
+      "diagnostics" : [ {
+        "severity" : "ERROR",
+        "source" : "PRECHECK",
+        "code" : "RK_UNKNOWN_ARG",
+        "summary" : "unknown arg 'grop' for op 'field add'",
+        "where" : {
+          "arg" : "grop"
+        },
+        "fix" : "did you mean 'group'?"
+      } ],
+      "written" : false
+    } ]
+  },
+  "diagnostics" : [ ],
+  "written" : false
 }
 (exit 1)
 ```
@@ -289,9 +314,9 @@ echo "(exit ${PIPESTATUS[0]})"
 
 ```output
 {
-  "code": "RK_UNKNOWN_OP",
-  "summary": "apply does not support op 'field bogus'",
-  "fix": "supported ops: computation add, computat…"
+  "code": null,
+  "summary": null,
+  "fix": "…"
 }
 (exit 1)
 ```
@@ -312,28 +337,34 @@ dmtool -m /tmp/apply-xtype.dm.json apply /tmp/apply-xtype-ops.json 2>&1; echo "(
 
 ```output
 {
-  "verb" : "apply",
-  "ops" : 1,
-  "committed" : false,
+  "target" : "apply",
+  "op" : "run",
+  "outcome" : "rejected",
+  "ok" : false,
   "summary" : "rolled back at op 0 — nothing written (atomic: all-or-nothing)",
-  "failedAt" : 0,
-  "written" : false,
-  "results" : [ {
-    "target" : "",
-    "op" : "",
-    "outcome" : "rejected",
-    "ok" : false,
-    "summary" : "op 0 has an invalid arg — sequence rolled back",
-    "diagnostics" : [ {
-      "severity" : "ERROR",
-      "source" : "PRECHECK",
-      "code" : "RK_WRONG_BATCH_KIND",
-      "summary" : "this op has verb/argv — it is a `batch` op-record, not an `apply` op",
-      "where" : { },
-      "fix" : "use the `batch` verb for {verb,args} ops; `apply` ops are {target,op,…args}"
-    } ],
-    "written" : false
-  } ]
+  "data" : {
+    "ops" : 1,
+    "committed" : false,
+    "failedAt" : 0,
+    "results" : [ {
+      "target" : "",
+      "op" : "",
+      "outcome" : "rejected",
+      "ok" : false,
+      "summary" : "op 0 has an invalid arg — sequence rolled back",
+      "diagnostics" : [ {
+        "severity" : "ERROR",
+        "source" : "PRECHECK",
+        "code" : "RK_WRONG_BATCH_KIND",
+        "summary" : "this op has verb/argv — it is a `batch` op-record, not an `apply` op",
+        "where" : { },
+        "fix" : "use the `batch` verb for {verb,args} ops; `apply` ops are {target,op,…args}"
+      } ],
+      "written" : false
+    } ]
+  },
+  "diagnostics" : [ ],
+  "written" : false
 }
 (exit 1)
 ```
@@ -356,27 +387,34 @@ dmtool -m /tmp/apply-meta.dm.json apply /tmp/apply-meta-ops.json
 
 ```output
 {
-  "verb" : "apply",
-  "ops" : 1,
-  "committed" : true,
+  "target" : "apply",
+  "op" : "run",
+  "outcome" : "applied",
+  "ok" : true,
+  "verification" : "KERNEL_CONFIRMED",
   "summary" : "1 op(s) committed, written to /tmp/apply-meta.dm.json",
-  "failedAt" : null,
+  "data" : {
+    "ops" : 1,
+    "committed" : true,
+    "failedAt" : null,
+    "results" : [ {
+      "target" : "meta",
+      "op" : "modify",
+      "outcome" : "staged",
+      "ok" : true,
+      "summary" : "staged meta modify",
+      "changed" : {
+        "ref" : "/Order/Quantity",
+        "annotation.owner" : "pricing",
+        "internalDescription.en_US" : "Quantity requested by the customer."
+      },
+      "diagnostics" : [ ],
+      "written" : false
+    } ]
+  },
+  "diagnostics" : [ ],
   "written" : true,
-  "output" : "/tmp/apply-meta.dm.json",
-  "results" : [ {
-    "target" : "meta",
-    "op" : "modify",
-    "outcome" : "staged",
-    "ok" : true,
-    "summary" : "staged meta modify",
-    "changed" : {
-      "ref" : "/Order/Quantity",
-      "annotation.owner" : "pricing",
-      "internalDescription.en_US" : "Quantity requested by the customer."
-    },
-    "diagnostics" : [ ],
-    "written" : false
-  } ]
+  "output" : "/tmp/apply-meta.dm.json"
 }
 ```
 
@@ -390,7 +428,6 @@ dmtool -m /tmp/apply-meta.dm.json meta /Order/Quantity
   "op" : "read",
   "outcome" : "read",
   "ok" : true,
-  "valid" : true,
   "summary" : "read metadata of /Order/Quantity",
   "data" : {
     "label" : { },
@@ -427,50 +464,57 @@ dmtool -m /tmp/apply-refactor.dm.json apply /tmp/apply-refactor-ops.json
 
 ```output
 {
-  "verb" : "apply",
-  "ops" : 3,
-  "committed" : true,
+  "target" : "apply",
+  "op" : "run",
+  "outcome" : "applied",
+  "ok" : true,
+  "verification" : "KERNEL_CONFIRMED",
   "summary" : "3 op(s) committed, written to /tmp/apply-refactor.dm.json",
-  "failedAt" : null,
+  "data" : {
+    "ops" : 3,
+    "committed" : true,
+    "failedAt" : null,
+    "results" : [ {
+      "target" : "field",
+      "op" : "add",
+      "outcome" : "staged",
+      "ok" : true,
+      "summary" : "staged field add",
+      "changed" : {
+        "added" : "/Order/Discount",
+        "kind" : "NUMBER"
+      },
+      "diagnostics" : [ ],
+      "written" : false
+    }, {
+      "target" : "rule",
+      "op" : "add",
+      "outcome" : "staged",
+      "ok" : true,
+      "summary" : "staged rule add",
+      "changed" : {
+        "rule" : "/Order/DISCOUNT_NOT_NEGATIVE"
+      },
+      "diagnostics" : [ ],
+      "written" : false
+    }, {
+      "target" : "field",
+      "op" : "rename",
+      "outcome" : "staged",
+      "ok" : true,
+      "summary" : "staged field rename",
+      "changed" : {
+        "renamed" : "/Order/Discount",
+        "to" : "/Order/Rebate",
+        "rewroteReferences" : [ "/Order/DISCOUNT_NOT_NEGATIVE" ]
+      },
+      "diagnostics" : [ ],
+      "written" : false
+    } ]
+  },
+  "diagnostics" : [ ],
   "written" : true,
-  "output" : "/tmp/apply-refactor.dm.json",
-  "results" : [ {
-    "target" : "field",
-    "op" : "add",
-    "outcome" : "staged",
-    "ok" : true,
-    "summary" : "staged field add",
-    "changed" : {
-      "added" : "/Order/Discount",
-      "kind" : "NUMBER"
-    },
-    "diagnostics" : [ ],
-    "written" : false
-  }, {
-    "target" : "rule",
-    "op" : "add",
-    "outcome" : "staged",
-    "ok" : true,
-    "summary" : "staged rule add",
-    "changed" : {
-      "rule" : "/Order/DISCOUNT_NOT_NEGATIVE"
-    },
-    "diagnostics" : [ ],
-    "written" : false
-  }, {
-    "target" : "field",
-    "op" : "rename",
-    "outcome" : "staged",
-    "ok" : true,
-    "summary" : "staged field rename",
-    "changed" : {
-      "renamed" : "/Order/Discount",
-      "to" : "/Order/Rebate",
-      "rewroteReferences" : [ "/Order/DISCOUNT_NOT_NEGATIVE" ]
-    },
-    "diagnostics" : [ ],
-    "written" : false
-  } ]
+  "output" : "/tmp/apply-refactor.dm.json"
 }
 ```
 

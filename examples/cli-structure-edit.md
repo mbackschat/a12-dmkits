@@ -57,6 +57,7 @@ dmtool -m /tmp/struct.dm.json field add --group /Order --name Discount --kind NU
   "op" : "add",
   "outcome" : "applied",
   "ok" : true,
+  "verification" : "KERNEL_CONFIRMED",
   "summary" : "added field /Order/Discount",
   "changed" : {
     "added" : "/Order/Discount",
@@ -98,6 +99,7 @@ dmtool -m /tmp/struct.dm.json group add --parent /Order --name Notes --repeatabl
   "op" : "add",
   "outcome" : "applied",
   "ok" : true,
+  "verification" : "KERNEL_CONFIRMED",
   "summary" : "added group /Order/Notes",
   "changed" : {
     "added" : "/Order/Notes",
@@ -161,6 +163,7 @@ dmtool -m /tmp/struct.dm.json field remove /Order/DeliveryDate --cascade
   "op" : "remove",
   "outcome" : "applied",
   "ok" : true,
+  "verification" : "KERNEL_CONFIRMED",
   "summary" : "removed /Order/DeliveryDate",
   "changed" : {
     "removed" : "/Order/DeliveryDate",
@@ -210,7 +213,6 @@ dmtool -m /tmp/struct2.dm.json field read /Subscription/Billing/BaseFee
   "op" : "read",
   "outcome" : "read",
   "ok" : true,
-  "valid" : true,
   "summary" : "read /Subscription/Billing/BaseFee",
   "data" : {
     "field" : "/Subscription/Billing/BaseFee",
@@ -239,7 +241,6 @@ dmtool -m /tmp/struct2.dm.json group read /Subscription/Addons
   "op" : "read",
   "outcome" : "read",
   "ok" : true,
-  "valid" : true,
   "summary" : "read /Subscription/Addons",
   "data" : {
     "group" : "/Subscription/Addons",
@@ -269,6 +270,7 @@ dmtool -m /tmp/struct2.dm.json group read /Subscription/Addons | jq '.data'
   "op" : "modify",
   "outcome" : "applied",
   "ok" : true,
+  "verification" : "KERNEL_CONFIRMED",
   "summary" : "set /Subscription/Addons: index field Name",
   "changed" : {
     "group" : "/Subscription/Addons",
@@ -308,6 +310,7 @@ dmtool -m /tmp/struct2.dm.json group read /Subscription/Addons | jq '.data.sortF
   "op" : "modify",
   "outcome" : "applied",
   "ok" : true,
+  "verification" : "KERNEL_CONFIRMED",
   "summary" : "set /Subscription/Addons: sort by MonthlyFee desc, Name asc",
   "changed" : {
     "group" : "/Subscription/Addons",
@@ -351,6 +354,7 @@ dmtool -m /tmp/struct2.dm.json group remove /Subscription/Addons
   "op" : "remove",
   "outcome" : "applied",
   "ok" : true,
+  "verification" : "KERNEL_CONFIRMED",
   "summary" : "removed /Subscription/Addons",
   "changed" : {
     "removed" : "/Subscription/Addons",
@@ -388,6 +392,7 @@ dmtool -m /tmp/struct2-td.json typedef add --id Currency --kind NUMBER
   "op" : "add",
   "outcome" : "applied",
   "ok" : true,
+  "verification" : "KERNEL_CONFIRMED",
   "summary" : "added typedef Currency",
   "changed" : {
     "added" : "Currency",
@@ -427,7 +432,6 @@ dmtool -m /tmp/struct2-td.json typedef read
   "op" : "read",
   "outcome" : "read",
   "ok" : true,
-  "valid" : true,
   "summary" : "read 2 local type definition(s)",
   "data" : {
     "typedefs" : [ "Currency", "BillingCycle" ]
@@ -452,6 +456,7 @@ dmtool -m /tmp/struct2-td.json \
   "op" : "add",
   "outcome" : "applied",
   "ok" : true,
+  "verification" : "KERNEL_CONFIRMED",
   "summary" : "added field /Subscription/Billing/SetupFee",
   "changed" : {
     "added" : "/Subscription/Billing/SetupFee",
@@ -479,10 +484,12 @@ dmtool -m /tmp/struct2-td.json typedef remove Currency >/tmp/struct2-td-rej.json
   "op" : "remove",
   "outcome" : "rejected",
   "ok" : false,
+  "valid" : false,
+  "verification" : "KERNEL_CONFIRMED",
   "summary" : "removal left the model invalid",
   "diagnostics" : [ {
     "severity" : "ERROR",
-    "source" : "PRECHECK",
+    "source" : "KERNEL",
     "summary" : "the edited model is not kernel-valid: Typedefinition with id 'Currency' could not be found.",
     "where" : { }
   } ],
@@ -504,6 +511,7 @@ dmtool -m /tmp/struct2-td.json typedef remove Currency
   "op" : "remove",
   "outcome" : "applied",
   "ok" : true,
+  "verification" : "KERNEL_CONFIRMED",
   "summary" : "removed typedef Currency",
   "changed" : {
     "removed" : "Currency"
@@ -543,6 +551,7 @@ dmtool -m /tmp/struct2-tdr.json typedef rename Currency --to Money
   "op" : "rename",
   "outcome" : "applied",
   "ok" : true,
+  "verification" : "KERNEL_CONFIRMED",
   "summary" : "renamed typedef Currency to Money",
   "changed" : {
     "renamed" : "Currency",
@@ -616,6 +625,7 @@ dmtool -m /tmp/struct2-tdx.json \
   "op" : "extract",
   "outcome" : "applied",
   "ok" : true,
+  "verification" : "KERNEL_CONFIRMED",
   "summary" : "extracted 2 field(s) into typedef Money",
   "changed" : {
     "created" : "Money",
@@ -654,6 +664,7 @@ dmtool -m /tmp/struct2-tdx.json typedef inline Money
   "op" : "inline",
   "outcome" : "applied",
   "ok" : true,
+  "verification" : "KERNEL_CONFIRMED",
   "summary" : "inlined typedef Money",
   "changed" : {
     "inlined" : "Money",
@@ -908,6 +919,7 @@ dmtool -m /tmp/struct2-sub.json \
   "op" : "add",
   "outcome" : "applied",
   "ok" : true,
+  "verification" : "KERNEL_CONFIRMED",
   "summary" : "added include catalog",
   "changed" : {
     "added" : "catalog",
@@ -934,7 +946,6 @@ dmtool -m /tmp/struct2-sub.json include read
   "op" : "read",
   "outcome" : "read",
   "ok" : true,
-  "valid" : true,
   "summary" : "read 1 include(s)",
   "data" : {
     "includes" : [ {
@@ -959,6 +970,7 @@ dmtool -m /tmp/struct2-sub.json include remove catalog -w /tmp/struct2-lib
   "op" : "remove",
   "outcome" : "applied",
   "ok" : true,
+  "verification" : "KERNEL_CONFIRMED",
   "summary" : "removed include catalog",
   "changed" : {
     "removed" : "catalog"
@@ -993,7 +1005,6 @@ dmtool -m /tmp/struct2-cfg.json config read
   "op" : "read",
   "outcome" : "read",
   "ok" : true,
-  "valid" : true,
   "summary" : "read document config",
   "data" : {
     "decimalSeparator" : ".",
@@ -1020,6 +1031,7 @@ dmtool -m /tmp/struct2-cfg.json config modify --decimal-separator ","
   "op" : "modify",
   "outcome" : "applied",
   "ok" : true,
+  "verification" : "KERNEL_CONFIRMED",
   "summary" : "changed document config",
   "changed" : {
     "decimalSeparator" : ","
@@ -1149,6 +1161,7 @@ dmtool -m /tmp/extras.dm.json \
   "op" : "multiselect",
   "outcome" : "applied",
   "ok" : true,
+  "verification" : "KERNEL_CONFIRMED",
   "summary" : "added multi-select group /Order/Conditions",
   "changed" : {
     "added" : "/Order/Conditions",
@@ -1177,6 +1190,7 @@ dmtool -m /tmp/extras.dm.json \
   "op" : "attachment",
   "outcome" : "applied",
   "ok" : true,
+  "verification" : "KERNEL_CONFIRMED",
   "summary" : "added attachment group /Order/Invoice",
   "changed" : {
     "added" : "/Order/Invoice",
@@ -1206,6 +1220,7 @@ dmtool -m /tmp/extras.dm.json \
   "op" : "modify",
   "outcome" : "applied",
   "ok" : true,
+  "verification" : "KERNEL_CONFIRMED",
   "summary" : "changed metadata of /Order/CustomerName",
   "changed" : {
     "ref" : "/Order/CustomerName",
@@ -1231,7 +1246,6 @@ dmtool -m /tmp/extras.dm.json meta /Order/CustomerName
   "op" : "read",
   "outcome" : "read",
   "ok" : true,
-  "valid" : true,
   "summary" : "read metadata of /Order/CustomerName",
   "data" : {
     "label" : {
@@ -1273,6 +1287,7 @@ dmtool -m /tmp/extras.dm.json \
   "op" : "modify",
   "outcome" : "applied",
   "ok" : true,
+  "verification" : "KERNEL_CONFIRMED",
   "summary" : "changed metadata of /Order/DeliveryNotBeforeOrder",
   "changed" : {
     "ref" : "/Order/DeliveryNotBeforeOrder",
@@ -1327,6 +1342,7 @@ dmtool -m /tmp/extras.dm.json \
   "op" : "modify",
   "outcome" : "applied",
   "ok" : true,
+  "verification" : "KERNEL_CONFIRMED",
   "summary" : "changed document config",
   "changed" : {
     "comment" : "Customer order with delivery and eligibility rules."
@@ -1347,7 +1363,6 @@ dmtool -m /tmp/extras.dm.json config read
   "op" : "read",
   "outcome" : "read",
   "ok" : true,
-  "valid" : true,
   "summary" : "read document config",
   "data" : {
     "decimalSeparator" : ".",

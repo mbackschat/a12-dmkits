@@ -1,5 +1,7 @@
 # dmtool CLI — review & comprehend a model
 
+**
+
 The **review** surface of `dmtool`: comprehend a whole model in one read (`model report`), and review what an edit changed (`model diff`). Both are JSON-in / JSON-out and **tool-computed** — every fact is read from the model, never the agent's narration. Commands run through `dmtool` from the repo root; some steps use `jq`. Re-check with `uvx showboat@0.6.1 verify examples/cli-review.md` (exit 0 = output still matches the live CLI).
 
 ## model report — understand the whole model
@@ -98,7 +100,7 @@ dmtool --text -m examples/models/order-ruled.dm.json model report \
 
 ```output
 15 field(s), 4 group(s), 3 rule(s), 0 computation(s)
-  (read · valid)
+  (read)
 
 /Order  (group)
 ├─ CustomerName  STRING
@@ -487,7 +489,7 @@ dmtool model diff examples/models/order-ruled.dm.json /tmp/order-renamed.dm.json
 
 ```output
 0 added, 0 removed, 1 modified, 1 renamed/moved
-  (read · valid)
+  (read)
 
 REFACTORS (1)
   ↻ RENAME /Order/OrderDate → /Order/PlacedDate  (1 referrer rewritten)
@@ -506,7 +508,7 @@ dmtool model diff examples/models/order-ruled.dm.json examples/models/order.dm.j
 
 ```output
 11 added, 3 removed, 1 modified (3 high-risk)
-  (read · valid)
+  (read)
 
 HIGH (3)
   REMOVED  rule  /Order/BillingAddress/PostalCodeFormat  RULE_REMOVED

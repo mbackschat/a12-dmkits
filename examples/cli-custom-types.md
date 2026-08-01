@@ -39,7 +39,8 @@ dmtool -m examples/models/payment-customtype.dm.json \
   "fired": [],
   "unsupported": [
     {
-      "name": "/Payment[1]/Iban",
+      "name": "Payment/Iban",
+      "subject": "cell",
       "reason": "custom field type 'Iban' has no registered validator"
     }
   ]
@@ -69,7 +70,7 @@ dmtool -m examples/models/payment-customtype.dm.json \
   "msg": [
     {
       "code": "customFieldTypeInvalid",
-      "field": "/Payment[1]/Iban"
+      "field": "Payment/Iban"
     }
   ]
 }
@@ -178,7 +179,7 @@ dmtool -m examples/models/payment-customtype.dm.json \
   "msg": [
     {
       "code": "invalidIban",
-      "field": "/Payment[1]/Iban",
+      "field": "Payment/Iban",
       "message": "Invalid Iban"
     }
   ]

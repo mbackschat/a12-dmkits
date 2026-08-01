@@ -22,7 +22,7 @@ dmtool -m examples/models/subscription-computed.dm.json \
   "op" : "read",
   "outcome" : "read",
   "ok" : true,
-  "valid" : true,
+  "verification" : "KERNEL_CONFIRMED",
   "summary" : "1 referrer(s) of /Subscription/Billing/BaseFee",
   "data" : {
     "entity" : "/Subscription/Billing/BaseFee",
@@ -87,6 +87,7 @@ echo "--- Sum( occurrences in the file after --dry-run: $(grep -c "Sum(" /tmp/ed
   "op" : "modify",
   "outcome" : "preview",
   "ok" : true,
+  "verification" : "KERNEL_CONFIRMED",
   "summary" : "would re-express /Subscription/Billing/EffectiveFeeComp",
   "changed" : {
     "before" : "computes /Subscription/Billing/EffectiveFee\nalways => [/Subscription/Billing/BaseFee]",
@@ -116,6 +117,7 @@ echo "--- the written model still validates: $(dmtool -m /tmp/edit-sub.json mode
   "op" : "modify",
   "outcome" : "applied",
   "ok" : true,
+  "verification" : "KERNEL_CONFIRMED",
   "summary" : "re-expressed /Subscription/Billing/EffectiveFeeComp",
   "changed" : {
     "before" : "computes /Subscription/Billing/EffectiveFee\nalways => [/Subscription/Billing/BaseFee]",
@@ -203,8 +205,7 @@ dmtool batch /tmp/edit-ops.json | jq -c ".[] | {id, valid: .result.valid}"
 ```
 
 ```output
-{"id":"ok","valid":true}
-{"id":"bad","valid":false}
+jq: error (at <stdin>:66): Cannot index string with string ("id")
 ```
 
 → Two `rule check`s in one JVM: the numeric comparison is `valid`, the pattern comparison on a number field is rejected — each verdict carries its `id`. This is how the eval runner re-validates many candidates at once.
@@ -267,6 +268,7 @@ echo "--- re-expression occurrences in the file after --dry-run: $(grep -c "Deli
   "op" : "modify",
   "outcome" : "preview",
   "ok" : true,
+  "verification" : "KERNEL_CONFIRMED",
   "summary" : "would re-express /Order/DeliveryNotBeforeOrder",
   "changed" : {
     "before" : "AllFieldsFilled(/Order/OrderDate, /Order/DeliveryDate) And DifferenceInDays(/Order/OrderDate, /Order/DeliveryDate) < 0",
@@ -296,6 +298,7 @@ echo "--- the written model still validates: $(dmtool -m /tmp/edit2-order.json m
   "op" : "modify",
   "outcome" : "applied",
   "ok" : true,
+  "verification" : "KERNEL_CONFIRMED",
   "summary" : "re-expressed /Order/DeliveryNotBeforeOrder",
   "changed" : {
     "before" : "AllFieldsFilled(/Order/OrderDate, /Order/DeliveryDate) And DifferenceInDays(/Order/OrderDate, /Order/DeliveryDate) < 0",
@@ -333,6 +336,7 @@ echo "--- the written model still validates: $(dmtool -m /tmp/edit2-rm-rule.json
   "op" : "remove",
   "outcome" : "applied",
   "ok" : true,
+  "verification" : "KERNEL_CONFIRMED",
   "summary" : "removed rule /Order/DeliveryNotBeforeOrder",
   "changed" : {
     "removed" : "/Order/DeliveryNotBeforeOrder"
@@ -376,6 +380,7 @@ echo "--- the written model checks: $(dmtool -m /tmp/edit2-sub.json model check 
   "op" : "add",
   "outcome" : "applied",
   "ok" : true,
+  "verification" : "KERNEL_CONFIRMED",
   "summary" : "added computation /Subscription/Billing/EffectiveFeeComp",
   "changed" : {
     "computation" : "/Subscription/Billing/EffectiveFeeComp"
@@ -403,7 +408,7 @@ dmtool -m /tmp/edit2-sub.json computation read /Subscription/Billing/EffectiveFe
   "op" : "read",
   "outcome" : "read",
   "ok" : true,
-  "valid" : true,
+  "verification" : "KERNEL_CONFIRMED",
   "summary" : "read /Subscription/Billing/EffectiveFeeComp",
   "data" : {
     "computation" : "/Subscription/Billing/EffectiveFeeComp",
@@ -448,6 +453,7 @@ echo "--- the written model still validates: $(dmtool -m /tmp/edit2-rm-comp.json
   "op" : "remove",
   "outcome" : "applied",
   "ok" : true,
+  "verification" : "KERNEL_CONFIRMED",
   "summary" : "removed computation /Subscription/Billing/EffectiveFeeComp",
   "changed" : {
     "removed" : "/Subscription/Billing/EffectiveFeeComp"

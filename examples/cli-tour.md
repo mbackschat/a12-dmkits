@@ -1,5 +1,7 @@
 # dmtool CLI — read & understand a model
 
+**
+
 A tour of **reading** one A12 model with **dmtool** (JSON-in / JSON-out over the real kernel): check it (`model check`), read its rules (`rule read`/`format`/`explain`/`check`), read the whole card (`model read`), audit field usage (`model usage`), and read structural facts (`field`/`group`/`config read`). Every command is `dmtool -m <model> <target> <op> [args]`. The tool's *self-describing* surface (manifest/operators/patterns/diagnostics/schema) lives in [cli-discover](cli-discover.md); the **review** verbs (`model report`/`model diff`) in [cli-review](cli-review.md); the cross-model `workspace` verbs in [cli-workspace](cli-workspace.md). Commands run through `dmtool` from the repo root; some use `jq`. Re-check with `uvx showboat@0.6.1 verify examples/cli-tour.md` (exit 0 = output still matches the live CLI).
 
 ## The model — `order-ruled`
@@ -59,7 +61,7 @@ dmtool -m examples/models/order-ruled.dm.json rule read /Order/DeliveryNotBefore
   "op" : "read",
   "outcome" : "read",
   "ok" : true,
-  "valid" : true,
+  "verification" : "KERNEL_CONFIRMED",
   "summary" : "read /Order/DeliveryNotBeforeOrder",
   "data" : {
     "rule" : "/Order/DeliveryNotBeforeOrder",
@@ -94,7 +96,7 @@ dmtool -m examples/models/order-ruled.dm.json rule format /Order/DeliveryNotBefo
   "op" : "format",
   "outcome" : "read",
   "ok" : true,
-  "valid" : true,
+  "verification" : "KERNEL_CONFIRMED",
   "summary" : "formatted /Order/DeliveryNotBeforeOrder",
   "data" : {
     "rule" : "/Order/DeliveryNotBeforeOrder",
@@ -269,7 +271,7 @@ dmtool -m examples/models/order-ruled.dm.json model read
   "op" : "read",
   "outcome" : "read",
   "ok" : true,
-  "valid" : true,
+  "verification" : "KERNEL_CONFIRMED",
   "summary" : "read 3 rule(s), 0 computation(s)",
   "data" : {
     "rules" : {
