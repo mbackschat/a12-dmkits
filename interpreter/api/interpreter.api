@@ -42,6 +42,9 @@ public final class io/github/mbackschat/a12/dm/interpreter/ComputationReport : i
 	public final fun getUnsupported ()Ljava/util/List;
 }
 
+public final class io/github/mbackschat/a12/dm/interpreter/ComputationReport$Companion {
+}
+
 public final class io/github/mbackschat/a12/dm/interpreter/ComputationResult {
 	public fun <init> (Lio/github/mbackschat/a12/dm/interpreter/FieldPointer;Lio/github/mbackschat/a12/dm/interpreter/ComputationOutcome;Ljava/lang/String;Lio/github/mbackschat/a12/dm/interpreter/ValidationFinding;)V
 	public synthetic fun <init> (Lio/github/mbackschat/a12/dm/interpreter/FieldPointer;Lio/github/mbackschat/a12/dm/interpreter/ComputationOutcome;Ljava/lang/String;Lio/github/mbackschat/a12/dm/interpreter/ValidationFinding;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
@@ -75,6 +78,9 @@ public final class io/github/mbackschat/a12/dm/interpreter/CustomConditionDocume
 	public final fun value (Lio/github/mbackschat/a12/dm/interpreter/FieldPointer;)Ljava/lang/String;
 }
 
+public final class io/github/mbackschat/a12/dm/interpreter/CustomConditionDocumentView$Companion {
+}
+
 public abstract interface class io/github/mbackschat/a12/dm/interpreter/CustomConditionFactory {
 	public abstract fun create (Ljava/lang/String;)Lio/github/mbackschat/a12/dm/interpreter/CustomCondition;
 }
@@ -88,12 +94,26 @@ public final class io/github/mbackschat/a12/dm/interpreter/CustomConditionInvoca
 	public final fun getRelevantEntities ()Ljava/util/List;
 }
 
+public final class io/github/mbackschat/a12/dm/interpreter/CustomConditionInvocation$Companion {
+}
+
 public final class io/github/mbackschat/a12/dm/interpreter/CustomConditionRegistry {
 	public static final field Companion Lio/github/mbackschat/a12/dm/interpreter/CustomConditionRegistry$Companion;
 	public synthetic fun <init> (Lio/github/mbackschat/a12/dm/interpreter/CustomConditionFactory;Lkotlin/jvm/internal/DefaultConstructorMarker;)V
 	public static final fun builder ()Lio/github/mbackschat/a12/dm/interpreter/CustomConditionRegistry$Builder;
 	public static final fun empty ()Lio/github/mbackschat/a12/dm/interpreter/CustomConditionRegistry;
 	public static final fun fromFactory (Lio/github/mbackschat/a12/dm/interpreter/CustomConditionFactory;)Lio/github/mbackschat/a12/dm/interpreter/CustomConditionRegistry;
+}
+
+public final class io/github/mbackschat/a12/dm/interpreter/CustomConditionRegistry$Builder {
+	public final fun build ()Lio/github/mbackschat/a12/dm/interpreter/CustomConditionRegistry;
+	public final fun register (Ljava/lang/String;Lio/github/mbackschat/a12/dm/interpreter/CustomCondition;)Lio/github/mbackschat/a12/dm/interpreter/CustomConditionRegistry$Builder;
+}
+
+public final class io/github/mbackschat/a12/dm/interpreter/CustomConditionRegistry$Companion {
+	public final fun builder ()Lio/github/mbackschat/a12/dm/interpreter/CustomConditionRegistry$Builder;
+	public final fun empty ()Lio/github/mbackschat/a12/dm/interpreter/CustomConditionRegistry;
+	public final fun fromFactory (Lio/github/mbackschat/a12/dm/interpreter/CustomConditionFactory;)Lio/github/mbackschat/a12/dm/interpreter/CustomConditionRegistry;
 }
 
 public abstract interface class io/github/mbackschat/a12/dm/interpreter/CustomFieldTypeFactory {
@@ -106,6 +126,17 @@ public final class io/github/mbackschat/a12/dm/interpreter/CustomFieldTypeRegist
 	public static final fun builder ()Lio/github/mbackschat/a12/dm/interpreter/CustomFieldTypeRegistry$Builder;
 	public static final fun empty ()Lio/github/mbackschat/a12/dm/interpreter/CustomFieldTypeRegistry;
 	public static final fun fromFactory (Lio/github/mbackschat/a12/dm/interpreter/CustomFieldTypeFactory;)Lio/github/mbackschat/a12/dm/interpreter/CustomFieldTypeRegistry;
+}
+
+public final class io/github/mbackschat/a12/dm/interpreter/CustomFieldTypeRegistry$Builder {
+	public final fun build ()Lio/github/mbackschat/a12/dm/interpreter/CustomFieldTypeRegistry;
+	public final fun register (Ljava/lang/String;Lio/github/mbackschat/a12/dm/interpreter/CustomFieldValidator;)Lio/github/mbackschat/a12/dm/interpreter/CustomFieldTypeRegistry$Builder;
+}
+
+public final class io/github/mbackschat/a12/dm/interpreter/CustomFieldTypeRegistry$Companion {
+	public final fun builder ()Lio/github/mbackschat/a12/dm/interpreter/CustomFieldTypeRegistry$Builder;
+	public final fun empty ()Lio/github/mbackschat/a12/dm/interpreter/CustomFieldTypeRegistry;
+	public final fun fromFactory (Lio/github/mbackschat/a12/dm/interpreter/CustomFieldTypeFactory;)Lio/github/mbackschat/a12/dm/interpreter/CustomFieldTypeRegistry;
 }
 
 public final class io/github/mbackschat/a12/dm/interpreter/CustomFieldValidationParameters {
@@ -126,6 +157,26 @@ public final class io/github/mbackschat/a12/dm/interpreter/CustomFieldValidation
 }
 
 public abstract interface class io/github/mbackschat/a12/dm/interpreter/CustomFieldValidationResult {
+}
+
+public final class io/github/mbackschat/a12/dm/interpreter/CustomFieldValidationResult$Accepted : io/github/mbackschat/a12/dm/interpreter/CustomFieldValidationResult {
+	public static final field INSTANCE Lio/github/mbackschat/a12/dm/interpreter/CustomFieldValidationResult$Accepted;
+	public fun equals (Ljava/lang/Object;)Z
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class io/github/mbackschat/a12/dm/interpreter/CustomFieldValidationResult$Rejected : io/github/mbackschat/a12/dm/interpreter/CustomFieldValidationResult {
+	public fun <init> (Ljava/lang/String;Ljava/lang/String;)V
+	public final fun component1 ()Ljava/lang/String;
+	public final fun component2 ()Ljava/lang/String;
+	public final fun copy (Ljava/lang/String;Ljava/lang/String;)Lio/github/mbackschat/a12/dm/interpreter/CustomFieldValidationResult$Rejected;
+	public static synthetic fun copy$default (Lio/github/mbackschat/a12/dm/interpreter/CustomFieldValidationResult$Rejected;Ljava/lang/String;Ljava/lang/String;ILjava/lang/Object;)Lio/github/mbackschat/a12/dm/interpreter/CustomFieldValidationResult$Rejected;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getErrorKey ()Ljava/lang/String;
+	public final fun getMessage ()Ljava/lang/String;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
 }
 
 public abstract interface class io/github/mbackschat/a12/dm/interpreter/CustomFieldValidator {
@@ -149,6 +200,9 @@ public final class io/github/mbackschat/a12/dm/interpreter/CustomizationRegistra
 	public final fun getReason ()Lio/github/mbackschat/a12/dm/interpreter/CustomizationRegistrationReason;
 }
 
+public final class io/github/mbackschat/a12/dm/interpreter/CustomizationRegistrationError$Companion {
+}
+
 public final class io/github/mbackschat/a12/dm/interpreter/CustomizationRegistrationReason : java/lang/Enum {
 	public static final field DUPLICATE_NAME Lio/github/mbackschat/a12/dm/interpreter/CustomizationRegistrationReason;
 	public static final field EMPTY_NAME Lio/github/mbackschat/a12/dm/interpreter/CustomizationRegistrationReason;
@@ -166,6 +220,9 @@ public final class io/github/mbackschat/a12/dm/interpreter/DocumentCoordinateErr
 	public final fun getExpectedCoordinateCount ()Ljava/lang/Integer;
 	public final fun getPath ()Ljava/lang/String;
 	public final fun getReason ()Lio/github/mbackschat/a12/dm/interpreter/DocumentCoordinateReason;
+}
+
+public final class io/github/mbackschat/a12/dm/interpreter/DocumentCoordinateError$Companion {
 }
 
 public final class io/github/mbackschat/a12/dm/interpreter/DocumentCoordinateReason : java/lang/Enum {
@@ -205,12 +262,31 @@ public final class io/github/mbackschat/a12/dm/interpreter/DocumentDecodeLimits 
 	public final fun getMaxTotalRawCodeUnits ()I
 }
 
+public final class io/github/mbackschat/a12/dm/interpreter/DocumentDecodeLimits$Builder {
+	public final fun build ()Lio/github/mbackschat/a12/dm/interpreter/DocumentDecodeLimits;
+	public final fun maxDocumentCodeUnits (I)Lio/github/mbackschat/a12/dm/interpreter/DocumentDecodeLimits$Builder;
+	public final fun maxFieldPlacements (I)Lio/github/mbackschat/a12/dm/interpreter/DocumentDecodeLimits$Builder;
+	public final fun maxGroupPlacements (I)Lio/github/mbackschat/a12/dm/interpreter/DocumentDecodeLimits$Builder;
+	public final fun maxModelNestingDepth (I)Lio/github/mbackschat/a12/dm/interpreter/DocumentDecodeLimits$Builder;
+	public final fun maxPathCodeUnits (I)Lio/github/mbackschat/a12/dm/interpreter/DocumentDecodeLimits$Builder;
+	public final fun maxRawCodeUnitsPerField (I)Lio/github/mbackschat/a12/dm/interpreter/DocumentDecodeLimits$Builder;
+	public final fun maxTotalRawCodeUnits (I)Lio/github/mbackschat/a12/dm/interpreter/DocumentDecodeLimits$Builder;
+}
+
+public final class io/github/mbackschat/a12/dm/interpreter/DocumentDecodeLimits$Companion {
+	public final fun builder ()Lio/github/mbackschat/a12/dm/interpreter/DocumentDecodeLimits$Builder;
+	public final fun defaults ()Lio/github/mbackschat/a12/dm/interpreter/DocumentDecodeLimits;
+}
+
 public final class io/github/mbackschat/a12/dm/interpreter/DocumentEncodeError : java/lang/RuntimeException {
 	public static final field Companion Lio/github/mbackschat/a12/dm/interpreter/DocumentEncodeError$Companion;
 	public synthetic fun <init> (Ljava/lang/String;Ljava/lang/String;Lkotlin/jvm/internal/DefaultConstructorMarker;)V
 	public final fun getCode ()Ljava/lang/String;
 	public final fun getModelPath ()Ljava/lang/String;
 	public final fun getPointer ()Ljava/lang/String;
+}
+
+public final class io/github/mbackschat/a12/dm/interpreter/DocumentEncodeError$Companion {
 }
 
 public abstract interface class io/github/mbackschat/a12/dm/interpreter/DocumentInputDiagnostic {
@@ -240,6 +316,9 @@ public final class io/github/mbackschat/a12/dm/interpreter/DocumentInputError : 
 	public synthetic fun <init> (Ljava/util/List;Lkotlin/jvm/internal/DefaultConstructorMarker;)V
 	public final fun getCode ()Ljava/lang/String;
 	public final fun getDiagnostics ()Ljava/util/List;
+}
+
+public final class io/github/mbackschat/a12/dm/interpreter/DocumentInputError$Companion {
 }
 
 public final class io/github/mbackschat/a12/dm/interpreter/DocumentInputReasonCode : java/lang/Enum {
@@ -288,6 +367,9 @@ public final class io/github/mbackschat/a12/dm/interpreter/DocumentSnapshot : io
 	public fun getOwner ()Lio/github/mbackschat/a12/dm/interpreter/ModelOwnerIdentity;
 }
 
+public final class io/github/mbackschat/a12/dm/interpreter/DocumentSnapshot$Companion {
+}
+
 public final class io/github/mbackschat/a12/dm/interpreter/FieldPointer : io/github/mbackschat/a12/dm/interpreter/DocumentPointer {
 	public static final field Companion Lio/github/mbackschat/a12/dm/interpreter/FieldPointer$Companion;
 	public synthetic fun <init> (Ljava/lang/String;Ljava/util/List;Lio/github/mbackschat/a12/dm/interpreter/ModelOwnerIdentity;Lio/github/mbackschat/a12/dm/interpreter/ModelVersionIdentity;Lkotlin/jvm/internal/DefaultConstructorMarker;)V
@@ -298,6 +380,9 @@ public final class io/github/mbackschat/a12/dm/interpreter/FieldPointer : io/git
 	public fun getPath ()Ljava/lang/String;
 }
 
+public final class io/github/mbackschat/a12/dm/interpreter/FieldPointer$Companion {
+}
+
 public final class io/github/mbackschat/a12/dm/interpreter/GroupPointer : io/github/mbackschat/a12/dm/interpreter/DocumentPointer {
 	public static final field Companion Lio/github/mbackschat/a12/dm/interpreter/GroupPointer$Companion;
 	public synthetic fun <init> (Ljava/lang/String;Ljava/util/List;Lio/github/mbackschat/a12/dm/interpreter/ModelOwnerIdentity;Lio/github/mbackschat/a12/dm/interpreter/ModelVersionIdentity;Lkotlin/jvm/internal/DefaultConstructorMarker;)V
@@ -306,6 +391,9 @@ public final class io/github/mbackschat/a12/dm/interpreter/GroupPointer : io/git
 	public fun getModelVersion ()Lio/github/mbackschat/a12/dm/interpreter/ModelVersionIdentity;
 	public fun getOwner ()Lio/github/mbackschat/a12/dm/interpreter/ModelOwnerIdentity;
 	public fun getPath ()Ljava/lang/String;
+}
+
+public final class io/github/mbackschat/a12/dm/interpreter/GroupPointer$Companion {
 }
 
 public final class io/github/mbackschat/a12/dm/interpreter/Interpreter : io/github/mbackschat/a12/dm/interpreter/ModelOwned {
@@ -328,11 +416,25 @@ public final class io/github/mbackschat/a12/dm/interpreter/Interpreter : io/gith
 	public static synthetic fun validatePart$default (Lio/github/mbackschat/a12/dm/interpreter/Interpreter;Lio/github/mbackschat/a12/dm/interpreter/DocumentSnapshot;Ljava/util/List;Ljava/lang/String;ILjava/lang/Object;)Lio/github/mbackschat/a12/dm/interpreter/ValidationReport;
 }
 
+public final class io/github/mbackschat/a12/dm/interpreter/Interpreter$Companion {
+}
+
 public final class io/github/mbackschat/a12/dm/interpreter/InterpreterConfiguration {
 	public static final field Companion Lio/github/mbackschat/a12/dm/interpreter/InterpreterConfiguration$Companion;
 	public synthetic fun <init> (Lio/github/mbackschat/a12/dm/interpreter/CustomFieldTypeRegistry;Lio/github/mbackschat/a12/dm/interpreter/CustomConditionRegistry;Lkotlin/jvm/internal/DefaultConstructorMarker;)V
 	public static final fun builder ()Lio/github/mbackschat/a12/dm/interpreter/InterpreterConfiguration$Builder;
 	public static final fun defaults ()Lio/github/mbackschat/a12/dm/interpreter/InterpreterConfiguration;
+}
+
+public final class io/github/mbackschat/a12/dm/interpreter/InterpreterConfiguration$Builder {
+	public final fun build ()Lio/github/mbackschat/a12/dm/interpreter/InterpreterConfiguration;
+	public final fun customConditions (Lio/github/mbackschat/a12/dm/interpreter/CustomConditionRegistry;)Lio/github/mbackschat/a12/dm/interpreter/InterpreterConfiguration$Builder;
+	public final fun customFieldTypes (Lio/github/mbackschat/a12/dm/interpreter/CustomFieldTypeRegistry;)Lio/github/mbackschat/a12/dm/interpreter/InterpreterConfiguration$Builder;
+}
+
+public final class io/github/mbackschat/a12/dm/interpreter/InterpreterConfiguration$Companion {
+	public final fun builder ()Lio/github/mbackschat/a12/dm/interpreter/InterpreterConfiguration$Builder;
+	public final fun defaults ()Lio/github/mbackschat/a12/dm/interpreter/InterpreterConfiguration;
 }
 
 public final class io/github/mbackschat/a12/dm/interpreter/InterpreterIntegrationError : java/lang/RuntimeException {
@@ -341,6 +443,9 @@ public final class io/github/mbackschat/a12/dm/interpreter/InterpreterIntegratio
 	public final fun getCode ()Ljava/lang/String;
 	public final fun getPhase ()Lio/github/mbackschat/a12/dm/interpreter/InterpreterIntegrationPhase;
 	public final fun getReason ()Lio/github/mbackschat/a12/dm/interpreter/InterpreterIntegrationReason;
+}
+
+public final class io/github/mbackschat/a12/dm/interpreter/InterpreterIntegrationError$Companion {
 }
 
 public final class io/github/mbackschat/a12/dm/interpreter/InterpreterIntegrationPhase : java/lang/Enum {
@@ -367,6 +472,9 @@ public final class io/github/mbackschat/a12/dm/interpreter/InterpreterSupportRep
 	public final fun getUnsupported ()Ljava/util/List;
 }
 
+public final class io/github/mbackschat/a12/dm/interpreter/InterpreterSupportReport$Companion {
+}
+
 public abstract interface class io/github/mbackschat/a12/dm/interpreter/JavaModelSourceProvider {
 	public fun getSnapshotRevision ()Ljava/lang/String;
 	public abstract fun load (Ljava/lang/String;Lio/github/mbackschat/a12/dm/interpreter/ModelSourceLoadContext;)Ljava/util/concurrent/CompletionStage;
@@ -379,6 +487,10 @@ public final class io/github/mbackschat/a12/dm/interpreter/JavaModelSourceProvid
 public abstract interface class io/github/mbackschat/a12/dm/interpreter/ModelCollectionSignal {
 	public static final field Companion Lio/github/mbackschat/a12/dm/interpreter/ModelCollectionSignal$Companion;
 	public abstract fun isCancelled ()Z
+}
+
+public final class io/github/mbackschat/a12/dm/interpreter/ModelCollectionSignal$Companion {
+	public final fun getNONE ()Lio/github/mbackschat/a12/dm/interpreter/ModelCollectionSignal;
 }
 
 public final class io/github/mbackschat/a12/dm/interpreter/ModelDependency {
@@ -401,6 +513,9 @@ public final class io/github/mbackschat/a12/dm/interpreter/ModelDependency {
 	public fun toString ()Ljava/lang/String;
 }
 
+public final class io/github/mbackschat/a12/dm/interpreter/ModelDependency$Companion {
+}
+
 public final class io/github/mbackschat/a12/dm/interpreter/ModelEntityKind : java/lang/Enum {
 	public static final field FIELD Lio/github/mbackschat/a12/dm/interpreter/ModelEntityKind;
 	public static final field GROUP Lio/github/mbackschat/a12/dm/interpreter/ModelEntityKind;
@@ -410,6 +525,28 @@ public final class io/github/mbackschat/a12/dm/interpreter/ModelEntityKind : jav
 }
 
 public abstract interface class io/github/mbackschat/a12/dm/interpreter/ModelExpansionResult {
+}
+
+public final class io/github/mbackschat/a12/dm/interpreter/ModelExpansionResult$Failure : io/github/mbackschat/a12/dm/interpreter/ModelExpansionResult {
+	public fun <init> (Lio/github/mbackschat/a12/dm/interpreter/ModelPreparationError;)V
+	public final fun component1 ()Lio/github/mbackschat/a12/dm/interpreter/ModelPreparationError;
+	public final fun copy (Lio/github/mbackschat/a12/dm/interpreter/ModelPreparationError;)Lio/github/mbackschat/a12/dm/interpreter/ModelExpansionResult$Failure;
+	public static synthetic fun copy$default (Lio/github/mbackschat/a12/dm/interpreter/ModelExpansionResult$Failure;Lio/github/mbackschat/a12/dm/interpreter/ModelPreparationError;ILjava/lang/Object;)Lio/github/mbackschat/a12/dm/interpreter/ModelExpansionResult$Failure;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getError ()Lio/github/mbackschat/a12/dm/interpreter/ModelPreparationError;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class io/github/mbackschat/a12/dm/interpreter/ModelExpansionResult$Success : io/github/mbackschat/a12/dm/interpreter/ModelExpansionResult {
+	public fun <init> (Ljava/lang/String;)V
+	public final fun component1 ()Ljava/lang/String;
+	public final fun copy (Ljava/lang/String;)Lio/github/mbackschat/a12/dm/interpreter/ModelExpansionResult$Success;
+	public static synthetic fun copy$default (Lio/github/mbackschat/a12/dm/interpreter/ModelExpansionResult$Success;Ljava/lang/String;ILjava/lang/Object;)Lio/github/mbackschat/a12/dm/interpreter/ModelExpansionResult$Success;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getJson ()Ljava/lang/String;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
 }
 
 public final class io/github/mbackschat/a12/dm/interpreter/ModelMetadata : io/github/mbackschat/a12/dm/interpreter/ModelOwned {
@@ -422,6 +559,9 @@ public final class io/github/mbackschat/a12/dm/interpreter/ModelMetadata : io/gi
 	public final fun relevantPointer (Ljava/lang/String;Ljava/util/List;)Lio/github/mbackschat/a12/dm/interpreter/RelevantEntityPointer;
 }
 
+public final class io/github/mbackschat/a12/dm/interpreter/ModelMetadata$Companion {
+}
+
 public abstract interface class io/github/mbackschat/a12/dm/interpreter/ModelOwned {
 	public abstract fun getModelVersion ()Lio/github/mbackschat/a12/dm/interpreter/ModelVersionIdentity;
 	public abstract fun getOwner ()Lio/github/mbackschat/a12/dm/interpreter/ModelOwnerIdentity;
@@ -431,12 +571,18 @@ public final class io/github/mbackschat/a12/dm/interpreter/ModelOwnerIdentity {
 	public static final field Companion Lio/github/mbackschat/a12/dm/interpreter/ModelOwnerIdentity$Companion;
 }
 
+public final class io/github/mbackschat/a12/dm/interpreter/ModelOwnerIdentity$Companion {
+}
+
 public final class io/github/mbackschat/a12/dm/interpreter/ModelOwnerMismatchError : java/lang/RuntimeException {
 	public static final field Companion Lio/github/mbackschat/a12/dm/interpreter/ModelOwnerMismatchError$Companion;
 	public synthetic fun <init> (Lio/github/mbackschat/a12/dm/interpreter/ModelOwnerIdentity;Lio/github/mbackschat/a12/dm/interpreter/ModelOwnerIdentity;Lkotlin/jvm/internal/DefaultConstructorMarker;)V
 	public final fun getActual ()Lio/github/mbackschat/a12/dm/interpreter/ModelOwnerIdentity;
 	public final fun getCode ()Ljava/lang/String;
 	public final fun getExpected ()Lio/github/mbackschat/a12/dm/interpreter/ModelOwnerIdentity;
+}
+
+public final class io/github/mbackschat/a12/dm/interpreter/ModelOwnerMismatchError$Companion {
 }
 
 public abstract interface class io/github/mbackschat/a12/dm/interpreter/ModelPreparationDiagnostic {
@@ -516,6 +662,9 @@ public final class io/github/mbackschat/a12/dm/interpreter/ModelPreparationError
 	public final fun getDiagnostics ()Ljava/util/List;
 }
 
+public final class io/github/mbackschat/a12/dm/interpreter/ModelPreparationError$Companion {
+}
+
 public final class io/github/mbackschat/a12/dm/interpreter/ModelPreparationLimits {
 	public static final field Companion Lio/github/mbackschat/a12/dm/interpreter/ModelPreparationLimits$Companion;
 	public static final field DEFAULT_MAX_MODEL_BYTES I
@@ -547,6 +696,23 @@ public final class io/github/mbackschat/a12/dm/interpreter/ModelPreparationLimit
 	public final fun getMaxTotalBytes ()I
 }
 
+public final class io/github/mbackschat/a12/dm/interpreter/ModelPreparationLimits$Builder {
+	public final fun build ()Lio/github/mbackschat/a12/dm/interpreter/ModelPreparationLimits;
+	public final fun maxModelBytes (I)Lio/github/mbackschat/a12/dm/interpreter/ModelPreparationLimits$Builder;
+	public final fun maxModelCount (I)Lio/github/mbackschat/a12/dm/interpreter/ModelPreparationLimits$Builder;
+	public final fun maxPreparedBytes (I)Lio/github/mbackschat/a12/dm/interpreter/ModelPreparationLimits$Builder;
+	public final fun maxPreparedElements (I)Lio/github/mbackschat/a12/dm/interpreter/ModelPreparationLimits$Builder;
+	public final fun maxReferenceDepth (I)Lio/github/mbackschat/a12/dm/interpreter/ModelPreparationLimits$Builder;
+	public final fun maxReferenceEdges (I)Lio/github/mbackschat/a12/dm/interpreter/ModelPreparationLimits$Builder;
+	public final fun maxStructureDepth (I)Lio/github/mbackschat/a12/dm/interpreter/ModelPreparationLimits$Builder;
+	public final fun maxTotalBytes (I)Lio/github/mbackschat/a12/dm/interpreter/ModelPreparationLimits$Builder;
+}
+
+public final class io/github/mbackschat/a12/dm/interpreter/ModelPreparationLimits$Companion {
+	public final fun builder ()Lio/github/mbackschat/a12/dm/interpreter/ModelPreparationLimits$Builder;
+	public final fun defaults ()Lio/github/mbackschat/a12/dm/interpreter/ModelPreparationLimits;
+}
+
 public final class io/github/mbackschat/a12/dm/interpreter/ModelPreparationResource : java/lang/Enum {
 	public static final field MODEL_BYTES Lio/github/mbackschat/a12/dm/interpreter/ModelPreparationResource;
 	public static final field MODEL_COUNT Lio/github/mbackschat/a12/dm/interpreter/ModelPreparationResource;
@@ -564,6 +730,28 @@ public final class io/github/mbackschat/a12/dm/interpreter/ModelPreparationResou
 public abstract interface class io/github/mbackschat/a12/dm/interpreter/ModelPreparationResult {
 }
 
+public final class io/github/mbackschat/a12/dm/interpreter/ModelPreparationResult$Failure : io/github/mbackschat/a12/dm/interpreter/ModelPreparationResult {
+	public fun <init> (Lio/github/mbackschat/a12/dm/interpreter/ModelPreparationError;)V
+	public final fun component1 ()Lio/github/mbackschat/a12/dm/interpreter/ModelPreparationError;
+	public final fun copy (Lio/github/mbackschat/a12/dm/interpreter/ModelPreparationError;)Lio/github/mbackschat/a12/dm/interpreter/ModelPreparationResult$Failure;
+	public static synthetic fun copy$default (Lio/github/mbackschat/a12/dm/interpreter/ModelPreparationResult$Failure;Lio/github/mbackschat/a12/dm/interpreter/ModelPreparationError;ILjava/lang/Object;)Lio/github/mbackschat/a12/dm/interpreter/ModelPreparationResult$Failure;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getError ()Lio/github/mbackschat/a12/dm/interpreter/ModelPreparationError;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class io/github/mbackschat/a12/dm/interpreter/ModelPreparationResult$Success : io/github/mbackschat/a12/dm/interpreter/ModelPreparationResult {
+	public fun <init> (Lio/github/mbackschat/a12/dm/interpreter/PreparedModel;)V
+	public final fun component1 ()Lio/github/mbackschat/a12/dm/interpreter/PreparedModel;
+	public final fun copy (Lio/github/mbackschat/a12/dm/interpreter/PreparedModel;)Lio/github/mbackschat/a12/dm/interpreter/ModelPreparationResult$Success;
+	public static synthetic fun copy$default (Lio/github/mbackschat/a12/dm/interpreter/ModelPreparationResult$Success;Lio/github/mbackschat/a12/dm/interpreter/PreparedModel;ILjava/lang/Object;)Lio/github/mbackschat/a12/dm/interpreter/ModelPreparationResult$Success;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getModel ()Lio/github/mbackschat/a12/dm/interpreter/PreparedModel;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
 public final class io/github/mbackschat/a12/dm/interpreter/ModelReferencePurpose : java/lang/Enum {
 	public static final field Companion Lio/github/mbackschat/a12/dm/interpreter/ModelReferencePurpose$Companion;
 	public static final field INCLUDE Lio/github/mbackschat/a12/dm/interpreter/ModelReferencePurpose;
@@ -571,6 +759,9 @@ public final class io/github/mbackschat/a12/dm/interpreter/ModelReferencePurpose
 	public static fun getEntries ()Lkotlin/enums/EnumEntries;
 	public static fun valueOf (Ljava/lang/String;)Lio/github/mbackschat/a12/dm/interpreter/ModelReferencePurpose;
 	public static fun values ()[Lio/github/mbackschat/a12/dm/interpreter/ModelReferencePurpose;
+}
+
+public final class io/github/mbackschat/a12/dm/interpreter/ModelReferencePurpose$Companion {
 }
 
 public final class io/github/mbackschat/a12/dm/interpreter/ModelReferenceStep {
@@ -589,11 +780,17 @@ public final class io/github/mbackschat/a12/dm/interpreter/ModelReferenceStep {
 	public fun toString ()Ljava/lang/String;
 }
 
+public final class io/github/mbackschat/a12/dm/interpreter/ModelReferenceStep$Companion {
+}
+
 public final class io/github/mbackschat/a12/dm/interpreter/ModelSourceLoadContext {
 	public static final field Companion Lio/github/mbackschat/a12/dm/interpreter/ModelSourceLoadContext$Companion;
 	public synthetic fun <init> (ILio/github/mbackschat/a12/dm/interpreter/ModelCollectionSignal;Lkotlin/jvm/internal/DefaultConstructorMarker;)V
 	public final fun getMaximumBytes ()I
 	public final fun getSignal ()Lio/github/mbackschat/a12/dm/interpreter/ModelCollectionSignal;
+}
+
+public final class io/github/mbackschat/a12/dm/interpreter/ModelSourceLoadContext$Companion {
 }
 
 public abstract interface class io/github/mbackschat/a12/dm/interpreter/ModelSourceProvider {
@@ -614,6 +811,18 @@ public final class io/github/mbackschat/a12/dm/interpreter/ModelSourceProviderEr
 	public final fun getReason ()Lio/github/mbackschat/a12/dm/interpreter/ModelSourceProviderFailureReason;
 }
 
+public final class io/github/mbackschat/a12/dm/interpreter/ModelSourceProviderError$Builder {
+	public final fun build ()Lio/github/mbackschat/a12/dm/interpreter/ModelSourceProviderError;
+	public final fun cause (Ljava/lang/Throwable;)Lio/github/mbackschat/a12/dm/interpreter/ModelSourceProviderError$Builder;
+	public final fun message (Ljava/lang/String;)Lio/github/mbackschat/a12/dm/interpreter/ModelSourceProviderError$Builder;
+	public final fun modelId (Ljava/lang/String;)Lio/github/mbackschat/a12/dm/interpreter/ModelSourceProviderError$Builder;
+	public final fun reason (Lio/github/mbackschat/a12/dm/interpreter/ModelSourceProviderFailureReason;)Lio/github/mbackschat/a12/dm/interpreter/ModelSourceProviderError$Builder;
+}
+
+public final class io/github/mbackschat/a12/dm/interpreter/ModelSourceProviderError$Companion {
+	public final fun builder ()Lio/github/mbackschat/a12/dm/interpreter/ModelSourceProviderError$Builder;
+}
+
 public final class io/github/mbackschat/a12/dm/interpreter/ModelSourceProviderFailureReason : java/lang/Enum {
 	public static final field ACCESS_DENIED Lio/github/mbackschat/a12/dm/interpreter/ModelSourceProviderFailureReason;
 	public static final field CANCELLED Lio/github/mbackschat/a12/dm/interpreter/ModelSourceProviderFailureReason;
@@ -630,6 +839,9 @@ public final class io/github/mbackschat/a12/dm/interpreter/ModelVersionIdentity 
 	public static final field Companion Lio/github/mbackschat/a12/dm/interpreter/ModelVersionIdentity$Companion;
 }
 
+public final class io/github/mbackschat/a12/dm/interpreter/ModelVersionIdentity$Companion {
+}
+
 public final class io/github/mbackschat/a12/dm/interpreter/ModelWorkspace {
 	public static final field Companion Lio/github/mbackschat/a12/dm/interpreter/ModelWorkspace$Companion;
 	public synthetic fun <init> (Lio/github/mbackschat/a12/dm/interpreter/workspace/AdmittedWorkspace;Lio/github/mbackschat/a12/dm/interpreter/ModelPreparationLimits;Ljava/lang/String;Lkotlin/jvm/internal/DefaultConstructorMarker;)V
@@ -641,6 +853,14 @@ public final class io/github/mbackschat/a12/dm/interpreter/ModelWorkspace {
 	public final fun prepare (Ljava/lang/String;)Lio/github/mbackschat/a12/dm/interpreter/PreparedModel;
 	public final fun tryExpand (Ljava/lang/String;)Lio/github/mbackschat/a12/dm/interpreter/ModelExpansionResult;
 	public final fun tryPrepare (Ljava/lang/String;)Lio/github/mbackschat/a12/dm/interpreter/ModelPreparationResult;
+}
+
+public final class io/github/mbackschat/a12/dm/interpreter/ModelWorkspace$Companion {
+	public final synthetic fun collect (Ljava/lang/String;Lio/github/mbackschat/a12/dm/interpreter/ModelSourceProvider;Lio/github/mbackschat/a12/dm/interpreter/ModelPreparationLimits;Lio/github/mbackschat/a12/dm/interpreter/ModelCollectionSignal;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public static synthetic fun collect$default (Lio/github/mbackschat/a12/dm/interpreter/ModelWorkspace$Companion;Ljava/lang/String;Lio/github/mbackschat/a12/dm/interpreter/ModelSourceProvider;Lio/github/mbackschat/a12/dm/interpreter/ModelPreparationLimits;Lio/github/mbackschat/a12/dm/interpreter/ModelCollectionSignal;Lkotlin/coroutines/Continuation;ILjava/lang/Object;)Ljava/lang/Object;
+	public final fun fromSources (Ljava/util/List;)Lio/github/mbackschat/a12/dm/interpreter/ModelWorkspace;
+	public final fun fromSources (Ljava/util/List;Lio/github/mbackschat/a12/dm/interpreter/ModelPreparationLimits;)Lio/github/mbackschat/a12/dm/interpreter/ModelWorkspace;
+	public static synthetic fun fromSources$default (Lio/github/mbackschat/a12/dm/interpreter/ModelWorkspace$Companion;Ljava/util/List;Lio/github/mbackschat/a12/dm/interpreter/ModelPreparationLimits;ILjava/lang/Object;)Lio/github/mbackschat/a12/dm/interpreter/ModelWorkspace;
 }
 
 public final class io/github/mbackschat/a12/dm/interpreter/ModelWorkspaceJava {
@@ -674,10 +894,38 @@ public final class io/github/mbackschat/a12/dm/interpreter/PreparedModel : io/gi
 	public static final fun tryLoadExpandedJson (Ljava/lang/String;)Lio/github/mbackschat/a12/dm/interpreter/ModelPreparationResult;
 }
 
+public final class io/github/mbackschat/a12/dm/interpreter/PreparedModel$Companion {
+	public final fun loadExpandedJson (Ljava/lang/String;)Lio/github/mbackschat/a12/dm/interpreter/PreparedModel;
+	public final fun tryLoadExpandedJson (Ljava/lang/String;)Lio/github/mbackschat/a12/dm/interpreter/ModelPreparationResult;
+}
+
 public abstract interface class io/github/mbackschat/a12/dm/interpreter/RelevantCoordinate {
 	public static final field Companion Lio/github/mbackschat/a12/dm/interpreter/RelevantCoordinate$Companion;
 	public static fun all ()Lio/github/mbackschat/a12/dm/interpreter/RelevantCoordinate;
 	public static fun exact (I)Lio/github/mbackschat/a12/dm/interpreter/RelevantCoordinate;
+}
+
+public final class io/github/mbackschat/a12/dm/interpreter/RelevantCoordinate$All : io/github/mbackschat/a12/dm/interpreter/RelevantCoordinate {
+	public static final field INSTANCE Lio/github/mbackschat/a12/dm/interpreter/RelevantCoordinate$All;
+	public fun equals (Ljava/lang/Object;)Z
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class io/github/mbackschat/a12/dm/interpreter/RelevantCoordinate$Companion {
+	public final fun all ()Lio/github/mbackschat/a12/dm/interpreter/RelevantCoordinate;
+	public final fun exact (I)Lio/github/mbackschat/a12/dm/interpreter/RelevantCoordinate;
+}
+
+public final class io/github/mbackschat/a12/dm/interpreter/RelevantCoordinate$Exact : io/github/mbackschat/a12/dm/interpreter/RelevantCoordinate {
+	public fun <init> (I)V
+	public final fun component1 ()I
+	public final fun copy (I)Lio/github/mbackschat/a12/dm/interpreter/RelevantCoordinate$Exact;
+	public static synthetic fun copy$default (Lio/github/mbackschat/a12/dm/interpreter/RelevantCoordinate$Exact;IILjava/lang/Object;)Lio/github/mbackschat/a12/dm/interpreter/RelevantCoordinate$Exact;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getValue ()I
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
 }
 
 public abstract interface class io/github/mbackschat/a12/dm/interpreter/RelevantEntityPointer : io/github/mbackschat/a12/dm/interpreter/ModelOwned {
@@ -695,11 +943,17 @@ public final class io/github/mbackschat/a12/dm/interpreter/RelevantSelectionPoin
 	public fun getPath ()Ljava/lang/String;
 }
 
+public final class io/github/mbackschat/a12/dm/interpreter/RelevantSelectionPointer$Companion {
+}
+
 public final class io/github/mbackschat/a12/dm/interpreter/UnknownModelPathError : java/lang/RuntimeException {
 	public static final field Companion Lio/github/mbackschat/a12/dm/interpreter/UnknownModelPathError$Companion;
 	public synthetic fun <init> (Ljava/lang/String;Lkotlin/jvm/internal/DefaultConstructorMarker;)V
 	public final fun getCode ()Ljava/lang/String;
 	public final fun getPath ()Ljava/lang/String;
+}
+
+public final class io/github/mbackschat/a12/dm/interpreter/UnknownModelPathError$Companion {
 }
 
 public final class io/github/mbackschat/a12/dm/interpreter/UnsupportedProgram {
@@ -767,6 +1021,9 @@ public final class io/github/mbackschat/a12/dm/interpreter/ValidationReport {
 	public final fun getUnsupported ()Ljava/util/List;
 }
 
+public final class io/github/mbackschat/a12/dm/interpreter/ValidationReport$Companion {
+}
+
 public final class io/github/mbackschat/a12/dm/interpreter/ValidationSeverity : java/lang/Enum {
 	public static final field ERROR Lio/github/mbackschat/a12/dm/interpreter/ValidationSeverity;
 	public static final field INFO Lio/github/mbackschat/a12/dm/interpreter/ValidationSeverity;
@@ -783,5 +1040,16 @@ public final class io/github/mbackschat/a12/dm/interpreter/WorkspaceModelSource 
 	public final fun getDiagnosticLabel ()Ljava/lang/String;
 	public final fun getExpectedSha256 ()Ljava/lang/String;
 	public final fun getJson ()Ljava/lang/String;
+}
+
+public final class io/github/mbackschat/a12/dm/interpreter/WorkspaceModelSource$Builder {
+	public final fun build ()Lio/github/mbackschat/a12/dm/interpreter/WorkspaceModelSource;
+	public final fun diagnosticLabel (Ljava/lang/String;)Lio/github/mbackschat/a12/dm/interpreter/WorkspaceModelSource$Builder;
+	public final fun expectedSha256 (Ljava/lang/String;)Lio/github/mbackschat/a12/dm/interpreter/WorkspaceModelSource$Builder;
+	public final fun json (Ljava/lang/String;)Lio/github/mbackschat/a12/dm/interpreter/WorkspaceModelSource$Builder;
+}
+
+public final class io/github/mbackschat/a12/dm/interpreter/WorkspaceModelSource$Companion {
+	public final fun builder ()Lio/github/mbackschat/a12/dm/interpreter/WorkspaceModelSource$Builder;
 }
 

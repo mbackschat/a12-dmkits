@@ -106,31 +106,72 @@ tasks.named('jsBrowserTest') {
 
 // Kotlin 2.2 installs ABI validation as a nested extension of the multiplatform DSL. Configure that public
 // extension directly because Groovy cannot call the Kotlin-only `abiValidation {}` shortcut.
+def interpreterRootPackage = 'io.github.mbackschat.a12.dm.interpreter'
+// These root-package declarations predate the model-owned façade and expose engine storage/arithmetic types.
+// They remain callable by in-repo migration consumers but are not part of the published contract.
+def interpreterNonContractRootNames = [
+    'Big',
+    'Dec',
+    'Dec_jvmKt',
+    'DEC_ZERO',
+    'DmInterpreter',
+    'InvalidModelTimeZoneException',
+    'RoundMode',
+    'UnsupportedConstructException',
+    'UnsupportedModelTimeZoneException',
+    'dec',
+    'decOrNull',
+]
+// The engine implementation packages, DERIVED from the production source tree rather than listed by hand — a
+// hand-kept list would go stale exactly when a new engine package is added, which is when the subtraction
+// below has to hold. They stay public only where another module still consumes them during the pre-1.0
+// migration; publishing must not freeze them.
+def interpreterEngineSubpackages = { ->
+    def names = new TreeSet<String>()
+    def mainSourceSets = file('src').listFiles({ File candidate ->
+        candidate.directory && candidate.name.endsWith('Main')
+    } as java.io.FileFilter)
+    mainSourceSets?.each { sourceSet ->
+        def packageRoot = new File(sourceSet, "kotlin/${interpreterRootPackage.replace('.', '/')}")
+        packageRoot.listFiles({ File candidate -> candidate.directory } as java.io.FileFilter)?.each {
+            names.add(it.name)
+        }
+    }
+    if (names.isEmpty()) {
+        throw new GradleException(
+            "found no engine subpackage under src/*Main/kotlin/${interpreterRootPackage.replace('.', '/')}; " +
+                'the ABI filter would publish the whole engine',
+        )
+    }
+    names
+}
 def interpreterAbiValidation = kotlin.extensions
     .getByType(org.jetbrains.kotlin.gradle.dsl.abi.AbiValidationMultiplatformExtension)
 interpreterAbiValidation.enabled.set(true)
 interpreterAbiValidation.filters {
     included {
-        // The release contract is the package-root façade. Engine implementation packages remain public only
-        // where another module still consumes them during the pre-1.0 migration; publishing must not freeze them.
-        byNames.add('io.github.mbackschat.a12.dm.interpreter.*')
+        // The release contract is the root-package façade, expressed as "the whole tree minus the engine
+        // packages" rather than as a root-package-only pattern. That is not cosmetic: a `byNames` pattern
+        // never crosses a `.`, and the KLIB filter is applied to EVERY declaration, whereas the JVM filter is
+        // applied per class with its members riding along. So `…interpreter.*` kept JVM members but reduced
+        // the KLIB dump to bare type headers — a removed function or changed signature on the Kotlin/JS
+        // surface passed it silently (IRG3). No pattern can admit `…interpreter.Foo.bar` while rejecting
+        // `…interpreter.eval.Baz`; the two are the same shape. Hence subtract, and keep both dumps
+        // member-level. `InterpreterAbiGoldenDepthTest` fails the build if this ever regresses.
+        byNames.add("${interpreterRootPackage}.**".toString())
     }
     excluded {
-        // These root-package declarations predate the model-owned façade and expose engine storage/arithmetic
-        // types. They remain callable by in-repo migration consumers but are not part of the published contract.
-        byNames.addAll([
-            'io.github.mbackschat.a12.dm.interpreter.Big',
-            'io.github.mbackschat.a12.dm.interpreter.Dec',
-            'io.github.mbackschat.a12.dm.interpreter.Dec_jvmKt',
-            'io.github.mbackschat.a12.dm.interpreter.DEC_ZERO',
-            'io.github.mbackschat.a12.dm.interpreter.DmInterpreter',
-            'io.github.mbackschat.a12.dm.interpreter.InvalidModelTimeZoneException',
-            'io.github.mbackschat.a12.dm.interpreter.RoundMode',
-            'io.github.mbackschat.a12.dm.interpreter.UnsupportedConstructException',
-            'io.github.mbackschat.a12.dm.interpreter.UnsupportedModelTimeZoneException',
-            'io.github.mbackschat.a12.dm.interpreter.dec',
-            'io.github.mbackschat.a12.dm.interpreter.decOrNull',
-        ])
+        interpreterEngineSubpackages().each { subpackage ->
+            byNames.add("${interpreterRootPackage}.${subpackage}.**".toString())
+        }
+        // Each non-contract name needs its member pattern too: under a `**` include, a member of an excluded
+        // class is still matched by the include and only the `<name>.**` pattern takes it back out.
+        interpreterNonContractRootNames.each { name ->
+            byNames.addAll([
+                "${interpreterRootPackage}.${name}".toString(),
+                "${interpreterRootPackage}.${name}.**".toString(),
+            ])
+        }
     }
 }
 
@@ -2351,6 +2392,31 @@ def interpreterDocGuardTest = tasks.register('interpreterDocGuardTest', Test) {
     ])
 }
 
+// The reviewed goldens are byte-compared by `checkLegacyAbi`, which can only catch a member-level break if
+// the golden records members at all. This guard locks that depth (IRG3) and the narrowness that pays for it.
+def interpreterAbiGoldenDepthTest = tasks.register('interpreterAbiGoldenDepthTest', Test) {
+    group = 'verification'
+    description = 'Require both reviewed Kotlin ABI goldens to stay member-level and root-package-only.'
+    dependsOn tasks.named('jvmTestClasses')
+    dependsOn tasks.named('checkLegacyAbi')
+    testClassesDirs = interpreterJvmTest.get().testClassesDirs
+    classpath = interpreterJvmTest.get().classpath
+    filter {
+        includeTestsMatching(
+            'io.github.mbackschat.a12.dm.interpreter.InterpreterAbiGoldenDepthTest',
+        )
+    }
+    systemProperty('interpreter.abi.golden.jvm', committedJvmApi.absolutePath)
+    systemProperty('interpreter.abi.golden.klib', committedKlibApi.absolutePath)
+    rootProject.guardInputs(it, [
+        'reviewed JVM ABI': committedJvmApi,
+        'reviewed KLIB ABI': committedKlibApi,
+    ])
+}
+tasks.named('check') {
+    dependsOn interpreterAbiGoldenDepthTest
+}
+
 def interpreterApiDocumentationTest = tasks.register(
     'interpreterApiDocumentationTest',
     Test,
@@ -2430,6 +2496,9 @@ interpreterJvmTest.configure {
         )
         excludeTestsMatching(
             'io.github.mbackschat.a12.dm.interpreter.InterpreterApiDocumentationTest',
+        )
+        excludeTestsMatching(
+            'io.github.mbackschat.a12.dm.interpreter.InterpreterAbiGoldenDepthTest',
         )
     }
 }
