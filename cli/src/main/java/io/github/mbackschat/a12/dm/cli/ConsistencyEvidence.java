@@ -8,6 +8,8 @@ import io.github.mbackschat.a12.dm.adapter.review.ModelReport;
 import io.github.mbackschat.a12.dm.core.Backends;
 import io.github.mbackschat.a12.dm.core.ModelConsistencyException;
 import io.github.mbackschat.a12.dm.core.Verification;
+import io.github.mbackschat.a12.dm.edit.EditSession;
+import io.github.mbackschat.a12.dm.modelkit.ModelDocument;
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel;
 import io.github.mbackschat.a12.dm.rulekit.validate.ValidationResult;
 
@@ -28,6 +30,9 @@ import io.github.mbackschat.a12.dm.rulekit.validate.ValidationResult;
  *       {@code ofJson}, <b>absent for {@code ofJsonLenient}</b>. A caller that switches to a lenient bind loses
  *       the evidence automatically, with no second edit and no way to forget.</li>
  *   <li>{@link #of(KernelAdapter)} — the adapter twin: present for {@code checkAndOpen}, absent for {@code of}.</li>
+ *   <li>{@link #of(ModelDocument)} / {@link #of(EditSession)} — the <b>edit</b> gates, which is what a mutating verb
+ *       holds. Both are mutable, so their receipts are <b>state-checked</b>: an edit after the gate revokes the
+ *       receipt rather than leaving it vouching for a tree that no longer exists.</li>
  *   <li>{@link #of(ModelReport)} / {@link #of(ModelDiff)} — a review artefact stores the gate it was assembled
  *       over, so it attests exactly as a binding does; both are closed types, so the receipt cannot be hand-built.</li>
  *   <li>{@link #of(ValidationResult)} — a validator run attests for the candidate verbs, which hold no binding.</li>
@@ -67,6 +72,28 @@ public final class ConsistencyEvidence {
     /** The gate receipt this adapter carries — {@link #none()} for the unchecked {@code KernelAdapter.of} path. */
     public static ConsistencyEvidence of(KernelAdapter adapter) {
         return from(adapter.consistencyGate());
+    }
+
+    /**
+     * The edit gate's receipt for the document as it stands — {@link ModelDocument#consistencyGate()}. This is the
+     * witness almost every mutating verb holds: they edit a {@code ModelDocument}, gate it with
+     * {@code validate(resolver)}, then write.
+     *
+     * <p>Unlike every witness above it, a document is <b>mutable</b>, so its receipt is state-checked and an edit
+     * after the gate revokes it. A caller therefore cannot publish {@code KERNEL_CONFIRMED} over a tree the kernel
+     * never saw, however it orders its calls.
+     */
+    public static ConsistencyEvidence of(ModelDocument document) {
+        return document == null ? NONE : from(document.consistencyGate());
+    }
+
+    /**
+     * The terminal gate's receipt for a session — {@link EditSession#consistencyGate()}, on the same state-checked
+     * terms as {@link #of(ModelDocument)}. What {@code apply} publishes: its staged steps are ungated by design and
+     * attest nothing, and this attests for the state the transaction actually commits.
+     */
+    public static ConsistencyEvidence of(EditSession session) {
+        return session == null ? NONE : from(session.consistencyGate());
     }
 
     /**

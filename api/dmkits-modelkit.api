@@ -503,6 +503,7 @@ public final class io.github.mbackschat.a12.dm.modelkit.ModelDocument
   public io.github.mbackschat.a12.dm.modelkit.ModelDocument clearSortFields(java.lang.String)
   public int computationCount()
   public io.github.mbackschat.a12.dm.modelkit.ModelDocument.DocConfig config()
+  public java.util.Optional<io.github.mbackschat.a12.dm.core.Verification> consistencyGate()
   public boolean describableExists(java.lang.String)
   public java.util.List<java.lang.String> enumValues(java.lang.String)
   public java.util.Map<java.lang.String, java.lang.String> externalDescription(java.lang.String)

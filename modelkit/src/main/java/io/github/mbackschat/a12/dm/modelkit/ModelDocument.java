@@ -30,6 +30,7 @@ import io.github.mbackschat.a12.dm.core.ModelResolver;
 import io.github.mbackschat.a12.dm.core.ReferenceResolvers;
 import io.github.mbackschat.a12.dm.core.UnresolvedReferenceException;
 import io.github.mbackschat.a12.dm.core.ValueKind;
+import io.github.mbackschat.a12.dm.core.Verification;
 
 /**
  * An existing document model, read from DM-JSON into its <em>authored source tree</em> (M7) — the read
@@ -66,6 +67,10 @@ public final class ModelDocument {
     private static final String TRANSITIVE_INCLUDE_PURPOSE = "transitiveInclude";
 
     private final ObjectNode root;
+
+    /** The exact DM-JSON {@link #validate(ModelResolver)} last gated, and what it decided — see {@link #consistencyGate()}. */
+    private String gatedJson;
+    private Verification gatedBy;
 
     private ModelDocument(ObjectNode root) {
         this.root = root;
@@ -2032,8 +2037,9 @@ public final class ModelDocument {
         // OUTSIDE the try on purpose: serializing our own edited tree is not a gate, so a failure here is a
         // tool defect and must not be relabelled as "the edited model is not kernel-valid" (see the catch below).
         String json = toJson();
+        Verification gate;
         try {
-            ModelLoader.loadAndCheck(json, resolver);
+            gate = ModelLoader.loadAndCheck(json, resolver);
         } catch (ModelConsistencyException e) {
             throw e; // checkConsistency tier — already the uniform "model invalid" type
         } catch (UnresolvedReferenceException e) {
@@ -2049,7 +2055,27 @@ public final class ModelDocument {
             // terminal gate (EditSession.validate) so the cause-append can't drift between the two gates.
             throw ModelConsistencyException.notKernelValid(e);
         }
+        gatedJson = json;
+        gatedBy = gate;
         return this;
+    }
+
+    /**
+     * The gate's <b>receipt</b> for the tree this document holds <em>right now</em> — empty until
+     * {@link #validate()} has run, and empty again after any edit that changes the model.
+     *
+     * <p>State-checked rather than stored, because a document is mutable and every other witness in the codebase
+     * ({@code BoundModel}, {@code KernelAdapter}, {@code ModelReport}) is not. A plain {@code Verification} field
+     * would keep reading {@code KERNEL_CONFIRMED} after a post-gate edit, so a caller publishing it would state
+     * that the kernel confirmed a model the kernel never saw — the ambient-mode defect displaced by one edit
+     * rather than removed. Keeping the receipt against the exact DM-JSON that was gated makes the stale claim
+     * unrepresentable instead of merely discouraged: there is no ordering rule for a caller to remember.
+     *
+     * <p>The comparison costs one serialization per read. That is affordable because a consumer reads the receipt
+     * once, at the point it publishes provenance — not per edit.
+     */
+    public Optional<Verification> consistencyGate() {
+        return gatedJson != null && gatedJson.equals(toJson()) ? Optional.of(gatedBy) : Optional.empty();
     }
 
     private ArrayNode rootGroups() {

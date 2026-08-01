@@ -7,6 +7,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.function.Function;
 
 import io.github.mbackschat.a12.dm.core.ModelConsistencyException;
@@ -14,6 +15,7 @@ import io.github.mbackschat.a12.dm.core.ModelLoader;
 import io.github.mbackschat.a12.dm.core.ModelResolver;
 import io.github.mbackschat.a12.dm.core.ReferenceResolvers;
 import io.github.mbackschat.a12.dm.core.UnresolvedReferenceException;
+import io.github.mbackschat.a12.dm.core.Verification;
 import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft;
 import io.github.mbackschat.a12.dm.modelkit.ElementDraft;
 import io.github.mbackschat.a12.dm.modelkit.FieldKind;
@@ -50,6 +52,10 @@ public final class EditSession {
     /** Memoized bind of the current {@code json} (M6): reused across navigations until a write replaces {@code json}. */
     private BoundModel cachedBoundModel;
     private String cachedForJson;
+
+    /** The exact DM-JSON {@link #validate()} last gated, and what it decided — see {@link #consistencyGate()}. */
+    private String gatedJson;
+    private Verification gatedBy;
 
     private EditSession(String json, ModelResolver resolver) {
         this.json = json;
@@ -561,8 +567,9 @@ public final class EditSession {
 
     /** The kernel gate: re-bind the whole model (deserialize → expand → checkConsistency), once. */
     public EditSession validate() {
+        Verification gate;
         try {
-            ModelLoader.loadAndCheck(json, resolver);
+            gate = ModelLoader.loadAndCheck(json, resolver);
         } catch (ModelConsistencyException e) {
             throw e;
         } catch (UnresolvedReferenceException e) {
@@ -575,7 +582,25 @@ public final class EditSession {
             // gate used to drop it, unlike the per-edit gate; one factory keeps them from drifting).
             throw ModelConsistencyException.notKernelValid(e);
         }
+        gatedJson = json;
+        gatedBy = gate;
         return this;
+    }
+
+    /**
+     * The terminal gate's <b>receipt</b> for the model this session holds <em>right now</em> — empty until
+     * {@link #validate()} has run, and empty again after any edit that follows it.
+     *
+     * <p>Same contract and same reason as {@link ModelDocument#consistencyGate()}: a session is mutable, so a
+     * stored {@code Verification} would go on vouching for a model that has since been edited. Here the check is
+     * free — the session's rep <em>is</em> the DM-JSON text, so the receipt is kept against the very string the
+     * gate ran on.
+     *
+     * <p>This is what lets {@code apply} publish provenance honestly: its per-op steps are ungated by design and
+     * attest nothing, while the one terminal gate attests for the state that actually gets written.
+     */
+    public Optional<Verification> consistencyGate() {
+        return json.equals(gatedJson) ? Optional.of(gatedBy) : Optional.empty();
     }
 
     /** The current model as DM-JSON. */
