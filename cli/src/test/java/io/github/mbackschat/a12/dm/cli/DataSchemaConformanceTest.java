@@ -137,7 +137,20 @@ class DataSchemaConformanceTest {
                 // --validate is a SEPARATE shape (per-entry checked/valid/verification or checked/problem), and
                 // running only the bare form is why three undeclared keys shipped against an
                 // additionalProperties:false schema — the closed-keys walk had nothing to walk.
-                new Run("workspace-list", new String[]{"workspace", "list", dir.toString(), "--validate"}));
+                new Run("workspace-list", new String[]{"workspace", "list", dir.toString(), "--validate"}),
+                // `patterns` selects its payload by ARGUMENTS, not a flag, so all three shapes need a run or the
+                // `oneOf` has unreachable branches — the trap the CG6 row named in advance (CATALOG-SPEC §6's
+                // sibling concern). The two scaffold runs additionally reach the two `$ref`s the scaffold's `spec`
+                // delegates to: a rule idiom lands on `add.schema.json`, a field idiom on `field-add.schema.json`.
+                // A kernel-REJECTED scaffold is deliberately NOT a run here: it exits 1 (this harness requires 0)
+                // and returns the SAME shape, so it would add no branch — `PatternsScaffoldVerdictTest` owns that
+                // verdict.
+                new Run("patterns", new String[]{"patterns"}),
+                new Run("patterns", new String[]{"patterns", "date-order"}),
+                new Run("patterns", new String[]{"-m", order.toString(), "patterns", "date-order",
+                        "--arg", "earlier=/Order/OrderDate", "--arg", "later=/Order/DeliveryDate"}),
+                new Run("patterns", new String[]{"-m", order.toString(), "patterns", "bounded-number",
+                        "--arg", "group=/Order", "--arg", "name=Weight", "--arg", "min=1", "--arg", "max=99"}));
 
         for (Run run : runs) {
             CliTestSupport.Result res = CliTestSupport.run(run.args());
@@ -234,9 +247,12 @@ class DataSchemaConformanceTest {
     /** Tripwire: if a new {@code DATA_SCHEMA} verb is added, it must be covered above or reasoned-exempt. */
     @Test
     void everyDataSchemaIsCoveredOrExempt() {
+        // Restates the schema names exercised above. The duplication is deliberate and tolerable ONLY because
+        // this test fires loudly the moment the two disagree — which is how `patterns` was caught on the way in.
+        // If it ever needs to be silent-safe, derive it from the run list instead of widening this set.
         Set<String> covered = Set.of("model-info", "describe", "model-diff", "model-report", "model-usage", "profile",
                 "profile-comparison", "read", "explain", "where-used", "meta-read", "field-read", "group-read", "typedef-read",
-                "eval-doc", "compute-doc", "workspace-list");
+                "eval-doc", "compute-doc", "workspace-list", "patterns");
         List<String> uncovered = new ArrayList<>();
         for (String schema : SchemaCommand.DATA_SCHEMA.values()) {
             if (!covered.contains(schema) && !EXEMPT_SCHEMAS.containsKey(schema)) {

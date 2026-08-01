@@ -98,6 +98,10 @@ final class SchemaCommand extends BaseCommand {
             Map.entry("rule explain", "explain"),
             Map.entry("model eval", "eval-doc"),
             Map.entry("model compute", "compute-doc"),
+            // Three payload shapes on one verb, selected by the arguments rather than a flag — so the `oneOf`
+            // is the contract, not a convenience (CG6). The scaffold branch `$ref`s the `add` verbs' own input
+            // schemas instead of restating the spec, since a restatement drifts invisibly.
+            Map.entry("patterns", "patterns"),
             Map.entry("workspace list", "workspace-list"),
             Map.entry("workspace graph", "workspace-graph"),
             Map.entry("workspace roles", "workspace-roles"));

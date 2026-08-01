@@ -1,0 +1,111 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/mbackschat/a12-dmkits/schema/patterns.schema.json",
+  "title": "patterns-data",
+  "description": "The `data` payload of `dmtool patterns`, whose three routes return three different shapes. Which one you get is decided by the arguments, not by a flag: no argument lists the catalogue, an id alone describes that one idiom, and an id plus `--arg` scaffolds the artifact. A kernel-REJECTED scaffold returns the SAME shape as an accepted one — the scaffold is still reported so the author can see what was built and why it was refused; the verdict rides the envelope's `valid` (false) and `diagnostics`, not the payload. `--apply` is a different route entirely: it persists through `rule add`/`computation add`/`field add` and returns an `applied` envelope with `changed` and no `data`, so it is out of this schema's scope.",
+  "oneOf": [
+    {
+      "title": "catalogue",
+      "description": "`patterns` with no argument — every idiom, each with the `kind` of artifact it scaffolds.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["count", "patterns"],
+      "properties": {
+        "count": {
+          "type": "integer",
+          "description": "How many idioms the catalogue holds."
+        },
+        "patterns": {
+          "type": "array",
+          "description": "The idioms, in catalogue order.",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["id", "kind", "summary", "params"],
+            "properties": {
+              "id": { "type": "string", "description": "The idiom id to pass back as `patterns <id>`." },
+              "kind": { "$ref": "#/$defs/kind" },
+              "summary": { "type": "string", "description": "One line: what the idiom is for." },
+              "params": { "$ref": "#/$defs/paramNames" }
+            }
+          }
+        }
+      }
+    },
+    {
+      "title": "idiom",
+      "description": "`patterns <id>` — one idiom in full, enough to compose the `--arg` list without guessing.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "kind", "summary", "params", "skeleton", "example"],
+      "properties": {
+        "id": { "type": "string", "description": "The idiom's id." },
+        "kind": { "$ref": "#/$defs/kind" },
+        "summary": { "type": "string", "description": "One line: what the idiom is for." },
+        "params": { "$ref": "#/$defs/params" },
+        "skeleton": {
+          "type": "string",
+          "description": "The artifact the idiom produces, with `<param>` placeholders left unsubstituted."
+        },
+        "example": {
+          "type": "object",
+          "description": "A ready-made argument set: parameter name → a sample value of the right kind. Pass each entry as one `--arg <name>=<value>` to get a working scaffold on the spot, rather than composing the values from `params[].kind` by hand.",
+          "additionalProperties": { "type": "string" }
+        },
+        "polarityNote": {
+          "type": "string",
+          "description": "Present on the rule idioms, absent on the others: a rule condition is TRUE on the VIOLATION, so this states which state the scaffolded condition describes. Read it before adapting the condition by hand — inverting it is the single most common authoring error the idioms exist to prevent."
+        }
+      }
+    },
+    {
+      "title": "scaffold",
+      "description": "`patterns <id> --arg k=v …` — the artifact built from the idiom and auto-checked against the kernel. Returned whether the kernel accepted it or refused it; read the envelope's `valid` for the verdict.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["pattern", "spec"],
+      "properties": {
+        "pattern": {
+          "type": "string",
+          "description": "The idiom id this was scaffolded from."
+        },
+        "spec": {
+          "description": "The scaffolded artifact, in EXACTLY the shape the corresponding `add` verb consumes — so it can be piped straight into `rule add` / `computation add` / `field add`, which is what `--apply` does internally. The shape is `$ref`'d from those verbs' own input schemas rather than restated here: a restatement is invisible to every guard (it is well-formed JSON that conforms to its meta-schema and that no example executes), and this project has already shipped one that taught a form the tool refuses.",
+          "oneOf": [
+            { "$ref": "https://github.com/mbackschat/a12-dmkits/schema/add.schema.json" },
+            { "$ref": "https://github.com/mbackschat/a12-dmkits/schema/field-add.schema.json" }
+          ]
+        }
+      }
+    }
+  ],
+  "$defs": {
+    "kind": {
+      "type": "string",
+      "enum": ["rule", "computation", "field"],
+      "description": "Which artifact the idiom scaffolds, and therefore which `add` verb consumes its `spec`. `field` idioms are the field-level ALTERNATIVE to a rule — a bound or a pattern on the field itself, checked by the kernel without a rule at all."
+    },
+    "paramNames": {
+      "type": "array",
+      "description": "The parameter NAMES only, in skeleton order — the catalogue's lean projection. NOTE the key `params` carries a different type on the two routes: bare strings here, full objects in the `idiom` shape below. That is the tool's actual output and this schema describes it rather than smoothing it over; it is recorded as a discoverability smell against the verb, because a reader who learns `params` from one route will mis-read the other. Renaming this projection would be a breaking output change with its own decision.",
+      "items": { "type": "string", "description": "A parameter name; pass it as `--arg <name>=<value>`." }
+    },
+    "params": {
+      "type": "array",
+      "description": "The idiom's parameters in full, in the order the skeleton reads them. Each is passed as one `--arg <name>=<value>`.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["name", "kind", "doc"],
+        "properties": {
+          "name": { "type": "string", "description": "The `--arg` key." },
+          "kind": {
+            "type": "string",
+            "description": "What the value must be: a model path of a given field type (e.g. `number_field`, `date_field`), a bare `value` literal, or a group path. The idiom pre-flights it and refuses on stderr at exit 2 before any kernel call — so a wrong-typed argument is a usage error, never a scaffolded artifact."
+          },
+          "doc": { "type": "string", "description": "What this parameter means in the idiom." }
+        }
+      }
+    }
+  }
+}
