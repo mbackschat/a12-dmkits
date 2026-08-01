@@ -103,6 +103,78 @@ class GapLedgerTemplateGuardTest {
     }
 
     /**
+     * <b>Every LIVE open item is citable by id.</b>
+     *
+     * <p>The addressing rule (docs/CLAUDE.md "Addressing — cite by id, never by title text") exists because a
+     * heading or a title phrase moves the moment a claim sharpens, and two findings had already been cited into
+     * rot that way. It was stated for the findings docs and the ledgers alike — and then went unchecked for the
+     * ledgers, so {@code CLI-CONFORMANCE-GAPS} spent months as the one ledger carrying <em>live</em> rows with
+     * no ids at all. Nothing caught it because the sibling bullet-style ledgers had all been drained in the
+     * meantime, which made the convention look universal while it was only holding where rows happened to be
+     * new. Its seven rows could be referred to only as "the patterns payload row" — exactly the citation the
+     * rule forbids, in the ledger most actively being worked.
+     *
+     * <p>The check is deliberately shape-tolerant: an item may be an {@code ### IAG9 — } / {@code ### CG3 — }
+     * heading, a {@code - **IG9 — …**} bullet, or a table row whose first cell is an id ({@code FEATURE-GAPS}
+     * uses that). What it refuses is an open item with <em>no</em> id in any of those positions, because that
+     * is the one shape nobody can cite. A new ledger inventing a fourth id-bearing shape adds a branch here;
+     * it does not get to omit the id.
+     */
+    @Test
+    void everyLiveOpenItemCarriesAnIdentifier() throws IOException {
+        List<String> unidentified = new ArrayList<>();
+        for (Path ledger : ledgers()) {
+            unidentified.addAll(auditIds(ledger.getFileName().toString(), Files.readString(ledger)));
+        }
+        assertTrue(unidentified.isEmpty(), () -> "these OPEN gap items carry no identifier, so they can only be "
+                + "cited by title text — the rot docs/CLAUDE.md's addressing rule exists to prevent. Give each an "
+                + "`### <FAM><n> — <title> <a id=\"famN\"></a>` heading (or an id-first table cell) and register "
+                + "the family in that table:\n  " + String.join("\n  ", unidentified));
+    }
+
+    /** Does-fire proof for the id check, on the exact shapes the estate uses. */
+    @Test
+    void theIdGuardFiresOnAnUnidentifiedOpenItem() {
+        String bulletNoId = "# x — gaps\n\n## 1. Open\n\n- **The matrix cannot fail on a false description.** body\n";
+        String bulletWithId = "# x — gaps\n\n## 1. Open\n\n- **IG9 — a real open gap** body\n";
+        String headingWithId = "# x — gaps\n\n## 1. Open\n\n### CG3 — a titled row <a id=\"cg3\"></a>\n\nbody\n";
+        String tableWithId = "# x — gaps\n\n## 1. Open\n\n| id | gap |\n|---|---|\n| F4 | something |\n";
+
+        assertTrue(!auditIds("bare.md", bulletNoId).isEmpty(),
+                "a bold-claim bullet with no id is the shape that went unchecked — it must fire");
+        assertTrue(auditIds("b.md", bulletWithId).isEmpty(), "an id-led bullet is citable");
+        assertTrue(auditIds("h.md", headingWithId).isEmpty(), "an id-led heading is citable");
+        assertTrue(auditIds("t.md", tableWithId).isEmpty(), "an id-first table row is citable");
+    }
+
+    /** One violation per open item that carries no id in any of the three accepted positions. */
+    private static List<String> auditIds(String name, String markdown) {
+        List<String> out = new ArrayList<>();
+        String[] lines = markdown.split("\n", -1);
+        boolean inOpen = false;
+        for (int i = 0; i < lines.length; i++) {
+            String line = lines[i];
+            if (line.startsWith("## ")) {
+                inOpen = line.matches("^## \\d*\\.?\\s*Open\\b.*");
+                continue;
+            }
+            if (!inOpen) {
+                continue;
+            }
+            boolean isItem = line.startsWith("### ") || line.startsWith("- **")
+                    || (line.startsWith("| ") && !line.contains("---") && !line.matches("^\\|\\s*id\\s*\\|.*"));
+            if (isItem && !ID.matcher(line).find()) {
+                out.add(name + ":" + (i + 1) + "  " + line.substring(0, Math.min(88, line.length())));
+            }
+        }
+        return out;
+    }
+
+    /** An id in any accepted position: a heading/bullet lead, or a table's first cell. */
+    private static final java.util.regex.Pattern ID =
+            java.util.regex.Pattern.compile("(^### |^- \\*\\*|^\\| ?)\\*?\\*?[A-Z]{1,4}\\d+\\b");
+
+    /**
      * Does-fire proof against fabricated ledgers, exercising {@link #audit(String, String)} — the same
      * method the real check calls. An empty section without the marker must fire; a section with items and
      * a section with the marker must not.

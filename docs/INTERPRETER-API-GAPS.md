@@ -18,7 +18,7 @@ The canonical-pointer utility is published on Kotlin/JVM and Kotlin/JS (`interpr
 
 ### IAG10 — a typed pointer on the MESSAGE channel must model A12's partially-known type, not our exact one <a id="iag10"></a>
 
-A recurring suggestion for the pointer-form question (`CLI-CONFORMANCE-GAPS` §1) is to stop publishing a string and expose a **typed** pointer that can render either spelling on demand. Reaching for the type we already have would break the project's #1 interop rule, and this row exists so that is decided before someone does it.
+A recurring suggestion for the pointer-form question ([CG5](CLI-CONFORMANCE-GAPS.md#cg5)) is to stop publishing a string and expose a **typed** pointer that can render either spelling on demand. Reaching for the type we already have would break the project's #1 interop rule, and this row exists so that is decided before someone does it.
 
 `A12Pointer` (`interpreter … A12PointerFormat.kt`) documents itself as **exact** — "This type models the EXACT pointer only, and the distinction is load-bearing" — and its position rule for `[0]` is the exact pointer's. A12's message channel is a **different type**: kernel `IMessage` returns `PartiallyKnownDocumentMultiPointer`, carrying `fullName()` plus `repetitionIndexes()` and admitting wildcard/unknown indices, and A12 publishes that structure rather than two string properties. So a typed message pointer is `PartiallyKnownDocumentMultiPointer`-shaped, not `A12Pointer`-shaped, and reusing the exact type would be inventing a shape where A12 has one — precisely what CLAUDE.md's first interop rule forbids, and the same class as the retired `DocumentInputV1` placement transport.
 
