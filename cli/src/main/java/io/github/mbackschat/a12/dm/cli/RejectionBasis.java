@@ -4,7 +4,7 @@ import io.github.mbackschat.a12.dm.core.Verification;
 
 /**
  * <b>Who</b> rejected the input — the fact that decides whether a {@code rejected} envelope carries a verdict and
- * its provenance (RESULT-CONTRACT-PROPOSAL §2/§3). Two kinds, and they are not interchangeable:
+ * its provenance (CLI-SPEC §3b "The result envelope"). Two kinds, and they are not interchangeable:
  *
  * <ul>
  *   <li>{@link KernelRejection} — the consistency gate ran and refused. The kernel <em>arbitrated this

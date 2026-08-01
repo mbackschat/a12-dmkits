@@ -19,7 +19,7 @@ import org.junit.jupiter.api.Test;
  * stay identical — it stayed identical until someone edited one of them. Threading the gate receipt had to visit
  * every copy; before that, the sibling gate-rejection mapping had drifted into three versions, each having lost
  * something different, and the branch all three got wrong was the one carrying no notifications
- * (RESULT-CONTRACT-PROPOSAL §1d item 19). Collapsing the duplication removes today's drift; only a guard stops it
+ * (docs/archived/RESULT-CONTRACT-PROPOSAL.md §1d item 19). Collapsing the duplication removes today's drift; only a guard stops it
  * growing back one command at a time, which is exactly how it arrived.
  *
  * <p>The check is a source scan, which is the weaker kind of evidence — it sees what is written, not what runs. It

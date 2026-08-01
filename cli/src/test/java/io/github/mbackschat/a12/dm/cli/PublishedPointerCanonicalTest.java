@@ -25,7 +25,7 @@ import io.github.mbackschat.a12.dm.interpreter.A12PointerFormat;
 
 /**
  * Every pointer dmtool <b>publishes as canonical A12</b> really is one, over live runtime output
- * (RESULT-CONTRACT-PROPOSAL §4).
+ * (CLI-SPEC §5 "Runtime output addresses cells by canonical A12 pointer").
  *
  * <p><b>The key set is derived from the schemas, not authored here.</b> Each published pointer carries
  * {@code "format": "a12-pointer"}, so this walks the schemas, collects the marked properties, and holds the live

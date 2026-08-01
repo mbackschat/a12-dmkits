@@ -17,7 +17,7 @@ import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel;
 
 /**
  * A review artefact must carry the receipt of the gate that <em>actually</em> ran, on the same basis as
- * {@link BoundModel#consistencyGate()} (RESULT-CONTRACT-PROPOSAL §3).
+ * {@link BoundModel#consistencyGate()} (CLI-SPEC §3b "The result envelope").
  *
  * <p>Both artefacts were used by the CLI as witnesses-by-type — "holding a report proves the gate ran, so only
  * the mode has to be read from the environment". Two things were wrong with that. The <b>mode</b> came from

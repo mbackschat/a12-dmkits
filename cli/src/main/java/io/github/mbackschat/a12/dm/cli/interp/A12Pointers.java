@@ -7,7 +7,7 @@ import io.github.mbackschat.a12.dm.interpreter.A12PointerFormat;
 
 /**
  * The one seam where a runtime pointer becomes <b>published</b> output — and therefore the one place it takes A12's
- * canonical form (RESULT-CONTRACT-PROPOSAL §4).
+ * canonical form (CLI-SPEC §5 "Runtime output addresses cells by canonical A12 pointer").
  *
  * <p><b>Two renderings exist on purpose, and only one of them is a contract.</b> The interpreter's own
  * {@code formatPointer} writes a house form — leading slash, {@code [1]} spelled out on every group segment:

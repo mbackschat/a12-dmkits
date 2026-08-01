@@ -13,7 +13,7 @@ import org.junit.jupiter.api.io.TempDir;
 
 /**
  * {@code patterns <id> --arg …} without {@code --apply} is a <b>verdict</b> route, so a scaffold the kernel
- * rejects exits <b>1</b> — the declared break (RESULT-CONTRACT-PROPOSAL §7). Before the typed result algebra this
+ * rejects exits <b>1</b> — the declared break (CLI-SPEC §3b "The result envelope"). Before the typed result algebra this
  * verb printed a raw node and always exited 0, and the change shipped with nothing asserting it: the valid path
  * was locked, the rejected path was not, so the exit code the break is *about* was untested in both directions.
  *

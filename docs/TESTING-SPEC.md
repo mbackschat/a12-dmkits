@@ -171,6 +171,26 @@ Rather than discover kernel constraints by tripping over them, these sweep the k
 
 When any of these fails after a kernel bump, [`KERNEL-UPGRADE.md`](KERNEL-UPGRADE.md) maps the failure to its meaning and realignment.
 
+## A guard must be able to fail — the vacuity shapes, and the two habits that avoid them
+
+The 2026-07/08 result-contract work produced **six** guards that were green because they *could not fail*, several written by the same author who had just documented the previous one. They are collected here because the shapes recur, they read as coverage, and only a deliberate attempt to break the guard exposes them.
+
+| shape | the instance | why the green meant nothing |
+|---|---|---|
+| **presence-shaped, not property-shaped** | `CliConformanceMatrixTest`'s columns were all `assertFalse(...isBlank())` / `hasNonNull` / exit-0 | a *false* description passes as easily as a true one; only a *missing* one fails |
+| **filtered before it counted** | `CatalogExamplesAreKernelValidTest` filters `e.invalidExample() != null` | a `@TestFactory` that filters before generating produces no test to skip, so "0 skipped" is structurally always true — and a **missing** example is the thing that needed catching |
+| **enforcement stopped at a `$ref`** | `SpecKeys` had no `$ref` handling, so a node consisting of one yielded "nothing to enforce" | silently unenforced in 9 of 28 bundled schemas — the walk terminated where the content began |
+| **the oracle was the implementation** | the pointer column asserted `value.equals(A12Pointers.canonical(value))` | neuter the converter and every assertion is trivially true — green in exactly the scenario it was written for |
+| **phrased in terms of the shape it was catching** | the `--text` guard asked "is this the JSON *envelope*", to catch verbs that emit something else | a bare array and a bespoke object both answer *no* and satisfy it — the two shapes it existed to reject |
+| **scoped to a surface the defect avoids** | receipt-totality ran over demonstrated branches; the three offending verbs are demonstrated without `-o` | totality over the demonstrations is not totality |
+
+Two habits, both cheap:
+
+1. **Break the fix and re-run — every new guard, no exceptions.** Neuter the production function, re-introduce the shape, empty the input tree; a guard that stays green is not a guard. This caught the self-oracle above *before* it shipped, and it is the only technique on this list that catches a shape nobody has named yet.
+2. **Derive the denominator from a live source; never enumerate it by hand.** Hand-kept sets fail exactly when something new is added, which is when the guard is needed. `WitnessTypesAreUnforgeableTest` reads the witness set from `ConsistencyEvidence`'s own `of(…)` signatures and immediately found a receipt type nobody had listed; `DemoOutputIsRealTest` reads every block in `examples/`. Where a set genuinely must be listed (a reasoned exemption), **guard the ledger too** — assert every row still names something real, so a stale exemption fails instead of quietly widening the hole.
+
+A corollary on **denominator assertions**: guarding against an empty scan is right (`assertTrue(found > 50)`), but asserting that a *violation* still exists is not — it turns a clean surface into a failure and pressures the next author to delete the guard. Put the positive control on the **scanner** instead (`VerbDemonstrationTest.theClaimScannerRecognisesTheFormThatWentStale`), so a clean surface stays green while the machinery is still proven to work.
+
 ## CLI self-describing surface & conformance ([`CLI-CONFORMANCE-SPEC.md`](CLI-CONFORMANCE-SPEC.md))
 
 The `dmtool` CLI is the agent's entire interface (the N6 eval drives the bare binary), so it must be **self-describing** — an agent discovers the verbs, their params, each verb's I/O shape, and a worked example *in action*, all *from the tool* — and **diagnostic** — a misuse returns a structured, corrective envelope, never a bare stack trace or terse exit. These tests enforce both, and most are **derived from the live picocli command tree**, so they can't drift from the actual verbs:
@@ -236,6 +256,8 @@ The `examples/*.md` files are **runnable CLI demos**: each interleaves prose, a 
 **Two levers, because the showboat gate is CI-only:**
 - **CI** runs `scripts/verify-demos.sh` (`.github/workflows/ci.yml`) — the **same** script developers run locally, and the authoritative drift gate. It builds the launcher, **discovers** every `examples/*.md` demo (so the set can't drift from a hand-kept CI list), and `uvx showboat@0.6.1 verify`s them **in parallel** (bounded by `VERIFY_JOBS`, default 6).
 - **A high-churn value a demo *pins* can still drift in a *local* commit with CI red but unnoticed** (it happened — two new `RkCode`s shifted the tour's `diagnostics` count 31→33). So every live-derived value a demo pins also gets a **local `:cli:test` lock**: the verb list in `ManifestVerbTest.EXPECTED_VERBS`, and the `diagnostics` count + `manifest` list + `schema rule add` keys in `CliTourFreshnessTest` (runs the real verb in-process, fails naming the regen command). Add such an inner-loop guard whenever a demo starts pinning a new live value.
+
+**`showboat verify` proves the capture is CURRENT, never that the demo WORKS — so it has a second guard (2026-08-01).** The gate diffs each block's output against what is committed, and **a captured error re-runs identically**. Regenerating the demos after a breaking output change duly wrote `jq: error (at <stdin>:66)` into `cli-edit-loop.md` *as the expected output*, and the gate stayed green over it for a full phase while the prose beneath described verdicts the command never printed. `DemoOutputIsRealTest` asks the other question: no captured block may contain a **pipeline tool failure** (a `jq` error, a stack trace, `command not found`), and every `null` in a demo must be named in its ledger with the reason it is real — because a projection whose key moved is textually identical to a key that is legitimately absent, and four stale filters were hiding among five genuine nulls. Run the two together: one keeps the capture honest about the tool, the other keeps it a demonstration.
 
 Audience note: these are **not** for cold-agent discoverability — the N6 eval agent never sees `examples/` (that's the self-describing surface's job). They serve the **CI drift-guard** and a **repo-equipped reader** learning a verb end to end.
 

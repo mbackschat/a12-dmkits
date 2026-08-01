@@ -14,7 +14,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
 /**
- * A write states its provenance, end to end through the binary (RESULT-CONTRACT-PROPOSAL §2).
+ * A write states its provenance, end to end through the binary (CLI-SPEC §3b "The result envelope").
  *
  * <p>{@code verification} answers "who arbitrated this invocation". The edit verbs put the model through the real
  * consistency oracle <em>before</em> writing — that is what makes a bad edit fail instead of corrupting the file —

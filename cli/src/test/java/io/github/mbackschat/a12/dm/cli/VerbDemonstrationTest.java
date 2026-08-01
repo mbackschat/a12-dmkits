@@ -149,7 +149,7 @@ class VerbDemonstrationTest {
     }
 
     /**
-     * <b>{@code --text} totality</b> (RESULT-CONTRACT-PROPOSAL §5): every envelope-producing verb renders human
+     * <b>{@code --text} totality</b> (CLI-SPEC §3b "The result envelope"): every envelope-producing verb renders human
      * text under {@code --text}, over the whole demonstrated surface rather than the three crafted envelopes
      * {@code TextRendererDispatchTest} pins at the renderer boundary.
      *
@@ -325,7 +325,7 @@ class VerbDemonstrationTest {
     }
 
     /**
-     * <b>Verdict provenance</b> (RESULT-CONTRACT-PROPOSAL §2): {@code valid} appears only where a verdict route
+     * <b>Verdict provenance</b> (CLI-SPEC §3b "The result envelope"): {@code valid} appears only where a verdict route
      * produced it. This is the column for the defect the whole contract exists to remove — 35 call sites passed a
      * literal {@code boolean valid}, and seven verbs were measured reporting {@code valid:true} on a model the
      * kernel rejects.
@@ -354,7 +354,7 @@ class VerbDemonstrationTest {
             java.util.Set.of("model check", "rule check", "workspace check", "patterns scaffold");
 
     /**
-     * <b>Receipt totality</b> (RESULT-CONTRACT-PROPOSAL §2): a mutation that ran the consistency oracle must say
+     * <b>Receipt totality</b> (CLI-SPEC §3b "The result envelope"): a mutation that ran the consistency oracle must say
      * so, over the 31 preview demos rather than the handful anyone thought to write a test for.
      *
      * <p>This column exists because the evidence type makes a <em>wrong</em> claim unrepresentable but leaves

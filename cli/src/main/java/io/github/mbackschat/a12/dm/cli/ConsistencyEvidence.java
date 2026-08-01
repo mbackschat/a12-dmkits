@@ -17,7 +17,7 @@ import io.github.mbackschat.a12.dm.rulekit.validate.ValidationResult;
 
 /**
  * A <b>receipt</b> that a consistency gate ran in <em>this</em> invocation — the only thing from which a verb may
- * publish the envelope's {@code verification} key (RESULT-CONTRACT-PROPOSAL §3).
+ * publish the envelope's {@code verification} key (CLI-SPEC §3b "The result envelope").
  *
  * <p><b>Why a type and not a {@code Verification} argument.</b> {@code verification} answers "how was this
  * invocation's verdict arbitrated", so it may only be emitted where a gate actually ran. Passing a bare

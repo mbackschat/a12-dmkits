@@ -346,7 +346,7 @@ final class KernelEval {
     /**
      * The kernel side of a CLI-level differential must be projected the way the <b>CLI</b> publishes, not the way
      * the interpreter renders internally — otherwise both sides get the same lossy projection and agree by
-     * construction (RESULT-CONTRACT-PROPOSAL §1c names this as one of the three harnesses that defended the defect
+     * construction (docs/archived/RESULT-CONTRACT-PROPOSAL.md §1c names this as one of the three harnesses that defended the defect
      * rather than catching it). So this renders canonical A12, through the same boundary converter the CLI uses.
      */
     private static String pointer(FieldPointer p) {

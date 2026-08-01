@@ -19,7 +19,7 @@ import io.github.mbackschat.a12.dm.rulekit.validate.Diagnostic;
  * <p><b>Why collapse it at all.</b> The duplication is the kind that has already cost twice. Threading the gate
  * receipt had to visit every copy; before that, the gate-rejection mapping lived in three places and each copy had
  * lost something different — and the branch they all got wrong was the one carrying no notifications, because a
- * branch with nothing in it is the branch nobody notices (RESULT-CONTRACT-PROPOSAL §1d item 19). A fragment
+ * branch with nothing in it is the branch nobody notices (docs/archived/RESULT-CONTRACT-PROPOSAL.md §1d item 19). A fragment
  * repeated thirty-three times does not stay identical; it stays identical until someone edits one of them.
  *
  * <p><b>What deliberately stays at the call site:</b> {@code --dry-run} and {@code --output}. They are picocli

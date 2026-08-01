@@ -19,7 +19,7 @@ import io.github.mbackschat.a12.dm.cli.CliTestSupport;
  * {@code model report} assembles a {@code ModelReport}, which loads through the consistency gate; {@code model report
  * --tree} projects the structure and never gates. So they legitimately differ in what they may claim, and the whole
  * point of the result contract is that the difference is *derived from the executed path* rather than declared per
- * verb (RESULT-CONTRACT-PROPOSAL §1b).
+ * verb (docs/archived/RESULT-CONTRACT-PROPOSAL.md §1b).
  *
  * <p>This is the case that killed the idea of a static verb→evidence table: any such table has one row for
  * {@code model report}, and would be wrong for one of its two paths whichever way it was written. Locked here across

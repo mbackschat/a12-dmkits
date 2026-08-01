@@ -23,7 +23,7 @@ import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel;
 import io.github.mbackschat.a12.dm.rulekit.validate.Diagnostic;
 
 /**
- * The result <b>algebra</b> (RESULT-CONTRACT-PROPOSAL §2/§3): what each envelope family may and may not claim.
+ * The result <b>algebra</b> (CLI-SPEC §3b "The result envelope"): what each envelope family may and may not claim.
  *
  * <p>These are the invariants the previous shape could not hold. A {@code record} with a public canonical
  * constructor plus a {@code read(…, boolean valid, …)} factory made every combination of members constructible, and

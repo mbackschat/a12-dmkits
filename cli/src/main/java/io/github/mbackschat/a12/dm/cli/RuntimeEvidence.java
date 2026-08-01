@@ -4,7 +4,7 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 
 /**
  * Which implementation produced a <b>semantic observation</b>, and which build projected it
- * (RESULT-CONTRACT-PROPOSAL §3). Carried by the runtime verbs — {@code model eval}, {@code model compute},
+ * (CLI-SPEC §3b "The result envelope"). Carried by the runtime verbs — {@code model eval}, {@code model compute},
  * {@code rule eval} — whose output is an evaluation result rather than a verdict about a model.
  *
  * <p><b>Three keys, all required, none inferable from another.</b> {@code engine} names the evaluator;

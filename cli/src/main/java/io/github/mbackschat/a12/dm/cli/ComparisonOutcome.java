@@ -2,7 +2,7 @@ package io.github.mbackschat.a12.dm.cli;
 
 /**
  * The result of comparing two artifacts of the same kind — {@code profile compare}'s verdict
- * (RESULT-CONTRACT-PROPOSAL §2).
+ * (CLI-SPEC §3b "The result envelope").
  *
  * <p><b>Why this exists.</b> Profile equality was reported as the envelope's {@code valid}, which claims "the
  * subject model is kernel-valid". Two profiles differing says nothing about any model's validity, and no
