@@ -38,6 +38,7 @@ class WorkspacePreparationBaselineTest {
                 "/Permit/SettledAt",
                 "/Permit/SiteSections/SectionName",
                 "/Permit/SiteSections/Area",
+                "/Permit/SiteSections/SurveyCharge",
             ),
             model.fields.map { it.path }.toSet(),
         )
@@ -58,6 +59,7 @@ class WorkspacePreparationBaselineTest {
             mapOf(
                 "/Permit/CopyRequestedArea" to "/Permit/ReviewedArea",
                 "/Permit/CalculateEstimatedFee" to "/Permit/EstimatedFee",
+                "/Permit/SiteSections/ChargeSectionSurvey" to "/Permit/SiteSections/SurveyCharge",
             ),
             model.computations.associate {
                 "${it.group}/${requireNotNull(it.name)}" to it.targetPath

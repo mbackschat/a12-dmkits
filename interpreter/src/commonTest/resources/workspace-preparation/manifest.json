@@ -105,6 +105,12 @@
             "maxLength" : 60
           }
         },
+        "/Permit/SiteSections/SurveyCharge" : {
+          "type" : "NumberType",
+          "NumberType" : {
+            "maxFractionalDigits" : 0
+          }
+        },
         "/Permit/SubmittedOn" : {
           "type" : "DateType",
           "DateType" : {
@@ -414,6 +420,9 @@
             "annotations" : [ ]
           }
         },
+        "/Permit/SiteSections/ChargeSectionSurvey" : {
+          "elementType" : "Computation"
+        },
         "/Permit/SiteSections/SectionName" : {
           "elementType" : "Field",
           "facts" : {
@@ -424,6 +433,24 @@
             "max" : null,
             "minLength" : null,
             "maxLength" : 60,
+            "pattern" : null,
+            "enumValues" : null,
+            "enumCategories" : null,
+            "repeatability" : null,
+            "usageType" : null,
+            "annotations" : [ ]
+          }
+        },
+        "/Permit/SiteSections/SurveyCharge" : {
+          "elementType" : "Field",
+          "facts" : {
+            "group" : false,
+            "kind" : "NUMBER",
+            "scale" : 0,
+            "min" : null,
+            "max" : null,
+            "minLength" : null,
+            "maxLength" : null,
             "pattern" : null,
             "enumValues" : null,
             "enumCategories" : null,
@@ -578,8 +605,21 @@
           "id" : "/Permit/SiteSections/Area",
           "elementType" : "Field"
         },
+        "/Permit/SiteSections/ChargeSectionSurvey" : {
+          "id" : "/Permit/SiteSections/ChargeSectionSurvey",
+          "elementType" : "Computation",
+          "commonPrecondition" : null,
+          "alternatives" : [ {
+            "precondition" : "FieldFilled(Area)",
+            "operation" : "[Area] * 25"
+          } ]
+        },
         "/Permit/SiteSections/SectionName" : {
           "id" : "/Permit/SiteSections/SectionName",
+          "elementType" : "Field"
+        },
+        "/Permit/SiteSections/SurveyCharge" : {
+          "id" : "/Permit/SiteSections/SurveyCharge",
           "elementType" : "Field"
         },
         "/Permit/SubmittedOn" : {

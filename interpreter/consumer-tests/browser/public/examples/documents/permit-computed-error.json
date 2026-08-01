@@ -17,11 +17,13 @@
     "SiteSections": [
       {
         "SectionName": "Production hall",
-        "Area": 700
+        "Area": 700,
+        "SurveyCharge": null
       },
       {
         "SectionName": "Warehouse",
-        "Area": 300
+        "Area": 300,
+        "SurveyCharge": null
       }
     ]
   }

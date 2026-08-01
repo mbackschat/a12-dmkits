@@ -1,5 +1,6 @@
 @file:OptIn(ExperimentalJsExport::class)
 
+import io.github.mbackschat.a12.dm.interpreter.A12PointerFormat as CoreA12PointerFormat
 import io.github.mbackschat.a12.dm.interpreter.ComputationOutcome as CoreComputationOutcome
 import io.github.mbackschat.a12.dm.interpreter.ComputationReport as CoreComputationReport
 import io.github.mbackschat.a12.dm.interpreter.CustomCondition as CoreCustomCondition
@@ -115,6 +116,24 @@ class InterpreterBridgeDocumentResult internal constructor(
 class InterpreterBridgePointerResult internal constructor(
     val value: InterpreterBridgePointer?,
     val failure: InterpreterBridgeFailure?,
+)
+
+@JsExport
+class InterpreterBridgeParsedPointer internal constructor(
+    val names: Array<String>,
+    val repetitions: Array<Int>,
+)
+
+@JsExport
+class InterpreterBridgePointerFormatResult internal constructor(
+    val value: String?,
+    val rejection: String?,
+)
+
+@JsExport
+class InterpreterBridgePointerParseResult internal constructor(
+    val value: InterpreterBridgeParsedPointer?,
+    val rejection: String?,
 )
 
 @JsExport
@@ -584,6 +603,48 @@ fun interpreterBridgeLoadExpandedJson(source: String): InterpreterBridgePrepared
     } catch (error: CoreModelPreparationError) {
         InterpreterBridgePreparedModelResult(null, preparationFailure(error))
     }
+
+/**
+ * Renders A12's canonical `DocumentPointer` for [path] and its positional [repetitions].
+ *
+ * A malformed request comes back as [InterpreterBridgePointerFormatResult.rejection] rather than as a thrown
+ * `IllegalArgumentException`: it is a caller contract violation, not a model diagnostic, so it carries no code
+ * and no structured details and must not borrow [InterpreterBridgeFailure]'s diagnostic shape.
+ */
+@JsExport
+fun interpreterBridgeFormatA12Pointer(
+    path: String,
+    repetitions: Array<Int>,
+): InterpreterBridgePointerFormatResult =
+    try {
+        InterpreterBridgePointerFormatResult(CoreA12PointerFormat.format(path, repetitions.toList()), null)
+    } catch (rejected: IllegalArgumentException) {
+        InterpreterBridgePointerFormatResult(null, rejected.message.orEmpty())
+    }
+
+/** Parses a canonical or leading-slash pointer; see [interpreterBridgeFormatA12Pointer] on the rejection shape. */
+@JsExport
+fun interpreterBridgeParseA12Pointer(pointer: String): InterpreterBridgePointerParseResult =
+    try {
+        val parsed = CoreA12PointerFormat.parse(pointer)
+        InterpreterBridgePointerParseResult(
+            InterpreterBridgeParsedPointer(
+                parsed.names.toTypedArray(),
+                parsed.repetitions.toTypedArray(),
+            ),
+            null,
+        )
+    } catch (rejected: IllegalArgumentException) {
+        InterpreterBridgePointerParseResult(null, rejected.message.orEmpty())
+    }
+
+/** A12's `RepetitionsV2` slot repetition, legal only on an exact pointer's last part. */
+@JsExport
+fun interpreterBridgeA12LastPartZero(): Int = CoreA12PointerFormat.LAST_PART_ZERO
+
+/** A12's unknown repetition (`IIdentifier.UNKNOWN`), legal at any part of an exact pointer. */
+@JsExport
+fun interpreterBridgeA12UnknownRepetition(): Int = CoreA12PointerFormat.UNKNOWN_REPETITION
 
 private fun interpreterConfiguration(
     customFieldTypes: Array<InterpreterBridgeCustomFieldTypeRegistration>,

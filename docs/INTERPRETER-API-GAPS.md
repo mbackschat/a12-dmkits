@@ -4,17 +4,9 @@
 >
 > **Lifecycle.** A shipped gap is deleted. Its stable contract graduates into [INTERPRETER-API-SPEC](INTERPRETER-API-SPEC.md) in the same commit, while git and an appropriate numbered finding retain the history and rationale.
 
-> **Current state.** The public v1 surface, browser qualification, anonymous publication, and computation diagnostics are complete as IF224–IF226 and IF241. §1 is drained; §2 tracks later API products.
+> **Current state.** The public v1 surface, browser qualification, anonymous publication, and computation diagnostics are complete as IF224–IF226 and IF241. §1 carries three rows, all on the same seam: whether the published pointer surface is A12's *exact* type or its *partially-known* one (IAG10), whether the house rendering earns a published renderer (IAG11), and what `A12PointerFormat`'s accepted repetition domain actually is (IAG12) — the last of which gates npm publication. §2 tracks later API products.
 
 ## 1. Open
-
-### IAG9 — `A12PointerFormat` is not on the npm surface <a id="iag9"></a>
-
-The canonical-pointer utility is published on Kotlin/JVM and Kotlin/JS (`interpreter.api`, `interpreter.klib.api`) but is absent from `interpreter/typescript/src/index.ts` and from `typescript.api`. A TypeScript consumer therefore cannot convert between the house form the reports carry (`/Order[1]/Items[2]/Count`) and A12's canonical form (`Order/Items[2]/Count`), nor parse either — the exact conversion `INTERPRETER-API-SPEC` now tells it to make.
-
-**How it surfaced, which is the part worth keeping:** our *own* browser consumer test hit the gap and worked around it. `consumer-tests/browser/src/qualification.ts:124-138` hand-rolls a `formattedPointer()` that reproduces `eval/Pointer.kt` byte-for-byte — a clone maintained by nobody, in a test whose job is to prove the published surface is usable. A consumer test that has to reimplement a published utility is reporting a hole in the surface, not solving one.
-
-**What settles it:** export the utility from the npm package and add it to `typescript.api`, then delete the clone and have the qualification test use the real thing. Small, but it is a *surface* addition to a released package, so it wants a deliberate decision on the exported name and whether `parse`'s error type is part of the TS contract. Found 2026-08-01 while auditing the interpreter API against the dmtool pointer work.
 
 ### IAG10 — a typed pointer on the MESSAGE channel must model A12's partially-known type, not our exact one <a id="iag10"></a>
 
@@ -24,8 +16,28 @@ A recurring suggestion for the pointer-form question ([CG5](CLI-CONFORMANCE-GAPS
 
 **The live tension that makes this concrete, and it is ours:** `A12Pointer` calls itself exact yet accepts `UNKNOWN_REPETITION` (`-5`, `IIdentifier.UNKNOWN`) **at any part**, because the kernel renders such pointers itself (`…/Demand[-5]/Headcount`) and we must read them back. That acceptance is deliberate and source-verified against kernel 30.8.1 — it is *not* a defect in current behaviour — but it means the type already straddles exact and partially-known, which is exactly the seam a typed-message proposal has to resolve rather than paper over. Note the near-miss history: this file previously called `0` "the wildcard" while enforcing the exact rule, and that vocabulary borrow led a findings entry to declare a correct, test-locked refusal a defect.
 
-**What settles it:** before any typed-pointer surface is designed, state which A12 type each published channel corresponds to — exact `DocumentPointer` for model/instance addressing, `PartiallyKnownDocumentMultiPointer` for message addressing — and cite the kernel counterpart for each. Only then is the rendering question answerable. Raised 2026-08-01 by a review of the pointer-form decision; **not** a prerequisite for IAG9, which adds no type.
+**What settles it:** before any typed-pointer surface is designed, state which A12 type each published channel corresponds to — exact `DocumentPointer` for model/instance addressing, `PartiallyKnownDocumentMultiPointer` for message addressing — and cite the kernel counterpart for each. Only then is the rendering question answerable. Raised 2026-08-01 by a review of the pointer-form decision.
 
+  **Widened 2026-08-01 — no longer hypothetical, and it now GATES npm publication.** The row was written about a *future* typed pointer; the same day, `A12Pointer` was exported from the npm package, so the undecided type is on a published surface. A second review executed the packed consumer and read the kernel source: the interface's own doc comment says **exact**, yet `parse("Order/Demand[-5]/Headcount")` yields `{names, repetitions:[1,-5,1]}` — a value A12's exact `DocumentPointer` constructor would refuse, while A12's message-channel owner (`PartiallyKnownDocumentMultiPointer`) models the same information as `fullName()` plus `repetitionIndexes()` and admits both the wildcard `0` and the unknown `-5`. So the exported shape currently matches **neither** A12 type exactly, which is the interop rule's failure mode rather than a naming quibble. **Decide before the package is published**: either the surface is exact (and `-5` needs its own channel or type) or it is partially-known (and it should carry A12's structure and be named for it). The npm export is committed but unpublished, so this is still cheap; after a publish it is a breaking change to a released package. Note what is *not* at issue: the accepted domain is enforced identically on both entry points — the question is whether that domain is the right one to publish, not whether it is applied consistently.
+
+### IAG11 — the house pointer form has no published renderer <a id="iag11"></a>
+
+The reports emit the interpreter's house pointer form in `ValidationFinding.errorPath`, `referenced`, and `fillToFix` (`/Order[1]/Items[2]/Count`), and the conformance corpus and the `:adapter` differential use that same string as their shared comparison key. Nothing renders it: `eval.formatPointer` is in an engine package the ABI filter excludes, so no target — JVM, Kotlin/JS, or npm — publishes a way to *produce* it from a `path` plus `coordinates`. `A12PointerFormat` renders A12's canonical form, which omits `[1]`, and therefore cannot.
+
+**What it blocks, concretely:** `consumer-tests/browser/src/qualification.ts` replays the committed corpus through the *published* surface only, so it must build the corpus key itself. Exporting `A12PointerFormat` to npm removed the parsing and the legality checks from that local helper — `corpusPointerKey` now derives both from the published utility — but the final join is still local, because no published call renders it. This was originally read as "the clone reproduces the published utility"; it does not. The clone reproduces the house form, which is a *different* rendering that happens to be unpublished.
+
+**Why it is not simply "publish it":** the two renderings' convergence is an open owner decision ([CG5](CLI-CONFORMANCE-GAPS.md#cg5)). Adding a second published renderer commits the released package to the house form as a first-class exported concept, and if the forms converge it becomes dead API on a shipped surface. The cheap alternative — canonicalizing both sides of the corpus comparison — was rejected because it would make the browser harness's key differ from the JVM/Node harnesses' and print pointers that no longer match the corpus files a reader is diffing against.
+
+**What would settle it:** the convergence decision. If the forms converge, this gap closes with them. If they stay separate, the house form earns a published renderer beside `A12PointerFormat` on all three surfaces, and the browser helper is deleted. Opened 2026-08-01 while exporting `A12PointerFormat` to npm, as **IAG10**; renumbered to IAG11 the same day after a review found that id already taken by the row above — see "Retired ids" below.
+
+## Retired ids
+
+Every `IAG<n>` ever issued that has no live row above, so a citation of one resolves here and **no number is ever reused**. `GapLedgerTemplateGuardTest` enforces both halves: a live id may not appear in this list, and a new row's number must exceed every number in either list. Reuse is what made this section necessary — `IAG9` named two unrelated gaps at different times, and six live citations across the repo could not be told apart.
+
+| id | what it meant | disposition |
+|---|---|---|
+| IAG9 | the native public computation report should retain the Kernel's two explanatory error channels while keeping validation's public finding projection | shipped 2026-07-31 → [IF241](INTERPRETER-FINDINGS.md#if241); locked by `adapter … laws/PublicComputationDiagnosticsDiffTest` |
+| IAG9 *(reused — the defect this section exists to prevent)* | `A12PointerFormat` was published on Kotlin/JVM and Kotlin/JS but not exported from the npm package | shipped 2026-08-01; the export, its bridge, and `typescript.api` landed together. Cited as "IAG9" in `INTERPRETER-API-SPEC` and `CLI-CONFORMANCE-GAPS` until both were corrected to name the work instead of the number |
 
 ## 2. Deferred — with re-open triggers
 

@@ -17,11 +17,13 @@
     "SiteSections": [
       {
         "SectionName": "Main building",
-        "Area": 60
+        "Area": 60,
+        "SurveyCharge": null
       },
       {
         "SectionName": "Access corridor",
-        "Area": 20
+        "Area": 20,
+        "SurveyCharge": null
       }
     ]
   }

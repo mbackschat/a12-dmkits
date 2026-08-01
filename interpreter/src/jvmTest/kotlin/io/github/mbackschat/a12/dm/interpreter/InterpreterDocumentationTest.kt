@@ -41,6 +41,12 @@ class InterpreterDocumentationTest {
             "ts",
         ),
         SnippetLock(
+            "interpreter-typescript-pointer",
+            "docs/INTERPRETER-API-GUIDE.md",
+            "interpreter/consumer-tests/typescript/src/index.ts",
+            "ts",
+        ),
+        SnippetLock(
             "interpreter-typescript-provider",
             "docs/INTERPRETER-API-GUIDE.md",
             "interpreter/consumer-tests/typescript/src/guide-provider.ts",

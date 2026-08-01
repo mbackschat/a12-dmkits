@@ -127,6 +127,8 @@ The Pages root links the browser showcase, rendered developer guide, TypeScript 
 
 The browser showcase is a real consumer of the packed TypeScript artifact. It supports built-in and locally selected workspaces and Documents, include/typedef resolution, full or partial validation, computation, provider failures, integrity and cancellation diagnostics, repeated operations over one prepared model/interpreter, and opt-in offline Cache Storage.
 
+A built-in scenario **demonstrates a repeated computed field**, not only repeatability-1 targets: the permit model charges every site-section row its own survey fee, so `compute` returns several results carrying the same `pointer.path`. Beside each raw `pointer` object the page renders the joined canonical A12 pointer from the published `A12PointerFormat`, because coordinates shown as a separate array do not identify a row to a reader. Demonstrating a capability the corpus already locks is a distinct obligation from having it: a walkthrough that runs is not a walkthrough that shows the thing.
+
 The showcase displays the package version and exact A12 Kernel/A12 Tools semantics target from release metadata generated from the repository's version and semantics pins. The Chrome showcase gate asserts the rendered values, and the Pages showcase tree for a release must match that release's immutable `dm-interpreter-<version>-showcase.zip` asset.
 
 Selected user files remain local to the browser. The static site loads no remote font, analytics, advertising, or social embed, sets no cookie, and performs no explicit client-storage write before the user opts into offline use. The site-specific privacy notice names the actual operator and GitHub Pages host.
@@ -139,7 +141,7 @@ Before staging a release, the source checkout must pass:
 
 - JVM and Node interpreter tests;
 - Kernel-backed adapter differentials required by changed semantics;
-- reviewed Kotlin/JVM, Kotlin/KLIB, and TypeScript ABI locks;
+- reviewed Kotlin/JVM, Kotlin/KLIB, and TypeScript ABI locks — all three **member-level**, so a removed function, a changed signature, or a dropped property fails the build on every published surface. That depth is not automatic. Kotlin's ABI validation applies its `byNames` include filter *per declaration* on a KLIB and *per class* on the JVM, and a `byNames` pattern never crosses a `.`; a root-package-only include therefore kept JVM members while reducing the KLIB dump to bare type headers, and it dropped every nested public type (each `Companion`, each `Builder`, each sealed subclass) from the JVM dump as well. No pattern can admit `…interpreter.Foo.bar` while rejecting `…interpreter.eval.Baz` — the two are the same shape — so the release contract is expressed as **the whole tree minus the engine packages**, with those packages derived from the production source layout rather than listed by hand. `InterpreterAbiGoldenDepthTest` fails the build if a golden goes shallow again, or if the subtraction is ever widened into an engine package to make it deeper;
 - exact npm and Maven file/dependency allowlists;
 - purity, source-map, secret, path, and license checks;
 - standalone Kotlin/JVM, Kotlin/JS, TypeScript/Node, and packed-browser consumers;

@@ -17,11 +17,13 @@
     "SiteSections": [
       {
         "SectionName": "Retail floor",
-        "Area": 75
+        "Area": 75,
+        "SurveyCharge": null
       },
       {
         "SectionName": "Storage area",
-        "Area": 50
+        "Area": 50,
+        "SurveyCharge": null
       }
     ]
   }

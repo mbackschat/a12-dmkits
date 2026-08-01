@@ -1,6 +1,7 @@
 import {readFileSync} from "node:fs";
 
 import {
+  A12PointerFormat,
   DocumentCoordinateError,
   DocumentInputError,
   InterpreterIntegrationError,
@@ -203,6 +204,63 @@ try {
   throw new Error("retained computation accepted a foreign model owner");
 } catch (error) {
   if (!(error instanceof ModelOwnerMismatchError)) {
+    throw error;
+  }
+}
+
+const perRowComputation = interpreter.compute(prepared.documents.readDocument({
+  Permit: {
+    ApplicationNo: "P-1",
+    SiteSections: [
+      {SectionName: "Retail floor", Area: 75},
+      {SectionName: "Storage area", Area: 50},
+    ],
+  },
+}));
+const perRowCharges = perRowComputation.results.filter(
+  ({pointer}) => pointer.path === "/Permit/SiteSections/SurveyCharge",
+);
+const reportedErrorPath = validation.findings[0]?.errorPath ?? "";
+
+// tag::interpreter-typescript-pointer[]
+// A computation inside a repeatable group reports one result per row, all under the SAME `pointer.path`.
+// `A12PointerFormat.format` joins path and coordinates into A12's canonical pointer, so each row becomes
+// addressable; `parse` reads back the house form (`/Permit[1]/Note`) that the reports' paths carry.
+const identifiedRows = perRowCharges.map(({pointer, value}) =>
+  `${A12PointerFormat.format(pointer.path, pointer.coordinates)}=${value}`);
+const errorCell = A12PointerFormat.parse(reportedErrorPath);
+// end::interpreter-typescript-pointer[]
+
+if (perRowCharges.length !== 2 ||
+    identifiedRows.join(",") !==
+      "Permit/SiteSections/SurveyCharge=1875,Permit/SiteSections[2]/SurveyCharge=1250") {
+  throw new Error("a repeated computed target did not carry one identified result per row");
+}
+if (errorCell.names.join("/") !== "Permit/Note" ||
+    errorCell.repetitions.join(",") !== "1,1" ||
+    A12PointerFormat.format(
+      errorCell.names.join("/"),
+      errorCell.repetitions,
+    ) !== "Permit/Note") {
+  throw new Error("the pointer utility did not convert the house form it was given");
+}
+if (A12PointerFormat.LAST_PART_ZERO !== 0 ||
+    A12PointerFormat.UNKNOWN_REPETITION !== -5) {
+  throw new Error("the pointer utility does not publish A12's reserved repetitions");
+}
+try {
+  A12PointerFormat.parse("Permit/SiteSections[0]/Area");
+  throw new Error("the pointer utility accepted a non-final zero repetition");
+} catch (error) {
+  if (!(error instanceof TypeError)) {
+    throw error;
+  }
+}
+try {
+  A12PointerFormat.format("/Permit/Note", [1]);
+  throw new Error("the pointer utility accepted a coordinate count it cannot pair");
+} catch (error) {
+  if (!(error instanceof TypeError)) {
     throw error;
   }
 }

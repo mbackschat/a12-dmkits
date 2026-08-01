@@ -1,6 +1,7 @@
 import {
   type A12Document,
   type A12DocumentGroup,
+  A12PointerFormat,
   type ComputationResult,
   ModelWorkspace,
   type PreparedModel,
@@ -80,7 +81,7 @@ const stringFieldPathsOf = (json: string): ReadonlySet<string> => {
 };
 
 /**
- * The document's FILLED cells, keyed by canonical pointer — the input side the kernel's compute reporting
+ * The document's FILLED cells, keyed by the corpus pointer key — the input side the kernel's compute reporting
  * granularity is diffed against (a value equal to its seeded input is not reported as a change).
  *
  * This walks the document the case already carries; it does not re-implement A12's shape. The converter that
@@ -106,7 +107,7 @@ const seededCells = (document: A12Document): ReadonlyMap<string, string> => {
       } else if (value !== null && typeof value === "object") {
         walk(value as A12DocumentGroup, childPath, [...reps, 1]);
       } else if (value !== null && value !== "") {
-        seeded.set(formattedPointer(childPath, [...reps, 1]), String(value));
+        seeded.set(corpusPointerKey(childPath, [...reps, 1]), String(value));
       }
     }
   };
@@ -121,20 +122,28 @@ const validationSignature = (
     finding.type === "omission" ? "OMISSION_ERROR" : "VALUE_ERROR"
   }|${finding.errorPath}`;
 
-const formattedPointer = (
+/**
+ * The conformance corpus keys its expected outcomes by the interpreter's **house** pointer form — a leading
+ * `/` and an explicit `[n]` on every non-terminal part, including `[1]`: `/Permit[1]/SiteSections[2]/Area`.
+ * That is the same key `ValidationFinding.errorPath` carries and the JVM/Node corpus harnesses build, so the
+ * browser replay must produce it byte-for-byte or the committed `computeExpected` lists stop comparing.
+ *
+ * `A12PointerFormat` publishes A12's *canonical* form, which omits `[1]`, so it cannot render this key — but it
+ * does own the splitting, the length check, and the repetition-legality rules, so those come from the library
+ * rather than from a second hand-written parser. Only the final join is local, and it is local because no
+ * published API renders the house form on any target (INTERPRETER-API-GAPS IAG11).
+ */
+const corpusPointerKey = (
   path: string,
   coordinates: readonly number[],
 ): string => {
-  const segments = path.slice(1).split("/");
-  if (segments.length !== coordinates.length) {
-    throw new Error(
-      `cannot render pointer '${path}': ${coordinates.length} coordinates`,
-    );
-  }
-  return `/${segments.map((segment, index) =>
-    index === segments.length - 1
-      ? segment
-      : `${segment}[${coordinates[index]}]`).join("/")}`;
+  const {names, repetitions} = A12PointerFormat.parse(
+    A12PointerFormat.format(path, coordinates),
+  );
+  return `/${names.map((name, index) =>
+    index === names.length - 1
+      ? name
+      : `${name}[${repetitions[index]}]`).join("/")}`;
 };
 
 const prepareCorpusModel = async (
@@ -168,7 +177,7 @@ const projectComputeResult = (
   seeded: ReadonlyMap<string, string>,
   stringFieldPaths: ReadonlySet<string>,
 ): string | undefined => {
-  const pointer = formattedPointer(
+  const pointer = corpusPointerKey(
     result.pointer.path,
     result.pointer.coordinates,
   );

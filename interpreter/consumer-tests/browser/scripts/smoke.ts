@@ -356,6 +356,7 @@ await withStaticServer(async (url) => {
       '"id": "/Permit/SiteSections"',
       '"mode": "absoluteOrRelativeToNextRepAncestor"',
       '"CalculateEstimatedFee"',
+      '"ChargeSectionSurvey"',
       '"externalDescription"',
     ]) {
       if (!builtInModelJson?.includes(expected)) {
@@ -398,6 +399,7 @@ await withStaticServer(async (url) => {
           row === null ||
           !Object.hasOwn(row, "SectionName") ||
           !Object.hasOwn(row, "Area") ||
+          !Object.hasOwn(row, "SurveyCharge") ||
           (row as Record<string, unknown>).SectionName === null ||
           (row as Record<string, unknown>).Area === null
         )
@@ -633,7 +635,9 @@ await withStaticServer(async (url) => {
     assertPopulatedSiteSections(explicitSeed, "model-shaped starter", 1);
     if (
       explicitSeed.Permit.ReviewedArea !== null ||
-      explicitSeed.Permit.EstimatedFee !== null
+      explicitSeed.Permit.EstimatedFee !== null ||
+      (explicitSeed.Permit.SiteSections as {SurveyCharge?: unknown}[])
+        .some((row) => row.SurveyCharge !== null)
     ) {
       throw new Error(
         `model-shaped seed filled computation-owned targets: ${
@@ -712,7 +716,33 @@ await withStaticServer(async (url) => {
       "/Permit/ReviewedArea",
       "/Permit/EstimatedFee",
       '"value": "125"',
+      // The repeated computed target: both rows report the SAME pointer.path, and only the
+      // rendered canonical pointer tells them apart.
+      '"a12Pointer": "Permit/SiteSections/SurveyCharge"',
+      '"a12Pointer": "Permit/SiteSections[2]/SurveyCharge"',
+      '"value": "1875"',
+      '"value": "1250"',
     ]);
+    // The whole point of the repeated computed target: several results under the SAME pointer.path, each
+    // shown with its own rendered pointer. Derive the check from the displayed payload rather than from a
+    // fragment list, so a page that stopped rendering one of the two rows cannot pass.
+    const computeOutput = await showcase
+      .locator("#result[data-operation='compute']")
+      .textContent();
+    const displayedResults = JSON.parse(computeOutput ?? "{}") as {
+      results?: {a12Pointer?: string; pointer?: {path?: string}}[];
+    };
+    const repeatedRows = (displayedResults.results ?? []).filter(
+      ({pointer}) => pointer?.path === "/Permit/SiteSections/SurveyCharge",
+    );
+    if (
+      repeatedRows.length !== 2 ||
+      new Set(repeatedRows.map(({a12Pointer}) => a12Pointer)).size !== 2
+    ) {
+      throw new Error(
+        `the showcase does not identify each repeated computed row: ${computeOutput}`,
+      );
+    }
     await assertTiming(3, "p95", "computation");
     if (await applyButton.isDisabled()) {
       throw new Error("a retained computation result cannot be applied");
@@ -721,7 +751,9 @@ await withStaticServer(async (url) => {
     await assertOutput("apply-computations", [
       '"ReviewedArea": 125',
       '"EstimatedFee": 312.5',
-      '"appliedActions": 2',
+      '"SurveyCharge": 1875',
+      '"SurveyCharge": 1250',
+      '"appliedActions": 4',
     ]);
     const appliedDocument = JSON.parse(
       await showcase.locator("#document-input").inputValue(),
@@ -729,6 +761,8 @@ await withStaticServer(async (url) => {
     if (
       appliedDocument.Permit?.ReviewedArea !== 125 ||
       appliedDocument.Permit?.EstimatedFee !== 312.5 ||
+      (appliedDocument.Permit?.SiteSections as {SurveyCharge?: unknown}[])
+        .map(({SurveyCharge}) => SurveyCharge).join(",") !== "1875,1250" ||
       !(await applyButton.isDisabled())
     ) {
       throw new Error(
@@ -746,8 +780,9 @@ await withStaticServer(async (url) => {
     await assertOutput("compute-apply-validate-full", [
       '"ReviewedArea": 125',
       '"EstimatedFee": 312.5',
+      '"SurveyCharge": 1875',
       '"findings": []',
-      '"appliedActions": 2',
+      '"appliedActions": 4',
     ]);
     await assertTiming(1, "elapsed", "form-flow");
     const formFlowDocument = JSON.parse(

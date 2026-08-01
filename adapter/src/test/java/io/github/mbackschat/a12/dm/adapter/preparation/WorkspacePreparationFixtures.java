@@ -186,7 +186,8 @@ public final class WorkspacePreparationFixtures {
                                 "/Permit/ReportedAt",
                                 "/Permit/SettledAt",
                                 "/Permit/SiteSections/SectionName",
-                                "/Permit/SiteSections/Area"))
+                                "/Permit/SiteSections/Area",
+                                "/Permit/SiteSections/SurveyCharge"))
                         .expectedRules(Set.of(
                                 "/Permit/AreaNeedsNote",
                                 "/Permit/DecimalPrecisionControl",
@@ -196,7 +197,9 @@ public final class WorkspacePreparationFixtures {
                                 "/Permit/BerlinSpringHour"))
                         .expectedComputations(Map.of(
                                 "/Permit/CopyRequestedArea", "/Permit/ReviewedArea",
-                                "/Permit/CalculateEstimatedFee", "/Permit/EstimatedFee"))
+                                "/Permit/CalculateEstimatedFee", "/Permit/EstimatedFee",
+                                "/Permit/SiteSections/ChargeSectionSurvey",
+                                "/Permit/SiteSections/SurveyCharge"))
                         .build(),
                 FixtureCase.builder()
                         .id("local-typedef")
@@ -526,7 +529,12 @@ public final class WorkspacePreparationFixtures {
                                         .min("1")
                                         .max("1000")
                                         .required()
-                                        .label("en_US", "Section area (m²)"))))
+                                        .label("en_US", "Section area (m²)"))
+                                // The showcase's one REPEATED computed target: several results whose
+                                // pointer.path is the same string, told apart only by their coordinates.
+                                .numberField("SurveyCharge", number -> number
+                                        .fractionDigits(0)
+                                        .label("en_US", "Section survey charge"))))
                 .build()
                 .toJson();
         var session = EditSession.read(structure);
@@ -543,6 +551,9 @@ public final class WorkspacePreparationFixtures {
         var graphemeProbe = permit.str("GraphemeProbe");
         var reportedAt = permit.dateTime("ReportedAt");
         var settledAt = permit.dateTime("SettledAt");
+        var sections = session.group("/Permit/SiteSections");
+        var sectionArea = sections.num("Area");
+        var surveyCharge = sections.num("SurveyCharge");
 
         Rule areaNeedsNote = permit.rule(rule -> rule.name("AreaNeedsNote")
                 .errorField(note)
@@ -566,6 +577,13 @@ public final class WorkspacePreparationFixtures {
                         .message(en("The estimated permit fee is area multiplied by the unit fee."))
                         .build());
         session.addComputation(ignored -> calculateEstimatedFee);
+        Computation chargeSectionSurvey = sections.computation(surveyCharge,
+                computation -> computation.name("ChargeSectionSurvey")
+                        .when(sectionArea.filled())
+                        .calc(sectionArea.asNumber().times(Dsl.number("25")).expression())
+                        .message(en("Each site section is surveyed at the statutory rate of 25 per m²."))
+                        .build());
+        session.addComputation(ignored -> chargeSectionSurvey);
         var reciprocalPower = rate.asNumber().toThePowerOf(Dsl.number("-64"));
         Rule decimalPrecisionControl = permit.rule(rule -> rule.name("DecimalPrecisionControl")
                 .errorField(rate)
@@ -627,6 +645,8 @@ public final class WorkspacePreparationFixtures {
                 "Copies the requested area into the reviewed-area output.");
         describeComputation(session, explanations, calculateEstimatedFee,
                 "Calculates the estimated permit fee as requested area multiplied by the fee per m².");
+        describeComputation(session, explanations, chargeSectionSurvey,
+                "Charges every site-section row its own survey fee at the statutory per-m² rate.");
 
         return session.validate().toJson();
     }

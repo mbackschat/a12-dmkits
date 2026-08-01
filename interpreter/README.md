@@ -11,6 +11,7 @@ The interpreter prepares model workspaces, resolves includes and imported type d
 - Lossless, versioned Document JSON with structured input diagnostics
 - Deterministic model-shaped Document seeds containing every declared group and field
 - Full and partial validation, retained computation application, support reports, and model-owned pointers
+- Canonical A12 `DocumentPointer` formatting and parsing, so a repeated computed row is separately addressable
 - Synchronous custom field validators and custom conditions
 - Explicit resource limits, integrity checks, cancellation, and immutable prepared models
 - The same Kotlin implementation on JVM, Node.js, and browser targets

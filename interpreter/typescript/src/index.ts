@@ -69,6 +69,8 @@ export {
   ModelMetadata,
   RelevantSelectionPointer,
 } from "./model.js";
+export {A12PointerFormat} from "./pointers.js";
+export type {A12Pointer} from "./pointers.js";
 export type {
   ModelEntityKind,
   RelevantCoordinate,
