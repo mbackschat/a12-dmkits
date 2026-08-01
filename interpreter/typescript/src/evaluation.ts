@@ -31,10 +31,22 @@ export interface ValidationFinding {
   readonly fillToFix: readonly string[];
 }
 
-/** One rule or computation the configured interpreter cannot evaluate. */
+/** What kind of address an {@link UnsupportedProgram.path} carries — the two are not interchangeable. */
+export type UnsupportedProgramSubject = "element" | "cell";
+
+/**
+ * One construct the configured interpreter cannot evaluate — a stored rule, an implicit rule, a computation, a
+ * field declaration whose custom type is unregistered, or a single document cell.
+ *
+ * `subject` says which of those `path` addresses: `"element"` is a model path you can look up in the model,
+ * `"cell"` is an instance pointer into the document being evaluated. A support audit reports only elements;
+ * validation and computation report both kinds in one list, so a consumer that ignores `subject` cannot render
+ * either correctly.
+ */
 export interface UnsupportedProgram {
   readonly path: string;
   readonly reason: string;
+  readonly subject: UnsupportedProgramSubject;
 }
 
 /** Document-independent support audit for a prepared model and callback configuration. */
@@ -90,9 +102,10 @@ export interface ComputeOptions {
 }
 
 const unsupportedPrograms = (
-  values: readonly {readonly path: string; readonly reason: string}[],
+  values: readonly {readonly path: string; readonly reason: string; readonly subject: string}[],
 ): readonly UnsupportedProgram[] =>
-  Object.freeze(values.map(({path, reason}) => Object.freeze({path, reason})));
+  Object.freeze(values.map(({path, reason, subject}) =>
+    Object.freeze({path, reason, subject: subject as UnsupportedProgramSubject})));
 
 const supportReport = (
   report: InterpreterBridgeSupportReport,

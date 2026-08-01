@@ -40,6 +40,8 @@ import io.github.mbackschat.a12.dm.interpreter.RelevantEntityPointer as CoreRele
 import io.github.mbackschat.a12.dm.interpreter.RelevantSelectionPointer as CoreRelevantSelectionPointer
 import io.github.mbackschat.a12.dm.interpreter.UnknownModelPathError as CoreUnknownModelPathError
 import io.github.mbackschat.a12.dm.interpreter.ValidationFinding as CoreValidationFinding
+import io.github.mbackschat.a12.dm.interpreter.UnsupportedProgram as CoreUnsupportedProgram
+import io.github.mbackschat.a12.dm.interpreter.UnsupportedProgramSubject as CoreUnsupportedProgramSubject
 import io.github.mbackschat.a12.dm.interpreter.ValidationFindingType as CoreValidationFindingType
 import io.github.mbackschat.a12.dm.interpreter.ValidationReport as CoreValidationReport
 import io.github.mbackschat.a12.dm.interpreter.ValidationSeverity as CoreValidationSeverity
@@ -362,6 +364,8 @@ class InterpreterBridgeModelMetadata internal constructor(
 class InterpreterBridgeUnsupportedProgram internal constructor(
     val path: String,
     val reason: String,
+    /** `"element"` (a model path) or `"cell"` (a document instance pointer) — see `UnsupportedProgramSubject`. */
+    val subject: String,
 )
 
 @JsExport
@@ -394,7 +398,7 @@ class InterpreterBridgeValidationReport internal constructor(
             InterpreterBridgeValidationReport(
                 findings = report.findings.map(::validationFinding).toTypedArray(),
                 unsupported = report.unsupported.map { unsupported ->
-                    InterpreterBridgeUnsupportedProgram(unsupported.path, unsupported.reason)
+                    unsupportedProgram(unsupported)
                 }.toTypedArray(),
                 noErrorOccurred = report.noErrorOccurred,
                 fullySupported = report.fullySupported,
@@ -419,7 +423,7 @@ class InterpreterBridgeComputationReport internal constructor(
     val formalErrorsInOperands: Array<InterpreterBridgeValidationFinding> =
         core.formalErrorsInOperands.map(::validationFinding).toTypedArray()
     val unsupported: Array<InterpreterBridgeUnsupportedProgram> = core.unsupported.map { unsupported ->
-        InterpreterBridgeUnsupportedProgram(unsupported.path, unsupported.reason)
+        unsupportedProgram(unsupported)
     }.toTypedArray()
     val noErrorOccurred: Boolean = core.noErrorOccurred
     val fullySupported: Boolean = core.fullySupported
@@ -457,7 +461,7 @@ class InterpreterBridgeInterpreter internal constructor(
         val report = core.supportReport()
         return InterpreterBridgeSupportReport(
             unsupported = report.unsupported.map { unsupported ->
-                InterpreterBridgeUnsupportedProgram(unsupported.path, unsupported.reason)
+                unsupportedProgram(unsupported)
             }.toTypedArray(),
             fullySupported = report.fullySupported,
         )
@@ -884,6 +888,15 @@ private fun CoreValidationSeverity.wireName(): String = when (this) {
     CoreValidationSeverity.ERROR -> "error"
     CoreValidationSeverity.WARNING -> "warning"
     CoreValidationSeverity.INFO -> "info"
+}
+
+/** The one core → bridge projection for an unsupported entry, so no site can drop the subject. */
+private fun unsupportedProgram(program: CoreUnsupportedProgram): InterpreterBridgeUnsupportedProgram =
+    InterpreterBridgeUnsupportedProgram(program.path, program.reason, program.subject.wireName())
+
+private fun CoreUnsupportedProgramSubject.wireName(): String = when (this) {
+    CoreUnsupportedProgramSubject.ELEMENT -> "element"
+    CoreUnsupportedProgramSubject.CELL -> "cell"
 }
 
 private fun CoreValidationFindingType.wireName(): String = when (this) {

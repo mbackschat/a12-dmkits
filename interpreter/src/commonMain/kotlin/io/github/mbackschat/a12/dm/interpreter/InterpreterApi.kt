@@ -11,6 +11,8 @@ import io.github.mbackschat.a12.dm.interpreter.model.Message as EngineMessage
 import io.github.mbackschat.a12.dm.interpreter.model.MsgType
 import io.github.mbackschat.a12.dm.interpreter.model.RelevantEntity
 import io.github.mbackschat.a12.dm.interpreter.model.Severity
+import io.github.mbackschat.a12.dm.interpreter.model.UnsupportedRule as EngineUnsupportedRule
+import io.github.mbackschat.a12.dm.interpreter.model.UnsupportedSubject as EngineUnsupportedSubject
 import io.github.mbackschat.a12.dm.interpreter.model.ValidationOutcome
 import io.github.mbackschat.a12.dm.interpreter.workspace.immutableListSnapshot
 import kotlin.jvm.JvmOverloads
@@ -330,10 +332,29 @@ data class ValidationFinding(
     val fillToFix: List<String>,
 )
 
-/** One stored rule, implicit rule, or computation the configured interpreter cannot evaluate. */
+/** What kind of address an [UnsupportedProgram.path] carries — the two are not interchangeable. */
+enum class UnsupportedProgramSubject {
+    /** A model ELEMENT path: a rule, a computation, or a field declaration. No repetition, no instance. */
+    ELEMENT,
+
+    /** A document CELL: an instance pointer carrying repetitions, e.g. an unregistered custom-typed value. */
+    CELL,
+}
+
+/**
+ * One construct the configured interpreter cannot evaluate — a stored rule, an implicit rule, a computation, a
+ * field declaration whose custom type is unregistered, or a single document cell.
+ *
+ * <p>[subject] says which of those [path] addresses, and it is load-bearing rather than descriptive: an
+ * [UnsupportedProgramSubject.ELEMENT] path is a model address a consumer can look up in the model, while a
+ * [UnsupportedProgramSubject.CELL] path is an instance pointer into the document being evaluated. Both kinds
+ * arrive in the same list — a support audit reports only elements, but validation and computation report both —
+ * and before this field a consumer had no way to tell them apart, so it could render neither correctly.
+ */
 data class UnsupportedProgram(
     val path: String,
     val reason: String,
+    val subject: UnsupportedProgramSubject,
 )
 
 /** Document-independent support audit for one prepared model and one bound customization configuration. */
@@ -765,7 +786,7 @@ class Interpreter private constructor(
                 customFieldTypes = configuration.customFieldTypes.engineMap(),
             )
             support = InterpreterSupportReport.create(
-                engine.supportAudit().map { UnsupportedProgram(it.rulePath, it.reason) },
+                engine.supportAudit().map(::unsupportedProgram),
             )
         } catch (error: Throwable) {
             throw InterpreterIntegrationError.of(
@@ -827,9 +848,7 @@ class Interpreter private constructor(
                     results = results,
                     actions = actions,
                     formalErrorsInOperands = retained.formalErrorsInOperands.map(::validationFinding),
-                    unsupported = retained.unsupported.map {
-                        UnsupportedProgram(it.rulePath, it.reason)
-                    },
+                    unsupported = retained.unsupported.map(::unsupportedProgram),
                     owner = owner,
                     modelVersion = modelVersion,
                 )
@@ -838,7 +857,11 @@ class Interpreter private constructor(
                     results = emptyList(),
                     actions = emptyList(),
                     formalErrorsInOperands = emptyList(),
-                    unsupported = listOf(UnsupportedProgram("<compute>", error.message.orEmpty())),
+                    unsupported = listOf(
+                        // A whole-compute failure names the operation, not a document cell.
+                        UnsupportedProgram("<compute>", error.message.orEmpty(),
+                            UnsupportedProgramSubject.ELEMENT),
+                    ),
                     owner = owner,
                     modelVersion = modelVersion,
                 )
@@ -853,7 +876,18 @@ class Interpreter private constructor(
     private fun validationReport(outcome: ValidationOutcome): ValidationReport =
         ValidationReport.create(
             findings = outcome.messages.map(::validationFinding),
-            unsupported = outcome.unsupported.map { UnsupportedProgram(it.rulePath, it.reason) },
+            unsupported = outcome.unsupported.map(::unsupportedProgram),
+        )
+
+    /** The one engine → facade projection for an unsupported entry, so the subject cannot be dropped at one site. */
+    private fun unsupportedProgram(rule: EngineUnsupportedRule): UnsupportedProgram =
+        UnsupportedProgram(
+            path = rule.rulePath,
+            reason = rule.reason,
+            subject = when (rule.subject) {
+                EngineUnsupportedSubject.ELEMENT -> UnsupportedProgramSubject.ELEMENT
+                EngineUnsupportedSubject.CELL -> UnsupportedProgramSubject.CELL
+            },
         )
 
     private fun validationFinding(message: EngineMessage): ValidationFinding =

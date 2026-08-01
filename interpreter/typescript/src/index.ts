@@ -48,6 +48,7 @@ export type {
   ComputeOptions,
   InterpreterSupportReport,
   UnsupportedProgram,
+  UnsupportedProgramSubject,
   ValidationFinding,
   ValidationFindingType,
   ValidationOptions,

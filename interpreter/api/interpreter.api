@@ -703,16 +703,26 @@ public final class io/github/mbackschat/a12/dm/interpreter/UnknownModelPathError
 }
 
 public final class io/github/mbackschat/a12/dm/interpreter/UnsupportedProgram {
-	public fun <init> (Ljava/lang/String;Ljava/lang/String;)V
+	public fun <init> (Ljava/lang/String;Ljava/lang/String;Lio/github/mbackschat/a12/dm/interpreter/UnsupportedProgramSubject;)V
 	public final fun component1 ()Ljava/lang/String;
 	public final fun component2 ()Ljava/lang/String;
-	public final fun copy (Ljava/lang/String;Ljava/lang/String;)Lio/github/mbackschat/a12/dm/interpreter/UnsupportedProgram;
-	public static synthetic fun copy$default (Lio/github/mbackschat/a12/dm/interpreter/UnsupportedProgram;Ljava/lang/String;Ljava/lang/String;ILjava/lang/Object;)Lio/github/mbackschat/a12/dm/interpreter/UnsupportedProgram;
+	public final fun component3 ()Lio/github/mbackschat/a12/dm/interpreter/UnsupportedProgramSubject;
+	public final fun copy (Ljava/lang/String;Ljava/lang/String;Lio/github/mbackschat/a12/dm/interpreter/UnsupportedProgramSubject;)Lio/github/mbackschat/a12/dm/interpreter/UnsupportedProgram;
+	public static synthetic fun copy$default (Lio/github/mbackschat/a12/dm/interpreter/UnsupportedProgram;Ljava/lang/String;Ljava/lang/String;Lio/github/mbackschat/a12/dm/interpreter/UnsupportedProgramSubject;ILjava/lang/Object;)Lio/github/mbackschat/a12/dm/interpreter/UnsupportedProgram;
 	public fun equals (Ljava/lang/Object;)Z
 	public final fun getPath ()Ljava/lang/String;
 	public final fun getReason ()Ljava/lang/String;
+	public final fun getSubject ()Lio/github/mbackschat/a12/dm/interpreter/UnsupportedProgramSubject;
 	public fun hashCode ()I
 	public fun toString ()Ljava/lang/String;
+}
+
+public final class io/github/mbackschat/a12/dm/interpreter/UnsupportedProgramSubject : java/lang/Enum {
+	public static final field CELL Lio/github/mbackschat/a12/dm/interpreter/UnsupportedProgramSubject;
+	public static final field ELEMENT Lio/github/mbackschat/a12/dm/interpreter/UnsupportedProgramSubject;
+	public static fun getEntries ()Lkotlin/enums/EnumEntries;
+	public static fun valueOf (Ljava/lang/String;)Lio/github/mbackschat/a12/dm/interpreter/UnsupportedProgramSubject;
+	public static fun values ()[Lio/github/mbackschat/a12/dm/interpreter/UnsupportedProgramSubject;
 }
 
 public final class io/github/mbackschat/a12/dm/interpreter/ValidationFinding {

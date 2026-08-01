@@ -250,6 +250,7 @@ class PublicPreparationApiSurfaceTest {
             ValidationSeverity::class.java,
             ValidationFindingType::class.java,
             ValidationFinding::class.java,
+            UnsupportedProgramSubject::class.java,
             UnsupportedProgram::class.java,
             InterpreterSupportReport::class.java,
             ValidationReport::class.java,

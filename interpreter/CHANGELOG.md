@@ -6,9 +6,14 @@ This changelog covers the independently consumable interpreter packages, API doc
 
 ### Added
 
+- **`A12PointerFormat.UNKNOWN_REPETITION`** exposes A12's `-5` sentinel (`IIdentifier.UNKNOWN`), the repetition a parallel iteration or semantic index leaves on a level that matched no row. `parse` accepts it at any part and `format` round-trips it, so a pointer the engine really produces is representable rather than a parse failure. The existing `LAST_PART_ZERO` rule is unchanged: a `0` earlier than the last part is still rejected, because on an exact pointer it is not a wildcard.
 - **Computation reports now explain unsuccessful computation.** `formalErrorsInOperands` carries eager operand diagnostics, each ERRORED result carries its target-owned `diagnostic`, and `noErrorOccurred` matches the Kernel predicate while remaining independent of `fullySupported`. Kotlin, Java, Kotlin/JS, packed TypeScript, and the browser showcase consume the same detached `ValidationFinding` projection.
 - **Prepared Documents can produce a model-shaped starter.** `prepared.documents.seedDocument()` includes every declared group and field and one row per repeatable group, using the same deterministic generator as `dmtool model seed`.
 - **The browser showcase is now a complete interpreter workflow consumer.** It can inspect the loaded Document Models, generate and edit model-shaped Documents, choose full or partial validation, compute, apply retained computation actions, and run compute-then-validate. The built-in permit model demonstrates required fields, computations, and repeating groups with prepared rows.
+
+### Changed — BREAKING
+
+- **`UnsupportedProgram` now says which kind of address it carries.** The new `subject` (`UnsupportedProgramSubject.ELEMENT` · `CELL`; `"element"` · `"cell"` in TypeScript) distinguishes a model path — a rule, a computation, or a field declaration — from a document cell instance pointer. Both kinds always arrived in the same list: a support audit reports only elements, while validation and computation report both, and a consumer had no way to tell them apart, so it could render neither correctly. Kotlin callers that construct an `UnsupportedProgram` positionally must supply the third argument; consumers that only read the reports gain a field and break nothing.
 
 ### Changed
 

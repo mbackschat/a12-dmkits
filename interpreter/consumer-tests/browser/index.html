@@ -126,7 +126,7 @@
         <div class="model-workspace-actions" aria-label="Model workspace operations">
           <span>Model workspace:</span>
           <button id="prepare" type="button" title="Resolve and prepare the selected DocumentModel workspace.">Prepare workspace</button>
-          <button id="check-support" type="button" title="Report rules and computations unsupported by this interpreter configuration.">Check model support</button>
+          <button id="check-support" type="button" title="Report rules, computations, and custom-typed fields this interpreter configuration cannot evaluate.">Check model support</button>
         </div>
 
         <div class="actions" aria-label="Interpreter operations">
@@ -298,7 +298,7 @@
           </li>
           <li>
             <h3>Prepare, validate, or compute</h3>
-            <p>Prepare workspace resolves the selected model and shows its dependencies. Check model support reports admitted rules or computations that the configured interpreter cannot evaluate without reading the Document. Validate checks the current Document as-is; each computation has an implicit consistency rule, so a stale filled target appears as a validation finding. Compute retains a result without changing the Document, Apply results writes those exact actions into the editable Document, and Compute → Apply → Validate runs that form-engine sequence in one step. Runs repeats validation, computation, or the complete form flow against the same prepared interpreter and Document source; one run reports elapsed time and multiple runs report p95.</p>
+            <p>Prepare workspace resolves the selected model and shows its dependencies. Check model support reports admitted rules, computations, and custom-typed field declarations that the configured interpreter cannot evaluate without reading the Document; every entry is a model element. Validation and computation report unsupported entries too, and those may additionally name a single Document cell — each entry&#8217;s subject says which. Validate checks the current Document as-is; each computation has an implicit consistency rule, so a stale filled target appears as a validation finding. Compute retains a result without changing the Document, Apply results writes those exact actions into the editable Document, and Compute → Apply → Validate runs that form-engine sequence in one step. Runs repeats validation, computation, or the complete form flow against the same prepared interpreter and Document source; one run reports elapsed time and multiple runs report p95.</p>
           </li>
           <li>
             <h3>Choose the validation scope</h3>

@@ -113,6 +113,11 @@ final enum class io.github.mbackschat.a12.dm.interpreter/ModelSourceProviderFail
     enum entry UNAVAILABLE // io.github.mbackschat.a12.dm.interpreter/ModelSourceProviderFailureReason.UNAVAILABLE|null[0]
 }
 
+final enum class io.github.mbackschat.a12.dm.interpreter/UnsupportedProgramSubject : kotlin/Enum<io.github.mbackschat.a12.dm.interpreter/UnsupportedProgramSubject> { // io.github.mbackschat.a12.dm.interpreter/UnsupportedProgramSubject|null[0]
+    enum entry CELL // io.github.mbackschat.a12.dm.interpreter/UnsupportedProgramSubject.CELL|null[0]
+    enum entry ELEMENT // io.github.mbackschat.a12.dm.interpreter/UnsupportedProgramSubject.ELEMENT|null[0]
+}
+
 final enum class io.github.mbackschat.a12.dm.interpreter/ValidationFindingType : kotlin/Enum<io.github.mbackschat.a12.dm.interpreter/ValidationFindingType> { // io.github.mbackschat.a12.dm.interpreter/ValidationFindingType|null[0]
     enum entry OMISSION // io.github.mbackschat.a12.dm.interpreter/ValidationFindingType.OMISSION|null[0]
     enum entry VALUE // io.github.mbackschat.a12.dm.interpreter/ValidationFindingType.VALUE|null[0]

@@ -8,7 +8,14 @@
 
 ## 1. Open
 
-_None open._
+### IAG9 — `A12PointerFormat` is not on the npm surface <a id="iag9"></a>
+
+The canonical-pointer utility is published on Kotlin/JVM and Kotlin/JS (`interpreter.api`, `interpreter.klib.api`) but is absent from `interpreter/typescript/src/index.ts` and from `typescript.api`. A TypeScript consumer therefore cannot convert between the house form the reports carry (`/Order[1]/Items[2]/Count`) and A12's canonical form (`Order/Items[2]/Count`), nor parse either — the exact conversion `INTERPRETER-API-SPEC` now tells it to make.
+
+**How it surfaced, which is the part worth keeping:** our *own* browser consumer test hit the gap and worked around it. `consumer-tests/browser/src/qualification.ts:124-138` hand-rolls a `formattedPointer()` that reproduces `eval/Pointer.kt` byte-for-byte — a clone maintained by nobody, in a test whose job is to prove the published surface is usable. A consumer test that has to reimplement a published utility is reporting a hole in the surface, not solving one.
+
+**What settles it:** export the utility from the npm package and add it to `typescript.api`, then delete the clone and have the qualification test use the real thing. Small, but it is a *surface* addition to a released package, so it wants a deliberate decision on the exported name and whether `parse`'s error type is part of the TS contract. Found 2026-08-01 while auditing the interpreter API against the dmtool pointer work.
+
 
 ## 2. Deferred — with re-open triggers
 

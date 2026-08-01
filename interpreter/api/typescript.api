@@ -373,7 +373,11 @@ export declare class UnknownModelPathError extends Error {
 export interface UnsupportedProgram {
     readonly path: string;
     readonly reason: string;
+    readonly subject: UnsupportedProgramSubject;
 }
+
+## UnsupportedProgramSubject
+export type UnsupportedProgramSubject = "element" | "cell";
 
 ## ValidationFinding
 export interface ValidationFinding {
