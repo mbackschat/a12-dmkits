@@ -32,6 +32,10 @@ package/dist/model.d.ts
 package/dist/model.d.ts.map
 package/dist/model.js
 package/dist/model.js.map
+package/dist/pointers.d.ts
+package/dist/pointers.d.ts.map
+package/dist/pointers.js
+package/dist/pointers.js.map
 package/dist/prepared-model.d.ts
 package/dist/prepared-model.d.ts.map
 package/dist/prepared-model.js

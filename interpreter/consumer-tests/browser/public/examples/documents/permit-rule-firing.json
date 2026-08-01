@@ -17,11 +17,13 @@
     "SiteSections": [
       {
         "SectionName": "Public hall",
-        "Area": 80
+        "Area": 80,
+        "SurveyCharge": null
       },
       {
         "SectionName": "Service wing",
-        "Area": 40
+        "Area": 40,
+        "SurveyCharge": null
       }
     ]
   }

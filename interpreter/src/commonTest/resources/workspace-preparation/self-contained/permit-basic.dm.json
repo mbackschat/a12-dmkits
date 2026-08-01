@@ -293,6 +293,41 @@
                     "text" : "Section area (m²)"
                   } ]
                 }
+              }, {
+                "type" : "Field",
+                "id" : "/Permit/SiteSections/SurveyCharge",
+                "name" : "SurveyCharge",
+                "Field" : {
+                  "fieldType" : {
+                    "type" : "NumberType",
+                    "NumberType" : {
+                      "maxFractionalDigits" : 0
+                    }
+                  },
+                  "label" : [ {
+                    "locale" : "en_US",
+                    "text" : "Section survey charge"
+                  } ]
+                }
+              }, {
+                "type" : "Computation",
+                "id" : "/Permit/SiteSections/ChargeSectionSurvey",
+                "name" : "ChargeSectionSurvey",
+                "Computation" : {
+                  "computedFieldRelPath" : "../SurveyCharge",
+                  "computationAlternatives" : [ {
+                    "precondition" : "FieldFilled(Area)",
+                    "operation" : "[Area] * 25"
+                  } ],
+                  "errorMessage" : [ {
+                    "locale" : "en_US",
+                    "text" : "Each site section is surveyed at the statutory rate of 25 per m²."
+                  } ]
+                },
+                "externalDescription" : [ {
+                  "locale" : "en_US",
+                  "text" : "Charges every site-section row its own survey fee at the statutory per-m² rate. Computes /Permit/SiteSections/SurveyCharge 1 alternative."
+                } ]
               } ]
             }
           }, {

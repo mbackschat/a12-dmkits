@@ -1,4 +1,5 @@
 import {
+  A12PointerFormat,
   type ComputationReport,
   type DocumentSnapshot,
   ModelWorkspace,
@@ -92,7 +93,7 @@ const scenarios: Readonly<Record<ScenarioId, Scenario>> = {
   clean: {
     workspace: "permit-basic",
     entryModelId: "permit-basic",
-    note: "A valid permit uses required fields, labels, an enum, a date, populated repeatable site-section rows, rules, and two computations without producing findings.",
+    note: "A valid permit uses required fields, labels, an enum, a date, populated repeatable site-section rows, rules, and computations without producing findings.",
     inputPath: "examples/documents/permit-valid.json",
     relevantPath: "/Permit",
     relevantCoordinates: [1],
@@ -116,7 +117,7 @@ const scenarios: Readonly<Record<ScenarioId, Scenario>> = {
   computation: {
     workspace: "permit-basic",
     entryModelId: "permit-basic",
-    note: "Two computations copy RequestedArea into ReviewedArea and calculate EstimatedFee from area × unit fee.",
+    note: "Computations copy RequestedArea into ReviewedArea, calculate EstimatedFee from area × unit fee, and charge every site-section row its own survey fee — so the repeated target reports one result per row under the same path, told apart by the rendered pointer.",
     inputPath: "examples/documents/permit-computation.json",
     relevantPath: "/Permit",
     relevantCoordinates: [1],
@@ -560,6 +561,13 @@ const computationResultsOutput = (
   entries: ComputationReport["results"],
 ) =>
   entries.map((entry) => ({
+    // A repeated computed target produces several results whose `path` is the SAME string; only the
+    // coordinates tell the rows apart. Joining them into one canonical A12 pointer is what makes the
+    // list readable, so the showcase publishes both: the raw address and its rendered form.
+    a12Pointer: A12PointerFormat.format(
+      entry.pointer.path,
+      entry.pointer.coordinates,
+    ),
     pointer: {
       path: entry.pointer.path,
       coordinates: entry.pointer.coordinates,

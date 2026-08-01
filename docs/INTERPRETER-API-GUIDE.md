@@ -118,6 +118,22 @@ export function computeApplyValidate(
 
 This is intentionally composition rather than a different evaluator mode. The Kernel also keeps `compute`, result application, and `validateFull` separate; the final `applied` snapshot is the Document a form retains.
 
+### Identify a repeated row: `A12PointerFormat`
+
+A computation that lives inside a repeatable group runs once per row, so `ComputationReport.results` can contain several results whose `pointer.path` is the *same* string. The per-row identity is in `pointer.coordinates`, and `A12PointerFormat` is what joins the two into one addressable pointer. `format` emits A12's canonical `DocumentPointer` — parts joined by `/`, `[n]` only where the repetition is not 1 (`Permit/SiteSections[2]/SurveyCharge`). `parse` accepts that spelling *and* the house form the report paths carry (a leading `/` and an explicit `[n]` on every non-terminal part, `/Permit[1]/Note`), so a consumer converts in either direction. `LAST_PART_ZERO` and `UNKNOWN_REPETITION` publish A12's two reserved repetitions. A malformed argument raises a `TypeError`; it is a caller contract violation, not a model diagnostic, so it is none of this package's named `Error` subclasses.
+
+<!-- snippet: interpreter-typescript-pointer -->
+```ts
+// A computation inside a repeatable group reports one result per row, all under the SAME `pointer.path`.
+// `A12PointerFormat.format` joins path and coordinates into A12's canonical pointer, so each row becomes
+// addressable; `parse` reads back the house form (`/Permit[1]/Note`) that the reports' paths carry.
+const identifiedRows = perRowCharges.map(({pointer, value}) =>
+  `${A12PointerFormat.format(pointer.path, pointer.coordinates)}=${value}`);
+const errorCell = A12PointerFormat.parse(reportedErrorPath);
+```
+
+The same utility is published on Kotlin/JVM and Kotlin/JS as the `A12PointerFormat` object, with `format`, `parse`, and the two constants.
+
 ## 4. Reuse for form input
 
 Keep one `PreparedModel` and one configured `Interpreter` for a form or request scope. After an input change, decode the new Document state and validate the resulting snapshot against the retained interpreter. Model parsing, executable preparation, and bounded model-owned caches are reused; each evaluation call owns its transient state and immutable result.

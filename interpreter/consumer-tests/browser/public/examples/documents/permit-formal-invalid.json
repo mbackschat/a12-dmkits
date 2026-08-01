@@ -17,11 +17,13 @@
     "SiteSections": [
       {
         "SectionName": "Living area",
-        "Area": 70
+        "Area": 70,
+        "SurveyCharge": null
       },
       {
         "SectionName": "Utility room",
-        "Area": 10
+        "Area": 10,
+        "SurveyCharge": null
       }
     ]
   }

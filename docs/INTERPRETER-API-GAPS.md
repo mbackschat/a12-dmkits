@@ -4,18 +4,19 @@
 >
 > **Lifecycle.** A shipped gap is deleted. Its stable contract graduates into [INTERPRETER-API-SPEC](INTERPRETER-API-SPEC.md) in the same commit, while git and an appropriate numbered finding retain the history and rationale.
 
-> **Current state.** The public v1 surface, browser qualification, anonymous publication, and computation diagnostics are complete as IF224–IF226 and IF241. §1 is drained; §2 tracks later API products.
+> **Current state.** The public v1 surface, browser qualification, anonymous publication, and computation diagnostics are complete as IF224–IF226 and IF241. §1 carries IAG10, opened while closing IAG9: exposing the canonical-pointer utility revealed that the *house* pointer form the reports carry has no published renderer at all, and whether it should get one is entangled with the open convergence decision. §2 tracks later API products.
 
 ## 1. Open
 
-### IAG9 — `A12PointerFormat` is not on the npm surface <a id="iag9"></a>
+### IAG10 — the house pointer form has no published renderer <a id="iag10"></a>
 
-The canonical-pointer utility is published on Kotlin/JVM and Kotlin/JS (`interpreter.api`, `interpreter.klib.api`) but is absent from `interpreter/typescript/src/index.ts` and from `typescript.api`. A TypeScript consumer therefore cannot convert between the house form the reports carry (`/Order[1]/Items[2]/Count`) and A12's canonical form (`Order/Items[2]/Count`), nor parse either — the exact conversion `INTERPRETER-API-SPEC` now tells it to make.
+The reports emit the interpreter's house pointer form in `ValidationFinding.errorPath`, `referenced`, and `fillToFix` (`/Order[1]/Items[2]/Count`), and the conformance corpus and the `:adapter` differential use that same string as their shared comparison key. Nothing renders it: `eval.formatPointer` is in an engine package the ABI filter excludes, so no target — JVM, Kotlin/JS, or npm — publishes a way to *produce* it from a `path` plus `coordinates`. `A12PointerFormat` renders A12's canonical form, which omits `[1]`, and therefore cannot.
 
-**How it surfaced, which is the part worth keeping:** our *own* browser consumer test hit the gap and worked around it. `consumer-tests/browser/src/qualification.ts:124-138` hand-rolls a `formattedPointer()` that reproduces `eval/Pointer.kt` byte-for-byte — a clone maintained by nobody, in a test whose job is to prove the published surface is usable. A consumer test that has to reimplement a published utility is reporting a hole in the surface, not solving one.
+**What it blocks, concretely:** `consumer-tests/browser/src/qualification.ts` replays the committed corpus through the *published* surface only, so it must build the corpus key itself. Closing IAG9 removed the parsing and the legality checks from that local helper — `corpusPointerKey` now derives both from `A12PointerFormat` — but the final join is still local, because no published call renders it. This was originally read as "the clone reproduces the published utility"; it does not. The clone reproduces the house form, which is a *different* rendering that happens to be unpublished.
 
-**What settles it:** export the utility from the npm package and add it to `typescript.api`, then delete the clone and have the qualification test use the real thing. Small, but it is a *surface* addition to a released package, so it wants a deliberate decision on the exported name and whether `parse`'s error type is part of the TS contract. Found 2026-08-01 while auditing the interpreter API against the dmtool pointer work.
+**Why it is not simply "publish it":** the two renderings' convergence is an open owner decision. Adding a second published renderer commits the released package to the house form as a first-class exported concept, and if the forms converge it becomes dead API on a shipped surface. The cheap alternative — canonicalizing both sides of the corpus comparison — was rejected because it would make the browser harness's key differ from the JVM/Node harnesses' and print pointers that no longer match the corpus files a reader is diffing against.
 
+**What would settle it:** the convergence decision. If the forms converge, this gap closes with them. If they stay separate, the house form earns a published renderer beside `A12PointerFormat` on all three surfaces, and the browser helper is deleted. Opened 2026-08-01 while closing IAG9.
 
 ## 2. Deferred — with re-open triggers
 
