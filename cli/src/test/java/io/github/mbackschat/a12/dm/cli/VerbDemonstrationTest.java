@@ -53,6 +53,60 @@ class VerbDemonstrationTest {
         assertTrue(ran >= 40, () -> "the demonstration corpus must exercise the surface; ran=" + ran);
     }
 
+    /**
+     * <b>{@code --text} totality</b> (RESULT-CONTRACT-PROPOSAL §5): every envelope-producing verb renders human
+     * text under {@code --text}, over the whole demonstrated surface rather than the three crafted envelopes
+     * {@code TextRendererDispatchTest} pins at the renderer boundary.
+     *
+     * <p>The two tests answer different questions and neither substitutes for the other. That one asks "given an
+     * envelope, does the renderer dispatch correctly" — a unit property, and it cannot see a verb that never
+     * hands the renderer an envelope in the first place. That was exactly the defect: {@code apply} printed a
+     * bespoke object and {@code batch} a bare array, so {@link TextRenderer#renderIfEnvelope} found no textual
+     * {@code outcome}, passed the payload through unchanged, and {@code --text} silently emitted raw JSON for
+     * both — in every flag placement, on success and on failure. A renderer-level test is structurally unable to
+     * catch that, because the input it constructs is the very thing the verb was failing to produce.
+     *
+     * <p>So the assertion is deliberately shaped as "the output is <b>not</b> the JSON envelope": pass-through is
+     * the failure mode, and it is invisible to any check that starts from a well-formed envelope.
+     */
+    @Test
+    void everyEnvelopeVerbRendersTextUnderTheTextFlag(@TempDir Path dir) throws Exception {
+        JsonNode corpus = corpus();
+        int checked = 0;
+        for (Iterator<String> it = corpus.fieldNames(); it.hasNext();) {
+            String verb = it.next();
+            if (verb.startsWith("_")) {
+                continue;
+            }
+            JsonNode ex = corpus.get(verb);
+            if (!List.of("read", "preview").contains(ex.path("expect").asText())) {
+                continue;   // an artifact/raw verb prints its artifact; --text has no envelope to render
+            }
+            List<String> command = new ArrayList<>(materialize(verb, ex, dir));
+            command.add("--text");
+            CliTestSupport.Result res = CliTestSupport.run(command.toArray(new String[0]));
+            assertEquals(0, res.code(), () -> verb + " --text failed (" + command + "): " + res.err() + res.out());
+            assertFalse(looksLikeTheJsonEnvelope(res.out()),
+                    () -> verb + " --text emitted the raw JSON envelope instead of text. The renderer passes a "
+                            + "payload through unchanged when it cannot find a textual `outcome`, so this means "
+                            + "the verb printed something that is not the standard envelope: " + res.out());
+            assertFalse(res.out().isBlank(), () -> verb + " --text produced nothing: " + command);
+            checked++;
+        }
+        int n = checked;
+        assertTrue(n >= 55, () -> "the --text column must cover the envelope surface; checked=" + n);
+    }
+
+    /** True when {@code out} is the machine envelope rather than rendered text — i.e. the renderer passed through. */
+    private static boolean looksLikeTheJsonEnvelope(String out) {
+        try {
+            JsonNode n = M.readTree(out);
+            return n.isObject() && n.path("outcome").isTextual();
+        } catch (Exception notJson) {
+            return false;
+        }
+    }
+
     /** Write the example's model (+ siblings, + inline doc) to {@code dir} and resolve the {@code <...>} placeholders. */
     private static List<String> materialize(String verb, JsonNode ex, Path dir) throws Exception {
         // model-originating verbs (e.g. `model new`) declare no `model` — they make one
