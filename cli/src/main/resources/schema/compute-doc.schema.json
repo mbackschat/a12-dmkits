@@ -27,8 +27,8 @@
       "required": ["field", "declaration", "outcome"],
       "additionalProperties": false,
       "properties": {
-        "field": { "type": "string", "description": "the canonical A12 pointer to the computed cell INSTANCE — `Order/Items[2]/Total`: no leading slash, `[1]` omitted, one repetition per part. Identifies the ROW, so a repeated computed field's entries are distinguishable without relying on list position" },
-        "declaration": { "type": "string", "description": "the canonical A12 path of the computation's target with no repetition — `Order/Items/Total`. Group by this to fold a repeated computed field's rows back into the one computation that produced them" },
+        "field": { "type": "string", "format": "a12-pointer", "description": "the canonical A12 pointer to the computed cell INSTANCE — `Order/Items[2]/Total`: no leading slash, `[1]` omitted, one repetition per part. Identifies the ROW, so a repeated computed field's entries are distinguishable without relying on list position" },
+        "declaration": { "type": "string", "format": "a12-pointer", "description": "the canonical A12 path of the computation's target with no repetition — `Order/Items/Total`. Group by this to fold a repeated computed field's rows back into the one computation that produced them" },
         "outcome": { "type": "string", "enum": ["value", "cleared", "error"], "description": "value (computed a value) | cleared (computed nothing, e.g. an empty operand) | error" },
         "value": { "type": "string", "description": "the computed value when outcome is 'value' (or the attempted value on 'error'); absent when cleared" }
       }
