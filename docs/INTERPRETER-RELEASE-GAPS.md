@@ -12,7 +12,7 @@ _None open._
 
 ## Retired ids
 
-Every `IRG<n>` ever issued that has no live row, so a citation of one resolves here and **no number is ever reused**. `GapLedgerTemplateGuardTest` enforces both halves: a live id may not appear in this list, and a new row's number must exceed every number in either list. `IRG2` is why the section exists — it named two unrelated gaps at different times, and a citation in an archived plan could not be told apart from a citation in this file.
+Every `IRG<n>` ever issued that has no live row, so a citation of one resolves here and **no number is ever reused**. **Not yet enforced**, and this section belongs on its own registry surface rather than inside a live ledger — see the note under [INTERPRETER-API-GAPS](INTERPRETER-API-GAPS.md) "Retired ids" for both corrections. `IRG2` is why the section exists — it named two unrelated gaps at different times, and a citation in an archived plan could not be told apart from a citation in this file.
 
 | id | what it meant | disposition |
 |---|---|---|
