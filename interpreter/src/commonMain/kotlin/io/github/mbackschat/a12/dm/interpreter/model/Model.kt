@@ -716,8 +716,31 @@ enum class Verdict { FIRED, PASSED, SUPPRESSED }
 /** A field whose formally-invalid value suppressed a rule — the `rule eval` `suppressedBy` entry. */
 data class Suppression(val field: String, val formalErrorCode: String)
 
-/** A rule the interpreter could not evaluate because it uses an unmodeled/external construct. */
-data class UnsupportedRule(val rulePath: String, val reason: String)
+/**
+ * What an [UnsupportedRule.rulePath] names — the two are different kinds of address and a consumer that
+ * canonicalizes them alike gets one of them wrong.
+ */
+enum class UnsupportedSubject {
+    /** A model ELEMENT path — a rule, a computation, or a field declaration: no repetition, no instance. */
+    ELEMENT,
+
+    /** A document CELL: an instance pointer with repetitions, e.g. an unregistered custom-typed value. */
+    CELL,
+}
+
+/**
+ * A construct the interpreter could not evaluate because it is unmodeled/external.
+ *
+ * [rulePath] is a model element path when [subject] is [UnsupportedSubject.ELEMENT] and a cell **instance pointer** when it
+ * is [UnsupportedSubject.CELL]. It carried both from the start with no way to tell them apart, which left the
+ * CLI unable to render the pointer half canonically without mangling the element half — so the kind is stated
+ * rather than guessed. The field keeps its name for source compatibility; [subject] is what to switch on.
+ */
+data class UnsupportedRule(
+    val rulePath: String,
+    val reason: String,
+    val subject: UnsupportedSubject = UnsupportedSubject.ELEMENT,
+)
 
 /** The result of [DmInterpreter.validate]: the firings plus the rules reported [unsupported]. */
 data class ValidationOutcome(

@@ -96,7 +96,7 @@ class CustomTypeSupportVerbTest {
                 { "Payment": { "AccountHolder": "Acme", "Iban": "NOT-AN-IBAN" } }""");
         var res = CliTestSupport.run("-m", model.toString(), "model", "eval", "--instance", bad.toString());
         assertEquals(0, res.code(), res::err);
-        assertTrue(unsupported(res.out()).contains("/Payment[1]/Iban"),
+        assertTrue(unsupported(res.out()).contains("Payment/Iban"),
                 () -> "the unregistered custom-typed cell must be surfaced under data.unsupported, not silently skipped: " + res.out());
     }
 

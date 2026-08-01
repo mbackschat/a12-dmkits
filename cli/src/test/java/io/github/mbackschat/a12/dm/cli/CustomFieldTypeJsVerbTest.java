@@ -104,7 +104,7 @@ class CustomFieldTypeJsVerbTest {
         var res = CliTestSupport.run("-m", model.toString(), "model", "eval",
                 "--instance", doc(dir, "DE89370400440532013000").toString(), "--custom-field-types-js", js.toString());
         assertEquals(0, res.code(), res::err);
-        assertTrue(unsupported(res.out()).contains("/Payment[1]/Iban"),
+        assertTrue(unsupported(res.out()).contains("Payment/Iban"),
                 () -> "a JS validator that throws must degrade the cell to unsupported, not crash the run: " + res.out());
         assertFalse(fired(res.out(), "customFieldTypeInvalid"),
                 () -> "a non-evaluable cell is unsupported, not a (false) format error: " + res.out());

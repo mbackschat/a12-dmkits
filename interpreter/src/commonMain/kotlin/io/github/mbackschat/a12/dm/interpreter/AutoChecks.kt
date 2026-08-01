@@ -33,6 +33,7 @@ import io.github.mbackschat.a12.dm.interpreter.model.PredefinedType
 import io.github.mbackschat.a12.dm.interpreter.model.Requiredness
 import io.github.mbackschat.a12.dm.interpreter.model.Severity
 import io.github.mbackschat.a12.dm.interpreter.model.UnsupportedRule
+import io.github.mbackschat.a12.dm.interpreter.model.UnsupportedSubject
 import io.github.mbackschat.a12.dm.interpreter.regex.PatternRegistry
 
 /**
@@ -68,6 +69,7 @@ internal class AutoChecks(
                     customUnsupported += UnsupportedRule(
                         doc.formattedPointer(vf.path, vf.reps),
                         result.reason,
+                        UnsupportedSubject.CELL,
                     )
                     null
                 }
@@ -77,7 +79,8 @@ internal class AutoChecks(
                         val text = try {
                             formatMessage(failure.error, vf.path, vf.reps, vf.raw, locale)
                         } catch (e: UnsupportedConstructException) {
-                            customUnsupported += UnsupportedRule(pointer, e.message ?: "unsupported field-owned message")
+                            customUnsupported += UnsupportedRule(pointer, e.message ?: "unsupported field-owned message",
+                                UnsupportedSubject.CELL)
                             return@mapNotNull null
                         }
                         Message(
@@ -298,13 +301,15 @@ internal class AutoChecks(
                 unsupported += UnsupportedRule(
                     ptr,
                     "requiredness field-owned error template has no exact '$locale' declaration",
+                    UnsupportedSubject.CELL,
                 )
                 return null
             }
             try {
                 renderRequiredFieldMessage(template, locale, messageLabel(path, locale, reps))
             } catch (e: UnsupportedConstructException) {
-                unsupported += UnsupportedRule(ptr, e.message ?: "unsupported requiredness field-owned message")
+                unsupported += UnsupportedRule(ptr, e.message ?: "unsupported requiredness field-owned message",
+                    UnsupportedSubject.CELL)
                 return null
             }
         }
@@ -422,6 +427,7 @@ internal class AutoChecks(
             else UnsupportedRule(
                 doc.formattedPointer(vf.path, vf.reps),
                 "custom field type '${declaration.name}' has no registered validator",
+                UnsupportedSubject.CELL,
             )
         }
 

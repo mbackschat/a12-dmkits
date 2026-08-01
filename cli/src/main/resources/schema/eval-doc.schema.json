@@ -37,10 +37,11 @@
       "description": "present only when the engine could NOT evaluate some construct — a CustomCondition with no registered impl, or a custom-typed value with no --predefined-types entry. Reported here, NOT silently absent from `fired` (which would read as a clean pass) — G29. `--strict-custom` turns a non-empty `unsupported` into a refusal (exit 2).",
       "items": {
         "type": "object",
-        "required": ["name", "reason"],
+        "required": ["name", "subject", "reason"],
         "additionalProperties": false,
         "properties": {
-          "name": { "type": "string", "description": "the rule's slash-path (a CustomCondition rule) or the value's instance pointer (an unregistered custom type)" },
+          "name": { "type": "string", "description": "what could not be evaluated — read it according to `subject`, since the two kinds are different addresses" },
+          "subject": { "type": "string", "enum": ["element", "cell"], "description": "element = a model path (a rule/computation/field declaration, no repetition); cell = a canonical A12 instance pointer to a document cell. Published because the two used to share one key with nothing to tell them apart, so neither a consumer nor the renderer could treat the pointer half as a pointer" },
           "reason": { "type": "string", "description": "why it couldn't be evaluated" }
         }
       }

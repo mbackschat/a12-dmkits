@@ -24,6 +24,7 @@ import io.github.mbackschat.a12.dm.interpreter.model.RuleResult;
 import io.github.mbackschat.a12.dm.interpreter.model.RelevantEntity;
 import io.github.mbackschat.a12.dm.interpreter.model.Severity;
 import io.github.mbackschat.a12.dm.interpreter.model.UnsupportedRule;
+import io.github.mbackschat.a12.dm.interpreter.model.UnsupportedSubject;
 import io.github.mbackschat.a12.dm.interpreter.model.ValidationOutcome;
 import io.github.mbackschat.a12.dm.interpreter.model.Verdict;
 import io.github.mbackschat.a12.dm.core.ModelResolver;
@@ -200,7 +201,8 @@ public final class InterpreterEngine {
             data.put("rule", rulePath);
             data.put("fired", false);
             data.put("verdict", "unsupported");
-            addUnsupported(data, List.of(new UnsupportedRule(rulePath, e.getMessage())));
+            addUnsupported(data, List.of(
+                    new UnsupportedRule(rulePath, e.getMessage(), UnsupportedSubject.ELEMENT)));
             return data;
         }
 
@@ -222,9 +224,16 @@ public final class InterpreterEngine {
         return data;
     }
 
-    /** Surface the constructs the engine could NOT evaluate (G29) as {@code data.unsupported} — present only
-     *  when non-empty, like {@code suppressedBy}. Each entry is {@code {name, reason}}: {@code name} is the
-     *  rule's slash-path (a CustomCondition rule) or the cell's instance pointer (an unregistered custom type). */
+    /**
+     * Surface the constructs the engine could NOT evaluate (G29) as {@code data.unsupported} — present only when
+     * non-empty, like {@code suppressedBy}. Each entry is {@code {name, subject, reason}}.
+     *
+     * <p><b>{@code subject} exists because {@code name} is two different kinds of address.</b> An unevaluatable
+     * rule contributes its model element path; an unregistered custom-typed cell contributes an <em>instance
+     * pointer</em>. They were published under one key with nothing to tell them apart, which left a consumer — and
+     * this projection — unable to canonicalize the pointer half without mangling the element half. So the kind is
+     * stated, and only {@code CELL} is rendered as a pointer.
+     */
     private static void addUnsupported(ObjectNode data, List<UnsupportedRule> unsupported) {
         if (unsupported.isEmpty()) {
             return;
@@ -232,7 +241,12 @@ public final class InterpreterEngine {
         ArrayNode arr = data.putArray("unsupported");
         for (UnsupportedRule u : unsupported) {
             ObjectNode n = arr.addObject();
-            n.put("name", u.getRulePath());
+            String name = switch (u.getSubject()) {
+                case CELL -> A12Pointers.canonical(u.getRulePath());
+                case ELEMENT -> u.getRulePath();
+            };
+            n.put("name", name);
+            n.put("subject", u.getSubject().name().toLowerCase(java.util.Locale.ROOT));
             n.put("reason", u.getReason());
         }
     }
