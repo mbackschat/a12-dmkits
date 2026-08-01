@@ -16,6 +16,16 @@ The canonical-pointer utility is published on Kotlin/JVM and Kotlin/JS (`interpr
 
 **What settles it:** export the utility from the npm package and add it to `typescript.api`, then delete the clone and have the qualification test use the real thing. Small, but it is a *surface* addition to a released package, so it wants a deliberate decision on the exported name and whether `parse`'s error type is part of the TS contract. Found 2026-08-01 while auditing the interpreter API against the dmtool pointer work.
 
+### IAG10 — a typed pointer on the MESSAGE channel must model A12's partially-known type, not our exact one <a id="iag10"></a>
+
+A recurring suggestion for the pointer-form question (`CLI-CONFORMANCE-GAPS` §1) is to stop publishing a string and expose a **typed** pointer that can render either spelling on demand. Reaching for the type we already have would break the project's #1 interop rule, and this row exists so that is decided before someone does it.
+
+`A12Pointer` (`interpreter … A12PointerFormat.kt`) documents itself as **exact** — "This type models the EXACT pointer only, and the distinction is load-bearing" — and its position rule for `[0]` is the exact pointer's. A12's message channel is a **different type**: kernel `IMessage` returns `PartiallyKnownDocumentMultiPointer`, carrying `fullName()` plus `repetitionIndexes()` and admitting wildcard/unknown indices, and A12 publishes that structure rather than two string properties. So a typed message pointer is `PartiallyKnownDocumentMultiPointer`-shaped, not `A12Pointer`-shaped, and reusing the exact type would be inventing a shape where A12 has one — precisely what CLAUDE.md's first interop rule forbids, and the same class as the retired `DocumentInputV1` placement transport.
+
+**The live tension that makes this concrete, and it is ours:** `A12Pointer` calls itself exact yet accepts `UNKNOWN_REPETITION` (`-5`, `IIdentifier.UNKNOWN`) **at any part**, because the kernel renders such pointers itself (`…/Demand[-5]/Headcount`) and we must read them back. That acceptance is deliberate and source-verified against kernel 30.8.1 — it is *not* a defect in current behaviour — but it means the type already straddles exact and partially-known, which is exactly the seam a typed-message proposal has to resolve rather than paper over. Note the near-miss history: this file previously called `0` "the wildcard" while enforcing the exact rule, and that vocabulary borrow led a findings entry to declare a correct, test-locked refusal a defect.
+
+**What settles it:** before any typed-pointer surface is designed, state which A12 type each published channel corresponds to — exact `DocumentPointer` for model/instance addressing, `PartiallyKnownDocumentMultiPointer` for message addressing — and cite the kernel counterpart for each. Only then is the rendering question answerable. Raised 2026-08-01 by a review of the pointer-form decision; **not** a prerequisite for IAG9, which adds no type.
+
 
 ## 2. Deferred — with re-open triggers
 
