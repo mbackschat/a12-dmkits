@@ -51,6 +51,7 @@ class SchemaExamplesGuardTest {
             assertEquals(0, res.code(), () -> target + " add rejected the schema example: " + res.err() + res.out());
             assertEquals("preview", MAPPER.readTree(res.out()).path("outcome").asText(),
                     () -> "the " + target + " example previews cleanly");
+            assertPreviewStatesItsGate(target + " add", res);
         }
     }
 
@@ -69,6 +70,7 @@ class SchemaExamplesGuardTest {
             assertEquals(0, res.code(), () -> "apply frame example rejected: " + res.err() + res.out());
             assertTrue(MAPPER.readTree(res.out()).path("data").path("committed").asBoolean(),
                     () -> "the apply frame example commits cleanly: " + res.out());
+            assertPreviewStatesItsGate("apply", res);
         }
     }
 
@@ -108,6 +110,7 @@ class SchemaExamplesGuardTest {
             assertEquals(0, res.code(), () -> "field add rejected the schema example: " + res.err() + res.out());
             assertEquals("preview", MAPPER.readTree(res.out()).path("outcome").asText(),
                     "the field-add example previews cleanly");
+            assertPreviewStatesItsGate("field add", res);
         }
     }
 
@@ -127,6 +130,7 @@ class SchemaExamplesGuardTest {
             assertEquals(0, result.code(), () -> "field modify rejected its schema example: "
                     + result.err() + result.out());
             assertEquals("preview", MAPPER.readTree(result.out()).path("outcome").asText());
+            assertPreviewStatesItsGate("field modify", result);
         }
     }
 
@@ -307,6 +311,23 @@ class SchemaExamplesGuardTest {
         } else if (node.isArray()) {
             node.elements().forEachRemaining(SchemaExamplesGuardTest::stripDocumentation);
         }
+    }
+
+    /**
+     * The receipt column for the <b>schema-demonstrated</b> mutation verbs — {@code rule add},
+     * {@code computation add}, {@code field add}, {@code field modify}, {@code apply}. Those verbs carry no
+     * {@code verb-examples.json} entry (their demonstration IS the schema's input example), so
+     * {@code VerbDemonstrationTest}'s preview column never reaches them; together the two make the mutation
+     * surface complete rather than sampled.
+     *
+     * <p>What it protects: {@code ConsistencyEvidence.of(x)} compiles for any witness and yields {@code none()}
+     * for one that never gated, so a mis-named witness or a dropped gate degrades to <em>silence</em>, not to a
+     * failure. All five of these verbs re-bind through the real oracle before writing, so the key must be there.
+     */
+    private static void assertPreviewStatesItsGate(String verb, CliTestSupport.Result res) throws Exception {
+        assertTrue(MAPPER.readTree(res.out()).hasNonNull("verification"),
+                () -> verb + ": the example gated before it previewed, so the envelope must name the gate — an "
+                        + "absent `verification` means the site's witness never ran one: " + res.out());
     }
 
     private static JsonNode schema(String name) throws Exception {

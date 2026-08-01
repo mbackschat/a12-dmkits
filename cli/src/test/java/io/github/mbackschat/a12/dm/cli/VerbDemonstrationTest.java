@@ -124,6 +124,9 @@ class VerbDemonstrationTest {
                 assertEquals(expect, env.path("outcome").asText(),
                         () -> verb + " demo expected outcome=" + expect + ": " + res.out());
                 assertEnvelopeIdentifiesItsOwnVerb(verb, env, res);
+                if ("preview".equals(expect)) {
+                    assertPreviewStatesItsGate(verb, env, res);
+                }
             }
             case "raw" -> {
                 // a non-envelope verb (export renders an artifact; model new emits a brand-new model document)
@@ -159,6 +162,42 @@ class VerbDemonstrationTest {
         assertEquals(expectedOp, env.path("op").asText(),
                 () -> verb + ": the envelope must echo its own op: " + res.out());
     }
+
+    /**
+     * <b>Receipt totality</b> (RESULT-CONTRACT-PROPOSAL §2): a mutation that ran the consistency oracle must say
+     * so, over the 31 preview demos rather than the handful anyone thought to write a test for.
+     *
+     * <p>This column exists because the evidence type makes a <em>wrong</em> claim unrepresentable but leaves
+     * <em>silence</em> cheap. {@code ConsistencyEvidence.of(x)} compiles for any witness, and one holding no
+     * receipt yields {@code none()} — so a site that names the wrong object, or a route whose gate is later moved
+     * or dropped, degrades quietly to publishing nothing. Nothing fails; the key just stops appearing. Asserting
+     * presence per verb over an enumerated list is what makes that visible, and it is deliberately not an
+     * {@code anyMatch} over whatever happened to run — a guard shaped that way is satisfied by one passing verb
+     * and reads as coverage for all of them (the failure mode this effort hit twice; §1d items 10 and 18).
+     *
+     * <p>{@link #UNGATED_PREVIEW} is the honest exemption, and it must state a reason per verb.
+     */
+    private static void assertPreviewStatesItsGate(String verb, JsonNode env, CliTestSupport.Result res) {
+        String reason = UNGATED_PREVIEW.get(verb);
+        if (reason != null) {
+            assertFalse(env.has("verification"),
+                    () -> verb + " is classified as ungated (" + reason + ") yet published a gate receipt — "
+                            + "either the classification is stale or the receipt is fabricated: " + res.out());
+            return;
+        }
+        assertTrue(env.hasNonNull("verification"),
+            () -> verb + ": a preview runs the same gate its write would, so it must name that gate. Absent means "
+                    + "the site's ConsistencyEvidence came from a witness that never gated (a pre-mutation "
+                    + "ModelDocument, a lenient bind) — or the route stopped gating. Fix the witness, or classify "
+                    + "the verb in UNGATED_PREVIEW with a reason: " + res.out());
+    }
+
+    /**
+     * Preview demos that legitimately publish no {@code verification}, each with the reason it never consults the
+     * oracle. A row here is a claim about the verb's behaviour, so it is checked in both directions above.
+     */
+    private static final Map<String, String> UNGATED_PREVIEW = Map.of(
+            "model normalize", "a pure re-serialization of the parsed tree — no consistency gate is run");
 
     private static Path writeResource(String classpath, Path dir) throws Exception {
         return writeResourceTo(classpath, dir.resolve(classpath.substring(classpath.lastIndexOf('/') + 1)));
