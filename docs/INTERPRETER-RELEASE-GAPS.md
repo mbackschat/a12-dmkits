@@ -4,7 +4,7 @@
 >
 > **Lifecycle.** A gap lives here only while open: §1 open, §2 deferred (trigger-gated), §3 out of scope. When a gap ships its row is **deleted** rather than retained as status history — git is the *what/when* and the graduated spec section is the *why*.
 >
-> **Current state.** §1 is drained. The only remaining release work is the trigger-gated IRG1 drop-in artifact in §2.
+> **Current state.** §1 carries IRG2 and IRG3, both opened 2026-08-01 while the dmtool result contract was being reviewed — a showcase that never demonstrates the per-row case, and a KLIB golden that cannot fail on a member-level break. IRG1, the drop-in artifact, stays trigger-gated in §2.
 
 ## 1. Open
 

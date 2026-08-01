@@ -100,6 +100,15 @@ public final class ModelWrite {
         return this;
     }
 
+    /**
+     * Everything the record must carry is present. Called by {@link BaseCommand#emitMutation} <b>before</b> the
+     * write, so a verb that forgot to state its gate is refused instead of mutating the model and then throwing
+     * on the way out — required state is validated ahead of the side effect, never after it.
+     */
+    void requireComplete() {
+        require(evidence);
+    }
+
     boolean previewOnly() {
         return dryRun;
     }

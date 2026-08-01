@@ -19,7 +19,7 @@ dmtool profile compare --target target.profile.json --actual actual.profile.json
 
 - `profile extract` returns the profile under the normal result envelope's `data` field. With `-o`, it writes the bare profile and returns an applied receipt.
 - `profile synthesize` accepts a bare profile or extraction envelope and emits deterministic own-domain DM-JSON. With `-o`, it writes the model and returns an applied receipt.
-- `profile compare` accepts bare profiles or extraction envelopes and returns `matches` plus every compared axis. A mismatch is `valid:false` with exit 1.
+- `profile compare` accepts bare profiles or extraction envelopes and returns `matches` plus every compared axis. The verdict is `data.matches`; a mismatch exits 1. The envelope carries no `valid`/`verification`: those report a consistency gate's arbitration, and comparing two profile artifacts consults no gate.
 
 The live contracts are `schema profile extract`, `schema profile synthesize`, and `schema profile compare`. There is one current format and no `profileVersion` compatibility branch.
 

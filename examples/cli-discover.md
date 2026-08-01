@@ -203,11 +203,24 @@ dmtool operators DifferenceInDays | jq '{id,kind,meaning}'
 Where `operators` is the *vocabulary*, `patterns` is the *idiom* catalogue — the recurring BA tasks, each a typed-DSL-backed template that's correct by construction, across three `kind`s: **rule** idioms (date-order, mutually-exclusive, …) bake in the two hardest rule traps — the **violation polarity** and a **referenced error field**; the **computation** idiom `tiered-amount` bakes in a **mutually-exclusive, exhaustive precondition table**; the **field** idioms (bounded-number, formatted-string, value-set-enum) scaffold the **field-level alternative** to a rule. `patterns` lists them, with each idiom's `kind`; the summary here is projected with `jq`.
 
 ```bash
-dmtool patterns | jq '{count, ids: (.patterns|map(.id))}'
+dmtool patterns | jq '{count: .data.count, ids: (.data.patterns|map(.id))}'
 ```
 
 ```output
-jq: error (at <stdin>:58): Cannot iterate over null (null)
+{
+  "count": 9,
+  "ids": [
+    "date-order",
+    "mutually-exclusive",
+    "at-least-one-of",
+    "required-when",
+    "sum-of-line-items",
+    "tiered-amount",
+    "bounded-number",
+    "formatted-string",
+    "value-set-enum"
+  ]
+}
 ```
 
 → Nine idioms. Pass an id with `--arg name=value` parameters (and `-m <model>`) to **scaffold** the artifact from one — a rule-spec, a computation-spec (`tiered-amount`), or a field-spec (the field idioms) — built through the typed DSL (correct by construction) and **auto-checked** against the kernel.
@@ -215,15 +228,15 @@ jq: error (at <stdin>:58): Cannot iterate over null (null)
 ```bash
 dmtool -m examples/models/order-ruled.dm.json \
   patterns date-order --arg earlier=/Order/OrderDate --arg later=/Order/DeliveryDate \
-  | jq '{pattern, spec: {field: .spec.field, condition: .spec.condition}, valid}'
+  | jq '{pattern: .data.pattern, spec: {field: .data.spec.field, condition: .data.spec.condition}, valid}'
 ```
 
 ```output
 {
-  "pattern": null,
+  "pattern": "date-order",
   "spec": {
-    "field": null,
-    "condition": null
+    "field": "/Order/DeliveryDate",
+    "condition": "AllFieldsFilled(/Order/OrderDate, /Order/DeliveryDate) And DifferenceInDays(/Order/OrderDate, /Order/DeliveryDate) < 0"
   },
   "valid": true
 }

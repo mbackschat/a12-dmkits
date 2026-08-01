@@ -22,8 +22,9 @@ import picocli.CommandLine.Option;
  * synthesized model preserves its target workload shape.
  */
 @Command(name = "compare", mixinStandardHelpOptions = true,
-        description = "Compare target and actual current profiles. Every fidelity axis rides `data`; a mismatch "
-                + "is a read result with `valid:false` and exit 1.")
+        description = "Compare target and actual current profiles. Every fidelity axis rides `data`; the overall "
+                + "verdict is `data.matches`, and a mismatch exits 1. No consistency gate arbitrates a profile "
+                + "comparison, so the envelope carries no `valid`/`verification`.")
 final class ProfileCompareCommand extends BaseCommand {
 
     private static final ObjectMapper JSON = new ObjectMapper();

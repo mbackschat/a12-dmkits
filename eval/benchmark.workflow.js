@@ -547,7 +547,7 @@ if (candidates.length) {
 Steps: (1) write this JSON array verbatim to /tmp/rk-eval-ops.json:
 ${JSON.stringify(ops)}
 (2) run:  ${CLI} batch /tmp/rk-eval-ops.json
-(3) the output is a JSON array; each element echoes its "id" and carries result.valid (the kernel verdict).
+(3) the output is the result envelope; the per-op records are at .data.results[], each echoing its "id" and carrying result.valid (the kernel verdict).
 Report every op via the structured-output tool: one {id, valid} per op.`,
       { label: 'batch recheck', phase: 'Recheck',
         schema: { type: 'object', additionalProperties: false, required: ['verdicts'],
@@ -764,7 +764,7 @@ is an array of row objects; a field is its value, native JSON for a number/boole
 present-but-empty; see \`${CLI} schema model eval\`) that exercise the fields BOTH conditions reference at their
 edges (empty vs filled, a boundary value, each enum value). For each doc run, for the GOLD then the CANDIDATE,
 \`${CLI} -m ${MODEL_FILE(r.task)} model eval${INCLUDE_HINT(r.task)} --condition '<that condition>' --field <that field> --instance <doc>\`
-and read \`rule.fired\`. They are EQUIVALENT iff \`rule.fired\` matches on EVERY document; a document where they
+and read \`data.rule.fired\`. They are EQUIVALENT iff \`data.rule.fired\` matches on EVERY document; a document where they
 differ is the witness that they are NOT. This runs the real kernel, so you needn't recall the empty/polarity rules.
 Reference gold: field="${r.task.gold.field}", condition=${JSON.stringify(r.task.gold.condition)}.
 Candidate: field="${r.out.field}", condition=${JSON.stringify(r.out.condition)}.
@@ -893,7 +893,7 @@ VERIFY BY EXECUTION — the kernel is the arbiter; PREFER it over reasoning when
 semantic (empty operands, polarity). Write 2-4 small documents to files (A12's canonical Document JSON —
 a root group name is a top-level key, no wrapper; see \`${CLI} schema model eval\`) exercising the referenced fields at their edges; for each, run for the GOLD then the CANDIDATE
 \`${CLI} -m ${MODEL_FILE(r.task)} model eval${INCLUDE_HINT(r.task)} --condition '<that condition>' --field ${r.task.gold.field} --instance <doc>\`
-and compare \`rule.fired\` — EQUIVALENT iff it matches on every document.
+and compare \`data.rule.fired\` — EQUIVALENT iff it matches on every document.
 Reference gold (the intended modified rule): error field "${r.task.gold.field}", condition=${JSON.stringify(r.task.gold.condition)}.
 Candidate condition: ${JSON.stringify(r.out.condition)}.
 Return ONLY JSON: {"equivalent": true|false, "why": "<one sentence>"}`,

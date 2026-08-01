@@ -201,11 +201,12 @@ cat > /tmp/edit-ops.json <<'EOF'
              "--condition", "[EffectiveFee] PatternViolated \"x\"", "--code", "Y"] }
 ]
 EOF
-dmtool batch /tmp/edit-ops.json | jq -c ".[] | {id, valid: .result.valid}"
+dmtool batch /tmp/edit-ops.json | jq -c ".data.results[] | {id, valid: .result.valid}"
 ```
 
 ```output
-jq: error (at <stdin>:66): Cannot index string with string ("id")
+{"id":"ok","valid":true}
+{"id":"bad","valid":false}
 ```
 
 → Two `rule check`s in one JVM: the numeric comparison is `valid`, the pattern comparison on a number field is rejected — each verdict carries its `id`. This is how the eval runner re-validates many candidates at once.

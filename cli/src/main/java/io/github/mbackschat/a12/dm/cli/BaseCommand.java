@@ -273,6 +273,7 @@ public abstract class BaseCommand implements Callable<Integer> {
      * an input rejection and not a consistency verdict, so it must not acquire either shape on the way out.
      */
     protected int emitMutation(ModelWrite write) {
+        write.requireComplete();   // before any side effect: an incomplete record must not leave a model behind
         if (write.previewOnly()) {
             return print(write.preview());
         }

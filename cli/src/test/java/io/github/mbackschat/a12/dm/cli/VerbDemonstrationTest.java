@@ -33,6 +33,101 @@ class VerbDemonstrationTest {
 
     private static final ObjectMapper M = new ObjectMapper();
 
+    /**
+     * <b>No agent-facing claim names an envelope value the verb never publishes.</b>
+     *
+     * <p>A verb's {@code --help}/{@code manifest} description and its example's {@code intent} are the two
+     * sentences a cold agent reads <em>before</em> running anything, so a stale value claim there sends it
+     * looking for a key that is not in the output. Nothing executed prose, so {@code profile compare} kept
+     * advertising "a mismatch is a read result with {@code valid:false}" through a whole phase in which
+     * {@code valid} had stopped being published at all — the taxonomy now reserves it for a verdict a
+     * consistency gate arbitrated, and comparing two profile artifacts arbitrates nothing. The exit code was
+     * still 1 and {@code data.matches} still said {@code false}, so every behavioural guard stayed green while
+     * the sentence describing the behaviour was wrong.
+     *
+     * <p>The check is narrow on purpose: only a {@code key:literal} claim about a <em>published envelope
+     * key</em>, verified against the verb's own demonstrated envelope. That form asserts something specific
+     * enough to rot; looser prose ("rides {@code data}") is left alone because it cannot be mechanically
+     * judged, and a guard that overreaches gets weakened rather than obeyed.
+     */
+    @Test
+    void noAgentFacingClaimNamesAnEnvelopeValueTheVerbNeverPublishes(@TempDir Path dir) throws Exception {
+        JsonNode manifest = M.readTree(CliTestSupport.run("manifest").out());
+        JsonNode corpus = corpus();
+        List<String> wrong = new ArrayList<>();
+        for (JsonNode v : manifest.path("verbs")) {
+            String verb = v.path("verb").asText();
+            JsonNode ex = corpus.get(verb);
+            if (ex == null) {
+                continue; // no demonstration to check the claim against; the matrix's demonstrated column owns that
+            }
+            List<String> claimed = claimedEnvelopeKeys(
+                    v.path("description").asText("") + " " + ex.path("intent").asText(""));
+            if (claimed.isEmpty()) {
+                continue;
+            }
+            JsonNode envelope = M.readTree(
+                    CliTestSupport.run(materialize(verb, ex, dir).toArray(new String[0])).out());
+            for (String key : claimed) {
+                if (!envelope.has(key)) {
+                    List<String> actual = new ArrayList<>();
+                    envelope.fieldNames().forEachRemaining(actual::add);
+                    wrong.add(verb + " promises '" + key + "' but its envelope publishes " + actual);
+                }
+            }
+        }
+        assertTrue(wrong.isEmpty(),
+                () -> "these agent-facing descriptions name an envelope value the verb does not publish: " + wrong
+                        + ". The sentence an agent reads before running the verb must match what the verb emits — "
+                        + "fix the description (and the example's intent), not the envelope");
+    }
+
+    /**
+     * The positive control for the column above, and the reason it is a separate test.
+     *
+     * <p>Fixing the last real violation leaves that column scanning a clean surface, so it would pass whether the
+     * scanner works or matches nothing at all — the vacuous-green shape this whole effort kept producing. Asserting
+     * "at least one claim was found" is the wrong cure: it turns a clean surface into a failure and pressures the
+     * next author to delete the guard. What actually needs proving is that the <em>scanner</em> still recognises
+     * the claim form, so it is exercised directly, on the sentence that was really shipped.
+     */
+    @Test
+    void theClaimScannerRecognisesTheFormThatWentStale() throws Exception {
+        assertEquals(List.of("valid"),
+                claimedEnvelopeKeys("a mismatch is visible as valid:false and exit 1"),
+                "the exact sentence profile compare shipped for a phase — this is what the column must catch");
+        assertEquals(List.of(), claimedEnvelopeKeys("Every fidelity axis rides `data`; a mismatch exits 1."),
+                "loose prose names no literal, so it is out of scope rather than a false positive");
+        assertEquals(List.of(), claimedEnvelopeKeys("see https://example.invalid/x for the contract"),
+                "a URL's colon must not read as a value claim");
+        assertFalse(envelopeKeys().isEmpty(),
+                "the envelope key set is read from result.schema.json; an empty one would silently drop every claim");
+        assertTrue(envelopeKeys().contains("valid"), "sanity: the schema really does define the key under test");
+    }
+
+    /** Envelope keys a prose sentence claims a concrete value for — the form specific enough to go stale. */
+    private static List<String> claimedEnvelopeKeys(String prose) throws Exception {
+        java.util.regex.Matcher m =
+                java.util.regex.Pattern.compile("\\b([a-z][a-zA-Z]*):(true|false|null|[0-9]+)\\b").matcher(prose);
+        List<String> claimed = new ArrayList<>();
+        while (m.find()) {
+            if (envelopeKeys().contains(m.group(1)) && !claimed.contains(m.group(1))) {
+                claimed.add(m.group(1));
+            }
+        }
+        return claimed;
+    }
+
+    /** The published envelope frame, read from the schema that defines it rather than restated here. */
+    private static java.util.Set<String> envelopeKeys() throws Exception {
+        try (InputStream in = VerbDemonstrationTest.class.getResourceAsStream("/schema/result.schema.json")) {
+            JsonNode props = M.readTree(in).path("properties");
+            java.util.Set<String> keys = new java.util.LinkedHashSet<>();
+            props.fieldNames().forEachRemaining(keys::add);
+            return keys;
+        }
+    }
+
     @Test
     void everyVerbExampleRunsAndProducesItsDocumentedOutcome(@TempDir Path dir) throws Exception {
         JsonNode corpus = corpus();

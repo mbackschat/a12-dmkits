@@ -191,4 +191,49 @@ class MutationEvidenceTest {
         assertFalse(step.has("verification"),
                 () -> "a staged step runs no gate of its own; the aggregate owns the receipt: " + res.out());
     }
+
+    /** A bare host for {@link BaseCommand#emitMutation}, so the tail can be driven without a real verb. */
+    @picocli.CommandLine.Command(name = "tail-probe")
+    static final class TailProbe extends BaseCommand {
+        ModelWrite write;
+
+        @Override
+        public Integer call() {
+            return emitMutation(write);
+        }
+    }
+
+    /**
+     * The tail validates what it requires <b>before</b> it touches the filesystem.
+     *
+     * <p>{@code emitMutation} used to write the model and only then ask {@link ModelWrite} for its gate receipt,
+     * so a verb that forgot {@code .gatedBy(…)} would mutate successfully and <em>then</em> throw: the edit
+     * lands, the envelope never prints, and the exception reads like a reporting bug rather than the missing
+     * provenance it is. Every one of the thirty-three callers supplies the receipt today, which is exactly why
+     * this needs a guard — the ordering is invisible until the first caller that doesn't.
+     *
+     * <p>The destination is asserted absent rather than unchanged: proving the file was never created is
+     * stronger than proving it was restored, and it fails for a partial write too.
+     */
+    @Test
+    void anIncompleteWriteRefusesBeforeItTouchesTheDestination(@TempDir Path dir) throws Exception {
+        Path dest = dir.resolve("must-not-appear.dm.json");
+        TailProbe cmd = new TailProbe();
+        cmd.write = ModelWrite.of("field", "add")
+                .summaries("would add PromoCode", "added PromoCode")
+                .json("{\"unused\":true}")
+                .dryRun(false)
+                .destination(dest.toString(), dest.toString());   // deliberately no .gatedBy(...)
+
+        picocli.CommandLine cl = new picocli.CommandLine(cmd);
+        cl.setOut(new java.io.PrintWriter(new java.io.StringWriter()));
+
+        IllegalStateException boom = org.junit.jupiter.api.Assertions.assertThrows(
+                IllegalStateException.class, cmd::call,
+                "a ModelWrite with no stated gate is incomplete and must be refused");
+        assertTrue(boom.getMessage().contains("without stating its gate"), boom::getMessage);
+        assertFalse(Files.exists(dest),
+                () -> "the refusal must come BEFORE the write — an incomplete record left a model behind at "
+                        + dest);
+    }
 }
