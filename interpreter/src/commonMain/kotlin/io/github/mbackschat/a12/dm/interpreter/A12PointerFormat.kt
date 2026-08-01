@@ -55,20 +55,29 @@ object A12PointerFormat {
      */
     const val UNKNOWN_REPETITION: Int = -5
 
+    // The part-name grammar, single-sourced: [PART] is BUILT from it, so `parse` (which splits a name from its
+    // bracket) and `format` (which validates a bare name) cannot drift apart on what a name may contain.
+    private const val NAME_PATTERN = "[\\w_-]+"
+
+    /** A bare part name — no bracket. What [format] receives, one part at a time, inside [path]. */
+    private val NAME = Regex(NAME_PATTERN)
+
     // The closing bracket MUST stay escaped: Kotlin/JS compiles a Regex in unicode (`u`) mode, where a lone
     // `]` is a SyntaxError — the pattern would fail to construct and every use would see an uninitialized
     // object. Harmless on the JVM, required on JS (the multiplatform `:interpreter:check` is what catches it).
-    // The optional `-` admits UNKNOWN_REPETITION only; every other negative is rejected below.
-    private val PART = Regex("([\\w_-]+)(\\[(-?\\d+)?\\])?")
+    // The optional `-` admits UNKNOWN_REPETITION only; every other negative is rejected by [requireLegalDomain].
+    private val PART = Regex("($NAME_PATTERN)(\\[(-?\\d+)?\\])?")
 
     /**
      * Render [path] (with or without a leading `/`) and its positional [repetitions] as the canonical string.
+     *
+     * Rejects exactly what [parse] rejects. It used to check only the arity, which let it emit 4,321 strings
+     * its own parser refused — `Order[0]/Count`, `Order[-7]/Count`, an already-indexed `Order[2]` growing a
+     * second bracket, a name outside the grammar. `A12PointerSymmetryTest` is the two-directional lock.
      */
     fun format(path: String, repetitions: List<Int>): String {
         val names = splitNames(path)
-        require(names.size == repetitions.size) {
-            "path '$path' has ${names.size} parts but ${repetitions.size} repetitions"
-        }
+        requireLegalDomain(names, repetitions) { "path '$path'" }
         return names.asSequence()
             .mapIndexed { i, name -> if (repetitions[i] == 1) name else "$name[${repetitions[i]}]" }
             .joinToString("/")
@@ -84,16 +93,39 @@ object A12PointerFormat {
             names.add(match.groupValues[1])
             repetitions.add(match.groupValues[3].takeIf { it.isNotEmpty() }?.toInt() ?: 1)
         }
+        requireLegalDomain(names, repetitions) { "pointer '$pointer'" }
+        return A12Pointer(immutableListSnapshot(names), immutableListSnapshot(repetitions))
+    }
+
+    /**
+     * <b>The ONE place an exact pointer's domain is enforced.</b> Both entry points call it, so neither can
+     * admit what the other refuses — the defect this replaces was precisely that the rule lived inside
+     * `parse`'s loop and bound `parse`'s callers only.
+     *
+     * Zero parts is legal and deliberately not special-cased: that is A12's **root pointer**, which
+     * `DocumentPointerImpl.parseFullName("")` returns as an empty part list and the kernel displays as
+     * `(empty DocumentPointer)`. Rejecting it would invent a shape stricter than A12's.
+     */
+    private fun requireLegalDomain(names: List<String>, repetitions: List<Int>, subject: () -> String) {
+        require(names.size == repetitions.size) {
+            "${subject()} has ${names.size} parts but ${repetitions.size} repetitions"
+        }
+        names.forEach { name ->
+            require(NAME.matchEntire(name) != null) {
+                "not a valid path part name: '$name' in ${subject()} — a name matches $NAME_PATTERN and carries " +
+                    "no bracket of its own, so an already-indexed name like 'Group[2]' is passed as the name " +
+                    "'Group' with repetition 2 instead"
+            }
+        }
         for (i in repetitions.indices) {
             val rep = repetitions[i]
             val lastPartZero = rep == LAST_PART_ZERO && i == repetitions.size - 1
             require(rep >= 1 || rep == UNKNOWN_REPETITION || lastPartZero) {
                 "all repetition indexes must be >= 1; only the last may be $LAST_PART_ZERO, and " +
-                    "$UNKNOWN_REPETITION (A12's unknown repetition) may appear at any part, in pointer " +
-                    "'$pointer' (an exact DocumentPointer — a multipointer wildcard is a different type)"
+                    "$UNKNOWN_REPETITION (A12's unknown repetition) may appear at any part, in ${subject()} " +
+                    "(an exact DocumentPointer — a multipointer wildcard is a different type)"
             }
         }
-        return A12Pointer(immutableListSnapshot(names), immutableListSnapshot(repetitions))
     }
 
     /** Split a path on `/`, stripping the redundant leading slash and rejecting a trailing one. */
