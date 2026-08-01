@@ -1,16 +1,13 @@
 package io.github.mbackschat.a12.dm.cli.include;
 
-import io.github.mbackschat.a12.dm.cli.ConsistencyEvidence;
 import io.github.mbackschat.a12.dm.cli.BaseCommand;
+import io.github.mbackschat.a12.dm.cli.ConsistencyEvidence;
+import io.github.mbackschat.a12.dm.cli.ModelWrite;
 import io.github.mbackschat.a12.dm.cli.ParamKind;
 import io.github.mbackschat.a12.dm.cli.Refusal;
-import io.github.mbackschat.a12.dm.cli.ResultEnvelope;
 import io.github.mbackschat.a12.dm.cli.StructureRefactor;
 import io.github.mbackschat.a12.dm.cli.WorkspaceOption;
 
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.util.Optional;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -92,21 +89,13 @@ final class IncludeRenameCommand extends BaseCommand {
         ObjectNode changed = MAPPER.createObjectNode();
         changed.put("renamed", alias);
         changed.put("to", newAlias);
-        if (dryRun) {
-            ResultEnvelope env = ResultEnvelope.preview("include", "rename",
-                    "would rename include " + alias + " to " + newAlias, changed, ConsistencyEvidence.of(rewritten));
-            out().print(env.toJsonString());
-            return env.exitCode();
-        }
-        String dest = outputPath != null ? outputPath : model;
-        try {
-            Files.writeString(Path.of(dest), resultJson);
-        } catch (IOException e) {
-            return fail("cannot write output: " + e.getMessage());
-        }
-        ResultEnvelope env = ResultEnvelope.applied("include", "rename",
-                "renamed include " + alias + " to " + newAlias, changed, dest, ConsistencyEvidence.of(rewritten));
-        out().print(env.toJsonString());
-        return env.exitCode();
+        return emitMutation(ModelWrite.of("include", "rename")
+                .summaries("would rename include " + alias + " to " + newAlias,
+                        "renamed include " + alias + " to " + newAlias)
+                .changed(changed)
+                .json(resultJson)
+                .gatedBy(ConsistencyEvidence.of(rewritten))
+                .dryRun(dryRun)
+                .destination(outputPath, model));
     }
 }

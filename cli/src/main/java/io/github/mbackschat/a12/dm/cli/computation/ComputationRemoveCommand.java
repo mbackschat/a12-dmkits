@@ -1,10 +1,10 @@
 package io.github.mbackschat.a12.dm.cli.computation;
 
-import io.github.mbackschat.a12.dm.cli.ConsistencyEvidence;
 import io.github.mbackschat.a12.dm.cli.BaseCommand;
+import io.github.mbackschat.a12.dm.cli.ConsistencyEvidence;
+import io.github.mbackschat.a12.dm.cli.ModelWrite;
 import io.github.mbackschat.a12.dm.cli.ParamKind;
 import io.github.mbackschat.a12.dm.cli.Refusal;
-import io.github.mbackschat.a12.dm.cli.ResultEnvelope;
 import io.github.mbackschat.a12.dm.cli.SafetyChecks;
 import io.github.mbackschat.a12.dm.cli.SafetyGate;
 import io.github.mbackschat.a12.dm.cli.WorkspaceOption;
@@ -81,21 +81,13 @@ final class ComputationRemoveCommand extends BaseCommand {
         }
         ObjectNode changed = MAPPER.createObjectNode();
         changed.put("removed", computation);
-        if (dryRun) {
-            ResultEnvelope env = ResultEnvelope.preview("computation", "remove",
-                    "would remove computation " + computation, changed, ConsistencyEvidence.of(reduced));
-            out().print(env.toJsonString());
-            return env.exitCode();
-        }
-        String dest = outputPath != null ? outputPath : model;
-        try {
-            Files.writeString(Path.of(dest), result);
-        } catch (IOException e) {
-            return fail("cannot write output: " + e.getMessage());
-        }
-        ResultEnvelope env = ResultEnvelope.applied("computation", "remove",
-                "removed computation " + computation, changed, dest, ConsistencyEvidence.of(reduced));
-        out().print(env.toJsonString());
-        return env.exitCode();
+        return emitMutation(ModelWrite.of("computation", "remove")
+                .summaries("would remove computation " + computation,
+                        "removed computation " + computation)
+                .changed(changed)
+                .json(result)
+                .gatedBy(ConsistencyEvidence.of(reduced))
+                .dryRun(dryRun)
+                .destination(outputPath, model));
     }
 }

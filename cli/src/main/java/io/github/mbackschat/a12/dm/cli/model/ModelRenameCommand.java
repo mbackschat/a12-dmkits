@@ -1,15 +1,13 @@
 package io.github.mbackschat.a12.dm.cli.model;
 
-import io.github.mbackschat.a12.dm.cli.ConsistencyEvidence;
 import io.github.mbackschat.a12.dm.cli.BaseCommand;
+import io.github.mbackschat.a12.dm.cli.ConsistencyEvidence;
+import io.github.mbackschat.a12.dm.cli.ModelWrite;
 import io.github.mbackschat.a12.dm.cli.ParamKind;
 import io.github.mbackschat.a12.dm.cli.Refusal;
-import io.github.mbackschat.a12.dm.cli.ResultEnvelope;
 import io.github.mbackschat.a12.dm.cli.SafetyChecks;
 import io.github.mbackschat.a12.dm.cli.WorkspaceOption;
 
-import java.io.IOException;
-import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -96,22 +94,14 @@ final class ModelRenameCommand extends BaseCommand {
         changed.put("id", newId);
         changed.put("from", oldId);
         String summary = "renamed model id " + oldId + " → " + newId;
-        if (dryRun) {
-            ResultEnvelope env = ResultEnvelope.preview("model", "rename", "would have " + summary, changed,
-                    ConsistencyEvidence.of(doc));
-            out().print(env.toJsonString());
-            return env.exitCode();
-        }
-        String dest = outputPath != null ? outputPath : model;
-        try {
-            Files.writeString(Path.of(dest), resultJson);
-        } catch (IOException e) {
-            return fail("cannot write output: " + e.getMessage());
-        }
-        ResultEnvelope env = ResultEnvelope.applied("model", "rename", summary, changed, dest,
-                ConsistencyEvidence.of(doc));
-        out().print(env.toJsonString());
-        return env.exitCode();
+        return emitMutation(ModelWrite.of("model", "rename")
+                .summaries("would have " + summary,
+                        summary)
+                .changed(changed)
+                .json(resultJson)
+                .gatedBy(ConsistencyEvidence.of(doc))
+                .dryRun(dryRun)
+                .destination(outputPath, model));
     }
 
     /**

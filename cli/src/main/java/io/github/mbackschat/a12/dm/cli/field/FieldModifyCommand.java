@@ -1,9 +1,9 @@
 package io.github.mbackschat.a12.dm.cli.field;
 
-import io.github.mbackschat.a12.dm.cli.ConsistencyEvidence;
 import io.github.mbackschat.a12.dm.cli.BaseCommand;
+import io.github.mbackschat.a12.dm.cli.ConsistencyEvidence;
+import io.github.mbackschat.a12.dm.cli.ModelWrite;
 import io.github.mbackschat.a12.dm.cli.Refusal;
-import io.github.mbackschat.a12.dm.cli.ResultEnvelope;
 import io.github.mbackschat.a12.dm.cli.SafetyChecks;
 import io.github.mbackschat.a12.dm.cli.SafetyGate;
 import io.github.mbackschat.a12.dm.cli.WorkspaceOption;
@@ -145,22 +145,15 @@ final class FieldModifyCommand extends BaseCommand {
         } catch (RuntimeException e) {
             return failEditGate(e);
         }
-        if (dryRun) {
-            ResultEnvelope env = ResultEnvelope.preview("field", "modify", "would modify " + fieldPath, changed,
-                    advisories, ConsistencyEvidence.of(doc));
-            out().print(env.toJsonString());
-            return env.exitCode();
-        }
-        String dest = outputPath != null ? outputPath : model;
-        try {
-            Files.writeString(Path.of(dest), resultJson);
-        } catch (IOException e) {
-            return fail("cannot write output: " + e.getMessage());
-        }
-        ResultEnvelope env = ResultEnvelope.applied("field", "modify", "modified " + fieldPath, changed,
-                advisories, dest, ConsistencyEvidence.of(doc));
-        out().print(env.toJsonString());
-        return env.exitCode();
+        return emitMutation(ModelWrite.of("field", "modify")
+                .summaries("would modify " + fieldPath,
+                        "modified " + fieldPath)
+                .changed(changed)
+                .advisories(advisories)
+                .json(resultJson)
+                .gatedBy(ConsistencyEvidence.of(doc))
+                .dryRun(dryRun)
+                .destination(outputPath, model));
     }
 
     /**

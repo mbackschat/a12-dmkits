@@ -2,6 +2,7 @@ package io.github.mbackschat.a12.dm.cli.rule;
 
 import io.github.mbackschat.a12.dm.cli.BaseCommand;
 import io.github.mbackschat.a12.dm.cli.ConsistencyEvidence;
+import io.github.mbackschat.a12.dm.cli.ModelWrite;
 import io.github.mbackschat.a12.dm.cli.RejectionBasis;
 import io.github.mbackschat.a12.dm.core.ModelConsistencyException;
 import io.github.mbackschat.a12.dm.cli.ParamKind;
@@ -186,23 +187,14 @@ final class RuleModifyCommand extends BaseCommand {
             ArrayNode m = changed.putArray("messages");
             messages.forEach((locale, text) -> m.addObject().put("locale", locale).put("text", text));
         }
-        if (dryRun) {
-            String summary = (condition != null ? "would re-express " : "would modify ") + rule;
-            ResultEnvelope env = ResultEnvelope.preview("rule", "modify", summary, changed,
-                    ConsistencyEvidence.of(rebound));
-            out().print(env.toJsonString());
-            return env.exitCode();
-        }
-        String dest = outputPath != null ? outputPath : model;
-        try {
-            Files.writeString(Path.of(dest), modifiedJson);
-        } catch (IOException e) {
-            return fail("cannot write output: " + e.getMessage());
-        }
-        String summary = (condition != null ? "re-expressed " : "modified ") + rule;
-        ResultEnvelope env = ResultEnvelope.applied("rule", "modify", summary, changed, dest,
-                ConsistencyEvidence.of(rebound));
-        out().print(env.toJsonString());
-        return env.exitCode();
+        String verb = condition != null ? "re-express" : "modify";
+        return emitMutation(ModelWrite.of("rule", "modify")
+                .summaries("would " + verb + " " + rule,
+                        (condition != null ? "re-expressed " : "modified ") + rule)
+                .changed(changed)
+                .json(modifiedJson)
+                .gatedBy(ConsistencyEvidence.of(rebound))
+                .dryRun(dryRun)
+                .destination(outputPath, model));
     }
 }

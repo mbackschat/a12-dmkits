@@ -1,17 +1,14 @@
 package io.github.mbackschat.a12.dm.cli.typedef;
 
-import io.github.mbackschat.a12.dm.cli.ConsistencyEvidence;
 import io.github.mbackschat.a12.dm.cli.BaseCommand;
+import io.github.mbackschat.a12.dm.cli.ConsistencyEvidence;
+import io.github.mbackschat.a12.dm.cli.ModelWrite;
 import io.github.mbackschat.a12.dm.cli.ParamKind;
 import io.github.mbackschat.a12.dm.cli.Refusal;
-import io.github.mbackschat.a12.dm.cli.ResultEnvelope;
 import io.github.mbackschat.a12.dm.cli.SafetyChecks;
 import io.github.mbackschat.a12.dm.cli.SafetyGate;
 import io.github.mbackschat.a12.dm.cli.WorkspaceOption;
 
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.util.List;
 import java.util.Optional;
 
@@ -83,21 +80,13 @@ final class TypedefInlineCommand extends BaseCommand {
         changed.put("inlined", id);
         ArrayNode fields = changed.putArray("expandedFields");
         expanded.forEach(fields::add);
-        if (dryRun) {
-            ResultEnvelope env = ResultEnvelope.preview("typedef", "inline",
-                    "would inline typedef " + id, changed, ConsistencyEvidence.of(doc));
-            out().print(env.toJsonString());
-            return env.exitCode();
-        }
-        String dest = outputPath != null ? outputPath : model;
-        try {
-            Files.writeString(Path.of(dest), resultJson);
-        } catch (IOException e) {
-            return fail("cannot write output: " + e.getMessage());
-        }
-        ResultEnvelope env = ResultEnvelope.applied("typedef", "inline",
-                "inlined typedef " + id, changed, dest, ConsistencyEvidence.of(doc));
-        out().print(env.toJsonString());
-        return env.exitCode();
+        return emitMutation(ModelWrite.of("typedef", "inline")
+                .summaries("would inline typedef " + id,
+                        "inlined typedef " + id)
+                .changed(changed)
+                .json(resultJson)
+                .gatedBy(ConsistencyEvidence.of(doc))
+                .dryRun(dryRun)
+                .destination(outputPath, model));
     }
 }

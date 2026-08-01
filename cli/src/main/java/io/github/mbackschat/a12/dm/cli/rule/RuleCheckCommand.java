@@ -5,9 +5,9 @@ import io.github.mbackschat.a12.dm.cli.ConsistencyEvidence;
 import io.github.mbackschat.a12.dm.cli.LintBackstop;
 import io.github.mbackschat.a12.dm.cli.ModelPaths;
 import io.github.mbackschat.a12.dm.cli.RejectionBasis;
-import io.github.mbackschat.a12.dm.cli.interp.TextConditionCorrective;
 import io.github.mbackschat.a12.dm.cli.ResultEnvelope;
 import io.github.mbackschat.a12.dm.cli.WorkspaceOption;
+import io.github.mbackschat.a12.dm.cli.interp.TextConditionCorrective;
 
 import java.io.IOException;
 import java.nio.file.Files;

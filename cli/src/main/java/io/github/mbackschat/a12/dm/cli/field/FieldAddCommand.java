@@ -1,10 +1,10 @@
 package io.github.mbackschat.a12.dm.cli.field;
 
-import io.github.mbackschat.a12.dm.cli.ConsistencyEvidence;
 import io.github.mbackschat.a12.dm.cli.BaseCommand;
+import io.github.mbackschat.a12.dm.cli.ConsistencyEvidence;
+import io.github.mbackschat.a12.dm.cli.ModelWrite;
 import io.github.mbackschat.a12.dm.cli.ParamKind;
 import io.github.mbackschat.a12.dm.cli.Refusal;
-import io.github.mbackschat.a12.dm.cli.ResultEnvelope;
 import io.github.mbackschat.a12.dm.cli.SafetyChecks;
 import io.github.mbackschat.a12.dm.cli.SafetyGate;
 import io.github.mbackschat.a12.dm.cli.WorkspaceOption;
@@ -169,22 +169,14 @@ final class FieldAddCommand extends BaseCommand {
         } catch (RuntimeException e) {
             return failEditGate(e);
         }
-        if (dryRun) {
-            ResultEnvelope env = ResultEnvelope.preview("field", "add", "would add field " + target, changed,
-                    ConsistencyEvidence.of(doc));
-            out().print(env.toJsonString());
-            return env.exitCode();
-        }
-        String dest = outputPath != null ? outputPath : model;
-        try {
-            Files.writeString(Path.of(dest), resultJson);
-        } catch (IOException e) {
-            return fail("cannot write output: " + e.getMessage());
-        }
-        ResultEnvelope env = ResultEnvelope.applied("field", "add", "added field " + target, changed, dest,
-                ConsistencyEvidence.of(doc));
-        out().print(env.toJsonString());
-        return env.exitCode();
+        return emitMutation(ModelWrite.of("field", "add")
+                .summaries("would add field " + target,
+                        "added field " + target)
+                .changed(changed)
+                .json(resultJson)
+                .gatedBy(ConsistencyEvidence.of(doc))
+                .dryRun(dryRun)
+                .destination(outputPath, model));
     }
 
     /** Emit the safety-gate refusal (group must exist) and report whether it fired. */

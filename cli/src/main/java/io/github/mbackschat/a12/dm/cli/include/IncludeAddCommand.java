@@ -1,10 +1,10 @@
 package io.github.mbackschat.a12.dm.cli.include;
 
-import io.github.mbackschat.a12.dm.cli.ConsistencyEvidence;
 import io.github.mbackschat.a12.dm.cli.BaseCommand;
+import io.github.mbackschat.a12.dm.cli.ConsistencyEvidence;
+import io.github.mbackschat.a12.dm.cli.ModelWrite;
 import io.github.mbackschat.a12.dm.cli.ParamKind;
 import io.github.mbackschat.a12.dm.cli.Refusal;
-import io.github.mbackschat.a12.dm.cli.ResultEnvelope;
 import io.github.mbackschat.a12.dm.cli.SafetyChecks;
 import io.github.mbackschat.a12.dm.cli.SafetyGate;
 import io.github.mbackschat.a12.dm.cli.WorkspaceOption;
@@ -136,21 +136,13 @@ final class IncludeAddCommand extends BaseCommand {
         if (excludeComputations) {
             changed.put("excludeComputations", true);
         }
-        if (dryRun) {
-            ResultEnvelope env = ResultEnvelope.preview("include", "add", "would add include " + alias, changed,
-                    ConsistencyEvidence.of(doc));
-            out().print(env.toJsonString());
-            return env.exitCode();
-        }
-        String dest = outputPath != null ? outputPath : model;
-        try {
-            Files.writeString(Path.of(dest), resultJson);
-        } catch (IOException e) {
-            return fail("cannot write output: " + e.getMessage());
-        }
-        ResultEnvelope env = ResultEnvelope.applied("include", "add", "added include " + alias, changed, dest,
-                ConsistencyEvidence.of(doc));
-        out().print(env.toJsonString());
-        return env.exitCode();
+        return emitMutation(ModelWrite.of("include", "add")
+                .summaries("would add include " + alias,
+                        "added include " + alias)
+                .changed(changed)
+                .json(resultJson)
+                .gatedBy(ConsistencyEvidence.of(doc))
+                .dryRun(dryRun)
+                .destination(outputPath, model));
     }
 }

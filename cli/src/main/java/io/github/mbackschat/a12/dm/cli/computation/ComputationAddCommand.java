@@ -2,8 +2,9 @@ package io.github.mbackschat.a12.dm.cli.computation;
 
 import io.github.mbackschat.a12.dm.cli.BaseCommand;
 import io.github.mbackschat.a12.dm.cli.ConsistencyEvidence;
-import io.github.mbackschat.a12.dm.cli.RejectionBasis;
+import io.github.mbackschat.a12.dm.cli.ModelWrite;
 import io.github.mbackschat.a12.dm.cli.ParamKind;
+import io.github.mbackschat.a12.dm.cli.RejectionBasis;
 import io.github.mbackschat.a12.dm.cli.ResultEnvelope;
 import io.github.mbackschat.a12.dm.cli.WorkspaceOption;
 
@@ -103,21 +104,14 @@ final class ComputationAddCommand extends BaseCommand {
         }
         ObjectNode changed = MAPPER.createObjectNode();
         changed.put("computation", parsed.fullName());
-        if (dryRun) {
-            ResultEnvelope env = ResultEnvelope.preview("computation", "add",
-                    "would add computation " + parsed.fullName(), changed, lints, ConsistencyEvidence.of(rebound));
-            out().print(env.toJsonString());
-            return env.exitCode();
-        }
-        String dest = outputPath != null ? outputPath : model;
-        try {
-            Files.writeString(Path.of(dest), persisted);
-        } catch (IOException e) {
-            return fail("cannot write output: " + e.getMessage());
-        }
-        ResultEnvelope env = ResultEnvelope.applied("computation", "add",
-                "added computation " + parsed.fullName(), changed, lints, dest, ConsistencyEvidence.of(rebound));
-        out().print(env.toJsonString());
-        return env.exitCode();
+        return emitMutation(ModelWrite.of("computation", "add")
+                .summaries("would add computation " + parsed.fullName(),
+                        "added computation " + parsed.fullName())
+                .changed(changed)
+                .advisories(lints)
+                .json(persisted)
+                .gatedBy(ConsistencyEvidence.of(rebound))
+                .dryRun(dryRun)
+                .destination(outputPath, model));
     }
 }

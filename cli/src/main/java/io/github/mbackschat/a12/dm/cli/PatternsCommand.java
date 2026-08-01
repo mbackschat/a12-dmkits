@@ -365,10 +365,6 @@ final class PatternsCommand extends BaseCommand {
         return print(ResultEnvelope.queryResult("patterns", op, summary, payload, ConsistencyEvidence.none()));
     }
 
-    private Integer print(ResultEnvelope env) {
-        out().print(env.toJsonString());
-        return env.exitCode();
-    }
 
     /** The per-locale messages — the caller's {@code --message locale=text}, with a placeholder for any gap. */
     private List<LocalizedText> messages(BoundModel bound, String placeholder) {

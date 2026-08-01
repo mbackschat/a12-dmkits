@@ -1,14 +1,11 @@
 package io.github.mbackschat.a12.dm.cli.typedef;
 
-import io.github.mbackschat.a12.dm.cli.ConsistencyEvidence;
 import io.github.mbackschat.a12.dm.cli.BaseCommand;
+import io.github.mbackschat.a12.dm.cli.ConsistencyEvidence;
+import io.github.mbackschat.a12.dm.cli.ModelWrite;
 import io.github.mbackschat.a12.dm.cli.ParamKind;
-import io.github.mbackschat.a12.dm.cli.ResultEnvelope;
 import io.github.mbackschat.a12.dm.cli.WorkspaceOption;
 
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
@@ -68,21 +65,13 @@ final class TypedefUnimportCommand extends BaseCommand {
         }
         ObjectNode changed = MAPPER.createObjectNode();
         changed.put("unimported", reference);
-        if (dryRun) {
-            ResultEnvelope env = ResultEnvelope.preview("typedef", "unimport",
-                    "would stop importing type definitions from " + reference, changed, ConsistencyEvidence.of(doc));
-            out().print(env.toJsonString());
-            return env.exitCode();
-        }
-        String dest = outputPath != null ? outputPath : model;
-        try {
-            Files.writeString(Path.of(dest), resultJson);
-        } catch (IOException e) {
-            return fail("cannot write output: " + e.getMessage());
-        }
-        ResultEnvelope env = ResultEnvelope.applied("typedef", "unimport",
-                "removed the type-def import of " + reference, changed, dest, ConsistencyEvidence.of(doc));
-        out().print(env.toJsonString());
-        return env.exitCode();
+        return emitMutation(ModelWrite.of("typedef", "unimport")
+                .summaries("would stop importing type definitions from " + reference,
+                        "removed the type-def import of " + reference)
+                .changed(changed)
+                .json(resultJson)
+                .gatedBy(ConsistencyEvidence.of(doc))
+                .dryRun(dryRun)
+                .destination(outputPath, model));
     }
 }

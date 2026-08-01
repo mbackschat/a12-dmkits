@@ -1,9 +1,9 @@
 package io.github.mbackschat.a12.dm.cli.typedef;
 
-import io.github.mbackschat.a12.dm.cli.ConsistencyEvidence;
 import io.github.mbackschat.a12.dm.cli.BaseCommand;
+import io.github.mbackschat.a12.dm.cli.ConsistencyEvidence;
+import io.github.mbackschat.a12.dm.cli.ModelWrite;
 import io.github.mbackschat.a12.dm.cli.ParamKind;
-import io.github.mbackschat.a12.dm.cli.ResultEnvelope;
 import io.github.mbackschat.a12.dm.cli.WorkspaceOption;
 
 import java.io.IOException;
@@ -115,21 +115,13 @@ final class TypedefAddCommand extends BaseCommand {
         changed.put("added", id);
         // echo the persisted kind through the resolver — the clean ValueKind name, same as `typedef read`
         changed.put("kind", doc.typeDefinitionKind(id).orElseThrow());
-        if (dryRun) {
-            ResultEnvelope env = ResultEnvelope.preview("typedef", "add", "would add typedef " + id, changed,
-                    ConsistencyEvidence.of(doc));
-            out().print(env.toJsonString());
-            return env.exitCode();
-        }
-        String dest = outputPath != null ? outputPath : model;
-        try {
-            Files.writeString(Path.of(dest), resultJson);
-        } catch (IOException e) {
-            return fail("cannot write output: " + e.getMessage());
-        }
-        ResultEnvelope env = ResultEnvelope.applied("typedef", "add", "added typedef " + id, changed, dest,
-                ConsistencyEvidence.of(doc));
-        out().print(env.toJsonString());
-        return env.exitCode();
+        return emitMutation(ModelWrite.of("typedef", "add")
+                .summaries("would add typedef " + id,
+                        "added typedef " + id)
+                .changed(changed)
+                .json(resultJson)
+                .gatedBy(ConsistencyEvidence.of(doc))
+                .dryRun(dryRun)
+                .destination(outputPath, model));
     }
 }

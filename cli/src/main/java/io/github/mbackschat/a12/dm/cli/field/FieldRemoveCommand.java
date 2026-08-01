@@ -1,17 +1,14 @@
 package io.github.mbackschat.a12.dm.cli.field;
 
-import io.github.mbackschat.a12.dm.cli.ConsistencyEvidence;
 import io.github.mbackschat.a12.dm.cli.BaseCommand;
+import io.github.mbackschat.a12.dm.cli.ConsistencyEvidence;
+import io.github.mbackschat.a12.dm.cli.ModelWrite;
 import io.github.mbackschat.a12.dm.cli.ParamKind;
 import io.github.mbackschat.a12.dm.cli.Refusal;
-import io.github.mbackschat.a12.dm.cli.ResultEnvelope;
 import io.github.mbackschat.a12.dm.cli.SafetyChecks;
 import io.github.mbackschat.a12.dm.cli.SafetyGate;
 import io.github.mbackschat.a12.dm.cli.WorkspaceOption;
 
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.util.Optional;
 import java.util.Set;
 import java.util.TreeSet;
@@ -124,21 +121,13 @@ final class FieldRemoveCommand extends BaseCommand {
         ObjectNode changed = MAPPER.createObjectNode();
         changed.put("removed", field);
         changed.set("cascaded", cascaded);
-        if (dryRun) {
-            ResultEnvelope env = ResultEnvelope.preview("field", "remove", "would remove " + field, changed,
-                    ConsistencyEvidence.of(session));
-            out().print(env.toJsonString());
-            return env.exitCode();
-        }
-        String dest = outputPath != null ? outputPath : model;
-        try {
-            Files.writeString(Path.of(dest), resultJson);
-        } catch (IOException e) {
-            return fail("cannot write output: " + e.getMessage());
-        }
-        ResultEnvelope env = ResultEnvelope.applied("field", "remove", "removed " + field, changed, dest,
-                ConsistencyEvidence.of(session));
-        out().print(env.toJsonString());
-        return env.exitCode();
+        return emitMutation(ModelWrite.of("field", "remove")
+                .summaries("would remove " + field,
+                        "removed " + field)
+                .changed(changed)
+                .json(resultJson)
+                .gatedBy(ConsistencyEvidence.of(session))
+                .dryRun(dryRun)
+                .destination(outputPath, model));
     }
 }

@@ -1,8 +1,5 @@
 package io.github.mbackschat.a12.dm.cli;
 
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.util.Optional;
 import java.util.Set;
 
@@ -100,23 +97,13 @@ public abstract class ReferenceRewritingRefactorCommand extends BaseCommand {
         ArrayNode refs = changed.putArray("rewroteReferences");
         rewroteReferences.forEach(refs::add);
 
-        if (dryRun) {
-            ResultEnvelope env = ResultEnvelope.preview(refactor.target(), refactor.op(),
-                    "would " + refactor.op() + " " + refactor.source() + " to " + refactor.newPath(), changed,
-                    ConsistencyEvidence.of(rewritten));
-            out().print(env.toJsonString());
-            return env.exitCode();
-        }
-        String dest = outputPath != null ? outputPath : model;
-        try {
-            Files.writeString(Path.of(dest), resultJson);
-        } catch (IOException e) {
-            return fail("cannot write output: " + e.getMessage());
-        }
-        ResultEnvelope env = ResultEnvelope.applied(refactor.target(), refactor.op(),
-                refactor.changedKey() + " " + refactor.source() + " to " + refactor.newPath(), changed, dest,
-                ConsistencyEvidence.of(rewritten));
-        out().print(env.toJsonString());
-        return env.exitCode();
+        return emitMutation(ModelWrite.of(refactor.target(), refactor.op())
+                .summaries("would " + refactor.op() + " " + refactor.source() + " to " + refactor.newPath(),
+                        refactor.changedKey() + " " + refactor.source() + " to " + refactor.newPath())
+                .changed(changed)
+                .json(resultJson)
+                .gatedBy(ConsistencyEvidence.of(rewritten))
+                .dryRun(dryRun)
+                .destination(outputPath, model));
     }
 }

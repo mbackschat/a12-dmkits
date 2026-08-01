@@ -12,8 +12,8 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 
-import io.github.mbackschat.a12.dm.cli.RolesMerge;
 import io.github.mbackschat.a12.dm.cli.Refusal;
+import io.github.mbackschat.a12.dm.cli.RolesMerge;
 import io.github.mbackschat.a12.dm.edit.EditSession;
 import io.github.mbackschat.a12.dm.modelkit.ModelTimeZoneContract;
 import io.github.mbackschat.a12.dm.modelkit.SupportedCharactersContract;

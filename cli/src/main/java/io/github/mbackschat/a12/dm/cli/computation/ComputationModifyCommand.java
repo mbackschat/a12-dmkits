@@ -2,6 +2,7 @@ package io.github.mbackschat.a12.dm.cli.computation;
 
 import io.github.mbackschat.a12.dm.cli.BaseCommand;
 import io.github.mbackschat.a12.dm.cli.ConsistencyEvidence;
+import io.github.mbackschat.a12.dm.cli.ModelWrite;
 import io.github.mbackschat.a12.dm.cli.RejectionBasis;
 import io.github.mbackschat.a12.dm.core.ModelConsistencyException;
 import io.github.mbackschat.a12.dm.cli.ParamKind;
@@ -135,21 +136,13 @@ final class ComputationModifyCommand extends BaseCommand {
             return fail("re-expression failed: " + e.getMessage());
         }
 
-        if (dryRun) {
-            ResultEnvelope env = ResultEnvelope.preview("computation", "modify",
-                    "would re-express " + computation, changed, ConsistencyEvidence.of(rebound));
-            out().print(env.toJsonString());
-            return env.exitCode();
-        }
-        String dest = outputPath != null ? outputPath : model;
-        try {
-            Files.writeString(Path.of(dest), modifiedJson);
-        } catch (IOException e) {
-            return fail("cannot write output: " + e.getMessage());
-        }
-        ResultEnvelope env = ResultEnvelope.applied("computation", "modify",
-                "re-expressed " + computation, changed, dest, ConsistencyEvidence.of(rebound));
-        out().print(env.toJsonString());
-        return env.exitCode();
+        return emitMutation(ModelWrite.of("computation", "modify")
+                .summaries("would re-express " + computation,
+                        "re-expressed " + computation)
+                .changed(changed)
+                .json(modifiedJson)
+                .gatedBy(ConsistencyEvidence.of(rebound))
+                .dryRun(dryRun)
+                .destination(outputPath, model));
     }
 }

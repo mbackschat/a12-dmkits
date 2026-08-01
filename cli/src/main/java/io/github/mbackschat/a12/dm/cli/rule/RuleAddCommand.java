@@ -2,12 +2,13 @@ package io.github.mbackschat.a12.dm.cli.rule;
 
 import io.github.mbackschat.a12.dm.cli.BaseCommand;
 import io.github.mbackschat.a12.dm.cli.ConsistencyEvidence;
-import io.github.mbackschat.a12.dm.cli.RejectionBasis;
 import io.github.mbackschat.a12.dm.cli.LintBackstop;
+import io.github.mbackschat.a12.dm.cli.ModelWrite;
 import io.github.mbackschat.a12.dm.cli.ParamKind;
-import io.github.mbackschat.a12.dm.cli.interp.TextConditionCorrective;
+import io.github.mbackschat.a12.dm.cli.RejectionBasis;
 import io.github.mbackschat.a12.dm.cli.ResultEnvelope;
 import io.github.mbackschat.a12.dm.cli.WorkspaceOption;
+import io.github.mbackschat.a12.dm.cli.interp.TextConditionCorrective;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -143,22 +144,15 @@ final class RuleAddCommand extends BaseCommand {
 
         ObjectNode changed = MAPPER.createObjectNode();
         changed.put("rule", ruleFullName);
-        if (dryRun) {
-            ResultEnvelope env = ResultEnvelope.preview("rule", "add", "would add rule " + ruleFullName, changed,
-                    warnings, ConsistencyEvidence.of(reModel));
-            out().print(env.toJsonString());
-            return env.exitCode();
-        }
-        String dest = outputPath != null ? outputPath : model;
-        try {
-            Files.writeString(Path.of(dest), persisted);
-        } catch (IOException e) {
-            return fail("cannot write output: " + e.getMessage());
-        }
-        ResultEnvelope env = ResultEnvelope.applied("rule", "add", "added rule " + ruleFullName, changed,
-                warnings, dest, ConsistencyEvidence.of(reModel));
-        out().print(env.toJsonString());
-        return env.exitCode();
+        return emitMutation(ModelWrite.of("rule", "add")
+                .summaries("would add rule " + ruleFullName,
+                        "added rule " + ruleFullName)
+                .changed(changed)
+                .advisories(warnings)
+                .json(persisted)
+                .gatedBy(ConsistencyEvidence.of(reModel))
+                .dryRun(dryRun)
+                .destination(outputPath, model));
     }
 
     /** Apply the optional rule metadata keys ({@code annotation} / {@code internal-description} /

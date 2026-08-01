@@ -1,15 +1,12 @@
 package io.github.mbackschat.a12.dm.cli.model;
 
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 
-import io.github.mbackschat.a12.dm.cli.ConsistencyEvidence;
 import io.github.mbackschat.a12.dm.cli.BaseCommand;
-import io.github.mbackschat.a12.dm.cli.ResultEnvelope;
+import io.github.mbackschat.a12.dm.cli.ConsistencyEvidence;
+import io.github.mbackschat.a12.dm.cli.ModelWrite;
 import io.github.mbackschat.a12.dm.modelkit.ModelDocument;
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Option;
@@ -54,21 +51,13 @@ final class ModelNormalizeCommand extends BaseCommand {
         ObjectNode changed = MAPPER.createObjectNode();
         changed.put("reformatted", reformatted);
         String summary = reformatted ? "normalized to canonical form" : "already canonical — no change";
-        if (dryRun) {
-            ResultEnvelope env = ResultEnvelope.preview("model", "normalize",
-                    reformatted ? "would normalize to canonical form" : summary, changed, ConsistencyEvidence.none());
-            out().print(env.toJsonString());
-            return env.exitCode();
-        }
-        String dest = outputPath != null ? outputPath : model;
-        try {
-            Files.writeString(Path.of(dest), canonical);
-        } catch (IOException e) {
-            return fail("cannot write output: " + e.getMessage());
-        }
-        ResultEnvelope env = ResultEnvelope.applied("model", "normalize", summary, changed, dest,
-                ConsistencyEvidence.none());
-        out().print(env.toJsonString());
-        return env.exitCode();
+        return emitMutation(ModelWrite.of("model", "normalize")
+                .summaries(reformatted ? "would normalize to canonical form" : summary,
+                        summary)
+                .changed(changed)
+                .json(canonical)
+                .gatedBy(ConsistencyEvidence.none())
+                .dryRun(dryRun)
+                .destination(outputPath, model));
     }
 }

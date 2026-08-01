@@ -1,10 +1,10 @@
 package io.github.mbackschat.a12.dm.cli.rule;
 
-import io.github.mbackschat.a12.dm.cli.ConsistencyEvidence;
 import io.github.mbackschat.a12.dm.cli.BaseCommand;
+import io.github.mbackschat.a12.dm.cli.ConsistencyEvidence;
+import io.github.mbackschat.a12.dm.cli.ModelWrite;
 import io.github.mbackschat.a12.dm.cli.ParamKind;
 import io.github.mbackschat.a12.dm.cli.Refusal;
-import io.github.mbackschat.a12.dm.cli.ResultEnvelope;
 import io.github.mbackschat.a12.dm.cli.SafetyChecks;
 import io.github.mbackschat.a12.dm.cli.SafetyGate;
 import io.github.mbackschat.a12.dm.cli.WorkspaceOption;
@@ -83,21 +83,13 @@ final class RuleRemoveCommand extends BaseCommand {
 
         ObjectNode changed = MAPPER.createObjectNode();
         changed.put("removed", rule);
-        if (dryRun) {
-            ResultEnvelope env = ResultEnvelope.preview("rule", "remove", "would remove rule " + rule, changed,
-                    ConsistencyEvidence.of(reduced));
-            out().print(env.toJsonString());
-            return env.exitCode();
-        }
-        String dest = outputPath != null ? outputPath : model;
-        try {
-            Files.writeString(Path.of(dest), result);
-        } catch (IOException e) {
-            return fail("cannot write output: " + e.getMessage());
-        }
-        ResultEnvelope env = ResultEnvelope.applied("rule", "remove", "removed rule " + rule, changed, dest,
-                ConsistencyEvidence.of(reduced));
-        out().print(env.toJsonString());
-        return env.exitCode();
+        return emitMutation(ModelWrite.of("rule", "remove")
+                .summaries("would remove rule " + rule,
+                        "removed rule " + rule)
+                .changed(changed)
+                .json(result)
+                .gatedBy(ConsistencyEvidence.of(reduced))
+                .dryRun(dryRun)
+                .destination(outputPath, model));
     }
 }

@@ -1,8 +1,5 @@
 package io.github.mbackschat.a12.dm.cli;
 
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -143,22 +140,14 @@ final class MetaCommand extends BaseCommand {
         } catch (RuntimeException e) {
             return failEditGate(e);
         }
-        if (dryRun) {
-            ResultEnvelope env = ResultEnvelope.preview("meta", "modify", "would change metadata of " + ref, changed,
-                    ConsistencyEvidence.of(session));
-            out().print(env.toJsonString());
-            return env.exitCode();
-        }
-        String dest = outputPath != null ? outputPath : model;
-        try {
-            Files.writeString(Path.of(dest), resultJson);
-        } catch (IOException e) {
-            return fail("cannot write output: " + e.getMessage());
-        }
-        ResultEnvelope env = ResultEnvelope.applied("meta", "modify", "changed metadata of " + ref, changed, dest,
-                ConsistencyEvidence.of(session));
-        out().print(env.toJsonString());
-        return env.exitCode();
+        return emitMutation(ModelWrite.of("meta", "modify")
+                .summaries("would change metadata of " + ref,
+                        "changed metadata of " + ref)
+                .changed(changed)
+                .json(resultJson)
+                .gatedBy(ConsistencyEvidence.of(session))
+                .dryRun(dryRun)
+                .destination(outputPath, model));
     }
 
     private static void putMap(ObjectNode target, Map<String, String> entries) {

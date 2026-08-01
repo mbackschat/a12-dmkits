@@ -1,18 +1,15 @@
 package io.github.mbackschat.a12.dm.cli.group;
 
-import io.github.mbackschat.a12.dm.cli.ConsistencyEvidence;
 import io.github.mbackschat.a12.dm.cli.BaseCommand;
+import io.github.mbackschat.a12.dm.cli.ConsistencyEvidence;
 import io.github.mbackschat.a12.dm.cli.GroupRemoval;
+import io.github.mbackschat.a12.dm.cli.ModelWrite;
 import io.github.mbackschat.a12.dm.cli.ParamKind;
 import io.github.mbackschat.a12.dm.cli.Refusal;
-import io.github.mbackschat.a12.dm.cli.ResultEnvelope;
 import io.github.mbackschat.a12.dm.cli.SafetyChecks;
 import io.github.mbackschat.a12.dm.cli.SafetyGate;
 import io.github.mbackschat.a12.dm.cli.WorkspaceOption;
 
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.util.Optional;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -109,21 +106,13 @@ final class GroupRemoveCommand extends BaseCommand {
         ObjectNode changed = MAPPER.createObjectNode();
         changed.put("removed", group);
         changed.set("cascaded", cascaded);
-        if (dryRun) {
-            ResultEnvelope env = ResultEnvelope.preview("group", "remove", "would remove " + group, changed,
-                    ConsistencyEvidence.of(session));
-            out().print(env.toJsonString());
-            return env.exitCode();
-        }
-        String dest = outputPath != null ? outputPath : model;
-        try {
-            Files.writeString(Path.of(dest), resultJson);
-        } catch (IOException e) {
-            return fail("cannot write output: " + e.getMessage());
-        }
-        ResultEnvelope env = ResultEnvelope.applied("group", "remove", "removed " + group, changed, dest,
-                ConsistencyEvidence.of(session));
-        out().print(env.toJsonString());
-        return env.exitCode();
+        return emitMutation(ModelWrite.of("group", "remove")
+                .summaries("would remove " + group,
+                        "removed " + group)
+                .changed(changed)
+                .json(resultJson)
+                .gatedBy(ConsistencyEvidence.of(session))
+                .dryRun(dryRun)
+                .destination(outputPath, model));
     }
 }

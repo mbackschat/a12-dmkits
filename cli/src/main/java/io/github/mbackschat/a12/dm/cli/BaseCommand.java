@@ -262,6 +262,35 @@ public abstract class BaseCommand implements Callable<Integer> {
     }
 
     /**
+     * The one ending every model-editing verb shares: preview under {@code --dry-run}, else write and report.
+     *
+     * <p>Thirty-three verbs hand-wrote this — identical destination resolution, identical {@code Files.writeString},
+     * identical failure text — differing only in the payload {@link ModelWrite} now carries. That is the shape of
+     * duplication that has already cost this project twice over (the gate-rejection mapping drifted into three
+     * versions; threading the receipt had to visit every copy), so it is collapsed rather than documented.
+     *
+     * <p>The write failure stays a plain {@link #fail}: an unwritable destination is an environment problem, not
+     * an input rejection and not a consistency verdict, so it must not acquire either shape on the way out.
+     */
+    protected int emitMutation(ModelWrite write) {
+        if (write.previewOnly()) {
+            return print(write.preview());
+        }
+        try {
+            Files.writeString(Path.of(write.destination()), write.json());
+        } catch (IOException e) {
+            return fail("cannot write output: " + e.getMessage());
+        }
+        return print(write.applied());
+    }
+
+    /** Print an envelope and return its exit code — the one place a result reaches stdout. */
+    protected int print(ResultEnvelope env) {
+        out().print(env.toJsonString());
+        return env.exitCode();
+    }
+
+    /**
      * Preserve input-domain rejections caught by a broad command-local {@link RuntimeException} boundary.
      * Strict model readers still use their local failure text for ordinary parse/render failures, but an invalid
      * stored model or unresolved model reference must escape to {@link Cli}'s single structured-envelope mapper.
