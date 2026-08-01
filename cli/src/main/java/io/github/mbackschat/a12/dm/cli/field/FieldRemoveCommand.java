@@ -1,5 +1,6 @@
 package io.github.mbackschat.a12.dm.cli.field;
 
+import io.github.mbackschat.a12.dm.cli.ConsistencyEvidence;
 import io.github.mbackschat.a12.dm.cli.BaseCommand;
 import io.github.mbackschat.a12.dm.cli.ParamKind;
 import io.github.mbackschat.a12.dm.cli.Refusal;
@@ -124,7 +125,8 @@ final class FieldRemoveCommand extends BaseCommand {
         changed.put("removed", field);
         changed.set("cascaded", cascaded);
         if (dryRun) {
-            ResultEnvelope env = ResultEnvelope.preview("field", "remove", "would remove " + field, changed);
+            ResultEnvelope env = ResultEnvelope.preview("field", "remove", "would remove " + field, changed,
+                    ConsistencyEvidence.of(session));
             out().print(env.toJsonString());
             return env.exitCode();
         }
@@ -134,7 +136,8 @@ final class FieldRemoveCommand extends BaseCommand {
         } catch (IOException e) {
             return fail("cannot write output: " + e.getMessage());
         }
-        ResultEnvelope env = ResultEnvelope.applied("field", "remove", "removed " + field, changed, dest);
+        ResultEnvelope env = ResultEnvelope.applied("field", "remove", "removed " + field, changed, dest,
+                ConsistencyEvidence.of(session));
         out().print(env.toJsonString());
         return env.exitCode();
     }

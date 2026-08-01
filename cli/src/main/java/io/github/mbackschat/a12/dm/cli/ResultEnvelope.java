@@ -382,44 +382,60 @@ public final class ResultEnvelope {
     /**
      * A mutating op that succeeded and wrote the model.
      *
-     * <p><b>Publishes no evidence yet.</b> The edit verbs <em>do</em> run the real consistency oracle before writing
-     * — a write that would break the model fails there — so this family has a receipt it could publish, and §2 says
-     * it should. Threading it through the ~75 mutation call sites is a separate, purely additive change with its own
-     * commit; this one closes the fabricated-{@code valid} defect. Until then a mutation stays silent about
-     * provenance, which is the pre-existing shape and never a false claim.
+     * <p><b>A write states its provenance on the same terms as a read.</b> Almost every edit verb runs the real
+     * consistency oracle before writing — a change that would break the model fails there — so it holds a receipt,
+     * and withholding it made a write the one route that gated and said nothing. The few genuinely ungated writes
+     * ({@code model expand}, {@code model normalize}, the schema import/export pair, the profile verbs) pass
+     * {@link ConsistencyEvidence#none()} explicitly, so an absent {@code verification} is a decision on the record.
+     *
+     * @param evidence the gate receipt — obtained from the object that gated ({@code ModelDocument},
+     *                 {@code EditSession}, a re-bound {@code BoundModel}), never named
      */
-    public static ResultEnvelope applied(String target, String op, String summary, JsonNode changed, String output) {
-        return applied(target, op, summary, changed, List.of(), output);
+    public static ResultEnvelope applied(String target, String op, String summary, JsonNode changed, String output,
+            ConsistencyEvidence evidence) {
+        return applied(target, op, summary, changed, List.of(), output, evidence);
     }
 
     /** A mutating op that succeeded, carrying advisory diagnostics (e.g. lint warnings) alongside the write. */
     public static ResultEnvelope applied(String target, String op, String summary, JsonNode changed,
-            List<Diagnostic> diagnostics, String output) {
-        return mutation(MutationDisposition.APPLIED, target, op, summary, changed, diagnostics)
+            List<Diagnostic> diagnostics, String output, ConsistencyEvidence evidence) {
+        return mutation(MutationDisposition.APPLIED, target, op, summary, changed, diagnostics, evidence)
                 .writtenTo(output)
                 .build();
     }
 
-    /** A mutating op previewed under {@code --dry-run} — nothing written. */
-    public static ResultEnvelope preview(String target, String op, String summary, JsonNode changed) {
-        return preview(target, op, summary, changed, List.of());
+    /**
+     * A mutating op previewed under {@code --dry-run} — nothing written.
+     *
+     * <p>A preview gates exactly as its write does; that is the whole point of {@code --dry-run}, and it is why the
+     * receipt belongs here too. "Nothing was written" and "nothing was checked" are different facts, and an agent
+     * deciding whether to re-run without {@code --dry-run} needs the second one.
+     */
+    public static ResultEnvelope preview(String target, String op, String summary, JsonNode changed,
+            ConsistencyEvidence evidence) {
+        return preview(target, op, summary, changed, List.of(), evidence);
     }
 
     /** A mutating op previewed under {@code --dry-run} — nothing written — carrying advisory diagnostics. */
     public static ResultEnvelope preview(String target, String op, String summary, JsonNode changed,
-            List<Diagnostic> diagnostics) {
-        return mutation(MutationDisposition.PREVIEW, target, op, summary, changed, diagnostics).build();
+            List<Diagnostic> diagnostics, ConsistencyEvidence evidence) {
+        return mutation(MutationDisposition.PREVIEW, target, op, summary, changed, diagnostics, evidence).build();
     }
 
     /**
      * One staged step of an {@code apply} transaction: the edit is in the session but nothing is written, and the
-     * sequence's single terminal gate decides whether it ever will be. Individually ungated <em>by design</em> —
-     * deferring validation to one terminal check is {@code apply}'s invariant — so a staged step passes
-     * {@link ConsistencyEvidence#none()} and the aggregate carries the evidence.
+     * sequence's single terminal gate decides whether it ever will be.
+     *
+     * <p><b>Takes no evidence, because a staged step can never have any.</b> {@code apply} routes its ops through
+     * the session's <em>text</em> overloads, which are documented "no per-op gate", and deferring validation to one
+     * terminal check is the verb's invariant. So this is the one mutation factory where the receipt is not a
+     * parameter with a legal empty value but a shape that does not arise — the aggregate carries the evidence for
+     * the state that actually gets committed.
      */
     public static ResultEnvelope staged(String target, String op, String summary, JsonNode changed,
             List<Diagnostic> diagnostics) {
-        return mutation(MutationDisposition.STAGED, target, op, summary, changed, diagnostics).build();
+        return mutation(MutationDisposition.STAGED, target, op, summary, changed, diagnostics,
+                ConsistencyEvidence.none()).build();
     }
 
     /**
@@ -434,16 +450,19 @@ public final class ResultEnvelope {
      * eliminate, still live inside the class itself. Naming the case removes the hazard rather than documenting it.
      */
     public static ResultEnvelope transaction(String target, String op, String summary, JsonNode data,
-            MutationDisposition disposition, String output) {
-        Draft draft = new Draft(Family.MUTATION, target, op, disposition.outcome(), summary).data(data);
+            MutationDisposition disposition, String output, ConsistencyEvidence evidence) {
+        Draft draft = new Draft(Family.MUTATION, target, op, disposition.outcome(), summary)
+                .data(data)
+                .verification(evidence.verification().orElse(null));
         return (output == null ? draft : draft.writtenTo(output)).build();
     }
 
     private static Draft mutation(MutationDisposition disposition, String target, String op, String summary,
-            JsonNode changed, List<Diagnostic> diagnostics) {
+            JsonNode changed, List<Diagnostic> diagnostics, ConsistencyEvidence evidence) {
         return new Draft(Family.MUTATION, target, op, disposition.outcome(), summary)
                 .changed(changed)
-                .diagnostics(diagnostics);
+                .diagnostics(diagnostics)
+                .verification(evidence.verification().orElse(null));
     }
 
     // --- 6. refusal -----------------------------------------------------------------------------------

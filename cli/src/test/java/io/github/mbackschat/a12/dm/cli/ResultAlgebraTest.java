@@ -18,6 +18,7 @@ import org.junit.jupiter.api.Test;
 
 import io.github.mbackschat.a12.dm.core.ReferenceResolvers;
 import io.github.mbackschat.a12.dm.core.Verification;
+import io.github.mbackschat.a12.dm.modelkit.ModelDocument;
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel;
 import io.github.mbackschat.a12.dm.rulekit.validate.Diagnostic;
 
@@ -33,6 +34,15 @@ import io.github.mbackschat.a12.dm.rulekit.validate.Diagnostic;
 class ResultAlgebraTest {
 
     private static final ObjectMapper M = new ObjectMapper();
+
+    /**
+     * The witness a mutating verb actually holds: a document that has been through {@code validate()}. Obtained,
+     * never named — there is no factory that mints a {@code KERNEL_CONFIRMED} receipt out of nothing, which is the
+     * property these tests are here to keep.
+     */
+    private static ConsistencyEvidence gated() {
+        return ConsistencyEvidence.of(ModelDocument.read(CliTestSupport.subscriptionJson()).validate());
+    }
 
     // --- structural closure ---------------------------------------------------------------------------
 
@@ -212,7 +222,7 @@ class ResultAlgebraTest {
         changed.put("added", "/Order/PromoCode").put("kind", "STRING");
 
         ResultEnvelope env = ResultEnvelope.applied("field", "add", "added field /Order/PromoCode (STRING)", changed,
-                "order.dm.json");
+                "order.dm.json", gated());
 
         assertEquals(0, env.exitCode());
         JsonNode j = env.toJson();
@@ -222,14 +232,61 @@ class ResultAlgebraTest {
         assertFalse(j.has("valid"), "a successful write is not a standing verdict about the model");
     }
 
+    /**
+     * A write gated before it wrote, so it says who arbitrated — the same axis a read publishes, on the same terms.
+     * {@code verification} is provenance, not a verdict, so it appears here <em>without</em> {@code valid}: the two
+     * were conflated once and the whole contract exists to keep them apart.
+     */
+    @Test
+    void anAppliedMutationStatesTheGateThatClearedIt() {
+        JsonNode j = ResultEnvelope.applied("field", "add", "added field /Order/PromoCode", M.createObjectNode(),
+                "order.dm.json", gated()).toJson();
+
+        assertEquals("KERNEL_CONFIRMED", j.path("verification").asText(),
+                "the edit gate ran before the write, so the write can name it");
+        assertFalse(j.has("valid"), "and still makes no standing verdict about the model");
+    }
+
+    /** The other side, and the reason the parameter is required rather than defaulted: silence must be chosen. */
+    @Test
+    void anUngatedMutationClaimsNothing() {
+        JsonNode j = ResultEnvelope.applied("model", "normalize", "normalized", M.createObjectNode(),
+                "order.dm.json", ConsistencyEvidence.none()).toJson();
+
+        assertFalse(j.has("verification"), "this route never consulted the oracle, so it may not name one");
+    }
+
     @Test
     void aPreviewWritesNothing() {
         ResultEnvelope env = ResultEnvelope.preview("field", "add", "would add /Order/PromoCode",
-                M.createObjectNode());
+                M.createObjectNode(), gated());
         JsonNode j = env.toJson();
         assertEquals("preview", j.get("outcome").asText());
         assertFalse(j.get("written").asBoolean());
         assertFalse(j.has("output"));
+    }
+
+    /**
+     * {@code --dry-run} runs the same gate the write would, so "nothing was written" must not read as "nothing was
+     * checked". An agent deciding whether to re-run for real needs exactly this distinction.
+     */
+    @Test
+    void aPreviewStillStatesTheGateItRan() {
+        JsonNode j = ResultEnvelope.preview("field", "add", "would add /Order/PromoCode", M.createObjectNode(),
+                gated()).toJson();
+
+        assertFalse(j.get("written").asBoolean());
+        assertEquals("KERNEL_CONFIRMED", j.path("verification").asText());
+    }
+
+    /** A committed {@code apply} passed its one terminal gate; the aggregate is where that receipt belongs. */
+    @Test
+    void aCommittedTransactionCarriesTheTerminalGate() {
+        JsonNode j = ResultEnvelope.transaction("apply", "run", "3 op(s) committed", M.createObjectNode(),
+                ResultEnvelope.MutationDisposition.APPLIED, "order.dm.json", gated()).toJson();
+
+        assertEquals("applied", j.get("outcome").asText());
+        assertEquals("KERNEL_CONFIRMED", j.path("verification").asText());
     }
 
     /** A staged step is ungated BY DESIGN — `apply` defers validation to one terminal gate. */

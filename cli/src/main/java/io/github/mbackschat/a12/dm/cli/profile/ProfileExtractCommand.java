@@ -77,7 +77,7 @@ final class ProfileExtractCommand extends BaseCommand {
         ObjectNode changed = JSON.createObjectNode();
         changed.put("artifact", "model-performance-profile");
         ResultEnvelope env = ResultEnvelope.applied("profile", "extract",
-                "extracted model performance profile", changed, outputPath);
+                "extracted model performance profile", changed, outputPath, ConsistencyEvidence.none());
         out().print(env.toJsonString());
         return env.exitCode();
     }

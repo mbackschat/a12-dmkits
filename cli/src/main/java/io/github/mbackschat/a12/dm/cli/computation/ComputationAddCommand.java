@@ -94,8 +94,9 @@ final class ComputationAddCommand extends BaseCommand {
             return env.exitCode();
         }
         String persisted = ModelWriter.addComputation(modelJson, parsed.draft(), parsed.messages());
+        BoundModel rebound;
         try {
-            BoundModel.ofJson(persisted, resolver);
+            rebound = BoundModel.ofJson(persisted, resolver);
         } catch (RuntimeException e) {
             return fail("persisted computation is invalid (e.g. missing a message for a declared locale): "
                     + e.getMessage());
@@ -104,7 +105,7 @@ final class ComputationAddCommand extends BaseCommand {
         changed.put("computation", parsed.fullName());
         if (dryRun) {
             ResultEnvelope env = ResultEnvelope.preview("computation", "add",
-                    "would add computation " + parsed.fullName(), changed, lints);
+                    "would add computation " + parsed.fullName(), changed, lints, ConsistencyEvidence.of(rebound));
             out().print(env.toJsonString());
             return env.exitCode();
         }
@@ -115,7 +116,7 @@ final class ComputationAddCommand extends BaseCommand {
             return fail("cannot write output: " + e.getMessage());
         }
         ResultEnvelope env = ResultEnvelope.applied("computation", "add",
-                "added computation " + parsed.fullName(), changed, lints, dest);
+                "added computation " + parsed.fullName(), changed, lints, dest, ConsistencyEvidence.of(rebound));
         out().print(env.toJsonString());
         return env.exitCode();
     }

@@ -8,6 +8,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 
 import io.github.mbackschat.a12.dm.adapter.profile.ModelSynthesizer;
+import io.github.mbackschat.a12.dm.cli.ConsistencyEvidence;
 import io.github.mbackschat.a12.dm.cli.BaseCommand;
 import io.github.mbackschat.a12.dm.cli.ParamKind;
 import io.github.mbackschat.a12.dm.cli.ResultEnvelope;
@@ -68,7 +69,8 @@ final class ProfileSynthesizeCommand extends BaseCommand {
         changed.put("id", modelId);
         changed.put("seed", seed);
         ResultEnvelope envelope = ResultEnvelope.applied(
-                "profile", "synthesize", "synthesized model from performance profile", changed, outputPath);
+                "profile", "synthesize", "synthesized model from performance profile", changed, outputPath,
+                    ConsistencyEvidence.none());
         out().print(envelope.toJsonString());
         return envelope.exitCode();
     }

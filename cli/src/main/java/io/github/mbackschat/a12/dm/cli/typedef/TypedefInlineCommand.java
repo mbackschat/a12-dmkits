@@ -1,5 +1,6 @@
 package io.github.mbackschat.a12.dm.cli.typedef;
 
+import io.github.mbackschat.a12.dm.cli.ConsistencyEvidence;
 import io.github.mbackschat.a12.dm.cli.BaseCommand;
 import io.github.mbackschat.a12.dm.cli.ParamKind;
 import io.github.mbackschat.a12.dm.cli.Refusal;
@@ -84,7 +85,7 @@ final class TypedefInlineCommand extends BaseCommand {
         expanded.forEach(fields::add);
         if (dryRun) {
             ResultEnvelope env = ResultEnvelope.preview("typedef", "inline",
-                    "would inline typedef " + id, changed);
+                    "would inline typedef " + id, changed, ConsistencyEvidence.of(doc));
             out().print(env.toJsonString());
             return env.exitCode();
         }
@@ -95,7 +96,7 @@ final class TypedefInlineCommand extends BaseCommand {
             return fail("cannot write output: " + e.getMessage());
         }
         ResultEnvelope env = ResultEnvelope.applied("typedef", "inline",
-                "inlined typedef " + id, changed, dest);
+                "inlined typedef " + id, changed, dest, ConsistencyEvidence.of(doc));
         out().print(env.toJsonString());
         return env.exitCode();
     }

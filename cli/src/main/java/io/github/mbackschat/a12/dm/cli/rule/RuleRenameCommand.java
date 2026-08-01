@@ -1,5 +1,6 @@
 package io.github.mbackschat.a12.dm.cli.rule;
 
+import io.github.mbackschat.a12.dm.cli.ConsistencyEvidence;
 import io.github.mbackschat.a12.dm.cli.BaseCommand;
 import io.github.mbackschat.a12.dm.cli.ParamKind;
 import io.github.mbackschat.a12.dm.cli.Refusal;
@@ -72,8 +73,13 @@ final class RuleRenameCommand extends BaseCommand {
         }
 
         String resultJson;
+        // The gated document is the REWRITTEN one, not the `doc` read above — that one only feeds the
+        // safety gate and never sees `validate`, so publishing its (absent) receipt would silently
+        // under-report the check this route really ran.
+        ModelDocument rewritten;
         try {
-            resultJson = refactor.rewriteAndMutate(modelJson).validate(resolver).toJson();
+            rewritten = refactor.rewriteAndMutate(modelJson).validate(resolver);
+            resultJson = rewritten.toJson();
         } catch (ModelConsistencyException e) {
             return emitKernelRejection("rule", "rename", "rename left the model invalid", e);
         } catch (RuntimeException e) {
@@ -84,7 +90,7 @@ final class RuleRenameCommand extends BaseCommand {
         changed.put("to", newPath);
         if (dryRun) {
             ResultEnvelope env = ResultEnvelope.preview("rule", "rename",
-                    "would rename " + rule + " to " + newPath, changed);
+                    "would rename " + rule + " to " + newPath, changed, ConsistencyEvidence.of(rewritten));
             out().print(env.toJsonString());
             return env.exitCode();
         }
@@ -95,7 +101,7 @@ final class RuleRenameCommand extends BaseCommand {
             return fail("cannot write output: " + e.getMessage());
         }
         ResultEnvelope env = ResultEnvelope.applied("rule", "rename", "renamed " + rule + " to " + newPath,
-                changed, dest);
+                changed, dest, ConsistencyEvidence.of(rewritten));
         out().print(env.toJsonString());
         return env.exitCode();
     }

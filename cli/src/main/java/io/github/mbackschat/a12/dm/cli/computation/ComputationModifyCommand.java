@@ -104,8 +104,9 @@ final class ComputationModifyCommand extends BaseCommand {
         } catch (RuntimeException e) {
             return fail("cannot apply the new computation: " + e.getMessage());
         }
+        BoundModel rebound;
         try {
-            BoundModel.ofJson(modifiedJson, resolver);
+            rebound = BoundModel.ofJson(modifiedJson, resolver);
         } catch (RuntimeException e) {
             Diagnostic d = Diagnostic.precheck(Optional.empty(),
                     "the re-expression is rejected by the kernel: " + e.getMessage(),
@@ -136,7 +137,7 @@ final class ComputationModifyCommand extends BaseCommand {
 
         if (dryRun) {
             ResultEnvelope env = ResultEnvelope.preview("computation", "modify",
-                    "would re-express " + computation, changed);
+                    "would re-express " + computation, changed, ConsistencyEvidence.of(rebound));
             out().print(env.toJsonString());
             return env.exitCode();
         }
@@ -147,7 +148,7 @@ final class ComputationModifyCommand extends BaseCommand {
             return fail("cannot write output: " + e.getMessage());
         }
         ResultEnvelope env = ResultEnvelope.applied("computation", "modify",
-                "re-expressed " + computation, changed, dest);
+                "re-expressed " + computation, changed, dest, ConsistencyEvidence.of(rebound));
         out().print(env.toJsonString());
         return env.exitCode();
     }

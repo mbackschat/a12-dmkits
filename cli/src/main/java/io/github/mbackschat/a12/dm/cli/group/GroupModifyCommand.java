@@ -1,5 +1,6 @@
 package io.github.mbackschat.a12.dm.cli.group;
 
+import io.github.mbackschat.a12.dm.cli.ConsistencyEvidence;
 import io.github.mbackschat.a12.dm.cli.BaseCommand;
 import io.github.mbackschat.a12.dm.cli.ParamKind;
 import io.github.mbackschat.a12.dm.cli.Refusal;
@@ -145,7 +146,8 @@ final class GroupModifyCommand extends BaseCommand {
         }
         String summary = "set " + group + ": " + String.join(", ", mod.summaryParts());
         if (dryRun) {
-            ResultEnvelope env = ResultEnvelope.preview("group", "modify", "would have " + summary, changed);
+            ResultEnvelope env = ResultEnvelope.preview("group", "modify", "would have " + summary, changed,
+                    ConsistencyEvidence.of(session));
             out().print(env.toJsonString());
             return env.exitCode();
         }
@@ -155,7 +157,8 @@ final class GroupModifyCommand extends BaseCommand {
         } catch (IOException e) {
             return fail("cannot write output: " + e.getMessage());
         }
-        ResultEnvelope env = ResultEnvelope.applied("group", "modify", summary, changed, dest);
+        ResultEnvelope env = ResultEnvelope.applied("group", "modify", summary, changed, dest,
+                ConsistencyEvidence.of(session));
         out().print(env.toJsonString());
         return env.exitCode();
     }

@@ -1,5 +1,6 @@
 package io.github.mbackschat.a12.dm.cli.include;
 
+import io.github.mbackschat.a12.dm.cli.ConsistencyEvidence;
 import io.github.mbackschat.a12.dm.cli.BaseCommand;
 import io.github.mbackschat.a12.dm.cli.ParamKind;
 import io.github.mbackschat.a12.dm.cli.Refusal;
@@ -81,7 +82,8 @@ final class IncludeRemoveCommand extends BaseCommand {
         ObjectNode changed = MAPPER.createObjectNode();
         changed.put("removed", alias);
         if (dryRun) {
-            ResultEnvelope env = ResultEnvelope.preview("include", "remove", "would remove include " + alias, changed);
+            ResultEnvelope env = ResultEnvelope.preview("include", "remove", "would remove include " + alias, changed,
+                    ConsistencyEvidence.of(doc));
             out().print(env.toJsonString());
             return env.exitCode();
         }
@@ -91,7 +93,8 @@ final class IncludeRemoveCommand extends BaseCommand {
         } catch (IOException e) {
             return fail("cannot write output: " + e.getMessage());
         }
-        ResultEnvelope env = ResultEnvelope.applied("include", "remove", "removed include " + alias, changed, dest);
+        ResultEnvelope env = ResultEnvelope.applied("include", "remove", "removed include " + alias, changed, dest,
+                ConsistencyEvidence.of(doc));
         out().print(env.toJsonString());
         return env.exitCode();
     }

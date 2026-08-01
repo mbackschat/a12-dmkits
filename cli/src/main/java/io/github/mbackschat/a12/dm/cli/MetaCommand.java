@@ -132,9 +132,10 @@ final class MetaCommand extends BaseCommand {
         }
 
         ObjectNode changed = MAPPER.createObjectNode();
+        // Declared outside the try so the gate's receipt is still in scope for the envelope below.
+        EditSession session = EditSession.read(modelJson, resolver);
         String resultJson;
         try {
-            EditSession session = EditSession.read(modelJson, resolver);
             modification.applyTo(ref, doc, session, changed);
             resultJson = session.validate().toJson();
         } catch (ModelConsistencyException e) {
@@ -143,7 +144,8 @@ final class MetaCommand extends BaseCommand {
             return failEditGate(e);
         }
         if (dryRun) {
-            ResultEnvelope env = ResultEnvelope.preview("meta", "modify", "would change metadata of " + ref, changed);
+            ResultEnvelope env = ResultEnvelope.preview("meta", "modify", "would change metadata of " + ref, changed,
+                    ConsistencyEvidence.of(session));
             out().print(env.toJsonString());
             return env.exitCode();
         }
@@ -153,7 +155,8 @@ final class MetaCommand extends BaseCommand {
         } catch (IOException e) {
             return fail("cannot write output: " + e.getMessage());
         }
-        ResultEnvelope env = ResultEnvelope.applied("meta", "modify", "changed metadata of " + ref, changed, dest);
+        ResultEnvelope env = ResultEnvelope.applied("meta", "modify", "changed metadata of " + ref, changed, dest,
+                ConsistencyEvidence.of(session));
         out().print(env.toJsonString());
         return env.exitCode();
     }

@@ -249,7 +249,8 @@ final class ApplyCommand extends BaseCommand {
                            : ops.size() + " op(s) committed (dry-run — nothing written)")
                 : (failedAt != null ? "rolled back at op " + failedAt + " — nothing written (atomic: all-or-nothing)"
                                     : "the terminal kernel gate rejected the sequence — rolled back, nothing written");
-        ResultEnvelope env = aggregate(summary, data, committed, written, output, stoppage, gateRejection);
+        ResultEnvelope env = aggregate(summary, data,
+                new Terminal(committed, written, output, stoppage, gateRejection, ConsistencyEvidence.of(session)));
         out().print(env.toJsonString());
         return env.exitCode();
     }
@@ -271,27 +272,37 @@ final class ApplyCommand extends BaseCommand {
      * code for "input rejected". Preserving that would require the outer {@code outcome} to say {@code refused} while
      * the exit said otherwise.
      */
-    private ResultEnvelope aggregate(String summary, ObjectNode data, boolean committed, boolean written,
-            String output, Stoppage stoppage, ModelConsistencyException gateRejection) {
-        if (committed) {
+    private ResultEnvelope aggregate(String summary, ObjectNode data, Terminal terminal) {
+        if (terminal.committed()) {
             return ResultEnvelope.transaction("apply", "run", summary, data,
-                    written ? ResultEnvelope.MutationDisposition.APPLIED
+                    terminal.written() ? ResultEnvelope.MutationDisposition.APPLIED
                             : ResultEnvelope.MutationDisposition.PREVIEW,
-                    written ? output : null);
+                    terminal.written() ? terminal.output() : null, terminal.evidence());
         }
-        if (gateRejection != null) {
+        if (terminal.gateRejection() != null) {
             // The one gate apply runs, and it rejected: valid:false plus the arbitrator that decided it.
             return ResultEnvelope.rejected("apply", "run", summary, data, List.of(),
-                    RejectionBasis.kernel(ConsistencyEvidence.of(gateRejection)));
+                    RejectionBasis.kernel(ConsistencyEvidence.of(terminal.gateRejection())));
         }
         // A mid-sequence stop never reached the terminal gate, so it carries neither a verdict nor evidence —
         // only the KIND of stop, which decides the exit code.
-        return switch (stoppage == null ? Stoppage.REJECTED : stoppage) {
+        return switch (terminal.stoppage() == null ? Stoppage.REJECTED : terminal.stoppage()) {
             case REFUSED -> ResultEnvelope.refused("apply", "run", summary, data, List.of());
             case REJECTED -> ResultEnvelope.rejected("apply", "run", summary, data, List.of(),
                     RejectionBasis.preflight());
         };
     }
+
+    /**
+     * How the transaction ended — the one value {@link #aggregate} switches on.
+     *
+     * <p>Introduced when the terminal gate's receipt had to reach the aggregate: the helper already took two
+     * {@code String}s and two adjacent {@code boolean}s, and an eighth positional argument would have been the
+     * silent-swap shape the project's own rule forbids. These six members are decided together at a single point
+     * and read together at a single point, so they are one value rather than a parameter list.
+     */
+    private record Terminal(boolean committed, boolean written, String output, Stoppage stoppage,
+            ModelConsistencyException gateRejection, ConsistencyEvidence evidence) {}
 
     /** Why the sequence stopped before the terminal gate — a refusal and a rejection exit differently. */
     private enum Stoppage { REFUSED, REJECTED }

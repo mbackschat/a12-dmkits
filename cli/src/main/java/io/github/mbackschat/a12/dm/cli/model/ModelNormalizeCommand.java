@@ -7,6 +7,7 @@ import java.nio.file.Path;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 
+import io.github.mbackschat.a12.dm.cli.ConsistencyEvidence;
 import io.github.mbackschat.a12.dm.cli.BaseCommand;
 import io.github.mbackschat.a12.dm.cli.ResultEnvelope;
 import io.github.mbackschat.a12.dm.modelkit.ModelDocument;
@@ -55,7 +56,7 @@ final class ModelNormalizeCommand extends BaseCommand {
         String summary = reformatted ? "normalized to canonical form" : "already canonical — no change";
         if (dryRun) {
             ResultEnvelope env = ResultEnvelope.preview("model", "normalize",
-                    reformatted ? "would normalize to canonical form" : summary, changed);
+                    reformatted ? "would normalize to canonical form" : summary, changed, ConsistencyEvidence.none());
             out().print(env.toJsonString());
             return env.exitCode();
         }
@@ -65,7 +66,8 @@ final class ModelNormalizeCommand extends BaseCommand {
         } catch (IOException e) {
             return fail("cannot write output: " + e.getMessage());
         }
-        ResultEnvelope env = ResultEnvelope.applied("model", "normalize", summary, changed, dest);
+        ResultEnvelope env = ResultEnvelope.applied("model", "normalize", summary, changed, dest,
+                ConsistencyEvidence.none());
         out().print(env.toJsonString());
         return env.exitCode();
     }

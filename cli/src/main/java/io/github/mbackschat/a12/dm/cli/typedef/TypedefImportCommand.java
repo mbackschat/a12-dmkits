@@ -1,5 +1,6 @@
 package io.github.mbackschat.a12.dm.cli.typedef;
 
+import io.github.mbackschat.a12.dm.cli.ConsistencyEvidence;
 import io.github.mbackschat.a12.dm.cli.BaseCommand;
 import io.github.mbackschat.a12.dm.cli.ParamKind;
 import io.github.mbackschat.a12.dm.cli.ResultEnvelope;
@@ -56,10 +57,10 @@ final class TypedefImportCommand extends BaseCommand {
             return 2;
         }
         ModelResolver resolver = workspace.resolverFor(model);
+        ModelDocument doc = ModelDocument.read(modelJson);
         String resultJson;
         try {
-            resultJson = ModelDocument.read(modelJson)
-                    .addImport(reference)
+            resultJson = doc.addImport(reference)
                     .validate(resolver)
                     .toJson();
         } catch (ModelConsistencyException e) {
@@ -71,7 +72,7 @@ final class TypedefImportCommand extends BaseCommand {
         changed.put("imported", reference);
         if (dryRun) {
             ResultEnvelope env = ResultEnvelope.preview("typedef", "import",
-                    "would import type definitions from " + reference, changed);
+                    "would import type definitions from " + reference, changed, ConsistencyEvidence.of(doc));
             out().print(env.toJsonString());
             return env.exitCode();
         }
@@ -82,7 +83,7 @@ final class TypedefImportCommand extends BaseCommand {
             return fail("cannot write output: " + e.getMessage());
         }
         ResultEnvelope env = ResultEnvelope.applied("typedef", "import",
-                "imported type definitions from " + reference, changed, dest);
+                "imported type definitions from " + reference, changed, dest, ConsistencyEvidence.of(doc));
         out().print(env.toJsonString());
         return env.exitCode();
     }

@@ -336,7 +336,7 @@ final class PatternsCommand extends BaseCommand {
         String persisted = persist.get();
         if (dryRun) {
             return print(ResultEnvelope.preview("patterns", "scaffold",
-                    "would add " + kind + " " + scaffolded, payload, diagnostics));
+                    "would add " + kind + " " + scaffolded, payload, diagnostics, evidence));
         }
         String dest = outputPath != null ? outputPath : model;
         try {
@@ -346,7 +346,7 @@ final class PatternsCommand extends BaseCommand {
         }
         payload.put(kind, scaffolded);
         return print(ResultEnvelope.applied("patterns", "scaffold", "added " + kind + " " + scaffolded, payload,
-                diagnostics, dest));
+                diagnostics, dest, evidence));
     }
 
     /** A catalog read — the bundled idiom catalog, no model and no gate. */

@@ -51,7 +51,7 @@
         "KERNEL_CONFIRMED",
         "STRUCTURAL_ONLY"
       ],
-      "description": "how a consistency gate arbitrated THIS invocation: KERNEL_CONFIRMED = a kernel backend ran the gate (the CLI always bundles one); STRUCTURAL_ONLY = the gate ran with NO backend, so a verdict beside it reflects structural prechecks only and must not be read as kernel-green (a library-consumer posture). PRESENT on every invocation that actually ran the gate — including a `rejected` one, because KERNEL_CONFIRMED means the kernel ARBITRATED, not that the model was valid. ABSENT when no gate ran. It is therefore per-INVOCATION and never per-verb: `model report` carries it while `model report --tree` does not, because only the former loads the model through the gate"
+      "description": "how a consistency gate arbitrated THIS invocation: KERNEL_CONFIRMED = a kernel backend ran the gate (the CLI always bundles one); STRUCTURAL_ONLY = the gate ran with NO backend, so a verdict beside it reflects structural prechecks only and must not be read as kernel-green (a library-consumer posture). PRESENT on every invocation that actually ran the gate — including a `rejected` one, because KERNEL_CONFIRMED means the kernel ARBITRATED, not that the model was valid, and including a WRITE, since an edit verb gates before it writes. ABSENT when no gate ran. It is therefore per-INVOCATION and never per-verb: `model report` carries it while `model report --tree` does not, and `field add` carries it while `model normalize` (a pure reformat) does not, because only the former of each pair puts the model through the gate. On a `--dry-run` preview it answers the question `written:false` cannot: nothing was written, but the change WAS checked"
     },
     "engine": {
       "type": "string",

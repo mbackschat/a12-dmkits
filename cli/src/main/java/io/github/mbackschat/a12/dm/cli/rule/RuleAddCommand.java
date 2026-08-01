@@ -144,7 +144,8 @@ final class RuleAddCommand extends BaseCommand {
         ObjectNode changed = MAPPER.createObjectNode();
         changed.put("rule", ruleFullName);
         if (dryRun) {
-            ResultEnvelope env = ResultEnvelope.preview("rule", "add", "would add rule " + ruleFullName, changed, warnings);
+            ResultEnvelope env = ResultEnvelope.preview("rule", "add", "would add rule " + ruleFullName, changed,
+                    warnings, ConsistencyEvidence.of(reModel));
             out().print(env.toJsonString());
             return env.exitCode();
         }
@@ -154,7 +155,8 @@ final class RuleAddCommand extends BaseCommand {
         } catch (IOException e) {
             return fail("cannot write output: " + e.getMessage());
         }
-        ResultEnvelope env = ResultEnvelope.applied("rule", "add", "added rule " + ruleFullName, changed, warnings, dest);
+        ResultEnvelope env = ResultEnvelope.applied("rule", "add", "added rule " + ruleFullName, changed,
+                warnings, dest, ConsistencyEvidence.of(reModel));
         out().print(env.toJsonString());
         return env.exitCode();
     }

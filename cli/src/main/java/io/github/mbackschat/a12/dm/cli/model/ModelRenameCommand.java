@@ -1,5 +1,6 @@
 package io.github.mbackschat.a12.dm.cli.model;
 
+import io.github.mbackschat.a12.dm.cli.ConsistencyEvidence;
 import io.github.mbackschat.a12.dm.cli.BaseCommand;
 import io.github.mbackschat.a12.dm.cli.ParamKind;
 import io.github.mbackschat.a12.dm.cli.Refusal;
@@ -96,7 +97,8 @@ final class ModelRenameCommand extends BaseCommand {
         changed.put("from", oldId);
         String summary = "renamed model id " + oldId + " → " + newId;
         if (dryRun) {
-            ResultEnvelope env = ResultEnvelope.preview("model", "rename", "would have " + summary, changed);
+            ResultEnvelope env = ResultEnvelope.preview("model", "rename", "would have " + summary, changed,
+                    ConsistencyEvidence.of(doc));
             out().print(env.toJsonString());
             return env.exitCode();
         }
@@ -106,7 +108,8 @@ final class ModelRenameCommand extends BaseCommand {
         } catch (IOException e) {
             return fail("cannot write output: " + e.getMessage());
         }
-        ResultEnvelope env = ResultEnvelope.applied("model", "rename", summary, changed, dest);
+        ResultEnvelope env = ResultEnvelope.applied("model", "rename", summary, changed, dest,
+                ConsistencyEvidence.of(doc));
         out().print(env.toJsonString());
         return env.exitCode();
     }

@@ -7,6 +7,7 @@ import java.nio.file.Path;
 import com.fasterxml.jackson.databind.node.JsonNodeFactory;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 
+import io.github.mbackschat.a12.dm.cli.ConsistencyEvidence;
 import io.github.mbackschat.a12.dm.cli.BaseCommand;
 import io.github.mbackschat.a12.dm.cli.ResultEnvelope;
 import io.github.mbackschat.a12.dm.cli.WorkspaceOption;
@@ -59,7 +60,8 @@ final class ModelExpandCommand extends BaseCommand {
         ObjectNode changed = JsonNodeFactory.instance.objectNode();
         changed.put("selfContained", true);
         ResultEnvelope envelope = ResultEnvelope.applied(
-                "model", "expand", "expanded model into one self-contained artifact", changed, outputPath);
+                "model", "expand", "expanded model into one self-contained artifact", changed, outputPath,
+                    ConsistencyEvidence.none());
         out().print(envelope.toJsonString());
         return envelope.exitCode();
     }

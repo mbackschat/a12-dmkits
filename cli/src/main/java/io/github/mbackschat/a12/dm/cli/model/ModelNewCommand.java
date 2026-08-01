@@ -1,5 +1,6 @@
 package io.github.mbackschat.a12.dm.cli.model;
 
+import io.github.mbackschat.a12.dm.cli.ConsistencyEvidence;
 import io.github.mbackschat.a12.dm.cli.BaseCommand;
 import io.github.mbackschat.a12.dm.cli.ParamKind;
 import io.github.mbackschat.a12.dm.cli.ResultEnvelope;
@@ -67,9 +68,11 @@ final class ModelNewCommand extends BaseCommand {
     public Integer call() {
         String rootName = (root != null && !root.isBlank()) ? root : capitalize(id);
         String json;
+        BoundModel skeleton;
         try {
             json = DocumentModelDraft.named(id).locale(locale).rootGroup(rootName, g -> { }).build().toJson();
-            BoundModel.ofJson(json); // kernel-check the skeleton — a bad id/locale fails here, not at the agent's next edit
+            // kernel-check the skeleton — a bad id/locale fails here, not at the agent's next edit
+            skeleton = BoundModel.ofJson(json);
         } catch (RuntimeException e) {
             return fail("cannot create a valid model from --id '" + id + "' --locale '" + locale + "': " + e.getMessage());
         }
@@ -86,7 +89,8 @@ final class ModelNewCommand extends BaseCommand {
             changed.put("id", id);
             changed.put("root", rootName);
             changed.put("locale", locale);
-            ResultEnvelope env = ResultEnvelope.applied("model", "new", "created model " + id, changed, outputPath);
+            ResultEnvelope env = ResultEnvelope.applied("model", "new", "created model " + id, changed, outputPath,
+                    ConsistencyEvidence.of(skeleton));
             out().print(env.toJsonString());
             return env.exitCode();
         }

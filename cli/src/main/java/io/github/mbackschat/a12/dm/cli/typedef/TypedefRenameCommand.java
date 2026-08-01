@@ -1,5 +1,6 @@
 package io.github.mbackschat.a12.dm.cli.typedef;
 
+import io.github.mbackschat.a12.dm.cli.ConsistencyEvidence;
 import io.github.mbackschat.a12.dm.cli.BaseCommand;
 import io.github.mbackschat.a12.dm.cli.ParamKind;
 import io.github.mbackschat.a12.dm.cli.Refusal;
@@ -77,8 +78,13 @@ final class TypedefRenameCommand extends BaseCommand {
 
         List<String> repointed = doc.fieldsUsingTypeDefinition(id);   // captured before the rename moves them
         String resultJson;
+        // The gated document is the REWRITTEN one, not the `doc` read above — that one only feeds the
+        // safety gate and never sees `validate`, so publishing its (absent) receipt would silently
+        // under-report the check this route really ran.
+        ModelDocument rewritten;
         try {
-            resultJson = refactor.rewriteAndMutate(modelJson).validate(resolver).toJson();
+            rewritten = refactor.rewriteAndMutate(modelJson).validate(resolver);
+            resultJson = rewritten.toJson();
         } catch (ModelConsistencyException e) {
             return emitKernelRejection("typedef", "rename", "rename left the model invalid", e);
         } catch (RuntimeException e) {
@@ -92,7 +98,7 @@ final class TypedefRenameCommand extends BaseCommand {
         repointed.forEach(fields::add);
         if (dryRun) {
             ResultEnvelope env = ResultEnvelope.preview("typedef", "rename",
-                    "would rename typedef " + id + " to " + newId, changed);
+                    "would rename typedef " + id + " to " + newId, changed, ConsistencyEvidence.of(rewritten));
             out().print(env.toJsonString());
             return env.exitCode();
         }
@@ -103,7 +109,7 @@ final class TypedefRenameCommand extends BaseCommand {
             return fail("cannot write output: " + e.getMessage());
         }
         ResultEnvelope env = ResultEnvelope.applied("typedef", "rename",
-                "renamed typedef " + id + " to " + newId, changed, dest);
+                "renamed typedef " + id + " to " + newId, changed, dest, ConsistencyEvidence.of(rewritten));
         out().print(env.toJsonString());
         return env.exitCode();
     }

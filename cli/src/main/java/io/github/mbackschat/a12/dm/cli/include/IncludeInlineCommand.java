@@ -1,5 +1,6 @@
 package io.github.mbackschat.a12.dm.cli.include;
 
+import io.github.mbackschat.a12.dm.cli.ConsistencyEvidence;
 import io.github.mbackschat.a12.dm.cli.BaseCommand;
 import io.github.mbackschat.a12.dm.cli.ParamKind;
 import io.github.mbackschat.a12.dm.cli.Refusal;
@@ -91,7 +92,7 @@ final class IncludeInlineCommand extends BaseCommand {
         changed.put("reference", reference);
         if (dryRun) {
             ResultEnvelope env = ResultEnvelope.preview("include", "inline",
-                    "would inline include " + alias, changed);
+                    "would inline include " + alias, changed, ConsistencyEvidence.of(doc));
             out().print(env.toJsonString());
             return env.exitCode();
         }
@@ -102,7 +103,8 @@ final class IncludeInlineCommand extends BaseCommand {
             return fail("cannot write output: " + e.getMessage());
         }
         ResultEnvelope env = ResultEnvelope.applied("include", "inline",
-                "inlined include " + alias + " (folded " + reference + " back in)", changed, dest);
+                "inlined include " + alias + " (folded " + reference + " back in)", changed, dest,
+                ConsistencyEvidence.of(doc));
         out().print(env.toJsonString());
         return env.exitCode();
     }

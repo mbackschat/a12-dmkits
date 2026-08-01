@@ -1,5 +1,6 @@
 package io.github.mbackschat.a12.dm.cli.computation;
 
+import io.github.mbackschat.a12.dm.cli.ConsistencyEvidence;
 import io.github.mbackschat.a12.dm.cli.BaseCommand;
 import io.github.mbackschat.a12.dm.cli.ParamKind;
 import io.github.mbackschat.a12.dm.cli.Refusal;
@@ -69,8 +70,12 @@ final class ComputationRemoveCommand extends BaseCommand {
             return refuse("computation", "remove", refusal.get());
         }
         String result;
+        BoundModel reduced;
         try {
-            result = BoundModel.ofJson(json, resolver).removeComputation(computation).toJson();
+            // removeComputation re-binds through the gate, so the REDUCED model is the witness — the
+            // pre-removal bind gated a model this verb is not writing.
+            reduced = BoundModel.ofJson(json, resolver).removeComputation(computation);
+            result = reduced.toJson();
         } catch (RuntimeException e) {
             return fail("cannot remove computation '" + computation + "': " + e.getMessage());
         }
@@ -78,7 +83,7 @@ final class ComputationRemoveCommand extends BaseCommand {
         changed.put("removed", computation);
         if (dryRun) {
             ResultEnvelope env = ResultEnvelope.preview("computation", "remove",
-                    "would remove computation " + computation, changed);
+                    "would remove computation " + computation, changed, ConsistencyEvidence.of(reduced));
             out().print(env.toJsonString());
             return env.exitCode();
         }
@@ -89,7 +94,7 @@ final class ComputationRemoveCommand extends BaseCommand {
             return fail("cannot write output: " + e.getMessage());
         }
         ResultEnvelope env = ResultEnvelope.applied("computation", "remove",
-                "removed computation " + computation, changed, dest);
+                "removed computation " + computation, changed, dest, ConsistencyEvidence.of(reduced));
         out().print(env.toJsonString());
         return env.exitCode();
     }

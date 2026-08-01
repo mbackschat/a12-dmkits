@@ -1,5 +1,6 @@
 package io.github.mbackschat.a12.dm.cli.field;
 
+import io.github.mbackschat.a12.dm.cli.ConsistencyEvidence;
 import io.github.mbackschat.a12.dm.cli.BaseCommand;
 import io.github.mbackschat.a12.dm.cli.Refusal;
 import io.github.mbackschat.a12.dm.cli.ResultEnvelope;
@@ -145,7 +146,8 @@ final class FieldModifyCommand extends BaseCommand {
             return failEditGate(e);
         }
         if (dryRun) {
-            ResultEnvelope env = ResultEnvelope.preview("field", "modify", "would modify " + fieldPath, changed, advisories);
+            ResultEnvelope env = ResultEnvelope.preview("field", "modify", "would modify " + fieldPath, changed,
+                    advisories, ConsistencyEvidence.of(doc));
             out().print(env.toJsonString());
             return env.exitCode();
         }
@@ -155,7 +157,8 @@ final class FieldModifyCommand extends BaseCommand {
         } catch (IOException e) {
             return fail("cannot write output: " + e.getMessage());
         }
-        ResultEnvelope env = ResultEnvelope.applied("field", "modify", "modified " + fieldPath, changed, advisories, dest);
+        ResultEnvelope env = ResultEnvelope.applied("field", "modify", "modified " + fieldPath, changed,
+                advisories, dest, ConsistencyEvidence.of(doc));
         out().print(env.toJsonString());
         return env.exitCode();
     }

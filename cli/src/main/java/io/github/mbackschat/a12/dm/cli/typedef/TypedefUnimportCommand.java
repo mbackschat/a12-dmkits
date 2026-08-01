@@ -1,5 +1,6 @@
 package io.github.mbackschat.a12.dm.cli.typedef;
 
+import io.github.mbackschat.a12.dm.cli.ConsistencyEvidence;
 import io.github.mbackschat.a12.dm.cli.BaseCommand;
 import io.github.mbackschat.a12.dm.cli.ParamKind;
 import io.github.mbackschat.a12.dm.cli.ResultEnvelope;
@@ -54,10 +55,10 @@ final class TypedefUnimportCommand extends BaseCommand {
             return 2;
         }
         ModelResolver resolver = workspace.resolverFor(model);
+        ModelDocument doc = ModelDocument.read(modelJson);
         String resultJson;
         try {
-            resultJson = ModelDocument.read(modelJson)
-                    .removeImport(reference)
+            resultJson = doc.removeImport(reference)
                     .validate(resolver)
                     .toJson();
         } catch (ModelConsistencyException e) {
@@ -69,7 +70,7 @@ final class TypedefUnimportCommand extends BaseCommand {
         changed.put("unimported", reference);
         if (dryRun) {
             ResultEnvelope env = ResultEnvelope.preview("typedef", "unimport",
-                    "would stop importing type definitions from " + reference, changed);
+                    "would stop importing type definitions from " + reference, changed, ConsistencyEvidence.of(doc));
             out().print(env.toJsonString());
             return env.exitCode();
         }
@@ -80,7 +81,7 @@ final class TypedefUnimportCommand extends BaseCommand {
             return fail("cannot write output: " + e.getMessage());
         }
         ResultEnvelope env = ResultEnvelope.applied("typedef", "unimport",
-                "removed the type-def import of " + reference, changed, dest);
+                "removed the type-def import of " + reference, changed, dest, ConsistencyEvidence.of(doc));
         out().print(env.toJsonString());
         return env.exitCode();
     }

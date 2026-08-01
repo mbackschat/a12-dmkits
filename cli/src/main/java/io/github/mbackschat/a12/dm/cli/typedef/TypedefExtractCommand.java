@@ -1,5 +1,6 @@
 package io.github.mbackschat.a12.dm.cli.typedef;
 
+import io.github.mbackschat.a12.dm.cli.ConsistencyEvidence;
 import io.github.mbackschat.a12.dm.cli.BaseCommand;
 import io.github.mbackschat.a12.dm.cli.ParamKind;
 import io.github.mbackschat.a12.dm.cli.Refusal;
@@ -91,7 +92,8 @@ final class TypedefExtractCommand extends BaseCommand {
         from.forEach(fields::add);
         if (dryRun) {
             ResultEnvelope env = ResultEnvelope.preview("typedef", "extract",
-                    "would extract " + from.size() + " field(s) into typedef " + id, changed);
+                    "would extract " + from.size() + " field(s) into typedef " + id, changed,
+                    ConsistencyEvidence.of(doc));
             out().print(env.toJsonString());
             return env.exitCode();
         }
@@ -102,7 +104,8 @@ final class TypedefExtractCommand extends BaseCommand {
             return fail("cannot write output: " + e.getMessage());
         }
         ResultEnvelope env = ResultEnvelope.applied("typedef", "extract",
-                "extracted " + from.size() + " field(s) into typedef " + id, changed, dest);
+                "extracted " + from.size() + " field(s) into typedef " + id, changed, dest,
+                ConsistencyEvidence.of(doc));
         out().print(env.toJsonString());
         return env.exitCode();
     }

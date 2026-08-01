@@ -1,5 +1,6 @@
 package io.github.mbackschat.a12.dm.cli.group;
 
+import io.github.mbackschat.a12.dm.cli.ConsistencyEvidence;
 import io.github.mbackschat.a12.dm.cli.BaseCommand;
 import io.github.mbackschat.a12.dm.cli.GroupRemoval;
 import io.github.mbackschat.a12.dm.cli.ParamKind;
@@ -109,7 +110,8 @@ final class GroupRemoveCommand extends BaseCommand {
         changed.put("removed", group);
         changed.set("cascaded", cascaded);
         if (dryRun) {
-            ResultEnvelope env = ResultEnvelope.preview("group", "remove", "would remove " + group, changed);
+            ResultEnvelope env = ResultEnvelope.preview("group", "remove", "would remove " + group, changed,
+                    ConsistencyEvidence.of(session));
             out().print(env.toJsonString());
             return env.exitCode();
         }
@@ -119,7 +121,8 @@ final class GroupRemoveCommand extends BaseCommand {
         } catch (IOException e) {
             return fail("cannot write output: " + e.getMessage());
         }
-        ResultEnvelope env = ResultEnvelope.applied("group", "remove", "removed " + group, changed, dest);
+        ResultEnvelope env = ResultEnvelope.applied("group", "remove", "removed " + group, changed, dest,
+                ConsistencyEvidence.of(session));
         out().print(env.toJsonString());
         return env.exitCode();
     }

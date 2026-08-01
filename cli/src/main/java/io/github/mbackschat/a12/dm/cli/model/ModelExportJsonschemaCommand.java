@@ -1,5 +1,6 @@
 package io.github.mbackschat.a12.dm.cli.model;
 
+import io.github.mbackschat.a12.dm.cli.ConsistencyEvidence;
 import io.github.mbackschat.a12.dm.cli.BaseCommand;
 import io.github.mbackschat.a12.dm.cli.ParamKind;
 import io.github.mbackschat.a12.dm.cli.ResultEnvelope;
@@ -77,7 +78,7 @@ final class ModelExportJsonschemaCommand extends BaseCommand {
             ObjectNode changed = MAPPER.createObjectNode();
             changed.set("report", JsonSchemaCli.reportNode(MAPPER, result.report()));   // structured dispositions in the envelope
             ResultEnvelope env = ResultEnvelope.applied("model", "export-jsonschema",
-                    "exported model → JSON Schema", changed, outputPath);
+                    "exported model → JSON Schema", changed, outputPath, ConsistencyEvidence.none());
             out().print(env.toJsonString());
             return env.exitCode();
         }

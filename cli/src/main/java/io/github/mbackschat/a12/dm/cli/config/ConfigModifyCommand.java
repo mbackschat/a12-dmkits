@@ -1,5 +1,6 @@
 package io.github.mbackschat.a12.dm.cli.config;
 
+import io.github.mbackschat.a12.dm.cli.ConsistencyEvidence;
 import io.github.mbackschat.a12.dm.cli.BaseCommand;
 import io.github.mbackschat.a12.dm.cli.ParamKind;
 import io.github.mbackschat.a12.dm.cli.Refusal;
@@ -176,12 +177,13 @@ final class ConfigModifyCommand extends BaseCommand {
             return refuse("config", "modify", refusal.get());
         }
         ObjectNode changed = MAPPER.createObjectNode();
+        // T4: the setter cascade + `changed` report is single-sourced with the `apply` CONFIG_MODIFY op.
+        // Standalone config modify was migrated off the immutable ModelDocument onto the mutable EditSession
+        // (the cleaner shape — matches `group modify`, and EditSession carries every config setter). Declared
+        // outside the try so the gate's receipt is still in scope for the envelope below.
+        EditSession session = EditSession.read(modelJson, resolver);
         String resultJson;
         try {
-            // T4: the setter cascade + `changed` report is single-sourced with the `apply` CONFIG_MODIFY op.
-            // Standalone config modify was migrated off the immutable ModelDocument onto the mutable EditSession
-            // (the cleaner shape — matches `group modify`, and EditSession carries every config setter).
-            EditSession session = EditSession.read(modelJson, resolver);
             mod.applyTo(session, changed);
             resultJson = session.validate().toJson();
         } catch (ModelConsistencyException e) {
@@ -192,7 +194,8 @@ final class ConfigModifyCommand extends BaseCommand {
         var advisories = mod.advisories();
         if (dryRun) {
             ResultEnvelope env = ResultEnvelope.preview(
-                    "config", "modify", "would change document config", changed, advisories);
+                    "config", "modify", "would change document config", changed, advisories,
+                    ConsistencyEvidence.of(session));
             out().print(env.toJsonString());
             return env.exitCode();
         }
@@ -203,7 +206,8 @@ final class ConfigModifyCommand extends BaseCommand {
             return fail("cannot write output: " + e.getMessage());
         }
         ResultEnvelope env = ResultEnvelope.applied(
-                "config", "modify", "changed document config", changed, advisories, dest);
+                "config", "modify", "changed document config", changed, advisories, dest,
+                ConsistencyEvidence.of(session));
         out().print(env.toJsonString());
         return env.exitCode();
     }

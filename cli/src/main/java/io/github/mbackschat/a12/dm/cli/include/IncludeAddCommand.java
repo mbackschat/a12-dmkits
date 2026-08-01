@@ -1,5 +1,6 @@
 package io.github.mbackschat.a12.dm.cli.include;
 
+import io.github.mbackschat.a12.dm.cli.ConsistencyEvidence;
 import io.github.mbackschat.a12.dm.cli.BaseCommand;
 import io.github.mbackschat.a12.dm.cli.ParamKind;
 import io.github.mbackschat.a12.dm.cli.Refusal;
@@ -110,10 +111,10 @@ final class IncludeAddCommand extends BaseCommand {
         if (excludeComputations) {
             options = options.excludingComputations();
         }
+        ModelDocument doc = ModelDocument.read(modelJson);
         String resultJson;
         try {
-            resultJson = ModelDocument.read(modelJson)
-                    .addInclude(alias, reference)
+            resultJson = doc.addInclude(alias, reference)
                     .mount(parent, name, alias, options)
                     .validate(resolver)
                     .toJson();
@@ -136,7 +137,8 @@ final class IncludeAddCommand extends BaseCommand {
             changed.put("excludeComputations", true);
         }
         if (dryRun) {
-            ResultEnvelope env = ResultEnvelope.preview("include", "add", "would add include " + alias, changed);
+            ResultEnvelope env = ResultEnvelope.preview("include", "add", "would add include " + alias, changed,
+                    ConsistencyEvidence.of(doc));
             out().print(env.toJsonString());
             return env.exitCode();
         }
@@ -146,7 +148,8 @@ final class IncludeAddCommand extends BaseCommand {
         } catch (IOException e) {
             return fail("cannot write output: " + e.getMessage());
         }
-        ResultEnvelope env = ResultEnvelope.applied("include", "add", "added include " + alias, changed, dest);
+        ResultEnvelope env = ResultEnvelope.applied("include", "add", "added include " + alias, changed, dest,
+                ConsistencyEvidence.of(doc));
         out().print(env.toJsonString());
         return env.exitCode();
     }

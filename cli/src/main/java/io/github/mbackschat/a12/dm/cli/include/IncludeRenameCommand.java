@@ -1,5 +1,6 @@
 package io.github.mbackschat.a12.dm.cli.include;
 
+import io.github.mbackschat.a12.dm.cli.ConsistencyEvidence;
 import io.github.mbackschat.a12.dm.cli.BaseCommand;
 import io.github.mbackschat.a12.dm.cli.ParamKind;
 import io.github.mbackschat.a12.dm.cli.Refusal;
@@ -75,8 +76,13 @@ final class IncludeRenameCommand extends BaseCommand {
         }
 
         String resultJson;
+        // The gated document is the REWRITTEN one, not the `doc` read above — that one only feeds the
+        // safety gate and never sees `validate`, so publishing its (absent) receipt would silently
+        // under-report the check this route really ran.
+        ModelDocument rewritten;
         try {
-            resultJson = refactor.rewriteAndMutate(modelJson).validate(resolver).toJson();
+            rewritten = refactor.rewriteAndMutate(modelJson).validate(resolver);
+            resultJson = rewritten.toJson();
         } catch (ModelConsistencyException e) {
             return emitKernelRejection("include", "rename", "rename left the model invalid", e);
         } catch (RuntimeException e) {
@@ -88,7 +94,7 @@ final class IncludeRenameCommand extends BaseCommand {
         changed.put("to", newAlias);
         if (dryRun) {
             ResultEnvelope env = ResultEnvelope.preview("include", "rename",
-                    "would rename include " + alias + " to " + newAlias, changed);
+                    "would rename include " + alias + " to " + newAlias, changed, ConsistencyEvidence.of(rewritten));
             out().print(env.toJsonString());
             return env.exitCode();
         }
@@ -99,7 +105,7 @@ final class IncludeRenameCommand extends BaseCommand {
             return fail("cannot write output: " + e.getMessage());
         }
         ResultEnvelope env = ResultEnvelope.applied("include", "rename",
-                "renamed include " + alias + " to " + newAlias, changed, dest);
+                "renamed include " + alias + " to " + newAlias, changed, dest, ConsistencyEvidence.of(rewritten));
         out().print(env.toJsonString());
         return env.exitCode();
     }

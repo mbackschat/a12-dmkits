@@ -1,5 +1,6 @@
 package io.github.mbackschat.a12.dm.cli.include;
 
+import io.github.mbackschat.a12.dm.cli.ConsistencyEvidence;
 import io.github.mbackschat.a12.dm.cli.BaseCommand;
 import io.github.mbackschat.a12.dm.cli.ParamKind;
 import io.github.mbackschat.a12.dm.cli.Refusal;
@@ -83,7 +84,7 @@ final class IncludeSetReferenceCommand extends BaseCommand {
         changed.put("alias", alias).put("reference", reference);
         if (dryRun) {
             ResultEnvelope env = ResultEnvelope.preview("include", "set-reference",
-                    "would repoint include " + alias + " to " + reference, changed);
+                    "would repoint include " + alias + " to " + reference, changed, ConsistencyEvidence.of(doc));
             out().print(env.toJsonString());
             return env.exitCode();
         }
@@ -94,7 +95,7 @@ final class IncludeSetReferenceCommand extends BaseCommand {
             return fail("cannot write output: " + e.getMessage());
         }
         ResultEnvelope env = ResultEnvelope.applied("include", "set-reference",
-                "repointed include " + alias + " to " + reference, changed, dest);
+                "repointed include " + alias + " to " + reference, changed, dest, ConsistencyEvidence.of(doc));
         out().print(env.toJsonString());
         return env.exitCode();
     }

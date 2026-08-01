@@ -1,5 +1,6 @@
 package io.github.mbackschat.a12.dm.cli.group;
 
+import io.github.mbackschat.a12.dm.cli.ConsistencyEvidence;
 import io.github.mbackschat.a12.dm.cli.BaseCommand;
 import io.github.mbackschat.a12.dm.cli.ParamKind;
 import io.github.mbackschat.a12.dm.cli.Refusal;
@@ -130,7 +131,7 @@ final class GroupAttachmentCommand extends BaseCommand {
         }
         if (dryRun) {
             ResultEnvelope env = ResultEnvelope.preview("group", "attachment",
-                    "would add attachment group " + target, changed);
+                    "would add attachment group " + target, changed, ConsistencyEvidence.of(doc));
             out().print(env.toJsonString());
             return env.exitCode();
         }
@@ -141,7 +142,7 @@ final class GroupAttachmentCommand extends BaseCommand {
             return fail("cannot write output: " + e.getMessage());
         }
         ResultEnvelope env = ResultEnvelope.applied("group", "attachment",
-                "added attachment group " + target, changed, dest);
+                "added attachment group " + target, changed, dest, ConsistencyEvidence.of(doc));
         out().print(env.toJsonString());
         return env.exitCode();
     }

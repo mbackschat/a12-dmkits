@@ -1,5 +1,6 @@
 package io.github.mbackschat.a12.dm.cli.typedef;
 
+import io.github.mbackschat.a12.dm.cli.ConsistencyEvidence;
 import io.github.mbackschat.a12.dm.cli.BaseCommand;
 import io.github.mbackschat.a12.dm.cli.ParamKind;
 import io.github.mbackschat.a12.dm.cli.Refusal;
@@ -76,7 +77,8 @@ final class TypedefRemoveCommand extends BaseCommand {
         ObjectNode changed = MAPPER.createObjectNode();
         changed.put("removed", id);
         if (dryRun) {
-            ResultEnvelope env = ResultEnvelope.preview("typedef", "remove", "would remove typedef " + id, changed);
+            ResultEnvelope env = ResultEnvelope.preview("typedef", "remove", "would remove typedef " + id, changed,
+                    ConsistencyEvidence.of(doc));
             out().print(env.toJsonString());
             return env.exitCode();
         }
@@ -86,7 +88,8 @@ final class TypedefRemoveCommand extends BaseCommand {
         } catch (IOException e) {
             return fail("cannot write output: " + e.getMessage());
         }
-        ResultEnvelope env = ResultEnvelope.applied("typedef", "remove", "removed typedef " + id, changed, dest);
+        ResultEnvelope env = ResultEnvelope.applied("typedef", "remove", "removed typedef " + id, changed, dest,
+                ConsistencyEvidence.of(doc));
         out().print(env.toJsonString());
         return env.exitCode();
     }

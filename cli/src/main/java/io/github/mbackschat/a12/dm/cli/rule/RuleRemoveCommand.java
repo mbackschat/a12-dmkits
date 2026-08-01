@@ -1,5 +1,6 @@
 package io.github.mbackschat.a12.dm.cli.rule;
 
+import io.github.mbackschat.a12.dm.cli.ConsistencyEvidence;
 import io.github.mbackschat.a12.dm.cli.BaseCommand;
 import io.github.mbackschat.a12.dm.cli.ParamKind;
 import io.github.mbackschat.a12.dm.cli.Refusal;
@@ -70,8 +71,12 @@ final class RuleRemoveCommand extends BaseCommand {
             return refuse("rule", "remove", refusal.get());
         }
         String result;
+        BoundModel reduced;
         try {
-            result = BoundModel.ofJson(json, resolver).removeRule(rule).toJson();
+            // removeRule re-binds through the gate, so the REDUCED model is the witness — the pre-removal
+            // bind gated a model this verb is not writing.
+            reduced = BoundModel.ofJson(json, resolver).removeRule(rule);
+            result = reduced.toJson();
         } catch (RuntimeException e) {
             return fail("cannot remove rule '" + rule + "': " + e.getMessage());
         }
@@ -79,7 +84,8 @@ final class RuleRemoveCommand extends BaseCommand {
         ObjectNode changed = MAPPER.createObjectNode();
         changed.put("removed", rule);
         if (dryRun) {
-            ResultEnvelope env = ResultEnvelope.preview("rule", "remove", "would remove rule " + rule, changed);
+            ResultEnvelope env = ResultEnvelope.preview("rule", "remove", "would remove rule " + rule, changed,
+                    ConsistencyEvidence.of(reduced));
             out().print(env.toJsonString());
             return env.exitCode();
         }
@@ -89,7 +95,8 @@ final class RuleRemoveCommand extends BaseCommand {
         } catch (IOException e) {
             return fail("cannot write output: " + e.getMessage());
         }
-        ResultEnvelope env = ResultEnvelope.applied("rule", "remove", "removed rule " + rule, changed, dest);
+        ResultEnvelope env = ResultEnvelope.applied("rule", "remove", "removed rule " + rule, changed, dest,
+                ConsistencyEvidence.of(reduced));
         out().print(env.toJsonString());
         return env.exitCode();
     }

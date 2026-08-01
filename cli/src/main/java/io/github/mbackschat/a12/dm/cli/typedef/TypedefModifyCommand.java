@@ -1,5 +1,6 @@
 package io.github.mbackschat.a12.dm.cli.typedef;
 
+import io.github.mbackschat.a12.dm.cli.ConsistencyEvidence;
 import io.github.mbackschat.a12.dm.cli.BaseCommand;
 import io.github.mbackschat.a12.dm.cli.ParamKind;
 import io.github.mbackschat.a12.dm.cli.ResultEnvelope;
@@ -125,7 +126,8 @@ final class TypedefModifyCommand extends BaseCommand {
         // echo the persisted kind through the resolver — the clean ValueKind name, same as `typedef read`
         changed.put("kind", doc.typeDefinitionKind(id).orElseThrow());
         if (dryRun) {
-            ResultEnvelope env = ResultEnvelope.preview("typedef", "modify", "would modify typedef " + id, changed);
+            ResultEnvelope env = ResultEnvelope.preview("typedef", "modify", "would modify typedef " + id, changed,
+                    ConsistencyEvidence.of(doc));
             out().print(env.toJsonString());
             return env.exitCode();
         }
@@ -135,7 +137,8 @@ final class TypedefModifyCommand extends BaseCommand {
         } catch (IOException e) {
             return fail("cannot write output: " + e.getMessage());
         }
-        ResultEnvelope env = ResultEnvelope.applied("typedef", "modify", "modified typedef " + id, changed, dest);
+        ResultEnvelope env = ResultEnvelope.applied("typedef", "modify", "modified typedef " + id, changed, dest,
+                ConsistencyEvidence.of(doc));
         out().print(env.toJsonString());
         return env.exitCode();
     }

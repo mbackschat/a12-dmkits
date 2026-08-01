@@ -1,5 +1,6 @@
 package io.github.mbackschat.a12.dm.cli.group;
 
+import io.github.mbackschat.a12.dm.cli.ConsistencyEvidence;
 import io.github.mbackschat.a12.dm.cli.BaseCommand;
 import io.github.mbackschat.a12.dm.cli.ParamKind;
 import io.github.mbackschat.a12.dm.cli.Refusal;
@@ -98,7 +99,8 @@ final class GroupAddCommand extends BaseCommand {
         changed.put("added", target);
         changed.put("repeatable", repeatable != null);
         if (dryRun) {
-            ResultEnvelope env = ResultEnvelope.preview("group", "add", "would add group " + target, changed);
+            ResultEnvelope env = ResultEnvelope.preview("group", "add", "would add group " + target, changed,
+                    ConsistencyEvidence.of(doc));
             out().print(env.toJsonString());
             return env.exitCode();
         }
@@ -108,7 +110,8 @@ final class GroupAddCommand extends BaseCommand {
         } catch (IOException e) {
             return fail("cannot write output: " + e.getMessage());
         }
-        ResultEnvelope env = ResultEnvelope.applied("group", "add", "added group " + target, changed, dest);
+        ResultEnvelope env = ResultEnvelope.applied("group", "add", "added group " + target, changed, dest,
+                ConsistencyEvidence.of(doc));
         out().print(env.toJsonString());
         return env.exitCode();
     }

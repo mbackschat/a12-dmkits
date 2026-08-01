@@ -1,5 +1,6 @@
 package io.github.mbackschat.a12.dm.cli.group;
 
+import io.github.mbackschat.a12.dm.cli.ConsistencyEvidence;
 import io.github.mbackschat.a12.dm.cli.BaseCommand;
 import io.github.mbackschat.a12.dm.cli.ParamKind;
 import io.github.mbackschat.a12.dm.cli.Refusal;
@@ -123,7 +124,7 @@ final class GroupMultiSelectCommand extends BaseCommand {
         changed.put("maxRows", maxRows);
         if (dryRun) {
             ResultEnvelope env = ResultEnvelope.preview("group", "multiselect",
-                    "would add multi-select group " + target, changed);
+                    "would add multi-select group " + target, changed, ConsistencyEvidence.of(doc));
             out().print(env.toJsonString());
             return env.exitCode();
         }
@@ -134,7 +135,7 @@ final class GroupMultiSelectCommand extends BaseCommand {
             return fail("cannot write output: " + e.getMessage());
         }
         ResultEnvelope env = ResultEnvelope.applied("group", "multiselect",
-                "added multi-select group " + target, changed, dest);
+                "added multi-select group " + target, changed, dest, ConsistencyEvidence.of(doc));
         out().print(env.toJsonString());
         return env.exitCode();
     }

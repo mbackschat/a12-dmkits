@@ -1,5 +1,6 @@
 package io.github.mbackschat.a12.dm.cli.group;
 
+import io.github.mbackschat.a12.dm.cli.ConsistencyEvidence;
 import io.github.mbackschat.a12.dm.cli.BaseCommand;
 import io.github.mbackschat.a12.dm.cli.ParamKind;
 import io.github.mbackschat.a12.dm.cli.Refusal;
@@ -98,8 +99,11 @@ final class GroupExtractCommand extends BaseCommand {
 
         // validate the composed pair BEFORE writing — serve the sub-model (id → DM-JSON) from memory, delegate other refs.
         ModelResolver composed = ref -> reference.equals(ref) ? subModel : dirResolver.resolve(ref);
+        // The composed pair's gate is the one this envelope reports: `output` names the slimmed base, and this is
+        // the run that cleared it. The sub-model's own gate below is a second, narrower precondition.
+        EditSession composedPair = EditSession.read(baseJson, composed);
         try {
-            EditSession.read(baseJson, composed).validate();
+            composedPair.validate();
         } catch (ModelConsistencyException e) {
             return emitKernelRejection("group", "extract", "extraction left the model invalid", e);
         }
@@ -122,7 +126,8 @@ final class GroupExtractCommand extends BaseCommand {
         changed.put("subModel", subFile.toString());
         if (dryRun) {
             ResultEnvelope env = ResultEnvelope.preview("group", "extract",
-                    "would extract " + group + " into sub-model " + reference, changed);
+                    "would extract " + group + " into sub-model " + reference, changed,
+                    ConsistencyEvidence.of(composedPair));
             out().print(env.toJsonString());
             return env.exitCode();
         }
@@ -134,7 +139,8 @@ final class GroupExtractCommand extends BaseCommand {
             return fail("cannot write output: " + e.getMessage());
         }
         ResultEnvelope env = ResultEnvelope.applied("group", "extract",
-                "extracted " + group + " into sub-model " + reference + " (" + subFile + ")", changed, dest);
+                "extracted " + group + " into sub-model " + reference + " (" + subFile + ")", changed, dest,
+                ConsistencyEvidence.of(composedPair));
         out().print(env.toJsonString());
         return env.exitCode();
     }

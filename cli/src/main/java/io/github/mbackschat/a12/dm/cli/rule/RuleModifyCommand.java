@@ -141,8 +141,9 @@ final class RuleModifyCommand extends BaseCommand {
             return fail("cannot apply the change: " + e.getMessage());
         }
 
+        BoundModel rebound;
         try {
-            BoundModel.ofJson(modifiedJson, resolver);
+            rebound = BoundModel.ofJson(modifiedJson, resolver);
         } catch (RuntimeException e) {
             Diagnostic d = Diagnostic.precheck(Optional.empty(),
                     "the edit is rejected by the kernel (use `rule check` for diagnostics): " + e.getMessage(),
@@ -187,7 +188,8 @@ final class RuleModifyCommand extends BaseCommand {
         }
         if (dryRun) {
             String summary = (condition != null ? "would re-express " : "would modify ") + rule;
-            ResultEnvelope env = ResultEnvelope.preview("rule", "modify", summary, changed);
+            ResultEnvelope env = ResultEnvelope.preview("rule", "modify", summary, changed,
+                    ConsistencyEvidence.of(rebound));
             out().print(env.toJsonString());
             return env.exitCode();
         }
@@ -198,7 +200,8 @@ final class RuleModifyCommand extends BaseCommand {
             return fail("cannot write output: " + e.getMessage());
         }
         String summary = (condition != null ? "re-expressed " : "modified ") + rule;
-        ResultEnvelope env = ResultEnvelope.applied("rule", "modify", summary, changed, dest);
+        ResultEnvelope env = ResultEnvelope.applied("rule", "modify", summary, changed, dest,
+                ConsistencyEvidence.of(rebound));
         out().print(env.toJsonString());
         return env.exitCode();
     }

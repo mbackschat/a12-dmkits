@@ -80,9 +80,14 @@ public abstract class ReferenceRewritingRefactorCommand extends BaseCommand {
         Set<String> rewroteReferences = refactor.referrers(adapter, doc);
 
         String resultJson;
+        // The gated document is the REWRITTEN one, not the `doc` read above — that one only feeds the
+        // safety gate and never sees `validate`, so publishing its (absent) receipt would silently
+        // under-report the check this route really ran.
+        ModelDocument rewritten;
         try {
             // rewrite every reference to the new path (kernel MoveSupportDM), apply the node change, re-validate.
-            resultJson = refactor.rewriteAndMutate(modelJson).validate(resolver).toJson();
+            rewritten = refactor.rewriteAndMutate(modelJson).validate(resolver);
+            resultJson = rewritten.toJson();
         } catch (ModelConsistencyException e) {
             return emitKernelRejection(refactor.target(), refactor.op(), refactor.op() + " left the model invalid", e);
         } catch (RuntimeException e) {
@@ -97,7 +102,8 @@ public abstract class ReferenceRewritingRefactorCommand extends BaseCommand {
 
         if (dryRun) {
             ResultEnvelope env = ResultEnvelope.preview(refactor.target(), refactor.op(),
-                    "would " + refactor.op() + " " + refactor.source() + " to " + refactor.newPath(), changed);
+                    "would " + refactor.op() + " " + refactor.source() + " to " + refactor.newPath(), changed,
+                    ConsistencyEvidence.of(rewritten));
             out().print(env.toJsonString());
             return env.exitCode();
         }
@@ -108,7 +114,8 @@ public abstract class ReferenceRewritingRefactorCommand extends BaseCommand {
             return fail("cannot write output: " + e.getMessage());
         }
         ResultEnvelope env = ResultEnvelope.applied(refactor.target(), refactor.op(),
-                refactor.changedKey() + " " + refactor.source() + " to " + refactor.newPath(), changed, dest);
+                refactor.changedKey() + " " + refactor.source() + " to " + refactor.newPath(), changed, dest,
+                ConsistencyEvidence.of(rewritten));
         out().print(env.toJsonString());
         return env.exitCode();
     }

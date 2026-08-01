@@ -1,5 +1,6 @@
 package io.github.mbackschat.a12.dm.cli.model;
 
+import io.github.mbackschat.a12.dm.cli.ConsistencyEvidence;
 import io.github.mbackschat.a12.dm.cli.BaseCommand;
 import io.github.mbackschat.a12.dm.cli.ParamKind;
 import io.github.mbackschat.a12.dm.cli.ResultEnvelope;
@@ -175,7 +176,7 @@ final class ModelImportJsonschemaCommand extends BaseCommand {
             ObjectNode changed = MAPPER.createObjectNode();
             changed.set("report", JsonSchemaCli.reportNode(MAPPER, result.report()));   // the agent's to-do list, structured
             ResultEnvelope env = ResultEnvelope.applied("model", "import-jsonschema",
-                    "imported JSON Schema → model", changed, outputPath);
+                    "imported JSON Schema → model", changed, outputPath, ConsistencyEvidence.none());
             out().print(env.toJsonString());
             return env.exitCode();
         }
@@ -214,7 +215,8 @@ final class ModelImportJsonschemaCommand extends BaseCommand {
             m.set("report", JsonSchemaCli.reportNode(MAPPER, entry.getValue().report()));
         }
         ResultEnvelope env = ResultEnvelope.applied("model", "import-jsonschema",
-                "imported OpenAPI bundle → " + bundle.models().size() + " models", changed, outDir);
+                "imported OpenAPI bundle → " + bundle.models().size() + " models", changed, outDir,
+                    ConsistencyEvidence.none());
         out().print(env.toJsonString());
         return env.exitCode();
     }
