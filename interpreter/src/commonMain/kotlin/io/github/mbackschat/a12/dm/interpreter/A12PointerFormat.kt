@@ -3,135 +3,161 @@ package io.github.mbackschat.a12.dm.interpreter
 import io.github.mbackschat.a12.dm.interpreter.workspace.immutableListSnapshot
 
 /**
- * One parsed **exact** A12 `DocumentPointer`: the path part names and their repetitions, positionally paired.
- * Repetition `0` is legal only on the last part, where it addresses A12's `RepetitionsV2` slot.
+ * One part of an exact A12 pointer — A12's `PathPart`, member for member: a `name` and a `repetitionIndex`.
+ *
+ * The domain is `PathPartImpl`'s: a non-empty name inside the part grammar, and `repetitionIndex >= 0`
+ * ("repetition index must be > 0, or 0 for wildcard, but not negative"). Whether a `0` may sit at *this*
+ * position is the pointer's rule, not the part's, exactly as in A12 — `DocumentPointerImpl`'s constructor
+ * decides that, and its assertion records that "PathPart is responsible for repetition indexes >= 0".
+ *
+ * A `data class` is safe here where it is not on [A12Pointer]: this holds no collection, so `copy()` re-runs
+ * the primary constructor and re-validates rather than side-stepping a snapshot.
  */
-data class A12Pointer(val names: List<String>, val repetitions: List<Int>) {
+data class A12PathPart(val name: String, val repetitionIndex: Int) {
     init {
-        require(names.size == repetitions.size) {
-            "names and repetitions have different length: ${names.size} vs ${repetitions.size}"
+        require(A12PointerSyntax.isName(name)) {
+            "not a valid path part name: '$name' — a name matches ${A12PointerSyntax.NAME_PATTERN}"
+        }
+        require(repetitionIndex >= 0) {
+            "repetition index must be >= 1, or ${A12PointerFormat.LAST_PART_ZERO} on the last part, " +
+                "but was $repetitionIndex — a negative index belongs to " +
+                "A12PartiallyKnownMultiPointer, not to an exact pointer"
+        }
+    }
+
+    /** `PathPartImpl.toString`: the index is written only when it is not the implicit 1. */
+    override fun toString(): String = A12PointerSyntax.renderPart(name, repetitionIndex)
+}
+
+/**
+ * One **exact** A12 `DocumentPointer`: an ordered list of [A12PathPart], with A12's derived views over it.
+ *
+ * <b>The shape is the owner's.</b> `DocumentPointer` holds `List<PathPart>` and *derives* `fullName()` and
+ * `repetitionIndexes()` from it. This type used to be a pair of parallel `names`/`repetitions` lists, which is
+ * a shape A12 does not have — the parallel lists appear only as *factory arguments* there
+ * (`DocumentPointer.of(fullName, repetitions)`), never as the value's state.
+ *
+ * <b>Repetition domain:</b> every index `>= 1`, except the last, which may also be
+ * [A12PointerFormat.LAST_PART_ZERO] to address A12's `RepetitionsV2` slot — `DocumentPointerImpl`'s constructor
+ * verbatim ("All repetition indexes must be >= 1, the last repetition can also be 0"). Nothing negative is
+ * representable; a repetition that could not be resolved to a row belongs to [A12PartiallyKnownMultiPointer].
+ *
+ * <b>Zero parts is legal.</b> That is A12's root pointer: `DocumentPointerImpl.parseFullName("")` returns an
+ * empty part list and the class displays that value as `(empty DocumentPointer)`, a display name no illegal
+ * value gets. Rejecting it would invent a shape stricter than A12's.
+ *
+ * Construction goes through [of], and never through a generated `copy()`: the parts list is snapshotted, so a
+ * `data class` would be unable to validate-and-snapshot in one step (`init` cannot reassign a `val` constructor
+ * property) and its `copy()` would hand back an unchecked value.
+ */
+class A12Pointer private constructor(parts: List<A12PathPart>) {
+
+    /** The parts, in order — `DocumentPointer.getPathParts()`. Immutable and independent of the caller's list. */
+    val pathParts: List<A12PathPart> = immutableListSnapshot(parts)
+
+    /** `DocumentPointer.size()`. */
+    val size: Int get() = pathParts.size
+
+    /** `DocumentPointer.fullName()` — the names with a leading slash each, so the root pointer renders as `""`. */
+    val fullName: String = pathParts.joinToString(separator = "") { "/${it.name}" }
+
+    /** `DocumentPointer.repetitionIndexes()`. Immutable, like [pathParts], rather than a fresh mutable copy. */
+    val repetitionIndexes: List<Int> = immutableListSnapshot(pathParts.map(A12PathPart::repetitionIndex))
+
+    /** `DocumentPointer.getPartAtLevel(level)`. */
+    fun partAtLevel(level: Int): A12PathPart = pathParts[level]
+
+    override fun equals(other: Any?): Boolean = other is A12Pointer && other.pathParts == pathParts
+
+    override fun hashCode(): Int = pathParts.hashCode()
+
+    /** `DocumentPointerImpl.toString`, including its display name for the root pointer. */
+    override fun toString(): String =
+        if (pathParts.isEmpty()) "(empty A12Pointer)" else pathParts.joinToString("/")
+
+    companion object {
+        /**
+         * The one construction path. Validates the whole pointer's domain — the parts have each already
+         * validated their own — and snapshots, so no caller-owned list stays attached.
+         */
+        fun of(pathParts: List<A12PathPart>): A12Pointer {
+            A12PointerFormat.requireExactDomain(
+                pathParts.map(A12PathPart::repetitionIndex),
+            ) { "pointer '${pathParts.joinToString("/")}'" }
+            return A12Pointer(pathParts)
         }
     }
 }
 
 /**
- * A12's canonical `DocumentPointer` string — the project's single addressing form (CLAUDE.md "NEVER invent a
- * shape A12 already defines"). Grammar, per kernel 30.8.1 `DocumentPointerImpl`/`PathPartImpl` and recorded in
- * KERNEL-FINDINGS: parts joined by `/`, each part `name` optionally followed by `[n]`. An absent bracket means
- * repetition 1 and the canonical form *omits* `[1]`, so `Recipe/Ingredients[3]/Name` is canonical and a field
- * part carries no bracket. A leading `/` is accepted and stripped as redundant; a trailing `/` is rejected.
- * `[0]` on the LAST part addresses `RepetitionsV2`; on an earlier part it is rejected, exactly as
- * `DocumentPointerImpl`'s constructor rejects it ("All repetition indexes must be >= 1, the last repetition can
- * also be 0").
+ * A12's canonical **exact** `DocumentPointer` string — the project's single addressing form for a resolved cell
+ * (CLAUDE.md "NEVER invent a shape A12 already defines"). Grammar, per kernel 30.8.1
+ * `DocumentPointerImpl`/`PathPartImpl`: parts joined by `/`, each part a `name` optionally followed by `[n]`.
+ * An absent bracket means repetition 1 and the canonical form *omits* `[1]`, so `Recipe/Ingredients[3]/Name` is
+ * canonical and a field part carries no bracket. A leading `/` is accepted and stripped as redundant; a trailing
+ * `/` is rejected.
  *
- * <b>This type models the EXACT pointer only, and the distinction is load-bearing.</b> A12 has a second
- * addressing type, `DocumentMultiPointer`, where `0` genuinely IS a wildcard meaning "all repetitions" — and there
- * it is legal at **every** part (the kernel's own example is `a[0]/b[2]`, wildcard on the first). This file used to
- * call `0` "the wildcard" while enforcing the exact pointer's position rule, i.e. borrow one type's vocabulary for
- * the other type's constraint. That cost real time: a canonical findings entry read the mismatch as an
- * over-rejection and declared a correct, test-locked refusal a defect. The refusal is right; the NAME was wrong.
- * A multipointer parser, should one ever be needed, is a separate type with the wildcard-at-every-part rule — not
- * a relaxation of this one. Note that on BOTH types an omitted bracket means repetition **1**, never "all".
+ * <b>This is the EXACT pointer only, and the distinction is load-bearing.</b> Two sibling A12 types share the
+ * bracket syntax and mean different things by it:
+ *
+ *  - `DocumentMultiPointer`, where `0` is `WILDCARD` ("all repetitions") and legal at **every** part — the
+ *    kernel's own example is `a[0]/b[2]`, wildcard on the first.
+ *  - `PartiallyKnownDocumentMultiPointer`, the type `IMessage` returns, which admits that same wildcard *and*
+ *    `UNKNOWN` (`-5`) at any part. That one is modelled by [A12PartiallyKnownMultiPointer].
+ *
+ * On an exact pointer `0` is neither: on the last part it addresses the `RepetitionsV2` node, and earlier it is
+ * simply rejected. This file once called `0` "the wildcard" while enforcing the exact rule, and later admitted
+ * `-5` as well — borrowing one type's vocabulary, then its domain, for another type's constraint. The union of
+ * the two domains is a shape A12 has nowhere, so it belonged to neither channel; both are now separate types
+ * whose accept/reject sets are measured against the kernel factories in `A12PointerKernelDomainDiffTest`.
  */
 object A12PointerFormat {
 
     /**
-     * The repetition value A12 permits only on an exact pointer's LAST part, where it addresses `RepetitionsV2`.
+     * The repetition A12 permits only on an exact pointer's LAST part, where it addresses `RepetitionsV2`.
      *
-     * Deliberately NOT named `WILDCARD`: that is `DocumentMultiPointer`'s meaning for the same digit, and conflating
-     * the two is what made this type's constraint look like a bug.
+     * Deliberately NOT named `WILDCARD`: that is `DocumentMultiPointer`'s meaning for the same digit, and
+     * conflating the two is what made this type's constraint look like a bug.
      */
     const val LAST_PART_ZERO: Int = 0
 
     /**
-     * A12's **unknown** repetition — `IIdentifier.UNKNOWN`, source-verified as `-5` in kernel 30.8.1
-     * (`kernel-core-runtime-api/.../IIdentifier.java:118`). It is not an index and not a wildcard: it marks a level
-     * the engine could not resolve to a row, which is what a parallel iteration produces when one joined group has
-     * no row carrying the current index value. The kernel renders such a pointer as `…/Demand[-5]/Headcount`, so a
-     * consumer meets it in real output and a renderer that cannot express it would have to invent something.
-     *
-     * Accepted at **any** part, unlike [LAST_PART_ZERO]: "no row here" can occur at any joined level, whereas the
-     * last-part `0` addresses a specific slot. The two are different concepts that happen to share a bracket.
-     */
-    const val UNKNOWN_REPETITION: Int = -5
-
-    // The part-name grammar, single-sourced: [PART] is BUILT from it, so `parse` (which splits a name from its
-    // bracket) and `format` (which validates a bare name) cannot drift apart on what a name may contain.
-    private const val NAME_PATTERN = "[\\w_-]+"
-
-    /** A bare part name — no bracket. What [format] receives, one part at a time, inside [path]. */
-    private val NAME = Regex(NAME_PATTERN)
-
-    // The closing bracket MUST stay escaped: Kotlin/JS compiles a Regex in unicode (`u`) mode, where a lone
-    // `]` is a SyntaxError — the pattern would fail to construct and every use would see an uninitialized
-    // object. Harmless on the JVM, required on JS (the multiplatform `:interpreter:check` is what catches it).
-    // The optional `-` admits UNKNOWN_REPETITION only; every other negative is rejected by [requireLegalDomain].
-    private val PART = Regex("($NAME_PATTERN)(\\[(-?\\d+)?\\])?")
-
-    /**
      * Render [path] (with or without a leading `/`) and its positional [repetitions] as the canonical string.
      *
-     * Rejects exactly what [parse] rejects. It used to check only the arity, which let it emit 4,321 strings
-     * its own parser refused — `Order[0]/Count`, `Order[-7]/Count`, an already-indexed `Order[2]` growing a
-     * second bracket, a name outside the grammar. `A12PointerSymmetryTest` is the two-directional lock.
+     * Rejects exactly what [parse] rejects. It used to check only the arity, which let it emit 4,321 strings its
+     * own parser refused; `A12PointerSymmetryTest` is the two-directional lock.
      */
     fun format(path: String, repetitions: List<Int>): String {
-        val names = splitNames(path)
-        requireLegalDomain(names, repetitions) { "path '$path'" }
+        val names = A12PointerSyntax.splitNames(path)
+        A12PointerSyntax.requireWellFormed(names, repetitions) { "path '$path'" }
+        requireExactDomain(repetitions) { "path '$path'" }
         return names.asSequence()
-            .mapIndexed { i, name -> if (repetitions[i] == 1) name else "$name[${repetitions[i]}]" }
+            .mapIndexed { i, name -> A12PointerSyntax.renderPart(name, repetitions[i]) }
             .joinToString("/")
     }
 
-    /** Parse a canonical (or leading-slash) pointer string into its names and repetitions. */
-    fun parse(pointer: String): A12Pointer {
-        val names = ArrayList<String>()
-        val repetitions = ArrayList<Int>()
-        for (part in splitNames(pointer)) {
-            val match = PART.matchEntire(part)
-                ?: throw IllegalArgumentException("not a valid path part: '$part' in pointer '$pointer'")
-            names.add(match.groupValues[1])
-            repetitions.add(match.groupValues[3].takeIf { it.isNotEmpty() }?.toInt() ?: 1)
-        }
-        requireLegalDomain(names, repetitions) { "pointer '$pointer'" }
-        return A12Pointer(immutableListSnapshot(names), immutableListSnapshot(repetitions))
-    }
+    /** The canonical string of an already-built [pointer] — no re-parse of its [A12Pointer.fullName]. */
+    fun render(pointer: A12Pointer): String = pointer.pathParts.joinToString("/")
+
+    /** Parse a canonical (or leading-slash) exact pointer string. */
+    fun parse(pointer: String): A12Pointer =
+        A12Pointer.of(A12PointerSyntax.parts(pointer).map { A12PathPart(it.name, it.repetition) })
 
     /**
-     * <b>The ONE place an exact pointer's domain is enforced.</b> Both entry points call it, so neither can
-     * admit what the other refuses — the defect this replaces was precisely that the rule lived inside
-     * `parse`'s loop and bound `parse`'s callers only.
-     *
-     * Zero parts is legal and deliberately not special-cased: that is A12's **root pointer**, which
-     * `DocumentPointerImpl.parseFullName("")` returns as an empty part list and the kernel displays as
-     * `(empty DocumentPointer)`. Rejecting it would invent a shape stricter than A12's.
+     * <b>The ONE place an exact pointer's repetition domain is enforced.</b> Every entry point calls it —
+     * [format], [parse] and [A12Pointer.of] — so none can admit what another refuses. The defect this replaces
+     * was precisely that the rule lived inside `parse`'s loop and bound `parse`'s callers only.
      */
-    private fun requireLegalDomain(names: List<String>, repetitions: List<Int>, subject: () -> String) {
-        require(names.size == repetitions.size) {
-            "${subject()} has ${names.size} parts but ${repetitions.size} repetitions"
-        }
-        names.forEach { name ->
-            require(NAME.matchEntire(name) != null) {
-                "not a valid path part name: '$name' in ${subject()} — a name matches $NAME_PATTERN and carries " +
-                    "no bracket of its own, so an already-indexed name like 'Group[2]' is passed as the name " +
-                    "'Group' with repetition 2 instead"
-            }
-        }
+    internal fun requireExactDomain(repetitions: List<Int>, subject: () -> String) {
         for (i in repetitions.indices) {
-            val rep = repetitions[i]
-            val lastPartZero = rep == LAST_PART_ZERO && i == repetitions.size - 1
-            require(rep >= 1 || rep == UNKNOWN_REPETITION || lastPartZero) {
-                "all repetition indexes must be >= 1; only the last may be $LAST_PART_ZERO, and " +
-                    "$UNKNOWN_REPETITION (A12's unknown repetition) may appear at any part, in ${subject()} " +
-                    "(an exact DocumentPointer — a multipointer wildcard is a different type)"
+            val repetition = repetitions[i]
+            val lastPartZero = repetition == LAST_PART_ZERO && i == repetitions.size - 1
+            require(repetition >= 1 || lastPartZero) {
+                "all repetition indexes must be >= 1 and only the last may be $LAST_PART_ZERO, in " +
+                    "${subject()} — this is an exact DocumentPointer. A wildcard at an earlier part, or A12's " +
+                    "unknown repetition (${A12PartiallyKnownMultiPointerFormat.UNKNOWN}), is a " +
+                    "PartiallyKnownDocumentMultiPointer and has its own type"
             }
         }
-    }
-
-    /** Split a path on `/`, stripping the redundant leading slash and rejecting a trailing one. */
-    private fun splitNames(path: String): List<String> {
-        require(path != "/" && !path.endsWith("/")) { "path must not end with a slash but was '$path'" }
-        val body = path.removePrefix("/")
-        return if (body.isEmpty()) emptyList() else body.split("/")
     }
 }

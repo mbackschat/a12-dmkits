@@ -459,20 +459,52 @@ sealed interface io.github.mbackschat.a12.dm.interpreter/RelevantEntityPointer :
         abstract fun <get-path>(): kotlin/String // io.github.mbackschat.a12.dm.interpreter/RelevantEntityPointer.path.<get-path>|<get-path>(){}[0]
 }
 
+final class io.github.mbackschat.a12.dm.interpreter/A12PartiallyKnownMultiPointer { // io.github.mbackschat.a12.dm.interpreter/A12PartiallyKnownMultiPointer|null[0]
+    final val fullName // io.github.mbackschat.a12.dm.interpreter/A12PartiallyKnownMultiPointer.fullName|{}fullName[0]
+        final fun <get-fullName>(): kotlin/String // io.github.mbackschat.a12.dm.interpreter/A12PartiallyKnownMultiPointer.fullName.<get-fullName>|<get-fullName>(){}[0]
+    final val repetitionIndexes // io.github.mbackschat.a12.dm.interpreter/A12PartiallyKnownMultiPointer.repetitionIndexes|{}repetitionIndexes[0]
+        final fun <get-repetitionIndexes>(): kotlin.collections/List<kotlin/Int> // io.github.mbackschat.a12.dm.interpreter/A12PartiallyKnownMultiPointer.repetitionIndexes.<get-repetitionIndexes>|<get-repetitionIndexes>(){}[0]
+
+    final fun equals(kotlin/Any?): kotlin/Boolean // io.github.mbackschat.a12.dm.interpreter/A12PartiallyKnownMultiPointer.equals|equals(kotlin.Any?){}[0]
+    final fun hashCode(): kotlin/Int // io.github.mbackschat.a12.dm.interpreter/A12PartiallyKnownMultiPointer.hashCode|hashCode(){}[0]
+    final fun toExactPointer(): io.github.mbackschat.a12.dm.interpreter/A12Pointer? // io.github.mbackschat.a12.dm.interpreter/A12PartiallyKnownMultiPointer.toExactPointer|toExactPointer(){}[0]
+    final fun toString(): kotlin/String // io.github.mbackschat.a12.dm.interpreter/A12PartiallyKnownMultiPointer.toString|toString(){}[0]
+}
+
+final class io.github.mbackschat.a12.dm.interpreter/A12PathPart { // io.github.mbackschat.a12.dm.interpreter/A12PathPart|null[0]
+    constructor <init>(kotlin/String, kotlin/Int) // io.github.mbackschat.a12.dm.interpreter/A12PathPart.<init>|<init>(kotlin.String;kotlin.Int){}[0]
+
+    final val name // io.github.mbackschat.a12.dm.interpreter/A12PathPart.name|{}name[0]
+        final fun <get-name>(): kotlin/String // io.github.mbackschat.a12.dm.interpreter/A12PathPart.name.<get-name>|<get-name>(){}[0]
+    final val repetitionIndex // io.github.mbackschat.a12.dm.interpreter/A12PathPart.repetitionIndex|{}repetitionIndex[0]
+        final fun <get-repetitionIndex>(): kotlin/Int // io.github.mbackschat.a12.dm.interpreter/A12PathPart.repetitionIndex.<get-repetitionIndex>|<get-repetitionIndex>(){}[0]
+
+    final fun component1(): kotlin/String // io.github.mbackschat.a12.dm.interpreter/A12PathPart.component1|component1(){}[0]
+    final fun component2(): kotlin/Int // io.github.mbackschat.a12.dm.interpreter/A12PathPart.component2|component2(){}[0]
+    final fun copy(kotlin/String = ..., kotlin/Int = ...): io.github.mbackschat.a12.dm.interpreter/A12PathPart // io.github.mbackschat.a12.dm.interpreter/A12PathPart.copy|copy(kotlin.String;kotlin.Int){}[0]
+    final fun equals(kotlin/Any?): kotlin/Boolean // io.github.mbackschat.a12.dm.interpreter/A12PathPart.equals|equals(kotlin.Any?){}[0]
+    final fun hashCode(): kotlin/Int // io.github.mbackschat.a12.dm.interpreter/A12PathPart.hashCode|hashCode(){}[0]
+    final fun toString(): kotlin/String // io.github.mbackschat.a12.dm.interpreter/A12PathPart.toString|toString(){}[0]
+}
+
 final class io.github.mbackschat.a12.dm.interpreter/A12Pointer { // io.github.mbackschat.a12.dm.interpreter/A12Pointer|null[0]
-    constructor <init>(kotlin.collections/List<kotlin/String>, kotlin.collections/List<kotlin/Int>) // io.github.mbackschat.a12.dm.interpreter/A12Pointer.<init>|<init>(kotlin.collections.List<kotlin.String>;kotlin.collections.List<kotlin.Int>){}[0]
+    final val fullName // io.github.mbackschat.a12.dm.interpreter/A12Pointer.fullName|{}fullName[0]
+        final fun <get-fullName>(): kotlin/String // io.github.mbackschat.a12.dm.interpreter/A12Pointer.fullName.<get-fullName>|<get-fullName>(){}[0]
+    final val pathParts // io.github.mbackschat.a12.dm.interpreter/A12Pointer.pathParts|{}pathParts[0]
+        final fun <get-pathParts>(): kotlin.collections/List<io.github.mbackschat.a12.dm.interpreter/A12PathPart> // io.github.mbackschat.a12.dm.interpreter/A12Pointer.pathParts.<get-pathParts>|<get-pathParts>(){}[0]
+    final val repetitionIndexes // io.github.mbackschat.a12.dm.interpreter/A12Pointer.repetitionIndexes|{}repetitionIndexes[0]
+        final fun <get-repetitionIndexes>(): kotlin.collections/List<kotlin/Int> // io.github.mbackschat.a12.dm.interpreter/A12Pointer.repetitionIndexes.<get-repetitionIndexes>|<get-repetitionIndexes>(){}[0]
+    final val size // io.github.mbackschat.a12.dm.interpreter/A12Pointer.size|{}size[0]
+        final fun <get-size>(): kotlin/Int // io.github.mbackschat.a12.dm.interpreter/A12Pointer.size.<get-size>|<get-size>(){}[0]
 
-    final val names // io.github.mbackschat.a12.dm.interpreter/A12Pointer.names|{}names[0]
-        final fun <get-names>(): kotlin.collections/List<kotlin/String> // io.github.mbackschat.a12.dm.interpreter/A12Pointer.names.<get-names>|<get-names>(){}[0]
-    final val repetitions // io.github.mbackschat.a12.dm.interpreter/A12Pointer.repetitions|{}repetitions[0]
-        final fun <get-repetitions>(): kotlin.collections/List<kotlin/Int> // io.github.mbackschat.a12.dm.interpreter/A12Pointer.repetitions.<get-repetitions>|<get-repetitions>(){}[0]
-
-    final fun component1(): kotlin.collections/List<kotlin/String> // io.github.mbackschat.a12.dm.interpreter/A12Pointer.component1|component1(){}[0]
-    final fun component2(): kotlin.collections/List<kotlin/Int> // io.github.mbackschat.a12.dm.interpreter/A12Pointer.component2|component2(){}[0]
-    final fun copy(kotlin.collections/List<kotlin/String> = ..., kotlin.collections/List<kotlin/Int> = ...): io.github.mbackschat.a12.dm.interpreter/A12Pointer // io.github.mbackschat.a12.dm.interpreter/A12Pointer.copy|copy(kotlin.collections.List<kotlin.String>;kotlin.collections.List<kotlin.Int>){}[0]
     final fun equals(kotlin/Any?): kotlin/Boolean // io.github.mbackschat.a12.dm.interpreter/A12Pointer.equals|equals(kotlin.Any?){}[0]
     final fun hashCode(): kotlin/Int // io.github.mbackschat.a12.dm.interpreter/A12Pointer.hashCode|hashCode(){}[0]
+    final fun partAtLevel(kotlin/Int): io.github.mbackschat.a12.dm.interpreter/A12PathPart // io.github.mbackschat.a12.dm.interpreter/A12Pointer.partAtLevel|partAtLevel(kotlin.Int){}[0]
     final fun toString(): kotlin/String // io.github.mbackschat.a12.dm.interpreter/A12Pointer.toString|toString(){}[0]
+
+    final object Companion { // io.github.mbackschat.a12.dm.interpreter/A12Pointer.Companion|null[0]
+        final fun of(kotlin.collections/List<io.github.mbackschat.a12.dm.interpreter/A12PathPart>): io.github.mbackschat.a12.dm.interpreter/A12Pointer // io.github.mbackschat.a12.dm.interpreter/A12Pointer.Companion.of|of(kotlin.collections.List<io.github.mbackschat.a12.dm.interpreter.A12PathPart>){}[0]
+    }
 }
 
 final class io.github.mbackschat.a12.dm.interpreter/ComputationReport : io.github.mbackschat.a12.dm.interpreter/ModelOwned { // io.github.mbackschat.a12.dm.interpreter/ComputationReport|null[0]
@@ -1144,12 +1176,23 @@ final class io.github.mbackschat.a12.dm.interpreter/WorkspaceModelSource { // io
     }
 }
 
+final object io.github.mbackschat.a12.dm.interpreter/A12PartiallyKnownMultiPointerFormat { // io.github.mbackschat.a12.dm.interpreter/A12PartiallyKnownMultiPointerFormat|null[0]
+    final const val UNKNOWN // io.github.mbackschat.a12.dm.interpreter/A12PartiallyKnownMultiPointerFormat.UNKNOWN|{}UNKNOWN[0]
+        final fun <get-UNKNOWN>(): kotlin/Int // io.github.mbackschat.a12.dm.interpreter/A12PartiallyKnownMultiPointerFormat.UNKNOWN.<get-UNKNOWN>|<get-UNKNOWN>(){}[0]
+    final const val WILDCARD // io.github.mbackschat.a12.dm.interpreter/A12PartiallyKnownMultiPointerFormat.WILDCARD|{}WILDCARD[0]
+        final fun <get-WILDCARD>(): kotlin/Int // io.github.mbackschat.a12.dm.interpreter/A12PartiallyKnownMultiPointerFormat.WILDCARD.<get-WILDCARD>|<get-WILDCARD>(){}[0]
+
+    final fun format(kotlin/String, kotlin.collections/List<kotlin/Int>): kotlin/String // io.github.mbackschat.a12.dm.interpreter/A12PartiallyKnownMultiPointerFormat.format|format(kotlin.String;kotlin.collections.List<kotlin.Int>){}[0]
+    final fun of(kotlin/String, kotlin.collections/List<kotlin/Int>): io.github.mbackschat.a12.dm.interpreter/A12PartiallyKnownMultiPointer // io.github.mbackschat.a12.dm.interpreter/A12PartiallyKnownMultiPointerFormat.of|of(kotlin.String;kotlin.collections.List<kotlin.Int>){}[0]
+    final fun parse(kotlin/String): io.github.mbackschat.a12.dm.interpreter/A12PartiallyKnownMultiPointer // io.github.mbackschat.a12.dm.interpreter/A12PartiallyKnownMultiPointerFormat.parse|parse(kotlin.String){}[0]
+    final fun render(io.github.mbackschat.a12.dm.interpreter/A12PartiallyKnownMultiPointer): kotlin/String // io.github.mbackschat.a12.dm.interpreter/A12PartiallyKnownMultiPointerFormat.render|render(io.github.mbackschat.a12.dm.interpreter.A12PartiallyKnownMultiPointer){}[0]
+}
+
 final object io.github.mbackschat.a12.dm.interpreter/A12PointerFormat { // io.github.mbackschat.a12.dm.interpreter/A12PointerFormat|null[0]
     final const val LAST_PART_ZERO // io.github.mbackschat.a12.dm.interpreter/A12PointerFormat.LAST_PART_ZERO|{}LAST_PART_ZERO[0]
         final fun <get-LAST_PART_ZERO>(): kotlin/Int // io.github.mbackschat.a12.dm.interpreter/A12PointerFormat.LAST_PART_ZERO.<get-LAST_PART_ZERO>|<get-LAST_PART_ZERO>(){}[0]
-    final const val UNKNOWN_REPETITION // io.github.mbackschat.a12.dm.interpreter/A12PointerFormat.UNKNOWN_REPETITION|{}UNKNOWN_REPETITION[0]
-        final fun <get-UNKNOWN_REPETITION>(): kotlin/Int // io.github.mbackschat.a12.dm.interpreter/A12PointerFormat.UNKNOWN_REPETITION.<get-UNKNOWN_REPETITION>|<get-UNKNOWN_REPETITION>(){}[0]
 
     final fun format(kotlin/String, kotlin.collections/List<kotlin/Int>): kotlin/String // io.github.mbackschat.a12.dm.interpreter/A12PointerFormat.format|format(kotlin.String;kotlin.collections.List<kotlin.Int>){}[0]
     final fun parse(kotlin/String): io.github.mbackschat.a12.dm.interpreter/A12Pointer // io.github.mbackschat.a12.dm.interpreter/A12PointerFormat.parse|parse(kotlin.String){}[0]
+    final fun render(io.github.mbackschat.a12.dm.interpreter/A12Pointer): kotlin/String // io.github.mbackschat.a12.dm.interpreter/A12PointerFormat.render|render(io.github.mbackschat.a12.dm.interpreter.A12Pointer){}[0]
 }

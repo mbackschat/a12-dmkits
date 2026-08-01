@@ -137,13 +137,13 @@ const corpusPointerKey = (
   path: string,
   coordinates: readonly number[],
 ): string => {
-  const {names, repetitions} = A12PointerFormat.parse(
+  const {pathParts} = A12PointerFormat.parse(
     A12PointerFormat.format(path, coordinates),
   );
-  return `/${names.map((name, index) =>
-    index === names.length - 1
-      ? name
-      : `${name}[${repetitions[index]}]`).join("/")}`;
+  return `/${pathParts.map((part, index) =>
+    index === pathParts.length - 1
+      ? part.name
+      : `${part.name}[${part.repetitionIndex}]`).join("/")}`;
 };
 
 const prepareCorpusModel = async (

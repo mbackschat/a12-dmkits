@@ -21,7 +21,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
-import io.github.mbackschat.a12.dm.interpreter.A12PointerFormat;
+import io.github.mbackschat.a12.dm.interpreter.A12PartiallyKnownMultiPointerFormat;
 
 /**
  * Every pointer dmtool <b>publishes as canonical A12</b> really is one, over live runtime output
@@ -144,6 +144,14 @@ class PublishedPointerCanonicalTest {
      * its own implementation cannot fail for the reason it exists. So the first two checks restate the published
      * contract in the contract's own terms, and only the third consults the type — for representability, which is
      * a different question from canonicality.
+     *
+     * <p>Representability is checked against {@code A12PartiallyKnownMultiPointerFormat}, not the exact pointer
+     * type, because that is the domain these keys publish. {@code field}, {@code referenced} and
+     * {@code fillToFix} are message-channel pointers, which A12 itself types as
+     * {@code PartiallyKnownDocumentMultiPointer} — so one may legitimately carry the unknown repetition an exact
+     * {@code DocumentPointer} cannot express. Holding them to the exact type would fail a <em>correct</em>
+     * pointer; the exact-vs-partially-known domains are pinned by {@code A12PointerKernelDomainDiffTest} against
+     * the real kernel factories, which is where that distinction belongs.
      */
     private static void assertCanonical(String label, String key, String value) {
         assertFalse(value.startsWith("/"),
@@ -152,7 +160,7 @@ class PublishedPointerCanonicalTest {
                         + "form escaping without going through A12Pointers");
         assertFalse(EXPLICIT_FIRST_REPETITION.matcher(value).find(),
                 () -> label + ": '" + value + "' under '" + key + "' spells [1], which A12's canonical form omits");
-        assertDoesNotThrow(() -> A12PointerFormat.INSTANCE.parse(value),
+        assertDoesNotThrow(() -> A12PartiallyKnownMultiPointerFormat.INSTANCE.parse(value),
                 () -> label + ": '" + value + "' under '" + key + "' is not a representable A12 pointer at all");
     }
 

@@ -1,6 +1,7 @@
 import {readFileSync} from "node:fs";
 
 import {
+  A12PartiallyKnownMultiPointerFormat,
   A12PointerFormat,
   DocumentCoordinateError,
   DocumentInputError,
@@ -224,11 +225,14 @@ const reportedErrorPath = validation.findings[0]?.errorPath ?? "";
 
 // tag::interpreter-typescript-pointer[]
 // A computation inside a repeatable group reports one result per row, all under the SAME `pointer.path`.
-// `A12PointerFormat.format` joins path and coordinates into A12's canonical pointer, so each row becomes
-// addressable; `parse` reads back the house form (`/Permit[1]/Note`) that the reports' paths carry.
+// `A12PointerFormat.format` joins path and coordinates into A12's canonical EXACT pointer, so each row becomes
+// addressable. A report path is a different A12 type — `PartiallyKnownDocumentMultiPointer`, which may carry a
+// wildcard or the unknown index — so it is read by `A12PartiallyKnownMultiPointerFormat`, and converted to an
+// exact pointer only when it really is one.
 const identifiedRows = perRowCharges.map(({pointer, value}) =>
   `${A12PointerFormat.format(pointer.path, pointer.coordinates)}=${value}`);
-const errorCell = A12PointerFormat.parse(reportedErrorPath);
+const errorCell = A12PartiallyKnownMultiPointerFormat.parse(reportedErrorPath);
+const errorCellExact = A12PartiallyKnownMultiPointerFormat.toExactPointer(errorCell);
 // end::interpreter-typescript-pointer[]
 
 if (perRowCharges.length !== 2 ||
@@ -236,17 +240,34 @@ if (perRowCharges.length !== 2 ||
       "Permit/SiteSections/SurveyCharge=1875,Permit/SiteSections[2]/SurveyCharge=1250") {
   throw new Error("a repeated computed target did not carry one identified result per row");
 }
-if (errorCell.names.join("/") !== "Permit/Note" ||
-    errorCell.repetitions.join(",") !== "1,1" ||
+if (errorCell.fullName !== "/Permit/Note" ||
+    errorCell.repetitionIndexes.join(",") !== "1,1" ||
+    errorCellExact === null ||
+    errorCellExact.pathParts.map((part) => part.name).join("/") !== "Permit/Note" ||
     A12PointerFormat.format(
-      errorCell.names.join("/"),
-      errorCell.repetitions,
+      errorCellExact.fullName,
+      errorCellExact.repetitionIndexes,
     ) !== "Permit/Note") {
   throw new Error("the pointer utility did not convert the house form it was given");
 }
 if (A12PointerFormat.LAST_PART_ZERO !== 0 ||
-    A12PointerFormat.UNKNOWN_REPETITION !== -5) {
-  throw new Error("the pointer utility does not publish A12's reserved repetitions");
+    A12PartiallyKnownMultiPointerFormat.WILDCARD !== 0 ||
+    A12PartiallyKnownMultiPointerFormat.UNKNOWN !== -5) {
+  throw new Error("the pointer utilities do not publish A12's reserved repetitions");
+}
+// The two domains really are different types: the unknown index is a message pointer and nothing else.
+const unresolved = A12PartiallyKnownMultiPointerFormat.parse("Plan/Demand[-5]/Headcount");
+if (unresolved.repetitionIndexes.join(",") !== "1,-5,1" ||
+    A12PartiallyKnownMultiPointerFormat.toExactPointer(unresolved) !== null) {
+  throw new Error("a message pointer with A12's unknown index did not read as unresolved");
+}
+try {
+  A12PointerFormat.parse("Plan/Demand[-5]/Headcount");
+  throw new Error("the exact pointer type accepted A12's unknown repetition");
+} catch (error) {
+  if (!(error instanceof TypeError)) {
+    throw error;
+  }
 }
 try {
   A12PointerFormat.parse("Permit/SiteSections[0]/Area");
@@ -256,12 +277,38 @@ try {
     throw error;
   }
 }
+// …while the message channel's wildcard IS legal at every part.
+if (A12PartiallyKnownMultiPointerFormat.parse("Permit/SiteSections[0]/Area")
+      .repetitionIndexes.join(",") !== "1,0,1") {
+  throw new Error("a message pointer refused the wildcard A12 allows at every part");
+}
 try {
   A12PointerFormat.format("/Permit/Note", [1]);
   throw new Error("the pointer utility accepted a coordinate count it cannot pair");
 } catch (error) {
   if (!(error instanceof TypeError)) {
     throw error;
+  }
+}
+// Kotlin/JS erases `Int`, so the PACKED artifact is the only place this can be observed: a non-integer
+// repetition must be refused rather than rendered as `Note[1.5]`.
+for (const hostile of [1.5, Number.NaN, Number.POSITIVE_INFINITY, 2147483648]) {
+  for (const render of [
+    () => A12PointerFormat.format("/Permit/Note", [1, hostile]),
+    () => A12PartiallyKnownMultiPointerFormat.format("/Permit/Note", [1, hostile]),
+  ]) {
+    let refused = false;
+    try {
+      render();
+    } catch (error) {
+      if (!(error instanceof TypeError)) {
+        throw error;
+      }
+      refused = true;
+    }
+    if (!refused) {
+      throw new Error(`a pointer utility accepted the non-integer repetition ${hostile}`);
+    }
   }
 }
 

@@ -1,22 +1,58 @@
-public final class io/github/mbackschat/a12/dm/interpreter/A12Pointer {
-	public fun <init> (Ljava/util/List;Ljava/util/List;)V
-	public final fun component1 ()Ljava/util/List;
-	public final fun component2 ()Ljava/util/List;
-	public final fun copy (Ljava/util/List;Ljava/util/List;)Lio/github/mbackschat/a12/dm/interpreter/A12Pointer;
-	public static synthetic fun copy$default (Lio/github/mbackschat/a12/dm/interpreter/A12Pointer;Ljava/util/List;Ljava/util/List;ILjava/lang/Object;)Lio/github/mbackschat/a12/dm/interpreter/A12Pointer;
+public final class io/github/mbackschat/a12/dm/interpreter/A12PartiallyKnownMultiPointer {
 	public fun equals (Ljava/lang/Object;)Z
-	public final fun getNames ()Ljava/util/List;
-	public final fun getRepetitions ()Ljava/util/List;
+	public final fun getFullName ()Ljava/lang/String;
+	public final fun getRepetitionIndexes ()Ljava/util/List;
+	public fun hashCode ()I
+	public final fun toExactPointer ()Lio/github/mbackschat/a12/dm/interpreter/A12Pointer;
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class io/github/mbackschat/a12/dm/interpreter/A12PartiallyKnownMultiPointerFormat {
+	public static final field INSTANCE Lio/github/mbackschat/a12/dm/interpreter/A12PartiallyKnownMultiPointerFormat;
+	public static final field UNKNOWN I
+	public static final field WILDCARD I
+	public final fun format (Ljava/lang/String;Ljava/util/List;)Ljava/lang/String;
+	public final fun of (Ljava/lang/String;Ljava/util/List;)Lio/github/mbackschat/a12/dm/interpreter/A12PartiallyKnownMultiPointer;
+	public final fun parse (Ljava/lang/String;)Lio/github/mbackschat/a12/dm/interpreter/A12PartiallyKnownMultiPointer;
+	public final fun render (Lio/github/mbackschat/a12/dm/interpreter/A12PartiallyKnownMultiPointer;)Ljava/lang/String;
+}
+
+public final class io/github/mbackschat/a12/dm/interpreter/A12PathPart {
+	public fun <init> (Ljava/lang/String;I)V
+	public final fun component1 ()Ljava/lang/String;
+	public final fun component2 ()I
+	public final fun copy (Ljava/lang/String;I)Lio/github/mbackschat/a12/dm/interpreter/A12PathPart;
+	public static synthetic fun copy$default (Lio/github/mbackschat/a12/dm/interpreter/A12PathPart;Ljava/lang/String;IILjava/lang/Object;)Lio/github/mbackschat/a12/dm/interpreter/A12PathPart;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getName ()Ljava/lang/String;
+	public final fun getRepetitionIndex ()I
 	public fun hashCode ()I
 	public fun toString ()Ljava/lang/String;
+}
+
+public final class io/github/mbackschat/a12/dm/interpreter/A12Pointer {
+	public static final field Companion Lio/github/mbackschat/a12/dm/interpreter/A12Pointer$Companion;
+	public synthetic fun <init> (Ljava/util/List;Lkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getFullName ()Ljava/lang/String;
+	public final fun getPathParts ()Ljava/util/List;
+	public final fun getRepetitionIndexes ()Ljava/util/List;
+	public final fun getSize ()I
+	public fun hashCode ()I
+	public final fun partAtLevel (I)Lio/github/mbackschat/a12/dm/interpreter/A12PathPart;
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class io/github/mbackschat/a12/dm/interpreter/A12Pointer$Companion {
+	public final fun of (Ljava/util/List;)Lio/github/mbackschat/a12/dm/interpreter/A12Pointer;
 }
 
 public final class io/github/mbackschat/a12/dm/interpreter/A12PointerFormat {
 	public static final field INSTANCE Lio/github/mbackschat/a12/dm/interpreter/A12PointerFormat;
 	public static final field LAST_PART_ZERO I
-	public static final field UNKNOWN_REPETITION I
 	public final fun format (Ljava/lang/String;Ljava/util/List;)Ljava/lang/String;
 	public final fun parse (Ljava/lang/String;)Lio/github/mbackschat/a12/dm/interpreter/A12Pointer;
+	public final fun render (Lio/github/mbackschat/a12/dm/interpreter/A12Pointer;)Ljava/lang/String;
 }
 
 public final class io/github/mbackschat/a12/dm/interpreter/ComputationOutcome : java/lang/Enum {

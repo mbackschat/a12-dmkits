@@ -118,21 +118,30 @@ export function computeApplyValidate(
 
 This is intentionally composition rather than a different evaluator mode. The Kernel also keeps `compute`, result application, and `validateFull` separate; the final `applied` snapshot is the Document a form retains.
 
-### Identify a repeated row: `A12PointerFormat`
+### Identify a repeated row: `A12PointerFormat`, and read a report path: `A12PartiallyKnownMultiPointerFormat`
 
-A computation that lives inside a repeatable group runs once per row, so `ComputationReport.results` can contain several results whose `pointer.path` is the *same* string. The per-row identity is in `pointer.coordinates`, and `A12PointerFormat` is what joins the two into one addressable pointer. `format` emits A12's canonical `DocumentPointer` — parts joined by `/`, `[n]` only where the repetition is not 1 (`Permit/SiteSections[2]/SurveyCharge`). `parse` accepts that spelling *and* the house form the report paths carry (a leading `/` and an explicit `[n]` on every non-terminal part, `/Permit[1]/Note`), so a consumer converts in either direction. `LAST_PART_ZERO` and `UNKNOWN_REPETITION` publish A12's two reserved repetitions. A malformed argument raises a `TypeError`; it is a caller contract violation, not a model diagnostic, so it is none of this package's named `Error` subclasses.
+**There are two pointer types because A12 has two, and they are not interchangeable.** An exact `DocumentPointer` addresses one resolved cell: every repetition is `>= 1`, except a `0` on the final part, which addresses A12's `RepetitionsV2` slot. A `PartiallyKnownDocumentMultiPointer` is what A12's own `IMessage` returns from `getErrorFieldPointer()` and its two sibling accessors, so it is the type of a *report* path: it admits a wildcard at every part and the unknown index a parallel iteration leaves on a level that matched no row.
+
+A computation that lives inside a repeatable group runs once per row, so `ComputationReport.results` can contain several results whose `pointer.path` is the *same* string. The per-row identity is in `pointer.coordinates`, and `A12PointerFormat` joins the two into one addressable **exact** pointer: `format` emits A12's canonical rendering — parts joined by `/`, `[n]` only where the repetition is not 1 (`Permit/SiteSections[2]/SurveyCharge`) — and `parse` reads that spelling *and* the house form the report paths carry (a leading `/` and an explicit `[n]` on every non-terminal part, `/Permit[1]/Note`). `LAST_PART_ZERO` publishes the one reserved repetition an exact pointer has.
+
+`ValidationFinding.errorPath`, `referenced` and `fillToFix` go through `A12PartiallyKnownMultiPointerFormat` instead, whose `WILDCARD` and `UNKNOWN` are A12's two sentinels for that channel. `toExactPointer` converts when the value really names one cell and returns `null` when it does not — a wildcard above the last part, or an unknown index anywhere, names a set or an unresolved level rather than a cell, so `null` is an answer and not a failure.
+
+A malformed argument raises a `TypeError` on either type; it is a caller contract violation, not a model diagnostic, so it is none of this package's named `Error` subclasses.
 
 <!-- snippet: interpreter-typescript-pointer -->
 ```ts
 // A computation inside a repeatable group reports one result per row, all under the SAME `pointer.path`.
-// `A12PointerFormat.format` joins path and coordinates into A12's canonical pointer, so each row becomes
-// addressable; `parse` reads back the house form (`/Permit[1]/Note`) that the reports' paths carry.
+// `A12PointerFormat.format` joins path and coordinates into A12's canonical EXACT pointer, so each row becomes
+// addressable. A report path is a different A12 type — `PartiallyKnownDocumentMultiPointer`, which may carry a
+// wildcard or the unknown index — so it is read by `A12PartiallyKnownMultiPointerFormat`, and converted to an
+// exact pointer only when it really is one.
 const identifiedRows = perRowCharges.map(({pointer, value}) =>
   `${A12PointerFormat.format(pointer.path, pointer.coordinates)}=${value}`);
-const errorCell = A12PointerFormat.parse(reportedErrorPath);
+const errorCell = A12PartiallyKnownMultiPointerFormat.parse(reportedErrorPath);
+const errorCellExact = A12PartiallyKnownMultiPointerFormat.toExactPointer(errorCell);
 ```
 
-The same utility is published on Kotlin/JVM and Kotlin/JS as the `A12PointerFormat` object, with `format`, `parse`, and the two constants.
+Both utilities are published on Kotlin/JVM and Kotlin/JS as objects with the same members. On Kotlin the exact pointer carries A12's own state — `pathParts` (a list of `A12PathPart`) with `fullName` and `repetitionIndexes` derived from it — and is built through `A12Pointer.of`, which validates and snapshots; there is no `copy`, because a generated one could not do both.
 
 ## 4. Reuse for form input
 

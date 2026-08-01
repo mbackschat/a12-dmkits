@@ -41,13 +41,18 @@ class A12PointerFormatTest {
 
     @Test
     fun parsesAnAbsentBracketAsRepetitionOne() {
-        assertEquals(A12Pointer(listOf("Recipe", "Title"), listOf(1, 1)), A12PointerFormat.parse("Recipe/Title"))
+        assertEquals(
+            A12Pointer.of(listOf(A12PathPart("Recipe", 1), A12PathPart("Title", 1))),
+            A12PointerFormat.parse("Recipe/Title"),
+        )
     }
 
     @Test
     fun parsesExplicitRepetitions() {
         assertEquals(
-            A12Pointer(listOf("Recipe", "Ingredients", "Name"), listOf(1, 3, 1)),
+            A12Pointer.of(
+                listOf(A12PathPart("Recipe", 1), A12PathPart("Ingredients", 3), A12PathPart("Name", 1)),
+            ),
             A12PointerFormat.parse("Recipe/Ingredients[3]/Name"),
         )
     }
@@ -60,14 +65,14 @@ class A12PointerFormatTest {
     @Test
     fun parsesTheTrailingWildcard() {
         assertEquals(
-            A12Pointer(listOf("Recipe", "Ingredients"), listOf(1, 0)),
+            A12Pointer.of(listOf(A12PathPart("Recipe", 1), A12PathPart("Ingredients", 0))),
             A12PointerFormat.parse("Recipe/Ingredients[0]"),
         )
     }
 
     @Test
     fun parsesAnEmptyBracketAsRepetitionOne() {
-        assertEquals(A12Pointer(listOf("Recipe"), listOf(1)), A12PointerFormat.parse("Recipe[]"))
+        assertEquals(A12Pointer.of(listOf(A12PathPart("Recipe", 1))), A12PointerFormat.parse("Recipe[]"))
     }
 
     @Test
@@ -85,32 +90,18 @@ class A12PointerFormatTest {
         assertFailsWith<IllegalArgumentException> { A12PointerFormat.parse("Recipe/Ingredients[3]x") }
     }
 
-    // ---- A12's unknown repetition (IIdentifier.UNKNOWN = -5) ------------------------------------
+    // ---- what an exact pointer may NOT carry ---------------------------------------------------
 
     /**
-     * `-5` is not an index and not a wildcard — it marks a level the engine could not resolve to a row, which a
-     * parallel iteration produces whenever one joined group has no row for the current index value. The kernel
-     * emits such pointers, so this format must express one rather than force an invention at the boundary.
+     * A12's unknown repetition (`-5`) is not an exact-pointer value at all: `DocumentPointerImpl`'s part pattern
+     * is unsigned and `PathPartImpl` refuses a negative index. It belongs to the message channel, so it is
+     * `A12PartiallyKnownMultiPointerFormat`'s to read — see `A12PointerDomainTest`.
      */
     @Test
-    fun parsesAndRendersTheUnknownRepetitionAtAnyPart() {
-        val parsed = A12PointerFormat.parse("Plan/Demand[-5]/Headcount")
-        assertEquals(listOf(1, -5, 1), parsed.repetitions)
-        assertEquals("Plan/Demand[-5]/Headcount", A12PointerFormat.format("Plan/Demand/Headcount", parsed.repetitions))
-    }
-
-    /**
-     * The distinction that keeps this from being a loosening: `[0]` stays refused on an earlier part. The two
-     * brackets share a syntax and mean unrelated things — the last-part `0` addresses `RepetitionsV2`, `-5` says
-     * "no row here" — so admitting one says nothing about the other.
-     */
-    @Test
-    fun butAnEarlierZeroIsStillRejectedAndSoIsAnyOtherNegative() {
-        assertFailsWith<IllegalArgumentException> { A12PointerFormat.parse("Plan/Demand[0]/Headcount") }
-        assertFailsWith<IllegalArgumentException> { A12PointerFormat.parse("Plan/Demand[-1]/Headcount") }
-        assertFailsWith<IllegalArgumentException> { A12PointerFormat.parse("Plan/Demand[-4]") }
-        // …while -5 stays legal wherever it appears, last part included.
-        assertEquals(listOf(1, -5), A12PointerFormat.parse("Plan/Demand[-5]").repetitions)
+    fun rejectsEveryNegativeRepetition() {
+        for (pointer in listOf("Plan/Demand[-1]/Headcount", "Plan/Demand[-4]", "Plan/Demand[-5]/Headcount")) {
+            assertFailsWith<IllegalArgumentException> { A12PointerFormat.parse(pointer) }
+        }
     }
 
     // ---- round trip ---------------------------------------------------------------------------
@@ -119,7 +110,8 @@ class A12PointerFormatTest {
     fun roundTripsTheCanonicalForm() {
         for (canonical in listOf("Recipe", "Recipe/Title", "Recipe/Ingredients[3]/Name", "Recipe/Ingredients[0]")) {
             val parsed = A12PointerFormat.parse(canonical)
-            assertEquals(canonical, A12PointerFormat.format(parsed.names.joinToString("/"), parsed.repetitions))
+            assertEquals(canonical, A12PointerFormat.render(parsed))
+            assertEquals(canonical, A12PointerFormat.format(parsed.fullName, parsed.repetitionIndexes))
         }
     }
 }

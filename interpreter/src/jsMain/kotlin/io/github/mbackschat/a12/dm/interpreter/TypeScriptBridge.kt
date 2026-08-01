@@ -1,5 +1,7 @@
 @file:OptIn(ExperimentalJsExport::class)
 
+import io.github.mbackschat.a12.dm.interpreter.A12PartiallyKnownMultiPointerFormat as CorePartiallyKnownFormat
+import io.github.mbackschat.a12.dm.interpreter.A12Pointer as CoreA12Pointer
 import io.github.mbackschat.a12.dm.interpreter.A12PointerFormat as CoreA12PointerFormat
 import io.github.mbackschat.a12.dm.interpreter.ComputationOutcome as CoreComputationOutcome
 import io.github.mbackschat.a12.dm.interpreter.ComputationReport as CoreComputationReport
@@ -118,10 +120,26 @@ class InterpreterBridgePointerResult internal constructor(
     val failure: InterpreterBridgeFailure?,
 )
 
+/** One parsed **exact** pointer — A12's `DocumentPointer` shape: its ordered parts, plus the derived views. */
 @JsExport
 class InterpreterBridgeParsedPointer internal constructor(
-    val names: Array<String>,
-    val repetitions: Array<Int>,
+    val pathParts: Array<InterpreterBridgePathPart>,
+    val fullName: String,
+    val repetitionIndexes: Array<Int>,
+)
+
+/** A12's `PathPart`. */
+@JsExport
+class InterpreterBridgePathPart internal constructor(
+    val name: String,
+    val repetitionIndex: Int,
+)
+
+/** One parsed message pointer — A12's `PartiallyKnownDocumentMultiPointer` shape, `fullName` plus indexes. */
+@JsExport
+class InterpreterBridgeParsedPartiallyKnownPointer internal constructor(
+    val fullName: String,
+    val repetitionIndexes: Array<Int>,
 )
 
 @JsExport
@@ -133,6 +151,12 @@ class InterpreterBridgePointerFormatResult internal constructor(
 @JsExport
 class InterpreterBridgePointerParseResult internal constructor(
     val value: InterpreterBridgeParsedPointer?,
+    val rejection: String?,
+)
+
+@JsExport
+class InterpreterBridgePartiallyKnownPointerParseResult internal constructor(
+    val value: InterpreterBridgeParsedPartiallyKnownPointer?,
     val rejection: String?,
 )
 
@@ -605,7 +629,24 @@ fun interpreterBridgeLoadExpandedJson(source: String): InterpreterBridgePrepared
     }
 
 /**
- * Renders A12's canonical `DocumentPointer` for [path] and its positional [repetitions].
+ * Kotlin/JS **erases `Int`**, so a packed consumer really can hand `1.5`, `NaN`, `Infinity` or `2^31` to a
+ * parameter typed `Array<Int>` and the compiler never sees it. This is the boundary where that erasure happens,
+ * so this is where it is refused — the shared domain checks in `commonMain` are about A12's domain and would
+ * happily read `1.5 >= 1` as satisfied.
+ *
+ * The test is lexical on purpose: `toString().toIntOrNull()` is the one integrality-and-range predicate whose
+ * behaviour does not depend on how Kotlin/JS lowers `Int` arithmetic (`%`, `|0`, truncating conversions), and it
+ * rejects a value outside the 32-bit range for free. `TypeScriptBridgePointerFormatTest` measures each case.
+ */
+private fun Array<Int>.asPortableIntegers(): List<Int> = map { value ->
+    require(value.toString().toIntOrNull() == value) {
+        "each repetition index must be a 32-bit integer, but got '$value'"
+    }
+    value
+}
+
+/**
+ * Renders A12's canonical **exact** `DocumentPointer` for [path] and its positional [repetitions].
  *
  * A malformed request comes back as [InterpreterBridgePointerFormatResult.rejection] rather than as a thrown
  * `IllegalArgumentException`: it is a caller contract violation, not a model diagnostic, so it carries no code
@@ -617,7 +658,10 @@ fun interpreterBridgeFormatA12Pointer(
     repetitions: Array<Int>,
 ): InterpreterBridgePointerFormatResult =
     try {
-        InterpreterBridgePointerFormatResult(CoreA12PointerFormat.format(path, repetitions.toList()), null)
+        InterpreterBridgePointerFormatResult(
+            CoreA12PointerFormat.format(path, repetitions.asPortableIntegers()),
+            null,
+        )
     } catch (rejected: IllegalArgumentException) {
         InterpreterBridgePointerFormatResult(null, rejected.message.orEmpty())
     }
@@ -626,25 +670,77 @@ fun interpreterBridgeFormatA12Pointer(
 @JsExport
 fun interpreterBridgeParseA12Pointer(pointer: String): InterpreterBridgePointerParseResult =
     try {
-        val parsed = CoreA12PointerFormat.parse(pointer)
-        InterpreterBridgePointerParseResult(
-            InterpreterBridgeParsedPointer(
-                parsed.names.toTypedArray(),
-                parsed.repetitions.toTypedArray(),
-            ),
-            null,
-        )
+        InterpreterBridgePointerParseResult(bridgePointer(CoreA12PointerFormat.parse(pointer)), null)
     } catch (rejected: IllegalArgumentException) {
         InterpreterBridgePointerParseResult(null, rejected.message.orEmpty())
     }
+
+private fun bridgePointer(parsed: CoreA12Pointer) = InterpreterBridgeParsedPointer(
+    parsed.pathParts.map { InterpreterBridgePathPart(it.name, it.repetitionIndex) }.toTypedArray(),
+    parsed.fullName,
+    parsed.repetitionIndexes.toTypedArray(),
+)
 
 /** A12's `RepetitionsV2` slot repetition, legal only on an exact pointer's last part. */
 @JsExport
 fun interpreterBridgeA12LastPartZero(): Int = CoreA12PointerFormat.LAST_PART_ZERO
 
-/** A12's unknown repetition (`IIdentifier.UNKNOWN`), legal at any part of an exact pointer. */
+/** Renders a **message** pointer (`PartiallyKnownDocumentMultiPointer`) for [path] and its [repetitions]. */
 @JsExport
-fun interpreterBridgeA12UnknownRepetition(): Int = CoreA12PointerFormat.UNKNOWN_REPETITION
+fun interpreterBridgeFormatA12PartiallyKnownPointer(
+    path: String,
+    repetitions: Array<Int>,
+): InterpreterBridgePointerFormatResult =
+    try {
+        InterpreterBridgePointerFormatResult(
+            CorePartiallyKnownFormat.format(path, repetitions.asPortableIntegers()),
+            null,
+        )
+    } catch (rejected: IllegalArgumentException) {
+        InterpreterBridgePointerFormatResult(null, rejected.message.orEmpty())
+    }
+
+/** Parses a message pointer, which unlike the exact form admits a wildcard at any part and the unknown index. */
+@JsExport
+fun interpreterBridgeParseA12PartiallyKnownPointer(
+    pointer: String,
+): InterpreterBridgePartiallyKnownPointerParseResult =
+    try {
+        val parsed = CorePartiallyKnownFormat.parse(pointer)
+        InterpreterBridgePartiallyKnownPointerParseResult(
+            InterpreterBridgeParsedPartiallyKnownPointer(
+                parsed.fullName,
+                parsed.repetitionIndexes.toTypedArray(),
+            ),
+            null,
+        )
+    } catch (rejected: IllegalArgumentException) {
+        InterpreterBridgePartiallyKnownPointerParseResult(null, rejected.message.orEmpty())
+    }
+
+/**
+ * `PartiallyKnownDocumentMultiPointer.toDocumentPointer()` — the exact pointer when the message pointer is one,
+ * and a `null` [InterpreterBridgePointerParseResult.value] with no rejection when it legitimately is not.
+ */
+@JsExport
+fun interpreterBridgeA12PartiallyKnownPointerToExact(
+    fullName: String,
+    repetitions: Array<Int>,
+): InterpreterBridgePointerParseResult =
+    try {
+        val exact = CorePartiallyKnownFormat.of(fullName, repetitions.asPortableIntegers()).toExactPointer()
+        InterpreterBridgePointerParseResult(exact?.let(::bridgePointer), null)
+    } catch (rejected: IllegalArgumentException) {
+        InterpreterBridgePointerParseResult(null, rejected.message.orEmpty())
+    }
+
+/** `DocumentMultiPointer.WILDCARD` — all repetitions of a level, legal at any part of a message pointer. */
+@JsExport
+fun interpreterBridgeA12PartiallyKnownWildcard(): Int = CorePartiallyKnownFormat.WILDCARD
+
+/** `PartiallyKnownDocumentMultiPointer.UNKNOWN` (`IIdentifier.UNKNOWN`) — a level that resolved to no row. */
+@JsExport
+fun interpreterBridgeA12PartiallyKnownUnknown(): Int = CorePartiallyKnownFormat.UNKNOWN
 
 private fun interpreterConfiguration(
     customFieldTypes: Array<InterpreterBridgeCustomFieldTypeRegistration>,

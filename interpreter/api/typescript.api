@@ -11,16 +11,38 @@ export interface A12DocumentGroup {
     readonly [name: string]: A12DocumentField | A12DocumentGroup | readonly A12DocumentGroup[];
 }
 
+## A12PartiallyKnownMultiPointer
+export interface A12PartiallyKnownMultiPointer {
+    readonly fullName: string;
+    readonly repetitionIndexes: readonly number[];
+}
+
+## A12PartiallyKnownMultiPointerFormat
+export declare class A12PartiallyKnownMultiPointerFormat {
+    static readonly WILDCARD: number;
+    static readonly UNKNOWN: number;
+    private constructor();
+    static format(path: string, repetitions: readonly number[]): string;
+    static parse(pointer: string): A12PartiallyKnownMultiPointer;
+    static toExactPointer(pointer: A12PartiallyKnownMultiPointer): A12Pointer | null;
+}
+
+## A12PathPart
+export interface A12PathPart {
+    readonly name: string;
+    readonly repetitionIndex: number;
+}
+
 ## A12Pointer
 export interface A12Pointer {
-    readonly names: readonly string[];
-    readonly repetitions: readonly number[];
+    readonly pathParts: readonly A12PathPart[];
+    readonly fullName: string;
+    readonly repetitionIndexes: readonly number[];
 }
 
 ## A12PointerFormat
 export declare class A12PointerFormat {
     static readonly LAST_PART_ZERO: number;
-    static readonly UNKNOWN_REPETITION: number;
     private constructor();
     static format(path: string, repetitions: readonly number[]): string;
     static parse(pointer: string): A12Pointer;
