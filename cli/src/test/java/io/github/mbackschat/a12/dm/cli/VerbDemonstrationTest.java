@@ -178,6 +178,7 @@ class VerbDemonstrationTest {
                 assertEquals(expect, env.path("outcome").asText(),
                         () -> verb + " demo expected outcome=" + expect + ": " + res.out());
                 assertEnvelopeIdentifiesItsOwnVerb(verb, env, res);
+                assertOnlyAVerdictRouteClaimsValidity(verb, env, res);
                 if ("preview".equals(expect)) {
                     assertPreviewStatesItsGate(verb, env, res);
                 }
@@ -216,6 +217,35 @@ class VerbDemonstrationTest {
         assertEquals(expectedOp, env.path("op").asText(),
                 () -> verb + ": the envelope must echo its own op: " + res.out());
     }
+
+    /**
+     * <b>Verdict provenance</b> (RESULT-CONTRACT-PROPOSAL §2): {@code valid} appears only where a verdict route
+     * produced it. This is the column for the defect the whole contract exists to remove — 35 call sites passed a
+     * literal {@code boolean valid}, and seven verbs were measured reporting {@code valid:true} on a model the
+     * kernel rejects.
+     *
+     * <p>The typed factories already make that unrepresentable: construction is private and only
+     * {@code consistencyVerdict} and a kernel {@code rejected} set the member. So this is the behavioural backstop
+     * for a structural property, and it earns its place by covering the axis the structure does <em>not</em>:
+     * whether a route that legitimately holds a verdict is the one being run. {@link VERDICT_VERBS} is the whole
+     * list, so a new verb that starts publishing {@code valid} fails here rather than quietly joining them.
+     */
+    private static void assertOnlyAVerdictRouteClaimsValidity(String verb, JsonNode env, CliTestSupport.Result res) {
+        if (VERDICT_VERBS.contains(verb)) {
+            assertTrue(env.has("valid"),
+                    () -> verb + " is a verdict route but published no `valid` — either it stopped gating, or the "
+                            + "VERDICT_VERBS list is stale: " + res.out());
+            return;
+        }
+        assertFalse(env.has("valid"),
+                () -> verb + " published `valid` without being a consistency verdict. A read, a runtime "
+                        + "observation and a mutation all establish no verdict, so claiming one is the exact "
+                        + "fabrication this contract removed: " + res.out());
+    }
+
+    /** The verbs whose product IS a consistency verdict — the only ones that may publish {@code valid}. */
+    private static final java.util.Set<String> VERDICT_VERBS =
+            java.util.Set.of("model check", "rule check", "workspace check", "patterns scaffold");
 
     /**
      * <b>Receipt totality</b> (RESULT-CONTRACT-PROPOSAL §2): a mutation that ran the consistency oracle must say

@@ -66,6 +66,17 @@ The recurring failure mode is subtle: you add a verb, it *works*, it's *listed* 
 | **params-described** | every param has a non-blank description | none |
 | **schema-resolves** | advertises a `schema` pointer that resolves to real JSON | verbs without a directional contract (below) |
 | **demonstrated** | carries a CI-executed worked invocation an agent can see *in action* | the self-describing verbs |
+| **status-free** | no verb/param description carries roadmap language (`TODO`, `not yet`, `for now`, `coming soon`, …) | none |
+| **verdict-provenance** | `valid` appears only on a verdict route (`model`/`rule`/`workspace check`, `patterns scaffold`) | the list itself is the ledger, checked in both directions |
+| **receipt-totality** | a preview that ran the consistency oracle publishes `verification` | `VerbDemonstrationTest.UNGATED_PREVIEW` — today only `model normalize`, with its reason |
+| **`--text` renders** | an envelope verb's `--text` output is not the JSON envelope | the artifact/raw verbs, which have no envelope |
+
+**The four columns added 2026-08-01 (Phase 3) are totality columns, and each replaced a check that could not fail for the reason it existed.** They are worth reading as a set, because the shared failure mode is what makes them necessary:
+
+- **`--text` renders** — `TextRendererDispatchTest` pins renderer dispatch given a well-formed envelope, so it is structurally blind to a verb that never produces one. That is precisely how `apply` and `batch` emitted raw JSON under `--text`. The column asserts the *inverse* over all 63 envelope demos: the output must **not** be the JSON envelope, because pass-through is the failure mode.
+- **receipt-totality** — the `ConsistencyEvidence` type makes a *wrong* provenance claim unrepresentable but leaves **silence** cheap: `of(x)` compiles for any witness and yields `none()` for one that never gated. A mis-named witness or a dropped gate therefore degrades to an absent key, failing nothing. Presence is asserted per verb over an enumerated list — never `anyMatch`, which one passing verb satisfies for all of them.
+- **verdict-provenance** — the behavioural backstop for a structural property. The typed factories already restrict `valid` to two of them; this covers the axis structure cannot, namely whether the route being *run* is one of those.
+- **status-free** — the surface is clean today, which is exactly when this costs nothing and refuses the first "not yet" someone reaches for later. An agent reads a description at the moment it decides what to run and cannot check whether the note is still true.
 
 **One row per verb, one column per obligation.** A newly-learned anti-pattern becomes one more column, re-checked against every existing verb at once — the same growth loop that produced AP1–AP6. The matrix *folds and strengthens* the old `ManifestCompletenessTest`: that check **skipped** a verb that advertised no schema, which is exactly how `meta` slipped through; the matrix has no skip.
 

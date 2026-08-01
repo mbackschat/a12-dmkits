@@ -5,6 +5,8 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.HashSet;
+import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 
@@ -94,6 +96,45 @@ class CliConformanceMatrixTest {
             assertTrue(v.path("example").hasNonNull("command"),
                     () -> verb + " has no worked demonstration — add it to verb-examples.json so the agent sees it "
                             + "in action (or classify it in DEMONSTRATION_PENDING with a reason)");
+        }
+    }
+
+    /**
+     * <b>Status-free descriptions</b> — the column for the doc-discipline rule that rationale is timeless while a
+     * disposition is status. A verb description is read by a cold agent through {@code manifest}/{@code --help} at
+     * the moment it decides what to run, so a "not yet"/"TODO"/"planned" note there is worse than in a doc: the
+     * agent cannot check whether it is still true, and it rots silently because nothing executes prose.
+     *
+     * <p>The surface is clean today, which is exactly when a guard is worth adding — it costs nothing now and
+     * refuses the first status note someone reaches for later. Status belongs in a {@code -GAPS} ledger or in git.
+     */
+    @Test
+    void noVerbOrParamDescriptionCarriesStatusLanguage() throws Exception {
+        JsonNode manifest = M.readTree(CliTestSupport.run("manifest").out());
+        for (JsonNode v : manifest.path("verbs")) {
+            String verb = v.path("verb").asText();
+            assertStatusFree(verb, "description", v.path("description").asText(""));
+            for (JsonNode p : v.path("params")) {
+                assertStatusFree(verb, "param " + p.path("key").asText(), p.path("description").asText(""));
+            }
+        }
+    }
+
+    /**
+     * Roadmap/disposition tokens. Deliberately narrow: each is a phrase that can only be about <em>when</em>
+     * something works, never about what the verb does, so a false positive would itself be a description worth
+     * rewording.
+     */
+    private static final List<String> STATUS_TOKENS = List.of(
+            "TODO", "FIXME", "not yet", "for now", "coming soon", "will be added", "in a future", "temporarily");
+
+    private static void assertStatusFree(String verb, String where, String text) {
+        String lower = text.toLowerCase(Locale.ROOT);
+        for (String token : STATUS_TOKENS) {
+            assertFalse(lower.contains(token.toLowerCase(Locale.ROOT)),
+                    () -> verb + " " + where + " carries the status phrase '" + token + "'. An agent reads this "
+                            + "to decide what to run and cannot tell whether it is still true; put the "
+                            + "disposition in a -GAPS ledger and describe the capability here: " + text);
         }
     }
 
