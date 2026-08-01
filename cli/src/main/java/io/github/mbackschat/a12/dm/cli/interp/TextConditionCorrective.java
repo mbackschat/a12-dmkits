@@ -41,6 +41,31 @@ import io.github.mbackschat.a12.dm.rulekit.validate.DiagnosticSource;
  */
 public final class TextConditionCorrective {
 
+    /**
+     * Why the operand-matched corrective was, or was not, served — the five outcomes kept <b>distinguishable</b>.
+     *
+     * <p>All of the failures return the diagnostics unchanged, so they are invisible in the output by design
+     * ("never worse than today"). That was fine for the corrective and wrong for the <em>visibility</em>: a
+     * tolerant {@code catch} turned every future parser gap into the same silence as a legitimate "the union fix
+     * is the right answer", and the two cost a debugging session to tell apart. Naming the outcome makes a parser
+     * gap a fact rather than an absence.
+     */
+    public enum Outcome {
+        /** The pinned comparison classified and the union fix was narrowed to the operand-matched corrective. */
+        UPGRADED,
+        /** The interpreter parser could not read the candidate text — <b>our</b> limit, not the author's. */
+        PARSE_FAILED,
+        /** The model index could not be built (an unresolved include, an unreadable model). */
+        MODEL_INDEX_FAILED,
+        /** The text parsed and carried no comparison node, so there was nothing to pin. */
+        NO_COMPARISON,
+        /** Parsed with comparisons, but no unique candidate operator — the union fix IS the correct answer. */
+        NO_UNIQUE_CANDIDATE
+    }
+
+    /** Enriched diagnostics together with the reason they were, or were not, narrowed. */
+    public record Result(List<Diagnostic> diagnostics, Outcome outcome) {}
+
     private final OperatorCatalog catalog;
 
     public TextConditionCorrective() {
@@ -59,17 +84,34 @@ public final class TextConditionCorrective {
      */
     public static List<Diagnostic> enrich(List<Diagnostic> diagnostics, String conditionText, String baseGroup,
             String modelJson, ModelResolver resolver) {
+        return resultOf(diagnostics, conditionText, baseGroup, modelJson, resolver).diagnostics();
+    }
+
+    /**
+     * The same enrichment, reporting {@linkplain Outcome why} it narrowed or did not. Callers that only publish
+     * diagnostics use {@link #enrich(List, String, String, String, ModelResolver)}; this exists so a parser gap
+     * is observable instead of silent.
+     */
+    public static Result resultOf(List<Diagnostic> diagnostics, String conditionText, String baseGroup,
+            String modelJson, ModelResolver resolver) {
         // Skip the catalog load + model expansion when there is nothing to enrich (a clean `rule check` has no
         // diagnostics) — the instance enrich's guard, hoisted before the eager argument builds it can't reach.
         if (diagnostics.isEmpty() || conditionText == null || conditionText.isBlank()) {
-            return diagnostics;
+            return new Result(diagnostics, Outcome.NO_COMPARISON);
         }
+        ModelIndex index;
         try {
-            return new TextConditionCorrective().enrich(diagnostics, conditionText, baseGroup,
-                    ModelIndex.of(modelJson, resolver));
+            index = ModelIndex.of(modelJson, resolver);
         } catch (RuntimeException indexFailure) {
-            return diagnostics;
+            return new Result(diagnostics, Outcome.MODEL_INDEX_FAILED);
         }
+        return new TextConditionCorrective().enrichWithOutcome(diagnostics, conditionText, baseGroup, index);
+    }
+
+    /** The {@link Outcome} alone, for a caller that already has the diagnostics. */
+    public static Outcome outcomeOf(List<Diagnostic> diagnostics, String conditionText, String baseGroup,
+            String modelJson, ModelResolver resolver) {
+        return resultOf(diagnostics, conditionText, baseGroup, modelJson, resolver).outcome();
     }
 
     /**
@@ -79,14 +121,30 @@ public final class TextConditionCorrective {
      */
     public List<Diagnostic> enrich(List<Diagnostic> diagnostics, String conditionText, String baseGroup,
             ModelIndex index) {
+        return enrichWithOutcome(diagnostics, conditionText, baseGroup, index).diagnostics();
+    }
+
+    /**
+     * The same enrichment, reporting {@linkplain Outcome why}. A parse failure and "the union fix is correct"
+     * both return the diagnostics unchanged, so only the outcome tells them apart.
+     */
+    public Result enrichWithOutcome(List<Diagnostic> diagnostics, String conditionText, String baseGroup,
+            ModelIndex index) {
         if (conditionText == null || conditionText.isBlank() || diagnostics.isEmpty()) {
-            return diagnostics;
+            return new Result(diagnostics, Outcome.NO_COMPARISON);
         }
-        Map<String, List<Cond.Cmp>> byOperator = comparisonsByOperator(conditionText, baseGroup);
+        Map<String, List<Cond.Cmp>> byOperator;
+        try {
+            byOperator = comparisonsByOperator(conditionText, baseGroup);
+        } catch (RuntimeException parseFailure) {
+            return new Result(diagnostics, Outcome.PARSE_FAILED);
+        }
         if (byOperator.isEmpty()) {
-            return diagnostics;
+            return new Result(diagnostics, Outcome.NO_COMPARISON);
         }
-        return diagnostics.stream().map(d -> upgrade(d, byOperator, index)).toList();
+        List<Diagnostic> upgraded = diagnostics.stream().map(d -> upgrade(d, byOperator, index)).toList();
+        return new Result(upgraded,
+                upgraded.equals(diagnostics) ? Outcome.NO_UNIQUE_CANDIDATE : Outcome.UPGRADED);
     }
 
     private Diagnostic upgrade(Diagnostic d, Map<String, List<Cond.Cmp>> byOperator, ModelIndex index) {
@@ -128,13 +186,14 @@ public final class TextConditionCorrective {
 
     /** Every comparison node of the (tolerantly parsed) condition, grouped by its catalog operator-id. Empty
      *  on a parse failure — the caller then keeps the union fix. */
+    /**
+     * The candidate's comparisons, keyed by operator id. <b>Throws</b> on a parse failure rather than answering
+     * with an empty map: an empty map means "parsed, no comparison", and conflating that with "unreadable" is the
+     * defect {@code TextCorrectiveOutcomeTest} pins. The single caller classifies the throw as
+     * {@link Outcome#PARSE_FAILED} and still returns the diagnostics untouched.
+     */
     private Map<String, List<Cond.Cmp>> comparisonsByOperator(String conditionText, String baseGroup) {
-        Cond ast;
-        try {
-            ast = ParserKt.parseCondition(conditionText, baseGroup, ParserKt.getDEFAULT_RESOLVER());
-        } catch (RuntimeException parseFailure) {
-            return Map.of();
-        }
+        Cond ast = ParserKt.parseCondition(conditionText, baseGroup, ParserKt.getDEFAULT_RESOLVER());
         Map<String, List<Cond.Cmp>> byOperator = new LinkedHashMap<>();
         collect(ast, byOperator);
         return byOperator;
