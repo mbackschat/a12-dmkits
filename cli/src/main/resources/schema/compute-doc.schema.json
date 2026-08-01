@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://github.com/mbackschat/a12-dmkits/schema/compute-doc.schema.json",
   "title": "ComputeDocResult",
-  "description": "Output of `model compute` — the runtime computation over a document INSTANCE: what each computed field becomes, evaluated by the native-safe dm interpreter (the sole runtime eval engine on every target; the envelope's `engine` names it). Read-only — the input --instance is never modified. The INPUT --instance is the same nested tree `model eval` takes (repeatable group = array of rows, field = its text value).",
+  "description": "Output of `model compute` — the runtime computation over a document INSTANCE: what each computed field becomes, evaluated by the native-safe dm interpreter (the sole runtime eval engine on every target; the envelope's `engine` names it). Read-only — the input --instance is never modified. The INPUT --instance shape is NOT restated here — it is `document-instance.schema.json`, served as the `input` half of `dmtool schema model compute`.",
   "type": "object",
   "required": ["computed", "declarations", "instances"],
   "additionalProperties": false,
