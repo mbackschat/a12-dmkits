@@ -158,6 +158,14 @@ Two things the implementation forced, both recorded rather than worked around:
 
 **A consequence worth stating, because it reads as a gap and is not one:** canonical A12 omits `[1]`, so the **first row's** instance pointer and the declaration coincide as strings (`Order/Lines/LineTotal`). An absent bracket *means* repetition 1 — which is also precisely why an omitted index can never be read as "all rows" (§4a).
 
+### 4a. `--relevant`: an omitted index on a repeatable segment is REFUSED <a id="relevant-break"></a>
+
+**Owner ruling, 2026-08-01.** `RelevantSelection` read an omitted index as **all repetitions**; A12 reads it as **repetition 1**, on both pointer types. Same spelling, opposite scope — and this one decides *which rows get validated*, so it is not a formatting difference. Three options were on the table and two are disallowed on their own terms: silently adopting A12's reading narrows every existing caller from all-rows to row-1 with a **clean pass** as the only symptom, and keeping ours means knowingly publishing a competing meaning for A12's own spelling, which the interop rule forbids outright. That leaves the third.
+
+So an omitted index on a repeatable segment is a **corrective refusal** naming the segment and *both* explicit forms — `[0]`/`[*]` for all repetitions, `[1]` for the first. Callers that relied on omission fail loudly and migrate deliberately, which is the only outcome where nobody's validation scope changes without them deciding it. `[0]` is additionally now **accepted** as A12's all-repetitions spelling, where it previously joined the negatives as an error.
+
+**Bounded on purpose:** a *non-repeatable* segment has exactly one instance, so an omitted index there is unambiguous under both readings and stays legal. Without that bound the rule would read as "always write an index" — noise on every ordinary selection, and not the rule. (`PartialValidationCliTest`, both directions.)
+
 ---
 
 ## 5. Aggregate uniformity <a id="aggregates"></a>

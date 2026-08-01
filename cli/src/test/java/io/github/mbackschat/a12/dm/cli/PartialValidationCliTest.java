@@ -76,8 +76,9 @@ class PartialValidationCliTest {
         Path model = model(dir);
         Path doc = document(dir, "{ \"Order\": {} }");
 
+        // [0] is A12's "all repetitions" and is now ACCEPTED; a negative index is what has no reading.
         var malformed = CliTestSupport.run("-m", model.toString(), "model", "eval",
-                "--instance", doc.toString(), "--relevant", "[\"/Order/Lines[0]/Quantity\"]");
+                "--instance", doc.toString(), "--relevant", "[\"/Order/Lines[-1]/Quantity\"]");
         assertEquals(2, malformed.code());
         assertTrue(malformed.err().contains("positive 1-based index"), malformed::err);
 
@@ -86,6 +87,41 @@ class PartialValidationCliTest {
         assertEquals(2, unknown.code());
         assertTrue(unknown.err().contains("/Order/Nmae"), unknown::err);
         assertTrue(unknown.err().contains("/Order/Name"), unknown::err);
+    }
+
+    /**
+     * <b>The declared break.</b> An omitted index on a repeatable segment used to mean ALL repetitions here and
+     * means repetition 1 in A12 — the same spelling, opposite scopes. Reinterpreting it silently would narrow an
+     * existing caller's validation from every row to the first, with a clean pass as the only symptom, so it is
+     * refused with both explicit forms named instead.
+     */
+    @Test
+    void anOmittedIndexOnARepeatableSegmentIsRefusedWithBothCorrectives(@TempDir Path dir) throws Exception {
+        Path model = model(dir);
+        Path doc = document(dir, "{ \"Order\": {} }");
+
+        var res = CliTestSupport.run("-m", model.toString(), "model", "eval",
+                "--instance", doc.toString(), "--relevant", "[\"/Order/Lines/Quantity\"]");
+
+        assertEquals(2, res.code(), () -> "an ambiguous scope is refused, never guessed: " + res.err());
+        assertTrue(res.err().contains("/Order/Lines[0]"), () -> "names the ALL form: " + res.err());
+        assertTrue(res.err().contains("/Order/Lines[1]"), () -> "and the first-row form: " + res.err());
+    }
+
+    /**
+     * The bound on that refusal: a <b>non-repeatable</b> segment has exactly one instance, so an omitted index
+     * there is unambiguous under both readings and stays legal. Without this the refusal would read as "always
+     * write an index", which is not the rule and would be noise on every ordinary selection.
+     */
+    @Test
+    void butAnOmittedIndexOnANonRepeatableSegmentStaysLegal(@TempDir Path dir) throws Exception {
+        Path model = model(dir);
+        Path doc = document(dir, "{ \"Order\": {} }");
+
+        var res = CliTestSupport.run("-m", model.toString(), "model", "eval",
+                "--instance", doc.toString(), "--relevant", "[\"/Order/Name\"]");
+
+        assertEquals(0, res.code(), () -> "one instance, nothing to disambiguate: " + res.err());
     }
 
     private static Path model(Path dir) throws Exception {
