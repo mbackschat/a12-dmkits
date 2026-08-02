@@ -75,6 +75,16 @@ class FilterNestedComparisonTest {
                 () -> "a filter under a PREDICATE arg is as reachable as one under a comparison operand: " + enriched);
     }
 
+    @Test
+    void aComparisonInsideACompoundEntityFilterIsAlsoFound() {
+        Diagnostic enriched = enrichAgainst(
+                "FirstFilledValue(/Order/Items*/Sku -> Speed Having "
+                        + "([/Order/Items/Sku] < [/Order/Items/Sku]), \"fallback\") == \"fallback\"");
+
+        assertEquals(Optional.of("LessThan"), enriched.where().operator(),
+                () -> "a filter under a category-bearing entitySpec must remain reachable: " + enriched);
+    }
+
     /** Having found it, the stage owes the operand-matched corrective and that operator's meaning — not the union. */
     @Test
     void theFilterComparisonGetsItsOperandMatchedCorrective() {

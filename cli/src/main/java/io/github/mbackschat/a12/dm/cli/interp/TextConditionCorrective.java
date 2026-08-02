@@ -255,6 +255,7 @@ public final class TextConditionCorrective {
             case Expr.Const ignored -> { }
             case Expr.SemanticIndex ignored -> { }
             case Expr.EnumCategory ignored -> { }
+            case Expr.EntitySpec spec -> collectIn(spec.getSource(), out);
         }
     }
 
