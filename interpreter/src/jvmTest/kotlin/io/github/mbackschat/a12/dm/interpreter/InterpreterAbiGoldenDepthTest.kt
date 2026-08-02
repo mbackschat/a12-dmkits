@@ -1,177 +1,236 @@
 package io.github.mbackschat.a12.dm.interpreter
 
+import java.io.File
 import java.nio.file.Files
 import java.nio.file.Path
+import java.util.Comparator
+import java.util.ServiceLoader
+import java.util.jar.JarFile
+import kotlin.io.path.name
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
 import kotlin.test.assertTrue
+import org.jetbrains.kotlin.abi.tools.api.AbiFilters
+import org.jetbrains.kotlin.abi.tools.api.AbiToolsFactory
+import org.jetbrains.kotlin.abi.tools.api.v2.AbiToolsV2
+import org.jetbrains.kotlin.abi.tools.api.v2.KlibTarget
 
 /**
- * Locks the *depth* of the two reviewed Kotlin ABI goldens, not their content.
+ * Locks the scope of the reviewed Kotlin ABI goldens without implementing a second Kotlin ABI model.
  *
- * Content is locked by `checkLegacyAbi`, which byte-compares each golden against a fresh dump — so a removed
- * function or a changed signature fails the build **only if the golden records members in the first place**.
- * It once did not: a root-package-only `byNames` include reduced `api/interpreter.klib.api` to bare type
- * headers, because the KLIB filter is applied to every declaration while the JVM filter is applied per class
- * with its members riding along. The Kotlin/JS surface therefore had a type-name inventory where the JVM
- * surface had a member-level lock, and nothing said so (IRG3).
- *
- * These tests are the counterweight to that fix, in both directions: the goldens must stay deep enough for
- * `checkLegacyAbi` to see a member-level break, and must stay narrow enough that "make it deeper" cannot be
- * satisfied by widening the filter into the engine packages.
+ * `checkLegacyAbi` compares each reviewed file with the configured, filtered dump. This guard asks the same
+ * ABI engine for an unfiltered dump and projects the intended contract from package identity alone. A new
+ * declaration kind therefore enters the denominator before this test has a name for it.
  */
 class InterpreterAbiGoldenDepthTest {
     private val jvmGolden = propertyPath("interpreter.abi.golden.jvm")
     private val klibGolden = propertyPath("interpreter.abi.golden.klib")
+    private val nonContractJvmFacades = propertyPath("interpreter.abi.non-contract-jvm-facades")
+    private val compiledJvm = propertyPath("interpreter.abi.compiled.jvm")
+    private val compiledKlib = propertyPath("interpreter.abi.compiled.klib")
+    private val nonContractNames = requireNotNull(System.getProperty("interpreter.abi.non-contract-names"))
+        .split(',')
+        .filter(String::isNotEmpty)
+        .toSet()
+    private val nonContractFacadeNames = requireNotNull(
+        System.getProperty("interpreter.abi.non-contract-facade-names"),
+    ).split(',').filter(String::isNotEmpty).toSet()
+    private val abiTools: AbiToolsV2 by lazy {
+        ServiceLoader.load(AbiToolsFactory::class.java)
+            .map { it.get().v2 }
+            .single()
+    }
 
     @Test
-    fun everySharedTypeWithJvmMembersDeclaresMembersInTheKlibGoldenToo() {
-        val jvm = jvmTypeBlocks(Files.readAllLines(jvmGolden))
-        val klib = klibTypeBlocks(Files.readAllLines(klibGolden))
-        val shared = klib.keys.intersect(jvm.keys)
+    fun theJvmGoldenIsTheExactRootPackageProjectionOfTheUnfilteredDump() {
+        val expected = contractJvmBlocks(unfilteredJvmDump())
+        val actual = jvmBlocks(Files.readString(jvmGolden))
 
-        assertTrue(
-            shared.size >= DENOMINATOR_FLOOR,
-            "only ${shared.size} types are shared by the two ABI goldens; the scan collapsed rather than " +
-                "the surface shrinking below $DENOMINATOR_FLOOR types",
-        )
         assertEquals(
-            emptySet(),
-            klib.keys - jvm.keys,
-            "the KLIB golden declares types the JVM golden does not",
-        )
-
-        val shallow = shared
-            .filter { jvm.getValue(it) > 0 && klib.getValue(it) == 0 }
-            .sorted()
-        assertTrue(
-            shallow.isEmpty(),
-            "${shallow.size} type(s) carry members in the JVM golden but none in the KLIB golden, so a " +
-                "member-level break on the Kotlin/JS surface would pass checkLegacyAbi silently: $shallow",
+            expected,
+            actual,
+            "the JVM golden must equal the whole exact-root-package projection of the ABI engine's own dump",
         )
     }
 
     @Test
-    fun neitherGoldenDeclaresATypeOutsideTheRootPackage() {
-        val leaks = buildList {
-            Files.readAllLines(jvmGolden)
-                .filter { JVM_SUBPACKAGE_DECLARATION.containsMatchIn(it) }
-                .forEach { add("interpreter.api: $it") }
-            Files.readAllLines(klibGolden)
-                .filter { KLIB_SUBPACKAGE_DECLARATION.containsMatchIn(it) }
-                .forEach { add("interpreter.klib.api: $it") }
+    fun excludedJvmFileFacadesContainOnlyTheirExactlyReviewedMembers() {
+        val expectedOwners = nonContractFacadeNames.mapTo(sortedSetOf()) { "$JVM_PACKAGE/$it" }
+        val reviewedText = Files.readString(nonContractJvmFacades)
+        val reviewed = jvmBlocks(reviewedText)
+        val unfiltered = jvmBlocks(unfilteredJvmDump()).filterKeys { it in expectedOwners }.toSortedMap()
+
+        assertEquals(
+            expectedOwners,
+            reviewed.keys,
+            "every owner-wide JVM file-facade exclusion needs one exact reviewed block",
+        )
+        assertCanonicalJvmBlocks(
+            expected = unfiltered,
+            actualText = reviewedText,
+        )
+    }
+
+    @Test
+    fun theKlibGoldenIsTheExactRootPackageProjectionOfTheUnfilteredDump() {
+        val expected = contractKlibDeclarations(unfilteredKlibDump())
+        val actual = klibDeclarations(Files.readString(klibGolden))
+
+        assertEquals(
+            expected,
+            actual,
+            "the KLIB golden must equal the whole exact-root-package projection of the ABI engine's own dump",
+        )
+    }
+
+    @Test
+    fun theProjectionDoesNotNeedToKnowJvmMemberKinds() {
+        val dump = """
+            public final class $JVM_PACKAGE/Future${'$'}Companion {
+                public static synthetic fun make${'$'}default ()V
+                public mystery member whose syntax the guard does not know
+            }
+
+            public final class $JVM_PACKAGE/eval/EngineType {
+            }
+
+            public final class $JVM_PACKAGE/DmInterpreter {
+            }
+        """.trimIndent()
+
+        assertEquals(
+            mapOf(
+                "$JVM_PACKAGE/Future\$Companion" to """
+                    public final class $JVM_PACKAGE/Future${'$'}Companion {
+                        public static synthetic fun make${'$'}default ()V
+                        public mystery member whose syntax the guard does not know
+                    }
+                """.trimIndent(),
+            ),
+            contractJvmBlocks(dump),
+        )
+    }
+
+    @Test
+    fun theProjectionDoesNotNeedToKnowKlibDeclarationKinds() {
+        val dump = """
+            future declaration // $KLIB_PACKAGE/Future.answer|opaque-signature[0]
+            another future declaration // $KLIB_PACKAGE/Future.answer.child|another-signature[0]
+            engine declaration // $KLIB_PACKAGE.eval/EngineType.answer|engine-signature[0]
+            excluded declaration // $KLIB_PACKAGE/DmInterpreter.answer|excluded-signature[0]
+        """.trimIndent()
+
+        assertEquals(
+            listOf(
+                "future declaration // $KLIB_PACKAGE/Future.answer|opaque-signature[0]",
+                "another future declaration // $KLIB_PACKAGE/Future.answer.child|another-signature[0]",
+            ),
+            contractKlibDeclarations(dump),
+        )
+    }
+
+    @Test
+    fun theAuxiliaryFacadeComparisonRejectsUnparsedText() {
+        val block = "public final class $JVM_PACKAGE/LegacyKt {\n}"
+        val expected = mapOf("$JVM_PACKAGE/LegacyKt" to block)
+
+        assertCanonicalJvmBlocks(expected, "$block\n")
+        assertFailsWith<AssertionError> {
+            assertCanonicalJvmBlocks(expected, "$block\npublic static final fun stale ()V\n")
         }
-        assertTrue(
-            leaks.isEmpty(),
-            "the published contract is the root-package façade, but a golden declares an engine-package " +
-                "type — widening the ABI include filter is not a way to make a golden deeper:\n" +
-                leaks.joinToString("\n"),
+    }
+
+    private fun unfilteredJvmDump(): String = withExtractedClasses(compiledJvm) { classFiles ->
+        buildString {
+            abiTools.printJvmDump(this, classFiles, AbiFilters.EMPTY)
+        }
+    }
+
+    private fun unfilteredKlibDump(): String = buildString {
+        abiTools.extractKlibAbi(
+            compiledKlib.toFile(),
+            KlibTarget.parse("js"),
+            AbiFilters.EMPTY,
+        ).print(this)
+    }
+
+    private fun contractJvmBlocks(dump: String): Map<String, String> =
+        jvmBlocks(dump).filterKeys { internalName ->
+            val relativeName = internalName.removePrefix("$JVM_PACKAGE/")
+            '/' !in relativeName && relativeName.substringBefore('$') !in nonContractNames
+        }
+
+    private fun jvmBlocks(dump: String): Map<String, String> {
+        val lines = dump.lines()
+        val blocks = linkedMapOf<String, String>()
+        var index = 0
+        while (index < lines.size) {
+            val internalName = JVM_TYPE_HEADER.find(lines[index])?.groupValues?.get(1)
+            if (internalName == null) {
+                index += 1
+                continue
+            }
+            val end = (index + 1 until lines.size).firstOrNull { lines[it] == "}" }
+            requireNotNull(end) { "unterminated JVM ABI block for $internalName" }
+            val previous = blocks.put(internalName, lines.subList(index, end + 1).joinToString("\n"))
+            require(previous == null) { "duplicate JVM ABI block for $internalName" }
+            index = end + 1
+        }
+        return blocks
+    }
+
+    private fun contractKlibDeclarations(dump: String): List<String> =
+        klibDeclarations(dump).filter { line ->
+            val identity = requireNotNull(KLIB_IDENTITY.find(line)).groupValues[1]
+            if (!identity.startsWith("$KLIB_PACKAGE/")) return@filter false
+            identity.removePrefix("$KLIB_PACKAGE/").substringBefore('.') !in nonContractNames
+        }
+
+    private fun klibDeclarations(dump: String): List<String> = dump.lineSequence()
+        .map(String::trim)
+        .filter(KLIB_IDENTITY::containsMatchIn)
+        .toList()
+
+    private fun assertCanonicalJvmBlocks(expected: Map<String, String>, actualText: String) {
+        assertEquals(
+            expected.toSortedMap().values.joinToString(separator = "\n\n", postfix = "\n"),
+            actualText,
+            "the auxiliary facade golden must be the complete canonical blocks, with no ignored text",
         )
     }
 
-    @Test
-    fun theInternalMessageComparisonProjectionIsNotPublished() {
-        val jvmLines = Files.readAllLines(jvmGolden)
-        val klibLines = Files.readAllLines(klibGolden)
-        assertTrue(
-            jvmLines.any { "A12PointerFormat" in it } && klibLines.any { "A12PointerFormat" in it },
-            "positive control: the scan must see a deliberately published pointer formatter in both goldens",
-        )
-        val leaks = (jvmLines + klibLines).filter { "MessagePointers" in it || "messagePointerHouseForm" in it }
-        assertTrue(
-            leaks.isEmpty(),
-            "the tool-owned message comparison projection is not a consumer format:\n" + leaks.joinToString("\n"),
-        )
-    }
-
-    @Test
-    fun theBlockScannersRecogniseAMemberlessDeclaration() {
-        val jvmShallow = jvmTypeBlocks(
-            listOf(
-                "public final class io/github/mbackschat/a12/dm/interpreter/Deep {",
-                "\tpublic final fun parse (Ljava/lang/String;)V",
-                "}",
-                "",
-                "public final class io/github/mbackschat/a12/dm/interpreter/Shallow {",
-                "}",
-            ),
-        )
-        assertEquals(mapOf("Deep" to 1, "Shallow" to 0), jvmShallow)
-
-        val klibShallow = klibTypeBlocks(
-            listOf(
-                "final object io.github.mbackschat.a12.dm.interpreter/Deep { // …|null[0]",
-                "    final fun parse(kotlin/String) // …|parse(kotlin.String){}[0]",
-                "}",
-                "",
-                "final class io.github.mbackschat.a12.dm.interpreter/Shallow // …|null[0]",
-            ),
-        )
-        assertEquals(mapOf("Deep" to 1, "Shallow" to 0), klibShallow)
-    }
-
-    /**
-     * Top-level JVM type blocks and their member-line counts. Nested types (`Outer$Nested`) are skipped
-     * because the KLIB renderer nests them inside their owner, where they already count as its members.
-     */
-    private fun jvmTypeBlocks(lines: List<String>): Map<String, Int> =
-        typeBlocks(lines, JVM_TYPE_HEADER) { it }
-            .filterKeys { '$' !in it }
-
-    /** Top-level KLIB type blocks and their member-line counts, comment tails removed so bodies are visible. */
-    private fun klibTypeBlocks(lines: List<String>): Map<String, Int> =
-        typeBlocks(lines, KLIB_TYPE_HEADER) { KLIB_COMMENT_TAIL.replace(it, "") }
-
-    private fun typeBlocks(
-        lines: List<String>,
-        header: Regex,
-        normalize: (String) -> String,
-    ): Map<String, Int> {
-        val counts = LinkedHashMap<String, Int>()
-        var openType: String? = null
-        var members = 0
-        for (raw in lines) {
-            val line = normalize(raw)
-            val current = openType
-            if (current == null) {
-                val name = header.find(line)?.groupValues?.get(1) ?: continue
-                if (line.trimEnd().endsWith("{")) {
-                    openType = name
-                    members = 0
-                } else {
-                    counts[name] = 0
-                }
-            } else if (line == "}") {
-                counts[current] = members
-                openType = null
-            } else if (line.isNotBlank()) {
-                members++
+    private fun <T> withExtractedClasses(jarPath: Path, action: (List<File>) -> T): T {
+        assertTrue(Files.isRegularFile(jarPath), "compiled JVM denominator is not an assembled JAR: $jarPath")
+        val temporary = Files.createTempDirectory("interpreter-abi-classes-")
+        try {
+            val classFiles = JarFile(jarPath.toFile()).use { jar ->
+                jar.entries().asSequence()
+                    .filter { !it.isDirectory && it.name.endsWith(".class") }
+                    .map { entry ->
+                        val destination = temporary.resolve(entry.name)
+                        Files.createDirectories(destination.parent)
+                        jar.getInputStream(entry).use { source -> Files.copy(source, destination) }
+                        destination.toFile()
+                    }
+                    .toList()
+            }
+            assertTrue(classFiles.isNotEmpty(), "assembled JVM JAR contains no class files: ${jarPath.name}")
+            return action(classFiles)
+        } finally {
+            Files.walk(temporary).use { paths ->
+                paths.sorted(Comparator.reverseOrder()).forEach(Files::deleteIfExists)
             }
         }
-        return counts
     }
 
     private fun propertyPath(name: String): Path =
         Path.of(requireNotNull(System.getProperty(name)) { "missing system property $name" })
 
     private companion object {
-        /** A scan that finds fewer shared types than this has broken, not measured a smaller surface. */
-        private const val DENOMINATOR_FLOOR = 50
-
-        /** The published contract's root package, in each dump's own spelling. */
         private const val JVM_PACKAGE = "io/github/mbackschat/a12/dm/interpreter"
-        private const val KLIB_PACKAGE = """io\.github\.mbackschat\.a12\.dm\.interpreter"""
-
-        /**
-         * A top-level declaration header in either dump: modifier words, then the declared name. Anchoring on
-         * that position is what keeps a *supertype* or *signature* reference to an engine type from reading as
-         * a declaration of one.
-         */
-        private val JVM_TYPE_HEADER = Regex("""^public [\w ]*class $JVM_PACKAGE/([^\s:]+)""")
-        private val KLIB_TYPE_HEADER = Regex("""^[\w ]+$KLIB_PACKAGE/([^\s:]+)""")
-        private val JVM_SUBPACKAGE_DECLARATION = Regex("""^public [\w ]*class $JVM_PACKAGE/\w+/""")
-        private val KLIB_SUBPACKAGE_DECLARATION = Regex("""^[\w ]+$KLIB_PACKAGE\.\w[\w.]*/""")
-
-        private val KLIB_COMMENT_TAIL = Regex("""\s*//.*$""")
+        private const val KLIB_PACKAGE = "io.github.mbackschat.a12.dm.interpreter"
+        private val JVM_TYPE_HEADER = Regex("""^public .* class ($JVM_PACKAGE/[^\s:]+)""")
+        private val KLIB_IDENTITY = Regex("""// ([^|]+)\|""")
     }
 }

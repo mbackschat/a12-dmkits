@@ -1,0 +1,6 @@
+public final class io/github/mbackschat/a12/dm/interpreter/Dec_jvmKt {
+	public static final fun dec (I)Lio/github/mbackschat/a12/dm/interpreter/Dec;
+	public static final fun dec (Ljava/lang/String;)Lio/github/mbackschat/a12/dm/interpreter/Dec;
+	public static final fun decOrNull (Ljava/lang/String;)Lio/github/mbackschat/a12/dm/interpreter/Dec;
+	public static final fun getDEC_ZERO ()Lio/github/mbackschat/a12/dm/interpreter/Dec;
+}

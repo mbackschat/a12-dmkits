@@ -95,6 +95,13 @@ kotlin {
                 implementation kotlin('test')
             }
         }
+        jvmTest {
+            dependencies {
+                // The ABI-depth guard asks the same engine that writes the reviewed dumps for an unfiltered
+                // dump, then projects the exact root package without modelling Kotlin declaration kinds.
+                implementation 'org.jetbrains.kotlin:abi-tools:2.2.0'
+            }
+        }
     }
 }
 
@@ -107,12 +114,14 @@ tasks.named('jsBrowserTest') {
 // Kotlin 2.2 installs ABI validation as a nested extension of the multiplatform DSL. Configure that public
 // extension directly because Groovy cannot call the Kotlin-only `abiValidation {}` shortcut.
 def interpreterRootPackage = 'io.github.mbackschat.a12.dm.interpreter'
+// A file facade can acquire unrelated top-level declarations while retaining the same JVM owner. Keep those
+// owner-wide exclusions separate so the ABI-depth guard can lock their complete unfiltered blocks.
+def interpreterNonContractJvmFacades = ['Dec_jvmKt']
 // These root-package declarations predate the model-owned façade and expose engine storage/arithmetic types.
 // They remain callable by in-repo migration consumers but are not part of the published contract.
 def interpreterNonContractRootNames = [
     'Big',
     'Dec',
-    'Dec_jvmKt',
     'DEC_ZERO',
     'DmInterpreter',
     'InvalidModelTimeZoneException',
@@ -121,7 +130,7 @@ def interpreterNonContractRootNames = [
     'UnsupportedModelTimeZoneException',
     'dec',
     'decOrNull',
-]
+] + interpreterNonContractJvmFacades
 // The engine implementation packages, DERIVED from the production source tree rather than listed by hand — a
 // hand-kept list would go stale exactly when a new engine package is added, which is when the subtraction
 // below has to hold. They stay public only where another module still consumes them during the pre-1.0
@@ -2001,6 +2010,7 @@ def interpreterApiDocsComparisonArchive = interpreterApiDocsBuildDir.map {
 def interpreterApiGuide = rootProject.file('docs/INTERPRETER-API-GUIDE.md')
 def committedJvmApi = file('api/interpreter.api')
 def committedKlibApi = file('api/interpreter.klib.api')
+def committedNonContractJvmFacades = file('api/interpreter.noncontract.jvm.api')
 
 def publicJvmTypeNames = {
     def names = [] as Set
@@ -2399,6 +2409,8 @@ def interpreterAbiGoldenDepthTest = tasks.register('interpreterAbiGoldenDepthTes
     description = 'Require both reviewed Kotlin ABI goldens to stay member-level and root-package-only.'
     dependsOn tasks.named('jvmTestClasses')
     dependsOn tasks.named('checkLegacyAbi')
+    dependsOn tasks.named('jvmJar')
+    dependsOn tasks.named('jsJar')
     testClassesDirs = interpreterJvmTest.get().testClassesDirs
     classpath = interpreterJvmTest.get().classpath
     filter {
@@ -2408,9 +2420,23 @@ def interpreterAbiGoldenDepthTest = tasks.register('interpreterAbiGoldenDepthTes
     }
     systemProperty('interpreter.abi.golden.jvm', committedJvmApi.absolutePath)
     systemProperty('interpreter.abi.golden.klib', committedKlibApi.absolutePath)
+    systemProperty('interpreter.abi.non-contract-jvm-facades', committedNonContractJvmFacades.absolutePath)
+    systemProperty('interpreter.abi.non-contract-names', interpreterNonContractRootNames.join(','))
+    systemProperty('interpreter.abi.non-contract-facade-names', interpreterNonContractJvmFacades.join(','))
+    doFirst {
+        systemProperty(
+            'interpreter.abi.compiled.jvm',
+            tasks.named('jvmJar', Jar).get().archiveFile.get().asFile.absolutePath,
+        )
+        systemProperty(
+            'interpreter.abi.compiled.klib',
+            tasks.named('jsJar', AbstractArchiveTask).get().archiveFile.get().asFile.absolutePath,
+        )
+    }
     rootProject.guardInputs(it, [
         'reviewed JVM ABI': committedJvmApi,
         'reviewed KLIB ABI': committedKlibApi,
+        'reviewed non-contract JVM file facades': committedNonContractJvmFacades,
     ])
 }
 tasks.named('check') {
