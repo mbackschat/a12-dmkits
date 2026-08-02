@@ -1,6 +1,12 @@
 #!/bin/sh
-# Keep the generated public README source statistics current before commits leave the clone.
+# Regenerate public README source statistics before commits leave the clone. A hook cannot add the resulting
+# edits to commits Git has already selected, so it aborts when regeneration changes a tracked README.
 set -eu
 
 ROOT=$(git rev-parse --show-toplevel)
+if command -v tokei >/dev/null 2>&1 && command -v jq >/dev/null 2>&1; then
+  exec "$ROOT/scripts/update-code-statistics.sh" --fail-on-update --allow-missing-lean
+fi
+
+echo "warning: tokei/jq unavailable; checking source statistics without regenerating" >&2
 exec "$ROOT/scripts/update-code-statistics.sh" --check --allow-missing-lean
