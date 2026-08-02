@@ -818,7 +818,7 @@ Generated with [Tokei](https://github.com/XAMPPRocky/tokei) from the production 
 | TypeScript | 17 | 3190 | 269 | 277 |
 | Lean | 664 | 100386 | 8591 | 15678 |
 
-Regenerate with `./scripts/update-code-statistics.sh`; pre-push refreshes changed tables and release assembly rejects stale values.
+Regenerate with `./scripts/update-code-statistics.sh`; pre-push refreshes a clean pushed HEAD and release assembly rejects stale values.
 <!-- source-statistics:root:inputs java=6dba4b2cf6c49d05b67880aa1b1d2defc2dccdd8 kotlin=1c1c7245f62819f820af334cff9ed1c75f46a08b typescript=5862c52523a21ee1f935ef3d7e7e95e3399c7877 lean=24bb51a201682b52b98be715f2e3a5d7465a8d0a measurements=4642f3b4823827205179cf63986fdaac57eb1dea -->
 <!-- source-statistics:root:end -->
 
@@ -887,7 +887,7 @@ The committed hooks enforce the commit-message convention and regenerate stale s
 git config core.hooksPath .githooks
 ```
 
-The `commit-msg` hook hard-rejects mechanical convention violations and reminds on the judgment rule. When Tokei and jq are available, the `pre-push` hook regenerates the Tokei blocks in every public README; when anything changes it stops the push so the generated result can be committed, then the next push proceeds. Without either tool it falls back to the read-only fingerprint check, so a current tree can still push but stale values cannot. Install them with `brew install tokei jq` on macOS. Release assembly repeats a read-only check—tagged release inputs are never rewritten—so `--no-verify` cannot publish stale values. To apply the commit-message check across all your repos, point your global Git template at it — copy that hook into `~/.git-template/hooks` and set `git config --global init.templateDir ~/.git-template`.
+The `commit-msg` hook hard-rejects mechanical convention violations and reminds on the judgment rule. The `pre-push` hook accepts only non-deletion refs that peel to the clean checked-out `HEAD`; this is what makes a worktree-based Tokei measurement describe the commits actually leaving the clone. When Tokei and jq are available it regenerates the blocks in every public README; when anything changes it stops the push so the generated result can be committed, then the next push proceeds. Without either tool it falls back to the read-only fingerprint check, so a current tree can still push but stale values cannot. Push a non-HEAD branch separately after checking it out. Install the tools with `brew install tokei jq` on macOS. Release assembly repeats a read-only check—tagged release inputs are never rewritten—so `--no-verify` cannot publish stale values. To apply the commit-message check across all your repos, point your global Git template at it — copy that hook into `~/.git-template/hooks` and set `git config --global init.templateDir ~/.git-template`.
 
 ## License
 

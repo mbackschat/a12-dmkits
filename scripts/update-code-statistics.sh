@@ -146,7 +146,7 @@ Generated with [Tokei](https://github.com/XAMPPRocky/tokei) from ${title_note}. 
 | TypeScript | ${tf} | ${tc} | ${tco} | ${tb} |
 | Lean | ${lf} | ${lc} | ${lco} | ${lb} |
 
-Regenerate with \`./scripts/update-code-statistics.sh\`; pre-push refreshes changed tables and release assembly rejects stale values.
+Regenerate with \`./scripts/update-code-statistics.sh\`; pre-push refreshes a clean pushed HEAD and release assembly rejects stale values.
 <!-- source-statistics:${id}:inputs java=${java_fingerprint} kotlin=${kotlin_fingerprint} typescript=${typescript_fingerprint} lean=${lean_fingerprint} measurements=${measurement_fingerprint} -->
 <!-- source-statistics:${id}:end -->
 EOF
