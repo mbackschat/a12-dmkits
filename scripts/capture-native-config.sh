@@ -26,12 +26,13 @@ DEST="cli/src/main/resources/META-INF/native-image/rulekit-agent"
 CFG="${RK_NATIVE_CFG:-/tmp/rk-native-capture}"
 rm -rf "$CFG"; mkdir -p "$DEST" "$CFG"
 
-# Run the whole :cli suite under the agent. A failing assertion still exercises its code path, so capture
-# is robust to a red test; --continue keeps the suite going and `|| true` ignores the test-failure exit.
+# Run the whole :cli suite under the agent except NativeImageMetadataHygieneTest, which necessarily reads the
+# PRE-CAPTURE committed file. Every executed test must pass: ignoring red tests contaminates metadata with
+# failure-serialization paths and can publish a capture from a genuinely broken suite.
 # build.sh keeps the Gradle daemon on the project's JDK 21 and resolves the shared isolated Gradle home
 # through Git's common directory. The rkNativeAgent mode independently launches the traced test JVM from
 # GRAALVM_HOME, so the capture still uses GraalVM without reimplementing the wrapper's environment policy.
-./build.sh --continue -PrkNativeAgent "-PrkNativeAgentDir=$CFG" :cli:test || true
+./build.sh -PrkNativeAgent "-PrkNativeAgentDir=$CFG" :cli:test
 
 shopt -s nullglob
 files=("$CFG"/*.json)
@@ -40,4 +41,8 @@ files=("$CFG"/*.json)
   exit 1
 }
 \cp -f "${files[@]}" "$DEST/"   # \cp bypasses a `cp -i` alias that would prompt and skip the overwrite
+
+# Now the hygiene assertion has the artifact it owns. Run it outside the agent so its test machinery does not
+# become capture input; set -e makes either the traced suite or this post-copy check terminal.
+./build.sh :cli:test --tests 'io.github.mbackschat.a12.dm.cli.NativeImageMetadataHygieneTest'
 echo "captured (test-suite) → $DEST/ ($(ls "$DEST" | tr '\n' ' '))"

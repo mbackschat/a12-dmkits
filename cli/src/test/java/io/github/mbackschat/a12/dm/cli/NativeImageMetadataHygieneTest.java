@@ -17,9 +17,10 @@ import com.fasterxml.jackson.databind.ObjectMapper;
  *
  * <p>The capture runs the {@code :cli} JUnit suite under the GraalVM agent, so without a caller-filter it
  * would record JUnit's reflective instantiation of the {@code *Test} classes straight into the shipped
- * metadata — exactly the noise the earlier curated capture avoided by NOT running tests. The caller-filter
- * ({@code scripts/native-agent-caller-filter.json}) drops it; this test LOCKS that, so a future re-capture
- * that bypasses the filter can't silently reship test-class metadata.
+ * metadata — exactly the noise the earlier curated capture avoided by NOT running tests. The caller filter
+ * drops JUnit/Gradle-originated access; {@code :cli:generateNativeAgentAccessFilter} independently derives
+ * every own compiled test-artifact target, including nested classes reached through production reflection.
+ * This test LOCKS their combined output, so a future re-capture cannot silently reship test metadata.
  *
  * <p><b>Scope:</b> our own test classes ({@code io.github.mbackschat …Test}/{@code …Tests}). A few
  * ServiceLoader-loaded JUnit-infra classes and the Groovy-runtime classes the JVM capture records are left
@@ -36,7 +37,8 @@ class NativeImageMetadataHygieneTest {
         List<String> offenders = testArtifactTypes(reflectionTypes(RESOURCE));
         assertTrue(offenders.isEmpty(),
                 "native reflection metadata leaks own test classes — re-run scripts/capture-native-config.sh with "
-                        + "the caller-filter active (docs/NATIVE-IMAGE-GRAALVM.md §5). Offenders: " + offenders);
+                        + "the caller + derived access filters active (docs/NATIVE-IMAGE-GRAALVM.md §5). Offenders: "
+                        + offenders);
     }
 
     /** Proves the detector actually fires (guards against a vacuous green) and spares the {@code RuleTestCommand} verb. */

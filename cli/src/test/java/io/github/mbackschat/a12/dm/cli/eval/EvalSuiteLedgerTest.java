@@ -1,14 +1,18 @@
 package io.github.mbackschat.a12.dm.cli.eval;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -50,14 +54,21 @@ class EvalSuiteLedgerTest {
     }
 
     private static Path benchmarkWorkflow() {
-        for (String candidate : List.of("../eval/benchmark.workflow.js", "eval/benchmark.workflow.js",
-                "../../eval/benchmark.workflow.js")) {
+        return evalFile("benchmark.workflow.js");
+    }
+
+    private static Path gapFinderWorkflow() {
+        return evalFile("gap-finder.workflow.js");
+    }
+
+    private static Path evalFile(String name) {
+        for (String candidate : List.of("../eval/" + name, "eval/" + name, "../../eval/" + name)) {
             Path path = Path.of(candidate);
             if (Files.isRegularFile(path)) {
                 return path;
             }
         }
-        throw new IllegalStateException("eval/benchmark.workflow.js not found from " + Path.of("").toAbsolutePath());
+        throw new IllegalStateException("eval/" + name + " not found from " + Path.of("").toAbsolutePath());
     }
 
     /** A task's kit = its containing subfolder (the structural source of truth). */
@@ -154,15 +165,90 @@ class EvalSuiteLedgerTest {
         assertEquals("--dry-run", task.path("expected").path("readOnlyOption").asText());
 
         String workflow = Files.readString(benchmarkWorkflow());
-        int promptStart = workflow.indexOf("function computationPreflightPrompt(task)");
-        int promptEnd = workflow.indexOf("\nconst AUTHOR_SCHEMA", promptStart);
-        assertTrue(promptStart >= 0 && promptEnd > promptStart,
-                "positive control: the guard must locate the computation-preflight prompt body");
         assertTrue(workflow.contains("--dry-run"),
                 "positive control: the workflow still names --dry-run outside the neutral producer prompt");
-        String producerPrompt = workflow.substring(promptStart, promptEnd);
-        assertTrue(!producerPrompt.contains("--dry-run"),
-                "the clean agent's producer prompt must not disclose the option being measured");
+        String rendered = renderComputationPreflightPrompt(workflow, task);
+        assertTrue(!rendered.contains("--dry-run"),
+                () -> "the fully rendered clean-agent prompt discloses the option being measured: " + rendered);
+
+        String indirectLeak = workflow.replace("${task.intent}", "${PREFLIGHT_OPTION}");
+        assertThrows(AssertionError.class, () -> renderComputationPreflightPrompt(indirectLeak, task),
+                "positive control: an indirectly interpolated option must not evade the prompt guard");
+    }
+
+    @Test
+    void gapFinderReconcilesEveryManifestDerivedTargetWithAnAuditReceipt() throws IOException {
+        JsonNode manifest = MAPPER.readTree(CliTestSupport.run("manifest").out());
+        Set<String> liveTargets = new TreeSet<>();
+        for (JsonNode verb : manifest.path("verbs")) {
+            String[] parts = verb.path("verb").asText().trim().split("\\s+");
+            if (parts.length > 1) {
+                liveTargets.add(parts[0]);
+            }
+        }
+        assertTrue(!liveTargets.isEmpty(), "positive control: the live manifest must expose top-level targets");
+
+        String workflow = Files.readString(gapFinderWorkflow());
+        assertGapFinderCoverageContract(workflow);
+        String missingReconciliation = workflow.replace("valid.forEach(assertAuditCoverage)",
+                "/* AUDIT MUTANT: reports are accepted without denominator reconciliation */");
+        assertThrows(AssertionError.class, () -> assertGapFinderCoverageContract(missingReconciliation),
+                "positive control: removing per-report denominator reconciliation must fail");
+    }
+
+    private static String renderComputationPreflightPrompt(String workflow, JsonNode task) {
+        String marker = "function computationPreflightPrompt(task)";
+        int functionStart = workflow.indexOf(marker);
+        assertTrue(functionStart >= 0, "the workflow must define the computation-preflight producer prompt");
+        int templateStart = workflow.indexOf("return `", functionStart);
+        assertTrue(templateStart >= 0, "the computation-preflight prompt must return one inspectable template");
+        templateStart += "return `".length();
+        int templateEnd = closingBacktick(workflow, templateStart);
+        assertTrue(templateEnd > templateStart, "the computation-preflight template must have a closing backtick");
+
+        String template = workflow.substring(templateStart, templateEnd);
+        Map<String, String> representative = Map.of(
+                "CLI", "bin/dmtool",
+                "MODEL_FILE(task)", "/tmp/rk-eval-sandbox/" + task.path("model").asText() + ".dm.json",
+                "skillBlock()", "",
+                "JSON.stringify(task.proposal)", task.path("proposal").toString(),
+                "task.intent", task.path("intent").asText());
+        Matcher interpolation = Pattern.compile("\\$\\{([^}]+)}").matcher(template);
+        StringBuilder rendered = new StringBuilder();
+        while (interpolation.find()) {
+            String expression = interpolation.group(1);
+            String value = representative.get(expression);
+            if (value == null) {
+                throw new AssertionError("unreviewed computation-preflight prompt interpolation: ${" + expression + "}");
+            }
+            interpolation.appendReplacement(rendered, Matcher.quoteReplacement(value));
+        }
+        interpolation.appendTail(rendered);
+        return rendered.toString().replace("\\`", "`");
+    }
+
+    private static int closingBacktick(String source, int start) {
+        for (int i = start; i < source.length(); i++) {
+            if (source.charAt(i) == '`' && (i == 0 || source.charAt(i - 1) != '\\')) {
+                return i;
+            }
+        }
+        return -1;
+    }
+
+    private static void assertGapFinderCoverageContract(String workflow) {
+        assertTrue(workflow.contains("const MANIFEST = A.manifest"),
+                "the gap-finder denominator must come from the passed live manifest");
+        assertTrue(workflow.contains("const AUDIT_TARGETS = [...new Set(MANIFEST.verbs"),
+                "the gap-finder must derive target names from manifest verbs");
+        assertTrue(workflow.contains("required: ['findings', 'audits']"),
+                "every explorer response must carry structured audit receipts");
+        assertTrue(workflow.contains("minItems: 1"),
+                "an explorer must not satisfy the audit contract with zero receipts");
+        assertTrue(workflow.contains("valid.forEach(assertAuditCoverage)"),
+                "every valid explorer report must reconcile against the manifest-derived denominator");
+        assertTrue(workflow.contains("receipts.length !== covered.length || missing.length || unexpected.length"),
+                "coverage reconciliation must reject duplicate, missing, and unexpected targets");
     }
 
     private static boolean inSuite(JsonNode task, String suite) {

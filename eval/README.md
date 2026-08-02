@@ -13,7 +13,7 @@ The curated task corpus for the N6 self-sufficiency eval, plus the **runner entr
 
 So: *shapes* live here, the *instances* live in `TASKS.md`, and the *authoritative current list* is always the corpus files (`tasks/<kit>/*.json`) themselves.
 
-A second, lighter instrument lives here too: **`gap-finder.workflow.js`** — the on-demand **self-explainability audit** (Option C, [`../docs/CLI-CONFORMANCE-SPEC.md`](../docs/CLI-CONFORMANCE-SPEC.md) "the gap-finder"). k cold agents critique the CLI's self-description for *qualitative* gaps the deterministic conformance matrix can't see; `gap-allowlist.json` is its reasoned tripwire state. It's ~3 agents (no corpus / kernel recheck / judge), distinct from the `benchmark` runner.
+A second, lighter instrument lives here too: **`gap-finder.workflow.js`** — the on-demand **self-explainability audit** (Option C, [`../docs/CLI-CONFORMANCE-SPEC.md`](../docs/CLI-CONFORMANCE-SPEC.md) "the gap-finder"). k cold agents critique the CLI's self-description for *qualitative* gaps the deterministic conformance matrix can't see; `gap-allowlist.json` is its reasoned tripwire state. It's ~3 agents (no corpus / kernel recheck / judge), distinct from the `benchmark` runner. Pass the parsed output of `bin/dmtool manifest` as `args.manifest`; the workflow derives its top-level target denominator from that live artifact and rejects any explorer report without exactly one absent-sibling audit receipt per target.
 
 ## Layout
 

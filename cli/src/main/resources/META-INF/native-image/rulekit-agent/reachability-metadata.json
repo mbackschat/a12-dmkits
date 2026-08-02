@@ -8665,9 +8665,6 @@
       ]
     },
     {
-      "type": "io.github.mbackschat.a12.dm.cli.MutationEvidenceTest$TailProbe"
-    },
-    {
       "type": "io.github.mbackschat.a12.dm.cli.OperatorsCommand",
       "fields": [
         {
@@ -14812,9 +14809,6 @@
     },
     {
       "glob": "META-INF/groovy/org.codehaus.groovy.source.Extensions"
-    },
-    {
-      "glob": "META-INF/native-image/rulekit-agent/reachability-metadata.json"
     },
     {
       "glob": "META-INF/services/io.github.mbackschat.a12.dm.core.spi.BackendInfo"

@@ -2,6 +2,7 @@ package io.github.mbackschat.a12.dm.cli.eval;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
 
@@ -202,6 +203,53 @@ class EvalGoldOracleTest {
                 () -> taskFile.getFileName() + " --text summary drifted: " + text.out());
         assertTrue(text.out().contains("data:"),
                 () -> taskFile.getFileName() + " --text omitted the result body: " + text.out());
+        assertRuntimeTextFacts(task, text.out(), taskFile);
+
+        String discriminator = runtimeTextFacts(task).getFirst();
+        String missingFact = text.out().replace(discriminator, "<AUDIT: expected fact removed>");
+        assertThrows(AssertionError.class, () -> assertRuntimeTextFacts(task, missingFact, taskFile),
+                () -> taskFile.getFileName() + " positive control: the text oracle must reject a missing fact");
+    }
+
+    private static void assertRuntimeTextFacts(JsonNode task, String text, Path taskFile) {
+        for (String fact : runtimeTextFacts(task)) {
+            assertTrue(text.contains(fact),
+                    () -> taskFile.getFileName() + " --text omitted expected fact " + fact + ": " + text);
+        }
+    }
+
+    /**
+     * Derives the human-readable oracle from the task's existing machine facts. No second hand-authored
+     * expected list can drift: a task changes once, and both projections must carry the same information.
+     */
+    private static List<String> runtimeTextFacts(JsonNode task) {
+        JsonNode expected = task.get("expected");
+        List<String> facts = new ArrayList<>();
+        switch (task.path("mode").asText()) {
+            case "model-compute" -> expected.path("computed").forEach(row -> {
+                StringBuilder block = new StringBuilder()
+                        .append("    -\n")
+                        .append("        field: ").append(row.path("field").asText()).append('\n')
+                        .append("        declaration: ").append(row.path("declaration").asText()).append('\n')
+                        .append("        outcome: ").append(row.path("outcome").asText());
+                if (row.has("value")) {
+                    block.append('\n').append("        value: ").append(row.path("value").asText());
+                }
+                facts.add(block.toString());
+            });
+            case "model-eval" -> {
+                expected.path("firedCodes").forEach(code -> facts.add("    - " + code.asText()));
+                expected.path("unsupported").forEach(name -> facts.add("        name: " + name.asText()));
+            }
+            case "rule-eval" -> {
+                facts.add("  rule: " + task.path("rule").asText());
+                facts.add("  fired: " + expected.path("ruleFired").asBoolean());
+                facts.add("  verdict: " + expected.path("verdict").asText());
+            }
+            default -> throw new AssertionError("runtime mode was validated before rendering text facts");
+        }
+        assertFalse(facts.isEmpty(), "positive control: every runtime task must derive at least one text fact");
+        return facts;
     }
 
     private static void assertComputationPreflight(JsonNode task, String model, Path taskFile) throws IOException {
