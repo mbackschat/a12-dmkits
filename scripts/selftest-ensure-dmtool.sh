@@ -31,7 +31,12 @@ ver="$(printf '%s' "$url" | sed -nE 's#.*/download/(v[0-9.]+)/.*#\1#p')"
 content() { printf '#!/bin/sh\necho "a12-dmkits %s"\n' "${ver#v}"; }
 case "$url" in
   *SHA256SUMS)
+    [[ "${FAKE_CHECKSUM_MODE:-ok}" != download-fails ]] || exit 22
     : > "$out"
+    if [[ "${FAKE_CHECKSUM_MODE:-ok}" == missing-entry ]]; then
+      printf '%064d  unrelated-asset\n' 0 >> "$out"
+      exit 0
+    fi
     for a in $RK_SELFTEST_BINARY_ASSETS; do
       tmp="$(mktemp)"; content > "$tmp"
       if [[ "${FAKE_BAD_CHECKSUM:-0}" == 1 ]]; then
@@ -129,5 +134,21 @@ set -e
   || fail "a checksum mismatch hard-failed the calling session with exit $checksum_status: $checksum_out"
 [[ "$checksum_out" == *"checksum mismatch"* && "$checksum_out" != *"dmtool ready:"* ]] \
   || fail "a checksum mismatch did not warn without claiming readiness: $checksum_out"
+
+# 8. Verification is fail-closed even though the caller's session stays alive: a missing checksum file and
+#    a checksum file without the selected asset are both unverified downloads, never installable binaries.
+for checksum_mode in download-fails missing-entry; do
+  checksum_data="$WORK/checksum-$checksum_mode"
+  set +e
+  checksum_out="$(PLUGIN_DATA="$checksum_data" CLAUDE_PLUGIN_DATA= FAKE_CHECKSUM_MODE="$checksum_mode" bash "$INSTALLER" 2>&1)"
+  checksum_status=$?
+  set -e
+  [[ $checksum_status -eq 0 ]] \
+    || fail "$checksum_mode hard-failed the calling session with exit $checksum_status: $checksum_out"
+  [[ "$checksum_out" == *"checksum"* && "$checksum_out" != *"dmtool ready:"* ]] \
+    || fail "$checksum_mode did not warn without claiming readiness: $checksum_out"
+  [[ ! -e "$checksum_data/bin/dmtool" ]] \
+    || fail "$checksum_mode left a stable path to an unverified binary"
+done
 
 echo "SELFTEST OK: version-aware cache, sandbox fallback, and truthful readiness"

@@ -5,7 +5,7 @@ set -euo pipefail
 
 verify_without_java() {
   local binary="$1" expected_version="$2" work="$3"
-  local output status first_line
+  local output status first_line manifest_output version_pattern
 
   mkdir -p "$work/empty-path"
   set +e
@@ -23,6 +23,22 @@ verify_without_java() {
       "a12-dmkits $expected_version" "$first_line" >&2
     return 1
   fi
+
+  set +e
+  manifest_output="$(JAVA_HOME="$work/not-a-jdk" PATH="$work/empty-path" "$binary" manifest 2>&1)"
+  status=$?
+  set -e
+  if [[ $status -ne 0 ]]; then
+    printf 'native no-Java smoke: functional manifest failed with Java unavailable (exit %s): %s\n' \
+      "$status" "$manifest_output" >&2
+    return 1
+  fi
+  version_pattern="\"rulekit\"[[:space:]]*:[[:space:]]*\"${expected_version}\""
+  if [[ ! "$manifest_output" =~ $version_pattern || "$manifest_output" != *'"verbs"'* ]]; then
+    printf 'native no-Java smoke: functional manifest did not carry rulekit %s and the verb tree: %s\n' \
+      "$expected_version" "$manifest_output" >&2
+    return 1
+  fi
 }
 
 self_test() (
@@ -31,8 +47,20 @@ self_test() (
   trap 'rm -rf "$work"' EXIT
   independent="$work/independent"
   dependent="$work/dependent"
-  printf '#!/bin/sh\necho "a12-dmkits 9.9.9"\n' > "$independent"
-  printf '#!/bin/sh\njava -version >/dev/null 2>&1 || exit 42\necho "a12-dmkits 9.9.9"\n' > "$dependent"
+  cat > "$independent" <<'EOF'
+#!/bin/sh
+case "$1" in
+  --version) echo "a12-dmkits 9.9.9" ;;
+  manifest) echo '{"version":{"rulekit":"9.9.9"},"verbs":[{"name":"manifest"}]}' ;;
+  *) exit 43 ;;
+esac
+EOF
+  cat > "$dependent" <<'EOF'
+#!/bin/sh
+if [ "$1" = --version ]; then echo "a12-dmkits 9.9.9"; exit 0; fi
+java -version >/dev/null 2>&1 || exit 42
+echo '{"version":{"rulekit":"9.9.9"},"verbs":[{"name":"manifest"}]}'
+EOF
   chmod +x "$independent" "$dependent"
 
   verify_without_java "$independent" 9.9.9 "$work/independent-run"

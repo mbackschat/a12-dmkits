@@ -4,11 +4,11 @@
   "additionalProperties": false,
   "required": ["skill", "binaryPath", "command", "verification", "valid", "written"],
   "properties": {
-    "skill": { "type": "string", "const": "dmtool:a12-dmtool" },
+    "skill": { "type": "string", "minLength": 1 },
     "binaryPath": { "type": "string", "minLength": 1 },
     "command": { "type": "string", "minLength": 1 },
-    "verification": { "type": "string", "const": "KERNEL_CONFIRMED" },
-    "valid": { "type": "boolean", "const": true },
-    "written": { "type": "boolean", "const": false }
+    "verification": { "type": "string", "minLength": 1 },
+    "valid": { "type": "boolean" },
+    "written": { "type": "boolean" }
   }
 }

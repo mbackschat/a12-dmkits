@@ -8,7 +8,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/);
 
 ### Fixed
 
-- The Codex plugin installer now uses a sandbox-writable temporary cache when plugin-hook data variables are absent, and reports readiness only after the installed binary is executable. Checksum and cache-write failures warn without terminating the agent session or printing a false ready path.
+- The Codex plugin installer now uses a sandbox-writable temporary cache when plugin-hook data variables are absent, and reports readiness only after the installed binary is executable and its named SHA-256 entry is present and matches. A missing checksum file, missing entry, mismatch, or cache-write failure warns without terminating the agent session or printing a false ready path.
 
 ## [0.10.1] — kernel 30.8.1 (A12 Tools 2025.06-ext5)
 

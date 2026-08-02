@@ -108,12 +108,15 @@ if [[ ! -x "$DEST" ]]; then
   base="https://github.com/$REPO/releases/download/$VERSION"
   curl -fsSL "$base/$asset" -o "$DEST" || { warn "download failed: $base/$asset"; rm -f "$DEST"; exit 0; }
   chmod +x "$DEST"
-  if curl -fsSL "$base/SHA256SUMS" -o "$BIN_DIR/SHA256SUMS" 2>/dev/null; then
-    expected="$(awk -v a="$asset" '$2==a || $2=="*"a {print $1}' "$BIN_DIR/SHA256SUMS")"
-    actual="$(shasum -a 256 "$DEST" | awk '{print $1}')"
-    if [[ -n "$expected" && "$expected" != "$actual" ]]; then
-      warn "checksum mismatch for $asset — refusing the binary"; rm -f "$DEST"; exit 0
-    fi
+  curl -fsSL "$base/SHA256SUMS" -o "$BIN_DIR/SHA256SUMS" 2>/dev/null \
+    || { warn "checksum download failed — refusing the unverified binary"; rm -f "$DEST" "$BIN_DIR/SHA256SUMS"; exit 0; }
+  expected="$(awk -v a="$asset" '$2==a || $2=="*"a {print $1}' "$BIN_DIR/SHA256SUMS")"
+  [[ "$expected" =~ ^[0-9a-fA-F]{64}$ ]] \
+    || { warn "checksum entry missing or malformed for $asset — refusing the unverified binary"; rm -f "$DEST"; exit 0; }
+  actual="$(shasum -a 256 "$DEST" | awk '{print $1}')" \
+    || { warn "checksum calculation failed for $asset — refusing the unverified binary"; rm -f "$DEST"; exit 0; }
+  if [[ "$expected" != "$actual" ]]; then
+    warn "checksum mismatch for $asset — refusing the binary"; rm -f "$DEST"; exit 0
   fi
   prune_stale_cache
 fi

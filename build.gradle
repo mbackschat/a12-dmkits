@@ -211,11 +211,14 @@ tasks.register('deliveryGuardTest', Test) {
     filter {
         includeTestsMatching 'io.github.mbackschat.a12.dm.EnsureDmtoolCacheTest'
         includeTestsMatching 'io.github.mbackschat.a12.dm.NativeNoJavaSmokeTest'
+        includeTestsMatching 'io.github.mbackschat.a12.dm.CodexPluginActivationEvidenceTest'
     }
     guardInputs(it, [
             'plugin installer'        : file('scripts/ensure-dmtool.sh'),
             'installer self-test'     : file('scripts/selftest-ensure-dmtool.sh'),
             'native no-Java smoke'    : file('scripts/native-no-java-smoke.sh'),
+            'Codex activation smoke'  : file('scripts/codex-plugin-activation-smoke.sh'),
+            'Codex evidence schema'   : file('scripts/codex-plugin-activation.schema.json'),
             'release asset manifest'  : file('scripts/release-assets.sh'),
     ])
 }
