@@ -1,7 +1,6 @@
 package io.github.mbackschat.a12.dm.cli.rule;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.nio.file.Path;
 
@@ -12,6 +11,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
 import io.github.mbackschat.a12.dm.cli.CliTestSupport;
+import io.github.mbackschat.a12.dm.rulekit.catalog.OperatorCatalog;
 
 /**
  * G30 — operand-aware fix selection on the {@code rule check} TEXT path. A kernel-REJECTED condition text has
@@ -34,13 +34,18 @@ class RuleCheckOperandCorrectiveTest {
         return null;
     }
 
+    private static String catalogFix(String... operands) {
+        return OperatorCatalog.load().correctiveFix("LessThan", "MVK_INVALID_TYPE_FOR_COMPARISON",
+                java.util.List.of(operands)).orElseThrow();
+    }
+
     @Test
     void dateVsIsoLiteralGetsTheDateCorrective(@TempDir Path dir) throws Exception {
         Path model = CliTestSupport.orderRuled(dir);
         var res = CliTestSupport.run("-m", model.toString(), "rule", "check",
                 "--field", "/Order/OrderDate", "--condition", "[/Order/OrderDate] < \"2024-12-31\"", "--code", "X");
         String fix = fixFor(res.out(), "MVK_INVALID_TYPE_FOR_COMPARISON");
-        assertTrue(fix != null && fix.startsWith("one side is a DATE"),
+        assertEquals(catalogFix("date", "string-literal"), fix,
                 () -> "date-vs-ISO-literal gets the date-literal corrective, not the union: " + res.out());
     }
 
@@ -51,7 +56,7 @@ class RuleCheckOperandCorrectiveTest {
                 "--field", "/Order/CustomerName",
                 "--condition", "[/Order/CustomerName] < [/Order/ProductCode]", "--code", "X");
         String fix = fixFor(res.out(), "MVK_INVALID_TYPE_FOR_COMPARISON");
-        assertEquals("ordering needs numbers or dates — compare the strings with == / != instead", fix,
+        assertEquals(catalogFix("string", "string"), fix,
                 () -> "string-vs-string gets the string corrective, not the union: " + res.out());
     }
 }

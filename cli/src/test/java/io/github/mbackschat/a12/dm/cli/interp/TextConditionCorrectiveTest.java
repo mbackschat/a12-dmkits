@@ -12,6 +12,7 @@ import org.junit.jupiter.api.Test;
 import io.github.mbackschat.a12.dm.cli.CliTestSupport;
 import io.github.mbackschat.a12.dm.core.ModelIndex;
 import io.github.mbackschat.a12.dm.core.Severity;
+import io.github.mbackschat.a12.dm.rulekit.catalog.OperatorCatalog;
 import io.github.mbackschat.a12.dm.rulekit.validate.Diagnostic;
 import io.github.mbackschat.a12.dm.rulekit.validate.DiagnosticSource;
 
@@ -38,15 +39,21 @@ class TextConditionCorrectiveTest {
         return out.get(0).fix().orElse("");
     }
 
+    private static String catalogFix(String... operands) {
+        return OperatorCatalog.load().correctiveFix("LessThan", "MVK_INVALID_TYPE_FOR_COMPARISON",
+                List.of(operands)).orElseThrow();
+    }
+
     @Test
     void upgradesDateVsIsoLiteralToTheDateCorrective() {
-        assertTrue(fixFor("[/Order/OrderDate] < \"2024-12-31\"").startsWith("one side is a DATE"),
+        assertEquals(catalogFix("date", "string-literal"),
+                fixFor("[/Order/OrderDate] < \"2024-12-31\""),
                 "a classifiable date-vs-ISO-literal is upgraded off the union");
     }
 
     @Test
     void upgradesStringVsStringToTheStringCorrective() {
-        assertEquals("ordering needs numbers or dates — compare the strings with == / != instead",
+        assertEquals(catalogFix("string", "string"),
                 fixFor("[/Order/CustomerName] < [/Order/ProductCode]"));
     }
 
