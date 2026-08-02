@@ -38,6 +38,14 @@ type ActiveNumberTraversal = Readonly<{
 const reverseDirection = (direction: BoundaryDirection): BoundaryDirection =>
   direction === "caller-to-library" ? "library-to-caller" : "caller-to-library";
 
+const participatesInBoundary = (
+  declaration: ts.Declaration | undefined,
+  surfaceRoot: string,
+): boolean => declaration !== undefined &&
+  // A dependency-owned declaration is still part of our callable contract when a public entry point
+  // consumes it. Only TypeScript's ambient standard library is outside the package boundary by definition.
+  (declaredWithin(declaration, surfaceRoot) || !declaration.getSourceFile().hasNoDefaultLib);
+
 const inboundNumberLeaves = (
   checker: ts.TypeChecker,
   type: ts.Type,
@@ -88,7 +96,7 @@ const inboundNumberLeaves = (
     }
 
     const callbacks = type.getCallSignatures()
-      .filter((signature) => declaredWithin(signature.getDeclaration(), surfaceRoot));
+      .filter((signature) => participatesInBoundary(signature.getDeclaration(), surfaceRoot));
     if (callbacks.length > 0) {
       // A callable reverses direction for its parameters and preserves it for its answer. Thus the direct
       // parameter of a caller-supplied callback is output, while a method on that output object reverses
@@ -117,7 +125,7 @@ const inboundNumberLeaves = (
     const properties = checker.getPropertiesOfType(type)
       .filter(publicDeclaration)
       .filter((property) => property.getDeclarations()?.some((declaration) =>
-        declaredWithin(declaration, surfaceRoot)) ?? false)
+        participatesInBoundary(declaration, surfaceRoot)) ?? false)
       .flatMap((property) => {
         const declaration = property.valueDeclaration ?? property.getDeclarations()?.[0];
         if (declaration === undefined) {

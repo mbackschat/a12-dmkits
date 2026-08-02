@@ -1,4 +1,4 @@
-import {mkdtempSync, rmSync, writeFileSync} from "node:fs";
+import {mkdirSync, mkdtempSync, rmSync, writeFileSync} from "node:fs";
 import {tmpdir} from "node:os";
 import {join} from "node:path";
 import {strict as assert} from "node:assert";
@@ -12,9 +12,15 @@ import {
 
 test("derives inbound numeric leaves without treating outputs as inputs", () => {
   const directory = mkdtempSync(join(tmpdir(), "a12-boundary-contract-"));
-  const declaration = join(directory, "index.d.ts");
+  const surface = join(directory, "surface");
+  const declaration = join(surface, "index.d.ts");
   try {
+    mkdirSync(surface);
+    writeFileSync(join(directory, "external.d.ts"), `
+      export interface ExternalOptions { readonly limit: number; }
+    `);
     writeFileSync(declaration, `
+      import type {ExternalOptions} from "../external.js";
       export interface RecursiveDocument {
         readonly [name: string]: string | number | RecursiveDocument;
       }
@@ -28,6 +34,8 @@ test("derives inbound numeric leaves without treating outputs as inputs", () => 
         static set threshold(value: number);
         static direct(values: readonly number[], options?: Options): number;
         static factory(): Promise<{readonly nested: {run(limit: number): void}}>;
+        static external(options: ExternalOptions): void;
+        static builtin(date: Date): void;
         set quota(value: number);
         read(document: RecursiveDocument): void;
         callback(run: (outbound: {
@@ -47,6 +55,7 @@ test("derives inbound numeric leaves without treating outputs as inputs", () => 
       "Surface.callback.run.return.answer",
       "Surface.direct.options.nested.maximum",
       "Surface.direct.values[]",
+      "Surface.external.options.limit",
       "Surface.factory.return.nested.run.limit",
       "Surface.quota.value",
       "Surface.read.document.*",
