@@ -319,11 +319,28 @@ tasks.register('staleGapGuardTest', Test) {
     rootProject.guardInputs(it, staleGapGuardInputs)
 }
 
+// MutationTailSingleSourceTest parses production Java source and reads the authored demonstration registry at
+// runtime. Compiled classes are insufficient inputs: a comment containing a fake ModelWrite marker compiles to
+// identical bytecode, which is exactly one planted vacuity control. Keep this narrow task source-sensitive.
+tasks.register('mutationTailGuardTest', Test) {
+    description = 'Structural and denominator guard for the one shared CLI model-mutation ending.'
+    group = 'verification'
+    testClassesDirs = sourceSets.test.output.classesDirs
+    classpath = sourceSets.test.runtimeClasspath
+    filter {
+        includeTestsMatching 'io.github.mbackschat.a12.dm.cli.MutationTailSingleSourceTest'
+    }
+    rootProject.guardInputs(it, [
+            'CLI production Java': rootProject.fileTree('cli/src/main/java') { include '**/*.java' },
+            'verb demonstrations': rootProject.file('cli/src/main/resources/verb-examples.json')])
+}
+
 tasks.named('test') {
     dependsOn 'docGuardTest'
     dependsOn 'evalGuardTest'
     dependsOn 'semanticsMapGuardTest'
     dependsOn 'staleGapGuardTest'
+    dependsOn 'mutationTailGuardTest'
     // The repo-file-reading guards live in docGuardTest / semanticsMapGuardTest (with the right inputs); keep
     // them OUT of the cacheable main suite so a docs/model-only edit can't invalidate all ~620 tests.
     filter {
@@ -343,6 +360,7 @@ tasks.named('test') {
         excludeTestsMatching 'io.github.mbackschat.a12.dm.cli.StaleGapReferenceClassifierTest'
         excludeTestsMatching 'io.github.mbackschat.a12.dm.cli.eval.EvalGoldOracleTest'
         excludeTestsMatching 'io.github.mbackschat.a12.dm.cli.eval.EvalSuiteLedgerTest'
+        excludeTestsMatching 'io.github.mbackschat.a12.dm.cli.MutationTailSingleSourceTest'
         // During tracing this one assertion necessarily reads the PRE-CAPTURE committed metadata. Exclude
         // only it; capture-native-config.sh copies the generated file and runs the class immediately after.
         // Every other test remains mandatory, so a real red suite cannot be swallowed by the capture.

@@ -4,6 +4,9 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.io.IOException;
+import java.io.InputStream;
+import java.net.URI;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -13,6 +16,21 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import javax.tools.JavaCompiler;
+import javax.tools.SimpleJavaFileObject;
+import javax.tools.ToolProvider;
+
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+
+import com.sun.source.tree.IdentifierTree;
+import com.sun.source.tree.MemberSelectTree;
+import com.sun.source.tree.MethodInvocationTree;
+import com.sun.source.tree.ReturnTree;
+import com.sun.source.tree.Tree;
+import com.sun.source.util.JavacTask;
+import com.sun.source.util.TreeScanner;
+
 import org.junit.jupiter.api.Test;
 
 import picocli.CommandLine;
@@ -21,10 +39,11 @@ import picocli.CommandLine;
  * A model-editing verb ends through {@link BaseCommand#emitMutation}, not through its own copy of the tail.
  *
  * <p><b>The denominator is the live editing surface, not a writer spelling.</b> Every editing leaf advertises
- * {@code --dry-run}; the guard walks the real picocli tree and requires each such leaf to use {@link ModelWrite}
- * or carry a reasoned custom-tail disposition. The old guard searched for the literal {@code Files.writeString(},
- * so {@code Files.write(}, a buffered writer, or a new helper could all recreate the tail without entering its
- * denominator. Artifact writers have no {@code --dry-run} and are correctly outside this editing invariant.
+ * {@code --dry-run}; the guard walks the real picocli tree and reconciles it with the independently authored
+ * preview demonstrations. Each leaf must structurally return {@code emitMutation(ModelWrite.of(...))} in the
+ * parsed Java syntax tree or carry a reasoned custom-tail disposition. Comments, strings, and unused
+ * {@code ModelWrite} constructions are not syntax-tree dispositions. Artifact writers have no preview
+ * demonstration and are correctly outside this editing invariant.
  *
  * <p>The behaviour a duplicate tail would get wrong is covered separately by {@link MutationWriteFailureTest}
  * and {@link MutationEvidenceTest}. This source guard owns the structural invariant that an editing command has
@@ -34,13 +53,24 @@ class MutationTailSingleSourceTest {
 
     private static final Path SOURCES = Path.of("src/main/java");
     private static final Path COMMANDS = SOURCES.resolve("io/github/mbackschat/a12/dm/cli");
-    private static final String SHARED_TAIL = "ModelWrite.of(";
+    private static final ObjectMapper MAPPER = new ObjectMapper();
 
     /** Editing routes whose output shape cannot use the one-model {@code emitMutation} ending. */
     private static final Map<String, String> CUSTOM_TAILS = Map.of(
             "apply", "one transaction envelope over a staged sequence, not a single edit",
             "group extract", "writes two artifacts — the slimmed base and the extracted sub-model",
             "patterns", "four routes, two of which are a verdict and a rejection rather than a write");
+
+    /** Editing routes demonstrated through a schema example, or whose one-token leaf also has read modes. */
+    private static final Map<String, String> NON_PREVIEW_DEMONSTRATION_EDITORS = Map.of(
+            "apply", "its apply-frame example is the independently executed demonstration",
+            "computation add", "its rich-input schema example is executed under --dry-run",
+            "computation modify", "its rich-input schema example is executed under --dry-run",
+            "field add", "its rich-input schema example is executed under --dry-run",
+            "field modify", "its rich-input schema example is executed under --dry-run",
+            "rule add", "its rich-input schema example is executed under --dry-run",
+            "meta", "the same one-token leaf carries read and modify modes",
+            "patterns", "the same one-token leaf carries read, verdict, preview, and write modes");
 
     @Test
     void everyLiveEditingVerbUsesTheSharedTailOrHasAReasonedDisposition() throws Exception {
@@ -77,7 +107,7 @@ class MutationTailSingleSourceTest {
         Set<String> sourceUsers = new LinkedHashSet<>();
         try (var paths = Files.walk(COMMANDS)) {
             for (Path path : paths.filter(candidate -> candidate.toString().endsWith(".java")).toList()) {
-                if (Files.readString(path).contains(SHARED_TAIL)) {
+                if (structurallyReturnsSharedTail(path.toString(), Files.readString(path))) {
                     sourceUsers.add(SOURCES.relativize(path).toString());
                 }
             }
@@ -94,6 +124,54 @@ class MutationTailSingleSourceTest {
                 "the denominator is --dry-run membership, so the writer implementation cannot hide a new tail");
     }
 
+    @Test
+    void aCommentCannotPretendToUseTheSharedTail() {
+        EditingVerb verb = new EditingVerb("probe mutate", Map.of(
+                "ProbeCommand.java", "class Probe { void run() { /* ModelWrite.of(fake) */ } }"));
+        assertFalse(verb.usesSharedTail(), "a source comment is not a structural disposition");
+    }
+
+    @Test
+    void anUnusedModelWriteCannotPretendToReachTheSharedTail() {
+        EditingVerb verb = new EditingVerb("probe mutate", Map.of(
+                "ProbeCommand.java", "class Probe { void run() { ModelWrite.of(fake); writePrivately(); } }"));
+        assertFalse(verb.usesSharedTail(), "constructing an unused ModelWrite does not reach emitMutation");
+    }
+
+    @Test
+    void theLiveDryRunSurfaceEqualsTheIndependentlyAuthoredEditingSurface() throws Exception {
+        Set<String> live = new LinkedHashSet<>();
+        for (EditingVerb verb : liveEditingVerbs()) {
+            live.add(verb.name());
+        }
+
+        Set<String> authored = new LinkedHashSet<>(NON_PREVIEW_DEMONSTRATION_EDITORS.keySet());
+        try (InputStream input = MutationTailSingleSourceTest.class.getResourceAsStream("/verb-examples.json")) {
+            assertTrue(input != null, "verb-examples.json must remain a packaged resource");
+            JsonNode examples = MAPPER.readTree(input);
+            examples.fields().forEachRemaining(entry -> {
+                if (entry.getValue().isObject() && "preview".equals(entry.getValue().path("expect").asText())) {
+                    authored.add(entry.getKey());
+                }
+            });
+        }
+
+        NON_PREVIEW_DEMONSTRATION_EDITORS.forEach((verb, reason) -> {
+            assertTrue(live.contains(verb), () -> verb + " is a stale editing-surface disposition");
+            assertFalse(reason.isBlank(), () -> verb + " needs a reason for not using a preview demonstration");
+        });
+        assertTrue(editingSurfaceMismatch(authored, live).isEmpty(),
+                () -> "the live --dry-run routes and the independently authored editing demonstrations disagree: "
+                        + editingSurfaceMismatch(authored, live));
+    }
+
+    @Test
+    void anAuthoredEditorWithoutDryRunFailsTheDenominatorReconciliation() {
+        assertEquals(List.of("missing --dry-run: probe mutate"),
+                editingSurfaceMismatch(Set.of("probe mutate"), Set.of()),
+                "the authored side must catch an editing command that forgot the live option used as denominator");
+    }
+
     private static List<String> unclassifiedEditingVerbs(List<EditingVerb> verbs) {
         return verbs.stream()
                 .filter(verb -> !verb.usesSharedTail())
@@ -101,6 +179,15 @@ class MutationTailSingleSourceTest {
                 .map(EditingVerb::name)
                 .sorted()
                 .toList();
+    }
+
+    private static List<String> editingSurfaceMismatch(Set<String> authored, Set<String> live) {
+        List<String> mismatch = new ArrayList<>();
+        authored.stream().filter(verb -> !live.contains(verb)).sorted()
+                .forEach(verb -> mismatch.add("missing --dry-run: " + verb));
+        live.stream().filter(verb -> !authored.contains(verb)).sorted()
+                .forEach(verb -> mismatch.add("not authored as editing: " + verb));
+        return mismatch;
     }
 
     private static List<EditingVerb> liveEditingVerbs() throws Exception {
@@ -145,17 +232,84 @@ class MutationTailSingleSourceTest {
     private record EditingVerb(String name, Map<String, String> sources) {
 
         private boolean usesSharedTail() {
-            return sources.values().stream().anyMatch(source -> source.contains(SHARED_TAIL));
+            return sources.entrySet().stream()
+                    .anyMatch(entry -> structurallyReturnsSharedTail(entry.getKey(), entry.getValue()));
         }
 
         private Set<String> sharedTailSourceKeys() {
             Set<String> keys = new LinkedHashSet<>();
             sources.forEach((key, source) -> {
-                if (source.contains(SHARED_TAIL)) {
+                if (structurallyReturnsSharedTail(key, source)) {
                     keys.add(key);
                 }
             });
             return keys;
         }
+    }
+
+    private static boolean structurallyReturnsSharedTail(String fileName, String source) {
+        JavaCompiler compiler = ToolProvider.getSystemJavaCompiler();
+        if (compiler == null) {
+            throw new IllegalStateException("MutationTailSingleSourceTest requires a JDK compiler");
+        }
+        var file = new SimpleJavaFileObject(URI.create("string:///" + Path.of(fileName).getFileName()),
+                javax.tools.JavaFileObject.Kind.SOURCE) {
+            @Override public CharSequence getCharContent(boolean ignoreEncodingErrors) {
+                return source;
+            }
+        };
+        JavacTask task = (JavacTask) compiler.getTask(null, null, null, List.of("-proc:none"), null, List.of(file));
+        try {
+            for (var unit : task.parse()) {
+                if (Boolean.TRUE.equals(new SharedTailReturnScanner().scan(unit, null))) {
+                    return true;
+                }
+            }
+            return false;
+        } catch (IOException e) {
+            throw new IllegalStateException("cannot parse " + fileName, e);
+        }
+    }
+
+    private static final class SharedTailReturnScanner extends TreeScanner<Boolean, Void> {
+        @Override public Boolean visitReturn(ReturnTree node, Void unused) {
+            if (node.getExpression() instanceof MethodInvocationTree invocation
+                    && "emitMutation".equals(methodName(invocation.getMethodSelect()))
+                    && invocation.getArguments().size() == 1
+                    && Boolean.TRUE.equals(new ModelWriteFactoryScanner().scan(invocation.getArguments().get(0), null))) {
+                return true;
+            }
+            return super.visitReturn(node, unused);
+        }
+
+        @Override public Boolean reduce(Boolean left, Boolean right) {
+            return Boolean.TRUE.equals(left) || Boolean.TRUE.equals(right);
+        }
+    }
+
+    private static final class ModelWriteFactoryScanner extends TreeScanner<Boolean, Void> {
+        @Override public Boolean visitMethodInvocation(MethodInvocationTree node, Void unused) {
+            if (node.getMethodSelect() instanceof MemberSelectTree member
+                    && "of".contentEquals(member.getIdentifier())
+                    && member.getExpression() instanceof IdentifierTree owner
+                    && "ModelWrite".contentEquals(owner.getName())) {
+                return true;
+            }
+            return super.visitMethodInvocation(node, unused);
+        }
+
+        @Override public Boolean reduce(Boolean left, Boolean right) {
+            return Boolean.TRUE.equals(left) || Boolean.TRUE.equals(right);
+        }
+    }
+
+    private static String methodName(Tree method) {
+        if (method instanceof IdentifierTree identifier) {
+            return identifier.getName().toString();
+        }
+        if (method instanceof MemberSelectTree member) {
+            return member.getIdentifier().toString();
+        }
+        return "";
     }
 }
