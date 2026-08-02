@@ -23,16 +23,18 @@ verify_activation_evidence() {
   jq -e -s '
     any(.[]; .type == "item.completed" and .item.type == "command_execution"
       and .item.exit_code == 0
-      and ((.item.command // "") | contains("/skills/a12-dmtool/SKILL.md")))
+      and ((.item.command // "")
+        | test("^(/bin/)?cat( --)? [^\\r\\n;&|<>#]+/skills/a12-dmtool/SKILL\\.md$")))
   ' "$events" >/dev/null || {
-    echo "Codex activation smoke: no successful command read the selected skill" >&2
+    echo "Codex activation smoke: no successful standalone cat command read the selected skill" >&2
     return 1
   }
 
   ready_path="$(jq -er -s '
     [.[] | select(.type == "item.completed" and .item.type == "command_execution"
       and .item.exit_code == 0
-      and ((.item.command // "") | contains("ensure-dmtool.sh"))
+      and ((.item.command // "")
+        | test("^(/bin/)?bash [^\\r\\n;&|<>#]+/skills/a12-dmtool/ensure-dmtool\\.sh$"))
       and ((.item.aggregated_output // "") | contains("dmtool ready:"))
       and (((.item.aggregated_output // "") | contains("dmtool plugin:")) | not))
       | (.item.aggregated_output // "")
@@ -41,6 +43,10 @@ verify_activation_evidence() {
   ' "$events")" || return 1
   [[ "$ready_path" == /* ]] || {
     echo "Codex activation smoke: installer did not report an absolute path: $ready_path" >&2
+    return 1
+  }
+  [[ -x "$ready_path" ]] || {
+    echo "Codex activation smoke: installer-reported binary is not executable: $ready_path" >&2
     return 1
   }
 
@@ -101,6 +107,8 @@ self_test_evidence() (
   events="$work/events.jsonl"
   result="$work/result.json"
   ready="$work/dmtool"
+  printf '#!/bin/sh\nexit 0\n' > "$ready"
+  chmod +x "$ready"
   envelope='{"target":"model","op":"check","outcome":"read","ok":true,"valid":true,"verification":"KERNEL_CONFIRMED","diagnostics":[],"written":false}'
   good_command="/bin/zsh -lc '$ready -m model.json model check'"
 
@@ -136,6 +144,16 @@ self_test_evidence() (
   cat "$work/comment.jsonl" >> "$work/prefix.jsonl"
   if verify_activation_evidence "$work/prefix.jsonl" "$result" >/dev/null 2>&1; then
     echo "Codex activation smoke self-test: a commented command suffix survived" >&2
+    return 1
+  fi
+
+  # Reading and installing are prerequisites too: mentioning their paths in comments must not count as
+  # executing them. The final command is exact, so these two planted spoofs isolate the prerequisite checks.
+  jq -nc '{type:"item.completed",item:{type:"command_execution",command:"true # /tmp/plugins/dmtool/skills/a12-dmtool/SKILL.md",aggregated_output:"",exit_code:0}}' > "$work/spoofed-prerequisites.jsonl"
+  jq -nc --arg ready "$ready" '{type:"item.completed",item:{type:"command_execution",command:"printf installer-output # /tmp/plugins/dmtool/skills/a12-dmtool/ensure-dmtool.sh",aggregated_output:("dmtool ready: " + $ready + "\n"),exit_code:0}}' >> "$work/spoofed-prerequisites.jsonl"
+  tail -n 1 "$events" >> "$work/spoofed-prerequisites.jsonl"
+  if verify_activation_evidence "$work/spoofed-prerequisites.jsonl" "$result" >/dev/null 2>&1; then
+    echo "Codex activation smoke self-test: commented skill/installer prerequisites survived" >&2
     return 1
   fi
   echo "Codex activation smoke self-test: discriminator fires"
@@ -220,7 +238,7 @@ fi
 
 EVENTS="$WORK/events.jsonl"
 RESULT="$WORK/result.json"
-PROMPT="Check whether model.json is statically consistent with A12. Use the authoritative tool available in this fresh session. If the tool is not on PATH, follow whatever installed workflow is available to make it ready. After the installer prints its absolute path, run that path as its own command with exactly these arguments: -m model.json model check. Do not pipe, redirect, wrap, or chain the model-check command. Return the requested evidence object from that command's JSON envelope; command is the unwrapped absolute-path command."
+PROMPT="Check whether model.json is statically consistent with A12. Use the authoritative tool available in this fresh session. Read the selected a12-dmtool SKILL.md by running cat on that file as a standalone command. If the tool is not on PATH, run its adjacent ensure-dmtool.sh as a standalone bash command. After the installer prints its absolute path, run that path as its own command with exactly these arguments: -m model.json model check. Do not pipe, redirect, wrap, or chain any of those three evidence commands. Return the requested evidence object from the model-check command's JSON envelope; command is the unwrapped absolute-path command."
 MODEL="${CODEX_ACTIVATION_MODEL:-gpt-5.6-sol}"
 EFFORT="${CODEX_ACTIVATION_REASONING_EFFORT:-xhigh}"
 EXEC_ENV=(env CODEX_HOME="$SMOKE_HOME" TMPDIR="$WORK/codex-tmp")

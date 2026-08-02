@@ -25,6 +25,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 
 import com.sun.source.tree.IdentifierTree;
 import com.sun.source.tree.MemberSelectTree;
+import com.sun.source.tree.MethodTree;
 import com.sun.source.tree.MethodInvocationTree;
 import com.sun.source.tree.ReturnTree;
 import com.sun.source.tree.Tree;
@@ -61,16 +62,9 @@ class MutationTailSingleSourceTest {
             "group extract", "writes two artifacts — the slimmed base and the extracted sub-model",
             "patterns", "four routes, two of which are a verdict and a rejection rather than a write");
 
-    /** Editing routes demonstrated through a schema example, or whose one-token leaf also has read modes. */
+    /** Editing routes whose one-token leaf also has read modes. Rich-input editors derive from SchemaCommand. */
     private static final Map<String, String> NON_PREVIEW_DEMONSTRATION_EDITORS = Map.of(
-            "apply", "its apply-frame example is the independently executed demonstration",
-            "computation add", "its rich-input schema example is executed under --dry-run",
-            "computation modify", "its rich-input schema example is executed under --dry-run",
-            "field add", "its rich-input schema example is executed under --dry-run",
-            "field modify", "its rich-input schema example is executed under --dry-run",
-            "rule add", "its rich-input schema example is executed under --dry-run",
-            "meta", "the same one-token leaf carries read and modify modes",
-            "patterns", "the same one-token leaf carries read, verdict, preview, and write modes");
+            "meta", "the same one-token leaf carries read and modify modes");
 
     @Test
     void everyLiveEditingVerbUsesTheSharedTailOrHasAReasonedDisposition() throws Exception {
@@ -139,6 +133,32 @@ class MutationTailSingleSourceTest {
     }
 
     @Test
+    void anUnreachableSharedTailCannotHideTheRealPrivateWriter() {
+        EditingVerb verb = new EditingVerb("probe mutate", Map.of(
+                "ProbeCommand.java", "class Probe { Integer call() { writePrivately(); "
+                        + "if (false) return emitMutation(ModelWrite.of(fake)); return 0; } }"));
+        assertFalse(verb.usesSharedTail(), "an unreachable shared-tail return is not the command's terminal path");
+    }
+
+    @Test
+    void aSharedTailInAnUnusedHelperCannotHideTheRealPrivateWriter() {
+        EditingVerb verb = new EditingVerb("probe mutate", Map.of(
+                "ProbeCommand.java", "class Probe { Integer call() { writePrivately(); return 0; } "
+                        + "Integer unused() { return emitMutation(ModelWrite.of(fake)); } }"));
+        assertFalse(verb.usesSharedTail(), "a helper the command never invokes is not its mutation tail");
+    }
+
+    @Test
+    void richInputEditorsAreDerivedFromTheSchemaRegistry() {
+        assertTrue(schemaDemonstratedEditors().containsAll(Set.of(
+                "rule add", "computation add", "computation modify", "field add", "field modify",
+                "typedef add", "typedef modify")),
+                "every rich-input editor must enter the authored denominator without a hand-copied name list");
+        assertFalse(schemaDemonstratedEditors().contains("profile synthesize"),
+                "a schema-described artifact producer is not a model editor");
+    }
+
+    @Test
     void theLiveDryRunSurfaceEqualsTheIndependentlyAuthoredEditingSurface() throws Exception {
         Set<String> live = new LinkedHashSet<>();
         for (EditingVerb verb : liveEditingVerbs()) {
@@ -146,6 +166,8 @@ class MutationTailSingleSourceTest {
         }
 
         Set<String> authored = new LinkedHashSet<>(NON_PREVIEW_DEMONSTRATION_EDITORS.keySet());
+        authored.addAll(schemaDemonstratedEditors());
+        authored.addAll(CUSTOM_TAILS.keySet());
         try (InputStream input = MutationTailSingleSourceTest.class.getResourceAsStream("/verb-examples.json")) {
             assertTrue(input != null, "verb-examples.json must remain a packaged resource");
             JsonNode examples = MAPPER.readTree(input);
@@ -188,6 +210,12 @@ class MutationTailSingleSourceTest {
         live.stream().filter(verb -> !authored.contains(verb)).sorted()
                 .forEach(verb -> mismatch.add("not authored as editing: " + verb));
         return mismatch;
+    }
+
+    private static Set<String> schemaDemonstratedEditors() {
+        Set<String> editors = new LinkedHashSet<>(SchemaCommand.INPUT_OPS.keySet());
+        editors.removeAll(SchemaCommand.ARTIFACT_OPS.keySet());
+        return editors;
     }
 
     private static List<EditingVerb> liveEditingVerbs() throws Exception {
@@ -261,7 +289,7 @@ class MutationTailSingleSourceTest {
         JavacTask task = (JavacTask) compiler.getTask(null, null, null, List.of("-proc:none"), null, List.of(file));
         try {
             for (var unit : task.parse()) {
-                if (Boolean.TRUE.equals(new SharedTailReturnScanner().scan(unit, null))) {
+                if (Boolean.TRUE.equals(new CommandTerminalReturnScanner().scan(unit, null))) {
                     return true;
                 }
             }
@@ -271,15 +299,18 @@ class MutationTailSingleSourceTest {
         }
     }
 
-    private static final class SharedTailReturnScanner extends TreeScanner<Boolean, Void> {
-        @Override public Boolean visitReturn(ReturnTree node, Void unused) {
-            if (node.getExpression() instanceof MethodInvocationTree invocation
+    private static final class CommandTerminalReturnScanner extends TreeScanner<Boolean, Void> {
+        @Override public Boolean visitMethod(MethodTree node, Void unused) {
+            if ("call".contentEquals(node.getName()) && node.getBody() != null
+                    && !node.getBody().getStatements().isEmpty()
+                    && node.getBody().getStatements().getLast() instanceof ReturnTree terminal
+                    && terminal.getExpression() instanceof MethodInvocationTree invocation
                     && "emitMutation".equals(methodName(invocation.getMethodSelect()))
                     && invocation.getArguments().size() == 1
                     && Boolean.TRUE.equals(new ModelWriteFactoryScanner().scan(invocation.getArguments().get(0), null))) {
                 return true;
             }
-            return super.visitReturn(node, unused);
+            return false;
         }
 
         @Override public Boolean reduce(Boolean left, Boolean right) {

@@ -13,6 +13,19 @@ native_executable_format() {
   esac
 }
 
+valid_model_check_envelope() {
+  local output="$1"
+  jq -e '
+    type == "object"
+    and .target == "model"
+    and .op == "check"
+    and .ok == true
+    and .valid == true
+    and .verification == "KERNEL_CONFIRMED"
+    and .written == false
+  ' <<< "$output" >/dev/null 2>&1
+}
+
 verify_without_java() {
   local binary="$1" expected_version="$2" work="$3" model="$4"
   local output status first_line manifest_output version_pattern check_output
@@ -64,12 +77,7 @@ verify_without_java() {
       "$status" "$check_output" >&2
     return 1
   fi
-  if [[ ! "$check_output" =~ \"target\"[[:space:]]*:[[:space:]]*\"model\" \
-      || ! "$check_output" =~ \"op\"[[:space:]]*:[[:space:]]*\"check\" \
-      || ! "$check_output" =~ \"ok\"[[:space:]]*:[[:space:]]*true \
-      || ! "$check_output" =~ \"valid\"[[:space:]]*:[[:space:]]*true \
-      || ! "$check_output" =~ \"verification\"[[:space:]]*:[[:space:]]*\"KERNEL_CONFIRMED\" \
-      || ! "$check_output" =~ \"written\"[[:space:]]*:[[:space:]]*false ]]; then
+  if ! valid_model_check_envelope "$check_output"; then
     printf 'native no-Java smoke: functional model check returned the wrong envelope: %s\n' "$check_output" >&2
     return 1
   fi
@@ -109,10 +117,15 @@ EOF
     echo "native no-Java smoke self-test: a Java-dependent launcher survived" >&2
     return 1
   fi
+  if valid_model_check_envelope 'garbage "target":"model" "op":"check" "ok":true "valid":true "verification":"KERNEL_CONFIRMED" "written":false'; then
+    echo "native no-Java smoke self-test: non-JSON model-check output survived" >&2
+    return 1
+  fi
   echo "native no-Java smoke self-test: discriminator fires"
 )
 
 if [[ "${1:-}" == "--self-test" ]]; then
+  command -v jq >/dev/null 2>&1 || { echo "native no-Java smoke self-test: missing jq" >&2; exit 2; }
   self_test
   exit 0
 fi
@@ -124,6 +137,7 @@ fi
 
 BINARY="$1"
 EXPECTED_VERSION="$2"
+command -v jq >/dev/null 2>&1 || { echo "native no-Java smoke: missing jq" >&2; exit 2; }
 [[ -x "$BINARY" ]] || { echo "native no-Java smoke: not executable: $BINARY" >&2; exit 2; }
 WORK="$(mktemp -d)"
 trap 'rm -rf "$WORK"' EXIT

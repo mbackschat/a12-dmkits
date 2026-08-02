@@ -182,7 +182,8 @@ jobs:
           echo "== manifest (catalog reflection) =="
           "$BIN" manifest | norm > /tmp/m.txt; grep -Eq '"a12Distribution" *: *"2025.06-ext5"' /tmp/m.txt
           echo "== model check (kernel reflection) =="
-          "$BIN" -m examples/models/order-ruled.dm.json model check | norm > /tmp/mv.txt; grep -Eq '"valid" *: *true' /tmp/mv.txt
+          "$BIN" -m examples/models/order-ruled.dm.json model check | norm > /tmp/mv.txt
+          jq -e '.target == "model" and .op == "check" and .ok == true and .valid == true and .verification == "KERNEL_CONFIRMED" and .written == false' /tmp/mv.txt >/dev/null
           # /Order/... is a POSIX-looking arg → git-bash rewrites it to C:/Program Files/Git/Order/... (MSYS
           # path conversion) → "not a rule". MSYS_NO_PATHCONV=1 passes it verbatim. Windows/git-bash-only —
           # NOT reproducible on mac/linux, so only the Windows CI reveals it.
