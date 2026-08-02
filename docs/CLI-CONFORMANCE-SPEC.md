@@ -68,7 +68,7 @@ The recurring failure mode is subtle: you add a verb, it *works*, it's *listed* 
 | **demonstrated** | carries a CI-executed worked invocation an agent can see *in action* | the self-describing verbs |
 | **status-free** | no verb/param description carries roadmap language (`TODO`, `not yet`, `for now`, `coming soon`, …) | none |
 | **verdict-provenance** | `valid` appears only on a verdict route (`model`/`rule`/`workspace check`, `patterns scaffold`) | the list itself is the ledger, checked in both directions |
-| **runtime-attribution** | a verb whose demonstrated envelope names `engine:DM_INTERPRETER` never attributes its runtime output to the kernel in its manifest description, example intent, or output-schema description | denominator derived from executed demonstrations; the real shipped false sentence is the positive control |
+| **runtime-attribution** | every verb in the independent `SchemaCommand.DOC_INPUT` denominator must emit `engine:DM_INTERPRETER` and never attribute runtime output to the kernel in its manifest description, example intent, or output-schema description where present | denominator and observed engine are checked in both directions; the real shipped false sentence is the positive control |
 | **receipt-totality** | a preview that ran the consistency oracle publishes `verification` | `VerbDemonstrationTest.UNGATED_PREVIEW` — today only `model normalize`, with its reason |
 | **`--text` renders** | an envelope verb's `--text` output is not the JSON envelope | the artifact/raw verbs, which have no envelope |
 

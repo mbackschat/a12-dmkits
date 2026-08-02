@@ -106,42 +106,51 @@ class VerbDemonstrationTest {
     }
 
     /**
-     * Runtime ownership is derived from the demonstrated envelope, not maintained as a verb-name list. An
-     * interpreter-backed verb may describe A12 input or kernel-matched semantics, but it must not tell an agent
-     * that the runtime output was produced by the kernel. The three texts inspected here are exactly the ones a
-     * cold consumer reads before or while interpreting output: manifest description, example intent, and the
-     * output data-schema description. The shared document-input schema is deliberately excluded; it correctly
-     * names A12's kernel-owned serializer format rather than attributing evaluation to it.
+     * Runtime ownership is derived from {@link SchemaCommand#DOC_INPUT}, the independent directional-contract
+     * denominator for every verb that evaluates a document instance. Every member must actually emit
+     * {@code engine:DM_INTERPRETER}; deriving the denominator from the engine value itself would skip a newly
+     * mislabelled verb while the old three kept a floor green. An interpreter-backed verb may describe A12 input
+     * or kernel-matched semantics, but it must not tell an agent that the runtime output was produced by the
+     * kernel. The texts inspected are the manifest description, example intent, and the output data-schema
+     * description where one exists. The shared document-input schema is deliberately excluded; it correctly names
+     * A12's kernel-owned serializer format rather than attributing evaluation to it.
      */
     @Test
     void interpreterBackedDemonstrationsNeverAttributeRuntimeOutputToTheKernel(@TempDir Path dir) throws Exception {
         JsonNode manifest = M.readTree(CliTestSupport.run("manifest").out());
         JsonNode corpus = corpus();
         List<String> violations = new ArrayList<>();
-        int interpreterVerbs = 0;
+        java.util.Set<String> checked = new java.util.LinkedHashSet<>();
 
-        for (JsonNode verb : manifest.path("verbs")) {
-            String name = verb.path("verb").asText();
-            JsonNode example = corpus.get(name);
-            if (example == null || !List.of("read", "preview").contains(example.path("expect").asText())) {
-                continue;
+        for (String name : SchemaCommand.DOC_INPUT.keySet()) {
+            JsonNode verb = null;
+            for (JsonNode candidate : manifest.path("verbs")) {
+                if (name.equals(candidate.path("verb").asText())) {
+                    verb = candidate;
+                    break;
+                }
             }
+            assertTrue(verb != null, () -> name + " is in DOC_INPUT but absent from the live manifest");
+            JsonNode example = corpus.get(name);
+            assertTrue(example != null, () -> name + " is in DOC_INPUT but has no demonstration");
             JsonNode envelope = M.readTree(
                     CliTestSupport.run(materialize(name, example, dir).toArray(new String[0])).out());
-            if (!RuntimeEvidence.Engine.DM_INTERPRETER.name().equals(envelope.path("engine").asText())) {
-                continue;
-            }
-            interpreterVerbs++;
+            assertEquals(RuntimeEvidence.Engine.DM_INTERPRETER.name(), envelope.path("engine").asText(),
+                    () -> name + " consumes a runtime document instance but does not identify the interpreter: "
+                            + envelope);
+            checked.add(name);
             List<String> command = List.of("schema", verb.path("target").asText(), verb.path("op").asText());
             JsonNode contract = M.readTree(CliTestSupport.run(command.toArray(String[]::new)).out());
             auditRuntimeAttribution(name, "manifest description", verb.path("description").asText(), violations);
             auditRuntimeAttribution(name, "example intent", example.path("intent").asText(), violations);
-            auditRuntimeAttribution(name, "data-schema description",
-                    contract.path("dataSchema").path("description").asText(), violations);
+            if (contract.has("dataSchema")) {
+                auditRuntimeAttribution(name, "data-schema description",
+                        contract.path("dataSchema").path("description").asText(), violations);
+            }
         }
 
-        assertTrue(interpreterVerbs >= 3,
-                "the derived denominator must include model eval, model compute, and rule eval");
+        assertEquals(SchemaCommand.DOC_INPUT.keySet(), checked,
+                "every document-instance runtime contract must be checked exactly once");
         assertTrue(violations.isEmpty(), () -> "interpreter-backed runtime claims attributed output to the kernel:\n  "
                 + String.join("\n  ", violations));
     }
