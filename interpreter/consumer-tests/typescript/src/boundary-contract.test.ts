@@ -30,7 +30,10 @@ test("derives inbound numeric leaves without treating outputs as inputs", () => 
         static factory(): Promise<{readonly nested: {run(limit: number): void}}>;
         set quota(value: number);
         read(document: RecursiveDocument): void;
-        callback(run: (outbound: {readonly ignored: number}) => {readonly answer: number}): void;
+        callback(run: (outbound: {
+          readonly ignored: number;
+          use(limit: number, report: (ignored: number) => {readonly answer: number}): void;
+        }) => {readonly answer: number}): void;
         readonly outputOnly: number;
       }
       declare function hidden(value: number): void;
@@ -39,6 +42,8 @@ test("derives inbound numeric leaves without treating outputs as inputs", () => 
     assert.deepEqual(deriveInboundNumberPaths(declaration), [
       "Fault.constructor.position",
       "Surface.Widget.constructor.size",
+      "Surface.callback.run.outbound.use.limit",
+      "Surface.callback.run.outbound.use.report.return.answer",
       "Surface.callback.run.return.answer",
       "Surface.direct.options.nested.maximum",
       "Surface.direct.values[]",

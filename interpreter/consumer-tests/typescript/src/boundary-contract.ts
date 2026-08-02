@@ -29,31 +29,46 @@ const parameterType = (
   parameter.valueDeclaration ?? signature.getDeclaration(),
 );
 
+type BoundaryDirection = "caller-to-library" | "library-to-caller";
+type ActiveNumberTraversal = Readonly<{
+  readonly callerToLibrary: Set<ts.Type>;
+  readonly libraryToCaller: Set<ts.Type>;
+}>;
+
+const reverseDirection = (direction: BoundaryDirection): BoundaryDirection =>
+  direction === "caller-to-library" ? "library-to-caller" : "caller-to-library";
+
 const inboundNumberLeaves = (
   checker: ts.TypeChecker,
   type: ts.Type,
   path: string,
-  active: Set<ts.Type>,
+  direction: BoundaryDirection,
+  active: ActiveNumberTraversal,
+  surfaceRoot: string,
 ): string[] => {
   if ((type.flags & ts.TypeFlags.NumberLike) !== 0) {
-    return [path];
+    return direction === "caller-to-library" ? [path] : [];
   }
   if ((type.flags & ts.TypeFlags.TypeParameter) !== 0) {
     const constraint = checker.getBaseConstraintOfType(type);
     return constraint === undefined
       ? []
-      : inboundNumberLeaves(checker, constraint, path, active);
+      : inboundNumberLeaves(checker, constraint, path, direction, active, surfaceRoot);
   }
   if ((type.flags & (ts.TypeFlags.Object | ts.TypeFlags.Union | ts.TypeFlags.Intersection)) === 0) {
     return [];
   }
-  if (active.has(type)) {
+  const activeTypes = direction === "caller-to-library"
+    ? active.callerToLibrary
+    : active.libraryToCaller;
+  if (activeTypes.has(type)) {
     return [];
   }
-  active.add(type);
+  activeTypes.add(type);
   try {
     if (type.isUnionOrIntersection()) {
-      return type.types.flatMap((member) => inboundNumberLeaves(checker, member, path, active));
+      return type.types.flatMap((member) =>
+        inboundNumberLeaves(checker, member, path, direction, active, surfaceRoot));
     }
     const typeName = type.aliasSymbol?.getName() ?? type.getSymbol()?.getName();
     const typeReference = (type.flags & ts.TypeFlags.Object) !== 0 &&
@@ -62,23 +77,47 @@ const inboundNumberLeaves = (
       : undefined;
     if ((typeName === "Promise" || typeName === "PromiseLike") && typeReference !== undefined) {
       const promised = checker.getTypeArguments(typeReference)[0];
-      return promised === undefined ? [] : inboundNumberLeaves(checker, promised, path, active);
+      return promised === undefined
+        ? []
+        : inboundNumberLeaves(checker, promised, path, direction, active, surfaceRoot);
     }
     if (checker.isArrayType(type) || checker.isTupleType(type)) {
       const reference = type as ts.TypeReference;
       return checker.getTypeArguments(reference).flatMap((element) =>
-        inboundNumberLeaves(checker, element, `${path}[]`, active));
+        inboundNumberLeaves(checker, element, `${path}[]`, direction, active, surfaceRoot));
     }
 
-    const callbacks = type.getCallSignatures();
+    const callbacks = type.getCallSignatures()
+      .filter((signature) => declaredWithin(signature.getDeclaration(), surfaceRoot));
     if (callbacks.length > 0) {
-      // The library supplies callback parameters; only the callback's answer crosses caller → library.
-      return callbacks.flatMap((signature) =>
-        inboundNumberLeaves(checker, signature.getReturnType(), `${path}.return`, active));
+      // A callable reverses direction for its parameters and preserves it for its answer. Thus the direct
+      // parameter of a caller-supplied callback is output, while a method on that output object reverses
+      // direction again and its arguments are caller input.
+      return callbacks.flatMap((signature) => [
+        ...signature.getParameters().flatMap((parameter) =>
+          inboundNumberLeaves(
+            checker,
+            parameterType(checker, signature, parameter),
+            `${path}.${parameter.getName()}`,
+            reverseDirection(direction),
+            active,
+            surfaceRoot,
+          )),
+        ...inboundNumberLeaves(
+          checker,
+          signature.getReturnType(),
+          `${path}.return`,
+          direction,
+          active,
+          surfaceRoot,
+        ),
+      ]);
     }
 
     const properties = checker.getPropertiesOfType(type)
       .filter(publicDeclaration)
+      .filter((property) => property.getDeclarations()?.some((declaration) =>
+        declaredWithin(declaration, surfaceRoot)) ?? false)
       .flatMap((property) => {
         const declaration = property.valueDeclaration ?? property.getDeclarations()?.[0];
         if (declaration === undefined) {
@@ -88,16 +127,18 @@ const inboundNumberLeaves = (
           checker,
           checker.getTypeOfSymbolAtLocation(property, declaration),
           `${path}.${property.getName()}`,
+          direction,
           active,
+          surfaceRoot,
         );
       });
     const stringIndex = checker.getIndexTypeOfType(type, ts.IndexKind.String);
     const indexed = stringIndex === undefined
       ? []
-      : inboundNumberLeaves(checker, stringIndex, `${path}.*`, active);
+      : inboundNumberLeaves(checker, stringIndex, `${path}.*`, direction, active, surfaceRoot);
     return [...properties, ...indexed];
   } finally {
-    active.delete(type);
+    activeTypes.delete(type);
   }
 };
 
@@ -105,12 +146,15 @@ const signatureLeaves = (
   checker: ts.TypeChecker,
   signature: ts.Signature,
   owner: string,
+  surfaceRoot: string,
 ): string[] => signature.getParameters().flatMap((parameter) =>
   inboundNumberLeaves(
     checker,
     parameterType(checker, signature, parameter),
     `${owner}.${parameter.getName()}`,
-    new Set(),
+    "caller-to-library",
+    {callerToLibrary: new Set(), libraryToCaller: new Set()},
+    surfaceRoot,
   ));
 
 const declaredWithin = (
@@ -182,7 +226,7 @@ const surfaceValueLeaves = (
     const callable = type.getCallSignatures()
       .filter((signature) => declaredWithin(signature.getDeclaration(), surfaceRoot))
       .flatMap((signature) => [
-        ...signatureLeaves(checker, signature, owner),
+        ...signatureLeaves(checker, signature, owner, surfaceRoot),
         ...surfaceValueLeaves(
           checker,
           signature.getReturnType(),
@@ -195,7 +239,7 @@ const surfaceValueLeaves = (
     const constructable = type.getConstructSignatures()
       .filter((signature) => declaredWithin(signature.getDeclaration(), surfaceRoot))
       .flatMap((signature) => [
-        ...signatureLeaves(checker, signature, `${owner}.constructor`),
+        ...signatureLeaves(checker, signature, `${owner}.constructor`, surfaceRoot),
         ...surfaceValueLeaves(
           checker,
           signature.getReturnType(),
@@ -219,7 +263,9 @@ const surfaceValueLeaves = (
           ?.filter(ts.isSetAccessorDeclaration)
           .flatMap((setter) => {
             const signature = checker.getSignatureFromDeclaration(setter);
-            return signature === undefined ? [] : signatureLeaves(checker, signature, propertyOwner);
+            return signature === undefined
+              ? []
+              : signatureLeaves(checker, signature, propertyOwner, surfaceRoot);
           }) ?? [];
         return [
           ...setters,

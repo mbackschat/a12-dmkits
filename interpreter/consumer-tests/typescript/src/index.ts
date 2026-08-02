@@ -504,6 +504,10 @@ const boundaryClassifications = {
     disposition: "safe",
     reason: "host-authored Error detail records an observation and has no numeric domain",
   },
+  "PreparedModel.createInterpreter.configuration.customConditions.*.invocation.document.value.pointer.coordinates[]": {
+    disposition: "safe",
+    reason: "the callback can return only a package-owned FieldPointer whose bridge identity and coordinates were validated at its factory",
+  },
   "ModelWorkspace.collect.options.limits.maxModelBytes": {
     disposition: "hostile-packed-test",
     reason: "resource ceilings must be positive portable integers before bridge serialization",
