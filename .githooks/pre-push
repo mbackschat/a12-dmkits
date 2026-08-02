@@ -1,0 +1,6 @@
+#!/bin/sh
+# Keep the generated public README source statistics current before commits leave the clone.
+set -eu
+
+ROOT=$(git rev-parse --show-toplevel)
+exec "$ROOT/scripts/update-code-statistics.sh" --check --allow-missing-lean

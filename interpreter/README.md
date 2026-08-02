@@ -115,6 +115,22 @@ The clean-room implementation is tested against the normative dynamic-Groovy Ker
 
 The core is MIT-licensed and contains no Kernel bytecode or runtime dependency. Supported model time zones are `UTC`, `GMT`, and `Europe/Berlin`; all four A12 Date precisions are supported. `supportReport()` and the `unsupported` members on validation and computation results keep unsupported programs explicit; each entry's `subject` says whether it addresses a model element or a single Document cell.
 
+<!-- source-statistics:interpreter-source:start -->
+## Source statistics
+
+Generated with [Tokei](https://github.com/XAMPPRocky/tokei) from the standalone interpreter library and its authored TypeScript facade. Tests, fixtures, generated output, build trees, and code embedded in Markdown are excluded.
+
+| Language | Files | Code | Comments | Blanks |
+|---|---:|---:|---:|---:|
+| Java | 0 | 0 | 0 | 0 |
+| Kotlin | 106 | 17385 | 6324 | 2180 |
+| TypeScript | 11 | 1385 | 228 | 168 |
+| Lean | 0 | 0 | 0 | 0 |
+
+Regenerate with `./scripts/update-code-statistics.sh`; pushes and release assembly reject stale values.
+<!-- source-statistics:interpreter-source:inputs java=none kotlin=1c1c7245f62819f820af334cff9ed1c75f46a08b typescript=e879b8a00ed945f104f0c83d3bb17ade2d4ffe67 lean=none measurements=5babe6eb3d7ad27a0412a1b3485efaaab26ac733 -->
+<!-- source-statistics:interpreter-source:end -->
+
 ## Documentation
 
 - [Developer API guide](https://github.com/mbackschat/a12-interpreter-releases/blob/v0.10.1/site/api/v0.10.1/INTERPRETER-API-GUIDE.md)

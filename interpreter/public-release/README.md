@@ -94,6 +94,22 @@ Java callers use the same JVM artifact; `ModelWorkspaceJava.collect` projects as
 
 The browser showcase uses this same public provider/workspace boundary. You can use its built-in examples or select your own local folder, model files, and Document; selected files remain in the browser.
 
+<!-- source-statistics:interpreter-release:start -->
+## Source statistics
+
+Generated with [Tokei](https://github.com/XAMPPRocky/tokei) from the standalone interpreter library, TypeScript facade, and browser showcase. Tests, fixtures, generated output, build trees, and code embedded in Markdown are excluded.
+
+| Language | Files | Code | Comments | Blanks |
+|---|---:|---:|---:|---:|
+| Java | 0 | 0 | 0 | 0 |
+| Kotlin | 106 | 17385 | 6324 | 2180 |
+| TypeScript | 17 | 3190 | 269 | 277 |
+| Lean | 0 | 0 | 0 | 0 |
+
+Regenerate with `./scripts/update-code-statistics.sh`; pushes and release assembly reject stale values.
+<!-- source-statistics:interpreter-release:inputs java=none kotlin=1c1c7245f62819f820af334cff9ed1c75f46a08b typescript=5862c52523a21ee1f935ef3d7e7e95e3399c7877 lean=none measurements=99741b2bfb79409f1a818a7bc5db6d62d21a81d5 -->
+<!-- source-statistics:interpreter-release:end -->
+
 ## Release contents
 
 This release contains:

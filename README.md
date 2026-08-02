@@ -806,6 +806,24 @@ Runtime evaluation — *which rules fire on this document, what does each comput
 
 ---
 
+<!-- source-statistics:root:start -->
+## Source statistics
+
+Generated with [Tokei](https://github.com/XAMPPRocky/tokei) from the production sources in this repository and the sibling A12 Lean formalization. Tests, fixtures, generated output, build trees, and code embedded in Markdown are excluded.
+
+| Language | Files | Code | Comments | Blanks |
+|---|---:|---:|---:|---:|
+| Java | 453 | 43813 | 11987 | 6445 |
+| Kotlin | 106 | 17385 | 6324 | 2180 |
+| TypeScript | 17 | 3190 | 269 | 277 |
+| Lean | 664 | 100386 | 8591 | 15678 |
+
+Regenerate with `./scripts/update-code-statistics.sh`; pushes and release assembly reject stale values.
+<!-- source-statistics:root:inputs java=6dba4b2cf6c49d05b67880aa1b1d2defc2dccdd8 kotlin=1c1c7245f62819f820af334cff9ed1c75f46a08b typescript=5862c52523a21ee1f935ef3d7e7e95e3399c7877 lean=24bb51a201682b52b98be715f2e3a5d7465a8d0a measurements=4642f3b4823827205179cf63986fdaac57eb1dea -->
+<!-- source-statistics:root:end -->
+
+---
+
 ## Documentation
 
 Start at the **[docs index](docs/README.md)**; the rest of the map:
@@ -863,13 +881,13 @@ Other useful tasks:
 
 ## Commit hooks
 
-A committed `commit-msg` hook (`.githooks/commit-msg`) enforces the repo's commit convention — Conventional Commits subject, subject-only by default, no bullet lists or test counts. Enable it once per clone:
+The committed hooks enforce the commit-message convention and reject stale generated source statistics before push. Enable them once per clone:
 
 ```sh
 git config core.hooksPath .githooks
 ```
 
-It hard-rejects the mechanical violations and reminds on the judgment rule; bypass a single commit with `git commit --no-verify`. To apply the same check across all your repos, point your global git template at it — copy the hook into `~/.git-template/hooks` and set `git config --global init.templateDir ~/.git-template`.
+The `commit-msg` hook hard-rejects mechanical convention violations and reminds on the judgment rule. The `pre-push` hook checks the Tokei blocks in every public README; run `./scripts/update-code-statistics.sh` and commit the result when it reports drift. Install Tokei with `brew install tokei` on macOS. Release assembly repeats the relevant check, so `--no-verify` cannot publish stale values. To apply the commit-message check across all your repos, point your global Git template at it — copy that hook into `~/.git-template/hooks` and set `git config --global init.templateDir ~/.git-template`.
 
 ## License
 

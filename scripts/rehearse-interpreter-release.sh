@@ -123,6 +123,15 @@ create_fixture() {
     release-mirror-common.sh; do
     cp "$ROOT/scripts/$script" "$SOURCE/scripts/$script"
   done
+  cat > "$SOURCE/scripts/update-code-statistics.sh" <<'EOF'
+#!/usr/bin/env bash
+set -euo pipefail
+[[ "$#" -eq 3 && "$1" == "--check" && "$2" == "--artifact" && "$3" == "interpreter" ]] || {
+  echo "synthetic source-statistics check received unexpected arguments: $*" >&2
+  exit 2
+}
+EOF
+  chmod +x "$SOURCE/scripts/update-code-statistics.sh"
   printf "version = '%s'\n" "$build_version" > "$SOURCE/build.gradle"
   printf '%s\n' '/build/' > "$SOURCE/.gitignore"
   create_synthetic_builder "$SOURCE/build.sh"

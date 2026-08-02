@@ -92,7 +92,7 @@ codex plugin add dmtool
 
 The Codex plugin lives under [`codex/`](codex/); the marketplace manifest at `.agents/plugins/marketplace.json` points Codex at it. Codex users can also drop the bundled [`codex/AGENTS.md`](codex/AGENTS.md) into their own repo's `AGENTS.md` to keep dmtool guidance always in context.
 
-Start a **new Codex session after installation**; Codex loads a plugin's bundled skills when the next CLI session starts. The skill then uses the same on-demand installer. Skill-launched commands do not receive the hook-only `PLUGIN_DATA` variable, so the installer uses a version-aware sandbox-writable temporary cache on Codex and the agent invokes the exact path it prints. A failed cache write warns without printing `dmtool ready`.
+Start a **new Codex session after installation**; Codex loads a plugin's bundled skills when the next CLI session starts. The skill then uses the same on-demand installer. Skill-launched commands do not receive the hook-only `PLUGIN_DATA` variable, so the installer uses a version-aware sandbox-writable temporary cache on Codex and the agent invokes the exact path it prints. A failed cache write warns without printing the installer's ready marker.
 
 ## Install — raw binary (no agent)
 
@@ -206,6 +206,22 @@ Import is **best-effort** — it maps as much as possible (even unbounded arrays
 End-to-end walkthroughs of **every verb** — command + real captured output — live in [`examples/`](examples/) (full [index](examples/README.md)): discovering the tool, reading & **reviewing** a model (`model report` / `model diff`), the rule/computation edit loop, structure editing with the safe-delete gate, the atomic `apply` session, runtime evaluation, **JSON Schema ⇄ model** interop, custom field types & conditions, multi-file **workspaces**, and the version/compatibility surface.
 
 Want ideas for what to *ask*? [`SCENARIOS.md`](SCENARIOS.md) catalogues realistic **multi-step sessions** — ordered, plain-language asks you can hand to your agent verbatim: from-scratch authoring, evolving an existing model's rules, refactors, computations, and more.
+
+<!-- source-statistics:dmtool:start -->
+## Source statistics
+
+Generated with [Tokei](https://github.com/XAMPPRocky/tokei) from the production sources linked into the dmtool artifact. Tests, fixtures, generated output, build trees, and code embedded in Markdown are excluded.
+
+| Language | Files | Code | Comments | Blanks |
+|---|---:|---:|---:|---:|
+| Java | 453 | 43813 | 11987 | 6445 |
+| Kotlin | 106 | 17385 | 6324 | 2180 |
+| TypeScript | 0 | 0 | 0 | 0 |
+| Lean | 0 | 0 | 0 | 0 |
+
+Regenerate with `./scripts/update-code-statistics.sh`; pushes and release assembly reject stale values.
+<!-- source-statistics:dmtool:inputs java=6dba4b2cf6c49d05b67880aa1b1d2defc2dccdd8 kotlin=1c1c7245f62819f820af334cff9ed1c75f46a08b typescript=none lean=none measurements=b0ab6a736434bc0fbbfd7b8faa05119a16285dd9 -->
+<!-- source-statistics:dmtool:end -->
 
 ## Changelog
 
