@@ -106,8 +106,7 @@ Generated with [Tokei](https://github.com/XAMPPRocky/tokei) from the standalone 
 | TypeScript | 17 | 3190 | 269 | 277 |
 | Lean | 0 | 0 | 0 | 0 |
 
-Regenerate with `./scripts/update-code-statistics.sh`; pre-push refreshes a clean pushed HEAD and release assembly rejects stale values.
-<!-- source-statistics:interpreter-release:inputs java=none kotlin=1c1c7245f62819f820af334cff9ed1c75f46a08b typescript=5862c52523a21ee1f935ef3d7e7e95e3399c7877 lean=none measurements=99741b2bfb79409f1a818a7bc5db6d62d21a81d5 -->
+Maintainers regenerate this table with the local statistics updater; release assembly checks the table it publishes.
 <!-- source-statistics:interpreter-release:end -->
 
 ## Release contents
