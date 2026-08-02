@@ -82,7 +82,7 @@ final class ModelReportCommand extends BaseCommand {
                         ModelTreeData.project(json, resolver, root, depth, includes);
                 if (!projection.found()) {
                     String hint = Suggest.hint(projection.missingRoot(), projection.candidates());
-                    return refuseNotFound("model", "report", RkCode.NO_SUCH_ELEMENT,
+                    return refuseNotFound(RkCode.NO_SUCH_ELEMENT,
                             "no element at '" + projection.missingRoot() + "'" + hint,
                             projection.missingRoot(),
                             "pass an existing field/group path" + hint + " (see `model describe`)");
@@ -93,8 +93,7 @@ final class ModelReportCommand extends BaseCommand {
                 // opposite of what an inspection verb is for. So it honestly claims no verification, while the
                 // report below carries KERNEL_CONFIRMED: one verb, two evidence classes, which is exactly why
                 // evidence is derived per invocation and never from a verb table.
-                ResultEnvelope env = ResultEnvelope.queryResult("model", "report",
-                        summary.path("fields").asInt() + " field(s), "
+                ResultEnvelope env = ResultEnvelope.queryResult(resultIdentity(), summary.path("fields").asInt() + " field(s), "
                                 + summary.path("groups").asInt() + " group(s), "
                                 + summary.path("rules").asInt() + " rule(s), "
                                 + summary.path("computations").asInt() + " computation(s)",
@@ -103,7 +102,7 @@ final class ModelReportCommand extends BaseCommand {
                 return env.exitCode();
             }
             ModelReport report = ModelReport.of(json, resolver);
-            ResultEnvelope env = ResultEnvelope.queryResult("model", "report",
+            ResultEnvelope env = ResultEnvelope.queryResult(resultIdentity(),
                     report.rules().size() + " rule(s), " + report.computations().size() + " computation(s); "
                             + report.usage().unreferenced().size() + " unreferenced field(s)",
                     toData(report), ConsistencyEvidence.of(report));

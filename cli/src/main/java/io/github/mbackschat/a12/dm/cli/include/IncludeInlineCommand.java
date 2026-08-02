@@ -62,7 +62,7 @@ final class IncludeInlineCommand extends BaseCommand {
                 .require(SafetyChecks.includeExists(doc, alias))
                 .firstFailure();
         if (refusal.isPresent()) {
-            return refuse("include", "inline", refusal.get());
+            return refuse(refusal.get());
         }
         String reference = doc.includes().stream()
                 .filter(i -> i.alias().equals(alias)).map(ModelDocument.Include::reference)
@@ -80,7 +80,7 @@ final class IncludeInlineCommand extends BaseCommand {
             doc.inlineInclude(alias, includedJson.get());
             resultJson = doc.validate(resolver).toJson();
         } catch (ModelConsistencyException e) {
-            return emitKernelRejection("include", "inline", "inline left the model invalid", e);
+            return emitKernelRejection("inline left the model invalid", e);
         } catch (RuntimeException e) {
             return failEditGate(e);
         }
@@ -88,7 +88,7 @@ final class IncludeInlineCommand extends BaseCommand {
         ObjectNode changed = MAPPER.createObjectNode();
         changed.put("inlined", alias);
         changed.put("reference", reference);
-        return emitMutation(ModelWrite.of("include", "inline")
+        return emitMutation(ModelWrite.of(resultIdentity())
                 .summaries("would inline include " + alias,
                         "inlined include " + alias + " (folded " + reference + " back in)")
                 .changed(changed)

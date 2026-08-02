@@ -160,7 +160,7 @@ final class ConfigModifyCommand extends BaseCommand {
         }
         Optional<Refusal> configRefusal = mod.firstFailure();
         if (configRefusal.isPresent()) {
-            return refuse("config", "modify", configRefusal.get());
+            return refuse(configRefusal.get());
         }
         String modelJson;
         try {
@@ -174,7 +174,7 @@ final class ConfigModifyCommand extends BaseCommand {
                 .require(SafetyChecks.decimalSeparatorValid(decimalSeparator))
                 .firstFailure();
         if (refusal.isPresent()) {
-            return refuse("config", "modify", refusal.get());
+            return refuse(refusal.get());
         }
         ObjectNode changed = MAPPER.createObjectNode();
         // T4: the setter cascade + `changed` report is single-sourced with the `apply` CONFIG_MODIFY op.
@@ -187,12 +187,12 @@ final class ConfigModifyCommand extends BaseCommand {
             mod.applyTo(session, changed);
             resultJson = session.validate().toJson();
         } catch (ModelConsistencyException e) {
-            return emitKernelRejection("config", "modify", "the config change is rejected by the kernel", e);
+            return emitKernelRejection("the config change is rejected by the kernel", e);
         } catch (RuntimeException e) {
             return failEditGate(e);
         }
         var advisories = mod.advisories();
-        return emitMutation(ModelWrite.of("config", "modify")
+        return emitMutation(ModelWrite.of(resultIdentity())
                 .summaries("would change document config",
                         "changed document config")
                 .changed(changed)

@@ -98,7 +98,7 @@ final class WorkspaceGraphCommand extends BaseCommand {
                             .put("resolved", e.resolved());
                 }
                 // a directory scan + header parse; no model is loaded through the consistency gate
-                ResultEnvelope env = ResultEnvelope.queryResult("workspace", "graph",
+                ResultEnvelope env = ResultEnvelope.queryResult(resultIdentity(),
                         models.size() + " model(s), " + edges.size() + " inheritance edge(s) under " + dir,
                         data, ConsistencyEvidence.none());
                 out().print(env.toJsonString());

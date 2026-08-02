@@ -87,7 +87,7 @@ final class TypedefModifyCommand extends BaseCommand {
         // the existence precheck runs BEFORE the --kind/spec arg-combo check, so a missing typedef always
         // gives the structured RK_NO_SUCH_TYPEDEF (not a bare usage error) regardless of the other args.
         if (!doc.typeDefinitionIds().contains(id)) {
-            return refuseNotFound("typedef", "modify", RkCode.NO_SUCH_TYPEDEF, "no type definition '" + id + "'",
+            return refuseNotFound(RkCode.NO_SUCH_TYPEDEF, "no type definition '" + id + "'",
                     id, "modify an existing type definition (list them with `typedef read` — no arg); "
                             + "to declare a new one use `typedef add`. type definitions: " + doc.typeDefinitionIds());
         }
@@ -98,7 +98,7 @@ final class TypedefModifyCommand extends BaseCommand {
         try {
             if (specPath != null) {
                 JsonNode spec = MAPPER.readTree(Files.readString(Path.of(specPath)));
-                Optional<Integer> rejected = rejectUnknownKeys("typedef", "modify", "typedef-add", spec);
+                Optional<Integer> rejected = rejectUnknownKeys("typedef-add", spec);
                 if (rejected.isPresent()) {
                     return rejected.get();
                 }
@@ -117,7 +117,7 @@ final class TypedefModifyCommand extends BaseCommand {
         try {
             resultJson = doc.validate(resolver).toJson();
         } catch (ModelConsistencyException e) {
-            return emitKernelRejection("typedef", "modify", "the modified type definition is rejected by the kernel", e);
+            return emitKernelRejection("the modified type definition is rejected by the kernel", e);
         } catch (RuntimeException e) {
             return failEditGate(e);
         }
@@ -125,7 +125,7 @@ final class TypedefModifyCommand extends BaseCommand {
         changed.put("modified", id);
         // echo the persisted kind through the resolver — the clean ValueKind name, same as `typedef read`
         changed.put("kind", doc.typeDefinitionKind(id).orElseThrow());
-        return emitMutation(ModelWrite.of("typedef", "modify")
+        return emitMutation(ModelWrite.of(resultIdentity())
                 .summaries("would modify typedef " + id,
                         "modified typedef " + id)
                 .changed(changed)

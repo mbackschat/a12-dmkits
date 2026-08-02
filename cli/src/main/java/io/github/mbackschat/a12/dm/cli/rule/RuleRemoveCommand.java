@@ -68,7 +68,7 @@ final class RuleRemoveCommand extends BaseCommand {
                 .require(SafetyChecks.ruleExists(KernelAdapter.ofJson(json, resolver), rule))
                 .firstFailure();
         if (refusal.isPresent()) {
-            return refuse("rule", "remove", refusal.get());
+            return refuse(refusal.get());
         }
         String result;
         BoundModel reduced;
@@ -83,7 +83,7 @@ final class RuleRemoveCommand extends BaseCommand {
 
         ObjectNode changed = MAPPER.createObjectNode();
         changed.put("removed", rule);
-        return emitMutation(ModelWrite.of("rule", "remove")
+        return emitMutation(ModelWrite.of(resultIdentity())
                 .summaries("would remove rule " + rule,
                         "removed rule " + rule)
                 .changed(changed)

@@ -99,7 +99,7 @@ final class GroupAttachmentCommand extends BaseCommand {
         }
         Optional<Refusal> refusal = gate.firstFailure();
         if (refusal.isPresent()) {
-            return refuse("group", "attachment", refusal.get());
+            return refuse(refusal.get());
         }
         String resultJson;
         try {
@@ -119,7 +119,7 @@ final class GroupAttachmentCommand extends BaseCommand {
             });
             resultJson = doc.validate(resolver).toJson();
         } catch (ModelConsistencyException e) {
-            return emitKernelRejection("group", "attachment", "the attachment group is rejected by the kernel", e);
+            return emitKernelRejection("the attachment group is rejected by the kernel", e);
         } catch (RuntimeException e) {
             return failEditGate(e);
         }
@@ -129,7 +129,7 @@ final class GroupAttachmentCommand extends BaseCommand {
         if (repeatable != null) {
             changed.put("repeatable", repeatable);
         }
-        return emitMutation(ModelWrite.of("group", "attachment")
+        return emitMutation(ModelWrite.of(resultIdentity())
                 .summaries("would add attachment group " + target,
                         "added attachment group " + target)
                 .changed(changed)

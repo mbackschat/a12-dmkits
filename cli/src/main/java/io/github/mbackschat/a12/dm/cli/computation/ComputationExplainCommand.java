@@ -67,7 +67,7 @@ final class ComputationExplainCommand extends BaseCommand {
                     .require(SafetyChecks.computationExists(adapter, computation))
                     .firstFailure();
             if (refusal.isPresent()) {
-                return refuse("computation", "explain", refusal.get());
+                return refuse(refusal.get());
             }
             ReadComputation read = adapter.readComputation(computation);
             JsonNode data;
@@ -83,7 +83,7 @@ final class ComputationExplainCommand extends BaseCommand {
                 data = d;
                 summary = computation + " is Opaque (not modeled)";
             }
-            ResultEnvelope env = ResultEnvelope.queryResult("computation", "explain", summary, data,
+            ResultEnvelope env = ResultEnvelope.queryResult(resultIdentity(), summary, data,
                     ConsistencyEvidence.of(bound));
             out().print(env.toJsonString());
             return env.exitCode();

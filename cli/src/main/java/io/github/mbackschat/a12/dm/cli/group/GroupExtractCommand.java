@@ -86,7 +86,7 @@ final class GroupExtractCommand extends BaseCommand {
                 .require(SafetyChecks.subtreeSelfContained(KernelAdapter.ofJson(modelJson, dirResolver), group))
                 .firstFailure();
         if (refusal.isPresent()) {
-            return refuse("group", "extract", refusal.get());
+            return refuse(refusal.get());
         }
 
         String subModel;
@@ -105,7 +105,7 @@ final class GroupExtractCommand extends BaseCommand {
         try {
             composedPair.validate();
         } catch (ModelConsistencyException e) {
-            return emitKernelRejection("group", "extract", "extraction left the model invalid", e);
+            return emitKernelRejection("extraction left the model invalid", e);
         }
         // §6 gate: the sub-model must be valid ON ITS OWN, not only inside the composed pair — else a carried
         // rule whose absolute operands couldn't be re-based ships as a broken artifact (probe 01-de Finding 6).
@@ -113,8 +113,8 @@ final class GroupExtractCommand extends BaseCommand {
         try {
             EditSession.read(subModel).validate();
         } catch (ModelConsistencyException e) {
-            return emitKernelRejection("group", "extract",
-                    "the extracted sub-model is invalid on its own — a carried rule's paths could not be re-based to the sub-model root", e);
+            return emitKernelRejection("the extracted sub-model is invalid on its own — a carried rule's paths "
+                    + "could not be re-based to the sub-model root", e);
         }
 
         // write the extracted sub-model into the first workspace root (-w / $DMTOOL_WORKSPACE / the model's folder)
@@ -125,7 +125,7 @@ final class GroupExtractCommand extends BaseCommand {
         changed.put("mountedAt", group);
         changed.put("subModel", subFile.toString());
         if (dryRun) {
-            ResultEnvelope env = ResultEnvelope.preview("group", "extract",
+            ResultEnvelope env = ResultEnvelope.preview(resultIdentity(),
                     "would extract " + group + " into sub-model " + reference, changed,
                     ConsistencyEvidence.of(composedPair));
             out().print(env.toJsonString());
@@ -138,7 +138,7 @@ final class GroupExtractCommand extends BaseCommand {
         } catch (IOException e) {
             return fail("cannot write output: " + e.getMessage());
         }
-        ResultEnvelope env = ResultEnvelope.applied("group", "extract",
+        ResultEnvelope env = ResultEnvelope.applied(resultIdentity(),
                 "extracted " + group + " into sub-model " + reference + " (" + subFile + ")", changed, dest,
                 ConsistencyEvidence.of(composedPair));
         out().print(env.toJsonString());

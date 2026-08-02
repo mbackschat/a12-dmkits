@@ -63,7 +63,7 @@ final class BatchCommand extends BaseCommand {
         // reads each child's exit from its item. Folding them into one code would discard exactly what the verb
         // exists to return, and there is no single code that could stand for a mixed run. Contrast `apply`, whose
         // ops are steps of ONE transaction and which therefore does derive its exit from that transaction.
-        ResultEnvelope env = ResultEnvelope.dispatchCompleted("batch", "run",
+        ResultEnvelope env = ResultEnvelope.dispatchCompleted(ResultIdentity.BATCH_RUN,
                 "dispatched " + results.size() + " op" + (results.size() == 1 ? "" : "s"), data);
         out().print(env.toJsonString());
         return env.exitCode();

@@ -67,7 +67,7 @@ final class ComputationRemoveCommand extends BaseCommand {
                 .require(SafetyChecks.computationExists(KernelAdapter.ofJson(json, resolver), computation))
                 .firstFailure();
         if (refusal.isPresent()) {
-            return refuse("computation", "remove", refusal.get());
+            return refuse(refusal.get());
         }
         String result;
         BoundModel reduced;
@@ -81,7 +81,7 @@ final class ComputationRemoveCommand extends BaseCommand {
         }
         ObjectNode changed = MAPPER.createObjectNode();
         changed.put("removed", computation);
-        return emitMutation(ModelWrite.of("computation", "remove")
+        return emitMutation(ModelWrite.of(resultIdentity())
                 .summaries("would remove computation " + computation,
                         "removed computation " + computation)
                 .changed(changed)

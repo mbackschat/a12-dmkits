@@ -71,14 +71,14 @@ final class RuleReadCommand extends BaseCommand {
         try {
             KernelAdapter adapter = KernelAdapter.ofJson(json, workspace.resolverFor(model));
             if (rule == null) {
-                return readNameIndex("rule", "rules", adapter.ruleFullNames(), ConsistencyEvidence.of(adapter));
+                return readNameIndex("rules", adapter.ruleFullNames(), ConsistencyEvidence.of(adapter));
             }
             String problem = ModelPaths.ruleProblem(adapter.ruleFullNames(), adapter.computationFullNames(), rule);
             if (problem != null) {
                 // structured refusal (RK_NO_SUCH_RULE), carrying the rich `problem` corrective (which detects
                 // a computation mistaken for a rule, a short-name/file-path slip, and lists the rules) as the
                 // fix — so a missing read target is machine-readable, not a plain-text stderr line
-                return refuseNotFound("rule", "read", RkCode.NO_SUCH_RULE, "no rule at '" + rule + "'", rule, problem);
+                return refuseNotFound(RkCode.NO_SUCH_RULE, "no rule at '" + rule + "'", rule, problem);
             }
             ReadResult read = adapter.read(rule);
             ObjectNode data = MAPPER.createObjectNode();
@@ -95,7 +95,7 @@ final class RuleReadCommand extends BaseCommand {
             putIfNotEmpty(data, "annotations", doc.annotations(rule));
             putIfNotEmpty(data, "internalDescription", doc.internalDescription(rule));
             putIfNotEmpty(data, "externalDescription", doc.externalDescription(rule));
-            ResultEnvelope env = ResultEnvelope.queryResult("rule", "read",
+            ResultEnvelope env = ResultEnvelope.queryResult(resultIdentity(),
                     read instanceof ReadResult.Converted ? "read " + rule : "read " + rule + " (Opaque)",
                     data, ConsistencyEvidence.of(adapter));
             out().print(env.toJsonString());

@@ -366,16 +366,9 @@ class VerbDemonstrationTest {
      * The envelope must identify the verb it came from — {@code target}/{@code op} are the command path, not free
      * prose: a two-token verb {@code X Y} reports {@code target=X, op=Y}, and a top-level verb ({@code meta},
      * {@code where-used}) reports itself as the target with {@code op=read}. Verified across every demonstrated
-     * verb rather than per verb, because the hazard is uniform: <b>every</b> {@link ResultEnvelope} factory opens
-     * with three adjacent {@code String}s ({@code target, op, summary}), so at ~150 call sites a swapped pair
-     * compiles, runs, and mis-attributes the result with nothing to catch it.
-     *
-     * <p>This is the property guard for that shape, and it is deliberately here rather than solved by changing the
-     * signatures: collapsing the pair into a value object would touch every call site while leaving the third
-     * {@code String} adjacent anyway, and deriving the identity from the live command spec — which would make the
-     * swap *unrepresentable*, the outcome the project's style rules prefer — is a cross-cutting refactor of every
-     * factory and its static callers. Recorded as such in CLI-CONFORMANCE-GAPS; until then the invariant is
-     * checked rather than assumed, over the surface the demonstration corpus already executes.
+     * verb rather than per verb. {@link ResultIdentity} now makes the former adjacent-string swap unrepresentable;
+     * this wire-level assertion stays as an independent end-to-end backstop that the right identity source was
+     * selected for each demonstrated route.
      */
     private static void assertEnvelopeIdentifiesItsOwnVerb(String verb, JsonNode env, CliTestSupport.Result res) {
         String[] path = verb.split(" ");

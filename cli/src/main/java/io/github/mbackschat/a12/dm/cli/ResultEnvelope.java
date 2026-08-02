@@ -29,7 +29,7 @@ import io.github.mbackschat.a12.dm.rulekit.validate.ValidationResult;
  *       {@link RuntimeEvidence}.</li>
  * </ul>
  *
- * <h2>Why this is a closed class with eight factories</h2>
+ * <h2>Why this is a closed class with factory-only construction</h2>
  *
  * <p>The predecessor was a {@code record} with a public canonical constructor and a
  * {@code read(target, op, summary, boolean valid, diagnostics, data)} factory. Both were defect generators, and the
@@ -60,27 +60,12 @@ import io.github.mbackschat.a12.dm.rulekit.validate.ValidationResult;
  * family compiles and publishes whatever members its factory happens to set. The factories are what constrain that,
  * so a new one must be read against this list, not trusted to be caught.
  *
- * <h2>What this refactor did NOT fix: the leading {@code (target, op, summary)}</h2>
+ * <h2>Command identity is derived, never repeated</h2>
  *
- * <p>Every factory below opens with <b>three adjacent {@code String}s</b> — the exact shape the project's own
- * long-parameter-list rule names as worst (several same-typed parameters, silently swap-prone), and the shape whose
- * {@code boolean valid} neighbour caused the defect this class exists to close. Saying so plainly matters, because the
- * builder rule was cited to justify the private {@link Draft} while the public surface kept the smell.
- *
- * <p>It is not closed here, and the reason is that the two available fixes are differently sized:
- * <ul>
- *   <li><b>A value object for the pair</b> ({@code Verb.of("field", "read")}) touches ~150 call sites, still leaves
- *       {@code summary} adjacent to it, and makes every call noisier — it moves the smell rather than removing it.</li>
- *   <li><b>Deriving the identity</b> from the live picocli spec, so a verb never states its own name, would make the
- *       swap <em>unrepresentable</em> — the outcome the style rules actually prefer. That is a cross-cutting change to
- *       every factory plus the static callers ({@code BaseCommand.kernelRejectionEnvelope}, {@code Cli}'s exception
- *       seam) that hold no command instance, so it is a design call to take deliberately, not a side effect of this
- *       one.</li>
- * </ul>
- *
- * <p>Until then the invariant is <b>checked instead of assumed</b>: {@code VerbDemonstrationTest} asserts that every
- * demonstrated verb's envelope echoes its own command path, so a swapped pair fails the build across the surface even
- * though it still compiles. Tracked in {@code CLI-CONFORMANCE-GAPS}.
+ * <p>Every factory takes one {@link ResultIdentity} before its summary. Ordinary verbs derive that identity from the
+ * live picocli leaf; multi-mode and synthetic routes use named, closed sources. No factory accepts adjacent
+ * {@code target}/{@code op}/{@code summary} strings, and {@code ResultIdentity} exposes no raw string-pair factory, so
+ * swapping the command path with its prose summary is not representable at a call site.
  *
  * @see ConsistencyEvidence the gate receipt that gates the {@code verification} key
  * @see RuntimeEvidence the engine/version triple every runtime observation carries
@@ -160,7 +145,7 @@ public final class ResultEnvelope {
     }
 
     /**
-     * The internal assembly step. Private because the eight factories are the whole public construction surface;
+     * The internal assembly step. Private because the named factories are the whole public construction surface;
      * fluent because the envelope has twelve members of which four are {@code String} and two are {@code JsonNode},
      * and a positional constructor over those is the silent-swap smell the project's builder rule exists to
      * forbid — most of all here, where a swap would misattribute a verdict.
@@ -181,10 +166,10 @@ public final class ResultEnvelope {
         private RuntimeEvidence runtimeEvidence;
         private ComparisonOutcome comparison;
 
-        private Draft(Family family, String target, String op, Outcome outcome, String summary) {
+        private Draft(Family family, ResultIdentity identity, Outcome outcome, String summary) {
             this.family = family;
-            this.target = target;
-            this.op = op;
+            this.target = identity.target();
+            this.op = identity.op();
             this.outcome = outcome;
             this.summary = summary;
         }
@@ -250,18 +235,18 @@ public final class ResultEnvelope {
      * @param evidence the gate receipt, or {@link ConsistencyEvidence#none()} — required explicitly, so an ungated
      *                 read is a decision on the record rather than a forgotten argument
      */
-    public static ResultEnvelope queryResult(String target, String op, String summary, JsonNode data,
+    public static ResultEnvelope queryResult(ResultIdentity identity, String summary, JsonNode data,
             ConsistencyEvidence evidence) {
-        return new Draft(Family.QUERY, target, op, Outcome.READ, summary)
+        return new Draft(Family.QUERY, identity, Outcome.READ, summary)
                 .data(data)
                 .verification(evidence.verification().orElse(null))
                 .build();
     }
 
     /** A query carrying advisory diagnostics alongside its payload (e.g. a version-skew note on a read). */
-    public static ResultEnvelope queryResult(String target, String op, String summary, JsonNode data,
+    public static ResultEnvelope queryResult(ResultIdentity identity, String summary, JsonNode data,
             List<Diagnostic> diagnostics, ConsistencyEvidence evidence) {
-        return new Draft(Family.QUERY, target, op, Outcome.READ, summary)
+        return new Draft(Family.QUERY, identity, Outcome.READ, summary)
                 .data(data)
                 .diagnostics(diagnostics)
                 .verification(evidence.verification().orElse(null))
@@ -283,14 +268,14 @@ public final class ResultEnvelope {
      * @throws IllegalStateException if {@code evidence} attests no gate — a verdict with nothing behind it is a
      *                               programming error, not a shape to serialize
      */
-    public static ResultEnvelope consistencyVerdict(String target, String op, String summary, boolean valid,
+    public static ResultEnvelope consistencyVerdict(ResultIdentity identity, String summary, boolean valid,
             List<Diagnostic> diagnostics, JsonNode data, ConsistencyEvidence evidence) {
         if (!evidence.gateRan()) {
-            throw new IllegalStateException("a consistency verdict for `" + target + " " + op + "` must carry the "
+            throw new IllegalStateException("a consistency verdict for `" + identity + "` must carry the "
                     + "gate that produced it — no gate ran on this path, so there is no verdict to report "
                     + "(use queryResult if this route only reads)");
         }
-        return new Draft(Family.VERDICT, target, op, Outcome.READ, summary)
+        return new Draft(Family.VERDICT, identity, Outcome.READ, summary)
                 .valid(valid)
                 .diagnostics(diagnostics)
                 .data(data)
@@ -309,9 +294,9 @@ public final class ResultEnvelope {
      * {@code valid:true} while the model was kernel-invalid. What they can honestly state is who computed the
      * answer, which {@link RuntimeEvidence} makes mandatory rather than optional.
      */
-    public static ResultEnvelope runtimeObservation(String target, String op, String summary, JsonNode data,
+    public static ResultEnvelope runtimeObservation(ResultIdentity identity, String summary, JsonNode data,
             RuntimeEvidence evidence) {
-        return new Draft(Family.RUNTIME_OBSERVATION, target, op, Outcome.READ, summary)
+        return new Draft(Family.RUNTIME_OBSERVATION, identity, Outcome.READ, summary)
                 .data(data)
                 .runtimeEvidence(evidence)
                 .build();
@@ -326,9 +311,9 @@ public final class ResultEnvelope {
      * <p>Profile equality is not model validity: this family exists so {@code compare} stops calling it
      * {@code valid} while <b>keeping exit 1 for {@code differs}</b> exactly as before.
      */
-    public static ResultEnvelope comparisonResult(String target, String op, String summary,
+    public static ResultEnvelope comparisonResult(ResultIdentity identity, String summary,
             ComparisonOutcome outcome, JsonNode data) {
-        return new Draft(Family.COMPARISON, target, op, Outcome.READ, summary)
+        return new Draft(Family.COMPARISON, identity, Outcome.READ, summary)
                 .comparison(outcome)
                 .data(data)
                 .build();
@@ -344,8 +329,8 @@ public final class ResultEnvelope {
      * pre-existing behaviour. Contrast {@code apply}, whose children are steps of ONE transaction with one
      * all-or-nothing outcome, and which therefore does derive its exit from that transaction.
      */
-    public static ResultEnvelope dispatchCompleted(String target, String op, String summary, JsonNode data) {
-        return new Draft(Family.DISPATCH, target, op, Outcome.COMPLETED, summary)
+    public static ResultEnvelope dispatchCompleted(ResultIdentity identity, String summary, JsonNode data) {
+        return new Draft(Family.DISPATCH, identity, Outcome.COMPLETED, summary)
                 .data(data)
                 .build();
     }
@@ -391,15 +376,15 @@ public final class ResultEnvelope {
      * @param evidence the gate receipt — obtained from the object that gated ({@code ModelDocument},
      *                 {@code EditSession}, a re-bound {@code BoundModel}), never named
      */
-    public static ResultEnvelope applied(String target, String op, String summary, JsonNode changed, String output,
+    public static ResultEnvelope applied(ResultIdentity identity, String summary, JsonNode changed, String output,
             ConsistencyEvidence evidence) {
-        return applied(target, op, summary, changed, List.of(), output, evidence);
+        return applied(identity, summary, changed, List.of(), output, evidence);
     }
 
     /** A mutating op that succeeded, carrying advisory diagnostics (e.g. lint warnings) alongside the write. */
-    public static ResultEnvelope applied(String target, String op, String summary, JsonNode changed,
+    public static ResultEnvelope applied(ResultIdentity identity, String summary, JsonNode changed,
             List<Diagnostic> diagnostics, String output, ConsistencyEvidence evidence) {
-        return mutation(MutationDisposition.APPLIED, target, op, summary, changed, diagnostics, evidence)
+        return mutation(MutationDisposition.APPLIED, identity, summary, changed, diagnostics, evidence)
                 .writtenTo(output)
                 .build();
     }
@@ -411,15 +396,15 @@ public final class ResultEnvelope {
      * receipt belongs here too. "Nothing was written" and "nothing was checked" are different facts, and an agent
      * deciding whether to re-run without {@code --dry-run} needs the second one.
      */
-    public static ResultEnvelope preview(String target, String op, String summary, JsonNode changed,
+    public static ResultEnvelope preview(ResultIdentity identity, String summary, JsonNode changed,
             ConsistencyEvidence evidence) {
-        return preview(target, op, summary, changed, List.of(), evidence);
+        return preview(identity, summary, changed, List.of(), evidence);
     }
 
     /** A mutating op previewed under {@code --dry-run} — nothing written — carrying advisory diagnostics. */
-    public static ResultEnvelope preview(String target, String op, String summary, JsonNode changed,
+    public static ResultEnvelope preview(ResultIdentity identity, String summary, JsonNode changed,
             List<Diagnostic> diagnostics, ConsistencyEvidence evidence) {
-        return mutation(MutationDisposition.PREVIEW, target, op, summary, changed, diagnostics, evidence).build();
+        return mutation(MutationDisposition.PREVIEW, identity, summary, changed, diagnostics, evidence).build();
     }
 
     /**
@@ -432,9 +417,9 @@ public final class ResultEnvelope {
      * parameter with a legal empty value but a shape that does not arise — the aggregate carries the evidence for
      * the state that actually gets committed.
      */
-    public static ResultEnvelope staged(String target, String op, String summary, JsonNode changed,
+    public static ResultEnvelope staged(ResultIdentity identity, String summary, JsonNode changed,
             List<Diagnostic> diagnostics) {
-        return mutation(MutationDisposition.STAGED, target, op, summary, changed, diagnostics,
+        return mutation(MutationDisposition.STAGED, identity, summary, changed, diagnostics,
                 ConsistencyEvidence.none()).build();
     }
 
@@ -449,17 +434,17 @@ public final class ResultEnvelope {
      * two are adjacent {@code JsonNode} parameters, i.e. precisely the silent-swap shape this class was built to
      * eliminate, still live inside the class itself. Naming the case removes the hazard rather than documenting it.
      */
-    public static ResultEnvelope transaction(String target, String op, String summary, JsonNode data,
+    public static ResultEnvelope transaction(ResultIdentity identity, String summary, JsonNode data,
             MutationDisposition disposition, String output, ConsistencyEvidence evidence) {
-        Draft draft = new Draft(Family.MUTATION, target, op, disposition.outcome(), summary)
+        Draft draft = new Draft(Family.MUTATION, identity, disposition.outcome(), summary)
                 .data(data)
                 .verification(evidence.verification().orElse(null));
         return (output == null ? draft : draft.writtenTo(output)).build();
     }
 
-    private static Draft mutation(MutationDisposition disposition, String target, String op, String summary,
+    private static Draft mutation(MutationDisposition disposition, ResultIdentity identity, String summary,
             JsonNode changed, List<Diagnostic> diagnostics, ConsistencyEvidence evidence) {
-        return new Draft(Family.MUTATION, target, op, disposition.outcome(), summary)
+        return new Draft(Family.MUTATION, identity, disposition.outcome(), summary)
                 .changed(changed)
                 .diagnostics(diagnostics)
                 .verification(evidence.verification().orElse(null));
@@ -468,8 +453,8 @@ public final class ResultEnvelope {
     // --- 6. refusal -----------------------------------------------------------------------------------
 
     /** A refactor/cascade safety gate refused (CLI-SPEC §6) — nothing written, exit 2. */
-    public static ResultEnvelope refused(String target, String op, String summary, List<Diagnostic> diagnostics) {
-        return refused(target, op, summary, null, diagnostics);
+    public static ResultEnvelope refused(ResultIdentity identity, String summary, List<Diagnostic> diagnostics) {
+        return refused(identity, summary, null, diagnostics);
     }
 
     /**
@@ -478,9 +463,9 @@ public final class ResultEnvelope {
      * <p>A refusal is the CLI declining to proceed, so it asserts nothing about the subject: no {@code valid}, and
      * no {@code verification} — the kernel was never asked for a verdict here.
      */
-    public static ResultEnvelope refused(String target, String op, String summary, JsonNode data,
+    public static ResultEnvelope refused(ResultIdentity identity, String summary, JsonNode data,
             List<Diagnostic> diagnostics) {
-        return new Draft(Family.REFUSAL, target, op, Outcome.REFUSED, summary)
+        return new Draft(Family.REFUSAL, identity, Outcome.REFUSED, summary)
                 .data(data)
                 .diagnostics(diagnostics)
                 .build();
@@ -499,9 +484,9 @@ public final class ResultEnvelope {
      *   <li>{@link RejectionBasis.PreflightRejection} — the CLI's own input gate refused first, so neither.</li>
      * </ul>
      */
-    public static ResultEnvelope rejected(String target, String op, String summary, List<Diagnostic> diagnostics,
+    public static ResultEnvelope rejected(ResultIdentity identity, String summary, List<Diagnostic> diagnostics,
             RejectionBasis basis) {
-        return rejected(target, op, summary, null, diagnostics, basis);
+        return rejected(identity, summary, null, diagnostics, basis);
     }
 
     /**
@@ -509,9 +494,9 @@ public final class ResultEnvelope {
      * stays useful precisely because the input was rejected ({@code rule check --suggest-error-field}'s candidate
      * list is the case: it exists to answer "then what should I have written?").
      */
-    public static ResultEnvelope rejected(String target, String op, String summary, JsonNode data,
+    public static ResultEnvelope rejected(ResultIdentity identity, String summary, JsonNode data,
             List<Diagnostic> diagnostics, RejectionBasis basis) {
-        Draft draft = new Draft(Family.REJECTION, target, op, Outcome.REJECTED, summary)
+        Draft draft = new Draft(Family.REJECTION, identity, Outcome.REJECTED, summary)
                 .data(data)
                 .diagnostics(diagnostics);
         return switch (basis) {
@@ -528,9 +513,9 @@ public final class ResultEnvelope {
      * raw stack trace escapes a verb), NOT a kernel rejection of input. {@code ok:false}, exit 70, nothing
      * written; the carried {@code RK_INTERNAL_ERROR} diagnostic names the failure (full trace on stderr).
      */
-    public static ResultEnvelope internalError(String target, String op, String summary,
+    public static ResultEnvelope internalError(ResultIdentity identity, String summary,
             List<Diagnostic> diagnostics) {
-        return new Draft(Family.INTERNAL_ERROR, target, op, Outcome.ERROR, summary)
+        return new Draft(Family.INTERNAL_ERROR, identity, Outcome.ERROR, summary)
                 .diagnostics(diagnostics)
                 .build();
     }

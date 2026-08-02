@@ -97,7 +97,7 @@ final class GroupMultiSelectCommand extends BaseCommand {
         }
         Optional<Refusal> refusal = gate.firstFailure();
         if (refusal.isPresent()) {
-            return refuse("group", "multiselect", refusal.get());
+            return refuse(refusal.get());
         }
         String resultJson;
         try {
@@ -114,7 +114,7 @@ final class GroupMultiSelectCommand extends BaseCommand {
             });
             resultJson = doc.validate(resolver).toJson();
         } catch (ModelConsistencyException e) {
-            return emitKernelRejection("group", "multiselect", "the multi-select group is rejected by the kernel", e);
+            return emitKernelRejection("the multi-select group is rejected by the kernel", e);
         } catch (RuntimeException e) {
             return failEditGate(e);
         }
@@ -122,7 +122,7 @@ final class GroupMultiSelectCommand extends BaseCommand {
         changed.put("added", target);
         changed.put("field", field);
         changed.put("maxRows", maxRows);
-        return emitMutation(ModelWrite.of("group", "multiselect")
+        return emitMutation(ModelWrite.of(resultIdentity())
                 .summaries("would add multi-select group " + target,
                         "added multi-select group " + target)
                 .changed(changed)

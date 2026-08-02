@@ -63,8 +63,8 @@ final class ProfileExtractCommand extends BaseCommand {
 
         if (outputPath == null) {
             // SynthesisProfile binds through BoundModel.ofJsonLenient — expand-only, no gate (measured).
-            ResultEnvelope env = ResultEnvelope.queryResult("profile", "extract",
-                    "extracted model performance profile", profile, ConsistencyEvidence.none());
+            ResultEnvelope env = ResultEnvelope.queryResult(resultIdentity(), "extracted model performance profile",
+                    profile, ConsistencyEvidence.none());
             out().print(env.toJsonString());
             return env.exitCode();
         }
@@ -76,8 +76,8 @@ final class ProfileExtractCommand extends BaseCommand {
         }
         ObjectNode changed = JSON.createObjectNode();
         changed.put("artifact", "model-performance-profile");
-        ResultEnvelope env = ResultEnvelope.applied("profile", "extract",
-                "extracted model performance profile", changed, outputPath, ConsistencyEvidence.none());
+        ResultEnvelope env = ResultEnvelope.applied(resultIdentity(), "extracted model performance profile", changed,
+                outputPath, ConsistencyEvidence.none());
         out().print(env.toJsonString());
         return env.exitCode();
     }

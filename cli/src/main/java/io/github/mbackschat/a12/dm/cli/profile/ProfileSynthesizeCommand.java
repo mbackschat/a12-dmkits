@@ -71,7 +71,7 @@ final class ProfileSynthesizeCommand extends BaseCommand {
         changed.put("id", modelId);
         changed.put("seed", seed);
         ResultEnvelope envelope = ResultEnvelope.applied(
-                "profile", "synthesize", "synthesized model from performance profile", changed, outputPath,
+                resultIdentity(), "synthesized model from performance profile", changed, outputPath,
                 ConsistencyEvidence.of(synthesized));
         out().print(envelope.toJsonString());
         return envelope.exitCode();

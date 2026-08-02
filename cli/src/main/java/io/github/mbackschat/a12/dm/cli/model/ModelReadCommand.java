@@ -72,7 +72,7 @@ final class ModelReadCommand extends BaseCommand {
             // This verb WAS gated all along (KernelAdapter.ofJson -> checkAndOpen), so its old `valid:true` was
             // coincidentally correct — it had already bailed on an inconsistent model. Coincidence is not a
             // contract: the gate is now reported as provenance and the unearned verdict is gone.
-            ResultEnvelope env = ResultEnvelope.queryResult("model", "read",
+            ResultEnvelope env = ResultEnvelope.queryResult(resultIdentity(),
                     "read " + m.rules().size() + " rule(s), " + m.computations().size() + " computation(s)",
                     data, ConsistencyEvidence.of(adapter));
             out().print(env.toJsonString());

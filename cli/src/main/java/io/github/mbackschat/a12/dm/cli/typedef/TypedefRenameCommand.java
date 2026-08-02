@@ -70,7 +70,7 @@ final class TypedefRenameCommand extends BaseCommand {
         // the refactor safety gate (CLI-SPEC §6): check before we change anything, refuse with diagnostics.
         Optional<Refusal> refusal = refactor.firstFailure(doc, adapter);
         if (refusal.isPresent()) {
-            return refuse("typedef", "rename", refusal.get());
+            return refuse(refusal.get());
         }
 
         List<String> repointed = doc.fieldsUsingTypeDefinition(id);   // captured before the rename moves them
@@ -83,7 +83,7 @@ final class TypedefRenameCommand extends BaseCommand {
             rewritten = refactor.rewriteAndMutate(modelJson).validate(resolver);
             resultJson = rewritten.toJson();
         } catch (ModelConsistencyException e) {
-            return emitKernelRejection("typedef", "rename", "rename left the model invalid", e);
+            return emitKernelRejection("rename left the model invalid", e);
         } catch (RuntimeException e) {
             return failEditGate(e);
         }
@@ -93,7 +93,7 @@ final class TypedefRenameCommand extends BaseCommand {
         changed.put("to", newId);
         ArrayNode fields = changed.putArray("repointedFields");
         repointed.forEach(fields::add);
-        return emitMutation(ModelWrite.of("typedef", "rename")
+        return emitMutation(ModelWrite.of(resultIdentity())
                 .summaries("would rename typedef " + id + " to " + newId,
                         "renamed typedef " + id + " to " + newId)
                 .changed(changed)

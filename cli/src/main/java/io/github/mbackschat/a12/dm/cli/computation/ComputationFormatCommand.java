@@ -67,9 +67,9 @@ final class ComputationFormatCommand extends BaseCommand {
                     .require(SafetyChecks.computationExists(adapter, computation))
                     .firstFailure();
             if (refusal.isPresent()) {
-                return refuse("computation", "format", refusal.get());
+                return refuse(refusal.get());
             }
-            ResultEnvelope env = FormatVerbs.envelope("computation", adapter, computation, lang,
+            ResultEnvelope env = FormatVerbs.envelope(resultIdentity(), adapter, computation, lang,
                     ConsistencyEvidence.of(bound));
             out().print(env.toJsonString());
             return env.exitCode();

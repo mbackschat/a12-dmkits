@@ -70,7 +70,7 @@ final class GroupRemoveCommand extends BaseCommand {
                 .require(SafetyChecks.exists(ModelDocument.read(modelJson), group, true))
                 .firstFailure();
         if (notFound.isPresent()) {
-            return refuse("group", "remove", notFound.get());
+            return refuse(notFound.get());
         }
         EditSession session = EditSession.read(modelJson, resolver);
         ArrayNode cascaded = MAPPER.createArrayNode();
@@ -82,7 +82,7 @@ final class GroupRemoveCommand extends BaseCommand {
             GroupRemoval.Plan plan = GroupRemoval.plan(adapter, group, cascade,
                     "pass --cascade to remove the referrers too, or remove them first");
             if (plan.refused()) {
-                return refuse("group", "remove", plan.refusal().get());
+                return refuse(plan.refusal().get());
             }
             for (String r : plan.cascadeRules()) {
                 session.removeRule(r);
@@ -101,12 +101,12 @@ final class GroupRemoveCommand extends BaseCommand {
         try {
             resultJson = session.validate().toJson();
         } catch (ModelConsistencyException e) {
-            return emitKernelRejection("group", "remove", "removal left the model invalid", e);
+            return emitKernelRejection("removal left the model invalid", e);
         }
         ObjectNode changed = MAPPER.createObjectNode();
         changed.put("removed", group);
         changed.set("cascaded", cascaded);
-        return emitMutation(ModelWrite.of("group", "remove")
+        return emitMutation(ModelWrite.of(resultIdentity())
                 .summaries("would remove " + group,
                         "removed " + group)
                 .changed(changed)

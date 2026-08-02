@@ -89,8 +89,8 @@ final class ModelExportJsonschemaCommand extends BaseCommand {
             }
             ObjectNode changed = MAPPER.createObjectNode();
             changed.set("report", JsonSchemaCli.reportNode(MAPPER, result.report()));   // structured dispositions in the envelope
-            ResultEnvelope env = ResultEnvelope.applied("model", "export-jsonschema",
-                    "exported model → JSON Schema", changed, outputPath, ConsistencyEvidence.of(gated));
+            ResultEnvelope env = ResultEnvelope.applied(resultIdentity(), "exported model → JSON Schema", changed,
+                    outputPath, ConsistencyEvidence.of(gated));
             out().print(env.toJsonString());
             return env.exitCode();
         }

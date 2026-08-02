@@ -96,7 +96,7 @@ final class WorkspaceListCommand extends BaseCommand {
         // The OUTER envelope stays an ungated query even under --validate. No single top-level marker can
         // characterise a mixed workspace, and the listing itself is what executed; the per-model verdicts ride
         // `data` and — structurally — a nested verdict never reaches the exit code.
-        ResultEnvelope env = ResultEnvelope.queryResult("workspace", "list",
+        ResultEnvelope env = ResultEnvelope.queryResult(resultIdentity(),
                 "listed " + models.size() + " model" + (models.size() == 1 ? "" : "s") + " under " + dir,
                 data, ConsistencyEvidence.none());
         out().print(env.toJsonString());

@@ -70,14 +70,14 @@ final class IncludeReadCommand extends BaseCommand {
                         .require(SafetyChecks.includeExists(doc, alias))
                         .firstFailure();
                 if (refusal.isPresent()) {
-                    return refuse("include", "read", refusal.get());
+                    return refuse(refusal.get());
                 }
                 ModelDocument.Include one = incs.stream()
                         .filter(i -> alias.equals(i.alias())).findFirst().orElseThrow();
                 ObjectNode data = MAPPER.createObjectNode();
                 data.put("alias", one.alias()).put("reference", one.reference());
-                ResultEnvelope env = ResultEnvelope.queryResult("include", "read",
-                        "read include " + alias, data, ConsistencyEvidence.none());
+                ResultEnvelope env = ResultEnvelope.queryResult(resultIdentity(), "read include " + alias, data,
+                        ConsistencyEvidence.none());
                 out().print(env.toJsonString());
                 return env.exitCode();
             }
@@ -86,7 +86,7 @@ final class IncludeReadCommand extends BaseCommand {
             for (ModelDocument.Include inc : incs) {
                 arr.addObject().put("alias", inc.alias()).put("reference", inc.reference());
             }
-            ResultEnvelope env = ResultEnvelope.queryResult("include", "read",
+            ResultEnvelope env = ResultEnvelope.queryResult(resultIdentity(),
                     "read " + incs.size() + " include(s)", data, ConsistencyEvidence.none());
             out().print(env.toJsonString());
             return env.exitCode();

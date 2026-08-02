@@ -67,11 +67,11 @@ final class ComputationReadCommand extends BaseCommand {
         try {
             KernelAdapter adapter = KernelAdapter.ofJson(json, workspace.resolverFor(model));
             if (computation == null) {
-                return readNameIndex("computation", "computations", adapter.computationFullNames(),
+                return readNameIndex("computations", adapter.computationFullNames(),
                         ConsistencyEvidence.of(adapter));
             }
             if (!adapter.computationFullNames().contains(computation)) {
-                return refuseNotFound("computation", "read", RkCode.NO_SUCH_COMPUTATION,
+                return refuseNotFound(RkCode.NO_SUCH_COMPUTATION,
                         "no computation at '" + computation + "'", computation,
                         "pass an existing computation's full name (list them with `computation read` — no arg); "
                                 + "computations: " + adapter.computationFullNames());
@@ -106,7 +106,7 @@ final class ComputationReadCommand extends BaseCommand {
                 data.put("converted", false);
                 data.put("reason", ((ReadComputation.Opaque) read).reason());
             }
-            ResultEnvelope env = ResultEnvelope.queryResult("computation", "read", "read " + computation,
+            ResultEnvelope env = ResultEnvelope.queryResult(resultIdentity(), "read " + computation,
                     data, ConsistencyEvidence.of(adapter));
             out().print(env.toJsonString());
             return env.exitCode();

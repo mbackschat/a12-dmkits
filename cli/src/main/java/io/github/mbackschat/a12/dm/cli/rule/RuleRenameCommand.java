@@ -66,7 +66,7 @@ final class RuleRenameCommand extends BaseCommand {
 
         Optional<Refusal> refusal = refactor.firstFailure(doc, adapter);
         if (refusal.isPresent()) {
-            return refuse("rule", "rename", refusal.get());
+            return refuse(refusal.get());
         }
 
         String resultJson;
@@ -78,14 +78,14 @@ final class RuleRenameCommand extends BaseCommand {
             rewritten = refactor.rewriteAndMutate(modelJson).validate(resolver);
             resultJson = rewritten.toJson();
         } catch (ModelConsistencyException e) {
-            return emitKernelRejection("rule", "rename", "rename left the model invalid", e);
+            return emitKernelRejection("rename left the model invalid", e);
         } catch (RuntimeException e) {
             return failEditGate(e);
         }
         ObjectNode changed = MAPPER.createObjectNode();
         changed.put("renamed", rule);
         changed.put("to", newPath);
-        return emitMutation(ModelWrite.of("rule", "rename")
+        return emitMutation(ModelWrite.of(resultIdentity())
                 .summaries("would rename " + rule + " to " + newPath,
                         "renamed " + rule + " to " + newPath)
                 .changed(changed)

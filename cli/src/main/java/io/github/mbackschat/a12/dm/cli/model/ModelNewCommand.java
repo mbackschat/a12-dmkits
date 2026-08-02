@@ -89,7 +89,7 @@ final class ModelNewCommand extends BaseCommand {
             changed.put("id", id);
             changed.put("root", rootName);
             changed.put("locale", locale);
-            ResultEnvelope env = ResultEnvelope.applied("model", "new", "created model " + id, changed, outputPath,
+            ResultEnvelope env = ResultEnvelope.applied(resultIdentity(), "created model " + id, changed, outputPath,
                     ConsistencyEvidence.of(skeleton));
             out().print(env.toJsonString());
             return env.exitCode();

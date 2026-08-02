@@ -99,7 +99,7 @@ final class GroupModifyCommand extends BaseCommand {
                 .require(SafetyChecks.exists(ModelDocument.read(modelJson), group, true))
                 .firstFailure();
         if (notFound.isPresent()) {
-            return refuse("group", "modify", notFound.get());
+            return refuse(notFound.get());
         }
         if (repeatable != null && nonRepeatable) {
             return fail("pass at most one of --repeatable <max> or --non-repeatable");
@@ -139,10 +139,10 @@ final class GroupModifyCommand extends BaseCommand {
         try {
             resultJson = session.validate().toJson();
         } catch (ModelConsistencyException e) {
-            return emitKernelRejection("group", "modify", "the change left the model invalid", e);
+            return emitKernelRejection("the change left the model invalid", e);
         }
         String summary = "set " + group + ": " + String.join(", ", mod.summaryParts());
-        return emitMutation(ModelWrite.of("group", "modify")
+        return emitMutation(ModelWrite.of(resultIdentity())
                 .summaries("would have " + summary,
                         summary)
                 .changed(changed)

@@ -67,7 +67,7 @@ final class ApplyCommand extends BaseCommand {
      * validation reads {@link #keys} from it — so a new op-kind can't be added without a dispatch case, and
      * the valid-key set can never drift from the dispatch (the brittleness of parallel string lists is gone).
      */
-    private enum Op {
+    enum Op implements ResultIdentity.Source {
         FIELD_ADD("field", "add", FieldSpec.ADD_KEYS),
         FIELD_MODIFY("field", "modify", FieldSpec.MODIFY_KEYS),
         FIELD_REMOVE("field", "remove", Set.of("fieldPathInModel")),
@@ -119,11 +119,27 @@ final class ApplyCommand extends BaseCommand {
             return target + " " + op;
         }
 
+        @Override
+        public String resultTarget() {
+            return target;
+        }
+
+        @Override
+        public String resultOp() {
+            return op;
+        }
+
+        ResultIdentity identity() {
+            return ResultIdentity.from(this);
+        }
+
         static Op of(JsonNode opRecord) {
-            String target = opRecord.path("target").asText();
-            String op = opRecord.path("op").asText();
+            return of(ParsedSelector.from(opRecord));
+        }
+
+        static Op of(ParsedSelector selector) {
             for (Op o : values()) {
-                if (o.target.equals(target) && o.op.equals(op)) {
+                if (o.target.equals(selector.resultTarget()) && o.op.equals(selector.resultOp())) {
                     return o;
                 }
             }
@@ -135,6 +151,20 @@ final class ApplyCommand extends BaseCommand {
             Set<String> keys = new java.util.HashSet<>(directiveKeys);
             keys.add(locator);
             return Set.copyOf(keys);
+        }
+    }
+
+    /**
+     * The named selector read from an op-record before it is known to be one of {@link Op}. Keeping the two JSON
+     * fields in one value preserves the rejected record's echo without reopening a positional String-pair factory.
+     */
+    record ParsedSelector(String resultTarget, String resultOp) implements ResultIdentity.Source {
+        static ParsedSelector from(JsonNode opRecord) {
+            return new ParsedSelector(opRecord.path("target").asText(), opRecord.path("op").asText());
+        }
+
+        ResultIdentity identity() {
+            return ResultIdentity.from(this);
         }
     }
 
@@ -274,21 +304,21 @@ final class ApplyCommand extends BaseCommand {
      */
     private ResultEnvelope aggregate(String summary, ObjectNode data, Terminal terminal) {
         if (terminal.committed()) {
-            return ResultEnvelope.transaction("apply", "run", summary, data,
+            return ResultEnvelope.transaction(ResultIdentity.APPLY_RUN, summary, data,
                     terminal.written() ? ResultEnvelope.MutationDisposition.APPLIED
                             : ResultEnvelope.MutationDisposition.PREVIEW,
                     terminal.written() ? terminal.output() : null, terminal.evidence());
         }
         if (terminal.gateRejection() != null) {
             // The one gate apply runs, and it rejected: valid:false plus the arbitrator that decided it.
-            return ResultEnvelope.rejected("apply", "run", summary, data, List.of(),
+            return ResultEnvelope.rejected(ResultIdentity.APPLY_RUN, summary, data, List.of(),
                     RejectionBasis.kernel(ConsistencyEvidence.of(terminal.gateRejection())));
         }
         // A mid-sequence stop never reached the terminal gate, so it carries neither a verdict nor evidence —
         // only the KIND of stop, which decides the exit code.
         return switch (terminal.stoppage() == null ? Stoppage.REJECTED : terminal.stoppage()) {
-            case REFUSED -> ResultEnvelope.refused("apply", "run", summary, data, List.of());
-            case REJECTED -> ResultEnvelope.rejected("apply", "run", summary, data, List.of(),
+            case REFUSED -> ResultEnvelope.refused(ResultIdentity.APPLY_RUN, summary, data, List.of());
+            case REJECTED -> ResultEnvelope.rejected(ResultIdentity.APPLY_RUN, summary, data, List.of(),
                     RejectionBasis.preflight());
         };
     }
@@ -410,7 +440,7 @@ final class ApplyCommand extends BaseCommand {
                 GroupRemoval.Plan plan = GroupRemoval.plan(adapter, path, cascade,
                         "set \"cascade\": true to remove the referrers too, or remove them first");
                 if (plan.refused()) {
-                    throw new OperationRefused("group", "remove", plan.refusal().get());
+                    throw new OperationRefused(which.identity(), plan.refusal().get());
                 }
                 changed.put("removed", path);
                 ArrayNode cascaded = changed.putArray("cascaded");
@@ -595,7 +625,7 @@ final class ApplyCommand extends BaseCommand {
                         .require(SafetyChecks.labelSupported(current, ref, !modification.labels().isEmpty()))
                         .firstFailure();
                 if (refusal.isPresent()) {
-                    throw new OperationRefused("meta", "modify", refusal.get());
+                    throw new OperationRefused(which.identity(), refusal.get());
                 }
                 modification.applyTo(ref, current, session, changed);
                 yield staged(which, changed, session);
@@ -611,7 +641,7 @@ final class ApplyCommand extends BaseCommand {
                 }
                 Optional<Refusal> refusal = mod.firstFailure();
                 if (refusal.isPresent()) {
-                    throw new OperationRefused(which.target, which.op, refusal.get());
+                    throw new OperationRefused(which.identity(), refusal.get());
                 }
                 mod.applyTo(session, changed);
                 yield staged(which, changed, mod.advisories(), session);
@@ -674,7 +704,7 @@ final class ApplyCommand extends BaseCommand {
     /** A staged mutation carrying nonblocking authoring diagnostics. */
     private static Applied staged(
             Op which, ObjectNode changed, List<Diagnostic> diagnostics, EditSession session) {
-        return new Applied(ResultEnvelope.staged(which.target, which.op, "staged " + which.label(), changed,
+        return new Applied(ResultEnvelope.staged(which.identity(), "staged " + which.label(), changed,
                 diagnostics), session);
     }
 
@@ -694,7 +724,7 @@ final class ApplyCommand extends BaseCommand {
     private static Applied readEnv(Op which, ObjectNode data, EditSession session) {
         // A read of the TRANSIENT session state; apply defers validation to one terminal gate, so this step
         // has no gate of its own to attest to.
-        return new Applied(ResultEnvelope.queryResult(which.target, which.op, "read " + which.label(), data,
+        return new Applied(ResultEnvelope.queryResult(which.identity(), "read " + which.label(), data,
                 ConsistencyEvidence.none()), session);
     }
 
@@ -710,8 +740,12 @@ final class ApplyCommand extends BaseCommand {
         ModelDocument doc = ModelDocument.read(modelJson);
         KernelAdapter adapter = KernelAdapter.ofJson(modelJson, resolver);
         Optional<Refusal> refusal = r.firstFailure(doc, adapter);
+        Op which = Op.of(new ParsedSelector(r.target(), r.op()));
+        if (which == null) {
+            throw new IllegalStateException("an apply refactor must name a declared op: " + r.target() + " " + r.op());
+        }
         if (refusal.isPresent()) {
-            throw new OperationRefused(r.target(), r.op(), refusal.get());
+            throw new OperationRefused(which.identity(), refusal.get());
         }
         Set<String> rewrote = r.referrers(adapter, doc);
         EditSession next = EditSession.read(r.rewriteAndMutate(modelJson).toJson(), resolver);
@@ -720,7 +754,7 @@ final class ApplyCommand extends BaseCommand {
         changed.put("to", r.newPath());
         ArrayNode refs = changed.putArray("rewroteReferences");
         rewrote.forEach(refs::add);
-        return new Applied(ResultEnvelope.staged(r.target(), r.op(), "staged " + r.target() + " " + r.op(),
+        return new Applied(ResultEnvelope.staged(which.identity(), "staged " + which.label(),
                 changed, List.of()), next);
     }
 
@@ -732,9 +766,9 @@ final class ApplyCommand extends BaseCommand {
     private static final class OperationRefused extends RuntimeException {
         private final transient ResultEnvelope envelope;
 
-        OperationRefused(String target, String op, Refusal refusal) {
+        OperationRefused(ResultIdentity identity, Refusal refusal) {
             super(refusal.summary());
-            this.envelope = ResultEnvelope.refused(target, op, refusal.summary(), refusal.data(),
+            this.envelope = ResultEnvelope.refused(identity, refusal.summary(), refusal.data(),
                     refusal.diagnostics());
         }
 
@@ -826,7 +860,7 @@ final class ApplyCommand extends BaseCommand {
 
     /** A failing op-arg envelope (the offending op rolled the sequence back). */
     private ResultEnvelope argRejection(JsonNode op, int index, List<Diagnostic> diagnostics) {
-        return ResultEnvelope.rejected(op.path("target").asText(), op.path("op").asText(),
+        return ResultEnvelope.rejected(ParsedSelector.from(op).identity(),
                 "op " + index + " has an invalid arg — sequence rolled back", diagnostics,
                 RejectionBasis.preflight());
     }
@@ -930,7 +964,8 @@ final class ApplyCommand extends BaseCommand {
                 new Diagnostic.Where((String) null, Optional.empty()),
                 Optional.of("fix this op and re-run; the whole sequence rolled back (nothing was written)"),
                 Optional.empty());
-        return ResultEnvelope.rejected(target, name, "op " + index + " failed — sequence rolled back", List.of(d),
+        return ResultEnvelope.rejected(ParsedSelector.from(op).identity(),
+                "op " + index + " failed — sequence rolled back", List.of(d),
                 RejectionBasis.preflight());
     }
 
@@ -941,7 +976,7 @@ final class ApplyCommand extends BaseCommand {
      * verbatim copy of it, so a correction to the notification-free tier landed there and not here.
      */
     private ResultEnvelope gateRejection(ModelConsistencyException e) {
-        return BaseCommand.kernelRejectionEnvelope("model", "validate",
+        return BaseCommand.kernelRejectionEnvelope(ResultIdentity.MODEL_VALIDATE,
                 "the terminal kernel gate rejected the sequence — rolled back", e);
     }
 }

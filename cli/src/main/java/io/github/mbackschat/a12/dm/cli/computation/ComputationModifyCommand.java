@@ -82,7 +82,7 @@ final class ComputationModifyCommand extends BaseCommand {
                 .require(SafetyChecks.computationExists(KernelAdapter.ofJson(modelJson, resolver), computation))
                 .firstFailure();
         if (refusal.isPresent()) {
-            return refuse("computation", "modify", refusal.get());
+            return refuse(refusal.get());
         }
         JsonNode spec;
         try {
@@ -114,8 +114,7 @@ final class ComputationModifyCommand extends BaseCommand {
                     new Diagnostic.Where(computation, Optional.empty()), Optional.empty(), Optional.empty());
             // See RuleModifyCommand: a ModelConsistencyException is the gate's own verdict (valid:false + its
             // arbitrator); any other RuntimeException means no verdict was reached, so neither is claimed.
-            ResultEnvelope env = ResultEnvelope.rejected("computation", "modify",
-                    "re-expression rejected by the kernel", List.of(d),
+            ResultEnvelope env = ResultEnvelope.rejected(resultIdentity(), "re-expression rejected by the kernel", List.of(d),
                     e instanceof ModelConsistencyException rejection
                             ? RejectionBasis.kernel(ConsistencyEvidence.of(rejection))
                             : RejectionBasis.preflight());
@@ -136,7 +135,7 @@ final class ComputationModifyCommand extends BaseCommand {
             return fail("re-expression failed: " + e.getMessage());
         }
 
-        return emitMutation(ModelWrite.of("computation", "modify")
+        return emitMutation(ModelWrite.of(resultIdentity())
                 .summaries("would re-express " + computation,
                         "re-expressed " + computation)
                 .changed(changed)

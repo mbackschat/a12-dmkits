@@ -77,7 +77,7 @@ final class ModelCheckCommand extends BaseCommand {
 
         long errors = diagnostics.stream().filter(d -> d.severity() == Severity.ERROR).count();
         String summary = valid ? "model is valid" : "model has " + errors + " error(s)";
-        ResultEnvelope env = ResultEnvelope.consistencyVerdict("model", "check", summary, valid, diagnostics, null,
+        ResultEnvelope env = ResultEnvelope.consistencyVerdict(resultIdentity(), summary, valid, diagnostics, null,
                 evidence);
         out().print(env.toJsonString());
         return env.exitCode();

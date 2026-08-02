@@ -123,13 +123,12 @@ final class WorkspaceCheckCommand extends BaseCommand {
         // The per-model verdicts ride `data` in every case, and a nested verdict never reaches the exit code.
         ResultEnvelope env;
         if (evidence.gateRan()) {
-            env = ResultEnvelope.consistencyVerdict("workspace", "check", summary, allValid, List.of(), data,
+            env = ResultEnvelope.consistencyVerdict(resultIdentity(), summary, allValid, List.of(), data,
                     evidence);
         } else if (models.isEmpty()) {
-            env = ResultEnvelope.queryResult("workspace", "check", summary, data, ConsistencyEvidence.none());
+            env = ResultEnvelope.queryResult(resultIdentity(), summary, data, ConsistencyEvidence.none());
         } else {
-            env = ResultEnvelope.rejected("workspace", "check",
-                    "no model could be checked — " + summary, data,
+            env = ResultEnvelope.rejected(resultIdentity(), "no model could be checked — " + summary, data,
                     List.of(Diagnostic.precheck(java.util.Optional.of(RkCode.MODEL_PREPARATION_FAILED.code()),
                             "not one of the " + models.size() + " model(s) reached the consistency gate, so this "
                                     + "workspace cannot be reported as passing",

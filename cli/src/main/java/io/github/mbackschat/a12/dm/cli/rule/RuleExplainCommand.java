@@ -61,7 +61,7 @@ final class RuleExplainCommand extends BaseCommand {
             // a computation named where a rule is expected gets a structured refusal that redirects to the
             // computation-aware verb (a calculated field is not a validation rule), instead of the bare "not a rule".
             if (adapter.computationFullNames().contains(rule)) {
-                return refuseNotFound("rule", "explain", RkCode.NO_SUCH_RULE,
+                return refuseNotFound(RkCode.NO_SUCH_RULE,
                         "'" + rule + "' is a computation, not a validation rule — refusing", rule,
                         "use `computation explain " + rule + "` — it is a computation (a calculated field), not a rule");
             }
@@ -71,11 +71,11 @@ final class RuleExplainCommand extends BaseCommand {
                     .require(SafetyChecks.ruleExists(adapter, rule))
                     .firstFailure();
             if (refusal.isPresent()) {
-                return refuse("rule", "explain", refusal.get());
+                return refuse(refusal.get());
             }
             ObjectNode data = RuleExplainData.build(adapter, bound, rule);
             String summary = RuleExplainData.isOpaque(data) ? rule + " is Opaque (not modeled)" : "explained " + rule;
-            ResultEnvelope env = ResultEnvelope.queryResult("rule", "explain", summary, data,
+            ResultEnvelope env = ResultEnvelope.queryResult(resultIdentity(), summary, data,
                     ConsistencyEvidence.of(bound));
             out().print(env.toJsonString());
             return env.exitCode();

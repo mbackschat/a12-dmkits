@@ -108,7 +108,7 @@ final class RuleModifyCommand extends BaseCommand {
                 .require(SafetyChecks.ruleExists(KernelAdapter.ofJson(modelJson, resolver), rule))
                 .firstFailure();
         if (refusal.isPresent()) {
-            return refuse("rule", "modify", refusal.get());
+            return refuse(refusal.get());
         }
         if (condition == null && severity == null && messages.isEmpty()) {
             return fail("nothing to change — pass at least one of --condition, --severity, or --message");
@@ -152,7 +152,7 @@ final class RuleModifyCommand extends BaseCommand {
             // One broad catch used to serve two different bases. A ModelConsistencyException IS the gate's verdict,
             // so it reports valid:false with its arbitrator; any other RuntimeException (a parse/render failure)
             // means we cannot say the gate reached a verdict at all, so it claims neither.
-            ResultEnvelope env = ResultEnvelope.rejected("rule", "modify", "edit rejected by the kernel", List.of(d),
+            ResultEnvelope env = ResultEnvelope.rejected(resultIdentity(), "edit rejected by the kernel", List.of(d),
                     e instanceof ModelConsistencyException rejection
                             ? RejectionBasis.kernel(ConsistencyEvidence.of(rejection))
                             : RejectionBasis.preflight());
@@ -188,7 +188,7 @@ final class RuleModifyCommand extends BaseCommand {
             messages.forEach((locale, text) -> m.addObject().put("locale", locale).put("text", text));
         }
         String verb = condition != null ? "re-express" : "modify";
-        return emitMutation(ModelWrite.of("rule", "modify")
+        return emitMutation(ModelWrite.of(resultIdentity())
                 .summaries("would " + verb + " " + rule,
                         (condition != null ? "re-expressed " : "modified ") + rule)
                 .changed(changed)

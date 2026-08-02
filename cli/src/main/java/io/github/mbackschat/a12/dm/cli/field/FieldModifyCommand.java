@@ -91,7 +91,7 @@ final class FieldModifyCommand extends BaseCommand {
         List<Diagnostic> advisories;
         try {
             JsonNode spec = MAPPER.readTree(Files.readString(Path.of(specPath)));
-            Optional<Integer> rejected = rejectUnknownKeys("field", "modify", "field-modify", spec);
+            Optional<Integer> rejected = rejectUnknownKeys("field-modify", spec);
             if (rejected.isPresent()) {
                 return rejected.get();
             }
@@ -111,7 +111,7 @@ final class FieldModifyCommand extends BaseCommand {
                     .require(SafetyChecks.exists(doc, fieldPath, false))
                     .firstFailure();
             if (refusal.isPresent()) {
-                return refuse("field", "modify", refusal.get());
+                return refuse(refusal.get());
             }
             // a KIND change (vs a within-kind config tweak or a field-property-only edit) can invalidate conditions
             // that read the field; surface the readers up front — only when re-typing. The kernel re-validate
@@ -141,11 +141,11 @@ final class FieldModifyCommand extends BaseCommand {
         try {
             resultJson = doc.validate(resolver).toJson();
         } catch (ModelConsistencyException e) {
-            return emitKernelRejection("field", "modify", "the change is rejected by the kernel", e);
+            return emitKernelRejection("the change is rejected by the kernel", e);
         } catch (RuntimeException e) {
             return failEditGate(e);
         }
-        return emitMutation(ModelWrite.of("field", "modify")
+        return emitMutation(ModelWrite.of(resultIdentity())
                 .summaries("would modify " + fieldPath,
                         "modified " + fieldPath)
                 .changed(changed)

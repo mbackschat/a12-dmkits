@@ -46,7 +46,7 @@ final class ConfigReadCommand extends BaseCommand {
             ModelDocument doc = ModelDocument.read(json);
             ObjectNode data = ReadPayloads.config(doc);   // T3: the one shared shape, same as `apply` CONFIG_READ
             // Parse-and-index only — no consistency gate on this path, so no verdict and no provenance.
-            ResultEnvelope env = ResultEnvelope.queryResult("config", "read", "read document config", data,
+            ResultEnvelope env = ResultEnvelope.queryResult(resultIdentity(), "read document config", data,
                     ConsistencyEvidence.none());
             out().print(env.toJsonString());
             return env.exitCode();

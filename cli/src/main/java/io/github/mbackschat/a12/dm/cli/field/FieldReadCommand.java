@@ -72,7 +72,7 @@ final class FieldReadCommand extends BaseCommand {
         try {
             ModelDocument doc = ModelDocument.read(json);
             if (fieldPath == null) {
-                return readNameIndex("field", "fields", doc.fieldPaths(), ConsistencyEvidence.none());
+                return readNameIndex("fields", doc.fieldPaths(), ConsistencyEvidence.none());
             }
             Optional<String> kind = doc.fieldKind(fieldPath);
             if (kind.isEmpty()) {
@@ -85,12 +85,12 @@ final class FieldReadCommand extends BaseCommand {
                     fix += "; an INCLUDED field (one `model describe` lists under an include mount) is read on its"
                             + " OWN model — this listing has only this model's own fields";
                 }
-                return refuseNotFound("field", "read", RkCode.NO_SUCH_FIELD, "no field at '" + fieldPath + "'",
+                return refuseNotFound(RkCode.NO_SUCH_FIELD, "no field at '" + fieldPath + "'",
                         fieldPath, fix);
             }
             ObjectNode data = ReadPayloads.field(doc, fieldPath);
             // Parse-and-index only — no consistency gate on this path, so no verdict and no provenance.
-            ResultEnvelope env = ResultEnvelope.queryResult("field", "read", "read " + fieldPath, data,
+            ResultEnvelope env = ResultEnvelope.queryResult(resultIdentity(), "read " + fieldPath, data,
                     ConsistencyEvidence.none());
             out().print(env.toJsonString());
             return env.exitCode();

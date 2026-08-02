@@ -101,7 +101,7 @@ final class IncludeAddCommand extends BaseCommand {
                     .require(SafetyChecks.exists(ModelDocument.read(modelJson), parent, true))
                     .firstFailure();
             if (refusal.isPresent()) {
-                return refuse("include", "add", refusal.get());
+                return refuse(refusal.get());
             }
         }
         MountOptions options = MountOptions.repeatable(repeatability);
@@ -119,7 +119,7 @@ final class IncludeAddCommand extends BaseCommand {
                     .validate(resolver)
                     .toJson();
         } catch (ModelConsistencyException e) {
-            return emitKernelRejection("include", "add", "the include is rejected by the kernel", e);
+            return emitKernelRejection("the include is rejected by the kernel", e);
         } catch (RuntimeException e) {
             return failEditGate(e);
         }
@@ -136,7 +136,7 @@ final class IncludeAddCommand extends BaseCommand {
         if (excludeComputations) {
             changed.put("excludeComputations", true);
         }
-        return emitMutation(ModelWrite.of("include", "add")
+        return emitMutation(ModelWrite.of(resultIdentity())
                 .summaries("would add include " + alias,
                         "added include " + alias)
                 .changed(changed)

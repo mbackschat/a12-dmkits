@@ -79,7 +79,7 @@ final class GroupAddCommand extends BaseCommand {
                     .require(SafetyChecks.exists(doc, parent, true))
                     .firstFailure();
             if (refusal.isPresent()) {
-                return refuse("group", "add", refusal.get());
+                return refuse(refusal.get());
             }
         }
         String resultJson;
@@ -91,14 +91,14 @@ final class GroupAddCommand extends BaseCommand {
             }
             resultJson = doc.validate(resolver).toJson();
         } catch (ModelConsistencyException e) {
-            return emitKernelRejection("group", "add", "the group is rejected by the kernel", e);
+            return emitKernelRejection("the group is rejected by the kernel", e);
         } catch (RuntimeException e) {
             return failEditGate(e);
         }
         ObjectNode changed = MAPPER.createObjectNode();
         changed.put("added", target);
         changed.put("repeatable", repeatable != null);
-        return emitMutation(ModelWrite.of("group", "add")
+        return emitMutation(ModelWrite.of(resultIdentity())
                 .summaries("would add group " + target,
                         "added group " + target)
                 .changed(changed)

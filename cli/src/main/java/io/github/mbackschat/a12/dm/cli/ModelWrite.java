@@ -29,8 +29,7 @@ import io.github.mbackschat.a12.dm.rulekit.validate.Diagnostic;
  */
 public final class ModelWrite {
 
-    private final String target;
-    private final String op;
+    private final ResultIdentity identity;
     private String previewSummary;
     private String appliedSummary;
     private JsonNode changed;
@@ -40,14 +39,13 @@ public final class ModelWrite {
     private boolean dryRun;
     private String destination;
 
-    private ModelWrite(String target, String op) {
-        this.target = target;
-        this.op = op;
+    private ModelWrite(ResultIdentity identity) {
+        this.identity = identity;
     }
 
     /** The verb this write belongs to — echoed by the envelope so the result identifies itself. */
-    public static ModelWrite of(String target, String op) {
-        return new ModelWrite(target, op);
+    public static ModelWrite of(ResultIdentity identity) {
+        return new ModelWrite(identity);
     }
 
     /**
@@ -122,17 +120,17 @@ public final class ModelWrite {
     }
 
     ResultEnvelope preview() {
-        return ResultEnvelope.preview(target, op, previewSummary, changed, advisories, require(evidence));
+        return ResultEnvelope.preview(identity, previewSummary, changed, advisories, require(evidence));
     }
 
     ResultEnvelope applied() {
-        return ResultEnvelope.applied(target, op, appliedSummary, changed, advisories, destination,
+        return ResultEnvelope.applied(identity, appliedSummary, changed, advisories, destination,
                 require(evidence));
     }
 
     private ConsistencyEvidence require(ConsistencyEvidence receipt) {
         if (receipt == null) {
-            throw new IllegalStateException(target + " " + op + " built a ModelWrite without stating its gate — "
+            throw new IllegalStateException(identity + " built a ModelWrite without stating its gate — "
                     + "pass the object that gated, or ConsistencyEvidence.none() if none did");
         }
         return receipt;

@@ -69,7 +69,7 @@ final class IncludeRenameCommand extends BaseCommand {
         // the refactor safety gate (CLI-SPEC §6): check before we change anything, refuse with diagnostics.
         Optional<Refusal> refusal = refactor.firstFailure(doc, adapter);
         if (refusal.isPresent()) {
-            return refuse("include", "rename", refusal.get());
+            return refuse(refusal.get());
         }
 
         String resultJson;
@@ -81,7 +81,7 @@ final class IncludeRenameCommand extends BaseCommand {
             rewritten = refactor.rewriteAndMutate(modelJson).validate(resolver);
             resultJson = rewritten.toJson();
         } catch (ModelConsistencyException e) {
-            return emitKernelRejection("include", "rename", "rename left the model invalid", e);
+            return emitKernelRejection("rename left the model invalid", e);
         } catch (RuntimeException e) {
             return failEditGate(e);
         }
@@ -89,7 +89,7 @@ final class IncludeRenameCommand extends BaseCommand {
         ObjectNode changed = MAPPER.createObjectNode();
         changed.put("renamed", alias);
         changed.put("to", newAlias);
-        return emitMutation(ModelWrite.of("include", "rename")
+        return emitMutation(ModelWrite.of(resultIdentity())
                 .summaries("would rename include " + alias + " to " + newAlias,
                         "renamed include " + alias + " to " + newAlias)
                 .changed(changed)

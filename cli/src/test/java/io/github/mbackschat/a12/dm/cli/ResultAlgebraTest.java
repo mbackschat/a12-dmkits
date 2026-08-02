@@ -28,7 +28,7 @@ import io.github.mbackschat.a12.dm.rulekit.validate.Diagnostic;
  * <p>These are the invariants the previous shape could not hold. A {@code record} with a public canonical
  * constructor plus a {@code read(…, boolean valid, …)} factory made every combination of members constructible, and
  * 35 call sites duly passed a literal {@code valid} — seven of them reporting {@code valid:true} on a model the
- * kernel rejects. The point of the eight factories is that those claims are now <em>unrepresentable</em>, so this
+ * kernel rejects. The point of the typed factories is that those claims are now <em>unrepresentable</em>, so this
  * class asserts the shape of each family and, where the guarantee is structural, asserts the structure itself.
  */
 class ResultAlgebraTest {
@@ -54,7 +54,7 @@ class ResultAlgebraTest {
     void theEnvelopeCannotBeConstructedDirectly() {
         for (Constructor<?> ctor : ResultEnvelope.class.getDeclaredConstructors()) {
             assertTrue(Modifier.isPrivate(ctor.getModifiers()),
-                    () -> "every ResultEnvelope constructor must be private so the eight factories are the whole "
+                    () -> "every ResultEnvelope constructor must be private so the named factories are the whole "
                             + "construction surface; found " + ctor);
         }
     }
@@ -74,7 +74,7 @@ class ResultAlgebraTest {
         ObjectNode payload = M.createObjectNode();
         payload.put("field", "/Order/Quantity").put("kind", "NUMBER");
 
-        ResultEnvelope env = ResultEnvelope.queryResult("field", "read", "read /Order/Quantity", payload,
+        ResultEnvelope env = ResultEnvelope.queryResult(CliTestSupport.identity("field", "read"), "read /Order/Quantity", payload,
                 ConsistencyEvidence.none());
 
         assertEquals(0, env.exitCode());
@@ -92,7 +92,7 @@ class ResultAlgebraTest {
     void aGatedQueryPublishesItsGateWithoutInventingAVerdict() {
         BoundModel gated = BoundModel.ofJson(CliTestSupport.subscriptionJson());
 
-        ResultEnvelope env = ResultEnvelope.queryResult("model", "info", "read model info", M.createObjectNode(),
+        ResultEnvelope env = ResultEnvelope.queryResult(CliTestSupport.identity("model", "info"), "read model info", M.createObjectNode(),
                 ConsistencyEvidence.of(gated));
 
         JsonNode j = env.toJson();
@@ -124,7 +124,7 @@ class ResultAlgebraTest {
         Diagnostic d = Diagnostic.precheck(Optional.of("MVK_X"), "bad",
                 new Diagnostic.Where("/Order", Optional.empty()), Optional.empty(), Optional.empty());
 
-        ResultEnvelope env = ResultEnvelope.consistencyVerdict("model", "check", "model has 1 error", false,
+        ResultEnvelope env = ResultEnvelope.consistencyVerdict(CliTestSupport.identity("model", "check"), "model has 1 error", false,
                 List.of(d), null, ConsistencyEvidence.of(BoundModel.ofJson(CliTestSupport.subscriptionJson())));
 
         assertEquals(1, env.exitCode());
@@ -138,7 +138,7 @@ class ResultAlgebraTest {
     @Test
     void aVerdictWithoutAGateCannotBeBuilt() {
         IllegalStateException boom = assertThrows(IllegalStateException.class,
-                () -> ResultEnvelope.consistencyVerdict("model", "check", "model is valid", true, List.of(), null,
+                () -> ResultEnvelope.consistencyVerdict(CliTestSupport.identity("model", "check"), "model is valid", true, List.of(), null,
                         ConsistencyEvidence.none()));
         assertTrue(boom.getMessage().contains("no gate ran"), boom::getMessage);
     }
@@ -149,7 +149,7 @@ class ResultAlgebraTest {
         ObjectNode data = M.createObjectNode();
         data.putArray("candidates").add("/Order/Quantity");
 
-        ResultEnvelope env = ResultEnvelope.consistencyVerdict("rule", "check", "candidate is kernel-valid", true,
+        ResultEnvelope env = ResultEnvelope.consistencyVerdict(CliTestSupport.identity("rule", "check"), "candidate is kernel-valid", true,
                 List.of(), data, ConsistencyEvidence.of(BoundModel.ofJson(CliTestSupport.subscriptionJson())));
 
         assertEquals(0, env.exitCode());
@@ -163,7 +163,7 @@ class ResultAlgebraTest {
         ObjectNode data = M.createObjectNode();
         data.putArray("fired");
 
-        ResultEnvelope env = ResultEnvelope.runtimeObservation("model", "eval", "0 rule(s) fired", data,
+        ResultEnvelope env = ResultEnvelope.runtimeObservation(CliTestSupport.identity("model", "eval"), "0 rule(s) fired", data,
                 RuntimeEvidence.interpreter());
 
         assertEquals(0, env.exitCode());
@@ -198,7 +198,7 @@ class ResultAlgebraTest {
      */
     @Test
     void aComparisonKeepsExitOneOnDiffersAndClaimsNoValidity() {
-        ResultEnvelope differs = ResultEnvelope.comparisonResult("profile", "compare", "profiles differ",
+        ResultEnvelope differs = ResultEnvelope.comparisonResult(CliTestSupport.identity("profile", "compare"), "profiles differ",
                 ComparisonOutcome.DIFFERS, M.createObjectNode());
 
         assertEquals(1, differs.exitCode(), "CI branches on this code — the reclassification must not move it");
@@ -210,7 +210,7 @@ class ResultAlgebraTest {
 
     @Test
     void anEquivalentComparisonExitsZero() {
-        assertEquals(0, ResultEnvelope.comparisonResult("profile", "compare", "profiles match",
+        assertEquals(0, ResultEnvelope.comparisonResult(CliTestSupport.identity("profile", "compare"), "profiles match",
                 ComparisonOutcome.EQUIVALENT, M.createObjectNode()).exitCode());
     }
 
@@ -221,7 +221,8 @@ class ResultAlgebraTest {
         ObjectNode changed = M.createObjectNode();
         changed.put("added", "/Order/PromoCode").put("kind", "STRING");
 
-        ResultEnvelope env = ResultEnvelope.applied("field", "add", "added field /Order/PromoCode (STRING)", changed,
+        ResultEnvelope env = ResultEnvelope.applied(CliTestSupport.identity("field", "add"),
+                "added field /Order/PromoCode (STRING)", changed,
                 "order.dm.json", gated());
 
         assertEquals(0, env.exitCode());
@@ -239,7 +240,7 @@ class ResultAlgebraTest {
      */
     @Test
     void anAppliedMutationStatesTheGateThatClearedIt() {
-        JsonNode j = ResultEnvelope.applied("field", "add", "added field /Order/PromoCode", M.createObjectNode(),
+        JsonNode j = ResultEnvelope.applied(CliTestSupport.identity("field", "add"), "added field /Order/PromoCode", M.createObjectNode(),
                 "order.dm.json", gated()).toJson();
 
         assertEquals("KERNEL_CONFIRMED", j.path("verification").asText(),
@@ -250,7 +251,7 @@ class ResultAlgebraTest {
     /** The other side, and the reason the parameter is required rather than defaulted: silence must be chosen. */
     @Test
     void anUngatedMutationClaimsNothing() {
-        JsonNode j = ResultEnvelope.applied("model", "normalize", "normalized", M.createObjectNode(),
+        JsonNode j = ResultEnvelope.applied(CliTestSupport.identity("model", "normalize"), "normalized", M.createObjectNode(),
                 "order.dm.json", ConsistencyEvidence.none()).toJson();
 
         assertFalse(j.has("verification"), "this route never consulted the oracle, so it may not name one");
@@ -258,7 +259,7 @@ class ResultAlgebraTest {
 
     @Test
     void aPreviewWritesNothing() {
-        ResultEnvelope env = ResultEnvelope.preview("field", "add", "would add /Order/PromoCode",
+        ResultEnvelope env = ResultEnvelope.preview(CliTestSupport.identity("field", "add"), "would add /Order/PromoCode",
                 M.createObjectNode(), gated());
         JsonNode j = env.toJson();
         assertEquals("preview", j.get("outcome").asText());
@@ -272,7 +273,7 @@ class ResultAlgebraTest {
      */
     @Test
     void aPreviewStillStatesTheGateItRan() {
-        JsonNode j = ResultEnvelope.preview("field", "add", "would add /Order/PromoCode", M.createObjectNode(),
+        JsonNode j = ResultEnvelope.preview(CliTestSupport.identity("field", "add"), "would add /Order/PromoCode", M.createObjectNode(),
                 gated()).toJson();
 
         assertFalse(j.get("written").asBoolean());
@@ -282,7 +283,7 @@ class ResultAlgebraTest {
     /** A committed {@code apply} passed its one terminal gate; the aggregate is where that receipt belongs. */
     @Test
     void aCommittedTransactionCarriesTheTerminalGate() {
-        JsonNode j = ResultEnvelope.transaction("apply", "run", "3 op(s) committed", M.createObjectNode(),
+        JsonNode j = ResultEnvelope.transaction(ResultIdentity.APPLY_RUN, "3 op(s) committed", M.createObjectNode(),
                 ResultEnvelope.MutationDisposition.APPLIED, "order.dm.json", gated()).toJson();
 
         assertEquals("applied", j.get("outcome").asText());
@@ -292,7 +293,7 @@ class ResultAlgebraTest {
     /** A staged step is ungated BY DESIGN — `apply` defers validation to one terminal gate. */
     @Test
     void aStagedStepClaimsNoGateOfItsOwn() {
-        ResultEnvelope env = ResultEnvelope.staged("field", "add", "staged field add", M.createObjectNode(),
+        ResultEnvelope env = ResultEnvelope.staged(CliTestSupport.identity("field", "add"), "staged field add", M.createObjectNode(),
                 List.of());
         JsonNode j = env.toJson();
         assertEquals("staged", j.get("outcome").asText());
@@ -306,7 +307,7 @@ class ResultAlgebraTest {
 
     @Test
     void aRefusalExitsTwoAndAssertsNothingAboutTheSubject() {
-        ResultEnvelope env = ResultEnvelope.refused("field", "remove",
+        ResultEnvelope env = ResultEnvelope.refused(CliTestSupport.identity("field", "remove"),
                 "/Order/DeliveryDate is referenced by 1 rule", List.of());
         assertEquals(2, env.exitCode());
         JsonNode j = env.toJson();
@@ -327,7 +328,7 @@ class ResultAlgebraTest {
                 new Diagnostic.Where("/Order/MinQuantity", Optional.empty()),
                 Optional.of("replace /Order/Quanity with /Order/Quantity"), Optional.empty());
 
-        ResultEnvelope env = ResultEnvelope.rejected("rule", "add", "condition rejected by the kernel (1 error)",
+        ResultEnvelope env = ResultEnvelope.rejected(CliTestSupport.identity("rule", "add"), "condition rejected by the kernel (1 error)",
                 List.of(d), RejectionBasis.kernel(
                         ConsistencyEvidence.of(BoundModel.ofJson(CliTestSupport.subscriptionJson()))));
 
@@ -344,7 +345,7 @@ class ResultAlgebraTest {
     /** A pre-flight rejection never consulted the kernel, so it has neither verdict nor evidence to give. */
     @Test
     void aPreflightRejectionReportsNeitherVerdictNorEvidence() {
-        ResultEnvelope env = ResultEnvelope.rejected("rule", "add", "the spec has 1 unrecognized key", List.of(),
+        ResultEnvelope env = ResultEnvelope.rejected(CliTestSupport.identity("rule", "add"), "the spec has 1 unrecognized key", List.of(),
                 RejectionBasis.preflight());
 
         assertEquals(1, env.exitCode());
@@ -361,7 +362,8 @@ class ResultAlgebraTest {
 
     @Test
     void anInternalErrorExitsSeventy() {
-        ResultEnvelope env = ResultEnvelope.internalError("model", "read", "the tool failed internally", List.of());
+        ResultEnvelope env = ResultEnvelope.internalError(CliTestSupport.identity("model", "read"),
+                "the tool failed internally", List.of());
         assertEquals(70, env.exitCode());
         assertEquals("error", env.toJson().get("outcome").asText());
         assertFalse(env.toJson().get("ok").asBoolean());
@@ -379,7 +381,7 @@ class ResultAlgebraTest {
         ObjectNode data = M.createObjectNode();
         data.putArray("models").addObject().put("path", "broken.dm.json").put("valid", false);
 
-        ResultEnvelope env = ResultEnvelope.queryResult("workspace", "list", "listed 1 model", data,
+        ResultEnvelope env = ResultEnvelope.queryResult(CliTestSupport.identity("workspace", "list"), "listed 1 model", data,
                 ConsistencyEvidence.none());
 
         assertEquals(0, env.exitCode(), "the listing executed; a per-entry verdict is payload, not process status");

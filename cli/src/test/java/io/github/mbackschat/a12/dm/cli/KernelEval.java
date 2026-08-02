@@ -159,7 +159,7 @@ final class KernelEval {
                         a.condition(), a.code(), a.severity());
                 ValidationResult check = new RuleValidator().check(modelJson, draft, resolver);
                 if (!check.ok()) {
-                    ResultEnvelope env = ResultEnvelope.rejected("model", "eval",
+                    ResultEnvelope env = ResultEnvelope.rejected(CliTestSupport.identity("model", "eval"),
                             "the candidate rule is rejected by the kernel (use `rule check` for diagnostics)",
                             check.diagnostics(), RejectionBasis.kernel(ConsistencyEvidence.of(check)));
                     out.append(env.toJsonString());
@@ -188,7 +188,7 @@ final class KernelEval {
             return fail(err, "evaluation failed: " + e.getMessage());
         }
 
-        ResultEnvelope env = ResultEnvelope.runtimeObservation("model", "eval",
+        ResultEnvelope env = ResultEnvelope.runtimeObservation(CliTestSupport.identity("model", "eval"),
                 data.get("fired").size() + " rule(s) fired", data, RuntimeEvidence.kernel());
         out.append(env.toJsonString());
         return env.exitCode();
@@ -235,7 +235,7 @@ final class KernelEval {
         } catch (RuntimeException e) {
             return fail(err, "computation failed: " + e.getMessage());
         }
-        ResultEnvelope env = ResultEnvelope.runtimeObservation("model", "compute",
+        ResultEnvelope env = ResultEnvelope.runtimeObservation(CliTestSupport.identity("model", "compute"),
                 "computed " + data.path("declarations").asInt() + " computation(s) over "
                         + data.path("instances").asInt() + " field instance(s)",
                 data, RuntimeEvidence.kernel());
@@ -271,7 +271,7 @@ final class KernelEval {
                 return refuse(out, "rule", "eval", refusal.get());
             }
             ObjectNode data = ruleTestData(adapter.testRule(a.rulePath(), fields, locale(a), !a.noComputations()));
-            ResultEnvelope env = ResultEnvelope.runtimeObservation("rule", "eval", ruleSummary(data), data,
+            ResultEnvelope env = ResultEnvelope.runtimeObservation(CliTestSupport.identity("rule", "eval"), ruleSummary(data), data,
                     RuntimeEvidence.kernel());
             out.append(env.toJsonString());
             return env.exitCode();
@@ -365,7 +365,8 @@ final class KernelEval {
     }
 
     private static int refuse(StringBuilder out, String target, String op, Refusal refusal) {
-        ResultEnvelope env = ResultEnvelope.refused(target, op, refusal.summary(), refusal.data(),
+        ResultEnvelope env = ResultEnvelope.refused(CliTestSupport.identity(target, op), refusal.summary(),
+                refusal.data(),
                 refusal.diagnostics());
         out.append(env.toJsonString());
         return env.exitCode();

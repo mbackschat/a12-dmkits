@@ -51,7 +51,7 @@ final class ModelNormalizeCommand extends BaseCommand {
         ObjectNode changed = MAPPER.createObjectNode();
         changed.put("reformatted", reformatted);
         String summary = reformatted ? "normalized to canonical form" : "already canonical — no change";
-        return emitMutation(ModelWrite.of("model", "normalize")
+        return emitMutation(ModelWrite.of(resultIdentity())
                 .summaries(reformatted ? "would normalize to canonical form" : summary,
                         summary)
                 .changed(changed)

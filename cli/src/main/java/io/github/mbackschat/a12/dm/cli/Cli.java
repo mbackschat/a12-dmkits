@@ -2,7 +2,6 @@ package io.github.mbackschat.a12.dm.cli;
 
 import java.io.PrintWriter;
 import java.io.StringWriter;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.function.BooleanSupplier;
 
@@ -109,20 +108,20 @@ public final class Cli {
                 //     envelope (RK_INTERNAL_ERROR), never a raw stack trace. picocli routes only Exceptions
                 //     here; an Error (e.g. a native reflection gap) is caught around execute() below.
                 .setExecutionExceptionHandler((ex, commandLine, parseResult) -> {
-                    String[] to = targetOp(parseResult);
+                    ResultIdentity identity = ResultIdentity.from(parseResult);
                     boolean internal = !(ex instanceof ModelConsistencyException)
                             && !(ex instanceof UnresolvedReferenceException)
                             && !(ex instanceof ModelPreparationError);
                     ResultEnvelope env;
                     if (ex instanceof ModelConsistencyException mce) {
-                        env = BaseCommand.kernelRejectionEnvelope(to[0], to[1],
+                        env = BaseCommand.kernelRejectionEnvelope(identity,
                                 "the model is rejected by the kernel — it is invalid as stored", mce);
                     } else if (ex instanceof UnresolvedReferenceException ure) {
-                        env = BaseCommand.unresolvedReferenceEnvelope(to[0], to[1], ure);
+                        env = BaseCommand.unresolvedReferenceEnvelope(identity, ure);
                     } else if (ex instanceof ModelPreparationError preparation) {
-                        env = BaseCommand.modelPreparationEnvelope(to[0], to[1], preparation);
+                        env = BaseCommand.modelPreparationEnvelope(identity, preparation);
                     } else {
-                        env = BaseCommand.internalErrorEnvelope(to[0], to[1], ex);
+                        env = BaseCommand.internalErrorEnvelope(identity, ex);
                     }
                     commandLine.getOut().print(env.toJsonString());
                     commandLine.getOut().flush();
@@ -177,19 +176,7 @@ public final class Cli {
             hideJvmOnlyVerbs(cli);
         }
         try {
-            return cli.execute(args);
-        } catch (Throwable t) {
-            // picocli routes only Exceptions to the handler above; an Error — notably GraalVM's
-            // MissingReflectionRegistrationError (a native reflection-metadata gap) — propagates uncaught on
-            // the calling thread. Map it to the SAME structured `error` envelope so no raw stack trace
-            // escapes a verb; the full trace goes to stderr (never the machine-readable stdout).
-            CommandLine.ParseResult pr = cli.getParseResult();
-            String[] to = pr != null ? targetOp(pr) : new String[]{"model", ""};
-            ResultEnvelope env = BaseCommand.internalErrorEnvelope(to[0], to[1], t);
-            outW.print(env.toJsonString());
-            outW.flush();
-            t.printStackTrace(errW);
-            return env.exitCode();
+            return executeWithErrorBoundary(cli, args, outW, errW);
         } finally {
             outW.flush();
             errW.flush();
@@ -201,13 +188,30 @@ public final class Cli {
         }
     }
 
+    /** Execute one configured command tree while containing Errors that picocli's Exception handler cannot catch. */
+    static int executeWithErrorBoundary(CommandLine cli, String[] args, PrintWriter outW, PrintWriter errW) {
+        try {
+            return cli.execute(args);
+        } catch (Throwable t) {
+            // picocli routes only Exceptions to the handler above; an Error — notably GraalVM's
+            // MissingReflectionRegistrationError (a native reflection-metadata gap) — propagates uncaught on
+            // the calling thread. Map it to the SAME structured `error` envelope so no raw stack trace
+            // escapes a verb; the full trace goes to stderr (never the machine-readable stdout).
+            CommandLine.ParseResult pr = cli.getParseResult();
+            ResultIdentity identity = pr != null ? ResultIdentity.from(pr) : ResultIdentity.UNPARSED_FALLBACK;
+            ResultEnvelope env = BaseCommand.internalErrorEnvelope(identity, t);
+            outW.print(env.toJsonString());
+            outW.flush();
+            t.printStackTrace(errW);
+            return env.exitCode();
+        }
+    }
+
     /**
      * Remove the {@link #JVM_ONLY_VERBS} from the live command tree. Since {@code manifest}, {@code schema},
      * and {@code --help} are all derived from this tree (the no-drift contract), this single removal hides
      * them from every self-describing surface — so a cold native agent can't even explore them.
      */
-    /** The {@code (target, op)} names below the root for a parse result — e.g. {@code {"rule","modify"}};
-     *  {@code op} is {@code ""} for a single-token verb. Used to stamp the load-failure {@code rejected} envelope. */
     /**
      * Throw the {@code UnmatchedArgumentException} picocli suppressed because a help option was also present, so an
      * unknown subcommand is a usage error regardless of {@code --help}.
@@ -225,14 +229,6 @@ public final class Cli {
                 throw new CommandLine.UnmatchedArgumentException(pr.commandSpec().commandLine(), unmatched);
             }
         }
-    }
-
-    private static String[] targetOp(CommandLine.ParseResult pr) {
-        List<String> names = new ArrayList<>();
-        for (CommandLine.ParseResult cur = pr.subcommand(); cur != null; cur = cur.subcommand()) {
-            names.add(cur.commandSpec().name());
-        }
-        return new String[]{names.isEmpty() ? "model" : names.get(0), names.size() > 1 ? names.get(1) : ""};
     }
 
     /**

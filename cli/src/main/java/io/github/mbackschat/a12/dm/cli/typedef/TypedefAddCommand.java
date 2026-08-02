@@ -88,7 +88,7 @@ final class TypedefAddCommand extends BaseCommand {
         try {
             if (specPath != null) {
                 JsonNode spec = MAPPER.readTree(Files.readString(Path.of(specPath)));
-                Optional<Integer> rejected = rejectUnknownKeys("typedef", "add", "typedef-add", spec);
+                Optional<Integer> rejected = rejectUnknownKeys("typedef-add", spec);
                 if (rejected.isPresent()) {
                     return rejected.get();
                 }
@@ -107,7 +107,7 @@ final class TypedefAddCommand extends BaseCommand {
         try {
             resultJson = doc.validate(resolver).toJson();
         } catch (ModelConsistencyException e) {
-            return emitKernelRejection("typedef", "add", "the type definition is rejected by the kernel", e);
+            return emitKernelRejection("the type definition is rejected by the kernel", e);
         } catch (RuntimeException e) {
             return failEditGate(e);
         }
@@ -115,7 +115,7 @@ final class TypedefAddCommand extends BaseCommand {
         changed.put("added", id);
         // echo the persisted kind through the resolver — the clean ValueKind name, same as `typedef read`
         changed.put("kind", doc.typeDefinitionKind(id).orElseThrow());
-        return emitMutation(ModelWrite.of("typedef", "add")
+        return emitMutation(ModelWrite.of(resultIdentity())
                 .summaries("would add typedef " + id,
                         "added typedef " + id)
                 .changed(changed)

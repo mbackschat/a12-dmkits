@@ -175,8 +175,8 @@ final class ModelImportJsonschemaCommand extends BaseCommand {
             }
             ObjectNode changed = MAPPER.createObjectNode();
             changed.set("report", JsonSchemaCli.reportNode(MAPPER, result.report()));   // the agent's to-do list, structured
-            ResultEnvelope env = ResultEnvelope.applied("model", "import-jsonschema",
-                    "imported JSON Schema → model", changed, outputPath, ConsistencyEvidence.of(result));
+            ResultEnvelope env = ResultEnvelope.applied(resultIdentity(), "imported JSON Schema → model", changed,
+                    outputPath, ConsistencyEvidence.of(result));
             out().print(env.toJsonString());
             return env.exitCode();
         }
@@ -225,7 +225,7 @@ final class ModelImportJsonschemaCommand extends BaseCommand {
         // One receipt per component, so the bundle can attest only what ALL of them agree on: a bundle whose
         // components gated differently (some synthesized rules, some purely structural) has no single answer,
         // and picking one component's would attest a model the others never went through.
-        ResultEnvelope env = ResultEnvelope.applied("model", "import-jsonschema",
+        ResultEnvelope env = ResultEnvelope.applied(resultIdentity(),
                 "imported OpenAPI bundle → " + bundle.models().size() + " models", changed, outDir,
                 sharedEvidence(bundle));
         out().print(env.toJsonString());

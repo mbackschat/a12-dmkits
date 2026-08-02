@@ -6,6 +6,8 @@ import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.IOException;
+import java.io.PrintWriter;
+import java.io.StringWriter;
 import java.nio.file.Files;
 import java.nio.file.Path;
 
@@ -14,6 +16,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
+
+import picocli.CommandLine;
 
 /**
  * The command boundary lets NO raw throwable escape (CLI-CONFORMANCE). The reported native crash was a
@@ -30,7 +34,7 @@ class InternalErrorBoundaryTest {
 
     @Test
     void internalErrorEnvelopeIsAStructuredErrorNotARejection() {
-        ResultEnvelope env = ResultEnvelope.internalError("group", "extract", "boom", java.util.List.of());
+        ResultEnvelope env = ResultEnvelope.internalError(CliTestSupport.identity("group", "extract"), "boom", java.util.List.of());
         assertEquals(70, env.exitCode(), "an internal tool error exits 70 (EX_SOFTWARE), not 1/2");
         JsonNode json = env.toJson();
         assertEquals("error", json.get("outcome").asText());
@@ -41,7 +45,7 @@ class InternalErrorBoundaryTest {
     @Test
     void internalErrorEnvelopeFromAThrowableCarriesTheCatalogedCode() {
         Throwable t = new RuntimeException("the real cause\nsecond line should be dropped");
-        ResultEnvelope env = BaseCommand.internalErrorEnvelope("group", "extract", t);
+        ResultEnvelope env = BaseCommand.internalErrorEnvelope(CliTestSupport.identity("group", "extract"), t);
         JsonNode d = env.toJson().get("diagnostics").get(0);
         assertEquals("RK_INTERNAL_ERROR", d.get("code").asText(), "explorable via `dmtool diagnostics RK_INTERNAL_ERROR`");
         assertEquals("INTERNAL", d.get("source").asText());
@@ -56,7 +60,7 @@ class InternalErrorBoundaryTest {
     void anUnresolvableReferenceIsAStructuredRejectionNotAnInternalError() {
         var e = new io.github.mbackschat.a12.dm.core.UnresolvedReferenceException(
                 "pricelist", "no document model with id \"pricelist\" found in 1 indexed models under [/apps]");
-        ResultEnvelope env = BaseCommand.unresolvedReferenceEnvelope("model", "check", e);
+        ResultEnvelope env = BaseCommand.unresolvedReferenceEnvelope(CliTestSupport.identity("model", "check"), e);
         assertEquals(1, env.exitCode(), "an input problem (unresolvable include) is a rejection, exit 1 — not internal error 70");
         JsonNode json = env.toJson();
         assertEquals("rejected", json.get("outcome").asText());
@@ -80,9 +84,55 @@ class InternalErrorBoundaryTest {
                 () -> "stdout must be a structured envelope, not a raw trace:\n" + res.out());
         assertEquals("error", env.get("outcome").asText(),
                 () -> "an unexpected throwable maps to outcome `error`, not a raw trace: " + res.out());
+        assertEquals("group", env.get("target").asText(), res::out);
+        assertEquals("extract", env.get("op").asText(), res::out);
         assertEquals(70, res.code(), "outcome `error` exits 70");
-        assertEquals("RK_INTERNAL_ERROR", env.get("diagnostics").get(0).get("code").asText());
+        JsonNode diagnostic = env.get("diagnostics").get(0);
+        assertEquals("RK_INTERNAL_ERROR", diagnostic.get("code").asText());
+        assertTrue(diagnostic.get("summary").asText().contains("group extract"), diagnostic::toString);
         assertTrue(res.err().contains("RuntimeException") || !res.err().isBlank(),
                 "the full trace is preserved on stderr");
+    }
+
+    @Test
+    void anErrorAfterParsingKeepsTheParsedVerbIdentity() throws Exception {
+        CommandLine cli = new CommandLine(new RootCommand())
+                .setExecutionStrategy(parsed -> {
+                    throw new AssertionError("parsed error");
+                });
+
+        JsonNode env = runThroughErrorBoundary(cli,
+                "-m", "unused.json", "group", "extract", "/R/G", "--reference", "sub");
+
+        assertEquals("group", env.path("target").asText(), env::toString);
+        assertEquals("extract", env.path("op").asText(), env::toString);
+        assertTrue(env.path("diagnostics").path(0).path("summary").asText().contains("group extract"), env::toString);
+    }
+
+    @Test
+    void anErrorBeforeAParseResultUsesTheNamedFallbackIdentity() throws Exception {
+        CommandLine cli = new CommandLine(new RootCommand()) {
+            @Override
+            public CommandLine.ParseResult getParseResult() {
+                return null;
+            }
+        }.setExecutionStrategy(parsed -> {
+            throw new AssertionError("unparsed error");
+        });
+
+        JsonNode env = runThroughErrorBoundary(cli,
+                "-m", "unused.json", "group", "extract", "/R/G", "--reference", "sub");
+
+        assertEquals("model", env.path("target").asText(), env::toString);
+        assertEquals("", env.path("op").asText(), env::toString);
+        assertTrue(env.path("diagnostics").path(0).path("summary").asText().contains("model"), env::toString);
+    }
+
+    private static JsonNode runThroughErrorBoundary(CommandLine cli, String... args) throws Exception {
+        StringWriter out = new StringWriter();
+        StringWriter err = new StringWriter();
+        int exit = Cli.executeWithErrorBoundary(cli, args, new PrintWriter(out, true), new PrintWriter(err, true));
+        assertEquals(70, exit, err::toString);
+        return M.readTree(out.toString());
     }
 }

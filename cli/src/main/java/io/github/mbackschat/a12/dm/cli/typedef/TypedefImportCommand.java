@@ -61,13 +61,13 @@ final class TypedefImportCommand extends BaseCommand {
                     .validate(resolver)
                     .toJson();
         } catch (ModelConsistencyException e) {
-            return emitKernelRejection("typedef", "import", "the type-def import is rejected by the kernel", e);
+            return emitKernelRejection("the type-def import is rejected by the kernel", e);
         } catch (RuntimeException e) {
             return failEditGate(e);
         }
         ObjectNode changed = MAPPER.createObjectNode();
         changed.put("imported", reference);
-        return emitMutation(ModelWrite.of("typedef", "import")
+        return emitMutation(ModelWrite.of(resultIdentity())
                 .summaries("would import type definitions from " + reference,
                         "imported type definitions from " + reference)
                 .changed(changed)

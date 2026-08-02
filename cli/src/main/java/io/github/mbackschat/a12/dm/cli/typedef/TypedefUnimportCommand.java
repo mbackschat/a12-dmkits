@@ -59,13 +59,13 @@ final class TypedefUnimportCommand extends BaseCommand {
                     .validate(resolver)
                     .toJson();
         } catch (ModelConsistencyException e) {
-            return emitKernelRejection("typedef", "unimport", "removing the type-def import is rejected by the kernel", e);
+            return emitKernelRejection("removing the type-def import is rejected by the kernel", e);
         } catch (RuntimeException e) {
             return failEditGate(e);
         }
         ObjectNode changed = MAPPER.createObjectNode();
         changed.put("unimported", reference);
-        return emitMutation(ModelWrite.of("typedef", "unimport")
+        return emitMutation(ModelWrite.of(resultIdentity())
                 .summaries("would stop importing type definitions from " + reference,
                         "removed the type-def import of " + reference)
                 .changed(changed)

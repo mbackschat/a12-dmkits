@@ -72,7 +72,7 @@ final class ComputationAddCommand extends BaseCommand {
         } catch (IOException e) {
             return fail("cannot read input: " + e.getMessage());
         }
-        Optional<Integer> rejected = rejectUnknownKeys("computation", "add", "add", spec);
+        Optional<Integer> rejected = rejectUnknownKeys("add", spec);
         if (rejected.isPresent()) {
             return rejected.get();
         }
@@ -88,7 +88,7 @@ final class ComputationAddCommand extends BaseCommand {
         if (!check.ok()) {
             List<Diagnostic> diagnostics = new ArrayList<>(check.diagnostics());
             diagnostics.addAll(lints);
-            ResultEnvelope env = ResultEnvelope.rejected("computation", "add",
+            ResultEnvelope env = ResultEnvelope.rejected(resultIdentity(),
                     "computation rejected by the kernel (" + check.diagnostics().size() + " finding(s))",
                     diagnostics, RejectionBasis.from(ConsistencyEvidence.of(check)));
             out().print(env.toJsonString());
@@ -104,7 +104,7 @@ final class ComputationAddCommand extends BaseCommand {
         }
         ObjectNode changed = MAPPER.createObjectNode();
         changed.put("computation", parsed.fullName());
-        return emitMutation(ModelWrite.of("computation", "add")
+        return emitMutation(ModelWrite.of(resultIdentity())
                 .summaries("would add computation " + parsed.fullName(),
                         "added computation " + parsed.fullName())
                 .changed(changed)

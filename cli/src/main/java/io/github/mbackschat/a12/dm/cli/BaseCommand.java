@@ -57,6 +57,11 @@ public abstract class BaseCommand implements Callable<Integer> {
         return spec.commandLine().getErr();
     }
 
+    /** The current ordinary two-token verb, derived from its injected live picocli leaf. */
+    protected final ResultIdentity resultIdentity() {
+        return ResultIdentity.from(spec);
+    }
+
     /** Print a diagnostic to stderr and return exit code 2 (usage / IO error). */
     protected int fail(String message) {
         err().println(message);
@@ -126,17 +131,17 @@ public abstract class BaseCommand implements Callable<Integer> {
      * lean (names only): it is the navigation handle to then {@code <target> read <name>} for one — distinct
      * from {@code model read} (full DSL of everything) and {@code export} (a takeaway artifact).
      */
-    protected int readNameIndex(String target, String plural, Collection<String> names,
-            ConsistencyEvidence evidence) {
+    protected int readNameIndex(String plural, Collection<String> names, ConsistencyEvidence evidence) {
+        ResultIdentity identity = resultIdentity();
         ObjectNode data = JSON.createObjectNode();
         ArrayNode arr = data.putArray(plural);
         names.forEach(arr::add);
         data.put("count", names.size());
-        String summary = names.size() + " " + target + (names.size() == 1 ? "" : "s");
+        String summary = names.size() + " " + identity.target() + (names.size() == 1 ? "" : "s");
         // Evidence is the CALLER's, not this helper's: `rule`/`computation read` reach their names through a gated
         // KernelAdapter while `field`/`group read` only parse the document. One shared payload shape, two honest
         // provenance answers — a single hard-coded value here would have been wrong for one pair or the other.
-        ResultEnvelope env = ResultEnvelope.queryResult(target, "read", summary, data, evidence);
+        ResultEnvelope env = ResultEnvelope.queryResult(identity, summary, data, evidence);
         out().print(env.toJsonString());
         return env.exitCode();
     }
@@ -145,8 +150,13 @@ public abstract class BaseCommand implements Callable<Integer> {
      * Emit a {@code refused} envelope from a refactor safety-gate {@link Refusal} (CLI-SPEC §6): the
      * structured {@code data} (e.g. the referrers) + the corrective diagnostic, nothing written, exit 2.
      */
-    protected int refuse(String target, String op, Refusal refusal) {
-        ResultEnvelope env = ResultEnvelope.refused(target, op, refusal.summary(), refusal.data(),
+    protected int refuse(Refusal refusal) {
+        return refuse(resultIdentity(), refusal);
+    }
+
+    /** Exceptional one-token/multi-mode counterpart whose identity cannot be derived from a two-token leaf. */
+    protected int refuse(ResultIdentity identity, Refusal refusal) {
+        ResultEnvelope env = ResultEnvelope.refused(identity, refusal.summary(), refusal.data(),
                 refusal.diagnostics());
         out().print(env.toJsonString());
         return env.exitCode();
@@ -158,8 +168,8 @@ public abstract class BaseCommand implements Callable<Integer> {
      * {@code fix}), so it is machine-readable like the rest of the surface and never a plain-text {@code fail}.
      * The read verb has already detected non-existence; this only emits (exit 2, nothing written).
      */
-    protected int refuseNotFound(String target, String op, RkCode code, String summary, String path, String fix) {
-        return refusePrecheck(target, op, code, summary, path, fix);
+    protected int refuseNotFound(RkCode code, String summary, String path, String fix) {
+        return refusePrecheck(resultIdentity(), code, summary, path, fix);
     }
 
     /**
@@ -167,18 +177,21 @@ public abstract class BaseCommand implements Callable<Integer> {
      * structured {@code RK_*} code, an optional {@code where.path}, and a corrective {@code fix}, so an agent
      * reads it like the rest of the surface — never a plain-text {@code fail}. Exit 2, nothing written.
      */
-    protected int refusePrecheck(String target, String op, RkCode code, String summary, String path, String fix) {
+    protected int refusePrecheck(ResultIdentity identity, RkCode code, String summary, String path, String fix) {
         Diagnostic diagnostic = Diagnostic.precheck(Optional.of(code.code()), summary,
                 Diagnostic.Where.path(path), Optional.of(fix), Optional.empty());
-        return refuse(target, op, new Refusal(summary, null, diagnostic));
+        return refuse(identity, new Refusal(summary, null, diagnostic));
+    }
+
+    protected int refusePrecheck(RkCode code, String summary, String path, String fix) {
+        return refusePrecheck(resultIdentity(), code, summary, path, fix);
     }
 
     /** A coded precheck whose catalog meaning is part of the corrective contract, not just its lookup key. */
-    protected int refuseExplainedPrecheck(
-            String target, String op, RkCode code, String summary, String path, String fix) {
+    protected int refuseExplainedPrecheck(RkCode code, String summary, String path, String fix) {
         Diagnostic diagnostic = Diagnostic.precheck(Optional.of(code.code()), summary,
                 Diagnostic.Where.path(path), Optional.of(fix), Optional.of(code.meaning()));
-        return refuse(target, op, new Refusal(summary, null, diagnostic));
+        return refuse(new Refusal(summary, null, diagnostic));
     }
 
     /**
@@ -216,14 +229,15 @@ public abstract class BaseCommand implements Callable<Integer> {
      * its exit code; otherwise {@link Optional#empty()} so the caller proceeds. The single defense against a
      * typo'd/out-of-scope key — or a mis-shaped value — being silently dropped into a false {@code applied}.
      */
-    protected Optional<Integer> rejectUnknownKeys(String target, String op, String schemaName, JsonNode spec) {
+    protected Optional<Integer> rejectUnknownKeys(String schemaName, JsonNode spec) {
+        ResultIdentity identity = resultIdentity();
         List<Diagnostic> problems = SpecKeys.forSchema(schemaName).validate(spec).stream()
-                .map(diagnostic -> MetadataRelocation.correct(target, op, diagnostic))
+                .map(diagnostic -> MetadataRelocation.correct(identity.target(), identity.op(), diagnostic))
                 .toList();
         if (problems.isEmpty()) {
             return Optional.empty();
         }
-        ResultEnvelope env = ResultEnvelope.rejected(target, op, specProblemSummary(problems), problems,
+        ResultEnvelope env = ResultEnvelope.rejected(identity, specProblemSummary(problems), problems,
                 RejectionBasis.preflight());
         out().print(env.toJsonString());
         return Optional.of(env.exitCode());
@@ -255,8 +269,13 @@ public abstract class BaseCommand implements Callable<Integer> {
      * notifications surfaced as enriched {@link Diagnostic}s (catalog-joined fix/explain). Shared by the
      * modelkit edit verbs, whose {@code EditSession.validate()} funnels both kernel tiers into this exception.
      */
-    protected int emitKernelRejection(String target, String op, String summary, ModelConsistencyException e) {
-        ResultEnvelope env = kernelRejectionEnvelope(target, op, summary, e);
+    protected int emitKernelRejection(String summary, ModelConsistencyException e) {
+        return emitKernelRejection(resultIdentity(), summary, e);
+    }
+
+    /** Exceptional one-token/multi-mode counterpart whose identity cannot be derived from a two-token leaf. */
+    protected int emitKernelRejection(ResultIdentity identity, String summary, ModelConsistencyException e) {
+        ResultEnvelope env = kernelRejectionEnvelope(identity, summary, e);
         out().print(env.toJsonString());
         return env.exitCode();
     }
@@ -332,9 +351,9 @@ public abstract class BaseCommand implements Callable<Integer> {
      * invalid-on-disk model — probe 01-de Finding 7) to the same structured envelope, instead of letting it
      * surface as a raw stack trace.
      */
-    static ResultEnvelope kernelRejectionEnvelope(String target, String op, String summary, ModelConsistencyException e) {
+    static ResultEnvelope kernelRejectionEnvelope(ResultIdentity identity, String summary, ModelConsistencyException e) {
         ConsistencyEvidence evidence = ConsistencyEvidence.of(e);
-        return ResultEnvelope.rejected(target, op, summary, gateRejectionDiagnostics(e, evidence),
+        return ResultEnvelope.rejected(identity, summary, gateRejectionDiagnostics(e, evidence),
                 RejectionBasis.kernel(evidence));
     }
 
@@ -369,25 +388,24 @@ public abstract class BaseCommand implements Callable<Integer> {
      * {@code RK_UNRESOLVED_REFERENCE} diagnostic (exit 1), not the generic internal-error shape; the
      * {@link Cli} seam routes {@link UnresolvedReferenceException} here so it never escapes as a raw trace.
      */
-    static ResultEnvelope unresolvedReferenceEnvelope(String target, String op, UnresolvedReferenceException e) {
+    static ResultEnvelope unresolvedReferenceEnvelope(ResultIdentity identity, UnresolvedReferenceException e) {
         Diagnostic d = Diagnostic.precheck(Optional.of(RkCode.UNRESOLVED_REFERENCE.code()),
                 e.getMessage(),
                 Diagnostic.Where.arg(null, e.reference()),
                 Optional.of(RkCode.UNRESOLVED_REFERENCE.fix()),
                 Optional.empty());
-        return ResultEnvelope.rejected(target, op,
+        return ResultEnvelope.rejected(identity,
                 "a model reference could not be resolved: " + e.reference(), List.of(d),
                 RejectionBasis.preflight());
     }
 
     /** Convert every portable workspace diagnostic into the CLI's corrective, self-describing refusal shape. */
-    static ResultEnvelope modelPreparationEnvelope(String target, String op, ModelPreparationError error) {
+    static ResultEnvelope modelPreparationEnvelope(ResultIdentity identity, ModelPreparationError error) {
         List<Diagnostic> diagnostics = error.getDiagnostics().stream()
                 .map(BaseCommand::modelPreparationDiagnostic)
                 .toList();
         return ResultEnvelope.refused(
-                target,
-                op,
+                identity,
                 "the model workspace could not be prepared",
                 diagnostics);
     }
@@ -443,15 +461,15 @@ public abstract class BaseCommand implements Callable<Integer> {
      * {@code Exception} and an escaped {@code Error} to one structured shape, so no raw stack trace escapes
      * a verb — generalizing the single-{@link ModelConsistencyException} seam to the whole throwable class.
      */
-    static ResultEnvelope internalErrorEnvelope(String target, String op, Throwable t) {
+    static ResultEnvelope internalErrorEnvelope(ResultIdentity identity, Throwable t) {
         String detail = t.getClass().getSimpleName()
                 + (t.getMessage() != null && !t.getMessage().isBlank() ? ": " + firstLine(t.getMessage()) : "");
-        String verb = (op == null || op.isEmpty()) ? target : target + " " + op;
+        String verb = identity.toString();
         Diagnostic d = Diagnostic.internal(Optional.of(RkCode.INTERNAL_ERROR.code()),
                 "internal error while executing `" + verb + "`: " + detail,
                 new Diagnostic.Where((String) null, Optional.empty()),
                 Optional.of(RkCode.INTERNAL_ERROR.fix()));
-        return ResultEnvelope.internalError(target, op == null ? "" : op,
+        return ResultEnvelope.internalError(identity,
                 "the tool failed internally — not an input rejection", List.of(d));
     }
 

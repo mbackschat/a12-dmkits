@@ -72,7 +72,7 @@ final class RuleDepsCommand extends BaseCommand {
                     .require(SafetyChecks.ruleExists(adapter, rule))
                     .firstFailure();
             if (refusal.isPresent()) {
-                return refuse("rule", "deps", refusal.get());
+                return refuse(refusal.get());
             }
             ReadResult read = adapter.read(rule);
             ObjectNode data = MAPPER.createObjectNode();
@@ -98,7 +98,7 @@ final class RuleDepsCommand extends BaseCommand {
             }
             // `bound` is a gated ofJson bind; the adapter beside it is KernelAdapter.of (gate SKIPped), so the
             // BINDING is the witness here — the discriminating pair the derivation rule exists for.
-            ResultEnvelope env = ResultEnvelope.queryResult("rule", "deps", summary, data,
+            ResultEnvelope env = ResultEnvelope.queryResult(resultIdentity(), summary, data,
                     ConsistencyEvidence.of(bound));
             out().print(env.toJsonString());
             return env.exitCode();

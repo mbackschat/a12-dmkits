@@ -153,10 +153,10 @@ final class RuleCheckCommand extends BaseCommand {
         // the only honest report is a rejection the CLI itself made — same exit 1, no invented verdict. `data`
         // rides along either way: the candidate list is exactly what a rejected author needs next.
         ResultEnvelope env = evidence.gateRan()
-                ? ResultEnvelope.consistencyVerdict("rule", "check",
+                ? ResultEnvelope.consistencyVerdict(resultIdentity(),
                         merged.ok() ? "candidate is kernel-valid" : "candidate has " + findings.size() + " finding(s)",
                         merged.ok(), findings, data, evidence)
-                : ResultEnvelope.rejected("rule", "check",
+                : ResultEnvelope.rejected(resultIdentity(),
                         "the candidate could not be checked — " + findings.size() + " finding(s)", data, findings,
                         RejectionBasis.preflight());
         out().print(env.toJsonString());

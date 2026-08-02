@@ -71,7 +71,7 @@ final class ModelUsageCommand extends BaseCommand {
                     unreferenced.add(field);
                 }
             }
-            ResultEnvelope env = ResultEnvelope.queryResult("model", "usage",
+            ResultEnvelope env = ResultEnvelope.queryResult(resultIdentity(),
                     "usage of " + fields.size() + " field(s); " + unreferenced.size() + " unreferenced",
                     data, ConsistencyEvidence.of(adapter));
             out().print(env.toJsonString());

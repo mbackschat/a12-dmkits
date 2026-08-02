@@ -78,7 +78,7 @@ final class ModelRenameCommand extends BaseCommand {
         // a best-effort cascade — if a sibling references the old id, or the new id collides.
         Refusal refusal = crossModelRefusal(model, oldId);
         if (refusal != null) {
-            return refuse("model", "rename", refusal);
+            return refuse(refusal);
         }
 
         ModelResolver resolver = workspace.resolverFor(model);
@@ -86,7 +86,7 @@ final class ModelRenameCommand extends BaseCommand {
         try {
             resultJson = doc.setModelId(newId).validate(resolver).toJson();
         } catch (ModelConsistencyException e) {
-            return emitKernelRejection("model", "rename", "the id change is rejected by the kernel", e);
+            return emitKernelRejection("the id change is rejected by the kernel", e);
         } catch (RuntimeException e) {
             return failEditGate(e);
         }
@@ -94,7 +94,7 @@ final class ModelRenameCommand extends BaseCommand {
         changed.put("id", newId);
         changed.put("from", oldId);
         String summary = "renamed model id " + oldId + " → " + newId;
-        return emitMutation(ModelWrite.of("model", "rename")
+        return emitMutation(ModelWrite.of(resultIdentity())
                 .summaries("would have " + summary,
                         summary)
                 .changed(changed)

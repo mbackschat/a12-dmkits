@@ -110,7 +110,7 @@ final class MetaCommand extends BaseCommand {
                 .require(SafetyChecks.labelSupported(doc, ref, !modification.labels().isEmpty()))
                 .firstFailure();
         if (refusal.isPresent()) {
-            return refuse("meta", hasWrites ? "modify" : "read", refusal.get());
+            return refuse(hasWrites ? ResultIdentity.META_MODIFY : ResultIdentity.META_READ, refusal.get());
         }
 
         if (!hasWrites) {
@@ -122,7 +122,7 @@ final class MetaCommand extends BaseCommand {
             putMap(data.putObject("annotations"), doc.annotations(ref));
             // ModelDocument.read parses and indexes; no consistency gate runs on this path, so no verdict and no
             // provenance are claimed (this verb was one of the seven measured reporting a fabricated valid:true).
-            ResultEnvelope env = ResultEnvelope.queryResult("meta", "read", "read metadata of " + ref, data,
+            ResultEnvelope env = ResultEnvelope.queryResult(ResultIdentity.META_READ, "read metadata of " + ref, data,
                     ConsistencyEvidence.none());
             out().print(env.toJsonString());
             return env.exitCode();
@@ -136,11 +136,12 @@ final class MetaCommand extends BaseCommand {
             modification.applyTo(ref, doc, session, changed);
             resultJson = session.validate().toJson();
         } catch (ModelConsistencyException e) {
-            return emitKernelRejection("meta", "modify", "the metadata change is rejected by the kernel", e);
+            return emitKernelRejection(ResultIdentity.META_MODIFY,
+                    "the metadata change is rejected by the kernel", e);
         } catch (RuntimeException e) {
             return failEditGate(e);
         }
-        return emitMutation(ModelWrite.of("meta", "modify")
+        return emitMutation(ModelWrite.of(ResultIdentity.META_MODIFY)
                 .summaries("would change metadata of " + ref,
                         "changed metadata of " + ref)
                 .changed(changed)

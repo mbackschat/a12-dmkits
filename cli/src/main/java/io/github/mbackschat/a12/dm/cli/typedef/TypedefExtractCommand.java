@@ -69,7 +69,7 @@ final class TypedefExtractCommand extends BaseCommand {
                 .require(SafetyChecks.fieldsShareConcreteType(doc, from))
                 .firstFailure();
         if (refusal.isPresent()) {
-            return refuse("typedef", "extract", refusal.get());
+            return refuse(refusal.get());
         }
 
         ModelResolver resolver = workspace.resolverFor(model);
@@ -78,7 +78,7 @@ final class TypedefExtractCommand extends BaseCommand {
             doc.extractTypeDefinition(id, from);
             resultJson = doc.validate(resolver).toJson();
         } catch (ModelConsistencyException e) {
-            return emitKernelRejection("typedef", "extract", "extract left the model invalid", e);
+            return emitKernelRejection("extract left the model invalid", e);
         } catch (RuntimeException e) {
             return failEditGate(e);
         }
@@ -87,7 +87,7 @@ final class TypedefExtractCommand extends BaseCommand {
         changed.put("created", id);
         ArrayNode fields = changed.putArray("fromFields");
         from.forEach(fields::add);
-        return emitMutation(ModelWrite.of("typedef", "extract")
+        return emitMutation(ModelWrite.of(resultIdentity())
                 .summaries("would extract " + from.size() + " field(s) into typedef " + id,
                         "extracted " + from.size() + " field(s) into typedef " + id)
                 .changed(changed)

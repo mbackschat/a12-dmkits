@@ -68,20 +68,20 @@ final class IncludeRemoveCommand extends BaseCommand {
                 .require(SafetyChecks.includeExists(doc, alias))
                 .firstFailure();
         if (refusal.isPresent()) {
-            return refuse("include", "remove", refusal.get());
+            return refuse(refusal.get());
         }
         String resultJson;
         try {
             doc.removeInclude(alias);
             resultJson = doc.validate(resolver).toJson();
         } catch (ModelConsistencyException e) {
-            return emitKernelRejection("include", "remove", "removal left the model invalid", e);
+            return emitKernelRejection("removal left the model invalid", e);
         } catch (RuntimeException e) {
             return failEditGate(e);
         }
         ObjectNode changed = MAPPER.createObjectNode();
         changed.put("removed", alias);
-        return emitMutation(ModelWrite.of("include", "remove")
+        return emitMutation(ModelWrite.of(resultIdentity())
                 .summaries("would remove include " + alias,
                         "removed include " + alias)
                 .changed(changed)

@@ -113,14 +113,14 @@ final class FieldAddCommand extends BaseCommand {
         try {
             if (specPath != null) {
                 JsonNode spec = MAPPER.readTree(Files.readString(Path.of(specPath)));
-                Optional<Integer> rejected = rejectUnknownKeys("field", "add", "field-add", spec);
+                Optional<Integer> rejected = rejectUnknownKeys("field-add", spec);
                 if (rejected.isPresent()) {
                     return rejected.get();
                 }
                 FieldSpec.Parsed parsed = FieldSpec.parse(spec);
                 effGroup = parsed.group();
                 target = effGroup + "/" + parsed.field().name();
-                if (refused(doc, effGroup, "field", "add")) {
+                if (refused(doc, effGroup)) {
                     return 2;
                 }
                 doc.addField(effGroup, parsed.field());
@@ -143,7 +143,7 @@ final class FieldAddCommand extends BaseCommand {
                 }
                 effGroup = group;
                 target = group + "/" + name;
-                if (refused(doc, effGroup, "field", "add")) {
+                if (refused(doc, effGroup)) {
                     return 2;
                 }
                 changed.put("added", target);   // key order matches the established field-add envelope
@@ -165,11 +165,11 @@ final class FieldAddCommand extends BaseCommand {
         try {
             resultJson = doc.validate(resolver).toJson();
         } catch (ModelConsistencyException e) {
-            return emitKernelRejection("field", "add", "the field is rejected by the kernel", e);
+            return emitKernelRejection("the field is rejected by the kernel", e);
         } catch (RuntimeException e) {
             return failEditGate(e);
         }
-        return emitMutation(ModelWrite.of("field", "add")
+        return emitMutation(ModelWrite.of(resultIdentity())
                 .summaries("would add field " + target,
                         "added field " + target)
                 .changed(changed)
@@ -180,13 +180,13 @@ final class FieldAddCommand extends BaseCommand {
     }
 
     /** Emit the safety-gate refusal (group must exist) and report whether it fired. */
-    private boolean refused(ModelDocument doc, String groupPath, String target, String op) {
+    private boolean refused(ModelDocument doc, String groupPath) {
         Optional<Refusal> refusal = new SafetyGate()
                 .require(SafetyChecks.exists(doc, groupPath, true))
                 .require(SafetyChecks.notAnIncludeMount(doc, groupPath))
                 .firstFailure();
         if (refusal.isPresent()) {
-            refuse(target, op, refusal.get());
+            refuse(refusal.get());
             return true;
         }
         return false;

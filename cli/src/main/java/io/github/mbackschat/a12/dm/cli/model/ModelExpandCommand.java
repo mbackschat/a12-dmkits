@@ -60,7 +60,7 @@ final class ModelExpandCommand extends BaseCommand {
         ObjectNode changed = JsonNodeFactory.instance.objectNode();
         changed.put("selfContained", true);
         ResultEnvelope envelope = ResultEnvelope.applied(
-                "model", "expand", "expanded model into one self-contained artifact", changed, outputPath,
+                resultIdentity(), "expanded model into one self-contained artifact", changed, outputPath,
                     ConsistencyEvidence.none());
         out().print(envelope.toJsonString());
         return envelope.exitCode();

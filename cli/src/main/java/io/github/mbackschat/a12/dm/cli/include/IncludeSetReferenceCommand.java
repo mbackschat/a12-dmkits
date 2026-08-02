@@ -66,20 +66,20 @@ final class IncludeSetReferenceCommand extends BaseCommand {
                 .require(SafetyChecks.includeExists(doc, alias))
                 .firstFailure();
         if (refusal.isPresent()) {
-            return refuse("include", "set-reference", refusal.get());
+            return refuse(refusal.get());
         }
         String resultJson;
         try {
             doc.setIncludeReference(alias, reference);
             resultJson = doc.validate(resolver).toJson();
         } catch (ModelConsistencyException e) {
-            return emitKernelRejection("include", "set-reference", "the new reference left the model invalid", e);
+            return emitKernelRejection("the new reference left the model invalid", e);
         } catch (RuntimeException e) {
             return failEditGate(e);
         }
         ObjectNode changed = MAPPER.createObjectNode();
         changed.put("alias", alias).put("reference", reference);
-        return emitMutation(ModelWrite.of("include", "set-reference")
+        return emitMutation(ModelWrite.of(resultIdentity())
                 .summaries("would repoint include " + alias + " to " + reference,
                         "repointed include " + alias + " to " + reference)
                 .changed(changed)

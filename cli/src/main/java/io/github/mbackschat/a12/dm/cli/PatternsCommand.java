@@ -94,17 +94,17 @@ final class PatternsCommand extends BaseCommand {
     @Override
     public Integer call() {
         if (id == null) {
-            return emitQuery("read", CATALOG.size() + " validation idiom(s)", list());
+            return emitQuery(CATALOG.size() + " validation idiom(s)", list());
         }
         PatternEntry pattern = CATALOG.byId(id).orElse(null);
         if (pattern == null) {
-            return refusePrecheck("patterns", "read", RkCode.NO_SUCH_ELEMENT,
+            return refusePrecheck(ResultIdentity.PATTERNS_READ, RkCode.NO_SUCH_ELEMENT,
                     "no pattern '" + id + "'", id,
                     "pass a known pattern id (list them with `dmtool patterns`): "
                             + CATALOG.entries().stream().map(PatternEntry::id).toList());
         }
         if (args.isEmpty()) {
-            return emitQuery("read", "read validation idiom " + pattern.id(), detail(pattern));
+            return emitQuery("read validation idiom " + pattern.id(), detail(pattern));
         }
         return scaffold(pattern);
     }
@@ -322,14 +322,14 @@ final class PatternsCommand extends BaseCommand {
             Supplier<String> persist) {
         if (!apply) {
             // review the spec + the kernel's verdict on it, then run the ordinary `<kind> add`
-            return print(ResultEnvelope.consistencyVerdict("patterns", "scaffold",
+            return print(ResultEnvelope.consistencyVerdict(ResultIdentity.PATTERNS_SCAFFOLD,
                     valid ? "scaffolded a kernel-valid " + kind
                             : "the scaffolded " + kind + " is rejected by the kernel (" + diagnostics.size()
                                     + " finding(s))",
                     valid, diagnostics, payload, evidence));
         }
         if (!valid) {
-            return print(ResultEnvelope.rejected("patterns", "scaffold",
+            return print(ResultEnvelope.rejected(ResultIdentity.PATTERNS_SCAFFOLD,
                     "the scaffolded " + kind + " is rejected by the kernel — fix the diagnostics before --apply",
                     payload, diagnostics, RejectionBasis.from(evidence)));
         }
@@ -346,7 +346,7 @@ final class PatternsCommand extends BaseCommand {
             return failOrRethrowDomainRejection("the scaffolded " + kind + " does not persist cleanly: ", e);
         }
         if (dryRun) {
-            return print(ResultEnvelope.preview("patterns", "scaffold",
+            return print(ResultEnvelope.preview(ResultIdentity.PATTERNS_SCAFFOLD,
                     "would add " + kind + " " + scaffolded, payload, diagnostics, written));
         }
         String dest = outputPath != null ? outputPath : model;
@@ -356,13 +356,15 @@ final class PatternsCommand extends BaseCommand {
             return fail("cannot write output: " + e.getMessage());
         }
         payload.put(kind, scaffolded);
-        return print(ResultEnvelope.applied("patterns", "scaffold", "added " + kind + " " + scaffolded, payload,
+        return print(ResultEnvelope.applied(ResultIdentity.PATTERNS_SCAFFOLD,
+                "added " + kind + " " + scaffolded, payload,
                 diagnostics, dest, written));
     }
 
     /** A catalog read — the bundled idiom catalog, no model and no gate. */
-    private Integer emitQuery(String op, String summary, ObjectNode payload) {
-        return print(ResultEnvelope.queryResult("patterns", op, summary, payload, ConsistencyEvidence.none()));
+    private Integer emitQuery(String summary, ObjectNode payload) {
+        return print(ResultEnvelope.queryResult(ResultIdentity.PATTERNS_READ, summary, payload,
+                ConsistencyEvidence.none()));
     }
 
 

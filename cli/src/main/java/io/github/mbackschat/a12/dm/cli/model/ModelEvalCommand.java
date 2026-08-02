@@ -160,7 +160,7 @@ final class ModelEvalCommand extends BaseCommand {
                 // a structured refusal for an unknown --rule narrowing — otherwise it would silently report
                 // the missing rule as fired:false.
                 if (ruleId != null && !InterpreterEngine.ruleFullNames(interpJson).contains(ruleId)) {
-                    return refuseNotFound("model", "eval", RkCode.NO_SUCH_RULE,
+                    return refuseNotFound(RkCode.NO_SUCH_RULE,
                             "rule '" + ruleId + "' does not exist — refusing", ruleId, RkCode.NO_SUCH_RULE.fix());
                 }
                 data = InterpreterEngine.evalData(interpJson, documentJson, localeTag, ruleId,
@@ -168,10 +168,10 @@ final class ModelEvalCommand extends BaseCommand {
                         customSupport.customFieldTypes(), !noComputations, relevant);
             }
         } catch (UnsupportedModelTimeZoneException e) {
-            return refuseExplainedPrecheck("model", "eval", RkCode.INTERPRETER_TIMEZONE_UNSUPPORTED, e.getMessage(),
+            return refuseExplainedPrecheck(RkCode.INTERPRETER_TIMEZONE_UNSUPPORTED, e.getMessage(),
                     model, RkCode.INTERPRETER_TIMEZONE_UNSUPPORTED.fix());
         } catch (InvalidModelTimeZoneException e) {
-            return refuseExplainedPrecheck("model", "eval", RkCode.INVALID_CONFIG_VALUE, e.getMessage(),
+            return refuseExplainedPrecheck(RkCode.INVALID_CONFIG_VALUE, e.getMessage(),
                     model, RkCode.INVALID_CONFIG_VALUE.fix());
         } catch (DocumentInputError badDoc) {
             return failInvalidInstance(badDoc);
@@ -181,12 +181,12 @@ final class ModelEvalCommand extends BaseCommand {
             return fail("evaluation failed: " + e.getMessage());
         }
 
-        ResultEnvelope refusal = customSupport.strictRefusal("model", "eval", data);
+        ResultEnvelope refusal = customSupport.strictRefusal(resultIdentity(), data);
         if (refusal != null) {
             out().print(refusal.toJsonString());
             return refusal.exitCode();
         }
-        ResultEnvelope env = ResultEnvelope.runtimeObservation("model", "eval",
+        ResultEnvelope env = ResultEnvelope.runtimeObservation(resultIdentity(),
                 data.get("fired").size() + " rule(s) fired", data, RuntimeEvidence.interpreter());
         out().print(env.toJsonString());
         return env.exitCode();

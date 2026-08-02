@@ -175,7 +175,7 @@ final class ModelDiffCommand extends BaseCommand {
                     + (highRisk > 0 ? " (" + highRisk + " high-risk)" : "");
             // ModelDiff loads BOTH sides through KernelAdapter.checkAndOpen, so the diff object's existence
             // witnesses two gates having run.
-            ResultEnvelope env = ResultEnvelope.queryResult("model", "diff", summary, data,
+            ResultEnvelope env = ResultEnvelope.queryResult(resultIdentity(), summary, data,
                     ConsistencyEvidence.of(diff));
             out().print(env.toJsonString());
             return env.exitCode();

@@ -77,7 +77,7 @@ final class RuleAddCommand extends BaseCommand {
         } catch (IOException e) {
             return fail("cannot read input: " + e.getMessage());
         }
-        Optional<Integer> rejected = rejectUnknownKeys("rule", "add", "add", spec);
+        Optional<Integer> rejected = rejectUnknownKeys("add", spec);
         if (rejected.isPresent()) {
             return rejected.get();
         }
@@ -120,7 +120,7 @@ final class RuleAddCommand extends BaseCommand {
             // G30: operand-aware corrective on the rejected text path (see TextConditionCorrective / RuleCheckCommand).
             List<Diagnostic> diagnostics =
                     TextConditionCorrective.enrich(check.diagnostics(), condition, group, modelJson, resolver);
-            ResultEnvelope env = ResultEnvelope.rejected("rule", "add",
+            ResultEnvelope env = ResultEnvelope.rejected(resultIdentity(),
                     "condition rejected by the kernel (" + diagnostics.size() + " finding(s))",
                     diagnostics, RejectionBasis.from(ConsistencyEvidence.of(check)));
             out().print(env.toJsonString());
@@ -144,7 +144,7 @@ final class RuleAddCommand extends BaseCommand {
 
         ObjectNode changed = MAPPER.createObjectNode();
         changed.put("rule", ruleFullName);
-        return emitMutation(ModelWrite.of("rule", "add")
+        return emitMutation(ModelWrite.of(resultIdentity())
                 .summaries("would add rule " + ruleFullName,
                         "added rule " + ruleFullName)
                 .changed(changed)

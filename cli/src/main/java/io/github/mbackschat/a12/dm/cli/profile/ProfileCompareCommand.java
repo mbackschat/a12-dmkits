@@ -63,7 +63,7 @@ final class ProfileCompareCommand extends BaseCommand {
         // reclassification of what the result is CALLED (profile equality was never model validity), not a change
         // to anything a caller observes.
         ComparisonOutcome outcome = ComparisonOutcome.of(comparison.path("matches").asBoolean());
-        ResultEnvelope env = ResultEnvelope.comparisonResult("profile", "compare",
+        ResultEnvelope env = ResultEnvelope.comparisonResult(resultIdentity(),
                 outcome.matches() ? "profiles match" : "profiles differ", outcome, comparison);
         out().print(env.toJsonString());
         return env.exitCode();

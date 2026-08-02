@@ -73,6 +73,9 @@ class ApplyVerbTest {
         JsonNode j = M.readTree(res.out());
         assertFalse(j.path("data").path("committed").asBoolean());
         assertFalse(j.path("written").asBoolean());
+        JsonNode gate = j.path("data").path("results").path(1);
+        assertEquals("model", gate.path("target").asText(), gate::toString);
+        assertEquals("validate", gate.path("op").asText(), gate::toString);
         assertTrue(res.out().contains("the same name"),
                 () -> "the apply terminal-gate rejection must surface the kernel cause, not a bare 'not kernel-valid': "
                         + res.out());

@@ -85,7 +85,7 @@ final class FieldRemoveCommand extends BaseCommand {
                 .require(SafetyChecks.exists(ModelDocument.read(modelJson), field, false))
                 .firstFailure();
         if (notFound.isPresent()) {
-            return refuse("field", "remove", notFound.get());
+            return refuse(notFound.get());
         }
         EditSession session = EditSession.read(modelJson, resolver);
         ArrayNode cascaded = MAPPER.createArrayNode();
@@ -95,7 +95,7 @@ final class FieldRemoveCommand extends BaseCommand {
             Set<String> refComputations = new TreeSet<>(adapter.whereUsedInComputations(field));
             if (!refRules.isEmpty() || !refComputations.isEmpty()) {
                 if (!cascade) {
-                    return refuse("field", "remove", SafetyChecks.referencedBy(field, refRules, refComputations,
+                    return refuse(SafetyChecks.referencedBy(field, refRules, refComputations,
                             "pass --cascade to remove the referrers too, or remove them first"));
                 }
                 for (String r : refRules) {
@@ -116,12 +116,12 @@ final class FieldRemoveCommand extends BaseCommand {
         try {
             resultJson = session.validate().toJson();
         } catch (ModelConsistencyException e) {
-            return emitKernelRejection("field", "remove", "removal left the model invalid", e);
+            return emitKernelRejection("removal left the model invalid", e);
         }
         ObjectNode changed = MAPPER.createObjectNode();
         changed.put("removed", field);
         changed.set("cascaded", cascaded);
-        return emitMutation(ModelWrite.of("field", "remove")
+        return emitMutation(ModelWrite.of(resultIdentity())
                 .summaries("would remove " + field,
                         "removed " + field)
                 .changed(changed)

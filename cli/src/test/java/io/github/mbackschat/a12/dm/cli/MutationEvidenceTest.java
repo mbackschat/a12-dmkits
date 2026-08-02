@@ -219,7 +219,7 @@ class MutationEvidenceTest {
     void anIncompleteWriteRefusesBeforeItTouchesTheDestination(@TempDir Path dir) throws Exception {
         Path dest = dir.resolve("must-not-appear.dm.json");
         TailProbe cmd = new TailProbe();
-        cmd.write = ModelWrite.of("field", "add")
+        cmd.write = ModelWrite.of(CliTestSupport.identity("field", "add"))
                 .summaries("would add PromoCode", "added PromoCode")
                 .json("{\"unused\":true}")
                 .dryRun(false)

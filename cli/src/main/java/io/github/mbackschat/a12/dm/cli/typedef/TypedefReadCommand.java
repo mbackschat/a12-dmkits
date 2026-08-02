@@ -69,7 +69,7 @@ final class TypedefReadCommand extends BaseCommand {
             if (id != null) {
                 Optional<String> kind = doc.typeDefinitionKind(id);
                 if (kind.isEmpty()) {
-                    return refuseNotFound("typedef", "read", RkCode.NO_SUCH_TYPEDEF,
+                    return refuseNotFound(RkCode.NO_SUCH_TYPEDEF,
                             "no type definition '" + id + "'", id,
                             "pass a declared type-def id (list them with `typedef read` — no arg); declared: " + ids);
                 }
@@ -83,14 +83,14 @@ final class TypedefReadCommand extends BaseCommand {
                 // accepts — so a constraint on a reusable type is verifiable through `read` alone (read-gap
                 // fix B, the typedef sibling), never the raw model JSON
                 doc.typeDefinitionConfigJson(id).ifPresent(cfg -> data.setAll(ReadPayloads.configNode(cfg)));
-                ResultEnvelope env = ResultEnvelope.queryResult("typedef", "read",
-                        "read type definition " + id, data, ConsistencyEvidence.none());
+                ResultEnvelope env = ResultEnvelope.queryResult(resultIdentity(), "read type definition " + id,
+                        data, ConsistencyEvidence.none());
                 out().print(env.toJsonString());
                 return env.exitCode();
             }
             // T3: the shared no-arg list shape (typedefs + importedFrom), same as `apply` TYPEDEF_READ
             ObjectNode data = ReadPayloads.typedefList(doc);
-            ResultEnvelope env = ResultEnvelope.queryResult("typedef", "read",
+            ResultEnvelope env = ResultEnvelope.queryResult(resultIdentity(),
                     "read " + ids.size() + " local type definition(s)", data, ConsistencyEvidence.none());
             out().print(env.toJsonString());
             return env.exitCode();

@@ -72,7 +72,7 @@ public abstract class ReferenceRewritingRefactorCommand extends BaseCommand {
         // gate: op-specific preconditions, checked before any mutation (CLI-SPEC §6).
         Optional<Refusal> refusal = refactor.firstFailure(doc, adapter);
         if (refusal.isPresent()) {
-            return refuse(refactor.target(), refactor.op(), refusal.get());
+            return refuse(refusal.get());
         }
         Set<String> rewroteReferences = refactor.referrers(adapter, doc);
 
@@ -86,7 +86,7 @@ public abstract class ReferenceRewritingRefactorCommand extends BaseCommand {
             rewritten = refactor.rewriteAndMutate(modelJson).validate(resolver);
             resultJson = rewritten.toJson();
         } catch (ModelConsistencyException e) {
-            return emitKernelRejection(refactor.target(), refactor.op(), refactor.op() + " left the model invalid", e);
+            return emitKernelRejection(refactor.op() + " left the model invalid", e);
         } catch (RuntimeException e) {
             return failEditGate(e);
         }
@@ -97,7 +97,7 @@ public abstract class ReferenceRewritingRefactorCommand extends BaseCommand {
         ArrayNode refs = changed.putArray("rewroteReferences");
         rewroteReferences.forEach(refs::add);
 
-        return emitMutation(ModelWrite.of(refactor.target(), refactor.op())
+        return emitMutation(ModelWrite.of(resultIdentity())
                 .summaries("would " + refactor.op() + " " + refactor.source() + " to " + refactor.newPath(),
                         refactor.changedKey() + " " + refactor.source() + " to " + refactor.newPath())
                 .changed(changed)

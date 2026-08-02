@@ -105,7 +105,7 @@ final class WorkspaceRolesCommand extends BaseCommand {
         String summary = summary(resolution, models.size(), warnings, infos);
         // Advisory only — never blocks. As a QUERY that is now STRUCTURAL: the family holds no verdict, so
         // exitCode() cannot return anything but 0, rather than relying on a hard-coded `valid:true`.
-        ResultEnvelope env = ResultEnvelope.queryResult("workspace", "roles", summary, data,
+        ResultEnvelope env = ResultEnvelope.queryResult(resultIdentity(), summary, data,
                 ConsistencyEvidence.none());
         out().print(env.toJsonString());
         return env.exitCode(); // always 0 — a roles finding informs, never gates

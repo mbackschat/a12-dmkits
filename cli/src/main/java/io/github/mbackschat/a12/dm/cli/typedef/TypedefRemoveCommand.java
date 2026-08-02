@@ -60,20 +60,20 @@ final class TypedefRemoveCommand extends BaseCommand {
                 .require(SafetyChecks.typedefExists(doc, id))
                 .firstFailure();
         if (refusal.isPresent()) {
-            return refuse("typedef", "remove", refusal.get());
+            return refuse(refusal.get());
         }
         String resultJson;
         try {
             doc.removeTypeDefinition(id);
             resultJson = doc.validate(resolver).toJson();
         } catch (ModelConsistencyException e) {
-            return emitKernelRejection("typedef", "remove", "removal left the model invalid", e);
+            return emitKernelRejection("removal left the model invalid", e);
         } catch (RuntimeException e) {
             return failEditGate(e);
         }
         ObjectNode changed = MAPPER.createObjectNode();
         changed.put("removed", id);
-        return emitMutation(ModelWrite.of("typedef", "remove")
+        return emitMutation(ModelWrite.of(resultIdentity())
                 .summaries("would remove typedef " + id,
                         "removed typedef " + id)
                 .changed(changed)

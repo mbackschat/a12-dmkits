@@ -72,10 +72,10 @@ final class ModelComputeCommand extends BaseCommand {
         try {
             data = InterpreterEngine.computeData(interpJson, documentJson, localeTag);
         } catch (UnsupportedModelTimeZoneException e) {
-            return refuseExplainedPrecheck("model", "compute", RkCode.INTERPRETER_TIMEZONE_UNSUPPORTED, e.getMessage(),
+            return refuseExplainedPrecheck(RkCode.INTERPRETER_TIMEZONE_UNSUPPORTED, e.getMessage(),
                     model, RkCode.INTERPRETER_TIMEZONE_UNSUPPORTED.fix());
         } catch (InvalidModelTimeZoneException e) {
-            return refuseExplainedPrecheck("model", "compute", RkCode.INVALID_CONFIG_VALUE, e.getMessage(),
+            return refuseExplainedPrecheck(RkCode.INVALID_CONFIG_VALUE, e.getMessage(),
                     model, RkCode.INVALID_CONFIG_VALUE.fix());
         } catch (DocumentInputError badDoc) {
             return failInvalidInstance(badDoc);
@@ -90,7 +90,7 @@ final class ModelComputeCommand extends BaseCommand {
         // axes at once — and the list it summarized mixes declarations, so position was ambiguous too.
         int declarations = data.path("declarations").asInt();
         int instances = data.path("instances").asInt();
-        ResultEnvelope env = ResultEnvelope.runtimeObservation("model", "compute",
+        ResultEnvelope env = ResultEnvelope.runtimeObservation(resultIdentity(),
                 "computed " + declarations + " computation(s) over " + instances + " field instance(s)",
                 data, RuntimeEvidence.interpreter());
         out().print(env.toJsonString());

@@ -97,7 +97,7 @@ final class ModelInfoCommand extends BaseCommand {
         // Header + kernel-free index only: no gate runs here, which is why the old hard-coded `valid:true`
         // was measurably FALSE on a model the kernel rejects. Nothing replaces it — an identity read has no
         // verdict to give.
-        ResultEnvelope env = ResultEnvelope.queryResult("model", "info", "read model info for " + self.id(), data,
+        ResultEnvelope env = ResultEnvelope.queryResult(resultIdentity(), "read model info for " + self.id(), data,
                 ConsistencyEvidence.none());
         out().print(env.toJsonString());
         return env.exitCode();

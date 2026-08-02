@@ -87,26 +87,26 @@ final class RuleEvalCommand extends BaseCommand {
                     json, Path.of(modelPath).getFileName().toString(), workspace.resolverFor(modelPath));
             // a structured refusal — the interpreter otherwise throws "no such rule", a bare error.
             if (!InterpreterEngine.ruleFullNames(interpJson).contains(rule)) {
-                return refuseNotFound("rule", "eval", RkCode.NO_SUCH_RULE,
+                return refuseNotFound(RkCode.NO_SUCH_RULE,
                         "rule '" + rule + "' does not exist — refusing", rule, RkCode.NO_SUCH_RULE.fix());
             }
             ObjectNode data = InterpreterEngine.ruleTestData(interpJson, documentJson, localeTag, rule,
                     customSupport.predefinedTypes(), customSupport.customConditions(),
                     customSupport.customFieldTypes(), !noComputations);
-            ResultEnvelope refusal = customSupport.strictRefusal("rule", "eval", data);
+            ResultEnvelope refusal = customSupport.strictRefusal(resultIdentity(), data);
             if (refusal != null) {
                 out().print(refusal.toJsonString());
                 return refusal.exitCode();
             }
-            ResultEnvelope env = ResultEnvelope.runtimeObservation("rule", "eval", summary(data), data,
+            ResultEnvelope env = ResultEnvelope.runtimeObservation(resultIdentity(), summary(data), data,
                     RuntimeEvidence.interpreter());
             out().print(env.toJsonString());
             return env.exitCode();
         } catch (UnsupportedModelTimeZoneException e) {
-            return refuseExplainedPrecheck("rule", "eval", RkCode.INTERPRETER_TIMEZONE_UNSUPPORTED, e.getMessage(),
+            return refuseExplainedPrecheck(RkCode.INTERPRETER_TIMEZONE_UNSUPPORTED, e.getMessage(),
                     modelPath, RkCode.INTERPRETER_TIMEZONE_UNSUPPORTED.fix());
         } catch (InvalidModelTimeZoneException e) {
-            return refuseExplainedPrecheck("rule", "eval", RkCode.INVALID_CONFIG_VALUE, e.getMessage(),
+            return refuseExplainedPrecheck(RkCode.INVALID_CONFIG_VALUE, e.getMessage(),
                     modelPath, RkCode.INVALID_CONFIG_VALUE.fix());
         } catch (DocumentInputError badDoc) {
             return failInvalidInstance(badDoc);

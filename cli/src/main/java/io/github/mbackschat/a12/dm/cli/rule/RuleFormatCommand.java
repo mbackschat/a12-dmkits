@@ -67,7 +67,7 @@ final class RuleFormatCommand extends BaseCommand {
             // a computation named where a rule is expected gets a structured refusal that redirects to the
             // computation-aware verb, instead of the bare "not a rule".
             if (adapter.computationFullNames().contains(rule)) {
-                return refuseNotFound("rule", "format", RkCode.NO_SUCH_RULE,
+                return refuseNotFound(RkCode.NO_SUCH_RULE,
                         "'" + rule + "' is a computation, not a validation rule — refusing", rule,
                         "use `computation format " + rule + "` — it is a computation (a calculated field), not a rule");
             }
@@ -76,9 +76,9 @@ final class RuleFormatCommand extends BaseCommand {
                     .require(SafetyChecks.ruleExists(adapter, rule))
                     .firstFailure();
             if (refusal.isPresent()) {
-                return refuse("rule", "format", refusal.get());
+                return refuse(refusal.get());
             }
-            ResultEnvelope env = FormatVerbs.envelope("rule", adapter, rule, lang,
+            ResultEnvelope env = FormatVerbs.envelope(resultIdentity(), adapter, rule, lang,
                     ConsistencyEvidence.of(bound));
             out().print(env.toJsonString());
             return env.exitCode();

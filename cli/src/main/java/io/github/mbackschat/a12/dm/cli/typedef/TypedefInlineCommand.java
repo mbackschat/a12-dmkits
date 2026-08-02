@@ -63,7 +63,7 @@ final class TypedefInlineCommand extends BaseCommand {
                 .require(SafetyChecks.typedefExists(doc, id))
                 .firstFailure();
         if (refusal.isPresent()) {
-            return refuse("typedef", "inline", refusal.get());
+            return refuse(refusal.get());
         }
         List<String> expanded = doc.fieldsUsingTypeDefinition(id);   // captured before the definition is dropped
         String resultJson;
@@ -71,7 +71,7 @@ final class TypedefInlineCommand extends BaseCommand {
             doc.inlineTypeDefinition(id);
             resultJson = doc.validate(resolver).toJson();
         } catch (ModelConsistencyException e) {
-            return emitKernelRejection("typedef", "inline", "inline left the model invalid", e);
+            return emitKernelRejection("inline left the model invalid", e);
         } catch (RuntimeException e) {
             return failEditGate(e);
         }
@@ -80,7 +80,7 @@ final class TypedefInlineCommand extends BaseCommand {
         changed.put("inlined", id);
         ArrayNode fields = changed.putArray("expandedFields");
         expanded.forEach(fields::add);
-        return emitMutation(ModelWrite.of("typedef", "inline")
+        return emitMutation(ModelWrite.of(resultIdentity())
                 .summaries("would inline typedef " + id,
                         "inlined typedef " + id)
                 .changed(changed)

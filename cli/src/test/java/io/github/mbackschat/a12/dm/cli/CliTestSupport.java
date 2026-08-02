@@ -14,6 +14,7 @@ import io.github.mbackschat.a12.dm.rulekit.dsl.Computation;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Rule;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Severity;
+import picocli.CommandLine;
 
 /** Shared CLI test helpers — run a verb at the {@link Cli#run} seam, and build fixtures once. */
 public final class CliTestSupport {
@@ -33,6 +34,15 @@ public final class CliTestSupport {
         StringBuilder err = new StringBuilder();
         int code = Cli.run(args, out, err);
         return new Result(code, out.toString(), err.toString());
+    }
+
+    /** Obtain a test identity from the live command tree; tests do not get a raw production identity factory. */
+    static ResultIdentity identity(String target, String op) {
+        CommandLine targetCommand = new CommandLine(new RootCommand()).getSubcommands().get(target);
+        if (targetCommand == null || !targetCommand.getSubcommands().containsKey(op)) {
+            throw new IllegalArgumentException("no live two-token command `" + target + " " + op + "`");
+        }
+        return ResultIdentity.from(targetCommand.getSubcommands().get(op).getCommandSpec());
     }
 
     /** Run with the <b>native build profile</b> forced — for the native-surface guard. */
