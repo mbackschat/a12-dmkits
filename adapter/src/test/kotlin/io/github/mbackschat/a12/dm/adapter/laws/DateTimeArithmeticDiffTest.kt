@@ -61,7 +61,7 @@ class DateTimeArithmeticDiffTest {
     private val a = "2024-06-15T22:00:00"
     private val b = "2024-06-16T03:30:15"   // a + 5h 30m 15s
 
-    @Test fun diffHours() = agree(render(m.dateTime(SA).filled().and(Dsl.differenceInHours(m.dateTime(SA), m.dateTime(CA)).eq(5))), a, b, "5h30m15s → 5 hours (floor)")
+    @Test fun diffHours() = agree(render(m.dateTime(SA).filled().and(Dsl.differenceInHours(m.dateTime(SA), m.dateTime(CA)).eq(5))), a, b, "5h30m15s → 5 hours (truncates toward zero)")
     @Test fun diffMinutes() = agree(render(m.dateTime(SA).filled().and(Dsl.differenceInMinutes(m.dateTime(SA), m.dateTime(CA)).eq(330))), a, b, "5h30m15s → 330 minutes")
     @Test fun diffSeconds() = agree(render(m.dateTime(SA).filled().and(Dsl.differenceInSeconds(m.dateTime(SA), m.dateTime(CA)).eq(19815))), a, b, "→ 19815 seconds")
     @Test fun diffHoursReverseTruncatesTowardZero() = agree(render(m.dateTime(SA).filled().and(Dsl.differenceInHours(m.dateTime(CA), m.dateTime(SA)).eq(-5))), a, b, "reverse −5.5h → −5, not −6 (truncate toward zero)")

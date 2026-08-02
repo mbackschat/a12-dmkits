@@ -195,9 +195,25 @@ public final class Dsl {
         return new NumberExpr(new FirstFilledValue(numberScope));
     }
 
+    /** Group form; A12 visits the group's descendant number fields in owner encounter order. */
+    public static NumberExpr firstFilledNumber(FirstFilledOperand group) {
+        return new NumberExpr(firstFilledValue(group, ValueKind.NUMBER, "firstFilledNumber"));
+    }
+
     /** Multi-operand {@code FirstFilledValue}: each later number field/list is visited only if no earlier operand supplied the result. */
     public static NumberExpr firstFilledNumber(FieldListRef numberScope, FieldOperand second, FieldOperand... rest) {
         return new NumberExpr(firstFilledValue(numberScope, ValueKind.NUMBER, "firstFilledNumber", second, rest));
+    }
+
+    /** Direct-field form; the owner requires at least two operands. */
+    public static NumberExpr firstFilledNumber(FieldOperand first, FieldOperand second, FieldOperand... rest) {
+        return new NumberExpr(firstFilledValue(first, ValueKind.NUMBER, "firstFilledNumber", second, rest));
+    }
+
+    /** Owner-entity form, including semantic-index fields and groups. */
+    public static NumberExpr firstFilledNumber(
+            FirstFilledOperand first, FirstFilledOperand second, FirstFilledOperand... rest) {
+        return new NumberExpr(firstFilledValue(first, ValueKind.NUMBER, "firstFilledNumber", second, rest));
     }
 
     /** {@code FirstFilledValue(…)} over a date repetition list — the first specified value, as a date. catalog:FirstFilledValue */
@@ -206,9 +222,148 @@ public final class Dsl {
         return new DateExpr(new FirstFilledValue(dateScope));
     }
 
+    /** Group form; A12 visits the group's descendant date fields in owner encounter order. */
+    public static DateExpr firstFilledDate(FirstFilledOperand group) {
+        return new DateExpr(firstFilledValue(group, ValueKind.DATE, "firstFilledDate"));
+    }
+
     /** Multi-operand {@code FirstFilledValue}: each later date field/list is visited only if no earlier operand supplied the result. */
     public static DateExpr firstFilledDate(FieldListRef dateScope, FieldOperand second, FieldOperand... rest) {
         return new DateExpr(firstFilledValue(dateScope, ValueKind.DATE, "firstFilledDate", second, rest));
+    }
+
+    /** Direct-field form; the owner requires at least two operands. */
+    public static DateExpr firstFilledDate(FieldOperand first, FieldOperand second, FieldOperand... rest) {
+        return new DateExpr(firstFilledValue(first, ValueKind.DATE, "firstFilledDate", second, rest));
+    }
+
+    /** Owner-entity form, including semantic-index fields and groups. */
+    public static DateExpr firstFilledDate(
+            FirstFilledOperand first, FirstFilledOperand second, FirstFilledOperand... rest) {
+        return new DateExpr(firstFilledValue(first, ValueKind.DATE, "firstFilledDate", second, rest));
+    }
+
+    /** {@code FirstFilledValue(…)} over date-fragment repetitions — the first specified partial date. catalog:FirstFilledValue */
+    public static DateExpr firstFilledDateFragment(FieldListRef fragmentScope) {
+        requireKind(fragmentScope, ValueKind.DATE_FRAGMENT, "firstFilledDateFragment");
+        return new DateExpr(new FirstFilledValue(fragmentScope));
+    }
+
+    /** Group form for the date/date-fragment owner family. */
+    public static DateExpr firstFilledDateFragment(FirstFilledOperand group) {
+        return new DateExpr(firstFilledValue(group, ValueKind.DATE_FRAGMENT, "firstFilledDateFragment"));
+    }
+
+    /** Multi-operand date-fragment {@code FirstFilledValue}, preserving authored encounter order. */
+    public static DateExpr firstFilledDateFragment(
+            FieldListRef fragmentScope, FieldOperand second, FieldOperand... rest) {
+        return new DateExpr(firstFilledValue(
+                fragmentScope, ValueKind.DATE_FRAGMENT, "firstFilledDateFragment", second, rest));
+    }
+
+    /** Direct-field form; the owner requires at least two operands. */
+    public static DateExpr firstFilledDateFragment(
+            FieldOperand first, FieldOperand second, FieldOperand... rest) {
+        return new DateExpr(firstFilledValue(
+                first, ValueKind.DATE_FRAGMENT, "firstFilledDateFragment", second, rest));
+    }
+
+    /** Owner-entity form, including semantic-index fields and groups. */
+    public static DateExpr firstFilledDateFragment(
+            FirstFilledOperand first, FirstFilledOperand second, FirstFilledOperand... rest) {
+        return new DateExpr(firstFilledValue(
+                first, ValueKind.DATE_FRAGMENT, "firstFilledDateFragment", second, rest));
+    }
+
+    /** {@code FirstFilledValue(…)} over date-range repetitions — the first specified interval. catalog:FirstFilledValue */
+    public static DateRangeExpr firstFilledDateRange(FieldListRef dateRangeScope) {
+        requireKind(dateRangeScope, ValueKind.DATE_RANGE, "firstFilledDateRange");
+        return new DateRangeExpr(new FirstFilledValue(dateRangeScope));
+    }
+
+    /** Group form; every descendant must be a date-range value. */
+    public static DateRangeExpr firstFilledDateRange(FirstFilledOperand group) {
+        return new DateRangeExpr(firstFilledValue(group, ValueKind.DATE_RANGE, "firstFilledDateRange"));
+    }
+
+    /** Multi-operand date-range {@code FirstFilledValue}, preserving authored encounter order. */
+    public static DateRangeExpr firstFilledDateRange(
+            FieldListRef dateRangeScope, FieldOperand second, FieldOperand... rest) {
+        return new DateRangeExpr(firstFilledValue(
+                dateRangeScope, ValueKind.DATE_RANGE, "firstFilledDateRange", second, rest));
+    }
+
+    /** Direct-field form; the owner requires at least two operands. */
+    public static DateRangeExpr firstFilledDateRange(
+            FieldOperand first, FieldOperand second, FieldOperand... rest) {
+        return new DateRangeExpr(firstFilledValue(
+                first, ValueKind.DATE_RANGE, "firstFilledDateRange", second, rest));
+    }
+
+    /** Owner-entity form, including semantic-index fields and groups. */
+    public static DateRangeExpr firstFilledDateRange(
+            FirstFilledOperand first, FirstFilledOperand second, FirstFilledOperand... rest) {
+        return new DateRangeExpr(firstFilledValue(
+                first, ValueKind.DATE_RANGE, "firstFilledDateRange", second, rest));
+    }
+
+    /** {@code FirstFilledValue(…)} over time repetitions — the first specified time. catalog:FirstFilledValue */
+    public static TimeExpr firstFilledTime(FieldListRef timeScope) {
+        requireKind(timeScope, ValueKind.TIME, "firstFilledTime");
+        return new TimeExpr(new FirstFilledValue(timeScope));
+    }
+
+    /** Group form; every descendant must be a time value. */
+    public static TimeExpr firstFilledTime(FirstFilledOperand group) {
+        return new TimeExpr(firstFilledValue(group, ValueKind.TIME, "firstFilledTime"));
+    }
+
+    /** Multi-operand time {@code FirstFilledValue}, preserving authored encounter order. */
+    public static TimeExpr firstFilledTime(FieldListRef timeScope, FieldOperand second, FieldOperand... rest) {
+        return new TimeExpr(firstFilledValue(timeScope, ValueKind.TIME, "firstFilledTime", second, rest));
+    }
+
+    /** Direct-field form; the owner requires at least two operands. */
+    public static TimeExpr firstFilledTime(FieldOperand first, FieldOperand second, FieldOperand... rest) {
+        return new TimeExpr(firstFilledValue(first, ValueKind.TIME, "firstFilledTime", second, rest));
+    }
+
+    /** Owner-entity form, including semantic-index fields and groups. */
+    public static TimeExpr firstFilledTime(
+            FirstFilledOperand first, FirstFilledOperand second, FirstFilledOperand... rest) {
+        return new TimeExpr(firstFilledValue(first, ValueKind.TIME, "firstFilledTime", second, rest));
+    }
+
+    /** {@code FirstFilledValue(…)} over date-time repetitions — the first specified instant. catalog:FirstFilledValue */
+    public static DateTimeExpr firstFilledDateTime(FieldListRef dateTimeScope) {
+        requireKind(dateTimeScope, ValueKind.DATE_TIME, "firstFilledDateTime");
+        return new DateTimeExpr(new FirstFilledValue(dateTimeScope));
+    }
+
+    /** Group form; every descendant must be a date-time value. */
+    public static DateTimeExpr firstFilledDateTime(FirstFilledOperand group) {
+        return new DateTimeExpr(firstFilledValue(group, ValueKind.DATE_TIME, "firstFilledDateTime"));
+    }
+
+    /** Multi-operand date-time {@code FirstFilledValue}, preserving authored encounter order. */
+    public static DateTimeExpr firstFilledDateTime(
+            FieldListRef dateTimeScope, FieldOperand second, FieldOperand... rest) {
+        return new DateTimeExpr(firstFilledValue(
+                dateTimeScope, ValueKind.DATE_TIME, "firstFilledDateTime", second, rest));
+    }
+
+    /** Direct-field form; the owner requires at least two operands. */
+    public static DateTimeExpr firstFilledDateTime(
+            FieldOperand first, FieldOperand second, FieldOperand... rest) {
+        return new DateTimeExpr(firstFilledValue(
+                first, ValueKind.DATE_TIME, "firstFilledDateTime", second, rest));
+    }
+
+    /** Owner-entity form, including semantic-index fields and groups. */
+    public static DateTimeExpr firstFilledDateTime(
+            FirstFilledOperand first, FirstFilledOperand second, FirstFilledOperand... rest) {
+        return new DateTimeExpr(firstFilledValue(
+                first, ValueKind.DATE_TIME, "firstFilledDateTime", second, rest));
     }
 
     /** {@code NumberOfFilledGroups(/RootGroup*)} — the count of a repeatable root group's filled repetitions. catalog:NumberOfFilledGroups */
@@ -222,9 +377,89 @@ public final class Dsl {
         return new StringExpr(new FirstFilledValue(stringScope));
     }
 
+    /** Group form for descendant string fields. */
+    public static StringExpr firstFilledString(FirstFilledOperand group) {
+        return new StringExpr(firstFilledValue(group, ValueKind.STRING, "firstFilledString"));
+    }
+
     /** Multi-operand {@code FirstFilledValue}: each later string field/list is visited only if no earlier operand supplied the result. */
     public static StringExpr firstFilledString(FieldListRef stringScope, FieldOperand second, FieldOperand... rest) {
         return new StringExpr(firstFilledValue(stringScope, ValueKind.STRING, "firstFilledString", second, rest));
+    }
+
+    /** Direct-field form; the owner requires at least two operands. */
+    public static StringExpr firstFilledString(FieldOperand first, FieldOperand second, FieldOperand... rest) {
+        return new StringExpr(firstFilledValue(first, ValueKind.STRING, "firstFilledString", second, rest));
+    }
+
+    /** Owner-entity form, including semantic-index fields and groups. */
+    public static StringExpr firstFilledString(
+            FirstFilledOperand first, FirstFilledOperand second, FirstFilledOperand... rest) {
+        return new StringExpr(firstFilledValue(first, ValueKind.STRING, "firstFilledString", second, rest));
+    }
+
+    /** {@code FirstFilledValue(…)} over custom-typed repetitions — custom values use A12's string result family. catalog:FirstFilledValue */
+    public static StringExpr firstFilledCustom(FieldListRef customScope) {
+        requireKind(customScope, ValueKind.CUSTOM, "firstFilledCustom");
+        return new StringExpr(new FirstFilledValue(customScope));
+    }
+
+    /** Group form for the String/Custom/Enumeration owner family. */
+    public static StringExpr firstFilledCustom(FirstFilledOperand group) {
+        return new StringExpr(firstFilledValue(group, ValueKind.CUSTOM, "firstFilledCustom"));
+    }
+
+    /** Multi-operand custom-typed {@code FirstFilledValue}, preserving authored encounter order. */
+    public static StringExpr firstFilledCustom(
+            FieldListRef customScope, FieldOperand second, FieldOperand... rest) {
+        return new StringExpr(firstFilledValue(
+                customScope, ValueKind.CUSTOM, "firstFilledCustom", second, rest));
+    }
+
+    /** Direct-field form; the owner requires at least two operands. */
+    public static StringExpr firstFilledCustom(
+            FieldOperand first, FieldOperand second, FieldOperand... rest) {
+        return new StringExpr(firstFilledValue(
+                first, ValueKind.CUSTOM, "firstFilledCustom", second, rest));
+    }
+
+    /** Owner-entity form, including semantic-index fields and groups. */
+    public static StringExpr firstFilledCustom(
+            FirstFilledOperand first, FirstFilledOperand second, FirstFilledOperand... rest) {
+        return new StringExpr(firstFilledValue(
+                first, ValueKind.CUSTOM, "firstFilledCustom", second, rest));
+    }
+
+    /** {@code FirstFilledValue(…)} over yes/no repetitions — confirm fields remain owner-forbidden. catalog:FirstFilledValue */
+    public static BoolExpr firstFilledBoolean(FieldListRef booleanScope) {
+        requireKind(booleanScope, ValueKind.BOOLEAN, "firstFilledBoolean");
+        return new BoolExpr(new FirstFilledValue(booleanScope));
+    }
+
+    /** Group form for descendant Boolean fields. */
+    public static BoolExpr firstFilledBoolean(FirstFilledOperand group) {
+        return new BoolExpr(firstFilledValue(group, ValueKind.BOOLEAN, "firstFilledBoolean"));
+    }
+
+    /** Multi-operand yes/no {@code FirstFilledValue}, preserving authored encounter order. */
+    public static BoolExpr firstFilledBoolean(
+            FieldListRef booleanScope, FieldOperand second, FieldOperand... rest) {
+        return new BoolExpr(firstFilledValue(
+                booleanScope, ValueKind.BOOLEAN, "firstFilledBoolean", second, rest));
+    }
+
+    /** Direct-field form; the owner requires at least two operands. */
+    public static BoolExpr firstFilledBoolean(
+            FieldOperand first, FieldOperand second, FieldOperand... rest) {
+        return new BoolExpr(firstFilledValue(
+                first, ValueKind.BOOLEAN, "firstFilledBoolean", second, rest));
+    }
+
+    /** Owner-entity form, including semantic-index fields and groups. */
+    public static BoolExpr firstFilledBoolean(
+            FirstFilledOperand first, FirstFilledOperand second, FirstFilledOperand... rest) {
+        return new BoolExpr(firstFilledValue(
+                first, ValueKind.BOOLEAN, "firstFilledBoolean", second, rest));
     }
 
     /** {@code FirstFilledValue(…)} over an enum repetition list — the first specified value, as an enum. catalog:FirstFilledValue */
@@ -233,9 +468,29 @@ public final class Dsl {
         return new EnumExpr(new FirstFilledValue(enumScope));
     }
 
+    /** Group form for the String/Custom/Enumeration owner family. */
+    public static EnumExpr firstFilledEnum(FirstFilledOperand group) {
+        return new EnumExpr(enumFirstFilledValue(
+                firstFilledValue(group, ValueKind.ENUMERATION, "firstFilledEnum")));
+    }
+
     /** Multi-operand {@code FirstFilledValue}: each later enum field/list is visited only if no earlier operand supplied the result. */
     public static EnumExpr firstFilledEnum(FieldListRef enumScope, FieldOperand second, FieldOperand... rest) {
-        return new EnumExpr(firstFilledValue(enumScope, ValueKind.ENUMERATION, "firstFilledEnum", second, rest));
+        return new EnumExpr(enumFirstFilledValue(
+                firstFilledValue(enumScope, ValueKind.ENUMERATION, "firstFilledEnum", second, rest)));
+    }
+
+    /** Direct-field form; the owner requires at least two operands. */
+    public static EnumExpr firstFilledEnum(FieldOperand first, FieldOperand second, FieldOperand... rest) {
+        return new EnumExpr(enumFirstFilledValue(
+                firstFilledValue(first, ValueKind.ENUMERATION, "firstFilledEnum", second, rest)));
+    }
+
+    /** Owner-entity form, including semantic-index fields and groups. */
+    public static EnumExpr firstFilledEnum(
+            FirstFilledOperand first, FirstFilledOperand second, FirstFilledOperand... rest) {
+        return new EnumExpr(enumFirstFilledValue(
+                firstFilledValue(first, ValueKind.ENUMERATION, "firstFilledEnum", second, rest)));
     }
 
     private static void requireKind(FieldListRef scope, io.github.mbackschat.a12.dm.core.ValueKind expected,
@@ -246,19 +501,59 @@ public final class Dsl {
         }
     }
 
-    private static FirstFilledValue firstFilledValue(FieldListRef scope, ValueKind expected, String method,
+    private static FirstFilledValue firstFilledValue(FirstFilledOperand group, ValueKind expected, String method) {
+        if (!compatibleFirstFilledKind(expected, group.kind())) {
+            throw new IllegalArgumentException(method + " needs a group compatible with " + expected
+                    + "; " + group.renderedPath() + " is " + group.kind());
+        }
+        return new FirstFilledValue(group, List.of());
+    }
+
+    private static FirstFilledValue firstFilledValue(FieldOperand first, ValueKind expected, String method,
             FieldOperand second, FieldOperand... rest) {
-        requireKind(scope, expected, method);
-        var trailing = new ArrayList<FieldOperand>();
+        FirstFilledOperand[] convertedRest = java.util.Arrays.stream(rest)
+                .map(FieldOperand::firstFilledOperand)
+                .toArray(FirstFilledOperand[]::new);
+        return firstFilledValue(first.firstFilledOperand(), expected, method,
+                second.firstFilledOperand(), convertedRest);
+    }
+
+    private static FirstFilledValue firstFilledValue(FirstFilledOperand first, ValueKind expected, String method,
+            FirstFilledOperand second, FirstFilledOperand... rest) {
+        if (!compatibleFirstFilledKind(expected, first.kind())) {
+            throw new IllegalArgumentException(method + " needs a first operand compatible with " + expected + "; "
+                    + "the first operand is " + first.kind());
+        }
+        var trailing = new ArrayList<FirstFilledOperand>();
         trailing.add(second);
         trailing.addAll(List.of(rest));
-        for (FieldOperand operand : trailing) {
-            if (operand.kind() != expected) {
-                throw new IllegalArgumentException(method + " needs " + expected + " operands; "
-                        + operand.renderedPath() + " is " + operand.kind());
+        for (FirstFilledOperand operand : trailing) {
+            if (!compatibleFirstFilledKind(expected, operand.kind())) {
+                throw new IllegalArgumentException(method + " needs operands compatible with " + expected + "; "
+                        + "an operand is " + operand.kind());
             }
         }
-        return new FirstFilledValue(scope, trailing);
+        return new FirstFilledValue(first, trailing);
+    }
+
+    private static FirstFilledValue enumFirstFilledValue(FirstFilledValue value) {
+        if (value.kind() != ValueKind.ENUMERATION) {
+            throw new IllegalArgumentException("firstFilledEnum needs an enumeration result; mixed "
+                    + "String/Custom/Enumeration operands produce STRING and belong in firstFilledString");
+        }
+        return value;
+    }
+
+    private static boolean compatibleFirstFilledKind(ValueKind expected, ValueKind actual) {
+        if (expected == actual) {
+            return true;
+        }
+        return switch (expected) {
+            case STRING, ENUMERATION, CUSTOM ->
+                actual == ValueKind.STRING || actual == ValueKind.ENUMERATION || actual == ValueKind.CUSTOM;
+            case DATE, DATE_FRAGMENT -> actual == ValueKind.DATE || actual == ValueKind.DATE_FRAGMENT;
+            default -> false;
+        };
     }
 
     private static NumberExpr listAggregate(ListAggregate.AggOp op, FieldOperand first, FieldOperand... rest) {
@@ -450,12 +745,12 @@ public final class Dsl {
         return new NumberExpr(new DateDifference(DateDifference.Unit.DAYS, a.expression(), b.expression()));
     }
 
-    /** {@code DifferenceInMonths(a, b)} — the whole-months date difference, as a number (a floor, not rounded). catalog:DifferenceInMonths */
+    /** {@code DifferenceInMonths(a, b)} — the signed whole-month date difference, truncated toward zero. catalog:DifferenceInMonths */
     public static NumberExpr differenceInMonths(DateOperand a, DateOperand b) {
         return new NumberExpr(new DateDifference(DateDifference.Unit.MONTHS, a.expression(), b.expression()));
     }
 
-    /** {@code DifferenceInYears(a, b)} — the whole-years date difference, as a number (a floor, not rounded). catalog:DifferenceInYears */
+    /** {@code DifferenceInYears(a, b)} — the signed whole-year date difference, truncated toward zero. catalog:DifferenceInYears */
     public static NumberExpr differenceInYears(DateOperand a, DateOperand b) {
         return new NumberExpr(new DateDifference(DateDifference.Unit.YEARS, a.expression(), b.expression()));
     }
@@ -645,9 +940,9 @@ public final class Dsl {
 
     /**
      * {@code DateRange(start, end)} — construct a date-range value from two dates (the kernel's
-     * {@code IDateRangeConstructionOperation}). Computation-only: its sole legal home is a computation
-     * operation assigning a {@code DATE_RANGE} field (it has no condition use site — see
-     * {@link DateRangeConstruction}). catalog:DateRange
+     * {@code IDateRangeConstructionOperation}). The result can be assigned to a {@code DATE_RANGE}
+     * field or compared to one with {@code ==}/{@code !=}; see {@link DateRangeConstruction}.
+     * catalog:DateRange
      */
     public static DateRangeConstruction dateRange(DateOperand start, DateOperand end) {
         return new DateRangeConstruction(start.expression(), end.expression());
@@ -738,7 +1033,8 @@ public final class Dsl {
         return new TimeExpr(new DateTimePart(DateTimePart.Unit.TIME, dateTime.expression()));
     }
 
-    /** {@code AddDays(date, n)} — shifts a date by an integer constant, yielding a date (comparable). catalog:AddDays */
+    /** Integral convenience overload for {@code AddDays(date, n)}; the {@link NumberExpr} overload accepts any
+     *  signed numeric amount. Yields a comparable date. catalog:AddDays */
     public static DateExpr addDays(DateOperand date, long amount) {
         return addDays(date, number(Long.toString(amount)));
     }
@@ -748,12 +1044,14 @@ public final class Dsl {
         return addDays(dateTime, number(Long.toString(amount)));
     }
 
-    /** {@code AddMonths(date, n)} — shifts a date by an integer constant number of months, yielding a date. catalog:AddMonths */
+    /** Integral convenience overload for {@code AddMonths(date, n)}; the {@link NumberExpr} overload accepts any
+     *  signed numeric amount. Yields a date. catalog:AddMonths */
     public static DateExpr addMonths(DateOperand date, long amount) {
         return addMonths(date, number(Long.toString(amount)));
     }
 
-    /** {@code AddYears(date, n)} — shifts a date by an integer constant number of years, yielding a date. catalog:AddYears */
+    /** Integral convenience overload for {@code AddYears(date, n)}; the {@link NumberExpr} overload accepts any
+     *  signed numeric amount. Yields a date. catalog:AddYears */
     public static DateExpr addYears(DateOperand date, long amount) {
         return addYears(date, number(Long.toString(amount)));
     }
@@ -784,12 +1082,14 @@ public final class Dsl {
         return addHours(dateTime, number(Long.toString(amount)));
     }
 
-    /** {@code AddMinutes(dateTime, n)} — shifts a date-time by an integer constant number of minutes ({@code n} may be negative). catalog:AddMinutes */
+    /** Integral convenience overload for {@code AddMinutes(dateTime, n)}; the {@link NumberExpr} overload accepts
+     *  any signed numeric amount. catalog:AddMinutes */
     public static DateTimeExpr addMinutes(DateTimeOperand dateTime, long amount) {
         return addMinutes(dateTime, number(Long.toString(amount)));
     }
 
-    /** {@code AddSeconds(dateTime, n)} — shifts a date-time by an integer constant number of seconds ({@code n} may be negative). catalog:AddSeconds */
+    /** Integral convenience overload for {@code AddSeconds(dateTime, n)}; the {@link NumberExpr} overload accepts
+     *  any signed numeric amount. catalog:AddSeconds */
     public static DateTimeExpr addSeconds(DateTimeOperand dateTime, long amount) {
         return addSeconds(dateTime, number(Long.toString(amount)));
     }
@@ -1190,7 +1490,7 @@ public final class Dsl {
     /**
      * The entity-valued (shape-C) gate the kernel applies: every operand across BOTH sides shares one base
      * kind (String/Enumeration/Number, {@code MVK_VARYING_TYPES_NOT_ALLOWED} / {@code MVK_ONLY_STRING_ENUM_NUMBER_ALLOWED}),
-     * and no exact reference occurs twice across the combined lists ({@code MVK_DUPLICATE_PARAM}).
+     * and no exact reference occurs twice across the combined lists ({@code MVK_DUPLICATE_PARAM1}).
      */
     private static void checkEntityValuedKindsAndDuplicates(String opName,
             java.util.List<ValueListOperand> fields, java.util.List<ValueListOperand> values) {
@@ -1230,7 +1530,7 @@ public final class Dsl {
             }
             if (!seen.add(identity)) {
                 throw new IllegalArgumentException("'" + identity + "' occurs more than once in " + opName
-                        + " — the kernel rejects an exact duplicate reference (MVK_DUPLICATE_PARAM)");
+                        + " — the kernel rejects an exact duplicate reference (MVK_DUPLICATE_PARAM1)");
             }
         }
     }

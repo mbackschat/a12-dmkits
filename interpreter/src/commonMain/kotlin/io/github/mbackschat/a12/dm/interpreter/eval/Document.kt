@@ -912,6 +912,12 @@ class Document(internal val config: DocumentConfig) {
          * reps address the leaf for any sibling, so the map is shared across sibling targets too.
          */
         override fun indexedCell(targetPath: String, indexField: String, indexValue: String): Val? {
+            val reps = indexedCellReps(targetPath, indexField, indexValue) ?: return null
+            val raw = valueAt(targetPath, reps)?.value
+            return if (!raw.isNullOrEmpty()) resolveValue(targetPath, raw) else null
+        }
+
+        private fun indexedCellReps(targetPath: String, indexField: String, indexValue: String): List<Int>? {
             val numericKey = declaredKind(indexField) == Kind.NUMBER
             val byValue = index().indexRowByValue.getOrPut(indexField to starScopePrefix(targetPath)) {
                 val m = HashMap<String, List<Int>>()
@@ -921,9 +927,18 @@ class Document(internal val config: DocumentConfig) {
                 }
                 m
             }
-            val reps = byValue[indexKey(indexValue, numericKey)] ?: return null
-            val raw = valueAt(targetPath, reps)?.value
-            return if (!raw.isNullOrEmpty()) resolveValue(targetPath, raw) else null
+            return byValue[indexKey(indexValue, numericKey)]
+        }
+
+        override fun indexedContainedFieldCells(
+            groupPath: String,
+            indexField: String,
+            indexValue: String,
+        ): Sequence<ScanCell> {
+            val indexCellReps = indexedCellReps(indexField, indexField, indexValue) ?: return emptySequence()
+            val selectedGroupReps = indexCellReps.dropLast(1)
+            return RowContext(groupPath, selectedGroupReps, evaluated = true)
+                .containedFieldCells(groupPath, declaredRange = false)
         }
 
         /**
@@ -1038,7 +1053,7 @@ class Document(internal val config: DocumentConfig) {
                 formallyInvalid(path, raw) -> CellState.INVALID
                 else -> CellState.FILLED
             }
-            return ScanCell(path, reps, raw, state)
+            return ScanCell(path, reps, raw, state, raw?.let { resolveValue(path, it) })
         }
 
         private fun instantiatedCellReps(
@@ -1120,6 +1135,9 @@ class Document(internal val config: DocumentConfig) {
 
         override fun enumCategory(path: String, category: String): Val =
             enumCategoryOf(path, category, valueAt(path, reps(path))?.value)
+
+        override fun enumCategoryValue(path: String, category: String, value: Val): Val =
+            enumCategoryOf(path, category, (value as? Val.Txt)?.v)
 
         override fun repsOf(path: String): List<Int> = reps(path)
 
@@ -1245,6 +1263,9 @@ class Document(internal val config: DocumentConfig) {
         override fun enumCategory(path: String, category: String): Val =
             enumCategoryOf(path, category, resolved(path))
 
+        override fun enumCategoryValue(path: String, category: String, value: Val): Val =
+            enumCategoryOf(path, category, (value as? Val.Txt)?.v)
+
         // Aggregates / filters / semantic index / custom conditions are NOT valid inside a parallel iteration
         // (KERNEL-SEMANTICS §9: a filter condition may not contain a parallel iteration, and vice versa) — fail
         // loud rather than risk a silently-wrong answer.
@@ -1254,6 +1275,11 @@ class Document(internal val config: DocumentConfig) {
             unsupportedInParallel()
         override fun containedFieldCells(groupPath: String, declaredRange: Boolean): Sequence<ScanCell> =
             unsupportedInParallel()
+        override fun indexedContainedFieldCells(
+            groupPath: String,
+            indexField: String,
+            indexValue: String,
+        ): Sequence<ScanCell> = unsupportedInParallel()
         private fun unsupportedInParallel(): Nothing =
             throw UnsupportedConstructException("an aggregate/filter inside a parallel iteration is not modeled")
     }

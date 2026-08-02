@@ -132,10 +132,10 @@ public record OperatorEntry(
     }
 
     /**
-     * A valid usage example for a <b>computation-only</b> operator — one that has no legal condition form
-     * (e.g. the {@code DateRange} constructor), so it can't carry a condition {@link Example}. The
-     * {@code operation} DSL is verified by injecting it as a computation assigning {@code computedField}
-     * and running the real kernel (the N7 peer, {@code CatalogComputationExamplesAreKernelValidTest}).
+     * A valid operation-valued usage example. The {@code operation} DSL is verified by injecting it as a
+     * computation assigning {@code computedField} and running the real kernel (the N7 peer,
+     * {@code CatalogComputationExamplesAreKernelValidTest}). An operator may also carry a condition
+     * {@link Example} when both use sites are legal.
      */
     @JsonIgnoreProperties(ignoreUnknown = true)
     public record ComputationExample(String operation, String computedField, String note) {

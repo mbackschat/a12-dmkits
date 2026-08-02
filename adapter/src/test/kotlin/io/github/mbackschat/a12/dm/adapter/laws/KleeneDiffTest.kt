@@ -43,35 +43,50 @@ class KleeneDiffTest {
         Tri.UNKNOWN -> "x"
     }
 
-    /** For one connective and one (left, right) truth pair: kernel-fires == interp-fires == Kleene prediction. */
-    private fun agree(conn: String, left: Tri, right: Tri, predicted: Boolean) {
+    private fun fixture(conn: String): Fixture {
         val q = m.num(A).gt(0)
         val bq = m.num(B).gt(0)
         val cond = render(if (conn == "And") q.and(bq) else q.or(bq))
-        val kModel = RuntimeLaws.withRule(order, "/Order", "R", "../Quantity", "K", cond)
+        val model = RuntimeLaws.withRule(order, "/Order", "R", "../Quantity", "K", cond)
         val def = ModelDef(fields, listOf(RuleDef("/Order/R", "/Order", cond, "K", "../Quantity")))
+        return Fixture(conn, model, def, RuntimeLaws.kernelJavaEngine(model))
+    }
+
+    /** For one connective and one (left, right) truth pair: both kernel strategies, interpreter, and the law agree. */
+    private fun agree(fixture: Fixture, left: Tri, right: Tri, predicted: Boolean) {
         val kDoc = RuntimeLaws.doc().group("/Order", 1)
             .field(A, valueFor(left), 1, 1).field(B, valueFor(right), 1, 1)
-        val iDoc = def.newDocument()
+        val iDoc = fixture.definition.newDocument()
             .group("/Order", 1).field(A, valueFor(left), 1, 1).field(B, valueFor(right), 1, 1)
-        val kernel = RuntimeLaws.fires(kModel, "K", kDoc)
-        val interp = DmInterpreter(def).validateFull(iDoc).any { it.code == "K" }
-        val label = "$left $conn $right"
-        assertEquals(predicted, kernel, "KERNEL disagrees with Kleene on  $label")
+        val kernel = RuntimeLaws.fires(fixture.model, "K", kDoc)
+        val javaStatic = fixture.java.messages(fixture.java.instance(kDoc)).any { it.code() == "K" }
+        val interp = DmInterpreter(fixture.definition).validateFull(iDoc).any { it.code == "K" }
+        val label = "$left ${fixture.connective} $right"
+        assertEquals(predicted, kernel, "dynamic Groovy disagrees with Kleene on $label")
+        assertEquals(kernel, javaStatic, "generated Java disagrees with dynamic Groovy on $label")
         assertEquals(predicted, interp, "INTERPRETER disagrees with Kleene on  $label")
     }
 
     @Test fun andTruthTableMatchesKernel() {
+        val fixture = fixture("And")
         for (l in Tri.entries) for (r in Tri.entries) {
-            agree("And", l, r, predicted = Kleene.and(l, r) == Tri.TRUE)
+            agree(fixture, l, r, predicted = Kleene.and(l, r) == Tri.TRUE)
         }
     }
 
     @Test fun orTruthTableMatchesKernel() {
+        val fixture = fixture("Or")
         for (l in Tri.entries) for (r in Tri.entries) {
-            agree("Or", l, r, predicted = Kleene.or(l, r) == Tri.TRUE)
+            agree(fixture, l, r, predicted = Kleene.or(l, r) == Tri.TRUE)
         }
     }
+
+    private data class Fixture(
+        val connective: String,
+        val model: String,
+        val definition: ModelDef,
+        val java: RuntimeLaws.JavaKernelEngine,
+    )
 
     private companion object {
         const val A = "/Order/Quantity"

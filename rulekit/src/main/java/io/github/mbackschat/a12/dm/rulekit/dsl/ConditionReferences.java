@@ -165,7 +165,7 @@ public record ConditionReferences(Set<String> fieldPaths, Set<String> groupPaths
             case Rounding r -> collect(r.operand(), fields, groups);
             case Concatenation c -> c.parts().forEach(p -> collect(p, fields, groups));
             case DateListAggregate a -> collectOperand(a.scope(), fields, groups);
-            case FirstFilledValue a -> a.operands().forEach(o -> collectOperand(o, fields, groups));
+            case FirstFilledValue a -> a.operands().forEach(o -> collectFirstFilledOperand(o, fields, groups));
             case FieldValueAsString c -> fields.add(c.field().path());
             case IndexedFieldValueAsString c -> collect(c.index(), fields, groups);
             case RangeAsString c -> fields.add(c.field().path());
@@ -214,5 +214,17 @@ public record ConditionReferences(Set<String> fieldPaths, Set<String> groupPaths
         if (op instanceof FieldListRef list) {
             list.filter().ifPresent(f -> collect(f, fields, groups));
         }
+    }
+
+    private static void collectFirstFilledOperand(
+            FirstFilledOperand operand, Set<String> fields, Set<String> groups) {
+        operand.field().ifPresent(field -> collectOperand(field, fields, groups));
+        operand.group().ifPresent(group -> {
+            groups.add(group.path());
+            operand.expandedGroupFields().forEach(field -> fields.add(field.path()));
+        });
+        operand.semanticIndex().filter(FirstFilledOperand.FieldIndex.class::isInstance)
+                .map(FirstFilledOperand.FieldIndex.class::cast)
+                .ifPresent(index -> fields.add(index.field().path()));
     }
 }

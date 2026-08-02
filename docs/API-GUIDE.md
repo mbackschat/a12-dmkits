@@ -574,6 +574,43 @@ DateTimeExpr latestInstant = Dsl.max(m.dateTime("/Order/ScheduledAt"),
         m.dateTime("/Order/CompletedAt"));
 ```
 
+**Date/Date-time ordering shares one instant timeline.** A DATE reads as model-zone midnight, so the typed operands admit `<`, `<=`, `>`, and `>=` across DATE and DATETIME in either direction. Cross-kind equality is deliberately absent: the kernel rejects `DATE == DATETIME`, even though it admits their ordering.
+
+<!-- snippet: temporal-cross-ordering -->
+```java
+Condition startsAfterOrderDay = m.dateTime("/Order/ScheduledAt")
+        .after(m.date("/Order/OrderDate"));
+Condition orderDayNotAfterCompletion = m.date("/Order/OrderDate")
+        .onOrBefore(m.dateTime("/Order/CompletedAt"));
+```
+
+**A constructed date range is an equality operand as well as a computation value.** `Dsl.dateRange` takes two `DateOperand` values but accepts only owner `entitySpec` shapes: a full DATE or DATE_FRAGMENT field, directly or through a semantic index. It refuses calculated dates such as `Today` and date shifts before rendering; the kernel remains the format-compatibility oracle because DATE and DATE_FRAGMENT may be mixed when their date-component sets match. The kernel admits `==` and `!=` against a DATE_RANGE field in either direction and between two constructions; it rejects ordering and does not admit a nested construction inside the overlap predicates. `DateRangeOperand` exposes exactly that result domain, including `DateRangeExpr` results such as a date-range `FirstFilledValue`. The typed `FirstFilledValue` family also covers TIME and DATETIME (`firstFilledTime`/`firstFilledDateTime`); an empty selection produces a value only for NUMBER (zero), while every other admitted kind remains unspecified and clears a computation.
+
+<!-- snippet: date-range-equality -->
+```java
+var requestedWindow = Dsl.dateRange(m.date("/Order/OrderDate"), m.date("/Order/DeliveryDate"));
+Condition windowChanged = m.dateRange("/Order/CoverageWindow").ne(requestedWindow);
+Condition requestedWindowChanged = requestedWindow.ne(
+        Dsl.dateRange(m.date("/Order/OrderDate"), m.date("/Order/DeliveryDate")));
+var firstObservedWindow = Dsl.firstFilledDateRange(m.flatten("/Order/Items*/ItemCoverage"));
+```
+
+**`FirstFilledValue` takes owner entity selectors, not merely a field list.** Each `FirstFilledOperand` is one field or group target with composable owner modifiers: category projection, semantic index, wildcard filter, and outer correlation. A plain group may use `.outer()` for correlation inside `Having`; A12 rejects every semantic index inside `Having`, so `having(...)` refuses both literal- and field-indexed outer groups with `MVK_SEMANTIC_INDEX_NOT_ALLOWED`. The owner expands group and category selectors in model order, then scans the resulting cells and moves to the next operand only while no filled value has been found. Choose the factory for the result family: mixed String/Custom/Enumeration operands belong in `firstFilledString`, while `firstFilledEnum` is deliberately enum-only; DATE and DATE_FRAGMENT share the date family; Boolean is supported by `firstFilledBoolean`, while Confirm is owner-rejected. `firstFilledGroup(path)` and `firstFilledGroupFor(path, key)` derive and validate a group's homogeneous result family from the model rather than asking callers to invent one.
+
+<!-- snippet: first-filled-owner-entities -->
+```java
+StringExpr firstLabel = Dsl.firstFilledString(
+        m.enumOf("/Order/Priority").category("SpeedClass").firstFilledOperand(),
+        m.str("/Order/CustomerName").field().firstFilledOperand());
+NumberExpr firstIndexedQuantity = Dsl.firstFilledNumber(
+        m.num("/Order/Items/Count").semanticIndex("SKU-1").index().firstFilledOperand(),
+        m.num("/Order/Items/UnitWeight").semanticIndex("SKU-1").index().firstFilledOperand());
+BoolExpr firstApproval = Dsl.firstFilledBoolean(
+        approval.flatten("/Approval/Rows*/Approved"));
+StringExpr firstBillingValue = Dsl.firstFilledString(
+        m.firstFilledGroup("/Order/BillingAddress"));
+```
+
 **Date/Time construction uses a model-checked component union.** A supplied component is a `TemporalComponent`: a typed `FieldRef`, a numeric expression such as the matching date/time extractor, or a quoted lexical component from `Dsl.temporalComponent`. The lexical factory is deliberate: `Dsl.temporalComponent("01")` preserves `"01"` where routing through a numeric literal would normalize it. The real kernel validates a field's declaration for its position, so the typed surface keeps model-dependent legality authorable without pretending every field kind works everywhere: bounded Number fields, exact-width digit-pattern String fields, and an exact-`yyyy` Date field in the complete-year position are admitted. `Dsl.date` accepts three or four components.
 
 <!-- teaser -->

@@ -137,7 +137,8 @@ class ComputationFillQuantifierScanContractTest {
             val range = if (declaredRange) Range.DECLARED else Range.INSTANTIATED
             states.forEachIndexed { slot, state ->
                 visits += visit(currentScan, range, slot + 1)
-                yield(ScanCell("$groupPath/Slot${slot + 1}", listOf(1, 1, 1), raw(state), state))
+                val raw = raw(state)
+                yield(ScanCell("$groupPath/Slot${slot + 1}", listOf(1, 1, 1), raw, state, raw?.let(Val::Txt)))
             }
         }
 

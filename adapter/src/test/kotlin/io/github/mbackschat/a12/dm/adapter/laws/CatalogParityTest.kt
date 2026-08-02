@@ -124,7 +124,7 @@ class CatalogParityTest {
             "DifferenceInHours", "DifferenceInMinutes", "DifferenceInSeconds")
         group("date/time construction + validity — DateConstructionDiffTest-locked; need bounded-int + time fields in the fuzz model",
             "Date", "Time", "Valid", "Invalid")
-        group("computation-only — DateRangeComputeDiffTest-locked; the fuzz net is condition-based, not a compute net",
+        group("date-range construction has dedicated equality and computation differentials; the fuzz model lacks compatible date-range operands",
             "DateRange")
         group("partial-date resolution — ValueAsDateDiffTest-locked; needs a DAY_OPTIONAL field in the fuzz model",
             "ValueAsDate")

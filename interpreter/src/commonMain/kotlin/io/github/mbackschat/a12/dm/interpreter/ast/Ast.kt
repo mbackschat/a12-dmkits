@@ -33,7 +33,7 @@ sealed interface Val {
 
     /** A date range — its [start]/[end] as canonical ISO `yyyy-MM-dd` dates. Produced by a [Kind.DATE_RANGE]
      *  field (format-parsed in the general `Document`); consumed by the date-range operators (`StartOfDateRange`
-     *  /`EndOfDateRange`/…). Not directly comparable as a scalar. */
+     *  /`EndOfDateRange`/…). Equality/inequality are legal; ordering is not. */
     data class Range(val start: String, val end: String) : Val
 }
 
@@ -106,10 +106,21 @@ enum class ArithOp { ADD, SUB, MUL, DIV, POW }
 
 /** Expression AST. */
 sealed interface Expr {
+    /** An owner `entitySpec` source. Both a scalar field and a wildcard field may carry the grammar's
+     * category projection; only a scalar source may also carry a semantic index. */
+    sealed interface EntitySource : Expr
+
+    /** The key of an owner semantic-index suffix. Keeping the two grammar alternatives explicit avoids the
+     * nullable-pair invariant of [SemanticIndex] in the compositional `entitySpec` representation. */
+    sealed interface EntityIndex {
+        data class Literal(val value: String) : EntityIndex
+        data class Field(val path: String, val outer: Boolean = false) : EntityIndex
+    }
+
     /** A field/value reference. [outer] marks the `$` correlation: inside a `Having` filter it resolves
      *  its own named path against the complete ENCLOSING repetition environment, not the inner filtered
      *  row. Different paths can select different captured repetition coordinates. Default `false`. */
-    data class Field(val path: String, val outer: Boolean = false) : Expr
+    data class Field(val path: String, val outer: Boolean = false) : EntitySource
 
     /** A numeric literal. [asVal] is the typed value, built ONCE at parse (the AST is cached per rule, #31)
      *  so evaluating the literal costs zero allocation per (rule, row) — the kernel's constant is likewise
@@ -134,7 +145,7 @@ sealed interface Expr {
      *  above `A`). −1 (a hand-built node) means "the leaf group's parent" — the single-star default, where
      *  the two coincide. */
     data class Star(val path: String, val having: Cond? = null, val outer: Boolean = false,
-                    val bindDepth: Int = -1) : Expr
+                    val bindDepth: Int = -1) : EntitySource
 
     /** A value-valued function, e.g. Min(a, b) (operand-list) or Sum(Star) (aggregate). */
     data class Func(val name: String, val args: List<Expr>) : Expr
@@ -152,13 +163,28 @@ sealed interface Expr {
      * ([indexFieldPath], the `[<field> For <keyField>]` form — the kernel's field-keyed semantic index).
      * Exactly one of [indexValue]/[indexFieldPath] is non-null.
      */
-    data class SemanticIndex(val path: String, val indexValue: String? = null, val indexFieldPath: String? = null) : Expr
+    data class SemanticIndex(
+        val path: String,
+        val indexValue: String? = null,
+        val indexFieldPath: String? = null,
+        val outer: Boolean = false,
+        val indexFieldOuter: Boolean = false,
+    ) : Expr
 
     /** An enum-category access `[<field> -> <category>]` — maps the enumeration [path]'s stored value to its
      *  value in the named [category] (the model pairs category values positionally with the enum values), then
      *  compares against the category's value domain. An empty enum or an out-of-enum value yields no comparison
      *  value (→ the rule does not fire / is suppressed). */
     data class EnumCategory(val path: String, val category: String, val outer: Boolean = false) : Expr
+
+    /** The owner grammar's compositional `entitySpec`: source, optional enum-category projection, then optional
+     * semantic index. The legacy single-modifier nodes above remain for the common shapes; this node represents
+     * the combinations whose modifiers must not erase one another. */
+    data class EntitySpec(
+        val source: EntitySource,
+        val category: String? = null,
+        val semanticIndex: EntityIndex? = null,
+    ) : Expr
 }
 
 /** Parse a raw field value into a typed [Val] by kind. A malformed NUMBER resolves to [Val.Unknown] (NOT a

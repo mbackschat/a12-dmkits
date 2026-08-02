@@ -251,6 +251,8 @@ public record Computation(
 
         private boolean operationMatchesComputedKind(Calculation operation) {
             return operation.kind() == computedField.kind()
+                    || operation instanceof FirstFilledValue
+                            && FirstFilledValue.sameOwnerFamily(operation.kind(), computedField.kind())
                     || operation instanceof BaseYear && computedField.kind() == ValueKind.NUMBER;
         }
 

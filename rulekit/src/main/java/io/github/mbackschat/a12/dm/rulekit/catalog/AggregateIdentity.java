@@ -19,7 +19,8 @@ public enum AggregateIdentity {
     ZERO,
 
     /** The empty fold yields <b>no value</b> — a NULL date-like value (the kernel's `DateCombiner`,
-     *  IF58/IF204) or a NOT-GIVEN date/string (`FirstFilledValue`, IF83). The enclosing comparison does not fire (there
-     *  is no value to compare); a computation into that target is CLEARED. */
+     *  IF58/IF204) or the owner kind's NOT-GIVEN value for every non-number kind admitted by
+     *  {@code FirstFilledValue} (IF83). The enclosing comparison does not fire (there is no value to compare);
+     *  a computation into that target is CLEARED. */
     NO_VALUE
 }

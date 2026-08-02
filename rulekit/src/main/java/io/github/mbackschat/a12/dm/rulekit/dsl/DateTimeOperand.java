@@ -4,8 +4,10 @@ package io.github.mbackschat.a12.dm.rulekit.dsl;
  * A date-time-valued operand — a {@link DateTimeRef date-time field} or a {@link DateTimeExpr} (a
  * {@code DateTime(date, time)} construction or a sub-day shift). Date-times are orderable like dates
  * and times (§5b) and carry no scale, so comparison needs none of the D13 machinery. A date-time
- * field compares to another date-time value (a field or a {@code DateTime(...)} construction), not to
- * a bare string literal (the kernel rejects that — build the value with {@code DateTime(...)}).
+ * field compares for equality to another date-time value (a field or a {@code DateTime(...)} construction).
+ * Ordering also admits a date operand because the kernel compares those values on their common timeline.
+ * A date-time never compares to a bare string literal (the kernel rejects that — build the value with
+ * {@code DateTime(...)}).
  */
 public sealed interface DateTimeOperand extends TemporalOperand permits DateTimeRef, DateTimeExpr {
 
@@ -26,6 +28,22 @@ public sealed interface DateTimeOperand extends TemporalOperand permits DateTime
     }
 
     default Condition onOrAfter(DateTimeOperand other) {
+        return new ComparisonCondition(expression(), CompareOp.GE, other.expression());
+    }
+
+    default Condition before(DateOperand other) {
+        return new ComparisonCondition(expression(), CompareOp.LT, other.expression());
+    }
+
+    default Condition onOrBefore(DateOperand other) {
+        return new ComparisonCondition(expression(), CompareOp.LE, other.expression());
+    }
+
+    default Condition after(DateOperand other) {
+        return new ComparisonCondition(expression(), CompareOp.GT, other.expression());
+    }
+
+    default Condition onOrAfter(DateOperand other) {
         return new ComparisonCondition(expression(), CompareOp.GE, other.expression());
     }
 

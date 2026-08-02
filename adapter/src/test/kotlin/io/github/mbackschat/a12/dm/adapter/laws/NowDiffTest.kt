@@ -21,9 +21,9 @@ import org.junit.jupiter.api.Test
  * any plausible "now" (year 2000 and year 2999); the verdict is then independent of the exact instant on
  * either side, and what's locked is that `Now` behaves as a *date-time* in a chronological comparison.
  *
- * `Now` is the date-time sibling of `Today`: it compares only to a DATE_TIME field (`ScheduledAt`, format
- * `yyyy-MM-dd'T'HH:mm:ss`); the kernel rejects comparing it to a plain date field at code generation (see the
- * `Now` catalog entry). The exact-instant boundary (`== Now`) is the kernel's discouraged moving target and
+ * `Now` is the date-time sibling of `Today`. Equality requires a DATE_TIME field; temporal ordering also admits
+ * a plain DATE and is covered separately by [NowDateOrderingDiffTest]. The exact-instant boundary (`== Now`) is
+ * the kernel's discouraged moving target and
  * is not locked here. Driven from parsed text; `ScheduledAt` is filled (the catalog guards with `FieldFilled`).
  */
 class NowDiffTest {

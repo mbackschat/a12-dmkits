@@ -229,7 +229,7 @@ class CapabilityEvidenceMatrixTest {
     private val catalog = OperatorCatalog.load()
     private val operatorMatrix: List<OperatorCapability> = catalog.entries().map { entry ->
         val test = when (entry.id()) {
-            "DateRange" -> DateRangeComputeDiffTest::class
+            "DateRange" -> DateRangeEqualityDiffTest::class
             "CustomCondition" -> CustomConditionDiffTest::class
             "RepetitionNotUnique" -> RepetitionNotUniqueExactnessDiffTest::class
             "ValidType", "InvalidType" -> PredefinedTypeValidityDiffTest::class

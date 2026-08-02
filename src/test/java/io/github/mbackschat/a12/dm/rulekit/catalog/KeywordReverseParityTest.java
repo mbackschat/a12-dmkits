@@ -12,6 +12,12 @@ import java.util.TreeSet;
 
 import org.junit.jupiter.api.Test;
 
+import io.github.mbackschat.a12.dm.core.ValueKind;
+import io.github.mbackschat.a12.dm.rulekit.dsl.ConditionLanguage;
+import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer;
+import io.github.mbackschat.a12.dm.rulekit.dsl.FieldPresenceCondition;
+import io.github.mbackschat.a12.dm.rulekit.dsl.FieldRef;
+
 /**
  * N3 keyword-parity, the <b>reverse</b> direction (the remaining N3 work named in {@link KeywordParityTest}):
  * every kernel lexer terminal ({@code LexerTerminals_{en,de}}) is either a <em>cataloged</em> operator
@@ -72,6 +78,25 @@ class KeywordReverseParityTest {
         assertTrue(!EN.keySet().contains("SomeBrandNewKeywordV99") && !EXCLUDED.containsKey("EN SomeBrandNewKeywordV99"),
                 "a fabricated kernel keyword must be neither a terminal nor excluded");
         assertTrue(EN.keySet().contains("FieldFilled"), "a real terminal is present (the check isn't vacuous)");
+    }
+
+    @Test
+    void rendererQuotesEveryLiveLexerTerminalThatCanBeAnEntityName() {
+        DslRenderer renderer = new DslRenderer(ConditionLanguage.EN);
+        TreeSet<String> terminals = new TreeSet<>();
+        terminals.addAll(EN.keySet());
+        terminals.addAll(DE.keySet());
+        terminals.stream()
+                .filter(name -> name.matches("[A-Za-z0-9_ÄÜÖäüöß:]+"))
+                .forEach(name -> assertTrue(renderer.render(new FieldPresenceCondition(
+                                new FieldRef("/Owner/" + name, ValueKind.STRING), true))
+                                .contains("/'" + name + "'"),
+                        () -> "live lexer terminal must be quoted in an entity path: " + name));
+
+        String ordinary = renderer.render(new FieldPresenceCondition(
+                new FieldRef("/Owner/OrdinaryEntityV99", ValueKind.STRING), true));
+        assertTrue(ordinary.contains("/OrdinaryEntityV99") && !ordinary.contains("'OrdinaryEntityV99'"),
+                "the control name must remain unquoted");
     }
 
     private static List<String> uncovered(String lang, ResourceBundle bundle, TreeSet<String> cataloged) {

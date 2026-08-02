@@ -112,6 +112,15 @@ class PathPolicyTest {
     }
 
     @Test
+    void singleQuotesReservedNonOperatorPathSegments() {
+        Condition c = new FieldPresenceCondition(
+                new FieldRef("/Order/RuleGroup", io.github.mbackschat.a12.dm.core.ValueKind.STRING), true);
+
+        assertEquals("FieldFilled(/Order/'RuleGroup')", new DslRenderer().render(c));
+        assertEquals("FieldFilled('RuleGroup')", new DslRenderer(ConditionLanguage.EN, "/Order").render(c));
+    }
+
+    @Test
     void leavesOrdinaryPathSegmentsUnquoted() {
         Condition c = m.field("/Subscription/Addons/MonthlyFee").filled();
         assertEquals("FieldFilled(MonthlyFee)",

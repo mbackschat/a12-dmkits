@@ -15,7 +15,8 @@ import org.junit.jupiter.api.Test
 import java.util.function.Consumer
 
 /**
- * Differential — **`FirstFilledValue` over a DATE / STRING star with NO filled cell** (the WI-T IG44 re-drill
+ * Differential — **`FirstFilledValue` over every owner-admitted value kind with NO filled cell**
+ * (the WI-T IG44 re-drill
  * residual). IF80 fixed the NUMBER case (empty selection → the fillable `0`, the kernel's `NumberCombiner`), but
  * did so **unconditionally**: `firstFilledValue` returned `Val.Num(0)` for EVERY kind. The kernel's
  * `FirstValueCombiner` has a per-kind family (`FirstValueCombinerDate`/`String`/`Number`), and on an empty
@@ -26,8 +27,8 @@ import java.util.function.Consumer
  *
  * The kernel's per-kind empty identity, differential-confirmed below:
  *  - NUMBER → the fillable `0` (a VALUE; a `< n` comparison fires) — IF80, unchanged.
- *  - DATE / STRING → a NOT-GIVEN value: the comparison does NOT fire (`vergleiche…` on a not-given side), and a
- *    computation into that target is CLEARED (no value).
+ *  - DATE / TIME / DATE_TIME / STRING / ENUM / DATE_RANGE → a NOT-GIVEN value: a comparison does not fire and a computation
+ *    into that target is CLEARED (no value).
  *
  * Own-domain (e-commerce): `FirstFilledValue` over a repeatable `Lines` group's `PromiseDate`/`Note`/`Qty`.
  */
@@ -38,10 +39,18 @@ class FirstFilledValueKindDiffTest {
     private val FIRST_D = "/Cart/FirstPromise"
     private val FIRST_T = "/Cart/FirstNote"
     private val FIRST_Q = "/Cart/FirstQty"
+    private val FIRST_R = "/Cart/FirstWindow"
+    private val FIRST_E = "/Cart/FirstChoice"
+    private val FIRST_TIME = "/Cart/FirstTime"
+    private val FIRST_MOMENT = "/Cart/FirstMoment"
     private val ITEM = "/Cart/Lines/ItemId"
     private val PROMISE = "/Cart/Lines/PromiseDate"
     private val NOTE = "/Cart/Lines/Note"
     private val QTY = "/Cart/Lines/Qty"
+    private val WINDOW = "/Cart/Lines/Window"
+    private val CHOICE = "/Cart/Lines/Choice"
+    private val TIME = "/Cart/Lines/Time"
+    private val MOMENT = "/Cart/Lines/Moment"
 
     private val base = DocumentModelDraft.named("cart").locale("en_US")
         .rootGroup("Cart", Consumer { g: GroupBuilder ->
@@ -50,19 +59,35 @@ class FirstFilledValueKindDiffTest {
                 .dateField("FirstPromise", Consumer { it.format("yyyy-MM-dd") })
                 .stringField("FirstNote", Consumer { })
                 .numberField("FirstQty", Consumer { it.fractionDigits(0) })
+                .dateRangeField("FirstWindow", Consumer { it.format("yyyy-MM-dd").separator("/") })
+                .enumField("FirstChoice", Consumer { it.value("A").value("B") })
+                .timeField("FirstTime", Consumer { it.format("HH:mm:ss") })
+                .dateTimeField("FirstMoment", Consumer { it.format("yyyy-MM-dd'T'HH:mm:ss") })
                 .group("Lines", Consumer { l ->
                     l.repeatable(99).indexField("ItemId")
                         .stringField("ItemId", Consumer { })
                         .dateField("PromiseDate", Consumer { it.format("yyyy-MM-dd") })
                         .stringField("Note", Consumer { })
                         .numberField("Qty", Consumer { it.fractionDigits(0) })
+                        .dateRangeField("Window", Consumer { it.format("yyyy-MM-dd").separator("/") })
+                        .enumField("Choice", Consumer { it.value("A").value("B") })
+                        .timeField("Time", Consumer { it.format("HH:mm:ss") })
+                        .dateTimeField("Moment", Consumer { it.format("yyyy-MM-dd'T'HH:mm:ss") })
                 })
         }).build().toJson()
     private val m = BoundModel.ofJson(base)
     private fun render(c: Condition): String = DslRenderer().render(c)
 
     /** Place [rows] Lines (ItemId always filled; the named cell placed when non-null) on both engines' docs. */
-    private class Rows(val promise: String? = null, val note: String? = null, val qty: String? = null)
+    private class Rows(
+        val promise: String? = null,
+        val note: String? = null,
+        val qty: String? = null,
+        val window: String? = null,
+        val choice: String? = null,
+        val time: String? = null,
+        val moment: String? = null,
+    )
 
     private fun kdoc(rows: List<Rows>): RuntimeLaws.Doc {
         val d = RuntimeLaws.doc().group("/Cart", 1)
@@ -72,6 +97,10 @@ class FirstFilledValueKindDiffTest {
             r.promise?.let { d.field(PROMISE, it, 1, row, 1) }
             r.note?.let { d.field(NOTE, it, 1, row, 1) }
             r.qty?.let { d.field(QTY, it, 1, row, 1) }
+            r.window?.let { d.field(WINDOW, it, 1, row, 1) }
+            r.choice?.let { d.field(CHOICE, it, 1, row, 1) }
+            r.time?.let { d.field(TIME, it, 1, row, 1) }
+            r.moment?.let { d.field(MOMENT, it, 1, row, 1) }
         }
         return d
     }
@@ -84,6 +113,10 @@ class FirstFilledValueKindDiffTest {
                 r.promise?.let { doc.field(PROMISE, it, 1, row, 1) }
                 r.note?.let { doc.field(NOTE, it, 1, row, 1) }
                 r.qty?.let { doc.field(QTY, it, 1, row, 1) }
+                r.window?.let { doc.field(WINDOW, it, 1, row, 1) }
+                r.choice?.let { doc.field(CHOICE, it, 1, row, 1) }
+                r.time?.let { doc.field(TIME, it, 1, row, 1) }
+                r.moment?.let { doc.field(MOMENT, it, 1, row, 1) }
             }
         }
 
@@ -115,7 +148,8 @@ class FirstFilledValueKindDiffTest {
 
     /** A same-kind sentinel seed so a clear is a reported CHANGE. */
     private fun sentinel(target: String) = when (target) {
-        FIRST_D -> "2000-01-01"; FIRST_Q -> "999"; else -> "SEED"
+        FIRST_D -> "2000-01-01"; FIRST_Q -> "999"; FIRST_R -> "2000-01-01/2000-01-02"
+        FIRST_E -> "B"; FIRST_TIME -> "12:34:56"; FIRST_MOMENT -> "2000-01-01T12:34:56"; else -> "SEED"
     }
 
     private fun kernelSig(c: RuntimeLaws.Computed?): String = when {
@@ -149,6 +183,18 @@ class FirstFilledValueKindDiffTest {
     @Test fun numberFirstFilledEmptyComputesZero() =
         agreeCompute(render2(Dsl.firstFilledNumber(m.flatten("/Cart/Lines*/Qty"))), "../FirstQty", FIRST_Q,
             listOf(Rows(), Rows()), "FirstFilledValue(empty numbers) → compute 0 (IF80 control)")
+    @Test fun dateRangeFirstFilledEmptyComputeClears() =
+        agreeCompute(render2(Dsl.firstFilledDateRange(m.flatten("/Cart/Lines*/Window"))), "../FirstWindow", FIRST_R,
+            listOf(Rows(), Rows()), "FirstFilledValue(empty date ranges) → compute CLEARS")
+    @Test fun enumFirstFilledEmptyComputeClears() =
+        agreeCompute(render2(Dsl.firstFilledEnum(m.flatten("/Cart/Lines*/Choice"))), "../FirstChoice", FIRST_E,
+            listOf(Rows(), Rows()), "FirstFilledValue(empty enums) → compute CLEARS")
+    @Test fun timeFirstFilledEmptyComputeClears() =
+        agreeCompute(render2(Dsl.firstFilledTime(m.flatten("/Cart/Lines*/Time"))), "../FirstTime", FIRST_TIME,
+            listOf(Rows(), Rows()), "FirstFilledValue(empty times) → compute CLEARS")
+    @Test fun dateTimeFirstFilledEmptyComputeClears() =
+        agreeCompute(render2(Dsl.firstFilledDateTime(m.flatten("/Cart/Lines*/Moment"))), "../FirstMoment", FIRST_MOMENT,
+            listOf(Rows(), Rows()), "FirstFilledValue(empty date-times) → compute CLEARS")
 
     // ── controls: a FILLED first value computes/compares the real value (per kind) ────────────────────────────
     @Test fun dateFirstFilledComputesTheValue() =
@@ -157,11 +203,31 @@ class FirstFilledValueKindDiffTest {
     @Test fun stringFirstFilledComputesTheValue() =
         agreeCompute(render2(Dsl.firstFilledString(m.flatten("/Cart/Lines*/Note"))), "../FirstNote", FIRST_T,
             listOf(Rows(note = "hello"), Rows()), "first Note filled → computes it")
+    @Test fun dateRangeFirstFilledComputesTheValue() =
+        agreeCompute(render2(Dsl.firstFilledDateRange(m.flatten("/Cart/Lines*/Window"))), "../FirstWindow", FIRST_R,
+            listOf(Rows(window = "2024-03-20/2024-03-21"), Rows()), "first Window filled → computes it")
+    @Test fun enumFirstFilledComputesTheValue() =
+        agreeCompute(render2(Dsl.firstFilledEnum(m.flatten("/Cart/Lines*/Choice"))), "../FirstChoice", FIRST_E,
+            listOf(Rows(choice = "A"), Rows()), "first Choice filled → computes it")
+    @Test fun timeFirstFilledComputesTheValue() =
+        agreeCompute(render2(Dsl.firstFilledTime(m.flatten("/Cart/Lines*/Time"))), "../FirstTime", FIRST_TIME,
+            listOf(Rows(time = "10:11:12"), Rows()), "first Time filled → computes it")
+    @Test fun dateTimeFirstFilledComputesTheValue() =
+        agreeCompute(render2(Dsl.firstFilledDateTime(m.flatten("/Cart/Lines*/Moment"))), "../FirstMoment", FIRST_MOMENT,
+            listOf(Rows(moment = "2024-03-20T10:11:12"), Rows()), "first Moment filled → computes it")
 
     private fun render2(e: io.github.mbackschat.a12.dm.rulekit.dsl.NumberExpr) =
         DslRenderer(io.github.mbackschat.a12.dm.rulekit.dsl.ConditionLanguage.EN, "/Cart").render(e.expression())
     private fun render2(e: io.github.mbackschat.a12.dm.rulekit.dsl.DateExpr) =
         DslRenderer(io.github.mbackschat.a12.dm.rulekit.dsl.ConditionLanguage.EN, "/Cart").render(e.expression())
     private fun render2(e: io.github.mbackschat.a12.dm.rulekit.dsl.StringExpr) =
+        DslRenderer(io.github.mbackschat.a12.dm.rulekit.dsl.ConditionLanguage.EN, "/Cart").render(e.expression())
+    private fun render2(e: io.github.mbackschat.a12.dm.rulekit.dsl.DateRangeExpr) =
+        DslRenderer(io.github.mbackschat.a12.dm.rulekit.dsl.ConditionLanguage.EN, "/Cart").render(e.expression())
+    private fun render2(e: io.github.mbackschat.a12.dm.rulekit.dsl.EnumExpr) =
+        DslRenderer(io.github.mbackschat.a12.dm.rulekit.dsl.ConditionLanguage.EN, "/Cart").render(e.expression())
+    private fun render2(e: io.github.mbackschat.a12.dm.rulekit.dsl.TimeExpr) =
+        DslRenderer(io.github.mbackschat.a12.dm.rulekit.dsl.ConditionLanguage.EN, "/Cart").render(e.expression())
+    private fun render2(e: io.github.mbackschat.a12.dm.rulekit.dsl.DateTimeExpr) =
         DslRenderer(io.github.mbackschat.a12.dm.rulekit.dsl.ConditionLanguage.EN, "/Cart").render(e.expression())
 }

@@ -1,6 +1,9 @@
 package io.github.mbackschat.a12.dm.adapter.laws
 
 import io.github.mbackschat.a12.dm.interpreter.eval.Interpreter
+import io.github.mbackschat.a12.dm.interpreter.DmInterpreter
+import io.github.mbackschat.a12.dm.interpreter.eval.newDocument
+import io.github.mbackschat.a12.dm.interpreter.load.ModelLoader
 import io.github.mbackschat.a12.dm.interpreter.model.Kind
 import io.github.mbackschat.a12.dm.interpreter.eval.SingleRowDoc
 import io.github.mbackschat.a12.dm.interpreter.parse.parseCondition
@@ -59,6 +62,35 @@ class ArithmeticDiffTest {
             Executable { assertEquals(kernel, interp, "\"${c.text}\" over ${c.values} [k=$kernel i=$interp]") }
         }
         assertAll(checks)
+    }
+
+    @Test
+    fun precedenceAndGroupingUseDiscriminatingTriEngineCases() {
+        val guard = m.str(CN).filled()
+        val conditions = listOf(
+            "multiply-before-add" to guard.and(Dsl.number("1").plus(Dsl.number("2").times(Dsl.number("3"))).eq("7")),
+            "power-before-multiply" to guard.and(Dsl.number("2").times(
+                Dsl.number("3").toThePowerOf(Dsl.number("2"))).eq("18")),
+            "curly-group-overrides-precedence" to guard.and(Dsl.number("1").plus(Dsl.number("2")).times(
+                Dsl.number("3")).eq("9")),
+        )
+        val model = conditions.foldIndexed(order) { index, json, (_, condition) ->
+            RuntimeLaws.withRule(json, "/Order", "Precedence$index", "../CustomerName", "PREC_$index", render(condition))
+        }
+        val expected = conditions.indices.map { "PREC_$it" }.toSet()
+        val kernelDocument = RuntimeLaws.doc().group("/Order", 1).field(CN, "Acme", 1, 1)
+        val dynamic = RuntimeLaws.messages(model, kernelDocument).map { it.code() }.filter { it in expected }.toSet()
+        val generatedEngine = RuntimeLaws.kernelJavaEngine(model)
+        val generated = generatedEngine.messages(generatedEngine.instance(kernelDocument))
+            .map { it.code() }.filter { it in expected }.toSet()
+        val definition = ModelLoader.load(model)
+        val interpreter = DmInterpreter(definition).validateFull(
+            definition.newDocument().group("/Order", 1).field(CN, "Acme", 1, 1),
+        ).map { it.code }.filter { it in expected }.toSet()
+
+        assertEquals(expected, dynamic, "each expression distinguishes the published precedence from its rival parse")
+        assertEquals(dynamic, generated, "dynamic Groovy vs generated Java")
+        assertEquals(dynamic, interpreter, "dynamic Groovy vs interpreter")
     }
 
     /**

@@ -2,6 +2,7 @@ package io.github.mbackschat.a12.dm.adapter.laws
 
 import io.github.mbackschat.a12.dm.interpreter.DmInterpreter
 import io.github.mbackschat.a12.dm.interpreter.eval.newDocument
+import io.github.mbackschat.a12.dm.interpreter.load.ModelLoader
 import io.github.mbackschat.a12.dm.interpreter.model.FieldDef
 import io.github.mbackschat.a12.dm.interpreter.model.Kind
 import io.github.mbackschat.a12.dm.interpreter.model.ModelDef
@@ -71,9 +72,39 @@ class CurrentRepetitionDiffTest {
     // PROBE: a malformed Qty at a NON-firing row (index 1) — should not affect rows 2,3.
     @Test fun malformedAtNonFiringRow() = agreeRows(gt2, listOf("abc", "5", "5"), "row 1 Qty malformed, rows 2,3 valid")
 
+    @Test
+    fun aNonRepeatableGroupHasTheConstantIndexOneOnAllThreeEngines() {
+        val order = RuntimeLaws.model("models/order.dm.json")
+        val bound = BoundModel.ofJson(order)
+        val guard = bound.str(CUSTOMER).filled()
+        val equal = render(guard.and(Dsl.currentRepetition(bound.group(ORDER)).eq(1)))
+        val unequal = render(guard.and(Dsl.currentRepetition(bound.group(ORDER)).ne(1)))
+        val model = RuntimeLaws.withRule(
+            RuntimeLaws.withRule(order, ORDER, "IndexOne", "../CustomerName", "CR_EQ", equal),
+            ORDER, "IndexNotOne", "../CustomerName", "CR_NE", unequal,
+        )
+        val expected = setOf("CR_EQ")
+        val kernelDocument = RuntimeLaws.doc().group(ORDER, 1).field(CUSTOMER, "Acme", 1, 1)
+        val dynamic = RuntimeLaws.messages(model, kernelDocument)
+            .map { it.code() }.filter { it == "CR_EQ" || it == "CR_NE" }.toSet()
+        val static = RuntimeLaws.kernelJavaEngine(model)
+        val generated = static.messages(static.instance(kernelDocument))
+            .map { it.code() }.filter { it == "CR_EQ" || it == "CR_NE" }.toSet()
+        val definition = ModelLoader.load(model)
+        val interpreted = DmInterpreter(definition).validateFull(
+            definition.newDocument().group(ORDER, 1).field(CUSTOMER, "Acme", 1, 1),
+        ).map { it.code }.filter { it == "CR_EQ" || it == "CR_NE" }.toSet()
+
+        assertEquals(expected, dynamic, "CurrentRepetition over a non-repeatable group is exactly 1")
+        assertEquals(dynamic, generated, "dynamic Groovy vs generated Java")
+        assertEquals(dynamic, interpreted, "dynamic Groovy vs interpreter")
+    }
+
     private companion object {
         const val LINES = "/Cart/Lines"
         const val ITEM = "/Cart/Lines/ItemId"
         const val QTY = "/Cart/Lines/Qty"
+        const val ORDER = "/Order"
+        const val CUSTOMER = "/Order/CustomerName"
     }
 }

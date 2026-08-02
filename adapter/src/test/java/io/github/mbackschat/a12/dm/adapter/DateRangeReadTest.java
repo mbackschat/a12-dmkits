@@ -36,6 +36,7 @@ class DateRangeReadTest {
                         .dateRangeField("Coverage", r -> r.format("dd.MM.yyyy").separator("-"))
                         .dateRangeField("Blackout", r -> r.format("dd.MM.yyyy").separator("-"))
                         .dateField("RequestedStart", d -> d.format("dd.MM.yyyy"))
+                        .dateField("RequestedEnd", d -> d.format("dd.MM.yyyy"))
                         .numberField("EndDay", n -> { })
                         .group("Periods", g -> g.repeatable(20)
                                 .dateRangeField("Span", r -> r.format("dd.MM.yyyy").separator("-"))))
@@ -86,6 +87,22 @@ class DateRangeReadTest {
         ValidationResult r = new RuleValidator().check(bookingJson(),
                 new DraftRule("/Booking", "StartRule", "../RequestedStart", RENDER.render(c), "C", "ERROR"));
         assertTrue(r.ok(), () -> "expected kernel acceptance, got: " + r.diagnostics());
+    }
+
+    @Test
+    void roundTripsConstructedDateRangeEqualityInBothDirections() {
+        BoundModel m = BoundModel.ofJson(bookingJson());
+        var constructed = Dsl.dateRange(m.date("/Booking/RequestedStart"), m.date("/Booking/RequestedEnd"));
+        Condition constructedFirst = constructed.eq(m.dateRange("/Booking/Coverage"));
+        Condition fieldFirst = m.dateRange("/Booking/Coverage").ne(constructed);
+        KernelAdapter adapter = KernelAdapter.of(m
+                .add(rule(m, "ConstructedFirst", "/Booking/Coverage", constructedFirst))
+                .add(rule(m, "FieldFirst", "/Booking/Coverage", fieldFirst)));
+
+        assertEquals(RENDER.render(constructedFirst),
+                RENDER.render(converted(adapter.read("/Booking/ConstructedFirst"))));
+        assertEquals(RENDER.render(fieldFirst),
+                RENDER.render(converted(adapter.read("/Booking/FieldFirst"))));
     }
 
     private static Rule rule(BoundModel m, String name, String errorField, Condition cond) {

@@ -45,9 +45,9 @@ class BareGroupScanLazinessTest {
             for (i in 0 until size) {
                 reads++
                 if (i == 0) {
-                    yield(ScanCell("$groupPath/First", listOf(1, 1, 1), "x", CellState.FILLED))
+                    yield(ScanCell("$groupPath/First", listOf(1, 1, 1), "x", CellState.FILLED, Val.Txt("x")))
                 } else {
-                    yield(ScanCell("$groupPath/Tail$i", listOf(1, 1, 1), null, CellState.EMPTY))
+                    yield(ScanCell("$groupPath/Tail$i", listOf(1, 1, 1), null, CellState.EMPTY, null))
                 }
             }
         }

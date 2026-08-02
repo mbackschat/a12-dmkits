@@ -101,13 +101,23 @@ internal class OverlayContext(
 
     override fun containedFieldCells(groupPath: String, declaredRange: Boolean): Sequence<ScanCell> =
         d.containedFieldCells(groupPath, declaredRange).map(::overlaidScanCell)
+    override fun indexedContainedFieldCells(
+        groupPath: String,
+        indexField: String,
+        indexValue: String,
+    ): Sequence<ScanCell> =
+        d.indexedContainedFieldCells(groupPath, indexField, indexValue).map(::overlaidScanCell)
 
     private fun overlaidScanCell(cell: ScanCell): ScanCell {
         val key = cell.path to cell.reps
         return when {
-            key in poisoned -> cell.copy(raw = null, baseState = CellState.INVALID)
-            key in cleared -> cell.copy(raw = null, baseState = CellState.EMPTY)
-            key in overlay -> cell.copy(raw = renderOverlayValue(cell.path, overlay.getValue(key)), baseState = CellState.FILLED)
+            key in poisoned -> cell.copy(raw = null, baseState = CellState.INVALID, value = Val.Unknown)
+            key in cleared -> cell.copy(raw = null, baseState = CellState.EMPTY, value = null)
+            key in overlay -> cell.copy(
+                raw = renderOverlayValue(cell.path, overlay.getValue(key)),
+                baseState = CellState.FILLED,
+                value = overlay.getValue(key),
+            )
             else -> cell
         }
     }

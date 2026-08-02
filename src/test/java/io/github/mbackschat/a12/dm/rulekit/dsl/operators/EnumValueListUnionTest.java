@@ -2,6 +2,7 @@ package io.github.mbackschat.a12.dm.rulekit.dsl.operators;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.List;
 
@@ -67,8 +68,10 @@ class EnumValueListUnionTest {
 
     @Test
     void anExactDuplicateReferenceIsRejected() {
-        assertThrows(IllegalArgumentException.class, () -> Dsl.atLeastOneFieldValueIncludedInValueList(
-                List.of("STANDARD"), m.enumOf(PRIORITY), m.enumOf(PRIORITY)));
+        IllegalArgumentException rejected = assertThrows(IllegalArgumentException.class,
+                () -> Dsl.atLeastOneFieldValueIncludedInValueList(
+                        List.of("STANDARD"), m.enumOf(PRIORITY), m.enumOf(PRIORITY)));
+        assertTrue(rejected.getMessage().contains("MVK_DUPLICATE_PARAM1"));
         // ...but a direct ref and a category ref on the same field are DISTINCT, so this must NOT throw:
         Dsl.atLeastOneFieldValueIncludedInValueList(List.of("STANDARD"),
                 m.enumOf(PRIORITY), m.enumOf(PRIORITY).category("SpeedClass"));

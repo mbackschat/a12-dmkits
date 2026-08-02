@@ -224,7 +224,7 @@ dmtool schema rule add | jq '.input.oneOf'
 {
   "id": "DateRange",
   "kind": "FUNCTION",
-  "meaning": "Constructs a date range from a start and an end date. Computation-only: it assigns a DATE_RANGE field in a computation operation; it has no condition form (the overlap predicates take date-range FIELDS, and a constructed range cannot be nested or compared). Both operands must be format-compatible date fields."
+  "meaning": "Constructs a DATE_RANGE value from start and end date fields. It may be compared to a DATE_RANGE field with == or != in either direction, or assigned to a DATE_RANGE field by a computation; ordering and nested use in overlap predicates are rejected."
 }
 [
   {
@@ -247,7 +247,7 @@ dmtool schema rule add | jq '.input.oneOf'
 ]
 ```
 
-→ `operators DateRange` carries the meaning and the use-site rule (computation-only); `schema rule add` returns the op's directional contract, with the input shape under `.input` — a `oneOf` of a rule-spec (`field`/`condition`/`code`) or a computation-spec (`computedField`/`alternatives`), both requiring `messages`. A cold agent learns the whole contract from the tool, no external docs.
+→ `operators DateRange` carries both legal use sites and the rejected nesting/ordering boundary; `schema rule add` returns the op's directional contract, with the input shape under `.input` — a `oneOf` of a rule-spec (`field`/`condition`/`code`) or a computation-spec (`computedField`/`alternatives`), both requiring `messages`. A cold agent learns the whole contract from the tool, no external docs.
 
 ## rule modify — re-express an existing rule (preview, then write)
 

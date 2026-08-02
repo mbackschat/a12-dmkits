@@ -15,6 +15,8 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
  * <p>The probe contract (executed by {@code adapter.laws.CatalogFacetProbesTest}):
  * <ul>
  *   <li>{@code dsl} — the error condition, written against {@code models/order.dm.json};</li>
+ *   <li>{@code kind} — for a {@code perKind} aggregate-identity claim, the exact branch this probe executes;
+ *       absent on kind-uniform and non-aggregate facets;</li>
  *   <li>{@code errorField} — the rule's error field, relative to {@code /Order} (e.g.
  *       {@code "Quantity"}, {@code "Items/Count"}); explicit by design, no inference;</li>
  *   <li>{@code rows} — group rows to instantiate beyond the implicit {@code /Order}; a path part
@@ -34,6 +36,7 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 @JsonIgnoreProperties(ignoreUnknown = true)
 public record FacetProbe(
         String dsl,
+        String kind,
         String errorField,
         List<String> rows,
         Map<String, String> given,

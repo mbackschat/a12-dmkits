@@ -23,12 +23,24 @@ class CustomConditionTest {
     }
 
     @Test
-    void nameMustBeABareIdentifier() {
+    void acceptsTheOwnersIdentifierAlphabetAndQuotesReservedNames() {
         assertThrows(IllegalArgumentException.class, () -> Dsl.customCondition(""));
         assertThrows(IllegalArgumentException.class, () -> Dsl.customCondition("has space"));
         assertThrows(IllegalArgumentException.class, () -> Dsl.customCondition("/path/like"));
         assertEquals("CustomCondition My_Check2",
                 new DslRenderer().render(Dsl.customCondition("My_Check2")));
+        assertEquals("CustomCondition 1Special",
+                new DslRenderer().render(Dsl.customCondition("1Special")));
+        assertEquals("CustomCondition _Special",
+                new DslRenderer().render(Dsl.customCondition("_Special")));
+        assertEquals("CustomCondition ÄSpecial",
+                new DslRenderer().render(Dsl.customCondition("ÄSpecial")));
+        assertEquals("CustomCondition A:B",
+                new DslRenderer().render(Dsl.customCondition("A:B")));
+        assertEquals("CustomCondition 'Today'",
+                new DslRenderer().render(Dsl.customCondition("Today")));
+        assertEquals("CustomCondition 'RuleGroup'",
+                new DslRenderer().render(Dsl.customCondition("RuleGroup")));
     }
 
     @Test

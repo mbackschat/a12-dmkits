@@ -182,6 +182,11 @@ interface EvalContext {
     fun enumCategory(path: String, category: String): Val =
         throw UnsupportedConstructException("enum-category needs the general Document context, not $this")
 
+    /** Project an already-resolved stored enum [value] through [category]. This is the category half of a
+     * compositional owner `entitySpec`, where a semantic index or wildcard row selected the value first. */
+    fun enumCategoryValue(path: String, category: String, value: Val): Val =
+        throw UnsupportedConstructException("enum-category projection needs the general Document context, not $this")
+
     /**
      * The 1-based repetition indices of a field path **in this row** — one per path part (the kernel's
      * `repetitionIndexes()`), for building a field-instance pointer. Defaults to all-1s (correct for a flat
@@ -220,7 +225,7 @@ interface EvalContext {
         val cells = starCells(path, bindDepth)
         val states = starScanStates(path, bindDepth)
         return cells.indices.asSequence().map { i ->
-            ScanCell(path, cells[i].first, null, states[i])
+            ScanCell(path, cells[i].first, null, states[i], cells[i].second)
         }
     }
 
@@ -229,6 +234,16 @@ interface EvalContext {
      *  interleaves each field's missing declared repetitions before advancing to the next field. */
     fun containedFieldCells(groupPath: String, declaredRange: Boolean): Sequence<ScanCell> =
         throw UnsupportedConstructException("bare-group compute scan needs the general Document context, not $this")
+
+    /** The contained-field scan rooted at the one [groupPath] row selected by [indexField]=[indexValue].
+     *  A clean no-match is an empty sequence. The caller owns the index-column validity gate so it can retain
+     *  validation-vs-computation poison semantics. */
+    fun indexedContainedFieldCells(
+        groupPath: String,
+        indexField: String,
+        indexValue: String,
+    ): Sequence<ScanCell> =
+        throw UnsupportedConstructException("indexed-group scan needs the general Document context, not $this")
 }
 
 /**
@@ -258,6 +273,8 @@ data class ScanCell(
     val reps: List<Int>,
     val raw: String?,
     val baseState: CellState,
+    /** The field-format-aware evaluation value for this exact cell; null only for an empty cell. */
+    val value: Val?,
 )
 
 /**

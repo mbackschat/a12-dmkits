@@ -65,10 +65,12 @@ import io.github.mbackschat.a12.dm.rulekit.read.ReadComputation;
 import io.github.mbackschat.a12.dm.rulekit.read.ReadResult;
 import io.github.mbackschat.a12.dm.rulekit.dsl.BaseYear;
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel;
+import io.github.mbackschat.a12.dm.rulekit.dsl.BoolExpr;
 import io.github.mbackschat.a12.dm.rulekit.dsl.CategoryRef;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Comments;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Now;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Calculation;
+import io.github.mbackschat.a12.dm.rulekit.dsl.ComparisonCondition;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Condition;
 import io.github.mbackschat.a12.dm.rulekit.dsl.DateConstruction;
 import io.github.mbackschat.a12.dm.rulekit.dsl.DateValidity;
@@ -88,6 +90,9 @@ import io.github.mbackschat.a12.dm.rulekit.dsl.DateTimeExpr;
 import io.github.mbackschat.a12.dm.rulekit.dsl.DateTimeOperand;
 import io.github.mbackschat.a12.dm.rulekit.dsl.TimeConstruction;
 import io.github.mbackschat.a12.dm.rulekit.dsl.DateRangeRef;
+import io.github.mbackschat.a12.dm.rulekit.dsl.DateRangeConstruction;
+import io.github.mbackschat.a12.dm.rulekit.dsl.DateRangeExpr;
+import io.github.mbackschat.a12.dm.rulekit.dsl.DateRangeOperand;
 import io.github.mbackschat.a12.dm.rulekit.dsl.DateRef;
 import io.github.mbackschat.a12.dm.rulekit.dsl.DateTimeRef;
 import io.github.mbackschat.a12.dm.rulekit.dsl.TemporalOperand;
@@ -106,6 +111,8 @@ import io.github.mbackschat.a12.dm.rulekit.dsl.FieldOperand;
 import io.github.mbackschat.a12.dm.rulekit.dsl.FieldRef;
 import io.github.mbackschat.a12.dm.rulekit.dsl.FieldValue;
 import io.github.mbackschat.a12.dm.rulekit.dsl.FieldValueAsNumber;
+import io.github.mbackschat.a12.dm.rulekit.dsl.FirstFilledValue;
+import io.github.mbackschat.a12.dm.rulekit.dsl.FirstFilledOperand;
 import io.github.mbackschat.a12.dm.rulekit.dsl.RangeAsNumber;
 import io.github.mbackschat.a12.dm.rulekit.dsl.GroupListOperand;
 import io.github.mbackschat.a12.dm.rulekit.dsl.GroupListRef;
@@ -769,6 +776,10 @@ final class ConditionConverter {
         IOperation left = comparison.getOperation1();
         ComparisonOperation op = comparison.getCmpOp();
         IOperation right = comparison.getOperation2();
+        if (left instanceof IDateRangeConstructionOperation) {
+            return dateRangeComparison(convertDateRangeOperand(left, comparison), op,
+                    convertDateRangeOperand(right, comparison), comparison);
+        }
         if (left instanceof IOpListOperation operandList && operandList.getType() == OperationType.DATE) {
             TemporalKind kind = temporalOperandListKind(operandList, right);
             return switch (kind) {
@@ -781,6 +792,24 @@ final class ConditionConverter {
             };
         }
         if (left instanceof IEntityListOperation aggregate) {
+            if (aggregate.getOperatorName() == EntityListOperationName.FirstFilledValue) {
+                ValueKind kind = firstFilledValueKind(aggregate);
+                Calculation value = convertFirstFilledValue(aggregate);
+                return switch (kind) {
+                    case NUMBER -> numberExprComparison(new NumberExpr(value), op, right, comparison);
+                    case STRING, CUSTOM -> stringExprComparison(new StringExpr(value), op, right, comparison);
+                    case ENUMERATION -> enumExprComparison(new EnumExpr(value), op, right, comparison);
+                    case BOOLEAN -> booleanExprComparison(new BoolExpr(value), op, right, comparison);
+                    case DATE, DATE_FRAGMENT -> dateComparison(new DateExpr(value), op,
+                            convertDateOperand(right, comparison), comparison);
+                    case TIME -> timeComparison(new TimeExpr(value), op, right, comparison);
+                    case DATE_TIME -> dateTimeComparison(new DateTimeExpr(value), op, right, comparison);
+                    case DATE_RANGE -> dateRangeComparison(firstFilledDateRangeExpr((FirstFilledValue) value),
+                            op, convertDateRangeOperand(right, comparison), comparison);
+                    case CONFIRM, UNKNOWN -> throw unsupported(
+                            "FirstFilledValue with result kind " + kind, aggregate);
+                };
+            }
             // a TIME/DATETIME extremum (MaxValue/MinValue over a temporal scope) compares as that kind — the
             // kernel folds all three date-like kinds through one DateCombiner (SPEC-2026-07-21-07)
             ValueKind extremumKind = temporalExtremumKind(aggregate);
@@ -900,7 +929,67 @@ final class ConditionConverter {
             case CONFIRM -> confirmComparison(model.confirm(path), op, other, origin);
             // a custom-typed field's value is text — the kernel compares it as a string (m.custom → StringRef)
             case CUSTOM -> stringComparison(leftOuter ? model.custom(path).outer() : model.custom(path), op, other, origin);
+            case DATE_RANGE -> dateRangeComparison(leftOuter ? model.dateRange(path).outer() : model.dateRange(path),
+                    op, convertDateRangeOperand(other, origin), origin);
             default -> throw unsupported("comparison on a " + kind + " field", origin);
+        };
+    }
+
+    private DateRangeOperand convertDateRangeOperand(IOperation operation, Object origin) {
+        if (operation instanceof IDateRangeConstructionOperation range) {
+            return Dsl.dateRange(dateRangeEndpoint(range.getDate1Id(), origin),
+                    dateRangeEndpoint(range.getDate2Id(), origin));
+        }
+        if (operation instanceof IFieldIdOperation field
+                && field.getOperatorName() == FieldIdOperationName.FieldValue
+                && model.fieldAt(field.getField().getFullName())
+                        .map(info -> info.kind() == ValueKind.DATE_RANGE).orElse(false)) {
+            DateRangeRef range = model.dateRange(field.getField().getFullName());
+            return field.getField().isOuter() ? range.outer() : range;
+        }
+        if (operation instanceof IEntityListOperation aggregate
+                && aggregate.getOperatorName() == EntityListOperationName.FirstFilledValue
+                && firstFilledValueKind(aggregate) == ValueKind.DATE_RANGE) {
+            return firstFilledDateRangeExpr(convertFirstFilledValue(aggregate));
+        }
+        throw unsupported("date-range operand " + operation.getClass().getSimpleName(), origin);
+    }
+
+    /** Re-enter through the public typed surface rather than giving the adapter an arbitrary-Calculation
+     *  escape hatch around {@link DateRangeExpr}. */
+    private DateRangeExpr firstFilledDateRangeExpr(FirstFilledValue value) {
+        List<FirstFilledOperand> operands = value.operands();
+        if (operands.size() == 1) {
+            return Dsl.firstFilledDateRange(operands.getFirst());
+        }
+        FirstFilledOperand[] rest = operands.subList(2, operands.size()).toArray(FirstFilledOperand[]::new);
+        return Dsl.firstFilledDateRange(operands.getFirst(), operands.get(1), rest);
+    }
+
+    private DateOperand dateRangeEndpoint(IEntityId field, Object origin) {
+        String path = field.getFullName();
+        ValueKind kind = model.fieldAt(path)
+                .orElseThrow(() -> unsupported("DateRange on unknown field " + path, origin)).kind();
+        if (hasSemanticIndex(field)) {
+            Calculation indexed = semanticIndex(field, origin).index();
+            if (kind == ValueKind.DATE || kind == ValueKind.DATE_FRAGMENT) {
+                return new DateExpr(indexed);
+            }
+            throw unsupported("DateRange on a " + kind + " semantic-index field " + path, origin);
+        }
+        return switch (kind) {
+            case DATE -> field.isOuter() ? model.date(path).outer() : model.date(path);
+            case DATE_FRAGMENT -> field.isOuter() ? model.dateFragment(path).outer() : model.dateFragment(path);
+            default -> throw unsupported("DateRange on a " + kind + " field " + path, origin);
+        };
+    }
+
+    private Condition dateRangeComparison(DateRangeOperand left, ComparisonOperation operation,
+            DateRangeOperand right, ICondition origin) {
+        return switch (operation) {
+            case EQ -> left.eq(right);
+            case NE -> left.ne(right);
+            default -> throw unsupported("date-range comparison operator " + operation, origin);
         };
     }
 
@@ -929,7 +1018,7 @@ final class ConditionConverter {
             return new NumberExpr(new NumberOfValueInFields(value, java.util.List.of(fields)));
         }
         if (name == EntityListOperationName.FirstFilledValue) {
-            return new NumberExpr(convertFirstFilledValue(aggregate, ValueKind.NUMBER));
+            return new NumberExpr(convertFirstFilledValue(aggregate));
         }
         // NumberOfFilledGroups(Group*): a single repeatable group, all reps — a group scope, not a field.
         if (name == EntityListOperationName.NumberOfFilledGroups
@@ -989,44 +1078,70 @@ final class ConditionConverter {
         };
     }
 
-    /**
-     * Rebuild a kind-homogeneous {@code FirstFilledValue} operand list without collapsing its authored
-     * encounter order. The compatible typed surface requires the first operand to remain a repetition
-     * list; every later operand may independently be another list or a plain field.
-     */
-    private Calculation convertFirstFilledValue(IEntityListOperation aggregate, ValueKind expectedKind) {
+    /** Rebuild A12's {@code entityListe} operand union without erasing groups, semantic indexes, or Having. */
+    private FirstFilledValue convertFirstFilledValue(IEntityListOperation aggregate) {
         if (aggregate.getOperatorName() != EntityListOperationName.FirstFilledValue) {
             throw unsupported("non-FirstFilledValue operation at the FirstFilledValue seam", aggregate);
         }
         List<IEntityId> entities = aggregate.getEntityList().getEntityIdList();
-        if (entities.isEmpty() || entities.stream().anyMatch(entity -> !entity.isField())) {
-            throw unsupported("FirstFilledValue over an empty or non-field operand list", aggregate);
+        if (entities.isEmpty()) {
+            throw unsupported("FirstFilledValue over an empty operand list", aggregate);
         }
-        List<FieldOperand> operands = entities.stream().map(this::toFieldOperand).toList();
-        if (!(operands.getFirst() instanceof FieldListRef scope)) {
-            throw unsupported("FirstFilledValue whose first operand is not a repetition list", aggregate);
+        List<FirstFilledOperand> operands = entities.stream()
+                .map(entity -> toFirstFilledOperand(entity, aggregate))
+                .toList();
+        return new FirstFilledValue(operands.getFirst(), operands.subList(1, operands.size()));
+    }
+
+    private FirstFilledOperand toFirstFilledOperand(IEntityId entity, IEntityListOperation origin) {
+        FirstFilledOperand operand;
+        if (entity.isField()) {
+            FieldOperand field = isWildcard(entity) ? flattenScope(entity) : toFieldOperand(entity);
+            operand = field.firstFilledOperand();
+        } else {
+            if (entity.getFilterCondition() != null) {
+                throw unsupported("FirstFilledValue group with Having", origin);
+            }
+            operand = model.firstFilledGroup(reconstructStarPath(entity));
         }
-        if (operands.stream().anyMatch(operand -> operand.kind() != expectedKind)) {
-            throw unsupported("FirstFilledValue with operands outside its " + expectedKind + " result kind", aggregate);
+
+        String category = entity.getCategoryName();
+        if (category != null && !category.isEmpty()) {
+            if (!entity.isField()) {
+                throw unsupported("FirstFilledValue category projection on a group", origin);
+            }
+            CategoryRef ref = model.enumOf(entity.getFullName()).category(category);
+            operand = operand.withCategory(ref);
         }
-        if (operands.size() == 1) {
-            return switch (expectedKind) {
-                case NUMBER -> Dsl.firstFilledNumber(scope).expression();
-                case STRING -> Dsl.firstFilledString(scope).expression();
-                case DATE -> Dsl.firstFilledDate(scope).expression();
-                case ENUMERATION -> Dsl.firstFilledEnum(scope).expression();
-                default -> throw unsupported("FirstFilledValue with result kind " + expectedKind, aggregate);
-            };
+        if (hasSemanticIndex(entity)) {
+            operand = withFirstFilledSemanticIndex(operand, entity, origin);
         }
-        FieldOperand second = operands.get(1);
-        FieldOperand[] rest = operands.subList(2, operands.size()).toArray(FieldOperand[]::new);
-        return switch (expectedKind) {
-            case NUMBER -> Dsl.firstFilledNumber(scope, second, rest).expression();
-            case STRING -> Dsl.firstFilledString(scope, second, rest).expression();
-            case DATE -> Dsl.firstFilledDate(scope, second, rest).expression();
-            case ENUMERATION -> Dsl.firstFilledEnum(scope, second, rest).expression();
-            default -> throw unsupported("FirstFilledValue with result kind " + expectedKind, aggregate);
-        };
+        return entity.isOuter() ? operand.outer() : operand;
+    }
+
+    private FirstFilledOperand withFirstFilledSemanticIndex(
+            FirstFilledOperand operand, IEntityId entity, IEntityListOperation origin) {
+        List<Object> keys = entity.getSemanticIndex();
+        if (keys == null || keys.size() != 1) {
+            throw unsupported("FirstFilledValue semantic index with a non-single key", origin);
+        }
+        Object key = keys.getFirst();
+        if (key instanceof String literal) {
+            return operand.forIndex(literal);
+        }
+        if (key instanceof IEntityId keyField) {
+            FieldRef ref = keyField.isOuter()
+                    ? model.field(keyField.getFullName()).outer()
+                    : model.field(keyField.getFullName());
+            return operand.forIndex(ref);
+        }
+        throw unsupported("FirstFilledValue semantic index with key "
+                + key.getClass().getSimpleName(), origin);
+    }
+
+    /** Recover the owner kind from the fields because the kernel transport collapses several families. */
+    private ValueKind firstFilledValueKind(IEntityListOperation aggregate) {
+        return convertFirstFilledValue(aggregate).kind();
     }
 
     /** Rebuild the wildcard scope (e.g. {@code Items} flattened) from the resolved path + indices, plus any Having filter. */
@@ -1360,7 +1475,7 @@ final class ConditionConverter {
         }
         // [field] == / != FirstFilledValue(/Group*/StringField) — a string-valued aggregate on the right
         if (right instanceof IEntityListOperation aggregate) {
-            StringExpr agg = stringAggregate(aggregate);
+            StringExpr agg = stringAggregate(aggregate, left.field().kind());
             return switch (op) {
                 case EQ -> left.eq(agg);
                 case NE -> left.ne(agg);
@@ -1404,7 +1519,7 @@ final class ConditionConverter {
             return stringCoercion((IFieldIdOperation) op);
         }
         if (op instanceof IEntityListOperation aggregate) {
-            return stringAggregate(aggregate);
+            return stringAggregate(aggregate, firstFilledValueKind(aggregate));
         }
         if (op instanceof ICompositeOperation nested && nested.getType() == OperationType.STRING) {
             return convertConcatenation(nested);
@@ -1413,10 +1528,17 @@ final class ConditionConverter {
     }
 
     /** A string-valued aggregate ({@code FirstFilledValue} over a string repetition list) as a {@link StringExpr}. */
-    private StringExpr stringAggregate(IEntityListOperation aggregate) {
+    private StringExpr stringAggregate(IEntityListOperation aggregate, ValueKind expectedKind) {
         List<IEntityId> entities = aggregate.getEntityList().getEntityIdList();
         if (aggregate.getOperatorName() == EntityListOperationName.FirstFilledValue) {
-            return new StringExpr(convertFirstFilledValue(aggregate, ValueKind.STRING));
+            if (expectedKind != ValueKind.STRING && expectedKind != ValueKind.CUSTOM) {
+                throw unsupported("string FirstFilledValue with result kind " + expectedKind, aggregate);
+            }
+            Calculation value = convertFirstFilledValue(aggregate);
+            if (!firstFilledTargetCompatible(expectedKind, value.kind())) {
+                throw unsupported("string FirstFilledValue resolved as " + value.kind(), aggregate);
+            }
+            return new StringExpr(value);
         }
         if (entities.size() != 1 || !entities.get(0).isField()) {
             throw unsupported("string aggregate over a non-single-field scope", aggregate);
@@ -1463,13 +1585,18 @@ final class ConditionConverter {
         if (keys == null || keys.size() != 1) {
             throw unsupported("semantic index ([field For …]) with a non-single key", origin);
         }
-        FieldRef field = model.field(entity.getFullName());
+        FieldRef field = entity.isOuter()
+                ? model.field(entity.getFullName()).outer()
+                : model.field(entity.getFullName());
         Object key = keys.get(0);
         if (key instanceof String literal) {
             return field.semanticIndex(literal);
         }
         if (key instanceof IEntityId keyField) {
-            return field.semanticIndex(model.field(keyField.getFullName()));
+            FieldRef keyRef = keyField.isOuter()
+                    ? model.field(keyField.getFullName()).outer()
+                    : model.field(keyField.getFullName());
+            return field.semanticIndex(keyRef);
         }
         throw unsupported("semantic index ([field For …]) with key " + key.getClass().getSimpleName(), origin);
     }
@@ -1485,7 +1612,14 @@ final class ConditionConverter {
             };
         }
         if (right instanceof IFieldIdOperation rf && rf.getOperatorName() == FieldIdOperationName.FieldValue) {
-            StringExpr other = model.str(rf.getField().getFullName()).asString();
+            String path = rf.getField().getFullName();
+            ValueKind kind = model.fieldAt(path)
+                    .orElseThrow(() -> unsupported("string-family comparison on unknown field " + path, origin))
+                    .kind();
+            if (kind != ValueKind.STRING && kind != ValueKind.CUSTOM && kind != ValueKind.ENUMERATION) {
+                throw unsupported("string-family expression compared against a " + kind + " field", origin);
+            }
+            StringExpr other = new StringExpr(new FieldValue(model.field(path), rf.getField().isOuter()));
             return switch (op) {
                 case EQ -> left.eq(other);
                 case NE -> left.ne(other);
@@ -1551,7 +1685,7 @@ final class ConditionConverter {
         // an enum-valued FirstFilledValue over an enum repetition list ([enum] != FirstFilledValue(items*/Cat))
         if (right instanceof IEntityListOperation aggregate
                 && aggregate.getOperatorName() == EntityListOperationName.FirstFilledValue) {
-            EnumExpr other = new EnumExpr(convertFirstFilledValue(aggregate, ValueKind.ENUMERATION));
+            EnumExpr other = new EnumExpr(convertFirstFilledValue(aggregate));
             return switch (op) {
                 case EQ -> left.is(other);
                 case NE -> left.isNot(other);
@@ -1587,12 +1721,46 @@ final class ConditionConverter {
     /** {@code [bool] == True|False} → {@link io.github.mbackschat.a12.dm.rulekit.dsl.BoolRef}. */
     private Condition booleanComparison(io.github.mbackschat.a12.dm.rulekit.dsl.BoolRef left,
             ComparisonOperation op, IOperation right, ICondition origin) {
+        if (right instanceof IEntityListOperation aggregate
+                && aggregate.getOperatorName() == EntityListOperationName.FirstFilledValue) {
+            Calculation other = convertFirstFilledValue(aggregate);
+            return switch (op) {
+                case EQ -> new ComparisonCondition(left.field().value(), io.github.mbackschat.a12.dm.rulekit.dsl.CompareOp.EQ, other);
+                case NE -> new ComparisonCondition(left.field().value(), io.github.mbackschat.a12.dm.rulekit.dsl.CompareOp.NE, other);
+                default -> throw unsupported("boolean aggregate comparison operator " + op, origin);
+            };
+        }
         boolean value = booleanConstant(right, origin);
         return switch (op) {
             case EQ -> value ? left.isTrue() : left.isFalse();
             case NE -> value ? left.isNotTrue() : left.isNotFalse();
             default -> throw unsupported("boolean comparison operator " + op, origin);
         };
+    }
+
+    /** A computed yes/no value compared to a literal or another yes/no field. */
+    private Condition booleanExprComparison(BoolExpr left, ComparisonOperation op, IOperation right,
+            ICondition origin) {
+        if (right instanceof IBoolConstantOperation) {
+            boolean value = booleanConstant(right, origin);
+            return switch (op) {
+                case EQ -> value ? left.isTrue() : left.isFalse();
+                case NE -> value ? left.isNotTrue() : left.isNotFalse();
+                default -> throw unsupported("boolean aggregate comparison operator " + op, origin);
+            };
+        }
+        if (right instanceof IFieldIdOperation field
+                && field.getOperatorName() == FieldIdOperationName.FieldValue
+                && model.fieldAt(field.getField().getFullName())
+                        .map(info -> info.kind() == ValueKind.BOOLEAN).orElse(false)) {
+            Calculation other = new FieldValue(model.field(field.getField().getFullName()), field.getField().isOuter());
+            return switch (op) {
+                case EQ -> new ComparisonCondition(left.expression(), io.github.mbackschat.a12.dm.rulekit.dsl.CompareOp.EQ, other);
+                case NE -> new ComparisonCondition(left.expression(), io.github.mbackschat.a12.dm.rulekit.dsl.CompareOp.NE, other);
+                default -> throw unsupported("boolean aggregate comparison operator " + op, origin);
+            };
+        }
+        throw unsupported("boolean aggregate comparison against " + right.getClass().getSimpleName(), origin);
     }
 
     /**
@@ -1620,6 +1788,17 @@ final class ConditionConverter {
     }
 
     private Condition dateComparison(DateOperand left, ComparisonOperation op, IOperation right, ICondition origin) {
+        if (isDateTimeValue(right)) {
+            DateTimeOperand other = convertDateTimeOperand(right, origin);
+            return switch (op) {
+                case LT -> left.before(other);
+                case LE -> left.onOrBefore(other);
+                case GT -> left.after(other);
+                case GE -> left.onOrAfter(other);
+                case EQ, NE -> throw unsupported("date/date-time equality operator " + op, origin);
+                default -> throw unsupported("date/date-time comparison operator " + op, origin);
+            };
+        }
         return dateComparison(left, op, convertDateOperand(right, origin), origin);
     }
 
@@ -1652,6 +1831,17 @@ final class ConditionConverter {
 
     /** {@code [dateTime] <op> other} — a date-time field vs another date-time value (field, {@code DateTime(...)}, or shift). */
     private Condition dateTimeComparison(DateTimeOperand left, ComparisonOperation op, IOperation right, ICondition origin) {
+        if (temporalOperandKind(right) == TemporalKind.DATE) {
+            DateOperand other = convertDateOperand(right, origin);
+            return switch (op) {
+                case LT -> left.before(other);
+                case LE -> left.onOrBefore(other);
+                case GT -> left.after(other);
+                case GE -> left.onOrAfter(other);
+                case EQ, NE -> throw unsupported("date-time/date equality operator " + op, origin);
+                default -> throw unsupported("date-time/date comparison operator " + op, origin);
+            };
+        }
         DateTimeOperand other = convertDateTimeOperand(right, origin);
         return switch (op) {
             case LT -> left.before(other);
@@ -1684,6 +1874,11 @@ final class ConditionConverter {
         }
         if (op instanceof IOpListOperation operandList && operandList.getType() == OperationType.DATE) {
             return new DateTimeExpr(convertTemporalOperandList(operandList, TemporalKind.DATE_TIME));
+        }
+        if (op instanceof IEntityListOperation aggregate
+                && aggregate.getOperatorName() == EntityListOperationName.FirstFilledValue
+                && firstFilledValueKind(aggregate) == ValueKind.DATE_TIME) {
+            return new DateTimeExpr(convertFirstFilledValue(aggregate));
         }
         // Now / BaseYear as a date-time operand (both compare to a date-time field)
         if (op instanceof IPointInTimeOperation pit) {
@@ -1870,6 +2065,11 @@ final class ConditionConverter {
         if (op instanceof IOpListOperation operandList && operandList.getType() == OperationType.DATE) {
             return new TimeExpr(convertTemporalOperandList(operandList, TemporalKind.TIME));
         }
+        if (op instanceof IEntityListOperation aggregate
+                && aggregate.getOperatorName() == EntityListOperationName.FirstFilledValue
+                && firstFilledValueKind(aggregate) == ValueKind.TIME) {
+            return new TimeExpr(convertFirstFilledValue(aggregate));
+        }
         // TimeFromDateTime(dt) → the time part of a date-time, as a time operand
         if (op instanceof IDateExtractionOperation ext
                 && ext.getOperatorName() == DateExtractionOperationName.TimeFromDateTime) {
@@ -1964,6 +2164,9 @@ final class ConditionConverter {
             return TemporalKind.DATE;
         }
         if (op instanceof IEntityListOperation aggregate) {
+            if (aggregate.getOperatorName() == EntityListOperationName.FirstFilledValue) {
+                return temporalKind(firstFilledValueKind(aggregate));
+            }
             return temporalKind(temporalExtremumKind(aggregate));
         }
         if (op instanceof IOpListOperation nested && nested.getType() == OperationType.DATE) {
@@ -2126,8 +2329,8 @@ final class ConditionConverter {
         }
         List<IEntityId> entities = aggregate.getEntityList().getEntityIdList();
         if (name == EntityListOperationName.FirstFilledValue) {
-            return !entities.isEmpty() && entities.stream().allMatch(entity -> entity.isField()
-                    && model.fieldAt(entity.getFullName()).map(i -> i.kind() == ValueKind.DATE).orElse(false));
+            ValueKind kind = firstFilledValueKind(aggregate);
+            return kind == ValueKind.DATE || kind == ValueKind.DATE_FRAGMENT;
         }
         return entities.size() == 1 && entities.getFirst().isField()
                 && model.fieldAt(entities.getFirst().getFullName()).map(i -> i.kind() == ValueKind.DATE).orElse(false);
@@ -2170,7 +2373,11 @@ final class ConditionConverter {
      *  {@link #temporalListAggregate} wrapped in a {@link TimeExpr}/{@link DateTimeExpr}). */
     private DateOperand convertDateAggregate(IEntityListOperation aggregate) {
         if (aggregate.getOperatorName() == EntityListOperationName.FirstFilledValue) {
-            return new DateExpr(convertFirstFilledValue(aggregate, ValueKind.DATE));
+            ValueKind kind = firstFilledValueKind(aggregate);
+            if (kind != ValueKind.DATE && kind != ValueKind.DATE_FRAGMENT) {
+                throw unsupported("date FirstFilledValue with result kind " + kind, aggregate);
+            }
+            return new DateExpr(convertFirstFilledValue(aggregate));
         }
         return new DateExpr(temporalListAggregate(aggregate));
     }
@@ -2197,6 +2404,15 @@ final class ConditionConverter {
         if (op instanceof IFieldIdOperation fv && fv.getOperatorName() == FieldIdOperationName.FieldValue) {
             return new FieldValue(model.field(fv.getField().getFullName()), fv.getField().isOuter());
         }
+        if (op instanceof IEntityListOperation aggregate
+                && aggregate.getOperatorName() == EntityListOperationName.FirstFilledValue) {
+            FirstFilledValue value = convertFirstFilledValue(aggregate);
+            if (!firstFilledTargetCompatible(computedKind, value.kind())) {
+                throw unsupported("FirstFilledValue result " + value.kind()
+                        + " assigned to a " + computedKind + " field", aggregate);
+            }
+            return value;
+        }
         // A value-expression, dispatched by the computed field's kind — reusing the same operand
         // converters the comparison side uses (arithmetic/concat, aggregates, coercions, date math, …).
         if (computedKind == ValueKind.STRING) {
@@ -2211,21 +2427,28 @@ final class ConditionConverter {
         if (computedKind == ValueKind.DATE && convertDateOperand(op, op) instanceof DateExpr date) {
             return date.expression();
         }
-        // SomeRange = DateRange(StartDate, EndDate) — the date-range constructor (computation-only)
+        // SomeRange = DateRange(StartDate, EndDate) — the computation form of the equality-capable constructor
         if (computedKind == ValueKind.DATE_RANGE && op instanceof IDateRangeConstructionOperation range) {
-            return Dsl.dateRange(model.date(range.getDate1Id().getFullName()),
-                    model.date(range.getDate2Id().getFullName()));
+            return Dsl.dateRange(dateRangeEndpoint(range.getDate1Id(), op),
+                    dateRangeEndpoint(range.getDate2Id(), op));
         }
         if (computedKind == ValueKind.TIME && convertTimeOperand(op, op) instanceof TimeExpr time) {
             return time.expression();   // e.g. SomeTime = TimeFromDateTime(dt)
         }
-        // an enum-valued FirstFilledValue over an enum repetition list (SomeEnum = FirstFilledValue(items*/Cat))
-        if (computedKind == ValueKind.ENUMERATION && op instanceof IEntityListOperation enumAgg
-                && enumAgg.getOperatorName() == EntityListOperationName.FirstFilledValue) {
-            return convertFirstFilledValue(enumAgg, ValueKind.ENUMERATION);
-        }
         throw unsupported("computation operation " + op.getClass().getSimpleName()
                 + " into a " + computedKind + " field", op);
+    }
+
+    private static boolean firstFilledTargetCompatible(ValueKind expected, ValueKind actual) {
+        if (expected == actual) {
+            return true;
+        }
+        return switch (expected) {
+            case STRING, ENUMERATION, CUSTOM ->
+                    actual == ValueKind.STRING || actual == ValueKind.ENUMERATION || actual == ValueKind.CUSTOM;
+            case DATE, DATE_FRAGMENT -> actual == ValueKind.DATE || actual == ValueKind.DATE_FRAGMENT;
+            default -> false;
+        };
     }
 
     /** Preserve the comparison wrapper as computation metadata before conversion unwraps its value. */

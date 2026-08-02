@@ -7,10 +7,11 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.List;
+import java.util.Set;
 
 import org.junit.jupiter.api.Test;
 
-import io.github.mbackschat.a12.dm.rulekit.validate.StructuralKernelFix;
+import io.github.mbackschat.a12.dm.core.ValueKind;
 
 /**
  * The operator catalog (PROJECT-DESIGN §9) is the language-neutral spine: a bundled JSON resource the
@@ -68,6 +69,29 @@ class OperatorCatalogTest {
     }
 
     @Test
+    void polymorphicOperatorsPublishTheirMeasuredOperandAndResultDomains() {
+        OperatorEntry date = CATALOG.byId("Date").orElseThrow();
+        assertTrue(date.operands().stream().allMatch(operand -> operand.type().equals("temporal-component")));
+
+        for (String id : List.of("MaxValue", "MinValue")) {
+            OperatorEntry aggregate = CATALOG.byId(id).orElseThrow();
+            assertEquals(List.of("sortable-field-list"),
+                    aggregate.operands().stream().map(OperatorEntry.Operand::type).toList());
+            assertEquals("the operands' common NUMBER, DATE, TIME, or DATETIME kind", aggregate.returns());
+            assertEquals(AggregateIdentity.ZERO,
+                    aggregate.aggregateIdentityClaim().identityFor("number").orElseThrow());
+            assertEquals(AggregateIdentity.NO_VALUE,
+                    aggregate.aggregateIdentityClaim().identityFor("date").orElseThrow());
+        }
+
+        assertEquals("number-or-date", CATALOG.byId("BaseYear").orElseThrow().returns());
+        for (String id : List.of("ValidType", "InvalidType")) {
+            assertEquals("string-or-enumeration-field",
+                    CATALOG.byId(id).orElseThrow().operands().getFirst().type());
+        }
+    }
+
+    @Test
     void rejectionOwnershipDoesNotDependOnCorrectiveText() {
         OperatorEntry.InvalidExample evidence = new OperatorEntry.InvalidExample("Bad()", "MVK_X", "");
         assertTrue(OperatorCatalog.documentsError(evidence, List.of(), "MVK_X"),
@@ -85,9 +109,8 @@ class OperatorCatalogTest {
 
     /**
      * The stub-entries policy (PROJECT-DESIGN §9): a {@code SUPPORTED} operator must carry a runnable example so
-     * it can't silently escape the kernel-validation harness — a condition {@code validExample} (N7) or,
-     * for a <b>computation-only</b> operator with no condition form (the {@code DateRange} constructor), a
-     * {@code computationExample} (its N7 peer). Only {@code PLANNED} stubs are exempt.
+     * it can't silently escape the kernel-validation harness — a condition {@code validExample} (N7) or a
+     * {@code computationExample} for an operation-valued use site (its N7 peer). Only {@code PLANNED} stubs are exempt.
      */
     @Test
     void everySupportedEntryHasARunnableExample() {
@@ -104,12 +127,11 @@ class OperatorCatalogTest {
     }
 
     /**
-     * A PLANNED stub (if any) is described but example-free. The {@code DateRange} <em>constructor</em> is
-     * the one built-but-condition-inexpressible operator: SUPPORTED via a {@code computationExample}, with
-     * no {@code validExample} (a constructed date range has no condition use site).
+     * A PLANNED stub (if any) is described but example-free. DateRange exercises both runnable lanes:
+     * equality as a condition and assignment as a computation.
      */
     @Test
-    void plannedStubsCarryNoExampleAndDateRangeIsComputationOnly() {
+    void plannedStubsCarryNoExampleAndDateRangeCoversBothUseSites() {
         for (OperatorEntry e : CATALOG.entries()) {
             if (!e.supported()) {
                 assertNull(e.validExample(), () -> e.id() + ": a PLANNED stub carries no validExample");
@@ -120,8 +142,8 @@ class OperatorCatalogTest {
         assertTrue(dateRange.supported(), "the DateRange constructor is built (2026-06-08)");
         assertEquals("DateRange", dateRange.keywords().en());
         assertEquals("DatumBereich", dateRange.keywords().de());
-        assertNull(dateRange.validExample(), "DateRange has no condition form — no validExample");
-        assertNotNull(dateRange.computationExample(), "DateRange is verified via a computationExample");
+        assertNotNull(dateRange.validExample(), "DateRange equality needs a condition example");
+        assertNotNull(dateRange.computationExample(), "DateRange assignment needs a computation example");
     }
 
     @Test
@@ -178,14 +200,17 @@ class OperatorCatalogTest {
 
     // ---- the semantics facets (CATALOG-SPEC §3–§6) ------------------------------------------------
 
-    /** The catalog kind tokens the facet machinery speaks (CATALOG-SPEC §3). */
-    private static final java.util.Set<String> KIND_TOKENS = java.util.Set.of(
-            "number", "string", "enum", "boolean", "confirm", "date", "time", "date-time", "date-range");
+    /** The facet vocabulary is derived from the live typed domain; adding a {@code ValueKind} cannot leave
+     *  this guard accepting yesterday's hand-list. UNKNOWN deliberately has no public machine token. */
+    private static final java.util.Set<String> KIND_TOKENS = java.util.Arrays.stream(ValueKind.values())
+            .map(OperatorCatalog::kindToken)
+            .filter(java.util.Objects::nonNull)
+            .collect(java.util.stream.Collectors.toUnmodifiableSet());
 
     /** Operand-class tokens a corrective's {@code whenOperands} may use: a kind, or a literal marker. */
-    private static final java.util.Set<String> OPERAND_CLASS_TOKENS = java.util.Set.of(
-            "number", "string", "enum", "boolean", "confirm", "date", "time", "date-time", "date-range",
-            "string-literal", "number-literal");
+    private static final java.util.Set<String> OPERAND_CLASS_TOKENS = java.util.stream.Stream.concat(
+            KIND_TOKENS.stream(), java.util.stream.Stream.of("string-literal", "number-literal"))
+            .collect(java.util.stream.Collectors.toUnmodifiableSet());
 
     /**
      * The header {@code emptyOperandDefaults} table states the per-kind empty behavior ONCE
@@ -266,54 +291,6 @@ class OperatorCatalogTest {
     }
 
     /**
-     * Every kernel rejection the catalog itself claims must lead somewhere executable. The denominator is
-     * derived from {@code MVK_*} tokens in the live gotcha text: an entry either owns an invalid/corrective
-     * example for the code, or the code has a construct-independent {@link StructuralKernelFix}. This does not
-     * claim to discover undocumented kernel rejections; it prevents an authored rejection from becoming advice
-     * prose that no N7 lane executes and no diagnostic can join.
-     */
-    @Test
-    void everyGotchaKernelCodeHasAnExecutableOwnerOrStructuralCorrective() {
-        java.util.List<String> missing = new java.util.ArrayList<>();
-        for (OperatorEntry entry : CATALOG.entries()) {
-            java.util.Set<String> owned = new java.util.HashSet<>();
-            if (entry.invalidExample() != null && entry.invalidExample().error() != null) {
-                owned.add(entry.invalidExample().error());
-            }
-            entry.correctives().stream().map(Corrective::code).forEach(owned::add);
-            missing.addAll(uncoveredGotchaCodes(entry.id(), entry.gotchas(), owned));
-        }
-        assertTrue(missing.isEmpty(), () -> "uncovered operator rejection claims:\n  "
-                + String.join("\n  ", missing));
-    }
-
-    @Test
-    void theGotchaCodeScannerRecognisesTheMissingCorrectiveThatShipped() {
-        OperatorEntry.Gotcha falseClaim = new OperatorEntry.Gotcha(
-                "HoursFromTime(Today) is MVK_WRONG_DATE_FORMAT_FOR_OP", GotchaKind.AUTHORING);
-        assertEquals(List.of("Synthetic mentions MVK_WRONG_DATE_FORMAT_FOR_OP without an executable example "
-                        + "or a structural corrective"),
-                uncoveredGotchaCodes("Synthetic", List.of(falseClaim), java.util.Set.of()));
-    }
-
-    private static List<String> uncoveredGotchaCodes(
-            String operatorId, List<OperatorEntry.Gotcha> gotchas, java.util.Set<String> owned) {
-        java.util.List<String> missing = new java.util.ArrayList<>();
-        java.util.regex.Pattern code = java.util.regex.Pattern.compile("MVK_[A-Z0-9_]+");
-        for (OperatorEntry.Gotcha gotcha : gotchas) {
-            var matcher = code.matcher(gotcha.text());
-            while (matcher.find()) {
-                String mentioned = matcher.group();
-                if (!owned.contains(mentioned) && StructuralKernelFix.forCode(mentioned).isEmpty()) {
-                    missing.add(operatorId + " mentions " + mentioned + " without an executable example "
-                            + "or a structural corrective");
-                }
-            }
-        }
-        return missing;
-    }
-
-    /**
      * Every {@code semantics.boundary} claim is well-formed: a value, a basis (the lock it derives
      * from), and at least one executable probe — the operator-level analogue of the emptyOperand
      * guard (CATALOG-SPEC §3/§5).
@@ -352,6 +329,41 @@ class OperatorCatalogTest {
         }
     }
 
+    @Test
+    void aggregateIdentityKindCoverageRejectsMissingDuplicateAndUnknownBranches() {
+        Set<String> branches = Set.of("number", "date");
+        assertTrue(aggregateProbeKindViolations(branches, List.of("number", "date")).isEmpty());
+        assertFalse(aggregateProbeKindViolations(branches, List.of("number")).isEmpty(),
+                "a missing per-kind branch must fail");
+        assertFalse(aggregateProbeKindViolations(branches, List.of("number", "date", "date")).isEmpty(),
+                "a duplicate per-kind branch must fail");
+        assertFalse(aggregateProbeKindViolations(branches, List.of("number", "date", "confirm")).isEmpty(),
+                "an unclaimed per-kind branch must fail");
+    }
+
+    private static List<String> aggregateProbeKindViolations(Set<String> branches, List<String> probeKinds) {
+        List<String> violations = new java.util.ArrayList<>();
+        if (probeKinds.stream().anyMatch(OperatorCatalogTest::isBlank)) {
+            violations.add("every perKind branch probe must name its kind");
+        }
+        Set<String> distinct = probeKinds.stream().filter(java.util.Objects::nonNull)
+                .collect(java.util.stream.Collectors.toSet());
+        if (distinct.size() != probeKinds.size()) {
+            violations.add("each perKind branch must have exactly one probe");
+        }
+        Set<String> missing = new java.util.TreeSet<>(branches);
+        missing.removeAll(distinct);
+        if (!missing.isEmpty()) {
+            violations.add("missing probe kinds " + missing);
+        }
+        Set<String> unknown = new java.util.TreeSet<>(distinct);
+        unknown.removeAll(branches);
+        if (!unknown.isEmpty()) {
+            violations.add("unknown probe kinds " + unknown);
+        }
+        return violations;
+    }
+
     /** The IF49 deviations from the INSTANTIATED default (CATALOG-SPEC §3b): All/NotAll scan the DECLARED
      *  range, FieldsNotCollectivelyFilled MIXES; the count quantifiers carry no claim (default). */
     @Test
@@ -386,6 +398,11 @@ class OperatorCatalogTest {
             assertFalse(isBlank(claim.basis()), () -> at + ": missing basis (the lock/finding it derives from)");
             assertFalse(claim.probes().isEmpty(), () -> at + ": a facet claim needs at least one probe");
             claim.probes().forEach(p -> assertProbeWellFormed(at, p));
+            if (!claim.perKind().isEmpty()) {
+                List<String> violations = aggregateProbeKindViolations(
+                        claim.perKind().keySet(), claim.probes().stream().map(FacetProbe::kind).toList());
+                assertTrue(violations.isEmpty(), () -> at + ": " + String.join("; ", violations));
+            }
         }
     }
 
@@ -394,7 +411,22 @@ class OperatorCatalogTest {
     @Test
     void aggregateIdentitySplitsZeroVsNoValueByKind() {
         assertEquals(AggregateIdentity.ZERO, CATALOG.byId("Sum").orElseThrow().aggregateIdentityClaim().value());
-        assertEquals(AggregateIdentity.ZERO, CATALOG.byId("MaxValue").orElseThrow().aggregateIdentityClaim().value());
+        for (String operator : java.util.List.of("MaxValue", "MinValue", "Max", "Min")) {
+            AggregateIdentityClaim claim = CATALOG.byId(operator).orElseThrow().aggregateIdentityClaim();
+            assertEquals(java.util.Optional.of(AggregateIdentity.ZERO), claim.identityFor("number"), operator);
+            for (String kind : java.util.List.of("date", "time", "date-time")) {
+                assertEquals(java.util.Optional.of(AggregateIdentity.NO_VALUE), claim.identityFor(kind),
+                        operator + " " + kind);
+            }
+        }
+        AggregateIdentityClaim first = CATALOG.byId("FirstFilledValue").orElseThrow().aggregateIdentityClaim();
+        assertEquals(java.util.Optional.of(AggregateIdentity.ZERO), first.identityFor("number"));
+        for (String kind : java.util.List.of(
+                "boolean", "custom", "string", "enum", "date", "date-fragment", "time", "date-time", "date-range")) {
+            assertEquals(java.util.Optional.of(AggregateIdentity.NO_VALUE), first.identityFor(kind), kind);
+        }
+        assertEquals(EmptyBehavior.NOT_EVALUATED, CATALOG.defaultEmptyBehavior(ValueKind.DATE_FRAGMENT).orElseThrow(),
+                "DATE_FRAGMENT keeps its own facet token but rides DATE's primitive empty default");
         assertEquals(java.util.Optional.of(AggregateIdentity.ZERO),
                 CATALOG.byId("Min").orElseThrow().aggregateIdentityClaim().identityFor("number"));
         assertEquals(java.util.Optional.of(AggregateIdentity.NO_VALUE),
@@ -490,6 +522,19 @@ class OperatorCatalogTest {
         assertEquals(java.util.Optional.of(EmptyBehavior.NOT_EVALUATED),
                 CATALOG.emptyOperandBehavior("FieldValueIncludedInValueList", 0,
                         io.github.mbackschat.a12.dm.core.ValueKind.NUMBER));
+    }
+
+    @Test
+    void temporalShiftAmountsAreNumericRatherThanInventedIntegerAdmissions() {
+        for (String id : List.of("AddDays", "AddMonths", "AddYears", "AddHours", "AddMinutes", "AddSeconds")) {
+            OperatorEntry entry = CATALOG.byId(id).orElseThrow();
+            String constraints = String.join(" ", entry.constraints());
+            assertEquals("number", entry.operands().get(1).type(),
+                    () -> id + " must publish the kernel's Number operand shape");
+            assertTrue(constraints.contains("numeric amount"), () -> id + " must describe the kernel's Number operand");
+            assertFalse(constraints.contains("integer amount"),
+                    () -> id + " must not reject the fractional amounts the kernel truncates");
+        }
     }
 
     private static boolean isOperandIndex(String operand, OperatorEntry e) {

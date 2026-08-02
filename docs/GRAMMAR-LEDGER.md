@@ -66,7 +66,7 @@ Classifications:
 | `datumKonstrukt` | rendered | `Date(d, m, y[, …])` construction |
 | `dateTimeKonstrukt` | rendered | `DateTime(…)` construction |
 | `timeKonstrukt` | rendered | `Time(…)` construction |
-| `datumBereichKonstrukt` | rendered | `DateRange(start, end)` — computation-only (condition-inexpressible; KERNEL-FINDINGS) |
+| `datumBereichKonstrukt` | rendered | `DateRange(start, end)` — DATE_RANGE computation value and `==`/`!=` condition operand; ordering and overlap nesting rejected |
 | `feldOpMitParams` / `feldOpMitParamsName` | rendered | `RangeAsNumber`/`RangeAsString` (`BereichAlsZahl`/`BereichAlsString`, 1-based interval law pre-checked) |
 | `feldOpMitDatumSpecial` | rendered | `ValueAsDate(field, FirstDay\|LastDay)` — partially-known-date coercion |
 | `tagSpec` | plumbing | `FirstDay` / `LastDay` (`ErsterTag`/`LetzterTag`) argument of `ValueAsDate` |

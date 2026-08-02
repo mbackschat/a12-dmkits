@@ -11,8 +11,9 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
  * <b>all-empty selection</b>. Operator-level, but with a per-element-kind split (like
  * {@link EmptyOperandClaim}): exactly one of {@code value} (kind-uniform — the number aggregates
  * `Sum`/`MaxValue`/`MinValue` are always {@link AggregateIdentity#ZERO}) or {@code perKind} (the fold
- * varies with the element kind — `Min`/`Max`/`FirstFilledValue` are {@code ZERO} over numbers but
- * {@code NO_VALUE} over date-like values/strings) is set.
+ * varies with the element kind — `Min`/`Max`, their field-list `MinValue`/`MaxValue` forms, and
+ * `FirstFilledValue` are {@code ZERO} over numbers but {@code NO_VALUE} over every other admitted
+ * value kind) is set.
  *
  * <p>{@code basis} names the lock (IF51/IF58/IF80/IF83); {@code probes} pin an all-empty selection over
  * a <b>non-index</b> field (an index field's empty cell is not-check-relevant — the invalid class, IF86,

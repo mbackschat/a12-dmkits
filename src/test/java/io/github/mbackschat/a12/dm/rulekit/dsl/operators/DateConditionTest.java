@@ -104,6 +104,14 @@ class DateConditionTest {
     }
 
     @Test
+    void rendersKernelLegalCrossKindTemporalOrdering() {
+        assertEquals("[/Order/OrderDate] < Now",
+                new DslRenderer().render(m.date(ORDER).before(Dsl.now())));
+        assertEquals("[/Order/ScheduledAt] >= [/Order/OrderDate]",
+                new DslRenderer().render(m.dateTime("/Order/ScheduledAt").onOrAfter(m.date(ORDER))));
+    }
+
+    @Test
     void rendersDifferenceFunctionsBilingually() {
         // operands render BARE inside the function (entity refs), not bracketed values
         Condition c = Dsl.differenceInDays(m.date(ORDER), m.date(DELIVERY)).gt(7);

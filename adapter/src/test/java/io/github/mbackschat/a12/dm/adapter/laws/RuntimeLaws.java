@@ -630,12 +630,18 @@ public final class RuntimeLaws {
      * a {@code value} computed a value.
      */
     static List<Computed> compute(String modelJson, Doc doc) {
+        return compute(modelJson, doc, null);
+    }
+
+    /** Compute with the same per-call custom-field-type binding used by validation differentials. */
+    static List<Computed> compute(
+            String modelJson, Doc doc, ICustomFieldTypeFactory fieldTypeFactory) {
         IDocumentModel model = expandedModel(modelJson);
         IDocumentModelResolver resolver = id -> model;
         DocumentServiceFactory dsf = new DocumentServiceFactory(resolver);
         IDocumentRtService rt = new DocumentRtServiceFactory(resolver).createDocumentRtService(dynamicConfig());
         DocumentV2 v2 = dsf.createDocumentV1V2Converter().ofDocumentV1(buildInstance(modelJson, dsf.createDocumentFactory(), doc));
-        return computeDetail(rt, v2);
+        return computeDetail(rt, v2, config(null, Locale.US, Map.of(), fieldTypeFactory));
     }
 
     static ComputationDetail computeWithFormalErrors(String modelJson, Doc doc) {
@@ -1212,6 +1218,11 @@ public final class RuntimeLaws {
          *  tri-differential payload, mirroring the Groovy {@link RuntimeLaws#compute(String, Doc)}. */
         List<Computed> compute(DocumentV2 instance) {
             return computeDetail(rt, instance);
+        }
+
+        /** Generated-Java compute with the same per-call custom-field-type binding as the dynamic path. */
+        List<Computed> compute(DocumentV2 instance, ICustomFieldTypeFactory fieldTypeFactory) {
+            return computeDetail(rt, instance, config(null, Locale.US, Map.of(), fieldTypeFactory));
         }
 
         ComputationDetail computeWithFormalErrors(DocumentV2 instance) {

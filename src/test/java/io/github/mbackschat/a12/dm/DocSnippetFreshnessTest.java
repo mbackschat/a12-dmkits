@@ -7,7 +7,9 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -38,6 +40,8 @@ import org.junit.jupiter.api.condition.EnabledIfSystemProperty;
  * the fixer, so a forgotten sync still fails the build.
  */
 class DocSnippetFreshnessTest {
+
+    private static final Pattern SNIPPET_MARKER = Pattern.compile("<!-- snippet: ([a-z0-9-]+) -->");
 
     /** One locked snippet: a fenced {@code ```java} block in {@code doc} mirrors a tagged region of {@code testSource}. */
     private record Lock(String id, String doc, String testSource) {}
@@ -89,6 +93,9 @@ class DocSnippetFreshnessTest {
             new Lock("model-computations", "docs/API-GUIDE.md",
                     "src/test/java/io/github/mbackschat/a12/dm/core/ModelIndexComputationsTest.java"),
             new Lock("date-minmax", "docs/API-GUIDE.md", NEW_SHAPES),
+            new Lock("temporal-cross-ordering", "docs/API-GUIDE.md", NEW_SHAPES),
+            new Lock("date-range-equality", "docs/API-GUIDE.md", NEW_SHAPES),
+            new Lock("first-filled-owner-entities", "docs/API-GUIDE.md", NEW_SHAPES),
             new Lock("date-before-1900", "docs/API-GUIDE.md",
                     "adapter/src/test/java/io/github/mbackschat/a12/dm/adapter/FieldConfigExtrasTest.java"),
             new Lock("field-rounding", "docs/API-GUIDE.md", NEW_SHAPES),
@@ -135,7 +142,7 @@ class DocSnippetFreshnessTest {
         for (int i = 0; i < lines.size(); i++) {
             if (lines.get(i).startsWith("```java")) {
                 String prev = precedingNonBlank(lines, i);
-                if (!prev.startsWith("<!-- snippet:") && !prev.equals("<!-- teaser -->")) {
+                if (!isSnippetMarker(prev) && !prev.equals("<!-- teaser -->")) {
                     unclassified.add("L" + (i + 1));
                 }
             }
@@ -146,6 +153,33 @@ class DocSnippetFreshnessTest {
                 + "`<!-- teaser -->` (acknowledge it stays hand-maintained: elided or non-compiling).");
     }
 
+    @Test
+    @DisabledIfSystemProperty(named = "snippets.fix", matches = "true")
+    void everySnippetMarkerHasExactlyOneLock() throws IOException {
+        Set<String> marked = new HashSet<>();
+        Matcher matcher = SNIPPET_MARKER.matcher(Files.readString(repoFile(STUDY)));
+        while (matcher.find()) {
+            assertTrue(marked.add(matcher.group(1)),
+                    () -> "duplicate snippet marker '" + matcher.group(1) + "' in " + STUDY);
+        }
+
+        List<String> registered = LOCKS.stream()
+                .filter(lock -> lock.doc().equals(STUDY))
+                .map(Lock::id)
+                .toList();
+        Set<String> locked = new HashSet<>(registered);
+        assertEquals(registered.size(), locked.size(), "duplicate lock id in DocSnippetFreshnessTest");
+        assertEquals(marked, locked,
+                "every `<!-- snippet: id -->` marker must have exactly one Lock row, and no Lock may be stale");
+    }
+
+    @Test
+    void snippetMarkerGrammarIsExact() {
+        assertTrue(isSnippetMarker("<!-- snippet: exact-id -->"));
+        assertTrue(!isSnippetMarker("<!-- snippet: exact-id EXTRA -->"),
+                "a malformed predecessor must not classify an unlocked Java fence as a snippet");
+    }
+
     private static String precedingNonBlank(List<String> lines, int idx) {
         for (int i = idx - 1; i >= 0; i--) {
             if (!lines.get(i).isBlank()) {
@@ -153,6 +187,10 @@ class DocSnippetFreshnessTest {
             }
         }
         return "";
+    }
+
+    private static boolean isSnippetMarker(String line) {
+        return SNIPPET_MARKER.matcher(line).matches();
     }
 
     @Test

@@ -270,7 +270,7 @@ record ConditionComplexity(int nodeCount, int depth, int maxBooleanArity,
                 case FirstFilledValue a -> {
                     op(a.operatorId());
                     constructs.add(Construct.AGGREGATE);
-                    yield 1 + operandDepth(a.scope());
+                    yield 1 + maxFirstFilledOperandDepth(a.operands());
                 }
                 case FieldValueAsString c -> { op(c.operatorId()); yield 1; }
                 case IndexedFieldValueAsString c -> {
@@ -379,6 +379,32 @@ record ConditionComplexity(int nodeCount, int depth, int maxBooleanArity,
             int max = 0;
             for (ValueListOperand o : operands) {
                 max = Math.max(max, operandDepth(o));
+            }
+            return max;
+        }
+
+        private int maxFirstFilledOperandDepth(java.util.List<? extends FirstFilledOperand> operands) {
+            int max = 0;
+            for (FirstFilledOperand operand : operands) {
+                int depth = operand.field().map(this::operandDepth).orElseGet(() -> {
+                    nodeCount++;
+                    var group = operand.group().orElseThrow();
+                    collectionPaths.add(group.path());
+                    maxStarSegments = Math.max(maxStarSegments, group.flattened().size());
+                    return 1;
+                });
+                if (operand.category().isPresent()) {
+                    nodeCount++;
+                    op("EnumCategory");
+                    depth++;
+                }
+                if (operand.semanticIndex().isPresent()) {
+                    nodeCount++;
+                    op("SemanticIndex");
+                    constructs.add(Construct.SEMANTIC_INDEX);
+                    depth++;
+                }
+                max = Math.max(max, depth);
             }
             return max;
         }

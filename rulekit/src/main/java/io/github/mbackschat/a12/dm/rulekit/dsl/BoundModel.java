@@ -388,6 +388,54 @@ public final class BoundModel {
         return new GroupListRef(group(base.toString()), flattened);
     }
 
+    /**
+     * A group operand for {@code FirstFilledValue}, preserving the group as one owner entity while deriving
+     * its recursively expanded fields from this live model for result-family validation. A star on a
+     * repeatable segment is retained, so read-back does not replace one owner entity with another shape.
+     */
+    public FirstFilledOperand firstFilledGroup(String starGroupPath) {
+        GroupListRef scope = firstFilledGroupScope(starGroupPath);
+        return FirstFilledOperand.group(scope, firstFilledDescendants(scope));
+    }
+
+    /** A group selected by a literal semantic-index key for {@code FirstFilledValue}. */
+    public FirstFilledOperand firstFilledGroupFor(String groupPath, String indexValue) {
+        GroupListRef scope = firstFilledGroupScope(groupPath);
+        requireExactSemanticIndexGroup(scope);
+        return FirstFilledOperand.group(scope, firstFilledDescendants(scope)).forIndex(indexValue);
+    }
+
+    /** A group selected by a field-valued semantic-index key for {@code FirstFilledValue}. */
+    public FirstFilledOperand firstFilledGroupFor(String groupPath, FieldRef indexField) {
+        GroupListRef scope = firstFilledGroupScope(groupPath);
+        requireExactSemanticIndexGroup(scope);
+        return FirstFilledOperand.group(scope, firstFilledDescendants(scope)).forIndex(indexField);
+    }
+
+    private GroupListRef firstFilledGroupScope(String starGroupPath) {
+        GroupListRef scope = flattenGroup(starGroupPath);
+        if (groupAt(scope.path()).isEmpty()) {
+            throw new IllegalArgumentException(scope.path() + " is not a group");
+        }
+        if (scope.path().indexOf('/', 1) < 0) {
+            throw new IllegalArgumentException("FirstFilledValue does not accept a root group"
+                    + " (MVK_ROOT_GROUP_REFERENCED): " + scope.path());
+        }
+        return scope;
+    }
+
+    private List<FieldRef> firstFilledDescendants(GroupListRef scope) {
+        String prefix = scope.path() + "/";
+        return fields().filter(field -> field.path().startsWith(prefix)).map(FieldInfo::ref).toList();
+    }
+
+    private static void requireExactSemanticIndexGroup(GroupListRef scope) {
+        if (!scope.flattened().isEmpty()) {
+            throw new IllegalArgumentException("a semantic index and wildcard may not address the same group"
+                    + " (MVK_SEMANTIC_INDEX_AND_WILDCARD): " + scope.renderedPath());
+        }
+    }
+
     // --- navigation (Level 1, study finding 9): streams of info handles; filter is the matcher --
 
     /** Every field, in model order, as rich {@link FieldInfo} descriptors. */

@@ -4,6 +4,13 @@ This changelog covers the independently consumable interpreter packages, API doc
 
 ## [@VERSION@]
 
+### Fixed
+
+- DATE and DATETIME values now share A12's instant timeline for ordering in either direction; equality remains same-kind only.
+- `DateRange(start, end)` now evaluates as an equality operand and computation value, including owner-legal semantic-index DATE or DATE_FRAGMENT endpoints.
+- `FirstFilledValue` now preserves the owner's composable field/group entity selectors and every admitted value kind; an all-empty NUMBER yields zero while every other admitted kind remains unspecified.
+- `BaseYear` now observes A12's supported year bounds instead of manufacturing an out-of-domain date.
+
 ### Added
 
 - **Both A12 pointer types are now on the npm surface too** — `A12PointerFormat` with `A12Pointer`/`A12PathPart`, and `A12PartiallyKnownMultiPointer` with its factory members — so a TypeScript consumer can join a `pointer.path` and its `coordinates` into one canonical A12 pointer, and read a report address in the type A12 gives it. This matters most for a computation inside a repeatable group: every row reports the same `pointer.path`, so without the conversion the rows are indistinguishable. They are classes with static members mirroring the Kotlin objects; a malformed argument raises a `TypeError`, since a caller contract violation is not a model diagnostic and gets no named error type.

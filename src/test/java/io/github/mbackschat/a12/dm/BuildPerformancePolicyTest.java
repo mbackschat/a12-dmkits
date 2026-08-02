@@ -88,6 +88,46 @@ class BuildPerformancePolicyTest {
                 "native capture must not derive a second Gradle home from a linked worktree's parent");
     }
 
+    @Test
+    void catalogProseReviewDeclaresEveryRuntimeScannedTestTree() throws IOException {
+        String build = Files.readString(locate("build.gradle"));
+        String task = gradleTask(build, "catalogProseReviewGuardTest");
+
+        assertFalse(task.isEmpty(),
+                "the catalog prose evidence resolver needs a dedicated input-declared task");
+        assertTrue(build.contains("dependsOn 'catalogProseReviewGuardTest'"),
+                "the broad root test must drive the catalog prose review task");
+        assertTrue(build.contains("excludeTestsMatching 'io.github.mbackschat.a12.dm.rulekit.catalog.CatalogProseReviewGuardTest'"),
+                "the catalog prose review must not also run in the input-blind broad root task");
+        for (String tree : new String[] {
+                "src/test",
+                "adapter/src/test",
+                "interpreter/src/commonTest",
+                "interpreter/src/jvmTest",
+                "interpreter/src/jsTest",
+                "cli/src/test",
+        }) {
+            assertTrue(task.contains("fileTree('" + tree + "')"),
+                    () -> "catalog prose review task does not declare scanned tree " + tree);
+        }
+        assertTrue(task.contains("guardInputs(it"),
+                "the dedicated task must reject a silently empty scanned evidence tree");
+    }
+
+    @Test
+    void docSnippetFreshnessDeclaresTheRawTaggedSourceDenominator() throws IOException {
+        String task = gradleTask(Files.readString(locate("build.gradle")), "docGuardTest");
+
+        assertTrue(task.contains("'canonical snippet test sources'"),
+                "DocSnippetFreshnessTest reads tagged source text, so bytecode alone is not a sufficient task input");
+        assertTrue(task.contains("fileTree('.')"),
+                "the tagged-source denominator must be derived from the repository test-source layout");
+        assertTrue(task.contains("include '**/src/test/**/*.java', '**/src/test/**/*.kt'"),
+                "every Java/Kotlin test source must invalidate the doc guard when a tag-only edit leaves bytecode unchanged");
+        assertTrue(task.contains("exclude '.claude/**', '**/build/**'"),
+                "the derived tree must exclude linked worktrees and generated build outputs");
+    }
+
     private static Properties buildProperties() throws IOException {
         var properties = new Properties();
         try (Reader reader = Files.newBufferedReader(locate("gradle.properties"))) {
@@ -101,6 +141,16 @@ class BuildPerformancePolicyTest {
                 "id '" + Pattern.quote(pluginId) + "' version '([^']+)' apply false").matcher(build);
         assertTrue(matcher.find(), () -> "root build must own the version for " + pluginId);
         return matcher.group(1);
+    }
+
+    private static String gradleTask(String build, String name) {
+        String marker = "tasks.register('" + name + "', Test)";
+        int start = build.indexOf(marker);
+        if (start < 0) {
+            return "";
+        }
+        int next = build.indexOf("\ntasks.register('", start + marker.length());
+        return build.substring(start, next < 0 ? build.length() : next);
     }
 
     private static Path locate(String relativePath) {

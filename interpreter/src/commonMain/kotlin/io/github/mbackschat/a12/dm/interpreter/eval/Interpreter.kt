@@ -116,16 +116,24 @@ class Interpreter(
     internal fun ctxOf(node: Expr): EvalContext = when {
         node is Expr.Field && node.outer -> outerOrThrow()
         node is Expr.Star && node.outer -> outerOrThrow()
+        node is Expr.EntitySpec && entitySourceOuter(node.source) -> outerOrThrow()
         node is Expr.EnumCategory && node.outer -> outerOrThrow()
+        node is Expr.SemanticIndex && node.outer -> outerOrThrow()
         else -> ctx
     }
+
+    /** The independently-correlatable key operand of a field-keyed semantic index. */
+    internal fun indexKeyCtx(node: Expr.SemanticIndex): EvalContext =
+        if (node.indexFieldOuter) outerOrThrow() else ctx
 
     /** Whether a `$`-marked node is UNBOUND in this context — an overlap-predicate `Having` ([outerUnbound]) has
      *  no enclosing iteration; its complete comparison/predicate becomes trivially TRUE (not [outer], not a throw). */
     internal fun outerUnknown(node: Expr): Boolean = outerUnbound && when (node) {
         is Expr.Field -> node.outer
         is Expr.Star -> node.outer
+        is Expr.EntitySpec -> entitySourceOuter(node.source) || entityIndexOuter(node.semanticIndex)
         is Expr.EnumCategory -> node.outer
+        is Expr.SemanticIndex -> node.outer || node.indexFieldOuter
         else -> false
     }
 
@@ -138,11 +146,21 @@ class Interpreter(
     private fun hasUnboundOuter(e: Expr): Boolean = when (e) {
         is Expr.Field -> e.outer
         is Expr.Star -> e.outer
+        is Expr.EntitySpec -> entitySourceOuter(e.source) || entityIndexOuter(e.semanticIndex)
         is Expr.EnumCategory -> e.outer
+        is Expr.SemanticIndex -> e.outer || e.indexFieldOuter
         is Expr.Func -> e.args.any { hasUnboundOuter(it) }
         is Expr.Arith -> hasUnboundOuter(e.left) || hasUnboundOuter(e.right)
         else -> false
     }
+
+    private fun entitySourceOuter(source: Expr.EntitySource): Boolean = when (source) {
+        is Expr.Field -> source.outer
+        is Expr.Star -> source.outer
+    }
+
+    private fun entityIndexOuter(index: Expr.EntityIndex?): Boolean =
+        index is Expr.EntityIndex.Field && index.outer
 
     /** A sub-interpreter for a `Having` candidate [rc], carrying the SAME config and capturing the
      *  enclosing iteration's complete [ctx] environment for path-specific `$` resolution. */
@@ -494,8 +512,16 @@ class Interpreter(
         }
     }
 
-    private fun scanCell(path: String, ctx: EvalContext) =
-        ScanCell(path, ctx.repsOf(path), ctx.displayValue(path), ctx.cellState(path))
+    private fun scanCell(path: String, ctx: EvalContext): ScanCell {
+        val state = ctx.cellState(path)
+        return ScanCell(
+            path,
+            ctx.repsOf(path),
+            ctx.displayValue(path),
+            state,
+            if (state == CellState.EMPTY) null else ctx.field(path),
+        )
+    }
 
     internal fun filledOrPoison(cell: ScanCell): Boolean = when (
         if (cell.baseState == CellState.FILLED) computeScanState?.invoke(cell) ?: cell.baseState else cell.baseState
@@ -942,6 +968,17 @@ class Interpreter(
         // literal `""`, suppresses the comparison (it does not fire) rather than comparing as a value. An empty
         // string *field* already arrives as Unknown (handled above); this covers the non-field empty strings.
         if ((l is Val.Txt && l.v.isEmpty()) || (r is Val.Txt && r.v.isEmpty())) return Tri.UNKNOWN
+        // A legal mixed DATE/DATE_TIME ordering compares two instants on the model-zone timeline. Lexical ISO
+        // ordering is observably wrong at exact midnight (`date < dateT00` by string length, but the instants
+        // are equal). The typed authoring surface excludes mixed equality; this shared comparison still stays
+        // total for every operator in a loaded model. `MixedDateTimeOrderingDiffTest` is the discriminator.
+        if (l is Val.Txt && r is Val.Txt &&
+            ((isIsoDate(l.v) && isIsoDateTime(r.v)) || (isIsoDateTime(l.v) && isIsoDate(r.v)))) {
+            val li = if (isIsoDateTime(l.v)) dateTimeInstant(c.left) else dateInstant(c.left)
+            val ri = if (isIsoDateTime(r.v)) dateTimeInstant(c.right) else dateInstant(c.right)
+            if (li == null || ri == null) return Tri.UNKNOWN
+            return compareInstants(c.op, li, ri)
+        }
         // A DATETIME comparison under a non-UTC model zone compares zone-parsed INSTANTS (the kernel's
         // `vergleicheDATUM` on `VkDate` epoch millis), derived STRUCTURALLY so a chained `Add{Hours,…}` keeps
         // its exact instant — an ambiguous fall-back wall time re-parses as STANDARD, so the equal-looking
@@ -951,14 +988,7 @@ class Interpreter(
             (timeZone != ModelTimeZone.UTC || l.v == r.v)) {
             val li = dateTimeInstant(c.left) ?: return Tri.UNKNOWN
             val ri = dateTimeInstant(c.right) ?: return Tri.UNKNOWN
-            return when (c.op) {
-                CmpOp.EQ -> Tri.of(li == ri)
-                CmpOp.NE -> Tri.of(li != ri)
-                CmpOp.LT -> Tri.of(li < ri)
-                CmpOp.LE -> Tri.of(li <= ri)
-                CmpOp.GT -> Tri.of(li > ri)
-                CmpOp.GE -> Tri.of(li >= ri)
-            }
+            return compareInstants(c.op, li, ri)
         }
         // A DATE comparison under a non-UTC model zone likewise compares zone-resolved INSTANTS, for the same
         // reason and by the same structural route: a Date-valued shift retains the instant ITS mutation selected,
@@ -972,14 +1002,7 @@ class Interpreter(
             val li = dateInstant(c.left)
             val ri = dateInstant(c.right)
             if (li != null && ri != null) {
-                return when (c.op) {
-                    CmpOp.EQ -> Tri.of(li == ri)
-                    CmpOp.NE -> Tri.of(li != ri)
-                    CmpOp.LT -> Tri.of(li < ri)
-                    CmpOp.LE -> Tri.of(li <= ri)
-                    CmpOp.GT -> Tri.of(li > ri)
-                    CmpOp.GE -> Tri.of(li >= ri)
-                }
+                return compareInstants(c.op, li, ri)
             }
         }
         return when (c.op) {
@@ -990,6 +1013,15 @@ class Interpreter(
             CmpOp.GT -> Tri.of(ValCompare.language(l, r) > 0)
             CmpOp.GE -> Tri.of(ValCompare.language(l, r) >= 0)
         }
+    }
+
+    private fun compareInstants(op: CmpOp, left: Long, right: Long): Tri = when (op) {
+        CmpOp.EQ -> Tri.of(left == right)
+        CmpOp.NE -> Tri.of(left != right)
+        CmpOp.LT -> Tri.of(left < right)
+        CmpOp.LE -> Tri.of(left <= right)
+        CmpOp.GT -> Tri.of(left > right)
+        CmpOp.GE -> Tri.of(left >= right)
     }
 
     /** The 3VL presence of a field-valued predicate/quantifier operand — a plain field ref ([filledTri]) or a

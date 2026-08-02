@@ -52,7 +52,8 @@ class AdvisorTest {
         Diagnostic d = withOperator(advisor.advise(c), "DifferenceInYears");
         assertEquals(Severity.INFO, d.severity());
         String s = d.summary().toLowerCase();
-        assertTrue(s.contains("floor") || s.contains("leap"), () -> "unexpected gotcha: " + d.summary());
+        assertTrue(s.contains("complete-period") || s.contains("leap"),
+                () -> "unexpected gotcha: " + d.summary());
     }
 
     @Test

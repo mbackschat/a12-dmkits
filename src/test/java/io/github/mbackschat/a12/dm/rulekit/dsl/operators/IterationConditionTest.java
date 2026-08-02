@@ -145,6 +145,11 @@ class IterationConditionTest {
         Condition nested = Dsl.sum(m.flatten("/Subscription/Addons*/MonthlyFee")
                 .having(m.str("/Subscription/Addons/Name").eq("x"))).gt(0);
         assertThrows(IllegalArgumentException.class, () -> fees.having(nested));
+
+        BoundModel order = Fixtures.order();
+        FieldListRef counts = order.flatten("/Order/Items*/Count");
+        assertThrows(IllegalArgumentException.class,
+                () -> counts.having(order.num("/Order/Items/Count").forIndex("SKU-1").gt(0)));
     }
 
     @Test

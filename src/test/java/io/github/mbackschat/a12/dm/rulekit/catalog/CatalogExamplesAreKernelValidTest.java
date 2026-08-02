@@ -1,5 +1,6 @@
 package io.github.mbackschat.a12.dm.rulekit.catalog;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -97,10 +98,11 @@ class CatalogExamplesAreKernelValidTest {
                     assertFalse(result.ok(),
                             () -> e.id() + " invalidExample '" + bad.dsl() + "' was unexpectedly accepted");
                     if (bad.error() != null && bad.error().startsWith("MVK_")) {
-                        assertTrue(
-                                result.diagnostics().stream()
-                                        .anyMatch(p -> p.code().filter(bad.error()::equals).isPresent()),
-                                () -> e.id() + " expected " + bad.error() + ", got: " + result.diagnostics());
+                        List<String> codes = result.diagnostics().stream()
+                                .flatMap(diagnostic -> diagnostic.code().stream()).toList();
+                        assertEquals(List.of(bad.error()), codes,
+                                () -> e.id() + " invalidExample reached competing gates: "
+                                        + result.diagnostics());
                     }
                 }));
     }
@@ -128,9 +130,11 @@ class CatalogExamplesAreKernelValidTest {
                             ValidationResult result = check(c.probe().dsl());
                             assertFalse(result.ok(),
                                     () -> e.id() + " corrective probe '" + c.probe().dsl() + "' was unexpectedly accepted");
-                            assertTrue(result.diagnostics().stream()
-                                            .anyMatch(p -> p.code().filter(c.code()::equals).isPresent()),
-                                    () -> e.id() + " corrective probe expected " + c.code() + ", got: " + result.diagnostics());
+                            List<String> codes = result.diagnostics().stream()
+                                    .flatMap(diagnostic -> diagnostic.code().stream()).toList();
+                            assertEquals(List.of(c.code()), codes,
+                                    () -> e.id() + " corrective probe reached competing gates: "
+                                            + result.diagnostics());
                         })));
     }
 

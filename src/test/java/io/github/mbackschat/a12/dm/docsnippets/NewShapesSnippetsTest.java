@@ -8,7 +8,10 @@ import java.util.List;
 import org.junit.jupiter.api.Test;
 
 import io.github.mbackschat.a12.dm.Fixtures;
+import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft;
+import io.github.mbackschat.a12.dm.modelkit.FieldKind;
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel;
+import io.github.mbackschat.a12.dm.rulekit.dsl.BoolExpr;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Computation;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Condition;
 import io.github.mbackschat.a12.dm.rulekit.dsl.DateExpr;
@@ -16,18 +19,27 @@ import io.github.mbackschat.a12.dm.rulekit.dsl.DateTimeExpr;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl;
 import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer;
 import io.github.mbackschat.a12.dm.rulekit.dsl.NumberExpr;
+import io.github.mbackschat.a12.dm.rulekit.dsl.StringExpr;
 import io.github.mbackschat.a12.dm.rulekit.dsl.TimeExpr;
+import io.github.mbackschat.a12.dm.rulekit.validate.DraftRule;
 import io.github.mbackschat.a12.dm.rulekit.validate.RuleValidator;
 
 /**
  * The canonical, runnable snippets for the typed authoring shapes closed under DEV-API-GAPS §2 — each
  * tagged region is mirrored verbatim into {@code docs/API-GUIDE.md} and locked by
  * {@link io.github.mbackschat.a12.dm.DocSnippetFreshnessTest}. Authored here so the guide shows code that
- * genuinely compiles and renders against the real kernel (order fixture).
+ * genuinely compiles and renders against the real kernel (typed own-domain fixtures).
  */
 class NewShapesSnippetsTest {
 
     private static final BoundModel m = Fixtures.order();
+    private static final String APPROVAL_JSON = DocumentModelDraft.named("approval").locale("en_US")
+            .rootGroup("Approval", root -> root
+                    .field("Error", FieldKind.STRING)
+                    .group("Rows", rows -> rows.repeatable(10)
+                            .field("Approved", FieldKind.BOOLEAN)))
+            .build().toJson();
+    private static final BoundModel approval = BoundModel.ofJson(APPROVAL_JSON);
 
     @Test
     void dateMinMaxSnippet() {
@@ -45,6 +57,70 @@ class NewShapesSnippetsTest {
                 new DslRenderer().render(earliestTime.expression()));
         assertEquals("Max([/Order/ScheduledAt], [/Order/CompletedAt])",
                 new DslRenderer().render(latestInstant.expression()));
+    }
+
+    @Test
+    void temporalCrossOrderingSnippet() {
+        // tag::temporal-cross-ordering[]
+        Condition startsAfterOrderDay = m.dateTime("/Order/ScheduledAt")
+                .after(m.date("/Order/OrderDate"));
+        Condition orderDayNotAfterCompletion = m.date("/Order/OrderDate")
+                .onOrBefore(m.dateTime("/Order/CompletedAt"));
+        // end::temporal-cross-ordering[]
+        assertEquals("[/Order/ScheduledAt] > [/Order/OrderDate]",
+                new DslRenderer().render(startsAfterOrderDay));
+        assertEquals("[/Order/OrderDate] <= [/Order/CompletedAt]",
+                new DslRenderer().render(orderDayNotAfterCompletion));
+        assertKernelAccepts(startsAfterOrderDay, "../ScheduledAt");
+        assertKernelAccepts(orderDayNotAfterCompletion, "../OrderDate");
+    }
+
+    @Test
+    void dateRangeEqualitySnippet() {
+        // tag::date-range-equality[]
+        var requestedWindow = Dsl.dateRange(m.date("/Order/OrderDate"), m.date("/Order/DeliveryDate"));
+        Condition windowChanged = m.dateRange("/Order/CoverageWindow").ne(requestedWindow);
+        Condition requestedWindowChanged = requestedWindow.ne(
+                Dsl.dateRange(m.date("/Order/OrderDate"), m.date("/Order/DeliveryDate")));
+        var firstObservedWindow = Dsl.firstFilledDateRange(m.flatten("/Order/Items*/ItemCoverage"));
+        // end::date-range-equality[]
+        assertEquals("[/Order/CoverageWindow] != DateRange(/Order/OrderDate, /Order/DeliveryDate)",
+                new DslRenderer().render(windowChanged));
+        assertEquals("FirstFilledValue(/Order/Items*/ItemCoverage)",
+                new DslRenderer().render(firstObservedWindow.expression()));
+        assertKernelAccepts(windowChanged, "../CoverageWindow");
+        assertKernelAccepts(requestedWindowChanged, "../OrderDate");
+        assertKernelAccepts(m.dateRange("/Order/CoverageWindow").eq(firstObservedWindow), "../CoverageWindow");
+    }
+
+    @Test
+    void firstFilledOwnerEntitiesSnippet() {
+        // tag::first-filled-owner-entities[]
+        StringExpr firstLabel = Dsl.firstFilledString(
+                m.enumOf("/Order/Priority").category("SpeedClass").firstFilledOperand(),
+                m.str("/Order/CustomerName").field().firstFilledOperand());
+        NumberExpr firstIndexedQuantity = Dsl.firstFilledNumber(
+                m.num("/Order/Items/Count").semanticIndex("SKU-1").index().firstFilledOperand(),
+                m.num("/Order/Items/UnitWeight").semanticIndex("SKU-1").index().firstFilledOperand());
+        BoolExpr firstApproval = Dsl.firstFilledBoolean(
+                approval.flatten("/Approval/Rows*/Approved"));
+        StringExpr firstBillingValue = Dsl.firstFilledString(
+                m.firstFilledGroup("/Order/BillingAddress"));
+        // end::first-filled-owner-entities[]
+        assertEquals("FirstFilledValue(/Order/Priority -> SpeedClass, /Order/CustomerName)",
+                new DslRenderer().render(firstLabel.expression()));
+        assertEquals("FirstFilledValue(/Order/Items/Count For \"SKU-1\", /Order/Items/UnitWeight For \"SKU-1\")",
+                new DslRenderer().render(firstIndexedQuantity.expression()));
+        assertEquals("FirstFilledValue(/Approval/Rows*/Approved)",
+                new DslRenderer().render(firstApproval.expression()));
+        assertEquals("FirstFilledValue(/Order/BillingAddress)",
+                new DslRenderer().render(firstBillingValue.expression()));
+        assertKernelAccepts(firstLabel.eq("priority"), "../CustomerName");
+        assertKernelAccepts(m.str("/Order/CustomerName").filled().and(firstIndexedQuantity.gt(0)),
+                "../CustomerName");
+        assertKernelAccepts(APPROVAL_JSON, "/Approval",
+                approval.str("/Approval/Error").filled().and(firstApproval.isTrue()), "../Error");
+        assertKernelAccepts(firstBillingValue.eq("billing"), "../BillingAddress/PostalCode");
     }
 
     @Test
@@ -93,6 +169,19 @@ class NewShapesSnippetsTest {
         // end::rule-group[]
         assertEquals("GroupFilled(RuleGroup) And NotExactlyOneFieldFilled(/Order/Items/Count, /Order/Items/UnitWeight)",
                 new DslRenderer().render(attachment));
+    }
+
+    private static void assertKernelAccepts(Condition condition, String errorField) {
+        assertKernelAccepts(Fixtures.orderJson(), "/Order", condition, errorField);
+    }
+
+    private static void assertKernelAccepts(
+            String modelJson, String group, Condition condition, String errorField) {
+        var result = new RuleValidator().check(modelJson, new DraftRule(
+                group, "GuideSnippet", errorField, new DslRenderer().render(condition),
+                "GUIDE", "ERROR"));
+        assertTrue(result.ok(), () -> "kernel rejected guide snippet '"
+                + new DslRenderer().render(condition) + "' at " + errorField + ": " + result.diagnostics());
     }
 
     @Test

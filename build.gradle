@@ -101,6 +101,7 @@ tasks.named('test') {
     dependsOn 'jsonConstructionGuardTest'
     dependsOn 'apiGuardTest'
     dependsOn 'interpreterReleaseGuardTest'
+    dependsOn 'catalogProseReviewGuardTest'
     // Repo-file-reading guards run in input-declared dedicated tasks; keep them out of the broad suite so a
     // doc/marker/golden/script-only edit cannot leave a stale-green `test` (TESTING-SPEC "Tests that read
     // repo files at runtime").
@@ -115,6 +116,7 @@ tasks.named('test') {
         excludeTestsMatching 'io.github.mbackschat.a12.dm.api.PublicApiGuardTest'
         excludeTestsMatching 'io.github.mbackschat.a12.dm.InterpreterReleaseMirrorAssemblerTest'
         excludeTestsMatching 'io.github.mbackschat.a12.dm.InterpreterReleasePublisherRehearsalTest'
+        excludeTestsMatching 'io.github.mbackschat.a12.dm.rulekit.catalog.CatalogProseReviewGuardTest'
     }
 }
 
@@ -143,6 +145,29 @@ tasks.register('jsonConstructionGuardTest', Test) {
             'interpreter commonMain'  : fileTree('interpreter/src/commonMain') { include '**/*.java', '**/*.kt' },
             'interpreter jvmMain'     : fileTree('interpreter/src/jvmMain') { include '**/*.java', '**/*.kt' },
             'interpreter jsMain'      : fileTree('interpreter/src/jsMain') { include '**/*.java', '**/*.kt' },
+    ])
+}
+
+// CatalogProseReviewGuardTest resolves authored evidence links by scanning test source files across six
+// modules/source sets. Those files are not on the root test runtime classpath, so a cited test rename would
+// otherwise leave the broad root test task UP-TO-DATE and preserve a false green. Keep the scan in one
+// input-declared task: a test-source-only edit reruns this guard, not every root integration test.
+tasks.register('catalogProseReviewGuardTest', Test) {
+    description = 'Content-bound catalog prose review with every scanned evidence source declared as an input.'
+    group = 'verification'
+    useJUnitPlatform()
+    testClassesDirs = sourceSets.test.output.classesDirs
+    classpath = sourceSets.test.runtimeClasspath
+    filter {
+        includeTestsMatching 'io.github.mbackschat.a12.dm.rulekit.catalog.CatalogProseReviewGuardTest'
+    }
+    guardInputs(it, [
+            'root test evidence'              : fileTree('src/test') { include '**/*.java', '**/*.kt' },
+            'adapter test evidence'           : fileTree('adapter/src/test') { include '**/*.java', '**/*.kt' },
+            'interpreter commonTest evidence' : fileTree('interpreter/src/commonTest') { include '**/*.java', '**/*.kt' },
+            'interpreter jvmTest evidence'    : fileTree('interpreter/src/jvmTest') { include '**/*.java', '**/*.kt' },
+            'interpreter jsTest evidence'     : fileTree('interpreter/src/jsTest') { include '**/*.java', '**/*.kt' },
+            'cli test evidence'               : fileTree('cli/src/test') { include '**/*.java', '**/*.kt' },
     ])
 }
 
@@ -175,10 +200,11 @@ ext.guardInputs = { Test task, Map<String, ?> named ->
 }
 
 // Root-project guards below read REPO FILES at RUNTIME that Gradle can't infer as test inputs:
-// DocSnippetFreshnessTest reads docs/API-GUIDE.md (its test-source side is covered — a region edit changes
-// bytecode), and DslCatalogBridgeTest reads the dsl package's `catalog:<Id>` Javadoc markers — which compile
-// to IDENTICAL bytecode, so a marker-only edit would leave the plain `test` task up-to-date and skip the very
-// guard the edit needs (the false-green trap). BuildPerformancePolicyTest locks the repo-level Gradle cache
+// DocSnippetFreshnessTest reads docs/API-GUIDE.md plus raw tagged test sources; a tag-only edit compiles to
+// IDENTICAL bytecode, so the live repo test-source denominator is a direct input. DslCatalogBridgeTest reads
+// the dsl package's `catalog:<Id>` Javadoc markers, which have the same bytecode-invisible property. Without
+// those inputs the plain `test` task can stay up-to-date and skip the very guard the edit needs (the false-green
+// trap). BuildPerformancePolicyTest locks the repo-level Gradle cache
 // and compiler-memory policies; GateTierWiringTest locks the push/nightly workflow split, persistent Gradle
 // cache, and non-cacheable isolated perf launcher chain.
 // They run HERE with those files declared as THIS task's inputs; `test` dependsOn this, so CI and a plain
@@ -199,6 +225,13 @@ tasks.register('docGuardTest', Test) {
     }
     guardInputs(it, [
             'docs/API-GUIDE.md': file('docs/API-GUIDE.md'),
+            // Derive from the conventional live test-source layout rather than duplicating the Lock registry's
+            // file list. A future module/source lock is covered automatically; linked worktrees and generated
+            // outputs are anchored exclusions.
+            'canonical snippet test sources': fileTree('.') {
+                include '**/src/test/**/*.java', '**/src/test/**/*.kt'
+                exclude '.claude/**', '**/build/**'
+            },
             // ApiFindingsNumberingGuardTest reads the findings list at runtime: the ordinals are public
             // anchors ("finding N", cited from production sources), so a prose-only edit must re-run it.
             'docs/API-FINDINGS.md': file('docs/API-FINDINGS.md'),

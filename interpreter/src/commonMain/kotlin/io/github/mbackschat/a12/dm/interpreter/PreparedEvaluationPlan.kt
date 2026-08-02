@@ -192,7 +192,12 @@ internal class PreparedEvaluationPlan(
         }
     }
 
-    private fun auditExpr(expr: Expr, outerAllowed: Boolean, starAllowed: Boolean) {
+    private fun auditExpr(
+        expr: Expr,
+        outerAllowed: Boolean,
+        starAllowed: Boolean,
+        groupSemanticIndexAllowed: Boolean = false,
+    ) {
         when (expr) {
             is Expr.Field -> requireOuterAllowed(expr.outer, outerAllowed)
             is Expr.NumLit, is Expr.StrLit, is Expr.BoolLit -> Unit
@@ -214,7 +219,12 @@ internal class PreparedEvaluationPlan(
                     ) {
                         return@forEachIndexed
                     }
-                    auditExpr(argument, outerAllowed, starAllowed = true)
+                    auditExpr(
+                        argument,
+                        outerAllowed,
+                        starAllowed = true,
+                        groupSemanticIndexAllowed = op == FunctionOp.FIRST_FILLED_VALUE,
+                    )
                 }
                 if (op == FunctionOp.SUM_OF_PRODUCTS &&
                     expr.args.any { it is Expr.Star && it.having != null }) {
@@ -247,12 +257,43 @@ internal class PreparedEvaluationPlan(
                 auditExpr(expr.right, outerAllowed, starAllowed = false)
             }
             is Expr.SemanticIndex -> {
-                val group = expr.path.substringBeforeLast('/')
+                requireOuterAllowed(expr.outer, outerAllowed)
+                requireOuterAllowed(expr.indexFieldOuter, outerAllowed)
+                val isField = expr.path in model.kinds
+                if (!isField && !groupSemanticIndexAllowed) {
+                    throw UnsupportedConstructException(
+                        "a group semantic index is only a value entity inside FirstFilledValue")
+                }
+                val group = if (isField) expr.path.substringBeforeLast('/') else expr.path
                 if (model.indexFields.none { it.substringBeforeLast('/') == group }) {
                     throw UnsupportedConstructException(
                         "SemanticIndex needs an index field on the group of ${expr.path}")
                 }
-                expr.indexFieldPath?.let { auditExpr(Expr.Field(it), outerAllowed, starAllowed = false) }
+                expr.indexFieldPath?.let {
+                    auditExpr(Expr.Field(it, expr.indexFieldOuter), outerAllowed, starAllowed = false)
+                }
+            }
+            is Expr.EntitySpec -> {
+                auditExpr(expr.source, outerAllowed, starAllowed, groupSemanticIndexAllowed)
+                val index = expr.semanticIndex
+                if (index != null) {
+                    val source = expr.source as? Expr.Field
+                        ?: throw UnsupportedConstructException("a wildcard entitySpec cannot carry a semantic index")
+                    val indexed = when (index) {
+                        is Expr.EntityIndex.Literal -> Expr.SemanticIndex(
+                            source.path,
+                            indexValue = index.value,
+                            outer = source.outer,
+                        )
+                        is Expr.EntityIndex.Field -> Expr.SemanticIndex(
+                            source.path,
+                            indexFieldPath = index.path,
+                            outer = source.outer,
+                            indexFieldOuter = index.outer,
+                        )
+                    }
+                    auditExpr(indexed, outerAllowed, starAllowed = false, groupSemanticIndexAllowed)
+                }
             }
             is Expr.EnumCategory -> requireOuterAllowed(expr.outer, outerAllowed)
         }

@@ -36,4 +36,14 @@ public record DateFragmentRef(FieldRef field, boolean correlated) implements Dat
     public Condition notFilled() {
         return field.notFilled();
     }
+
+    /** The indexed date-fragment cell selected by a literal semantic-index value. */
+    public DateExpr forIndex(String indexValue) {
+        return new DateExpr(new SemanticIndexValue(field, indexValue));
+    }
+
+    /** The indexed date-fragment cell selected by the current value of {@code keyField}. */
+    public DateExpr forIndex(FieldRef keyField) {
+        return new DateExpr(new SemanticIndexFieldValue(field, keyField));
+    }
 }

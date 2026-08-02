@@ -64,7 +64,7 @@ public final class StructuralKernelFix {
                             + "the A12K-30 escapes `\\A \\G \\Z \\z \\a \\e \\p \\Q \\E`, nested unescaped "
                             + "`[` class syntax, and the typed/full-model `\\P` rejection. Passing this gate does "
                             + "NOT prove JavaScript portability.",
-                    "The kernel first requires Java Pattern syntax, then applies its finite A12K-30 blacklist; "
+                    "The kernel first requires Java Pattern syntax, then applies an additional admission gate; "
                             + "the typed/full-model oracle additionally rejects uppercase `\\P`. "
                             + "MVK_INVALID_PATTERN can therefore mean invalid Java syntax or a Java-valid "
                             + "kernel-rejected form; it is not a general cross-runtime portability check.")),

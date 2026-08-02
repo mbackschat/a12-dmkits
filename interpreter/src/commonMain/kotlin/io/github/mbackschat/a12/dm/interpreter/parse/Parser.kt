@@ -228,27 +228,44 @@ private class ConditionParser(
     }
 
     /**
-     * The `entitySpec` suffix the kernel grammar allows after ANY entity reference — an `-> Category`
-     * (EnumCategory) or a `For <index>` (SemanticIndex) — in BOTH a `[...]` value ref AND a bare
+     * The `entitySpec` suffix the owner grammar allows after ANY field entity reference — an optional
+     * `-> Category` followed by an optional `For <index>` — in BOTH a `[...]` value ref AND a bare
      * predicate/aggregate argument (`FieldValueAsString(Product For MaxNumber)`, string-concat operands). The
-     * `For` key is a literal (`For "value"`) or another field (`For keyField`). Applies to a just-read [Expr.Field];
-     * any other expression (a `Star`, literal, function) has no such suffix and is returned unchanged.
+     * `For` key is a literal (`For "value"`) or another field (`For keyField`). A starred source may carry a
+     * category and a later `Having`, but not a semantic index (the owner rejects wildcard + index).
      */
     private fun entitySuffix(e: Expr): Expr {
-        if (e !is Expr.Field) return e
-        if (matchArrow()) {
+        val source = e as? Expr.EntitySource ?: return e
+        val category = if (matchArrow()) {
             skipWs()
-            return Expr.EnumCategory(e.path, readIdent(), outer = e.outer)
-        }
-        if (matchKeyword("For")) {
+            readIdent()
+        } else null
+        val index = if (matchKeyword("For")) {
             skipWs()
-            return if (peek() == '"') {
-                Expr.SemanticIndex(e.path, indexValue = readString().v)
+            if (peek() == '"') {
+                Expr.EntityIndex.Literal(readString().v)
             } else {
-                Expr.SemanticIndex(e.path, indexFieldPath = (readRef() as Expr.Field).path)
+                val key = readRef() as Expr.Field
+                Expr.EntityIndex.Field(key.path, key.outer)
             }
+        } else null
+        if (category == null && index == null) return e
+        return when {
+            source is Expr.Field && category != null && index == null ->
+                Expr.EnumCategory(source.path, category, source.outer)
+            source is Expr.Field && category == null && index != null -> source.semanticIndex(index)
+            else -> Expr.EntitySpec(source, category, index)
         }
-        return e
+    }
+
+    private fun Expr.Field.semanticIndex(index: Expr.EntityIndex): Expr.SemanticIndex = when (index) {
+        is Expr.EntityIndex.Literal -> Expr.SemanticIndex(path, indexValue = index.value, outer = outer)
+        is Expr.EntityIndex.Field -> Expr.SemanticIndex(
+            path,
+            indexFieldPath = index.path,
+            outer = outer,
+            indexFieldOuter = index.outer,
+        )
     }
 
     /**
@@ -434,8 +451,15 @@ private class ConditionParser(
         val e = parseExpr()
         skipWs()
         if (!matchKeyword("Having")) return e
-        val star = e as? Expr.Star ?: throw UnsupportedConstructException("Having applies to a starred operand")
-        return Expr.Star(star.path, parseOr(), star.outer, star.bindDepth)
+        return when (e) {
+            is Expr.Star -> e.copy(having = parseOr())
+            is Expr.EntitySpec -> {
+                val star = e.source as? Expr.Star
+                    ?: throw UnsupportedConstructException("Having applies to a starred operand")
+                e.copy(source = star.copy(having = parseOr()))
+            }
+            else -> throw UnsupportedConstructException("Having applies to a starred operand")
+        }
     }
 
     /** Read a `@From` reference-group token raw — up to the closing `)` (a group path/name, possibly with `/`). */

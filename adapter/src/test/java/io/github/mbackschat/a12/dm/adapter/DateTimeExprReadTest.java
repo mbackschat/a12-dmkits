@@ -171,6 +171,22 @@ class DateTimeExprReadTest {
     }
 
     @Test
+    void roundTripsCrossDateAndDateTimeOrderingInBothDirections() {
+        BoundModel m = order();
+        Condition dateTimeFirst = m.dateTime("/Order/ScheduledAt").after(m.date("/Order/OrderDate"));
+        Condition dateFirst = m.date("/Order/OrderDate").onOrBefore(m.dateTime("/Order/CompletedAt"));
+
+        KernelAdapter adapter = KernelAdapter.of(m
+                .add(orderRule(m, "DateTimeAfterDate", "/Order/ScheduledAt", dateTimeFirst))
+                .add(orderRule(m, "DateBeforeDateTime", "/Order/OrderDate", dateFirst)));
+
+        assertEquals(RENDER.render(dateTimeFirst),
+                RENDER.render(converted(adapter.read("/Order/DateTimeAfterDate"))));
+        assertEquals(RENDER.render(dateFirst),
+                RENDER.render(converted(adapter.read("/Order/DateBeforeDateTime"))));
+    }
+
+    @Test
     void dateExpressionsAreKernelValid() {
         ValidationResult r = new RuleValidator().check(read("models/order.dm.json"),
                 new DraftRule("/Order", "ExtractRule", "../OrderDate",

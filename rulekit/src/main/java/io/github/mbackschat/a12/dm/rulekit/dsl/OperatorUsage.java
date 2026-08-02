@@ -116,7 +116,7 @@ public final class OperatorUsage {
             }
             case FirstFilledValue a -> {
                 ops.add(a.operatorId());
-                a.operands().forEach(o -> collectOperand(o, ops));
+                a.operands().forEach(o -> collectFirstFilledOperand(o, ops));
             }
             case FieldValueAsString c -> ops.add(c.operatorId());
             case IndexedFieldValueAsString c -> {
@@ -180,6 +180,12 @@ public final class OperatorUsage {
                 collect(dr.end(), ops);
             }
         }
+    }
+
+    private static void collectFirstFilledOperand(FirstFilledOperand operand, Set<String> ops) {
+        operand.field().ifPresent(field -> collectOperand(field, ops));
+        operand.category().ifPresent(ignored -> ops.add("EnumCategory"));
+        operand.semanticIndex().ifPresent(ignored -> ops.add("SemanticIndex"));
     }
 
     /** A list operand may be a category projection (its own catalog operator) or carry a {@code Having}

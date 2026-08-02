@@ -197,6 +197,10 @@ internal class IterationScopes(private val model: ModelDef) {
         }
         is Expr.Arith -> parallelGroupReads(expr.left) + parallelGroupReads(expr.right)
         is Expr.Star -> expr.having?.let(::parallelGroupReads) ?: emptyList()
+        is Expr.EntitySpec -> when (val source = expr.source) {
+            is Expr.Star -> source.having?.let(::parallelGroupReads) ?: emptyList()
+            is Expr.Field -> emptyList()
+        }
         is Expr.SemanticIndex -> emptyList()
         is Expr.Field, is Expr.NumLit, is Expr.StrLit, is Expr.BoolLit, is Expr.Const, is Expr.EnumCategory ->
             emptyList()

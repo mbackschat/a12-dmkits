@@ -49,12 +49,16 @@ public record FieldListRef(FieldRef field, List<GroupRef> flattened, Optional<Co
      * The kernel forbids certain constructs inside a filter condition (KERNEL-SEMANTICS §9): the
      * representable ones — {@code RepetitionNotUnique}, {@code CustomCondition}, and a nested
      * {@code Having} — are pre-checked here ({@code MVK_DISALLOWED_CONSTRUCT_IN_FILTER_CONDITION}); the
-     * rest (semantic index, parallel iteration) stay kernel-delegated. All three refusals are
-     * kernel-verified (2026-07-25 over-rejection audit, {@code validate.laws.AggregateSlotLawsTest}) — this
-     * javadoc previously listed {@code CustomCondition} as delegated while the code pre-checked it.
+     * semantic index is also pre-checked with its own {@code MVK_SEMANTIC_INDEX_NOT_ALLOWED} code; parallel
+     * iteration stays kernel-delegated. All four refusals are kernel-verified (the semantic-index group forms
+     * by {@code SemanticIndexSlotLawsTest}, the others by {@code AggregateSlotLawsTest}).
      * catalog:Having
      */
     public FieldListRef having(Condition filter) {
+        if (OperatorUsage.of(filter).contains("SemanticIndex")) {
+            throw new IllegalArgumentException("a filter condition may not contain a semantic index"
+                    + " (MVK_SEMANTIC_INDEX_NOT_ALLOWED)");
+        }
         rejectForbiddenInFilter(filter);
         return new FieldListRef(field, flattened, Optional.of(filter), correlated);
     }

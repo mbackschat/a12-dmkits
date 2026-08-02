@@ -75,7 +75,7 @@ enum class PredicateOp(val kernelName: String, val polarity: MsgType?, val count
 
 /**
  * A no-operand constant construct (an `Expr.Const`), resolved against the evaluation clock/model config to
- * a [Val]. `Today` is the current date; `Now` is the current date-time (compares only to a date-time field);
+ * a [Val]. `Today` is the current date; `Now` is the current date-time (orderable with dates and date-times);
  * `BaseYear` joins as the base-year family lands.
  */
 enum class ConstantOp(val kernelName: String) {

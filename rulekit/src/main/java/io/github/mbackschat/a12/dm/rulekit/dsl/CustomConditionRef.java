@@ -3,7 +3,9 @@ package io.github.mbackschat.a12.dm.rulekit.dsl;
 /**
  * {@code CustomCondition <Name>} — the app-defined escape hatch (DE {@code ApplikationsBedingung};
  * KERNEL-SEMANTICS §14): the kernel parses and places the rule but delegates the fire/don't-fire
- * decision to host code registered under {@code name}. No operands — just a bare identifier.
+ * decision to host code registered under {@code name}. No operands — just an A12
+ * {@code nameOhnePunkt}: letters (including the grammar's German letters), digits, underscore, or
+ * colon. A name that collides with a reserved token is quoted by {@link DslRenderer}.
  *
  * <p>Two contexts forbid it (verified 2026-06-04): inside a {@code Having} filter
  * ({@code MVK_DISALLOWED_CONSTRUCT_IN_FILTER_CONDITION}, pre-checked in {@link FieldListRef#having})
@@ -16,9 +18,9 @@ public record CustomConditionRef(String name) implements Condition {
         if (name == null || name.isBlank()) {
             throw new IllegalArgumentException("CustomCondition needs a non-blank name");
         }
-        if (!name.matches("[A-Za-z][A-Za-z0-9_]*")) {
-            throw new IllegalArgumentException("CustomCondition name must be a bare identifier"
-                    + " (letter, then letters/digits/underscores): " + name);
+        if (!name.matches("[A-Za-z0-9_ÄÜÖäüöß:]+")) {
+            throw new IllegalArgumentException("CustomCondition name must use the A12 name alphabet"
+                    + " (letters, digits, underscore, or colon): " + name);
         }
     }
 

@@ -22,7 +22,7 @@ import org.junit.jupiter.api.Test
 class BaseYearDiffTest {
 
     private val order = RuntimeLaws.model("models/order.dm.json")
-    private val fields = listOf(FieldDef(OD, Kind.DATE), FieldDef(QTY, Kind.NUMBER))
+    private val fields = listOf(FieldDef(OD, Kind.DATE), FieldDef(QTY, Kind.NUMBER), FieldDef(SCHEDULED, Kind.DATE_TIME))
     private val baseYear = 2020
 
     // Conditions are authored with the rulekit typed DSL ([m]) and rendered to the canonical string fed to BOTH
@@ -69,8 +69,68 @@ class BaseYearDiffTest {
             "2020 equals the base year number")
     }
 
+    @Test
+    fun dateTimeOrderingUsesTheBaseYearStartOnTheCommonTimeline() {
+        val condition = render(m.dateTime(SCHEDULED).onOrAfter(Dsl.baseYear()))
+        val code = "BDT"
+        val modelJson = RuntimeLaws.withRule(order, "/Order", "DateTimeBaseYear", "../ScheduledAt", code, condition)
+        val definition = ModelDef(
+            fields,
+            listOf(RuleDef("/Order/DateTimeBaseYear", "/Order", condition, code, "../ScheduledAt")),
+            baseYear = baseYear,
+        )
+        val java = RuntimeLaws.kernelJavaEngine(modelJson)
+
+        listOf(
+            "2019-12-31T23:59:59" to false,
+            "2020-01-01T00:00:00" to true,
+            "2020-01-01T00:00:01" to true,
+        ).forEach { (value, expected) ->
+            val kernelDoc = RuntimeLaws.doc().group("/Order", 1).field(SCHEDULED, value, 1, 1)
+            val interpreterDoc = Document(definition.kinds).field(SCHEDULED, value, 1, 1)
+            val dynamic = RuntimeLaws.fires(modelJson, code, kernelDoc)
+            val generated = java.messages(java.instance(kernelDoc)).any { it.code() == code }
+            val interpreted = DmInterpreter(definition).validate(interpreterDoc).messages.any { it.code == code }
+
+            assertEquals(expected, dynamic, "$value — dynamic Groovy")
+            assertEquals(dynamic, generated, "$value — generated Java")
+            assertEquals(dynamic, interpreted, "$value — interpreter")
+        }
+    }
+
+    @Test
+    fun baseYearRangeBoundsAreTheFirstAndLastCalendarDays() {
+        val cases = listOf(
+            render(m.date(OD).eq(Dsl.startOfBaseYear())) to "2020-01-01",
+            render(m.date(OD).eq(Dsl.endOfBaseYear())) to "2020-12-31",
+        )
+        cases.forEachIndexed { index, (condition, matchingDate) ->
+            val code = "BR$index"
+            val model = RuntimeLaws.withRule(order, "/Order", "R$index", "../OrderDate", code, condition)
+            val definition = ModelDef(
+                fields,
+                listOf(RuleDef("/Order/R$index", "/Order", condition, code, "../OrderDate")),
+                baseYear = baseYear,
+            )
+            val java = RuntimeLaws.kernelJavaEngine(model)
+
+            listOf(matchingDate to true, "2020-06-15" to false).forEach { (date, expected) ->
+                val kernelDoc = RuntimeLaws.doc().group("/Order", 1).field(OD, date, 1, 1)
+                val interpreterDoc = Document(definition.kinds).field(OD, date, 1, 1)
+                val dynamic = RuntimeLaws.fires(model, code, kernelDoc)
+                val generated = java.messages(java.instance(kernelDoc)).any { it.code() == code }
+                val interpreter = DmInterpreter(definition).validate(interpreterDoc).messages.any { it.code == code }
+
+                assertEquals(expected, dynamic, "$condition on $date — dynamic Groovy")
+                assertEquals(dynamic, generated, "$condition on $date — generated Java")
+                assertEquals(dynamic, interpreter, "$condition on $date — interpreter")
+            }
+        }
+    }
+
     private companion object {
         const val OD = "/Order/OrderDate"
         const val QTY = "/Order/Quantity"
+        const val SCHEDULED = "/Order/ScheduledAt"
     }
 }

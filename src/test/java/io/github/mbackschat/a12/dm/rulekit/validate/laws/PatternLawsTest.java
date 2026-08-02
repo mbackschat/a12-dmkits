@@ -28,4 +28,10 @@ class PatternLawsTest {
         KernelLaws.rejects("/Subscription/Billing", "../InvoiceEmail",
                 "[InvoiceEmail] == \"say \\\"hi\\\"\"");
     }
+
+    @Test
+    void aPatternLiteralPreservesBackslashesAndDoubledQuotes() {
+        KernelLaws.accepts("/Subscription/Billing", "../InvoiceEmail",
+                "[InvoiceEmail] PatternMatched \"say \"\"hi\"\"\\d\"");
+    }
 }

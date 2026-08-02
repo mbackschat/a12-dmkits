@@ -13,6 +13,8 @@ import java.util.stream.Stream;
 import org.junit.jupiter.api.DynamicTest;
 import org.junit.jupiter.api.TestFactory;
 
+import io.github.mbackschat.a12.dm.edit.EditSession;
+import io.github.mbackschat.a12.dm.modelkit.FieldKind;
 import io.github.mbackschat.a12.dm.rulekit.catalog.FacetProbe;
 import io.github.mbackschat.a12.dm.rulekit.catalog.OperatorCatalog;
 import io.github.mbackschat.a12.dm.rulekit.catalog.ProbeOutcome;
@@ -41,10 +43,28 @@ import io.github.mbackschat.a12.dm.rulekit.validate.ValidationResult;
 class CatalogFacetProbesTest {
 
     private static final OperatorCatalog CATALOG = OperatorCatalog.load();
-    private static final String ORDER = RuntimeLaws.model("models/order.dm.json");
+    private static final String ORDER = facetProbeOrder();
     private static final RuleValidator VALIDATOR = new RuleValidator();
     private static final String PROBE_CODE = "FACET_PROBE";
     private static final String FILLER_FIELD = "/Order/CustomerName";
+
+    /** Extend the shared order fixture through the typed edit surface with only the missing per-kind probe axes. */
+    private static String facetProbeOrder() {
+        EditSession session = EditSession.read(RuntimeLaws.model("models/order.dm.json"));
+        session.group("/Order")
+                .addField("CatalogBoolean", FieldKind.BOOLEAN)
+                .timeField("CatalogTime", field -> field.format("HH:mm:ss"))
+                .timeField("CatalogTimeAnchor", field -> field.format("HH:mm:ss"))
+                .dateTimeField("CatalogDateTimeAnchor", field -> field.format("yyyy-MM-dd'T'HH:mm:ss"))
+                .dateFragmentField("CatalogFragmentA", field -> field.fragmentFormat("MM"))
+                .dateFragmentField("CatalogFragmentB", field -> field.fragmentFormat("MM"))
+                .dateFragmentField("CatalogFragmentAnchor", field -> field.fragmentFormat("MM"))
+                .customField("CatalogCustomA", field -> field.type("CatalogProbeCode"))
+                .customField("CatalogCustomB", field -> field.type("CatalogProbeCode"))
+                .dateRangeField("CatalogCoverage", field -> field.format("dd.MM.yyyy").separator("-"))
+                .dateRangeField("CatalogCoverageAnchor", field -> field.format("dd.MM.yyyy").separator("-"));
+        return session.toJson();
+    }
 
     @TestFactory
     Stream<DynamicTest> everyEmptyOperandDefaultProbeHoldsOnTheKernel() {
@@ -82,7 +102,7 @@ class CatalogFacetProbesTest {
         return CATALOG.entries().stream()
                 .filter(e -> e.aggregateIdentityClaim() != null)
                 .flatMap(e -> e.aggregateIdentityClaim().probes().stream()
-                        .map(p -> probeTest(e.id() + " aggregateIdentity", p)));
+                        .map(p -> probeTest(e.id() + " aggregateIdentity[" + p.kind() + "]", p)));
     }
 
     @TestFactory

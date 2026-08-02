@@ -15,8 +15,8 @@ import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 
 /**
- * Differential for the `DateRange(start, end)` CONSTRUCTOR — a computation-only construct (the kernel rejects
- * it in a condition). It assigns a DATE_RANGE field, and the kernel renders the value in the TARGET field's
+ * Differential for the computation form of the `DateRange(start, end)` constructor. It assigns a DATE_RANGE
+ * field, while `DateRangeEqualityDiffTest` locks its condition form. The kernel renders the value in the TARGET field's
  * format: `OrderDate`/`DeliveryDate` (`yyyy-MM-dd`) → `CoverageWindow` (`dd.MM.yyyy`-`-`) = `01.06.2024-30.06.2024`.
  * Compares the computed value to the kernel's `compute()`.
  */

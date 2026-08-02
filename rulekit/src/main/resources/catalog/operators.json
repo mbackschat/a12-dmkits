@@ -160,7 +160,7 @@
       "returns": "boolean",
       "meaning": "True iff the referenced field currently holds a value.",
       "constraints": [
-        "the operand is a single field reference, not a bracketed field-value expression"
+        "a field operand is written as an unbracketed entity reference, including semantic-index entities such as /Order/Items/Count For \"SKU-1\"; brackets denote value position and are rejected here"
       ],
       "gotchas": [
         {
@@ -333,7 +333,7 @@
       "invalidExample": {
         "dsl": "[CustomerName] <= [ProductCode]",
         "error": "MVK_INVALID_TYPE_FOR_COMPARISON",
-        "fix": "ordering needs numbers or dates — compare strings with == / != instead; but if one side is a DATE, write the literal in German dd.MM.yyyy form (e.g. \"31.12.2024\"), not ISO \"2024-12-31\""
+        "fix": "this operator cannot order strings; use NUMBER or DATE operands, or == / != only when equality was intended"
       },
       "correctives": [
         {
@@ -342,7 +342,7 @@
             "string",
             "string"
           ],
-          "fix": "ordering needs numbers or dates — compare the strings with == / != instead",
+          "fix": "this operator cannot order strings; use NUMBER or DATE operands, or == / != only when equality was intended",
           "probe": {
             "dsl": "[CustomerName] <= [ProductCode]"
           }
@@ -353,7 +353,7 @@
             "date",
             "string-literal"
           ],
-          "fix": "one side is a DATE — write the literal in the German dd.MM.yyyy form (e.g. \"31.12.2024\"), not ISO \"2024-12-31\"",
+          "fix": "for DATE versus a quoted literal, write dd.MM.yyyy (for example \"31.12.2024\"), not ISO \"2024-12-31\"",
           "probe": {
             "dsl": "[OrderDate] <= \"2024-12-31\""
           }
@@ -421,7 +421,7 @@
       "invalidExample": {
         "dsl": "[CustomerName] < [ProductCode]",
         "error": "MVK_INVALID_TYPE_FOR_COMPARISON",
-        "fix": "ordering needs numbers or dates — compare strings with == / != instead; but if one side is a DATE, write the literal in German dd.MM.yyyy form (e.g. \"31.12.2024\"), not ISO \"2024-12-31\""
+        "fix": "this operator cannot order strings; use NUMBER or DATE operands, or == / != only when equality was intended"
       },
       "correctives": [
         {
@@ -430,7 +430,7 @@
             "string",
             "string"
           ],
-          "fix": "ordering needs numbers or dates — compare the strings with == / != instead",
+          "fix": "this operator cannot order strings; use NUMBER or DATE operands, or == / != only when equality was intended",
           "probe": {
             "dsl": "[CustomerName] < [ProductCode]"
           }
@@ -441,7 +441,7 @@
             "date",
             "string-literal"
           ],
-          "fix": "one side is a DATE — write the literal in the German dd.MM.yyyy form (e.g. \"31.12.2024\"), not ISO \"2024-12-31\"",
+          "fix": "for DATE versus a quoted literal, write dd.MM.yyyy (for example \"31.12.2024\"), not ISO \"2024-12-31\"",
           "probe": {
             "dsl": "[OrderDate] < \"2024-12-31\""
           }
@@ -509,7 +509,7 @@
       "invalidExample": {
         "dsl": "[CustomerName] > [ProductCode]",
         "error": "MVK_INVALID_TYPE_FOR_COMPARISON",
-        "fix": "ordering needs numbers or dates — compare strings with == / != instead; but if one side is a DATE, write the literal in German dd.MM.yyyy form (e.g. \"31.12.2024\"), not ISO \"2024-12-31\""
+        "fix": "this operator cannot order strings; use NUMBER or DATE operands, or == / != only when equality was intended"
       },
       "correctives": [
         {
@@ -518,7 +518,7 @@
             "string",
             "string"
           ],
-          "fix": "ordering needs numbers or dates — compare the strings with == / != instead",
+          "fix": "this operator cannot order strings; use NUMBER or DATE operands, or == / != only when equality was intended",
           "probe": {
             "dsl": "[CustomerName] > [ProductCode]"
           }
@@ -529,7 +529,7 @@
             "date",
             "string-literal"
           ],
-          "fix": "one side is a DATE — write the literal in the German dd.MM.yyyy form (e.g. \"31.12.2024\"), not ISO \"2024-12-31\"",
+          "fix": "for DATE versus a quoted literal, write dd.MM.yyyy (for example \"31.12.2024\"), not ISO \"2024-12-31\"",
           "probe": {
             "dsl": "[OrderDate] > \"2024-12-31\""
           }
@@ -597,7 +597,7 @@
       "invalidExample": {
         "dsl": "[CustomerName] >= [ProductCode]",
         "error": "MVK_INVALID_TYPE_FOR_COMPARISON",
-        "fix": "ordering needs numbers or dates — compare strings with == / != instead; but if one side is a DATE, write the literal in German dd.MM.yyyy form (e.g. \"31.12.2024\"), not ISO \"2024-12-31\""
+        "fix": "this operator cannot order strings; use NUMBER or DATE operands, or == / != only when equality was intended"
       },
       "correctives": [
         {
@@ -606,7 +606,7 @@
             "string",
             "string"
           ],
-          "fix": "ordering needs numbers or dates — compare the strings with == / != instead",
+          "fix": "this operator cannot order strings; use NUMBER or DATE operands, or == / != only when equality was intended",
           "probe": {
             "dsl": "[CustomerName] >= [ProductCode]"
           }
@@ -617,7 +617,7 @@
             "date",
             "string-literal"
           ],
-          "fix": "one side is a DATE — write the literal in the German dd.MM.yyyy form (e.g. \"31.12.2024\"), not ISO \"2024-12-31\"",
+          "fix": "for DATE versus a quoted literal, write dd.MM.yyyy (for example \"31.12.2024\"), not ISO \"2024-12-31\"",
           "probe": {
             "dsl": "[OrderDate] >= \"2024-12-31\""
           }
@@ -671,19 +671,42 @@
       "returns": "boolean",
       "meaning": "True iff the two operands are equal.",
       "constraints": [
-        "operands must be type-compatible; numeric == / != requires known compatible derived scales, unless the multiplicative-constant-capable operand is on the smaller-scale side or MVK_INVALID_COMPARE_DEC_PLACES is suppressed"
+        "operands must be type-compatible",
+        "numeric == / != requires known compatible derived scales",
+        "differing numeric scales are admitted when the smaller-scale operand is multiplicative-constant-capable",
+        "@SuppressWarning(MVK_INVALID_COMPARE_DEC_PLACES) admits an otherwise-incompatible numeric == / != comparison"
       ],
       "gotchas": [
         {
-          "text": "the decimal-scale gate is required for == / != ONLY (ordering < <= > >= is exempt), and it is ASYMMETRIC rather than a field/literal syntax rule: a scale-2 field == literal 0 is legal because the capable literal is the smaller-scale side; a scale-0 field == literal 0.00 is rejected in either operand order because the smaller-scale field cannot be padded",
+          "text": "the decimal-scale gate applies to == / != only; ordering < <= > >= is exempt",
           "kind": "SURPRISE"
         },
         {
-          "text": "an arithmetic expression carries a derived signed scale plus independent constant capability: + / - use the maximum scale, * adds scales, / is unknown, and power is normally unknown except for a scale-0 base with a simple nonnegative constant exponent; wrap an incompatible expression in RoundAccounting(expr, n), or waive the check with @SuppressWarning(MVK_INVALID_COMPARE_DEC_PLACES)",
+          "text": "the scale gate is asymmetric rather than a field/literal syntax rule: a scale-2 field == literal 0 is legal because the capable literal is the smaller-scale side; a scale-0 field == literal 0.00 is rejected in either operand order because the smaller-scale field cannot be padded",
           "kind": "SURPRISE"
         },
         {
-          "text": "enums compare by stored value, never display text. Direct String/enum comparability uses effective remapping: no labels and identity-only labels are textless; two display-bearing enums need only a bidirectionally consistent partial map in each shared locale, so compatible disjoint/partial maps are legal",
+          "text": "an arithmetic expression carries a derived signed scale plus independent constant capability: + / - use the maximum scale, * adds scales, and / is unknown",
+          "kind": "SURPRISE"
+        },
+        {
+          "text": "power normally has unknown scale, except for a scale-0 base with a simple nonnegative constant exponent",
+          "kind": "SURPRISE"
+        },
+        {
+          "text": "wrap an incompatible numeric expression in RoundAccounting(expr, n) to give it an explicit derived scale",
+          "kind": "AUTHORING"
+        },
+        {
+          "text": "@SuppressWarning(MVK_INVALID_COMPARE_DEC_PLACES) waives the numeric == / != scale check",
+          "kind": "SURPRISE"
+        },
+        {
+          "text": "enum field values are stored S-values, not display labels",
+          "kind": "SURPRISE"
+        },
+        {
+          "text": "direct String/enum comparability uses effective remapping: no labels and identity-only labels are textless; two display-bearing enums need only a bidirectionally consistent partial map in each shared locale, so compatible disjoint/partial maps are legal",
           "kind": "SURPRISE"
         }
       ],
@@ -694,7 +717,7 @@
       "invalidExample": {
         "dsl": "[Quantity] == [UnitPrice]",
         "error": "MVK_INVALID_COMPARE_DEC_PLACES",
-        "fix": "operands differ in decimal scale (0 vs 2); round one with RoundDown(..., n)"
+        "fix": "operands differ in decimal scale (0 vs 2); use RoundDown(..., n) with n chosen to match the other operand's derived scale"
       },
       "sinceKernel": "30.8.x"
     },
@@ -741,7 +764,7 @@
       "invalidExample": {
         "dsl": "[Quantity] != [UnitPrice]",
         "error": "MVK_INVALID_COMPARE_DEC_PLACES",
-        "fix": "operands differ in decimal scale (0 vs 2); round one with RoundDown(..., n)"
+        "fix": "operands differ in decimal scale (0 vs 2); use RoundDown(..., n) with n chosen to match the other operand's derived scale"
       },
       "sinceKernel": "30.8.x"
     },
@@ -1386,7 +1409,8 @@
       "constraints": [
         "the operand is ONE common entity list admitting group AND field references (despite the name)",
         "direct duplicates and group/descendant overlap are rejected (MVK_DUPLICATE_PARAM1 / MVK_DUPLICATE_PARAM2)",
-        "needs more than one operand — a singleton, field or group, is rejected (MVK_PARAMSIZE_INVALID2); root groups are rejected (MVK_ROOT_GROUP_REFERENCED)"
+        "needs more than one operand — a singleton, field or group, is rejected (MVK_PARAMSIZE_INVALID2); root groups are rejected (MVK_ROOT_GROUP_REFERENCED)",
+        "arguments may not use an asterisk (MVK_NO_WILDCARDS_G_ALLOWED)"
       ],
       "gotchas": [
         {
@@ -1409,7 +1433,7 @@
       "invalidExample": {
         "dsl": "AllGroupsFilled(ShippingAddress, ShippingAddress/Street)",
         "error": "MVK_DUPLICATE_PARAM2",
-        "fix": "an operand nested under a listed group is an overlap — list disjoint entities"
+        "fix": "replace the overlapping operand with a second distinct, disjoint, non-root entity; AllGroupsFilled requires at least two operands"
       },
       "sinceKernel": "30.8.x"
     },
@@ -1523,7 +1547,7 @@
         "the operand is ONE common entity list admitting group AND field references (despite the name)",
         "direct duplicates and group/descendant overlap are rejected (MVK_DUPLICATE_PARAM1 / MVK_DUPLICATE_PARAM2)",
         "needs more than one operand — a singleton, field or group, is rejected (MVK_PARAMSIZE_INVALID2); root groups are rejected (MVK_ROOT_GROUP_REFERENCED)",
-        "arguments may not use an asterisk (MVK_NO_WILDCARDS_G_ALLOWED, starred field operands included) — the same bar applies to GroupsNotCollectivelyFilled and AllGroupsFilled"
+        "arguments may not use an asterisk (MVK_NO_WILDCARDS_G_ALLOWED, starred field operands included)"
       ],
       "gotchas": [
         {
@@ -1565,7 +1589,8 @@
       "constraints": [
         "the operand is ONE common entity list admitting group AND field references (despite the name)",
         "direct duplicates and group/descendant overlap are rejected (MVK_DUPLICATE_PARAM1 / MVK_DUPLICATE_PARAM2)",
-        "needs more than one operand — a singleton, field or group, is rejected (MVK_PARAMSIZE_INVALID2); root groups are rejected (MVK_ROOT_GROUP_REFERENCED)"
+        "needs more than one operand — a singleton, field or group, is rejected (MVK_PARAMSIZE_INVALID2); root groups are rejected (MVK_ROOT_GROUP_REFERENCED)",
+        "arguments may not use an asterisk (MVK_NO_WILDCARDS_G_ALLOWED)"
       ],
       "gotchas": [
         {
@@ -1645,9 +1670,9 @@
       },
       "operands": [],
       "returns": "boolean-constant",
-      "meaning": "The boolean/confirm constant 'true'. Booleans compare to True/False; confirm fields compare ONLY to True (== / !=).",
+      "meaning": "The boolean/confirm constant 'true'. Boolean fields compare to True or False; confirm fields support equality and inequality with True.",
       "constraints": [
-        "usable in equality comparisons against boolean fields (== / !=) and confirm fields (== / != True only)"
+        "usable in equality comparisons against boolean fields and confirm fields"
       ],
       "gotchas": [
         {
@@ -1742,7 +1767,7 @@
           "kind": "SURPRISE"
         },
         {
-          "text": "over a noValueValidation (raw-type) field, Length is authorable ONLY as the whole condition Length(f) > c (or c < Length(f); anything else is MVK_INVALID_LENGTH_OF_RAW_TYPE / MVK_INVALID_RAW_TYPE) — and that one shape is a disguised max-length DECLARATION the kernel eliminates at codegen: it never fires as a rule",
+          "text": "over a noValueValidation (raw-type) field, the strict whole-condition shapes Length(f) > c and c < Length(f) are admitted, while the otherwise-similar non-strict Length(f) >= c is rejected with MVK_INVALID_LENGTH_OF_RAW_TYPE; the admitted shapes are disguised max-length declarations the kernel eliminates at codegen and never fire as rules",
           "kind": "SURPRISE"
         }
       ],
@@ -1831,7 +1856,19 @@
           "kind": "RENDERING"
         },
         {
-          "text": "every arithmetic node rounds independently to 50 significant digits (HALF_UP); before evaluation one ordered post-order pass pulls only immediate division-root operands out of each original multiplication, preserves factor/division encounter order, and never revisits generated products — this is not global or fixed-point normalization",
+          "text": "every arithmetic node rounds independently to 50 significant digits (HALF_UP)",
+          "kind": "SURPRISE"
+        },
+        {
+          "text": "before evaluation one ordered post-order pass pulls only immediate division-root operands out of each original multiplication",
+          "kind": "SURPRISE"
+        },
+        {
+          "text": "division lowering preserves factor/division encounter order",
+          "kind": "SURPRISE"
+        },
+        {
+          "text": "division lowering never revisits generated products, so it is not global or fixed-point normalization",
           "kind": "SURPRISE"
         },
         {
@@ -1966,7 +2003,7 @@
           "kind": "SURPRISE"
         },
         {
-          "text": "authoring first requires valid Java Pattern syntax, then applies the kernel 30.8.x restrictions: the finite A12K-30 blacklist (possessive quantifiers, (?<… / (?>…), \\A \\G \\Z \\z \\a \\e \\p \\Q \\E, nested unescaped [) plus the typed/full-model \\P rejection; passing them is not a JavaScript-portability guarantee",
+          "text": "authoring first requires valid Java Pattern syntax, then the kernel's additional admission gate; Java-valid lookbehind and uppercase \\P are known rejected examples, and acceptance is not a JavaScript-portability guarantee",
           "kind": "AUTHORING"
         },
         {
@@ -1985,7 +2022,7 @@
       "invalidExample": {
         "dsl": "[ProductCode] PatternMatched \"(?<=A)B\"",
         "error": "MVK_INVALID_PATTERN",
-        "fix": "use a Java-valid pattern outside the finite A12K-30 blacklist; for example, replace the lookbehind with an explicit matched prefix such as \"AB.*\""
+        "fix": "use a Java-valid pattern admitted by the kernel's additional pattern gate; for example, replace the lookbehind with an explicit matched prefix such as \"AB.*\""
       },
       "sinceKernel": "30.8.x"
     },
@@ -2026,7 +2063,7 @@
           "kind": "SURPRISE"
         },
         {
-          "text": "authoring first requires valid Java Pattern syntax, then applies the kernel 30.8.x restrictions: the finite A12K-30 blacklist (possessive quantifiers, (?<… / (?>…), \\A \\G \\Z \\z \\a \\e \\p \\Q \\E, nested unescaped [) plus the typed/full-model \\P rejection; passing them is not a JavaScript-portability guarantee",
+          "text": "authoring first requires valid Java Pattern syntax, then the kernel's additional admission gate; Java-valid lookbehind and uppercase \\P are known rejected examples, and acceptance is not a JavaScript-portability guarantee",
           "kind": "AUTHORING"
         }
       ],
@@ -2075,7 +2112,7 @@
       ],
       "gotchas": [
         {
-          "text": "field-value entries ([OtherField]) are also legal in the list — mixing them with literals is fine",
+          "text": "a value list may use field-value entries ([OtherField]) instead of literals; field entries must match the subject kind, and literal and field-entry forms cannot be mixed in one list",
           "kind": "AUTHORING"
         },
         {
@@ -2230,7 +2267,7 @@
       "meaning": "True iff at least one of the listed fields holds one of the listed values.",
       "constraints": [
         "syntax: Name(f1, f2 In v1, v2) — the In separator is language-independent",
-        "all listed fields must share one base type (MVK_VARYING_TYPES_NOT_ALLOWED); no exact reference may repeat (MVK_DUPLICATE_PARAM)",
+        "all listed fields must share one base type (MVK_VARYING_TYPES_NOT_ALLOWED); no exact reference may repeat (MVK_DUPLICATE_PARAM1)",
         "for enums each literal must be in the UNION of the selected members' domains (a direct reference's stored values plus a category projection's category values), NOT in every one (MVK_INVALID_STRING_CONSTANT_FOR_ENUMERATION_OR_CATEGORY)",
         "a value-side field list makes it entity-valued: both sides share one base type, no reference repeats across the combined lists, and enum-domain containment is NOT required",
         "values may also be string literals or field references"
@@ -2745,7 +2782,7 @@
       "invalidExample": {
         "dsl": "RepetitionNotUnique(Items/Sku) And RepetitionNotUnique(Items/Count)",
         "error": "MVK_INVALID_COMBINATION_OF_REPETITON_NOT_UNIQUE",
-        "fix": "a condition may contain exactly one RepetitionNotUnique leaf; combine all key fields in that one leaf"
+        "fix": "a condition may contain at most one RepetitionNotUnique leaf; use one leaf with all fields for a composite key, or separate rules for independent uniqueness checks"
       },
       "sinceKernel": "30.8.x"
     },
@@ -2783,7 +2820,7 @@
       "invalidExample": {
         "dsl": "RepetitionNotUnique(Items/Sku @From ShippingAddress)",
         "error": "MVK_GROUP_NOT_REPEATABLE",
-        "fix": "@From needs a repeatable reference group"
+        "fix": "choose a repeatable @From group that contains every key field"
       },
       "sinceKernel": "30.8.x"
     },
@@ -2806,12 +2843,6 @@
       "meaning": "True when the listed fields' values are not all distinct.",
       "constraints": [
         "takes plain or flattened (starred) field operands"
-      ],
-      "gotchas": [
-        {
-          "text": "negativity-sensitive when mixing iterating and non-iterating operands (MVK_NEG_CONDITION_IN_ITERATION territory)",
-          "kind": "SURPRISE"
-        }
       ],
       "validExample": {
         "dsl": "FieldFilled(CustomerName) And FieldValuesNotUnique(Items*/Sku)",
@@ -2843,10 +2874,6 @@
       "gotchas": [
         {
           "text": "an UNSPECIFIED field counts as 0 — unlike MaxValue/MinValue, which ignore unspecified fields (KERNEL-SEMANTICS §9)",
-          "kind": "SURPRISE"
-        },
-        {
-          "text": "Sum is a zero-seeded encounter-order left fold with precision-50 HALF_UP after every present value; model declaration order and repetition row order are semantic, so do not sort, reassociate, or accumulate exactly and round once",
           "kind": "SURPRISE"
         },
         {
@@ -2928,13 +2955,13 @@
       },
       "operands": [
         {
-          "type": "number-field-list"
+          "type": "sortable-field-list"
         }
       ],
-      "returns": "number",
+      "returns": "the operands' common NUMBER, DATE, TIME, or DATETIME kind",
       "meaning": "The largest of the listed values; unspecified fields are ignored. Over number fields it returns a number; over a date repetition list it returns the latest date.",
       "constraints": [
-        "sortable types only — numbers or dates (MVK_NOT_SORTABLE)",
+        "sortable fields only — NUMBER, or mutually format-compatible DATE, TIME, or DATE_TIME fields (MVK_NOT_SORTABLE / MVK_DATEFORMATS_NOT_COMPATIBLE)",
         "more than one field or a repetition list; no repeated direct field, but a wildcarded (starred) operand may repeat (MVK_DUPLICATE_PARAM1)"
       ],
       "gotchas": [
@@ -2950,15 +2977,29 @@
       "invalidExample": {
         "dsl": "FieldFilled(CustomerName) And MaxValue(CustomerName, ProductCode) > 0",
         "error": "MVK_NOT_SORTABLE",
-        "fix": "MaxValue needs numbers (or dates)"
+        "fix": "use at least two distinct sortable fields — numbers, or mutually format-compatible DATE/TIME/DATE_TIME fields — or one flattened sortable repetition list"
       },
+      "correctives": [
+        {
+          "code": "MVK_DATEFORMATS_NOT_COMPATIBLE",
+          "whenOperands": [],
+          "fix": "use DATE, TIME, or DATE_TIME fields with mutually compatible declared formats",
+          "probe": { "dsl": "FieldFilled(OrderDate) And MaxValue(OrderDate, ScheduledAt) > \"01.01.2020\"" }
+        }
+      ],
       "semantics": {
         "aggregateIdentity": {
-          "value": "ZERO",
-          "basis": "IF51 / KERNEL-FINDINGS §1 (an all-empty star folds to the fillable 0)",
-          "note": "an all-empty selection folds to 0, so MaxValue(∅) == 0 fires",
+          "perKind": {
+            "number": "ZERO",
+            "date": "NO_VALUE",
+            "time": "NO_VALUE",
+            "date-time": "NO_VALUE"
+          },
+          "basis": "number: IF51 (all-empty folds to 0); date-like: IF58/IF204, adapter.laws.DateAggregateDiffTest + TemporalExtremaDiffTest (all-empty yields no value)",
+          "note": "an all-empty NUMBER selection folds to 0; an all-empty DATE, TIME, or DATE_TIME selection yields no value",
           "probes": [
             {
+              "kind": "number",
               "dsl": "FieldFilled(CustomerName) And MaxValue(Items*/Count) == 0",
               "errorField": "CustomerName",
               "rows": [
@@ -2970,7 +3011,46 @@
                 "/Order/Items[2]/Count"
               ],
               "fires": true,
-              "note": "all Count values empty → MaxValue folds to 0 → == 0 fires"
+              "note": "all Count values empty → numeric MaxValue folds to 0 → == 0 fires"
+            },
+            {
+              "kind": "date",
+              "dsl": "FieldFilled(CustomerName) And MaxValue(OrderDate, DeliveryDate) >= \"01.01.1900\"",
+              "errorField": "CustomerName",
+              "empty": [
+                "/Order/OrderDate",
+                "/Order/DeliveryDate"
+              ],
+              "fires": false,
+              "note": "both dates empty → no value → comparison cannot fire"
+            },
+            {
+              "kind": "time",
+              "dsl": "FieldFilled(CustomerName) And MaxValue(PickupTime, CatalogTime) >= [CatalogTimeAnchor]",
+              "errorField": "CustomerName",
+              "given": {
+                "/Order/CatalogTimeAnchor": "00:00:00"
+              },
+              "empty": [
+                "/Order/PickupTime",
+                "/Order/CatalogTime"
+              ],
+              "fires": false,
+              "note": "both times empty → no value → comparison cannot fire"
+            },
+            {
+              "kind": "date-time",
+              "dsl": "FieldFilled(CustomerName) And MaxValue(ScheduledAt, CompletedAt) >= [CatalogDateTimeAnchor]",
+              "errorField": "CustomerName",
+              "given": {
+                "/Order/CatalogDateTimeAnchor": "1900-01-01T00:00:00"
+              },
+              "empty": [
+                "/Order/ScheduledAt",
+                "/Order/CompletedAt"
+              ],
+              "fires": false,
+              "note": "both date-times empty → no value → comparison cannot fire"
             }
           ]
         },
@@ -2978,7 +3058,7 @@
           {
             "operand": "0",
             "behavior": "SKIPPED",
-            "basis": "KERNEL-SEMANTICS §9 (ignores unspecified fields); IF51 / adapter.laws.MultiFieldAggregateDiffTest; the all-empty identity is KERNEL-FINDINGS §1 (= 0)",
+            "basis": "KERNEL-SEMANTICS §9 (ignores unspecified fields); IF51 / adapter.laws.MultiFieldAggregateDiffTest; all-empty identity is kind-specific",
             "probes": [
               {
                 "dsl": "FieldFilled(CustomerName) And MaxValue(Items*/Count) == -7",
@@ -3017,13 +3097,13 @@
       },
       "operands": [
         {
-          "type": "number-field-list"
+          "type": "sortable-field-list"
         }
       ],
-      "returns": "number",
+      "returns": "the operands' common NUMBER, DATE, TIME, or DATETIME kind",
       "meaning": "The smallest of the listed values; unspecified fields are ignored. Over number fields it returns a number; over a date repetition list it returns the earliest date.",
       "constraints": [
-        "same slot rules as MaxValue (sortable types — numbers or dates)"
+        "same slot rules as MaxValue: NUMBER, or mutually format-compatible DATE, TIME, or DATE_TIME fields"
       ],
       "gotchas": [
         {
@@ -3035,13 +3115,27 @@
         "dsl": "FieldFilled(CustomerName) And MinValue(Items*/Count) >= 1",
         "note": "fires only when every specified line count is at least 1"
       },
+      "correctives": [
+        {
+          "code": "MVK_DATEFORMATS_NOT_COMPATIBLE",
+          "whenOperands": [],
+          "fix": "use DATE, TIME, or DATE_TIME fields with mutually compatible declared formats",
+          "probe": { "dsl": "FieldFilled(OrderDate) And MinValue(OrderDate, ScheduledAt) > \"01.01.2020\"" }
+        }
+      ],
       "semantics": {
         "aggregateIdentity": {
-          "value": "ZERO",
-          "basis": "IF51 / KERNEL-FINDINGS §1 (an all-empty star folds to the fillable 0)",
-          "note": "an all-empty selection folds to 0, so MinValue(∅) == 0 fires",
+          "perKind": {
+            "number": "ZERO",
+            "date": "NO_VALUE",
+            "time": "NO_VALUE",
+            "date-time": "NO_VALUE"
+          },
+          "basis": "number: IF51 (all-empty folds to 0); date-like: IF58/IF204, adapter.laws.DateAggregateDiffTest + TemporalExtremaDiffTest (all-empty yields no value)",
+          "note": "an all-empty NUMBER selection folds to 0; an all-empty DATE, TIME, or DATE_TIME selection yields no value",
           "probes": [
             {
+              "kind": "number",
               "dsl": "FieldFilled(CustomerName) And MinValue(Items*/Count) == 0",
               "errorField": "CustomerName",
               "rows": [
@@ -3053,7 +3147,46 @@
                 "/Order/Items[2]/Count"
               ],
               "fires": true,
-              "note": "all Count values empty → MinValue folds to 0 → == 0 fires"
+              "note": "all Count values empty → numeric MinValue folds to 0 → == 0 fires"
+            },
+            {
+              "kind": "date",
+              "dsl": "FieldFilled(CustomerName) And MinValue(OrderDate, DeliveryDate) >= \"01.01.1900\"",
+              "errorField": "CustomerName",
+              "empty": [
+                "/Order/OrderDate",
+                "/Order/DeliveryDate"
+              ],
+              "fires": false,
+              "note": "both dates empty → no value → comparison cannot fire"
+            },
+            {
+              "kind": "time",
+              "dsl": "FieldFilled(CustomerName) And MinValue(PickupTime, CatalogTime) >= [CatalogTimeAnchor]",
+              "errorField": "CustomerName",
+              "given": {
+                "/Order/CatalogTimeAnchor": "00:00:00"
+              },
+              "empty": [
+                "/Order/PickupTime",
+                "/Order/CatalogTime"
+              ],
+              "fires": false,
+              "note": "both times empty → no value → comparison cannot fire"
+            },
+            {
+              "kind": "date-time",
+              "dsl": "FieldFilled(CustomerName) And MinValue(ScheduledAt, CompletedAt) >= [CatalogDateTimeAnchor]",
+              "errorField": "CustomerName",
+              "given": {
+                "/Order/CatalogDateTimeAnchor": "1900-01-01T00:00:00"
+              },
+              "empty": [
+                "/Order/ScheduledAt",
+                "/Order/CompletedAt"
+              ],
+              "fires": false,
+              "note": "both date-times empty → no value → comparison cannot fire"
             }
           ]
         },
@@ -3061,7 +3194,7 @@
           {
             "operand": "0",
             "behavior": "SKIPPED",
-            "basis": "KERNEL-SEMANTICS §9 (ignores unspecified fields); IF51 / adapter.laws.MultiFieldAggregateDiffTest; the all-empty identity is KERNEL-FINDINGS §1 (= 0)",
+            "basis": "KERNEL-SEMANTICS §9 (ignores unspecified fields); IF51 / adapter.laws.MultiFieldAggregateDiffTest; all-empty identity is kind-specific",
             "probes": [
               {
                 "dsl": "FieldFilled(CustomerName) And MinValue(Items*/Count) == 20",
@@ -3395,6 +3528,7 @@
           "note": "the per-kind split: an all-empty NUMBER Min folds to 0 (fires == 0); an all-empty DATE, TIME, or DATETIME Min yields NO value (a comparison cannot fire)",
           "probes": [
             {
+              "kind": "number",
               "dsl": "FieldFilled(CustomerName) And Min([Quantity], [BackorderQuantity]) == 0",
               "errorField": "CustomerName",
               "empty": [
@@ -3405,6 +3539,7 @@
               "note": "both empty numbers → Min(0, 0) = 0 → == 0 fires"
             },
             {
+              "kind": "date",
               "dsl": "FieldFilled(CustomerName) And Min([OrderDate], [DeliveryDate]) >= \"01.01.1900\"",
               "errorField": "CustomerName",
               "empty": [
@@ -3413,6 +3548,34 @@
               ],
               "fires": false,
               "note": "both empty dates → no value → >= any date cannot fire (a produced date would be >= 1900)"
+            },
+            {
+              "kind": "time",
+              "dsl": "FieldFilled(CustomerName) And Min([PickupTime], [CatalogTime]) >= [CatalogTimeAnchor]",
+              "errorField": "CustomerName",
+              "given": {
+                "/Order/CatalogTimeAnchor": "00:00:00"
+              },
+              "empty": [
+                "/Order/PickupTime",
+                "/Order/CatalogTime"
+              ],
+              "fires": false,
+              "note": "both empty times → no value → comparison cannot fire"
+            },
+            {
+              "kind": "date-time",
+              "dsl": "FieldFilled(CustomerName) And Min([ScheduledAt], [CompletedAt]) >= [CatalogDateTimeAnchor]",
+              "errorField": "CustomerName",
+              "given": {
+                "/Order/CatalogDateTimeAnchor": "1900-01-01T00:00:00"
+              },
+              "empty": [
+                "/Order/ScheduledAt",
+                "/Order/CompletedAt"
+              ],
+              "fires": false,
+              "note": "both empty date-times → no value → comparison cannot fire"
             }
           ]
         },
@@ -3516,6 +3679,7 @@
           "note": "the per-kind split: an all-empty NUMBER Max folds to 0 (fires == 0); an all-empty DATE, TIME, or DATETIME Max yields NO value (a comparison cannot fire)",
           "probes": [
             {
+              "kind": "number",
               "dsl": "FieldFilled(CustomerName) And Max([Quantity], [BackorderQuantity]) == 0",
               "errorField": "CustomerName",
               "empty": [
@@ -3526,6 +3690,7 @@
               "note": "both empty numbers → Max(0, 0) = 0 → == 0 fires"
             },
             {
+              "kind": "date",
               "dsl": "FieldFilled(CustomerName) And Max([OrderDate], [DeliveryDate]) >= \"01.01.1900\"",
               "errorField": "CustomerName",
               "empty": [
@@ -3534,6 +3699,34 @@
               ],
               "fires": false,
               "note": "both empty dates → no value → >= any date cannot fire"
+            },
+            {
+              "kind": "time",
+              "dsl": "FieldFilled(CustomerName) And Max([PickupTime], [CatalogTime]) >= [CatalogTimeAnchor]",
+              "errorField": "CustomerName",
+              "given": {
+                "/Order/CatalogTimeAnchor": "00:00:00"
+              },
+              "empty": [
+                "/Order/PickupTime",
+                "/Order/CatalogTime"
+              ],
+              "fires": false,
+              "note": "both empty times → no value → comparison cannot fire"
+            },
+            {
+              "kind": "date-time",
+              "dsl": "FieldFilled(CustomerName) And Max([ScheduledAt], [CompletedAt]) >= [CatalogDateTimeAnchor]",
+              "errorField": "CustomerName",
+              "given": {
+                "/Order/CatalogDateTimeAnchor": "1900-01-01T00:00:00"
+              },
+              "empty": [
+                "/Order/ScheduledAt",
+                "/Order/CompletedAt"
+              ],
+              "fires": false,
+              "note": "both empty date-times → no value → comparison cannot fire"
             }
           ]
         },
@@ -3739,7 +3932,7 @@
       "invalidExample": {
         "dsl": "FieldFilled(CustomerName) And NumberOfDifferentValues(CustomerName, Quantity) < 2",
         "error": "MVK_STRING_ENUM_AND_NON_STRING_ENUM",
-        "fix": "list only same-type fields"
+        "fix": "use one admitted homogeneous class: STRING and ENUM may mix, all NUMBER operands may mix, or use mutually format-compatible date-like fields"
       },
       "correctives": [
         {
@@ -3813,7 +4006,7 @@
         }
       ],
       "returns": "number",
-      "meaning": "The count of the listed fields whose value equals a given constant — NumberOfValueInFields(value In f1, f2, …). The constant may be a boolean, number, string, or date.",
+      "meaning": "The count of the listed fields whose value equals a given boolean, number, or string constant — NumberOfValueInFields(value In f1, f2, …).",
       "constraints": [
         "at least two fields (or at least one group), else MVK_PARAMSIZE_INVALIDN",
         "the constant follows the 'In' grammar literal; the fields are bare entity refs",
@@ -3821,7 +4014,7 @@
       ],
       "gotchas": [
         {
-          "text": "the operand shape is <value> In <fields>, where <fields> is EITHER a plain field list of two or more fields — NumberOfValueInFields(0 In Quantity, BackorderQuantity) — OR one flattened repetition list over a repeatable group (a starred group then a field) — NumberOfValueInFields(0 In Items*/Count); the constant may be a boolean, number, string, or date",
+          "text": "the operand shape is <value> In <fields>, where <fields> is EITHER a plain field list of two or more fields — NumberOfValueInFields(0 In Quantity, BackorderQuantity) — OR one flattened repetition list over a repeatable group (a starred group then a field) — NumberOfValueInFields(0 In Items*/Count); the constant may be a boolean, number, or string",
           "kind": "AUTHORING"
         },
         {
@@ -3884,7 +4077,7 @@
       "meaning": "Filters a *-repetition list, keeping only candidates whose complete condition is known true, before an aggregate or quantifier consumes selected cells.",
       "constraints": [
         "the filtered field must carry an asterisk (MVK_WILDCARDS_REQUIRED) — only flattened lists can be filtered",
-        "the filter condition may not contain CustomCondition, RepetitionNotUnique, a semantic index, a parallel iteration, or a nested Having (MVK_DISALLOWED_CONSTRUCT_IN_FILTER_CONDITION)"
+        "the filter condition may not contain CustomCondition, RepetitionNotUnique, or a nested Having (MVK_DISALLOWED_CONSTRUCT_IN_FILTER_CONDITION); semantic indexing is rejected with MVK_SEMANTIC_INDEX_NOT_ALLOWED, and parallel iteration is also forbidden"
       ],
       "gotchas": [
         {
@@ -4003,7 +4196,7 @@
       "returns": "boolean",
       "meaning": "Delegates the fire/don't-fire decision to host code the consuming system registers under the given name — the escape hatch when the language cannot express a check.",
       "constraints": [
-        "the name is a bare identifier (letter, then letters/digits/underscores), no operands",
+        "the name is one A12 name token made from letters (including Ä/Ü/Ö/ä/ü/ö/ß), digits, underscore, or colon; it may start with a digit or underscore, a reserved-token name is single-quoted, and it takes no operands",
         "forbidden inside a Having filter (MVK_DISALLOWED_CONSTRUCT_IN_FILTER_CONDITION) and in computation rules",
         "does not satisfy the error-field rule on its own — pair it with a field reference"
       ],
@@ -4064,11 +4257,11 @@
           "kind": "AUTHORING"
         },
         {
-          "text": "the indexed field may be ANY kind (number, string, enum, date, time, date-time) — not only a number; the comparison then uses that kind's operators (ordering for number/date, == / != for string/enum). The key may be a quoted constant or a bare field reference.",
+          "text": "the typed value projection covers number, string, custom, enum, date, date-fragment, time, and date-time fields — not only numbers; the comparison then uses that result family's operators. The key may be a quoted constant or a bare field reference.",
           "kind": "AUTHORING"
         },
         {
-          "text": "when no repetition carries the index value the comparison is not evaluated (no fire) — it does not fall back to the empty-number 0",
+          "text": "for a number field, a clean no-match reads as the fillable empty-number 0, so an == 0 comparison fires",
           "kind": "SURPRISE"
         }
       ],
@@ -4099,12 +4292,6 @@
       "constraints": [
         "compares only to dates (a date field, another date expression) — not to numbers"
       ],
-      "gotchas": [
-        {
-          "text": "Now (the date-time sibling) is discouraged with == and forbidden in computations",
-          "kind": "AUTHORING"
-        }
-      ],
       "validExample": {
         "dsl": "FieldFilled(OrderDate) And [OrderDate] >= Today",
         "note": "fires when the order date is today or in the future"
@@ -4112,7 +4299,7 @@
       "invalidExample": {
         "dsl": "FieldFilled(Quantity) And [Quantity] >= Today",
         "error": "MVK_INVALID_COMPARE_TO_DATE",
-        "fix": "Today compares to dates — compare a date field, not a number"
+        "fix": "Today compares to a full-precision DATE or resolved date expression, not a number or partially-known date"
       },
       "sinceKernel": "30.8.x"
     },
@@ -4211,13 +4398,13 @@
         }
       ],
       "returns": "number",
-      "meaning": "The largest number of whole months that can be added to the first date without passing the second.",
+      "meaning": "The signed whole-month difference from the first date to the second; any fractional month is discarded toward zero.",
       "constraints": [
         "both operands are dates"
       ],
       "gotchas": [
         {
-          "text": "a floor, not a calendar count (KERNEL-SEMANTICS §6)",
+          "text": "a complete-period count truncated toward zero, not a calendar-field subtraction (KERNEL-SEMANTICS §6)",
           "kind": "SURPRISE"
         }
       ],
@@ -4286,13 +4473,13 @@
         }
       ],
       "returns": "number",
-      "meaning": "The largest number of whole years between the two dates.",
+      "meaning": "The signed whole-year difference from the first date to the second; any fractional year is discarded toward zero.",
       "constraints": [
         "both operands are dates"
       ],
       "gotchas": [
         {
-          "text": "a floor; a naive age check around leap days can be off (Add* vs Difference* disagree across leap years)",
+          "text": "a complete-period count truncated toward zero; a naive age check around leap days can be off (Add* vs Difference* disagree across leap years)",
           "kind": "SURPRISE"
         }
       ],
@@ -4367,7 +4554,7 @@
       ],
       "gotchas": [
         {
-          "text": "a floor, not a rounded count; the sign follows operand order (DifferenceIn*(a,b) = b - a)",
+          "text": "fractional hours are discarded toward zero, not rounded; the sign follows operand order (DifferenceIn*(a,b) = b - a)",
           "kind": "SURPRISE"
         }
       ],
@@ -4442,7 +4629,7 @@
       ],
       "gotchas": [
         {
-          "text": "a floor, not a rounded count",
+          "text": "fractional minutes are discarded toward zero, not rounded",
           "kind": "SURPRISE"
         }
       ],
@@ -4517,7 +4704,7 @@
       ],
       "gotchas": [
         {
-          "text": "a floor, not a rounded count",
+          "text": "fractional seconds are discarded toward zero, not rounded",
           "kind": "SURPRISE"
         }
       ],
@@ -4582,13 +4769,13 @@
           "type": "date-or-date-time"
         },
         {
-          "type": "integer"
+          "type": "number"
         }
       ],
       "returns": "same-temporal-family",
-      "meaning": "The date or date-time shifted forward by the given number of whole wall-calendar days.",
+      "meaning": "The date or date-time shifted by the given signed number of whole wall-calendar days.",
       "constraints": [
-        "the first operand is a date or date-time (bare entity ref); the second an integer amount"
+        "the first operand is a date or date-time (bare entity ref); the second a numeric amount, truncated toward zero and narrowed to a signed 32-bit integer"
       ],
       "gotchas": [
         {
@@ -4596,11 +4783,11 @@
           "kind": "SURPRISE"
         },
         {
-          "text": "over a date-time source AddDays shifts the day and preserves the time of day, returning a date-time; over a date it returns a date. AddYears/AddMonths stay date-only, while DifferenceInDays accepts date-times and mixed date/date-time pairs",
+          "text": "over a date-time source AddDays shifts the day and preserves the time of day, returning a date-time; over a date it returns a date",
           "kind": "AUTHORING"
         },
         {
-          "text": "on a date FRAGMENT, Add* is gated by the format's granularity — AddDays needs a day, AddMonths a month, AddYears a year, else MVK_WRONG_DATE_FORMAT_FOR_OP",
+          "text": "on a date fragment, AddDays requires a format carrying a day; a coarser fragment is rejected with MVK_WRONG_DATE_FORMAT_FOR_OP",
           "kind": "SURPRISE"
         }
       ],
@@ -4635,17 +4822,17 @@
           "type": "date"
         },
         {
-          "type": "integer"
+          "type": "number"
         }
       ],
       "returns": "date",
-      "meaning": "The date shifted forward by the given number of months (preserves the day number).",
+      "meaning": "The date shifted by the given signed number of months, clamping an invalid landing day to the target month's last day.",
       "constraints": [
-        "the first operand is a date; the second an integer amount"
+        "the first operand is a date; the second a numeric amount, truncated toward zero and narrowed to a signed 32-bit integer"
       ],
       "gotchas": [
         {
-          "text": "AddMonths preserves the day; AddYears maps end-of-February — they disagree across a leap-year boundary (§6)",
+          "text": "AddMonths is date-only, requires a format carrying a month, and clamps month-end overflow; its behavior differs from AddYears across a leap-year boundary (§6)",
           "kind": "SURPRISE"
         }
       ],
@@ -4670,17 +4857,17 @@
           "type": "date"
         },
         {
-          "type": "integer"
+          "type": "number"
         }
       ],
       "returns": "date",
-      "meaning": "The date shifted forward by the given number of years (maps end-of-February to end-of-February).",
+      "meaning": "The date shifted by the given signed number of years (maps end-of-February to end-of-February).",
       "constraints": [
-        "the first operand is a date; the second an integer amount"
+        "the first operand is a date; the second a numeric amount, truncated toward zero and narrowed to a signed 32-bit integer"
       ],
       "gotchas": [
         {
-          "text": "differs from AddMonths across leap years (§6)",
+          "text": "AddYears is date-only, requires a format carrying a year, and maps end-of-February to end-of-February; this differs from AddMonths across leap years (§6)",
           "kind": "SURPRISE"
         }
       ],
@@ -4705,13 +4892,13 @@
           "type": "date-time"
         },
         {
-          "type": "integer"
+          "type": "number"
         }
       ],
       "returns": "date-time",
       "meaning": "The date-time shifted by the given number of hours (may roll over the date; the amount may be negative).",
       "constraints": [
-        "the first operand is a date-time (bare entity ref); the second an integer amount"
+        "the first operand is a date-time value; the second a numeric amount, truncated toward zero and narrowed to a signed 32-bit integer"
       ],
       "gotchas": [
         {
@@ -4750,13 +4937,13 @@
           "type": "date-time"
         },
         {
-          "type": "integer"
+          "type": "number"
         }
       ],
       "returns": "date-time",
       "meaning": "The date-time shifted by the given number of minutes (amount may be negative).",
       "constraints": [
-        "the first operand is a date-time; the second an integer amount"
+        "the first operand is a date-time; the second a numeric amount, truncated toward zero and narrowed to a signed 32-bit integer"
       ],
       "gotchas": [
         {
@@ -4785,13 +4972,13 @@
           "type": "date-time"
         },
         {
-          "type": "integer"
+          "type": "number"
         }
       ],
       "returns": "date-time",
       "meaning": "The date-time shifted by the given number of seconds (amount may be negative).",
       "constraints": [
-        "the first operand is a date-time; the second an integer amount"
+        "the first operand is a date-time; the second a numeric amount, truncated toward zero and narrowed to a signed 32-bit integer"
       ],
       "gotchas": [
         {
@@ -4952,7 +5139,7 @@
       ],
       "gotchas": [
         {
-          "text": "rejected on a partially-known date (a DateType with a date precision other than FULL, e.g. DAY_OPTIONAL) — MVK_INVALID_DATE_TYPE; resolve it to a concrete date with ValueAsDate first. (MonthFromDate/YearFromDate/QuarterFromDate ARE permitted on a DAY_OPTIONAL date.)",
+          "text": "rejected on a partially-known date (a DateType with a date precision other than FULL, e.g. DAY_OPTIONAL) — MVK_INVALID_DATE_TYPE; use a full DATE or DATE_TIME field or expression, because ValueAsDate cannot be nested directly in DayFromDate. (MonthFromDate/YearFromDate/QuarterFromDate ARE permitted on a DAY_OPTIONAL date.)",
           "kind": "SURPRISE"
         }
       ],
@@ -4964,7 +5151,7 @@
         {
           "code": "MVK_INVALID_DATE_TYPE",
           "whenOperands": [],
-          "fix": "DayFromDate needs a complete date; resolve a partially-known date with ValueAsDate first",
+          "fix": "use a full-precision DATE or DATE_TIME field or expression, such as OrderDate; ValueAsDate cannot be nested directly in DayFromDate",
           "probe": {
             "dsl": "FieldFilled(ApproxDate) And DayFromDate(ApproxDate) > 1"
           }
@@ -6038,19 +6225,19 @@
       },
       "operands": [
         {
-          "type": "number"
+          "type": "temporal-component"
         },
         {
-          "type": "number"
+          "type": "temporal-component"
         },
         {
-          "type": "number"
+          "type": "temporal-component"
         }
       ],
       "returns": "date",
-      "meaning": "Constructs a date from day, month, and year (optionally century + 2-digit decade) operands — a comparable date. Components render as bare entity refs.",
+      "meaning": "Constructs a comparable date from day, month, and year (optionally century + 2-digit decade) temporal components. A component may be a bounded number field/expression or a quoted digit string; field-backed components render as bare entity refs and literal components remain quoted.",
       "constraints": [
-        "the operands must be bounded-integer / digit-patterned number fields (the kernel rejects a plain scale-0 number: MVK_WRONG_DATE_FORMAT_FOR_OP)"
+        "each operand is a temporal component: a bounded-integer / digit-patterned number field or expression, or a quoted digit string; the kernel rejects a plain scale-0 number field (MVK_WRONG_DATE_FORMAT_FOR_OP)"
       ],
       "gotchas": [
         {
@@ -6091,7 +6278,7 @@
       "returns": "time",
       "meaning": "Constructs a comparable time-of-day from a zero-to-three-component hour/minute/second prefix; omitted trailing components default to zero.",
       "constraints": [
-        "components are a prefix in hour, minute, second order and are bare number fields or quoted constants (Time(), Time(\"10\"), Time(\"10\", \"30\"), Time(\"10\", \"30\", \"50\")); a bracketed value [H] is rejected"
+        "components are a prefix in hour, minute, second order and are quoted constants or declaration-compatible bare number/string fields (Time(), Time(\"10\"), Time(Hour, \"30\")); a bracketed value [Hour] is rejected, and field declarations must satisfy the component position's width/range or digit-pattern gate"
       ],
       "validExample": {
         "dsl": "FieldFilled(PickupTime) And [PickupTime] == Time(\"10\", \"30\", \"50\")",
@@ -6145,10 +6332,10 @@
         "de": "Jetzt"
       },
       "returns": "date-time",
-      "meaning": "The current date-time — the date-time sibling of Today. Compares only to a date-time field (a field whose format carries a time component); comparing it to a plain date field is rejected, because the kernel requires the two operands' date formats to be consistent (a date format has no time, a date-time format does).",
+      "meaning": "The current date-time — the date-time sibling of Today. Ordering admits both date and date-time operands on their common timeline; equality requires another date-time operand.",
       "constraints": [
-        "the other operand must be a date-time (format with a time component) — comparing Now to a plain date field raises MVK_INVALID_COMPARE_TO_DATE",
-        "discouraged with == (a moving target); forbidden in computations"
+        "== and != require the other operand to carry a time component; a plain-date equality is rejected with MVK_INVALID_COMPARE_TO_DATE",
+        "discouraged with == (a moving target); it is legal as a computation result but usually self-invalidates because the implicit validation compares against a later instant"
       ],
       "validExample": {
         "dsl": "FieldFilled(ScheduledAt) And [ScheduledAt] > Now",
@@ -6157,7 +6344,7 @@
       "invalidExample": {
         "dsl": "FieldFilled(Quantity) And [Quantity] >= Now",
         "error": "MVK_INVALID_COMPARE_TO_DATE",
-        "fix": "Now is a date-time — compare it to a date-time field (e.g. ScheduledAt), not a number (and not a plain date field, which the kernel rejects at code generation for format inconsistency)"
+        "fix": "Now is temporal — compare it to a date or date-time field, not a number; use a date-time field when testing equality"
       },
       "sinceKernel": "30.8.x"
     },
@@ -6172,8 +6359,8 @@
         "en": "BaseYear",
         "de": "Referenzjahr"
       },
-      "returns": "date",
-      "meaning": "The model's configured base year, as a point-in-time. Polymorphic: a date (the base-year start) against a date/date-time field, or the year number against a number field.",
+      "returns": "number-or-date",
+      "meaning": "The model's configured base year, as a point-in-time. Polymorphic: the base-year start against a date field, or the year number against a number field. Ordering also admits a date-time field on the common timeline; date-time equality is rejected.",
       "constraints": [
         "only valid in a model that declares a base year (modelInfo.baseYear), else MVK_NO_BASE_YEAR"
       ],
@@ -6204,7 +6391,7 @@
       "returns": "boolean",
       "meaning": "True iff a constructed date is real AND all its referenced fields are specified (Date(31, 2, 2024) is not real; an unspecified part also makes it not Valid). This is the date-construct overload (IDateValidityCondition); the custom-field-type overload Valid(field, \"Type\") is the separate ValidType entry.",
       "constraints": [
-        "the operand is a Date(...) construction (or a date)"
+        "the operand is a Date(...) construction"
       ],
       "gotchas": [
         {
@@ -6239,7 +6426,7 @@
       "returns": "boolean",
       "meaning": "True iff a constructed date is not a real calendar date OR any referenced field is unspecified. Its truth projection is the strong-Kleene complement of Valid; its OMISSION/VALUE verdict needs the construction reason. The date-construct overload, distinct from the custom-field-type Invalid (see InvalidType).",
       "constraints": [
-        "the operand is a Date(...) construction (or a date)"
+        "the operand is a Date(...) construction"
       ],
       "gotchas": [
         {
@@ -6268,20 +6455,20 @@
       },
       "operands": [
         {
-          "type": "string"
+          "type": "string-or-enumeration-field"
         },
         {
           "type": "string"
         }
       ],
       "returns": "boolean",
-      "meaning": "True iff the field's value is a valid instance of the named predefined custom field type (e.g. \"IBAN\", \"Steuernummer\"). The custom-field-type overload of Valid — distinct from the date-construct Valid (separate catalog id). Operand 1 is a STRING or ENUMERATION field; operand 2 is the type name as a string literal.",
+      "meaning": "True iff the field's value is a valid instance of the named predefined custom field type (e.g. \"IBAN\", \"Steuernummer\"). The custom-field-type overload of Valid — distinct from the date-construct Valid (separate catalog id). Operand 1 is a STRING, ENUMERATION, or EXTENSIBLE-ENUMERATION field; operand 2 is the type name as a string literal.",
       "constraints": [
         "operand 1 is a STRING, ENUMERATION, or EXTENSIBLE-ENUMERATION field (kernel message MVK_NO_STRING_OR_ENUM_OR_EXT_ENUM); operand 2 is a string-literal type name"
       ],
       "gotchas": [
         {
-          "text": "the type name is NOT validated when the model is checked — checkConsistency accepts any string (even a misspelled or unregistered type); a wrong type name only fails at runtime evaluation, because the predefined types are a runtime client-SPI (IPredefinedType), not a model-time registry",
+      "text": "the type name is NOT validated when the model is checked — checkConsistency accepts any string (even a misspelled or unregistered type); when the runtime client-SPI (IPredefinedType) supplies no validator for that name, both Valid and Invalid fire, so the two polarities are not complements",
           "kind": "SURPRISE"
         }
       ],
@@ -6306,7 +6493,7 @@
       },
       "operands": [
         {
-          "type": "string"
+          "type": "string-or-enumeration-field"
         },
         {
           "type": "string"
@@ -6386,10 +6573,16 @@
     {
       "id": "FirstFilledValue",
       "dslEntry": [
+        "firstFilledBoolean",
+        "firstFilledCustom",
         "firstFilledDate",
+        "firstFilledDateFragment",
+        "firstFilledDateRange",
+        "firstFilledDateTime",
         "firstFilledEnum",
         "firstFilledNumber",
-        "firstFilledString"
+        "firstFilledString",
+        "firstFilledTime"
       ],
       "kind": "function",
       "keywords": {
@@ -6398,11 +6591,11 @@
       },
       "operands": [
         {
-          "type": "field-list-or-fields"
+          "type": "entity-spec-list"
         }
       ],
-      "returns": "the operands' common element type",
-      "meaning": "The first specified value across the operands in authored order; a repetition-list operand is scanned in row order and unspecified cells are skipped (a feldListenOp sibling of Sum).",
+      "returns": "the operands' common owner value family",
+      "meaning": "The first specified value across owner entity selectors in authored order. Selectors may be direct or wildcard fields, enum categories, semantic-indexed fields, or plain, wildcard, or semantic-indexed groups; groups and categories expand in model order, repetition lists scan in row order, and unspecified cells are skipped (a feldListenOp sibling of Sum).",
       "gotchas": [
         {
           "text": "each operand's Having filter is encountered immediately before that operand is scanned: an encountered filter makes a fired comparison OMISSION, but a filter on a later operand is invisible once an earlier operand supplied the first value",
@@ -6418,7 +6611,7 @@
         }
       ],
       "constraints": [
-        "one or more type-homogeneous field/list operands; the typed multi-operand factories start with a repetition list"
+        "at least two direct selectors, or one repetition-list/group selector; all expanded values must share one owner family (STRING/CUSTOM/ENUMERATION or DATE/DATE_FRAGMENT are compatible families); Confirm fields are rejected with MVK_NO_BOOLY_ALLOWED"
       ],
       "validExample": {
         "dsl": "FieldFilled(CustomerName) And FirstFilledValue(Items*/Count) > 10",
@@ -6428,12 +6621,21 @@
         "aggregateIdentity": {
           "perKind": {
             "number": "ZERO",
-            "date": "NO_VALUE"
+            "boolean": "NO_VALUE",
+            "custom": "NO_VALUE",
+            "string": "NO_VALUE",
+            "enum": "NO_VALUE",
+            "date": "NO_VALUE",
+            "date-fragment": "NO_VALUE",
+            "time": "NO_VALUE",
+            "date-time": "NO_VALUE",
+            "date-range": "NO_VALUE"
           },
-          "basis": "number: IF80 (NumberCombiner fillable 0 on an empty selection); date: IF83 / adapter.laws.FirstFilledValueKindDiffTest (NOT-GIVEN date → the comparison does not fire)",
-          "note": "the per-kind split (IF83, the kernel's FirstValueCombiner family): a number empty selection folds to 0 (fires == 0); a date empty selection is NOT-GIVEN (a comparison cannot fire, a computation CLEARS)",
+        "basis": "adapter.laws.FirstFilledValueKindDiffTest + FirstFilledValueAdditionalKindDiffTest: NUMBER folds to 0; BOOLEAN, CUSTOM, STRING, ENUM, DATE, DATE_FRAGMENT, TIME, DATE_TIME, and DATE_RANGE produce their owner-kind NOT-GIVEN value and clear a computation",
+          "note": "the per-kind split in the kernel's FirstValueCombiner family: an empty number selection folds to 0 (fires == 0); every other admitted kind is NOT-GIVEN (a comparison cannot fire, a computation CLEARS)",
           "probes": [
             {
+              "kind": "number",
               "dsl": "FieldFilled(CustomerName) And FirstFilledValue(Items*/Count) == 0",
               "errorField": "CustomerName",
               "rows": [
@@ -6448,6 +6650,7 @@
               "note": "all Count values empty → the fillable 0 → == 0 fires"
             },
             {
+              "kind": "date",
               "dsl": "FieldFilled(CustomerName) And FirstFilledValue(OrderDate, DeliveryDate) >= \"01.01.1900\"",
               "errorField": "CustomerName",
               "empty": [
@@ -6456,6 +6659,106 @@
               ],
               "fires": false,
               "note": "both empty dates → NOT-GIVEN → >= any date cannot fire"
+            },
+            {
+              "kind": "boolean",
+              "dsl": "FieldFilled(CustomerName) And FirstFilledValue(ExpressShipping, CatalogBoolean) == True",
+              "errorField": "CustomerName",
+              "empty": [
+                "/Order/ExpressShipping",
+                "/Order/CatalogBoolean"
+              ],
+              "fires": false,
+              "note": "both booleans empty → NOT-GIVEN → comparison cannot fire"
+            },
+            {
+              "kind": "custom",
+              "dsl": "FieldFilled(CustomerName) And FirstFilledValue(CatalogCustomA, CatalogCustomB) == \"X\"",
+              "errorField": "CustomerName",
+              "empty": [
+                "/Order/CatalogCustomA",
+                "/Order/CatalogCustomB"
+              ],
+              "fires": false,
+              "note": "both custom values empty → NOT-GIVEN → comparison cannot fire"
+            },
+            {
+              "kind": "string",
+              "dsl": "FieldFilled(CustomerName) And FirstFilledValue(ProductCode, ShippingAddress/Street) == \"X\"",
+              "errorField": "CustomerName",
+              "empty": [
+                "/Order/ProductCode",
+                "/Order/ShippingAddress/Street"
+              ],
+              "fires": false,
+              "note": "both strings empty → NOT-GIVEN → comparison cannot fire"
+            },
+            {
+              "kind": "enum",
+              "dsl": "FieldFilled(CustomerName) And FirstFilledValue(Priority, ProductCode) == \"STANDARD\"",
+              "errorField": "CustomerName",
+              "empty": [
+                "/Order/Priority",
+                "/Order/ProductCode"
+              ],
+              "fires": false,
+              "note": "both enumeration-family values empty → NOT-GIVEN → comparison cannot fire"
+            },
+            {
+              "kind": "date-fragment",
+              "dsl": "FieldFilled(CustomerName) And FirstFilledValue(CatalogFragmentA, CatalogFragmentB) == [CatalogFragmentAnchor]",
+              "errorField": "CustomerName",
+              "given": {
+                "/Order/CatalogFragmentAnchor": "01"
+              },
+              "empty": [
+                "/Order/CatalogFragmentA",
+                "/Order/CatalogFragmentB"
+              ],
+              "fires": false,
+              "note": "both date fragments empty → NOT-GIVEN → comparison cannot fire"
+            },
+            {
+              "kind": "time",
+              "dsl": "FieldFilled(CustomerName) And FirstFilledValue(PickupTime, CatalogTime) >= [CatalogTimeAnchor]",
+              "errorField": "CustomerName",
+              "given": {
+                "/Order/CatalogTimeAnchor": "00:00:00"
+              },
+              "empty": [
+                "/Order/PickupTime",
+                "/Order/CatalogTime"
+              ],
+              "fires": false,
+              "note": "both times empty → NOT-GIVEN → comparison cannot fire"
+            },
+            {
+              "kind": "date-time",
+              "dsl": "FieldFilled(CustomerName) And FirstFilledValue(ScheduledAt, CompletedAt) >= [CatalogDateTimeAnchor]",
+              "errorField": "CustomerName",
+              "given": {
+                "/Order/CatalogDateTimeAnchor": "1900-01-01T00:00:00"
+              },
+              "empty": [
+                "/Order/ScheduledAt",
+                "/Order/CompletedAt"
+              ],
+              "fires": false,
+              "note": "both date-times empty → NOT-GIVEN → comparison cannot fire"
+            },
+            {
+              "kind": "date-range",
+              "dsl": "FieldFilled(CustomerName) And FirstFilledValue(CoverageWindow, CatalogCoverage) == [CatalogCoverageAnchor]",
+              "errorField": "CustomerName",
+              "given": {
+                "/Order/CatalogCoverageAnchor": "01.01.2020-02.01.2020"
+              },
+              "empty": [
+                "/Order/CoverageWindow",
+                "/Order/CatalogCoverage"
+              ],
+              "fires": false,
+              "note": "both date ranges empty → NOT-GIVEN → comparison cannot fire"
             }
           ]
         }
@@ -6481,16 +6784,20 @@
         }
       ],
       "returns": "date-range",
-      "meaning": "Constructs a date range from a start and an end date. Computation-only: it assigns a DATE_RANGE field in a computation operation; it has no condition form (the overlap predicates take date-range FIELDS, and a constructed range cannot be nested or compared). Both operands must be format-compatible date fields.",
+      "meaning": "Constructs a DATE_RANGE value from start and end date entity references. It may be compared with == or != to a DATE_RANGE field in either direction or to another construction, or assigned to a DATE_RANGE field by a computation; ordering and nested use in overlap predicates are rejected.",
       "gotchas": [
         {
-          "text": "operands are BARE entity refs: write DateRange(OrderDate, DeliveryDate), never DateRange([OrderDate], [DeliveryDate]). Brackets mark a field used as a comparison value; a function's arguments are not that, and bracketing them is MVK_UNEXPECTED_TOKEN.",
+          "text": "operands are BARE entity refs, including semantic indexes: write DateRange(OrderDate, DeliveryDate) or DateRange(Items/Date For \"sku1\", Items/Date For SelectedSku), never bracket either operand. Brackets mark a comparison value; a function's arguments are not that, and bracketing them is MVK_UNEXPECTED_TOKEN.",
           "kind": "AUTHORING"
         }
       ],
       "constraints": [
-        "computation-only — the operation of a computation that assigns a DATE_RANGE field; both operands are date fields with identical date format"
+        "each operand is a bare full DATE or DATE_FRAGMENT entity reference, and both formats contain the same date components and no time component; DATE and DATE_FRAGMENT may be mixed, lexical spellings may differ, and a computation target must be DATE_RANGE"
       ],
+      "validExample": {
+        "dsl": "DateRange(OrderDate, DeliveryDate) == [CoverageWindow]",
+        "note": "the constructed interval equals the stored coverage window"
+      },
       "computationExample": {
         "operation": "DateRange(OrderDate, DeliveryDate)",
         "computedField": "/Order/CoverageWindow",

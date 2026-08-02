@@ -23,7 +23,17 @@ public final class DslRenderer {
     private final OperatorCatalog catalog;
     private final ConditionLanguage language;
     private final String baseGroup;
-    private final java.util.Set<String> keywords;
+    private static final java.util.Set<String> NON_OPERATOR_RESERVED_NAMES = java.util.Set.of(
+            "AND", "and", "OR", "or", "UND", "und", "ODER", "oder",
+            "IN", "In", "in", "TO", "To", "to", "ZU", "Zu", "zu",
+            "RuleGroup", "RegelKontext", "SuppressWarning", "UnterdrueckeWarnung",
+            "VordruckAngegeben", "VordruckNichtAngegeben", "MindestensEinVordruckAngegeben",
+            "KeinVordruckAngegeben", "ValueNotConsistent", "WertNichtKonsistent",
+            "AktuelleVordruckNummer", "AnzahlAngegebeneUsb", "AnzahlAngegebenerVordrucke",
+            "MaximalAngegebenerZeilenindex", "UsbNichtFortlaufend", "VordruckNichtFortlaufend",
+            "ZeileNichtEindeutig", "ZeilenLueckenlos", "ZeilenNichtAufsteigend");
+
+    private final java.util.Set<String> reservedNames;
 
     public DslRenderer() {
         this(ConditionLanguage.EN);
@@ -46,8 +56,10 @@ public final class DslRenderer {
         this.catalog = catalog;
         this.language = language;
         this.baseGroup = baseGroup;
-        this.keywords = catalog.entries().stream()
-                .flatMap(e -> java.util.stream.Stream.of(e.keywords().en(), e.keywords().de()))
+        this.reservedNames = java.util.stream.Stream.concat(
+                catalog.entries().stream()
+                        .flatMap(e -> java.util.stream.Stream.of(e.keywords().en(), e.keywords().de())),
+                NON_OPERATOR_RESERVED_NAMES.stream())
                 .filter(k -> k != null && !k.isBlank())
                 .collect(java.util.stream.Collectors.toUnmodifiableSet());
     }
@@ -66,7 +78,8 @@ public final class DslRenderer {
      * Single-quote any path segment that collides with a DSL keyword (fork #9 / F3a) — the kernel
      * rejects an unquoted keyword-named entity with {@code MVK_UNEXPECTED_TOKEN} (KERNEL-FINDINGS
      * §10, paths), and {@code '<name>'} is the grammar's escape (NameOhnePunktMitQuotes). Detection uses
-     * the catalog's operator keywords; the full lexer keyword set rides the N3 parity anchor.
+     * the catalog's operator keywords plus the non-operator lexer terminals. The reverse parity and
+     * renderer behavior guards derive completeness from the live kernel lexer.
      */
     private String quoteKeywordSegments(String renderedPath) {
         String[] segments = renderedPath.split("/", -1);
@@ -90,7 +103,7 @@ public final class DslRenderer {
             suffix = "*";
             name = name.substring(0, name.length() - 1);
         }
-        return keywords.contains(name) ? "'" + name + "'" + suffix : segment;
+        return reservedNames.contains(name) ? "'" + name + "'" + suffix : segment;
     }
 
     private static String relativize(String base, String absolute) {
@@ -203,7 +216,7 @@ public final class DslRenderer {
             case ValueListCondition v -> keyword(v.operatorId()) + "(" + path(v.field().path()) + ", "
                     + v.values().stream().map(this::render).collect(java.util.stream.Collectors.joining(", "))
                     + ")";
-            case CustomConditionRef c -> keyword(c.operatorId()) + " " + c.name();
+            case CustomConditionRef c -> keyword(c.operatorId()) + " " + quoteSegment(c.name());
             case RepetitionNotUniqueCondition r -> keyword(r.operatorId()) + "("
                     + r.keys().stream().map(k -> path(k.path())).collect(java.util.stream.Collectors.joining(", "))
                     + r.scope().map(s -> " " + keyword("FromScope") + " " + path(s.path())).orElse("")
@@ -397,7 +410,7 @@ public final class DslRenderer {
                     .collect(java.util.stream.Collectors.joining(" + "));
             case DateListAggregate a -> keyword(a.operatorId()) + "(" + operand(a.scope()) + ")";
             case FirstFilledValue a -> keyword(a.operatorId()) + "("
-                    + a.operands().stream().map(this::operand)
+                    + a.operands().stream().map(this::firstFilledOperand)
                             .collect(java.util.stream.Collectors.joining(", "))
                     + ")";
             case FieldValueAsString c -> keyword(c.operatorId()) + "(" + path(c.field().path()) + ")";
@@ -461,7 +474,10 @@ public final class DslRenderer {
 
     private String renderArg(Calculation value) {
         if (value instanceof FieldValue v) {
-            return path(v.field().path());
+            return (v.outer() ? "$" : "") + path(v.field().path());
+        }
+        if (value instanceof IndexedFieldValue indexed) {
+            return indexBody(indexed);
         }
         return render(value);
     }
@@ -494,9 +510,41 @@ public final class DslRenderer {
     private String indexBody(IndexedFieldValue index) {
         return switch (index) {
             case SemanticIndexValue v ->   // literal key: a quoted constant
-                    path(v.field().path()) + " " + keyword(v.operatorId()) + " " + quote(v.indexValue());
+                    (v.field().correlated() ? "$" : "") + path(v.field().path()) + " "
+                            + keyword(v.operatorId()) + " " + quote(v.indexValue());
             case SemanticIndexFieldValue v ->   // field key: a bare field path, not a quoted literal
-                    path(v.field().path()) + " " + keyword(v.operatorId()) + " " + path(v.indexField().path());
+                    (v.field().correlated() ? "$" : "") + path(v.field().path()) + " "
+                            + keyword(v.operatorId()) + " "
+                            + (v.indexField().correlated() ? "$" : "") + path(v.indexField().path());
         };
+    }
+
+    /** Render the owner {@code entitySpec} union accepted by {@code FirstFilledValue}; semantic indexes
+     *  are bare here (the surrounding operator already consumes entities), not value-bracketed. */
+    private String firstFilledOperand(FirstFilledOperand operand) {
+        StringBuilder rendered = new StringBuilder();
+        if (operand.outerReference()) {
+            rendered.append('$');
+        }
+        rendered.append(path(operand.renderedPath()));
+        operand.category().ifPresent(category -> rendered.append(" ").append(keyword("EnumCategory"))
+                .append(" ").append(category));
+        operand.semanticIndex().ifPresent(index -> {
+            rendered.append(" ").append(keyword("SemanticIndex")).append(" ");
+            switch (index) {
+                case FirstFilledOperand.LiteralIndex literal -> rendered.append(quote(literal.value()));
+                case FirstFilledOperand.FieldIndex field -> {
+                    if (field.field().correlated()) {
+                        rendered.append('$');
+                    }
+                    rendered.append(path(field.field().path()));
+                }
+            }
+        });
+        operand.field().filter(FieldListRef.class::isInstance).map(FieldListRef.class::cast)
+                .flatMap(FieldListRef::filter)
+                .ifPresent(filter -> rendered.append(" ").append(keyword("Having")).append(" ")
+                        .append(render(filter)));
+        return rendered.toString();
     }
 }

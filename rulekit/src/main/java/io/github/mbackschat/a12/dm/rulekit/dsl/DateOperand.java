@@ -29,6 +29,22 @@ public sealed interface DateOperand extends TemporalOperand permits DateRef, Dat
         return new ComparisonCondition(expression(), CompareOp.GE, other.expression());
     }
 
+    default Condition before(DateTimeOperand other) {
+        return new ComparisonCondition(expression(), CompareOp.LT, other.expression());
+    }
+
+    default Condition onOrBefore(DateTimeOperand other) {
+        return new ComparisonCondition(expression(), CompareOp.LE, other.expression());
+    }
+
+    default Condition after(DateTimeOperand other) {
+        return new ComparisonCondition(expression(), CompareOp.GT, other.expression());
+    }
+
+    default Condition onOrAfter(DateTimeOperand other) {
+        return new ComparisonCondition(expression(), CompareOp.GE, other.expression());
+    }
+
     default Condition eq(DateOperand other) {
         return new ComparisonCondition(expression(), CompareOp.EQ, other.expression());
     }

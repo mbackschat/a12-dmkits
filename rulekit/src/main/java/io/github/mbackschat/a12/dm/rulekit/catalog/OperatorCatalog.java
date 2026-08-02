@@ -104,7 +104,7 @@ public final class OperatorCatalog {
      * ({@code DATE_RANGE} has no comparison/value position; {@code CUSTOM} validity is a delegated SPI).
      */
     public Optional<EmptyBehavior> defaultEmptyBehavior(ValueKind kind) {
-        return Optional.ofNullable(kindToken(kind))
+        return Optional.ofNullable(defaultEmptyKindToken(kind))
                 .map(emptyOperandDefaults::get)
                 .map(EmptyOperandDefault::behavior);
     }
@@ -135,11 +135,20 @@ public final class OperatorCatalog {
             case ENUMERATION -> "enum";
             case BOOLEAN -> "boolean";
             case CONFIRM -> "confirm";
-            case DATE, DATE_FRAGMENT -> "date";
+            case DATE -> "date";
+            case DATE_FRAGMENT -> "date-fragment";
             case TIME -> "time";
             case DATE_TIME -> "date-time";
-            case DATE_RANGE, CUSTOM, UNKNOWN -> null;
+            case DATE_RANGE -> "date-range";
+            case CUSTOM -> "custom";
+            case UNKNOWN -> null;
         };
+    }
+
+    /** Primitive-empty defaults predate the operator-specific DATE_FRAGMENT facet. A fragment keeps its
+     *  distinct machine kind for per-kind claims, but rides DATE's primitive no-value default. */
+    private static String defaultEmptyKindToken(ValueKind kind) {
+        return kind == ValueKind.DATE_FRAGMENT ? "date" : kindToken(kind);
     }
 
     public List<OperatorEntry> entries() {

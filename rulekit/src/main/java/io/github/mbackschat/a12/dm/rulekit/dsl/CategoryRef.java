@@ -32,6 +32,11 @@ public record CategoryRef(FieldRef field, String name, List<String> values, bool
         return new EnumCategoryAccess(field, name, correlated);
     }
 
+    /** This category projection as an A12 entity operand of {@code FirstFilledValue}. */
+    public FirstFilledOperand firstFilledOperand() {
+        return FirstFilledOperand.of(access());
+    }
+
     // --- EnumListRef: a category projection contributes its category values, and is a distinct member ---
 
     /** This category access as a value-list quantifier operand ({@code [field -> name]}). */

@@ -198,6 +198,26 @@ class DateRangeOverlapSemanticsDiffTest {
             "AtLeastOneDateRangeOverlaps(CoverageWindow In Items*/ItemCoverage)",
             window("10.01.2026-20.01.2026"), cov))
 
+    @Test
+    fun perRowScalarListIncludesSelfWhileTheModelLevelPairCheckFiresOnce() {
+        assertEquals(3, triCount(
+            "/Order/Items",
+            "../ItemCoverage",
+            "AOS",
+            "AtLeastOneDateRangeOverlaps(ItemCoverage In ../Items*/ItemCoverage)",
+            listOf(acme),
+            cov,
+        ))
+        assertEquals(1, triCount(
+            "/Order",
+            "../CustomerName",
+            "AOM",
+            "FieldFilled(CustomerName) And DateRangesOverlap(Items*/ItemCoverage)",
+            listOf(acme),
+            cov,
+        ))
+    }
+
     /** an EMPTY scalar → no fire (FALSE_OR_UNKNOWN — NOT unknown-suppression); items overlapping each other do
      *  NOT rescue it (unlike DateRangesOverlap, there is no list-internal pairing). */
     @Test fun atLeastOneEmptyScalarNoFire() =

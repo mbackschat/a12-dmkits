@@ -38,11 +38,11 @@ class BaseYearArithmeticLawsTest {
                 .rootGroup("Forecast", group -> group.numberField("Projected", field -> field.fractionDigits(0)))
                 .build().toJson();
         BoundModel model = BoundModel.ofJson(json);
-        var direct = model.computation(model.num("/Forecast/Projected"))
-                .name("RoundedBaseYear")
-                .calc(Dsl.roundDown(Dsl.baseYearNumber()).expression())
-                .message(Dsl.en("Rounded base year."))
-                .build();
+        var direct = java.util.List.of(
+                Dsl.roundDown(Dsl.baseYearNumber()),
+                Dsl.roundUp(Dsl.baseYearNumber()),
+                Dsl.roundAccounting(Dsl.baseYearNumber()),
+                Dsl.abs(Dsl.baseYearNumber()));
         var derived = model.computation(model.num("/Forecast/Projected"))
                 .name("RoundedDerivedYear")
                 .calc(Dsl.roundDown(Dsl.yearFromDate(Dsl.baseYear())).expression())
@@ -50,7 +50,14 @@ class BaseYearArithmeticLawsTest {
                 .build();
         var validator = new RuleValidator();
 
-        assertTrue(validator.check(json, direct.draft()).ok());
+        for (int index = 0; index < direct.size(); index++) {
+            var computation = model.computation(model.num("/Forecast/Projected"))
+                    .name("BaseYearWrapper" + index)
+                    .calc(direct.get(index).expression())
+                    .message(Dsl.en("Wrapped base year."))
+                    .build();
+            assertTrue(validator.check(json, computation.draft()).ok());
+        }
         assertTrue(validator.check(json, derived.draft()).ok());
     }
 }

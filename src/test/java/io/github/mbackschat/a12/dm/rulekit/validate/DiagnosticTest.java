@@ -39,12 +39,12 @@ class DiagnosticTest {
     }
 
     @Test
-    void catalogJoinSuppliesTheSharedFixButNoUnearnedExplain() {
+    void catalogJoinSuppliesTheSafeCorrectiveUnionButNoUnearnedExplain() {
         Diagnostic d = firstWithCode(orderingTwoStrings(), "MVK_INVALID_TYPE_FOR_COMPARISON");
 
         assertTrue(d.fix().isPresent(), "catalog-join should reuse the operator's curated fix");
-        assertTrue(d.fix().get().contains("compare strings with"),
-                () -> "unexpected fix: " + d.fix().get());
+        assertTrue(d.fix().get().contains("cannot order strings") && d.fix().get().contains("dd.MM.yyyy"),
+                () -> "the unresolved owner needs both operand-specific remedies, got: " + d.fix().get());
         // NO explain here, deliberately — corrected 2026-07-31. MVK_INVALID_TYPE_FOR_COMPARISON is documented
         // by FOUR ordering operators whose fixes AGREE (so the fix above is safe without knowing the owner) but
         // whose MEANINGS differ. The old join emitted firstMeaning() = LessThanOrEqual's "less than or equal",

@@ -18,10 +18,10 @@ import io.github.mbackschat.a12.dm.rulekit.validate.RuleValidator;
 import io.github.mbackschat.a12.dm.rulekit.validate.ValidationResult;
 
 /**
- * N7 peer for <b>computation-only</b> operators: every catalog {@code computationExample} is accepted by
+ * N7 peer for operation-valued use sites: every catalog {@code computationExample} is accepted by
  * the real kernel — injected as a computation that assigns {@code computedField} (one unconditional
- * alternative) and checked via {@link RuleValidator}. Covers operators with no condition form (the
- * {@code DateRange} constructor) that {@code CatalogExamplesAreKernelValidTest} can't reach.
+ * alternative) and checked via {@link RuleValidator}. This is independent of any condition example the
+ * same operator may also carry.
  */
 class CatalogComputationExamplesAreKernelValidTest {
 

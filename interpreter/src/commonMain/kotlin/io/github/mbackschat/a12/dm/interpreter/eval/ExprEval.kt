@@ -161,13 +161,32 @@ internal fun Interpreter.evalExpr(e: Expr): Val = when (e) {
     is Expr.Const -> evalConst(e.name)
     is Expr.SemanticIndex -> evalSemanticIndex(e)
     is Expr.EnumCategory -> if (outerUnknown(e)) Val.Unknown else ctxOf(e).enumCategory(e.path, e.category)
+    is Expr.EntitySpec -> evalEntitySpec(e)
+}
+
+private fun Interpreter.evalEntitySpec(e: Expr.EntitySpec): Val {
+    if (outerUnknown(e)) return Val.Unknown
+    val source = e.source as? Expr.Field
+        ?: throw UnsupportedConstructException("a starred entitySpec must sit inside an aggregate")
+    val selected = e.semanticIndex?.let { evalSemanticIndex(source.semanticIndex(it)) } ?: evalExpr(source)
+    return e.category?.let { ctxOf(source).enumCategoryValue(source.path, it, selected) } ?: selected
+}
+
+private fun Expr.Field.semanticIndex(index: Expr.EntityIndex): Expr.SemanticIndex = when (index) {
+    is Expr.EntityIndex.Literal -> Expr.SemanticIndex(path, indexValue = index.value, outer = outer)
+    is Expr.EntityIndex.Field -> Expr.SemanticIndex(
+        path,
+        indexFieldPath = index.path,
+        outer = outer,
+        indexFieldOuter = index.outer,
+    )
 }
 
 /** `[field For "value"]` — the field's value in the row whose index field equals the value; an absent row
  *  or empty cell reads as the kind's EMPTY value (a number → 0, fillable), matching a missing field ref.
  *  Compute-mode reads go through the poison gates of [computeGuardedIndexCell]. */
 private fun Interpreter.evalSemanticIndex(e: Expr.SemanticIndex): Val {
-    val kind = ctx.declaredKind(e.path) ?: return Val.Unknown
+    val kind = ctxOf(e).declaredKind(e.path) ?: return Val.Unknown
     return computeGuardedIndexCell(e) ?: emptyValue(kind)
 }
 
@@ -192,6 +211,7 @@ private fun Interpreter.evalSemanticIndex(e: Expr.SemanticIndex): Val {
  * concatenation (the kernel's `np` flag riding `VkString.add` into `isStringNotRelevant`).
  */
 private fun Interpreter.computeGuardedIndexCell(e: Expr.SemanticIndex): Val? {
+    val c = ctxOf(e)
     if (computeMode) {
         if (indexColumnInvalid(e)) throw PoisonedReadException(e.path)
         val cell = semanticIndexCell(e)
@@ -201,11 +221,11 @@ private fun Interpreter.computeGuardedIndexCell(e: Expr.SemanticIndex): Val? {
     val idx = indexFieldOf(e.path) ?: throw UnsupportedConstructException(
         "SemanticIndex needs an index field on the group of ${e.path}")
     val key = resolveIndexKey(e) ?: return null                      // empty/absent key → not-given
-    val matchedKey = ctx.indexedCell(idx, idx, key)                  // the index-field self-lookup
+    val matchedKey = c.indexedCell(idx, idx, key)                    // the index-field self-lookup
     if (matchedKey != null) {
         // matched on a malformed (raw-equal) or DUPLICATED key cell → not-check-relevant
-        if (matchedKey is Val.Unknown || matchedKey in ctx.indexColumn(idx).duplicated) return Val.Unknown
-        return ctx.indexedCell(e.path, idx, key)
+        if (matchedKey is Val.Unknown || matchedKey in c.indexColumn(idx).duplicated) return Val.Unknown
+        return c.indexedCell(e.path, idx, key)
     }
     if (indexColumnInvalid(e)) return Val.Unknown                    // unresolvable no-match
     return null                                                      // clean no-match → not-given
@@ -217,7 +237,7 @@ private fun Interpreter.computeGuardedIndexCell(e: Expr.SemanticIndex): Val? {
 private fun Interpreter.indexColumnInvalid(e: Expr.SemanticIndex): Boolean {
     val idx = indexFieldOf(e.path) ?: throw UnsupportedConstructException(
         "SemanticIndex needs an index field on the group of ${e.path}")
-    return ctx.indexColumn(idx).anyNotCheckRelevant
+    return ctxOf(e).indexColumn(idx).anyNotCheckRelevant
 }
 
 /** The matched CELL of `[F For key]`, or null when nothing matches — an empty/absent key field, no row
@@ -225,7 +245,7 @@ private fun Interpreter.indexColumnInvalid(e: Expr.SemanticIndex): Boolean {
 internal fun Interpreter.semanticIndexCell(e: Expr.SemanticIndex): Val? {
     val idx = indexFieldOf(e.path) ?: throw UnsupportedConstructException("SemanticIndex needs an index field on the group of ${e.path}")
     val key = resolveIndexKey(e) ?: return null
-    return ctx.indexedCell(e.path, idx, key)
+    return ctxOf(e).indexedCell(e.path, idx, key)
 }
 
 /**
@@ -236,7 +256,7 @@ internal fun Interpreter.semanticIndexCell(e: Expr.SemanticIndex): Val? {
  * invalid KEY field, → UNKNOWN (not check-relevant). `SemanticIndexPresenceDiffTest`.
  */
 internal fun Interpreter.semanticIndexPresence(e: Expr.SemanticIndex): Tri {
-    e.indexFieldPath?.let { if (invalid(it)) return Tri.UNKNOWN }
+    e.indexFieldPath?.let { if (indexKeyCtx(e).cellState(it) == CellState.INVALID) return Tri.UNKNOWN }
     val cell = semanticIndexCell(e) ?: return Tri.FALSE
     return if (cell is Val.Unknown) Tri.UNKNOWN else Tri.TRUE
 }
@@ -245,11 +265,15 @@ internal fun Interpreter.semanticIndexPresence(e: Expr.SemanticIndex): Tri {
  *  ([Expr.SemanticIndex.indexFieldPath]) for the field-keyed `[F For keyField]` form — null when that key
  *  field is empty/absent (→ no row matches → the empty value, same as a non-matching literal). */
 private fun Interpreter.resolveIndexKey(e: Expr.SemanticIndex): String? =
-    e.indexValue ?: e.indexFieldPath?.let { ctx.displayValue(it)?.takeIf { v -> v.isNotEmpty() } }
+    e.indexValue ?: e.indexFieldPath?.let { indexKeyCtx(e).displayValue(it)?.takeIf { v -> v.isNotEmpty() } }
 
 /** The index-field path of [fieldPath]'s repeatable group (its sibling index field), or null if none. */
 private fun Interpreter.indexFieldOf(fieldPath: String): String? {
-    val group = fieldPath.substringBeforeLast('/')
+    val group = if (indexFields.any { it.substringBeforeLast('/') == fieldPath }) {
+        fieldPath
+    } else {
+        fieldPath.substringBeforeLast('/')
+    }
     return indexFields.firstOrNull { it.substringBeforeLast('/') == group }
 }
 
@@ -466,8 +490,9 @@ private fun Interpreter.evalFunc(f: Expr.Func): Val {
     // Time(hours, minutes, seconds): the constructed time as `HH:mm:ss`. Components are in range by model
     // validity (an out-of-range constant is MVK_WRONG_DATE_FORMAT_FOR_OP at codegen); empty/malformed → Unknown.
     FunctionOp.TIME -> evalTime(f).asTimeVal()
-    // DateRange(start, end): a date range from two date operands (computation-only — the kernel rejects it in
-    // a condition). Rendered to the target field's format at the compute() boundary. Empty/malformed → Unknown.
+    // DateRange(start, end): a date range from two owner entity references — full DATE or DATE_FRAGMENT,
+    // optionally semantic-index selected. The value is equality-comparable with another range and renders to
+    // the target field's format at the compute() boundary. Empty/malformed → Unknown.
     FunctionOp.DATE_RANGE -> {
         val s = (evalExpr(f.args[0]) as? Val.Txt)?.v
         val e = (evalExpr(f.args[1]) as? Val.Txt)?.v
@@ -497,8 +522,8 @@ private fun Interpreter.evalFunc(f: Expr.Func): Val {
     FunctionOp.DIFFERENCE_IN_YEARS -> dateDiff(f.args, FunctionOp.DIFFERENCE_IN_YEARS)
     // Date-range endpoint extractors — a DATE_RANGE operand → its start / end as an ISO date (so the
     // *FromDate extractors and date comparisons read it like any date). Empty/absent range → Unknown.
-    FunctionOp.START_OF_DATE_RANGE -> (evalExpr(f.args[0]) as? Val.Range)?.let { Val.Txt(it.start) } ?: Val.Unknown
-    FunctionOp.END_OF_DATE_RANGE -> (evalExpr(f.args[0]) as? Val.Range)?.let { Val.Txt(it.end) } ?: Val.Unknown
+    FunctionOp.START_OF_DATE_RANGE -> dateRangeBound(f.args[0], start = true)
+    FunctionOp.END_OF_DATE_RANGE -> dateRangeBound(f.args[0], start = false)
     // |x| — Abs over an expression, AbsValue over a field. Kernel VkBigDecimal.abs preserves its invalid
     // numeric sentinel, so an arithmetic domain failure must survive this legal wrapper; Unknown remains Unknown.
     FunctionOp.ABS, FunctionOp.ABS_VALUE -> mapNumber(evalExpr(f.args[0])) { Val.Num(it.abs()) }
@@ -540,6 +565,17 @@ private fun Interpreter.evalFunc(f: Expr.Func): Val {
         if (outerUnknown(f.args[0])) Val.Unknown else Val.Num(dec(ctxOf(f.args[0]).repsOf(pathOf(f.args[0])).last()))
     null -> throw UnsupportedConstructException("unsupported function ${f.name}")
     }
+}
+
+/** A date-range endpoint. `BaseYear` is the one point-in-time operand the kernel admits in this slot and
+ * denotes the complete reference year; ordinary operands must resolve to a real range. */
+private fun Interpreter.dateRangeBound(operand: Expr, start: Boolean): Val {
+    if (operand is Expr.Const && ConstantOp.byName(operand.name) == ConstantOp.BASE_YEAR) {
+        val year = baseYearOrThrow().toString().padStart(4, '0')
+        return Val.Txt(if (start) "$year-01-01" else "$year-12-31")
+    }
+    val range = evalExpr(operand) as? Val.Range ?: return Val.Unknown
+    return Val.Txt(if (start) range.start else range.end)
 }
 
 /** `Round*([expr][, n])` / `Round*Value(field[, n])` — round the numeric first operand with [mode] to the
@@ -1306,6 +1342,13 @@ private fun Interpreter.valueAsDate(args: List<Expr>): Val {
  */
 internal data class FirstFilledScan(val value: Val, val fill: Fill, val encounteredFilter: Boolean)
 
+private data class FirstFilledWalk(var fillable: Boolean = false, var encounteredFilter: Boolean = false)
+
+private sealed interface FirstFilledStep {
+    data object Continue : FirstFilledStep
+    data class Stop(val value: Val) : FirstFilledStep
+}
+
 /**
  * The filtered entity traversal shared by every filtered field-list consumer — the kernel's
  * `EbenenIterator.InnerIterator` ONE-KEPT-SUCCESSOR LOOKAHEAD (SPEC-2026-07-23-10/-11): after the current
@@ -1331,72 +1374,221 @@ private fun Interpreter.keptRowsWithSuccessorLookahead(
 }
 
 internal fun Interpreter.firstFilledScan(f: Expr.Func): FirstFilledScan {
-    var fillable = false
-    var encounteredFilter = false
-    for (operand in f.args) when (operand) {
-        is Expr.Star -> {
-            val having = operand.having
-            if (having != null) {
-                encounteredFilter = true
-                fillable = true
-            }
-
-            // An index column's empty/duplicate status is column-wide in the kernel cache. Keep the existing
-            // conservative gate, but reach it only when this operand itself is reached.
-            val operandContext = ctxOf(operand)
-            if (having == null &&
-                indexOperandNonEvaluable(operandContext, operand.path, operand.bindDepth)
-            ) {
-                return FirstFilledScan(Val.Unknown, Fill.of(fillable, fillable), encounteredFilter)
-            }
-
-            val group = operand.path.substringBeforeLast('/')
-            val rows = operandContext.rowContexts(group, operand.bindDepth)
-            val kept = if (having == null) rows.asSequence()
-                else keptRowsWithSuccessorLookahead(rows, having)
-            var visitedRow = false
-            for (row in kept) {
-                visitedRow = true
-                val reps = row.repsOf(operand.path)
-                if (cellRelevant != null && !cellRelevant.invoke(operand.path, reps)) {
-                    return FirstFilledScan(Val.Unknown, Fill.of(fillable, fillable), encounteredFilter)
-                }
-                if (computeMode) {
-                    val cell = ScanCell(
-                        operand.path,
-                        reps,
-                        row.displayValue(operand.path),
-                        row.cellState(operand.path),
-                    )
-                    if (!filledOrPoison(cell)) {
-                        fillable = true
-                        continue
-                    }
-                } else if (!row.filled(operand.path)) {
-                    fillable = true
-                    continue
-                }
-                return FirstFilledScan(row.field(operand.path), Fill.of(fillable, fillable), encounteredFilter)
-            }
-            if (!visitedRow) fillable = true
-        }
-        is Expr.Field -> {
-            val operandContext = ctxOf(operand)
-            if (!operandContext.filled(operand.path)) {
-                fillable = true
-                continue
-            }
-            return FirstFilledScan(evalExpr(operand), Fill.of(fillable, fillable), encounteredFilter)
-        }
-        else -> {
-            val value = evalExpr(operand)
-            return FirstFilledScan(value, Fill.of(fillable, fillable), encounteredFilter)
+    val walk = FirstFilledWalk()
+    for (operand in f.args) {
+        when (val step = firstFilledOperand(operand, walk)) {
+            FirstFilledStep.Continue -> Unit
+            is FirstFilledStep.Stop -> return FirstFilledScan(
+                step.value,
+                Fill.of(walk.fillable, walk.fillable),
+                walk.encounteredFilter,
+            )
         }
     }
 
     // NO terminal value → the per-kind FirstValueCombiner identity: NUMBER gives the fillable 0; the
     // other kinds give NOT-GIVEN. A future value in any exhausted operand can displace that identity.
-    return FirstFilledScan(firstFilledEmpty(f), Fill.of(true, true), encounteredFilter)
+    return FirstFilledScan(firstFilledEmpty(f), Fill.of(true, true), walk.encounteredFilter)
+}
+
+/** Scan one A12 `entitySpec`. Groups expand to descendant fields without changing their authored slot;
+ * semantic indexes and category projections distinguish an absent value (continue) from an unavailable value
+ * (terminal Unknown). This is an original owner-behaviour reconstruction, differential-locked by
+ * `FirstFilledValueEntitySpecDiffTest`. */
+private fun Interpreter.firstFilledOperand(operand: Expr, walk: FirstFilledWalk): FirstFilledStep = when (operand) {
+    is Expr.Field -> {
+        val c = ctxOf(operand)
+        if (c.declaredKind(operand.path) == null) {
+            firstFilledContainedCells(c.containedFieldCells(operand.path, declaredRange = false), walk)
+        } else if (!c.filled(operand.path)) {
+            walk.fillable = true
+            FirstFilledStep.Continue
+        } else {
+            FirstFilledStep.Stop(evalExpr(operand))
+        }
+    }
+    is Expr.Star -> {
+        val c = ctxOf(operand)
+        if (c.declaredKind(operand.path) == null) {
+            firstFilledExpandedGroup(c.containedFields(operand.path), walk) { path ->
+                Expr.Star(path, operand.having, operand.outer, operand.bindDepth)
+            }
+        } else {
+            firstFilledStar(operand, walk)
+        }
+    }
+    is Expr.EnumCategory -> {
+        val c = ctxOf(operand)
+        if (!c.filled(operand.path)) {
+            walk.fillable = true
+            FirstFilledStep.Continue
+        } else {
+            FirstFilledStep.Stop(evalExpr(operand))
+        }
+    }
+    is Expr.SemanticIndex -> {
+        val c = ctxOf(operand)
+        if (c.declaredKind(operand.path) == null) {
+            val idx = indexFieldOf(operand.path) ?: throw UnsupportedConstructException(
+                "SemanticIndex needs an index field on the group of ${operand.path}")
+            val key = resolveIndexKey(operand)
+            if (key == null) {
+                walk.fillable = true
+                FirstFilledStep.Continue
+            } else {
+                val matchedKey = c.indexedCell(idx, idx, key)
+                if (computeMode && indexColumnInvalid(operand)) {
+                    throw PoisonedReadException(operand.path)
+                }
+                when {
+                    matchedKey == null && !computeMode && indexColumnInvalid(operand) ->
+                        FirstFilledStep.Stop(Val.Unknown)
+                    matchedKey is Val.Unknown || matchedKey in c.indexColumn(idx).duplicated ->
+                        if (computeMode) throw PoisonedReadException(operand.path)
+                        else FirstFilledStep.Stop(Val.Unknown)
+                    matchedKey == null -> {
+                        walk.fillable = true
+                        FirstFilledStep.Continue
+                    }
+                    else -> firstFilledContainedCells(
+                        c.indexedContainedFieldCells(operand.path, idx, key),
+                        walk,
+                    )
+                }
+            }
+        } else {
+            val cell = computeGuardedIndexCell(operand)
+            if (cell == null) {
+                walk.fillable = true
+                FirstFilledStep.Continue
+            } else {
+                FirstFilledStep.Stop(cell)
+            }
+        }
+    }
+    is Expr.EntitySpec -> firstFilledEntitySpec(operand, walk)
+    else -> FirstFilledStep.Stop(evalExpr(operand))
+}
+
+private fun Interpreter.firstFilledEntitySpec(
+    operand: Expr.EntitySpec,
+    walk: FirstFilledWalk,
+): FirstFilledStep {
+    val category = operand.category
+    val step = when (val source = operand.source) {
+        is Expr.Field -> operand.semanticIndex?.let { firstFilledOperand(source.semanticIndex(it), walk) }
+            ?: firstFilledOperand(source, walk)
+        is Expr.Star -> {
+            require(operand.semanticIndex == null) { "a wildcard entitySpec cannot carry a semantic index" }
+            return firstFilledStar(source, walk, category)
+        }
+    }
+    if (step !is FirstFilledStep.Stop || category == null) return step
+    val source = operand.source
+    return FirstFilledStep.Stop(ctxOf(source).enumCategoryValue(source.path, category, step.value))
+}
+
+private val Expr.EntitySource.path: String
+    get() = when (this) {
+        is Expr.Field -> path
+        is Expr.Star -> path
+    }
+
+/** Consume the identity-preserving descendant-cell stream supplied by [EvalContext]. This is the shared
+ * implicit-wildcard mechanism used by every bare-group scan: repeatable levels below the authored group are
+ * enumerated by the document context, rather than reconstructed as scalar AST paths. */
+private fun Interpreter.firstFilledContainedCells(
+    cells: Sequence<ScanCell>,
+    walk: FirstFilledWalk,
+): FirstFilledStep {
+    var visited = false
+    for (cell in cells) {
+        visited = true
+        if (computeMode) {
+            if (!filledOrPoison(cell)) {
+                walk.fillable = true
+                continue
+            }
+        } else {
+            when (cell.baseState) {
+                CellState.EMPTY -> {
+                    walk.fillable = true
+                    continue
+                }
+                CellState.INVALID -> return FirstFilledStep.Stop(Val.Unknown)
+                CellState.FILLED -> Unit
+            }
+        }
+        return FirstFilledStep.Stop(cell.value ?: Val.Unknown)
+    }
+    if (!visited) walk.fillable = true
+    return FirstFilledStep.Continue
+}
+
+private inline fun Interpreter.firstFilledExpandedGroup(
+    fields: List<String>,
+    walk: FirstFilledWalk,
+    operand: (String) -> Expr,
+): FirstFilledStep {
+    if (fields.isEmpty()) walk.fillable = true
+    for (field in fields) {
+        val step = firstFilledOperand(operand(field), walk)
+        if (step is FirstFilledStep.Stop) return step
+    }
+    return FirstFilledStep.Continue
+}
+
+private fun Interpreter.firstFilledStar(
+    operand: Expr.Star,
+    walk: FirstFilledWalk,
+    category: String? = null,
+): FirstFilledStep {
+    val having = operand.having
+    if (having != null) {
+        walk.encounteredFilter = true
+        walk.fillable = true
+    }
+
+    // An index column's empty/duplicate status is column-wide in the kernel cache. Keep the existing
+    // conservative gate, but reach it only when this operand itself is reached.
+    val operandContext = ctxOf(operand)
+    if (having == null && indexOperandNonEvaluable(operandContext, operand.path, operand.bindDepth)) {
+        return FirstFilledStep.Stop(Val.Unknown)
+    }
+
+    val group = operand.path.substringBeforeLast('/')
+    val rows = operandContext.rowContexts(group, operand.bindDepth)
+    val kept = if (having == null) rows.asSequence() else keptRowsWithSuccessorLookahead(rows, having)
+    var visitedRow = false
+    for (row in kept) {
+        visitedRow = true
+        val reps = row.repsOf(operand.path)
+        if (cellRelevant != null && !cellRelevant.invoke(operand.path, reps)) {
+            return FirstFilledStep.Stop(Val.Unknown)
+        }
+        if (computeMode) {
+            val cell = ScanCell(
+                operand.path,
+                reps,
+                row.displayValue(operand.path),
+                row.cellState(operand.path),
+                row.field(operand.path),
+            )
+            if (!filledOrPoison(cell)) {
+                walk.fillable = true
+                continue
+            }
+        } else if (!row.filled(operand.path)) {
+            walk.fillable = true
+            continue
+        }
+        val selected = row.field(operand.path)
+        return FirstFilledStep.Stop(
+            category?.let { row.enumCategoryValue(operand.path, it, selected) } ?: selected,
+        )
+    }
+    if (!visitedRow) walk.fillable = true
+    return FirstFilledStep.Continue
 }
 
 private fun Interpreter.firstFilledValue(f: Expr.Func): Val = firstFilledScan(f).value
@@ -1407,14 +1599,21 @@ private fun Interpreter.firstFilledValue(f: Expr.Func): Val = firstFilledScan(f)
 private fun Interpreter.firstFilledEmpty(f: Expr.Func): Val =
     if (firstFilledKind(f) == Kind.NUMBER) Val.Num(DEC_ZERO) else Val.Unknown
 
-/** The declared kind of a `FirstFilledValue`'s operand (its star / field), or null when indeterminable. */
+/** The declared kind of a `FirstFilledValue` entity, including expanded groups and projections. */
 private fun Interpreter.firstFilledKind(f: Expr.Func): Kind? = f.args.firstNotNullOfOrNull { a ->
     when (a) {
-        is Expr.Star -> ctxOf(a).declaredKind(a.path)
-        is Expr.Field -> ctxOf(a).declaredKind(a.path)
+        is Expr.Star -> firstFilledEntityKind(ctxOf(a), a.path)
+        is Expr.Field -> firstFilledEntityKind(ctxOf(a), a.path)
+        is Expr.SemanticIndex -> firstFilledEntityKind(ctxOf(a), a.path)
+        is Expr.EnumCategory -> Kind.STRING
+        is Expr.EntitySpec -> if (a.category != null) Kind.STRING
+            else firstFilledEntityKind(ctxOf(a.source), a.source.path)
         else -> null
     }
 }
+
+private fun firstFilledEntityKind(c: EvalContext, path: String): Kind? =
+    c.declaredKind(path) ?: c.containedFields(path).firstNotNullOfOrNull(c::declaredKind)
 
 /** DATE-like kinds ride the kernel's date machinery (`VkDate`) — min/max over them dispatch to the
  *  `DateCombiner` family, not the number combiner ([dateAggregate]). */

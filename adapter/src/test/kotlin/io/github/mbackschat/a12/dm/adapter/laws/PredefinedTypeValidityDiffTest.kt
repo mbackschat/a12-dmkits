@@ -17,6 +17,7 @@ import io.github.mbackschat.a12.dm.rulekit.dsl.Condition
 import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl
 import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import java.util.Optional
 
@@ -110,6 +111,34 @@ class PredefinedTypeValidityDiffTest {
             assertEquals(expected, groovy, "$name discriminator")
             assertEquals(groovy, javaStatic, "$name — Groovy-dynamic vs generated Java")
             assertEquals(groovy, interpreter, "$name — Groovy-dynamic vs interpreter")
+        }
+    }
+
+    @Test
+    fun unregisteredTypeNameIsAcceptedByTheModelAndBothPolaritiesFireAtRuntime() {
+        listOf(
+            Dsl.validType(cn, "Unregistered") to true,
+            Dsl.invalidType(cn, "Unregistered") to true,
+        ).forEach { (condition, expected) ->
+            val model = RuntimeLaws.withRule(order, "/Order", "R", "../CustomerName", "VT", render(condition))
+            val doc = RuntimeLaws.doc().group("/Order", 1).field(NAME, valid, 1, 1)
+            val javaEngine = RuntimeLaws.kernelJavaEngine(model)
+
+            val dynamic = RuntimeLaws.messages(model, doc, factory).any { it.code() == "VT" }
+            val generated = javaEngine.messages(javaEngine.instance(doc), factory).any { it.code() == "VT" }
+            val definition = ModelDef(
+                fields,
+                listOf(RuleDef("/Order/R", "/Order", render(condition), "VT", "../CustomerName")),
+            )
+            val interpreted = DmInterpreter(definition).validate(
+                definition.newDocument().group("/Order", 1).field(NAME, valid, 1, 1),
+            )
+
+            assertEquals(dynamic, generated)
+            assertEquals(expected, dynamic)
+            assertEquals(emptyList<Any>(), interpreted.messages, "the interpreter must not guess kernel SPI fallback semantics")
+            assertEquals(1, interpreted.unsupported.size, "the intentional unregistered-type divergence stays explicit")
+            assertTrue(interpreted.unsupported.single().reason.contains("unknown predefined type"))
         }
     }
 
