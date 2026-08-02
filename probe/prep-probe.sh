@@ -24,6 +24,10 @@ FIXTURE="${1:-}"   # optional: a repo-relative model file or workspace dir to se
 NATIVE="$ROOT/cli/build/native/nativeCompile/dmtool"
 LOG="$SANDBOX/dmtool-calls.log"
 
+# Prove the digest's discriminator before preparing a run. In particular, a legitimate nested computation
+# outcome:"error" must stay clean while a top-level RK_INTERNAL_ERROR must still fire.
+"$ROOT/probe/digest-probe.sh" --self-test >/dev/null
+
 # The probe tests the SHIPPED artifact — the native image (the v0.1.0 reflection crash was native-ONLY, which
 # is exactly why the JVM-based eval never saw it). Build it first if missing.
 [[ -x "$NATIVE" ]] || {

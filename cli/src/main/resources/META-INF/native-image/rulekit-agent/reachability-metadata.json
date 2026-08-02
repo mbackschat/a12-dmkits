@@ -7966,6 +7966,9 @@
       "type": "int[][]"
     },
     {
+      "type": "io.github.mbackschat.a12.dm.adapter.KernelAdapter"
+    },
+    {
       "type": "io.github.mbackschat.a12.dm.adapter.KernelBackendInfo"
     },
     {
@@ -8018,6 +8021,9 @@
           "parameterTypes": []
         }
       ]
+    },
+    {
+      "type": "io.github.mbackschat.a12.dm.adapter.profile.ModelSynthesizer$Synthesized"
     },
     {
       "type": "io.github.mbackschat.a12.dm.adapter.profile.SynthesisProfile",
@@ -8495,6 +8501,12 @@
       ]
     },
     {
+      "type": "io.github.mbackschat.a12.dm.adapter.review.ModelDiff"
+    },
+    {
+      "type": "io.github.mbackschat.a12.dm.adapter.review.ModelReport"
+    },
+    {
       "type": "io.github.mbackschat.a12.dm.cli.ApplyCommand",
       "fields": [
         {
@@ -8538,6 +8550,9 @@
           "parameterTypes": []
         }
       ]
+    },
+    {
+      "type": "io.github.mbackschat.a12.dm.cli.ConsistencyEvidence"
     },
     {
       "type": "io.github.mbackschat.a12.dm.cli.CustomSupportOptions",
@@ -8650,6 +8665,9 @@
       ]
     },
     {
+      "type": "io.github.mbackschat.a12.dm.cli.MutationEvidenceTest$TailProbe"
+    },
+    {
       "type": "io.github.mbackschat.a12.dm.cli.OperatorsCommand",
       "fields": [
         {
@@ -8720,6 +8738,15 @@
           "name": "workspace"
         }
       ]
+    },
+    {
+      "type": "io.github.mbackschat.a12.dm.cli.ResultEnvelope"
+    },
+    {
+      "type": "io.github.mbackschat.a12.dm.cli.ResultIdentity"
+    },
+    {
+      "type": "io.github.mbackschat.a12.dm.cli.ResultIdentity$Source"
     },
     {
       "type": "io.github.mbackschat.a12.dm.cli.RootCommand",
@@ -10680,6 +10707,9 @@
       "type": "io.github.mbackschat.a12.dm.edit.EditSession"
     },
     {
+      "type": "io.github.mbackschat.a12.dm.modelkit.ModelDocument"
+    },
+    {
       "type": "io.github.mbackschat.a12.dm.rulekit.catalog.AggregateIdentity"
     },
     {
@@ -10754,6 +10784,7 @@
         {
           "name": "<init>",
           "parameterTypes": [
+            "java.lang.String",
             "java.lang.String",
             "java.lang.String",
             "java.util.List",
@@ -10864,7 +10895,8 @@
           "name": "<init>",
           "parameterTypes": [
             "java.lang.String",
-            "io.github.mbackschat.a12.dm.rulekit.catalog.GotchaKind"
+            "io.github.mbackschat.a12.dm.rulekit.catalog.GotchaKind",
+            "java.util.List"
           ]
         }
       ]
@@ -10953,6 +10985,15 @@
     },
     {
       "type": "io.github.mbackschat.a12.dm.rulekit.catalog.ProbeOutcome"
+    },
+    {
+      "type": "io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel"
+    },
+    {
+      "type": "io.github.mbackschat.a12.dm.rulekit.validate.ValidationResult"
+    },
+    {
+      "type": "io.github.mbackschat.a12.dm.schemakit.JsonSchemaImporter$ImportResult"
     },
     {
       "type": "java.beans.PropertyVetoException"
@@ -18370,6 +18411,9 @@
       "glob": "schema/batch.schema.json"
     },
     {
+      "glob": "schema/broken-ref.schema.json"
+    },
+    {
       "glob": "schema/compute-doc.schema.json"
     },
     {
@@ -18413,6 +18457,9 @@
     },
     {
       "glob": "schema/model-usage.schema.json"
+    },
+    {
+      "glob": "schema/patterns.schema.json"
     },
     {
       "glob": "schema/profile-comparison.schema.json"

@@ -84,6 +84,8 @@ Gold comes in **two forms**, by how the task was authored:
 
 Either way, gold is matched **semantically, not literally** (read → re-render → compare, like the eval judge): many valid expressions enforce one intent (`DifferenceInYears` vs an `AddYears` formulation for age; a field-list vs a group-scope quantifier; `[Age] < 18` stored-number vs a birth-date derivation). The bar is **"the agent's model enforces the same thing, at least as completely as the reference."** The kernel stays the validity oracle — gold says *what* should be enforced, the kernel says whether the agent's expression of it is *valid*.
 
+**A runtime-projection gold names the concrete identities, not only the declaration.** Probe task `14` locks the easily-misread repeated-computation case: three results share one computation declaration while their concrete `field` pointers independently carry VALUE, CLEARED, and ERROR. Its deterministic `ProbeRepeatedComputationIdentityTest` executes the typed-dogfood permit fixture, asserts the exact three row identities/outcomes, and includes a collapsed-identity positive control; the probe asks whether a cold consumer can reach and explain those facts from the packed native tool.
+
 Gold is **never shown to the probe agent** (it is on the far side of the material boundary, §above) — it is the reviewer's key, not the agent's input. The reverse-engineered form also makes the task backlog cheap: every rich fixture is a candidate scenario, covering the operator/structure surface that model already exercises.
 
 ## Scenario design — clean vs fixture start, extensible, and not overfit
@@ -185,7 +187,7 @@ A probe is only useful if it can be re-run and compared; an analysis done by han
 | sandbox + shim | [`prep-probe.sh`](../probe/prep-probe.sh) (script) |
 | the subagent's framing (boundary, env, no-look-ahead, report format) | [`agent-preamble.md`](../probe/agent-preamble.md) — **single-sourced**; only the task's turns vary, so runs are comparable and the boundary can't drift |
 | the integrity check | [`audit-probe.sh`](../probe/audit-probe.sh) (script, verified to fire) |
-| the **mechanical** analysis | [`digest-probe.sh`](../probe/digest-probe.sh) (script) — counts, nonzero exits, repeated calls, and the **auto RED-FLAG for a raw exception escaping a verb** (the P1 class), so it's never again "found by eye"; exits 1 on a red flag, so it gates too |
+| the **mechanical** analysis | [`digest-probe.sh`](../probe/digest-probe.sh) (script) — counts, nonzero exits, repeated calls, and the **auto RED-FLAG for a raw exception or command-level `RK_INTERNAL_ERROR`** (the P1 class), so it's never again "found by eye"; exits 1 on a red flag, so it gates too. `prep-probe.sh` first runs its positive control: a nested per-computation ERROR stays clean while a top-level internal-error envelope fires. |
 | the scenario | a committed `tasks/<n>.md` (prompts + gold) |
 | the findings | a committed `reports/<date>-<n>.md` |
 | a **root-cause repro** | the finding's TDD guard test (or a committed repro script) — *the repro is the test*, runnable by anyone/CI, not a one-off command |

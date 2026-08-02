@@ -163,6 +163,7 @@ tasks.register('docGuardTest', Test) {
         includeTestsMatching 'io.github.mbackschat.a12.dm.cli.DocAnchorResolveGuardTest'
         includeTestsMatching 'io.github.mbackschat.a12.dm.cli.DocumentShapeSingleSourceTest'
         includeTestsMatching 'io.github.mbackschat.a12.dm.cli.DemoOutputIsRealTest'
+        includeTestsMatching 'io.github.mbackschat.a12.dm.cli.ProbeRepeatedComputationIdentityTest'
         includeTestsMatching 'io.github.mbackschat.a12.dm.cli.interp.ModelLoaderParityTest'
     }
     // guardInputs (root ext, kernel-decoupling §3b #17) declares these runtime-read files as inputs AND fails
@@ -181,10 +182,13 @@ tasks.register('docGuardTest', Test) {
             'docs/README.md'     : rootProject.file('docs/README.md'),
             'docs/*.md tree'     : rootProject.fileTree('docs') { include '**/*.md' },
             'eval workflow'      : rootProject.file('eval/benchmark.workflow.js'),
+            'probe task 14'      : rootProject.file('probe/tasks/14-repeated-computation-outcomes.md'),
             'operator catalog'   : rootProject.fileTree('rulekit/src/main/resources/catalog'),
             // ModelLoaderParityTest reads every fixture model in both roots.
             'cli test models'    : rootProject.fileTree('cli/src/test/resources/models') { include '**/*.json' },
             'examples/models'    : rootProject.fileTree('examples/models') { include '**/*.json' },
+            'permit showcase fixture': rootProject.file(
+                    'interpreter/src/commonTest/resources/workspace-preparation/self-contained/permit-basic.dm.json'),
             // DocumentShapeSingleSourceTest walks the whole served schema dir at runtime, so a NEW schema that
             // restates the --instance shape re-runs the guard that would catch it.
             'served schemas'     : rootProject.fileTree('cli/src/main/resources/schema') { include '**/*.json' }])

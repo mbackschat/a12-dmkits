@@ -4,7 +4,7 @@
 >
 > **Lifecycle.** Same `-GAPS` discipline as its siblings ([`DEV-API-GAPS.md`](DEV-API-GAPS.md), [`INTERPRETER-GAPS.md`](INTERPRETER-GAPS.md), …): a gap lives here only while open — §1 open, §2 deferred (with re-open triggers), §3 out of scope. A shipped gap is **deleted**, not kept as a "shipped" list (git is the *what/when*; the graduated `CLI-CONFORMANCE-SPEC` matrix column / `CLI-SPEC` section is the *why*).
 >
-> **Current state.** §1 was drained and is **re-opened 2026-07-31** by external field feedback. The lesson is about this ledger's own axis: the guards here were **presence-shaped, not property-shaped** — the matrix asks "is there a description?", never "is it true?"; the `--text` guard covered three verbs; the catalog guard verified only the examples that exist. Three harnesses had additionally *encoded* the defective output (demo captures, probe gold, the test-side kernel projection), so they defended it rather than catching it. The rows are the resulting guard + instrument gaps; the public-contract half is designed in [`RESULT-CONTRACT-PROPOSAL.md`](archived/RESULT-CONTRACT-PROPOSAL.md). The earlier **2026-07-21 cold-agent probe** found the two candidate axes in §2 largely self-explaining already, so both stay demoted there with the evidence rather than built; two of its sub-findings shipped directly as one-line `--help` fixes, recorded in git.
+> **Current state.** §1 is drained. External field feedback had reopened it on 2026-07-31 because the existing guards were **presence-shaped, not property-shaped**; the resulting guard and instrument gaps have graduated into [`CLI-CONFORMANCE-SPEC`](CLI-CONFORMANCE-SPEC.md), [`EVAL-SPEC`](EVAL-SPEC.md), and [`PROBE-SPEC`](PROBE-SPEC.md). The earlier **2026-07-21 cold-agent probe** found the two candidate axes in §2 largely self-explaining already, so both stay demoted there with the evidence rather than built; two of its sub-findings shipped directly as one-line `--help` fixes, recorded in git.
 >
 > **Provenance.** A 2026-06-28 review of dmtool against a general "CLI tools for LLM agents" best-practices note found that dmtool already meets or beats ~80% of it — JSON-default output, a picocli-**derived** manifest that can't drift, the result envelope, the `refused`/referrers safety gate, the exit-code taxonomy, CI-executed examples. The rows below are the residual deltas, and — in §2/§3 — the ones we considered and are **not** taking, each with a re-open trigger so the decision carries its own expiry.
 
@@ -12,13 +12,7 @@
 
 ## 1. Open
 
-Re-opened **2026-07-31** by external field feedback whose defects this ledger's own guards structurally could not see. The contract half is designed in [`RESULT-CONTRACT-PROPOSAL.md`](archived/RESULT-CONTRACT-PROPOSAL.md) and tracked by its acceptance gate; the rows below are the **guard and instrument** gaps that let the defects ship, plus the independent surface fixes. Each graduates into `CLI-CONFORMANCE-SPEC` as a matrix column or into the named spec, and is deleted here on ship.
-
-### CG7 — no probe task exercises per-row computed identity <a id="cg7"></a>
-
-**A probe task should make a repeated `model compute` result identify `VALUE`/`CLEARED`/`ERRORED` rows from its own output.** No current task exercises per-row computed identity, so the contract's most easily-misread output has no cold-agent evidence. Must run after a fresh native build. Graduates to [`PROBE-SPEC`](PROBE-SPEC.md).
-
-  *Corrected 2026-08-01 — the pointer-migration half of this row is WITHDRAWN, not deferred.* It read "active gold uses `/Policy[1]/Claims[1]/Amount`, so a probe would mark the canonical A12 form wrong once the contract lands; migrate active gold to canonical spelling". That inferred the consequence instead of checking it. A probe agent **authors rules and never sees a runtime pointer**, and the gold in question cites the *conformance corpus*, whose §5 comparison key is `formatPointer` — the shared rendering the `:adapter` differential puts **both** sides through, kernel included. Rewriting it would break the comparison to fix nothing. The row was written before Phase 1 separated the two renderings (house form for the interpreter library, canonical A12 at the dmtool boundary), and both spellings are correct in their own surface. The live decision that remains is the interpreter library's own pointer form, which is tracked in its own row above.
+_None open._
 
 ## 2. Deferred — with re-open triggers
 

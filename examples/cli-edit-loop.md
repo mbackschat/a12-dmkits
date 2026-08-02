@@ -224,7 +224,7 @@ dmtool schema rule add | jq '.input.oneOf'
 {
   "id": "DateRange",
   "kind": "FUNCTION",
-  "meaning": "Constructs a DATE_RANGE value from start and end date fields. It may be compared to a DATE_RANGE field with == or != in either direction, or assigned to a DATE_RANGE field by a computation; ordering and nested use in overlap predicates are rejected."
+  "meaning": "Constructs a DATE_RANGE value from start and end date entity references. It may be compared with == or != to a DATE_RANGE field in either direction or to another construction, or assigned to a DATE_RANGE field by a computation; ordering and nested use in overlap predicates are rejected."
 }
 [
   {

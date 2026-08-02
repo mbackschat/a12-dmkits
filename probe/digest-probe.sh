@@ -19,6 +19,58 @@
 # facts, agents for judgment" (CLAUDE.md).
 set -euo pipefail
 SANDBOX="${RK_PROBE_SANDBOX:-/tmp/rk-probe-sandbox}"
+
+if [[ "${1:-}" == "--self-test" ]]; then
+  TEST_DIR="$(mktemp -d /tmp/rk-probe-digest-test.XXXXXX)"
+  trap 'rm -rf "$TEST_DIR"' EXIT
+
+  printf '%s\n' \
+    '$ dmtool -m model.dm.json model compute --instance doc.json' \
+    '--- stdout:' \
+    '{' \
+    '  "outcome" : "read",' \
+    '  "data" : {' \
+    '    "computed" : [ {' \
+    '      "outcome" : "error",' \
+    '      "value" : "10000"' \
+    '    } ]' \
+    '  }' \
+    '}' \
+    '--- stderr:' \
+    '[exit 0]' > "$TEST_DIR/nested-error.log"
+  if ! "$0" "$TEST_DIR/nested-error.log" > "$TEST_DIR/nested-error.out"; then
+    echo "digest self-test failed: a legal nested computation error was classified as an internal tool error" >&2
+    exit 1
+  fi
+  grep -q '0 RED FLAGS' "$TEST_DIR/nested-error.out" || {
+    echo "digest self-test failed: nested-error control did not report zero red flags" >&2
+    exit 1
+  }
+
+  printf '%s\n' \
+    '$ dmtool -m model.dm.json model compute --instance doc.json' \
+    '--- stdout:' \
+    '{' \
+    '  "outcome" : "error",' \
+    '  "diagnostics" : [ {' \
+    '    "code" : "RK_INTERNAL_ERROR"' \
+    '  } ]' \
+    '}' \
+    '--- stderr:' \
+    '[exit 0]' > "$TEST_DIR/internal-error.log"
+  if "$0" "$TEST_DIR/internal-error.log" > "$TEST_DIR/internal-error.out"; then
+    echo "digest self-test failed: the internal-error positive control did not fire" >&2
+    exit 1
+  fi
+  grep -q '1 RED FLAGS' "$TEST_DIR/internal-error.out" || {
+    echo "digest self-test failed: internal-error control did not report one red flag" >&2
+    exit 1
+  }
+
+  echo "digest self-test: GREEN (nested outcome ignored; top-level RK_INTERNAL_ERROR detected)"
+  exit 0
+fi
+
 LOG="${1:-$SANDBOX/dmtool-calls.log}"
 [[ -f "$LOG" ]] || { echo "shim log not found: $LOG" >&2; exit 3; }
 
@@ -44,7 +96,7 @@ function bucketof(v,   a, t1, t2) {
   if (t2 == "check" || t2 == "validate") return "verify"
   return "orient"
 }
-function flush(   v, b) {
+function flush(   v, b, structuredInternal) {
   if (cmd == "") return
   total++
   count[cmd]++
@@ -52,12 +104,13 @@ function flush(   v, b) {
   v = verbof(cmd); b = bucketof(v)
   vhist[v]++; vorder[v] = (v in vorder) ? vorder[v] : (++vord); bkt[b]++
   if (exitc != "" && exitc != "0") { nz[++nzn] = sprintf("%s  -> exit %s%s", cmd, exitc, (errfirst!="" ? "  | " errfirst : "")); failv[v]++ }
-  if (exc != "" || internalerr != "" || exitc == "70") {
-    reason = (exc != "") ? exc : (internalerr != "" ? internalerr : "exit 70 — internal tool error (RK_INTERNAL_ERROR)")
+  structuredInternal = (toperror != "" && internalcode != "")
+  if (exc != "" || structuredInternal || exitc == "70") {
+    reason = (exc != "") ? exc : (structuredInternal ? toperror " + " internalcode : "exit 70 — internal tool error (RK_INTERNAL_ERROR)")
     rf[++rfn] = sprintf("%s\n      %s", cmd, reason)
   }
 }
-/^\$ dmtool / { flush(); cmd=$0; sub(/^\$ /,"",cmd); instderr=0; exitc=""; errfirst=""; exc=""; internalerr="";
+/^\$ dmtool / { flush(); cmd=$0; sub(/^\$ /,"",cmd); instderr=0; exitc=""; errfirst=""; exc=""; toperror=""; internalcode="";
   # a catalog/self-describe verb ECHOES diagnostic codes as DATA — its stdout mentioning RK_INTERNAL_ERROR is a
   # lookup, not a verb erroring (the agent ran `diagnostics RK_INTERNAL_ERROR`). Exempt it from stdout flagging.
   catalogcmd = (verbof(cmd) ~ /^(diagnostics|manifest|schema|operators|patterns)( |$)/); next }
@@ -69,10 +122,12 @@ function flush(   v, b) {
     if (errfirst == "") errfirst=$0
     if (exc == "" && ($0 ~ /Exception|Throwable|Caused by:|[ \t]+at [A-Za-z0-9_.$]+\([A-Za-z0-9_]+\.java:[0-9]+\)/)) exc=$0
   } else if (!instderr && $0 != "") {
-    # Post-CLI-boundary fix, an internal tool error is a STRUCTURED envelope on stdout (outcome:"error" +
-    # RK_INTERNAL_ERROR), with the trace on stderr — not a raw trace on stdout. Catch that signal too — but
-    # NOT when a catalog/self-describe verb is just echoing the code as data (exit 70 still flags those).
-    if (!catalogcmd && internalerr == "" && ($0 ~ /"outcome"[^}]*"error"/ || $0 ~ /RK_INTERNAL_ERROR/)) internalerr=$0
+    # A command-level internal error needs BOTH the TOP-LEVEL outcome and RK_INTERNAL_ERROR. Computation rows
+    # legitimately carry their own nested outcome:"error" inside a successful outcome:"read" envelope (CG7);
+    # treating that as an internal tool failure makes the digest reject the behavior the probe is measuring.
+    # The CLI JSON renderer uses two-space indentation for top-level members; nested outcomes are deeper.
+    if (!catalogcmd && toperror == "" && $0 ~ /^  "outcome"[ \t]*:[ \t]*"error"/) toperror=$0
+    if (!catalogcmd && internalcode == "" && $0 ~ /"code"[ \t]*:[ \t]*"RK_INTERNAL_ERROR"/) internalcode=$0
   }
 }
 END {
