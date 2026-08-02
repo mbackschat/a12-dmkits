@@ -14,7 +14,7 @@ Owns the program end-to-end:
 - **Keeps the program's state doc** — a proposal/design doc whose work-item table (WI rows with status, model assignment, dependencies) is THE inter-session state carrier. Every landing updates it in the same commit (auto-commit each write-back).
 - **Mints each worker session's paste-prompt.** A good prompt is self-contained for a cold session: identity + the one-session rule, warm-up reads (the state doc's relevant §§, the ledgers), the item queue with per-item method, the standing constraints (license boundaries, commit policy, build/log-capture rules), and the reporting format — SPELLED OUT, never "report as before" (a fresh session has no shared context; gloss program-internal names with commit hashes or file paths). **Red/probe evidence must survive by construction:** the reporting format requires red and probe logs written to unique per-item files (`build/<set>-<item>-red.log`), NEVER reused for a later green re-run — an overwritten red log forces the gate into a pre-fix reconstruction (a real gate cost, 2026-07-24). **Delivery format:** put a `---` horizontal rule immediately before AND after the prompt's fenced block, with the block containing the prompt alone — fences don't separate visually in a terminal, and prompt-end blending into surrounding prose causes copy ambiguity. The user pastes it into a fresh session and reports back "X is done" with comments.
 - **Makes rulings** (contract/anchor/scope questions a worker escalates) — and treats its own rulings as hypotheses: a gate ruling was once mechanically wrong and a worker's source-read corrected it. Record rulings in the state doc.
-- **Runs the review gate on every landing** (below). Graduation is provisional until the gate clears it.
+- **Runs the master self-gate on every landing** (below). Graduation is provisional until that gate clears it. A separate cold-agent gate is reserved for the high-risk stable milestones defined below; it is not repeated after every small commit.
 
 ## The worker tier is recommended per set (per-item → per-set, 2026-07-15)
 
@@ -35,7 +35,7 @@ A worker that finds a new divergence mid-item does **not** triage it in-session:
 
 A **discovery/hunt set** (sweeping for instances of a class rather than fixing a named one) runs **until dry**: the stop rule is N consecutive hunts yielding nothing new — a fixed count target misses the tail.
 
-## The review gate (master, per landing)
+## The master self-gate (per landing)
 
 Audit checklist — all nine, every time:
 
@@ -50,6 +50,16 @@ Audit checklist — all nine, every time:
 9. **Kernel-oracle verification for runtime-semantics claims in measured material** — a claim about *runtime behavior* (what fires, how often, where an error attaches) destined for `skill/SKILL.md` or another agent-facing surface must be verified against the **kernel oracle** (an adapter differential / `CliTestSupport.runKernel` / a laws lock), never only through the binary — the binary's eval engine is the interpreter, which can carry a known-or-unknown `IG` divergence, so binary-verified ≠ kernel-verified exactly where it matters. The shipped class (2026-07-18, Set SK→FG): a skill bullet's "fires per row, marking every row" was verified through `dmtool model eval` by worker AND gate — both watched the interpreter's IG73 over-fire; the kernel fires once. Accept/reject claims may rest on `rule check` (that IS the kernel); runtime claims may not rest on `model eval`.
 
 Plus ledger hygiene: fixed rows deleted (rationale graduates to a finding), code comments repointed, the state doc's program log updated.
+
+## The cold-agent gate (high-risk stable milestones only)
+
+Use a cold, read-only reviewer for a published API or wire/output contract, a new or materially changed guard, kernel-oracle or clean-room work, and release/publishing machinery. Give it a committed or otherwise frozen range only after local red/green work, mutants, denominator enumeration, API diffs, stale-surface searches, and the master self-gate are complete. Small mechanical landings do not each earn another cold call.
+
+The cold reviewer uses the **same model and reasoning/effort tier as the implementing session**, in a fresh context. Its compact packet contains the governing rules, exact baseline/range, a finite acceptance matrix and non-goals, already-known findings and their dispositions, and authoritative test outputs. Ask for **new findings only**, each as: discriminator input → observed and expected output → exact source locus → oracle → execution status. Keep it read-only and build-free while an isolated timing-sensitive gate is running; the master reproduces every actionable finding before changing code.
+
+Batch compatible review axes into one milestone call, with explicit owner/API, guard/vacuity/evidence, and public-surface sections where relevant. Split reviewers only when genuinely different source estates or mechanisms justify paying the context-rebuild cost twice. A warm reviewer is appropriate for bounded compilation fallout, regression inventory, and API/doc/golden synchronization; it cannot replace the cold gate for completeness, owner semantics, clean-room boundaries, a new guard, or a new public contract.
+
+**Convergence stop:** after two consecutive implementation/review rounds add net-new blockers to the same slice, or any round changes its acceptance denominator, stop patching that frame. Freeze the established observations, partition the coupled mechanisms into independently meaningful feature commits, give each a finite acceptance matrix and explicit non-goals, and finish one partition before reopening another. An adjacent improvement goes to its owning later slice instead of silently expanding the current review.
 
 ## The retro (after each gate; full at program end)
 
