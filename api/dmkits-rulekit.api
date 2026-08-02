@@ -144,6 +144,8 @@ public final class io.github.mbackschat.a12.dm.rulekit.catalog.OperatorCatalog
   public static java.lang.String kindToken(io.github.mbackschat.a12.dm.core.ValueKind)
   public static io.github.mbackschat.a12.dm.rulekit.catalog.OperatorCatalog load()
   public java.util.List<io.github.mbackschat.a12.dm.rulekit.catalog.OperatorEntry> operatorsForError(java.lang.String)
+  public java.util.Optional<java.lang.String> rejectionFix(java.lang.String, java.lang.String)
+  public java.util.List<java.lang.String> rejectionFixes(java.lang.String, java.lang.String)
   public int size()
   public java.lang.String verifiedAgainst()
 
@@ -207,9 +209,11 @@ public static record io.github.mbackschat.a12.dm.rulekit.catalog.OperatorEntry.E
 
 public static record io.github.mbackschat.a12.dm.rulekit.catalog.OperatorEntry.Gotcha
   public Gotcha(java.lang.String, io.github.mbackschat.a12.dm.rulekit.catalog.GotchaKind)
+  public Gotcha(java.lang.String, io.github.mbackschat.a12.dm.rulekit.catalog.GotchaKind, java.util.List<java.lang.String>)
   public final boolean equals(java.lang.Object)
   public final int hashCode()
   public io.github.mbackschat.a12.dm.rulekit.catalog.GotchaKind kind()
+  public java.util.List<java.lang.String> seeAlso()
   public java.lang.String text()
   public final java.lang.String toString()
 

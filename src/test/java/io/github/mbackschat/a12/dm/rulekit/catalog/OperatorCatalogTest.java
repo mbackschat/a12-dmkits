@@ -6,7 +6,11 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.util.List;
+
 import org.junit.jupiter.api.Test;
+
+import io.github.mbackschat.a12.dm.rulekit.validate.StructuralKernelFix;
 
 /**
  * The operator catalog (PROJECT-DESIGN §9) is the language-neutral spine: a bundled JSON resource the
@@ -55,7 +59,28 @@ class OperatorCatalogTest {
             assertFalse(isBlank(e.keywords().de()), () -> e.id() + ": missing de keyword");
             assertFalse(isBlank(e.returns()), () -> e.id() + ": missing returns");
             assertFalse(isBlank(e.meaning()), () -> e.id() + ": missing meaning");
+            if (e.invalidExample() != null) {
+                assertFalse(isBlank(e.invalidExample().dsl()), () -> e.id() + ": invalid example missing dsl");
+                assertFalse(isBlank(e.invalidExample().error()), () -> e.id() + ": invalid example missing error");
+                assertFalse(isBlank(e.invalidExample().fix()), () -> e.id() + ": invalid example missing fix");
+            }
         }
+    }
+
+    @Test
+    void rejectionOwnershipDoesNotDependOnCorrectiveText() {
+        OperatorEntry.InvalidExample evidence = new OperatorEntry.InvalidExample("Bad()", "MVK_X", "");
+        assertTrue(OperatorCatalog.documentsError(evidence, List.of(), "MVK_X"),
+                "the kernel-rejected code establishes ownership even before a corrective is authored");
+    }
+
+    @Test
+    void anOperandSpecificCorrectivePrecedesTheGeneralFallback() {
+        Corrective general = new Corrective("MVK_X", List.of(), "general", null, null);
+        Corrective specific = new Corrective("MVK_X", List.of("number", "string"), "specific", null, null);
+
+        assertEquals("specific", OperatorCatalog.selectCorrectiveFix(
+                List.of(general, specific), List.of("string", "number")).orElseThrow());
     }
 
     /**
@@ -211,24 +236,81 @@ class OperatorCatalogTest {
     }
 
     /**
-     * Every {@code correctives} entry is well-formed: a kernel code, a non-empty operand-class match,
+     * Every {@code correctives} entry is well-formed: a kernel code, an optional operand-class match,
      * the fix text, and a reject probe whose DSL the facet lane executes (must be rejected with the
-     * code) — so an operand-conditional fix can't document a trigger that no longer exists.
+     * code) — so a fix can't document a trigger that no longer exists. Empty operand selectors are the
+     * operator/code-wide fallback and must therefore be unique.
      */
     @Test
     void everyCorrectiveIsWellFormedAndProbed() {
         for (OperatorEntry e : CATALOG.entries()) {
+            java.util.Set<String> selectors = new java.util.HashSet<>();
             for (Corrective c : e.correctives()) {
                 String at = e.id() + " corrective " + c.code();
                 assertFalse(isBlank(c.code()), () -> e.id() + ": corrective missing code");
-                assertFalse(c.whenOperands().isEmpty(), () -> at + ": whenOperands must not be empty");
                 c.whenOperands().forEach(t -> assertTrue(OPERAND_CLASS_TOKENS.contains(t),
                         () -> at + ": unknown operand-class token '" + t + "'"));
+                if (c.whenOperands().isEmpty()) {
+                    long general = e.correctives().stream()
+                            .filter(peer -> c.code().equals(peer.code()) && peer.whenOperands().isEmpty())
+                            .count();
+                    assertEquals(1, general, () -> at + ": only one general corrective may exist per code");
+                }
+                String selector = c.code() + ":" + c.whenOperands().stream().sorted().toList();
+                assertTrue(selectors.add(selector), () -> at + ": duplicate unordered operand selector");
                 assertFalse(isBlank(c.fix()), () -> at + ": missing fix");
                 assertNotNull(c.probe(), () -> at + ": missing reject probe");
                 assertFalse(isBlank(c.probe().dsl()), () -> at + ": reject probe needs a dsl");
             }
         }
+    }
+
+    /**
+     * Every kernel rejection the catalog itself claims must lead somewhere executable. The denominator is
+     * derived from {@code MVK_*} tokens in the live gotcha text: an entry either owns an invalid/corrective
+     * example for the code, or the code has a construct-independent {@link StructuralKernelFix}. This does not
+     * claim to discover undocumented kernel rejections; it prevents an authored rejection from becoming advice
+     * prose that no N7 lane executes and no diagnostic can join.
+     */
+    @Test
+    void everyGotchaKernelCodeHasAnExecutableOwnerOrStructuralCorrective() {
+        java.util.List<String> missing = new java.util.ArrayList<>();
+        for (OperatorEntry entry : CATALOG.entries()) {
+            java.util.Set<String> owned = new java.util.HashSet<>();
+            if (entry.invalidExample() != null && entry.invalidExample().error() != null) {
+                owned.add(entry.invalidExample().error());
+            }
+            entry.correctives().stream().map(Corrective::code).forEach(owned::add);
+            missing.addAll(uncoveredGotchaCodes(entry.id(), entry.gotchas(), owned));
+        }
+        assertTrue(missing.isEmpty(), () -> "uncovered operator rejection claims:\n  "
+                + String.join("\n  ", missing));
+    }
+
+    @Test
+    void theGotchaCodeScannerRecognisesTheMissingCorrectiveThatShipped() {
+        OperatorEntry.Gotcha falseClaim = new OperatorEntry.Gotcha(
+                "HoursFromTime(Today) is MVK_WRONG_DATE_FORMAT_FOR_OP", GotchaKind.AUTHORING);
+        assertEquals(List.of("Synthetic mentions MVK_WRONG_DATE_FORMAT_FOR_OP without an executable example "
+                        + "or a structural corrective"),
+                uncoveredGotchaCodes("Synthetic", List.of(falseClaim), java.util.Set.of()));
+    }
+
+    private static List<String> uncoveredGotchaCodes(
+            String operatorId, List<OperatorEntry.Gotcha> gotchas, java.util.Set<String> owned) {
+        java.util.List<String> missing = new java.util.ArrayList<>();
+        java.util.regex.Pattern code = java.util.regex.Pattern.compile("MVK_[A-Z0-9_]+");
+        for (OperatorEntry.Gotcha gotcha : gotchas) {
+            var matcher = code.matcher(gotcha.text());
+            while (matcher.find()) {
+                String mentioned = matcher.group();
+                if (!owned.contains(mentioned) && StructuralKernelFix.forCode(mentioned).isEmpty()) {
+                    missing.add(operatorId + " mentions " + mentioned + " without an executable example "
+                            + "or a structural corrective");
+                }
+            }
+        }
+        return missing;
     }
 
     /**

@@ -133,6 +133,17 @@ public final class CliTestSupport {
         return resource("models/order-ruled.dm.json");
     }
 
+    public static String orderJson() {
+        return resource("models/order.dm.json");
+    }
+
+    /** Write the broad operator-domain order fixture to a temp file the CLI can read. */
+    public static Path order(Path dir) throws IOException {
+        Path file = dir.resolve("order.dm.json");
+        Files.writeString(file, orderJson());
+        return file;
+    }
+
     /** Write the {@code order-ruled} fixture to a temp file the CLI can read. */
     public static Path orderRuled(Path dir) throws IOException {
         Path file = dir.resolve("order-ruled.dm.json");

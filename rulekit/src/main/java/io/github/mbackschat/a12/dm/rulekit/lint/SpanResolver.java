@@ -24,8 +24,8 @@ import io.github.mbackschat.a12.dm.rulekit.validate.Span;
 /**
  * F4a <b>span-pointing</b> — link a KERNEL {@link Diagnostic} back to the AST node that produced it.
  * The kernel reports a code, not a location; rulekit knows the operators the rule uses
- * ({@link OperatorUsage}). Intersecting a code's catalog candidate operators (those whose
- * {@code invalidExample} documents it) with the rule's used operators identifies the culprit when
+ * ({@link OperatorUsage}). Intersecting a code's catalog candidate operators (those with executable
+ * rejection evidence for it) with the rule's used operators identifies the culprit when
  * exactly one matches — then {@code where.operator} is pinned (it is otherwise empty for KERNEL
  * diagnostics) and the catalog-join is re-derived from that <em>exact</em> entry rather than the
  * representative first one. Ambiguous (several used candidates) or unknown codes pass through
@@ -102,9 +102,7 @@ public final class SpanResolver {
             return diagnostic;
         }
         Optional<String> fix = correctiveFix(operator, diagnostic.code().get(), rendered)
-                .or(() -> Optional.ofNullable(operator.invalidExample())
-                        .map(OperatorEntry.InvalidExample::fix)
-                        .filter(s -> s != null && !s.isBlank()))
+                .or(() -> catalog.rejectionFix(operator.id(), diagnostic.code().get()))
                 .or(diagnostic::fix);
         Optional<String> explain = Optional.ofNullable(operator.meaning())
                 .filter(s -> s != null && !s.isBlank())

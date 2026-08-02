@@ -56,7 +56,7 @@ Existing internal code is **not** the spec for how to consume the kit — the AP
 
 | The fact is about… | It goes in | Carried as |
 |---|---|---|
-| **one operator** (a semantic surprise, a constraint, a relation, an example) | the operator catalog `rulekit/src/main/resources/catalog/operators.json` (served by `dmtool operators <id>`, N7-validated) | a `gotcha` with its `kind` (`SURPRISE`/`AUTHORING`/`RENDERING` — `GotchaKind`), `seeAlso`, `validExample`/`invalidExample{fix}` |
+| **one operator** (a semantic surprise, a constraint, a relation, an example) | the operator catalog `rulekit/src/main/resources/catalog/operators.json` (served by `dmtool operators <id>`, N7-validated) | a `gotcha` with its `kind` (`SURPRISE`/`AUTHORING`/`RENDERING` — `GotchaKind`) and local `seeAlso`; primary `validExample`/`invalidExample{fix}`; plural code-specific `correctives[]` for additional rejection triggers |
 | **one spec/field shape** (a key, its requiredness, allowed values, a co-requirement) | the published JSON schema (`schema <target> <op>`), CI-executed examples | a property `description` / `enum` / required-together prose |
 | **one kernel rejection's** meaning + corrective | the diagnostic enricher (`StructuralKernelFix.forCode`/`forMessage`, `RkCode`, the catalog-join) | a `fix`+`explain` that rides the `MVK_*`/`RK_*` itself |
 | **cross-cutting judgment**, or a **trap that spans constructs / is no single operator** | the skill `skill/SKILL.md` (the #1-rule discipline applies) | a concise judgment note (polarity, iteration scope, the bilingual `--add-locale` cascade, "is this even a rule?") |

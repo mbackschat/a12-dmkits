@@ -116,7 +116,7 @@ class SpanResolverTest {
 
     @Test
     void unmatchedOperandShapesKeepTheUnionFallback() {
-        // number-vs-number-literal matches no corrective → the entry-level invalidExample fix stays.
+        // number-vs-number-literal matches no operand-specific corrective → the code-specific fallback stays.
         Condition c = m.num(FEE).lt(0);
         Diagnostic refined = resolver.resolve(List.of(kernel("MVK_INVALID_TYPE_FOR_COMPARISON")), c).get(0);
         assertTrue(refined.fix().isPresent(), "the fallback fix must survive an unmatched operand shape");

@@ -80,6 +80,19 @@ class CheckVerbTest {
     }
 
     @Test
+    void aSecondaryOperatorRejectionCarriesItsExecutableCorrective(@TempDir Path dir) throws Exception {
+        Path m = CliTestSupport.order(dir);
+        var res = CliTestSupport.run("-m", m.toString(), "rule", "check",
+                "--field", "/Order/PickupTime",
+                "--condition", "HoursFromTime(Today) > HoursFromTime(PickupTime)", "--code", "X");
+        JsonNode diagnostic = MAPPER.readTree(res.out()).path("diagnostics").get(0);
+
+        assertEquals("MVK_WRONG_DATE_FORMAT_FOR_OP", diagnostic.path("code").asText(), res::out);
+        assertTrue(diagnostic.path("fix").asText().contains("time or date-time"), res::out);
+        assertTrue(diagnostic.path("explain").asText().contains("hour-of-day"), res::out);
+    }
+
+    @Test
     void invalidRulePatternGetsTheTwoStageCorrective(@TempDir Path dir) throws Exception {
         Path m = model(dir);
         var res = CliTestSupport.run("-m", m.toString(), "rule", "check",

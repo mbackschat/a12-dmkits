@@ -27,8 +27,23 @@ class DiagnosticEnricherTest {
     private static final DiagnosticEnricher ENRICHER = new DiagnosticEnricher(OperatorCatalog.load());
 
     private static Diagnostic raw(String code) {
-        return Diagnostic.precheck(Optional.of(code), code + " (raw kernel message)",
+        return raw(code, code + " (raw kernel message)");
+    }
+
+    private static Diagnostic raw(String code, String summary) {
+        return Diagnostic.precheck(Optional.of(code), summary,
                 new Diagnostic.Where((String) null, Optional.empty()), Optional.empty(), Optional.empty());
+    }
+
+    @Test
+    void aNamedSecondaryOperatorRejectionGetsItsExecutableCorrective() {
+        Diagnostic enriched = ENRICHER.enrich(raw("MVK_WRONG_DATE_FORMAT_FOR_OP",
+                "At 'HoursFromTime': Wrong date format at 'Today'."));
+
+        assertTrue(enriched.fix().orElse("").contains("time or date-time"),
+                () -> "the named HoursFromTime gate needs its own corrective: " + enriched.fix());
+        assertTrue(enriched.explain().orElse("").contains("hour-of-day"),
+                () -> "the named operator should own the explanation: " + enriched.explain());
     }
 
     @Test
@@ -229,11 +244,16 @@ class DiagnosticEnricherTest {
         OperatorCatalog catalog = OperatorCatalog.load();
         Map<String, Set<String>> fixesByCode = new HashMap<>();
         for (OperatorEntry e : catalog.entries()) {
-            OperatorEntry.InvalidExample ix = e.invalidExample();
-            if (ix == null || ix.error() == null || ix.fix() == null || ix.fix().isBlank()) {
-                continue;
+            java.util.Set<String> codes = new java.util.HashSet<>();
+            if (e.invalidExample() != null && e.invalidExample().error() != null) {
+                codes.add(e.invalidExample().error());
             }
-            fixesByCode.computeIfAbsent(ix.error(), k -> new HashSet<>()).add(ix.fix());
+            e.correctives().stream().map(io.github.mbackschat.a12.dm.rulekit.catalog.Corrective::code)
+                    .forEach(codes::add);
+            for (String code : codes) {
+                fixesByCode.computeIfAbsent(code, k -> new HashSet<>())
+                        .addAll(catalog.rejectionFixes(e.id(), code));
+            }
         }
         for (Map.Entry<String, Set<String>> byCode : fixesByCode.entrySet()) {
             if (byCode.getValue().size() < 2 || StructuralKernelFix.forCode(byCode.getKey()).isPresent()) {

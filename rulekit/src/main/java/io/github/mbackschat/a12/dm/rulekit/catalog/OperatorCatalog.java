@@ -7,6 +7,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.stream.Stream;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -184,8 +185,9 @@ public final class OperatorCatalog {
     }
 
     /**
-     * <em>All</em> catalog entries that document this kernel error code in their {@code invalidExample}
-     * — the candidate operators that can produce it. The {@code DiagnosticEnricher} joins on this:
+     * <em>All</em> catalog entries that document this kernel error code in either their primary
+     * {@code invalidExample} or plural {@code correctives} — the candidate operators that can produce it.
+     * The {@code DiagnosticEnricher} joins on this:
      * one documenter (or several that agree) yields that corrective; several that disagree yield the
      * <em>union</em> — never an arbitrary first pick (the removed {@code byInvalidError}/{@code findFirst}
      * mis-stamped every other construct: probe findings F06-2 / dec-places). AST↔problem span-linking
@@ -194,8 +196,45 @@ public final class OperatorCatalog {
      */
     public List<OperatorEntry> operatorsForError(String mvkCode) {
         return entries.stream()
-                .filter(e -> e.invalidExample() != null && mvkCode.equals(e.invalidExample().error()))
+                .filter(e -> documentsError(e.invalidExample(), e.correctives(), mvkCode))
                 .toList();
+    }
+
+    /** Evidence ownership is independent of whether its corrective text is presently usable. */
+    static boolean documentsError(
+            OperatorEntry.InvalidExample primary, List<Corrective> correctives, String code) {
+        return (primary != null && code.equals(primary.error()))
+                || correctives.stream().anyMatch(corrective -> code.equals(corrective.code()));
+    }
+
+    /** Every distinct executable corrective this operator documents for {@code code}. The primary
+     * invalid example and the plural corrective probes are one evidence set; consumers must never inspect
+     * just one lane and silently drop the other. */
+    public List<String> rejectionFixes(String operatorId, String code) {
+        return byId(operatorId).stream()
+                .flatMap(entry -> Stream.concat(
+                        Stream.ofNullable(entry.invalidExample())
+                                .filter(example -> code.equals(example.error()))
+                                .map(OperatorEntry.InvalidExample::fix),
+                        entry.correctives().stream()
+                                .filter(corrective -> code.equals(corrective.code()))
+                                .map(Corrective::fix)))
+                .filter(fix -> fix != null && !fix.isBlank())
+                .distinct()
+                .sorted()
+                .toList();
+    }
+
+    /** The operator's code-specific fallback. One fix is returned directly; multiple trigger-specific fixes
+     * remain an explicit union until operand evidence selects one. */
+    public Optional<String> rejectionFix(String operatorId, String code) {
+        List<String> fixes = rejectionFixes(operatorId, code);
+        return switch (fixes.size()) {
+            case 0 -> Optional.empty();
+            case 1 -> Optional.of(fixes.get(0));
+            default -> Optional.of("this code has more than one trigger for " + operatorId
+                    + "; use the corrective matching the operands — " + String.join("; ", fixes));
+        };
     }
 
     /**
@@ -208,11 +247,19 @@ public final class OperatorCatalog {
      * enrichment (G30, which classifies operands via the kernel-free interpreter parser + {@code ModelIndex}).
      */
     public Optional<String> correctiveFix(String operatorId, String code, List<String> operandTokens) {
-        return byId(operatorId).stream()
+        List<Corrective> forCode = byId(operatorId).stream()
                 .flatMap(e -> e.correctives().stream())
-                .filter(c -> code.equals(c.code()) && matchesUnordered(c.whenOperands(), operandTokens))
-                .map(Corrective::fix)
-                .findFirst();
+                .filter(c -> code.equals(c.code()))
+                .toList();
+        return selectCorrectiveFix(forCode, operandTokens);
+    }
+
+    static Optional<String> selectCorrectiveFix(List<Corrective> forCode, List<String> operandTokens) {
+        return Stream.concat(
+                        forCode.stream().filter(c -> !c.whenOperands().isEmpty()
+                                && matchesUnordered(c.whenOperands(), operandTokens)),
+                        forCode.stream().filter(c -> c.whenOperands().isEmpty()))
+                .map(Corrective::fix).findFirst();
     }
 
     private static boolean matchesUnordered(List<String> expected, List<String> actual) {

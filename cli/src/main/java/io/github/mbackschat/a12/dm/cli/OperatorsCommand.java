@@ -163,6 +163,10 @@ final class OperatorsCommand extends BaseCommand {
                 ObjectNode gn = g.addObject();
                 gn.put("text", x.text());
                 gn.put("kind", x.kind().name());
+                if (!x.seeAlso().isEmpty()) {
+                    ArrayNode related = gn.putArray("seeAlso");
+                    x.seeAlso().forEach(related::add);
+                }
             });
         }
         // the semantics facets (CATALOG-SPEC §3–§4/§7) — the machine-readable per-operator semantics

@@ -116,8 +116,8 @@ class CatalogExamplesAreKernelValidTest {
     }
 
     /**
-     * The correctives' reject lane (CATALOG-SPEC §6): each operand-conditional corrective carries a probe
-     * DSL with exactly its operand shape, which the kernel must reject with the corrective's {@code code}
+     * The correctives' reject lane (CATALOG-SPEC §6): each code-specific corrective carries a probe
+     * DSL with exactly its trigger shape, which the kernel must reject with the corrective's {@code code}
      * — so a corrective can't document a trigger that no longer exists.
      */
     @TestFactory

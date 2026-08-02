@@ -3725,16 +3725,12 @@
           "seeAlso": [
             "MaxValue",
             "MinValue"
-          ],
-          "validExample": {
-            "dsl": "FieldFilled(Quantity) And NumberOfDifferentValues(OrderDate, DeliveryDate) > 0"
-          },
-          "invalidExample": {
-            "dsl": "FieldFilled(Quantity) And NumberOfDifferentValues(OrderDate, ScheduledAt) > 0",
-            "error": "MVK_DATEFORMATS_NOT_COMPATIBLE",
-            "fix": "compare date-like fields declaring the same format"
-          }
+          ]
         }
+      ],
+      "seeAlso": [
+        "MaxValue",
+        "MinValue"
       ],
       "validExample": {
         "dsl": "FieldFilled(CustomerName) And NumberOfDifferentValues(Items*/Sku) < 2",
@@ -3745,6 +3741,16 @@
         "error": "MVK_STRING_ENUM_AND_NON_STRING_ENUM",
         "fix": "list only same-type fields"
       },
+      "correctives": [
+        {
+          "code": "MVK_DATEFORMATS_NOT_COMPATIBLE",
+          "whenOperands": [],
+          "fix": "NumberOfDifferentValues needs date-like fields with compatible declared formats",
+          "probe": {
+            "dsl": "FieldFilled(Quantity) And NumberOfDifferentValues(OrderDate, ScheduledAt) > 0"
+          }
+        }
+      ],
       "semantics": {
         "polarity": {
           "value": "GROW_ONLY",
@@ -4602,6 +4608,16 @@
         "dsl": "AllFieldsFilled(OrderDate, DeliveryDate) And [DeliveryDate] > AddDays(OrderDate, 7)",
         "note": "fires when delivery is more than a week out"
       },
+      "correctives": [
+        {
+          "code": "MVK_WRONG_DATE_FORMAT_FOR_OP",
+          "whenOperands": [],
+          "fix": "AddDays needs a date value whose format carries a day component",
+          "probe": {
+            "dsl": "FieldFilled(OrderDate) And [OrderDate] != AddDays(Date(\"\", \"01\", \"1963\"), 1)"
+          }
+        }
+      ],
       "sinceKernel": "30.8.x"
     },
     {
@@ -4707,6 +4723,16 @@
         "dsl": "FieldFilled(ScheduledAt) And HoursFromTime(AddHours(ScheduledAt, 2)) < 23",
         "note": "the scheduled time, two hours on, is before 23:00"
       },
+      "correctives": [
+        {
+          "code": "MVK_WRONG_DATE_FORMAT_FOR_OP",
+          "whenOperands": [],
+          "fix": "AddHours needs a date-time; combine a resolved date with a time using DateTime(...) or use AddDays",
+          "probe": {
+            "dsl": "AddHours(ValueAsDate(ApproxDate, FirstDay), 1) > [ScheduledAt]"
+          }
+        }
+      ],
       "sinceKernel": "30.8.x"
     },
     {
@@ -4934,6 +4960,16 @@
         "dsl": "FieldFilled(OrderDate) And DayFromDate(OrderDate) > 28",
         "note": "fires for orders late in the month"
       },
+      "correctives": [
+        {
+          "code": "MVK_INVALID_DATE_TYPE",
+          "whenOperands": [],
+          "fix": "DayFromDate needs a complete date; resolve a partially-known date with ValueAsDate first",
+          "probe": {
+            "dsl": "FieldFilled(ApproxDate) And DayFromDate(ApproxDate) > 1"
+          }
+        }
+      ],
       "semantics": {
         "polarity": {
           "value": "SYMMETRIC",
@@ -5344,6 +5380,24 @@
         "error": "MVK_NO_CONST",
         "fix": "extract from a field or a temporal expression, never a literal: HoursFromTime(PickupTime) > 10"
       },
+      "correctives": [
+        {
+          "code": "MVK_WRONG_DATE_FORMAT_FOR_OP",
+          "whenOperands": [],
+          "fix": "HoursFromTime needs a time or date-time source; Today is date-only",
+          "probe": {
+            "dsl": "HoursFromTime(Today) > HoursFromTime(PickupTime)"
+          }
+        },
+        {
+          "code": "MVK_INVALID_DATE_STRING",
+          "whenOperands": [],
+          "fix": "HoursFromTime needs a time-bearing field or expression; an unparseable quoted value is not a temporal source",
+          "probe": {
+            "dsl": "HoursFromTime(\"2019-01-01\") > HoursFromTime(PickupTime)"
+          }
+        }
+      ],
       "semantics": {
         "polarity": {
           "value": "SYMMETRIC",
@@ -5426,6 +5480,16 @@
         "error": "MVK_NO_CONST",
         "fix": "extract from a field or a temporal expression, never a literal: MinutesFromTime(PickupTime) > 30"
       },
+      "correctives": [
+        {
+          "code": "MVK_WRONG_DATE_FORMAT_FOR_OP",
+          "whenOperands": [],
+          "fix": "MinutesFromTime needs a time or date-time source; Today is date-only",
+          "probe": {
+            "dsl": "MinutesFromTime(Today) > MinutesFromTime(PickupTime)"
+          }
+        }
+      ],
       "semantics": {
         "polarity": {
           "value": "SYMMETRIC",
@@ -5508,6 +5572,16 @@
         "error": "MVK_NO_CONST",
         "fix": "extract from a field or a temporal expression, never a literal: SecondsFromTime(PickupTime) > 0"
       },
+      "correctives": [
+        {
+          "code": "MVK_WRONG_DATE_FORMAT_FOR_OP",
+          "whenOperands": [],
+          "fix": "SecondsFromTime needs a time or date-time source; Today is date-only",
+          "probe": {
+            "dsl": "SecondsFromTime(Today) > SecondsFromTime(PickupTime)"
+          }
+        }
+      ],
       "semantics": {
         "polarity": {
           "value": "SYMMETRIC",
@@ -5893,13 +5967,14 @@
       ],
       "gotchas": [
         {
-          "text": "it is NOT usable wherever a date is expected — the kernel gives it its own operand alternative, so an extractor (DayFromDate(ValueAsDate(F, FirstDay))), the TIME argument of DateTime, a Date(...) component, and a Min/Max operand all draw MVK_UNEXPECTED_TOKEN; AddHours is in position but draws MVK_WRONG_DATE_FORMAT_FOR_OP because a date carries no sub-day component",
+          "text": "it is NOT usable wherever a date is expected — the kernel gives it its own operand alternative, so an extractor (DayFromDate(ValueAsDate(F, FirstDay))), the TIME argument of DateTime, a Date(...) component, and a Min/Max operand all draw MVK_UNEXPECTED_TOKEN; AddHours is in position but its own date-format gate rejects the resolved date because it carries no sub-day component",
           "kind": "AUTHORING",
           "seeAlso": [
             "AddDays",
             "DifferenceInDays",
             "DateTime",
-            "DayFromDate"
+            "DayFromDate",
+            "AddHours"
           ]
         }
       ],

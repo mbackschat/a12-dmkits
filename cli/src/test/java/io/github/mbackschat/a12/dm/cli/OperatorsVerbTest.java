@@ -119,6 +119,14 @@ class OperatorsVerbTest {
         assertEquals(2, correctives.size(), () -> "both operand-conditional fixes served: " + lt.out());
         assertTrue(correctives.get(0).path("whenOperands").isArray());
         assertTrue(!correctives.get(0).path("fix").asText().isBlank());
+
+        CliTestSupport.Result hours = CliTestSupport.run("operators", "HoursFromTime");
+        assertEquals(0, hours.code(), hours::err);
+        JsonNode hour = MAPPER.readTree(hours.out());
+        assertTrue(hour.path("gotchas").get(0).path("seeAlso").toString().contains("MinutesFromTime"),
+                () -> "gotcha-local related operators must not be dropped: " + hours.out());
+        assertTrue(hour.path("correctives").toString().contains("MVK_WRONG_DATE_FORMAT_FOR_OP"),
+                () -> "secondary executable rejections must be served: " + hours.out());
     }
 
     /**

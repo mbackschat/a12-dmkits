@@ -10,8 +10,8 @@ import io.github.mbackschat.a12.dm.rulekit.catalog.OperatorEntry;
 
 /**
  * Enriches a raw kernel {@link Diagnostic} via the <b>catalog-join</b> (PROJECT-DESIGN §F4a): a
- * {@code MVK_*} code is matched against the catalog entry that documents it in its
- * {@code invalidExample}, and that entry's curated {@code fix} and operator {@code meaning} are
+ * {@code MVK_*} code is matched against the catalog entry that documents it in an executable
+ * {@code invalidExample} or {@code corrective} probe, and that entry's curated {@code fix} and operator {@code meaning} are
  * attached. The fix database thus lives in one place — the N7-locked catalog — so kernel
  * diagnostics and authoring examples never drift apart.
  *
@@ -75,17 +75,18 @@ final class DiagnosticEnricher {
         }
         List<OperatorEntry> documenters = diagnostic.code().map(catalog::operatorsForError).orElse(List.of());
         if (!documenters.isEmpty()) {
+            String code = diagnostic.code().orElseThrow();
             Optional<OperatorEntry> owner = resolveOwner(diagnostic, documenters);
             if (owner.isPresent()) {
                 // The owner is one of the documenters (resolveOwner cannot return anything else), so both its curated
                 // fix and its meaning are about THIS code.
-                return diagnostic.withFix(owner.flatMap(DiagnosticEnricher::ownFix),
+                return diagnostic.withFix(owner.flatMap(entry -> catalog.rejectionFix(entry.id(), code)),
                         owner.flatMap(DiagnosticEnricher::ownMeaning));
             }
             // OWNERSHIP UNESTABLISHED → a generic, code-level corrective that ENUMERATES the possibilities, and
             // deliberately NO explain: an operator meaning is a claim about which construct rejected, so
             // emitting one here would assert an ownership we could not establish.
-            return diagnostic.withFix(genericFix(documenters), Optional.empty());
+            return diagnostic.withFix(genericFix(documenters, code), Optional.empty());
         }
         // last resort — a content-free KERNEL rejection with a message but no MVK_ code (e.g. the date/time
         // field-format reject); attach a message-matched hint so it isn't left fix-less (probe 08).
@@ -104,11 +105,9 @@ final class DiagnosticEnricher {
      * → their one shared fix (safe without ownership); documenters that DISAGREE → the enumerated
      * <em>union</em>, so the reader chooses rather than being mis-stamped. Sorted for a deterministic message.
      */
-    private static Optional<String> genericFix(List<OperatorEntry> documenters) {
+    private Optional<String> genericFix(List<OperatorEntry> documenters, String code) {
         List<String> distinct = documenters.stream()
-                .map(OperatorEntry::invalidExample)
-                .filter(e -> e != null && e.fix() != null && !e.fix().isBlank())
-                .map(OperatorEntry.InvalidExample::fix)
+                .flatMap(entry -> catalog.rejectionFixes(entry.id(), code).stream())
                 .distinct()
                 .sorted()
                 .toList();
@@ -209,12 +208,6 @@ final class DiagnosticEnricher {
 
     private static boolean namesOperator(OperatorEntry entry, String named) {
         return identifiers(entry).stream().anyMatch(named::equalsIgnoreCase);
-    }
-
-    private static Optional<String> ownFix(OperatorEntry entry) {
-        OperatorEntry.InvalidExample example = entry.invalidExample();
-        return example == null || example.fix() == null || example.fix().isBlank()
-                ? Optional.empty() : Optional.of(example.fix());
     }
 
     private static Optional<String> ownMeaning(OperatorEntry entry) {

@@ -109,9 +109,15 @@ public record OperatorEntry(
      * older entries still surface.
      */
     @JsonIgnoreProperties(ignoreUnknown = true)
-    public record Gotcha(String text, GotchaKind kind) {
+    public record Gotcha(String text, GotchaKind kind, List<String> seeAlso) {
         public Gotcha {
             kind = kind == null ? GotchaKind.SURPRISE : kind;
+            seeAlso = seeAlso == null ? List.of() : List.copyOf(seeAlso);
+        }
+
+        /** Source/binary-compatible constructor for callers of the original two-field shape. */
+        public Gotcha(String text, GotchaKind kind) {
+            this(text, kind, List.of());
         }
     }
 
