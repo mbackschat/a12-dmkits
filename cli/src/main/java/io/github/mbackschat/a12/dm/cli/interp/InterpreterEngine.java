@@ -8,6 +8,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 
+import io.github.mbackschat.a12.dm.interpreter.A12PartiallyKnownMultiPointer;
 import io.github.mbackschat.a12.dm.interpreter.model.Computed;
 import io.github.mbackschat.a12.dm.interpreter.model.ComputeOutcome;
 import io.github.mbackschat.a12.dm.interpreter.DmInterpreter;
@@ -217,7 +218,7 @@ public final class InterpreterEngine {
             ArrayNode arr = data.putArray("suppressedBy");
             result.getSuppressedBy().forEach(s -> {
                 ObjectNode n = arr.addObject();
-                n.put("field", A12Pointers.canonical(s.getField()));
+                n.put("field", A12Pointers.canonicalCell(s.getField()));
                 n.put("formalErrorCode", s.getFormalErrorCode());
             });
         }
@@ -242,7 +243,7 @@ public final class InterpreterEngine {
         for (UnsupportedRule u : unsupported) {
             ObjectNode n = arr.addObject();
             String name = switch (u.getSubject()) {
-                case CELL -> A12Pointers.canonical(u.getRulePath());
+                case CELL -> A12Pointers.canonicalCell(u.getRulePath());
                 case ELEMENT -> u.getRulePath();
             };
             n.put("name", name);
@@ -254,19 +255,19 @@ public final class InterpreterEngine {
     private static void addMessage(ObjectNode mn, Message m) {
         mn.put("code", m.getCode());
         mn.put("rule", m.getRulePath());
-        // Canonical A12, not the interpreter's house form — see A12Pointers for why the two exist and which is a
-        // contract. A pointer copied out of this output has to be one A12 accepts back.
-        mn.put("field", A12Pointers.canonical(m.getErrorPath()));
+        // Rendered from the RETAINED message pointer, not from a string — see A12Pointers for why re-reading the
+        // house form cannot tell an exact address from an unresolved one.
+        mn.put("field", A12Pointers.canonical(m.getErrorPointer()));
         mn.put("severity", m.getSeverity().name());
         mn.put("type", typeError(m.getType()));
         mn.put("message", m.getText());
-        putPointers(mn.putArray("referenced"), m.getReferenced());
-        if (!m.getFillToFix().isEmpty()) {
-            putPointers(mn.putArray("fillToFix"), m.getFillToFix());
+        putPointers(mn.putArray("referenced"), m.getReferencedPointers());
+        if (!m.getFillToFixPointers().isEmpty()) {
+            putPointers(mn.putArray("fillToFix"), m.getFillToFixPointers());
         }
     }
 
-    private static void putPointers(ArrayNode arr, java.util.List<String> pointers) {
+    private static void putPointers(ArrayNode arr, java.util.List<A12PartiallyKnownMultiPointer> pointers) {
         A12Pointers.canonical(pointers).forEach(arr::add);
     }
 

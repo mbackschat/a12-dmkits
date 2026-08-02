@@ -1,7 +1,9 @@
 package io.github.mbackschat.a12.dm.interpreter.eval
 
+import io.github.mbackschat.a12.dm.interpreter.A12PartiallyKnownMultiPointer
 import io.github.mbackschat.a12.dm.interpreter.CacheObserver
 import io.github.mbackschat.a12.dm.interpreter.CacheOwnerKind
+import io.github.mbackschat.a12.dm.interpreter.MessagePointers
 import io.github.mbackschat.a12.dm.interpreter.UnsupportedConstructException
 import io.github.mbackschat.a12.dm.interpreter.decOrNull
 import io.github.mbackschat.a12.dm.interpreter.ast.Val
@@ -247,8 +249,9 @@ class Document(internal val config: DocumentConfig) {
 
         /** group path → its declared field paths, recursive and in model declaration order. */
         val containedFieldsByGroup: MutableMap<String, List<String>> = HashMap()
-        /** Canonical message-pointer strings, partitioned by path to avoid flat-key collision clusters. */
-        val formattedPointersByPath: MutableMap<String, MutableMap<List<Int>, String>> = HashMap()
+        /** Message pointers, partitioned by path to avoid flat-key collision clusters. */
+        val messagePointersByPath: MutableMap<String, MutableMap<List<Int>, A12PartiallyKnownMultiPointer>> =
+            HashMap()
     }
 
     private var cachedIndex: Index? = null
@@ -275,7 +278,7 @@ class Document(internal val config: DocumentConfig) {
                 idx.starOmissionByScope.size +
                 idx.overLimitRowsByGroup.values.sumOf { it.size } +
                 idx.containedFieldsByGroup.size +
-                idx.formattedPointersByPath.values.sumOf { it.size }
+                idx.messagePointersByPath.values.sumOf { it.size }
         } ?: 0
         observer.cacheEntries(
             this,
@@ -291,7 +294,21 @@ class Document(internal val config: DocumentConfig) {
         val content = ArrayList<Placement>()
         val partsMemo = HashMap<String, List<String>>()
         for (p in placements) {
-            partsMemo.getOrPut(p.path) { parts(p.path) }
+            val pathParts = partsMemo.getOrPut(p.path) { parts(p.path) }
+            // One coordinate per path part. A cell whose coordinate count disagrees with its path has no
+            // address — A12's message pointer pairs a name with an index at every level — so such a placement
+            // cannot be pointed at. It went unchecked while the house renderer merely IGNORED a surplus, which
+            // silently collapsed a whole repeated column onto one rendered pointer (measured: placing `/C/S` at
+            // `(1, i, 1)` rendered `/C[1]/S` for every i).
+            //
+            // Checked HERE and not in `add`: this loop already has the part list, so the check is free, whereas
+            // `add` is the document-build hot path and computing it per placement there cost real time —
+            // `CharsetPerfTest`'s N/4N growth ratio went to 9.73× against its 9.0× floor, measured, before this
+            // moved. The engine's #1 performance rule is that the interpreter never gets worse.
+            require(p.reps.size == pathParts.size) {
+                "'${p.path}' has ${pathParts.size} parts but was placed at ${p.reps} — a cell carries one " +
+                    "1-based coordinate per path part, the field's own included"
+            }
             if (p.isGroup) {
                 // No `!in` dedup needed: every group placement is already unique by (path, reps) — both
                 // group() and autoGroup() gate on the `instantiatedGroups` set before adding. The old
@@ -330,10 +347,23 @@ class Document(internal val config: DocumentConfig) {
     /** Instantiated rows of one group, without constructing evaluation contexts or scanning document content. */
     internal fun instantiatedRows(groupPath: String): List<List<Int>> = rowsOf(groupPath)
 
-    /** Canonical pointer text retained with the immutable document index and discarded on mutation (IF191/IF142). */
+    /**
+     * <b>The one place a message address is built</b> — A12's `PartiallyKnownDocumentMultiPointer` for the cell
+     * or row at `(path, reps)`, retained with the immutable document index and discarded on mutation
+     * (IF191/IF142). Every `Message` channel takes its pointer from here, so the engine stores the typed value
+     * and never re-derives one from text.
+     */
+    internal fun messagePointer(path: String, reps: List<Int>): A12PartiallyKnownMultiPointer =
+        index().messagePointersByPath.getOrPut(path) { HashMap() }
+            .getOrPut(reps) { A12PartiallyKnownMultiPointer.of(path, reps) }
+
+    /**
+     * The house-form projection of [messagePointer], for the two channels that are genuinely textual: an
+     * [io.github.mbackschat.a12.dm.interpreter.model.UnsupportedRule]'s cell subject and the `$pointer$` slot of
+     * a diagnostic's rendered text. Derived, so it cannot disagree with the retained pointer.
+     */
     internal fun formattedPointer(path: String, reps: List<Int>): String =
-        index().formattedPointersByPath.getOrPut(path) { HashMap() }
-            .getOrPut(reps) { formatPointer(path, reps) }
+        MessagePointers.houseForm(messagePointer(path, reps))
 
     /**
      * A copy of this document with computed values applied — the interpreter's twin of the kernel's

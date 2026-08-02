@@ -469,6 +469,15 @@ final class io.github.mbackschat.a12.dm.interpreter/A12PartiallyKnownMultiPointe
     final fun hashCode(): kotlin/Int // io.github.mbackschat.a12.dm.interpreter/A12PartiallyKnownMultiPointer.hashCode|hashCode(){}[0]
     final fun toExactPointer(): io.github.mbackschat.a12.dm.interpreter/A12Pointer? // io.github.mbackschat.a12.dm.interpreter/A12PartiallyKnownMultiPointer.toExactPointer|toExactPointer(){}[0]
     final fun toString(): kotlin/String // io.github.mbackschat.a12.dm.interpreter/A12PartiallyKnownMultiPointer.toString|toString(){}[0]
+
+    final object Companion { // io.github.mbackschat.a12.dm.interpreter/A12PartiallyKnownMultiPointer.Companion|null[0]
+        final const val UNKNOWN // io.github.mbackschat.a12.dm.interpreter/A12PartiallyKnownMultiPointer.Companion.UNKNOWN|{}UNKNOWN[0]
+            final fun <get-UNKNOWN>(): kotlin/Int // io.github.mbackschat.a12.dm.interpreter/A12PartiallyKnownMultiPointer.Companion.UNKNOWN.<get-UNKNOWN>|<get-UNKNOWN>(){}[0]
+        final const val WILDCARD // io.github.mbackschat.a12.dm.interpreter/A12PartiallyKnownMultiPointer.Companion.WILDCARD|{}WILDCARD[0]
+            final fun <get-WILDCARD>(): kotlin/Int // io.github.mbackschat.a12.dm.interpreter/A12PartiallyKnownMultiPointer.Companion.WILDCARD.<get-WILDCARD>|<get-WILDCARD>(){}[0]
+
+        final fun of(kotlin/String, kotlin.collections/List<kotlin/Int>): io.github.mbackschat.a12.dm.interpreter/A12PartiallyKnownMultiPointer // io.github.mbackschat.a12.dm.interpreter/A12PartiallyKnownMultiPointer.Companion.of|of(kotlin.String;kotlin.collections.List<kotlin.Int>){}[0]
+    }
 }
 
 final class io.github.mbackschat.a12.dm.interpreter/A12PathPart { // io.github.mbackschat.a12.dm.interpreter/A12PathPart|null[0]
@@ -1110,16 +1119,16 @@ final class io.github.mbackschat.a12.dm.interpreter/UnsupportedProgram { // io.g
 }
 
 final class io.github.mbackschat.a12.dm.interpreter/ValidationFinding { // io.github.mbackschat.a12.dm.interpreter/ValidationFinding|null[0]
-    constructor <init>(kotlin/String, kotlin/String, kotlin/String, io.github.mbackschat.a12.dm.interpreter/ValidationSeverity, io.github.mbackschat.a12.dm.interpreter/ValidationFindingType, kotlin/String, kotlin.collections/List<kotlin/String>, kotlin.collections/List<kotlin/String>) // io.github.mbackschat.a12.dm.interpreter/ValidationFinding.<init>|<init>(kotlin.String;kotlin.String;kotlin.String;io.github.mbackschat.a12.dm.interpreter.ValidationSeverity;io.github.mbackschat.a12.dm.interpreter.ValidationFindingType;kotlin.String;kotlin.collections.List<kotlin.String>;kotlin.collections.List<kotlin.String>){}[0]
+    constructor <init>(kotlin/String, kotlin/String, io.github.mbackschat.a12.dm.interpreter/A12PartiallyKnownMultiPointer, io.github.mbackschat.a12.dm.interpreter/ValidationSeverity, io.github.mbackschat.a12.dm.interpreter/ValidationFindingType, kotlin/String, kotlin.collections/List<io.github.mbackschat.a12.dm.interpreter/A12PartiallyKnownMultiPointer>, kotlin.collections/List<io.github.mbackschat.a12.dm.interpreter/A12PartiallyKnownMultiPointer>) // io.github.mbackschat.a12.dm.interpreter/ValidationFinding.<init>|<init>(kotlin.String;kotlin.String;io.github.mbackschat.a12.dm.interpreter.A12PartiallyKnownMultiPointer;io.github.mbackschat.a12.dm.interpreter.ValidationSeverity;io.github.mbackschat.a12.dm.interpreter.ValidationFindingType;kotlin.String;kotlin.collections.List<io.github.mbackschat.a12.dm.interpreter.A12PartiallyKnownMultiPointer>;kotlin.collections.List<io.github.mbackschat.a12.dm.interpreter.A12PartiallyKnownMultiPointer>){}[0]
 
     final val code // io.github.mbackschat.a12.dm.interpreter/ValidationFinding.code|{}code[0]
         final fun <get-code>(): kotlin/String // io.github.mbackschat.a12.dm.interpreter/ValidationFinding.code.<get-code>|<get-code>(){}[0]
     final val errorPath // io.github.mbackschat.a12.dm.interpreter/ValidationFinding.errorPath|{}errorPath[0]
-        final fun <get-errorPath>(): kotlin/String // io.github.mbackschat.a12.dm.interpreter/ValidationFinding.errorPath.<get-errorPath>|<get-errorPath>(){}[0]
+        final fun <get-errorPath>(): io.github.mbackschat.a12.dm.interpreter/A12PartiallyKnownMultiPointer // io.github.mbackschat.a12.dm.interpreter/ValidationFinding.errorPath.<get-errorPath>|<get-errorPath>(){}[0]
     final val fillToFix // io.github.mbackschat.a12.dm.interpreter/ValidationFinding.fillToFix|{}fillToFix[0]
-        final fun <get-fillToFix>(): kotlin.collections/List<kotlin/String> // io.github.mbackschat.a12.dm.interpreter/ValidationFinding.fillToFix.<get-fillToFix>|<get-fillToFix>(){}[0]
+        final fun <get-fillToFix>(): kotlin.collections/List<io.github.mbackschat.a12.dm.interpreter/A12PartiallyKnownMultiPointer> // io.github.mbackschat.a12.dm.interpreter/ValidationFinding.fillToFix.<get-fillToFix>|<get-fillToFix>(){}[0]
     final val referenced // io.github.mbackschat.a12.dm.interpreter/ValidationFinding.referenced|{}referenced[0]
-        final fun <get-referenced>(): kotlin.collections/List<kotlin/String> // io.github.mbackschat.a12.dm.interpreter/ValidationFinding.referenced.<get-referenced>|<get-referenced>(){}[0]
+        final fun <get-referenced>(): kotlin.collections/List<io.github.mbackschat.a12.dm.interpreter/A12PartiallyKnownMultiPointer> // io.github.mbackschat.a12.dm.interpreter/ValidationFinding.referenced.<get-referenced>|<get-referenced>(){}[0]
     final val rulePath // io.github.mbackschat.a12.dm.interpreter/ValidationFinding.rulePath|{}rulePath[0]
         final fun <get-rulePath>(): kotlin/String // io.github.mbackschat.a12.dm.interpreter/ValidationFinding.rulePath.<get-rulePath>|<get-rulePath>(){}[0]
     final val severity // io.github.mbackschat.a12.dm.interpreter/ValidationFinding.severity|{}severity[0]
@@ -1131,13 +1140,13 @@ final class io.github.mbackschat.a12.dm.interpreter/ValidationFinding { // io.gi
 
     final fun component1(): kotlin/String // io.github.mbackschat.a12.dm.interpreter/ValidationFinding.component1|component1(){}[0]
     final fun component2(): kotlin/String // io.github.mbackschat.a12.dm.interpreter/ValidationFinding.component2|component2(){}[0]
-    final fun component3(): kotlin/String // io.github.mbackschat.a12.dm.interpreter/ValidationFinding.component3|component3(){}[0]
+    final fun component3(): io.github.mbackschat.a12.dm.interpreter/A12PartiallyKnownMultiPointer // io.github.mbackschat.a12.dm.interpreter/ValidationFinding.component3|component3(){}[0]
     final fun component4(): io.github.mbackschat.a12.dm.interpreter/ValidationSeverity // io.github.mbackschat.a12.dm.interpreter/ValidationFinding.component4|component4(){}[0]
     final fun component5(): io.github.mbackschat.a12.dm.interpreter/ValidationFindingType // io.github.mbackschat.a12.dm.interpreter/ValidationFinding.component5|component5(){}[0]
     final fun component6(): kotlin/String // io.github.mbackschat.a12.dm.interpreter/ValidationFinding.component6|component6(){}[0]
-    final fun component7(): kotlin.collections/List<kotlin/String> // io.github.mbackschat.a12.dm.interpreter/ValidationFinding.component7|component7(){}[0]
-    final fun component8(): kotlin.collections/List<kotlin/String> // io.github.mbackschat.a12.dm.interpreter/ValidationFinding.component8|component8(){}[0]
-    final fun copy(kotlin/String = ..., kotlin/String = ..., kotlin/String = ..., io.github.mbackschat.a12.dm.interpreter/ValidationSeverity = ..., io.github.mbackschat.a12.dm.interpreter/ValidationFindingType = ..., kotlin/String = ..., kotlin.collections/List<kotlin/String> = ..., kotlin.collections/List<kotlin/String> = ...): io.github.mbackschat.a12.dm.interpreter/ValidationFinding // io.github.mbackschat.a12.dm.interpreter/ValidationFinding.copy|copy(kotlin.String;kotlin.String;kotlin.String;io.github.mbackschat.a12.dm.interpreter.ValidationSeverity;io.github.mbackschat.a12.dm.interpreter.ValidationFindingType;kotlin.String;kotlin.collections.List<kotlin.String>;kotlin.collections.List<kotlin.String>){}[0]
+    final fun component7(): kotlin.collections/List<io.github.mbackschat.a12.dm.interpreter/A12PartiallyKnownMultiPointer> // io.github.mbackschat.a12.dm.interpreter/ValidationFinding.component7|component7(){}[0]
+    final fun component8(): kotlin.collections/List<io.github.mbackschat.a12.dm.interpreter/A12PartiallyKnownMultiPointer> // io.github.mbackschat.a12.dm.interpreter/ValidationFinding.component8|component8(){}[0]
+    final fun copy(kotlin/String = ..., kotlin/String = ..., io.github.mbackschat.a12.dm.interpreter/A12PartiallyKnownMultiPointer = ..., io.github.mbackschat.a12.dm.interpreter/ValidationSeverity = ..., io.github.mbackschat.a12.dm.interpreter/ValidationFindingType = ..., kotlin/String = ..., kotlin.collections/List<io.github.mbackschat.a12.dm.interpreter/A12PartiallyKnownMultiPointer> = ..., kotlin.collections/List<io.github.mbackschat.a12.dm.interpreter/A12PartiallyKnownMultiPointer> = ...): io.github.mbackschat.a12.dm.interpreter/ValidationFinding // io.github.mbackschat.a12.dm.interpreter/ValidationFinding.copy|copy(kotlin.String;kotlin.String;io.github.mbackschat.a12.dm.interpreter.A12PartiallyKnownMultiPointer;io.github.mbackschat.a12.dm.interpreter.ValidationSeverity;io.github.mbackschat.a12.dm.interpreter.ValidationFindingType;kotlin.String;kotlin.collections.List<io.github.mbackschat.a12.dm.interpreter.A12PartiallyKnownMultiPointer>;kotlin.collections.List<io.github.mbackschat.a12.dm.interpreter.A12PartiallyKnownMultiPointer>){}[0]
     final fun equals(kotlin/Any?): kotlin/Boolean // io.github.mbackschat.a12.dm.interpreter/ValidationFinding.equals|equals(kotlin.Any?){}[0]
     final fun hashCode(): kotlin/Int // io.github.mbackschat.a12.dm.interpreter/ValidationFinding.hashCode|hashCode(){}[0]
     final fun toString(): kotlin/String // io.github.mbackschat.a12.dm.interpreter/ValidationFinding.toString|toString(){}[0]
@@ -1176,18 +1185,6 @@ final class io.github.mbackschat.a12.dm.interpreter/WorkspaceModelSource { // io
     }
 }
 
-final object io.github.mbackschat.a12.dm.interpreter/A12PartiallyKnownMultiPointerFormat { // io.github.mbackschat.a12.dm.interpreter/A12PartiallyKnownMultiPointerFormat|null[0]
-    final const val UNKNOWN // io.github.mbackschat.a12.dm.interpreter/A12PartiallyKnownMultiPointerFormat.UNKNOWN|{}UNKNOWN[0]
-        final fun <get-UNKNOWN>(): kotlin/Int // io.github.mbackschat.a12.dm.interpreter/A12PartiallyKnownMultiPointerFormat.UNKNOWN.<get-UNKNOWN>|<get-UNKNOWN>(){}[0]
-    final const val WILDCARD // io.github.mbackschat.a12.dm.interpreter/A12PartiallyKnownMultiPointerFormat.WILDCARD|{}WILDCARD[0]
-        final fun <get-WILDCARD>(): kotlin/Int // io.github.mbackschat.a12.dm.interpreter/A12PartiallyKnownMultiPointerFormat.WILDCARD.<get-WILDCARD>|<get-WILDCARD>(){}[0]
-
-    final fun format(kotlin/String, kotlin.collections/List<kotlin/Int>): kotlin/String // io.github.mbackschat.a12.dm.interpreter/A12PartiallyKnownMultiPointerFormat.format|format(kotlin.String;kotlin.collections.List<kotlin.Int>){}[0]
-    final fun of(kotlin/String, kotlin.collections/List<kotlin/Int>): io.github.mbackschat.a12.dm.interpreter/A12PartiallyKnownMultiPointer // io.github.mbackschat.a12.dm.interpreter/A12PartiallyKnownMultiPointerFormat.of|of(kotlin.String;kotlin.collections.List<kotlin.Int>){}[0]
-    final fun parse(kotlin/String): io.github.mbackschat.a12.dm.interpreter/A12PartiallyKnownMultiPointer // io.github.mbackschat.a12.dm.interpreter/A12PartiallyKnownMultiPointerFormat.parse|parse(kotlin.String){}[0]
-    final fun render(io.github.mbackschat.a12.dm.interpreter/A12PartiallyKnownMultiPointer): kotlin/String // io.github.mbackschat.a12.dm.interpreter/A12PartiallyKnownMultiPointerFormat.render|render(io.github.mbackschat.a12.dm.interpreter.A12PartiallyKnownMultiPointer){}[0]
-}
-
 final object io.github.mbackschat.a12.dm.interpreter/A12PointerFormat { // io.github.mbackschat.a12.dm.interpreter/A12PointerFormat|null[0]
     final const val LAST_PART_ZERO // io.github.mbackschat.a12.dm.interpreter/A12PointerFormat.LAST_PART_ZERO|{}LAST_PART_ZERO[0]
         final fun <get-LAST_PART_ZERO>(): kotlin/Int // io.github.mbackschat.a12.dm.interpreter/A12PointerFormat.LAST_PART_ZERO.<get-LAST_PART_ZERO>|<get-LAST_PART_ZERO>(){}[0]
@@ -1195,4 +1192,9 @@ final object io.github.mbackschat.a12.dm.interpreter/A12PointerFormat { // io.gi
     final fun format(kotlin/String, kotlin.collections/List<kotlin/Int>): kotlin/String // io.github.mbackschat.a12.dm.interpreter/A12PointerFormat.format|format(kotlin.String;kotlin.collections.List<kotlin.Int>){}[0]
     final fun parse(kotlin/String): io.github.mbackschat.a12.dm.interpreter/A12Pointer // io.github.mbackschat.a12.dm.interpreter/A12PointerFormat.parse|parse(kotlin.String){}[0]
     final fun render(io.github.mbackschat.a12.dm.interpreter/A12Pointer): kotlin/String // io.github.mbackschat.a12.dm.interpreter/A12PointerFormat.render|render(io.github.mbackschat.a12.dm.interpreter.A12Pointer){}[0]
+}
+
+final object io.github.mbackschat.a12.dm.interpreter/MessagePointers { // io.github.mbackschat.a12.dm.interpreter/MessagePointers|null[0]
+    final fun canonicalExactForm(io.github.mbackschat.a12.dm.interpreter/A12PartiallyKnownMultiPointer): kotlin/String? // io.github.mbackschat.a12.dm.interpreter/MessagePointers.canonicalExactForm|canonicalExactForm(io.github.mbackschat.a12.dm.interpreter.A12PartiallyKnownMultiPointer){}[0]
+    final fun houseForm(io.github.mbackschat.a12.dm.interpreter/A12PartiallyKnownMultiPointer): kotlin/String // io.github.mbackschat.a12.dm.interpreter/MessagePointers.houseForm|houseForm(io.github.mbackschat.a12.dm.interpreter.A12PartiallyKnownMultiPointer){}[0]
 }

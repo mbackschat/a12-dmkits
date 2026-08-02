@@ -23,10 +23,9 @@ import kotlin.test.assertTrue
  *    (`format("", [])` → `""`) as a defect, while the kernel's own `DocumentPointerImpl.parseFullName("")`
  *    returns an empty part list and the class displays that value as `(empty DocumentPointer)`.
  *
- * Both laws run over both types, because the split into an exact and a partially-known type doubled the number
- * of `format`/`parse` pairs that can drift — and a law that covered only the type it was written for would have
- * left the new one unguarded from the day it landed. The type-specific facts (which sentinel each domain admits,
- * where) are `A12PointerDomainTest`'s; this file only asserts the two functions agree.
+ * The laws run over every string codec the library publishes — one today, the exact pointer's, because A12
+ * gives no pointer string to the partially-known type. The type-specific facts (which sentinel each domain
+ * admits, where) are `A12PointerDomainTest`'s; this file only asserts a codec's two halves agree.
  *
  * **Recall limit, stated because it is not exhaustive over everything:** the vector sweep is exhaustive over
  * arities [ARITIES] and repetitions [REPETITION_BOUND], which is every vector *within those authored bounds* —
@@ -48,13 +47,17 @@ class A12PointerSymmetryTest {
     )
 
     /**
-     * The pointer value is erased to `Any` so both types travel through one loop rather than one law per type.
-     * The casts in `render` are safe by construction: within a pair, `parse` and `render` belong to the same
-     * format object, and no other code puts a value into a pair.
+     * The pointer value is erased to `Any` so every string codec travels through one loop rather than one law
+     * per codec. The cast in `render` is safe by construction: within a pair, `parse` and `render` belong to the
+     * same format object, and no other code puts a value into a pair.
      *
-     * **This list is authored, not derived** — a third format type would have to be added here by hand. The
-     * committed ABI dumps are what make such a type *visible* (a new public `…PointerFormat` object appears in
-     * them), not this file.
+     * **There is exactly one entry today**, and that is a fact about A12 rather than a gap: only the exact
+     * `DocumentPointer` has a pointer-string form. `PartiallyKnownDocumentMultiPointer` has none — no kernel
+     * parser, no kernel renderer — so it has no codec to hold symmetric, and the one this file used to check was
+     * an invention that has since been deleted.
+     *
+     * **This list is authored, not derived.** The committed ABI dumps are what make a new codec *visible*, not
+     * this file.
      */
     private val pairs = listOf(
         SymmetryPair(
@@ -62,12 +65,6 @@ class A12PointerSymmetryTest {
             A12PointerFormat::parse,
             A12PointerFormat::format,
             { A12PointerFormat.render(it as A12Pointer) },
-        ),
-        SymmetryPair(
-            "partially-known",
-            A12PartiallyKnownMultiPointerFormat::parse,
-            A12PartiallyKnownMultiPointerFormat::format,
-            { A12PartiallyKnownMultiPointerFormat.render(it as A12PartiallyKnownMultiPointer) },
         ),
     )
 
@@ -146,8 +143,6 @@ class A12PointerSymmetryTest {
         add("Recipe[]")
         add("Order/Items[2]/Count")
         add("/Order[1]/Items[2]/Count")
-        add("Plan/Demand[-5]/Headcount")
-        add("Plan[0]/Demand[2]")
         add("Order/Items[0]")
         addAll(NAME_CORPUS)
         for (arity in ARITIES) {
@@ -158,16 +153,11 @@ class A12PointerSymmetryTest {
         }
     }
 
-    /** A12's root pointer is legal on every entry point of both types. Pinned so it cannot regress silently. */
+    /** A12's root pointer is legal on both entry points of the exact codec. Pinned so it cannot regress. */
     @Test
     fun theRootPointerIsLegalOnBothEntryPoints() {
         assertEquals("", A12PointerFormat.format("", emptyList()))
         assertEquals(A12Pointer.of(emptyList()), A12PointerFormat.parse(""))
-        assertEquals("", A12PartiallyKnownMultiPointerFormat.format("", emptyList()))
-        assertEquals(
-            A12PartiallyKnownMultiPointerFormat.of("", emptyList()),
-            A12PartiallyKnownMultiPointerFormat.parse(""),
-        )
     }
 
     /** Every vector within the authored bounds, then every name-grammar case at arity 1 and 2. */

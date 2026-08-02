@@ -95,7 +95,7 @@ class A12PointerFormatTest {
     /**
      * A12's unknown repetition (`-5`) is not an exact-pointer value at all: `DocumentPointerImpl`'s part pattern
      * is unsigned and `PathPartImpl` refuses a negative index. It belongs to the message channel, so it is
-     * `A12PartiallyKnownMultiPointerFormat`'s to read — see `A12PointerDomainTest`.
+     * `A12PartiallyKnownMultiPointer`'s to carry — see `A12PointerDomainTest`.
      */
     @Test
     fun rejectsEveryNegativeRepetition() {

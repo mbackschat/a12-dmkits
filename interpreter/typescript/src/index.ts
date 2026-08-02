@@ -69,12 +69,10 @@ export {
   ModelMetadata,
   RelevantSelectionPointer,
 } from "./model.js";
-export {A12PartiallyKnownMultiPointerFormat, A12PointerFormat} from "./pointers.js";
-export type {
-  A12PartiallyKnownMultiPointer,
-  A12PathPart,
-  A12Pointer,
-} from "./pointers.js";
+// `A12PartiallyKnownMultiPointer` is both an interface and its factory object, the way A12 puts the static
+// factories on `PartiallyKnownDocumentMultiPointer` itself; one re-export carries both meanings.
+export {A12PartiallyKnownMultiPointer, A12PointerFormat} from "./pointers.js";
+export type {A12PathPart, A12Pointer} from "./pointers.js";
 export type {
   ModelEntityKind,
   RelevantCoordinate,

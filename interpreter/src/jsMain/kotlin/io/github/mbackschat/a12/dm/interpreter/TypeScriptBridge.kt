@@ -1,6 +1,6 @@
 @file:OptIn(ExperimentalJsExport::class)
 
-import io.github.mbackschat.a12.dm.interpreter.A12PartiallyKnownMultiPointerFormat as CorePartiallyKnownFormat
+import io.github.mbackschat.a12.dm.interpreter.A12PartiallyKnownMultiPointer as CorePartiallyKnown
 import io.github.mbackschat.a12.dm.interpreter.A12Pointer as CoreA12Pointer
 import io.github.mbackschat.a12.dm.interpreter.A12PointerFormat as CoreA12PointerFormat
 import io.github.mbackschat.a12.dm.interpreter.ComputationOutcome as CoreComputationOutcome
@@ -155,7 +155,7 @@ class InterpreterBridgePointerParseResult internal constructor(
 )
 
 @JsExport
-class InterpreterBridgePartiallyKnownPointerParseResult internal constructor(
+class InterpreterBridgePartiallyKnownPointerResult internal constructor(
     val value: InterpreterBridgeParsedPartiallyKnownPointer?,
     val rejection: String?,
 )
@@ -421,12 +421,12 @@ class InterpreterBridgeSupportReport internal constructor(
 class InterpreterBridgeValidationFinding internal constructor(
     val code: String,
     val rulePath: String,
-    val errorPath: String,
+    val errorPath: InterpreterBridgeParsedPartiallyKnownPointer,
     val severity: String,
     val type: String,
     val text: String,
-    val referenced: Array<String>,
-    val fillToFix: Array<String>,
+    val referenced: Array<InterpreterBridgeParsedPartiallyKnownPointer>,
+    val fillToFix: Array<InterpreterBridgeParsedPartiallyKnownPointer>,
 )
 
 @JsExport
@@ -685,42 +685,35 @@ private fun bridgePointer(parsed: CoreA12Pointer) = InterpreterBridgeParsedPoint
 @JsExport
 fun interpreterBridgeA12LastPartZero(): Int = CoreA12PointerFormat.LAST_PART_ZERO
 
-/** Renders a **message** pointer (`PartiallyKnownDocumentMultiPointer`) for [path] and its [repetitions]. */
+/**
+ * Builds a **message** pointer — `PartiallyKnownDocumentMultiPointer.of(fullName, repetitions)`.
+ *
+ * There is deliberately no `format`/`parse` beside it: A12 defines no pointer string for this type, so the
+ * bridge carries the owner's value and the owner's operations only.
+ */
 @JsExport
-fun interpreterBridgeFormatA12PartiallyKnownPointer(
-    path: String,
+fun interpreterBridgeA12PartiallyKnownOf(
+    fullName: String,
     repetitions: Array<Int>,
-): InterpreterBridgePointerFormatResult =
+): InterpreterBridgePartiallyKnownPointerResult =
     try {
-        InterpreterBridgePointerFormatResult(
-            CorePartiallyKnownFormat.format(path, repetitions.asPortableIntegers()),
-            null,
-        )
+        val built = CorePartiallyKnown.of(fullName, repetitions.asPortableIntegers())
+        InterpreterBridgePartiallyKnownPointerResult(bridgePartiallyKnown(built), null)
     } catch (rejected: IllegalArgumentException) {
-        InterpreterBridgePointerFormatResult(null, rejected.message.orEmpty())
+        InterpreterBridgePartiallyKnownPointerResult(null, rejected.message.orEmpty())
     }
 
-/** Parses a message pointer, which unlike the exact form admits a wildcard at any part and the unknown index. */
-@JsExport
-fun interpreterBridgeParseA12PartiallyKnownPointer(
-    pointer: String,
-): InterpreterBridgePartiallyKnownPointerParseResult =
-    try {
-        val parsed = CorePartiallyKnownFormat.parse(pointer)
-        InterpreterBridgePartiallyKnownPointerParseResult(
-            InterpreterBridgeParsedPartiallyKnownPointer(
-                parsed.fullName,
-                parsed.repetitionIndexes.toTypedArray(),
-            ),
-            null,
-        )
-    } catch (rejected: IllegalArgumentException) {
-        InterpreterBridgePartiallyKnownPointerParseResult(null, rejected.message.orEmpty())
-    }
+/** The one crossing of a message pointer, so a built one and a finding's one cannot take different shapes. */
+private fun bridgePartiallyKnown(pointer: CorePartiallyKnown) = InterpreterBridgeParsedPartiallyKnownPointer(
+    pointer.fullName,
+    pointer.repetitionIndexes.toTypedArray(),
+)
 
 /**
  * `PartiallyKnownDocumentMultiPointer.toDocumentPointer()` — the exact pointer when the message pointer is one,
  * and a `null` [InterpreterBridgePointerParseResult.value] with no rejection when it legitimately is not.
+ *
+ * The ROOT raises rather than answering, which is the owner's measured behaviour, so it arrives as a rejection.
  */
 @JsExport
 fun interpreterBridgeA12PartiallyKnownPointerToExact(
@@ -728,7 +721,7 @@ fun interpreterBridgeA12PartiallyKnownPointerToExact(
     repetitions: Array<Int>,
 ): InterpreterBridgePointerParseResult =
     try {
-        val exact = CorePartiallyKnownFormat.of(fullName, repetitions.asPortableIntegers()).toExactPointer()
+        val exact = CorePartiallyKnown.of(fullName, repetitions.asPortableIntegers()).toExactPointer()
         InterpreterBridgePointerParseResult(exact?.let(::bridgePointer), null)
     } catch (rejected: IllegalArgumentException) {
         InterpreterBridgePointerParseResult(null, rejected.message.orEmpty())
@@ -736,11 +729,11 @@ fun interpreterBridgeA12PartiallyKnownPointerToExact(
 
 /** `DocumentMultiPointer.WILDCARD` — all repetitions of a level, legal at any part of a message pointer. */
 @JsExport
-fun interpreterBridgeA12PartiallyKnownWildcard(): Int = CorePartiallyKnownFormat.WILDCARD
+fun interpreterBridgeA12PartiallyKnownWildcard(): Int = CorePartiallyKnown.WILDCARD
 
 /** `PartiallyKnownDocumentMultiPointer.UNKNOWN` (`IIdentifier.UNKNOWN`) — a level that resolved to no row. */
 @JsExport
-fun interpreterBridgeA12PartiallyKnownUnknown(): Int = CorePartiallyKnownFormat.UNKNOWN
+fun interpreterBridgeA12PartiallyKnownUnknown(): Int = CorePartiallyKnown.UNKNOWN
 
 private fun interpreterConfiguration(
     customFieldTypes: Array<InterpreterBridgeCustomFieldTypeRegistration>,
@@ -972,12 +965,12 @@ private fun validationFinding(finding: CoreValidationFinding): InterpreterBridge
     InterpreterBridgeValidationFinding(
         code = finding.code,
         rulePath = finding.rulePath,
-        errorPath = finding.errorPath,
+        errorPath = bridgePartiallyKnown(finding.errorPath),
         severity = finding.severity.wireName(),
         type = finding.type.wireName(),
         text = finding.text,
-        referenced = finding.referenced.toTypedArray(),
-        fillToFix = finding.fillToFix.toTypedArray(),
+        referenced = finding.referenced.map(::bridgePartiallyKnown).toTypedArray(),
+        fillToFix = finding.fillToFix.map(::bridgePartiallyKnown).toTypedArray(),
     )
 
 private fun CoreProviderFailureReason.wireName(): String = when (this) {

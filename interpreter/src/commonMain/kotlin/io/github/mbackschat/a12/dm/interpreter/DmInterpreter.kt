@@ -569,14 +569,14 @@ class DmInterpreter @JvmOverloads constructor(
                 // small prefix, and expose an O(1) immutable joined view over the shared cluster list. This keeps
                 // exact list semantics without copying the N-entry peer projection into every one of N messages.
                 val ordinaryRefs = if (matchingRnuOutcome != null) ordinaryRefsOutsideRnuKeys.orEmpty() else ordinaryMessageRefs
-                val ordinaryPointers = ordinaryRefs.map { pass.doc.formattedPointer(it, ctx.repsOf(it)) }
+                val ordinaryPointers = ordinaryRefs.map { pass.doc.messagePointer(it, ctx.repsOf(it)) }
                 val rnuPointers = matchingRnuOutcome?.peerKeyPointers.orEmpty()
                 val referenced = joinedList(ordinaryPointers, rnuPointers)
                 // refOmissionErrorResponsible: for an OMISSION error the kernel attaches ALL the operands the
                 // omission depends on (verified — both the filled and the empty operand of an And), so filling/
                 // changing any could resolve it. Empty for a VALUE error (no fill fixes a value).
                 val fillToFix = if (type == MsgType.OMISSION) referenced else emptyList()
-                RowOutcome.Fired(Message(rule.errorCode, rule.path, pass.doc.formattedPointer(errorPath, ctx.repsOf(errorPath)),
+                RowOutcome.Fired(Message(rule.errorCode, rule.path, pass.doc.messagePointer(errorPath, ctx.repsOf(errorPath)),
                     rule.severity, type, text, referenced, fillToFix))
             } else {
                 // Not fired: a formally-invalid operand means the rule was NOT cleanly evaluated → SUPPRESSED

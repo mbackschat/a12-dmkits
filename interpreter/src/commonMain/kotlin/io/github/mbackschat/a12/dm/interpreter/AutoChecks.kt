@@ -75,12 +75,15 @@ internal class AutoChecks(
                 }
                 is FormalResult.Invalid -> when (val failure = result.failure) {
                     is FormalFailure.Format -> {
-                        val pointer = doc.formattedPointer(vf.path, vf.reps)
+                        val pointer = doc.messagePointer(vf.path, vf.reps)
                         val text = try {
                             formatMessage(failure.error, vf.path, vf.reps, vf.raw, locale)
                         } catch (e: UnsupportedConstructException) {
-                            customUnsupported += UnsupportedRule(pointer, e.message ?: "unsupported field-owned message",
-                                UnsupportedSubject.CELL)
+                            customUnsupported += UnsupportedRule(
+                                MessagePointers.houseForm(pointer),
+                                e.message ?: "unsupported field-owned message",
+                                UnsupportedSubject.CELL,
+                            )
                             return@mapNotNull null
                         }
                         Message(
@@ -95,7 +98,7 @@ internal class AutoChecks(
                     is FormalFailure.Custom -> Message(
                         failure.code,
                         FORMAL_RULE_PATH,
-                        doc.formattedPointer(vf.path, vf.reps),
+                        doc.messagePointer(vf.path, vf.reps),
                         Severity.ERROR,
                         MsgType.VALUE,
                         customMessage(failure.rejection, vf.path, locale),
@@ -233,7 +236,7 @@ internal class AutoChecks(
     fun uniquenessMessages(doc: Document, dup: Set<Pair<String, List<Int>>>, locale: String,
             isRelevant: Relevance): List<Message> =
         dup.filter { (path, reps) -> isRelevant(path, reps) }.map { (path, reps) ->
-            Message(UNIQUE_INDEX, uniqueRulePath(path), doc.formattedPointer(path, reps), Severity.ERROR, MsgType.VALUE,
+            Message(UNIQUE_INDEX, uniqueRulePath(path), doc.messagePointer(path, reps), Severity.ERROR, MsgType.VALUE,
                 uniqueIndexText(locale))
         }
 
@@ -259,28 +262,28 @@ internal class AutoChecks(
             )
         }
         if (error == null && !genericWhenValid) return null
-        val pointer = doc.formattedPointer(path, reps)
+        val pointer = doc.messagePointer(path, reps)
         return Message(
             code = error?.id ?: COMPUTED_VALUE_ERROR,
             rulePath = FORMAL_RULE_PATH,
-            errorPath = pointer,
+            errorPointer = pointer,
             severity = Severity.ERROR,
             type = MsgType.VALUE,
             text = error?.let { formatMessage(it, path, reps, raw, locale) }
-                ?: computedValueErrorText(locale, pointer),
+                ?: computedValueErrorText(locale, MessagePointers.houseForm(pointer)),
         )
     }
 
     /** Domain-failure diagnostic: a no-value computed target belongs to the formal-operand channel. */
     fun computedDomainError(doc: Document, path: String, reps: List<Int>, locale: String): Message {
-        val pointer = doc.formattedPointer(path, reps)
+        val pointer = doc.messagePointer(path, reps)
         return Message(
             code = COMPUTED_VALUE_ERROR,
             rulePath = FORMAL_RULE_PATH,
-            errorPath = pointer,
+            errorPointer = pointer,
             severity = Severity.ERROR,
             type = MsgType.VALUE,
-            text = computedValueErrorText(locale, pointer),
+            text = computedValueErrorText(locale, MessagePointers.houseForm(pointer)),
         )
     }
 
@@ -291,7 +294,7 @@ internal class AutoChecks(
         locale: String,
         unsupported: MutableList<UnsupportedRule>,
     ): Message? {
-        val ptr = doc.formattedPointer(path, reps)
+        val ptr = doc.messagePointer(path, reps)
         val declared = model.fieldOf(path)?.requiredMessages.orEmpty()
         val text = if (declared.isEmpty()) {
             mandatoryFieldText(locale)
@@ -299,7 +302,7 @@ internal class AutoChecks(
             val template = declared[locale]
             if (template == null) {
                 unsupported += UnsupportedRule(
-                    ptr,
+                    MessagePointers.houseForm(ptr),
                     "requiredness field-owned error template has no exact '$locale' declaration",
                     UnsupportedSubject.CELL,
                 )
@@ -308,8 +311,11 @@ internal class AutoChecks(
             try {
                 renderRequiredFieldMessage(template, locale, messageLabel(path, locale, reps))
             } catch (e: UnsupportedConstructException) {
-                unsupported += UnsupportedRule(ptr, e.message ?: "unsupported requiredness field-owned message",
-                    UnsupportedSubject.CELL)
+                unsupported += UnsupportedRule(
+                    MessagePointers.houseForm(ptr),
+                    e.message ?: "unsupported requiredness field-owned message",
+                    UnsupportedSubject.CELL,
+                )
                 return null
             }
         }
@@ -448,7 +454,7 @@ internal class AutoChecks(
             val exceeded = paths.exceededBound(vf.path, vf.reps) ?: continue
             if (!isRelevant(vf.path, vf.reps)) continue
             val type = overRepetitionType(exceeded)
-            out += Message(type.code, FORMAL_RULE_PATH, doc.formattedPointer(vf.path, vf.reps),
+            out += Message(type.code, FORMAL_RULE_PATH, doc.messagePointer(vf.path, vf.reps),
                 Severity.ERROR, MsgType.VALUE, type.messageText(locale))
         }
         for (group in model.effectiveGroupRepetitionMaximums.keys) {
@@ -457,7 +463,7 @@ internal class AutoChecks(
                 val exceeded = paths.exceededBound(group, row) ?: continue
                 if (!isRelevant(group, row)) continue
                 val type = overRepetitionType(exceeded, ownLevel)
-                out += Message(type.code, FORMAL_RULE_PATH, doc.formattedPointer(group, row),
+                out += Message(type.code, FORMAL_RULE_PATH, doc.messagePointer(group, row),
                     Severity.ERROR, MsgType.VALUE, type.messageText(locale))
             }
         }

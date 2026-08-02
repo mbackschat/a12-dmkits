@@ -1,4 +1,4 @@
-import io.github.mbackschat.a12.dm.interpreter.A12PartiallyKnownMultiPointerFormat
+import io.github.mbackschat.a12.dm.interpreter.A12PartiallyKnownMultiPointer
 import io.github.mbackschat.a12.dm.interpreter.A12PointerFormat
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -63,11 +63,11 @@ class TypeScriptBridgePointerFormatTest {
     fun theBridgePublishesEachTypesReservedRepetitions() {
         assertEquals(A12PointerFormat.LAST_PART_ZERO, interpreterBridgeA12LastPartZero())
         assertEquals(
-            A12PartiallyKnownMultiPointerFormat.WILDCARD,
+            A12PartiallyKnownMultiPointer.WILDCARD,
             interpreterBridgeA12PartiallyKnownWildcard(),
         )
         assertEquals(
-            A12PartiallyKnownMultiPointerFormat.UNKNOWN,
+            A12PartiallyKnownMultiPointer.UNKNOWN,
             interpreterBridgeA12PartiallyKnownUnknown(),
         )
     }
@@ -75,25 +75,33 @@ class TypeScriptBridgePointerFormatTest {
     // ---- the message channel's own type ---------------------------------------------------------
 
     @Test
-    fun theBridgeReadsAMessagePointerTheExactTypeRefuses() {
+    fun theBridgeCarriesAMessagePointerTheExactTypeRefuses() {
         val exact = interpreterBridgeParseA12Pointer("/Plan[1]/Demand[-5]/Headcount[1]")
         assertNull(exact.value, "the exact type must not admit A12's unknown repetition")
 
-        val message = interpreterBridgeParseA12PartiallyKnownPointer("/Plan[1]/Demand[-5]/Headcount[1]")
+        val message = interpreterBridgeA12PartiallyKnownOf("/Plan/Demand/Headcount", arrayOf(1, -5, 1))
         assertNull(message.rejection)
-        val parsed = requireNotNull(message.value)
-        assertEquals("/Plan/Demand/Headcount", parsed.fullName)
-        assertEquals(listOf(1, -5, 1), parsed.repetitionIndexes.toList())
+        val built = requireNotNull(message.value)
+        assertEquals("/Plan/Demand/Headcount", built.fullName)
+        assertEquals(listOf(1, -5, 1), built.repetitionIndexes.toList())
+    }
 
-        assertEquals(
-            "Plan/Demand[-5]/Headcount",
-            interpreterBridgeFormatA12PartiallyKnownPointer("/Plan/Demand/Headcount", arrayOf(1, -5, 1)).value,
-        )
+    /** The owner's fullName domain: splitting and normalization, never the string parser's name grammar. */
+    @Test
+    fun theBridgeAcceptsEveryFullNameTheOwnerFactoryAccepts() {
+        for (fullName in listOf("/Order\u0024", "/Order Item", "/Order[2]")) {
+            val built = interpreterBridgeA12PartiallyKnownOf(fullName, arrayOf(1))
+            assertNull(built.rejection, "owner-legal fullName was refused: $fullName")
+            assertEquals(fullName, requireNotNull(built.value).fullName)
+        }
+        val interior = interpreterBridgeA12PartiallyKnownOf("/Order//Items", arrayOf(1, 1, 1))
+        assertNull(interior.rejection)
+        assertEquals("/Order//Items", requireNotNull(interior.value).fullName)
     }
 
     /**
-     * `toDocumentPointer()`'s two outcomes are distinguishable across the bridge: an inconvertible pointer comes
-     * back as a `null` value with **no** rejection, which is not the same signal as a malformed request.
+     * `toDocumentPointer()`'s three outcomes are distinguishable across the bridge: converted, legitimately
+     * absent (a `null` value with NO rejection), and raised — the root, where A12 itself raises.
      */
     @Test
     fun theBridgeConvertsAMessagePointerToTheExactTypeOnlyWhenItIsOne() {
@@ -104,6 +112,13 @@ class TypeScriptBridgePointerFormatTest {
         val unresolved = interpreterBridgeA12PartiallyKnownPointerToExact("/Plan/Demand", arrayOf(1, -5))
         assertNull(unresolved.rejection, "an inconvertible pointer is an answer, not a rejection")
         assertNull(unresolved.value)
+
+        val root = interpreterBridgeA12PartiallyKnownPointerToExact("", arrayOf())
+        assertNull(root.value)
+        assertTrue(
+            root.rejection.orEmpty().contains("root pointer has no exact counterpart"),
+            "unexpected root rejection: ${root.rejection}",
+        )
 
         val malformed = interpreterBridgeA12PartiallyKnownPointerToExact("/Plan/Demand", arrayOf(1, -1))
         assertNull(malformed.value)
@@ -134,8 +149,8 @@ class TypeScriptBridgePointerFormatTest {
                 "unexpected rejection for $hostile: ${exact.rejection}",
             )
 
-            val message = interpreterBridgeFormatA12PartiallyKnownPointer("/Order/Items", repetitions)
-            assertNull(message.value, "the message bridge emitted a pointer for repetition $hostile")
+            val message = interpreterBridgeA12PartiallyKnownOf("/Order/Items", repetitions)
+            assertNull(message.value, "the message bridge built a pointer for repetition $hostile")
             assertTrue(
                 message.rejection.orEmpty().contains("32-bit integer"),
                 "unexpected rejection for $hostile: ${message.rejection}",

@@ -1,5 +1,6 @@
 package io.github.mbackschat.a12.dm.interpreter.retained
 
+import io.github.mbackschat.a12.dm.interpreter.A12PartiallyKnownMultiPointer
 import io.github.mbackschat.a12.dm.interpreter.ComputationOutcome
 import io.github.mbackschat.a12.dm.interpreter.ModelOwnerMismatchError
 import io.github.mbackschat.a12.dm.interpreter.PreparedModel
@@ -139,8 +140,8 @@ class RetainedComputationResultTest {
         )
 
         assertEquals(
-            listOf("zahlHatDezimalTrenner@/Order[1]/Lines[2]/Candidate"),
-            report.formalErrorsInOperands.map { "${it.code}@${it.errorPath}" },
+            listOf("zahlHatDezimalTrenner" to messagePointer("/Order/Lines/Candidate", CELL)),
+            report.formalErrorsInOperands.map { it.code to it.errorPath },
         )
         assertEquals(
             ComputationOutcome.CLEARED,
@@ -163,7 +164,7 @@ class RetainedComputationResultTest {
         assertEquals(ComputationOutcome.ERRORED, result.outcome)
         assertEquals("10", result.value)
         assertEquals("zahlZuGross", result.diagnostic?.code)
-        assertEquals("/Order[1]/Lines[2]/Amount", result.diagnostic?.errorPath)
+        assertEquals(erroredAmountCell(), result.diagnostic?.errorPath)
         assertTrue(result.diagnostic?.text.orEmpty().isNotBlank())
         assertEquals(emptyList(), report.formalErrorsInOperands)
         assertFalse(report.noErrorOccurred)
@@ -182,7 +183,7 @@ class RetainedComputationResultTest {
             .single { it.pointer.path == AMOUNT && it.pointer.coordinates == CELL }
             .diagnostic
         val validated = interpreter.validateFull(document).findings
-            .single { it.code == "zahlZuGross" && it.errorPath == "/Order[1]/Lines[2]/Amount" }
+            .single { it.code == "zahlZuGross" && it.errorPath == erroredAmountCell() }
 
         assertEquals(validated, computed)
     }
@@ -211,8 +212,8 @@ class RetainedComputationResultTest {
         )
 
         assertEquals(
-            listOf("berechnungsWertFehler@/Order[1]/Quotient"),
-            report.formalErrorsInOperands.map { "${it.code}@${it.errorPath}" },
+            listOf("berechnungsWertFehler" to messagePointer("/Order/Quotient", listOf(1, 1))),
+            report.formalErrorsInOperands.map { it.code to it.errorPath },
         )
         assertEquals(ComputationOutcome.CLEARED, report.results.single().outcome)
         assertFalse(report.noErrorOccurred)
@@ -228,8 +229,8 @@ class RetainedComputationResultTest {
             ),
         )
         assertEquals(
-            listOf("mandatoryField@/Order[1]/IndexedLines[1]/Code"),
-            empty.formalErrorsInOperands.map { "${it.code}@${it.errorPath}" },
+            listOf("mandatoryField" to messagePointer("/Order/IndexedLines/Code", listOf(1, 1, 1))),
+            empty.formalErrorsInOperands.map { it.code to it.errorPath },
         )
 
         val duplicate = interpreter.compute(
@@ -239,10 +240,10 @@ class RetainedComputationResultTest {
         )
         assertEquals(
             listOf(
-                "uniqueIndex@/Order[1]/IndexedLines[1]/Code",
-                "uniqueIndex@/Order[1]/IndexedLines[2]/Code",
+                "uniqueIndex" to messagePointer("/Order/IndexedLines/Code", listOf(1, 1, 1)),
+                "uniqueIndex" to messagePointer("/Order/IndexedLines/Code", listOf(1, 2, 1)),
             ),
-            duplicate.formalErrorsInOperands.map { "${it.code}@${it.errorPath}" },
+            duplicate.formalErrorsInOperands.map { it.code to it.errorPath },
         )
     }
 
@@ -287,6 +288,16 @@ class RetainedComputationResultTest {
     }
 
     private fun prepared(): PreparedModel = PreparedModel.loadExpandedJson(RetainedComputationModelFixture.JSON)
+
+    /**
+     * A finding's address as the message channel carries it — A12's message pointer, whose terminal index the
+     * house rendering (`/Order[1]/Lines[2]/Amount`) does not write. Asserting the value rather than that string
+     * is what makes these checks of the channel and not of a projection of it.
+     */
+    private fun messagePointer(path: String, coordinates: List<Int>) =
+        A12PartiallyKnownMultiPointer.of(path, coordinates)
+
+    private fun erroredAmountCell() = messagePointer(AMOUNT, CELL)
 
     private companion object {
         const val AMOUNT = "/Order/Lines/Amount"

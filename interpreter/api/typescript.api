@@ -13,19 +13,16 @@ export interface A12DocumentGroup {
 
 ## A12PartiallyKnownMultiPointer
 export interface A12PartiallyKnownMultiPointer {
+    readonly [A12_PARTIALLY_KNOWN_POINTER]: true;
     readonly fullName: string;
     readonly repetitionIndexes: readonly number[];
 }
-
-## A12PartiallyKnownMultiPointerFormat
-export declare class A12PartiallyKnownMultiPointerFormat {
-    static readonly WILDCARD: number;
-    static readonly UNKNOWN: number;
-    private constructor();
-    static format(path: string, repetitions: readonly number[]): string;
-    static parse(pointer: string): A12PartiallyKnownMultiPointer;
-    static toExactPointer(pointer: A12PartiallyKnownMultiPointer): A12Pointer | null;
-}
+A12PartiallyKnownMultiPointer: Readonly<{
+    WILDCARD: number;
+    UNKNOWN: number;
+    of(fullName: string, repetitionIndexes: readonly number[]): A12PartiallyKnownMultiPointer;
+    toExactPointer(pointer: A12PartiallyKnownMultiPointer): A12Pointer | null;
+}>
 
 ## A12PathPart
 export interface A12PathPart {
@@ -35,6 +32,7 @@ export interface A12PathPart {
 
 ## A12Pointer
 export interface A12Pointer {
+    readonly [A12_EXACT_POINTER]: true;
     readonly pathParts: readonly A12PathPart[];
     readonly fullName: string;
     readonly repetitionIndexes: readonly number[];
@@ -420,12 +418,12 @@ export type UnsupportedProgramSubject = "element" | "cell";
 export interface ValidationFinding {
     readonly code: string;
     readonly rulePath: string;
-    readonly errorPath: string;
+    readonly errorPath: A12PartiallyKnownMultiPointer;
     readonly severity: ValidationSeverity;
     readonly type: ValidationFindingType;
     readonly text: string;
-    readonly referenced: readonly string[];
-    readonly fillToFix: readonly string[];
+    readonly referenced: readonly A12PartiallyKnownMultiPointer[];
+    readonly fillToFix: readonly A12PartiallyKnownMultiPointer[];
 }
 
 ## ValidationFindingType

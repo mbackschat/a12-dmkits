@@ -21,7 +21,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
-import io.github.mbackschat.a12.dm.interpreter.A12PartiallyKnownMultiPointerFormat;
+import io.github.mbackschat.a12.dm.interpreter.A12PointerFormat;
 
 /**
  * Every pointer dmtool <b>publishes as canonical A12</b> really is one, over live runtime output
@@ -59,39 +59,66 @@ class PublishedPointerCanonicalTest {
     private static final ObjectMapper M = new ObjectMapper();
 
     /**
-     * The schema keyword that marks a value as a published A12 pointer. JSON Schema's own extension point for
-     * exactly this, so the mark is machine-readable rather than inferred from prose.
+     * The schema keyword that marks a value as a published A12 pointer — always canonical, no exceptions. JSON
+     * Schema's own extension point, so the mark is machine-readable rather than inferred from prose.
      */
     private static final String POINTER_FORMAT = "a12-pointer";
 
+    /**
+     * The keyword for a <b>message address</b>, which is a weaker promise and must not borrow the stronger mark.
+     *
+     * <p>A message address is A12's {@code PartiallyKnownDocumentMultiPointer}; A12 defines no pointer string for
+     * one that does not name a single cell, so such a value is published as the interpreter's house form. Marking
+     * it {@value #POINTER_FORMAT} would state a contract the value cannot keep — and would make this guard demand
+     * a canonical spelling that does not exist.
+     */
+    private static final String MESSAGE_ADDRESS_FORMAT = "a12-message-address";
+
     @Test
     void everyKeyMarkedAsAnA12PointerPublishesOne(@TempDir Path dir) throws Exception {
-        Set<String> pointerKeys = new LinkedHashSet<>();
-        for (String schema : List.of("eval-doc.schema.json", "compute-doc.schema.json")) {
-            collectPointerKeys(readSchema(schema), pointerKeys);
-        }
-        assertEquals(Set.of("field", "declaration", "referenced", "fillToFix"), pointerKeys,
-                "the runtime schemas' a12-pointer keys — pinned so REMOVING a mark (which would silently shrink "
-                        + "this guard's reach) fails, not just adding one");
+        Map<String, String> evalMarks = marks("eval-doc.schema.json");
+        Map<String, String> computeMarks = marks("compute-doc.schema.json");
+        assertEquals(
+                Map.of("field", MESSAGE_ADDRESS_FORMAT,
+                        "referenced", MESSAGE_ADDRESS_FORMAT,
+                        "fillToFix", MESSAGE_ADDRESS_FORMAT),
+                evalMarks,
+                "eval publishes the three IMessage channels, and they are message ADDRESSES — pinned so removing "
+                        + "a mark (silently shrinking this guard) fails, and so does quietly promoting one to "
+                        + POINTER_FORMAT);
+        assertEquals(Map.of("field", POINTER_FORMAT, "declaration", POINTER_FORMAT), computeMarks,
+                "a computed cell is an exact pointer at every level, so both of its keys keep the strong mark");
 
         Map<String, Integer> seen = new LinkedHashMap<>();
-        pointerKeys.forEach(k -> seen.put(k, 0));
-        for (Scenario scenario : scenarios(dir)) {
+        for (Scenario scenario : scenarios(dir, evalMarks, computeMarks)) {
+            scenario.marks().keySet().forEach(key -> seen.putIfAbsent(scenario.reach(key), 0));
             JsonNode env = M.readTree(scenario.run().out());
-            walk(scenario.label(), env.path("data"), pointerKeys, seen);
+            walk(scenario, env.path("data"), seen);
         }
 
-        seen.forEach((key, count) -> assertTrue(count > 0,
-                () -> "no scenario produced a value for '" + key + "', so this guard proves nothing about it — "
+        seen.forEach((reach, count) -> assertTrue(count > 0,
+                () -> "no scenario produced a value for '" + reach + "', so this guard proves nothing about it — "
                         + "extend the scenarios until it does, rather than leaving the key unchecked"));
     }
 
-    /** One runtime invocation whose payload is expected to carry pointers. */
-    private record Scenario(String label, List<String> command) {
+    /** Every marked property of one schema, as key → the format keyword it carries. */
+    private static Map<String, String> marks(String schema) throws Exception {
+        Map<String, String> found = new LinkedHashMap<>();
+        collectPointerKeys(readSchema(schema), found);
+        return found;
+    }
+
+    /** One runtime invocation, together with the marks of the schema its payload conforms to. */
+    private record Scenario(String label, List<String> command, Map<String, String> marks) {
         CliTestSupport.Result run() {
             CliTestSupport.Result res = CliTestSupport.run(command.toArray(new String[0]));
             assertEquals(0, res.code(), () -> label + " failed: " + res.err() + res.out());
             return res;
+        }
+
+        /** A key's coverage identity. {@code field} is marked differently by the two schemas, so both must be hit. */
+        String reach(String key) {
+            return marks.get(key) + ":" + key;
         }
     }
 
@@ -104,7 +131,8 @@ class PublishedPointerCanonicalTest {
      * fixture — {@code order-ruled} is shared by many tests, and a guard should not reshape everyone else's model
      * to arrange its own inputs.
      */
-    private static List<Scenario> scenarios(Path dir) throws Exception {
+    private static List<Scenario> scenarios(
+            Path dir, Map<String, String> evalMarks, Map<String, String> computeMarks) throws Exception {
         Path order = fixture("order-ruled.dm.json", dir);
         addRule(order, dir.resolve("row-rule.json"), """
                 {"field": "/Order/Items/Count",
@@ -128,9 +156,11 @@ class PublishedPointerCanonicalTest {
 
         return List.of(
                 new Scenario("model eval (row violation → field/referenced, empty number → fillToFix)",
-                        List.of("-m", order.toString(), "model", "eval", "--instance", violating.toString())),
+                        List.of("-m", order.toString(), "model", "eval", "--instance", violating.toString()),
+                        evalMarks),
                 new Scenario("model compute (field/declaration)",
-                        List.of("-m", computed.toString(), "model", "compute", "--instance", billing.toString())));
+                        List.of("-m", computed.toString(), "model", "compute", "--instance", billing.toString()),
+                        computeMarks));
     }
 
     /**
@@ -145,13 +175,12 @@ class PublishedPointerCanonicalTest {
      * contract in the contract's own terms, and only the third consults the type — for representability, which is
      * a different question from canonicality.
      *
-     * <p>Representability is checked against {@code A12PartiallyKnownMultiPointerFormat}, not the exact pointer
-     * type, because that is the domain these keys publish. {@code field}, {@code referenced} and
-     * {@code fillToFix} are message-channel pointers, which A12 itself types as
-     * {@code PartiallyKnownDocumentMultiPointer} — so one may legitimately carry the unknown repetition an exact
-     * {@code DocumentPointer} cannot express. Holding them to the exact type would fail a <em>correct</em>
-     * pointer; the exact-vs-partially-known domains are pinned by {@code A12PointerKernelDomainDiffTest} against
-     * the real kernel factories, which is where that distinction belongs.
+     * <p>Representability is checked against the <b>exact</b> pointer type, and the scenarios are chosen so every
+     * marked value is one. A message address that carries a wildcard above the last part, or the {@code -5} of an
+     * unresolved parallel-iteration level, is A12's {@code PartiallyKnownDocumentMultiPointer} — for which A12
+     * defines no pointer string at all — so it is published as the interpreter's house form and is deliberately
+     * outside this guard's reach rather than silently renamed "canonical". The two domains are pinned against
+     * the real kernel factories by {@code A12PointerKernelDomainDiffTest}, which is where that belongs.
      */
     private static void assertCanonical(String label, String key, String value) {
         assertFalse(value.startsWith("/"),
@@ -160,16 +189,39 @@ class PublishedPointerCanonicalTest {
                         + "form escaping without going through A12Pointers");
         assertFalse(EXPLICIT_FIRST_REPETITION.matcher(value).find(),
                 () -> label + ": '" + value + "' under '" + key + "' spells [1], which A12's canonical form omits");
-        assertDoesNotThrow(() -> A12PartiallyKnownMultiPointerFormat.INSTANCE.parse(value),
+        assertDoesNotThrow(() -> A12PointerFormat.INSTANCE.parse(value),
                 () -> label + ": '" + value + "' under '" + key + "' is not a representable A12 pointer at all");
+    }
+
+    /**
+     * A <b>message address</b> keeps the canonical contract exactly when it names one cell, and is otherwise the
+     * house form — which A12 can neither parse nor render, so demanding canonicality of it would be demanding a
+     * spelling that does not exist.
+     *
+     * <p>The leading slash is the published discriminator (it is what the schema tells a consumer to test), so
+     * this checks the two branches by it: no slash ⇒ the full canonical contract; slash ⇒ a well-formed house
+     * form. A value that is neither — a bare name that will not parse, say — fails both branches.
+     */
+    private static void assertMessageAddress(String label, String key, String value) {
+        if (!value.startsWith("/")) {
+            assertCanonical(label, key, value);
+            return;
+        }
+        assertTrue(HOUSE_FORM.matcher(value).matches(),
+                () -> label + ": '" + value + "' under '" + key + "' is neither a canonical A12 pointer nor the "
+                        + "interpreter house form the schema admits for a partially-known address");
     }
 
     /** An explicitly spelled first repetition — legal input, never canonical output. */
     private static final java.util.regex.Pattern EXPLICIT_FIRST_REPETITION = java.util.regex.Pattern.compile("\\[1]");
 
-    private static void walk(String label, JsonNode node, Set<String> pointerKeys, Map<String, Integer> seen) {
+    /** The house form: a leading slash, then {@code /Name} segments each optionally carrying {@code [<index>]}. */
+    private static final java.util.regex.Pattern HOUSE_FORM =
+            java.util.regex.Pattern.compile("(/[\\w_-]+(\\[-?\\d+])?)+");
+
+    private static void walk(Scenario scenario, JsonNode node, Map<String, Integer> seen) {
         if (node.isArray()) {
-            node.forEach(child -> walk(label, child, pointerKeys, seen));
+            node.forEach(child -> walk(scenario, child, seen));
             return;
         }
         if (!node.isObject()) {
@@ -177,13 +229,19 @@ class PublishedPointerCanonicalTest {
         }
         node.properties().forEach(e -> {
             JsonNode value = e.getValue();
-            if (pointerKeys.contains(e.getKey())) {
+            String format = scenario.marks().get(e.getKey());
+            if (format != null) {
                 for (String pointer : strings(value)) {
-                    assertCanonical(label, e.getKey(), pointer);
-                    seen.merge(e.getKey(), 1, Integer::sum);
+                    switch (format) {
+                        case POINTER_FORMAT -> assertCanonical(scenario.label(), e.getKey(), pointer);
+                        case MESSAGE_ADDRESS_FORMAT -> assertMessageAddress(scenario.label(), e.getKey(), pointer);
+                        default -> throw new AssertionError("unhandled pointer mark '" + format + "' on '"
+                                + e.getKey() + "' — every mark needs an assertion, or the guard silently skips it");
+                    }
+                    seen.merge(scenario.reach(e.getKey()), 1, Integer::sum);
                 }
             }
-            walk(label, value, pointerKeys, seen);
+            walk(scenario, value, seen);
         });
     }
 
@@ -201,8 +259,8 @@ class PublishedPointerCanonicalTest {
         return out;
     }
 
-    /** Every property (including under {@code $defs}) marked {@value #POINTER_FORMAT}, on itself or its items. */
-    private static void collectPointerKeys(JsonNode node, Set<String> into) {
+    /** Every property (including under {@code $defs}) carrying an address mark, on itself or its items. */
+    private static void collectPointerKeys(JsonNode node, Map<String, String> into) {
         if (node.isArray()) {
             node.forEach(child -> collectPointerKeys(child, into));
             return;
@@ -214,9 +272,9 @@ class PublishedPointerCanonicalTest {
         if (props != null && props.isObject()) {
             props.properties().forEach(e -> {
                 JsonNode p = e.getValue();
-                if (POINTER_FORMAT.equals(p.path("format").asText())
-                        || POINTER_FORMAT.equals(p.path("items").path("format").asText())) {
-                    into.add(e.getKey());
+                String format = p.has("format") ? p.path("format").asText() : p.path("items").path("format").asText();
+                if (POINTER_FORMAT.equals(format) || MESSAGE_ADDRESS_FORMAT.equals(format)) {
+                    into.put(e.getKey(), format);
                 }
             });
         }

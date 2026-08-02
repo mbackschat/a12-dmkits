@@ -29,7 +29,7 @@ import io.github.mbackschat.a12.dm.adapter.RuleTestOutcome;
 import io.github.mbackschat.a12.dm.core.ModelResolver;
 import io.github.mbackschat.a12.dm.core.ReferenceResolvers;
 import io.github.mbackschat.a12.dm.cli.interp.A12Pointers;
-import io.github.mbackschat.a12.dm.interpreter.eval.PointerKt;
+import io.github.mbackschat.a12.dm.interpreter.A12PartiallyKnownMultiPointer;
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel;
 import io.github.mbackschat.a12.dm.rulekit.validate.DraftRule;
 import io.github.mbackschat.a12.dm.rulekit.validate.RuleValidator;
@@ -348,9 +348,13 @@ final class KernelEval {
      * the interpreter renders internally — otherwise both sides get the same lossy projection and agree by
      * construction (docs/archived/RESULT-CONTRACT-PROPOSAL.md §1c names this as one of the three harnesses that defended the defect
      * rather than catching it). So this renders canonical A12, through the same boundary converter the CLI uses.
+     *
+     * <p>The kernel's own address is {@code (path, repetitions)} — the very pair A12's message pointer holds — so
+     * it is rebuilt as that pointer and handed to the converter typed. Rendering it to the house form first and
+     * letting the converter re-read the string would put a lossy round-trip on the ORACLE side of the differential.
      */
     private static String pointer(FieldPointer p) {
-        return A12Pointers.canonical(PointerKt.formatPointer(p.path(), p.reps()));
+        return A12Pointers.canonical(A12PartiallyKnownMultiPointer.Companion.of(p.path(), p.reps()));
     }
 
     // ---- shared emit helpers (match BaseCommand.fail / refuse) ----

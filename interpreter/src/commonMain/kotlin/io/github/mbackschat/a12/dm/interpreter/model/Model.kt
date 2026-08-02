@@ -1,5 +1,8 @@
 package io.github.mbackschat.a12.dm.interpreter.model
 
+import io.github.mbackschat.a12.dm.interpreter.A12PartiallyKnownMultiPointer
+import io.github.mbackschat.a12.dm.interpreter.MessagePointers
+
 import io.github.mbackschat.a12.dm.interpreter.regex.PatternRegistry
 import io.github.mbackschat.a12.dm.interpreter.regex.compilePattern
 
@@ -688,23 +691,38 @@ data class ModelDef(
 }
 
 /**
- * One validation finding produced by [DmInterpreter.validateFull] — the interpreter's kernel-free twin
- * of the kernel's `IMessage`, carrying the same channels: the fired rule's [code], its [rulePath], the
- * offending-field pointer [errorPath] (path + repetition indices, [formatPointer] form), [severity], the
- * VALUE/OMISSION [type] polarity, the rendered [text], the [referenced] operand pointers, and (for an
- * OMISSION) [fillToFix] — the referenced fields that, if filled, would clear the error (the kernel's
- * `refOmissionErrorResponsible`).
+ * One validation finding produced by [DmInterpreter.validateFull] — the interpreter's kernel-free twin of the
+ * kernel's `IMessage`, carrying the same channels: the fired rule's [code], its [rulePath], the offending
+ * entity [errorPointer], [severity], the VALUE/OMISSION [type] polarity, the rendered [text], the
+ * [referencedPointers] operands, and (for an OMISSION) [fillToFixPointers] — the referenced fields that, if
+ * filled, would clear the error (the kernel's `refOmissionErrorResponsible`).
+ *
+ * <b>Every address here is A12's message pointer, and it is STORED as one.</b> `IMessage` types all three of
+ * those channels as `PartiallyKnownDocumentMultiPointer`, and so do these. The house-form strings below are
+ * *derived* projections kept for the comparison surfaces that have always used them — the conformance corpus,
+ * the `:adapter` differential and dmtool's output. The direction is not a preference: the house form omits the
+ * terminal repetition, so `("/Plan/Demand", [1, -5])` renders `/Plan[1]/Demand` and the sentinel is gone. A
+ * string can be computed from the pointer; the pointer cannot be recovered from the string.
  */
 data class Message(
     val code: String,
     val rulePath: String,
-    val errorPath: String,
+    val errorPointer: A12PartiallyKnownMultiPointer,
     val severity: Severity,
     val type: MsgType,
     val text: String = "",
-    val referenced: List<String> = emptyList(),
-    val fillToFix: List<String> = emptyList(),
-)
+    val referencedPointers: List<A12PartiallyKnownMultiPointer> = emptyList(),
+    val fillToFixPointers: List<A12PartiallyKnownMultiPointer> = emptyList(),
+) {
+    /** Derived comparison projection — never stored. See the class note on why the direction is one-way. */
+    val errorPath: String get() = MessagePointers.houseForm(errorPointer)
+
+    /** Derived comparison projection — never stored. */
+    val referenced: List<String> get() = referencedPointers.map(MessagePointers::houseForm)
+
+    /** Derived comparison projection — never stored. */
+    val fillToFix: List<String> get() = fillToFixPointers.map(MessagePointers::houseForm)
+}
 
 /**
  * The three-way verdict of a single-rule eval ([DmInterpreter.testRule]) — the `rule eval` contract.

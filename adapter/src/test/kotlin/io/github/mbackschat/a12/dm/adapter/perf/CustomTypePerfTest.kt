@@ -45,10 +45,16 @@ class CustomTypePerfTest {
         emptyList(), declaredReps = mapOf("/C" to MAX))
     private val registry = mapOf("Iban" to PredefinedType(minLength = 15, maxLength = 34, pattern = IBAN))
 
-    /** A document of [n] custom-typed cells, all carrying a valid IBAN (so `accepts` runs the full regex per cell). */
+    /**
+     * A document of [n] custom-typed cells, all carrying a valid IBAN (so `accepts` runs the full regex per cell).
+     *
+     * `/C/S` has TWO parts, so a cell carries two coordinates: the repeatable `/C` row, then the field's own.
+     * This used to pass three, which the document accepted and the house pointer renderer then ignored — so all
+     * [n] cells rendered as the single pointer `/C[1]/S`. Typing the message channel made that unrepresentable.
+     */
     private fun doc(n: Int): Document {
         val d = customDef.newDocument()   // kinds are STRING for both defs → one doc serves both
-        for (i in 1..n) d.field(s, "DE89370400440532013000", 1, i, 1)
+        for (i in 1..n) d.field(s, "DE89370400440532013000", i, 1)
         return d
     }
 
@@ -56,7 +62,7 @@ class CustomTypePerfTest {
         val d = doc(N)
         // Correctness sanity — the timed path is NOT a no-op: a bad value fires customFieldTypeInvalid, and the
         // registered type is actually consulted (nothing reported unsupported).
-        val bad = customDef.newDocument().apply { field(s, "NOT-AN-IBAN", 1, 1, 1) }
+        val bad = customDef.newDocument().apply { field(s, "NOT-AN-IBAN", 1, 1) }
         val outcome = DmInterpreter(customDef, predefinedTypes = registry).validate(bad)
         assertEquals(1, outcome.messages.size, "the accepts() path must run (a bad IBAN fires once): ${outcome.messages}")
         assertTrue(outcome.unsupported.isEmpty(), "the registered type must be consulted, not reported unsupported: ${outcome.unsupported}")

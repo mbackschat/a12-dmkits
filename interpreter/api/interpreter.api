@@ -1,4 +1,8 @@
 public final class io/github/mbackschat/a12/dm/interpreter/A12PartiallyKnownMultiPointer {
+	public static final field Companion Lio/github/mbackschat/a12/dm/interpreter/A12PartiallyKnownMultiPointer$Companion;
+	public static final field UNKNOWN I
+	public static final field WILDCARD I
+	public synthetic fun <init> (Ljava/lang/String;Ljava/util/List;Lkotlin/jvm/internal/DefaultConstructorMarker;)V
 	public fun equals (Ljava/lang/Object;)Z
 	public final fun getFullName ()Ljava/lang/String;
 	public final fun getRepetitionIndexes ()Ljava/util/List;
@@ -7,14 +11,8 @@ public final class io/github/mbackschat/a12/dm/interpreter/A12PartiallyKnownMult
 	public fun toString ()Ljava/lang/String;
 }
 
-public final class io/github/mbackschat/a12/dm/interpreter/A12PartiallyKnownMultiPointerFormat {
-	public static final field INSTANCE Lio/github/mbackschat/a12/dm/interpreter/A12PartiallyKnownMultiPointerFormat;
-	public static final field UNKNOWN I
-	public static final field WILDCARD I
-	public final fun format (Ljava/lang/String;Ljava/util/List;)Ljava/lang/String;
+public final class io/github/mbackschat/a12/dm/interpreter/A12PartiallyKnownMultiPointer$Companion {
 	public final fun of (Ljava/lang/String;Ljava/util/List;)Lio/github/mbackschat/a12/dm/interpreter/A12PartiallyKnownMultiPointer;
-	public final fun parse (Ljava/lang/String;)Lio/github/mbackschat/a12/dm/interpreter/A12PartiallyKnownMultiPointer;
-	public final fun render (Lio/github/mbackschat/a12/dm/interpreter/A12PartiallyKnownMultiPointer;)Ljava/lang/String;
 }
 
 public final class io/github/mbackschat/a12/dm/interpreter/A12PathPart {
@@ -520,6 +518,12 @@ public final class io/github/mbackschat/a12/dm/interpreter/JavaModelSourceProvid
 	public static fun getSnapshotRevision (Lio/github/mbackschat/a12/dm/interpreter/JavaModelSourceProvider;)Ljava/lang/String;
 }
 
+public final class io/github/mbackschat/a12/dm/interpreter/MessagePointers {
+	public static final field INSTANCE Lio/github/mbackschat/a12/dm/interpreter/MessagePointers;
+	public final fun canonicalExactForm (Lio/github/mbackschat/a12/dm/interpreter/A12PartiallyKnownMultiPointer;)Ljava/lang/String;
+	public final fun houseForm (Lio/github/mbackschat/a12/dm/interpreter/A12PartiallyKnownMultiPointer;)Ljava/lang/String;
+}
+
 public abstract interface class io/github/mbackschat/a12/dm/interpreter/ModelCollectionSignal {
 	public static final field Companion Lio/github/mbackschat/a12/dm/interpreter/ModelCollectionSignal$Companion;
 	public abstract fun isCancelled ()Z
@@ -1016,20 +1020,20 @@ public final class io/github/mbackschat/a12/dm/interpreter/UnsupportedProgramSub
 }
 
 public final class io/github/mbackschat/a12/dm/interpreter/ValidationFinding {
-	public fun <init> (Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Lio/github/mbackschat/a12/dm/interpreter/ValidationSeverity;Lio/github/mbackschat/a12/dm/interpreter/ValidationFindingType;Ljava/lang/String;Ljava/util/List;Ljava/util/List;)V
+	public fun <init> (Ljava/lang/String;Ljava/lang/String;Lio/github/mbackschat/a12/dm/interpreter/A12PartiallyKnownMultiPointer;Lio/github/mbackschat/a12/dm/interpreter/ValidationSeverity;Lio/github/mbackschat/a12/dm/interpreter/ValidationFindingType;Ljava/lang/String;Ljava/util/List;Ljava/util/List;)V
 	public final fun component1 ()Ljava/lang/String;
 	public final fun component2 ()Ljava/lang/String;
-	public final fun component3 ()Ljava/lang/String;
+	public final fun component3 ()Lio/github/mbackschat/a12/dm/interpreter/A12PartiallyKnownMultiPointer;
 	public final fun component4 ()Lio/github/mbackschat/a12/dm/interpreter/ValidationSeverity;
 	public final fun component5 ()Lio/github/mbackschat/a12/dm/interpreter/ValidationFindingType;
 	public final fun component6 ()Ljava/lang/String;
 	public final fun component7 ()Ljava/util/List;
 	public final fun component8 ()Ljava/util/List;
-	public final fun copy (Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Lio/github/mbackschat/a12/dm/interpreter/ValidationSeverity;Lio/github/mbackschat/a12/dm/interpreter/ValidationFindingType;Ljava/lang/String;Ljava/util/List;Ljava/util/List;)Lio/github/mbackschat/a12/dm/interpreter/ValidationFinding;
-	public static synthetic fun copy$default (Lio/github/mbackschat/a12/dm/interpreter/ValidationFinding;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Lio/github/mbackschat/a12/dm/interpreter/ValidationSeverity;Lio/github/mbackschat/a12/dm/interpreter/ValidationFindingType;Ljava/lang/String;Ljava/util/List;Ljava/util/List;ILjava/lang/Object;)Lio/github/mbackschat/a12/dm/interpreter/ValidationFinding;
+	public final fun copy (Ljava/lang/String;Ljava/lang/String;Lio/github/mbackschat/a12/dm/interpreter/A12PartiallyKnownMultiPointer;Lio/github/mbackschat/a12/dm/interpreter/ValidationSeverity;Lio/github/mbackschat/a12/dm/interpreter/ValidationFindingType;Ljava/lang/String;Ljava/util/List;Ljava/util/List;)Lio/github/mbackschat/a12/dm/interpreter/ValidationFinding;
+	public static synthetic fun copy$default (Lio/github/mbackschat/a12/dm/interpreter/ValidationFinding;Ljava/lang/String;Ljava/lang/String;Lio/github/mbackschat/a12/dm/interpreter/A12PartiallyKnownMultiPointer;Lio/github/mbackschat/a12/dm/interpreter/ValidationSeverity;Lio/github/mbackschat/a12/dm/interpreter/ValidationFindingType;Ljava/lang/String;Ljava/util/List;Ljava/util/List;ILjava/lang/Object;)Lio/github/mbackschat/a12/dm/interpreter/ValidationFinding;
 	public fun equals (Ljava/lang/Object;)Z
 	public final fun getCode ()Ljava/lang/String;
-	public final fun getErrorPath ()Ljava/lang/String;
+	public final fun getErrorPath ()Lio/github/mbackschat/a12/dm/interpreter/A12PartiallyKnownMultiPointer;
 	public final fun getFillToFix ()Ljava/util/List;
 	public final fun getReferenced ()Ljava/util/List;
 	public final fun getRulePath ()Ljava/lang/String;

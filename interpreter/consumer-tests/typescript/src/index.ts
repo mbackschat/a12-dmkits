@@ -1,7 +1,7 @@
 import {readFileSync} from "node:fs";
 
 import {
-  A12PartiallyKnownMultiPointerFormat,
+  A12PartiallyKnownMultiPointer,
   A12PointerFormat,
   DocumentCoordinateError,
   DocumentInputError,
@@ -15,6 +15,7 @@ import {
   type ModelSourceProvider,
   type WorkspaceModelSource,
 } from "@mbackschat/a12-interpreter";
+import type {A12Pointer} from "@mbackschat/a12-interpreter";
 
 import {validateWithProjectCondition} from "./guide-customization.js";
 import {runInterpreter} from "./guide-finite.js";
@@ -221,18 +222,22 @@ const perRowComputation = interpreter.compute(prepared.documents.readDocument({
 const perRowCharges = perRowComputation.results.filter(
   ({pointer}) => pointer.path === "/Permit/SiteSections/SurveyCharge",
 );
-const reportedErrorPath = validation.findings[0]?.errorPath ?? "";
+const reportedFinding = validation.findings[0];
+if (reportedFinding === undefined) {
+  throw new Error("the fixture must report a finding, or the message-channel checks below prove nothing");
+}
 
 // tag::interpreter-typescript-pointer[]
 // A computation inside a repeatable group reports one result per row, all under the SAME `pointer.path`.
 // `A12PointerFormat.format` joins path and coordinates into A12's canonical EXACT pointer, so each row becomes
-// addressable. A report path is a different A12 type — `PartiallyKnownDocumentMultiPointer`, which may carry a
-// wildcard or the unknown index — so it is read by `A12PartiallyKnownMultiPointerFormat`, and converted to an
-// exact pointer only when it really is one.
+// addressable. A12's message addressing is a different type — `PartiallyKnownDocumentMultiPointer`, which may
+// carry a wildcard at any part or the unknown index — and a validation finding CARRIES that type: `errorPath`,
+// `referenced` and `fillToFix` are values, not strings, so nothing has been rendered away. It converts to an
+// exact pointer only when it really names one cell.
 const identifiedRows = perRowCharges.map(({pointer, value}) =>
   `${A12PointerFormat.format(pointer.path, pointer.coordinates)}=${value}`);
-const errorCell = A12PartiallyKnownMultiPointerFormat.parse(reportedErrorPath);
-const errorCellExact = A12PartiallyKnownMultiPointerFormat.toExactPointer(errorCell);
+const errorCell = reportedFinding.errorPath;
+const errorCellExact = A12PartiallyKnownMultiPointer.toExactPointer(errorCell);
 // end::interpreter-typescript-pointer[]
 
 if (perRowCharges.length !== 2 ||
@@ -240,6 +245,8 @@ if (perRowCharges.length !== 2 ||
       "Permit/SiteSections/SurveyCharge=1875,Permit/SiteSections[2]/SurveyCharge=1250") {
   throw new Error("a repeated computed target did not carry one identified result per row");
 }
+// The terminal `1` is exactly what the interpreter's house form (`/Permit[1]/Note`) does not write, so reading it
+// back off the published value is what proves the channel carries the pointer rather than a rendering of it.
 if (errorCell.fullName !== "/Permit/Note" ||
     errorCell.repetitionIndexes.join(",") !== "1,1" ||
     errorCellExact === null ||
@@ -248,17 +255,23 @@ if (errorCell.fullName !== "/Permit/Note" ||
       errorCellExact.fullName,
       errorCellExact.repetitionIndexes,
     ) !== "Permit/Note") {
-  throw new Error("the pointer utility did not convert the house form it was given");
+  throw new Error("a finding's message pointer did not convert to the exact pointer it names");
+}
+if (!Object.isFrozen(errorCell) || !Object.isFrozen(errorCell.repetitionIndexes) ||
+    !Object.isFrozen(reportedFinding.referenced) || !Object.isFrozen(reportedFinding.fillToFix) ||
+    reportedFinding.referenced.some((pointer) => !Object.isFrozen(pointer) ||
+      !Object.isFrozen(pointer.repetitionIndexes))) {
+  throw new Error("a published message pointer or repetition list was not frozen");
 }
 if (A12PointerFormat.LAST_PART_ZERO !== 0 ||
-    A12PartiallyKnownMultiPointerFormat.WILDCARD !== 0 ||
-    A12PartiallyKnownMultiPointerFormat.UNKNOWN !== -5) {
-  throw new Error("the pointer utilities do not publish A12's reserved repetitions");
+    A12PartiallyKnownMultiPointer.WILDCARD !== 0 ||
+    A12PartiallyKnownMultiPointer.UNKNOWN !== -5) {
+  throw new Error("the pointer types do not publish A12's reserved repetitions");
 }
-// The two domains really are different types: the unknown index is a message pointer and nothing else.
-const unresolved = A12PartiallyKnownMultiPointerFormat.parse("Plan/Demand[-5]/Headcount");
+// The two domains really are different: the unknown index is a message value and nothing else.
+const unresolved = A12PartiallyKnownMultiPointer.of("/Plan/Demand/Headcount", [1, -5, 1]);
 if (unresolved.repetitionIndexes.join(",") !== "1,-5,1" ||
-    A12PartiallyKnownMultiPointerFormat.toExactPointer(unresolved) !== null) {
+    A12PartiallyKnownMultiPointer.toExactPointer(unresolved) !== null) {
   throw new Error("a message pointer with A12's unknown index did not read as unresolved");
 }
 try {
@@ -271,16 +284,37 @@ try {
 }
 try {
   A12PointerFormat.parse("Permit/SiteSections[0]/Area");
-  throw new Error("the pointer utility accepted a non-final zero repetition");
+  throw new Error("the exact pointer accepted a non-final zero repetition");
 } catch (error) {
   if (!(error instanceof TypeError)) {
     throw error;
   }
 }
 // …while the message channel's wildcard IS legal at every part.
-if (A12PartiallyKnownMultiPointerFormat.parse("Permit/SiteSections[0]/Area")
+if (A12PartiallyKnownMultiPointer.of("/Permit/SiteSections/Area", [1, 0, 1])
       .repetitionIndexes.join(",") !== "1,0,1") {
   throw new Error("a message pointer refused the wildcard A12 allows at every part");
+}
+// The ROOT conversion raises, exactly as A12's own toDocumentPointer() does.
+try {
+  A12PartiallyKnownMultiPointer.toExactPointer(A12PartiallyKnownMultiPointer.of("", []));
+  throw new Error("the root conversion answered where A12 raises");
+} catch (error) {
+  if (!(error instanceof TypeError)) {
+    throw error;
+  }
+}
+// A12's PathPart accepts any non-empty name; only the string CODEC restricts what it will write.
+if (A12PartiallyKnownMultiPointer.of("/Order$/Order Item", [1, 2]).fullName !== "/Order$/Order Item") {
+  throw new Error("the message pointer refused a fullName its owner accepts");
+}
+try {
+  A12PointerFormat.format("/Order$", [1]);
+  throw new Error("the string codec wrote a name it cannot read back");
+} catch (error) {
+  if (!(error instanceof TypeError)) {
+    throw error;
+  }
 }
 try {
   A12PointerFormat.format("/Permit/Note", [1]);
@@ -293,13 +327,13 @@ try {
 // Kotlin/JS erases `Int`, so the PACKED artifact is the only place this can be observed: a non-integer
 // repetition must be refused rather than rendered as `Note[1.5]`.
 for (const hostile of [1.5, Number.NaN, Number.POSITIVE_INFINITY, 2147483648]) {
-  for (const render of [
+  for (const build of [
     () => A12PointerFormat.format("/Permit/Note", [1, hostile]),
-    () => A12PartiallyKnownMultiPointerFormat.format("/Permit/Note", [1, hostile]),
+    () => A12PartiallyKnownMultiPointer.of("/Permit/Note", [1, hostile]),
   ]) {
     let refused = false;
     try {
-      render();
+      build();
     } catch (error) {
       if (!(error instanceof TypeError)) {
         throw error;
@@ -307,10 +341,39 @@ for (const hostile of [1.5, Number.NaN, Number.POSITIVE_INFINITY, 2147483648]) {
       refused = true;
     }
     if (!refused) {
-      throw new Error(`a pointer utility accepted the non-integer repetition ${hostile}`);
+      throw new Error(`a pointer type accepted the non-integer repetition ${hostile}`);
     }
   }
 }
+
+// ---- NOMINALITY LOCKS -------------------------------------------------------------------------------
+// The two pointer types must not be interchangeable in EITHER direction. These are compile-time assertions:
+// `@ts-expect-error` fails the build when the error it expects does NOT occur, so deleting the brands or
+// re-widening a signature turns each of these into "Unused '@ts-expect-error' directive".
+const exactForNominality: A12Pointer = A12PointerFormat.parse("Permit/Note");
+const messageForNominality: A12PartiallyKnownMultiPointer =
+  A12PartiallyKnownMultiPointer.of("/Permit/Note", [1, 1]);
+
+// @ts-expect-error an exact pointer is not a message pointer
+const notAMessagePointer: A12PartiallyKnownMultiPointer = exactForNominality;
+// @ts-expect-error a message pointer is not an exact pointer
+const notAnExactPointer: A12Pointer = messageForNominality;
+// @ts-expect-error toExactPointer takes the message type only
+const notConvertible = A12PartiallyKnownMultiPointer.toExactPointer(exactForNominality);
+
+// …and the SAME nominality holds for a pointer that arrived through a validation finding, which is the path a
+// real consumer takes. A brand applied only by the hand-built factory would pass the three checks above and
+// still leave every published finding structurally typed.
+const fromFinding: A12PartiallyKnownMultiPointer = reportedFinding.errorPath;
+const referencedFromFinding: readonly A12PartiallyKnownMultiPointer[] = reportedFinding.referenced;
+// @ts-expect-error a finding's address is a message pointer, never an exact one
+const findingIsNotExact: A12Pointer = reportedFinding.errorPath;
+void notAMessagePointer;
+void notAnExactPointer;
+void notConvertible;
+void fromFinding;
+void referencedFromFinding;
+void findingIsNotExact;
 
 const canonical = prepared.documents.encodeDocumentJson(snapshot);
 if (canonical !== '{"Permit":{"ApplicationNo":"P-1","RequestedArea":125}}') {

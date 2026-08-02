@@ -694,7 +694,10 @@ await withStaticServer(async (url) => {
     await assertOutput("compute", [
       '"formalErrorsInOperands"',
       '"zahlHatUngueltigeZeichen"',
-      '"errorPath": "/Permit[1]/RequestedArea"',
+      // A finding's address is A12's message pointer, so the showcase publishes the VALUE plus its canonical
+      // A12 spelling — never a rendered string standing in for the pointer.
+      '"a12Pointer": "Permit/RequestedArea"',
+      '"fullName": "/Permit/RequestedArea"',
       '"noErrorOccurred": false',
     ]);
 
@@ -704,7 +707,8 @@ await withStaticServer(async (url) => {
       '"outcome": "errored"',
       '"diagnostic"',
       '"stelligkeitZuLang"',
-      '"errorPath": "/Permit[1]/EstimatedFee"',
+      '"a12Pointer": "Permit/EstimatedFee"',
+      '"fullName": "/Permit/EstimatedFee"',
       '"formalErrorsInOperands": []',
       '"noErrorOccurred": false',
     ]);

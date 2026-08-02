@@ -3,25 +3,29 @@ package io.github.mbackschat.a12.dm.interpreter
 import io.github.mbackschat.a12.dm.interpreter.workspace.immutableListSnapshot
 
 /**
- * One part of an exact A12 pointer — A12's `PathPart`, member for member: a `name` and a `repetitionIndex`.
+ * One part of an exact A12 pointer — the counterpart of A12's `PathPart`: a `name` and a `repetitionIndex`.
  *
- * The domain is `PathPartImpl`'s: a non-empty name inside the part grammar, and `repetitionIndex >= 0`
- * ("repetition index must be > 0, or 0 for wildcard, but not negative"). Whether a `0` may sit at *this*
- * position is the pointer's rule, not the part's, exactly as in A12 — `DocumentPointerImpl`'s constructor
- * decides that, and its assertion records that "PathPart is responsible for repetition indexes >= 0".
+ * <b>The domain is `PathPartImpl`'s, and it is looser than the pointer STRING grammar.</b> A non-empty name and
+ * `repetitionIndex >= 0` ("repetition index must be > 0, or 0 for wildcard, but not negative") — and nothing
+ * else. `PathPart.of("a/b", 1)` and `PathPart.of("Order$", 1)` are both accepted by the kernel and survive into
+ * `DocumentPointer.fullName()`; only `DocumentPointer.of(String)` refuses those names, because a *written*
+ * pointer has to parse back to the same value. This type previously imposed the string grammar here, which made
+ * a legal A12 part unrepresentable — an over-rejection on the read path as much as the authoring one.
  *
- * A `data class` is safe here where it is not on [A12Pointer]: this holds no collection, so `copy()` re-runs
- * the primary constructor and re-validates rather than side-stepping a snapshot.
+ * Whether a `0` may sit at *this* position is the pointer's rule, not the part's, exactly as in A12:
+ * `DocumentPointerImpl`'s constructor decides that, and its assertion records that "PathPart is responsible for
+ * repetition indexes >= 0".
+ *
+ * A `data class` is safe here where it is not on [A12Pointer]: this holds no collection, so `copy()` re-runs the
+ * primary constructor and re-validates rather than side-stepping a snapshot.
  */
 data class A12PathPart(val name: String, val repetitionIndex: Int) {
     init {
-        require(A12PointerSyntax.isName(name)) {
-            "not a valid path part name: '$name' — a name matches ${A12PointerSyntax.NAME_PATTERN}"
-        }
+        require(name.isNotEmpty()) { "PathPart name must not be empty" }
         require(repetitionIndex >= 0) {
-            "repetition index must be >= 1, or ${A12PointerFormat.LAST_PART_ZERO} on the last part, " +
-                "but was $repetitionIndex — a negative index belongs to " +
-                "A12PartiallyKnownMultiPointer, not to an exact pointer"
+            "repetition index must be >= 1, or ${A12PointerFormat.LAST_PART_ZERO} for the RepetitionsV2 slot, " +
+                "but was $repetitionIndex — a negative index belongs to A12PartiallyKnownMultiPointer, not to " +
+                "an exact pointer"
         }
     }
 
@@ -37,10 +41,10 @@ data class A12PathPart(val name: String, val repetitionIndex: Int) {
  * a shape A12 does not have — the parallel lists appear only as *factory arguments* there
  * (`DocumentPointer.of(fullName, repetitions)`), never as the value's state.
  *
- * <b>Repetition domain:</b> every index `>= 1`, except the last, which may also be
- * [A12PointerFormat.LAST_PART_ZERO] to address A12's `RepetitionsV2` slot — `DocumentPointerImpl`'s constructor
- * verbatim ("All repetition indexes must be >= 1, the last repetition can also be 0"). Nothing negative is
- * representable; a repetition that could not be resolved to a row belongs to [A12PartiallyKnownMultiPointer].
+ * <b>Repetition domain</b>, measured against `DocumentPointerImpl`'s constructor: every index `>= 1`, except the
+ * last, which may also be [A12PointerFormat.LAST_PART_ZERO] to address A12's `RepetitionsV2` slot. Nothing
+ * negative is representable; a repetition that could not be resolved to a row belongs to
+ * [A12PartiallyKnownMultiPointer].
  *
  * <b>Zero parts is legal.</b> That is A12's root pointer: `DocumentPointerImpl.parseFullName("")` returns an
  * empty part list and the class displays that value as `(empty DocumentPointer)`, a display name no illegal
@@ -77,8 +81,11 @@ class A12Pointer private constructor(parts: List<A12PathPart>) {
 
     companion object {
         /**
-         * The one construction path. Validates the whole pointer's domain — the parts have each already
-         * validated their own — and snapshots, so no caller-owned list stays attached.
+         * The one construction path, and the counterpart of `DocumentPointer.of(List<PathPart>)`: it enforces
+         * that factory's rule and only that one — the **position** rule over already-valid parts. It does not
+         * impose the string codec's name grammar, because A12's own part-list factory does not
+         * (`DocumentPointer.of(List.of(PathPart.of("a/b", 1)))` is accepted and yields `fullName` `/a/b`).
+         * Snapshots, so no caller-owned list stays attached.
          */
         fun of(pathParts: List<A12PathPart>): A12Pointer {
             A12PointerFormat.requireExactDomain(
@@ -124,12 +131,16 @@ object A12PointerFormat {
     /**
      * Render [path] (with or without a leading `/`) and its positional [repetitions] as the canonical string.
      *
-     * Rejects exactly what [parse] rejects. It used to check only the arity, which let it emit 4,321 strings its
-     * own parser refused; `A12PointerSymmetryTest` is the two-directional lock.
+     * <b>This is the string CODEC, so it carries the codec's precondition</b> — every written name must match
+     * the part grammar, so that what it emits [parse] reads back as the same pointer. That is narrower than
+     * [A12Pointer]'s value domain on purpose, and the narrowing belongs to the string, not to the pointer: a
+     * part whose name carries a `/` or a bracket is a legal [A12PathPart] and simply cannot be *written*.
+     *
+     * It used to check only the arity, which let it emit 4,321 strings its own parser refused.
      */
     fun format(path: String, repetitions: List<Int>): String {
         val names = A12PointerSyntax.splitNames(path)
-        A12PointerSyntax.requireWellFormed(names, repetitions) { "path '$path'" }
+        A12PointerSyntax.requireCodecArgs(names, repetitions) { "path '$path'" }
         requireExactDomain(repetitions) { "path '$path'" }
         return names.asSequence()
             .mapIndexed { i, name -> A12PointerSyntax.renderPart(name, repetitions[i]) }
@@ -144,9 +155,13 @@ object A12PointerFormat {
         A12Pointer.of(A12PointerSyntax.parts(pointer).map { A12PathPart(it.name, it.repetition) })
 
     /**
-     * <b>The ONE place an exact pointer's repetition domain is enforced.</b> Every entry point calls it —
-     * [format], [parse] and [A12Pointer.of] — so none can admit what another refuses. The defect this replaces
-     * was precisely that the rule lived inside `parse`'s loop and bound `parse`'s callers only.
+     * <b>The ONE place the exact pointer's POSITION rule lives</b>, holding the domain measured on
+     * `DocumentPointerImpl`'s constructor. [A12Pointer.of] and [format] both call it, and [parse] reaches it
+     * through [A12Pointer.of], so no entry point can admit a position another refuses. The defect this replaces
+     * was that the rule lived inside `parse`'s loop and bound `parse`'s callers only.
+     *
+     * Deliberately NOT extended to the name grammar: that is the string codec's, and A12's part-list factory
+     * does not apply it.
      */
     internal fun requireExactDomain(repetitions: List<Int>, subject: () -> String) {
         for (i in repetitions.indices) {
@@ -155,7 +170,7 @@ object A12PointerFormat {
             require(repetition >= 1 || lastPartZero) {
                 "all repetition indexes must be >= 1 and only the last may be $LAST_PART_ZERO, in " +
                     "${subject()} — this is an exact DocumentPointer. A wildcard at an earlier part, or A12's " +
-                    "unknown repetition (${A12PartiallyKnownMultiPointerFormat.UNKNOWN}), is a " +
+                    "unknown repetition (${A12PartiallyKnownMultiPointer.UNKNOWN}), is a " +
                     "PartiallyKnownDocumentMultiPointer and has its own type"
             }
         }

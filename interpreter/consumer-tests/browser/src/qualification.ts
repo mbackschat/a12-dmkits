@@ -1,7 +1,7 @@
 import {
   type A12Document,
   type A12DocumentGroup,
-  A12PointerFormat,
+  A12PartiallyKnownMultiPointer,
   type ComputationResult,
   ModelWorkspace,
   type PreparedModel,
@@ -120,31 +120,36 @@ const validationSignature = (
 ): string =>
   `${finding.code}|${
     finding.type === "omission" ? "OMISSION_ERROR" : "VALUE_ERROR"
-  }|${finding.errorPath}`;
+  }|${housePointerKey(finding.errorPath)}`;
 
 /**
  * The conformance corpus keys its expected outcomes by the interpreter's **house** pointer form — a leading
  * `/` and an explicit `[n]` on every non-terminal part, including `[1]`: `/Permit[1]/SiteSections[2]/Area`.
- * That is the same key `ValidationFinding.errorPath` carries and the JVM/Node corpus harnesses build, so the
- * browser replay must produce it byte-for-byte or the committed `computeExpected` lists stop comparing.
+ * That is the key the JVM/Node corpus harnesses build, so the browser replay must produce it byte-for-byte or
+ * the committed `computeExpected` lists stop comparing.
  *
- * `A12PointerFormat` publishes A12's *canonical* form, which omits `[1]`, so it cannot render this key — but it
- * does own the splitting, the length check, and the repetition-legality rules, so those come from the library
- * rather than from a second hand-written parser. Only the final join is local, and it is local because no
- * published API renders the house form on any target (INTERPRETER-API-GAPS IAG11).
+ * <p>It is rendered from the finding's own message pointer, which is a `PartiallyKnownDocumentMultiPointer`
+ * value rather than text. Routing it through `A12PointerFormat` instead would be wrong twice over: that codec
+ * publishes A12's *canonical* form, which omits `[1]` and so cannot spell this key at all, and it refuses the
+ * wildcard and unknown indexes a message address may legitimately carry. Only the join is local, and it is local
+ * because no published API renders the house form on any target (INTERPRETER-API-GAPS IAG11).
  */
+const housePointerKey = (
+  pointer: A12PartiallyKnownMultiPointer,
+): string => {
+  const names = pointer.fullName.replace(/^\//, "").split("/");
+  return names.map((name, index) =>
+    index === names.length - 1
+      ? `/${name}`
+      : `/${name}[${pointer.repetitionIndexes[index]}]`).join("");
+};
+
+/** The same key for a document CELL the replay seeds, whose address it holds as a path plus coordinates. */
 const corpusPointerKey = (
   path: string,
   coordinates: readonly number[],
-): string => {
-  const {pathParts} = A12PointerFormat.parse(
-    A12PointerFormat.format(path, coordinates),
-  );
-  return `/${pathParts.map((part, index) =>
-    index === pathParts.length - 1
-      ? part.name
-      : `${part.name}[${part.repetitionIndex}]`).join("/")}`;
-};
+): string =>
+  housePointerKey(A12PartiallyKnownMultiPointer.of(path, coordinates));
 
 const prepareCorpusModel = async (
   modelRef: string,

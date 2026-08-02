@@ -1,5 +1,6 @@
 package io.github.mbackschat.a12.dm.adapter.laws
 
+import io.github.mbackschat.a12.dm.interpreter.MessagePointers
 import io.github.mbackschat.a12.dm.interpreter.PreparedModel
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
@@ -48,12 +49,12 @@ class PublicComputationDiagnosticsDiffTest {
             )
             assertEquals(
                 signatures(dynamic.formalErrorsInOperands()),
-                report.formalErrorsInOperands.map { "${it.code}@${it.errorPath}" }.sorted(),
+                report.formalErrorsInOperands.map { "${it.code}@${MessagePointers.houseForm(it.errorPath)}" }.sorted(),
                 "${case.label}: public formal operand diagnostics",
             )
             assertEquals(
                 signatures(dynamic.computedErrors()),
-                report.results.mapNotNull { it.diagnostic }.map { "${it.code}@${it.errorPath}" }.sorted(),
+                report.results.mapNotNull { it.diagnostic }.map { "${it.code}@${MessagePointers.houseForm(it.errorPath)}" }.sorted(),
                 "${case.label}: public computed-target diagnostics",
             )
             assertEquals(

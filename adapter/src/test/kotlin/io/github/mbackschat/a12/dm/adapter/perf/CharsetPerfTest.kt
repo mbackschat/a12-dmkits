@@ -35,7 +35,7 @@ class CharsetPerfTest {
 
     private fun doc(): Document {
         val d = def.newDocument()
-        for (i in 1..N) d.field(s, "Auftragsbestätigung Nr. $i — Île-de-France", 1, i, 1)   // all within DIN
+        for (i in 1..N) d.field(s, "Auftragsbestätigung Nr. $i — Île-de-France", i, 1)   // all within DIN
         return d
     }
 
@@ -45,7 +45,7 @@ class CharsetPerfTest {
     /** A document whose values carry configured DECOMPOSED graphemes, so every row exercises the trie path. */
     private fun graphemeDoc(model: ModelDef, rows: Int): Document {
         val d = model.newDocument()
-        for (i in 1..rows) d.field(s, "Café Résumé nr $i", 1, i, 1)   // decomposed é ×3, rest ASCII
+        for (i in 1..rows) d.field(s, "Café Résumé nr $i", i, 1)   // decomposed é ×3, rest ASCII
         return d
     }
 

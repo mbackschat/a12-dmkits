@@ -55,12 +55,12 @@
       "properties": {
         "code": { "type": "string", "description": "the rule's error code, or a kernel formal-error code" },
         "rule": { "type": "string", "description": "the firing rule's full slash-path (e.g. /Order/X); a kernel FORMAL check reports the sentinel 'formalePruefung' — a leading '/' is the author-rule discriminator" },
-        "field": { "type": "string", "format": "a12-pointer", "description": "the offending field's instance pointer in canonical A12 form — no leading slash, [1] omitted, one repetition per part, e.g. Order/Items[2]/Count — the row it hit. Paste-compatible with A12 addressing" },
+        "field": { "type": "string", "format": "a12-message-address", "description": "the offending field's address. A message address is A12's PartiallyKnownDocumentMultiPointer (what IMessage.getErrorFieldPointer returns), so it is published in canonical A12 pointer form — no leading slash, [1] omitted, e.g. Order/Items[2]/Count, paste-compatible with A12 addressing — exactly when it names one cell. It may instead carry a wildcard above the last part, or the -5 of a level that matched no row; A12 defines no pointer string for such a value, so it passes through as the interpreter house form (/Order[1]/Items[2]/Count) rather than being given an invented canonical spelling. Test the leading slash to tell the two apart" },
         "severity": { "type": "string", "description": "ERROR | WARNING | INFO" },
         "type": { "type": "string", "description": "VALUE_ERROR | OMISSION_ERROR" },
         "message": { "type": "string", "description": "the INTERPOLATED end-user text — the authored message with $Field$/$Field.value$ tokens resolved against this document (what the user actually reads, G1)" },
-        "referenced": { "type": "array", "items": { "type": "string", "format": "a12-pointer" }, "description": "the fields the rule READ (its operands), as canonical A12 instance pointers — A12's referencedFields" },
-        "fillToFix": { "type": "array", "items": { "type": "string", "format": "a12-pointer" }, "description": "for an OMISSION error, the operand fields that — if filled/changed — would clear it (the kernel's refOmissionErrorResponsible), as canonical A12 instance pointers; absent for a VALUE error" }
+        "referenced": { "type": "array", "items": { "type": "string", "format": "a12-message-address" }, "description": "the fields the rule READ (its operands) — A12's referencedFields. Same address contract as `field`: canonical A12 pointer when the address names one cell, house form otherwise" },
+        "fillToFix": { "type": "array", "items": { "type": "string", "format": "a12-message-address" }, "description": "for an OMISSION error, the operand fields that — if filled/changed — would clear it (the kernel's refOmissionErrorResponsible); absent for a VALUE error. Same address contract as `field`" }
       }
     }
   }

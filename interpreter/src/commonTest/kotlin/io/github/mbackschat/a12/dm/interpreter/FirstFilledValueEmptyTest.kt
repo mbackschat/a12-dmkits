@@ -32,7 +32,7 @@ class FirstFilledValueEmptyTest {
 
     private fun outcomeOf(op: String, rows: List<Pair<String?, String?>>): ComputeOutcome {
         val m = model(op)
-        val doc = m.newDocument().group("/Cart", 1).field(TOTAL, "0.01", 1)
+        val doc = m.newDocument().group("/Cart", 1).field(TOTAL, "0.01", 1, 1)
         rows.forEachIndexed { i, (qty, flag) ->
             val r = i + 1
             doc.group("/Cart/Lines", 1, r)
@@ -44,7 +44,7 @@ class FirstFilledValueEmptyTest {
 
     private fun valueOf(op: String, rows: List<Pair<String?, String?>>): String? {
         val m = model(op)
-        val doc = m.newDocument().group("/Cart", 1).field(TOTAL, "0.01", 1)
+        val doc = m.newDocument().group("/Cart", 1).field(TOTAL, "0.01", 1, 1)
         rows.forEachIndexed { i, (qty, _) -> if (qty != null) { doc.group("/Cart/Lines", 1, i + 1); doc.field(QTY, qty, 1, i + 1, 1) } }
         return DmInterpreter(m).compute(doc).first { it.path == TOTAL }.value
     }

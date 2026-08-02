@@ -320,16 +320,29 @@ enum class ValidationFindingType {
     OMISSION,
 }
 
-/** Detached, kernel-free projection of one validation finding. */
+/**
+ * Detached, kernel-free projection of one validation finding.
+ *
+ * <b>Its three addresses are A12's message pointer.</b> `IMessage` types `getErrorFieldPointer()`,
+ * `getReferencedFieldsPointers()` and `getRefOmissionErrorResponsiblePointers()` as
+ * `PartiallyKnownDocumentMultiPointer`, so `errorPath`, `referenced` and `fillToFix` carry
+ * [A12PartiallyKnownMultiPointer] — the value the engine retains, not a string it was rendered into. The
+ * distinction is observable: an unresolved level ([A12PartiallyKnownMultiPointer.UNKNOWN]) and a terminal
+ * wildcard are exactly what a rendered path drops, so a consumer that needs them can only get them from here.
+ *
+ * Rendering is the consumer's call: [A12PartiallyKnownMultiPointer.toExactPointer] plus
+ * [A12PointerFormat.render] gives A12's canonical pointer string for an address that names one cell, and
+ * `null` for one that does not.
+ */
 data class ValidationFinding(
     val code: String,
     val rulePath: String,
-    val errorPath: String,
+    val errorPath: A12PartiallyKnownMultiPointer,
     val severity: ValidationSeverity,
     val type: ValidationFindingType,
     val text: String,
-    val referenced: List<String>,
-    val fillToFix: List<String>,
+    val referenced: List<A12PartiallyKnownMultiPointer>,
+    val fillToFix: List<A12PartiallyKnownMultiPointer>,
 )
 
 /** What kind of address an [UnsupportedProgram.path] carries — the two are not interchangeable. */
@@ -894,7 +907,7 @@ class Interpreter private constructor(
         ValidationFinding(
             code = message.code,
             rulePath = message.rulePath,
-            errorPath = message.errorPath,
+            errorPath = message.errorPointer,
             severity = when (message.severity) {
                 Severity.ERROR -> ValidationSeverity.ERROR
                 Severity.WARNING -> ValidationSeverity.WARNING
@@ -905,8 +918,8 @@ class Interpreter private constructor(
                 MsgType.OMISSION -> ValidationFindingType.OMISSION
             },
             text = message.text,
-            referenced = immutableListSnapshot(message.referenced),
-            fillToFix = immutableListSnapshot(message.fillToFix),
+            referenced = immutableListSnapshot(message.referencedPointers),
+            fillToFix = immutableListSnapshot(message.fillToFixPointers),
         )
 
     private fun relevantEntity(pointer: RelevantEntityPointer): RelevantEntity {

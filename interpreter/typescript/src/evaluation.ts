@@ -8,6 +8,11 @@ import type {
 import {DocumentSnapshot} from "./documents.js";
 import {throwBridgeFailure} from "./errors.js";
 import {
+  type A12PartiallyKnownMultiPointer,
+  type A12Pointer,
+  frozenPartiallyKnown,
+} from "./pointers.js";
+import {
   type FieldPointer,
   pointerFromBridge,
   relevantBridgeValue,
@@ -19,16 +24,25 @@ export type ValidationSeverity = "error" | "warning" | "info";
 /** Whether a firing reports an invalid value or a required omission. */
 export type ValidationFindingType = "value" | "omission";
 
-/** Detached projection of one firing validation rule. */
+/**
+ * Detached projection of one firing validation rule.
+ *
+ * Its three addresses are A12's message pointer — `IMessage` types `getErrorFieldPointer()`,
+ * `getReferencedFieldsPointers()` and `getRefOmissionErrorResponsiblePointers()` as
+ * `PartiallyKnownDocumentMultiPointer`, and so does this. They arrive branded, so a finding's address is
+ * accepted wherever an {@link A12PartiallyKnownMultiPointer} is required and rejected where an
+ * {@link A12Pointer} is. Use {@link A12PartiallyKnownMultiPointer.toExactPointer} for the exact pointer when
+ * the address names one cell; it answers `null` when it does not.
+ */
 export interface ValidationFinding {
   readonly code: string;
   readonly rulePath: string;
-  readonly errorPath: string;
+  readonly errorPath: A12PartiallyKnownMultiPointer;
   readonly severity: ValidationSeverity;
   readonly type: ValidationFindingType;
   readonly text: string;
-  readonly referenced: readonly string[];
-  readonly fillToFix: readonly string[];
+  readonly referenced: readonly A12PartiallyKnownMultiPointer[];
+  readonly fillToFix: readonly A12PartiallyKnownMultiPointer[];
 }
 
 /** What kind of address an {@link UnsupportedProgram.path} carries — the two are not interchangeable. */
@@ -115,27 +129,32 @@ const supportReport = (
     fullySupported: report.fullySupported,
   });
 
+type BridgeMessagePointer = {
+  readonly fullName: string;
+  readonly repetitionIndexes: readonly number[];
+};
+
 const validationFinding = (
   finding: {
     readonly code: string;
     readonly rulePath: string;
-    readonly errorPath: string;
+    readonly errorPath: BridgeMessagePointer;
     readonly severity: string;
     readonly type: string;
     readonly text: string;
-    readonly referenced: readonly string[];
-    readonly fillToFix: readonly string[];
+    readonly referenced: readonly BridgeMessagePointer[];
+    readonly fillToFix: readonly BridgeMessagePointer[];
   },
 ): ValidationFinding =>
   Object.freeze({
     code: finding.code,
     rulePath: finding.rulePath,
-    errorPath: finding.errorPath,
+    errorPath: frozenPartiallyKnown(finding.errorPath),
     severity: finding.severity as ValidationSeverity,
     type: finding.type as ValidationFindingType,
     text: finding.text,
-    referenced: Object.freeze([...finding.referenced]),
-    fillToFix: Object.freeze([...finding.fillToFix]),
+    referenced: Object.freeze(finding.referenced.map(frozenPartiallyKnown)),
+    fillToFix: Object.freeze(finding.fillToFix.map(frozenPartiallyKnown)),
   });
 
 const validationReport = (

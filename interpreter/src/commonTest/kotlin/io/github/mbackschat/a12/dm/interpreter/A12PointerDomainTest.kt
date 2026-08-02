@@ -8,10 +8,10 @@ import kotlin.test.assertNull
 /**
  * The two A12 addressing domains are separate types, and neither leaks into the other.
  *
- * [A12Pointer]/[A12PointerFormat] model A12's **exact** `DocumentPointer` only: names matching `[\w_-]+`,
- * repetitions `>= 1`, and `0` legal on the final part alone (`DocumentPointerImpl`'s constructor, plus
- * `PathPartImpl`'s `repetitionIndex >= 0`). A negative repetition is unrepresentable there — the kernel's own
- * part pattern is `([\w_-]+)(\[(\d+)?\])?`, with no sign.
+ * [A12Pointer]/[A12PointerFormat] model A12's **exact** `DocumentPointer` only: repetitions `>= 1`, with `0`
+ * legal on the final part alone (`DocumentPointerImpl`'s constructor, plus `PathPartImpl`'s
+ * `repetitionIndex >= 0`). A negative repetition is unrepresentable there. The `[\w_-]+` name grammar belongs
+ * to the **string codec**, not to the value — see [A12PointerOwnerEntryPointTest].
  *
  * [A12PartiallyKnownMultiPointer] models `PartiallyKnownDocumentMultiPointer`, which is what `IMessage` really
  * returns from `getErrorFieldPointer`/`getReferencedFieldsPointers`/`getRefOmissionErrorResponsiblePointers`.
@@ -60,30 +60,35 @@ class A12PointerDomainTest {
     @Test
     fun copyingAPathPartCannotBypassItsDomain() {
         assertFailsWith<IllegalArgumentException> { A12PathPart("Items", 2).copy(repetitionIndex = -7) }
-        assertFailsWith<IllegalArgumentException> { A12PathPart("Items", 2).copy(name = "Items[3]") }
+        assertFailsWith<IllegalArgumentException> { A12PathPart("Items", 2).copy(name = "") }
+        // …while `Items[3]` is a LEGAL part name — only the string codec refuses to write it.
+        assertEquals("Items[3]", A12PathPart("Items", 2).copy(name = "Items[3]").name)
     }
 
     // ---- the message channel is its own type, with PartiallyKnownDocumentMultiPointer's domain --
 
     /**
      * The owner shape, member for member: `fullName()` (the `/A/B/C` form
-     * `PartiallyKnownDocumentMultiPointerImpl` joins) and `repetitionIndexes()`.
+     * `PartiallyKnownDocumentMultiPointerImpl` joins) and `repetitionIndexes()` — and **no pointer string**,
+     * because A12 defines none for this type.
      */
     @Test
-    fun thePartiallyKnownPointerCarriesTheOwnerShape() {
-        val reported = A12PartiallyKnownMultiPointerFormat.parse("/Plan/Demand[-5]/Headcount")
+    fun thePartiallyKnownPointerCarriesTheOwnerShapeAndNothingElse() {
+        val reported = A12PartiallyKnownMultiPointer.of("/Plan/Demand/Headcount", listOf(1, -5, 1))
         assertEquals("/Plan/Demand/Headcount", reported.fullName)
         assertEquals(listOf(1, -5, 1), reported.repetitionIndexes)
-        assertEquals("Plan/Demand[-5]/Headcount", A12PartiallyKnownMultiPointerFormat.render(reported))
     }
 
     /** `0` is the wildcard at EVERY part here, and the `RepetitionsV2` slot on the final part only there. */
     @Test
     fun zeroMeansDifferentThingsOnTheTwoTypes() {
         assertFailsWith<IllegalArgumentException> { A12PointerFormat.parse("Plan/Demand[0]/Headcount") }
+        assertFailsWith<IllegalArgumentException> {
+            A12Pointer.of(listOf(A12PathPart("Plan", 0), A12PathPart("Demand", 2)))
+        }
         assertEquals(
             listOf(0, 2),
-            A12PartiallyKnownMultiPointerFormat.parse("Plan[0]/Demand[2]").repetitionIndexes,
+            A12PartiallyKnownMultiPointer.of("/Plan/Demand", listOf(0, 2)).repetitionIndexes,
         )
     }
 
@@ -96,28 +101,28 @@ class A12PointerDomainTest {
     fun aPartiallyKnownPointerConvertsToTheExactTypeOnlyWhenItIsOne() {
         assertEquals(
             A12PointerFormat.parse("Order/Items[2]"),
-            A12PartiallyKnownMultiPointerFormat.parse("Order/Items[2]").toExactPointer(),
+            A12PartiallyKnownMultiPointer.of("/Order/Items", listOf(1, 2)).toExactPointer(),
         )
         assertEquals(
             A12PointerFormat.parse("Order/Items[0]"),
-            A12PartiallyKnownMultiPointerFormat.parse("Order/Items[0]").toExactPointer(),
+            A12PartiallyKnownMultiPointer.of("/Order/Items", listOf(1, 0)).toExactPointer(),
         )
-        assertNull(A12PartiallyKnownMultiPointerFormat.parse("Plan/Demand[-5]/Headcount").toExactPointer())
-        assertNull(A12PartiallyKnownMultiPointerFormat.parse("Plan[0]/Demand[2]").toExactPointer())
+        assertNull(A12PartiallyKnownMultiPointer.of("/Plan/Demand/Headcount", listOf(1, -5, 1)).toExactPointer())
+        assertNull(A12PartiallyKnownMultiPointer.of("/Plan/Demand", listOf(0, 2)).toExactPointer())
     }
 
     @Test
     fun thePartiallyKnownPointerAlsoSnapshotsAndValidates() {
         val repetitions = mutableListOf(1, -5)
-        val pointer = A12PartiallyKnownMultiPointerFormat.of("/Plan/Demand", repetitions)
+        val pointer = A12PartiallyKnownMultiPointer.of("/Plan/Demand", repetitions)
         repetitions[1] = 99
         assertEquals(listOf(1, -5), pointer.repetitionIndexes)
         // -1 is IIdentifier.ITERATION, a template placeholder; only -5 is a message-pointer sentinel.
         assertFailsWith<IllegalArgumentException> {
-            A12PartiallyKnownMultiPointerFormat.of("/Plan/Demand", listOf(1, -1))
+            A12PartiallyKnownMultiPointer.of("/Plan/Demand", listOf(1, -1))
         }
         assertFailsWith<IllegalArgumentException> {
-            A12PartiallyKnownMultiPointerFormat.of("/Plan/Demand", listOf(1))
+            A12PartiallyKnownMultiPointer.of("/Plan/Demand", listOf(1))
         }
     }
 
@@ -132,10 +137,11 @@ class A12PointerDomainTest {
         assertEquals("", A12PointerFormat.parse("/").fullName)
         assertEquals(0, A12PointerFormat.parse("").size)
 
-        val root = A12PartiallyKnownMultiPointerFormat.of("", emptyList())
+        val root = A12PartiallyKnownMultiPointer.of("", emptyList())
         assertEquals("/", root.fullName)
         assertEquals(emptyList(), root.repetitionIndexes)
-        assertEquals(root, A12PartiallyKnownMultiPointerFormat.of(root.fullName, root.repetitionIndexes))
-        assertEquals(A12PointerFormat.parse(""), root.toExactPointer())
+        assertEquals(root, A12PartiallyKnownMultiPointer.of(root.fullName, root.repetitionIndexes))
+        // …but its CONVERSION raises, exactly as the owner's does — see A12PointerOwnerEntryPointTest.
+        assertFailsWith<IllegalArgumentException> { root.toExactPointer() }
     }
 }

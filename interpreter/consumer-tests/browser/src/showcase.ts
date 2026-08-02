@@ -1,10 +1,13 @@
 import {
+  type A12PartiallyKnownMultiPointer,
+  A12PartiallyKnownMultiPointer as A12MessagePointer,
   A12PointerFormat,
   type ComputationReport,
   type DocumentSnapshot,
   ModelWorkspace,
   type PreparedModel,
   type RelevantCoordinate,
+  type ValidationFinding,
   type ValidationReport,
   type WorkspaceModelSource,
 } from "@mbackschat/a12-interpreter";
@@ -557,6 +560,38 @@ const selectedValidation = (state: PreparedState): ValidationOperation => {
   };
 };
 
+/**
+ * One message address as the showcase publishes it: the pointer VALUE a finding carries, plus its canonical A12
+ * spelling when it names exactly one cell.
+ *
+ * Both halves are shown for the same reason the computation results show both: the value is what the API hands
+ * over and the string is what a user can paste back into A12. `a12Pointer` is `null` when the address carries a
+ * wildcard above the last level or an unresolved one — A12 defines no pointer string for that, and a demo must
+ * not invent one.
+ */
+const messageAddressOutput = (pointer: A12PartiallyKnownMultiPointer) => {
+  const exact = A12MessagePointer.toExactPointer(pointer);
+  return {
+    a12Pointer: exact === null
+      ? null
+      : A12PointerFormat.format(exact.fullName, exact.repetitionIndexes),
+    fullName: pointer.fullName,
+    repetitionIndexes: pointer.repetitionIndexes,
+  };
+};
+
+const findingOutput = (finding: ValidationFinding) => ({
+  ...finding,
+  errorPath: messageAddressOutput(finding.errorPath),
+  referenced: finding.referenced.map(messageAddressOutput),
+  fillToFix: finding.fillToFix.map(messageAddressOutput),
+});
+
+const validationOutput = (report: ValidationReport) => ({
+  ...report,
+  findings: report.findings.map(findingOutput),
+});
+
 const computationResultsOutput = (
   entries: ComputationReport["results"],
 ) =>
@@ -574,13 +609,13 @@ const computationResultsOutput = (
     },
     outcome: entry.outcome,
     value: entry.value,
-    diagnostic: entry.diagnostic,
+    diagnostic: entry.diagnostic === undefined ? undefined : findingOutput(entry.diagnostic),
   }));
 
 const computationOutput = (report: ComputationReport) => ({
   results: computationResultsOutput(report.results),
   actions: computationResultsOutput(report.actions),
-  formalErrorsInOperands: report.formalErrorsInOperands,
+  formalErrorsInOperands: report.formalErrorsInOperands.map(findingOutput),
   noErrorOccurred: report.noErrorOccurred,
   unsupported: report.unsupported,
   fullySupported: report.fullySupported,
@@ -857,7 +892,7 @@ export const startShowcase = async (): Promise<void> => {
       const validation = selectedValidation(document.state);
       const timed = timeOperation(runs, () => validation.run(document.value));
       const report = timed.value;
-      renderResult(`validate-${validation.scope}`, report);
+      renderResult(`validate-${validation.scope}`, validationOutput(report));
       summarizeResult("Validation complete", report.findings.length, "finding");
       renderOperationTiming("validation", timed.samplesMillis);
       status.dataset.state = "passed";

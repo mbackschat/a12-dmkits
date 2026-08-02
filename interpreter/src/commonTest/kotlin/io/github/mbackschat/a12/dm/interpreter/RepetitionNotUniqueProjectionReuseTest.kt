@@ -38,11 +38,11 @@ class RepetitionNotUniqueProjectionReuseTest {
         val messages = DmInterpreter(model).validateFull(document).filter { it.code == "RU" }
 
         assertEquals(4, messages.size)
-        assertEquals(4, messages.first().referenced.size)
+        assertEquals(4, messages.first().referencedPointers.size)
         messages.drop(1).forEach { message ->
             assertSame(
-                messages.first().referenced,
-                message.referenced,
+                messages.first().referencedPointers,
+                message.referencedPointers,
                 "one duplicate cluster must not allocate the same peer-pointer list once per firing row",
             )
         }

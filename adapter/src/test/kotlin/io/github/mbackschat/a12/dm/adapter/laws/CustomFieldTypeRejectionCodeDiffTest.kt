@@ -104,7 +104,7 @@ class CustomFieldTypeRejectionCodeDiffTest {
             .filter { it.errorPath.contains("Code") }.map { it.code }
         val publicSnapshot = publicPrepared.documents.readDocument(orderJson(value))
         val public = publicInterpreter.validateFull(publicSnapshot).findings
-            .filter { it.errorPath.contains("Code") }.map { it.code }
+            .filter { it.errorPath.fullName.contains("Code") }.map { it.code }
         val exp = listOfNotNull(expected)
         assertEquals(false, publicPrepared.createInterpreter().supportReport().fullySupported)
         assertEquals(true, publicInterpreter.supportReport().fullySupported)

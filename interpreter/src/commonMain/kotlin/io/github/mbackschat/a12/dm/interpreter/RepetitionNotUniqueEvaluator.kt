@@ -10,7 +10,7 @@ import io.github.mbackschat.a12.dm.interpreter.model.RuleDef
 /** One duplicate row's RNU-leaf polarity and the shared pointer projection of its duplicate cluster. */
 internal data class RnuRowOutcome(
     val type: MsgType,
-    val peerKeyPointers: List<String>,
+    val peerKeyPointers: List<A12PartiallyKnownMultiPointer>,
 )
 
 /** The call-scoped RNU cache: typed-key paths plus O(1) error-row lookup. */
@@ -138,7 +138,7 @@ internal class RepetitionNotUniqueEvaluator(private val model: ModelDef, private
                     // immutable projection once; rebuilding it per message turns a dense N-row result into N
                     // separately allocated N-entry lists even though the logical output is identical.
                     val peerKeyPointers = duplicates.flatMap { duplicate ->
-                        keys.zip(duplicate.keyReps).map { (path, reps) -> pass.doc.formattedPointer(path, reps) }
+                        keys.zip(duplicate.keyReps).map { (path, reps) -> pass.doc.messagePointer(path, reps) }
                     }.distinct()
                     for (row in duplicates) {
                         // RNU's own polarity: OMISSION when a (fillable) key component is empty, else VALUE. The

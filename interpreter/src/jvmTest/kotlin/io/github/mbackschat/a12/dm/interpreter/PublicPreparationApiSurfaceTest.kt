@@ -250,6 +250,13 @@ class PublicPreparationApiSurfaceTest {
             ValidationSeverity::class.java,
             ValidationFindingType::class.java,
             ValidationFinding::class.java,
+            // A12's own addressing types. A validation finding publishes the message pointer, and that pointer
+            // converts to the exact one — so all three are part of the published surface, not leaked internals.
+            A12PartiallyKnownMultiPointer::class.java,
+            A12PartiallyKnownMultiPointer.Companion::class.java,
+            A12Pointer::class.java,
+            A12Pointer.Companion::class.java,
+            A12PathPart::class.java,
             UnsupportedProgramSubject::class.java,
             UnsupportedProgram::class.java,
             InterpreterSupportReport::class.java,

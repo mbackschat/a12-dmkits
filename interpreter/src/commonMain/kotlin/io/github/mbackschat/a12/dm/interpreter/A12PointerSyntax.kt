@@ -1,25 +1,32 @@
 package io.github.mbackschat.a12.dm.interpreter
 
-/** One part as the shared grammar reads it, before either addressing domain's rule is applied. */
+/** One part as the shared grammar reads it, before any domain rule is applied. */
 internal class A12RawPointerPart(val name: String, val repetition: Int)
 
 /**
- * The pointer-string **syntax** A12's two addressing domains share, single-sourced so neither can drift.
+ * The pointer-**string** grammar, single-sourced — and nothing else. It belongs to the string codec, not to any
+ * pointer value.
  *
- * A12 layers pointer validity in two steps and so do we: a *grammar* that reads a part into a name and an
- * optional bracketed index, then a per-type *domain rule* over the index. The kernel does the same —
- * `DocumentPointerImpl.parsePathParts` matches `([\w_-]+)(\[(\d+)?\])?` and *then* keeps a `repetition < 0`
- * guard its own pattern can never reach, which is the layering made visible in its source.
+ * <b>A12 gives its entry points DIFFERENT domains, and this file exists to keep that visible.</b> Measured
+ * against kernel 30.8.1's own factories:
  *
- * The one deliberate difference: the sign is **in** this grammar, where A12's exact pattern has none. The
- * message channel really does carry `[-5]` (`RtExternalIdentifier.toString` renders every index, negatives
- * included), so a shared reader must be able to see one; the exact domain then refuses it with a message that
- * says *why* rather than "not a valid path part". Accept/reject is unchanged either way, and
- * `A12PointerKernelDomainDiffTest` measures that against the kernel factories.
+ * | entry point | what it validates |
+ * |---|---|
+ * | `PathPartImpl(name, index)` | a **non-empty** name and `index >= 0` — `PathPart.of("a/b", 1)` is accepted |
+ * | `DocumentPointerImpl(List<PathPart>)` | the **position** rule only: non-last `>= 1`, last may be `0` |
+ * | `DocumentPointerImpl.of(String)` | *this* grammar — `([\w_-]+)(\[(\d+)?\])?` per part |
+ * | `PartiallyKnownDocumentMultiPointerImpl(fullName, reps)` | splitting and normalization; **no** name rule |
+ *
+ * So `[NAME_PATTERN]` is the precondition of reading and writing a pointer **string**, so that what a codec
+ * emits its own parser can read back. It is *not* a statement about which names A12 permits in a pointer value,
+ * and applying it to a value factory is an over-rejection — one this file used to commit at four entry points
+ * (`A12PointerKernelDomainDiffTest` decides each against its own owner now).
+ *
+ * A12 layers the same way — its string parser applies a pattern first and a numeric rule afterwards — which is why the two live apart here too.
  */
 internal object A12PointerSyntax {
 
-    /** A12's part-name grammar — the first group of `DocumentPointerImpl.pathPartPattern`. */
+    /** A12's part-name grammar — the first group of `DocumentPointerImpl.pathPartPattern`, a STRING rule. */
     const val NAME_PATTERN: String = "[\\w_-]+"
 
     private val NAME = Regex(NAME_PATTERN)
@@ -27,26 +34,28 @@ internal object A12PointerSyntax {
     // The closing bracket MUST stay escaped: Kotlin/JS compiles a Regex in unicode (`u`) mode, where a lone
     // `]` is a SyntaxError — the pattern would fail to construct and every use would see an uninitialized
     // object. Harmless on the JVM, required on JS (the multiplatform `:interpreter:check` is what catches it).
+    // The sign is admitted by the grammar and refused by each caller's own domain rule, so a message can say
+    // WHY rather than "not a valid path part".
     private val PART = Regex("($NAME_PATTERN)(\\[(-?\\d+)?\\])?")
 
-    fun isName(name: String): Boolean = NAME.matchEntire(name) != null
-
     /**
-     * Split a path on `/`, stripping the redundant leading slash and rejecting a trailing one —
-     * `DocumentPointerImpl.parseFullName`, condition for condition.
+     * The names of a path, with the leading slash treated as decoration.
      *
-     * A bare `"/"` is the one string that ends in a slash and is still legal: the kernel excludes it from the
-     * trailing-slash refusal by name and then strips the slash to reach the empty part list, i.e. the root
-     * pointer. This used to reject it, which made `A12PartiallyKnownMultiPointer`'s own `fullName()` for the
-     * root — `"/"`, since its owner joins with a `"/"` prefix — unreadable by the very function that produced it.
+     * Behaviour, stated as the contract rather than as an implementation: one leading `/` is optional and
+     * carries no meaning; an otherwise-empty path names **no** parts, which is the document root, so `""` and a
+     * bare `"/"` are the same pointer; and a path that ends in `/` after that stripping is malformed, because
+     * the empty tail would be a part with no name.
      */
     fun splitNames(path: String): List<String> {
-        require(path == "/" || !path.endsWith("/")) { "path must not end with a slash but was '$path'" }
         val body = path.removePrefix("/")
-        return if (body.isEmpty()) emptyList() else body.split("/")
+        if (body.isEmpty()) {
+            return emptyList()
+        }
+        require(!body.endsWith("/")) { "path must not end with a slash but was '$path'" }
+        return body.split("/")
     }
 
-    /** Read every part of [pointer]; an absent bracket means repetition 1, as it does on both A12 types. */
+    /** Read every part of [pointer]; an absent bracket means repetition 1, as it does on every A12 type. */
     fun parts(pointer: String): List<A12RawPointerPart> = splitNames(pointer).map { part ->
         val match = PART.matchEntire(part)
             ?: throw IllegalArgumentException("not a valid path part: '$part' in pointer '$pointer'")
@@ -56,23 +65,32 @@ internal object A12PointerSyntax {
         )
     }
 
-    /** Both types render a part the way `PathPartImpl.toString` does: `[1]` is implicit and omitted. */
+    /** Both string forms render a part the way `PathPartImpl.toString` does: `[1]` is implicit and omitted. */
     fun renderPart(name: String, repetition: Int): String =
         if (repetition == 1) name else "$name[$repetition]"
 
-    /**
-     * The arity + name half of every domain rule, which is identical on both types. Only the repetition rule
-     * differs, so only that stays in the per-type file.
-     */
-    fun requireWellFormed(names: List<String>, repetitions: List<Int>, subject: () -> String) {
+    /** One index per name — the only rule shared by a codec and a value factory. */
+    fun requireArity(names: List<String>, repetitions: List<Int>, subject: () -> String) {
         require(names.size == repetitions.size) {
             "${subject()} has ${names.size} parts but ${repetitions.size} repetitions"
         }
+    }
+
+    /**
+     * <b>The string codec's precondition, and deliberately narrower than any A12 value domain.</b> A codec must
+     * emit only what it can read back, so the names it writes have to be inside the part grammar — a name
+     * carrying its own bracket or a `/` would round-trip to a different pointer. This says nothing about
+     * `PathPart` or `DocumentPointer` value validity, both of which admit such names.
+     */
+    fun requireCodecArgs(names: List<String>, repetitions: List<Int>, subject: () -> String) {
+        requireArity(names, repetitions, subject)
         names.forEach { name ->
-            require(isName(name)) {
-                "not a valid path part name: '$name' in ${subject()} — a name matches $NAME_PATTERN and carries " +
-                    "no bracket of its own, so an already-indexed name like 'Group[2]' is passed as the name " +
-                    "'Group' with repetition 2 instead"
+            require(NAME.matchEntire(name) != null) {
+                "not a valid path part name for the pointer STRING codec: '$name' in ${subject()} — a written " +
+                    "name matches $NAME_PATTERN and carries no bracket of its own, so an already-indexed name " +
+                    "like 'Group[2]' is passed as the name 'Group' with repetition 2 instead. A12's PathPart " +
+                    "value itself is looser (any non-empty name); only what is WRITTEN into a pointer string " +
+                    "is restricted, so that the string parses back to the same pointer"
             }
         }
     }
