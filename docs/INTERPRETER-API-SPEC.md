@@ -315,7 +315,7 @@ The public boundary is locked by:
 
 - common JVM and Node behavior tests;
 - real-Kernel differential tests in `:adapter`;
-- Kotlin/JVM, Kotlin/JS, and strict TypeScript external consumers;
+- Kotlin/JVM, Kotlin/JS, and strict TypeScript external consumers, including a declaration-derived exact inventory of caller-to-library numeric paths reconciled with packed-artifact hostile cases or an explicit safe classification;
 - reviewed JVM, KLIB, and TypeScript ABI goldens;
 - package-content, dependency, source-map, secret, and checksum guards;
 - packed-package execution in Node and system Chrome.

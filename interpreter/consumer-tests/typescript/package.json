@@ -3,7 +3,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "check": "tsc --project tsconfig.json && node dist/index.js"
+    "check": "tsc --project tsconfig.json && node --test dist/boundary-contract.test.js && node dist/index.js"
   },
   "devDependencies": {
     "@types/node": "24.10.0",

@@ -12,11 +12,20 @@ import {
   type CustomCondition,
   type CustomFieldValidator,
   type A12Document,
+  type DocumentDecodeLimits,
+  type ModelPreparationLimits,
   type ModelSourceProvider,
   type WorkspaceModelSource,
 } from "@mbackschat/a12-interpreter";
 import type {A12Pointer} from "@mbackschat/a12-interpreter";
 
+import {
+  assertBoundaryClassifications,
+  assertHostileClassificationsExecuted,
+  deriveInboundNumberPaths,
+  installedInterpreterDeclaration,
+  type BoundaryClassification,
+} from "./boundary-contract.js";
 import {validateWithProjectCondition} from "./guide-customization.js";
 import {runInterpreter} from "./guide-finite.js";
 import {collectWorkspace} from "./guide-provider.js";
@@ -324,28 +333,6 @@ try {
     throw error;
   }
 }
-// Kotlin/JS erases `Int`, so the PACKED artifact is the only place this can be observed: a non-integer
-// repetition must be refused rather than rendered as `Note[1.5]`.
-for (const hostile of [1.5, Number.NaN, Number.POSITIVE_INFINITY, 2147483648]) {
-  for (const build of [
-    () => A12PointerFormat.format("/Permit/Note", [1, hostile]),
-    () => A12PartiallyKnownMultiPointer.of("/Permit/Note", [1, hostile]),
-  ]) {
-    let refused = false;
-    try {
-      build();
-    } catch (error) {
-      if (!(error instanceof TypeError)) {
-        throw error;
-      }
-      refused = true;
-    }
-    if (!refused) {
-      throw new Error(`a pointer type accepted the non-integer repetition ${hostile}`);
-    }
-  }
-}
-
 // ---- NOMINALITY LOCKS -------------------------------------------------------------------------------
 // The two pointer types must not be interchangeable in EITHER direction. These are compile-time assertions:
 // `@ts-expect-error` fails the build when the error it expects does NOT occur, so deleting the brands or
@@ -467,5 +454,397 @@ try {
     throw error;
   }
 }
+
+const boundaryClassifications = {
+  "A12PartiallyKnownMultiPointer.of.repetitionIndexes[]": {
+    disposition: "hostile-packed-test",
+    reason: "Kotlin/JS erases Int on a caller-authored message pointer",
+  },
+  "A12PartiallyKnownMultiPointer.toExactPointer.pointer.repetitionIndexes[]": {
+    disposition: "hostile-packed-test",
+    reason: "plain JavaScript can forge the otherwise branded pointer object",
+  },
+  "A12PointerFormat.format.repetitions[]": {
+    disposition: "hostile-packed-test",
+    reason: "Kotlin/JS erases Int on an exact pointer codec call",
+  },
+  "DocumentCoordinateError.constructor.actualCoordinateCount": {
+    disposition: "safe",
+    reason: "host-authored Error detail is data, not a validated coordinate",
+  },
+  "DocumentCoordinateError.constructor.coordinateIndex": {
+    disposition: "safe",
+    reason: "host-authored Error detail is data, not a validated coordinate",
+  },
+  "DocumentCoordinateError.constructor.expectedCoordinateCount": {
+    disposition: "safe",
+    reason: "host-authored Error detail is data, not a validated coordinate",
+  },
+  "DocumentInputError.constructor.diagnostics[].inputPath[]": {
+    disposition: "safe",
+    reason: "a numeric input-path segment is an authored array index, not a domain integer",
+  },
+  "Interpreter.validatePart.relevant[].coordinates[]": {
+    disposition: "safe",
+    reason: "package-owned pointer instances carry coordinates validated by their factories",
+  },
+  "ModelMetadata.pointer.coordinates[]": {
+    disposition: "hostile-packed-test",
+    reason: "caller-authored exact coordinates must be positive portable integers",
+  },
+  "ModelMetadata.relevantPointer.coordinates[]": {
+    disposition: "hostile-packed-test",
+    reason: "caller-authored concrete coordinates must be positive portable integers",
+  },
+  "ModelPreparationError.constructor.diagnostics[].actual": {
+    disposition: "safe",
+    reason: "host-authored Error detail records an observation and has no numeric domain",
+  },
+  "ModelPreparationError.constructor.diagnostics[].maximum": {
+    disposition: "safe",
+    reason: "host-authored Error detail records an observation and has no numeric domain",
+  },
+  "ModelWorkspace.collect.options.limits.maxModelBytes": {
+    disposition: "hostile-packed-test",
+    reason: "resource ceilings must be positive portable integers before bridge serialization",
+  },
+  "ModelWorkspace.collect.options.limits.maxModelCount": {
+    disposition: "hostile-packed-test",
+    reason: "resource ceilings must be positive portable integers before bridge serialization",
+  },
+  "ModelWorkspace.collect.options.limits.maxPreparedBytes": {
+    disposition: "hostile-packed-test",
+    reason: "resource ceilings must be positive portable integers before bridge serialization",
+  },
+  "ModelWorkspace.collect.options.limits.maxPreparedElements": {
+    disposition: "hostile-packed-test",
+    reason: "resource ceilings must be positive portable integers before bridge serialization",
+  },
+  "ModelWorkspace.collect.options.limits.maxReferenceDepth": {
+    disposition: "hostile-packed-test",
+    reason: "resource ceilings must be positive portable integers before bridge serialization",
+  },
+  "ModelWorkspace.collect.options.limits.maxReferenceEdges": {
+    disposition: "hostile-packed-test",
+    reason: "resource ceilings must be positive portable integers before bridge serialization",
+  },
+  "ModelWorkspace.collect.options.limits.maxStructureDepth": {
+    disposition: "hostile-packed-test",
+    reason: "resource ceilings must be positive portable integers before bridge serialization",
+  },
+  "ModelWorkspace.collect.options.limits.maxTotalBytes": {
+    disposition: "hostile-packed-test",
+    reason: "resource ceilings must be positive portable integers before bridge serialization",
+  },
+  "ModelWorkspace.fromSources.limits.maxModelBytes": {
+    disposition: "hostile-packed-test",
+    reason: "resource ceilings must be positive portable integers before bridge serialization",
+  },
+  "ModelWorkspace.fromSources.limits.maxModelCount": {
+    disposition: "hostile-packed-test",
+    reason: "resource ceilings must be positive portable integers before bridge serialization",
+  },
+  "ModelWorkspace.fromSources.limits.maxPreparedBytes": {
+    disposition: "hostile-packed-test",
+    reason: "resource ceilings must be positive portable integers before bridge serialization",
+  },
+  "ModelWorkspace.fromSources.limits.maxPreparedElements": {
+    disposition: "hostile-packed-test",
+    reason: "resource ceilings must be positive portable integers before bridge serialization",
+  },
+  "ModelWorkspace.fromSources.limits.maxReferenceDepth": {
+    disposition: "hostile-packed-test",
+    reason: "resource ceilings must be positive portable integers before bridge serialization",
+  },
+  "ModelWorkspace.fromSources.limits.maxReferenceEdges": {
+    disposition: "hostile-packed-test",
+    reason: "resource ceilings must be positive portable integers before bridge serialization",
+  },
+  "ModelWorkspace.fromSources.limits.maxStructureDepth": {
+    disposition: "hostile-packed-test",
+    reason: "resource ceilings must be positive portable integers before bridge serialization",
+  },
+  "ModelWorkspace.fromSources.limits.maxTotalBytes": {
+    disposition: "hostile-packed-test",
+    reason: "resource ceilings must be positive portable integers before bridge serialization",
+  },
+  "PreparedDocumentApi.readDocument.document.*": {
+    disposition: "hostile-packed-test",
+    reason: "native JavaScript values must survive JSON serialization without loss or substitution",
+  },
+  "PreparedDocumentApi.readDocument.options.limits.maxDocumentCodeUnits": {
+    disposition: "hostile-packed-test",
+    reason: "resource ceilings must be positive portable integers before bridge serialization",
+  },
+  "PreparedDocumentApi.readDocument.options.limits.maxFieldPlacements": {
+    disposition: "hostile-packed-test",
+    reason: "resource ceilings must be positive portable integers before bridge serialization",
+  },
+  "PreparedDocumentApi.readDocument.options.limits.maxGroupPlacements": {
+    disposition: "hostile-packed-test",
+    reason: "resource ceilings must be positive portable integers before bridge serialization",
+  },
+  "PreparedDocumentApi.readDocument.options.limits.maxModelNestingDepth": {
+    disposition: "hostile-packed-test",
+    reason: "resource ceilings must be positive portable integers before bridge serialization",
+  },
+  "PreparedDocumentApi.readDocument.options.limits.maxPathCodeUnits": {
+    disposition: "hostile-packed-test",
+    reason: "resource ceilings must be positive portable integers before bridge serialization",
+  },
+  "PreparedDocumentApi.readDocument.options.limits.maxRawCodeUnitsPerField": {
+    disposition: "hostile-packed-test",
+    reason: "resource ceilings must be positive portable integers before bridge serialization",
+  },
+  "PreparedDocumentApi.readDocument.options.limits.maxTotalRawCodeUnits": {
+    disposition: "hostile-packed-test",
+    reason: "resource ceilings must be positive portable integers before bridge serialization",
+  },
+  "PreparedDocumentApi.tryReadDocument.document.*": {
+    disposition: "hostile-packed-test",
+    reason: "the result-returning route must reject the same unrepresentable native values",
+  },
+  "PreparedDocumentApi.tryReadDocument.options.limits.maxDocumentCodeUnits": {
+    disposition: "hostile-packed-test",
+    reason: "resource ceilings must be positive portable integers before bridge serialization",
+  },
+  "PreparedDocumentApi.tryReadDocument.options.limits.maxFieldPlacements": {
+    disposition: "hostile-packed-test",
+    reason: "resource ceilings must be positive portable integers before bridge serialization",
+  },
+  "PreparedDocumentApi.tryReadDocument.options.limits.maxGroupPlacements": {
+    disposition: "hostile-packed-test",
+    reason: "resource ceilings must be positive portable integers before bridge serialization",
+  },
+  "PreparedDocumentApi.tryReadDocument.options.limits.maxModelNestingDepth": {
+    disposition: "hostile-packed-test",
+    reason: "resource ceilings must be positive portable integers before bridge serialization",
+  },
+  "PreparedDocumentApi.tryReadDocument.options.limits.maxPathCodeUnits": {
+    disposition: "hostile-packed-test",
+    reason: "resource ceilings must be positive portable integers before bridge serialization",
+  },
+  "PreparedDocumentApi.tryReadDocument.options.limits.maxRawCodeUnitsPerField": {
+    disposition: "hostile-packed-test",
+    reason: "resource ceilings must be positive portable integers before bridge serialization",
+  },
+  "PreparedDocumentApi.tryReadDocument.options.limits.maxTotalRawCodeUnits": {
+    disposition: "hostile-packed-test",
+    reason: "resource ceilings must be positive portable integers before bridge serialization",
+  },
+} as const satisfies Readonly<Record<string, BoundaryClassification>>;
+
+assertBoundaryClassifications(
+  deriveInboundNumberPaths(installedInterpreterDeclaration()),
+  boundaryClassifications,
+);
+
+const hostileEvidence: string[] = [];
+const portableIntegerHostiles = [
+  -2_147_483_649,
+  -1,
+  1.5,
+  Number.NaN,
+  Number.NEGATIVE_INFINITY,
+  Number.POSITIVE_INFINITY,
+  2_147_483_648,
+  Number.MAX_VALUE,
+] as const;
+const positivePortableIntegerHostiles = [0, ...portableIntegerHostiles] as const;
+
+const expectThrows = (
+  label: string,
+  expected: (error: unknown) => boolean,
+  action: () => unknown,
+): void => {
+  try {
+    action();
+  } catch (error) {
+    if (expected(error)) {
+      return;
+    }
+    throw error;
+  }
+  throw new Error(`${label} accepted a hostile packed-artifact input`);
+};
+
+const expectRejects = async (
+  label: string,
+  expected: (error: unknown) => boolean,
+  action: () => Promise<unknown>,
+): Promise<void> => {
+  try {
+    await action();
+  } catch (error) {
+    if (expected(error)) {
+      return;
+    }
+    throw error;
+  }
+  throw new Error(`${label} accepted a hostile packed-artifact input`);
+};
+
+if (A12PointerFormat.format("/Permit/Note", [1, 0]) !== "Permit/Note[0]") {
+  throw new Error("exact pointer packed-boundary legal control failed");
+}
+for (const hostile of portableIntegerHostiles) {
+  expectThrows(
+    `A12PointerFormat.format repetition ${hostile}`,
+    (error) => error instanceof TypeError,
+    () => A12PointerFormat.format("/Permit/Note", [1, hostile]),
+  );
+}
+hostileEvidence.push("A12PointerFormat.format.repetitions[]");
+
+const legalMessagePointer = A12PartiallyKnownMultiPointer.of("/Permit/Note", [1, -5]);
+if (A12PartiallyKnownMultiPointer.toExactPointer(legalMessagePointer) !== null) {
+  throw new Error("partially-known pointer packed-boundary legal control failed");
+}
+for (const hostile of portableIntegerHostiles) {
+  expectThrows(
+    `A12PartiallyKnownMultiPointer.of repetition ${hostile}`,
+    (error) => error instanceof TypeError,
+    () => A12PartiallyKnownMultiPointer.of("/Permit/Note", [1, hostile]),
+  );
+  expectThrows(
+    `A12PartiallyKnownMultiPointer.toExactPointer repetition ${hostile}`,
+    (error) => error instanceof TypeError,
+    () => A12PartiallyKnownMultiPointer.toExactPointer({
+      fullName: "/Permit/Note",
+      repetitionIndexes: [1, hostile],
+    } as unknown as A12PartiallyKnownMultiPointer),
+  );
+}
+hostileEvidence.push(
+  "A12PartiallyKnownMultiPointer.of.repetitionIndexes[]",
+  "A12PartiallyKnownMultiPointer.toExactPointer.pointer.repetitionIndexes[]",
+);
+
+prepared.model.pointer("/Permit/Note", [1, 1]);
+prepared.model.relevantPointer("/Permit/Note", ["ALL", 1]);
+for (const hostile of positivePortableIntegerHostiles) {
+  expectThrows(
+    `ModelMetadata.pointer coordinate ${hostile}`,
+    (error) => error instanceof DocumentCoordinateError,
+    () => prepared.model.pointer("/Permit/Note", [1, hostile]),
+  );
+  expectThrows(
+    `ModelMetadata.relevantPointer coordinate ${hostile}`,
+    (error) => error instanceof DocumentCoordinateError,
+    () => prepared.model.relevantPointer("/Permit/Note", ["ALL", hostile]),
+  );
+}
+hostileEvidence.push(
+  "ModelMetadata.pointer.coordinates[]",
+  "ModelMetadata.relevantPointer.coordinates[]",
+);
+
+const preparationLimitNames = [
+  "maxModelCount",
+  "maxModelBytes",
+  "maxTotalBytes",
+  "maxPreparedBytes",
+  "maxReferenceDepth",
+  "maxReferenceEdges",
+  "maxStructureDepth",
+  "maxPreparedElements",
+] as const satisfies readonly (keyof ModelPreparationLimits)[];
+const maximumPreparationLimits = Object.fromEntries(
+  preparationLimitNames.map((name) => [name, 2_147_483_647]),
+) as ModelPreparationLimits;
+ModelWorkspace.fromSources([...sourcesById.values()], maximumPreparationLimits);
+await ModelWorkspace.collect("permit-single", provider, {
+  limits: maximumPreparationLimits,
+  signal: controller.signal,
+});
+for (const name of preparationLimitNames) {
+  for (const hostile of positivePortableIntegerHostiles) {
+    expectThrows(
+      `ModelWorkspace.fromSources ${name}=${hostile}`,
+      (error) => error instanceof RangeError,
+      () => ModelWorkspace.fromSources([...sourcesById.values()], {[name]: hostile}),
+    );
+    await expectRejects(
+      `ModelWorkspace.collect ${name}=${hostile}`,
+      (error) => error instanceof RangeError,
+      () => ModelWorkspace.collect("permit-single", provider, {
+        limits: {[name]: hostile},
+        signal: controller.signal,
+      }),
+    );
+  }
+  hostileEvidence.push(
+    `ModelWorkspace.fromSources.limits.${name}`,
+    `ModelWorkspace.collect.options.limits.${name}`,
+  );
+}
+
+const documentLimitNames = [
+  "maxDocumentCodeUnits",
+  "maxGroupPlacements",
+  "maxFieldPlacements",
+  "maxPathCodeUnits",
+  "maxRawCodeUnitsPerField",
+  "maxTotalRawCodeUnits",
+  "maxModelNestingDepth",
+] as const satisfies readonly (keyof DocumentDecodeLimits)[];
+const maximumDocumentLimits = Object.fromEntries(
+  documentLimitNames.map((name) => [name, 2_147_483_647]),
+) as DocumentDecodeLimits;
+prepared.documents.readDocument({}, {limits: maximumDocumentLimits});
+if (!prepared.documents.tryReadDocument({}, {limits: maximumDocumentLimits}).ok) {
+  throw new Error("tryReadDocument packed-boundary legal limit control failed");
+}
+for (const name of documentLimitNames) {
+  for (const hostile of positivePortableIntegerHostiles) {
+    expectThrows(
+      `PreparedDocumentApi.readDocument ${name}=${hostile}`,
+      (error) => error instanceof RangeError,
+      () => prepared.documents.readDocument({}, {limits: {[name]: hostile}}),
+    );
+    expectThrows(
+      `PreparedDocumentApi.tryReadDocument ${name}=${hostile}`,
+      (error) => error instanceof RangeError,
+      () => prepared.documents.tryReadDocument({}, {limits: {[name]: hostile}}),
+    );
+  }
+  hostileEvidence.push(
+    `PreparedDocumentApi.readDocument.options.limits.${name}`,
+    `PreparedDocumentApi.tryReadDocument.options.limits.${name}`,
+  );
+}
+
+prepared.documents.readDocument({Permit: {RequestedArea: 1.5}});
+if (!prepared.documents.tryReadDocument({Permit: {RequestedArea: 1.5}}).ok) {
+  throw new Error("tryReadDocument packed-boundary legal finite-number control failed");
+}
+const unrepresentableValues: readonly unknown[] = [
+  Number.NaN,
+  Number.NEGATIVE_INFINITY,
+  Number.POSITIVE_INFINITY,
+  undefined,
+  () => undefined,
+  Symbol("not-json"),
+  1n,
+];
+for (const hostile of unrepresentableValues) {
+  const document = {Permit: {RequestedArea: hostile}} as unknown as A12Document;
+  expectThrows(
+    `PreparedDocumentApi.readDocument native ${typeof hostile}`,
+    (error) => error instanceof DocumentInputError &&
+      error.diagnostics[0]?.reasonCode === "unrepresentable-native-value",
+    () => prepared.documents.readDocument(document),
+  );
+  const result = prepared.documents.tryReadDocument(document);
+  if (result.ok || result.error.diagnostics[0]?.reasonCode !== "unrepresentable-native-value") {
+    throw new Error(`tryReadDocument accepted or misclassified native ${typeof hostile}`);
+  }
+}
+hostileEvidence.push(
+  "PreparedDocumentApi.readDocument.document.*",
+  "PreparedDocumentApi.tryReadDocument.document.*",
+);
+
+assertHostileClassificationsExecuted(boundaryClassifications, hostileEvidence);
 
 console.log("TypeScript package consumer passed");
