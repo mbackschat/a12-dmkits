@@ -104,22 +104,34 @@ ASSETS_FILE="$SCRIPT_DIR/release-assets.sh"
 asset="$(rk_release_asset_for_platform)" \
   || { warn "no prebuilt binary for $(uname -s)/$(uname -m) yet — install dmtool manually"; exit 0; }
 
+base="https://github.com/$REPO/releases/download/$VERSION"
+checksum_file="$BIN_DIR/SHA256SUMS"
+checksum_tmp="$checksum_file.tmp"
+refuse_unverified() {
+  rm -f "$DEST" "$STABLE" "$checksum_file" "$checksum_tmp" 2>/dev/null || true
+}
+
 if [[ ! -x "$DEST" ]]; then
-  base="https://github.com/$REPO/releases/download/$VERSION"
   curl -fsSL "$base/$asset" -o "$DEST" || { warn "download failed: $base/$asset"; rm -f "$DEST"; exit 0; }
   chmod +x "$DEST"
-  curl -fsSL "$base/SHA256SUMS" -o "$BIN_DIR/SHA256SUMS" 2>/dev/null \
-    || { warn "checksum download failed — refusing the unverified binary"; rm -f "$DEST" "$BIN_DIR/SHA256SUMS"; exit 0; }
-  expected="$(awk -v a="$asset" '$2==a || $2=="*"a {print $1}' "$BIN_DIR/SHA256SUMS")"
-  [[ "$expected" =~ ^[0-9a-fA-F]{64}$ ]] \
-    || { warn "checksum entry missing or malformed for $asset — refusing the unverified binary"; rm -f "$DEST"; exit 0; }
-  actual="$(shasum -a 256 "$DEST" | awk '{print $1}')" \
-    || { warn "checksum calculation failed for $asset — refusing the unverified binary"; rm -f "$DEST"; exit 0; }
-  if [[ "$expected" != "$actual" ]]; then
-    warn "checksum mismatch for $asset — refusing the binary"; rm -f "$DEST"; exit 0
-  fi
-  prune_stale_cache
 fi
+
+# Revalidate EVERY production cache use against the release checksum. Older installers could leave an
+# executable at this versioned path after checksum retrieval failed; executability therefore is not proof of
+# provenance. Fetching the small checksum manifest on a cache hit keeps the binary download cached while
+# making that legacy state (and later cache tampering) fail closed.
+curl -fsSL "$base/SHA256SUMS" -o "$checksum_tmp" 2>/dev/null \
+  || { warn "checksum download failed — refusing the unverified binary"; refuse_unverified; exit 0; }
+mv "$checksum_tmp" "$checksum_file"
+expected="$(awk -v a="$asset" '$2==a || $2=="*"a {print $1}' "$checksum_file")"
+[[ "$expected" =~ ^[0-9a-fA-F]{64}$ ]] \
+  || { warn "checksum entry missing or malformed for $asset — refusing the unverified binary"; refuse_unverified; exit 0; }
+actual="$(shasum -a 256 "$DEST" | awk '{print $1}')" \
+  || { warn "checksum calculation failed for $asset — refusing the unverified binary"; refuse_unverified; exit 0; }
+if [[ "$expected" != "$actual" ]]; then
+  warn "checksum mismatch for $asset — refusing the binary"; refuse_unverified; exit 0
+fi
+prune_stale_cache
 
 # Defense-in-depth (loud, never fatal): the resolved binary must self-report the pinned version. A mismatch
 # means the release tag's asset disagrees with the pin (a mispublished release) — surface it, never run a

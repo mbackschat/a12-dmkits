@@ -2,10 +2,25 @@
 # Execute a native dmtool release artifact with every Java discovery route made unusable. This checks the
 # delivered artifact, not the bin/dmtool dispatch shim: substituting a JVM launcher must fail.
 set -euo pipefail
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+
+native_executable_format() {
+  local binary="$1" magic
+  magic="$(LC_ALL=C od -An -tx1 -N4 "$binary" 2>/dev/null | tr -d '[:space:]')" || return 1
+  case "$magic" in
+    7f454c46|feedface|feedfacf|cefaedfe|cffaedfe|cafebabe|bebafeca|cafebabf|bfbafeca|4d5a*) return 0 ;;
+    *) return 1 ;;
+  esac
+}
 
 verify_without_java() {
-  local binary="$1" expected_version="$2" work="$3"
-  local output status first_line manifest_output version_pattern
+  local binary="$1" expected_version="$2" work="$3" model="$4"
+  local output status first_line manifest_output version_pattern check_output
+
+  if ! native_executable_format "$binary"; then
+    printf 'native no-Java smoke: artifact is not an ELF, Mach-O, or PE executable: %s\n' "$binary" >&2
+    return 1
+  fi
 
   mkdir -p "$work/empty-path"
   set +e
@@ -39,6 +54,25 @@ verify_without_java() {
       "$expected_version" "$manifest_output" >&2
     return 1
   fi
+
+  set +e
+  check_output="$(JAVA_HOME="$work/not-a-jdk" PATH="$work/empty-path" "$binary" -m "$model" model check 2>&1)"
+  status=$?
+  set -e
+  if [[ $status -ne 0 ]]; then
+    printf 'native no-Java smoke: functional model check failed with Java unavailable (exit %s): %s\n' \
+      "$status" "$check_output" >&2
+    return 1
+  fi
+  if [[ ! "$check_output" =~ \"target\"[[:space:]]*:[[:space:]]*\"model\" \
+      || ! "$check_output" =~ \"op\"[[:space:]]*:[[:space:]]*\"check\" \
+      || ! "$check_output" =~ \"ok\"[[:space:]]*:[[:space:]]*true \
+      || ! "$check_output" =~ \"valid\"[[:space:]]*:[[:space:]]*true \
+      || ! "$check_output" =~ \"verification\"[[:space:]]*:[[:space:]]*\"KERNEL_CONFIRMED\" \
+      || ! "$check_output" =~ \"written\"[[:space:]]*:[[:space:]]*false ]]; then
+    printf 'native no-Java smoke: functional model check returned the wrong envelope: %s\n' "$check_output" >&2
+    return 1
+  fi
 }
 
 self_test() (
@@ -63,8 +97,15 @@ echo '{"version":{"rulekit":"9.9.9"},"verbs":[{"name":"manifest"}]}'
 EOF
   chmod +x "$independent" "$dependent"
 
-  verify_without_java "$independent" 9.9.9 "$work/independent-run"
-  if verify_without_java "$dependent" 9.9.9 "$work/dependent-run" >/dev/null 2>&1; then
+  native_executable_format /bin/sh || {
+    echo "native no-Java smoke self-test: supported host executable format was not recognized" >&2
+    return 1
+  }
+  if verify_without_java "$independent" 9.9.9 "$work/independent-run" "$ROOT/examples/models/order-ruled.dm.json" >/dev/null 2>&1; then
+    echo "native no-Java smoke self-test: a script that synthesized version and manifest survived" >&2
+    return 1
+  fi
+  if verify_without_java "$dependent" 9.9.9 "$work/dependent-run" "$ROOT/examples/models/order-ruled.dm.json" >/dev/null 2>&1; then
     echo "native no-Java smoke self-test: a Java-dependent launcher survived" >&2
     return 1
   fi
@@ -86,5 +127,7 @@ EXPECTED_VERSION="$2"
 [[ -x "$BINARY" ]] || { echo "native no-Java smoke: not executable: $BINARY" >&2; exit 2; }
 WORK="$(mktemp -d)"
 trap 'rm -rf "$WORK"' EXIT
-verify_without_java "$BINARY" "$EXPECTED_VERSION" "$WORK"
+MODEL="$ROOT/examples/models/order-ruled.dm.json"
+[[ -f "$MODEL" ]] || { echo "native no-Java smoke: functional fixture missing: $MODEL" >&2; exit 2; }
+verify_without_java "$BINARY" "$EXPECTED_VERSION" "$WORK" "$MODEL"
 echo "native no-Java smoke: GREEN ($BINARY, version $EXPECTED_VERSION)"

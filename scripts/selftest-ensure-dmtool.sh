@@ -151,4 +151,32 @@ for checksum_mode in download-fails missing-entry; do
     || fail "$checksum_mode left a stable path to an unverified binary"
 done
 
-echo "SELFTEST OK: version-aware cache, sandbox fallback, and truthful readiness"
+# 9. A cache written by an older installer has no trustworthy provenance. Executability alone must not
+#    make it reusable: the current installer has to revalidate it against the release checksum before it
+#    prints readiness. This is the upgrade path for already-contaminated same-version caches.
+legacy_data="$WORK/legacy-cache"
+legacy_dest="$legacy_data/bin/v9.9.4/dmtool"
+sed -E 's/^VERSION="v[0-9.]+"/VERSION="v9.9.4"/' "$INSTALLER" > "$WORK/installer-v9.9.4.sh"
+mkdir -p "$(dirname "$legacy_dest")"
+printf '#!/bin/sh\necho "a12-dmkits 9.9.4"\n' > "$legacy_dest"
+chmod +x "$legacy_dest"
+set +e
+legacy_out="$(PLUGIN_DATA="$legacy_data" CLAUDE_PLUGIN_DATA= FAKE_CHECKSUM_MODE=download-fails bash "$WORK/installer-v9.9.4.sh" 2>&1)"
+legacy_status=$?
+set -e
+[[ $legacy_status -eq 0 ]] || fail "legacy cache verification hard-failed the session: $legacy_out"
+[[ "$legacy_out" == *"checksum"* && "$legacy_out" != *"dmtool ready:"* ]] \
+  || fail "an executable legacy cache bypassed checksum verification: $legacy_out"
+[[ ! -e "$legacy_dest" && ! -e "$legacy_data/bin/dmtool" ]] \
+  || fail "refused legacy cache remained reachable after verification failed"
+
+mkdir -p "$(dirname "$legacy_dest")"
+printf '#!/bin/sh\necho "a12-dmkits 9.9.4"\n' > "$legacy_dest"
+chmod +x "$legacy_dest"
+: > "$FETCH_LOG"
+legacy_out="$(PLUGIN_DATA="$legacy_data" CLAUDE_PLUGIN_DATA= bash "$WORK/installer-v9.9.4.sh" 2>&1)"
+[[ "$legacy_out" == *"dmtool ready:"* ]] || fail "a checksum-valid legacy cache was not recovered: $legacy_out"
+[[ "$(grep -c v9.9.4 "$FETCH_LOG")" -eq 0 ]] \
+  || fail "a checksum-valid legacy cache unnecessarily re-downloaded the binary"
+
+echo "SELFTEST OK: version-aware verified cache, sandbox fallback, and truthful readiness"

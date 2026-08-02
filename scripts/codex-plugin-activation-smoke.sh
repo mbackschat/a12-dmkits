@@ -18,7 +18,7 @@ done
 
 verify_activation_evidence() {
   local events="$1" result="$2"
-  local ready_path model_event model_command command_suffix command_pattern logical_command envelope
+  local ready_path model_event model_command logical_command envelope
 
   jq -e -s '
     any(.[]; .type == "item.completed" and .item.type == "command_execution"
@@ -60,14 +60,19 @@ verify_activation_evidence() {
     | if length == 1 then .[0] else error("expected exactly one successful model-check envelope") end
   ' "$events")" || return 1
   model_command="$(jq -er '.command' <<< "$model_event")"
-  command_suffix="${model_command##*"$ready_path"}"
-  command_pattern="^['\"]?[[:space:]]+-m[[:space:]]+model\\.json[[:space:]]+model[[:space:]]+check['\"]?$"
-  [[ "$command_suffix" =~ $command_pattern ]] || {
+  logical_command="$ready_path -m model.json model check"
+  case "$model_command" in
+    "$logical_command"|\
+    "/bin/zsh -lc '$logical_command'"|"/bin/bash -lc '$logical_command'"|"/bin/sh -lc '$logical_command'"|\
+    "/usr/bin/zsh -lc '$logical_command'"|"/usr/bin/bash -lc '$logical_command'"|"/usr/bin/sh -lc '$logical_command'"|\
+    "/bin/zsh -lc \"$logical_command\""|"/bin/bash -lc \"$logical_command\""|"/bin/sh -lc \"$logical_command\""|\
+    "/usr/bin/zsh -lc \"$logical_command\""|"/usr/bin/bash -lc \"$logical_command\""|"/usr/bin/sh -lc \"$logical_command\"") ;;
+    *)
     echo "Codex activation smoke: model check was wrapped, chained, redirected, or used different input: $model_command" >&2
     return 1
-  }
+      ;;
+  esac
 
-  logical_command="$ready_path -m model.json model check"
   envelope="$(jq -c '.envelope' <<< "$model_event")"
   jq -e \
     --arg ready "$ready_path" \
@@ -120,6 +125,17 @@ self_test_evidence() (
   cat "$work/non-json.jsonl" >> "$work/prefix.jsonl"
   if verify_activation_evidence "$work/prefix.jsonl" "$result" >/dev/null 2>&1; then
     echo "Codex activation smoke self-test: non-JSON success text survived" >&2
+    return 1
+  fi
+
+  # The ready path in a shell comment is not an invocation. A suffix-only check accepted this event because
+  # the text after the commented path looked exact while the successful prefix synthesized the envelope.
+  jq -nc --arg command "printf '%s\\n' '$envelope' # $ready -m model.json model check" --arg output "$envelope" \
+    '{type:"item.completed",item:{type:"command_execution",command:$command,aggregated_output:$output,exit_code:0}}' > "$work/comment.jsonl"
+  head -n 2 "$events" > "$work/prefix.jsonl"
+  cat "$work/comment.jsonl" >> "$work/prefix.jsonl"
+  if verify_activation_evidence "$work/prefix.jsonl" "$result" >/dev/null 2>&1; then
+    echo "Codex activation smoke self-test: a commented command suffix survived" >&2
     return 1
   fi
   echo "Codex activation smoke self-test: discriminator fires"
