@@ -43,7 +43,7 @@ import picocli.CommandLine.Parameters;
  *
  * <p>Three modes, self-describing (emits its own JSON, like {@code operators}):
  * <ul>
- *   <li>{@code patterns} — list every idiom (id, summary, params);</li>
+ *   <li>{@code patterns} — list every idiom (id, summary, paramNames);</li>
  *   <li>{@code patterns <id>} — one idiom in full (params, polarity note, skeleton, example);</li>
  *   <li>{@code patterns <id> --arg k=v …} (needs {@code -m}) — instantiate it into a <b>rule-spec</b> (the
  *       shape {@code rule add} consumes) and <b>auto-check</b> it against the kernel; {@code --apply} persists
@@ -118,7 +118,7 @@ final class PatternsCommand extends BaseCommand {
             n.put("id", p.id());
             n.put("kind", p.kind().name().toLowerCase(java.util.Locale.ROOT));
             n.put("summary", p.summary());
-            ArrayNode params = n.putArray("params");
+            ArrayNode params = n.putArray("paramNames");
             p.params().forEach(param -> params.add(param.name()));
         }
         root.put("count", CATALOG.size());

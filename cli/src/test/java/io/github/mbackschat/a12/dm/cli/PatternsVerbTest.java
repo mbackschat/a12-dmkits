@@ -49,6 +49,12 @@ class PatternsVerbTest {
         assertTrue(ids.toString().contains("date-order") && ids.toString().contains("mutually-exclusive"),
                 () -> "lists the built-in idioms: " + res.out());
         assertTrue(j.path("count").asInt() >= 5, res::out);
+        ids.forEach(pattern -> {
+            assertTrue(pattern.path("paramNames").isArray(),
+                    () -> "the catalogue names its lean string projection `paramNames`: " + pattern);
+            assertFalse(pattern.has("params"),
+                    () -> "`params` is reserved for the object-valued detail projection: " + pattern);
+        });
     }
 
     @Test

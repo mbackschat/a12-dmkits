@@ -21,12 +21,12 @@
           "items": {
             "type": "object",
             "additionalProperties": false,
-            "required": ["id", "kind", "summary", "params"],
+            "required": ["id", "kind", "summary", "paramNames"],
             "properties": {
               "id": { "type": "string", "description": "The idiom id to pass back as `patterns <id>`." },
               "kind": { "$ref": "#/$defs/kind" },
               "summary": { "type": "string", "description": "One line: what the idiom is for." },
-              "params": { "$ref": "#/$defs/paramNames" }
+              "paramNames": { "$ref": "#/$defs/paramNames" }
             }
           }
         }
@@ -87,7 +87,7 @@
     },
     "paramNames": {
       "type": "array",
-      "description": "The parameter NAMES only, in skeleton order — the catalogue's lean projection. NOTE the key `params` carries a different type on the two routes: bare strings here, full objects in the `idiom` shape below. That is the tool's actual output and this schema describes it rather than smoothing it over; it is recorded as a discoverability smell against the verb, because a reader who learns `params` from one route will mis-read the other. Renaming this projection would be a breaking output change with its own decision.",
+      "description": "The parameter NAMES only, in skeleton order — the catalogue's lean projection. The detail route uses the separate `params` key for its object-valued parameter descriptions.",
       "items": { "type": "string", "description": "A parameter name; pass it as `--arg <name>=<value>`." }
     },
     "params": {
