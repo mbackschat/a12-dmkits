@@ -1,0 +1,25 @@
+{
+  "id": "23-runtime-rule-eval-text",
+  "family": "runtime",
+  "mode": "rule-eval",
+  "model": "order-ruled",
+  "rule": "/Order/DeliveryNotBeforeOrder",
+  "operators": [],
+  "intent": "Evaluate only the named existing rule against this document instance. Report whether it fires and the runtime verdict, and present the CLI result in its human-readable form.",
+  "instance": {
+    "Order": {
+      "OrderDate": "2025-07-10",
+      "DeliveryDate": "2025-07-09"
+    }
+  },
+  "expected": {
+    "verb": "rule eval",
+    "humanReadable": true,
+    "summaryLine": "/Order/DeliveryNotBeforeOrder FIRED on this instance (a violation)",
+    "ruleFired": true,
+    "verdict": "fired"
+  },
+  "notes": "Runtime discovery: the agent must find the focused existing-rule verb rather than emulate it with whole-model evaluation. The deterministic backbone executes the rule and locks its fired verdict.",
+  "difficulty": "simple",
+  "suites": []
+}

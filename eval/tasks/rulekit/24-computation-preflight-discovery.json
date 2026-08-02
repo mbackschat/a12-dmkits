@@ -1,0 +1,39 @@
+{
+  "id": "24-computation-preflight-discovery",
+  "family": "computation-preflight",
+  "model": "subscription",
+  "operators": [
+    "Multiply"
+  ],
+  "intent": "Test whether this proposed computation would be accepted without modifying the model.",
+  "proposal": {
+    "computedField": "/Subscription/Billing/EffectiveFee",
+    "alternatives": [
+      {
+        "operation": "[BaseFee] * 2"
+      }
+    ],
+    "messages": [
+      {
+        "locale": "en_US",
+        "text": "The effective fee is twice the base fee."
+      },
+      {
+        "locale": "de_DE",
+        "text": "Die Effektivgebühr ist das Doppelte der Basisgebühr."
+      }
+    ]
+  },
+  "expected": {
+    "verb": "computation add",
+    "readOnlyOption": "--dry-run",
+    "accepted": true,
+    "outcome": "preview",
+    "written": false
+  },
+  "notes": "Bare-tool preflight discovery. The intent deliberately does not name the read-only option; the agent must discover it from computation add --help. The deterministic backbone verifies acceptance and byte-identity of the model.",
+  "difficulty": "simple",
+  "suites": [
+    "simple"
+  ]
+}

@@ -1,0 +1,31 @@
+{
+  "id": "21-runtime-compute-text",
+  "family": "runtime",
+  "mode": "model-compute",
+  "model": "order-tiered",
+  "operators": [],
+  "intent": "Run the model's existing computations over this document instance. Report every computed field instance, outcome, and value, and present the CLI result in its human-readable form.",
+  "instance": {
+    "Order": {
+      "Subtotal": 125
+    }
+  },
+  "expected": {
+    "verb": "model compute",
+    "humanReadable": true,
+    "summaryLine": "computed 1 computation(s) over 1 field instance(s)",
+    "computed": [
+      {
+        "field": "Order/ShippingFee",
+        "declaration": "Order/ShippingFee",
+        "outcome": "value",
+        "value": "0"
+      }
+    ]
+  },
+  "notes": "Runtime discovery: the agent must find model compute and the human-readable output mode from the bare CLI. The deterministic task backbone executes the same instance and locks the exact computed row.",
+  "difficulty": "simple",
+  "suites": [
+    "simple"
+  ]
+}

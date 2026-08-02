@@ -20,7 +20,7 @@ The agent gets exactly the **shipped** material for the persona under test, and 
 - **Developer path:** dmkits-the-library's **public API + javadoc** + the catalog, with the **compiler + lint (`RuleDiagnostics`)** as the feedback (N10 — no bespoke vehicle). *Harness:* a clean agent in a **git worktree** authors a rule via the typed builder and validates with `RuleValidator`, iterating against `javac`/gradle. (First probe 2026-06-05 — see [`../eval/RESULTS.md`](../eval/RESULTS.md); harness distinct from the CLI Workflow runner.)
 
 **Hard boundary — per persona** (no design notes, no answer keys; that's what makes the eval measure the *product*):
-- **BA/CLI:** only the CLI (which self-describes its operator catalog via `cli operators`) + (in production mode) the N1 skill — **not** dmkits' source, `docs/`, or tests.
+- **BA/CLI:** only the CLI (which self-describes its operator catalog via `cli operators`) + the task's model and, where applicable, its inline Document instance or proposed computation + (in production mode) the N1 skill — **not** dmkits' source, `docs/`, tests, or task/gold files.
 - **Developer:** the public API **source + javadoc** + catalog + `README` *are* the material (that's what a library user sees) — but `skill/`, `docs/` (design notes), and **`eval/` (the golds)** are off-limits.
 
 Either way, reading the model file under test is allowed — it's the input.
@@ -39,7 +39,7 @@ Why bare-tool is the default instrument, not an afterthought: CLAUDE.md's standi
 - a bare-tool failure the **skill would fix** (a polarity flip, a missed iteration guard) → a **skill-worklist** item (N1), *not* a CLI defect;
 - a bare-tool failure about an **undiscoverable verb/param/operator** → a **CLI/catalog** defect (fix the self-description).
 
-`benchmark.workflow.js` has **always** been bare-tool by default: from its first commit the produce prompts say *"Do NOT read any … `*.md` files"*, and the script never referenced `SKILL.md`. **Production mode is opt-in (wired 2026-06-08; `skillPath` added 2026-06-09),** and gives **every** producer family (authoring, both computation families, both modify families, comprehension, computation-comprehension) the skill, two ways:
+`benchmark.workflow.js` has **always** been bare-tool by default: from its first commit the produce prompts say *"Do NOT read any … `*.md` files"*, and the script never referenced `SKILL.md`. **Production mode is opt-in (wired 2026-06-08; `skillPath` added 2026-06-09),** and gives **every** producer family (authoring, computation authoring/preflight, both modify families, comprehension, computation-comprehension, runtime, and the modelkit/mixed families) the skill, two ways:
 
 - **`args.skillPath`** (PREFERRED, 2026-06-09) — a repo-relative path; the producer prompt tells the agent to **read that file itself** (it already runs in the repo with shell access). The **verbatim** skill thus needs no inline transcription by the main loop (the script has no filesystem access) and can't drift from the committed file. The prompt names that file as the **only** extra material the agent may read.
 - **`args.skill`** — the skill's CONTENTS inlined (the main loop pastes them). Kept for inlining callers; for a *definitive* run prefer `skillPath` so "verbatim" is trustworthy.
@@ -73,6 +73,8 @@ The families, grouped by scoring shape (the authoring/modify variants — includ
 - **Metadata** — intent (NL) → a description / annotation / model-comment edit on a named element (the cross-cutting `meta <ref>` verb, or `config modify --comment`). Scored (both layers): the gold metadata edit re-binds kernel-valid **and** the value reads back; covers descriptions/annotations on field/group/rule/computation + type-def by id, and the model comment. **Layer-2 agentic + deterministically scored** (§8d B).
 - **Template** — intent (NL) → a `usageType` group template (§3.8): `group multiselect` or `group attachment`. Scored (both layers): expanding the template re-binds kernel-valid (the kernel's `MultiSelect`/`AttachmentGroupRule` accept the canonical composition — the strongest proof for attachment, whose 8 fields + 4 mandated rules must be exact) **and** the group exists. **Layer-2 agentic + deterministically scored** (§8d B).
 - **Session** — a multi-step intent → an `apply` op-list applied in one session. Scored: the model re-binds after all ops **and** every intended element is present; the batch-repair variant seeds one wrong op and scores recovery from the rolled-back, per-op-attributed envelope.
+- **Runtime** — an inline canonical Document instance + business intent → discovery and execution of the appropriate live instance verb (`model compute`, `model eval`, or `rule eval`) and its human-readable projection. `EvalSuiteLedgerTest` derives this denominator from every manifest verb carrying `--instance`; `EvalGoldOracleTest` executes both machine and text modes and locks the exact facts. The clean agent's structured observation is scored directly, with no second judge.
+- **Computation-preflight** — an inline proposal + the neutral intent “test whether this proposed computation would be accepted without modifying the model” → discovery of the read-only computation-add preview. The task and producer prompt are both guarded against leaking the option name; the deterministic oracle proves acceptance and byte-identical input, and the clean agent's structured observation is scored directly.
 
 **Self-correction (a cross-cutting dimension — #1 priority).** A task may be **seeded to fail recoverably** on the obvious first attempt (a near-miss field name, an invertible polarity, an ISO date literal the kernel lexes as a string). It is scored not on first-try success but on whether the agent **recovers using the diagnostic's `fix`** within k turns (error → applied fix → green) — the direct measure of "good diagnostics let the agent correct its mistakes."
 
@@ -138,24 +140,26 @@ The spec stays stable; measured results churn each run — so **all eval/benchma
 - **`eval/README.md`** — the schema, scoring/pass policy, and how to add/change a task.
 - **Layer 1 — the oracle (deterministic, CI):** `cli/.../eval/EvalGoldOracleTest` reads the corpus and asserts every gold *validates against the kernel* — authoring/computation golds via `RuleValidator.check` (multi-file tasks with a `ReferenceResolvers.directory` resolver), modify-computation and modify-rule golds via replace-then-bind. Guards that tasks + golds are real; runs on every build.
 - **Layer 2 — the agent runner (soft, opt-in):** `eval/benchmark.workflow.js` (✅ runnable, 2026-06-05) — a Workflow that fans out `model × task × k` clean agents over the **seven LLM-judged rulekit families** (authoring / self-correction [rides the authoring path — §3] / authoring-computation / modify-computation / modify-rule → a candidate; comprehension / computation-comprehension → an explanation) **plus the six deterministically-scored modelkit/mixed families** (structure · session · delete-safety · metadata · template · refactor — no LLM judge; §8d B) **and the LLM-judged `workspace-roles` family** (R4 — the agent audits a workspace's access control vs the task rubric; its deterministic backbone is the `EvalGoldOracleTest` lint-to-`expectedCodes` check), then **Recheck** (authoritatively re-validates every candidate — `cli batch` of `check` for rules, `cli add` for computations, `cli modify … --dry-run` for both modify families [rule re-expressions batched, so the DSL needs no shell-quoting] — not the agents' self-report) → **Judge** (a judge agent scores semantic correctness vs the gold/rubric, which catches a kernel-valid-but-inverted rule; every judge carries the type-aware empty-operand kernel fact so a *redundant* presence guard isn't mis-flagged — the cheap patch for the false-positive class. As of WI-5b the judge also **consults the machine-readable facet block** the tool serves — `cli operators <id>`'s `semantics` (`emptyOperand`, `boundary` STRICT/INCLUSIVE so `< k` ≢ `<= k`, `aggregateIdentity` the all-empty fold, `polarity`) is the judge's **ground-truth oracle** for a per-operator semantic (CATALOG-SPEC §8; the served surface is guarded deterministically by `OperatorsVerbTest`). The principled fix, **judge-verify-by-execution**, is now wired for the **rule judges** (authoring + modify-rule): they construct discriminating documents and run `model eval --condition … --field … --instance …` for the gold *and* the candidate, comparing `rule.fired` — deciding equivalence by EXECUTION on the real kernel rather than by recalling empty-operand/polarity semantics (preferred whenever equivalence hinges on such a semantic). The **computation judges** keep the type-aware empty-operand reasoning for now; first-class comp verify-by-execution awaits a `model compute --spec` candidate path (follow-up — today `model compute` runs a model's existing computations, not an injected candidate)) → aggregate pass@k. `pass = kernel-valid AND semantically-right`. Uses the **`batch` verb** (✅ CLI-SPEC §4) for the re-check. Token-heavy → run on demand, never per-commit; the caller passes the `eval/tasks/*/*.json` contents in via `args` (the script has no filesystem access). Prereq: `./gradlew :cli:installDist`.
+- **Layer 2 — the agent runner (soft, opt-in):** `eval/benchmark.workflow.js` (✅ runnable, 2026-06-05) — a Workflow that fans out `model × task × k` clean agents over the **eight LLM-judged families** (authoring · self-correction · authoring-computation · modify-computation · modify-rule · comprehension · computation-comprehension · workspace-roles), the **six executor-scored structural families** (structure · session · delete-safety · metadata · template · refactor), and the **two single-agent discovery families** (runtime · computation-preflight). Recheck authoritatively validates authored candidates; a separate judge handles semantic equivalence where judgment is required; structural scorers execute and report facts; discovery observations compare directly with deterministic expected facts. Token-heavy → run on demand, never per-commit; the caller passes task contents via `args` because the workflow has no filesystem access. Prerequisite: `./build.sh :cli:installDist`.
 
 ### 8a. Cost model — how many agents a run spawns
 
-A run's agent count is dominated by the phases. With **`T` total tasks** (across *all* families), `M` model tiers, and `k` runs per cell:
+A run's agent count is dominated by the phases. Let `T₂` be tasks that require a second judge/executor agent, `T₁` the directly scored discovery tasks (`runtime` and `computation-preflight`), `M` model tiers, and `k` runs per cell:
 
 | Phase | Agents | Why |
 |---|---|---|
 | **Prep** | `1` | One agent VERIFIES (read-only) the sandbox the operator built with `eval/prep-sandbox.sh`, halting if absent — so no produce/score agent ever names a committed fixture (§8c). |
-| **Produce** | `T × M × k` | One clean agent per (task, model, run) — **every family** (authoring, the computation/modify families, comprehension, computation-comprehension, the modelkit/mixed structural families, workspace-roles). |
+| **Produce** | `(T₂ + T₁) × M × k` | One clean agent per (task, model, run) — every family. |
 | **Recheck** | `~1` (`+1` if any computation tasks; `0` if neither) | Rule candidates re-validate through **one** warm-JVM `cli batch` of `check`; computations through `cli add`/`cli modify --dry-run`. **Flat** — `k`/tasks grow produce + score linearly but never multiply the batch. The modelkit/mixed structural families need no recheck (their scorer applies the edit directly). |
-| **Score** | `≈ produced candidates` | One agent per produced candidate — either an **LLM judge** (the *judged* families: authoring · self-correction · authoring-computation · modify-computation · modify-rule · comprehension · computation-comprehension · workspace-roles; a kernel-invalid rule candidate skips its judge, it's already a fail) **or** a deterministic **executor** (the *structural* modelkit/mixed families: structure · session · delete-safety · metadata · template · refactor — it runs the gold edit + reports raw facts; the pass/fail is computed in-script, no LLM). |
-| **Total** | `Produce + Recheck + Score` ≈ **`2·(T×M×k)` + recheck + prep** | |
+| **Score** | `≈ T₂ × M × k` | One second agent per judged or executor-scored candidate. Runtime and preflight observations are compared directly in-script and add no score agent. A kernel-invalid authored candidate may skip its judge because it is already a fail. |
+| **Total** | `Produce + Recheck + Score` ≈ **`(2·T₂ + T₁) × M × k + recheck + prep`** | |
 
-The recheck is **flat** by design; produce + score scale linearly in `T·M·k`. Every produced candidate gets a second agent in the Score phase (judge or executor) — that's the `2×` factor.
+The recheck is **flat** by design. Two-agent families scale with the `2·T₂` term; directly scored discovery families scale with `T₁` and therefore cost half as many agents per cell.
 
 **Worked examples (real recent runs):**
 - **Targeted single comprehension task, `k=3`, one model** (07-read-two-rules, 2026-06-18): prep `1` + produce `3` + score `3` (comprehension → judged) = **7 agents** (no recheck — comprehension produces no rule candidate). *(Matches the run's reported `agent_count: 7`.)*
 - **Single workspace-roles task, `k=1`, one model** (09-workspace-roles-audit, 2026-06-18): prep `1` + produce `1` + score `1` (LLM judge) = **3 agents** — the cheap floor for a judged task. *(Matches `agent_count: 3`.)*
+- **Single runtime/preflight discovery task, `k=1`, one model:** prep `1` + produce `1` + direct in-workflow scoring `0` = **2 agents** — no second agent is spent copying an already-structured oracle.
 - **Rulekit-era full run** (2026-06-05, `T=7` rulekit, `M=2`, `k=2`): produce `28` + recheck `1` + judge `27` (`23` kernel-valid authoring candidates `+ 4` comprehension) = **56**. *(Predates the modelkit/mixed families; a same-size run today adds one executor agent per structural candidate.)*
 
 ### 8b. Targeted re-runs — confirm a fix cheaply
@@ -184,12 +188,13 @@ MAIN LOOP  (you, via the run-dmtool-eval skill)      — orchestration; shares y
   │   Workflow({ scriptPath: "eval/benchmark.workflow.js", args: { models, k, tasks } })
   ▼
 WORKFLOW  (eval/benchmark.workflow.js)                — fan-out + scoring; ONE allowed level of nesting
-  Prep (verify sandbox, read-only) ──► Produce ──► Recheck (1 batch agent) ──► Judge ──► aggregate pass@k
+  Prep (verify sandbox, read-only) ──► Produce ──► Recheck (where needed) ──► Judge/executor (where needed) ──► aggregate pass@k
   │
   │   spawns N clean agents — model pinned, neutral prompt, material boundary enforced
   ▼
 CLEAN SUBAGENTS  (the instrument)                     — ISOLATED BY DESIGN (a first-time consumer)
   see ONLY: the self-describing CLI launcher (verbs · --help · cli operators) + the model file under test
+            + the task's inline Document instance or computation proposal where applicable
             (bare-tool mode, §2a — the wired default; production mode would also inject skill/SKILL.md)
   return:  a candidate rule / an explanation, via StructuredOutput
 ```
@@ -215,10 +220,10 @@ The lesson generalizes: **a 0/k cell whose candidates look correct is an artifac
 |---|---|
 | Main → Workflow | `args = { models, k, tasks }` (plain JSON) |
 | Workflow → clean subagent | a neutral prompt + the path to the shipped material (never source/docs/this spec) |
-| Clean subagent → Workflow | `StructuredOutput` — authoring: `{field, condition, code, kernelAccepted}`; comprehension: `{explanations}` |
+| Clean subagent → Workflow | `StructuredOutput` — a candidate artifact, an explanation, or directly scored runtime/preflight observations |
 | Recheck (inside Workflow) | all candidates → **one** agent runs `cli batch` (one warm JVM) → `{verdicts:[{id, valid}]}`; falls back to self-report on failure |
-| Judge → Workflow | `{equivalent\|correct, why}` per item |
-| Workflow → Main | `{agg, authorJudged, explainJudged}` — you fold `agg` + rationales into `RESULTS.md` |
+| Judge/executor → Workflow | `{equivalent\|correct, why}` or raw execution facts for families requiring a second agent; no second-agent boundary for runtime/preflight |
+| Workflow → Main | `{agg, …family details}` — you fold `agg` + rationales/facts into `RESULTS.md` |
 
 **Parameterization — the `args` object is the entire control surface:**
 
@@ -274,7 +279,7 @@ The session/delete-safety/template/refactor scores are **structural** by design 
 
 ## 9. Status & next
 
-The eval is live and instrumented. **Built:** the **31-task corpus across 14 families** (`rulekit/` 01–20, `modelkit/` 01–09, `mixed/` 01–02 — the per-task catalog is [`../eval/TASKS.md`](../eval/TASKS.md)), each with a deterministic backbone (`EvalGoldOracleTest`); the `check`/`add`/`batch`/`modify` verbs; the N1 skill; and the Layer-2 pass@k runner over all families — the **LLM-judged** ones (authoring · self-correction · authoring-computation · modify-computation · modify-rule · comprehension · computation-comprehension · **workspace-roles**) + the **deterministically-scored** modelkit/mixed structural ones (structure · session · delete-safety · metadata · template · refactor — §8d B). The **build-measure-learn loop closed end-to-end** on the #1 gap: the eval *found* the silent inverted-polarity trap → the skill *taught* it → the CLI now *catches* it automatically (the `RK_INVERTED_REQUIREDNESS` lint backstop on both `add` and `check`). The **2026-06-06 full run** then drove three more material fixes: the CLI `--field`/`--group`/`--rule` metavar+guard (model-entity-path vs file-path confusion), and two skill notes — the per-row-vs-document-level scope choice (T1) and reading host-delegated custom conditions without guessing (T8). Measured lifts and pass@k are in **[`../eval/RESULTS.md`](../eval/RESULTS.md)**.
+The eval is live and instrumented. **Built:** the **35-task corpus across 16 families** (`rulekit/` 01–24, `modelkit/` 01–09, `mixed/` 01–02 — the per-task catalog is [`../eval/TASKS.md`](../eval/TASKS.md)), each with a deterministic backbone (`EvalGoldOracleTest`); the Layer-2 pass@k runner over eight LLM-judged families, six executor-scored structural families, and the two directly scored discovery families; plus the live-manifest denominator that requires runtime tasks for every document-instance verb and the neutral computation-preflight guard. Measured lifts and pass@k are in **[`../eval/RESULTS.md`](../eval/RESULTS.md)**.
 
 **Next:** run the Layer-2 runner on demand to populate pass@k per (model, task); grow the suite as new operator families or gaps surface. (The F10 aggregate-read gap this eval surfaced is now lifted — KERNEL-INTEGRATION-NOTES — so an aggregate rule like T4 round-trips and can serve as a comprehension fixture.)
 

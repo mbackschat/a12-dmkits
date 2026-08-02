@@ -1,0 +1,32 @@
+{
+  "id": "22-runtime-model-eval-text",
+  "family": "runtime",
+  "mode": "model-eval",
+  "model": "order-ruled",
+  "operators": [],
+  "intent": "Evaluate this document instance against the whole model. Report every validation code that fires and every rule the runtime cannot evaluate, and present the CLI result in its human-readable form.",
+  "instance": {
+    "Order": {
+      "OrderDate": "2025-07-10",
+      "DeliveryDate": "2025-07-09",
+      "BillingAddress": {
+        "PostalCode": "12A"
+      }
+    }
+  },
+  "expected": {
+    "verb": "model eval",
+    "humanReadable": true,
+    "summaryLine": "2 rule(s) fired",
+    "firedCodes": [
+      "POSTAL_CODE_MALFORMED",
+      "DELIVERY_BEFORE_ORDER"
+    ],
+    "unsupported": [
+      "/Order/EligibilityCheck"
+    ]
+  },
+  "notes": "Runtime discovery: the agent must distinguish whole-model evaluation from focused rule evaluation and surface unsupported runtime constructs instead of calling the run clean. The deterministic backbone executes the exact instance.",
+  "difficulty": "medium",
+  "suites": []
+}

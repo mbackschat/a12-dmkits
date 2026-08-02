@@ -24,7 +24,7 @@ const GAP_SCHEMA = {
           gapType: {
             type: 'string',
             enum: ['AMBIGUOUS_MODE', 'UNCLEAR_INPUT', 'UNCLEAR_OUTPUT', 'PARAM_MEANING_UNCLEAR',
-              'MISSING_CONSTRAINTS', 'UNCLEAR_PURPOSE', 'OTHER'],
+              'MISSING_CONSTRAINTS', 'UNCLEAR_PURPOSE', 'MISSING_DISCOVERY', 'OTHER'],
           },
           detail: { type: 'string', description: 'one specific sentence: what you cannot tell from the tool alone' },
         },
@@ -46,6 +46,14 @@ Do NOT pass \`-m\`, do NOT run a verb against a model, do NOT read any file off 
 
 YOUR JOB: walk EVERY verb in the manifest and decide whether — from the tool's self-description ALONE — you could confidently (a) say what the verb does, (b) know exactly what to pass (each param's meaning + its accepted values/format), and (c) know what you'll get back. Where you genuinely could NOT, record a finding.
 
+After that verb walk, test the surface in the opposite direction: for each top-level target shown by the manifest
+(model, rule, computation, field, group, workspace, …), invent at most ONE plausible sibling operation a new user
+might reasonably try but which is ABSENT from that target's help. Actually run `${BIN} <target> <candidate> --help`.
+Then search the manifest/help for the real route to that intent. Report a MISSING_DISCOVERY finding against the
+nearest existing manifest verb ONLY when the failed guess plus the live self-description still do not reveal the
+correct route. A clean failed guess with a corrective that names the real route is NOT a finding. Include the exact
+attempted command and observed failure in detail. This is bounded to one guess per target; do not brainstorm a wish list.
+
 A finding is a real self-explanation gap an LLM agent would trip on — NOT a missing feature, NOT a style nit, NOT "I'd like more examples". Be CONSERVATIVE: only report what would actually block correct first-try use. It is normal to report only a handful across the whole surface; reporting nothing is a valid result if the surface is clear.
 
 Classify each finding by gapType:
@@ -55,6 +63,7 @@ Classify each finding by gapType:
   - PARAM_MEANING_UNCLEAR — a specific param's meaning or accepted values are unclear.
   - MISSING_CONSTRAINTS   — valid values / ranges / mutual-exclusions aren't stated where they matter.
   - UNCLEAR_PURPOSE       — what the verb is for is unclear, or it's easily confused with a sibling verb.
+  - MISSING_DISCOVERY     — a plausible absent sibling was tried, and neither its failure nor the live help reveals the real existing route.
   - OTHER                 — a genuine self-explanation gap not covered above (spell it out in detail).
 
 Return ONLY the structured output {findings:[{verb, gapType, detail}]}. detail = one specific sentence naming exactly what you cannot tell. Use the exact manifest verb name.`

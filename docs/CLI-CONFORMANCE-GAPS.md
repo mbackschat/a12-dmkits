@@ -14,10 +14,6 @@
 
 Re-opened **2026-07-31** by external field feedback whose defects this ledger's own guards structurally could not see. The contract half is designed in [`RESULT-CONTRACT-PROPOSAL.md`](archived/RESULT-CONTRACT-PROPOSAL.md) and tracked by its acceptance gate; the rows below are the **guard and instrument** gaps that let the defects ship, plus the independent surface fixes. Each graduates into `CLI-CONFORMANCE-SPEC` as a matrix column or into the named spec, and is deleted here on ship.
 
-### CG3 — the eval cannot see the runtime or text surfaces <a id="cg3"></a>
-
-**The eval cannot see the runtime or text surfaces at all.** **Zero** `eval/tasks/` files invoke `model compute`, `model eval`, `rule eval`, or `--text`, and the harness scores task success against a gold rather than envelope conformance — so four of the shipped defects were live during the last full run (2026-07-09) and invisible to it. Add runtime-verb coverage and a bare-tool discovery task whose intent is "test this computation without modifying the model" *without* naming `--dry-run`; extend `gap-finder.workflow.js` to try plausible-but-absent sibling verbs (it audits descriptions today and never guesses). Correct `eval/TASKS.md`'s stale `schema add` reference. Contract properties stay in deterministic guards — they do not justify repeated LLM runs. Graduates to [`EVAL-SPEC`](EVAL-SPEC.md).
-
 ### CG7 — no probe task exercises per-row computed identity <a id="cg7"></a>
 
 **A probe task should make a repeated `model compute` result identify `VALUE`/`CLEARED`/`ERRORED` rows from its own output.** No current task exercises per-row computed identity, so the contract's most easily-misread output has no cold-agent evidence. Must run after a fresh native build. Graduates to [`PROBE-SPEC`](PROBE-SPEC.md).

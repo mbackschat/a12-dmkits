@@ -16,6 +16,7 @@ import java.util.Set;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import io.github.mbackschat.a12.dm.cli.CliTestSupport;
 import io.github.mbackschat.a12.dm.core.ModelResolver;
 
 import org.junit.jupiter.api.Test;
@@ -138,8 +139,105 @@ class EvalGoldOracleTest {
             // Workspace-roles (R4): lint the fixture workspace via WorkspaceRoles and assert the produced
             // finding codes equal `expectedCodes` — the cross-file access-control backbone (no single model).
             case "workspace-roles" -> assertRolesAudit(task, taskFile);
+            // Runtime discovery: execute the exact instance through the selected interpreter-backed verb and
+            // lock both its machine facts and the human-readable projection. The LLM layer measures discovery;
+            // this layer owns correctness.
+            case "runtime" -> assertRuntimeTask(task, model, taskFile);
+            // A preflight task must be a real accepted preview and leave the model byte-identical. Its intent is
+            // deliberately neutral: the agent must discover the read-only option from the live CLI.
+            case "computation-preflight" -> assertComputationPreflight(task, model, taskFile);
             default -> fail(taskFile.getFileName() + " has unknown family: " + task.path("family").asText());
         }
+    }
+
+    private static void assertRuntimeTask(JsonNode task, String model, Path taskFile) throws IOException {
+        Path dir = Files.createTempDirectory("dmtool-eval-runtime-");
+        Path modelFile = dir.resolve("model.dm.json");
+        Path instanceFile = dir.resolve("instance.json");
+        Files.writeString(modelFile, model);
+        Files.writeString(instanceFile, MAPPER.writeValueAsString(task.get("instance")));
+
+        List<String> args = new ArrayList<>(List.of("-m", modelFile.toString()));
+        switch (task.path("mode").asText()) {
+            case "model-compute" -> args.addAll(List.of("model", "compute", "--instance", instanceFile.toString()));
+            case "model-eval" -> args.addAll(List.of("model", "eval", "--instance", instanceFile.toString()));
+            case "rule-eval" -> args.addAll(List.of("rule", "eval", task.path("rule").asText(),
+                    "--instance", instanceFile.toString()));
+            default -> fail(taskFile.getFileName() + " has unknown runtime mode: " + task.path("mode").asText());
+        }
+
+        var machine = CliTestSupport.run(args.toArray(String[]::new));
+        assertEquals(0, machine.code(), () -> taskFile.getFileName() + " runtime command failed: " + machine.err());
+        JsonNode envelope = MAPPER.readTree(machine.out());
+        JsonNode expected = task.get("expected");
+        assertEquals(expected.path("verb").asText(),
+                envelope.path("target").asText() + " " + envelope.path("op").asText(),
+                () -> taskFile.getFileName() + " verb oracle drifted");
+
+        switch (task.path("mode").asText()) {
+            case "model-compute" -> assertEquals(expected.get("computed"), envelope.path("data").path("computed"),
+                    () -> taskFile.getFileName() + " computed rows drifted: " + machine.out());
+            case "model-eval" -> {
+                assertEquals(textSet(expected.path("firedCodes")), textSet(envelope.path("data").path("fired")),
+                        () -> taskFile.getFileName() + " fired set drifted: " + machine.out());
+                assertEquals(textSet(expected.path("unsupported")),
+                        fieldTextSet(envelope.path("data").path("unsupported"), "name"),
+                        () -> taskFile.getFileName() + " unsupported set drifted: " + machine.out());
+            }
+            case "rule-eval" -> {
+                assertEquals(expected.path("ruleFired").asBoolean(), envelope.path("data").path("fired").asBoolean(),
+                        () -> taskFile.getFileName() + " focused fired verdict drifted: " + machine.out());
+                assertEquals(expected.path("verdict").asText(), envelope.path("data").path("verdict").asText(),
+                        () -> taskFile.getFileName() + " focused verdict drifted: " + machine.out());
+            }
+            default -> throw new AssertionError("mode was validated above");
+        }
+
+        args.add("--text");
+        var text = CliTestSupport.run(args.toArray(String[]::new));
+        assertEquals(0, text.code(), () -> taskFile.getFileName() + " --text failed: " + text.err());
+        assertFalse(text.out().stripLeading().startsWith("{"),
+                () -> taskFile.getFileName() + " --text emitted the JSON envelope: " + text.out());
+        assertTrue(text.out().lines().findFirst().orElse("").equals(expected.path("summaryLine").asText()),
+                () -> taskFile.getFileName() + " --text summary drifted: " + text.out());
+        assertTrue(text.out().contains("data:"),
+                () -> taskFile.getFileName() + " --text omitted the result body: " + text.out());
+    }
+
+    private static void assertComputationPreflight(JsonNode task, String model, Path taskFile) throws IOException {
+        assertFalse(task.path("intent").asText().contains("--dry-run"),
+                () -> taskFile.getFileName() + " leaks the option the bare agent must discover");
+        Path dir = Files.createTempDirectory("dmtool-eval-preflight-");
+        Path modelFile = dir.resolve("model.dm.json");
+        Path proposalFile = dir.resolve("proposal.json");
+        Files.writeString(modelFile, model);
+        Files.writeString(proposalFile, MAPPER.writeValueAsString(task.get("proposal")));
+        String before = Files.readString(modelFile);
+
+        var result = CliTestSupport.run("-m", modelFile.toString(), "computation", "add",
+                proposalFile.toString(), "--dry-run");
+        assertEquals(0, result.code(), () -> taskFile.getFileName() + " preflight failed: " + result.err());
+        JsonNode envelope = MAPPER.readTree(result.out());
+        JsonNode expected = task.get("expected");
+        assertEquals(expected.path("verb").asText(),
+                envelope.path("target").asText() + " " + envelope.path("op").asText());
+        assertEquals(expected.path("outcome").asText(), envelope.path("outcome").asText());
+        assertEquals(expected.path("accepted").asBoolean(), envelope.path("ok").asBoolean());
+        assertEquals(expected.path("written").asBoolean(), envelope.path("written").asBoolean());
+        assertEquals(before, Files.readString(modelFile),
+                () -> taskFile.getFileName() + " preflight modified the model");
+    }
+
+    private static Set<String> textSet(JsonNode values) {
+        Set<String> result = new TreeSet<>();
+        values.forEach(value -> result.add(value.asText()));
+        return result;
+    }
+
+    private static Set<String> fieldTextSet(JsonNode values, String field) {
+        Set<String> result = new TreeSet<>();
+        values.forEach(value -> result.add(value.path(field).asText()));
+        return result;
     }
 
     private static void assertGoldValidates(JsonNode task, String model, Path taskFile) {

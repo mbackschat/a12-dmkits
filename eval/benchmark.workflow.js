@@ -101,6 +101,8 @@ const MODIFY_RULE = TASKS.filter(t => t.family === 'modify-rule')
 const COMPREHENSION = TASKS.filter(t => t.family === 'comprehension')
 const WORKSPACE_ROLES = TASKS.filter(t => t.family === 'workspace-roles')
 const COMPUTATION_COMPREHENSION = TASKS.filter(t => t.family === 'computation-comprehension')
+const RUNTIME = TASKS.filter(t => t.family === 'runtime')
+const COMPUTATION_PREFLIGHT = TASKS.filter(t => t.family === 'computation-preflight')
 // self-correction is authoring with a recovery trap: the obvious first attempt is kernel-rejected (e.g. an
 // ISO date literal → MVK_INVALID_TYPE_FOR_COMPARISON) and the agent must read the diagnostic's `fix` and
 // recover within its turns. The recovery loop happens INSIDE the produce agent (it has the check verb), so
@@ -124,6 +126,10 @@ const missingComp = MODIFY_COMP.filter(t => !t.computation).map(t => t.id)
 if (missingComp.length) throw new Error(`modify-computation task(s) missing the \`computation\` key: ${missingComp.join(', ')} — pass the whole task object or include \`computation\``)
 const missingGold = [...AUTHORING, ...SELF_CORRECTION].filter(t => !(t.gold && t.gold.condition && t.gold.field)).map(t => t.id)
 if (missingGold.length) throw new Error(`authoring/self-correction task(s) missing \`gold.field\`/\`gold.condition\` (the judge needs the reference rule): ${missingGold.join(', ')} — pass the whole task object`)
+const missingRuntime = RUNTIME.filter(t => !t.mode || !t.instance || !t.expected).map(t => t.id)
+if (missingRuntime.length) throw new Error(`runtime task(s) missing \`mode\`/\`instance\`/\`expected\`: ${missingRuntime.join(', ')} — pass the whole task object`)
+const missingProposal = COMPUTATION_PREFLIGHT.filter(t => !t.proposal || !t.expected).map(t => t.id)
+if (missingProposal.length) throw new Error(`computation-preflight task(s) missing \`proposal\`/\`expected\`: ${missingProposal.join(', ')} — pass the whole task object`)
 
 // ---- prompts (EVAL-SPEC §5: neutral, material-only, no leaking the technique/polarity) ------------
 
@@ -285,6 +291,39 @@ common precondition / guard), and (c) each band — the case it covers and the v
 Return ONLY JSON: {"explanations": { "<computationPath>": "<your explanation>", ... }}`
 }
 
+// Runtime discovery: the intent names the business action, never the verb or presentation flag. The agent has
+// the instance as task input and must discover model compute / model eval / rule eval plus the human-readable mode.
+function runtimePrompt(task) {
+  const focused = task.rule ? `\nThe named existing rule is: ${task.rule}.` : ''
+  return `You help a business analyst exercise an A12 model against one document instance. Assume NO prior A12
+knowledge; use ONLY:
+  - the CLI:  ${CLI} <args>   (it is self-describing: \`${CLI} --help\` lists the verbs and \`${CLI} <verb> --help\` explains their parameters)
+  - the model file: ${MODEL_FILE(task)}${skillBlock()}
+Do NOT read any source, docs, tests, task files, or other *.md files (beyond the skill named above, if any).
+Document instance (A12 canonical Document JSON): ${JSON.stringify(task.instance)}${focused}
+Requirement: "${task.intent}"
+Write the supplied instance to an otherwise-unused /tmp JSON file, discover the right read-only CLI operation,
+run it, and inspect its human-readable result. Return ONLY JSON using the fields relevant to the result:
+  {"verb":"<the exact two-token verb you used>","humanReadable":true|false,"summaryLine":"<the first output line>",
+   "computed":[{"field":"…","declaration":"…","outcome":"…","value":"…"}],
+   "firedCodes":["…"],"unsupported":["<rule path>",…],"ruleFired":true|false,"verdict":"<word>"}`
+}
+
+// The preflight task deliberately withholds the option name: discovering the read-only preview is the measurement.
+function computationPreflightPrompt(task) {
+  return `You help a business analyst test a proposed A12 computation before deciding whether to add it. Assume NO
+prior A12 knowledge; use ONLY:
+  - the CLI:  ${CLI} <args>   (it is self-describing: \`${CLI} --help\` lists the verbs and \`${CLI} <verb> --help\` explains their parameters)
+  - the model file: ${MODEL_FILE(task)}${skillBlock()}
+Do NOT read any source, docs, tests, task files, or other *.md files (beyond the skill named above, if any).
+Proposed computation: ${JSON.stringify(task.proposal)}
+Requirement: "${task.intent}"
+Write the proposal to an otherwise-unused /tmp JSON file, discover and run the CLI's read-only preflight, and inspect
+the result. Return ONLY JSON:
+  {"verb":"<the exact two-token verb you used>","readOnlyOption":"<the option that prevented a write>",
+   "accepted":true|false,"outcome":"<result outcome>","written":true|false}`
+}
+
 const AUTHOR_SCHEMA = {
   type: 'object', additionalProperties: true,
   properties: { field: { type: 'string' }, condition: { type: 'string' },
@@ -369,6 +408,28 @@ const ROLES_AUDIT_SCHEMA = {
   required: ['findings'],
 }
 
+const RUNTIME_SCHEMA = {
+  type: 'object', additionalProperties: true,
+  properties: {
+    verb: { type: 'string' }, humanReadable: { type: 'boolean' }, summaryLine: { type: 'string' },
+    computed: { type: 'array', items: { type: 'object', additionalProperties: true,
+      properties: { field: { type: 'string' }, declaration: { type: 'string' }, outcome: { type: 'string' }, value: { type: 'string' } } } },
+    firedCodes: { type: 'array', items: { type: 'string' } },
+    unsupported: { type: 'array', items: { type: 'string' } },
+    ruleFired: { type: 'boolean' }, verdict: { type: 'string' },
+  },
+  required: ['verb', 'humanReadable', 'summaryLine'],
+}
+
+const COMPUTATION_PREFLIGHT_SCHEMA = {
+  type: 'object', additionalProperties: false,
+  properties: {
+    verb: { type: 'string' }, readOnlyOption: { type: 'string' }, accepted: { type: 'boolean' },
+    outcome: { type: 'string' }, written: { type: 'boolean' },
+  },
+  required: ['verb', 'readOnlyOption', 'accepted', 'outcome', 'written'],
+}
+
 // ---- Prep: VERIFY the model sandbox (committed fixtures stay read-only) ----------------------------
 // The COPY is done by eval/prep-sandbox.sh, which the operator runs from the main loop alongside
 // `:cli:installDist` — NOT by an agent. A workflow subagent runs under a restricted permission mode and
@@ -429,6 +490,26 @@ const compExplained = await parallel(compExplainRuns.map(r => () =>
   agent(computationExplainPrompt(r.task), { label: `comp-explain ${r.model}:${r.task.id}#${r.i}`, phase: 'Produce', model: r.model, schema: EXPLAIN_SCHEMA })
     .then(out => ({ kind: 'computation-comprehension', model: r.model, task: r.task, i: r.i, out }))
     .catch(() => ({ kind: 'computation-comprehension', model: r.model, task: r.task, i: r.i, out: null }))))
+
+const runtimeRuns = []
+for (const model of MODELS)
+  for (const task of RUNTIME)
+    for (let i = 0; i < K; i++) runtimeRuns.push({ model, task, i })
+
+const runtimeObserved = await parallel(runtimeRuns.map(r => () =>
+  agent(runtimePrompt(r.task), { label: `runtime ${r.model}:${r.task.id}#${r.i}`, phase: 'Produce', model: r.model, schema: RUNTIME_SCHEMA })
+    .then(out => ({ kind: 'runtime', model: r.model, task: r.task, i: r.i, out }))
+    .catch(() => ({ kind: 'runtime', model: r.model, task: r.task, i: r.i, out: null }))))
+
+const preflightRuns = []
+for (const model of MODELS)
+  for (const task of COMPUTATION_PREFLIGHT)
+    for (let i = 0; i < K; i++) preflightRuns.push({ model, task, i })
+
+const preflightObserved = await parallel(preflightRuns.map(r => () =>
+  agent(computationPreflightPrompt(r.task), { label: `preflight ${r.model}:${r.task.id}#${r.i}`, phase: 'Produce', model: r.model, schema: COMPUTATION_PREFLIGHT_SCHEMA })
+    .then(out => ({ kind: 'computation-preflight', model: r.model, task: r.task, i: r.i, out }))
+    .catch(() => ({ kind: 'computation-preflight', model: r.model, task: r.task, i: r.i, out: null }))))
 
 const compRuns = []
 for (const model of MODELS)
@@ -1099,6 +1180,47 @@ Return ONLY JSON: {"applied": <bool>, "newExists": <bool>, "oldGone": <bool>}`,
     .catch(() => ({ key, model: r.model, taskId: r.task.id, pass: false }))
 }))
 
+// ---- Score (runtime + computation preflight): deterministic structured facts, no second agent --------
+// The task backbones execute these verbs in CI and own behavioral correctness. The soft layer asks one clean
+// producer to discover the verb/mode and copy the exact facts; scoring those typed facts needs no LLM judgment.
+const sortedStrings = values => [...(values || [])].map(String).sort()
+const sameStringSet = (actual, expected) => JSON.stringify(sortedStrings(actual)) === JSON.stringify(sortedStrings(expected))
+const normalizedComputed = rows => [...(rows || [])].map(row => ({
+  field: String(row.field || ''), declaration: String(row.declaration || ''),
+  outcome: String(row.outcome || ''), value: String(row.value || ''),
+})).sort((a, b) => a.field.localeCompare(b.field))
+
+const runtimeScored = runtimeObserved.map(r => {
+  const key = `${r.model}/${r.task.id}/${r.i}`
+  const out = r.out || {}
+  const expected = r.task.expected
+  let factsMatch = false
+  switch (r.task.mode) {
+    case 'model-compute':
+      factsMatch = JSON.stringify(normalizedComputed(out.computed)) === JSON.stringify(normalizedComputed(expected.computed))
+      break
+    case 'model-eval':
+      factsMatch = sameStringSet(out.firedCodes, expected.firedCodes)
+        && sameStringSet(out.unsupported, expected.unsupported)
+      break
+    case 'rule-eval':
+      factsMatch = out.ruleFired === expected.ruleFired && out.verdict === expected.verdict
+      break
+  }
+  const pass = out.verb === expected.verb && out.humanReadable === expected.humanReadable
+    && out.summaryLine === expected.summaryLine && factsMatch
+  return { key, model: r.model, taskId: r.task.id, pass, facts: out }
+})
+
+const preflightScored = preflightObserved.map(r => {
+  const key = `${r.model}/${r.task.id}/${r.i}`
+  const out = r.out || {}
+  const expected = r.task.expected
+  const pass = out.verb === expected.verb && out.readOnlyOption === expected.readOnlyOption
+    && out.accepted === expected.accepted && out.outcome === expected.outcome && out.written === expected.written
+  return { key, model: r.model, taskId: r.task.id, pass, facts: out }
+})
+
 // ---- Aggregate pass@k per (model, task). pass = kernel-valid AND semantically right ----------------
 
 const agg = {}
@@ -1121,7 +1243,10 @@ for (const r of templateScored) bump(r.model, r.taskId, r.pass)
 for (const r of refactorScored) bump(r.model, r.taskId, r.pass)
 for (const r of rolesAuditJudged) bump(r.model, r.taskId, r.correct)
 for (const r of compExplainJudged) bump(r.model, r.taskId, r.correct)
+for (const r of runtimeScored) bump(r.model, r.taskId, r.pass)
+for (const r of preflightScored) bump(r.model, r.taskId, r.pass)
 
 log('pass@k by (model, task): ' + JSON.stringify(agg))
 return { agg, authorJudged, compJudged, modJudged, modRuleJudged, explainJudged, rolesAuditJudged, compExplainJudged,
-  structureScored, sessionScored, deleteScored, metadataScored, templateScored, refactorScored }
+  structureScored, sessionScored, deleteScored, metadataScored, templateScored, refactorScored,
+  runtimeScored, preflightScored }

@@ -1,5 +1,6 @@
 package io.github.mbackschat.a12.dm.cli.eval;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.IOException;
@@ -11,6 +12,7 @@ import java.util.TreeSet;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import io.github.mbackschat.a12.dm.cli.CliTestSupport;
 
 import org.junit.jupiter.api.Test;
 
@@ -45,6 +47,17 @@ class EvalSuiteLedgerTest {
         try (var s = Files.walk(dir)) {
             return s.filter(p -> p.toString().endsWith(".json")).sorted().toList();
         }
+    }
+
+    private static Path benchmarkWorkflow() {
+        for (String candidate : List.of("../eval/benchmark.workflow.js", "eval/benchmark.workflow.js",
+                "../../eval/benchmark.workflow.js")) {
+            Path path = Path.of(candidate);
+            if (Files.isRegularFile(path)) {
+                return path;
+            }
+        }
+        throw new IllegalStateException("eval/benchmark.workflow.js not found from " + Path.of("").toAbsolutePath());
     }
 
     /** A task's kit = its containing subfolder (the structural source of truth). */
@@ -93,6 +106,63 @@ class EvalSuiteLedgerTest {
         assertTrue(count > 0, "the `simple` suite must be non-empty");
         assertTrue(covered.equals(DIFFICULTIES),
                 () -> "the `simple` suite must span all difficulties " + DIFFICULTIES + ", covers: " + covered);
+    }
+
+    @Test
+    void runtimeTasksCoverEveryLiveDocumentInstanceVerb() throws IOException {
+        JsonNode manifest = MAPPER.readTree(CliTestSupport.run("manifest").out());
+        Set<String> liveRuntimeVerbs = new TreeSet<>();
+        for (JsonNode verb : manifest.path("verbs")) {
+            for (JsonNode param : verb.path("params")) {
+                if ("--instance".equals(param.path("flag").asText())) {
+                    liveRuntimeVerbs.add(verb.path("verb").asText());
+                }
+            }
+        }
+        assertTrue(!liveRuntimeVerbs.isEmpty(), "positive control: the live CLI must expose document-instance verbs");
+
+        Set<String> covered = new TreeSet<>();
+        for (Path f : tasks()) {
+            JsonNode task = MAPPER.readTree(Files.readString(f));
+            if ("runtime".equals(task.path("family").asText())) {
+                assertTrue(task.path("expected").path("humanReadable").asBoolean(),
+                        () -> f.getFileName() + " must exercise the human-readable projection");
+                assertTrue(!task.path("expected").path("summaryLine").asText().isBlank(),
+                        () -> f.getFileName() + " must lock a real human-readable summary");
+                covered.add(task.path("expected").path("verb").asText());
+            }
+        }
+        assertTrue(covered.equals(liveRuntimeVerbs),
+                () -> "runtime tasks must cover exactly the live --instance verbs; live=" + liveRuntimeVerbs
+                        + ", covered=" + covered);
+    }
+
+    @Test
+    void computationPreflightKeepsTheDiscoveryPromptNeutral() throws IOException {
+        List<JsonNode> preflights = new java.util.ArrayList<>();
+        for (Path f : tasks()) {
+            JsonNode task = MAPPER.readTree(Files.readString(f));
+            if ("computation-preflight".equals(task.path("family").asText())) {
+                preflights.add(task);
+            }
+        }
+        assertEquals(1, preflights.size(), "the bare-tool suite carries one focused computation preflight");
+        JsonNode task = preflights.getFirst();
+        assertTrue(!task.path("intent").asText().contains("--dry-run"),
+                "the intent must not disclose the option being discovered");
+        assertEquals("computation add", task.path("expected").path("verb").asText());
+        assertEquals("--dry-run", task.path("expected").path("readOnlyOption").asText());
+
+        String workflow = Files.readString(benchmarkWorkflow());
+        int promptStart = workflow.indexOf("function computationPreflightPrompt(task)");
+        int promptEnd = workflow.indexOf("\nconst AUTHOR_SCHEMA", promptStart);
+        assertTrue(promptStart >= 0 && promptEnd > promptStart,
+                "positive control: the guard must locate the computation-preflight prompt body");
+        assertTrue(workflow.contains("--dry-run"),
+                "positive control: the workflow still names --dry-run outside the neutral producer prompt");
+        String producerPrompt = workflow.substring(promptStart, promptEnd);
+        assertTrue(!producerPrompt.contains("--dry-run"),
+                "the clean agent's producer prompt must not disclose the option being measured");
     }
 
     private static boolean inSuite(JsonNode task, String suite) {
