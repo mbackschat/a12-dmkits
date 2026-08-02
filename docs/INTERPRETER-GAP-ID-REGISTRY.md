@@ -2,7 +2,7 @@
 
 This is the append-only registry for every `IAG<n>` and `IRG<n>` identifier issued by the interpreter public-API and release gap ledgers. The live ledgers remain live-only: [INTERPRETER-API-GAPS](INTERPRETER-API-GAPS.md) and [INTERPRETER-RELEASE-GAPS](INTERPRETER-RELEASE-GAPS.md) carry only open and deferred work, while this surface makes shipped identifiers resolvable and prevents reuse.
 
-`InterpreterGapIdRegistryGuardTest` requires each identifier to occur exactly once here, requires every open or deferred ledger heading to match its registered state and canonical meaning, and rejects a shipped identifier reappearing as live work. New work takes the next unused number in its family. Historical commits cannot be rewritten, so the two accidental reuses are corrected here: the oldest meanings keep `IAG9` and `IRG2`; the later meanings are `IAG12` and `IRG4`.
+`InterpreterGapIdRegistryGuardTest` requires each identifier to occur exactly once here, requires every open or deferred ledger heading to match its registered state and canonical meaning, and rejects a shipped identifier reappearing as live work. Every ID-bearing registry row and live heading must first match the canonical grammar; a malformed duplicate cannot disappear from the denominator merely because its anchor or suffix is wrong. New work takes the next unused number in its family. Historical commits cannot be rewritten, so the two accidental reuses are corrected here: the oldest meanings keep `IAG9` and `IRG2`; the later meanings are `IAG12` and `IRG4`.
 
 | id | state | canonical meaning |
 |---|---|---|

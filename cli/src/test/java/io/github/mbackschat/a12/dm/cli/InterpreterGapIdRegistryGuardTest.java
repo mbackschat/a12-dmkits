@@ -24,7 +24,8 @@ class InterpreterGapIdRegistryGuardTest {
     private static final Pattern REGISTRY_ROW = Pattern.compile(
             "^\\| (IAG\\d+|IRG\\d+) <a id=\"([^\"]+)\"></a> \\| (open|deferred|shipped) \\| ([^|]+?) \\|$");
     private static final Pattern GAP_HEADING = Pattern.compile(
-            "^### (IAG\\d+|IRG\\d+) — (.+?) <a id=\"[^\"]+\"></a>$");
+            "^### (IAG\\d+|IRG\\d+) — (.+?) <a id=\"([^\"]+)\"></a>$");
+    private static final Pattern ID_TOKEN = Pattern.compile("\\b(?:IAG|IRG)\\d+\\b", Pattern.CASE_INSENSITIVE);
 
     @Test
     void everyIssuedInterpreterGapIdIsUniqueAndEveryLiveRowMatchesIt() throws IOException {
@@ -65,6 +66,40 @@ class InterpreterGapIdRegistryGuardTest {
                 "a live row must not reuse an id whose registry disposition is shipped");
     }
 
+    @Test
+    void anIdBearingMalformedRowCannotFallThroughTheParser() {
+        String malformedDuplicateRegistry = """
+                | id | state | canonical meaning |
+                |---|---|---|
+                | IAG1 <a id="iag1"></a> | shipped | original meaning |
+                | IAG1 | open | accidental reuse without its anchor |
+                """;
+        assertTrue(!audit(malformedDuplicateRegistry, Map.of("IAG", "")).isEmpty(),
+                "an ID-bearing registry row must be rejected rather than skipped when its grammar is malformed");
+
+        String validRegistry = """
+                | id | state | canonical meaning |
+                |---|---|---|
+                | IAG1 <a id="iag1"></a> | open | original meaning |
+                """;
+        String malformedDuplicateLedger = """
+                ## 1. Open
+
+                ### IAG1 — original meaning <a id="iag1"></a>
+                ### IAG1 — accidental reuse without its anchor
+                """;
+        assertTrue(!audit(validRegistry, Map.of("IAG", malformedDuplicateLedger)).isEmpty(),
+                "an ID-bearing live heading must be rejected rather than skipped when its grammar is malformed");
+
+        String mismatchedAnchorLedger = """
+                ## 1. Open
+
+                ### IAG1 — original meaning <a id="iag99"></a>
+                """;
+        assertTrue(!audit(validRegistry, Map.of("IAG", mismatchedAnchorLedger)).isEmpty(),
+                "a live heading's anchor must resolve to its visible ID");
+    }
+
     private static List<String> audit(String registryMarkdown, Map<String, String> ledgerMarkdown) {
         List<String> violations = new ArrayList<>();
         Map<String, IssuedId> registry = parseRegistry(registryMarkdown, violations);
@@ -90,9 +125,16 @@ class InterpreterGapIdRegistryGuardTest {
 
     private static Map<String, IssuedId> parseRegistry(String markdown, List<String> violations) {
         Map<String, IssuedId> result = new LinkedHashMap<>();
-        for (String line : markdown.split("\\R")) {
+        String[] lines = markdown.split("\\R");
+        for (int index = 0; index < lines.length; index++) {
+            String line = lines[index];
             Matcher matcher = REGISTRY_ROW.matcher(line);
             if (!matcher.matches()) {
+                Matcher token = ID_TOKEN.matcher(line);
+                if (line.startsWith("|") && token.find()) {
+                    violations.add("registry line " + (index + 1) + " carries "
+                            + token.group().toUpperCase() + " but is not a canonical issued-id row: " + line);
+                }
                 continue;
             }
             String id = matcher.group(1);
@@ -113,7 +155,9 @@ class InterpreterGapIdRegistryGuardTest {
     private static void parseLedger(String family, String markdown, Map<String, IssuedId> liveRows,
             List<String> violations) {
         String state = null;
-        for (String line : markdown.split("\\R")) {
+        String[] lines = markdown.split("\\R");
+        for (int index = 0; index < lines.length; index++) {
+            String line = lines[index];
             if (line.startsWith("## ")) {
                 String lower = line.toLowerCase();
                 state = lower.matches("^## (\\d+\\. )?open.*") ? "open"
@@ -125,12 +169,20 @@ class InterpreterGapIdRegistryGuardTest {
             }
             Matcher matcher = GAP_HEADING.matcher(line);
             if (!matcher.matches()) {
+                Matcher token = ID_TOKEN.matcher(line);
+                if (line.startsWith("### ") && token.find()) {
+                    violations.add(family + " ledger line " + (index + 1) + " carries "
+                            + token.group().toUpperCase() + " but is not a canonical live gap heading: " + line);
+                }
                 continue;
             }
             String id = matcher.group(1);
             if (!id.startsWith(family)) {
                 violations.add(id + " appears in the " + family + " ledger");
                 continue;
+            }
+            if (!matcher.group(3).equals(id.toLowerCase())) {
+                violations.add(id + " live heading anchor must be `" + id.toLowerCase() + "`");
             }
             IssuedId row = new IssuedId(id, state, matcher.group(2).strip());
             if (liveRows.putIfAbsent(id, row) != null) {
