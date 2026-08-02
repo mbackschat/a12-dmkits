@@ -171,7 +171,9 @@ jobs:
         shell: bash
         run: |
           BIN="cli/build/native/nativeCompile/dmtool.exe"
+          VERSION="$(sed -nE "s/^version = '([^']+)'/\1/p" build.gradle)"
           norm() { sed 's/\r$//'; }
+          ./scripts/native-no-java-smoke.sh "$BIN" "$VERSION"
           echo "== --version =="
           "$BIN" --version | norm | tee /tmp/v.txt
           grep -q "A12 Tools distribution: 2025.06-ext5" /tmp/v.txt

@@ -102,6 +102,7 @@ tasks.named('test') {
     dependsOn 'apiGuardTest'
     dependsOn 'interpreterReleaseGuardTest'
     dependsOn 'catalogProseReviewGuardTest'
+    dependsOn 'deliveryGuardTest'
     // Repo-file-reading guards run in input-declared dedicated tasks; keep them out of the broad suite so a
     // doc/marker/golden/script-only edit cannot leave a stale-green `test` (TESTING-SPEC "Tests that read
     // repo files at runtime").
@@ -117,6 +118,8 @@ tasks.named('test') {
         excludeTestsMatching 'io.github.mbackschat.a12.dm.InterpreterReleaseMirrorAssemblerTest'
         excludeTestsMatching 'io.github.mbackschat.a12.dm.InterpreterReleasePublisherRehearsalTest'
         excludeTestsMatching 'io.github.mbackschat.a12.dm.rulekit.catalog.CatalogProseReviewGuardTest'
+        excludeTestsMatching 'io.github.mbackschat.a12.dm.EnsureDmtoolCacheTest'
+        excludeTestsMatching 'io.github.mbackschat.a12.dm.NativeNoJavaSmokeTest'
     }
 }
 
@@ -197,6 +200,24 @@ ext.guardInputs = { Test task, Map<String, ?> named ->
                 "location; a guard must never run against an empty input.")
         }
     }
+}
+
+tasks.register('deliveryGuardTest', Test) {
+    description = 'Input-declared behavioral guards for the plugin installer and native Java-independence smoke.'
+    group = 'verification'
+    useJUnitPlatform()
+    testClassesDirs = sourceSets.test.output.classesDirs
+    classpath = sourceSets.test.runtimeClasspath
+    filter {
+        includeTestsMatching 'io.github.mbackschat.a12.dm.EnsureDmtoolCacheTest'
+        includeTestsMatching 'io.github.mbackschat.a12.dm.NativeNoJavaSmokeTest'
+    }
+    guardInputs(it, [
+            'plugin installer'        : file('scripts/ensure-dmtool.sh'),
+            'installer self-test'     : file('scripts/selftest-ensure-dmtool.sh'),
+            'native no-Java smoke'    : file('scripts/native-no-java-smoke.sh'),
+            'release asset manifest'  : file('scripts/release-assets.sh'),
+    ])
 }
 
 // Root-project guards below read REPO FILES at RUNTIME that Gradle can't infer as test inputs:

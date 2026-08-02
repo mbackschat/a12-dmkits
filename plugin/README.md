@@ -92,7 +92,7 @@ codex plugin add dmtool
 
 The Codex plugin lives under [`codex/`](codex/); the marketplace manifest at `.agents/plugins/marketplace.json` points Codex at it. Codex users can also drop the bundled [`codex/AGENTS.md`](codex/AGENTS.md) into their own repo's `AGENTS.md` to keep dmtool guidance always in context.
 
-Codex uses the **same on-demand installer**, so the *Activation* note above applies here too: the skill fetches the binary the first time you need it — no restart. The binary lands at `$PLUGIN_DATA/bin/dmtool` (Codex's data dir), and the agent invokes it by the path the installer prints.
+Start a **new Codex session after installation**; Codex loads a plugin's bundled skills when the next CLI session starts. The skill then uses the same on-demand installer. Skill-launched commands do not receive the hook-only `PLUGIN_DATA` variable, so the installer uses a version-aware sandbox-writable temporary cache on Codex and the agent invokes the exact path it prints. A failed cache write warns without printing `dmtool ready`.
 
 ## Install — raw binary (no agent)
 

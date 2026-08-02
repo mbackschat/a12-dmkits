@@ -34,7 +34,12 @@ case "$url" in
     : > "$out"
     for a in $RK_SELFTEST_BINARY_ASSETS; do
       tmp="$(mktemp)"; content > "$tmp"
-      printf '%s  %s\n' "$(shasum -a 256 "$tmp" | awk '{print $1}')" "$a" >> "$out"; rm -f "$tmp"
+      if [[ "${FAKE_BAD_CHECKSUM:-0}" == 1 ]]; then
+        printf '%064d  %s\n' 0 "$a" >> "$out"
+      else
+        printf '%s  %s\n' "$(shasum -a 256 "$tmp" | awk '{print $1}')" "$a" >> "$out"
+      fi
+      rm -f "$tmp"
     done ;;
   *dmtool-*) content > "$out"; echo "$ver ${url##*/}" >> "$FETCH_LOG" ;;
   *) exit 22 ;;
@@ -95,4 +100,34 @@ FAKE_UNAME_S=Linux FAKE_UNAME_M=aarch64 run_at v9.9.3
 grep -q "v9.9.3 $RK_LINUX_ARM64_ASSET" "$FETCH_LOG" \
   || fail "linux arm64 did not download $RK_LINUX_ARM64_ASSET"
 
-echo "SELFTEST OK: version-aware cache — downloads on bump, reuses on same version"
+# 5. A skill-launched command does not inherit the plugin-hook-only PLUGIN_DATA variables on Codex. The
+#    installer must therefore choose a sandbox-writable temporary cache rather than assuming HOME is writable.
+CODEX_TMP="$WORK/codex-tmp"; mkdir -p "$CODEX_TMP"
+DEV_BINARY="$WORK/dev-dmtool"; printf '#!/bin/sh\necho "a12-dmkits 9.9.3"\n' > "$DEV_BINARY"; chmod +x "$DEV_BINARY"
+unset PLUGIN_DATA CLAUDE_PLUGIN_DATA
+fallback_out="$(HOME=/dev/null TMPDIR="$CODEX_TMP" RK_DMTOOL_LOCAL="$DEV_BINARY" bash "$INSTALLER" 2>&1)"
+fallback_path="$CODEX_TMP/dmtool-plugin-${UID:-user}/bin/dmtool"
+[[ "$fallback_out" == *"dmtool ready: $fallback_path"* ]] \
+  || fail "missing plugin-data variables did not select the writable temporary cache: $fallback_out"
+[[ -x "$fallback_path" ]] || fail "temporary-cache fallback did not produce an executable stable path"
+
+# 6. The installer deliberately leaves a session alive on delivery failure, but it must never print a false
+#    ready path. /dev/null is a deterministic non-directory on every supported POSIX release host.
+unwritable_out="$(PLUGIN_DATA=/dev/null/dmtool CLAUDE_PLUGIN_DATA= RK_DMTOOL_LOCAL="$DEV_BINARY" bash "$INSTALLER" 2>&1)"
+[[ "$unwritable_out" != *"dmtool ready:"* ]] \
+  || fail "an unusable cache printed a false ready path: $unwritable_out"
+[[ "$unwritable_out" == *"dmtool plugin:"* ]] \
+  || fail "an unusable cache did not emit the required warning: $unwritable_out"
+
+# 7. Integrity refusal is a delivery failure, not a reason to terminate the agent's session. It must remove
+#    the rejected binary, warn, return success, and never claim readiness.
+set +e
+checksum_out="$(PLUGIN_DATA="$WORK/bad-checksum" CLAUDE_PLUGIN_DATA= FAKE_BAD_CHECKSUM=1 bash "$INSTALLER" 2>&1)"
+checksum_status=$?
+set -e
+[[ $checksum_status -eq 0 ]] \
+  || fail "a checksum mismatch hard-failed the calling session with exit $checksum_status: $checksum_out"
+[[ "$checksum_out" == *"checksum mismatch"* && "$checksum_out" != *"dmtool ready:"* ]] \
+  || fail "a checksum mismatch did not warn without claiming readiness: $checksum_out"
+
+echo "SELFTEST OK: version-aware cache, sandbox fallback, and truthful readiness"

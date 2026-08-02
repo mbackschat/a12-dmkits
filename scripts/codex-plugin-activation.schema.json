@@ -1,0 +1,14 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["skill", "binaryPath", "command", "verification", "valid", "written"],
+  "properties": {
+    "skill": { "type": "string", "const": "dmtool:a12-dmtool" },
+    "binaryPath": { "type": "string", "minLength": 1 },
+    "command": { "type": "string", "minLength": 1 },
+    "verification": { "type": "string", "const": "KERNEL_CONFIRMED" },
+    "valid": { "type": "boolean", "const": true },
+    "written": { "type": "boolean", "const": false }
+  }
+}
