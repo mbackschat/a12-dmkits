@@ -56,9 +56,19 @@ final class SchemaCommand extends BaseCommand {
             "typedef modify", "typedef-add",
             "profile synthesize", "profile");
 
-    /** Ops whose primary stdout value is a schema-described artifact rather than the result envelope. */
-    static final Map<String, String> ARTIFACT_OPS = Map.of(
-            "profile synthesize", "dm-json-model");
+    /** One artifact route: its kind, optional output schema, and optional file-writing receipt branch. */
+    record ArtifactContract(String kind, String schema, String outputOption) {
+        ArtifactContract {
+            if (kind.isBlank()) {
+                throw new IllegalArgumentException("artifact kind must not be blank");
+            }
+        }
+    }
+
+    /** Ops whose primary stdout value is an artifact rather than the result envelope. */
+    static final Map<String, ArtifactContract> ARTIFACT_OPS = Map.of(
+            "profile synthesize", new ArtifactContract("dm-json-model", null, "-o"),
+            "model seed", new ArtifactContract("a12-document-json", "document-instance", null));
 
     /** Ops that consume a {@code --instance} document INSTANCE → the schema describing that instance tree. */
     static final Map<String, String> DOC_INPUT = Map.of(
@@ -137,7 +147,6 @@ final class SchemaCommand extends BaseCommand {
                     + "an additive write-confirmation envelope, but the primary form has no directional contract"),
             Map.entry("model expand", "emits one self-contained expanded DM-JSON model artifact to stdout; with -o "
                     + "the model goes to the selected file and stdout carries an additive write-confirmation envelope"),
-            Map.entry("model seed", "emits a generated sample document instance (an artifact), not the result envelope"),
             Map.entry("model import-jsonschema", "reads a JSON Schema file and emits the imported model as a DM-JSON "
                     + "artifact to stdout (report on stderr); with -o the model goes to file + a write envelope"),
             Map.entry("model export-jsonschema", "emits the model as a JSON Schema artifact to stdout (report on "
@@ -205,17 +214,26 @@ final class SchemaCommand extends BaseCommand {
                 c.set("docInput", schema);
             }
         }
-        String artifactKind = ARTIFACT_OPS.get(verb);
-        if (artifactKind != null) {
+        ArtifactContract artifactContract = ARTIFACT_OPS.get(verb);
+        if (artifactContract != null) {
             c.put("returns", "artifact");
             ObjectNode artifact = c.putObject("artifact");
-            artifact.put("kind", artifactKind);
+            artifact.put("kind", artifactContract.kind());
             artifact.put("defaultDestination", "stdout");
-            artifact.put("outputOption", "-o");
-            artifact.put(
-                    "withOutput",
-                    "writes the artifact to the selected file and returns an applied result envelope");
-            artifact.put("receiptSchema", "result");
+            if (artifactContract.schema() != null) {
+                JsonNode schema = readSchema(artifactContract.schema());
+                if (schema == null) {
+                    return fail("schema resource missing: " + artifactContract.schema());
+                }
+                artifact.set("schema", schema);
+            }
+            if (artifactContract.outputOption() != null) {
+                artifact.put("outputOption", artifactContract.outputOption());
+                artifact.put(
+                        "withOutput",
+                        "writes the artifact to the selected file and returns an applied result envelope");
+                artifact.put("receiptSchema", "result");
+            }
         } else {
             c.put("returns", "result");
             c.put("resultSchema", "result");

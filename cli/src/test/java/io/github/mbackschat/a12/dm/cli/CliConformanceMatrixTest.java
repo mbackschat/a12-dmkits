@@ -148,9 +148,9 @@ class CliConformanceMatrixTest {
             assertTrue(verbs.contains(verb), () -> "CONTRACT_EXEMPT names '" + verb + "', absent from the manifest (stale)");
             assertFalse(reason.isBlank(), () -> "CONTRACT_EXEMPT '" + verb + "' needs a reason");
         });
-        SchemaCommand.ARTIFACT_OPS.forEach((verb, kind) -> {
+        SchemaCommand.ARTIFACT_OPS.forEach((verb, artifact) -> {
             assertTrue(verbs.contains(verb), () -> "ARTIFACT_OPS names '" + verb + "', absent from the manifest (stale)");
-            assertFalse(kind.isBlank(), () -> "ARTIFACT_OPS '" + verb + "' needs an artifact kind");
+            assertFalse(artifact.kind().isBlank(), () -> "ARTIFACT_OPS '" + verb + "' needs an artifact kind");
             assertFalse(SchemaCommand.CONTRACT_EXEMPT.containsKey(verb),
                     () -> "ARTIFACT_OPS '" + verb + "' cannot also be contract-exempt");
         });

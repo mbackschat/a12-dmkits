@@ -51,6 +51,10 @@ class SchemaResourceSurfaceTest {
         referenced.addAll(SchemaCommand.INPUT_OPS.values());
         referenced.addAll(SchemaCommand.DOC_INPUT.values());
         referenced.addAll(SchemaCommand.DATA_SCHEMA.values());
+        SchemaCommand.ARTIFACT_OPS.values().stream()
+                .map(SchemaCommand.ArtifactContract::schema)
+                .filter(java.util.Objects::nonNull)
+                .forEach(referenced::add);
 
         try (Stream<Path> files = Files.list(SCHEMA_DIR)) {
             List<String> orphans = files
