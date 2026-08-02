@@ -850,6 +850,14 @@ final class ConditionConverter {
                     ? dateTimeComparison(convertDateTimeAdd(add), op, right, comparison)
                     : dateComparison(convertDateAdd(add), op, convertDateOperand(right, comparison), comparison);
         }
+        TemporalKind expressionKind = undispatchedTemporalExpressionKind(left, right);
+        if (expressionKind != null) {
+            return switch (expressionKind) {
+                case DATE -> dateComparison(convertDateOperand(left, comparison), op, right, comparison);
+                case TIME -> timeComparison(convertTimeOperand(left, comparison), op, right, comparison);
+                case DATE_TIME -> dateTimeComparison(convertDateTimeOperand(left, comparison), op, right, comparison);
+            };
+        }
         if (left instanceof IFieldIdOperation lenOp && lenOp.getOperatorName() == FieldIdOperationName.Length) {
             return numberExprComparison(model.str(lenOp.getField().getFullName()).length(), op, right, comparison);
         }
@@ -882,6 +890,31 @@ final class ConditionConverter {
             }
         }
         throw unsupported("comparison whose left side is not a plain field value or an aggregate", comparison);
+    }
+
+    /**
+     * Temporal value expressions not dispatched by the aggregate/list/shift/extraction branches above.
+     * BaseYear is context-sensitive: it is a date only against the kernel's DATE family and otherwise falls
+     * through to the numeric-expression branch.
+     */
+    private TemporalKind undispatchedTemporalExpressionKind(IOperation left, IOperation right) {
+        if (left instanceof IDateTimeConstructionOperation) {
+            return TemporalKind.DATE_TIME;
+        }
+        if (left instanceof ITimeConstructionOperation) {
+            return TemporalKind.TIME;
+        }
+        if (left instanceof IDateConstructionOperation || left instanceof IDateRangeExtractionOperation) {
+            return TemporalKind.DATE;
+        }
+        if (left instanceof IPointInTimeOperation point) {
+            return switch (point.getOperatorName()) {
+                case Now -> TemporalKind.DATE_TIME;
+                case Today -> TemporalKind.DATE;
+                case BaseYear -> right.getType() == OperationType.DATE ? TemporalKind.DATE : null;
+            };
+        }
+        return null;
     }
 
     /** Dispatch a {@code [field] <op> other} comparison by the field's kind (other = the constant/field operand). */

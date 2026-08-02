@@ -187,6 +187,46 @@ class DateTimeExprReadTest {
     }
 
     @Test
+    void roundTripsExpressionFirstMixedTemporalOrdering() {
+        BoundModel m = order();
+        Condition nowFirst = Dsl.now().after(m.date("/Order/OrderDate"));
+        Condition todayFirst = Dsl.today().after(m.date("/Order/OrderDate"));
+        Condition baseYearDateFirst = Dsl.baseYear().before(m.date("/Order/DeliveryDate"));
+        Condition baseYearNumberFirst = Dsl.baseYearNumber().gt(m.num("/Order/Quantity").asNumber());
+        Condition dateConstructionFirst = Dsl.date(
+                Dsl.temporalComponent("01"), Dsl.temporalComponent("07"), Dsl.temporalComponent("2025"))
+                .after(m.date("/Order/OrderDate"));
+        Condition timeConstructionFirst = Dsl.time("10", "30")
+                .before(m.time("/Order/PickupTime"));
+        Condition constructionFirst = Dsl.dateTime(m.date("/Order/OrderDate"), m.time("/Order/PickupTime"))
+                .before(m.date("/Order/DeliveryDate"));
+
+        KernelAdapter adapter = KernelAdapter.of(m
+                .add(orderRule(m, "NowAfterDate", "/Order/OrderDate", nowFirst))
+                .add(orderRule(m, "TodayAfterDate", "/Order/OrderDate", todayFirst))
+                .add(orderRule(m, "BaseYearBeforeDate", "/Order/DeliveryDate", baseYearDateFirst))
+                .add(orderRule(m, "BaseYearAboveQuantity", "/Order/Quantity", baseYearNumberFirst))
+                .add(orderRule(m, "ConstructedDateAfterDate", "/Order/OrderDate", dateConstructionFirst))
+                .add(orderRule(m, "ConstructedTimeBeforeTime", "/Order/PickupTime", timeConstructionFirst))
+                .add(orderRule(m, "ConstructedDateTimeBeforeDate", "/Order/DeliveryDate", constructionFirst)));
+
+        assertEquals(RENDER.render(nowFirst),
+                RENDER.render(converted(adapter.read("/Order/NowAfterDate"))));
+        assertEquals(RENDER.render(todayFirst),
+                RENDER.render(converted(adapter.read("/Order/TodayAfterDate"))));
+        assertEquals(RENDER.render(baseYearDateFirst),
+                RENDER.render(converted(adapter.read("/Order/BaseYearBeforeDate"))));
+        assertEquals(RENDER.render(baseYearNumberFirst),
+                RENDER.render(converted(adapter.read("/Order/BaseYearAboveQuantity"))));
+        assertEquals(RENDER.render(dateConstructionFirst),
+                RENDER.render(converted(adapter.read("/Order/ConstructedDateAfterDate"))));
+        assertEquals(RENDER.render(timeConstructionFirst),
+                RENDER.render(converted(adapter.read("/Order/ConstructedTimeBeforeTime"))));
+        assertEquals(RENDER.render(constructionFirst),
+                RENDER.render(converted(adapter.read("/Order/ConstructedDateTimeBeforeDate"))));
+    }
+
+    @Test
     void dateExpressionsAreKernelValid() {
         ValidationResult r = new RuleValidator().check(read("models/order.dm.json"),
                 new DraftRule("/Order", "ExtractRule", "../OrderDate",
