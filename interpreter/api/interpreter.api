@@ -518,12 +518,6 @@ public final class io/github/mbackschat/a12/dm/interpreter/JavaModelSourceProvid
 	public static fun getSnapshotRevision (Lio/github/mbackschat/a12/dm/interpreter/JavaModelSourceProvider;)Ljava/lang/String;
 }
 
-public final class io/github/mbackschat/a12/dm/interpreter/MessagePointers {
-	public static final field INSTANCE Lio/github/mbackschat/a12/dm/interpreter/MessagePointers;
-	public final fun canonicalExactForm (Lio/github/mbackschat/a12/dm/interpreter/A12PartiallyKnownMultiPointer;)Ljava/lang/String;
-	public final fun houseForm (Lio/github/mbackschat/a12/dm/interpreter/A12PartiallyKnownMultiPointer;)Ljava/lang/String;
-}
-
 public abstract interface class io/github/mbackschat/a12/dm/interpreter/ModelCollectionSignal {
 	public static final field Companion Lio/github/mbackschat/a12/dm/interpreter/ModelCollectionSignal$Companion;
 	public abstract fun isCancelled ()Z

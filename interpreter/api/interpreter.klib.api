@@ -1193,8 +1193,3 @@ final object io.github.mbackschat.a12.dm.interpreter/A12PointerFormat { // io.gi
     final fun parse(kotlin/String): io.github.mbackschat.a12.dm.interpreter/A12Pointer // io.github.mbackschat.a12.dm.interpreter/A12PointerFormat.parse|parse(kotlin.String){}[0]
     final fun render(io.github.mbackschat.a12.dm.interpreter/A12Pointer): kotlin/String // io.github.mbackschat.a12.dm.interpreter/A12PointerFormat.render|render(io.github.mbackschat.a12.dm.interpreter.A12Pointer){}[0]
 }
-
-final object io.github.mbackschat.a12.dm.interpreter/MessagePointers { // io.github.mbackschat.a12.dm.interpreter/MessagePointers|null[0]
-    final fun canonicalExactForm(io.github.mbackschat.a12.dm.interpreter/A12PartiallyKnownMultiPointer): kotlin/String? // io.github.mbackschat.a12.dm.interpreter/MessagePointers.canonicalExactForm|canonicalExactForm(io.github.mbackschat.a12.dm.interpreter.A12PartiallyKnownMultiPointer){}[0]
-    final fun houseForm(io.github.mbackschat.a12.dm.interpreter/A12PartiallyKnownMultiPointer): kotlin/String // io.github.mbackschat.a12.dm.interpreter/MessagePointers.houseForm|houseForm(io.github.mbackschat.a12.dm.interpreter.A12PartiallyKnownMultiPointer){}[0]
-}

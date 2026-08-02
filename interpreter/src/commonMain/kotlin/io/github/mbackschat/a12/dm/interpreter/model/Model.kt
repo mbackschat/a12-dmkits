@@ -1,7 +1,7 @@
 package io.github.mbackschat.a12.dm.interpreter.model
 
 import io.github.mbackschat.a12.dm.interpreter.A12PartiallyKnownMultiPointer
-import io.github.mbackschat.a12.dm.interpreter.MessagePointers
+import io.github.mbackschat.a12.dm.interpreter.messagePointerHouseForm
 
 import io.github.mbackschat.a12.dm.interpreter.regex.PatternRegistry
 import io.github.mbackschat.a12.dm.interpreter.regex.compilePattern
@@ -715,13 +715,13 @@ data class Message(
     val fillToFixPointers: List<A12PartiallyKnownMultiPointer> = emptyList(),
 ) {
     /** Derived comparison projection — never stored. See the class note on why the direction is one-way. */
-    val errorPath: String get() = MessagePointers.houseForm(errorPointer)
+    val errorPath: String get() = messagePointerHouseForm(errorPointer)
 
     /** Derived comparison projection — never stored. */
-    val referenced: List<String> get() = referencedPointers.map(MessagePointers::houseForm)
+    val referenced: List<String> get() = referencedPointers.map(::messagePointerHouseForm)
 
     /** Derived comparison projection — never stored. */
-    val fillToFix: List<String> get() = fillToFixPointers.map(MessagePointers::houseForm)
+    val fillToFix: List<String> get() = fillToFixPointers.map(::messagePointerHouseForm)
 }
 
 /**

@@ -44,6 +44,7 @@ class A12PointerSymmetryTest {
         val parse: (String) -> Any,
         val format: (String, List<Int>) -> String,
         val render: (Any) -> String,
+        val components: (Any) -> Pair<String, List<Int>>,
     )
 
     /**
@@ -65,6 +66,10 @@ class A12PointerSymmetryTest {
             A12PointerFormat::parse,
             A12PointerFormat::format,
             { A12PointerFormat.render(it as A12Pointer) },
+            {
+                val pointer = it as A12Pointer
+                pointer.fullName to pointer.repetitionIndexes
+            },
         ),
     )
 
@@ -108,10 +113,12 @@ class A12PointerSymmetryTest {
     fun formatCanExpressEveryPointerParseAccepts() {
         val overStrict = mutableListOf<String>()
         for (pair in pairs) {
-            for (candidate in stringCorpus(pair)) {
+            for (candidate in stringCorpus()) {
                 val parsed = runCatching { pair.parse(candidate) }.getOrNull() ?: continue
-                val reformatted = runCatching { pair.render(parsed) }.getOrElse {
-                    overStrict += "${pair.label}: parse accepts '$candidate' but it cannot be rendered back: " +
+                val (fullName, repetitions) = pair.components(parsed)
+                val reformatted = runCatching { pair.format(fullName, repetitions) }.getOrElse {
+                    overStrict += "${pair.label}: parse accepts '$candidate' as ($fullName, $repetitions), " +
+                        "but format refuses that value: " +
                         "${it.message}"
                     continue
                 }
@@ -136,7 +143,7 @@ class A12PointerSymmetryTest {
      * empty-bracket form, and both spellings of the root pointer. `parse` filters this to its own domain, so an
      * entry that is not a pointer of that type costs nothing.
      */
-    private fun stringCorpus(pair: SymmetryPair): List<String> = buildList {
+    private fun stringCorpus(): List<String> = buildList {
         add("")
         add("/")
         add("Order")
@@ -148,9 +155,20 @@ class A12PointerSymmetryTest {
         for (arity in ARITIES) {
             forEachVector(arity, emptyList()) { repetitions ->
                 val names = List(arity) { LEGAL_NAMES[it] }
-                runCatching { pair.format(names.joinToString("/"), repetitions) }.onSuccess { add(it) }
+                add(renderCandidate(names, repetitions))
+                add("/" + renderCandidate(names, repetitions, explicitOne = true))
             }
         }
+    }
+
+    /** Independent corpus writer: a refusal in the production formatter cannot remove its own counterexample. */
+    private fun renderCandidate(
+        names: List<String>,
+        repetitions: List<Int>,
+        explicitOne: Boolean = false,
+    ): String = names.indices.joinToString("/") { index ->
+        val repetition = repetitions[index]
+        names[index] + if (repetition == 1 && !explicitOne) "" else "[$repetition]"
     }
 
     /** A12's root pointer is legal on both entry points of the exact codec. Pinned so it cannot regress. */

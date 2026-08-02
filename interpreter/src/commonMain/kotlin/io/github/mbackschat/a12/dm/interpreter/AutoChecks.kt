@@ -80,7 +80,7 @@ internal class AutoChecks(
                             formatMessage(failure.error, vf.path, vf.reps, vf.raw, locale)
                         } catch (e: UnsupportedConstructException) {
                             customUnsupported += UnsupportedRule(
-                                MessagePointers.houseForm(pointer),
+                                messagePointerHouseForm(pointer),
                                 e.message ?: "unsupported field-owned message",
                                 UnsupportedSubject.CELL,
                             )
@@ -270,7 +270,7 @@ internal class AutoChecks(
             severity = Severity.ERROR,
             type = MsgType.VALUE,
             text = error?.let { formatMessage(it, path, reps, raw, locale) }
-                ?: computedValueErrorText(locale, MessagePointers.houseForm(pointer)),
+                ?: computedValueErrorText(locale, messagePointerHouseForm(pointer)),
         )
     }
 
@@ -283,7 +283,7 @@ internal class AutoChecks(
             errorPointer = pointer,
             severity = Severity.ERROR,
             type = MsgType.VALUE,
-            text = computedValueErrorText(locale, MessagePointers.houseForm(pointer)),
+            text = computedValueErrorText(locale, messagePointerHouseForm(pointer)),
         )
     }
 
@@ -302,7 +302,7 @@ internal class AutoChecks(
             val template = declared[locale]
             if (template == null) {
                 unsupported += UnsupportedRule(
-                    MessagePointers.houseForm(ptr),
+                    messagePointerHouseForm(ptr),
                     "requiredness field-owned error template has no exact '$locale' declaration",
                     UnsupportedSubject.CELL,
                 )
@@ -312,7 +312,7 @@ internal class AutoChecks(
                 renderRequiredFieldMessage(template, locale, messageLabel(path, locale, reps))
             } catch (e: UnsupportedConstructException) {
                 unsupported += UnsupportedRule(
-                    MessagePointers.houseForm(ptr),
+                    messagePointerHouseForm(ptr),
                     e.message ?: "unsupported requiredness field-owned message",
                     UnsupportedSubject.CELL,
                 )

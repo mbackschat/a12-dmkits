@@ -7,7 +7,7 @@ import kotlin.test.assertTrue
 
 /**
  * The showcase model must actually exercise **per-row identity** — several computation results whose
- * `pointer.path` is the *same* string, told apart only by their coordinates (IRG2).
+ * `pointer.path` is the *same* string, told apart only by their coordinates (IRG4).
  *
  * The capability itself is locked by the conformance corpus (`compute/order-stock-per-row`); what this test
  * locks is the *demonstration*: the model the browser showcase and the packaged consumers run must contain a

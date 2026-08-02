@@ -903,25 +903,6 @@ class Interpreter private constructor(
             },
         )
 
-    private fun validationFinding(message: EngineMessage): ValidationFinding =
-        ValidationFinding(
-            code = message.code,
-            rulePath = message.rulePath,
-            errorPath = message.errorPointer,
-            severity = when (message.severity) {
-                Severity.ERROR -> ValidationSeverity.ERROR
-                Severity.WARNING -> ValidationSeverity.WARNING
-                Severity.INFO -> ValidationSeverity.INFO
-            },
-            type = when (message.type) {
-                MsgType.VALUE -> ValidationFindingType.VALUE
-                MsgType.OMISSION -> ValidationFindingType.OMISSION
-            },
-            text = message.text,
-            referenced = immutableListSnapshot(message.referencedPointers),
-            fillToFix = immutableListSnapshot(message.fillToFixPointers),
-        )
-
     private fun relevantEntity(pointer: RelevantEntityPointer): RelevantEntity {
         metadata.requireOwned(pointer)
         val coordinates = when (pointer) {
@@ -989,6 +970,26 @@ class Interpreter private constructor(
         ): Interpreter = Interpreter(prepared, configuration)
     }
 }
+
+/** The single engine-to-public message projection; internal so common tests can lock the channel boundary. */
+internal fun validationFinding(message: EngineMessage): ValidationFinding =
+    ValidationFinding(
+        code = message.code,
+        rulePath = message.rulePath,
+        errorPath = message.errorPointer,
+        severity = when (message.severity) {
+            Severity.ERROR -> ValidationSeverity.ERROR
+            Severity.WARNING -> ValidationSeverity.WARNING
+            Severity.INFO -> ValidationSeverity.INFO
+        },
+        type = when (message.type) {
+            MsgType.VALUE -> ValidationFindingType.VALUE
+            MsgType.OMISSION -> ValidationFindingType.OMISSION
+        },
+        text = message.text,
+        referenced = immutableListSnapshot(message.referencedPointers),
+        fillToFix = immutableListSnapshot(message.fillToFixPointers),
+    )
 
 private class CallbackFailure(cause: Throwable) : RuntimeException(cause)
 

@@ -40,7 +40,7 @@ class DocumentPointerFormatCacheTest {
         val entriesAfterPointer = document.cacheEntries()
 
         assertEquals("/Order[1]/Lines[7]/Amount", document.formattedPointer(path, listOf(1, 7, 1)))
-        assertEquals(MessagePointers.houseForm(pointer), document.formattedPointer(path, listOf(1, 7, 1)))
+        assertEquals(messagePointerHouseForm(pointer), document.formattedPointer(path, listOf(1, 7, 1)))
         assertEquals(entriesAfterPointer, document.cacheEntries(), "the projection adds no cache entry")
     }
 

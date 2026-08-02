@@ -1,6 +1,9 @@
 package io.github.mbackschat.a12.dm.interpreter
 
 import io.github.mbackschat.a12.dm.interpreter.workspace.WorkspacePreparationFixtureJson
+import io.github.mbackschat.a12.dm.interpreter.model.Message as EngineMessage
+import io.github.mbackschat.a12.dm.interpreter.model.MsgType
+import io.github.mbackschat.a12.dm.interpreter.model.Severity
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
@@ -70,18 +73,24 @@ class MessagePointerChannelTest {
      * because the information is not in that string to recover.
      */
     @Test
-    fun aTerminalIndexTheHouseFormDropsSurvivesOnTheTypedValue() {
-        for (indexes in listOf(listOf(1, -5), listOf(1, 0), listOf(3))) {
-            val names = List(indexes.size) { "P$it" }
-            val pointer = A12PartiallyKnownMultiPointer.of(names.joinToString("/", prefix = "/"), indexes)
-            val house = MessagePointers.houseForm(pointer)
+    fun terminalIndexesSurviveTheActualEngineToPublicProjectionOnEveryChannel() {
+        val error = A12PartiallyKnownMultiPointer.of("/Error", listOf(3))
+        val referenced = A12PartiallyKnownMultiPointer.of("/Referenced", listOf(0))
+        val fillToFix = A12PartiallyKnownMultiPointer.of("/Fill", listOf(-5))
+        val projected = validationFinding(
+            EngineMessage(
+                code = "POINTER-CHANNEL",
+                rulePath = "/Rule",
+                errorPointer = error,
+                severity = Severity.ERROR,
+                type = MsgType.OMISSION,
+                referencedPointers = listOf(referenced),
+                fillToFixPointers = listOf(fillToFix),
+            ),
+        )
 
-            assertEquals(indexes, pointer.repetitionIndexes, "the typed value keeps every index")
-            assertTrue(
-                !house.contains("[${indexes.last()}]"),
-                "this test is only meaningful while the house form really drops the terminal index; " +
-                    "'$house' still shows it",
-            )
-        }
+        assertEquals(error, projected.errorPath)
+        assertEquals(listOf(referenced), projected.referenced)
+        assertEquals(listOf(fillToFix), projected.fillToFix)
     }
 }

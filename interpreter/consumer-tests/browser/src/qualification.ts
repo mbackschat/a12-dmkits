@@ -132,7 +132,7 @@ const validationSignature = (
  * value rather than text. Routing it through `A12PointerFormat` instead would be wrong twice over: that codec
  * publishes A12's *canonical* form, which omits `[1]` and so cannot spell this key at all, and it refuses the
  * wildcard and unknown indexes a message address may legitimately carry. Only the join is local, and it is local
- * because no published API renders the house form on any target (INTERPRETER-API-GAPS IAG11).
+ * because the house form is a tool-owned corpus key, not a published A12 format.
  */
 const housePointerKey = (
   pointer: A12PartiallyKnownMultiPointer,

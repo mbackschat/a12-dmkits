@@ -70,6 +70,21 @@ class InterpreterAbiGoldenDepthTest {
     }
 
     @Test
+    fun theInternalMessageComparisonProjectionIsNotPublished() {
+        val jvmLines = Files.readAllLines(jvmGolden)
+        val klibLines = Files.readAllLines(klibGolden)
+        assertTrue(
+            jvmLines.any { "A12PointerFormat" in it } && klibLines.any { "A12PointerFormat" in it },
+            "positive control: the scan must see a deliberately published pointer formatter in both goldens",
+        )
+        val leaks = (jvmLines + klibLines).filter { "MessagePointers" in it || "messagePointerHouseForm" in it }
+        assertTrue(
+            leaks.isEmpty(),
+            "the tool-owned message comparison projection is not a consumer format:\n" + leaks.joinToString("\n"),
+        )
+    }
+
+    @Test
     fun theBlockScannersRecogniseAMemberlessDeclaration() {
         val jvmShallow = jvmTypeBlocks(
             listOf(

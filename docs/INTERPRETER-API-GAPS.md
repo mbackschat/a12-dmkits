@@ -4,31 +4,11 @@
 >
 > **Lifecycle.** A shipped gap is deleted. Its stable contract graduates into [INTERPRETER-API-SPEC](INTERPRETER-API-SPEC.md) in the same commit, while git and an appropriate numbered finding retain the history and rationale.
 
-> **Current state.** The public v1 surface, browser qualification, anonymous publication, and computation diagnostics are complete as IF224–IF226 and IF241. §1 carries one row on the pointer seam: whether the interpreter's house rendering earns a published renderer (IAG11). Which A12 type each addressing concept corresponds to was decided on 2026-08-01, and the message channel now carries it — the contract is in [INTERPRETER-API-SPEC](INTERPRETER-API-SPEC.md) "The two pointer types". §2 tracks later API products.
+> **Current state.** The public v1 surface, browser qualification, anonymous publication, computation diagnostics, and the two owner-shaped pointer types are complete as IF224–IF226 and IF241–IF242. The house spelling remains an internal tool/corpus projection rather than a second published A12 format. §1 is drained; §2 tracks later API products.
 
 ## 1. Open
 
-### IAG11 — the house pointer form has no published renderer <a id="iag11"></a>
-
-The reports emit the interpreter's house pointer form in `ValidationFinding.errorPath`, `referenced`, and `fillToFix` (`/Order[1]/Items[2]/Count`), and the conformance corpus and the `:adapter` differential use that same string as their shared comparison key. Nothing renders it: `eval.formatPointer` is in an engine package the ABI filter excludes, so no target — JVM, Kotlin/JS, or npm — publishes a way to *produce* it from a `path` plus `coordinates`. `A12PointerFormat` renders A12's canonical form, which omits `[1]`, and therefore cannot.
-
-**What it blocks, concretely:** `consumer-tests/browser/src/qualification.ts` replays the committed corpus through the *published* surface only, so it must build the corpus key itself. Exporting `A12PointerFormat` to npm removed the parsing and the legality checks from that local helper — `corpusPointerKey` now derives both from the published utility — but the final join is still local, because no published call renders it. This was originally read as "the clone reproduces the published utility"; it does not. The clone reproduces the house form, which is a *different* rendering that happens to be unpublished.
-
-**Why it is not simply "publish it":** the two renderings' convergence is an open owner decision ([CG5](CLI-CONFORMANCE-GAPS.md#cg5)). Adding a second published renderer commits the released package to the house form as a first-class exported concept, and if the forms converge it becomes dead API on a shipped surface. The cheap alternative — canonicalizing both sides of the corpus comparison — was rejected because it would make the browser harness's key differ from the JVM/Node harnesses' and print pointers that no longer match the corpus files a reader is diffing against.
-
-**What would settle it:** the convergence decision. If the forms converge, this gap closes with them. If they stay separate, the house form earns a published renderer beside `A12PointerFormat` on all three surfaces, and the browser helper is deleted. Opened 2026-08-01 while exporting `A12PointerFormat` to npm, as **IAG10**; renumbered to IAG11 the same day after a review found that id already taken — see "Retired ids" below.
-
-## Retired ids
-
-Every `IAG<n>` ever issued that has no live row above, so a citation of one resolves here and **no number is ever reused**. Reuse is what made this section necessary — `IAG9` named two unrelated gaps at different times, and six live citations across the repo could not be told apart.
-
-> **Not yet enforced, and this section is in the wrong place.** An earlier revision claimed `GapLedgerTemplateGuardTest` checks that a live id never appears below and that a new number exceeds every issued one. It checks neither — its five tests cover template shape, open-section population, and the *presence* of an identifier, so a second live `IAG9` would pass all of them. Writing an enforcement claim for a guard that did not exist is the same defect this project keeps finding, committed one commit after proposing a measure against it. Separately, a shipped-history list inside a live ledger contradicts the `-GAPS` lifecycle ("No shipped list, ever" — [docs/CLAUDE.md](CLAUDE.md)). Both are tracked together: the registry moves to its own surface and acquires the guard that makes the claim true.
-
-| id | what it meant | disposition |
-|---|---|---|
-| IAG9 | the native public computation report should retain the Kernel's two explanatory error channels while keeping validation's public finding projection | shipped 2026-07-31 → [IF241](INTERPRETER-FINDINGS.md#if241); locked by `adapter … laws/PublicComputationDiagnosticsDiffTest` |
-| IAG9 *(reused — the defect this section exists to prevent)* | `A12PointerFormat` was published on Kotlin/JVM and Kotlin/JS but not exported from the npm package | shipped 2026-08-01; the export, its bridge, and `typescript.api` landed together. Cited as "IAG9" in `INTERPRETER-API-SPEC` and `CLI-CONFORMANCE-GAPS` until both were corrected to name the work instead of the number |
-| IAG10 | which A12 type each addressing concept corresponds to — the exact `DocumentPointer` or the partially-known `PartiallyKnownDocumentMultiPointer` — and the hybrid the one exported type had become | **decided 2026-08-01, shipped in two parts.** The owner decision: both, as two nominally distinct types on every target. The types landed 2026-08-01 (`A12Pointer` exact, carrying A12's `List<PathPart>`; `A12PartiallyKnownMultiPointer` carrying `fullName` + `repetitionIndexes`) and were **corrected 2026-08-02** after an eight-row counterexample audit — per-entry-point domains, the invented partially-known string form deleted, JVM construction closed, TypeScript brands, root-conversion parity. The message channel was wired to the type in that same correction, so `ValidationFinding.errorPath`, `referenced` and `fillToFix` carry `A12PartiallyKnownMultiPointer` on every published target; an intermediate revision of this row claimed the wiring was done before it was, and a later one opened a gap for it that never shipped. Contract in [INTERPRETER-API-SPEC](INTERPRETER-API-SPEC.md) "The two pointer types" → [IF242](INTERPRETER-FINDINGS.md#if242); every entry point measured against its own kernel factory by `adapter … laws/A12PointerKernelDomainDiffTest`, recorded as [kf171](KERNEL-FINDINGS.md#kf171) |
+_None open._
 
 ## 2. Deferred — with re-open triggers
 

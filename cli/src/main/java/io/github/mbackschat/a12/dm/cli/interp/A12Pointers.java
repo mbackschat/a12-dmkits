@@ -3,8 +3,9 @@ package io.github.mbackschat.a12.dm.cli.interp;
 import java.util.List;
 
 import io.github.mbackschat.a12.dm.interpreter.A12PartiallyKnownMultiPointer;
+import io.github.mbackschat.a12.dm.interpreter.A12Pointer;
 import io.github.mbackschat.a12.dm.interpreter.A12PointerFormat;
-import io.github.mbackschat.a12.dm.interpreter.MessagePointers;
+import io.github.mbackschat.a12.dm.interpreter.eval.PointerKt;
 
 /**
  * The one seam where a runtime pointer becomes <b>published</b> output, and therefore the one place it takes A12's
@@ -40,19 +41,32 @@ public final class A12Pointers {
      * The published rendering of a <b>message-channel</b> address.
      *
      * <p>Canonical A12 when the address names exactly one cell, and the interpreter's house form when it does not.
-     * Both branches are decided by {@link MessagePointers}, from the pointer value itself.
+     * Both branches are decided from the pointer value itself.
      */
     public static String canonical(A12PartiallyKnownMultiPointer pointer) {
         if (pointer == null) {
             return null;
         }
-        String exact = MessagePointers.INSTANCE.canonicalExactForm(pointer);
-        return exact != null ? exact : MessagePointers.INSTANCE.houseForm(pointer);
+        String exact = canonicalExactForm(pointer);
+        return exact != null ? exact : houseForm(pointer);
     }
 
     /** {@link #canonical(A12PartiallyKnownMultiPointer)} over a list — the {@code referenced} / {@code fillToFix} channels. */
     public static List<String> canonical(List<A12PartiallyKnownMultiPointer> pointers) {
         return pointers.stream().map(A12Pointers::canonical).toList();
+    }
+
+    private static String canonicalExactForm(A12PartiallyKnownMultiPointer pointer) {
+        if (pointer.getRepetitionIndexes().isEmpty()) {
+            return null;
+        }
+        A12Pointer exact = pointer.toExactPointer();
+        return exact == null ? null : A12PointerFormat.INSTANCE.render(exact);
+    }
+
+    /** dmtool's explicitly tool-owned fallback for an A12 message address that has no owner-defined string. */
+    private static String houseForm(A12PartiallyKnownMultiPointer pointer) {
+        return PointerKt.formatPointer(pointer.getFullName(), pointer.getRepetitionIndexes());
     }
 
     /**

@@ -3,7 +3,7 @@ package io.github.mbackschat.a12.dm.interpreter.eval
 import io.github.mbackschat.a12.dm.interpreter.A12PartiallyKnownMultiPointer
 import io.github.mbackschat.a12.dm.interpreter.CacheObserver
 import io.github.mbackschat.a12.dm.interpreter.CacheOwnerKind
-import io.github.mbackschat.a12.dm.interpreter.MessagePointers
+import io.github.mbackschat.a12.dm.interpreter.messagePointerHouseForm
 import io.github.mbackschat.a12.dm.interpreter.UnsupportedConstructException
 import io.github.mbackschat.a12.dm.interpreter.decOrNull
 import io.github.mbackschat.a12.dm.interpreter.ast.Val
@@ -363,7 +363,7 @@ class Document(internal val config: DocumentConfig) {
      * a diagnostic's rendered text. Derived, so it cannot disagree with the retained pointer.
      */
     internal fun formattedPointer(path: String, reps: List<Int>): String =
-        MessagePointers.houseForm(messagePointer(path, reps))
+        messagePointerHouseForm(messagePointer(path, reps))
 
     /**
      * A copy of this document with computed values applied — the interpreter's twin of the kernel's

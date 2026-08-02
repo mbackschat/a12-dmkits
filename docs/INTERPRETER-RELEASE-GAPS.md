@@ -10,16 +10,6 @@
 
 _None open._
 
-## Retired ids
-
-Every `IRG<n>` ever issued that has no live row, so a citation of one resolves here and **no number is ever reused**. **Not yet enforced**, and this section belongs on its own registry surface rather than inside a live ledger — see the note under [INTERPRETER-API-GAPS](INTERPRETER-API-GAPS.md) "Retired ids" for both corrections. `IRG2` is why the section exists — it named two unrelated gaps at different times, and a citation in an archived plan could not be told apart from a citation in this file.
-
-| id | what it meant | disposition |
-|---|---|---|
-| IRG2 | the showcase semantics badge was built and gated but deliberately not deployed under v0.9.1 | shipped with release 0.9.2; cited from [`archived/A12-SHAPE-CONSOLIDATION.md`](archived/A12-SHAPE-CONSOLIDATION.md) step 6, which is where that plan recorded the closure |
-| IRG2 *(reused — the defect this section exists to prevent)* | both built-in showcase models computed only into repeatability-1 targets, so the page never demonstrated per-row computed identity | shipped 2026-08-01; the permit model now charges each site-section row its own survey fee and the page renders the joined canonical pointer beside the raw `pointer`. Contract in [INTERPRETER-RELEASE-SPEC](INTERPRETER-RELEASE-SPEC.md) |
-| IRG3 | `interpreter.klib.api` was a type-name inventory, so a member-level break on the Kotlin/JS surface passed `checkLegacyAbi` silently while the JVM and TypeScript goldens caught it | shipped 2026-08-01; both Kotlin goldens are member-level and `InterpreterAbiGoldenDepthTest` fails the build if either goes shallow or the ABI filter is widened into an engine package to fake depth |
-
 ## 2. Deferred — with re-open triggers
 
 ### IRG1 — publish the separate Kernel drop-in artifact <a id="irg1"></a>

@@ -1,7 +1,7 @@
 package io.github.mbackschat.a12.dm.adapter.laws
 
-import io.github.mbackschat.a12.dm.interpreter.MessagePointers
 import io.github.mbackschat.a12.dm.interpreter.PreparedModel
+import io.github.mbackschat.a12.dm.interpreter.eval.formatPointer
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 
@@ -49,12 +49,12 @@ class PublicComputationDiagnosticsDiffTest {
             )
             assertEquals(
                 signatures(dynamic.formalErrorsInOperands()),
-                report.formalErrorsInOperands.map { "${it.code}@${MessagePointers.houseForm(it.errorPath)}" }.sorted(),
+                report.formalErrorsInOperands.map { "${it.code}@${houseForm(it.errorPath)}" }.sorted(),
                 "${case.label}: public formal operand diagnostics",
             )
             assertEquals(
                 signatures(dynamic.computedErrors()),
-                report.results.mapNotNull { it.diagnostic }.map { "${it.code}@${MessagePointers.houseForm(it.errorPath)}" }.sorted(),
+                report.results.mapNotNull { it.diagnostic }.map { "${it.code}@${houseForm(it.errorPath)}" }.sorted(),
                 "${case.label}: public computed-target diagnostics",
             )
             assertEquals(
@@ -64,6 +64,9 @@ class PublicComputationDiagnosticsDiffTest {
             )
         }
     }
+
+    private fun houseForm(pointer: io.github.mbackschat.a12.dm.interpreter.A12PartiallyKnownMultiPointer): String =
+        formatPointer(pointer.fullName, pointer.repetitionIndexes)
 
     private fun cases(): List<Case> = listOf(
         Case(
