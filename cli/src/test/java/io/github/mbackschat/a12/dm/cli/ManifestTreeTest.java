@@ -42,10 +42,10 @@ class ManifestTreeTest {
     }
 
     @Test
-    void pointsAtTheUniversalResultSchema() throws Exception {
+    void pointsAtTheStandardResultSchema() throws Exception {
         JsonNode j = M.readTree(CliTestSupport.run("manifest").out());
         assertEquals("result", j.path("resultSchema").asText(),
-                "manifest must name the universal output schema so an agent fetches it via `schema result`");
+                "manifest must name the standard envelope schema so an agent fetches it via `schema result`");
     }
 
     @Test

@@ -303,7 +303,7 @@ A family's parent and subcommands live together so the subcommands stay package-
 
 ### 5b. picocli — declarative parsing, and the manifest derives from the tree
 
-One `@Command`/`@Option(description=…)` declaration per verb drives **parsing, `--help`, *and* the machine-readable `manifest`** — so help and the manifest cannot drift from behavior (they recompute from the same command tree). `BaseCommand` is the shared superclass: it resolves the `-m` model (the `WorkspaceOption` mixin), owns the `fail(...)`/`refuse(...)` paths, and every verb returns one **`ResultEnvelope`** (`{ok, valid, outcome, data, diagnostics, written, …}`, §3b of the spec) with exit codes keyed off `ok`/`valid`. A single `setExecutionExceptionHandler` seam in `Cli` maps an escaped `ModelConsistencyException` (an invalid-on-disk load) to a structured `rejected` envelope, so no verb leaks a stack trace.
+One `@Command`/`@Option(description=…)` declaration per verb drives **parsing, `--help`, *and* the machine-readable `manifest`** — so help and the manifest cannot drift from behavior (they recompute from the same command tree). `BaseCommand` is the shared superclass: it resolves the `-m` model (the `WorkspaceOption` mixin) and owns the `fail(...)`/`refuse(...)` paths. Invocations whose effective output kind is `RESULT_ENVELOPE` return one **`ResultEnvelope`** (`{ok, valid, outcome, data, diagnostics, written, …}`, §3b of the spec) with exit codes keyed off `ok`/`valid`; a matching raw view or an artifact/catalog profile emits its declared raw JSON/text or empty-stdout form instead. A single `setExecutionExceptionHandler` seam in `Cli` maps an escaped `ModelConsistencyException` (an invalid-on-disk load) to a structured `rejected` envelope, so no verb leaks a stack trace.
 
 ```
   argv ─▶ picocli parse (RootCommand → family → op) ─▶ <Op>Command.call()
@@ -311,7 +311,7 @@ One `@Command`/`@Option(description=…)` declaration per verb drives **parsing,
                                                           │ load via dm.core / edit / adapter
                                                           │ mutate / read / validate (the kernel gate)
                                                           ▼
-                                                   ResultEnvelope ──▶ JSON (or --text) on stdout, exit code
+                                                   ResultEnvelope or declared raw artifact ──▶ stdout, exit code
 ```
 
 ### 5c. The self-describing surface + conformance guards

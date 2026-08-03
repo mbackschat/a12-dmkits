@@ -53,7 +53,7 @@ final class ManifestCommand extends BaseCommand {
         // the machine-readable version surface (CLI-SPEC §1b) — what this build is + what it was built/
         // verified against; the human peer is `--version`. A cold agent reads it from `manifest.version`.
         root.set("version", VersionInfo.current().toJson(MAPPER));
-        // The universal result-envelope schema remains available even though explicitly described artifact
+        // The standard result-envelope schema remains available even though explicitly described artifact
         // operations can return an artifact on stdout and a result receipt only when -o is selected.
         root.put("resultSchema", "result");
         // the -m/--model context option is inherited by every verb — list it once, globally

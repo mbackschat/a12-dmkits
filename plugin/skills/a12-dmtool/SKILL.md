@@ -26,7 +26,7 @@ The CLI is **self-describing** — explore it:
 
 - `dmtool --help` — the verb list; every command is `dmtool -m <model.json> <target> <op>` (the model is set once with `-m`, before or after the verb); `dmtool <target> <op> --help` — that op's parameters and what they mean; `dmtool manifest` — the same, machine-readable (each verb's `target`/`op` + params).
 - `dmtool operators` — the DSL operator catalog (each operator's meaning, operands, examples, and **gotchas** — read the gotchas, they often name the exact fix for a rejection); `dmtool operators <id>` — one in full. The list's header serves the per-kind **`emptyOperandDefaults`** (how an empty field behaves in a comparison), and an entry's **`semantics`** block states its kernel-verified facets — empty-operand behavior, strict-vs-inclusive boundaries, what an all-empty aggregate folds to. Check there instead of assuming.
-- `dmtool schema <target> <op>` — the JSON an op consumes/returns (and `dmtool schema result` — the universal output envelope every verb emits).
+- `dmtool schema <target> <op>` — the JSON an op consumes/returns. `dmtool schema result` describes the standard envelope used only when the effective output kind is `RESULT_ENVELOPE`. In the matching manifest profile, matching `operationalProfiles[].returns.views[]` overrides `operationalProfiles[].returns.kind`; without a matching view, use that primary kind. For example, `--text=true` selects a `RAW_TEXT` view. `RAW_JSON`, `RAW_TEXT`, and `EMPTY_STDOUT` bypass the envelope.
 
 The four you lean on:
 - **`dmtool -m <model.json> model describe`** — orient: fields, kinds, enum values, groups, repeatability.

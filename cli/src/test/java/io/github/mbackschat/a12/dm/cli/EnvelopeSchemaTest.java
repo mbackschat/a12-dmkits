@@ -13,10 +13,10 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
 /**
- * The uniform result envelope (every verb's output) and the {@link io.github.mbackschat.a12.dm.rulekit.validate.Diagnostic}
- * shape must each be published as a discoverable schema (CLI-SPEC §3b/§4) — an agent learns the contract via
- * {@code schema result} / {@code schema diagnostic} instead of inferring it. The {@code result} schema is also
- * drift-locked against a real verb's envelope so a new envelope field can't slip past the published contract.
+ * The standard result envelope and the {@link io.github.mbackschat.a12.dm.rulekit.validate.Diagnostic} shape must
+ * each be published as a discoverable schema (CLI-SPEC §3b/§4) — an agent learns the contract via {@code schema
+ * result} / {@code schema diagnostic} instead of inferring it. The {@code result} schema is also drift-locked
+ * against a real effective envelope output so a new envelope field can't slip past the published contract.
  */
 class EnvelopeSchemaTest {
 

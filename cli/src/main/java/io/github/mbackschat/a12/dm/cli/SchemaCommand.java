@@ -22,7 +22,7 @@ import picocli.CommandLine.Parameters;
  * as the verbs:
  * <ul>
  *   <li>{@code schema result} / {@code schema diagnostic} — the cross-cutting <b>structures</b> (raw JSON
- *       Schema): the universal output envelope and a single finding.</li>
+ *       Schema): the standard result envelope and a single finding.</li>
  *   <li>{@code schema <target> <op>} — that op's <b>directional contract</b> {@code {input?, returns, data?}}:
  *       what it <em>consumes</em> (a rich JSON input like the rule-spec) and whether it <em>returns</em> the
  *       result envelope or an artifact. One call, unambiguous direction. Flag-only ops carry no {@code input}

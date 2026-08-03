@@ -131,6 +131,50 @@ class DmtoolPublicContractTest {
     }
 
     @Test
+    void publicEnvelopeDescriptionsDeferToTheOperationalOutputProfile(@TempDir Path dir) throws Exception {
+        PackagedDmtool dmtool = new PackagedDmtool(dir);
+        JsonNode manifest = MAPPER.readTree(dmtool.run("manifest").out());
+        JsonNode seedProfiles = manifestVerb(manifest, "model seed").path("operationalProfiles");
+        assertEquals(1, seedProfiles.size(), "model seed has one unconditional output contract");
+        assertTrue(selectorIsUnconditional(seedProfiles.get(0).path("when")), seedProfiles::toPrettyString);
+        assertEquals("RAW_JSON", seedProfiles.get(0).path("returns").path("kind").asText(),
+                "model seed is the positive control: its primary output is an artifact, not an envelope");
+        Path model = resource(dir.resolve("outputs"), "order-ruled.dm.json");
+        PackagedDmtool.Result seed = dmtool.run("-m", model.toString(), "model", "seed", "--seed", "42");
+        assertEquals(0, seed.code(), seed::err);
+        JsonNode document = MAPPER.readTree(seed.out());
+        assertTrue(document.has("Order"), seed::out);
+        assertFalse(document.has("outcome"), "model seed must emit the Document artifact, not an envelope");
+
+        JsonNode readProfiles = manifestVerb(manifest, "field read").path("operationalProfiles");
+        assertEquals(1, readProfiles.size(), "field read has one primary output contract");
+        JsonNode readReturns = readProfiles.get(0).path("returns");
+        assertEquals("RESULT_ENVELOPE", readReturns.path("kind").asText());
+        JsonNode readViews = readReturns.path("views");
+        assertEquals(1, readViews.size(), "field read has one output view override");
+        JsonNode textView = readViews.get(0);
+        JsonNode textValues = textView.path("when").path("values").path("--text");
+        assertEquals(1, textValues.size(), "the raw-text view has one accepted --text value");
+        assertEquals("true", textValues.get(0).asText());
+        assertEquals("RAW_TEXT", textView.path("kind").asText());
+        PackagedDmtool.Result textRead = dmtool.run("-m", model.toString(), "field", "read",
+                "/Order/Quantity", "--text=true");
+        assertEquals(0, textRead.code(), textRead::err);
+        assertFalse(textRead.out().isBlank(), "the RAW_TEXT view must not discard stdout");
+        assertTrue(textRead.out().startsWith("read /Order/Quantity"), textRead::out);
+
+        String schemaDescription = MAPPER.readTree(dmtool.run("schema", "result").out())
+                .path("description").asText();
+        assertOutputSelectionIsExplained(schemaDescription);
+        assertFalse(schemaDescription.contains("every `dmtool` verb"), schemaDescription);
+
+        String skill = Files.readString(Path.of("../skill/SKILL.md"));
+        assertOutputSelectionIsExplained(skill);
+        assertFalse(skill.contains("universal output envelope every verb emits"),
+                "the skill must not contradict raw artifact/catalog routes");
+    }
+
+    @Test
     void packagedGlobalTextViewUsesTheParsedBooleanValue(@TempDir Path dir) throws Exception {
         PackagedDmtool dmtool = new PackagedDmtool(dir);
         Path model = resource(dir, "subscription.dm.json");
@@ -212,5 +256,23 @@ class DmtoolPublicContractTest {
             if (name.equals(verb.path("verb").asText())) return verb;
         }
         throw new AssertionError("manifest has no " + name);
+    }
+
+    private static void assertOutputSelectionIsExplained(String prose) {
+        assertTrue(prose.contains("matching `operationalProfiles[].returns.views[]` overrides "
+                        + "`operationalProfiles[].returns.kind`"),
+                () -> "public output contract must state view-before-primary precedence: " + prose);
+        for (String term : List.of("operationalProfiles[].returns.views[]", "operationalProfiles[].returns.kind",
+                "RESULT_ENVELOPE", "RAW_JSON", "RAW_TEXT", "EMPTY_STDOUT")) {
+            assertTrue(prose.contains(term), () -> "public output contract omits " + term + ": " + prose);
+        }
+    }
+
+    private static boolean selectorIsUnconditional(JsonNode when) {
+        return when.path("supplied").isEmpty()
+                && when.path("omitted").isEmpty()
+                && when.path("anySet").isEmpty()
+                && when.path("noneSet").isEmpty()
+                && when.path("values").isEmpty();
     }
 }

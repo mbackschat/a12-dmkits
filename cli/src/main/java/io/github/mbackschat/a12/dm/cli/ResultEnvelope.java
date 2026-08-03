@@ -15,8 +15,8 @@ import io.github.mbackschat.a12.dm.rulekit.validate.Diagnostic;
 import io.github.mbackschat.a12.dm.rulekit.validate.ValidationResult;
 
 /**
- * The uniform result envelope every {@code dmtool} verb (and every {@code apply} op) emits — CLI-SPEC §3b.
- * One op-record {@code {target, op, args}} in, one envelope out, so an agent learns a single output shape.
+ * The standard result shape emitted when an invocation's effective output kind is {@code RESULT_ENVELOPE}, and
+ * by every {@code apply} op — CLI-SPEC §3b. A selected raw view overrides a profile's primary return kind.
  *
  * <p>It embeds the existing {@link Diagnostic} array <b>verbatim</b> (via {@link ValidationResult}); the wrapper
  * adds the three orthogonal axes an agent must not conflate:
