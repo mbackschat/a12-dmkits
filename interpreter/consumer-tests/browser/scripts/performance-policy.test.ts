@@ -7,6 +7,36 @@ import {
   requiresExtendedBrowserSeries,
   summarizeBrowserSamples,
 } from "./performance-policy.js";
+import {browserPerformanceReportHeader} from "./performance-provenance.js";
+
+test("browser measurements distinguish a clean commit from dirty source", () => {
+  const commit = "a".repeat(40);
+
+  assert.deepEqual(
+    browserPerformanceReportHeader({
+      INTERPRETER_COMMIT: commit,
+      INTERPRETER_WORKTREE_DIRTY: "false",
+    }),
+    {
+      format: "a12-browser-first-answer-v4",
+      source: {commit, worktreeDirty: false},
+    },
+  );
+  assert.deepEqual(
+    browserPerformanceReportHeader({
+      INTERPRETER_COMMIT: commit,
+      INTERPRETER_WORKTREE_DIRTY: "true",
+    }),
+    {
+      format: "a12-browser-first-answer-v4",
+      source: {commit, worktreeDirty: true},
+    },
+  );
+  assert.throws(
+    () => browserPerformanceReportHeader({INTERPRETER_COMMIT: commit}),
+    /INTERPRETER_WORKTREE_DIRTY must be 'true' or 'false'/,
+  );
+});
 
 test("the browser first-answer median boundary passes with ten fresh samples", () => {
   const summary = enforceBrowserFirstAnswer(

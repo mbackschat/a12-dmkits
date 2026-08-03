@@ -1,5 +1,7 @@
 package io.github.mbackschat.a12.dm.interpreter
 
+import io.github.mbackschat.a12.dm.interpreter.ast.Val
+import io.github.mbackschat.a12.dm.interpreter.eval.AggregateMemoKey
 import io.github.mbackschat.a12.dm.interpreter.eval.Document
 import io.github.mbackschat.a12.dm.interpreter.eval.EvalConfig
 import io.github.mbackschat.a12.dm.interpreter.eval.EvalContext
@@ -41,6 +43,7 @@ internal class ValidationPass(
     private val formallyIncorrect: () -> Set<CustomConditionFieldPointer> = { emptySet() },
 ) {
     val partial: Boolean = config.cellRelevant != null
+    private val aggregateMemo = HashMap<AggregateMemoKey, Val>()
 
     /**
      * The "unknown-operand" code of the field instance at [path] in [ctx], or null when the field is usable.
@@ -78,4 +81,5 @@ internal class ValidationPass(
             },
             rnuOutcome = rnuOutcome,
             customFormallyIncorrect = formallyIncorrect)
+            .sharingAggregateMemo(aggregateMemo)
 }

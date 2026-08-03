@@ -2864,6 +2864,10 @@ def interpreterCommit = providers.exec {
     workingDir rootProject.rootDir
     commandLine('git', 'rev-parse', 'HEAD')
 }.standardOutput.asText.map { it.trim() }
+def interpreterWorktreeDirty = providers.exec {
+    workingDir rootProject.rootDir
+    commandLine('git', 'status', '--porcelain', '--untracked-files=normal')
+}.standardOutput.asText.map { !it.trim().isEmpty() }
 def measureExternalInterpreterBrowserFirstAnswer = tasks.register(
     'measureExternalInterpreterBrowserFirstAnswer',
     Exec,
@@ -2875,6 +2879,7 @@ def measureExternalInterpreterBrowserFirstAnswer = tasks.register(
     commandLine('pnpm', 'run', 'measure:first-answer')
     environment 'CI', 'true'
     environment 'INTERPRETER_COMMIT', interpreterCommit.get()
+    environment 'INTERPRETER_WORKTREE_DIRTY', interpreterWorktreeDirty.get().toString()
     environment 'BROWSER_PERFORMANCE_REPORT', browserPerformanceReport.get().asFile.absolutePath
     outputs.file(browserPerformanceReport)
     outputs.upToDateWhen { false }

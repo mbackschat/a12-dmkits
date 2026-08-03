@@ -225,7 +225,7 @@ tasks.named('test') {
      'atom.kernel', 'atom.interp', 'atom.model', 'atom.seed', 'atom.dump', 'atom.valuediff',
      'vf.model', 'vf.seed', 'vf.side', 'vf.sig', 'vf.kernelmm', 'vf.dump',
      'replay.model', 'replay.op', 'corpus.hostile',
-     'perf.profile', 'perf.n', 'perf.edge', 'perf.edge.n', 'perf.edge.counts', 'perf.scaling', 'perf.scaling.n',
+     'perf.profile', 'perf.n', 'perf.rules', 'perf.edge', 'perf.edge.n', 'perf.edge.counts', 'perf.scaling', 'perf.scaling.n',
      'perf.synthesized', 'perf.synth.model', 'perf.synth.leaf', 'perf.synth.seed', 'perf.synth.op',
      'perf.synth.pairs', 'perf.synth.warmup', 'perf.synth.iters', 'perf.synth.complexity',
      'perf.scenario',

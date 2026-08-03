@@ -4,13 +4,12 @@ import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.condition.EnabledIfSystemProperty
 
 /**
- * **Where the kernel has the EDGE** (INTERPRETER-PERFORMANCE.md "where the kernel wins"). The kernel team's
- * pride is well-founded: its architecture is **compile-once codegen + per-run caches** (`IndexFieldCache`,
- * `ValidationCache`, `CalculationCache`, `GroupFillCache`, `RepetitionNotUniqueErrorCache`), so its advantage
- * shows in the **many-rules** and **batch (repeated-eval)** regimes — exactly where the interpreter's per-call
- * tree-WALK of the cached rule ASTs (parsing is one-and-done — `ParsedModel`; the #31 re-parse cost is retired)
- * meets the kernel's already-compiled rules. This opt-in test HUNTS the crossover (interp/java
- * → 1 and beyond) rather than gating it; it is the proof-of-kernel-edge measurement for the analysis log.
+ * **Kernel-edge search** (INTERPRETER-PERFORMANCE.md "where the kernel wins"). The kernel's architecture has
+ * strong compile-once code generation and specialized per-run caches (`IndexFieldCache`, `ValidationCache`,
+ * `CalculationCache`, `GroupFillCache`, `RepetitionNotUniqueErrorCache`). This opt-in suite searches the shapes
+ * where those mechanisms might outrun the interpreter, including many rules, repeated evaluation, deep/wide
+ * models, and large documents. A search is allowed to find no crossover; the observed ratios, not this KDoc,
+ * decide whether either strategy leads.
  *
  * ```
  * ./build.sh :adapter:test --tests "*KernelEdgeTest" -Dperf.edge=true [-Dperf.edge.n=1000]
@@ -29,10 +28,9 @@ class KernelEdgeTest {
         get() = System.getProperty("perf.edge.counts", "6,12,24,48,96,192").split(",").map { it.trim().toInt() }
 
     /**
-     * Rule-count sweep at fixed document size: as the rule count grows, the interpreter tree-WALKS all rule ASTs
-     * on every `validateFull` call (parsed once + cached — `ParsedModel`) while the kernel runs already-generated
-     * code — so interp/kernel-Java climbs
-     * toward (and past) 1.0. The crossover is the kernel's compile-once edge, made visible.
+     * Rule-count sweep at fixed document size: the interpreter tree-walks cached rule ASTs while the kernel runs
+     * already-generated code. The sweep measures whether and where that compile-once advantage produces a
+     * crossover; it does not assume one.
      */
     @Test
     fun ruleCountCrossover() {
@@ -62,8 +60,8 @@ class KernelEdgeTest {
     /**
      * **LATENT O(N²) hunt** — the constructs the easy benchmarks overshadowed (the `Having` cliff's siblings).
      * Times the interpreter at N and 4N; **linear ≈ ×4, quadratic ≈ ×16**. Suspects: a per-row rule referencing a
-     * row-INVARIANT global aggregate (`Sum` recomputed per row), and `NumberOfDifferentValues` (linear distinct
-     * scan = O(values²)). A ×16-ish growth means a hidden quadratic to fix.
+     * row-INVARIANT global aggregate (one scoped fold shared across rows), and `NumberOfDifferentValues` (sorted
+     * adjacent-distinct). A ×16-ish growth means one of those repaired mechanisms regressed.
      */
     @Test
     fun latentQuadraticHunt() {
@@ -80,6 +78,16 @@ class KernelEdgeTest {
                 PerfHarness.measurementLabel(sc, 8000),
                 name, small.medianMs, large.medianMs, large.medianMs / small.medianMs,
             ))
+        }
+    }
+
+    /** Fair tri-engine comparison for the row-invariant aggregate whose interpreter fold used to run per row. */
+    @Test
+    fun rowInvariantAggregateKernelComparison() {
+        val scenario = PerfCatalog.perRowGlobalAggregate()
+        println("[edge] ROW-INVARIANT aggregate — repaired interpreter vs both kernel strategies:")
+        for (rows in listOf(500, 2_000)) {
+            println("  N=%4d  %s".format(rows, PerfHarness.format(PerfHarness.runScenario(scenario, rows))))
         }
     }
 

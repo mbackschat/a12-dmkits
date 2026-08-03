@@ -107,6 +107,16 @@ class Interpreter(
     private val computeScanState = config.computeScanState
     internal val computeMode = config.computeMode
 
+    /** Validation-call-local aggregate results, installed only by [ValidationPass]. A direct low-level
+     * [Interpreter] and every compute interpreter deliberately keep this null, so reusing an [EvalConfig] across
+     * documents cannot carry values between calls and a mutable computation overlay is never cached. */
+    internal var aggregateMemo: MutableMap<AggregateMemoKey, Val>? = null
+        private set
+
+    internal fun sharingAggregateMemo(memo: MutableMap<AggregateMemoKey, Val>): Interpreter = apply {
+        aggregateMemo = memo
+    }
+
     /** Formal-aware group state for validation; low-level/compute consumers retain structural Boolean presence. */
     internal fun groupPresence(c: EvalContext, path: String): GroupPresenceState =
         config.groupPresence?.invoke(c, path) ?: GroupPresenceState(c.groupFilled(path), erroneous = false)
@@ -165,13 +175,14 @@ class Interpreter(
     /** A sub-interpreter for a `Having` candidate [rc], carrying the SAME config and capturing the
      *  enclosing iteration's complete [ctx] environment for path-specific `$` resolution. */
     internal fun havingInterp(rc: EvalContext): Interpreter =
-        Interpreter(rc, config, customErrorField, invalid, outer = ctx)
+        Interpreter(rc, config, customErrorField, invalid, outer = ctx).also { it.aggregateMemo = aggregateMemo }
 
     /** A sub-interpreter for the overlap predicates' `Having` filter row [rc] — like [havingInterp] but with NO
      *  outer binding ([outerUnbound]): a plain boolean predicate's rep-list arg has no enclosing iteration, so
      *  the codegen makes a `$`-bearing comparison/predicate trivially TRUE (KERNEL-FINDINGS §6). */
     private fun overlapFilterInterp(rc: EvalContext): Interpreter =
         Interpreter(rc, config, customErrorField, invalid, outer = null, outerUnbound = true)
+            .also { it.aggregateMemo = aggregateMemo }
 
     fun fires(cond: Cond): Boolean = eval(cond) == Tri.TRUE
 

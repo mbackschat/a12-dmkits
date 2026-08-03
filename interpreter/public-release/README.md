@@ -1,6 +1,6 @@
 # A12 Interpreter releases
 
-This repository is the public distribution of the independent, kernel-free A12 Document Model interpreter. Development happens in a separate source repository; this mirror contains immutable release assets, the cumulative Maven repository, versioned API references, and the browser showcase.
+This repository is the public distribution of the independent, kernel-free A12 Document Model interpreter. Development happens in the main [`a12-dmkits` project](https://github.com/mbackschat/a12-dmkits); this mirror contains immutable release assets, the cumulative Maven repository, versioned API references, and the browser showcase.
 
 > **Independent project.** This is not an official A12 or mgm artifact.
 
@@ -12,10 +12,12 @@ Use the built-in models and Documents or load your own local workspace. Your sel
 
 ## Documentation
 
-- [Read the developer guide](https://github.com/mbackschat/a12-interpreter-releases/blob/@RELEASE_TAG@/site/api/v@VERSION@/INTERPRETER-API-GUIDE.md) — rendered Markdown for the released version
-- [Browse the TypeScript API](https://mbackschat.github.io/a12-interpreter-releases/api/latest/typescript/)
-- [Browse the Kotlin API](https://mbackschat.github.io/a12-interpreter-releases/api/latest/kotlin/)
-- [Open the public release site](https://mbackschat.github.io/a12-interpreter-releases/) — current version, installation coordinates, showcase, API references, and privacy information
+- 🚀 **[Try the live browser showcase →](https://mbackschat.github.io/a12-interpreter-releases/showcase/)**
+- 📘 **[Read the developer API guide →](https://github.com/mbackschat/a12-interpreter-releases/blob/@RELEASE_TAG@/site/api/v@VERSION@/INTERPRETER-API-GUIDE.md)**
+- 🧭 **[Browse the TypeScript API →](https://mbackschat.github.io/a12-interpreter-releases/api/latest/typescript/)**
+- 🧭 **[Browse the Kotlin API →](https://mbackschat.github.io/a12-interpreter-releases/api/latest/kotlin/)**
+- 🏠 **[Open the public release site →](https://mbackschat.github.io/a12-interpreter-releases/)** — current version, installation coordinates, showcase, API references, and privacy information
+- 🛠️ **[Explore the main `a12-dmkits` project →](https://github.com/mbackschat/a12-dmkits)** — source, design, benchmark method, and complete test evidence
 
 ## What ships
 
@@ -29,15 +31,17 @@ Use the built-in models and Documents or load your own local workspace. Your sel
 
 The package performs no implicit filesystem, network, storage, or credential access. It contains no A12 Kernel bytecode or runtime dependency.
 
+**Semantics target.** This release reproduces the evaluation behavior of **A12 Kernel 30.8.1**, as shipped in the **A12 Tools 2025.06-ext5** distribution. The implementation is clean-room and is verified by differential testing against that kernel; the target version is stated so you can tell which kernel's semantics a given release was matched to.
+
 ## Performance
+
+**Fast, and measured — never assumed.**
 
 The interpreter runs the same clean-room Kotlin implementation on the JVM, Node.js, and in the browser. The qualified browser package replays 33 portable conformance cases, and the [live showcase](https://mbackschat.github.io/a12-interpreter-releases/showcase/) proves the packed package in system Chrome rather than inferring browser support from Node.js.
 
-The published @VERSION@ showcase's complete production bundle is about **232 kB gzip**. On the fixed Apple M1/Chrome runner, a representative 200-row Document validates in a **10.0 ms median**; the 10,000-row stress Document validates with 4,900 findings in a **187.7 ms median**. Both figures use 10 stable fresh Chrome processes and include interpreter construction through complete result materialization.
+The @VERSION@ showcase's measured production JavaScript entry is about **232 kB gzip**. On the fixed Apple M1/Chrome runner on 2026-08-03, a representative 200-row Document validated in a **10.9 ms median**; the 10,000-row stress Document validated with 4,900 findings in a **197.45 ms median**. Both figures use 10 independent fresh Chrome processes and include interpreter construction through complete result materialization.
 
-The JVM comparison uses the A12 Kernel's generated validator compiled as Java, with code generation outside the clock, as the fair algorithmic baseline. In the recorded run, the interpreter was approximately **2–3× faster** on rule-count sweeps, **5× faster** on the combined real-world case, **25–50× faster** on aggregates, and up to **165× faster** on the huge-document axis. These are dated measurements, not universal promises; the scenarios, semantic preflight, timing boundaries, and complete result tables are documented in [Interpreter performance](https://github.com/mbackschat/a12-dmkits/blob/main/docs/INTERPRETER-PERFORMANCE.md).
-
-**Semantics target.** This release reproduces the evaluation behavior of **A12 Kernel 30.8.1**, as shipped in the **A12 Tools 2025.06-ext5** distribution. The implementation is clean-room and is verified by differential testing against that kernel; the target version is stated so you can tell which kernel's semantics a given release was matched to.
+The JVM comparison uses the A12 Kernel's generated validator compiled as Java, with code generation outside the clock, as the fair algorithmic baseline. In the 2026-08-03 sweep, the interpreter was **2.1× to 12.5× faster** across the 15-case default inventory and **10× to 16.7× faster** on repeated-document evaluation. The closest hostile point—384 concentrated low-firing rules—still led by **1.32×**, and the huge-document edge reached about **155×**. Neither generated Java nor dynamic Groovy won an eligible comparison in the default, repeated, rule-count, or 13-case edge suites. These are bounded same-machine measurements after exact result preflight, not universal promises; the scenarios, timing boundaries, and complete tables are documented in [Interpreter performance](https://github.com/mbackschat/a12-dmkits/blob/main/docs/INTERPRETER-PERFORMANCE.md).
 
 ## TypeScript and JavaScript
 
@@ -108,7 +112,7 @@ Generated with [Tokei](https://github.com/XAMPPRocky/tokei) from the standalone 
 | Language | Files | Code | Comments | Blanks |
 |---|---:|---:|---:|---:|
 | Java | 0 | 0 | 0 | 0 |
-| Kotlin | 106 | 17385 | 6324 | 2180 |
+| Kotlin | 106 | 17423 | 6336 | 2185 |
 | TypeScript | 17 | 3190 | 269 | 277 |
 
 Maintainers regenerate this table with the local statistics updater; both release publishers compare it with fresh counts before any public mutation.

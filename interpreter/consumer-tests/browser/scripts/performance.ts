@@ -16,6 +16,7 @@ import {
   requiresExtendedBrowserSeries,
   summarizeBrowserSamples,
 } from "./performance-policy.js";
+import {browserPerformanceReportHeader} from "./performance-provenance.js";
 
 enum PerformanceScenarioId {
   REPRESENTATIVE = "representative",
@@ -175,8 +176,7 @@ const measuredScenarios = Object.fromEntries(scenarios.map((scenario) => {
   ];
 }));
 const report = {
-  format: "a12-browser-first-answer-v3",
-  commit: process.env.INTERPRETER_COMMIT ?? "unknown",
+  ...browserPerformanceReportHeader(process.env),
   runtime: {
     browser: chromeVersion,
     os: `${platform()} ${release()}`,

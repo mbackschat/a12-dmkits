@@ -20,11 +20,13 @@ The package does not author models, render forms, persist Documents, provide a v
 
 ## Browser footprint and performance
 
+**Fast, and measured — never assumed.**
+
 Browser execution is a first-class qualified target, not a Node.js inference. The packed npm tarball is installed into an external consumer, its portable behavior corpus is replayed in system Chrome, and the same package powers the [live browser showcase](https://mbackschat.github.io/a12-interpreter-releases/showcase/).
 
-The published 0.11.0 showcase's complete production bundle is about **232 kB gzip**. On the fixed Apple M1/Chrome runner, a representative 200-row Document validates in a **10.0 ms median**; the 10,000-row stress Document validates with 4,900 findings in a **187.7 ms median**. Both figures use 10 stable fresh Chrome processes and include interpreter construction through complete result materialization.
+The showcase's measured production JavaScript entry is about **232 kB gzip**. On the fixed Apple M1/Chrome runner on 2026-08-03, a representative 200-row Document validated in a **10.9 ms median**; the 10,000-row stress Document validated with 4,900 findings in a **197.45 ms median**. Both figures use 10 independent fresh Chrome processes and include interpreter construction through complete result materialization.
 
-The JVM comparison deliberately uses the A12 Kernel's generated validator compiled as Java, with code generation outside the clock, as the fair algorithmic baseline. In the recorded run, the interpreter was approximately **2–3× faster** on rule-count sweeps, **5× faster** on the combined real-world case, **25–50× faster** on aggregates, and up to **165× faster** on the huge-document axis. These are dated measurements rather than universal promises; the scenarios, semantic preflight, timing boundaries, and full result tables are documented in [Interpreter performance](https://github.com/mbackschat/a12-dmkits/blob/main/docs/INTERPRETER-PERFORMANCE.md).
+The JVM comparison deliberately uses the A12 Kernel's generated validator compiled as Java, with code generation outside the clock, as the fair algorithmic baseline. In the 2026-08-03 sweep, the interpreter was **2.1× to 12.5× faster** across the 15-case default inventory and **10× to 16.7× faster** on repeated-document evaluation. The closest hostile point—384 concentrated low-firing rules—still led by **1.32×**, and the huge-document edge reached about **155×**. Neither generated Java nor dynamic Groovy won an eligible comparison in the default, repeated, rule-count, or 13-case edge suites. These are bounded same-machine measurements after exact result preflight, not universal promises; the scenarios, timing boundaries, and complete tables are documented in [Interpreter performance](https://github.com/mbackschat/a12-dmkits/blob/main/docs/INTERPRETER-PERFORMANCE.md).
 
 ## Install
 
@@ -131,7 +133,7 @@ Generated with [Tokei](https://github.com/XAMPPRocky/tokei) from the standalone 
 | Language | Files | Code | Comments | Blanks |
 |---|---:|---:|---:|---:|
 | Java | 0 | 0 | 0 | 0 |
-| Kotlin | 106 | 17385 | 6324 | 2180 |
+| Kotlin | 106 | 17423 | 6336 | 2185 |
 | TypeScript | 11 | 1385 | 228 | 168 |
 
 Maintainers regenerate this table with the local statistics updater; both release publishers compare it with fresh counts before any public mutation.
@@ -139,7 +141,11 @@ Maintainers regenerate this table with the local statistics updater; both releas
 
 ## Documentation
 
-- [Developer API guide](https://github.com/mbackschat/a12-interpreter-releases/blob/v0.11.0/site/api/v0.11.0/INTERPRETER-API-GUIDE.md)
-- Version-matched Kotlin and TypeScript references plus `llms.txt` are packaged in `dm-interpreter-0.11.0-api-docs.zip` under `api/v0.11.0/`
-- Browser showcase: `https://mbackschat.github.io/a12-interpreter-releases/showcase/`
-- [MIT license](https://github.com/mbackschat/a12-interpreter-releases/blob/v0.11.0/LICENSE)
+- 🚀 **[Try the live browser showcase →](https://mbackschat.github.io/a12-interpreter-releases/showcase/)**
+- 📘 **[Read the developer API guide →](https://github.com/mbackschat/a12-interpreter-releases/blob/v0.11.0/site/api/v0.11.0/INTERPRETER-API-GUIDE.md)**
+- 🧭 **[Browse the TypeScript API →](https://mbackschat.github.io/a12-interpreter-releases/api/latest/typescript/)**
+- 🧭 **[Browse the Kotlin API →](https://mbackschat.github.io/a12-interpreter-releases/api/latest/kotlin/)**
+- 🛠️ **[Explore the main `a12-dmkits` project →](https://github.com/mbackschat/a12-dmkits)** — source, design, benchmark method, and complete test evidence
+- ⚖️ **[Read the MIT license →](https://github.com/mbackschat/a12-interpreter-releases/blob/v0.11.0/LICENSE)**
+
+Version-matched references plus `llms.txt` are also packaged in `dm-interpreter-0.11.0-api-docs.zip` under `api/v0.11.0/`.

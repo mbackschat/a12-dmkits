@@ -2,11 +2,18 @@
 
 **`dmtool`** is an agent-friendly, **self-describing** CLI for authoring, validating, and safely editing **A12 Kernel document models** — validation rules, computations, and structure — one native binary, **JSON in / JSON out**. Every edit is confirmed by the embedded **real A12 kernel** before it is written, and runtime evaluation (which rules fire on a real document) runs on a clean-room, kernel-exact **interpreter**. Point your coding agent at it: the tool describes itself (`manifest` / `operators` / `schema`), and the bundled skill teaches the judgment calls.
 
-This repository is the **public distribution** — release-only (binaries + the plugins are pushed here from a separate source repo); it is not where the tool is developed.
+This repository is the **public distribution** — release-only (binaries + the plugins are pushed here from the main [`a12-dmkits` project](https://github.com/mbackschat/a12-dmkits)); it is not where the tool is developed.
 
 > **Not an official A12 / mgm artifact.** `dmtool` is an independent tool built against the public A12 Kernel.
 
 This release targets **A12 Kernel 30.8.1** (A12 Tools distribution **2025.06-ext5**) — reported by `dmtool --version` and `dmtool manifest`, and recorded per entry in the [`CHANGELOG`](CHANGELOG.md).
+
+## Documentation
+
+- 🛠️ **[Explore the main `a12-dmkits` project →](https://github.com/mbackschat/a12-dmkits)** — source, design, API guides, and complete test evidence
+- 🧭 **[Follow the executable dmtool examples →](examples/README.md)** — discovery, editing, evaluation, workspaces, and JSON Schema/OpenAPI
+- 🚀 **[Try the interpreter’s live browser showcase →](https://mbackschat.github.io/a12-interpreter-releases/showcase/)** — the same kernel-free runtime evaluator used by dmtool
+- 📋 **[Read the release changelog →](CHANGELOG.md)**
 
 <!-- shared:dmtool-story — MIRRORED from the top-level README.md; do NOT edit here. Edit the canonical block there, then re-copy (SharedReadmeRegionTest enforces parity). -->
 ## Why `dmtool`
@@ -215,7 +222,7 @@ Generated with [Tokei](https://github.com/XAMPPRocky/tokei) from the production 
 | Language | Files | Code | Comments | Blanks |
 |---|---:|---:|---:|---:|
 | Java | 453 | 43813 | 11987 | 6445 |
-| Kotlin | 106 | 17385 | 6324 | 2180 |
+| Kotlin | 106 | 17423 | 6336 | 2185 |
 | TypeScript | 0 | 0 | 0 | 0 |
 
 Maintainers regenerate this table with the local statistics updater; both release publishers compare it with fresh counts before any public mutation.

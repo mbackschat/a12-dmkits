@@ -71,6 +71,21 @@ class PerfGateTest {
     }
 
     /**
+     * Guards a per-row rule that reads a row-INVARIANT starred aggregate. The aggregate's scope is the parent of
+     * the iterated group, so every row observes the same value; rebuilding and folding the whole star once per row
+     * is O(rows²). The evaluation-call memo must share one result for that scope while keeping nested scopes apart.
+     */
+    @Test
+    fun rowInvariantAggregateStaysSubQuadratic() {
+        val aggregate = PerfCatalog.perRowGlobalAggregate()
+        assertSubQuadratic("row-invariant aggregate sub-quadratic", 500, "rows",
+            "the scoped aggregate memo stopped sharing across rows?",
+            identityAt = { n -> PerfHarness.measurementLabel(aggregate, n) }) { n ->
+            PerfHarness.timeInterpreter(aggregate, n, warmup = 5, iters = 7).medianMs
+        }
+    }
+
+    /**
      * Guards the **deep-nested `Having` path** against the O(N²) the `deepRichScaling` benchmark exposed: the
      * `Having` clause's per-scope row contexts (`rowContextsScoped`) scanned ALL rows of the group and
      * prefix-filtered — O(scopes·rows) on a deep doc (it flipped interp/kernel from 0.34 to 1.77 at 1000

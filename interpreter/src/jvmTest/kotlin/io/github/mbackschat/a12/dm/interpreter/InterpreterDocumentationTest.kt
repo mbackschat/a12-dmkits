@@ -187,6 +187,11 @@ class InterpreterDocumentationTest {
             publicReadme.indexOf("## Performance") > publicReadme.indexOf("## What ships"),
             "the public repository README must present performance immediately after what ships",
         )
+        assertTrue(
+            publicReadme.indexOf("**Semantics target.**") in
+                publicReadme.indexOf("## What ships") until publicReadme.indexOf("## Performance"),
+            "the semantics target must close what ships before the performance section",
+        )
         val changelog = Files.readString(repoFile("interpreter/CHANGELOG.md"))
         val releases = Regex("(?m)^## \\[[^]]+]$").findAll(changelog).toList()
         val currentReleaseNotes = changelog.substring(
@@ -194,11 +199,15 @@ class InterpreterDocumentationTest {
             releases.getOrNull(1)?.range?.first ?: changelog.length,
         )
         for ((surface, text) in listOf(
+            "main repository README" to Files.readString(repoFile("README.md")),
+            "interpreter package README" to Files.readString(repoFile("interpreter/README.md")),
             "public repository README" to publicReadme,
             "current release notes" to currentReleaseNotes,
         )) {
             assertTrue(text.contains("232 kB gzip"), "$surface omits the measured browser footprint")
-            assertTrue(text.contains("10.0 ms median"), "$surface omits the representative browser timing")
+            assertTrue(text.contains("10.9 ms median"), "$surface omits the representative browser timing")
+            assertTrue(text.contains("2026-08-03"), "$surface omits the measurement date")
+            assertTrue(text.contains("Fast, and measured"), "$surface omits the measured-performance statement")
             assertTrue(
                 text.contains("generated validator compiled as Java"),
                 "$surface omits the fair Kernel-codegen comparison basis",

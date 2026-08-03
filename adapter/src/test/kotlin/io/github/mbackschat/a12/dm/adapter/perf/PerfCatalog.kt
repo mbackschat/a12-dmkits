@@ -135,9 +135,8 @@ object PerfCatalog {
         scenario("B1 per-row", lines.errorRule("HQ", qty.field(), qty.filled().and(qty.gt(50))), ::flatRows)
 
     /** **PRA — a per-row rule comparing each Line to a ROW-INVARIANT global aggregate** (`[Amount] > Sum(Lines* /
-     *  Amount)`): the Sum over ALL lines is the same for every line but recomputed per row → O(rows²) unless the
-     *  aggregate is memoized (the kernel's CalculationCache analog). The latent cliff #50 (aggregate memoization)
-     *  targets. */
+     *  Amount)`): the Sum over ALL lines is the same for every line. It caught the old per-row refold (O(rows²));
+     *  the validation-call aggregate memo now folds once per star scope and the routine perf gate locks it. */
     fun perRowGlobalAggregate(): PerfScenario =
         scenario("PRA per-row-global-agg",
             lines.errorRule("PGA", amount.field(), amount.filled().and(amount.asNumber().gt(Dsl.sum(perfRoot.flatten("Lines*/Amount"))))),

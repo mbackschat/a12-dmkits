@@ -15,6 +15,7 @@ import io.github.mbackschat.a12.dm.interpreter.model.Message
 import io.github.mbackschat.a12.dm.interpreter.model.ModelDef
 import io.github.mbackschat.a12.dm.interpreter.model.MsgType
 import io.github.mbackschat.a12.dm.interpreter.model.UnsupportedRule
+import java.lang.management.ManagementFactory
 import java.util.Locale
 
 /**
@@ -447,6 +448,29 @@ object PerfHarness {
     fun measure(warmup: Int, iters: Int, block: () -> Unit): Stats {
         repeat(warmup) { block() }
         val times = DoubleArray(iters) { val t = System.nanoTime(); block(); (System.nanoTime() - t) / 1e6 }
+        return stats(times)
+    }
+
+    /**
+     * Median current-thread CPU time for a single-threaded algorithmic guard. Unlike [measure], this excludes
+     * time while another Gradle test fork preempts the measuring JVM. Use it only for CPU-work ratios and growth
+     * floors; user-visible latency and cross-engine throughput remain wall-clock observations.
+     */
+    fun measureCurrentThreadCpu(warmup: Int, iters: Int, block: () -> Unit): Stats {
+        require(warmup >= 0) { "warmup must not be negative" }
+        require(iters > 0) { "iters must be positive" }
+        val bean = ManagementFactory.getThreadMXBean()
+        require(bean.isCurrentThreadCpuTimeSupported) { "current-thread CPU time is unavailable on this JVM" }
+        if (!bean.isThreadCpuTimeEnabled) bean.isThreadCpuTimeEnabled = true
+        repeat(warmup) { block() }
+        val times = DoubleArray(iters) {
+            val start = bean.currentThreadCpuTime
+            require(start >= 0L) { "current-thread CPU time is unavailable on this JVM" }
+            block()
+            val elapsed = bean.currentThreadCpuTime - start
+            require(elapsed > 0L) { "current-thread CPU observation must be positive, got ${elapsed}ns" }
+            elapsed / 1e6
+        }
         return stats(times)
     }
 

@@ -11,8 +11,6 @@ import io.github.mbackschat.a12.dm.interpreter.model.ValidationOutcome
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
-import kotlin.time.Duration.Companion.milliseconds
-import kotlin.time.measureTime
 
 /**
  * Perf guard for the [LegalCharset] SPI (IF43) — a CUSTOM charset must be ~as fast as the [LegalCharset.BMP]
@@ -20,8 +18,8 @@ import kotlin.time.measureTime
  * inlined O(1) bitset read, NOT a per-code-point virtual call: the first SPI cut used a SAM `fun interface`,
  * whose per-code-point virtual dispatch blew up the full perf suite (a 16-min CPU burn). This times `validateFull`
  * over a large string-heavy document under the BMP default vs a DIN-91379-style range charset and asserts the
- * custom charset is within a small factor of BMP — a virtual-call regression is 10×+ and trips this. JVM-only
- * (reliable timing; the ratio cancels machine speed). Pure engine, no kernel.
+ * custom charset is within a small factor of BMP — a virtual-call regression is 10×+ and trips this. JVM-only,
+ * current-thread CPU time (algorithmic work without another Gradle fork's preemption). Pure engine, no kernel.
  */
 class CharsetPerfTest {
 
@@ -53,10 +51,15 @@ class CharsetPerfTest {
         val d = doc()
         fun run(c: LegalCharset) = DmInterpreter(def, legalCharset = c).validate(d)
         repeat(WARM) { run(LegalCharset.BMP); run(din) }                       // warm both paths
-        val bmp = measureTime { repeat(REPEATS) { run(LegalCharset.BMP) } }
-        val custom = measureTime { repeat(REPEATS) { run(din) } }
-        assertTrue(custom < bmp * FACTOR + 50.milliseconds,
-            "custom charset ($custom) must be within ${FACTOR}× the BMP default ($bmp) — a per-codepoint virtual call regressed")
+        val bmpMs = PerfHarness.measureCurrentThreadCpu(warmup = 0, iters = 1) {
+            repeat(REPEATS) { run(LegalCharset.BMP) }
+        }.medianMs
+        val customMs = PerfHarness.measureCurrentThreadCpu(warmup = 0, iters = 1) {
+            repeat(REPEATS) { run(din) }
+        }.medianMs
+        assertTrue(customMs < bmpMs * FACTOR + 50.0,
+            "custom charset (${customMs}ms CPU) must be within ${FACTOR}× the BMP default (${bmpMs}ms CPU) — " +
+                "a per-codepoint virtual call regressed")
     }
 
     @Test fun bmpAndGraphemePathsStayBelowTheFourfoldGrowthCatastropheFloor() {
@@ -85,7 +88,7 @@ class CharsetPerfTest {
         repeat(WARM) { runN(); runFourN() }
         return PerfHarness.pairedGrowth(GROWTH_N, GROWTH_N * 4) { rows ->
             val run = if (rows == GROWTH_N) ::runN else ::runFourN
-            PerfHarness.measure(warmup = 0, iters = REPEATS) { run() }.medianMs
+            PerfHarness.measureCurrentThreadCpu(warmup = 0, iters = REPEATS) { run() }.medianMs
         }
     }
 

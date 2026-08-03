@@ -43,6 +43,21 @@ private val DATE_PRODUCING_FUNCS = setOf(
 /** The min/max family — DATE-valued when its operands are dates ([dateAggregate]/[producesDate]). */
 private val MIN_MAX_FUNCS = setOf(FunctionOp.MIN, FunctionOp.MAX, FunctionOp.MIN_VALUE, FunctionOp.MAX_VALUE)
 
+/** Starred value aggregates whose result can be memoized by expression + aggregate-scope prefixes. */
+private val MEMOIZED_STAR_AGGREGATES = setOf(
+    FunctionOp.SUM,
+    FunctionOp.MAX_VALUE,
+    FunctionOp.MIN_VALUE,
+    FunctionOp.NUMBER_OF_DIFFERENT_VALUES,
+    FunctionOp.SUM_OF_PRODUCTS,
+)
+
+/** A validation-call cache key for a starred aggregate value and the exact star scopes it ranges over. */
+internal data class AggregateMemoKey(
+    val expression: Expr.Func,
+    val scopePrefixes: List<List<Int>>,
+)
+
 /** `RangeAsNumber` parses its substring ONLY when it is a run of digits (kernel `\d+`); else the value is 0. */
 private val DIGITS = Regex("""\d+""")
 
@@ -437,7 +452,10 @@ private fun Interpreter.evalFunc(f: Expr.Func): Val {
             if (sp != null && !starRelevant.invoke(sp)) return Val.Unknown
         }
     }
-    return when (op) {
+    val memo = aggregateMemo
+    val memoKey = if (memo == null) null else invariantAggregateMemoKey(f, op)
+    if (memo != null && memoKey != null) memo[memoKey]?.let { return it }
+    val result = when (op) {
     // Value aggregates — the FOLDS are pure runtime semantics ([Aggregates], IG5→IF10); the strategy only
     // RESOLVES operands (operand-list `map { evalExpr }` vs the starred `starVals`) and gates Unknown
     // ([combine]). The same fold serves both forms (`Min`/`MinValue` share [Aggregates.min]). Min/max over
@@ -565,6 +583,28 @@ private fun Interpreter.evalFunc(f: Expr.Func): Val {
         if (outerUnknown(f.args[0])) Val.Unknown else Val.Num(dec(ctxOf(f.args[0]).repsOf(pathOf(f.args[0])).last()))
     null -> throw UnsupportedConstructException("unsupported function ${f.name}")
     }
+    if (memo != null && memoKey != null) memo[memoKey] = result
+    return result
+}
+
+/**
+ * An unfiltered, uncorrelated starred value aggregate depends on its star domains, not on the individual row
+ * inside one of those domains. The expression plus every scope prefix is therefore the complete value identity:
+ * sibling parent rows remain separate, while their child rows share one fold. A top-level aggregate may create a
+ * one-off entry; keeping the eligibility rule purely semantic is cheaper and safer than trying to predict call
+ * multiplicity from A12 repetition-list lengths (which contain one index for every path segment).
+ */
+private fun Interpreter.invariantAggregateMemoKey(f: Expr.Func, op: FunctionOp?): AggregateMemoKey? {
+    if (computeMode) return null
+    if (op !in MEMOIZED_STAR_AGGREGATES) return null
+    val stars = f.args.map { it as? Expr.Star ?: return null }
+    if (stars.any { it.having != null || it.outer }) return null
+    val scopes = stars.map { star ->
+        val context = ctxOf(star)
+        val groupPath = if (context.declaredKind(star.path) == null) star.path else star.path.substringBeforeLast('/')
+        context.scopePrefixOf(groupPath, star.bindDepth).toList()
+    }
+    return AggregateMemoKey(f, scopes)
 }
 
 /** A date-range endpoint. `BaseYear` is the one point-in-time operand the kernel admits in this slot and

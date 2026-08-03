@@ -1,6 +1,7 @@
 package io.github.mbackschat.a12.dm.adapter.perf
 
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
 
@@ -34,5 +35,18 @@ class PerfGrowthEstimatorTest {
                 PerfHarness.pairedGrowth(10, 40, pairs = 1) { invalid }
             }
         }
+    }
+
+    @Test
+    fun currentThreadCpuExcludesBlockedWallTime() {
+        val wallStart = System.nanoTime()
+        val measured = PerfHarness.measureCurrentThreadCpu(warmup = 0, iters = 1) {
+            Thread.sleep(100)
+        }.medianMs
+        val wallMs = (System.nanoTime() - wallStart) / 1e6
+
+        assertTrue(wallMs >= 80.0, "control: the thread must actually block, wall=${wallMs}ms")
+        assertTrue(measured < wallMs / 4.0,
+            "current-thread CPU must exclude blocked wall time: cpu=${measured}ms wall=${wallMs}ms")
     }
 }

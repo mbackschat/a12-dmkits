@@ -8,12 +8,12 @@ import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.condition.EnabledIfSystemProperty
 
 /**
- * **Profiling driver** (INTERPRETER-PERFORMANCE.md #64). Runs `validateFull` on the low-firing 192-rule
- * scenario (the only spot still above the kernel) in a tight loop for ~[SECONDS]s so a sampling profiler gets
+ * **Profiling driver** (INTERPRETER-PERFORMANCE.md #64). Runs `validateFull` on the low-firing rule
+ * scenario in a tight loop for ~[SECONDS]s so a sampling profiler gets
  * dense samples — to attribute `validateFull`'s cost (eval / `firedType` vs the shared machinery:
  * `iterationContexts`, the per-(rule,row) `Interpreter` alloc, the suppressor scan, `Document` lookups). Run:
  * ```
- * ./build.sh :adapter:test --tests "*EvalProfileTest" -Dperf.profile=true -Dperf.jfr=<abs>/prof.jfr
+ * ./build.sh :adapter:test --tests "*EvalProfileTest" -Dperf.profile=true -Dperf.rules=384 -Dperf.jfr=<abs>/prof.jfr
  * jfr print --events jdk.ExecutionSample --stack-depth 30 <abs>/prof.jfr   # then aggregate the hot frames
  * ```
  * It is opt-in (`perf.profile`) and asserts nothing — it exists to feed the profiler, not to gate.
@@ -22,8 +22,14 @@ import org.junit.jupiter.api.condition.EnabledIfSystemProperty
 class EvalProfileTest {
 
     @Test
-    fun loopLowFiring192ForProfiler() = profile(PerfCatalog.manyRules(192, firing = false),
-        System.getProperty("perf.n", "1000").toInt(), "low-firing 192")
+    fun loopLowFiringForProfiler() {
+        val rules = System.getProperty("perf.rules", "192").toInt()
+        profile(
+            PerfCatalog.manyRules(rules, firing = false),
+            System.getProperty("perf.n", "1000").toInt(),
+            "low-firing $rules",
+        )
+    }
 
     /** Profile the DEEP+RICH scenario (the one that exposed a super-linear cliff) at `-Dperf.n` vendors. */
     @Test

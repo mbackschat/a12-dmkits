@@ -11,8 +11,6 @@ import io.github.mbackschat.a12.dm.interpreter.model.PredefinedType
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
-import kotlin.time.Duration.Companion.milliseconds
-import kotlin.time.measureTime
 
 /**
  * Perf guard for the declarative custom-field-type path (`--predefined-types` / `predefinedTypes` registry, G30 /
@@ -23,8 +21,8 @@ import kotlin.time.measureTime
  * gate: IF44's code-based field-type SPI is deliberately additive; a naive "route every field type through one
  * `fun interface`" refactor would deoptimize the declarative path — and this test trips.
  *
- * Two guards (the [CharsetPerfTest] sibling pattern — pure engine, no kernel, JVM-only; the ratio/growth cancels
- * machine speed):
+ * Two guards (the [CharsetPerfTest] sibling pattern — pure engine, no kernel, JVM-only, measured as
+ * current-thread CPU time so another Gradle fork's preemption cannot manufacture growth):
  *  1. **Within a factor of plain-string-with-the-same-pattern** — a custom-typed cell and a plain STRING cell
  *     carrying the identical regex do the same regex match; the custom path adds only the registry lookup +
  *     `accepts` dispatch. So it must stay within a small factor. This catches the GROSS deopts a careless SPI
@@ -70,10 +68,15 @@ class CustomTypePerfTest {
         fun runCustom() = DmInterpreter(customDef, predefinedTypes = registry).validate(d)
         fun runString() = DmInterpreter(stringDef).validate(d)
         repeat(WARM) { runCustom(); runString() }
-        val custom = measureTime { repeat(REPEATS) { runCustom() } }
-        val string = measureTime { repeat(REPEATS) { runString() } }
-        assertTrue(custom < string * FACTOR + 50.milliseconds,
-            "custom-type validation ($custom) must stay within ${FACTOR}× plain-string-with-the-same-pattern ($string) " +
+        val customMs = PerfHarness.measureCurrentThreadCpu(warmup = 0, iters = 1) {
+            repeat(REPEATS) { runCustom() }
+        }.medianMs
+        val stringMs = PerfHarness.measureCurrentThreadCpu(warmup = 0, iters = 1) {
+            repeat(REPEATS) { runString() }
+        }.medianMs
+        assertTrue(customMs < stringMs * FACTOR + 50.0,
+            "custom-type validation (${customMs}ms CPU) must stay within ${FACTOR}× " +
+                "plain-string-with-the-same-pattern (${stringMs}ms CPU) " +
                 "— a per-cell allocation / megamorphic dispatch on the field-type path regressed (see the monomorphic-hot-path rule)")
     }
 
@@ -83,7 +86,7 @@ class CustomTypePerfTest {
         repeat(WARM) { docs.values.forEach { run(it) } }
         // IF137 paired estimator: interleaved N/4N, median of within-pair ratios (via the shared PerfHarness helper).
         val g = PerfHarness.pairedGrowth(N_SMALL, N_SMALL * 4) { n ->
-            PerfHarness.measure(warmup = 0, iters = REPEATS) { run(docs.getValue(n)) }.medianMs
+            PerfHarness.measureCurrentThreadCpu(warmup = 0, iters = REPEATS) { run(docs.getValue(n)) }.medianMs
         }
         assertTrue(g.ratio < PerfBounds.SUB_QUADRATIC_MAX,
             "custom-type validation growth for 4× rows was ${"%.2f".format(g.ratio)}× (linear≈4, quadratic≈16) — an O(N²) regression")
