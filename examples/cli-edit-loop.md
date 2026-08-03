@@ -410,9 +410,9 @@ dmtool -m /tmp/edit2-sub.json computation read /Subscription/Billing/EffectiveFe
   "summary" : "read /Subscription/Billing/EffectiveFeeComp",
   "data" : {
     "computation" : "/Subscription/Billing/EffectiveFeeComp",
+    "errorCodesToSuppress" : [ ],
     "converted" : true,
     "calculatedField" : "/Subscription/Billing/EffectiveFee",
-    "errorCodesToSuppress" : [ ],
     "alternatives" : [ {
       "operation" : "[BaseFee] * 2"
     } ],

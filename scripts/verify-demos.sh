@@ -50,9 +50,12 @@ echo "==> building the JVM CLI launcher (installDist — always current; native 
 # worktree instead of the common checkout's sibling cache, and concurrent worktrees can corrupt it.
 ./build.sh --no-daemon :cli:installDist
 
-# the demos call the bare `dmtool`; the repo shim resolves it to the freshly-built installDist launcher
-# (RK_NATIVE is deliberately unset, so a stale native image can't shadow this build)
+# The demos call the bare `dmtool`; the repo shim resolves it to the freshly-built installDist launcher.
+# Pin the launcher explicitly: DMTOOL_CLI is the shim's highest-priority selector, so an inherited value
+# would otherwise make this "fresh build" gate verify an older or unrelated binary. RK_NATIVE is likewise
+# cleared so it cannot select a stale native image.
 export PATH="$ROOT/bin:$PATH"
+export DMTOOL_CLI="$ROOT/cli/build/install/dmtool/bin/dmtool"
 unset RK_NATIVE || true
 
 # DISCOVER the demos: every examples/*.md (except README) that carries a Showboat ```output block.
