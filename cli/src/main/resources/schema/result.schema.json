@@ -181,8 +181,8 @@
       "outcome": "read",
       "ok": true,
       "engine": "DM_INTERPRETER",
-      "engineVersion": "0.11.0",
-      "toolVersion": "0.11.0",
+      "engineVersion": "0.11.1",
+      "toolVersion": "0.11.1",
       "summary": "computed 1 field(s)",
       "data": {
         "computed": [

@@ -30,11 +30,11 @@ The JVM comparison deliberately uses the A12 Kernel's generated validator compil
 
 ## Install
 
-Version `0.11.0` is distributed from the public `a12-interpreter-releases` repository.
+Version `0.11.1` is distributed from the public `a12-interpreter-releases` repository.
 
-For TypeScript or JavaScript, install the release tarball with `pnpm add https://github.com/mbackschat/a12-interpreter-releases/releases/download/v0.11.0/a12-interpreter-0.11.0.tgz`.
+For TypeScript or JavaScript, install the release tarball with `pnpm add https://github.com/mbackschat/a12-interpreter-releases/releases/download/v0.11.1/a12-interpreter-0.11.1.tgz`.
 
-For Kotlin or Java, add the Maven repository `https://mbackschat.github.io/a12-interpreter-releases/maven` and dependency `io.github.mbackschat.a12.dm:dm-interpreter:0.11.0`. Public third-party dependencies continue to resolve from Maven Central or npm.
+For Kotlin or Java, add the Maven repository `https://mbackschat.github.io/a12-interpreter-releases/maven` and dependency `io.github.mbackschat.a12.dm:dm-interpreter:0.11.1`. Public third-party dependencies continue to resolve from Maven Central or npm.
 
 ## TypeScript
 
@@ -142,10 +142,10 @@ Maintainers regenerate this table with the local statistics updater; both releas
 ## Documentation
 
 - 🚀 **[Try the live browser showcase →](https://mbackschat.github.io/a12-interpreter-releases/showcase/)**
-- 📘 **[Read the developer API guide →](https://github.com/mbackschat/a12-interpreter-releases/blob/v0.11.0/site/api/v0.11.0/INTERPRETER-API-GUIDE.md)**
+- 📘 **[Read the developer API guide →](https://github.com/mbackschat/a12-interpreter-releases/blob/v0.11.1/site/api/v0.11.1/INTERPRETER-API-GUIDE.md)**
 - 🧭 **[Browse the TypeScript API →](https://mbackschat.github.io/a12-interpreter-releases/api/latest/typescript/)**
 - 🧭 **[Browse the Kotlin API →](https://mbackschat.github.io/a12-interpreter-releases/api/latest/kotlin/)**
 - 🛠️ **[Explore the main `a12-dmkits` project →](https://github.com/mbackschat/a12-dmkits)** — source, design, benchmark method, and complete test evidence
-- ⚖️ **[Read the MIT license →](https://github.com/mbackschat/a12-interpreter-releases/blob/v0.11.0/LICENSE)**
+- ⚖️ **[Read the MIT license →](https://github.com/mbackschat/a12-interpreter-releases/blob/v0.11.1/LICENSE)**
 
-Version-matched references plus `llms.txt` are also packaged in `dm-interpreter-0.11.0-api-docs.zip` under `api/v0.11.0/`.
+Version-matched references plus `llms.txt` are also packaged in `dm-interpreter-0.11.1-api-docs.zip` under `api/v0.11.1/`.

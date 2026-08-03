@@ -4,7 +4,11 @@ All notable changes to the **publicly released `dmtool` artifacts** — the nati
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versioning is [SemVer](https://semver.org/) plus **A12 Kernel compatibility metadata** (the kernel each release targets is recorded per entry, never folded into the version string).
 
-## [Unreleased]
+## [0.11.1] — kernel 30.8.1 (A12 Tools 2025.06-ext5)
+
+### Fixed
+
+- The built-in interpreter now folds a row-invariant unfiltered starred aggregate once per validation call and exact star scope instead of once per iterated row, restoring near-linear repeated-row validation while preserving Kernel-exact results.
 
 ## [0.11.0] — kernel 30.8.1 (A12 Tools 2025.06-ext5)
 
