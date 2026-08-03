@@ -186,30 +186,37 @@ dmtool -m examples/models/multifile/app/storefront.dm.json \
 
 ## batch — many ops in one warm JVM
 
-`batch` runs a JSON array of verb invocations in a single process, amortizing the kernel's warm-up. Each op is `{id, verb, args}`, where `verb` is the **target** (`rule`) and the operation (`check`) leads `args` — the same target-first form a standalone call uses; each result is tagged by its `id`, so a producer can attribute every verdict.
+`batch` runs a JSON array of independent verb invocations in a single process. Each op is `{id, verb, args}`, where `verb` is the **target** (`field`) and the operation (`add`) leads `args` — the same target-first form a standalone call uses. Batch attempts every child and never rolls back earlier writes; use `apply` when edits must be atomic. This black-box example deliberately writes once and then rejects the duplicate:
 
 ```bash
+cp examples/models/subscription.dm.json /tmp/batch-contract.dm.json
+cat > /tmp/batch-field.json <<'EOF'
+{"group":"/Subscription/Billing","name":"BatchCommitted","kind":"STRING"}
+EOF
 cat > /tmp/edit-ops.json <<'EOF'
 [
-  { "id": "ok",  "verb": "rule",
-    "args": ["check", "-m", "examples/models/subscription-computed.dm.json",
-             "--field", "/Subscription/Billing/EffectiveFee",
-             "--condition", "[EffectiveFee] < [BaseFee]", "--code", "X"] },
-  { "id": "bad", "verb": "rule",
-    "args": ["check", "-m", "examples/models/subscription-computed.dm.json",
-             "--field", "/Subscription/Billing/EffectiveFee",
-             "--condition", "[EffectiveFee] PatternViolated \"x\"", "--code", "Y"] }
+  {"id":"write","verb":"field","args":["add","/tmp/batch-field.json"]},
+  {"id":"reject-duplicate","verb":"field","args":["add","/tmp/batch-field.json"]}
 ]
 EOF
-dmtool batch /tmp/edit-ops.json | jq -c ".data.results[] | {id, valid: .result.valid}"
+dmtool -m /tmp/batch-contract.dm.json batch /tmp/edit-ops.json | jq -c '{outcome,ok,dispatched:.data.dispatched,allSucceeded:.data.allSucceeded,results:[.data.results[] | {id,exit,written:.result.written}]}'
 ```
 
 ```output
-{"id":"ok","valid":true}
-{"id":"bad","valid":false}
+{"outcome":"completed","ok":false,"dispatched":true,"allSucceeded":false,"results":[{"id":"write","exit":0,"written":true},{"id":"reject-duplicate","exit":1,"written":false}]}
 ```
 
-→ Two `rule check`s in one JVM: the numeric comparison is `valid`, the pattern comparison on a number field is rejected — each verdict carries its `id`. This is how the eval runner re-validates many candidates at once.
+`completed` means every child was dispatched; `allSucceeded:false`, outer `ok:false`, and process exit 1 report the aggregate failure. The first child nevertheless remains persisted:
+
+```bash
+dmtool -m /tmp/batch-contract.dm.json field read /Subscription/Billing/BatchCommitted | jq -c '{outcome,field:.data.field}'
+```
+
+```output
+{"outcome":"read","field":"/Subscription/Billing/BatchCommitted"}
+```
+
+→ This is non-transactional partial persistence by design. Each result keeps its `id`, exact exit, and `written` state. Use `batch` for independent calls or explicitly acceptable partial writes; use `apply` for all-or-nothing model edits.
 
 ## The tool describes itself — operators & schema
 

@@ -12,6 +12,7 @@ import java.util.Optional;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 
 import org.junit.jupiter.api.Test;
@@ -303,7 +304,44 @@ class ResultAlgebraTest {
                 "the transaction's single terminal gate carries the evidence, not each step");
     }
 
-    // --- 6/7/8. refusal, rejection, internal error ----------------------------------------------------
+    // --- 6. stateless dispatch ------------------------------------------------------------------------
+
+    @Test
+    void aSuccessfulDispatchIsCompletedAndExitsZero() {
+        ArrayNode results = M.createArrayNode();
+        results.addObject().put("exit", 0);
+
+        ResultEnvelope env = ResultEnvelope.dispatchCompleted(
+                ResultIdentity.BATCH_RUN, "dispatched 1 op", results);
+
+        assertEquals(0, env.exitCode());
+        JsonNode j = env.toJson();
+        assertEquals("completed", j.path("outcome").asText());
+        assertTrue(j.path("ok").asBoolean());
+        assertTrue(j.path("data").path("dispatched").asBoolean());
+        assertTrue(j.path("data").path("allSucceeded").asBoolean());
+    }
+
+    @Test
+    void aCompletedDispatchWithAFailedChildIsNotSuccessful() {
+        ArrayNode results = M.createArrayNode();
+        results.addObject().put("exit", 0);
+        results.addObject().put("exit", 1);
+
+        ResultEnvelope env = ResultEnvelope.dispatchCompleted(
+                ResultIdentity.BATCH_RUN, "dispatched 2 ops", results);
+
+        assertEquals(1, env.exitCode());
+        JsonNode j = env.toJson();
+        assertEquals("completed", j.path("outcome").asText(), "dispatch still reached every child");
+        assertFalse(j.path("ok").asBoolean(), "completed dispatch is not the same as successful children");
+        assertTrue(j.path("data").path("dispatched").asBoolean());
+        assertFalse(j.path("data").path("allSucceeded").asBoolean());
+        assertEquals(0, j.path("data").path("results").get(0).path("exit").asInt());
+        assertEquals(1, j.path("data").path("results").get(1).path("exit").asInt());
+    }
+
+    // --- 7/8/9. refusal, rejection, internal error ----------------------------------------------------
 
     @Test
     void aRefusalExitsTwoAndAssertsNothingAboutTheSubject() {
@@ -372,9 +410,10 @@ class ResultAlgebraTest {
     // --- the nested-verdict boundary ------------------------------------------------------------------
 
     /**
-     * A nested verdict must never feed the process's exit status. This is structural rather than conventional: the
-     * exit code switches on the family, and nothing in it reads {@code data} — so a workspace of invalid models
-     * still exits 0 from an ungated listing, and no future edit to the payload can change that.
+     * An arbitrary nested verdict must never feed the process's exit status. This is structural rather than
+     * conventional: the exit code switches on the family and never reads {@code data}, so a workspace of invalid
+     * models still exits 0 from an ungated listing. An aggregate command such as {@code batch} may deliberately
+     * fold child exits into its family before constructing the envelope; merely nesting {@code valid:false} cannot.
      */
     @Test
     void aNestedVerdictInDataNeverReachesTheExitCode() {

@@ -18,7 +18,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 /**
  * The {@code batch} verb — run a sequence of verb invocations in one process so JVM startup and the
  * kernel's one-time StringTemplate warm-up are amortized across all ops (the benchmark-runner enabler).
- * Each op runs through the same {@link Cli#run} seam; per-op results are collected into a JSON array.
+ * Each op runs through the same {@link Cli#run} seam; per-op results are collected into one aggregate envelope.
  */
 class BatchVerbTest {
 
@@ -56,7 +56,11 @@ class BatchVerbTest {
         Files.writeString(opsFile, ops);
 
         var res = CliTestSupport.run("batch", opsFile.toString());
-        assertEquals(0, res.code(), res::err);
+        assertEquals(1, res.code(), "a failed child makes the aggregate unsuccessful");
+        JsonNode envelope = MAPPER.readTree(res.out());
+        assertFalse(envelope.path("ok").asBoolean(), res::out);
+        assertTrue(envelope.path("data").path("dispatched").asBoolean(), res::out);
+        assertFalse(envelope.path("data").path("allSucceeded").asBoolean(), res::out);
         JsonNode arr = batchItems(res.out());
         assertEquals(3, arr.size(), () -> "one result per op: " + res.out());
 
@@ -119,7 +123,7 @@ class BatchVerbTest {
         Path opsFile = dir.resolve("ops.json");
         Files.writeString(opsFile, "[ {\"verb\":\"batch\",\"args\":[\"x\"]} ]");
         var res = CliTestSupport.run("batch", opsFile.toString());
-        assertEquals(0, res.code(), "the batch itself runs");
+        assertEquals(1, res.code(), "the nested child failed even though the batch dispatched it");
         JsonNode arr = batchItems(res.out());
         assertEquals(2, arr.get(0).get("exit").asInt(), "but a nested batch op is rejected");
         assertTrue(arr.get(0).get("stderr").asText().toLowerCase().contains("nest"));
@@ -135,6 +139,10 @@ class BatchVerbTest {
         // set -m once on the batch; the ops carry no -m of their own and should inherit it
         var res = CliTestSupport.run("-m", m.toString(), "batch", ops.toString());
         assertEquals(0, res.code(), res::err);
+        JsonNode envelope = MAPPER.readTree(res.out());
+        assertTrue(envelope.path("ok").asBoolean(), res::out);
+        assertTrue(envelope.path("data").path("dispatched").asBoolean(), res::out);
+        assertTrue(envelope.path("data").path("allSucceeded").asBoolean(), res::out);
         JsonNode arr = batchItems(res.out());
         assertEquals(0, arr.get(0).get("exit").asInt(), () -> "model check used the batch -m: " + arr);
         assertEquals(0, arr.get(1).get("exit").asInt(), () -> "config read used the batch -m: " + arr);
@@ -155,6 +163,41 @@ class BatchVerbTest {
                 () -> "the op's own -m (orderRuled) won — it read an Order rule the batch model lacks: " + arr);
     }
 
+    @Test
+    void aLaterFailureIsReportedWithoutPretendingEarlierWritesWereRolledBack(@TempDir Path dir) throws Exception {
+        Path m = model(dir);
+        Path fieldSpec = dir.resolve("batch-field.json");
+        Files.writeString(fieldSpec, """
+                {"group":"/Subscription/Billing","name":"BatchCommitted","kind":"STRING"}
+                """);
+        Path ops = dir.resolve("ops.json");
+        Files.writeString(ops, """
+                [
+                  {"id":"first-write","verb":"field","args":["add",%s]},
+                  {"id":"second-rejected-duplicate","verb":"field","args":["add",%s]}
+                ]
+                """.formatted(
+                    MAPPER.writeValueAsString(fieldSpec.toString()),
+                    MAPPER.writeValueAsString(fieldSpec.toString())));
+
+        var res = CliTestSupport.run("-m", m.toString(), "batch", ops.toString());
+
+        assertEquals(1, res.code(), res::out);
+        JsonNode envelope = MAPPER.readTree(res.out());
+        assertEquals("completed", envelope.path("outcome").asText(), res::out);
+        assertFalse(envelope.path("ok").asBoolean(), res::out);
+        assertTrue(envelope.path("data").path("dispatched").asBoolean(), res::out);
+        assertFalse(envelope.path("data").path("allSucceeded").asBoolean(), res::out);
+        JsonNode results = envelope.path("data").path("results");
+        assertEquals(0, results.get(0).path("exit").asInt(), results::toString);
+        assertTrue(results.get(0).path("result").path("written").asBoolean(), results::toString);
+        assertEquals(1, results.get(1).path("exit").asInt(), results::toString);
+
+        var read = CliTestSupport.run(
+                "-m", m.toString(), "field", "read", "/Subscription/Billing/BatchCommitted");
+        assertEquals(0, read.code(), "batch is explicitly non-transactional; the first write remains");
+    }
+
     /**
      * The per-op items. `batch` now returns the standard result envelope with them under {@code data.results},
      * where it used to print a bare JSON array — which is exactly why {@code batch --text} emitted raw JSON: the
@@ -164,7 +207,7 @@ class BatchVerbTest {
     private static JsonNode batchItems(String stdout) throws Exception {
         JsonNode envelope = MAPPER.readTree(stdout);
         assertEquals("completed", envelope.path("outcome").asText(),
-                () -> "a dispatched batch is `completed` whatever the children returned: " + stdout);
+                () -> "a fully dispatched batch is `completed` whatever the children returned: " + stdout);
         return envelope.path("data").path("results");
     }
 }

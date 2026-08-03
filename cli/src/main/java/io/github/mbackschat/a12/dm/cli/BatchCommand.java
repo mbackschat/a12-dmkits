@@ -18,13 +18,14 @@ import picocli.CommandLine.Parameters;
  * The {@code batch} verb (CLI-SPEC §4) — run a sequence of verb invocations in ONE process, amortizing
  * JVM startup + the kernel's one-time StringTemplate warm-up across all ops (the N6 runner enabler).
  * Reads a JSON array of ops {@code {"verb","args":[…],"id"?}}, dispatches each through {@link Cli#run}
- * (the same seam as a standalone call), and emits a JSON array of self-describing per-op results.
- * A batch-level error (missing/malformed file) exits 2; otherwise exit 0 with each op's own exit code.
+ * (the same seam as a standalone call), and emits self-describing per-op results in an aggregate envelope.
+ * A batch-level error (missing/malformed file) exits 2; a fully dispatched batch exits 0 iff every child did,
+ * while retaining every child's exact exit code. Dispatch is non-transactional and never rolls writes back.
  * A batch-level {@code -m} is the <b>default model</b> for ops that omit their own (G18 — the universal
  * {@code -m} convention); an op carrying its own {@code -m} keeps it.
  */
 @Command(name = "batch", mixinStandardHelpOptions = true,
-        description = "Run a JSON array of verb invocations in one process (amortizes JVM + kernel warm-up).")
+        description = "Dispatch independent verb invocations in one process (non-transactional; never rolls back).")
 final class BatchCommand extends BaseCommand {
 
     private static final ObjectMapper MAPPER = new ObjectMapper();
@@ -55,16 +56,8 @@ final class BatchCommand extends BaseCommand {
         // The standard envelope, with the items under `data.results`. It used to print a bare JSON ARRAY, which is
         // why `batch --text` emitted raw JSON: the renderer needs an object carrying a textual `outcome`, and an
         // array has neither. The items themselves are unchanged.
-        ObjectNode data = MAPPER.createObjectNode();
-        data.put("ops", results.size());
-        data.set("results", results);
-        // `completed` — a NEW outcome, and the aggregate exits 0 whatever the children returned. That is the
-        // measured pre-existing contract and it is the right one: a batch's product IS the item list, so a caller
-        // reads each child's exit from its item. Folding them into one code would discard exactly what the verb
-        // exists to return, and there is no single code that could stand for a mixed run. Contrast `apply`, whose
-        // ops are steps of ONE transaction and which therefore does derive its exit from that transaction.
-        ResultEnvelope env = ResultEnvelope.dispatchCompleted(ResultIdentity.BATCH_RUN,
-                "dispatched " + results.size() + " op" + (results.size() == 1 ? "" : "s"), data);
+        String summary = "dispatched " + results.size() + " op" + (results.size() == 1 ? "" : "s");
+        ResultEnvelope env = ResultEnvelope.dispatchCompleted(ResultIdentity.BATCH_RUN, summary, results);
         out().print(env.toJsonString());
         return env.exitCode();
     }

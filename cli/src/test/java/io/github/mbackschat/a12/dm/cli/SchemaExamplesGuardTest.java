@@ -79,15 +79,20 @@ class SchemaExamplesGuardTest {
     void batchFrameExamplesAreAcceptedByTheTool(@TempDir Path dir) throws Exception {
         Path model = dir.resolve("subscription.dm.json");
         Files.writeString(model, CliTestSupport.subscriptionJson());
+        Path computationSpec = dir.resolve("computation-spec.json");
+        Files.writeString(computationSpec,
+                schema("computation-add").path("examples").get(0).toString());
 
         JsonNode examples = schema("batch").path("examples");
         assertTrue(examples.isArray() && examples.size() > 0, "batch.schema declares examples");
         int i = 0;
-        for (JsonNode ex : examples) {           // each example IS a batch-ops array; the MODEL placeholder → the fixture
-            String ops = ex.toString().replace("MODEL", model.toString());
+        for (JsonNode ex : examples) {           // each example IS a batch-ops array; placeholders → executable fixtures
+            String ops = ex.toString()
+                    .replace("MODEL", model.toString())
+                    .replace("SPEC", computationSpec.toString());
             Path opsFile = dir.resolve("batch-ex-" + i++ + ".json");
             Files.writeString(opsFile, ops);
-            CliTestSupport.Result res = CliTestSupport.run("batch", opsFile.toString());
+            CliTestSupport.Result res = CliTestSupport.run("-m", model.toString(), "batch", opsFile.toString());
             assertEquals(0, res.code(), () -> "batch frame example run failed: " + res.err());
             JsonNode envelope = MAPPER.readTree(res.out());
             assertEquals("completed", envelope.path("outcome").asText(),
@@ -96,6 +101,10 @@ class SchemaExamplesGuardTest {
                     () -> "batch frame example identifies the aggregate target: " + res.out());
             assertEquals("run", envelope.path("op").asText(),
                     () -> "batch frame example identifies the aggregate operation: " + res.out());
+            assertTrue(envelope.path("data").path("dispatched").asBoolean(),
+                    () -> "batch reports that every child was dispatched: " + res.out());
+            assertTrue(envelope.path("data").path("allSucceeded").asBoolean(),
+                    () -> "the schema examples contain only successful children: " + res.out());
             JsonNode results = envelope.path("data").path("results");
             assertTrue(results.isArray(),
                     () -> "batch frame example returns child results under data.results: " + res.out());

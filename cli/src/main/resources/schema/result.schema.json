@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://github.com/mbackschat/a12-dmkits/schema/result.schema.json",
   "title": "ResultEnvelope",
-  "description": "The uniform OUTPUT of every `dmtool` verb and every `apply` op (CLI-SPEC §3b): one op-record in, one envelope out, so an agent learns a single output shape. THREE ORTHOGONAL AXES, never conflated: `ok` = the operation executed as asked (about the invocation); `valid` = the subject model is kernel-valid (a consistency VERDICT, so it appears only where a gate produced one); `verification`/`engine` = who vouches for it. A read that succeeded is `ok:true` and carries NO `valid` — it established no verdict, so claiming one would be fabrication. Optional keys are omitted when not applicable, and WHICH may appear is decided by what the invocation actually did, never by which verb it was.",
+  "description": "The uniform OUTPUT of every `dmtool` verb and every `apply` op (CLI-SPEC §3b): one op-record in, one envelope out, so an agent learns a single output shape. THREE ORTHOGONAL AXES, never conflated: `ok` = the operation succeeded (for `batch`, every child succeeded); `valid` = the subject model is kernel-valid (a consistency VERDICT, so it appears only where a gate produced one); `verification`/`engine` = who vouches for it. A read that succeeded is `ok:true` and carries NO `valid` — it established no verdict, so claiming one would be fabrication. Optional keys are omitted when not applicable, and WHICH may appear is decided by what the invocation actually did, never by which verb it was.",
   "type": "object",
   "required": [
     "target",
@@ -35,11 +35,11 @@
         "completed",
         "error"
       ],
-      "description": "the execution result class; `error` = the tool itself failed (an unexpected throwable caught at the boundary, exit 70), distinct from `rejected` (input rejected, exit 1). `read` covers EVERY non-mutating result class — a query, a verdict, a runtime observation, a comparison — which is why `outcome` alone does not tell you whether `valid` may be present. `completed` is `batch`'s successful outcome: every child was dispatched, and the aggregate exits 0 whatever the children returned — a batch's product IS the item list, so each child's exit rides its item and folding them into one code would discard exactly that. Contrast `apply`, whose ops are steps of ONE transaction and which therefore does derive its outcome and exit from that transaction"
+      "description": "the execution result class; `error` = the tool itself failed (an unexpected throwable caught at the boundary, exit 70), distinct from `rejected` (input rejected, exit 1). `read` covers EVERY non-mutating result class — a query, a verdict, a runtime observation, a comparison — which is why `outcome` alone does not tell you whether `valid` may be present. For `batch`, `completed` means every child was dispatched, not that every child succeeded: inspect `data.allSucceeded` and each child's exact exit. Outer `ok` is false and the process exits 1 when any child fails. Batch is non-transactional, so an earlier successful write remains. Contrast `apply`, whose ops are steps of ONE transaction and roll back together"
     },
     "ok": {
       "type": "boolean",
-      "description": "the operation executed as asked (outcome in applied | preview | read | staged | completed); false for refused | rejected | error"
+      "description": "the operation succeeded. True for applied | preview | read | staged; for completed batch dispatch, true only when `data.allSucceeded` is true. False for a completed batch with any failed child, and for refused | rejected | error"
     },
     "valid": {
       "type": "boolean",

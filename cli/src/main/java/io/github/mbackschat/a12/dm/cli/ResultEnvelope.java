@@ -7,6 +7,7 @@ import java.util.Optional;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 
 import io.github.mbackschat.a12.dm.core.Verification;
@@ -21,7 +22,8 @@ import io.github.mbackschat.a12.dm.rulekit.validate.ValidationResult;
  * adds the three orthogonal axes an agent must not conflate:
  *
  * <ul>
- *   <li>{@code ok} — <b>the operation executed as asked</b>. A property of the invocation, never of the subject.</li>
+ *   <li>{@code ok} — <b>the operation succeeded</b>. For aggregate dispatch this means every child succeeded;
+ *       {@code data.dispatched} separately says whether every child was attempted. Never a property of the subject.</li>
  *   <li>{@code valid} — <b>the subject model is kernel-valid</b>. A consistency <em>verdict</em>, so it exists only
  *       where a gate produced one: {@code model check} that finds the model invalid is {@code ok:true, valid:false}.</li>
  *   <li>{@code verification} / {@code engine}+{@code engineVersion}+{@code toolVersion} — <b>who vouches</b> for
@@ -88,17 +90,10 @@ public final class ResultEnvelope {
         COMPARISON,
         /** A write, a preview of one, or a staged step of a transaction. */
         MUTATION,
-        /**
-         * Every child of a stateless multi-verb dispatch was run. The aggregate reports that it dispatched them
-         * all; each child's own exit rides its item and <b>never</b> determines the outer one.
-         *
-         * <p>Its own family because "we ran everything you asked" is not any of the others: not a mutation (the
-         * children own their writes), not a verdict, and not a failure just because a child failed. The outer exit
-         * stays 0, which is the measured pre-existing contract for {@code batch} — a caller reads per-child results
-         * from the items, and collapsing them into one code would destroy exactly the information a batch exists to
-         * return.
-         */
+        /** Every child of a stateless multi-verb dispatch was run and returned zero. */
         DISPATCH,
+        /** Every child was dispatched, but at least one returned nonzero. Non-transactional writes remain. */
+        DISPATCH_WITH_FAILURES,
         /** A safety gate refused before mutating (CLI-SPEC §6) — exit 2, nothing written. */
         REFUSAL,
         /** The input was rejected — by the kernel gate, or by the CLI's own pre-flight. Exit 1. */
@@ -320,17 +315,28 @@ public final class ResultEnvelope {
     }
 
     /**
-     * Every child of a stateless multi-verb dispatch ran — {@code batch}. {@code data} carries the per-child items;
-     * the aggregate exits <b>0</b> whatever the children returned.
-     *
-     * <p>This is deliberate, and it is the one place an aggregate does <em>not</em> derive its status from its parts.
-     * A batch's product IS the item list: a caller reads each child's exit from its item, and folding them into a
-     * single code would discard the very information the verb exists to return. It also preserves the measured
-     * pre-existing behaviour. Contrast {@code apply}, whose children are steps of ONE transaction with one
-     * all-or-nothing outcome, and which therefore does derive its exit from that transaction.
+     * Every child of a stateless multi-verb dispatch was attempted — {@code batch}. This is the sole construction
+     * path for the aggregate: it derives {@code data.allSucceeded}, the family that drives {@code ok}/exit, and the
+     * status-bearing summary from the same child exits, so those representations cannot contradict one another.
      */
-    public static ResultEnvelope dispatchCompleted(ResultIdentity identity, String summary, JsonNode data) {
-        return new Draft(Family.DISPATCH, identity, Outcome.COMPLETED, summary)
+    public static ResultEnvelope dispatchCompleted(
+            ResultIdentity identity, String summary, ArrayNode results) {
+        boolean allSucceeded = true;
+        for (JsonNode result : results) {
+            if (result.path("exit").asInt(1) != 0) {
+                allSucceeded = false;
+                break;
+            }
+        }
+        ObjectNode data = MAPPER.createObjectNode();
+        data.put("ops", results.size());
+        data.put("dispatched", true);
+        data.put("allSucceeded", allSucceeded);
+        data.set("results", results.deepCopy());
+        Family family = allSucceeded ? Family.DISPATCH : Family.DISPATCH_WITH_FAILURES;
+        String aggregateSummary = summary
+                + (allSucceeded ? "; all succeeded" : "; one or more failed — earlier writes were not rolled back");
+        return new Draft(family, identity, Outcome.COMPLETED, aggregateSummary)
                 .data(data)
                 .build();
     }
@@ -574,11 +580,11 @@ public final class ResultEnvelope {
 
     // --- derived contract -----------------------------------------------------------------------------
 
-    /** {@code ok} = the operation executed as asked — NOT the subject's validity (that is {@link #valid()}). */
+    /** {@code ok} = the operation succeeded — NOT the subject's validity (that is {@link #valid()}). */
     boolean ok() {
         return switch (family) {
             case QUERY, VERDICT, RUNTIME_OBSERVATION, COMPARISON, MUTATION, DISPATCH -> true;
-            case REFUSAL, REJECTION, INTERNAL_ERROR -> false;
+            case DISPATCH_WITH_FAILURES, REFUSAL, REJECTION, INTERNAL_ERROR -> false;
         };
     }
 
@@ -588,15 +594,16 @@ public final class ResultEnvelope {
      *
      * <p>Dispatching on {@link Family} rather than inspecting members is what makes two contract rules structural
      * instead of conventional. A {@code QUERY} <b>cannot</b> exit 1, because it holds no verdict to be negative
-     * about. And a <b>nested</b> verdict — {@code workspace list --validate}'s per-model {@code valid}, a batch
-     * child's — can never leak into the process's exit status, because nested verdicts live inside {@code data} and
-     * nothing here reads {@code data}.
+     * about. Nested verdicts never drive this method directly: {@code workspace list --validate}'s per-model
+     * {@code valid} stays informational, while {@link #dispatchCompleted} explicitly folds child exits into the
+     * dispatch family before constructing this envelope.
      */
     public int exitCode() {
         return switch (family) {
             case INTERNAL_ERROR -> 70;   // EX_SOFTWARE — the tool failed, distinct from rejected=1 / refused=2
             case REFUSAL -> 2;
             case REJECTION -> 1;
+            case DISPATCH_WITH_FAILURES -> 1;
             case VERDICT -> Boolean.FALSE.equals(valid) ? 1 : 0;
             case COMPARISON -> comparison.exitCode();
             case QUERY, RUNTIME_OBSERVATION, MUTATION, DISPATCH -> 0;
