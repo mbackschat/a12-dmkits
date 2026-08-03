@@ -342,13 +342,92 @@ This is also the established pattern: the MCP documentation ships its **own** de
 - **MCP Apps** — phase 2, whose trigger §1 records. Land the surface first.
 - **Hosted HTTP** — phase 3, §13.
 
-## 13. Phase 3 — hosted, and why it is deferred
+## 13. Hosting and deployment — the shapes, the gate, and the sovereignty assessment
 
-**The gate is licensing, and it is one paragraph.** EUPL-1.2 already applies to the shipped bundle: [LICENSING.md](LICENSING.md) sets the rule as *"EUPL-1.2 for any artifact in which we bundle the kernel"*, so distributing the binary — and distributing a container image — changes nothing. What **hosting** adds is that Article 1 counts *"providing access to its essential functionalities"* as Distribution and/or Communication, so the copyleft and source-availability clauses attach to a service that hands out **no copies at all**, and the hosted combined work must be offered under EUPL-1.2 with a maintained source repository. Hosting also makes the operator a **GDPR processor** of customers' document models. Neither is reversible. *(This is engineering analysis, not legal advice — the same caveat LICENSING.md carries.)*
+**Why this is here at length.** EU-sovereign hosted access is where the idea started, and the assessment below is the part that took research rather than design. Phase 1 depends on none of it, but deleting it would mean re-deriving it later, which is the more expensive mistake. What is deliberately *not* here is a per-unit pricing table — those are the numbers that rot and they were never the decision input. The **free allowance** is a different matter: free hosting is a stated owner requirement (§13.5), so the allowance is a design constraint and is recorded as one.
 
-**Infrastructure is not the constraint** and is deliberately not detailed here, to avoid a vendor snapshot rotting inside a proposal. The shape that was examined on 2026-08-02: a European serverless-container product with a 60-minute request ceiling, HTTP/2, scale-to-zero, and single-digit-euro monthly cost at the expected load, whose provider is EU-owned and outside the US CLOUD Act, ISO 27001 and HDS certified, **and not SecNumCloud-qualified** (assessment ongoing as of that date). If phase 3 is ever taken up, re-measure limits, pricing, and certification status then; a figure recorded now would be stale by the time it mattered.
+### 13.1 Three deployment shapes
 
-**If phase 3 happens**, model state moves to server-minted opaque handles passed as ordinary tool arguments (the specification's own non-normative "Stateful Tools" guidance), authorization becomes OAuth 2.1 resource-server, and the Java SDK becomes worth reconsidering for that transport only.
+| | shape | licensing delta | ops burden | who answers the sovereignty question |
+|---|---|---|---|---|
+| **S1** | `dmtool mcp` — stdio server inside the existing binary (**phase 1, what this proposal contracts**) | none; a local artifact under the posture [LICENSING.md](LICENSING.md) already sets | none | nobody has to — nothing leaves the machine |
+| **S2** | Publish a **container image**; the customer runs it in their own tenancy | none; distribution, exactly as the binary is today | theirs | theirs, by construction |
+| **S3** | **We host it** as a service | the hosted combined work must be offered under EUPL-1.2 with source (§13.2) | authentication, tenancy isolation, a DPA, retention, on-call | ours, and it is a business question rather than a technical one |
+
+**Recommendation: build S1, offer S2 as the answer to "can we have it hosted", and treat S3 as a separately justified product decision.** In order of weight:
+
+1. **S1 is most of the code for S3 and none of the risk.** Statelessness is what makes that true — there is no session layer to build twice, so the transport is the only difference (§3, §5).
+2. **S2 answers EU sovereignty better than S3 does.** A customer who cares about digital sovereignty most wants the thing running in *their* tenancy, under their own jurisdiction and their own certifications. Shipping an image is a build-pipeline change; hosting is an operation with a licensing and processor posture attached.
+3. **S3's real cost is not infrastructure.** It is the licensing posture and the processor role in §13.2, neither of which has an undo.
+
+**A free-hosting requirement is recorded for S3 (§13.5), and it does not change this recommendation.** The free tier is reachable at this load, so infrastructure cost is genuinely a non-issue — but running for free still means *operating a service*, so EUPL-1.2 source availability and the GDPR processor role attach in full. Those obligations are indifferent to the invoice. Free removes the cheapest objection to S3 and leaves both expensive ones standing, which is worth being explicit about, because "it costs nothing" reads like "it commits to nothing" and does not.
+
+**GitHub Actions is not a hosting option.** It appeared in the original framing as an alternative to a serverless-container product, and it is not one: CI jobs are ephemeral, with no inbound endpoint and no stable URL. It is the right place to *build the image and deploy it*, and the wrong place to *run* the server. Worth stating plainly so it is not re-proposed.
+
+**The question that actually decides S2 versus S3 is "who is the consumer" — us and our team, BAs at customer sites, or a public service.** That is an owner question, but it is not a phase-1 blocker, which is why it is recorded here rather than in §15.
+
+### 13.2 The gate is licensing, not infrastructure
+
+EUPL-1.2 already applies to the shipped bundle: [LICENSING.md](LICENSING.md) sets the rule as *"EUPL-1.2 for any artifact in which we bundle the kernel"*, so distributing the binary — and distributing an S2 container image — changes nothing. What **hosting** adds is that Article 1 counts *"providing access to its essential functionalities"* as Distribution and/or Communication, so the copyleft and source-availability clauses attach to a service that hands out **no copies at all**, and the hosted combined work must be offered under EUPL-1.2 with a maintained source repository. Hosting also makes the operator a **GDPR processor** of customers' document models — their rules, field names, and domain structure are their business IP — which pulls in a DPA, a retention policy, and handle-scoped authorization. Neither consequence is reversible. *(Engineering analysis, not legal advice — the same caveat LICENSING.md carries.)*
+
+Dropping to a kernel-free `STRUCTURAL_ONLY` backend to escape the clause is not a real option: it removes the consistency oracle, which is the most valuable thing dmtool does.
+
+### 13.3 Sovereignty — the assessment, and the one place it does not reach
+
+Scaleway was assessed because it was recommended on sovereignty grounds. Read from the vendor's own security-and-compliance page and a procurement announcement on **2026-08-02**:
+
+- **Satisfied:** 100% European infrastructure operating under EU jurisdiction, stated by the vendor as *"free from the US CLOUD Act"*; **ISO/IEC 27001:2022** and **HDS** (health-data hosting) certified; selected in April 2026 under the European Commission's **Cloud III Dynamic Purchasing System**, a €180 M programme for EU institutions, after evaluation under the Commission's Cloud Sovereignty Framework.
+- **Not satisfied: SecNumCloud is not held.** The vendor's own page says *"currently undergoing qualification."* If a customer's requirement is literally SecNumCloud, this provider does not meet it. **And the substitution is not like-for-like:** the providers that do hold the qualification offer no equivalent serverless-container product, so satisfying SecNumCloud changes the deployment shape to managed VMs — a different operational proposition, not a different vendor line-item.
+
+**So the honest verdict: sound and cheap for GDPR and EU-jurisdiction sovereignty; not a choice for SecNumCloud-regulated workloads today.** Which of those two is the actual requirement is an owner question. Note that under S2 it stops being ours to answer at all — a further reason S2 is the better sovereignty story.
+
+### 13.4 Technical fit, and the product choice inside the vendor
+
+Serverless **Containers** fit the workload: the request ceiling is an hour, HTTP/2 is supported, instances scale to zero when idle, and the image budget is generous against a **33 MB / ~90 ms** native binary ([NATIVE-IMAGE-GRAALVM.md](NATIVE-IMAGE-GRAALVM.md)) — a near-ideal cold-start profile for a scale-to-zero product. Two things to check at the time rather than now: images must target `linux/amd64` only, so the release pipeline needs an amd64 build for this path even if the maintainer's machine is ARM; and the platform offers two sandbox generations, the stricter of which restricts syscalls, so the native binary must be tested on it rather than assumed to run.
+
+Serverless **Functions** are the wrong product here — per-instance concurrency of one and a small request-payload cap make them event handlers, not a JSON-RPC endpoint. Recording the rejection because "serverless" reads as one choice when it is two.
+
+### 13.5 Free hosting as a hard requirement — and why it must be arithmetic, not monitoring
+
+**Three owner constraints, stated 2026-08-03.** The load is at most a few thousand calls per day; requests normally arrive within a **4–8 hour window** rather than around the clock; and the hosting must be **free, with no upgrade to a paid tier under any circumstances**. Crucially, **service unavailability on exhausting the allowance is acceptable** — the owner prefers the service to stop over incurring any charge. That last point is what makes the requirement satisfiable.
+
+**First, the finding that shapes everything else: the platform does not enforce free, and will bill silently.** Verified 2026-08-03 against the vendor's billing-alerts and billing-FAQ pages:
+
+- The free tier is an **allowance deducted on the invoice**, not a ceiling — the invoice carries a "Free Tier" section showing the cost it saved. Consumption beyond it is billed pay-as-you-go automatically.
+- **Billing alerts only notify.** You set a monthly budget in euros plus a percentage threshold, and receive SMS, e-mail, or **webhook**; up to ten alerts. Nothing in the documentation stops, throttles, or caps usage.
+- There is **no spending limit and no prepaid mode** — prepaid cards are explicitly rejected as a payment method, and payment is auto-initiated from the registered card at the start of each month.
+
+So the owner's requirement cannot be met by asking the platform to stop. It also cannot be met reliably by a cost-triggered webhook: while you are inside the allowance your cost is €0, so a *cost* threshold necessarily fires **after** billing has begun. A webhook shutdown bounds exposure to cents; it cannot bound it to zero.
+
+**Therefore the requirement must be met structurally: choose an allocation whose maximum possible monthly consumption is below the allowance.** The allowance is **200,000 vCPU-seconds and 400,000 GB-seconds** per month. Since consumption is exactly allocated tier × run duration, and run duration cannot exceed the month, the worst case is computable — and at the platform's floor tier it is already inside the allowance:
+
+| | allocation | worst case: continuously up for a 31-day month | inside the allowance? |
+|---|---|---|---|
+| CPU | **70 mvCPU** (the platform minimum) | 2,678,400 s × 0.070 = **187,488 vCPU-s** | yes, ~6% spare |
+| memory | **128 MB** (the platform minimum) | 2,678,400 s × 0.125 GB = **334,800 GB-s** | yes, ~16% spare |
+
+**At the floor tier with maximum scale capped at one instance, exceeding the free allowance is arithmetically impossible** — not unlikely, impossible — regardless of how the traffic arrives, whether the instance ever scales to zero, or whether the 15-minute idle window is tunable. That converts the requirement from something monitored into something guaranteed, which is exactly what "I do not want to be upgraded" demands. **Capping maximum scale at one instance is the load-bearing half of that guarantee:** per-instance concurrency runs to 80 and this load needs nothing near it, but if the platform may scale out, each extra instance consumes the allowance in parallel and the bound is void.
+
+**What it costs: 70 mvCPU is ~7% of a core, and the allocation is a ceiling rather than a reservation, so CPU-bound calls stretch by roughly its inverse** — seconds rather than milliseconds per call. For a few thousand agent-initiated calls a day that is likely tolerable, but it should be measured rather than assumed, and it is the real price of the guarantee.
+
+**If the binary does not run inside 128 MB**, the guarantee is lost, because 256 MB continuously up would consume ~670,000 GB-s against a 400,000 allowance. The stated 4–8 hour window makes 256 MB comfortably free in *practice* — an 8-hour window plus one idle tail is ~920,000 seconds a month, so ~230,000 GB-s, well under half the allowance, and the CPU ceiling at that uptime is a much more usable ~217 mvCPU. But that is a bound on *expected behaviour*, not on possible behaviour: a client retry loop or a usage pattern that spreads out would silently convert it into continuous uptime. Under a no-upgrade requirement that difference matters, so the fallback needs an active stop — a watchdog reading the Billing API's monthly-consumption endpoint and scaling the container to zero on a self-set threshold **below** the allowance, which acts before any cost exists rather than after. The owner's acceptance of unavailability is what makes that watchdog a clean design instead of a degradation policy.
+
+**Two unknowns now sit on the critical path** and are cheap to settle in the first deployment:
+
+1. **Does the native binary run inside 128 MB?** This decides between the arithmetic guarantee and the watchdog. It is one deployment.
+2. **Is the free allowance scoped per container, per project, or per account?** The pages read on 2026-08-02 do not say. The arithmetic guarantee assumes the allowance is available to this container; if it is account-wide and shared, any other serverless workload in the same account erodes it and the bound is wrong. **Verify before relying on the guarantee, and prefer a dedicated account or project for this service.**
+
+Two further items are worth knowing but no longer gate anything: container cold-start time (the 33 MB / ~90 ms figure above is *process* start, not container start), and whether the 15-minute idle window is tunable — irrelevant under the floor-tier guarantee, relevant only to the watchdog fallback.
+
+Note this is a *serving* decision only. It is independent of §9's no-warm-model rule, which is about correctness and holds under every configuration above. **Re-measure limits, sandbox behaviour, allowances, and certification status if phase 3 is ever taken up** — this section is a dated assessment, not a live one.
+
+### 13.6 What phase 3 changes in the design
+
+Model state moves from filesystem paths to **server-minted opaque handles passed as ordinary tool arguments** — the specification's own non-normative "Stateful Tools" guidance, and the only shape available now that protocol sessions are gone (§3). Model bytes then live in object storage behind the handle. Inlining a model in every call stays available for one-shot use and is token-fatal on real models; a client-supplied storage URI is the third option and the least attractive, since it makes us fetch from a location the model chose.
+
+Authorization becomes OAuth 2.1 resource-server, with the revision's `iss`-validation requirement and Client ID Metadata Documents now preferred over Dynamic Client Registration (§2). The official Java SDK becomes worth reconsidering **for that transport only** (§5.1): Streamable HTTP, SSE, and OAuth plumbing would justify the dependency where native-image is no longer a constraint.
+
+**§9's no-warm-model rule still holds under hosting.** Handles address storage, not a resident parsed model; caching one re-opens the cache-coherence objection that R3 records.
 
 ## 14. How this stands against decisions already recorded
 
