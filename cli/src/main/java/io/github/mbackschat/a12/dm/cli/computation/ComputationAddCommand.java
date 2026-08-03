@@ -73,7 +73,7 @@ final class ComputationAddCommand extends BaseCommand {
         } catch (IOException e) {
             return fail("cannot read input: " + e.getMessage());
         }
-        Optional<Integer> rejected = rejectUnknownKeys("computation-add", spec);
+        Optional<Integer> rejected = rejectInvalidSpec("computation-add", spec);
         if (rejected.isPresent()) {
             return rejected.get();
         }

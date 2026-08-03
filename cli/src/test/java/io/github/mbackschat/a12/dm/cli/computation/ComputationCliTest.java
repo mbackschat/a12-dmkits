@@ -69,7 +69,8 @@ class ComputationCliTest {
                 """);
         var res = CliTestSupport.run("-m", model.toString(), "computation", "add", spec.toString());
         assertNotEquals(0, res.code(), "an alternative without an operation is malformed");
-        assertTrue(res.err().contains("operation"), () -> "names the gap: " + res.err());
+        assertTrue(res.out().contains("RK_INVALID_VALUE") && res.out().contains("alternatives[]/operation"),
+                () -> "the schema rejection names the nested required property: " + res.out());
     }
 
     @Test

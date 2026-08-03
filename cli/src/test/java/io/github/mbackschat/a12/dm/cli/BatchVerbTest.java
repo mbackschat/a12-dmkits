@@ -145,6 +145,26 @@ class BatchVerbTest {
     }
 
     @Test
+    void aMissingRequiredKeyInALaterItemIsRejectedBeforeTheFirstWrite(@TempDir Path dir) throws Exception {
+        Path m = model(dir);
+        String before = Files.readString(m);
+        Path fieldSpec = dir.resolve("field.json");
+        Files.writeString(fieldSpec,
+                "{\"group\":\"/Subscription/Billing\",\"name\":\"MustNotAppear\",\"kind\":\"STRING\"}");
+        Path ops = dir.resolve("ops.json");
+        Files.writeString(ops, "[{\"verb\":\"field\",\"args\":[\"add\"," +
+                MAPPER.writeValueAsString(fieldSpec.toString()) + "]},{}]");
+
+        var res = CliTestSupport.run("-m", m.toString(), "batch", ops.toString());
+
+        assertEquals(1, res.code(), res::out);
+        JsonNode envelope = MAPPER.readTree(res.out());
+        assertEquals("rejected", envelope.path("outcome").asText(), res::out);
+        assertEquals("RK_INVALID_VALUE", envelope.path("diagnostics").get(0).path("code").asText(), res::out);
+        assertEquals(before, Files.readString(m), "the complete schema frame is checked before child zero");
+    }
+
+    @Test
     void rejectsWrongTypedFrameValuesInsteadOfCoercingOrDroppingThem(@TempDir Path dir) throws Exception {
         Path ops = dir.resolve("ops.json");
         Files.writeString(ops, "[{\"verb\":\"model\",\"args\":\"check\"}]");

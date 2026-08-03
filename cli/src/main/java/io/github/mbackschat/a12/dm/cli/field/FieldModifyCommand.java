@@ -91,7 +91,7 @@ final class FieldModifyCommand extends BaseCommand {
         List<Diagnostic> advisories;
         try {
             JsonNode spec = MAPPER.readTree(Files.readString(Path.of(specPath)));
-            Optional<Integer> rejected = rejectUnknownKeys("field-modify", spec);
+            Optional<Integer> rejected = rejectInvalidSpec("field-modify", spec);
             if (rejected.isPresent()) {
                 return rejected.get();
             }

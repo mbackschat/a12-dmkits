@@ -60,7 +60,7 @@ final class BatchCommand extends BaseCommand {
         // Enforce the exact frame served by `schema batch` before invoking the first child. The former
         // path coerced wrong-typed id/verb values, silently treated a non-array args value as absent, and
         // ignored extra keys despite additionalProperties:false — schema and runtime contradicted each other.
-        var frameRejection = rejectUnknownKeys(ResultIdentity.BATCH_RUN, "batch", ops);
+        var frameRejection = rejectInvalidSpec(ResultIdentity.BATCH_RUN, "batch", ops);
         if (frameRejection.isPresent()) {
             return frameRejection.get();
         }

@@ -3,7 +3,10 @@ package io.github.mbackschat.a12.dm.cli.profile;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Optional;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 
@@ -43,14 +46,29 @@ final class ProfileSynthesizeCommand extends BaseCommand {
 
     @Override
     public Integer call() {
+        String profileJson;
+        try {
+            profileJson = Files.readString(Path.of(inputPath));
+        } catch (IOException e) {
+            return fail("cannot read input: " + e.getMessage());
+        }
+        JsonNode input;
+        try {
+            input = JSON.readTree(profileJson);
+        } catch (JsonProcessingException e) {
+            return fail("profile synthesis failed: not valid JSON: " + e.getOriginalMessage());
+        }
+        JsonNode profile = profilePayload(input);
+        Optional<Integer> rejected = rejectInvalidSpec("profile", profile);
+        if (rejected.isPresent()) {
+            return rejected.get();
+        }
+
         String modelJson;
         ModelSynthesizer.Synthesized synthesized;
         try {
-            synthesized = ModelSynthesizer.synthesized(
-                    Files.readString(Path.of(inputPath)), seed);
+            synthesized = ModelSynthesizer.synthesized(profileJson, seed);
             modelJson = synthesized.dmJson();
-        } catch (IOException e) {
-            return fail("cannot read input: " + e.getMessage());
         } catch (RuntimeException e) {
             return failOrRethrowDomainRejection("profile synthesis failed: ", e);
         }
@@ -75,6 +93,13 @@ final class ProfileSynthesizeCommand extends BaseCommand {
                 ConsistencyEvidence.of(synthesized));
         out().print(envelope.toJsonString());
         return envelope.exitCode();
+    }
+
+    private static JsonNode profilePayload(JsonNode input) {
+        if (input == null) {
+            return JSON.missingNode();
+        }
+        return input.has("structure") ? input : input.path("data");
     }
 
     private static String modelId(String modelJson) {

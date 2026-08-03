@@ -98,7 +98,7 @@ final class TypedefModifyCommand extends BaseCommand {
         try {
             if (specPath != null) {
                 JsonNode spec = MAPPER.readTree(Files.readString(Path.of(specPath)));
-                Optional<Integer> rejected = rejectUnknownKeys("typedef-add", spec);
+                Optional<Integer> rejected = rejectInvalidSpec("typedef-add", spec);
                 if (rejected.isPresent()) {
                     return rejected.get();
                 }

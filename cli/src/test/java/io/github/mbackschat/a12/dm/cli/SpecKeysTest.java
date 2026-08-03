@@ -39,6 +39,62 @@ class SpecKeysTest {
     }
 
     @Test
+    void flagsMissingAndNullRequiredPropertiesFromThePublishedSchema() throws Exception {
+        for (String json : List.of(
+                "{\"name\":\"F\"}",
+                "{\"group\":null,\"name\":\"F\"}")) {
+            List<Diagnostic> found = validateFieldAdd(json);
+            assertEquals(1, found.size(), () -> "one missing required property: " + found);
+            assertEquals("RK_INVALID_VALUE", found.get(0).code().orElse(null));
+            assertEquals("group", found.get(0).where().arg().orElse(null),
+                    () -> "the required-property locator comes from the schema: " + found.get(0));
+        }
+    }
+
+    @Test
+    void anOptionalPropertyMayBeAbsentButMayNotViolateItsDeclaredType() throws Exception {
+        assertTrue(validateFieldAdd("{\"group\":\"/G\",\"name\":\"F\"}").isEmpty(),
+                "optional means absent is legal");
+
+        List<Diagnostic> found = validateFieldAdd("{\"group\":\"/G\",\"name\":\"F\",\"global\":null}");
+
+        assertEquals(1, found.size(), () -> "present null does not satisfy the published boolean type: " + found);
+        assertEquals("RK_INVALID_VALUE", found.get(0).code().orElse(null));
+        assertEquals("global", found.get(0).where().arg().orElse(null));
+    }
+
+    @Test
+    void optionalBatchArgsMustBeAnArrayWhenPresent() throws Exception {
+        List<Diagnostic> found = SpecKeys.forSchema("batch").validate(M.readTree(
+                "[{\"verb\":\"manifest\",\"args\":null}]"));
+
+        assertEquals(1, found.size(), () -> "present batch args must conform instead of defaulting: " + found);
+        assertEquals("RK_INVALID_VALUE", found.get(0).code().orElse(null));
+        assertEquals("[]/args", found.get(0).where().arg().orElse(null));
+    }
+
+    @Test
+    void flagsARequiredPropertyInsideEveryArrayItem() throws Exception {
+        List<Diagnostic> found = SpecKeys.forSchema("batch").validate(M.readTree("[{\"verb\":\"manifest\"},{}]"));
+
+        assertEquals(1, found.size(), () -> "the malformed second item is rejected before dispatch: " + found);
+        assertEquals("RK_INVALID_VALUE", found.get(0).code().orElse(null));
+        assertEquals("[]/verb", found.get(0).where().arg().orElse(null),
+                () -> "the item requirement is attributed to verb: " + found.get(0));
+    }
+
+    @Test
+    void validatesDynamicObjectValuesAgainstSchemaValuedAdditionalProperties() throws Exception {
+        List<Diagnostic> found = SpecKeys.forSchema("profile#/$defs/distributionMap").validate(M.readTree("""
+                {"1":{"n":1,"min":1,"max":1,"mean":1,"median":1,"p90":1}}
+                """));
+
+        assertEquals(1, found.size(), () -> "the dynamic map value must satisfy the distribution schema: " + found);
+        assertEquals("RK_INVALID_VALUE", found.get(0).code().orElse(null));
+        assertEquals("1/buckets", found.get(0).where().arg().orElse(null));
+    }
+
+    @Test
     void flagsAnUnknownTopLevelKeyWithADidYouMean() throws Exception {
         List<Diagnostic> found = validateFieldAdd("""
                 {"group":"/G","name":"F","requried":true}""");                       // typo: requried

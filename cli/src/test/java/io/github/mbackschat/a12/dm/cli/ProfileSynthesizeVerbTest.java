@@ -9,6 +9,7 @@ import java.nio.file.Path;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -54,6 +55,28 @@ class ProfileSynthesizeVerbTest {
         assertEquals("synthesize", receipt.path("op").asText());
         assertEquals("applied", receipt.path("outcome").asText());
         assertEquals(output.toString(), receipt.path("output").asText());
+    }
+
+    @Test
+    void rejectsANestedPublishedSchemaViolationBeforeSynthesis(@TempDir Path dir) throws Exception {
+        Path invalid = profile(dir);
+        ObjectNode root = (ObjectNode) JSON.readTree(Files.readString(invalid));
+        ObjectNode byDepth = (ObjectNode) root.at("/structure/repeatability/chainProductByDepth");
+        ObjectNode distribution = (ObjectNode) byDepth.elements().next();
+        distribution.remove("buckets");
+        Files.writeString(invalid, root.toPrettyString());
+        Path output = dir.resolve("must-not-exist.dm.json");
+
+        CliTestSupport.Result result = CliTestSupport.run("profile", "synthesize", "--input",
+                invalid.toString(), "-o", output.toString());
+
+        assertEquals(1, result.code(), result::err);
+        JsonNode envelope = JSON.readTree(result.out());
+        assertEquals("rejected", envelope.path("outcome").asText(), result::out);
+        assertEquals("RK_INVALID_VALUE", envelope.path("diagnostics").get(0).path("code").asText(), result::out);
+        assertTrue(envelope.path("diagnostics").get(0).path("where").path("arg").asText().endsWith("/buckets"),
+                result::out);
+        assertFalse(Files.exists(output));
     }
 
     @Test

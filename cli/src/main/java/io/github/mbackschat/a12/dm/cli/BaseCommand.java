@@ -68,6 +68,16 @@ public abstract class BaseCommand implements Callable<Integer> {
         return 2;
     }
 
+    /** Whether the caller explicitly supplied any named option, including an explicit boolean {@code false}. */
+    protected final boolean optionMatched(String... names) {
+        for (String name : names) {
+            if (spec.commandLine().getParseResult().hasMatchedOption(name)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     /**
      * The DM-JSON at {@code modelPath}, or {@code null} after printing the corrective failure to stderr (the
      * caller then returns exit 2). Centralizes the read-the-model-file step every mutating verb opens with —
@@ -224,17 +234,18 @@ public abstract class BaseCommand implements Callable<Integer> {
 
     /**
      * Strict input gate: if {@code spec} carries a key the {@code schema/<schemaName>.schema.json} does not
-     * declare, or a declared key with a wrong-typed/shaped value (top-level or nested), emit a {@code rejected}
+     * declare, omits a required property, or carries a declared key with a wrong-typed/shaped value, emit a {@code rejected}
      * envelope of {@code RK_UNKNOWN_ARG} / {@code RK_INVALID_VALUE} diagnostics (with a did-you-mean) and return
      * its exit code; otherwise {@link Optional#empty()} so the caller proceeds. The single defense against a
-     * typo'd/out-of-scope key — or a mis-shaped value — being silently dropped into a false {@code applied}.
+     * typo'd/out-of-scope key, missing required value, or mis-shaped value being silently dropped/defaulted into
+     * a false {@code applied}.
      */
-    protected Optional<Integer> rejectUnknownKeys(String schemaName, JsonNode spec) {
-        return rejectUnknownKeys(resultIdentity(), schemaName, spec);
+    protected Optional<Integer> rejectInvalidSpec(String schemaName, JsonNode spec) {
+        return rejectInvalidSpec(resultIdentity(), schemaName, spec);
     }
 
     /** One-token/multi-mode counterpart whose identity is intentionally named rather than leaf-derived. */
-    protected Optional<Integer> rejectUnknownKeys(ResultIdentity identity, String schemaName, JsonNode spec) {
+    protected Optional<Integer> rejectInvalidSpec(ResultIdentity identity, String schemaName, JsonNode spec) {
         List<Diagnostic> problems = SpecKeys.forSchema(schemaName).validate(spec).stream()
                 .map(diagnostic -> MetadataRelocation.correct(identity.target(), identity.op(), diagnostic))
                 .toList();

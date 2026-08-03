@@ -135,6 +135,7 @@ class AddVerbTest {
                 """;
         var res = CliTestSupport.run("-m", model(dir).toString(), "rule", "add", spec(dir, noMsg).toString());
         assertNotEquals(0, res.code(), "a rule-spec without messages is an error");
-        assertTrue(res.err().toLowerCase().contains("message"), () -> "names the gap: " + res.err());
+        assertTrue(res.out().contains("RK_INVALID_VALUE") && res.out().contains("messages"),
+                () -> "the schema rejection names the missing required property: " + res.out());
     }
 }

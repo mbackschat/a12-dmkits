@@ -5,6 +5,7 @@ import java.io.InputStream;
 import java.io.UncheckedIOException;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -32,14 +33,16 @@ import io.github.mbackschat.a12.dm.rulekit.validate.RkCode;
  *       ({@code required:"MANDATORY"} vs the {@code [true,false,"ifParentPresent"]} enum). An open object
  *       (e.g. a locale map) still requires an <em>object</em> value while leaving its keys unrestricted — the
  *       two checks compose. This generalizes the per-parser fail-fast in {@code FieldSpec} to every served spec,
- *       with a structured diagnostic instead of a plain {@code fail}; the parsers keep their fail-fast invariant
+ *       with a structured diagnostic instead of a plain {@code fail}; a schema-required property that is missing
+ *       or null is the same {@code RK_INVALID_VALUE} class, checked before a parser can default or coerce it. The
+ *       parsers keep their fail-fast invariant
  *       behind the gate (it also backstops the {@code apply} op-record's top-level scalars).</li>
  * </ul>
  *
  * <p>The allowed keys are <b>read from</b> {@code schema/<name>.schema.json} (the same file {@code dmtool
  * schema <target> <op>} serves), not a second hand-maintained list — so the contract an agent reads and the
- * enforcement cannot drift. Used by the standalone spec verbs (field add/modify, rule/computation add) and
- * by {@code apply}/{@code batch} (which also allows the op-record's {@code target}/{@code op} at the root).
+ * enforcement cannot drift. Used by every registered rich-input verb (field/typedef/rule/computation edits and
+ * profile synthesis) and by {@code apply}/{@code batch} (which also allow their frame keys at the root).
  */
 public final class SpecKeys {
 
@@ -78,7 +81,7 @@ public final class SpecKeys {
         }
     }
 
-    /** Validate {@code input}; one {@code RK_UNKNOWN_ARG} per undeclared key (recursively). Empty = clean. */
+    /** Validate {@code input}; report undeclared keys, invalid values, and missing required properties. Empty = clean. */
     public List<Diagnostic> validate(JsonNode input) {
         return validate(input, Set.of());
     }
@@ -94,10 +97,10 @@ public final class SpecKeys {
     }
 
     /**
-     * Validate only the <b>nested</b> keys — recurse into each declared property, but do not flag unknown
+     * Validate only the <b>nested</b> shape — recurse into each declared property, but do not flag unknown
      * <em>top-level</em> keys. For {@code apply}/{@code batch}, where the op-record's top-level keys are
-     * already checked tightly against the op's own key-set; this adds the nested coverage (e.g. a typo inside
-     * a {@code string} config block, or a message-item key) those flat checks miss.
+     * already checked tightly against the op's own key-set; this adds nested keys, values, and requirements
+     * (e.g. a typo inside a {@code string} config block, or a message-item key) those flat checks miss.
      */
     public List<Diagnostic> validateNested(JsonNode input) {
         List<Diagnostic> out = new ArrayList<>();
@@ -120,7 +123,9 @@ public final class SpecKeys {
      *       the value-shape gate (key <em>values</em>), the sibling of the unknown-<em>key</em> check below;</li>
      *   <li>{@code closed} — its {@code additionalProperties:false}: a key outside {@code children} is rejected;</li>
      *   <li>{@code children} — each declared property's own tree (a {@code null} child = an open sub-object with
-     *       nothing to enforce — not recursed); {@code arrayItem} — the item tree for an array schema.</li>
+     *       nothing to enforce — not recursed); {@code arrayItem} — the item tree for an array schema;
+     *       {@code additionalProperty} — the schema for every dynamic map value when
+     *       {@code additionalProperties} is itself a schema.</li>
      * </ul>
      * A {@code null} tree means "open — nothing to enforce". An OPEN object (declared {@code type:object} with no
      * {@code properties}, e.g. a locale→text map) is a NON-null node carrying only {@code type=object}: its value
@@ -128,18 +133,21 @@ public final class SpecKeys {
      */
     private static final class Node {
 
-        private final String type;
+        private final Set<String> types;
         private final List<JsonNode> enumValues;
         private final boolean closed;
+        private final Set<String> required;
         // Populated immediately after the node is memoized, so a self-referential $ref (explain's tree node) can
         // point back at the node being built instead of recursing forever.
         private final Map<String, Node> children = new LinkedHashMap<>();
         private Node arrayItem;
+        private Node additionalProperty;
 
-        private Node(String type, List<JsonNode> enumValues, boolean closed) {
-            this.type = type;
+        private Node(Set<String> types, List<JsonNode> enumValues, boolean closed, Set<String> required) {
+            this.types = Set.copyOf(types);
             this.enumValues = enumValues;
             this.closed = closed;
+            this.required = Set.copyOf(required);
         }
 
         /**
@@ -166,7 +174,7 @@ public final class SpecKeys {
             if (ref != null && ref.isTextual()) {
                 return fromRef(ref.asText(), root, memo);
             }
-            String type = schema.path("type").isTextual() ? schema.get("type").asText() : null;
+            Set<String> types = declaredTypes(schema.get("type"));
             List<JsonNode> enumValues = null;
             JsonNode en = schema.get("enum");
             if (en != null && en.isArray()) {
@@ -179,11 +187,13 @@ public final class SpecKeys {
             declarations.forEach((key, declared) -> props.put(key, agreedDeclaration(declared)));
             JsonNode items = schema.get("items");
             boolean hasItems = items != null && items.isObject();
-            if (type == null && enumValues == null && props.isEmpty() && !hasItems) {
+            JsonNode ap = schema.get("additionalProperties");
+            boolean hasAdditionalProperty = ap != null && ap.isObject();
+            if (types.isEmpty() && enumValues == null && props.isEmpty() && !hasItems && !hasAdditionalProperty) {
                 return null; // nothing to enforce — open, unrestricted
             }
-            JsonNode ap = schema.path("additionalProperties");
-            Node node = new Node(type, enumValues, !props.isEmpty() && ap.isBoolean() && !ap.booleanValue());
+            Node node = new Node(types, enumValues, ap != null && ap.isBoolean() && !ap.booleanValue(),
+                    alwaysRequired(schema));
             if (memoKey != null) {
                 // Published BEFORE the children are walked: that ordering is what lets a self-referential $ref
                 // (explain's tree node) resolve to this very node instead of recursing without end.
@@ -193,7 +203,56 @@ public final class SpecKeys {
             if (hasItems) {
                 node.arrayItem = build(items, root, memo, null);
             }
+            if (hasAdditionalProperty) {
+                node.additionalProperty = build(ap, root, memo, null);
+            }
             return node;
+        }
+
+        private static Set<String> declaredTypes(JsonNode type) {
+            Set<String> types = new LinkedHashSet<>();
+            if (type != null && type.isTextual()) {
+                types.add(type.asText());
+            } else if (type != null && type.isArray()) {
+                type.forEach(value -> types.add(value.asText()));
+            }
+            return types;
+        }
+
+        /**
+         * Properties required on every branch that can satisfy {@code schema}. Direct and {@code allOf}
+         * requirements accumulate; alternatives contribute only their intersection, avoiding the over-refusal
+         * of requiring a property that belongs to one {@code oneOf}/{@code anyOf} variant only.
+         */
+        private static Set<String> alwaysRequired(JsonNode schema) {
+            Set<String> required = new TreeSet<>();
+            JsonNode direct = schema.get("required");
+            if (direct != null && direct.isArray()) {
+                direct.forEach(key -> required.add(key.asText()));
+            }
+            JsonNode allOf = schema.get("allOf");
+            if (allOf != null && allOf.isArray()) {
+                allOf.forEach(branch -> required.addAll(alwaysRequired(branch)));
+            }
+            for (String alternatives : List.of("oneOf", "anyOf")) {
+                JsonNode branches = schema.get(alternatives);
+                if (branches == null || !branches.isArray() || branches.isEmpty()) {
+                    continue;
+                }
+                Set<String> common = null;
+                for (JsonNode branch : branches) {
+                    Set<String> branchRequired = alwaysRequired(branch);
+                    if (common == null) {
+                        common = new TreeSet<>(branchRequired);
+                    } else {
+                        common.retainAll(branchRequired);
+                    }
+                }
+                if (common != null) {
+                    required.addAll(common);
+                }
+            }
+            return required;
         }
 
         /** Resolve a local {@code #/…} reference, sharing one node per pointer so a recursive shape terminates. */
@@ -248,10 +307,9 @@ public final class SpecKeys {
         }
 
         void validate(JsonNode input, String path, Set<String> ignore, List<Diagnostic> out) {
-            // value-shape gate: a PRESENT value must match the declared type/enum. An explicit null = "absent →
-            // default" (the parsers treat isNull() as the default), so it is not flagged. A mis-shaped value is
-            // reported and NOT recursed into (recursing would pile confusing child errors onto the real cause).
-            if (!input.isNull() && !valueMatches(input)) {
+            // Optional means a property may be absent. Once present, every value must satisfy the declared type;
+            // null is legal only when the schema explicitly includes the "null" type. Wrong shapes do not recurse.
+            if (!valueMatches(input)) {
                 out.add(invalidValue(path, this));
                 return;
             }
@@ -261,6 +319,11 @@ public final class SpecKeys {
             }
             if (!input.isObject()) {
                 return;
+            }
+            for (String key : required) {
+                if (!input.has(key)) {
+                    out.add(missingRequired(path, key));
+                }
             }
             input.fields().forEachRemaining(entry -> {
                 String key = entry.getKey();
@@ -272,6 +335,9 @@ public final class SpecKeys {
                     if (child != null) {
                         child.validate(entry.getValue(), path.isEmpty() ? key : path + "/" + key, Set.of(), out);
                     }
+                } else if (additionalProperty != null) {
+                    additionalProperty.validate(entry.getValue(), path.isEmpty() ? key : path + "/" + key,
+                            Set.of(), out);
                 } else if (closed) {
                     out.add(unknownArg(key, path, children.keySet()));
                 }
@@ -283,18 +349,19 @@ public final class SpecKeys {
             if (enumValues != null) {
                 return enumValues.stream().anyMatch(allowed -> allowed.equals(input));
             }
-            if (type == null) {
+            if (types.isEmpty()) {
                 return true;
             }
-            return switch (type) {
-                case "object" -> input.isObject();
-                case "array" -> input.isArray();
-                case "string" -> input.isTextual();
-                case "boolean" -> input.isBoolean();
-                case "integer" -> input.isIntegralNumber();
-                case "number" -> input.isNumber();
-                default -> true; // an unrecognized type keyword — don't restrict
-            };
+            return types.stream().anyMatch(type -> switch (type) {
+                    case "null" -> input.isNull();
+                    case "object" -> input.isObject();
+                    case "array" -> input.isArray();
+                    case "string" -> input.isTextual();
+                    case "boolean" -> input.isBoolean();
+                    case "integer" -> input.isIntegralNumber();
+                    case "number" -> input.isNumber();
+                    default -> true; // an unrecognized type keyword — don't restrict
+                });
         }
 
         /** What this node accepts, for the {@code RK_INVALID_VALUE} message/fix. */
@@ -306,7 +373,7 @@ public final class SpecKeys {
                 }
                 return b.toString();
             }
-            return "a value of type " + type;
+            return "a value of type " + String.join(" or ", types);
         }
     }
 
@@ -316,6 +383,15 @@ public final class SpecKeys {
                 "invalid value for '" + path + "' — expected " + expected,
                 Diagnostic.Where.arg(null, path),
                 Optional.of("provide " + expected),
+                Optional.empty());
+    }
+
+    private static Diagnostic missingRequired(String path, String key) {
+        String where = path.isEmpty() ? key : path + "/" + key;
+        return Diagnostic.precheck(Optional.of(RkCode.INVALID_VALUE.code()),
+                "missing required property '" + where + "'",
+                Diagnostic.Where.arg(null, where),
+                Optional.of("provide the required property '" + key + "' with a non-null value"),
                 Optional.empty());
     }
 

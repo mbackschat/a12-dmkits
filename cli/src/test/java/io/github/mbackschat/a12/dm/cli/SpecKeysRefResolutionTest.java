@@ -76,7 +76,8 @@ class SpecKeysRefResolutionTest {
                                      "afterValue": { "type": "BOOLEAN", "value": true } },
                                    { "aspect": "length",
                                      "beforeValue": { "type": "INTEGER", "value": 3 },
-                                     "afterValue": { "type": "STRING_LIST", "value": [ "a", "b" ] } } ] } ] }""");
+                                     "afterValue": { "type": "STRING_LIST", "value": [ "a", "b" ] } } ] } ],
+                  "refactors": [] }""");
 
         List<Diagnostic> violations = SpecKeys.forSchema("model-diff").validate(data);
 
