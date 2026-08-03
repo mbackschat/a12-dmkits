@@ -103,6 +103,7 @@ tasks.named('test') {
     dependsOn 'interpreterReleaseGuardTest'
     dependsOn 'catalogProseReviewGuardTest'
     dependsOn 'deliveryGuardTest'
+    dependsOn 'releaseGapGuardTest'
     // Repo-file-reading guards run in input-declared dedicated tasks; keep them out of the broad suite so a
     // doc/marker/golden/script-only edit cannot leave a stale-green `test` (TESTING-SPEC "Tests that read
     // repo files at runtime").
@@ -121,6 +122,7 @@ tasks.named('test') {
         excludeTestsMatching 'io.github.mbackschat.a12.dm.EnsureDmtoolCacheTest'
         excludeTestsMatching 'io.github.mbackschat.a12.dm.NativeNoJavaSmokeTest'
         excludeTestsMatching 'io.github.mbackschat.a12.dm.CodexPluginActivationEvidenceTest'
+        excludeTestsMatching 'io.github.mbackschat.a12.dm.ReleaseGapBlockerTest'
     }
 }
 
@@ -221,6 +223,21 @@ tasks.register('deliveryGuardTest', Test) {
             'Codex activation smoke'  : file('scripts/codex-plugin-activation-smoke.sh'),
             'Codex evidence schema'   : file('scripts/codex-plugin-activation.schema.json'),
             'release asset manifest'  : file('scripts/release-assets.sh'),
+    ])
+}
+
+tasks.register('releaseGapGuardTest', Test) {
+    description = 'Release blocker proving every derived gap ledger has a drained open section.'
+    group = 'verification'
+    useJUnitPlatform()
+    testClassesDirs = sourceSets.test.output.classesDirs
+    classpath = sourceSets.test.runtimeClasspath
+    filter {
+        includeTestsMatching 'io.github.mbackschat.a12.dm.ReleaseGapBlockerTest'
+    }
+    guardInputs(it, [
+            'release gap checker': file('scripts/check-release-gaps.sh'),
+            'gap ledgers'        : fileTree('docs') { include '*-GAPS.md' },
     ])
 }
 
@@ -329,6 +346,8 @@ tasks.register('interpreterReleaseGuardTest', Test) {
             'rehearsal'         : file('scripts/rehearse-interpreter-release.sh'),
             'rehearsal backend' : file('scripts/interpreter-release-rehearsal-host.sh'),
             'dmtool publisher'  : file('scripts/publish-release.sh'),
+            'release gap checker': file('scripts/check-release-gaps.sh'),
+            'gap ledgers'       : fileTree('docs') { include '*-GAPS.md' },
             'consumer programs' : fileTree('interpreter/consumer-tests') {
                 include 'kotlin-jvm/**/*'
                 include 'typescript/**/*'

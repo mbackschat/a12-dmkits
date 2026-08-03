@@ -185,12 +185,15 @@ class GapLedgerTemplateGuardTest {
         String markerPlusProse = "# x\n\n## 1. Open\n\n_None open._\n\nEverything shipped.\n\n## 2. Deferred\n";
         String markerOnly = "# x\n\n## 1. Open\n\n_None open._\n\n---\n\n## 2. Deferred\n";
         String withItems = "# x\n\n## 1. Open\n\n- **IG9 — a real open gap**\n\n## 2. Deferred\n";
+        String emptyTable = "# x\n\n## 1. Open\n\n| id | gap |\n|---|---|\n\n## 2. Deferred\n";
 
         assertTrue(!audit("bare.md", bare).isEmpty(), "a drained open section with no marker must fire");
         assertTrue(audit("markerPlusProse.md", markerPlusProse).stream().anyMatch(v -> v.contains("still carries prose")),
                 "a marked section that still buries the answer under prose must fire");
         assertTrue(audit("markerOnly.md", markerOnly).isEmpty(), "the marker alone must satisfy the guard");
         assertTrue(audit("items.md", withItems).isEmpty(), "a section that lists an item needs no marker");
+        assertTrue(!audit("emptyTable.md", emptyTable).isEmpty(),
+                "an empty table has no live item and must not satisfy the open-section guard");
     }
 
     /** One violation per open section that is neither populated nor explicitly empty. */
@@ -216,7 +219,8 @@ class GapLedgerTemplateGuardTest {
             }
             if (line.strip().equals(MARKER)) {
                 hasMarker = true;
-            } else if (line.startsWith("- **") || line.startsWith("### ") || line.startsWith("| ")) {
+            } else if (line.startsWith("- **") || line.startsWith("### ")
+                    || (line.startsWith("| ") && ID.matcher(line).find())) {
                 hasItem = true;
             } else if (!line.isBlank() && !line.strip().equals("---")) {
                 // A drained section must say ONLY that it is drained. Closure history and lifecycle policy

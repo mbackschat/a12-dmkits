@@ -137,6 +137,8 @@ The versioned API archive contains the canonical README and tested guide plus ge
 
 ## 8. Qualification and package gates
 
+Before qualification, staging, or promotion, [`check-release-gaps.sh`](../scripts/check-release-gaps.sh) derives every live `docs/*-GAPS.md` ledger and refuses publication unless every Open section contains only `_None open._`. Deferred, declined, divergence, and out-of-scope sections do not block.
+
 Before staging a release, the source checkout must pass:
 
 - JVM and Node interpreter tests;
@@ -155,7 +157,7 @@ Qualification writes a receipt containing the exact source commit, source tag, r
 
 The publisher follows this state machine:
 
-1. Require a clean source checkout whose local and origin source tag resolve to the current commit and whose root version matches both tags.
+1. Require all live gap ledgers to have drained Open sections, then require a clean source checkout whose local and origin source tag resolve to the current commit and whose root version matches both tags.
 2. Verify the qualification receipt and exact output checksums.
 3. Clone and verify the existing public mirror, including every historical commit's author and committer identity.
 4. Push only the public workflow bootstrap required by a new mirror.

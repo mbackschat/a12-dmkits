@@ -46,6 +46,8 @@ The library jars/JavaDoc are out of v1 scope; the full build + consume + licensi
 
 **Published-release immutability policy:** after `--go-live`, the mirror's GitHub Release is immutable by project policy, even if GitHub technically allows asset edits. Adding a new platform, replacing a binary, changing `SHA256SUMS`, or changing the public workflow for that release requires a new patch release. Draft releases may be refreshed before publication; published releases are superseded, not mutated. `publish-release.sh` enforces this by refusing to stage over a published release and refusing `--go-live` unless the release is still a draft.
 
+**Open-gap release blocker:** every stage and go-live invocation first runs [`scripts/check-release-gaps.sh`](../scripts/check-release-gaps.sh). The checker derives every `docs/*-GAPS.md` ledger and requires its Open section to contain only the canonical `_None open._` marker. Deferred, declined, divergence, and out-of-scope sections remain non-blocking. `releaseGapGuardTest` supplies the positive controls: a newly discovered ledger with one open row and an empty ledger denominator both fail.
+
 **Step 1 — version bump (before tagging).** Run **[`scripts/bump-version.sh X.Y.Z`](../scripts/bump-version.sh)** — it does the deterministic edits in the table below (the `build.gradle` version, both plugin manifests, the `cli-version.md` capture, and the plugin's **binary-download pin**), leaving only the CHANGELOG *content* and the build/verify/commit/tag to you. Most of these are caught by **no** guard (`VersionMentionFreshnessTest` guards only the *kernel* pin), so a missed file drifts the project version silently — which is exactly why the edits are scripted. The one exception is the download pin, now guarded by **`PluginInstallerVersionTest`**:
 
 | File | What |
@@ -66,7 +68,7 @@ git tag -a vX.Y.Z -m "vX.Y.Z — kernel <pin> (A12 Tools <quarter>)" && git push
 
 **Step 2 — stage the release** (`./scripts/publish-release.sh vX.Y.Z`), which runs:
 ```
-build mac native (§3a) + native-gate.sh (§5)
+check-release-gaps.sh ──► build mac native (§3a) + native-gate.sh (§5)
   └─ assemble-release-repo.sh ──► rsync --delete into a fresh clone of the mirror ──► commit + push   (mirror CONTENT)
        └─ gh release create --draft  ──► upload mac binary (dmtool-macos-arm64)                        (BEFORE the dispatch ↓)
             └─ gh workflow run build-native (source_ref+release_tag) ─► Linux/Windows nativeCompile+verify,

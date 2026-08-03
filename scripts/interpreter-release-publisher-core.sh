@@ -426,6 +426,7 @@ publish_interpreter_release() {
   work_directory="${INTERPRETER_RELEASE_WORK_DIRECTORY:-$source_root/build/interpreter-release/publisher}"
   INTERPRETER_RELEASE_PAGES_BASE="${INTERPRETER_RELEASE_PAGES_BASE:-https://mbackschat.github.io/a12-interpreter-releases}"
   INTERPRETER_RELEASE_DOWNLOAD_BASE="${INTERPRETER_RELEASE_DOWNLOAD_BASE:-https://github.com/mbackschat/a12-interpreter-releases/releases/download}"
+  "$source_root/scripts/check-release-gaps.sh" "$source_root/docs"
   release_require_safe_derived_directory "$work_directory"
   mkdir -p "$work_directory"
 

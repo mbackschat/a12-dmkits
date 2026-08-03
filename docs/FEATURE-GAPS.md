@@ -31,8 +31,7 @@ So a code/doc comment citing **`FEATURE-GAPS §N`** / **`Gn`** (including legacy
 
 ## 3. Open
 
-| id | surfaced | gap | completion |
-|---|---|---|---|
+_None open._
 ---
 
 ## 4. Deferred / out of scope / won't build

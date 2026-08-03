@@ -107,6 +107,7 @@ create_fixture() {
   WORK="$FIXTURE/work"
   mkdir -p \
     "$SOURCE/scripts" \
+    "$SOURCE/docs" \
     "$SOURCE/interpreter/public-release" \
     "$SOURCE/.github/interpreter-mirror-workflows" \
     "$STATE"
@@ -118,11 +119,13 @@ create_fixture() {
   for script in \
     assemble-interpreter-release-repo.sh \
     check-interpreter-release-repo.sh \
+    check-release-gaps.sh \
     interpreter-release-assets.sh \
     release-git-identity.sh \
     release-mirror-common.sh; do
     cp "$ROOT/scripts/$script" "$SOURCE/scripts/$script"
   done
+  printf '%s\n' '# synthetic — gaps' '' '## 1. Open' '' '_None open._' > "$SOURCE/docs/SYNTHETIC-GAPS.md"
   cat > "$SOURCE/scripts/update-code-statistics.sh" <<'EOF'
 #!/usr/bin/env bash
 set -euo pipefail
