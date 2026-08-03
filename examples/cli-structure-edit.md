@@ -441,7 +441,7 @@ dmtool -m /tmp/struct2-td.json typedef read
 }
 ```
 
-→ `data.typedefs = [ "Currency" ]` is the inventory of reusable types you can point a field at.
+→ `data.typedefs = [ "Currency", "BillingCycle" ]` is the inventory of reusable types you can point a field at.
 
 Now type a field by that definition with `field add --typedef Currency` (instead of `--kind`). The echo reports both the `typedef` pointer and the resolved value `kind` — so you see it's typed *by reference* and what it effectively holds:
 
@@ -470,6 +470,23 @@ dmtool -m /tmp/struct2-td.json \
 ```
 
 → `changed.typedef = Currency` with `changed.kind = NUMBER`: `SetupFee` is typed *by* the `Currency` definition (a reference, so a change to `Currency` propagates), and its resolved value kind is `NUMBER`.
+
+`typedef modify` changes the shared definition's config in one place. Every field typed by that definition inherits the new config by reference; there is no per-field rewrite:
+
+```bash
+echo '{ "kind": "NUMBER", "number": { "maxFractionalDigits": 3, "unit": "AMOUNT" } }' > /tmp/currency-3dp.json
+dmtool -m /tmp/struct2-td.json typedef modify --id Currency /tmp/currency-3dp.json \
+  | jq -c '{outcome, modified: .changed.modified, kind: .changed.kind}'
+dmtool -m /tmp/struct2-td.json field read /Subscription/Billing/SetupFee \
+  | jq -c '{typedef: .data.typedef, maxFractionalDigits: .data.resolvedType.number.maxFractionalDigits}'
+```
+
+```output
+{"outcome":"applied","modified":"Currency","kind":"NUMBER"}
+{"typedef":"Currency","maxFractionalDigits":3}
+```
+
+→ The write touched `Currency` once, and the following `field read` proves `SetupFee` immediately resolves the new three-decimal config.
 
 `typedef remove` deletes a definition — but the kernel rejects (exit 1) removing one a field still uses, because that would leave the field's type dangling. With `SetupFee` still referencing `Currency`, the removal is refused:
 

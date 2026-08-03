@@ -6,6 +6,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.TreeSet;
 
 import org.junit.jupiter.api.Test;
 
@@ -34,7 +35,7 @@ class ManifestVerbTest {
             "field add", "field modify", "field read", "field remove", "field rename", "field move",
             "group add", "group multiselect", "group attachment", "group read", "group modify", "group remove",
             "group rename", "group move", "group extract",
-            "typedef add", "typedef read", "typedef remove", "typedef rename", "typedef extract", "typedef inline",
+            "typedef add", "typedef modify", "typedef read", "typedef remove", "typedef rename", "typedef extract", "typedef inline",
             "typedef import", "typedef unimport",
             "include add", "include read", "include set-reference", "include rename", "include remove", "include inline",
             "config read", "config modify",
@@ -53,9 +54,12 @@ class ManifestVerbTest {
             assertTrue(!v.path("description").asText().isBlank(),
                     () -> "verb " + v.path("verb").asText() + " has a description");
         }
-        for (String expected : EXPECTED_VERBS) {
-            assertTrue(verbs.contains(expected), () -> "manifest is missing verb '" + expected + "': " + verbs);
-        }
+        Set<String> expected = new HashSet<>(EXPECTED_VERBS);
+        assertEquals(EXPECTED_VERBS.size(), expected.size(), "EXPECTED_VERBS must not contain duplicates");
+        assertEquals(expected, verbs,
+                () -> "manifest verb set differs from the independent pin; missing from manifest: "
+                        + difference(expected, verbs) + "; live verbs missing from EXPECTED_VERBS: "
+                        + difference(verbs, expected));
     }
 
     @Test
@@ -86,5 +90,11 @@ class ManifestVerbTest {
             }
         }
         throw new AssertionError("no verb '" + name + "' in manifest");
+    }
+
+    private static Set<String> difference(Set<String> minuend, Set<String> subtrahend) {
+        Set<String> difference = new TreeSet<>(minuend);
+        difference.removeAll(subtrahend);
+        return difference;
     }
 }
