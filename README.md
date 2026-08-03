@@ -1,6 +1,6 @@
 # a12-dmkits
 
-Author, read, and safely edit the **rules** and **structure** of A12 Kernel document models — through a self-describing command-line tool (**`dmtool`**), or as typed Java code. What you author is confirmed by the **real A12 kernel**, so it is *accepted*, not merely plausible; what you run — which rules fire on a document — is evaluated by a clean-room, kernel-exact **interpreter** (JVM + JS). Models also import from and export to **JSON Schema / OpenAPI**. JSON in, JSON out.
+Author, read, and safely edit the **rules** and **structure** of A12 Kernel document models — through a self-describing command-line tool (**`dmtool`**), or as typed Java code. What you author is confirmed by the **real A12 kernel**, so it is *accepted*, not merely plausible; what you run — which rules fire on a document — is evaluated by a clean-room, kernel-exact **interpreter** (JVM + JS). Models also import from and export to **JSON Schema / OpenAPI**. Rich specs and result envelopes are JSON; other inputs use flags, and artifact/catalog modes explicitly declare JSON, text, or empty stdout.
 
 > **Not an official A12 artifact.** A personal exploration, not affiliated with or endorsed by mgm — currently a private project, built using GPT 5.5. Shipped code binds only to the kernel's **public** OSS surface — no internal systems. (An opt-in, Java-only adapter module may read the kernel's internal AST tier under strict guardrails.)
 
@@ -11,7 +11,7 @@ Author, read, and safely edit the **rules** and **structure** of A12 Kernel docu
 - **dm.edit** — `EditSession`: structure + rule edits on one in-memory model, behind a single kernel gate
 - **schemakit** — JSON Schema / OpenAPI ⇄ document model, import and export
 - **the interpreter** — **[PUBLIC RELEASE REPOSITORY →](https://github.com/mbackschat/a12-interpreter-releases)** — kernel-free runtime evaluation (validate / compute); one engine for the JVM, native binary, Node.js, and browser, with a production browser JavaScript entry of about 232 kB gzip
-- **`dmtool`** — **[PUBLIC RELEASE REPOSITORY →](https://github.com/mbackschat/a12-dmtool-releases)** — the CLI over all of it: self-describing, JSON in / JSON out, agent-first
+- **`dmtool`** — **[PUBLIC RELEASE REPOSITORY →](https://github.com/mbackschat/a12-dmtool-releases)** — the CLI over all of it: self-describing, machine-readable by default, explicitly profiled artifacts, agent-first
 
 ---
 
@@ -26,13 +26,13 @@ AllFieldsFilled(OrderDate, DeliveryDate) And DifferenceInDays(OrderDate, Deliver
 
 Writing these by hand is fragile: a mistyped path, a wrong operator or decimal scale, or — most insidious — **inverted polarity** (the condition true on the *requirement* instead of the *violation*) slips through until the kernel runs, if it's caught at all.
 
-**`dmtool` closes that gap from the command line** — one self-describing native binary, **JSON in / JSON out**, no Java toolchain. It authors, reads, and safely edits a model's rules *and* structure — **every edit is confirmed by the embedded real A12 kernel before it is written**, so *valid* means the engine accepts it, not that it merely looks right — and it runs rules against real documents on a **clean-room interpreter** held kernel-exact by a differential test estate and a tri-verified conformance corpus.
+**`dmtool` closes that gap from the command line** — one self-describing native binary, machine-readable by default with explicitly profiled JSON/text artifacts, no Java toolchain. It authors, reads, and safely edits a model's rules *and* structure — **every edit is confirmed by the embedded real A12 kernel before it is written**, so *valid* means the engine accepts it, not that it merely looks right — and it runs rules against real documents on a **clean-room interpreter** held kernel-exact by a differential test estate and a tri-verified conformance corpus.
 
 It is built **agent-first** — the #1 use is inside a coding-agent session (Claude Code, Codex):
 
 - **Self-describing — a cold agent needs no external docs.** `manifest` lists every verb × parameter with a worked example; `operators` / `patterns` / `diagnostics` / `schema` expose the DSL vocabulary, the validation idioms, each diagnostic code, and the exact I/O shape — all from the binary itself.
 - **Judgment where `--help` can't reach.** A bundled skill teaches what the catalog can't — condition *polarity*, error-field paths, iteration scope — so a scaffolded rule has the right shape before the kernel ever sees it.
-- **Safe by construction.** Every result rides one uniform envelope; deletes and structural refactors are **gated** (a referenced field won't silently vanish); a multi-op `apply` session is **atomic** (rollback on any failure).
+- **Safe by construction.** Envelope-producing operations share one standard result shape, while raw artifact/catalog and text-view modes are explicit in the operational profile; deletes and structural refactors are **gated** (a referenced field won't silently vanish); a multi-op `apply` session is **atomic** (rollback on any failure).
 
 ### A session, in natural language
 
@@ -75,7 +75,7 @@ Prefer typed Java in your own JVM project? The same engine is a library — see 
 
 | You are… | Use | Why |
 |---|---|---|
-| a **modeller / BA**, or an **LLM agent** | **`dmtool`**, the CLI | verbs + JSON I/O, single native binary, self-describing — no Java toolchain to install |
+| a **modeller / BA**, or an **LLM agent** | **`dmtool`**, the CLI | verbs + profiled JSON/text I/O, single native binary, self-describing — no Java toolchain to install |
 | a **developer**, editing models in your own JVM project | **rulekit / modelkit** as a library | typed builders, kernel-checked, in your own code & compiler |
 
 *(The kits — rulekit, modelkit, dm.edit, schemakit — are a **Java** library. The **interpreter** is Kotlin Multiplatform and its packed library is tested on JVM, Node.js, and Chrome.)*
@@ -84,7 +84,7 @@ Prefer typed Java in your own JVM project? The same engine is a library — see 
 
 ## `dmtool` — the CLI
 
-Same engine, no Java required. Every command is `dmtool -m <model> <target> <op> [args]` and prints a uniform JSON **result envelope** (`{ok, valid, outcome, data, diagnostics[], …}`). It is **self-describing**, so a cold agent (or you) can discover the whole surface from the binary alone.
+Same engine, no Java required. Every command is `dmtool -m <model> <target> <op> [args]`; each matching manifest operational profile declares whether effective stdout is the standard JSON **result envelope** (`{ok, valid, outcome, data, diagnostics[], …}`), raw JSON/text, or empty after an artifact write. It is **self-describing**, so a cold agent (or you) can discover the whole surface from the binary alone.
 
 ### Install — see the release repo (single source of truth)
 

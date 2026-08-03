@@ -74,7 +74,10 @@ class GateTierWiringTest {
     @Test
     void packagedPublicContractDeclaresTheCanonicalSkillInput() throws IOException {
         String rootBuild = Files.readString(locate("build.gradle"));
-        String task = gradleTask(Files.readString(locate("cli/build.gradle")), "publicContractTest");
+        String cliBuild = Files.readString(locate("cli/build.gradle"));
+        String task = gradleTask(cliBuild, "publicContractTest");
+        String cliDocGuard = gradleTask(cliBuild, "docGuardTest");
+        String cliMainTest = namedGradleTask(cliBuild, "test");
         String docGuard = gradleTask(rootBuild, "docGuardTest");
 
         assertFalse(task.isEmpty(), "cli must provide the packaged public-contract task");
@@ -82,15 +85,26 @@ class GateTierWiringTest {
                 "the public-contract task reads the canonical skill and must invalidate on a skill-only change");
         assertTrue(docGuard.contains("file('cli/build.gradle')"),
                 "the wiring guard reads cli/build.gradle, so docGuardTest must declare that file as an input");
+        assertTrue(cliDocGuard.contains("includeTestsMatching 'io.github.mbackschat.a12.dm.cli.PublicOutputClaimsTest'"),
+                "the public-output prose guard must run in the input-aware CLI doc lane");
+        assertTrue(cliMainTest.contains("excludeTestsMatching 'io.github.mbackschat.a12.dm.cli.PublicOutputClaimsTest'"),
+                "the repo-file-reading prose guard must not also run in the input-blind main CLI test task");
     }
 
     private static String gradleTask(String build, String name) {
-        String marker = "tasks.register('" + name + "', Test)";
+        return taskBlock(build, "tasks.register('" + name + "', Test)");
+    }
+
+    private static String namedGradleTask(String build, String name) {
+        return taskBlock(build, "tasks.named('" + name + "')");
+    }
+
+    private static String taskBlock(String build, String marker) {
         int start = build.indexOf(marker);
         if (start < 0) {
             return "";
         }
-        int next = build.indexOf("\ntasks.register('", start + marker.length());
+        int next = build.indexOf("\ntasks.", start + marker.length());
         return build.substring(start, next < 0 ? build.length() : next);
     }
 

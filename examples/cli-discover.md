@@ -290,7 +290,7 @@ dmtool diagnostics RK_NO_SUCH_FIELD
 
 ## schema result — the output envelope
 
-Every verb returns the **same envelope shape**. `schema result` emits its JSON Schema, so an agent learns that contract once and reads every command's output the same way. Projected here to the property names and their meanings.
+Invocations whose effective output kind is `RESULT_ENVELOPE` share the **same envelope shape**. A matching `operationalProfiles[].returns.views[]` overrides the primary `returns.kind`; raw JSON/text and empty-stdout modes bypass the envelope. `schema result` emits the envelope's JSON Schema, projected here to the property names and their meanings.
 
 ```bash
 dmtool schema result | jq "{required, properties: (.properties | map_values(.description))}"
@@ -327,11 +327,11 @@ dmtool schema result | jq "{required, properties: (.properties | map_values(.des
 }
 ```
 
-→ Seven keys are always present (`target`, `op`, `outcome`, `ok`, `summary`, `diagnostics`, `written`); the rest are conditional. Note the **`ok`/`valid` split** — `ok` says the op ran, `valid` is the verdict on the model — and that **reads** put their payload under **`data`** (whose shape is op-specific: `schema <target> <op>` gives it per verb). This is why one output reader suffices for the whole CLI.
+→ Within a result envelope, seven keys are always present (`target`, `op`, `outcome`, `ok`, `summary`, `diagnostics`, `written`); the rest are conditional. Note the **`ok`/`valid` split** — `ok` says the op ran, `valid` is the verdict on the model — and that **reads** put their payload under **`data`** (whose shape is op-specific: `schema <target> <op>` gives it per verb). One envelope reader therefore covers the envelope-producing routes; inspect the operational profile before choosing it instead of a raw JSON/text/artifact reader.
 
 ## schema rule add — a directional contract
 
-`schema <target> <op>` gives one verb's **directional** I/O contract: what it consumes and what it returns. For a mutating verb like `rule add` the input is a spec; the output is — universally — the `result` envelope above.
+`schema <target> <op>` gives one verb's **directional** I/O contract: what it consumes and what it returns. For a mutating verb like `rule add`, the input is a spec and its default effective output is the `result` envelope above.
 
 ```bash
 dmtool schema rule add | jq '{op, returns, inputKeys: (.input.properties|keys)}'

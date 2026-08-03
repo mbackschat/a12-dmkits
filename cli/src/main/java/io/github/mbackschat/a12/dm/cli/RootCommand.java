@@ -30,7 +30,7 @@ import picocli.CommandLine.Spec;
         mixinStandardHelpOptions = true,
         versionProvider = VersionProvider.class,
         synopsisSubcommandLabel = "<target> <op>",
-        description = "Typed, model-aware authoring & edit kit for A12 document models. JSON in / JSON out.",
+        description = "Typed, model-aware authoring & edit kit for A12 document models. Machine-readable output with explicit JSON/text artifact profiles.",
         // R1 orientation footer (CLI-SPEC §2): the read-when map in miniature, shown at
         // first contact. Routes a cold agent to the catalog verbs and positions `manifest` as the one-call
         // BULK map (not the only door — agents navigate via --help + the catalog verbs; see CLI-SPEC §2).

@@ -16,7 +16,7 @@ dmkits is **one library with a shared core and two sibling kits**, an **opt-in k
 ```
                     ┌──────────────────────────── front-ends ─────────────────────────────┐
   agent / BA  ────▶ │  dmtool CLI  (:cli)              developer's own project              │
-  developer   ────▶ │  picocli verbs · JSON in/out     (rulekit/modelkit as a library dep)  │
+  developer   ────▶ │  picocli verbs · profiled JSON/text I/O (rulekit/modelkit library)    │
                     └───────────────┬──────────────────────────────────┬───────────────────┘
                                     │ implementation                    │ depends on (library)
                     ┌───────────────┴──────────────── the library  (root project ` : `) ─────┐

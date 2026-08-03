@@ -2,7 +2,7 @@
 
 **
 
-A tour of **reading** one A12 model with **dmtool** (JSON-in / JSON-out over the real kernel): check it (`model check`), read its rules (`rule read`/`format`/`explain`/`check`), read the whole card (`model read`), audit field usage (`model usage`), and read structural facts (`field`/`group`/`config read`). Every command is `dmtool -m <model> <target> <op> [args]`. The tool's *self-describing* surface (manifest/operators/patterns/diagnostics/schema) lives in [cli-discover](cli-discover.md); the **review** verbs (`model report`/`model diff`) in [cli-review](cli-review.md); the cross-model `workspace` verbs in [cli-workspace](cli-workspace.md). Commands run through `dmtool` from the repo root; some use `jq`. Re-check with `uvx showboat@0.6.1 verify examples/cli-tour.md` (exit 0 = output still matches the live CLI).
+A tour of **reading** one A12 model with **dmtool** through its standard JSON result envelopes over the real kernel: check it (`model check`), read its rules (`rule read`/`format`/`explain`/`check`), read the whole card (`model read`), audit field usage (`model usage`), and read structural facts (`field`/`group`/`config read`). Each model-bound command in this tour is `dmtool -m <model> <target> <op> [args]`. The tool's *self-describing* surface (manifest/operators/patterns/diagnostics/schema) lives in [cli-discover](cli-discover.md); the **review** verbs (`model report`/`model diff`) in [cli-review](cli-review.md); the cross-model `workspace` verbs in [cli-workspace](cli-workspace.md). Commands run through `dmtool` from the repo root; some use `jq`. Re-check with `uvx showboat@0.6.1 verify examples/cli-tour.md` (exit 0 = output still matches the live CLI).
 
 ## The model — `order-ruled`
 
@@ -25,7 +25,7 @@ dmtool -m examples/models/order-ruled.dm.json model describe \
 
 ## model check
 
-Runs a model through the **real kernel** consistency check — the same engine that gates persistence. Like every verb it returns the **result envelope**: `outcome`, `ok` (did the op run), `valid` (is the subject model valid), and `diagnostics[]`, with exit 0 valid / 1 invalid.
+Runs a model through the **real kernel** consistency check — the same engine that gates persistence. This verb returns the **result envelope**: `outcome`, `ok` (did the op run), `valid` (is the subject model valid), and `diagnostics[]`, with exit 0 valid / 1 invalid.
 
 ```bash
 dmtool -m examples/models/order-ruled.dm.json model check

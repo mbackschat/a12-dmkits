@@ -133,6 +133,13 @@ class DmtoolPublicContractTest {
     @Test
     void publicEnvelopeDescriptionsDeferToTheOperationalOutputProfile(@TempDir Path dir) throws Exception {
         PackagedDmtool dmtool = new PackagedDmtool(dir);
+        String help = dmtool.run("--help").out();
+        assertFalse(PublicOutputClaimsTest.containsBlanketClaim(help.replace('\n', ' ')),
+                "root help must not universalize the profiled input/output contract");
+        assertFalse(PublicOutputClaimsTest.containsJsonInOutSlogan(help),
+                "root help must not use the universal JSON-in/JSON-out slogan");
+        assertTrue(help.contains("explicit JSON/text artifact profiles"), help);
+
         JsonNode manifest = MAPPER.readTree(dmtool.run("manifest").out());
         JsonNode seedProfiles = manifestVerb(manifest, "model seed").path("operationalProfiles");
         assertEquals(1, seedProfiles.size(), "model seed has one unconditional output contract");

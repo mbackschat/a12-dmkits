@@ -1,6 +1,6 @@
 # dmtool — release distribution + agent plugins (Claude Code, Codex)
 
-**`dmtool`** is an agent-friendly, **self-describing** CLI for authoring, validating, and safely editing **A12 Kernel document models** — validation rules, computations, and structure — one native binary, **JSON in / JSON out**. Every edit is confirmed by the embedded **real A12 kernel** before it is written, and runtime evaluation (which rules fire on a real document) runs on a clean-room, kernel-exact **interpreter**. Point your coding agent at it: the tool describes itself (`manifest` / `operators` / `schema`), and the bundled skill teaches the judgment calls.
+**`dmtool`** is an agent-friendly, **self-describing** CLI for authoring, validating, and safely editing **A12 Kernel document models** — validation rules, computations, and structure — one native binary, machine-readable by default with explicitly profiled JSON/text artifacts. Every edit is confirmed by the embedded **real A12 kernel** before it is written, and runtime evaluation (which rules fire on a real document) runs on a clean-room, kernel-exact **interpreter**. Point your coding agent at it: the tool describes itself (`manifest` / `operators` / `schema`), and the bundled skill teaches the judgment calls.
 
 This repository is the **public distribution** — release-only (binaries + the plugins are pushed here from the main [`a12-dmkits` project](https://github.com/mbackschat/a12-dmkits)); it is not where the tool is developed.
 
@@ -26,13 +26,13 @@ AllFieldsFilled(OrderDate, DeliveryDate) And DifferenceInDays(OrderDate, Deliver
 
 Writing these by hand is fragile: a mistyped path, a wrong operator or decimal scale, or — most insidious — **inverted polarity** (the condition true on the *requirement* instead of the *violation*) slips through until the kernel runs, if it's caught at all.
 
-**`dmtool` closes that gap from the command line** — one self-describing native binary, **JSON in / JSON out**, no Java toolchain. It authors, reads, and safely edits a model's rules *and* structure — **every edit is confirmed by the embedded real A12 kernel before it is written**, so *valid* means the engine accepts it, not that it merely looks right — and it runs rules against real documents on a **clean-room interpreter** held kernel-exact by a differential test estate and a tri-verified conformance corpus.
+**`dmtool` closes that gap from the command line** — one self-describing native binary, machine-readable by default with explicitly profiled JSON/text artifacts, no Java toolchain. It authors, reads, and safely edits a model's rules *and* structure — **every edit is confirmed by the embedded real A12 kernel before it is written**, so *valid* means the engine accepts it, not that it merely looks right — and it runs rules against real documents on a **clean-room interpreter** held kernel-exact by a differential test estate and a tri-verified conformance corpus.
 
 It is built **agent-first** — the #1 use is inside a coding-agent session (Claude Code, Codex):
 
 - **Self-describing — a cold agent needs no external docs.** `manifest` lists every verb × parameter with a worked example; `operators` / `patterns` / `diagnostics` / `schema` expose the DSL vocabulary, the validation idioms, each diagnostic code, and the exact I/O shape — all from the binary itself.
 - **Judgment where `--help` can't reach.** A bundled skill teaches what the catalog can't — condition *polarity*, error-field paths, iteration scope — so a scaffolded rule has the right shape before the kernel ever sees it.
-- **Safe by construction.** Every result rides one uniform envelope; deletes and structural refactors are **gated** (a referenced field won't silently vanish); a multi-op `apply` session is **atomic** (rollback on any failure).
+- **Safe by construction.** Envelope-producing operations share one standard result shape, while raw artifact/catalog and text-view modes are explicit in the operational profile; deletes and structural refactors are **gated** (a referenced field won't silently vanish); a multi-op `apply` session is **atomic** (rollback on any failure).
 
 ### A session, in natural language
 
@@ -169,7 +169,7 @@ dmtool -m order.dm.json rule add rule.json
 
 **The key idea — polarity:** a condition is **true on the *violation*, not the requirement.** To enforce *"delivery must not be before the order date,"* you write the case to **reject** — `DifferenceInDays(OrderDate, DeliveryDate) < 0` is true exactly when delivery *is* before order (the `AllFieldsFilled(…)` guard skips the check until both dates are present). Writing the requirement directly would flag every *valid* document — the inverted-polarity trap the bundled skill helps you avoid.
 
-Every result is a uniform JSON envelope (`{ok, valid, outcome, changed, diagnostics[], …}`) with structured, fix-oriented diagnostics.
+Envelope-producing invocations use the standard JSON result envelope (`{ok, valid, outcome, changed, diagnostics[], …}`) with structured, fix-oriented diagnostics; raw artifact/catalog and text-view modes are declared by their operational profiles.
 
 ### Review an edit semantically
 

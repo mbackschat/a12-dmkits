@@ -206,6 +206,7 @@ tasks.register('docGuardTest', Test) {
         includeTestsMatching 'io.github.mbackschat.a12.dm.cli.DocumentShapeSingleSourceTest'
         includeTestsMatching 'io.github.mbackschat.a12.dm.cli.DemoOutputIsRealTest'
         includeTestsMatching 'io.github.mbackschat.a12.dm.cli.ProbeRepeatedComputationIdentityTest'
+        includeTestsMatching 'io.github.mbackschat.a12.dm.cli.PublicOutputClaimsTest'
         includeTestsMatching 'io.github.mbackschat.a12.dm.cli.interp.ModelLoaderParityTest'
     }
     // guardInputs (root ext, kernel-decoupling §3b #17) declares these runtime-read files as inputs AND fails
@@ -389,6 +390,7 @@ tasks.named('test') {
         excludeTestsMatching 'io.github.mbackschat.a12.dm.cli.eval.EvalGoldOracleTest'
         excludeTestsMatching 'io.github.mbackschat.a12.dm.cli.eval.EvalSuiteLedgerTest'
         excludeTestsMatching 'io.github.mbackschat.a12.dm.cli.MutationTailSingleSourceTest'
+        excludeTestsMatching 'io.github.mbackschat.a12.dm.cli.PublicOutputClaimsTest'
         excludeTestsMatching 'io.github.mbackschat.a12.dm.cli.DmtoolPublicContractTest'
         excludeTestsMatching 'io.github.mbackschat.a12.dm.cli.DmtoolMutationSafetyTest'
         excludeTestsMatching 'io.github.mbackschat.a12.dm.cli.PackagedDmtoolJourneyTest'

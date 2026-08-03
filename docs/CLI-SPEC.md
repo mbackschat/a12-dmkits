@@ -6,7 +6,7 @@ The component spec for the standalone CLI (N10). The proposal's [§14/§16](PROJ
 
 ## 1. Purpose & persona
 
-`dmtool` is the **modeller/BA's** interaction surface (N10): one engine (core + adapter + the modelkit/rulekit kits), driven by an **agent** through verbs with **JSON in / JSON out**, the JVM bundled and invisible. It is *not* the developer's surface — a developer uses the kits as libraries (no CLI). It edits the **whole document model** — structure (fields, groups, type definitions, includes, doc config) *and* rules/computations — validates, reads/explains, and batches. The CLI never shells out to `javac`; the agent authors via **JSON / flags**, which `dmtool` deserializes *through the typed builders*, so the BA gets the builder pre-checks **plus** the kernel `Diagnostic`s (F4a) at runtime — the runtime analogue of the developer's compile-time steering.
+`dmtool` is the **modeller/BA's** interaction surface (N10): one engine (core + adapter + the modelkit/rulekit kits), driven by an **agent** through JSON/flags with operationally profiled JSON/text output, the JVM bundled and invisible. It is *not* the developer's surface — a developer uses the kits as libraries (no CLI). It edits the **whole document model** — structure (fields, groups, type definitions, includes, doc config) *and* rules/computations — validates, reads/explains, and batches. The CLI never shells out to `javac`; the agent authors via **JSON / flags**, which `dmtool` deserializes *through the typed builders*, so the BA gets the builder pre-checks **plus** the kernel `Diagnostic`s (F4a) at runtime — the runtime analogue of the developer's compile-time steering.
 
 ## 2. Design principle — self-explaining **and** corrective diagnostics (the #1 priority)
 
