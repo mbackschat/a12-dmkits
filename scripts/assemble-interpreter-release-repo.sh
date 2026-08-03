@@ -13,9 +13,6 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 # shellcheck source=release-mirror-common.sh
 . "$ROOT/scripts/release-mirror-common.sh"
 
-# The npm package and release mirror receive the two interpreter READMEs. Check them before staging anything.
-"$ROOT/scripts/update-code-statistics.sh" --check --artifact interpreter
-
 DESTINATION=""
 ASSETS_DIRECTORY=""
 VERSION=""

@@ -219,7 +219,7 @@ Generated with [Tokei](https://github.com/XAMPPRocky/tokei) from the production 
 | TypeScript | 0 | 0 | 0 | 0 |
 | Lean | 0 | 0 | 0 | 0 |
 
-Maintainers regenerate this table with the local statistics updater; release assembly checks the table it publishes.
+Maintainers regenerate this table with the local statistics updater; both release publishers compare it with fresh counts before any public mutation.
 <!-- source-statistics:dmtool:end -->
 
 ## Changelog

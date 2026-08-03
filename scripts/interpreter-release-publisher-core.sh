@@ -242,6 +242,7 @@ interpreter_release_verify_qualified_outputs() {
 interpreter_release_qualify() {
   local source_root="$1" work_directory="$2" preview assets receipt
   interpreter_release_source_preflight "$source_root" true
+  "$source_root/scripts/update-code-statistics.sh" --check --artifact interpreter
   preview="$source_root/build/interpreter-release/public-mirror"
   assets="$source_root/build/interpreter-release/public-assets"
   receipt="$work_directory/qualified-release.txt"

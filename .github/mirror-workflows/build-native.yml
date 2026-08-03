@@ -147,7 +147,7 @@ jobs:
         env:
           GRADLE_USER_HOME: ${{ github.workspace }}/.gradle-isolated
         run: |
-          ./gradlew --no-daemon :cli:nativeCompile \
+          ./build.sh --no-daemon :cli:nativeCompile \
             -Porg.gradle.java.installations.fromEnv=${{ matrix.java_home_env }}
           ls -la cli/build/native/nativeCompile/
 

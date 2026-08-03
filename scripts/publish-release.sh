@@ -49,6 +49,7 @@ GO_LIVE=0; [[ "${2:-}" == "--go-live" ]] && GO_LIVE=1
 VER="${TAG#v}"
 
 ./scripts/check-release-gaps.sh
+./scripts/update-code-statistics.sh --check --artifact dmtool
 
 KVER="$(grep -oE "kernelVersion *= *'[^']+'" build.gradle | sed -E "s/.*'([^']+)'.*/\1/")"
 A12="$(grep -oE "a12Distribution *= *'[^']+'" build.gradle | sed -E "s/.*'([^']+)'.*/\1/")"

@@ -12,9 +12,6 @@ DEST="${1:-$ROOT/build/release-repo}"
 PIN="$(grep -oE "kernelVersion *= *'[^']+'" "$ROOT/build.gradle" | grep -oE "[0-9][0-9.]+")"
 A12DIST="$(grep -oE "a12Distribution *= *'[^']+'" "$ROOT/build.gradle" | sed -E "s/.*'([^']+)'.*/\1/")"
 
-# The public mirror receives plugin/README.md. Refuse stale generated source statistics before touching DEST.
-"$ROOT/scripts/update-code-statistics.sh" --check --artifact dmtool
-
 # Guard: the kernel checkout must match our pin, or its notices are for the wrong version.
 [[ -d "$KERNEL" ]] || { echo "kernel checkout not found at $KERNEL" >&2; exit 2; }
 if ! git -C "$KERNEL" log -1 --format=%s 2>/dev/null | grep -q "$PIN"; then

@@ -215,6 +215,7 @@ tasks.register('deliveryGuardTest', Test) {
         includeTestsMatching 'io.github.mbackschat.a12.dm.EnsureDmtoolCacheTest'
         includeTestsMatching 'io.github.mbackschat.a12.dm.NativeNoJavaSmokeTest'
         includeTestsMatching 'io.github.mbackschat.a12.dm.CodexPluginActivationEvidenceTest'
+        includeTestsMatching 'io.github.mbackschat.a12.dm.SourceStatisticsReleaseBoundaryTest'
     }
     guardInputs(it, [
             'plugin installer'        : file('scripts/ensure-dmtool.sh'),
@@ -222,6 +223,11 @@ tasks.register('deliveryGuardTest', Test) {
             'native no-Java smoke'    : file('scripts/native-no-java-smoke.sh'),
             'Codex activation smoke'  : file('scripts/codex-plugin-activation-smoke.sh'),
             'Codex evidence schema'   : file('scripts/codex-plugin-activation.schema.json'),
+            'source statistics'       : file('scripts/update-code-statistics.sh'),
+            'dmtool publisher'        : file('scripts/publish-release.sh'),
+            'interpreter publisher'   : file('scripts/interpreter-release-publisher-core.sh'),
+            'dmtool assembler'        : file('scripts/assemble-release-repo.sh'),
+            'interpreter assembler'   : file('scripts/assemble-interpreter-release-repo.sh'),
             'release asset manifest'  : file('scripts/release-assets.sh'),
     ])
 }

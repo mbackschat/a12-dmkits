@@ -12,7 +12,7 @@ usage() {
 Usage: update-code-statistics.sh [--check] [--artifact all|root|dmtool|interpreter]
 
 Update the selected public README tables, or compare them with a fresh Tokei measurement.
-This maintainer-only release aid requires local `tokei` and `jq`; normal builds and pushes do not.
+This maintainer-only release aid requires local `tokei` and `jq`; normal builds and CI do not.
 The root table also requires the sibling a12-kernel-lean checkout (override with A12_LEAN_REPO).
 EOF
 }
@@ -84,7 +84,7 @@ Generated with [Tokei](https://github.com/XAMPPRocky/tokei) from ${description}.
 | TypeScript | ${tf} | ${tc} | ${tco} | ${tb} |
 | Lean | ${lf} | ${lc} | ${lco} | ${lb} |
 
-Maintainers regenerate this table with the local statistics updater; release assembly checks the table it publishes.
+Maintainers regenerate this table with the local statistics updater; both release publishers compare it with fresh counts before any public mutation.
 <!-- source-statistics:${id}:end -->
 EOF
 }

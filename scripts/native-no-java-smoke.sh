@@ -13,6 +13,10 @@ native_executable_format() {
   esac
 }
 
+normalize_native_output() {
+  sed 's/\r$//' <<< "$1"
+}
+
 valid_model_check_envelope() {
   local output="$1"
   jq -e '
@@ -44,6 +48,7 @@ verify_without_java() {
     printf 'native no-Java smoke: binary failed with Java unavailable (exit %s): %s\n' "$status" "$output" >&2
     return 1
   fi
+  output="$(normalize_native_output "$output")"
 
   first_line="${output%%$'\n'*}"
   if [[ "$first_line" != "a12-dmkits $expected_version" ]]; then
@@ -61,6 +66,7 @@ verify_without_java() {
       "$status" "$manifest_output" >&2
     return 1
   fi
+  manifest_output="$(normalize_native_output "$manifest_output")"
   version_pattern="\"rulekit\"[[:space:]]*:[[:space:]]*\"${expected_version}\""
   if [[ ! "$manifest_output" =~ $version_pattern || "$manifest_output" != *'"verbs"'* ]]; then
     printf 'native no-Java smoke: functional manifest did not carry rulekit %s and the verb tree: %s\n' \
@@ -77,6 +83,7 @@ verify_without_java() {
       "$status" "$check_output" >&2
     return 1
   fi
+  check_output="$(normalize_native_output "$check_output")"
   if ! valid_model_check_envelope "$check_output"; then
     printf 'native no-Java smoke: functional model check returned the wrong envelope: %s\n' "$check_output" >&2
     return 1
@@ -107,6 +114,10 @@ EOF
 
   native_executable_format /bin/sh || {
     echo "native no-Java smoke self-test: supported host executable format was not recognized" >&2
+    return 1
+  }
+  [[ "$(normalize_native_output $'first\r\nsecond\r')" == $'first\nsecond' ]] || {
+    echo "native no-Java smoke self-test: CRLF output was not normalized" >&2
     return 1
   }
   if verify_without_java "$independent" 9.9.9 "$work/independent-run" "$ROOT/examples/models/order-ruled.dm.json" >/dev/null 2>&1; then

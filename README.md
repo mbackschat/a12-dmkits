@@ -819,7 +819,7 @@ Generated with [Tokei](https://github.com/XAMPPRocky/tokei) from the production 
 | TypeScript | 17 | 3190 | 269 | 277 |
 | Lean | 664 | 100386 | 8591 | 15678 |
 
-Maintainers regenerate this table with the local statistics updater; release assembly checks the table it publishes.
+Maintainers regenerate this table with the local statistics updater; both release publishers compare it with fresh counts before any public mutation.
 <!-- source-statistics:root:end -->
 
 ---
