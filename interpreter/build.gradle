@@ -2824,6 +2824,39 @@ def verifyExternalInterpreterBrowserConsumer = tasks.register(
     environment 'CI', 'true'
     outputs.upToDateWhen { false }
 }
+def browserBundleSize = externalBrowserConsumerBuildDir.map {
+    it.file('dist/bundle-size.json')
+}
+def verifyInterpreterBrowserSizeDocumentation = tasks.register(
+    'verifyInterpreterBrowserSizeDocumentation',
+) {
+    group = 'verification'
+    description = 'Keep every public README browser-size claim aligned with the packed showcase artifact.'
+    dependsOn verifyExternalInterpreterBrowserConsumer
+    inputs.file(browserBundleSize)
+    inputs.file(rootProject.file('README.md'))
+    inputs.file(file('README.md'))
+    inputs.file(file('public-release/README.md'))
+    doLast {
+        def measurement = new groovy.json.JsonSlurper().parse(browserBundleSize.get().asFile)
+        if (!(measurement.gzipBytes instanceof Number) || measurement.gzipBytes <= 0) {
+            throw new GradleException("invalid browser bundle measurement: ${measurement.gzipBytes}")
+        }
+        def expected = "${Math.round(measurement.gzipBytes / 1_000.0d)} kB gzip"
+        [
+            rootProject.file('README.md'),
+            file('README.md'),
+            file('public-release/README.md'),
+        ].each { readme ->
+            if (!readme.getText('UTF-8').contains(expected)) {
+                throw new GradleException(
+                    "${rootProject.relativePath(readme)} must state measured browser size '${expected}' " +
+                        "from ${rootProject.relativePath(browserBundleSize.get().asFile)}",
+                )
+            }
+        }
+    }
+}
 def browserPerformanceReport = rootProject.layout.buildDirectory.file(
     'reports/interpreter-browser-performance/r5.2.json',
 )
@@ -2847,7 +2880,7 @@ def measureExternalInterpreterBrowserFirstAnswer = tasks.register(
     outputs.upToDateWhen { false }
 }
 tasks.named('check') {
-    dependsOn verifyExternalInterpreterBrowserConsumer
+    dependsOn verifyInterpreterBrowserSizeDocumentation
 }
 
 // --- R7.1 deterministic public mirror --------------------------------------------------------------

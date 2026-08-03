@@ -17,7 +17,7 @@ Use the built-in models and Documents or load your own local workspace. Your sel
 - [Browse the Kotlin API](https://mbackschat.github.io/a12-interpreter-releases/api/latest/kotlin/)
 - [Open the public release site](https://mbackschat.github.io/a12-interpreter-releases/) — current version, installation coordinates, showcase, API references, and privacy information
 
-The interpreter runs the same clean-room Kotlin implementation on the JVM, Node.js, and in the browser. The qualified browser package replays 33 portable conformance cases; the showcase's current production bundle is about 211 kB gzip. Its representative 200-row Document validates in a 10.2 ms median, while the 10,000-row stress Document validates with 4,900 findings in a 177.1 ms median.
+The interpreter runs the same clean-room Kotlin implementation on the JVM, Node.js, and in the browser. The qualified browser package replays 33 portable conformance cases; the showcase's current production bundle is about 232 kB gzip. Its representative 200-row Document validates in a 10.2 ms median, while the 10,000-row stress Document validates with 4,900 findings in a 177.1 ms median.
 
 ## What ships
 

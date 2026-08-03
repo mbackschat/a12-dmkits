@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Bump the PROJECT version across every surface RELEASE-SPEC §4 step 1 lists. These are the deterministic
-# edits that NO guard catches — VersionMentionFreshnessTest pins only the *kernel* version, so a missed file
-# drifts the project version silently. This script does the mechanical version-string replacement; the two
+# edits whose independent guards do not form one release-version denominator. This script does the mechanical
+# version-string replacement and verifies every declared target; the two
 # parts that need judgment stay manual (and are printed as next steps): the CHANGELOG *content* and the
 # build/verify/commit/tag. (The release glue downstream is scripts/publish-release.sh.)
 #
@@ -25,7 +25,9 @@ export OLD NEW
 perl -i -pe 's/\Q$ENV{OLD}\E/$ENV{NEW}/ if /^version = /'                    build.gradle                                          # 1. source of truth (--version / manifest.version)
 perl -i -pe 's/\Q$ENV{OLD}\E/$ENV{NEW}/ if /"version"\s*:/'                  plugin/.claude-plugin/plugin.json plugin-codex/.codex-plugin/plugin.json  # 2+3. the agent-plugin manifests
 perl -i -pe 's/\Q$ENV{OLD}\E/$ENV{NEW}/ if /^a12-dmkits / || /"rulekit"\s*:/' examples/cli-version.md                              # 4. the showboat-gated capture (project-version lines only)
-# 5. the plugin's binary-download pin (the skill's on-demand installer fetches the v$NEW release). Set
+perl -i -pe 's/\Q$ENV{OLD}\E/$ENV{NEW}/g'                                      interpreter/README.md docs/INTERPRETER-API-GUIDE.md   # 5+6. version-matched public interpreter docs
+perl -i -pe 's/\Q$ENV{OLD}\E/$ENV{NEW}/g if /"(?:engine|tool)Version"\s*:/'   examples/cli-runtime.md cli/src/main/resources/schema/result.schema.json  # 7+8. executable runtime examples
+# 9. the plugin's binary-download pin (the skill's on-demand installer fetches the v$NEW release). Set
 # UNCONDITIONALLY (not a swap of $OLD) so it self-heals even if it ever drifted, then propagate to both plugin
 # copies. The pin lagging the project version is exactly what shipped the stale v0.1.0 binary;
 # PluginInstallerVersionTest now fails the build if this step is skipped.
@@ -33,9 +35,10 @@ perl -i -pe 's/^VERSION="v[^"]+"/VERSION="v$ENV{NEW}"/'                       sc
 ./scripts/sync-plugin-assets.sh >/dev/null
 
 FILES=(build.gradle plugin/.claude-plugin/plugin.json plugin-codex/.codex-plugin/plugin.json examples/cli-version.md \
-       scripts/ensure-dmtool.sh plugin/skills/a12-dmtool/ensure-dmtool.sh plugin-codex/skills/a12-dmtool/ensure-dmtool.sh)
-for f in build.gradle plugin/.claude-plugin/plugin.json plugin-codex/.codex-plugin/plugin.json \
-         scripts/ensure-dmtool.sh plugin/skills/a12-dmtool/ensure-dmtool.sh plugin-codex/skills/a12-dmtool/ensure-dmtool.sh; do
+       interpreter/README.md docs/INTERPRETER-API-GUIDE.md examples/cli-runtime.md \
+       cli/src/main/resources/schema/result.schema.json scripts/ensure-dmtool.sh \
+       plugin/skills/a12-dmtool/ensure-dmtool.sh plugin-codex/skills/a12-dmtool/ensure-dmtool.sh)
+for f in "${FILES[@]}"; do
   grep -q "$NEW" "$f" || { echo "FAILED to set $NEW in $f — left as-is, check manually" >&2; exit 1; }
 done
 echo "edited:"; git --no-pager diff --stat -- "${FILES[@]}"
@@ -45,6 +48,6 @@ cat <<EOF
 The MECHANICAL edits are done. Remaining (judgment + verify), per RELEASE-SPEC §4 step 1:
   1. plugin/CHANGELOG.md — flip [Unreleased] -> [$NEW] — kernel <pin> (write the actual user-facing changes)
   2. ./build.sh :cli:installDist && PATH="\$PWD/bin:\$PATH" uvx showboat@0.6.1 verify examples/cli-version.md
-  3. git commit -am "chore(release): v$NEW — kernel <pin> (A12 Tools <quarter>)"
+  3. git commit -am "chore(release): prepare v$NEW"
   4. git tag -a v$NEW -m "v$NEW — …"   then   ./scripts/publish-release.sh v$NEW
 EOF

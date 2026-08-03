@@ -22,17 +22,17 @@ The package does not author models, render forms, persist Documents, provide a v
 
 Browser execution is a first-class qualified target, not a Node.js inference. The packed npm tarball is installed into an external consumer, its portable behavior corpus is replayed in system Chrome, and the same package powers the [live browser showcase](https://mbackschat.github.io/a12-interpreter-releases/showcase/).
 
-The published 0.10.1 showcase's complete production bundle is about **211 kB gzip**. On the fixed Apple M1/Chrome runner, a representative 200-row Document validates in a **10.2 ms median**; the 10,000-row stress Document validates with 4,900 findings in a **177.1 ms median**. Both figures use 10 stable fresh Chrome processes and include interpreter construction through complete result materialization.
+The published 0.11.0 showcase's complete production bundle is about **232 kB gzip**. On the fixed Apple M1/Chrome runner, a representative 200-row Document validates in a **10.2 ms median**; the 10,000-row stress Document validates with 4,900 findings in a **177.1 ms median**. Both figures use 10 stable fresh Chrome processes and include interpreter construction through complete result materialization.
 
 The JVM comparison deliberately uses the A12 Kernel's generated validator compiled as Java, with code generation outside the clock, as the fair algorithmic baseline. In the recorded run, the interpreter was approximately **2–3× faster** on rule-count sweeps, **5× faster** on the combined real-world case, **25–50× faster** on aggregates, and up to **165× faster** on the huge-document axis. These are dated measurements rather than universal promises; the scenarios, semantic preflight, timing boundaries, and full result tables are documented in [Interpreter performance](https://github.com/mbackschat/a12-dmkits/blob/main/docs/INTERPRETER-PERFORMANCE.md).
 
 ## Install
 
-Version `0.10.1` is distributed from the public `a12-interpreter-releases` repository.
+Version `0.11.0` is distributed from the public `a12-interpreter-releases` repository.
 
-For TypeScript or JavaScript, install the release tarball with `pnpm add https://github.com/mbackschat/a12-interpreter-releases/releases/download/v0.10.1/a12-interpreter-0.10.1.tgz`.
+For TypeScript or JavaScript, install the release tarball with `pnpm add https://github.com/mbackschat/a12-interpreter-releases/releases/download/v0.11.0/a12-interpreter-0.11.0.tgz`.
 
-For Kotlin or Java, add the Maven repository `https://mbackschat.github.io/a12-interpreter-releases/maven` and dependency `io.github.mbackschat.a12.dm:dm-interpreter:0.10.1`. Public third-party dependencies continue to resolve from Maven Central or npm.
+For Kotlin or Java, add the Maven repository `https://mbackschat.github.io/a12-interpreter-releases/maven` and dependency `io.github.mbackschat.a12.dm:dm-interpreter:0.11.0`. Public third-party dependencies continue to resolve from Maven Central or npm.
 
 ## TypeScript
 
@@ -140,7 +140,7 @@ Maintainers regenerate this table with the local statistics updater; release ass
 
 ## Documentation
 
-- [Developer API guide](https://github.com/mbackschat/a12-interpreter-releases/blob/v0.10.1/site/api/v0.10.1/INTERPRETER-API-GUIDE.md)
-- Version-matched Kotlin and TypeScript references plus `llms.txt` are packaged in `dm-interpreter-0.10.1-api-docs.zip` under `api/v0.10.1/`
+- [Developer API guide](https://github.com/mbackschat/a12-interpreter-releases/blob/v0.11.0/site/api/v0.11.0/INTERPRETER-API-GUIDE.md)
+- Version-matched Kotlin and TypeScript references plus `llms.txt` are packaged in `dm-interpreter-0.11.0-api-docs.zip` under `api/v0.11.0/`
 - Browser showcase: `https://mbackschat.github.io/a12-interpreter-releases/showcase/`
-- [MIT license](https://github.com/mbackschat/a12-interpreter-releases/blob/v0.10.1/LICENSE)
+- [MIT license](https://github.com/mbackschat/a12-interpreter-releases/blob/v0.11.0/LICENSE)

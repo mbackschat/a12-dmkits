@@ -6,9 +6,29 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/);
 
 ## [Unreleased]
 
+## [0.11.0] — kernel 30.8.1 (A12 Tools 2025.06-ext5)
+
+This release makes dmtool's result contract uniform and evidence-bearing, gives repeated runtime results stable A12 addresses, and carries the interpreter's latest semantic and browser improvements into the native CLI.
+
+### Changed
+
+- **BREAKING:** the result envelope no longer overloads `valid` as a universal success flag. `outcome` and `ok` describe execution; `valid` appears only for a consistency verdict; `verification`, `runtime`, `comparison`, and `rejectionBasis` state which authority produced the corresponding claim.
+- **BREAKING:** `apply` and `batch` now return the standard result envelope. `apply` derives its outcome from the atomic transaction and carries per-operation envelopes under `data.results`; `batch` returns `outcome:"completed"` with each independent result carrying its own outcome.
+- **BREAKING:** the patterns catalogue list calls its string parameter projection `paramNames`; detailed pattern records keep `params` for the typed `{name,kind,doc}` objects.
+- Every successful write that ran a consistency gate now carries its unforgeable `verification` receipt. Artifact-producing import, export, profile, pattern, apply, and batch routes use the same mutation ending and report whether anything was written.
+
+### Added
+
+- Computation results expose a canonical `a12Pointer` beside the existing path/coordinate shape, so repeated rows are distinguishable without inventing a pointer spelling. Validation message addresses retain A12's partially-known repetition semantics instead of discarding terminal wildcard or unknown indices.
+- `schema model seed` publishes the exact A12 Document JSON artifact contract, and `schema patterns` describes the list, detail, scaffold, and verdict payloads from live executions.
+- The built-in interpreter adds complete `DateRange` value/equality handling, owner-shaped `FirstFilledValue` selectors, bounded `BaseYear`, and cross-kind DATE/DATETIME timeline ordering. Its browser showcase now demonstrates repeated computations and the complete seed/edit/validate/compute workflow.
+
 ### Fixed
 
 - The Codex plugin installer now uses a sandbox-writable temporary cache when plugin-hook data variables are absent, and reports readiness only after the installed binary is executable and its named SHA-256 entry is present and matches. A missing checksum file, missing entry, mismatch, or cache-write failure warns without terminating the agent session or printing a false ready path.
+- Nested comparisons inside compound entity filters now receive the same corrective analysis as their top-level equivalents.
+- The development launcher now refuses a missing, failing, unparseable, or pre-Java-21 runtime instead of attempting a broken JVM launch.
+- Native reachability capture now traces only product-exercising tests, rejects test-compiler contamination, and refuses an unexplained loss of committed metadata entries.
 
 ## [0.10.1] — kernel 30.8.1 (A12 Tools 2025.06-ext5)
 

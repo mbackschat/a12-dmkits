@@ -32,7 +32,7 @@
 set -uo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-VERSION="v0.10.1"
+VERSION="v0.11.0"
 REPO="mbackschat/a12-dmtool-releases"
 # Hook hosts provide plugin-specific data dirs, but a skill-launched shell is not a hook: current Codex does
 # not inject PLUGIN_DATA there. Its workspace sandbox also need not admit HOME. Fall back to the host's

@@ -48,7 +48,7 @@ The library jars/JavaDoc are out of v1 scope; the full build + consume + licensi
 
 **Open-gap release blocker:** every stage and go-live invocation first runs [`scripts/check-release-gaps.sh`](../scripts/check-release-gaps.sh). The checker derives every `docs/*-GAPS.md` ledger and requires its Open section to contain only the canonical `_None open._` marker. Deferred, declined, divergence, and out-of-scope sections remain non-blocking. `releaseGapGuardTest` supplies the positive controls: a newly discovered ledger with one open row and an empty ledger denominator both fail.
 
-**Step 1 — version bump (before tagging).** Run **[`scripts/bump-version.sh X.Y.Z`](../scripts/bump-version.sh)** — it does the deterministic edits in the table below (the `build.gradle` version, both plugin manifests, the `cli-version.md` capture, and the plugin's **binary-download pin**), leaving only the CHANGELOG *content* and the build/verify/commit/tag to you. Most of these are caught by **no** guard (`VersionMentionFreshnessTest` guards only the *kernel* pin), so a missed file drifts the project version silently — which is exactly why the edits are scripted. The one exception is the download pin, now guarded by **`PluginInstallerVersionTest`**:
+**Step 1 — version bump (before tagging).** Run **[`scripts/bump-version.sh X.Y.Z`](../scripts/bump-version.sh)** — it does the deterministic edits in the table below (the root version, both plugin manifests, version-bearing CLI demonstrations/schema examples, version-matched interpreter docs, and the plugin's **binary-download pin**), leaving only the CHANGELOG *content* and the build/verify/commit/tag to you. Several independent guards check the resulting state, but the edits remain scripted so a release does not begin as a whack-a-mole sequence of stale surfaces. The download pin is guarded by **`PluginInstallerVersionTest`** and the interpreter docs by `InterpreterDocumentationTest`:
 
 | File | What |
 |---|---|
@@ -56,6 +56,8 @@ The library jars/JavaDoc are out of v1 scope; the full build + consume + licensi
 | `plugin/.claude-plugin/plugin.json` | `"version": "X.Y.Z"` |
 | `plugin-codex/.codex-plugin/plugin.json` | `"version": "X.Y.Z"` |
 | `examples/cli-version.md` | regen the captured `--version` + `manifest.version` (showboat-gated — drifts the demo otherwise) |
+| `examples/cli-runtime.md` + `cli/…/schema/result.schema.json` | update the executable runtime-envelope version examples |
+| `interpreter/README.md` + `docs/INTERPRETER-API-GUIDE.md` | update current release coordinates, links, and versioned API archive names |
 | `scripts/ensure-dmtool.sh` → both plugin copies | `VERSION="vX.Y.Z"` — the **release tag the on-demand installer downloads the binary from**. Set unconditionally, then propagated to both plugins' `skills/a12-dmtool/` by `sync-plugin-assets.sh`. **Guarded by `PluginInstallerVersionTest`** (it must equal the project version) — the pin lagging at `v0.1.0` shipped a long-fixed native crash to every install through v0.3.1, the incident this guard prevents. |
 | `plugin/CHANGELOG.md` | flip `[Unreleased]` → `[X.Y.Z] — kernel <pin>`; **this section is the release `--notes`** (the script extracts it) |
 
