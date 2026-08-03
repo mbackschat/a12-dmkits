@@ -28,11 +28,12 @@ import org.junit.jupiter.api.Test;
  *   <li><b>schema-resolves</b> — every directional-contract verb advertises a {@code schema} pointer that
  *       resolves to real JSON. Verbs in {@link SchemaCommand#CONTRACT_EXEMPT} are the only exemption, and it
  *       is a <em>reasoned, honest</em> one — every exempt verb exists and carries a reason.</li>
- * </ul>
  *   <li><b>demonstrated</b> — every verb carries a worked invocation the agent can see <em>in action</em>:
  *       a {@code verb-examples.json} entry surfaced in the manifest as {@code example}, OR a schema input
  *       example (the rich-input verbs), OR a reasoned row in {@link #DEMONSTRATION_PENDING}. The example is
  *       CI-executed by {@link VerbDemonstrationTest}.</li>
+ *   <li><b>operational-profiled</b> — every verb has one or more complete profiles rendered from
+ *       {@link CommandContracts}; argument-dependent modes carry explicit invocation selectors.</li>
  * </ul>
  * Each obligation is a column; a newly-learned anti-pattern becomes one more column here. {@code
  * ManifestVerbTest} (the verb-list pin) and {@code ParamKindManifestTest} (the kind spot-checks) stay — they
@@ -69,6 +70,8 @@ class CliConformanceMatrixTest {
                 assertFalse(p.path("description").asText().isBlank(),
                         () -> verb + " param '" + p.path("key").asText() + "' needs a description");
             }
+            assertTrue(v.path("operationalProfiles").isArray() && !v.path("operationalProfiles").isEmpty(),
+                    () -> verb + " needs an operational profile rendered from CommandContracts");
 
             if (SchemaCommand.CONTRACT_EXEMPT.containsKey(verb)) {
                 continue; // no directional contract — discovered by running it; see theLedgersAreHonest()

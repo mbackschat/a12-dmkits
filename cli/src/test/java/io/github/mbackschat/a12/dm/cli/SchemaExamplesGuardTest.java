@@ -57,6 +57,28 @@ class SchemaExamplesGuardTest {
     }
 
     @Test
+    void computationSpecExamplesAlsoDriveTheModifyRouteAndChangeItsCandidate(@TempDir Path dir) throws Exception {
+        Path model = CliTestSupport.modelWithRuleAndComputation(dir);
+        String before = Files.readString(model);
+        JsonNode examples = schema("computation-add").path("examples");
+        assertEquals(1, examples.size(), "the shared computation input schema has one canonical example");
+        Path spec = dir.resolve("computation-modify.json");
+        Files.writeString(spec, examples.get(0).toString());
+
+        CliTestSupport.Result preview = CliTestSupport.run("-m", model.toString(), "computation", "modify",
+                CliTestSupport.COMPUTATION_FULL_NAME, "--spec", spec.toString(), "--dry-run");
+
+        assertEquals(0, preview.code(), () -> "computation modify rejected its published schema example: "
+                + preview.err() + preview.out());
+        JsonNode envelope = MAPPER.readTree(preview.out());
+        assertEquals("preview", envelope.path("outcome").asText(), preview::out);
+        assertTrue(envelope.path("changed").path("changed").asBoolean(),
+                () -> "the modify demonstration must be a positive control, not a no-op: " + preview.out());
+        assertEquals(before, Files.readString(model), "the modify schema example is still a dry-run");
+        assertPreviewStatesItsGate("computation modify", preview);
+    }
+
+    @Test
     void applyFrameExamplesAreAcceptedByTheTool(@TempDir Path dir) throws Exception {
         Path model = dir.resolve("subscription.dm.json");
         Files.writeString(model, CliTestSupport.subscriptionJson());

@@ -679,12 +679,7 @@ final class ApplyCommand extends BaseCommand {
                 yield readEnv(which, ReadPayloads.typedefList(ModelDocument.read(session.toJson())), session);
             }
             case INCLUDE_READ -> {
-                ObjectNode data = MAPPER.createObjectNode();
-                ArrayNode arr = data.putArray("includes");
-                for (ModelDocument.Include inc : ModelDocument.read(session.toJson()).includes()) {
-                    arr.addObject().put("alias", inc.alias()).put("reference", inc.reference());
-                }
-                yield readEnv(which, data, session);
+                yield readEnv(which, ReadPayloads.includeList(ModelDocument.read(session.toJson())), session);
             }
             case CONFIG_READ -> {
                 // T3: the same shared full config shape the standalone `config read` emits (was 4 scalars)

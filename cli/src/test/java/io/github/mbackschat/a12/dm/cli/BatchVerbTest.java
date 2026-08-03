@@ -38,9 +38,14 @@ class BatchVerbTest {
                 [ {"target":"field","op":"add","group":"/Subscription","name":"X","kind":"NUMBER"} ]""");
 
         var res = CliTestSupport.run("batch", opsFile.toString());
-        JsonNode r0 = batchItems(res.out()).get(0);
-        assertNotEquals(0, r0.path("exit").asInt());
-        assertTrue(r0.path("stderr").asText().contains("apply"), () -> "points at `apply`: " + r0);
+        assertEquals(2, res.code());
+        JsonNode envelope = MAPPER.readTree(res.out());
+        assertEquals("refused", envelope.path("outcome").asText(), res::out);
+        assertFalse(envelope.path("written").asBoolean(), res::out);
+        JsonNode diagnostic = envelope.path("diagnostics").get(0);
+        assertEquals("RK_UNKNOWN_ARG", diagnostic.path("code").asText());
+        assertTrue(diagnostic.path("fix").asText().contains("dmtool apply"),
+                () -> "points at `apply` before dispatch: " + diagnostic);
     }
 
     @Test
@@ -116,6 +121,52 @@ class BatchVerbTest {
         Files.writeString(opsFile, "{ not an array }");
         var res = CliTestSupport.run("batch", opsFile.toString());
         assertNotEquals(0, res.code(), "a malformed ops file fails at the batch level");
+    }
+
+    @Test
+    void validatesThePublishedBatchFrameBeforeDispatchingAnyChild(@TempDir Path dir) throws Exception {
+        Path m = model(dir);
+        String before = Files.readString(m);
+        Path fieldSpec = dir.resolve("field.json");
+        Files.writeString(fieldSpec,
+                "{\"group\":\"/Subscription/Billing\",\"name\":\"MustNotAppear\",\"kind\":\"STRING\"}");
+        Path ops = dir.resolve("ops.json");
+        Files.writeString(ops, "[{\"id\":\"write\",\"verb\":\"field\",\"args\":[\"add\","
+                + MAPPER.writeValueAsString(fieldSpec.toString()) + "],\"typo\":true}]");
+
+        var res = CliTestSupport.run("-m", m.toString(), "batch", ops.toString());
+
+        assertEquals(1, res.code(), res::out);
+        JsonNode envelope = MAPPER.readTree(res.out());
+        assertEquals("rejected", envelope.path("outcome").asText(), res::out);
+        assertEquals("RK_UNKNOWN_ARG", envelope.path("diagnostics").get(0).path("code").asText(), res::out);
+        assertFalse(envelope.path("written").asBoolean(), res::out);
+        assertEquals(before, Files.readString(m), "frame validation must happen before the first child is invoked");
+    }
+
+    @Test
+    void rejectsWrongTypedFrameValuesInsteadOfCoercingOrDroppingThem(@TempDir Path dir) throws Exception {
+        Path ops = dir.resolve("ops.json");
+        Files.writeString(ops, "[{\"verb\":\"model\",\"args\":\"check\"}]");
+
+        var res = CliTestSupport.run("batch", ops.toString());
+
+        assertEquals(1, res.code(), res::out);
+        JsonNode envelope = MAPPER.readTree(res.out());
+        assertEquals("RK_INVALID_VALUE", envelope.path("diagnostics").get(0).path("code").asText(), res::out);
+    }
+
+    @Test
+    void validOptionalIdAndOmittedArgsStillDispatch(@TempDir Path dir) throws Exception {
+        Path ops = dir.resolve("ops.json");
+        Files.writeString(ops, "[{\"id\":\"catalog\",\"verb\":\"manifest\"}]");
+
+        var res = CliTestSupport.run("batch", ops.toString());
+
+        assertEquals(0, res.code(), res::out);
+        JsonNode result = batchItems(res.out()).get(0);
+        assertEquals("catalog", result.path("id").asText(), res::out);
+        assertEquals(0, result.path("exit").asInt(), res::out);
     }
 
     @Test

@@ -13,8 +13,8 @@ import io.github.mbackschat.a12.dm.modelkit.ElementDraft;
 import io.github.mbackschat.a12.dm.modelkit.ModelDocument;
 
 /**
- * Shared {@code data}-payload builders for the read verbs (T3). The standalone {@code group read} /
- * {@code config read} / {@code typedef read} verbs and their {@code apply}-embedded {@code *_READ} op
+ * Shared {@code data}-payload builders for the read verbs (T3). The standalone {@code field/group/config/
+ * typedef/include read} verbs and their {@code apply}-embedded {@code *_READ} op
  * peers used to build DIFFERENT (subset) shapes for the same read — group emitted 2 keys vs the
  * standalone's 8, config 4 vs ~10, typedef dropped {@code importedFrom}. These builders are the single
  * source of each shape, so both surfaces stay at parity by construction.
@@ -129,6 +129,16 @@ public final class ReadPayloads {
             ArrayNode importsArr = data.putArray("importedFrom");
             imports.forEach(importsArr::add);
         }
+        return data;
+    }
+
+    /** Every declared include as the same alias/reference pair list on standalone and embedded reads. */
+    public static ObjectNode includeList(ModelDocument doc) {
+        ObjectNode data = MAPPER.createObjectNode();
+        ArrayNode includes = data.putArray("includes");
+        doc.includes().forEach(include -> includes.addObject()
+                .put("alias", include.alias())
+                .put("reference", include.reference()));
         return data;
     }
 

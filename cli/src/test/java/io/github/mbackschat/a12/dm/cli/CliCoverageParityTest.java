@@ -18,8 +18,9 @@ import org.junit.jupiter.api.Test;
  * <em>a capability that exists in one component (the modelkit/{@code dm.edit} authoring facade) with no guard
  * forcing the component that should expose it (the CLI) to cover it.</em>
  *
- * <p>{@link EditSession} is the unified authoring facade the CLI's {@code apply}/{@code batch} + the standalone
- * verbs all drive. This test reflectively enumerates <b>every public mutator</b> on it and requires each to be
+ * <p>{@link EditSession} is the unified authoring facade the CLI's {@code apply} and standalone mutation
+ * verbs drive ({@code batch} only dispatches those standalone routes). This test reflectively enumerates
+ * <b>every public mutator</b> on it and requires each to be
  * <b>classified</b> — either mapped to the CLI verb/apply-op that covers it, or explicitly marked {@code OPEN:}
  * (a tracked {@code FEATURE-GAPS} gap) or {@code EXCLUDED:} (intentionally not in the CLI, with a reason).
  * A NEW mutator with no classification <b>fails the build</b> — forcing the author to answer "does the CLI expose

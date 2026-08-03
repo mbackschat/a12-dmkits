@@ -230,7 +230,11 @@ public abstract class BaseCommand implements Callable<Integer> {
      * typo'd/out-of-scope key — or a mis-shaped value — being silently dropped into a false {@code applied}.
      */
     protected Optional<Integer> rejectUnknownKeys(String schemaName, JsonNode spec) {
-        ResultIdentity identity = resultIdentity();
+        return rejectUnknownKeys(resultIdentity(), schemaName, spec);
+    }
+
+    /** One-token/multi-mode counterpart whose identity is intentionally named rather than leaf-derived. */
+    protected Optional<Integer> rejectUnknownKeys(ResultIdentity identity, String schemaName, JsonNode spec) {
         List<Diagnostic> problems = SpecKeys.forSchema(schemaName).validate(spec).stream()
                 .map(diagnostic -> MetadataRelocation.correct(identity.target(), identity.op(), diagnostic))
                 .toList();

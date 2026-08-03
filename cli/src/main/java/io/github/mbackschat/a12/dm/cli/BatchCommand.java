@@ -10,6 +10,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import io.github.mbackschat.a12.dm.rulekit.validate.RkCode;
 
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Parameters;
@@ -46,6 +47,22 @@ final class BatchCommand extends BaseCommand {
         }
         if (!ops.isArray()) {
             return fail("ops file must be a JSON array");
+        }
+        for (int index = 0; index < ops.size(); index++) {
+            JsonNode op = ops.get(index);
+            if (!op.has("verb") && (op.has("target") || op.has("op"))) {
+                return refusePrecheck(ResultIdentity.BATCH_RUN, RkCode.UNKNOWN_ARG,
+                        "batch item " + index + " is an apply op-record, not a batch invocation",
+                        "/" + index,
+                        "use `dmtool apply` for records shaped as {target,op,…}; batch items are {verb,args,id?}");
+            }
+        }
+        // Enforce the exact frame served by `schema batch` before invoking the first child. The former
+        // path coerced wrong-typed id/verb values, silently treated a non-array args value as absent, and
+        // ignored extra keys despite additionalProperties:false — schema and runtime contradicted each other.
+        var frameRejection = rejectUnknownKeys(ResultIdentity.BATCH_RUN, "batch", ops);
+        if (frameRejection.isPresent()) {
+            return frameRejection.get();
         }
         ArrayNode results = MAPPER.createArrayNode();
         String batchModel = model();   // G18: the batch-level -m is the default for ops that omit their own

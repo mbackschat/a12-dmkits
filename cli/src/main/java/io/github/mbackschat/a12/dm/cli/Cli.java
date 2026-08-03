@@ -162,6 +162,7 @@ public final class Cli {
                     rejectUnknownSubcommand(parseResult);
                     return new CommandLine.RunLast().execute(parseResult);
                 });
+        CommandContracts.decorateHelp(cli);
         if (nativeProfile) {
             hideJvmOnlyVerbs(cli);
         }

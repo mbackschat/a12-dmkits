@@ -69,21 +69,35 @@ final class ExportCommand extends BaseCommand {
         if (model == null) {
             return fail("pass -m <model.json> (before or after the verb)");
         }
+        String json;
         try {
-            String json = Files.readString(Path.of(model));
-            BoundModel bound = BoundModel.ofJson(json, workspace.resolverFor(model));
-            if (outputDir != null) {
+            json = Files.readString(Path.of(model));
+        } catch (IOException e) {
+            return fail("cannot read model: " + e.getMessage());
+        }
+        BoundModel bound;
+        try {
+            bound = BoundModel.ofJson(json, workspace.resolverFor(model));
+        } catch (RuntimeException e) {
+            return failOrRethrowDomainRejection("export failed: ", e);
+        }
+        if (outputDir != null) {
+            try {
                 Path dir = Path.of(outputDir);
                 Files.createDirectories(dir);
                 for (Artifact a : Artifact.values()) {
                     Files.writeString(dir.resolve(a.fileName), render(a, bound, json));
                 }
                 return 0;
+            } catch (IOException e) {
+                return fail("cannot write output: " + e.getMessage());
+            } catch (RuntimeException e) {
+                return failOrRethrowDomainRejection("export failed: ", e);
             }
+        }
+        try {
             out().print(render(only == null ? Artifact.MODEL_CARD : only, bound, json));
             return 0;
-        } catch (IOException e) {
-            return fail("cannot read model: " + e.getMessage());
         } catch (RuntimeException e) {
             return failOrRethrowDomainRejection("export failed: ", e);
         }

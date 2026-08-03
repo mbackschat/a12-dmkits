@@ -25,6 +25,11 @@ export PATH="$ROOT/bin:$PATH"
 [[ -n "$VERSION" ]] || { echo "native gate: repository version is missing from build.gradle" >&2; exit 2; }
 "$ROOT/scripts/native-no-java-smoke.sh" "$NATIVE" "$VERSION"
 
+# Reuse the complete process-boundary contract and mutation matrix against the artifact itself. This catches
+# native-only command discovery/schema/provenance/write-safety drift before the narrower demos and crash battery.
+echo "----"
+"$ROOT/build.sh" --no-daemon -PdmtoolContractExecutable="$NATIVE" :cli:publicContractTest
+
 # Demos NOT byte-verifiable against the native binary, with WHY. Keep the reason here so a skip is never silent.
 #
 # As of 2026-06-24 the map is EMPTY — ALL demos are native-applicable. The two former skips are obsolete:
@@ -66,5 +71,5 @@ battery_fail=0
 
 echo "----"
 total=$(( fails + battery_fail ))
-if [[ $total -eq 0 ]]; then echo "native gate: GREEN (demos byte-match; no-crash battery clean; JVM-only demos skipped)"; else echo "native gate: $fails demo(s) FAILED + battery $([ $battery_fail -ne 0 ] && echo FAILED || echo ok)"; fi
+if [[ $total -eq 0 ]]; then echo "native gate: GREEN (public contract clean; demos byte-match; no-crash battery clean; JVM-only demos skipped)"; else echo "native gate: $fails demo(s) FAILED + battery $([ $battery_fail -ne 0 ] && echo FAILED || echo ok)"; fi
 exit $(( total > 0 ? 1 : 0 ))

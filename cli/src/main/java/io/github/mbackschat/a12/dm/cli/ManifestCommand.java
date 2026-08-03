@@ -124,6 +124,9 @@ final class ManifestCommand extends BaseCommand {
             ex.put("intent", example.path("intent").asText());
             ex.set("command", example.get("command"));
         }
+        // Operational semantics are not inferred from prose. This is the same typed owner rendered by
+        // `schema <verb>` and the generated leaf-help footer.
+        v.set("operationalProfiles", CommandContracts.toJson(name, cmd));
         // the semantic kind of each param (so an agent knows what to pass; derived from @ParamKind tags)
         Map<String, ParamKind.Kind> kinds = ParamKinds.of(cmd);
         ArrayNode params = v.putArray("params");

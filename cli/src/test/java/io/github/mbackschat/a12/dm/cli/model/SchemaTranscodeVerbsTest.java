@@ -176,4 +176,32 @@ class SchemaTranscodeVerbsTest {
         assertTrue(out.path("properties").has("id") && out.path("properties").has("quantity"),
                 () -> "import→export preserves the field structure: " + res.out());
     }
+
+    @Test
+    void bundleImportSuccessAndLaterFailureExposeTheDeclaredPartialPersistence(@TempDir Path dir)
+            throws Exception {
+        Path schema = dir.resolve("bundle.openapi.json");
+        Files.writeString(schema, """
+                {"openapi":"3.1.0","info":{"title":"Bundle","version":"1"},"paths":{},
+                 "components":{"schemas":{
+                   "A":{"type":"object","properties":{"a":{"type":"string"}}},
+                   "B":{"type":"object","properties":{"b":{"type":"string"}}}
+                 }}}
+                """);
+        Path success = dir.resolve("success");
+        CliTestSupport.Result allWritten = CliTestSupport.run(
+                "model", "import-jsonschema", "--schema", schema.toString(), "--out-dir", success.toString());
+        assertEquals(0, allWritten.code(), allWritten::err);
+        assertTrue(Files.isRegularFile(success.resolve("A.dm.json")));
+        assertTrue(Files.isRegularFile(success.resolve("B.dm.json")));
+
+        Path partial = dir.resolve("partial");
+        Files.createDirectories(partial.resolve("B.dm.json"));
+        CliTestSupport.Result failed = CliTestSupport.run(
+                "model", "import-jsonschema", "--schema", schema.toString(), "--out-dir", partial.toString());
+
+        assertEquals(2, failed.code(), failed::err);
+        assertTrue(Files.isRegularFile(partial.resolve("A.dm.json")),
+                "A remains when the later B write fails: the bundle profile is PARTIAL");
+    }
 }

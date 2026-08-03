@@ -4,6 +4,7 @@ import io.github.mbackschat.a12.dm.cli.BaseCommand;
 import io.github.mbackschat.a12.dm.cli.ConsistencyEvidence;
 import io.github.mbackschat.a12.dm.cli.ParamKind;
 import io.github.mbackschat.a12.dm.cli.Refusal;
+import io.github.mbackschat.a12.dm.cli.ReadPayloads;
 import io.github.mbackschat.a12.dm.cli.ResultEnvelope;
 import io.github.mbackschat.a12.dm.cli.SafetyChecks;
 import io.github.mbackschat.a12.dm.cli.SafetyGate;
@@ -15,7 +16,6 @@ import java.util.List;
 import java.util.Optional;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 
 import io.github.mbackschat.a12.dm.modelkit.ModelDocument;
@@ -81,11 +81,7 @@ final class IncludeReadCommand extends BaseCommand {
                 out().print(env.toJsonString());
                 return env.exitCode();
             }
-            ObjectNode data = MAPPER.createObjectNode();
-            ArrayNode arr = data.putArray("includes");
-            for (ModelDocument.Include inc : incs) {
-                arr.addObject().put("alias", inc.alias()).put("reference", inc.reference());
-            }
+            ObjectNode data = ReadPayloads.includeList(doc);
             ResultEnvelope env = ResultEnvelope.queryResult(resultIdentity(),
                     "read " + incs.size() + " include(s)", data, ConsistencyEvidence.none());
             out().print(env.toJsonString());

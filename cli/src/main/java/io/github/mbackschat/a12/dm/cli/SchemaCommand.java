@@ -188,7 +188,23 @@ final class SchemaCommand extends BaseCommand {
             if (in == null) {
                 return fail("schema resource missing: " + resource);
             }
-            out().print(new String(in.readAllBytes(), StandardCharsets.UTF_8));
+            String source = new String(in.readAllBytes(), StandardCharsets.UTF_8);
+            if (FRAMES.contains(name)) {
+                JsonNode parsed = MAPPER.readTree(source);
+                if (!(parsed instanceof ObjectNode frame)) {
+                    return fail("schema frame is not a JSON object: " + resource);
+                }
+                CommandSpec command = resolveLeaf(List.of(name));
+                if (command == null) {
+                    return fail("cannot resolve live command contract: " + name);
+                }
+                // A JSON-Schema annotation: the frame shape and its operational contract remain one response,
+                // rendered from the same owner as manifest/help rather than duplicated in schema prose.
+                frame.set("operationalProfiles", CommandContracts.toJson(name, command));
+                out().print(frame.toPrettyString() + "\n");
+            } else {
+                out().print(source);
+            }
             return 0;
         } catch (IOException e) {
             return fail("cannot read schema: " + e.getMessage());
@@ -259,25 +275,34 @@ final class SchemaCommand extends BaseCommand {
                 }
             }
         }
+        CommandSpec command = resolveLeaf(tokens);
+        if (command == null) {
+            return fail("cannot resolve live command contract: " + verb);
+        }
+        c.set("operationalProfiles", CommandContracts.toJson(verb, command));
         out().print(c.toPrettyString() + "\n");
         return 0;
     }
 
     /** Resolve the tokens against the live command tree; true iff they name a runnable leaf op. */
     private boolean resolvesToLeaf(List<String> toks) {
+        return resolveLeaf(toks) != null;
+    }
+
+    private CommandSpec resolveLeaf(List<String> toks) {
         Map<String, CommandLine> subs = spec.root().subcommands();
         CommandSpec cur = null;
         for (String t : toks) {
             CommandLine cl = subs.get(t);
             if (cl == null) {
-                return false;
+                return null;
             }
             cur = cl.getCommandSpec();
             subs = cur.subcommands();
         }
         // a runnable, non-hidden leaf — hidden commands aren't part of the canonical surface (the manifest
         // skips them too). Stays as the invariant; the legacy flat aliases this once guarded against are gone.
-        return cur != null && cur.subcommands().isEmpty() && !cur.usageMessage().hidden();
+        return cur != null && cur.subcommands().isEmpty() && !cur.usageMessage().hidden() ? cur : null;
     }
 
     private JsonNode readSchema(String name) {

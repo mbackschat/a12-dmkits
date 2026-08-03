@@ -179,4 +179,23 @@ class GroupExtractVerbTest {
         assertTrue(j.path("diagnostics").toString().contains("RK_OUTWARD_REFERENCE"));
         assertTrue(j.path("data").path("escapingRules").toString().contains("/Order/Shipping/NeedsDate"));
     }
+
+    @Test
+    void aLaterBaseWriteFailureLeavesTheDeclaredPartialSubModel(@TempDir Path dir) throws Exception {
+        String base = DocumentModelDraft.named("order").locale("en_US")
+                .rootGroup("Order", order -> order.group("Shipping",
+                        shipping -> shipping.field("Zip", FieldKind.STRING)))
+                .build().toJson();
+        Path model = write(dir, "order.dm.json", base);
+        Path blockedDestination = dir.resolve("blocked.dm.json");
+        Files.createDirectory(blockedDestination);
+
+        var res = CliTestSupport.run("-m", model.toString(), "group", "extract", "/Order/Shipping",
+                "--reference", "shipping", "-o", blockedDestination.toString());
+
+        assertEquals(2, res.code(), res::err);
+        assertTrue(Files.isRegularFile(dir.resolve("shipping.dm.json")),
+                "the first write remains when the later base write fails: this profile is PARTIAL");
+        assertEquals(base, Files.readString(model), "the original base was not the selected destination");
+    }
 }

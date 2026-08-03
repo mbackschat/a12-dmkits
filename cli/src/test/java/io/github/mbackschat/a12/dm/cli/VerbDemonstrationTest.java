@@ -278,7 +278,7 @@ class VerbDemonstrationTest {
     }
 
     /** Write the example's model (+ siblings, + inline doc) to {@code dir} and resolve the {@code <...>} placeholders. */
-    private static List<String> materialize(String verb, JsonNode ex, Path dir) throws Exception {
+    static List<String> materialize(String verb, JsonNode ex, Path dir) throws Exception {
         // model-originating verbs (e.g. `model new`) declare no `model` — they make one
         Path model = ex.hasNonNull("model") ? writeResource("models/" + ex.get("model").asText(), dir) : null;
         for (JsonNode sib : ex.path("siblings")) {
@@ -473,7 +473,7 @@ class VerbDemonstrationTest {
         return path.substring(path.lastIndexOf('/') + 1);
     }
 
-    private static JsonNode corpus() throws Exception {
+    static JsonNode corpus() throws Exception {
         try (InputStream in = VerbDemonstrationTest.class.getResourceAsStream("/verb-examples.json")) {
             assertTrue(in != null, "verb-examples.json present on the classpath");
             return M.readTree(in);

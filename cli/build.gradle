@@ -340,6 +340,27 @@ tasks.register('mutationTailGuardTest', Test) {
             'verb demonstrations': rootProject.file('cli/src/main/resources/verb-examples.json')])
 }
 
+// The public-contract suite crosses the packaging boundary deliberately: it spawns the exact installDist
+// launcher, never CliTestSupport's in-process seam and never the environment-selecting repo shim. A native gate
+// can point the same runner at its freshly built binary with -PdmtoolContractExecutable=<path>.
+def dmtoolContractExecutable = project.findProperty('dmtoolContractExecutable')
+        ?: layout.buildDirectory.file('install/dmtool/bin/dmtool').get().asFile.absolutePath
+tasks.register('publicContractTest', Test) {
+    description = 'Black-box operational-contract, mutation-safety, and packaged-journey suite.'
+    group = 'verification'
+    dependsOn tasks.named('installDist')
+    testClassesDirs = sourceSets.test.output.classesDirs
+    classpath = sourceSets.test.runtimeClasspath
+    systemProperty 'dmtool.executable', dmtoolContractExecutable
+    inputs.file(file(dmtoolContractExecutable))
+    filter {
+        includeTestsMatching 'io.github.mbackschat.a12.dm.cli.DmtoolPublicContractTest'
+        includeTestsMatching 'io.github.mbackschat.a12.dm.cli.DmtoolMutationSafetyTest'
+        includeTestsMatching 'io.github.mbackschat.a12.dm.cli.PackagedDmtoolJourneyTest'
+    }
+}
+tasks.named('check') { dependsOn 'publicContractTest' }
+
 tasks.named('test') {
     dependsOn 'docGuardTest'
     dependsOn 'evalGuardTest'
@@ -366,6 +387,9 @@ tasks.named('test') {
         excludeTestsMatching 'io.github.mbackschat.a12.dm.cli.eval.EvalGoldOracleTest'
         excludeTestsMatching 'io.github.mbackschat.a12.dm.cli.eval.EvalSuiteLedgerTest'
         excludeTestsMatching 'io.github.mbackschat.a12.dm.cli.MutationTailSingleSourceTest'
+        excludeTestsMatching 'io.github.mbackschat.a12.dm.cli.DmtoolPublicContractTest'
+        excludeTestsMatching 'io.github.mbackschat.a12.dm.cli.DmtoolMutationSafetyTest'
+        excludeTestsMatching 'io.github.mbackschat.a12.dm.cli.PackagedDmtoolJourneyTest'
         // During tracing this one assertion necessarily reads the PRE-CAPTURE committed metadata. Exclude
         // only it; capture-native-config.sh copies the generated file and runs the class immediately after.
         // Every other test remains mandatory, so a real red suite cannot be swallowed by the capture.

@@ -204,11 +204,18 @@ The `dmtool` CLI is the agent's entire interface (the N6 eval drives the bare bi
 | `SchemaVerbTest` | `schema result`/`diagnostic` serve the structures; `schema <target> <op>` (and `schema <verb>` for an envelope cross-cutting verb like `meta`) gives the directional contract — incl. a verb's `docInput` (the `--instance` `DocumentInstance` shape) and `dataSchema` (its read payload, e.g. `Explanation`/`ModelCard`) where they exist; **every target-first verb's real output conforms to `result.schema.json`** (the F11 drift guard) |
 | `SchemaExamplesGuardTest` | every published schema `examples` block is **CI-executed through the tool** (the `add` rule/computation specs and the `field-add` field spec via `--dry-run`, the `apply`/`batch` frames, the `document-instance` example via `model eval`) or statically conformed (`result`/`diagnostic`) — a stale example can't ship |
 | **`VerbDemonstrationTest`** — the **demonstration** gate | every verb's worked example in `verb-examples.json` (the read-only invocation `manifest` surfaces as the verb's `example`, so a cold agent sees it *in action*) is **executed through the tool** against a fixture and must produce its documented outcome — the "in action" demo can't rot |
+| `CommandContractsTest` | every live leaf and argument-dependent mode has one complete operational profile; manifest, schema, and generated help render the same typed owner; the finite mutation denominator stays 48 writes/39 previews |
+| `DmtoolPublicContractTest` | against the exact packaged executable: the complete manifest denominator, every schema pointer, every published worked invocation, result-envelope shape, and static/runtime provenance agree |
+| `DmtoolMutationSafetyTest` | every declared mutating profile: byte-identical rejection/dry-run, a real-write positive control, persisted `model check`, unknown-key refusal, and discriminating rollback/partial-write cases |
+| `PackagedDmtoolJourneyTest` | the cold public journey—`model new` → `apply` setup → computation preview/add/read → `model check` → `model compute`—works through the installed launcher |
+| `CommandRouteEquivalenceTest` / `ApplyReadPayloadParityTest` | equivalent direct/batch/apply/read routes agree on envelopes, persisted model trees, and payloads |
 | `RkCodeParityTest` | the single-source `RkCode` registry (served by the `diagnostics` verb) stays bidirectionally in sync — every emitted code is registered, no dead rows |
 | `NotFoundRefusalTest` | a not-found entity-ref on a mutating verb refuses with the structured `RK_NO_SUCH_*`, not a bare error |
 | **`DiagnosticConformanceFuzzTest`** — the conformance **fuzzer** | derived from the live tree, it probes every mutating verb with a **bogus value for each entity-ref param** and asserts a **structured** envelope comes back (a code + a fix), not a bare fail. A new verb can't escape it, and it catches real regressions — e.g. it caught a `rule modify` change whose precondition *ordering* let a missing-rule slip through as a terse "nothing to change" instead of the structured `RK_NO_SUCH_RULE`. |
 
 The bar (CLI-CONFORMANCE-SPEC): a cold agent given only the binary can self-serve. Two active enforcers make a new verb hold the contract automatically — the **matrix** proves it's fully surfaced (described, contract-discoverable, demonstrated), and the **fuzzer** proves its misuse is structured-diagnosed.
+
+The packaged classes run in the dedicated `:cli:publicContractTest` task, not the broad in-process `:cli:test`. The task builds `installDist`, passes its exact launcher through `dmtool.executable`, and is part of `:cli:check`; `-PdmtoolContractExecutable=<native>` reuses the identical suite for a freshly built native artifact. Process stdout/stderr go to per-invocation files, the environment-selecting repo shim is never involved, and each process has a bounded timeout.
 
 ## Locked doc snippets (no-rot for the `java` code in docs)
 
@@ -355,6 +362,7 @@ ROOT="$(cd .. && pwd)"; export GRADLE_USER_HOME="$ROOT/.gradle-isolated"; export
 ./gradlew :adapter:test --tests "*.PolarityLawsTest"        # one class
 ./gradlew :adapter:test --tests "*.KernelMmReadCoverageTest" -Da12.kernel.mm.dir=../a12-kernel-mm   # opt-in
 ./gradlew :adapter:test --tests "*.Corpus1ReadCoverageTest" -Da12.corpus1.dir="…/workspaces"        # opt-in
+./build.sh :cli:publicContractTest                          # exact installDist public-contract + mutation suite
 ./gradlew syncDocSnippets                                   # rewrite drifted locked doc snippets (autonomous; never CI)
 ```
 

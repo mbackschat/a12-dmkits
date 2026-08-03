@@ -4,7 +4,7 @@
 >
 > **Lifecycle.** Same `-GAPS` discipline as its siblings ([`DEV-API-GAPS.md`](DEV-API-GAPS.md), [`INTERPRETER-GAPS.md`](INTERPRETER-GAPS.md), …): a gap lives here only while open — §1 open, §2 deferred (with re-open triggers), §3 out of scope. A shipped gap is **deleted**, not kept as a "shipped" list (git is the *what/when*; the graduated `CLI-CONFORMANCE-SPEC` matrix column / `CLI-SPEC` section is the *why*).
 >
-> **Current state.** §1 reopened on 2026-08-03 after external field feedback falsified the skill's claim that `batch` was atomic while the schema and implementation correctly said it never rolls back; the command tests also explicitly locked outer success for failed children. The batch-specific defect is fixed and adversarially locked, but the cross-surface operational-contract denominator remains open below. The earlier 2026-07-31 property-shaped conformance gaps have graduated into [`CLI-CONFORMANCE-SPEC`](CLI-CONFORMANCE-SPEC.md), [`EVAL-SPEC`](EVAL-SPEC.md), and [`PROBE-SPEC`](PROBE-SPEC.md).
+> **Current state.** No open conformance gaps. The 2026-08-03 operational-contract gap graduated into [`CLI-CONFORMANCE-SPEC`](CLI-CONFORMANCE-SPEC.md), [`CLI-SPEC`](CLI-SPEC.md), and the packaged public-contract suite. The earlier 2026-07-31 property-shaped conformance gaps graduated into [`CLI-CONFORMANCE-SPEC`](CLI-CONFORMANCE-SPEC.md), [`EVAL-SPEC`](EVAL-SPEC.md), and [`PROBE-SPEC`](PROBE-SPEC.md).
 >
 > **Provenance.** A 2026-06-28 review of dmtool against a general "CLI tools for LLM agents" best-practices note found that dmtool already meets or beats ~80% of it — JSON-default output, a picocli-**derived** manifest that can't drift, the result envelope, the `refused`/referrers safety gate, the exit-code taxonomy, CI-executed examples. The rows below are the residual deltas, and — in §2/§3 — the ones we considered and are **not** taking, each with a re-open trigger so the decision carries its own expiry.
 
@@ -12,11 +12,7 @@
 
 ## 1. Open
 
-### CG9 — Executable operational-contract matrix for effect, failure persistence, dry-run, and aggregate success <a id="cg9"></a>
-
-*(Reopened 2026-08-03 by the `apply`/`batch` write-safety contradiction.)* The current self-description and guards own different projections: the live manifest owns command/parameter discovery, schemas own input/result shape, examples prove selected invocations run, and command tests own local behavior. None is the executable owner for whether an invocation is read-only or mutating, transactional or partial-write, dry-run capable, and how child outcomes determine outer `ok`/exit. The missing discriminator was `successful batch child → rejected child → inspect the first child's state`; existing tests instead asserted the unsafe outer-success policy, while the canonical skill contradicted the already-correct batch schema. The batch fix now locks that one profile at the result-algebra, command, schema, skill, and packaged-demo layers; it does not establish a denominator across the CLI.
-
-**Acceptance matrix for the follow-up:** derive every live leaf from the picocli tree and enumerate any argument-dependent operational profiles explicitly; give each profile an effect class, failure-persistence contract (`NO_WRITE` / `ROLLBACK` / `PARTIAL`), dry-run support, and aggregate-success rule. Run the fresh `installDist` wrapper against one adversarial fixture per mutating profile: a successful write persists and reads back, a rejection and `--dry-run` leave the input byte-identical, persisted output passes `model check`, unknown rich-spec keys fail before writing, and multi-operation failure exhibits the declared rollback/partial behavior. Require positive controls that prove each fixture could mutate, and validate every emitted envelope against the profile. Provenance remains receipt-derived per invocation—never a static per-command constant—because existing routes legitimately gate only under particular flags. Reconcile normative help/schema/skill claims with this owner instead of adding three overlapping hand-maintained test inventories.
+_None open._
 
 ## 2. Deferred — with re-open triggers
 

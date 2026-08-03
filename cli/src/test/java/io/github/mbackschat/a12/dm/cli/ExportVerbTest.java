@@ -141,6 +141,24 @@ class ExportVerbTest {
     }
 
     @Test
+    void aLaterDirectoryWriteFailureIsReportedAsAWriteAndLeavesTheDeclaredPartialEffect(@TempDir Path dir)
+            throws Exception {
+        Path model = modelWithRule(dir);
+        Path ctx = dir.resolve("ctx");
+        Files.createDirectories(ctx.resolve("groups.jsonl")); // second Artifact enum entry cannot be written
+        StringBuilder err = new StringBuilder();
+
+        int code = Cli.run(new String[]{"-m", model.toString(), "export", "--out-dir", ctx.toString()},
+                new StringBuilder(), err);
+
+        assertEquals(2, code, () -> "a filesystem write failure is environmental: " + err);
+        assertTrue(err.toString().contains("cannot write output"),
+                () -> "do not misdiagnose an artifact write as a model-read failure: " + err);
+        assertTrue(Files.isRegularFile(ctx.resolve("fields.jsonl")),
+                "the first artifact remains: this profile is explicitly PARTIAL, not transactional");
+    }
+
+    @Test
     void unknownVerbFailsWithNonZeroExit() {
         StringBuilder err = new StringBuilder();
         int code = Cli.run(new String[]{"frobnicate"}, new StringBuilder(), err);
