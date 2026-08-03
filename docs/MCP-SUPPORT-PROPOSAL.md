@@ -353,7 +353,7 @@ This is also the established pattern: the MCP documentation ships its **own** de
 | **S1** | `dmtool mcp` — stdio server inside the existing binary (**phase 1, what this proposal contracts**) | none; a local artifact under the posture [LICENSING.md](LICENSING.md) already sets | none | nobody has to — nothing leaves the machine |
 | **S2** | Publish a **container image**; the customer runs it in their own tenancy | none; distribution, exactly as the binary is today | theirs | theirs, by construction |
 | **S3** | **We host it** as a service | the hosted combined work must be offered under EUPL-1.2 with source (§13.2) | authentication, tenancy isolation, a DPA, retention, on-call | ours, and it is a business question rather than a technical one |
-| **S4** | **A public demonstration endpoint** — no customer data, no availability promise, existing to be tried rather than relied on | same clauses as S3 attach, but with no customer models there is no processor role | best-effort only | ours, but with nothing at stake |
+| **S4** | **A public demonstration endpoint**, preferably **read-only** (§13.8) — no customer data, no availability promise, existing to be tried rather than relied on | same clauses as S3 attach, but with no customer models there is no processor role | best-effort only | ours, but with nothing at stake |
 
 **S4 was added 2026-08-03** because a candidate arrived that fits it and fits nothing else (§13.6). It is worth distinguishing from S3 precisely because the two have different *obligations*, not merely different scale: the moment an endpoint holds a customer's document model, §13.2's processor role attaches and platform durability becomes a contractual concern rather than an inconvenience.
 
@@ -485,7 +485,7 @@ Note the verb: **delete**, not only suspend. For H3 that is acceptable, because 
 
 Model state moves from filesystem paths to **server-minted opaque handles passed as ordinary tool arguments** — the specification's own non-normative "Stateful Tools" guidance, and the only shape available now that protocol sessions are gone (§3). Model bytes then live in object storage behind the handle.
 
-**A handle scopes to a private per-tenant workspace, never into a shared tree.** This is part of the contract rather than an implementation detail, because it is what closes the isolation gap of §13.6 and, by making every model single-writer, the concurrent-write gap of §13.7.
+**A handle scopes to a private per-tenant workspace, never into a shared tree.** This is part of the contract rather than an implementation detail: it is what closes the isolation gap of §13.6, and by making every model single-writer it also removes the unmediated-writer exposure of §13.7 item 3.
 
 **But what is a tenant, when the protocol has no sessions?** Statelessness removed *sessions*, not *identity* — a stateless server simply cannot remember who called, so every request must carry its own proof, which is the ordinary bearer-credential pattern. Of the three signals available, only one is an identity:
 
@@ -501,7 +501,12 @@ So the term resolves per shape, and the differences are load-bearing:
 | **S4** public demonstration | **no identity at all** — each handle mints its own ephemeral workspace | per *handle*, capability-only; acceptable precisely because S4 holds no customer models |
 | **S3** hosted service | the **authenticated principal** of the request's access token | per principal, with handles bound to it |
 
-**Under S3 a handle must be minted for a subject and rejected when presented by another.** If the handle is the only boundary, the security model is an unguessable string and a leaked handle is a breach — a defensible choice for S4, never for a service holding customer models under the §13.2 processor role. Inlining a model in every call stays available for one-shot use and is token-fatal on real models; a client-supplied storage URI is the third option and the least attractive, since it makes us fetch from a location the model chose.
+**Under S3 a handle must be minted for a subject and rejected when presented by another.** If the handle is the only boundary, the security model is an unguessable string and a leaked handle is a breach — a defensible choice for S4, never for a service holding customer models under the §13.2 processor role.
+
+**Two non-negotiables follow, and the second is the cleaner answer.**
+
+1. **An endpoint without authentication must not expose mutating tools.** Where there is no principal there is no answer to "who may write what", so a reachable mutating surface is simply open (§13.7 item 1). This is not a policy preference; it is what the absence of identity means.
+2. **Prefer making the demonstration endpoint read-only, rather than isolating writes on it.** A read-only S4 exposes the catalogs, the published schemas, per-verb help, and the consistency oracle over caller-supplied content — `model check`, `rule check`, `model describe`, `where-used`, the whole inspection surface — which is most of what there is to demonstrate. **It then needs no tenant, no authorization, no isolation, no handles, and no write path at all**, and every concern in §13.7 evaporates rather than being mitigated. A demonstration endpoint that cannot be made worse by its callers is also the only one that can be left running unattended, which is what "no availability promise" (§13.1) is really trading for. Mutating tools stay a phase-3 question, gated on the authentication of requirement 1. Inlining a model in every call stays available for one-shot use and is token-fatal on real models; a client-supplied storage URI is the third option and the least attractive, since it makes us fetch from a location the model chose.
 
 Authorization becomes OAuth 2.1 resource-server, with the revision's `iss`-validation requirement and Client ID Metadata Documents now preferred over Dynamic Client Registration (§2). The official Java SDK becomes worth reconsidering **for that transport only** (§5.1): Streamable HTTP, SSE, and OAuth plumbing would justify the dependency where native-image is no longer a constraint.
 
