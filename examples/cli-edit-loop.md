@@ -213,11 +213,11 @@ dmtool batch /tmp/edit-ops.json | jq -c ".data.results[] | {id, valid: .result.v
 
 ## The tool describes itself — operators & schema
 
-Two more self-description verbs round out the surface. `operators <id>` gives one DSL operator in full; `schema <target> <op>` gives that op's **directional contract** (`{op, input, returns, ...}`) — the rich rule/computation input schema (a `oneOf`) rides `.input`.
+Two more self-description verbs round out the surface. `operators <id>` gives one DSL operator in full; `schema <target> <op>` gives that op's **directional contract** (`{op, input, returns, ...}`) — the target-specific input schema rides `.input`.
 
 ```bash
 dmtool operators DateRange | jq '{id, kind, meaning}'
-dmtool schema rule add | jq '.input.oneOf'
+dmtool schema rule add | jq '.input | {title, required}'
 ```
 
 ```output
@@ -226,28 +226,18 @@ dmtool schema rule add | jq '.input.oneOf'
   "kind": "FUNCTION",
   "meaning": "Constructs a DATE_RANGE value from start and end date entity references. It may be compared with == or != to a DATE_RANGE field in either direction or to another construction, or assigned to a DATE_RANGE field by a computation; ordering and nested use in overlap predicates are rejected."
 }
-[
-  {
-    "title": "rule-spec",
-    "required": [
-      "field",
-      "condition",
-      "code",
-      "messages"
-    ]
-  },
-  {
-    "title": "computation-spec",
-    "required": [
-      "computedField",
-      "alternatives",
-      "messages"
-    ]
-  }
-]
+{
+  "title": "RuleAddSpec",
+  "required": [
+    "field",
+    "condition",
+    "code",
+    "messages"
+  ]
+}
 ```
 
-→ `operators DateRange` carries both legal use sites and the rejected nesting/ordering boundary; `schema rule add` returns the op's directional contract, with the input shape under `.input` — a `oneOf` of a rule-spec (`field`/`condition`/`code`) or a computation-spec (`computedField`/`alternatives`), both requiring `messages`. A cold agent learns the whole contract from the tool, no external docs.
+→ `operators DateRange` carries both legal use sites and the rejected nesting/ordering boundary; `schema rule add` returns the op's directional contract, with the strict rule-spec shape under `.input`. `schema computation add` likewise returns only the computation-spec keys, so a cold agent learns the exact contract from the tool without a permissive mixed-target schema.
 
 ## rule modify — re-express an existing rule (preview, then write)
 
@@ -415,6 +405,7 @@ dmtool -m /tmp/edit2-sub.json computation read /Subscription/Billing/EffectiveFe
     "computation" : "/Subscription/Billing/EffectiveFeeComp",
     "converted" : true,
     "calculatedField" : "/Subscription/Billing/EffectiveFee",
+    "errorCodesToSuppress" : [ ],
     "alternatives" : [ {
       "operation" : "[BaseFee] * 2"
     } ],
@@ -431,7 +422,7 @@ dmtool -m /tmp/edit2-sub.json computation read /Subscription/Billing/EffectiveFe
 }
 ```
 
-→ `outcome: "read"`, `ok: true`, and `.data` carries `converted: true` (the kernel construct round-tripped into rulekit's typed form cleanly) plus `calculatedField` — the `/Subscription/Billing/EffectiveFee` this computation assigns. `read` writes nothing (`written: false`); it's the verification half of the add we just made.
+→ `outcome: "read"`, `ok: true`, and `.data` carries `converted: true` (the kernel construct round-tripped into rulekit's typed form cleanly), `calculatedField` — the `/Subscription/Billing/EffectiveFee` this computation assigns — and the exact A12 `errorCodesToSuppress` list (empty here). `read` writes nothing (`written: false`); it's the verification half of the add we just made.
 
 ## computation remove — drop a computation
 

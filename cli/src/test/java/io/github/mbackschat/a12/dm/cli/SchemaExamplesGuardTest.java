@@ -21,7 +21,7 @@ import org.junit.jupiter.api.io.TempDir;
  * CI-verified schema {@code examples} (CLI-SPEC §5a, the F11 "loud detection at build" guard) — a published
  * schema's worked examples must not rot:
  * <ul>
- *   <li><b>Input</b> examples (the {@code add} rule/computation specs) are <b>executed through the tool</b> —
+ *   <li><b>Input</b> examples (the target-specific rule/computation add specs) are <b>executed through the tool</b> —
  *       fed to {@code rule add}/{@code computation add --dry-run} and required to be accepted. A drifted
  *       spec example (a renamed key, a now-invalid condition) fails here.</li>
  *   <li><b>Output</b> examples ({@code result}, {@code diagnostic}) are statically locked to their own schema:
@@ -35,23 +35,24 @@ class SchemaExamplesGuardTest {
 
     @Test
     void inputSpecExamplesAreAcceptedByTheTool(@TempDir Path dir) throws Exception {
-        Path model = dir.resolve("subscription.dm.json");
-        Files.writeString(model, CliTestSupport.subscriptionJson());
+        for (String target : List.of("rule", "computation")) {
+            Path model = dir.resolve(target + "-subscription.dm.json");
+            Files.writeString(model, CliTestSupport.subscriptionJson());
 
-        JsonNode examples = schema("add").path("examples");
-        assertTrue(examples.isArray() && examples.size() > 0, "add.schema declares examples");
-        int i = 0;
-        for (JsonNode ex : examples) {
-            Path spec = dir.resolve("spec-" + i++ + ".json");
-            Files.writeString(spec, ex.toString());
-            boolean isComputation = ex.hasNonNull("computedField");
-            String target = isComputation ? "computation" : "rule";
-            CliTestSupport.Result res = CliTestSupport.run(
-                    "-m", model.toString(), target, "add", spec.toString(), "--dry-run");
-            assertEquals(0, res.code(), () -> target + " add rejected the schema example: " + res.err() + res.out());
-            assertEquals("preview", MAPPER.readTree(res.out()).path("outcome").asText(),
-                    () -> "the " + target + " example previews cleanly");
-            assertPreviewStatesItsGate(target + " add", res);
+            JsonNode examples = schema(target + "-add").path("examples");
+            assertTrue(examples.isArray() && !examples.isEmpty(), target + "-add.schema declares examples");
+            int i = 0;
+            for (JsonNode ex : examples) {
+                Path spec = dir.resolve(target + "-spec-" + i++ + ".json");
+                Files.writeString(spec, ex.toString());
+                CliTestSupport.Result res = CliTestSupport.run(
+                        "-m", model.toString(), target, "add", spec.toString(), "--dry-run");
+                assertEquals(0, res.code(),
+                        () -> target + " add rejected the schema example: " + res.err() + res.out());
+                assertEquals("preview", MAPPER.readTree(res.out()).path("outcome").asText(),
+                        () -> "the " + target + " example previews cleanly");
+                assertPreviewStatesItsGate(target + " add", res);
+            }
         }
     }
 

@@ -343,12 +343,9 @@ dmtool schema rule add | jq '{op, returns, inputKeys: (.input.properties|keys)}'
   "returns": "result",
   "inputKeys": [
     "allowDifferingDecimals",
-    "alternatives",
     "annotation",
     "code",
     "comment",
-    "commonPrecondition",
-    "computedField",
     "condition",
     "external-description",
     "field",
@@ -361,4 +358,4 @@ dmtool schema rule add | jq '{op, returns, inputKeys: (.input.properties|keys)}'
 }
 ```
 
-→ `returns: "result"` — the same envelope `schema result` describes, so the agent already knows how to read it. The `inputKeys` are the **union** of two specs (`rule add` accepts a rule-spec *or* a computation-spec, chosen by which keys are present): `field`/`condition`/`code` author a rule, `computedField`/`alternatives` a computation. The full schema (omitted by this projection) spells out each key, the `oneOf`, and the required sets — enough to construct a valid `add` payload without trial and error.
+→ `returns: "result"` — the same envelope `schema result` describes, so the agent already knows how to read it. The `inputKeys` are target-specific: `schema rule add` exposes only rule fields, while `schema computation add` exposes only computation fields. A key owned by the other spec is rejected instead of silently ignored. The full schema (omitted by this projection) spells out each key and the required set — enough to construct a valid payload without trial and error.

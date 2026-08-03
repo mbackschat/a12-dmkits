@@ -567,6 +567,11 @@ public final class KernelAdapter {
         return readOne(calculationRule(computationFullName));
     }
 
+    /** A12's owner-level suppression metadata, independent of formula AST conversion. */
+    public List<String> computationErrorCodesToSuppress(String computationFullName) {
+        return errorCodesToSuppress(calculationRule(computationFullName));
+    }
+
     /** Look up a computation's {@code ICalculationRule} by full name (read-only — the {@link #rule} peer).
      *  Served from the {@link #calcIndex} so repeated computation reads stay {@code O(C)}, not {@code O(C²)}. */
     private ICalculationRule calculationRule(String computationFullName) {
@@ -616,13 +621,11 @@ public final class KernelAdapter {
     private ReadComputation readOne(ICalculationRule cr) {
         String verbatim = verbatimComputationText(cr);
         try {
+            List<String> errorCodesToSuppress = errorCodesToSuppress(cr);
             java.util.Optional<ICalculationInfo> info = calcService().extractCalculationInfo(cr, SILENT);
             if (info.isEmpty()) {
                 return new ReadComputation.Opaque(verbatim, "the kernel could not extract calculation info");
             }
-            List<String> errorCodesToSuppress = cr.getRule() instanceof IRuleFromComputation source
-                    ? source.getOriginalComputation().getErrorCodesToSuppress()
-                    : List.of();
             Computation computation = new ConditionConverter(model)
                     .convertComputation(info.get(), recoverMessages(cr.getRule()), errorCodesToSuppress);
             return new ReadComputation.Converted(computation);
@@ -631,6 +634,13 @@ public final class KernelAdapter {
         } catch (RuntimeException unexpected) {
             return new ReadComputation.Opaque(verbatim, opaqueFailureReason(unexpected));
         }
+    }
+
+    private static List<String> errorCodesToSuppress(ICalculationRule calculation) {
+        if (!(calculation.getRule() instanceof IRuleFromComputation source)) {
+            return List.of();
+        }
+        return List.copyOf(source.getOriginalComputation().getErrorCodesToSuppress());
     }
 
     /** The verbatim stored text to preserve for an opaque computation — a computation is stored as a rule,
@@ -725,6 +735,9 @@ public final class KernelAdapter {
             text.append(renderer.render(alternative.operation()));
             alternative.toleranceRangeOp().ifPresent(
                     tolerance -> text.append(" [toleranceRangeOp=").append(tolerance.wire()).append(']'));
+        }
+        if (!computation.errorCodesToSuppress().isEmpty()) {
+            text.append("\nerrorCodesToSuppress=").append(computation.errorCodesToSuppress());
         }
         return text.toString();
     }

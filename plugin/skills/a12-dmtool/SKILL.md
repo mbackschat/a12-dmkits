@@ -28,10 +28,19 @@ The CLI is **self-describing** — explore it:
 - `dmtool operators` — the DSL operator catalog (each operator's meaning, operands, examples, and **gotchas** — read the gotchas, they often name the exact fix for a rejection); `dmtool operators <id>` — one in full. The list's header serves the per-kind **`emptyOperandDefaults`** (how an empty field behaves in a comparison), and an entry's **`semantics`** block states its kernel-verified facets — empty-operand behavior, strict-vs-inclusive boundaries, what an all-empty aggregate folds to. Check there instead of assuming.
 - `dmtool schema <target> <op>` — the JSON an op consumes/returns (and `dmtool schema result` — the universal output envelope every verb emits).
 
-The three you lean on:
+The four you lean on:
 - **`dmtool -m <model.json> model describe`** — orient: fields, kinds, enum values, groups, repeatability.
 - **`dmtool operators`** — pick operators by meaning.
 - **`dmtool -m <model.json> rule check --field <ABSOLUTE field path> --condition "<DSL>" --code <ID>`** — submit a candidate and get the **real kernel's** verdict (the result envelope's `valid` + `diagnostics`). This is your ground truth. (`dmtool -m <model.json> model check` statically re-checks a model's *existing* rules + computations.)
+- **`dmtool -m <model.json> computation add <computation-spec.json> --dry-run`** — the computation-spec counterpart of `rule check`: get the real kernel's static verdict without writing (`outcome:preview`, `verification:KERNEL_CONFIRMED`, `written:false` when accepted). Discover the spec with `dmtool schema computation add`; there is deliberately no separate check subcommand under `computation`.
+
+Keep the evidence owner explicit:
+
+| Question | Use | What the output proves |
+|---|---|---|
+| Is a model/rule/computation definition statically accepted? | `model check`, `rule check`, or `computation add … --dry-run` | The real kernel's consistency verdict; require `verification:KERNEL_CONFIRMED`. |
+| What fires or computes for a document instance? | `model eval`, `rule eval`, or `model compute` | A dm-interpreter runtime observation; the envelope says `engine:DM_INTERPRETER`. Do not cite it as kernel-runtime evidence. |
+| What does a model-shaped sample document look like? | `model seed` | A generated A12 Document JSON artifact to edit and feed to `eval`/`compute`; it is neither a consistency verdict nor runtime evidence. |
 
 **⛔ Inspect and edit a model ONLY through `dmtool`'s structured verbs — never read or hand-edit the raw `.dm.json`, and don't fall back to `export` to inspect, either.** To *see* a model: `model describe` (structure + kinds + enum values) and `field read` / `rule read` (one element in full — `field read` echoes the field's metadata **and its per-kind config**: number min/max/unit/scale, string pattern/length/`patternMessage`, enum values, date/time formats — so you can confirm a constraint actually persisted). To *change* it: the edit verbs. **`export` is NOT an inspection tool** — it dumps the model's raw DM-JSON for *emitting* it (saving, handing to A12 Tools); eyeballing an export dump to understand a model is the same anti-pattern as `cat`-ing the file, because you're reading the kernel's internal format that `describe`/`read` exist to abstract. The structured reads already show everything you'd look for — if one seems to omit something you need, that's a bug report, not a `cat` or an `export`.
 

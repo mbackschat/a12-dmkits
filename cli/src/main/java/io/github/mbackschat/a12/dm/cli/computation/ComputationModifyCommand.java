@@ -90,6 +90,10 @@ final class ComputationModifyCommand extends BaseCommand {
         } catch (IOException e) {
             return fail("cannot read --spec: " + e.getMessage());
         }
+        Optional<Integer> rejected = rejectUnknownKeys("computation-add", spec);
+        if (rejected.isPresent()) {
+            return rejected.get();
+        }
         ComputationSpec.Parsed parsed = ComputationSpec.parse(spec);
         if (!parsed.ok()) {
             return fail(parsed.error());

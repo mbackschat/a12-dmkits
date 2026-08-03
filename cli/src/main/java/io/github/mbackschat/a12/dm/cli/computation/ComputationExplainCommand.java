@@ -30,7 +30,7 @@ import picocli.CommandLine.Parameters;
 /**
  * {@code dmtool computation explain <computationPath>} — project a computation into a structured {@code
  * ComputationExplanation} (computed field, common precondition + per-alternative precondition/operation,
- * messages, gloss). A read op: the explanation rides {@code data}; an Opaque computation comes back as
+ * warning suppressions, messages, gloss). A read op: the explanation rides {@code data}; an Opaque computation comes back as
  * {@code explained:false} + reason.
  */
 @Command(name = "explain", mixinStandardHelpOptions = true,
@@ -76,13 +76,17 @@ final class ComputationExplainCommand extends BaseCommand {
                 data = MAPPER.readTree(new ModelContext(bound).explainComputation(converted.computation()).toJson());
                 summary = "explained " + computation;
             } else {
+                ReadComputation.Opaque opaque = (ReadComputation.Opaque) read;
                 ObjectNode d = MAPPER.createObjectNode();
                 d.put("computation", computation);
                 d.put("explained", false);
-                d.put("reason", ((ReadComputation.Opaque) read).reason());
+                d.put("reason", opaque.reason());
                 data = d;
                 summary = computation + " is Opaque (not modeled)";
             }
+            ObjectNode explained = (ObjectNode) data;
+            var suppressions = explained.putArray("errorCodesToSuppress");
+            adapter.computationErrorCodesToSuppress(computation).forEach(suppressions::add);
             ResultEnvelope env = ResultEnvelope.queryResult(resultIdentity(), summary, data,
                     ConsistencyEvidence.of(bound));
             out().print(env.toJsonString());

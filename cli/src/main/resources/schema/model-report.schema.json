@@ -114,7 +114,7 @@
       "items": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["computation", "scope", "explained", "messages"],
+        "required": ["computation", "scope", "explained", "errorCodesToSuppress", "messages"],
         "properties": {
           "computation": { "type": "string", "description": "the computation's full name" },
           "scope": { "type": "string", "description": "the group the computation is scoped to" },
@@ -124,6 +124,11 @@
           "canonicalText": { "type": "string", "description": "the kernel-canonical text (present when Opaque)" },
           "reason": { "type": "string", "description": "the construct rulekit could not model — present only when explained is false" },
           "commonPrecondition": { "type": "string", "description": "the precondition gating the WHOLE computation, when set — the DSL text (same shape as `computation read`)" },
+          "errorCodesToSuppress": {
+            "type": "array",
+            "items": { "type": "string" },
+            "description": "the exact A12 IComputation.errorCodesToSuppress list, retained even when the formula is Opaque; empty only when the computation declares none"
+          },
           "alternatives": {
             "type": "array",
             "description": "the (precondition?, operation, toleranceRangeOp?) formulae — same shape as `computation read`; present when explained",

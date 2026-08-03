@@ -64,4 +64,12 @@ class UnknownSubcommandHelpTest {
         assertEquals(0, CliTestSupport.run("rule", "check", "--help").code());
         assertEquals(0, CliTestSupport.run("--help").code());
     }
+
+    @Test
+    void computationCheckGuessPointsToTheStructuredDryRun() {
+        var result = CliTestSupport.run("computation", "check", "--help");
+        assertEquals(2, result.code());
+        assertTrue(result.err().contains("computation add <computation-spec.json> --dry-run"), result::err);
+        assertTrue(result.err().contains("schema computation add"), result::err);
+    }
 }

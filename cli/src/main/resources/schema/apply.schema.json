@@ -91,6 +91,14 @@
     ],
     [
       { "target": "config", "op": "modify", "time-zone": "America/New_York" }
+    ],
+    [
+      { "target": "computation", "op": "add",
+        "computedField": "/Subscription/Billing/EffectiveFee",
+        "alternatives": [ { "operation": "[/Subscription/Billing/BaseFee] / 3" } ],
+        "errorCodesToSuppress": ["MVK_INVALID_COMPARE_DEC_PLACES"],
+        "messages": [ { "locale": "en_US", "text": "Effective fee is one-third of base." },
+                      { "locale": "de_DE", "text": "Effektivgebühr ist ein Drittel der Basis." } ] }
     ]
   ]
 }

@@ -310,8 +310,11 @@ dmtool -m order.dm.json rule check --field /Order/DeliveryDate \
   --condition '…' --code DELIVERY_BEFORE_ORDER --suggest-error-field   # → data.candidates[]
 
 dmtool -m order.dm.json rule add <rule-spec.json>          # persist it (kernel-checked before + after)
-dmtool -m sub.dm.json   computation add <comp-spec.json>   # a computed field, likewise (with author-time lints)
+dmtool -m sub.dm.json   computation add <comp-spec.json> --dry-run  # static preflight, writes nothing
+dmtool -m sub.dm.json   computation add <comp-spec.json>   # persist the same kernel-accepted computation
 ```
+
+For intentionally scale-unknown division or field-exponent power, the computation spec uses A12's property unchanged: `"errorCodesToSuppress":["MVK_INVALID_COMPARE_DEC_PLACES"]`. Discover the complete, target-specific shape with `dmtool schema computation add`; rule-only keys are rejected on computations and computation-only keys are rejected on rules.
 
 Diagnostics are **corrective**: each carries a stable `code`, a `where`, and a `fix` — and a built-in lint flags the classic **inverted-polarity** mistake automatically (and, on `computation add`, forbidden constructs + overlapping preconditions).
 

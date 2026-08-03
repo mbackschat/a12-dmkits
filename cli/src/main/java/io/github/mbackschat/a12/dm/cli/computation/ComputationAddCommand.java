@@ -38,7 +38,8 @@ import picocli.CommandLine.Parameters;
  * A rejected computation yields a {@code rejected} envelope (nothing written). See `schema computation add`.
  */
 @Command(name = "add", mixinStandardHelpOptions = true,
-        description = "Persist a computation from a JSON computation-spec (kernel-validated before + after).")
+        description = "Persist a computation from a JSON computation-spec (kernel-validated before + after); "
+                + "--dry-run is the read-only static preflight.")
 final class ComputationAddCommand extends BaseCommand {
 
     private static final ObjectMapper MAPPER = new ObjectMapper();
@@ -72,7 +73,7 @@ final class ComputationAddCommand extends BaseCommand {
         } catch (IOException e) {
             return fail("cannot read input: " + e.getMessage());
         }
-        Optional<Integer> rejected = rejectUnknownKeys("add", spec);
+        Optional<Integer> rejected = rejectUnknownKeys("computation-add", spec);
         if (rejected.isPresent()) {
             return rejected.get();
         }

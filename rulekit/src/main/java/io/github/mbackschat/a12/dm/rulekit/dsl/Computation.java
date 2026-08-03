@@ -37,6 +37,9 @@ public record Computation(
         Comments comments,
         List<String> errorCodesToSuppress) {
 
+    private static final java.util.Set<String> SUPPORTED_ERROR_CODES_TO_SUPPRESS =
+            java.util.Set.of("MVK_INVALID_COMPARE_DEC_PLACES");
+
     public Computation {
         alternatives = List.copyOf(alternatives);
         messages = List.copyOf(messages);
@@ -74,6 +77,11 @@ public record Computation(
         return "../" + computedField.path().substring(groupPath.length() + 1);
     }
 
+    /** The kernel-measured domain accepted by A12's {@code IComputation.errorCodesToSuppress}. */
+    public static java.util.Set<String> supportedErrorCodesToSuppress() {
+        return SUPPORTED_ERROR_CODES_TO_SUPPRESS;
+    }
+
     /** The bridge to the F4 validator ({@code RuleValidator.check(modelJson, computation.draft())}). */
     public DraftComputation draft() {
         return draft(ConditionLanguage.EN);
@@ -103,9 +111,6 @@ public record Computation(
          * assignment-scale gate ({@code IComputation.getErrorCodesToSuppress}, KERNEL-FINDINGS; IF92).
          * A code outside it is refused with a corrective error rather than silently written.
          */
-        private static final java.util.Set<String> SUPPORTED_SUPPRESSIONS =
-                java.util.Set.of("MVK_INVALID_COMPARE_DEC_PLACES");
-
         private final FieldRef computedField;
         private final List<String> declaredLocales;
         private String name;
@@ -161,9 +166,9 @@ public record Computation(
          */
         public Builder errorCodesToSuppress(String... codes) {
             for (String code : codes) {
-                if (!SUPPORTED_SUPPRESSIONS.contains(code)) {
+                if (!supportedErrorCodesToSuppress().contains(code)) {
                     throw new IllegalArgumentException("errorCodesToSuppress only accepts the kernel's"
-                            + " supported set " + SUPPORTED_SUPPRESSIONS + " — got '" + code + "'");
+                            + " supported set " + supportedErrorCodesToSuppress() + " — got '" + code + "'");
                 }
             }
             errorCodesToSuppress.addAll(List.of(codes));

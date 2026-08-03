@@ -11,7 +11,8 @@ import picocli.CommandLine.Spec;
  * {@code -m}. A bare {@code dmtool computation} prints its op list (exit 2); the ops are its subcommands.
  */
 @Command(name = "computation", mixinStandardHelpOptions = true,
-        description = "Computation operations: add, read, explain, format, modify, remove.",
+        description = "Computation operations: add, read, explain, format, modify, remove. Use add --dry-run "
+                + "to statically check a computation spec without writing.",
         subcommands = { ComputationAddCommand.class, ComputationReadCommand.class,
                 ComputationExplainCommand.class, ComputationFormatCommand.class, ComputationModifyCommand.class,
                 ComputationRemoveCommand.class })

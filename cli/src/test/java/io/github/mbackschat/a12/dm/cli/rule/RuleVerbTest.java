@@ -195,7 +195,7 @@ class RuleVerbTest {
 
     @Test
     void addPersistsAnInfoSeverityRule(@TempDir Path dir) throws Exception {
-        // The self-describing surface (add.schema severity description, rule check --severity paramLabel,
+        // The self-describing surface (rule-add.schema severity description, rule check --severity paramLabel,
         // DraftRule javadoc) advertises INFO alongside ERROR|WARNING; this locks that INFO is real —
         // kernel-accepted and persisted — not just documented.
         Path model = CliTestSupport.modelWithRule(dir);

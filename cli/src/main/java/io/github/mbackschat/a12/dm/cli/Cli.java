@@ -129,7 +129,10 @@ public final class Cli {
                     // The instance-flag hint wins over the locator hint: `rule eval` takes BOTH an --instance
                     // and a positional <rulePathInModel>, so a wrong --doc must be corrected to --instance, not
                     // sent to the positional. Fall back to the locator corrective otherwise.
-                    String hint = metadataRelocationHint(ex);
+                    String hint = semanticSubcommandHint(ex);
+                    if (hint == null) {
+                        hint = metadataRelocationHint(ex);
+                    }
                     if (hint == null) {
                         hint = instanceFlagHint(ex, parsedArgs);
                     }
@@ -216,6 +219,20 @@ public final class Cli {
                 throw new CommandLine.UnmatchedArgumentException(pr.commandSpec().commandLine(), unmatched);
             }
         }
+    }
+
+    /** Correct a plausible verb guess when the equivalent workflow intentionally has a different shape. */
+    private static String semanticSubcommandHint(CommandLine.ParameterException ex) {
+        if (!(ex instanceof CommandLine.UnmatchedArgumentException unmatched)) {
+            return null;
+        }
+        boolean guessedCheck = unmatched.getUnmatched().stream().anyMatch("check"::equals);
+        if (guessedCheck && ex.getCommandLine().getCommandSpec().qualifiedName().endsWith(" computation")) {
+            return "→ statically check a computation spec with `dmtool -m <model.json> computation add "
+                    + "<computation-spec.json> --dry-run` (writes nothing); discover its shape with "
+                    + "`dmtool schema computation add`.";
+        }
+        return null;
     }
 
     /**

@@ -47,9 +47,9 @@ final class SchemaCommand extends BaseCommand {
 
     /** Ops that consume a rich JSON input file → the input schema resource that documents it. */
     static final Map<String, String> INPUT_OPS = Map.of(
-            "rule add", "add",
-            "computation add", "add",
-            "computation modify", "add",
+            "rule add", "rule-add",
+            "computation add", "computation-add",
+            "computation modify", "computation-add",
             "field add", "field-add",
             "field modify", "field-modify",
             "typedef add", "typedef-add",

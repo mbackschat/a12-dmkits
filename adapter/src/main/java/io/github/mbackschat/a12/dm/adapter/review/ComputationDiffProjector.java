@@ -18,14 +18,22 @@ final class ComputationDiffProjector {
 
     static Map<String, Map<String, String>> project(ModelDiffState state) {
         Map<String, Map<String, String>> out = new LinkedHashMap<>();
-        state.adapter().readAllComputations().forEach((name, read) -> out.put(name, aspects(read)));
+        state.adapter().readAllComputations().forEach((name, read) -> out.put(name,
+                aspects(read, state.adapter().computationErrorCodesToSuppress(name))));
         return out;
     }
 
     static Map<String, String> aspects(ReadComputation read) {
+        List<String> suppressions = read instanceof ReadComputation.Converted converted
+                ? converted.computation().errorCodesToSuppress()
+                : List.of();
+        return aspects(read, suppressions);
+    }
+
+    static Map<String, String> aspects(ReadComputation read, List<String> suppressions) {
         return switch (read) {
             case ReadComputation.Converted converted -> convertedAspects(converted.computation());
-            case ReadComputation.Opaque opaque -> Map.of("opaque", opaque.canonicalText());
+            case ReadComputation.Opaque opaque -> opaqueAspects(opaque, suppressions);
         };
     }
 
@@ -75,6 +83,16 @@ final class ComputationDiffProjector {
             aspects.put("errorCodesToSuppress", String.join(",", draft.errorCodesToSuppress()));
         }
         computation.messages().forEach(message -> aspects.put("message." + message.locale(), message.text()));
+        return aspects;
+    }
+
+    private static Map<String, String> opaqueAspects(
+            ReadComputation.Opaque computation, List<String> errorCodesToSuppress) {
+        Map<String, String> aspects = new LinkedHashMap<>();
+        aspects.put("opaque", computation.canonicalText());
+        if (!errorCodesToSuppress.isEmpty()) {
+            aspects.put("errorCodesToSuppress", String.join(",", errorCodesToSuppress));
+        }
         return aspects;
     }
 

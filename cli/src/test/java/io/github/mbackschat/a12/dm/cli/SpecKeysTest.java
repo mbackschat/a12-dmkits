@@ -13,6 +13,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
 
 import io.github.mbackschat.a12.dm.cli.field.FieldSpec;
+import io.github.mbackschat.a12.dm.cli.computation.ComputationSpec;
+import io.github.mbackschat.a12.dm.rulekit.dsl.Computation;
 import io.github.mbackschat.a12.dm.rulekit.validate.Diagnostic;
 
 /**
@@ -117,12 +119,25 @@ class SpecKeysTest {
 
     @Test
     void theGateCoversEveryServedSpecNotJustFields() throws Exception {
-        // the add schema (rule/computation) declares `messages` as an array — a string is rejected uniformly,
-        // proving the value-shape gate is schema-driven across specs, not a field-only special case.
-        List<Diagnostic> found = SpecKeys.forSchema("add").validate(M.readTree("""
+        // the rule-add schema declares `messages` as an array — a string is rejected uniformly, proving the
+        // value-shape gate is schema-driven across specs, not a field-only special case.
+        List<Diagnostic> found = SpecKeys.forSchema("rule-add").validate(M.readTree("""
                 {"field":"/O/Q","condition":"x","code":"C","messages":"oops"}"""));
         assertEquals(1, found.size(), () -> "rule `messages` as a string is rejected: " + found);
         assertEquals("RK_INVALID_VALUE", found.get(0).code().orElse(null));
+    }
+
+    @Test
+    void targetSpecificSchemasRejectKeysOwnedByTheOtherSpec() throws Exception {
+        List<Diagnostic> computation = SpecKeys.forSchema("computation-add").validate(M.readTree("""
+                {"computedField":"/O/Total","alternatives":[{"operation":"1"}],"messages":[],
+                 "allowDifferingDecimals":true}"""));
+        assertEquals("RK_UNKNOWN_ARG", computation.get(0).code().orElse(null));
+
+        List<Diagnostic> rule = SpecKeys.forSchema("rule-add").validate(M.readTree("""
+                {"field":"/O/Q","condition":"x","code":"C","messages":[],
+                 "errorCodesToSuppress":["MVK_INVALID_COMPARE_DEC_PLACES"]}"""));
+        assertEquals("RK_UNKNOWN_ARG", rule.get(0).code().orElse(null));
     }
 
     @Test
@@ -134,5 +149,21 @@ class SpecKeysTest {
         schema.path("properties").fieldNames().forEachRemaining(schemaKeys::add);
         assertEquals(new TreeSet<>(FieldSpec.ADD_KEYS), schemaKeys,
                 "field-add.schema root `properties` must equal FieldSpec.ADD_KEYS (the schema is what SpecKeys enforces)");
+    }
+
+    @Test
+    void computationSchemaMatchesItsParserAndTheMeasuredSuppressionDomain() throws Exception {
+        JsonNode schema = M.readTree(SpecKeysTest.class.getResourceAsStream(
+                "/schema/computation-add.schema.json"));
+        Set<String> schemaKeys = new TreeSet<>();
+        schema.path("properties").fieldNames().forEachRemaining(schemaKeys::add);
+        assertEquals(new TreeSet<>(ComputationSpec.KEYS), schemaKeys,
+                "computation-add.schema keys must equal the parser/apply keys");
+
+        Set<String> schemaSuppressions = new TreeSet<>();
+        schema.path("properties").path("errorCodesToSuppress").path("items").path("enum")
+                .forEach(value -> schemaSuppressions.add(value.asText()));
+        assertEquals(new TreeSet<>(Computation.supportedErrorCodesToSuppress()), schemaSuppressions,
+                "the CLI schema must not drift from rulekit's kernel-measured suppression domain");
     }
 }

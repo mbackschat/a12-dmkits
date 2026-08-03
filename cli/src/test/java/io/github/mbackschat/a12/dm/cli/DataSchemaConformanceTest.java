@@ -141,7 +141,7 @@ class DataSchemaConformanceTest {
                 // `patterns` selects its payload by ARGUMENTS, not a flag, so all three shapes need a run or the
                 // `oneOf` has unreachable branches — the trap the CG6 row named in advance (CATALOG-SPEC §6's
                 // sibling concern). The two scaffold runs additionally reach the two `$ref`s the scaffold's `spec`
-                // delegates to: a rule idiom lands on `add.schema.json`, a field idiom on `field-add.schema.json`.
+                // delegates to: a rule idiom lands on `rule-add.schema.json`, a field idiom on `field-add.schema.json`.
                 // A kernel-REJECTED scaffold is deliberately NOT a run here: it exits 1 (this harness requires 0)
                 // and returns the SAME shape, so it would add no branch — `PatternsScaffoldVerdictTest` owns that
                 // verdict.

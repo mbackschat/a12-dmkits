@@ -77,7 +77,7 @@ final class RuleAddCommand extends BaseCommand {
         } catch (IOException e) {
             return fail("cannot read input: " + e.getMessage());
         }
-        Optional<Integer> rejected = rejectUnknownKeys("add", spec);
+        Optional<Integer> rejected = rejectUnknownKeys("rule-add", spec);
         if (rejected.isPresent()) {
             return rejected.get();
         }

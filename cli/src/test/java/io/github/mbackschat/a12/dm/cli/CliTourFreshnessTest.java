@@ -90,7 +90,7 @@ class CliTourFreshnessTest {
 
     @Test
     void cliTourSchemaRuleAddKeysMatchTheLiveSchema() throws Exception {
-        // The tour captures `schema rule add | jq '{… inputKeys: (.input.properties|keys)}'`; an add.schema
+        // The tour captures `schema rule add | jq '{… inputKeys: (.input.properties|keys)}'`; a rule-add.schema
         // property add/rename drifts it. jq `keys` sorts, so compare sorted.
         CliTestSupport.Result res = CliTestSupport.run("schema", "rule", "add");
         assertEquals(0, res.code(), res.err());
@@ -103,7 +103,7 @@ class CliTourFreshnessTest {
         M.readTree(capturedJson).get("inputKeys").forEach(k -> captured.add(k.asText()));
 
         assertEquals(live, captured, () ->
-                DEMO + " pins STALE `rule add` schema keys — an add.schema property change wasn't "
+                DEMO + " pins STALE `rule add` schema keys — a rule-add.schema property change wasn't "
                 + "reflected in the CI-gated tour. Regenerate it: " + REGEN);
     }
 

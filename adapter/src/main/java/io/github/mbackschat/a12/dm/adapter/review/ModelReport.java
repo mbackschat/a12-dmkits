@@ -1,6 +1,7 @@
 package io.github.mbackschat.a12.dm.adapter.review;
 
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -45,6 +46,7 @@ public final class ModelReport {
     private final Usage usage;
     private final List<RuleEntry> rules;
     private final List<ComputationEntry> computations;
+    private final Map<String, List<String>> computationErrorCodesToSuppress;
     // The receipt of the gate that assembled this report, taken from the adapter — null iff none ran. NOT read
     // from Backends: that describes the environment, so an ungated assembly would still have looked confirmed.
     private final Verification consistencyGate;
@@ -52,12 +54,14 @@ public final class ModelReport {
     // Private on purpose: the report doubles as the CLI's proof that a consistency gate ran, and a receipt
     // anyone can construct is not proof. As a public record its canonical constructor could not be narrowed.
     private ModelReport(Identity identity, ModelCard structure, Usage usage,
-            List<RuleEntry> rules, List<ComputationEntry> computations, Verification consistencyGate) {
+            List<RuleEntry> rules, List<ComputationEntry> computations,
+            Map<String, List<String>> computationErrorCodesToSuppress, Verification consistencyGate) {
         this.identity = identity;
         this.structure = structure;
         this.usage = usage;
         this.rules = List.copyOf(rules);
         this.computations = List.copyOf(computations);
+        this.computationErrorCodesToSuppress = Map.copyOf(computationErrorCodesToSuppress);
         this.consistencyGate = consistencyGate;
     }
 
@@ -79,6 +83,11 @@ public final class ModelReport {
 
     public List<ComputationEntry> computations() {
         return computations;
+    }
+
+    /** A12's owner-level suppression list, available even when the computation formula is Opaque. */
+    public List<String> computationErrorCodesToSuppress(String computation) {
+        return computationErrorCodesToSuppress.getOrDefault(computation, List.of());
     }
 
     /**
@@ -143,7 +152,7 @@ public final class ModelReport {
         }
     }
 
-    /** A rule or computation that rulekit preserved verbatim because it could not model one construct. */
+    /** A rule or computation preserved verbatim because rulekit could not model one construct. */
     public record OpaqueExplanation(String canonicalText, String reason)
             implements RuleExplanationOutcome, ComputationExplanationOutcome {
         public OpaqueExplanation {
@@ -258,8 +267,9 @@ public final class ModelReport {
 
     /**
      * One computation, glossed for comprehension. The explained branch carries the computed field,
-     * common precondition, alternatives, and messages together; the Opaque branch carries only the preserved
-     * text and conversion reason, so contradictory branch states cannot be constructed.
+     * common precondition, alternatives, suppressions, and messages together; the Opaque branch carries the
+     * preserved text and conversion reason. Owner-level suppression metadata lives on the containing report,
+     * independently of formula conversion.
      */
     public record ComputationEntry(String computation, String scope,
             ComputationExplanationOutcome explanation) {
@@ -373,8 +383,9 @@ public final class ModelReport {
         Identity identity = new Identity(doc.id(), doc.modelType(), doc.modelVersion(), doc.locales());
         ModelContext context = new ModelContext(model);
         ModelCard structure = context.describe();
+        ComputationCatalog computationCatalog = computationCatalog(adapter, context);
         return new ModelReport(identity, structure, usage(adapter, structure),
-                ruleCatalog(adapter, context), computationCatalog(adapter, context),
+                ruleCatalog(adapter, context), computationCatalog.entries(), computationCatalog.suppressions(),
                 adapter.consistencyGate().orElse(null));
     }
 
@@ -417,11 +428,16 @@ public final class ModelReport {
         return out;
     }
 
-    private static List<ComputationEntry> computationCatalog(KernelAdapter adapter, ModelContext context) {
+    private record ComputationCatalog(
+            List<ComputationEntry> entries, Map<String, List<String>> suppressions) {}
+
+    private static ComputationCatalog computationCatalog(KernelAdapter adapter, ModelContext context) {
         List<ComputationEntry> out = new ArrayList<>();
+        Map<String, List<String>> suppressions = new LinkedHashMap<>();
         for (String name : adapter.computationFullNames()) {
             ReadComputation read = adapter.readComputation(name);
             if (read instanceof ReadComputation.Converted converted) {
+                suppressions.put(name, adapter.computationErrorCodesToSuppress(name));
                 ComputationExplanation ex = context.explainComputation(converted.computation());
                 // the (precondition?, operation) formulae — the SAME DraftComputation `computation read`
                 // emits, so the report and the per-computation read agree on when a field is filled
@@ -432,6 +448,7 @@ public final class ModelReport {
                         .build());
             } else {
                 ReadComputation.Opaque opaque = (ReadComputation.Opaque) read;
+                suppressions.put(name, adapter.computationErrorCodesToSuppress(name));
                 out.add(ComputationEntry.builder(name, scopeOf(name))
                         .explanation(OpaqueExplanation.builder()
                                 .canonicalText(opaque.canonicalText())
@@ -440,7 +457,7 @@ public final class ModelReport {
                         .build());
             }
         }
-        return out;
+        return new ComputationCatalog(List.copyOf(out), Map.copyOf(suppressions));
     }
 
     /** The element's scope group — its containing group (the path with the trailing element name removed). */

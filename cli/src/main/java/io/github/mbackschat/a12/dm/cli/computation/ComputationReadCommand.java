@@ -79,6 +79,8 @@ final class ComputationReadCommand extends BaseCommand {
             ReadComputation read = adapter.readComputation(computation);
             ObjectNode data = MAPPER.createObjectNode();
             data.put("computation", computation);
+            ArrayNode suppressions = data.putArray("errorCodesToSuppress");
+            adapter.computationErrorCodesToSuppress(computation).forEach(suppressions::add);
             if (read instanceof ReadComputation.Converted converted) {
                 data.put("converted", true);
                 Computation comp = converted.computation();
@@ -103,8 +105,9 @@ final class ComputationReadCommand extends BaseCommand {
                 }
                 RuleMessages.putInto(data, comp.messages());
             } else {
+                ReadComputation.Opaque opaque = (ReadComputation.Opaque) read;
                 data.put("converted", false);
-                data.put("reason", ((ReadComputation.Opaque) read).reason());
+                data.put("reason", opaque.reason());
             }
             ResultEnvelope env = ResultEnvelope.queryResult(resultIdentity(), "read " + computation,
                     data, ConsistencyEvidence.of(adapter));

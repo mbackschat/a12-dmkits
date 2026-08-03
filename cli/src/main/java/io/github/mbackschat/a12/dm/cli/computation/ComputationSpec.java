@@ -2,6 +2,7 @@ package io.github.mbackschat.a12.dm.cli.computation;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 
 import com.fasterxml.jackson.databind.JsonNode;
 
@@ -25,10 +26,16 @@ import io.github.mbackschat.a12.dm.rulekit.validate.DraftComputation;
  *     { "precondition": "&lt;DSL&gt;", "operation": "&lt;DSL&gt;",
  *       "toleranceRangeOp": "DiffersWithToleranceRange1" }, // optional per tier
  *     { "operation": "&lt;DSL&gt;" } ],                          // OR one unconditional
+ *   "errorCodesToSuppress": ["MVK_INVALID_COMPARE_DEC_PLACES"], // optional A12 owner-shaped list
  *   "messages": [ {"locale":"en_US","text":"…"} ] }          // required, non-empty
  * </pre>
  */
 public final class ComputationSpec {
+
+    /** The exact top-level computation-spec keys, shared with {@code apply}'s flat op gate. */
+    public static final Set<String> KEYS = Set.of(
+            "computedField", "alternatives", "commonPrecondition", "comment", "name", "messages",
+            "errorCodesToSuppress");
 
     private ComputationSpec() {
     }
@@ -107,8 +114,12 @@ public final class ComputationSpec {
             return error("computation-spec needs at least one message {locale,text}");
         }
 
+        List<String> errorCodesToSuppress = new ArrayList<>();
+        for (JsonNode code : spec.path("errorCodesToSuppress")) {
+            errorCodesToSuppress.add(code.asText());
+        }
         DraftComputation draft = new DraftComputation(groupPath, name, "../" + fieldName,
-                text(spec, "commonPrecondition"), alternatives);
+                text(spec, "commonPrecondition"), alternatives, errorCodesToSuppress);
         return new Parsed(draft, messages, null);
     }
 

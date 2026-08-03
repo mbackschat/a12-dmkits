@@ -79,8 +79,8 @@ final class ApplyCommand extends BaseCommand {
         RULE_MODIFY("rule", "modify",
                 Set.of("rulePathInModel", "condition", "comment", "severity", "messages")),
         RULE_REMOVE("rule", "remove", Set.of("rulePathInModel")),
-        COMPUTATION_ADD("computation", "add", Set.of("computedField", "alternatives", "commonPrecondition", "comment", "name", "messages")),
-        COMPUTATION_MODIFY("computation", "modify", Set.of("computationPathInModel", "computedField", "alternatives", "commonPrecondition", "comment", "name", "messages")),
+        COMPUTATION_ADD("computation", "add", ComputationSpec.KEYS),
+        COMPUTATION_MODIFY("computation", "modify", withLocator("computationPathInModel", ComputationSpec.KEYS)),
         TYPEDEF_ADD("typedef", "add", Set.of("id", "kind", "string", "number", "enum", "custom",
                 "date", "time", "dateTime", "dateRange", "dateFragment")),
         TYPEDEF_MODIFY("typedef", "modify", Set.of("id", "kind", "string", "number", "enum", "custom",
@@ -845,7 +845,8 @@ final class ApplyCommand extends BaseCommand {
     /** Ops whose spec has nested objects worth schema-validating beyond the flat top-level key-set above. */
     private static final java.util.Map<Op, String> NESTED_SCHEMA = java.util.Map.of(
             Op.FIELD_ADD, "field-add", Op.FIELD_MODIFY, "field-modify",
-            Op.RULE_ADD, "add", Op.RULE_MODIFY, "add", Op.COMPUTATION_ADD, "add", Op.COMPUTATION_MODIFY, "add",
+            Op.RULE_ADD, "rule-add", Op.RULE_MODIFY, "rule-add",
+            Op.COMPUTATION_ADD, "computation-add", Op.COMPUTATION_MODIFY, "computation-add",
             Op.TYPEDEF_ADD, "typedef-add", Op.TYPEDEF_MODIFY, "typedef-add",
             Op.META_MODIFY, "apply#/$defs/metaModify");
 

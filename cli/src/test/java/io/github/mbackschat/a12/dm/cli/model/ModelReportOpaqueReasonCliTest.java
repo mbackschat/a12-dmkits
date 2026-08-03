@@ -26,11 +26,20 @@ import io.github.mbackschat.a12.dm.rulekit.dsl.Severity;
 class ModelReportOpaqueReasonCliTest {
 
     private static final ObjectMapper MAPPER = new ObjectMapper();
+    private static final String OPAQUE_COMPUTATION = "/Review/OpaqueComputation";
+    private static final String SUPPRESSION = "MVK_INVALID_COMPARE_DEC_PLACES";
 
     @Test
     void emitsReasonOnlyForOpaqueRulesAndComputations(@TempDir Path dir) throws Exception {
         Path model = dir.resolve("review-report.dm.json");
         Files.writeString(model, modelWithOpaqueBodies());
+
+        JsonNode read = MAPPER.readTree(CliTestSupport.run(
+                "-m", model.toString(), "computation", "read", OPAQUE_COMPUTATION).out()).path("data");
+        assertEquals(SUPPRESSION, read.path("errorCodesToSuppress").get(0).asText());
+        JsonNode explain = MAPPER.readTree(CliTestSupport.run(
+                "-m", model.toString(), "computation", "explain", OPAQUE_COMPUTATION).out()).path("data");
+        assertEquals(SUPPRESSION, explain.path("errorCodesToSuppress").get(0).asText());
 
         var result = CliTestSupport.run("-m", model.toString(), "model", "report");
         assertEquals(0, result.code(), result::err);
@@ -45,10 +54,11 @@ class ModelReportOpaqueReasonCliTest {
         assertFalse(explainedRule.has("reason"), () -> "explained rule acquired opaque state: " + explainedRule);
 
         JsonNode opaqueComputation = named(
-                data.path("computations"), "computation", "/Review/OpaqueComputation");
+                data.path("computations"), "computation", OPAQUE_COMPUTATION);
         assertFalse(opaqueComputation.path("explained").asBoolean());
         assertTrue(opaqueComputation.hasNonNull("reason") && !opaqueComputation.path("reason").asText().isBlank(),
                 () -> "opaque computation reason missing: " + opaqueComputation);
+        assertEquals(SUPPRESSION, opaqueComputation.path("errorCodesToSuppress").get(0).asText());
         JsonNode explainedComputation = named(
                 data.path("computations"), "computation", "/Review/ExplainedComputation");
         assertTrue(explainedComputation.path("explained").asBoolean());
@@ -91,6 +101,7 @@ class ModelReportOpaqueReasonCliTest {
         session.addComputation(model -> model.computation(model.dateTime("/Review/ComputedOpaque").field())
                 .name("OpaqueComputation")
                 .calc(Dsl.addHours(model.dateTime("/Review/SourceDateTime"), 1).expression())
+                .errorCodesToSuppress(SUPPRESSION)
                 .message(en("The opaque total follows a project calculation.")).build());
 
         ObjectNode root = (ObjectNode) MAPPER.readTree(session.toJson());

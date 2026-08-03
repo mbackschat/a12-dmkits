@@ -716,6 +716,7 @@ public record io.github.mbackschat.a12.dm.rulekit.dsl.Computation
   public final int hashCode()
   public java.util.List<io.github.mbackschat.a12.dm.rulekit.dsl.LocalizedText> messages()
   public java.lang.String name()
+  public static java.util.Set<java.lang.String> supportedErrorCodesToSuppress()
   public final java.lang.String toString()
 
 public static record io.github.mbackschat.a12.dm.rulekit.dsl.Computation.Alternative

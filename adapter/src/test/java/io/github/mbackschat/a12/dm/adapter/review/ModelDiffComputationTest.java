@@ -186,10 +186,13 @@ class ModelDiffComputationTest {
 
     @Test
     void opaqueComputationsUseTheirVerbatimTextAsTheFingerprint() {
-        var first = ComputationDiffProjector.aspects(new ReadComputation.Opaque("[Price] * [Quantity]", "x"));
+        var first = ComputationDiffProjector.aspects(
+                new ReadComputation.Opaque("[Price] * [Quantity]", "x"),
+                java.util.List.of("MVK_INVALID_COMPARE_DEC_PLACES"));
         var second = ComputationDiffProjector.aspects(new ReadComputation.Opaque("[Price] + [Quantity]", "y"));
 
         assertEquals("[Price] * [Quantity]", first.get("opaque"));
+        assertEquals("MVK_INVALID_COMPARE_DEC_PLACES", first.get("errorCodesToSuppress"));
         assertEquals("[Price] + [Quantity]", second.get("opaque"));
     }
 

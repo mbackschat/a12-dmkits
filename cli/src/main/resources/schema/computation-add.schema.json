@@ -1,0 +1,65 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/mbackschat/a12-dmkits/schema/computation-add.schema.json",
+  "title": "ComputationAddSpec",
+  "description": "INPUT of `dmtool -m <model> computation add <spec.json>` and `computation modify <path> --spec <spec.json>` — A12's computation shape. Add persists it; modify is a whole re-expression, so an omitted optional property is removed. Both routes are kernel-gated before writing.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["computedField", "alternatives", "messages"],
+  "properties": {
+    "computedField": { "type": "string", "description": "the calculated field's ABSOLUTE path; the computation is placed in its parent group (its iteration scope). A computation that reads per-row fields must compute a field INSIDE that repeatable group; to compute a non-repeatable field from per-row data, aggregate first (e.g. Sum(Group*/Field)) — else MVK_ERROR_FIELD_NOT_IN_RULEGROUP." },
+    "commonPrecondition": { "type": "string", "description": "optional guard (A12 DSL) shared by all alternatives" },
+    "comment": { "type": "string", "description": "optional explanatory note, persisted as a leading ;; comment on the first operation" },
+    "alternatives": {
+      "type": "array",
+      "description": "≥1 (precondition?, operation, toleranceRangeOp?) tier — either one unconditional {operation} or all preconditioned {precondition, operation} (the kernel rejects mixing). Computation takes the first holding tier, but implicit validation retains every holding tier's mismatch, so preconditions must be mutually exclusive",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["operation"],
+        "additionalProperties": false,
+        "properties": {
+          "precondition": { "type": "string", "description": "the tier's guard in A12 DSL (omit for the single unconditional alternative)" },
+          "operation": { "type": "string", "description": "the value-expression in A12 DSL, assigned to the computed field when the precondition holds" },
+          "toleranceRangeOp": {
+            "type": "string",
+            "enum": ["DiffersWithToleranceRange1", "DiffersWithToleranceRange2", "DiffersWithToleranceRange5", "DiffersWithToleranceRange10"],
+            "description": "optional closed tolerance band for this alternative's implicit validation; a stored computed value fires the computation's validation only when its absolute difference from the operation exceeds the selected band"
+          }
+        }
+      }
+    },
+    "errorCodesToSuppress": {
+      "type": "array",
+      "items": { "type": "string", "enum": ["MVK_INVALID_COMPARE_DEC_PLACES"] },
+      "description": "A12 IComputation.errorCodesToSuppress, serialized unchanged as an array. The kernel currently accepts only MVK_INVALID_COMPARE_DEC_PLACES; use it when a numeric operation is intentionally valid despite the static assignment-scale gate. Omit (or pass []) for no suppression."
+    },
+    "messages": {
+      "type": "array",
+      "description": "≥1 localized self-validation message; cover every locale the model declares",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["locale", "text"],
+        "additionalProperties": false,
+        "properties": {
+          "locale": { "type": "string", "description": "a full locale code, e.g. en_US (bare 'en' is rejected by the kernel)" },
+          "text": { "type": "string", "description": "the self-validation message text; may use the same kernel interpolation tokens as rule messages" }
+        }
+      }
+    },
+    "name": { "type": "string", "description": "the computation's name (default = <Field>Comp)" }
+  },
+  "examples": [
+    {
+      "computedField": "/Subscription/Billing/EffectiveFee",
+      "comment": "one-third of the base fee is intentional",
+      "alternatives": [ { "operation": "[/Subscription/Billing/BaseFee] / 3" } ],
+      "errorCodesToSuppress": ["MVK_INVALID_COMPARE_DEC_PLACES"],
+      "messages": [
+        { "locale": "en_US", "text": "Effective fee is one-third of base." },
+        { "locale": "de_DE", "text": "Effektivgebühr ist ein Drittel der Basis." }
+      ]
+    }
+  ]
+}

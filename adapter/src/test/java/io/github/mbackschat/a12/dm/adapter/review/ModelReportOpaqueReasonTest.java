@@ -33,6 +33,7 @@ class ModelReportOpaqueReasonTest {
     private static final String OPAQUE_RULE = "/Review/OpaqueRule";
     private static final String EXPLAINED_COMPUTATION = "/Review/ExplainedComputation";
     private static final String OPAQUE_COMPUTATION = "/Review/OpaqueComputation";
+    private static final String SUPPRESSION = "MVK_INVALID_COMPARE_DEC_PLACES";
 
     @Test
     void opaqueRuleAndComputationCarryTheirReadFailureReasons() throws Exception {
@@ -55,6 +56,7 @@ class ModelReportOpaqueReasonTest {
         assertNull(opaqueComputation.computedField());
         assertNull(opaqueComputation.commonPrecondition());
         assertEquals(List.of(), opaqueComputation.alternatives());
+        assertEquals(List.of(SUPPRESSION), report.computationErrorCodesToSuppress(OPAQUE_COMPUTATION));
     }
 
     @Test
@@ -112,6 +114,7 @@ class ModelReportOpaqueReasonTest {
         session.addComputation(model -> model.computation(model.dateTime("/Review/ComputedOpaque").field())
                 .name("OpaqueComputation")
                 .calc(Dsl.addHours(model.dateTime("/Review/SourceDateTime"), 1).expression())
+                .errorCodesToSuppress(SUPPRESSION)
                 .message(en("The opaque total follows a project calculation.")).build());
 
         ObjectNode root = (ObjectNode) MAPPER.readTree(session.toJson());
