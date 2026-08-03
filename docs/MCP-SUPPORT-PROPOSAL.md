@@ -346,6 +346,13 @@ This is also the established pattern: the MCP documentation ships its **own** de
 
 **Why this is here at length.** EU-sovereign hosted access is where the idea started, and the assessment below is the part that took research rather than design. Phase 1 depends on none of it, but deleting it would mean re-deriving it later, which is the more expensive mistake. What is deliberately *not* here is a per-unit pricing table — those are the numbers that rot and they were never the decision input. The **free allowance** is a different matter: free hosting is a stated owner requirement (§13.5), so the allowance is a design constraint and is recorded as one.
 
+**Two questions this section settles**, because they are asked of any hosted MCP surface and the protocol answers neither:
+
+- **Tenancy is not an MCP concept, and cannot be.** The protocol is deliberately silent about who is calling — `2026-07-28` removed *sessions*, not *identity*. Identity can therefore only arrive as a **per-request credential from the transport**, which is not a workaround for statelessness but the only form identity takes in it, exactly as in any stateless HTTP API. With OAuth 2.1 the tenant is the access token's subject, re-established on every call. **Without authentication there are no tenants and there cannot be**, which leaves two coherent designs and no others: a read-only endpoint, or per-handle ephemeral workspaces where the handle *is* the capability. Per-shape resolution and the handle contract: §13.8.
+- **Writing over a network endpoint is an authorization question, not a file-atomicity one.** §5's serialised dispatch already forbids two mutations interleaving inside one process, so the read-modify-write race belongs to two shells rather than to a server — an earlier draft of §13.7 had this wrong. What survives is that an **unauthenticated mutating endpoint is open by construction**, plus a narrower durability exposure on abrupt termination. Ordered by significance, with the source-verified basis: §13.7.
+
+Both answers point the same way: **withholding mutation removes more risk than securing it adds** (§13.8), which is why S4 is specified read-only.
+
 ### 13.1 Three deployment shapes
 
 | | shape | licensing delta | ops burden | who answers the sovereignty question |
