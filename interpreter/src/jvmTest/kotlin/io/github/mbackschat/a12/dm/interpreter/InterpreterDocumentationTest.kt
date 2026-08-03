@@ -181,6 +181,33 @@ class InterpreterDocumentationTest {
     }
 
     @Test
+    fun publicReleaseSurfacesCarryTheMeasuredPerformanceStory() {
+        val publicReadme = Files.readString(repoFile("interpreter/public-release/README.md"))
+        assertTrue(
+            publicReadme.indexOf("## Performance") > publicReadme.indexOf("## What ships"),
+            "the public repository README must present performance immediately after what ships",
+        )
+        val changelog = Files.readString(repoFile("interpreter/CHANGELOG.md"))
+        val releases = Regex("(?m)^## \\[[^]]+]$").findAll(changelog).toList()
+        val currentReleaseNotes = changelog.substring(
+            releases.first().range.first,
+            releases.getOrNull(1)?.range?.first ?: changelog.length,
+        )
+        for ((surface, text) in listOf(
+            "public repository README" to publicReadme,
+            "current release notes" to currentReleaseNotes,
+        )) {
+            assertTrue(text.contains("232 kB gzip"), "$surface omits the measured browser footprint")
+            assertTrue(text.contains("10.0 ms median"), "$surface omits the representative browser timing")
+            assertTrue(
+                text.contains("generated validator compiled as Java"),
+                "$surface omits the fair Kernel-codegen comparison basis",
+            )
+            assertTrue(text.contains("INTERPRETER-PERFORMANCE.md"), "$surface does not link to the full method")
+        }
+    }
+
+    @Test
     fun multiplyPackagedPublicDocumentsUsePortableLinks() {
         val documents = listOf(
             repoFile("interpreter/README.md"),

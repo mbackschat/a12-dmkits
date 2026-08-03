@@ -17,8 +17,6 @@ Use the built-in models and Documents or load your own local workspace. Your sel
 - [Browse the Kotlin API](https://mbackschat.github.io/a12-interpreter-releases/api/latest/kotlin/)
 - [Open the public release site](https://mbackschat.github.io/a12-interpreter-releases/) — current version, installation coordinates, showcase, API references, and privacy information
 
-The interpreter runs the same clean-room Kotlin implementation on the JVM, Node.js, and in the browser. The qualified browser package replays 33 portable conformance cases; the showcase's current production bundle is about 232 kB gzip. Its representative 200-row Document validates in a 10.0 ms median, while the 10,000-row stress Document validates with 4,900 findings in a 187.7 ms median.
-
 ## What ships
 
 - Finite in-memory workspaces and on-demand model providers
@@ -30,6 +28,14 @@ The interpreter runs the same clean-room Kotlin implementation on the JVM, Node.
 - Resource limits, source integrity, cancellation, and immutable prepared models
 
 The package performs no implicit filesystem, network, storage, or credential access. It contains no A12 Kernel bytecode or runtime dependency.
+
+## Performance
+
+The interpreter runs the same clean-room Kotlin implementation on the JVM, Node.js, and in the browser. The qualified browser package replays 33 portable conformance cases, and the [live showcase](https://mbackschat.github.io/a12-interpreter-releases/showcase/) proves the packed package in system Chrome rather than inferring browser support from Node.js.
+
+The published @VERSION@ showcase's complete production bundle is about **232 kB gzip**. On the fixed Apple M1/Chrome runner, a representative 200-row Document validates in a **10.0 ms median**; the 10,000-row stress Document validates with 4,900 findings in a **187.7 ms median**. Both figures use 10 stable fresh Chrome processes and include interpreter construction through complete result materialization.
+
+The JVM comparison uses the A12 Kernel's generated validator compiled as Java, with code generation outside the clock, as the fair algorithmic baseline. In the recorded run, the interpreter was approximately **2–3× faster** on rule-count sweeps, **5× faster** on the combined real-world case, **25–50× faster** on aggregates, and up to **165× faster** on the huge-document axis. These are dated measurements, not universal promises; the scenarios, semantic preflight, timing boundaries, and complete result tables are documented in [Interpreter performance](https://github.com/mbackschat/a12-dmkits/blob/main/docs/INTERPRETER-PERFORMANCE.md).
 
 **Semantics target.** This release reproduces the evaluation behavior of **A12 Kernel 30.8.1**, as shipped in the **A12 Tools 2025.06-ext5** distribution. The implementation is clean-room and is verified by differential testing against that kernel; the target version is stated so you can tell which kernel's semantics a given release was matched to.
 
@@ -104,7 +110,6 @@ Generated with [Tokei](https://github.com/XAMPPRocky/tokei) from the standalone 
 | Java | 0 | 0 | 0 | 0 |
 | Kotlin | 106 | 17385 | 6324 | 2180 |
 | TypeScript | 17 | 3190 | 269 | 277 |
-| Lean | 0 | 0 | 0 | 0 |
 
 Maintainers regenerate this table with the local statistics updater; both release publishers compare it with fresh counts before any public mutation.
 <!-- source-statistics:interpreter-release:end -->

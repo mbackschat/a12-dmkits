@@ -4,6 +4,11 @@ This changelog covers the independently consumable interpreter packages, API doc
 
 ## [@VERSION@]
 
+### Performance
+
+- **The complete production browser bundle is about 232 kB gzip.** On the fixed Apple M1/Chrome runner, a representative 200-row Document validates in a **10.0 ms median**; the 10,000-row stress Document validates with 4,900 findings in a **187.7 ms median**. Both measurements use 10 stable fresh Chrome processes and include interpreter construction through complete result materialization.
+- **The interpreter is competitive-to-far-faster than the A12 Kernel's generated validator compiled as Java across every recorded JVM shape.** With code generation outside the clock, the interpreter measured approximately **2–3× faster** on rule-count sweeps, **5× faster** on the combined real-world case, **25–50× faster** on aggregates, and up to **165× faster** on the huge-document axis. These are dated measurements rather than universal promises; see [the benchmark method and complete tables](https://github.com/mbackschat/a12-dmkits/blob/main/docs/INTERPRETER-PERFORMANCE.md).
+
 ### Fixed
 
 - DATE and DATETIME values now share A12's instant timeline for ordering in either direction; equality remains same-kind only.
