@@ -4,7 +4,7 @@
 
 **Scope.** Expose the dmtool surface over the Model Context Protocol, revision **`2026-07-28`**, as a **stdio server inside the existing binary** (`dmtool mcp`). Hosted HTTP and MCP Apps are named as later phases with their own gates; they are not proposed here.
 
-**Owner decisions already taken** (2026-08-02): stdio-first; target `2026-07-28` hand-rolled, with the official Java SDK kept as a possible later substitution; target-shaped tools rather than one-per-verb; filesystem paths for stdio, server-minted handles only if hosting ever happens. **§15 carries four questions that must be answered before implementation starts**, one of which (Q1) can invalidate the revision choice.
+**Owner decisions already taken** (2026-08-02): stdio-first; target `2026-07-28` hand-rolled, with the official Java SDK kept as a possible later substitution; target-shaped tools rather than one-per-verb; filesystem paths for stdio, server-minted handles only if hosting ever happens. **Hosting requirements — with "never silently enter a paid tier" as the top-priority one — and the rejection of the first candidate against them are recorded 2026-08-03 in §13.5.** **§15 carries four questions that must be answered before implementation starts**, one of which (Q1) can invalidate the revision choice.
 
 **Two statements rest on CLI-side fixes that had not landed when this was written.** They are tagged inline as **`[ASSUMED-FIXED: C1]`** / **`[ASSUMED-FIXED: C2]`** and collated in **§16** with how to verify each and what changes if it never lands. Verify and delete the tags when the fixes land; `grep -n 'ASSUMED-FIXED' docs/MCP-SUPPORT-PROPOSAL.md` finds every site.
 
@@ -342,7 +342,7 @@ This is also the established pattern: the MCP documentation ships its **own** de
 - **MCP Apps** — phase 2, whose trigger §1 records. Land the surface first.
 - **Hosted HTTP** — phase 3, §13.
 
-## 13. Hosting and deployment — the shapes, the gate, and the sovereignty assessment
+## 13. Hosting and deployment — requirements, shapes, and the assessment so far
 
 **Why this is here at length.** EU-sovereign hosted access is where the idea started, and the assessment below is the part that took research rather than design. Phase 1 depends on none of it, but deleting it would mean re-deriving it later, which is the more expensive mistake. What is deliberately *not* here is a per-unit pricing table — those are the numbers that rot and they were never the decision input. The **free allowance** is a different matter: free hosting is a stated owner requirement (§13.5), so the allowance is a design constraint and is recorded as one.
 
@@ -360,7 +360,7 @@ This is also the established pattern: the MCP documentation ships its **own** de
 2. **S2 answers EU sovereignty better than S3 does.** A customer who cares about digital sovereignty most wants the thing running in *their* tenancy, under their own jurisdiction and their own certifications. Shipping an image is a build-pipeline change; hosting is an operation with a licensing and processor posture attached.
 3. **S3's real cost is not infrastructure.** It is the licensing posture and the processor role in §13.2, neither of which has an undo.
 
-**A free-hosting requirement is recorded for S3 (§13.5), and it does not change this recommendation.** The free tier is reachable at this load, so infrastructure cost is genuinely a non-issue — but running for free still means *operating a service*, so EUPL-1.2 source availability and the GDPR processor role attach in full. Those obligations are indifferent to the invoice. Free removes the cheapest objection to S3 and leaves both expensive ones standing, which is worth being explicit about, because "it costs nothing" reads like "it commits to nothing" and does not.
+**The owner requirements for S3 are recorded in §13.5, and they do not change this recommendation.** Note in particular that running for **free** still means *operating a service*, so EUPL-1.2 source availability and the GDPR processor role attach in full. Those obligations are indifferent to the invoice. A free tier removes the cheapest objection to S3 and leaves both expensive ones standing, which is worth being explicit about, because "it costs nothing" reads like "it commits to nothing" and does not.
 
 **GitHub Actions is not a hosting option.** It appeared in the original framing as an alternative to a serverless-container product, and it is not one: CI jobs are ephemeral, with no inbound endpoint and no stable URL. It is the right place to *build the image and deploy it*, and the wrong place to *run* the server. Worth stating plainly so it is not re-proposed.
 
@@ -374,7 +374,9 @@ Dropping to a kernel-free `STRUCTURAL_ONLY` backend to escape the clause is not 
 
 ### 13.3 Sovereignty — the assessment, and the one place it does not reach
 
-Scaleway was assessed because it was recommended on sovereignty grounds. Read from the vendor's own security-and-compliance page and a procurement announcement on **2026-08-02**:
+Scaleway was assessed because it was recommended on sovereignty grounds, and **it is out** — rejected on its billing model rather than on sovereignty, which it largely satisfies. The disposition and the requirements it produced are §13.5. This assessment is kept rather than deleted because it is dated research, because the requirements were derived from it, and because the sovereignty findings below apply to any European candidate.
+
+Read from the vendor's own security-and-compliance page and a procurement announcement on **2026-08-02**:
 
 - **Satisfied:** 100% European infrastructure operating under EU jurisdiction, stated by the vendor as *"free from the US CLOUD Act"*; **ISO/IEC 27001:2022** and **HDS** (health-data hosting) certified; selected in April 2026 under the European Commission's **Cloud III Dynamic Purchasing System**, a €180 M programme for EU institutions, after evaluation under the Commission's Cloud Sovereignty Framework.
 - **Not satisfied: SecNumCloud is not held.** The vendor's own page says *"currently undergoing qualification."* If a customer's requirement is literally SecNumCloud, this provider does not meet it. **And the substitution is not like-for-like:** the providers that do hold the qualification offer no equivalent serverless-container product, so satisfying SecNumCloud changes the deployment shape to managed VMs — a different operational proposition, not a different vendor line-item.
@@ -387,39 +389,41 @@ Serverless **Containers** fit the workload: the request ceiling is an hour, HTTP
 
 Serverless **Functions** are the wrong product here — per-instance concurrency of one and a small request-payload cap make them event handlers, not a JSON-RPC endpoint. Recording the rejection because "serverless" reads as one choice when it is two.
 
-### 13.5 Free hosting as a hard requirement — and why it must be arithmetic, not monitoring
+Two facts here generalise past the rejected vendor and are worth carrying into any future assessment: **an amd64 image is needed** whatever the platform, since the maintainer's machine is ARM; and **process start is not container start**, so the 33 MB / ~90 ms figure is a floor for cold-start latency rather than a measurement of it. Everything else in this subsection is a dated snapshot — **re-measure against whatever candidate is actually chosen.**
 
-**Three owner constraints, stated 2026-08-03.** The load is at most a few thousand calls per day; requests normally arrive within a **4–8 hour window** rather than around the clock; and the hosting must be **free, with no upgrade to a paid tier under any circumstances**. Crucially, **service unavailability on exhausting the allowance is acceptable** — the owner prefers the service to stop over incurring any charge. That last point is what makes the requirement satisfiable.
+### 13.5 Owner requirements for any hosted deployment, and why Scaleway is out
 
-**First, the finding that shapes everything else: the platform does not enforce free, and will bill silently.** Verified 2026-08-03 against the vendor's billing-alerts and billing-FAQ pages:
+**Recorded 2026-08-03.** These govern any future hosting candidate. The assessment above is the worked example that produced them, not a shortlist.
+
+| # | requirement | |
+|---|---|---|
+| **H1** | **Never silently enter a paid tier.** The maximum possible charge must be bounded **by construction** — either a platform-enforced spend ceiling, or a configuration whose worst-case consumption is provably inside a free allowance. Monitoring, alerting, and after-the-fact shutdown do **not** satisfy this. | **top priority** |
+| **H2** | **The bound must hold under hostile traffic.** A flood must not be able to raise the bill, and the safe setting must not depend on the platform's defaults being sane. | **top priority** |
+| **H3** | **Service unavailability is preferred over any charge.** On exhausting the allowance the service may stop; it may not bill. | required |
+| **H4** | **Free at the expected load** — at most a few thousand calls per day, normally arriving within a 4–8 hour window. | required |
+| **H5** | **EU jurisdiction and GDPR compliance**, which is the motivation the idea started from. SecNumCloud qualification only if a customer's requirement is literally SecNumCloud (§13.3). | required |
+| **H6** | If S3 is taken up at all, **EUPL-1.2 source availability and the GDPR processor role are accepted** (§13.2). | gate |
+| **H7** | **No warm model, no resolved-model cache**, under every hosting configuration (§9). | invariant |
+
+**The acceptance test a candidate must pass: can the maximum possible monthly charge be stated as a number derived only from settings we control?** If it cannot, the candidate fails H1, whatever else it offers.
+
+**Why Scaleway fails that test.** Verified 2026-08-03 against the vendor's billing-alerts and billing-FAQ pages:
 
 - The free tier is an **allowance deducted on the invoice**, not a ceiling — the invoice carries a "Free Tier" section showing the cost it saved. Consumption beyond it is billed pay-as-you-go automatically.
-- **Billing alerts only notify.** You set a monthly budget in euros plus a percentage threshold, and receive SMS, e-mail, or **webhook**; up to ten alerts. Nothing in the documentation stops, throttles, or caps usage.
+- **Billing alerts only notify.** A monthly budget in euros plus a percentage threshold, delivered by SMS, e-mail, or webhook, up to ten alerts. Nothing in the documentation stops, throttles, or caps usage.
 - There is **no spending limit and no prepaid mode** — prepaid cards are explicitly rejected as a payment method, and payment is auto-initiated from the registered card at the start of each month.
 
-So the owner's requirement cannot be met by asking the platform to stop. It also cannot be met reliably by a cost-triggered webhook: while you are inside the allowance your cost is €0, so a *cost* threshold necessarily fires **after** billing has begun. A webhook shutdown bounds exposure to cents; it cannot bound it to zero.
+A cost-triggered webhook cannot close the gap either: inside the allowance the cost is €0, so a *cost* threshold necessarily fires **after** billing has begun. It bounds exposure to cents, not to zero, and it is a moving part that can fail.
 
-**Therefore the requirement must be met structurally: choose an allocation whose maximum possible monthly consumption is below the allowance.** The allowance is **200,000 vCPU-seconds and 400,000 GB-seconds** per month. Since consumption is exactly allocated tier × run duration, and run duration cannot exceed the month, the worst case is computable — and at the platform's floor tier it is already inside the allowance:
+**The exposure this creates is the H2 case, and it is worth quantifying.** Charges are allocated tier × run duration × instances, so a flood cannot spend more than the ceiling we configured — the bound comes from our settings, not from attacker volume. But the published ceilings are high: maximum scale runs to 50 instances, so 50 instances pinned for a month is on the order of **€1,900 at the default tier** and **€11,000 at the maximum tier**. Two details make this a real risk rather than a theoretical one: the **defaults are not safe**, so maximum scale must be lowered by hand; and **rejecting a request still consumes run duration**, so authentication narrows the blast radius without removing it. Combined with alert-only detection, an unnoticed weekend flood at default settings is a three-figure invoice.
 
-| | allocation | worst case: continuously up for a 31-day month | inside the allowance? |
-|---|---|---|---|
-| CPU | **70 mvCPU** (the platform minimum) | 2,678,400 s × 0.070 = **187,488 vCPU-s** | yes, ~6% spare |
-| memory | **128 MB** (the platform minimum) | 2,678,400 s × 0.125 GB = **334,800 GB-s** | yes, ~16% spare |
+**One configuration would have satisfied H1 and H2, and is recorded because it is the shape any candidate must offer.** At the platform floor — **70 mvCPU / 128 MB with maximum scale capped at one instance** — continuous operation for a 31-day month consumes ~187,000 vCPU-s and ~335,000 GB-s against a 200,000 / 400,000 allowance. Since consumption is exactly tier × time and time cannot exceed the month, exceeding the allowance is **arithmetically impossible** regardless of traffic, and a flood becomes cost-neutral: it degrades availability, which H3 already permits. The cap at one instance is the load-bearing half — parallel instances consume the allowance in parallel and void the bound.
 
-**At the floor tier with maximum scale capped at one instance, exceeding the free allowance is arithmetically impossible** — not unlikely, impossible — regardless of how the traffic arrives, whether the instance ever scales to zero, or whether the 15-minute idle window is tunable. That converts the requirement from something monitored into something guaranteed, which is exactly what "I do not want to be upgraded" demands. **Capping maximum scale at one instance is the load-bearing half of that guarantee:** per-instance concurrency runs to 80 and this load needs nothing near it, but if the platform may scale out, each extra instance consumes the allowance in parallel and the bound is void.
+It did not save the vendor, for three reasons: it rests on two facts the documentation does not settle (whether the native binary runs inside 128 MB, and whether the allowance is scoped per container or account-wide and therefore shared with any other workload); its guarantee is *our* arithmetic rather than the platform's promise, so a change to the allowance or the tier floor silently breaks it; and 70 mvCPU is ~7% of a core as a ceiling rather than a reservation, which makes every CPU-bound call take seconds.
 
-**What it costs: 70 mvCPU is ~7% of a core, and the allocation is a ceiling rather than a reservation, so CPU-bound calls stretch by roughly its inverse** — seconds rather than milliseconds per call. For a few thousand agent-initiated calls a day that is likely tolerable, but it should be measured rather than assumed, and it is the real price of the guarantee.
+**Decision (owner, 2026-08-03): Scaleway is out.** H1 outranks the sovereignty fit that motivated the candidate in the first place.
 
-**If the binary does not run inside 128 MB**, the guarantee is lost, because 256 MB continuously up would consume ~670,000 GB-s against a 400,000 allowance. The stated 4–8 hour window makes 256 MB comfortably free in *practice* — an 8-hour window plus one idle tail is ~920,000 seconds a month, so ~230,000 GB-s, well under half the allowance, and the CPU ceiling at that uptime is a much more usable ~217 mvCPU. But that is a bound on *expected behaviour*, not on possible behaviour: a client retry loop or a usage pattern that spreads out would silently convert it into continuous uptime. Under a no-upgrade requirement that difference matters, so the fallback needs an active stop — a watchdog reading the Billing API's monthly-consumption endpoint and scaling the container to zero on a self-set threshold **below** the allowance, which acts before any cost exists rather than after. The owner's acceptance of unavailability is what makes that watchdog a clean design instead of a degradation policy.
-
-**Two unknowns now sit on the critical path** and are cheap to settle in the first deployment:
-
-1. **Does the native binary run inside 128 MB?** This decides between the arithmetic guarantee and the watchdog. It is one deployment.
-2. **Is the free allowance scoped per container, per project, or per account?** The pages read on 2026-08-02 do not say. The arithmetic guarantee assumes the allowance is available to this container; if it is account-wide and shared, any other serverless workload in the same account erodes it and the bound is wrong. **Verify before relying on the guarantee, and prefer a dedicated account or project for this service.**
-
-Two further items are worth knowing but no longer gate anything: container cold-start time (the 33 MB / ~90 ms figure above is *process* start, not container start), and whether the 15-minute idle window is tunable — irrelevant under the floor-tier guarantee, relevant only to the watchdog fallback.
-
-Note this is a *serving* decision only. It is independent of §9's no-warm-model rule, which is about correctness and holds under every configuration above. **Re-measure limits, sandbox behaviour, allowances, and certification status if phase 3 is ever taken up** — this section is a dated assessment, not a live one.
+**What this implies for a future search**, stated as a criterion rather than a shortlist: the candidate classes that can satisfy H1 structurally are a platform that **suspends rather than bills** when a free tier is exhausted, and a **fixed-price plan whose ceiling is the price** — where "free" is traded for "bounded", which H1 permits and H4 would have to be revisited against. Usage-metered serverless with an uncapped invoice is disqualified as a class, not as a vendor. Note also that **S2 satisfies every requirement here trivially**, by moving the exposure to whoever runs it — a further argument for §13.1's recommendation.
 
 ### 13.6 What phase 3 changes in the design
 
