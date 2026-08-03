@@ -403,7 +403,8 @@ Two facts here generalise past the rejected vendor and are worth carrying into a
 | **H4** | **Free at the expected load** — at most a few thousand calls per day, normally arriving within a 4–8 hour window. | required |
 | **H5** | **EU jurisdiction and GDPR compliance**, which is the motivation the idea started from. SecNumCloud qualification only if a customer's requirement is literally SecNumCloud (§13.3). | required |
 | **H6** | If S3 is taken up at all, **EUPL-1.2 source availability and the GDPR processor role are accepted** (§13.2). | gate |
-| **H7** | **No warm model, no resolved-model cache**, under every hosting configuration (§9). | invariant |
+
+The no-warm-model rule is deliberately **not** a row here. It is a design invariant that holds under every transport and phase, stated in §9 and conditioned on by R3; hosting neither creates nor relaxes it, and §13.6 records only that handles do not license a cache. Listing it as a hosting requirement would misattribute it.
 
 **The acceptance test a candidate must pass: can the maximum possible monthly charge be stated as a number derived only from settings we control?** If it cannot, the candidate fails H1, whatever else it offers.
 
