@@ -205,7 +205,8 @@ class InterpreterDocumentationTest {
             "current release notes" to currentReleaseNotes,
         )) {
             assertTrue(text.contains("232 kB gzip"), "$surface omits the measured browser footprint")
-            assertTrue(text.contains("10.9 ms median"), "$surface omits the representative browser timing")
+            assertTrue(text.contains("10.5 ms median"), "$surface omits the representative browser timing")
+            assertTrue(text.contains("203.6 ms median"), "$surface omits the stress browser timing")
             assertTrue(text.contains("2026-08-03"), "$surface omits the measurement date")
             assertTrue(text.contains("Fast, and measured"), "$surface omits the measured-performance statement")
             assertTrue(
