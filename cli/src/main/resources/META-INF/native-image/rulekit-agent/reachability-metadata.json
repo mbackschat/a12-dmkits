@@ -2326,19 +2326,6 @@
       ]
     },
     {
-      "type": "com.mgmtp.a12.kernel.core.codegen.internal.generator.backingbeans.CodeGenFilterCondition",
-      "methods": [
-        {
-          "name": "getConditionBooleanCode",
-          "parameterTypes": []
-        },
-        {
-          "name": "getVarName",
-          "parameterTypes": []
-        }
-      ]
-    },
-    {
       "type": "com.mgmtp.a12.kernel.core.codegen.internal.generator.backingbeans.CodeGenMetaFields",
       "methods": [
         {
@@ -2751,10 +2738,6 @@
           "parameterTypes": []
         },
         {
-          "name": "getFilterConditionName",
-          "parameterTypes": []
-        },
-        {
           "name": "getHasCategory",
           "parameterTypes": []
         },
@@ -3105,23 +3088,6 @@
       ]
     },
     {
-      "type": "com.mgmtp.a12.kernel.core.codegen.internal.generator.backingbeans.conditions.PredefinedTypeValidityCondition",
-      "methods": [
-        {
-          "name": "getConditionNameCode",
-          "parameterTypes": []
-        },
-        {
-          "name": "getFieldIdCode",
-          "parameterTypes": []
-        },
-        {
-          "name": "getPredefinedTypeCode",
-          "parameterTypes": []
-        }
-      ]
-    },
-    {
       "type": "com.mgmtp.a12.kernel.core.codegen.internal.generator.backingbeans.conditions.RootGroupCondition",
       "methods": [
         {
@@ -3147,27 +3113,6 @@
       ]
     },
     {
-      "type": "com.mgmtp.a12.kernel.core.codegen.internal.generator.backingbeans.conditions.ValueListCondition",
-      "methods": [
-        {
-          "name": "getBedingungNameCode",
-          "parameterTypes": []
-        },
-        {
-          "name": "getFeldIdCode",
-          "parameterTypes": []
-        },
-        {
-          "name": "getOpCodeFragments",
-          "parameterTypes": []
-        },
-        {
-          "name": "isStringList",
-          "parameterTypes": []
-        }
-      ]
-    },
-    {
       "type": "com.mgmtp.a12.kernel.core.codegen.internal.generator.backingbeans.dynamicEnum.CodeGenDynamicEnumerations",
       "methods": [
         {
@@ -3185,15 +3130,6 @@
       "methods": [
         {
           "name": "getStringValue",
-          "parameterTypes": []
-        }
-      ]
-    },
-    {
-      "type": "com.mgmtp.a12.kernel.core.codegen.internal.generator.backingbeans.fieldoperations.CodeGenOperation",
-      "methods": [
-        {
-          "name": "getFormat",
           "parameterTypes": []
         }
       ]
@@ -3238,15 +3174,6 @@
         },
         {
           "name": "getOperatorNameCode",
-          "parameterTypes": []
-        }
-      ]
-    },
-    {
-      "type": "com.mgmtp.a12.kernel.core.codegen.internal.generator.backingbeans.fieldoperations.FieldIdOperationWithParameters",
-      "methods": [
-        {
-          "name": "getParameterCode",
           "parameterTypes": []
         }
       ]
@@ -3316,19 +3243,6 @@
         },
         {
           "name": "getOperatorNameCode",
-          "parameterTypes": []
-        }
-      ]
-    },
-    {
-      "type": "com.mgmtp.a12.kernel.core.codegen.internal.generator.backingbeans.fieldoperations.date.DateRangeConstructionOperation",
-      "methods": [
-        {
-          "name": "getDate1Code",
-          "parameterTypes": []
-        },
-        {
-          "name": "getDate2Code",
           "parameterTypes": []
         }
       ]
@@ -17577,9 +17491,6 @@
       "glob": "internal/templates/validation/groovy/conditionsDir/ApplicationCondition.st"
     },
     {
-      "glob": "internal/templates/validation/groovy/conditionsDir/CodeGenFilterCondition.st"
-    },
-    {
       "glob": "internal/templates/validation/groovy/conditionsDir/ComparisonCondition.st"
     },
     {
@@ -17589,13 +17500,7 @@
       "glob": "internal/templates/validation/groovy/conditionsDir/EntityListCondition.st"
     },
     {
-      "glob": "internal/templates/validation/groovy/conditionsDir/PredefinedTypeValidityCondition.st"
-    },
-    {
       "glob": "internal/templates/validation/groovy/conditionsDir/RootGroupCondition.st"
-    },
-    {
-      "glob": "internal/templates/validation/groovy/conditionsDir/ValueListCondition.st"
     },
     {
       "glob": "internal/templates/validation/groovy/dynamicEnum.stg"
@@ -17841,9 +17746,6 @@
       "glob": "internal/templates/validation/groovy/operationsDir/CompositeOperation.st"
     },
     {
-      "glob": "internal/templates/validation/groovy/operationsDir/ConstantOperation_datum.st"
-    },
-    {
       "glob": "internal/templates/validation/groovy/operationsDir/ConstantOperation_string.st"
     },
     {
@@ -17859,19 +17761,10 @@
       "glob": "internal/templates/validation/groovy/operationsDir/DateExtractionOperation.st"
     },
     {
-      "glob": "internal/templates/validation/groovy/operationsDir/DateRangeConstructionOperation.st"
-    },
-    {
       "glob": "internal/templates/validation/groovy/operationsDir/EntityListOperation.st"
     },
     {
       "glob": "internal/templates/validation/groovy/operationsDir/FieldIdOperation.st"
-    },
-    {
-      "glob": "internal/templates/validation/groovy/operationsDir/FieldIdOperationWithParameters.st"
-    },
-    {
-      "glob": "internal/templates/validation/groovy/operationsDir/OpListOperation.st"
     },
     {
       "glob": "internal/templates/validation/groovy/operationsDir/OpListOperationWithParameter.st"
@@ -18345,22 +18238,13 @@
       "glob": "models/multifile/app/storefront.dm.json"
     },
     {
-      "glob": "models/multifile/lib"
-    },
-    {
       "glob": "models/multifile/lib/catalog.dm.json"
-    },
-    {
-      "glob": "models/order-aggregates.dm.json"
     },
     {
       "glob": "models/order-imports-types.dm.json"
     },
     {
       "glob": "models/order-ruled.dm.json"
-    },
-    {
-      "glob": "models/order-tiered.dm.json"
     },
     {
       "glob": "models/order-variant.dm.json"
@@ -18373,9 +18257,6 @@
     },
     {
       "glob": "models/person.dm.json"
-    },
-    {
-      "glob": "models/roles-ws"
     },
     {
       "glob": "models/roles/Catalog_DM.json"

@@ -41,6 +41,27 @@ class NativeImageMetadataHygieneTest {
                         + offenders);
     }
 
+    @Test
+    void shippedMetadataHasNoJavacResourcesReachedOnlyByTheStructuralTestHarness() throws Exception {
+        List<String> offenders = javacResources(metadata(RESOURCE).path("resources"));
+        assertTrue(offenders.isEmpty(),
+                "native metadata leaks the JDK compiler used only by MutationTailSingleSourceTest; keep "
+                        + "repository-structure guard tasks outside the traced product test: " + offenders);
+    }
+
+    @Test
+    void javacResourceDetectorFiresWithoutRejectingRuntimeServiceProviders() throws Exception {
+        JsonNode resources = new ObjectMapper().readTree("""
+                [
+                  {"glob":"META-INF/services/com.sun.source.util.Plugin"},
+                  {"module":"jdk.compiler","glob":"com/sun/tools/javac/resources/compiler.properties"},
+                  {"bundle":"com.sun.tools.javac.resources.javac"},
+                  {"glob":"META-INF/services/io.github.mbackschat.a12.dm.core.spi.BackendInfo"}
+                ]
+                """);
+        assertEquals(3, javacResources(resources).size());
+    }
+
     /** Proves the detector actually fires (guards against a vacuous green) and spares the {@code RuleTestCommand} verb. */
     @Test
     void detectorFlagsTestClassesButNotProductionVerbs() {
@@ -72,19 +93,37 @@ class NativeImageMetadataHygieneTest {
     }
 
     private static List<String> reflectionTypes(String resource) throws Exception {
+        List<String> types = new ArrayList<>();
+        for (JsonNode e : metadata(resource).path("reflection")) {
+            JsonNode t = e.path("type");
+            if (t.isTextual()) {   // `type` can also be an object (e.g. proxies) — only plain class names matter here
+                types.add(t.asText());
+            }
+        }
+        return types;
+    }
+
+    private static List<String> javacResources(JsonNode resources) {
+        List<String> offenders = new ArrayList<>();
+        for (JsonNode resource : resources) {
+            String text = resource.toString();
+            if (text.contains("com.sun.source.util.Plugin")
+                    || text.contains("com/sun/tools/javac/")
+                    || text.contains("com.sun.tools.javac.")
+                    || text.contains("\"module\":\"jdk.compiler\"")) {
+                offenders.add(text);
+            }
+        }
+        return offenders;
+    }
+
+    private static JsonNode metadata(String resource) throws Exception {
         var mapper = new ObjectMapper();
         try (InputStream in = NativeImageMetadataHygieneTest.class.getClassLoader().getResourceAsStream(resource)) {
             if (in == null) {
                 throw new IllegalStateException("native metadata resource not on classpath: " + resource);
             }
-            List<String> types = new ArrayList<>();
-            for (JsonNode e : mapper.readTree(in).path("reflection")) {
-                JsonNode t = e.path("type");
-                if (t.isTextual()) {   // `type` can also be an object (e.g. proxies) — only plain class names matter here
-                    types.add(t.asText());
-                }
-            }
-            return types;
+            return mapper.readTree(in);
         }
     }
 }

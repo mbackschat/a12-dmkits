@@ -144,11 +144,15 @@ def generateNativeAgentAccessFilter = tasks.register('generateNativeAgentAccessF
     }
 }
 
-// Config shared by EVERY :cli Test task (the main `test` + the `docGuardTest` split below). Putting the
-// native-agent capture here means a capture run (scripts/capture-native-config.sh, -PrkNativeAgent) covers
-// both — and since `test` dependsOn `docGuardTest`, plain `:cli:test` always drives both in CI too.
 tasks.withType(Test).configureEach {
     useJUnitPlatform()
+}
+
+// Trace only the ordinary product-exercising suite. Repository-structure guards still run as dependencies of
+// `test`, but under the normal JDK and without the agent: their parsers and build-time tooling are not dmtool
+// runtime reachability. In particular, MutationTailSingleSourceTest invokes javac to parse production source;
+// tracing every Test task made javac's ServiceLoader/resource-bundle traffic leak into the shipped metadata.
+tasks.named('test', Test) {
     // Native-image reflection capture (docs/NATIVE-IMAGE-GRAALVM.md §5) — TEST-SUITE driven, opt-in.
     // `-PrkNativeAgent` runs the suite under the GraalVM tracing agent so the captured reachability
     // metadata TRACKS THE TEST SUITE (grows with TDD), replacing the old curated verb-driving capture
@@ -162,8 +166,9 @@ tasks.withType(Test).configureEach {
         def cfgDir = project.findProperty('rkNativeAgentDir') ?: "${rootProject.projectDir}/build/rk-native-capture"
         // caller-filter drops reflective lookups MADE BY the test harness (JUnit/Gradle), so the metadata
         // does not record JUnit's instantiation of the *Test classes (which share the …cli package with
-        // production classes, so a package access-filter cannot separate them). The derived access filter
-        // additionally removes test artifacts reached through production reflection.
+        // production classes, so a package access-filter cannot separate them). Repository-structure guards
+        // are outside this traced task; the derived access filter additionally removes test artifacts reached
+        // through production reflection.
         def callerFilter = "${rootProject.projectDir}/scripts/native-agent-caller-filter.json"
         dependsOn generateNativeAgentAccessFilter
         executable = "${graalHome}/bin/java"
