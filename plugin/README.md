@@ -217,7 +217,6 @@ Generated with [Tokei](https://github.com/XAMPPRocky/tokei) from the production 
 | Java | 453 | 43813 | 11987 | 6445 |
 | Kotlin | 106 | 17385 | 6324 | 2180 |
 | TypeScript | 0 | 0 | 0 | 0 |
-| Lean | 0 | 0 | 0 | 0 |
 
 Maintainers regenerate this table with the local statistics updater; both release publishers compare it with fresh counts before any public mutation.
 <!-- source-statistics:dmtool:end -->

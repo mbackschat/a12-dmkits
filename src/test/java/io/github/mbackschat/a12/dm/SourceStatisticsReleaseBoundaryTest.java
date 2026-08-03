@@ -41,6 +41,20 @@ class SourceStatisticsReleaseBoundaryTest {
         assertFalse(read("scripts/assemble-interpreter-release-repo.sh").contains("update-code-statistics.sh"));
     }
 
+    @Test
+    void publicSourceStatisticsExcludeTheSiblingLeanProject() throws IOException {
+        String updater = read("scripts/update-code-statistics.sh");
+        assertFalse(updater.contains("A12_LEAN_REPO"));
+        assertFalse(updater.contains("| Lean |"));
+        for (String readme : List.of(
+                "README.md",
+                "plugin/README.md",
+                "interpreter/README.md",
+                "interpreter/public-release/README.md")) {
+            assertFalse(read(readme).contains("| Lean |"), readme + " must not report Lean statistics");
+        }
+    }
+
     private static boolean precedes(String text, String first, String second) {
         int firstIndex = text.indexOf(first);
         int secondIndex = text.indexOf(second);

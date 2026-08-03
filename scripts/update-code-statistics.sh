@@ -3,7 +3,6 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-LEAN_ROOT="${A12_LEAN_REPO:-$ROOT/../a12-kernel-lean}"
 MODE="update"
 ARTIFACT="all"
 
@@ -13,7 +12,6 @@ Usage: update-code-statistics.sh [--check] [--artifact all|root|dmtool|interpret
 
 Update the selected public README tables, or compare them with a fresh Tokei measurement.
 This maintainer-only release aid requires local `tokei` and `jq`; normal builds and CI do not.
-The root table also requires the sibling a12-kernel-lean checkout (override with A12_LEAN_REPO).
 EOF
 }
 
@@ -65,12 +63,11 @@ measure() {
 }
 
 make_block() {
-  local id="$1" description="$2" java="$3" kotlin="$4" typescript="$5" lean="$6" output="$7"
-  local jf jc jco jb kf kc kco kb tf tc tco tb lf lc lco lb
+  local id="$1" description="$2" java="$3" kotlin="$4" typescript="$5" output="$6"
+  local jf jc jco jb kf kc kco kb tf tc tco tb
   IFS=$'\t' read -r jf jc jco jb <<< "$java"
   IFS=$'\t' read -r kf kc kco kb <<< "$kotlin"
   IFS=$'\t' read -r tf tc tco tb <<< "$typescript"
-  IFS=$'\t' read -r lf lc lco lb <<< "$lean"
   cat > "$output" <<EOF
 <!-- source-statistics:${id}:start -->
 ## Source statistics
@@ -82,7 +79,6 @@ Generated with [Tokei](https://github.com/XAMPPRocky/tokei) from ${description}.
 | Java | ${jf} | ${jc} | ${jco} | ${jb} |
 | Kotlin | ${kf} | ${kc} | ${kco} | ${kb} |
 | TypeScript | ${tf} | ${tc} | ${tco} | ${tb} |
-| Lean | ${lf} | ${lc} | ${lco} | ${lb} |
 
 Maintainers regenerate this table with the local statistics updater; both release publishers compare it with fresh counts before any public mutation.
 <!-- source-statistics:${id}:end -->
@@ -140,24 +136,19 @@ TYPESCRIPT_LIBRARY="$(measure TypeScript "${TYPESCRIPT_LIBRARY_SOURCES[@]}")"
 TYPESCRIPT_ALL="$(measure TypeScript "${TYPESCRIPT_LIBRARY_SOURCES[@]}" "${TYPESCRIPT_SHOWCASE_SOURCES[@]}")"
 
 if [[ "$ARTIFACT" == "all" || "$ARTIFACT" == "root" ]]; then
-  [[ -d "$LEAN_ROOT/A12Kernel" && -f "$LEAN_ROOT/A12Kernel.lean" ]] || {
-    echo "Lean checkout not found at $LEAN_ROOT (set A12_LEAN_REPO)" >&2
-    exit 2
-  }
-  LEAN="$(measure Lean "$LEAN_ROOT/A12Kernel" "$LEAN_ROOT/A12Kernel.lean")"
-  make_block root "the production sources in this repository and the sibling A12 Lean formalization" "$JAVA" "$KOTLIN" "$TYPESCRIPT_ALL" "$LEAN" "$WORK/root.md"
+  make_block root "the production sources in this repository" "$JAVA" "$KOTLIN" "$TYPESCRIPT_ALL" "$WORK/root.md"
   apply_block "$ROOT/README.md" root "$WORK/root.md"
 fi
 
 if [[ "$ARTIFACT" == "all" || "$ARTIFACT" == "dmtool" ]]; then
-  make_block dmtool "the production sources linked into the dmtool artifact" "$JAVA" "$KOTLIN" "$ZERO" "$ZERO" "$WORK/dmtool.md"
+  make_block dmtool "the production sources linked into the dmtool artifact" "$JAVA" "$KOTLIN" "$ZERO" "$WORK/dmtool.md"
   apply_block "$ROOT/plugin/README.md" dmtool "$WORK/dmtool.md"
 fi
 
 if [[ "$ARTIFACT" == "all" || "$ARTIFACT" == "interpreter" ]]; then
-  make_block interpreter-source "the standalone interpreter library and its authored TypeScript facade" "$ZERO" "$KOTLIN" "$TYPESCRIPT_LIBRARY" "$ZERO" "$WORK/interpreter-source.md"
+  make_block interpreter-source "the standalone interpreter library and its authored TypeScript facade" "$ZERO" "$KOTLIN" "$TYPESCRIPT_LIBRARY" "$WORK/interpreter-source.md"
   apply_block "$ROOT/interpreter/README.md" interpreter-source "$WORK/interpreter-source.md"
-  make_block interpreter-release "the standalone interpreter library, TypeScript facade, and browser showcase" "$ZERO" "$KOTLIN" "$TYPESCRIPT_ALL" "$ZERO" "$WORK/interpreter-release.md"
+  make_block interpreter-release "the standalone interpreter library, TypeScript facade, and browser showcase" "$ZERO" "$KOTLIN" "$TYPESCRIPT_ALL" "$WORK/interpreter-release.md"
   apply_block "$ROOT/interpreter/public-release/README.md" interpreter-release "$WORK/interpreter-release.md"
 fi
 

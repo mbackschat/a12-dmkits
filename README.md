@@ -810,14 +810,13 @@ Runtime evaluation — *which rules fire on this document, what does each comput
 <!-- source-statistics:root:start -->
 ## Source statistics
 
-Generated with [Tokei](https://github.com/XAMPPRocky/tokei) from the production sources in this repository and the sibling A12 Lean formalization. Tests, fixtures, generated output, build trees, and code embedded in Markdown are excluded.
+Generated with [Tokei](https://github.com/XAMPPRocky/tokei) from the production sources in this repository. Tests, fixtures, generated output, build trees, and code embedded in Markdown are excluded.
 
 | Language | Files | Code | Comments | Blanks |
 |---|---:|---:|---:|---:|
 | Java | 453 | 43813 | 11987 | 6445 |
 | Kotlin | 106 | 17385 | 6324 | 2180 |
 | TypeScript | 17 | 3190 | 269 | 277 |
-| Lean | 664 | 100386 | 8591 | 15678 |
 
 Maintainers regenerate this table with the local statistics updater; both release publishers compare it with fresh counts before any public mutation.
 <!-- source-statistics:root:end -->

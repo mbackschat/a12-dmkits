@@ -133,7 +133,6 @@ Generated with [Tokei](https://github.com/XAMPPRocky/tokei) from the standalone 
 | Java | 0 | 0 | 0 | 0 |
 | Kotlin | 106 | 17385 | 6324 | 2180 |
 | TypeScript | 11 | 1385 | 228 | 168 |
-| Lean | 0 | 0 | 0 | 0 |
 
 Maintainers regenerate this table with the local statistics updater; both release publishers compare it with fresh counts before any public mutation.
 <!-- source-statistics:interpreter-source:end -->
