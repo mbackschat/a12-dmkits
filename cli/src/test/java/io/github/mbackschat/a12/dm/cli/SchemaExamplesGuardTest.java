@@ -88,8 +88,23 @@ class SchemaExamplesGuardTest {
             Files.writeString(opsFile, ops);
             CliTestSupport.Result res = CliTestSupport.run("batch", opsFile.toString());
             assertEquals(0, res.code(), () -> "batch frame example run failed: " + res.err());
-            for (JsonNode r : MAPPER.readTree(res.out())) {
-                assertEquals(0, r.path("exit").asInt(), () -> "batch frame example op exits 0: " + r);
+            JsonNode envelope = MAPPER.readTree(res.out());
+            assertEquals("completed", envelope.path("outcome").asText(),
+                    () -> "batch frame example returns a completed aggregate envelope: " + res.out());
+            assertEquals("batch", envelope.path("target").asText(),
+                    () -> "batch frame example identifies the aggregate target: " + res.out());
+            assertEquals("run", envelope.path("op").asText(),
+                    () -> "batch frame example identifies the aggregate operation: " + res.out());
+            JsonNode results = envelope.path("data").path("results");
+            assertTrue(results.isArray(),
+                    () -> "batch frame example returns child results under data.results: " + res.out());
+            assertEquals(ex.size(), results.size(),
+                    () -> "batch frame example returns one result per child op: " + res.out());
+            for (JsonNode result : results) {
+                assertTrue(result.path("exit").isInt(),
+                        () -> "batch frame example child declares an integer exit: " + result);
+                assertEquals(0, result.path("exit").intValue(),
+                        () -> "batch frame example child exits 0: " + result);
             }
         }
     }
