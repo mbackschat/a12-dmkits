@@ -89,6 +89,10 @@ class GateTierWiringTest {
                 "the public-output prose guard must run in the input-aware CLI doc lane");
         assertTrue(cliMainTest.contains("excludeTestsMatching 'io.github.mbackschat.a12.dm.cli.PublicOutputClaimsTest'"),
                 "the repo-file-reading prose guard must not also run in the input-blind main CLI test task");
+        assertTrue(cliDocGuard.contains("includeTestsMatching 'io.github.mbackschat.a12.dm.cli.PublicCommandShapeClaimsTest'"),
+                "the command-shape prose guard must run in the input-aware CLI doc lane");
+        assertTrue(cliMainTest.contains("excludeTestsMatching 'io.github.mbackschat.a12.dm.cli.PublicCommandShapeClaimsTest'"),
+                "the command-shape prose guard must not also run in the input-blind main CLI test task");
     }
 
     private static String gradleTask(String build, String name) {

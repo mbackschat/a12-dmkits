@@ -3,7 +3,7 @@
 *2026-06-11T21:02:45Z by Showboat 0.6.1*
 <!-- showboat-id: af0727e1-6f18-458a-ba7a-84938e1b2b93 -->
 
-The structure-edit companion to the [verb tour](cli-tour.md) (which reads rules): this demo **edits the model's structure** — add a field, add a group, and **safely remove** a referenced field. These mutating verbs write **in place** (`-o` redirects, `--dry-run` previews) and carry the result envelope's `.changed`. Every command is `dmtool -m <model> <target> <op>`, run from the repo root; some steps also use `jq`. Re-check the captured output with `uvx showboat@0.6.1 verify examples/cli-structure-edit.md` (exit 0 = it still matches the live CLI).
+The structure-edit companion to the [verb tour](cli-tour.md) (which reads rules): this demo **edits the model's structure** — add a field, add a group, and **safely remove** a referenced field. These mutating verbs write **in place** (`-o` redirects, `--dry-run` previews) and carry the result envelope's `.changed`. Model-bound edit operations use `dmtool -m <model> <target> <op>`; root and artifact operations use their manifest-declared syntax. Commands run from the repo root; some steps also use `jq`. Re-check the captured output with `uvx showboat@0.6.1 verify examples/cli-structure-edit.md` (exit 0 = it still matches the live CLI).
 
 We work on a `/tmp` copy of the `order-ruled` fixture — its `DeliveryNotBeforeOrder` rule references `/Order/DeliveryDate`, which is what arms the safe-delete gate below — so the committed fixture stays put.
 
@@ -1117,7 +1117,7 @@ dmtool -m /tmp/struct2-cfg.json model rename --to subscription-v2 | jq "{outcome
 
 ## export — the artifacts, not the envelope
 
-`export` takes the model via the universal `-m` like every other verb (`dmtool -m <model> export [<artifact>]`), but it prints a plain artifact — *not* the JSON result envelope. With no artifact name it emits the **model card** (a Markdown summary); `fields | groups | rules` print line-delimited JSON instead, and `--out-dir` writes all four to files.
+`export` is model-bound and takes its model through `-m` (`dmtool -m <model> export [<artifact>]`), but it prints a plain artifact — *not* the JSON result envelope. With no artifact name it emits the **model card** (a Markdown summary); `fields | groups | rules` print line-delimited JSON instead, and `--out-dir` writes all four to files.
 
 ```bash
 cp examples/models/subscription.dm.json /tmp/struct2-exp.json && echo "copied subscription → /tmp/struct2-exp.json"

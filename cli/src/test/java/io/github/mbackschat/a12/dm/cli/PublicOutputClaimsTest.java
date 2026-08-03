@@ -6,10 +6,8 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Comparator;
 import java.util.List;
 import java.util.regex.Pattern;
-import java.util.stream.Stream;
 
 import org.junit.jupiter.api.Test;
 
@@ -37,7 +35,7 @@ class PublicOutputClaimsTest {
     @Test
     void livePublicDocsDoNotUniversalizeTheEnvelopeOrJsonOutput() throws Exception {
         List<String> findings = new ArrayList<>();
-        for (Path surface : surfaces()) {
+        for (Path surface : PublicMarkdownSurfaces.live()) {
             List<String> lines = Files.readAllLines(surface);
             for (int index = 0; index < lines.size(); index++) {
                 String line = lines.get(index);
@@ -93,24 +91,4 @@ class PublicOutputClaimsTest {
                 || OTHER_BLANKET.matcher(clause).find();
     }
 
-    private static List<Path> surfaces() throws Exception {
-        List<Path> surfaces = new ArrayList<>(List.of(
-                Path.of("../README.md"),
-                Path.of("../plugin/README.md"),
-                Path.of("../plugin-codex/AGENTS.md"),
-                Path.of("../skill/SKILL.md")));
-        addMarkdown(surfaces, Path.of("../examples"), null);
-        // Archived docs preserve superseded claims deliberately; current product/design docs are the live surface.
-        addMarkdown(surfaces, Path.of("../docs"), Path.of("../docs/archived"));
-        return surfaces.stream().sorted(Comparator.comparing(Path::toString)).toList();
-    }
-
-    private static void addMarkdown(List<Path> surfaces, Path root, Path excluded) throws Exception {
-        try (Stream<Path> paths = Files.walk(root)) {
-            paths.filter(Files::isRegularFile)
-                    .filter(path -> path.toString().endsWith(".md"))
-                    .filter(path -> excluded == null || !path.startsWith(excluded))
-                    .forEach(surfaces::add);
-        }
-    }
 }

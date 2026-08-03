@@ -79,7 +79,7 @@ a12-dmkits 0.1.1
 
 Every action is one **operation record** — `{ target, op, args }`. A single CLI invocation is *one* record; a batch is an ordered *list* of them ([§7](#7-batching--dispatcher-batch-vs-session-apply)). Its matching operational profile declares the primary output, and a matching view can override it; the resulting effective stdout is the standard result envelope, a raw JSON/text artifact or rendering, or empty after an artifact write. Define the vocabulary once; render it onto both surfaces. Consistency on the two axes — **element family** (modelkit structure ⟂ rulekit rules) × **operation** — then holds by construction, in both the CLI and the batch.
 
-### 3a. Invocation shape — `dmtool -m <model> <target> <op> [args]`
+### 3a. Model-bound invocation shape — `dmtool -m <model> <target> <op> [args]`
 
 The model file is **context**, named once with `-m/--model`, like `git -C <dir>` / `kubectl -n <ns>` / `docker --context`. The per-op object (a field path, a rule name) is a positional on the op, like `docker image rm <image>`. So the op's own flags are never interrupted by the model path, and the op record carries **no model** — making single-verb and batch perfectly symmetric:
 
@@ -179,7 +179,7 @@ Worked shapes (the real `Diagnostic` fields, inside the envelope):
 
 ## 5. Verb surface — target × op
 
-Every command is `dmtool -m <model> <target> <op> [args]`. Family (modelkit ⟂ rulekit) is a **grouping in `--help`/manifest**, not a command level — the real two axes (kind × op) *are* the two command levels. Artifact and cross-model operations can replace the `-m` input with their own source: **`model new`** creates a model from scratch; **`profile synthesize --input <profile.json>`** creates a model from a profile; and the `workspace` verbs scan a directory of models. Their exact inputs remain derived in help/manifest and the rows below.
+Model-bound operations use `dmtool -m <model> <target> <op> [args]`. Family (modelkit ⟂ rulekit) is a **grouping in `--help`/manifest**, not a command level — the real two axes (kind × op) *are* the two command levels. Artifact and cross-model operations can replace the `-m` input with their own source: **`model new`** creates a model from scratch; **`profile synthesize --input <profile.json>`** creates a model from a profile; and the `workspace` verbs scan a directory of models. Their exact inputs remain derived in help/manifest and the rows below.
 
 `model diff` binds both states independently. In two-file mode, repeatable `--base-workspace` and `--head-workspace` roots distinguish snapshots that contain different versions of the same referenced model id; without them, shared `-w` applies, then each model's folder. In `--since` mode, the base model and its dependencies come from the Git ref while the head resolves from the working tree.
 

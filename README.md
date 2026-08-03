@@ -84,7 +84,7 @@ Prefer typed Java in your own JVM project? The same engine is a library — see 
 
 ## `dmtool` — the CLI
 
-Same engine, no Java required. Every command is `dmtool -m <model> <target> <op> [args]`; each matching manifest operational profile declares whether effective stdout is the standard JSON **result envelope** (`{ok, valid, outcome, data, diagnostics[], …}`), raw JSON/text, or empty after an artifact write. It is **self-describing**, so a cold agent (or you) can discover the whole surface from the binary alone.
+Same engine, no Java required. Model-bound operations use `dmtool -m <model> <target> <op> [args]`; root, catalog, and artifact operations expose their own syntax. Each matching manifest operational profile declares whether effective stdout is the standard JSON **result envelope** (`{ok, valid, outcome, data, diagnostics[], …}`), raw JSON/text, or empty after an artifact write. It is **self-describing**, so a cold agent (or you) can discover the whole surface from the binary alone.
 
 ### Install — see the release repo (single source of truth)
 
