@@ -16,31 +16,46 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
+logical_evidence_command() {
+  local command="$1"
+  if [[ "$command" =~ ^(/bin/(zsh|bash|sh)|/usr/bin/(zsh|bash|sh))[[:space:]]+-lc[[:space:]]+\'([^\']*)\'$ ]]; then
+    printf '%s' "${BASH_REMATCH[4]}"
+  elif [[ "$command" =~ ^(/bin/(zsh|bash|sh)|/usr/bin/(zsh|bash|sh))[[:space:]]+-lc[[:space:]]+\"([^\"]*)\"$ ]]; then
+    printf '%s' "${BASH_REMATCH[4]}"
+  else
+    printf '%s' "$command"
+  fi
+}
+
 verify_activation_evidence() {
   local events="$1" result="$2"
-  local ready_path model_event model_command logical_command envelope
+  local ready_path="" model_event model_command logical_command envelope item raw command output candidate
+  local skill_reads=0 installer_events=0
 
-  jq -e -s '
-    any(.[]; .type == "item.completed" and .item.type == "command_execution"
-      and .item.exit_code == 0
-      and ((.item.command // "")
-        | test("^(/bin/)?cat( --)? [^\\r\\n;&|<>#]+/skills/a12-dmtool/SKILL\\.md$")))
-  ' "$events" >/dev/null || {
-    echo "Codex activation smoke: no successful standalone cat command read the selected skill" >&2
+  while IFS= read -r item; do
+    raw="$(jq -r '.command // ""' <<< "$item")"
+    command="$(logical_evidence_command "$raw")"
+    if [[ "$command" =~ ^(/bin/)?cat(\ --)?\ [^$'\r\n;&|<>#']+/skills/a12-dmtool/SKILL\.md$ ]]; then
+      skill_reads=$((skill_reads + 1))
+    fi
+    if [[ "$command" =~ ^(/bin/)?bash\ [^$'\r\n;&|<>#']+/skills/a12-dmtool/ensure-dmtool\.sh$ ]]; then
+      output="$(jq -r '.aggregated_output // ""' <<< "$item")"
+      if [[ "$output" == *"dmtool ready:"* && "$output" != *"dmtool plugin:"* ]] &&
+        candidate="$(jq -er '(.aggregated_output // "") | capture("dmtool ready: (?<path>[^\\r\\n]+)").path' <<< "$item")"; then
+        installer_events=$((installer_events + 1))
+        ready_path="$candidate"
+      fi
+    fi
+  done < <(jq -c 'select(.type == "item.completed" and .item.type == "command_execution" and .item.exit_code == 0) | .item' "$events")
+
+  [[ "$skill_reads" == 1 ]] || {
+    echo "Codex activation smoke: expected exactly one successful standalone skill read, found $skill_reads" >&2
     return 1
   }
-
-  ready_path="$(jq -er -s '
-    [.[] | select(.type == "item.completed" and .item.type == "command_execution"
-      and .item.exit_code == 0
-      and ((.item.command // "")
-        | test("^(/bin/)?bash [^\\r\\n;&|<>#]+/skills/a12-dmtool/ensure-dmtool\\.sh$"))
-      and ((.item.aggregated_output // "") | contains("dmtool ready:"))
-      and (((.item.aggregated_output // "") | contains("dmtool plugin:")) | not))
-      | (.item.aggregated_output // "")
-      | capture("dmtool ready: (?<path>[^\\r\\n]+)").path]
-    | if length == 1 then .[0] else error("expected exactly one successful installer event") end
-  ' "$events")" || return 1
+  [[ "$installer_events" == 1 ]] || {
+    echo "Codex activation smoke: expected exactly one successful standalone installer event, found $installer_events" >&2
+    return 1
+  }
   [[ "$ready_path" == /* ]] || {
     echo "Codex activation smoke: installer did not report an absolute path: $ready_path" >&2
     return 1
@@ -67,17 +82,10 @@ verify_activation_evidence() {
   ' "$events")" || return 1
   model_command="$(jq -er '.command' <<< "$model_event")"
   logical_command="$ready_path -m model.json model check"
-  case "$model_command" in
-    "$logical_command"|\
-    "/bin/zsh -lc '$logical_command'"|"/bin/bash -lc '$logical_command'"|"/bin/sh -lc '$logical_command'"|\
-    "/usr/bin/zsh -lc '$logical_command'"|"/usr/bin/bash -lc '$logical_command'"|"/usr/bin/sh -lc '$logical_command'"|\
-    "/bin/zsh -lc \"$logical_command\""|"/bin/bash -lc \"$logical_command\""|"/bin/sh -lc \"$logical_command\""|\
-    "/usr/bin/zsh -lc \"$logical_command\""|"/usr/bin/bash -lc \"$logical_command\""|"/usr/bin/sh -lc \"$logical_command\"") ;;
-    *)
+  if [[ "$(logical_evidence_command "$model_command")" != "$logical_command" ]]; then
     echo "Codex activation smoke: model check was wrapped, chained, redirected, or used different input: $model_command" >&2
     return 1
-      ;;
-  esac
+  fi
 
   envelope="$(jq -c '.envelope' <<< "$model_event")"
   jq -e \
@@ -101,7 +109,7 @@ verify_activation_evidence() {
 }
 
 self_test_evidence() (
-  local work events result ready envelope good_command
+  local work events result ready envelope good_command good_skill_read good_installer
   work="$(mktemp -d)"
   trap 'rm -rf "$work"' EXIT
   events="$work/events.jsonl"
@@ -111,9 +119,11 @@ self_test_evidence() (
   chmod +x "$ready"
   envelope='{"target":"model","op":"check","outcome":"read","ok":true,"valid":true,"verification":"KERNEL_CONFIRMED","diagnostics":[],"written":false}'
   good_command="/bin/zsh -lc '$ready -m model.json model check'"
+  good_skill_read="/bin/zsh -lc 'cat /tmp/plugins/dmtool/skills/a12-dmtool/SKILL.md'"
+  good_installer="/bin/zsh -lc 'bash /tmp/plugins/dmtool/skills/a12-dmtool/ensure-dmtool.sh'"
 
-  jq -nc '{type:"item.completed",item:{type:"command_execution",command:"cat /tmp/plugins/dmtool/skills/a12-dmtool/SKILL.md",aggregated_output:"",exit_code:0}}' > "$events"
-  jq -nc --arg ready "$ready" '{type:"item.completed",item:{type:"command_execution",command:"bash /tmp/plugins/dmtool/skills/a12-dmtool/ensure-dmtool.sh",aggregated_output:("dmtool ready: " + $ready + "\n"),exit_code:0}}' >> "$events"
+  jq -nc --arg command "$good_skill_read" '{type:"item.completed",item:{type:"command_execution",command:$command,aggregated_output:"",exit_code:0}}' > "$events"
+  jq -nc --arg command "$good_installer" --arg ready "$ready" '{type:"item.completed",item:{type:"command_execution",command:$command,aggregated_output:("dmtool ready: " + $ready + "\n"),exit_code:0}}' >> "$events"
   jq -nc --arg command "$good_command" --arg output "$envelope" '{type:"item.completed",item:{type:"command_execution",command:$command,aggregated_output:$output,exit_code:0}}' >> "$events"
   jq -n --arg ready "$ready" --arg command "$ready -m model.json model check" '{skill:"dmtool:a12-dmtool",binaryPath:$ready,command:$command,verification:"KERNEL_CONFIRMED",valid:true,written:false}' > "$result"
   verify_activation_evidence "$events" "$result" || return 1
