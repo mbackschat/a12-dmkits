@@ -15,9 +15,10 @@ import org.junit.jupiter.api.Test;
  * The published envelope's top-level key set is pinned, so changing it is <b>deliberate and triggers a consumer
  * sweep</b>.
  *
- * <p><b>What this is for, and what it is not.</b> It is not a schema test — {@code SchemaVerbTest} already checks
- * that every verb's real output keys are declared. It is a <b>tripwire</b>: the envelope frame is the one thing
- * whose change invalidates consumers the build cannot see. Nesting the verb payloads under {@code data} broke four
+ * <p><b>What this is for, and what it is not.</b> It is not a schema test — {@code SchemaVerbTest} samples real
+ * effective envelope outputs against the schema. It is a <b>tripwire</b>: the complete envelope frame is the one
+ * thing whose change invalidates consumers the build cannot see. Nesting the verb payloads under {@code data}
+ * broke four
  * {@code jq} filters in {@code examples/} and a prompt in the eval harness that tells judging agents what
  * {@code batch} returns; all of them stayed green, because a captured error re-runs identically and nothing
  * executes a prompt. The Java call sites were swept mechanically and the rest were swept from memory.

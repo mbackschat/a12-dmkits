@@ -17,7 +17,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
  * The {@code schema} verb (CLI-SPEC §5a) — the CLI's on-demand contract surface. Two shapes: the
  * cross-cutting <b>structures</b> ({@code result}/{@code diagnostic}) as raw JSON Schema, and a verb's
  * <b>directional contract</b> ({@code schema <target> <op>}). The drift guard is the point (F11 "loud
- * detection at build"): a target-first verb's real output must conform to the universal {@code result}
+ * detection at build"): sampled real effective envelope outputs must conform to the standard {@code result}
  * schema, and the {@code schema add} split must hold.
  */
 class SchemaVerbTest {
@@ -170,7 +170,7 @@ class SchemaVerbTest {
     }
 
     @Test
-    void everyTargetFirstVerbOutputConformsToTheResultEnvelope(@TempDir Path dir) throws Exception {
+    void sampledEffectiveEnvelopeOutputsConformToTheResultSchema(@TempDir Path dir) throws Exception {
         Path model = CliTestSupport.modelWithRule(dir);
         // a mutation (preview) and reads — each must emit only keys the result schema declares
         assertResultEnvelope(CliTestSupport.run("-m", model.toString(), "field", "add",
@@ -181,7 +181,7 @@ class SchemaVerbTest {
         assertResultEnvelope(CliTestSupport.run("-m", model.toString(), "model", "check"));
     }
 
-    /** Every top-level key the verb emits must be declared in the universal `result` schema (the F11 drift guard). */
+    /** Every top-level key the envelope emits must be declared in the standard `result` schema (the F11 drift guard). */
     private void assertResultEnvelope(CliTestSupport.Result verb) throws Exception {
         assertEquals(0, verb.code(), () -> "verb failed: " + verb.err());
         JsonNode output = MAPPER.readTree(verb.out());

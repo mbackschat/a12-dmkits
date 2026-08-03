@@ -78,7 +78,7 @@ The published schemas (`cli/.../resources/schema/*.json`) are part of the self-d
 
 | change you make | schema to touch | the guard that catches a lag |
 |---|---|---|
-| **add/rename a result-envelope key** (`ResultEnvelope`) | `result.schema.json` | `SchemaVerbTest` — every target-first verb's real output keys must be declared in `result.schema` |
+| **add/rename a result-envelope key** (`ResultEnvelope`) | `result.schema.json` | `ResultEnvelopeFrameTripwireTest` pins the complete frame; `SchemaVerbTest` samples real effective envelope outputs against `result.schema` |
 | **change a `Diagnostic`/`Where` field** | `diagnostic.schema.json` | `SchemaVerbTest`/`SchemaExamplesGuardTest` (diagnostics in real envelopes conform) |
 | **change the rule/computation spec shape** | `rule-add.schema.json` / `computation-add.schema.json` (+ their `examples`) | `SchemaExamplesGuardTest` — the target-specific input examples are **executed through the tool** |
 | **change the `apply`/`batch` op-record frame or add an op/key** | `apply.schema.json` / `batch.schema.json` (+ `examples`) + the `ApplyCommand.Op` enum's `keys` (field ops single-source `FieldSpec.{ADD,MODIFY}_KEYS`) | `SchemaExamplesGuardTest` — both frame example blocks are CI-executed |
