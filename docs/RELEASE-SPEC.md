@@ -112,7 +112,7 @@ The three jobs and why they're shaped this way:
 
 | Gotcha | Symptom | Fix |
 |---|---|---|
-| **Grep a FILE, never a pipe** | `"$BIN" manifest \| … \| grep -q PAT` — `grep -q` exits on first match and **SIGPIPEs** the upstream producer (manifest is ~66 KB), so the step dies with **exit 141** under `pipefail` | write to a temp file, then `grep PAT file` (what the `--version` check already does via `tee`). `--version` only survived the pipe form because its output is a few lines |
+| **Grep a FILE, never a pipe** | `"$BIN" manifest \| … \| grep -q PAT` — `grep -q` exits on first match and **SIGPIPEs** the still-writing upstream producer, so the step dies with **exit 141** under `pipefail` | write to a temp file, then `grep PAT file` (what the `--version` check already does via `tee`). `--version` only survived the pipe form because its output is a few lines |
 | **Match Jackson's pretty spacing** | the CLI emits `"key" : value` (space *before* the colon); `grep '"key": value'` (compact) never matches → false failure | spacing-tolerant `grep -Eq '"key" *: *value'` |
 | **Complete the verb invocation** | `rule read` bare exits 2 (`Missing required parameter: <rulePathInModel>`) | pass a real rule path (e.g. `/Order/DeliveryNotBeforeOrder`) |
 | **POSIX-path args mangled by git-bash** *(Windows-only)* | `rule read /Order/X` → git-bash rewrites `/Order/X` to `C:/Program Files/Git/Order/X` (MSYS path conversion) → "not a rule", exit 2. **Not reproducible on mac/linux.** | prefix the command: `MSYS_NO_PATHCONV=1 "$BIN" … rule read /Order/X` |
