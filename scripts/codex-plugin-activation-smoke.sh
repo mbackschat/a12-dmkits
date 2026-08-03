@@ -252,10 +252,16 @@ PROMPT="Check whether model.json is statically consistent with A12. Use the auth
 MODEL="${CODEX_ACTIVATION_MODEL:-gpt-5.6-sol}"
 EFFORT="${CODEX_ACTIVATION_REASONING_EFFORT:-xhigh}"
 EXEC_ENV=(env CODEX_HOME="$SMOKE_HOME" TMPDIR="$WORK/codex-tmp")
+EXEC_CONFIG=(-c "model_reasoning_effort=\"$EFFORT\"")
 if [[ "$MODE" == local ]]; then
   EXEC_ENV+=(RK_DMTOOL_LOCAL="$NATIVE")
+else
+  # workspace-write disables command networking by default. The public smoke must exercise the plugin's
+  # real GitHub downloader, so enable it for this isolated release-only session rather than accepting a
+  # local fallback that proves nothing about the published binary path.
+  EXEC_CONFIG+=(-c "sandbox_workspace_write.network_access=true")
 fi
-"${EXEC_ENV[@]}" codex exec --ephemeral --json -m "$MODEL" -c "model_reasoning_effort=\"$EFFORT\"" \
+"${EXEC_ENV[@]}" codex exec --ephemeral --json -m "$MODEL" "${EXEC_CONFIG[@]}" \
   -s workspace-write -C "$SMOKE_REPO" --output-schema "$ROOT/scripts/codex-plugin-activation.schema.json" \
   -o "$RESULT" "$PROMPT" > "$EVENTS"
 

@@ -76,7 +76,7 @@ env \
   INTERPRETER_MAVEN_REPOSITORY="$MAVEN_REPOSITORY" \
   INTERPRETER_VERSION="$VERSION" \
   "${deadline[@]}" 120 \
-  "$ROOT/gradlew" \
+  "$ROOT/build.sh" \
   --no-daemon \
   --console=plain \
   --project-dir "$KOTLIN_CONSUMER" \

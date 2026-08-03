@@ -1,6 +1,7 @@
 package io.github.mbackschat.a12.dm;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 import java.io.IOException;
@@ -12,6 +13,14 @@ import org.junit.jupiter.api.Test;
 
 /** Proves the release-only Codex activation smoke rejects synthesized evidence around a failed command. */
 class CodexPluginActivationEvidenceTest {
+
+    @Test
+    void publicInstallerRunsWithNetworkAccessEnabled() throws IOException {
+        String script = Files.readString(repoFile("scripts/codex-plugin-activation-smoke.sh"));
+        assertTrue(
+                script.contains("sandbox_workspace_write.network_access=true"),
+                "the clean-session smoke cannot exercise the public installer while command networking is disabled");
+    }
 
     @Test
     void activationEvidenceComesFromOneSuccessfulDmtoolEnvelope() throws IOException, InterruptedException {

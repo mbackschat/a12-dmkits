@@ -96,7 +96,10 @@ class InterpreterReleasePublisherRehearsalTest {
         assertTrue(smoke.contains(":interpreter:prepareExternalInterpreterConsumer"));
         assertTrue(smoke.contains(":interpreter:prepareExternalInterpreterTypeScriptConsumer"));
         assertTrue(smoke.contains("pnpm"));
-        assertTrue(smoke.contains("gradlew"));
+        assertTrue(smoke.contains("\"$ROOT/build.sh\""));
+        assertFalse(
+                smoke.contains("\"$ROOT/gradlew\""),
+                "the public consumer must retain the repository's isolated Gradle home and JDK 21 boundary");
 
         var backend = Files.readString(repoFile("scripts/interpreter-release-github.sh"));
         assertTrue(backend.contains("smoke-interpreter-public-release.sh"));
