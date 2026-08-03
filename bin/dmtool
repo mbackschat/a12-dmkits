@@ -24,7 +24,8 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 candidates=("${DMTOOL_CLI:-}")
 if [[ "${RK_NATIVE:-}" == "1" ]]; then
   candidates+=(
-    "$ROOT/cli/build/native/dmtool"             # conventional native output (future :cli native task)
+    "$ROOT/cli/build/native/nativeCompile/dmtool" # GraalVM Gradle plugin output
+    "$ROOT/cli/build/native/nativeCompile/dmtool.exe" # Windows GraalVM output under Git Bash
     "$ROOT/build/native-spike/dmtool-cli-res"   # the CLI-SPEC §B2 spike's resource-bundled binary
   )
 fi

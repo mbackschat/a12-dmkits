@@ -6,13 +6,19 @@
 # would have to fabricate all of that through a process builder and would still not run the real script's
 # resolution order.
 #
-# Every case below was a live bypass; all four were found by review rather than by a test, because the gate had
-# none. The pattern is uniform and worth stating once: each bypass ended in the gate returning SUCCESS, so the
-# failure surfaced later (or not at all) — and one of them exited 0 with empty stdout, which an agent reads as
-# "ran fine, nothing to report". A gate that cannot fail is worse than no gate, because it is trusted.
+# Every case below was a live bypass; the JDK-gate cases were found by review rather than by a test, because the
+# gate had none. The pattern is uniform and worth stating once: each bypass ended in the gate returning SUCCESS,
+# so the failure surfaced later (or not at all) — and one of them exited 0 with empty stdout, which an agent reads
+# as "ran fine, nothing to report". The native-path case likewise fell through successfully to the wrong runtime.
+# A gate that cannot fail is worse than no gate, because it is trusted.
 set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 DMTOOL="$ROOT/bin/dmtool"
+EXPECTED_NATIVE_RELATIVE="${1:-}"
+[[ "$EXPECTED_NATIVE_RELATIVE" == cli/build/native/* && "$EXPECTED_NATIVE_RELATIVE" != *..* ]] || {
+  echo "usage: $0 <Gradle-native-output-relative-to-repo>" >&2
+  exit 2
+}
 WORK="$(mktemp -d)"
 trap 'rm -rf "$WORK"' EXIT
 
@@ -54,6 +60,23 @@ check() {  # $1 = case, $2 = expected exit, $3.. = command
     pass=$((pass + 1))
   else
     printf '  FAIL  %s — expected exit %s, got %s\n        output: %s\n' "$name" "$want" "$status" "$out"
+    fail=$((fail + 1))
+  fi
+}
+
+check_output() {  # $1 = case, $2 = expected output, $3.. = command
+  local name="$1" want="$2"; shift 2
+  local out status
+  set +e
+  out="$("$@" 2>&1)"
+  status=$?
+  set -e
+  if [[ "$status" == 0 && "$out" == "$want" ]]; then
+    printf '  ok    %s\n' "$name"
+    pass=$((pass + 1))
+  else
+    printf '  FAIL  %s — expected exit 0 + output %q, got exit %s + output %q\n' \
+      "$name" "$want" "$status" "$out"
     fail=$((fail + 1))
   fi
 }
@@ -119,6 +142,53 @@ else
   printf '  ok    native binary is not JDK-gated\n'
   pass=$((pass + 1))
 fi
+
+echo
+echo "…and RK_NATIVE=1 must select Gradle's actual nativeCompile artifact:"
+
+# Exercise the Gradle task's declared output layout in an isolated repository-shaped tree. The JUnit wrapper
+# obtains this argument from nativeCompile.outputFile, so this test does not repeat the launcher's path literal.
+# The previous shim looked in cli/build/native/dmtool while Gradle produced a nested nativeCompile output, so
+# RK_NATIVE=1 silently fell through to the JVM launcher.
+TEST_ROOT="$WORK/repo"
+mkdir -p "$TEST_ROOT/bin" "$(dirname "$TEST_ROOT/$EXPECTED_NATIVE_RELATIVE")" \
+  "$TEST_ROOT/cli/build/install/dmtool/bin"
+cp "$DMTOOL" "$TEST_ROOT/bin/dmtool"
+cat > "$TEST_ROOT/$EXPECTED_NATIVE_RELATIVE" <<'EOF'
+#!/usr/bin/env bash
+printf 'NATIVE'
+EOF
+cat > "$TEST_ROOT/cli/build/install/dmtool/bin/dmtool" <<'EOF'
+#!/usr/bin/env bash
+# JAVA_HOME marks this as a JVM launcher to bin/dmtool's content-based gate.
+printf 'JVM'
+EOF
+chmod +x "$TEST_ROOT/bin/dmtool" \
+  "$TEST_ROOT/$EXPECTED_NATIVE_RELATIVE" \
+  "$TEST_ROOT/cli/build/install/dmtool/bin/dmtool"
+check_output "RK_NATIVE selects nativeCompile output" NATIVE \
+  env DMTOOL_CLI= RK_NATIVE=1 JAVA_HOME="$JDK_OK" "$TEST_ROOT/bin/dmtool" --version
+
+# Windows appends .exe to imageName. Reproduce the Git-Bash-visible layout on this host so a missing Windows
+# candidate cannot hide behind this test's POSIX-only JUnit wrapper.
+WINDOWS_ROOT="$WORK/repo-windows"
+mkdir -p "$WINDOWS_ROOT/bin" "$WINDOWS_ROOT/cli/build/native/nativeCompile" \
+  "$WINDOWS_ROOT/cli/build/install/dmtool/bin"
+cp "$DMTOOL" "$WINDOWS_ROOT/bin/dmtool"
+cat > "$WINDOWS_ROOT/cli/build/native/nativeCompile/dmtool.exe" <<'EOF'
+#!/usr/bin/env bash
+printf 'NATIVE_EXE'
+EOF
+cat > "$WINDOWS_ROOT/cli/build/install/dmtool/bin/dmtool" <<'EOF'
+#!/usr/bin/env bash
+# JAVA_HOME marks this as a JVM launcher to bin/dmtool's content-based gate.
+printf 'JVM'
+EOF
+chmod +x "$WINDOWS_ROOT/bin/dmtool" \
+  "$WINDOWS_ROOT/cli/build/native/nativeCompile/dmtool.exe" \
+  "$WINDOWS_ROOT/cli/build/install/dmtool/bin/dmtool"
+check_output "RK_NATIVE selects Windows nativeCompile output" NATIVE_EXE \
+  env DMTOOL_CLI= RK_NATIVE=1 JAVA_HOME="$JDK_OK" "$WINDOWS_ROOT/bin/dmtool" --version
 
 printf '\n%s passed, %s failed\n' "$pass" "$fail"
 [[ "$fail" -eq 0 ]]

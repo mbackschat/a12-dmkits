@@ -120,6 +120,7 @@ tasks.named('test') {
         excludeTestsMatching 'io.github.mbackschat.a12.dm.InterpreterReleasePublisherRehearsalTest'
         excludeTestsMatching 'io.github.mbackschat.a12.dm.rulekit.catalog.CatalogProseReviewGuardTest'
         excludeTestsMatching 'io.github.mbackschat.a12.dm.EnsureDmtoolCacheTest'
+        excludeTestsMatching 'io.github.mbackschat.a12.dm.DmtoolLauncherTest'
         excludeTestsMatching 'io.github.mbackschat.a12.dm.NativeNoJavaSmokeTest'
         excludeTestsMatching 'io.github.mbackschat.a12.dm.CodexPluginActivationEvidenceTest'
         excludeTestsMatching 'io.github.mbackschat.a12.dm.ReleaseGapBlockerTest'
@@ -213,6 +214,7 @@ tasks.register('deliveryGuardTest', Test) {
     classpath = sourceSets.test.runtimeClasspath
     filter {
         includeTestsMatching 'io.github.mbackschat.a12.dm.EnsureDmtoolCacheTest'
+        includeTestsMatching 'io.github.mbackschat.a12.dm.DmtoolLauncherTest'
         includeTestsMatching 'io.github.mbackschat.a12.dm.NativeNoJavaSmokeTest'
         includeTestsMatching 'io.github.mbackschat.a12.dm.CodexPluginActivationEvidenceTest'
         includeTestsMatching 'io.github.mbackschat.a12.dm.SourceStatisticsReleaseBoundaryTest'
@@ -220,6 +222,9 @@ tasks.register('deliveryGuardTest', Test) {
     guardInputs(it, [
             'plugin installer'        : file('scripts/ensure-dmtool.sh'),
             'installer self-test'     : file('scripts/selftest-ensure-dmtool.sh'),
+            'dmtool launcher'         : file('bin/dmtool'),
+            'launcher self-test'      : file('scripts/selftest-dmtool-launcher.sh'),
+            'native build contract'   : file('cli/build.gradle'),
             'native no-Java smoke'    : file('scripts/native-no-java-smoke.sh'),
             'Codex activation smoke'  : file('scripts/codex-plugin-activation-smoke.sh'),
             'Codex evidence schema'   : file('scripts/codex-plugin-activation.schema.json'),
@@ -230,6 +235,13 @@ tasks.register('deliveryGuardTest', Test) {
             'interpreter assembler'   : file('scripts/assemble-interpreter-release-repo.sh'),
             'release asset manifest'  : file('scripts/release-assets.sh'),
     ])
+    def nativeOutputRelative = providers.provider {
+        relativePath(project(':cli').tasks.named('nativeCompile').get().outputFile.get().asFile)
+    }
+    inputs.property('nativeCompile output path', nativeOutputRelative)
+    doFirst {
+        systemProperty 'dmtool.nativeOutputRelative', nativeOutputRelative.get()
+    }
 }
 
 tasks.register('releaseGapGuardTest', Test) {
