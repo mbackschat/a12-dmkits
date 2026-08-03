@@ -305,6 +305,7 @@ tasks.register('docGuardTest', Test) {
                     'plugin-codex/.codex-plugin/plugin.json',
                     'interpreter/public-release/README.md'),
             'root build'       : file('build.gradle'),
+            'cli build'        : file('cli/build.gradle'),
             'Gradle environment': file('scripts/gradle-environment.sh'),
             'gradle.properties': file('gradle.properties'),
             'cache smoke'      : file('scripts/verify-build-cache.sh'),

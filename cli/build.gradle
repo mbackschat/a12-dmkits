@@ -353,6 +353,7 @@ tasks.register('publicContractTest', Test) {
     classpath = sourceSets.test.runtimeClasspath
     systemProperty 'dmtool.executable', dmtoolContractExecutable
     inputs.file(file(dmtoolContractExecutable))
+    inputs.file(rootProject.file('skill/SKILL.md'))
     filter {
         includeTestsMatching 'io.github.mbackschat.a12.dm.cli.DmtoolPublicContractTest'
         includeTestsMatching 'io.github.mbackschat.a12.dm.cli.DmtoolMutationSafetyTest'

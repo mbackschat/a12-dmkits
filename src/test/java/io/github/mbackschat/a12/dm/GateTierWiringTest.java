@@ -71,6 +71,19 @@ class GateTierWiringTest {
                 "the routine performance task must never restore a cached measurement");
     }
 
+    @Test
+    void packagedPublicContractDeclaresTheCanonicalSkillInput() throws IOException {
+        String rootBuild = Files.readString(locate("build.gradle"));
+        String task = gradleTask(Files.readString(locate("cli/build.gradle")), "publicContractTest");
+        String docGuard = gradleTask(rootBuild, "docGuardTest");
+
+        assertFalse(task.isEmpty(), "cli must provide the packaged public-contract task");
+        assertTrue(task.contains("rootProject.file('skill/SKILL.md')"),
+                "the public-contract task reads the canonical skill and must invalidate on a skill-only change");
+        assertTrue(docGuard.contains("file('cli/build.gradle')"),
+                "the wiring guard reads cli/build.gradle, so docGuardTest must declare that file as an input");
+    }
+
     private static String gradleTask(String build, String name) {
         String marker = "tasks.register('" + name + "', Test)";
         int start = build.indexOf(marker);
