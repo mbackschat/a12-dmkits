@@ -181,13 +181,14 @@ final class ModelEvalCommand extends BaseCommand {
             return fail("evaluation failed: " + e.getMessage());
         }
 
-        ResultEnvelope refusal = customSupport.strictRefusal(resultIdentity(), data);
+        RuntimeEvidence evidence = RuntimeEvidence.interpreter();
+        ResultEnvelope refusal = customSupport.strictRefusal(resultIdentity(), data, evidence);
         if (refusal != null) {
             out().print(refusal.toJsonString());
             return refusal.exitCode();
         }
         ResultEnvelope env = ResultEnvelope.runtimeObservation(resultIdentity(),
-                data.get("fired").size() + " rule(s) fired", data, RuntimeEvidence.interpreter());
+                data.get("fired").size() + " rule(s) fired", data, evidence);
         out().print(env.toJsonString());
         return env.exitCode();
     }

@@ -54,6 +54,19 @@ class MetaVerbTest {
         assertTrue(!j.path("written").asBoolean(true), "a refused op writes nothing");
     }
 
+    @Test
+    void mutationOnlyOptionsAreRejectedInReadMode(@TempDir Path dir) throws Exception {
+        Path model = CliTestSupport.orderRuled(dir);
+
+        var dryRun = CliTestSupport.run("-m", model.toString(), "meta", "/Order", "--dry-run");
+        assertEquals(2, dryRun.code());
+        assertTrue(dryRun.err().contains("require a metadata change"), dryRun::err);
+
+        var output = CliTestSupport.run("-m", model.toString(), "meta", "/Order", "-o", dir.resolve("out.json").toString());
+        assertEquals(2, output.code());
+        assertTrue(output.err().contains("require a metadata change"), output::err);
+    }
+
     // G21 — the display LABEL is the one metadata aspect `meta` didn't cover (it had internal/external
     // descriptions + annotations). A field's label was authorable in the from-scratch builder, but editing an
     // existing element's label had no CLI surface; `meta` adds it on the cross-cutting verb so field + group

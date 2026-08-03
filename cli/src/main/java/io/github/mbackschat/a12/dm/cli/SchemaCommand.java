@@ -27,13 +27,15 @@ import picocli.CommandLine.Parameters;
  *       what it <em>consumes</em> (a rich JSON input like the rule-spec) and whether it <em>returns</em> the
  *       result envelope or an artifact. One call, unambiguous direction. Flag-only ops carry no {@code input}
  *       (their params are in the manifest); reads note that their payload rides the envelope's {@code data}.</li>
+ *   <li>Every runnable leaf, including a directionally exempt artifact/catalog verb, serves the operational
+ *       profiles projected from {@link CommandContracts}; exempt leaves return an operational-only contract.</li>
  * </ul>
  * Schemas are never attached to a verb's own response (that would bloat every call); they live here, fetched
  * when wanted. Structure schemas are classpath resources under {@code /schema/<name>.schema.json}; the
  * directional contracts are assembled from the live command tree. Drift-locked by {@code SchemaVerbTest}.
  */
 @Command(name = "schema", mixinStandardHelpOptions = true,
-        description = "Emit a structure schema (result|diagnostic) or a verb's directional contract "
+        description = "Emit a structure schema or a verb's directional/operational contract "
                 + "(`schema <target> <op>`), on demand.")
 final class SchemaCommand extends BaseCommand {
 
@@ -126,10 +128,11 @@ final class SchemaCommand extends BaseCommand {
     static final Set<String> VERDICT_OPS = Set.of("model check", "rule check");
 
     /**
-     * Verbs for which {@code schema <verb>} serves <b>no</b> directional contract. Two reasons, mapped here as
+     * Verbs for which {@code schema <verb>} serves <b>no</b> directional contract (their operational contract is
+     * still always served). Two reasons, mapped here as
      * the single source of truth (read by {@link
      * ManifestCommand} to decide the schema pointer, and by {@code CliConformanceMatrixTest} as the reasoned
-     * exemption ledger): the five <b>self-describing</b> verbs ({@code manifest}/{@code schema}/{@code operators}/
+     * exemption ledger): the self-describing verbs ({@code manifest}/{@code schema}/{@code operators}/
      * {@code patterns}/{@code diagnostics}) emit their own JSON (run them to see it), while the listed legacy
      * artifact verbs have no directional contract. An artifact verb registered in {@link #ARTIFACT_OPS} is not
      * exempt: its input, stdout artifact, and {@code -o} receipt branch are contract-discoverable.
@@ -173,13 +176,29 @@ final class SchemaCommand extends BaseCommand {
             return serveStructure(tokens.get(0));
         }
         String verb = String.join(" ", tokens);
-        // A directional contract resolves for every non-exempt runnable leaf: result-envelope ops plus the
-        // explicitly schema-described artifact ops. CONTRACT_EXEMPT verbs are explored via their own output.
-        if (!resolvesToLeaf(tokens) || CONTRACT_EXEMPT.containsKey(verb)) {
+        if (!resolvesToLeaf(tokens)) {
             return fail("unknown schema: " + verb + "   (structures: " + String.join(", ", STRUCTURES)
                     + "; or a verb contract like `rule add`, `field read`, `meta`)");
         }
+        if (CONTRACT_EXEMPT.containsKey(verb)) {
+            return operationalContract(verb);
+        }
         return contract(verb);
+    }
+
+    /** The table-owned contract for a leaf that deliberately has no directional I/O contract. */
+    private int operationalContract(String verb) {
+        CommandSpec command = resolveLeaf(tokens);
+        if (command == null) {
+            return fail("cannot resolve live command contract: " + verb);
+        }
+        ObjectNode contract = MAPPER.createObjectNode();
+        contract.put("op", verb);
+        contract.put("contract", "operational-only");
+        contract.put("directionalExemption", CONTRACT_EXEMPT.get(verb));
+        contract.set("operationalProfiles", CommandContracts.toJson(verb, command));
+        out().print(contract.toPrettyString() + "\n");
+        return 0;
     }
 
     private int serveStructure(String name) {

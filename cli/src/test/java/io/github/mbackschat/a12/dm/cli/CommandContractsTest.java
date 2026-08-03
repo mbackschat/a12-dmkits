@@ -5,6 +5,8 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 import com.fasterxml.jackson.databind.JsonNode;
@@ -36,6 +38,8 @@ class CommandContractsTest {
                     assertTrue(profile.has(key), () -> name + "#" + profile.path("id").asText()
                             + " is missing " + key);
                 }
+                assertEquals("CASE_INSENSITIVE", profile.path("when").path("valueComparison").asText(),
+                        () -> name + " must publish how semantic values are compared");
             }
         }
         assertTrue(profiles > 81,
@@ -97,23 +101,132 @@ class CommandContractsTest {
     }
 
     @Test
-    void selectorsAreNotVacuousForTheKnownMultiModeCommands() throws Exception {
+    void parsedSemanticSelectorsAreTotalAndDisjointForEveryMultiModeProfile() {
+        Map<String, List<String>> cases = Map.ofEntries(
+                Map.entry("apply#commit", List.of("apply", "ops.json")),
+                Map.entry("apply#preview", List.of("apply", "ops.json", "--dry-run")),
+                Map.entry("batch#dispatch", List.of("batch", "ops.json")),
+                Map.entry("group extract#commit", List.of("group", "extract", "/R/G", "--reference", "g")),
+                Map.entry("group extract#preview", List.of("group", "extract", "/R/G", "--reference", "g", "--dry-run")),
+                Map.entry("meta#read", List.of("meta", "/R/F")),
+                Map.entry("meta#commit", List.of("meta", "/R/F", "--annotation", "owner=qa")),
+                Map.entry("meta#preview", List.of("meta", "/R/F", "--annotation", "owner=qa", "--dry-run")),
+                Map.entry("patterns#catalog", List.of("patterns")),
+                Map.entry("patterns#detail", List.of("patterns", "date-order")),
+                Map.entry("patterns#scaffold", List.of("patterns", "date-order", "--arg", "earlier=/R/A")),
+                Map.entry("patterns#commit", List.of("patterns", "date-order", "--arg", "earlier=/R/A", "--apply")),
+                Map.entry("patterns#preview", List.of("patterns", "date-order", "--arg", "earlier=/R/A", "--apply", "--dry-run")),
+                Map.entry("model new#stdout", List.of("model", "new", "--id", "R", "--locale", "en_US", "--root", "R")),
+                Map.entry("model new#file", List.of("model", "new", "--id", "R", "--locale", "en_US", "--root", "R", "-o", "r.json")),
+                Map.entry("model expand#stdout", List.of("model", "expand")),
+                Map.entry("model expand#file", List.of("model", "expand", "-o", "r.json")),
+                Map.entry("model export-jsonschema#stdout", List.of("model", "export-jsonschema")),
+                Map.entry("model export-jsonschema#file", List.of("model", "export-jsonschema", "-o", "r.json")),
+                Map.entry("profile synthesize#stdout", List.of("profile", "synthesize", "--input", "p.json")),
+                Map.entry("profile synthesize#file", List.of("profile", "synthesize", "--input", "p.json", "-o", "r.json")),
+                Map.entry("profile extract#envelope", List.of("profile", "extract")),
+                Map.entry("profile extract#file", List.of("profile", "extract", "-o", "p.json")),
+                Map.entry("model import-jsonschema#stdout", List.of("model", "import-jsonschema", "--schema", "s.json")),
+                Map.entry("model import-jsonschema#file", List.of("model", "import-jsonschema", "--schema", "s.json", "-o", "m.json")),
+                Map.entry("model import-jsonschema#bundle", List.of("model", "import-jsonschema", "--schema", "s.json", "--out-dir", "models")),
+                Map.entry("export#stdout", List.of("export")),
+                Map.entry("export#directory", List.of("export", "--out-dir", "artifacts")),
+                Map.entry("workspace list#json-default", List.of("workspace", "list", "models")),
+                Map.entry("workspace list#json", List.of("workspace", "list", "models", "--format", "JSON")),
+                Map.entry("workspace list#json-validated", List.of("workspace", "list", "models", "--validate")),
+                Map.entry("workspace list#json-validated-explicit", List.of("workspace", "list", "models", "--validate", "--format", "JSON")),
+                Map.entry("workspace list#table", List.of("workspace", "list", "models", "--format", "TABLE")),
+                Map.entry("workspace list#table-validated", List.of("workspace", "list", "models", "--validate", "--format", "TABLE")),
+                Map.entry("workspace graph#json-default", List.of("workspace", "graph", "models")),
+                Map.entry("workspace graph#json", List.of("workspace", "graph", "models", "--format", "JSON")),
+                Map.entry("workspace graph#tree", List.of("workspace", "graph", "models", "--format", "TREE")),
+                Map.entry("workspace graph#dot", List.of("workspace", "graph", "models", "--format", "DOT")),
+                Map.entry("model report#report", List.of("model", "report")),
+                Map.entry("model report#tree", List.of("model", "report", "--tree")),
+                Map.entry("schema#orientation", List.of("schema")),
+                Map.entry("schema#contract", List.of("schema", "field", "read")));
+
+        Set<String> exercised = new HashSet<>();
+        cases.forEach((expected, args) -> {
+            List<CommandContracts.Profile> matches = CommandContracts.matchingProfiles(args);
+            assertEquals(1, matches.size(), () -> expected + " matched " + matches + " for " + args);
+            String actual = CommandContracts.qualifiedVerb(args) + "#" + matches.getFirst().id();
+            assertEquals(expected, actual, () -> "wrong selector branch for " + args);
+            exercised.add(actual);
+        });
+
+        assertEquals(cases.keySet(), exercised, "every named multi-mode profile has a positive control");
+        assertMatch("apply#commit", "apply", "ops.json", "--dry-run=false");
+        assertMatch("patterns#commit", "patterns", "date-order", "--arg", "earlier=/R/A", "--apply",
+                "--dry-run=false");
+        assertTrue(CommandContracts.matchingProfiles(List.of("patterns", "--arg", "earlier=/R/A")).isEmpty(),
+                "an invocation the command rejects must not be assigned the catalog profile");
+        assertTrue(CommandContracts.matchingProfiles(List.of("meta", "/R/F", "--dry-run")).isEmpty(),
+                "a mutation-only option rejected in read mode must not match the read profile");
+        assertTrue(CommandContracts.matchingProfiles(List.of("meta", "/R/F", "-o", "out.json")).isEmpty(),
+                "a mutation-only destination rejected in read mode must not match the read profile");
+        assertTrue(CommandContracts.matchingProfiles(List.of("patterns", "date-order", "--arg", "earlier=/R/A",
+                "--dry-run=false")).isEmpty(),
+                "an explicitly supplied dry-run flag rejected without --apply must not match scaffold");
+        assertTrue(CommandContracts.matchingProfiles(List.of("model", "report", "--root", "/R")).isEmpty(),
+                "tree-only projection options rejected in report mode must not match report");
+        assertTrue(CommandContracts.matchingProfiles(List.of("model", "import-jsonschema", "--schema", "s.json",
+                "--out-dir", "models", "-o", "ignored.json")).isEmpty(),
+                "mutually exclusive output destinations must not match the bundle profile");
+        assertTrue(CommandContracts.matchingProfiles(List.of("model", "import-jsonschema", "--schema", "s.json",
+                "--out-dir", "models", "--component", "R")).isEmpty(),
+                "the single-component selector rejected in bundle mode must not match the bundle profile");
+    }
+
+    @Test
+    void resultEnvelopeProfilesDeclareTheGlobalTextView() throws Exception {
         JsonNode manifest = MAPPER.readTree(CliTestSupport.run("manifest").out());
-        for (String name : Set.of("meta", "patterns", "apply", "group extract", "model new", "model expand",
-                "model import-jsonschema", "model export-jsonschema", "profile extract", "profile synthesize",
-                "export", "workspace list", "workspace graph", "model report", "schema")) {
-            JsonNode profiles = verb(manifest, name).path("operationalProfiles");
-            assertTrue(profiles.size() > 1, () -> name + " needs explicit argument-dependent profiles");
-            boolean hasPredicate = false;
-            for (JsonNode profile : profiles) {
-                JsonNode when = profile.path("when");
-                hasPredicate |= !when.path("present").isEmpty()
-                        || !when.path("absent").isEmpty()
-                        || !when.path("anyPresent").isEmpty()
-                        || !when.path("values").isEmpty();
+        int envelopeProfiles = 0;
+        for (JsonNode verb : manifest.path("verbs")) {
+            for (JsonNode profile : verb.path("operationalProfiles")) {
+                JsonNode returns = profile.path("returns");
+                if ("RESULT_ENVELOPE".equals(returns.path("kind").asText())) {
+                    envelopeProfiles++;
+                    JsonNode view = returns.path("views").get(0);
+                    assertEquals("RAW_TEXT", view.path("kind").asText(), () -> verb.path("verb").asText());
+                    assertEquals(List.of("true"), MAPPER.convertValue(
+                            view.path("when").path("values").path("--text"), List.class));
+                } else {
+                    assertTrue(returns.path("views").isEmpty(),
+                            () -> "raw/artifact output cannot claim envelope text rendering: " + profile);
+                    assertTrue(Set.of("NONE", "NOT_EMITTED")
+                                    .contains(profile.path("provenance").path("consistency").asText()),
+                            () -> "raw output cannot promise a provenance field it cannot emit: " + profile);
+                }
             }
-            assertTrue(hasPredicate, () -> name + " profiles do not discriminate any invocation");
         }
+        assertTrue(envelopeProfiles > 65, "the modifier guard must cover the whole envelope surface");
+    }
+
+    @Test
+    void ordinaryStaticReadsClassifyConsistencyPrecisely() throws Exception {
+        JsonNode manifest = MAPPER.readTree(CliTestSupport.run("manifest").out());
+        Set<String> required = Set.of(
+                "model check", "model describe", "model diff", "model read", "model usage",
+                "rule read", "rule explain", "rule deps", "rule format",
+                "computation read", "computation explain", "computation format", "where-used");
+        Set<String> optional = Set.of("rule check", "workspace check");
+        Set<String> none = Set.of(
+                "model info", "profile compare", "field read", "group read", "typedef read", "include read",
+                "config read", "workspace roles");
+        required.forEach(name -> assertEquals("REQUIRED",
+                verb(manifest, name).path("operationalProfiles").get(0).path("provenance").path("consistency").asText(), name));
+        optional.forEach(name -> assertEquals("OPTIONAL",
+                verb(manifest, name).path("operationalProfiles").get(0).path("provenance").path("consistency").asText(), name));
+        none.forEach(name -> assertEquals("NONE",
+                verb(manifest, name).path("operationalProfiles").get(0).path("provenance").path("consistency").asText(), name));
+    }
+
+    private static void assertMatch(String expected, String... args) {
+        List<String> command = List.of(args);
+        List<CommandContracts.Profile> matches = CommandContracts.matchingProfiles(command);
+        assertEquals(1, matches.size(), () -> expected + " matched " + matches);
+        assertEquals(expected, CommandContracts.qualifiedVerb(command) + "#" + matches.getFirst().id());
     }
 
     private static void assertProfile(

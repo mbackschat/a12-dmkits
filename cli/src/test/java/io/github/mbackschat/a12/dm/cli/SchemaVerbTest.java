@@ -51,6 +51,20 @@ class SchemaVerbTest {
     }
 
     @Test
+    void directionalExemptionsStillServeTheirOperationalContract() throws Exception {
+        for (String verb : SchemaCommand.CONTRACT_EXEMPT.keySet()) {
+            CliTestSupport.Result result = CliTestSupport.run(
+                    java.util.stream.Stream.concat(java.util.stream.Stream.of("schema"),
+                            java.util.Arrays.stream(verb.split(" "))).toArray(String[]::new));
+            assertEquals(0, result.code(), () -> verb + ": " + result.err());
+            JsonNode contract = MAPPER.readTree(result.out());
+            assertEquals(verb, contract.path("op").asText());
+            assertEquals("operational-only", contract.path("contract").asText(), () -> verb + ": " + contract);
+            assertFalse(contract.path("operationalProfiles").isEmpty(), () -> verb + ": " + contract);
+        }
+    }
+
+    @Test
     void resultStructureSchemaIsServed() throws Exception {
         CliTestSupport.Result res = CliTestSupport.run("schema", "result");
         assertEquals(0, res.code(), res::err);

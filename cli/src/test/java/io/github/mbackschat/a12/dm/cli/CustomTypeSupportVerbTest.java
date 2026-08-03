@@ -134,6 +134,10 @@ class CustomTypeSupportVerbTest {
         assertEquals(2, res.code(), () -> "--strict-custom must refuse (exit 2) on an unsupported construct: " + res.out());
         assertTrue(res.out().contains("--strict-custom"),
                 () -> "the refusal must name --strict-custom: " + res.out());
+        JsonNode envelope = MAPPER.readTree(res.out());
+        assertEquals("DM_INTERPRETER", envelope.path("engine").asText(),
+                () -> "a post-evaluation refusal keeps the runtime receipt: " + res.out());
+        assertTrue(envelope.hasNonNull("engineVersion") && envelope.hasNonNull("toolVersion"), res::out);
     }
 
     @Test
@@ -157,6 +161,21 @@ class CustomTypeSupportVerbTest {
         assertEquals(0, res.code(), res::err);
         assertEquals("unsupported", MAPPER.readTree(res.out()).get("data").get("verdict").asText(),
                 () -> "rule eval reports a CustomCondition rule as 'unsupported', not a crash or a false pass: " + res.out());
+    }
+
+    @Test
+    void ruleStrictCustomRefusalKeepsTheRuntimeReceipt(@TempDir Path dir) throws Exception {
+        Path model = CliTestSupport.orderRuled(dir);
+        Path document = write(dir, "doc.json", """
+                { "Order": { "CustomerName": "Acme" } }""");
+
+        var res = CliTestSupport.run("-m", model.toString(), "rule", "eval", "/Order/EligibilityCheck",
+                "--instance", document.toString(), "--strict-custom");
+
+        assertEquals(2, res.code(), res::out);
+        JsonNode envelope = MAPPER.readTree(res.out());
+        assertEquals("DM_INTERPRETER", envelope.path("engine").asText(), res::out);
+        assertTrue(envelope.hasNonNull("engineVersion") && envelope.hasNonNull("toolVersion"), res::out);
     }
 
     @Test

@@ -135,7 +135,7 @@ final class ModelImportJsonschemaCommand extends BaseCommand {
             description = "import the WHOLE OpenAPI document as a BUNDLE — one model per components/schemas entry, "
                     + "written as <dir>/<Component>.dm.json and wired by includes (an object cross-reference becomes "
                     + "a mount; a recursive self-reference is expanded, since the kernel forbids a self-include). "
-                    + "Mutually exclusive with --component (which imports a single entry to stdout/-o).")
+                    + "Mutually exclusive with --component and -o/--output (which import a single entry).")
     String outDir;
 
     @ParamKind(ParamKind.Kind.FILE)
@@ -146,6 +146,12 @@ final class ModelImportJsonschemaCommand extends BaseCommand {
 
     @Override
     public Integer call() {
+        if (outDir != null && outputPath != null) {
+            return fail("--out-dir (whole-bundle) and -o/--output (single file) are mutually exclusive");
+        }
+        if (outDir != null && component != null) {
+            return fail("--out-dir (whole-bundle) and --component (single entry) are mutually exclusive");
+        }
         String schemaJson;
         try {
             schemaJson = Files.readString(Path.of(schemaPath));
@@ -155,9 +161,6 @@ final class ModelImportJsonschemaCommand extends BaseCommand {
         MappingProfile profile = buildProfile();
         Dialect resolvedDialect = dialect != null ? dialect : Dialect.AUTO;
         if (outDir != null) {
-            if (component != null) {
-                return fail("--out-dir (whole-bundle) and --component (single entry) are mutually exclusive");
-            }
             return importBundle(schemaJson, profile, resolvedDialect);
         }
         JsonSchemaImporter.ImportResult result;

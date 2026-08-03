@@ -95,6 +95,11 @@ final class MetaCommand extends BaseCommand {
 
     @Override
     public Integer call() {
+        MetaModification modification = modification();
+        boolean hasWrites = !modification.isEmpty();
+        if (!hasWrites && optionMatched("--dry-run", "--output")) {
+            return fail("--dry-run and -o/--output require a metadata change");
+        }
         String model = model();
         String modelJson = readModelJson(model);
         if (modelJson == null) {
@@ -102,8 +107,6 @@ final class MetaCommand extends BaseCommand {
         }
         ModelResolver resolver = workspace.resolverFor(model);
         ModelDocument doc = ModelDocument.read(modelJson);
-        MetaModification modification = modification();
-        boolean hasWrites = !modification.isEmpty();
 
         Optional<Refusal> refusal = new SafetyGate()
                 .require(SafetyChecks.elementExists(doc, ref))

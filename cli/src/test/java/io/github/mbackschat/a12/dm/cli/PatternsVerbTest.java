@@ -102,6 +102,46 @@ class PatternsVerbTest {
     }
 
     @Test
+    void generationOptionsWithoutAPatternIdAreRejectedInsteadOfIgnored() {
+        for (List<String> args : List.of(
+                List.of("patterns", "--arg", "earlier=/Order/OrderDate"),
+                List.of("patterns", "--apply"),
+                List.of("patterns", "--dry-run"),
+                List.of("patterns", "-o", "ignored.json"))) {
+            var res = CliTestSupport.run(args.toArray(String[]::new));
+            assertEquals(2, res.code(), () -> "unsupported mode must not fall through to the catalog: " + res.out());
+            assertTrue(res.err().contains("patternId"), res::err);
+        }
+    }
+
+    @Test
+    void applyOnlyOptionsWithoutArgumentsAreRejectedInsteadOfIgnored() {
+        for (List<String> args : List.of(
+                List.of("patterns", "date-order", "--apply"),
+                List.of("patterns", "date-order", "--dry-run"),
+                List.of("patterns", "date-order", "-o", "ignored.json"))) {
+            var res = CliTestSupport.run(args.toArray(String[]::new));
+            assertEquals(2, res.code(), () -> "unsupported mode must not fall through to detail: " + res.out());
+            assertTrue(res.err().contains("--arg"), res::err);
+        }
+    }
+
+    @Test
+    void dryRunAndOutputRequireApply(@TempDir Path dir) throws Exception {
+        Path model = model(dir);
+        for (List<String> tail : List.of(
+                List.of("--dry-run"),
+                List.of("-o", dir.resolve("ignored.json").toString()))) {
+            List<String> args = new ArrayList<>(List.of("-m", model.toString(), "patterns", "date-order",
+                    "--arg", "earlier=/Order/OrderDate", "--arg", "later=/Order/DeliveryDate"));
+            args.addAll(tail);
+            var res = CliTestSupport.run(args.toArray(String[]::new));
+            assertEquals(2, res.code(), res::out);
+            assertTrue(res.err().contains("--apply"), res::err);
+        }
+    }
+
+    @Test
     void applyPersistsTheScaffoldedRule(@TempDir Path dir) throws Exception {
         Path model = model(dir);
         var res = CliTestSupport.run("-m", model.toString(), "patterns", "mutually-exclusive",

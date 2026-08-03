@@ -150,17 +150,24 @@ class DmtoolMutationSafetyTest {
     }
 
     @Test
-    void allTenRichInputOwnersRejectUnknownKeysBeforeWriting(@TempDir Path dir) throws Exception {
+    void everyRegisteredRichInputOwnerRejectsUnknownKeysBeforeWriting(@TempDir Path dir) throws Exception {
         PackagedDmtool dmtool = new PackagedDmtool(dir);
-        int checked = 0;
-        checked += unknownEditor(dmtool, dir, "rule-add", "subscription.dm.json", "rule", "add", null, null);
-        checked += unknownEditor(dmtool, dir, "computation-add", "subscription.dm.json", "computation", "add", null, null);
-        checked += unknownEditor(dmtool, dir, "computation-add", "subscription-computed.dm.json",
+        Set<String> exercised = new HashSet<>();
+        unknownEditor(dmtool, dir, "rule-add", "subscription.dm.json", "rule", "add", null, null);
+        exercised.add("rule add");
+        unknownEditor(dmtool, dir, "computation-add", "subscription.dm.json", "computation", "add", null, null);
+        exercised.add("computation add");
+        unknownEditor(dmtool, dir, "computation-add", "subscription-computed.dm.json",
                 "computation", "modify", "/Subscription/Billing/EffectiveFeeComp", "--spec");
-        checked += unknownEditor(dmtool, dir, "field-add", "subscription.dm.json", "field", "add", null, null);
-        checked += unknownEditor(dmtool, dir, "field-modify", "subscription.dm.json", "field", "modify", null, null);
-        checked += unknownTypedef(dmtool, dir, false);
-        checked += unknownTypedef(dmtool, dir, true);
+        exercised.add("computation modify");
+        unknownEditor(dmtool, dir, "field-add", "subscription.dm.json", "field", "add", null, null);
+        exercised.add("field add");
+        unknownEditor(dmtool, dir, "field-modify", "subscription.dm.json", "field", "modify", null, null);
+        exercised.add("field modify");
+        unknownTypedef(dmtool, dir, false);
+        exercised.add("typedef add");
+        unknownTypedef(dmtool, dir, true);
+        exercised.add("typedef modify");
 
         Path applyModel = resource(dir.resolve("unknown-apply"), "subscription.dm.json");
         Path apply = dir.resolve("unknown-apply.json");
@@ -169,7 +176,7 @@ class DmtoolMutationSafetyTest {
         Files.writeString(apply, MAPPER.writeValueAsString(List.of(applyOp)));
         assertUnknownLeavesModel(dmtool, applyModel,
                 List.of("-m", applyModel.toString(), "apply", apply.toString(), "--dry-run"));
-        checked++;
+        exercised.add("apply");
 
         Path batchModel = resource(dir.resolve("unknown-batch"), "subscription.dm.json");
         Path fieldSpec = dir.resolve("unknown-batch-field.json");
@@ -180,7 +187,7 @@ class DmtoolMutationSafetyTest {
                 + MAPPER.writeValueAsString(fieldSpec.toString()) + "],\"typo\":true}]");
         assertUnknownLeavesModel(dmtool, batchModel,
                 List.of("-m", batchModel.toString(), "batch", batch.toString()));
-        checked++;
+        exercised.add("batch");
 
         Path profileModel = resource(dir.resolve("unknown-profile"), "order-ruled.dm.json");
         Path profile = dir.resolve("unknown-profile.json");
@@ -192,11 +199,183 @@ class DmtoolMutationSafetyTest {
         Path output = dir.resolve("must-not-exist.dm.json");
         PackagedDmtool.Result rejected = dmtool.run("profile", "synthesize", "--input", profile.toString(), "-o",
                 output.toString());
-        assertNotEquals(0, rejected.code(), rejected::out);
+        assertEquals(1, rejected.code(), rejected::out);
+        JsonNode profileRejection = MAPPER.readTree(rejected.out());
+        assertEquals("rejected", profileRejection.path("outcome").asText(), rejected::out);
+        assertEquals("RK_UNKNOWN_ARG", profileRejection.path("diagnostics").get(0).path("code").asText(),
+                rejected::out);
         assertFalse(Files.exists(output), "unknown profile key must fail before the artifact write");
-        checked++;
+        exercised.add("profile synthesize");
 
-        assertEquals(10, checked);
+        Set<String> registered = new HashSet<>(SchemaCommand.INPUT_OPS.keySet());
+        registered.addAll(SchemaCommand.FRAMES);
+        assertEquals(registered, exercised,
+                () -> "rich-input safety cases and registries differ; missing=" + difference(registered, exercised)
+                        + ", stale=" + difference(exercised, registered));
+    }
+
+    @Test
+    void everyDeclaredRollbackOrPartialProfileHasAPackagedLaterFailureDiscriminator(@TempDir Path dir)
+            throws Exception {
+        PackagedDmtool dmtool = new PackagedDmtool(dir);
+        Set<String> exercised = new HashSet<>();
+
+        Path applyDir = Files.createDirectories(dir.resolve("later-apply"));
+        Path applyModel = resource(applyDir, "order-ruled.dm.json");
+        String applyBefore = Files.readString(applyModel);
+        Path applyOps = applyDir.resolve("ops.json");
+        Files.writeString(applyOps, """
+                [{"target":"field","op":"add","group":"/Order","name":"Discount","kind":"NUMBER"},
+                 {"target":"field","op":"add","group":"/Order/NoSuchGroup","name":"X","kind":"NUMBER"}]
+                """);
+        PackagedDmtool.Result apply = dmtool.run("-m", applyModel.toString(), "apply", applyOps.toString());
+        assertEquals(1, apply.code(), apply::out);
+        assertFalse(MAPPER.readTree(apply.out()).path("data").path("committed").asBoolean(), apply::out);
+        assertEquals(applyBefore, Files.readString(applyModel), "apply rolls back the successful first child");
+        assertModelChecks(dmtool, applyModel);
+        exercised.add("apply#commit");
+
+        Path batchDir = Files.createDirectories(dir.resolve("later-batch"));
+        Path batchModel = resource(batchDir, "subscription.dm.json");
+        Path batchSpec = batchDir.resolve("field.json");
+        Files.writeString(batchSpec,
+                "{\"group\":\"/Subscription/Billing\",\"name\":\"BatchCommitted\",\"kind\":\"STRING\"}");
+        Path batchOps = batchDir.resolve("ops.json");
+        String quotedBatchSpec = MAPPER.writeValueAsString(batchSpec.toString());
+        Files.writeString(batchOps, "[{\"verb\":\"field\",\"args\":[\"add\"," + quotedBatchSpec
+                + "]},{\"verb\":\"field\",\"args\":[\"add\"," + quotedBatchSpec + "]}]");
+        PackagedDmtool.Result batch = dmtool.run("-m", batchModel.toString(), "batch", batchOps.toString());
+        assertEquals(1, batch.code(), batch::out);
+        assertFalse(MAPPER.readTree(batch.out()).path("ok").asBoolean(), batch::out);
+        assertEquals(0, dmtool.run("-m", batchModel.toString(), "field", "read",
+                "/Subscription/Billing/BatchCommitted").code(), "batch preserves the successful first child");
+        assertModelChecks(dmtool, batchModel);
+        exercised.add("batch#dispatch");
+
+        Path extractDir = Files.createDirectories(dir.resolve("later-extract"));
+        Path extractModel = extractDir.resolve("order.dm.json");
+        String extractSource = io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft.named("order")
+                .locale("en_US")
+                .rootGroup("Order", order -> order.group("Shipping",
+                        shipping -> shipping.field("Zip", io.github.mbackschat.a12.dm.modelkit.FieldKind.STRING)))
+                .build().toJson();
+        Files.writeString(extractModel, extractSource);
+        Path blocked = extractDir.resolve("blocked.dm.json");
+        Files.createDirectory(blocked);
+        PackagedDmtool.Result extract = dmtool.run("-m", extractModel.toString(), "group", "extract",
+                "/Order/Shipping", "--reference", "shipping", "-o", blocked.toString());
+        assertEquals(2, extract.code(), extract::err);
+        Path extracted = extractDir.resolve("shipping.dm.json");
+        assertTrue(Files.isRegularFile(extracted), "the first submodel write remains after the later base write");
+        assertEquals(extractSource, Files.readString(extractModel));
+        assertModelChecks(dmtool, extracted);
+        assertModelChecks(dmtool, extractModel);
+        exercised.add("group extract#commit");
+
+        Path exportDir = Files.createDirectories(dir.resolve("later-export"));
+        Path exportModel = resource(exportDir, "order-ruled.dm.json");
+        Path artifacts = exportDir.resolve("artifacts");
+        Files.createDirectories(artifacts.resolve("groups.jsonl"));
+        PackagedDmtool.Result export = dmtool.run("-m", exportModel.toString(), "export", "--out-dir",
+                artifacts.toString());
+        assertEquals(2, export.code(), export::err);
+        assertTrue(Files.isRegularFile(artifacts.resolve("fields.jsonl")),
+                "the first export artifact remains after the second write fails");
+        assertModelChecks(dmtool, exportModel);
+        exercised.add("export#directory");
+
+        Path importDir = Files.createDirectories(dir.resolve("later-import"));
+        Path schema = importDir.resolve("bundle.openapi.json");
+        Files.writeString(schema, """
+                {"openapi":"3.1.0","info":{"title":"Bundle","version":"1"},"paths":{},
+                 "components":{"schemas":{"A":{"type":"object","properties":{"a":{"type":"string"}}},
+                 "B":{"type":"object","properties":{"b":{"type":"string"}}}}}}
+                """);
+        Path bundle = importDir.resolve("bundle");
+        Files.createDirectories(bundle.resolve("B.dm.json"));
+        PackagedDmtool.Result imported = dmtool.run("model", "import-jsonschema", "--schema", schema.toString(),
+                "--out-dir", bundle.toString());
+        assertEquals(2, imported.code(), imported::err);
+        assertTrue(Files.isRegularFile(bundle.resolve("A.dm.json")),
+                "the first imported component remains after the later component fails");
+        assertModelChecks(dmtool, bundle.resolve("A.dm.json"));
+        exercised.add("model import-jsonschema#bundle");
+
+        JsonNode manifest = MAPPER.readTree(dmtool.run("manifest").out());
+        Set<String> declared = profileKeys(manifest, profile -> Set.of("ROLLBACK", "PARTIAL")
+                .contains(profile.path("failurePersistence").asText()));
+        assertEquals(declared, exercised,
+                () -> "later-failure cases and live persistence registry differ; missing="
+                        + difference(declared, exercised) + ", stale=" + difference(exercised, declared));
+        assertEquals(5, exercised.size());
+    }
+
+    @Test
+    void aMissingRequiredKeyInALaterBatchFrameItemWritesNothing(@TempDir Path dir) throws Exception {
+        PackagedDmtool dmtool = new PackagedDmtool(dir);
+        Path caseDir = Files.createDirectories(dir.resolve("required-batch"));
+        Path model = resource(caseDir, "subscription.dm.json");
+        String before = Files.readString(model);
+        Path spec = caseDir.resolve("field.json");
+        Files.writeString(spec,
+                "{\"group\":\"/Subscription/Billing\",\"name\":\"MustNotAppear\",\"kind\":\"STRING\"}");
+        Path ops = caseDir.resolve("ops.json");
+        Files.writeString(ops, "[{\"verb\":\"field\",\"args\":[\"add\","
+                + MAPPER.writeValueAsString(spec.toString()) + "]},{}]");
+
+        PackagedDmtool.Result result = dmtool.run("-m", model.toString(), "batch", ops.toString());
+
+        assertEquals(1, result.code(), result::out);
+        assertEquals("RK_INVALID_VALUE",
+                MAPPER.readTree(result.out()).path("diagnostics").get(0).path("code").asText(), result::out);
+        assertEquals(before, Files.readString(model), "the complete frame is validated before child zero");
+        assertModelChecks(dmtool, model);
+    }
+
+    @Test
+    void profileSynthesisRejectsANestedDynamicMapRequirementBeforeWriting(@TempDir Path dir) throws Exception {
+        PackagedDmtool dmtool = new PackagedDmtool(dir);
+        Path model = resource(dir.resolve("profile-required"), "subscription.dm.json");
+        PackagedDmtool.Result extracted = dmtool.run("-m", model.toString(), "profile", "extract");
+        assertEquals(0, extracted.code(), extracted::err);
+        ObjectNode envelope = (ObjectNode) MAPPER.readTree(extracted.out());
+        ObjectNode byDepth = (ObjectNode) envelope.at("/data/structure/repeatability/chainProductByDepth");
+        assertFalse(byDepth.isEmpty(), extracted::out);
+        ((ObjectNode) byDepth.elements().next()).remove("buckets");
+        Path profile = dir.resolve("invalid-required.profile.json");
+        Files.writeString(profile, envelope.toPrettyString());
+        Path output = dir.resolve("must-not-exist-required.dm.json");
+
+        PackagedDmtool.Result rejected = dmtool.run("profile", "synthesize", "--input", profile.toString(),
+                "-o", output.toString());
+
+        assertEquals(1, rejected.code(), rejected::err);
+        JsonNode result = MAPPER.readTree(rejected.out());
+        assertEquals("rejected", result.path("outcome").asText(), rejected::out);
+        assertEquals("RK_INVALID_VALUE", result.path("diagnostics").get(0).path("code").asText(), rejected::out);
+        assertTrue(result.path("diagnostics").get(0).path("where").path("arg").asText().endsWith("/buckets"),
+                rejected::out);
+        assertFalse(Files.exists(output), "schema-invalid profile reached the artifact write");
+    }
+
+    @Test
+    void optionalNullValuesAreRejectedBeforeDispatchOrWriting(@TempDir Path dir) throws Exception {
+        PackagedDmtool dmtool = new PackagedDmtool(dir);
+        Path caseDir = Files.createDirectories(dir.resolve("optional-null"));
+        Path model = resource(caseDir, "subscription.dm.json");
+        String before = Files.readString(model);
+        Path field = caseDir.resolve("field.json");
+        Files.writeString(field,
+                "{\"group\":\"/Subscription/Billing\",\"name\":\"NullGlobal\",\"kind\":\"STRING\",\"global\":null}");
+
+        PackagedDmtool.Result fieldResult = dmtool.run("-m", model.toString(), "field", "add", field.toString());
+        assertSchemaRejection(fieldResult, "global");
+        assertEquals(before, Files.readString(model), "schema-invalid optional null reached the model write");
+
+        Path batch = caseDir.resolve("batch.json");
+        Files.writeString(batch, "[{\"verb\":\"manifest\",\"args\":null}]");
+        PackagedDmtool.Result batchResult = dmtool.run("batch", batch.toString());
+        assertSchemaRejection(batchResult, "[]/args");
     }
 
     private static void runPublishedPreview(PackagedDmtool dmtool, String verb, JsonNode example, Path root,
@@ -274,7 +453,7 @@ class DmtoolMutationSafetyTest {
                                 "earlier=/Order/OrderDate", "--arg", "later=/Order/DeliveryDate", "--apply", "--dry-run")));
     }
 
-    private static int unknownEditor(PackagedDmtool dmtool, Path dir, String schema, String modelResource,
+    private static void unknownEditor(PackagedDmtool dmtool, Path dir, String schema, String modelResource,
             String target, String op, String positional, String specFlag) throws Exception {
         Path caseDir = Files.createDirectories(dir.resolve("unknown-" + target + "-" + op));
         Path model = resource(caseDir, modelResource);
@@ -288,10 +467,9 @@ class DmtoolMutationSafetyTest {
         args.add(spec.toString());
         args.add("--dry-run");
         assertUnknownLeavesModel(dmtool, model, args);
-        return 1;
     }
 
-    private static int unknownTypedef(PackagedDmtool dmtool, Path dir, boolean modify) throws Exception {
+    private static void unknownTypedef(PackagedDmtool dmtool, Path dir, boolean modify) throws Exception {
         Path caseDir = Files.createDirectories(dir.resolve("unknown-typedef-" + (modify ? "modify" : "add")));
         Path model = resource(caseDir, modify ? "typedefs.dm.json" : "subscription.dm.json");
         ObjectNode bad = (ObjectNode) schemaExample("typedef-add", 0).deepCopy();
@@ -302,7 +480,6 @@ class DmtoolMutationSafetyTest {
         assertUnknownLeavesModel(dmtool, model,
                 List.of("-m", model.toString(), "typedef", modify ? "modify" : "add", "--id", id,
                         spec.toString(), "--dry-run"));
-        return 1;
     }
 
     private static void assertUnknownLeavesModel(PackagedDmtool dmtool, Path model, List<String> args)
@@ -314,6 +491,15 @@ class DmtoolMutationSafetyTest {
         assertEquals("rejected", envelope.path("outcome").asText(), rejected::out);
         assertTrue(envelope.toString().contains("RK_UNKNOWN_ARG"), rejected::out);
         assertEquals(before, Files.readString(model), "unknown key reached the write path");
+    }
+
+    private static void assertSchemaRejection(PackagedDmtool.Result rejected, String arg) throws Exception {
+        assertEquals(1, rejected.code(), () -> rejected.err() + rejected.out());
+        JsonNode envelope = MAPPER.readTree(rejected.out());
+        assertEquals("rejected", envelope.path("outcome").asText(), rejected::out);
+        assertEquals("RK_INVALID_VALUE", envelope.path("diagnostics").get(0).path("code").asText(), rejected::out);
+        assertEquals(arg, envelope.path("diagnostics").get(0).path("where").path("arg").asText(), rejected::out);
+        assertFalse(envelope.path("written").asBoolean(), rejected::out);
     }
 
     private static void assertPreview(PackagedDmtool.Result result, String label) throws Exception {

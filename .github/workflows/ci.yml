@@ -78,7 +78,7 @@ jobs:
         working-directory: a12-dmkits
         env:
           JAVA_HOME: ${{ env.JAVA_HOME_21_X64 }}
-        run: ./gradlew --no-daemon test :adapter:test :cli:test :verifyKitPurity :noBackendTest -PrunFuzz
+        run: ./gradlew --no-daemon test :adapter:test :cli:test :cli:publicContractTest :verifyKitPurity :noBackendTest -PrunFuzz
 
       # Both agent plugins (Claude Code, Codex) bundle COPIES of the single-source assets — the skills,
       # installer, and release-asset manifest — synced by scripts/sync-plugin-assets.sh. Fail loudly if any

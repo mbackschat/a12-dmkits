@@ -111,11 +111,13 @@ final class ManifestCommand extends BaseCommand {
         } else {
             v.put("op", name);
         }
-        // The schema pointer: every directional-contract op is discoverable via `schema <name>` (including an
-        // explicitly described artifact op). CONTRACT_EXEMPT verbs carry none.
+        // The directional schema pointer. CONTRACT_EXEMPT verbs omit this pointer but still carry the separate
+        // operationalSchema pointer below, so no command is absent from the table-owned contract surface.
         if (!SchemaCommand.CONTRACT_EXEMPT.containsKey(name)) {
             v.put("schema", name);
         }
+        // Every leaf has an operational contract even when its directional I/O shape is deliberately exempt.
+        v.put("operationalSchema", name);
         v.put("description", String.join(" ", cmd.usageMessage().description()));
         // a worked demonstration — the verb IN ACTION ({intent, command}), so an agent learns it from one read
         JsonNode example = EXAMPLES.get(name);

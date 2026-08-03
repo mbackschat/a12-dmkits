@@ -72,13 +72,7 @@ public final class Cli {
         // re-rendered as human-readable text; non-envelope output (catalogs, artifacts, --help, errors)
         // passes through unchanged (TextRenderer is gated). JSON is the default. The flag is detected here,
         // before execute, to choose the output sink — it is also a self-describing @Option on RootCommand.
-        boolean textMode = false;
-        for (String a : args) {
-            if (a.equals("--text")) {
-                textMode = true;
-                break;
-            }
-        }
+        boolean textMode = textMode(args);
         StringWriter textBuf = textMode ? new StringWriter() : null;
         PrintWriter outW = new PrintWriter(textMode ? textBuf : new AppendableWriter(out), true);
         // Built OUTSIDE the try so the catch below can read its ParseResult to label the error envelope.
@@ -177,6 +171,19 @@ public final class Cli {
                 realOut.flush();
             }
         }
+    }
+
+    /** Resolve the inherited boolean before execution so stdout capture follows picocli's accepted spellings. */
+    private static boolean textMode(String[] args) {
+        boolean enabled = false;
+        for (String arg : args) {
+            if (arg.equals("--text")) {
+                enabled = true;
+            } else if (arg.startsWith("--text=")) {
+                enabled = Boolean.parseBoolean(arg.substring("--text=".length()));
+            }
+        }
+        return enabled;
     }
 
     /** Execute one configured command tree while containing Errors that picocli's Exception handler cannot catch. */

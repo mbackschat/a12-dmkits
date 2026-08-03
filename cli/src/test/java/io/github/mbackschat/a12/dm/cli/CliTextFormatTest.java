@@ -49,6 +49,17 @@ class CliTextFormatTest {
     }
 
     @Test
+    void explicitBooleanValuesUseTheirParsedMeaning(@TempDir Path dir) throws IOException {
+        Path model = CliTestSupport.modelWithRule(dir);
+
+        String enabled = CliTestSupport.run("-m", model.toString(), "model", "check", "--text=true").out();
+        String disabled = CliTestSupport.run("-m", model.toString(), "model", "check", "--text=false").out();
+
+        assertFalse(enabled.stripLeading().startsWith("{"), () -> "explicit true enables the declared view: " + enabled);
+        assertTrue(disabled.stripLeading().startsWith("{"), () -> "explicit false keeps the primary JSON: " + disabled);
+    }
+
+    @Test
     void textFlagIsSelfDescribing() {
         CliTestSupport.Result res = CliTestSupport.run("--help");
         assertTrue(res.out().contains("--text"), () -> "--text is discoverable in --help: " + res.out());

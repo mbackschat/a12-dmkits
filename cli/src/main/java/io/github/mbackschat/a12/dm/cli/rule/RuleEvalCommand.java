@@ -93,13 +93,14 @@ final class RuleEvalCommand extends BaseCommand {
             ObjectNode data = InterpreterEngine.ruleTestData(interpJson, documentJson, localeTag, rule,
                     customSupport.predefinedTypes(), customSupport.customConditions(),
                     customSupport.customFieldTypes(), !noComputations);
-            ResultEnvelope refusal = customSupport.strictRefusal(resultIdentity(), data);
+            RuntimeEvidence evidence = RuntimeEvidence.interpreter();
+            ResultEnvelope refusal = customSupport.strictRefusal(resultIdentity(), data, evidence);
             if (refusal != null) {
                 out().print(refusal.toJsonString());
                 return refusal.exitCode();
             }
             ResultEnvelope env = ResultEnvelope.runtimeObservation(resultIdentity(), summary(data), data,
-                    RuntimeEvidence.interpreter());
+                    evidence);
             out().print(env.toJsonString());
             return env.exitCode();
         } catch (UnsupportedModelTimeZoneException e) {

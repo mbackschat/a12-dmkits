@@ -357,6 +357,7 @@ tasks.register('publicContractTest', Test) {
         includeTestsMatching 'io.github.mbackschat.a12.dm.cli.DmtoolPublicContractTest'
         includeTestsMatching 'io.github.mbackschat.a12.dm.cli.DmtoolMutationSafetyTest'
         includeTestsMatching 'io.github.mbackschat.a12.dm.cli.PackagedDmtoolJourneyTest'
+        includeTestsMatching 'io.github.mbackschat.a12.dm.cli.CommandRouteEquivalenceTest'
     }
 }
 tasks.named('check') { dependsOn 'publicContractTest' }
@@ -390,6 +391,7 @@ tasks.named('test') {
         excludeTestsMatching 'io.github.mbackschat.a12.dm.cli.DmtoolPublicContractTest'
         excludeTestsMatching 'io.github.mbackschat.a12.dm.cli.DmtoolMutationSafetyTest'
         excludeTestsMatching 'io.github.mbackschat.a12.dm.cli.PackagedDmtoolJourneyTest'
+        excludeTestsMatching 'io.github.mbackschat.a12.dm.cli.CommandRouteEquivalenceTest'
         // During tracing this one assertion necessarily reads the PRE-CAPTURE committed metadata. Exclude
         // only it; capture-native-config.sh copies the generated file and runs the class immediately after.
         // Every other test remains mandatory, so a real red suite cannot be swallowed by the capture.

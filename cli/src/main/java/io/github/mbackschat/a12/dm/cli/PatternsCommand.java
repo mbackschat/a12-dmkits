@@ -94,6 +94,10 @@ final class PatternsCommand extends BaseCommand {
     @Override
     public Integer call() {
         if (id == null) {
+            if (generationOptionMatched()) {
+                return fail("generation options require <patternId>; use `dmtool patterns` without them to list "
+                        + "the catalog");
+            }
             return emitQuery(CATALOG.size() + " validation idiom(s)", list());
         }
         PatternEntry pattern = CATALOG.byId(id).orElse(null);
@@ -104,9 +108,22 @@ final class PatternsCommand extends BaseCommand {
                             + CATALOG.entries().stream().map(PatternEntry::id).toList());
         }
         if (args.isEmpty()) {
+            if (generationOptionMatched()) {
+                return fail("generation options require at least one --arg <name=value>; omit them to read the "
+                        + "pattern detail");
+            }
             return emitQuery("read validation idiom " + pattern.id(), detail(pattern));
         }
+        if (!apply && (optionMatched("--dry-run") || optionMatched("--output"))) {
+            return fail("--dry-run and -o/--output require --apply");
+        }
         return scaffold(pattern);
+    }
+
+    /** Whether the caller selected any option belonging to scaffold/apply mode, including an explicit false. */
+    private boolean generationOptionMatched() {
+        return List.of("--arg", "--code", "--message", "--name", "--apply", "--dry-run", "--output")
+                .stream().anyMatch(this::optionMatched);
     }
 
     /** List mode — every idiom, compact. */

@@ -62,6 +62,9 @@ final class ModelReportCommand extends BaseCommand {
 
     @Override
     public Integer call() {
+        if (!tree && optionMatched("--root", "--depth", "--include")) {
+            return fail("--root, --depth, and --include require --tree");
+        }
         String model = model();
         if (model == null) {
             return fail("pass -m <model.json> (before or after the verb)");
@@ -71,9 +74,6 @@ final class ModelReportCommand extends BaseCommand {
             json = Files.readString(Path.of(model));
         } catch (IOException e) {
             return fail("cannot read model: " + e.getMessage());
-        }
-        if (!tree && (root != null || depth != null || !includes.isEmpty())) {
-            return fail("--root, --depth, and --include require --tree");
         }
         try {
             ModelResolver resolver = workspace.resolverFor(model);

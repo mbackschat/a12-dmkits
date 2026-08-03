@@ -76,6 +76,22 @@ class SchemaTranscodeVerbsTest {
         assertTrue(env.path("written").asBoolean(), () -> "written:true: " + res.out());
     }
 
+    @Test
+    void bundleAndSingleFileDestinationsAreMutuallyExclusive(@TempDir Path dir) throws Exception {
+        Path schema = dir.resolve("order.schema.json");
+        Files.writeString(schema, ORDER_SCHEMA);
+        Path bundle = dir.resolve("bundle");
+        Path output = dir.resolve("ignored.dm.json");
+
+        CliTestSupport.Result result = CliTestSupport.run("model", "import-jsonschema", "--schema",
+                schema.toString(), "--out-dir", bundle.toString(), "-o", output.toString());
+
+        assertEquals(2, result.code());
+        assertTrue(result.err().contains("mutually exclusive"), result::err);
+        assertFalse(Files.exists(bundle));
+        assertFalse(Files.exists(output));
+    }
+
     private static final String NAME_AND_PRICE = """
             { "title": "Pricing", "type": "object",
               "properties": { "name": { "type": "string" }, "price": { "type": "number" } } }

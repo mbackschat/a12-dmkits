@@ -124,7 +124,7 @@ public final class CustomSupportOptions {
      * fidelity-or-fail. Returns {@code null} when not strict, or when everything was evaluated (proceed with
      * the normal read). The refused envelope keeps the {@code unsupported} list visible in {@code data}.
      */
-    public ResultEnvelope strictRefusal(ResultIdentity identity, ObjectNode data) {
+    public ResultEnvelope strictRefusal(ResultIdentity identity, ObjectNode data, RuntimeEvidence evidence) {
         if (!strictCustom) {
             return null;
         }
@@ -132,10 +132,10 @@ public final class CustomSupportOptions {
         if (unsupported == null || unsupported.isEmpty()) {
             return null;
         }
-        return ResultEnvelope.refused(identity,
+        return ResultEnvelope.runtimeRefused(identity,
                 "--strict-custom: " + unsupported.size() + " construct(s) could not be evaluated (a custom field "
                         + "type with no --predefined-types entry, or a CustomCondition with no impl); supply the "
                         + "missing handler or drop --strict-custom",
-                data, List.of());
+                data, List.of(), evidence);
     }
 }

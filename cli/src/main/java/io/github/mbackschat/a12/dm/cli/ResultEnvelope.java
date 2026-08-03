@@ -297,6 +297,20 @@ public final class ResultEnvelope {
                 .build();
     }
 
+    /**
+     * A refusal reached only after a runtime engine produced an observation. The refusal keeps the same mandatory
+     * engine/version receipt as the successful observation; refusing its result does not make that execution
+     * static or erase which implementation produced the {@code data} payload.
+     */
+    public static ResultEnvelope runtimeRefused(ResultIdentity identity, String summary, JsonNode data,
+            List<Diagnostic> diagnostics, RuntimeEvidence evidence) {
+        return new Draft(Family.REFUSAL, identity, Outcome.REFUSED, summary)
+                .data(data)
+                .diagnostics(diagnostics)
+                .runtimeEvidence(evidence)
+                .build();
+    }
+
     // --- 4. comparison --------------------------------------------------------------------------------
 
     /**
