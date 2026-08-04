@@ -25,7 +25,7 @@
 | **host documentation** — Claude Code plugin reference | plugin packaging (§10), tool-name scoping | labelled *host docs*; not part of MCP |
 | **this repository** — source read, or a dated measurement | every dmtool claim | §4 separates measured from unverified |
 
-**Measurement provenance.** Every dmtool figure below was re-derived **2026-08-04** by running the packaged launcher built from `fba978ba` (no `:cli` source changes between it and this revision) and analysing `manifest`, or by source read at a cited locus. Figures are not carried forward from earlier revisions; the two review rounds found that reused numbers were the dominant defect class.
+**Measurement provenance.** Every dmtool figure below was re-derived **2026-08-04** by running the packaged launcher built from the tree at **`5c0d5f03`** and analysing `manifest`, or by source read at a cited locus. `:cli` sources moved while this revision was being written (`SchemaCommand`, `VersionInfo`, `result.schema.json`), so the figures were re-measured against the current build rather than carried from an earlier one — reused numbers were the dominant defect class in both review rounds, and one figure in the first draft of *this* revision was carried from a reviewer rather than re-derived, which the re-measurement caught.
 
 ---
 
@@ -138,7 +138,7 @@ All figures 2026-08-04, from `manifest` on a dist built from `fba978ba`:
 | verbs `RESULT_ENVELOPE` in **every** profile | **68** |
 | verbs with at least one non-envelope route | **13** — of which **7** also have an envelope route (`model new`, `model expand`, `model import-jsonschema`, `model export-jsonschema`, `profile synthesize`, `workspace list`, `workspace graph`) and **6** never return an envelope (`model seed`, `export`, `schema`, `operators`, `diagnostics`, `manifest`) |
 | verbs carrying more than one distinct `ReturnKind` | **9** — the 7 above plus `export` (`RAW_TEXT`/`EMPTY_STDOUT`) and `schema` (`RAW_TEXT`/`RAW_JSON`), which are mixed without ever being an envelope |
-| `manifest` size, pretty-printed | **273,549 bytes** |
+| `manifest` size, pretty-printed | **273,328 bytes** |
 
 **On the 46 effect-disagreeing verbs.** Two mechanisms account for most of them — a `--dry-run` selector, and an output-flag selector where an absent `-o`/`--output`/`--out-dir` means "print to stdout". **Two verbs use neither:** `patterns` discriminates `READ_ONLY` from `MODEL_WRITE` on the parsed *value* of `--apply`, and `meta` on the presence of any of twelve metadata-write flags (`anySet` versus `noneSet`). Whether every remaining verb uses only the two systematic mechanisms is **not enumerated**, so no universal is claimed here.
 
@@ -169,7 +169,7 @@ The largest read tool in the surface publishes no output schema *solely* because
 | The official Java SDK cannot serve this revision, and carries a dependency we do not want | `mcp` v2.0.0 tracks `2025-11-25`; `mcp-core`'s compile deps include `reactor-core` (§5.2). *Dated 2026-08-02 — re-check before any SDK decision* |
 | `Cli.run` is already a pure per-call entry point | it constructs a fresh `new CommandLine(new RootCommand())` per invocation and writes to passed sinks, so no option state can leak between calls (§5.1) |
 | Reference resolution is already content-first | `ModelResolver` is a `@FunctionalInterface` (`id → DM-JSON`) whose own javadoc names *"a map, a service, a classpath"* as intended sources; `EditSession.read(json, resolver)` and `BoundModel.ofJson(json, resolver)` take JSON strings. Only the CLI layer requires paths |
-| Every verb resolves a machine-readable contract | all 81 `schema <target> <op>` calls succeed. **The emitted shape is not uniform**: there are 15 distinct key sets. An envelope route's richest form is `{op, input, returns, resultSchema, operationalProfiles}` (7 verbs exactly); 29 return it without `input`; others add `data`, `dataSchema`, `docInput`, `verdict`, `notes`, or `artifact`; the directionally exempt form `{op, contract: "operational-only", directionalExemption, operationalProfiles}` holds for 9 verbs; and `apply`/`batch` return a bare JSON Schema with no `op` key at all |
+| Every verb resolves a machine-readable contract | all 81 `schema <target> <op>` calls parse. **The emitted shape is not uniform**: there are **14** distinct key sets. The commonest is `{op, returns, resultSchema, operationalProfiles}` (29 verbs); 17 add `data` + `dataSchema` and 8 add `data` alone; only **7** carry `input`; the directionally exempt form `{op, contract: "operational-only", directionalExemption, operationalProfiles}` holds for **9**; single cases add `verdict`, `docInput`, `notes`, or `artifact`; and `apply`/`batch` return a bare JSON Schema with no `op` key at all. So a consumer must not assume one contract shape |
 
 ### Unverified — settle before building
 
@@ -611,4 +611,5 @@ What was held earlier in this proposal's life and is no longer held. Recorded he
 | "No path components on the wire, so the traversal surface does not exist" | **corrected** | 12 `FILE`-tagged parameters plus positional operands carry caller-supplied paths inside `args` (§9) |
 | `openWorldHint: false` because dmtool "touches local files and nothing external" | **corrected** | It spawns `node` and `git` as local subprocesses; the hint still holds, on the narrower basis that there is no open world of external entities (§7) |
 | Excluded: *"any new CLI verb"* | **corrected** | The `mcp` leaf is itself a new verb, with the standing new-verb obligations (§12) |
-| `manifest` is 94,681 / 118,226 bytes; `resolverFor` is called by ~30 verbs; `emitMutation` serves 33; `skill/SKILL.md` is 152 lines with 19 invocations; `schema` returns one of two shapes | **all corrected** | 273,549 bytes; ~59 verbs; 36 leaves; 167 lines with 20 invocations; 15 distinct key sets. Every figure in this revision is re-derived rather than carried forward — reused numbers were the dominant defect class in both review rounds |
+| `manifest` is 94,681 / 118,226 bytes; `resolverFor` is called by ~30 verbs; `emitMutation` serves 33; `skill/SKILL.md` is 152 lines with 19 invocations; `schema` returns one of two shapes | **all corrected** | 273,328 bytes; ~59 verbs; 36 leaves; 167 lines with 20 invocations; 14 distinct key sets |
+| *"15 distinct key sets"*, published in this revision's first draft | **corrected to 14** | Taken from a reviewer rather than re-derived — the one figure in this revision that repeated the defect class it documents. Caught by re-measuring after `:cli` sources moved mid-revision |
