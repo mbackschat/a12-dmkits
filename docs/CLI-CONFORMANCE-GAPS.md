@@ -4,7 +4,7 @@
 >
 > **Lifecycle.** Same `-GAPS` discipline as its siblings ([`DEV-API-GAPS.md`](DEV-API-GAPS.md), [`INTERPRETER-GAPS.md`](INTERPRETER-GAPS.md), …): a gap lives here only while open — §1 open, §2 deferred (with re-open triggers), §3 out of scope. A shipped gap is **deleted**, not kept as a "shipped" list (git is the *what/when*; the graduated `CLI-CONFORMANCE-SPEC` matrix column / `CLI-SPEC` section is the *why*).
 >
-> **Current state.** One open gap (`model compute`'s undocumented value form, §1). The 2026-08-03 operational-contract gap graduated into [`CLI-CONFORMANCE-SPEC`](CLI-CONFORMANCE-SPEC.md), [`CLI-SPEC`](CLI-SPEC.md), and the packaged public-contract suite. The earlier 2026-07-31 property-shaped conformance gaps graduated into [`CLI-CONFORMANCE-SPEC`](CLI-CONFORMANCE-SPEC.md), [`EVAL-SPEC`](EVAL-SPEC.md), and [`PROBE-SPEC`](PROBE-SPEC.md).
+> **Current state.** No open conformance gaps. The 2026-08-04 `model compute` value-form gap graduated into `compute-doc.schema.json`'s published `value` contract (locked by `ComputedValueFormTest`). The 2026-08-03 operational-contract gap graduated into [`CLI-CONFORMANCE-SPEC`](CLI-CONFORMANCE-SPEC.md), [`CLI-SPEC`](CLI-SPEC.md), and the packaged public-contract suite. The earlier 2026-07-31 property-shaped conformance gaps graduated into [`CLI-CONFORMANCE-SPEC`](CLI-CONFORMANCE-SPEC.md), [`EVAL-SPEC`](EVAL-SPEC.md), and [`PROBE-SPEC`](PROBE-SPEC.md).
 >
 > **Provenance.** A 2026-06-28 review of dmtool against a general "CLI tools for LLM agents" best-practices note found that dmtool already meets or beats ~80% of it — JSON-default output, a picocli-**derived** manifest that can't drift, the result envelope, the `refused`/referrers safety gate, the exit-code taxonomy, CI-executed examples. The rows below are the residual deltas, and — in §2/§3 — the ones we considered and are **not** taking, each with a re-open trigger so the decision carries its own expiry.
 
@@ -12,7 +12,7 @@
 
 ## 1. Open
 
-- **CG7 — `model compute`'s `value` publishes no form contract.** *(Found 2026-08-04 while sweeping the class behind the `schema result` address gap: an output-FORM fact a consumer needs, stated nowhere the consumer meets the value.)* `compute-doc.schema.json` describes `value` only as "the computed value", so a consumer reading `"250"` or `"0.5"` cannot tell what the string's scale means. Measured on the `subscription-computed` fixture (kernel 30.8.1 / dmtool 0.11.1): `BaseFee` `250.00` → `EffectiveFee` `"250"`, `250` → `"250"`, `1e3` → `"1000"`, `0.5` → `"0.5"` — a plain-form decimal (never exponent notation), whose trailing zeros follow the **target** field's declared minimum fraction digits rather than the operand's (the IF92 store path), which is exactly the fact a reader would otherwise guess wrong. **Not folded into the address fix**: a precise statement needs the min-frac/scale matrix measured across declared configurations, and an imprecise one about number form is worse than none (CLAUDE.md's number-stringification rule exists because that went wrong once). **Closes when** `value` carries the measured form contract, locked the way `A12NumberPlainFormTest` locks the lexical plain form.
+_None open._
 
 ## 2. Deferred — with re-open triggers
 
