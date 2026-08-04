@@ -18,6 +18,7 @@
 | target `2026-07-28` **only** — no `2025-11-25` fallback; anything below it is **refused with a corrective diagnostic**, never partly served (§5.3) | 2026-08-04 |
 | **zero new dependencies** — no MCP SDK (none implements this revision), no JSON-RPC library, no schema validator; Jackson tree plus the JDK, both already in the binary (§5.2) | 2026-08-04 |
 | a later SDK is confined to **one binding class**, prepared by three things the design wants anyway and by nothing else — no second implementation, no factory, no MCP-shaped types (§5.4) | 2026-08-04 |
+| the tool surface is the **joint partition of `Effect` × `ReturnKind`** inside each target — 30 tools, both published facts truthful everywhere they can be; a verb is never changed to make a tool eligible (§6) | 2026-08-04 |
 
 **Evidence basis — four source classes, deliberately not conflated:**
 
@@ -156,12 +157,12 @@ All figures 2026-08-04, from `manifest` on a dist built from `fba978ba`:
 | `structuredContent` | the result envelope | the **68** verbs whose every profile returns `RESULT_ENVELOPE` |
 | `content[0].text` | the `--text` rendering of that envelope | the same 68 |
 | tool-execution error (`isError: true`) | `rejected` / `refused` / `error` outcomes with their diagnostics | the same 68 |
-| `outputSchema` ← `result.schema.json` | the published result schema | **54 verbs** — fewer than 68, because `outputSchema` is declared **per `Tool`**, not per call |
-| `readOnlyHint` ← `Effect.READ_ONLY` | the operational profile | derived per tool; see §7 |
+| `outputSchema` ← `result.schema.json` | the published result schema | **all 68**, under §6's joint partition — the 13 remaining verbs are ineligible under any grouping |
+| `readOnlyHint` ← `Effect.READ_ONLY` | the operational profile | derived per tool; all **34** always-read-only verbs are covered (§7) |
 
-**The `outputSchema` shortfall is a real design tension, not a rounding.** MCP carries one `outputSchema` per `Tool`, and the specification requires that "if an output schema is provided, servers MUST provide structured results that conform to this schema." So a tool may declare it only when *every* profile of *every* op it exposes returns an envelope. Under §6's grouping, **6 of 26 tools must omit it** — `dm.model.read`, `dm.model.edit`, `dm.profile.edit`, `dm.workspace`, `dm.catalog`, `dm.export` — which strips it from **14 otherwise-eligible verbs**: `model check`, `model compute`, `model describe`, `model diff`, `model eval`, `model info`, `model normalize`, `model read`, `model rename`, `model report`, `model usage`, `profile extract`, `workspace check`, `workspace roles`.
+**Why `outputSchema` forces the grouping, and how it was resolved.** MCP carries one `outputSchema` per `Tool`, and the specification requires that "if an output schema is provided, servers MUST provide structured results that conform to this schema." So a tool may declare it only when *every* profile of *every* op it exposes returns an envelope. An `Effect`-only grouping therefore left **6 of 26 tools** unable to declare it, stripping it from **14 otherwise-eligible verbs** — the largest read tool in the surface losing it *solely* because `model seed` (`RAW_JSON`-only) sat in it.
 
-The largest read tool in the surface publishes no output schema *solely* because `model seed` (`RAW_JSON`-only) sits in it. The deeper point: **§6 partitions on `Effect` and this rule needs a partition on `ReturnKind`, and one grouping cannot satisfy both.** §15 Q2 carries it as an input to the tool-shape decision.
+The resolution was to stop treating the two hints as competing for one partition: `Effect` and `ReturnKind` are **independent axes**, and partitioning on both recovers every fact on both, at four extra tool definitions. §6 records the decision and the measurement; the 13 verbs still ineligible are ineligible under *every* grouping, 9 of them because they mix return kinds within a single op.
 
 ### Also proven
 
@@ -258,42 +259,69 @@ Three consequences of stdio framing (§2) shape the rest:
 
 **Conformance testing, stated accurately.** The official **MCP Inspector** CLI connects to a server, invokes the single method named by `--method`, prints the result, and exits. It is a per-method smoke tool with usable exit codes and documented CI recipes — worth wiring, and it will catch a broken frame or a missing method. It is **not** a conformance suite: it does not enumerate the revision's MUSTs, nor validate `_meta` requiredness, cacheable-result obligations, header rules, or error-code allocation. So: *smoke-tested per method in CI, plus hand-written assertions for the MUSTs we implement* — not "provably conformant."
 
-## 6. The tool surface — split by effect, not only by target
+## 6. The tool surface — the partition of the two facts MCP can carry
 
-**The measured cost of target-shaped grouping.** 34 of 81 verbs are `READ_ONLY` in every profile. Grouped by target alone, only **three** tools (`dm.workspace`, `dm.where-used`, `dm.catalog`) are wholly read-only, so `readOnlyHint: true` could be stated on 3 tools covering 9 verbs — and **25 read-only verbs would lose a fact the tool now publishes about them**. It also bundles approval: one grant of `dm.rule` would span `rule read` and `rule remove`.
+**Owner decision, 2026-08-04 (§15 Q2): partition on `Effect` *and* `ReturnKind` jointly — 30 tools.** MCP lets a tool carry exactly two facts about what it does: `readOnlyHint`, which is true only if every op is read-only, and `outputSchema`, which may be declared only if every op always returns a conforming structured result. Both are **per-`Tool`**, so any tool spanning ops that disagree must drop the fact. That makes the correct grouping not a matter of taste: **it is the partition of the ops by those two properties**, inside each target. A coarser grouping must lie about one fact; a finer one adds definitions without adding truth.
 
-**Splitting each target by effect fixes both, and the partition is derived from published `Effect` rather than chosen.** Nine targets have both read-only and mutating ops; `workspace` has only read-only ones.
+**Measured against the live tree.** 34 of 81 verbs are `READ_ONLY` in every profile; 68 are `RESULT_ENVELOPE` in every profile. Grouping by **target alone** yields 17 tools with only **three** wholly read-only (`dm.workspace`, `dm.where-used`, `dm.catalog`) — 25 read-only verbs lose a published fact, and one grant of `dm.rule` would span `rule read` and `rule remove`. Splitting by **effect only** yields 26 tools that recover every read-only hint but strip `outputSchema` from 14 otherwise-eligible verbs. The joint partition yields **30**, and loses nothing on either axis.
 
-| tool | ops | `readOnlyHint` |
+| | target only | effect only | **joint (decided)** |
+|---|---|---|---|
+| tools | 17 | 26 | **30** |
+| read-only tools | 3 | 12 | **14** |
+| verbs under a read-only tool | 9 | 34 | **34** |
+| `outputSchema`-eligible tools | — | 20 | **24** |
+| verbs keeping `outputSchema` | — | 54 | **68** |
+
+68 is the ceiling, not a compromise: the other 13 verbs cannot be rescued by *any* grouping. **9 mix return kinds within themselves** (`model new`, `model expand`, `model import-jsonschema`, `model export-jsonschema`, `profile synthesize`, `export`, `schema`, `workspace list`, `workspace graph`), and one op cannot be split across two tools; the remaining 4 are the catalog verbs, which never return an envelope at all.
+
+**The naming rule is derived, not chosen.** Each tool is one cell of *(target × effect-class × return-class)*, and the suffix names the cell:
+
+| cell | suffix | meaning to a caller |
 |---|---|---|
-| `dm.model.read` | check, compute, describe, diff, eval, info, read, report, seed, usage | **true** |
-| `dm.model.edit` | new, rename, normalize, expand, import-jsonschema, export-jsonschema | false |
-| `dm.rule.read` | check, read, explain, deps, format, eval | **true** |
-| `dm.rule.edit` | add, modify, remove, rename | false |
-| `dm.computation.read` | read, explain, format | **true** |
-| `dm.computation.edit` | add, modify, remove | false |
-| `dm.field.read` | read | **true** |
-| `dm.field.edit` | add, modify, remove, rename, move | false |
-| `dm.group.read` | read | **true** |
-| `dm.group.edit` | add, multiselect, attachment, modify, remove, rename, move, extract | false |
-| `dm.typedef.read` | read | **true** |
-| `dm.typedef.edit` | add, modify, remove, rename, extract, inline, import, unimport | false |
-| `dm.include.read` | read | **true** |
-| `dm.include.edit` | add, set-reference, rename, remove, inline | false |
-| `dm.config.read` | read | **true** |
-| `dm.config.edit` | modify | false |
-| `dm.profile.read` | compare | **true** |
-| `dm.profile.edit` | extract, synthesize | false |
-| `dm.workspace` | list, graph, check, roles | **true** |
-| `dm.where-used` | *(one root verb)* | **true** |
-| `dm.catalog` | operators, diagnostics, schema, manifest | **true** |
-| `dm.apply` | *(one root verb)* | false |
-| `dm.batch` | *(one root verb)* | false |
-| `dm.export` | *(one root verb)* | false |
-| `dm.meta` | *(one root verb, argument-selected routes)* | false |
-| `dm.patterns` | *(one root verb, argument-selected routes)* | false |
+| read-only, envelope | `.read` | inspects; returns the standard envelope |
+| writes, envelope | `.edit` | changes the model; returns the envelope |
+| read-only, raw | `.emit` | hands back a document or rendering; changes nothing |
+| writes, raw | `.generate` | produces a document, and with an output option persists it |
 
-**26 tools, 12 truthfully read-only**, against 17 tools with 3. The op union equals exactly the 81 live leaves, with no duplicate and no omission. The trade is 9 extra tool definitions for 9 extra truthful hints plus safe categorical approval on every read tool — **and, now measured, the loss of `outputSchema` on 14 verbs** (§4), which is the cost this shape carries and which §15 Q2 must weigh.
+**A target carries suffixes only where it has more than one cell**; a single-cell group stays bare. That is why `dm.catalog` and the root-verb tools are unsuffixed, and it is the same rule that left `dm.workspace` bare under the 26-tool shape — where it had one cell and now has two.
+
+| tool | ops | `readOnlyHint` | `outputSchema` |
+|---|---|---|---|
+| `dm.model.read` | check, compute, describe, diff, eval, info, read, report, usage | **true** | ✓ |
+| `dm.model.emit` | seed | **true** | — |
+| `dm.model.edit` | normalize, rename | false | ✓ |
+| `dm.model.generate` | new, expand, import-jsonschema, export-jsonschema | false | — |
+| `dm.rule.read` | check, read, explain, deps, format, eval | **true** | ✓ |
+| `dm.rule.edit` | add, modify, remove, rename | false | ✓ |
+| `dm.computation.read` | read, explain, format | **true** | ✓ |
+| `dm.computation.edit` | add, modify, remove | false | ✓ |
+| `dm.field.read` | read | **true** | ✓ |
+| `dm.field.edit` | add, modify, remove, rename, move | false | ✓ |
+| `dm.group.read` | read | **true** | ✓ |
+| `dm.group.edit` | add, multiselect, attachment, modify, remove, rename, move, extract | false | ✓ |
+| `dm.typedef.read` | read | **true** | ✓ |
+| `dm.typedef.edit` | add, modify, remove, rename, extract, inline, import, unimport | false | ✓ |
+| `dm.include.read` | read | **true** | ✓ |
+| `dm.include.edit` | add, set-reference, rename, remove, inline | false | ✓ |
+| `dm.config.read` | read | **true** | ✓ |
+| `dm.config.edit` | modify | false | ✓ |
+| `dm.profile.read` | compare | **true** | ✓ |
+| `dm.profile.edit` | extract | false | ✓ |
+| `dm.profile.generate` | synthesize | false | — |
+| `dm.workspace.read` | check, roles | **true** | ✓ |
+| `dm.workspace.emit` | list, graph | **true** | — |
+| `dm.where-used` | *(one root verb)* | **true** | ✓ |
+| `dm.catalog` | operators, diagnostics, schema, manifest | **true** | — |
+| `dm.apply` | *(one root verb)* | false | ✓ |
+| `dm.batch` | *(one root verb)* | false | ✓ |
+| `dm.export` | *(one root verb)* | false | — |
+| `dm.meta` | *(one root verb, argument-selected routes)* | false | ✓ |
+| `dm.patterns` | *(one root verb, argument-selected routes)* | false | ✓ |
+
+**30 tools, 14 truthfully read-only, 24 declaring `outputSchema`.** The op union equals exactly the 81 live leaves, with no duplicate and no omission — verified against the live `manifest`, not asserted from this table.
+
+**Non-goal, stated because the temptation is real: never change a verb to tidy the projection.** The four ineligible tools are ineligible because of what their verbs actually return, and the fix that suggests itself — give a verb a different `ReturnKind`, or move an op between targets so a tool becomes eligible — is a **breaking CLI change made to flatter a derived view**. The projection adapts to the command tree; the command tree never adapts to the projection. Choosing among the three groupings above costs **no `:cli` source change at all** — each is one grouping function in `McpToolRegistry`, which is why the whole 30-tool alternative was derived from published `manifest` output before any code existed.
 
 **What is invented, named plainly.** `ManifestCommand` emits `target` + `op` only for a nested verb; **root-level verbs carry `op` alone, with no target**. So `dm.catalog` grouping four target-less root verbs is a new grouping, and the `.read`/`.edit` suffixes are new name components. Both are deliberate deviations in a repository whose first interop rule is never to invent a shape A12 already defines — mitigated because the *partition* is derived from published `Effect`, but the *names* are ours.
 
@@ -305,7 +333,7 @@ Three consequences of stdio framing (§2) shape the rest:
 
 ### 6.1 Why grouped at all, and not one tool per verb
 
-**The primary argument is that the grouping already exists for nested verbs.** Ten of the twelve targets are real op-record targets, so `{op, args}` under a target tool is a faithful rendering for 71 of 81 leaves. The effect split subdivides that existing grouping rather than replacing it.
+**The primary argument is that the grouping already exists for nested verbs.** Ten of the twelve targets are real op-record targets, so `{op, args}` under a target tool is a faithful rendering for 71 of 81 leaves. The effect × return-kind partition subdivides that existing grouping rather than replacing it — every tool stays inside one target.
 
 **A secondary argument, with its limits stated.** Client guidance recommends **progressive discovery** once tool definitions occupy a large share of the context window, at which point the host stops injecting definitions and supplies a `search_tools` meta-tool. Fewer, denser tools are less likely to trip that threshold. That argument is **weak**: the threshold is a non-normative example range ("for example, 1%-5%"), and this proposal has not measured its own token cost (R8). A lexical probe over the manifest showed only that *substring* retrieval fails on intent phrasing (`required` matched 3 verb descriptions, `mandatory` and "make a field required" matched none) — which says nothing about the embedding, subagent, or provider-native strategies the same guidance names.
 
@@ -325,7 +353,7 @@ The root verbs stay separate tools because their contracts differ where it matte
 
 `ToolAnnotations` defaults are `readOnlyHint` **false**, `destructiveHint` **true**, `idempotentHint` false, `openWorldHint` true. So:
 
-- **`readOnlyHint: true` exactly where every profile of every op in the tool is `Effect.READ_ONLY`** — the 12 tools marked in §6, derived rather than asserted, and guarded by the conformance test in §12.
+- **`readOnlyHint: true` exactly where every profile of every op in the tool is `Effect.READ_ONLY`** — the 14 tools marked in §6, covering all 34 always-read-only verbs, derived rather than asserted, and guarded by the conformance test in §12.
 - **`readOnlyHint: false` elsewhere**, with `destructiveHint` at its default.
 - **`openWorldHint: false` on every tool.** The basis is that no dmtool verb reaches an *open world of external entities* — there is no network egress, no third-party service, no unbounded resource space. It is **not** that nothing external is touched: `model eval`, `model compute`, and `rule eval` spawn the system `node` for the custom-type bridge (`CustomJsWorker`), and `model diff --since` spawns `git cat-file --batch` (`GitBaseline`). Both are local subprocesses under the caller's own account, which is why the hint still reads `false`, but the earlier "touches local files and nothing external" wording was wrong.
 - **`idempotentHint` omitted** — not crisply statable per verb, and its default costs nothing.
@@ -335,7 +363,7 @@ The root verbs stay separate tools because their contracts differ where it matte
 
 **On the untrusted-server caveat.** The specification says clients "should never make tool use decisions based on `ToolAnnotations` received from **untrusted** servers." A plugin-installed server is trusted, so that caveat does not license imprecision here.
 
-**Categorical approval is safe on the read tools.** Client guidance describes approval keyed on tool *name* — *"allow `ticketing_createIssue` for this script run"* — in the Programmatic Tool Calling security section. Under the effect split, granting `dm.rule.read` cannot reach `rule remove`. This is the main safety argument for §6's shape.
+**Categorical approval is safe on the read tools.** Client guidance describes approval keyed on tool *name* — *"allow `ticketing_createIssue` for this script run"* — in the Programmatic Tool Calling security section. Under §6's partition, granting `dm.rule.read` cannot reach `rule remove`. This is the main safety argument for that shape, and it is why the effect axis is the one that must never be collapsed.
 
 **The per-verb side-effect axis is no longer a deferral.** It was demoted in [CLI-CONFORMANCE-GAPS.md](CLI-CONFORMANCE-GAPS.md) §2 on 2026-07-21 after a probe found side-effect inferable from `--help` for 5 of 6 sampled verbs; the axis then landed as `CommandContracts.Effect`, published on every route, and **the ledger row was deleted in `7427c417`** when the operational contract graduated. Nothing remains open there.
 
@@ -424,8 +452,8 @@ Two rejected alternatives, recorded so they are not re-proposed: an **invocation
 - The `mcp` command in `:cli` (§5); the `McpDispatcher` seam with its handler table exposed as data and synchronous handlers (§5.4); the `Cli.run` invocation contract (§5.1); serialised dispatch.
 - `server/discover` with `supportedVersions` (exactly `["2026-07-28"]`), `capabilities`, `serverInfo`, `instructions`, `ttlMs`, `cacheScope`.
 - **The §5.3 revision refusal**, with the test that proves each row of its table fires.
-- `tools/list` — the 26 tools of §6, **generated from the live picocli tree plus `CommandContracts`**, with `ttlMs`/`cacheScope` and deterministic ordering.
-- `tools/call` — compact-serialised envelope into `structuredContent` and the in-process `--text` rendering into `content` for the 68 envelope verbs; the raw payload as `content` text for the 13 non-envelope-route verbs; **`outputSchema` only on tools whose every exposed profile returns `RESULT_ENVELOPE`** (54 verbs across 20 tools, §4); `isError: true` for `rejected`/`refused`/`error`; JSON-RPC `-32602` for an unknown tool or op.
+- `tools/list` — the 30 tools of §6, **generated from the live picocli tree plus `CommandContracts`** by partitioning each target on `Effect` × `ReturnKind`, with `ttlMs`/`cacheScope` and deterministic ordering.
+- `tools/call` — compact-serialised envelope into `structuredContent` and the in-process `--text` rendering into `content` for the 68 envelope verbs; the raw payload as `content` text for the 13 non-envelope-route verbs; **`outputSchema` only on tools whose every exposed profile returns `RESULT_ENVELOPE`** (all 68 verbs across 24 tools, §6); `isError: true` for `rejected`/`refused`/`error`; JSON-RPC `-32602` for an unknown tool or op.
 - `resources/list`, `resources/templates/list`, `resources/read` for the §8 URIs.
 - Annotations **derived** from `CommandContracts` exactly as §7 specifies.
 - Addressing hygiene per §9: relative-path rejection, resolved-roots echo, traversal and workspace-escape rejection **covering `args`, not only the two addressing keys**.
@@ -583,7 +611,7 @@ Numbering is stable: a resolved question keeps its number, because §4 and §6 c
 
 **Q1 — which revision, given no evidence the host speaks `2026-07-28`? RESOLVED 2026-08-04: target `2026-07-28` only, and refuse anything below it** — over the recommendation to verify the host first. The contract is §5.3; R7 records what the decision did and did not change. The refusal, not a fallback, is what keeps an older host from looking like a broken server.
 
-**Q2 — is the effect-split tool shape right, now that its cost is measured?** §6 proposes 26 tools (12 truthfully read-only) against a target-only grouping's 17 (3 read-only). It buys 9 truthful `readOnlyHint`s and safe categorical approval on every read tool. **It costs `outputSchema` on 14 verbs** (§4), because the partition is on `Effect` while the schema rule needs `ReturnKind` and no single grouping satisfies both. Alternatives: the 17-tool target grouping, which discards the read-only fact for 25 verbs *and* still loses `outputSchema` wherever a tool mixes return kinds; a `ReturnKind`-aware sub-split, which recovers `outputSchema` at the cost of more tools and a partition on two axes; or one tool per verb at 81, which makes both facts exactly stateable at maximal definition cost. **Recommendation: the 26-tool split**, with the `outputSchema` loss accepted and named — but this is now a genuine trade rather than a free improvement, and the owner should see both sides.
+**Q2 — is the effect-split tool shape right, now that its cost is measured? RESOLVED 2026-08-04: partition on `Effect` × `ReturnKind` jointly, 30 tools.** The question dissolved once the two axes were measured as independent rather than competing: the joint partition costs **four** more tool definitions than the effect-only split and recovers **every** fact on both axes — 14 read-only tools over all 34 always-read-only verbs, 24 tools declaring `outputSchema` over all 68 eligible verbs. §6 carries the decision, the comparison against the 17- and 26-tool alternatives, the derived naming rule, and the non-goal that forbids changing a verb to make a tool eligible. The residual cost is four more **public tool names**, which is why §6 restates that a name is chosen once.
 
 **Q3 — is the bare-MCP-host audience decision (§10) accepted?** It follows from the skill being invocation-shaped, and it decides that no MCP skill and no marketplace entry are needed, that the derived tool descriptions must carry the judgment a bare host needs, and that an MCP bare-tool eval arm is the way to check that. **Recommendation: accept.**
 
@@ -641,7 +669,7 @@ What was held earlier in this proposal's life and is no longer held. Recorded he
 |---|---|---|
 | Envelope classification is `returns: "result" \| "artifact"`, split 70 / 2 / 9 contract-exempt | **superseded** | `CommandContracts` publishes a 4-way `ReturnKind` per route. 68 verbs are envelope-only; 13 have a non-envelope route; 9 carry more than one return kind |
 | **17 target-shaped tools**, 3 read-only | **superseded** | 34 verbs are `READ_ONLY` in every profile, so target-only grouping discards a published fact about 25 of them and bundles read with remove under one approval name (§6) |
-| *"Precision is not available"* for annotations | **superseded** | Effect is published per route; `readOnlyHint` is derived and true for 12 tools (§7) |
+| *"Precision is not available"* for annotations | **superseded** | Effect is published per route; `readOnlyHint` is derived and true for 14 tools (§7) |
 | `outputSchema` reaches the same set as `structuredContent` | **corrected** | `outputSchema` is a per-`Tool` declaration, so it reaches **54** verbs, not 68 — the `Effect`-versus-`ReturnKind` tension in §4 |
 | A per-verb `sideEffect` axis is an open deferral to route to the owner | **closed by events** | The axis landed as `CommandContracts.Effect`, and the ledger row was deleted in `7427c417` |
 | Model writes occur at *four* sites; the atomic-write remedy is small and single-sourced | **corrected, and the remedy rejected** | Ten sites write DM-JSON to a possible model destination. The defect is the **published overclaim on 43 profiles**, and the remedy is a machine-visible scope, not atomic replacement (§14.1) |
@@ -655,6 +683,7 @@ What was held earlier in this proposal's life and is no longer held. Recorded he
 | Referrer analysis is outward-only | **corrected** | True for `where-used` and the rewriting refactors, false for `model rename` — the finding that produced the closed-world axis |
 | Route A means "every verb works immediately" | **corrected** | `model diff`'s two roots and git route need explicit handling |
 | A `ReferenceResolvers` map factory has no other caller | **corrected** | Unenumerated; `GitBaseline.GitModelResolver` is a production map-backed resolver. The factory is still not proposed, but for want of need rather than want of callers |
+| The 26-tool effect-only split, with the `outputSchema` loss on 14 verbs framed as *"the cost this shape carries"* and a `ReturnKind` sub-split costed only as *"more tools"* | **superseded 2026-08-04** | The two axes are independent, so nothing had to be traded: the joint partition costs **4** tools — a number the earlier text never derived — and recovers both facts fully (54→68 verbs with `outputSchema`, 12→14 read-only tools). Framing it as a trade came from partitioning on one axis and treating the other as its casualty (§6) |
 | The seam rule: *"nothing **below** `McpDispatcher` may name a protocol type — no `_meta`, no headers, no `resultType`, no JSON-RPC envelope"*, with the transport drawn **under** the dispatcher | **corrected — it was inverted and overbroad** | The transport is the *outermost* layer, not an inner one, so the diagram contradicted the rule it illustrated. And banning `resultType`/`ttlMs`/`cacheScope` from the inner layers would have pushed caching *policy* into the transport; the ban is on library **types**, not protocol **facts** (§5) |
 | `--text` emits only the rendering, so passing it would lose the JSON | **corrected** | `TextRenderer` is gated and passes a non-envelope payload through unchanged; the loss applies only on envelope routes (§5.1) |
 | "No path components on the wire, so the traversal surface does not exist" | **corrected** | 12 `FILE`-tagged parameters plus positional operands carry caller-supplied paths inside `args` (§9) |
