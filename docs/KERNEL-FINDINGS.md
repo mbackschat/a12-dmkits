@@ -2524,3 +2524,26 @@ Canonical in §9 "Other repetition rules". [KF100](#kf100) recorded this operato
 **The discriminating case, and why this is not a shared field-list contract.** `NumberOfDifferentValues(BinCode, Condition)` — the *same* String-beside-Enumeration pair over the *same* two fields — is **admitted**. So the two field-list operators do not share one comparability rule, and the rejection alone would not have shown it: a kernel that refused the mix everywhere satisfies the rejection half equally well. Reusing the distinct-count rule here would wrongly admit a String/Enumeration list; requiring one declared *scale* rather than one declared *kind* would wrongly reject the Number list KF100 depends on.
 
 *(Locked: `validate.laws.FieldValuesNotUniqueAdmissionLawsTest` — ten cases: the arity pair, the three kind rejections, the three same-kind admissions, and the `NumberOfDifferentValues` contrast. The catalog carries the two gates as constraints with a CI-executed `MVK_PARAMSIZE_INVALIDN` corrective probe and an `MVK_VARYING_TYPES_NOT_ALLOWED` `invalidExample`, both of which must reach exactly their own code.)*
+
+## §11 supplement — the computed-target scale gate is the COMPARISON predicate, not equality (kernel `checkConsistency`, 2026-08-04) <a id="kf174"></a>
+
+> Fold: folded → §11.
+
+Canonical in §11 "Computations". The reconciliation request is the lean project's `SPEC-2026-08-04-01`; every verdict below was reproduced here rather than accepted as reported.
+
+**The defect was an internal contradiction, not a missing fact.** §11 stated that a computed field's declared scale must *equal* the calculation's scale, while §5's scale summary in the same document already defined the constant-capability model the comparison gate uses. Both cannot hold, and the mechanism says which: a computation *is* also a validation rule (§11's first bullet), so its admission runs the implicit `[target] != <operation>` comparison through the ordinary `==`/`!=` gate. Equality was the observed special case mistaken for the rule.
+
+| operation (`Rate`, `Factor`, `Surcharge` all scale 2) | derived scale | capable | declared 0 | declared 2 | declared 4 |
+|---|---|---|---|---|---|
+| `[Rate] * 100` (integer literal strips to signed scale −2) | 0 | yes | admitted | **admitted** | **admitted** |
+| `[Rate] * 1.50` | 4 | yes | rejected | rejected | admitted |
+| `[Rate] * [Factor]` | 4 | no | rejected | **rejected** | admitted |
+| `[Rate] + [Surcharge]` | 2 | no | rejected | admitted | rejected |
+
+**Two discriminating pairs, because two rival readings each explain part of the table.** Row 1 versus row 2 kills "any mismatch is fine while capable": the same capability admits the *smaller* derived scale and rejects the *larger*, so direction is load-bearing and padding only ever adds digits. Row 2 versus row 3 at declared scale 2 kills "the gate reads the scales": the derived scale is 4 in both, and the verdict flips purely on whether a field reference joined the operation. Row 4 is the third reading's control — addition needs *both* operands capable, so two capable-free fields refuse the smaller declared scale exactly as they refuse the larger.
+
+Every rejection is `MVK_INVALID_COMPARE_DEC_PLACES` **alone** (the lock asserts the whole emitted code list, not its membership), which is also why the computation's `errorCodesToSuppress` escape hatch reaches the no-fit store arm described in the §11 five-channel supplement.
+
+**Nothing was over-rejected client-side.** `Computation` defers scale to the kernel by design (D13) and carries no scale check, so a capability-carrying computation has always been authorable through the typed surface; the wrong statement lived only in the prose.
+
+*(Locked: `validate.laws.ComputedTargetScaleLawsTest` — the four operations across the three declared scales, including both discriminating pairs.)*
