@@ -22,7 +22,7 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
-/** Byte-level mutation safety across all 48 mutating profiles, through the packaged process boundary. */
+/** Byte-level mutation safety across all 49 mutating profiles, through the packaged process boundary. */
 class DmtoolMutationSafetyTest {
 
     private static final ObjectMapper MAPPER = new ObjectMapper();
@@ -54,7 +54,7 @@ class DmtoolMutationSafetyTest {
     }
 
     @Test
-    void theRemainingNineWriteProfilesPersistAndReadBack(@TempDir Path dir) throws Exception {
+    void theRemainingTenWriteProfilesPersistAndReadBack(@TempDir Path dir) throws Exception {
         PackagedDmtool dmtool = new PackagedDmtool(dir);
         Set<String> exercised = new HashSet<>();
 
@@ -136,6 +136,19 @@ class DmtoolMutationSafetyTest {
         assertModelChecks(dmtool, batchModel);
         exercised.add("batch#dispatch");
 
+        Path observationOps = dir.resolve("batch-observation.json");
+        Files.writeString(observationOps,
+                "[{\"id\":\"fee-cap\",\"verb\":\"rule\",\"args\":[\"check\",\"--field\","
+                        + "\"/Subscription/Addons/MonthlyFee\",\"--condition\",\"[MonthlyFee] > 1000\","
+                        + "\"--code\",\"CAP\"]}]");
+        Path observations = dir.resolve("observations.json");
+        PackagedDmtool.Result observationResult = dmtool.run("-m", batchModel.toString(), "batch",
+                observationOps.toString(), "--observations", observations.toString());
+        assertEquals(0, observationResult.code(), observationResult::err);
+        assertTrue(MAPPER.readTree(Files.readString(observations)).path("observations").isArray());
+        assertModelChecks(dmtool, batchModel);
+        exercised.add("batch#dispatch-with-observations");
+
         JsonNode manifest = MAPPER.readTree(dmtool.run("manifest").out());
         Set<String> declared = profileKeys(manifest, profile -> Set.of(
                 "MODEL_WRITE", "ARTIFACT_WRITE", "MULTI_FILE_WRITE", "TRANSACTION", "DISPATCH")
@@ -146,7 +159,7 @@ class DmtoolMutationSafetyTest {
         assertEquals(declared, exercised,
                 () -> "non-preview write cases and registry differ; missing=" + difference(declared, exercised)
                         + ", stale=" + difference(exercised, declared));
-        assertEquals(9, exercised.size());
+        assertEquals(10, exercised.size());
     }
 
     @Test
@@ -216,16 +229,16 @@ class DmtoolMutationSafetyTest {
 
     /**
      * Each case proves the persistence label it was registered under, and the registry cross-check is done
-     * per label. Merging the two sets let the two labels be swapped without a failure: {@code apply} reverting
-     * and {@code batch} keeping its first child are opposite guarantees, so one union set cannot tell which
-     * verb made which promise.
+     * per label. Merging the sets lets labels be swapped without a failure: {@code apply} reverts,
+     * multi-file writers stop with earlier artifacts retained, and {@code batch} continues to later children.
      */
     @Test
-    void everyDeclaredRollbackOrPartialProfileHasAPackagedLaterFailureDiscriminator(@TempDir Path dir)
+    void everyNonNoWriteFailureProfileHasAPackagedLaterFailureDiscriminator(@TempDir Path dir)
             throws Exception {
         PackagedDmtool dmtool = new PackagedDmtool(dir);
         Set<String> rolledBack = new HashSet<>();
         Set<String> keptEarlierWork = new HashSet<>();
+        Set<String> continuedAfterChildFailure = new HashSet<>();
 
         Path applyDir = Files.createDirectories(dir.resolve("later-apply"));
         Path applyModel = resource(applyDir, "order-ruled.dm.json");
@@ -247,17 +260,38 @@ class DmtoolMutationSafetyTest {
         Path batchSpec = batchDir.resolve("field.json");
         Files.writeString(batchSpec,
                 "{\"group\":\"/Subscription/Billing\",\"name\":\"BatchCommitted\",\"kind\":\"STRING\"}");
+        Path afterFailureSpec = batchDir.resolve("after-failure.json");
+        Files.writeString(afterFailureSpec,
+                "{\"group\":\"/Subscription/Billing\",\"name\":\"AfterFailure\",\"kind\":\"STRING\"}");
         Path batchOps = batchDir.resolve("ops.json");
         String quotedBatchSpec = MAPPER.writeValueAsString(batchSpec.toString());
+        String quotedAfterFailureSpec = MAPPER.writeValueAsString(afterFailureSpec.toString());
         Files.writeString(batchOps, "[{\"verb\":\"field\",\"args\":[\"add\"," + quotedBatchSpec
-                + "]},{\"verb\":\"field\",\"args\":[\"add\"," + quotedBatchSpec + "]}]");
+                + "]},{\"verb\":\"field\",\"args\":[\"add\"," + quotedBatchSpec
+                + "]},{\"verb\":\"field\",\"args\":[\"add\"," + quotedAfterFailureSpec + "]}]");
         PackagedDmtool.Result batch = dmtool.run("-m", batchModel.toString(), "batch", batchOps.toString());
         assertEquals(1, batch.code(), batch::out);
         assertFalse(MAPPER.readTree(batch.out()).path("ok").asBoolean(), batch::out);
         assertEquals(0, dmtool.run("-m", batchModel.toString(), "field", "read",
                 "/Subscription/Billing/BatchCommitted").code(), "batch preserves the successful first child");
+        assertEquals(0, dmtool.run("-m", batchModel.toString(), "field", "read",
+                "/Subscription/Billing/AfterFailure").code(), "batch still dispatches the child after failure");
         assertModelChecks(dmtool, batchModel);
-        keptEarlierWork.add("batch#dispatch");
+        continuedAfterChildFailure.add("batch#dispatch");
+
+        Path observationOps = batchDir.resolve("observation-ops.json");
+        Files.writeString(observationOps, """
+                [{"id":"fails","verb":"rule","args":["check","--field","/Subscription/Billing/BaseFee","--condition","@@@ junk @@@","--code","FAILS"]},
+                 {"id":"continues","verb":"rule","args":["check","--field","/Subscription/Billing/BaseFee","--condition","[BaseFee] > 0","--code","CONTINUES"]}]
+                """);
+        Path observationArtifact = batchDir.resolve("observations.json");
+        PackagedDmtool.Result observed = dmtool.run("-m", batchModel.toString(), "batch",
+                observationOps.toString(), "--observations", observationArtifact.toString());
+        assertEquals(1, observed.code(), observed::out);
+        JsonNode recorded = MAPPER.readTree(Files.readString(observationArtifact)).path("observations");
+        assertEquals(2, recorded.size(), "the artifact is written after a failed child");
+        assertEquals("continues", recorded.get(1).path("id").asText(), "the later child was still dispatched");
+        continuedAfterChildFailure.add("batch#dispatch-with-observations");
 
         Path extractDir = Files.createDirectories(dir.resolve("later-extract"));
         Path extractModel = extractDir.resolve("order.dm.json");
@@ -313,6 +347,8 @@ class DmtoolMutationSafetyTest {
                 profile -> "ROLLBACK".equals(profile.path("failurePersistence").asText()));
         Set<String> declaredPartial = profileKeys(manifest,
                 profile -> "PARTIAL".equals(profile.path("failurePersistence").asText()));
+        Set<String> declaredContinue = profileKeys(manifest,
+                profile -> "CONTINUE_AFTER_CHILD_FAILURE".equals(profile.path("failurePersistence").asText()));
         assertEquals(declaredRollback, rolledBack,
                 () -> "ROLLBACK cases and live registry differ; missing="
                         + difference(declaredRollback, rolledBack) + ", stale="
@@ -321,8 +357,13 @@ class DmtoolMutationSafetyTest {
                 () -> "PARTIAL cases and live registry differ; missing="
                         + difference(declaredPartial, keptEarlierWork) + ", stale="
                         + difference(keptEarlierWork, declaredPartial));
+        assertEquals(declaredContinue, continuedAfterChildFailure,
+                () -> "CONTINUE_AFTER_CHILD_FAILURE cases and live registry differ; missing="
+                        + difference(declaredContinue, continuedAfterChildFailure) + ", stale="
+                        + difference(continuedAfterChildFailure, declaredContinue));
         assertEquals(1, rolledBack.size());
-        assertEquals(4, keptEarlierWork.size());
+        assertEquals(3, keptEarlierWork.size());
+        assertEquals(2, continuedAfterChildFailure.size());
     }
 
     @Test

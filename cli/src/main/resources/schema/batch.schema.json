@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://github.com/mbackschat/a12-dmkits/schema/batch.schema.json",
   "title": "BatchOps",
-  "description": "INPUT of `dmtool batch <ops.json>` — a JSON array of independent verb invocations run in one process. Dispatch is stateless and non-transactional: every op is attempted, a failed child never rolls back an earlier write, and each result echoes its `id`/`verb`/`args` plus exact exit. The outer envelope has `outcome:completed` and `data.dispatched:true` after full dispatch; `data.allSucceeded`, outer `ok`, and the process exit report whether every child succeeded. Use `apply` instead for ordered, atomic edits to one model ({target,op,…}, one terminal gate + rollback — see `schema apply`).",
+  "description": "INPUT of `dmtool batch <ops.json>` — a JSON array of independent verb invocations run in one process. Dispatch is stateless and non-transactional: every op is attempted, a failed child never rolls back an earlier write, and each result echoes its `id`/`verb`/`args` plus exact exit. The outer envelope has `outcome:completed` and `data.dispatched:true` after full dispatch; `data.allSucceeded`, outer `ok`, and the process exit report whether every child succeeded. Optional `--observations <file>` overwrites the compact deterministic static-kernel artifact described by this response's `observationArtifact` annotation; observation mode preflights every child and accepts only caller-tagged rule-check conditions or computation add/modify specs in --dry-run mode. Use `apply` instead for ordered, atomic edits to one model ({target,op,…}, one terminal gate + rollback — see `schema apply`).",
   "type": "array",
   "items": {
     "type": "object",
@@ -11,7 +11,7 @@
     "properties": {
       "verb": { "type": "string", "description": "the verb to run (any except `batch`, which cannot nest)" },
       "args": { "type": "array", "items": { "type": "string" }, "description": "the verb's argv (as on the command line, minus the verb)" },
-      "id": { "type": "string", "description": "optional caller tag, echoed back on the result for correlation" }
+      "id": { "type": "string", "description": "optional caller tag, echoed back on the result for correlation; required and non-blank when --observations is used" }
     }
   },
   "examples": [

@@ -55,7 +55,10 @@ final class CommandContracts {
     enum FailurePersistence {
         NO_WRITE("the destination is not written at all"),
         ROLLBACK("every write this invocation already made is reverted, leaving each destination as it was"),
-        PARTIAL("writes already made remain, and the ones after the failure do not happen");
+        PARTIAL("writes already made remain, and the ones after the failure do not happen"),
+        CONTINUE_AFTER_CHILD_FAILURE("batch-level or preflight rejection writes nothing; once dispatch starts, "
+                + "a child failure is retained, earlier writes are not rolled back, later children still run, "
+                + "and any selected terminal artifact is still attempted");
 
         /**
          * The failure classes these values describe, and the two they deliberately do not. The excluded pair is a
@@ -82,8 +85,14 @@ final class CommandContracts {
     }
 
     enum DryRun { NOT_APPLICABLE, SUPPORTED, ACTIVE }
-    enum AggregateSuccess { SELF, TRANSACTION_COMMITTED, TRANSACTION_SUCCEEDED, ALL_CHILD_EXITS_ZERO }
-    enum TopLevelOk { OUTCOME_SUCCEEDED, EXECUTION_COMPLETED, ALL_CHILD_EXITS_ZERO }
+    enum AggregateSuccess {
+        SELF, TRANSACTION_COMMITTED, TRANSACTION_SUCCEEDED, ALL_CHILD_EXITS_ZERO,
+        ALL_CHILD_EXITS_ZERO_AND_ARTIFACT_WRITTEN
+    }
+    enum TopLevelOk {
+        OUTCOME_SUCCEEDED, EXECUTION_COMPLETED, ALL_CHILD_EXITS_ZERO,
+        ALL_CHILD_EXITS_ZERO_AND_ARTIFACT_WRITTEN
+    }
     enum ReturnKind { RESULT_ENVELOPE, RAW_JSON, RAW_TEXT, EMPTY_STDOUT }
     enum Consistency { NONE, OPTIONAL, REQUIRED, NESTED, CHILD_DEFINED, NOT_EMITTED }
     enum Runtime { NONE, REQUIRED }
@@ -413,6 +422,18 @@ final class CommandContracts {
 
     private record ParsedInvocation(String verb, CommandSpec command, Invocation invocation) {}
 
+    /** The live parser's resolved command and parameter values, without executing the invocation. */
+    record ParsedParameters(String verb, Map<String, Object> values) {
+        ParsedParameters {
+            values = java.util.Collections.unmodifiableMap(new LinkedHashMap<>(values));
+        }
+
+        String value(String parameter) {
+            Object value = values.get(parameter);
+            return value == null ? null : String.valueOf(value);
+        }
+    }
+
     private CommandContracts() {
     }
 
@@ -492,6 +513,12 @@ final class CommandContracts {
         return parse(args).verb();
     }
 
+    /** Resolve one authored argv through the same picocli tree that will dispatch it, but do not execute it. */
+    static ParsedParameters parsedParameters(List<String> args) {
+        ParsedInvocation parsed = parse(args);
+        return new ParsedParameters(parsed.verb(), parsed.invocation().values());
+    }
+
     private static ParsedInvocation parse(List<String> args) {
         CommandLine root = new CommandLine(new RootCommand()).setExpandAtFiles(false);
         ParseResult result = root.parseArgs(args.toArray(String[]::new));
@@ -566,13 +593,23 @@ final class CommandContracts {
                             .provenance(Consistency.REQUIRED, Runtime.NONE)
                             .build(),
                     preview("preview", semantic("--dry-run", "true"), AggregateSuccess.TRANSACTION_SUCCEEDED));
-            case BATCH -> List.of(Profile.builder("dispatch")
-                    .effect(Effect.DISPATCH)
-                    .failurePersistence(FailurePersistence.PARTIAL)
-                    .aggregateSuccess(AggregateSuccess.ALL_CHILD_EXITS_ZERO)
-                    .topLevelOk(TopLevelOk.ALL_CHILD_EXITS_ZERO)
-                    .provenance(Consistency.CHILD_DEFINED, Runtime.NONE)
-                    .build());
+            case BATCH -> List.of(
+                    Profile.builder("dispatch")
+                            .when(omitted("--observations"))
+                            .effect(Effect.DISPATCH)
+                            .failurePersistence(FailurePersistence.CONTINUE_AFTER_CHILD_FAILURE)
+                            .aggregateSuccess(AggregateSuccess.ALL_CHILD_EXITS_ZERO)
+                            .topLevelOk(TopLevelOk.ALL_CHILD_EXITS_ZERO)
+                            .provenance(Consistency.CHILD_DEFINED, Runtime.NONE)
+                            .build(),
+                    Profile.builder("dispatch-with-observations")
+                            .when(supplied("--observations"))
+                            .effect(Effect.ARTIFACT_WRITE)
+                            .failurePersistence(FailurePersistence.CONTINUE_AFTER_CHILD_FAILURE)
+                            .aggregateSuccess(AggregateSuccess.ALL_CHILD_EXITS_ZERO_AND_ARTIFACT_WRITTEN)
+                            .topLevelOk(TopLevelOk.ALL_CHILD_EXITS_ZERO_AND_ARTIFACT_WRITTEN)
+                            .provenance(Consistency.CHILD_DEFINED, Runtime.NONE)
+                            .build());
             case GROUP_EXTRACT -> List.of(
                     Profile.builder("commit")
                             .when(semantic("--dry-run", "false"))

@@ -64,8 +64,8 @@ class CommandContractsTest {
                 }
             }
         }
-        assertEquals(48, writes,
-                "36 shared editors + 3 custom editors + 8 artifact writers + batch dispatch");
+        assertEquals(49, writes,
+                "36 shared editors + 3 custom editors + 8 artifact writers + two batch dispatch modes");
         assertEquals(39, previews, "every live --dry-run editing leaf has one active-preview profile");
     }
 
@@ -74,7 +74,14 @@ class CommandContractsTest {
         JsonNode manifest = MAPPER.readTree(CliTestSupport.run("manifest").out());
 
         assertProfile(manifest, "apply", "commit", "TRANSACTION", "ROLLBACK", "TRANSACTION_COMMITTED");
-        assertProfile(manifest, "batch", "dispatch", "DISPATCH", "PARTIAL", "ALL_CHILD_EXITS_ZERO");
+        assertProfile(manifest, "batch", "dispatch", "DISPATCH", "CONTINUE_AFTER_CHILD_FAILURE",
+                "ALL_CHILD_EXITS_ZERO");
+        assertProfile(manifest, "batch", "dispatch-with-observations", "ARTIFACT_WRITE",
+                "CONTINUE_AFTER_CHILD_FAILURE",
+                "ALL_CHILD_EXITS_ZERO_AND_ARTIFACT_WRITTEN");
+        JsonNode observations = profile(manifest, "batch", "dispatch-with-observations");
+        assertEquals("ALL_CHILD_EXITS_ZERO_AND_ARTIFACT_WRITTEN",
+                observations.path("topLevelOk").asText());
         assertProfile(manifest, "group extract", "commit", "MULTI_FILE_WRITE", "PARTIAL", "SELF");
         assertProfile(manifest, "export", "directory", "MULTI_FILE_WRITE", "PARTIAL", "SELF");
         assertProfile(manifest, "model import-jsonschema", "bundle", "MULTI_FILE_WRITE", "PARTIAL", "SELF");
@@ -105,7 +112,7 @@ class CommandContractsTest {
 
         Set<String> declaredValues = new HashSet<>();
         persistence.path("values").fieldNames().forEachRemaining(declaredValues::add);
-        assertEquals(Set.of("NO_WRITE", "ROLLBACK", "PARTIAL"), declaredValues);
+        assertEquals(Set.of("NO_WRITE", "ROLLBACK", "PARTIAL", "CONTINUE_AFTER_CHILD_FAILURE"), declaredValues);
         persistence.path("values").fields().forEachRemaining(entry ->
                 assertFalse(entry.getValue().asText().isBlank(), () -> entry.getKey() + " has no published meaning"));
 
@@ -161,7 +168,7 @@ class CommandContractsTest {
         CliTestSupport.Result help = CliTestSupport.run("batch", "--help");
         assertEquals(0, help.code(), help::err);
         assertTrue(help.out().contains("Operational contract:"), help::out);
-        assertTrue(help.out().contains("PARTIAL"), help::out);
+        assertTrue(help.out().contains("CONTINUE_AFTER_CHILD_FAILURE"), help::out);
         assertTrue(help.out().contains("ALL_CHILD_EXITS_ZERO"), help::out);
     }
 
@@ -171,6 +178,8 @@ class CommandContractsTest {
                 Map.entry("apply#commit", List.of("apply", "ops.json")),
                 Map.entry("apply#preview", List.of("apply", "ops.json", "--dry-run")),
                 Map.entry("batch#dispatch", List.of("batch", "ops.json")),
+                Map.entry("batch#dispatch-with-observations",
+                        List.of("batch", "ops.json", "--observations", "observations.json")),
                 Map.entry("group extract#commit", List.of("group", "extract", "/R/G", "--reference", "g")),
                 Map.entry("group extract#preview", List.of("group", "extract", "/R/G", "--reference", "g", "--dry-run")),
                 Map.entry("meta#read", List.of("meta", "/R/F")),

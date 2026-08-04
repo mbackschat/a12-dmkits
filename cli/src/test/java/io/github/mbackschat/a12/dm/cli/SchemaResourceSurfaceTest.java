@@ -51,6 +51,9 @@ class SchemaResourceSurfaceTest {
         referenced.addAll(SchemaCommand.INPUT_OPS.values());
         referenced.addAll(SchemaCommand.DOC_INPUT.values());
         referenced.addAll(SchemaCommand.DATA_SCHEMA.values());
+        SchemaCommand.EMBEDDED_SCHEMAS.values().stream()
+                .map(SchemaCommand.EmbeddedSchema::schema)
+                .forEach(referenced::add);
         SchemaCommand.ARTIFACT_OPS.values().stream()
                 .map(SchemaCommand.ArtifactContract::schema)
                 .filter(java.util.Objects::nonNull)

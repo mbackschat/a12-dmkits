@@ -22,8 +22,9 @@ import io.github.mbackschat.a12.dm.rulekit.validate.ValidationResult;
  * adds the three orthogonal axes an agent must not conflate:
  *
  * <ul>
- *   <li>{@code ok} — <b>the operation succeeded</b>. For aggregate dispatch this means every child succeeded;
- *       {@code data.dispatched} separately says whether every child was attempted. Never a property of the subject.</li>
+ *   <li>{@code ok} — <b>the operation succeeded</b>. For ordinary aggregate dispatch this means every child
+ *       succeeded; observation dispatch additionally requires its selected artifact write. {@code data.dispatched}
+ *       separately says whether every child was attempted. Never a property of the subject.</li>
  *   <li>{@code valid} — <b>the subject model is kernel-valid</b>. A consistency <em>verdict</em>, so it exists only
  *       where a gate produced one: {@code model check} that finds the model invalid is {@code ok:true, valid:false}.</li>
  *   <li>{@code verification} / {@code engine}+{@code engineVersion}+{@code toolVersion} — <b>who vouches</b> for
@@ -335,6 +336,39 @@ public final class ResultEnvelope {
      */
     public static ResultEnvelope dispatchCompleted(
             ResultIdentity identity, String summary, ArrayNode results) {
+        return dispatchCompleted(identity, summary, results, null);
+    }
+
+    /** Every child ran and the selected post-dispatch artifact was written. */
+    public static ResultEnvelope dispatchCompletedWithArtifact(
+            ResultIdentity identity, String summary, ArrayNode results, String output) {
+        if (output == null || output.isBlank()) {
+            throw new IllegalArgumentException("a written dispatch artifact needs its output path");
+        }
+        return dispatchCompleted(identity, summary, results, output);
+    }
+
+    private static ResultEnvelope dispatchCompleted(
+            ResultIdentity identity, String summary, ArrayNode results, String output) {
+        ObjectNode data = dispatchData(results);
+        boolean allSucceeded = data.path("allSucceeded").asBoolean();
+        Family family = allSucceeded ? Family.DISPATCH : Family.DISPATCH_WITH_FAILURES;
+        String aggregateSummary = summary
+                + (allSucceeded ? "; all succeeded" : "; one or more failed — earlier writes were not rolled back");
+        Draft draft = new Draft(family, identity, Outcome.COMPLETED, aggregateSummary).data(data);
+        return output == null ? draft.build() : draft.writtenTo(output).build();
+    }
+
+    /** Every child ran, but the selected post-dispatch observations artifact could not be written. */
+    public static ResultEnvelope dispatchArtifactWriteFailed(
+            ResultIdentity identity, String summary, ArrayNode results, List<Diagnostic> diagnostics) {
+        return new Draft(Family.INTERNAL_ERROR, identity, Outcome.ERROR, summary)
+                .data(dispatchData(results))
+                .diagnostics(diagnostics)
+                .build();
+    }
+
+    private static ObjectNode dispatchData(ArrayNode results) {
         boolean allSucceeded = true;
         for (JsonNode result : results) {
             if (result.path("exit").asInt(1) != 0) {
@@ -347,12 +381,7 @@ public final class ResultEnvelope {
         data.put("dispatched", true);
         data.put("allSucceeded", allSucceeded);
         data.set("results", results.deepCopy());
-        Family family = allSucceeded ? Family.DISPATCH : Family.DISPATCH_WITH_FAILURES;
-        String aggregateSummary = summary
-                + (allSucceeded ? "; all succeeded" : "; one or more failed — earlier writes were not rolled back");
-        return new Draft(family, identity, Outcome.COMPLETED, aggregateSummary)
-                .data(data)
-                .build();
+        return data;
     }
 
     // --- 5. mutation ----------------------------------------------------------------------------------

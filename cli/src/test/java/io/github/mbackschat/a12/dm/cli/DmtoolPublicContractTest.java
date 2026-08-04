@@ -88,7 +88,7 @@ class DmtoolPublicContractTest {
             }
         }
         assertEquals(81, leaves);
-        assertEquals(48, writes);
+        assertEquals(49, writes);
         assertEquals(39, previews);
         assertEquals(RUNTIME, runtime, "only the three interpreter runtime routes may claim runtime execution");
     }
@@ -280,6 +280,75 @@ class DmtoolPublicContractTest {
         JsonNode refusal = MAPPER.readTree(missing.out());
         assertEquals("RK_NO_SUCH_FIELD", refusal.path("diagnostics").path(0).path("code").asText(), missing::out);
         assertEquals(before, Files.readString(model), "a packaged rejected candidate must not write the model");
+    }
+
+    @Test
+    void packagedBatchWritesReplayableKernelObservations(@TempDir Path dir) throws Exception {
+        PackagedDmtool dmtool = new PackagedDmtool(dir);
+        Path model = resource(dir.resolve("batch-observations"), "subscription.dm.json");
+        Path ops = dir.resolve("batch-observations.json");
+        String condition = "[MonthlyFee] > 1000";
+        Files.writeString(ops, "[{\"id\":\"fee-cap\",\"verb\":\"rule\",\"args\":[\"check\",\"--field\","
+                + "\"/Subscription/Addons/MonthlyFee\",\"--condition\"," + MAPPER.writeValueAsString(condition)
+                + ",\"--code\",\"CAP\"]}]");
+        Path observations = dir.resolve("kernel-observations.json");
+
+        PackagedDmtool.Result first = dmtool.run("-m", model.toString(), "batch", ops.toString(),
+                "--observations", observations.toString());
+
+        assertEquals(0, first.code(), () -> first.out() + first.err());
+        String firstBytes = Files.readString(observations);
+        JsonNode artifact = MAPPER.readTree(firstBytes);
+        assertEquals(1, artifact.path("schemaVersion").asInt());
+        assertEquals("fee-cap", artifact.path("observations").get(0).path("id").asText());
+        assertTrue(artifact.path("observations").get(0).path("valid").asBoolean());
+        JsonNode firstEnvelope = MAPPER.readTree(first.out());
+        assertTrue(firstEnvelope.path("written").asBoolean());
+        assertEquals(observations.toAbsolutePath().normalize().toString(), firstEnvelope.path("output").asText());
+        assertFalse(firstBytes.contains(dir.toString()), "the packaged artifact must exclude local paths");
+        JsonNode served = MAPPER.readTree(dmtool.run("schema", "batch").out()).path("observationArtifact");
+        assertEquals("BatchObservations", served.path("title").asText());
+
+        PackagedDmtool.Result second = dmtool.run("-m", model.toString(), "batch", ops.toString(),
+                "--observations", observations.toString());
+        assertEquals(first.code(), second.code(), second::err);
+        assertEquals(firstBytes, Files.readString(observations));
+    }
+
+    @Test
+    void packagedLiteralTextPositionalDoesNotSelectTheTextView(@TempDir Path dir) throws Exception {
+        PackagedDmtool dmtool = new PackagedDmtool(dir);
+        Path model = resource(dir, "subscription.dm.json");
+        Path literalTextSpec = dir.resolve("--text");
+        Files.writeString(literalTextSpec, """
+                {
+                  "computedField": "/Subscription/Billing/EffectiveFee",
+                  "name": "LiteralTextFile",
+                  "alternatives": [{"operation":"[/Subscription/Billing/BaseFee]"}],
+                  "messages": [{"locale":"en_US","text":"Literal text."},{"locale":"de_DE","text":"Wörtlicher Text."}]
+                }
+                """);
+
+        PackagedDmtool.Result direct = dmtool.run("-m", model.toString(), "computation", "add", "--dry-run",
+                "--", "--text");
+        assertEquals(0, direct.code(), () -> direct.out() + direct.err());
+        assertEquals("preview", MAPPER.readTree(direct.out()).path("outcome").asText(),
+                "a positional named --text must retain the primary JSON envelope");
+
+        Path ops = dir.resolve("literal-text-ops.json");
+        Files.writeString(ops, "[{\"id\":\"literal-text\",\"verb\":\"computation\","
+                + "\"args\":[\"add\",\"--dry-run\",\"--\",\"--text\"]}]");
+        Path observations = dir.resolve("literal-text-observations.json");
+        PackagedDmtool.Result batch = dmtool.run("-m", model.toString(), "batch", ops.toString(),
+                "--observations", observations.toString());
+
+        assertEquals(0, batch.code(), () -> batch.out() + batch.err());
+        JsonNode child = MAPPER.readTree(batch.out()).path("data").path("results").get(0);
+        assertTrue(child.has("result"), "batch must receive the child's JSON envelope, not a text-rendered stdout");
+        assertFalse(child.has("stdout"), "a positional named --text is not the global option");
+        assertEquals("preview", child.path("result").path("outcome").asText());
+        assertEquals("literal-text",
+                MAPPER.readTree(Files.readString(observations)).path("observations").get(0).path("id").asText());
     }
 
     @Test

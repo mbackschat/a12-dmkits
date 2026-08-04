@@ -1,0 +1,41 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/mbackschat/a12-dmkits/schema/batch-observations.schema.json",
+  "title": "BatchObservations",
+  "description": "The deterministic artifact overwritten by `dmtool batch <ops.json> --observations <file>`. It retains static real-kernel candidate outcomes as diagnostic codes only: no summaries, authored inputs, arguments, timings, paths, locale-dependent text, host data, interpreter runtime values, qualification, or projector data. Every child needs an id and must be `rule check --condition ...`, `computation add <spec> --dry-run`, or `computation modify ... --spec <spec> --dry-run`; observation capture never persists a computation candidate. The inputHash is SHA-256 of the exact UTF-8 condition string or exact computation-spec file bytes. The optional model is SHA-256 of the one effective persisted model file and is omitted for a heterogeneous/no-model batch. A completed gate may have ok:true with valid:false: ok is execution success; valid is the kernel verdict and appears only when the child emitted one.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "dmtool", "kernelBuilt", "kernelRuntime", "source", "observations"],
+  "properties": {
+    "schemaVersion": { "const": 1, "description": "integer artifact shape version; bumped only for a breaking shape change" },
+    "dmtool": { "type": "string", "description": "tool release version, exactly manifest.version.rulekit" },
+    "kernelBuilt": { "type": "string", "description": "kernel version built against, exactly manifest.version.kernel.builtAgainst" },
+    "kernelRuntime": { "type": "string", "description": "kernel version on the runtime classpath, exactly manifest.version.kernel.runtime" },
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["revision", "state"],
+      "properties": {
+        "revision": { "type": "string", "description": "exactly manifest.version.source.revision" },
+        "state": { "type": "string", "enum": ["CLEAN", "DIRTY", "UNKNOWN"], "description": "exactly manifest.version.source.state" }
+      }
+    },
+    "model": { "type": "string", "pattern": "^[0-9a-f]{64}$", "description": "optional SHA-256 of the one effective model's persisted bytes after dispatch; omitted when there is no single model identity" },
+    "observations": {
+      "type": "array",
+      "description": "one compact result per child in dispatch order",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "inputHash", "ok", "codes"],
+        "properties": {
+          "id": { "type": "string", "minLength": 1, "description": "the caller's batch item tag, verbatim" },
+          "inputHash": { "type": "string", "pattern": "^[0-9a-f]{64}$", "description": "SHA-256 over the exact authored condition UTF-8 or computation-spec bytes" },
+          "ok": { "type": "boolean", "description": "the child's execution-success axis; independent of valid" },
+          "valid": { "type": "boolean", "description": "the child's kernel verdict, present only when the invocation emitted one" },
+          "codes": { "type": "array", "items": { "type": "string" }, "description": "diagnostic code values in emitted kernel order; never summaries" }
+        }
+      }
+    }
+  }
+}

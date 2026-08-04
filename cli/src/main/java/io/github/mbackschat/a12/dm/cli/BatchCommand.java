@@ -10,9 +10,11 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import io.github.mbackschat.a12.dm.rulekit.validate.Diagnostic;
 import io.github.mbackschat.a12.dm.rulekit.validate.RkCode;
 
 import picocli.CommandLine.Command;
+import picocli.CommandLine.Option;
 import picocli.CommandLine.Parameters;
 
 /**
@@ -36,6 +38,11 @@ final class BatchCommand extends BaseCommand {
                     + "verb's CLI argv. See `dmtool schema batch` for the frame + worked examples. (A batch-level "
                     + "-m is the default model for ops that omit their own.)")
     String opsFile;
+
+    @Option(names = "--observations", paramLabel = "<file>",
+            description = "overwrite a deterministic static-kernel verdict artifact for caller-tagged rule checks "
+                    + "and computation-spec dry-runs (see `dmtool schema batch`)")
+    String observationsFile;
 
     @Override
     public Integer call() {
@@ -64,19 +71,63 @@ final class BatchCommand extends BaseCommand {
         if (frameRejection.isPresent()) {
             return frameRejection.get();
         }
-        ArrayNode results = MAPPER.createArrayNode();
         String batchModel = model();   // G18: the batch-level -m is the default for ops that omit their own
+        BatchObservationCapture.Plan observationPlan = null;
+        if (observationsFile != null) {
+            try {
+                observationPlan = BatchObservationCapture.prepare(
+                        ops, Path.of(opsFile), Path.of(observationsFile), batchModel);
+            } catch (BatchObservationCapture.InvalidInputException invalid) {
+                BatchObservationCapture.Rejection rejection = invalid.rejection();
+                return rejectObservationInput(rejection);
+            } catch (IOException e) {
+                return rejectObservationInput(new BatchObservationCapture.Rejection(-1,
+                        "cannot establish safe observation paths", e.getMessage()));
+            }
+        }
+        ArrayNode results = MAPPER.createArrayNode();
         int index = 0;
         for (JsonNode op : ops) {
             results.add(runOp(op, index++, batchModel));
+        }
+        if (observationPlan != null) {
+            try {
+                observationPlan.write(results);
+            } catch (IOException e) {
+                Diagnostic diagnostic = Diagnostic.internal(java.util.Optional.of(RkCode.INTERNAL_ERROR.code()),
+                        "cannot write the observations artifact: " + e.getMessage(),
+                        new Diagnostic.Where((String) null, java.util.Optional.empty()),
+                        java.util.Optional.of("choose a writable regular-file destination and rerun the batch"));
+                ResultEnvelope envelope = ResultEnvelope.dispatchArtifactWriteFailed(
+                        ResultIdentity.BATCH_RUN, "dispatched " + results.size() + " op"
+                                + (results.size() == 1 ? "" : "s")
+                                + ", but could not write the observations artifact",
+                        results, List.of(diagnostic));
+                out().print(envelope.toJsonString());
+                return envelope.exitCode();
+            }
         }
         // The standard envelope, with the items under `data.results`. It used to print a bare JSON ARRAY, which is
         // why `batch --text` emitted raw JSON: the renderer needs an object carrying a textual `outcome`, and an
         // array has neither. The items themselves are unchanged.
         String summary = "dispatched " + results.size() + " op" + (results.size() == 1 ? "" : "s");
-        ResultEnvelope env = ResultEnvelope.dispatchCompleted(ResultIdentity.BATCH_RUN, summary, results);
+        ResultEnvelope env = observationPlan == null
+                ? ResultEnvelope.dispatchCompleted(ResultIdentity.BATCH_RUN, summary, results)
+                : ResultEnvelope.dispatchCompletedWithArtifact(
+                        ResultIdentity.BATCH_RUN, summary, results, observationPlan.output());
         out().print(env.toJsonString());
         return env.exitCode();
+    }
+
+    private int rejectObservationInput(BatchObservationCapture.Rejection rejection) {
+        String path = rejection.index() < 0 ? "/" : "/" + rejection.index();
+        Diagnostic diagnostic = Diagnostic.precheck(java.util.Optional.of(RkCode.INVALID_VALUE.code()),
+                rejection.message(), Diagnostic.Where.path(path), java.util.Optional.of(rejection.fix()),
+                java.util.Optional.empty());
+        ResultEnvelope envelope = ResultEnvelope.rejected(ResultIdentity.BATCH_RUN,
+                "the observation request is invalid", List.of(diagnostic), RejectionBasis.preflight());
+        out().print(envelope.toJsonString());
+        return envelope.exitCode();
     }
 
     private static ObjectNode runOp(JsonNode op, int index, String batchModel) {
@@ -107,21 +158,19 @@ final class BatchCommand extends BaseCommand {
 
         List<String> argv = new ArrayList<>();
         argv.add(verb);
-        boolean opHasModel = false;
         if (argsNode.isArray()) {
             for (JsonNode a : argsNode) {
                 String arg = a.asText();
-                if ("-m".equals(arg) || "--model".equals(arg)) {
-                    opHasModel = true;
-                }
                 argv.add(arg);
             }
         }
+        boolean opHasModel = hasOwnModel(argv);
         // G18: an op that omits its own -m inherits the batch-level one (the universal -m default); an op
-        // carrying its own -m keeps it. `-m` is a global inherited option, so injecting it is always safe.
+        // carrying its own -m keeps it. Put the inherited global option before the child command's arguments:
+        // appending it would place it after a child's `--`, where picocli correctly treats it as a positional.
         if (!opHasModel && batchModel != null) {
-            argv.add("-m");
-            argv.add(batchModel);
+            argv.add(1, batchModel);
+            argv.add(1, "-m");
         }
 
         StringBuilder opOut = new StringBuilder();
@@ -140,6 +189,15 @@ final class BatchCommand extends BaseCommand {
             result.put("stderr", opErr.toString());
         }
         return result;
+    }
+
+    private static boolean hasOwnModel(List<String> argv) {
+        try {
+            return CommandContracts.parsedParameters(argv).value("--model") != null;
+        } catch (RuntimeException malformedChild) {
+            return argv.stream().anyMatch(arg -> "-m".equals(arg) || "--model".equals(arg)
+                    || arg.startsWith("-m=") || arg.startsWith("--model="));
+        }
     }
 
     private static void attachStdout(ObjectNode result, String stdout) {

@@ -47,6 +47,12 @@ final class SchemaCommand extends BaseCommand {
     /** The batch op-record frames, served as raw JSON Schema (the list frame + a worked, CI-executed example). */
     static final List<String> FRAMES = List.of("apply", "batch");
 
+    /** Schema resources embedded under a named property of another public schema response. */
+    record EmbeddedSchema(String property, String schema) { }
+
+    static final Map<String, EmbeddedSchema> EMBEDDED_SCHEMAS = Map.of(
+            "batch", new EmbeddedSchema("observationArtifact", "batch-observations"));
+
     /** Ops that consume a rich JSON input file → the input schema resource that documents it. */
     static final Map<String, String> INPUT_OPS = Map.of(
             "rule add", "rule-add",
@@ -219,6 +225,14 @@ final class SchemaCommand extends BaseCommand {
                 }
                 // A JSON-Schema annotation: the frame shape and its operational contract remain one response,
                 // rendered from the same owner as manifest/help rather than duplicated in schema prose.
+                EmbeddedSchema embedded = EMBEDDED_SCHEMAS.get(name);
+                if (embedded != null) {
+                    JsonNode embeddedSchema = readSchema(embedded.schema());
+                    if (embeddedSchema == null) {
+                        return fail("schema resource missing: " + embedded.schema());
+                    }
+                    frame.set(embedded.property(), embeddedSchema);
+                }
                 CommandContracts.attachTo(frame, name, command);
                 out().print(frame.toPrettyString() + "\n");
             } else {

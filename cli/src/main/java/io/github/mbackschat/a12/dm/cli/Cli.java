@@ -173,17 +173,16 @@ public final class Cli {
         }
     }
 
-    /** Resolve the inherited boolean before execution so stdout capture follows picocli's accepted spellings. */
+    /** Resolve the inherited boolean through the live picocli contract before choosing the stdout sink. */
     private static boolean textMode(String[] args) {
-        boolean enabled = false;
-        for (String arg : args) {
-            if (arg.equals("--text")) {
-                enabled = true;
-            } else if (arg.startsWith("--text=")) {
-                enabled = Boolean.parseBoolean(arg.substring("--text=".length()));
-            }
+        try {
+            return Boolean.parseBoolean(CommandContracts.parsedParameters(List.of(args)).value("--text"));
+        } catch (RuntimeException invalidInvocation) {
+            // Parse errors produce no result envelope, so capturing stdout cannot add value. More importantly,
+            // never guess from raw tokens here: `--` can make a literal positional named `--text`, and the batch
+            // observation preflight uses this same parsed-parameter owner to decide whether JSON is preserved.
+            return false;
         }
-        return enabled;
     }
 
     /** Execute one configured command tree while containing Errors that picocli's Exception handler cannot catch. */

@@ -318,7 +318,7 @@ For intentionally scale-unknown division or field-exponent power, the computatio
 
 Diagnostics are **corrective**: each carries a stable `code`, a `where`, and a `fix` — and a built-in lint flags the classic **inverted-polarity** mistake automatically (and, on `computation add`, forbidden constructs + overlapping preconditions).
 
-Adding many rules or edits in one go? **`apply`** (below) is the bulk path — one model load, ordered ops, one terminal kernel gate, one write, atomic rollback. `batch` merely dispatches independent calls: it continues after a child failure and never rolls back an earlier successful write; its outer `ok` and exit report whether every child succeeded.
+Adding many rules or edits in one go? **`apply`** (below) is the bulk path — one model load, ordered ops, one terminal kernel gate, one write, atomic rollback. `batch` merely dispatches independent calls: it continues after a child failure and never rolls back an earlier successful write; its outer `ok` and exit report whether every child succeeded. For a replayable static-kernel verdict matrix, give every supported child an `id` and add `batch --observations <file>`: it overwrites one deterministic, diagnostic-code-only artifact whose exact shape is served by `schema batch`.
 
 ### Run the rules against real data (not just static checks)
 

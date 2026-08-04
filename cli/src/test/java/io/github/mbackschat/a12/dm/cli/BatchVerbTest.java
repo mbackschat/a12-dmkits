@@ -224,14 +224,23 @@ class BatchVerbTest {
         Path subscription = model(dir);                   // has no /Order rules
         Path orderRuled = CliTestSupport.orderRuled(dir);  // has /Order/EligibilityCheck
         Path ops = dir.resolve("ops.json");
-        // the op carries its own -m (orderRuled); the batch-level -m (subscription) must NOT override it
-        Files.writeString(ops, "[ {\"verb\":\"rule\",\"args\":[\"read\",\"/Order/EligibilityCheck\",\"-m\","
-                + MAPPER.writeValueAsString(orderRuled.toString()) + "]} ]");
+        // Every accepted own-model spelling must suppress batch-model injection. The equals forms were the
+        // sibling gap: token scanning recognized only a standalone -m/--model and then appended the wrong model.
+        String quoted = MAPPER.writeValueAsString(orderRuled.toString());
+        String shortEquals = MAPPER.writeValueAsString("-m=" + orderRuled);
+        String longEquals = MAPPER.writeValueAsString("--model=" + orderRuled);
+        Files.writeString(ops, "["
+                + "{\"verb\":\"rule\",\"args\":[\"read\",\"/Order/EligibilityCheck\",\"-m\"," + quoted + "]},"
+                + "{\"verb\":\"rule\",\"args\":[\"read\",\"/Order/EligibilityCheck\"," + shortEquals + "]},"
+                + "{\"verb\":\"rule\",\"args\":[\"read\",\"/Order/EligibilityCheck\"," + longEquals + "]}]");
         var res = CliTestSupport.run("-m", subscription.toString(), "batch", ops.toString());
         assertEquals(0, res.code(), res::err);
         JsonNode arr = batchItems(res.out());
-        assertEquals(0, arr.get(0).get("exit").asInt(),
-                () -> "the op's own -m (orderRuled) won — it read an Order rule the batch model lacks: " + arr);
+        assertEquals(3, arr.size());
+        for (JsonNode item : arr) {
+            assertEquals(0, item.get("exit").asInt(),
+                    () -> "the op's own model won — it read an Order rule the batch model lacks: " + arr);
+        }
     }
 
     @Test
