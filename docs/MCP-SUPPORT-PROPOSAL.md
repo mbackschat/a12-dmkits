@@ -17,6 +17,7 @@
 | the write-durability finding is answered by publishing `FailurePersistence`'s scope, not by making writes atomic | 2026-08-04 |
 | target `2026-07-28` **only** — no `2025-11-25` fallback; anything below it is **refused with a corrective diagnostic**, never partly served (§5.3) | 2026-08-04 |
 | **zero new dependencies** — no MCP SDK (none implements this revision), no JSON-RPC library, no schema validator; Jackson tree plus the JDK, both already in the binary (§5.2) | 2026-08-04 |
+| a later SDK is confined to **one binding class**, prepared by three things the design wants anyway and by nothing else — no second implementation, no factory, no MCP-shaped types (§5.4) | 2026-08-04 |
 
 **Evidence basis — four source classes, deliberately not conflated:**
 
@@ -191,12 +192,18 @@ The largest read tool in the surface publishes no output schema *solely* because
 **The MCP command lives in `:cli`, not a new module.** `RootCommand`, `ManifestCommand`, and `TextRenderer` are package-private, so a class outside `io.github.mbackschat.a12.dm.cli` can neither build the live tree, nor walk it to derive tools, nor produce the `--text` rendering. Placing the command in that package makes all three reachable without widening any visibility. A separate module would additionally require `:cli` to depend on it while it depends on `:cli` — both edges cannot hold.
 
 ```
-cli/…/mcp/McpToolRegistry     derived from the live picocli tree + CommandContracts (the walk `manifest` uses)
-cli/…/mcp/McpDispatcher       method + params -> result; names no protocol type
-   └── McpStdioTransport      frames JSON-RPC; the only protocol-aware layer
+cli/…/mcp/McpStdioBinding     owns the wire: framing, the JSON-RPC envelope, _meta, headers   ← outermost
+  └── McpDispatcher           method name -> handler over OUR request/result records
+        ├── McpToolRegistry   derived from the live picocli tree + CommandContracts (the walk `manifest` uses)
+        └── McpInvoker        Cli.run per call; envelope -> structuredContent + content (§5.1)
 ```
 
-**The seam rule:** nothing below `McpDispatcher` may name a protocol type — no `_meta`, no headers, no `resultType`, no JSON-RPC envelope. That keeps a later hosted transport a bounded addition and confines a possible SDK substitution to one class.
+**The seam rule, stated precisely.** Only the binding may name a **transport or library type** — the JSON-RPC envelope, header objects, and (later) any SDK class. Everything inside it speaks our own records.
+
+Two clarifications, because the earlier wording of this rule was both inverted and overbroad (Appendix B):
+
+- **Protocol *facts* live inside; protocol *types* stay out.** `resultType`, `ttlMs`, and `cacheScope` are plain fields on our result record, because *which* op is cacheable and *what* its freshness is are semantics we own — a transport must not decide caching policy. What the rule bans is depending on someone else's classes to express them.
+- **Method-name strings are the dispatcher's key, not a leak.** `"tools/call"` is how the table is addressed; forbidding it would leave the dispatcher unable to dispatch.
 
 ### 5.1 The invocation contract — one entry point, per call
 
@@ -204,7 +211,7 @@ cli/…/mcp/McpDispatcher       method + params -> result; names no protocol typ
 
 Three consequences of stdio framing (§2) shape the rest:
 
-1. **The server serialises its own compact frames; it never relays CLI stdout.** dmtool prints pretty-printed multi-line JSON and stdio MCP forbids embedded newlines in a message. The dispatcher captures the run's output, parses it, and re-serialises compactly.
+1. **The server serialises its own compact frames; it never relays CLI stdout.** dmtool prints pretty-printed multi-line JSON and stdio MCP forbids embedded newlines in a message. `McpInvoker` captures the run's output and parses it to a tree; the binding is what serialises the frame, compactly — which is the same split the seam rule draws, since only the binding knows what a frame is.
 2. **`--text` must not be passed through, for the 68 envelope verbs.** `Cli.run` diverts stdout into an internal buffer when `--text` is present and then applies `TextRenderer`. **`TextRenderer` is gated**: it returns the payload unchanged when that payload is not an envelope, so `--text operators` and `--text manifest` emit their JSON intact. So passing `--text` would lose the JSON only on an envelope route — but that is exactly the route MCP needs both forms from, and re-invoking a mutating verb to obtain the other form would apply the edit twice. Rule: run without `--text`, parse once, and apply the renderer in process. For the **13 verbs with a non-envelope route** there is no envelope to parse and no rendering to produce, and `content` carries the raw payload as text.
 3. **The verb must not write to the real stdout.** dmtool's entry point takes passed sinks rather than static streams; the dispatcher supplies its own. A strict process-boundary sweep of all 81 leaves found 79 JSON-promising routes emitting exactly one JSON value with EOF immediately after ([CLI-CONFORMANCE-GAPS.md](CLI-CONFORMANCE-GAPS.md) §2), with `schema` bare and `export card` deliberately raw. A wire protocol nonetheless sets a stricter bar than a CLI, which is why the dispatcher supplies its own sinks rather than relying on ambient purity.
 
@@ -220,8 +227,6 @@ Three consequences of stdio framing (§2) shape the rest:
 
 **Consequence for phase 3.** The 2026-08-02 row keeping the SDK as a possible later substitution for a hosted transport is now conditional on an SDK that implements this revision existing at all. **Re-open trigger:** a Java SDK release supporting `2026-07-28`. Until then the hosted transport would also have to be hand-rolled, or built on a dependency chosen on its own merits rather than on MCP-SDK grounds — which is a phase-3 decision, not a phase-1 one.
 
-**Conformance testing, stated accurately.** The official **MCP Inspector** CLI connects to a server, invokes the single method named by `--method`, prints the result, and exits. It is a per-method smoke tool with usable exit codes and documented CI recipes — worth wiring, and it will catch a broken frame or a missing method. It is **not** a conformance suite: it does not enumerate the revision's MUSTs, nor validate `_meta` requiredness, cacheable-result obligations, header rules, or error-code allocation. So: *smoke-tested per method in CI, plus hand-written assertions for the MUSTs we implement* — not "provably conformant."
-
 ### 5.3 Refusing a client below `2026-07-28`
 
 **Owner decision, 2026-08-04: target `2026-07-28` only, and refuse anything below it.** No `2025-11-25` compatibility path is built, and no request from an older client is partly served. The refusal must be *corrective* — it names the revision this server implements, what it observed instead, and that `server/discover` is where the answer is published — because a bare `Method not found` reads as a broken server rather than a version mismatch, and a silently partial service is the failure mode this project rejects outright.
@@ -236,6 +241,22 @@ Three consequences of stdio framing (§2) shape the rest:
 | `server/discover` | answered normally, advertising `supportedVersions: ["2026-07-28"]` — the one call an older client may legitimately make |
 
 **Obligation on landing:** the refusal path gets a test that proves it *fires*, per the standing rule that a refusal is not shippable until its refusal is tested — one case per row above, asserting the code and that the message names the supported revision.
+
+### 5.4 Preparing for an SDK that does not exist yet
+
+**Owner decision, 2026-08-04: build for the substitution, but add nothing for it beyond one boundary.** The requirement is a single location to change; the trap is paying for flexibility now — a second implementation, a factory, a revision-parameterised abstraction, or types that mirror MCP's so an SDK can slot in. None of that is proposed. The whole preparation is three things the design wants anyway:
+
+**1. The handler table is data, and the binding consumes it.** `McpDispatcher` exposes method name → handler over our records. Today `McpStdioBinding` walks that table and dispatches itself; with an SDK, an `McpSdkBinding` walks the *same* table and registers each entry with the SDK. Without this the substitution would touch both the transport *and* every method registration; with it, one class is added and one deleted. Cost today: one accessor.
+
+**2. Handlers are synchronous pure functions.** `request → result`, no callbacks, no streams. This is the direction that adapts: a synchronous function wraps into whatever an SDK wants (including a Reactor `Mono`, which §5.2 measures as likely), while an async handler cannot be un-wrapped as cheaply. Phase 1 serialises dispatch anyway (§5.1), so this costs nothing.
+
+**3. Protocol tests assert on the wire, not on internals.** Given these bytes in, these bytes out. Such a test does not know which binding produced the answer, so it survives the substitution intact and becomes the SDK's acceptance suite rather than something to rewrite. The §5.3 refusal test is the first instance and the reason the rule is worth stating now.
+
+**What is deliberately NOT abstracted:** the tool derivation, the annotations, `Cli.run` invocation, and the §5.3 refusal *semantics*. An SDK replaces framing, envelope handling, and method registration — it does not know our registry, and pre-abstracting against a library nobody has read is how a seam ends up fitting the imagined SDK rather than the real one.
+
+**No import lint today, because there is nothing to forbid.** The interpreter's `verifyInterpreterPurity` is the precedent for enforcing exactly this kind of boundary, and an equivalent belongs here — but with zero SDK on the classpath it would assert against an empty set. It is bound to the re-open trigger above: the SDK arriving is what makes the lint meaningful, and writing it is part of that work, not of phase 1.
+
+**Conformance testing, stated accurately.** The official **MCP Inspector** CLI connects to a server, invokes the single method named by `--method`, prints the result, and exits. It is a per-method smoke tool with usable exit codes and documented CI recipes — worth wiring, and it will catch a broken frame or a missing method. It is **not** a conformance suite: it does not enumerate the revision's MUSTs, nor validate `_meta` requiredness, cacheable-result obligations, header rules, or error-code allocation. So: *smoke-tested per method in CI, plus hand-written assertions for the MUSTs we implement* — not "provably conformant."
 
 ## 6. The tool surface — split by effect, not only by target
 
@@ -400,7 +421,7 @@ Two rejected alternatives, recorded so they are not re-proposed: an **invocation
 
 **Required (phase 1)**
 
-- The `mcp` command in `:cli` (§5); the `McpDispatcher` seam; the `Cli.run` invocation contract (§5.1); serialised dispatch.
+- The `mcp` command in `:cli` (§5); the `McpDispatcher` seam with its handler table exposed as data and synchronous handlers (§5.4); the `Cli.run` invocation contract (§5.1); serialised dispatch.
 - `server/discover` with `supportedVersions` (exactly `["2026-07-28"]`), `capabilities`, `serverInfo`, `instructions`, `ttlMs`, `cacheScope`.
 - **The §5.3 revision refusal**, with the test that proves each row of its table fires.
 - `tools/list` — the 26 tools of §6, **generated from the live picocli tree plus `CommandContracts`**, with `ttlMs`/`cacheScope` and deterministic ordering.
@@ -634,6 +655,7 @@ What was held earlier in this proposal's life and is no longer held. Recorded he
 | Referrer analysis is outward-only | **corrected** | True for `where-used` and the rewriting refactors, false for `model rename` — the finding that produced the closed-world axis |
 | Route A means "every verb works immediately" | **corrected** | `model diff`'s two roots and git route need explicit handling |
 | A `ReferenceResolvers` map factory has no other caller | **corrected** | Unenumerated; `GitBaseline.GitModelResolver` is a production map-backed resolver. The factory is still not proposed, but for want of need rather than want of callers |
+| The seam rule: *"nothing **below** `McpDispatcher` may name a protocol type — no `_meta`, no headers, no `resultType`, no JSON-RPC envelope"*, with the transport drawn **under** the dispatcher | **corrected — it was inverted and overbroad** | The transport is the *outermost* layer, not an inner one, so the diagram contradicted the rule it illustrated. And banning `resultType`/`ttlMs`/`cacheScope` from the inner layers would have pushed caching *policy* into the transport; the ban is on library **types**, not protocol **facts** (§5) |
 | `--text` emits only the rendering, so passing it would lose the JSON | **corrected** | `TextRenderer` is gated and passes a non-envelope payload through unchanged; the loss applies only on envelope routes (§5.1) |
 | "No path components on the wire, so the traversal surface does not exist" | **corrected** | 12 `FILE`-tagged parameters plus positional operands carry caller-supplied paths inside `args` (§9) |
 | `openWorldHint: false` because dmtool "touches local files and nothing external" | **corrected** | It spawns `node` and `git` as local subprocesses; the hint still holds, on the narrower basis that there is no open world of external entities (§7) |
