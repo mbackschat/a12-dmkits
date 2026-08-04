@@ -116,8 +116,6 @@ tasks.named('test') {
         excludeTestsMatching 'io.github.mbackschat.a12.dm.rulekit.catalog.DslCatalogBridgeTest'
         excludeTestsMatching 'io.github.mbackschat.a12.dm.A12JsonConstructionGuardTest'
         excludeTestsMatching 'io.github.mbackschat.a12.dm.api.PublicApiGuardTest'
-        excludeTestsMatching 'io.github.mbackschat.a12.dm.InterpreterReleaseMirrorAssemblerTest'
-        excludeTestsMatching 'io.github.mbackschat.a12.dm.InterpreterReleasePublisherRehearsalTest'
         excludeTestsMatching 'io.github.mbackschat.a12.dm.rulekit.catalog.CatalogProseReviewGuardTest'
         excludeTestsMatching 'io.github.mbackschat.a12.dm.EnsureDmtoolCacheTest'
         excludeTestsMatching 'io.github.mbackschat.a12.dm.DmtoolLauncherTest'
@@ -340,16 +338,29 @@ tasks.register('apiGuardTest', Test) {
     guardInputs(it, ['api goldens': fileTree('api') { include '**/*.api' }])
 }
 
+// Its own source set, following the `noBackendTest` precedent above, because these two classes were the
+// dominant cost of the whole root lane: 73 s of its 79 s of guard time (11 tests, 2 classes) against 14 s for
+// the 1588-test suite they hung off. The cost was pure COUPLING, not work — sharing `sourceSets.test` made
+// the compiled root test output (222 classes) their input, so every TDD edit anywhere in root's test tree
+// re-ran them, and each run also had to load the kernel-laden test runtime classpath to select 11 tests.
+// Both classes are genuinely standalone (JUnit + JDK only, zero project imports), which is what makes the
+// split safe; their sibling guards are NOT (`CatalogProseReviewGuardTest` reads `OperatorCatalog`), so this
+// is deliberately not applied estate-wide. The declared `guardInputs` below are unchanged and remain the
+// real trigger.
+sourceSets {
+    releaseGuardTest
+}
+dependencies {
+    releaseGuardTestImplementation platform('org.junit:junit-bom:5.11.4')
+    releaseGuardTestImplementation 'org.junit.jupiter:junit-jupiter'
+    releaseGuardTestRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+}
 tasks.register('interpreterReleaseGuardTest', Test) {
     description = 'Synthetic interpreter mirror and staged-publisher laws with every runtime-read release input declared.'
     group = 'verification'
     useJUnitPlatform()
-    testClassesDirs = sourceSets.test.output.classesDirs
-    classpath = sourceSets.test.runtimeClasspath
-    filter {
-        includeTestsMatching 'io.github.mbackschat.a12.dm.InterpreterReleaseMirrorAssemblerTest'
-        includeTestsMatching 'io.github.mbackschat.a12.dm.InterpreterReleasePublisherRehearsalTest'
-    }
+    testClassesDirs = sourceSets.releaseGuardTest.output.classesDirs
+    classpath = sourceSets.releaseGuardTest.runtimeClasspath
     guardInputs(it, [
             'assembler'         : file('scripts/assemble-interpreter-release-repo.sh'),
             'source statistics' : file('scripts/update-code-statistics.sh'),
