@@ -138,6 +138,79 @@ normalization {
     }
 }
 
+// --- Native reflection-metadata FRESHNESS STAMP (docs/NATIVE-IMAGE-GRAALVM.md §5.1) ----------------------
+// Closes the one native staleness hole neither mtime gate can see: edit source, skip the capture, run
+// `nativeCompile`, and the binary is now newer than every source file — so `prep-probe.sh` and
+// `native-gate.sh` both pass while the committed reflection metadata describes older code. That is what
+// §3.5's five shipped native-only defects look like from the outside.
+//
+// The capture IS `:cli:test` under the tracing agent, so its inputs are that run's inputs: this project's
+// TEST sources (they decide which paths get exercised at all) plus every module's MAIN sources and the
+// resolved external jars, because a reflective site anywhere on the runtime classpath is what gets recorded.
+// The digest is COMMITTED rather than left to Gradle's up-to-date history, which lives in `.gradle/` and does
+// not travel between machines or survive a fresh clone.
+//
+// Deliberately OVER-approximating, and derived rather than hand-listed: a new module's sources are swept
+// automatically. The failure directions are not symmetric — hashing too much costs a re-capture that was not
+// owed, while hashing too little passes a stale capture and ships a binary that throws on a user's machine.
+// Other modules' TEST sources are excluded because only `:cli:test` is traced (the guard tasks it depends on
+// run untraced), so including them would raise false staleness on the commonest edits in the repo.
+def nativeCaptureStampFile = file('native-capture-stamp.txt')
+def nativeCaptureStampDigest = {
+    def md = java.security.MessageDigest.getInstance('SHA-256')
+    def add = { String label, byte[] bytes ->
+        md.update(label.getBytes('UTF-8')); md.update((byte) 0); md.update(bytes); md.update((byte) 0)
+    }
+    def trees = rootProject.allprojects.collect { it.file('src/main') } + [project.file('src/test')]
+    trees.findAll { it.directory }.toSorted { a, b -> a.absolutePath <=> b.absolutePath }.each { root ->
+        project.fileTree(root).files.toSorted { a, b -> a.absolutePath <=> b.absolutePath }.each { f ->
+            add(rootProject.relativePath(f), f.bytes)
+        }
+    }
+    // External dependency IDENTITY, not content: the file name carries the version, which is what changes a
+    // reflective surface (a kernel bump, a Jackson bump). Project entries are skipped — their sources are
+    // already hashed above, and their build outputs would make the stamp depend on compilation state.
+    configurations.testRuntimeClasspath.files
+            .findAll { it.name.endsWith('.jar') }
+            .collect { it.name }.toSorted()
+            .each { add('jar', it.getBytes('UTF-8')) }
+    add('callerFilter', rootProject.file('scripts/native-agent-caller-filter.json').bytes)
+    add('graalvm', (System.getenv('GRAALVM_HOME') ?: '(unset)').getBytes('UTF-8'))
+    return md.digest().encodeHex().toString()
+}
+
+tasks.register('nativeCaptureStamp') {
+    group = 'build'
+    description = 'Record the input digest the committed native reflection metadata was captured from.'
+    outputs.upToDateWhen { false }
+    doLast {
+        nativeCaptureStampFile.text = nativeCaptureStampDigest() + '\n'
+        logger.lifecycle("native capture stamp → ${rootProject.relativePath(nativeCaptureStampFile)}")
+    }
+}
+
+tasks.register('verifyNativeCaptureStamp') {
+    group = 'verification'
+    description = 'Fail when the committed native reflection metadata was captured from different sources.'
+    outputs.upToDateWhen { false }
+    doLast {
+        if (!nativeCaptureStampFile.file) {
+            throw new GradleException('no native capture stamp — run scripts/capture-native-config.sh '
+                    + '(it records one), so a stale capture can never pass unnoticed')
+        }
+        def recorded = nativeCaptureStampFile.text.trim()
+        def actual = nativeCaptureStampDigest()
+        if (recorded != actual) {
+            throw new GradleException('STALE native reflection metadata: it was captured from different '
+                    + "sources (stamp ${recorded.take(12)}…, now ${actual.take(12)}…).\n"
+                    + '  The capture is TEST-SUITE-DRIVEN, so a reflective site your change added is not in '
+                    + 'it and the native gate cannot see that (docs/NATIVE-IMAGE-GRAALVM.md §3.5). Re-capture:\n'
+                    + '    GRAALVM_HOME=<graalvm-25> ./scripts/capture-native-config.sh')
+        }
+        logger.lifecycle("native reflection metadata is fresh (stamp ${recorded.take(12)}…)")
+    }
+}
+
 // picocli-codegen: name the project so the generated native-image config lands under a stable
 // META-INF/native-image/<group>/<artifact>/ path (CLI-SPEC §B2).
 tasks.named('compileJava') {

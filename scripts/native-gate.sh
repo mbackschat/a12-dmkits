@@ -23,6 +23,27 @@ export PATH="$ROOT/bin:$PATH"
 
 [[ -x "$NATIVE" ]] || { echo "native binary not found/executable: $NATIVE  (build with :cli:nativeCompile)" >&2; exit 2; }
 [[ -n "$VERSION" ]] || { echo "native gate: repository version is missing from build.gradle" >&2; exit 2; }
+
+# Never certify a binary older than the source it claims to be. `probe/prep-probe.sh` has enforced this on the
+# PROBE path since it was written; the SHIP path — this gate — did not, so a stale binary could pass every
+# check here and be published. Same oracle deliberately: an mtime sweep works on a dirty tree, where a
+# git-revision comparison is inert (provenance reads CLEAN/DIRTY, and DIRTY says nothing about which edits are
+# in the binary). Any source file newer than the artifact means this gate would be certifying a fiction.
+stale="$(find "$ROOT"/*/src "$ROOT/src" -type f \( -name '*.java' -o -name '*.kt' -o -name '*.json' \) \
+        -newer "$NATIVE" -print -quit 2>/dev/null)"
+if [[ -n "$stale" ]]; then
+    echo "STALE native binary — refusing to certify it (newer than the build: $stale)" >&2
+    echo "  the reflection metadata capture is TEST-SUITE-DRIVEN, so re-capture FIRST, then rebuild:" >&2
+    echo "    GRAALVM_HOME=/Library/Java/JavaVirtualMachines/graalvm-25.jdk/Contents/Home ./scripts/capture-native-config.sh" >&2
+    echo "    GRAALVM_HOME=/Library/Java/JavaVirtualMachines/graalvm-25.jdk/Contents/Home ./build.sh :cli:nativeCompile -Porg.gradle.java.installations.fromEnv=GRAALVM_HOME" >&2
+    echo "    ./scripts/native-gate.sh   # then re-run this gate on the rebuilt binary" >&2
+    exit 3
+fi
+
+# The staleness the mtime sweep above CANNOT see: edit source, skip the capture, rebuild — the binary is now
+# newer than every source file, so the sweep passes while the committed reflection metadata describes older
+# code. ~2s, and it fails closed when no stamp exists (§5.1).
+"$ROOT/build.sh" --console=plain :cli:verifyNativeCaptureStamp
 "$ROOT/scripts/native-no-java-smoke.sh" "$NATIVE" "$VERSION"
 
 # Reuse the complete process-boundary contract and mutation matrix against the artifact itself. This catches

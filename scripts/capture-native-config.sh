@@ -62,4 +62,11 @@ files=("$CFG"/*.json)
 # Now the hygiene assertion has the artifact it owns. Run it outside the agent so its test machinery does not
 # become capture input; set -e makes either the traced suite or this post-copy check terminal.
 ./build.sh :cli:test --tests 'io.github.mbackschat.a12.dm.cli.NativeImageMetadataHygieneTest'
+
+# Record WHAT this capture was taken from, so a later stale capture cannot pass unnoticed. Written last, only
+# on success, so a failed capture never leaves a stamp claiming freshness it did not establish. The stamp is
+# committed alongside the metadata; `verifyNativeCaptureStamp` (run by the probe and ship gates) fails when the
+# sources have moved on. NATIVE-IMAGE-GRAALVM §5.1.
+./build.sh :cli:nativeCaptureStamp
+
 echo "captured (test-suite) → $DEST/ ($(ls "$DEST" | tr '\n' ' '))"

@@ -130,6 +130,19 @@ One committed script does it: **[`../scripts/capture-native-config.sh`](../scrip
 
 ### 5.1 Where it's stored & how often to regenerate — it is NOT a per-build cost
 
+> **STALENESS MUST NEVER HAPPEN — so neither kind is a judgement call.** Two distinct things can lag the source, and the distinction exists to tell you *what to redo*, never *whether to bother*:
+>
+> | what can lag | remedy | cost | what makes it impossible to miss |
+> |---|---|---|---|
+> | **the BINARY** — it predates your code | `:cli:nativeCompile` | ~1m10s | a source-newer-than-binary gate, enforced on **every** path that consumes the binary: `probe/prep-probe.sh` before a probe, `scripts/native-gate.sh` before a ship |
+> | **the METADATA** — the captured reflection config misses a site your change introduced | `scripts/capture-native-config.sh` | ~7m30s | the root `CLAUDE.md` rule: re-capture before any native (re)build, unconditionally |
+>
+> Every source change stales the binary. The table below is the *reasoned* account of when the metadata's content actually changes — it explains **which of the two capture scripts to run and why**, and it is emphatically **not** a licence to skip the capture because your change looks harmless. [§3.5](#35-the-bugs-this-closes-v010--v011--v060-native-binaries) is why: five native-only defects shipped from exactly that reasoning, and two of them were un-masked only by fixing the previous one. The capture's own coverage is test-suite-driven, so a reflective site no test reaches is invisible to it — which means "the gate would have caught it" is false for precisely the class that has actually bitten.
+>
+> **The metadata's cheap detector is the capture STAMP (added 2026-08-05).** `scripts/capture-native-config.sh` records, on success only, a digest of what it was captured from — this project's test sources plus every module's main sources and the resolved external jars, i.e. the inputs of the `:cli:test` run that *is* the capture. `:cli:verifyNativeCaptureStamp` recomputes it in ~2s and both gates run it. That closes the one hole the mtime sweeps cannot see: **edit source → skip the capture → rebuild** leaves the binary newer than every source file, so both sweeps pass while the metadata describes older code. It **fails closed** — no stamp means refuse, because unknown provenance is not freshness. Re-stamping is a side effect of a real capture and never a manual step; writing one by hand would assert a freshness nothing established.
+>
+> The digest deliberately over-approximates (all modules' main sources, not a hand-listed set) because the failure directions are asymmetric: hashing too much costs a re-capture that was not owed, hashing too little ships a binary that throws. Other modules' *test* sources are excluded — only `:cli:test` is traced. Residual exposure, stated rather than hidden: the stamp proves *which sources* a capture saw, not that the capture *exercised* every reflective path in them; that limit is inherent to a test-suite-driven capture and is why the operational rule stays unconditional.
+
 There are now **two committed metadata sources** (GraalVM merges both), plus a build-arg glob — and a kernel bump must refresh **all three**:
 
 ```

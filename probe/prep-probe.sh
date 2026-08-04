@@ -60,6 +60,10 @@ if [[ -n "$stale" ]]; then
   exit 3
 fi
 
+# The staleness the sweep above cannot see: a rebuild WITHOUT a re-capture leaves the binary newer than every
+# source file while the committed reflection metadata describes older code. ~2s; fails closed with no stamp.
+"$ROOT/build.sh" --console=plain :cli:verifyNativeCaptureStamp
+
 rm -rf "$SANDBOX"
 mkdir -p "$SANDBOX/bin" "$SANDBOX/work"
 : > "$LOG"
