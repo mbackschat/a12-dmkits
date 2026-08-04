@@ -92,7 +92,7 @@ public final class DocumentModelDraft {
         this.typeDefs = List.copyOf(b.typeDefs);
         this.rootGroups = List.copyOf(b.rootGroups);
         this.baseYear = b.baseYear;
-        this.labels = Map.copyOf(b.labels);
+        this.labels = OrderedMap.copyOf(b.labels);
         this.annotations = List.copyOf(b.annotations);
         this.supportedCharacters = SupportedCharactersContract.requireValid(b.supportedCharacters);
         this.typeDefImports = List.copyOf(b.typeDefImports);
@@ -776,7 +776,7 @@ public final class DocumentModelDraft {
             TypeDefBuilder b = new TypeDefBuilder();
             body.accept(b);
             typeDefs.add(new TypeDefDecl(id, b.spec(), List.copyOf(b.annotations),
-                    Map.copyOf(b.internalDescription), Map.copyOf(b.externalDescription)));
+                    OrderedMap.copyOf(b.internalDescription), OrderedMap.copyOf(b.externalDescription)));
             return this;
         }
 

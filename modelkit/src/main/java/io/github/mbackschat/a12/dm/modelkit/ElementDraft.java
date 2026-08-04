@@ -121,7 +121,7 @@ public sealed interface ElementDraft
             String severity, Map<String, String> messages) implements ElementDraft {
 
         public Rule {
-            messages = Map.copyOf(messages);
+            messages = OrderedMap.copyOf(messages);
         }
 
         @Override

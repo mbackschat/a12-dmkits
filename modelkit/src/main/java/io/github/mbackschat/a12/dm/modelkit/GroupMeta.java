@@ -22,10 +22,10 @@ public record GroupMeta(
         Map<String, String> externalDescription) {
 
     public GroupMeta {
-        labels = labels == null ? Map.of() : Map.copyOf(labels);
+        labels = labels == null ? Map.of() : OrderedMap.copyOf(labels);
         annotations = annotations == null ? List.of() : List.copyOf(annotations);
-        internalDescription = internalDescription == null ? Map.of() : Map.copyOf(internalDescription);
-        externalDescription = externalDescription == null ? Map.of() : Map.copyOf(externalDescription);
+        internalDescription = internalDescription == null ? Map.of() : OrderedMap.copyOf(internalDescription);
+        externalDescription = externalDescription == null ? Map.of() : OrderedMap.copyOf(externalDescription);
     }
 
     /** No metadata — the default for a bare group. */

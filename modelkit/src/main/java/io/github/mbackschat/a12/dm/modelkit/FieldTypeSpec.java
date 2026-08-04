@@ -306,7 +306,8 @@ public sealed interface FieldTypeSpec {
         public EnumSpec {
             values = List.copyOf(values);
             categories = List.copyOf(categories);
-            invalidValueMessages = invalidValueMessages == null ? Map.of() : Map.copyOf(invalidValueMessages);
+            invalidValueMessages = invalidValueMessages == null ? Map.of()
+                    : OrderedMap.copyOf(invalidValueMessages);
             for (EnumCategory category : categories) {
                 if (category.values().size() != values.size()) {
                     throw new IllegalArgumentException("category '" + category.name() + "' classifies "
@@ -381,7 +382,7 @@ public sealed interface FieldTypeSpec {
     /** One enumeration entry: a stored {@code value} and optional per-locale display labels. */
     record EnumValue(String value, Map<String, String> labels) {
         public EnumValue {
-            labels = Map.copyOf(labels);
+            labels = OrderedMap.copyOf(labels);
         }
     }
 

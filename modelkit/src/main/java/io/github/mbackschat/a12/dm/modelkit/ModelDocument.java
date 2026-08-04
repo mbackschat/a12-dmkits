@@ -378,7 +378,7 @@ public final class ModelDocument {
     /** Requiredness plus the optional per-locale custom required-field messages. */
     public record FieldRequirements(Requiredness requiredness, Map<String, String> messages) {
         public FieldRequirements {
-            messages = Map.copyOf(messages);
+            messages = OrderedMap.copyOf(messages);
         }
     }
 
@@ -405,8 +405,8 @@ public final class ModelDocument {
     public record DescriptiveState(Map<String, String> internalDescription, Map<String, String> externalDescription,
             List<ElementDraft.Annotation> annotations) {
         public DescriptiveState {
-            internalDescription = Map.copyOf(internalDescription);
-            externalDescription = Map.copyOf(externalDescription);
+            internalDescription = OrderedMap.copyOf(internalDescription);
+            externalDescription = OrderedMap.copyOf(externalDescription);
             annotations = List.copyOf(annotations);
         }
     }
