@@ -2844,6 +2844,15 @@
       "constraints": [
         "takes plain or flattened (starred) field operands"
       ],
+      "gotchas": [
+        {
+          "text": "the starred form produces one aggregate verdict per surrounding scope and pins an in-group error field to the first row; it does not mark the duplicate rows — use RepetitionNotUnique from the repeated group's parent when every duplicate row needs its own message",
+          "kind": "SURPRISE",
+          "seeAlso": [
+            "RepetitionNotUnique"
+          ]
+        }
+      ],
       "validExample": {
         "dsl": "FieldFilled(CustomerName) And FieldValuesNotUnique(Items*/Sku)",
         "note": "fires when any two line items share a Sku (non-iterating form)"

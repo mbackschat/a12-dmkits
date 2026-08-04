@@ -80,6 +80,27 @@ class OperatorsVerbTest {
     }
 
     @Test
+    void servesTheFieldValuesNotUniqueAggregateMessageScope() throws Exception {
+        CliTestSupport.Result result = CliTestSupport.run("operators", "FieldValuesNotUnique");
+        assertEquals(0, result.code(), result::err);
+        JsonNode gotchas = MAPPER.readTree(result.out()).path("gotchas");
+        JsonNode scope = null;
+        for (JsonNode gotcha : gotchas) {
+            if (gotcha.path("text").asText().contains("one aggregate verdict")) {
+                scope = gotcha;
+                break;
+            }
+        }
+        assertTrue(scope != null, () -> "missing aggregate message-scope gotcha: " + gotchas);
+        JsonNode aggregateScope = scope;
+        assertEquals("SURPRISE", aggregateScope.path("kind").asText());
+        assertTrue(aggregateScope.path("text").asText().contains("first row"),
+                () -> "missing first-row anchor: " + aggregateScope);
+        assertTrue(aggregateScope.path("text").asText().contains("RepetitionNotUnique"),
+                () -> "missing per-duplicate-row alternative: " + aggregateScope);
+    }
+
+    @Test
     void unknownOperatorFails() {
         CliTestSupport.Result res = CliTestSupport.run("operators", "NoSuchOp");
         assertEquals(2, res.code());
