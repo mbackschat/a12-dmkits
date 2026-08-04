@@ -177,6 +177,19 @@ class OperatorsVerbTest {
     }
 
     @Test
+    void bareListMapsCatalogIdsToTheirAuthoredKeywords() throws Exception {
+        CliTestSupport.Result res = CliTestSupport.run("operators");
+        assertEquals(0, res.code(), res::err);
+        JsonNode validType = java.util.stream.StreamSupport.stream(
+                        MAPPER.readTree(res.out()).path("operators").spliterator(), false)
+                .filter(operator -> "ValidType".equals(operator.path("id").asText()))
+                .findFirst()
+                .orElseThrow(() -> new AssertionError("ValidType is absent from the operator list"));
+        assertEquals("Valid", validType.path("keyword").asText(),
+                "the compact list must expose the authored token when it differs from the catalog id");
+    }
+
+    @Test
     void filtersByKind() throws Exception {
         CliTestSupport.Result res = CliTestSupport.run("operators", "--kind", "PREDICATE");
         assertEquals(0, res.code(), res::err);

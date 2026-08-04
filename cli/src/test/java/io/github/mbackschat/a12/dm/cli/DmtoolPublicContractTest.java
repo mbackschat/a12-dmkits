@@ -45,6 +45,19 @@ class DmtoolPublicContractTest {
         assertEquals(revision, source.path("revision").asText(), machine::out);
         assertEquals(state, source.path("state").asText(), machine::out);
     }
+
+    @Test
+    void packagedOperatorListMapsCatalogIdsToAuthoredKeywords(@TempDir Path dir) throws Exception {
+        PackagedDmtool.Result result = new PackagedDmtool(dir).run("operators");
+        assertEquals(0, result.code(), result::err);
+        JsonNode validType = java.util.stream.StreamSupport.stream(
+                        MAPPER.readTree(result.out()).path("operators").spliterator(), false)
+                .filter(operator -> "ValidType".equals(operator.path("id").asText()))
+                .findFirst()
+                .orElseThrow(() -> new AssertionError("ValidType is absent from packaged operators output"));
+        assertEquals("Valid", validType.path("keyword").asText(), result::out);
+    }
+
     @Test
     void packagedManifestOwnsTheCompleteOperationalDenominator(@TempDir Path dir) throws Exception {
         PackagedDmtool dmtool = new PackagedDmtool(dir);
