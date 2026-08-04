@@ -15,6 +15,7 @@
 | the carried set is a **caller-declared request-local resource tree**, not a derived closure; the closure is a client-side payload-minimisation rule only | 2026-08-04 |
 | a verb whose correctness depends on input-set completeness runs only under an explicit **authority assertion**, and is refused without it | 2026-08-04 |
 | the write-durability finding is answered by publishing `FailurePersistence`'s scope, not by making writes atomic | 2026-08-04 |
+| target `2026-07-28` **only** — no `2025-11-25` fallback; anything below it is **refused with a corrective diagnostic**, never partly served (§5.3) | 2026-08-04 |
 
 **Evidence basis — four source classes, deliberately not conflated:**
 
@@ -175,14 +176,14 @@ The largest read tool in the surface publishes no output schema *solely* because
 
 | open item | why it matters | tracked as |
 |---|---|---|
-| **Which revision the intended host implements** | decides whether phase 1 works at all | **R7 / §15 Q1** |
+| **Which revision the intended host implements** | decides whether phase 1 is *usable*; no longer decides what gets built (§5.3) — an older host is refused legibly, so this is an acceptance test, not a prerequisite | **R7** |
 | **MCPB** (MCP Bundles) as a packaging path | may resolve binary presence outright | R2 |
 | Real host support for `resources` versus `tools` | a resource-only design could be invisible in some clients | R6 |
 | Per-call **workspace index** cost | the only honest input to any future caching discussion, and it scales with the tree rather than the model | R3 |
 | Token cost of the tool definitions | decides nothing in this design, but §6.1's secondary argument rests on it | R8 |
 | The **closed-world** denominator (§13.4) | five leaves are known to need input-set completeness; whether any other verb makes a claim quantified over its input set is unaudited | R10 |
 
-**Verdict: feasible and small on the protocol and licence axes; blocked on R7 for scheduling.**
+**Verdict: feasible and small on the protocol and licence axes. No longer blocked for scheduling** — the revision target is decided (§5.3), so R7 is a usability risk carried into build rather than a gate ahead of it.
 
 ## 5. Architecture
 
@@ -215,6 +216,21 @@ Measured 2026-08-02: `mcp` v2.0.0 (released 2026-06-11) tracks protocol revision
 **Recommendation: do not adopt the SDK for the stdio path.** If it is ever adopted, that is a *hosted-transport* decision, where Streamable HTTP and OAuth 2.1 plumbing justify the dependency and native-image is not a constraint.
 
 **Conformance testing, stated accurately.** The official **MCP Inspector** CLI connects to a server, invokes the single method named by `--method`, prints the result, and exits. It is a per-method smoke tool with usable exit codes and documented CI recipes — worth wiring, and it will catch a broken frame or a missing method. It is **not** a conformance suite: it does not enumerate the revision's MUSTs, nor validate `_meta` requiredness, cacheable-result obligations, header rules, or error-code allocation. So: *smoke-tested per method in CI, plus hand-written assertions for the MUSTs we implement* — not "provably conformant."
+
+### 5.3 Refusing a client below `2026-07-28`
+
+**Owner decision, 2026-08-04: target `2026-07-28` only, and refuse anything below it.** No `2025-11-25` compatibility path is built, and no request from an older client is partly served. The refusal must be *corrective* — it names the revision this server implements, what it observed instead, and that `server/discover` is where the answer is published — because a bare `Method not found` reads as a broken server rather than a version mismatch, and a silently partial service is the failure mode this project rejects outright.
+
+**This is the specification's own mechanism, not a house rule.** §2 records that the revision moved the protocol version into required per-request `_meta` (`io.modelcontextprotocol/protocolVersion`), that a mismatch returns `UnsupportedProtocolVersionError`, that `-32022` is the allocated code, and that `server/discover` advertises `supportedVersions` and doubles as the stdio backward-compatibility probe. So the refusal is conformance, and the discovery answer is its positive half: a client can learn the supported set *before* being refused.
+
+| what arrives | what the server does |
+|---|---|
+| `_meta.io.modelcontextprotocol/protocolVersion` present and **below** `2026-07-28` | `-32022` `UnsupportedProtocolVersion`, naming the supported set |
+| that required field **absent** | the same refusal, not a generic invalid-params — its absence is the signature of a pre-`2026-07-28` client, since the field is required in this revision |
+| `initialize` (or `notifications/initialized`) | a corrective refusal naming the revision. **Which code is a design choice, not a spec finding:** `-32601` is the literal JSON-RPC answer for a method this revision removed, while `-32022` states the actual cause. The recommendation is **`-32022` with the removed-method name in the message**, since the cause is what the client can act on — but the spec was not re-read on this point, so it stays a recommendation |
+| `server/discover` | answered normally, advertising `supportedVersions: ["2026-07-28"]` — the one call an older client may legitimately make |
+
+**Obligation on landing:** the refusal path gets a test that proves it *fires*, per the standing rule that a refusal is not shippable until its refusal is tested — one case per row above, asserting the code and that the message names the supported revision.
 
 ## 6. The tool surface — split by effect, not only by target
 
@@ -351,7 +367,7 @@ Two rejected alternatives, recorded so they are not re-proposed: an **invocation
 
 ## 11. Risks and constraints
 
-**R7 — no evidence the intended host implements `2026-07-28`.** §5.2 establishes that the Java SDK tracks `2025-11-25` and that Tier-1 SDKs have betas; neither says what a *host* speaks, and Claude Code's MCP documentation states no protocol revision. A `2026-07-28`-only server has no fallback for a legacy client: the spec places the backward-compatibility probe obligation on the **client**, so a client that opens with `initialize` meets a method the server does not implement. **This decides whether phase 1 works, and it is cheap to settle** — one connection against the real host once a skeleton exists. §15 Q1.
+**R7 — no evidence the intended host implements `2026-07-28`.** §5.2 establishes that the Java SDK tracks `2025-11-25` and that Tier-1 SDKs have betas; neither says what a *host* speaks, and Claude Code's MCP documentation states no protocol revision. **The owner decision of 2026-08-04 does not remove this risk; it fixes what happens when it fires** (§5.3): an older client is refused with `-32022` and a message naming the supported revision, so the outcome is a legible diagnosis rather than a mystery failure — but phase 1 delivers nothing usable on that host, and no fallback exists by design. The residual risk is therefore *unchanged in severity and changed in character*: it no longer gates the build decision, and the host check becomes an acceptance test rather than a prerequisite. Still cheap: one connection against the real host once a skeleton exists.
 
 **R1 — binary presence at plugin-enable time.** Reduced to a phase-1.5 item by §10. It returns in full if auto-wiring is wanted: the workable route is a wrapper as the `command` (resolve-or-download, then `exec "$BIN" mcp`), which moves a network download inside the MCP startup window — **and inverts a failure policy**, since `ensure-dmtool.sh` deliberately warns and exits 0 on any download problem, whereas a `command` that exits 0 without speaking JSON-RPC is a broken server.
 
@@ -380,7 +396,8 @@ Two rejected alternatives, recorded so they are not re-proposed: an **invocation
 **Required (phase 1)**
 
 - The `mcp` command in `:cli` (§5); the `McpDispatcher` seam; the `Cli.run` invocation contract (§5.1); serialised dispatch.
-- `server/discover` with `supportedVersions`, `capabilities`, `serverInfo`, `instructions`, `ttlMs`, `cacheScope`.
+- `server/discover` with `supportedVersions` (exactly `["2026-07-28"]`), `capabilities`, `serverInfo`, `instructions`, `ttlMs`, `cacheScope`.
+- **The §5.3 revision refusal**, with the test that proves each row of its table fires.
 - `tools/list` — the 26 tools of §6, **generated from the live picocli tree plus `CommandContracts`**, with `ttlMs`/`cacheScope` and deterministic ordering.
 - `tools/call` — compact-serialised envelope into `structuredContent` and the in-process `--text` rendering into `content` for the 68 envelope verbs; the raw payload as `content` text for the 13 non-envelope-route verbs; **`outputSchema` only on tools whose every exposed profile returns `RESULT_ENVELOPE`** (54 verbs across 20 tools, §4); `isError: true` for `rejected`/`refused`/`error`; JSON-RPC `-32602` for an unknown tool or op.
 - `resources/list`, `resources/templates/list`, `resources/read` for the §8 URIs.
@@ -397,6 +414,7 @@ Two rejected alternatives, recorded so they are not re-proposed: an **invocation
 
 - Multi Round-Trip Requests, `subscriptions/listen`, sampling, roots, logging, and `io.modelcontextprotocol/tasks`.
 - The official Java SDK on the stdio path (§5.2).
+- **Any `2025-11-25` compatibility path** — no `initialize` handling beyond the §5.3 refusal, and no negotiated downgrade.
 - Any warm model, resolved-model cache, or workspace-index cache (§9, R3).
 - Any new **authoring** verb — the `mcp` leaf is the one addition, with the obligations above.
 - `dm:///skill` and any excerpt of the skill into `instructions` (§10).
@@ -533,9 +551,11 @@ Prose rather than a table, because a status board over other documents' decision
 
 **Also shipped, independently:** `DmtoolMutationSafetyTest`'s discriminator no longer merges `ROLLBACK` and `PARTIAL` into one set before asserting equality — the union is invariant under swapping which verb carries which label, so the behavioural evidence (a reverted destination versus a surviving first child) was never joined to the published label. Each label is now cross-checked against its own behavioural set.
 
-## 15. Open for owner decision
+## 15. Owner decisions — resolved and open
 
-**Q1 — which revision, given no evidence the host speaks `2026-07-28`?** Target `2026-07-28` only, implement a `2025-11-25` fallback alongside it, or verify the host first and decide after. **Recommendation: verify first** — one connection test against the real host once a skeleton exists, and a wrong answer means phase 1 does not work. This is R7 and it gates scheduling.
+Numbering is stable: a resolved question keeps its number, because §4 and §6 cite these by number.
+
+**Q1 — which revision, given no evidence the host speaks `2026-07-28`? RESOLVED 2026-08-04: target `2026-07-28` only, and refuse anything below it** — over the recommendation to verify the host first. The contract is §5.3; R7 records what the decision did and did not change. The refusal, not a fallback, is what keeps an older host from looking like a broken server.
 
 **Q2 — is the effect-split tool shape right, now that its cost is measured?** §6 proposes 26 tools (12 truthfully read-only) against a target-only grouping's 17 (3 read-only). It buys 9 truthful `readOnlyHint`s and safe categorical approval on every read tool. **It costs `outputSchema` on 14 verbs** (§4), because the partition is on `Effect` while the schema rule needs `ReturnKind` and no single grouping satisfies both. Alternatives: the 17-tool target grouping, which discards the read-only fact for 25 verbs *and* still loses `outputSchema` wherever a tool mixes return kinds; a `ReturnKind`-aware sub-split, which recovers `outputSchema` at the cost of more tools and a partition on two axes; or one tool per verb at 81, which makes both facts exactly stateable at maximal definition cost. **Recommendation: the 26-tool split**, with the `outputSchema` loss accepted and named — but this is now a genuine trade rather than a free improvement, and the owner should see both sides.
 
