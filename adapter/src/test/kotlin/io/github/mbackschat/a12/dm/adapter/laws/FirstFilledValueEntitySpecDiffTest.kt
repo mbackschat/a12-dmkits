@@ -100,6 +100,39 @@ class FirstFilledValueEntitySpecDiffTest {
         }
     }
 
+    @Test
+    fun filteredCategoryEntitySpecRetainsItsHavingStarAndFallbackMessageReferences() {
+        fun kernelDocument() = RuntimeLaws.doc().group(ROOT, 1)
+            .field(FALLBACK_TEXT, "x", 1, 1)
+            .group(FILTER_ROWS, 1, 1)
+            .field(FILTER_KEY, "MATCH", 1, 1, 1)
+            .field(FILTER_PRIORITY, "EXPRESS", 1, 1, 1)
+
+        fun interpreterDocument() = definition.newDocument().group(ROOT, 1)
+            .field(FALLBACK_TEXT, "x", 1, 1)
+            .group(FILTER_ROWS, 1, 1)
+            .field(FILTER_KEY, "MATCH", 1, 1, 1)
+            .field(FILTER_PRIORITY, "EXPRESS", 1, 1, 1)
+
+        val dynamic = RuntimeLaws.messagesModern(modelJson, kernelDocument(), Date(0))
+            .filter { it.code() == COMPOUND_FILTER_CATEGORY }
+            .map { "${it.field()}|${it.type().name}|${it.referenced().sorted()}" }
+        val generated = java.messagesModern(kernelDocument(), Date(0))
+            .filter { it.code() == COMPOUND_FILTER_CATEGORY }
+            .map { "${it.field()}|${it.type().name}|${it.referenced().sorted()}" }
+        val interpreted = DmInterpreter(definition).validateFull(interpreterDocument())
+            .filter { it.code == COMPOUND_FILTER_CATEGORY }
+            .map { "${it.errorPath}|OMISSION_ERROR|${it.referenced.sorted()}" }
+        val expected = listOf(
+            "/Selection[1]/FallbackText|OMISSION_ERROR|" +
+                "[/Selection[1]/FallbackText, /Selection[1]/FilterRows[0]/Key, /Selection[1]/FilterRows[0]/Priority]",
+        )
+
+        assertEquals(expected, dynamic, "dynamic kernel exact EntitySpec message refs")
+        assertEquals(dynamic, generated, "dynamic/static exact EntitySpec message refs")
+        assertEquals(dynamic, interpreted, "kernel/interpreter exact EntitySpec message refs")
+    }
+
     private fun agree(filledSelectors: Boolean, expected: Set<String>) {
         val kernelDocument = RuntimeLaws.doc().group(ROOT, 1)
             .field(FALLBACK_TEXT, "x", 1, 1)

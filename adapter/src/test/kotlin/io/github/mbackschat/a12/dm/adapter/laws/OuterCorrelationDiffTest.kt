@@ -2,6 +2,7 @@ package io.github.mbackschat.a12.dm.adapter.laws
 
 import io.github.mbackschat.a12.dm.interpreter.DmInterpreter
 import io.github.mbackschat.a12.dm.interpreter.eval.newDocument
+import io.github.mbackschat.a12.dm.interpreter.load.ModelLoader
 import io.github.mbackschat.a12.dm.interpreter.model.FieldDef
 import io.github.mbackschat.a12.dm.interpreter.model.Kind
 import io.github.mbackschat.a12.dm.interpreter.model.ModelDef
@@ -100,6 +101,42 @@ class OuterCorrelationDiffTest {
         agree(corrLess, "9", "9", "9")     // none smaller → none
         agree(corrLess, "5", "5", "5")
         agree(corrLess, "9", "5", "7")
+    }
+
+    @Test fun outerCorrelationMessageReferencesKeepTheOuterRowAndWildcardTheInnerScope() {
+        val model = RuntimeLaws.withRule(order, "/Order", "Corr", "../Items/Count", "CORR", corrNoExcl)
+        val def = ModelLoader.load(model)
+
+        fun documents(): Pair<RuntimeLaws.Doc, io.github.mbackschat.a12.dm.interpreter.eval.Document> {
+            val kDoc = RuntimeLaws.doc().group("/Order", 1).field(CN, "Acme", 1, 1)
+            val iDoc = def.newDocument().group("/Order", 1).field(CN, "Acme", 1, 1)
+            listOf("5", "6").forEachIndexed { index, count ->
+                val row = index + 1
+                kDoc.group("/Order/Items", 1, row).field(SKU, ('A' + index).toString(), 1, row, 1)
+                kDoc.field(COUNT, count, 1, row, 1)
+                iDoc.group("/Order/Items", 1, row).field(SKU, ('A' + index).toString(), 1, row, 1)
+                iDoc.field(COUNT, count, 1, row, 1)
+            }
+            return kDoc to iDoc
+        }
+
+        val (dynamicDoc, interpreterDoc) = documents()
+        val dynamic = RuntimeLaws.messages(model, dynamicDoc).filter { it.code() == "CORR" }
+            .map { "${it.field()}|${it.type().name}|${it.referenced().sorted()}" }.sorted()
+        val (staticDoc, _) = documents()
+        val javaStatic = RuntimeLaws.kernelJavaEngine(model)
+            .messagesModern(staticDoc, null, java.util.Locale.US).filter { it.code() == "CORR" }
+            .map { "${it.field()}|${it.type().name}|${it.referenced().sorted()}" }.sorted()
+        val interpreter = DmInterpreter(def).validateFull(interpreterDoc).filter { it.code == "CORR" }
+            .map { "${it.errorPath}|OMISSION_ERROR|${it.referenced.sorted()}" }.sorted()
+        val expected = listOf(1, 2).map { row ->
+            "/Order[1]/Items[$row]/Count|OMISSION_ERROR|" +
+                "[/Order[1]/Items[0]/Count, /Order[1]/Items[$row]/Count]"
+        }
+
+        assertEquals(expected, dynamic, "dynamic kernel exact outer/wildcard references")
+        assertEquals(dynamic, javaStatic, "dynamic/static kernel exact outer/wildcard references")
+        assertEquals(dynamic, interpreter, "kernel/interpreter exact outer/wildcard references")
     }
 
     private companion object {

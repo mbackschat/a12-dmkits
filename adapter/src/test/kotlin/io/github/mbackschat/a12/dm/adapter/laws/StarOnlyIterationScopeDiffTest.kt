@@ -78,22 +78,27 @@ class StarOnlyIterationScopeDiffTest {
         }
     }
 
-    /** Tri-check the fire-set (pointer|polarity) of the rule at [group]/[errorRel] with [cond]. */
+    /** Tri-check the fire-set (pointer|polarity, optionally rich references) of the rule at [group]/[errorRel]
+     *  with [cond]. */
     private fun agree(group: String, errorRel: String, cond: String, expect: List<String>, msg: String,
+                      includeReferences: Boolean = false,
                       buildDoc: (Both) -> Unit) {
         val kModel = RuntimeLaws.withRule(base, group, "R", errorRel, CODE, cond)
         val def = ModelLoader.load(kModel)
         val b = Both(RuntimeLaws.doc(), def.newDocument())
         buildDoc(b)
         val groovy = RuntimeLaws.messages(kModel, b.kDoc).filter { it.code() == CODE }
-            .map { "${it.field()}|${it.type().name}" }.sorted()
+            .map { "${it.field()}|${it.type().name}" + if (includeReferences) "|${it.referenced().sorted()}" else "" }.sorted()
         val engine = RuntimeLaws.kernelJavaEngine(kModel)
         val kDoc2 = RuntimeLaws.doc()
         buildDoc(Both(kDoc2, def.newDocument()))
         val javaStatic = engine.messagesModern(kDoc2, null, java.util.Locale.US).filter { it.code() == CODE }
-            .map { "${it.field()}|${it.type().name}" }.sorted()
+            .map { "${it.field()}|${it.type().name}" + if (includeReferences) "|${it.referenced().sorted()}" else "" }.sorted()
         val interp = DmInterpreter(def).validateFull(b.iDoc).filter { it.code == CODE }
-            .map { "${it.errorPath}|${if (it.type == MsgType.OMISSION) "OMISSION_ERROR" else "VALUE_ERROR"}" }.sorted()
+            .map {
+                "${it.errorPath}|${if (it.type == MsgType.OMISSION) "OMISSION_ERROR" else "VALUE_ERROR"}" +
+                    if (includeReferences) "|${it.referenced.sorted()}" else ""
+            }.sorted()
         assertEquals(expect.sorted(), groovy, "$msg — the kernel groovy-dynamic fire set")
         assertEquals(groovy, javaStatic, "$msg — groovy vs java-static (tri-check)")
         assertEquals(groovy, interp, "$msg — kernel vs interpreter")
@@ -105,6 +110,14 @@ class StarOnlyIterationScopeDiffTest {
         agree(ITEMS, "../Count", "Sum(/Order/Items*/Count) > -1",
             expect = listOf("/Order[1]/Items[1]/Count|OMISSION_ERROR"),
             msg = "always-true Sum over the rule's OWN starred group fires ONCE, anchored at row 1") { b ->
+            build(b, counts = listOf("2", "5", "1"))
+        }
+
+    @Test fun ownGroupStarOnlyCarriesItsWildcardReference() =
+        agree(ITEMS, "../Count", "Sum(/Order/Items*/Count) > -1",
+            expect = listOf("/Order[1]/Items[1]/Count|OMISSION_ERROR|[/Order[1]/Items[0]/Count]"),
+            msg = "a starred aggregate's message retains the kernel wildcard operand pointer",
+            includeReferences = true) { b ->
             build(b, counts = listOf("2", "5", "1"))
         }
 

@@ -522,10 +522,10 @@ class DmInterpreter @JvmOverloads constructor(
         // a normal rule (no cache, no seam). Building here can throw UnsupportedConstructException (>1 RNU, a
         // group/asterisk key, a too-deep scope) — the caller's per-rule tolerance reports it unsupported.
         val rnuCache = rnuEval.outcomes(prepared.repetitionNotUnique, pass)
-        val ordinaryMessageRefs = if (rnuCache == null) refs else nonRnuMessageRefs(ast).distinct()
-        val ordinaryRefsOutsideRnuKeys = rnuCache?.let { cache ->
+        val directMessageRefs = prepared.messageReferences
+        val directRefsOutsideRnuKeys = rnuCache?.let { cache ->
             val rnuKeys = cache.keys.toSet()
-            ordinaryMessageRefs.filterNot(rnuKeys::contains)
+            directMessageRefs.filterNot { it.path in rnuKeys }
         }
         val rnuSeam: ((EvalContext) -> MsgType?)? =
             rnuCache?.let { cache -> { context -> cache.rows[context.repsOf(errorPath)]?.type } }
@@ -568,10 +568,10 @@ class DmInterpreter @JvmOverloads constructor(
                 // every occurrence of an RNU key path. Drop a same-path ordinary occurrence, render the remaining
                 // small prefix, and expose an O(1) immutable joined view over the shared cluster list. This keeps
                 // exact list semantics without copying the N-entry peer projection into every one of N messages.
-                val ordinaryRefs = if (matchingRnuOutcome != null) ordinaryRefsOutsideRnuKeys.orEmpty() else ordinaryMessageRefs
-                val ordinaryPointers = ordinaryRefs.map { pass.doc.messagePointer(it, ctx.repsOf(it)) }
+                val directRefs = if (matchingRnuOutcome != null) directRefsOutsideRnuKeys.orEmpty() else directMessageRefs
+                val directPointers = directRefs.map { messagePointer(it, pass.doc, ctx) }.distinct()
                 val rnuPointers = matchingRnuOutcome?.peerKeyPointers.orEmpty()
-                val referenced = joinedList(ordinaryPointers, rnuPointers)
+                val referenced = joinedList(directPointers, rnuPointers)
                 // refOmissionErrorResponsible: for an OMISSION error the kernel attaches ALL the operands the
                 // omission depends on (verified — both the filled and the empty operand of an And), so filling/
                 // changing any could resolve it. Empty for a VALUE error (no fill fixes a value).
@@ -583,6 +583,23 @@ class DmInterpreter @JvmOverloads constructor(
                 // (the `rule eval` third verdict), naming the offending field/code; else a clean PASSED.
                 pass.firstSuppressor(refs, ctx)?.let { RowOutcome.Suppressed(it) } ?: RowOutcome.Passed
             }
+        }
+    }
+
+    /** Project one prepared message operand into A12's partially-known pointer domain. The wildcard coordinates
+     *  belong only to the rich message channel; iteration/suppression deliberately continue to use the
+     *  star-free reference view. */
+    private fun messagePointer(reference: MessageReference, doc: Document, ctx: EvalContext) = when (reference) {
+        is MessageReference.Ordinary -> doc.messagePointer(reference.path, ctx.repsOf(reference.path))
+        is MessageReference.Wildcard -> {
+            val prefixes = paths.groupsThrough(reference.path)
+            val bindDepth = if (reference.bindDepth >= 0) minOf(reference.bindDepth, prefixes.size)
+            else prefixes.size - if (model.kinds[reference.path] == null) 1 else 2
+            val repetitions = ctx.repsOf(reference.path).mapIndexed { level, repetition ->
+                if (level >= bindDepth && prefixes[level] in model.repeatable) A12PartiallyKnownMultiPointer.WILDCARD
+                else repetition
+            }
+            doc.messagePointer(reference.path, repetitions)
         }
     }
 

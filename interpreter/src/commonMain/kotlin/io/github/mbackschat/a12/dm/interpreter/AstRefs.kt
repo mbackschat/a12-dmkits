@@ -80,22 +80,72 @@ internal fun nonStarredRefs(cond: Cond): List<String> = when (cond) {
     is Cond.Custom -> emptyList()   // the name carries no textual ref; the complete rule must reference its error field elsewhere
 }
 
-/**
- * Every ordinary message reference, excluding the key arguments of a `RepetitionNotUnique` leaf. RNU projects
- * those keys from its duplicate-cluster cache instead of resolving only the current row; the same path used by
- * another branch still appears through that branch's own walk.
- */
-internal fun nonRnuMessageRefs(cond: Cond): List<String> = when (cond) {
-    is Cond.Cmp -> exprRefs(cond.left) + exprRefs(cond.right)
-    is Cond.Tolerance -> exprRefs(cond.left) + exprRefs(cond.right)
-    is Cond.ValueListQuant -> (cond.fields + cond.values).flatMap { exprRefs(it) }
-    is Cond.And -> nonRnuMessageRefs(cond.left) + nonRnuMessageRefs(cond.right)
-    is Cond.Or -> nonRnuMessageRefs(cond.left) + nonRnuMessageRefs(cond.right)
-    is Cond.Not -> nonRnuMessageRefs(cond.c)
-    is Cond.Pred -> if (cond.name == "RepetitionNotUnique") emptyList() else cond.args.flatMap { exprRefs(it) }
-    is Cond.Pattern -> exprRefs(cond.value) + exprRefs(cond.pattern)
+/** One operand pointer the kernel publishes on a fired message. [Wildcard] retains the binding depth of the
+ *  aggregate that owns it: every repeatable level at or below that depth is rendered with A12's wildcard
+ *  repetition, while an [Ordinary] reference resolves in the rule's current row. Keeping this separate from
+ *  [nonStarredRefs] is load-bearing — that star-free view decides iteration and suppression, not the message's
+ *  rich reference channel. */
+internal sealed interface MessageReference {
+    val path: String
+
+    data class Ordinary(override val path: String) : MessageReference
+    data class Wildcard(override val path: String, val bindDepth: Int) : MessageReference
+}
+
+/** Message-reference walk in deterministic AST order. A starred operand contributes its `Having` field operands
+ *  and the aggregate operand itself. Filter refs are part of that wildcard domain unless marked `$`-outer;
+ *  `CurrentRepetition` is structural and contributes no field pointer. The kernel publishes these as a set, so
+ *  its incidental `HashSet` iteration order is not reproduced. [excludeRepetitionNotUniqueKeys] preserves RNU's
+ *  separately projected duplicate-cluster channel while allowing references from sibling branches through. */
+internal fun messageReferences(
+    cond: Cond,
+    excludeRepetitionNotUniqueKeys: Boolean = false,
+): List<MessageReference> = messageReferences(cond, null, excludeRepetitionNotUniqueKeys)
+
+private fun messageReferences(
+    cond: Cond,
+    wildcardBindDepth: Int?,
+    excludeRepetitionNotUniqueKeys: Boolean,
+): List<MessageReference> = when (cond) {
+    is Cond.Cmp -> messageReferences(cond.left, wildcardBindDepth) + messageReferences(cond.right, wildcardBindDepth)
+    is Cond.Tolerance -> messageReferences(cond.left, wildcardBindDepth) + messageReferences(cond.right, wildcardBindDepth)
+    is Cond.ValueListQuant -> (cond.fields + cond.values).flatMap { messageReferences(it, wildcardBindDepth) }
+    is Cond.And -> messageReferences(cond.left, wildcardBindDepth, excludeRepetitionNotUniqueKeys) +
+        messageReferences(cond.right, wildcardBindDepth, excludeRepetitionNotUniqueKeys)
+    is Cond.Or -> messageReferences(cond.left, wildcardBindDepth, excludeRepetitionNotUniqueKeys) +
+        messageReferences(cond.right, wildcardBindDepth, excludeRepetitionNotUniqueKeys)
+    is Cond.Not -> messageReferences(cond.c, wildcardBindDepth, excludeRepetitionNotUniqueKeys)
+    is Cond.Pred -> if (excludeRepetitionNotUniqueKeys && cond.name == "RepetitionNotUnique") emptyList()
+        else cond.args.flatMap { messageReferences(it, wildcardBindDepth) }
+    is Cond.Pattern -> messageReferences(cond.value, wildcardBindDepth) + messageReferences(cond.pattern, wildcardBindDepth)
     is Cond.Custom -> emptyList()
 }
+
+private fun messageReferences(expr: Expr, wildcardBindDepth: Int?): List<MessageReference> = when (expr) {
+    is Expr.Field -> listOf(messageReference(expr.path, expr.outer, wildcardBindDepth))
+    is Expr.Star -> (expr.having?.let {
+        messageReferences(it, expr.bindDepth, excludeRepetitionNotUniqueKeys = false)
+    } ?: emptyList()) + MessageReference.Wildcard(expr.path, expr.bindDepth)
+    is Expr.Func -> if (FunctionOp.byName(expr.name) == FunctionOp.CURRENT_REPETITION) emptyList()
+        else expr.args.flatMap { messageReferences(it, wildcardBindDepth) }
+    is Expr.Arith -> messageReferences(expr.left, wildcardBindDepth) + messageReferences(expr.right, wildcardBindDepth)
+    is Expr.EnumCategory -> listOf(messageReference(expr.path, expr.outer, wildcardBindDepth))
+    // Preserve the existing message contract: the field-valued key is the per-row operand; the semantic lookup
+    // target is an absolute lookup and does not itself appear in the message reference list.
+    is Expr.SemanticIndex -> expr.indexFieldPath?.let {
+        listOf(messageReference(it, expr.indexFieldOuter, wildcardBindDepth))
+    } ?: emptyList()
+    is Expr.EntitySpec -> when (val index = expr.semanticIndex) {
+        null -> messageReferences(expr.source, wildcardBindDepth)
+        is Expr.EntityIndex.Literal -> emptyList()
+        is Expr.EntityIndex.Field -> listOf(messageReference(index.path, index.outer, wildcardBindDepth))
+    }
+    else -> emptyList()
+}
+
+private fun messageReference(path: String, outer: Boolean, wildcardBindDepth: Int?): MessageReference =
+    if (wildcardBindDepth != null && !outer) MessageReference.Wildcard(path, wildcardBindDepth)
+    else MessageReference.Ordinary(path)
 
 internal fun exprRefs(expr: Expr): List<String> = when (expr) {
     is Expr.Field -> listOf(expr.path)

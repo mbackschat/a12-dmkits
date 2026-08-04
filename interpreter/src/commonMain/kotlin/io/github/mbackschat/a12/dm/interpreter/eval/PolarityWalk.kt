@@ -490,9 +490,14 @@ private fun Interpreter.predType(p: Cond.Pred): MsgType {
     // The overlap predicates' polarity is filter-derived, computed in the SAME scan as the truth (shared [Res]).
     if (op == PredicateOp.DATE_RANGES_OVERLAP) return overlapAny(p.args).type
     if (op == PredicateOp.ATLEAST_ONE_DATE_RANGE_OVERLAPS) return atLeastOneOverlap(p.args).type
+    // FieldValuesNotUnique is ordinarily a static VALUE predicate, but its one kernel-accepted filtered-star
+    // form is TRUE_AF/OMISSION. Keep this measured exception ahead of the static return without widening every
+    // other static predicate's denominator.
+    if (op == PredicateOp.FIELD_VALUES_NOT_UNIQUE &&
+        (p.args.singleOrNull() as? Expr.Star)?.having != null) return MsgType.OMISSION
     op.polarity?.let { return it }
     if (!op.countsGroups && hasFillScopeOperand(p.args)) return fillScopeType(op, fillScopeInfo(p.args))
-    // A fired quantifier over a Having-FILTERED field star is UNCONDITIONALLY escalated to TRUE_AF →
+    // A fired fill quantifier over a Having-FILTERED field star is UNCONDITIONALLY escalated to TRUE_AF →
     // OMISSION (the fill-quantifier twin of the §8 value-list rule "a Having-filtered entry escalates a
     // fired result to TRUE_AF"): kernel-pinned in BOTH directions — NoFieldFilled fired with nothing kept
     // AND AtLeastOneFieldFilled fired over a fully-kept FILLED row are both OMISSION (IF101). The kept-rows

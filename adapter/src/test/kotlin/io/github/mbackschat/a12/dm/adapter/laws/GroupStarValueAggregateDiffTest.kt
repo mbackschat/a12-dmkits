@@ -170,4 +170,37 @@ class GroupStarValueAggregateDiffTest {
         assertEquals(false, kLow, "kernel silent at Sum 10.50")
         assertEquals(kLow, iLow, "interpreter agrees on the silent side")
     }
+
+    @Test fun validationMessageOverGroupStarRecursivelyReferencesExpandedFieldsNotGroups() {
+        val kModel = RuntimeLaws.withRule(base, "/Invoice", "R", "../Reference", "SUMHIGH",
+            "FieldFilled(Reference) And Sum(/Invoice/Charges*) > 5")
+        val def = ModelLoader.load(kModel)
+
+        fun documents(): Pair<RuntimeLaws.Doc, Document> {
+            val both = Both(RuntimeLaws.doc(), def.newDocument())
+            both.group("/Invoice", 1).field(GATE, "INV-7", 1, 1)
+                .group(CHARGES, 1, 1).field(FEE, "1.00", 1, 1, 1).field(TAX, "2.00", 1, 1, 1)
+                .group(EXTRAS, 1, 1, 1).field(SURCHARGE, "3.00", 1, 1, 1, 1)
+            return both.kDoc to both.iDoc
+        }
+
+        val (dynamicDoc, interpreterDoc) = documents()
+        val dynamic = RuntimeLaws.messages(kModel, dynamicDoc).filter { it.code() == "SUMHIGH" }
+            .map { "${it.field()}|${it.type().name}|${it.referenced().sorted()}" }
+        val (staticDoc, _) = documents()
+        val javaStatic = RuntimeLaws.kernelJavaEngine(kModel)
+            .messagesModern(staticDoc, null, java.util.Locale.US).filter { it.code() == "SUMHIGH" }
+            .map { "${it.field()}|${it.type().name}|${it.referenced().sorted()}" }
+        val interpreter = DmInterpreter(def).validateFull(interpreterDoc).filter { it.code == "SUMHIGH" }
+            .map { "${it.errorPath}|${if (it.type == MsgType.OMISSION) "OMISSION_ERROR" else "VALUE_ERROR"}|${it.referenced.sorted()}" }
+        val expected = listOf(
+            "/Invoice[1]/Reference|OMISSION_ERROR|" +
+                "[/Invoice[1]/Charges[0]/Extras[0]/Surcharge, /Invoice[1]/Charges[0]/Fee, " +
+                "/Invoice[1]/Charges[0]/Tax, /Invoice[1]/Reference]",
+        )
+
+        assertEquals(expected, dynamic, "dynamic kernel recursively expands a group-star message ref to contained fields")
+        assertEquals(dynamic, javaStatic, "dynamic/static exact group-star message refs")
+        assertEquals(dynamic, interpreter, "kernel/interpreter exact group-star message refs")
+    }
 }

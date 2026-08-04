@@ -2,6 +2,7 @@ package io.github.mbackschat.a12.dm.adapter.laws
 
 import io.github.mbackschat.a12.dm.interpreter.DmInterpreter
 import io.github.mbackschat.a12.dm.interpreter.eval.newDocument
+import io.github.mbackschat.a12.dm.interpreter.load.ModelLoader
 import io.github.mbackschat.a12.dm.interpreter.model.FieldDef
 import io.github.mbackschat.a12.dm.interpreter.model.Kind
 import io.github.mbackschat.a12.dm.interpreter.model.ModelDef
@@ -108,6 +109,53 @@ class FieldValuesNotUniqueDiffTest {
     @Test fun starredEmptyRowSkippedStillDup() = starAgree(star, listOf("5", null, "5"), msg = "empty row skipped; the two 5s duplicate → fires")
     @Test fun starredDistinctWithEmptyDoesNotFire() = starAgree(star, listOf("5", null, "9"), msg = "distinct rows + empty → not fire")
     @Test fun starredSingleRowDoesNotFire() = starAgree(star, listOf("5"), msg = "one value → no duplicate")
+
+    @Test fun starredDuplicateEmitsOneFirstRowMessageWithItsWildcardReferenceInBothPlacements() {
+        val having = render(Dsl.fieldValuesNotUnique(
+            m.flatten("/Order/Items*/Count").having(m.str(SKU).ne("K0")),
+        ))
+        for ((group, errorRel) in listOf(
+            ITEMS to "../Count",
+            "/Order" to "../Items/Count",
+        )) {
+            for ((condition, expected) in listOf(
+                havingGeq2 to "OMISSION_ERROR|[/Order[1]/Items[0]/Count]",
+                having to "OMISSION_ERROR|[/Order[1]/Items[0]/Count, /Order[1]/Items[0]/Sku]",
+                star to "VALUE_ERROR|[/Order[1]/Items[0]/Count]",
+            )) {
+                val kModel = RuntimeLaws.withRule(order, group, "FU", errorRel, "FU", condition)
+                val def = ModelLoader.load(kModel)
+
+                fun documents(): Pair<RuntimeLaws.Doc, io.github.mbackschat.a12.dm.interpreter.eval.Document> {
+                    val kDoc = RuntimeLaws.doc().group("/Order", 1)
+                    val iDoc = def.newDocument().group("/Order", 1)
+                    listOf("7", "5", "5").forEachIndexed { index, count ->
+                        val row = index + 1
+                        kDoc.group(ITEMS, 1, row).field(SKU, "K$row", 1, row, 1)
+                        kDoc.field(COUNT, count, 1, row, 1)
+                        iDoc.group(ITEMS, 1, row).field(SKU, "K$row", 1, row, 1)
+                        iDoc.field(COUNT, count, 1, row, 1)
+                    }
+                    return kDoc to iDoc
+                }
+
+                val (dynamicDoc, interpreterDoc) = documents()
+                val dynamic = RuntimeLaws.messages(kModel, dynamicDoc).filter { it.code() == "FU" }
+                    .map { "${it.field()}|${it.type().name}|${it.referenced().sorted()}" }
+                val (staticDoc, _) = documents()
+                val javaStatic = RuntimeLaws.kernelJavaEngine(kModel)
+                    .messagesModern(staticDoc, null, java.util.Locale.US).filter { it.code() == "FU" }
+                    .map { "${it.field()}|${it.type().name}|${it.referenced().sorted()}" }
+                val interpreter = DmInterpreter(def).validateFull(interpreterDoc).filter { it.code == "FU" }
+                    .map { "${it.errorPath}|${if (it.type.name == "OMISSION") "OMISSION_ERROR" else "VALUE_ERROR"}|${it.referenced.sorted()}" }
+                val expectedMessages = listOf("/Order[1]/Items[1]/Count|$expected")
+
+                assertEquals(expectedMessages, dynamic, "$group — dynamic kernel exact message")
+                assertEquals(dynamic, javaStatic, "$group — dynamic/static kernel exact message")
+                assertEquals(dynamic, interpreter, "$group — kernel/interpreter exact message")
+            }
+        }
+    }
 
     // A `Having` on the starred operand — kernel-probed to be ACCEPTED + EVALUATED (unlike SumOfProducts, which
     // the kernel authoring-rejects). The keep-law is the overlap-predicate one (keep iff the filter is TRUE);

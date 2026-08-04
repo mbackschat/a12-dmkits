@@ -21,6 +21,9 @@ internal data class PreparedRulePlan(
     val ast: Cond,
     val iteration: IterationPlan,
     val repetitionNotUnique: RnuPlan?,
+    /** Rich message operands in deterministic AST order; RNU keys are excluded because its duplicate-cluster projector owns
+     *  their concrete peer pointers. */
+    val messageReferences: List<MessageReference>,
     /** Kernel codegen skips every rule containing a `Having` filter during partial validation. */
     val hasFilterConditions: Boolean,
 )
@@ -105,12 +108,28 @@ internal class PreparedEvaluationPlan(
     private fun prepareRule(rule: RuleDef): PreparedRulePlan {
         val ast = parsed.condAstOf(rule)
         auditCond(ast, outerAllowed = false)
+        val rnu = repetitionNotUnique.prepare(rule, ast)
         return PreparedRulePlan(
-            ast,
-            scopes.prepare(rule, ast),
-            repetitionNotUnique.prepare(rule, ast),
-            starRefs(ast).any { it.having != null },
+            ast = ast,
+            iteration = scopes.prepare(rule, ast),
+            repetitionNotUnique = rnu,
+            messageReferences = messageReferences(ast, excludeRepetitionNotUniqueKeys = rnu != null)
+                .flatMap(::expandMessageReference).distinct(),
+            hasFilterConditions = starRefs(ast).any { it.having != null },
         )
+    }
+
+    /** The kernel's meta-reference inventory is field-only and consumes the partially expanded condition: a
+     *  group operand recursively contributes its contained fields, never a group pointer. */
+    private fun expandMessageReference(reference: MessageReference): List<MessageReference> {
+        if (model.kinds[reference.path] != null) return listOf(reference)
+        return model.fields.asSequence().map { it.path }
+            .filter { it.startsWith("${reference.path}/") }
+            .map { path -> when (reference) {
+                is MessageReference.Ordinary -> MessageReference.Ordinary(path)
+                is MessageReference.Wildcard -> MessageReference.Wildcard(path, reference.bindDepth)
+            } }
+            .toList()
     }
 
     private fun prepareComputation(comp: ComputationDef): ParsedComputation {
