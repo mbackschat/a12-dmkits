@@ -353,10 +353,47 @@ public final class ResultEnvelope {
         ObjectNode data = dispatchData(results);
         boolean allSucceeded = data.path("allSucceeded").asBoolean();
         Family family = allSucceeded ? Family.DISPATCH : Family.DISPATCH_WITH_FAILURES;
-        String aggregateSummary = summary
-                + (allSucceeded ? "; all succeeded" : "; one or more failed — earlier writes were not rolled back");
+        String aggregateSummary = summary + (allSucceeded ? "; all succeeded" : nonzeroBreakdown(results));
         Draft draft = new Draft(family, identity, Outcome.COMPLETED, aggregateSummary).data(data);
         return output == null ? draft.build() : draft.writtenTo(output).build();
+    }
+
+    /**
+     * Why the nonzero children exited nonzero, split on the axis this envelope refuses to conflate anywhere else.
+     *
+     * <p><b>A nonzero child exit is not the same as a failed child.</b> Exactly two families exit nonzero while
+     * reporting {@code ok:true} — a {@link Family#VERDICT} whose {@code valid} is false, and a
+     * {@link Family#COMPARISON} that {@code DIFFERS} — and both of those RAN successfully and reported a negative
+     * finding. This line used to call every one of them "failed", which is the conflation the envelope contract
+     * forbids ({@code schema result}: three orthogonal axes, never conflated), stated in the first line an
+     * operator reads. It bites hardest on a deliberately separating batch: a negative control is a
+     * kernel-REJECTED candidate, so a well-designed capture always tripped the wording, and a caller reading it
+     * could not tell a correct rejection from a broken run.
+     *
+     * <p>The counts are derived from each child's OWN envelope, so the classification is the child's own claim
+     * rather than a guess about its exit code. A child whose stdout is not a result envelope (a raw-JSON verb, a
+     * {@code --text} render) has no {@code ok} to read and counts as a failure — which is right: those verbs hold
+     * no verdict, so a nonzero exit from one is nothing else.
+     *
+     * <p>{@code ok}, {@code data.allSucceeded} and the process exit are deliberately untouched. The aggregate
+     * contract stays {@code ALL_CHILD_EXITS_ZERO} for every mode — forking it for the one mode that meets
+     * rejections routinely would make a single verb's exit mean something different from every other batch.
+     */
+    private static String nonzeroBreakdown(ArrayNode results) {
+        int failed = 0;
+        int reported = 0;
+        for (JsonNode result : results) {
+            if (result.path("exit").asInt(1) == 0) {
+                continue;
+            }
+            if (result.path("result").path("ok").asBoolean(false)) {
+                reported++;
+            } else {
+                failed++;
+            }
+        }
+        return "; " + (failed + reported) + " of " + results.size() + " exited nonzero (" + failed + " failed, "
+                + reported + " reported a negative verdict or comparison) — earlier writes were not rolled back";
     }
 
     /** Every child ran, but the selected post-dispatch observations artifact could not be written. */

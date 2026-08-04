@@ -26,9 +26,19 @@ import picocli.CommandLine.Parameters;
  * while retaining every child's exact exit code. Dispatch is non-transactional and never rolls writes back.
  * A batch-level {@code -m} is the <b>default model</b> for ops that omit their own (G18 — the universal
  * {@code -m} convention); an op carrying its own {@code -m} keeps it.
+ *
+ * <p><b>A nonzero child exit is not necessarily a failed child</b>, and the aggregate says which it was rather
+ * than guessing: a verdict verb ({@code rule check}, {@code model check}, …) exits 1 when its verdict is
+ * negative while reporting {@code ok:true}, as does a comparison that differs. Both RAN. The summary's
+ * breakdown is derived from each child's own envelope — see {@code ResultEnvelope}'s nonzero-breakdown note for
+ * why the exit code alone cannot classify them.
  */
 @Command(name = "batch", mixinStandardHelpOptions = true,
-        description = "Dispatch independent verb invocations in one process (non-transactional; never rolls back).")
+        description = "Dispatch independent verb invocations in one process (non-transactional; never rolls back). "
+                + "Exits 0 iff every child did. A nonzero child is NOT always a failed child: a verdict verb "
+                + "(rule/model/workspace check) exits 1 on a negative verdict, and a comparison exits 1 when it "
+                + "differs, both with ok:true — so read the child's own `ok` (did it run) beside `valid`/`matches` "
+                + "(what it found). The aggregate summary reports that split.")
 final class BatchCommand extends BaseCommand {
 
     private static final ObjectMapper MAPPER = new ObjectMapper();
@@ -41,7 +51,15 @@ final class BatchCommand extends BaseCommand {
 
     @Option(names = "--observations", paramLabel = "<file>",
             description = "overwrite a deterministic static-kernel verdict artifact for caller-tagged rule checks "
-                    + "and computation-spec dry-runs (see `dmtool schema batch`)")
+                    + "and computation-spec dry-runs (see `dmtool schema batch`). EXIT: the aggregate rule above "
+                    + "applies unchanged, and it bites here routinely — a candidate the kernel REJECTED is a "
+                    + "nonzero child, so a capture containing an intentional negative control exits 1 by design, "
+                    + "not because the capture failed. The artifact is still complete and authoritative: the "
+                    + "capture succeeded exactly when the envelope reports `outcome:completed` with "
+                    + "`written:true` (a preflight refusal is `outcome:rejected` and writes nothing; an artifact "
+                    + "write failure is `outcome:error`, exit 70). Per child, the artifact keeps the two axes "
+                    + "apart: `ok:true` with `valid:false` is a correctly rejected candidate, while `ok:false` is "
+                    + "a child that failed to run")
     String observationsFile;
 
     @Override
