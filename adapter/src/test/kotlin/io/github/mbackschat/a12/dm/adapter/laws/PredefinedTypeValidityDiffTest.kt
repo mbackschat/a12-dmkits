@@ -116,16 +116,22 @@ class PredefinedTypeValidityDiffTest {
 
     @Test
     fun unregisteredTypeNameIsAcceptedByTheModelAndBothPolaritiesFireAtRuntime() {
-        listOf(
-            Dsl.validType(cn, "Unregistered") to true,
-            Dsl.invalidType(cn, "Unregistered") to true,
-        ).forEach { (condition, expected) ->
+        listOf(Dsl.validType(cn, "Unregistered"), Dsl.invalidType(cn, "Unregistered")).forEach { condition ->
             val model = RuntimeLaws.withRule(order, "/Order", "R", "../CustomerName", "VT", render(condition))
             val doc = RuntimeLaws.doc().group("/Order", 1).field(NAME, valid, 1, 1)
             val javaEngine = RuntimeLaws.kernelJavaEngine(model)
 
-            val dynamic = RuntimeLaws.messages(model, doc, factory).any { it.code() == "VT" }
-            val generated = javaEngine.messages(javaEngine.instance(doc), factory).any { it.code() == "VT" }
+            // The NATURE of the observable, not merely the presence of the code: a message that carries the
+            // rule's code could also have been a captured validator failure attributed to the rule, which is a
+            // different result domain. Projecting code+type separates them, and both engines must agree on it.
+            // The full registration/fill matrix, and what it refutes, is
+            // UnregisteredPredefinedTypeObservableDiffTest (KF51).
+            val fired = { messages: List<RuntimeLaws.Msg> ->
+                messages.filter { it.code() == "VT" }.map { "${it.code()}/${it.type()}" }
+            }
+            val dynamic = fired(RuntimeLaws.messages(model, doc, factory))
+            val generated = fired(javaEngine.messages(javaEngine.instance(doc), factory))
+            assertEquals(listOf("VT/VALUE_ERROR"), dynamic, "one fired rule message with a real polarity")
             val definition = ModelDef(
                 fields,
                 listOf(RuleDef("/Order/R", "/Order", render(condition), "VT", "../CustomerName")),
@@ -135,7 +141,6 @@ class PredefinedTypeValidityDiffTest {
             )
 
             assertEquals(dynamic, generated)
-            assertEquals(expected, dynamic)
             assertEquals(emptyList<Any>(), interpreted.messages, "the interpreter must not guess kernel SPI fallback semantics")
             assertEquals(1, interpreted.unsupported.size, "the intentional unregistered-type divergence stays explicit")
             assertTrue(interpreted.unsupported.single().reason.contains("unknown predefined type"))
