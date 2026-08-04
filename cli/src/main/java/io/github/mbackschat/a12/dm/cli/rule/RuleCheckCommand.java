@@ -82,12 +82,12 @@ final class RuleCheckCommand extends BaseCommand {
         if (model == null) {
             return fail("pass -m <model.json> (before or after the verb)");
         }
+        if (!ModelPaths.isAbsoluteEntityPath(field)) {
+            return fail("--field must be an absolute path (e.g. /Group/Field)");
+        }
         String effectiveGroup = group;
         if (effectiveGroup == null) {
             int slash = field.lastIndexOf('/');
-            if (slash <= 0) {
-                return fail("--field must be an absolute path (e.g. /Group/Field)");
-            }
             effectiveGroup = field.substring(0, slash);
         }
         if (!field.startsWith(effectiveGroup + "/")) {

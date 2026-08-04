@@ -458,7 +458,7 @@ final class ApplyCommand extends BaseCommand {
             case RULE_ADD -> {
                 String field = req(op, "field");
                 int s = field.lastIndexOf('/');
-                if (s <= 0) {
+                if (!ModelPaths.isAbsoluteEntityPath(field)) {
                     throw new IllegalArgumentException("rule add 'field' must be an absolute path (e.g. /Group/Field)");
                 }
                 // the rule group defaults to the error field's parent; `group` overrides it (mirrors the standalone

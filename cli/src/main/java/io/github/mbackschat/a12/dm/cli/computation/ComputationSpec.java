@@ -6,6 +6,7 @@ import java.util.Set;
 
 import com.fasterxml.jackson.databind.JsonNode;
 
+import io.github.mbackschat.a12.dm.cli.ModelPaths;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Comments;
 import io.github.mbackschat.a12.dm.rulekit.dsl.LocalizedText;
 import io.github.mbackschat.a12.dm.rulekit.dsl.ToleranceBand;
@@ -63,7 +64,7 @@ public final class ComputationSpec {
             return error("computation-spec needs computedField (the calculated field's full path)");
         }
         int slash = computedField.lastIndexOf('/');
-        if (slash <= 0) {
+        if (!ModelPaths.isAbsoluteEntityPath(computedField)) {
             return error("computedField must be an absolute path (e.g. /Group/Field), got: " + computedField);
         }
         String groupPath = computedField.substring(0, slash);

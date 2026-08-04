@@ -2,6 +2,7 @@ package io.github.mbackschat.a12.dm.cli.model;
 
 import io.github.mbackschat.a12.dm.cli.BaseCommand;
 import io.github.mbackschat.a12.dm.cli.CustomSupportOptions;
+import io.github.mbackschat.a12.dm.cli.ModelPaths;
 import io.github.mbackschat.a12.dm.cli.ParamKind;
 import io.github.mbackschat.a12.dm.cli.ResultEnvelope;
 import io.github.mbackschat.a12.dm.cli.RuntimeEvidence;
@@ -132,11 +133,11 @@ final class ModelEvalCommand extends BaseCommand {
         String effectiveGroup = group;
         String errorEntityRelPath = null;
         if (candidate) {
+            if (!ModelPaths.isAbsoluteEntityPath(field)) {
+                return fail("--field must be an absolute path (e.g. /Group/Field)");
+            }
             if (effectiveGroup == null) {
                 int slash = field.lastIndexOf('/');
-                if (slash <= 0) {
-                    return fail("--field must be an absolute path (e.g. /Group/Field)");
-                }
                 effectiveGroup = field.substring(0, slash);
             }
             if (!field.startsWith(effectiveGroup + "/")) {

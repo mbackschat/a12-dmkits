@@ -24,6 +24,14 @@ public final class ModelPaths {
     private ModelPaths() {
     }
 
+    /**
+     * True when a value has the syntax required of a non-root model entity path. Checking only for a slash is
+     * insufficient: {@code Order/Quantity} has one but is still relative.
+     */
+    public static boolean isAbsoluteEntityPath(String path) {
+        return path != null && path.startsWith("/") && path.lastIndexOf('/') > 0;
+    }
+
     public static String fieldProblem(BoundModel model, String path) {
         return model.fieldAt(path).isPresent() ? null : problem(path, "field", "/Group/Field");
     }

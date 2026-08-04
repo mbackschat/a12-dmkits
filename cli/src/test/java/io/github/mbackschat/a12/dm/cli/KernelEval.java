@@ -138,11 +138,11 @@ final class KernelEval {
         String errorEntityRelPath = null;
         String targetRule = a.rule();
         if (candidate) {
+            if (!ModelPaths.isAbsoluteEntityPath(a.field())) {
+                return fail(err, "--field must be an absolute path (e.g. /Group/Field)");
+            }
             if (effectiveGroup == null) {
                 int slash = a.field().lastIndexOf('/');
-                if (slash <= 0) {
-                    return fail(err, "--field must be an absolute path (e.g. /Group/Field)");
-                }
                 effectiveGroup = a.field().substring(0, slash);
             }
             if (!a.field().startsWith(effectiveGroup + "/")) {

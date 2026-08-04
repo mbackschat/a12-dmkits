@@ -2,6 +2,7 @@ package io.github.mbackschat.a12.dm.cli.rule;
 
 import io.github.mbackschat.a12.dm.cli.BaseCommand;
 import io.github.mbackschat.a12.dm.cli.CustomSupportOptions;
+import io.github.mbackschat.a12.dm.cli.ModelPaths;
 import io.github.mbackschat.a12.dm.cli.ParamKind;
 import io.github.mbackschat.a12.dm.cli.ResultEnvelope;
 import io.github.mbackschat.a12.dm.cli.RuntimeEvidence;
@@ -101,7 +102,7 @@ final class RuleEvalCommand extends BaseCommand {
         String candidateErrorEntityRelPath = null;
         if (candidate) {
             int slash = field.lastIndexOf('/');
-            if (!field.startsWith("/") || slash <= 0) {
+            if (!ModelPaths.isAbsoluteEntityPath(field)) {
                 return fail("--field must be an absolute path (e.g. /Group/Field)");
             }
             candidateGroup = field.substring(0, slash);

@@ -3,6 +3,7 @@ package io.github.mbackschat.a12.dm.cli.rule;
 import io.github.mbackschat.a12.dm.cli.BaseCommand;
 import io.github.mbackschat.a12.dm.cli.ConsistencyEvidence;
 import io.github.mbackschat.a12.dm.cli.LintBackstop;
+import io.github.mbackschat.a12.dm.cli.ModelPaths;
 import io.github.mbackschat.a12.dm.cli.ModelWrite;
 import io.github.mbackschat.a12.dm.cli.ParamKind;
 import io.github.mbackschat.a12.dm.cli.RejectionBasis;
@@ -102,7 +103,7 @@ final class RuleAddCommand extends BaseCommand {
         String severity = spec.hasNonNull("severity") ? spec.get("severity").asText() : "ERROR";
         String name = spec.hasNonNull("name") ? spec.get("name").asText() : code;
         int slash = field.lastIndexOf('/');
-        if (slash <= 0) {
+        if (!ModelPaths.isAbsoluteEntityPath(field)) {
             return fail("field must be an absolute path (e.g. /Group/Field)");
         }
         // the rule group (iteration scope) defaults to the error field's parent; `group` overrides it (mirrors
