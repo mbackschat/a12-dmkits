@@ -24,6 +24,7 @@ import io.github.mbackschat.a12.dm.interpreter.DocumentInputError;
 import io.github.mbackschat.a12.dm.interpreter.DocumentInputReasonCode;
 import io.github.mbackschat.a12.dm.interpreter.ModelPreparationDiagnostic;
 import io.github.mbackschat.a12.dm.interpreter.ModelPreparationError;
+import io.github.mbackschat.a12.dm.interpreter.model.UndeclaredReference;
 import io.github.mbackschat.a12.dm.modelkit.ModelTimeZoneContract;
 import io.github.mbackschat.a12.dm.rulekit.validate.Diagnostic;
 import io.github.mbackschat.a12.dm.rulekit.validate.KernelDiagnostics;
@@ -195,6 +196,35 @@ public abstract class BaseCommand implements Callable<Integer> {
 
     protected int refusePrecheck(RkCode code, String summary, String path, String fix) {
         return refusePrecheck(resultIdentity(), code, summary, path, fix);
+    }
+
+    /**
+     * Refuse a RUNTIME evaluation whose model or candidate names entities it does not declare (G46) — one
+     * diagnostic per reference, so a consumer repairs every one of them in a single pass instead of discovering
+     * the next only after fixing the last. Exit 2, nothing evaluated and nothing written.
+     *
+     * <p>A refusal rather than a degraded answer because there is no honest answer to give: the missing cell
+     * reads as empty in a presence position (so the rule FIRES), collapses to an empty row domain in a starred
+     * position (so the rule PASSES), and has no reading at all in a value position. The kernel rejects the same
+     * model as {@code MVK_INVALID_ENTITY}, so this refusal is not stricter than the kernel — it is the same
+     * verdict, reached without one.
+     */
+    protected int refuseUndeclaredReferences(List<UndeclaredReference> undeclared) {
+        String summary = undeclared.size() == 1
+                ? "'" + undeclared.get(0).getPath() + "' is not declared by this model — refusing to evaluate"
+                : undeclared.size() + " references name entities this model does not declare — refusing to evaluate";
+        List<Diagnostic> diagnostics = undeclared.stream()
+                .map(reference -> Diagnostic.precheck(
+                        Optional.of(RkCode.UNDECLARED_ENTITY_REFERENCE.code()),
+                        reference.getLocus() + " references '" + reference.getPath()
+                                + "', which this model does not declare",
+                        Diagnostic.Where.path(reference.getPath()),
+                        Optional.of(RkCode.UNDECLARED_ENTITY_REFERENCE.fix()),
+                        Optional.of(RkCode.UNDECLARED_ENTITY_REFERENCE.meaning())))
+                .toList();
+        ResultEnvelope env = ResultEnvelope.refused(resultIdentity(), summary, null, diagnostics);
+        out().print(env.toJsonString());
+        return env.exitCode();
     }
 
     /** A coded precheck whose catalog meaning is part of the corrective contract, not just its lookup key. */

@@ -8,6 +8,7 @@ import io.github.mbackschat.a12.dm.cli.interp.InterpreterEngine;
 import io.github.mbackschat.a12.dm.interpreter.DocumentInputError;
 import io.github.mbackschat.a12.dm.interpreter.UnsupportedModelTimeZoneException;
 import io.github.mbackschat.a12.dm.interpreter.InvalidModelTimeZoneException;
+import io.github.mbackschat.a12.dm.interpreter.model.UndeclaredReference;
 import io.github.mbackschat.a12.dm.rulekit.validate.RkCode;
 
 import java.io.IOException;
@@ -67,6 +68,13 @@ final class ModelComputeCommand extends BaseCommand {
         // Use the public portable workspace so an includes-bearing model computes over its mounted content.
         String interpJson =
                 InterpreterEngine.prepareForEval(modelJson, Path.of(model).getFileName().toString(), resolver);
+
+        // An operation naming an entity the model does not declare has no empty reading to fall back on, so it
+        // used to die mid-computation as an untyped failure. Same gate, same code as the eval verbs (G46).
+        List<UndeclaredReference> undeclared = InterpreterEngine.undeclaredReferences(interpJson);
+        if (!undeclared.isEmpty()) {
+            return refuseUndeclaredReferences(undeclared);
+        }
 
         ObjectNode data;
         try {

@@ -24,6 +24,7 @@ import io.github.mbackschat.a12.dm.interpreter.model.RuleDef;
 import io.github.mbackschat.a12.dm.interpreter.model.RuleResult;
 import io.github.mbackschat.a12.dm.interpreter.model.RelevantEntity;
 import io.github.mbackschat.a12.dm.interpreter.model.Severity;
+import io.github.mbackschat.a12.dm.interpreter.model.UndeclaredReference;
 import io.github.mbackschat.a12.dm.interpreter.model.UnsupportedRule;
 import io.github.mbackschat.a12.dm.interpreter.model.UnsupportedSubject;
 import io.github.mbackschat.a12.dm.interpreter.model.ValidationOutcome;
@@ -70,6 +71,26 @@ public final class InterpreterEngine {
     /** The full field paths visible in a prepared runtime model, including mounted workspace content. */
     public static List<String> fieldFullNames(String modelJson) {
         return InterpreterModelLoader.load(modelJson).getFields().stream().map(field -> field.getPath()).toList();
+    }
+
+    /**
+     * Every reference in the prepared model's rules and computations that names an entity the model does not
+     * declare — the value-independent gate the runtime verbs run before they answer (G46). Kernel-free, so it
+     * works on the native binary where the MVK consistency oracle is unavailable.
+     */
+    public static List<UndeclaredReference> undeclaredReferences(String modelJson) {
+        return new DmInterpreter(InterpreterModelLoader.load(modelJson)).undeclaredReferences();
+    }
+
+    /**
+     * The same gate for a non-stored {@code --condition}/{@code --field} candidate, whose references are checked
+     * against the prepared model it would be evaluated in.
+     */
+    public static List<UndeclaredReference> undeclaredCandidateReferences(String modelJson, String locale,
+            String group, String name, String errorEntityRelPath, String condition, String code) {
+        ModelDef def = InterpreterModelLoader.load(modelJson);
+        RuleDef candidate = candidateRule(locale, group, name, errorEntityRelPath, condition, code, "ERROR", code);
+        return new DmInterpreter(def).undeclaredReferences(candidate);
     }
 
     /** {@code model eval} over the whole model (optionally narrowing the {@code rule} verdict to {@code targetRule}).

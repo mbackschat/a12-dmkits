@@ -27,6 +27,7 @@ import io.github.mbackschat.a12.dm.interpreter.model.RelevantEntity
 import io.github.mbackschat.a12.dm.interpreter.model.RuleDef
 import io.github.mbackschat.a12.dm.interpreter.model.RuleResult
 import io.github.mbackschat.a12.dm.interpreter.model.Suppression
+import io.github.mbackschat.a12.dm.interpreter.model.UndeclaredReference
 import io.github.mbackschat.a12.dm.interpreter.model.UnsupportedRule
 import io.github.mbackschat.a12.dm.interpreter.model.ValidationOutcome
 import io.github.mbackschat.a12.dm.interpreter.model.Verdict
@@ -136,6 +137,44 @@ class DmInterpreter @JvmOverloads constructor(
      * [validate] remains the per-instance outcome-bearing check for failures raised by a registered callback.
      */
     fun supportAudit(): List<UnsupportedRule> = preparedModel.audit()
+
+    /**
+     * Every reference in this model's rules and computations that names an entity the model does not declare —
+     * value-independent, so it answers before any document is read.
+     *
+     * Separate from [supportAudit] on purpose: an undeclared reference is not a construct we cannot evaluate but
+     * a model the kernel's consistency gate rejects (`MVK_INVALID_ENTITY`), and evaluating it produces a
+     * confident answer about a rule that cannot exist. It has no single failure shape either — a presence
+     * predicate reads the missing cell as empty and FIRES, a starred aggregate collapses to an empty domain and
+     * PASSES, and a value position throws — so a caller that wants to be honest has to ask up front rather than
+     * interpret whatever came back.
+     *
+     * The domain checked against is the model's declared entity set, and the reference has already been bound by
+     * the model's own rules, so a legal absolute / `..`-relative / `..Name` / short-name / starred / multi-star
+     * reference resolves to a declared path and is not reported. Implicit computation-validation rules are
+     * excluded because they are generated from the computations that are checked here.
+     */
+    fun undeclaredReferences(): List<UndeclaredReference> = buildList {
+        model.rules.forEach { rule ->
+            addAll(undeclared(rule.path, namedEntityPaths(parsedModel.condAstOf(rule))))
+        }
+        model.computations.forEach { comp ->
+            val locus = comp.name?.let { "${comp.group}/$it" } ?: comp.targetPath
+            val parsed = parsedModel.parsedOf(comp)
+            parsed.commonPrecondition?.let { addAll(undeclared(locus, namedEntityPaths(it))) }
+            parsed.alternatives.forEach { alternative ->
+                alternative.precondition?.let { addAll(undeclared(locus, namedEntityPaths(it))) }
+                addAll(undeclared(locus, namedEntityPaths(alternative.operation)))
+            }
+        }
+    }.distinct()
+
+    /** The same check for one ad-hoc candidate rule — the non-stored `--condition`/`--field` route. */
+    fun undeclaredReferences(candidate: RuleDef): List<UndeclaredReference> =
+        undeclared(candidate.path, namedEntityPaths(parsedModel.condAstOf(candidate))).distinct()
+
+    private fun undeclared(locus: String, paths: List<String>): List<UndeclaredReference> =
+        paths.filter { it !in model.entityPaths }.map { UndeclaredReference(locus, it) }
 
     /** Test/measurement seam: number of distinct sources compiled by this engine owner. */
     internal fun patternCompilationCount(): Int = patterns.compilationCount

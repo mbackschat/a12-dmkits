@@ -760,6 +760,20 @@ data class UnsupportedRule(
     val subject: UnsupportedSubject = UnsupportedSubject.ELEMENT,
 )
 
+/**
+ * One reference in a condition or computation operation that names an entity the model does not declare.
+ *
+ * A model carrying one is **invalid** — the kernel's consistency gate rejects it as `MVK_INVALID_ENTITY` — so
+ * this is not a capability gap and never an [UnsupportedRule]: evaluating it would answer confidently about a
+ * rule that cannot exist. [locus] is the rule/computation element path that carries the reference; [path] is
+ * the absolute entity path the text resolved to, after the model's own binding rules (declaring-group
+ * precedence, then the `fieldRefByShortNameAllowed` short-name fallback) have had their chance.
+ */
+data class UndeclaredReference(
+    val locus: String,
+    val path: String,
+)
+
 /** The result of [DmInterpreter.validate]: the firings plus the rules reported [unsupported]. */
 data class ValidationOutcome(
     val messages: List<Message>,

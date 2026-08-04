@@ -10,6 +10,7 @@ import io.github.mbackschat.a12.dm.cli.WorkspaceOption;
 import io.github.mbackschat.a12.dm.cli.interp.InterpreterEngine;
 import io.github.mbackschat.a12.dm.interpreter.DocumentInputError;
 import io.github.mbackschat.a12.dm.interpreter.ModelPreparationError;
+import io.github.mbackschat.a12.dm.interpreter.model.UndeclaredReference;
 
 import java.nio.file.Path;
 import java.util.List;
@@ -125,6 +126,15 @@ final class RuleEvalCommand extends BaseCommand {
                 return refuseNotFound(RkCode.NO_SUCH_FIELD,
                         "field '" + field + "' does not exist — refusing candidate evaluation",
                         field, RkCode.NO_SUCH_FIELD.fix());
+            }
+            // The condition's own references get the same treatment as --field's: an entity the model does not
+            // declare makes the rule impossible, so evaluating it would answer confidently about nothing (G46).
+            List<UndeclaredReference> undeclared = candidate
+                    ? InterpreterEngine.undeclaredCandidateReferences(interpJson, localeTag, candidateGroup,
+                            "EvalRuleCandidate", candidateErrorEntityRelPath, condition, code)
+                    : InterpreterEngine.undeclaredReferences(interpJson);
+            if (!undeclared.isEmpty()) {
+                return refuseUndeclaredReferences(undeclared);
             }
             ObjectNode data;
             if (candidate) {

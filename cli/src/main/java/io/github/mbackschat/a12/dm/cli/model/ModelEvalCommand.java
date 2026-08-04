@@ -17,6 +17,7 @@ import java.util.List;
 import io.github.mbackschat.a12.dm.interpreter.DocumentInputError;
 import io.github.mbackschat.a12.dm.interpreter.UnsupportedModelTimeZoneException;
 import io.github.mbackschat.a12.dm.interpreter.InvalidModelTimeZoneException;
+import io.github.mbackschat.a12.dm.interpreter.model.UndeclaredReference;
 import io.github.mbackschat.a12.dm.rulekit.validate.RkCode;
 
 import com.fasterxml.jackson.databind.node.ObjectNode;
@@ -154,6 +155,15 @@ final class ModelEvalCommand extends BaseCommand {
             return refuseNotFound(RkCode.NO_SUCH_FIELD,
                     "field '" + field + "' does not exist — refusing candidate evaluation",
                     field, RkCode.NO_SUCH_FIELD.fix());
+        }
+        // The condition's own references, held to the same bar as --field's (G46). A stored rule is checked too:
+        // dmtool's write paths gate every reference, but a model that arrived from anywhere else was never gated.
+        List<UndeclaredReference> undeclared = candidate
+                ? InterpreterEngine.undeclaredCandidateReferences(interpJson, localeTag, effectiveGroup, name,
+                        errorEntityRelPath, condition, code)
+                : InterpreterEngine.undeclaredReferences(interpJson);
+        if (!undeclared.isEmpty()) {
+            return refuseUndeclaredReferences(undeclared);
         }
 
         ObjectNode data;

@@ -185,3 +185,46 @@ internal fun semanticIndexTargets(cond: Cond): List<String> = when (cond) {
 }
 
 internal fun condRefsOrEmpty(cond: Cond?): List<String> = cond?.let { nonStarredRefs(it) } ?: emptyList()
+
+// ---------------------------------------------------------------------------------------------------------
+// The DECLARATION view — every entity path the text NAMES, with no purpose-specific exclusion (IF248).
+// ---------------------------------------------------------------------------------------------------------
+
+/**
+ * Every entity path [cond] NAMES, whether field or group, starred or not, in any operand position — the view a
+ * declaration check needs. Deliberately **not** one of the walks above: each of those omits paths on purpose
+ * (the scope view drops stars, the dependency view drops `CurrentRepetition`'s group and `EntitySpec`
+ * altogether, the message view drops a semantic-index target), and every such omission would become a
+ * reference this walk fails to check. Both `when`s are exhaustive over the sealed AST so a new node cannot be
+ * added without deciding what it names.
+ *
+ * A starred operand contributes its `*`-free path, which is what the parser already stores ([Expr.Star.path]) —
+ * the wildcard markers never reach the AST, so a legal `Items* / Count` is checked as `…/Items/Count`.
+ */
+internal fun namedEntityPaths(cond: Cond): List<String> = when (cond) {
+    is Cond.Cmp -> namedEntityPaths(cond.left) + namedEntityPaths(cond.right)
+    is Cond.Tolerance -> namedEntityPaths(cond.left) + namedEntityPaths(cond.right)
+    is Cond.ValueListQuant -> (cond.fields + cond.values).flatMap { namedEntityPaths(it) }
+    is Cond.And -> namedEntityPaths(cond.left) + namedEntityPaths(cond.right)
+    is Cond.Or -> namedEntityPaths(cond.left) + namedEntityPaths(cond.right)
+    is Cond.Not -> namedEntityPaths(cond.c)
+    is Cond.Pred -> cond.args.flatMap { namedEntityPaths(it) }
+    is Cond.Pattern -> namedEntityPaths(cond.value) + namedEntityPaths(cond.pattern)
+    // A custom condition names no entity — the delegate receives the document and decides for itself.
+    is Cond.Custom -> emptyList()
+}
+
+/** Expression twin of [namedEntityPaths]; a literal or a no-operand constant names nothing. */
+internal fun namedEntityPaths(expr: Expr): List<String> = when (expr) {
+    is Expr.Field -> listOf(expr.path)
+    is Expr.Star -> listOf(expr.path) + expr.having?.let { namedEntityPaths(it) }.orEmpty()
+    is Expr.Func -> expr.args.flatMap { namedEntityPaths(it) }
+    is Expr.Arith -> namedEntityPaths(expr.left) + namedEntityPaths(expr.right)
+    is Expr.EnumCategory -> listOf(expr.path)
+    is Expr.SemanticIndex -> listOfNotNull(expr.path, expr.indexFieldPath)
+    is Expr.EntitySpec -> namedEntityPaths(expr.source) + when (val index = expr.semanticIndex) {
+        null, is Expr.EntityIndex.Literal -> emptyList()
+        is Expr.EntityIndex.Field -> listOf(index.path)
+    }
+    is Expr.NumLit, is Expr.StrLit, is Expr.BoolLit, is Expr.Const -> emptyList()
+}
