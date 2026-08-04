@@ -2842,7 +2842,9 @@
       "returns": "boolean",
       "meaning": "True when the listed fields' values are not all distinct.",
       "constraints": [
-        "takes plain or flattened (starred) field operands"
+        "takes plain or flattened (starred) field operands",
+        "more than one operand, OR one flattened repetition list (Group*/field) which already expands to many rows — a single DIRECT field is rejected MVK_PARAMSIZE_INVALIDN",
+        "every operand must share ONE declared kind (MVK_VARYING_TYPES_NOT_ALLOWED); differing Number scales are admitted, which is what makes cross-scale equality reachable"
       ],
       "gotchas": [
         {
@@ -2851,12 +2853,34 @@
           "seeAlso": [
             "RepetitionNotUnique"
           ]
+        },
+        {
+          "text": "this operator's kind gate is STRICTER than NumberOfDifferentValues', so the two field-list operators do not share one comparability contract: a String beside a stored Enumeration is rejected MVK_VARYING_TYPES_NOT_ALLOWED here, while NumberOfDifferentValues admits exactly that mix over the same two fields",
+          "kind": "AUTHORING",
+          "seeAlso": [
+            "NumberOfDifferentValues"
+          ]
         }
       ],
       "validExample": {
         "dsl": "FieldFilled(CustomerName) And FieldValuesNotUnique(Items*/Sku)",
         "note": "fires when any two line items share a Sku (non-iterating form)"
       },
+      "invalidExample": {
+        "dsl": "FieldValuesNotUnique(CustomerName, Priority)",
+        "error": "MVK_VARYING_TYPES_NOT_ALLOWED",
+        "fix": "list operands of ONE declared kind — all String, all Enumeration, or all Number (any scales). To count distinct values across a String/Enumeration mix instead, use NumberOfDifferentValues, whose comparability rule is the looser one"
+      },
+      "correctives": [
+        {
+          "code": "MVK_PARAMSIZE_INVALIDN",
+          "whenOperands": [],
+          "fix": "FieldValuesNotUnique needs more than one operand: list a second field, or use one flattened repetition list (Items*/Sku), which expands to a row stream and satisfies the arity on its own",
+          "probe": {
+            "dsl": "FieldValuesNotUnique(Quantity)"
+          }
+        }
+      ],
       "sinceKernel": "30.8.x"
     },
     {

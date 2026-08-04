@@ -375,6 +375,30 @@
     },
     {
       "locator": {
+        "operator": "FieldValuesNotUnique",
+        "source": "INVALID_EXAMPLE",
+        "ordinal": 0
+      },
+      "digest": "sha256:77e5d36e6f41f7518b72c1d41db1a24e44ad5220da5085a44358e8e47b0897b5",
+      "fixture": "ORDER",
+      "group": "/Order",
+      "field": "../CustomerName",
+      "dsl": "FieldValuesNotUnique(CustomerName, ProductCode)"
+    },
+    {
+      "locator": {
+        "operator": "FieldValuesNotUnique",
+        "source": "CORRECTIVE",
+        "ordinal": 0
+      },
+      "digest": "sha256:25265aacca0f9d7a3eb4d35179ff944af90dbd60f9e7b836ef8d472de55f0570",
+      "fixture": "ORDER",
+      "group": "/Order",
+      "field": "../CustomerName",
+      "dsl": "FieldFilled(CustomerName) And FieldValuesNotUnique(Items*/Sku)"
+    },
+    {
+      "locator": {
         "operator": "Sum",
         "source": "INVALID_EXAMPLE",
         "ordinal": 0

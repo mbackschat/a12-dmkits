@@ -3722,6 +3722,40 @@
     },
     {
       "operator": "FieldValuesNotUnique",
+      "lane": "CONSTRAINT",
+      "ordinal": 1,
+      "digest": "sha256:07e62e57b96f244816fc0c4fbb1e253380ee4e34437f8fc6588a51ddfab2c77b",
+      "classifications": [
+        "REJECTION",
+        "ADMISSION"
+      ],
+      "evidence": [
+        {
+          "classification": "ADMISSION",
+          "type": "KERNEL_LAW",
+          "id": "FieldValuesNotUniqueAdmissionLawsTest#aSingleStarredSlotIsAdmitted"
+        }
+      ]
+    },
+    {
+      "operator": "FieldValuesNotUnique",
+      "lane": "CONSTRAINT",
+      "ordinal": 2,
+      "digest": "sha256:925842128384798e66803d6de1c7c90c2fba6ea2b94daafd093ad7557b8e6260",
+      "classifications": [
+        "REJECTION",
+        "ADMISSION"
+      ],
+      "evidence": [
+        {
+          "classification": "ADMISSION",
+          "type": "KERNEL_LAW",
+          "id": "FieldValuesNotUniqueAdmissionLawsTest#twoNumberFieldsAtDifferentScalesAreAdmitted"
+        }
+      ]
+    },
+    {
+      "operator": "FieldValuesNotUnique",
       "lane": "GOTCHA",
       "ordinal": 0,
       "digest": "sha256:24096494fb77993609b0dfbedfc9a1c2cfed7fbb60a540c936cfe811b2587b13",
@@ -3735,6 +3769,16 @@
           "id": "adapter.laws.FieldValuesNotUniqueDiffTest.starredDuplicateEmitsOneFirstRowMessageWithItsWildcardReferenceInBothPlacements"
         }
       ]
+    },
+    {
+      "operator": "FieldValuesNotUnique",
+      "lane": "GOTCHA",
+      "ordinal": 1,
+      "digest": "sha256:96b93d501d29e2e2e2946b1e4f2cccd80b6857efb12e8caa007f676ca48921ae",
+      "classifications": [
+        "REJECTION"
+      ],
+      "evidence": []
     },
     {
       "operator": "Sum",
@@ -24579,6 +24623,52 @@
           "type": "CLAIM_PROBE",
           "id": "Equal.time-datetime-incompatible",
           "side": "TRIGGER"
+        }
+      ]
+    },
+    {
+      "id": "literal.FieldValuesNotUnique.constraint1.MVK_PARAMSIZE_INVALIDN",
+      "operator": "FieldValuesNotUnique",
+      "kind": "CONDITION",
+      "units": [
+        {
+          "lane": "CONSTRAINT",
+          "ordinal": 1
+        }
+      ],
+      "expected": {
+        "verdict": "REJECTED",
+        "code": "MVK_PARAMSIZE_INVALIDN"
+      },
+      "evidence": [
+        {
+          "type": "CORRECTIVE",
+          "code": "MVK_PARAMSIZE_INVALIDN",
+          "whenOperands": []
+        }
+      ]
+    },
+    {
+      "id": "literal.FieldValuesNotUnique.constraint2.MVK_VARYING_TYPES_NOT_ALLOWED",
+      "operator": "FieldValuesNotUnique",
+      "kind": "CONDITION",
+      "units": [
+        {
+          "lane": "CONSTRAINT",
+          "ordinal": 2
+        },
+        {
+          "lane": "GOTCHA",
+          "ordinal": 1
+        }
+      ],
+      "expected": {
+        "verdict": "REJECTED",
+        "code": "MVK_VARYING_TYPES_NOT_ALLOWED"
+      },
+      "evidence": [
+        {
+          "type": "INVALID_EXAMPLE"
         }
       ]
     },
