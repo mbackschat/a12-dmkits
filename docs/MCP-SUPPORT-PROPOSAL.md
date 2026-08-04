@@ -531,7 +531,7 @@ Prose rather than a table, because a status board over other documents' decision
 
 **Re-open trigger:** a resident server shipping, which raises the rate of unannounced termination from incidental to once per session; or any report of a truncated model.
 
-**Separately and independently:** `DmtoolMutationSafetyTest`'s discriminator merges `ROLLBACK` and `PARTIAL` into one set before asserting equality, so swapping those two labels on a profile still passes. That is a live guard hole with no dependence on this decision.
+**Also shipped, independently:** `DmtoolMutationSafetyTest`'s discriminator no longer merges `ROLLBACK` and `PARTIAL` into one set before asserting equality — the union is invariant under swapping which verb carries which label, so the behavioural evidence (a reverted destination versus a surviving first child) was never joined to the published label. Each label is now cross-checked against its own behavioural set.
 
 ## 15. Open for owner decision
 

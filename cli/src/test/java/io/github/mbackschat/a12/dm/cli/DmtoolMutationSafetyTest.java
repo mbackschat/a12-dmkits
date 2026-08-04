@@ -214,11 +214,18 @@ class DmtoolMutationSafetyTest {
                         + ", stale=" + difference(exercised, registered));
     }
 
+    /**
+     * Each case proves the persistence label it was registered under, and the registry cross-check is done
+     * per label. Merging the two sets let the two labels be swapped without a failure: {@code apply} reverting
+     * and {@code batch} keeping its first child are opposite guarantees, so one union set cannot tell which
+     * verb made which promise.
+     */
     @Test
     void everyDeclaredRollbackOrPartialProfileHasAPackagedLaterFailureDiscriminator(@TempDir Path dir)
             throws Exception {
         PackagedDmtool dmtool = new PackagedDmtool(dir);
-        Set<String> exercised = new HashSet<>();
+        Set<String> rolledBack = new HashSet<>();
+        Set<String> keptEarlierWork = new HashSet<>();
 
         Path applyDir = Files.createDirectories(dir.resolve("later-apply"));
         Path applyModel = resource(applyDir, "order-ruled.dm.json");
@@ -233,7 +240,7 @@ class DmtoolMutationSafetyTest {
         assertFalse(MAPPER.readTree(apply.out()).path("data").path("committed").asBoolean(), apply::out);
         assertEquals(applyBefore, Files.readString(applyModel), "apply rolls back the successful first child");
         assertModelChecks(dmtool, applyModel);
-        exercised.add("apply#commit");
+        rolledBack.add("apply#commit");
 
         Path batchDir = Files.createDirectories(dir.resolve("later-batch"));
         Path batchModel = resource(batchDir, "subscription.dm.json");
@@ -250,7 +257,7 @@ class DmtoolMutationSafetyTest {
         assertEquals(0, dmtool.run("-m", batchModel.toString(), "field", "read",
                 "/Subscription/Billing/BatchCommitted").code(), "batch preserves the successful first child");
         assertModelChecks(dmtool, batchModel);
-        exercised.add("batch#dispatch");
+        keptEarlierWork.add("batch#dispatch");
 
         Path extractDir = Files.createDirectories(dir.resolve("later-extract"));
         Path extractModel = extractDir.resolve("order.dm.json");
@@ -270,7 +277,7 @@ class DmtoolMutationSafetyTest {
         assertEquals(extractSource, Files.readString(extractModel));
         assertModelChecks(dmtool, extracted);
         assertModelChecks(dmtool, extractModel);
-        exercised.add("group extract#commit");
+        keptEarlierWork.add("group extract#commit");
 
         Path exportDir = Files.createDirectories(dir.resolve("later-export"));
         Path exportModel = resource(exportDir, "order-ruled.dm.json");
@@ -282,7 +289,7 @@ class DmtoolMutationSafetyTest {
         assertTrue(Files.isRegularFile(artifacts.resolve("fields.jsonl")),
                 "the first export artifact remains after the second write fails");
         assertModelChecks(dmtool, exportModel);
-        exercised.add("export#directory");
+        keptEarlierWork.add("export#directory");
 
         Path importDir = Files.createDirectories(dir.resolve("later-import"));
         Path schema = importDir.resolve("bundle.openapi.json");
@@ -299,15 +306,23 @@ class DmtoolMutationSafetyTest {
         assertTrue(Files.isRegularFile(bundle.resolve("A.dm.json")),
                 "the first imported component remains after the later component fails");
         assertModelChecks(dmtool, bundle.resolve("A.dm.json"));
-        exercised.add("model import-jsonschema#bundle");
+        keptEarlierWork.add("model import-jsonschema#bundle");
 
         JsonNode manifest = MAPPER.readTree(dmtool.run("manifest").out());
-        Set<String> declared = profileKeys(manifest, profile -> Set.of("ROLLBACK", "PARTIAL")
-                .contains(profile.path("failurePersistence").asText()));
-        assertEquals(declared, exercised,
-                () -> "later-failure cases and live persistence registry differ; missing="
-                        + difference(declared, exercised) + ", stale=" + difference(exercised, declared));
-        assertEquals(5, exercised.size());
+        Set<String> declaredRollback = profileKeys(manifest,
+                profile -> "ROLLBACK".equals(profile.path("failurePersistence").asText()));
+        Set<String> declaredPartial = profileKeys(manifest,
+                profile -> "PARTIAL".equals(profile.path("failurePersistence").asText()));
+        assertEquals(declaredRollback, rolledBack,
+                () -> "ROLLBACK cases and live registry differ; missing="
+                        + difference(declaredRollback, rolledBack) + ", stale="
+                        + difference(rolledBack, declaredRollback));
+        assertEquals(declaredPartial, keptEarlierWork,
+                () -> "PARTIAL cases and live registry differ; missing="
+                        + difference(declaredPartial, keptEarlierWork) + ", stale="
+                        + difference(keptEarlierWork, declaredPartial));
+        assertEquals(1, rolledBack.size());
+        assertEquals(4, keptEarlierWork.size());
     }
 
     @Test
