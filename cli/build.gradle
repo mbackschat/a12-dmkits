@@ -412,6 +412,13 @@ tasks.register('publicContractTest', Test) {
     systemProperty 'dmtool.executable', dmtoolContractExecutable
     inputs.file(file(dmtoolContractExecutable))
     inputs.file(rootProject.file('skill/SKILL.md'))
+    // The ONE place the version-resource normalization above must not reach. This lane asserts the PACKAGED
+    // launcher's reported revision equals `git rev-parse HEAD`, so provenance is a genuine input to it and a
+    // bare commit MUST re-run it — otherwise the stale-launcher property stops being checked per commit, and
+    // that property is the whole reason the resource is regenerated. Declared as a plain file input, which is
+    // not classpath-normalized, so the `ignore` does not apply here. `dependsOn installDist` alone is not
+    // enough: it orders the rebuild but never makes this task out-of-date.
+    inputs.file(generateVersionProperties.map { it.destinationFile })
     filter {
         includeTestsMatching 'io.github.mbackschat.a12.dm.cli.DmtoolPublicContractTest'
         includeTestsMatching 'io.github.mbackschat.a12.dm.cli.DmtoolMutationSafetyTest'
@@ -428,6 +435,11 @@ tasks.named('test') {
     dependsOn 'staleGapGuardTest'
     dependsOn 'mutationTailGuardTest'
     dependsOn 'sourceProvenanceGuardTest'
+    // This suite contains the two tests that READ the provenance resource (`VersionVerbTest`,
+    // `BatchObservationsTest`), so it declares it explicitly and keeps re-running on every commit — the
+    // normalization above must not cause a test that used to run to stop running. Only the six guard tasks,
+    // none of which contains a provenance-reading test, legitimately go up-to-date on a bare commit.
+    inputs.file(generateVersionProperties.map { it.destinationFile })
     // The repo-file-reading guards live in docGuardTest / semanticsMapGuardTest (with the right inputs); keep
     // them OUT of the cacheable main suite so a docs/model-only edit can't invalidate all ~620 tests.
     filter {
