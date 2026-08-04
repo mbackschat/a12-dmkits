@@ -31,7 +31,20 @@ So a code/doc comment citing **`FEATURE-GAPS §N`** / **`Gn`** (including legacy
 
 ## 3. Open
 
-_None open._
+- **G46 — a runtime candidate whose condition names a nonexistent entity is EVALUATED, not refused, and reports a confident observation.** *(Found 2026-08-04 while root-causing the `rule eval` message-projection report; the sibling of G29's visible-ignore contract, one layer earlier.)* Both candidate verbs accept a condition the kernel gate rejects, and answer as if it were a rule.
+
+  Measured (dmtool 0.11.1, kernel 30.8.1, model with `/Policy/Coverages/{CoverageCode,Premium}`):
+
+  | input | oracle | observed |
+  |---|---|---|
+  | `rule check --field /Policy/Coverages/CoverageCode --condition 'FieldNotFilled(NoSuchField)'` | the kernel gate | `valid:false`, `MVK_INVALID_ENTITY` |
+  | `rule eval --condition 'FieldNotFilled(NoSuchField)' --field …/CoverageCode` | — | exit 0, `verdict:"fired"`, `type:"OMISSION_ERROR"`, `referenced:[]` |
+  | `model eval --condition 'FieldNotFilled(NoSuchField)' --field …/CoverageCode` | — | exit 0, the candidate's code in `data.fired` |
+  | `rule eval --condition 'FieldValuesNotUnique(Coverages*/CoverageCode)' --field …/CoverageCode` (relative path unresolvable in that scope) | the kernel gate rejects it the same way | exit 0, `verdict:"passed"` |
+
+  So an unresolvable reference degrades to "an entity that is not filled" and the verb reports **FIRED** for a rule that cannot exist — and in the relative-path case reports **PASSED**, the false-clean-pass shape G29 exists to prevent. `referenced:[]` on a condition that names an operand is the tell. The affected surface is exactly the two `--condition/--field` candidate routes; a *stored* rule cannot carry an unresolvable reference, because every write path gates first.
+
+  **Why this is not fixed in the same slice (needs an owner decision).** The refusal has a measured kernel basis, so being strict here is warranted — but its *breadth* is not yet bounded, and that is the half that goes wrong: reference resolution is model-config dependent (`fieldRefByShortNameAllowed`, relative vs absolute vs short-name binding), so a resolver that is stricter than the kernel's would make legal candidates **unauthorable**, which is the exact over-rejection class CLAUDE.md's "a client-side refusal needs a measured kernel basis" rule was written for. Two further open questions: the check must live **interpreter-side** (these verbs run on the native binary with no kernel), and the channel is a choice — a hard refusal (exit 2, matching `--field`'s existing `NO_SUCH_FIELD` refusal) or the lenient `data.unsupported` + `--strict-custom` route (matching G29). **Closes when** that channel is chosen and the resolver's breadth is locked against the kernel's own binding rules in both directions (accepts what the kernel accepts, refuses what it rejects), with the false-FIRED and false-PASSED rows above as the does-fire controls.
 ---
 
 ## 4. Deferred / out of scope / won't build
