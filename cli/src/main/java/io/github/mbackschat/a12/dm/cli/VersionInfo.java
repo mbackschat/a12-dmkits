@@ -15,10 +15,13 @@ import io.github.mbackschat.a12.dm.rulekit.validate.KernelVersion;
 /**
  * The release's version surface (CLI-SPEC §1b) — what this {@code dmtool} build <em>is</em> and what it was
  * built/verified against, for {@code --version} (human) and {@code manifest.version} (machine-readable, so a
- * cold agent can read it). Six axes, each from its single source of truth:
+ * cold agent can read it). Seven axes, each from its single source of truth:
  *
  * <ul>
  *   <li><b>rulekit</b> — this release, baked into {@code version.properties} by the build.</li>
+ *   <li><b>source</b> — the full Git revision plus whether tracked or untracked working-tree content differed
+ *       when the artifact was built; baked into the same resource so a developer {@code installDist} build is
+ *       citable even between commits.</li>
  *   <li><b>kernel built-against</b> — the kernel pin this release compiled against ({@code build.gradle}, via
  *       the same properties resource).</li>
  *   <li><b>A12 distribution</b> — the human-facing A12 Tools release label the built-against kernel ships in
@@ -33,8 +36,26 @@ import io.github.mbackschat.a12.dm.rulekit.validate.KernelVersion;
  *       is compared against (the §8c load-time skew check).</li>
  * </ul>
  */
-record VersionInfo(String rulekit, String kernelBuiltAgainst, String a12Distribution, String kernelRuntime,
-        String catalogVerifiedAgainst, String modelVersion) {
+record VersionInfo(String rulekit, String sourceRevision, SourceState sourceState, String kernelBuiltAgainst,
+        String a12Distribution, String kernelRuntime, String catalogVerifiedAgainst, String modelVersion) {
+
+    enum SourceState {
+        CLEAN,
+        DIRTY,
+        UNKNOWN;
+
+        static SourceState from(String value) {
+            return switch (value) {
+                case "CLEAN" -> CLEAN;
+                case "DIRTY" -> DIRTY;
+                default -> UNKNOWN;
+            };
+        }
+
+        String label() {
+            return name().toLowerCase(java.util.Locale.ROOT);
+        }
+    }
 
     private static final String UNKNOWN = "(unknown)";
 
@@ -48,8 +69,21 @@ record VersionInfo(String rulekit, String kernelBuiltAgainst, String a12Distribu
         } catch (IOException ignored) {
             // the build always generates it; if absent (e.g. an odd classpath) we degrade to "(dev)"
         }
+        return from(p);
+    }
+
+    /** Build the version surface from generated properties, keeping source revision/state as one invariant. */
+    static VersionInfo from(Properties p) {
+        String revision = p.getProperty("sourceRevision", UNKNOWN);
+        SourceState state = SourceState.from(p.getProperty("sourceState", "UNKNOWN"));
+        if (!revision.matches("[0-9a-f]{40}") || state == SourceState.UNKNOWN) {
+            revision = UNKNOWN;
+            state = SourceState.UNKNOWN;
+        }
         return new VersionInfo(
                 p.getProperty("rulekit", "(dev)"),
+                revision,
+                state,
                 p.getProperty("kernelBuiltAgainst", UNKNOWN),
                 p.getProperty("a12Distribution", UNKNOWN),
                 Optional.ofNullable(KernelVersion.runtimeVersion()).orElse(UNKNOWN),
@@ -66,6 +100,7 @@ record VersionInfo(String rulekit, String kernelBuiltAgainst, String a12Distribu
     String[] lines() {
         return new String[] {
                 "a12-dmkits " + rulekit,
+                "  source: " + sourceRevision + " (" + sourceState.label() + ")",
                 "  kernel: " + kernelBuiltAgainst + " (built) / " + kernelRuntime + " (runtime)"
                         + (kernelSkewed() ? "  [skew — see RK_KERNEL_VERSION_SKEW]" : ""),
                 "  A12 Tools distribution: " + a12Distribution,
@@ -78,6 +113,9 @@ record VersionInfo(String rulekit, String kernelBuiltAgainst, String a12Distribu
     ObjectNode toJson(ObjectMapper mapper) {
         ObjectNode n = mapper.createObjectNode();
         n.put("rulekit", rulekit);
+        ObjectNode source = n.putObject("source");
+        source.put("revision", sourceRevision);
+        source.put("state", sourceState.name());
         ObjectNode k = n.putObject("kernel");
         k.put("builtAgainst", kernelBuiltAgainst);
         k.put("a12Distribution", a12Distribution);

@@ -481,7 +481,7 @@ dmtool -m app/storefront.dm.json model check -w lib   # resolves include'd / typ
 
 ### Version & compatibility — tolerant, but explicit
 
-This build targets **A12 Kernel 30.8.1** (A12 Tools distribution **2025.06-ext5**). `dmtool --version` (and `manifest.version`) report that — alongside the kernel actually on the classpath, the operator-catalog floor, and the document-model reference version. Loading a model authored for a different format is handled with the kernel as the authority — an older, compatible model loads with an informational `RK_MODEL_VERSION_SKEW`, an incompatible one fails fast with `RK_MODEL_VERSION_INCOMPATIBLE` (and writing a model back never bumps its version).
+This build targets **A12 Kernel 30.8.1** (A12 Tools distribution **2025.06-ext5**). `dmtool --version` (and `manifest.version`) report that — alongside the base source revision and clean/dirty build state, the kernel actually on the classpath, the operator-catalog floor, and the document-model reference version. A `CLEAN` stamp identifies the exact committed source; `DIRTY` explicitly says the artifact differs from that revision. Loading a model authored for a different format is handled with the kernel as the authority — an older, compatible model loads with an informational `RK_MODEL_VERSION_SKEW`, an incompatible one fails fast with `RK_MODEL_VERSION_INCOMPATIBLE` (and writing a model back never bumps its version).
 
 ### See it all, runnable
 

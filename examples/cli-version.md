@@ -3,17 +3,18 @@
 *2026-06-12T01:27:50Z by Showboat 0.6.1*
 <!-- showboat-id: 27570390-855c-4fb8-91c4-1a8957c0a204 -->
 
-A release knows **what it is** and **what it targets**, and says so on two peer surfaces: `--version` (human) and `manifest.version` (machine-readable). The kernel is the authority on whether a document model's version is compatible; `dmtool` is *tolerant but explicit* — it warns on a difference it can load and fails fast (with a stable code) on one it can't. Writing a model back never bumps its version.
+A build identifies **the commit it is based on**, whether it diverged, and **what it targets** on two peer surfaces: `--version` (human) and `manifest.version` (machine-readable). The full Git revision plus explicit clean/dirty state makes a clean artifact exactly citable and prevents a working-tree `installDist` launcher from being mistaken for its HEAD commit; a dirty stamp deliberately warns that the uncommitted content itself is not identified. The kernel is the authority on whether a document model's version is compatible; `dmtool` is *tolerant but explicit* — it warns on a difference it can load and fails fast (with a stable code) on one it can't. Writing a model back never bumps its version.
 
-**`--version`** — the six axes: the rulekit release, the kernel built-against / runtime, the A12 Tools distribution label, the catalog floor, and the document-model reference version.
+**`--version`** — the seven axes: the rulekit release, source revision/tree state, kernel built-against/runtime, A12 Tools distribution label, catalog floor, and document-model reference version. The demo normalizes the revision and state because both legitimately change with the checkout used to verify it.
 
 ```bash
-dmtool --version
+dmtool --version | sed -E 's/(source: )[0-9a-f]{40} \((clean|dirty)\)/\1<git-revision> (<tree-state>)/'
 
 ```
 
 ```output
 a12-dmkits 0.11.1
+  source: <git-revision> (<tree-state>)
   kernel: 30.8.1 (built) / 30.8.1 (runtime)
   A12 Tools distribution: 2025.06-ext5
   catalog verified against: 30.8.1
@@ -23,13 +24,17 @@ a12-dmkits 0.11.1
 The same facts machine-readably, so a cold agent reads them like any other manifest entry (`kernel.skewed` flags a runtime kernel newer than the catalog floor — F11, always informational).
 
 ```bash
-dmtool manifest | jq .version
+dmtool manifest | jq '.version | .source = {revision: "<git-revision>", state: "<tree-state>"}'
 
 ```
 
 ```output
 {
   "rulekit": "0.11.1",
+  "source": {
+    "revision": "<git-revision>",
+    "state": "<tree-state>"
+  },
   "kernel": {
     "builtAgainst": "30.8.1",
     "a12Distribution": "2025.06-ext5",

@@ -21,7 +21,7 @@ The **command name is `dmtool`** everywhere it is publicly invoked. `:cli`'s `in
 
 - **0.x** while the public library API stabilizes; **`1.0.0`** when it does. MAJOR = breaking API change, MINOR = additive, PATCH = fixes.
 - **The compatibility key is the kernel semver** (currently `30.8.1`; the A12 Tools distribution label `2025.06-ext5` is a secondary human tag). It is already encoded where consumers look:
-  - CLI → baked into `version.properties` as `kernelBuiltAgainst`, surfaced by `--version` / `manifest.version`.
+  - CLI → baked into `version.properties` as `kernelBuiltAgainst`; the same generated resource stamps the full Git `sourceRevision` and `sourceState` (`CLEAN`/`DIRTY`), all surfaced by `--version` / `manifest.version`.
   - library → the kits are **kernel-free** (decoupling Stage 3), so their published POMs declare **no** kernel dependency; the kernel-compat key rides the CLI surface + the release title/notes, not a library POM coordinate.
   - → therefore **no separate `project-release.yaml`** (a third, drift-prone source), and **no `release/YYYY.MM` maintenance branches** (premature, and against the no-self-branching rule).
 - **Tag-format gate** (CI, lands with the CI matrix): `^v[0-9]+\.[0-9]+\.[0-9]+(-(alpha|beta|rc)\.[0-9]+)?$`.

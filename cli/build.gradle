@@ -83,14 +83,34 @@ application {
     applicationName = 'dmtool'
 }
 
-// Bake the build's versions into a resource so `--version` / `manifest.version` can report them at
-// runtime (works from `:cli:test` classes AND the installDist jar, unlike a jar-manifest attribute).
-// Single source of truth: the root project's `version` and `kernelVersion` (the kernel pin). The
-// kernel *runtime* version is read separately from the kernel jar; the catalog floor from operators.json.
+// Bake the build's versions and source provenance into a resource so `--version` / `manifest.version`
+// can report them at runtime (works from `:cli:test` classes AND the installDist jar, unlike a jar-manifest
+// attribute). Git state is a task input: committing or dirtying the tree invalidates a previously generated
+// resource, which prevents an installDist launcher from silently retaining the provenance of an older build.
+// The kernel *runtime* version is read separately from the kernel jar; the catalog floor from operators.json.
 def generatedVersionDir = layout.buildDirectory.dir('generated/version-resources')
+def sourceProvenanceProgram = rootProject.file('scripts/SourceProvenance.java')
+def javaExecutable = new File(System.getProperty('java.home'), 'bin/'
+        + (System.getProperty('os.name').toLowerCase(java.util.Locale.ROOT).contains('win') ? 'java.exe' : 'java'))
+// Execute one portable, black-box-tested implementation. Its two-line output is deliberately trivial to parse.
+def provenanceExec = providers.exec {
+    commandLine javaExecutable, sourceProvenanceProgram, rootProject.projectDir
+    ignoreExitValue = true
+}
+def provenance = provenanceExec.standardOutput.asText.zip(provenanceExec.result) { output, result ->
+    def lines = output.readLines()
+    result.exitValue == 0 && lines.size() == 2
+            ? [revision: lines[0], state: lines[1]]
+            : [revision: '(unknown)', state: 'UNKNOWN']
+}
+def sourceRevision = provenance.map { it.revision }
+def sourceState = provenance.map { it.state }
 def generateVersionProperties = tasks.register('generateVersionProperties', WriteProperties) {
     destinationFile = generatedVersionDir.map { it.file('io/github/mbackschat/a12/dm/cli/version.properties') }
+    inputs.file(sourceProvenanceProgram)
     property 'rulekit', rootProject.version.toString()
+    property 'sourceRevision', sourceRevision
+    property 'sourceState', sourceState
     property 'kernelBuiltAgainst', rootProject.ext.kernelVersion
     property 'a12Distribution', rootProject.ext.a12Distribution
 }
@@ -342,6 +362,21 @@ tasks.register('mutationTailGuardTest', Test) {
             'verb demonstrations': rootProject.file('cli/src/main/resources/verb-examples.json')])
 }
 
+// SourceProvenanceBuildTest executes the build-time Java source and reads this build file at runtime. Keep it
+// on a source-sensitive lane so a behavior-only helper/build edit cannot be hidden by the broad test cache.
+tasks.register('sourceProvenanceGuardTest', Test) {
+    description = 'Adversarial clean/nested/untracked checks for dmtool build provenance.'
+    group = 'verification'
+    testClassesDirs = sourceSets.test.output.classesDirs
+    classpath = sourceSets.test.runtimeClasspath
+    filter {
+        includeTestsMatching 'io.github.mbackschat.a12.dm.cli.SourceProvenanceBuildTest'
+    }
+    rootProject.guardInputs(it, [
+            'CLI build wiring'          : project.file('build.gradle'),
+            'source provenance program' : sourceProvenanceProgram])
+}
+
 // The public-contract suite crosses the packaging boundary deliberately: it spawns the exact installDist
 // launcher, never CliTestSupport's in-process seam and never the environment-selecting repo shim. A native gate
 // can point the same runner at its freshly built binary with -PdmtoolContractExecutable=<path>.
@@ -371,6 +406,7 @@ tasks.named('test') {
     dependsOn 'semanticsMapGuardTest'
     dependsOn 'staleGapGuardTest'
     dependsOn 'mutationTailGuardTest'
+    dependsOn 'sourceProvenanceGuardTest'
     // The repo-file-reading guards live in docGuardTest / semanticsMapGuardTest (with the right inputs); keep
     // them OUT of the cacheable main suite so a docs/model-only edit can't invalidate all ~620 tests.
     filter {
@@ -391,6 +427,7 @@ tasks.named('test') {
         excludeTestsMatching 'io.github.mbackschat.a12.dm.cli.eval.EvalGoldOracleTest'
         excludeTestsMatching 'io.github.mbackschat.a12.dm.cli.eval.EvalSuiteLedgerTest'
         excludeTestsMatching 'io.github.mbackschat.a12.dm.cli.MutationTailSingleSourceTest'
+        excludeTestsMatching 'io.github.mbackschat.a12.dm.cli.SourceProvenanceBuildTest'
         excludeTestsMatching 'io.github.mbackschat.a12.dm.cli.PublicCommandShapeClaimsTest'
         excludeTestsMatching 'io.github.mbackschat.a12.dm.cli.PublicOutputClaimsTest'
         excludeTestsMatching 'io.github.mbackschat.a12.dm.cli.DmtoolPublicContractTest'
