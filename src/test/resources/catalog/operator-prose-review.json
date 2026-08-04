@@ -3721,6 +3721,22 @@
       ]
     },
     {
+      "operator": "FieldValuesNotUnique",
+      "lane": "GOTCHA",
+      "ordinal": 0,
+      "digest": "sha256:24096494fb77993609b0dfbedfc9a1c2cfed7fbb60a540c936cfe811b2587b13",
+      "classifications": [
+        "RUNTIME"
+      ],
+      "evidence": [
+        {
+          "classification": "RUNTIME",
+          "type": "TEST",
+          "id": "adapter.laws.FieldValuesNotUniqueDiffTest.starredDuplicateEmitsOneFirstRowMessageWithItsWildcardReferenceInBothPlacements"
+        }
+      ]
+    },
+    {
       "operator": "Sum",
       "lane": "MEANING",
       "ordinal": 0,
