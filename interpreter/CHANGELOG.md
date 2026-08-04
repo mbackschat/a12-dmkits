@@ -6,7 +6,7 @@ This changelog covers the independently consumable interpreter packages, API doc
 
 ### Performance
 
-- **The measured production browser JavaScript entry is about 232 kB gzip.** On the fixed Apple M1/Chrome runner on 2026-08-03, a representative 200-row Document validated in a **10.5 ms median**; the 10,000-row stress Document validated with 4,900 findings in a **203.6 ms median**. Both measurements use 10 independent fresh Chrome processes and include interpreter construction through complete result materialization.
+- **The measured production browser JavaScript entry is about 233 kB gzip.** On the fixed Apple M1/Chrome runner on 2026-08-03, a representative 200-row Document validated in a **10.5 ms median**; the 10,000-row stress Document validated with 4,900 findings in a **203.6 ms median**. Both measurements use 10 independent fresh Chrome processes and include interpreter construction through complete result materialization.
 - **Fast, and measured — never assumed.** With the A12 Kernel's generated validator compiled as Java and code generation outside the clock, the 2026-08-03 sweep put the interpreter **2.1× to 12.5× ahead** across the 15-case default inventory and **10× to 16.7× ahead** on repeated-document evaluation. The closest hostile point still led by **1.32×**, and the huge-document edge reached about **155×**. Neither generated Java nor dynamic Groovy won an eligible comparison in the default, repeated, rule-count, or 13-case edge suites. These are bounded same-machine measurements after exact result preflight, not universal promises; see [the benchmark method and complete tables](https://github.com/mbackschat/a12-dmkits/blob/main/docs/INTERPRETER-PERFORMANCE.md).
 
 ### Fixed
