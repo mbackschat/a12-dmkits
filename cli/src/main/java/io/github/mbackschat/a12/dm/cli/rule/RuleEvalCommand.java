@@ -26,7 +26,8 @@ import picocli.CommandLine.Parameters;
 
 /**
  * {@code dmtool rule eval <rulePath> --instance <document.json>} — the rule-scope RUNTIME verb: the scoped,
- * suppression-aware polarity check for ONE rule against a document INSTANCE (FEATURE-GAPS). The rule-first
+ * suppression-aware polarity check for ONE stored rule or a non-stored {@code --condition}/{@code --field}
+ * candidate against a document INSTANCE (FEATURE-GAPS). The rule-first
  * peer of {@code model eval}: it answers <b>fired</b> / <b>passed</b> / <b>suppressed</b> — the last being a
  * rule the engine never evaluated because a field it references is formally invalid (reporting that as a pass
  * would mislead, so a plain "did it fire" verb isn't enough). Read-only; the verdict rides {@code data}.
@@ -38,15 +39,29 @@ import picocli.CommandLine.Parameters;
  * check/eval/compute taxonomy in CLI-SPEC.
  */
 @Command(name = "eval", mixinStandardHelpOptions = true,
-        description = "Evaluate ONE rule against a document INSTANCE: fired / passed / suppressed (runtime "
+        description = "Evaluate ONE stored rule, or a non-stored --condition/--field candidate, against a document "
+                + "INSTANCE: fired / passed / suppressed (runtime "
                 + "polarity; applies computations first by default, like model eval). For the whole model's "
                 + "fired-set — or one rule within that report — use `model eval` (with --rule).")
 final class RuleEvalCommand extends BaseCommand {
 
     @ParamKind(ParamKind.Kind.RULE_PATH)
-    @Parameters(index = "0", paramLabel = "<rulePathInModel>",
-            description = "the rule's full name — its slash-path in the model, e.g. /Order/SomeRule")
+    @Parameters(index = "0", arity = "0..1", paramLabel = "<rulePathInModel>",
+            description = "a stored rule's full slash-path, e.g. /Order/SomeRule; omit for candidate mode")
     String rule;
+
+    @Option(names = "--condition", paramLabel = "<DSL>",
+            description = "evaluate a NON-STORED candidate rule (with --field): true on a violation")
+    String condition;
+
+    @Option(names = "--field", paramLabel = "<fieldPathInModel>",
+            description = "the candidate's error field as an absolute model path (with --condition); its parent "
+                    + "is the iteration scope")
+    String field;
+
+    @Option(names = "--code", defaultValue = "EVAL_RULE", paramLabel = "<errorCode>",
+            description = "the candidate's error code (default: ${DEFAULT-VALUE})")
+    String code;
 
     @Option(names = "--instance", required = true, paramLabel = "<document.json>",
             description = "the document INSTANCE (field data) in A12's canonical Document JSON — a nested tree "
@@ -72,6 +87,26 @@ final class RuleEvalCommand extends BaseCommand {
 
     @Override
     public Integer call() {
+        boolean candidate = condition != null || field != null;
+        if (candidate && rule != null) {
+            return fail("pass either a stored <rulePathInModel> OR a candidate (--condition + --field), not both");
+        }
+        if (candidate && (condition == null || field == null)) {
+            return fail("a candidate rule needs both --condition and --field");
+        }
+        if (!candidate && rule == null) {
+            return fail("pass either a stored <rulePathInModel> or a candidate (--condition + --field)");
+        }
+        String candidateGroup = null;
+        String candidateErrorEntityRelPath = null;
+        if (candidate) {
+            int slash = field.lastIndexOf('/');
+            if (!field.startsWith("/") || slash <= 0) {
+                return fail("--field must be an absolute path (e.g. /Group/Field)");
+            }
+            candidateGroup = field.substring(0, slash);
+            candidateErrorEntityRelPath = "../" + field.substring(slash + 1);
+        }
         String modelPath = model();
         String json = readModelJson(modelPath);   // null (after printing the failure) if no -m / unreadable
         if (json == null) {
@@ -85,14 +120,27 @@ final class RuleEvalCommand extends BaseCommand {
             // Use the public portable workspace so included content is mounted before rule evaluation.
             String interpJson = InterpreterEngine.prepareForEval(
                     json, Path.of(modelPath).getFileName().toString(), workspace.resolverFor(modelPath));
-            // a structured refusal — the interpreter otherwise throws "no such rule", a bare error.
-            if (!InterpreterEngine.ruleFullNames(interpJson).contains(rule)) {
-                return refuseNotFound(RkCode.NO_SUCH_RULE,
-                        "rule '" + rule + "' does not exist — refusing", rule, RkCode.NO_SUCH_RULE.fix());
+            if (candidate && !InterpreterEngine.fieldFullNames(interpJson).contains(field)) {
+                return refuseNotFound(RkCode.NO_SUCH_FIELD,
+                        "field '" + field + "' does not exist — refusing candidate evaluation",
+                        field, RkCode.NO_SUCH_FIELD.fix());
             }
-            ObjectNode data = InterpreterEngine.ruleTestData(interpJson, documentJson, localeTag, rule,
-                    customSupport.predefinedTypes(), customSupport.customConditions(),
-                    customSupport.customFieldTypes(), !noComputations);
+            ObjectNode data;
+            if (candidate) {
+                data = InterpreterEngine.ruleTestCandidateData(interpJson, documentJson, localeTag, candidateGroup,
+                        "EvalRuleCandidate", candidateErrorEntityRelPath, condition, code,
+                        customSupport.predefinedTypes(), customSupport.customConditions(),
+                        customSupport.customFieldTypes(), !noComputations);
+            } else {
+                // a structured refusal — the interpreter otherwise throws "no such rule", a bare error.
+                if (!InterpreterEngine.ruleFullNames(interpJson).contains(rule)) {
+                    return refuseNotFound(RkCode.NO_SUCH_RULE,
+                            "rule '" + rule + "' does not exist — refusing", rule, RkCode.NO_SUCH_RULE.fix());
+                }
+                data = InterpreterEngine.ruleTestData(interpJson, documentJson, localeTag, rule,
+                        customSupport.predefinedTypes(), customSupport.customConditions(),
+                        customSupport.customFieldTypes(), !noComputations);
+            }
             RuntimeEvidence evidence = RuntimeEvidence.interpreter();
             ResultEnvelope refusal = customSupport.strictRefusal(resultIdentity(), data, evidence);
             if (refusal != null) {

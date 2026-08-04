@@ -67,6 +67,11 @@ public final class InterpreterEngine {
         return InterpreterModelLoader.load(modelJson).getRules().stream().map(RuleDef::getPath).toList();
     }
 
+    /** The full field paths visible in a prepared runtime model, including mounted workspace content. */
+    public static List<String> fieldFullNames(String modelJson) {
+        return InterpreterModelLoader.load(modelJson).getFields().stream().map(field -> field.getPath()).toList();
+    }
+
     /** {@code model eval} over the whole model (optionally narrowing the {@code rule} verdict to {@code targetRule}).
      *  {@code applyComputations} runs the form-engine flow (compute → apply → validate, the default); false is the
      *  bare {@code validateFull} ({@code --no-computations}). */
@@ -105,11 +110,17 @@ public final class InterpreterEngine {
             String group, String name, String errorEntityRelPath, String condition, String code, String severity,
             Map<String, PredefinedType> predefinedTypes, Map<String, CustomCondition> customConditions,
             Map<String, CustomFieldType> customFieldTypes, boolean applyComputations, String relevantJson) {
-        RuleDef candidate = new RuleDef(group + "/" + name, group, condition, code, errorEntityRelPath,
-                Severity.valueOf(severity.toUpperCase()), Map.of(locale, name));
+        RuleDef candidate = candidateRule(locale, group, name, errorEntityRelPath, condition, code, severity, name);
         ModelDef def = InterpreterModelLoader.load(modelJson).withRule(candidate);
         return evalFor(def, documentJson, locale, candidate.getPath(),
                 predefinedTypes, customConditions, customFieldTypes, applyComputations, relevantJson);
+    }
+
+    /** The one candidate-rule representation consumed by both model-scope and focused runtime evaluation. */
+    private static RuleDef candidateRule(String locale, String group, String name, String errorEntityRelPath,
+            String condition, String code, String severity, String message) {
+        return new RuleDef(group + "/" + name, group, condition, code, errorEntityRelPath,
+                Severity.valueOf(severity.toUpperCase()), Map.of(locale, message));
     }
 
     /**
@@ -190,11 +201,41 @@ public final class InterpreterEngine {
             Map<String, CustomFieldType> customFieldTypes, boolean applyComputations) {
         ModelDef def = InterpreterModelLoader.load(modelJson);
         Document doc = InterpreterModelLoader.document(documentJson, def);
+        return focusedRuleData(def, doc, locale, rulePath, predefinedTypes, customConditions, customFieldTypes,
+                applyComputations, (interpreter, evaluated) -> interpreter.testRule(rulePath, evaluated, locale));
+    }
+
+    /**
+     * {@code rule eval --condition/--field}: focused runtime evaluation of one non-stored candidate, rendered
+     * through the same fired/passed/suppressed/unsupported data contract as a stored rule.
+     */
+    public static ObjectNode ruleTestCandidateData(String modelJson, String documentJson, String locale,
+            String group, String name, String errorEntityRelPath, String condition, String code,
+            Map<String, PredefinedType> predefinedTypes, Map<String, CustomCondition> customConditions,
+            Map<String, CustomFieldType> customFieldTypes, boolean applyComputations) {
+        ModelDef def = InterpreterModelLoader.load(modelJson);
+        Document doc = InterpreterModelLoader.document(documentJson, def);
+        RuleDef candidate = candidateRule(locale, group, name, errorEntityRelPath, condition, code, "ERROR", code);
+        return focusedRuleData(def, doc, locale, candidate.getPath(), predefinedTypes, customConditions,
+                customFieldTypes, applyComputations,
+                (interpreter, evaluated) -> interpreter.evalCandidate(candidate, evaluated, locale));
+    }
+
+    @FunctionalInterface
+    private interface FocusedRuleEvaluator {
+        RuleResult evaluate(DmInterpreter interpreter, Document document);
+    }
+
+    /** One focused-rule execution and projection for both stored and candidate routes. */
+    private static ObjectNode focusedRuleData(ModelDef def, Document doc, String locale, String rulePath,
+            Map<String, PredefinedType> predefinedTypes, Map<String, CustomCondition> customConditions,
+            Map<String, CustomFieldType> customFieldTypes, boolean applyComputations,
+            FocusedRuleEvaluator evaluator) {
         RuleResult result;
         try {
             DmInterpreter interp = new DmInterpreter(def, null, predefinedTypes, customConditions, customFieldTypes);
             Document evalDoc = applyComputations ? interp.applyComputations(doc, locale) : doc;
-            result = interp.testRule(rulePath, evalDoc, locale);
+            result = evaluator.evaluate(interp, evalDoc);
         } catch (UnsupportedConstructException e) {
             // The rule uses a construct the engine can't evaluate (a CustomCondition with no impl) → report it
             // unsupported instead of crashing, mirroring whole-document eval's tolerance (G29).

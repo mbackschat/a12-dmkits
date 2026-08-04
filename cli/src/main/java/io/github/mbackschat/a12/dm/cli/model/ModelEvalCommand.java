@@ -149,6 +149,12 @@ final class ModelEvalCommand extends BaseCommand {
         String interpJson =
                 InterpreterEngine.prepareForEval(modelJson, Path.of(model).getFileName().toString(), resolver);
 
+        if (candidate && !InterpreterEngine.fieldFullNames(interpJson).contains(field)) {
+            return refuseNotFound(RkCode.NO_SUCH_FIELD,
+                    "field '" + field + "' does not exist — refusing candidate evaluation",
+                    field, RkCode.NO_SUCH_FIELD.fix());
+        }
+
         ObjectNode data;
         try {
             if (candidate) {

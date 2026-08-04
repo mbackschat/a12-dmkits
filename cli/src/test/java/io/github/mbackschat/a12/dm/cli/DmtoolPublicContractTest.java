@@ -255,6 +255,34 @@ class DmtoolPublicContractTest {
     }
 
     @Test
+    void packagedRuleEvalRunsANonPersistedCandidate(@TempDir Path dir) throws Exception {
+        PackagedDmtool dmtool = new PackagedDmtool(dir);
+        Path model = resource(dir.resolve("candidate-rule-eval"), "order-ruled.dm.json");
+        String before = Files.readString(model);
+        Path document = dir.resolve("candidate-rule-eval.json");
+        Files.writeString(document, "{\"Order\":{\"Quantity\":\"150\"}}");
+
+        PackagedDmtool.Result result = dmtool.run("-m", model.toString(), "rule", "eval",
+                "--condition", "[Quantity] > 100", "--field", "/Order/Quantity",
+                "--instance", document.toString());
+
+        assertEquals(0, result.code(), () -> result.out() + result.err());
+        JsonNode envelope = MAPPER.readTree(result.out());
+        assertEquals("fired", envelope.path("data").path("verdict").asText(), result::out);
+        assertEquals("DM_INTERPRETER", envelope.path("engine").asText(), result::out);
+        assertFalse(envelope.path("written").asBoolean(), result::out);
+        assertEquals(before, Files.readString(model), "packaged candidate eval must leave the model byte-identical");
+
+        PackagedDmtool.Result missing = dmtool.run("-m", model.toString(), "rule", "eval",
+                "--condition", "[Quantity] > 100", "--field", "/Order/DefinitelyMissing",
+                "--instance", document.toString());
+        assertEquals(2, missing.code(), () -> missing.out() + missing.err());
+        JsonNode refusal = MAPPER.readTree(missing.out());
+        assertEquals("RK_NO_SUCH_FIELD", refusal.path("diagnostics").path(0).path("code").asText(), missing::out);
+        assertEquals(before, Files.readString(model), "a packaged rejected candidate must not write the model");
+    }
+
+    @Test
     void packagedRejectedModeCombinationsMatchNoOperationalProfile(@TempDir Path dir) throws Exception {
         PackagedDmtool dmtool = new PackagedDmtool(dir);
         Path model = resource(dir.resolve("modes"), "order-ruled.dm.json");
