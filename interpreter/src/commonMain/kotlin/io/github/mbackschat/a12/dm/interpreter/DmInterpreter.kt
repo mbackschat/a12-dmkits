@@ -436,7 +436,7 @@ class DmInterpreter @JvmOverloads constructor(
         )
         val rows = rowOutcomes(rule, pass)
         rows.firstNotNullOfOrNull { it as? RowOutcome.Fired }?.let {
-            return@observeCaches RuleResult(rule.path, Verdict.FIRED, it.message.text, it.message.type)
+            return@observeCaches RuleResult(rule.path, Verdict.FIRED, it.message)
         }
         // No firing: a referenced field being formally invalid means the rule was NOT evaluated (the
         // kernel skips it) → SUPPRESSED, not PASSED. PASSED only when every row was cleanly evaluated.

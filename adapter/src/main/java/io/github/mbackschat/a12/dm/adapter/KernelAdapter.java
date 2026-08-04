@@ -829,8 +829,7 @@ public final class KernelAdapter {
         Optional<EvalMessage> firedMessage = messages.stream()
                 .filter(m -> m.rulePath().filter(ruleFullName::equals).isPresent()).findFirst();
         if (firedMessage.isPresent()) {
-            return new RuleTestOutcome(ruleFullName, RuleTestOutcome.Verdict.FIRED, List.of(),
-                    Optional.of(firedMessage.get().message()));
+            return new RuleTestOutcome(ruleFullName, RuleTestOutcome.Verdict.FIRED, List.of(), firedMessage);
         }
         List<RuleTestOutcome.Suppression> suppressions = new ArrayList<>();
         for (EvalMessage m : messages) {

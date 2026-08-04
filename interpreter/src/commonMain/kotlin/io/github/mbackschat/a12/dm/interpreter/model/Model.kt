@@ -766,14 +766,28 @@ data class ValidationOutcome(
     val unsupported: List<UnsupportedRule>,
 )
 
-/** The result of [DmInterpreter.testRule] / [DmInterpreter.evalCandidate]. */
+/**
+ * The result of [DmInterpreter.testRule] / [DmInterpreter.evalCandidate].
+ *
+ * <b>A [Verdict.FIRED] verdict retains the [firing] message itself, not a projection of it.</b> This used to
+ * store only the rendered text and the polarity, which lost every other channel `validateFull` publishes for the
+ * same firing — including the operands the rule read. The type in particular is a semantic observable, not
+ * presentation: for a uniqueness predicate it is the only difference between a filtered and an unfiltered firing
+ * on identical data, so a single-rule consumer that could not see it had to re-run whole-document validation to
+ * measure it. [message] and [type] stay available as derived reads of the retained value.
+ */
 data class RuleResult(
     val rulePath: String,
     val verdict: Verdict,
-    val message: String = "",
-    val type: MsgType? = null,
+    val firing: Message? = null,
     val suppressedBy: List<Suppression> = emptyList(),
-)
+) {
+    /** The firing's rendered end-user text; empty when nothing fired. */
+    val message: String get() = firing?.text ?: ""
+
+    /** The firing's VALUE/OMISSION polarity; null when nothing fired. */
+    val type: MsgType? get() = firing?.type
+}
 
 /**
  * One computed-field outcome of a [DmInterpreter.compute] run — the kernel-free twin of the kernel's

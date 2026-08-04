@@ -319,7 +319,21 @@ final class KernelEval {
         data.put("rule", outcome.rule());
         data.put("fired", outcome.fired());
         data.put("verdict", outcome.verdict().name().toLowerCase(Locale.ROOT));
-        outcome.message().ifPresent(m -> data.put("message", m));
+        // The firing's own channels, projected the way the CLI publishes them — so a parity test comparing the
+        // two legs compares `type`/`referenced` too, instead of agreeing on a shape that omits them.
+        outcome.firing().ifPresent(m -> {
+            data.put("code", m.errorCode());
+            data.put("field", pointer(m.field()));
+            data.put("severity", m.severity());
+            data.put("type", m.messageType());
+            data.put("message", m.message());
+            ArrayNode referenced = data.putArray("referenced");
+            m.referenced().forEach(p -> referenced.add(pointer(p)));
+            if (!m.fillToFix().isEmpty()) {
+                ArrayNode fillToFix = data.putArray("fillToFix");
+                m.fillToFix().forEach(p -> fillToFix.add(pointer(p)));
+            }
+        });
         if (!outcome.suppressedBy().isEmpty()) {
             ArrayNode arr = data.putArray("suppressedBy");
             for (RuleTestOutcome.Suppression s : outcome.suppressedBy()) {

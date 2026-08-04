@@ -51,6 +51,22 @@ class RuleTestLawsTest {
         assertEquals(RuleTestOutcome.Verdict.FIRED, outcome.verdict());
     }
 
+    /**
+     * A firing retains the kernel's whole message, so a scoped check can report the channels — the message TYPE
+     * above all — that only whole-document evaluation used to expose.
+     */
+    @Test
+    void aFiringRetainsTheKernelMessageChannels() {
+        RuleTestOutcome outcome = test("10.00");
+        assertTrue(outcome.firing().isPresent(), () -> "a FIRED verdict carries its message: " + outcome);
+        assertEquals("PRICE_HIGH", outcome.firing().orElseThrow().errorCode(), outcome::toString);
+        assertEquals("VALUE_ERROR", outcome.firing().orElseThrow().messageType(),
+                () -> "a present value violating a comparison is a value error: " + outcome);
+        assertTrue(outcome.firing().orElseThrow().referenced().stream()
+                        .anyMatch(p -> p.path().endsWith("UnitPrice")),
+                () -> "the operand the rule read is named: " + outcome);
+    }
+
     @Test
     void passesOnASatisfyingInstance() {
         RuleTestOutcome outcome = test("3.00");

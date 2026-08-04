@@ -78,6 +78,7 @@ class PublishedPointerCanonicalTest {
     void everyKeyMarkedAsAnA12PointerPublishesOne(@TempDir Path dir) throws Exception {
         Map<String, String> evalMarks = marks("eval-doc.schema.json");
         Map<String, String> computeMarks = marks("compute-doc.schema.json");
+        Map<String, String> ruleEvalMarks = marks("rule-eval.schema.json");
         assertEquals(
                 Map.of("field", MESSAGE_ADDRESS_FORMAT,
                         "referenced", MESSAGE_ADDRESS_FORMAT,
@@ -88,9 +89,12 @@ class PublishedPointerCanonicalTest {
                         + POINTER_FORMAT);
         assertEquals(Map.of("field", POINTER_FORMAT, "declaration", POINTER_FORMAT), computeMarks,
                 "a computed cell is an exact pointer at every level, so both of its keys keep the strong mark");
+        assertEquals(evalMarks, ruleEvalMarks,
+                "a focused rule firing publishes the same three IMessage channels as a whole-document message, so "
+                        + "it carries the same marks — a divergence here would mean one firing is described two ways");
 
         Map<String, Integer> seen = new LinkedHashMap<>();
-        for (Scenario scenario : scenarios(dir, evalMarks, computeMarks)) {
+        for (Scenario scenario : scenarios(dir, evalMarks, computeMarks, ruleEvalMarks)) {
             scenario.marks().keySet().forEach(key -> seen.putIfAbsent(scenario.reach(key), 0));
             JsonNode env = M.readTree(scenario.run().out());
             walk(scenario, env.path("data"), seen);
@@ -123,16 +127,17 @@ class PublishedPointerCanonicalTest {
     }
 
     /**
-     * Three invocations that between them populate all four marked keys:
+     * Four invocations that between them populate all four marked keys:
      * a VALUE error in a repeated row ({@code field}, {@code referenced}), an OMISSION error
-     * ({@code fillToFix}), and a computation ({@code field}, {@code declaration}).
+     * ({@code fillToFix}), a computation ({@code field}, {@code declaration}), and the same row violation read
+     * through the FOCUSED single-rule verb, which publishes the message channels on its own payload.
      *
-     * <p>The rules the first two need are authored <b>through the tool</b> rather than added to a committed
+     * <p>The rules the eval scenarios need are authored <b>through the tool</b> rather than added to a committed
      * fixture — {@code order-ruled} is shared by many tests, and a guard should not reshape everyone else's model
      * to arrange its own inputs.
      */
-    private static List<Scenario> scenarios(
-            Path dir, Map<String, String> evalMarks, Map<String, String> computeMarks) throws Exception {
+    private static List<Scenario> scenarios(Path dir, Map<String, String> evalMarks,
+            Map<String, String> computeMarks, Map<String, String> ruleEvalMarks) throws Exception {
         Path order = fixture("order-ruled.dm.json", dir);
         addRule(order, dir.resolve("row-rule.json"), """
                 {"field": "/Order/Items/Count",
@@ -158,6 +163,10 @@ class PublishedPointerCanonicalTest {
                 new Scenario("model eval (row violation → field/referenced, empty number → fillToFix)",
                         List.of("-m", order.toString(), "model", "eval", "--instance", violating.toString()),
                         evalMarks),
+                new Scenario("rule eval (the same row violation, focused → field/referenced on the firing)",
+                        List.of("-m", order.toString(), "rule", "eval", "/Order/Items/COUNT_TOO_HIGH",
+                                "--instance", violating.toString()),
+                        ruleEvalMarks),
                 new Scenario("model compute (field/declaration)",
                         List.of("-m", computed.toString(), "model", "compute", "--instance", billing.toString()),
                         computeMarks));

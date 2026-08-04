@@ -1,0 +1,86 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/mbackschat/a12-dmkits/schema/rule-eval.schema.json",
+  "title": "RuleEvalResult",
+  "description": "Output of `rule eval` — the runtime verdict for ONE rule against a document INSTANCE, either a stored `<rulePathInModel>` or a non-stored `--condition`/`--field` candidate. Both forms return this identical shape. FOUR verdicts, and `fired:false` is three of them: `fired` (a violation), `passed` (evaluated, condition false), `suppressed` (never evaluated — a referenced field is formally invalid, so reporting a pass would mislead), `unsupported` (a construct the engine does not model, e.g. a CustomCondition with no registered impl). A `fired` verdict additionally publishes the firing MESSAGE's own channels — `code`, `field`, `severity`, `type`, `message`, `referenced`, and (for an omission) `fillToFix` — the same keys and the same meanings as one `model eval` `messages[]` entry, so one message parser reads both. It reports the FIRST firing only: a rule that violates several rows of its iteration scope yields one message here, where `model eval` yields one per row. The INPUT --instance shape is NOT restated here — it is `document-instance.schema.json`, served as the `docInput` half of `dmtool schema rule eval`.",
+  "type": "object",
+  "required": ["rule", "fired", "verdict"],
+  "additionalProperties": false,
+  "properties": {
+    "rule": {
+      "type": "string",
+      "description": "the evaluated rule's full slash-path; a candidate reports the in-memory name it was given (`<group>/EvalRuleCandidate`), which is never written to the model"
+    },
+    "fired": {
+      "type": "boolean",
+      "description": "whether the rule fired (true iff `verdict` is `fired`). Kept beside `verdict` because it is the one-bit question most callers ask, but it does NOT distinguish the three false cases — read `verdict` for that"
+    },
+    "verdict": {
+      "type": "string",
+      "enum": ["fired", "passed", "suppressed", "unsupported"],
+      "description": "fired | passed | suppressed | unsupported (see the description)"
+    },
+    "code": {
+      "type": "string",
+      "description": "(fired only) the rule's error code — for a candidate, whatever `--code` supplied"
+    },
+    "field": {
+      "type": "string",
+      "format": "a12-message-address",
+      "description": "(fired only) the offending field's address, in the message-address form documented under `messages[].field` in `schema model eval`: canonical A12 (no leading slash, `[1]` omitted) when it names one cell, the interpreter house form otherwise. Test the leading slash to tell the two apart"
+    },
+    "severity": { "type": "string", "description": "(fired only) ERROR | WARNING | INFO" },
+    "type": {
+      "type": "string",
+      "enum": ["VALUE_ERROR", "OMISSION_ERROR"],
+      "description": "(fired only) the firing's polarity. A semantic observable, not presentation: for `FieldValuesNotUnique` it is the only thing distinguishing a filtered from an unfiltered firing on identical data — a reached `Having` on the starred operand escalates the firing to OMISSION_ERROR where the unfiltered form reports VALUE_ERROR"
+    },
+    "message": {
+      "type": "string",
+      "description": "(fired only) the INTERPOLATED end-user text — the authored message with its $Field$/$Field.value$ tokens resolved against this document. A candidate carries no message template, so it renders its in-memory name, which is the `--code` value"
+    },
+    "referenced": {
+      "type": "array",
+      "items": { "type": "string", "format": "a12-message-address" },
+      "description": "(fired only) the fields the rule READ — its operands (A12's referencedFields). Same address contract as `field`, decided per address: a starred operand consumed as a whole column names a set of cells, so it renders as the house form beside an exact `field`"
+    },
+    "fillToFix": {
+      "type": "array",
+      "items": { "type": "string", "format": "a12-message-address" },
+      "description": "(fired with `type: OMISSION_ERROR`) the operand fields that — if filled/changed — would clear the error (the kernel's refOmissionErrorResponsible); absent for a value error. Same address contract as `field`"
+    },
+    "suppressedBy": {
+      "type": "array",
+      "description": "(suppressed only) the referenced fields whose formally-invalid values kept the rule from being evaluated",
+      "items": {
+        "type": "object",
+        "required": ["field", "formalErrorCode"],
+        "additionalProperties": false,
+        "properties": {
+          "field": {
+            "type": "string",
+            "description": "the offending cell, as a canonical A12 instance pointer (no leading slash, `[1]` omitted). Every level is resolved by construction here, so unlike a message address this one is always canonical"
+          },
+          "formalErrorCode": {
+            "type": "string",
+            "description": "the kernel formal-check code that made the value invalid, e.g. datumFormatFalsch"
+          }
+        }
+      }
+    },
+    "unsupported": {
+      "type": "array",
+      "description": "(unsupported only) what the engine could not evaluate — reported rather than passed off as a clean `passed` (G29). `--strict-custom` turns this into a refusal (exit 2)",
+      "items": {
+        "type": "object",
+        "required": ["name", "subject", "reason"],
+        "additionalProperties": false,
+        "properties": {
+          "name": { "type": "string", "description": "what could not be evaluated — read it according to `subject`, since the two kinds are different addresses" },
+          "subject": { "type": "string", "enum": ["element", "cell"], "description": "element = a model path (a rule/computation/field declaration, no repetition); cell = a canonical A12 instance pointer to a document cell" },
+          "reason": { "type": "string", "description": "why it couldn't be evaluated" }
+        }
+      }
+    }
+  }
+}

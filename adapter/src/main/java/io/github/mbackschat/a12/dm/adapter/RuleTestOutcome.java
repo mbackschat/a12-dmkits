@@ -9,19 +9,29 @@ import java.util.Optional;
  * a plain "did it fire" answer conflates a genuine <b>PASS</b> with a <b>SUPPRESSED</b> rule (one the kernel
  * never evaluated because a field it references is formally invalid — too many decimals, etc.; KERNEL-FINDINGS),
  * and that conflation misleads. When suppressed, {@link #suppressedBy} names the offending referenced fields.
- * When FIRED, {@link #message} carries the <b>interpolated</b> end-user text the kernel produced (G1) — the
- * authored message with its {@code $Field$}/{@code $Field.value$} tokens resolved against this instance.
+ *
+ * <p>When FIRED, {@link #firing} carries the <b>whole kernel message</b> that fired — its code, error-field
+ * pointer, severity, VALUE/OMISSION type, interpolated text (G1) and the operands it read — not just the rendered
+ * line. The type is a semantic observable rather than presentation (for a uniqueness predicate it is the only
+ * difference between a filtered and an unfiltered firing on identical data), and a scoped single-rule check that
+ * dropped it forced a consumer back to whole-document evaluation to measure it. {@link #message} stays available
+ * as a derived read.
  *
  * @param rule         the rule's full slash-path
  * @param verdict      FIRED (a violation), PASSED (evaluated, condition false), or SUPPRESSED (not evaluated)
  * @param suppressedBy the referenced fields that were formally invalid (non-empty iff {@code verdict} is SUPPRESSED)
- * @param message      the interpolated end-user message (present iff {@code verdict} is FIRED)
+ * @param firing       the kernel message this rule fired with (present iff {@code verdict} is FIRED)
  */
 public record RuleTestOutcome(String rule, Verdict verdict, List<Suppression> suppressedBy,
-        Optional<String> message) {
+        Optional<EvalMessage> firing) {
 
     public RuleTestOutcome {
         suppressedBy = List.copyOf(suppressedBy);
+    }
+
+    /** The interpolated end-user text of {@link #firing}; empty when nothing fired. */
+    public Optional<String> message() {
+        return firing.map(EvalMessage::message);
     }
 
     /** Whether the rule fired (a violation was present on the data). */

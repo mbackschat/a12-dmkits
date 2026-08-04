@@ -252,8 +252,15 @@ public final class InterpreterEngine {
         data.put("rule", result.getRulePath());
         data.put("fired", result.getVerdict() == Verdict.FIRED);
         data.put("verdict", result.getVerdict().name().toLowerCase(java.util.Locale.ROOT));
-        if (result.getMessage() != null && !result.getMessage().isEmpty()) {
-            data.put("message", result.getMessage());
+        // A firing publishes the SAME message channels `model eval` does — `type` above all, which is a semantic
+        // observable rather than presentation: for a uniqueness predicate it is the only difference between a
+        // filtered and an unfiltered firing on identical data. Projecting only the rendered text made measuring
+        // it require persisting the rule and running whole-document eval, the model-dirtying cycle this verb's
+        // candidate mode exists to avoid.
+        Message firing = result.getFiring();
+        if (firing != null) {
+            data.put("code", firing.getCode());
+            data.setAll(messageChannels(firing));
         }
         if (!result.getSuppressedBy().isEmpty()) {
             ArrayNode arr = data.putArray("suppressedBy");
@@ -296,16 +303,29 @@ public final class InterpreterEngine {
     private static void addMessage(ObjectNode mn, Message m) {
         mn.put("code", m.getCode());
         mn.put("rule", m.getRulePath());
-        // Rendered from the RETAINED message pointer, not from a string — see A12Pointers for why re-reading the
-        // house form cannot tell an exact address from an unresolved one.
-        mn.put("field", A12Pointers.canonical(m.getErrorPointer()));
-        mn.put("severity", m.getSeverity().name());
-        mn.put("type", typeError(m.getType()));
-        mn.put("message", m.getText());
-        putPointers(mn.putArray("referenced"), m.getReferencedPointers());
+        mn.setAll(messageChannels(m));
+    }
+
+    /**
+     * The message channels beyond the two identity keys ({@code code} and the rule path), rendered once for both
+     * the whole-document {@code messages[]} entry and the focused {@code rule eval} firing — so the two cannot
+     * describe one firing differently. Each caller places the identity keys itself, because their order in the
+     * published object differs.
+     *
+     * <p>Every address is rendered from the RETAINED message pointer, not from a string — see {@link A12Pointers}
+     * for why re-reading the house form cannot tell an exact address from an unresolved one.
+     */
+    private static ObjectNode messageChannels(Message m) {
+        ObjectNode node = MAPPER.createObjectNode();
+        node.put("field", A12Pointers.canonical(m.getErrorPointer()));
+        node.put("severity", m.getSeverity().name());
+        node.put("type", typeError(m.getType()));
+        node.put("message", m.getText());
+        putPointers(node.putArray("referenced"), m.getReferencedPointers());
         if (!m.getFillToFixPointers().isEmpty()) {
-            putPointers(mn.putArray("fillToFix"), m.getFillToFixPointers());
+            putPointers(node.putArray("fillToFix"), m.getFillToFixPointers());
         }
+        return node;
     }
 
     private static void putPointers(ArrayNode arr, java.util.List<A12PartiallyKnownMultiPointer> pointers) {

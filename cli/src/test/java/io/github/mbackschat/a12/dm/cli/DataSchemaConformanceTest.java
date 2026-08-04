@@ -65,6 +65,15 @@ class DataSchemaConformanceTest {
         Files.writeString(doc, """
                 { "Order": { "CustomerName": "Acme", "Quantity": "5",
                                           "OrderDate": "2026-01-01", "DeliveryDate": "2026-01-10" } }""");
+        // `rule eval` selects its payload keys by VERDICT, so one document cannot reach them: a firing carries the
+        // message channels, a formally-invalid operand carries `suppressedBy`, and an unmodeled construct carries
+        // `unsupported`. Three documents, one per branch.
+        Path violation = docDir.resolve("violation.json");
+        Files.writeString(violation, """
+                { "Order": { "OrderDate": "2026-01-10", "DeliveryDate": "2026-01-01" } }""");
+        Path malformedDate = docDir.resolve("malformed-date.json");
+        Files.writeString(malformedDate, """
+                { "Order": { "OrderDate": "2026-01-10", "DeliveryDate": "not-a-date" } }""");
 
         // Populate OPTIONAL read properties so the forward drift check covers them, not just the lean branch.
         Path fieldProps = dir.resolve("field-props.json");
@@ -133,6 +142,14 @@ class DataSchemaConformanceTest {
                 new Run("typedef-read", new String[]{"-m", td.toString(), "typedef", "read"}),
                 new Run("eval-doc", new String[]{"-m", order.toString(), "model", "eval", "--instance", doc.toString()}),
                 new Run("compute-doc", new String[]{"-m", order.toString(), "model", "compute", "--instance", doc.toString()}),
+                new Run("rule-eval", new String[]{"-m", order.toString(), "rule", "eval",
+                        "/Order/DeliveryNotBeforeOrder", "--instance", doc.toString()}),
+                new Run("rule-eval", new String[]{"-m", order.toString(), "rule", "eval",
+                        "/Order/DeliveryNotBeforeOrder", "--instance", violation.toString()}),
+                new Run("rule-eval", new String[]{"-m", order.toString(), "rule", "eval",
+                        "/Order/DeliveryNotBeforeOrder", "--instance", malformedDate.toString()}),
+                new Run("rule-eval", new String[]{"-m", order.toString(), "rule", "eval",
+                        "/Order/EligibilityCheck", "--instance", doc.toString()}),
                 new Run("workspace-list", new String[]{"workspace", "list", dir.toString()}),
                 // --validate is a SEPARATE shape (per-entry checked/valid/verification or checked/problem), and
                 // running only the bare form is why three undeclared keys shipped against an
@@ -252,7 +269,7 @@ class DataSchemaConformanceTest {
         // If it ever needs to be silent-safe, derive it from the run list instead of widening this set.
         Set<String> covered = Set.of("model-info", "describe", "model-diff", "model-report", "model-usage", "profile",
                 "profile-comparison", "read", "explain", "where-used", "meta-read", "field-read", "group-read", "typedef-read",
-                "eval-doc", "compute-doc", "workspace-list", "patterns");
+                "eval-doc", "compute-doc", "rule-eval", "workspace-list", "patterns");
         List<String> uncovered = new ArrayList<>();
         for (String schema : SchemaCommand.DATA_SCHEMA.values()) {
             if (!covered.contains(schema) && !EXEMPT_SCHEMAS.containsKey(schema)) {

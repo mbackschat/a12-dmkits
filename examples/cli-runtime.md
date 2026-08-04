@@ -200,14 +200,19 @@ dmtool -m examples/models/order-ruled.dm.json \
     "rule" : "/Order/DeliveryNotBeforeOrder",
     "fired" : true,
     "verdict" : "fired",
-    "message" : "The delivery date must not be earlier than the order date."
+    "code" : "DELIVERY_BEFORE_ORDER",
+    "field" : "Order/DeliveryDate",
+    "severity" : "ERROR",
+    "type" : "VALUE_ERROR",
+    "message" : "The delivery date must not be earlier than the order date.",
+    "referenced" : [ "Order/OrderDate", "Order/DeliveryDate" ]
   },
   "diagnostics" : [ ],
   "written" : false
 }
 ```
 
-→ `verdict: fired` — a violation. Now feed it a **malformed** delivery date (`not-a-date`, which the `yyyy-MM-dd` field can't parse). The rule references `DeliveryDate`, so it is never evaluated:
+→ `verdict: fired` — a violation, reported with the firing message's own channels: the same `code`/`field`/`severity`/`type`/`message`/`referenced` keys a `model eval` `messages[]` entry carries (plus `fillToFix` on an omission). `type` is the one worth knowing about — `VALUE_ERROR` means *what is there is wrong*, `OMISSION_ERROR` means *filling something could clear it* — and it is a semantic fact, not a label: for `FieldValuesNotUnique` a reached `Having` on the starred operand flips a firing to `OMISSION_ERROR` on otherwise identical data. Reading it here needs no persisted rule, so a `--condition` candidate can be measured without touching the model. Now feed it a **malformed** delivery date (`not-a-date`, which the `yyyy-MM-dd` field can't parse). The rule references `DeliveryDate`, so it is never evaluated:
 
 ```bash
 cat > /tmp/rt-order-baddate.json <<'JSON'
