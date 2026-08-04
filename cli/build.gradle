@@ -117,6 +117,27 @@ def generateVersionProperties = tasks.register('generateVersionProperties', Writ
 sourceSets.main.resources.srcDir(generatedVersionDir)
 tasks.named('processResources') { dependsOn generateVersionProperties }
 
+// …but keep that deliberate per-commit invalidation OFF the test runtime classpath. The resource above is a
+// main resource, so it rides `sourceSets.test.runtimeClasspath` — the `classpath` of `test` and of all six
+// `:cli` guard tasks. Its content changes on every commit (new SHA) and on the first edit after one
+// (CLEAN→DIRTY), so without this normalization the whole `:cli` test estate re-runs on a bare commit that
+// changed no source at all, and `publicContractTest` (~3–10 min) re-runs with it.
+//
+// Ignoring it here cannot mask a defect: the only tests that read it assert its SHAPE, never a literal
+// revision (`VersionVerbTest` matches `[0-9a-f]{40}` / `CLEAN|DIRTY|UNKNOWN`; `BatchObservationsTest`
+// compares the CLI's output against `VersionInfo.load()`, so both sides move together). A change to HOW
+// provenance is produced still re-triggers, via `sourceProvenanceGuardTest`'s declared inputs on this build
+// file and `scripts/SourceProvenance.java`.
+//
+// The freshness property the resource exists for is untouched: `jar`/`installDist`/`nativeCompile` consume
+// the generated file itself, not a normalized classpath, so a launcher can still never retain an older
+// build's provenance — which is what makes a stale-binary check possible at all.
+normalization {
+    runtimeClasspath {
+        ignore 'io/github/mbackschat/a12/dm/cli/version.properties'
+    }
+}
+
 // picocli-codegen: name the project so the generated native-image config lands under a stable
 // META-INF/native-image/<group>/<artifact>/ path (CLI-SPEC §B2).
 tasks.named('compileJava') {
