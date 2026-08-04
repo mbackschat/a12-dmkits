@@ -16,6 +16,7 @@
 | a verb whose correctness depends on input-set completeness runs only under an explicit **authority assertion**, and is refused without it | 2026-08-04 |
 | the write-durability finding is answered by publishing `FailurePersistence`'s scope, not by making writes atomic | 2026-08-04 |
 | target `2026-07-28` **only** — no `2025-11-25` fallback; anything below it is **refused with a corrective diagnostic**, never partly served (§5.3) | 2026-08-04 |
+| **zero new dependencies** — no MCP SDK (none implements this revision), no JSON-RPC library, no schema validator; Jackson tree plus the JDK, both already in the binary (§5.2) | 2026-08-04 |
 
 **Evidence basis — four source classes, deliberately not conflated:**
 
@@ -167,7 +168,7 @@ The largest read tool in the surface publishes no output schema *solely* because
 |---|---|
 | The tool list can be **derived** from the live picocli tree, inheriting the no-drift property `manifest` has | `manifest` is recomputed from that tree; `ManifestVerbTest` guards the verb set under a **set-equality** assertion over 81 entries |
 | A Claude Code plugin can bundle skills **and** an MCP server in one plugin | *host docs*: components include skills, agents, hooks, MCP servers, LSP servers, monitors; config via `.mcp.json` at the plugin root or inline `mcpServers` |
-| The official Java SDK cannot serve this revision, and carries a dependency we do not want | `mcp` v2.0.0 tracks `2025-11-25`; `mcp-core`'s compile deps include `reactor-core` (§5.2). *Dated 2026-08-02 — re-check before any SDK decision* |
+| The official Java SDK cannot serve this revision, and carries a dependency we do not want | **Re-verified 2026-08-04:** v2.0.0 is the latest release and still tracks `2025-11-25`; no release or pre-release supports `2026-07-28`, and Java is absent from the Tier-1 beta set. `mcp-core`'s compile deps include `reactor-core` (§5.2). *Re-check trigger: a Java SDK release supporting `2026-07-28`* |
 | `Cli.run` is already a pure per-call entry point | it constructs a fresh `new CommandLine(new RootCommand())` per invocation and writes to passed sinks, so no option state can leak between calls (§5.1) |
 | Reference resolution is already content-first | `ModelResolver` is a `@FunctionalInterface` (`id → DM-JSON`) whose own javadoc names *"a map, a service, a classpath"* as intended sources; `EditSession.read(json, resolver)` and `BoundModel.ofJson(json, resolver)` take JSON strings. Only the CLI layer requires paths |
 | Every verb resolves a machine-readable contract | all 81 `schema <target> <op>` calls parse. **The emitted shape is not uniform**: there are **17** distinct key sets. The commonest is `{op, returns, resultSchema, operationalProfiles, contractVocabulary}` (28 verbs); 17 add `data` + `dataSchema` and 9 add `data` alone; only **8** carry `input`; the directionally exempt form `{op, contract: "operational-only", directionalExemption, operationalProfiles}` holds for **9**; single cases add `verdict`, `docInput`, `notes`, or `artifact`; and `apply`/`batch` return a bare JSON Schema with no `op` key at all. `contractVocabulary` (§14.1) rides exactly the **47** verbs that can write, which splits several of those shapes in two. So a consumer must not assume one contract shape |
@@ -209,11 +210,15 @@ Three consequences of stdio framing (§2) shape the rest:
 
 **Serialised dispatch is an S1 decision, not a global one.** stdio delivers requests on one channel, so overlapping `tools/call` invocations are possible unless dispatch is serialised. Phase 1 serialises — one request at a time — because it is the only posture whose thread-safety is currently established, and because no dmtool verb is long enough to make queueing costly *for a single caller*. That justification does not survive multiple callers: §13.5 records why, and any multi-caller shape must revisit both the queueing policy and the thread-safety claim (R9). `notifications/cancelled` must at minimum be accepted and produce no further messages for the cancelled request; in-flight interruption is out of scope for phase 1.
 
-### 5.2 On the official Java SDK
+### 5.2 On the official Java SDK, and the dependency budget
 
-Measured 2026-08-02: `mcp` v2.0.0 (released 2026-06-11) tracks protocol revision **`2025-11-25`**, not `2026-07-28`; `main` is `2.0.1-SNAPSHOT`. Java is a **Tier 2** SDK — Tier 1 (TypeScript, Python, Go, C#) have `2026-07-28` betas. More decisively, `mcp-core`'s compile dependencies are `slf4j-api`, `jackson-annotations`, **`reactor-core`**, and `jakarta.servlet-api` (provided). Reactor is not optional. Against dmtool's current set — picocli, Jackson databind, slf4j-nop, the kits — that is a substantial new reflective surface in a binary whose native-image metadata is test-suite-captured, purchased to replace newline-delimited JSON framing.
+**Re-verified 2026-08-04** (§5.2 carried its own re-check trigger, and the §5.3 decision fires it): the Java SDK's latest release is still **v2.0.0**, still tracking revision **`2025-11-25`**, with **no release and no pre-release supporting `2026-07-28`**. Java is a **Tier 2** SDK; the `2026-07-28` beta announcement covers the four Tier 1 SDKs — Python, TypeScript, Go, C# — and does not mention Java or a Tier 2 timeline.
 
-**Recommendation: do not adopt the SDK for the stdio path.** If it is ever adopted, that is a *hosted-transport* decision, where Streamable HTTP and OAuth 2.1 plumbing justify the dependency and native-image is not a constraint.
+**So for this target the SDK is not a trade-off, it is unavailable.** The earlier dependency argument still holds and is worth keeping, because it decides the *hosted* case too: `mcp-core`'s compile dependencies are `slf4j-api`, `jackson-annotations`, **`reactor-core`**, and `jakarta.servlet-api` (provided), and Reactor is not optional — a substantial new reflective surface in a binary whose native-image metadata is test-suite-captured, purchased to replace newline-delimited JSON framing. But it is now the second reason, not the first.
+
+**Owner decision, 2026-08-04: zero new dependencies.** Phase 1 adds **no** declared dependency — not the MCP Java SDK, not a JSON-RPC library, not a JSON-Schema validator. Stated exactly, since "zero dependencies" would be false: the layer is **Jackson tree plus the JDK**, both already in the binary (`:cli` declares `jackson-databind` and `picocli` directly, with `slf4j-nop` at runtime). What makes that sufficient is the shape §3 already derived — newline-delimited JSON on stdio, one JSON-RPC dispatch table, no HTTP, no OAuth, no SSE, no reactive streams — and the fact that `inputSchema`/`outputSchema` are *published documents* we already own, not runtime validators: incoming arguments are still validated by picocli and the verbs themselves.
+
+**Consequence for phase 3.** The 2026-08-02 row keeping the SDK as a possible later substitution for a hosted transport is now conditional on an SDK that implements this revision existing at all. **Re-open trigger:** a Java SDK release supporting `2026-07-28`. Until then the hosted transport would also have to be hand-rolled, or built on a dependency chosen on its own merits rather than on MCP-SDK grounds — which is a phase-3 decision, not a phase-1 one.
 
 **Conformance testing, stated accurately.** The official **MCP Inspector** CLI connects to a server, invokes the single method named by `--method`, prints the result, and exits. It is a per-method smoke tool with usable exit codes and documented CI recipes — worth wiring, and it will catch a broken frame or a missing method. It is **not** a conformance suite: it does not enumerate the revision's MUSTs, nor validate `_meta` requiredness, cacheable-result obligations, header rules, or error-code allocation. So: *smoke-tested per method in CI, plus hand-written assertions for the MUSTs we implement* — not "provably conformant."
 
@@ -375,7 +380,7 @@ Two rejected alternatives, recorded so they are not re-proposed: an **invocation
 
 **R3 — the `dmtool serve` won't-build.** [FEATURE-GAPS.md](FEATURE-GAPS.md) §4, decided 2026-06-15, with an explicit *"don't re-litigate without new evidence."* §3 classifies its five grounds and answers all of them. **Conditional on §9's no-warm-model rule.** Measure the per-call workspace index cost before any cache is discussed.
 
-**R4 — native image.** The MCP command adds code and Jackson usage to the shipped binary, so the test-suite-captured reflection metadata stales. Re-capture before any native build, then run the native gate ([NATIVE-IMAGE-GRAALVM.md](NATIVE-IMAGE-GRAALVM.md) §5.1). Keeping the transport hand-rolled and Jackson-tree-based keeps this near zero; the SDK would not (§5.2).
+**R4 — native image.** The MCP command adds code and Jackson usage to the shipped binary, so the test-suite-captured reflection metadata stales. Re-capture before any native build, then run the native gate ([NATIVE-IMAGE-GRAALVM.md](NATIVE-IMAGE-GRAALVM.md) §5.1). The zero-new-dependency decision (§5.2) is what keeps this near zero: the added reflective surface is Jackson usage the binary already has, not a new library's.
 
 **R5 — eval material boundary.** [EVAL-SPEC.md](EVAL-SPEC.md) §2a defines a **bare-tool** arm where agents get the self-describing CLI and the model file with **no skill**. §10's exclusion of `dm:///skill` keeps that arm intact, and §10's audience decision makes an MCP bare-tool arm the natural measurement of whether the derived tool descriptions suffice.
 
@@ -413,7 +418,7 @@ Two rejected alternatives, recorded so they are not re-proposed: an **invocation
 **Excluded — deliberately**
 
 - Multi Round-Trip Requests, `subscriptions/listen`, sampling, roots, logging, and `io.modelcontextprotocol/tasks`.
-- The official Java SDK on the stdio path (§5.2).
+- **Any new dependency** (§5.2) — the MCP Java SDK does not implement this revision, and no JSON-RPC or schema-validation library is added.
 - **Any `2025-11-25` compatibility path** — no `initialize` handling beyond the §5.3 refusal, and no negotiated downgrade.
 - Any warm model, resolved-model cache, or workspace-index cache (§9, R3).
 - Any new **authoring** verb — the `mcp` leaf is the one addition, with the obligations above.
