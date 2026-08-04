@@ -1,8 +1,16 @@
 # dmtool over MCP — proposal
 
-**Status:** PROPOSAL (revised 2026-08-04 after two independent review rounds). Intent, rationale, and public contract; nothing built. Graduates into the owning specs as phases land, per [DOC-DISCIPLINE.md](DOC-DISCIPLINE.md) §5.
+**Status:** **PARKED** (2026-08-04, owner decision). The design is settled and **nothing is built**; no present need triggers building it. The re-open triggers are in §1. Graduates into the owning specs if and when a phase lands, per [DOC-DISCIPLINE.md](DOC-DISCIPLINE.md) §5.
 
-**Scope.** Expose the dmtool surface over the Model Context Protocol, revision **`2026-07-28`**, as a **stdio server inside the existing binary** (`dmtool mcp`). Hosted HTTP is §13 plus [Appendix A](#appendix-a--hosting-candidate-assessments), as phase 3 with its own gate. MCP Apps is phase 2. Neither is proposed for implementation here.
+> ### Positioning — read this before anything else
+>
+> **MCP is for callers that cannot execute the binary. Where an agent can run `dmtool` directly, the CLI is the better surface and should be used instead.**
+>
+> It is the *same executable*: an MCP server would be one more leaf in the same command tree, routing every call to an existing verb and adding no authoring capability. So for a local, shell-capable agent, MCP is pure indirection — and under §9's content-carrying rules it is actively worse, because it gives up in-place editing and pays a read-modify-write round trip the CLI does not.
+>
+> MCP earns its place in exactly three situations, none of which is "local convenience": a **host that cannot spawn a subprocess** (a web client, a hosted agent platform, a mobile or sandboxed IDE integration), a **hosted deployment** where the caller installs nothing, and **host-enforced approval**, where allowlisting a read-only tool is a guarantee that granting shell access can never be.
+
+**Scope.** Expose the dmtool surface over the Model Context Protocol, revision **`2026-07-28`**. Two transports are described: a **stdio server inside the existing binary** (`dmtool mcp`), and hosted HTTP in §13 plus [Appendix A](#appendix-a--hosting-candidate-assessments). Per the positioning above, the *hosted* transport is the one that carries the value; the stdio server is a development and testing vehicle for it, not a recommended local surface. MCP Apps is a later phase. **Nothing here is proposed for implementation while this document is parked.**
 
 **Owner decisions already taken:**
 
@@ -18,6 +26,7 @@
 | target `2026-07-28` **only** — no `2025-11-25` fallback; anything below it is **refused with a corrective diagnostic**, never partly served (§5.3) | 2026-08-04 |
 | **zero new dependencies** — no MCP SDK (none implements this revision), no JSON-RPC library, no schema validator; Jackson tree plus the JDK, both already in the binary (§5.2) | 2026-08-04 |
 | a later SDK is confined to **one binding class**, prepared by three things the design wants anyway and by nothing else — no second implementation, no factory, no MCP-shaped types (§5.4) | 2026-08-04 |
+| **positioning: MCP serves callers that cannot execute the binary; the CLI is the better surface wherever it can be run.** The proposal is PARKED on this basis, with three re-open triggers (§1) | 2026-08-04 |
 | the tool surface is the **joint partition of `Effect` × `ReturnKind`** inside each target — 30 tools, both published facts truthful everywhere they can be; a verb is never changed to make a tool eligible (§6) | 2026-08-04 |
 
 **Evidence basis — four source classes, deliberately not conflated:**
@@ -34,6 +43,20 @@
 ---
 
 ## 1. Motivation
+
+### Why this is parked, and what would un-park it
+
+**No present need triggers this work.** The reach argument below is real but was never the trigger — building the Claude Code and Codex plugins was near-identical work, so the "N native wrappers" friction RELEASE-SPEC §12 named as the condition has not arrived. And for the one host in daily use, an MCP surface would be strictly worse than the CLI it wraps (see *Positioning*). A proposal whose own motivation section declines to claim a trigger should say so at the top rather than read as a plan.
+
+**The three re-open triggers**, each sufficient on its own:
+
+| trigger | why it changes the answer |
+|---|---|
+| A wanted caller **cannot execute the binary** — a web client, a hosted agent platform, a sandboxed or mobile IDE integration | MCP stops being indirection and becomes the only route to dmtool at all |
+| A **hosted** dmtool is wanted, so callers install nothing | MCP is the transport by construction. **Decide §13 first:** hosting is distribution under EUPL Article 1 (§13.2), so this trigger carries a licensing obligation the local case never has |
+| **Host-enforced approval** becomes a requirement — a user allowlisting a read-only tool rather than granting shell access | This is the one benefit the CLI cannot provide at any effort, because approving a shell is unconstrained by construction |
+
+**What this document already paid for while parked**, recorded so the work is not mistaken for sunk cost: it produced `CommandContracts` (the per-verb operational contract now published by help, manifest, and schema), the `FailurePersistence` scope publication (§14.1), the per-label persistence discriminator, and the `CustomJsWorker` residency defect (§9). None of those needed MCP to ship, and all of them stay.
 
 ### What it buys
 
@@ -87,7 +110,7 @@ The stdio binding requires that the server **MUST NOT** write anything to stdout
 
 ### Why one deprecation matters here
 
-The Roots migration advice is *"pass directories or files via tool parameters, resource URIs, or server configuration instead"* — which is exactly the addressing chosen in §9, making that choice the specification's own recommendation rather than a workaround.
+Roots — the mechanism by which a client told a server which directories it could reach — is deprecated, and the migration advice is *"pass directories or files via tool parameters, resource URIs, or server configuration instead."* Read precisely, that licenses **a location parameter where one is needed** and names **resource URIs** as an equal alternative; it is **not** an endorsement of a server accepting client filesystem paths. An earlier revision cited it as the specification recommending §9's then-path-based addressing — an overstatement, and §9 now decides the opposite (Appendix B).
 
 ## 3. Why statelessness is the enabling change
 
@@ -126,27 +149,27 @@ The load-bearing structural point: a verb carries **one profile per argument-sel
 
 ### Measured
 
-All figures 2026-08-04, from `manifest` on a dist built from `fba978ba`:
+All figures re-derived **2026-08-04** from `manifest` on a dist built from `b5aba1ec`, after the batch-observations, candidate-eval, and absolute-path commits landed:
 
 | quantity | value |
 |---|---|
 | live command-tree leaves | **81** |
-| operational profiles across them | **142** |
+| operational profiles across them | **143** |
 | profiles per verb | 31 verbs have 1 · 45 have 2 · 2 have 3 · one each has 4, 5, 6 |
 | `Effect` over profiles | `READ_ONLY` 94 · `MODEL_WRITE` 37 · `ARTIFACT_WRITE` 6 · `MULTI_FILE_WRITE` 3 · `DISPATCH` 1 · `TRANSACTION` 1 |
-| `ReturnKind` over profiles | `RESULT_ENVELOPE` 125 · `RAW_JSON` 10 · `RAW_TEXT` 6 · `EMPTY_STDOUT` 1 |
-| `FailurePersistence` over profiles | `NO_WRITE` 137 · `PARTIAL` 4 · `ROLLBACK` 1 |
+| `ReturnKind` over profiles | `RESULT_ENVELOPE` 126 · `RAW_JSON` 10 · `RAW_TEXT` 6 · `EMPTY_STDOUT` 1 |
+| `FailurePersistence` over profiles | `NO_WRITE` 137 · `PARTIAL` 3 · `CONTINUE_AFTER_CHILD_FAILURE` 2 · `ROLLBACK` 1 |
 | **`NO_WRITE` profiles whose effect is not read-only** | **43** (37 `MODEL_WRITE` + 6 `ARTIFACT_WRITE`) — the basis of §14's contract finding |
 | verbs `READ_ONLY` in **every** profile | **34** |
-| verbs whose profiles **disagree** on effect | **46** |
+| verbs whose profiles **disagree** on effect | **47** |
 | verbs `RESULT_ENVELOPE` in **every** profile | **68** |
 | verbs with at least one non-envelope route | **13** — of which **7** also have an envelope route (`model new`, `model expand`, `model import-jsonschema`, `model export-jsonschema`, `profile synthesize`, `workspace list`, `workspace graph`) and **6** never return an envelope (`model seed`, `export`, `schema`, `operators`, `diagnostics`, `manifest`) |
 | verbs carrying more than one distinct `ReturnKind` | **9** — the 7 above plus `export` (`RAW_TEXT`/`EMPTY_STDOUT`) and `schema` (`RAW_TEXT`/`RAW_JSON`), which are mixed without ever being an envelope |
-| `manifest` size, pretty-printed | **274,509 bytes** |
+| `manifest` size, pretty-printed | **276,995 bytes** |
 
-**On the 46 effect-disagreeing verbs.** Two mechanisms account for most of them — a `--dry-run` selector, and an output-flag selector where an absent `-o`/`--output`/`--out-dir` means "print to stdout". **Two verbs use neither:** `patterns` discriminates `READ_ONLY` from `MODEL_WRITE` on the parsed *value* of `--apply`, and `meta` on the presence of any of twelve metadata-write flags (`anySet` versus `noneSet`). Whether every remaining verb uses only the two systematic mechanisms is **not enumerated**, so no universal is claimed here.
+**On the 47 effect-disagreeing verbs.** Two mechanisms account for most of them — a `--dry-run` selector, and an output-flag selector where an absent `-o`/`--output`/`--out-dir` means "print to stdout" (`batch` joined this class when its observations artifact landed, taking the count from 46 to 47). **Two verbs use neither:** `patterns` discriminates `READ_ONLY` from `MODEL_WRITE` on the parsed *value* of `--apply`, and `meta` on the presence of any of twelve metadata-write flags (`anySet` versus `noneSet`). Whether every remaining verb uses only the two systematic mechanisms is **not enumerated**, so no universal is claimed here.
 
-**Seven of the 46 have no `--dry-run` at all** — `model new`, `model expand`, `model import-jsonschema`, `model export-jsonschema`, `profile extract`, `profile synthesize`, `export` (`dryRun: NOT_APPLICABLE` on every profile). §7 depends on this.
+**Seven of the 47 have no `--dry-run` at all** — `model new`, `model expand`, `model import-jsonschema`, `model export-jsonschema`, `profile extract`, `profile synthesize`, `export` (`dryRun: NOT_APPLICABLE` on every profile). §7 depends on this.
 
 **The manifest does not publish which parameters carry external content.** Only **12 parameters across 8 verbs** are tagged `kind: "FILE"`; the `kind` field is absent on `field add <spec.json>`, `model eval --instance`, `--predefined-types`, `--custom-conditions-js`, `--custom-field-types-js`, and `workspace roles <dir>`/`--roles`/`--users`, among others. §13.4's enumeration therefore rests on a source-and-help sweep rather than on a derived surface, and that gap is itself a design input for phase 3.
 
@@ -392,22 +415,36 @@ The split is one rule: **resource templates when you know what you want, a tool 
 
 **Prompts are not the skill channel.** The specification defines prompts as *user-controlled* — explicitly selected by the user. A skill is model-invoked on relevance. Different trigger model; do not conflate.
 
-## 9. Model addressing over stdio
+## 9. Content in, content out — the server knows no client path and stores nothing
 
-Over stdio the server shares a filesystem with the user, so `model` and `workspace` are **paths**, carrying `-m`/`-w` semantics unchanged. This is what the specification recommends (§2, the Roots deprecation). Hosted addressing is different in kind and is §13.4.
+**Owner decision, 2026-08-04. Two rules, both hard, both applying to every transport:**
 
-**Every tool call re-reads from disk. There is no warm model, no resolved-model cache, and no workspace index cache.** A hard constraint, not a performance note — it is the condition under which §3's argument and R3 hold. Two clarifications:
+1. **The server never receives, resolves, or returns a client-side path.** Every input the caller controls crosses the wire as **content**. Every path the CLI needs is **server-generated**.
+2. **The server stores nothing locally.** No model, no resolved model, no workspace index, no cache — and **nothing a call creates survives that call**.
 
-- **The rule is about model content, not about all state.** `Backends`, `ReadBackends`, and `OperatorCatalog.INSTANCE` hold process-lifetime service and catalog singletons. Those are benign and desirable in a resident process; what must never be cached is a model, a resolved model, or a workspace index.
-- **The index cost is the real per-call cost, and it is larger than "parse a header".** `ReferenceResolvers.directory(roots)` builds its id-keyed index **eagerly at construction**, before any reference is resolved. For each candidate it does `Files.readString` on the **whole file** and `mapper.readTree` on the **whole document**, then reads `header` — there is no header-only parse and no streaming short-circuit. `WorkspaceOption.resolverFor` is called from **56 command sources**, one of which is an abstract base standing for four leaves, so roughly **59 verbs** pay it once per invocation; `WorkspaceOption`'s own javadoc says *"~60 call sites"*. Two further verbs (`workspace list`, `workspace check`) build the same eager index directly. R3 measures this, and the experiment is `model info` on one self-contained model with `-w` pointed at trees of 1 / 50 / 500 models.
+**This is a simplification, not a cost — it deletes a hazard class rather than defending against one.** The three addressing hazards this section used to carry existed *only* because the caller names locations: `$DMTOOL_WORKSPACE` freezing into ambient state the caller can neither see nor change; relative paths resolving against a server CWD the caller does not know; and traversal from caller-supplied paths, which the specification requires servers to sanitise and which — as the earlier text conceded — reached far past `model`/`workspace` into at least 12 `FILE`-tagged parameters plus several positional operands inside `args`. Under rule 1 none of them is reachable, so none needs a guard, a corrective diagnostic, or an echo of resolved roots.
 
-**Three addressing hazards that a one-shot process hides and a resident one does not:**
+**The mechanism, and why one is needed.** `Cli.run` is path-based: measured on the live tree, **seven verbs accept their content only as a file** (`rule add`, `computation add`, `computation modify`, `field modify`, `profile compare`, `apply`, `batch`) with no inline alternative and no stdin route anywhere in `:cli` — nor could there be, since stdio's stdin is the JSON-RPC channel — and `-m` is a path. So the MCP layer materialises: per request, a fresh temporary tree; inbound content written under **server-generated** names; the argument vector built against those names; `Cli.run` invoked; outbound artifacts read back into the response; the tree deleted. This is [§13.4](#134-the-hosted-design--requests-carry-their-content)'s route A, so **stdio and hosted now share one content mechanism instead of each having its own.**
 
-1. **`$DMTOOL_WORKSPACE` becomes frozen ambient state.** The precedence is `-w > $DMTOOL_WORKSPACE > the model's directory`, and the env value is fixed by the host at process start — a value the model can neither see nor change, and stale if the user switches projects. **Phase 1 echoes the resolved roots in every response**, so env-derived resolution is never invisible.
-2. **Relative paths resolve against the server's CWD**, which the host chooses and the model does not know. **Phase 1 rejects a relative `model` or `workspace`** with a corrective diagnostic naming the CWD.
-3. **The model supplies the path**, a different trust boundary from a user's shell. The specification requires servers to sanitise file paths against traversal and validate all tool inputs. Phase 1 normalises and resolves both keys, rejects a path escaping the workspace root when one is set, and reports the rejection as a tool-execution error naming the searched roots. **Note this is not confined to `model`/`workspace`:** at least 12 `FILE`-tagged parameters plus several positional operands carry caller-supplied paths inside `args` (`profile compare --target/--actual`, `rule add <rule-spec.json>`, `apply <ops.json>`, `model import-jsonschema --schema`, …), and the manifest does not tag them all (§4). Path validation must cover `args`, not just the two addressing keys.
+**The residual, stated plainly.** Content does *transiently* touch the server's filesystem during a call. Rule 2 is therefore a **lifetime** guarantee — nothing outlives the request — rather than an absence of writes, and that distinction is recorded here rather than left for a reader to discover. The exit, if transient disk becomes unacceptable, is a content-first invocation path in `:cli`; it is larger than phase 1 and deliberately excluded. An in-memory `FileSystem` provider is **not** an option: the JDK ships none, and adding one violates the zero-new-dependency decision (§5.2).
 
-**On `--output` versus `--out-dir`:** not an inconsistency. `--output`/`-o` selects one file; `--out-dir` selects several — `export` writes four artifacts, `model import-jsonschema --out-dir` imports a bundle into multiple models. Both are visible in the operational profiles as `ARTIFACT_WRITE` and `MULTI_FILE_WRITE`.
+| direction | what crosses the wire |
+|---|---|
+| the subject model | its DM-JSON content |
+| models it references | the content of each, as §13.4's caller-declared resource tree |
+| a spec or document-instance input | the JSON, inline |
+| an edited model | the new DM-JSON content in the response — **the caller owns persistence** |
+| a multi-file result | each artifact inline, keyed by a server-assigned relative name |
+
+**Consequences that are now decisions rather than preferences:**
+
+- **`-m`, `-w`, `-o`, `--out-dir`, `--observations`, and every content path are not caller-settable over MCP.** `$DMTOOL_WORKSPACE` plays no part. The `--output`/`--out-dir` distinction remains a CLI fact and stops being an MCP one.
+- **Directory-scope inputs are excluded from phase 1** — `workspace check|list|graph|roles <dir>` and the custom-JS directories. Inline content for a *tree* is a different shape from inline content for a document, and §13.4's exclusions already name it.
+- **Nothing a call creates may outlive it**, which is stricter than this section's former rule and reaches a real defect the cold review surfaced: `CustomJsWorker` registers an **unremoved JVM shutdown hook per call**, and its `node` child lives until process exit. In a one-shot CLI that is correct and costs nothing; under rule 2 it is a violation. The old wording forbade only a cached *model*, which is exactly why it did not reach this. A residency audit — spawned processes, shutdown hooks, temp trees, `deleteOnExit` — is a phase-1 obligation (§12).
+- **Process-lifetime *service* singletons remain permitted**: `Backends`, `ReadBackends`, `OperatorCatalog.INSTANCE` hold no caller content. The line is caller content and per-call resources, not all state.
+- **R3 changes shape.** There is no directory to index, so the eager id-keyed index `ReferenceResolvers.directory(roots)` builds — `Files.readString` plus `mapper.readTree` over every candidate, with no header-only parse — no longer runs over a tree the caller points at. Per-call cost becomes proportional to the content the caller *sends*, which is the quantity §13.4 was already reasoning about.
+
+**Audience consequence.** The caller must be able to obtain and persist model content itself, which means a **host with file access** — Claude Code, an IDE, a desktop client with a filesystem connector — not a host with shell access to run `dmtool`. §10's "bare-MCP" framing was derived from the wrong constraint and is corrected there.
 
 ## 10. Packaging and the skill
 
@@ -444,6 +481,8 @@ Two rejected alternatives, recorded so they are not re-proposed: an **invocation
 ## 12. Scope
 
 **The Required list is a sequence, not a set.** `CommandReferencesResolveTest` resolves every command reference in `cli/src/main`, the rulekit catalog, the root and plugin READMEs, `skill/SKILL.md`, the Codex `AGENTS.md`, and the eval workflow against the **live** command tree — `docs/` is deliberately not scanned, which is why this proposal may name `dmtool mcp` while no such verb exists. The verb must exist in the picocli tree **before** any command example naming it enters one of those seven surfaces.
+
+**The positioning must ride the verb itself, not just this document.** If the `mcp` leaf ever lands, its `@Command` description is where a cold agent meets the surface, so that description — not an external doc — must say that the verb serves callers which cannot execute the binary and that direct verb invocation is preferable wherever it is available. The self-explaining rule already requires discoverability to live in the tool; here it also has to prevent a *wrong* choice, which is stronger than describing a capability. Until the verb exists there is no help text to carry it, which is why this is recorded as an obligation rather than done.
 
 **Adding the `mcp` leaf carries the standing new-verb obligations**, which the CLAUDE.md schema-discipline table imposes and which this proposal does not exempt itself from: `ManifestVerbTest.EXPECTED_VERBS` moves from 81 to 82 under its set-equality assertion, the conformance matrix must pass (described · params-described · schema-resolves · demonstrated), a `verb-examples.json` demonstration is added or a reasoned `DEMONSTRATION_PENDING` row recorded, and the verb needs an operational profile in `CommandContracts` — it renders an artifact rather than an envelope, so it is a `SchemaCommand.CONTRACT_EXEMPT` candidate with a stated reason.
 
@@ -683,6 +722,10 @@ What was held earlier in this proposal's life and is no longer held. Recorded he
 | Referrer analysis is outward-only | **corrected** | True for `where-used` and the rewriting refactors, false for `model rename` — the finding that produced the closed-world axis |
 | Route A means "every verb works immediately" | **corrected** | `model diff`'s two roots and git route need explicit handling |
 | A `ReferenceResolvers` map factory has no other caller | **corrected** | Unenumerated; `GitBaseline.GitModelResolver` is a production map-backed resolver. The factory is still not proposed, but for want of need rather than want of callers |
+| Phase 1 framed as work to ship, with reach *"a benefit, not the trigger"* stated but never carried to its conclusion | **superseded 2026-08-04 — the proposal is PARKED** | Joining §1's own admission (no trigger) to §10's (a plugin agent will shell out and ignore the tools) yields the conclusion neither drew: for a caller that can run the binary, MCP is indirection. §9's content-carrying decision then made the local case strictly worse than the CLI, since it gives up in-place editing. The three real value cases are recorded as re-open triggers (§1) |
+| *"Over stdio the server shares a filesystem with the user, so `model` and `workspace` are paths"*, defended by relative-path rejection, a resolved-roots echo, and traversal sanitising across `args` | **superseded 2026-08-04** | The server accepts no client path at all (§9), so all three guards protect an unreachable surface. A path from a caller is caller-controlled input into a filesystem; refusing the shape is strictly safer than sanitising it |
+| A model-as-path / specs-as-content split, justified by the model being the durable artifact the user owns | **rejected before it was written** | It kept per-caller isolation true for one transport and false for the other, reproducing the split the 2026-08-03 content-carrying decision existed to remove |
+| The Roots migration advice read as *"the specification's own recommendation"* for path addressing | **corrected 2026-08-04** | It licenses a location parameter where one is needed and names resource URIs as an equal alternative; it endorses nothing about accepting client filesystem paths (§2) |
 | The 26-tool effect-only split, with the `outputSchema` loss on 14 verbs framed as *"the cost this shape carries"* and a `ReturnKind` sub-split costed only as *"more tools"* | **superseded 2026-08-04** | The two axes are independent, so nothing had to be traded: the joint partition costs **4** tools — a number the earlier text never derived — and recovers both facts fully (54→68 verbs with `outputSchema`, 12→14 read-only tools). Framing it as a trade came from partitioning on one axis and treating the other as its casualty (§6) |
 | The seam rule: *"nothing **below** `McpDispatcher` may name a protocol type — no `_meta`, no headers, no `resultType`, no JSON-RPC envelope"*, with the transport drawn **under** the dispatcher | **corrected — it was inverted and overbroad** | The transport is the *outermost* layer, not an inner one, so the diagram contradicted the rule it illustrated. And banning `resultType`/`ttlMs`/`cacheScope` from the inner layers would have pushed caching *policy* into the transport; the ban is on library **types**, not protocol **facts** (§5) |
 | `--text` emits only the rendering, so passing it would lose the JSON | **corrected** | `TextRenderer` is gated and passes a non-envelope payload through unchanged; the loss applies only on envelope routes (§5.1) |
