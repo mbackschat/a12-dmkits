@@ -196,4 +196,42 @@ class UndeclaredReferenceTest {
     fun acceptsAModelWithNoRulesOrComputationsAtAll() {
         assertEquals(emptyList(), interpreter(orderModel()).undeclaredReferences())
     }
+
+    // ---------------------------------------------------------------------------------------------------
+    // The focused query is genuinely narrower than the whole-model one
+    // ---------------------------------------------------------------------------------------------------
+
+    @Test
+    fun theFocusedQueryReportsOnlyTheRuleItWasGiven() {
+        // A focused caller must not inherit another rule's problem: `rule eval <path>` evaluates one rule, and
+        // asking the whole-model question there would both over-refuse and force every rule's AST, defeating
+        // the parse-only-what-you-touch preparation that keeps a single-rule call cheap.
+        val clean = rule("CleanRule", "/Order/Items", "FieldNotFilled(Sku)", "../Sku")
+        val broken = rule("BrokenRule", "/Order/Items", "FieldNotFilled(NoSuchField)", "../Sku")
+        val engine = interpreter(orderModel(rules = listOf(clean, broken)))
+
+        assertEquals(emptyList(), engine.undeclaredReferences(clean),
+            "the clean rule reports nothing of its own")
+        assertEquals(listOf("/Order/Items/NoSuchField"), engine.undeclaredReferences(broken).map { it.path })
+        assertEquals(listOf("/Order/Items/NoSuchField"), engine.undeclaredReferences().map { it.path },
+            "the whole-model question still finds it")
+    }
+
+    @Test
+    fun theComputationHalfIsAskableOnItsOwn() {
+        // Askable apart from the rules because two callers need exactly it: `compute`, which validates nothing,
+        // and a focused rule evaluation under the form-engine flow, which applies the computations before
+        // validating and so reaches their references whichever rule the caller asked about.
+        val model = orderModel(
+            rules = listOf(rule("CleanRule", "/Order/Items", "FieldNotFilled(Sku)", "../Sku")),
+            computations = listOf(ComputationDef(
+                group = "/Order/Items",
+                name = "CountComp",
+                targetPath = "/Order/Items/Count",
+                alternatives = listOf(ComputationAlternative(precondition = null, operation = "[NoSuchNumber]")),
+            )),
+        )
+        assertEquals(listOf("/Order/Items/NoSuchNumber"),
+            interpreter(model).undeclaredComputationReferences().map { it.path })
+    }
 }

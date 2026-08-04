@@ -154,24 +154,34 @@ class DmInterpreter @JvmOverloads constructor(
      * reference resolves to a declared path and is not reported. Implicit computation-validation rules are
      * excluded because they are generated from the computations that are checked here.
      */
-    fun undeclaredReferences(): List<UndeclaredReference> = buildList {
-        model.rules.forEach { rule ->
-            addAll(undeclared(rule.path, namedEntityPaths(parsedModel.condAstOf(rule))))
-        }
-        model.computations.forEach { comp ->
-            val locus = comp.name?.let { "${comp.group}/$it" } ?: comp.targetPath
-            val parsed = parsedModel.parsedOf(comp)
-            parsed.commonPrecondition?.let { addAll(undeclared(locus, namedEntityPaths(it))) }
-            parsed.alternatives.forEach { alternative ->
-                alternative.precondition?.let { addAll(undeclared(locus, namedEntityPaths(it))) }
-                addAll(undeclared(locus, namedEntityPaths(alternative.operation)))
-            }
-        }
-    }.distinct()
+    fun undeclaredReferences(): List<UndeclaredReference> =
+        (model.rules.flatMap { undeclaredReferences(it) } + undeclaredComputationReferences()).distinct()
 
-    /** The same check for one ad-hoc candidate rule — the non-stored `--condition`/`--field` route. */
-    fun undeclaredReferences(candidate: RuleDef): List<UndeclaredReference> =
-        undeclared(candidate.path, namedEntityPaths(parsedModel.condAstOf(candidate))).distinct()
+    /**
+     * The same check for ONE rule's condition — a stored rule or an ad-hoc `--condition`/`--field` candidate.
+     *
+     * A focused caller uses this rather than [undeclaredReferences] so it stays focused: the whole-model form
+     * forces every rule's AST, which would defeat the parse-once-lazily design that lets [testRule] prepare only
+     * the rule it touches. It also keeps the refusal proportionate — an unrelated rule's bad reference cannot
+     * change this rule's verdict, so it is not this call's business to report.
+     */
+    fun undeclaredReferences(rule: RuleDef): List<UndeclaredReference> =
+        undeclared(rule.path, namedEntityPaths(parsedModel.condAstOf(rule))).distinct()
+
+    /**
+     * The computation half on its own — every guard and operation. Two callers need it apart from the whole-model
+     * query: [compute], which validates nothing; and a FOCUSED rule evaluation, which reaches a computation's
+     * reference despite being focused whenever the form-engine flow applies the computations first. A focused
+     * evaluation that skips that step reaches only its own rule, because [testRule]/[evalCandidate] never touch
+     * the implicit computation-validation rules that whole-model [validate] evaluates.
+     */
+    fun undeclaredComputationReferences(): List<UndeclaredReference> = model.computations.flatMap { comp ->
+        val locus = comp.name?.let { "${comp.group}/$it" } ?: comp.targetPath
+        val parsed = parsedModel.parsedOf(comp)
+        val conditions = listOfNotNull(parsed.commonPrecondition) + parsed.alternatives.mapNotNull { it.precondition }
+        conditions.flatMap { undeclared(locus, namedEntityPaths(it)) } +
+            parsed.alternatives.flatMap { undeclared(locus, namedEntityPaths(it.operation)) }
+    }.distinct()
 
     private fun undeclared(locus: String, paths: List<String>): List<UndeclaredReference> =
         paths.filter { it !in model.entityPaths }.map { UndeclaredReference(locus, it) }

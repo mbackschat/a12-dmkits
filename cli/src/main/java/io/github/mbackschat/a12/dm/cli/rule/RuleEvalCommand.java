@@ -127,19 +127,22 @@ final class RuleEvalCommand extends BaseCommand {
                         "field '" + field + "' does not exist — refusing candidate evaluation",
                         field, RkCode.NO_SUCH_FIELD.fix());
             }
-            // The condition's own references get the same treatment as --field's: an entity the model does not
-            // declare makes the rule impossible, so evaluating it would answer confidently about nothing (G46).
-            List<UndeclaredReference> undeclared = candidate
-                    ? InterpreterEngine.undeclaredCandidateReferences(interpJson, localeTag, candidateGroup,
-                            "EvalRuleCandidate", candidateErrorEntityRelPath, condition, code)
-                    : InterpreterEngine.undeclaredReferences(interpJson);
-            if (!undeclared.isEmpty()) {
-                return refuseUndeclaredReferences(undeclared);
-            }
             ObjectNode data;
             if (candidate) {
-                data = InterpreterEngine.ruleTestCandidateData(interpJson, documentJson, localeTag, candidateGroup,
-                        "EvalRuleCandidate", candidateErrorEntityRelPath, condition, code,
+                InterpreterEngine.CandidateRule spec = InterpreterEngine.CandidateRule.builder()
+                        .locale(localeTag).group(candidateGroup).name("EvalRuleCandidate")
+                        .errorEntityRelPath(candidateErrorEntityRelPath).condition(condition).code(code)
+                        .build();
+                // The condition's own references get the same treatment as --field's: an entity the model does
+                // not declare makes the rule impossible, so evaluating it would answer confidently about
+                // nothing (G46). Scoped to what this focused call actually reaches — the candidate alone, plus
+                // the computations only when the form-engine flow applies them.
+                List<UndeclaredReference> undeclared = InterpreterEngine.undeclaredCandidateReferences(
+                        interpJson, spec, InterpreterEngine.Computations.of(!noComputations));
+                if (!undeclared.isEmpty()) {
+                    return refuseUndeclaredReferences(undeclared);
+                }
+                data = InterpreterEngine.ruleTestCandidateData(interpJson, documentJson, spec,
                         customSupport.predefinedTypes(), customSupport.customConditions(),
                         customSupport.customFieldTypes(), !noComputations);
             } else {
@@ -147,6 +150,11 @@ final class RuleEvalCommand extends BaseCommand {
                 if (!InterpreterEngine.ruleFullNames(interpJson).contains(rule)) {
                     return refuseNotFound(RkCode.NO_SUCH_RULE,
                             "rule '" + rule + "' does not exist — refusing", rule, RkCode.NO_SUCH_RULE.fix());
+                }
+                List<UndeclaredReference> undeclared = InterpreterEngine.undeclaredRuleReferences(
+                        interpJson, rule, InterpreterEngine.Computations.of(!noComputations));
+                if (!undeclared.isEmpty()) {
+                    return refuseUndeclaredReferences(undeclared);
                 }
                 data = InterpreterEngine.ruleTestData(interpJson, documentJson, localeTag, rule,
                         customSupport.predefinedTypes(), customSupport.customConditions(),

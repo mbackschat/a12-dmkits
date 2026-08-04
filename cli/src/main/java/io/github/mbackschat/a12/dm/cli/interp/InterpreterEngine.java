@@ -3,6 +3,7 @@ package io.github.mbackschat.a12.dm.cli.interp;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.stream.Stream;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
@@ -74,23 +75,90 @@ public final class InterpreterEngine {
     }
 
     /**
-     * Every reference in the prepared model's rules and computations that names an entity the model does not
-     * declare — the value-independent gate the runtime verbs run before they answer (G46). Kernel-free, so it
-     * works on the native binary where the MVK consistency oracle is unavailable.
+     * How much of the model a runtime verb's undeclared-reference gate (G46) speaks for — always exactly what the
+     * verb about to run will evaluate, never more and never less.
+     *
+     * <p>The bound is load-bearing in both directions. Reporting LESS than the verb reaches would let a bad
+     * reference through and put the verb back to answering confidently about a rule that cannot exist. Reporting
+     * MORE would refuse a call that is sound as issued: a focused question is not the place to report an
+     * unrelated rule's typo, and asking the whole-model question there would force every rule's AST, defeating
+     * the interpreter's parse-only-what-you-touch preparation that keeps a single-rule call cheap.
+     *
+     * <p>Each entry point below names its own rule domain — the rule the caller asked about, every stored rule,
+     * or none at all ({@code model compute} validates nothing). This enum settles the one remaining choice, and
+     * only a FOCUSED verb has it: {@code --no-computations} skips the compute-and-apply step, and a focused rule
+     * is then the only thing evaluated. <b>Whole-model validation has no such choice</b> — it evaluates the
+     * implicit computation-validation rules ({@code [F] != <operation>}, one per computation — IF32/IF65) whether
+     * or not the compute step ran, so a computation's operation is reached either way and stays in scope.
+     */
+    public enum Computations {
+        /** The form-engine flow: compute → apply → evaluate. The default of every eval verb. */
+        APPLIED,
+        /** {@code --no-computations}: evaluate the stored values as they are. */
+        SKIPPED;
+
+        public static Computations of(boolean applied) {
+            return applied ? APPLIED : SKIPPED;
+        }
+    }
+
+    /**
+     * The gate for a WHOLE-MODEL evaluation ({@code model eval}): every stored rule and every computation.
+     * Kernel-free, so it works on the native binary where the MVK consistency oracle is unavailable.
      */
     public static List<UndeclaredReference> undeclaredReferences(String modelJson) {
         return new DmInterpreter(InterpreterModelLoader.load(modelJson)).undeclaredReferences();
     }
 
+    /** The same whole-model gate with a non-stored candidate appended — {@code model eval --condition}. */
+    public static List<UndeclaredReference> undeclaredReferencesWithCandidate(String modelJson,
+            CandidateRule candidate) {
+        DmInterpreter interpreter = new DmInterpreter(InterpreterModelLoader.load(modelJson));
+        return union(interpreter.undeclaredReferences(focusedRule(candidate)),
+                interpreter.undeclaredReferences());
+    }
+
     /**
-     * The same gate for a non-stored {@code --condition}/{@code --field} candidate, whose references are checked
-     * against the prepared model it would be evaluated in.
+     * The gate for {@code model compute}, which runs the computations and validates nothing — so a stored rule's
+     * undeclared reference is out of scope here however broken it is.
      */
-    public static List<UndeclaredReference> undeclaredCandidateReferences(String modelJson, String locale,
-            String group, String name, String errorEntityRelPath, String condition, String code) {
+    public static List<UndeclaredReference> undeclaredComputationReferences(String modelJson) {
+        return new DmInterpreter(InterpreterModelLoader.load(modelJson)).undeclaredComputationReferences();
+    }
+
+    /**
+     * The gate for a FOCUSED stored-rule evaluation ({@code rule eval <rulePathInModel>}): that rule's condition,
+     * plus the computations when the form-engine flow applies them. An unknown {@code rulePath} yields no
+     * findings — every caller refuses a missing rule ({@code RK_NO_SUCH_RULE}) before reaching here, so there is
+     * no rule to answer about rather than nothing to report.
+     */
+    public static List<UndeclaredReference> undeclaredRuleReferences(String modelJson, String rulePath,
+            Computations computations) {
         ModelDef def = InterpreterModelLoader.load(modelJson);
-        RuleDef candidate = candidateRule(locale, group, name, errorEntityRelPath, condition, code, "ERROR", code);
-        return new DmInterpreter(def).undeclaredReferences(candidate);
+        DmInterpreter interpreter = new DmInterpreter(def);
+        return def.getRules().stream().filter(rule -> rule.getPath().equals(rulePath)).findFirst()
+                .map(rule -> union(interpreter.undeclaredReferences(rule), applied(interpreter, computations)))
+                .orElseGet(List::of);
+    }
+
+    /** The same focused gate for a non-stored {@code --condition}/{@code --field} candidate ({@code rule eval}). */
+    public static List<UndeclaredReference> undeclaredCandidateReferences(String modelJson,
+            CandidateRule candidate, Computations computations) {
+        DmInterpreter interpreter = new DmInterpreter(InterpreterModelLoader.load(modelJson));
+        return union(interpreter.undeclaredReferences(focusedRule(candidate)),
+                applied(interpreter, computations));
+    }
+
+    private static List<UndeclaredReference> applied(DmInterpreter interpreter, Computations computations) {
+        return switch (computations) {
+            case APPLIED -> interpreter.undeclaredComputationReferences();
+            case SKIPPED -> List.of();
+        };
+    }
+
+    private static List<UndeclaredReference> union(List<UndeclaredReference> first,
+            List<UndeclaredReference> second) {
+        return Stream.concat(first.stream(), second.stream()).distinct().toList();
     }
 
     /** {@code model eval} over the whole model (optionally narrowing the {@code rule} verdict to {@code targetRule}).
@@ -118,30 +186,108 @@ public final class InterpreterEngine {
      * identical to persisting the rule (G42), never a single index-less collapse; {@code rule} narrows to it.
      * A candidate carries no message template, so it renders its {@code name} (matching the kernel's fallback).
      */
-    public static ObjectNode evalCandidateData(String modelJson, String documentJson, String locale,
-            String group, String name, String errorEntityRelPath, String condition, String code, String severity,
+    public static ObjectNode evalCandidateData(String modelJson, String documentJson, CandidateRule candidate,
             Map<String, PredefinedType> predefinedTypes, Map<String, CustomCondition> customConditions,
             Map<String, CustomFieldType> customFieldTypes, boolean applyComputations) {
-        return evalCandidateData(modelJson, documentJson, locale, group, name, errorEntityRelPath, condition, code,
-                severity, predefinedTypes, customConditions, customFieldTypes, applyComputations, null);
+        return evalCandidateData(modelJson, documentJson, candidate, predefinedTypes, customConditions,
+                customFieldTypes, applyComputations, null);
     }
 
     /** Candidate evaluation with optional partial-validation relevance. */
-    public static ObjectNode evalCandidateData(String modelJson, String documentJson, String locale,
-            String group, String name, String errorEntityRelPath, String condition, String code, String severity,
+    public static ObjectNode evalCandidateData(String modelJson, String documentJson, CandidateRule candidate,
             Map<String, PredefinedType> predefinedTypes, Map<String, CustomCondition> customConditions,
             Map<String, CustomFieldType> customFieldTypes, boolean applyComputations, String relevantJson) {
-        RuleDef candidate = candidateRule(locale, group, name, errorEntityRelPath, condition, code, severity, name);
-        ModelDef def = InterpreterModelLoader.load(modelJson).withRule(candidate);
-        return evalFor(def, documentJson, locale, candidate.getPath(),
+        RuleDef rule = candidateRule(candidate, candidate.name());
+        ModelDef def = InterpreterModelLoader.load(modelJson).withRule(rule);
+        return evalFor(def, documentJson, candidate.locale(), rule.getPath(),
                 predefinedTypes, customConditions, customFieldTypes, applyComputations, relevantJson);
     }
 
-    /** The one candidate-rule representation consumed by both model-scope and focused runtime evaluation. */
-    private static RuleDef candidateRule(String locale, String group, String name, String errorEntityRelPath,
-            String condition, String code, String severity, String message) {
-        return new RuleDef(group + "/" + name, group, condition, code, errorEntityRelPath,
-                Severity.valueOf(severity.toUpperCase()), Map.of(locale, message));
+    /**
+     * The non-stored candidate rule a runtime verb was asked about ({@code --condition} + {@code --field}) — the
+     * rule it would be if it were stored. A value object rather than six positional strings because the same six
+     * feed three entry points (the reference gate, whole-model candidate eval, focused candidate eval) and, being
+     * same-typed, are silently swap-prone at every call site.
+     *
+     * @param severity the candidate's severity; {@code model eval} takes it from the caller, the focused routes
+     *                 evaluate every candidate as an ERROR because a verdict does not depend on it
+     */
+    public record CandidateRule(String locale, String group, String name, String errorEntityRelPath,
+            String condition, String code, String severity) {
+
+        public static Builder builder() {
+            return new Builder();
+        }
+
+        /** The public construction path — named setters, so no two same-typed arguments can trade places. */
+        public static final class Builder {
+            private String locale;
+            private String group;
+            private String name;
+            private String errorEntityRelPath;
+            private String condition;
+            private String code;
+            private String severity = "ERROR";
+
+            private Builder() {
+            }
+
+            public Builder locale(String locale) {
+                this.locale = locale;
+                return this;
+            }
+
+            public Builder group(String group) {
+                this.group = group;
+                return this;
+            }
+
+            public Builder name(String name) {
+                this.name = name;
+                return this;
+            }
+
+            public Builder errorEntityRelPath(String errorEntityRelPath) {
+                this.errorEntityRelPath = errorEntityRelPath;
+                return this;
+            }
+
+            public Builder condition(String condition) {
+                this.condition = condition;
+                return this;
+            }
+
+            public Builder code(String code) {
+                this.code = code;
+                return this;
+            }
+
+            /** Leave unset for the ERROR default the focused routes always use. */
+            public Builder severity(String severity) {
+                this.severity = severity;
+                return this;
+            }
+
+            public CandidateRule build() {
+                return new CandidateRule(locale, group, name, errorEntityRelPath, condition, code, severity);
+            }
+        }
+    }
+
+    /**
+     * The one candidate-rule representation consumed by both model-scope and focused runtime evaluation. The
+     * {@code message} differs by route: whole-model eval renders the candidate's {@code name} (the kernel's
+     * fallback for a rule with no template), the focused routes render its {@code code}.
+     */
+    private static RuleDef candidateRule(CandidateRule candidate, String message) {
+        return new RuleDef(candidate.group() + "/" + candidate.name(), candidate.group(), candidate.condition(),
+                candidate.code(), candidate.errorEntityRelPath(),
+                Severity.valueOf(candidate.severity().toUpperCase()), Map.of(candidate.locale(), message));
+    }
+
+    /** The candidate as the focused routes build it — reference gate and {@code rule eval} must see one rule. */
+    private static RuleDef focusedRule(CandidateRule candidate) {
+        return candidateRule(candidate, candidate.code());
     }
 
     /**
@@ -230,16 +376,16 @@ public final class InterpreterEngine {
      * {@code rule eval --condition/--field}: focused runtime evaluation of one non-stored candidate, rendered
      * through the same fired/passed/suppressed/unsupported data contract as a stored rule.
      */
-    public static ObjectNode ruleTestCandidateData(String modelJson, String documentJson, String locale,
-            String group, String name, String errorEntityRelPath, String condition, String code,
+    public static ObjectNode ruleTestCandidateData(String modelJson, String documentJson, CandidateRule candidate,
             Map<String, PredefinedType> predefinedTypes, Map<String, CustomCondition> customConditions,
             Map<String, CustomFieldType> customFieldTypes, boolean applyComputations) {
         ModelDef def = InterpreterModelLoader.load(modelJson);
         Document doc = InterpreterModelLoader.document(documentJson, def);
-        RuleDef candidate = candidateRule(locale, group, name, errorEntityRelPath, condition, code, "ERROR", code);
-        return focusedRuleData(def, doc, locale, candidate.getPath(), predefinedTypes, customConditions,
+        String locale = candidate.locale();
+        RuleDef rule = focusedRule(candidate);
+        return focusedRuleData(def, doc, locale, rule.getPath(), predefinedTypes, customConditions,
                 customFieldTypes, applyComputations,
-                (interpreter, evaluated) -> interpreter.evalCandidate(candidate, evaluated, locale));
+                (interpreter, evaluated) -> interpreter.evalCandidate(rule, evaluated, locale));
     }
 
     @FunctionalInterface

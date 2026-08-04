@@ -156,11 +156,17 @@ final class ModelEvalCommand extends BaseCommand {
                     "field '" + field + "' does not exist — refusing candidate evaluation",
                     field, RkCode.NO_SUCH_FIELD.fix());
         }
+        InterpreterEngine.CandidateRule spec = !candidate ? null : InterpreterEngine.CandidateRule.builder()
+                .locale(localeTag).group(effectiveGroup).name(name).errorEntityRelPath(errorEntityRelPath)
+                .condition(condition).code(code).severity(severity)
+                .build();
         // The condition's own references, held to the same bar as --field's (G46). A stored rule is checked too:
         // dmtool's write paths gate every reference, but a model that arrived from anywhere else was never gated.
+        // Whole-model either way — a candidate here is appended to the model and evaluated alongside every stored
+        // rule — and the computations stay in scope even under --no-computations, because validation evaluates
+        // the implicit computation-validation rules regardless (IF32/IF65).
         List<UndeclaredReference> undeclared = candidate
-                ? InterpreterEngine.undeclaredCandidateReferences(interpJson, localeTag, effectiveGroup, name,
-                        errorEntityRelPath, condition, code)
+                ? InterpreterEngine.undeclaredReferencesWithCandidate(interpJson, spec)
                 : InterpreterEngine.undeclaredReferences(interpJson);
         if (!undeclared.isEmpty()) {
             return refuseUndeclaredReferences(undeclared);
@@ -169,8 +175,7 @@ final class ModelEvalCommand extends BaseCommand {
         ObjectNode data;
         try {
             if (candidate) {
-                data = InterpreterEngine.evalCandidateData(interpJson, documentJson, localeTag,
-                        effectiveGroup, name, errorEntityRelPath, condition, code, severity,
+                data = InterpreterEngine.evalCandidateData(interpJson, documentJson, spec,
                         customSupport.predefinedTypes(), customSupport.customConditions(),
                         customSupport.customFieldTypes(), !noComputations, relevant);
             } else {

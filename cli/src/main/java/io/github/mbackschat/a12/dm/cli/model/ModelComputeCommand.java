@@ -70,8 +70,9 @@ final class ModelComputeCommand extends BaseCommand {
                 InterpreterEngine.prepareForEval(modelJson, Path.of(model).getFileName().toString(), resolver);
 
         // An operation naming an entity the model does not declare has no empty reading to fall back on, so it
-        // used to die mid-computation as an untyped failure. Same gate, same code as the eval verbs (G46).
-        List<UndeclaredReference> undeclared = InterpreterEngine.undeclaredReferences(interpJson);
+        // used to die mid-computation as an untyped failure. Same gate, same code as the eval verbs (G46) — but
+        // this verb validates nothing, so only the computations are in its scope.
+        List<UndeclaredReference> undeclared = InterpreterEngine.undeclaredComputationReferences(interpJson);
         if (!undeclared.isEmpty()) {
             return refuseUndeclaredReferences(undeclared);
         }
