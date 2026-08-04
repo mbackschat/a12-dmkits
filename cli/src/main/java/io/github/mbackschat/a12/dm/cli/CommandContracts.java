@@ -30,8 +30,57 @@ import picocli.CommandLine.ParseResult;
 final class CommandContracts {
 
     enum Execution { STATIC, DM_INTERPRETER_RUNTIME }
-    enum Effect { READ_ONLY, MODEL_WRITE, ARTIFACT_WRITE, MULTI_FILE_WRITE, TRANSACTION, DISPATCH }
-    enum FailurePersistence { NO_WRITE, ROLLBACK, PARTIAL }
+
+    enum Effect {
+        READ_ONLY, MODEL_WRITE, ARTIFACT_WRITE, MULTI_FILE_WRITE, TRANSACTION, DISPATCH;
+
+        /**
+         * Whether this effect can leave bytes on disk — the discriminator for who needs the persistence scope.
+         * Only {@code READ_ONLY} cannot: a stdout-only artifact route is {@code READ_ONLY} by construction, since
+         * {@code fileWriter} is selected on a <i>supplied</i> output option. {@code DISPATCH} counts because its
+         * children write.
+         */
+        boolean writes() {
+            return this != READ_ONLY;
+        }
+    }
+
+    /**
+     * What survives a failure — and, in {@link #SCOPE}, the failure classes that claim actually covers.
+     *
+     * <p>The scope is <b>published</b>, not merely commented here: {@code NO_WRITE} rides profiles whose effect
+     * is a write, where a reader may fairly take it for an unconditional durability promise. It is not one, and
+     * the boundary has to travel with the value rather than live in a doc the value does not point at.
+     */
+    enum FailurePersistence {
+        NO_WRITE("the destination is not written at all"),
+        ROLLBACK("every write this invocation already made is reverted, leaving each destination as it was"),
+        PARTIAL("writes already made remain, and the ones after the failure do not happen");
+
+        /**
+         * The failure classes these values describe, and the two they deliberately do not. The excluded pair is a
+         * withheld guarantee rather than a measured behavior: no write path in this tool does an atomic replace
+         * ({@code Files.writeString}/{@code Files.write} truncate the destination in place), so neither case can
+         * be promised to leave it unchanged.
+         */
+        static final String SCOPE = "These values describe what survives a failure this tool detects and "
+                + "reports: a rejected invocation, a domain refusal, and a failing child op. They are not claims "
+                + "about an I/O failure during the write itself, or about abnormal process termination — every "
+                + "destination is truncated and rewritten in place, never atomically replaced, so in those two "
+                + "cases the destination is not guaranteed to be left unchanged. Re-verify an interrupted run "
+                + "with `" + Cli.TOOL_NAME + " model check`.";
+
+        private final String meaning;
+
+        FailurePersistence(String meaning) {
+            this.meaning = meaning;
+        }
+
+        String meaning() {
+            return meaning;
+        }
+    }
+
     enum DryRun { NOT_APPLICABLE, SUPPORTED, ACTIVE }
     enum AggregateSuccess { SELF, TRANSACTION_COMMITTED, TRANSACTION_SUCCEEDED, ALL_CHILD_EXITS_ZERO }
     enum TopLevelOk { OUTCOME_SUCCEEDED, EXECUTION_COMPLETED, ALL_CHILD_EXITS_ZERO }
@@ -397,6 +446,40 @@ final class CommandContracts {
         return array;
     }
 
+    /**
+     * The published meaning of the contract axes whose bare enum name under-describes what it claims. Derived
+     * from the enum itself, so a new value or a sharpened meaning cannot leave the vocabulary behind.
+     */
+    static ObjectNode vocabulary() {
+        ObjectNode root = MAPPER.createObjectNode();
+        ObjectNode persistence = root.putObject("failurePersistence");
+        persistence.put("scope", FailurePersistence.SCOPE);
+        ObjectNode values = persistence.putObject("values");
+        for (FailurePersistence value : FailurePersistence.values()) {
+            values.put(value.name(), value.meaning());
+        }
+        return root;
+    }
+
+    /**
+     * Attach this leaf's operational owner to a response frame: always the profiles, and the persistence
+     * vocabulary exactly when the leaf can write — that is the only case where a bare {@code NO_WRITE} can be
+     * read as a promise the tool does not make. A whole-tree surface carries {@link #vocabulary()} once instead.
+     */
+    static void attachTo(ObjectNode frame, String verb, CommandSpec command) {
+        List<Profile> profiles = profiles(verb, command);
+        ArrayNode array = MAPPER.createArrayNode();
+        profiles.forEach(profile -> array.add(profile.toJson()));
+        frame.set("operationalProfiles", array);
+        if (writes(profiles)) {
+            frame.set("contractVocabulary", vocabulary());
+        }
+    }
+
+    private static boolean writes(List<Profile> profiles) {
+        return profiles.stream().anyMatch(profile -> profile.effect().writes());
+    }
+
     /** Parse without executing and return exactly the profiles whose selectors describe the real parsed values. */
     static List<Profile> matchingProfiles(List<String> args) {
         ParsedInvocation parsed = parse(args);
@@ -460,8 +543,12 @@ final class CommandContracts {
         Set<CommandLine> children = new LinkedHashSet<>(command.getSubcommands().values());
         if (children.isEmpty()) {
             List<Profile> profiles = profiles(name, spec);
+            List<String> footer = new ArrayList<>(profiles.stream().map(Profile::helpLine).toList());
+            if (writes(profiles)) {
+                footer.add("  persistence scope: " + FailurePersistence.SCOPE);
+            }
             spec.usageMessage().footerHeading("%nOperational contract:%n");
-            spec.usageMessage().footer(profiles.stream().map(Profile::helpLine).toArray(String[]::new));
+            spec.usageMessage().footer(footer.toArray(String[]::new));
             return;
         }
         children.forEach(child -> decorateHelp(child, name, visited));

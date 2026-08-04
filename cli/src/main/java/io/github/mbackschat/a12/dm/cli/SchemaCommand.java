@@ -196,7 +196,7 @@ final class SchemaCommand extends BaseCommand {
         contract.put("op", verb);
         contract.put("contract", "operational-only");
         contract.put("directionalExemption", CONTRACT_EXEMPT.get(verb));
-        contract.set("operationalProfiles", CommandContracts.toJson(verb, command));
+        CommandContracts.attachTo(contract, verb, command);
         out().print(contract.toPrettyString() + "\n");
         return 0;
     }
@@ -219,7 +219,7 @@ final class SchemaCommand extends BaseCommand {
                 }
                 // A JSON-Schema annotation: the frame shape and its operational contract remain one response,
                 // rendered from the same owner as manifest/help rather than duplicated in schema prose.
-                frame.set("operationalProfiles", CommandContracts.toJson(name, command));
+                CommandContracts.attachTo(frame, name, command);
                 out().print(frame.toPrettyString() + "\n");
             } else {
                 out().print(source);
@@ -298,7 +298,7 @@ final class SchemaCommand extends BaseCommand {
         if (command == null) {
             return fail("cannot resolve live command contract: " + verb);
         }
-        c.set("operationalProfiles", CommandContracts.toJson(verb, command));
+        CommandContracts.attachTo(c, verb, command);
         out().print(c.toPrettyString() + "\n");
         return 0;
     }

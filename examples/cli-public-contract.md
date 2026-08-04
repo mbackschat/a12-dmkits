@@ -61,6 +61,19 @@ test "$before" = "$after" && echo 'model unchanged: true'
 model unchanged: true
 ```
 
+That `written:false` is a *contract* claim, so the tool publishes the claim's boundary instead of leaving it to prose. The commit profile declares `NO_WRITE`, and `contractVocabulary` — carried by every verb that can write — says which failures that covers and which two it does not.
+
+```bash
+dmtool schema computation add | jq -r '
+  (.operationalProfiles[] | select(.id=="commit") | "commit: \(.effect), failure=\(.failurePersistence)"),
+  .contractVocabulary.failurePersistence.scope'
+```
+
+```output
+commit: MODEL_WRITE, failure=NO_WRITE
+These values describe what survives a failure this tool detects and reports: a rejected invocation, a domain refusal, and a failing child op. They are not claims about an I/O failure during the write itself, or about abnormal process termination — every destination is truncated and rewritten in place, never atomically replaced, so in those two cases the destination is not guaranteed to be left unchanged. Re-verify an interrupted run with `dmtool model check`.
+```
+
 Persist the same accepted spec, then read its canonical stored form.
 
 ```bash

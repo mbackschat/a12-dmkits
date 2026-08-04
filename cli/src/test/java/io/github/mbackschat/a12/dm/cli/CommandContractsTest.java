@@ -4,10 +4,12 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.stream.Stream;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -83,6 +85,69 @@ class CommandContractsTest {
         assertProfile(manifest, "patterns", "commit", "MODEL_WRITE", "NO_WRITE", "SELF");
         assertProfile(manifest, "schema", "orientation", "READ_ONLY", "NO_WRITE", "SELF");
         assertProfile(manifest, "workspace graph", "tree", "READ_ONLY", "NO_WRITE", "SELF");
+    }
+
+    /**
+     * {@code NO_WRITE} rides 43 profiles whose effect is a write, so the scope of the persistence claim has to
+     * be published wherever the value is — not left to a doc the value does not point at. The discriminator is
+     * two-directional on purpose: presence alone would pass on a vocabulary bolted onto every response.
+     */
+    @Test
+    void thePersistenceClaimPublishesItsScopeOnEveryVerbThatCanWrite() throws Exception {
+        JsonNode manifest = MAPPER.readTree(CliTestSupport.run("manifest").out());
+        JsonNode vocabulary = manifest.path("contractVocabulary");
+        JsonNode persistence = vocabulary.path("failurePersistence");
+        String scope = persistence.path("scope").asText();
+        assertTrue(scope.contains("I/O failure") && scope.contains("abnormal process termination"),
+                () -> "the scope must name both excluded failure classes: " + scope);
+        assertTrue(scope.contains("never atomically replaced"),
+                () -> "the scope must say why neither is guaranteed: " + scope);
+
+        Set<String> declaredValues = new HashSet<>();
+        persistence.path("values").fieldNames().forEachRemaining(declaredValues::add);
+        assertEquals(Set.of("NO_WRITE", "ROLLBACK", "PARTIAL"), declaredValues);
+        persistence.path("values").fields().forEachRemaining(entry ->
+                assertFalse(entry.getValue().asText().isBlank(), () -> entry.getKey() + " has no published meaning"));
+
+        int writing = 0;
+        int readOnly = 0;
+        for (JsonNode verb : manifest.path("verbs")) {
+            String name = verb.path("verb").asText();
+            boolean writes = false;
+            for (JsonNode profile : verb.path("operationalProfiles")) {
+                assertTrue(declaredValues.contains(profile.path("failurePersistence").asText()),
+                        () -> name + " publishes a persistence value the vocabulary does not define");
+                writes |= !"READ_ONLY".equals(profile.path("effect").asText());
+            }
+            CliTestSupport.Result result = CliTestSupport.run(
+                    Stream.concat(Stream.of("schema"), Arrays.stream(name.split(" "))).toArray(String[]::new));
+            assertEquals(0, result.code(), () -> name + ": " + result.err());
+            JsonNode contract = MAPPER.readTree(result.out());
+            if (writes) {
+                writing++;
+                assertEquals(vocabulary, contract.path("contractVocabulary"),
+                        () -> name + " can write but does not publish the persistence scope");
+            } else {
+                readOnly++;
+                assertTrue(contract.path("contractVocabulary").isMissingNode(),
+                        () -> name + " writes nothing, so a persistence scope there is noise");
+            }
+        }
+        assertEquals(47, writing, "every leaf with at least one writing profile carries the scope");
+        assertEquals(34, readOnly, "the always-read-only leaves stay free of it");
+    }
+
+    @Test
+    void theScopeReachesTheGeneratedHelpOfAWritingLeafOnly() {
+        CliTestSupport.Result writing = CliTestSupport.run("field", "add", "--help");
+        assertEquals(0, writing.code(), writing::err);
+        assertTrue(writing.out().contains("persistence scope:"), writing::out);
+        assertTrue(writing.out().contains("never atomically replaced"), writing::out);
+
+        CliTestSupport.Result read = CliTestSupport.run("field", "read", "--help");
+        assertEquals(0, read.code(), read::err);
+        assertTrue(read.out().contains("Operational contract:"), read::out);
+        assertFalse(read.out().contains("persistence scope:"), read::out);
     }
 
     @Test

@@ -43,6 +43,7 @@ A cold agent learns the whole surface from the tool:
 | **what a `code` means** | `dmtool diagnostics` (list) / `dmtool diagnostics <CODE>` (explain) — the `operators` twin, derived from the registry | registry parity guard |
 | what `severity`/`source` mean | `schema diagnostic` (the `severity`/`source` enum descriptions) | schema guard |
 | whether an invocation reads/writes, what survives failure, dry-run behavior, output kind, aggregate success, and expected provenance | the generated leaf-help footer + `manifest.operationalProfiles` + the same schema annotation | `CommandContractsTest` + the packaged public-contract/mutation-safety suites |
+| **what a persistence value does and does not claim** | `manifest.contractVocabulary` once, plus `schema <verb>` and the help footer for each of the 47 verbs that can write — derived from the `FailurePersistence` enum, so a new value cannot leave it behind | `CommandContractsTest` (fails on a missing *and* on an indiscriminate vocabulary) |
 
 ## The gates (what enforces each rule)
 

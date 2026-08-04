@@ -56,6 +56,9 @@ final class ManifestCommand extends BaseCommand {
         // The standard result-envelope schema remains available even though explicitly described artifact
         // operations can return an artifact on stdout and a result receipt only when -o is selected.
         root.put("resultSchema", "result");
+        // What the operational axes actually claim, where the bare enum name under-describes it. The whole tree
+        // is one document, so this rides it once; `schema <verb>` repeats it per verb that can write.
+        root.set("contractVocabulary", CommandContracts.vocabulary());
         // the -m/--model context option is inherited by every verb — list it once, globally
         ArrayNode globals = root.putArray("globalOptions");
         for (OptionSpec o : spec.root().options()) {
