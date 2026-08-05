@@ -276,6 +276,10 @@ tasks.register('docGuardTest', Test) {
     filter {
         includeTestsMatching 'io.github.mbackschat.a12.dm.ApiFindingsNumberingGuardTest'
         includeTestsMatching 'io.github.mbackschat.a12.dm.DocSnippetFreshnessTest'
+        // ...but not its in-place fixer, which is a TOOL and not a check: `@EnabledIfSystemProperty` makes it
+        // report as skipped on every verification run, and a lane carrying a permanent benign skip cannot use
+        // `skipped=0` as evidence — a real skip would hide against that baseline. `syncDocSnippets` selects it.
+        excludeTestsMatching 'io.github.mbackschat.a12.dm.DocSnippetFreshnessTest.regenerateLockedDocSnippetsFromTheirRunTests'
         includeTestsMatching 'io.github.mbackschat.a12.dm.BuildPerformancePolicyTest'
         includeTestsMatching 'io.github.mbackschat.a12.dm.GateTierWiringTest'
         includeTestsMatching 'io.github.mbackschat.a12.dm.VersionMentionFreshnessTest'
