@@ -456,21 +456,29 @@ final class SchemaCommand extends BaseCommand {
         if (!(document instanceof ObjectNode root)) {
             return document;
         }
-        Set<String> targets = new TreeSet<>();
-        collectCrossReferences(root, targets);
-        if (targets.isEmpty()) {
+        Set<String> pending = new TreeSet<>();
+        collectCrossReferences(root, pending);
+        if (pending.isEmpty()) {
             return root;
         }
         ObjectNode defs = root.has("$defs") ? (ObjectNode) root.get("$defs") : MAPPER.createObjectNode();
-        for (String target : targets) {
-            if (defs.has(target)) {
-                continue; // already embedded (or an authored def of that name) — never clobber
+        Set<String> seen = new TreeSet<>();
+        while (!pending.isEmpty()) {
+            String target = pending.iterator().next();
+            pending.remove(target);
+            if (!seen.add(target)) {
+                continue; // already handled — also what makes a reference cycle terminate
             }
-            JsonNode referent = readSchema(target);
-            if (referent instanceof ObjectNode embedded) {
-                ObjectNode copy = embedded.deepCopy();
+            if (defs.has(target)) {
+                continue; // an authored def of that name wins; never clobbered
+            }
+            if (readSchema(target) instanceof ObjectNode referent) {
+                ObjectNode copy = referent.deepCopy();
                 copy.remove("$schema");
                 defs.set(target, copy);
+                // Close transitively: an embedded document may itself reference a third. Depth-1 embedding
+                // would emit a `$ref` the consumer still cannot resolve, which is the whole defect.
+                collectCrossReferences(copy, pending);
             }
         }
         root.set("$defs", defs);

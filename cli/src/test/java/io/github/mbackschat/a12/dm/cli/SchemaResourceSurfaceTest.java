@@ -106,9 +106,19 @@ class SchemaResourceSurfaceTest {
      */
     @Test
     void everyEmittedDocumentResolvesItsOwnRefs() throws Exception {
-        Set<String> emitters = SchemaCommand.crossDocumentReferences();
-        assertFalse(emitters.isEmpty(), "no cross-referencing document to check — the scan is broken");
-        for (String verb : List.of("schema result", "schema patterns")) {
+        // The denominator is DERIVED: every document that carries a sibling `$ref`, mapped to the invocation
+        // that serves it. Hardcoding a verb pair here would silently stop checking a third document the day one
+        // gained a reference — the same completeness failure this suite exists to catch elsewhere.
+        List<String> emitters = new ArrayList<>();
+        for (Map.Entry<String, String> entry : SchemaCommand.servedSchemas().entrySet()) {
+            List<String> refs = new ArrayList<>();
+            collectAbsoluteRefs(MAPPER.readTree(SCHEMA_DIR.resolve(entry.getKey() + ".schema.json").toFile()), refs);
+            if (!refs.isEmpty()) {
+                emitters.add(entry.getValue());
+            }
+        }
+        assertFalse(emitters.isEmpty(), "no cross-referencing document found — the scan is broken");
+        for (String verb : emitters) {
             CliTestSupport.Result res = CliTestSupport.run(verb.split(" "));
             assertEquals(0, res.code(), res::err);
             JsonNode emitted = MAPPER.readTree(res.out());

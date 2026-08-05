@@ -141,6 +141,32 @@ class ParamContentRoleTest {
         spec.subcommands().values().forEach(sub -> collectValuelessFlags(sub.getCommandSpec(), into));
     }
 
+    /**
+     * <b>Misclassification, not just non-classification.</b> The classifier decides direction from the flag
+     * name, so a destination that is not <em>named</em> like one falls through to the inbound default — which is
+     * exactly how {@code batch --observations} was published as {@code INBOUND_CONTENT} while
+     * {@code BatchObservationCapture} does {@code Files.writeString} to it. The parameter's own description is an
+     * <b>independent</b> signal (authored for humans, not derived from the flag), so cross-checking against it
+     * catches that class. Limitation, stated rather than implied: prose is a heuristic, so this catches a
+     * write-described parameter classified as anything else, and cannot prove the converse.
+     */
+    @Test
+    void noParamDescribedAsWrittenIsClassifiedAsInboundContent() throws Exception {
+        java.util.regex.Pattern writes = java.util.regex.Pattern.compile(
+                "\\b(overwrite|written as|written to|write (?:the|all|it|them)|writes)\\b",
+                java.util.regex.Pattern.CASE_INSENSITIVE);
+        List<String> wrong = publishedParams(manifest()).entrySet().stream()
+                .filter(e -> e.getValue().hasNonNull("contentRole"))
+                .filter(e -> !"OUTBOUND_DESTINATION".equals(e.getValue().path("contentRole").asText()))
+                .filter(e -> writes.matcher(e.getValue().path("description").asText()).find())
+                .map(e -> e.getKey() + " is " + e.getValue().path("contentRole").asText()
+                        + " but its description says it is written")
+                .sorted().toList();
+        assertTrue(wrong.isEmpty(),
+                () -> "these params are described as being written but are not classified as a destination — add "
+                        + "the flag to ContentRole.DESTINATION_FLAGS: " + wrong);
+    }
+
     /** The four roles are each actually reachable — a value no live param carries is a fiction in the vocabulary. */
     @Test
     void everyRoleIsCarriedByAtLeastOneLiveParam() throws Exception {

@@ -59,7 +59,13 @@ enum ContentRole {
     /** A label naming a concrete file: {@code <file>}, {@code <ops.json>}, {@code <roles.yaml>}, {@code <baseFile>}. */
     private static final Pattern NAMED_FILE = Pattern.compile("<([A-Za-z0-9_.-]+\\.(?:json|yaml|yml)|\\w*[Ff]ile)>");
 
-    private static final Set<String> DESTINATION_FLAGS = Set.of("--output", "-o", "--out-dir");
+    /**
+     * Flags the tool writes to. {@code --observations} is here because it is a destination that is <b>not</b>
+     * named like one — {@code BatchObservationCapture} does {@code Files.writeString(destination, …)} — and the
+     * fallback below would otherwise call it inbound. That miss is why {@code ParamContentRoleTest}
+     * cross-checks each role against the parameter's own description: the flag name alone cannot decide this.
+     */
+    private static final Set<String> DESTINATION_FLAGS = Set.of("--output", "-o", "--out-dir", "--observations");
 
     /** Workspace roots: searched to resolve a model's includes, never written. */
     private static final Set<String> SCOPE_FLAGS = Set.of("-w", "--workspace", "--base-workspace", "--head-workspace");
