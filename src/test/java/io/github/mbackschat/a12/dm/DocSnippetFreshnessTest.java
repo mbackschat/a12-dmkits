@@ -221,26 +221,43 @@ class DocSnippetFreshnessTest {
         }
     }
 
-    /** Replace the body of the first {@code ```java} fence after {@code <!-- snippet: id -->} with {@code body}. */
-    private static void rewriteDocFence(Path doc, String id, String body) throws IOException {
+    /** A fenced {@code ```java} block; group 1 is the body between the fence lines. */
+    private static final Pattern JAVA_FENCE = Pattern.compile("```java\\R(.*?)\\R```", Pattern.DOTALL);
+
+    /**
+     * A located snippet body: the whole document text plus the half-open range the body occupies. Both the read
+     * and the in-place rewrite go through {@link #locateFence}, so the verifier and the fixer cannot disagree
+     * about <em>which bytes a snippet is</em> — the same reason they already share one normalization path.
+     */
+    private record Fence(String text, int from, int to) {
+        String body() {
+            return text.substring(from, to);
+        }
+
+        String withBody(String replacement) {
+            return text.substring(0, from) + replacement + text.substring(to);
+        }
+    }
+
+    /** Locate the first {@code ```java} fence after {@code <!-- snippet: id -->} in {@code doc}. */
+    private static Fence locateFence(Path doc, String id) throws IOException {
         String text = Files.readString(doc);
         String marker = "<!-- snippet: " + id + " -->";
         int at = text.indexOf(marker);
         assertTrue(at >= 0, () -> "no marker `" + marker + "` in " + doc);
-        Matcher m = Pattern.compile("```java\\R(.*?)\\R```", Pattern.DOTALL).matcher(text);
+        Matcher m = JAVA_FENCE.matcher(text);
         assertTrue(m.find(at + marker.length()), () -> "no ```java fence after `" + marker + "` in " + doc);
-        Files.writeString(doc, text.substring(0, m.start(1)) + body + text.substring(m.end(1)));
+        return new Fence(text, m.start(1), m.end(1));
+    }
+
+    /** Replace the body of the first {@code ```java} fence after {@code <!-- snippet: id -->} with {@code body}. */
+    private static void rewriteDocFence(Path doc, String id, String body) throws IOException {
+        Files.writeString(doc, locateFence(doc, id).withBody(body));
     }
 
     /** The body of the first {@code ```java} fence after {@code <!-- snippet: id -->} in {@code doc}. */
     private static String docFence(Path doc, String id) throws IOException {
-        String text = Files.readString(doc);
-        String marker = "<!-- snippet: " + id + " -->";
-        int at = text.indexOf(marker);
-        assertTrue(at >= 0, () -> "no marker `" + marker + "` in " + doc);
-        Matcher m = Pattern.compile("```java\\R(.*?)\\R```", Pattern.DOTALL).matcher(text);
-        assertTrue(m.find(at + marker.length()), () -> "no ```java fence after `" + marker + "` in " + doc);
-        return m.group(1);
+        return locateFence(doc, id).body();
     }
 
     /** The lines between {@code // tag::id[]} and {@code // end::id[]} (markers excluded) in {@code src}. */
