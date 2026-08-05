@@ -186,7 +186,10 @@ final class ManifestCommand extends BaseCommand {
      * flag, never hand-listed per parameter.
      */
     private static void describeContent(ObjectNode n, ArgSpec param) {
-        if (param.paramLabel() != null && !param.paramLabel().isBlank()) {
+        // Only a param that actually ACCEPTS a value has a value shape to publish. picocli synthesizes a label
+        // from the field name even for an arity-0 boolean (`--recursive` gets `<recursive>`) and simply never
+        // renders it in help; publishing that would tell an agent the flag takes an argument when it does not.
+        if (param.arity().max() > 0 && param.paramLabel() != null && !param.paramLabel().isBlank()) {
             n.put("paramLabel", param.paramLabel());
         }
         ContentRole.of(param).ifPresent(role -> n.put("contentRole", role.name()));
