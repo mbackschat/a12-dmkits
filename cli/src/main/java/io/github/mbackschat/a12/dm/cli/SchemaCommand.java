@@ -7,6 +7,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.TreeMap;
+import java.util.TreeSet;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -162,6 +164,11 @@ final class SchemaCommand extends BaseCommand {
             Map.entry("model export-jsonschema", "emits the model as a JSON Schema artifact to stdout (report on "
                     + "stderr); with -o stdout carries a write-confirmation envelope"));
 
+    /** The prefix every published {@code $id} shares — a {@code $ref} carrying it addresses a sibling document. */
+    private static final String SCHEMA_ID_PREFIX = "https://github.com/mbackschat/a12-dmkits/schema/";
+
+    private static final String SCHEMA_SUFFIX = ".schema.json";
+
     /** Leaf op-names whose verb returns a read payload in the envelope's {@code data}. */
     private static final Set<String> READ_OPS =
             Set.of("read", "explain", "deps", "format", "describe", "usage", "eval", "compute", "meta");
@@ -176,7 +183,8 @@ final class SchemaCommand extends BaseCommand {
         if (tokens.isEmpty()) {
             out().print("Structure schemas: " + String.join(", ", STRUCTURES)
                     + "\nBatch frames: " + String.join(", ", FRAMES)
-                    + "\nVerb contracts: `schema <target> <op>` (e.g. `schema rule add`, `schema field read`).\n");
+                    + "\nVerb contracts: `schema <target> <op>` (e.g. `schema rule add`, `schema field read`).\n"
+                    + crossReferenceRegistry());
             return 0;
         }
         if (tokens.size() == 1 && (STRUCTURES.contains(tokens.get(0)) || FRAMES.contains(tokens.get(0)))) {
@@ -191,6 +199,106 @@ final class SchemaCommand extends BaseCommand {
             return operationalContract(verb);
         }
         return contract(verb);
+    }
+
+    /**
+     * The orientation's registry section: which invocation hands over each document that another schema
+     * {@code $ref}s. Without it a consumer of {@code schema result} holds a reference it cannot resolve and
+     * has nothing telling it where the referent lives.
+     */
+    private String crossReferenceRegistry() {
+        Map<String, String> referenced = crossReferenceEntries();
+        if (referenced.isEmpty()) {
+            return "";
+        }
+        int width = referenced.keySet().stream()
+                .mapToInt(name -> name.length() + SCHEMA_SUFFIX.length()).max().orElseThrow();
+        StringBuilder registry = new StringBuilder(
+                "\nThese schemas are `$ref`d by another document rather than restated, so a validator needs both"
+                        + " registered.\nFetch each with the invocation named here:\n");
+        String row = "  %-" + width + "s  `%s`%n";
+        referenced.forEach((target, invocation) -> registry.append(row.formatted(target + SCHEMA_SUFFIX, invocation)));
+        return registry.toString();
+    }
+
+    /**
+     * Every published schema resource, mapped to the {@code schema} invocation that hands it over — derived
+     * from the tables above rather than authored, so it cannot drift from what the verb actually serves. Where
+     * several invocations serve one document ({@code computation add} and {@code computation modify} both carry
+     * {@code computation-add}), the lexicographically first wins, so the map is deterministic.
+     */
+    static Map<String, String> servedSchemas() {
+        Map<String, String> served = new TreeMap<>();
+        STRUCTURES.forEach(name -> serves(served, name, name));
+        FRAMES.forEach(name -> serves(served, name, name));
+        EMBEDDED_SCHEMAS.forEach((frame, embedded) -> serves(served, embedded.schema(), frame));
+        INPUT_OPS.forEach((verb, name) -> serves(served, name, verb));
+        DOC_INPUT.forEach((verb, name) -> serves(served, name, verb));
+        DATA_SCHEMA.forEach((verb, name) -> serves(served, name, verb));
+        ARTIFACT_OPS.forEach((verb, artifact) -> {
+            if (artifact.schema() != null) {
+                serves(served, artifact.schema(), verb);
+            }
+        });
+        return served;
+    }
+
+    private static void serves(Map<String, String> served, String resource, String verb) {
+        served.merge(resource, "schema " + verb, (a, b) -> a.compareTo(b) <= 0 ? a : b);
+    }
+
+    /**
+     * The sibling documents that some published schema addresses by {@code $id} instead of restating its shape.
+     * That single-sourcing is deliberate — a restatement conforms to its meta-schema, executes nothing, and
+     * drifts invisibly — but it makes the published documents a <b>registry</b>: a consumer validating against
+     * one of them must register the documents named here too. Scanned from the resources, never listed by hand.
+     */
+    static Set<String> crossDocumentReferences() {
+        Set<String> targets = new TreeSet<>();
+        for (String name : servedSchemas().keySet()) {
+            JsonNode document = readSchema(name);
+            if (document != null) {
+                collectCrossReferences(document, targets);
+            }
+        }
+        return targets;
+    }
+
+    /**
+     * The cross-referenced documents the tool can actually hand over, mapped to the invocation that serves
+     * each. Filtered rather than assumed total, so a reference the tool cannot serve degrades to an omission
+     * instead of rendering a {@code null} invocation; {@code SchemaResourceSurfaceTest} owns the separate
+     * claim that the filter never drops anything.
+     */
+    static Map<String, String> crossReferenceEntries() {
+        Map<String, String> served = servedSchemas();
+        Map<String, String> entries = new TreeMap<>();
+        for (String target : crossDocumentReferences()) {
+            String invocation = served.get(target);
+            if (invocation != null) {
+                entries.put(target, invocation);
+            }
+        }
+        return entries;
+    }
+
+    private static void collectCrossReferences(JsonNode node, Set<String> targets) {
+        if (node.isObject()) {
+            node.fields().forEachRemaining(field -> {
+                JsonNode value = field.getValue();
+                if (field.getKey().equals("$ref") && value.isTextual()
+                        && value.asText().startsWith(SCHEMA_ID_PREFIX)) {
+                    String target = value.asText().substring(SCHEMA_ID_PREFIX.length());
+                    targets.add(target.endsWith(SCHEMA_SUFFIX)
+                            ? target.substring(0, target.length() - SCHEMA_SUFFIX.length())
+                            : target);
+                } else {
+                    collectCrossReferences(value, targets);
+                }
+            });
+        } else if (node.isArray()) {
+            node.forEach(child -> collectCrossReferences(child, targets));
+        }
     }
 
     /** The table-owned contract for a leaf that deliberately has no directional I/O contract. */
@@ -209,7 +317,7 @@ final class SchemaCommand extends BaseCommand {
     }
 
     private int serveStructure(String name) {
-        String resource = "/schema/" + name + ".schema.json";
+        String resource = resourcePath(name);
         try (InputStream in = SchemaCommand.class.getResourceAsStream(resource)) {
             if (in == null) {
                 return fail("schema resource missing: " + resource);
@@ -339,11 +447,16 @@ final class SchemaCommand extends BaseCommand {
         return cur != null && cur.subcommands().isEmpty() && !cur.usageMessage().hidden() ? cur : null;
     }
 
-    private JsonNode readSchema(String name) {
-        try (InputStream in = SchemaCommand.class.getResourceAsStream("/schema/" + name + ".schema.json")) {
+    private static JsonNode readSchema(String name) {
+        try (InputStream in = SchemaCommand.class.getResourceAsStream(resourcePath(name))) {
             return in == null ? null : MAPPER.readTree(in);
         } catch (IOException e) {
             return null;
         }
+    }
+
+    /** Where a published document lives on the classpath — the one place the resource layout is spelled out. */
+    private static String resourcePath(String name) {
+        return "/schema/" + name + SCHEMA_SUFFIX;
     }
 }

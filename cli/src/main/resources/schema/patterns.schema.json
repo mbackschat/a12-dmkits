@@ -70,7 +70,7 @@
           "description": "The idiom id this was scaffolded from."
         },
         "spec": {
-          "description": "The scaffolded artifact, in EXACTLY the shape the corresponding `add` verb consumes — so it can be piped straight into `rule add` / `computation add` / `field add`, which is what `--apply` does internally. The shape is `$ref`'d from those verbs' own input schemas rather than restated here: a restatement is invisible to every guard (it is well-formed JSON that conforms to its meta-schema and that no example executes), and this project has already shipped one that taught a form the tool refuses.",
+          "description": "The scaffolded artifact, in EXACTLY the shape the corresponding `add` verb consumes — so it can be piped straight into `rule add` / `computation add` / `field add`, which is what `--apply` does internally. The shape is `$ref`'d from those verbs' own input schemas rather than restated here: a restatement is invisible to every guard (it is well-formed JSON that conforms to its meta-schema and that no example executes), and this project has already shipped one that taught a form the tool refuses. Resolving those three references means registering the documents too — fetch them with `schema rule add`, `schema computation add`, and `schema field add`.",
           "oneOf": [
             { "$ref": "https://github.com/mbackschat/a12-dmkits/schema/rule-add.schema.json" },
             { "$ref": "https://github.com/mbackschat/a12-dmkits/schema/computation-add.schema.json" },

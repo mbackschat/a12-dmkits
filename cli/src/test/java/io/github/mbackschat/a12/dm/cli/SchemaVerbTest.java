@@ -33,6 +33,33 @@ class SchemaVerbTest {
         }
     }
 
+    /**
+     * The published documents are a <b>registry</b>, not standalone files: {@code schema result} hands over a
+     * document whose {@code diagnostics} item {@code $ref}s a sibling by {@code $id}, so a validator resolves
+     * it only once that sibling is registered too. Nothing told a consumer where to obtain it — the orientation
+     * output now names the invocation that serves each referenced document. Listed pairs are derived from the
+     * resources, so the section cannot drift from what is actually referenced.
+     */
+    @Test
+    void theOrientationNamesTheInvocationServingEveryCrossReferencedDocument() {
+        CliTestSupport.Result res = CliTestSupport.run("schema");
+        assertEquals(0, res.code(), res::err);
+        java.util.Map<String, String> referenced = SchemaCommand.crossReferenceEntries();
+        assertFalse(referenced.isEmpty(), "the cross-reference scan found nothing to orient a consumer with");
+        referenced.forEach((target, invocation) -> {
+            assertTrue(res.out().contains(target + ".schema.json"),
+                    () -> "names the referenced document " + target + ": " + res.out());
+            assertTrue(res.out().contains(invocation),
+                    () -> "names `" + invocation + "` as what serves " + target + ": " + res.out());
+        });
+        // The other direction: only the referenced documents are listed. No other orientation line prints a
+        // `.schema.json` filename, so the count is exact — a section that drifted into dumping all 32 served
+        // documents would stop answering "where do I get the one my `$ref` needs".
+        long listed = res.out().lines().filter(l -> l.contains(".schema.json")).count();
+        assertEquals(referenced.size(), listed,
+                () -> "lists exactly the cross-referenced documents: " + res.out());
+    }
+
     @Test
     void theApplyAndBatchFramesAreServedWithAWorkedExample() throws Exception {
         for (String frame : new String[] {"apply", "batch"}) {
