@@ -13,6 +13,7 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import picocli.CommandLine;
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Model.CommandSpec;
+import picocli.CommandLine.Model.ArgSpec;
 import picocli.CommandLine.Model.OptionSpec;
 import picocli.CommandLine.Model.PositionalParamSpec;
 
@@ -59,6 +60,11 @@ final class ManifestCommand extends BaseCommand {
         // What the operational axes actually claim, where the bare enum name under-describes it. The whole tree
         // is one document, so this rides it once; `schema <verb>` repeats it per verb that can write.
         root.set("contractVocabulary", CommandContracts.vocabulary());
+        // What each content role claims, so a consumer learns the vocabulary from the manifest itself.
+        ObjectNode contentRoles = root.putObject("contentRoles");
+        for (ContentRole role : ContentRole.values()) {
+            contentRoles.put(role.name(), role.meaning());
+        }
         // the -m/--model context option is inherited by every verb — list it once, globally
         ArrayNode globals = root.putArray("globalOptions");
         for (OptionSpec o : spec.root().options()) {
@@ -143,6 +149,7 @@ final class ManifestCommand extends BaseCommand {
             n.put("positional", true);
             n.put("required", p.required());
             n.put("description", String.join(" ", p.description()));
+            describeContent(n, p);
             if (kinds.containsKey(key)) {
                 n.put("kind", kinds.get(key).name());
             }
@@ -168,6 +175,20 @@ final class ManifestCommand extends BaseCommand {
         n.put("positional", false);
         n.put("required", o.required());
         n.put("description", String.join(" ", o.description()));
+        describeContent(n, o);
         return n;
+    }
+
+    /**
+     * Publish the value shape a parameter takes, and — where it names something on the filesystem — which way
+     * content flows through it (CG8). The label was previously emitted only for positionals, so an option's
+     * value shape was invisible; {@code contentRole} is derived in {@link ContentRole} from that label plus the
+     * flag, never hand-listed per parameter.
+     */
+    private static void describeContent(ObjectNode n, ArgSpec param) {
+        if (param.paramLabel() != null && !param.paramLabel().isBlank()) {
+            n.put("paramLabel", param.paramLabel());
+        }
+        ContentRole.of(param).ifPresent(role -> n.put("contentRole", role.name()));
     }
 }
