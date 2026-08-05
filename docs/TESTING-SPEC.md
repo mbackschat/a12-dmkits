@@ -284,6 +284,8 @@ These read the **real** model corpora to measure coverage; they skip when their 
 
 `adapter.laws.RawAtomShrinkTest` (`-Datom.kernel/interp/model/seed/dump`) hunts compute KIND atoms, and `-Datom.valuediff=true` hunts the kind-equal VALUE-vs-VALUE class. `adapter.laws.ValidateUnitShrinkTest` (`-Dvf.side=kernel-only|interp-only`, `-Dvf.model/seed/sig/dump`, `-Dvf.kernelmm=true` for the kernel-mm corpus) hunts `validateFull` fired-code units with the sweep's unsupported-rule exclusion. `adapter.laws.MinimalReplayTest` (`-Dreplay.model=<scratch>`, `-Dreplay.op=validate|compute`) replays a dumped minimal through both engines; `CrashProbeTest` locates crash classes; `ModelShrinkTest` (`-Dig44.vcv`) remains the granularity-projected hunt. All honor `-Dcorpus.hostile=true`; `HostileValues` in adapter `CorpusSeeding.kt` deterministically makes roughly every fourth NUMBER cell violate one operand-validity class. The tools print only license-safe redacted shapes.
 
+**A hunt's stop rule is *until dry*, never a count.** A discovery sweep (looking for further instances of a class, rather than fixing a named one) stops after **N consecutive hunts yield nothing new**; a fixed target such as "find 10" stops in the middle of the tail, which is exactly where the remaining instances live. It pairs with the root-cause rule in [`../CLAUDE.md`](../CLAUDE.md): the sweep is how the class gets enumerated before anyone calls it fixed, and the histogram delta afterwards is how you show the siblings did not survive.
+
 ## Layout conventions (so hotspots never grow)
 
 - **One file per operator family**; a new increment adds a *new* small file, it does not pile onto a monolith. `dsl/` keeps only the renderer/handle core; each family lives under `dsl/operators/`.

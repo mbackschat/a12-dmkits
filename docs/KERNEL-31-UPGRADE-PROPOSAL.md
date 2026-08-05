@@ -10,7 +10,7 @@ Neither repository publishes Git tags or GitHub Release objects. That does **not
 
 This is a **major-version and model-format migration, not a pin bump.** `30.8.1` (2025.06-ext5) → **`31.1.0` (2026.06-ext0)** is a new annual line; the old line is preserved upstream as branch `release/2025.06` (our current pin). The upgrade raises the minimum/latest document-model format from **28.4.0 to 29.4.0**, so all **65 committed JSON models** plus inline fixtures and authoring defaults must migrate. It also carries hard compile breaks across `:adapter` main/test source sets, a kernel module rename/consolidation (`kernel-*` → `kernel-internal-*` + deletions), a Jackson 2 → 3 move inside the kernel, one new DSL operator (`SumOfTerms`), two constraint relaxations that contradict currently-green laws, and an include-config/alias restructure spanning `core`, `modelkit`, `edit`, CLI, fixtures, and demos. JDK stays **21**.
 
-Effort shape: **multi-session** — it fits the [`run-master-session`](../.claude/skills/run-master-session/SKILL.md) protocol. There is also a prerequisite in a sibling repo: [`a12-kernel-bootstrap`](../../a12-kernel-bootstrap) must be updated first, or 31.1.0 never reaches `mavenLocal` and nothing here builds.
+Effort shape: **multi-session** — this doc's work-item table is the state carrier across those sessions ([`../CLAUDE.md`](../CLAUDE.md) "How work runs"). There is also a prerequisite in a sibling repo: [`a12-kernel-bootstrap`](../../a12-kernel-bootstrap) must be updated first, or 31.1.0 never reaches `mavenLocal` and nothing here builds.
 
 This is exactly the scenario [KERNEL-UPGRADE.md](KERNEL-UPGRADE.md) was written for — quiet tolerance at runtime, **loud detection at build time**. This audit also found several guardians that are one-way or scan a hardcoded source set; Phase 4 strengthens those before treating their failures as a complete worklist.
 
@@ -291,7 +291,7 @@ Before any native build, re-capture native configuration, rebuild, and run the n
 The three maintainer calls this disposition resolves:
 
 1. **Internal-module strategy.** Keep binding `:adapter` to `kernel-internal-*` (accept the instability the rename declares), or re-plumb onto only the public aggregates (`kernel-md-facade`/`kernel-md-serializer`/`kernel-md-documentmodel`)? — *Recommended:* re-plumb behind the SPI, i.e. let the decoupling program own this; don't decide it standalone. Only relevant once Phase 2 runs.
-2. **Timing / scope.** Full migration now, or track 31.1.0 while staying on 30.8.1? — *Recommended:* **defer** (above); when it runs, it is a [`run-master-session`](../.claude/skills) program.
+2. **Timing / scope.** Full migration now, or track 31.1.0 while staying on 30.8.1? — *Recommended:* **defer** (above); when it runs, it spans several sessions with this doc's work-item table as the state carrier.
 3. **`SumOfTerms` priority.** Ship in this bump (catalog + interpreter) or catalog-only first? — *Recommended:* ship with the eventual bump; no reason to front-run it while deferred.
 
 ## 11 · Open decisions and build-time confirmations

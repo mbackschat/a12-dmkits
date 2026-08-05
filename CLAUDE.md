@@ -118,6 +118,14 @@ A type-level erasure is the same defect one layer earlier and harder to see: no 
 
 The drill: **reproduce → root-cause → generalize (enumerate every site of the class) → fix at the shared root → lock with a guard that covers the siblings, not just the reported case.** Worked example: P1 — a raw stack trace from a duplicate `rule add` — root-caused to `RuleValidator.check` letting a kernel conversion exception escape, a path shared by six callers; the fix went in the validator and the guard covers `computation add` too, not only the reported `rule add`. This complements the anti-whack-a-mole mining below (mine constraints proactively) and the probe's proactive loop ([`docs/PROBE-SPEC.md`](docs/PROBE-SPEC.md)).
 
+## Advertise nothing you cannot point at (standing requirement, 2026-07-16)
+
+**For every invariant a change *advertises* (a schema field, a declared policy, a guarantee in docs or help text), name the enforcement locus and the test that fails when it is violated.** "Parsed but never consumed" is a shipped class here: a boundary once parsed a request's declared policy and observation fields and enforced neither, and only an external consumer's independent audit caught it. A does-fire test proves that a *built* thing fires; this rule proves that a *claimed* thing was built at all.
+
+## A client's stop rule is never overridden from inside (standing requirement, 2026-07-17)
+
+**In cross-project work, an external client's explicit stop/verify rule is never reinterpreted away by our own documentation, however well reasoned.** A conflict between our state and a client's pin goes BACK TO THE CLIENT as a question before any run proceeds. The shipped class: a published identity's freeze status was pre-ruled "the documented pre-freeze upgrade, not drift" using *our* freeze definition, but the client's smoke run had already exercised that identity externally, so one published id briefly meant two byte contracts and an otherwise flawless run was rejected on version identity. A published identity's freeze status is the CONSUMER'S exercised reality, not the producer's ledger, and the one-message round trip is always cheaper than a rejected handback.
+
 ## Convergence gate — stop when a slice keeps expanding (standing requirement, 2026-08-02)
 
 **Two consecutive implementation/review rounds that add net-new blockers to the same slice, or any round that changes its acceptance denominator, are evidence that the work is not converging. Stop patching at that point.** A perpetually growing slice usually couples distinct mechanisms (for example a generic evidence guard, several owner-semantic fixes, and public documentation) and makes each review invalidate the framing of the previous one. More review inside that frame burns tokens without creating a stable landing.
@@ -164,9 +172,13 @@ Review follows the same convergence discipline. Review committed or otherwise st
 
 Applies hardest to a claim reached by **reasoning rather than execution**: if a chain has an unmeasured link, measure the link — a client-side bound justified "by transitivity" was once flagged as open rather than settled by a 15-second kernel probe, which then confirmed it outright (`MVK_FRACT_DIGITS_INVALID`, 2026-07-25).
 
-## Multi-session work programs
+## This session does the work; sub-agents only review (standing requirement, 2026-08-06)
 
-Running a work program that spans multiple sessions (a master session minting worker prompts, per-set hybrid tier choice, review gates on every landing)? **Load the `run-master-session` skill** (`.claude/skills/`) — don't run the protocol from memory; its gate checklist and drill criteria are easy to violate silently. One rule holds even without the skill: **one active session per worktree, always.**
+**The session you are in plans, implements, and verifies.** Use plan mode or a task list for anything multi-step. **Sub-agents are read-only**: they review, search, and report findings. Never delegate implementation to one, and never use one to double-check work you can check yourself. Never let two sessions write the same tree: **one active session per worktree, always** (a read-only reviewer is compatible with that rule; concurrent editing is not).
+
+Pick the review checkpoints **while writing the plan**, not while working, and record them as real tasks so they cannot be skipped silently. Planning them is this rule's job; which ones are warranted is "Cold adversarial review gates" below.
+
+Work that outgrows one session carries its state in a proposal/design doc whose work-item table is the state carrier, updated in the same commit as each landing. No separate tracker, and no relay protocol: the next session reads that table and continues.
 
 ## Cold adversarial review gates
 
@@ -206,11 +218,12 @@ Write idiomatic modern Java 21, not Java 8 with newer syntax:
 
 ## Documentation — the iron rules + the trigger table
 
-Full procedures + rationale: [`docs/DOC-DISCIPLINE.md`](docs/DOC-DISCIPLINE.md). Three iron rules, always:
+Full procedures + rationale: [`docs/DOC-DISCIPLINE.md`](docs/DOC-DISCIPLINE.md). Four iron rules, always:
 
 1. **Every non-obvious finding gets written down** in its home doc, in the same change — kernel behavior → [`docs/KERNEL-FINDINGS.md`](docs/KERNEL-FINDINGS.md) (§-numbered to mirror the canonical [`docs/KERNEL-SEMANTICS.md`](docs/KERNEL-SEMANTICS.md); a new fact lands in KERNEL-FINDINGS FIRST, experiment-verified + test-locked — folding it into the canonical prose is a separate, deliberate upstream edit); kernel/build/environment facts → [`docs/KERNEL-INTEGRATION-NOTES.md`](docs/KERNEL-INTEGRATION-NOTES.md); design decisions → [`docs/PROJECT-DESIGN.md`](docs/PROJECT-DESIGN.md). A finding is only "done" when documented; a contradicted note is updated, never left stale.
 2. **Docs travel inside the feature commit, never after it** — update the affected docs and sweep them for stale claims in the same pass; commit code + docs together. No trailing "docs: refresh" commits.
 3. **Rationale is timeless; a disposition is status.** A durable note records decisions/tradeoffs/principles; "parked / deferred / not yet / rides X" belongs in a `-GAPS` ledger, a backlog, or git — never dressed as a durable *why*. When a decision rests on a current fact, embed its re-open trigger.
+4. **Codify only what recurs, and PRUNE what a guard now enforces.** A rule earns its place by naming the cost it prevents, and every session pays to read it. So ask the inverse question as often as the additive one: once a guard, script, or lint enforces a rule mechanically, retire the prose. Codification must not only accrete.
 
 Research kernel facts by **SOURCE, never by jar** (the golden rule): the consult-only `../a12-kernel/` checkout is the primary oracle for syntax/rendering/rules/signatures (match the fully-qualified class, not the file name; ignore generated `delombok` trees); probing the live kernel confirms *behavior*; the kernel-team BA doc (consult-only, never copied) is the second oracle. **Route the question to the artifact that answers it** — complete denominator → the class inventory + the RT-semantics/MVK ledgers; the **general lowering of a rule shape** → the **codegen template** (`kernel-tool/kernel-core-codegen-*/src/main/resources/internal/templates/validation/{groovy,java,java_script_vk}/**/*.st`, a standing instrument; skip the `build/resources/` duplicates) **and then the codegen BACKING BEAN it interpolates** — most operand templates are 2–3-line **pass-throughs** (`CompositeOperation.st` is just `<t.feldOperationCodeJava>`), so the emission shape lives in the bean property, reached by following the interpolated attribute (`…/backingbeans/**`); a silent-looking template means *pass-through*, never "no lowering"; the actual order for one concrete shape → the generated program; an operation's local meaning → the runtime class; whether a locally correct reading *manifests* → a probe. **Cite which layer you consulted** — names collide across layers (`CompositeOperation` is both a template and a bean; `java_script_vk` names a codegen dialect *and* pairs with a separate TS runtime), so a basis that just says "CompositeOperation" is ambiguous. **A claim about read order, precedence, reachability, or interaction between runtime classes, established by source reading alone, stays a HYPOTHESIS until a template, a generated program, or a probe confirms it** — locally correct reads compose wrongly, repeatedly. Detail + the proactive kernel-coverage ledgers (MVK / RT-semantics / grammar, and [`docs/KERNEL-UPGRADE.md`](docs/KERNEL-UPGRADE.md) on a bump): [`docs/DOC-DISCIPLINE.md`](docs/DOC-DISCIPLINE.md) §1–§2.
 
