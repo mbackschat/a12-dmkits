@@ -1,5 +1,7 @@
 package io.github.mbackschat.a12.dm.cli;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.IOException;
@@ -34,6 +36,9 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 class SchemaResourceSurfaceTest {
 
     private static final Path SCHEMA_DIR = Path.of("src/main/resources/schema");
+
+    /** The prefix a published {@code $id} shares — a {@code $ref} carrying it addresses a sibling document. */
+    private static final String SIBLING_ID_PREFIX = "https://github.com/mbackschat/a12-dmkits/schema/";
     private static final ObjectMapper MAPPER = new ObjectMapper();
 
     /**
@@ -87,6 +92,72 @@ class SchemaResourceSurfaceTest {
         assertTrue(targets.contains("rule-add"),
                 () -> "the scan missed patterns.schema.json's `oneOf[].$ref` — it does not recurse into "
                         + "arrays: " + targets);
+    }
+
+    /**
+     * <b>Every document the tool emits is self-contained.</b> The source files single-source their shapes by
+     * {@code $ref}-ing a sibling's {@code $id} — the discipline that keeps a restatement from drifting
+     * invisibly — but a consumer who feeds one served document to a validator must not have to know that.
+     * So emission bundles the referents in (JSON Schema 2020-12 compound schema document: the referenced
+     * resources are embedded under {@code $defs} keeping their {@code $id}, and the absolute {@code $ref}
+     * resolves against the embedded copy). Authored duplication drifts; duplication recomputed at serve time
+     * from the one source cannot. This asserts the property a consumer actually depends on — no {@code $ref}
+     * in emitted output points outside its own document.
+     */
+    @Test
+    void everyEmittedDocumentResolvesItsOwnRefs() throws Exception {
+        Set<String> emitters = SchemaCommand.crossDocumentReferences();
+        assertFalse(emitters.isEmpty(), "no cross-referencing document to check — the scan is broken");
+        for (String verb : List.of("schema result", "schema patterns")) {
+            CliTestSupport.Result res = CliTestSupport.run(verb.split(" "));
+            assertEquals(0, res.code(), res::err);
+            JsonNode emitted = MAPPER.readTree(res.out());
+            // A served document may ride under a contract key (`schema patterns` nests it as `dataSchema`), and
+            // its `$defs` travels with it — so the property is that the referent is present SOMEWHERE in what
+            // the consumer was handed, not that it sits at the outermost JSON root.
+            Set<String> embedded = new java.util.HashSet<>();
+            collectEmbeddedIds(emitted, embedded);
+            List<String> refs = new ArrayList<>();
+            collectAbsoluteRefs(emitted, refs);
+            assertFalse(refs.isEmpty(), () -> "`" + verb + "` carries no sibling $ref — nothing was checked");
+            List<String> unresolved = refs.stream().filter(r -> !embedded.contains(r)).distinct().sorted().toList();
+            assertTrue(unresolved.isEmpty(),
+                    () -> "`" + verb + "` emits a $ref a consumer cannot resolve from that output alone — "
+                            + "bundle the referent at serve time: " + unresolved);
+        }
+    }
+
+    /** Every absolute sibling {@code $ref} anywhere in the emitted output. */
+    private static void collectAbsoluteRefs(JsonNode node, List<String> refs) {
+        walk(node, (key, value) -> {
+            if (key.equals("$ref") && value.isTextual() && value.asText().startsWith(SIBLING_ID_PREFIX)) {
+                refs.add(value.asText());
+            }
+        });
+    }
+
+    /** Every {@code $id} carried by a {@code $defs} entry — the resources a consumer can resolve locally. */
+    private static void collectEmbeddedIds(JsonNode node, Set<String> ids) {
+        walk(node, (key, value) -> {
+            if (key.equals("$defs")) {
+                value.forEach(def -> {
+                    if (def.path("$id").isTextual()) {
+                        ids.add(def.path("$id").asText());
+                    }
+                });
+            }
+        });
+    }
+
+    private static void walk(JsonNode node, java.util.function.BiConsumer<String, JsonNode> visit) {
+        if (node.isObject()) {
+            node.fields().forEachRemaining(e -> {
+                visit.accept(e.getKey(), e.getValue());
+                walk(e.getValue(), visit);
+            });
+        } else if (node.isArray()) {
+            node.forEach(child -> walk(child, visit));
+        }
     }
 
     @Test

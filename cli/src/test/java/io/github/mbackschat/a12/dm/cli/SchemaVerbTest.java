@@ -34,30 +34,22 @@ class SchemaVerbTest {
     }
 
     /**
-     * The published documents are a <b>registry</b>, not standalone files: {@code schema result} hands over a
-     * document whose {@code diagnostics} item {@code $ref}s a sibling by {@code $id}, so a validator resolves
-     * it only once that sibling is registered too. Nothing told a consumer where to obtain it — the orientation
-     * output now names the invocation that serves each referenced document. Listed pairs are derived from the
-     * resources, so the section cannot drift from what is actually referenced.
+     * The orientation states the <b>self-contained</b> guarantee. A source document single-sources its shape by
+     * {@code $ref}-ing a sibling, but emission bundles the referent in, so one call is enough. An earlier
+     * revision instead listed the documents to fetch separately; once bundling landed that instruction was
+     * actively wrong, which is the failure mode this pins — a consumer must not be told to do work that is
+     * already done for it. ({@code SchemaResourceSurfaceTest} owns the stronger claim that the emitted bytes
+     * really do resolve; this only asserts the promise is published.)
      */
     @Test
-    void theOrientationNamesTheInvocationServingEveryCrossReferencedDocument() {
+    void theOrientationPublishesTheSelfContainedGuarantee() {
         CliTestSupport.Result res = CliTestSupport.run("schema");
         assertEquals(0, res.code(), res::err);
-        java.util.Map<String, String> referenced = SchemaCommand.crossReferenceEntries();
-        assertFalse(referenced.isEmpty(), "the cross-reference scan found nothing to orient a consumer with");
-        referenced.forEach((target, invocation) -> {
-            assertTrue(res.out().contains(target + ".schema.json"),
-                    () -> "names the referenced document " + target + ": " + res.out());
-            assertTrue(res.out().contains(invocation),
-                    () -> "names `" + invocation + "` as what serves " + target + ": " + res.out());
-        });
-        // The other direction: only the referenced documents are listed. No other orientation line prints a
-        // `.schema.json` filename, so the count is exact — a section that drifted into dumping all 32 served
-        // documents would stop answering "where do I get the one my `$ref` needs".
-        long listed = res.out().lines().filter(l -> l.contains(".schema.json")).count();
-        assertEquals(referenced.size(), listed,
-                () -> "lists exactly the cross-referenced documents: " + res.out());
+        assertTrue(res.out().contains("self-contained") && res.out().contains("$defs"),
+                () -> "states that a served document embeds what it references: " + res.out());
+        assertFalse(res.out().contains("Fetch each"),
+                () -> "must not tell a consumer to fetch referents separately — bundling made that false: "
+                        + res.out());
     }
 
     @Test

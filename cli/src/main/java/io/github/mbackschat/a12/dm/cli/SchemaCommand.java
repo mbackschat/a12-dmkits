@@ -184,7 +184,7 @@ final class SchemaCommand extends BaseCommand {
             out().print("Structure schemas: " + String.join(", ", STRUCTURES)
                     + "\nBatch frames: " + String.join(", ", FRAMES)
                     + "\nVerb contracts: `schema <target> <op>` (e.g. `schema rule add`, `schema field read`).\n"
-                    + crossReferenceRegistry());
+                    + SELF_CONTAINED_NOTE);
             return 0;
         }
         if (tokens.size() == 1 && (STRUCTURES.contains(tokens.get(0)) || FRAMES.contains(tokens.get(0)))) {
@@ -202,24 +202,14 @@ final class SchemaCommand extends BaseCommand {
     }
 
     /**
-     * The orientation's registry section: which invocation hands over each document that another schema
-     * {@code $ref}s. Without it a consumer of {@code schema result} holds a reference it cannot resolve and
-     * has nothing telling it where the referent lives.
+     * The guarantee a consumer needs stated, rather than a list of extra fetches to make. The sources
+     * single-source their shapes by {@code $ref}-ing a sibling, but emission bundles the referents in, so one
+     * served document validates on its own. (Measured: without the bundle, a 2020-12 validator given only
+     * {@code schema result} raises {@code Unresolvable} rather than warning.)
      */
-    private String crossReferenceRegistry() {
-        Map<String, String> referenced = crossReferenceEntries();
-        if (referenced.isEmpty()) {
-            return "";
-        }
-        int width = referenced.keySet().stream()
-                .mapToInt(name -> name.length() + SCHEMA_SUFFIX.length()).max().orElseThrow();
-        StringBuilder registry = new StringBuilder(
-                "\nThese schemas are `$ref`d by another document rather than restated, so a validator needs both"
-                        + " registered.\nFetch each with the invocation named here:\n");
-        String row = "  %-" + width + "s  `%s`%n";
-        referenced.forEach((target, invocation) -> registry.append(row.formatted(target + SCHEMA_SUFFIX, invocation)));
-        return registry.toString();
-    }
+    private static final String SELF_CONTAINED_NOTE =
+            "\nEvery served document is self-contained: a schema it references is embedded under `$defs`,\n"
+                    + "so one call is enough — no second fetch, no network.\n";
 
     /**
      * Every published schema resource, mapped to the {@code schema} invocation that hands it over — derived
@@ -264,23 +254,6 @@ final class SchemaCommand extends BaseCommand {
         return targets;
     }
 
-    /**
-     * The cross-referenced documents the tool can actually hand over, mapped to the invocation that serves
-     * each. Filtered rather than assumed total, so a reference the tool cannot serve degrades to an omission
-     * instead of rendering a {@code null} invocation; {@code SchemaResourceSurfaceTest} owns the separate
-     * claim that the filter never drops anything.
-     */
-    static Map<String, String> crossReferenceEntries() {
-        Map<String, String> served = servedSchemas();
-        Map<String, String> entries = new TreeMap<>();
-        for (String target : crossDocumentReferences()) {
-            String invocation = served.get(target);
-            if (invocation != null) {
-                entries.put(target, invocation);
-            }
-        }
-        return entries;
-    }
 
     private static void collectCrossReferences(JsonNode node, Set<String> targets) {
         if (node.isObject()) {
@@ -340,12 +313,17 @@ final class SchemaCommand extends BaseCommand {
                     if (embeddedSchema == null) {
                         return fail("schema resource missing: " + embedded.schema());
                     }
-                    frame.set(embedded.property(), embeddedSchema);
+                    frame.set(embedded.property(), bundle(embeddedSchema));
                 }
                 CommandContracts.attachTo(frame, name, command);
-                out().print(frame.toPrettyString() + "\n");
+                out().print(bundle(frame).toPrettyString() + "\n");
             } else {
-                out().print(source);
+                // A document with no sibling reference is emitted verbatim, so its served bytes stay exactly the
+                // authored file; only one that needs bundling is re-rendered.
+                JsonNode parsed = MAPPER.readTree(source);
+                Set<String> siblings = new TreeSet<>();
+                collectCrossReferences(parsed, siblings);
+                out().print(siblings.isEmpty() ? source : bundle(parsed).toPrettyString() + "\n");
             }
             return 0;
         } catch (IOException e) {
@@ -362,14 +340,14 @@ final class SchemaCommand extends BaseCommand {
             if (schema == null) {
                 return fail("schema resource missing: " + input);
             }
-            c.set("input", schema);
+            c.set("input", bundle(schema));
         }
         // a `--instance` document instance the verb evaluates (eval/compute/test) — the shape it expects
         String docInput = DOC_INPUT.get(verb);
         if (docInput != null) {
             JsonNode schema = readSchema(docInput);
             if (schema != null) {
-                c.set("docInput", schema);
+                c.set("docInput", bundle(schema));
             }
         }
         ArtifactContract artifactContract = ARTIFACT_OPS.get(verb);
@@ -383,7 +361,7 @@ final class SchemaCommand extends BaseCommand {
                 if (schema == null) {
                     return fail("schema resource missing: " + artifactContract.schema());
                 }
-                artifact.set("schema", schema);
+                artifact.set("schema", bundle(schema));
             }
             if (artifactContract.outputOption() != null) {
                 artifact.put("outputOption", artifactContract.outputOption());
@@ -412,7 +390,7 @@ final class SchemaCommand extends BaseCommand {
                 if (dataSchema != null) {
                     JsonNode schema = readSchema(dataSchema);
                     if (schema != null) {
-                        c.set("dataSchema", schema);
+                        c.set("dataSchema", bundle(schema));
                     }
                 }
             }
@@ -458,5 +436,44 @@ final class SchemaCommand extends BaseCommand {
     /** Where a published document lives on the classpath — the one place the resource layout is spelled out. */
     private static String resourcePath(String name) {
         return "/schema/" + name + SCHEMA_SUFFIX;
+    }
+
+    /**
+     * Make an emitted document <b>self-contained</b>: embed every sibling it {@code $ref}s under {@code $defs},
+     * as a JSON Schema 2020-12 <i>compound schema document</i> — the embedded resource keeps its {@code $id}, so
+     * the existing absolute {@code $ref} resolves against it with no rewriting and no second fetch.
+     *
+     * <p>This is the one duplication that is safe. Restating a shape in the <em>source</em> files drifts
+     * invisibly (well-formed JSON, conforms to its meta-schema, executed by no example — the {@code eval-doc}
+     * incident), which is why the sources single-source by {@code $ref}. Recomputing the copy at serve time from
+     * that same source cannot drift: it is derived, not authored. A consumer therefore needs no knowledge of the
+     * registry to validate against what it was handed.
+     *
+     * <p>The inner {@code $schema} is dropped: all published documents share one dialect, and a differing
+     * {@code $schema} on an embedded resource is the corner of the spec implementations support least.
+     */
+    private static JsonNode bundle(JsonNode document) {
+        if (!(document instanceof ObjectNode root)) {
+            return document;
+        }
+        Set<String> targets = new TreeSet<>();
+        collectCrossReferences(root, targets);
+        if (targets.isEmpty()) {
+            return root;
+        }
+        ObjectNode defs = root.has("$defs") ? (ObjectNode) root.get("$defs") : MAPPER.createObjectNode();
+        for (String target : targets) {
+            if (defs.has(target)) {
+                continue; // already embedded (or an authored def of that name) — never clobber
+            }
+            JsonNode referent = readSchema(target);
+            if (referent instanceof ObjectNode embedded) {
+                ObjectNode copy = embedded.deepCopy();
+                copy.remove("$schema");
+                defs.set(target, copy);
+            }
+        }
+        root.set("$defs", defs);
+        return root;
     }
 }
