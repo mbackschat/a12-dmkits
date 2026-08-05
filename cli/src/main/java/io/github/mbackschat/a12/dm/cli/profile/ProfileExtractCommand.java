@@ -37,7 +37,6 @@ final class ProfileExtractCommand extends BaseCommand {
     @Mixin
     WorkspaceOption workspace = new WorkspaceOption();
 
-    @ParamKind(ParamKind.Kind.FILE)
     @Option(names = {"--output", "-o"}, paramLabel = "<profile.json>",
             description = "write the bare profile artifact here; stdout then carries an applied write-confirmation envelope")
     String outputPath;

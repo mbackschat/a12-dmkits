@@ -41,7 +41,6 @@ final class ModelImportJsonschemaCommand extends BaseCommand {
 
     private static final ObjectMapper MAPPER = new ObjectMapper();
 
-    @ParamKind(ParamKind.Kind.FILE)
     @Option(names = "--schema", required = true, paramLabel = "<file>",
             description = "the JSON Schema or OpenAPI document to import, JSON or YAML (its `title`, or --component, "
                     + "becomes the model id; else a default)")
@@ -130,7 +129,6 @@ final class ModelImportJsonschemaCommand extends BaseCommand {
                     + "unbounded container + to-do). Capping it lets the importer reach into and recurse the items.")
     Integer defaultRepeatCap;
 
-    @ParamKind(ParamKind.Kind.FILE)
     @Option(names = "--out-dir", paramLabel = "<dir>",
             description = "import the WHOLE OpenAPI document as a BUNDLE — one model per components/schemas entry, "
                     + "written as <dir>/<Component>.dm.json and wired by includes (an object cross-reference becomes "
@@ -138,7 +136,6 @@ final class ModelImportJsonschemaCommand extends BaseCommand {
                     + "Mutually exclusive with --component and -o/--output (which import a single entry).")
     String outDir;
 
-    @ParamKind(ParamKind.Kind.FILE)
     @Option(names = {"--output", "-o"}, paramLabel = "<file>",
             description = "write the imported model here instead of stdout; stdout then carries a write-confirmation "
                     + "envelope (with the structured report in changed.report)")

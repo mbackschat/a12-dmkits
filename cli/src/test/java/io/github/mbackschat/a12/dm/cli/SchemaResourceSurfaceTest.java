@@ -70,8 +70,8 @@ class SchemaResourceSurfaceTest {
      * A published schema may address a sibling by its {@code $id} rather than restate its shape — the
      * single-sourcing discipline {@code patterns.schema.json} was built on ("a restatement conforms to its
      * meta-schema, executes nothing, and drifts invisibly"). The cost is that the documents form a
-     * <b>registry</b>: {@code schema result} alone does not resolve, because its {@code diagnostics} item
-     * {@code $ref}s another document. That is only sound while every referenced document is itself obtainable,
+     * <b>registry</b> at the source level: the {@code diagnostics} item {@code $ref}s another document, which
+     * emission then bundles in. That is only sound while every referenced document is itself obtainable,
      * so this guards the join — a {@code $ref} can never point at a document the tool will not hand over.
      */
     @Test
@@ -109,15 +109,11 @@ class SchemaResourceSurfaceTest {
         // The denominator is DERIVED: every document that carries a sibling `$ref`, mapped to the invocation
         // that serves it. Hardcoding a verb pair here would silently stop checking a third document the day one
         // gained a reference — the same completeness failure this suite exists to catch elsewhere.
-        List<String> emitters = new ArrayList<>();
-        for (Map.Entry<String, String> entry : SchemaCommand.servedSchemas().entrySet()) {
-            List<String> refs = new ArrayList<>();
-            collectAbsoluteRefs(MAPPER.readTree(SCHEMA_DIR.resolve(entry.getKey() + ".schema.json").toFile()), refs);
-            if (!refs.isEmpty()) {
-                emitters.add(entry.getValue());
-            }
-        }
-        assertFalse(emitters.isEmpty(), "no cross-referencing document found — the scan is broken");
+        // EVERY distinct invocation that serves a document, not only the documents that carry a ref today: a
+        // path with no live reference is exactly where an unbundled emission would first appear.
+        List<String> emitters = SchemaCommand.servedSchemas().values().stream().distinct().sorted().toList();
+        assertFalse(emitters.isEmpty(), "no serving invocation found — the walk is broken");
+        int checked = 0;
         for (String verb : emitters) {
             CliTestSupport.Result res = CliTestSupport.run(verb.split(" "));
             assertEquals(0, res.code(), res::err);
@@ -129,12 +125,14 @@ class SchemaResourceSurfaceTest {
             collectEmbeddedIds(emitted, embedded);
             List<String> refs = new ArrayList<>();
             collectAbsoluteRefs(emitted, refs);
-            assertFalse(refs.isEmpty(), () -> "`" + verb + "` carries no sibling $ref — nothing was checked");
+            checked += refs.size();
             List<String> unresolved = refs.stream().filter(r -> !embedded.contains(r)).distinct().sorted().toList();
             assertTrue(unresolved.isEmpty(),
                     () -> "`" + verb + "` emits a $ref a consumer cannot resolve from that output alone — "
                             + "bundle the referent at serve time: " + unresolved);
         }
+        // Anti-vacuity: the loop is satisfied by an estate with no references at all.
+        assertTrue(checked > 0, "no sibling $ref was seen in any served output — the ref scan is broken");
     }
 
     /** Every absolute sibling {@code $ref} anywhere in the emitted output. */

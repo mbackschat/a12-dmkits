@@ -51,7 +51,6 @@ final class ModelExportJsonschemaCommand extends BaseCommand {
                     + "#/components/schemas/…), a drop-in vs the bare Schema Object (which uses $defs).")
     boolean wrapOpenApi;
 
-    @ParamKind(ParamKind.Kind.FILE)
     @Option(names = {"--output", "-o"}, paramLabel = "<file>",
             description = "write the JSON Schema here instead of stdout; stdout then carries a write-confirmation envelope")
     String outputPath;

@@ -44,7 +44,6 @@ final class ComputationAddCommand extends BaseCommand {
 
     private static final ObjectMapper MAPPER = new ObjectMapper();
 
-    @ParamKind(ParamKind.Kind.FILE)
     @Parameters(index = "0", paramLabel = "<computation-spec.json>",
             description = "the computation envelope as JSON (computedField, alternatives, messages, …)")
     String specPath;

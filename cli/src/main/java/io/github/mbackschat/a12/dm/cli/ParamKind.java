@@ -39,7 +39,6 @@ public @interface ParamKind {
         NEW_NAME(false, null, "RkConformanceProbe"),
         FIELD_KIND(false, null, "NUMBER"),
         SCALAR(false, null, "1"),
-        FILE(false, null, null),
         FREEFORM(false, null, null);
 
         private final boolean entityRef;

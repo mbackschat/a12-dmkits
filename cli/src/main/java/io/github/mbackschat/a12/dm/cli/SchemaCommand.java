@@ -240,8 +240,8 @@ final class SchemaCommand extends BaseCommand {
     /**
      * The sibling documents that some published schema addresses by {@code $id} instead of restating its shape.
      * That single-sourcing is deliberate — a restatement conforms to its meta-schema, executes nothing, and
-     * drifts invisibly — but it makes the published documents a <b>registry</b>: a consumer validating against
-     * one of them must register the documents named here too. Scanned from the resources, never listed by hand.
+     * drifts invisibly. Emission bundles these in ({@link #bundle}), so a consumer never registers them itself;
+     * this scan is what feeds that, and the guards. Scanned from the resources, never listed by hand.
      */
     static Set<String> crossDocumentReferences() {
         Set<String> targets = new TreeSet<>();
@@ -461,7 +461,9 @@ final class SchemaCommand extends BaseCommand {
         if (pending.isEmpty()) {
             return root;
         }
-        ObjectNode defs = root.has("$defs") ? (ObjectNode) root.get("$defs") : MAPPER.createObjectNode();
+        // A non-object `$defs` would be a malformed document; treat it as absent rather than letting a
+        // ClassCastException escape the verb (the standing no-raw-exception rule).
+        ObjectNode defs = root.get("$defs") instanceof ObjectNode authored ? authored : MAPPER.createObjectNode();
         Set<String> seen = new TreeSet<>();
         while (!pending.isEmpty()) {
             String target = pending.iterator().next();

@@ -95,8 +95,9 @@ class ParamContentRoleTest {
 
     /**
      * The inconsistency that <em>was</em> CG8: structurally identical parameters must now agree. {@code --output}
-     * is declared 45 separate times (it is not inherited), which is precisely how 41 of them ended up untagged;
-     * with {@code --out-dir} the destination family is 47.
+     * is declared 45 separate times (mostly per-command, though {@code ReferenceRewritingRefactorCommand}
+     * hoists four), which is how 41 of them ended up untagged; with {@code --out-dir} and {@code --observations}
+     * the destination family is 48.
      */
     @Test
     void everyOutputParamAgreesOnBeingADestination() throws Exception {

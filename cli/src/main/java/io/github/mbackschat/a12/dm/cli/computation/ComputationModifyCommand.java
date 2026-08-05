@@ -50,7 +50,6 @@ final class ComputationModifyCommand extends BaseCommand {
             description = "the computation's full name — its slash-path in the model, e.g. /Order/TotalComp")
     String computation;
 
-    @ParamKind(ParamKind.Kind.FILE)
     @Option(names = "--spec", required = true, paramLabel = "<computation-spec.json>",
             description = "the re-expressed computation as a computation-spec JSON file")
     String specPath;

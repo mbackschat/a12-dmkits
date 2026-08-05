@@ -29,12 +29,10 @@ final class ProfileCompareCommand extends BaseCommand {
 
     private static final ObjectMapper JSON = new ObjectMapper();
 
-    @ParamKind(ParamKind.Kind.FILE)
     @Option(names = "--target", required = true, paramLabel = "<profile.json>",
             description = "target current profile, as a bare artifact or a profile-extract result envelope")
     String targetPath;
 
-    @ParamKind(ParamKind.Kind.FILE)
     @Option(names = "--actual", required = true, paramLabel = "<profile.json>",
             description = "actual current profile, as a bare artifact or a profile-extract result envelope")
     String actualPath;

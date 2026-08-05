@@ -29,7 +29,6 @@ final class ProfileSynthesizeCommand extends BaseCommand {
 
     private static final ObjectMapper JSON = new ObjectMapper();
 
-    @ParamKind(ParamKind.Kind.FILE)
     @Option(names = "--input", required = true, paramLabel = "<profile.json>",
             description = "current profile artifact, either bare JSON or a profile-extract result envelope")
     String inputPath;
@@ -39,7 +38,6 @@ final class ProfileSynthesizeCommand extends BaseCommand {
             description = "deterministic seed; the same current profile and seed reproduce the same model")
     long seed;
 
-    @ParamKind(ParamKind.Kind.FILE)
     @Option(names = {"--output", "-o"}, paramLabel = "<model.json>",
             description = "write the synthesized DM-JSON model here instead of stdout")
     String outputPath;

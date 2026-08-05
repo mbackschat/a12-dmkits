@@ -11,22 +11,27 @@ import picocli.CommandLine.Model.OptionSpec;
 /**
  * Which way content flows through a parameter that names something on the filesystem (CG8).
  *
- * <p><b>Why this exists.</b> The manifest published {@code kind:"FILE"} on 12 of 317 parameters and the tag
+ * <p><b>Why this exists.</b> The manifest published {@code kind:"FILE"} on 12 of 320 parameters and the tag
  * disagreed with itself across structurally identical ones — {@code --output} occurs 45 times and carried it on
  * 4 — while saying nothing about direction: the same kind covered {@code --schema} (read) and {@code --output}
  * (written). A consumer could not tell which parameters carry content, or which way, and fell back on reading
- * each description.
+ * each description. That tag is now gone; {@code contentRole} replaces it on all 82 path-bearing parameters.
  *
- * <p><b>Why classification lives here rather than on each declaration.</b> Two candidate levers were measured
- * and rejected. The field <em>type</em> cannot carry it: every path parameter in the tool is declared
- * {@code String} and converted at the point of use, so typing them {@code Path} would be a wide refactor that
- * also moves conversion errors into picocli — a behaviour change on a published surface. Hoisting the 45
- * duplicate {@code --output} declarations into one shared mixin would lose information: each carries verb
- * specific prose ("write the synthesized DM-JSON model here instead of stdout"), and a sample of six
- * declarations had six distinct descriptions. What <em>is</em> reliable is the {@code paramLabel} — already
- * consistent ({@code <file>} ×43, {@code <dir>} ×11, extension-bearing labels elsewhere), already consumer
- * facing in {@code --help}, and mechanically inspectable. So file-ness is <b>derived</b> from the label and the
- * role from the flag, in this one place; nothing is hand-listed per parameter.
+ * <p><b>Why classification is derived from the label.</b> The {@code paramLabel} is already consistent
+ * ({@code <file>} ×47 and {@code <dir>} ×13 in the live tree, extension-bearing labels elsewhere), already
+ * consumer-facing in {@code --help}, and mechanically inspectable — so file-ness is <b>derived</b> from it and
+ * the role from the flag, in this one place, with nothing hand-listed per parameter.
+ *
+ * <p><i>Corrected 2026-08-05, after a cold review falsified two earlier justifications for this design. They
+ * had claimed (a) that the field type could not carry file-ness because "every path parameter is declared
+ * {@code String}" — false: {@code RootCommand.workspace} and {@code ModelDiffCommand}'s two workspace options
+ * are {@code List<Path>}, and those three are exactly the {@code SCOPE_DIRECTORY} parameters; and (b) that
+ * hoisting the duplicate {@code --output} declarations would lose verb-specific prose — false: of the 45
+ * occurrences only 10 descriptions are distinct and 36 are byte-identical, and {@code
+ * ReferenceRewritingRefactorCommand} already hoists four of them. Both figures came from a source-declaration
+ * grep that under-matched, generalized from a six-declaration sample. The label lever above stands on its own
+ * measurement; those two rejections do not support it, and a type-based or partly-hoisted design is a live
+ * option for a later slice rather than something ruled out.</i>
  *
  * <p>The anti-drift property comes from the guard, not from the annotation that is deliberately absent:
  * {@code ParamContentRoleTest} walks the complete live command tree and fails when a file-shaped parameter
@@ -40,11 +45,21 @@ enum ContentRole {
     /** The tool writes here. Supplying it is what diverts a write off its default destination. */
     OUTBOUND_DESTINATION("a destination the tool writes to"),
 
-    /** A directory searched to resolve references; nothing in it is written. */
-    SCOPE_DIRECTORY("a directory searched to resolve references, never written"),
+    /**
+     * A directory searched to resolve a model's references. It deliberately does <b>not</b> claim nothing in it
+     * is written: {@code group extract} writes the new sub-model into the first {@code -w} root
+     * ({@code GroupExtractCommand} → {@code workspace.roots(model).get(0).resolve(...)}), so a "never written"
+     * guarantee here was false. Whether a given invocation writes is a <em>per-verb</em> fact and lives in
+     * {@code operationalProfiles} ({@link CommandContracts}); a role describes the parameter, not the verb.
+     */
+    SCOPE_DIRECTORY("a directory searched to resolve a model's references"),
 
-    /** The model under operation: read, and written back in place unless a destination is supplied. */
-    SUBJECT_MODEL("the model operated on — read, and rewritten in place unless a destination is given");
+    /**
+     * The model the verb operates on. Also does not claim a write: {@code -m} is inherited by every leaf,
+     * including the 34 that are read-only in every profile, so "rewritten in place" was false for those.
+     * Read {@code operationalProfiles} for what a specific invocation does to it.
+     */
+    SUBJECT_MODEL("the model the verb operates on");
 
     private final String meaning;
 
