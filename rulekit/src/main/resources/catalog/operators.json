@@ -2844,7 +2844,8 @@
       "constraints": [
         "takes plain or flattened (starred) field operands",
         "more than one operand, OR one flattened repetition list (Group*/field) which already expands to many rows — a single DIRECT field is rejected MVK_PARAMSIZE_INVALIDN",
-        "every operand must share ONE declared kind (MVK_VARYING_TYPES_NOT_ALLOWED); differing Number scales are admitted, which is what makes cross-scale equality reachable"
+        "every operand must share ONE comparability category (MVK_VARYING_TYPES_NOT_ALLOWED) — {String, Custom}, {Enumeration}, {Number}, or the temporal family {Date, Time, DateTime, DateFragment}; differing Number scales are admitted, which is what makes cross-scale equality reachable",
+        "Boolean and DateRange operands are refused outright (MVK_ONLY_STRING_ENUM_NUMBER_DATE_ALLOWED), and every temporal operand must carry one IDENTICAL declared format string, else the same code"
       ],
       "gotchas": [
         {
@@ -2855,11 +2856,15 @@
           ]
         },
         {
-          "text": "this operator's kind gate is STRICTER than NumberOfDifferentValues', so the two field-list operators do not share one comparability contract: a String beside a stored Enumeration is rejected MVK_VARYING_TYPES_NOT_ALLOWED here, while NumberOfDifferentValues admits exactly that mix over the same two fields",
+          "text": "this operator's comparability gate is STRICTER than NumberOfDifferentValues', so the two field-list operators do not share one comparability contract: a String beside a stored Enumeration is rejected MVK_VARYING_TYPES_NOT_ALLOWED here, while NumberOfDifferentValues admits exactly that mix over the same two fields",
           "kind": "AUTHORING",
           "seeAlso": [
             "NumberOfDifferentValues"
           ]
+        },
+        {
+          "text": "the temporal gate reads the declared FORMAT, not the field kind, so 'all operands the same kind' is neither necessary nor sufficient: a Date declared yyyy beside a DateFragment declared yyyy is ADMITTED across two kinds, while two Date fields differing only in declared format are rejected MVK_ONLY_STRING_ENUM_NUMBER_DATE_ALLOWED",
+          "kind": "AUTHORING"
         }
       ],
       "validExample": {
@@ -2869,7 +2874,7 @@
       "invalidExample": {
         "dsl": "FieldValuesNotUnique(CustomerName, Priority)",
         "error": "MVK_VARYING_TYPES_NOT_ALLOWED",
-        "fix": "list operands of ONE declared kind — all String, all Enumeration, or all Number (any scales). To count distinct values across a String/Enumeration mix instead, use NumberOfDifferentValues, whose comparability rule is the looser one"
+        "fix": "list operands of ONE comparability category — all String (Custom counts as String here), all Enumeration, all Number (any scales), or all temporal at ONE identical declared format. To count distinct values across a String/Enumeration mix instead, use NumberOfDifferentValues, whose comparability rule is the looser one"
       },
       "correctives": [
         {
@@ -2878,6 +2883,14 @@
           "fix": "FieldValuesNotUnique needs more than one operand: list a second field, or use one flattened repetition list (Items*/Sku), which expands to a row stream and satisfies the arity on its own",
           "probe": {
             "dsl": "FieldValuesNotUnique(Quantity)"
+          }
+        },
+        {
+          "code": "MVK_ONLY_STRING_ENUM_NUMBER_DATE_ALLOWED",
+          "whenOperands": [],
+          "fix": "this operand list is refused by KIND or by declared FORMAT, not by mixing categories. Boolean and DateRange operands are never admitted — compare something else, or use RepetitionNotUnique on a key field. Temporal operands (Date, Time, DateTime, DateFragment) are admitted only when ALL of them declare one IDENTICAL format string, so align the declared formats; note the gate reads the format and not the kind, so a Date declared yyyy and a DateFragment declared yyyy are a legal pair",
+          "probe": {
+            "dsl": "FieldValuesNotUnique(OrderDate, ApproxDate)"
           }
         }
       ],

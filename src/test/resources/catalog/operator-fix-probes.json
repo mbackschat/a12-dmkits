@@ -379,7 +379,7 @@
         "source": "INVALID_EXAMPLE",
         "ordinal": 0
       },
-      "digest": "sha256:77e5d36e6f41f7518b72c1d41db1a24e44ad5220da5085a44358e8e47b0897b5",
+      "digest": "sha256:9d8c68ccb60f43b8c1e3e53f9992c6bb19fd0308c771d3cec0f40f523aa429a0",
       "fixture": "ORDER",
       "group": "/Order",
       "field": "../CustomerName",
@@ -396,6 +396,18 @@
       "group": "/Order",
       "field": "../CustomerName",
       "dsl": "FieldFilled(CustomerName) And FieldValuesNotUnique(Items*/Sku)"
+    },
+    {
+      "locator": {
+        "operator": "FieldValuesNotUnique",
+        "source": "CORRECTIVE",
+        "ordinal": 1
+      },
+      "digest": "sha256:d5588feb3867f67fdf61ed62dee4b563cb07a9316a618d6530054ac75c56f3b6",
+      "fixture": "ORDER",
+      "group": "/Order",
+      "field": "../CustomerName",
+      "dsl": "FieldFilled(CustomerName) And FieldValuesNotUnique(OrderDate, DeliveryDate)"
     },
     {
       "locator": {

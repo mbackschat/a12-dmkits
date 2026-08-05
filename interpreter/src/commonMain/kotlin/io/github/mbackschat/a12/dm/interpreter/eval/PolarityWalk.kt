@@ -490,11 +490,10 @@ private fun Interpreter.predType(p: Cond.Pred): MsgType {
     // The overlap predicates' polarity is filter-derived, computed in the SAME scan as the truth (shared [Res]).
     if (op == PredicateOp.DATE_RANGES_OVERLAP) return overlapAny(p.args).type
     if (op == PredicateOp.ATLEAST_ONE_DATE_RANGE_OVERLAPS) return atLeastOneOverlap(p.args).type
-    // FieldValuesNotUnique is ordinarily a static VALUE predicate, but its one kernel-accepted filtered-star
-    // form is TRUE_AF/OMISSION. Keep this measured exception ahead of the static return without widening every
-    // other static predicate's denominator.
-    if (op == PredicateOp.FIELD_VALUES_NOT_UNIQUE &&
-        (p.args.singleOrNull() as? Expr.Star)?.having != null) return MsgType.OMISSION
+    // FieldValuesNotUnique escalates to OMISSION only when a filtered operand contributed a compared value BEFORE
+    // the duplicate the scan returned at — POSITIONAL, so it cannot be read off the operand list and is decided in
+    // the same ordered scan as the truth (SPEC-2026-08-05-01; `FieldValuesNotUniqueDiffTest`).
+    if (op == PredicateOp.FIELD_VALUES_NOT_UNIQUE) return fieldValuesNotUnique(p.args).type
     op.polarity?.let { return it }
     if (!op.countsGroups && hasFillScopeOperand(p.args)) return fillScopeType(op, fillScopeInfo(p.args))
     // A fired fill quantifier over a Having-FILTERED field star is UNCONDITIONALLY escalated to TRUE_AF →

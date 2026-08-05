@@ -63,7 +63,11 @@ final class KernelLaws {
      */
     static void rejectsOrderInsteadOf(String group, String errorField, String condition,
             String expectedCode, String preemptedCode) {
-        ValidationResult r = check(ORDER, group, errorField, condition);
+        assertRejectsInsteadOf(check(ORDER, group, errorField, condition), condition, expectedCode, preemptedCode);
+    }
+
+    private static void assertRejectsInsteadOf(ValidationResult r, String condition,
+            String expectedCode, String preemptedCode) {
         assertFalse(r.ok(), () -> "expected rejection of '" + condition + "'");
         assertTrue(r.diagnostics().stream().anyMatch(p -> p.code().filter(expectedCode::equals).isPresent()),
                 () -> "expected " + expectedCode + " for '" + condition + "', got: " + r.diagnostics());
@@ -108,6 +112,12 @@ final class KernelLaws {
 
     static void rejectsModel(String json, String group, String errorField, String condition, String expectedCode) {
         assertRejects(json, group, errorField, condition, expectedCode);
+    }
+
+    /** As {@link #rejectsOrderInsteadOf}, on a caller-supplied model — same exclusivity reasoning. */
+    static void rejectsModelInsteadOf(String json, String group, String errorField, String condition,
+            String expectedCode, String preemptedCode) {
+        assertRejectsInsteadOf(check(json, group, errorField, condition), condition, expectedCode, preemptedCode);
     }
 
     /** Typed-rule variant: every path and the rendered condition derive from the rulekit object. */

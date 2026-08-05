@@ -3741,7 +3741,7 @@
       "operator": "FieldValuesNotUnique",
       "lane": "CONSTRAINT",
       "ordinal": 2,
-      "digest": "sha256:925842128384798e66803d6de1c7c90c2fba6ea2b94daafd093ad7557b8e6260",
+      "digest": "sha256:67809022f822c151696b0b0b90aa17cbb748102122f3de5f25c85f176f48c674",
       "classifications": [
         "REJECTION",
         "ADMISSION"
@@ -3751,6 +3751,33 @@
           "classification": "ADMISSION",
           "type": "KERNEL_LAW",
           "id": "FieldValuesNotUniqueAdmissionLawsTest#twoNumberFieldsAtDifferentScalesAreAdmitted"
+        },
+        {
+          "classification": "ADMISSION",
+          "type": "KERNEL_LAW",
+          "id": "FieldValuesNotUniqueAdmissionLawsTest#aCustomFieldBesideAStringIsAdmitted"
+        },
+        {
+          "classification": "ADMISSION",
+          "type": "KERNEL_LAW",
+          "id": "FieldValuesNotUniqueAdmissionLawsTest#twoCustomFieldsOfDifferentRegisteredTypesAreAdmitted"
+        }
+      ]
+    },
+    {
+      "operator": "FieldValuesNotUnique",
+      "lane": "CONSTRAINT",
+      "ordinal": 3,
+      "digest": "sha256:e75f3294b5106aae22923a04833f0a2032923b543c8ec5b30661eab58df2d069",
+      "classifications": [
+        "REJECTION",
+        "ADMISSION"
+      ],
+      "evidence": [
+        {
+          "classification": "ADMISSION",
+          "type": "KERNEL_LAW",
+          "id": "FieldValuesNotUniqueAdmissionLawsTest#twoDateFieldsSharingOneDeclaredFormatAreAdmitted"
         }
       ]
     },
@@ -3774,11 +3801,28 @@
       "operator": "FieldValuesNotUnique",
       "lane": "GOTCHA",
       "ordinal": 1,
-      "digest": "sha256:96b93d501d29e2e2e2946b1e4f2cccd80b6857efb12e8caa007f676ca48921ae",
+      "digest": "sha256:be2b0c42a0ce11d7b9463def7811e0c308c13bfe32178e7f670d21506b85a0ef",
       "classifications": [
         "REJECTION"
       ],
       "evidence": []
+    },
+    {
+      "operator": "FieldValuesNotUnique",
+      "lane": "GOTCHA",
+      "ordinal": 2,
+      "digest": "sha256:c27ffcb8b432d7149b3436a2ece8f53ca4380546544ba0c8b993572741becea3",
+      "classifications": [
+        "REJECTION",
+        "ADMISSION"
+      ],
+      "evidence": [
+        {
+          "classification": "ADMISSION",
+          "type": "KERNEL_LAW",
+          "id": "FieldValuesNotUniqueAdmissionLawsTest#aDateAndADateFragmentSharingOneFormatAreAdmittedAcrossKinds"
+        }
+      ]
     },
     {
       "operator": "Sum",
@@ -24669,6 +24713,32 @@
       "evidence": [
         {
           "type": "INVALID_EXAMPLE"
+        }
+      ]
+    },
+    {
+      "id": "literal.FieldValuesNotUnique.constraint3.MVK_ONLY_STRING_ENUM_NUMBER_DATE_ALLOWED",
+      "operator": "FieldValuesNotUnique",
+      "kind": "CONDITION",
+      "units": [
+        {
+          "lane": "CONSTRAINT",
+          "ordinal": 3
+        },
+        {
+          "lane": "GOTCHA",
+          "ordinal": 2
+        }
+      ],
+      "expected": {
+        "verdict": "REJECTED",
+        "code": "MVK_ONLY_STRING_ENUM_NUMBER_DATE_ALLOWED"
+      },
+      "evidence": [
+        {
+          "type": "CORRECTIVE",
+          "code": "MVK_ONLY_STRING_ENUM_NUMBER_DATE_ALLOWED",
+          "whenOperands": []
         }
       ]
     },

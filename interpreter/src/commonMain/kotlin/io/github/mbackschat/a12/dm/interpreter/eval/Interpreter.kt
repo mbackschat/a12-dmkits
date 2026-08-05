@@ -358,7 +358,7 @@ class Interpreter(
             PredicateOp.FIELD_VALUE_NOT_IN_LIST -> Kleene.not(valueInList(p.args))
             PredicateOp.DATE_RANGES_OVERLAP -> overlapAny(p.args).truth
             PredicateOp.ATLEAST_ONE_DATE_RANGE_OVERLAPS -> atLeastOneOverlap(p.args).truth
-            PredicateOp.FIELD_VALUES_NOT_UNIQUE -> fieldValuesNotUnique(p.args)
+            PredicateOp.FIELD_VALUES_NOT_UNIQUE -> fieldValuesNotUnique(p.args).truth
             // An ordinary per-row 3VL leaf (IF149): the row's key is a duplicate (TRUE) or not (FALSE), read from
             // the call-scoped duplicate cache. The polarity (VALUE/OMISSION) rides [rnuOutcome] and is typed in
             // [predType]; here only truth matters. Degrade-loud if the leaf wasn't wired (see [rnuOutcomeAt]).
@@ -1044,44 +1044,48 @@ class Interpreter(
     }
 
     /**
-     * `FieldValuesNotUnique(…)` — fires iff two of the operands' values are **equal**, i.e. the present values
-     * are not all distinct (kernel codegen). Two operand shapes, both kernel-probed and identical in semantics:
-     * a **plain field list** `(f1, f2, …)` (distinctness across named sibling fields) and a **starred** operand
+     * `FieldValuesNotUnique(…)` — fires iff two of the operands' values are **equal**, i.e. the compared values are
+     * not all distinct (kernel codegen). Two operand shapes, both kernel-probed and identical in semantics: a
+     * **plain field list** `(f1, f2, …)` (distinctness across named sibling fields) and a **starred** operand
      * `(Items* / Count)` (distinctness across the repetition's rows — the no-`--group` alternative to
-     * `RepetitionNotUnique`). In both, **empties are skipped** (two empties are NOT a duplicate — only present
-     * values compare); a filled-but-malformed operand makes the rule non-evaluable → suppressed (Unknown).
-     * Equality is the typed [eq] (numbers numerically — `5` == `5.00` across scales — strings as strings).
+     * `RepetitionNotUnique`). Equality is [Aggregates.distinctKeyOrNull] (numbers numerically — `5` == `5.00`
+     * across scales — strings as strings).
+     *
+     * The scan is **ORDERED and returns at the first duplicate** (SPEC-2026-08-05-01, measured across the 13-case
+     * matrix in `FieldValuesNotUniqueDiffTest`), which is what makes the result POSITION-dependent and therefore
+     * why truth and polarity must be decided in this one walk rather than by inspecting the operand list:
+     *
+     *  - A cell contributes nothing when it is **empty** OR when its stored value **cannot be converted** to the
+     *    declared type. Both are skipped, and neither suppresses the rule: two equal unconvertible values do not
+     *    duplicate (they never enter the comparison), while a duplicate elsewhere in the list still fires. Measured
+     *    on Number and on Date.
+     *  - A filtered operand escalates the firing to OMISSION only through a cell that **actually yielded a compared
+     *    value**, and only if that happened **before** the duplicate was reached. So a filter authored after the
+     *    duplicate, a filter whose kept cells are all empty, and a filter whose kept cells are all unconvertible all
+     *    leave the firing a VALUE error.
      */
-    private fun fieldValuesNotUnique(args: List<Expr>): Tri {
-        val values = mutableListOf<Val>()
-        for (a in args) when (a) {
-            is Expr.Star -> {
-                // filled row values (empties dropped) — an optional `Having` filters the rows (kernel-probed: FVNU
-                // ACCEPTS + EVALUATES a filter, the overlap-predicate keep-law; unlike SumOfProducts, which the
-                // kernel authoring-rejects). A malformed kept cell → non-evaluable (suppressed).
-                val rows = filteredStarCells(a)
-                if (rows.any { it is Val.Unknown }) return Tri.UNKNOWN  // a malformed row → non-evaluable
-                values.addAll(rows)
-            }
-            else -> {
-                if (!ctx.filled(pathOf(a))) continue             // empty → skipped (no value to compare)
-                val v = evalExpr(a)
-                if (v is Val.Unknown) return Tri.UNKNOWN          // a filled-but-malformed operand → non-evaluable
-                values.add(v)
-            }
-        }
-        // O(n) duplicate detection via canonical keys. The starred operand collects ONE value per row, so the
+    internal fun fieldValuesNotUnique(args: List<Expr>): Res {
+        // O(n) duplicate detection via canonical keys — the starred operand contributes ONE value per row, so the
         // old O(n²) pairwise equality scan went quadratic on a large repetition list (confirmed super-linear; the
-        // kernel memoizes this via its RepetitionNotUniqueErrorCache). The key is [Aggregates.distinctKeyOrNull]
-        // — the SAME keying `NumberOfDifferentValues` uses (numbers scale-19-insensitive, strings/bools by
-        // themselves), so distinctness and duplicate-detection agree; a `Range`/other never compares equal → no
-        // key → skipped (it cannot form a duplicate).
-        val seen = HashSet<String>(values.size * 2)
-        for (v in values) {
-            val k = Aggregates.distinctKeyOrNull(v) ?: continue
-            if (!seen.add(k)) return Tri.TRUE
+        // kernel memoizes this via its RepetitionNotUniqueErrorCache). The key is the SAME keying
+        // `NumberOfDifferentValues` uses (numbers scale-19-insensitive, strings/bools by themselves), so distinctness
+        // and duplicate-detection agree; a `Range`/other never compares equal → no key → contributes nothing.
+        val seen = HashSet<String>()
+        var escalated = false
+        for (a in args) {
+            // A `Having` on a starred operand is kernel-probed to be ACCEPTED + EVALUATED (the overlap-predicate
+            // keep-law; unlike SumOfProducts, which the kernel authoring-rejects), and filtering the rows changes
+            // which values are compared for distinctness (IF72).
+            val filtered = a is Expr.Star && a.having != null
+            val cells = if (a is Expr.Star) filteredStarCells(a)          // kept row values, empties already dropped
+                else if (ctx.filled(pathOf(a))) listOf(evalExpr(a)) else emptyList()
+            for (cell in cells) {
+                val key = Aggregates.distinctKeyOrNull(cell) ?: continue   // unconvertible / uncomparable → skipped
+                if (filtered) escalated = true
+                if (!seen.add(key)) return Res.of(Tri.TRUE, if (escalated) MsgType.OMISSION else MsgType.VALUE)
+            }
         }
-        return Tri.FALSE
+        return Res.of(Tri.FALSE, MsgType.VALUE)
     }
 
     /** The path of a plain field-ref operand. Any other operand shape in a field-ref position is a construct
