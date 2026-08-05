@@ -335,6 +335,8 @@ tasks.register('docGuardTest', Test) {
             // added/renamed/removed script must re-run the guard that checks its index row.
             'scripts tree'       : rootProject.fileTree('scripts'),
             'README.md'          : rootProject.file('README.md'),
+            // CommandReferencesResolveTest scans the project instructions too (root AGENTS.md is a symlink to it).
+            'CLAUDE.md'          : rootProject.file('CLAUDE.md'),
             'plugin/README.md'   : rootProject.file('plugin/README.md'),
             'skill/SKILL.md'     : rootProject.file('skill/SKILL.md'),
             'plugin-codex/AGENTS.md': rootProject.file('plugin-codex/AGENTS.md'),

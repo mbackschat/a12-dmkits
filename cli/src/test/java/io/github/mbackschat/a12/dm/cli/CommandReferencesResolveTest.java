@@ -74,7 +74,11 @@ class CommandReferencesResolveTest {
             Path.of("../README.md"),
             Path.of("../plugin/README.md"),
             Path.of("../skill/SKILL.md"),
-            Path.of("../plugin-codex/AGENTS.md"));
+            Path.of("../plugin-codex/AGENTS.md"),
+            // The project instructions, symlinked as the repo-root AGENTS.md — the one file EVERY session reads,
+            // so a stale verb here misleads more often than anywhere else. It cites verbs to reach for when
+            // verifying a claim (`dmtool manifest`, `rule check`, `model eval`, …); those must resolve.
+            Path.of("../CLAUDE.md"));
 
     /** Command-bearing JS an agent harness EXECUTES: the eval workflow embeds {@code ${CLI} …} command
      *  forms ({@code ${CLI}} = its {@code bin/dmtool} handle) — the exact surface where the task-17 recheck
