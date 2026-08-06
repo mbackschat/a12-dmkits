@@ -106,23 +106,11 @@ tasks.named('test') {
     dependsOn 'releaseGapGuardTest'
     // Repo-file-reading guards run in input-declared dedicated tasks; keep them out of the broad suite so a
     // doc/marker/golden/script-only edit cannot leave a stale-green `test` (TESTING-SPEC "Tests that read
-    // repo files at runtime").
-    filter {
-        excludeTestsMatching 'io.github.mbackschat.a12.dm.ApiFindingsNumberingGuardTest'
-        excludeTestsMatching 'io.github.mbackschat.a12.dm.DocSnippetFreshnessTest'
-        excludeTestsMatching 'io.github.mbackschat.a12.dm.BuildPerformancePolicyTest'
-        excludeTestsMatching 'io.github.mbackschat.a12.dm.GateTierWiringTest'
-        excludeTestsMatching 'io.github.mbackschat.a12.dm.VersionMentionFreshnessTest'
-        excludeTestsMatching 'io.github.mbackschat.a12.dm.rulekit.catalog.DslCatalogBridgeTest'
-        excludeTestsMatching 'io.github.mbackschat.a12.dm.A12JsonConstructionGuardTest'
-        excludeTestsMatching 'io.github.mbackschat.a12.dm.api.PublicApiGuardTest'
-        excludeTestsMatching 'io.github.mbackschat.a12.dm.rulekit.catalog.CatalogProseReviewGuardTest'
-        excludeTestsMatching 'io.github.mbackschat.a12.dm.EnsureDmtoolCacheTest'
-        excludeTestsMatching 'io.github.mbackschat.a12.dm.DmtoolLauncherTest'
-        excludeTestsMatching 'io.github.mbackschat.a12.dm.NativeNoJavaSmokeTest'
-        excludeTestsMatching 'io.github.mbackschat.a12.dm.CodexPluginActivationEvidenceTest'
-        excludeTestsMatching 'io.github.mbackschat.a12.dm.ReleaseGapBlockerTest'
-    }
+    // repo files at runtime"). Derived from those tasks — see `routeExclusivelyHostedTests`. `dumpKitApi` and
+    // `syncDocSnippets` are regenerators over classes `apiGuardTest`/`docGuardTest` already own, and
+    // `interpreterReleaseGuardTest` runs its own `releaseGuardTest` source set, so neither owns anything here.
+    routeExclusivelyHostedTests(it, ['docGuardTest', 'jsonConstructionGuardTest', 'apiGuardTest',
+                                     'catalogProseReviewGuardTest', 'deliveryGuardTest', 'releaseGapGuardTest'])
 }
 
 // A12 JSON construction is a ROLE boundary, not a module boundary (API-FINDINGS 103 / IF228): this guard reads
@@ -200,6 +188,70 @@ ext.guardInputs = { Test task, Map<String, ?> named ->
                 "or renamed folder likely silenced this guard while it checked nothing (kernel-decoupling §3b " +
                 "#17, the silent-empty-fileTree false-green class). Re-point the guard's fileTree to the moved " +
                 "location; a guard must never run against an empty input.")
+        }
+    }
+}
+
+// `guardInputs`' exclusive-ownership counterpart. A guard owning runtime inputs the broad `test` task does not
+// declare must run in a DEDICATED task AND be excluded from `test` — and those two lists were kept by hand, so
+// they drifted: root's `SourceStatisticsReleaseBoundaryTest` and four cli `docGuardTest` classes were measurably
+// executing in BOTH lanes. This derives `test`'s excludes FROM the owning tasks' includes, so the two can no
+// longer disagree and adding a class to a guard task removes it from the broad suite in the same edit.
+//
+// It also closes the trap that ownership creates: `:<module>:test --tests '*AnOwnedClass'` fails as Gradle's bare
+// "No tests found for given includes", which names neither the exclusion nor the task that DOES host the class
+// (it cost two sessions). Same self-explaining-surface rule the CLI follows — emit the command to run instead.
+//
+// Only for tasks that own their classes EXCLUSIVELY. `:adapter`'s perf/capture lanes deliberately re-run classes
+// the broad suite also runs (`FootprintScenarioFixtureGuardTest` is hosted by two tasks on purpose), so they are
+// a different shape and keep their hand-written excludes.
+ext.routeExclusivelyHostedTests = { Test broad, List<String> owningTaskNames ->
+    def hostByClass = owningTaskNames.collectEntries { name ->
+        broad.project.tasks.named(name, Test).get().filter.includePatterns.collectEntries { [(it): name] }
+    }
+    hostByClass.keySet().each { broad.filter.excludeTestsMatching(it) }
+    // The root project's path is already ':', so only a subproject needs the separator appended.
+    def taskPathPrefix = broad.project.path == ':' ? ':' : broad.project.path + ':'
+    // Gradle's `--tests` accepts a trailing `.method`, so probe the pattern with that segment dropped too.
+    def matches = { String pattern, String fqcn ->
+        def hit = { String p -> fqcn ==~ ('\\Q' + p.replace('*', '\\E.*\\Q') + '\\E') }
+        hit(pattern) || (pattern.contains('.') && hit(pattern.substring(0, pattern.lastIndexOf('.'))))
+    }
+    broad.doFirst {
+        def patterns = []
+        try {
+            patterns = new ArrayList(broad.filter.commandLineIncludePatterns)
+        } catch (Throwable ignored) {
+            return      // internal accessor gone: fall back to Gradle's own message, never break the build
+        }
+        def misrouted = patterns.isEmpty() ? [:]
+                : hostByClass.findAll { fqcn, owner -> patterns.any { matches(it, fqcn) } }
+        if (misrouted.isEmpty()) {
+            return
+        }
+        // Stay silent when the patterns still reach something this task can run, so a broad pattern spanning
+        // both lanes behaves exactly as before.
+        def stillReachable = false
+        broad.testClassesDirs.files.findAll { it.isDirectory() }.each { dir ->
+            dir.traverse(type: groovy.io.FileType.FILES) { file ->
+                if (!file.name.endsWith('.class') || file.name.contains('$')) {
+                    return
+                }
+                def rel = dir.toPath().relativize(file.toPath()).toString().replace(File.separator, '.')
+                def fqcn = rel.substring(0, rel.length() - '.class'.length())
+                if (!hostByClass.containsKey(fqcn) && patterns.any { matches(it, fqcn) }) {
+                    stillReachable = true
+                }
+            }
+        }
+        if (!stillReachable) {
+            throw new GradleException(
+                    "--tests ${patterns} matches only classes ${taskPathPrefix}test deliberately excludes, " +
+                    "because a dedicated task owns their runtime inputs. Run that task instead:\n" +
+                    misrouted.collect { fqcn, owner ->
+                        "  ${fqcn}\n      ./build.sh -Pfast ${taskPathPrefix}${owner} " +
+                        "--tests '*${fqcn.tokenize('.').last()}'"
+                    }.join('\n'))
         }
     }
 }

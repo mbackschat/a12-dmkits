@@ -104,7 +104,13 @@ class BuildPerformancePolicyTest {
                 "the catalog prose evidence resolver needs a dedicated input-declared task");
         assertTrue(build.contains("dependsOn 'catalogProseReviewGuardTest'"),
                 "the broad root test must drive the catalog prose review task");
-        assertTrue(build.contains("excludeTestsMatching 'io.github.mbackschat.a12.dm.rulekit.catalog.CatalogProseReviewGuardTest'"),
+        // Asserted through the DERIVATION, not a literal exclude line: the broad task's excludes are computed
+        // from the owning tasks' includes (`routeExclusivelyHostedTests`), so naming the owner here covers every
+        // class that lane hosts. The literal-line form this replaced could only see the classes it spelled out,
+        // which is how four cli classes and root's SourceStatisticsReleaseBoundaryTest drifted into both lanes.
+        assertTrue(build.contains("routeExclusivelyHostedTests(it, ["),
+                "the broad root test must DERIVE its excludes from the owning lanes, not mirror them by hand");
+        assertTrue(ownersOfDerivedExcludes(build).contains("catalogProseReviewGuardTest"),
                 "the catalog prose review must not also run in the input-blind broad root task");
         for (String tree : new String[] {
                 "src/test",
@@ -148,6 +154,15 @@ class BuildPerformancePolicyTest {
                 "id '" + Pattern.quote(pluginId) + "' version '([^']+)' apply false").matcher(build);
         assertTrue(matcher.find(), () -> "root build must own the version for " + pluginId);
         return matcher.group(1);
+    }
+
+    /** The task names the broad `test` derives its excludes from — the argument list of the routing call. */
+    private static String ownersOfDerivedExcludes(String build) {
+        int start = build.indexOf("routeExclusivelyHostedTests(it, [");
+        if (start < 0) {
+            return "";
+        }
+        return build.substring(start, build.indexOf(']', start));
     }
 
     private static String gradleTask(String build, String name) {

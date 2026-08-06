@@ -506,6 +506,15 @@ tasks.register('publicContractTest', Test) {
 }
 tasks.named('check') { dependsOn 'publicContractTest' }
 
+// Every dedicated Test task above hosts classes `test` must NOT re-run, because each owns runtime inputs that
+// `test` does not declare. Their include patterns therefore ARE `test`'s exclude list — DERIVED, not mirrored.
+// It used to be a hand-kept copy and had already drifted: four docGuardTest classes (DocumentShapeSingleSource,
+// DemoOutputIsReal, ProbeRepeatedComputationIdentity, InterpreterGapIdRegistryGuard) were absent from the copy
+// and so ran in both lanes. Deriving it means adding a class to a guard task removes it from the broad suite in
+// the same edit, and the two lists cannot disagree again.
+def dedicatedTestTasks = ['docGuardTest', 'evalGuardTest', 'semanticsMapGuardTest', 'staleGapGuardTest',
+                          'mutationTailGuardTest', 'sourceProvenanceGuardTest', 'publicContractTest']
+
 tasks.named('test') {
     dependsOn 'docGuardTest'
     dependsOn 'evalGuardTest'
@@ -520,31 +529,8 @@ tasks.named('test') {
     inputs.file(generateVersionProperties.map { it.destinationFile })
     // The repo-file-reading guards live in docGuardTest / semanticsMapGuardTest (with the right inputs); keep
     // them OUT of the cacheable main suite so a docs/model-only edit can't invalidate all ~620 tests.
+    rootProject.routeExclusivelyHostedTests(it, dedicatedTestTasks)
     filter {
-        excludeTestsMatching 'io.github.mbackschat.a12.dm.cli.CliTourFreshnessTest'
-        excludeTestsMatching 'io.github.mbackschat.a12.dm.cli.CommandReferencesResolveTest'
-        excludeTestsMatching 'io.github.mbackschat.a12.dm.cli.CliSpecVerbTableTest'
-        excludeTestsMatching 'io.github.mbackschat.a12.dm.cli.SharedReadmeRegionTest'
-        excludeTestsMatching 'io.github.mbackschat.a12.dm.cli.DocsIndexGuardTest'
-        excludeTestsMatching 'io.github.mbackschat.a12.dm.cli.DirectoryIndexGuardTest'
-        excludeTestsMatching 'io.github.mbackschat.a12.dm.cli.GapLedgerTemplateGuardTest'
-        excludeTestsMatching 'io.github.mbackschat.a12.dm.cli.DocAnchorResolveGuardTest'
-        excludeTestsMatching 'io.github.mbackschat.a12.dm.cli.SemanticsMapResolveTest'
-        excludeTestsMatching 'io.github.mbackschat.a12.dm.cli.KernelDocsFoldContractTest'
-        excludeTestsMatching 'io.github.mbackschat.a12.dm.cli.KernelDocsBasisContractTest'
-        excludeTestsMatching 'io.github.mbackschat.a12.dm.cli.interp.ModelLoaderParityTest'
-        excludeTestsMatching 'io.github.mbackschat.a12.dm.cli.StaleGapReferenceGuardTest'
-        excludeTestsMatching 'io.github.mbackschat.a12.dm.cli.StaleGapReferenceClassifierTest'
-        excludeTestsMatching 'io.github.mbackschat.a12.dm.cli.eval.EvalGoldOracleTest'
-        excludeTestsMatching 'io.github.mbackschat.a12.dm.cli.eval.EvalSuiteLedgerTest'
-        excludeTestsMatching 'io.github.mbackschat.a12.dm.cli.MutationTailSingleSourceTest'
-        excludeTestsMatching 'io.github.mbackschat.a12.dm.cli.SourceProvenanceBuildTest'
-        excludeTestsMatching 'io.github.mbackschat.a12.dm.cli.PublicCommandShapeClaimsTest'
-        excludeTestsMatching 'io.github.mbackschat.a12.dm.cli.PublicOutputClaimsTest'
-        excludeTestsMatching 'io.github.mbackschat.a12.dm.cli.DmtoolPublicContractTest'
-        excludeTestsMatching 'io.github.mbackschat.a12.dm.cli.DmtoolMutationSafetyTest'
-        excludeTestsMatching 'io.github.mbackschat.a12.dm.cli.PackagedDmtoolJourneyTest'
-        excludeTestsMatching 'io.github.mbackschat.a12.dm.cli.CommandRouteEquivalenceTest'
         // During tracing this one assertion necessarily reads the PRE-CAPTURE committed metadata. Exclude
         // only it; capture-native-config.sh copies the generated file and runs the class immediately after.
         // Every other test remains mandatory, so a real red suite cannot be swallowed by the capture.

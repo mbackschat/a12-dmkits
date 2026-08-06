@@ -87,12 +87,25 @@ class GateTierWiringTest {
                 "the wiring guard reads cli/build.gradle, so docGuardTest must declare that file as an input");
         assertTrue(cliDocGuard.contains("includeTestsMatching 'io.github.mbackschat.a12.dm.cli.PublicOutputClaimsTest'"),
                 "the public-output prose guard must run in the input-aware CLI doc lane");
-        assertTrue(cliMainTest.contains("excludeTestsMatching 'io.github.mbackschat.a12.dm.cli.PublicOutputClaimsTest'"),
-                "the repo-file-reading prose guard must not also run in the input-blind main CLI test task");
         assertTrue(cliDocGuard.contains("includeTestsMatching 'io.github.mbackschat.a12.dm.cli.PublicCommandShapeClaimsTest'"),
                 "the command-shape prose guard must run in the input-aware CLI doc lane");
-        assertTrue(cliMainTest.contains("excludeTestsMatching 'io.github.mbackschat.a12.dm.cli.PublicCommandShapeClaimsTest'"),
-                "the command-shape prose guard must not also run in the input-blind main CLI test task");
+        // Both exclusions are asserted through the DERIVATION rather than two literal exclude lines: the broad
+        // task computes its excludes from the owning lanes' includes, so naming `docGuardTest` as an owner covers
+        // every class it hosts. The literal form saw only the classes it spelled out, and four sibling docGuardTest
+        // classes were measurably running in both lanes while these two assertions passed.
+        assertTrue(cliMainTest.contains("routeExclusivelyHostedTests(it, dedicatedTestTasks)"),
+                "the main CLI test task must DERIVE its excludes from the owning lanes, not mirror them by hand");
+        assertTrue(dedicatedTaskList(cliBuild).contains("'docGuardTest'"),
+                "the repo-file-reading prose guards must not also run in the input-blind main CLI test task");
+    }
+
+    /** The literal list of lanes that exclusively own their test classes, which the broad task derives from. */
+    private static String dedicatedTaskList(String build) {
+        int start = build.indexOf("def dedicatedTestTasks = [");
+        if (start < 0) {
+            return "";
+        }
+        return build.substring(start, build.indexOf(']', start));
     }
 
     private static String gradleTask(String build, String name) {
