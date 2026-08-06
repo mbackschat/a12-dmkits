@@ -152,6 +152,8 @@ That is deliberately the **only** thing this server reads from its environment, 
 
 **Not served, deliberately:** SSE response streams (a single JSON object is permitted and every answer here is one), `subscriptions/listen`, and authentication. The last is a specification SHOULD and a real exposure for a public endpoint: nothing is stored, so there is no data to reach, but there is CPU to burn. Put the endpoint behind the platform's own auth or a private network unless it is meant to be public.
 
+**Deploying it.** The endpoint is built and deployed from CI, never from a laptop: [`deploy-mcp-endpoint.yml`](../.github/workflows/deploy-mcp-endpoint.yml) is `workflow_dispatch`-only, ships the **released** `dmtool-linux-x64` asset verified against `SHA256SUMS` (so production runs the byte-identical artifact a user downloads, not a second build), uploads it beside the live path and moves it into place, restarts the site, and then proves the endpoint with [`smoke-mcp-endpoint.sh`](../scripts/smoke-mcp-endpoint.sh) — bounded retries, so a dead endpoint fails the job instead of hanging it. The host's own start command pins the heap (`-Xmx`), which is not optional: a native image sizes its heap from *physical* host RAM, so an unpinned process on a small plan is killed and takes the endpoint down for everyone. Candidate assessments, and the requirements a host must meet, are in [MCP-GAPS](MCP-GAPS.md) "Hosting".
+
 ## 8. The verb's own contract
 
 `mcp` publishes one operational profile, and every axis differs from an ordinary verb's:

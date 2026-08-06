@@ -1,0 +1,142 @@
+name: deploy-mcp-endpoint
+
+# Deploy the hosted MCP endpoint (MCP-SPEC §7) to the alwaysdata "user program" site that runs it.
+#
+# It deploys the RELEASED binary rather than building one here: the public mirror's build-native workflow
+# already produces `dmtool-linux-x64` and publishes it with `SHA256SUMS`, so this pipeline ships the exact
+# artifact users download, verified by checksum, instead of a second build nobody else ever runs.
+#
+# MANUAL ONLY. A deploy replaces a live public endpoint, so it never rides a push — you trigger it, naming the
+# release tag to put there. `smoke_only` re-checks what is already running without touching it.
+#
+# WHAT THE REPOSITORY MUST CARRY (nothing here is account-specific by design):
+#   vars.ALWAYSDATA_SSH_HOST     e.g. ssh-<account>.alwaysdata.net
+#   vars.ALWAYSDATA_SSH_USER     the account's SSH user
+#   vars.ALWAYSDATA_BIN_PATH     absolute path the site's start command runs, e.g. /home/<account>/bin/dmtool
+#   vars.ALWAYSDATA_SITE_ID      the site's numeric id, used to restart it through the API
+#   vars.ALWAYSDATA_ACCOUNT      the account name, used in the API's basic-auth user
+#   vars.MCP_ENDPOINT_URL        the public endpoint, e.g. https://<site>.alwaysdata.net/mcp
+#   secrets.ALWAYSDATA_SSH_KEY   a private key authorised for that account
+#   secrets.ALWAYSDATA_API_KEY   an API token from the account's Profile section
+#
+# THE SITE'S OWN CONFIGURATION (set once, in the alwaysdata admin, not from here) is a `user program` site
+# whose command binds the address the platform assigns and pins the heap below the plan's memory:
+#
+#   /home/<account>/bin/dmtool -Xmx192m mcp --http
+#
+# `--host`/`--port` default to the platform's IP and PORT variables, so the command needs neither. The heap
+# pin is not optional: a native image sizes its heap from PHYSICAL host RAM, so an unpinned process on a
+# 256 MB plan is killed. Authoring is flat at ~43 MiB; document EVALUATION has been measured at 519 MiB and
+# is not promised on this plan.
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'release tag to deploy (blank = the latest release)'
+        required: false
+        default: ''
+      smoke_only:
+        description: 'only re-check the running endpoint; deploy nothing'
+        type: boolean
+        default: false
+
+concurrency:
+  # One deploy at a time against one endpoint; a second would race the restart.
+  group: mcp-endpoint
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Fail fast on missing configuration
+        env:
+          SSH_HOST: ${{ vars.ALWAYSDATA_SSH_HOST }}
+          ENDPOINT: ${{ vars.MCP_ENDPOINT_URL }}
+        run: |
+          # A half-configured deploy is worse than none: it uploads, cannot restart, and leaves the old
+          # process serving while the log reads green.
+          missing=()
+          [[ -n "$ENDPOINT" ]] || missing+=(MCP_ENDPOINT_URL)
+          if [[ "${{ inputs.smoke_only }}" != "true" ]]; then
+            [[ -n "$SSH_HOST" ]] || missing+=(ALWAYSDATA_SSH_HOST)
+            [[ -n "${{ vars.ALWAYSDATA_SSH_USER }}" ]] || missing+=(ALWAYSDATA_SSH_USER)
+            [[ -n "${{ vars.ALWAYSDATA_BIN_PATH }}" ]] || missing+=(ALWAYSDATA_BIN_PATH)
+            [[ -n "${{ vars.ALWAYSDATA_SITE_ID }}" ]] || missing+=(ALWAYSDATA_SITE_ID)
+            [[ -n "${{ vars.ALWAYSDATA_ACCOUNT }}" ]] || missing+=(ALWAYSDATA_ACCOUNT)
+          fi
+          if [[ ${#missing[@]} -gt 0 ]]; then
+            echo "missing repository configuration: ${missing[*]}" >&2
+            echo "see the header of .github/workflows/deploy-mcp-endpoint.yml" >&2
+            exit 1
+          fi
+
+      - name: Download the released linux-x64 binary and verify it
+        if: ${{ !inputs.smoke_only }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          tag='${{ inputs.tag }}'
+          repo=mbackschat/a12-dmtool-releases
+          [[ -n "$tag" ]] || tag="$(gh release view --repo "$repo" --json tagName -q .tagName)"
+          echo "deploying $tag"
+          gh release download "$tag" --repo "$repo" --pattern 'dmtool-linux-x64' --pattern 'SHA256SUMS'
+          # The checksum is the whole point of shipping the released asset: what runs in production is then
+          # byte-identical to what a user downloads, and a corrupted transfer fails here rather than there.
+          grep ' dmtool-linux-x64$' SHA256SUMS | sha256sum -c -
+          chmod +x dmtool-linux-x64
+          echo "TAG=$tag" >> "$GITHUB_ENV"
+
+      - name: Upload it and swap it in
+        if: ${{ !inputs.smoke_only }}
+        env:
+          SSH_KEY: ${{ secrets.ALWAYSDATA_SSH_KEY }}
+          SSH_HOST: ${{ vars.ALWAYSDATA_SSH_HOST }}
+          SSH_USER: ${{ vars.ALWAYSDATA_SSH_USER }}
+          BIN_PATH: ${{ vars.ALWAYSDATA_BIN_PATH }}
+        run: |
+          set -euo pipefail
+          install -m 600 /dev/null key && printf '%s\n' "$SSH_KEY" > key
+          mkdir -p ~/.ssh && ssh-keyscan -H "$SSH_HOST" >> ~/.ssh/known_hosts 2>/dev/null
+          # Upload beside the live path, then move: a partially-transferred binary must never be the one the
+          # platform restarts into. `mv` within a directory is atomic enough for this.
+          scp -i key -o IdentitiesOnly=yes dmtool-linux-x64 "$SSH_USER@$SSH_HOST:$BIN_PATH.incoming"
+          ssh -i key -o IdentitiesOnly=yes "$SSH_USER@$SSH_HOST" \
+            "chmod +x '$BIN_PATH.incoming' && mv -f '$BIN_PATH.incoming' '$BIN_PATH'"
+          rm -f key
+
+      - name: Restart the site
+        if: ${{ !inputs.smoke_only }}
+        env:
+          API_KEY: ${{ secrets.ALWAYSDATA_API_KEY }}
+          ACCOUNT: ${{ vars.ALWAYSDATA_ACCOUNT }}
+          SITE_ID: ${{ vars.ALWAYSDATA_SITE_ID }}
+        run: |
+          set -euo pipefail
+          # The documented restart route. Note the trailing colon after the key in the basic-auth user.
+          curl -sS --fail-with-body -X POST --basic \
+            --user "$API_KEY account=$ACCOUNT:" \
+            "https://api.alwaysdata.com/v1/site/$SITE_ID/restart/"
+
+      - name: Smoke-test the public endpoint
+        env:
+          ENDPOINT: ${{ vars.MCP_ENDPOINT_URL }}
+        run: |
+          set -euo pipefail
+          # A restart is not instant, and "it answered eventually" is the claim worth making — but bounded, so
+          # a permanently dead endpoint fails the job instead of hanging it.
+          for attempt in $(seq 1 20); do
+            if ./scripts/smoke-mcp-endpoint.sh "$ENDPOINT"; then exit 0; fi
+            echo "attempt $attempt: not serving yet"
+            sleep 5
+          done
+          echo "the endpoint never came back after the deploy" >&2
+          exit 1
