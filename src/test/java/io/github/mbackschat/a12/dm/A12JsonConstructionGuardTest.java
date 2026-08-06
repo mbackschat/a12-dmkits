@@ -156,6 +156,10 @@ class A12JsonConstructionGuardTest {
                     + "::jackson-object-mapper#1", CLI_OWNED_JSON),
             entry("cli/src/main/java/io/github/mbackschat/a12/dm/cli/McpDispatcher.java"
                     + "::jackson-object-mapper#1", MCP_FRAME_JSON),
+            entry("cli/src/main/java/io/github/mbackschat/a12/dm/cli/McpFrames.java"
+                    + "::jackson-object-mapper#1", MCP_FRAME_JSON),
+            entry("cli/src/main/java/io/github/mbackschat/a12/dm/cli/McpHttpBinding.java"
+                    + "::jackson-object-mapper#1", MCP_FRAME_JSON),
             entry("cli/src/main/java/io/github/mbackschat/a12/dm/cli/McpInvoker.java"
                     + "::jackson-object-mapper#1", MCP_FRAME_JSON),
             entry("cli/src/main/java/io/github/mbackschat/a12/dm/cli/McpToolRegistry.java"

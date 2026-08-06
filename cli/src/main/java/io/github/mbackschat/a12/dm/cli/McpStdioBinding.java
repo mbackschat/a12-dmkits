@@ -51,7 +51,7 @@ final class McpStdioBinding {
                 message = MAPPER.readTree(line);
             } catch (JacksonException malformed) {
                 // The id is unreadable, so the error frame reports it as null — the one case JSON-RPC allows.
-                write(out, errorFrame(null, McpProtocol.PARSE_ERROR,
+                write(out, McpFrames.error(null, McpProtocol.PARSE_ERROR,
                         "malformed JSON-RPC message: " + malformed.getOriginalMessage(), null));
                 continue;
             }
@@ -61,20 +61,20 @@ final class McpStdioBinding {
 
     private static void respond(PrintWriter out, McpDispatcher dispatcher, JsonNode message) throws IOException {
         if (!message.isObject()) {
-            write(out, errorFrame(null, McpProtocol.INVALID_REQUEST,
+            write(out, McpFrames.error(null, McpProtocol.INVALID_REQUEST,
                     "a JSON-RPC message must be an object", null));
             return;
         }
         JsonNode id = message.get("id");
         if (id != null && id.isNull()) {
             // A notification omits the id entirely; an explicit null is neither a request nor a notification.
-            write(out, errorFrame(null, McpProtocol.INVALID_REQUEST,
+            write(out, McpFrames.error(null, McpProtocol.INVALID_REQUEST,
                     "a request id must not be null; omit `id` entirely to send a notification", null));
             return;
         }
         JsonNode method = message.path("method");
         if (!method.isTextual()) {
-            write(out, errorFrame(id, McpProtocol.INVALID_REQUEST, "a JSON-RPC message must name a method", null));
+            write(out, McpFrames.error(id, McpProtocol.INVALID_REQUEST, "a JSON-RPC message must name a method", null));
             return;
         }
         JsonNode params = message.path("params");
@@ -84,54 +84,15 @@ final class McpStdioBinding {
             return; // JSON-RPC: the receiver MUST NOT respond to a notification.
         }
         try {
-            write(out, resultFrame(id, dispatcher.dispatch(request)));
+            write(out, McpFrames.result(id, dispatcher.dispatch(request)));
         } catch (McpFailure refusal) {
-            write(out, errorFrame(id, refusal.code(), refusal.getMessage(), refusal.data()));
+            write(out, McpFrames.error(id, refusal.code(), refusal.getMessage(), refusal.data()));
         } catch (RuntimeException unexpected) {
             // A handler bug is this server's fault, never the caller's: report it as an internal error rather
             // than letting it kill the session, which would take every other in-flight request with it.
-            write(out, errorFrame(id, McpProtocol.INTERNAL_ERROR,
+            write(out, McpFrames.error(id, McpProtocol.INTERNAL_ERROR,
                     "internal server error: " + unexpected, null));
         }
-    }
-
-    private static ObjectNode resultFrame(JsonNode id, McpResult result) {
-        ObjectNode frame = frame(id);
-        ObjectNode body = frame.putObject("result");
-        body.put("resultType", result.resultType().wireName());
-        body.setAll(result.payload());
-        if (result.ttlMs() != null) {
-            body.put("ttlMs", result.ttlMs());
-            body.put("cacheScope", result.cacheScope().wireName());
-        }
-        // Servers SHOULD identify themselves on every result; with no session there is nowhere else to say it.
-        body.putObject(McpProtocol.META).set(McpProtocol.META_SERVER_INFO, serverInfo());
-        return frame;
-    }
-
-    private static ObjectNode errorFrame(JsonNode id, int code, String message, ObjectNode data) {
-        ObjectNode frame = frame(id);
-        ObjectNode error = frame.putObject("error");
-        error.put("code", code);
-        error.put("message", message);
-        if (data != null) {
-            error.set("data", data);
-        }
-        return frame;
-    }
-
-    private static ObjectNode frame(JsonNode id) {
-        ObjectNode frame = MAPPER.createObjectNode();
-        frame.put("jsonrpc", "2.0");
-        frame.set("id", id == null ? MAPPER.nullNode() : id);
-        return frame;
-    }
-
-    private static ObjectNode serverInfo() {
-        ObjectNode info = MAPPER.createObjectNode();
-        info.put("name", Cli.TOOL_NAME);
-        info.put("version", VersionInfo.current().rulekit());
-        return info;
     }
 
     /** One frame, one line. Flushed per message: a client blocks on the answer to the request it just sent. */

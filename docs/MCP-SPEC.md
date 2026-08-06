@@ -1,6 +1,6 @@
 # dmtool over MCP — the spec
 
-The `dmtool mcp` verb serves this tool over the [Model Context Protocol](https://modelcontextprotocol.io), revision **`2026-07-28`**, on stdin/stdout.
+The `dmtool mcp` verb serves this tool over the [Model Context Protocol](https://modelcontextprotocol.io), revision **`2026-07-28`** — on stdin/stdout for a host that launches the binary, and over **Streamable HTTP** (`--http`) for a host reached across the network.
 
 > ### Positioning — read this before anything else
 >
@@ -12,7 +12,7 @@ The `dmtool mcp` verb serves this tool over the [Model Context Protocol](https:/
 >
 > The positioning rides the verb's own `--help`, not only this document: that is where a cold agent meets the surface, and the wrong choice there is silent.
 
-**What is built here is the stdio transport, and hosting is where this is going.** The design record is explicit that the *hosted* transport is the one carrying the value and that a stdio server is the development and testing vehicle for it; the owner's recorded sequencing is "stdio-first, hosted a later and separately justified phase" (2026-08-02). Phase 1 was built to that plan rather than around it — the content-carrying request model exists *because* both transports were made to share one mechanism, so a hosted binding replaces the wire layer and reuses the dispatcher, the registry, and the invoker unchanged. What remains is a binding, a queue and a payload cap, and two decisions of different weight: shipping a container image a customer runs is licensing-neutral, while hosting it ourselves attaches EUPL Article 1. [MCP-GAPS](MCP-GAPS.md) "Hosting" carries all four.
+**Hosting is what this is for.** The design record is explicit that the *hosted* transport is the one carrying the value and that stdio is the development and testing vehicle for it; the owner's recorded sequencing was stdio first (2026-08-02), and both are now built. The content-carrying request model exists *because* the two were made to share one mechanism — §7 is a binding, not a second server. What remains for a deployment is packaging and a platform: [MCP-GAPS](MCP-GAPS.md) "Hosting" carries the container image (licensing-neutral) and hosting it ourselves (which attaches EUPL Article 1).
 
 **How the design was reached** — the alternatives, the measurements, and the decisions taken while it was unbuilt — is the archived [MCP-SUPPORT-PROPOSAL](archived/MCP-SUPPORT-PROPOSAL.md). This file states what is *built*; what is deliberately not built is [MCP-GAPS](MCP-GAPS.md).
 
@@ -49,15 +49,18 @@ Every result carries `resultType: "complete"` and `_meta.io.modelcontextprotocol
 ## 3. The seam
 
 ```
-McpStdioBinding     the wire: framing, the JSON-RPC envelope, id correlation      ← outermost
-  └── McpDispatcher method name -> handler, over OUR request/result records
+McpStdioBinding  |  McpHttpBinding    the wire: framing/headers, the envelope, id correlation  ← outermost
+              └──┴── McpDispatcher    method name -> handler, over OUR request/result records
+                       └── McpToolRegistry / McpInvoker
 ```
+
+Two bindings, one everything-else. That the hosted transport was a *binding* rather than a second server is the payoff of the content rules: no session, no server-side state, nothing per-transport to keep in step.
 
 Only the binding may name a transport shape. Protocol *facts* live inside — `resultType`, `ttlMs`, and `cacheScope` are plain fields on `McpResult`, because which operation is cacheable and how fresh its answer is are semantics this server owns; a transport must not decide caching policy. What the rule bans is depending on someone else's classes to express them.
 
 **Zero new dependencies.** The layer is Jackson tree plus the JDK, both already in the binary. The official Java SDK is not a trade-off here but unavailable: its latest release tracks `2025-11-25`, and Java is not in the revision's Tier-1 SDK set. Three things prepare for a substitution and nothing else does: the handler table is **data** (`McpDispatcher.handlers()`), handlers are **synchronous pure functions**, and the protocol tests assert **on the wire** — so they survive a substitution intact and become the SDK's acceptance suite rather than something to rewrite.
 
-**Dispatch is serialised**, one request at a time. It is the only posture whose thread-safety is established, and no verb is long enough to make queueing costly for a single caller. That justification does not survive multiple callers.
+**Dispatch is serialised**, one request at a time, on both transports — the only posture whose thread-safety is established. For a single caller no verb is long enough to make queueing costly; for a hosted endpoint serving several callers it head-of-line blocks, which is [MG5](MCP-GAPS.md)'s bounded-concurrency work and is not yet done.
 
 ## 4. `server/discover`
 
@@ -112,7 +115,36 @@ Mandatory in this revision, and cacheable (`ttlMs` one hour, `cacheScope: "publi
 
 **One deliberate deviation, stated.** The specification SHOULDs that a tool returning structured content also return the serialized JSON in a text block, for a client that ignores `structuredContent`. That client is served here by the `--text` rendering, which carries the same information in the form a model reads better; emitting the JSON twice would double every response for a client that already has it. Artifacts come back as **embedded resources** (`dm:///out/<name>`), which the spec permits while SHOULDing the `resources` capability alongside — not declared here, because declaring a capability whose endpoints are not served ([MG1](MCP-GAPS.md)) would be the worse claim.
 
-## 7. The verb's own contract
+## 7. The hosted transport — Streamable HTTP
+
+The **second binding over the same seam**: `dmtool mcp --http` reuses `McpDispatcher`, `McpToolRegistry`, and `McpInvoker` unchanged. That is what the content-carrying request model was built for — with no session and no server-side state, a transport swap touches one class. It runs on the JDK's own `com.sun.net.httpserver`, so hosting costs no new dependency.
+
+```sh
+dmtool mcp --http --host 0.0.0.0 --port 8080     # a hosted process; the endpoint is POST /mcp
+```
+
+Defaults are the safe ones: it binds **loopback** unless told otherwise (the specification SHOULDs that for a server running beside its caller), and **no browser origin is allowed** until one is listed. The startup line goes to **stderr**, because this route's stdout carries nothing — which is exactly what its `http` operational profile publishes as `EMPTY_STDOUT`.
+
+**The status mapping is the specification's, not a convention.** JSON-RPC over HTTP is usually served as 200-with-an-error-body; this revision is explicit instead, and every row is a MUST:
+
+| what happens | answer |
+|---|---|
+| a result | `200` · `application/json` (a single JSON object; SSE is permitted and not used) |
+| a notification | `202` with **no body** — and header validation does not apply, since this revision defines no header rules for one |
+| a required header missing, or disagreeing with the body | `400` + `HeaderMismatch` **-32020** |
+| a protocol version this server does not implement | `400` + **-32022** with the supported set |
+| an RPC method it does not implement | **`404`** + -32601 |
+| `Origin` present and not allowlisted | `403` — the required DNS-rebinding defense |
+| `GET` / `DELETE` (the removed standalone stream and session teardown) | `405`; `Mcp-Session-Id` and `Last-Event-ID` are ignored, never echoed |
+| a body over the cap | `413` with a corrective naming the flag that raises it |
+
+A **tool execution** error is none of these: it rides a `200` as `isError` inside the result, because the call reached the verb and the answer is actionable feedback.
+
+**Why the mirrored headers are validated rather than trusted.** `MCP-Protocol-Version`, `Mcp-Method`, and — on `tools/call` — `Mcp-Name` must agree with the body. An intermediary may route on the header while this server executes the body, so a disagreement is a real vulnerability, which is why the specification makes rejecting it a MUST rather than a nicety. A name that is not header-safe arrives Base64-wrapped in the `=?base64?…?=` sentinel and is **decoded before comparison** — comparing first would reject every legitimate encoded name.
+
+**Not served, deliberately:** SSE response streams (a single JSON object is permitted and every answer here is one), `subscriptions/listen`, and authentication. The last is a specification SHOULD and a real exposure for a public endpoint: nothing is stored, so there is no data to reach, but there is CPU to burn. Put the endpoint behind the platform's own auth or a private network unless it is meant to be public.
+
+## 8. The verb's own contract
 
 `mcp` publishes one operational profile, and every axis differs from an ordinary verb's:
 
@@ -127,7 +159,7 @@ It is `CONTRACT_EXEMPT` from the directional `schema <verb>` surface, for a stat
 
 Its demonstration is likewise structural rather than owed: a verb whose unit of use is a session on stdin cannot be shown by an argv, so it is exempt in the conformance matrix and demonstrated executably by the wire suite instead.
 
-## 8. No skill ships with this surface — and none should
+## 9. No skill ships with this surface — and none should
 
 `skill/SKILL.md` is **not** given to an MCP caller, no second skill is written for one, and the server is not registered in either agent plugin. Four reasons, in order of how load-bearing they are:
 
@@ -140,7 +172,7 @@ Its demonstration is likewise structural rather than owed: a verb whose unit of 
 
 The cheap win available now is independent of MCP: relocate what the placement rule says was misfiled anyway. Two measured examples — `GroupFilled`'s "guard row existence with `GroupFilled`, not `FieldFilled`" is an operator-relation fact belonging in the catalog, and `export`'s "not an inspection tool" belongs in the verb description. Relocating them makes them MCP-reachable for free *and* shrinks the measured skill.
 
-## 9. Guards
+## 10. Guards
 
 | claim | what fails when it is violated |
 |---|---|
@@ -166,4 +198,6 @@ The cheap win available now is independent of MCP: relocate what the placement r
 | a variadic positional takes each element as its own token | `McpToolCallTest` |
 | no request tree survives its call | `McpToolCallTest` |
 | a call writes nothing to the process stdout, so no verb output can corrupt a frame | `McpToolCallTest` |
+| every HTTP status and error code in §7, one case each | `McpHttpWireTest` |
+| the `--http` route binds, announces on stderr, and leaves stdout empty | `McpCommandTest` |
 | the published output-kind vocabulary names `NDJSON_STREAM` | `DmtoolPublicContractTest` |

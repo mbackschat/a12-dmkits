@@ -68,10 +68,11 @@ Two pieces make an agent this good with `dmtool`:
 
 ### 🔌 The same tool over MCP — for a host that cannot run a binary
 
-Some callers can't spawn a subprocess at all: a web client, a hosted agent platform, a sandboxed IDE integration. For those, **the same binary is a Model Context Protocol server** (revision `2026-07-28`, on stdin/stdout):
+Some callers can't spawn a subprocess at all: a web client, a hosted agent platform, a sandboxed IDE integration. For those, **the same binary is a Model Context Protocol server** (revision `2026-07-28`) — two transports, one implementation:
 
 ```sh
-dmtool mcp          # register this as the server command with your host
+dmtool mcp                                       # stdin/stdout, for a host that launches the binary
+dmtool mcp --http --host 0.0.0.0 --port 8080     # a bound port — upload it, start it, hand out the URL
 ```
 
 The whole verb surface arrives as tools, **derived from the same command tree the CLI describes itself from** — so the two surfaces can never describe the tool differently, and a verb added to the CLI appears here by itself. Each tool carries the facts a host can act on: a read tool is annotated read-only, so allowlisting `dm.rule.read` cannot reach `rule remove` — a guarantee granting shell access can never give you.
@@ -115,7 +116,15 @@ For a caller that cannot execute the binary, the same executable speaks the **Mo
 { "mcpServers": { "dmtool": { "command": "dmtool", "args": ["mcp"] } } }
 ```
 
-or drive it directly — one newline-delimited JSON-RPC message per line:
+**Or host it.** For a caller that reaches the tool over the network rather than launching it, the same binary binds a port and serves Streamable HTTP — upload it, start it, hand out the URL:
+
+```sh
+dmtool mcp --http --host 0.0.0.0 --port 8080     # POST https://your-host/mcp
+```
+
+It binds loopback and allows no browser origin unless told otherwise, refuses a body over its cap, and answers with the protocol's own status codes (`400` on a header/body mismatch, `404` on an unknown method, `403` on an unlisted `Origin`).
+
+Over stdio you can also drive it directly — one newline-delimited JSON-RPC message per line:
 
 ```sh
 printf '%s\n' '{"jsonrpc":"2.0","id":1,"method":"server/discover","params":{"_meta":{"io.modelcontextprotocol/protocolVersion":"2026-07-28","io.modelcontextprotocol/clientCapabilities":{}}}}' | dmtool mcp

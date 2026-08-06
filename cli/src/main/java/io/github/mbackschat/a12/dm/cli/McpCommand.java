@@ -5,9 +5,12 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.Reader;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.function.Supplier;
 
 import picocli.CommandLine.Command;
+import picocli.CommandLine.Option;
 
 /**
  * The {@code mcp} verb — serve the tool surface over the Model Context Protocol on stdin/stdout (MCP-SPEC).
@@ -21,12 +24,13 @@ import picocli.CommandLine.Command;
  * would need three visibility widenings to buy nothing.
  */
 @Command(name = "mcp", mixinStandardHelpOptions = true,
-        description = "Serve this tool over the Model Context Protocol (revision " + McpProtocol.REVISION + ") "
-                + "on stdin/stdout, for a caller that CANNOT execute this binary — a hosted agent platform, a "
-                + "web client, a sandboxed integration. Where the binary can be run, invoke the verbs directly "
-                + "instead: they edit a model in place, while every MCP call carries the model's content both "
-                + "ways. Register it with your host as the command `" + Cli.TOOL_NAME + " mcp`; it serves one "
-                + "request at a time and exits when stdin closes.")
+        description = "Serve this tool over the Model Context Protocol (revision " + McpProtocol.REVISION + "), "
+                + "for a caller that CANNOT execute this binary — a hosted agent platform, a web client, a "
+                + "sandboxed integration. Two transports: by default stdin/stdout, for a host that launches "
+                + "the binary itself (`" + Cli.TOOL_NAME + " mcp`, serving until stdin closes); with --http a "
+                + "bound port, for a host the caller reaches over the network. Where the binary can be run, "
+                + "invoke the verbs directly instead: they edit a model in place, while every MCP call carries "
+                + "the model's content both ways and this server keeps nothing.")
 final class McpCommand extends BaseCommand {
 
     /**
@@ -34,6 +38,39 @@ final class McpCommand extends BaseCommand {
      * test supplies a scripted session, so the wiring is exercised without a spawned process.
      */
     static Supplier<Reader> stdinSource = () -> new InputStreamReader(System.in, StandardCharsets.UTF_8);
+
+    /**
+     * What a served HTTP endpoint does after it is up: nothing, until the process is stopped. A seam for the
+     * same reason as {@link #stdinSource} — a test needs the verb to start, bind, and return.
+     */
+    static Runnable httpBlock = () -> {
+        try {
+            Thread.currentThread().join();
+        } catch (InterruptedException stopped) {
+            Thread.currentThread().interrupt();
+        }
+    };
+
+    @Option(names = "--http", description = "serve Streamable HTTP on a bound port instead of stdin/stdout — "
+            + "the hosted shape, for callers that reach this tool over the network rather than by launching it")
+    boolean http;
+
+    @Option(names = "--host", paramLabel = "<host>", description = "the interface the HTTP endpoint binds "
+            + "(default ${DEFAULT-VALUE}); pass 0.0.0.0 in a container, where the platform routes to it")
+    String host = McpHttpConfig.DEFAULT_HOST;
+
+    @Option(names = "--port", paramLabel = "<port>", description = "the HTTP port to bind (default "
+            + "${DEFAULT-VALUE}); 0 asks the operating system for a free one")
+    int port = 8080;
+
+    @Option(names = "--allow-origin", paramLabel = "<origin>", description = "a browser Origin permitted to "
+            + "call the endpoint (repeatable). A request carrying any other Origin is refused 403, the "
+            + "protocol's required DNS-rebinding defense; a non-browser client sends none and is unaffected")
+    List<String> allowOrigin = new ArrayList<>();
+
+    @Option(names = "--max-request-bytes", paramLabel = "<bytes>", description = "the request-body ceiling "
+            + "(default ${DEFAULT-VALUE}); a larger body is refused with a corrective instead of being read")
+    int maxRequestBytes = McpHttpConfig.DEFAULT_MAX_REQUEST_BYTES;
 
     @Override
     public Integer call() throws IOException {
@@ -44,8 +81,32 @@ final class McpCommand extends BaseCommand {
             return fail("`--text` renders a result envelope for a human reader; this verb writes MCP protocol "
                     + "frames, which have no text rendering. Run it without `--text`.");
         }
+        McpDispatcher dispatcher = new McpDispatcher(spec.root());
+        if (http) {
+            return serveHttp(dispatcher);
+        }
         try (BufferedReader in = new BufferedReader(stdinSource.get())) {
-            McpStdioBinding.serve(in, out(), new McpDispatcher(spec.root()));
+            McpStdioBinding.serve(in, out(), dispatcher);
+        }
+        return 0;
+    }
+
+    /**
+     * The hosted shape: bind a port and serve until the process is stopped. The startup line goes to
+     * <b>stderr</b> — this verb's stdout carries protocol frames on the stdio route and nothing at all here,
+     * and a hosting platform reads stderr for logs anyway.
+     */
+    private Integer serveHttp(McpDispatcher dispatcher) throws IOException {
+        McpHttpConfig config = McpHttpConfig.builder()
+                .host(host)
+                .port(port)
+                .allowedOrigins(allowOrigin)
+                .maxRequestBytes(maxRequestBytes)
+                .build();
+        try (McpHttpBinding binding = McpHttpBinding.start(config, dispatcher, Runnable::run)) {
+            err().println(McpHttpBinding.describe(config, binding.port()));
+            err().flush();
+            httpBlock.run();
         }
         return 0;
     }

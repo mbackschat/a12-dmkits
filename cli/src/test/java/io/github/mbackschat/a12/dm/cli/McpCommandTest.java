@@ -44,6 +44,26 @@ class McpCommandTest {
     }
 
     /**
+     * The hosted route: the verb binds a port, announces it on <b>stderr</b>, and leaves stdout empty — which
+     * is what its `http` operational profile publishes as {@code EMPTY_STDOUT}.
+     */
+    @Test
+    void theHttpRouteBindsAPortAndSaysSoOnStderr() {
+        Runnable block = McpCommand.httpBlock;
+        McpCommand.httpBlock = () -> { };
+        try {
+            CliTestSupport.Result result = CliTestSupport.run("mcp", "--http", "--port", "0");
+
+            assertEquals(0, result.code(), result::err);
+            assertEquals("", result.out(), "the frames travel over the port, never over stdout");
+            assertTrue(result.err().contains("/mcp"), () -> "the endpoint is announced: " + result.err());
+            assertTrue(result.err().contains("2026-07-28"), () -> "with the revision served: " + result.err());
+        } finally {
+            McpCommand.httpBlock = block;
+        }
+    }
+
+    /**
      * {@code --text} buffers stdout until the verb returns, and this verb returns when the session ends — so
      * passing it would withhold every frame and hang the client on its first request. Refused, not ignored.
      */

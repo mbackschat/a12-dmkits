@@ -635,14 +635,26 @@ final class CommandContracts {
             // `batch` carries, because `batch`'s children write to the caller's files and these cannot.
             // The classification is true only while that holds: accepting a caller-supplied path, or letting
             // anything a call creates outlive it, makes this DISPATCH and puts the persistence scope back.
-            case MCP -> List.of(Profile.builder("serve")
-                    .effect(Effect.READ_ONLY)
-                    .failurePersistence(FailurePersistence.NO_WRITE)
-                    .topLevelOk(TopLevelOk.EXECUTION_COMPLETED)
-                    .returns(Returns.builder(ReturnKind.NDJSON_STREAM)
-                            .reason("newline-delimited JSON-RPC frames, one per line, until stdin closes")
-                            .build())
-                    .build());
+            case MCP -> List.of(
+                    Profile.builder("stdio")
+                            .when(omitted("--http"))
+                            .effect(Effect.READ_ONLY)
+                            .failurePersistence(FailurePersistence.NO_WRITE)
+                            .topLevelOk(TopLevelOk.EXECUTION_COMPLETED)
+                            .returns(Returns.builder(ReturnKind.NDJSON_STREAM)
+                                    .reason("newline-delimited JSON-RPC frames, one per line, until stdin closes")
+                                    .build())
+                            .build(),
+                    Profile.builder("http")
+                            .when(supplied("--http"))
+                            .effect(Effect.READ_ONLY)
+                            .failurePersistence(FailurePersistence.NO_WRITE)
+                            .topLevelOk(TopLevelOk.EXECUTION_COMPLETED)
+                            .returns(Returns.builder(ReturnKind.EMPTY_STDOUT)
+                                    .reason("frames travel over the bound port; stdout carries nothing and "
+                                            + "the startup line goes to stderr")
+                                    .build())
+                            .build());
             case META -> List.of(
                     read("read", Selector.builder().noneSet(META_WRITE_FLAGS).omitted("--dry-run", "--output", "-o").build(),
                             envelope(), Consistency.NONE),

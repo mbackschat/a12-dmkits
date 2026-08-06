@@ -39,6 +39,9 @@ final class McpProtocol {
     static final int INTERNAL_ERROR = -32603;
     static final int UNSUPPORTED_PROTOCOL_VERSION = -32022;
 
+    /** HTTP only: the mirrored headers disagree with the body, or a required one is missing. */
+    static final int HEADER_MISMATCH = -32020;
+
     /**
      * What a result <i>is</i>. Every result MUST carry one, and a client MUST treat an unrecognized value as
      * invalid. This server completes or fails; it never asks for more input, so {@code input_required} — the
