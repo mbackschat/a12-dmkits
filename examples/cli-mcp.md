@@ -121,4 +121,14 @@ jq -nc --rawfile model examples/models/order.dm.json '{jsonrpc:"2.0",id:6,method
 `workspace` names a filesystem path (a directory searched to resolve a model's references), and this server accepts no caller-supplied path. Send content instead — a model as `model`, a referenced model in `references`, any other file under `files` — and read the result back out of the response.
 ```
 
+## The hosted form
+
+Everything above is the stdio transport, which a host launches. The same binary also binds a port and speaks Streamable HTTP, for callers that reach it over the network — upload the binary, start it, hand out the URL:
+
+```sh
+dmtool mcp --http --host 0.0.0.0 --port 8080     # clients POST to https://your-host/mcp
+```
+
+It is the *same* server: the dispatcher, the tool registry, and the invoker are reused unchanged, so every behaviour shown above holds identically. What the HTTP layer adds is the transport's own rules — the mirrored `MCP-Protocol-Version` / `Mcp-Method` / `Mcp-Name` headers must agree with the body (`400` + `-32020` if they do not), an unknown method is `404`, an unlisted browser `Origin` is `403`, the removed `GET`/`DELETE` session mechanics are `405`, and a body over the cap is `413`. Several callers are served by a bounded pool; past it the answer is an immediate `503` with `Retry-After`. The full contract is [`MCP-SPEC.md`](../docs/MCP-SPEC.md) §7.
+
 A few verbs are deliberately not served, each for a stated reason a client can read: the `workspace` family answers over a whole directory, and `model rename` refuses on an *inward* scan, so serving it from a caller-declared set would let it prove an absence that was never established.

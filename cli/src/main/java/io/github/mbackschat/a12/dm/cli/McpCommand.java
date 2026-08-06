@@ -72,6 +72,17 @@ final class McpCommand extends BaseCommand {
             + "(default ${DEFAULT-VALUE}); a larger body is refused with a corrective instead of being read")
     int maxRequestBytes = McpHttpConfig.DEFAULT_MAX_REQUEST_BYTES;
 
+    @Option(names = "--workers", paramLabel = "<n>", description = "how many calls may run at once (default "
+            + "${DEFAULT-VALUE}). Memory scales with this, not just CPU: authoring is flat at tens of MiB "
+            + "while evaluating a large document has been measured in the hundreds, so raise it only with "
+            + "the heap to match")
+    int workers = McpHttpConfig.DEFAULT_WORKERS;
+
+    @Option(names = "--queue-depth", paramLabel = "<n>", description = "how many calls may wait for a worker "
+            + "(default ${DEFAULT-VALUE}). Past it a caller is told to retry immediately rather than queued: "
+            + "a timed-out request is re-issued as a new one, so a deep queue invites a retry storm")
+    int queueDepth = McpHttpConfig.DEFAULT_QUEUE_DEPTH;
+
     @Override
     public Integer call() throws IOException {
         // `--text` renders a result envelope as human text by buffering stdout until the verb returns. On a
@@ -102,8 +113,10 @@ final class McpCommand extends BaseCommand {
                 .port(port)
                 .allowedOrigins(allowOrigin)
                 .maxRequestBytes(maxRequestBytes)
+                .workers(workers)
+                .queueDepth(queueDepth)
                 .build();
-        try (McpHttpBinding binding = McpHttpBinding.start(config, dispatcher, Runnable::run)) {
+        try (McpHttpBinding binding = McpHttpBinding.start(config, dispatcher)) {
             err().println(McpHttpBinding.describe(config, binding.port()));
             err().flush();
             httpBlock.run();

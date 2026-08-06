@@ -61,9 +61,10 @@ final class McpInvoker {
     private McpInvoker() {
     }
 
-    static McpResult call(CommandSpec root, McpRequest request) throws McpFailure {
+    static McpResult call(CommandSpec root, List<McpToolRegistry.McpTool> tools, McpRequest request)
+            throws McpFailure {
         String name = request.params().path("name").asText(null);
-        McpToolRegistry.McpTool tool = McpToolRegistry.tools(root).stream()
+        McpToolRegistry.McpTool tool = tools.stream()
                 .filter(candidate -> candidate.name().equals(name)).findFirst()
                 .orElseThrow(() -> new McpFailure(McpProtocol.INVALID_PARAMS, "Unknown tool: " + name));
         JsonNode arguments = request.params().path("arguments");

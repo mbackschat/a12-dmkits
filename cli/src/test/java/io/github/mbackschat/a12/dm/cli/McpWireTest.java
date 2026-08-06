@@ -78,7 +78,12 @@ class McpWireTest {
         assertEquals(List.of("2026-07-28"),
                 MAPPER.convertValue(result.path("supportedVersions"), List.class));
         assertTrue(result.path("capabilities").has("tools"), "the tools capability is declared");
-        assertFalse(result.path("instructions").asText().isBlank(), "discover carries the router instructions");
+        String instructions = result.path("instructions").asText();
+        assertFalse(instructions.isBlank(), "discover carries the router instructions");
+        // The one piece of judgment that must arrive BEFORE the call: the kernel accepts both polarities, so
+        // no diagnostic can catch an inverted rule, and no reactive surface can correct it in time.
+        assertTrue(instructions.contains("VIOLATION"),
+                () -> "discover teaches rule polarity, which nothing else can deliver in time: " + instructions);
         assertTrue(result.path("ttlMs").isNumber(), "a cacheable result carries ttlMs");
         assertEquals("public", result.path("cacheScope").asText());
         // Servers SHOULD identify themselves in the result's _meta rather than in a handshake that no longer exists.

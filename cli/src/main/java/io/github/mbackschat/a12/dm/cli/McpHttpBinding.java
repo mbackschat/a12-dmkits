@@ -9,7 +9,11 @@ import java.util.Base64;
 import java.util.List;
 import java.util.Locale;
 import java.util.Optional;
+import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.Executor;
+import java.util.concurrent.RejectedExecutionException;
+import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
 
 import com.fasterxml.jackson.core.JacksonException;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -63,24 +67,65 @@ final class McpHttpBinding implements AutoCloseable {
     private static final String BASE64_PREFIX = "=?base64?";
     private static final String BASE64_SUFFIX = "?=";
 
-    private final HttpServer server;
+    /**
+     * Capacity exhausted. Allocated <b>outside</b> the JSON-RPC reserved range, as the specification directs
+     * for a purpose it does not define, and matched to the HTTP status so the two say the same thing.
+     */
+    private static final int BUSY = 503;
 
-    private McpHttpBinding(HttpServer server) {
+    private final HttpServer server;
+    private final Runnable onClose;
+
+    private McpHttpBinding(HttpServer server, Runnable onClose) {
         this.server = server;
+        this.onClose = onClose;
     }
 
-    /** Bind and begin serving. The caller owns the returned handle and closes it to stop. */
-    static McpHttpBinding start(McpHttpConfig config, McpDispatcher dispatcher, Executor executor)
-            throws IOException {
+    /**
+     * Bind and begin serving with a <b>bounded</b> worker pool, closed by the returned handle.
+     *
+     * <p>The acceptor thread only hands off, so a full pool is answered on the spot rather than silently
+     * queued: with stream resumability removed from this revision, a timed-out request is re-issued as a
+     * <i>new</i> one, and an unbounded queue would turn one slow call into a retry storm. A caller told
+     * "busy, retry" immediately can back off; a caller left waiting cannot.
+     */
+    static McpHttpBinding start(McpHttpConfig config, McpDispatcher dispatcher) throws IOException {
+        ThreadPoolExecutor pool = new ThreadPoolExecutor(config.workers(), config.workers(),
+                0L, TimeUnit.MILLISECONDS, new ArrayBlockingQueue<>(config.queueDepth()),
+                runnable -> {
+                    Thread worker = new Thread(runnable, "mcp-http-worker");
+                    worker.setDaemon(true);
+                    return worker;
+                });
+        return start(config, dispatcher, pool, pool::shutdownNow);
+    }
+
+    /** The seam a test uses to drive a specific executor — a rejecting one, or a direct one. */
+    static McpHttpBinding start(McpHttpConfig config, McpDispatcher dispatcher, Executor executor,
+            Runnable onClose) throws IOException {
         HttpServer server = HttpServer.create(new InetSocketAddress(config.host(), config.port()), 0);
         server.createContext(ENDPOINT, exchange -> {
-            try (exchange) {
-                handle(exchange, config, dispatcher);
+            try {
+                executor.execute(() -> {
+                    try (exchange) {
+                        handle(exchange, config, dispatcher);
+                    } catch (IOException broken) {
+                        exchange.close(); // the peer went away mid-answer; nothing to report to it
+                    }
+                });
+            } catch (RejectedExecutionException busy) {
+                try (exchange) {
+                    exchange.getResponseHeaders().add("Retry-After", "1");
+                    respond(exchange, 503, error(null, BUSY,
+                            "the server is at capacity (" + config.workers() + " concurrent, "
+                                    + config.queueDepth() + " queued); retry shortly"));
+                }
             }
         });
-        server.setExecutor(executor);
+        // The acceptor dispatches inline and hands straight off, so nothing queues behind a running call.
+        server.setExecutor(null);
         server.start();
-        return new McpHttpBinding(server);
+        return new McpHttpBinding(server, onClose);
     }
 
     int port() {
@@ -90,6 +135,7 @@ final class McpHttpBinding implements AutoCloseable {
     @Override
     public void close() {
         server.stop(0);
+        onClose.run();
     }
 
     private static void handle(HttpExchange exchange, McpHttpConfig config, McpDispatcher dispatcher)

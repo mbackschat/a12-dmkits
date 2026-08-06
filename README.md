@@ -122,7 +122,7 @@ For a caller that cannot execute the binary, the same executable speaks the **Mo
 dmtool mcp --http --host 0.0.0.0 --port 8080     # POST https://your-host/mcp
 ```
 
-It binds loopback and allows no browser origin unless told otherwise, refuses a body over its cap, and answers with the protocol's own status codes (`400` on a header/body mismatch, `404` on an unknown method, `403` on an unlisted `Origin`).
+It binds loopback and allows no browser origin unless told otherwise, refuses a body over its cap, and answers with the protocol's own status codes (`400` on a header/body mismatch, `404` on an unknown method, `403` on an unlisted `Origin`). Several callers are served at once by a **bounded** pool — past `--workers` × `--queue-depth` a caller gets an immediate `503` with `Retry-After`, because this protocol revision dropped stream resumability and a deep queue would turn one slow call into a retry storm.
 
 Over stdio you can also drive it directly — one newline-delimited JSON-RPC message per line:
 

@@ -1,6 +1,7 @@
 package io.github.mbackschat.a12.dm.cli;
 
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -44,11 +45,18 @@ final class McpDispatcher {
      *             hides (a native build's JVM-only set) is absent from the tool surface too
      */
     McpDispatcher(CommandSpec root) {
+        // Derived ONCE. The surface is computed from this process's own command tree, so it cannot change
+        // while the process runs — and deriving it per request would rebuild every bundled output schema on
+        // every `tools/list`, and would walk the shared tree from several threads for no reason.
+        List<McpToolRegistry.McpTool> tools = McpToolRegistry.tools(root);
+        ArrayNode toolsJson = MAPPER.createArrayNode();
+        tools.forEach(tool -> toolsJson.add(tool.toJson()));
+
         handlers.put("server/discover", request -> McpResult.cacheable(discover(), DISCOVER_TTL_MS));
-        handlers.put("tools/call", request -> McpInvoker.call(root, request));
+        handlers.put("tools/call", request -> McpInvoker.call(root, tools, request));
         handlers.put("tools/list", request -> {
             ObjectNode payload = MAPPER.createObjectNode();
-            payload.set("tools", McpToolRegistry.toolsJson(root));
+            payload.set("tools", toolsJson.deepCopy());
             return McpResult.cacheable(payload, TOOLS_TTL_MS);
         });
     }
@@ -110,9 +118,15 @@ final class McpDispatcher {
     }
 
     /**
-     * The mandatory discovery RPC: what this server speaks, what it can do, and where to look next. The
-     * {@code instructions} string is a <b>router, never content</b> — the vocabulary and the per-verb detail
-     * live behind calls a client can make, and duplicating them here would be a second copy to keep true.
+     * The mandatory discovery RPC: what this server speaks, what it can do, and where to look next.
+     *
+     * <p>{@code instructions} is <b>a router plus the judgment nothing else can deliver in time</b>. The
+     * specification defines it as guidance for using the server effectively, and one fact qualifies on its
+     * own: a rule's condition is true on the <i>violation</i>. The kernel accepts both directions, so no
+     * diagnostic can catch an inverted rule — and unlike every other trap here, the correction has to arrive
+     * <i>before</i> the call, not inside its answer. Everything a caller can look up instead — the operator
+     * catalogue, the schemas, each diagnostic's fix, and `rule explain`'s own published {@code polarity} —
+     * stays behind a call, because a second copy is a second thing to keep true.
      */
     private static ObjectNode discover() {
         ObjectNode result = MAPPER.createObjectNode();
@@ -122,8 +136,17 @@ final class McpDispatcher {
         result.put("instructions", "A12 DocumentModel authoring and inspection. Every call carries its own "
                 + "content: send the model's DM-JSON, receive the edited DM-JSON back — this server stores "
                 + "nothing between calls and accepts no filesystem path. Call `tools/list` for the surface; "
-                + "each tool's `op` enum documents that route's effect and what it returns. Where you can run "
-                + "the `" + Cli.TOOL_NAME + "` binary directly, prefer it: it edits models in place.");
+                + "each tool's `op` enum documents that route's effect and what it returns. "
+                + "AUTHORING A RULE: its condition must be TRUE on the VIOLATION — the state to reject, not "
+                + "the requirement. To enforce \"a delivery date must not precede the order date\", write the "
+                + "condition that is true when it DOES. The kernel accepts both directions, so a valid result "
+                + "never means the polarity is right; read it back as \"true exactly when the document is "
+                + "wrong\", and use the `explain` op, whose `polarity` says the same about a stored rule. "
+                + "Ask first whether the constraint belongs in the FIELD (requiredness, a pattern, a range) "
+                + "rather than a rule, and remember that a condition over a repeatable group is evaluated "
+                + "PER ROW unless an aggregate operator makes it whole-column. "
+                + "Where you can run the `" + Cli.TOOL_NAME + "` binary directly, prefer it: it edits models "
+                + "in place.");
         return result;
     }
 }

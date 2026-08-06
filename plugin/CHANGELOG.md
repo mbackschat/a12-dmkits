@@ -9,6 +9,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/);
 ### Added
 
 - **`dmtool mcp` — the same tool over the Model Context Protocol** (revision `2026-07-28`, newline-delimited JSON-RPC on stdin/stdout), for a caller that cannot execute the binary. The tool surface is *derived* from the live command tree, so `readOnlyHint` and `outputSchema` are true of every op a tool covers or are not claimed; every call carries the model's content in both directions, the server accepts no filesystem path and keeps nothing between calls, and a client on an older revision is refused with the protocol's own error naming the supported set. Register it with `{"mcpServers":{"dmtool":{"command":"dmtool","args":["mcp"]}}}`; a worked session is in `examples/cli-mcp.md`. Where the binary *can* be run, the CLI remains the better surface — it edits models in place.
+- **`dmtool mcp --http` — the same server, hosted.** Upload the binary, start it bound to a port, hand out the URL: clients POST JSON-RPC to `/mcp`. It binds loopback and allows no browser `Origin` until told otherwise, caps the request body, and serves several callers from a bounded pool that answers `503` with `Retry-After` rather than queueing. Every status code is the protocol's own (`400` on a header/body mismatch, `404` on an unknown method, `403` on an unlisted origin, `405` on the removed session mechanics).
 
 ### Changed
 

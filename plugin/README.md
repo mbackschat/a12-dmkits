@@ -146,7 +146,7 @@ The same executable speaks the **Model Context Protocol**, revision `2026-07-28`
 dmtool mcp --http --host 0.0.0.0 --port 8080     # clients POST to https://your-host/mcp
 ```
 
-It binds loopback until told otherwise, allows no browser `Origin` unless you list one, and caps the request body. Put it behind your platform's TLS and authentication: the server stores nothing, so there is no data to reach, but an open endpoint is open CPU.
+It binds loopback until told otherwise, allows no browser `Origin` unless you list one, and caps the request body. Several callers are served at once by a bounded pool (`--workers`, `--queue-depth`); past it a caller gets an immediate `503` with `Retry-After` rather than waiting behind a queue. Raise `--workers` only with the memory to match — authoring is flat at tens of MiB, but evaluating a large document has been measured in the hundreds. Put it behind your platform's TLS and authentication: the server stores nothing, so there is no data to reach, but an open endpoint is open CPU.
 
 Nothing else is needed — no plugin, no skill, no configuration file of ours. To see the stdio form answer, drive it by hand (one newline-delimited JSON-RPC message per line):
 

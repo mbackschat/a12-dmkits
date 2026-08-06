@@ -60,7 +60,7 @@ Only the binding may name a transport shape. Protocol *facts* live inside — `r
 
 **Zero new dependencies.** The layer is Jackson tree plus the JDK, both already in the binary. The official Java SDK is not a trade-off here but unavailable: its latest release tracks `2025-11-25`, and Java is not in the revision's Tier-1 SDK set. Three things prepare for a substitution and nothing else does: the handler table is **data** (`McpDispatcher.handlers()`), handlers are **synchronous pure functions**, and the protocol tests assert **on the wire** — so they survive a substitution intact and become the SDK's acceptance suite rather than something to rewrite.
 
-**Dispatch is serialised**, one request at a time, on both transports — the only posture whose thread-safety is established. For a single caller no verb is long enough to make queueing costly; for a hosted endpoint serving several callers it head-of-line blocks, which is [MG5](MCP-GAPS.md)'s bounded-concurrency work and is not yet done.
+**Dispatch is serialised over stdio** — one request at a time, which is right for a single caller launching the binary. The hosted transport is **bounded-concurrent** instead (§7), because there a second caller must not wait behind the first.
 
 ## 4. `server/discover`
 
@@ -142,6 +142,10 @@ A **tool execution** error is none of these: it rides a `200` as `isError` insid
 
 **Why the mirrored headers are validated rather than trusted.** `MCP-Protocol-Version`, `Mcp-Method`, and — on `tools/call` — `Mcp-Name` must agree with the body. An intermediary may route on the header while this server executes the body, so a disagreement is a real vulnerability, which is why the specification makes rejecting it a MUST rather than a nicety. A name that is not header-safe arrives Base64-wrapped in the `=?base64?…?=` sentinel and is **decoded before comparison** — comparing first would reject every legitimate encoded name.
 
+**Several callers at once.** The hosted endpoint runs a **bounded** worker pool (`--workers`, default the visible cores capped at 4) behind a **bounded** queue (`--queue-depth`, default 16). Past both a caller gets `503` with `Retry-After` and an error code allocated *outside* the JSON-RPC reserved range, as the specification directs for a purpose it does not define. Bounded on purpose: this revision removed stream resumability, so a timed-out request is re-issued as a **new** one, and a deep queue converts one slow call into a retry storm. The worker count is a **memory** dial more than a CPU one — authoring is flat at ~43 MiB while a large document evaluation has been measured at 519 MiB, so a host sized for authoring must not admit four evaluations at once.
+
+**The thread-safety claim is established, not assumed** — the hosted endpoint is the first place two callers can be in flight together. What makes it hold: `Cli.run` builds a fresh command tree per invocation, so no `@Option` field is shared; each call gets its own temporary tree and its own output sinks; and the tool surface is derived **once** at startup rather than walked per request (which also stops `tools/list` rebuilding every bundled schema on every call). A test drives twelve concurrent calls carrying two different models and asserts each caller gets its own answer back.
+
 **Not served, deliberately:** SSE response streams (a single JSON object is permitted and every answer here is one), `subscriptions/listen`, and authentication. The last is a specification SHOULD and a real exposure for a public endpoint: nothing is stored, so there is no data to reach, but there is CPU to burn. Put the endpoint behind the platform's own auth or a private network unless it is meant to be public.
 
 ## 8. The verb's own contract
@@ -168,7 +172,14 @@ Its demonstration is likewise structural rather than owed: a verb whose unit of 
 - **Most of the skill's factual content is already MCP-reachable**, by the project's own placement rule: operator `gotchas` and semantics through `dm.catalog` op `operators`, field-level requiredness and co-requirements through the published schemas (`dm.catalog` op `schema`), and each error code's `fix`/`explain` through `dm.catalog` op `diagnostics` *and* the diagnostics riding every envelope. Those are three of the four placement lanes; only the fourth — the skill's own — is unreachable.
 - **MCP has no skill concept in any revision.** Agent Skills is a separate portable standard; the two compose at the packaging layer, not in the protocol.
 
-**What an MCP caller genuinely loses**, stated rather than waved away: the cross-cutting judgment no registry can derive — condition **polarity** (the kernel accepts both directions, so no diagnostic can catch an inverted rule), the *is this even a rule?* gate, and the per-row-versus-aggregate recasting trap. That residue has no home on this surface today. Writing it into `instructions` was considered and refused: that string is deliberately a **router, never content**, and a second copy of the one file the project says only an expensive probe run can validate is exactly the duplication two skills were rejected for. How much it actually costs is **unmeasured** — there is no MCP eval arm ([MG4](MCP-GAPS.md)) — so the honest sequence is measure first, then decide.
+**What an MCP caller loses — and what it does not.** *(Corrected 2026-08-06: an earlier revision of this section said the judgment residue "has no home on this surface today". Measured, that was wrong in both directions.)*
+
+- **Already data, reachable by a call:** operator `gotchas` and semantics (`dm.catalog` op `operators`), field-level requiredness and co-requirements (op `schema`), each code's `fix`/`explain` (op `diagnostics`, and the diagnostics riding every envelope) — and **polarity itself**, which `dm.rule.read` op `explain` publishes as `data.polarity.{firesOn, note}` for a stored rule. `rule check`'s polarity lint fires on the way in.
+- **Genuinely prospective, and therefore in `instructions`:** the judgment that must arrive *before* the call. Rule polarity is the case that qualifies on its own — the kernel accepts both directions, so a `valid` result never means the polarity is right and **no diagnostic can catch an inverted rule**. A reactive surface cannot correct what it never sees. Beside it ride two more sentences: ask whether the constraint belongs in the *field* rather than a rule, and remember that a condition over a repeatable group is evaluated **per row** unless an aggregate makes it whole-column.
+
+That is a deliberate narrowing of the "router, never content" rule, not an abandonment of it: `instructions` is defined by the specification as guidance for using the server effectively, and the test is whether a fact can be *looked up in time*. Everything that can stays behind a call, because a second copy is a second thing to keep true. Four sentences of the one trap that cannot is not a duplicated skill — and it reaches every MCP client with no packaging and no host skill support.
+
+**A host-loaded skill remains available and is not ruled out.** MCP has no skill concept, but Agent Skills is a separate standard the *host* loads, so a caller's host can carry one beside the server registration. It would have to be a **different** skill from `skill/SKILL.md` — that one is invocation-shaped — and whether the residue above justifies writing one is unmeasured until an MCP eval arm exists ([MG4](MCP-GAPS.md)). Build it on a measurement, not on a hunch.
 
 The cheap win available now is independent of MCP: relocate what the placement rule says was misfiled anyway. Two measured examples — `GroupFilled`'s "guard row existence with `GroupFilled`, not `FieldFilled`" is an operator-relation fact belonging in the catalog, and `export`'s "not an inspection tool" belongs in the verb description. Relocating them makes them MCP-reachable for free *and* shrinks the measured skill.
 
@@ -200,4 +211,7 @@ The cheap win available now is independent of MCP: relocate what the placement r
 | a call writes nothing to the process stdout, so no verb output can corrupt a frame | `McpToolCallTest` |
 | every HTTP status and error code in §7, one case each | `McpHttpWireTest` |
 | the `--http` route binds, announces on stderr, and leaves stdout empty | `McpCommandTest` |
+| concurrent callers carrying different models each get their own answer | `McpHttpConcurrencyTest` |
+| a full server answers `503` + `Retry-After` immediately instead of queueing | `McpHttpConcurrencyTest` |
+| the derived tool surface is identical call to call | `McpHttpConcurrencyTest` |
 | the published output-kind vocabulary names `NDJSON_STREAM` | `DmtoolPublicContractTest` |

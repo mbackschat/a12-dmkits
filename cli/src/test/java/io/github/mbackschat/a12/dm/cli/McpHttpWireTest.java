@@ -41,8 +41,10 @@ class McpHttpWireTest {
     void start() throws IOException {
         McpHttpConfig config = McpHttpConfig.builder().port(0).allowedOrigins(List.of("https://allowed.example"))
                 .maxRequestBytes(32 * 1024).build();
+        // The direct executor keeps these protocol cases single-threaded and deterministic; the bounded pool
+        // is exercised by McpHttpConcurrencyTest, which is where concurrency is the thing under test.
         server = McpHttpBinding.start(config,
-                new McpDispatcher(new CommandLine(new RootCommand()).getCommandSpec()), Runnable::run);
+                new McpDispatcher(new CommandLine(new RootCommand()).getCommandSpec()), Runnable::run, () -> { });
         endpoint = URI.create("http://127.0.0.1:" + server.port() + McpHttpBinding.ENDPOINT);
     }
 
