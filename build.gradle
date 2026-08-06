@@ -220,7 +220,16 @@ ext.routeExclusivelyHostedTests = { Test broad, List<String> owningTaskNames,
                     "'${name}' is declared an exclusive owner but its filter includes NO test class, so " +
                     "${broad.path} would silently re-run what that lane is supposed to own.")
         }
-        patterns.each { hostByClass[it] = name }
+        patterns.each {
+            // Refuse ambiguous ownership rather than last-wins: with two owners the corrective would name
+            // whichever was configured last, which can be a REGENERATOR (it writes goldens instead of asserting).
+            if (hostByClass.containsKey(it) && hostByClass[it] != name) {
+                throw new GradleException(
+                        "'${it}' is claimed as exclusively owned by both '${hostByClass[it]}' and '${name}'. " +
+                        "Exactly one lane owns a class; classify the other as a non-owner with its reason.")
+            }
+            hostByClass[it] = name
+        }
     }
     // Every Test task that filters classes out of the SAME compiled output must be classified — an owner, or a
     // reasoned non-owner. This is what makes "a new exclusively owning task must be added to the owners list"
@@ -242,22 +251,34 @@ ext.routeExclusivelyHostedTests = { Test broad, List<String> owningTaskNames,
                 "it with a reason (a regenerator over already-owned classes, or an additive lane the broad " +
                 "suite also runs).")
     }
-    hostByClass.keySet().each { broad.filter.excludeTestsMatching(it) }
-    // The EFFECT assertion, not a restatement of the wiring: if an owned class actually executes in the broad lane
-    // — by any mutation of the derivation above, however it is written — the lane fails naming the leak. This is
-    // what the previous text-matching guards could not see, and what let five classes double-run unnoticed.
-    def leaked = [] as Set
-    broad.afterTest { desc, result ->
-        if (hostByClass.containsKey(desc.className)) {
-            leaked << desc.className
+    // The native-image REFLECTION CAPTURE traces this lane only (`-PrkNativeAgent`), and excluding a class that
+    // drives the product in-process would shrink the traced surface — the one class CLAUDE.md calls invisible to
+    // both the capture and the gate's trip-wire. During a capture the exclusion is therefore not applied at all,
+    // so the traced set stays a superset of what it was before this derivation existed. Capture is release-only.
+    def tracingForNativeImage = broad.project.hasProperty('rkNativeAgent')
+    if (tracingForNativeImage) {
+        broad.doFirst {
+            logger.lifecycle("${broad.path}: -PrkNativeAgent set, so the ${hostByClass.size()} exclusively-owned " +
+                    "classes stay IN this lane to keep the reflection capture's surface complete.")
         }
-    }
-    broad.doLast {
-        if (!leaked.isEmpty()) {
-            throw new GradleException(
-                    "${broad.path} executed ${leaked.size()} class(es) a dedicated lane owns exclusively: " +
-                    "${leaked.sort()}. Their runtime inputs are declared on the owning task, not here, so running " +
-                    "them in this lane can go up-to-date into a false green.")
+    } else {
+        hostByClass.keySet().each { broad.filter.excludeTestsMatching(it) }
+        // The EFFECT assertion, not a restatement of the wiring: if an owned class actually executes in the broad
+        // lane — by any mutation of the derivation above, however written — the lane fails naming the leak. That is
+        // what the text-matching guards could not see, and what let five classes double-run unnoticed.
+        def leaked = [] as Set
+        broad.afterTest { desc, result ->
+            if (hostByClass.containsKey(desc.className)) {
+                leaked << desc.className
+            }
+        }
+        broad.doLast {
+            if (!leaked.isEmpty()) {
+                throw new GradleException(
+                        "${broad.path} executed ${leaked.size()} class(es) a dedicated lane owns exclusively: " +
+                        "${leaked.sort()}. Their runtime inputs are declared on the owning task, not here, so " +
+                        "running them in this lane can go up-to-date into a false green.")
+            }
         }
     }
     // The root project's path is already ':', so only a subproject needs the separator appended.
@@ -268,6 +289,9 @@ ext.routeExclusivelyHostedTests = { Test broad, List<String> owningTaskNames,
         hit(pattern) || (pattern.contains('.') && hit(pattern.substring(0, pattern.lastIndexOf('.'))))
     }
     broad.doFirst {
+        if (tracingForNativeImage) {
+            return      // nothing was excluded, so there is nothing to reroute
+        }
         def patterns = []
         try {
             patterns = new ArrayList(broad.filter.commandLineIncludePatterns)
