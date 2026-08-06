@@ -64,6 +64,26 @@ class McpCommandTest {
     }
 
     /**
+     * A hosting platform assigns the address and passes it in the environment, so the bind defaults must say
+     * so where the operator reads them. The behaviour itself is a parse-time environment lookup that an
+     * in-process test cannot set; it is verified end to end against the packaged launcher and on the host by
+     * the deployment smoke test, and what is locked here is that the contract stays *published*.
+     */
+    @Test
+    void theBindDefaultsDocumentThePlatformEnvironment() {
+        CliTestSupport.Result help = CliTestSupport.run("mcp", "--help");
+
+        assertEquals(0, help.code(), help::err);
+        // Picocli wraps a description across lines, so the match is against whitespace-normalised help —
+        // otherwise the assertion would pass or fail on where the column break happens to land.
+        String flowed = help.out().replaceAll("\\s+", " ");
+        assertTrue(flowed.contains("PORT environment variable"),
+                () -> "the port default names the platform's variable: " + help.out());
+        assertTrue(flowed.contains("IP or HOST environment variable"),
+                () -> "the host default names the platform's variable: " + help.out());
+    }
+
+    /**
      * {@code --text} buffers stdout until the verb returns, and this verb returns when the session ends — so
      * passing it would withhold every frame and hang the client on its first request. Refused, not ignored.
      */

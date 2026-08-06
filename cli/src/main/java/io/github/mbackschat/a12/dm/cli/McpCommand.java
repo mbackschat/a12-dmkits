@@ -55,13 +55,19 @@ final class McpCommand extends BaseCommand {
             + "the hosted shape, for callers that reach this tool over the network rather than by launching it")
     boolean http;
 
-    @Option(names = "--host", paramLabel = "<host>", description = "the interface the HTTP endpoint binds "
-            + "(default ${DEFAULT-VALUE}); pass 0.0.0.0 in a container, where the platform routes to it")
-    String host = McpHttpConfig.DEFAULT_HOST;
+    // A hosting platform ASSIGNS the address it wants the program to listen on and passes it in the
+    // environment — alwaysdata's user-program type sets IP and PORT, and most platforms set at least PORT.
+    // So the defaults read the environment before falling back, and picocli interpolates them, which means
+    // `--help` on the host shows the address that environment actually resolves to rather than a guess.
+    @Option(names = "--host", paramLabel = "<host>", defaultValue = "${env:IP:-${env:HOST:-127.0.0.1}}",
+            description = "the interface the HTTP endpoint binds — the platform's IP or HOST environment "
+                    + "variable when one is set, else ${DEFAULT-VALUE}. Pass 0.0.0.0 for any interface")
+    String host;
 
-    @Option(names = "--port", paramLabel = "<port>", description = "the HTTP port to bind (default "
-            + "${DEFAULT-VALUE}); 0 asks the operating system for a free one")
-    int port = 8080;
+    @Option(names = "--port", paramLabel = "<port>", defaultValue = "${env:PORT:-8080}",
+            description = "the HTTP port to bind — the platform's PORT environment variable when one is set, "
+                    + "else ${DEFAULT-VALUE}; 0 asks the operating system for a free one")
+    int port;
 
     @Option(names = "--allow-origin", paramLabel = "<origin>", description = "a browser Origin permitted to "
             + "call the endpoint (repeatable). A request carrying any other Origin is refused 403, the "
