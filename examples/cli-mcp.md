@@ -1,0 +1,124 @@
+# dmtool over MCP — the same tool, for a host that cannot run a binary
+
+`dmtool mcp` serves the whole verb surface over the **Model Context Protocol**, revision `2026-07-28`, as newline-delimited JSON-RPC on stdin/stdout. It exists for a caller that cannot execute the binary — a web client, a hosted agent platform, a sandboxed integration. **Where you can run the binary, run it:** the CLI edits models in place, while every MCP call carries the model's content in both directions.
+
+A host normally launches it (`{"mcpServers":{"dmtool":{"command":"dmtool","args":["mcp"]}}}`); here it is driven by hand, one message per line, so every frame is visible.
+
+**Discovery** is mandatory in this revision and cacheable — it names the revision served, what the server can do, and how long the answer stays fresh. There is no handshake: every request carries its own protocol version.
+
+```bash
+printf '%s\n' '{"jsonrpc":"2.0","id":1,"method":"server/discover","params":{"_meta":{"io.modelcontextprotocol/protocolVersion":"2026-07-28","io.modelcontextprotocol/clientCapabilities":{}}}}' | dmtool mcp | jq '.result | {resultType, supportedVersions, capabilities: (.capabilities|keys), cacheScope}'
+
+```
+
+```output
+{
+  "resultType": "complete",
+  "supportedVersions": [
+    "2026-07-28"
+  ],
+  "capabilities": [
+    "tools"
+  ],
+  "cacheScope": "public"
+}
+```
+
+**The tools are derived**, not authored: each is one cell of *(target × effect × return shape)* over the live command tree, so a tool is annotated read-only exactly when every op it covers is. That is what makes categorical approval safe — granting `dm.rule.read` cannot reach `rule remove`.
+
+```bash
+printf '%s\n' '{"jsonrpc":"2.0","id":2,"method":"tools/list","params":{"_meta":{"io.modelcontextprotocol/protocolVersion":"2026-07-28","io.modelcontextprotocol/clientCapabilities":{}}}}' | dmtool mcp | jq '{tools: (.result.tools|length), readOnly: [.result.tools[]|select(.annotations.readOnlyHint)|.name]}'
+
+```
+
+```output
+{
+  "tools": 28,
+  "readOnly": [
+    "dm.catalog",
+    "dm.computation.read",
+    "dm.config.read",
+    "dm.field.read",
+    "dm.group.read",
+    "dm.include.read",
+    "dm.model.emit",
+    "dm.model.read",
+    "dm.profile.read",
+    "dm.rule.read",
+    "dm.typedef.read",
+    "dm.where-used"
+  ]
+}
+```
+
+**A read carries its subject as content.** The model's DM-JSON goes in the request; the standard result envelope comes back as `structuredContent`, with the same answer rendered for a human in `content`. The server reads no file and keeps nothing.
+
+```bash
+jq -nc --rawfile model examples/models/order.dm.json '{jsonrpc:"2.0",id:3,method:"tools/call",params:{name:"dm.model.read",arguments:{op:"check",model:$model},_meta:{"io.modelcontextprotocol/protocolVersion":"2026-07-28","io.modelcontextprotocol/clientCapabilities":{}}}}' | dmtool mcp | jq '.result | {isError, outcome: .structuredContent.outcome, valid: .structuredContent.valid, text: .content[0].text}'
+
+```
+
+```output
+{
+  "isError": false,
+  "outcome": "read",
+  "valid": true,
+  "text": "model is valid\n  (read · valid)\n"
+}
+```
+
+**An edit returns the edited model.** The rule spec rides `files` under the parameter key the manifest publishes; the kernel checks the rule exactly as it would from the CLI, and the new DM-JSON comes back as an embedded resource. Persisting it is the caller's job — nothing was written anywhere.
+
+```bash
+jq -nc --rawfile model examples/models/order.dm.json --arg spec '{ "field": "/Order/DeliveryDate", "group": "/Order", "condition": "AllFieldsFilled(OrderDate, DeliveryDate) And DifferenceInDays(OrderDate, DeliveryDate) < 0", "code": "DELIVERY_BEFORE_ORDER", "messages": [ {"locale":"en_US","text":"Delivery date must not precede the order date."} ] }' '{jsonrpc:"2.0",id:4,method:"tools/call",params:{name:"dm.rule.edit",arguments:{op:"add",model:$model,files:{"rule-spec.json":$spec}},_meta:{"io.modelcontextprotocol/protocolVersion":"2026-07-28","io.modelcontextprotocol/clientCapabilities":{}}}}' | dmtool mcp | jq '.result | {isError, outcome: .structuredContent.outcome, changed: .structuredContent.changed, returned: [.content[]|select(.type=="resource")|{uri: .resource.uri, bytes: (.resource.text|length)}]}'
+
+```
+
+```output
+{
+  "isError": false,
+  "outcome": "applied",
+  "changed": {
+    "rule": "/Order/DELIVERY_BEFORE_ORDER"
+  },
+  "returned": [
+    {
+      "uri": "dm:///out/subject.dm.json",
+      "bytes": 11230
+    }
+  ]
+}
+```
+
+**One revision, and anything else is refused legibly.** A client on the previous revision gets the protocol's own error with the supported set, not a mystery failure — so it can act on the answer instead of guessing.
+
+```bash
+printf '%s\n' '{"jsonrpc":"2.0","id":5,"method":"tools/list","params":{"_meta":{"io.modelcontextprotocol/protocolVersion":"2025-11-25","io.modelcontextprotocol/clientCapabilities":{}}}}' | dmtool mcp | jq '.error'
+
+```
+
+```output
+{
+  "code": -32022,
+  "message": "Unsupported protocol version",
+  "data": {
+    "supported": [
+      "2026-07-28"
+    ],
+    "requested": "2025-11-25"
+  }
+}
+```
+
+**No caller-supplied path, of any kind.** A path argument is refused rather than sanitised, and the refusal says what to send instead. That is why two callers cannot reach each other's models: the server holds none.
+
+```bash
+jq -nc --rawfile model examples/models/order.dm.json '{jsonrpc:"2.0",id:6,method:"tools/call",params:{name:"dm.model.read",arguments:{op:"check",model:$model,args:{workspace:"/etc"}},_meta:{"io.modelcontextprotocol/protocolVersion":"2026-07-28","io.modelcontextprotocol/clientCapabilities":{}}}}' | dmtool mcp | jq -r '.error.message'
+
+```
+
+```output
+`workspace` names a filesystem path (a directory searched to resolve a model's references), and this server accepts no caller-supplied path. Send content instead — a model as `model`, a referenced model in `references`, any other file under `files` — and read the result back out of the response.
+```
+
+A few verbs are deliberately not served, each for a stated reason a client can read: the `workspace` family answers over a whole directory, and `model rename` refuses on an *inward* scan, so serving it from a caller-declared set would let it prove an absence that was never established.

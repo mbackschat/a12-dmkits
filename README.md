@@ -33,7 +33,6 @@ It is built **agent-first** — the #1 use is inside a coding-agent session (Cla
 - **Self-describing — a cold agent needs no external docs.** `manifest` lists every verb × parameter with a worked example; `operators` / `patterns` / `diagnostics` / `schema` expose the DSL vocabulary, the validation idioms, each diagnostic code, and the exact I/O shape — all from the binary itself.
 - **Judgment where `--help` can't reach.** A bundled skill teaches what the catalog can't — condition *polarity*, error-field paths, iteration scope — so a scaffolded rule has the right shape before the kernel ever sees it.
 - **Safe by construction.** Envelope-producing operations share one standard result shape, while raw artifact/catalog and text-view modes are explicit in the operational profile; deletes and structural refactors are **gated** (a referenced field won't silently vanish); a multi-op `apply` session is **atomic** (rollback on any failure).
-- **Reachable where a binary is not.** `dmtool mcp` serves the same verbs over the Model Context Protocol for a caller that *cannot* run the binary — a hosted agent platform, a web client, a sandboxed integration. Every call carries the model's content both ways and the server keeps nothing. Where you *can* run the binary, run it: it edits models in place.
 
 ### A session, in natural language
 
@@ -66,18 +65,33 @@ Two pieces make an agent this good with `dmtool`:
 
 - **The plugin** delivers the binary — a bundled installer the skill runs **on demand** (the first time `dmtool` is needed, in that same session) fetches the right per-OS native build (anonymous, checksum-verified). One install line (below); the same plugin model serves Claude Code and Codex.
 - **The skill** is a small `SKILL.md` of *judgment* — the traps `--help` can't teach: rule **polarity**, valid **error fields**, **iteration** scope, the date/number gotchas. The binary stays self-describing (`manifest` / `operators` / `schema`); the skill teaches *when* and *why*, and the same canonical skill backs both agents.
+
+### 🔌 The same tool over MCP — for a host that cannot run a binary
+
+Some callers can't spawn a subprocess at all: a web client, a hosted agent platform, a sandboxed IDE integration. For those, **the same binary is a Model Context Protocol server** (revision `2026-07-28`, on stdin/stdout):
+
+```sh
+dmtool mcp          # register this as the server command with your host
+```
+
+The whole verb surface arrives as tools, **derived from the same command tree the CLI describes itself from** — so the two surfaces can never describe the tool differently, and a verb added to the CLI appears here by itself. Each tool carries the facts a host can act on: a read tool is annotated read-only, so allowlisting `dm.rule.read` cannot reach `rule remove` — a guarantee granting shell access can never give you.
+
+**Every call carries its own content.** Send the model's DM-JSON, get the edited DM-JSON back. The server accepts **no filesystem path**, holds no model between calls, and deletes everything a call creates before it answers — so two callers cannot reach each other's work, by construction rather than by policy.
+
+> **Where you *can* run the binary, run it.** The CLI edits models in place; over MCP you pay a content round trip in each direction. MCP is the answer to "my host cannot execute anything", not a local convenience — and the verb's own `--help` says so.
 <!-- /shared:dmtool-story -->
 
 Prefer typed Java in your own JVM project? The same engine is a library — see *The idea* and the rulekit / modelkit sections below.
 
 ---
 
-## Two ways to use it
+## Three ways to use it
 
 | You are… | Use | Why |
 |---|---|---|
 | a **modeller / BA**, or an **LLM agent** | **`dmtool`**, the CLI | verbs + profiled JSON/text I/O, single native binary, self-describing — no Java toolchain to install |
 | a **developer**, editing models in your own JVM project | **rulekit / modelkit** as a library | typed builders, kernel-checked, in your own code & compiler |
+| a **host that cannot execute a binary** — a web client, a hosted agent platform, a sandboxed integration | **`dmtool mcp`**, the MCP server ([contract](docs/MCP-SPEC.md)) | the same verbs as tools derived from the same command tree; every call carries its content both ways and the server keeps nothing |
 
 *(The kits — rulekit, modelkit, dm.edit, schemakit — are a **Java** library. The **interpreter** is Kotlin Multiplatform and its packed library is tested on JVM, Node.js, and Chrome.)*
 
@@ -92,6 +106,24 @@ Same engine, no Java required. Model-bound operations use `dmtool -m <model> <ta
 `dmtool` is distributed from the public release repo — **[`a12-dmtool-releases`](https://github.com/mbackschat/a12-dmtool-releases)**, which holds the **single source of install truth**. Both paths are documented there in full: the **agent plugin** (Claude Code / Codex — bundles the binary + the canonical skill, *including the post-install activation step*) and the **raw per-OS binary** (+ `SHA256SUMS`) for plain terminal use. (This source repo holds the plugin *source* under [`plugin/`](plugin/) (Claude Code) and [`plugin-codex/`](plugin-codex/) (Codex); they ship to the mirror at release.)
 
 The binary is **EUPL-1.2** (it embeds the A12 Kernel — see the mirror's `LICENSE`/`NOTICE`); Homebrew/Scoop come later. The runtime-evaluation verbs (`model eval`, `rule eval`, `model compute`, `model seed`) run on a **native-safe interpreter** on every target — the sole runtime eval engine — so they work in the native binary too.
+
+### Serve it over MCP
+
+For a caller that cannot execute the binary, the same executable speaks the **Model Context Protocol**, revision `2026-07-28`, over stdin/stdout. Register it with a host that reads a project `.mcp.json`:
+
+```json
+{ "mcpServers": { "dmtool": { "command": "dmtool", "args": ["mcp"] } } }
+```
+
+or drive it directly — one newline-delimited JSON-RPC message per line:
+
+```sh
+printf '%s\n' '{"jsonrpc":"2.0","id":1,"method":"server/discover","params":{"_meta":{"io.modelcontextprotocol/protocolVersion":"2026-07-28","io.modelcontextprotocol/clientCapabilities":{}}}}' | dmtool mcp
+```
+
+The tools are **derived** from the live command tree plus the operational contract, so `readOnlyHint` and `outputSchema` are true of every op a tool covers or are not claimed at all. Content crosses the wire in both directions — no path is accepted, nothing is stored, and a call's working tree is deleted before it answers. A few verbs are deliberately not served (the `workspace` family, `model rename`), each for a stated reason: they answer over a whole directory, or their refusal must prove a sibling's *absence*, which a caller-declared set cannot establish.
+
+Worked session: [`examples/cli-mcp.md`](examples/cli-mcp.md). Full contract, the refusals, and what is deliberately not built: [`docs/MCP-SPEC.md`](docs/MCP-SPEC.md) + [`docs/MCP-GAPS.md`](docs/MCP-GAPS.md).
 
 ### Discover the tool itself
 

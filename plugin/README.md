@@ -33,7 +33,6 @@ It is built **agent-first** — the #1 use is inside a coding-agent session (Cla
 - **Self-describing — a cold agent needs no external docs.** `manifest` lists every verb × parameter with a worked example; `operators` / `patterns` / `diagnostics` / `schema` expose the DSL vocabulary, the validation idioms, each diagnostic code, and the exact I/O shape — all from the binary itself.
 - **Judgment where `--help` can't reach.** A bundled skill teaches what the catalog can't — condition *polarity*, error-field paths, iteration scope — so a scaffolded rule has the right shape before the kernel ever sees it.
 - **Safe by construction.** Envelope-producing operations share one standard result shape, while raw artifact/catalog and text-view modes are explicit in the operational profile; deletes and structural refactors are **gated** (a referenced field won't silently vanish); a multi-op `apply` session is **atomic** (rollback on any failure).
-- **Reachable where a binary is not.** `dmtool mcp` serves the same verbs over the Model Context Protocol for a caller that *cannot* run the binary — a hosted agent platform, a web client, a sandboxed integration. Every call carries the model's content both ways and the server keeps nothing. Where you *can* run the binary, run it: it edits models in place.
 
 ### A session, in natural language
 
@@ -66,6 +65,20 @@ Two pieces make an agent this good with `dmtool`:
 
 - **The plugin** delivers the binary — a bundled installer the skill runs **on demand** (the first time `dmtool` is needed, in that same session) fetches the right per-OS native build (anonymous, checksum-verified). One install line (below); the same plugin model serves Claude Code and Codex.
 - **The skill** is a small `SKILL.md` of *judgment* — the traps `--help` can't teach: rule **polarity**, valid **error fields**, **iteration** scope, the date/number gotchas. The binary stays self-describing (`manifest` / `operators` / `schema`); the skill teaches *when* and *why*, and the same canonical skill backs both agents.
+
+### 🔌 The same tool over MCP — for a host that cannot run a binary
+
+Some callers can't spawn a subprocess at all: a web client, a hosted agent platform, a sandboxed IDE integration. For those, **the same binary is a Model Context Protocol server** (revision `2026-07-28`, on stdin/stdout):
+
+```sh
+dmtool mcp          # register this as the server command with your host
+```
+
+The whole verb surface arrives as tools, **derived from the same command tree the CLI describes itself from** — so the two surfaces can never describe the tool differently, and a verb added to the CLI appears here by itself. Each tool carries the facts a host can act on: a read tool is annotated read-only, so allowlisting `dm.rule.read` cannot reach `rule remove` — a guarantee granting shell access can never give you.
+
+**Every call carries its own content.** Send the model's DM-JSON, get the edited DM-JSON back. The server accepts **no filesystem path**, holds no model between calls, and deletes everything a call creates before it answers — so two callers cannot reach each other's work, by construction rather than by policy.
+
+> **Where you *can* run the binary, run it.** The CLI edits models in place; over MCP you pay a content round trip in each direction. MCP is the answer to "my host cannot execute anything", not a local convenience — and the verb's own `--help` says so.
 <!-- /shared:dmtool-story -->
 
 **A second bundled skill — `/a12-dmtool-bug-report`.** When something breaks, ask your agent to file a bug report. It isolates a **minimal reproduction**, tells a genuine **tool defect** apart from a rejected input (an internal error surfaces as a structured `error` envelope with `RK_INTERNAL_ERROR`, exit 70 — never a raw stack trace), captures the friction it hit, and writes a crisp report to **a folder you choose** — ready to attach to an issue or send however you like. Good reports help us fix the tool fast; it's the same report rigor we use to probe `dmtool` ourselves.
@@ -117,6 +130,26 @@ mv dmtool-macos-arm64 dmtool && chmod +x dmtool   # or dmtool-linux-x64 / dmtool
 The CLI is **self-describing** — `dmtool --help`, `dmtool manifest`, `dmtool operators`, `dmtool schema <target> <op>`.
 
 > The native binary covers rule **authoring / checking / structure / read** **and runtime evaluation** — `model eval`, `rule eval`, `model compute`, `model seed` run on the native-safe interpreter (kernel-free), the sole runtime eval engine on every target.
+
+## Install — as an MCP server (for a host that can't run a binary)
+
+The same executable speaks the **Model Context Protocol**, revision `2026-07-28`, on stdin/stdout. Install the binary as above, then register it with your host. For a host that reads a project `.mcp.json`:
+
+```json
+{ "mcpServers": { "dmtool": { "command": "dmtool", "args": ["mcp"] } } }
+```
+
+Nothing else is needed — no plugin, no skill, no configuration file of ours. To see it answer, drive it by hand (one newline-delimited JSON-RPC message per line):
+
+```sh
+printf '%s\n' '{"jsonrpc":"2.0","id":1,"method":"server/discover","params":{"_meta":{"io.modelcontextprotocol/protocolVersion":"2026-07-28","io.modelcontextprotocol/clientCapabilities":{}}}}' | dmtool mcp
+```
+
+What arrives is the whole verb surface as tools, **derived from the same command tree the CLI describes itself from**. Two things follow that a wrapper could not give you: a read tool is annotated read-only, so allowlisting `dm.rule.read` cannot reach `rule remove`; and every call **carries its own content** — send the model's DM-JSON, receive the edited DM-JSON back, with no path accepted and nothing kept between calls.
+
+A worked session is in [`examples/cli-mcp.md`](examples/cli-mcp.md).
+
+> **If you can run the binary, run it.** The CLI edits models in place; over MCP you pay a content round trip each way. This surface exists for the host that cannot execute anything.
 
 ## What you can do — a quick tour
 

@@ -6,6 +6,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/);
 
 ## [Unreleased]
 
+### Added
+
+- **`dmtool mcp` — the same tool over the Model Context Protocol** (revision `2026-07-28`, newline-delimited JSON-RPC on stdin/stdout), for a caller that cannot execute the binary. The tool surface is *derived* from the live command tree, so `readOnlyHint` and `outputSchema` are true of every op a tool covers or are not claimed; every call carries the model's content in both directions, the server accepts no filesystem path and keeps nothing between calls, and a client on an older revision is refused with the protocol's own error naming the supported set. Register it with `{"mcpServers":{"dmtool":{"command":"dmtool","args":["mcp"]}}}`; a worked session is in `examples/cli-mcp.md`. Where the binary *can* be run, the CLI remains the better surface — it edits models in place.
+
 ### Changed
 
 - **BREAKING:** non-transactional `batch` still returns `outcome:"completed"` after full dispatch and retains every independent child result, but now exposes `data.dispatched` and `data.allSucceeded`; outer `ok` and exit 0/1 agree with whether every child exited zero.

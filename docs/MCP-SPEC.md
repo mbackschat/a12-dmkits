@@ -125,7 +125,20 @@ It is `CONTRACT_EXEMPT` from the directional `schema <verb>` surface, for a stat
 
 Its demonstration is likewise structural rather than owed: a verb whose unit of use is a session on stdin cannot be shown by an argv, so it is exempt in the conformance matrix and demonstrated executably by the wire suite instead.
 
-## 6. Guards
+## 8. No skill ships with this surface — and none should
+
+`skill/SKILL.md` is **not** given to an MCP caller, no second skill is written for one, and the server is not registered in either agent plugin. Four reasons, in order of how load-bearing they are:
+
+- **The skill is invocation-shaped.** 167 lines carrying 20 `dmtool …` command forms, every one guarded to resolve against the live command tree. An agent holding `dm.rule.read` and no shell can execute **none** of it, so handing it over teaches the wrong surface.
+- **Where both exist, the skill is right to win.** Under a plugin the binary *is* present, so an agent reading the skill will shell out and ignore the tools — which is the correct choice, per the positioning at the top of this file. A skill that steered such an agent to MCP would be steering it wrong.
+- **Most of the skill's factual content is already MCP-reachable**, by the project's own placement rule: operator `gotchas` and semantics through `dm.catalog` op `operators`, field-level requiredness and co-requirements through the published schemas (`dm.catalog` op `schema`), and each error code's `fix`/`explain` through `dm.catalog` op `diagnostics` *and* the diagnostics riding every envelope. Those are three of the four placement lanes; only the fourth — the skill's own — is unreachable.
+- **MCP has no skill concept in any revision.** Agent Skills is a separate portable standard; the two compose at the packaging layer, not in the protocol.
+
+**What an MCP caller genuinely loses**, stated rather than waved away: the cross-cutting judgment no registry can derive — condition **polarity** (the kernel accepts both directions, so no diagnostic can catch an inverted rule), the *is this even a rule?* gate, and the per-row-versus-aggregate recasting trap. That residue has no home on this surface today. Writing it into `instructions` was considered and refused: that string is deliberately a **router, never content**, and a second copy of the one file the project says only an expensive probe run can validate is exactly the duplication two skills were rejected for. How much it actually costs is **unmeasured** — there is no MCP eval arm ([MG4](MCP-GAPS.md)) — so the honest sequence is measure first, then decide.
+
+The cheap win available now is independent of MCP: relocate what the placement rule says was misfiled anyway. Two measured examples — `GroupFilled`'s "guard row existence with `GroupFilled`, not `FieldFilled`" is an operator-relation fact belonging in the catalog, and `export`'s "not an inspection tool" belongs in the verb description. Relocating them makes them MCP-reachable for free *and* shrinks the measured skill.
+
+## 9. Guards
 
 | claim | what fails when it is violated |
 |---|---|

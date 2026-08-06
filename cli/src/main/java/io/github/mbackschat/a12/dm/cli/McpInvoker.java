@@ -143,7 +143,7 @@ final class McpInvoker {
         Map<String, ArgSpec> parameters = parameters(leaf.command());
         // Positionals are keyed by their DECLARED index, never by the order the caller happened to send:
         // `model diff <baseFile> <headFile>` would otherwise compare the two the wrong way round.
-        Map<Integer, String> positionals = new java.util.TreeMap<>();
+        Map<Integer, List<String>> positionals = new java.util.TreeMap<>();
         List<String> options = new ArrayList<>();
         for (Map.Entry<String, JsonNode> file : files(args, leaf, tree).entrySet()) {
             emit(parameters.get(file.getKey()), file.getValue(), positionals, options);
@@ -166,7 +166,7 @@ final class McpInvoker {
             }
             emit(parameter, entry.getValue(), positionals, options);
         }
-        argv.addAll(positionals.values());
+        positionals.values().forEach(argv::addAll);
         argv.addAll(options);
         return argv;
     }
@@ -220,10 +220,14 @@ final class McpInvoker {
      * One parameter's tokens. A boolean is a presence flag: {@code false} emits nothing, because picocli's
      * negated form is not universal here and an absent flag is what "off" means on this surface.
      */
-    private static void emit(ArgSpec parameter, JsonNode value, Map<Integer, String> positionals,
+    private static void emit(ArgSpec parameter, JsonNode value, Map<Integer, List<String>> positionals,
             List<String> options) {
         if (parameter instanceof PositionalParamSpec positional) {
-            positionals.put(positional.index().min(), value.asText());
+            // A positional may be VARIADIC — `schema <schema>...` takes `rule add` as two tokens of one
+            // parameter — so an array contributes each element in order rather than being stringified.
+            positionals.put(positional.index().min(), value.isArray()
+                    ? java.util.stream.StreamSupport.stream(value.spliterator(), false).map(JsonNode::asText).toList()
+                    : List.of(value.asText()));
             return;
         }
         OptionSpec option = (OptionSpec) parameter;

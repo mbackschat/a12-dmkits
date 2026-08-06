@@ -126,6 +126,24 @@ class McpToolCallTest {
         assertTrue(textOf(result).contains("GroupFilled"), "the catalogue itself comes back");
     }
 
+    /**
+     * A <b>variadic</b> positional takes an array. `schema <schema>...` addresses a verb contract as two
+     * tokens of one parameter, so stringifying the array — which is what a single-value path does to a JSON
+     * array — silently passed an empty argument and made every per-verb schema unreachable from a session.
+     * That is the path MCP-SPEC §8 relies on for a caller's field-level facts.
+     */
+    @Test
+    void aVariadicPositionalTakesEachElementAsItsOwnToken() throws Exception {
+        ObjectNode arguments = arguments();
+        arguments.put("op", "schema");
+        arguments.putObject("args").putArray("schema").add("rule").add("add");
+
+        JsonNode contract = MAPPER.readTree(textOf(call("dm.catalog", arguments)));
+
+        assertEquals("rule add", contract.path("op").asText(), "the two tokens addressed one verb contract");
+        assertTrue(contract.path("input").isObject(), "and it is the verb's real input schema");
+    }
+
     @Test
     void anUnknownToolIsInvalidParams() {
         McpFailure failure = org.junit.jupiter.api.Assertions.assertThrows(McpFailure.class,
