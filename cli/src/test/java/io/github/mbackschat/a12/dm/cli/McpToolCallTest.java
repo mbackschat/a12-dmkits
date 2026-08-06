@@ -113,6 +113,41 @@ class McpToolCallTest {
         assertEquals(before, fixture(), "the caller's file is never touched");
     }
 
+    /**
+     * <b>A request carries as many models as the subject needs</b> — and the server names every file itself,
+     * because a document model's identity is <em>inside</em> its content (`header.id`, which
+     * {@code ReferenceResolvers} indexes on) rather than in its file name. That is what lets `references`
+     * exist at all, and it is the exact property a directory of {@code <Name>.js} implementations lacks
+     * ([MCP-GAPS MG8]).
+     *
+     * <p>The first half is the positive control: without the referenced model the same call must FAIL
+     * legibly, or "it resolved" would prove nothing about what was carried.
+     */
+    @Test
+    void carriedReferencesResolveByTheirContentNotTheirFileName() throws Exception {
+        String subject = Files.readString(Path.of("src/test/resources/models/multifile/app/storefront.dm.json"));
+        String referenced = Files.readString(Path.of("src/test/resources/models/multifile/lib/catalog.dm.json"));
+
+        ObjectNode alone = arguments();
+        alone.put("op", "check");
+        alone.put("model", subject);
+        JsonNode unresolved = call("dm.model.read", alone);
+        assertTrue(unresolved.path("isError").asBoolean(), () -> "an absent reference must fail: " + unresolved);
+        assertEquals("RK_UNRESOLVED_REFERENCE",
+                unresolved.path("structuredContent").path("diagnostics").get(0).path("code").asText(),
+                "and it fails as a missing reference, not as something else");
+
+        ObjectNode carried = arguments();
+        carried.put("op", "check");
+        carried.put("model", subject);
+        carried.putArray("references").add(referenced);
+        JsonNode resolved = call("dm.model.read", carried);
+
+        assertFalse(resolved.path("isError").asBoolean(), () -> "the carried model resolves it: " + resolved);
+        assertTrue(resolved.path("structuredContent").path("valid").asBoolean(),
+                () -> "and the whole multi-model subject is kernel-valid: " + resolved.path("structuredContent"));
+    }
+
     /** A raw route has no envelope to structure, so the payload rides content and nothing is claimed. */
     @Test
     void aRawRouteReturnsItsPayloadAsTextWithNoStructuredContent() throws Exception {

@@ -95,7 +95,7 @@ Mandatory in this revision, and cacheable (`ttlMs` one hour, `cacheScope: "publi
 | direction | what crosses the wire |
 |---|---|
 | the subject model | its DM-JSON content, as `model` |
-| models it references | the content of each, as `references[]` |
+| models it references | the content of each, as `references[]` — **as many as the subject needs**; the server names every file, because a model's identity is its `header.id`, not its file name |
 | a spec or document instance | the content, under `files.<parameterKey>` |
 | an edited or generated model | an **embedded resource** in the response — the caller owns persistence |
 | a read's answer | the envelope as `structuredContent`, the `--text` rendering as `content` |
@@ -160,6 +160,8 @@ The cheap win available now is independent of MCP: relocate what the placement r
 | a directory-shaped content parameter is refused as a directory | `McpToolCallTest` |
 | a malformed invocation returns the stderr corrective as a tool error | `McpToolCallTest` |
 | a domain refusal is a tool error that keeps its structured envelope | `McpToolCallTest` |
+| a multi-model subject resolves from carried `references`, and fails legibly without them | `McpToolCallTest` |
+| a variadic positional takes each element as its own token | `McpToolCallTest` |
 | no request tree survives its call | `McpToolCallTest` |
 | a call writes nothing to the process stdout, so no verb output can corrupt a frame | `McpToolCallTest` |
 | the published output-kind vocabulary names `NDJSON_STREAM` | `DmtoolPublicContractTest` |

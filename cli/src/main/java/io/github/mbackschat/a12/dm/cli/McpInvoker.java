@@ -188,9 +188,11 @@ final class McpInvoker {
         for (Map.Entry<String, JsonNode> file : files.properties()) {
             if (directories.contains(file.getKey())) {
                 throw new McpFailure(McpProtocol.INVALID_PARAMS,
-                        "`" + file.getKey() + "` takes a DIRECTORY of files, and this surface carries one "
-                                + "document per parameter; a carried tree is a different shape and is not "
-                                + "served here. Run the verb directly if you need it.");
+                        "`" + file.getKey() + "` takes a DIRECTORY whose FILE NAMES are the identifiers "
+                                + "(each `<Name>.js` registers `<Name>`), and this server names every carried "
+                                + "file itself, so it cannot accept them. A model is different — it carries "
+                                + "its id inside its content, which is why `references` works. Run the verb "
+                                + "directly if you need custom JS.");
             }
             String key = inbound.stream().filter(candidate -> candidate.equals(file.getKey())).findFirst()
                     .orElseThrow(() -> new McpFailure(McpProtocol.INVALID_PARAMS,
