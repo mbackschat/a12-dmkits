@@ -289,7 +289,8 @@ A root **hub** package plus nine **verb-family** sub-packages:
    │  StructureRefactor · ReferenceRewritingRefactorCommand · GroupRemoval   shared edit logic
    │  WorkspaceOption (-m / -w mixin) · ParamKind(s) · ModelPaths · Suggestions · SpecKeys
    │  cross-cutting verbs: apply · batch · export · manifest · schema · operators ·
-   │                       diagnostics · patterns · where-used · meta · …
+   │                       diagnostics · patterns · where-used · meta · mcp · …
+   │  Mcp{Command,StdioBinding,Dispatcher,ToolRegistry,Invoker,…}   the MCP server (§5c)
    │
    ├── cli.model/ rule/ computation/ field/ group/ typedef/ include/ config/ workspace/
    │     each family = a parent command + its op subcommands + that family's spec
@@ -343,6 +344,12 @@ Two distinct instruments drive `dmtool` end-to-end (both *outside* the JUnit sui
 The split is deliberate: the **eval** runs the JVM build (fast, all verbs, scored self-sufficiency); the **probe** runs the *native* binary (the actual shipped artifact, so native-only bugs are visible) over realistic sessions. Both treat the CLI as a black box — they exercise the same self-describing surface a real agent sees.
 
 ---
+
+### 5f. The MCP server — a second surface over the same tree
+
+`dmtool mcp` serves the tool over the Model Context Protocol on stdin/stdout, for a caller that cannot execute the binary. It is a **projection, not a second implementation**: `McpToolRegistry` derives the tool set from the running picocli tree plus `CommandContracts`, and `McpInvoker` routes every call through `Cli.run` — the same entry point, the same verbs, the same envelope. Nothing about the CLI is reshaped to suit it.
+
+It lives in the **root hub package** rather than a `cli.mcp/` sub-package, and that is a dependency fact rather than a preference: `RootCommand`, `ManifestCommand`, `TextRenderer`, and `CommandContracts` are package-private, so a sub-package would need four visibility widenings to reach what a projection must read. The layering inside it is one edge — `McpStdioBinding` (the only class that names a transport shape) over `McpDispatcher` (a method-name table over our own records). Contract: [`MCP-SPEC.md`](MCP-SPEC.md).
 
 ## 6. Maintenance map (when the kernel changes)
 

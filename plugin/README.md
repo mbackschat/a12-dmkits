@@ -33,6 +33,7 @@ It is built **agent-first** — the #1 use is inside a coding-agent session (Cla
 - **Self-describing — a cold agent needs no external docs.** `manifest` lists every verb × parameter with a worked example; `operators` / `patterns` / `diagnostics` / `schema` expose the DSL vocabulary, the validation idioms, each diagnostic code, and the exact I/O shape — all from the binary itself.
 - **Judgment where `--help` can't reach.** A bundled skill teaches what the catalog can't — condition *polarity*, error-field paths, iteration scope — so a scaffolded rule has the right shape before the kernel ever sees it.
 - **Safe by construction.** Envelope-producing operations share one standard result shape, while raw artifact/catalog and text-view modes are explicit in the operational profile; deletes and structural refactors are **gated** (a referenced field won't silently vanish); a multi-op `apply` session is **atomic** (rollback on any failure).
+- **Reachable where a binary is not.** `dmtool mcp` serves the same verbs over the Model Context Protocol for a caller that *cannot* run the binary — a hosted agent platform, a web client, a sandboxed integration. Every call carries the model's content both ways and the server keeps nothing. Where you *can* run the binary, run it: it edits models in place.
 
 ### A session, in natural language
 

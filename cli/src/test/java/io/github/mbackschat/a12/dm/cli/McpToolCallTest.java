@@ -222,6 +222,29 @@ class McpToolCallTest {
         assertTrue(failure.getMessage().contains("DIRECTORY"), failure::getMessage);
     }
 
+    /**
+     * The framer owns the output stream: a verb's own output must never reach it, or one stray line
+     * corrupts a frame and — on a resident server — kills the whole session rather than one call. Supplying
+     * {@code Cli.run} its own sinks is what prevents it; this is the check that the wiring actually does.
+     *
+     * <p>Deliberately driven by a verb that writes a large payload to stdout, so a leak would be unmissable.
+     */
+    @Test
+    void aCallWritesNothingToTheProcessStdout() throws Exception {
+        java.io.PrintStream real = System.out;
+        java.io.ByteArrayOutputStream leaked = new java.io.ByteArrayOutputStream();
+        ObjectNode arguments = arguments();
+        arguments.put("op", "operators");
+        try {
+            System.setOut(new java.io.PrintStream(leaked, true, java.nio.charset.StandardCharsets.UTF_8));
+            call("dm.catalog", arguments);
+        } finally {
+            System.setOut(real);
+        }
+        assertEquals("", leaked.toString(java.nio.charset.StandardCharsets.UTF_8),
+                "the verb's payload belongs in the response frame, never on the framer's stream");
+    }
+
     /** Nothing a call creates outlives it — the lifetime guarantee, checked rather than asserted in prose. */
     @Test
     void noRequestTreeSurvivesTheCall() throws Exception {

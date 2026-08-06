@@ -12,7 +12,7 @@ The `dmtool mcp` verb serves this tool over the [Model Context Protocol](https:/
 >
 > The positioning rides the verb's own `--help`, not only this document: that is where a cold agent meets the surface, and the wrong choice there is silent.
 
-**How the design was reached** — the alternatives, the measurements, and the decisions taken while it was unbuilt — is the [MCP-SUPPORT-PROPOSAL](MCP-SUPPORT-PROPOSAL.md). This file states what is *built*; what is deliberately not built is [MCP-GAPS](MCP-GAPS.md).
+**How the design was reached** — the alternatives, the measurements, and the decisions taken while it was unbuilt — is the archived [MCP-SUPPORT-PROPOSAL](archived/MCP-SUPPORT-PROPOSAL.md). This file states what is *built*; what is deliberately not built is [MCP-GAPS](MCP-GAPS.md).
 
 ## 1. The revision, and the one it refuses
 
@@ -35,7 +35,7 @@ Every refusal below is the specification's own mechanism, and each is locked by 
 Newline-delimited JSON-RPC. Three binding MUSTs are discharged in code rather than trusted:
 
 - **One message per line, no embedded newlines.** Frames are serialised compactly, so a newline inside any string is escaped by the serializer and cannot break a frame. Locked by a case that forces a newline into a refusal message and asserts the output holds exactly one.
-- **Nothing on stdout that is not an MCP message.** The framer owns the stream; no verb ever writes to it.
+- **Nothing on stdout that is not an MCP message.** The framer owns the stream and every verb runs with its own sinks, checked by a case that drives a large-payload verb through a call and asserts the process stdout stayed empty. The residual is third-party code in the same JVM printing directly; dmtool's own sources are clean and no subprocess inherits stdout.
 - **Never respond to a notification.** A message with no `id` is consumed silently — which is also what makes `notifications/cancelled` safe to accept, since a request gets exactly one response and it has already been written.
 
 An explicit `"id": null` is neither a request nor a notification and is refused `-32600`; end of input is the graceful-shutdown signal, so the loop returns and the process exits.
@@ -148,4 +148,5 @@ Its demonstration is likewise structural rather than owed: a verb whose unit of 
 | a malformed invocation returns the stderr corrective as a tool error | `McpToolCallTest` |
 | a domain refusal is a tool error that keeps its structured envelope | `McpToolCallTest` |
 | no request tree survives its call | `McpToolCallTest` |
+| a call writes nothing to the process stdout, so no verb output can corrupt a frame | `McpToolCallTest` |
 | the published output-kind vocabulary names `NDJSON_STREAM` | `DmtoolPublicContractTest` |

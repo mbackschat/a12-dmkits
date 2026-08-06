@@ -4,7 +4,7 @@
 >
 > **Lifecycle.** A gap lives here only while open. When it ships its row is DELETED in the same commit and its rationale graduates to [`MCP-SPEC.md`](MCP-SPEC.md); git is the what/when. No shipped list, ever.
 >
-> **Current state.** The deferrals below were all decided while the design was being built, not discovered afterwards, and each names what would re-open it. The design record they were taken against is the [MCP-SUPPORT-PROPOSAL](MCP-SUPPORT-PROPOSAL.md).
+> **Current state.** The deferrals below were all decided while the design was being built, not discovered afterwards, and each names what would re-open it. The design record they were taken against is the archived [MCP-SUPPORT-PROPOSAL](archived/MCP-SUPPORT-PROPOSAL.md).
 
 ---
 
@@ -18,7 +18,7 @@ _None open._
 
 - **MG2 — MCP Apps (`io.modelcontextprotocol/ui`).** The in-chat HTML report widget that [`MODEL-REVIEW-GAPS.md`](MODEL-REVIEW-GAPS.md) §2 defers "when dmtool ships as an MCP server". Shipping the server fires that trigger; the widget itself is a separate extension, negotiated through capabilities and versioned independently. **Re-open when** the report surface is wanted in-chat rather than as a file.
 
-- **MG3 — a hosted (Streamable HTTP) transport.** Everything hosting needs beyond the wire — the deployment shapes, the requirement set H1–H12 (never silently enter a paid tier; the bound must hold under hostile traffic; EU jurisdiction; a bounded request-payload cap), and the candidate assessments — is recorded in the [proposal](MCP-SUPPORT-PROPOSAL.md) §13 and Appendix A, and none of it is built. **Decide the licensing first:** hosting counts as Distribution under EUPL Article 1, so the hosted combined work must be offered under EUPL-1.2 with a maintained source repository, an obligation the local case never carries. **Re-open when** a caller wants dmtool without installing it.
+- **MG3 — a hosted (Streamable HTTP) transport.** Everything hosting needs beyond the wire — the deployment shapes, the requirement set H1–H12 (never silently enter a paid tier; the bound must hold under hostile traffic; EU jurisdiction; a bounded request-payload cap), and the candidate assessments — is recorded in the [proposal](archived/MCP-SUPPORT-PROPOSAL.md) §13 and Appendix A, and none of it is built. **Decide the licensing first:** hosting counts as Distribution under EUPL Article 1, so the hosted combined work must be offered under EUPL-1.2 with a maintained source repository, an obligation the local case never carries. **Re-open when** a caller wants dmtool without installing it.
 
 - **MG4 — an MCP arm for the self-sufficiency eval.** [`EVAL-SPEC.md`](EVAL-SPEC.md) §2a's *bare-tool* arm means the CLI without the skill; it is not an MCP arm, and the harness drives `${CLI}` command forms throughout. So how much judgment an MCP-only caller loses — the residue no registry can derive: polarity, the *is this even a rule?* gate, the per-row-versus-aggregate recasting trap — is **unmeasured**, and the tool descriptions' sufficiency is an assumption. **Re-open when** that question is worth the harness work and the run cost.
 
