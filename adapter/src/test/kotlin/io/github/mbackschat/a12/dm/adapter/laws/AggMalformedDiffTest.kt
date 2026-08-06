@@ -38,8 +38,11 @@ class AggMalformedDiffTest {
     private fun render(c: Condition): String = DslRenderer().render(c)
     private val prices = m.flatten("/Cart/Lines*/Price")
 
-    /** A starred-aggregate rule at /Cart over two Lines (Price `p1`, `p2`) — the two engines' code lists. */
-    private fun starredCase(cond: String, code: String, p1: String, p2: String): Pair<List<String>, List<String>> {
+    /** Both engines' code lists for one starred-aggregate document, plus the kernel's own `code@row` pointers. */
+    private data class Reading(val kernel: List<String>, val interpreter: List<String>, val kernelRows: List<String>)
+
+    /** A starred-aggregate rule at /Cart over two Lines (Price `p1`, `p2`). */
+    private fun starredCase(cond: String, code: String, p1: String, p2: String): Reading {
         val kModel = RuntimeLaws.withRule(fuzz, "/Cart", code, "../Lines/Price", code, cond)
         val def = model(RuleDef("/Cart/$code", "/Cart", cond, code, "../Lines/Price"))
         val kDoc = RuntimeLaws.doc().group("/Cart", 1)
@@ -47,7 +50,13 @@ class AggMalformedDiffTest {
             .group("/Cart/Lines", 1, 2).field(ITEM, "B", 1, 2, 1).field(PRICE, p2, 1, 2, 1)
         val iDoc = doc(def).field(ITEM, "A", 1, 1, 1).field(PRICE, p1, 1, 1, 1)
             .field(ITEM, "B", 1, 2, 1).field(PRICE, p2, 1, 2, 1)
-        return codes(code, kModel, kDoc, def, iDoc)
+        val (kernel, interpreter) = codes(code, kModel, kDoc, def, iDoc)
+        val relevant = { c: String -> c == code || c.startsWith("zahl") }
+        // `errorField` is the kernel's raw pointer toString by RuntimeLaws' documented contract; take it from the
+        // first '[' so the row identity does not pin the pointer IMPL's class name.
+        val rows = RuntimeLaws.messages(kModel, kDoc).filter { relevant(it.code) }
+            .map { "${it.code}@${it.errorField.substringAfter('[').removeSuffix("]")}" }.sorted()
+        return Reading(kernel, interpreter, rows)
     }
 
     /** A starred-aggregate rule at /Cart over two Lines (Price `p1`, `p2`) — kernel and interpreter must agree. */
@@ -96,15 +105,20 @@ class AggMalformedDiffTest {
     @Test fun minOperandComputesWhenAllValid() = operandMin("10", "50")
 
     /**
-     * The POSITIONAL discriminator for the ordered account of `combineFeldListe` (KERNEL-FINDINGS §3): the scan
-     * early-returns at the FIRST non-relevant cell rather than surveying the selection, so for an **all-rows**
-     * aggregate the malformed cell's authored position cannot be read off validation output — head and tail must
-     * produce the identical verdict, and that verdict is the formal error ALONE (the rule stays suppressed).
+     * The malformed cell's authored position does not change an all-rows aggregate's **VERDICT**: `Sum`, `MaxValue`,
+     * `MinValue` and `NumberOfDifferentValues` stay suppressed with the formal error alone whether the bad cell is
+     * head or tail. Scope is deliberately the verdict and nothing wider — the emitted formal error still names the
+     * offending ROW, so validation *output* is not position-blind, and the `kernelRows` column below pins that.
      *
-     * This measures the *negative* half of the mechanism. What makes the ordering a real mechanism rather than a
-     * restatement is the rival stop-at-first combiner, where position IS observable in validation:
-     * `FirstFilledValueDiffTest.malformedAfterFirstIsInvisible` FIRES on the very shape that suppresses here,
-     * while `malformedAtFirstFilledSuppresses` does not. A whole-selection scan cannot produce that pair.
+     * Two controls make the suppression rows non-vacuous. The **all-valid** column proves the rule code surfaces
+     * through the very filter the suppressed rows are read through (without it, a lost channel would read as
+     * suppression). The **row** column proves the head/tail swap was actually applied (without it, passing the same
+     * document twice satisfies the equality — a mutant that survived until this column existed).
+     *
+     * This measures an outcome, not a mechanism: verdict identity is what BOTH an ordered early return and a
+     * whole-selection survey predict, so it does not by itself establish either. The kernel's ordering account,
+     * its pre-loop survey, and what actually separates these operators from `FirstFilledValue` are in
+     * KERNEL-FINDINGS §3 with their source basis named.
      */
     @Test fun theMalformedCellsPositionDoesNotChangeAnAllRowsAggregateVerdict() {
         val rows = mutableListOf<String>()
@@ -114,26 +128,32 @@ class AggMalformedDiffTest {
             "MN" to render(Dsl.minValue(prices).gt(0)),
             "ND" to render(Dsl.numberOfDifferentValues(prices).gt(1)),
         )) {
-            val (headKernel, headInterp) = starredCase(cond, code, "abc", "200")
-            val (tailKernel, tailInterp) = starredCase(cond, code, "200", "abc")
-            // The POSITIVE CONTROL, in the same row: with both cells valid the rule code must SURFACE through
-            // the very filter the suppressed rows are read through — otherwise the two rows above would agree
-            // vacuously, for want of any channel that could have shown the rule at all.
-            val (validKernel, validInterp) = starredCase(cond, code, "200", "50")
-            assertEquals(headKernel, headInterp, "$code malformed head — kernel/interpreter")
-            assertEquals(tailKernel, tailInterp, "$code malformed tail — kernel/interpreter")
-            assertEquals(validKernel, validInterp, "$code all valid — kernel/interpreter")
-            rows += "$code head=$headKernel tail=$tailKernel valid=$validKernel"
+            val head = starredCase(cond, code, "abc", "200")
+            val tail = starredCase(cond, code, "200", "abc")
+            val valid = starredCase(cond, code, "200", "50")
+            assertEquals(head.kernel, head.interpreter, "$code malformed head — kernel/interpreter")
+            assertEquals(tail.kernel, tail.interpreter, "$code malformed tail — kernel/interpreter")
+            assertEquals(valid.kernel, valid.interpreter, "$code all valid — kernel/interpreter")
+            rows += "$code head=${head.kernel} tail=${tail.kernel} valid=${valid.kernel}"
+            rows += "$code rows head=${head.kernelRows} tail=${tail.kernelRows}"
         }
         assertEquals(
             listOf(
                 "SM head=[zahlHatUngueltigeZeichen] tail=[zahlHatUngueltigeZeichen] valid=[SM]",
+                "SM rows head=[zahlHatUngueltigeZeichen@/Cart/Lines/Price, [1, 1, 1]]" +
+                    " tail=[zahlHatUngueltigeZeichen@/Cart/Lines/Price, [1, 2, 1]]",
                 "MX head=[zahlHatUngueltigeZeichen] tail=[zahlHatUngueltigeZeichen] valid=[MX]",
+                "MX rows head=[zahlHatUngueltigeZeichen@/Cart/Lines/Price, [1, 1, 1]]" +
+                    " tail=[zahlHatUngueltigeZeichen@/Cart/Lines/Price, [1, 2, 1]]",
                 "MN head=[zahlHatUngueltigeZeichen] tail=[zahlHatUngueltigeZeichen] valid=[MN]",
+                "MN rows head=[zahlHatUngueltigeZeichen@/Cart/Lines/Price, [1, 1, 1]]" +
+                    " tail=[zahlHatUngueltigeZeichen@/Cart/Lines/Price, [1, 2, 1]]",
                 "ND head=[zahlHatUngueltigeZeichen] tail=[zahlHatUngueltigeZeichen] valid=[ND]",
+                "ND rows head=[zahlHatUngueltigeZeichen@/Cart/Lines/Price, [1, 1, 1]]" +
+                    " tail=[zahlHatUngueltigeZeichen@/Cart/Lines/Price, [1, 2, 1]]",
             ),
             rows,
-            "position must not select the verdict, and the rule must stay suppressed in both orders",
+            "position must not select the VERDICT, while the formal error still names the offending row",
         )
     }
 
