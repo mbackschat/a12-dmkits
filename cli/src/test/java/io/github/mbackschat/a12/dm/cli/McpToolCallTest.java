@@ -148,6 +148,53 @@ class McpToolCallTest {
                 () -> "and the whole multi-model subject is kernel-valid: " + resolved.path("structuredContent"));
     }
 
+    /**
+     * <b>Type definitions resolve from a carried model, and an edit may INTRODUCE the reference.</b> This is
+     * the case the design record singled out: `typedef import` mounts a model the subject does not yet
+     * reference, so the needed model is by construction outside the subject's pre-edit closure. A design that
+     * carried only "the subject and what it already references" could not express it at all.
+     */
+    @Test
+    void aReferenceIntroducingEditResolvesAgainstACarriedModel() throws Exception {
+        String subject = Files.readString(Path.of("src/test/resources/models/order.dm.json"));
+        String types = Files.readString(Path.of("src/test/resources/models/catalogtypes.dm.json"));
+
+        ObjectNode arguments = arguments();
+        arguments.put("op", "import");
+        arguments.put("model", subject);
+        arguments.putArray("references").add(types);
+        arguments.putObject("args").put("reference", "catalogtypes");
+
+        JsonNode result = call("dm.typedef.edit", arguments);
+
+        assertFalse(result.path("isError").asBoolean(), () -> "the import applies: " + result);
+        assertEquals("catalogtypes", result.path("structuredContent").path("changed").path("imported").asText());
+        assertTrue(MAPPER.writeValueAsString(result).contains("dm:///out/subject.dm.json"),
+                "and the edited model comes back");
+    }
+
+    /** A model that imports type definitions validates only when the definitions are carried with it. */
+    @Test
+    void aTypeDefinitionImportNeedsItsDefinitionsCarried() throws Exception {
+        String subject = Files.readString(Path.of("src/test/resources/models/order-imports-types.dm.json"));
+        String types = Files.readString(Path.of("src/test/resources/models/catalogtypes.dm.json"));
+
+        ObjectNode alone = arguments();
+        alone.put("op", "check");
+        alone.put("model", subject);
+        assertEquals("RK_UNRESOLVED_REFERENCE",
+                call("dm.model.read", alone).path("structuredContent").path("diagnostics").get(0)
+                        .path("code").asText(),
+                "without them it fails as a missing reference, loudly");
+
+        ObjectNode carried = arguments();
+        carried.put("op", "check");
+        carried.put("model", subject);
+        carried.putArray("references").add(types);
+        assertTrue(call("dm.model.read", carried).path("structuredContent").path("valid").asBoolean(),
+                "with them the imported types resolve and the model is kernel-valid");
+    }
+
     /** A raw route has no envelope to structure, so the payload rides content and nothing is claimed. */
     @Test
     void aRawRouteReturnsItsPayloadAsTextWithNoStructuredContent() throws Exception {
@@ -335,6 +382,42 @@ class McpToolCallTest {
 
         assertFalse(result.path("isError").asBoolean(), () -> "the carried tree checks out: " + result);
         assertEquals("read", result.path("structuredContent").path("outcome").asText());
+    }
+
+    /**
+     * <b>A multi-file refactor returns every file it produced, and names none of them by a server path.</b>
+     * `group extract` writes a NEW sub-model beside the subject, so both come back — and its receipt used to
+     * publish the sub-model's absolute location inside the request tree, which is meaningless to a caller who
+     * supplied no path and discloses the server's layout. The receipt now names the artifact the response
+     * already carries.
+     */
+    @Test
+    void aRefactorThatCreatesAModelReturnsBothAndLeaksNoServerPath() throws Exception {
+        ObjectNode arguments = arguments();
+        arguments.put("op", "extract");
+        arguments.put("model", Files.readString(Path.of("src/test/resources/models/order.dm.json")));
+        arguments.putObject("args").put("groupPathInModel", "/Order/ShippingAddress")
+                .put("reference", "shipping-address");
+
+        JsonNode result = call("dm.group.edit", arguments);
+
+        assertFalse(result.path("isError").asBoolean(), () -> "the extract applies: " + result);
+        List<String> returned = new java.util.ArrayList<>();
+        result.path("content").forEach(block -> {
+            if ("resource".equals(block.path("type").asText())) {
+                returned.add(block.path("resource").path("uri").asText());
+            }
+        });
+        assertEquals(List.of("dm:///out/shipping-address.dm.json", "dm:///out/subject.dm.json"),
+                returned.stream().sorted().toList(),
+                "the new sub-model AND the rewritten subject both come back");
+
+        String whole = MAPPER.writeValueAsString(result);
+        assertFalse(whole.contains(McpInvoker.REQUEST_TREE_PREFIX),
+                () -> "no response may name the server's request tree: " + whole);
+        assertEquals("dm:///out/shipping-address.dm.json",
+                result.path("structuredContent").path("changed").path("subModel").asText(),
+                "the receipt names the artifact the caller received");
     }
 
     /** Nothing a call creates outlives it — the lifetime guarantee, checked rather than asserted in prose. */

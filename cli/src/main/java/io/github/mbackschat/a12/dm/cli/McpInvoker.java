@@ -81,7 +81,7 @@ final class McpInvoker {
             StringBuilder out = new StringBuilder();
             StringBuilder err = new StringBuilder();
             int exit = Cli.run(argv.toArray(String[]::new), out, err);
-            return result(exit, out.toString(), err.toString(), changed(tree, before));
+            return result(exit, scrub(out.toString(), tree), scrub(err.toString(), tree), changed(tree, before));
         } catch (IOException failure) {
             throw new McpFailure(McpProtocol.INTERNAL_ERROR, "cannot materialise the request: " + failure);
         } finally {
@@ -324,12 +324,39 @@ final class McpInvoker {
             ObjectNode block = content.addObject();
             block.put("type", "resource");
             ObjectNode resource = block.putObject("resource");
-            resource.put("uri", "dm:///out/" + artifact.name());
+            resource.put("uri", OUT_NAMESPACE + artifact.name());
             resource.put("mimeType", "application/json");
             resource.put("text", artifact.content());
         });
         payload.put("isError", isError);
         return McpResult.complete(payload);
+    }
+
+    /** The namespace an artifact is addressed in — the same one the embedded resources use. */
+    private static final String OUT_NAMESPACE = "dm:///out/";
+
+    /**
+     * Rewrite the request tree out of anything the caller sees.
+     *
+     * <p>A verb that creates a file reports where it put it, and where it put it is a path this server
+     * generated inside a temporary directory: `group extract` published
+     * {@code changed.subModel: "/var/folders/…/dmtool-mcp-…/shipping-address.dm.json"}. That is meaningless
+     * to a caller who supplied no path, and it discloses the server's filesystem layout — the output half of
+     * the rule whose input half is refusing caller paths. Rewritten, it names the artifact the response
+     * already carries, so the receipt and the bytes agree.
+     *
+     * <p>Textual, and deliberately so: it must catch the path wherever a verb chose to mention it — an
+     * envelope field, a diagnostic message, a corrective on stderr — not only where this layer expects it.
+     */
+    private static String scrub(String text, Path tree) {
+        String root = tree.toString();
+        if (text.isEmpty() || !text.contains(root)) {
+            return text;
+        }
+        // JSON escapes a Windows separator, so the escaped spelling is rewritten too rather than surviving.
+        return text.replace(root.replace("\\", "\\\\") + "\\\\", OUT_NAMESPACE)
+                .replace(root + java.io.File.separator, OUT_NAMESPACE)
+                .replace(root, OUT_NAMESPACE);
     }
 
     private static void text(ArrayNode content, String value) {

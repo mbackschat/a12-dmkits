@@ -116,6 +116,10 @@ The directory those verbs take is the **request tree itself**, filled in by the 
 
 **Refusals, each corrective:** a caller-supplied path in `args` (including the inherited `-m`/`-w`) names what to send instead; a **directory-shaped** content parameter says it is a directory and that a carried tree is not served here; a content key the verb does not take lists the ones it does. The directory refusal also disposes of a residency question by construction: the only path to `CustomJsWorker` — which registers an unremoved shutdown hook per call and leaves its `node` child running until the process exits — is the two custom-JS directories, so it is unreachable from a session.
 
+**Multi-model work is the normal case, not an edge.** A request carries one subject plus as many models as it needs, and resolution keys on `header.id` inside the content — so the server names every file and a caller supplies no path. That is what makes the **reference-introducing** edits expressible at all: `typedef import`, `include add --reference` and `include set-reference` mount a model the subject does **not yet reference**, which a design carrying only "the subject and its existing closure" could not express. Verified end to end: includes and imported type definitions resolve from `references`, an absent one fails loudly as `RK_UNRESOLVED_REFERENCE` rather than silently, and `group extract` — which writes a **new** sub-model beside the subject — returns both files.
+
+**No response names a server path.** A verb that creates a file reports where it put it, and that is a path this server generated in a temporary directory: `group extract` published `changed.subModel: "/var/folders/…/dmtool-mcp-…/shipping-address.dm.json"`. Meaningless to a caller who supplied no path, and a disclosure of the server's layout — the *output* half of the rule whose input half is refusing caller paths. Every response is rewritten into the request namespace, so a receipt names the artifact the caller actually received.
+
 **`isError` keys on the outcome, not the exit code.** A `refused`/`rejected`/`error` envelope is actionable feedback a model can self-correct from; `model check` reporting an invalid model is a *successful* answer to the question asked, and marking it an error would tell the caller the tool failed. A malformed invocation — empty stdout, the whole corrective surface on stderr — comes back as a tool error carrying that stderr, because a design reading only stdout would drop the answer on the likeliest outcome of a generated call.
 
 **One deliberate deviation, stated.** The specification SHOULDs that a tool returning structured content also return the serialized JSON in a text block, for a client that ignores `structuredContent`. That client is served here by the `--text` rendering, which carries the same information in the form a model reads better; emitting the JSON twice would double every response for a client that already has it. Artifacts come back as **embedded resources** (`dm:///out/<name>`), which the spec permits while SHOULDing the `resources` capability alongside — not declared here, because declaring a capability whose endpoints are not served ([MG1](MCP-GAPS.md)) would be the worse claim.
@@ -221,6 +225,9 @@ The cheap win available now is independent of MCP: relocate what the placement r
 | a domain refusal is a tool error that keeps its structured envelope | `McpToolCallTest` |
 | a multi-model subject resolves from carried `references`, and fails legibly without them | `McpToolCallTest` |
 | a variadic positional takes each element as its own token | `McpToolCallTest` |
+| includes and imported type definitions resolve from carried models, and fail loudly without them | `McpToolCallTest` |
+| a reference-introducing edit resolves against a carried model | `McpToolCallTest` |
+| a refactor that creates a model returns both files and leaks no server path | `McpToolCallTest` |
 | no request tree survives its call | `McpToolCallTest` |
 | a call writes nothing to the process stdout, so no verb output can corrupt a frame | `McpToolCallTest` |
 | every HTTP status and error code in §7, one case each | `McpHttpWireTest` |
