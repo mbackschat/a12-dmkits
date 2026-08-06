@@ -331,12 +331,15 @@ internal fun typeFormatErrorCached(
                 }
                 DatePrecision.FRAGMENT -> completeFragmentToIso(raw, fmt, baseYear)?.let { dateParts(it) }
                 DatePrecision.FULL -> {
-                    // A DateType with exact format `yyyy` is a kernel-legal complete-Year component source.
-                    // It is not a DateFragmentType, but its own field value must pass the formal gate before
-                    // Date(...) can route the stored year through numeric conversion (SPEC-2026-07-27-13).
-                    // Keep the exception exact: other incomplete DateType formats are not inferred here.
-                    val iso = if (fmt == "yyyy") completeFragmentToIso(raw, fmt, baseYear)
-                    else parseDateToIso(raw, fmt)
+                    // A DateType's declared format may itself OMIT calendar components — `yyyy`, `yyyy-MM`,
+                    // `yyyyMM` and `MM` are all kernel-legal (KF176) — and such a value is complete FOR ITS
+                    // FORMAT, so it is well-formed and the kernel completes the rest exactly as it completes a
+                    // DateFragmentType. Parse the complete form first, then fall back to the shared fragment
+                    // completion; this is already how a DATE_RANGE endpoint is checked below. This used to admit
+                    // only the exact `yyyy` case (added for SPEC-2026-07-27-13's Date(...) year-component
+                    // source, with a comment declining to infer the others) — so `yyyy-MM`, `yyyyMM` and `MM`
+                    // drew a FALSE datumFormatFalsch on a legal model (IG110).
+                    val iso = parseDateToIso(raw, fmt) ?: completeFragmentToIso(raw, fmt, baseYear)
                     iso?.let { dateParts(it) }
                 }
             }

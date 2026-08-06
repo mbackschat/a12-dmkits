@@ -1407,7 +1407,14 @@ class Document(internal val config: DocumentConfig) {
                         if (parts.first == 0 || parts.second == 0 || parts.third == 0) Val.Unknown
                         else Val.Txt(isoDate(parts.first, parts.second, parts.third))
                     }
-                    else -> parseDateToIso(raw, fmt)?.let { Val.Txt(it) } ?: Val.Unknown
+                    // A FULL-precision DateType whose declared FORMAT omits components (`yyyy`, `yyyy-MM`,
+                    // `yyyyMM`, `MM` — KF176) completes the missing ones exactly as a FRAGMENT does: month and
+                    // day to 01, a missing year to the model's base year (measured against a non-default base
+                    // year, so it is the base year and not a constant). The formal gate above admits such a
+                    // cell, so resolution MUST produce a value for it — returning Unknown here made every
+                    // referencing rule silently non-evaluable while the cell was perfectly legal (IG110).
+                    else -> (parseDateToIso(raw, fmt) ?: completeFragmentToIso(raw, fmt, baseYear ?: 2000))
+                        ?.let { Val.Txt(it) } ?: Val.Unknown
                 }
             }
             Kind.DATE_TIME -> parseDateTimeToIso(raw, dateTimeFormats[path] ?: "yyyy-MM-dd'T'HH:mm:ss")
