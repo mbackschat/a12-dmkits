@@ -10,7 +10,11 @@
 
 ## 1. Open
 
-_None open._
+- **MG10 — `tools/list` is 349 KB, and 86 % of it is the same schema 23 times.** Measured 2026-08-06 against the packaged launcher: the frame is **348,768 bytes** (~87k tokens at 4 bytes/token), of which `outputSchema` is **302,358 bytes** — the served `result` schema, **13,146 bytes**, repeated for each of the 23 eligible tools. `inputSchema` is 37 KB and every description together is 4.7 KB, so nothing else is close.
+
+  The repetition is a direct consequence of two decisions that are each right on their own: `outputSchema` is per-`Tool` in MCP, and it must be the **served** document with its referents bundled, because a `$ref` to a sibling is one the client cannot resolve (and the specification forbids auto-dereferencing a network `$ref`). A host that injects tool definitions into a model's context pays that once per call.
+
+  **This is a real cost, not a deferral, and the fix needs a decision rather than a default.** The candidates, none free: drop `outputSchema` and lose the conformance guarantee on 23 tools; publish a *compact* projection of the result schema (accurate but no longer the same document the CLI serves, which is the property §6 of the spec leans on); or rely on the host's progressive-discovery path, which the client guidance describes but which is a non-normative example range and unmeasured here. **Settle it before a host with a tight definition budget is the one that discovers it.**
 
 ## 2. Deferred — with re-open triggers
 
