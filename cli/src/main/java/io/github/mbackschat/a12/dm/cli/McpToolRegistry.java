@@ -174,8 +174,52 @@ final class McpToolRegistry {
         String name = PREFIX + cell.group() + (groupIsSplit ? "." + suffix(cell) : "");
         List<String> ops = leaves.stream().map(Leaf::op).sorted().toList();
         return new McpTool(name, description(cell, leaves, ops), ops, cell.readOnly(),
-                cell.envelope() ? SchemaCommand.servedStructure("result") : null,
+                cell.envelope() ? OUTPUT_SCHEMA : null,
                 inputSchema(leaves, ops));
+    }
+
+    /**
+     * The declared {@code outputSchema}: the served result schema with its <b>annotations removed</b>.
+     *
+     * <p>Measured, and the reason this exists: the served document is 12,777 bytes of which <b>81 % is
+     * `description` and `examples`</b>. MCP carries one `outputSchema` per tool, so that prose was repeated
+     * for each of the 23 eligible tools — 302 KB of a 337 KB catalogue. A host that injects tool definitions
+     * into a prompt pays that on every model turn, whether or not a tool is called.
+     *
+     * <p><b>Why this is safe rather than a compromise.</b> `description` and `examples` are JSON Schema
+     * <i>annotations</i>: they assert nothing, so removing them cannot change what validates. The declared
+     * schema therefore still means exactly what the served one means, and MCP's requirement that structured
+     * results conform to it is untouched — a claim held by a test that validates a real envelope against this
+     * copy and still rejects a malformed diagnostic through the embedded definition.
+     *
+     * <p>One short description survives, because a caller must be able to find the prose it no longer sees.
+     */
+    private static final JsonNode OUTPUT_SCHEMA = leanResultSchema();
+
+    private static JsonNode leanResultSchema() {
+        ObjectNode lean = (ObjectNode) stripAnnotations(SchemaCommand.servedStructure("result"));
+        lean.put("description", "This tool's standard result envelope. The copy carries structure only, so a "
+                + "tool definition stays small; the field-by-field contract — what `ok`, `valid`, "
+                + "`verification` and the pointer forms each assert — is one call away: the `schema` op of "
+                + "`dm.catalog`, with args {\"schema\": [\"result\"]}.");
+        return lean;
+    }
+
+    /** Drop every annotation keyword, at every depth. Structure, {@code $id} and {@code $ref} are untouched. */
+    private static JsonNode stripAnnotations(JsonNode node) {
+        if (node instanceof ObjectNode object) {
+            ObjectNode copy = MAPPER.createObjectNode();
+            object.properties().stream()
+                    .filter(entry -> !"description".equals(entry.getKey()) && !"examples".equals(entry.getKey()))
+                    .forEach(entry -> copy.set(entry.getKey(), stripAnnotations(entry.getValue())));
+            return copy;
+        }
+        if (node instanceof ArrayNode array) {
+            ArrayNode copy = MAPPER.createArrayNode();
+            array.forEach(element -> copy.add(stripAnnotations(element)));
+            return copy;
+        }
+        return node;
     }
 
     /**
@@ -265,9 +309,21 @@ final class McpToolRegistry {
         return text.append(']').toString();
     }
 
-    /** Whether the op operates on a subject model — the inherited {@code -m}, published as SUBJECT_MODEL. */
+    /**
+     * Whether the op actually <b>consumes</b> a subject model — derived from the {@code WorkspaceOption}
+     * mixin, which is how a verb gains model and workspace resolution in the first place.
+     *
+     * <p>The obvious test is wrong and was: {@code -m} is <i>inherited by every leaf</i>, so asking whether
+     * the option exists answers "yes" even for the catalogue verbs, and every tool then advertised a `model`
+     * property it ignores — inviting a caller to attach a model to a catalogue lookup. The mixin is the
+     * honest signal because it is the mechanism rather than a restatement: a verb that reads a model
+     * declares it, `model new` (which makes one) does not, and neither do the four self-describing verbs.
+     * A verb that somehow read a model without the mixin would simply not be offered the property and would
+     * fail with the CLI's own "pass -m" — legible, not silent.
+     */
     private static boolean takesSubjectModel(CommandSpec command) {
-        return command.optionsMap().containsKey("--model");
+        return command.mixins().values().stream()
+                .anyMatch(mixin -> mixin.userObject() instanceof WorkspaceOption);
     }
 
     /** The label of a parameter whose value is a directory of files rather than one file. */

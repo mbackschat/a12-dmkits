@@ -7,6 +7,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
 
@@ -140,6 +141,48 @@ class McpToolSurfaceTest {
     }
 
     /**
+     * <b>Stripping the prose changed nothing that validates.</b> The declared {@code outputSchema} carries no
+     * `description`/`examples` — 81 % of the served document, repeated per tool — and MCP requires structured
+     * results to conform to what is declared. Annotations assert nothing, so this must still be true, and the
+     * only way to know it is to run a real validator against the copy that actually ships.
+     *
+     * <p>The second case is the control that makes the first non-vacuous: if the embedded `diagnostic`
+     * definition stopped being enforced, a malformed diagnostic would pass and the first assertion would
+     * still be green.
+     */
+    @Test
+    void theLeanOutputSchemaStillValidatesExactlyWhatTheServedOneDoes() throws Exception {
+        JsonNode declared = McpToolRegistry.tools(liveRoot()).stream()
+                .filter(tool -> tool.name().equals("dm.model.read")).findFirst().orElseThrow().outputSchema();
+        com.networknt.schema.JsonSchema schema = com.networknt.schema.JsonSchemaFactory
+                .getInstance(com.networknt.schema.SpecVersion.VersionFlag.V202012)
+                .getSchema(MAPPER.writeValueAsString(declared),
+                        com.networknt.schema.SchemaValidatorsConfig.builder().build());
+
+        CliTestSupport.Result read = CliTestSupport.run("model", "info",
+                "-m", "src/test/resources/models/order-ruled.dm.json");
+        assertEquals(0, read.code(), read::err);
+        assertTrue(schema.validate(MAPPER.readTree(read.out())).isEmpty(),
+                "a real envelope validates against the declared copy, with no external resolution");
+
+        JsonNode malformed = MAPPER.readTree(read.out());
+        ((com.fasterxml.jackson.databind.node.ObjectNode) malformed)
+                .putArray("diagnostics").addObject().put("severity", "NOT_A_SEVERITY");
+        assertFalse(schema.validate(malformed).isEmpty(),
+                "the embedded diagnostic definition is still enforced, not inert");
+    }
+
+    /** The prose is gone from the definition but not from the tool: the copy says where to find it. */
+    @Test
+    void theLeanSchemaPointsAtTheFullContract() {
+        JsonNode declared = McpToolRegistry.tools(liveRoot()).stream()
+                .filter(tool -> tool.outputSchema() != null).findFirst().orElseThrow().outputSchema();
+
+        assertTrue(declared.path("description").asText().contains("dm.catalog"),
+                () -> "a caller must be able to reach the field-by-field contract: " + declared.path("description"));
+    }
+
+    /**
      * The surface pinned as a denominator. Not a restatement of the rule: it is what makes a grouping change
      * visible in review, the same job {@code ManifestVerbTest}'s verb pin does for the tree.
      */
@@ -194,6 +237,34 @@ class McpToolSurfaceTest {
         }
         assertTrue(ruleEdit.inputSchema().path("properties").has("model"),
                 "a model-bound tool asks for the model's content, never its path");
+    }
+
+    /**
+     * A tool asks for a model only where its ops <b>consume</b> one. `-m` is inherited by every leaf, so the
+     * naive test made even a catalogue lookup advertise a `model` property it ignores — inviting a caller to
+     * attach an 11 KB document to `operators`.
+     */
+    @Test
+    void onlyModelConsumingToolsAskForAModel() {
+        Map<String, Boolean> asksForModel = new java.util.TreeMap<>();
+        McpToolRegistry.tools(liveRoot()).forEach(tool ->
+                asksForModel.put(tool.name(), tool.inputSchema().path("properties").has("model")));
+
+        assertEquals(false, asksForModel.get("dm.catalog"), "the self-describing verbs consume no model");
+        assertEquals(true, asksForModel.get("dm.model.read"), "a read of a model needs the model");
+        assertEquals(true, asksForModel.get("dm.rule.edit"), "so does an edit");
+        // A mixed cell asks, and must: `dm.model.generate` covers `model new`, which makes a model, together
+        // with `expand`/`import-jsonschema`/`export-jsonschema`, which read one. MCP's granularity is the
+        // tool, so the property has to be offered for the three — `model new` simply ignores it. The
+        // discrimination that matters is that a tool with NO model-reading op does not ask at all.
+        assertEquals(true, asksForModel.get("dm.model.generate"),
+                "three of its four ops read a model, so the tool must offer it");
+        // And where a tool asks for a model it also accepts the models that model references, or a
+        // multi-file subject could never resolve.
+        McpToolRegistry.tools(liveRoot()).stream()
+                .filter(tool -> tool.inputSchema().path("properties").has("model"))
+                .forEach(tool -> assertTrue(tool.inputSchema().path("properties").has("references"),
+                        () -> tool.name() + " takes a model but no way to carry what it references"));
     }
 
     /** No tool asks for a filesystem path: that is the whole content rule, checked over the whole surface. */

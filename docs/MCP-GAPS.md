@@ -10,17 +10,7 @@
 
 ## 1. Open
 
-- **MG10 — `tools/list` is 349 KB, and 86 % of it is the same schema 23 times.** Measured 2026-08-06 against the packaged launcher: the frame is **348,768 bytes** (~87k tokens at 4 bytes/token), of which `outputSchema` is **302,358 bytes** — the served `result` schema, **13,146 bytes**, repeated for each of the 23 eligible tools. `inputSchema` is 37 KB and every description together is 4.7 KB, so nothing else is close.
-
-  The repetition is a direct consequence of two decisions that are each right on their own: `outputSchema` is per-`Tool` in MCP, and it must be the **served** document with its referents bundled, because a `$ref` to a sibling is one the client cannot resolve (and the specification forbids auto-dereferencing a network `$ref`).
-
-  **Which cost this is, stated precisely** *(corrected 2026-08-06 — the row said "once per call", which reads as once per tool invocation and is wrong).* It is the `tools/list` **catalogue**, not a call's answer. Measured on the same build: a `tools/list` response is **336,910 bytes**, while a real `tools/call` — `model check` over a carried model — is **419 bytes** and contains **no** tool definition at all. So there are two costs and only one of them is open:
-  - **On the wire: handled.** `tools/list` is served cacheable (`ttlMs` one hour, `cacheScope: "public"`), so a conforming client fetches the catalogue about once per hour per client, not once per call.
-  - **In the model's context: open, and this is the real one.** A host that injects tool definitions into the prompt pays them on **every model turn** the tools are visible — whether or not a tool is called at all. ~87k tokens of definitions is what makes this worth fixing.
-
-  **This is a real cost, not a deferral, and the fix needs a decision rather than a default.** The candidates, none free: drop `outputSchema` and lose the conformance guarantee on 23 tools; publish a *compact* projection of the result schema (accurate but no longer the same document the CLI serves, which is the property §6 of the spec leans on); or rely on the host's progressive-discovery path, which the client guidance describes but which is a non-normative example range and unmeasured here. **Settle it before a host with a tight definition budget is the one that discovers it.**
-
-- **MG11 — every tool offers `model`, including the ones that ignore it.** `-m/--model` is inherited by every leaf, so the registry's "does this op take a subject model?" test is true even for `dm.catalog` (the four self-describing verbs) and `dm.model.generate` (`model new` makes one). The property is *accepted* by picocli rather than false, but it invites a caller to attach an 11 KB model to a catalogue lookup, and the tool description says so in words. The honest fix is a published per-verb fact — which verbs *consume* the subject model — since nothing in the manifest states it today; deriving it from the inherited option cannot. **Re-open with** MG10, which is the same question about payload size from the other end.
+_None open._
 
 ## 2. Deferred — with re-open triggers
 

@@ -91,6 +91,13 @@ Mandatory in this revision, and cacheable (`ttlMs` one hour, `cacheScope: "publi
 | `workspace list`/`graph`/`check`/`roles` | a **directory** is the input, and three of them answer over the whole set — served from a caller-declared tree they would silently answer about the fragment that was sent |
 | `model rename` | its refusal must prove a sibling's **absence**: it scans the workspace inward and refuses if something includes the old id. Given only what a caller chose to send it would find nothing and permit the rename, turning "not supplied" into "proved absent" — a safety gate degrading silently rather than failing loudly ([MG7](MCP-GAPS.md)) |
 
+**What a tool definition costs, and why it is what it is.** The whole catalogue is **85,624 bytes** (~21k tokens) for 28 tools over 76 ops — down from 336,910 (~84k) once two measurements were taken. On the wire it is cacheable and fetched about once an hour per client; in a prompt a host pays it on every model turn, which is the cost that actually binds. Two things got it there, both derived rather than trimmed by hand:
+
+- **The declared `outputSchema` carries no annotations.** The served result schema is 12,777 bytes of which **81 % is `description` and `examples`**, and MCP puts `outputSchema` per tool, so that prose was repeated 23 times. `description`/`examples` are JSON Schema *annotations* — they assert nothing — so removing them **cannot change what validates**, and a test proves it by validating a real envelope against the shipped copy and still rejecting a malformed diagnostic through the embedded definition. One short description survives, naming the call that returns the full contract.
+- **Only a tool whose ops consume a model asks for one.** `-m` is inherited by every leaf, so the obvious test ("does the option exist?") said yes even for a catalogue lookup and invited a caller to attach a document to `operators`. The signal is the `WorkspaceOption` **mixin** — the mechanism by which a verb gains model resolution at all — so `dm.catalog` no longer asks, while a mixed cell still does because three of its four ops read a model.
+
+Reducing it further means dropping a published fact rather than a redundancy, so the remaining lever is the host's own progressive discovery.
+
 **Input shape.** `{op?, args, model?, references?, files?}` — `op` only where a tool has more than one, and each `op` carries a **derived** description of that route's `Effect`, `FailurePersistence`, and `DryRun`, which is the route-level fact MCP annotations cannot express. `args` stays loosely typed on purpose: per-op validation is what this tool's corrective diagnostics already do well, and a large discriminated union degrades a model's tool-calling accuracy for no correctness gain. No property anywhere is a filesystem path.
 
 ## 6. `tools/call` — content in, content out, nothing kept
@@ -204,6 +211,8 @@ The cheap win available now is independent of MCP: relocate what the placement r
 | `readOnlyHint` and `outputSchema` are true of every op the tool covers, both directions | `McpToolSurfaceTest` (oracle: the tool's own `manifest`) |
 | the surface's denominator (28 tools · 12 read-only · 23 with `outputSchema`) | `McpToolSurfaceTest` |
 | tool names are unique, ordered, legal, and no input schema offers a path | `McpToolSurfaceTest` |
+| the annotation-stripped `outputSchema` validates exactly what the served one does | `McpToolSurfaceTest` (a real 2020-12 validator, with a positive control) |
+| only a tool whose ops consume a model asks for one | `McpToolSurfaceTest` |
 | a read runs the verb on carried content and returns the envelope | `McpToolCallTest` |
 | an edit returns the mutated model and leaves the caller's file untouched | `McpToolCallTest` |
 | a raw route carries its payload as text and claims no structured content | `McpToolCallTest` |
