@@ -116,13 +116,27 @@ class GateTierWiringTest {
         return taskBlock(build, "tasks.named('" + name + "')");
     }
 
+    /**
+     * The text of one task block. Bounded by the block's own closing brace as well as the next {@code tasks.}
+     * declaration: the last task in a file has no successor, so a next-marker-only scan returned everything to
+     * EOF and an assertion meant for one task silently held over the whole remainder.
+     */
     private static String taskBlock(String build, String marker) {
         int start = build.indexOf(marker);
         if (start < 0) {
             return "";
         }
-        int next = build.indexOf("\ntasks.", start + marker.length());
-        return build.substring(start, next < 0 ? build.length() : next);
+        int from = start + marker.length();
+        int nextTask = build.indexOf("\ntasks.", from);
+        int closingBrace = build.indexOf("\n}\n", from);
+        int end = build.length();
+        if (nextTask >= 0) {
+            end = nextTask;
+        }
+        if (closingBrace >= 0 && closingBrace < end) {
+            end = closingBrace;
+        }
+        return build.substring(start, end);
     }
 
     /** Walk up from the working dir to find {@code rel} (the test runs from a module dir; ci.yml is at the repo root). */

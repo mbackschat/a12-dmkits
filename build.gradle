@@ -110,7 +110,9 @@ tasks.named('test') {
     // `syncDocSnippets` are regenerators over classes `apiGuardTest`/`docGuardTest` already own, and
     // `interpreterReleaseGuardTest` runs its own `releaseGuardTest` source set, so neither owns anything here.
     routeExclusivelyHostedTests(it, ['docGuardTest', 'jsonConstructionGuardTest', 'apiGuardTest',
-                                     'catalogProseReviewGuardTest', 'deliveryGuardTest', 'releaseGapGuardTest'])
+                                     'catalogProseReviewGuardTest', 'deliveryGuardTest', 'releaseGapGuardTest'],
+            ['dumpKitApi'     : 'regenerator over apiGuardTest\'s class — writes the goldens instead of asserting',
+             'syncDocSnippets': 'regenerator over docGuardTest\'s class — writes the snippets instead of asserting'])
 }
 
 // A12 JSON construction is a ROLE boundary, not a module boundary (API-FINDINGS 103 / IF228): this guard reads
@@ -205,11 +207,59 @@ ext.guardInputs = { Test task, Map<String, ?> named ->
 // Only for tasks that own their classes EXCLUSIVELY. `:adapter`'s perf/capture lanes deliberately re-run classes
 // the broad suite also runs (`FootprintScenarioFixtureGuardTest` is hosted by two tasks on purpose), so they are
 // a different shape and keep their hand-written excludes.
-ext.routeExclusivelyHostedTests = { Test broad, List<String> owningTaskNames ->
-    def hostByClass = owningTaskNames.collectEntries { name ->
-        broad.project.tasks.named(name, Test).get().filter.includePatterns.collectEntries { [(it): name] }
+ext.routeExclusivelyHostedTests = { Test broad, List<String> owningTaskNames,
+                                    Map<String, String> classifiedNonOwners = [:] ->
+    // Fail on an EMPTY derivation, the same silent-empty class `guardInputs` guards for on the input side. Without
+    // this the helper can be gutted to yield nothing and every text-matching guard still passes while the owned
+    // classes quietly re-enter the broad lane — a cold review demonstrated exactly that mutant surviving.
+    def hostByClass = [:]
+    owningTaskNames.each { name ->
+        def patterns = broad.project.tasks.named(name, Test).get().filter.includePatterns
+        if (patterns.isEmpty()) {
+            throw new GradleException(
+                    "'${name}' is declared an exclusive owner but its filter includes NO test class, so " +
+                    "${broad.path} would silently re-run what that lane is supposed to own.")
+        }
+        patterns.each { hostByClass[it] = name }
+    }
+    // Every Test task that filters classes out of the SAME compiled output must be classified — an owner, or a
+    // reasoned non-owner. This is what makes "a new exclusively owning task must be added to the owners list"
+    // an enforced invariant rather than a comment; an unclassified lane fails the build naming itself.
+    def sharedDirs = broad.testClassesDirs.files
+    broad.project.tasks.withType(Test).each { t ->
+        if (t.name == broad.name || owningTaskNames.contains(t.name) || classifiedNonOwners.containsKey(t.name)) {
+            return
+        }
+        if (t.filter.includePatterns.isEmpty()) {
+            return      // runs its whole source set unfiltered, so it owns no individual class here
+        }
+        if (t.testClassesDirs.files.intersect(sharedDirs).isEmpty()) {
+            return      // a separate source set: its classes cannot run in the broad lane at all
+        }
+        throw new GradleException(
+                "Test task '${t.name}' filters classes out of the same compiled output as ${broad.path} but is " +
+                "neither an exclusive owner nor a classified non-owner. Add it to the owners list, or classify " +
+                "it with a reason (a regenerator over already-owned classes, or an additive lane the broad " +
+                "suite also runs).")
     }
     hostByClass.keySet().each { broad.filter.excludeTestsMatching(it) }
+    // The EFFECT assertion, not a restatement of the wiring: if an owned class actually executes in the broad lane
+    // — by any mutation of the derivation above, however it is written — the lane fails naming the leak. This is
+    // what the previous text-matching guards could not see, and what let five classes double-run unnoticed.
+    def leaked = [] as Set
+    broad.afterTest { desc, result ->
+        if (hostByClass.containsKey(desc.className)) {
+            leaked << desc.className
+        }
+    }
+    broad.doLast {
+        if (!leaked.isEmpty()) {
+            throw new GradleException(
+                    "${broad.path} executed ${leaked.size()} class(es) a dedicated lane owns exclusively: " +
+                    "${leaked.sort()}. Their runtime inputs are declared on the owning task, not here, so running " +
+                    "them in this lane can go up-to-date into a false green.")
+        }
+    }
     // The root project's path is already ':', so only a subproject needs the separator appended.
     def taskPathPrefix = broad.project.path == ':' ? ':' : broad.project.path + ':'
     // Gradle's `--tests` accepts a trailing `.method`, so probe the pattern with that segment dropped too.
@@ -249,8 +299,10 @@ ext.routeExclusivelyHostedTests = { Test broad, List<String> owningTaskNames ->
                     "--tests ${patterns} matches only classes ${taskPathPrefix}test deliberately excludes, " +
                     "because a dedicated task owns their runtime inputs. Run that task instead:\n" +
                     misrouted.collect { fqcn, owner ->
-                        "  ${fqcn}\n      ./build.sh -Pfast ${taskPathPrefix}${owner} " +
-                        "--tests '*${fqcn.tokenize('.').last()}'"
+                        // Echo the patterns the caller actually typed, so a `.method` selector survives; and no
+                        // `-Pfast`, which is only implemented for the adapter lanes.
+                        "  ${fqcn}\n      ./build.sh ${taskPathPrefix}${owner} " +
+                        patterns.findAll { matches(it, fqcn) }.collect { "--tests '${it}'" }.join(' ')
                     }.join('\n'))
         }
     }
