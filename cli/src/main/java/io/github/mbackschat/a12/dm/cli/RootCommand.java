@@ -64,7 +64,8 @@ import picocli.CommandLine.Spec;
             OperatorsCommand.class,
             PatternsCommand.class,
             DiagnosticsCommand.class,
-            ManifestCommand.class
+            ManifestCommand.class,
+            McpCommand.class
         })
 final class RootCommand implements Callable<Integer> {
 

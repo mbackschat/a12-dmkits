@@ -67,6 +67,16 @@ class A12JsonConstructionGuardTest {
             "external JSON Schema/OpenAPI boundary; its JSON and YAML parsers explicitly preserve decimal scale.";
     private static final String CLI_OWNED_JSON =
             "dmtool-owned command spec, diagnostic, result envelope, or projection, not A12 content.";
+    /**
+     * The MCP layer gets its own role rather than riding {@link #CLI_OWNED_JSON}, because it is the one
+     * dmtool-owned frame that <em>carries</em> A12 content: a request brings a model's DM-JSON and a result
+     * hands the edited bytes back. What keeps a default mapper correct there is that the content is never
+     * parsed at this layer — it crosses as opaque text and the CLI does the parsing it already does
+     * correctly. State the invariant here, so a future change that starts parsing model content in the MCP
+     * layer has to come back and confront this row.
+     */
+    private static final String MCP_FRAME_JSON =
+            "MCP JSON-RPC frame this server owns; A12 content crosses it as opaque text, never parsed here.";
     private static final String INTERPRETER_OWNED_JSON =
             "dmtool interpreter worker/configuration/selection shape, not A12 model or document content.";
     private static final String PROFILE_JSON =
@@ -144,6 +154,10 @@ class A12JsonConstructionGuardTest {
                     + "::jackson-object-mapper#1", CLI_OWNED_JSON),
             entry("cli/src/main/java/io/github/mbackschat/a12/dm/cli/ManifestCommand.java"
                     + "::jackson-object-mapper#1", CLI_OWNED_JSON),
+            entry("cli/src/main/java/io/github/mbackschat/a12/dm/cli/McpDispatcher.java"
+                    + "::jackson-object-mapper#1", MCP_FRAME_JSON),
+            entry("cli/src/main/java/io/github/mbackschat/a12/dm/cli/McpStdioBinding.java"
+                    + "::jackson-object-mapper#1", MCP_FRAME_JSON),
             entry("cli/src/main/java/io/github/mbackschat/a12/dm/cli/MetaCommand.java"
                     + "::jackson-object-mapper#1", CLI_OWNED_JSON),
             entry("cli/src/main/java/io/github/mbackschat/a12/dm/cli/OperatorsCommand.java"

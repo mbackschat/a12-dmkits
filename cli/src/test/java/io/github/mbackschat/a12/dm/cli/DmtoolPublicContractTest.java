@@ -419,7 +419,7 @@ class DmtoolPublicContractTest {
                         + "`operationalProfiles[].returns.kind`"),
                 () -> "public output contract must state view-before-primary precedence: " + prose);
         for (String term : List.of("operationalProfiles[].returns.views[]", "operationalProfiles[].returns.kind",
-                "RESULT_ENVELOPE", "RAW_JSON", "RAW_TEXT", "EMPTY_STDOUT")) {
+                "RESULT_ENVELOPE", "RAW_JSON", "RAW_TEXT", "EMPTY_STDOUT", "NDJSON_STREAM")) {
             assertTrue(prose.contains(term), () -> "public output contract omits " + term + ": " + prose);
         }
     }

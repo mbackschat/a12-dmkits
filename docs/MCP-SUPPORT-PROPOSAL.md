@@ -1,6 +1,8 @@
 # dmtool over MCP — proposal
 
-**Status:** **PARKED** (2026-08-04, owner decision). The design is settled and **nothing is built**; no present need triggers building it. The re-open triggers are in §1. Graduates into the owning specs if and when a phase lands, per [DOC-DISCIPLINE.md](DOC-DISCIPLINE.md) §5.
+**Status:** **UN-PARKED and building** (2026-08-06, owner decision). It was PARKED 2026-08-04 with nothing built; the owner then called for phase 1 to be implemented. **The contract now lives in [MCP-SPEC.md](MCP-SPEC.md)**, what is deliberately not built in [MCP-GAPS.md](MCP-GAPS.md), and this document is being drained into them — read it for *how the design was reached* (the alternatives, the measurements, the decisions), never for what the tool does today. It is archived once phase 1 is complete, per [DOC-DISCIPLINE.md](DOC-DISCIPLINE.md) §5.
+
+**Where the spec corrects this document.** Reading the specification itself — rather than the summary in §2 — falsified three claims below, all in §5.3's refusal table and §12's discovery shape. The corrections are in [MCP-SPEC.md](MCP-SPEC.md) §1 and §4 and are marked here: an absent required `_meta` field is a specification-mandated `-32602`, not `-32022`; the `initialize` refusal is `-32601` with a version-naming message rather than `-32022`; and `serverInfo` rides `result._meta`, not a top-level field.
 
 > ### Positioning — read this before anything else
 >

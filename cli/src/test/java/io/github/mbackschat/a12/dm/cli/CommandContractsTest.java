@@ -141,7 +141,9 @@ class CommandContractsTest {
             }
         }
         assertEquals(47, writing, "every leaf with at least one writing profile carries the scope");
-        assertEquals(34, readOnly, "the always-read-only leaves stay free of it");
+        // 35 since `mcp` landed: it serves editing verbs but accepts no destination, so no bytes survive a
+        // call and a persistence scope there would describe a write that cannot happen (MCP-SPEC §5).
+        assertEquals(35, readOnly, "the always-read-only leaves stay free of it");
     }
 
     @Test

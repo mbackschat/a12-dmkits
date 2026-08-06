@@ -93,7 +93,13 @@ final class CommandContracts {
         OUTCOME_SUCCEEDED, EXECUTION_COMPLETED, ALL_CHILD_EXITS_ZERO,
         ALL_CHILD_EXITS_ZERO_AND_ARTIFACT_WRITTEN
     }
-    enum ReturnKind { RESULT_ENVELOPE, RAW_JSON, RAW_TEXT, EMPTY_STDOUT }
+    /**
+     * What stdout <i>is</i>, so a consumer knows how to read it. {@code NDJSON_STREAM} is not a JSON document:
+     * it is a sequence of newline-delimited JSON values written for the lifetime of a session, so a consumer
+     * that parsed it as one value — which is exactly what {@code RAW_JSON} promises — would fail on the second
+     * frame. The distinction is published rather than commented because it decides how stdout is consumed.
+     */
+    enum ReturnKind { RESULT_ENVELOPE, RAW_JSON, RAW_TEXT, EMPTY_STDOUT, NDJSON_STREAM }
     enum Consistency { NONE, OPTIONAL, REQUIRED, NESTED, CHILD_DEFINED, NOT_EMITTED }
     enum Runtime { NONE, REQUIRED }
 
@@ -118,6 +124,7 @@ final class CommandContracts {
         BATCH("batch"),
         EXPORT("export"),
         GROUP_EXTRACT("group extract"),
+        MCP("mcp"),
         META("meta"),
         MODEL_EXPAND("model expand"),
         MODEL_EXPORT_JSONSCHEMA("model export-jsonschema"),
@@ -619,6 +626,23 @@ final class CommandContracts {
                             .provenance(Consistency.REQUIRED, Runtime.NONE)
                             .build(),
                     preview("preview", semantic("--dry-run", "true"), AggregateSuccess.SELF));
+            // A protocol session, so every axis differs from an ordinary verb's.
+            //
+            // READ_ONLY is the load-bearing one, and it is a claim about DESTINATIONS rather than about work:
+            // this verb accepts no path, so content crosses the wire in both directions and a call's temporary
+            // tree is deleted before the call answers. A client can therefore drive an editing verb through it
+            // and still leave no bytes on disk — the caller owns persistence. It is NOT the DISPATCH that
+            // `batch` carries, because `batch`'s children write to the caller's files and these cannot.
+            // The classification is true only while that holds: accepting a caller-supplied path, or letting
+            // anything a call creates outlive it, makes this DISPATCH and puts the persistence scope back.
+            case MCP -> List.of(Profile.builder("serve")
+                    .effect(Effect.READ_ONLY)
+                    .failurePersistence(FailurePersistence.NO_WRITE)
+                    .topLevelOk(TopLevelOk.EXECUTION_COMPLETED)
+                    .returns(Returns.builder(ReturnKind.NDJSON_STREAM)
+                            .reason("newline-delimited JSON-RPC frames, one per line, until stdin closes")
+                            .build())
+                    .build());
             case META -> List.of(
                     read("read", Selector.builder().noneSet(META_WRITE_FLAGS).omitted("--dry-run", "--output", "-o").build(),
                             envelope(), Consistency.NONE),

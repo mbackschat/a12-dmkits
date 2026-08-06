@@ -43,8 +43,15 @@ class CliConformanceMatrixTest {
 
     private static final ObjectMapper M = new ObjectMapper();
 
-    /** The self-describing verbs ARE the demonstration surface — running them is the demo; no example needed. */
-    private static final Set<String> DEMO_EXEMPT = Set.of("manifest", "schema", "operators", "diagnostics");
+    /**
+     * Verbs a single worked invocation cannot demonstrate, for a reason that is structural rather than debt —
+     * so they are exempt here rather than owed in {@link #DEMONSTRATION_PENDING}. Two shapes: the
+     * self-describing verbs, where <em>running them is the demo</em>; and {@code mcp}, whose unit of use is a
+     * protocol session on stdin rather than an argv, and whose executable demonstration is the wire suite
+     * ({@code McpWireTest}) — a {@code verb-examples.json} row would have to be a command that serves until
+     * its input closes, which demonstrates nothing an agent can read.
+     */
+    private static final Set<String> DEMO_EXEMPT = Set.of("manifest", "schema", "operators", "diagnostics", "mcp");
 
     /**
      * Reasoned debt: a verb whose <em>happy-path</em> demonstration needs a fixture the corpus doesn't have

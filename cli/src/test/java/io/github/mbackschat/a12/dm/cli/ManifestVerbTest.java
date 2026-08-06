@@ -40,7 +40,8 @@ class ManifestVerbTest {
             "include add", "include read", "include set-reference", "include rename", "include remove", "include inline",
             "config read", "config modify",
             "workspace list", "workspace graph", "workspace check", "workspace roles",
-            "where-used", "meta", "export", "batch", "apply", "schema", "operators", "patterns", "diagnostics", "manifest");
+            "where-used", "meta", "export", "batch", "apply", "schema", "operators", "patterns", "diagnostics", "manifest",
+            "mcp");
 
     @Test
     void listsEveryVerbWithADescription() throws Exception {

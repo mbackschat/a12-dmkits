@@ -154,6 +154,9 @@ final class SchemaCommand extends BaseCommand {
             // became false and `schema patterns` was a dead end for a verb with four documented routes. Its
             // contract is now derived like any envelope verb, with the routes in CONTRACT_NOTES.
             Map.entry("diagnostics", "emits the diagnostic registry itself — run it"),
+            Map.entry("mcp", "serves a protocol session on stdin/stdout rather than consuming and returning one "
+                    + "document; its own contract is published over that protocol, by `server/discover` and "
+                    + "`tools/list`, and each tool there carries the schemas of the verb it routes to"),
             Map.entry("export", "renders an artifact (model card / dot / …), not the result envelope"),
             Map.entry("model new", "emits a brand-new model document (an artifact) to stdout; with -o stdout carries "
                     + "an additive write-confirmation envelope, but the primary form has no directional contract"),
@@ -423,6 +426,16 @@ final class SchemaCommand extends BaseCommand {
         // a runnable, non-hidden leaf — hidden commands aren't part of the canonical surface (the manifest
         // skips them too). Stays as the invariant; the legacy flat aliases this once guarded against are gone.
         return cur != null && cur.subcommands().isEmpty() && !cur.usageMessage().hidden() ? cur : null;
+    }
+
+    /**
+     * A published structure exactly as {@code schema <name>} serves it — referents embedded under
+     * {@code $defs}, so one document resolves on its own. Another surface that hands this schema to a
+     * consumer (the MCP tool projection's {@code outputSchema}) must take it from here rather than reading
+     * the resource, or it would publish the unbundled form whose {@code $ref} the consumer cannot resolve.
+     */
+    static JsonNode servedStructure(String name) {
+        return bundle(readSchema(name));
     }
 
     private static JsonNode readSchema(String name) {

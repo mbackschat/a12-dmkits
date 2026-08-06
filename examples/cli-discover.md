@@ -94,6 +94,7 @@ operators
 patterns
 diagnostics
 manifest
+mcp
 ```
 
 → The surface is **two axes**: a *target* (`model`, `profile`, `rule`, `computation`, `field`, `group`, `typedef`, `include`, `config`, `workspace`) crossed with an *op* (`add`/`read`/`modify`/`remove`, plus per-target verbs like `profile extract`/`synthesize`/`compare`, `rule check`, or `model check`). (`workspace` is the cross-model exception — it scans a *directory*, not the `-m` model.) The manifest carries each verb's `target`/`op`, its params (with the op-record `key`), and a schema pointer for every directional contract, including the explicitly described `profile synthesize` artifact operation. The tool describes itself — the skill teaches *judgment* (polarity, the traps), not this catalog.
