@@ -88,7 +88,29 @@ Mandatory in this revision, and cacheable (`ttlMs` one hour, `cacheScope: "publi
 
 **Input shape.** `{op?, args, model?, references?, files?}` — `op` only where a tool has more than one, and each `op` carries a **derived** description of that route's `Effect`, `FailurePersistence`, and `DryRun`, which is the route-level fact MCP annotations cannot express. `args` stays loosely typed on purpose: per-op validation is what this tool's corrective diagnostics already do well, and a large discriminated union degrades a model's tool-calling accuracy for no correctness gain. No property anywhere is a filesystem path.
 
-## 6. The verb's own contract
+## 6. `tools/call` — content in, content out, nothing kept
+
+**Two rules, both hard.** The server never receives, resolves, or returns a client-side path; and nothing a call creates survives it. This is a simplification rather than a cost: with no caller-supplied path there is no traversal surface to sanitise, no ambient workspace to freeze into, and no relative path resolving against a directory the caller cannot see.
+
+| direction | what crosses the wire |
+|---|---|
+| the subject model | its DM-JSON content, as `model` |
+| models it references | the content of each, as `references[]` |
+| a spec or document instance | the content, under `files.<parameterKey>` |
+| an edited or generated model | an **embedded resource** in the response — the caller owns persistence |
+| a read's answer | the envelope as `structuredContent`, the `--text` rendering as `content` |
+
+**The mechanism, and why one is needed.** Seven verbs accept their content only as a file and `-m` is a path, so each request materialises a temporary tree under **server-generated** names, runs `Cli.run` against it, reads back everything the run created or changed, and deletes the tree. Content therefore *transiently* touches disk: rule 2 is a **lifetime** guarantee, not an absence of writes, and a test asserts no request tree survives a call. `-w` is passed explicitly whenever a model is carried — without it the workspace would fall back to `$DMTOOL_WORKSPACE` and let the server's own environment decide what a caller's references resolve against.
+
+**Model content is never parsed by this layer.** Inbound bytes go to the tree verbatim and the CLI does the parsing it already does correctly; outbound bytes are read back and carried as text. Number fidelity is then unlosable by construction rather than dependent on configuring a mapper — which is why the layer's own mapper is allowlisted for *frames* only, with that invariant written into the allowlist row.
+
+**Refusals, each corrective:** a caller-supplied path in `args` (including the inherited `-m`/`-w`) names what to send instead; a **directory-shaped** content parameter says it is a directory and that a carried tree is not served here; a content key the verb does not take lists the ones it does. The directory refusal also disposes of a residency question by construction: the only path to `CustomJsWorker` — which registers an unremoved shutdown hook per call and leaves its `node` child running until the process exits — is the two custom-JS directories, so it is unreachable from a session.
+
+**`isError` keys on the outcome, not the exit code.** A `refused`/`rejected`/`error` envelope is actionable feedback a model can self-correct from; `model check` reporting an invalid model is a *successful* answer to the question asked, and marking it an error would tell the caller the tool failed. A malformed invocation — empty stdout, the whole corrective surface on stderr — comes back as a tool error carrying that stderr, because a design reading only stdout would drop the answer on the likeliest outcome of a generated call.
+
+**One deliberate deviation, stated.** The specification SHOULDs that a tool returning structured content also return the serialized JSON in a text block, for a client that ignores `structuredContent`. That client is served here by the `--text` rendering, which carries the same information in the form a model reads better; emitting the JSON twice would double every response for a client that already has it. Artifacts come back as **embedded resources** (`dm:///out/<name>`), which the spec permits while SHOULDing the `resources` capability alongside — not declared here, because declaring a capability whose endpoints are not served ([MG1](MCP-GAPS.md)) would be the worse claim.
+
+## 7. The verb's own contract
 
 `mcp` publishes one operational profile, and every axis differs from an ordinary verb's:
 
@@ -118,4 +140,12 @@ Its demonstration is likewise structural rather than owed: a verb whose unit of 
 | `readOnlyHint` and `outputSchema` are true of every op the tool covers, both directions | `McpToolSurfaceTest` (oracle: the tool's own `manifest`) |
 | the surface's denominator (28 tools · 12 read-only · 23 with `outputSchema`) | `McpToolSurfaceTest` |
 | tool names are unique, ordered, legal, and no input schema offers a path | `McpToolSurfaceTest` |
+| a read runs the verb on carried content and returns the envelope | `McpToolCallTest` |
+| an edit returns the mutated model and leaves the caller's file untouched | `McpToolCallTest` |
+| a raw route carries its payload as text and claims no structured content | `McpToolCallTest` |
+| a caller-supplied path — including the inherited `-m`/`-w` — is refused with its reason | `McpToolCallTest` |
+| a directory-shaped content parameter is refused as a directory | `McpToolCallTest` |
+| a malformed invocation returns the stderr corrective as a tool error | `McpToolCallTest` |
+| a domain refusal is a tool error that keeps its structured envelope | `McpToolCallTest` |
+| no request tree survives its call | `McpToolCallTest` |
 | the published output-kind vocabulary names `NDJSON_STREAM` | `DmtoolPublicContractTest` |

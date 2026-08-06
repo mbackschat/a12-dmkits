@@ -270,17 +270,45 @@ final class McpToolRegistry {
         return command.optionsMap().containsKey("--model");
     }
 
-    /** The op's non-model content parameters, by the key an {@code apply} op record would use. */
+    /** The label of a parameter whose value is a directory of files rather than one file. */
+    private static final String DIRECTORY_LABEL = "<dir>";
+
+    /** The op's non-model content parameters that take ONE file, by the key an {@code apply} op record uses. */
     static List<String> inboundContentKeys(CommandSpec command) {
+        return contentKeys(command, false);
+    }
+
+    /**
+     * The op's content parameters that take a <b>directory</b> — excluded from this surface, because inline
+     * content for a tree is a different shape from inline content for a document. Published as its own list
+     * so the refusal can say which it is instead of "no such parameter".
+     *
+     * <p>It also disposes of a residency question: the only path to {@code CustomJsWorker} — which registers
+     * an unremoved JVM shutdown hook per call and leaves its {@code node} child running until the process
+     * exits, harmless in a one-shot CLI and a leak in a resident server — is through the two custom-JS
+     * directories, and both are in this list. Unreachable, measured rather than hoped.
+     */
+    static List<String> directoryContentKeys(CommandSpec command) {
+        return contentKeys(command, true);
+    }
+
+    private static List<String> contentKeys(CommandSpec command, boolean directories) {
         List<String> keys = new ArrayList<>();
-        command.positionalParameters().forEach(positional -> role(positional)
-                .ifPresent(role -> keys.add(ParamKinds.paramKey(positional.paramLabel()))));
-        command.options().stream().filter(option -> !option.inherited()).forEach(option -> role(option)
-                .ifPresent(role -> keys.add(ParamKinds.paramKey(option.longestName()))));
+        command.positionalParameters().forEach(positional -> {
+            if (isInboundContent(positional, directories)) {
+                keys.add(ParamKinds.paramKey(positional.paramLabel()));
+            }
+        });
+        command.options().stream().filter(option -> !option.inherited()).forEach(option -> {
+            if (isInboundContent(option, directories)) {
+                keys.add(ParamKinds.paramKey(option.longestName()));
+            }
+        });
         return List.copyOf(keys);
     }
 
-    private static Optional<ContentRole> role(CommandLine.Model.ArgSpec param) {
-        return ContentRole.of(param).filter(role -> role == ContentRole.INBOUND_CONTENT);
+    private static boolean isInboundContent(CommandLine.Model.ArgSpec param, boolean directories) {
+        return ContentRole.of(param).filter(role -> role == ContentRole.INBOUND_CONTENT).isPresent()
+                && DIRECTORY_LABEL.equals(param.paramLabel()) == directories;
     }
 }

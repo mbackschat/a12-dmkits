@@ -45,6 +45,7 @@ final class McpDispatcher {
      */
     McpDispatcher(CommandSpec root) {
         handlers.put("server/discover", request -> McpResult.cacheable(discover(), DISCOVER_TTL_MS));
+        handlers.put("tools/call", request -> McpInvoker.call(root, request));
         handlers.put("tools/list", request -> {
             ObjectNode payload = MAPPER.createObjectNode();
             payload.set("tools", McpToolRegistry.toolsJson(root));
