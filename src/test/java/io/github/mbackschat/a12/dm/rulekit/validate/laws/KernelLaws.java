@@ -149,6 +149,16 @@ final class KernelLaws {
                 () -> "expected " + code + " for '" + rule.render() + "', got: " + r.diagnostics());
     }
 
+    /**
+     * The raw {@link ValidationResult} for a caller-supplied model — for a law whose claim is a TABLE of verdicts
+     * across many conditions. Asserting row-by-row aborts at the first divergence and hides the rest of the matrix,
+     * which is exactly what you need to see when a kernel upgrade shifts a gate; such a law collects verdicts with
+     * this and asserts the whole table once.
+     */
+    static ValidationResult checkModel(String json, String group, String errorField, String condition) {
+        return check(json, group, errorField, condition);
+    }
+
     private static ValidationResult check(String json, String group, String errorField, String condition) {
         return VALIDATOR.check(json, new DraftRule(group, "ProbeRule", errorField, condition, "PROBE", "ERROR"));
     }

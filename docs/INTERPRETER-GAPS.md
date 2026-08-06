@@ -6,7 +6,7 @@
 >
 > **Section invariant (the placement rule):** every section holds exactly one **live** status — **§1 = open, §2 = deferred / ongoing-incremental, §3 = out-of-scope**. A FULLY-shipped/graduated entry belongs in **none** of them: completing it *deletes* its row (see the lifecycle). So §1 reads `_None open._` whenever nothing is open — the marker every `-GAPS` ledger uses, so one grep rolls up the whole family (`GapLedgerTemplateGuardTest`) — and a fully-FIXED entry **anywhere** in this ledger is a bug in *this doc* — git already records the fix. (A partially-shipped *ongoing* refactor in §2 is not "fixed" — it stays until all of it lands.)
 >
-> **Current state.** §1 has no open gaps as of 2026-07-30. New semantic or performance defects belong in §1 only while they have actionable work and a defined completion gate.
+> **Current state.** §1 carries one open semantic defect (IG110, opened 2026-08-06). New semantic or performance defects belong in §1 only while they have actionable work and a defined completion gate.
 >
 > **Scope.** `:interpreter` only — the kernel-free Kotlin evaluator (parser, evaluation semantics, model loader, the differential/perf harnesses' interpreter side). dmkit (rulekit/modelkit/edit) authoring gaps go to [`DEV-API-GAPS.md`](DEV-API-GAPS.md); kernel-coverage classification stays in the MVK / RT-semantics / grammar ledgers.
 
@@ -14,7 +14,7 @@
 
 ## 1. Open
 
-_None open._
+- **IG110 — a `DateType` whose declared FORMAT omits calendar components is mishandled: one silent suppression and three false formal errors** <a id="ig110"></a> (kernel contract measured + locked as [KF176](KERNEL-FINDINGS.md#kf176), 2026-08-06). The kernel admits `yyyy`, `yyyy-MM`, `yyyyMM` and `MM` as `DateType` formats and treats such a cell as a concrete date (comparison, ordering, the admitted extractor, and `FieldValuesNotUnique` all evaluate). The interpreter does neither: on `yyyy` the cell resolves to `Val.Unknown`, so **every referencing rule is silently suppressed**; on `yyyy-MM`, `yyyyMM` and `MM` the formal check emits a **false `datumFormatFalsch`**. Root cause is a half-applied exception rather than a missing mechanism — `FormalError`'s FULL branch completes `fmt == "yyyy"` only (added for `SPEC-2026-07-27-13`'s `Date(...)` year-component source), `Document.resolveValue`'s FULL branch completes nothing, and `completeFragmentToIso` already does the completion for `DateFragmentType`. **Remaining work:** measure the completion target first (which month/day, and which year a year-less `MM` format takes — the extractor gate closes the cheap route, so it needs a comparison or `DifferenceInDays` against a full-format field), then mirror one fallback in both branches, then lock it as a differential across the four legal formats with the partial-`datePrecision` and `Date(...)`-component behavior as regression controls. **Completion gate:** the differential green on all four formats, no change to the two already-locked partial shapes.
 
 ---
 
