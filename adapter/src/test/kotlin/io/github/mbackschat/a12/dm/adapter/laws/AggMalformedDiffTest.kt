@@ -157,7 +157,58 @@ class AggMalformedDiffTest {
         )
     }
 
+    /**
+     * Closes two gaps a cold review left open. (1) The positional cases above read the **dynamic-Groovy** leg only,
+     * so the verdict was never tri-checked; the static-Java codegen strategy is compared here. (2) `SumOfProducts`
+     * is measured, having twice proved wrong wherever it was folded into a list with the `Combiner`-based
+     * aggregates — it reaches neither `combineFeldListe` nor the three-value pre-survey, so nothing about its
+     * third-state behaviour may be inherited from them.
+     *
+     * Deliberately TWO operators and two documents each, not the full matrix: each case builds and compiles a
+     * generated Java model, and this class shares `:adapter:test` with wall-clock perf floors that a per-case
+     * codegen sweep has inflated before.
+     */
+    @Test fun theStaticJavaStrategyAgreesOnThePositionalVerdictIncludingSumOfProducts() {
+        val qtys = m.flatten("/Cart/Lines*/Qty")
+        val readings = mutableListOf<String>()
+        for ((code, cond) in listOf(
+            "SM" to render(Dsl.sum(prices).gt(100)),
+            "SP" to render(Dsl.sumOfProducts(qtys, prices).gt(100)),
+        )) {
+            for ((where, p1, p2) in listOf(
+                Triple("head", "abc", "200"), Triple("tail", "200", "abc"), Triple("valid", "200", "50"),
+            )) {
+                val kModel = RuntimeLaws.withRule(fuzz, "/Cart", code, "../Lines/Price", code, cond)
+                val def = model(RuleDef("/Cart/$code", "/Cart", cond, code, "../Lines/Price"))
+                val kDoc = RuntimeLaws.doc().group("/Cart", 1)
+                    .group("/Cart/Lines", 1, 1).field(ITEM, "A", 1, 1, 1).field(QTY, "2", 1, 1, 1)
+                    .field(PRICE, p1, 1, 1, 1)
+                    .group("/Cart/Lines", 1, 2).field(ITEM, "B", 1, 2, 1).field(QTY, "3", 1, 2, 1)
+                    .field(PRICE, p2, 1, 2, 1)
+                val iDoc = doc(def).field(ITEM, "A", 1, 1, 1).field(QTY, "2", 1, 1, 1).field(PRICE, p1, 1, 1, 1)
+                    .field(ITEM, "B", 1, 2, 1).field(QTY, "3", 1, 2, 1).field(PRICE, p2, 1, 2, 1)
+                val relevant = { c: String -> c == code || c.startsWith("zahl") }
+                val dynamic = RuntimeLaws.messages(kModel, kDoc).map { it.code }.filter(relevant).sorted()
+                val java = RuntimeLaws.kernelJavaEngine(kModel)
+                val staticJava = java.messages(java.instance(kDoc)).map { it.code }.filter(relevant).sorted()
+                val interpreter = DmInterpreter(def).validateFull(iDoc).map { it.code }.filter(relevant).sorted()
+                assertEquals(dynamic, staticJava, "$code/$where — dynamic-Groovy vs static-Java")
+                assertEquals(dynamic, interpreter, "$code/$where — kernel vs interpreter")
+                readings += "$code/$where => $dynamic"
+            }
+        }
+        assertEquals(EXPECTED_TRI, readings, "the positional verdict as BOTH kernel strategies report it")
+    }
+
     private companion object {
+        val EXPECTED_TRI = listOf(
+            "SM/head => [zahlHatUngueltigeZeichen]",
+            "SM/tail => [zahlHatUngueltigeZeichen]",
+            "SM/valid => [SM]",
+            "SP/head => [zahlHatUngueltigeZeichen]",
+            "SP/tail => [zahlHatUngueltigeZeichen]",
+            "SP/valid => [SP]",
+        )
         const val ITEM = "/Cart/Lines/ItemId"
         const val QTY = "/Cart/Lines/Qty"
         const val PRICE = "/Cart/Lines/Price"
