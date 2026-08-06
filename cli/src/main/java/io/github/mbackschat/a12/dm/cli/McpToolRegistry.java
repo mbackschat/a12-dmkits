@@ -60,13 +60,43 @@ final class McpToolRegistry {
      * </ul>
      */
     static final Map<String, String> EXCLUDED_VERBS = Map.of(
-            "mcp", "the server itself — routing to it would nest a session inside a session",
-            "workspace list", "takes a directory whose contents are the input, and answers over the whole set",
-            "workspace graph", "takes a directory whose contents are the input, and answers over the whole set",
-            "workspace check", "takes a directory whose contents are the input, and answers over the whole set",
-            "workspace roles", "takes a directory whose contents are the input, and answers over the whole set",
-            "model rename", "refuses on an INWARD workspace scan, so it must prove a sibling's absence; a "
-                    + "caller-declared tree cannot establish that, and the gate would pass silently");
+            "mcp", "the server itself — routing to it would nest a session inside a session");
+
+    /**
+     * The <b>closed-world</b> verbs: served only when the caller asserts its carried tree is an authoritative
+     * complete workspace, and refused without it — never silently degraded (MCP-SPEC §6).
+     *
+     * <p>The axis is independent of {@code Effect} (does it write) and {@code ReturnKind} (what it emits): it
+     * asks whether a verb's <b>correctness depends on its input set being complete</b>. Two mechanisms put a
+     * verb here, and the discriminator for both is what an <i>absent</i> input produces — a visibly missing
+     * answer, or a confident wrong one:
+     *
+     * <ul>
+     *   <li><b>a refusal that must prove ABSENCE.</b> {@code model rename} scans the workspace inward for a
+     *       sibling that includes the old id. Given a partial tree it finds nothing and <i>permits</i> the
+     *       rename — turning "not supplied" into "proved absent", which is a safety gate degrading in
+     *       silence;</li>
+     *   <li><b>an answer quantified over the set.</b> The {@code workspace} family reports about every model
+     *       under a root, so a partial tree yields a complete-looking answer about a fragment.</li>
+     * </ul>
+     *
+     * <p><b>The denominator was swept, not assumed</b> (2026-08-06). Every verb reaching a workspace-wide
+     * scan was enumerated; it found a sixth candidate, {@code model info}, and <i>cleared</i> it by
+     * measurement: its scan builds an outward id→path index, its sub/supertype graph comes from the model's
+     * own header annotations rather than from siblings, and an unresolved reference is published as
+     * {@code resolvedPath: null} — visibly missing, not silently wrong. Every other verb resolves by id and
+     * fails loudly with {@code RK_UNRESOLVED_REFERENCE}.
+     */
+    static final Map<String, String> CLOSED_WORLD_VERBS = Map.of(
+            "workspace list", "lists every model under the root, so a partial tree looks like a whole one",
+            "workspace graph", "draws the inheritance graph over every model under the root",
+            "workspace check", "reports the project gate over every model under the root",
+            "workspace roles", "resolves each model's roles across the whole set",
+            "model rename", "refuses on an INWARD scan for a sibling that includes the old id, so it must "
+                    + "prove absence — on a partial tree it would find nothing and permit the rename");
+
+    /** The argument by which a caller takes responsibility for the completeness of what it sent. */
+    static final String AUTHORITY_ASSERTION = "authoritativeWorkspace";
 
     /** One tool: a cell of (target × effect-class × return-class), with the two facts MCP can carry. */
     record McpTool(String name, String description, List<String> ops, boolean readOnly, JsonNode outputSchema,
@@ -275,6 +305,17 @@ final class McpToolRegistry {
             references.put("description", "the DM-JSON of every model the subject includes or imports type "
                     + "definitions from. Resolution sees exactly what is sent, so an omitted one is an "
                     + "unresolved reference, never a silent success");
+        }
+        if (leaves.stream().anyMatch(leaf -> CLOSED_WORLD_VERBS.containsKey(leaf.verb()))) {
+            ObjectNode authority = properties.putObject(AUTHORITY_ASSERTION);
+            authority.put("type", "boolean");
+            authority.put("description", "assert that the models carried in this request are a COMPLETE "
+                    + "workspace, not a subset. Ops whose correctness depends on seeing everything — "
+                    + leaves.stream().filter(leaf -> CLOSED_WORLD_VERBS.containsKey(leaf.verb()))
+                            .map(Leaf::op).sorted().toList()
+                    + " — run only under this assertion and are refused without it, because on a partial "
+                    + "tree they would answer confidently about a fragment. You are taking responsibility "
+                    + "for what you did not send");
         }
         if (leaves.stream().anyMatch(leaf -> !inboundContentKeys(leaf.command()).isEmpty())) {
             ObjectNode files = properties.putObject("files");

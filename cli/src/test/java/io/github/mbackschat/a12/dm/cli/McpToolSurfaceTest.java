@@ -187,11 +187,14 @@ class McpToolSurfaceTest {
      * visible in review, the same job {@code ManifestVerbTest}'s verb pin does for the tree.
      */
     @Test
-    void theSurfaceIsTwentyEightToolsOfWhichTwelveAreReadOnly() {
+    void theSurfaceIsThirtyToolsOfWhichFourteenAreReadOnly() {
         List<McpToolRegistry.McpTool> tools = McpToolRegistry.tools(liveRoot());
-        assertEquals(28, tools.size(), () -> "tools: " + tools.stream().map(McpToolRegistry.McpTool::name).toList());
-        assertEquals(12, tools.stream().filter(McpToolRegistry.McpTool::readOnly).count(), "read-only tools");
-        assertEquals(23, tools.stream().filter(tool -> tool.outputSchema() != null).count(),
+        // 30/14/24 is the whole live tree minus the `mcp` leaf itself: the closed-world verbs rejoined the
+        // surface when the authority assertion gave them a safe way to run, so nothing is held back now
+        // except the server's own leaf.
+        assertEquals(30, tools.size(), () -> "tools: " + tools.stream().map(McpToolRegistry.McpTool::name).toList());
+        assertEquals(14, tools.stream().filter(McpToolRegistry.McpTool::readOnly).count(), "read-only tools");
+        assertEquals(24, tools.stream().filter(tool -> tool.outputSchema() != null).count(),
                 "tools declaring outputSchema");
     }
 

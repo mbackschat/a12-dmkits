@@ -79,24 +79,22 @@ Mandatory in this revision, and cacheable (`ttlMs` one hour, `cacheScope: "publi
 | read-only, raw | `.emit` | hands back a document or rendering; changes nothing |
 | writes, raw | `.generate` | produces a document |
 
-**28 tools over 76 ops, 12 truthfully read-only, 23 declaring `outputSchema`.** The `outputSchema` is the **served** `schema result` document, whose referents are embedded under `$defs`, so a client resolves it with no second call; publishing the resource file instead would hand over a `$ref` it cannot resolve.
+**30 tools over 81 ops — the whole live tree but the server's own leaf — 14 truthfully read-only, 24 declaring `outputSchema`.** The `outputSchema` is the **served** `schema result` document, whose referents are embedded under `$defs`, so a client resolves it with no second call; publishing the resource file instead would hand over a `$ref` it cannot resolve.
 
 `readOnlyHint` is what makes categorical approval safe: granting `dm.rule.read` cannot reach `rule remove`, which is the whole reason the effect axis is never collapsed. `openWorldHint` is `false` everywhere — not because nothing external is touched (`model eval` spawns `node`, `model diff --since` spawns `git`) but because there is no open world of external entities; both are local subprocesses under the caller's own account.
 
-**Six live verbs are not served, each with its reason as data** (`McpToolRegistry.EXCLUDED_VERBS`), because an unexplained hole in a derived surface reads as a bug:
+**One live verb is not served: `mcp` itself** — routing to it would nest a session inside a session.
 
-| not served | why |
+**Five run only under an authority assertion.** They sit on a third axis, independent of `Effect` and `ReturnKind`: whether a verb's **correctness depends on its input set being complete**. A request may set `authoritativeWorkspace: true` to declare that the models it carries *are* the whole workspace; without it these five are **refused**, never silently degraded.
+
+| verb | why it needs the whole set |
 |---|---|
-| `mcp` | the server itself; routing to it would nest a session inside a session |
-| `workspace list`/`graph`/`check`/`roles` | a **directory** is the input, and three of them answer over the whole set — served from a caller-declared tree they would silently answer about the fragment that was sent |
-| `model rename` | its refusal must prove a sibling's **absence**: it scans the workspace inward and refuses if something includes the old id. Given only what a caller chose to send it would find nothing and permit the rename, turning "not supplied" into "proved absent" — a safety gate degrading silently rather than failing loudly ([MG7](MCP-GAPS.md)) |
+| `model rename` | it refuses on an **inward** scan for a sibling that includes the old id — so on a partial tree it finds nothing and **permits** the rename, turning "not supplied" into "proved absent". The failure looks like success, which is why refusing beats degrading |
+| `workspace list`/`graph`/`check`/`roles` | each answers *over the set*, so a fragment yields a complete-looking answer about part of it |
 
-**What a tool definition costs, and why it is what it is.** The whole catalogue is **85,624 bytes** (~21k tokens) for 28 tools over 76 ops — down from 336,910 (~84k) once two measurements were taken. On the wire it is cacheable and fetched about once an hour per client; in a prompt a host pays it on every model turn, which is the cost that actually binds. Two things got it there, both derived rather than trimmed by hand:
+The directory those verbs take is the **request tree itself**, filled in by the server from the published `SCOPE_DIRECTORY` role rather than from a list of workspace verbs — so the caller still supplies models, never a location.
 
-- **The declared `outputSchema` carries no annotations.** The served result schema is 12,777 bytes of which **81 % is `description` and `examples`**, and MCP puts `outputSchema` per tool, so that prose was repeated 23 times. `description`/`examples` are JSON Schema *annotations* — they assert nothing — so removing them **cannot change what validates**, and a test proves it by validating a real envelope against the shipped copy and still rejecting a malformed diagnostic through the embedded definition. One short description survives, naming the call that returns the full contract.
-- **Only a tool whose ops consume a model asks for one.** `-m` is inherited by every leaf, so the obvious test ("does the option exist?") said yes even for a catalogue lookup and invited a caller to attach a document to `operators`. The signal is the `WorkspaceOption` **mixin** — the mechanism by which a verb gains model resolution at all — so `dm.catalog` no longer asks, while a mixed cell still does because three of its four ops read a model.
-
-Reducing it further means dropping a published fact rather than a redundancy, so the remaining lever is the host's own progressive discovery.
+**The denominator was swept, not assumed.** Every verb reaching a workspace-wide scan was enumerated. The sweep turned up a sixth candidate, `model info`, and **cleared it by measurement**: its scan builds an *outward* id→path index, its sub/supertype graph comes from the model's own header annotations rather than from siblings, and an unresolved reference is published as `resolvedPath: null` — visibly missing rather than silently wrong. Everything else resolves by id and fails loudly with `RK_UNRESOLVED_REFERENCE`. The discriminator throughout: does an absent input produce a *visible gap* or a *confident wrong answer*?
 
 **Input shape.** `{op?, args, model?, references?, files?}` — `op` only where a tool has more than one, and each `op` carries a **derived** description of that route's `Effect`, `FailurePersistence`, and `DryRun`, which is the route-level fact MCP annotations cannot express. `args` stays loosely typed on purpose: per-op validation is what this tool's corrective diagnostics already do well, and a large discriminated union degrades a model's tool-calling accuracy for no correctness gain. No property anywhere is a filesystem path.
 
@@ -213,6 +211,7 @@ The cheap win available now is independent of MCP: relocate what the placement r
 | tool names are unique, ordered, legal, and no input schema offers a path | `McpToolSurfaceTest` |
 | the annotation-stripped `outputSchema` validates exactly what the served one does | `McpToolSurfaceTest` (a real 2020-12 validator, with a positive control) |
 | only a tool whose ops consume a model asks for one | `McpToolSurfaceTest` |
+| the closed-world gate FIRES without the assertion, and the verb runs under it | `McpToolCallTest` |
 | a read runs the verb on carried content and returns the envelope | `McpToolCallTest` |
 | an edit returns the mutated model and leaves the caller's file untouched | `McpToolCallTest` |
 | a raw route carries its payload as text and claims no structured content | `McpToolCallTest` |

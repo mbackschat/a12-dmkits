@@ -298,6 +298,45 @@ class McpToolCallTest {
                 "the verb's payload belongs in the response frame, never on the framer's stream");
     }
 
+    /**
+     * <b>The closed-world gate FIRES.</b> A verb whose correctness needs the whole workspace is refused
+     * without the authority assertion — the does-fire half the refactoring-safety rule requires, because a
+     * gate that only works on the happy path is not a gate.
+     *
+     * <p>`model rename` is the sharp case: it refuses when a sibling includes the old id, so on a partial
+     * tree it would find nothing and PERMIT the rename. That failure is invisible — it looks like success.
+     */
+    @Test
+    void aClosedWorldVerbIsRefusedWithoutTheAuthorityAssertion() throws Exception {
+        ObjectNode arguments = arguments();
+        arguments.put("op", "rename");
+        arguments.put("model", fixture());
+        arguments.putObject("args").put("to", "renamed");
+
+        McpFailure refusal = org.junit.jupiter.api.Assertions.assertThrows(McpFailure.class,
+                () -> call("dm.model.edit", arguments));
+
+        assertEquals(McpProtocol.INVALID_PARAMS, refusal.code());
+        assertTrue(refusal.getMessage().contains("authoritativeWorkspace"),
+                () -> "the refusal names what to assert: " + refusal.getMessage());
+        assertTrue(refusal.getMessage().contains("COMPLETE"),
+                () -> "and what the assertion means: " + refusal.getMessage());
+    }
+
+    /** Under the assertion it runs — otherwise the gate would be a permanent exclusion wearing a flag. */
+    @Test
+    void underTheAssertionAWorkspaceVerbAnswersOverTheCarriedTree() throws Exception {
+        ObjectNode arguments = arguments();
+        arguments.put("op", "check");
+        arguments.put("model", fixture());
+        arguments.put(McpToolRegistry.AUTHORITY_ASSERTION, true);
+
+        JsonNode result = call("dm.workspace.read", arguments);
+
+        assertFalse(result.path("isError").asBoolean(), () -> "the carried tree checks out: " + result);
+        assertEquals("read", result.path("structuredContent").path("outcome").asText());
+    }
+
     /** Nothing a call creates outlives it — the lifetime guarantee, checked rather than asserted in prose. */
     @Test
     void noRequestTreeSurvivesTheCall() throws Exception {

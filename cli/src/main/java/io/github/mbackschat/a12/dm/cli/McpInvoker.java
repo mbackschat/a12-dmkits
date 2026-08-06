@@ -72,6 +72,8 @@ final class McpInvoker {
         String op = resolveOp(tool, args);
         Leaf leaf = leafOf(root, tool, op);
 
+        requireAuthorityFor(leaf, args);
+
         Path tree = createRequestTree();
         try {
             List<String> argv = argv(leaf, args, tree);
@@ -89,6 +91,28 @@ final class McpInvoker {
 
     /** A leaf of the live tree, resolved from the tool's group and the requested op. */
     private record Leaf(String verb, List<String> tokens, CommandSpec command) {
+    }
+
+    /**
+     * The closed-world gate: a verb whose correctness depends on seeing the whole workspace runs only when
+     * the caller has asserted that what it sent <b>is</b> the whole workspace, and is refused otherwise.
+     *
+     * <p>Refused rather than degraded, because the failure it prevents is silent. {@code model rename}
+     * scans inward for a sibling that includes the old id and refuses when it finds one; handed a partial
+     * tree it finds nothing and permits the rename, turning "not supplied" into "proved absent". No
+     * diagnostic can catch that afterwards — the answer looks like success.
+     */
+    private static void requireAuthorityFor(Leaf leaf, ObjectNode args) throws McpFailure {
+        String why = McpToolRegistry.CLOSED_WORLD_VERBS.get(leaf.verb());
+        if (why == null || args.path(McpToolRegistry.AUTHORITY_ASSERTION).asBoolean(false)) {
+            return;
+        }
+        throw new McpFailure(McpProtocol.INVALID_PARAMS,
+                "`" + leaf.verb() + "` " + why + ". It therefore runs only when you set `"
+                        + McpToolRegistry.AUTHORITY_ASSERTION + ": true`, asserting that the models carried "
+                        + "in this request are the COMPLETE workspace rather than a subset — on a partial "
+                        + "tree it would answer confidently about a fragment, and nothing downstream could "
+                        + "tell. Send every referenced model in `references`, then assert it.");
     }
 
     private static String resolveOp(McpToolRegistry.McpTool tool, ObjectNode args) throws McpFailure {
@@ -142,10 +166,18 @@ final class McpInvoker {
         argv.addAll(leaf.tokens());
 
         Map<String, ArgSpec> parameters = parameters(leaf.command());
+        List<String> options = new ArrayList<>();
         // Positionals are keyed by their DECLARED index, never by the order the caller happened to send:
         // `model diff <baseFile> <headFile>` would otherwise compare the two the wrong way round.
         Map<Integer, List<String>> positionals = new java.util.TreeMap<>();
-        List<String> options = new ArrayList<>();
+        // A verb whose subject is a DIRECTORY gets the request tree itself. The path is server-generated, so
+        // the content rule holds: the caller supplies the models, never the location they live at. Derived
+        // from the published role rather than a list of workspace verbs, so a new one is covered by default.
+        for (PositionalParamSpec positional : leaf.command().positionalParameters()) {
+            if (ContentRole.of(positional).filter(role -> role == ContentRole.SCOPE_DIRECTORY).isPresent()) {
+                positionals.put(positional.index().min(), List.of(tree.toString()));
+            }
+        }
         for (Map.Entry<String, JsonNode> file : files(args, leaf, tree).entrySet()) {
             emit(parameters.get(file.getKey()), file.getValue(), positionals, options);
         }
