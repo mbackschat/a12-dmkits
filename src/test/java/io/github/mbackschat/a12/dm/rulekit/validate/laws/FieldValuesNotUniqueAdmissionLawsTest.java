@@ -7,8 +7,8 @@ import io.github.mbackschat.a12.dm.modelkit.FieldKind;
 
 /**
  * KERNEL-FINDINGS §4 — {@code FieldValuesNotUnique} <b>operand admission</b> (SPEC-2026-08-04-02, extended and
- * partly corrected by SPEC-2026-08-05-02). Three gates the canonical account did not carry, all measured here
- * against the real kernel:
+ * partly corrected by SPEC-2026-08-05-02, scoped by SPEC-2026-08-05-04). Three gates the canonical account did not
+ * carry, all measured here against the real kernel:
  *
  * <ol>
  * <li><b>Arity.</b> The list needs more than one operand — a single <em>direct</em> field is rejected
@@ -41,6 +41,10 @@ import io.github.mbackschat.a12.dm.modelkit.FieldKind;
  *     declared scales stay admitted. Without that control, "differing declared formats are refused" would be
  *     satisfied by a kernel that demanded identical declarations everywhere — and the canonical cross-scale equality
  *     claim (a scale-0 {@code 5} equals a scale-2 {@code 5.00}) would be unauthorable.</li>
+ * <li>Each gate's SCOPE is the whole operand list, not the first offending operand — so authored position never
+ *     selects the reported class. Three of the five three-operand rows at the bottom place a category mismatch
+ *     <em>ahead</em> of the operand that offends the kind or format gate; a fail-fast implementation reports the
+ *     mixing code on exactly those.</li>
  * </ul>
  */
 class FieldValuesNotUniqueAdmissionLawsTest {
@@ -275,5 +279,53 @@ class FieldValuesNotUniqueAdmissionLawsTest {
     @Test
     void numberOfDifferentValuesAdmitsTheStringEnumerationMixThisOperatorRefuses() {
         admits("UnitsOnHand", "NumberOfDifferentValues(BinCode, Condition) < 2");
+    }
+
+    // ── each gate reads the WHOLE list, so authored position never selects the reported class ─────────
+
+    /*
+     * SPEC-2026-08-05-04. The pre-emption above says which gate wins; these say over what SCOPE each gate runs.
+     * Both gates walk the entire operand list, so an operand that offends a LATER gate still reports that gate's
+     * code even when an earlier-authored operand already offends the mixing one. The rival reading — refuse at the
+     * first offending operand in authored order — is what an implementation naturally writes, and it reports the
+     * mixing class on the three cases below marked THE DISCRIMINATOR.
+     */
+
+    @Test
+    void anInadmissibleKindAfterACategoryMismatchStillReportsTheKindGate() {
+        // THE DISCRIMINATOR. Operand 2 (String beside Date) already mixes categories, and operand 3 is an
+        // inadmissible kind: fail-fast in authored order would stop at operand 2 and report the mix.
+        refusesInsteadOf("AisleCode", "FieldValuesNotUnique(CountedOn, BinCode, Recount)",
+                "MVK_ONLY_STRING_ENUM_NUMBER_DATE_ALLOWED", "MVK_VARYING_TYPES_NOT_ALLOWED");
+    }
+
+    @Test
+    void theSameThreeOperandsReorderedReportTheSameKindGate() {
+        // The control: with the Boolean moved ahead of the mismatched String, both readings agree — which is why
+        // the pair is what carries the claim and neither row does alone.
+        refusesInsteadOf("AisleCode", "FieldValuesNotUnique(CountedOn, Recount, BinCode)",
+                "MVK_ONLY_STRING_ENUM_NUMBER_DATE_ALLOWED", "MVK_VARYING_TYPES_NOT_ALLOWED");
+    }
+
+    @Test
+    void aTemporalFormatMismatchSplitAroundACategoryMismatchStillReportsTheFormatGate() {
+        // THE DISCRIMINATOR for the same predicate's FORMAT half: the two Dates differ in declared format, and the
+        // String authored between them mixes categories with both.
+        refusesInsteadOf("AisleCode", "FieldValuesNotUnique(CountedOn, BinCode, ClosedOn)",
+                "MVK_ONLY_STRING_ENUM_NUMBER_DATE_ALLOWED", "MVK_VARYING_TYPES_NOT_ALLOWED");
+    }
+
+    @Test
+    void theSameFormatMismatchReorderedReportsTheSameGate() {
+        refusesInsteadOf("AisleCode", "FieldValuesNotUnique(CountedOn, ClosedOn, BinCode)",
+                "MVK_ONLY_STRING_ENUM_NUMBER_DATE_ALLOWED", "MVK_VARYING_TYPES_NOT_ALLOWED");
+    }
+
+    @Test
+    void aNumberLedListReportsTheKindGateAcrossAnInterveningCategoryMismatch() {
+        // The second instance, off the temporal family entirely — so the scope rule is not read as something the
+        // temporal format gate does.
+        refusesInsteadOf("AisleCode", "FieldValuesNotUnique(UnitsOnHand, BinCode, Recount)",
+                "MVK_ONLY_STRING_ENUM_NUMBER_DATE_ALLOWED", "MVK_VARYING_TYPES_NOT_ALLOWED");
     }
 }

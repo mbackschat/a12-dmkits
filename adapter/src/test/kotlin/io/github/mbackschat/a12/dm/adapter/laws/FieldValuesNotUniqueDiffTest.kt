@@ -14,6 +14,7 @@ import io.github.mbackschat.a12.dm.interpreter.model.CustomFieldType
 import io.github.mbackschat.a12.dm.interpreter.model.CustomTypeRejection
 import io.github.mbackschat.a12.dm.interpreter.model.RuleDef
 import io.github.mbackschat.a12.dm.modelkit.CustomFieldBuilder
+import io.github.mbackschat.a12.dm.modelkit.DateFieldBuilder
 import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel
 import io.github.mbackschat.a12.dm.rulekit.dsl.Condition
@@ -376,6 +377,70 @@ class FieldValuesNotUniqueDiffTest {
         }
     }
 
+    /**
+     * SPEC-2026-08-05-03 asked whether the temporal compared identity is the operand's **stored text** or its
+     * **decoded** date, and named the class of document that would separate them: two distinct stored texts under one
+     * identical declared format whose decoded values are equal. This locks the measured answer — **no such document
+     * exists**, for every candidate the entry proposed and for the formats reachable here.
+     *
+     * <p>The kernel's date input check is width-exact and blank-intolerant, so each near-miss text is refused at the
+     * cell before any comparison happens: a single-digit day or month under `dd.MM.yyyy` (and under `yyyy-MM-dd`) is
+     * `datumFormatFalsch`, a leading blank is `fuehrendesBlank`, a trailing blank is `nachfolgendesBlank`, and a
+     * padded or signed year is `datumFormatFalsch` again. Under one declared format the surviving texts therefore map
+     * one-to-one onto decoded dates, which makes stored-text and decoded comparison **observationally equivalent** on
+     * every storable temporal list — so this operator's identity choice is not decidable from behavior here, and
+     * neither implementation is in conflict with the kernel by picking either.
+     *
+     * <p>What this file does <em>not</em> claim: that the kernel compares stored text. That is a source-level reading
+     * of `feldWertIntern`, and the measurements below cannot separate it — they show the separating case is
+     * unreachable. The two rows at the end are the positive and negative controls, without which "every row reports a
+     * formal error" would be satisfied by a fixture whose rule never fires at all.
+     */
+    @Test fun noNearMissTemporalTextIsStorableSoTextAndDecodedIdentityAgree() {
+        val readings = mutableListOf<String>()
+        val expected = mutableListOf<String>()
+        for (case in listOf(
+            NearMissCase("dd.MM.yyyy", "1.2.2020", "01.02.2020", "datumFormatFalsch@first"),
+            NearMissCase("dd.MM.yyyy", "01.02.2020 ", "01.02.2020", "nachfolgendesBlank@first"),
+            NearMissCase("dd.MM.yyyy", " 01.02.2020", "01.02.2020", "fuehrendesBlank@first"),
+            NearMissCase("dd.MM.yyyy", "01.2.2020", "1.02.2020", "datumFormatFalsch@first, datumFormatFalsch@second"),
+            NearMissCase("yyyy-MM-dd", "2020-2-1", "2020-02-01", "datumFormatFalsch@first"),
+            // The controls: the exactly-formatted pair fires, and a genuinely different date does not.
+            NearMissCase("dd.MM.yyyy", "01.02.2020", "01.02.2020", "FU@first"),
+            NearMissCase("dd.MM.yyyy", "01.02.2020", "02.02.2020", ""),
+        )) {
+            val json = DocumentModelDraft.named("visit").locale("en_US")
+                .rootGroup("Visit", Consumer { g ->
+                    g.dateField("FirstSeenOn", Consumer<DateFieldBuilder> { it.format(case.format) })
+                    g.dateField("LastSeenOn", Consumer<DateFieldBuilder> { it.format(case.format) })
+                })
+                .build().toJson()
+            val bound = BoundModel.ofJson(json)
+            val condition = render(Dsl.fieldValuesNotUnique(bound.field(FIRST_SEEN), bound.field(LAST_SEEN)))
+            val kModel = RuntimeLaws.withRule(json, "/Visit", "FU", "../FirstSeenOn", "FU", condition)
+            val def = ModelLoader.load(kModel)
+            val kDoc = RuntimeLaws.doc().group("/Visit", 1)
+            val iDoc = def.newDocument().group("/Visit", 1)
+            for (setter in listOf<(String, String) -> Unit>(
+                { p, v -> kDoc.field(p, v, 1, 1) }, { p, v -> iDoc.field(p, v, 1, 1) },
+            )) { setter(FIRST_SEEN, case.first); setter(LAST_SEEN, case.second) }
+            fun label(field: String) = if (field.endsWith("FirstSeenOn")) "first" else "second"
+            val kernel = RuntimeLaws.messages(kModel, kDoc).map { "${it.code()}@${label(it.field())}" }
+            val interpreter = DmInterpreter(def).validateFull(iDoc).map { "${it.code}@${label(it.errorPath)}" }
+            readings += "${case.label}: kernel=$kernel interpreter=$interpreter"
+            expected += "${case.label}: kernel=[${case.expectedCodes}] interpreter=[${case.expectedCodes}]"
+        }
+        assertEquals(expected, readings, "the near-miss storability matrix as the kernel reports it")
+    }
+
+    private data class NearMissCase(
+        val format: String, val first: String, val second: String,
+        /** The comma-joined `code@field` list BOTH engines must report; empty for "no message". */
+        val expectedCodes: String,
+    ) {
+        val label: String get() = "[$format] '$first' vs '$second'"
+    }
+
     private data class TemporalKindCase(
         val kind: String, val modelPath: String, val group: String,
         val first: String, val second: String, val equal: String, val distinct: String,
@@ -475,5 +540,7 @@ class FieldValuesNotUniqueDiffTest {
         const val COMPLETED_AT = "/Order/CompletedAt"
         const val SUPPLIER_REF = "/Refs/SupplierRef"
         const val CARRIER_REF = "/Refs/CarrierRef"
+        const val FIRST_SEEN = "/Visit/FirstSeenOn"
+        const val LAST_SEEN = "/Visit/LastSeenOn"
     }
 }

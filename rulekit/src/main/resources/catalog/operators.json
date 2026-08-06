@@ -2845,7 +2845,7 @@
         "takes plain or flattened (starred) field operands",
         "more than one operand, OR one flattened repetition list (Group*/field) which already expands to many rows — a single DIRECT field is rejected MVK_PARAMSIZE_INVALIDN",
         "every operand must share ONE comparability category (MVK_VARYING_TYPES_NOT_ALLOWED) — {String, Custom}, {Enumeration}, {Number}, or the temporal family {Date, Time, DateTime, DateFragment}; differing Number scales are admitted, which is what makes cross-scale equality reachable",
-        "Boolean and DateRange operands are refused outright (MVK_ONLY_STRING_ENUM_NUMBER_DATE_ALLOWED), and every temporal operand must carry one IDENTICAL declared format string, else the same code"
+        "Boolean and DateRange operands are refused outright (MVK_ONLY_STRING_ENUM_NUMBER_DATE_ALLOWED), and every temporal operand must carry one IDENTICAL declared format string, else the same code — each gate reads the WHOLE operand list, so reordering the operands never changes which code you get"
       ],
       "gotchas": [
         {
@@ -2888,7 +2888,7 @@
         {
           "code": "MVK_ONLY_STRING_ENUM_NUMBER_DATE_ALLOWED",
           "whenOperands": [],
-          "fix": "this operand list is refused by KIND or by declared FORMAT, not by mixing categories. Boolean and DateRange operands are never admitted — compare something else, or use RepetitionNotUnique on a key field. Temporal operands (Date, Time, DateTime, DateFragment) are admitted only when ALL of them declare one IDENTICAL format string, so align the declared formats; note the gate reads the format and not the kind, so a Date declared yyyy and a DateFragment declared yyyy are a legal pair",
+          "fix": "this operand list is refused by KIND or by declared FORMAT, not by mixing categories. Boolean and DateRange operands are never admitted — compare something else, or use RepetitionNotUnique on a key field. Temporal operands (Date, Time, DateTime, DateFragment) are admitted only when ALL of them declare one IDENTICAL format string, so align the declared formats; note the gate reads the format and not the kind, so a Date declared yyyy and a DateFragment declared yyyy are a legal pair. This code also wins over the mixing code wherever the offending operand sits, because both gates read the whole list — so do not read it as a claim that the rest of the list is comparable",
           "probe": {
             "dsl": "FieldValuesNotUnique(OrderDate, ApproxDate)"
           }
