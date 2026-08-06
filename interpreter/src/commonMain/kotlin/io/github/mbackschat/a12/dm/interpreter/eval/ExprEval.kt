@@ -442,11 +442,13 @@ internal fun Interpreter.producesString(e: Expr): Boolean = when (e) {
 
 private fun Interpreter.evalFunc(f: Expr.Func): Val {
     val op = FunctionOp.byName(f.name)
-    // Partial validation only: an ALL-ROWS starred aggregate (Sum/Max/Min/distinct/sum-of-products) is
-    // UNKNOWN unless the relevant set WILDCARDS its starred level — concrete per-row enumeration, even of all
-    // rows, is not enough (kernel-probed, IF42). `FirstFilled` is EXEMPT here (handled order-aware in its
-    // branch). Full validation: starRelevant is null → skipped. O(relevant-set), no per-cell scan.
-    if (starRelevant != null && op != FunctionOp.FIRST_FILLED_VALUE) {
+    // Partial validation only: an ALL-ROWS starred aggregate (Sum/Max/Min/distinct) is UNKNOWN unless the
+    // relevant set WILDCARDS its starred level — concrete per-row enumeration, even of all rows, is not enough
+    // (kernel-probed, IF42). TWO operators are EXEMPT. `FirstFilled` is order-aware in its own branch. And
+    // `SumOfProducts` does not share this gate at all: the kernel walks its two lists in a hand-written loop
+    // with no three-value pre-survey, so it EVALUATES under concrete enumeration where the others stay UNKNOWN
+    // — measured, and previously wrong here because IF42's operator list was generalized past its probe.
+    if (starRelevant != null && op != FunctionOp.FIRST_FILLED_VALUE && op != FunctionOp.SUM_OF_PRODUCTS) {
         f.args.forEach { arg ->
             val sp = (arg as? Expr.Star)?.path
             if (sp != null && !starRelevant.invoke(sp)) return Val.Unknown

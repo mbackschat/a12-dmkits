@@ -247,7 +247,7 @@ class DmInterpreter @JvmOverloads constructor(
 
     /**
      * Whether a STARRED operation has complete extent in PARTIAL mode (IF42). The kernel evaluates an
-     * all-rows aggregate (`Sum`/`Max`/`Min`/`NumberOfDifferentValues`/`SumOfProducts`) only when the relevant set
+     * all-rows aggregate (`Sum`/`Max`/`Min`/`NumberOfDifferentValues`, but NOT `SumOfProducts`) only when the relevant set
      * **wildcards** every repeatable level of the path — `ALL_SEMANTIC` at the starred group, or a relevant
      * ANCESTOR group (whose descent makes all rows relevant). Enumerating concrete rows — even ALL of them — is
      * NOT enough (kernel-probed: the `*` reference is "fully known" only via a wildcard). A relevant entity covers
