@@ -15,6 +15,7 @@ import io.github.mbackschat.a12.dm.interpreter.model.CustomTypeRejection
 import io.github.mbackschat.a12.dm.interpreter.model.RuleDef
 import io.github.mbackschat.a12.dm.modelkit.CustomFieldBuilder
 import io.github.mbackschat.a12.dm.modelkit.DateFieldBuilder
+import io.github.mbackschat.a12.dm.modelkit.DateFragmentFieldBuilder
 import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel
 import io.github.mbackschat.a12.dm.rulekit.dsl.Condition
@@ -433,6 +434,60 @@ class FieldValuesNotUniqueDiffTest {
         assertEquals(expected, readings, "the near-miss storability matrix as the kernel reports it")
     }
 
+    /**
+     * SPEC-2026-08-05-03 (a12-kernel-lean): the compared temporal identity is the operand's **stored text**
+     * (`feldWertIntern`, their dynamic-runtime source read), and its agreement with the decoded date rests on the
+     * assumption that one declared format admits one text per value. This probes the two candidates the earlier
+     * matrix did not reach, and adds the **static-Java** leg they flagged as unread on their side.
+     *
+     * A bare `yyyy` format is legal ([KF176]), so it is the widest temporal format available and the best chance of
+     * two distinct texts decoding equal. The cross-KIND pair is the sharper shot: [KF173] admits a `Date` declared
+     * `yyyy` beside a `DateFragment` declared `yyyy`, so if the two kinds' input checkers differ in leniency the
+     * witness pair becomes reachable at one shared format. A refusal row is a legitimate and useful result — it is
+     * what makes the assumption hold for the probed formats rather than merely be assumed.
+     */
+    @Test fun noStorableTemporalPairSeparatesStoredTextFromItsDecodedValue() {
+        val readings = mutableListOf<String>()
+        for ((kindOfSecond, first, second) in listOf(
+            Triple("date", "2020", "2020"),          // control: identical text must FIRE
+            Triple("date", "2020", "2021"),          // control: different year must stay silent
+            Triple("date", "2020", "02020"),         // zero-padded year (their candidate 3)
+            Triple("date", "2020", "+2020"),         // signed year (their candidate 3)
+            Triple("date", "2020", " 2020"),         // leading blank at the widest format
+            Triple("fragment", "2020", "2020"),      // cross-kind at ONE shared format: admitted by KF173
+            Triple("fragment", "2020", "02020"),     // cross-kind near-miss — the sharper shot
+            Triple("fragment", "2020", "+2020"),
+        )) {
+            val json = DocumentModelDraft.named("visit").locale("en_US")
+                .rootGroup("Visit", Consumer { g ->
+                    g.dateField("FirstSeenOn", Consumer<DateFieldBuilder> { it.format("yyyy") })
+                    if (kindOfSecond == "date") {
+                        g.dateField("LastSeenOn", Consumer<DateFieldBuilder> { it.format("yyyy") })
+                    } else {
+                        g.dateFragmentField("LastSeenOn", Consumer<DateFragmentFieldBuilder> { it.fragmentFormat("yyyy") })
+                    }
+                }).build().toJson()
+            val bound = BoundModel.ofJson(json)
+            val condition = render(Dsl.fieldValuesNotUnique(bound.field(FIRST_SEEN), bound.field(LAST_SEEN)))
+            val kModel = RuntimeLaws.withRule(json, "/Visit", "FU", "../FirstSeenOn", "FU", condition)
+            val def = ModelLoader.load(kModel)
+            val kDoc = RuntimeLaws.doc().group("/Visit", 1)
+            val iDoc = def.newDocument().group("/Visit", 1)
+            for (setter in listOf<(String, String) -> Unit>(
+                { path, v -> kDoc.field(path, v, 1, 1) }, { path, v -> iDoc.field(path, v, 1, 1) },
+            )) { setter(FIRST_SEEN, first); setter(LAST_SEEN, second) }
+            fun codes(cs: List<String>) = cs.sorted().ifEmpty { listOf("(silent)") }
+            val dynamic = codes(RuntimeLaws.messages(kModel, kDoc).map { it.code })
+            val java = RuntimeLaws.kernelJavaEngine(kModel)
+            val staticJava = codes(java.messages(java.instance(kDoc)).map { it.code })
+            val interpreter = codes(DmInterpreter(def).validateFull(iDoc).map { it.code })
+            assertEquals(dynamic, staticJava, "[$kindOfSecond] '$first' vs '$second' — dynamic-Groovy vs static-Java")
+            assertEquals(dynamic, interpreter, "[$kindOfSecond] '$first' vs '$second' — kernel vs interpreter")
+            readings += "[$kindOfSecond] '$first' vs '$second' => $dynamic"
+        }
+        assertEquals(EXPECTED_YYYY_PAIRS, readings, "the widest-format storability matrix as the kernel reports it")
+    }
+
     private data class NearMissCase(
         val format: String, val first: String, val second: String,
         /** The comma-joined `code@field` list BOTH engines must report; empty for "no message". */
@@ -540,6 +595,16 @@ class FieldValuesNotUniqueDiffTest {
         const val COMPLETED_AT = "/Order/CompletedAt"
         const val SUPPLIER_REF = "/Refs/SupplierRef"
         const val CARRIER_REF = "/Refs/CarrierRef"
+        val EXPECTED_YYYY_PAIRS = listOf(
+            "[date] '2020' vs '2020' => [FU]",
+            "[date] '2020' vs '2021' => [(silent)]",
+            "[date] '2020' vs '02020' => [datumFormatFalsch]",
+            "[date] '2020' vs '+2020' => [datumFormatFalsch]",
+            "[date] '2020' vs ' 2020' => [fuehrendesBlank]",
+            "[fragment] '2020' vs '2020' => [FU]",
+            "[fragment] '2020' vs '02020' => [datumFormatFalsch]",
+            "[fragment] '2020' vs '+2020' => [datumFormatFalsch]",
+        )
         const val FIRST_SEEN = "/Visit/FirstSeenOn"
         const val LAST_SEEN = "/Visit/LastSeenOn"
     }
