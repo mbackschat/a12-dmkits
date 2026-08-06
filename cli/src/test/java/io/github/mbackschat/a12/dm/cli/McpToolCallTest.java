@@ -195,6 +195,35 @@ class McpToolCallTest {
                 "with them the imported types resolve and the model is kernel-valid");
     }
 
+    /**
+     * <b>The differential that settles content-carrying: a carried workspace expands to the same bytes as a
+     * real one.</b> `model expand` resolves the whole include closure into one self-contained model, so it
+     * reads everything a multi-file subject depends on. Running it over MCP against carried `references` and
+     * on disk against the fixture directory must produce identical output — anything else would mean the
+     * carried path resolves differently from the path every other consumer uses, which no assertion about
+     * individual fields would reliably catch.
+     */
+    @Test
+    void aCarriedWorkspaceExpandsToTheSameBytesAsARealOne() throws Exception {
+        Path app = Path.of("src/test/resources/models/multifile/app/storefront.dm.json");
+        Path lib = Path.of("src/test/resources/models/multifile/lib/catalog.dm.json");
+
+        ObjectNode arguments = arguments();
+        arguments.put("op", "expand");
+        arguments.put("model", Files.readString(app));
+        arguments.putArray("references").add(Files.readString(lib));
+        String overMcp = textOf(call("dm.model.generate", arguments));
+
+        StringBuilder out = new StringBuilder();
+        StringBuilder err = new StringBuilder();
+        int exit = Cli.run(new String[] {"-m", app.toString(), "-w", "src/test/resources/models/multifile",
+                "model", "expand"}, out, err);
+
+        assertEquals(0, exit, err::toString);
+        assertEquals(out.toString(), overMcp,
+                "the carried closure must expand exactly as the on-disk one");
+    }
+
     /** A raw route has no envelope to structure, so the payload rides content and nothing is claimed. */
     @Test
     void aRawRouteReturnsItsPayloadAsTextWithNoStructuredContent() throws Exception {

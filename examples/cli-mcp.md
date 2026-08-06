@@ -1,5 +1,7 @@
 # dmtool over MCP — the same tool, for a host that cannot run a binary
 
+**
+
 `dmtool mcp` serves the whole verb surface over the **Model Context Protocol**, revision `2026-07-28`, as newline-delimited JSON-RPC on stdin/stdout. It exists for a caller that cannot execute the binary — a web client, a hosted agent platform, a sandboxed integration. **Where you can run the binary, run it:** the CLI edits models in place, while every MCP call carries the model's content in both directions.
 
 A host normally launches it (`{"mcpServers":{"dmtool":{"command":"dmtool","args":["mcp"]}}}`); here it is driven by hand, one message per line, so every frame is visible.
@@ -33,7 +35,7 @@ printf '%s\n' '{"jsonrpc":"2.0","id":2,"method":"tools/list","params":{"_meta":{
 
 ```output
 {
-  "tools": 28,
+  "tools": 30,
   "readOnly": [
     "dm.catalog",
     "dm.computation.read",
@@ -46,7 +48,9 @@ printf '%s\n' '{"jsonrpc":"2.0","id":2,"method":"tools/list","params":{"_meta":{
     "dm.profile.read",
     "dm.rule.read",
     "dm.typedef.read",
-    "dm.where-used"
+    "dm.where-used",
+    "dm.workspace.emit",
+    "dm.workspace.read"
   ]
 }
 ```
@@ -120,6 +124,34 @@ jq -nc --rawfile model examples/models/order.dm.json '{jsonrpc:"2.0",id:6,method
 ```output
 `workspace` names a filesystem path (a directory searched to resolve a model's references), and this server accepts no caller-supplied path. Send content instead — a model as `model`, a referenced model in `references`, any other file under `files` — and read the result back out of the response.
 ```
+
+**A model rarely stands alone.** A subject that includes another model, or imports its type definitions, needs those models too — so a request carries them in `references`. The server names every file itself, because a model's identity is its `header.id` rather than its filename.
+
+```bash
+jq -nc --rawfile app examples/models/multifile/app/storefront.dm.json --rawfile lib examples/models/multifile/lib/catalog.dm.json '{jsonrpc:"2.0",id:5,method:"tools/call",params:{name:"dm.model.read",arguments:{op:"check",model:$app,references:[$lib]},_meta:{"io.modelcontextprotocol/protocolVersion":"2026-07-28","io.modelcontextprotocol/clientCapabilities":{}}}}' | dmtool mcp | jq '.result | {isError, valid: .structuredContent.valid, summary: .structuredContent.summary}'
+
+```
+
+```output
+{
+  "isError": false,
+  "valid": true,
+  "summary": "model is valid"
+}
+```
+
+**Leave one out and it fails loudly, never quietly.** An absent reference is a rejection with a code, not a model that silently validates against half of itself.
+
+```bash
+jq -nc --rawfile app examples/models/multifile/app/storefront.dm.json '{jsonrpc:"2.0",id:6,method:"tools/call",params:{name:"dm.model.read",arguments:{op:"check",model:$app},_meta:{"io.modelcontextprotocol/protocolVersion":"2026-07-28","io.modelcontextprotocol/clientCapabilities":{}}}}' | dmtool mcp | jq -c '.result.structuredContent | {outcome, code: .diagnostics[0].code}'
+
+```
+
+```output
+{"outcome":"rejected","code":"RK_UNRESOLVED_REFERENCE"}
+```
+
+Because a request carries models rather than a closure, an edit may also **introduce** a reference: `typedef import`, `include add --reference` and `include set-reference` mount a model the subject does not reference yet, and it simply rides along in `references`. A refactor that *creates* a model — `group extract` — returns both files, the new sub-model and the rewritten subject.
 
 ## The hosted form
 

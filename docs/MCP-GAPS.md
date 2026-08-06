@@ -10,7 +10,7 @@
 
 ## 1. Open
 
-_None open._
+- **MG14 — a CLI-authored corrective can advise an action an MCP caller cannot take.** Found while verifying multi-model work (2026-08-06). Omit a referenced model and the rejection is correct and loud — `RK_UNRESOLVED_REFERENCE` — but its `fix` reads *"pass `-w <dir>` (or set `$DMTOOL_WORKSPACE`) pointing at the directory that holds it"*. Over MCP the caller has neither: the answer is to send the model in `references`. The diagnostic is right for the surface it was written for, and rewriting another layer's prose from the transport would create exactly the second copy this design avoids everywhere else — so the fix belongs at the source, as a transport-neutral corrective or a per-transport one the diagnostic itself owns. It costs a caller one wasted attempt, not a wrong answer: the tool's own `references` description and the path refusal both say the right thing. **Re-open when** a second such corrective turns up, which would make it a class rather than an instance.
 
 ## 2. Deferred — with re-open triggers
 
