@@ -12,6 +12,8 @@ The `dmtool mcp` verb serves this tool over the [Model Context Protocol](https:/
 >
 > The positioning rides the verb's own `--help`, not only this document: that is where a cold agent meets the surface, and the wrong choice there is silent.
 
+**What is built here is the stdio transport, and hosting is where this is going.** The design record is explicit that the *hosted* transport is the one carrying the value and that a stdio server is the development and testing vehicle for it; the owner's recorded sequencing is "stdio-first, hosted a later and separately justified phase" (2026-08-02). Phase 1 was built to that plan rather than around it — the content-carrying request model exists *because* both transports were made to share one mechanism, so a hosted binding replaces the wire layer and reuses the dispatcher, the registry, and the invoker unchanged. What remains is a binding, a queue and a payload cap, and two decisions of different weight: shipping a container image a customer runs is licensing-neutral, while hosting it ourselves attaches EUPL Article 1. [MCP-GAPS](MCP-GAPS.md) "Hosting" carries all four.
+
 **How the design was reached** — the alternatives, the measurements, and the decisions taken while it was unbuilt — is the archived [MCP-SUPPORT-PROPOSAL](archived/MCP-SUPPORT-PROPOSAL.md). This file states what is *built*; what is deliberately not built is [MCP-GAPS](MCP-GAPS.md).
 
 ## 1. The revision, and the one it refuses
