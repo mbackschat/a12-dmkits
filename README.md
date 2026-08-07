@@ -132,7 +132,7 @@ printf '%s\n' '{"jsonrpc":"2.0","id":1,"method":"server/discover","params":{"_me
 
 The tools are **derived** from the live command tree plus the operational contract, so `readOnlyHint` and `outputSchema` are true of every op a tool covers or are not claimed at all. Content crosses the wire in both directions — no path is accepted, nothing is stored, and a call's working tree is deleted before it answers. A few verbs cannot answer honestly from a fragment (the `workspace` family, `model rename`): they report over a whole directory, or their refusal must prove a sibling's *absence*. Rather than hide them, the surface runs them **only** under `authoritativeWorkspace: true`, by which the caller takes responsibility for having sent a complete workspace.
 
-Worked session: [`examples/cli-mcp.md`](examples/cli-mcp.md). Full contract, the refusals, and what is deliberately not built: [`docs/MCP-SPEC.md`](docs/MCP-SPEC.md) + [`docs/MCP-GAPS.md`](docs/MCP-GAPS.md).
+Worked session: [`examples/cli-mcp.md`](examples/cli-mcp.md). Full contract, the refusals, and what is deliberately not built: [`docs/MCP-SPEC.md`](docs/MCP-SPEC.md) + [`docs/MCP-GAPS.md`](docs/MCP-GAPS.md). Standing up a hosted endpoint for real: [`docs/MCP-HOSTING.md`](docs/MCP-HOSTING.md).
 
 ### Discover the tool itself
 

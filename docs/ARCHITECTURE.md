@@ -11,12 +11,13 @@ The **structural** view of the system as it is **today**: the principal componen
 
 ## 1. The big picture
 
-dmkits is **one library with a shared core and two sibling kits**, an **opt-in kernel adapter** that reaches the kernel's internal read APIs, and a **CLI front-end** (`dmtool`) for the agent/BA. Everything sits on the **A12 kernel**, and the whole stack is built so the core never touches anything but the kernel's *public* surface.
+dmkits is **one library with a shared core and two sibling kits**, an **opt-in kernel adapter** that reaches the kernel's internal read APIs, and a **CLI front-end** (`dmtool`) for the agent/BA — which the same binary also **projects over MCP** (§5f), for a caller that cannot execute it. Everything sits on the **A12 kernel**, and the whole stack is built so the core never touches anything but the kernel's *public* surface.
 
 ```
                     ┌──────────────────────────── front-ends ─────────────────────────────┐
   agent / BA  ────▶ │  dmtool CLI  (:cli)              developer's own project              │
   developer   ────▶ │  picocli verbs · profiled JSON/text I/O (rulekit/modelkit library)    │
+  MCP host    ────▶ │  dmtool mcp — the same verbs over stdio or a bound port (§5f)         │
                     └───────────────┬──────────────────────────────────┬───────────────────┘
                                     │ implementation                    │ depends on (library)
                     ┌───────────────┴──────────────── the library  (root project ` : `) ─────┐
@@ -290,7 +291,8 @@ A root **hub** package plus nine **verb-family** sub-packages:
    │  WorkspaceOption (-m / -w mixin) · ParamKind(s) · ModelPaths · Suggestions · SpecKeys
    │  cross-cutting verbs: apply · batch · export · manifest · schema · operators ·
    │                       diagnostics · patterns · where-used · meta · mcp · …
-   │  Mcp{Command,StdioBinding,Dispatcher,ToolRegistry,Invoker,…}   the MCP server (§5c)
+   │  Mcp{Command,Dispatcher,ToolRegistry,Invoker,Frames,Protocol}   the MCP server (§5f)
+   │  Mcp{Stdio,Http}Binding · McpHttpConfig    its two transports over that one seam
    │
    ├── cli.model/ rule/ computation/ field/ group/ typedef/ include/ config/ workspace/
    │     each family = a parent command + its op subcommands + that family's spec
@@ -347,9 +349,11 @@ The split is deliberate: the **eval** runs the JVM build (fast, all verbs, score
 
 ### 5f. The MCP server — a second surface over the same tree
 
-`dmtool mcp` serves the tool over the Model Context Protocol on stdin/stdout, for a caller that cannot execute the binary. It is a **projection, not a second implementation**: `McpToolRegistry` derives the tool set from the running picocli tree plus `CommandContracts`, and `McpInvoker` routes every call through `Cli.run` — the same entry point, the same verbs, the same envelope. Nothing about the CLI is reshaped to suit it.
+`dmtool mcp` serves the tool over the Model Context Protocol, for a caller that cannot execute the binary. It is a **projection, not a second implementation**: `McpToolRegistry` derives the tool set from the running picocli tree plus `CommandContracts`, and `McpInvoker` routes every call through `Cli.run` — the same entry point, the same verbs, the same envelope. Nothing about the CLI is reshaped to suit it.
 
-It lives in the **root hub package** rather than a `cli.mcp/` sub-package, and that is a dependency fact rather than a preference: `RootCommand`, `ManifestCommand`, `TextRenderer`, and `CommandContracts` are package-private, so a sub-package would need four visibility widenings to reach what a projection must read. The layering inside it is one edge — `McpStdioBinding` (the only class that names a transport shape) over `McpDispatcher` (a method-name table over our own records). Contract: [`MCP-SPEC.md`](MCP-SPEC.md).
+**Two transports, one seam.** `McpStdioBinding` (newline-delimited JSON-RPC on stdin/stdout, for a host that launches the binary) and `McpHttpBinding` (`--http`; Streamable HTTP on a bound port, for a caller that reaches it over the network) are the *only* classes that name a transport shape. Both build their frames with `McpFrames` and hand a request to the same `McpDispatcher`, a method-name table over our own records, which reaches the same registry and invoker. That is the payoff of the content-carrying request model: with no session and no server-side state, adding a transport touched one class rather than threading a lifecycle through the stack. The HTTP binding runs on the JDK's own `com.sun.net.httpserver`, so it adds no dependency edge; its bounded worker pool is the one place two calls are in flight together, which is why the per-request lifetimes (a fresh command tree, a fresh temporary tree, a fresh interpreter) are load-bearing rather than incidental.
+
+It lives in the **root hub package** rather than a `cli.mcp/` sub-package, and that is a dependency fact rather than a preference: `RootCommand`, `ManifestCommand`, `TextRenderer`, and `CommandContracts` are package-private, so a sub-package would need four visibility widenings to reach what a projection must read. Contract: [`MCP-SPEC.md`](MCP-SPEC.md); standing the hosted form up: [`MCP-HOSTING.md`](MCP-HOSTING.md).
 
 ## 6. Maintenance map (when the kernel changes)
 

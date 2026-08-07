@@ -9,6 +9,9 @@ name: deploy-mcp-endpoint
 # MANUAL ONLY. A deploy replaces a live public endpoint, so it never rides a push — you trigger it, naming the
 # release tag to put there. `smoke_only` re-checks what is already running without touching it.
 #
+# SETUP RUNBOOK: docs/MCP-HOSTING.md — the site's own configuration, the SSH-keypair split, the gh commands
+# that set everything below, and what to do when a deploy fails. The list here is the fail-fast reference.
+#
 # WHAT THE REPOSITORY MUST CARRY (nothing here is account-specific by design):
 #   vars.ALWAYSDATA_SSH_HOST     e.g. ssh-<account>.alwaysdata.net
 #   vars.ALWAYSDATA_SSH_USER     the account's SSH user
