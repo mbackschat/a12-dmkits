@@ -56,6 +56,22 @@ class McpHttpConcurrencyTest {
                                         McpProtocol.META_CLIENT_CAPABILITIES, MAPPER.createObjectNode()))));
     }
 
+    /** A document evaluation: the subject model plus a carried instance, which rides in {@code files}. */
+    private static String evalCall(String model, String instance) throws IOException {
+        return MAPPER.writeValueAsString(MAPPER.createObjectNode()
+                .put("jsonrpc", "2.0").put("id", 1).put("method", "tools/call")
+                .<com.fasterxml.jackson.databind.node.ObjectNode>set("params", MAPPER.createObjectNode()
+                        .put("name", "dm.model.read")
+                        .<com.fasterxml.jackson.databind.node.ObjectNode>set("arguments",
+                                MAPPER.createObjectNode().put("op", "eval").put("model", model)
+                                        .<com.fasterxml.jackson.databind.node.ObjectNode>set("files",
+                                                MAPPER.createObjectNode().put("instance", instance)))
+                        .<com.fasterxml.jackson.databind.node.ObjectNode>set("_meta", MAPPER.createObjectNode()
+                                .put(McpProtocol.META_PROTOCOL_VERSION, McpProtocol.REVISION)
+                                .<com.fasterxml.jackson.databind.node.ObjectNode>set(
+                                        McpProtocol.META_CLIENT_CAPABILITIES, MAPPER.createObjectNode()))));
+    }
+
     private static HttpResponse<String> post(URI endpoint, String payload, String toolName) throws Exception {
         return CLIENT.send(HttpRequest.newBuilder(endpoint)
                 .POST(HttpRequest.BodyPublishers.ofString(payload, StandardCharsets.UTF_8))
@@ -92,6 +108,57 @@ class McpHttpConcurrencyTest {
                     assertTrue(MAPPER.writeValueAsString(envelope).contains(expected),
                             () -> "a caller got someone else's model back: " + envelope);
                     return envelope;
+                });
+            }
+            ExecutorService callers = Executors.newFixedThreadPool(6);
+            try {
+                for (Future<JsonNode> answer : callers.invokeAll(calls)) {
+                    assertFalse(answer.get().isMissingNode(), "every caller got an answer");
+                }
+            } finally {
+                callers.shutdownNow();
+                assertTrue(callers.awaitTermination(30, TimeUnit.SECONDS));
+            }
+        }
+    }
+
+    /**
+     * Twelve concurrent <b>document evaluations of one model</b>, alternating a violating and a compliant
+     * instance. Distinct from the case above, which drives static reads: evaluation is the only path that
+     * reaches the interpreter, and the interpreter now <b>refuses</b> concurrent use of a single
+     * {@code Interpreter} — a {@code PreparedModel} may be shared, an interpreter is per request. Every
+     * construction on the CLI path is a method-local today, so this passes by construction; the guard exists
+     * because a per-model preparation cache is the obvious next optimisation, and hoisting the interpreter
+     * along with it would fail <b>only</b> under two simultaneous callers, which exists only here.
+     */
+    @Test
+    void concurrentDocumentEvaluationsEachGetTheirOwnVerdict() throws Exception {
+        String model = Files.readString(Path.of("src/test/resources/models/order-ruled.dm.json"));
+        String violating = "{ \"Order\": { \"CustomerName\": \"Acme\", "
+                + "\"OrderDate\": \"2026-03-10\", \"DeliveryDate\": \"2026-03-01\" } }";
+        String compliant = "{ \"Order\": { \"CustomerName\": \"Acme\", "
+                + "\"OrderDate\": \"2026-03-01\", \"DeliveryDate\": \"2026-03-10\" } }";
+        McpHttpConfig config = McpHttpConfig.builder().port(0).workers(4).queueDepth(32).build();
+
+        try (McpHttpBinding server = McpHttpBinding.start(config, new McpDispatcher(liveRoot()))) {
+            URI endpoint = URI.create("http://127.0.0.1:" + server.port() + McpHttpBinding.ENDPOINT);
+            List<Callable<JsonNode>> calls = new ArrayList<>();
+            for (int index = 0; index < 12; index++) {
+                boolean violates = index % 2 == 0;
+                calls.add(() -> {
+                    HttpResponse<String> response = post(endpoint,
+                            evalCall(model, violates ? violating : compliant), "dm.model.read");
+                    assertEquals(200, response.statusCode(), response::body);
+                    JsonNode result = MAPPER.readTree(response.body()).path("result");
+                    assertFalse(result.path("isError").asBoolean(),
+                            () -> "an evaluation failed under concurrency: " + result);
+                    JsonNode fired = result.path("structuredContent").path("data").path("fired");
+                    assertEquals(violates ? 1 : 0, fired.size(),
+                            () -> "a caller got the other document's verdict: " + fired);
+                    if (violates) {
+                        assertEquals("DELIVERY_BEFORE_ORDER", fired.get(0).asText());
+                    }
+                    return result;
                 });
             }
             ExecutorService callers = Executors.newFixedThreadPool(6);

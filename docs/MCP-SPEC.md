@@ -233,6 +233,7 @@ The cheap win available now is independent of MCP: relocate what the placement r
 | every HTTP status and error code in §7, one case each | `McpHttpWireTest` |
 | the `--http` route binds, announces on stderr, and leaves stdout empty | `McpCommandTest` |
 | concurrent callers carrying different models each get their own answer | `McpHttpConcurrencyTest` |
+| concurrent document **evaluations** each get their own verdict, one interpreter per request | `McpHttpConcurrencyTest` |
 | a full server answers `503` + `Retry-After` immediately instead of queueing | `McpHttpConcurrencyTest` |
 | the derived tool surface is identical call to call | `McpHttpConcurrencyTest` |
 | the published output-kind vocabulary names `NDJSON_STREAM` | `DmtoolPublicContractTest` |
