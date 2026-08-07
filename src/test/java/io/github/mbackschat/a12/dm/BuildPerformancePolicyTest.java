@@ -10,6 +10,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Properties;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 import org.junit.jupiter.api.Test;
 
@@ -96,6 +97,23 @@ class BuildPerformancePolicyTest {
         assertTrue(script.contains("./build.sh -PrkCaptureInProgress :cli:nativeCaptureStamp"),
                 "only a completed capture may mint the freshness stamp, so this script must be what authorizes "
                         + "it; dropping the property makes the task refuse (cli/build.gradle nativeCaptureStamp)");
+    }
+
+    /**
+     * The capture stamp must mean the same thing on every machine. It hashed {@code GRAALVM_HOME} — an absolute
+     * path, and a different patch release on a runner — so it could only ever verify on the machine that minted
+     * it. The gate fails closed, so every CI native build broke the moment the stamp was first committed and the
+     * check stopped being vacuous (2026-08-07). Any environment read puts that back.
+     */
+    @Test
+    void theCaptureStampDigestReadsNoMachineSpecificEnvironment() throws IOException {
+        String digest = closureBody(Files.readString(locate("cli/build.gradle")), "nativeCaptureStampDigest");
+        assertTrue(digest.contains("MessageDigest"), "the capture stamp digest closure must be found intact");
+
+        String code = digest.lines().filter(line -> !line.strip().startsWith("//")).collect(Collectors.joining("\n"));
+        assertFalse(code.contains("System.getenv"), "the capture stamp digest must hash only repository "
+                + "inputs; an environment read makes the stamp unverifiable on any other machine, and the "
+                + "gate that consumes it fails closed");
     }
 
     /**
@@ -187,6 +205,24 @@ class BuildPerformancePolicyTest {
             return "";
         }
         return build.substring(start, build.indexOf(']', start));
+    }
+
+    /** Brace-balanced body of a {@code def <name> = { … }} closure, so a check cannot run past it into the next one. */
+    private static String closureBody(String build, String name) {
+        int start = build.indexOf("def " + name);
+        if (start < 0) {
+            return "";
+        }
+        int depth = 0;
+        for (int i = build.indexOf('{', start); i >= 0 && i < build.length(); i++) {
+            char character = build.charAt(i);
+            if (character == '{') {
+                depth++;
+            } else if (character == '}' && --depth == 0) {
+                return build.substring(start, i + 1);
+            }
+        }
+        return "";
     }
 
     /** Brace-balanced body of a {@code tasks.named('<name>')} block — {@link #gradleTask} only finds registrations. */

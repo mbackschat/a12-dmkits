@@ -189,7 +189,16 @@ def nativeCaptureStampDigest = {
             .collect { it.name }.toSorted()
             .each { add('jar', it.getBytes('UTF-8')) }
     add('callerFilter', rootProject.file('scripts/native-agent-caller-filter.json').bytes)
-    add('graalvm', (System.getenv('GRAALVM_HOME') ?: '(unset)').getBytes('UTF-8'))
+    // GRAALVM_HOME is deliberately NOT hashed. It used to be, and that made the stamp unverifiable anywhere
+    // but the machine that minted it: the value is an absolute path (`/Library/Java/…` here,
+    // `/opt/hostedtoolcache/…` on a runner), and the runner's GraalVM is a different patch release besides.
+    // The gate fails closed, so every CI native build failed the moment the stamp was first committed and the
+    // check stopped being a no-op — measured 2026-08-07, and reproduced locally by changing only this variable.
+    //
+    // Dropping it loses nothing the digest is for. The question a stamp answers is "were the SOURCES the same",
+    // and the verifier's own toolchain is not a source input. A capture taken with a different GraalVM that
+    // recorded a different surface still moves the digest, because the metadata file itself lives under
+    // `cli/src/main` and is hashed above.
     return md.digest().encodeHex().toString()
 }
 
