@@ -2276,6 +2276,15 @@
       "type": "android.os.Build$VERSION"
     },
     {
+      "type": "apple.security.AppleProvider",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
       "type": "byte[]"
     },
     {
@@ -2283,6 +2292,9 @@
     },
     {
       "type": "char[]"
+    },
+    {
+      "type": "com.ethlo.time.ITU"
     },
     {
       "type": "com.fasterxml.jackson.databind.deser.Deserializers[]"
@@ -2321,6 +2333,19 @@
       "methods": [
         {
           "name": "isExtmp",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "com.mgmtp.a12.kernel.core.codegen.internal.generator.backingbeans.CodeGenFilterCondition",
+      "methods": [
+        {
+          "name": "getConditionBooleanCode",
+          "parameterTypes": []
+        },
+        {
+          "name": "getVarName",
           "parameterTypes": []
         }
       ]
@@ -2738,6 +2763,10 @@
           "parameterTypes": []
         },
         {
+          "name": "getFilterConditionName",
+          "parameterTypes": []
+        },
+        {
           "name": "getHasCategory",
           "parameterTypes": []
         },
@@ -3088,6 +3117,23 @@
       ]
     },
     {
+      "type": "com.mgmtp.a12.kernel.core.codegen.internal.generator.backingbeans.conditions.PredefinedTypeValidityCondition",
+      "methods": [
+        {
+          "name": "getConditionNameCode",
+          "parameterTypes": []
+        },
+        {
+          "name": "getFieldIdCode",
+          "parameterTypes": []
+        },
+        {
+          "name": "getPredefinedTypeCode",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
       "type": "com.mgmtp.a12.kernel.core.codegen.internal.generator.backingbeans.conditions.RootGroupCondition",
       "methods": [
         {
@@ -3113,6 +3159,27 @@
       ]
     },
     {
+      "type": "com.mgmtp.a12.kernel.core.codegen.internal.generator.backingbeans.conditions.ValueListCondition",
+      "methods": [
+        {
+          "name": "getBedingungNameCode",
+          "parameterTypes": []
+        },
+        {
+          "name": "getFeldIdCode",
+          "parameterTypes": []
+        },
+        {
+          "name": "getOpCodeFragments",
+          "parameterTypes": []
+        },
+        {
+          "name": "isStringList",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
       "type": "com.mgmtp.a12.kernel.core.codegen.internal.generator.backingbeans.dynamicEnum.CodeGenDynamicEnumerations",
       "methods": [
         {
@@ -3130,6 +3197,15 @@
       "methods": [
         {
           "name": "getStringValue",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "com.mgmtp.a12.kernel.core.codegen.internal.generator.backingbeans.fieldoperations.CodeGenOperation",
+      "methods": [
+        {
+          "name": "getFormat",
           "parameterTypes": []
         }
       ]
@@ -3174,6 +3250,15 @@
         },
         {
           "name": "getOperatorNameCode",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "com.mgmtp.a12.kernel.core.codegen.internal.generator.backingbeans.fieldoperations.FieldIdOperationWithParameters",
+      "methods": [
+        {
+          "name": "getParameterCode",
           "parameterTypes": []
         }
       ]
@@ -3243,6 +3328,19 @@
         },
         {
           "name": "getOperatorNameCode",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "com.mgmtp.a12.kernel.core.codegen.internal.generator.backingbeans.fieldoperations.date.DateRangeConstructionOperation",
+      "methods": [
+        {
+          "name": "getDate1Code",
+          "parameterTypes": []
+        },
+        {
+          "name": "getDate2Code",
           "parameterTypes": []
         }
       ]
@@ -5862,6 +5960,12 @@
           ]
         },
         {
+          "name": "setErrorCodesToSuppress",
+          "parameterTypes": [
+            "java.util.List"
+          ]
+        },
+        {
           "name": "setErrorMessage",
           "parameterTypes": [
             "com.mgmtp.a12.kernel.md.model.api.ILocalizedTextMap"
@@ -7295,6 +7399,98 @@
       ]
     },
     {
+      "type": "com.sun.crypto.provider.AESCipher$General",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "com.sun.crypto.provider.ARCFOURCipher",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "com.sun.crypto.provider.ChaCha20Cipher$ChaCha20Poly1305",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "com.sun.crypto.provider.DESCipher",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "com.sun.crypto.provider.DESedeCipher",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "com.sun.crypto.provider.DHParameters",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "com.sun.crypto.provider.GaloisCounterMode$AESGCM",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "com.sun.crypto.provider.HKDFKeyDerivation$HKDFSHA256",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": [
+            "javax.crypto.KDFParameters"
+          ]
+        }
+      ]
+    },
+    {
+      "type": "com.sun.crypto.provider.HmacCore$HmacSHA256",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "com.sun.crypto.provider.TlsMasterSecretGenerator",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
       "type": "double"
     },
     {
@@ -8455,6 +8651,9 @@
       "type": "io.github.mbackschat.a12.dm.cli.BatchCommand",
       "fields": [
         {
+          "name": "observationsFile"
+        },
+        {
           "name": "opsFile"
         }
       ],
@@ -8527,6 +8726,38 @@
     },
     {
       "type": "io.github.mbackschat.a12.dm.cli.ManifestCommand",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "io.github.mbackschat.a12.dm.cli.McpCommand",
+      "fields": [
+        {
+          "name": "allowOrigin"
+        },
+        {
+          "name": "host"
+        },
+        {
+          "name": "http"
+        },
+        {
+          "name": "maxRequestBytes"
+        },
+        {
+          "name": "port"
+        },
+        {
+          "name": "queueDepth"
+        },
+        {
+          "name": "workers"
+        }
+      ],
       "methods": [
         {
           "name": "<init>",
@@ -10121,7 +10352,16 @@
       "type": "io.github.mbackschat.a12.dm.cli.rule.RuleEvalCommand",
       "fields": [
         {
+          "name": "code"
+        },
+        {
+          "name": "condition"
+        },
+        {
           "name": "customSupport"
+        },
+        {
+          "name": "field"
         },
         {
           "name": "instance"
@@ -11202,6 +11442,15 @@
       "type": "java.lang.String[][]"
     },
     {
+      "type": "java.lang.System",
+      "methods": [
+        {
+          "name": "console",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
       "type": "java.lang.Thread"
     },
     {
@@ -11309,6 +11558,18 @@
           ]
         }
       ]
+    },
+    {
+      "type": "java.security.AlgorithmParametersSpi"
+    },
+    {
+      "type": "java.security.KeyStoreSpi"
+    },
+    {
+      "type": "java.security.interfaces.ECPrivateKey"
+    },
+    {
+      "type": "java.security.interfaces.ECPublicKey"
     },
     {
       "type": "java.sql.Connection"
@@ -11508,6 +11769,9 @@
     },
     {
       "type": "java.util.ImmutableCollections$AbstractImmutableMap"
+    },
+    {
+      "type": "java.util.ImmutableCollections$List12"
     },
     {
       "type": "java.util.ImmutableCollections$ListN"
@@ -12536,6 +12800,60 @@
       ]
     },
     {
+      "type": "sun.security.pkcs12.PKCS12KeyStore",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "sun.security.pkcs12.PKCS12KeyStore$DualFormatPKCS12",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "sun.security.provider.DSA$SHA224withDSA",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "sun.security.provider.DSA$SHA256withDSA",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "sun.security.provider.JavaKeyStore$DualFormatJKS",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "sun.security.provider.JavaKeyStore$JKS",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
       "type": "sun.security.provider.MD5",
       "methods": [
         {
@@ -12565,10 +12883,271 @@
       ]
     },
     {
+      "type": "sun.security.provider.SHA2$SHA224",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "sun.security.provider.SHA2$SHA256",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "sun.security.provider.SHA5$SHA384",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "sun.security.provider.SHA5$SHA512",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "sun.security.provider.X509Factory",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "sun.security.provider.certpath.PKIXCertPathValidator",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "sun.security.rsa.PSSParameters",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "sun.security.rsa.RSAKeyFactory$Legacy",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "sun.security.rsa.RSAPSSSignature",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "sun.security.rsa.RSASignature$SHA224withRSA",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "sun.security.ssl.KeyManagerFactoryImpl$SunX509",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "sun.security.ssl.SSLContextImpl$DefaultSSLContext",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "sun.security.ssl.TrustManagerFactoryImpl$PKIXFactory",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "sun.security.x509.AuthorityInfoAccessExtension",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": [
+            "java.lang.Boolean",
+            "java.lang.Object"
+          ]
+        }
+      ]
+    },
+    {
+      "type": "sun.security.x509.AuthorityKeyIdentifierExtension",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": [
+            "java.lang.Boolean",
+            "java.lang.Object"
+          ]
+        }
+      ]
+    },
+    {
+      "type": "sun.security.x509.BasicConstraintsExtension",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": [
+            "java.lang.Boolean",
+            "java.lang.Object"
+          ]
+        }
+      ]
+    },
+    {
+      "type": "sun.security.x509.CRLDistributionPointsExtension",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": [
+            "java.lang.Boolean",
+            "java.lang.Object"
+          ]
+        }
+      ]
+    },
+    {
+      "type": "sun.security.x509.CertificatePoliciesExtension",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": [
+            "java.lang.Boolean",
+            "java.lang.Object"
+          ]
+        }
+      ]
+    },
+    {
+      "type": "sun.security.x509.ExtendedKeyUsageExtension",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": [
+            "java.lang.Boolean",
+            "java.lang.Object"
+          ]
+        }
+      ]
+    },
+    {
+      "type": "sun.security.x509.KeyUsageExtension",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": [
+            "java.lang.Boolean",
+            "java.lang.Object"
+          ]
+        }
+      ]
+    },
+    {
+      "type": "sun.security.x509.NetscapeCertTypeExtension",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": [
+            "java.lang.Boolean",
+            "java.lang.Object"
+          ]
+        }
+      ]
+    },
+    {
+      "type": "sun.security.x509.PrivateKeyUsageExtension",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": [
+            "java.lang.Boolean",
+            "java.lang.Object"
+          ]
+        }
+      ]
+    },
+    {
+      "type": "sun.security.x509.SubjectAlternativeNameExtension",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": [
+            "java.lang.Boolean",
+            "java.lang.Object"
+          ]
+        }
+      ]
+    },
+    {
+      "type": "sun.security.x509.SubjectKeyIdentifierExtension",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": [
+            "java.lang.Boolean",
+            "java.lang.Object"
+          ]
+        }
+      ]
+    },
+    {
       "type": "sun.text.resources.BreakIteratorInfo"
     },
     {
       "type": "sun.text.resources.BreakIteratorResources"
+    },
+    {
+      "type": "sun.text.resources.FormatData"
+    },
+    {
+      "type": "sun.text.resources.FormatData_en"
+    },
+    {
+      "type": "sun.text.resources.FormatData_en_US"
+    },
+    {
+      "type": "sun.text.resources.JavaTimeSupplementary"
     },
     {
       "type": "sun.text.resources.cldr.FormatData"
@@ -12590,6 +13169,15 @@
     },
     {
       "type": "sun.util.resources.cldr.LocaleNames_en_US"
+    },
+    {
+      "type": "sun.util.resources.cldr.TimeZoneNames"
+    },
+    {
+      "type": "sun.util.resources.cldr.TimeZoneNames_en"
+    },
+    {
+      "type": "sun.util.resources.cldr.TimeZoneNames_en_US"
     },
     {
       "type": {
@@ -14725,6 +15313,9 @@
       "glob": "META-INF/groovy/org.codehaus.groovy.source.Extensions"
     },
     {
+      "glob": "META-INF/services/com.sun.net.httpserver.spi.HttpServerProvider"
+    },
+    {
       "glob": "META-INF/services/io.github.mbackschat.a12.dm.core.spi.BackendInfo"
     },
     {
@@ -14732,6 +15323,12 @@
     },
     {
       "glob": "META-INF/services/io.github.mbackschat.a12.dm.rulekit.spi.ConditionReadBack"
+    },
+    {
+      "glob": "META-INF/services/java.net.spi.InetAddressResolverProvider"
+    },
+    {
+      "glob": "META-INF/services/java.net.spi.URLStreamHandlerProvider"
     },
     {
       "glob": "META-INF/services/java.nio.channels.spi.SelectorProvider"
@@ -17491,6 +18088,9 @@
       "glob": "internal/templates/validation/groovy/conditionsDir/ApplicationCondition.st"
     },
     {
+      "glob": "internal/templates/validation/groovy/conditionsDir/CodeGenFilterCondition.st"
+    },
+    {
       "glob": "internal/templates/validation/groovy/conditionsDir/ComparisonCondition.st"
     },
     {
@@ -17500,7 +18100,13 @@
       "glob": "internal/templates/validation/groovy/conditionsDir/EntityListCondition.st"
     },
     {
+      "glob": "internal/templates/validation/groovy/conditionsDir/PredefinedTypeValidityCondition.st"
+    },
+    {
       "glob": "internal/templates/validation/groovy/conditionsDir/RootGroupCondition.st"
+    },
+    {
+      "glob": "internal/templates/validation/groovy/conditionsDir/ValueListCondition.st"
     },
     {
       "glob": "internal/templates/validation/groovy/dynamicEnum.stg"
@@ -17746,6 +18352,9 @@
       "glob": "internal/templates/validation/groovy/operationsDir/CompositeOperation.st"
     },
     {
+      "glob": "internal/templates/validation/groovy/operationsDir/ConstantOperation_datum.st"
+    },
+    {
       "glob": "internal/templates/validation/groovy/operationsDir/ConstantOperation_string.st"
     },
     {
@@ -17761,10 +18370,19 @@
       "glob": "internal/templates/validation/groovy/operationsDir/DateExtractionOperation.st"
     },
     {
+      "glob": "internal/templates/validation/groovy/operationsDir/DateRangeConstructionOperation.st"
+    },
+    {
       "glob": "internal/templates/validation/groovy/operationsDir/EntityListOperation.st"
     },
     {
       "glob": "internal/templates/validation/groovy/operationsDir/FieldIdOperation.st"
+    },
+    {
+      "glob": "internal/templates/validation/groovy/operationsDir/FieldIdOperationWithParameters.st"
+    },
+    {
+      "glob": "internal/templates/validation/groovy/operationsDir/OpListOperation.st"
     },
     {
       "glob": "internal/templates/validation/groovy/operationsDir/OpListOperationWithParameter.st"
@@ -18238,13 +18856,22 @@
       "glob": "models/multifile/app/storefront.dm.json"
     },
     {
+      "glob": "models/multifile/lib"
+    },
+    {
       "glob": "models/multifile/lib/catalog.dm.json"
+    },
+    {
+      "glob": "models/order-aggregates.dm.json"
     },
     {
       "glob": "models/order-imports-types.dm.json"
     },
     {
       "glob": "models/order-ruled.dm.json"
+    },
+    {
+      "glob": "models/order-tiered.dm.json"
     },
     {
       "glob": "models/order-variant.dm.json"
@@ -18257,6 +18884,9 @@
     },
     {
       "glob": "models/person.dm.json"
+    },
+    {
+      "glob": "models/roles-ws"
     },
     {
       "glob": "models/roles/Catalog_DM.json"
@@ -18277,16 +18907,16 @@
       "glob": "models/typedefs.dm.json"
     },
     {
-      "glob": "schema/add.schema.json"
+      "glob": "schema/apply.schema.json"
     },
     {
-      "glob": "schema/apply.schema.json"
+      "glob": "schema/batch-observations.schema.json"
     },
     {
       "glob": "schema/batch.schema.json"
     },
     {
-      "glob": "schema/broken-ref.schema.json"
+      "glob": "schema/computation-add.schema.json"
     },
     {
       "glob": "schema/compute-doc.schema.json"
@@ -18347,6 +18977,12 @@
     },
     {
       "glob": "schema/result.schema.json"
+    },
+    {
+      "glob": "schema/rule-add.schema.json"
+    },
+    {
+      "glob": "schema/rule-eval.schema.json"
     },
     {
       "glob": "schema/typedef-add.schema.json"
@@ -18770,6 +19406,18 @@
     {
       "module": "java.base",
       "glob": "jdk/internal/icu/impl/data/icudt76b/nfc.nrm"
+    },
+    {
+      "module": "java.base",
+      "glob": "jdk/internal/icu/impl/data/icudt76b/nfkc.nrm"
+    },
+    {
+      "module": "java.base",
+      "glob": "jdk/internal/icu/impl/data/icudt76b/uprops.icu"
+    },
+    {
+      "module": "java.base",
+      "glob": "sun/net/idn/uidna.spp"
     },
     {
       "module": "java.base",

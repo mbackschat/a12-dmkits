@@ -93,6 +93,9 @@ class BuildPerformancePolicyTest {
                 "the destination-dependent hygiene check must run after the captured metadata is copied");
         assertFalse(script.contains("export GRADLE_USER_HOME"),
                 "native capture must not derive a second Gradle home from a linked worktree's parent");
+        assertTrue(script.contains("./build.sh -PrkCaptureInProgress :cli:nativeCaptureStamp"),
+                "only a completed capture may mint the freshness stamp, so this script must be what authorizes "
+                        + "it; dropping the property makes the task refuse (cli/build.gradle nativeCaptureStamp)");
     }
 
     @Test

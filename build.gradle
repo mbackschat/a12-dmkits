@@ -8,7 +8,7 @@ plugins {
 }
 
 group = 'io.github.mbackschat.a12.dm'
-version = '0.11.1'
+version = '0.12.0'
 
 // Single-source the shared coordinates (kernel-decoupling Stage 4, PROPOSAL §3a): the published kit modules
 // (core/rulekit/modelkit/edit + schemakit) inherit group + version from HERE, so bump-version.sh's
@@ -208,7 +208,8 @@ ext.guardInputs = { Test task, Map<String, ?> named ->
 // the broad suite also runs (`FootprintScenarioFixtureGuardTest` is hosted by two tasks on purpose), so they are
 // a different shape and keep their hand-written excludes.
 ext.routeExclusivelyHostedTests = { Test broad, List<String> owningTaskNames,
-                                    Map<String, String> classifiedNonOwners = [:] ->
+                                    Map<String, String> classifiedNonOwners = [:],
+                                    Map<String, String> untracedDuringCapture = [:] ->
     // Fail on an EMPTY derivation, the same silent-empty class `guardInputs` guards for on the input side. Without
     // this the helper can be gutted to yield nothing and every text-matching guard still passes while the owned
     // classes quietly re-enter the broad lane — a cold review demonstrated exactly that mutant surviving.
@@ -255,11 +256,64 @@ ext.routeExclusivelyHostedTests = { Test broad, List<String> owningTaskNames,
     // drives the product in-process would shrink the traced surface — the one class CLAUDE.md calls invisible to
     // both the capture and the gate's trip-wire. During a capture the exclusion is therefore not applied at all,
     // so the traced set stays a superset of what it was before this derivation existed. Capture is release-only.
+    // NOTE for whoever absorbs a lane's classes here: absorbing the CLASSES without the owning task's RUNTIME
+    // INPUTS is a defect, and it shipped once. `publicContractTest` supplies `-Ddmtool.executable`; during a
+    // capture its four classes run in this lane, which did not, so all 13 tried to exec the module directory.
+    // Two of them additionally drive the CLI IN-PROCESS, so excluding them instead would have silently shrunk
+    // the captured metadata — measured: 5 committed entries lost, including the picocli field injections for
+    // `rule eval` and `batch`. The traced lane must therefore SUPPLY what it absorbs (see cli/build.gradle).
+    // A capture keeps owned classes IN this lane so the traced surface stays whole — but that absorption has
+    // TWO failure modes, and both were shipped. Sorted by the only axis that decides them: does the class
+    // exercise dmtool's RUNTIME, or build-time tooling?
+    //
+    //  • runtime → stays IN, and this lane must SUPPLY the owning task's runtime inputs. Omitting them made
+    //    13 `publicContractTest` cases exec the module directory; excluding those classes instead loses real
+    //    metadata, because two of the four also drive the CLI in-process (measured: 5 entries, among them the
+    //    picocli field injections behind `rule eval` and `batch`).
+    //  • build tooling → stays OUT, because its traffic is not dmtool reachability. `MutationTailSingleSourceTest`
+    //    invokes javac, and tracing it leaked `jdk.compiler` resource bundles into the shipped metadata
+    //    (caught by `NativeImageMetadataHygieneTest`, whose message asks for exactly this exclusion).
+    //    What makes staying OUT safe is an ENUMERATION, not a metadata diff: the class's only product-facing
+    //    reflection is `new CommandLine(new RootCommand())`, which ≥12 classes that remain in this lane also
+    //    perform (`CliTestSupport`, `InternalErrorBoundaryTest`, `McpHttpWireTest`, …) and production `Cli`
+    //    does too. Measuring "no members lost against the baseline" does NOT establish this and must not be
+    //    cited for it — the baseline was itself captured with the class already excluded, so that comparison
+    //    is true either way. A cold review caught exactly that non-discriminating basis (2026-08-07).
     def tracingForNativeImage = broad.project.hasProperty('rkNativeAgent')
+    untracedDuringCapture.each { name, reason ->
+        if (!owningTaskNames.contains(name)) {
+            throw new GradleException("'${name}' is classified untraced-during-capture but owns nothing in " +
+                    "${broad.path}; the two lists must agree.")
+        }
+    }
+    def buildTooling = hostByClass.findAll { cls, owner -> untracedDuringCapture.containsKey(owner) }.keySet()
     if (tracingForNativeImage) {
+        buildTooling.each { broad.filter.excludeTestsMatching(it) }
+        // For every lane that stays in, assert its CONFIGURATION-TIME system properties came with it — one
+        // second, instead of a 27-minute capture that dies on the first absorbed class.
+        //
+        // Deliberately narrow, and the narrowness is the honest part: this compares `systemProperties` KEYS
+        // only. It does NOT see a property set inside a `doFirst` (root `deliveryGuardTest` does exactly that),
+        // a wrong VALUE for a key that is present, a `dependsOn` (the other half of the fix this guard was
+        // written for is `dependsOn installDist`, which nothing derives), or an `inputs.file`. Widening it
+        // means resolving execution-time state at configuration time, which Gradle does not offer. So: this
+        // catches the one failure mode that actually occurred, and the rest of the absorption contract stays
+        // the author's job — do not read a green here as "the lane is fully supplied".
+        (owningTaskNames - untracedDuringCapture.keySet()).each { name ->
+            def owner = broad.project.tasks.named(name, Test).get()
+            def unsupplied = owner.systemProperties.keySet() - broad.systemProperties.keySet()
+            if (!unsupplied.isEmpty()) {
+                throw new GradleException(
+                        "-PrkNativeAgent makes ${broad.path} run '${name}''s classes, but ${unsupplied.sort()} " +
+                        "is declared on '${name}' and not here. Supply it on the traced lane; do NOT exclude " +
+                        "the classes unless they are build tooling — a lane can drive the product in-process " +
+                        "as well, and dropping it shrinks the captured metadata silently.")
+            }
+        }
         broad.doFirst {
-            logger.lifecycle("${broad.path}: -PrkNativeAgent set, so the ${hostByClass.size()} exclusively-owned " +
-                    "classes stay IN this lane to keep the reflection capture's surface complete.")
+            logger.lifecycle("${broad.path}: -PrkNativeAgent set — ${hostByClass.size() - buildTooling.size()} " +
+                    "exclusively-owned classes stay IN to keep the capture's surface complete; " +
+                    "${buildTooling.size()} stay out as build tooling (${untracedDuringCapture.keySet().sort()}).")
         }
     } else {
         hostByClass.keySet().each { broad.filter.excludeTestsMatching(it) }

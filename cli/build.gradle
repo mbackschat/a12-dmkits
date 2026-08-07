@@ -182,13 +182,36 @@ def nativeCaptureStampDigest = {
     return md.digest().encodeHex().toString()
 }
 
+// Minting the stamp is the one operation that can ASSERT freshness without establishing it, so it refuses to
+// run bare. `capture-native-config.sh` sets the marker and reaches it only after the traced suite, the removal
+// check and the hygiene assertion have all passed; a hand-run claims the same thing with none of them behind it.
+// That is not hypothetical — it happened on 2026-08-07, minutes after a hygiene FAILURE.
+//
+// The escape hatch is deliberate and mirrors `RK_NATIVE_REMOVAL_REASON`: the digest deliberately
+// over-approximates (it hashes all of `cli/src/test`, including the classes `-PrkNativeAgent` excludes from
+// tracing), so a change that provably cannot alter a capture would otherwise cost a 27-minute re-trace. Stating
+// WHY is the price of skipping it, and the reason is echoed into the build log rather than kept private.
+//
+// Gradle PROPERTIES, not environment variables: `System.getenv` inside a build reads the long-lived DAEMON's
+// environment, which is whatever it was when the daemon started, so an env-var gate would answer about the
+// wrong invocation. Same `-Prk…` convention as the capture's own `-PrkNativeAgent`.
+def capturingNativeMetadata = project.hasProperty('rkCaptureInProgress')
+def handMintedStampReason = project.findProperty('rkStampReason')
 tasks.register('nativeCaptureStamp') {
     group = 'build'
     description = 'Record the input digest the committed native reflection metadata was captured from.'
     outputs.upToDateWhen { false }
     doLast {
+        if (!capturingNativeMetadata && !handMintedStampReason) {
+            throw new GradleException('refusing to mint a native capture stamp outside '
+                    + 'scripts/capture-native-config.sh — it would certify a freshness no capture established.\n'
+                    + '  Re-capture:  GRAALVM_HOME=<graalvm-25> ./scripts/capture-native-config.sh\n'
+                    + '  Or, if the changed sources provably cannot alter the captured metadata, say why:\n'
+                    + '    ./build.sh -PrkStampReason="…" :cli:nativeCaptureStamp')
+        }
         nativeCaptureStampFile.text = nativeCaptureStampDigest() + '\n'
-        logger.lifecycle("native capture stamp → ${rootProject.relativePath(nativeCaptureStampFile)}")
+        logger.lifecycle("native capture stamp → ${rootProject.relativePath(nativeCaptureStampFile)}"
+                + (capturingNativeMetadata ? '' : " (hand-minted: ${handMintedStampReason})"))
     }
 }
 
@@ -269,6 +292,11 @@ tasks.withType(Test).configureEach {
 // `test`, but under the normal JDK and without the agent: their parsers and build-time tooling are not dmtool
 // runtime reachability. In particular, MutationTailSingleSourceTest invokes javac to parse production source;
 // tracing every Test task made javac's ServiceLoader/resource-bundle traffic leak into the shipped metadata.
+// The packaged launcher the contract lane spawns. Defined HERE, above `test`, because the reflection
+// capture below must hand the same value to the traced lane (see the -PrkNativeAgent block).
+def dmtoolContractExecutable = project.findProperty('dmtoolContractExecutable')
+        ?: layout.buildDirectory.file('install/dmtool/bin/dmtool').get().asFile.absolutePath
+
 tasks.named('test', Test) {
     // Native-image reflection capture (docs/NATIVE-IMAGE-GRAALVM.md §5) — TEST-SUITE driven, opt-in.
     // `-PrkNativeAgent` runs the suite under the GraalVM tracing agent so the captured reachability
@@ -291,6 +319,14 @@ tasks.named('test', Test) {
         executable = "${graalHome}/bin/java"
         jvmArgs "-agentlib:native-image-agent=config-merge-dir=${cfgDir},caller-filter-file=${callerFilter},access-filter-file=${nativeAgentAccessFilter.get().asFile}"
         maxParallelForks = 1
+        // A capture DISABLES the exclusive-lane exclusion (root build.gradle), so this lane absorbs the four
+        // `publicContractTest` classes — and must therefore also supply that lane's RUNTIME INPUT. Absorbing
+        // the classes without it is what made the first capture after both features existed die on 13 execs of
+        // the module directory. Excluding them instead is NOT the fix: two of the four also drive the CLI
+        // IN-PROCESS, so dropping them silently loses committed metadata (measured: 5 entries, including the
+        // picocli field injections behind `rule eval` and `batch`).
+        dependsOn tasks.named('installDist')
+        systemProperty 'dmtool.executable', dmtoolContractExecutable
         outputs.upToDateWhen { false }   // always re-run; a cached (skipped) test run captures nothing
     }
 }
@@ -479,8 +515,6 @@ tasks.register('sourceProvenanceGuardTest', Test) {
 // The public-contract suite crosses the packaging boundary deliberately: it spawns the exact installDist
 // launcher, never CliTestSupport's in-process seam and never the environment-selecting repo shim. A native gate
 // can point the same runner at its freshly built binary with -PdmtoolContractExecutable=<path>.
-def dmtoolContractExecutable = project.findProperty('dmtoolContractExecutable')
-        ?: layout.buildDirectory.file('install/dmtool/bin/dmtool').get().asFile.absolutePath
 tasks.register('publicContractTest', Test) {
     description = 'Black-box operational-contract, mutation-safety, and packaged-journey suite.'
     group = 'verification'
@@ -529,7 +563,10 @@ tasks.named('test') {
     inputs.file(generateVersionProperties.map { it.destinationFile })
     // The repo-file-reading guards live in docGuardTest / semanticsMapGuardTest (with the right inputs); keep
     // them OUT of the cacheable main suite so a docs/model-only edit can't invalidate all ~620 tests.
-    rootProject.routeExclusivelyHostedTests(it, dedicatedTestTasks)
+    rootProject.routeExclusivelyHostedTests(it, dedicatedTestTasks, [:],
+            ['mutationTailGuardTest': 'MutationTailSingleSourceTest invokes javac to parse production source, '
+                    + 'so tracing it registers jdk.compiler resource bundles that are build tooling, not dmtool '
+                    + 'runtime reachability (NativeImageMetadataHygieneTest fails on exactly those globs)'])
     filter {
         // During tracing this one assertion necessarily reads the PRE-CAPTURE committed metadata. Exclude
         // only it; capture-native-config.sh copies the generated file and runs the class immediately after.

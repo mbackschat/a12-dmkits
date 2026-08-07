@@ -44,8 +44,11 @@ class CommandContractsTest {
                         () -> name + " must publish how semantic values are compared");
             }
         }
-        assertTrue(profiles > 81,
-                "argument-dependent commands must make the profile denominator larger than the 81 live leaves");
+        // Derived, not pinned: this bound sat at a literal 81 while the live surface reached 82, which silently
+        // weakened it — a tree with ZERO argument-dependent profiles would have satisfied `> 81`.
+        assertTrue(profiles > ManifestVerbTest.EXPECTED_VERBS.size(),
+                "argument-dependent commands must make the profile denominator larger than the "
+                        + ManifestVerbTest.EXPECTED_VERBS.size() + " live leaves");
     }
 
     @Test

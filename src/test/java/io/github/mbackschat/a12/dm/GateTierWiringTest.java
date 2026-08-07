@@ -93,7 +93,11 @@ class GateTierWiringTest {
         // task computes its excludes from the owning lanes' includes, so naming `docGuardTest` as an owner covers
         // every class it hosts. The literal form saw only the classes it spelled out, and four sibling docGuardTest
         // classes were measurably running in both lanes while these two assertions passed.
-        assertTrue(cliMainTest.contains("routeExclusivelyHostedTests(it, dedicatedTestTasks)"),
+        // Matched WITHOUT the closing paren: the helper takes optional trailing classifications (non-owners,
+        // untraced-during-capture lanes), and pinning the exact arity made a legitimate 4-argument call read as
+        // a lost derivation. The invariant is that the excludes are DERIVED from the owning-lane list, which the
+        // prefix establishes; the arguments after it are the classification, not the derivation.
+        assertTrue(cliMainTest.contains("routeExclusivelyHostedTests(it, dedicatedTestTasks"),
                 "the main CLI test task must DERIVE its excludes from the owning lanes, not mirror them by hand");
         assertTrue(dedicatedTaskList(cliBuild).contains("'docGuardTest'"),
                 "the repo-file-reading prose guards must not also run in the input-blind main CLI test task");

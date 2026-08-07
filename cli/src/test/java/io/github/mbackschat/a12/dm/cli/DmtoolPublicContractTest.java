@@ -87,7 +87,7 @@ class DmtoolPublicContractTest {
                 if ("DM_INTERPRETER_RUNTIME".equals(profile.path("execution").asText())) runtime.add(name);
             }
         }
-        assertEquals(81, leaves);
+        assertEquals(ManifestVerbTest.EXPECTED_VERBS.size(), leaves);
         assertEquals(49, writes);
         assertEquals(39, previews);
         assertEquals(RUNTIME, runtime, "only the three interpreter runtime routes may claim runtime execution");
@@ -109,7 +109,8 @@ class DmtoolPublicContractTest {
                     () -> name + " manifest/schema profiles drifted");
             checked++;
         }
-        assertEquals(81, checked, "every live leaf projects its operational owner through schema");
+        assertEquals(ManifestVerbTest.EXPECTED_VERBS.size(), checked,
+                "every live leaf projects its operational owner through schema");
 
         for (String frame : List.of("apply", "batch")) {
             JsonNode schema = MAPPER.readTree(dmtool.run("schema", frame).out());
@@ -418,9 +419,16 @@ class DmtoolPublicContractTest {
         assertTrue(prose.contains("matching `operationalProfiles[].returns.views[]` overrides "
                         + "`operationalProfiles[].returns.kind`"),
                 () -> "public output contract must state view-before-primary precedence: " + prose);
-        for (String term : List.of("operationalProfiles[].returns.views[]", "operationalProfiles[].returns.kind",
-                "RESULT_ENVELOPE", "RAW_JSON", "RAW_TEXT", "EMPTY_STDOUT", "NDJSON_STREAM")) {
+        for (String term : List.of("operationalProfiles[].returns.views[]", "operationalProfiles[].returns.kind")) {
             assertTrue(prose.contains(term), () -> "public output contract omits " + term + ": " + prose);
+        }
+        // DERIVED from the enum, not a hand-kept list. The list form could only check the kinds someone
+        // remembered to add to it, so `NDJSON_STREAM` reached the enum and this literal while the skill was
+        // left behind — the guard named the term it was itself missing elsewhere. Now a sixth constant fails
+        // here until BOTH published surfaces explain it, which is what CLAUDE.md's verb row advertises.
+        for (CommandContracts.ReturnKind kind : CommandContracts.ReturnKind.values()) {
+            assertTrue(prose.contains(kind.name()),
+                    () -> "public output contract omits the " + kind.name() + " return kind: " + prose);
         }
     }
 

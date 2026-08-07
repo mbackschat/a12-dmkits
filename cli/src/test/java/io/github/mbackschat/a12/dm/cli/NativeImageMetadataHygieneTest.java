@@ -3,9 +3,13 @@ package io.github.mbackschat.a12.dm.cli;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.io.IOException;
 import java.io.InputStream;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Stream;
 
 import org.junit.jupiter.api.Test;
 
@@ -39,6 +43,40 @@ class NativeImageMetadataHygieneTest {
                 "native reflection metadata leaks own test classes — re-run scripts/capture-native-config.sh with "
                         + "the caller + derived access filters active (docs/NATIVE-IMAGE-GRAALVM.md §5). Offenders: "
                         + offenders);
+    }
+
+    /**
+     * <b>A shipped resource glob must name a resource that ships.</b> Two ways it stops doing so, one of each
+     * found on 2026-08-07: the file is DELETED after the capture (`schema/add.schema.json` went stale 14 hours
+     * after the capture that recorded it, and no capture ran for four days), or the glob was never a product
+     * resource at all (`schema/broken-ref.schema.json` is a TEST fixture that production `SpecKeys.forSchema`
+     * loads on the test classpath, so the agent recorded it — the derived access filter removes test
+     * <em>classes</em>, and nothing removed test <em>resources</em>).
+     *
+     * <p>Neither crashes a native image; both are dead weight that only a capture would ever notice, which is
+     * why this is a STATIC check instead. Scoped by GLOB PREFIX — {@code schema/} and {@code catalog/} — not by
+     * which artifact serves the resource, so a dependency jar shipping one of those prefixes would false-positive
+     * here. None does: all 33 own-prefix globs in the committed metadata resolve inside this repository's own
+     * main resource trees (measured 2026-08-07), and the prefixes are ours by construction. The roots are
+     * DERIVED rather than listed, so a new module providing one of them is covered without an edit here.
+     */
+    @Test
+    void everyOwnResourceGlobStillNamesAShippedResource() throws Exception {
+        List<Path> roots = mainResourceRoots();
+        List<String> offenders = new ArrayList<>();
+        for (String glob : resourceGlobs(RESOURCE)) {
+            if (!glob.startsWith("schema/") && !glob.startsWith("catalog/")) {
+                continue;
+            }
+            if (roots.stream().noneMatch(root -> provides(root, glob))) {
+                offenders.add(glob);
+            }
+        }
+        assertTrue(offenders.isEmpty(),
+                "shipped native metadata registers own-resource globs that no main resource tree provides — "
+                        + "either the file was deleted since the capture, or it is a TEST fixture the capture "
+                        + "recorded through production code. Drop them from the committed metadata (and from "
+                        + "the next capture). Offenders: " + offenders);
     }
 
     @Test
@@ -101,6 +139,62 @@ class NativeImageMetadataHygieneTest {
             }
         }
         return types;
+    }
+
+    /**
+     * Every module's main resource tree, derived from the repository layout. An empty derivation cannot go
+     * unnoticed: it turns every own-prefix glob into an offender, so this fails loud rather than vacuously green.
+     */
+    private static List<Path> mainResourceRoots() throws Exception {
+        Path dir = Path.of("").toAbsolutePath();
+        while (dir != null && !Files.exists(dir.resolve("settings.gradle"))) {
+            dir = dir.getParent();
+        }
+        if (dir == null) {
+            throw new IllegalStateException("no settings.gradle above " + Path.of("").toAbsolutePath());
+        }
+        try (Stream<Path> modules = Files.list(dir)) {
+            return modules.map(module -> module.resolve("src/main/resources")).filter(Files::isDirectory).sorted()
+                    .toList();
+        }
+    }
+
+    /**
+     * Case-EXACT, unlike {@link Files#exists}: macOS resolves {@code schema/RESULT.schema.json} and the Linux
+     * native build does not, so a wrongly-cased glob would pass here and miss where the image is actually built.
+     */
+    private static boolean provides(Path root, String glob) {
+        Path candidate = root.resolve(glob);
+        Path parent = candidate.getParent();
+        if (parent == null || !Files.isDirectory(parent)) {
+            return false;
+        }
+        try (Stream<Path> siblings = Files.list(parent)) {
+            return siblings.anyMatch(sibling -> sibling.getFileName().equals(candidate.getFileName()));
+        } catch (IOException unreadable) {
+            return false;
+        }
+    }
+
+    /** Proves the resolver is case-exact and not vacuous — {@code Files.exists} answers yes to both on macOS. */
+    @Test
+    void resourceResolverAcceptsTheExactNameAndRejectsAMiscasedOne() throws Exception {
+        List<Path> roots = mainResourceRoots();
+        assertTrue(roots.stream().anyMatch(root -> provides(root, "catalog/operators.json")),
+                "the operator catalog must resolve under a derived main resource root: " + roots);
+        assertTrue(roots.stream().noneMatch(root -> provides(root, "catalog/OPERATORS.json")),
+                "a wrongly-cased glob must not resolve — the Linux native build is case-sensitive");
+    }
+
+    private static List<String> resourceGlobs(String resource) throws Exception {
+        List<String> globs = new ArrayList<>();
+        for (JsonNode e : metadata(resource).path("resources")) {
+            JsonNode glob = e.path("glob");
+            if (glob.isTextual()) {
+                globs.add(glob.asText());
+            }
+        }
+        return globs;
     }
 
     private static List<String> javacResources(JsonNode resources) {

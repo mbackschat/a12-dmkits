@@ -1,7 +1,14 @@
 #!/usr/bin/env bash
-# Refuse silent loss from a GraalVM tracing-agent recapture. Top-level reflection/resource entries are
-# canonicalized as JSON sets, so formatting/order changes are ignored and a partial entry change (for example,
-# one reflected method disappearing) is still reported as removal of the previous contract.
+# Refuse silent loss from a GraalVM tracing-agent recapture — at MEMBER granularity, so a removal means a
+# (type, field/method/flag) pair that the baseline had and the recapture does not.
+#
+# It used to compare whole top-level entries as JSON sets, which caught a disappearing method but ALSO fired
+# whenever an entry merely GAINED one: the old entry no longer matched, so a strict superset read as a loss.
+# Measured 2026-08-07: a recapture that grew 1308 → 1370 reflection entries was reported as "5 committed
+# entries removed", of which four were supersets (`RuleEvalCommand` +code/+condition/+field, `BatchCommand`
+# +observationsFile, `Computation` +setErrorCodesToSuppress, `EntityId` +getFilterConditionName) and only one
+# was real. A guard that cries wolf on nearly every capture is a guard that gets waived, which is exactly what
+# `RK_NATIVE_REMOVAL_REASON` would then have been used for.
 set -euo pipefail
 
 if [[ $# -ne 2 ]]; then
@@ -21,8 +28,23 @@ NEW="$2"
 WORK="$(mktemp -d /tmp/rk-native-metadata-removals.XXXXXX)"
 trap 'rm -rf "$WORK"' EXIT
 
+# One line per REACHABLE THING, not per entry: the type itself, each field, each method (with its parameter
+# types, so an overload cannot mask another), and each remaining key with its value (`allPublicMethods` and
+# friends — a flag flipping off is a real loss). Resources have no members, so they stay whole entries.
 canonical_entries() {
-  jq -e -S -c '(.reflection[] | {section:"reflection",entry:.}), (.resources[] | {section:"resources",entry:.})' "$1" | sort
+  jq -e -S -c '
+    def members:
+      (.type | tojson) as $t
+      | {section:"reflection", type:$t, member:"<the type itself>"},
+        (.fields  // [] | .[] | {section:"reflection", type:$t, member:("field " + .name)}),
+        (.methods // [] | .[] | {section:"reflection", type:$t,
+                                 member:("method " + .name + "(" + ((.parameterTypes // []) | join(",")) + ")")}),
+        (. as $e | keys_unsorted[]
+           | select(. != "type" and . != "fields" and . != "methods")
+           | {section:"reflection", type:$t, member:(. + "=" + ($e[.] | tojson))});
+    (.reflection // [] | .[] | members),
+    (.resources  // [] | .[] | {section:"resources", type:tojson, member:"<the resource>"})
+  ' "$1" | sort -u
 }
 
 canonical_entries "$OLD" > "$WORK/old.entries"

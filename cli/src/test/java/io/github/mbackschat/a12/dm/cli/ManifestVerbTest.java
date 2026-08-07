@@ -24,7 +24,12 @@ class ManifestVerbTest {
     private static final ObjectMapper MAPPER = new ObjectMapper();
 
     // The canonical target-first surface (the legacy flat verbs are hidden aliases, absent from the manifest).
-    private static final List<String> EXPECTED_VERBS = List.of(
+    // THE single source of the live-leaf denominator: `DmtoolPublicContractTest` derives its count from this
+    // list's size rather than pinning its own number. It used to carry a literal, which then sat at 81 while
+    // this list said 82 — adding `mcp` updated one and not the other. It survived because the lane that pins
+    // it hangs off `check`, not `test`, and the local checkpoint ran `:cli:test`; CI does name the lane, but
+    // nothing had been pushed for it to run on.
+    static final List<String> EXPECTED_VERBS = List.of(
             "model new", "model info", "model check", "model describe", "model diff", "model read", "model usage", "model report", "model rename", "model normalize", "model expand", "model eval", "model compute", "model seed",
             "model import-jsonschema", "model export-jsonschema",
             "profile extract", "profile synthesize", "profile compare",

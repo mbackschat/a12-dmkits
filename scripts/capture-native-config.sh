@@ -57,6 +57,54 @@ files=("$CFG"/*.json)
   exit 1
 }
 ./scripts/check-native-metadata-removals.sh "$BASELINE" "$CFG/reachability-metadata.json"
+# Drop own-resource globs that ONLY a TEST resource tree provides. The agent records what production code
+# ASKS for, including a test fixture loaded on the test classpath (`schema/broken-ref.schema.json`, reached
+# through SpecKeys.forSchema) — the derived access filter removes test CLASSES and nothing removed test
+# RESOURCES, so that glob shipped for months. Applied AFTER the removal check on purpose: the check should
+# compare like with like against the baseline, and this strip is a stated policy rather than a loss.
+# `NativeImageMetadataHygieneTest.everyOwnResourceGlobStillNamesAShippedResource` fails if one survives.
+#
+# The predicate is POSITIVE — strip only what we can place on a test tree — because this is the one stage
+# whose output nothing else loss-checks (the removal check ran above, against the pre-strip file). Its earlier
+# form was negative ("no main tree provides it") and a cold review showed that wrongly dropping a real
+# resource was one missing root away: on a synthetic tree it dropped 4 globs where this drops 1, the three
+# extras being an `adapter/`-provided resource, one produced by a GENERATED resources dir, and a wildcard
+# pattern that `Path.exists()` can never resolve. Unresolvable now means KEEP, which is the safe direction.
+python3 - "$CFG/reachability-metadata.json" <<'STRIP'
+import json, pathlib, sys
+path = pathlib.Path(sys.argv[1])
+data = json.loads(path.read_text())
+repo = pathlib.Path(".")
+def roots(kind):
+    # Derived, never hand-listed: a hard-coded `cli` + `rulekit` pair silently strips whatever a module
+    # outside it provides. Fail on an empty derivation — the silent-empty-fileTree false-green class.
+    found = sorted(p for p in [*repo.glob(f"src/{kind}/resources"), *repo.glob(f"*/src/{kind}/resources")]
+                   if p.is_dir())
+    if not found:
+        sys.exit(f"no {kind} resource root under {repo.resolve()} — refusing to strip against nothing")
+    return found
+MAIN, TEST = roots("main"), roots("test")
+def provides(root, glob):
+    # Case-EXACT: macOS resolves `schema/RESULT.schema.json` and the Linux native build does not, so
+    # `Path.exists()` here would answer for a platform this metadata is not built on.
+    candidate = root / glob
+    return candidate.parent.is_dir() and candidate.name in {p.name for p in candidate.parent.iterdir()}
+def strip(entry):
+    glob = entry.get("glob", "")
+    if not (glob.startswith("schema/") or glob.startswith("catalog/")):
+        return False
+    if any(ch in glob for ch in "*?["):
+        return False    # a PATTERN, not a path: `provides` can only answer for a literal
+    if any(provides(root, glob) for root in MAIN):
+        return False
+    return any(provides(root, glob) for root in TEST)
+before = data.get("resources", [])
+dropped = [entry.get("glob") for entry in before if strip(entry)]
+data["resources"] = [entry for entry in before if not strip(entry)]
+path.write_text(json.dumps(data, indent=2) + "\n")
+print(f"stripped {len(dropped)} test-classpath own-resource glob(s): {', '.join(dropped) or '(none)'}")
+STRIP
+
 \cp -f "${files[@]}" "$DEST/"   # \cp bypasses a `cp -i` alias that would prompt and skip the overwrite
 
 # Now the hygiene assertion has the artifact it owns. Run it outside the agent so its test machinery does not
@@ -67,6 +115,10 @@ files=("$CFG"/*.json)
 # on success, so a failed capture never leaves a stamp claiming freshness it did not establish. The stamp is
 # committed alongside the metadata; `verifyNativeCaptureStamp` (run by the probe and ship gates) fails when the
 # sources have moved on. NATIVE-IMAGE-GRAALVM §5.1.
-./build.sh :cli:nativeCaptureStamp
+#
+# `-PrkCaptureInProgress` is what authorizes the mint at all: reaching this line means the traced suite, the
+# removal check and the hygiene assertion all passed, and the task refuses a bare hand-run that can claim the
+# same freshness with none of them behind it.
+./build.sh -PrkCaptureInProgress :cli:nativeCaptureStamp
 
 echo "captured (test-suite) → $DEST/ ($(ls "$DEST" | tr '\n' ' '))"
