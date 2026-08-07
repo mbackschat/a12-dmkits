@@ -58,6 +58,8 @@ class EvalConfig(
      *  WILDCARDS the starred level; concrete per-row enumeration (even of all rows) is NOT enough (IF42).
      *  `FirstFilled` does NOT use this (it is order-aware via [cellRelevant]). **Null in full validation.** */
     val starRelevant: ((String) -> Boolean)? = null,
+    /** `SumOfProducts`' weaker completeness gate: wildcard OR a COMPLETE concrete enumeration (DmInterpreter). */
+    val starFullyEnumerated: ((String) -> Boolean)? = null,
     /** Partial validation only: the relevant entity set passed to a [CustomCondition]'s `check` (the kernel's
      *  `relevantEntities` — `MainValidatorController` feeds it `getAllPruefungsrelevanteEntitiesExtern`). **Null
      *  in full validation** (the kernel passes `null` there, "all relevant"); a partial validation supplies the

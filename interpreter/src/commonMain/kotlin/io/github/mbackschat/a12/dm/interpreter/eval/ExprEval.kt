@@ -444,14 +444,18 @@ private fun Interpreter.evalFunc(f: Expr.Func): Val {
     val op = FunctionOp.byName(f.name)
     // Partial validation only: an ALL-ROWS starred aggregate (Sum/Max/Min/distinct) is UNKNOWN unless the
     // relevant set WILDCARDS its starred level — concrete per-row enumeration, even of all rows, is not enough
-    // (kernel-probed, IF42). TWO operators are EXEMPT. `FirstFilled` is order-aware in its own branch. And
-    // `SumOfProducts` does not share this gate at all: the kernel walks its two lists in a hand-written loop
-    // with no three-value pre-survey, so it EVALUATES under concrete enumeration where the others stay UNKNOWN
-    // — measured, and previously wrong here because IF42's operator list was generalized past its probe.
-    if (starRelevant != null && op != FunctionOp.FIRST_FILLED_VALUE && op != FunctionOp.SUM_OF_PRODUCTS) {
+    // (kernel-probed, IF42). `FirstFilled` is EXEMPT (order-aware in its own branch).
+    //
+    // `SumOfProducts` gets a WEAKER gate, not NO gate. It walks its two lists in a hand-written loop with no
+    // three-value pre-survey, so it evaluates under a COMPLETE concrete enumeration where the others stay
+    // UNKNOWN — but under a PARTIAL enumeration the kernel is silent, and exempting it outright made the
+    // interpreter fire where the kernel does not, on 5 of the fuzz net's 180 combinations. Both readings are
+    // measured in `PartialValidationAggregateDiffTest`; the completeness predicate is DmInterpreter's.
+    val gate = if (op == FunctionOp.SUM_OF_PRODUCTS) starFullyEnumerated else starRelevant
+    if (gate != null && op != FunctionOp.FIRST_FILLED_VALUE) {
         f.args.forEach { arg ->
             val sp = (arg as? Expr.Star)?.path
-            if (sp != null && !starRelevant.invoke(sp)) return Val.Unknown
+            if (sp != null && !gate.invoke(sp)) return Val.Unknown
         }
     }
     val memo = aggregateMemo

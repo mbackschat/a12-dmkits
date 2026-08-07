@@ -103,6 +103,7 @@ class Interpreter(
     private val customFieldTypes = config.customFieldTypes
     internal val cellRelevant = config.cellRelevant
     internal val starRelevant = config.starRelevant
+    internal val starFullyEnumerated = config.starFullyEnumerated
     private val customRelevant = config.customRelevant
     private val computeScanState = config.computeScanState
     internal val computeMode = config.computeMode

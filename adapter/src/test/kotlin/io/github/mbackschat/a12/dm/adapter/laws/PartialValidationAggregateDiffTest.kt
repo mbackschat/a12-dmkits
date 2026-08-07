@@ -144,10 +144,56 @@ class PartialValidationAggregateDiffTest {
         assertEquals(EXPECTED_RELEVANCE, readings, "per-operator relevance as the dynamic kernel reports it")
     }
 
+    /**
+     * The axis the per-operator sweep above does NOT vary: its `concrete` set enumerates BOTH declared rows, so
+     * "concrete" there is also COMPLETE. `SumOfProducts` was exempted from the IF42 gate on that single reading,
+     * and `perf.PartialValidationFuzzDiffTest` then found the kernel SILENT where the interpreter fires — always
+     * on a set that enumerates only SOME rows. Enumeration COMPLETENESS is therefore its own axis, and this pins
+     * each granularity against the kernel itself rather than against a generalization of one measurement.
+     */
+    @Test fun sumOfProductsSeparatesCompleteFromPartialRowEnumeration() {
+        val rule = cond(Dsl.sumOfProducts(m.flatten("$LINES*/Qty"), m.flatten("$LINES*/Price")))
+        val km = RuntimeLaws.withRule(json, CART, "SOP", "../Total", "SOP", rule)
+        val d = ModelDef(
+            listOf(FieldDef(TOTAL, Kind.NUMBER), FieldDef(QTY, Kind.NUMBER), FieldDef(PRICE, Kind.NUMBER)),
+            listOf(RuleDef("$CART/SOP", CART, rule, "SOP", "../Total")),
+            repeatableGroups = setOf(LINES), declaredReps = mapOf(LINES to 2),
+        )
+        val readings = mutableListOf<String>()
+        val diverged = mutableListOf<String>()
+        for ((label, sets) in listOf(
+            "wildcard" to (setOf(Relevant.of(TOTAL, 0, 0), Relevant.of(LINES, 0, 0)) to
+                setOf(RelevantEntity.anyRep(TOTAL), RelevantEntity.anyRep(LINES))),
+            "both-rows" to (setOf(Relevant.of(TOTAL, 0, 0), Relevant.of(LINES, 0, 1), Relevant.of(LINES, 0, 2)) to
+                setOf(RelevantEntity.anyRep(TOTAL), RelevantEntity(LINES, listOf(0, 1)), RelevantEntity(LINES, listOf(0, 2)))),
+            "row-1-only" to (setOf(Relevant.of(TOTAL, 0, 0), Relevant.of(LINES, 0, 1)) to
+                setOf(RelevantEntity.anyRep(TOTAL), RelevantEntity(LINES, listOf(0, 1)))),
+            "row-2-only" to (setOf(Relevant.of(TOTAL, 0, 0), Relevant.of(LINES, 0, 2)) to
+                setOf(RelevantEntity.anyRep(TOTAL), RelevantEntity(LINES, listOf(0, 2)))),
+        )) {
+            val (kRel, iRel) = sets
+            val k = RuntimeLaws.messagesPart(km, kDoc(), kRel).map { it.code }.filter { it == "SOP" }.sorted()
+            val i = DmInterpreter(d).validatePart(iDoc(), iRel).messages
+                .map { it.code }.filter { it == "SOP" }.sorted()
+            readings += "SOP $label kernel=${if (k.isEmpty()) "silent" else "fires"}" +
+                " interp=${if (i.isEmpty()) "silent" else "fires"}"
+            if (k != i) diverged += label
+        }
+        assertEquals(listOf<String>(), diverged, "SumOfProducts diverges by enumeration granularity:\n" +
+            readings.joinToString("\n"))
+        assertEquals(EXPECTED_SOP_GRANULARITY, readings, "what the dynamic kernel reports per granularity")
+    }
+
     private companion object {
         const val CART = "/Cart"; const val TOTAL = "/Cart/Total"
         const val LINES = "/Cart/Lines"; const val QTY = "/Cart/Lines/Qty"; const val PRICE = "/Cart/Lines/Price"
         val CODES = setOf("SUM", "FF")
+        val EXPECTED_SOP_GRANULARITY = listOf(
+            "SOP wildcard kernel=fires interp=fires",
+            "SOP both-rows kernel=fires interp=fires",
+            "SOP row-1-only kernel=silent interp=silent",
+            "SOP row-2-only kernel=silent interp=silent",
+        )
         val EXPECTED_RELEVANCE = listOf(
             "SUM wildcard=fires concrete=silent",
             "MXV wildcard=fires concrete=silent",

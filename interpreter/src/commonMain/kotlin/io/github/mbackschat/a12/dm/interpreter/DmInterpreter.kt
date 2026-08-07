@@ -294,6 +294,7 @@ class DmInterpreter private constructor(
             relevanceOf(relevant),
             customRelevantOf(relevant),
             starRelevantOf(relevant),
+            starFullyEnumeratedOf(relevant),
             groupRelevanceOf(relevant),
         )
 
@@ -319,6 +320,59 @@ class DmInterpreter private constructor(
         }
     }
 
+    /**
+     * `SumOfProducts`' own, WEAKER completeness notion. It does not share [starRelevantOf]'s wildcard-only gate
+     * (it runs a hand-written two-list loop with no three-value pre-survey), but it is not ungated either: the
+     * kernel evaluates it under a CONCRETE enumeration only when that enumeration is COMPLETE. Measured against
+     * the dynamic kernel on `/Cart/Lines[2]` (`PartialValidationAggregateDiffTest`):
+     *
+     * | relevant set | kernel |
+     * |---|---|
+     * | wildcard | fires |
+     * | both rows enumerated | fires |
+     * | row 1 only / row 2 only | **silent** |
+     *
+     * Exempting it from the gate ENTIRELY — reading "concrete enumeration evaluates" off the both-rows case
+     * alone — made the interpreter fire where the kernel is silent, on 5 of the fuzz net's 180 (document,
+     * relevant-subset) combinations. Completeness is measured against the DECLARED repetitions, which is what
+     * the probe varied; a document with fewer rows than declared is not separately measured.
+     */
+    private fun starFullyEnumeratedOf(relevant: Set<RelevantEntity>): (String) -> Boolean {
+        // Indexed ONCE per call: per relevant path, per level, the repetitions that path enumerates. Deciding
+        // completeness by rescanning the relevant set for every declared repetition is O(relevant² × reps), and
+        // enumerating every row makes the relevant set grow WITH the document — measured 8.63× growth for 4×
+        // rows and 0.98× against the kernel at 1000 rows, i.e. slower than the thing we exist to beat
+        // (`laws/PartialSumOfProductsPerfTest`). With the index it is a set lookup per declared repetition.
+        val enumerated = HashMap<String, MutableList<MutableSet<Int>>>()
+        for (r in relevant) {
+            val levels = enumerated.getOrPut(r.path) { ArrayList() }
+            while (levels.size < r.indices.size) levels.add(HashSet())
+            r.indices.forEachIndexed { i, rep -> levels[i].add(rep) }
+        }
+        val decided = HashMap<String, Boolean>()
+        return { starPath -> decided.getOrPut(starPath) { starFullyEnumerated(relevant, enumerated, starPath) } }
+    }
+
+    private fun starFullyEnumerated(
+        relevant: Set<RelevantEntity>,
+        enumerated: Map<String, List<Set<Int>>>,
+        starPath: String,
+    ): Boolean {
+        val sParts = pathParts(starPath)
+        return relevant.any { r ->
+            val rParts = pathParts(r.path)
+            rParts.size <= sParts.size && rParts == sParts.take(rParts.size) &&
+                r.indices.indices.all { i ->
+                    val level = "/" + rParts.take(i + 1).joinToString("/")
+                    val seen = enumerated[r.path]?.getOrNull(i)
+                    r.indices[i] == RelevantEntity.ALL || level !in model.repeatable ||
+                        seen != null && (RelevantEntity.ALL in seen ||
+                            // concrete: every declared repetition of this level must itself be enumerated
+                            model.declaredReps[level]?.let { declared -> (1..declared).all { it in seen } } == true)
+                }
+        }
+    }
+
     /** The relevant set a [io.github.mbackschat.a12.dm.interpreter.model.CustomCondition] sees in PARTIAL mode —
      *  the kernel feeds it the caller's relevant entities (wildcards preserved, groups NOT expanded) **plus the
      *  auto-added global fields** (IF37/IF38, `MainValidatorController` → `getAllPruefungsrelevanteEntitiesExtern`).
@@ -338,6 +392,7 @@ class DmInterpreter private constructor(
      */
     private fun validateWith(doc: Document, locale: String, isRelevant: Relevance,
             customRelevant: Set<CustomConditionFieldPointer>? = null, starRelevant: ((String) -> Boolean)? = null,
+            starFullyEnumerated: ((String) -> Boolean)? = null,
             groupRelevance: (String, List<Int>) -> GroupRelevance = { _, _ -> GroupRelevance.FULL }): ValidationOutcome =
         observeCaches(doc) {
             // The index-default staging split (SPEC-2026-07-23-14): a FULL call stages each eligible
@@ -374,7 +429,7 @@ class DmInterpreter private constructor(
                 GroupPresenceIndex(admittedGroupContent, formallyIncorrect, groupRelevance)
             }
             val pass = ValidationPass(call, doc, locale, isRelevant, dup,
-                validationConfig(isRelevant, customRelevant, starRelevant) { ctx, path -> groupPresence.state(ctx, path) },
+                validationConfig(isRelevant, customRelevant, starRelevant, starFullyEnumerated) { ctx, path -> groupPresence.state(ctx, path) },
                 formalResults, { formallyIncorrect })
             for (rule in model.rules) {
                 try {
@@ -531,7 +586,7 @@ class DmInterpreter private constructor(
             locale,
             ALL_RELEVANT,
             dup,
-            validationConfig(ALL_RELEVANT, null, null) { ctx, path -> groupPresence.state(ctx, path) },
+            validationConfig(ALL_RELEVANT, null, null, null) { ctx, path -> groupPresence.state(ctx, path) },
             formalResults,
             { formallyIncorrect },
         )
@@ -570,12 +625,14 @@ class DmInterpreter private constructor(
      */
     private fun validationConfig(isRelevant: Relevance, customRelevant: Set<CustomConditionFieldPointer>?,
             starRelevant: ((String) -> Boolean)?,
+            starFullyEnumerated: ((String) -> Boolean)?,
             groupPresence: (EvalContext, String) -> io.github.mbackschat.a12.dm.interpreter.eval.GroupPresenceState): EvalConfig =
         EvalConfig(clock, model.baseYear, model.indexFields, timeZone = model.timeZone,
             predefinedTypes = predefinedTypes, customConditions = customConditions, customFieldTypes = customFieldTypes,
             patternMatches = patterns::matches,
             cellRelevant = if (isRelevant === ALL_RELEVANT) null else { path, reps -> isRelevant(path, reps) },
-            starRelevant = starRelevant, customRelevant = customRelevant, groupPresence = groupPresence)
+            starRelevant = starRelevant, starFullyEnumerated = starFullyEnumerated,
+            customRelevant = customRelevant, groupPresence = groupPresence)
 
     /** The kernel's allowed-and-eliminated raw-type length shape (see [rowOutcomes]): the whole condition is
      *  `Length(nvv) > constant` or the mirrored `constant < Length(nvv)` — GT/LT only (`>=`-style variants are
