@@ -39,6 +39,40 @@ class InterpreterPerfCoverageTest {
     }
 
     /**
+     * **The published facade is a SECOND denominator, and it is enumerated here so it cannot go unnoticed.**
+     *
+     * `Interpreter` (the `DocumentSnapshot`-based library API external consumers actually call) evaluates
+     * through the same engine, but its methods take a `DocumentSnapshot` rather than a [Document], so the
+     * reflection above is blind to them. Discovering that immediately after writing IF254 is the finding's own
+     * lesson arriving one surface later: the risk is never the entry point you remembered to check.
+     *
+     * Each is dispositioned rather than timed. The facade adds two things to an already-timed core call — an
+     * O(1) snapshot unwrap (`DocumentSnapshot.document()` returns a stored field) and an O(1)-per-finding
+     * pointer projection (`ModelAddressValidation.entityKind` is two set lookups) — so its realistic worst case
+     * is a constant factor, not a complexity class. Timing it properly needs a public snapshot-construction
+     * path at scale for BOTH engines, which is a new harness rather than one run; until that exists this test
+     * keeps the surface visible and its reasoning attached.
+     */
+    @Test
+    fun theSnapshotFacadeIsEnumeratedEvenThoughItIsNotSeparatelyTimed() {
+        val facade = Class.forName("io.github.mbackschat.a12.dm.interpreter.Interpreter")
+        val snapshot = Class.forName("io.github.mbackschat.a12.dm.interpreter.DocumentSnapshot")
+        val discovered = facade.methods
+            .filter { it.declaringClass == facade }
+            .filter { Modifier.isPublic(it.modifiers) && !it.isSynthetic && '$' !in it.name }
+            .filter { m -> m.parameterTypes.any { it == snapshot } }
+            .map { it.name }
+            .toSortedSet()
+
+        assertEquals(
+            FACADE_DISPOSITION.keys.toSortedSet(), discovered,
+            "the published Interpreter facade's evaluation surface changed. Each snapshot-taking method must " +
+                "be dispositioned here: it delegates to a timed core call, or it needs its own guard. This is " +
+                "the second denominator — DmInterpreter's is the reflection above.",
+        )
+    }
+
+    /**
      * The map must keep pointing at something real. A renamed or deleted test would otherwise leave the
      * coverage claim standing while the guard it names no longer exists — an advertised invariant with no
      * enforcement locus.
@@ -108,6 +142,14 @@ class InterpreterPerfCoverageTest {
                 "$PERF.EntryPointPerfTest", "applyComputationsBeatsTheKernelAndScales",
                 "compute plus the whole-document rebuild — the rebuild is the part nothing else times",
             ),
+        )
+
+        /** The published facade's evaluation surface, each with why it is not separately timed. */
+        val FACADE_DISPOSITION: Map<String, String> = mapOf(
+            "validateFull" to "delegates to DmInterpreter.validate; adds an O(1) unwrap + O(1)-per-finding projection",
+            "validatePart" to "delegates to DmInterpreter.validatePart, timed by PartialSumOfProductsPerfTest",
+            "compute" to "delegates to the retained compute run timed by the B7 inventory row",
+            "applyComputations" to "defined as compute + ComputationReport.applyTo; both halves delegate",
         )
     }
 }
