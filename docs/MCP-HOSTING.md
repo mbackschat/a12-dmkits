@@ -122,7 +122,7 @@ alwaysdata is the host *for now*, not an assumption baked through the pipeline. 
 | **activate** | `POST https://api.alwaysdata.com/v1/site/<id>/restart/` | **this is the vendor-specific one** |
 | **prove** | [`smoke-mcp-endpoint.sh`](../scripts/smoke-mcp-endpoint.sh) against the public URL | yes — it takes a URL and nothing else |
 
-So a move is: rewrite the **activate** step, re-point the five `MCP_DEPLOY_*`/`MCP_ENDPOINT_URL` settings, and drop the three `ALWAYSDATA_*` ones. Everything else, including the rollback, is unchanged.
+So a move is: rewrite the **activate** step **and the rollback step** (which repeats the same restart to put the previous binary back), re-point the five `MCP_DEPLOY_*`/`MCP_ENDPOINT_URL` settings, and drop the three `ALWAYSDATA_*` ones. Acquire, place and prove are unchanged.
 
 **The binary is already host-portable.** `--host`/`--port` default to `$IP`/`$PORT`, and that is the convention on Cloud Run, Heroku, Fly and Railway too, not an alwaysdata quirk ([MCP-SPEC](MCP-SPEC.md) §7). Nothing else is read from the environment.
 

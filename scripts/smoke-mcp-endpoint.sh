@@ -11,7 +11,11 @@
 # Nothing it does can write anything anywhere — the server holds no state and this sends no edit.
 set -euo pipefail
 
-ENDPOINT="${1:?usage: smoke-mcp-endpoint.sh <url of the /mcp endpoint>}"
+ENDPOINT="${1:?usage: smoke-mcp-endpoint.sh <url of the /mcp endpoint> [expected-version]}"
+# Optional, and the difference between "something answers" and "the thing we just deployed answers": a
+# restart that silently did not take leaves the OLD process passing every check below, so a deploy would
+# report success for a binary it never activated. `server/discover` publishes the version on every frame.
+EXPECT_VERSION="${2:-}"
 REVISION="2026-07-28"
 META="\"_meta\":{\"io.modelcontextprotocol/protocolVersion\":\"$REVISION\",\"io.modelcontextprotocol/clientCapabilities\":{}}"
 
@@ -33,6 +37,10 @@ discover="$(post server/discover "{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"ser
   || fail "the endpoint did not answer server/discover"
 echo "$discover" | grep -q "\"$REVISION\"" || fail "server/discover does not advertise $REVISION: $discover"
 echo "$discover" | grep -q '"name":"dmtool"' || fail "the endpoint is not dmtool: $discover"
+if [[ -n "$EXPECT_VERSION" ]]; then
+  echo "$discover" | grep -q "\"version\":\"${EXPECT_VERSION}\"" \
+    || fail "serving a different version than expected ($EXPECT_VERSION) — did the restart take? $discover"
+fi
 
 echo "==> 2/4 tools/list — the derived surface arrives"
 tools="$(post tools/list "{\"jsonrpc\":\"2.0\",\"id\":2,\"method\":\"tools/list\",\"params\":{$META}}")" \

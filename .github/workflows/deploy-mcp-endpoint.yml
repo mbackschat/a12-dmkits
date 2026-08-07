@@ -8,9 +8,9 @@ name: deploy-mcp-endpoint
 #   activate  make the new binary the running process                                HOST-SPECIFIC
 #   prove     drive the real protocol against the public URL                         host-independent
 #
-# Only `activate` is vendor-specific (an alwaysdata REST restart). Porting to another host means rewriting
-# that one step and, on the host side, its own start command — see docs/MCP-HOSTING.md "Porting to another
-# host". Variables are named for their ROLE (MCP_DEPLOY_*), not for the vendor; the two that only alwaysdata
+# `activate` is the vendor-specific one (an alwaysdata REST restart) — and so is the ROLLBACK step, which
+# repeats that same restart, so porting means rewriting BOTH, plus the host's own start command. See
+# docs/MCP-HOSTING.md "Porting to another host". Variables are named for their ROLE (MCP_DEPLOY_*), not for the vendor; the two that only alwaysdata
 # understands keep its name.
 #
 # It deploys the RELEASED binary rather than building one here: the public mirror's build-native workflow
@@ -80,6 +80,9 @@ jobs:
         id: mode
         env:
           ENDPOINT: ${{ vars.MCP_ENDPOINT_URL }}
+          # Presence only — a secret cannot be compared, and must never be interpolated into a script body.
+          SSH_KEY_SET: ${{ secrets.MCP_DEPLOY_SSH_KEY != '' && 'yes' || '' }}
+          API_KEY_SET: ${{ secrets.ALWAYSDATA_API_KEY != '' && 'yes' || '' }}
         run: |
           # A scheduled run before the endpoint exists must not sit permanently red — there is nothing to
           # check yet, and a red heartbeat nobody can fix trains everyone to ignore it. A DISPATCHED run
@@ -108,6 +111,11 @@ jobs:
             [[ -n "${{ vars.MCP_DEPLOY_BIN_PATH }}" ]] || missing+=(MCP_DEPLOY_BIN_PATH)
             [[ -n "${{ vars.ALWAYSDATA_SITE_ID }}" ]] || missing+=(ALWAYSDATA_SITE_ID)
             [[ -n "${{ vars.ALWAYSDATA_ACCOUNT }}" ]] || missing+=(ALWAYSDATA_ACCOUNT)
+            # The SECRETS too, or this check does not prevent the failure it exists to prevent: without them
+            # `place` still succeeds and REPLACES the live binary, and only then does `activate` fail on auth.
+            # Emptiness is all we can test — a secret's value is masked, never compared here.
+            [[ -n "$SSH_KEY_SET" ]] || missing+=(MCP_DEPLOY_SSH_KEY)
+            [[ -n "$API_KEY_SET" ]] || missing+=(ALWAYSDATA_API_KEY)
           fi
           if [[ ${#missing[@]} -gt 0 ]]; then
             echo "missing repository configuration: ${missing[*]}" >&2
@@ -135,6 +143,7 @@ jobs:
 
       # ── place (any SSH-reachable host) ───────────────────────────────────────────────────────────────
       - name: Place it on the host, keeping the one it replaces
+        id: place
         if: ${{ steps.mode.outputs.deploy == 'true' }}
         env:
           SSH_KEY: ${{ secrets.MCP_DEPLOY_SSH_KEY }}
@@ -171,7 +180,8 @@ jobs:
       # ── prove ────────────────────────────────────────────────────────────────────────────────────────
       - name: Prove the public endpoint serves
         id: smoke
-        if: ${{ steps.mode.outputs.skip == 'false' }}
+        if: ${{ always() && steps.mode.outputs.skip == 'false'
+                && (steps.mode.outputs.deploy != 'true' || steps.place.outcome == 'success') }}
         continue-on-error: true
         env:
           ENDPOINT: ${{ vars.MCP_ENDPOINT_URL }}
@@ -180,15 +190,25 @@ jobs:
           # A restart is not instant, and "it answered eventually" is the claim worth making — but bounded, so
           # a permanently dead endpoint fails the job instead of hanging it.
           for attempt in $(seq 1 20); do
-            if ./scripts/smoke-mcp-endpoint.sh "$ENDPOINT"; then exit 0; fi
+            # TAG is written to $GITHUB_ENV by `acquire`, so it exists only on a deploying run. On a
+            # smoke_only or scheduled run it is unset — and this step runs under `set -u`, so it must be
+            # defaulted. Empty means "do not pin a version", which is right: nothing was deployed.
+            expect="${TAG:-}"; expect="${expect#v}"
+            if ./scripts/smoke-mcp-endpoint.sh "$ENDPOINT" "$expect"; then exit 0; fi
             echo "attempt $attempt: not serving yet"
             sleep 5
           done
           echo "the endpoint never came back" >&2
           exit 1
 
+      # `always()` is load-bearing. A GitHub `if:` with no status function is implicitly wrapped in `success()`,
+      # so once `place` or `activate` fails the job is already failed and this step would be SKIPPED — leaving
+      # the new, unproven binary at $BIN_PATH with the old one still running, so the next restart (vendor, OOM)
+      # silently activates something that never passed a smoke test. Roll back whenever a deploy got as far as
+      # replacing the binary and the endpoint was not then proven.
       - name: Roll back to the previous binary
-        if: ${{ steps.mode.outputs.deploy == 'true' && steps.smoke.outcome == 'failure' }}
+        if: ${{ always() && steps.mode.outputs.deploy == 'true' && steps.place.outcome == 'success'
+                && steps.smoke.outcome != 'success' }}
         env:
           SSH_KEY: ${{ secrets.MCP_DEPLOY_SSH_KEY }}
           SSH_HOST: ${{ vars.MCP_DEPLOY_SSH_HOST }}
