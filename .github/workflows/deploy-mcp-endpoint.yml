@@ -1,34 +1,48 @@
 name: deploy-mcp-endpoint
 
-# Deploy the hosted MCP endpoint (MCP-SPEC §7) to the alwaysdata "user program" site that runs it.
+# Deploy the hosted MCP endpoint (MCP-SPEC §7) to whichever host runs it. Today that is an alwaysdata
+# "user program" site; the job is written in FOUR PHASES so swapping the host touches only two of them:
+#
+#   acquire   download the released dmtool-linux-x64, verify it against SHA256SUMS   host-independent
+#   place     put the binary on the host (ssh/scp, keeping the previous one)         any SSH-reachable host
+#   activate  make the new binary the running process                                HOST-SPECIFIC
+#   prove     drive the real protocol against the public URL                         host-independent
+#
+# Only `activate` is vendor-specific (an alwaysdata REST restart). Porting to another host means rewriting
+# that one step and, on the host side, its own start command — see docs/MCP-HOSTING.md "Porting to another
+# host". Variables are named for their ROLE (MCP_DEPLOY_*), not for the vendor; the two that only alwaysdata
+# understands keep its name.
 #
 # It deploys the RELEASED binary rather than building one here: the public mirror's build-native workflow
 # already produces `dmtool-linux-x64` and publishes it with `SHA256SUMS`, so this pipeline ships the exact
 # artifact users download, verified by checksum, instead of a second build nobody else ever runs.
 #
-# MANUAL ONLY. A deploy replaces a live public endpoint, so it never rides a push — you trigger it, naming the
-# release tag to put there. `smoke_only` re-checks what is already running without touching it.
+# MANUAL, plus a read-only heartbeat. A deploy replaces a live public endpoint, so it never rides a push.
+# The schedule runs `smoke_only`, which touches nothing: a free-tier endpoint can be deleted by the vendor
+# or OOM-killed, and the public README links to it, so "is it still up?" needs an answer that is not a user.
 #
 # SETUP RUNBOOK: docs/MCP-HOSTING.md — the site's own configuration, the SSH-keypair split, the gh commands
 # that set everything below, and what to do when a deploy fails. The list here is the fail-fast reference.
 #
 # WHAT THE REPOSITORY MUST CARRY (nothing here is account-specific by design):
-#   vars.ALWAYSDATA_SSH_HOST     e.g. ssh-<account>.alwaysdata.net
-#   vars.ALWAYSDATA_SSH_USER     the account's SSH user
-#   vars.ALWAYSDATA_BIN_PATH     absolute path the site's start command runs, e.g. /home/<account>/bin/dmtool
-#   vars.ALWAYSDATA_SITE_ID      the site's numeric id, used to restart it through the API
-#   vars.ALWAYSDATA_ACCOUNT      the account name, used in the API's basic-auth user
-#   vars.MCP_ENDPOINT_URL        the public endpoint, e.g. https://<site>.alwaysdata.net/mcp
-#   secrets.ALWAYSDATA_SSH_KEY   a private key authorised for that account
-#   secrets.ALWAYSDATA_API_KEY   an API token from the account's Profile section
+#   vars.MCP_ENDPOINT_URL         the public endpoint, e.g. https://<site>.alwaysdata.net/mcp
+#   vars.MCP_DEPLOY_SSH_HOST      e.g. ssh-<account>.alwaysdata.net
+#   vars.MCP_DEPLOY_SSH_USER      the account's SSH user
+#   vars.MCP_DEPLOY_BIN_PATH      absolute path the host's start command runs, e.g. /home/<account>/bin/dmtool
+#   secrets.MCP_DEPLOY_SSH_KEY    a private key authorised for that account
+#   vars.ALWAYSDATA_SITE_ID       (activate, vendor) the site's numeric id, restarted through the API
+#   vars.ALWAYSDATA_ACCOUNT       (activate, vendor) the account name, used in the API's basic-auth user
+#   secrets.ALWAYSDATA_API_KEY    (activate, vendor) an API token from the account's Profile section
 #
-# THE SITE'S OWN CONFIGURATION (set once, in the alwaysdata admin, not from here) is a `user program` site
-# whose command binds the address the platform assigns and pins the heap below the plan's memory:
+# THE HOST'S OWN CONFIGURATION (set once, on the host, not from here) is the start command. It cannot be
+# abstracted away: alwaysdata has it in a site's admin form, another host wants a systemd unit, a Dockerfile
+# CMD, or a Procfile. On alwaysdata it is a `user program` site running:
 #
 #   /home/<account>/bin/dmtool -Xmx192m mcp --http
 #
-# `--host`/`--port` default to the platform's IP and PORT variables, so the command needs neither. The heap
-# pin is not optional: a native image sizes its heap from PHYSICAL host RAM, so an unpinned process on a
+# `--host`/`--port` default to the platform's IP and PORT variables, so the command needs neither, and that
+# convention is not an alwaysdata quirk — Cloud Run, Heroku, Fly and Railway all pass PORT the same way. The
+# heap pin is not optional: a native image sizes its heap from PHYSICAL host RAM, so an unpinned process on a
 # 256 MB plan is killed. Authoring is flat at ~43 MiB; document EVALUATION has been measured at 519 MiB and
 # is not promised on this plan.
 
@@ -43,6 +57,9 @@ on:
         description: 'only re-check the running endpoint; deploy nothing'
         type: boolean
         default: false
+  schedule:
+    # Read-only heartbeat. Deliberately not near the hour, and offset from nightly-performance's 03:00.
+    - cron: '17 6 * * *'
 
 concurrency:
   # One deploy at a time against one endpoint; a second would race the restart.
@@ -59,30 +76,48 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Fail fast on missing configuration
+      - name: Decide what this run does
+        id: mode
         env:
-          SSH_HOST: ${{ vars.ALWAYSDATA_SSH_HOST }}
           ENDPOINT: ${{ vars.MCP_ENDPOINT_URL }}
         run: |
+          # A scheduled run before the endpoint exists must not sit permanently red — there is nothing to
+          # check yet, and a red heartbeat nobody can fix trains everyone to ignore it. A DISPATCHED run
+          # still fails loudly on missing configuration, because there a human asked for something.
+          if [[ "${{ github.event_name }}" == "schedule" && -z "$ENDPOINT" ]]; then
+            echo "no MCP_ENDPOINT_URL configured — nothing to smoke yet"
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          echo "skip=false" >> "$GITHUB_OUTPUT"
           # A half-configured deploy is worse than none: it uploads, cannot restart, and leaves the old
           # process serving while the log reads green.
+          # An `x && y=z` one-liner would return non-zero when x is false, and GitHub runs each step under
+          # `bash -e` — so the false branch would FAIL the step rather than skip the assignment.
+          if [[ "${{ github.event_name }}" == "schedule" || "${{ inputs.smoke_only }}" == "true" ]]; then
+            deploying=false
+          else
+            deploying=true
+          fi
+          echo "deploy=$deploying" >> "$GITHUB_OUTPUT"
           missing=()
           [[ -n "$ENDPOINT" ]] || missing+=(MCP_ENDPOINT_URL)
-          if [[ "${{ inputs.smoke_only }}" != "true" ]]; then
-            [[ -n "$SSH_HOST" ]] || missing+=(ALWAYSDATA_SSH_HOST)
-            [[ -n "${{ vars.ALWAYSDATA_SSH_USER }}" ]] || missing+=(ALWAYSDATA_SSH_USER)
-            [[ -n "${{ vars.ALWAYSDATA_BIN_PATH }}" ]] || missing+=(ALWAYSDATA_BIN_PATH)
+          if [[ "$deploying" == "true" ]]; then
+            [[ -n "${{ vars.MCP_DEPLOY_SSH_HOST }}" ]] || missing+=(MCP_DEPLOY_SSH_HOST)
+            [[ -n "${{ vars.MCP_DEPLOY_SSH_USER }}" ]] || missing+=(MCP_DEPLOY_SSH_USER)
+            [[ -n "${{ vars.MCP_DEPLOY_BIN_PATH }}" ]] || missing+=(MCP_DEPLOY_BIN_PATH)
             [[ -n "${{ vars.ALWAYSDATA_SITE_ID }}" ]] || missing+=(ALWAYSDATA_SITE_ID)
             [[ -n "${{ vars.ALWAYSDATA_ACCOUNT }}" ]] || missing+=(ALWAYSDATA_ACCOUNT)
           fi
           if [[ ${#missing[@]} -gt 0 ]]; then
             echo "missing repository configuration: ${missing[*]}" >&2
-            echo "see the header of .github/workflows/deploy-mcp-endpoint.yml" >&2
+            echo "see docs/MCP-HOSTING.md, or the header of this workflow" >&2
             exit 1
           fi
 
-      - name: Download the released linux-x64 binary and verify it
-        if: ${{ !inputs.smoke_only }}
+      # ── acquire ──────────────────────────────────────────────────────────────────────────────────────
+      - name: Acquire the released linux-x64 binary and verify it
+        if: ${{ steps.mode.outputs.deploy == 'true' }}
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
@@ -98,26 +133,30 @@ jobs:
           chmod +x dmtool-linux-x64
           echo "TAG=$tag" >> "$GITHUB_ENV"
 
-      - name: Upload it and swap it in
-        if: ${{ !inputs.smoke_only }}
+      # ── place (any SSH-reachable host) ───────────────────────────────────────────────────────────────
+      - name: Place it on the host, keeping the one it replaces
+        if: ${{ steps.mode.outputs.deploy == 'true' }}
         env:
-          SSH_KEY: ${{ secrets.ALWAYSDATA_SSH_KEY }}
-          SSH_HOST: ${{ vars.ALWAYSDATA_SSH_HOST }}
-          SSH_USER: ${{ vars.ALWAYSDATA_SSH_USER }}
-          BIN_PATH: ${{ vars.ALWAYSDATA_BIN_PATH }}
+          SSH_KEY: ${{ secrets.MCP_DEPLOY_SSH_KEY }}
+          SSH_HOST: ${{ vars.MCP_DEPLOY_SSH_HOST }}
+          SSH_USER: ${{ vars.MCP_DEPLOY_SSH_USER }}
+          BIN_PATH: ${{ vars.MCP_DEPLOY_BIN_PATH }}
         run: |
           set -euo pipefail
           install -m 600 /dev/null key && printf '%s\n' "$SSH_KEY" > key
           mkdir -p ~/.ssh && ssh-keyscan -H "$SSH_HOST" >> ~/.ssh/known_hosts 2>/dev/null
           # Upload beside the live path, then move: a partially-transferred binary must never be the one the
-          # platform restarts into. `mv` within a directory is atomic enough for this.
+          # platform restarts into. `mv` within a directory is atomic enough for this. The outgoing binary is
+          # KEPT as .previous — the smoke test runs after the restart, so by the time a bad build is known to
+          # be bad it is already serving, and without a copy there is nothing to go back to.
           scp -i key -o IdentitiesOnly=yes dmtool-linux-x64 "$SSH_USER@$SSH_HOST:$BIN_PATH.incoming"
           ssh -i key -o IdentitiesOnly=yes "$SSH_USER@$SSH_HOST" \
-            "chmod +x '$BIN_PATH.incoming' && mv -f '$BIN_PATH.incoming' '$BIN_PATH'"
-          rm -f key
+            "cp -f '$BIN_PATH' '$BIN_PATH.previous' 2>/dev/null || true; \
+             chmod +x '$BIN_PATH.incoming' && mv -f '$BIN_PATH.incoming' '$BIN_PATH'"
 
-      - name: Restart the site
-        if: ${{ !inputs.smoke_only }}
+      # ── activate (HOST-SPECIFIC — the one step a different host rewrites) ────────────────────────────
+      - name: Activate it (alwaysdata site restart)
+        if: ${{ steps.mode.outputs.deploy == 'true' }}
         env:
           API_KEY: ${{ secrets.ALWAYSDATA_API_KEY }}
           ACCOUNT: ${{ vars.ALWAYSDATA_ACCOUNT }}
@@ -129,7 +168,11 @@ jobs:
             --user "$API_KEY account=$ACCOUNT:" \
             "https://api.alwaysdata.com/v1/site/$SITE_ID/restart/"
 
-      - name: Smoke-test the public endpoint
+      # ── prove ────────────────────────────────────────────────────────────────────────────────────────
+      - name: Prove the public endpoint serves
+        id: smoke
+        if: ${{ steps.mode.outputs.skip == 'false' }}
+        continue-on-error: true
         env:
           ENDPOINT: ${{ vars.MCP_ENDPOINT_URL }}
         run: |
@@ -141,5 +184,35 @@ jobs:
             echo "attempt $attempt: not serving yet"
             sleep 5
           done
-          echo "the endpoint never came back after the deploy" >&2
+          echo "the endpoint never came back" >&2
           exit 1
+
+      - name: Roll back to the previous binary
+        if: ${{ steps.mode.outputs.deploy == 'true' && steps.smoke.outcome == 'failure' }}
+        env:
+          SSH_KEY: ${{ secrets.MCP_DEPLOY_SSH_KEY }}
+          SSH_HOST: ${{ vars.MCP_DEPLOY_SSH_HOST }}
+          SSH_USER: ${{ vars.MCP_DEPLOY_SSH_USER }}
+          BIN_PATH: ${{ vars.MCP_DEPLOY_BIN_PATH }}
+          API_KEY: ${{ secrets.ALWAYSDATA_API_KEY }}
+          ACCOUNT: ${{ vars.ALWAYSDATA_ACCOUNT }}
+          SITE_ID: ${{ vars.ALWAYSDATA_SITE_ID }}
+        run: |
+          set -euo pipefail
+          # Restoring is best-effort by nature: if there was no previous binary (a first deploy) there is
+          # nothing to go back to, and saying so plainly beats a confusing failure inside the rollback.
+          install -m 600 /dev/null key && printf '%s\n' "$SSH_KEY" > key
+          if ! ssh -i key -o IdentitiesOnly=yes "$SSH_USER@$SSH_HOST" "test -f '$BIN_PATH.previous'"; then
+            echo "no $BIN_PATH.previous on the host — nothing to roll back to (first deploy?)" >&2
+            exit 1
+          fi
+          ssh -i key -o IdentitiesOnly=yes "$SSH_USER@$SSH_HOST" \
+            "mv -f '$BIN_PATH.previous' '$BIN_PATH'"
+          curl -sS --fail-with-body -X POST --basic \
+            --user "$API_KEY account=$ACCOUNT:" \
+            "https://api.alwaysdata.com/v1/site/$SITE_ID/restart/"
+          echo "rolled back; re-run the smoke check once the restart settles" >&2
+
+      - name: Fail the run if the endpoint never served
+        if: ${{ steps.smoke.outcome == 'failure' }}
+        run: exit 1
