@@ -1029,6 +1029,33 @@ public final class RuntimeLaws {
         ResultChannels resultChannels(DocumentV2 instance) {
             return resultChannelsOf(rt.compute(instance, config(null, Locale.US)));
         }
+
+        // ---- the entry-point timing payloads (EntryPointPerfTest) --------------------------------
+        // The sorted-signature methods above are the CORRECTNESS payload: they map every message and sort
+        // it, which is O(m log m) the interpreter's single-rule/single-field entry points never pay. Timing
+        // one of those entry points against a sorted-signature call would charge the kernel for work outside
+        // the comparison, so the three below post-process as little as the API allows.
+
+        /** The kernel's {@code validateFull} message COUNT — no signature mapping, no sort. */
+        public int validationMessageCount(DocumentV2 instance) {
+            return rt.validateFull(instance, config(null, Locale.US)).getMessages().size();
+        }
+
+        /** The kernel's {@code compute()} changed-instance COUNT — the compute twin of {@link #validationMessageCount}. */
+        public int computationCount(DocumentV2 instance) {
+            return rt.compute(instance, config(null, Locale.US)).getComputedFieldInstancesWithChanges().size();
+        }
+
+        /**
+         * The kernel's form-engine APPLY step — {@code compute()} then {@code applyTo(DocumentV2)}, returning the
+         * new immutable applied document. The oracle for {@link io.github.mbackschat.a12.dm.interpreter.DmInterpreter#applyComputations}:
+         * {@link #messagesAfterCompute} is the same flow with a {@code validateFull} appended, which would charge
+         * this comparison for a whole validation pass the interpreter's {@code applyComputations} does not run.
+         */
+        public DocumentV2 computeAndApply(DocumentV2 instance) {
+            DocumentProcessingConfig cfg = config(null, Locale.US);
+            return rt.compute(instance, cfg).applyTo(instance);
+        }
     }
 
     public static KernelEngine kernelEngine(String modelJson) {

@@ -322,8 +322,9 @@ private fun computationSignature(computed: Computed): String {
 private fun PerfScenario.javaLocale(): Locale =
     Locale.forLanguageTag(locale.replace('_', '-'))
 
-/** Feeds a [PerfScenario]'s placements into a [RuntimeLaws.Doc] — shared by both kernel engines (Groovy + Java). */
-private class KernelDocSink(private val doc: RuntimeLaws.Doc) : PlacementSink {
+/** Feeds a [PerfScenario]'s placements into a [RuntimeLaws.Doc] — shared by both kernel engines (Groovy + Java)
+ *  and by the entry-point guards, which build the same document outside this harness ([EntryPointPerfTest]). */
+internal class KernelDocSink(private val doc: RuntimeLaws.Doc) : PlacementSink {
     override fun group(path: String, vararg reps: Int) { doc.group(path, *reps) }
     override fun field(path: String, value: String, vararg reps: Int) { doc.field(path, value, *reps) }
     override fun emptyField(path: String, vararg reps: Int) { doc.emptyField(path, *reps) }

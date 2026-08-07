@@ -1,6 +1,7 @@
 package io.github.mbackschat.a12.dm.adapter.laws
 
 import io.github.mbackschat.a12.dm.adapter.laws.RuntimeLaws.Relevant
+import io.github.mbackschat.a12.dm.adapter.perf.KernelAdvantage
 import io.github.mbackschat.a12.dm.interpreter.DmInterpreter
 import io.github.mbackschat.a12.dm.interpreter.eval.newDocument
 import io.github.mbackschat.a12.dm.interpreter.model.FieldDef
@@ -13,7 +14,6 @@ import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl
 import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer
 import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft
 import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft.GroupBuilder
-import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Tag
 import org.junit.jupiter.api.Test
 import java.util.function.Consumer
@@ -31,45 +31,19 @@ import java.util.function.Consumer
  * deciding that costs a scan over the relevant set per repeatable level. Enumerating every row makes the
  * relevant set grow with the document, which is precisely where such a predicate would go quadratic.
  *
- * Reported against the KERNEL, not against a previous interpreter number: a newly measured scenario has no
- * prior of its own, and the project's target is to beat the kernel rather than to avoid regressing ourselves.
- * The assertion is a scaling sanity bound; absolute numbers are printed for the record and are NOT a release
- * bar (a bar needs IF137 certification).
+ * The bar and the growth check are [KernelAdvantage]; absolute numbers are printed for the record and are NOT a
+ * release bar (a bar needs IF137 certification).
  */
 @Tag("perf")
 class PartialSumOfProductsPerfTest {
 
     @Test
     fun completeConcreteEnumerationStaysSubQuadraticAndBeatsTheKernel() {
-        val small = measure(SMALL)
-        val large = measure(LARGE)
-        val factor = LARGE.toDouble() / SMALL
-        val growth = large.interpreterMs / small.interpreterMs.coerceAtLeast(0.001)
-
-        println("[perf] partial-SOP/complete-concrete@$SMALL  interp=${ms(small.interpreterMs)} " +
-            "kernel=${ms(small.kernelMs)} ratio=${"%.2f".format(small.kernelMs / small.interpreterMs)}×")
-        println("[perf] partial-SOP/complete-concrete@$LARGE  interp=${ms(large.interpreterMs)} " +
-            "kernel=${ms(large.kernelMs)} ratio=${"%.2f".format(large.kernelMs / large.interpreterMs)}×")
-        println("[perf] partial-SOP growth ${"%.2f".format(growth)}× for ${factor.toInt()}× rows " +
-            "(linear≈$factor, quadratic≈${factor * factor})")
-
-        assertTrue(growth < factor * NEAR_LINEAR_SLACK) {
-            "partial validation scales super-linearly: ${"%.2f".format(growth)}× for ${factor.toInt()}× rows " +
-                "(linear≈$factor). A relevance query must not cost O(relevant set); the caller's set grows WITH " +
-                "the document whenever it enumerates concrete rows."
-        }
-        for ((label, r) in listOf("$SMALL" to small, "$LARGE" to large)) {
-            val ratio = r.kernelMs / r.interpreterMs
-            assertTrue(ratio >= MIN_KERNEL_ADVANTAGE) {
-                "interpreter must beat the kernel by ≥${MIN_KERNEL_ADVANTAGE}× at $label rows, measured " +
-                    "${"%.2f".format(ratio)}× (interp=${ms(r.interpreterMs)} kernel=${ms(r.kernelMs)})"
-            }
-        }
+        KernelAdvantage.assertBeatsKernelAndScales(
+            "partial-SOP/complete-concrete", measure(SMALL), measure(LARGE))
     }
 
-    private class Reading(val interpreterMs: Double, val kernelMs: Double)
-
-    private fun measure(rows: Int): Reading {
+    private fun measure(rows: Int): KernelAdvantage.Reading {
         val json = DocumentModelDraft.named("cart").locale("en_US")
             .rootGroup("Cart", Consumer { g: GroupBuilder ->
                 g.numberField("Total", Consumer { })
@@ -102,30 +76,17 @@ class PartialSumOfProductsPerfTest {
 
         val interpreter = DmInterpreter(def)
         val iDocument = iDoc()
-        repeat(WARMUP) { interpreter.validatePart(iDocument, iRel) }
-        val iStart = System.nanoTime()
-        repeat(REPEATS) { interpreter.validatePart(iDocument, iRel) }
-        val iMs = (System.nanoTime() - iStart) / 1e6 / REPEATS
-
         val kDocument = kDoc()
-        repeat(WARMUP) { RuntimeLaws.messagesPart(kModel, kDocument, kRel) }
-        val kStart = System.nanoTime()
-        repeat(REPEATS) { RuntimeLaws.messagesPart(kModel, kDocument, kRel) }
-        val kMs = (System.nanoTime() - kStart) / 1e6 / REPEATS
-
-        return Reading(iMs, kMs)
+        return KernelAdvantage.read(
+            rows,
+            interpreter = { interpreter.validatePart(iDocument, iRel) },
+            kernel = { RuntimeLaws.messagesPart(kModel, kDocument, kRel) },
+        )
     }
-
-    private fun ms(v: Double) = "${"%.1f".format(v)}ms"
 
     private companion object {
         const val CART = "/Cart"; const val TOTAL = "/Cart/Total"
         const val LINES = "/Cart/Lines"; const val QTY = "/Cart/Lines/Qty"; const val PRICE = "/Cart/Lines/Price"
         const val SMALL = 250; const val LARGE = 1000
-        const val WARMUP = 3; const val REPEATS = 5
-        /** The owner's bar: beat BOTH kernel strategies by this factor on every measured scale (2026-08-07). */
-        const val MIN_KERNEL_ADVANTAGE = 1.5
-        /** Near-linear: growth may exceed the row factor by this much before it counts as super-linear. */
-        const val NEAR_LINEAR_SLACK = 1.35
     }
 }
