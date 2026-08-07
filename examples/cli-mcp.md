@@ -157,9 +157,9 @@ Because a request carries models rather than a closure, an edit may also **intro
 
 Everything above is the stdio transport, which a host launches. The same binary also binds a port and speaks Streamable HTTP, for callers that reach it over the network — upload the binary, start it, hand out the URL:
 
-```sh
-dmtool mcp --http --host 0.0.0.0 --port 8080     # clients POST to https://your-host/mcp
-```
+    dmtool mcp --http --host 0.0.0.0 --port 8080     # clients POST to https://your-host/mcp
+
+*(Indented rather than fenced on purpose: `showboat verify` executes every fenced block, and a server that never returns would hang the demo gate forever. It only ever passed because port 8080 happened to be busy.)*
 
 It is the *same* server: the dispatcher, the tool registry, and the invoker are reused unchanged, so every behaviour shown above holds identically. What the HTTP layer adds is the transport's own rules — the mirrored `MCP-Protocol-Version` / `Mcp-Method` / `Mcp-Name` headers must agree with the body (`400` + `-32020` if they do not), an unknown method is `404`, an unlisted browser `Origin` is `403`, the removed `GET`/`DELETE` session mechanics are `405`, and a body over the cap is `413`. Several callers are served by a bounded pool; past it the answer is an immediate `503` with `Retry-After`. The full contract is [`MCP-SPEC.md`](../docs/MCP-SPEC.md) §7.
 

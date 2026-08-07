@@ -72,6 +72,26 @@ if [[ "${#demos[@]}" -eq 0 ]]; then
   exit 1
 fi
 
+# REFUSE a demo that would hang this gate. `showboat verify` executes EVERY fenced block — it runs the
+# fence's info string as the interpreter — so a block starting a server that never returns blocks the run
+# forever: no timeout, no output, nothing in the log after "verifying N demos". `mcp --http` is the only
+# verb we ship that behaves that way. It sat in a demo for weeks and passed, because it only ever
+# "finished" when its port happened to be occupied; on a free port it hung. Show such a command as an
+# INDENTED code block instead — indented blocks are not fenced, so showboat leaves them alone.
+hangs=()
+for f in "${demos[@]}"; do
+  if awk '/^```/ { fenced = !fenced; next }
+          fenced && /mcp[[:space:]]+--http/ { found = 1 }
+          END { exit !found }' "$f"; then
+    hangs+=("$f")
+  fi
+done
+if [[ "${#hangs[@]}" -gt 0 ]]; then
+  echo "demo(s) carry a fenced \`mcp --http\` block, which never returns: ${hangs[*]}" >&2
+  echo "indent that command by four spaces instead of fencing it (see the comment above this check)" >&2
+  exit 1
+fi
+
 # Verify in PARALLEL, bounded — a serial loop over ~11 demos (each spawning `uvx showboat`, which in
 # turn runs many `dmtool` JVMs) dominated the CI wall-clock. Each verify writes to its own log +
 # status file (interleaved stdout would be garbled); we print an ordered summary once all finish.
