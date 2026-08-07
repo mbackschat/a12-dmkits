@@ -12,7 +12,7 @@ This changelog covers the independently consumable interpreter packages, API doc
 
 ### Performance
 
-- **Measured, never assumed.** The production browser JavaScript entry is about **233 kB gzip**; on the fixed Apple M1/Chrome runner a 200-row Document validated in a **10.5 ms median** and a 10,000-row stress Document with 4,900 findings in **203.6 ms**. Against the A12 Kernel's generated Java with code generation outside the clock, the interpreter led by **2.1×–12.5×** across the default inventory and **10×–16.7×** on repeated-document evaluation, with the closest hostile point still ahead by 1.32×. These are bounded same-machine measurements after exact result preflight, not universal promises; see [the benchmark method and complete tables](https://github.com/mbackschat/a12-dmkits/blob/main/docs/INTERPRETER-PERFORMANCE.md).
+- **Fast, and measured — never assumed.** The production browser JavaScript entry is about **233 kB gzip**; on the fixed Apple M1/Chrome runner on 2026-08-03, a 200-row Document validated in a **10.5 ms median** and the 10,000-row stress Document with 4,900 findings in a **203.6 ms median**. Against the A12 Kernel's generated validator compiled as Java, with code generation outside the clock, the interpreter led by **2.1×–12.5×** across the default inventory and **10×–16.7×** on repeated-document evaluation, with the closest hostile point still ahead by 1.32×. These are bounded same-machine measurements after exact result preflight, not universal promises; see [the benchmark method and complete tables](https://github.com/mbackschat/a12-dmkits/blob/main/docs/INTERPRETER-PERFORMANCE.md).
 
 ### Fixed
 
