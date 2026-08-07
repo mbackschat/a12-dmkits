@@ -1104,7 +1104,7 @@ public final class RuntimeLaws {
             Properties idToPackage = new Properties();   // OUT: modelId -> generated package (the static path needs it)
             Map<String, String> sources = generateSources(
                     expanded, IValidationCodeGeneratorConfig.ProgrammingLanguage.JAVA, idToPackage);
-            ClassLoader codeLoader = compileInMemory(sources);
+            ClassLoader codeLoader = compileInMemory(sources).loader();
             IDocumentModelResolver resolver = id -> expanded;
             this.dsf = new DocumentServiceFactory(resolver);
             this.rt = new DocumentRtServiceFactory(resolver).createDocumentRtService(staticConfig(idToPackage, codeLoader));
@@ -1419,7 +1419,24 @@ public final class RuntimeLaws {
     }
 
     /** Compile {@code sources} ({@code zipPath -> code}) in-memory against this JVM's classpath; return a loader for them. */
-    private static ClassLoader compileInMemory(Map<String, String> sources) {
+    /**
+     * A compiled generated-Java program: its loader, and the total size of the bytecode the loader retains.
+     *
+     * <p>The size is reported because {@link #compileInMemory} keeps every class's bytes on the HEAP for the
+     * loader's whole life (it defines classes lazily from that map), which a deployment loading the same classes
+     * from a jar does not. A footprint measurement must therefore be able to subtract it.
+     */
+    public record CompiledJava(ClassLoader loader, long bytecodeBytes) {
+    }
+
+    /** The retained-bytecode volume of a model's generated-Java program, for footprint accounting. */
+    public static long compiledJavaBytecodeBytes(String modelJson) {
+        Properties idToPackage = new Properties();
+        return compileInMemory(generateSources(expandedModel(modelJson),
+                IValidationCodeGeneratorConfig.ProgrammingLanguage.JAVA, idToPackage)).bytecodeBytes();
+    }
+
+    private static CompiledJava compileInMemory(Map<String, String> sources) {
         JavaCompiler compiler = ToolProvider.getSystemJavaCompiler();
         if (compiler == null) {
             throw new IllegalStateException("a JDK (not a JRE) is required to compile the Java kernel baseline");
@@ -1452,7 +1469,8 @@ public final class RuntimeLaws {
             for (Diagnostic<? extends JavaFileObject> d : diags.getDiagnostics()) sb.append("  ").append(d).append('\n');
             throw new IllegalStateException(sb.toString());
         }
-        return new ClassLoader(RuntimeLaws.class.getClassLoader()) {
+        long bytecodeBytes = compiled.values().stream().mapToLong(ByteArrayOutputStream::size).sum();
+        return new CompiledJava(new ClassLoader(RuntimeLaws.class.getClassLoader()) {
             @Override
             protected Class<?> findClass(String name) throws ClassNotFoundException {
                 ByteArrayOutputStream b = compiled.get(name);
@@ -1460,7 +1478,7 @@ public final class RuntimeLaws {
                 byte[] arr = b.toByteArray();
                 return defineClass(name, arr, 0, arr.length);
             }
-        };
+        }, bytecodeBytes);
     }
 
     /**

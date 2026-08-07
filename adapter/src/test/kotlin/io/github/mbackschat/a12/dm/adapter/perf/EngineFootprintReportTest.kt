@@ -67,10 +67,11 @@ class EngineFootprintReportTest {
             report(label, "groovy warm", codes, measure(hold) { warmGroovy(json, documentJson, bindings) })
             report(label, "java warm", codes, measure(hold) { warmJava(json, documentJson, bindings) })
             println(
-                "%-39s %-11s %9d %8d   (dm-json %d; generated source bytes: groovy, java)".format(
+                "%-39s %-11s %9d %8d %10d   (gen src groovy, java; java bytecode; dm-json %d)".format(
                     label, "gen source",
                     RuntimeLaws.generatedGroovySource(json).toByteArray().size,
                     RuntimeLaws.generatedJavaSource(json).toByteArray().size,
+                    RuntimeLaws.compiledJavaBytecodeBytes(json),
                     json.toByteArray().size,
                 ),
             )

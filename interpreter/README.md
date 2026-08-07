@@ -49,9 +49,9 @@ Four things to know before sizing a cache:
   **≈ 1.4 kB × fields + 1.55 kB × rules + 2.3 kB × groups**, which holds within 4% across six models spanning 5 to 79
   fields, 3 to 29 groups and 0 to 192 rules.
 - It is nonetheless far **smaller than the A12 Kernel runtime service it replaces**: on those same models,
-  **4.7× to 10.4×** smaller than the Kernel's generated Java and **22× to 41×** smaller than its dynamic Groovy
+  **3.8× to 9.2×** smaller than the Kernel's generated Java and **22× to 41×** smaller than its dynamic Groovy
   (measured 2026-08-07, JDK 21). The Kernel's own Document Model is comparable to a prepared model; the difference
-  is the generated rule code — and a sixth to nearly half of it is class metadata in Metaspace, which a heap
+  is the generated rule code — and a fifth to a half of it is class metadata in Metaspace, which a heap
   measurement does not show at all.
 - An undersized cache is not slightly worse, it is no cache plus eviction overhead. The same 12 requests through a
   cache one entry too small cost **12 preparations and 10 evictions**.

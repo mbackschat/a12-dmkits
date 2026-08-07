@@ -294,32 +294,38 @@ same way. The last is derived from a **real** A12 model's shape, so the table is
 
 | model | fields | groups | rules | interpreter | Kernel model graph | + generated Java | + generated Groovy |
 |---|--:|--:|--:|--:|--:|--:|--:|
-| type definitions only | 26 | 4 | 0 | 45 | 20 | 466 | 1,091 |
-| small order + aggregates | 15 | 4 | 6 | 37 | 18 | 374 | 1,363 |
-| order with one rule | 29 | 4 | 1 | 51 | 23 | 361 | 1,118 |
-| rule-heavy | 5 | 3 | 48 | 86 | 49 | 552 | 3,535 |
-| rule-heavy | 5 | 3 | 192 | 305 | 181 | 1,431 | 11,729 |
-| **real-model shape** | 79 | 29 | 89 | 309 | 152 | 1,455 | 6,924 |
+| type definitions only | 26 | 4 | 0 | 45 | 20 | 412 | 1,091 |
+| small order + aggregates | 15 | 4 | 6 | 37 | 18 | 308 | 1,363 |
+| order with one rule | 29 | 4 | 1 | 51 | 23 | 296 | 1,118 |
+| rule-heavy | 5 | 3 | 48 | 86 | 49 | 444 | 3,535 |
+| rule-heavy | 5 | 3 | 192 | 305 | 181 | 1,166 | 11,729 |
+| **real-model shape** | 79 | 29 | 89 | 309 | 152 | 1,254 | 6,924 |
 
 **Measured 2026-08-07 on JDK 21**, twelve resident instances per arm, after the three engines were confirmed to
-produce the same message-code multiset over the same document. A resident entry is **4.7× to 10.4×** smaller than the
-generated-Java equivalent and **22× to 41×** smaller than the dynamic-Groovy one.
+produce the same message-code multiset over the same document. A resident entry is **3.8× to 9.2×** smaller than the
+generated-Java equivalent and **22× to 41×** smaller than the dynamic-Groovy one. The Java column has one
+measurement artifact removed: the harness that compiles the generated Java keeps each class's bytecode on the heap,
+which a deployment loading those classes from a jar does not, so 56 to 271 kB per model is subtracted. The Groovy
+column gets no such adjustment, because there the retained generated text is the Kernel's own design rather than the
+harness's.
 
 Reading it:
 
 - **The generated rule and computation code is the whole difference, not the model.** The Kernel's own expanded
   Document Model is the sixth column — 18 to 181 kB, comparable to a prepared model and *smaller* than it on the
   rule-heavy shapes. Everything above that line is generated code and the machinery that loads it.
-- **A sixth to nearly half of the Kernel figures is invisible to a heap profiler.** Generated classes live in
-  Metaspace, not the heap: 16% to 44% of the totals above, which is 85 to 298 kB for Java and 286 kB to 4.8 MB for
+- **A fifth to a half of the Kernel figures is invisible to a heap profiler.** Generated classes live in
+  Metaspace, not the heap: 19% to 50% of the totals above, which is 85 to 298 kB for Java and 286 kB to 4.8 MB for
   Groovy. A prepared model generates and loads **no classes at all**, so for the interpreter column heap *is* the
-  total and a heap budget is the whole budget.
+  total and a heap budget is the whole budget. On the Groovy path the generated source text is resident too, beside
+  the classes parsed from it.
 - **Groovy's class count grows per rule; Java's does not.** It tracks `≈ 34 + 3.2 × rules` across all six models
   (34 classes at no rules, 639 at 192), against 12 to 19 for Java at every size. The generated *source* volume is
   near-identical between the two (740 kB vs 736 kB at 192 rules), so what differs is what compiling it produces.
-- **The Kernel side has usable formulas too.** Dynamic Groovy fits `≈ 0.75 MB + 14 kB × fields + 58 kB × rules`
-  within 7%. Generated Java does *not* fit these predictors — it is dominated by a fixed cost of roughly 350 kB and a
-  linear fit is only good to ±25%, so treat the measured range rather than a slope as the guide there.
+- **The Kernel side has one usable formula.** Dynamic Groovy fits `≈ 0.75 MB + 14 kB × fields + 58 kB × rules`
+  within 7%. Generated Java does *not* fit these predictors — rule count is the wrong axis for it, since the
+  89-rule real-model shape costs more than the 192-rule fixture (varied rules over 79 fields and 29 groups compile to
+  more program than near-identical ones over 5 fields) — so use its measured range rather than a slope.
 - **The Groovy engine defers nearly all of its cost to the first request**, exactly as a prepared model defers its
   plans: creating the runtime service costs almost nothing over the model graph, and the code generation happens on
   first evaluation. Budget the served figure on either engine.
