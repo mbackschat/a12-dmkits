@@ -492,6 +492,7 @@ public final class io/github/mbackschat/a12/dm/interpreter/InterpreterIntegratio
 
 public final class io/github/mbackschat/a12/dm/interpreter/InterpreterIntegrationReason : java/lang/Enum {
 	public static final field CALLBACK_THREW Lio/github/mbackschat/a12/dm/interpreter/InterpreterIntegrationReason;
+	public static final field CONCURRENT_USE Lio/github/mbackschat/a12/dm/interpreter/InterpreterIntegrationReason;
 	public static final field FACTORY_THREW Lio/github/mbackschat/a12/dm/interpreter/InterpreterIntegrationReason;
 	public static final field REENTRANT_EVALUATION Lio/github/mbackschat/a12/dm/interpreter/InterpreterIntegrationReason;
 	public static fun getEntries ()Lkotlin/enums/EnumEntries;

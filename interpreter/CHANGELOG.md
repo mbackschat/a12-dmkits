@@ -4,6 +4,11 @@ This changelog covers the independently consumable interpreter packages, API doc
 
 ## [@VERSION@]
 
+### Added
+
+- **One prepared model now serves concurrent requests.** Model-static preparation — condition and operation ASTs, iteration scopes, uniqueness plans, the path index, the computation dependency order — is owned by the `PreparedModel` rather than by each `Interpreter`, so a bounded server-side cache holds one entry per model instead of one per (model × configuration), and a second interpreter over it performs no model-static work. A retained interpreter now adds only 2–5% over the prepared model, where it previously roughly doubled the cost. Sizing guidance and measured per-model costs are in the developer API guide.
+- **Sharing one `Interpreter` across threads is refused instead of misbehaving.** A `PreparedModel` is what may be shared; an interpreter is per request. Concurrent entry now raises `InterpreterIntegrationReason.CONCURRENT_USE` rather than letting a custom condition observe another thread's Document. This is best-effort detection, not thread safety.
+
 ### Performance
 
 - **The measured production browser JavaScript entry is about 233 kB gzip.** On the fixed Apple M1/Chrome runner on 2026-08-03, a representative 200-row Document validated in a **10.5 ms median**; the 10,000-row stress Document validated with 4,900 findings in a **203.6 ms median**. Both measurements use 10 independent fresh Chrome processes and include interpreter construction through complete result materialization.

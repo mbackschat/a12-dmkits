@@ -108,6 +108,7 @@ final enum class io.github.mbackschat.a12.dm.interpreter/InterpreterIntegrationP
 
 final enum class io.github.mbackschat.a12.dm.interpreter/InterpreterIntegrationReason : kotlin/Enum<io.github.mbackschat.a12.dm.interpreter/InterpreterIntegrationReason> { // io.github.mbackschat.a12.dm.interpreter/InterpreterIntegrationReason|null[0]
     enum entry CALLBACK_THREW // io.github.mbackschat.a12.dm.interpreter/InterpreterIntegrationReason.CALLBACK_THREW|null[0]
+    enum entry CONCURRENT_USE // io.github.mbackschat.a12.dm.interpreter/InterpreterIntegrationReason.CONCURRENT_USE|null[0]
     enum entry FACTORY_THREW // io.github.mbackschat.a12.dm.interpreter/InterpreterIntegrationReason.FACTORY_THREW|null[0]
     enum entry REENTRANT_EVALUATION // io.github.mbackschat.a12.dm.interpreter/InterpreterIntegrationReason.REENTRANT_EVALUATION|null[0]
 

@@ -21,6 +21,7 @@ import io.github.mbackschat.a12.dm.interpreter.workspace.immutableListSnapshot
 import kotlin.jvm.JvmOverloads
 import kotlin.jvm.JvmStatic
 import kotlin.jvm.JvmSynthetic
+import kotlin.concurrent.Volatile
 
 /** Whether a model-owned pointer addresses a declared group row or field cell. */
 enum class ModelEntityKind {
@@ -760,6 +761,14 @@ enum class InterpreterIntegrationReason {
 
     /** A callback attempted to enter the same active interpreter recursively. */
     REENTRANT_EVALUATION,
+
+    /**
+     * A second execution lane entered the same interpreter while one was already evaluating. An [Interpreter] is
+     * per request: a `PreparedModel` is what may be shared. Detection is best-effort — this refuses the misuse
+     * loudly instead of letting a custom condition observe another lane's Document, and does not make the
+     * interpreter thread-safe.
+     */
+    CONCURRENT_USE,
 }
 
 /** Typed boundary error for host factory/callback failures and same-lane reentry. */
@@ -789,8 +798,12 @@ class Interpreter private constructor(
     configuration: InterpreterConfiguration,
 ) : ModelOwned by prepared {
     private val metadata = prepared.model
+    @Volatile
     private var activeSnapshot: DocumentSnapshot? = null
-    private var evaluating = false
+
+    /** The lane currently inside [evaluate], or [NO_LANE]. Volatile so a second lane can observe the first. */
+    @Volatile
+    private var evaluatingLane: Long = NO_LANE
     private val engine: DmInterpreter
     private val support: InterpreterSupportReport
 
@@ -950,14 +963,20 @@ class Interpreter private constructor(
 
     private inline fun <T> evaluate(snapshot: DocumentSnapshot, action: () -> T): T {
         metadata.requireOwned(snapshot)
-        if (evaluating) {
+        val lane = currentExecutionLane()
+        val occupant = evaluatingLane
+        if (occupant != NO_LANE) {
             throw InterpreterIntegrationError.of(
                 phase = InterpreterIntegrationPhase.EVALUATE,
-                reason = InterpreterIntegrationReason.REENTRANT_EVALUATION,
+                reason = if (occupant == lane) {
+                    InterpreterIntegrationReason.REENTRANT_EVALUATION
+                } else {
+                    InterpreterIntegrationReason.CONCURRENT_USE
+                },
                 cause = null,
             )
         }
-        evaluating = true
+        evaluatingLane = lane
         activeSnapshot = snapshot
         return try {
             action()
@@ -969,11 +988,13 @@ class Interpreter private constructor(
             )
         } finally {
             activeSnapshot = null
-            evaluating = false
+            evaluatingLane = NO_LANE
         }
     }
 
     companion object {
+        private const val NO_LANE = -1L
+
         @JvmSynthetic
         internal fun create(
             prepared: PreparedModel,

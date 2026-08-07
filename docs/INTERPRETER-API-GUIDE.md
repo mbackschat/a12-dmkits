@@ -166,7 +166,9 @@ and a second interpreter over it performs no model-static work at all.
 
 An interpreter is per request. That is a **safety** requirement, not a cost preference: it carries a
 snapshot-scoped guard that the custom-condition adapter reads, so sharing one across threads can hand a callback
-another thread's Document. This is a known limitation: the contract is documented, not yet enforced.
+another thread's Document. Concurrent entry is now detected and refused with
+`InterpreterIntegrationReason.CONCURRENT_USE`, which is best-effort detection rather than thread safety: it
+turns the misuse into a clear failure instead of a silent one.
 
 Five rules follow, each with a real failure mode:
 
