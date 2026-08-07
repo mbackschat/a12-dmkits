@@ -35,6 +35,12 @@ class InterpreterDocumentationTest {
             "ts",
         ),
         SnippetLock(
+            "interpreter-kotlin-service-cache",
+            "docs/INTERPRETER-API-GUIDE.md",
+            "interpreter/consumer-tests/kotlin-jvm/src/main/kotlin/ServiceCacheExample.kt",
+            "kotlin",
+        ),
+        SnippetLock(
             "interpreter-typescript-form-pass",
             "docs/INTERPRETER-API-GUIDE.md",
             "interpreter/consumer-tests/typescript/src/guide-finite.ts",

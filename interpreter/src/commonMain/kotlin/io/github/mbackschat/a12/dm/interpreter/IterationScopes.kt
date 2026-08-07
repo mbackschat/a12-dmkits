@@ -27,7 +27,7 @@ internal sealed interface IterationPlan {
  * repeatable group a rule/computation iterates ([scopeFromRefs]), the per-row contexts of that scope incl.
  * the error-entity re-anchor ([iterationContexts], IF103), and the parallel-iteration outer join
  * ([parallelIterationContexts], KERNEL-SEMANTICS §9). Shared by the rule path, the `RepetitionNotUnique`
- * guard-scope check, and the computation engine. Allocated once per [DmInterpreter].
+ * guard-scope check, and the computation engine. Allocated once per MODEL (see [ModelStaticPlans]), shared by its evaluators.
  */
 internal class IterationScopes(private val model: ModelDef) {
 

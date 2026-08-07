@@ -4,13 +4,42 @@
 >
 > **Lifecycle.** A shipped gap is deleted. Its stable contract graduates into [INTERPRETER-API-SPEC](INTERPRETER-API-SPEC.md) in the same commit, while git and an appropriate numbered finding retain the history and rationale.
 
-> **Current state.** The public v1 surface, browser qualification, anonymous publication, computation diagnostics, and the two owner-shaped pointer types are complete as IF224–IF226 and IF241–IF242. The house spelling remains an internal tool/corpus projection rather than a second published A12 format. §1 is drained; §2 tracks later API products.
+> **Current state.** The public v1 surface, browser qualification, anonymous publication, computation diagnostics, and the two owner-shaped pointer types are complete as IF224–IF226 and IF241–IF242. The house spelling remains an internal tool/corpus projection rather than a second published A12 format. §1 carries the concurrent-interpreter hardening (IAG13); §2 tracks later API products.
 
 ## 1. Open
 
-_None open._
+### IAG13 — concurrent misuse of one Interpreter corrupts instead of failing <a id="iag13"></a>
+
+`Interpreter.evaluate` sets unsynchronized `evaluating`/`activeSnapshot` fields and `adaptCondition` reads
+`activeSnapshot` to build a custom condition's invocation, so two threads sharing one interpreter can hand a
+consumer callback the **other thread's Document**, and the `finally` clears the peer's state. The check-then-set
+re-entrancy guard does not serialize, so the misuse is not even reliably rejected. A `PreparedModel` is safe to
+share ([IF251](INTERPRETER-FINDINGS.md#if251)); an interpreter is per request, and today that contract is
+documented rather than enforced.
+
+**Planned fix:** detect the owning thread and refuse concurrent use with a corrective diagnostic, which needs an
+`expect`/`actual` thread identity because `commonMain` cannot touch `java.*`. Removing the field stash by
+threading the snapshot through the call is the better end state and a larger change.
+
+**Owner-decided 2026-08-07:** fail loudly first, in its own slice.
 
 ## 2. Deferred — with re-open triggers
+
+### IAG14 — per-entry cost surface for bounding a model cache in bytes <a id="iag14"></a>
+
+NFR-F3's numeric half is unquantified because a bounded cache cannot be sized by entry count: a warm entry measures
+5.8×–9.7× its expanded DM-JSON across five real models and grows on both the field and rule axes at roughly
+1.6 kB each, so the ratio moves with shape ([INTERPRETER-PERFORMANCE](INTERPRETER-PERFORMANCE.md) "Per-model
+resident cost"). The demo makes the
+consequence concrete: a cache one entry too small turned 12 requests into 12 preparations and 10 evictions, so an
+undersized cache is not slightly worse but no cache at all.
+
+**Shape under consideration:** expose the cost INPUTS a service can calibrate against — field, rule and
+computation counts plus expanded source bytes — rather than a retained-byte estimate, which is not portable
+across JVM and JS and would be worse than none if fabricated.
+
+**Re-open trigger:** a real backend service needs to bound its hot-model cache, or NFR-F3's numeric half is put
+up for certification.
 
 ### IAG1 — Kernel-shaped TypeScript import replacement <a id="iag1"></a>
 

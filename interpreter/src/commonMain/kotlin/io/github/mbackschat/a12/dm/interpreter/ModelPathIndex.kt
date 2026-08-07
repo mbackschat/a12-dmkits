@@ -4,7 +4,7 @@ import io.github.mbackschat.a12.dm.interpreter.model.ModelDef
 
 /**
  * Model-static path structure shared by validation passes that otherwise split and rebuild the same paths per
- * cell. The engine owns one instance: ancestor propagation and over-repetition checks therefore perform only
+ * cell. The prepared model owns one instance, shared by every evaluator over it: ancestor propagation and over-repetition checks therefore perform only
  * indexed lookups while a document is validated (IF196).
  */
 internal class ModelPathIndex(model: ModelDef) {

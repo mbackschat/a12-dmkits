@@ -18,6 +18,8 @@ This is the append-only registry for every `IAG<n>` and `IRG<n>` identifier issu
 | IAG10 <a id="iag10"></a> | shipped | a typed pointer on the MESSAGE channel must model A12's partially-known type, not our exact one |
 | IAG11 <a id="iag11"></a> | shipped | the house pointer form has no published renderer |
 | IAG12 <a id="iag12"></a> | shipped | `A12PointerFormat` is not on the npm surface |
+| IAG13 <a id="iag13"></a> | open | concurrent misuse of one Interpreter corrupts instead of failing |
+| IAG14 <a id="iag14"></a> | deferred | per-entry cost surface for bounding a model cache in bytes |
 | IRG1 <a id="irg1"></a> | deferred | publish the separate Kernel drop-in artifact |
 | IRG2 <a id="irg2"></a> | shipped | deploy the showcase semantics badge after v0.9.1 |
 | IRG3 <a id="irg3"></a> | shipped | make both Kotlin ABI goldens member-level |

@@ -11,6 +11,9 @@ import io.github.mbackschat.a12.dm.interpreter.model.Message as EngineMessage
 import io.github.mbackschat.a12.dm.interpreter.model.MsgType
 import io.github.mbackschat.a12.dm.interpreter.model.RelevantEntity
 import io.github.mbackschat.a12.dm.interpreter.model.Severity
+import io.github.mbackschat.a12.dm.interpreter.model.LegalCharset
+import io.github.mbackschat.a12.dm.interpreter.model.MessageLabelProvider
+import io.github.mbackschat.a12.dm.interpreter.model.PredefinedTypeRegistry
 import io.github.mbackschat.a12.dm.interpreter.model.UnsupportedRule as EngineUnsupportedRule
 import io.github.mbackschat.a12.dm.interpreter.model.UnsupportedSubject as EngineUnsupportedSubject
 import io.github.mbackschat.a12.dm.interpreter.model.ValidationOutcome
@@ -793,10 +796,18 @@ class Interpreter private constructor(
 
     init {
         try {
-            engine = DmInterpreter(
+            engine = DmInterpreter.sharing(
                 model = prepared.definition(),
+                clock = null,
+                predefinedTypes = PredefinedTypeRegistry.DEFAULT,
                 customConditions = configuration.customConditions.engineMap(::adaptCondition),
                 customFieldTypes = configuration.customFieldTypes.engineMap(),
+                legalCharset = LegalCharset.BMP,
+                messageLabelProvider = MessageLabelProvider.MODEL_LABEL_OR_NAME,
+                // The sharing boundary: every interpreter over this prepared model reads ONE model-static
+                // preparation, so a per-request interpreter costs its configuration binding and audit, not a
+                // rebuild of every AST and plan (NFR-F3).
+                plans = prepared.plans(),
             )
             support = InterpreterSupportReport.create(
                 engine.supportAudit().map(::unsupportedProgram),

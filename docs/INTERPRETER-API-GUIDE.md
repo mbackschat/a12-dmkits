@@ -154,6 +154,139 @@ Keep one `PreparedModel` and one configured `Interpreter` for a form or request 
 
 This is optional state reuse at the application boundary, not a mutable editing session. The public Document snapshot remains immutable, and a snapshot or pointer from another preparation fails with `ModelOwnerMismatchError`.
 
+### Serve concurrent requests from a cache of hot models
+
+A backend service holds many models and serves concurrent requests. The split that makes this work is that a
+**`PreparedModel` is shareable and an `Interpreter` is not.**
+
+A prepared model owns everything derived from the model alone — condition and operation ASTs, iteration scopes,
+`RepetitionNotUnique` plans, the path index, the computation dependency order — memoized in thread-safe lazy state.
+So one cache entry serves every tenant and every concurrent request for that model, whatever their configuration,
+and a second interpreter over it performs no model-static work at all.
+
+An interpreter is per request. That is a **safety** requirement, not a cost preference: it carries a
+snapshot-scoped guard that the custom-condition adapter reads, so sharing one across threads can hand a callback
+another thread's Document. This is a known limitation: the contract is documented, not yet enforced.
+
+Five rules follow, each with a real failure mode:
+
+1. **Resolve the model once per request** and hold that reference for the whole request. Never re-resolve midway.
+2. **Key the cache by a cheap identity you already have** — the database's `(modelId, version)` or an etag — and
+   fetch the model body only on a miss. Neither a digest of the body nor `PreparedModel.fingerprint` can be the
+   lookup key: hashing requires fetching, and reading the fingerprint requires the preparation a hit exists to
+   skip. The fingerprint's job is to *verify* an entry's content identity.
+3. **Single-flight the miss.** Without a per-key guard, concurrent misses each build a full prepared model.
+4. **Give every request its own interpreter.**
+5. **Eviction only drops the cache's reference.** An in-flight request's own reference keeps its entry alive, so
+   eviction is safe by construction.
+
+<!-- snippet: interpreter-kotlin-service-cache -->
+```kotlin
+/** A bounded, content-keyed cache of prepared models with single-flight loading. */
+class PreparedModelCache(private val capacity: Int) {
+    private val entries = ConcurrentHashMap<String, PreparedModel>()
+    private val order = ArrayDeque<String>()
+    val preparations = AtomicInteger()
+    val evictions = AtomicInteger()
+
+    /**
+     * Rule 2 + rule 3: one entry per model version, built at most once even under a concurrent miss.
+     *
+     * [key] is the cheap content identity the service ALREADY has before touching the model body — the
+     * database's `(modelId, version)` or an etag. [loadExpandedJson] runs only on a miss, so a hit costs no
+     * database read, no digest, no parse and no preparation. Keying on a digest of the body would defeat that:
+     * you cannot hash what you have not fetched. The prepared model's own `fingerprint` is unusable as a
+     * lookup key for the same reason, one layer worse — obtaining it requires the preparation being avoided.
+     *
+     * `computeIfAbsent` is the single-flight: competing threads await the winner instead of each preparing.
+     */
+    fun resolve(key: String, loadExpandedJson: () -> String): PreparedModel {
+        val prepared = entries.computeIfAbsent(key) {
+            preparations.incrementAndGet()
+            PreparedModel.loadExpandedJson(loadExpandedJson())
+        }
+        remember(key)
+        return prepared
+    }
+
+    /** Rule 5: evicting removes only this reference; a request holding the entry keeps using it safely. */
+    private fun remember(key: String) {
+        synchronized(order) {
+            order.remove(key)
+            order.addLast(key)
+            while (order.size > capacity) {
+                entries.remove(order.removeFirst())
+                evictions.incrementAndGet()
+            }
+        }
+    }
+}
+
+/** One request: resolve once, take an OWN interpreter, answer. Rules 1 and 4. */
+fun serveRequest(
+    cache: PreparedModelCache,
+    modelKey: String,
+    loadExpandedJson: () -> String,
+    documentJson: String,
+): Int {
+    // rule 1: resolved once, and the instance is held for the rest of the request
+    val prepared = cache.resolve(modelKey, loadExpandedJson)
+    val document = prepared.documents.readDocument(documentJson)
+    val interpreter = prepared.createInterpreter()        // rule 4: never shared across threads
+    return interpreter.validateFull(document).findings.size
+}
+```
+
+**Content identity is not instance interchangeability.** Two prepared models over identical bytes share a
+fingerprint, yet each owns its objects: a snapshot from one is refused by an interpreter from the other with
+`ModelOwnerMismatchError`. That is why rule 1 matters, and it is also why the cache is necessarily
+**in-process**. A prepared model is a live instance with a per-instance owner identity and no serialization, so
+it cannot go in Redis or be shared between service instances. Only the expanded DM-JSON can live in a shared
+tier, with each JVM preparing its own instances from it.
+
+#### What it costs, so you can decide
+
+A `PreparedModel` is **larger than the DM-JSON it came from**, and it grows on two axes rather than tracking file
+size. These are real models measured on one machine — a rough guide for sizing, not a specification, and not
+updated automatically.
+
+**Measured 2026-08-07 on JDK 21, retained bytes per instance.** `cold` is a prepared model that has never served
+a request; **`warm`** is the same after one `createInterpreter()` + `validateFull`, which is what a cache entry holds
+once it has served anything — budget with that column.
+
+| model | fields | rules | expanded DM-JSON | cold | warm | warm ÷ DM-JSON |
+|---|--:|--:|--:|--:|--:|--:|
+| type definitions only | 26 | 0 | 4,726 | 32,839 | 45,892 | 9.7× |
+| small order + aggregates | 15 | 6 | 5,197 | 24,808 | 38,751 | 7.5× |
+| order with one rule | 29 | 1 | 5,397 | 36,487 | 52,425 | 9.7× |
+| rule-heavy | 5 | 48 | 14,504 | 45,347 | 88,407 | 6.1× |
+| rule-heavy | 5 | 192 | 53,779 | 154,894 | 313,946 | 5.8× |
+
+Reading it:
+
+- **Budget roughly 1.6 kB per field and 1.6 kB per rule.** Both slopes come from the table's own two axes and agree:
+  predicting the 15-field/6-rule row from them gives 37.1 kB against 38.8 kB measured. That rule of thumb is more
+  useful than a ratio, because the ratio itself moves between 5.8× and 9.7× depending on shape.
+- **Do not size by DM-JSON bytes and do not size by entry count.** A field-dense 5 kB model costs more than a
+  rule-dense one of the same size, and the smallest and largest entries here differ by 8×.
+- **Budget `warm`, not `cold`.** A served entry costs 1.4× to 1.9× an untouched one.
+- **A retained interpreter adds only 2–5%** on top of `warm`, because model-static work lives on the prepared model.
+  So holding an interpreter is cheap; what you are really budgeting is the prepared model.
+
+Against that cost, the cache buys you: model-static work once per model; one entry per model rather than per
+(model × configuration); safe sharing across concurrent requests; and content-addressed invalidation, since an
+edited model yields a new fingerprint.
+
+**An undersized cache is not slightly worse, it is no cache plus eviction overhead.** In the shipped example, 12
+requests over 3 models cost **3** preparations when the cache fits and **12** preparations with 10 evictions when it
+is one entry too small.
+
+Eviction policy is yours. The library deliberately ships no cache, because that would mean global mutable state in a
+module whose determinism is enforced.
+
+A runnable version of all of this, executed against the published artifact on every release verification, is
+`ServiceCacheExample` in the Kotlin/JVM consumer example.
+
 ## 5. Add project callbacks
 
 Custom field validators and custom conditions are registered while creating an interpreter. They are synchronous and scoped to that interpreter. A custom condition returns the rule's error condition: `true` means the rule fires.

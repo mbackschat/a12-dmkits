@@ -45,35 +45,38 @@ internal data class PreparationSupport(
  */
 internal class PreparedEvaluationPlan(
     private val model: ModelDef,
-    private val parsed: ParsedModel,
-    private val scopes: IterationScopes,
-    private val repetitionNotUnique: RepetitionNotUniqueEvaluator,
-    private val observer: () -> PreparationObserver? = { null },
+    private val plans: ModelStaticPlans,
     private val support: PreparationSupport,
 ) {
-    private val rulePlans: Map<RuleDef, Lazy<PreparedRulePlan>> =
-        (model.rules + parsed.implicitRules).associateWith { rule -> lazy {
-            observe(PreparationWork.RULE_PLAN, rule.path)
-            prepareRule(rule)
-        } }
+    /**
+     * The audit VERDICT for one rule under this evaluator's configuration, memoized per evaluator because the
+     * verdict is what configuration decides. The plan itself is memoized once per model in [plans].
+     *
+     * Ordering is load-bearing and preserved from when the two were one step: the audit runs BEFORE the plan is
+     * forced, so a rule that both fails its configuration audit and fails to build (more than one
+     * `RepetitionNotUnique`) still reports the audit's message, exactly as before.
+     */
+    private val ruleVerdicts: Map<RuleDef, Lazy<Unit>> =
+        (model.rules + plans.parsed.implicitRules).associateWith { rule ->
+            lazy { auditCond(plans.condAstOf(rule), outerAllowed = false) }
+        }
 
-    private val computationPlans: Map<ComputationDef, Lazy<ParsedComputation>> =
-        model.computations.associateWith { computation -> lazy {
-            observe(PreparationWork.COMPUTATION_PLAN, computation.targetPath)
-            prepareComputation(computation)
-        } }
+    private val computationVerdicts: Map<ComputationDef, Lazy<Unit>> =
+        model.computations.associateWith { computation ->
+            lazy { auditComputationPlan(plans.computation(computation)) }
+        }
 
-    private fun observe(work: PreparationWork, key: String) {
-        observer()?.performed(PreparationEvent(work, key))
+    /** The prepared plan execution uses for [rule]; ad-hoc candidates are audited and prepared for that call. */
+    fun rule(rule: RuleDef): PreparedRulePlan {
+        ruleVerdicts[rule]?.value ?: auditCond(plans.condAstOf(rule), outerAllowed = false)
+        return plans.rule(rule)
     }
 
-    /** The prepared plan execution uses for [rule]; ad-hoc candidates are prepared once for that call. */
-    fun rule(rule: RuleDef): PreparedRulePlan =
-        rulePlans[rule]?.value ?: prepareRule(rule)
-
     /** The parsed and support-checked computation execution uses for [computation]. */
-    fun computation(computation: ComputationDef): ParsedComputation =
-        computationPlans.getValue(computation).value
+    fun computation(computation: ComputationDef): ParsedComputation {
+        computationVerdicts.getValue(computation).value
+        return plans.computation(computation)
+    }
 
     fun audit(): List<UnsupportedRule> = buildList {
         model.fieldConstraints.forEach { (path, constraints) ->
@@ -93,7 +96,7 @@ internal class PreparedEvaluationPlan(
         }
         model.rules.forEach { auditRule(it, this) }
         model.computations.forEach { auditComputation(it, this) }
-        parsed.implicitRules.forEach { auditRule(it, this) }
+        plans.parsed.implicitRules.forEach { auditRule(it, this) }
     }.distinct()
 
     private fun auditRule(rule: RuleDef, unsupported: MutableList<UnsupportedRule>) {
@@ -105,41 +108,14 @@ internal class PreparedEvaluationPlan(
         capture(path, unsupported) { computation(comp) }
     }
 
-    private fun prepareRule(rule: RuleDef): PreparedRulePlan {
-        val ast = parsed.condAstOf(rule)
-        auditCond(ast, outerAllowed = false)
-        val rnu = repetitionNotUnique.prepare(rule, ast)
-        return PreparedRulePlan(
-            ast = ast,
-            iteration = scopes.prepare(rule, ast),
-            repetitionNotUnique = rnu,
-            messageReferences = messageReferences(ast, excludeRepetitionNotUniqueKeys = rnu != null)
-                .flatMap(::expandMessageReference).distinct(),
-            hasFilterConditions = starRefs(ast).any { it.having != null },
-        )
-    }
-
-    /** The kernel's meta-reference inventory is field-only and consumes the partially expanded condition: a
-     *  group operand recursively contributes its contained fields, never a group pointer. */
-    private fun expandMessageReference(reference: MessageReference): List<MessageReference> {
-        if (model.kinds[reference.path] != null) return listOf(reference)
-        return model.fields.asSequence().map { it.path }
-            .filter { it.startsWith("${reference.path}/") }
-            .map { path -> when (reference) {
-                is MessageReference.Ordinary -> MessageReference.Ordinary(path)
-                is MessageReference.Wildcard -> MessageReference.Wildcard(path, reference.bindDepth)
-            } }
-            .toList()
-    }
-
-    private fun prepareComputation(comp: ComputationDef): ParsedComputation {
-        val computation = parsed.parsedOf(comp)
+    /** The configuration half of computation preparation, over an already-parsed computation. Separate from the
+     *  parse so the parse is memoized once per model and only the verdict is memoized per evaluator. */
+    private fun auditComputationPlan(computation: ParsedComputation) {
         computation.commonPrecondition?.let { auditCond(it, outerAllowed = false) }
         computation.alternatives.forEach { alternative ->
             alternative.precondition?.let { auditCond(it, outerAllowed = false) }
             auditExpr(alternative.operation, outerAllowed = false, starAllowed = false)
         }
-        return computation
     }
 
     private inline fun capture(

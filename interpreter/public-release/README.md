@@ -27,7 +27,7 @@ Use the built-in models and Documents or load your own local workspace. Your sel
 - Lossless, versioned Document JSON with structured input diagnostics
 - Full and partial validation, computations, support reports, and model-owned pointers
 - Custom field validators and custom conditions
-- Resource limits, source integrity, cancellation, and immutable prepared models
+- Resource limits, source integrity, cancellation, and prepared models that are immutable to callers
 
 The package performs no implicit filesystem, network, storage, or credential access. It contains no A12 Kernel bytecode or runtime dependency.
 

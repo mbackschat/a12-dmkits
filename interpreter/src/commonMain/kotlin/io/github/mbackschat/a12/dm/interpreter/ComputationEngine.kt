@@ -49,28 +49,13 @@ internal class ComputationEngine(
     private val predefinedTypes: Map<String, PredefinedType>,
     private val customFieldTypes: Map<String, CustomFieldType>,
     private val preparedModel: PreparedEvaluationPlan,
-    private val scopes: IterationScopes,
+    private val plans: ModelStaticPlans,
     private val checks: AutoChecks,
     private val patterns: PatternRegistry,
     private val cacheObserver: () -> CacheObserver? = { null },
-    private val preparationObserver: () -> PreparationObserver? = { null },
 ) {
 
-    private val allComputations: Lazy<List<ComputationDef>> = lazy {
-        observePreparation(PreparationWork.ALL_COMPUTATION_ORDER, "<all>")
-        orderedFrom(model.computations.map { it.targetPath })
-    }
-    private val computationClosures: Map<String, Lazy<List<ComputationDef>>> =
-        model.computations.map { it.targetPath }.distinct().associateWith { target ->
-            lazy {
-                observePreparation(PreparationWork.COMPUTATION_CLOSURE, target)
-                orderedFrom(listOf(target))
-            }
-        }
-
-    private fun observePreparation(work: PreparationWork, key: String) {
-        preparationObserver()?.performed(PreparationEvent(work, key))
-    }
+    private val scopes: IterationScopes = plans.scopes
 
     /**
      * Every computed-field outcome for the WHOLE model WITH its target cell's repetition indices
@@ -85,7 +70,7 @@ internal class ComputationEngine(
 
     /** Whole-model result retaining the explanatory channels consumed by the public API. */
     fun computeRun(doc: Document, locale: String): ComputationEngineRun =
-        computeOver(doc, allComputations.value, locale)
+        computeOver(doc, plans.allComputationOrder(), locale)
 
     /**
      * Compute ONE computed field — its transitive computed-dependency CLOSURE run in dependency order (so cascade
@@ -511,35 +496,7 @@ internal class ComputationEngine(
      * computations are pruned. A non-computed [fieldPath] (no computation targets it) yields an empty list.
      */
     private fun dependencyClosureOf(fieldPath: String): List<ComputationDef> =
-        computationClosures[fieldPath]?.value ?: emptyList()
-
-    /**
-     * The DFS topological sort shared by [allComputations] (roots = every target) and [dependencyClosureOf]
-     * (root = one field). Recurses into the targets a computation reads BEFORE emitting it,
-     * so a target is ordered after every target it depends on. A field can be targeted by MULTIPLE computations
-     * (a composed base + subtype override — IF87), emitted together in DOCUMENT order ([groupBy] preserves
-     * encounter order — the order [computeOver]'s first-selected scan consumes). A cyclic dependency (which the
-     * kernel rejects at codegen) throws.
-     */
-    private fun orderedFrom(roots: List<String>): List<ComputationDef> {
-        val byTarget: Map<String, List<ComputationDef>> = model.computations.groupBy { it.targetPath }
-        val ordered = mutableListOf<ComputationDef>()
-        val done = HashSet<String>()
-        val onStack = HashSet<String>()
-        fun visit(target: String) {
-            if (target in done) return
-            if (!onStack.add(target)) {
-                throw UnsupportedConstructException("cyclic computation dependency involving $target")
-            }
-            for (comp in byTarget[target].orEmpty())
-                for (ref in computationDepRefs(preparedModel.computation(comp)))
-                    if (ref != target && ref in byTarget) visit(ref)
-            onStack.remove(target)
-            if (done.add(target)) ordered.addAll(byTarget[target].orEmpty())
-        }
-        roots.forEach { visit(it) }
-        return ordered
-    }
+        plans.computationClosure(fieldPath)
 
     /** Render a computed [Val.Range] to the target field's `(format, separator)` (e.g. `01.06.2024-30.06.2024`);
      *  ISO `start/end` fallback when the target declares no range config or an endpoint is malformed. */
@@ -581,7 +538,7 @@ internal class ComputationEngine(
 
         for (comp in comps) {
             val parsed = preparedModel.computation(comp)
-            val dependencies = computationDepRefs(parsed)
+            val dependencies = plans.computationDepRefs(parsed)
             dependencies.filterTo(fields) { it in model.kinds && it !in computedTargets }
             dependencies.filterTo(indexes) { it in model.indexFields }
 
@@ -618,20 +575,4 @@ internal class ComputationEngine(
         condRefsOrEmpty(parsed.commonPrecondition) +
             parsed.alternatives.flatMap { condRefsOrEmpty(it.precondition) + exprRefs(it.operation) }
 
-    /** All field/star refs of a whole tiered computation — its cascade DEPENDENCY input: each operation's full
-     *  refs (incl. starred and `Having`-filter refs, so a dependency through an aggregate over a computed field
-     *  is ordered) plus each precondition's + the common precondition's FULL refs ([condDepRefs] — a
-     *  precondition's quantifier over a computed field is a dependency too). */
-    private fun computationDepRefs(parsed: ParsedComputation): List<String> = (
-        (parsed.commonPrecondition?.let { condDepRefs(it) } ?: emptyList()) +
-            parsed.alternatives.flatMap {
-                (it.precondition?.let { p -> condDepRefs(p) } ?: emptyList()) + referencedFieldPaths(it.operation)
-            }
-        ).flatMap(::expandGroupDependency)
-
-    /** A bare-group fill predicate depends on every computed target contained by that group, not on the
-     *  non-field group path itself. Expansion here serves both whole-model ordering and computeField closure. */
-    private fun expandGroupDependency(path: String): List<String> =
-        if (path in model.kinds) listOf(path)
-        else model.kinds.keys.filter { it.startsWith("$path/") }
 }

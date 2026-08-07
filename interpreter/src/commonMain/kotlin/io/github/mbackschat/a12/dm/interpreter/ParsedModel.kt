@@ -20,7 +20,7 @@ internal class ParsedAlternative(val precondition: Cond?, val operation: Expr, v
 
 /**
  * The parse-once caches + the implicit computation-validation rules — a call-invariant collaborator of the
- * I2 eval-state seam (IF117). Allocated once per [DmInterpreter]; consumed by the rule path ([condAstOf]),
+ * I2 eval-state seam (IF117). Allocated once per MODEL (see [ModelStaticPlans]), shared by its evaluators; consumed by the rule path ([condAstOf]),
  * the `RepetitionNotUnique` recognizer (via the caller-supplied AST), and the [ComputationEngine]
  * ([parsedOf] + [implicitRules]).
  */

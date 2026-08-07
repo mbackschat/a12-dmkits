@@ -33,6 +33,7 @@ import io.github.mbackschat.a12.dm.interpreter.model.ValidationOutcome
 import io.github.mbackschat.a12.dm.interpreter.model.Verdict
 import io.github.mbackschat.a12.dm.interpreter.regex.PatternRegistry
 import kotlin.jvm.JvmOverloads
+import kotlin.jvm.JvmSynthetic
 
 /**
  * The public entry point — evaluates a [ModelDef]'s rules over a [Document] instance, kernel-free, on
@@ -44,25 +45,25 @@ import kotlin.jvm.JvmOverloads
  * ([testRule]/[evalCandidate]), and computations ([compute]) — the kernel's `validateFull`/`validatePart`/
  * `compute` twins, kernel-free.
  */
-class DmInterpreter @JvmOverloads constructor(
+class DmInterpreter private constructor(
     private val model: ModelDef,
-    private val clock: EvalClock? = null,
+    private val clock: EvalClock?,
     /** The consumer-supplied predefined-type registry (`Valid`/`Invalid(field, "Name")`) — the kernel's
      *  `IPredefinedType` client SPI. Defaults to the built-in common set ([PredefinedTypeRegistry.DEFAULT]);
      *  a consumer may pass its own (built-ins + project types). An unregistered name → the rule is unsupported. */
-    private val predefinedTypes: Map<String, PredefinedType> = PredefinedTypeRegistry.DEFAULT,
+    private val predefinedTypes: Map<String, PredefinedType>,
     /** Consumer-supplied custom conditions (the kernel's `ICustomCondition` SPI, cross-platform JVM+JS), keyed
      *  by name — `CustomCondition X`. Default empty: a model using an unregistered custom condition reports it
      *  unsupported (fail-fast). A JVM consumer adapts existing kernel `ICustomCondition` impls onto the SPI; a
      *  JS consumer implements the SPI directly. */
-    private val customConditions: Map<String, CustomCondition> = emptyMap(),
+    private val customConditions: Map<String, CustomCondition>,
     /** Consumer-supplied CODE-BASED custom field types ([CustomFieldType] — the kernel's `ICustomFieldType` SPI,
      *  for imperative checksum types), keyed by name. Default empty. Consulted ONLY after [predefinedTypes] misses,
      *  so the declarative per-cell path stays monomorphic ([CustomFieldType]'s KDoc; `CustomTypePerfTest`). Each
      *  relevant concrete value is checked once per call with its locale/effective bounds/stored-value context;
      *  the cached code/message result drives both emission and suppression. A custom-typed cell whose name is in
      *  NEITHER registry is reported unsupported (the lenient degrade). */
-    private val customFieldTypes: Map<String, CustomFieldType> = emptyMap(),
+    private val customFieldTypes: Map<String, CustomFieldType>,
     /** The consumer-supplied legal character set field values are validated against — the SPI for a project charset
      *  the DM-JSON does NOT carry (e.g. **DIN 91379**, the EU public-administration set), IF43. **Default
      *  [LegalCharset.BMP]** (the kernel's runtime default: an emoji / supplementary-plane char is illegal). This is
@@ -70,19 +71,68 @@ class DmInterpreter @JvmOverloads constructor(
      *  IF120) that model-declared slot takes precedence (it is what the kernel bakes into codegen and enforces), and
      *  this SPI applies only when the model declares none. The interpreter must expose every kernel customization to
      *  be 100% compatible. */
-    private val legalCharset: LegalCharset = LegalCharset.BMP,
+    private val legalCharset: LegalCharset,
     /** Consumer override for `$field$` message names. A non-null result wins exactly (including empty); null
      *  falls through to the nonempty model label, then the field's indexed debug identity. */
-    private val messageLabelProvider: MessageLabelProvider? = MessageLabelProvider.MODEL_LABEL_OR_NAME,
+    private val messageLabelProvider: MessageLabelProvider?,
+    plans: ModelStaticPlans?,
 ) {
+
+    /**
+     * The public construction path, unchanged. It owns a private [ModelStaticPlans], so a directly constructed
+     * evaluator behaves exactly as before; sharing happens only through [PreparedModel].
+     */
+    @JvmOverloads
+    constructor(
+        model: ModelDef,
+        clock: EvalClock? = null,
+        predefinedTypes: Map<String, PredefinedType> = PredefinedTypeRegistry.DEFAULT,
+        customConditions: Map<String, CustomCondition> = emptyMap(),
+        customFieldTypes: Map<String, CustomFieldType> = emptyMap(),
+        legalCharset: LegalCharset = LegalCharset.BMP,
+        messageLabelProvider: MessageLabelProvider? = MessageLabelProvider.MODEL_LABEL_OR_NAME,
+    ) : this(
+        model, clock, predefinedTypes, customConditions, customFieldTypes, legalCharset, messageLabelProvider,
+        plans = null,
+    )
+
+    /** The model-static preparation this evaluator reads: shared when supplied, private otherwise. */
+    private val plans: ModelStaticPlans = plans ?: ModelStaticPlans.of(model)
+
+    companion object {
+        /**
+         * Build an evaluator that SHARES [plans] with every other evaluator over the same model — the sharing
+         * boundary the P-SERVICE profile needs, reached through [PreparedModel.createInterpreter] rather than by
+         * a consumer assembling one.
+         *
+         * This is a factory rather than an `internal` constructor on purpose: Kotlin emits an `internal`
+         * constructor as `ACC_PUBLIC`, so a Java caller could reach it and bypass the boundary. That exact trap
+         * was closed once before for `A12PartiallyKnownMultiPointer` (see the interpreter CHANGELOG) and must not
+         * be reopened. `@JvmSynthetic` hides this function from Java; it cannot be applied to a constructor.
+         */
+        @JvmSynthetic
+        internal fun sharing(
+            model: ModelDef,
+            clock: EvalClock?,
+            predefinedTypes: Map<String, PredefinedType>,
+            customConditions: Map<String, CustomCondition>,
+            customFieldTypes: Map<String, CustomFieldType>,
+            legalCharset: LegalCharset,
+            messageLabelProvider: MessageLabelProvider?,
+            plans: ModelStaticPlans,
+        ): DmInterpreter = DmInterpreter(
+            model, clock, predefinedTypes, customConditions, customFieldTypes, legalCharset,
+            messageLabelProvider, plans,
+        )
+    }
 
     /** The effective legal charset: the model-declared `supportedCharacters` ([ModelDef.legalCharset], IF120) when
      *  present, else the consumer-supplied [legalCharset] SPI. */
     private val effectiveLegalCharset: LegalCharset = model.legalCharset ?: legalCharset
     private val patterns = PatternRegistry()
 
-    /** Model-static path prefixes and repetition bounds, prepared once rather than rebuilt per validation cell. */
-    private val paths = ModelPathIndex(model)
+    /** Model-static path prefixes and repetition bounds, prepared once per MODEL rather than per evaluator. */
+    private val paths = this.plans.paths
 
     /** The auto-check emitter + formal-status oracle — the call-invariant I2 seam collaborator (IF117). */
     private val checks = AutoChecks(
@@ -95,20 +145,23 @@ class DmInterpreter @JvmOverloads constructor(
         ::messageLabel,
     )
 
-    /** The iteration-scope machinery + the RepetitionNotUnique evaluator — call-invariant I2 seam collaborators (IF117). */
-    private val scopes = IterationScopes(model)
-    private val rnuEval = RepetitionNotUniqueEvaluator(model, scopes)
-    /** Nullable, instance-local deterministic seam used only by model-static performance guards. */
-    internal var preparationObserver: PreparationObserver? = null
-    private val parsedModel = ParsedModel(model) { preparationObserver }
+    /** The iteration-scope machinery + the RepetitionNotUnique evaluator — call-invariant I2 seam collaborators
+     *  (IF117), now model-owned so per-request evaluators share one build. */
+    private val scopes = this.plans.scopes
+    private val rnuEval = this.plans.repetitionNotUnique
+
+    /** Nullable deterministic seam used only by model-static performance guards. It delegates to the shared
+     *  preparation, because that is where the model-static work now happens. */
+    internal var preparationObserver: PreparationObserver?
+        get() = plans.preparationObserver
+        set(value) { plans.preparationObserver = value }
+
+    private val parsedModel = this.plans.parsed
     /** Nullable, instance-local structural seam used only by the cache-lifetime guard. */
     internal var cacheObserver: CacheObserver? = null
     private val preparedModel = PreparedEvaluationPlan(
         model,
-        parsedModel,
-        scopes,
-        rnuEval,
-        observer = { preparationObserver },
+        this.plans,
         support = PreparationSupport(
             clock = clock,
             predefinedTypes = predefinedTypes,
@@ -123,11 +176,10 @@ class DmInterpreter @JvmOverloads constructor(
         predefinedTypes,
         customFieldTypes,
         preparedModel,
-        scopes,
+        this.plans,
         checks,
         patterns = patterns,
         cacheObserver = { cacheObserver },
-        preparationObserver = { preparationObserver },
     )
 
     /**

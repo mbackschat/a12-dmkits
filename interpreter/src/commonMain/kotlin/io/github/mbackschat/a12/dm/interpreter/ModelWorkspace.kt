@@ -106,7 +106,22 @@ class ModelWorkspace private constructor(
 
 /**
  * One model-static prepared owner domain. It contains no request document, clock, callback, registry, provider,
- * filesystem handle, or mutable resolver state.
+ * filesystem handle, or request-scoped state.
+ *
+ * **It does hold model-static preparation, memoized lazily and thread-safely**: condition and operation ASTs,
+ * iteration scopes, `RepetitionNotUnique` plans, the model path index, and the computation dependency order. That
+ * state is derived from the model alone and never from an [Interpreter]'s configuration, so every interpreter
+ * created here shares one build of it — which is what lets a service cache one entry per model instead of one per
+ * (model × configuration). See the P-SERVICE profile in `docs/INTERPRETER-SPEC.md` ("The two consumer profiles").
+ * Configuration-dependent work — the support-audit verdict, predefined-type pattern compilation, the clock — stays
+ * on each interpreter.
+ *
+ * Concurrency: the memos are SYNCHRONIZED `lazy`, so concurrent JVM request threads sharing one instance each
+ * observe a single build. Node reaches this one isolate at a time; a multi-isolate JS host duplicates the instance
+ * per isolate rather than sharing it.
+ *
+ * *(Corrected 2026-08-07: this note previously claimed "no mutable resolver state", which the shared preparation
+ * memo makes false as written. The guarantee that matters — nothing request-scoped is retained — is unchanged.)*
  */
 class PreparedModel private constructor(
     val entryModelId: String,
@@ -133,6 +148,15 @@ class PreparedModel private constructor(
 
     @JvmSynthetic
     internal fun definition(): ModelDef = definition
+
+    /**
+     * The model-static preparation every interpreter of this prepared model shares. Lazy so constructing a
+     * prepared model stays cheap, and built exactly once so a second interpreter does none of it.
+     */
+    private val staticPlans: Lazy<ModelStaticPlans> = lazy { ModelStaticPlans.of(definition) }
+
+    @JvmSynthetic
+    internal fun plans(): ModelStaticPlans = staticPlans.value
 
     companion object {
         /**

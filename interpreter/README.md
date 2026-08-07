@@ -13,7 +13,8 @@ The interpreter prepares model workspaces, resolves includes and imported type d
 - Full and partial validation, retained computation application, support reports, and model-owned pointers
 - Canonical A12 `DocumentPointer` formatting and parsing, so a repeated computed row is separately addressable
 - Synchronous custom field validators and custom conditions
-- Explicit resource limits, integrity checks, cancellation, and immutable prepared models
+- Thread-safe model reuse: one prepared model serves concurrent requests, each with its own interpreter
+- Explicit resource limits, integrity checks, cancellation, and prepared models that are immutable to callers
 - The same Kotlin implementation on JVM, Node.js, and browser targets
 
 The package does not author models, render forms, persist Documents, provide a virtual filesystem, or bundle Kernel code. Kernel-shaped TypeScript and JVM drop-in adapters are separate, later compatibility products.
@@ -27,6 +28,32 @@ Browser execution is a first-class qualified target, not a Node.js inference. Th
 The showcase's measured production JavaScript entry is about **233 kB gzip**. On the fixed Apple M1/Chrome runner on 2026-08-03, a representative 200-row Document validated in a **10.5 ms median**; the 10,000-row stress Document validated with 4,900 findings in a **203.6 ms median**. Both figures use 10 independent fresh Chrome processes and include interpreter construction through complete result materialization.
 
 The JVM comparison deliberately uses the A12 Kernel's generated validator compiled as Java, with code generation outside the clock, as the fair algorithmic baseline. In the 2026-08-03 sweep, the interpreter was **2.1× to 12.5× faster** across the 15-case default inventory and **10× to 16.7× faster** on repeated-document evaluation. The closest hostile point—384 concentrated low-firing rules—still led by **1.32×**, and the huge-document edge reached about **155×**. Neither generated Java nor dynamic Groovy won an eligible comparison in the default, repeated, rule-count, or 13-case edge suites. These are bounded same-machine measurements after exact result preflight, not universal promises; the scenarios, timing boundaries, and complete tables are documented in [Interpreter performance](https://github.com/mbackschat/a12-dmkits/blob/main/docs/INTERPRETER-PERFORMANCE.md).
+
+## Server-side model cache
+
+**A prepared model is shareable across concurrent requests; an interpreter is not.**
+
+A `PreparedModel` owns everything derived from the model alone — condition and operation ASTs, iteration scopes,
+uniqueness plans, the path index, the computation dependency order — memoized in thread-safe lazy state. One cache
+entry therefore serves every tenant and every concurrent request for that model, whatever their configuration, and a
+second interpreter over it performs no model-static work at all. In the shipped consumer example, 12 concurrent
+requests across 4 threads over 3 models cost **3 preparations**.
+
+An `Interpreter` is per request. That is a safety requirement, not a cost preference: it carries snapshot-scoped
+state that custom conditions read, so sharing one across threads is unsupported.
+
+Three things to know before sizing a cache:
+
+- A resident prepared model is **larger than the DM-JSON it came from** — 5.8× to 9.7× once it has served a
+  request, and the ratio moves with model SHAPE rather than size. Budget roughly 1.6 kB per field and 1.6 kB per
+  rule, and size the cache in **bytes, not entries**.
+- An undersized cache is not slightly worse, it is no cache plus eviction overhead. The same 12 requests through a
+  cache one entry too small cost **12 preparations and 10 evictions**.
+- The cache is necessarily **in-process**: a prepared model is a live instance with a per-instance owner identity
+  and no serialization, so only the expanded DM-JSON can live in a shared tier.
+
+The complete pattern — cache keying, single-flight loading, eviction safety, and the trade-offs — is in
+[the developer API guide](https://github.com/mbackschat/a12-interpreter-releases/blob/v0.11.1/site/api/v0.11.1/INTERPRETER-API-GUIDE.md).
 
 ## Install
 
