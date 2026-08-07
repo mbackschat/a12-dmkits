@@ -41,7 +41,8 @@ import picocli.CommandLine.Parameters;
                 + "modified, with complete typed aspects and review-impact reasons, in `data`. A pure reformat is never "
                 + "reported (it compares structure, not text). Pass two files (base then head), or "
                 + "`-m <model> --since <ref>` to diff against a git ref. Includes/imports resolve per side from "
-                + "`--base-workspace`/`--head-workspace`, shared `-w`, or that side's model folder; --since "
+                + "`--base-workspace`/`--head-workspace`, shared `-w`, or that side's model folder (over MCP, from "
+                + "the models sent in `references`); --since "
                 + "resolves BASE dependencies at the ref. Shape: "
                 + "`model-diff.schema`.")
 final class ModelDiffCommand extends BaseCommand {

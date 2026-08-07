@@ -71,7 +71,11 @@ final class IncludeInlineCommand extends BaseCommand {
         Path[] roots = workspace.roots(model).toArray(Path[]::new); // -w / $DMTOOL_WORKSPACE / the model's folder
         Optional<String> includedJson = ReferenceResolvers.documentModelJson(reference, roots);
         if (includedJson.isEmpty()) {
-            return fail("cannot resolve the included model '" + reference + "' — pass -w <dir>");
+            // Both affordances, because this message reaches both transports: over MCP there is no -w to pass
+            // (the server owns the workspace), and `references` is the only way to make the model available.
+            return fail("cannot resolve the included model '" + reference
+                    + "': on the CLI, pass -w <dir> pointing at the directory that holds it;"
+                    + " over MCP, send its DM-JSON in `references`");
         }
 
         ModelResolver resolver = workspace.resolverFor(model);

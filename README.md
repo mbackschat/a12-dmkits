@@ -130,7 +130,7 @@ Over stdio you can also drive it directly — one newline-delimited JSON-RPC mes
 printf '%s\n' '{"jsonrpc":"2.0","id":1,"method":"server/discover","params":{"_meta":{"io.modelcontextprotocol/protocolVersion":"2026-07-28","io.modelcontextprotocol/clientCapabilities":{}}}}' | dmtool mcp
 ```
 
-The tools are **derived** from the live command tree plus the operational contract, so `readOnlyHint` and `outputSchema` are true of every op a tool covers or are not claimed at all. Content crosses the wire in both directions — no path is accepted, nothing is stored, and a call's working tree is deleted before it answers. A few verbs are deliberately not served (the `workspace` family, `model rename`), each for a stated reason: they answer over a whole directory, or their refusal must prove a sibling's *absence*, which a caller-declared set cannot establish.
+The tools are **derived** from the live command tree plus the operational contract, so `readOnlyHint` and `outputSchema` are true of every op a tool covers or are not claimed at all. Content crosses the wire in both directions — no path is accepted, nothing is stored, and a call's working tree is deleted before it answers. A few verbs cannot answer honestly from a fragment (the `workspace` family, `model rename`): they report over a whole directory, or their refusal must prove a sibling's *absence*. Rather than hide them, the surface runs them **only** under `authoritativeWorkspace: true`, by which the caller takes responsibility for having sent a complete workspace.
 
 Worked session: [`examples/cli-mcp.md`](examples/cli-mcp.md). Full contract, the refusals, and what is deliberately not built: [`docs/MCP-SPEC.md`](docs/MCP-SPEC.md) + [`docs/MCP-GAPS.md`](docs/MCP-GAPS.md).
 

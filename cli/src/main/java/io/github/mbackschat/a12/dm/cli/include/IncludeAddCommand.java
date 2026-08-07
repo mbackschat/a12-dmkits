@@ -46,7 +46,8 @@ final class IncludeAddCommand extends BaseCommand {
 
     @ParamKind(ParamKind.Kind.FREEFORM)
     @Option(names = "--reference", required = true, paramLabel = "<reference>",
-            description = "the referenced model's header id (resolved via -w/--workspace)")
+            description = "the referenced model's header id (resolved via -w/--workspace on the CLI, "
+                    + "or against the models sent in `references` over MCP)")
     String reference;
 
     @ParamKind(ParamKind.Kind.GROUP_PATH)

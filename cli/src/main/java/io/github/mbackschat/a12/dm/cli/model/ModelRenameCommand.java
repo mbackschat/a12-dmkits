@@ -39,7 +39,8 @@ import picocli.CommandLine.Option;
  * envelope.
  */
 @Command(name = "rename", mixinStandardHelpOptions = true,
-        description = "Change the model's header id (single-model; refuses if a -w workspace sibling includes the old id).")
+        description = "Change the model's header id (single-model; refuses if a sibling model includes the old id "
+                + "— a -w workspace sibling on the CLI, one of the `references` sent over MCP).")
 final class ModelRenameCommand extends BaseCommand {
 
     private static final ObjectMapper MAPPER = new ObjectMapper();

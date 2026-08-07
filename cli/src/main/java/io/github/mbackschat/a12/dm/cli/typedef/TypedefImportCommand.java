@@ -33,7 +33,8 @@ final class TypedefImportCommand extends BaseCommand {
 
     @ParamKind(ParamKind.Kind.FREEFORM)
     @Option(names = "--reference", required = true, paramLabel = "<reference>",
-            description = "the type-def-providing model's header id (resolved via -w/--workspace)")
+            description = "the type-def-providing model's header id (resolved via -w/--workspace on the CLI, "
+                    + "or against the models sent in `references` over MCP)")
     String reference;
 
     @Option(names = {"--output", "-o"}, paramLabel = "<file>",
