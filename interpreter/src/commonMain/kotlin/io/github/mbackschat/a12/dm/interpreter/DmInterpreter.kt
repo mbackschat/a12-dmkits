@@ -336,41 +336,94 @@ class DmInterpreter private constructor(
      * alone — made the interpreter fire where the kernel is silent, on 5 of the fuzz net's 180 (document,
      * relevant-subset) combinations. Completeness is measured against the DECLARED repetitions, which is what
      * the probe varied; a document with fewer rows than declared is not separately measured.
+     *
+     * **Completeness is a property of the TUPLES, not of each level independently** — the distinction only
+     * appears once two repeatable levels are nested, which is why the one-level probe above could not see it.
+     * Enumerating `Outer[1]/Inner[1]` and `Outer[2]/Inner[2]` covers `{1,2}` at both levels while covering only
+     * the diagonal, half of the four rows; reading per-level unions called that complete and fired where the
+     * kernel is silent. So a candidate must cover the full CROSS-PRODUCT of the declared repetitions, checked
+     * per wildcard pattern: entities sharing a path and a pattern are the ones whose tuples are comparable.
      */
-    private fun starFullyEnumeratedOf(relevant: Set<RelevantEntity>): (String) -> Boolean {
-        // Indexed ONCE per call: per relevant path, per level, the repetitions that path enumerates. Deciding
-        // completeness by rescanning the relevant set for every declared repetition is O(relevant² × reps), and
-        // enumerating every row makes the relevant set grow WITH the document — measured 8.63× growth for 4×
-        // rows and 0.98× against the kernel at 1000 rows, i.e. slower than the thing we exist to beat
-        // (`laws/PartialSumOfProductsPerfTest`). With the index it is a set lookup per declared repetition.
-        val enumerated = HashMap<String, MutableList<MutableSet<Int>>>()
+    private fun starFullyEnumeratedOf(relevant: Set<RelevantEntity>): (String, List<Int>) -> Boolean {
+        // Grouped ONCE per call. Deciding completeness by rescanning the relevant set for every declared
+        // repetition is O(relevant² × reps), and enumerating every row makes the relevant set grow WITH the
+        // document — measured 8.63× growth for 4× rows on `laws/PartialSumOfProductsPerfTest`.
+        val byShape = HashMap<Pair<String, List<Boolean>>, MutableList<RelevantEntity>>()
         for (r in relevant) {
-            val levels = enumerated.getOrPut(r.path) { ArrayList() }
-            while (levels.size < r.indices.size) levels.add(HashSet())
-            r.indices.forEachIndexed { i, rep -> levels[i].add(rep) }
+            if (r.indices.size != pathParts(r.path).size) continue
+            byShape.getOrPut(r.path to r.indices.map { it == RelevantEntity.ALL }) { ArrayList() } += r
         }
-        val decided = HashMap<String, Boolean>()
-        return { starPath -> decided.getOrPut(starPath) { starFullyEnumerated(relevant, enumerated, starPath) } }
+        val decided = HashMap<Pair<String, List<Int>>, Boolean>()
+        return { starPath, rowReps ->
+            decided.getOrPut(starPath to boundPrefix(starPath, rowReps)) {
+                byShape.any { (shape, entities) ->
+                    coversEveryRepetition(shape.first, shape.second, entities, starPath, rowReps)
+                }
+            }
+        }
     }
 
-    private fun starFullyEnumerated(
-        relevant: Set<RelevantEntity>,
-        enumerated: Map<String, List<Set<Int>>>,
+    /**
+     * The repetition coordinates the CURRENT ROW binds for [starPath]: every repeatable level strictly above
+     * the star's own. The star's deepest repeatable level is the one it iterates, so the row says nothing
+     * about it; levels above it are fixed by the rule's iteration scope. Truncating to exactly those makes the
+     * memo key row-correct without depending on whatever placeholder `repsOf` reports at an unbound level.
+     */
+    private fun boundPrefix(starPath: String, rowReps: List<Int>): List<Int> {
+        val parts = pathParts(starPath)
+        val deepestRepeatable = parts.indices.lastOrNull { i ->
+            "/" + parts.take(i + 1).joinToString("/") in model.repeatable
+        } ?: return emptyList()
+        return rowReps.take(minOf(deepestRepeatable, rowReps.size))
+    }
+
+    /**
+     * Whether the entities sharing one path and one wildcard [pattern] cover every declared repetition tuple of
+     * [starPath]'s repeatable levels. Levels **deeper** than this path need no enumeration: a relevant group
+     * makes every descendant relevant, which is the kernel's own rule.
+     *
+     * Coverage spread across DIFFERENT patterns is not detected and reports incomplete, which suppresses rather
+     * than fires. That direction is deliberate but unmeasured — `PartialValidationAggregateDiffTest` pins the
+     * mixed-pattern case against the kernel so the choice is not left to inference.
+     */
+    private fun coversEveryRepetition(
+        path: String,
+        pattern: List<Boolean>,
+        entities: List<RelevantEntity>,
         starPath: String,
+        rowReps: List<Int>,
     ): Boolean {
         val sParts = pathParts(starPath)
-        return relevant.any { r ->
-            val rParts = pathParts(r.path)
-            rParts.size <= sParts.size && rParts == sParts.take(rParts.size) &&
-                r.indices.indices.all { i ->
-                    val level = "/" + rParts.take(i + 1).joinToString("/")
-                    val seen = enumerated[r.path]?.getOrNull(i)
-                    r.indices[i] == RelevantEntity.ALL || level !in model.repeatable ||
-                        seen != null && (RelevantEntity.ALL in seen ||
-                            // concrete: every declared repetition of this level must itself be enumerated
-                            model.declaredReps[level]?.let { declared -> (1..declared).all { it in seen } } == true)
-                }
+        val rParts = pathParts(path)
+        if (rParts.size > sParts.size || rParts != sParts.take(rParts.size)) return false
+
+        // Levels the ROW binds are a filter, not something to enumerate: an entity addressing a different outer
+        // row says nothing about this one. Levels the row does not bind are the star's own, and those must be
+        // covered completely.
+        val bound = boundPrefix(starPath, rowReps)
+        val inThisRow = entities.filter { e ->
+            bound.indices.all { i -> i >= e.indices.size || pattern[i] || e.indices[i] == bound[i] }
         }
+        if (inThisRow.isEmpty()) return false
+
+        val concreteLevels = ArrayList<Int>()
+        var universe = 1L
+        for (i in rParts.indices) {
+            val level = "/" + rParts.take(i + 1).joinToString("/")
+            if (pattern[i] || level !in model.repeatable || i < bound.size) continue
+            val declared = model.declaredReps[level] ?: return false
+            concreteLevels += i
+            universe *= declared
+        }
+        if (concreteLevels.isEmpty()) return true   // every unbound repeatable level on this path is wildcarded
+
+        for (i in concreteLevels) {
+            val declared = model.declaredReps.getValue("/" + rParts.take(i + 1).joinToString("/"))
+            val seen = inThisRow.mapTo(HashSet()) { it.indices[i] }
+            if ((1..declared).any { it !in seen }) return false
+        }
+        // Every level is individually complete — necessary, and on its own exactly the diagonal's mistake.
+        return inThisRow.mapTo(HashSet()) { e -> concreteLevels.map { e.indices[it] } }.size.toLong() == universe
     }
 
     /** The relevant set a [io.github.mbackschat.a12.dm.interpreter.model.CustomCondition] sees in PARTIAL mode —
@@ -392,7 +445,7 @@ class DmInterpreter private constructor(
      */
     private fun validateWith(doc: Document, locale: String, isRelevant: Relevance,
             customRelevant: Set<CustomConditionFieldPointer>? = null, starRelevant: ((String) -> Boolean)? = null,
-            starFullyEnumerated: ((String) -> Boolean)? = null,
+            starFullyEnumerated: ((String, List<Int>) -> Boolean)? = null,
             groupRelevance: (String, List<Int>) -> GroupRelevance = { _, _ -> GroupRelevance.FULL }): ValidationOutcome =
         observeCaches(doc) {
             // The index-default staging split (SPEC-2026-07-23-14): a FULL call stages each eligible
@@ -625,7 +678,7 @@ class DmInterpreter private constructor(
      */
     private fun validationConfig(isRelevant: Relevance, customRelevant: Set<CustomConditionFieldPointer>?,
             starRelevant: ((String) -> Boolean)?,
-            starFullyEnumerated: ((String) -> Boolean)?,
+            starFullyEnumerated: ((String, List<Int>) -> Boolean)?,
             groupPresence: (EvalContext, String) -> io.github.mbackschat.a12.dm.interpreter.eval.GroupPresenceState): EvalConfig =
         EvalConfig(clock, model.baseYear, model.indexFields, timeZone = model.timeZone,
             predefinedTypes = predefinedTypes, customConditions = customConditions, customFieldTypes = customFieldTypes,
@@ -811,15 +864,28 @@ class DmInterpreter private constructor(
      *
      * [matches] admits an entity whose path is an ancestor-or-equal prefix and whose every index is either the
      * query's repetition or [RelevantEntity.ALL]. So bucket the set by path, and answer a query by trying each
-     * ancestor prefix with every concrete/wildcard combination of its levels — `2^depth` hash probes, where
-     * depth is the model's nesting depth (single digits), instead of one probe per relevant entity. A concrete
-     * repetition is 1-based, so it can never collide with the `ALL` sentinel.
+     * ancestor prefix. A concrete repetition is 1-based, so it can never collide with the `ALL` sentinel.
+     *
+     * Within a prefix, probe **one key per distinct wildcard PATTERN the caller actually supplied**, not every
+     * combination of the level count. The two are equivalent — an entity with pattern `p` matches iff its
+     * indices equal the query's repetitions with `ALL` substituted at `p`'s wildcard positions, so one probe
+     * settles the whole pattern — but the cost is completely different, and the first version enumerated
+     * `2^depth` combinations on the strength of a comment asserting "depth is the model's nesting depth
+     * (single digits)". [ModelPreparation] admits **64** by default and 128 as its hard limit, so that bound
+     * was never the model's: measured, a depth-24 model took 4.7 s per partial validation of a ONE-FIELD
+     * document, and at depth 31 `1 shl depth` overflows `Int` to a negative bound, which skipped the probe
+     * loop entirely and silently answered "not relevant" for every query — messages simply vanished
+     * ([PartialRelevanceDepthTest]). Patterns are bounded by the relevant set, so the query can never cost
+     * more than the data the caller passed in.
      */
     private fun relevanceIndexOf(relevant: Set<RelevantEntity>): Relevance {
-        val byPath = HashMap<String, HashSet<List<Int>>>()
+        val tuples = HashMap<String, HashSet<List<Int>>>()
+        val patterns = HashMap<String, MutableSet<List<Boolean>>>()
         for (r in relevant) {
             // matches() requires exactly one index per path part; anything else can never match.
-            if (r.indices.size == pathParts(r.path).size) byPath.getOrPut(r.path) { HashSet() } += r.indices
+            if (r.indices.size != pathParts(r.path).size) continue
+            tuples.getOrPut(r.path) { HashSet() } += r.indices
+            patterns.getOrPut(r.path) { LinkedHashSet() } += r.indices.map { it == RelevantEntity.ALL }
         }
         return { path, reps ->
             if (path in model.globalFields) true else {
@@ -827,15 +893,18 @@ class DmInterpreter private constructor(
                 var hit = false
                 var depth = 1
                 while (depth <= pParts.size && depth <= reps.size && !hit) {
-                    val bucket = byPath["/" + pParts.take(depth).joinToString("/")]
+                    val prefix = "/" + pParts.take(depth).joinToString("/")
+                    val bucket = tuples[prefix]
                     if (bucket != null) {
+                        // Every pattern filed under `prefix` has exactly `depth` entries: entities are indexed
+                        // only when their index count equals their own path-part count.
                         val base = reps.take(depth)
-                        var mask = 0
-                        while (mask < (1 shl depth) && !hit) {
-                            hit = base.mapIndexed { i, rep ->
-                                if ((mask shr i) and 1 == 1) RelevantEntity.ALL else rep
-                            } in bucket
-                            mask++
+                        for (pattern in patterns.getValue(prefix)) {
+                            val key = base.mapIndexed { i, rep -> if (pattern[i]) RelevantEntity.ALL else rep }
+                            if (key in bucket) {
+                                hit = true
+                                break
+                            }
                         }
                     }
                     depth++

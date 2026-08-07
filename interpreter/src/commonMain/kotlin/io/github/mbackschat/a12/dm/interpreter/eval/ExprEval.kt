@@ -451,11 +451,22 @@ private fun Interpreter.evalFunc(f: Expr.Func): Val {
     // UNKNOWN — but under a PARTIAL enumeration the kernel is silent, and exempting it outright made the
     // interpreter fire where the kernel does not, on 5 of the fuzz net's 180 combinations. Both readings are
     // measured in `PartialValidationAggregateDiffTest`; the completeness predicate is DmInterpreter's.
-    val gate = if (op == FunctionOp.SUM_OF_PRODUCTS) starFullyEnumerated else starRelevant
-    if (gate != null && op != FunctionOp.FIRST_FILLED_VALUE) {
+    if (op != FunctionOp.FIRST_FILLED_VALUE) {
+        val fullyEnumerated = starFullyEnumerated
+        val relevant = starRelevant
         f.args.forEach { arg ->
             val sp = (arg as? Expr.Star)?.path
-            if (sp != null && !gate.invoke(sp)) return Val.Unknown
+            if (sp != null) {
+                // Completeness is asked PER ROW: with two nested repeatable levels a relevant set can complete
+                // one outer row and not the next, and the kernel evaluates the complete one. A path-keyed
+                // question cannot express that (PartialNestedAggregateDiffTest).
+                val gated = if (op == FunctionOp.SUM_OF_PRODUCTS) {
+                    fullyEnumerated != null && !fullyEnumerated.invoke(sp, ctx.repsOf(sp))
+                } else {
+                    relevant != null && !relevant.invoke(sp)
+                }
+                if (gated) return Val.Unknown
+            }
         }
     }
     val memo = aggregateMemo
