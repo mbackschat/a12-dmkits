@@ -1,5 +1,8 @@
 # dmtool CLI — multi-file & workspaces
 
+*2026-06-30T00:06:51Z by Showboat 0.6.1*
+<!-- showboat-id: aa02bfb6-6759-4b8a-956e-5fea4eda9180 -->
+
 When you're handed a model that references others, or a whole **directory** of models, these verbs map the cross-model picture: `model info` (one model's outbound references resolved to files) and the `workspace` family (`list`/`graph`/`roles`) over a folder. Commands run through `dmtool` from the repo root; some use `jq`. Re-check with `uvx showboat@0.6.1 verify examples/cli-workspace.md` (exit 0 = output still matches the live CLI).
 
 ## model info — one model's header dashboard

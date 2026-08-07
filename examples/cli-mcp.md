@@ -1,6 +1,7 @@
 # dmtool over MCP — the same tool, for a host that cannot run a binary
 
-**
+*2026-08-06T15:27:16Z by Showboat 0.6.1*
+<!-- showboat-id: bafb9246-3f82-4693-ad37-0156910019b2 -->
 
 `dmtool mcp` serves the whole verb surface over the **Model Context Protocol**, revision `2026-07-28`, as newline-delimited JSON-RPC on stdin/stdout. It exists for a caller that cannot execute the binary — a web client, a hosted agent platform, a sandboxed integration. **Where you can run the binary, run it:** the CLI edits models in place, while every MCP call carries the model's content in both directions.
 

@@ -1,6 +1,7 @@
 # dmtool CLI — review & comprehend a model
 
-**
+*2026-06-30T00:06:51Z by Showboat 0.6.1*
+<!-- showboat-id: c3ef0506-da6e-4eba-80d2-5ef7a81fe324 -->
 
 The **review** surface of `dmtool`: comprehend a whole model in one read (`model report`), and review what an edit changed (`model diff`). Both are JSON-in / JSON-out and **tool-computed** — every fact is read from the model, never the agent's narration. Commands run through `dmtool` from the repo root; some steps use `jq`. Re-check with `uvx showboat@0.6.1 verify examples/cli-review.md` (exit 0 = output still matches the live CLI).
 

@@ -9,6 +9,8 @@ export PATH="$PWD/bin:$PATH"
 uvx showboat@0.6.1 verify examples/cli-tour.md   # exit 0 = output still matches the live CLI
 ```
 
+**Two authoring rules, both learned the hard way.** *(a)* Every demo carries showboat's header — a `*<timestamp> by Showboat 0.6.1*` byline and a `<!-- showboat-id: … -->` comment — directly under the title. A hand-authored demo that lacks it grows a bare `**` the first time anyone runs `verify --output`, because showboat writes the byline template with both fields empty; the header is preserved verbatim across regeneration, so writing one by hand is the fix. *(b)* Never fence a command that does not return (`dmtool mcp --http` is the only one we ship). `verify` executes **every** fenced block, so it would hang forever; show such a command as a four-space **indented** block, which showboat leaves alone. `scripts/verify-demos.sh` refuses that case up front.
+
 The demos use the bare `dmtool` and read their sample models from [`models/`](models/) — the demos' **own** fixtures, kept separate from the JUnit test fixtures (`cli/src/test/resources/models/`): same kind of model, different purpose (user-facing showcase vs. internal test coverage). Both the demos and `models/` are published to the release mirror, so the walkthroughs run there too.
 
 The [`profiles/`](profiles/) directory carries the three approved domain-blind performance-calibration artifacts used by the profile-driven synthesis and interpreter scalability workflow. They are current-format `profile′` outputs from own-domain synthesized models, not copies or profiles of private source models.

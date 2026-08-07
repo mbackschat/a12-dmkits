@@ -1,6 +1,7 @@
 # dmtool CLI — discover the tool
 
-**
+*2026-06-30T00:06:51Z by Showboat 0.6.1*
+<!-- showboat-id: 7b629f7c-e167-40e2-a65f-de2f1bd1bd05 -->
 
 A cold agent learns the **dmtool** CLI **from the CLI** — no external docs. This tour is the self-describing surface: `manifest` (every verb), `operators`/`patterns` (the DSL vocabulary + idioms), `diagnostics` (the error codes), and `schema` (the I/O contracts). Commands run through `dmtool` from the repo root; some use `jq`. Re-check with `uvx showboat@0.6.1 verify examples/cli-discover.md` (exit 0 = output still matches the live CLI).
 
