@@ -98,6 +98,27 @@ class BuildPerformancePolicyTest {
                         + "it; dropping the property makes the task refuse (cli/build.gradle nativeCaptureStamp)");
     }
 
+    /**
+     * A release binary must never name a commit it was not built from. The project-wide runtimeClasspath
+     * normalization ignores {@code version.properties} (so a bare commit does not re-run the whole {@code :cli}
+     * estate), which also hid it from {@code nativeCompile}'s up-to-date check: on 2026-08-07 one invocation
+     * regenerated the resource at {@code aa6f1763} and still reported the image UP-TO-DATE, leaving
+     * {@code 3b85a822} baked in. The explicit input is the whole fix, so this pins it.
+     */
+    @Test
+    void theNativeImageRebuildsWhenOnlyItsProvenanceChanged() throws IOException {
+        String build = Files.readString(locate("cli/build.gradle"));
+
+        assertTrue(build.contains("ignore 'io/github/mbackschat/a12/dm/cli/version.properties'"),
+                "this guard exists because that normalization hides the resource from classpath-based "
+                        + "up-to-date checks; if it is gone, re-derive whether the explicit input is still needed");
+        String nativeCompile = namedTaskBlock(build, "nativeCompile");
+        assertFalse(nativeCompile.isEmpty(), "cli/build.gradle must configure nativeCompile");
+        assertTrue(nativeCompile.contains("inputs.file(generateVersionProperties"),
+                "nativeCompile must declare the generated version.properties as an input, or the native image "
+                        + "goes UP-TO-DATE across a commit and ships provenance naming the previous one");
+    }
+
     @Test
     void catalogProseReviewDeclaresEveryRuntimeScannedTestTree() throws IOException {
         String build = Files.readString(locate("build.gradle"));
@@ -166,6 +187,24 @@ class BuildPerformancePolicyTest {
             return "";
         }
         return build.substring(start, build.indexOf(']', start));
+    }
+
+    /** Brace-balanced body of a {@code tasks.named('<name>')} block — {@link #gradleTask} only finds registrations. */
+    private static String namedTaskBlock(String build, String name) {
+        int start = build.indexOf("tasks.named('" + name + "')");
+        if (start < 0) {
+            return "";
+        }
+        int depth = 0;
+        for (int i = build.indexOf('{', start); i >= 0 && i < build.length(); i++) {
+            char character = build.charAt(i);
+            if (character == '{') {
+                depth++;
+            } else if (character == '}' && --depth == 0) {
+                return build.substring(start, i + 1);
+            }
+        }
+        return "";
     }
 
     private static String gradleTask(String build, String name) {

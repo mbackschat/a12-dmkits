@@ -132,13 +132,24 @@ tasks.named('processResources') { dependsOn generateVersionProperties }
 // provenance is produced still re-triggers, via `sourceProvenanceGuardTest`'s declared inputs on this build
 // file and `scripts/SourceProvenance.java`.
 //
-// The freshness property the resource exists for is untouched: `jar`/`installDist`/`nativeCompile` consume
-// the generated file itself, not a normalized classpath, so a launcher can still never retain an older
-// build's provenance — which is what makes a stale-binary check possible at all.
+// The freshness property the resource exists for holds for `jar`/`installDist`, which consume the generated
+// file itself — but it did NOT hold for `nativeCompile`, and the claim that it did was wrong for eight weeks.
+// Measured 2026-08-07: in ONE invocation, `generateVersionProperties` executed with a new revision and
+// `:cli:nativeCompile` still reported UP-TO-DATE, so the binary kept the previous commit's provenance baked in
+// (HEAD `aa6f1763`, both copies of the resource `aa6f1763 CLEAN`, binary reporting `3b85a822 (clean)`). The
+// generated file was simply not an effective input of that task. `native-gate.sh` caught it — a release
+// binary would otherwise have shipped naming a commit that is not the one it was built from.
 normalization {
     runtimeClasspath {
         ignore 'io/github/mbackschat/a12/dm/cli/version.properties'
     }
+}
+
+// So declare it, the same way `publicContractTest` below has to. Provenance alone must be able to invalidate
+// the image; nothing else in the task graph will do it, and a stale-binary check that the binary can defeat
+// is not a check.
+tasks.named('nativeCompile') {
+    inputs.file(generateVersionProperties.map { it.destinationFile })
 }
 
 // --- Native reflection-metadata FRESHNESS STAMP (docs/NATIVE-IMAGE-GRAALVM.md §5.1) ----------------------
