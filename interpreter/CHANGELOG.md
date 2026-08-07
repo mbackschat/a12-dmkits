@@ -9,6 +9,21 @@ This changelog covers the independently consumable interpreter packages, API doc
 ### Added
 
 - **One prepared model serves concurrent requests.** Model-static preparation is owned by the `PreparedModel` rather than by each `Interpreter`, so a bounded server-side cache holds one entry per model instead of one per (model × configuration), and a retained interpreter adds only 2–5% over the prepared model. Sharing a single `Interpreter` across threads is now refused (`CONCURRENT_USE`) instead of letting a custom condition observe another thread's Document — a `PreparedModel` is what may be shared, an interpreter is per request.
+
+### Performance
+
+- **Measured, never assumed.** The production browser JavaScript entry is about **233 kB gzip**; on the fixed Apple M1/Chrome runner a 200-row Document validated in a **10.5 ms median** and a 10,000-row stress Document with 4,900 findings in **203.6 ms**. Against the A12 Kernel's generated Java with code generation outside the clock, the interpreter led by **2.1×–12.5×** across the default inventory and **10×–16.7×** on repeated-document evaluation, with the closest hostile point still ahead by 1.32×. These are bounded same-machine measurements after exact result preflight, not universal promises; see [the benchmark method and complete tables](https://github.com/mbackschat/a12-dmkits/blob/main/docs/INTERPRETER-PERFORMANCE.md).
+
+### Fixed
+
+- Row-invariant unfiltered starred aggregates fold once per validation call rather than once per iterated row (the release guard measured 17.12× growth for 4× rows before, 4.51× after).
+- `SumOfProducts` evaluates correctly under concrete partial relevance, a component-incomplete DATE format is completed, `FieldValuesNotUnique` scans its operands in authored order, and aggregate message references are retained.
+
+## [0.11.0]
+
+### Added
+
+- **Both A12 pointer types reach the npm surface**, so a TypeScript consumer can join a `pointer.path` and its `coordinates` into one canonical A12 pointer — the thing that tells apart the rows of a computation inside a repeatable group.
 - **Computation reports explain unsuccessful computation** — eager operand diagnostics, a target-owned `diagnostic` on every ERRORED result, and a Kernel-matching `noErrorOccurred` predicate — and prepared Documents can produce a model-shaped starter through `seedDocument()`.
 - **The browser showcase is a complete interpreter workflow consumer**: inspect models, generate and edit Documents, choose full or partial validation, compute, apply retained actions, and run compute-then-validate, including repeated computed fields.
 
@@ -20,12 +35,15 @@ This changelog covers the independently consumable interpreter packages, API doc
 
 ### Performance
 
-- **Measured, never assumed.** The production browser JavaScript entry is about **233 kB gzip**; on the fixed Apple M1/Chrome runner a 200-row Document validated in a **10.5 ms median** and a 10,000-row stress Document with 4,900 findings in **203.6 ms**. Against the A12 Kernel's generated Java with code generation outside the clock, the interpreter led by **2.1×–12.5×** across the default inventory and **10×–16.7×** on repeated-document evaluation, with the closest hostile point still ahead by 1.32×. These are bounded same-machine measurements after exact result preflight, not universal promises; see [the benchmark method and complete tables](https://github.com/mbackschat/a12-dmkits/blob/main/docs/INTERPRETER-PERFORMANCE.md).
+- The production browser bundle measured about **232 kB gzip**, with a 200-row Document at a **10.0 ms median** and the 10,000-row stress Document at **187.7 ms**, on the fixed Apple M1/Chrome runner.
 
 ### Fixed
 
-- Row-invariant unfiltered starred aggregates fold once per validation call rather than once per iterated row (the release guard measured 17.12× growth for 4× rows before, 4.51× after).
 - Temporal semantics corrections: DATE and DATETIME share A12's instant timeline for ordering, `DateRange` evaluates as an equality operand and computation value, `FirstFilledValue` preserves the owner's entity selectors, and `BaseYear` observes A12's year bounds.
+
+### Changed
+
+- The showcase separates runtime actions from workspace utilities, keeps the model and result panels collapsible, and expands with the browser width.
 
 ## [0.10.0]
 
