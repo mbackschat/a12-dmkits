@@ -115,7 +115,7 @@ Generated with [Tokei](https://github.com/XAMPPRocky/tokei) from the standalone 
 | Language | Files | Code | Comments | Blanks |
 |---|---:|---:|---:|---:|
 | Java | 0 | 0 | 0 | 0 |
-| Kotlin | 106 | 17423 | 6336 | 2185 |
+| Kotlin | 110 | 17618 | 6553 | 2232 |
 | TypeScript | 17 | 3190 | 269 | 277 |
 
 Maintainers regenerate this table with the local statistics updater; both release publishers compare it with fresh counts before any public mutation.

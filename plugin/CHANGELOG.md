@@ -4,22 +4,27 @@ All notable changes to the **publicly released `dmtool` artifacts** — the nati
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versioning is [SemVer](https://semver.org/) plus **A12 Kernel compatibility metadata** (the kernel each release targets is recorded per entry, never folded into the version string).
 
+**Headline topics only.** An entry names the capabilities and breaking changes a user would notice, not every fix behind them; the source repo's git history is the complete record.
+
 ## [Unreleased]
+
+## [0.12.0] — kernel 30.8.1 (A12 Tools 2025.06-ext5)
+
+*(0.11.1 was prepared but never published; its interpreter fix ships here.)*
 
 ### Added
 
-- **`dmtool mcp` — the same tool over the Model Context Protocol** (revision `2026-07-28`, newline-delimited JSON-RPC on stdin/stdout), for a caller that cannot execute the binary. The tool surface is *derived* from the live command tree, so `readOnlyHint` and `outputSchema` are true of every op a tool covers or are not claimed; every call carries the model's content in both directions, the server accepts no filesystem path and keeps nothing between calls, and a client on an older revision is refused with the protocol's own error naming the supported set. Register it with `{"mcpServers":{"dmtool":{"command":"dmtool","args":["mcp"]}}}`; a worked session is in `examples/cli-mcp.md`. Where the binary *can* be run, the CLI remains the better surface — it edits models in place.
-- **`dmtool mcp --http` — the same server, hosted.** Upload the binary, start it bound to a port, hand out the URL: clients POST JSON-RPC to `/mcp`. It binds loopback and allows no browser `Origin` until told otherwise, caps the request body, and serves several callers from a bounded pool that answers `503` with `Retry-After` rather than queueing. Every status code is the protocol's own (`400` on a header/body mismatch, `404` on an unknown method, `403` on an unlisted origin, `405` on the removed session mechanics).
+- **MCP support — the same tool over the Model Context Protocol** (revision `2026-07-28`), for callers that cannot execute the binary. `dmtool mcp` speaks newline-delimited JSON-RPC on stdin/stdout for a host that launches it; `dmtool mcp --http` binds a port and serves Streamable HTTP for one that reaches it across a network. The tool surface is *derived* from the live command tree, every call carries the model's content both ways, and the server accepts no filesystem path and keeps nothing between calls. A worked session is in `examples/cli-mcp.md`. Where the binary *can* be run, the CLI remains the better surface.
+- **Published operational contracts.** Every verb declares its effect, failure persistence, dry-run support, return kind, and aggregate-success rule; every parameter declares what it carries and which way it flows; and a served document bundles the schemas it references, transitively.
 
 ### Changed
 
-- **BREAKING:** non-transactional `batch` still returns `outcome:"completed"` after full dispatch and retains every independent child result, but now exposes `data.dispatched` and `data.allSucceeded`; outer `ok` and exit 0/1 agree with whether every child exited zero.
-
-## [0.11.1] — kernel 30.8.1 (A12 Tools 2025.06-ext5)
+- **BREAKING:** non-transactional `batch` now exposes `data.dispatched` and `data.allSucceeded`, and its outer `ok` and exit code agree with whether every child exited zero. It still completes full dispatch and retains every child result.
+- An **undeclared entity reference is refused before evaluation** rather than producing a confident answer about a rule that cannot exist.
 
 ### Fixed
 
-- The built-in interpreter now folds a row-invariant unfiltered starred aggregate once per validation call and exact star scope instead of once per iterated row, restoring near-linear repeated-row validation while preserving Kernel-exact results.
+- **Interpreter backend improvements:** row-invariant starred aggregates are folded once per validation call rather than per iteration, `SumOfProducts` is correct under partial relevance, temporal formats and aggregate message references are corrected, and sharing one interpreter across threads is refused outright instead of silently crossing documents.
 
 ## [0.11.0] — kernel 30.8.1 (A12 Tools 2025.06-ext5)
 
@@ -27,34 +32,19 @@ This release makes dmtool's result contract uniform and evidence-bearing, gives 
 
 ### Changed
 
-- **BREAKING:** the result envelope no longer overloads `valid` as a universal success flag. `outcome` and `ok` describe execution; `valid` appears only for a consistency verdict; `verification`, `runtime`, `comparison`, and `rejectionBasis` state which authority produced the corresponding claim.
-- **BREAKING:** `apply` and `batch` now return the standard result envelope. `apply` derives its outcome from the atomic transaction and carries per-operation envelopes under `data.results`; `batch` returns `outcome:"completed"` with each independent result carrying its own outcome.
-- **BREAKING:** the patterns catalogue list calls its string parameter projection `paramNames`; detailed pattern records keep `params` for the typed `{name,kind,doc}` objects.
-- Every successful write that ran a consistency gate now carries its unforgeable `verification` receipt. Artifact-producing import, export, profile, pattern, apply, and batch routes use the same mutation ending and report whether anything was written.
+- **BREAKING: the result contract is uniform.** The envelope no longer overloads `valid` as a universal success flag (`outcome`/`ok` describe execution, `valid` only a consistency verdict); `apply` and `batch` return the standard envelope; and the patterns catalogue list calls its string projection `paramNames`.
+- Every successful write that ran a consistency gate carries an unforgeable `verification` receipt.
 
 ### Added
 
-- Computation results expose a canonical `a12Pointer` beside the existing path/coordinate shape, so repeated rows are distinguishable without inventing a pointer spelling. Validation message addresses retain A12's partially-known repetition semantics instead of discarding terminal wildcard or unknown indices.
-- `schema model seed` publishes the exact A12 Document JSON artifact contract, and `schema patterns` describes the list, detail, scaffold, and verdict payloads from live executions.
-- The built-in interpreter adds complete `DateRange` value/equality handling, owner-shaped `FirstFilledValue` selectors, bounded `BaseYear`, and cross-kind DATE/DATETIME timeline ordering. Its browser showcase now demonstrates repeated computations and the complete seed/edit/validate/compute workflow.
-
-### Fixed
-
-- The Codex plugin installer now uses a sandbox-writable temporary cache when plugin-hook data variables are absent, and reports readiness only after the installed binary is executable and its named SHA-256 entry is present and matches. A missing checksum file, missing entry, mismatch, or cache-write failure warns without terminating the agent session or printing a false ready path.
-- Nested comparisons inside compound entity filters now receive the same corrective analysis as their top-level equivalents.
-- The development launcher now refuses a missing, failing, unparseable, or pre-Java-21 runtime instead of attempting a broken JVM launch.
-- Native reachability capture now traces only product-exercising tests, rejects test-compiler contamination, and refuses an unexplained loss of committed metadata entries.
+- Runtime results carry canonical A12 pointers, so repeated rows are distinguishable without inventing a pointer spelling.
+- Interpreter semantics gain complete `DateRange` handling, owner-shaped `FirstFilledValue`, bounded `BaseYear`, and cross-kind DATE/DATETIME ordering.
 
 ## [0.10.1] — kernel 30.8.1 (A12 Tools 2025.06-ext5)
 
 ### Changed
 
-- **BREAKING:** `dmtool meta <ref>` is now the sole post-creation writer for labels, annotations, and internal/external descriptions across fields, groups, rules, computations, and type definitions. The duplicated metadata keys and flags are removed from `field modify`, `group modify`, `rule modify`, and their `apply` records; each refusal points to the canonical `meta` route.
-- `apply` adds transactional `{target:"meta",op:"modify",ref,…}` metadata edits, including the previously unreachable computation and type-definition cases. Target-specific reads keep their complete metadata projections.
-
-### Fixed
-
-- `field read` now returns `helperText`, including through an in-session `apply` read, and the field/group/meta read schemas cover every emitted metadata key.
+- **BREAKING:** `dmtool meta <ref>` is the sole post-creation writer for labels, annotations, and descriptions across every element kind; the duplicated keys and flags are removed from the `modify` verbs, each refusal pointing at the canonical route. `apply` gains transactional metadata edits to match.
 
 ## [0.10.0] — kernel 30.8.1 (A12 Tools 2025.06-ext5)
 
@@ -62,20 +52,11 @@ The runtime document boundary now uses A12's own Document JSON shape and I/O beh
 
 ### Changed
 
-- **BREAKING:** `model eval`, `rule eval`, and `model compute` now read and write A12's canonical nested Document JSON: groups are objects, repeated groups are arrays, and omitted fields are absent. The former `{groups:[...], fields:[...]}` placement envelope is removed.
-- Document values are normalized through A12's model-driven ingress behavior. JSON comments are accepted at the same reader sites as the kernel, unparseable values retain their source text, and numbers preserve their lexical scale while emitting in Java `BigDecimal.toPlainString` form.
+- **BREAKING:** `model eval`, `rule eval`, and `model compute` read and write A12's canonical nested Document JSON; the former `{groups:[...], fields:[...]}` placement envelope is removed. Values follow A12's own ingress and egress behavior, including lexical number scale.
 
 ### Added
 
-- Runtime support for all four A12 Date precisions, zero-to-three-component Time construction, declared temporal components, and the pre-1900 Date validation option.
-- Authoring support for number text bounds and optional Month/Year component declarations.
-
-### Fixed
-
-- Computation application now preserves retained-result source state, including the separate-destination distinction between a source-classified clear and direct no-value application.
-- Field-owned error messages now use the kernel's producer-specific staging and literal-dollar decoding.
-- Date shifts, date comparisons, starred iteration, computation selection, temporal extraction, and component construction now match the maintained dual-kernel matrices.
-- Model edits no longer rewrite stored numeric literals merely by reading and writing the model.
+- Runtime support for all four A12 Date precisions, zero-to-three-component Time construction, and the pre-1900 Date validation option.
 
 ## [0.9.1] — kernel 30.8.1
 
@@ -87,18 +68,17 @@ The built-in interpreter becomes the **sole** runtime evaluation engine, verifie
 
 ### Changed
 
-- **BREAKING:** the JVM-only `--kernel` eval engine is removed — runtime evaluation (`model eval` / `rule eval` / `model compute`) now runs solely on the native-safe interpreter on every target; the kernel is retained only for the consistency gate (`rule check` / `model check`).
-- **BREAKING:** `model import-jsonschema --format` is renamed **`--string-format`** (it selects the string-conversion strategy; `--format` elsewhere selects output rendering).
+- **BREAKING:** the JVM-only `--kernel` eval engine is removed — runtime evaluation runs solely on the native-safe interpreter on every target; the kernel is retained only for the consistency gate.
+- **BREAKING:** `model import-jsonschema --format` is renamed **`--string-format`**.
 
 ### Added
 
-- **Kernel-parity interpreter:** the built-in evaluation engine now matches the A12 kernel bit-for-bit on two real-world corpora at zero divergences, closing a large semantics campaign.
-- **Authoring consistency pass:** element metadata across the `rule` / `group` / `config` families, new `include set-reference` / `include rename` verbs, operator-catalog DSL entry points (`dslEntry`), and the `field add --parent` alias.
+- **Kernel-parity interpreter:** the built-in evaluation engine matches the A12 kernel bit-for-bit on two real-world corpora at zero divergences, closing a large semantics campaign.
+- **Authoring consistency pass:** element metadata across the `rule`/`group`/`config` families, `include set-reference`/`include rename`, and operator-catalog DSL entry points.
 
 ### Fixed
 
-- **`model diff` is now comprehensive** — fields, groups, computations, reusable type definitions, includes, and model identity/configuration are all first-class, eliminating the false “no change” results of earlier releases.
-- **Structured, coded refusals** on missing targets for read/query verbs, and hardened JSON-Schema import.
+- **`model diff` is comprehensive** — fields, groups, computations, type definitions, includes, and model identity are all first-class, eliminating earlier false "no change" results.
 
 ## [0.8.2] — kernel 30.8.1 (A12 Tools 2025.06-ext5)
 
@@ -106,76 +86,39 @@ A platform-coverage patch release on the 0.8.x surface — no change to the mode
 
 ### Added
 
-- **Linux ARM64 native binary.** The public release now ships `dmtool-linux-arm64` alongside macOS ARM64, Linux x64, and Windows x64, so ARM Linux hosts can install through the agent plugin or download the raw binary with checksum coverage.
-- The public mirror now ships generated-repo agent guidance (`CLAUDE.md`, with `AGENTS.md` redirecting to it) that makes the release-only boundary explicit.
-
-### Fixed
-
-- Published releases are now treated as immutable by the release script: after a release goes live, adding or replacing assets requires a new patch release rather than mutating the existing tag.
-- Generated public mirror trees no longer carry local `.DS_Store` metadata files.
+- **Linux ARM64 native binary**, alongside macOS ARM64, Linux x64, and Windows x64, with checksum coverage.
 
 ## [0.8.1] — kernel 30.8.1 (A12 Tools 2025.06-ext5)
 
-A small maintenance + docs release on the 0.8.0 surface — no change to the model operations themselves.
-
-### Added
-
-- **`SCENARIOS.md`** — a catalogue of realistic, multi-turn authoring/validation sessions the CLI is exercised with (the natural-language *asks*, complementing the runnable `examples/` walkthroughs).
-
-### Changed
-
-- The JSON Schema **transcoding report** (`model import-jsonschema` / `model export-jsonschema`, on stderr) now word-wraps its omission/to-do notes at a fixed width, so a long note no longer scrolls off the right edge of a terminal.
-- The bundled `examples/` walkthroughs were tidied for readability — long commands wrapped, nested JSON output pretty-printed.
-
-### Fixed
-
-- The release mirror now ships the real, maintained `examples/README.md` index (a hardcoded copy could previously go stale).
+A small maintenance + docs release on the 0.8.0 surface — no change to the model operations themselves. Adds `SCENARIOS.md`, a catalogue of realistic multi-turn authoring sessions, and tidies the bundled walkthroughs.
 
 ## [0.8.0] — kernel 30.8.1 (A12 Tools 2025.06-ext5)
 
-Three headline capabilities this release: the **native binary now evaluates document instances** (a from-scratch, kernel-free interpreter powers the runtime verbs, so `model eval` / `rule eval` / `model compute` / `model seed` run in the shipped native image — previously JVM-only); a **model-review** family for understanding and comparing models (`model diff`, `model report`, `model normalize`); and **JSON Schema interop** (`model import-jsonschema` / `model export-jsonschema`).
-
 ### Added
 
-- **Runtime evaluation in the native binary — a kernel-free interpreter.** `model eval` (which rules fire on a document instance), `rule eval` (a single rule), `model compute` (what a computed field evaluates to), and `model seed` (generate a valid sample instance) now default to a from-scratch evaluator that reproduces the A12 kernel's runtime semantics **without the kernel's on-the-fly Groovy** — so they run in the GraalVM native image, not just on the JVM. The interpreter is verified rule-for-rule against the kernel, and scales linearly on large documents (it overtakes the kernel on instances with thousands of repeated rows). Add `--kernel` to evaluate with the A12 kernel itself (JVM only). `model eval` / `rule eval` compute-then-validate by default, with `--apply-computed-back` exposed.
-- **Custom constructs at runtime.** `--predefined-types` declares custom field types declaratively; `--custom-conditions-js` and `--custom-field-types-js` run a model's imperative custom conditions / field types via a Node worker; `--strict-custom` fails loudly instead of degrading when a custom construct can't be honored. Unsupported custom constructs are surfaced, never silently skipped.
-- **Model review — understand and compare models.**
-  - `model diff` — a structural two-file diff with **risk tiers and reason codes** (a loosening change outranks a tightening one), **`POLARITY_INVERTED`** detection (a rule's condition was logically flipped) read straight from the rule ASTs, and **`--since <ref>`** to diff the working model against a git ref.
-  - `model report` — a self-describing comprehension surface: model identity, structure, field usage, and a glossed catalog of every rule and computation (plain-language gloss + polarity + message).
-  - `model normalize` — a deterministic, order-preserving canonical write-out.
-  - `--text` gives `model diff` and `model report` a compact human-readable rendering alongside the JSON envelope.
-- **JSON Schema interop.** `model import-jsonschema` builds a document model from a JSON Schema or OpenAPI document (JSON **or** YAML), with `--dialect` / `--component` selection, best-effort import defaults (every guess flagged) or `--strict`, multi-model bundle import (`--out-dir`, mounts, includes), and a structured transcoding report carried in the `-o` envelope. `model export-jsonschema` goes the other way, with dialect selection and `--wrap-openapi`.
+- **Runtime evaluation in the native binary — a kernel-free interpreter.** `model eval`, `rule eval`, `model compute`, and `model seed` run in the shipped native image rather than only on the JVM, on a from-scratch evaluator that reproduces the kernel's runtime semantics without its on-the-fly Groovy. Custom field types and custom conditions are supported declaratively or through a Node worker, and an unsupported construct is surfaced rather than silently skipped.
+- **Model review — understand and compare models.** `model diff` (structural, with risk tiers, reason codes, `POLARITY_INVERTED` detection, and `--since <ref>`), `model report` (identity, structure, field usage, and a glossed catalog of every rule and computation), and `model normalize`.
+- **JSON Schema interop.** `model import-jsonschema` builds a document model from JSON Schema or OpenAPI (JSON or YAML), with dialect/component selection, best-effort or `--strict` import, and multi-model bundles; `model export-jsonschema` goes the other way.
 
 ### Changed
 
-- **The native command tree no longer carries `--kernel`.** Kernel evaluation needs Groovy, so `--kernel` is a JVM-only option — it is now removed from every native surface (`manifest`, `--help`, schema) rather than merely refused at call time.
+- **The native command tree no longer carries `--kernel`** — kernel evaluation needs Groovy, so it is removed from every native surface rather than refused at call time.
 
 ## [0.7.0] — kernel 30.8.1 (A12 Tools 2025.06-ext5)
 
-A probe-driven **robustness + DX** wave: a cold agent ran realistic authoring sessions against the shipped binary, and every defect it surfaced was fixed at the root. The themes are a **unified value-type vocabulary**, **fuller read-backs**, a new **`typedef modify`** verb, **two native-image crash fixes**, and a broad sweep of **corrective, self-describing diagnostics** — so the tool explains itself and never leaks a raw stack trace.
+A probe-driven **robustness + DX** wave: a cold agent ran realistic authoring sessions against the shipped binary, and every defect it surfaced was fixed at the root.
 
 ### Added
 
-- **`typedef modify --id <id> <spec.json>` — change a shared type definition in one place.** A model-level ENUM or restricted-STRING type definition could be added (`typedef add`) but not edited; changing its config meant removing and re-adding it, breaking every field that referenced it. `typedef modify` re-binds the type in place, kernel-gated, with the same per-kind spec `typedef add` takes.
-- **`group read` echoes a group's direct child fields.** Reading a group now reports whether it repeats (and its max rows / row-key) **and** the field paths it directly contains, so an agent can see a group's shape without a separate `field read` per child.
-- **Fuller read-backs across `rule` / `computation` / `field` / `typedef`.** The read verbs now surface the complete stored spec — a rule/computation's full condition, message set and placement; a field's per-kind config (number/string/enum/date), label, descriptions, requiredness and annotations; a typedef's per-kind config and import provenance — so an edit is verifiable straight from the tool.
-- **Served data-schemas for the read verbs — `schema field read` / `schema typedef read` / `schema group read`.** The read output shape (including the value-type `kind` vocabulary) is now self-describing and guard-checked, like the write verbs already were.
-- **Per-locale custom error text for a string pattern.** A patterned STRING field can carry a localized "doesn't match" message per display locale, alongside the existing required-field and enum error messages.
+- **`typedef modify`** — change a shared type definition in place, kernel-gated, instead of removing and re-adding it and breaking every field that referenced it.
+- **Fuller read-backs across `rule`/`computation`/`field`/`group`/`typedef`**, with served data-schemas for the read verbs, so an edit is verifiable straight from the tool.
 
 ### Changed
 
-- **A field's value type is reported as `kind` everywhere, with one vocabulary — the kernel discriminator never leaks.** `field read`, `typedef read`, and the `apply` read/echo ops used to print the raw kernel type (`NumberType`, and the bare `TypeDefType` for a type-definition-typed field), which `field add --kind` won't accept — a broken round-trip. They now report the same `kind` names `model describe` uses (`NUMBER`, `STRING`, `ENUMERATION`, …); a type-definition-typed field reports its **resolved underlying** kind plus the `typedef` id it references. (If you parsed the old `type` key, switch to `kind`.)
-- **The authoring skill is now `/a12-dmtool` and covers full document-model authoring, not just rules.** It was `/a12-rules`, scoped by name and description to validation rules, so it wouldn't reliably activate for model-building work (create a model, add fields/groups, factor out an include) even though `dmtool` does all of that. Renamed and rebroadened to **structure *and* rules**, with sharper guidance on bilingual message provisioning, the direction-aware "unguarded number" lint, and inspecting only via the structured read verbs (never the raw model JSON). The CLI binary is unchanged by this item.
+- **A field's value type is reported as `kind` everywhere, with one vocabulary** — the kernel discriminator no longer leaks, and a type-definition-typed field reports its resolved underlying kind plus the `typedef` it references. (If you parsed the old `type` key, switch to `kind`.)
+- The authoring skill is now **`/a12-dmtool`** and covers full document-model authoring, not only validation rules.
 
 ### Fixed
 
-- **Native crash on a rule message that uses error-text parameter tokens (`$<Field>.value$`, `$#<Group>$`).** Such a message invokes a kernel parser whose initializer loads a `LexerTerminals` resource bundle the native image hadn't registered, so adding *any* token-bearing message crashed the binary (`MissingResourceException` → exit 70) while the JVM was fine. The bundle is now registered (base + fallback), covering every locale.
-- **Native crash when serializing or expanding a model that carries a `roles` header annotation.** The annotation's Jackson getters fire only during kernel expand/copy, a path no read/validate over an un-annotated fixture exercised, so the capture missed them and `include add` / `export` / validate over an annotated model crashed natively. The getters are now registered.
-- **No verb leaks a raw Java stack trace anymore.** Every boundary throwable is classified into the structured `rejected` envelope (the `MVK_*`/`RK_*` code + message in `diagnostics[]`) — including a duplicate `rule add` / `computation add` name, a missing group, an invalid-on-disk model loaded by a read verb, and the `apply` / `batch` terminal commit gate (which now surfaces the kernel's actual cause instead of a bare failure).
-- **A broad diagnostics sweep — opaque kernel rejections now carry a meaning and a corrective fix.** `MVK_UNEXPECTED_TOKEN` names the bracket-the-operand / boolean-casing cause; `MVK_NO_WILDCARD`, `MVK_INVALID_ENTITY`, and `MVK_INTERNAL_VALUES_AND_DISPLAY_VALUES` get operator-correct fixes; the diagnostic ↔ catalog join is sound (it unions on disagreement instead of picking the first match); and a content-free or misleading rejection now explains its cause.
-- **A wrong locator flag on a positional-locator verb self-corrects** — `rule read --path …`, `where-used --field …` and the like now point at the right positional form instead of dead-ending on "Unknown option".
-- **The spec-rejection summary reports the right kind of problem** — a wrong-shaped value (e.g. a JSON array where an object is required) is counted as an invalid value, not mislabeled an "unrecognized key".
-- **`field modify` no longer silently drops a config block with no `kind`** — it's refused with a precise corrective instead of reporting a false `applied`.
-- **Field labels with an incomplete locale set reject cleanly** instead of crashing with exit 70.
-- **A no-op `rule` / `computation move` names itself** rather than reporting a confusing bare name clash.
-- **The counting operators are discoverable by the word "count"** in `operators count`, and `field read` of a not-found path on a model with includes now names the include caveat (an included field is read on its own model).
+- **Two native-image crashes** — a rule message using error-text parameter tokens, and serializing or expanding a model carrying a `roles` header annotation. Both worked on the JVM and killed the binary.
+- **No verb leaks a raw Java stack trace**, and a broad diagnostics sweep gives opaque kernel rejections a meaning and a corrective fix.

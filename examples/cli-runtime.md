@@ -63,8 +63,8 @@ dmtool -m examples/models/order-ruled.dm.json \
   "outcome" : "read",
   "ok" : true,
   "engine" : "DM_INTERPRETER",
-  "engineVersion" : "0.11.1",
-  "toolVersion" : "0.11.1",
+  "engineVersion" : "0.12.0",
+  "toolVersion" : "0.12.0",
   "summary" : "1 rule(s) fired",
   "data" : {
     "fired" : [ "DELIVERY_BEFORE_ORDER" ],
@@ -115,8 +115,8 @@ dmtool -m examples/models/order-ruled.dm.json \
   "outcome" : "read",
   "ok" : true,
   "engine" : "DM_INTERPRETER",
-  "engineVersion" : "0.11.1",
-  "toolVersion" : "0.11.1",
+  "engineVersion" : "0.12.0",
+  "toolVersion" : "0.12.0",
   "summary" : "0 rule(s) fired",
   "data" : {
     "fired" : [ ],
@@ -193,8 +193,8 @@ dmtool -m examples/models/order-ruled.dm.json \
   "outcome" : "read",
   "ok" : true,
   "engine" : "DM_INTERPRETER",
-  "engineVersion" : "0.11.1",
-  "toolVersion" : "0.11.1",
+  "engineVersion" : "0.12.0",
+  "toolVersion" : "0.12.0",
   "summary" : "/Order/DeliveryNotBeforeOrder FIRED on this instance (a violation)",
   "data" : {
     "rule" : "/Order/DeliveryNotBeforeOrder",
@@ -230,8 +230,8 @@ dmtool -m examples/models/order-ruled.dm.json \
   "outcome" : "read",
   "ok" : true,
   "engine" : "DM_INTERPRETER",
-  "engineVersion" : "0.11.1",
-  "toolVersion" : "0.11.1",
+  "engineVersion" : "0.12.0",
+  "toolVersion" : "0.12.0",
   "summary" : "/Order/DeliveryNotBeforeOrder was NOT evaluated — a referenced field is formally invalid",
   "data" : {
     "rule" : "/Order/DeliveryNotBeforeOrder",
@@ -272,8 +272,8 @@ dmtool -m examples/models/order-ruled.dm.json \
   "outcome" : "read",
   "ok" : true,
   "engine" : "DM_INTERPRETER",
-  "engineVersion" : "0.11.1",
-  "toolVersion" : "0.11.1",
+  "engineVersion" : "0.12.0",
+  "toolVersion" : "0.12.0",
   "summary" : "1 rule(s) fired",
   "data" : {
     "fired" : [ "QTY_CAP" ],
@@ -343,8 +343,8 @@ dmtool -m examples/models/subscription-computed.dm.json \
   "outcome" : "read",
   "ok" : true,
   "engine" : "DM_INTERPRETER",
-  "engineVersion" : "0.11.1",
-  "toolVersion" : "0.11.1",
+  "engineVersion" : "0.12.0",
+  "toolVersion" : "0.12.0",
   "summary" : "computed 1 computation(s) over 1 field instance(s)",
   "data" : {
     "computed" : [ {
@@ -380,8 +380,8 @@ dmtool -m examples/models/subscription-computed.dm.json \
   "outcome" : "read",
   "ok" : true,
   "engine" : "DM_INTERPRETER",
-  "engineVersion" : "0.11.1",
-  "toolVersion" : "0.11.1",
+  "engineVersion" : "0.12.0",
+  "toolVersion" : "0.12.0",
   "summary" : "computed 1 computation(s) over 1 field instance(s)",
   "data" : {
     "computed" : [ {
