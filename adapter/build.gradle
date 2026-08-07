@@ -209,6 +209,12 @@ tasks.named('test') {
         // slow (per-model kernel codegen); it skips when absent but is excluded from the default/CI run — opt in
         // with -PrunCorpusSweep (+ ../a12-kernel-mm present and/or -Da12.corpus1.dir=<workspaces>).
         if (!project.hasProperty('runCorpusSweep')) excludeTags 'corpus-sweep'
+        // Kernel MEASUREMENT probes (@Tag 'kernel-probe'): footprint/attribution reports whose kernel-side result
+        // changes only on a kernel upgrade, never on our own commits. They assert nothing beyond their own validity
+        // and are not regression gates, so they are excluded even under -PallTests and -PrunPerf (a perf checkpoint
+        // has no reason to re-run kernel probes). Opt in with -PrunKernelProbe; refresh them on a kernel bump
+        // (docs/KERNEL-UPGRADE.md).
+        if (!project.hasProperty('runKernelProbe')) excludeTags 'kernel-probe'
     }
     // Fork the kernel-heavy suite across JVMs — distributes test CLASSES over N forks so the differential
     // + fuzz classes run in parallel (the kernel oracle does Groovy codegen per rule). Each fork is an isolated
@@ -230,6 +236,7 @@ tasks.named('test') {
      'perf.synth.pairs', 'perf.synth.warmup', 'perf.synth.iters', 'perf.synth.complexity',
      'perf.scenario',
      'a12.engine.footprint', 'a12.engine.footprint.hold', 'a12.engine.footprint.models',
+     'a12.java.histogram', 'a12.java.histogram.hold', 'a12.java.histogram.model', 'a12.java.histogram.strategy',
      'rp.perf'].each { k ->
         if (System.getProperty(k) != null) systemProperty k, System.getProperty(k)
     }

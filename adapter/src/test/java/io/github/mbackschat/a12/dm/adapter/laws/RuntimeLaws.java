@@ -2,6 +2,7 @@ package io.github.mbackschat.a12.dm.adapter.laws;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
+import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.StringReader;
@@ -1463,7 +1464,15 @@ public final class RuntimeLaws {
         // Inherit this test JVM's classpath so the generated code's com.mgmtp.* imports resolve.
         List<String> options = List.of("-classpath", System.getProperty("java.class.path"));
         DiagnosticCollector<JavaFileObject> diags = new DiagnosticCollector<>();
-        boolean ok = compiler.getTask(null, fm, diags, options, null, units).call();
+        boolean ok;
+        // Close the file manager once the task is done: it holds a zip filesystem per classpath jar, and leaving it
+        // open leaked ~56 kB of zipfs index nodes per compiled model (found by the heap-histogram attribution). The
+        // returned loader needs none of it — it defines classes from the in-memory byte map alone.
+        try (ForwardingJavaFileManager<StandardJavaFileManager> managed = fm) {
+            ok = compiler.getTask(null, managed, diags, options, null, units).call();
+        } catch (IOException e) {
+            throw new IllegalStateException("failed to close the in-memory Java file manager", e);
+        }
         if (!ok) {
             StringBuilder sb = new StringBuilder("generated Java failed to compile:\n");
             for (Diagnostic<? extends JavaFileObject> d : diags.getDiagnostics()) sb.append("  ").append(d).append('\n');

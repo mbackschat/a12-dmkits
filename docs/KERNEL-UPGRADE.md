@@ -9,6 +9,14 @@ rulekit pins one kernel (`30.8.1` today) and never reimplements its truth — th
 3. **Read failures by class → act** using the coupling map below. Each guardian failure names exactly what changed and the realignment.
 4. **Re-stamp the floor.** Update the catalog's `verifiedAgainst` (in `operators.json`) to the new version once green — that is the F11 verification floor the runtime skew advisory compares against. Set `sinceKernel` on any newly-added operator entries.
 5. **Sweep docs.** Record any new kernel fact in `KERNEL-FINDINGS.md`, note rulekit's treatment in `KERNEL-INTEGRATION-NOTES.md`, and (if the bump is a design observation worth keeping) add a finding to `API-FINDINGS.md` — in the same change (docs travel with the code).
+6. **Re-run the kernel measurement probes** (`@Tag("kernel-probe")`), which are deliberately absent from every routine lane because only a kernel change can move them:
+
+   ```bash
+   ./build.sh -Pfast -PrunKernelProbe :adapter:test --tests "*EngineFootprintReportTest*" -Da12.engine.footprint=true
+   ./build.sh -Pfast -PrunKernelProbe :adapter:test --tests "*JavaEngineHeapHistogramReportTest*" -Da12.java.histogram=true
+   ```
+
+   They assert nothing, so nothing fails here — read the printed tables and refresh the dated numbers in [`INTERPRETER-PERFORMANCE.md`](INTERPRETER-PERFORMANCE.md) "The same axis against both kernel strategies" plus the ratios quoted in [`INTERPRETER-API-GUIDE.md`](INTERPRETER-API-GUIDE.md), [`../interpreter/README.md`](../interpreter/README.md) and [`../interpreter/public-release/README.md`](../interpreter/public-release/README.md). A materially changed kernel footprint is itself a finding ([IF253](INTERPRETER-FINDINGS.md#if253)).
 
 ## The coupling map — guardian ↔ what a failure means ↔ realignment
 

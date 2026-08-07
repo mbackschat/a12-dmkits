@@ -35,12 +35,14 @@ import org.junit.jupiter.api.Test
  * must agree before any arm is measured. Without it a silently degraded engine would report an attractively small
  * footprint.
  *
- * `@Tag("perf")` plus an env gate: this is GC-sensitive and Groovy codegen is slow, so it never runs by default.
+ * **Not a regression gate.** `@Tag("kernel-probe")` plus a property gate, so it is excluded even from `-PallTests`
+ * and `-PrunPerf`: it asserts nothing beyond its own validity check, it is GC-sensitive, and its kernel-side result
+ * changes only when the kernel does. Refresh it on a kernel upgrade, not on our own commits.
  *
- * Run: `./build.sh -Pfast -PrunPerf :adapter:test --tests "*EngineFootprintReportTest*" -Da12.engine.footprint=true`
+ * Run: `./build.sh -Pfast -PrunKernelProbe :adapter:test --tests "*EngineFootprintReportTest*" -Da12.engine.footprint=true`
  * Knobs: `-Da12.engine.footprint.hold=<n>` (instances per arm), `-Da12.engine.footprint.models=<path>,<path>`.
  */
-@Tag("perf")
+@Tag("kernel-probe")
 class EngineFootprintReportTest {
 
     @Test
