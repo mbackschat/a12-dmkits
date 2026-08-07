@@ -17,9 +17,9 @@ import org.junit.jupiter.api.Test
  *
  * [PerfOp] models exactly two operations — `validate` and `compute` — so every existing gate and benchmark
  * times one of those two. The other four public evaluation entry points had **no timing test at all**, and the
- * gap is not academic: partial validation was quadratic in document size for as long as it existed, and the
- * scenario sweep could not see it because no scenario called `validatePart`. These four are the same class of
- * blind spot one entry point over.
+ * gap is not academic: partial validation was quadratic for as long as it existed whenever the caller's
+ * relevant set grew with the document, and the scenario sweep could not see it because no scenario called
+ * `validatePart`. These four are the same class of blind spot one entry point over.
  *
  * Each guard reuses a **reviewed [PerfCatalog] scenario** rather than minting a model, so the document and both
  * engine models are shared with the sweep and cannot drift from it. Two scenarios carry all four:
@@ -29,9 +29,13 @@ import org.junit.jupiter.api.Test
  * | `testRule` / `evalCandidate` | [PerfCatalog.b1] — exactly ONE rule | the kernel's `validateFull` over a one-rule model evaluates that same rule over the same rows |
  * | `computeField` / `applyComputations` | [PerfCatalog.b7] — exactly ONE computation | the kernel's `compute()` over a one-computation model computes that same field |
  *
- * The one-construct property is what makes the comparison honest: the interpreter's entry point does a slice of
- * the work, and on these models the kernel's whole-document call is exactly that slice. It is asserted, not
- * assumed — [singleRuleScenario]/[singleComputationScenario] fail if a scenario ever grows a second construct.
+ * The one-construct property is what keeps the comparison honest: the interpreter's entry point does a slice of
+ * the work, and on these models the kernel's whole-document call is the same rule or the same computation. It is
+ * asserted, not assumed — [singleRuleScenario]/[singleComputationScenario] fail if a scenario ever grows a
+ * second construct. It is not an identity, and should not be read as one: the kernel's whole-document call also
+ * formally validates every field in the model, so a model carrying many fields unrelated to the rule would
+ * charge the kernel work the focused call skips. These two scenarios are narrow, which is why the margins below
+ * are reported as measurements of THEM rather than as a general statement about the entry points.
  *
  * Correctness before timing, in two layers: [PerfHarness.preflight] refuses to time an unsupported construct,
  * and each test cross-checks its entry point against the kernel on the same document before the clock starts.

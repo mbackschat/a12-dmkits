@@ -76,11 +76,16 @@ class PartialSumOfProductsPerfTest {
 
         val interpreter = DmInterpreter(def)
         val iDocument = iDoc()
-        val kDocument = kDoc()
+        // Build-once on BOTH sides. `RuntimeLaws.messagesPart` re-expands the model, rebuilds the service
+        // factories and re-converts the document on every call, none of which the interpreter repeats — timing
+        // against it charged the kernel a whole engine construction per iteration and inflated the reported
+        // advantage by roughly an order of magnitude.
+        val kernel = RuntimeLaws.kernelEngine(kModel)
+        val kDocument = kernel.instance(kDoc())
         return KernelAdvantage.read(
             rows,
             interpreter = { interpreter.validatePart(iDocument, iRel) },
-            kernel = { RuntimeLaws.messagesPart(kModel, kDocument, kRel) },
+            kernel = { kernel.partialMessageCount(kDocument, kRel) },
         )
     }
 

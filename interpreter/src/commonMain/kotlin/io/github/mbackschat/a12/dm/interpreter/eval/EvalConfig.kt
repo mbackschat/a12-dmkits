@@ -54,12 +54,14 @@ class EvalConfig(
      *  (no `starCells` call, so the flat-spike `RepDoc` context is unaffected). */
     val cellRelevant: ((String, List<Int>) -> Boolean)? = null,
     /** Partial validation only: whether an ALL-ROWS aggregate's starred path is **wildcard-relevant** — the
-     *  kernel evaluates `Sum`/`Max`/`Min`/`NumberOfDifferentValues`/`SumOfProducts` only when the relevant set
-     *  WILDCARDS the starred level; concrete per-row enumeration (even of all rows) is NOT enough (IF42).
-     *  `FirstFilled` does NOT use this (it is order-aware via [cellRelevant]). **Null in full validation.** */
+     *  kernel evaluates `Sum`/`Max`/`Min`/`NumberOfDifferentValues` only when the relevant set WILDCARDS the
+     *  starred level; concrete per-row enumeration (even of all rows) is NOT enough (IF42). `SumOfProducts` is
+     *  NOT one of them — it carries the weaker [starFullyEnumerated] gate instead ([IF255]); `FirstFilled` uses
+     *  neither (it is order-aware via [cellRelevant]). **Null in full validation.** */
     val starRelevant: ((String) -> Boolean)? = null,
-    /** `SumOfProducts`' weaker completeness gate: wildcard OR a COMPLETE concrete enumeration (DmInterpreter). */
-    /** Star path + the CURRENT ROW's repetition coordinates: completeness is per iteration row, not global. */
+    /** `SumOfProducts`' weaker completeness gate: wildcard OR a COMPLETE concrete enumeration of the declared
+     *  repetitions. Takes the star path plus the CURRENT ROW's repetition coordinates, because completeness is
+     *  decided per iteration row and not globally (IF255; predicate in `DmInterpreter`). */
     val starFullyEnumerated: ((String, List<Int>) -> Boolean)? = null,
     /** Partial validation only: the relevant entity set passed to a [CustomCondition]'s `check` (the kernel's
      *  `relevantEntities` — `MainValidatorController` feeds it `getAllPruefungsrelevanteEntitiesExtern`). **Null

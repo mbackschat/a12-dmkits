@@ -1047,6 +1047,23 @@ public final class RuntimeLaws {
         }
 
         /**
+         * PARTIAL validation over an already-built instance — the build-once twin of
+         * {@link RuntimeLaws#messagesPart}, which expands the model, constructs both service factories and
+         * converts V1&rarr;V2 on <em>every</em> invocation. Timing a partial-validation entry point against that
+         * charges the kernel a whole engine construction per iteration while the interpreter reuses its
+         * prepared model, which inflates the reported advantage by roughly an order of magnitude.
+         *
+         * <p>Relevant-pointer conversion stays <em>inside</em> the timed call on purpose: the interpreter
+         * re-indexes its own relevant set per {@code validatePart} too, so paying it on both sides is what makes
+         * the comparison symmetric rather than merely fast.
+         */
+        public int partialMessageCount(DocumentV2 instance, Set<Relevant> relevant) {
+            Set<DocumentMultiPointer> pointers = relevant.stream()
+                    .map(r -> DocumentMultiPointer.of(r.path(), r.reps())).collect(Collectors.toSet());
+            return rt.validatePart(instance, pointers, config(null, Locale.US)).getMessages().size();
+        }
+
+        /**
          * The kernel's form-engine APPLY step — {@code compute()} then {@code applyTo(DocumentV2)}, returning the
          * new immutable applied document. The oracle for {@link io.github.mbackschat.a12.dm.interpreter.DmInterpreter#applyComputations}:
          * {@link #messagesAfterCompute} is the same flow with a {@code validateFull} appended, which would charge

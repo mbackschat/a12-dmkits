@@ -347,7 +347,8 @@ class DmInterpreter private constructor(
     private fun starFullyEnumeratedOf(relevant: Set<RelevantEntity>): (String, List<Int>) -> Boolean {
         // Grouped ONCE per call. Deciding completeness by rescanning the relevant set for every declared
         // repetition is O(relevant² × reps), and enumerating every row makes the relevant set grow WITH the
-        // document — measured 8.63× growth for 4× rows on `laws/PartialSumOfProductsPerfTest`.
+        // document — measured 8.63× growth for 4× rows on `laws/PartialSumOfProductsPerfTest` (a growth
+        // figure, so interpreter-only and unaffected by that guard's since-corrected kernel baseline).
         val byShape = HashMap<Pair<String, List<Boolean>>, MutableList<RelevantEntity>>()
         for (r in relevant) {
             if (r.indices.size != pathParts(r.path).size) continue
@@ -856,11 +857,15 @@ class DmInterpreter private constructor(
 
     /**
      * The relevance query, INDEXED. It used to be `relevant.any { matches(it, path, reps) }` — a linear scan of
-     * the caller's relevant set, run once per field INSTANCE. When the caller enumerates concrete rows the set
-     * grows WITH the document, so partial validation was quadratic in document size: measured 8.36× growth for
-     * 4× rows, and only 1.06× against the kernel at 1000 rows on `laws/PartialSumOfProductsPerfTest` — at the
-     * edge of losing to the engine the interpreter exists to beat. This is not aggregate-specific; every
-     * partial validation paid it.
+     * the caller's relevant set, run once per field INSTANCE. That is quadratic **when the relevant set itself
+     * grows with the document**, which is exactly what a concrete row enumeration does — measured 8.36× growth
+     * for 4× rows on `laws/PartialSumOfProductsPerfTest`. It is not aggregate-specific: every partial
+     * validation over such a set paid it. It is equally not universal — a single wildcard entity keeps the set
+     * constant and the same scan stays linear, so "partial validation was quadratic" overstates it.
+     *
+     * (The kernel RATIOS once quoted here came from a harness that rebuilt the kernel engine inside the timed
+     * call, so they were inflated and have been dropped rather than restated; the growth figures above are
+     * interpreter-only and stand. Corrected 2026-08-08, IF255.)
      *
      * [matches] admits an entity whose path is an ancestor-or-equal prefix and whose every index is either the
      * query's repetition or [RelevantEntity.ALL]. So bucket the set by path, and answer a query by trying each

@@ -12,8 +12,9 @@ import java.lang.reflect.Modifier
  *
  * Four of [DmInterpreter]'s eight document-evaluation entry points had no timing test whatsoever, and that was
  * invisible because the coverage question was never asked against a *list*. The gap is expensive: an entry
- * point nothing times is exactly where a quadratic hides (partial validation was O(N²) for its whole life,
- * unseen because no scenario called `validatePart`).
+ * point nothing times is exactly where a quadratic hides (partial validation was quadratic **under a relevant
+ * set that grows with the document**, unseen for its whole life because no scenario called `validatePart`;
+ * with a single wildcard entity the same code stayed linear, so the unqualified claim overstated it).
  *
  * So the entry points are **discovered by reflection**, not enumerated by hand: adding a public method that
  * takes a [Document] fails this test until it is either given a timing guard or explicitly recorded as not
