@@ -53,13 +53,17 @@ class PartialSumOfProductsPerfTest {
         println("[perf] partial-SOP growth ${"%.2f".format(growth)}× for ${factor.toInt()}× rows " +
             "(linear≈$factor, quadratic≈${factor * factor})")
 
-        assertTrue(growth < factor * factor * 0.75) {
-            "completeness predicate scales quadratically: ${"%.2f".format(growth)}× for ${factor.toInt()}× rows " +
-                "(quadratic≈${factor * factor}). It is consulted per row, so it must be decided once per star path."
+        assertTrue(growth < factor * NEAR_LINEAR_SLACK) {
+            "partial validation scales super-linearly: ${"%.2f".format(growth)}× for ${factor.toInt()}× rows " +
+                "(linear≈$factor). A relevance query must not cost O(relevant set); the caller's set grows WITH " +
+                "the document whenever it enumerates concrete rows."
         }
-        assertTrue(large.interpreterMs < large.kernelMs) {
-            "interpreter must beat the kernel on this scenario: interp=${ms(large.interpreterMs)} " +
-                "kernel=${ms(large.kernelMs)}"
+        for ((label, r) in listOf("$SMALL" to small, "$LARGE" to large)) {
+            val ratio = r.kernelMs / r.interpreterMs
+            assertTrue(ratio >= MIN_KERNEL_ADVANTAGE) {
+                "interpreter must beat the kernel by ≥${MIN_KERNEL_ADVANTAGE}× at $label rows, measured " +
+                    "${"%.2f".format(ratio)}× (interp=${ms(r.interpreterMs)} kernel=${ms(r.kernelMs)})"
+            }
         }
     }
 
@@ -119,5 +123,9 @@ class PartialSumOfProductsPerfTest {
         const val LINES = "/Cart/Lines"; const val QTY = "/Cart/Lines/Qty"; const val PRICE = "/Cart/Lines/Price"
         const val SMALL = 250; const val LARGE = 1000
         const val WARMUP = 3; const val REPEATS = 5
+        /** The owner's bar: beat BOTH kernel strategies by this factor on every measured scale (2026-08-07). */
+        const val MIN_KERNEL_ADVANTAGE = 1.5
+        /** Near-linear: growth may exceed the row factor by this much before it counts as super-linear. */
+        const val NEAR_LINEAR_SLACK = 1.35
     }
 }

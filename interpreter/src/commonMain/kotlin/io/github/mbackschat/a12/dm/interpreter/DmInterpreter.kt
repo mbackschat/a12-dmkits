@@ -799,7 +799,51 @@ class DmInterpreter private constructor(
         // The kernel's md-runtime-service auto-adds every GLOBAL field (wildcarded at all reps) to the relevant
         // set before validating (LowKernelApiUtils.addGlobalFieldsToRelevantEntities), so a global field's
         // instances are relevant regardless of the caller's set — IG11→IF37, KERNEL-FINDINGS "Partial validation".
-        { path, reps -> path in model.globalFields || relevant.any { matches(it, path, reps) } }
+        relevanceIndexOf(relevant)
+
+    /**
+     * The relevance query, INDEXED. It used to be `relevant.any { matches(it, path, reps) }` — a linear scan of
+     * the caller's relevant set, run once per field INSTANCE. When the caller enumerates concrete rows the set
+     * grows WITH the document, so partial validation was quadratic in document size: measured 8.36× growth for
+     * 4× rows, and only 1.06× against the kernel at 1000 rows on `laws/PartialSumOfProductsPerfTest` — at the
+     * edge of losing to the engine the interpreter exists to beat. This is not aggregate-specific; every
+     * partial validation paid it.
+     *
+     * [matches] admits an entity whose path is an ancestor-or-equal prefix and whose every index is either the
+     * query's repetition or [RelevantEntity.ALL]. So bucket the set by path, and answer a query by trying each
+     * ancestor prefix with every concrete/wildcard combination of its levels — `2^depth` hash probes, where
+     * depth is the model's nesting depth (single digits), instead of one probe per relevant entity. A concrete
+     * repetition is 1-based, so it can never collide with the `ALL` sentinel.
+     */
+    private fun relevanceIndexOf(relevant: Set<RelevantEntity>): Relevance {
+        val byPath = HashMap<String, HashSet<List<Int>>>()
+        for (r in relevant) {
+            // matches() requires exactly one index per path part; anything else can never match.
+            if (r.indices.size == pathParts(r.path).size) byPath.getOrPut(r.path) { HashSet() } += r.indices
+        }
+        return { path, reps ->
+            if (path in model.globalFields) true else {
+                val pParts = pathParts(path)
+                var hit = false
+                var depth = 1
+                while (depth <= pParts.size && depth <= reps.size && !hit) {
+                    val bucket = byPath["/" + pParts.take(depth).joinToString("/")]
+                    if (bucket != null) {
+                        val base = reps.take(depth)
+                        var mask = 0
+                        while (mask < (1 shl depth) && !hit) {
+                            hit = base.mapIndexed { i, rep ->
+                                if ((mask shr i) and 1 == 1) RelevantEntity.ALL else rep
+                            } in bucket
+                            mask++
+                        }
+                    }
+                    depth++
+                }
+                hit
+            }
+        }
+    }
 
     /**
      * Partial validation's two group-relevance levels. Any selected descendant makes its ancestors PARTIAL,
