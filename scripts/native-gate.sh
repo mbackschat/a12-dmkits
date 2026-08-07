@@ -15,6 +15,13 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT"
 NATIVE="${1:-$ROOT/cli/build/native/nativeCompile/dmtool}"
+# Absolutize a caller-supplied path. The `-x` check below resolves it against the caller's cwd, but the same
+# value is handed to Gradle as `-PdmtoolContractExecutable`, which the :cli project resolves against ITS OWN
+# directory — so a repo-relative path passes the check here and then arrives at the task as `cli/cli/…`, which
+# fails as a missing task input rather than as anything a reader would connect to the argument they typed.
+# One value must name one file in both frames. (publish-release.sh always passed an absolute path, so the
+# trap only sprang on a hand-run: 2026-08-07.)
+[[ "$NATIVE" = /* ]] || NATIVE="$(cd "$(dirname "$NATIVE")" 2>/dev/null && pwd)/$(basename "$NATIVE")"
 VERSION="$(sed -nE "s/^version = '([^']+)'/\1/p" "$ROOT/build.gradle")"
 
 # The demos call the bare `dmtool`; put the repo shim on PATH so it resolves there. The shim honors
