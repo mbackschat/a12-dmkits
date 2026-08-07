@@ -92,6 +92,45 @@ if [[ "${#hangs[@]}" -gt 0 ]]; then
   exit 1
 fi
 
+# RATCHET the width of command lines. A demo is read far more often than it is written, and a 400-character
+# one-liner forces horizontal scrolling in every renderer — `cli-mcp.md` had one of 816. The fix is to break
+# at the pipes with a trailing `\` and let the continuation start the next line (see `cli-jsonschema.md`,
+# which does it throughout). A frame for the stdio transport is the one thing that must NOT wrap, since the
+# protocol is newline-delimited; build it with `jq -nc`, whose output is one line however its source is laid
+# out. This is a ratchet rather than a flat cap because nine demos predate the rule: a file may only get
+# BETTER. Lower a number when you rewrap a file; the gate fails if any file regresses past its own mark.
+python3 - "${demos[@]}" <<'RATCHET' || exit 1
+import sys, pathlib
+BUDGET = {  # longest line inside a ```bash block; ratchet down, never up
+    "cli-apply.md": 164, "cli-custom-types.md": 103, "cli-discover.md": 128,
+    "cli-edit-loop.md": 207, "cli-jsonschema.md": 149, "cli-mcp.md": 110,
+    "cli-public-contract.md": 106, "cli-review.md": 173, "cli-runtime.md": 122,
+    "cli-structure-edit.md": 232, "cli-tour.md": 142, "cli-version.md": 109,
+    "cli-workspace.md": 125,
+}
+GOAL = 120  # what a new or rewrapped demo must meet
+bad = []
+for name in sys.argv[1:]:
+    path = pathlib.Path(name)
+    fenced, lang, worst = False, None, 0
+    for line in path.read_text().split("\n"):
+        if line.startswith("```"):
+            if not fenced:
+                lang = line[3:].strip()
+            fenced = not fenced
+            continue
+        if fenced and lang == "bash":
+            worst = max(worst, len(line))
+    allowed = BUDGET.get(path.name, GOAL)
+    if worst > allowed:
+        bad.append(f"{path.name}: longest bash line {worst} > {allowed}"
+                   + ("" if path.name in BUDGET else f" (the bar for a new demo is {GOAL})"))
+if bad:
+    print("command lines got wider — break them at the pipes with a trailing backslash:", file=sys.stderr)
+    print("  " + "\n  ".join(bad), file=sys.stderr)
+    sys.exit(1)
+RATCHET
+
 # Verify in PARALLEL, bounded — a serial loop over ~11 demos (each spawning `uvx showboat`, which in
 # turn runs many `dmtool` JVMs) dominated the CI wall-clock. Each verify writes to its own log +
 # status file (interleaved stdout would be garbled); we print an ordered summary once all finish.
