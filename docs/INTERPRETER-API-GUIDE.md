@@ -266,14 +266,63 @@ once it has served anything — budget with that column.
 
 Reading it:
 
-- **Budget roughly 1.6 kB per field and 1.6 kB per rule.** Both slopes come from the table's own two axes and agree:
-  predicting the 15-field/6-rule row from them gives 37.1 kB against 38.8 kB measured. That rule of thumb is more
-  useful than a ratio, because the ratio itself moves between 5.8× and 9.7× depending on shape.
+- **Budget from structure, with a formula.** Across six models spanning 5 to 79 fields, 3 to 29 groups and 0 to 192
+  rules, a warm prepared model costs
+
+  > **≈ 1.4 kB × fields + 1.55 kB × rules + 2.3 kB × groups**
+
+  to within **4%** on every one of them, and to within 2.4% against the independently measured table above. Use it
+  in preference to any ratio, because the ratio itself moves between 5.8× and 9.7× with shape. A rule's share tracks
+  its condition size rather than its mere existence (about 0.8 kB per boolean operand), so a model of unusually
+  complex rules runs above the per-rule term and a model of one-operand rules below it.
+- **About 90% of the per-field cost is the parsed model, not the preparation.** On a fixture of 26 minimal fields and
+  no rules, the parsed model retains ~1.25 kB per field, wrapping it in a `PreparedModel` adds nothing measurable,
+  and serving a request adds ~0.5 kB per field of indexes and plans. So the space-for-time trade is smaller than the
+  total suggests: most of what a cache entry holds is the model itself.
 - **Do not size by DM-JSON bytes and do not size by entry count.** A field-dense 5 kB model costs more than a
-  rule-dense one of the same size, and the smallest and largest entries here differ by 8×.
+  rule-dense one of the same size, and the smallest and largest entries here differ by 8×. DM-JSON bytes are an
+  especially poor guide for real models, whose size is dominated by localized label and message text.
 - **Budget `warm`, not `cold`.** A served entry costs 1.4× to 1.9× an untouched one.
 - **A retained interpreter adds only 2–5%** on top of `warm`, because model-static work lives on the prepared model.
   So holding an interpreter is cheap; what you are really budgeting is the prepared model.
+
+#### How that compares to the A12 Kernel
+
+If you are sizing a service that used to hold A12 Kernel runtime services, here are six models measured the
+same way. The last is derived from a **real** A12 model's shape, so the table is not only synthetic fixtures.
+**Total resident memory per model, in kB (1024 bytes) — heap plus class metadata, which is the whole budget:**
+
+| model | fields | groups | rules | interpreter | Kernel model graph | + generated Java | + generated Groovy |
+|---|--:|--:|--:|--:|--:|--:|--:|
+| type definitions only | 26 | 4 | 0 | 45 | 20 | 466 | 1,091 |
+| small order + aggregates | 15 | 4 | 6 | 37 | 18 | 374 | 1,363 |
+| order with one rule | 29 | 4 | 1 | 51 | 23 | 361 | 1,118 |
+| rule-heavy | 5 | 3 | 48 | 86 | 49 | 552 | 3,535 |
+| rule-heavy | 5 | 3 | 192 | 305 | 181 | 1,431 | 11,729 |
+| **real-model shape** | 79 | 29 | 89 | 309 | 152 | 1,455 | 6,924 |
+
+**Measured 2026-08-07 on JDK 21**, twelve resident instances per arm, after the three engines were confirmed to
+produce the same message-code multiset over the same document. A resident entry is **4.7× to 10.4×** smaller than the
+generated-Java equivalent and **22× to 41×** smaller than the dynamic-Groovy one.
+
+Reading it:
+
+- **The generated rule and computation code is the whole difference, not the model.** The Kernel's own expanded
+  Document Model is the sixth column — 18 to 181 kB, comparable to a prepared model and *smaller* than it on the
+  rule-heavy shapes. Everything above that line is generated code and the machinery that loads it.
+- **A sixth to nearly half of the Kernel figures is invisible to a heap profiler.** Generated classes live in
+  Metaspace, not the heap: 16% to 44% of the totals above, which is 85 to 298 kB for Java and 286 kB to 4.8 MB for
+  Groovy. A prepared model generates and loads **no classes at all**, so for the interpreter column heap *is* the
+  total and a heap budget is the whole budget.
+- **Groovy's class count grows per rule; Java's does not.** It tracks `≈ 34 + 3.2 × rules` across all six models
+  (34 classes at no rules, 639 at 192), against 12 to 19 for Java at every size. The generated *source* volume is
+  near-identical between the two (740 kB vs 736 kB at 192 rules), so what differs is what compiling it produces.
+- **The Kernel side has usable formulas too.** Dynamic Groovy fits `≈ 0.75 MB + 14 kB × fields + 58 kB × rules`
+  within 7%. Generated Java does *not* fit these predictors — it is dominated by a fixed cost of roughly 350 kB and a
+  linear fit is only good to ±25%, so treat the measured range rather than a slope as the guide there.
+- **The Groovy engine defers nearly all of its cost to the first request**, exactly as a prepared model defers its
+  plans: creating the runtime service costs almost nothing over the model graph, and the code generation happens on
+  first evaluation. Budget the served figure on either engine.
 
 Against that cost, the cache buys you: model-static work once per model; one entry per model rather than per
 (model × configuration); safe sharing across concurrent requests; and content-addressed invalidation, since an

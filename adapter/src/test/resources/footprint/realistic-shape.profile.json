@@ -1,0 +1,546 @@
+{
+  "computations": {
+    "aggregateScaleMatch": {
+      "matched": 0,
+      "mismatched": 0
+    },
+    "aggregateStars": {
+      "buckets": {},
+      "max": 0,
+      "mean": 0.0,
+      "median": 0,
+      "min": 0,
+      "n": 0,
+      "p90": 0
+    },
+    "alternatives": {
+      "buckets": {
+        "1": 1
+      },
+      "max": 1,
+      "mean": 1.0,
+      "median": 1,
+      "min": 1,
+      "n": 1,
+      "p90": 1
+    },
+    "archetypes": {
+      "CONSTANT": 1
+    },
+    "computedFieldKinds": {
+      "CONFIRM": 1
+    },
+    "constructCombos": {
+      "NONE": 1
+    },
+    "constructs": {},
+    "constructsByScope": {
+      "modelLevel": {},
+      "perGroup": {},
+      "perRepeatableRow": {}
+    },
+    "count": 1,
+    "depth": {
+      "buckets": {
+        "1": 1
+      },
+      "max": 1,
+      "mean": 1.0,
+      "median": 1,
+      "min": 1,
+      "n": 1,
+      "p90": 1
+    },
+    "fanIn": {
+      "buckets": {
+        "1": 1
+      },
+      "max": 1,
+      "mean": 1.0,
+      "median": 1,
+      "min": 1,
+      "n": 1,
+      "p90": 1
+    },
+    "feedingOthers": 0,
+    "iteration": {
+      "listScanCapacity": {
+        "buckets": {
+          "1": 1
+        },
+        "max": 1,
+        "mean": 1.0,
+        "median": 1,
+        "min": 1,
+        "n": 1,
+        "p90": 1
+      },
+      "outerCorrelation": 0,
+      "parallelIteration": 0,
+      "scannedScopeCapacity": {
+        "buckets": {},
+        "max": 0,
+        "mean": 0.0,
+        "median": 0,
+        "min": 0,
+        "n": 0,
+        "p90": 0
+      },
+      "scopeCapacity": {
+        "buckets": {
+          "1": 1
+        },
+        "max": 1,
+        "mean": 1.0,
+        "median": 1,
+        "min": 1,
+        "n": 1,
+        "p90": 1
+      },
+      "workCapacity": {
+        "buckets": {
+          "1": 1
+        },
+        "max": 1,
+        "mean": 1.0,
+        "median": 1,
+        "min": 1,
+        "n": 1,
+        "p90": 1
+      }
+    },
+    "maxCascadeDepth": 1,
+    "nodeCount": {
+      "buckets": {
+        "2-3": 1
+      },
+      "max": 2,
+      "mean": 2.0,
+      "median": 2,
+      "min": 2,
+      "n": 1,
+      "p90": 2
+    },
+    "opaqueCount": 0,
+    "operators": {
+      "FieldFilled": 1,
+      "True": 1
+    },
+    "preconditionedCount": 1,
+    "scope": {
+      "modelLevel": 0,
+      "perGroup": 1,
+      "perRepeatableRow": 0
+    }
+  },
+  "rules": {
+    "booleanArity": {
+      "buckets": {
+        "1": 12,
+        "2-3": 64,
+        "4-7": 13
+      },
+      "max": 5,
+      "mean": 2.550561797752809,
+      "median": 3,
+      "min": 1,
+      "n": 89,
+      "p90": 4
+    },
+    "constructCombos": {
+      "AGGREGATE+QUANTIFIER": 1,
+      "ARITHMETIC+QUANTIFIER": 1,
+      "CUSTOM": 11,
+      "GROUP_FILL": 6,
+      "NONE": 30,
+      "PATTERN": 4,
+      "QUANTIFIER": 13,
+      "QUANTIFIER+VALUE_LIST": 2,
+      "UNIQUENESS": 16,
+      "VALUE_LIST": 5
+    },
+    "constructs": {
+      "AGGREGATE": 1,
+      "ARITHMETIC": 1,
+      "CUSTOM": 11,
+      "GROUP_FILL": 6,
+      "PATTERN": 4,
+      "QUANTIFIER": 17,
+      "UNIQUENESS": 16,
+      "VALUE_LIST": 7
+    },
+    "constructsByScope": {
+      "modelLevel": {},
+      "perGroup": {
+        "AGGREGATE": 1,
+        "ARITHMETIC": 1,
+        "CUSTOM": 7,
+        "GROUP_FILL": 1,
+        "PATTERN": 4,
+        "QUANTIFIER": 15,
+        "UNIQUENESS": 11,
+        "VALUE_LIST": 5
+      },
+      "perRepeatableRow": {
+        "CUSTOM": 4,
+        "GROUP_FILL": 5,
+        "QUANTIFIER": 2,
+        "UNIQUENESS": 5,
+        "VALUE_LIST": 2
+      }
+    },
+    "count": 89,
+    "depth": {
+      "buckets": {
+        "1": 11,
+        "2-3": 35,
+        "4-7": 43
+      },
+      "max": 7,
+      "mean": 3.269662921348315,
+      "median": 3,
+      "min": 1,
+      "n": 89,
+      "p90": 5
+    },
+    "fanIn": {
+      "buckets": {
+        "1": 16,
+        "2-3": 65,
+        "4-7": 8
+      },
+      "max": 5,
+      "mean": 2.359550561797753,
+      "median": 2,
+      "min": 1,
+      "n": 89,
+      "p90": 3
+    },
+    "iteration": {
+      "listScanCapacity": {
+        "buckets": {
+          "1": 80,
+          "524288-1048575": 3,
+          "64-127": 2,
+          "8192-16383": 4
+        },
+        "max": 1000000,
+        "mean": 34160.449438202246,
+        "median": 1,
+        "min": 1,
+        "n": 89,
+        "p90": 100
+      },
+      "outerCorrelation": 0,
+      "parallelIteration": 2,
+      "scannedScopeCapacity": {
+        "buckets": {
+          "1": 6,
+          "524288-1048575": 2,
+          "64-127": 1
+        },
+        "max": 1000000,
+        "mean": 222234.0,
+        "median": 1,
+        "min": 1,
+        "n": 9,
+        "p90": 1000000
+      },
+      "scopeCapacity": {
+        "buckets": {
+          "1": 61,
+          "524288-1048575": 12,
+          "64-127": 15,
+          "8192-16383": 1
+        },
+        "max": 1000000,
+        "mean": 134961.35955056178,
+        "median": 1,
+        "min": 1,
+        "n": 89,
+        "p90": 1000000
+      },
+      "workCapacity": {
+        "buckets": {
+          "1": 55,
+          "1073741824-2147483647": 2,
+          "524288-1048575": 12,
+          "64-127": 16,
+          "67108864-134217727": 1,
+          "8192-16383": 3
+        },
+        "max": 2147483647,
+        "mean": 49516842.123595506,
+        "median": 1,
+        "min": 1,
+        "n": 89,
+        "p90": 1000000
+      }
+    },
+    "nodeCount": {
+      "buckets": {
+        "1": 11,
+        "16-31": 3,
+        "2-3": 13,
+        "32-63": 1,
+        "4-7": 34,
+        "8-15": 27
+      },
+      "max": 35,
+      "mean": 7.0,
+      "median": 5,
+      "min": 1,
+      "n": 89,
+      "p90": 11
+    },
+    "opaqueCount": 0,
+    "operators": {
+      "AllFieldsFilled": 10,
+      "And": 143,
+      "AtLeastOneFieldFilled": 4,
+      "AtLeastOneFieldValueIncludedInValueList": 1,
+      "AtLeastOneGroupFilled": 1,
+      "CustomCondition": 11,
+      "EnumCategory": 10,
+      "Equal": 74,
+      "False": 1,
+      "FieldFilled": 44,
+      "FieldNotFilled": 35,
+      "FieldValueIncludedInValueList": 1,
+      "FieldValueNotIncludedInValueList": 2,
+      "FromScope": 2,
+      "GreaterThan": 7,
+      "GroupFilled": 5,
+      "GroupNotFilled": 1,
+      "Length": 2,
+      "LessThan": 3,
+      "NoFieldFilled": 1,
+      "NoGroupFilled": 1,
+      "NotAllFieldValuesIncludedInValueList": 3,
+      "NotEqual": 12,
+      "NumberOfFilledFields": 2,
+      "Or": 4,
+      "PatternMatched": 4,
+      "RepetitionNotUnique": 16,
+      "True": 11
+    },
+    "repeatableLevelsCrossed": {
+      "buckets": {
+        "0": 38,
+        "1": 33,
+        "2-3": 18
+      },
+      "max": 2,
+      "mean": 0.7752808988764045,
+      "median": 1,
+      "min": 0,
+      "n": 89,
+      "p90": 2
+    },
+    "rulesPerErrorField": {
+      "buckets": {
+        "1": 25,
+        "2-3": 18,
+        "4-7": 4
+      },
+      "max": 7,
+      "mean": 1.8936170212765957,
+      "median": 1,
+      "min": 1,
+      "n": 47,
+      "p90": 3
+    },
+    "scope": {
+      "modelLevel": 0,
+      "perGroup": 61,
+      "perRepeatableRow": 28
+    },
+    "walkUpDistance": {
+      "buckets": {
+        "2-3": 43,
+        "4-7": 12
+      },
+      "max": 4,
+      "mean": 2.581818181818182,
+      "median": 2,
+      "min": 2,
+      "n": 55,
+      "p90": 4
+    }
+  },
+  "structure": {
+    "constraints": {
+      "enumCardinality": {
+        "buckets": {
+          "2-3": 6,
+          "4-7": 2,
+          "8-15": 3
+        },
+        "max": 15,
+        "mean": 5.545454545454546,
+        "median": 3,
+        "min": 2,
+        "n": 11,
+        "p90": 13
+      },
+      "numberScale": {
+        "buckets": {
+          "0": 10,
+          "8-15": 2
+        },
+        "max": 14,
+        "mean": 2.3333333333333335,
+        "median": 0,
+        "min": 0,
+        "n": 12,
+        "p90": 14
+      },
+      "numbersWithBounds": 9,
+      "stringsWithLength": 22,
+      "stringsWithPattern": 4
+    },
+    "fieldCount": 79,
+    "fieldKinds": {
+      "BOOLEAN": 2,
+      "CONFIRM": 15,
+      "ENUMERATION": 11,
+      "NUMBER": 12,
+      "STRING": 39
+    },
+    "fieldsPerGroup": {
+      "buckets": {
+        "0": 4,
+        "1": 5,
+        "2-3": 14,
+        "4-7": 3,
+        "8-15": 3
+      },
+      "max": 13,
+      "mean": 2.7241379310344827,
+      "median": 2,
+      "min": 0,
+      "n": 29,
+      "p90": 8
+    },
+    "groupCount": 29,
+    "maxNestingDepth": 6,
+    "repeatability": {
+      "chainProduct": {
+        "buckets": {
+          "524288-1048575": 3,
+          "64-127": 11,
+          "8192-16383": 1
+        },
+        "max": 1000000,
+        "mean": 200740.0,
+        "median": 100,
+        "min": 100,
+        "n": 15,
+        "p90": 1000000
+      },
+      "chainProductByDepth": {
+        "1": {
+          "buckets": {
+            "64-127": 11,
+            "8192-16383": 1
+          },
+          "max": 10000,
+          "mean": 925.0,
+          "median": 100,
+          "min": 100,
+          "n": 12,
+          "p90": 100
+        },
+        "2-3": {
+          "buckets": {
+            "524288-1048575": 3
+          },
+          "max": 1000000,
+          "mean": 1000000.0,
+          "median": 1000000,
+          "min": 1000000,
+          "n": 3,
+          "p90": 1000000
+        }
+      },
+      "fieldChainProduct": {
+        "buckets": {
+          "1": 53,
+          "524288-1048575": 5,
+          "64-127": 20,
+          "8192-16383": 1
+        },
+        "max": 1000000,
+        "mean": 63443.70886075949,
+        "median": 1,
+        "min": 1,
+        "n": 79,
+        "p90": 100
+      },
+      "maxRepeatableNestingDepth": 2,
+      "maxRepetitions": {
+        "buckets": {
+          "64-127": 11,
+          "8192-16383": 4
+        },
+        "max": 10000,
+        "mean": 2740.0,
+        "median": 100,
+        "min": 100,
+        "n": 15,
+        "p90": 10000
+      },
+      "nestingDepth": {
+        "buckets": {
+          "1": 12,
+          "2-3": 3
+        },
+        "max": 2,
+        "mean": 1.2,
+        "median": 1,
+        "min": 1,
+        "n": 15,
+        "p90": 2
+      },
+      "nestingDepthExact": {
+        "1": 12,
+        "2": 3
+      },
+      "repeatableGroupCount": 15,
+      "siblingBranchFan": {
+        "buckets": {
+          "1": 5,
+          "2-3": 2,
+          "4-7": 2,
+          "8-15": 2
+        },
+        "max": 12,
+        "mean": 3.909090909090909,
+        "median": 2,
+        "min": 1,
+        "n": 11,
+        "p90": 12
+      },
+      "unboundedCount": 0
+    }
+  },
+  "wiring": {
+    "fieldFanOut": {
+      "buckets": {
+        "1": 17,
+        "2-3": 30,
+        "32-63": 1,
+        "4-7": 11
+      },
+      "max": 57,
+      "mean": 3.4745762711864407,
+      "median": 2,
+      "min": 1,
+      "n": 59,
+      "p90": 5
+    },
+    "fieldsReferenced": 59,
+    "referencedByComputations": 2,
+    "referencedByRules": 58
+  }
+}

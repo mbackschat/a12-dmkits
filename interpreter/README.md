@@ -42,11 +42,17 @@ requests across 4 threads over 3 models cost **3 preparations**.
 An `Interpreter` is per request. That is a safety requirement, not a cost preference: it carries snapshot-scoped
 state that custom conditions read, so sharing one across threads is unsupported.
 
-Three things to know before sizing a cache:
+Four things to know before sizing a cache:
 
-- A resident prepared model is **larger than the DM-JSON it came from** — 5.8× to 9.7× once it has served a
-  request, and the ratio moves with model SHAPE rather than size. Budget roughly 1.6 kB per field and 1.6 kB per
-  rule, and size the cache in **bytes, not entries**.
+- A resident prepared model is **larger than the DM-JSON it came from**, and the ratio moves with model SHAPE rather
+  than size, so size the cache in **bytes, not entries**. Budget it from structure instead:
+  **≈ 1.4 kB × fields + 1.55 kB × rules + 2.3 kB × groups**, which holds within 4% across six models spanning 5 to 79
+  fields, 3 to 29 groups and 0 to 192 rules.
+- It is nonetheless far **smaller than the A12 Kernel runtime service it replaces**: on those same models,
+  **4.7× to 10.4×** smaller than the Kernel's generated Java and **22× to 41×** smaller than its dynamic Groovy
+  (measured 2026-08-07, JDK 21). The Kernel's own Document Model is comparable to a prepared model; the difference
+  is the generated rule code — and a sixth to nearly half of it is class metadata in Metaspace, which a heap
+  measurement does not show at all.
 - An undersized cache is not slightly worse, it is no cache plus eviction overhead. The same 12 requests through a
   cache one entry too small cost **12 preparations and 10 evictions**.
 - The cache is necessarily **in-process**: a prepared model is a live instance with a per-instance owner identity

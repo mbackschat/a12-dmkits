@@ -925,6 +925,7 @@ public final class RuntimeLaws {
      */
     public static final class KernelEngine {
         private final String modelJson;
+        private final IDocumentModel model;
         private final IDocumentRtService rt;
         private final DocumentServiceFactory dsf;
         private final IDocumentFactory df;
@@ -932,6 +933,7 @@ public final class RuntimeLaws {
         KernelEngine(String modelJson) {
             this.modelJson = modelJson;
             IDocumentModel model = expandedModel(modelJson);
+            this.model = model;
             IDocumentModelResolver resolver = id -> model;
             this.dsf = new DocumentServiceFactory(resolver);
             this.rt = new DocumentRtServiceFactory(resolver).createDocumentRtService(dynamicConfig());
@@ -942,6 +944,18 @@ public final class RuntimeLaws {
          *  OUTSIDE the timed region (V2 is immutable, so reusing one instance across timed runs has no aliasing hazard). */
         public DocumentV2 instance(Doc doc) {
             return dsf.createDocumentV1V2Converter().ofDocumentV1(buildInstance(modelJson, df, doc));
+        }
+
+        /**
+         * Build the kernel {@link DocumentV2} from A12's own Document JSON, reusing this engine's already-expanded
+         * model. The footprint comparison needs it: the identical document must reach all three engines, and the
+         * interpreter's public boundary emits exactly this encoding. The serializer is created per call and not
+         * retained, so an engine's measured resident cost is unchanged by this seam existing.
+         */
+        public DocumentV2 instance(String documentJson) {
+            IDocumentModelResolver resolver = id -> model;
+            return deserializeV2(
+                    new MDSerializerFactory().createDocumentSerializerV2(resolver), modelJson, documentJson);
         }
 
         /**
@@ -1078,6 +1092,7 @@ public final class RuntimeLaws {
      */
     public static final class JavaKernelEngine {
         private final String modelJson;
+        private final IDocumentModel model;
         private final IDocumentRtService rt;
         private final IDocumentFactory df;
         private final DocumentServiceFactory dsf;   // kept for the V1→V2 conversion the modern validatePart needs
@@ -1085,6 +1100,7 @@ public final class RuntimeLaws {
         JavaKernelEngine(String modelJson) {
             this.modelJson = modelJson;
             IDocumentModel expanded = expandedModel(modelJson);
+            this.model = expanded;
             Properties idToPackage = new Properties();   // OUT: modelId -> generated package (the static path needs it)
             Map<String, String> sources = generateSources(
                     expanded, IValidationCodeGeneratorConfig.ProgrammingLanguage.JAVA, idToPackage);
@@ -1099,6 +1115,13 @@ public final class RuntimeLaws {
          *  timed region (the static rt-service consumes {@link DocumentV2} just like the dynamic one). */
         public DocumentV2 instance(Doc doc) {
             return dsf.createDocumentV1V2Converter().ofDocumentV1(buildInstance(modelJson, df, doc));
+        }
+
+        /** The A12-Document-JSON twin of {@link KernelEngine#instance(String)}; same non-retaining contract. */
+        public DocumentV2 instance(String documentJson) {
+            IDocumentModelResolver resolver = id -> model;
+            return deserializeV2(
+                    new MDSerializerFactory().createDocumentSerializerV2(resolver), modelJson, documentJson);
         }
 
         /** Every fired error code for an already-built instance, <b>sorted</b> — the multiset (see {@link KernelEngine}). */
@@ -1315,10 +1338,20 @@ public final class RuntimeLaws {
     }
 
     /**
-     * Generate and join the kernel's Java source for a model without compiling it. Package-private for
-     * structural law locks whose runtime result cannot expose generated evaluation order.
+     * The kernel's deserialized + expanded Document Model, alone — no service, no generated code. The footprint
+     * comparison needs this baseline to separate the two halves of a kernel strategy's resident cost: the model
+     * graph, which both strategies share, and the generated rule/computation code, which is the part that differs.
      */
-    static String generatedJavaSource(String modelJson) {
+    public static Object expandedDocumentModel(String modelJson) {
+        return expandedModel(modelJson);
+    }
+
+    /**
+     * Generate and join the kernel's Java source for a model without compiling it. Public for the structural law
+     * locks whose runtime result cannot expose generated evaluation order, and for the footprint report, which
+     * quotes generated-code volume as a deterministic companion to its GC-sensitive metaspace measurement.
+     */
+    public static String generatedJavaSource(String modelJson) {
         return generatedSource(modelJson, IValidationCodeGeneratorConfig.ProgrammingLanguage.JAVA);
     }
 
@@ -1328,7 +1361,7 @@ public final class RuntimeLaws {
      * {@code NUM_CONDITIONLINES_PER_METHOD_GROOVY}, which no runtime result can reveal — so a law lock over
      * that mode must read the emitted Groovy to prove it actually engaged.
      */
-    static String generatedGroovySource(String modelJson) {
+    public static String generatedGroovySource(String modelJson) {
         return generatedSource(modelJson, IValidationCodeGeneratorConfig.ProgrammingLanguage.GROOVY);
     }
 

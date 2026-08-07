@@ -22,16 +22,19 @@ import kotlin.test.Test
  *
  * Run: `./build.sh -Pfast :interpreter:jvmTest --tests "*ModelFootprintReportTest*" -Da12.footprint.report=true`
  * Add `-Da12.footprint.models=<path>,<path>` to measure other self-contained models.
+ *
+ * The cross-strategy companion — the same quantity for the kernel's dynamic-Groovy and generated-Java engines —
+ * is `:adapter`'s `EngineFootprintReportTest`, which must live there because this module stays kernel-free.
  */
 class ModelFootprintReportTest {
 
     @Test
     fun reportResidentCostPerModelShape() {
-        if (System.getenv("A12_FOOTPRINT_REPORT") != "true") {
+        if (System.getProperty("a12.footprint.report") != "true") {
             return
         }
         val repoRoot = repoRoot()
-        val paths = (System.getenv("A12_FOOTPRINT_MODELS")?.split(",")?.map { Path.of(it.trim()) }
+        val paths = (System.getProperty("a12.footprint.models")?.split(",")?.map { Path.of(it.trim()) }
             ?: DEFAULT_MODELS.map { repoRoot.resolve(it) })
             .filter { Files.isRegularFile(it) }
         check(paths.isNotEmpty()) { "no measurable model files found" }

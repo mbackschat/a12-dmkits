@@ -2366,6 +2366,15 @@ def verifyInterpreterReleaseContracts = tasks.register(
     }
 }
 
+// Forward the opt-in measurement knobs from the Gradle CLI to the test JVM, the same explicit-allowlist idiom
+// :adapter uses for its perf harnesses. Report harnesses skip when their property is unset, so the default run is
+// unaffected — and the documented command is the one that actually reaches the test.
+tasks.named('jvmTest', Test) {
+    ['a12.footprint.report', 'a12.footprint.models'].each { k ->
+        if (System.getProperty(k) != null) systemProperty k, System.getProperty(k)
+    }
+}
+
 def interpreterJvmTest = tasks.named('jvmTest', Test)
 def interpreterDocGuardTest = tasks.register('interpreterDocGuardTest', Test) {
     group = 'verification'
