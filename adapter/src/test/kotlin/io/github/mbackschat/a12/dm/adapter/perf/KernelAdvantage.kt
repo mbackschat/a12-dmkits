@@ -5,10 +5,11 @@ import io.github.mbackschat.a12.dm.adapter.perf.PerfBounds.NEAR_LINEAR_SLACK
 import org.junit.jupiter.api.Assertions.assertTrue
 
 /**
- * The shared owner-bar assertion for a perf guard that times **one interpreter entry point against its kernel
- * counterpart directly**, rather than through the [PerfInventory] scenario sweep: the interpreter must beat the
- * kernel by [PerfBounds.MIN_KERNEL_ADVANTAGE] at every measured scale, and its growth between the two scales
- * must stay near-linear.
+ * The shared assertion for a perf guard that times **one interpreter entry point against its kernel counterpart
+ * directly**, rather than through the [PerfInventory] scenario sweep: the interpreter must not fall below the
+ * [PerfBounds.MIN_KERNEL_ADVANTAGE] floor at any measured scale, and its growth between the two scales must stay
+ * near-linear. The floor is conservative and one-sided — clearing it is the minimum, never the goal, and the
+ * guarded entries are expected to stay far above it (see that constant's contract).
  *
  * Direct rather than inventory-derived because these guards time an entry point [PerfOp] does not model, and
  * the inventory's rows carry reviewed content fingerprints that a new operation axis would invalidate. The
