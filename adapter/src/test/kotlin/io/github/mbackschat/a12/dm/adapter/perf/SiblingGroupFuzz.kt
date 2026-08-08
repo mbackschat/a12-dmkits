@@ -41,8 +41,11 @@ object SiblingGroupFuzz {
     /** A generated rule over the sibling model: where it sits, its code, its referenced error field, its text. */
     private data class Spec(val group: String, val code: String, val errorRel: String, val cond: String)
 
-    /** A parallel-iteration case (NOT supported yet): the scenario + the rule's code and interpreter path. */
+    /** A parallel-iteration case: the scenario + the rule's code and interpreter path. */
     data class ParallelCase(val scenario: PerfScenario, val code: String, val rulePath: String)
+
+    /** How many DISTINCT parallel-iteration rule shapes [parallelCase] can produce — its `caseIndex` domain. */
+    const val PARALLEL_CASES = 2
 
     /** The shared structure JSON (kernel) for the two-sibling `/Plan` model — built once, rules injected per case. */
     private val structureJson: String = DocumentModelDraft.named("plan").locale("en_US")
@@ -73,17 +76,23 @@ object SiblingGroupFuzz {
     }
 
     /**
-     * A **parallel-iteration** case for [modelSeed] (a per-row reference into BOTH siblings, joined by the shared
+     * The **parallel-iteration** case [caseIndex] (a per-row reference into BOTH siblings, joined by the shared
      * `Dept` index). The interpreter evaluates it as the index-keyed outer join and must agree with the kernel
      * at the full-message level — across matched, A-only, B-only values AND the occasional invalid index
      * (duplicate/empty → the 3VL corner, KERNEL-FINDINGS §9), all of which the value strategy generates.
+     *
+     * There are exactly [PARALLEL_CASES] shapes, and — unlike [supported], which varies its threshold by
+     * `modelSeed % 90` — nothing else here varies with the argument. Iterate it over `0 until PARALLEL_CASES`
+     * and spend the rest of the budget on DOCUMENT seeds, which is the axis that actually varies the join:
+     * a wider first loop only replays the same two models.
      */
-    fun parallelCase(modelSeed: Int): ParallelCase {
-        val spec = when (modelSeed % 2) {
+    fun parallelCase(caseIndex: Int): ParallelCase {
+        require(caseIndex in 0 until PARALLEL_CASES) { "parallel case index out of range: $caseIndex" }
+        val spec = when (caseIndex) {
             0 -> Spec(ROOT, "PC", "../A/Va", "FieldsNotCollectivelyFilled(A/Va, B/Vb)")
             else -> Spec(ROOT, "PX", "../A/Va", "FieldFilled(A/Va) And FieldFilled(B/Vb) And [A/Va] > [B/Vb]")
         }
-        return ParallelCase(scenario("siblingparallel#$modelSeed ${spec.code}", spec), spec.code, "${spec.group}/${spec.code}")
+        return ParallelCase(scenario("siblingparallel#$caseIndex ${spec.code}", spec), spec.code, "${spec.group}/${spec.code}")
     }
 
     private fun scenario(name: String, spec: Spec): PerfScenario {

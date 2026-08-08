@@ -30,9 +30,7 @@ class SiblingGroupFuzzDiffTest {
             for (m in 0 until MODELS) {
                 val scenario = SiblingGroupFuzz.supported(m)
                 for (d in 0 until DOCS) {
-                    if (!FuzzDiagnostics.signaturesAgree(scenario, d)) {
-                        add("${scenario.name} docSeed=$d :: " + FuzzDiagnostics.signatureDivergence(scenario, d))
-                    }
+                    if (!FuzzDiagnostics.signaturesAgree(scenario, d)) add(report(scenario, d))
                 }
             }
         }
@@ -46,13 +44,11 @@ class SiblingGroupFuzzDiffTest {
     fun parallelIterationAgreesWithKernel() {
         val failures = mutableListOf<String>()
         var kernelEverFired = false
-        for (m in 0 until MODELS) {
+        for (m in 0 until SiblingGroupFuzz.PARALLEL_CASES) {
             val case = SiblingGroupFuzz.parallelCase(m)
-            for (d in 0 until DOCS) {
+            for (d in 0 until PARALLEL_DOCS) {
                 if (case.code in FuzzDiagnostics.kernelCodes(case.scenario, d)) kernelEverFired = true
-                if (!FuzzDiagnostics.signaturesAgree(case.scenario, d)) {
-                    failures += "${case.scenario.name} docSeed=$d :: " + FuzzDiagnostics.signatureDivergence(case.scenario, d)
-                }
+                if (!FuzzDiagnostics.signaturesAgree(case.scenario, d)) failures += report(case.scenario, d)
             }
         }
         assertTrue(failures.isEmpty()) {
@@ -63,8 +59,26 @@ class SiblingGroupFuzzDiffTest {
         assertTrue(kernelEverFired) { "kernel never fired any parallel-iteration code — the cases aren't exercising the join" }
     }
 
+    /**
+     * A diverging seed, WITH the document that produced it. [FuzzDiagnostics.signatureDivergence] names which
+     * engine pair split but not what was fed in, and reading a sibling-join divergence means seeing the index
+     * values — chasing [IF270] otherwise took a hand-written probe just to print the placements.
+     */
+    private fun report(scenario: PerfScenario, docSeed: Int): String =
+        "${scenario.name} docSeed=$docSeed :: ${FuzzDiagnostics.signatureDivergence(scenario, docSeed)}\n" +
+            FuzzDiagnostics.placementDump(scenario, docSeed)
+
     private companion object {
         const val MODELS = 40
         const val DOCS = 5
+
+        /**
+         * The parallel regime spends its budget on DOCUMENTS, not on the first loop. [SiblingGroupFuzz.supported]
+         * genuinely varies with its argument (`t = 1 + modelSeed % 90`), so 40 model seeds there are 40 models;
+         * [SiblingGroupFuzz.parallelCase] has only [SiblingGroupFuzz.PARALLEL_CASES] shapes and the generated
+         * document depends on the DOC seed alone — so the former `MODELS × DOCS` loop ran 200 times over 10
+         * unique comparisons and just 5 distinct documents. Same shape, 8× the documents, 40 % of the runs.
+         */
+        const val PARALLEL_DOCS = 40
     }
 }

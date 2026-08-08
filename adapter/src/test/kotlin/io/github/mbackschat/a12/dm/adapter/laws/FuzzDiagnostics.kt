@@ -201,6 +201,11 @@ object FuzzDiagnostics {
     fun kernelCodes(scenario: PerfScenario, seed: Int): Set<String> =
         kernelDetail(scenario.kernelModel, record(scenario, seed)).codes.toSet()
 
+    /** The placements [scenario] generates for [seed], one per line — the document behind a divergence report.
+     *  [signatureDivergence] names the split; this says what was fed in. */
+    fun placementDump(scenario: PerfScenario, seed: Int): String =
+        record(scenario, seed).joinToString("\n") { "  ${it.kind} ${it.path}${it.reps} ${it.value ?: ""}".trimEnd() }
+
     // ---- compute differential (harness F — computation cascade) ---------------------------------
 
     /**
