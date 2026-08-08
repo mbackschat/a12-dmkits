@@ -334,6 +334,9 @@ internal class ComputationEngine(
      * uniqueness holds within one parent's row set, so the same key value under two different parent rows is
      * not a duplicate, and an invalidity under one parent must not reach instances under another. Pooling every
      * row of [group] across all parents produced both halves of the IF222 defect.
+     *
+     * Duplication is judged on the canonical [indexKeyOf] form, never raw text ([IF272]) — a Number index field
+     * spelled `5` in one row and `5.00` in another compromises the column exactly as `5`/`5` does.
      */
     private fun invalidIndexParentCoords(doc: Document, group: String): Set<List<Int>> {
         val indexField = model.indexFields.firstOrNull { parentGroup(it) == group } ?: return emptySet()
@@ -341,7 +344,9 @@ internal class ComputationEngine(
         return doc.contextsFor(group)
             .groupBy { it.repsOf(group).take(parentDepth) }
             .filterValues { rows ->
-                val values = rows.map { it.displayValue(indexField) }
+                val values = rows.map { ctx ->
+                    ctx.displayValue(indexField)?.let { indexKeyOf(it, ctx.declaredKind(indexField)) }
+                }
                 values.any { it.isNullOrEmpty() } || values.size != values.distinct().size
             }
             .keys

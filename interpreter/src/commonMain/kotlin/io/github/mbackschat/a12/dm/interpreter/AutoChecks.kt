@@ -162,6 +162,9 @@ internal class AutoChecks(
      * is **"unknown"** for any rule referencing it ([formalErrorAt]), branch-scoped exactly like a formal error
      * (verified: a rule on the dup field is suppressed; a rule on a sibling field still fires). Computed once
      * per evaluation and threaded, not recomputed per operand.
+     *
+     * Cells are compared by their canonical [indexKeyOf] form, never raw text ([IF272]) — a Number index field
+     * spelled `5` in one row and `5.00` in another is ONE kernel key, so both rows are flagged.
      */
     fun duplicateIndexCells(doc: Document, isRelevant: Relevance = ALL_RELEVANT): Set<Pair<String, List<Int>>> {
         val out = mutableSetOf<Pair<String, List<Int>>>()
@@ -173,7 +176,8 @@ internal class AutoChecks(
                 // index cache from the relevant fields only (`ValidationCommand.befuelleCacheMitRelevantenFeldern`),
                 // so a relevant row whose duplicate PARTNER is not relevant is NOT flagged (IF39). Full: all cells.
                 if (!isRelevant(indexField, reps)) return@mapNotNull null
-                ctx.displayValue(indexField)?.takeIf { it.isNotEmpty() }?.let { reps to it }
+                ctx.displayValue(indexField)?.takeIf { it.isNotEmpty() }
+                    ?.let { reps to indexKeyOf(it, ctx.declaredKind(indexField)) }
             }
             rows.groupBy { it.first.dropLast(2) }.forEach { (_, scope) ->
                 val duplicated = scope.groupingBy { it.second }.eachCount().filterValues { it > 1 }.keys

@@ -5,7 +5,7 @@ import io.github.mbackschat.a12.dm.interpreter.CacheObserver
 import io.github.mbackschat.a12.dm.interpreter.CacheOwnerKind
 import io.github.mbackschat.a12.dm.interpreter.messagePointerHouseForm
 import io.github.mbackschat.a12.dm.interpreter.UnsupportedConstructException
-import io.github.mbackschat.a12.dm.interpreter.decOrNull
+import io.github.mbackschat.a12.dm.interpreter.indexKeyOf
 import io.github.mbackschat.a12.dm.interpreter.ast.Val
 import io.github.mbackschat.a12.dm.interpreter.ast.emptyValue
 import io.github.mbackschat.a12.dm.interpreter.ast.typedValue
@@ -543,9 +543,10 @@ class Document(internal val config: DocumentConfig) {
      * fields empty (and its pointer level to [UNKNOWN_REP], -5).
      *
      * The iteration value set is the **union of the groups' index-field values** within each common-parent row
-     * (the kernel's `ValidationCache.getIterationValuesForGroups` — the per-group value→repetition map keys,
-     * last write winning on a duplicate, empty cells excluded). Each value resolves each group to the row that
-     * carries it, or **not specified** when the group has no row for it.
+     * (the kernel's `ValidationCache.getIterationValuesForGroups` — the per-group value→repetition map keys, with
+     * empty cells excluded and a DUPLICATED value keying nothing at all, [IF270]). Each value resolves each group
+     * to the row that carries it, or **not specified** when the group has no row for it. Values are compared as
+     * canonical [indexKeyOf] keys, not as raw text ([IF272]).
      *
      * **Invalid index → 3VL (KERNEL-FINDINGS §9):** a group whose index is *invalid* here (a duplicate value or
      * an empty cell — `invalidIndexGroups`) reads its **unmatched** references as 3-valued **UNKNOWN**, not
@@ -614,7 +615,11 @@ class Document(internal val config: DocumentConfig) {
      *  cleanly. Since the group is also marked invalid here, a reference to that value is then
      *  unmatched-into-an-invalid-group = 3VL UNKNOWN, which is what suppresses a negative operator over it. This
      *  is the same rule the semantic-index column already applies ([IndexColumn]); the parallel join was the one
-     *  index-keyed lookup that resolved a duplicate by row order. */
+     *  index-keyed lookup that resolved a duplicate by row order.
+     *
+     *  Both the collision test and the join key itself are the CANONICAL [indexKeyOf] form, never the raw stored
+     *  text ([IF272]) — on a Number index field `5` and `5.00` are one kernel key, so they collide within a group
+     *  and match across groups. */
     private fun indexMap(group: String, indexFieldName: String, ctxReps: List<Int>, invalidOut: MutableSet<String>,
             cellRelevant: ((String, List<Int>) -> Boolean)?): Map<String, List<Int>> {
         val idxPath = "$group/$indexFieldName"
@@ -638,9 +643,13 @@ class Document(internal val config: DocumentConfig) {
                 invalidOut.add(group)
                 continue
             }
-            val v = valueAt(idxPath, row + 1)?.value
+            val raw = valueAt(idxPath, row + 1)?.value
+            if (raw.isNullOrEmpty()) {                                      // empty index cell → group invalid here
+                invalidOut.add(group)
+                continue
+            }
+            val v = indexKeyOf(raw, kinds[idxPath])
             when {
-                v.isNullOrEmpty() -> invalidOut.add(group)                  // empty index cell → group invalid here
                 v in collided -> Unit                                       // 3rd+ occurrence: already keys nothing
                 byValue.put(v, row) != null -> {                            // duplicate value → group invalid here
                     invalidOut.add(group)
@@ -952,16 +961,16 @@ class Document(internal val config: DocumentConfig) {
         }
 
         private fun indexedCellReps(targetPath: String, indexField: String, indexValue: String): List<Int>? {
-            val numericKey = declaredKind(indexField) == Kind.NUMBER
+            val kind = declaredKind(indexField)
             val byValue = index().indexRowByValue.getOrPut(indexField to starScopePrefix(targetPath)) {
                 val m = HashMap<String, List<Int>>()
                 for (reps in starRows(targetPath)) {
-                    val key = valueAt(indexField, reps)?.value?.let { indexKey(it, numericKey) } ?: continue
+                    val key = valueAt(indexField, reps)?.value?.let { indexKeyOf(it, kind) } ?: continue
                     if (key !in m) m[key] = reps                          // FIRST placement per key wins (matches a scan)
                 }
                 m
             }
-            return byValue[indexKey(indexValue, numericKey)]
+            return byValue[indexKeyOf(indexValue, kind)]
         }
 
         override fun indexedContainedFieldCells(
@@ -974,17 +983,6 @@ class Document(internal val config: DocumentConfig) {
             return RowContext(groupPath, selectedGroupReps, evaluated = true)
                 .containedFieldCells(groupPath, declaredRange = false)
         }
-
-        /**
-         * The canonical semantic-index key — the kernel's `IndexFieldCache.normalizeValue`. A **Number** index
-         * field (`FormatDefinitionZahl`) compares by NUMERIC value: both the stored key and the requested key are
-         * normalized to the peer's canonical numeric form ([Dec.display], trailing zeros stripped), so legal
-         * spellings such as `5.00` and `5` collide (SPEC-2026-07-23-08). A value that does not parse as a number
-         * falls back to its raw text (the kernel's raw fallback). Every non-Number kind keeps EXACT stored text.
-         * Applied identically on construction AND query, so the two sides can never diverge.
-         */
-        private fun indexKey(value: String, numeric: Boolean): String =
-            if (numeric) decOrNull(value)?.display() ?: value else value
 
         /** The memoized [IndexColumn] — built ONCE per (column, star-scope prefix) at the DOCUMENT level and
          *  shared across every row context of the scope (the [Index.indexColumnByScope] twin of
