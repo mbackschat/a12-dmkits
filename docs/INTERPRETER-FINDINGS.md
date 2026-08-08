@@ -2853,7 +2853,9 @@ The generator now has three deterministic relevant-set shape classes: the origin
 
 **Source-discriminated mechanism.** The kernel does not ask whether any caller pointer wildcards the star. `ValidationCommand.initialisiereRelevanteFelder` first expands relevant groups into descendant field identifiers; `compressRelevantFieldsForValidationCall` stores them per field name; `ValidationCache.reduceRedundancies` removes an identifier only when another wildcard identifier encompasses it. `EntityIterator.certainlyNotInSameSubtree` then filters to the current iteration subtree, and `existiertEbeneMitSternUndTeilvalidierungUngleich` rejects the aggregate extent if any identifier still present is concrete at a starred iterator level. The rival "any wildcard wins" mechanism predicts firing for the mixed discriminator and is falsified by both kernel differentials.
 
-The interpreter's shared `starRelevantOf` gate now mirrors that sequence: expand relevant ancestors to the operand path, remove identifiers encompassed by broader wildcard identifiers, filter to the current row, then require every remaining identifier to wildcard every iterated star level. Reduction is cached per operand path, so the row hot path does not repeatedly perform the pairwise pattern work. The same shared gate serves all-rows aggregates and starred value-list quantifiers; `SumOfProducts` retains `starFullyEnumeratedOf`.
+The interpreter's `starRelevantOf` gate now mirrors that sequence: expand relevant ancestors to the operand path, remove identifiers encompassed by broader wildcard identifiers, filter to the current row, then require every remaining identifier to wildcard every iterated star level. Reduction is cached per operand path, so the row hot path does not repeatedly perform the pairwise pattern work. `SumOfProducts` retains `starFullyEnumeratedOf`.
+
+**Amended 2026-08-08 — this gate serves the four all-rows aggregates ONLY.** The original text ended "the same shared gate serves all-rows aggregates and starred value-list quantifiers", which was an inference from one implementation serving two call sites and is **falsified**: the kernel fires a starred `No` and suppresses `Sum` on the same relevant set. The value-list site is existential and now has its own `starExtentKnownOf` ([IF264](#if264)).
 
 *Locked by:* `laws/PartialValidationAggregateDiffTest` for the exact reduction matrix, the independent `Sum` reproduction, and the `SumOfProducts` boundary; `laws/PartialNestedWildcardScopeDiffTest`, `PartialMultiStarScopeDiffTest`, `PartialValidationValueListDiffTest`, and `PartialNestedAggregateDiffTest` for sibling gates; `perf/PartialValidationFuzzDiffTest` for the structurally metered 180-case tri-differential.
 
@@ -2866,3 +2868,27 @@ The side map is gone. Each timing method now owns a `@TimesInterpreterEntryPoint
 The exact scope matters. This removes the stale class/method pointer and co-locates the coverage declaration with the code that performs the timing. It does not bytecode-instrument a test body to prove that an honest annotation's text matches every call it makes. The behavioral timing assertions and kernel preflights remain the oracle for the guard's work; this denominator proves ownership and complete declared coverage.
 
 *Locked by:* `InterpreterPerfCoverageTest` (`:adapter`, ordinary lane). Red phase: after deleting the map and before adding declarations, the derived guard set was empty against all eight reflected entry points; adding the declarations made the exact-set check green.
+
+### IF264: the starred value-list extent gate is EXISTENTIAL where the all-rows aggregate gate is universal (FIXED 2026-08-08) <a id="if264"></a>
+
+[IF262](#if262) established that the four all-rows aggregates take their wildcard gate **universally** over a reduced identifier set, and the interpreter applied that predicate at both starred-extent call sites — the aggregates and the value-list quantifiers — on the strength of one implementation serving both. The two gates do not agree. Seven relevant-set shapes, one model, one document, a starred `No` beside a starred `Sum`, read per engine:
+
+| relevant set | starred `No` | starred `Sum` |
+|---|---|---|
+| field wildcard alone | fires | fires |
+| **field wildcard + concrete group rows (semantic root)** | **fires** | **silent** |
+| field wildcard + a concrete identifier for the SAME field | fires | fires |
+| concrete field identifier + wildcard group | fires | fires |
+| all-semantic field wildcard + concrete group rows | fires | fires |
+| **field wildcard + concrete group rows (physical root)** | **fires** | **silent** |
+| concrete group rows only | silent | silent |
+
+Dynamic-Groovy and static-Java agree on every cell, so this is not an [IF136](#if136) strategy split. Rows 2 and 6 are the discriminator and rows 1/7 are the positive controls that keep them from reading as "the value-list gate is absent": with no wildcard at all the value-list entry is UNKNOWN too.
+
+**Row 3 is what makes the reading precise, and it is why this is not a retraction of IF262.** A wildcard identifier beside a *concrete identifier for its own field* fires on **both** sides — IF262's reduction removes the encompassed sibling exactly as measured. What the aggregate gate does and the value-list gate does not is carry the **expanded group rows** into the same universal test. So the split is about which identifiers reach the gate, not about wildcards as such, and the aggregate mechanism in IF262 stands unchanged.
+
+**Consequence and fix.** Folding the value-list site into IF262's reduction made the interpreter suppress a `No`/`NotAll`-values entry the kernel fires — a divergence shipped in `3ce95a05` and live until this finding. `EvalConfig` now carries `starExtentKnown` beside `starRelevant`; `DmInterpreter.starExtentKnownOf` is the existential predicate (the pre-IF262 form), keeping the star anchor of [IF259](#if259) and the per-iteration-row scope of [IF257](#if257) — only the reduction/universal layer is aggregate-only. `ValueListQuantEval` reads the new seam.
+
+**Why the standing nets missed it.** The 180-case partial fuzz agrees before and after: its value-list rules never receive a field wildcard beside concrete group rows, which is [IG112](INTERPRETER-GAPS.md)'s shape gap one level deeper — the generator now emits wildcards, but not the *combination* that separates two gates answering the same structural question. The finding came from asking for a discriminating case for a claim that had been carried by shared implementation, which is the [CLAUDE.md](../CLAUDE.md) "match the oracle to the CLAIM KIND" rule applied to a mechanism claim.
+
+*Locked by:* `laws/PartialExtentGateShapeDiffTest` (the seven-shape table, both kernel strategies, both operators side by side) and `laws/PartialValidationValueListDiffTest.oneWildcardEstablishesTheExtentEvenBesideConcreteRows` (with its wildcard-removed positive control).

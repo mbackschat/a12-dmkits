@@ -126,6 +126,45 @@ class PartialValidationValueListDiffTest {
         assertEquals(setOf("VLQ"), ancestor, "a relevant ancestor supplies complete extent to its descendant star")
     }
 
+    /**
+     * The value-list extent gate is EXISTENTIAL: **one** covering relevant identifier that wildcards the starred
+     * level establishes the extent, and concrete siblings beside it do not take it away.
+     *
+     * This is the gate's own measurement rather than an inference from the all-rows aggregate path it briefly
+     * shared an implementation with. On the middle row the two kernel-DIVERGE — a starred `No` fires while `Sum`
+     * over the same rows stays UNKNOWN — which is why the shared predicate had to be split ([IF264], the full
+     * seven-shape table in `PartialExtentGateShapeDiffTest`).
+     */
+    @Test
+    fun oneWildcardEstablishesTheExtentEvenBesideConcreteRows() {
+        val cond = "NoFieldValueIncludedInValueList(/Order/Items*/Tag In \"A\")"
+        val rows = listOf("C", "D")
+        val tagWildcard = Relevant.of(TAG, 1, 0, 1)
+        val tagWildcardI = RelevantEntity(TAG, listOf(1, 0, 1))
+        val concreteRows = listOf(Relevant.of(ITEMS, 0, 1), Relevant.of(ITEMS, 0, 2))
+        val concreteRowsI = listOf(RelevantEntity(ITEMS, listOf(0, 1)), RelevantEntity(ITEMS, listOf(0, 2)))
+
+        val fieldWildcardOnly = agree(cond, "x", rows,
+            setOf(ackK, tagWildcard), setOf(ackI, tagWildcardI), "field wildcard alone")
+        val besideConcreteRows = agree(cond, "x", rows,
+            setOf(ackK, tagWildcard) + concreteRows, setOf(ackI, tagWildcardI) + concreteRowsI,
+            "field wildcard beside concrete group rows")
+        val concreteRowsOnly = agree(cond, "x", rows,
+            setOf(ackK) + concreteRows, setOf(ackI) + concreteRowsI, "concrete group rows only")
+
+        assertEquals(setOf("VLQ"), fieldWildcardOnly, "a lone field wildcard establishes the extent")
+        assertEquals(
+            setOf("VLQ"), besideConcreteRows,
+            "adding concrete group rows beside that wildcard does not take the extent away — existential, not " +
+                "universal, and the opposite of what the all-rows aggregate gate does with the same set",
+        )
+        assertEquals(
+            emptySet<String>(), concreteRowsOnly,
+            "with the wildcard removed there is nothing left to establish the extent — the positive control " +
+                "that keeps the row above from passing vacuously",
+        )
+    }
+
     @Test
     fun nonRepeatableEntryIsTriviallyComplete() {
         val cond = "NoFieldValueIncludedInValueList(/Order/Ack In \"A\")"   // Ack X ∉ {A} → No holds; no star

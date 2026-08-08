@@ -295,6 +295,7 @@ class DmInterpreter private constructor(
             relevanceOf(relevant),
             customRelevantOf(relevant),
             starRelevantOf(relevant),
+            starExtentKnownOf(relevant),
             starFullyEnumeratedOf(relevant),
             groupRelevanceOf(relevant),
         )
@@ -322,6 +323,31 @@ class DmInterpreter private constructor(
                             scoped.any { it.indices[level] != RelevantEntity.ALL }
                         }
                     }
+            }
+        }
+    }
+
+    /**
+     * A starred VALUE-LIST entry's complete-extent gate — the same star anchor and per-iteration-row scope as
+     * [starRelevantOf], but **EXISTENTIAL**: one covering relevant identifier that wildcards every reopened
+     * level establishes the extent, and concrete siblings surviving beside it do NOT suppress it.
+     *
+     * The two gates were briefly one predicate, on the reasoning that they answer the same structural question.
+     * They do not. On `{field wildcard} + {concrete group rows}` the kernel FIRES a starred `No` and is SILENT
+     * on `Sum` over the same rows, on both codegen strategies — so folding the value-list site into [IF262]'s
+     * reduction made the interpreter suppress where the kernel fires. Seven relevant-set shapes measured side by
+     * side in `PartialExtentGateShapeDiffTest`; the split is IF264.
+     */
+    private fun starExtentKnownOf(relevant: Set<RelevantEntity>): (String, Int, List<Int>) -> Boolean {
+        val candidates = wellFormed(relevant)
+        val decided = HashMap<Triple<String, Int, List<Int>>, Boolean>()
+        return { starPath, bindDepth, rowReps ->
+            val scope = starScope(starPath, bindDepth, rowReps)
+            decided.getOrPut(Triple(starPath, bindDepth, scope.bound)) {
+                candidates.any { e ->
+                    covers(e, starPath) && addressesRow(e, scope.bound) &&
+                        scope.levels.all { i -> i >= e.indices.size || e.indices[i] == RelevantEntity.ALL }
+                }
             }
         }
     }
@@ -518,6 +544,7 @@ class DmInterpreter private constructor(
     private fun validateWith(doc: Document, locale: String, isRelevant: Relevance,
             customRelevant: Set<CustomConditionFieldPointer>? = null,
             starRelevant: ((String, Int, List<Int>) -> Boolean)? = null,
+            starExtentKnown: ((String, Int, List<Int>) -> Boolean)? = null,
             starFullyEnumerated: ((String, Int, List<Int>) -> Boolean)? = null,
             groupRelevance: (String, List<Int>) -> GroupRelevance = { _, _ -> GroupRelevance.FULL }): ValidationOutcome =
         observeCaches(doc) {
@@ -555,7 +582,7 @@ class DmInterpreter private constructor(
                 GroupPresenceIndex(admittedGroupContent, formallyIncorrect, groupRelevance)
             }
             val pass = ValidationPass(call, doc, locale, isRelevant, dup,
-                validationConfig(isRelevant, customRelevant, starRelevant, starFullyEnumerated) { ctx, path -> groupPresence.state(ctx, path) },
+                validationConfig(isRelevant, customRelevant, starRelevant, starExtentKnown, starFullyEnumerated) { ctx, path -> groupPresence.state(ctx, path) },
                 formalResults, { formallyIncorrect })
             for (rule in model.rules) {
                 try {
@@ -712,7 +739,7 @@ class DmInterpreter private constructor(
             locale,
             ALL_RELEVANT,
             dup,
-            validationConfig(ALL_RELEVANT, null, null, null) { ctx, path -> groupPresence.state(ctx, path) },
+            validationConfig(ALL_RELEVANT, null, null, null, null) { ctx, path -> groupPresence.state(ctx, path) },
             formalResults,
             { formallyIncorrect },
         )
@@ -751,13 +778,15 @@ class DmInterpreter private constructor(
      */
     private fun validationConfig(isRelevant: Relevance, customRelevant: Set<CustomConditionFieldPointer>?,
             starRelevant: ((String, Int, List<Int>) -> Boolean)?,
+            starExtentKnown: ((String, Int, List<Int>) -> Boolean)?,
             starFullyEnumerated: ((String, Int, List<Int>) -> Boolean)?,
             groupPresence: (EvalContext, String) -> io.github.mbackschat.a12.dm.interpreter.eval.GroupPresenceState): EvalConfig =
         EvalConfig(clock, model.baseYear, model.indexFields, timeZone = model.timeZone,
             predefinedTypes = predefinedTypes, customConditions = customConditions, customFieldTypes = customFieldTypes,
             patternMatches = patterns::matches,
             cellRelevant = if (isRelevant === ALL_RELEVANT) null else { path, reps -> isRelevant(path, reps) },
-            starRelevant = starRelevant, starFullyEnumerated = starFullyEnumerated,
+            starRelevant = starRelevant, starExtentKnown = starExtentKnown,
+            starFullyEnumerated = starFullyEnumerated,
             customRelevant = customRelevant, groupPresence = groupPresence)
 
     /** The kernel's allowed-and-eliminated raw-type length shape (see [rowOutcomes]): the whole condition is

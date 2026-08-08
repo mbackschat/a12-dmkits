@@ -46,11 +46,13 @@ private fun Interpreter.vlqOperands(entries: List<Expr>): List<VlqOperand> = ent
         is Expr.Star -> {
             val op = VlqOperand(filtered = e.having != null)
             val c = ctxOf(e)
-            // Partial validation: this starred entry's COMPLETE extent is established only by WILDCARD coverage
-            // of its repeatable level(s) (or a relevant ancestor) — the [starRelevant] seam shared with all-rows
-            // aggregates (IF42); enumerating concrete rows, even all of them, does NOT (SPEC-2026-07-22-09).
+            // Partial validation: this starred entry's COMPLETE extent is established by WILDCARD coverage of
+            // its repeatable level(s) (or a relevant ancestor); enumerating concrete rows, even all of them,
+            // does NOT (SPEC-2026-07-22-09). It is its OWN seam, not the all-rows aggregates' [starRelevant]:
+            // that one is universal over the reduced identifier set, this one is existential, and the two
+            // kernel-diverge on a wildcard beside concrete siblings ([IF264]).
             // Null in full validation → never set → the full path stays byte-identical.
-            if (starRelevant?.invoke(e.path, e.bindDepth, c.repsOf(e.path)) == false) op.extentUnknown = true
+            if (starExtentKnown?.invoke(e.path, e.bindDepth, c.repsOf(e.path)) == false) op.extentUnknown = true
             // A starred INDEX field's formal errors are field-LOCAL and make the CELL not check-relevant
             // → UNKNOWN: an empty cell is mandatory-empty (the kernel auto-requires an index field per
             // row), and EVERY cell of a duplicated value carries the uniqueIndex error (over ALL rows, not
