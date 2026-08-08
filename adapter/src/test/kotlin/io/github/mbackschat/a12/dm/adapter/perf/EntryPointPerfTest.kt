@@ -90,12 +90,16 @@ class EntryPointPerfTest {
         val rig = Rig(singleComputationScenario())
         val target = rig.scenario.interpModel.computations.single().targetPath
 
-        assertTrue(rig.interpreter.computeField(target, rig.interpDoc(SMALL_NESTED)).isNotEmpty()) {
-            "computeField produced no outcome at all — timing it would measure nothing"
-        }
-        assertTrue(rig.kernel.computationCount(rig.kernelDoc(SMALL_NESTED)) > 0) {
-            "the kernel computed nothing on the same document — the comparison would be against an empty run"
-        }
+        // Agreement, not merely non-emptiness: a wrong-but-nonempty result would otherwise be timed happily.
+        // Counts rather than full signatures because the interpreter reports EVERY computed instance while the
+        // kernel reports its change projection, and on this scenario the seed leaves the target empty so every
+        // instance is a change — a shape assertion the count check would expose if it ever stopped holding.
+        val computed = rig.interpreter.computeField(target, rig.interpDoc(SMALL_NESTED)).size
+        assertEquals(
+            rig.kernel.computationCount(rig.kernelDoc(SMALL_NESTED)), computed,
+            "computeField and the kernel must compute the same number of instances before either is timed",
+        )
+        assertTrue(computed > 0) { "nothing was computed — timing this would measure an empty run" }
         rig.measure(
             "computeField", SMALL_NESTED, LARGE_NESTED,
             interpreter = { interp, doc -> interp.computeField(target, doc) },
@@ -113,11 +117,18 @@ class EntryPointPerfTest {
         // A no-op apply would rebuild nothing and time as fast as you like, so require it to actually write.
         val source = rig.interpDoc(SMALL_NESTED)
         val applied = rig.interpreter.applyComputations(source)
-        fun computedCells(doc: Document): List<String> =
-            doc.valuedFields().filter { it.path == target }.map { it.raw }
-        assertTrue(computedCells(applied).isNotEmpty() && computedCells(applied) != computedCells(source)) {
-            "applyComputations left the computed field untouched — timing it would measure a no-op rebuild"
-        }
+        // Keyed by coordinates, not zipped: this scenario's seed leaves the computed field EMPTY, so the source
+        // has no valued cell at that path at all and a positional zip pairs 150 applied cells against nothing.
+        // An absent source cell is a written cell, which is exactly what the count has to say.
+        fun computedCells(doc: Document): Map<List<Int>, String> =
+            doc.valuedFields().filter { it.path == target }.associate { it.reps to it.raw }
+        val before = computedCells(source)
+        val changed = computedCells(applied).count { (reps, value) -> before[reps] != value }
+        assertEquals(
+            rig.kernel.computationCount(rig.kernelDoc(SMALL_NESTED)), changed,
+            "applyComputations must write exactly the cells the kernel's compute() reports as changed; a " +
+                "no-op rebuild, or a rebuild that writes the wrong number of cells, would otherwise be timed",
+        )
         rig.measure(
             "applyComputations", SMALL_NESTED, LARGE_NESTED,
             interpreter = { interp, doc -> interp.applyComputations(doc) },

@@ -9,6 +9,7 @@ import java.io.Reader;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Properties;
+import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
@@ -110,10 +111,28 @@ class BuildPerformancePolicyTest {
         String digest = closureBody(Files.readString(locate("cli/build.gradle")), "nativeCaptureStampDigest");
         assertTrue(digest.contains("MessageDigest"), "the capture stamp digest closure must be found intact");
 
-        String code = digest.lines().filter(line -> !line.strip().startsWith("//")).collect(Collectors.joining("\n"));
+        String code = uncommented(digest);
         assertFalse(code.contains("System.getenv"), "the capture stamp digest must hash only repository "
                 + "inputs; an environment read makes the stamp unverifiable on any other machine, and the "
                 + "gate that consumes it fails closed");
+
+        // A direct read is the obvious form, not the only one: assigning the environment to a variable OUTSIDE
+        // this closure and hashing the variable inside it is the same defect and passed the check above. So
+        // collect every file-scope name bound to an environment read and require the digest to mention none.
+        String build = uncommented(Files.readString(locate("cli/build.gradle")));
+        Matcher bindings = Pattern.compile("\\bdef\\s+(\\w+)\\s*=[^\\n]*System\\.getenv").matcher(build);
+        while (bindings.find()) {
+            String name = bindings.group(1);
+            assertFalse(Pattern.compile("\\b" + Pattern.quote(name) + "\\b").matcher(code).find(),
+                    "the capture stamp digest reads '" + name + "', which is bound from System.getenv earlier "
+                            + "in cli/build.gradle. Hoisting the environment read out of the closure leaves the "
+                            + "stamp exactly as machine-specific as reading it inline");
+        }
+    }
+
+    /** Source with comment lines dropped, so a guard matches CODE and never a comment that quotes it. */
+    private static String uncommented(String source) {
+        return source.lines().filter(line -> !line.strip().startsWith("//")).collect(Collectors.joining("\n"));
     }
 
     /**
@@ -130,8 +149,10 @@ class BuildPerformancePolicyTest {
         assertTrue(build.contains("ignore 'io/github/mbackschat/a12/dm/cli/version.properties'"),
                 "this guard exists because that normalization hides the resource from classpath-based "
                         + "up-to-date checks; if it is gone, re-derive whether the explicit input is still needed");
-        String nativeCompile = namedTaskBlock(build, "nativeCompile");
-        assertFalse(nativeCompile.isEmpty(), "cli/build.gradle must configure nativeCompile");
+        // Comment-stripped: this asserts the declaration EXISTS, and a commented-out line carrying the same
+        // text would otherwise satisfy it while the input is gone — the failure mode the guard is for.
+        String nativeCompile = uncommented(namedTaskBlock(build, "nativeCompile"));
+        assertFalse(nativeCompile.isBlank(), "cli/build.gradle must configure nativeCompile");
         assertTrue(nativeCompile.contains("inputs.file(generateVersionProperties"),
                 "nativeCompile must declare the generated version.properties as an input, or the native image "
                         + "goes UP-TO-DATE across a commit and ships provenance naming the previous one");

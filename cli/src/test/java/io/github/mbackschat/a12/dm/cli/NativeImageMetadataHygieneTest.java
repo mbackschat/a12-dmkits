@@ -68,6 +68,15 @@ class NativeImageMetadataHygieneTest {
             if (!glob.startsWith("schema/") && !glob.startsWith("catalog/")) {
                 continue;
             }
+            // A PATTERN, not a path: `provides` resolves literally and can never answer for one. The capture
+            // sanitizer takes the same view and KEEPS such an entry (`scripts/capture-native-config.sh`:
+            // "Unresolvable now means KEEP, which is the safe direction"). Without this the two halves of one
+            // contract disagree — the sanitizer deliberately retains an entry this guard then reports as an
+            // offender. Neither arm fires today (the committed metadata carries no own-prefix wildcard), so
+            // this aligns them before the disagreement can surface as a confusing failure.
+            if (glob.indexOf('*') >= 0 || glob.indexOf('?') >= 0 || glob.indexOf('[') >= 0) {
+                continue;
+            }
             if (roots.stream().noneMatch(root -> provides(root, glob))) {
                 offenders.add(glob);
             }
@@ -153,10 +162,21 @@ class NativeImageMetadataHygieneTest {
         if (dir == null) {
             throw new IllegalStateException("no settings.gradle above " + Path.of("").toAbsolutePath());
         }
+        // The ROOT project's own tree counts too. `Files.list` yields the root's children, so mapping each to
+        // `src/main/resources` reaches every module but never `<repo>/src/main/resources` itself — which the
+        // capture sanitizer DOES treat as a main root (`repo.glob("src/main/resources")`). The root project
+        // ships no such tree today, so this is alignment rather than a fix, but a divergent root set is exactly
+        // how a stripped-vs-kept disagreement would appear.
+        List<Path> roots = new ArrayList<>();
         try (Stream<Path> modules = Files.list(dir)) {
-            return modules.map(module -> module.resolve("src/main/resources")).filter(Files::isDirectory).sorted()
-                    .toList();
+            modules.map(module -> module.resolve("src/main/resources")).filter(Files::isDirectory).sorted()
+                    .forEach(roots::add);
         }
+        Path ownRoot = dir.resolve("src/main/resources");
+        if (Files.isDirectory(ownRoot)) {
+            roots.add(ownRoot);
+        }
+        return roots;
     }
 
     /**

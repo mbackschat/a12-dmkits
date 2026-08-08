@@ -85,10 +85,18 @@ class InterpreterPerfCoverageTest {
             val owner = runCatching { Class.forName(guard.testClass) }.getOrElse {
                 throw AssertionError("$entryPoint names a perf guard whose class is gone: ${guard.testClass}")
             }
-            val methods = owner.methods.map { it.name }.toSet()
-            check(guard.testMethod in methods) {
+            val named = owner.methods.filter { it.name == guard.testMethod }
+            check(named.isNotEmpty()) {
                 "$entryPoint names ${guard.testClass}.${guard.testMethod}, which no longer exists. " +
                     "Point it at the guard that times $entryPoint today."
+            }
+            // Existence alone would accept any method at all — a helper, or something inherited from Object.
+            // This does NOT establish that the named test exercises the entry point; nothing cheap does, and
+            // claiming otherwise would be the "advertise what you cannot point at" defect one level up. It
+            // rules out the mis-pointing that costs nothing to rule out.
+            check(named.any { it.isAnnotationPresent(Test::class.java) }) {
+                "$entryPoint names ${guard.testClass}.${guard.testMethod}, which is not a @Test method. A " +
+                    "coverage claim must point at something that actually runs."
             }
         }
     }

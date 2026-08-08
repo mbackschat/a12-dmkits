@@ -2752,3 +2752,38 @@ So the guard asserts the invariant **directly**: findings the engine gave the sa
 **How it shipped: a disposition reasoned from one line of a function.** The façade's four snapshot-taking methods were dispositioned in [IF254](#if254) as "delegates to a timed core call, adds an O(1)-per-finding projection, so the worst case is a constant factor". That was reached by reading `ModelAddressValidation.entityKind` — two set lookups, correct in itself — while missing the pointer-list copy on the adjacent line. Reading part of a function is not a measurement of the function, and the reasoning was recorded confidently enough that only an external reviewer's execution overturned it.
 
 *Locked by:* `FacadeProjectionSharingTest` (`:adapter`, ordinary lane). Found by cold review (C-F5); the reviewer's 8.56×-growth reading did not reproduce at that ratio here, but the underlying defect did, and its real signature is the heap rather than the clock.
+
+### IF257 — the wildcard-only gate was row-blind too, the sibling site of IF255, and it UNDER-fired (2026-08-08) <a id="if257"></a>
+
+[IF255](#if255) fixed `SumOfProducts`' completeness gate, which decided globally what the kernel decides per iteration row. `starRelevant` — the wildcard-only gate `Sum`/`MaxValue`/`MinValue`/`NumberOfDifferentValues` share ([IF42](#if42)) — was keyed on the star path in exactly the same way, so the root-cause rule required sweeping it rather than assuming it was fine. It diverged.
+
+**Discriminator:** two nested repeatable levels, with the inner level wildcarded for ONE outer row and enumerated concretely for the other — `Outer[1]/Inner[*]` + `Outer[2]/Inner[1]` + `Outer[2]/Inner[2]`. Kernel fires **1×** (the wildcarded row). Interpreter fired **0×**.
+
+**Note the direction, because it is the opposite of the sibling and of the prediction.** The old predicate required *every* repeatable level of some entity to be `ALL`, so `[ALL, 1, ALL]` — outer row 1, all its inner rows — failed the test and no entity qualified: silent everywhere. The expectation before running it was over-firing, on the reasoning that a path-keyed gate would answer "some entity wildcards this star" and admit both rows. Reasoning about a defect's direction is worth exactly nothing; the differential took a minute and settled it.
+
+Cell relevance cannot mask this one: every cell of `Outer[2]` **is** relevant in the discriminating case, and only its wildcard-ness differs — which is why the case had to nest two repeatable levels to exist at all.
+
+**The fix removes the duplication rather than repeating it.** Both gates now share one `rowScope` helper that filters entities to the current row's bound prefix and returns the repeatable levels left concrete below it; the wildcard-only gate requires that list empty, `SumOfProducts` requires it fully enumerated. The row scoping was the part that was wrong twice, so it now exists once.
+
+*Locked by:* `laws/PartialNestedWildcardScopeDiffTest` (`:adapter` — both-wildcarded, both-concrete, and the mixed discriminator, each read from the kernel and compared as a firing COUNT so one-row-versus-two is visible rather than collapsed to a set).
+
+### IF258 — four guards asserted their own source text or a name's existence rather than the behaviour they advertised (2026-08-08) <a id="if258"></a>
+
+A cold review of the release and perf work found four guards that would pass while the invariant they name was violated. None had ever failed; three had never been able to.
+
+| guard | what it asserted | how it passed with the defect present |
+|---|---|---|
+| capture-stamp portability | no `System.getenv` **inside** the digest closure | bind the environment to a file-scope name and hash the name |
+| native provenance input | the build file *contains* `inputs.file(generateVersionProperties` | a commented-out line carrying the same text |
+| perf coverage map | the named test **method exists** | point an entry point at any unrelated method, including one inherited from `Object` |
+| entry-point compute preflight | the result is **non-empty** | a wrong-but-nonempty result is timed happily |
+
+The first two are now comment-stripped and identifier-aware: the stamp guard additionally collects every file-scope name bound from `System.getenv` and refuses to find any of them in the digest, which closes the hoisting form (mutant-verified — it fires naming the hoisted variable). The compute preflights compare **instance counts against the kernel** instead of asserting non-emptiness.
+
+**The coverage-map guard is only partly closable, and that is stated rather than papered over.** It now requires the named method to carry `@Test`, which rules out a pointer to a helper or an `Object` method. It does **not** establish that the named test exercises the entry point; nothing cheap does, and asserting more than it checks would reproduce, one level up, exactly the defect this finding is about.
+
+**The pattern worth keeping.** All four are *source-text* or *name-existence* proxies for a *behavioural* claim, and a proxy is only as good as the distance between it and the thing. The distance is invisible while the invariant holds, which is why none of these ever failed — and why the check that matters is not "does the guard pass" but "can I make the defect and watch it pass". The stamp guard's hoisting form was mutated and fires naming the hoisted variable.
+
+**Strengthening a guard is a code change and can itself be wrong.** The first version of the `applyComputations` count compared the applied and source cell lists **positionally**; this scenario's seed leaves the computed field empty, so the source list is empty, the zip produced no pairs, and the guard failed claiming 0 written cells where 150 were written. Keyed by coordinates it is right, and an absent source cell correctly counts as written. A preflight that fails on a correct implementation is not a stricter guard, it is a broken one — worth stating because the whole finding is about guards that do not check what they claim.
+
+*Locked by:* `BuildPerformancePolicyTest` (the two build guards, root `:test`), `InterpreterPerfCoverageTest` and `EntryPointPerfTest` (`:adapter`).
