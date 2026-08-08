@@ -603,16 +603,24 @@ class Document(internal val config: DocumentConfig) {
             if (commonParent in declaredReps) emptyList() else listOf(List(parts(commonParent).size) { 1 })
         }
 
-    /** [group]'s `indexValue → matching-row reps` map under parent context [ctxReps] (last write wins on a
-     *  duplicate); adds [group] to [invalidOut] if its index has a duplicate value or an empty cell here. An
-     *  OVER-LIMIT row is EXCLUDED from the join: the kernel never inserts it into the `IndexFieldCache`, so its
-     *  index value is not a join key and a reference to it reads UNMATCHED (empty-as-0), never its poisoned cell —
-     *  the same [overLimitRows] exclusion the star/quantifier domain uses (SPEC-2026-07-23-13 / IF220). */
+    /** [group]'s `indexValue → matching-row reps` map under parent context [ctxReps]; adds [group] to
+     *  [invalidOut] if its index has a duplicate value or an empty cell here. An OVER-LIMIT row is EXCLUDED from
+     *  the join: the kernel never inserts it into the `IndexFieldCache`, so its index value is not a join key and
+     *  a reference to it reads UNMATCHED (empty-as-0), never its poisoned cell — the same [overLimitRows]
+     *  exclusion the star/quantifier domain uses (SPEC-2026-07-23-13 / IF220).
+     *
+     *  **A DUPLICATED value keys NOTHING** ([IF270]): it is not a selectable entry and is never resolved by row
+     *  order, so every colliding row drops out and the value is a join key only if another group carries it
+     *  cleanly. Since the group is also marked invalid here, a reference to that value is then
+     *  unmatched-into-an-invalid-group = 3VL UNKNOWN, which is what suppresses a negative operator over it. This
+     *  is the same rule the semantic-index column already applies ([IndexColumn]); the parallel join was the one
+     *  index-keyed lookup that resolved a duplicate by row order. */
     private fun indexMap(group: String, indexFieldName: String, ctxReps: List<Int>, invalidOut: MutableSet<String>,
             cellRelevant: ((String, List<Int>) -> Boolean)?): Map<String, List<Int>> {
         val idxPath = "$group/$indexFieldName"
         val overLimit = overLimitRows(group)
         val byValue = LinkedHashMap<String, List<Int>>()
+        val collided = HashSet<String>()
         for (row in rowsWithPrefix(group, ctxReps)) {
             if (row in overLimit) continue                                  // over-limit row: outside the join
             // Partial validation: the join is keyed by the INDEX field and the kernel builds that cache from the
@@ -622,8 +630,15 @@ class Document(internal val config: DocumentConfig) {
             // cell, which is why selecting a whole row keeps its iteration.
             if (cellRelevant?.invoke(idxPath, row + 1) == false) continue
             val v = valueAt(idxPath, row + 1)?.value
-            if (v.isNullOrEmpty()) invalidOut.add(group)                    // empty index cell → group invalid here
-            else if (byValue.put(v, row) != null) invalidOut.add(group)     // duplicate value → group invalid here
+            when {
+                v.isNullOrEmpty() -> invalidOut.add(group)                  // empty index cell → group invalid here
+                v in collided -> Unit                                       // 3rd+ occurrence: already keys nothing
+                byValue.put(v, row) != null -> {                            // duplicate value → group invalid here
+                    invalidOut.add(group)
+                    collided.add(v)
+                    byValue.remove(v)                                       // …and the value keys NOTHING at all
+                }
+            }
         }
         return byValue
     }
