@@ -2957,9 +2957,11 @@ The kernel runs a rule only where its error field is relevant — the interprete
 
 Row 1 falsifies the exact-instance reading. Row 4 falsifies the two coarser rivals in one shot: "the error PATH is relevant somewhere" would fire on every row, and "the rule's ELEMENT is relevant" would admit row 3, whose `Note` makes that element relevant. **Row 6 falsifies the declared-group reading** — same declared group as row 1, same error field, opposite answer, because the references moved the iteration. Rows 3, 5 and 7 keep the gate from collapsing into "always run": the error path must still be relevant *somewhere* under the bound levels.
 
-**Fix.** `ValidationPass.runsForRow` replaces the direct `isRelevant(errorPath, ctx.repsOf(errorPath))` call; the bound count is `EvalContext.boundLevelsOf` (a `Document.Ctx` row reports its shared ancestry with the group it iterates, capped by the coordinates it carries; a `ParallelRowContext` reports each joined group's own depth); and `RelevanceQueries.relevantWithin` answers the query off the same index the ordinary predicate uses — tuples and wildcard patterns projected onto the bound levels, memoized per (path, bound), which a rule fixes. Where the error field sits inside the iterated element — every per-row rule, so the overwhelming majority — the bound count covers every level and the query is byte-identical to the old one. The `ParallelRowContext` arm is reasoned from `repsOf`'s own binding, not measured; no probe in the estate reaches a parallel-iteration rule reporting below a joined group.
+**Fix.** `ValidationPass.runsForRow` replaces the direct `isRelevant(errorPath, ctx.repsOf(errorPath))` call; the bound count is `EvalContext.boundLevelsOf` (a `Document.Ctx` row reports its shared ancestry with the group it iterates, capped by the coordinates it carries; a `ParallelRowContext` reports each joined group's own depth); and `RelevanceQueries.relevantWithin` answers the query off the same index the ordinary predicate uses — tuples and wildcard patterns projected onto the bound levels, memoized per (path, bound), which a rule fixes. Where the error field sits inside the iterated element — every per-row rule, so the overwhelming majority — the bound count covers every level and the query is byte-identical to the old one.
 
-*Locked by:* `laws/PartialRuleGateScopeDiffTest`.
+*Corrected 2026-08-09:* this paragraph used to end "The `ParallelRowContext` arm is reasoned from `repsOf`'s own binding, not measured; no probe in the estate reaches a parallel-iteration rule reporting below a joined group." **Both halves are now false.** `laws/PartialParallelJoinKeyDiffTest` runs partial validation over `Demand ⊥ Supply` with the rule at `/Staffing` reporting into `../Demand/Headcount` — below a joined group, including the `Demand[-5]` unmatched arm — tri-engine. That the arm is genuinely *load-bearing* there, rather than merely present, is a mutation result, not a reading: replacing the `ParallelRowContext` bound with the path's own length turns `aParallelRowExistsOnlyWhereItsIndexCellIsRelevant` red while `PartialRuleGateScopeDiffTest` stays entirely green — so the parallel arm is covered by that test and by nothing else.
+
+*Locked by:* `laws/PartialRuleGateScopeDiffTest`; the parallel arm additionally by `laws/PartialParallelJoinKeyDiffTest`.
 
 ### IF269: a parallel-iteration row exists only where its INDEX cell is relevant (FIXED 2026-08-08) <a id="if269"></a>
 
@@ -3038,3 +3040,27 @@ The control is what makes the rest meaningful — a fully relevant column still 
 **Provenance.** Found by the partial parallel-iteration fuzz on its first run (`SiblingGroupFuzzDiffTest.parallelIterationAgreesWithKernelUnderPartialRelevance`), which is the cell no other net reached: the only other partial net's model is a nested chain, and `IterationScopes.prepare` excludes an ancestor group from the parallel candidates, so that topology can never be planned as a parallel iteration at any seed count. Two of 240 combinations diverged; `FuzzDiagnostics.shrinkPartial` — the relevant-set twin of `shrink`, added for this — reduced both to the same three-entity set, after which the hand-built discriminators above were straightforward. Hand isolation had failed first for a reason worth recording: every attempt included the ROOT group entity, which expands onto every descendant, so five "different" relevant sets were silently the same set.
 
 *Locked by:* `laws/PartialParallelJoinKeyDiffTest.aNonRelevantIndexCellInvalidatesTheColumnNotJustItsKey` (mutant-checked: reverting the fix fails ONLY this method, while the fourteen positive shapes stay green — the blind spot, demonstrated rather than asserted) and the fuzz regime above as the class-level net.
+
+### IF272: an index-field cell is identified by its A12 VALUE, never by its stored text (FIXED 2026-08-09) <a id="if272"></a>
+
+**Claim.** Everywhere the kernel treats an index-field cell as an *identity* it compares the canonical value, not the characters. On a **Number** index field (`FormatDefinitionZahl`) the legal spellings `5`, `5.0` and `5.00` are ONE key — the kernel's `IndexFieldCache.normalizeValue`, already established for the semantic index as SPEC-2026-07-23-08. A value that does not parse as a number falls back to its raw text, and every other `Kind` keeps its exact stored text.
+
+**The defect.** The interpreter had this rule in exactly one of the four places that need it. `Document.indexedCellReps` (the semantic index `[F For "v"]`) normalized; the parallel join's value→row map, the auto `uniqueIndex` check, and the computation engine's invalid-index detection each keyed a raw `String`. So the same document produced three different divergences at once, all of them silent.
+
+**Discriminators** (two sibling groups under `/Tariff` sharing a Number index `Deductible`, `fractionDigits(2)`; both kernel strategies agree on every row; the `5`/`5` textual pair is the control that was always exact):
+
+| document | kernel | pre-fix interpreter |
+|---|---|---|
+| `Offered` keys `5`, `5.00` | `uniqueIndex` on **both** rows, join silent | no `uniqueIndex`; the join fires 3 messages |
+| the same, plus a clean `6` | the clean key still fires at row 3 | fires at rows 1, 2, 3 and `[-5]` |
+| `Offered` `5` vs `Quoted` `5.00` | silent — the two spellings are ONE joined row | 2 messages: two unmatched rows |
+| computation target keyed `5`, `5.00` | both instances CLEARED | `VALUE\|30` and `VALUE\|0` |
+| starred aggregate over the index column | poisoned, exactly as `5`/`5` | *(already exact — `IndexColumn` keys the typed `Val`, whose decimal equality is value-based since [IF41](#if41))* |
+
+Row 3 is the sharpest: it involves no duplicate and no invalidity at all, only whether the outer join MATCHES, so it rules out "this is really about duplicate detection". Row 5 is why the fix is not four fixes — the site that already used a typed value never had the bug, which is itself the argument for one canonical key function.
+
+**Fix.** One `internal fun indexKeyOf(value, kind)` (`IndexKey.kt`), applied at all four sites; `Document.indexedCellReps`'s private `indexKey` is deleted in favour of it. The normalization is **narrower than "canonicalize values"** on purpose: it is `Kind.NUMBER` only, with the raw-text fallback, because that is the whole of the measured basis (SPEC-2026-07-23-08). Widening it to the date family or to enum S-values would be a refusal-shaped guess with no kernel measurement behind it.
+
+**Provenance.** A cold review of the [IF270](#if270)/[IF271](#if271) slice, which asked whether the join's *identity* was checked at all — it was not: `ParallelJoinDuplicateKeyDiffTest` uses a `String` index throughout, so every one of its rows passes under raw-text keying. A lock is only as strong as the field kind it exercises.
+
+*Locked by:* `laws/NumericIndexKeyDiffTest` (mutant-checked: reverting each of the three sites fails the method that owns it, and all three leave the fourth — the `IndexColumn` — green, which is how that site's independence was established rather than assumed).
