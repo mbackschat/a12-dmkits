@@ -50,7 +50,7 @@ private fun Interpreter.vlqOperands(entries: List<Expr>): List<VlqOperand> = ent
             // of its repeatable level(s) (or a relevant ancestor) — the [starRelevant] seam shared with all-rows
             // aggregates (IF42); enumerating concrete rows, even all of them, does NOT (SPEC-2026-07-22-09).
             // Null in full validation → never set → the full path stays byte-identical.
-            if (starRelevant?.invoke(e.path) == false) op.extentUnknown = true
+            if (starRelevant?.invoke(e.path, c.repsOf(e.path)) == false) op.extentUnknown = true
             // A starred INDEX field's formal errors are field-LOCAL and make the CELL not check-relevant
             // → UNKNOWN: an empty cell is mandatory-empty (the kernel auto-requires an index field per
             // row), and EVERY cell of a duplicated value carries the uniqueIndex error (over ALL rows, not

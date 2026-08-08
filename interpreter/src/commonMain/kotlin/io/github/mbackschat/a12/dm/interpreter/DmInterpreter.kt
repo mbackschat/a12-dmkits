@@ -309,15 +309,64 @@ class DmInterpreter private constructor(
      * The same fact also gates a starred VALUE-LIST quantifier's complete extent (`No` either side / `NotAll`
      * values side — [io.github.mbackschat.a12.dm.interpreter.eval.evalValueListQuant], SPEC-2026-07-22-09).
      */
-    private fun starRelevantOf(relevant: Set<RelevantEntity>): (String) -> Boolean = { starPath ->
-        val sParts = pathParts(starPath)
-        relevant.any { r ->
-            val rParts = pathParts(r.path)
-            rParts.size <= sParts.size && rParts == sParts.take(rParts.size) &&
-                r.indices.indices.all { i ->
-                    r.indices[i] == RelevantEntity.ALL || "/" + rParts.take(i + 1).joinToString("/") !in model.repeatable
+    private fun starRelevantOf(relevant: Set<RelevantEntity>): (String, List<Int>) -> Boolean {
+        val byShape = relevantShapes(relevant)
+        val decided = HashMap<Pair<String, List<Int>>, Boolean>()
+        return { starPath, rowReps ->
+            decided.getOrPut(starPath to boundPrefix(starPath, rowReps)) {
+                byShape.any { (shape, entities) ->
+                    // Wildcard-only: nothing the CURRENT row leaves unbound may be pinned to a concrete
+                    // repetition. Asking this globally rejected a set that wildcards one outer row and
+                    // enumerates the next, where the kernel evaluates the wildcarded row (IF257).
+                    rowScope(shape.first, shape.second, entities, starPath, rowReps)?.second?.isEmpty() == true
                 }
+            }
         }
+    }
+
+    /** Group the relevant set by (path, wildcard pattern) — entities whose tuples are comparable to each other. */
+    private fun relevantShapes(
+        relevant: Set<RelevantEntity>,
+    ): Map<Pair<String, List<Boolean>>, List<RelevantEntity>> {
+        val byShape = HashMap<Pair<String, List<Boolean>>, MutableList<RelevantEntity>>()
+        for (r in relevant) {
+            if (r.indices.size != pathParts(r.path).size) continue
+            byShape.getOrPut(r.path to r.indices.map { it == RelevantEntity.ALL }) { ArrayList() } += r
+        }
+        return byShape
+    }
+
+    /**
+     * One shape's view of [starPath] **from the current row**: the entities that address this row, paired with
+     * the repeatable levels they leave CONCRETE below the row's bound prefix. Null when the shape cannot apply.
+     *
+     * Both starred-aggregate gates are decided per iteration row and differ only in what they do with that
+     * second list — the wildcard-only gate requires it empty, `SumOfProducts` requires it fully enumerated — so
+     * the row scoping lives here once rather than being re-derived (and mis-derived) per gate.
+     */
+    private fun rowScope(
+        path: String,
+        pattern: List<Boolean>,
+        entities: List<RelevantEntity>,
+        starPath: String,
+        rowReps: List<Int>,
+    ): Pair<List<RelevantEntity>, List<Int>>? {
+        val sParts = pathParts(starPath)
+        val rParts = pathParts(path)
+        if (rParts.size > sParts.size || rParts != sParts.take(rParts.size)) return null
+
+        // Levels the ROW binds are a filter, not something to enumerate: an entity addressing a different outer
+        // row says nothing about this one.
+        val bound = boundPrefix(starPath, rowReps)
+        val inThisRow = entities.filter { e ->
+            bound.indices.all { i -> i >= e.indices.size || pattern[i] || e.indices[i] == bound[i] }
+        }
+        if (inThisRow.isEmpty()) return null
+
+        val concreteLevels = rParts.indices.filter { i ->
+            !pattern[i] && i >= bound.size && "/" + rParts.take(i + 1).joinToString("/") in model.repeatable
+        }
+        return inThisRow to concreteLevels
     }
 
     /**
@@ -349,11 +398,7 @@ class DmInterpreter private constructor(
         // repetition is O(relevant² × reps), and enumerating every row makes the relevant set grow WITH the
         // document — measured 8.63× growth for 4× rows on `laws/PartialSumOfProductsPerfTest` (a growth
         // figure, so interpreter-only and unaffected by that guard's since-corrected kernel baseline).
-        val byShape = HashMap<Pair<String, List<Boolean>>, MutableList<RelevantEntity>>()
-        for (r in relevant) {
-            if (r.indices.size != pathParts(r.path).size) continue
-            byShape.getOrPut(r.path to r.indices.map { it == RelevantEntity.ALL }) { ArrayList() } += r
-        }
+        val byShape = relevantShapes(relevant)
         val decided = HashMap<Pair<String, List<Int>>, Boolean>()
         return { starPath, rowReps ->
             decided.getOrPut(starPath to boundPrefix(starPath, rowReps)) {
@@ -383,9 +428,12 @@ class DmInterpreter private constructor(
      * [starPath]'s repeatable levels. Levels **deeper** than this path need no enumeration: a relevant group
      * makes every descendant relevant, which is the kernel's own rule.
      *
-     * Coverage spread across DIFFERENT patterns is not detected and reports incomplete, which suppresses rather
-     * than fires. That direction is deliberate but unmeasured — `PartialValidationAggregateDiffTest` pins the
-     * mixed-pattern case against the kernel so the choice is not left to inference.
+     * Coverage spread across genuinely DIFFERENT patterns is not detected and reports incomplete, which
+     * suppresses rather than fires. That direction is deliberate and remains **unmeasured**: the nearest pinned
+     * case (`laws/PartialNestedAggregateDiffTest`, "Outer wildcarded, Inner rows enumerated separately") turns
+     * out to share ONE pattern — `[ALL, ALL, 1]` and `[ALL, ALL, 2]` differ only in a concrete coordinate — so
+     * it is covered by the cross-product check and fires in both engines. A set mixing `[ALL, ALL, *]` with
+     * `[ALL, 1, 2]` would be the real discriminator and nobody has run it.
      */
     private fun coversEveryRepetition(
         path: String,
@@ -394,32 +442,15 @@ class DmInterpreter private constructor(
         starPath: String,
         rowReps: List<Int>,
     ): Boolean {
-        val sParts = pathParts(starPath)
-        val rParts = pathParts(path)
-        if (rParts.size > sParts.size || rParts != sParts.take(rParts.size)) return false
-
-        // Levels the ROW binds are a filter, not something to enumerate: an entity addressing a different outer
-        // row says nothing about this one. Levels the row does not bind are the star's own, and those must be
-        // covered completely.
-        val bound = boundPrefix(starPath, rowReps)
-        val inThisRow = entities.filter { e ->
-            bound.indices.all { i -> i >= e.indices.size || pattern[i] || e.indices[i] == bound[i] }
-        }
-        if (inThisRow.isEmpty()) return false
-
-        val concreteLevels = ArrayList<Int>()
-        var universe = 1L
-        for (i in rParts.indices) {
-            val level = "/" + rParts.take(i + 1).joinToString("/")
-            if (pattern[i] || level !in model.repeatable || i < bound.size) continue
-            val declared = model.declaredReps[level] ?: return false
-            concreteLevels += i
-            universe *= declared
-        }
+        val (inThisRow, concreteLevels) =
+            rowScope(path, pattern, entities, starPath, rowReps) ?: return false
         if (concreteLevels.isEmpty()) return true   // every unbound repeatable level on this path is wildcarded
 
+        val rParts = pathParts(path)
+        var universe = 1L
         for (i in concreteLevels) {
-            val declared = model.declaredReps.getValue("/" + rParts.take(i + 1).joinToString("/"))
+            val declared = model.declaredReps["/" + rParts.take(i + 1).joinToString("/")] ?: return false
+            universe *= declared
             val seen = inThisRow.mapTo(HashSet()) { it.indices[i] }
             if ((1..declared).any { it !in seen }) return false
         }
@@ -445,7 +476,8 @@ class DmInterpreter private constructor(
      * field's relevance.
      */
     private fun validateWith(doc: Document, locale: String, isRelevant: Relevance,
-            customRelevant: Set<CustomConditionFieldPointer>? = null, starRelevant: ((String) -> Boolean)? = null,
+            customRelevant: Set<CustomConditionFieldPointer>? = null,
+            starRelevant: ((String, List<Int>) -> Boolean)? = null,
             starFullyEnumerated: ((String, List<Int>) -> Boolean)? = null,
             groupRelevance: (String, List<Int>) -> GroupRelevance = { _, _ -> GroupRelevance.FULL }): ValidationOutcome =
         observeCaches(doc) {
@@ -678,7 +710,7 @@ class DmInterpreter private constructor(
      * (null in full, the caller's set + globals in partial — IF38).
      */
     private fun validationConfig(isRelevant: Relevance, customRelevant: Set<CustomConditionFieldPointer>?,
-            starRelevant: ((String) -> Boolean)?,
+            starRelevant: ((String, List<Int>) -> Boolean)?,
             starFullyEnumerated: ((String, List<Int>) -> Boolean)?,
             groupPresence: (EvalContext, String) -> io.github.mbackschat.a12.dm.interpreter.eval.GroupPresenceState): EvalConfig =
         EvalConfig(clock, model.baseYear, model.indexFields, timeZone = model.timeZone,

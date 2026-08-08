@@ -82,6 +82,7 @@ class PartialNestedAggregateDiffTest {
         val k = RuntimeLaws.messagesPart(kModel, kDoc(), kRel).map { it.code }.filter { it == CODE }.toSortedSet()
         val i = DmInterpreter(def).validatePart(iDoc(), iRel).messages
             .map { it.code }.filter { it == CODE }.toSortedSet()
+        println("[kernel-reading] SumOfProducts · $label → kernel=$k interp=$i")
         assertEquals(k, i, "$label — kernel=$k interp=$i")
     }
 

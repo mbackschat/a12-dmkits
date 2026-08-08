@@ -463,7 +463,7 @@ private fun Interpreter.evalFunc(f: Expr.Func): Val {
                 val gated = if (op == FunctionOp.SUM_OF_PRODUCTS) {
                     fullyEnumerated != null && !fullyEnumerated.invoke(sp, ctx.repsOf(sp))
                 } else {
-                    relevant != null && !relevant.invoke(sp)
+                    relevant != null && !relevant.invoke(sp, ctx.repsOf(sp))
                 }
                 if (gated) return Val.Unknown
             }
