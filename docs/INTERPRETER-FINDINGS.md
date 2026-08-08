@@ -2733,9 +2733,13 @@ The [IF42](#if42) completeness fix and the relevance index that followed were bo
 
 *Locked by:* `PartialRelevanceDepthTest` (`:interpreter`, kernel-free — the index against the scan it replaced, plus a cost bound a depth-enumerating query cannot pass) and `laws/PartialNestedAggregateDiffTest` (`:adapter` — wildcard / full cross-product / diagonal / anti-diagonal / one-row-complete / mixed-shape, every reading taken from the kernel).
 
+**Corrected 2026-08-08:** the case listed here as "mixed-shape" was not one — `[*,*,1]` and `[*,*,2]` share a wildcard pattern and differ only in a concrete coordinate, so the cross-product check saw them together and the case never exercised coverage spread across shapes. The genuinely mixed reading is [IF260](#if260), where the per-pattern decision turned out to suppress a complete union. The case is kept, relabelled for what it does pin.
+
 ### IF256 — the published façade allocated quadratically by defensively copying a list the engine had shared, and a TIMING guard could not see it (2026-08-08) <a id="if256"></a>
 
 [IF191](#if191) makes the engine hand every finding of a dense `RepetitionNotUnique` cluster **one shared pointer-list instance** rather than a private copy each. The public `Interpreter` façade then projected each engine message into a `ValidationFinding` and ran `immutableListSnapshot` on that list **per finding** — copying one N-element list N times, and cancelling the optimization at exactly the boundary a library consumer calls. Fixed by reusing the snapshot when the source list is the same instance (`SharedPointerSnapshots`, one slot per channel; a miss simply falls back to the copy, so it is a fast path and never a correctness dependency).
+
+**Corrected 2026-08-08:** one slot per channel held for a single duplicate cluster and missed on *every* message of two interleaved ones, restoring the full quadratic — see [IF261](#if261). The copy is now removed rather than cached: the engine publishes an immutable snapshot and the boundary recognizes it. The measurement in this finding stands; the remedy it describes was replaced.
 
 **The instrument matters more than the finding.** The cost here is **allocation, not arithmetic**, and the two are not interchangeable:
 
@@ -2763,7 +2767,9 @@ So the guard asserts the invariant **directly**: findings the engine gave the sa
 
 Cell relevance cannot mask this one: every cell of `Outer[2]` **is** relevant in the discriminating case, and only its wildcard-ness differs — which is why the case had to nest two repeatable levels to exist at all.
 
-**The fix removes the duplication rather than repeating it.** Both gates now share one `rowScope` helper that filters entities to the current row's bound prefix and returns the repeatable levels left concrete below it; the wildcard-only gate requires that list empty, `SumOfProducts` requires it fully enumerated. The row scoping was the part that was wrong twice, so it now exists once.
+**The fix removes the duplication rather than repeating it.** Both gates now share the row scoping — filter entities to the current row's bound prefix, then look at the repeatable levels left concrete below it; the wildcard-only gate requires none, `SumOfProducts` requires them fully enumerated. The row scoping was the part that was wrong twice, so it exists once.
+
+**Corrected 2026-08-08:** the shared helper derived the bound prefix from the star path's *deepest* repeatable level, which is wrong for a multi-star operand — see [IF259](#if259), where consolidating the computation made one wrong derivation authoritative for both gates. The consolidation stands; the derivation inside it did not.
 
 *Locked by:* `laws/PartialNestedWildcardScopeDiffTest` (`:adapter` — both-wildcarded, both-concrete, and the mixed discriminator, each read from the kernel and compared as a firing COUNT so one-row-versus-two is visible rather than collapsed to a set).
 
@@ -2787,3 +2793,52 @@ The first two are now comment-stripped and identifier-aware: the stamp guard add
 **Strengthening a guard is a code change and can itself be wrong.** The first version of the `applyComputations` count compared the applied and source cell lists **positionally**; this scenario's seed leaves the computed field empty, so the source list is empty, the zip produced no pairs, and the guard failed claiming 0 written cells where 150 were written. Keyed by coordinates it is right, and an absent source cell correctly counts as written. A preflight that fails on a correct implementation is not a stricter guard, it is a broken one — worth stating because the whole finding is about guards that do not check what they claim.
 
 *Locked by:* `BuildPerformancePolicyTest` (the two build guards, root `:test`), `InterpreterPerfCoverageTest` and `EntryPointPerfTest` (`:adapter`).
+
+**Extended 2026-08-08, after a second review found four more of the same shape** — three of them in the strengthening above, which is the finding's own lesson arriving on its own fix:
+
+| guard | what still passed | now |
+|---|---|---|
+| capture-stamp portability | the hoist sweep knew one spelling (`def x = … System.getenv`); a method wrapper, an `ext` property, and Gradle's own `providers.environmentVariable` all passed | six ambient-read forms × four binding forms, with a positive control asserting the detector finds each |
+| native provenance input | the declaration could sit in a dead branch and the test named a *rebuild* it never observes | renamed to what it checks (`nativeCompileDeclaresTheGeneratedProvenanceAsAnInput`); the behavioural claim rests on the 2026-08-07 measurement, and the name no longer overstates it |
+| perf coverage denominator | both denominators key on method NAME, so a second `validatePart(Document, …)` overload would leave the discovered set unchanged and go untimed | a duplicate name fails loudly and demands its own disposition |
+| native resource globs | any own-prefix glob containing `*` was skipped, so `schema/no-such-*.json` was accepted — the exact dead weight, spelled with a star | wildcards resolve against the shipped tree, with a positive control on a matching and an empty glob |
+
+**The bound is stated rather than papered over.** Text scanning cannot cover a dynamically composed `System."${'get' + 'env'}"`; the guard catches every form anyone would write on purpose and the stamp gate fails closed on CI behind it. And the coverage map still does not establish that a named test *exercises* its entry point — closing that needs the claim made at the timing guard rather than in a map beside it, which is recorded in [`INTERPRETER-GAPS.md`](INTERPRETER-GAPS.md) rather than left implicit.
+
+### IF259 — the row-scoping helper bound a MULTI-star operand at the wrong level, and the shared helper spread it to both gates (2026-08-08) <a id="if259"></a>
+
+[IF257](#if257) fixed both starred-aggregate gates by giving them one `rowScope` helper, which derived the current row's bound coordinates from the star path's **deepest repeatable level**. That derivation is right for a single star and wrong for a multi-star operand, where [IF94](#if94) already pins the kernel's rule: binding stops at the levels strictly above the **first** `*`-marked group, so `Outer* then Inner* then Qty` still spans every outer row from any one of them.
+
+**Discriminator:** `Sum(Outer* then Inner* then Qty) > 25` on `Outer[2]/Inner[2]`, all `Qty = 10`, with the relevant set pinning `Outer` to one row and wildcarding `Inner` under it. Kernel **0×**, interpreter **1×** — it fires on an operand reaching rows the caller never made relevant. Pinning both outer rows separately reads the same way: kernel **0×**, interpreter **2×**.
+
+The threshold is the positive control and is why the reading means anything: 25 sits between one outer row's subtotal (20) and the cross-row total (40), so full validation firing **2×** in both engines proves the operand really does span both outer rows. A silent kernel in a partial case is otherwise indistinguishable from an unsupported shape, and every "agreement" underneath would be two kinds of nothing.
+
+**`bindDepth` was already on the AST and already correct** ([IF93](#if93)/IF94, threaded through the whole `EvalContext` star family). Only the relevance gates re-derived it from the path — one of them via a helper introduced *to stop the row scoping being derived twice*. Consolidating a computation is not the same as getting it right: it made one wrong derivation authoritative for both gates, and the sibling site in the value-list quantifier dropped the same parameter independently.
+
+**The fix** threads `bindDepth` into both gates and splits the star path into what the row binds and what the star iterates (`starScope`). A hand-built node (−1) keeps the leaf-parent default, where the two coincide by definition.
+
+*Locked by:* `laws/PartialMultiStarScopeDiffTest` (`:adapter` — the full-validation positive control plus four partial readings, each compared as a firing count).
+
+### IF260 — completeness decided PER WILDCARD PATTERN suppressed a relevant set whose union is complete (2026-08-08) <a id="if260"></a>
+
+[IF255](#if255)'s cross-product completeness test grouped the relevant set by (path, wildcard pattern) so that tuples were comparable, then asked whether **any one group** covered everything. Coverage spread across genuinely different patterns therefore read as incomplete. That direction was recorded in the source as deliberate-but-unmeasured; it is measured now, and it is wrong.
+
+**Discriminator:** `Inner[1]` relevant for every outer row (`[*,*,1]`) plus `Inner[2]` pinned per outer row (`[*,1,2]`, `[*,2,2]`). The union is all four pairs; neither pattern is complete alone. Kernel fires **2×**, interpreter fired **0×**. The same reading with the shape difference at the root coordinate rather than the outer one (`[*,*,1]` against `[1,*,2]`) behaves identically, so it is not an artefact of which level carries the difference.
+
+**The fix** drops the pattern grouping and takes the cover over the union of every addressing entity: each becomes a box over the iterated levels (a concrete index pins that level, `ALL` — or a level deeper than the entity's own path — spans it), and `boxesCoverEveryTuple` asks whether the boxes cover the full cross-product. Recursing on the wildcarding boxes first keeps it linear in the entity count on the enumerate-every-row shape the perf guard measures; the descent is bounded by the concrete indices actually present, never by the declared repetition counts.
+
+**The union is right here and wrong one gate over.** The wildcard-only gate is deliberately *not* a union: two entities that each pin a different outer row and wildcard the inner one cover every cell between them, and the kernel is still silent (IF259's third reading). Completeness composes across entities; wildcard-ness does not. The two gates now differ in exactly that, which is the distinction the shared helper had blurred.
+
+*Locked by:* `laws/PartialNestedAggregateDiffTest` (`:adapter`), whose previously "mixed" case turned out to share one pattern and is relabelled; its comparison is now a firing count rather than a set of codes.
+
+### IF261 — a bounded reuse cache is not a fix for a sharing invariant: two interleaved clusters defeated it completely (2026-08-08) <a id="if261"></a>
+
+[IF256](#if256) stopped the façade copying a pointer list the engine shares, using a one-slot-per-channel identity cache justified by "the sharing is per cluster and the two channels alternate".
+
+**Discriminator:** 40 rows alternating between two duplicate keys, so findings alternate between two source lists. Every call misses the single slot: **40 distinct instances across 40 findings** — the full O(N²) allocation back, at the boundary IF256 was written to protect.
+
+Nothing bounds how many duplicate clusters a document may interleave, so no slot count is defensible; picking one is the same "bound asserted rather than measured" this whole sequence is about, and enlarging it would only move the discriminator.
+
+**The fix removes the copy instead of caching it.** The engine builds its shared cluster projection as an `immutableListSnapshot`, and the boundary publishes an already-immutable list as-is (`isImmutableListSnapshot`). No cache, no scale at which it degrades; a list from anywhere else is still copied, so the published list is immutable either way. The invariant is now a property of the value rather than of a cache's hit rate.
+
+*Locked by:* `perf/FacadeProjectionSharingTest` (`:adapter` — the dense single cluster and the alternating pair, both asserted by list identity, no clock).

@@ -13,13 +13,31 @@ import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 
-private class ImmutableListSnapshot<T>(values: Collection<T>) : AbstractList<T>() {
+/**
+ * A list that is immutable **by construction** and may therefore cross the public boundary as-is.
+ *
+ * This marker is what lets a shared list be published without a defensive copy. Copying instead is not merely
+ * wasteful: when the engine deliberately hands N findings ONE list (IF191), a per-finding copy is O(N²)
+ * allocation, and no bounded reuse cache fixes it in general — interleaved duplicate clusters miss every slot
+ * (IF261). It is a marker rather than a type check on one class because the engine has more than one such shape:
+ * the cluster projection is a snapshot, and a message that ALSO carries direct references publishes an immutable
+ * concatenation over it. Missing the second is how the copy survived the first fix on the commoner shape.
+ *
+ * The obligation on an implementor is exact: no mutation after construction, and none of its backing lists
+ * mutated either.
+ */
+internal interface ImmutableProjection
+
+internal class ImmutableListSnapshot<T>(values: Collection<T>) : AbstractList<T>(), ImmutableProjection {
     private val values = values.toList()
     override val size: Int get() = values.size
     override fun get(index: Int): T = values[index]
 }
 
 internal fun <T> immutableListSnapshot(values: Collection<T>): List<T> = ImmutableListSnapshot(values)
+
+/** Whether [values] may be published without copying it — see [ImmutableProjection]. */
+internal fun isImmutableProjection(values: List<*>): Boolean = values is ImmutableProjection
 
 private val safeDiagnosticMetadataPattern =
     Regex("[A-Za-z0-9][A-Za-z0-9._-]{0,63}(:[A-Za-z0-9][A-Za-z0-9._-]{0,63})?")

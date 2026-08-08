@@ -8,7 +8,9 @@ import java.io.IOException;
 import java.io.Reader;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.List;
 import java.util.Properties;
+import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -112,22 +114,80 @@ class BuildPerformancePolicyTest {
         assertTrue(digest.contains("MessageDigest"), "the capture stamp digest closure must be found intact");
 
         String code = uncommented(digest);
-        assertFalse(code.contains("System.getenv"), "the capture stamp digest must hash only repository "
-                + "inputs; an environment read makes the stamp unverifiable on any other machine, and the "
-                + "gate that consumes it fails closed");
-
-        // A direct read is the obvious form, not the only one: assigning the environment to a variable OUTSIDE
-        // this closure and hashing the variable inside it is the same defect and passed the check above. So
-        // collect every file-scope name bound to an environment read and require the digest to mention none.
-        String build = uncommented(Files.readString(locate("cli/build.gradle")));
-        Matcher bindings = Pattern.compile("\\bdef\\s+(\\w+)\\s*=[^\\n]*System\\.getenv").matcher(build);
-        while (bindings.find()) {
-            String name = bindings.group(1);
-            assertFalse(Pattern.compile("\\b" + Pattern.quote(name) + "\\b").matcher(code).find(),
-                    "the capture stamp digest reads '" + name + "', which is bound from System.getenv earlier "
-                            + "in cli/build.gradle. Hoisting the environment read out of the closure leaves the "
-                            + "stamp exactly as machine-specific as reading it inline");
+        for (String read : AMBIENT_READS) {
+            assertFalse(code.contains(read), "the capture stamp digest must hash only repository inputs; '"
+                    + read + "' reads ambient state, which makes the stamp unverifiable on any other machine, "
+                    + "and the gate that consumes it fails closed");
         }
+
+        // A direct read is the obvious form, not the only one: binding the environment to a name OUTSIDE this
+        // closure and hashing the name inside it is the same defect and passed a check for the call alone. So
+        // collect every file-scope name bound to an ambient read — `def x =`, `ext.x =`, a bare `x =`, or a
+        // method whose body performs one — and require the digest to mention none of them.
+        String build = uncommented(Files.readString(locate("cli/build.gradle")));
+        for (String name : namesBoundToAmbientState(build)) {
+            assertFalse(Pattern.compile("\\b" + Pattern.quote(name) + "\\b").matcher(code).find(),
+                    "the capture stamp digest reads '" + name + "', which is bound from ambient state earlier "
+                            + "in cli/build.gradle. Hoisting the read out of the closure leaves the stamp "
+                            + "exactly as machine-specific as reading it inline");
+        }
+    }
+
+    /**
+     * Every ambient-state read a Gradle build script can reach. Blacklisting spellings is bounded only because
+     * this vocabulary is: {@code System.getenv} was the whole list once, and it accepted
+     * {@code providers.environmentVariable} — a Gradle-idiomatic form of exactly the defect — untouched.
+     *
+     * <p><b>The bound of this guard:</b> it reads source text, so a dynamically composed call
+     * ({@code System."${'get' + 'env'}"}) evades it. That is accepted rather than papered over: the check
+     * catches every form anyone would write on purpose, and the stamp gate itself fails closed on CI if one
+     * slips through. It is a tripwire for an accident, not a barrier against an author who means it.
+     */
+    private static final List<String> AMBIENT_READS = List.of(
+            "System.getenv", "System.env", "System.getProperty", "System.properties",
+            "providers.environmentVariable", "providers.systemProperty");
+
+    /**
+     * <b>The hoist detector must actually fire.</b> Each form below is a way to move an ambient read out of the
+     * digest closure and reference it from inside; the detector previously recognized only {@code def x =} with
+     * {@code System.getenv}, so a method wrapper, an {@code ext} property, and Gradle's own
+     * {@code providers.environmentVariable} all passed while doing exactly what the invariant forbids. Asserting
+     * on a synthetic build script keeps this a positive control without mutating the repository.
+     */
+    @Test
+    void theHoistDetectorRecognizesEveryBindingFormOfAnAmbientRead() {
+        String script = """
+                def graal = System.getenv('GRAALVM_HOME')
+                ext.home = System.env['JAVA_HOME']
+                runner = providers.environmentVariable('CI').get()
+                def toolchain() { System.getProperty('java.home') }
+                def innocent = rootProject.file('scripts/x.json')
+                """;
+
+        assertEquals(Set.of("graal", "home", "runner", "toolchain"), namesBoundToAmbientState(script),
+                "every way of binding ambient state to a name must be detected; a name the digest can "
+                        + "reference is a machine-specific stamp however the value reached it");
+    }
+
+    /** File-scope names whose value comes from {@link #AMBIENT_READS}, in any binding form Groovy offers. */
+    private static Set<String> namesBoundToAmbientState(String build) {
+        String reads = AMBIENT_READS.stream().map(Pattern::quote).collect(Collectors.joining("|"));
+        var names = new java.util.LinkedHashSet<String>();
+        // `def x = …`, `ext.x = …`, `x = …` — the assignment forms, read on one line.
+        Matcher assigned = Pattern.compile("(?:\\bdef\\s+|\\bext\\.)?(\\w+)\\s*=[^\\n]*(?:" + reads + ")")
+                .matcher(build);
+        while (assigned.find()) {
+            names.add(assigned.group(1));
+        }
+        // `def name(…) { … System.getenv … }` — a method wrapping the read is the same hoist one indirection on.
+        Matcher method = Pattern.compile("\\bdef\\s+(\\w+)\\s*\\([^)]*\\)\\s*\\{([^}]*)}", Pattern.DOTALL)
+                .matcher(build);
+        while (method.find()) {
+            if (Pattern.compile(reads).matcher(method.group(2)).find()) {
+                names.add(method.group(1));
+            }
+        }
+        return names;
     }
 
     /** Source with comment lines dropped, so a guard matches CODE and never a comment that quotes it. */
@@ -140,10 +200,16 @@ class BuildPerformancePolicyTest {
      * normalization ignores {@code version.properties} (so a bare commit does not re-run the whole {@code :cli}
      * estate), which also hid it from {@code nativeCompile}'s up-to-date check: on 2026-08-07 one invocation
      * regenerated the resource at {@code aa6f1763} and still reported the image UP-TO-DATE, leaving
-     * {@code 3b85a822} baked in. The explicit input is the whole fix, so this pins it.
+     * {@code 3b85a822} baked in. The explicit input is the whole fix, so this pins that it is DECLARED.
+     *
+     * <p><b>Named for what it checks.</b> It read {@code theNativeImageRebuildsWhenOnlyItsProvenanceChanged},
+     * which claims a rebuild this test never observes — the declaration could sit in a dead branch and this
+     * would still pass. Observing the rebuild needs a Gradle TestKit build plus a native compile, which is not
+     * affordable in this lane. The behavioural claim rests on the 2026-08-07 measurement; what runs on every
+     * build is this declaration check, and the name now says so.
      */
     @Test
-    void theNativeImageRebuildsWhenOnlyItsProvenanceChanged() throws IOException {
+    void nativeCompileDeclaresTheGeneratedProvenanceAsAnInput() throws IOException {
         String build = Files.readString(locate("cli/build.gradle"));
 
         assertTrue(build.contains("ignore 'io/github/mbackschat/a12/dm/cli/version.properties'"),

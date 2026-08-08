@@ -78,12 +78,13 @@ class PartialNestedAggregateDiffTest {
         }
     }
 
+    /** Compares the COUNT of firings, not the set of codes: the rule iterates two outer rows, so a set would
+     *  collapse "fired for one row" and "fired for both" into the same reading. */
     private fun agree(kRel: Set<Relevant>, iRel: Set<RelevantEntity>, label: String) {
-        val k = RuntimeLaws.messagesPart(kModel, kDoc(), kRel).map { it.code }.filter { it == CODE }.toSortedSet()
-        val i = DmInterpreter(def).validatePart(iDoc(), iRel).messages
-            .map { it.code }.filter { it == CODE }.toSortedSet()
+        val k = RuntimeLaws.messagesPart(kModel, kDoc(), kRel).count { it.code == CODE }
+        val i = DmInterpreter(def).validatePart(iDoc(), iRel).messages.count { it.code == CODE }
         println("[kernel-reading] SumOfProducts · $label → kernel=$k interp=$i")
-        assertEquals(k, i, "$label — kernel=$k interp=$i")
+        assertEquals(k, i, "$label — kernel fired $k×, interpreter fired $i×")
     }
 
     /** The error cell, always relevant, so only the aggregate's own coverage varies between cases. */
@@ -132,16 +133,40 @@ class PartialNestedAggregateDiffTest {
     )
 
     /**
-     * **Mixed wildcard shapes.** `Outer[*]/Inner[1]` plus `Outer[*]/Inner[2]` covers every pair, but through
-     * two entities that are individually incomplete and share no wildcard pattern with each other. The
-     * interpreter decides completeness per pattern, so it reports incomplete here; this case exists to state
-     * what the KERNEL does rather than leave the direction to inference.
+     * `Outer[*]/Inner[1]` plus `Outer[*]/Inner[2]` covers every pair. Both entities WILDCARD the same level and
+     * differ only in a concrete coordinate, so they share one pattern and the cross-product check sees them
+     * together — this case does NOT exercise coverage spread across different shapes, despite reading like it.
+     * It is kept because it pins the one-wildcard-level reading; [mixedWildcardShapesAgree] is the real one.
+     */
+    @Test
+    fun oneWildcardShapeWithSeparateInnerRowsAgrees() = agree(
+        setOf(kTotal, Relevant.of(INNER, 0, 0, 1), Relevant.of(INNER, 0, 0, 2)),
+        setOf(iTotal, RelevantEntity(INNER, listOf(0, 0, 1)), RelevantEntity(INNER, listOf(0, 0, 2))),
+        "Outer wildcarded, Inner rows enumerated separately (ONE shared wildcard pattern)",
+    )
+
+    /**
+     * **Genuinely mixed wildcard shapes.** `Outer[*]/Inner[1]` wildcards the outer level; `Outer[1]/Inner[2]` and
+     * `Outer[2]/Inner[2]` pin it. The union is all four pairs, but the two patterns — `[*,*,1]` and `[*,c,2]` —
+     * are individually incomplete, and a completeness test that decides **per pattern** reports incomplete and
+     * suppresses. That direction was a documented guess; this case measures it.
      */
     @Test
     fun mixedWildcardShapesAgree() = agree(
-        setOf(kTotal, Relevant.of(INNER, 0, 0, 1), Relevant.of(INNER, 0, 0, 2)),
-        setOf(iTotal, RelevantEntity(INNER, listOf(0, 0, 1)), RelevantEntity(INNER, listOf(0, 0, 2))),
-        "Outer wildcarded, Inner rows enumerated separately (union covers everything, no single shape does)",
+        setOf(kTotal, Relevant.of(INNER, 0, 0, 1), kInner(1, 2), kInner(2, 2)),
+        setOf(iTotal, RelevantEntity(INNER, listOf(0, 0, 1)), iInner(1, 2), iInner(2, 2)),
+        "Inner[1] for every Outer + Inner[2] pinned per Outer (union is complete, neither pattern is)",
+    )
+
+    /**
+     * The same fact with the mixing at the ROOT coordinate instead of the outer one — `[*,*,1]` against
+     * `[1,*,2]` — so the reading cannot depend on which level carries the shape difference.
+     */
+    @Test
+    fun mixedWildcardShapesAtTheRootCoordinateAgree() = agree(
+        setOf(kTotal, Relevant.of(INNER, 0, 0, 1), Relevant.of(INNER, 1, 0, 2)),
+        setOf(iTotal, RelevantEntity(INNER, listOf(0, 0, 1)), RelevantEntity(INNER, listOf(1, 0, 2))),
+        "root wildcarded vs root pinned (union covers every pair, neither pattern does)",
     )
 
     private companion object {

@@ -6,6 +6,7 @@ import io.github.mbackschat.a12.dm.interpreter.model.Kind
 import io.github.mbackschat.a12.dm.interpreter.model.ModelDef
 import io.github.mbackschat.a12.dm.interpreter.model.MsgType
 import io.github.mbackschat.a12.dm.interpreter.model.RuleDef
+import io.github.mbackschat.a12.dm.interpreter.workspace.immutableListSnapshot
 
 /** One duplicate row's RNU-leaf polarity and the shared pointer projection of its duplicate cluster. */
 internal data class RnuRowOutcome(
@@ -137,9 +138,14 @@ internal class RepetitionNotUniqueEvaluator(private val model: ModelDef, private
                     // Every firing row in one duplicate cluster exposes the same peer-pointer set. Prepare that
                     // immutable projection once; rebuilding it per message turns a dense N-row result into N
                     // separately allocated N-entry lists even though the logical output is identical.
-                    val peerKeyPointers = duplicates.flatMap { duplicate ->
+                    //
+                    // Built as an immutable SNAPSHOT rather than a bare list so the public façade can publish it
+                    // as-is: a boundary that cannot tell "already immutable" from "someone's ArrayList" must
+                    // copy defensively, and copying per finding restores the O(N²) this sharing exists to avoid
+                    // (IF261).
+                    val peerKeyPointers = immutableListSnapshot(duplicates.flatMap { duplicate ->
                         keys.zip(duplicate.keyReps).map { (path, reps) -> pass.doc.messagePointer(path, reps) }
-                    }.distinct()
+                    }.distinct())
                     for (row in duplicates) {
                         // RNU's own polarity: OMISSION when a (fillable) key component is empty, else VALUE. The
                         // surrounding And/Or combines this with any guard/branch via the ordinary 3VL walk.

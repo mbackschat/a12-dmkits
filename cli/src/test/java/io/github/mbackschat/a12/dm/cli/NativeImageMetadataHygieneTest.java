@@ -9,6 +9,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.regex.Pattern;
 import java.util.stream.Stream;
 
 import org.junit.jupiter.api.Test;
@@ -68,16 +69,19 @@ class NativeImageMetadataHygieneTest {
             if (!glob.startsWith("schema/") && !glob.startsWith("catalog/")) {
                 continue;
             }
-            // A PATTERN, not a path: `provides` resolves literally and can never answer for one. The capture
-            // sanitizer takes the same view and KEEPS such an entry (`scripts/capture-native-config.sh`:
-            // "Unresolvable now means KEEP, which is the safe direction"). Without this the two halves of one
-            // contract disagree — the sanitizer deliberately retains an entry this guard then reports as an
-            // offender. Neither arm fires today (the committed metadata carries no own-prefix wildcard), so
-            // this aligns them before the disagreement can surface as a confusing failure.
-            if (glob.indexOf('*') >= 0 || glob.indexOf('?') >= 0 || glob.indexOf('[') >= 0) {
-                continue;
-            }
-            if (roots.stream().noneMatch(root -> provides(root, glob))) {
+            // A wildcard is RESOLVED, not skipped. `provides` compares file names literally and cannot answer
+            // for a pattern, so the wildcard arm used to `continue` — which accepted any own-prefix glob
+            // matching nothing at all (`schema/no-such-*.json`), the exact dead weight this test exists to
+            // find, merely spelled with a star. Matching the glob against the shipped tree answers it directly.
+            //
+            // This does NOT conflict with the capture sanitizer keeping an entry it cannot resolve
+            // (`scripts/capture-native-config.sh`: "Unresolvable now means KEEP, which is the safe direction").
+            // That is a decision made without the tree in hand; here the tree IS in hand, so a glob is an
+            // offender only when nothing in it matches — which the sanitizer's conservatism never asserted.
+            boolean matched = glob.indexOf('*') >= 0 || glob.indexOf('?') >= 0
+                    ? anyRootMatches(roots, glob)
+                    : roots.stream().anyMatch(root -> provides(root, glob));
+            if (!matched) {
                 offenders.add(glob);
             }
         }
@@ -183,6 +187,64 @@ class NativeImageMetadataHygieneTest {
      * Case-EXACT, unlike {@link Files#exists}: macOS resolves {@code schema/RESULT.schema.json} and the Linux
      * native build does not, so a wrongly-cased glob would pass here and miss where the image is actually built.
      */
+    /**
+     * <b>The wildcard resolver must fire on a glob that matches nothing.</b> The arm above used to skip every
+     * pattern, so an own-prefix glob naming no shipped resource was accepted purely for containing a star —
+     * which is the dead weight this class exists to find. Run against the real resource roots so the control
+     * proves the resolver works on the actual tree rather than a fixture.
+     */
+    @Test
+    void theWildcardResolverAcceptsAMatchingGlobAndRejectsAnEmptyOne() throws Exception {
+        List<Path> roots = mainResourceRoots();
+
+        assertTrue(anyRootMatches(roots, "schema/*.json"),
+                "the shipped schema resources must satisfy a wildcard that genuinely covers them");
+        assertTrue(!anyRootMatches(roots, "schema/no-such-*.json"),
+                "a glob matching no shipped resource must be reported, not skipped for containing a star");
+        assertTrue(anyRootMatches(roots, "**/*.json"),
+                "a double star must span path separators");
+    }
+
+    /** Whether any shipped resource under [roots] matches the wildcard [glob]. */
+    private static boolean anyRootMatches(List<Path> roots, String glob) throws IOException {
+        Pattern pattern = globPattern(glob);
+        for (Path root : roots) {
+            try (Stream<Path> tree = Files.walk(root)) {
+                boolean hit = tree.filter(Files::isRegularFile)
+                        .map(file -> root.relativize(file).toString().replace(java.io.File.separatorChar, '/'))
+                        .anyMatch(relative -> pattern.matcher(relative).matches());
+                if (hit) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    /**
+     * GraalVM resource-glob syntax as a regex: {@code **} spans separators, {@code *} and {@code ?} stay inside
+     * one path segment. Every other character is literal — including {@code [}, which this syntax does not treat
+     * as a class. If that ever changes, a bracket glob fails here rather than passing silently, which is the
+     * direction a hygiene guard should err in.
+     */
+    private static Pattern globPattern(String glob) {
+        StringBuilder regex = new StringBuilder();
+        for (int i = 0; i < glob.length(); i++) {
+            char c = glob.charAt(i);
+            if (c == '*' && i + 1 < glob.length() && glob.charAt(i + 1) == '*') {
+                regex.append(".*");
+                i++;
+            } else if (c == '*') {
+                regex.append("[^/]*");
+            } else if (c == '?') {
+                regex.append("[^/]");
+            } else {
+                regex.append(Pattern.quote(String.valueOf(c)));
+            }
+        }
+        return Pattern.compile(regex.toString());
+    }
+
     private static boolean provides(Path root, String glob) {
         Path candidate = root.resolve(glob);
         Path parent = candidate.getParent();

@@ -17,7 +17,8 @@ This changelog covers the independently consumable interpreter packages, API doc
 ### Fixed
 
 - Row-invariant unfiltered starred aggregates fold once per validation call rather than once per iterated row (the release guard measured 17.12× growth for 4× rows before, 4.51× after).
-- `SumOfProducts` evaluates correctly under concrete partial relevance, a component-incomplete DATE format is completed, `FieldValuesNotUnique` scans its operands in authored order, and aggregate message references are retained.
+- Partial validation gates starred aggregates exactly as the Kernel does across nested repetitions: the question is asked per iteration row, `SumOfProducts` requires the full cross-product of the row's starred extent taken over the union of the relevant entities, a multi-star operand is judged over every level its star iterates, a component-incomplete DATE format is completed, `FieldValuesNotUnique` scans its operands in authored order, and aggregate message references are retained.
+- Validation findings no longer copy the pointer list the engine shares across the findings of one duplicate-key cluster, so a densely duplicated Document costs linear rather than quadratic memory at the API boundary.
 
 ## [0.11.0]
 

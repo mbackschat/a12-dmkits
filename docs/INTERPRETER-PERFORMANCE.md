@@ -497,7 +497,9 @@ The catalog must favor **non-obvious** combinations (nesting × aggregation × c
 
 ### Checkpoint 2026-08-08 — the façade's quadratic allocation, and why a timing guard missed it (IF256)
 
-The public `Interpreter` façade copied a pointer list the engine had deliberately **shared** across the findings of a dense `RepetitionNotUnique` cluster ([IF191](INTERPRETER-FINDINGS.md#if191)), so one N-element list was copied N times. Fixed by reusing the snapshot per source-list identity.
+The public `Interpreter` façade copied a pointer list the engine had deliberately **shared** across the findings of a dense `RepetitionNotUnique` cluster ([IF191](INTERPRETER-FINDINGS.md#if191)), so one N-element list was copied N times. Fixed by removing the copy: the engine publishes an immutable snapshot and the façade recognizes it ([IF261](INTERPRETER-FINDINGS.md#if261)).
+
+**The first remedy was a one-slot-per-channel reuse cache, and it was a bound asserted rather than measured** — it held for a single cluster and missed on *every* message of two interleaved ones, restoring the full quadratic. Nothing bounds how many duplicate clusters a document interleaves, so no slot count was defensible; enlarging it would only have moved the discriminator. **When a fix depends on a cache hitting, ask what makes it miss before asking how big it should be** — here the answer was to make the invariant a property of the value instead.
 
 **Do not use a timing guard for an allocation defect.** Measured with the defect fully present: 500→2,000 rows grew **2.68×**, and 1,000→4,000 grew **3.80×** against a 5.4× trip line — both green. At 8,000 rows the façade produced ~64 million pointer references and killed the test JVM with `OutOfMemoryError`. `arraycopy` is cheap, so N² copies barely register on a clock while being fatal to the heap; worse, any growth guard tuned to a scale that *fits* in memory necessarily sits in the range where the defect is invisible. The guard therefore asserts the invariant directly — findings the engine gave the same list must share one list — at 40 rows, with no clock. **When the suspected cost is allocation, assert the allocation property, not a time ratio.**
 
@@ -509,7 +511,17 @@ The public `Interpreter` façade copied a pointer list the engine had deliberate
 
 **The published sweep figures are NOT affected, and this is the basis rather than an assurance.** Every headline number in the READMEs and the release notes — 2.1×–12.5× across the default inventory, 10×–16.7× repeated, 1.32× at the hostile point, ~155× on the huge-document edge — comes from `PerfBenchTest`/`KernelEdgeTest` via `KernelPerfEngine`, which calls `RuntimeLaws.kernelEngine(...)` **once per scenario** outside every timed region. The defect was confined to the one partial-validation guard, and no published surface cites a partial-validation ratio. The 2026-08-03 sweep also remains current on its own terms: the IF255 gates exist only on the `validatePart` path, so full validation and compute are untouched by them.
 
-**Cost of the correctness repair.** Deciding completeness per iteration row costs a row-keyed memo: partial validation at 1000 rows moved from ~10 ms to ~15 ms while staying linear. Exactness is not traded for speed, and a linear path that is 7× the kernel has the headroom.
+**Cost of the correctness repair.** Deciding completeness per iteration row costs a row-keyed memo: partial validation at 1000 rows moved from ~10 ms to ~15 ms while staying linear. Exactness is not traded for speed, and a linear path several times the kernel has the headroom.
+
+**Read the ratios above as single-run snapshots, not constants.** A re-measurement on the same machine returned 4.79× / 10.00× / growth 3.17× against the 5.40× / 7.17× / 3.92× recorded here. The conclusion — linear, and several times the kernel — is what the guard asserts and what survives re-running; the individual figures move by tens of percent between runs and no published surface should quote one as a bar.
+
+### Checkpoint 2026-08-08 — the completeness gate rebuilt as a union cover, still linear (IF259/IF260)
+
+A second review of the IF255/IF257 repair found both gates still wrong: completeness was decided **per wildcard pattern** (suppressing a relevant set whose union is complete), and the shared row-scoping helper bound a **multi-star** operand at the path's deepest repeatable level instead of its first star, firing on rows the caller had never made relevant. Both are correctness defects; the interest here is that the fix for the first is an algorithm, not a predicate.
+
+Completeness now takes the cover over the union of every addressing entity — each becomes a box over the levels the star iterates, and the boxes must cover the full cross-product. Recursing on the *wildcarding* boxes first is what keeps it cheap: when they alone cover the remaining levels every index is covered and no per-index descent happens, and otherwise the descent is bounded by the concrete indices actually present rather than by the declared repetition counts. So the enumerate-every-row shape — the one that made the relevant set grow with the document — stays linear in the entity count.
+
+**Measured after the change** (`laws/PartialSumOfProductsPerfTest`, Apple M1, isolated single-class run): 250 rows **5.25×** the kernel, 1000 rows **9.41×**, growth **3.26×** for 4× rows against a linear ≈4. A strictly more general cover, and no worse than the per-pattern predicate it replaced.
 
 ### Checkpoint 2026-08-03 — release sweep and row-invariant aggregate repair (IF246)
 

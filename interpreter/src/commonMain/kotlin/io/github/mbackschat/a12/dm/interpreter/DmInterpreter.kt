@@ -34,6 +34,7 @@ import io.github.mbackschat.a12.dm.interpreter.model.Verdict
 import io.github.mbackschat.a12.dm.interpreter.regex.PatternRegistry
 import kotlin.jvm.JvmOverloads
 import kotlin.jvm.JvmSynthetic
+import io.github.mbackschat.a12.dm.interpreter.workspace.ImmutableProjection
 
 /**
  * The public entry point — evaluates a [ModelDef]'s rules over a [Document] instance, kernel-free, on
@@ -309,64 +310,63 @@ class DmInterpreter private constructor(
      * The same fact also gates a starred VALUE-LIST quantifier's complete extent (`No` either side / `NotAll`
      * values side — [io.github.mbackschat.a12.dm.interpreter.eval.evalValueListQuant], SPEC-2026-07-22-09).
      */
-    private fun starRelevantOf(relevant: Set<RelevantEntity>): (String, List<Int>) -> Boolean {
-        val byShape = relevantShapes(relevant)
-        val decided = HashMap<Pair<String, List<Int>>, Boolean>()
-        return { starPath, rowReps ->
-            decided.getOrPut(starPath to boundPrefix(starPath, rowReps)) {
-                byShape.any { (shape, entities) ->
-                    // Wildcard-only: nothing the CURRENT row leaves unbound may be pinned to a concrete
-                    // repetition. Asking this globally rejected a set that wildcards one outer row and
-                    // enumerates the next, where the kernel evaluates the wildcarded row (IF257).
-                    rowScope(shape.first, shape.second, entities, starPath, rowReps)?.second?.isEmpty() == true
+    private fun starRelevantOf(relevant: Set<RelevantEntity>): (String, Int, List<Int>) -> Boolean {
+        val candidates = wellFormed(relevant)
+        val decided = HashMap<Triple<String, Int, List<Int>>, Boolean>()
+        return { starPath, bindDepth, rowReps ->
+            val scope = starScope(starPath, bindDepth, rowReps)
+            decided.getOrPut(Triple(starPath, bindDepth, scope.bound)) {
+                // Wildcard-only, and per ITERATION ROW: ONE entity must address this row and wildcard every
+                // level the star iterates. Asking it globally rejected a set that wildcards one outer row and
+                // enumerates the next, where the kernel evaluates the wildcarded row (IF257). It is deliberately
+                // NOT a union across entities: two entities that each pin a different outer row and wildcard
+                // the inner one cover every cell between them, and the kernel is still silent (IF259).
+                candidates.any { e ->
+                    covers(e, starPath) && addressesRow(e, scope.bound) &&
+                        scope.levels.all { i -> i >= e.indices.size || e.indices[i] == RelevantEntity.ALL }
                 }
             }
         }
     }
 
-    /** Group the relevant set by (path, wildcard pattern) — entities whose tuples are comparable to each other. */
-    private fun relevantShapes(
-        relevant: Set<RelevantEntity>,
-    ): Map<Pair<String, List<Boolean>>, List<RelevantEntity>> {
-        val byShape = HashMap<Pair<String, List<Boolean>>, MutableList<RelevantEntity>>()
-        for (r in relevant) {
-            if (r.indices.size != pathParts(r.path).size) continue
-            byShape.getOrPut(r.path to r.indices.map { it == RelevantEntity.ALL }) { ArrayList() } += r
-        }
-        return byShape
+    /** The relevant entities carrying one index per path segment — the shape both gates can reason about. */
+    private fun wellFormed(relevant: Set<RelevantEntity>): List<RelevantEntity> =
+        relevant.filter { it.indices.size == pathParts(it.path).size }
+
+    /** Whether [e] speaks about [starPath] at all: its path is an ancestor-or-equal prefix. */
+    private fun covers(e: RelevantEntity, starPath: String): Boolean {
+        val sParts = pathParts(starPath)
+        val eParts = pathParts(e.path)
+        return eParts.size <= sParts.size && eParts == sParts.take(eParts.size)
     }
 
+    /** Whether [e] says anything about the row [bound] pins — an entity on a different outer row does not. */
+    private fun addressesRow(e: RelevantEntity, bound: List<Int>): Boolean =
+        bound.indices.all { i ->
+            i >= e.indices.size || e.indices[i] == RelevantEntity.ALL || e.indices[i] == bound[i]
+        }
+
+    /** The repetition coordinates the current row BINDS for a starred operand, and the levels the star iterates. */
+    private class StarScope(val bound: List<Int>, val levels: List<Int>)
+
     /**
-     * One shape's view of [starPath] **from the current row**: the entities that address this row, paired with
-     * the repeatable levels they leave CONCRETE below the row's bound prefix. Null when the shape cannot apply.
+     * Split [starPath]'s repeatable levels into the ones the current row fixes and the ones the star iterates.
      *
-     * Both starred-aggregate gates are decided per iteration row and differ only in what they do with that
-     * second list — the wildcard-only gate requires it empty, `SumOfProducts` requires it fully enumerated — so
-     * the row scoping lives here once rather than being re-derived (and mis-derived) per gate.
+     * The split is [io.github.mbackschat.a12.dm.interpreter.ast.Expr.Star.bindDepth] — the segments strictly
+     * above the FIRST `*`-marked group (IF94) — and **not** the path's deepest repeatable level. For a
+     * single-star operand the two coincide, which is why deriving it from the path alone survived every
+     * single-star probe. For `Outer* then Inner* then Qty` they differ by exactly one level, and that level is
+     * one the row would claim to bind while the operand in fact spans every one of its rows: pinning `Outer` to
+     * row 1 then read as "everything unbound is wildcarded", and the interpreter fired where the kernel is
+     * silent (IF259). A hand-built node (−1) keeps the leaf-parent default, where the two coincide by definition.
      */
-    private fun rowScope(
-        path: String,
-        pattern: List<Boolean>,
-        entities: List<RelevantEntity>,
-        starPath: String,
-        rowReps: List<Int>,
-    ): Pair<List<RelevantEntity>, List<Int>>? {
-        val sParts = pathParts(starPath)
-        val rParts = pathParts(path)
-        if (rParts.size > sParts.size || rParts != sParts.take(rParts.size)) return null
-
-        // Levels the ROW binds are a filter, not something to enumerate: an entity addressing a different outer
-        // row says nothing about this one.
-        val bound = boundPrefix(starPath, rowReps)
-        val inThisRow = entities.filter { e ->
-            bound.indices.all { i -> i >= e.indices.size || pattern[i] || e.indices[i] == bound[i] }
-        }
-        if (inThisRow.isEmpty()) return null
-
-        val concreteLevels = rParts.indices.filter { i ->
-            !pattern[i] && i >= bound.size && "/" + rParts.take(i + 1).joinToString("/") in model.repeatable
-        }
-        return inThisRow to concreteLevels
+    private fun starScope(starPath: String, bindDepth: Int, rowReps: List<Int>): StarScope {
+        val parts = pathParts(starPath)
+        fun repeatableAt(i: Int) = "/" + parts.take(i + 1).joinToString("/") in model.repeatable
+        val firstStar = if (bindDepth >= 0) minOf(bindDepth, parts.size)
+            else parts.indices.lastOrNull { repeatableAt(it) } ?: 0
+        val bound = rowReps.take(minOf(firstStar, rowReps.size))
+        return StarScope(bound, parts.indices.filter { it >= bound.size && repeatableAt(it) })
     }
 
     /**
@@ -390,72 +390,74 @@ class DmInterpreter private constructor(
      * appears once two repeatable levels are nested, which is why the one-level probe above could not see it.
      * Enumerating `Outer[1]/Inner[1]` and `Outer[2]/Inner[2]` covers `{1,2}` at both levels while covering only
      * the diagonal, half of the four rows; reading per-level unions called that complete and fired where the
-     * kernel is silent. So a candidate must cover the full CROSS-PRODUCT of the declared repetitions, checked
-     * per wildcard pattern: entities sharing a path and a pattern are the ones whose tuples are comparable.
+     * kernel is silent. So a candidate must cover the full CROSS-PRODUCT of the declared repetitions of the
+     * levels the star iterates.
+     *
+     * The cover is taken over the **union of every addressing entity**, not per wildcard pattern. Deciding it
+     * per pattern suppressed a set whose union is complete but whose individual patterns are not — `[*,*,1]`
+     * together with `[*,1,2]` and `[*,2,2]` covers all four pairs, and the kernel fires (IF260).
      */
-    private fun starFullyEnumeratedOf(relevant: Set<RelevantEntity>): (String, List<Int>) -> Boolean {
-        // Grouped ONCE per call. Deciding completeness by rescanning the relevant set for every declared
+    private fun starFullyEnumeratedOf(relevant: Set<RelevantEntity>): (String, Int, List<Int>) -> Boolean {
+        // Filtered ONCE per call. Deciding completeness by rescanning the relevant set for every declared
         // repetition is O(relevant² × reps), and enumerating every row makes the relevant set grow WITH the
         // document — measured 8.63× growth for 4× rows on `laws/PartialSumOfProductsPerfTest` (a growth
         // figure, so interpreter-only and unaffected by that guard's since-corrected kernel baseline).
-        val byShape = relevantShapes(relevant)
-        val decided = HashMap<Pair<String, List<Int>>, Boolean>()
-        return { starPath, rowReps ->
-            decided.getOrPut(starPath to boundPrefix(starPath, rowReps)) {
-                byShape.any { (shape, entities) ->
-                    coversEveryRepetition(shape.first, shape.second, entities, starPath, rowReps)
-                }
+        val candidates = wellFormed(relevant)
+        val decided = HashMap<Triple<String, Int, List<Int>>, Boolean>()
+        return { starPath, bindDepth, rowReps ->
+            val scope = starScope(starPath, bindDepth, rowReps)
+            decided.getOrPut(Triple(starPath, bindDepth, scope.bound)) {
+                coversEveryRepetition(candidates, starPath, scope)
             }
         }
     }
 
     /**
-     * The repetition coordinates the CURRENT ROW binds for [starPath]: every repeatable level strictly above
-     * the star's own. The star's deepest repeatable level is the one it iterates, so the row says nothing
-     * about it; levels above it are fixed by the rule's iteration scope. Truncating to exactly those makes the
-     * memo key row-correct without depending on whatever placeholder `repsOf` reports at an unbound level.
+     * Whether the relevant entities addressing this row cover every declared repetition TUPLE of the levels
+     * [starPath]'s star iterates. Levels **deeper** than an entity's own path need no enumeration: a relevant
+     * group makes every descendant relevant, which is the kernel's own rule, so such a level reads as wildcarded.
      */
-    private fun boundPrefix(starPath: String, rowReps: List<Int>): List<Int> {
+    private fun coversEveryRepetition(
+        candidates: List<RelevantEntity>,
+        starPath: String,
+        scope: StarScope,
+    ): Boolean {
+        if (scope.levels.isEmpty()) return candidates.any { covers(it, starPath) && addressesRow(it, scope.bound) }
+
         val parts = pathParts(starPath)
-        val deepestRepeatable = parts.indices.lastOrNull { i ->
-            "/" + parts.take(i + 1).joinToString("/") in model.repeatable
-        } ?: return emptyList()
-        return rowReps.take(minOf(deepestRepeatable, rowReps.size))
+        val declared = IntArray(scope.levels.size) { k ->
+            model.declaredReps["/" + parts.take(scope.levels[k] + 1).joinToString("/")] ?: return false
+        }
+        // Each addressing entity becomes a BOX over the iterated levels — a concrete index pins that level,
+        // ALL (and any level deeper than the entity's own path) spans it.
+        val boxes = candidates.mapNotNull { e ->
+            if (!covers(e, starPath) || !addressesRow(e, scope.bound)) null
+            else IntArray(scope.levels.size) { k ->
+                val i = scope.levels[k]
+                if (i >= e.indices.size) RelevantEntity.ALL else e.indices[i]
+            }
+        }
+        return boxesCoverEveryTuple(0, declared, boxes)
     }
 
     /**
-     * Whether the entities sharing one path and one wildcard [pattern] cover every declared repetition tuple of
-     * [starPath]'s repeatable levels. Levels **deeper** than this path need no enumeration: a relevant group
-     * makes every descendant relevant, which is the kernel's own rule.
+     * Whether a union of boxes covers the full cross-product of [declared], from level [k] down.
      *
-     * Coverage spread across genuinely DIFFERENT patterns is not detected and reports incomplete, which
-     * suppresses rather than fires. That direction is deliberate and remains **unmeasured**: the nearest pinned
-     * case (`laws/PartialNestedAggregateDiffTest`, "Outer wildcarded, Inner rows enumerated separately") turns
-     * out to share ONE pattern — `[ALL, ALL, 1]` and `[ALL, ALL, 2]` differ only in a concrete coordinate — so
-     * it is covered by the cross-product check and fires in both engines. A set mixing `[ALL, ALL, *]` with
-     * `[ALL, 1, 2]` would be the real discriminator and nobody has run it.
+     * Recursing on the boxes that WILDCARD level `k` first is what keeps this linear in practice: if they alone
+     * cover the remaining levels, every index of `k` is covered and no per-index descent is needed. Otherwise
+     * each declared index must be covered by the wildcards plus the boxes pinning it — and an index no box
+     * pins at all fails immediately, so the descent is bounded by the concrete indices actually present rather
+     * than by the declared repetition counts.
      */
-    private fun coversEveryRepetition(
-        path: String,
-        pattern: List<Boolean>,
-        entities: List<RelevantEntity>,
-        starPath: String,
-        rowReps: List<Int>,
-    ): Boolean {
-        val (inThisRow, concreteLevels) =
-            rowScope(path, pattern, entities, starPath, rowReps) ?: return false
-        if (concreteLevels.isEmpty()) return true   // every unbound repeatable level on this path is wildcarded
-
-        val rParts = pathParts(path)
-        var universe = 1L
-        for (i in concreteLevels) {
-            val declared = model.declaredReps["/" + rParts.take(i + 1).joinToString("/")] ?: return false
-            universe *= declared
-            val seen = inThisRow.mapTo(HashSet()) { it.indices[i] }
-            if ((1..declared).any { it !in seen }) return false
+    private fun boxesCoverEveryTuple(k: Int, declared: IntArray, boxes: List<IntArray>): Boolean {
+        if (k == declared.size) return boxes.isNotEmpty()
+        val wild = boxes.filter { it[k] == RelevantEntity.ALL }
+        if (boxesCoverEveryTuple(k + 1, declared, wild)) return true
+        val pinned = boxes.filter { it[k] != RelevantEntity.ALL }.groupBy { it[k] }
+        return (1..declared[k]).all { v ->
+            val here = pinned[v] ?: return false
+            boxesCoverEveryTuple(k + 1, declared, wild + here)
         }
-        // Every level is individually complete — necessary, and on its own exactly the diagonal's mistake.
-        return inThisRow.mapTo(HashSet()) { e -> concreteLevels.map { e.indices[it] } }.size.toLong() == universe
     }
 
     /** The relevant set a [io.github.mbackschat.a12.dm.interpreter.model.CustomCondition] sees in PARTIAL mode —
@@ -477,8 +479,8 @@ class DmInterpreter private constructor(
      */
     private fun validateWith(doc: Document, locale: String, isRelevant: Relevance,
             customRelevant: Set<CustomConditionFieldPointer>? = null,
-            starRelevant: ((String, List<Int>) -> Boolean)? = null,
-            starFullyEnumerated: ((String, List<Int>) -> Boolean)? = null,
+            starRelevant: ((String, Int, List<Int>) -> Boolean)? = null,
+            starFullyEnumerated: ((String, Int, List<Int>) -> Boolean)? = null,
             groupRelevance: (String, List<Int>) -> GroupRelevance = { _, _ -> GroupRelevance.FULL }): ValidationOutcome =
         observeCaches(doc) {
             // The index-default staging split (SPEC-2026-07-23-14): a FULL call stages each eligible
@@ -710,8 +712,8 @@ class DmInterpreter private constructor(
      * (null in full, the caller's set + globals in partial — IF38).
      */
     private fun validationConfig(isRelevant: Relevance, customRelevant: Set<CustomConditionFieldPointer>?,
-            starRelevant: ((String, List<Int>) -> Boolean)?,
-            starFullyEnumerated: ((String, List<Int>) -> Boolean)?,
+            starRelevant: ((String, Int, List<Int>) -> Boolean)?,
+            starFullyEnumerated: ((String, Int, List<Int>) -> Boolean)?,
             groupPresence: (EvalContext, String) -> io.github.mbackschat.a12.dm.interpreter.eval.GroupPresenceState): EvalConfig =
         EvalConfig(clock, model.baseYear, model.indexFields, timeZone = model.timeZone,
             predefinedTypes = predefinedTypes, customConditions = customConditions, customFieldTypes = customFieldTypes,
@@ -865,7 +867,11 @@ class DmInterpreter private constructor(
         else -> JoinedList(prefix, suffix)
     }
 
-    private class JoinedList<T>(private val prefix: List<T>, private val suffix: List<T>) : AbstractList<T>() {
+    /** Immutable by construction over two call-local immutable inputs, so it publishes without a copy: an
+     *  RNU message that also carries direct references lands here rather than on the bare cluster snapshot, and
+     *  a boundary that recognized only the snapshot copied this one per message (IF261). */
+    private class JoinedList<T>(private val prefix: List<T>, private val suffix: List<T>)
+        : AbstractList<T>(), ImmutableProjection {
         override val size: Int = prefix.size + suffix.size
 
         override fun get(index: Int): T = when {

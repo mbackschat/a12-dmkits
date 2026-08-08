@@ -455,15 +455,19 @@ private fun Interpreter.evalFunc(f: Expr.Func): Val {
         val fullyEnumerated = starFullyEnumerated
         val relevant = starRelevant
         f.args.forEach { arg ->
-            val sp = (arg as? Expr.Star)?.path
-            if (sp != null) {
+            val star = arg as? Expr.Star
+            if (star != null) {
+                val sp = star.path
                 // Completeness is asked PER ROW: with two nested repeatable levels a relevant set can complete
                 // one outer row and not the next, and the kernel evaluates the complete one. A path-keyed
-                // question cannot express that (PartialNestedAggregateDiffTest).
+                // question cannot express that (PartialNestedAggregateDiffTest). `bindDepth` rides along because
+                // it is what says WHICH levels the row binds — a multi-star operand spans every row of its
+                // outer levels (IF94), so a gate deriving that from the path alone binds a level the star
+                // iterates and reads a pinned outer row as wildcarded (PartialMultiStarScopeDiffTest).
                 val gated = if (op == FunctionOp.SUM_OF_PRODUCTS) {
-                    fullyEnumerated != null && !fullyEnumerated.invoke(sp, ctx.repsOf(sp))
+                    fullyEnumerated != null && !fullyEnumerated.invoke(sp, star.bindDepth, ctx.repsOf(sp))
                 } else {
-                    relevant != null && !relevant.invoke(sp, ctx.repsOf(sp))
+                    relevant != null && !relevant.invoke(sp, star.bindDepth, ctx.repsOf(sp))
                 }
                 if (gated) return Val.Unknown
             }

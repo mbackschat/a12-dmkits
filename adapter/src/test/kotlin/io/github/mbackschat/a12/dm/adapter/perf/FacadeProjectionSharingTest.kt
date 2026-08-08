@@ -69,6 +69,42 @@ class FacadeProjectionSharingTest {
         }
     }
 
+    /**
+     * **Two clusters, interleaved.** The engine shares one list per cluster, so alternating keys make the
+     * findings alternate between two source instances: `A, B, A, B, …`. Any reuse cache holding a bounded number
+     * of slots — one per channel was the first shape of this fix — misses on every single message here and
+     * copies the whole cluster list each time, which is the same O(N²) allocation the dense case was fixed for.
+     *
+     * The number of interleaved clusters a document may carry is not bounded by anything, so the invariant is
+     * "no copy at all", not "a cache big enough for the cases we thought of".
+     */
+    @Test
+    fun alternatingDuplicateClustersEachShareOneReferencedPointerList() {
+        val prepared = preparedModel()
+        val snapshot = prepared.documents.readDocument(alternatingKeyDocument(ROWS))
+
+        val duplicates = prepared.createInterpreter().validateFull(snapshot).findings.filter { it.code == RNU }
+        assertEquals(ROWS, duplicates.size, "every row is a duplicate of its own cluster, so every row fires")
+
+        // Grouped by the list each finding carries: two clusters must yield exactly two distinct instances.
+        val byIdentity = duplicates.groupBy { IdentityKey(it.referenced) }
+        assertEquals(
+            2, byIdentity.size,
+            "two interleaved clusters must produce exactly TWO shared lists, one per cluster — got " +
+                "${byIdentity.size} distinct instances across ${duplicates.size} findings, i.e. the façade is " +
+                "copying per finding again (a bounded slot cache misses on every alternation)",
+        )
+        assertTrue(byIdentity.keys.all { it.list.size == ROWS / 2 }) {
+            "each cluster references its own half of the rows: sizes=${byIdentity.keys.map { it.list.size }}"
+        }
+    }
+
+    /** Identity-keyed wrapper: `List.equals` would collapse two distinct-but-equal lists into one group. */
+    private class IdentityKey(val list: List<*>) {
+        override fun hashCode(): Int = System.identityHashCode(list)
+        override fun equals(other: Any?): Boolean = other is IdentityKey && other.list === list
+    }
+
     private fun preparedModel(): PreparedModel {
         val base = DocumentModelDraft.named("orders").locale("en_US")
             .rootGroup("Order", Consumer { o: GroupBuilder ->
@@ -102,6 +138,14 @@ class FacadeProjectionSharingTest {
             prefix = """{"Order":{"Lines":[""",
             postfix = "]}}",
         ) { """{"LineKey":"K","Amount":$it}""" }
+
+    /** Keys alternate `K1, K2, K1, K2, …`, so the two duplicate clusters interleave row by row. */
+    private fun alternatingKeyDocument(rows: Int): String =
+        (1..rows).joinToString(
+            separator = ",",
+            prefix = """{"Order":{"Lines":[""",
+            postfix = "]}}",
+        ) { """{"LineKey":"K${it % 2}","Amount":$it}""" }
 
     private companion object {
         const val RNU = "DUP"

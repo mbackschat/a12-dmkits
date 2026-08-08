@@ -18,6 +18,7 @@ import io.github.mbackschat.a12.dm.interpreter.model.UnsupportedRule as EngineUn
 import io.github.mbackschat.a12.dm.interpreter.model.UnsupportedSubject as EngineUnsupportedSubject
 import io.github.mbackschat.a12.dm.interpreter.model.ValidationOutcome
 import io.github.mbackschat.a12.dm.interpreter.workspace.immutableListSnapshot
+import io.github.mbackschat.a12.dm.interpreter.workspace.isImmutableProjection
 import kotlin.jvm.JvmOverloads
 import kotlin.jvm.JvmStatic
 import kotlin.jvm.JvmSynthetic
@@ -884,7 +885,7 @@ class Interpreter private constructor(
                 ComputationReport.create(
                     results = results,
                     actions = actions,
-                    formalErrorsInOperands = validationFindings(retained.formalErrorsInOperands),
+                    formalErrorsInOperands = retained.formalErrorsInOperands.map(::validationFinding),
                     unsupported = retained.unsupported.map(::unsupportedProgram),
                     owner = owner,
                     modelVersion = modelVersion,
@@ -912,7 +913,7 @@ class Interpreter private constructor(
 
     private fun validationReport(outcome: ValidationOutcome): ValidationReport =
         ValidationReport.create(
-            findings = validationFindings(outcome.messages),
+            findings = outcome.messages.map(::validationFinding),
             unsupported = outcome.unsupported.map(::unsupportedProgram),
         )
 
@@ -1004,46 +1005,29 @@ class Interpreter private constructor(
 }
 
 /**
- * One projection pass's snapshot reuse, keyed by list IDENTITY.
+ * Publish a pointer list across the public boundary — **without copying one that is already immutable**.
  *
- * The engine hands every message of a dense duplicate cluster the **same** pointer-list instance rather than a
- * private copy per message (IF191). Snapshotting defensively per message therefore copies one N-element list N
- * times: quadratic in both time and memory, and it cancels that optimization at exactly the boundary a library
- * consumer calls. Measured, the facade exhausted the default test heap on 8,000 all-duplicate rows — a document
- * the engine itself handles.
+ * The engine hands every message of a duplicate cluster the *same* pointer-list instance rather than a private
+ * copy per message (IF191). Snapshotting defensively per message therefore copies one N-element list N times:
+ * quadratic in both time and memory, and it cancels that optimization at exactly the boundary a library consumer
+ * calls. Measured, the façade exhausted the default test heap on 8,000 all-duplicate rows — a document the
+ * engine itself handles.
  *
- * One slot per channel is enough because the sharing is per cluster and the two channels alternate; a miss
- * simply falls back to the copy, so this is a fast path and never a correctness dependency. The defensive copy
- * still happens once per distinct source list, so the public list stays immutable.
+ * The first fix cached the last snapshot per channel, which held for ONE cluster and missed on every message of
+ * two interleaved ones — the copy, and the O(N²), came straight back (IF261). Since nothing bounds how many
+ * duplicate clusters a document may interleave, no fixed number of slots is defensible. So the engine marks every list it
+ * builds immutably (`ImmutableProjection`) and this boundary recognizes the marker: no copy, no cache, no scale
+ * at which it degrades. A list from anywhere else is still copied, so the published list is immutable either way.
  */
-private class SharedPointerSnapshots {
-    private var referencedSource: List<A12PartiallyKnownMultiPointer>? = null
-    private var referencedSnapshot: List<A12PartiallyKnownMultiPointer>? = null
-    private var fillToFixSource: List<A12PartiallyKnownMultiPointer>? = null
-    private var fillToFixSnapshot: List<A12PartiallyKnownMultiPointer>? = null
-
-    fun referenced(values: List<A12PartiallyKnownMultiPointer>): List<A12PartiallyKnownMultiPointer> {
-        if (values.isEmpty()) return emptyList()
-        if (referencedSource === values) return checkNotNull(referencedSnapshot)
-        return immutableListSnapshot(values).also { referencedSource = values; referencedSnapshot = it }
+private fun publishedPointers(values: List<A12PartiallyKnownMultiPointer>): List<A12PartiallyKnownMultiPointer> =
+    when {
+        values.isEmpty() -> emptyList()
+        isImmutableProjection(values) -> values
+        else -> immutableListSnapshot(values)
     }
-
-    fun fillToFix(values: List<A12PartiallyKnownMultiPointer>): List<A12PartiallyKnownMultiPointer> {
-        if (values.isEmpty()) return emptyList()
-        if (fillToFixSource === values) return checkNotNull(fillToFixSnapshot)
-        return immutableListSnapshot(values).also { fillToFixSource = values; fillToFixSnapshot = it }
-    }
-}
-
-/** Project a whole message list, reusing the snapshot of any pointer list the engine shared across messages. */
-internal fun validationFindings(messages: List<EngineMessage>): List<ValidationFinding> =
-    SharedPointerSnapshots().let { shared -> messages.map { validationFinding(it, shared) } }
 
 /** The single engine-to-public message projection; internal so common tests can lock the channel boundary. */
 internal fun validationFinding(message: EngineMessage): ValidationFinding =
-    validationFinding(message, SharedPointerSnapshots())
-
-private fun validationFinding(message: EngineMessage, shared: SharedPointerSnapshots): ValidationFinding =
     ValidationFinding(
         code = message.code,
         rulePath = message.rulePath,
@@ -1058,8 +1042,8 @@ private fun validationFinding(message: EngineMessage, shared: SharedPointerSnaps
             MsgType.OMISSION -> ValidationFindingType.OMISSION
         },
         text = message.text,
-        referenced = shared.referenced(message.referencedPointers),
-        fillToFix = shared.fillToFix(message.fillToFixPointers),
+        referenced = publishedPointers(message.referencedPointers),
+        fillToFix = publishedPointers(message.fillToFixPointers),
     )
 
 private class CallbackFailure(cause: Throwable) : RuntimeException(cause)
