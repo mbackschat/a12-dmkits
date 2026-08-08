@@ -347,8 +347,10 @@ object FuzzDiagnostics {
     /** Single source of the partial fuzz's reproducible document-seed/relevant-seed pairing. */
     fun partialRelevantSeed(docSeed: Int, relevantSeed: Int): Int = docSeed * 131 + relevantSeed
 
-    /** One placement of a generated document, in the shape a relevance meter classifies. */
-    data class Cell(val path: String, val reps: List<Int>, val isGroup: Boolean)
+    /** One placement of a generated document, in the shape a relevance meter classifies. [value] is null for a
+     *  group row and for an empty field, so a meter that asks "do these two rows carry the SAME key" can tell a
+     *  shared value from two absent ones. */
+    data class Cell(val path: String, val reps: List<Int>, val isGroup: Boolean, val value: String?)
 
     /**
      * A generated document's cells paired with the **EFFECTIVE** relevance a relevant set induces — the query a
@@ -358,9 +360,13 @@ object FuzzDiagnostics {
      * that tested `path in entities` would report shapes the runtime never sees — e.g. "payload relevant but its
      * index cell is not" for a row whose whole GROUP was selected, where in fact both are relevant.
      *
-     * This mirrors `DmInterpreter.RelevanceQueries.relevant` (the `bound = reps.size` case). It is a coverage
-     * instrument, not an oracle: correctness of relevance is the differential's job, so a drift here shows up as
-     * the meter's shapes shifting, never as a silent pass. [RelevantViewTest] pins the semantics.
+     * This **re-implements** `DmInterpreter.RelevanceQueries.relevant` (the `bound = reps.size` case), because
+     * that query is private to `:interpreter` and no public API exposes it. [RelevantViewTest] pins THIS
+     * implementation's semantics case by case; it cannot pin the two against each other, so **nothing mechanically
+     * fails if production's relevance changes and this copy does not** — and the failure would be silent in the
+     * worst direction: an over-reporting copy lets the shape meter assert full coverage of shapes the runtime
+     * never realises. Tracked as IG115 with what would settle it. Correctness of relevance itself is not at
+     * stake here — that is the differential's job, and it runs the real query.
      */
     class RelevantView internal constructor(
         val cells: List<Cell>,
@@ -401,7 +407,7 @@ object FuzzDiagnostics {
     fun relevantView(scenario: PerfScenario, docSeed: Int, relevantSeed: Int): RelevantView {
         val places = record(scenario, docSeed)
         return RelevantView(
-            places.map { Cell(it.path, it.reps, it.kind == Place.Kind.GROUP) },
+            places.map { Cell(it.path, it.reps, it.kind == Place.Kind.GROUP, it.value) },
             relevantSets(places, relevantSeed).second,
             scenario.interpModel.globalFields,
         )

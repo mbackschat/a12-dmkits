@@ -44,20 +44,25 @@ class SiblingGroupFuzzDiffTest {
     @Test
     fun parallelIterationAgreesWithKernel() {
         val failures = mutableListOf<String>()
-        var kernelEverFired = false
+        val silentCases = mutableListOf<String>()
         for (m in 0 until SiblingGroupFuzz.PARALLEL_CASES) {
             val case = SiblingGroupFuzz.parallelCase(m)
+            var fired = false
             for (d in 0 until PARALLEL_DOCS) {
-                if (case.code in FuzzDiagnostics.kernelCodes(case.scenario, d)) kernelEverFired = true
+                if (!fired && case.code in FuzzDiagnostics.kernelCodes(case.scenario, d)) fired = true
                 if (!FuzzDiagnostics.signaturesAgree(case.scenario, d)) failures += report(case.scenario, d)
             }
+            if (!fired) silentCases += case.scenario.name
         }
         assertTrue(failures.isEmpty()) {
             "parallel-iteration fuzz: interpreter diverged from the kernel on ${failures.size} (model, doc) pairs:\n" +
                 failures.take(15).joinToString("\n")
         }
-        // Sanity: the kernel really DOES fire these rules — otherwise the agreement would be vacuous.
-        assertTrue(kernelEverFired) { "kernel never fired any parallel-iteration code — the cases aren't exercising the join" }
+        // Sanity, PER CASE: a shared flag lets one firing case vouch for a sibling that is agreeing about silence.
+        assertTrue(silentCases.isEmpty()) {
+            "the kernel never fired these parallel-iteration cases on any document, so their agreement is " +
+                "vacuous: $silentCases"
+        }
     }
 
     /**
@@ -95,28 +100,29 @@ class SiblingGroupFuzzDiffTest {
     @Test
     fun parallelIterationAgreesWithKernelUnderPartialRelevance() {
         val failures = mutableListOf<String>()
-        var kernelEverFired = false
+        val silentCases = mutableListOf<String>()
         for (c in 0 until SiblingGroupFuzz.PARALLEL_CASES) {
             val case = SiblingGroupFuzz.parallelCase(c)
+            var fired = false
             for (d in 0 until PARTIAL_DOCS) for (r in 0 until PARTIAL_REL_SEEDS) {
                 val rel = FuzzDiagnostics.partialRelevantSeed(d, r)
-                // Short-circuited: once the kernel has fired the joined rule under SOME relevant set the oracle
-                // is satisfied, and this extra kernel run is skipped for the remaining combinations.
-                if (!kernelEverFired && case.code in FuzzDiagnostics.kernelPartialCodes(case.scenario, d, rel)) {
-                    kernelEverFired = true
-                }
+                // Short-circuited PER CASE: once THIS case's rule has fired under some relevant set its oracle is
+                // satisfied, and the extra kernel run is skipped for its remaining combinations. Sharing one flag
+                // across cases would let a firing case vouch for a sibling that never fires at all.
+                if (!fired && case.code in FuzzDiagnostics.kernelPartialCodes(case.scenario, d, rel)) fired = true
                 if (!FuzzDiagnostics.partialSignaturesAgree(case.scenario, d, rel)) {
                     failures += "${case.scenario.name} :: " + FuzzDiagnostics.partialDivergence(case.scenario, d, rel)
                 }
             }
+            if (!fired) silentCases += case.scenario.name
         }
         assertTrue(failures.isEmpty()) {
             "partial parallel-iteration fuzz: interpreter diverged from the kernel on ${failures.size} " +
                 "(case, doc, relevant) combinations:\n" + failures.take(5).joinToString("\n")
         }
-        assertTrue(kernelEverFired) {
-            "the kernel never fired a parallel-iteration code under ANY relevant set — the partial regime is " +
-                "agreeing about silence, which no relevant-set bug could disturb"
+        assertTrue(silentCases.isEmpty()) {
+            "the kernel never fired these parallel-iteration cases under ANY relevant set, so they are agreeing " +
+                "about silence, which no relevant-set bug could disturb: $silentCases"
         }
     }
 

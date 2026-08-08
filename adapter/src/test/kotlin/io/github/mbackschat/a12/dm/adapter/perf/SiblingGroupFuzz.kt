@@ -60,31 +60,47 @@ object SiblingGroupFuzz {
         PAYLOAD_WITHOUT_ITS_INDEX,
         /** The index cell is relevant while its payload is not — the row keys the join but yields no value. */
         INDEX_WITHOUT_ITS_PAYLOAD,
-        /** A complete row (index + payload) is relevant on exactly ONE side, so the other side is unmatched. */
+        /** Some index VALUE has a complete relevant row (index + payload) on exactly one side — the outer join's
+         *  unmatched arm, where the other side resolves to `[-5]`. */
         ONE_SIDE_ONLY,
-        /** A complete row on BOTH sides — the join has something to match. */
+        /** Some index VALUE has a complete relevant row on BOTH sides — the join actually MATCHES. Requiring a
+         *  shared value is what makes this a discriminating shape: "each side has some complete row" is satisfied
+         *  by two sides whose key domains are disjoint, where nothing ever joins. */
         BOTH_SIDES,
     }
 
-    /** Which of [ParallelRelevanceShape] the relevance in [view] actually realises over the two sibling groups. */
+    /**
+     * Which of [ParallelRelevanceShape] the relevance in [view] actually realises over the two sibling groups.
+     *
+     * Driven by the group's ROWS, not by its index CELLS: a row whose index field has no placement at all still
+     * has a payload, and it is precisely the row that realises [ParallelRelevanceShape.PAYLOAD_WITHOUT_ITS_INDEX]
+     * most sharply — keying the loop off the index cell made it invisible, so the meter could report full
+     * coverage while never seeing it.
+     */
     fun parallelRelevanceShapes(view: FuzzDiagnostics.RelevantView): Set<ParallelRelevanceShape> = buildSet {
-        val complete = mutableMapOf(A to false, B to false)
+        val completeKeys = mutableMapOf(A to mutableSetOf<String>(), B to mutableSetOf<String>())
         for ((group, payload) in listOf(A to "$A/Va", B to "$B/Vb")) {
             val index = "$group/Dept"
-            for (cell in view.cells) {
-                if (cell.path != index) continue                 // one pass per ROW, keyed off its index cell
-                val indexRelevant = view.isRelevant(index, cell.reps)
-                val payloadRelevant = view.isRelevant(payload, cell.reps)
+            val depth = group.trim('/').split('/').size
+            val valueAt = view.cells.filter { it.path == index }.associate { it.reps to it.value }
+            for (row in view.cells.filter { it.path == group || it.path.startsWith("$group/") }
+                .map { it.reps.take(depth) }.distinct()) {
+                val cell = row + 1
+                val indexRelevant = view.isRelevant(index, cell)
+                val payloadRelevant = view.isRelevant(payload, cell)
                 when {
                     payloadRelevant && !indexRelevant -> add(ParallelRelevanceShape.PAYLOAD_WITHOUT_ITS_INDEX)
                     indexRelevant && !payloadRelevant -> add(ParallelRelevanceShape.INDEX_WITHOUT_ITS_PAYLOAD)
-                    indexRelevant -> complete[group] = true
+                    // A complete row keys the join only if its index cell actually carries a value — an absent or
+                    // empty one invalidates the column instead of contributing a key ([IF270]/[IF271]).
+                    indexRelevant -> valueAt[cell]?.let { completeKeys.getValue(group) += it }
                 }
             }
         }
-        when {
-            complete.getValue(A) && complete.getValue(B) -> add(ParallelRelevanceShape.BOTH_SIDES)
-            complete.getValue(A) || complete.getValue(B) -> add(ParallelRelevanceShape.ONE_SIDE_ONLY)
+        val shared = completeKeys.getValue(A) intersect completeKeys.getValue(B)
+        if (shared.isNotEmpty()) add(ParallelRelevanceShape.BOTH_SIDES)
+        if ((completeKeys.getValue(A) + completeKeys.getValue(B)).any { it !in shared }) {
+            add(ParallelRelevanceShape.ONE_SIDE_ONLY)
         }
     }
 
