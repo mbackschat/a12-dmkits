@@ -14,7 +14,9 @@
 
 ## 1. Open
 
-_None open._
+- **IG114 — a SPARSE repeatable row: the kernel materializes the gap, the interpreter does not.** Observed 2026-08-08 while delta-debugging an unrelated seed, so it is a measurement looking for its scope rather than a diagnosed defect. Feeding **identical placements** to both engines — `/Plan[1]`, `/Plan/A[1,5]`, `/Plan/A/Dept[1,5,1]="D5"`, `/Plan/A/Va[1,5,1]` empty, i.e. only repetition **5** instantiated — dynamic Groovy fires `mandatoryField|OMISSION_ERROR` at `/Plan[1]/A[1]/Dept` through `A[4]/Dept`, treating rows 1–4 as present-and-empty; the interpreter fires nothing and sees one row. Rows placed at repetition 2 and 4 behave the same way (1 and 3 firings respectively), so the kernel materializes `1..n-1` for a row placed at `n`.
+
+  **What is unsettled is reachability, and that decides whether this is a defect at all.** The document came from the document shrinker, which drops rows and can therefore produce shapes the generator never emits. A12's Document JSON does represent a repeating group as an array with `{}` for an empty or sparse row, so `[{},{},{},{},{…}]` looks representable — but that is a reading of the format, not a measurement, and no committed corpus case, demo, or fuzz generator produces one today. **What would settle it:** round-trip a sparse array through the kernel's own `DocumentJsonAndXmlDeserializationInfoImpl` and see what coordinates it assigns; if it yields the same placements, this is a real divergence and needs an `IF` plus a law test, and the fuzz generators should learn to emit sparse rows. **Blocks:** nothing currently shipped — every net and corpus case builds contiguous rows. Deliberately not folded into the parallel-join slice that found it (convergence gate): different mechanism, different denominator.
 
 ---
 
