@@ -2,7 +2,9 @@ package io.github.mbackschat.a12.dm.adapter.laws
 
 import io.github.mbackschat.a12.dm.adapter.laws.RuntimeLaws.Relevant
 import io.github.mbackschat.a12.dm.adapter.perf.KernelAdvantage
+import io.github.mbackschat.a12.dm.adapter.perf.TimesInterpreterEntryPoint
 import io.github.mbackschat.a12.dm.interpreter.DmInterpreter
+import io.github.mbackschat.a12.dm.interpreter.eval.Document
 import io.github.mbackschat.a12.dm.interpreter.eval.newDocument
 import io.github.mbackschat.a12.dm.interpreter.model.FieldDef
 import io.github.mbackschat.a12.dm.interpreter.model.Kind
@@ -38,6 +40,7 @@ import java.util.function.Consumer
 class PartialSumOfProductsPerfTest {
 
     @Test
+    @TimesInterpreterEntryPoint("validatePart", Document::class, Set::class, String::class)
     fun completeConcreteEnumerationStaysSubQuadraticAndBeatsTheKernel() {
         KernelAdvantage.assertBeatsKernelAndScales(
             "partial-SOP/complete-concrete", measure(SMALL), measure(LARGE))

@@ -3,6 +3,7 @@ package io.github.mbackschat.a12.dm.adapter.perf
 import io.github.mbackschat.a12.dm.adapter.perf.PerfBounds.ABS_CEILING_MS
 import io.github.mbackschat.a12.dm.adapter.perf.PerfBounds.CAVEAT
 import io.github.mbackschat.a12.dm.adapter.perf.PerfBounds.RATIO_CEILING
+import io.github.mbackschat.a12.dm.interpreter.eval.Document
 import io.github.mbackschat.a12.dm.interpreter.model.ModelTimeZone
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Tag
@@ -23,6 +24,7 @@ import org.junit.jupiter.api.Test
 class PerfBenchTest {
 
     @Test
+    @TimesInterpreterEntryPoint("compute", Document::class, String::class)
     fun gatesEveryInventoryScenario() {
         val selectedCases = PerfInventory.select(System.getProperty("perf.scenario")?.takeIf(String::isNotBlank))
 

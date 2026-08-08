@@ -6,7 +6,7 @@
 >
 > **Section invariant (the placement rule):** every section holds exactly one **live** status — **§1 = open, §2 = deferred / ongoing-incremental, §3 = out-of-scope**. A FULLY-shipped/graduated entry belongs in **none** of them: completing it *deletes* its row (see the lifecycle). So §1 reads `_None open._` whenever nothing is open — the marker every `-GAPS` ledger uses, so one grep rolls up the whole family (`GapLedgerTemplateGuardTest`) — and a fully-FIXED entry **anywhere** in this ledger is a bug in *this doc* — git already records the fix. (A partially-shipped *ongoing* refactor in §2 is not "fixed" — it stays until all of it lands.)
 >
-> **Current state.** One open gap remains from the 2026-08-08 review rounds (IG111); IG112 shipped as [IF262](INTERPRETER-FINDINGS.md#if262), and the previous occupant IG110 shipped as [IF250](INTERPRETER-FINDINGS.md#if250). New semantic or performance defects belong in §1 only while they have actionable work and a defined completion gate.
+> **Current state.** No open gaps remain from the 2026-08-08 review rounds; IG111 shipped as [IF263](INTERPRETER-FINDINGS.md#if263), IG112 shipped as [IF262](INTERPRETER-FINDINGS.md#if262), and the previous occupant IG110 shipped as [IF250](INTERPRETER-FINDINGS.md#if250). New semantic or performance defects belong in §1 only while they have actionable work and a defined completion gate.
 >
 > **Scope.** `:interpreter` only — the kernel-free Kotlin evaluator (parser, evaluation semantics, model loader, the differential/perf harnesses' interpreter side). dmkit (rulekit/modelkit/edit) authoring gaps go to [`DEV-API-GAPS.md`](DEV-API-GAPS.md); kernel-coverage classification stays in the MVK / RT-semantics / grammar ledgers.
 
@@ -14,7 +14,7 @@
 
 ## 1. Open
 
-- **IG111 — the perf-coverage map names a guard per entry point but cannot show that the guard exercises it.** `InterpreterPerfCoverageTest` derives both denominators by reflection and checks that each signature names a live `@Test`; pointing an entry point at an unrelated test would pass. **What would close it:** move the claim from the map to the timing guard — an annotation on the test method naming the entry point it times — so the coverage set is derived from the guards themselves rather than authored beside them, and a mis-pointing becomes unrepresentable. **What it blocks:** nothing shipping; the risk is a *stale* coverage claim surviving a test rename, not an untimed entry point (the denominator half is derived and cannot be forgotten). Recorded because the class states this limit explicitly and a stated limit needs a home, per [IF258](INTERPRETER-FINDINGS.md#if258).
+_None open._
 
 ---
 

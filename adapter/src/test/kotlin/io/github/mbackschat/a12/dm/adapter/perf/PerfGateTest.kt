@@ -5,6 +5,7 @@ import io.github.mbackschat.a12.dm.adapter.perf.PerfBounds.CAVEAT
 import io.github.mbackschat.a12.dm.adapter.perf.PerfBounds.N_SMALL
 import io.github.mbackschat.a12.dm.adapter.perf.PerfBounds.RATIO_CEILING
 import io.github.mbackschat.a12.dm.adapter.perf.PerfBounds.SUB_QUADRATIC_MAX
+import io.github.mbackschat.a12.dm.interpreter.eval.Document
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Tag
 import org.junit.jupiter.api.Test
@@ -48,6 +49,7 @@ class PerfGateTest {
      * This is what actually guards the #28 indexing from a reintroduced linear-scan regression.
      */
     @Test
+    @TimesInterpreterEntryPoint("validate", Document::class, String::class)
     fun scalingIsSubQuadratic() {
         val b1 = PerfCatalog.b1()
         assertSubQuadratic("B1 sub-quadratic check", N_SMALL, "rows", "the #28 indexing regressed to a linear scan?",

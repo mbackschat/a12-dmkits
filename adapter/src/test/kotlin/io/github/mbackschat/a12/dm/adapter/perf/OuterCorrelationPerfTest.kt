@@ -118,6 +118,7 @@ class OuterCorrelationPerfTest {
     }
 
     @Test
+    @TimesInterpreterEntryPoint("validateFull", Document::class, String::class)
     fun equalityOuterCorrelationStaysSubQuadratic() {
         // IF137 paired estimator: interleaved N/4N, median of within-pair ratios (via the shared PerfHarness helper).
         val g = PerfHarness.pairedGrowth(N, N * 4) { medianMs(defEq, it, ::spread) }

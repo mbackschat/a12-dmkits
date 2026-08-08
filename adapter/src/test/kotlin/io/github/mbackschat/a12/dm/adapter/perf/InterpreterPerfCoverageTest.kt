@@ -3,16 +3,22 @@ package io.github.mbackschat.a12.dm.adapter.perf
 import io.github.mbackschat.a12.dm.interpreter.DmInterpreter
 import io.github.mbackschat.a12.dm.interpreter.eval.Document
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Tag
 import org.junit.jupiter.api.Test
+import org.junit.platform.engine.discovery.DiscoverySelectors.selectPackage
+import org.junit.platform.engine.support.descriptor.MethodSource
+import org.junit.platform.launcher.core.LauncherDiscoveryRequestBuilder
+import org.junit.platform.launcher.core.LauncherFactory
 import java.lang.reflect.Method
 import java.lang.reflect.Modifier
 
 /**
- * **The perf-coverage denominator: no evaluation entry point may exist without a NAMED timing guard.**
+ * **The perf-coverage denominator: no evaluation entry point may exist without a timing guard that owns its
+ * coverage claim.**
  *
- * The word "named" is load-bearing and the promise stops there — see [everyNamedGuardStillExists] for what is
- * and is not established. This class derives the denominator; it does not verify that each named test calls the
- * entry point it claims.
+ * [TimesInterpreterEntryPoint] sits on the timing test itself; this class discovers those annotations through
+ * JUnit and resolves their typed signatures against [DmInterpreter]. There is no separate
+ * class/method pointer that can be aimed at an unrelated test or survive a test rename.
  *
  * Four of [DmInterpreter]'s eight document-evaluation entry points had no timing test whatsoever, and that was
  * invisible because the coverage question was never asked against a *list*. The gap is expensive: an entry
@@ -21,8 +27,9 @@ import java.lang.reflect.Modifier
  * with a single wildcard entity the same code stayed linear, so the unqualified claim overstated it).
  *
  * So the entry points are **discovered by reflection**, not enumerated by hand: adding a public method that
- * takes a [Document] fails this test until it is either given a timing guard or explicitly recorded as not
- * needing one. A hand-written list would have to be remembered; a derived one cannot be forgotten.
+ * takes a [Document] fails this test until a live, perf-tagged `@Test` method names it with
+ * [TimesInterpreterEntryPoint]. A hand-written list would have to be remembered; two derived sets cannot be
+ * forgotten or drift apart.
  *
  * This guard is deliberately **not** `@Tag("perf")` — it is a cheap reflection check that must run in the
  * ordinary lane, so the coverage question is answered on every build rather than only when someone opts into
@@ -33,13 +40,17 @@ class InterpreterPerfCoverageTest {
     @Test
     fun everyEvaluationEntryPointHasATimingGuard() {
         val discovered = evaluationEntryPoints()
+        val guarded = timingGuards()
+        val guardOwners = guarded.sortedBy { signature(it.entryPoint) }.joinToString(", ") {
+            "${signature(it.entryPoint)} <- ${it.testMethod.declaringClass.simpleName}.${it.testMethod.name}"
+        }
 
         assertEquals(
-            COVERAGE.keys.toSortedSet(), discovered.map(::signature).toSortedSet(),
+            discovered.map(::signature).toSortedSet(), guarded.map { signature(it.entryPoint) }.toSortedSet(),
             "the set of DmInterpreter evaluation entry points changed. Every public method taking a Document " +
-                "is timed by some perf guard; add the new one to COVERAGE with the guard that times it (or, if " +
-                "it genuinely cannot be timed, record it here with the reason). Missing a guard is how " +
-                "validatePart stayed quadratic unnoticed.",
+                "must be named by @TimesInterpreterEntryPoint on the live, perf-tagged @Test method that times " +
+                "it. Missing a guard is how validatePart stayed quadratic unnoticed. Discovered claims: " +
+                guardOwners,
         )
     }
 
@@ -87,42 +98,7 @@ class InterpreterPerfCoverageTest {
     private fun signature(method: Method): String =
         method.parameterTypes.joinToString(",", "${method.name}(", ")") { it.simpleName }
 
-    /**
-     * The map must keep pointing at something real. A renamed or deleted test would otherwise leave the
-     * coverage claim standing while the guard it names no longer exists — an advertised invariant with no
-     * enforcement locus.
-     *
-     * **What this does NOT establish: that the named test exercises the entry point.** Pointing `validatePart`
-     * at any `@Test` method anywhere would pass. Closing that needs the claim to be made *at* the timing guard
-     * rather than in a map beside it (an annotation on the test method, derived instead of authored); it is
-     * recorded as IG111 in `docs/INTERPRETER-GAPS.md` rather than left as an implicit weakness. Until then the claim
-     * this class enforces is exactly "every entry point is NAMED here and the name resolves to a live test",
-     * which is what the assertions below check and all the wording in this file should promise.
-     */
-    @Test
-    fun everyNamedGuardStillExists() {
-        for ((entryPoint, guard) in COVERAGE) {
-            val owner = runCatching { Class.forName(guard.testClass) }.getOrElse {
-                throw AssertionError("$entryPoint names a perf guard whose class is gone: ${guard.testClass}")
-            }
-            val named = owner.methods.filter { it.name == guard.testMethod }
-            check(named.isNotEmpty()) {
-                "$entryPoint names ${guard.testClass}.${guard.testMethod}, which no longer exists. " +
-                    "Point it at the guard that times $entryPoint today."
-            }
-            // Existence alone would accept any method at all — a helper, or something inherited from Object.
-            // This does NOT establish that the named test exercises the entry point; nothing cheap does, and
-            // claiming otherwise would be the "advertise what you cannot point at" defect one level up. It
-            // rules out the mis-pointing that costs nothing to rule out.
-            check(named.any { it.isAnnotationPresent(Test::class.java) }) {
-                "$entryPoint names ${guard.testClass}.${guard.testMethod}, which is not a @Test method. A " +
-                    "coverage claim must point at something that actually runs."
-            }
-        }
-    }
-
-    /** Where one entry point's timing coverage lives. */
-    private data class Guard(val testClass: String, val testMethod: String, val note: String)
+    private data class TimingGuard(val testMethod: Method, val entryPoint: Method)
 
     private companion object {
 
@@ -136,43 +112,51 @@ class InterpreterPerfCoverageTest {
             .filter { Modifier.isPublic(it.modifiers) && !it.isSynthetic && '$' !in it.name }
             .filter { m -> m.parameterTypes.any { it == Document::class.java } }
 
-        private const val PERF = "io.github.mbackschat.a12.dm.adapter.perf"
-        private const val LAWS = "io.github.mbackschat.a12.dm.adapter.laws"
+        private const val ADAPTER_PACKAGE = "io.github.mbackschat.a12.dm.adapter"
 
-        val COVERAGE: Map<String, Guard> = mapOf(
-            "validate(Document,String)" to Guard(
-                "$PERF.PerfGateTest", "scalingIsSubQuadratic",
-                "the sweep's own operation: InterpreterPerfEngine times validate for every VALIDATE scenario",
-            ),
-            "validateFull(Document,String)" to Guard(
-                "$PERF.OuterCorrelationPerfTest", "equalityOuterCorrelationStaysSubQuadratic",
-                "times validateFull directly; the cold-start gate drives the same path with no warmup",
-            ),
-            "validatePart(Document,Set,String)" to Guard(
-                "$LAWS.PartialSumOfProductsPerfTest", "completeConcreteEnumerationStaysSubQuadraticAndBeatsTheKernel",
-                "the relevant set grows WITH the document under a concrete enumeration — where the O(N²) was",
-            ),
-            "compute(Document,String)" to Guard(
-                "$PERF.PerfBenchTest", "gatesEveryInventoryScenario",
-                "the sweep's other operation: B7 / compute-cleared / compute-errored / tiered-compute",
-            ),
-            "testRule(String,Document,String)" to Guard(
-                "$PERF.EntryPointPerfTest", "testRuleBeatsTheKernelAndScales",
-                "single stored rule over the whole document",
-            ),
-            "evalCandidate(RuleDef,Document,String)" to Guard(
-                "$PERF.EntryPointPerfTest", "evalCandidateBeatsTheKernelAndScales",
-                "single injected candidate rule — the model eval --condition shape",
-            ),
-            "computeField(String,Document,String)" to Guard(
-                "$PERF.EntryPointPerfTest", "computeFieldBeatsTheKernelAndScales",
-                "one computation's pruned subset",
-            ),
-            "applyComputations(Document,String)" to Guard(
-                "$PERF.EntryPointPerfTest", "applyComputationsBeatsTheKernelAndScales",
-                "compute plus the whole-document rebuild — the rebuild is the part nothing else times",
-            ),
-        )
+        /**
+         * Discover the coverage declarations from a JUnit plan as executable test methods. An
+         * annotation on a helper is rejected, as is one in an untagged class: a declaration is a timing guard only
+         * when the ordinary JUnit engine sees a `@Test` and the perf lane selects it.
+         */
+        fun timingGuards(): List<TimingGuard> {
+            val request = LauncherDiscoveryRequestBuilder.request()
+                .selectors(selectPackage(ADAPTER_PACKAGE))
+                .build()
+            val plan = LauncherFactory.create().discover(request)
+            val testMethods = plan.roots.asSequence()
+                .flatMap { plan.getDescendants(it).asSequence() }
+                .mapNotNull { it.source.orElse(null) as? MethodSource }
+                .map { it.javaMethod }
+                .distinct()
+                .toList()
+
+            return testMethods.mapNotNull { testMethod ->
+                val owner = testMethod.declaringClass
+                val claim = testMethod.getAnnotation(TimesInterpreterEntryPoint::class.java)
+                    ?: return@mapNotNull null
+                check(testMethod.isAnnotationPresent(Test::class.java)) {
+                    "${owner.name}.${testMethod.name} claims interpreter timing coverage but is not a @Test"
+                }
+                check(owner.getAnnotationsByType(Tag::class.java).any { it.value == "perf" } ||
+                    testMethod.getAnnotationsByType(Tag::class.java).any { it.value == "perf" }) {
+                    "${owner.name}.${testMethod.name} claims interpreter timing coverage but is not @Tag(\"perf\")"
+                }
+                val entryPoint = runCatching {
+                    DmInterpreter::class.java.getMethod(
+                        claim.method,
+                        *claim.parameterTypes.map { it.java }.toTypedArray(),
+                    )
+                }.getOrElse {
+                    throw AssertionError(
+                        "${owner.name}.${testMethod.name} names no live DmInterpreter method: " +
+                            "${claim.method}(${claim.parameterTypes.joinToString { it.simpleName ?: "?" }})",
+                        it,
+                    )
+                }
+                TimingGuard(testMethod, entryPoint)
+            }
+        }
 
         /**
          * The published facade's evaluation surface, each with why it is not separately timed.

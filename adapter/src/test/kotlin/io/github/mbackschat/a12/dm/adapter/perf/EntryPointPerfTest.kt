@@ -6,6 +6,7 @@ import io.github.mbackschat.a12.dm.interpreter.DmInterpreter
 import io.github.mbackschat.a12.dm.interpreter.eval.Document
 import io.github.mbackschat.a12.dm.interpreter.eval.newDocument
 import io.github.mbackschat.a12.dm.interpreter.gen.asSink
+import io.github.mbackschat.a12.dm.interpreter.model.RuleDef
 import io.github.mbackschat.a12.dm.interpreter.model.Verdict
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertTrue
@@ -49,6 +50,7 @@ import org.junit.jupiter.api.Test
 class EntryPointPerfTest {
 
     @Test
+    @TimesInterpreterEntryPoint("testRule", String::class, Document::class, String::class)
     fun testRuleBeatsTheKernelAndScales() {
         val rig = Rig(singleRuleScenario())
         val rulePath = rig.scenario.interpModel.rules.single().path
@@ -66,6 +68,7 @@ class EntryPointPerfTest {
     }
 
     @Test
+    @TimesInterpreterEntryPoint("evalCandidate", RuleDef::class, Document::class, String::class)
     fun evalCandidateBeatsTheKernelAndScales() {
         val rig = Rig(singleRuleScenario())
         // The SAME rule, injected as a non-stored candidate — the `model eval --condition` shape. It shares
@@ -86,6 +89,7 @@ class EntryPointPerfTest {
     }
 
     @Test
+    @TimesInterpreterEntryPoint("computeField", String::class, Document::class, String::class)
     fun computeFieldBeatsTheKernelAndScales() {
         val rig = Rig(singleComputationScenario())
         val target = rig.scenario.interpModel.computations.single().targetPath
@@ -108,6 +112,7 @@ class EntryPointPerfTest {
     }
 
     @Test
+    @TimesInterpreterEntryPoint("applyComputations", Document::class, String::class)
     fun applyComputationsBeatsTheKernelAndScales() {
         val rig = Rig(singleComputationScenario())
         val target = rig.scenario.interpModel.computations.single().targetPath
