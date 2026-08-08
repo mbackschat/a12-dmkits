@@ -18,6 +18,7 @@ import io.github.mbackschat.a12.dm.modelkit.NumberFieldBuilder
 import io.github.mbackschat.a12.dm.rulekit.dsl.Computation
 import io.github.mbackschat.a12.dm.rulekit.dsl.Condition
 import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl
+import io.github.mbackschat.a12.dm.rulekit.dsl.FieldOperand
 import io.github.mbackschat.a12.dm.rulekit.dsl.FieldRef
 import io.github.mbackschat.a12.dm.rulekit.dsl.NumberLiteral
 import io.github.mbackschat.a12.dm.rulekit.dsl.Rule
@@ -1121,6 +1122,7 @@ object PerfCatalog {
     private val fzWeight = cartParts.num("Weight")
     private val nestedWeights = cartLines.flatten("Parts*/Weight")
     private val allWeights = cart.flatten("Lines*/Parts*/Weight")
+    private val itemIds = cart.flatten("Lines*/ItemId")
     private val fuzzFields = listOf(
         FieldDef("/Cart/Lines/ItemId", Kind.STRING),
         FieldDef("/Cart/Lines/Qty", Kind.NUMBER, scale = 0),
@@ -1146,6 +1148,18 @@ object PerfCatalog {
         cart.errorRule("SP", fzQty.field(), Dsl.sumOfProducts(cart.flatten("Lines*/Qty"), cart.flatten("Lines*/Price")).gt(100000)),   // Σ qᵢ·pᵢ, row-paired
         cartLines.errorRule("NS", fzQty.field(), fzQty.filled().and(Dsl.sumOfProducts(nestedWeights, nestedWeights).gt(100000))), // Parts* is row-bound by the current Line
         cart.errorRule("MS", fzWeight.field(), Dsl.sum(allWeights).gt(1000)), // legal two-star extent
+        // Starred VALUE-LIST quantifiers. The net had none at all, so the starred-extent gate they ride was
+        // outside the differential entirely — which is why IF264's split from the all-rows aggregate gate was
+        // invisible here. `NL` and `NX` are the extent-SENSITIVE pair (`No` on the fields side, `NotAll` on the
+        // values side). The `K0`/`K1` pool makes both fire on some seeds and not others.
+        // The `AtLeastOne` peer is NOT here yet: adding it turned 6 of 180 combinations red on a divergence
+        // that predates this net and is independent of the extent gate (`AtLeastOne` never reads
+        // `extentUnknown`; `NL` carries the identical rule shape and agrees on all 180). It is IG113, with its
+        // reproducing seeds, and the rule goes in with the fix rather than red.
+        cart.errorRule("NL", fzItem.field(),
+            Dsl.noFieldValueIncludedInValueList(listOf("K0", "K1"), itemIds)),
+        cartLines.errorRule("NX", fzItem.field(),
+            Dsl.notAllFieldValuesIncludedInValueList(listOf<FieldOperand>(itemIds), fzItem.field())),
         cartLines.errorRule("DV", fzPrice.field(), fzQty.filled().and(fzPrice.asNumber().dividedBy(fzQty.asNumber()).gt(5))),   // division (+ div-by-zero quiet)
         cartLines.errorRule("PW", fzQty.field(), fzQty.asNumber().toThePowerOf(Dsl.number("2")).gt(100)),                       // power
         cartLines.errorRule("AB", fzPrice.field(), Dsl.abs(fzPrice.asNumber()).gt(500)),                                        // |x|

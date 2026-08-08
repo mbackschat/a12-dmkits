@@ -6,7 +6,7 @@
 >
 > **Section invariant (the placement rule):** every section holds exactly one **live** status — **§1 = open, §2 = deferred / ongoing-incremental, §3 = out-of-scope**. A FULLY-shipped/graduated entry belongs in **none** of them: completing it *deletes* its row (see the lifecycle). So §1 reads `_None open._` whenever nothing is open — the marker every `-GAPS` ledger uses, so one grep rolls up the whole family (`GapLedgerTemplateGuardTest`) — and a fully-FIXED entry **anywhere** in this ledger is a bug in *this doc* — git already records the fix. (A partially-shipped *ongoing* refactor in §2 is not "fixed" — it stays until all of it lands.)
 >
-> **Current state.** No open gaps remain from the 2026-08-08 review rounds; IG111 shipped as [IF263](INTERPRETER-FINDINGS.md#if263), IG112 shipped as [IF262](INTERPRETER-FINDINGS.md#if262), and the previous occupant IG110 shipped as [IF250](INTERPRETER-FINDINGS.md#if250). New semantic or performance defects belong in §1 only while they have actionable work and a defined completion gate.
+> **Current state.** IG111 shipped as [IF263](INTERPRETER-FINDINGS.md#if263), IG112 shipped as [IF262](INTERPRETER-FINDINGS.md#if262), and the previous occupant IG110 shipped as [IF250](INTERPRETER-FINDINGS.md#if250). IG113 opened 2026-08-08: closing IG112's shape gap put value-list rules into the fuzz for the first time, and the first thing they found was an `AtLeastOne` divergence that had simply never been under a net. New semantic or performance defects belong in §1 only while they have actionable work and a defined completion gate.
 >
 > **Scope.** `:interpreter` only — the kernel-free Kotlin evaluator (parser, evaluation semantics, model loader, the differential/perf harnesses' interpreter side). dmkit (rulekit/modelkit/edit) authoring gaps go to [`DEV-API-GAPS.md`](DEV-API-GAPS.md); kernel-coverage classification stays in the MVK / RT-semantics / grammar ledgers.
 
@@ -14,7 +14,7 @@
 
 ## 1. Open
 
-_None open._
+- **IG113 — `AtLeastOneFieldValueIncludedInValueList` over a starred operand diverges from the kernel under partial relevance.** Found the moment the fuzz gained value-list rules at all ([IF264](INTERPRETER-FINDINGS.md#if264) exposed that it had none): a starred `AtLeastOne` whose error field sits *inside* the repeatable group diverges on **6 of 180** (document, relevant-subset) combinations, in **both** directions — kernel-only on seeds `4/rel=525`, `28/rel=3669`, `38/rel=4980`, `44/rel=5766`, `46/rel=6027`, interpreter-only on `40/rel=5241`, every one at `AL|VALUE_ERROR|/Cart[1]/Lines[1]/ItemId`. **Independent of the extent gate**, on two counts: `AtLeastOne` never reads `VlqOperand.extentUnknown` (only `No`'s fields side and the values-side collector do), and the `No` rule `NL` carries the identical rule shape — same group, same error field, same operand — and agrees on all 180. So the suspect is per-cell relevance in the `AtLeastOne` scan, not the starred extent. **What would close it:** reproduce the seed-4 case as a focused differential (relevant set `{ItemId[1,1,1], Lines[1,4], …}` — one concrete field row plus one group row), root-cause the cell classification, fix, then add the `AtLeastOne` rule to `PerfCatalog.fuzzRuleSpecs()` beside `NL`/`NX` and require all 180 green. **What it blocks:** nothing shipping today, but it is a kernel-exactness defect in a shipped operator, so it outranks new capability under the module's priority #1.
 
 ---
 
