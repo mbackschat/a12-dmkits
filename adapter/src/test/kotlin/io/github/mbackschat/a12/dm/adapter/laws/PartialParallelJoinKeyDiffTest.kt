@@ -6,6 +6,7 @@ import io.github.mbackschat.a12.dm.interpreter.eval.newDocument
 import io.github.mbackschat.a12.dm.interpreter.gen.PlacementSink
 import io.github.mbackschat.a12.dm.interpreter.gen.asSink
 import io.github.mbackschat.a12.dm.interpreter.load.ModelLoader
+import io.github.mbackschat.a12.dm.interpreter.model.ModelDef
 import io.github.mbackschat.a12.dm.interpreter.model.RelevantEntity
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
@@ -28,14 +29,17 @@ class PartialParallelJoinKeyDiffTest {
 
     private val staffing = RuntimeLaws.model("models/staffing.dm.json")
 
-    private val model by lazy {
-        RuntimeLaws.withRule(
-            staffing, "/Staffing", "PG", "../Demand/Headcount", "PG",
-            "FieldFilled(/Staffing/Demand/Headcount) Or FieldFilled(/Staffing/Supply/Headcount)",
-        )
+    private val models = HashMap<String, String>()
+    private val defs = HashMap<String, ModelDef>()
+    private val engines = HashMap<String, RuntimeLaws.JavaKernelEngine>()
+
+    private fun modelFor(code: String) = models.getOrPut(code) {
+        val condition = when (code) {
+            POSITIVE -> "FieldFilled(/Staffing/Demand/Headcount) Or FieldFilled(/Staffing/Supply/Headcount)"
+            else -> "FieldsNotCollectivelyFilled(/Staffing/Demand/Headcount, /Staffing/Supply/Headcount)"
+        }
+        RuntimeLaws.withRule(staffing, "/Staffing", code, "../Demand/Headcount", code, condition)
     }
-    private val def by lazy { ModelLoader.load(model) }
-    private val engine by lazy { RuntimeLaws.kernelJavaEngine(model) }
 
     @Test
     fun aParallelRowExistsOnlyWhereItsIndexCellIsRelevant() {
@@ -62,7 +66,7 @@ class PartialParallelJoinKeyDiffTest {
                 Sel(SDEP, listOf(1, 2, 1)), Sel(SHC, listOf(1, 2, 1)), Sel(DHC, listOf(1, 1, 1))),
         )
 
-        val readings = selections.map { (label, sel) -> "$label | ${verdicts(sel)}" }
+        val readings = selections.map { (label, sel) -> "$label | ${verdicts(POSITIVE, sel)}" }
 
         assertEquals(
             listOf(
@@ -88,7 +92,49 @@ class PartialParallelJoinKeyDiffTest {
         )
     }
 
-    private fun verdicts(selection: List<Sel>): String {
+    /**
+     * The half the rule above **structurally cannot see** ([IF271]). A non-relevant index cell does not merely
+     * remove a join key; it INVALIDATES the column exactly as an empty cell does, so every unmatched reference
+     * into that group reads 3VL UNKNOWN instead of a definite empty. `FieldFilled(D) Or FieldFilled(S)` is TRUE
+     * whenever the far side is filled — identical under both readings — so the positive shapes above pinned the
+     * POINTER and left the VALIDITY unmeasured, and the interpreter shipped the wrong half of it. Only a
+     * negative operator, which fires solely on a definite "not filled", separates them.
+     *
+     * The control matters as much as the splits: with EVERY index cell relevant the column is valid and the
+     * unmatched sides fire normally, so this is not "a partial relevant set silences negative rules".
+     */
+    @Test
+    fun aNonRelevantIndexCellInvalidatesTheColumnNotJustItsKey() {
+        val selections = listOf(
+            "every index cell relevant (control)" to listOf(
+                Sel(DDEP, ALL3), Sel(DHC, ALL3), Sel(SDEP, ALL3), Sel(SHC, ALL3)),
+            "this side's index cells are ALL non-relevant" to listOf(Sel(DHC, ALL3), Sel(SDEP, ALL3), Sel(SHC, ALL3)),
+            "this side: only ONE row's index cell is relevant" to listOf(
+                Sel(DDEP, listOf(1, 1, 1)), Sel(DHC, ALL3), Sel(SDEP, ALL3), Sel(SHC, ALL3)),
+            "the FAR side: only one row's index cell is relevant" to listOf(
+                Sel(DDEP, ALL3), Sel(DHC, ALL3), Sel(SDEP, listOf(1, 1, 1)), Sel(SHC, ALL3)),
+        )
+
+        val readings = selections.map { (label, sel) -> "$label | ${verdicts(NEGATIVE, sel)}" }
+
+        assertEquals(
+            listOf(
+                "every index cell relevant (control) | $UNMATCHED_AND_ROW2",
+                "this side's index cells are ALL non-relevant | $SILENT",
+                "this side: only ONE row's index cell is relevant | $SILENT",
+                "the FAR side: only one row's index cell is relevant | $SILENT",
+            ),
+            readings,
+            "ONE index cell outside the relevant set compromises the whole column, on either side of the join, " +
+                "so the negative operator is suppressed — while a fully relevant column fires exactly as it " +
+                "does under full validation",
+        )
+    }
+
+    private fun verdicts(code: String, selection: List<Sel>): String {
+        val model = modelFor(code)
+        val def = defs.getOrPut(code) { ModelLoader.load(model) }
+        val engine = engines.getOrPut(code) { RuntimeLaws.kernelJavaEngine(model) }
         val kDoc = RuntimeLaws.doc()
         place(object : PlacementSink {
             override fun group(path: String, vararg reps: Int) { kDoc.group(path, *reps) }
@@ -100,10 +146,10 @@ class PartialParallelJoinKeyDiffTest {
         val kRel = selection.map { Relevant.of(it.path, *it.reps.toIntArray()) }.toSet()
         val iRel = selection.mapTo(HashSet()) { RelevantEntity(it.path, it.reps) }
         fun sig(v: List<String>) = v.sorted().joinToString(";").ifEmpty { "-" }
-        val dynamic = sig(RuntimeLaws.messagesPart(model, kDoc, kRel).filter { it.code() == "PG" }.map { it.field() })
-        val static = sig(engine.messagesPart(kDoc, kRel).filter { it.code() == "PG" }.map { it.field() })
+        val dynamic = sig(RuntimeLaws.messagesPart(model, kDoc, kRel).filter { it.code() == code }.map { it.field() })
+        val static = sig(engine.messagesPart(kDoc, kRel).filter { it.code() == code }.map { it.field() })
         val interp = sig(DmInterpreter(def).validatePart(iDoc, iRel).messages
-            .filter { it.code == "PG" }.map { it.errorPath })
+            .filter { it.code == code }.map { it.errorPath })
         return "groovy=$dynamic java=$static interp=$interp"
     }
 
@@ -130,10 +176,16 @@ class PartialParallelJoinKeyDiffTest {
         private const val R2 = "/Staffing[1]/Demand[2]/Headcount"
         /** The kernel's `IIdentifier.UNKNOWN` repetition — this group has no row for the joined value. */
         private const val NONE = "/Staffing[1]/Demand[-5]/Headcount"
+        const val POSITIVE = "PG"
+        const val NEGATIVE = "NG"
+        val ALL3 = listOf(0, 0, 0)
+
         const val ROW1 = "groovy=$R1 java=$R1 interp=$R1"
         const val ROW2 = "groovy=$R2 java=$R2 interp=$R2"
         const val BOTH = "groovy=$R1;$R2 java=$R1;$R2 interp=$R1;$R2"
         const val UNMATCHED = "groovy=$NONE java=$NONE interp=$NONE"
+        /** The negative rule over a fully relevant column: both unmatched keys fire, as under full validation. */
+        const val UNMATCHED_AND_ROW2 = "groovy=$NONE;$R2 java=$NONE;$R2 interp=$NONE;$R2"
         const val SILENT = "groovy=- java=- interp=-"
     }
 }

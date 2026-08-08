@@ -470,6 +470,35 @@ object FuzzDiagnostics {
             places.joinToString("\n") { "  ${it.kind} ${it.path}${it.reps} ${it.value ?: ""}".trimEnd() }
     }
 
+    /**
+     * The relevant-set twin of [shrink]: greedily drop relevant ENTITIES that are not needed to keep a partial
+     * divergence, leaving the minimal set to read. A partial divergence is usually about which entities are
+     * *missing*, so shrinking the document alone does not localize it — and a relevant set that contains an
+     * ancestor GROUP expands onto every descendant, which makes hand-built isolation attempts collapse into
+     * "everything relevant" without saying so.
+     */
+    fun shrinkPartial(scenario: PerfScenario, seed: Int, relevantSeed: Int): String {
+        val places = record(scenario, seed)
+        fun diverges(entities: List<RelevantEntity>): Boolean {
+            val k = entities.mapTo(HashSet()) { RuntimeLaws.Relevant.of(it.path, *it.indices.toIntArray()) }
+            val i = interpPartialSignatures(scenario.interpModel, places, entities.toSet())
+            return i != kernelPartialSignatures(scenario.kernelModel, places, k)
+        }
+        var kept = relevantSets(places, relevantSeed).second.sortedWith(
+            compareBy<RelevantEntity> { it.path }.thenBy { it.indices.joinToString(",") })
+        if (!diverges(kept)) return "seed=$seed/rel=$relevantSeed: no partial divergence to shrink"
+        for (entity in kept.toList()) {
+            val trial = kept.filterNot { it == entity }
+            if (diverges(trial)) kept = trial
+        }
+        val kRel = kept.mapTo(HashSet()) { RuntimeLaws.Relevant.of(it.path, *it.indices.toIntArray()) }
+        return "seed=$seed/rel=$relevantSeed shrunk to ${kept.size} relevant entities:\n" +
+            kept.joinToString("\n") { "  relevant ${it.path}${it.indices}" } + "\n" +
+            "  interp=${interpPartialSignatures(scenario.interpModel, places, kept.toSet())}\n" +
+            "  kernel=${kernelPartialSignatures(scenario.kernelModel, places, kRel)}\n" +
+            placementDump(scenario, seed)
+    }
+
     /** Multiset difference `a − b` (each element of [b] cancels at most one of [a]). */
     private fun multisetMinus(a: List<String>, b: List<String>): List<String> {
         val rem = b.toMutableList()

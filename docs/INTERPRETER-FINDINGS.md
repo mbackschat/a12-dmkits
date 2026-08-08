@@ -2986,6 +2986,8 @@ Two independent gates have to hold, and the table separates them: **the index ce
 
 **Fix.** `Document.parallelContexts` takes the call's cell-relevance predicate and `indexMap` skips a row whose index cell is outside the set; `IterationScopes.iterationContexts` threads it; `DmInterpreter` supplies `config.cellRelevant`. Null everywhere else, so full validation and every compute consumer are unchanged.
 
+*Corrected 2026-08-08:* skipping the row was only **half** the rule. A non-relevant index cell also **invalidates the column**, so the group's unmatched references read 3VL UNKNOWN rather than a definite empty — [IF271](#if271), found by the partial parallel fuzz. Every shape in the table above uses `FieldFilled(…) Or FieldFilled(…)`, which is TRUE whenever the far side is filled and therefore reads identically under both rules; the fourteen rows pinned the POINTER and left the VALIDITY unmeasured. The lesson is narrower than "add more shapes": a table of shapes measured through ONE operator can only settle what that operator's truth function can distinguish.
+
 **Provenance.** Found while probing the ONE arm of [IF268]'s fix that had been reasoned rather than measured — whether a parallel context binds its joined groups' own levels. That reasoning was correct, and this defect was sitting next to it. The standing lesson is the cheaper one: the probe cost minutes and the arm it was written to check turned out fine, which is not an argument against having run it.
 
 *Locked by:* `laws/PartialParallelJoinKeyDiffTest` (fourteen shapes, both kernel strategies plus the interpreter; both halves of the fix independently mutant-checked).
@@ -3013,3 +3015,26 @@ An **empty** index cell was already exact — it never entered the map — which
 **Provenance.** Not found by review or by reasoning: found by *de-duplicating* Harness G. `SiblingGroupFuzz.parallelCase` varies only on `caseIndex % 2` and its document depends solely on the doc seed, so the former `MODELS = 40 × DOCS = 5` loop ran 200 times over 10 unique comparisons and just **5 distinct documents**. Rebalancing to `PARALLEL_CASES × 40` documents — fewer total runs — reached doc seed 11 and turned it red immediately. The redundancy had been hiding the defect for as long as the harness existed.
 
 *Locked by:* `laws/ParallelJoinDuplicateKeyDiffTest` (seven documents, both kernel strategies plus the interpreter; both the removal and the collision set independently mutant-checked, the latter detected by the triple-key row alone).
+
+### IF271: a non-relevant index cell INVALIDATES the parallel-join column, not just its key (FIXED 2026-08-08) <a id="if271"></a>
+
+**Claim.** Under partial validation, a row whose index cell is outside the relevant set is "not given" to the relevance-scoped `IndexFieldCache` — so it contributes no join key ([IF269]) **and** marks the group's index invalid for that parent, exactly as an EMPTY index cell does ([KERNEL-FINDINGS](KERNEL-FINDINGS.md) §9). One such cell compromises the whole column. Every unmatched reference into that group then reads 3VL **UNKNOWN** instead of a definite empty, which suppresses a negative operator over it.
+
+**Why it hid.** [IF269] implemented only the key half, and its fourteen-shape law test could not see the difference: it measures `FieldFilled(Demand/Headcount) Or FieldFilled(Supply/Headcount)`, a positive operator that is TRUE whenever the far side is filled — identical whether the near side is UNKNOWN or definitely empty. The blind spot is the operator's truth function, not the number of shapes.
+
+**Discriminators** (`Demand ⊥ Supply`, `FieldsNotCollectivelyFilled(Demand/Headcount, Supply/Headcount)`; both kernel strategies agree):
+
+| relevant set | kernel | pre-fix interpreter |
+|---|---|---|
+| every index cell relevant (control) | fires at `Demand[2]` and `Demand[-5]` | identical |
+| this side's index cells ALL non-relevant | silent | fires at `Demand[-5]` twice |
+| this side: only ONE row's index cell relevant | silent | fires at `Demand[-5]` |
+| the FAR side: only one row's index cell relevant | silent | fires at `Demand[2]` |
+
+The control is what makes the rest meaningful — a fully relevant column still fires exactly as under full validation, so this is not "partial relevance silences negative rules". Rows 3 and 4 settle the *scope* of the invalidity: it is per column and symmetric across the join, not "only when the group has no keys at all".
+
+**Fix.** One branch in `Document.indexMap`: a non-relevant index cell now takes the same path as an empty one — `invalidOut.add(group)` before the `continue`.
+
+**Provenance.** Found by the partial parallel-iteration fuzz on its first run (`SiblingGroupFuzzDiffTest.parallelIterationAgreesWithKernelUnderPartialRelevance`), which is the cell no other net reached: the only other partial net's model is a nested chain, and `IterationScopes.prepare` excludes an ancestor group from the parallel candidates, so that topology can never be planned as a parallel iteration at any seed count. Two of 240 combinations diverged; `FuzzDiagnostics.shrinkPartial` — the relevant-set twin of `shrink`, added for this — reduced both to the same three-entity set, after which the hand-built discriminators above were straightforward. Hand isolation had failed first for a reason worth recording: every attempt included the ROOT group entity, which expands onto every descendant, so five "different" relevant sets were silently the same set.
+
+*Locked by:* `laws/PartialParallelJoinKeyDiffTest.aNonRelevantIndexCellInvalidatesTheColumnNotJustItsKey` (mutant-checked: reverting the fix fails ONLY this method, while the fourteen positive shapes stay green — the blind spot, demonstrated rather than asserted) and the fuzz regime above as the class-level net.

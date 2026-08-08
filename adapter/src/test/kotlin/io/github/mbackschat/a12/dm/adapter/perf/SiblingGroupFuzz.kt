@@ -1,5 +1,6 @@
 package io.github.mbackschat.a12.dm.adapter.perf
 
+import io.github.mbackschat.a12.dm.adapter.laws.FuzzDiagnostics
 import io.github.mbackschat.a12.dm.adapter.laws.RuntimeLaws
 import io.github.mbackschat.a12.dm.interpreter.gen.SeedGenerator
 import io.github.mbackschat.a12.dm.interpreter.gen.ValueStrategy
@@ -46,6 +47,46 @@ object SiblingGroupFuzz {
 
     /** How many DISTINCT parallel-iteration rule shapes [parallelCase] can produce — its `caseIndex` domain. */
     const val PARALLEL_CASES = 2
+
+    /**
+     * The relevance shapes a PARALLEL join can be in — the axes the partial-relevance gates branch on, and the
+     * reason the partial regime needs its own coverage meter. Random document VALUES cannot cover a missing
+     * shape: whether a row's index cell is inside the relevant set is decided by the relevant-set generator, not
+     * by the document, so a seed matrix that never separates the index cell from its payload would agree with
+     * the kernel vacuously.
+     */
+    enum class ParallelRelevanceShape {
+        /** A payload cell is relevant while its own row's INDEX cell is not — the row keys nothing ([IF269]). */
+        PAYLOAD_WITHOUT_ITS_INDEX,
+        /** The index cell is relevant while its payload is not — the row keys the join but yields no value. */
+        INDEX_WITHOUT_ITS_PAYLOAD,
+        /** A complete row (index + payload) is relevant on exactly ONE side, so the other side is unmatched. */
+        ONE_SIDE_ONLY,
+        /** A complete row on BOTH sides — the join has something to match. */
+        BOTH_SIDES,
+    }
+
+    /** Which of [ParallelRelevanceShape] the relevance in [view] actually realises over the two sibling groups. */
+    fun parallelRelevanceShapes(view: FuzzDiagnostics.RelevantView): Set<ParallelRelevanceShape> = buildSet {
+        val complete = mutableMapOf(A to false, B to false)
+        for ((group, payload) in listOf(A to "$A/Va", B to "$B/Vb")) {
+            val index = "$group/Dept"
+            for (cell in view.cells) {
+                if (cell.path != index) continue                 // one pass per ROW, keyed off its index cell
+                val indexRelevant = view.isRelevant(index, cell.reps)
+                val payloadRelevant = view.isRelevant(payload, cell.reps)
+                when {
+                    payloadRelevant && !indexRelevant -> add(ParallelRelevanceShape.PAYLOAD_WITHOUT_ITS_INDEX)
+                    indexRelevant && !payloadRelevant -> add(ParallelRelevanceShape.INDEX_WITHOUT_ITS_PAYLOAD)
+                    indexRelevant -> complete[group] = true
+                }
+            }
+        }
+        when {
+            complete.getValue(A) && complete.getValue(B) -> add(ParallelRelevanceShape.BOTH_SIDES)
+            complete.getValue(A) || complete.getValue(B) -> add(ParallelRelevanceShape.ONE_SIDE_ONLY)
+        }
+    }
 
     /** The shared structure JSON (kernel) for the two-sibling `/Plan` model — built once, rules injected per case. */
     private val structureJson: String = DocumentModelDraft.named("plan").locale("en_US")

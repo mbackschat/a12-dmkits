@@ -1,6 +1,7 @@
 package io.github.mbackschat.a12.dm.adapter.perf
 
 import io.github.mbackschat.a12.dm.adapter.laws.FuzzDiagnostics
+import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Tag
 import org.junit.jupiter.api.Test
@@ -60,6 +61,66 @@ class SiblingGroupFuzzDiffTest {
     }
 
     /**
+     * The generator half of the partial regime, separated from the differential exactly as the partial net
+     * separates its own two methods: a red here is a GENERATOR regression (the seed matrix stopped producing a
+     * shape), a red below is an INTERPRETER divergence. Cheap — no engine runs, only the generator.
+     */
+    @Test
+    fun theParallelSeedMatrixReachesEveryDiscriminatingRelevanceShape() {
+        val coverage = buildSet {
+            for (c in 0 until SiblingGroupFuzz.PARALLEL_CASES) {
+                val scenario = SiblingGroupFuzz.parallelCase(c).scenario
+                for (d in 0 until PARTIAL_DOCS) for (r in 0 until PARTIAL_REL_SEEDS) {
+                    val view = FuzzDiagnostics.relevantView(scenario, d, FuzzDiagnostics.partialRelevantSeed(d, r))
+                    addAll(SiblingGroupFuzz.parallelRelevanceShapes(view))
+                }
+            }
+        }
+
+        assertEquals(
+            SiblingGroupFuzz.ParallelRelevanceShape.entries.toSet(), coverage,
+            "the partial parallel regime must separate a row's INDEX cell from its payload in both directions " +
+                "and reach one-sided and two-sided joins; document values cannot cover a shape the relevant-set " +
+                "generator never produces, so agreement below would be vacuous without this",
+        )
+    }
+
+    /**
+     * **The cell no other net reaches.** The only other partial net's model is a nested chain
+     * (`Lines ⊃ Parts`), and `IterationScopes.prepare` excludes an ancestor group from the parallel candidates —
+     * so that topology can never be planned as a parallel iteration, at any seed count. Sibling topology was
+     * fuzzed only under FULL validation, partial relevance only over a nested chain, and the index-keyed join
+     * under partial relevance fell between them ([IF269] was found by hand, not by a net).
+     */
+    @Test
+    fun parallelIterationAgreesWithKernelUnderPartialRelevance() {
+        val failures = mutableListOf<String>()
+        var kernelEverFired = false
+        for (c in 0 until SiblingGroupFuzz.PARALLEL_CASES) {
+            val case = SiblingGroupFuzz.parallelCase(c)
+            for (d in 0 until PARTIAL_DOCS) for (r in 0 until PARTIAL_REL_SEEDS) {
+                val rel = FuzzDiagnostics.partialRelevantSeed(d, r)
+                // Short-circuited: once the kernel has fired the joined rule under SOME relevant set the oracle
+                // is satisfied, and this extra kernel run is skipped for the remaining combinations.
+                if (!kernelEverFired && case.code in FuzzDiagnostics.kernelPartialCodes(case.scenario, d, rel)) {
+                    kernelEverFired = true
+                }
+                if (!FuzzDiagnostics.partialSignaturesAgree(case.scenario, d, rel)) {
+                    failures += "${case.scenario.name} :: " + FuzzDiagnostics.partialDivergence(case.scenario, d, rel)
+                }
+            }
+        }
+        assertTrue(failures.isEmpty()) {
+            "partial parallel-iteration fuzz: interpreter diverged from the kernel on ${failures.size} " +
+                "(case, doc, relevant) combinations:\n" + failures.take(5).joinToString("\n")
+        }
+        assertTrue(kernelEverFired) {
+            "the kernel never fired a parallel-iteration code under ANY relevant set — the partial regime is " +
+                "agreeing about silence, which no relevant-set bug could disturb"
+        }
+    }
+
+    /**
      * A diverging seed, WITH the document that produced it. [FuzzDiagnostics.signatureDivergence] names which
      * engine pair split but not what was fed in, and reading a sibling-join divergence means seeing the index
      * values — chasing [IF270] otherwise took a hand-written probe just to print the placements.
@@ -80,5 +141,10 @@ class SiblingGroupFuzzDiffTest {
          * unique comparisons and just 5 distinct documents. Same shape, 8× the documents, 40 % of the runs.
          */
         const val PARALLEL_DOCS = 40
+
+        /** The partial regime's budget goes on DOCUMENTS × RELEVANT SETS, the two axes that vary its outcome —
+         *  12 × 10 × [SiblingGroupFuzz.PARALLEL_CASES] = 240 tri-engine partial validations. */
+        const val PARTIAL_DOCS = 12
+        const val PARTIAL_REL_SEEDS = 10
     }
 }

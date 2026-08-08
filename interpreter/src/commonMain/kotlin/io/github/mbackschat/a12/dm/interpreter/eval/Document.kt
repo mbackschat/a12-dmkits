@@ -626,9 +626,18 @@ class Document(internal val config: DocumentConfig) {
             // Partial validation: the join is keyed by the INDEX field and the kernel builds that cache from the
             // RELEVANT cells only (IF39), so a row whose own index cell is outside the relevant set contributes
             // no key — the group is then the outer join's "not specified" side for that value, pointer
-            // `Demand[-5]`, exactly like a group with no row at all ([IF269]). A relevant GROUP covers its index
-            // cell, which is why selecting a whole row keeps its iteration.
-            if (cellRelevant?.invoke(idxPath, row + 1) == false) continue
+            // `Demand[-5]` ([IF269]). A relevant GROUP covers its index cell, which is why selecting a whole row
+            // keeps its iteration.
+            //
+            // It also INVALIDATES the column, exactly like an empty cell ([IF271]): a non-relevant index cell is
+            // "not given" to the relevance-scoped cache, so ONE of them makes every unmatched reference into
+            // this group read 3VL UNKNOWN rather than a definite empty. Only a negative operator can see the
+            // difference, which is why [IF269]'s shapes — all measured with `FieldFilled(…) Or FieldFilled(…)`,
+            // true whenever the far side is filled — pinned the pointer but not the validity.
+            if (cellRelevant?.invoke(idxPath, row + 1) == false) {
+                invalidOut.add(group)
+                continue
+            }
             val v = valueAt(idxPath, row + 1)?.value
             when {
                 v.isNullOrEmpty() -> invalidOut.add(group)                  // empty index cell → group invalid here
