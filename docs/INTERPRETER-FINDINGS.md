@@ -2732,3 +2732,23 @@ The [IF42](#if42) completeness fix and the relevance index that followed were bo
 **A fourth defect was in the guard, not the code.** `PartialSumOfProductsPerfTest` timed the interpreter against `RuntimeLaws.messagesPart`, which takes a model JSON *string* and therefore expands the model, builds both service factories and converts V1→V2 **inside every call**, while the interpreter reused its prepared model. It reported **19.57×** at 1000 rows; built once on both sides the honest figures are **5.40×** at 250 rows and **7.17×** at 1000, growth 3.92× for 4× rows. The conclusion held and only the magnitude was wrong — and note the direction on the *before* number: an inflated kernel baseline made the pre-fix 0.98× an **over**statement of where the interpreter stood. No published surface was affected (they cite the inventory sweep, which builds its kernel once); method rule and basis in [INTERPRETER-PERFORMANCE.md](INTERPRETER-PERFORMANCE.md) "Checkpoint 2026-08-08".
 
 *Locked by:* `PartialRelevanceDepthTest` (`:interpreter`, kernel-free — the index against the scan it replaced, plus a cost bound a depth-enumerating query cannot pass) and `laws/PartialNestedAggregateDiffTest` (`:adapter` — wildcard / full cross-product / diagonal / anti-diagonal / one-row-complete / mixed-shape, every reading taken from the kernel).
+
+### IF256 — the published façade allocated quadratically by defensively copying a list the engine had shared, and a TIMING guard could not see it (2026-08-08) <a id="if256"></a>
+
+[IF191](#if191) makes the engine hand every finding of a dense `RepetitionNotUnique` cluster **one shared pointer-list instance** rather than a private copy each. The public `Interpreter` façade then projected each engine message into a `ValidationFinding` and ran `immutableListSnapshot` on that list **per finding** — copying one N-element list N times, and cancelling the optimization at exactly the boundary a library consumer calls. Fixed by reusing the snapshot when the source list is the same instance (`SharedPointerSnapshots`, one slot per channel; a miss simply falls back to the copy, so it is a fast path and never a correctness dependency).
+
+**The instrument matters more than the finding.** The cost here is **allocation, not arithmetic**, and the two are not interchangeable:
+
+| scale | timing guard (4× rows) | what actually happened |
+|---|---|---|
+| 500 → 2,000 | 2.68× — **passes** | defect fully present |
+| 1,000 → 4,000 | 3.80× against a 5.4× trip line — **passes** | defect fully present |
+| 8,000 | never reports | `OutOfMemoryError: Java heap space` |
+
+`arraycopy` is fast, so N² copies barely move a clock; they move the heap. At 8,000 duplicate rows the façade produced ~64 million pointer references and killed the test JVM on a document the engine handles comfortably. **A timing proxy for an allocation defect reports green while the process is one scale away from dying** — and a growth guard tuned to a scale that fits in memory is guaranteed to sit in the range where the defect is invisible.
+
+So the guard asserts the invariant **directly**: findings the engine gave the same list must come out sharing one list (`assertSame`). Deterministic, scale-free, 40 rows, no clock — and it runs in the ordinary lane rather than behind `-PrunPerf`, because a consumer-visible memory blow-up should not wait for someone to opt into the perf tier. Verified non-vacuous: removing the sharing fails it, where the timing version passed.
+
+**How it shipped: a disposition reasoned from one line of a function.** The façade's four snapshot-taking methods were dispositioned in [IF254](#if254) as "delegates to a timed core call, adds an O(1)-per-finding projection, so the worst case is a constant factor". That was reached by reading `ModelAddressValidation.entityKind` — two set lookups, correct in itself — while missing the pointer-list copy on the adjacent line. Reading part of a function is not a measurement of the function, and the reasoning was recorded confidently enough that only an external reviewer's execution overturned it.
+
+*Locked by:* `FacadeProjectionSharingTest` (`:adapter`, ordinary lane). Found by cold review (C-F5); the reviewer's 8.56×-growth reading did not reproduce at that ratio here, but the underlying defect did, and its real signature is the heap rather than the clock.

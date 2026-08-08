@@ -47,12 +47,13 @@ class InterpreterPerfCoverageTest {
      * reflection above is blind to them. Discovering that immediately after writing IF254 is the finding's own
      * lesson arriving one surface later: the risk is never the entry point you remembered to check.
      *
-     * Each is dispositioned rather than timed. The facade adds two things to an already-timed core call — an
-     * O(1) snapshot unwrap (`DocumentSnapshot.document()` returns a stored field) and an O(1)-per-finding
-     * pointer projection (`ModelAddressValidation.entityKind` is two set lookups) — so its realistic worst case
-     * is a constant factor, not a complexity class. Timing it properly needs a public snapshot-construction
-     * path at scale for BOTH engines, which is a new harness rather than one run; until that exists this test
-     * keeps the surface visible and its reasoning attached.
+     * Each delegates to a timed core call, so none carries its own timing guard. **That disposition was first
+     * written as "adds an O(1)-per-finding projection, so the worst case is a constant factor", and it was
+     * wrong** — reasoned from `ModelAddressValidation.entityKind` (two set lookups, correct in itself) while
+     * missing the pointer-list copy beside it, which the engine had deliberately shared across findings. The
+     * façade allocated quadratically and exhausted the heap at 8,000 duplicate rows; `FacadeProjectionSharingTest`
+     * now pins the sharing directly. The lesson is why this list exists: a disposition reasoned from one line of
+     * a function is not a measurement of the function.
      */
     @Test
     fun theSnapshotFacadeIsEnumeratedEvenThoughItIsNotSeparatelyTimed() {

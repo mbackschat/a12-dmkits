@@ -884,7 +884,7 @@ class Interpreter private constructor(
                 ComputationReport.create(
                     results = results,
                     actions = actions,
-                    formalErrorsInOperands = retained.formalErrorsInOperands.map(::validationFinding),
+                    formalErrorsInOperands = validationFindings(retained.formalErrorsInOperands),
                     unsupported = retained.unsupported.map(::unsupportedProgram),
                     owner = owner,
                     modelVersion = modelVersion,
@@ -912,7 +912,7 @@ class Interpreter private constructor(
 
     private fun validationReport(outcome: ValidationOutcome): ValidationReport =
         ValidationReport.create(
-            findings = outcome.messages.map(::validationFinding),
+            findings = validationFindings(outcome.messages),
             unsupported = outcome.unsupported.map(::unsupportedProgram),
         )
 
@@ -1003,8 +1003,47 @@ class Interpreter private constructor(
     }
 }
 
+/**
+ * One projection pass's snapshot reuse, keyed by list IDENTITY.
+ *
+ * The engine hands every message of a dense duplicate cluster the **same** pointer-list instance rather than a
+ * private copy per message (IF191). Snapshotting defensively per message therefore copies one N-element list N
+ * times: quadratic in both time and memory, and it cancels that optimization at exactly the boundary a library
+ * consumer calls. Measured, the facade exhausted the default test heap on 8,000 all-duplicate rows — a document
+ * the engine itself handles.
+ *
+ * One slot per channel is enough because the sharing is per cluster and the two channels alternate; a miss
+ * simply falls back to the copy, so this is a fast path and never a correctness dependency. The defensive copy
+ * still happens once per distinct source list, so the public list stays immutable.
+ */
+private class SharedPointerSnapshots {
+    private var referencedSource: List<A12PartiallyKnownMultiPointer>? = null
+    private var referencedSnapshot: List<A12PartiallyKnownMultiPointer>? = null
+    private var fillToFixSource: List<A12PartiallyKnownMultiPointer>? = null
+    private var fillToFixSnapshot: List<A12PartiallyKnownMultiPointer>? = null
+
+    fun referenced(values: List<A12PartiallyKnownMultiPointer>): List<A12PartiallyKnownMultiPointer> {
+        if (values.isEmpty()) return emptyList()
+        if (referencedSource === values) return checkNotNull(referencedSnapshot)
+        return immutableListSnapshot(values).also { referencedSource = values; referencedSnapshot = it }
+    }
+
+    fun fillToFix(values: List<A12PartiallyKnownMultiPointer>): List<A12PartiallyKnownMultiPointer> {
+        if (values.isEmpty()) return emptyList()
+        if (fillToFixSource === values) return checkNotNull(fillToFixSnapshot)
+        return immutableListSnapshot(values).also { fillToFixSource = values; fillToFixSnapshot = it }
+    }
+}
+
+/** Project a whole message list, reusing the snapshot of any pointer list the engine shared across messages. */
+internal fun validationFindings(messages: List<EngineMessage>): List<ValidationFinding> =
+    SharedPointerSnapshots().let { shared -> messages.map { validationFinding(it, shared) } }
+
 /** The single engine-to-public message projection; internal so common tests can lock the channel boundary. */
 internal fun validationFinding(message: EngineMessage): ValidationFinding =
+    validationFinding(message, SharedPointerSnapshots())
+
+private fun validationFinding(message: EngineMessage, shared: SharedPointerSnapshots): ValidationFinding =
     ValidationFinding(
         code = message.code,
         rulePath = message.rulePath,
@@ -1019,8 +1058,8 @@ internal fun validationFinding(message: EngineMessage): ValidationFinding =
             MsgType.OMISSION -> ValidationFindingType.OMISSION
         },
         text = message.text,
-        referenced = immutableListSnapshot(message.referencedPointers),
-        fillToFix = immutableListSnapshot(message.fillToFixPointers),
+        referenced = shared.referenced(message.referencedPointers),
+        fillToFix = shared.fillToFix(message.fillToFixPointers),
     )
 
 private class CallbackFailure(cause: Throwable) : RuntimeException(cause)

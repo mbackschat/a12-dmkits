@@ -495,6 +495,12 @@ The catalog must favor **non-obvious** combinations (nesting × aggregation × c
 
 *The current headline + the naive baseline it improved on. The intermediate optimization-journey entries were collapsed away (2026-06-27) — the *method* and the *lessons* live above (the optimization catalog, the kernel-technique map, the biases-to-re-check); this log keeps only the **current** measures and the **pre-optimization yardstick** they're read against. Dates are when each axis was last measured.*
 
+### Checkpoint 2026-08-08 — the façade's quadratic allocation, and why a timing guard missed it (IF256)
+
+The public `Interpreter` façade copied a pointer list the engine had deliberately **shared** across the findings of a dense `RepetitionNotUnique` cluster ([IF191](INTERPRETER-FINDINGS.md#if191)), so one N-element list was copied N times. Fixed by reusing the snapshot per source-list identity.
+
+**Do not use a timing guard for an allocation defect.** Measured with the defect fully present: 500→2,000 rows grew **2.68×**, and 1,000→4,000 grew **3.80×** against a 5.4× trip line — both green. At 8,000 rows the façade produced ~64 million pointer references and killed the test JVM with `OutOfMemoryError`. `arraycopy` is cheap, so N² copies barely register on a clock while being fatal to the heap; worse, any growth guard tuned to a scale that *fits* in memory necessarily sits in the range where the defect is invisible. The guard therefore asserts the invariant directly — findings the engine gave the same list must share one list — at 40 rows, with no clock. **When the suspected cost is allocation, assert the allocation property, not a time ratio.**
+
 ### Checkpoint 2026-08-08 — partial validation repaired, and a harness that was charging the kernel twice (IF255)
 
 **Partial validation, `SumOfProducts` under a complete concrete enumeration** (`laws/PartialSumOfProductsPerfTest`, Apple M1): **5.40×** the kernel at 250 rows, **7.17×** at 1000, growth **3.92×** for 4× rows. The path had been quadratic for its whole existence and was measured at parity with the kernel before the fix.
