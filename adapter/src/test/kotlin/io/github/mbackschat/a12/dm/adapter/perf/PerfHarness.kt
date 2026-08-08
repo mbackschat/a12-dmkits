@@ -706,15 +706,20 @@ object PerfHarness {
      * Assert a growth estimate stays under a CATASTROPHE floor, **re-measuring before it fails**.
      *
      * The floor exists to catch an algorithmic blowup: linear medians ≈4x, quadratic ≈16x, and the trip line
-     * sits at [PerfBounds.SUB_QUADRATIC_MAX] between them. A blowup is a property of the code, so it breaches
-     * every independent re-measurement; a contended CI slice inflates one estimate by a few percent and does
-     * not reproduce. Requiring the breach to repeat therefore removes the false RED without touching the floor
-     * or admitting a single false GREEN — a genuine 16x can never produce a sub-floor attempt.
+     * sits at [PerfBounds.SUB_QUADRATIC_MAX] between them. A contended CI slice inflates one estimate by a few
+     * percent and does not reproduce; a blowup is a property of the code and does.
      *
-     * This is not a licence to run perf assertions under load. It is the acknowledgement that a ratio of two
-     * timings amplifies noise on both ends, and that a shared-vCPU runner (GitHub's free tier) is a normal
-     * place for this estate to run. The happy path costs exactly one estimate, as before; only a breach pays
-     * for the retry, and the failure names every attempt so a real regression is unmistakable.
+     * **The acceptance rule is the MEDIAN of the re-measurements, not "any attempt below the floor".** That
+     * distinction is the whole correctness of this helper: retrying until one observation passes would make a
+     * real breach *more* likely to be hidden the more often it is retried — `10x, 10x, 8x` would be admitted.
+     * With the median, that sequence fails and `9.5x, 4x, 4x` passes, which is the intended asymmetry. Note
+     * what is and is not claimed: this **reduces** the false-GREEN probability relative to retry-until-pass and
+     * leaves the single-estimate happy path exactly as strict as the guard was before any retry existed, but a
+     * timing floor is a statistical instrument and no arrangement of it can promise zero false GREENs.
+     *
+     * The happy path costs exactly one estimate; only a breach pays for the re-measurements, and the failure
+     * names every attempt so a real regression is unmistakable. This is not a licence to run perf assertions
+     * under load — the isolation rule in CLAUDE.md stands.
      */
     fun assertGrowthBelowCatastropheFloor(
         label: String,
@@ -724,19 +729,18 @@ object PerfHarness {
         attempts: Int = GROWTH_RETRY_ATTEMPTS,
         estimate: () -> Growth,
     ) {
-        require(attempts > 0) { "attempts must be positive" }
-        val seen = mutableListOf<Growth>()
-        repeat(attempts) {
-            val growth = estimate()
-            if (growth.ratio < floor) return
-            seen += growth
-        }
+        require(attempts > 0 && attempts % 2 == 1) { "attempts must be a positive odd number" }
+        val seen = mutableListOf(estimate())
+        if (seen.single().ratio < floor) return          // clean first estimate: one measurement, as before
+        while (seen.size < attempts) seen += estimate()  // a breach must survive the MEDIAN of independent re-runs
+        if (median(seen.map { it.ratio }.toDoubleArray()) < floor) return
         throw AssertionError(
-            "$label median within-pair N/4N growth stayed at or above the ${floor}x catastrophe floor on all " +
+            "$label median within-pair N/4N growth stayed at or above the ${floor}x catastrophe floor across " +
                 "$attempts independent re-measurements: " +
                 seen.joinToString(", ") { "${it.ratio} (${it.smallMs}ms -> ${it.largeMs}ms)" } +
-                ". Load inflates one estimate and does not reproduce; an algorithmic blowup does " +
-                "(linear medians ~4x, quadratic ~16x)." + culprit?.let { " Likely cause: $it." }.orEmpty(),
+                ". Acceptance is the median of these, so one low outlier cannot clear a real breach. Load " +
+                "inflates one estimate and does not reproduce; an algorithmic blowup does (linear medians " +
+                "~4x, quadratic ~16x)." + culprit?.let { " Likely cause: $it." }.orEmpty(),
         )
     }
 
