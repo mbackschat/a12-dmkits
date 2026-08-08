@@ -2892,3 +2892,25 @@ Dynamic-Groovy and static-Java agree on every cell, so this is not an [IF136](#i
 **Why the standing nets missed it.** The 180-case partial fuzz agrees before and after: its value-list rules never receive a field wildcard beside concrete group rows, which is [IG112](INTERPRETER-GAPS.md)'s shape gap one level deeper — the generator now emits wildcards, but not the *combination* that separates two gates answering the same structural question. The finding came from asking for a discriminating case for a claim that had been carried by shared implementation, which is the [CLAUDE.md](../CLAUDE.md) "match the oracle to the CLAIM KIND" rule applied to a mechanism claim.
 
 *Locked by:* `laws/PartialExtentGateShapeDiffTest` (the seven-shape table, both kernel strategies, both operators side by side) and `laws/PartialValidationValueListDiffTest.oneWildcardEstablishesTheExtentEvenBesideConcreteRows` (with its wildcard-removed positive control).
+
+### IF265: the relevance reduction was quadratic in DISTINCT wildcard shapes, which no timing guard could see (FIXED 2026-08-08) <a id="if265"></a>
+
+[IF262](#if262)'s dominance reduction costs `identifiers x distinctWildcardMasks x depth`. The mask count is bounded by `min(identifiers, 2^depth)`, which reads as "linear for a fixed path depth" — and that reading is what let the cost ship unmeasured. It is wrong wherever `2^depth` exceeds the relevant-set size, because the mask count then grows *with* the set and the reduction is quadratic.
+
+**Measured, on a 14-level model with the identifiers' masks forming an ANTICHAIN** (every mask wildcards exactly 7 of the 14 levels, so no identifier removes any other and every probe is wasted work):
+
+| distinct wildcard masks | before | after |
+|---|---|---|
+| 1500 | 337 ms | 10 ms |
+| 3000 | 1306 ms | 17 ms |
+| growth on doubling | **3.86x** — quadratic | **1.69x** |
+
+The antichain is the shape that matters and the reason the first attempt at this measurement read a reassuring 1.26x: the dominance scan **short-circuits** on its first hit, so a set whose masks do dominate each other exits after a few probes however many masks it holds. A guard for this has to construct the incomparable case deliberately.
+
+**The fix is a strictly-larger-mask precondition, not a cache.** A candidate is removable only by a tuple whose wildcard mask is a **strict superset** of its own, so masks are grouped by how many levels they wildcard and a candidate skips every group that cannot exceed it — in the antichain, all of them, without touching a single mask. Masks are `Long` bitmaps, so the surviving comparisons are two integer ops instead of building and hashing a fresh list. A path deeper than 63 segments falls back to the original pairwise scan, which is equivalent and unreachable in practice.
+
+**What this does NOT claim.** The residual worst case — a set mixing many different wildcard counts, where each low-breadth candidate really must consult the higher-breadth masks — is still `identifiers x masks`, now with a cheap constant. Subset-query indexing would be needed to remove that, and nothing observed motivates it.
+
+**Provenance.** Found by an owner review of a review: the coverage claim was that `validatePart` is timed, and that is true — `PartialSumOfProductsPerfTest` times it. But it grows the relevant set with identifiers of one shape and exercises the `SumOfProducts` gate, so it could not see this. The `p <= 2^depth` bound in the original analysis was correct and the conclusion drawn from it was not.
+
+*Locked by:* `StarRelevanceReductionGrowthTest` (`:interpreter` jvmTest, kernel-free, current-thread CPU time per the algorithmic-work exception) — the antichain builder carries a `check` that the requested mask count was actually available, so it cannot silently measure a smaller set than it claims.

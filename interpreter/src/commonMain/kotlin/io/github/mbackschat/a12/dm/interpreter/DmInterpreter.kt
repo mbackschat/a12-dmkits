@@ -46,6 +46,9 @@ import io.github.mbackschat.a12.dm.interpreter.workspace.ImmutableProjection
  * ([testRule]/[evalCandidate]), and computations ([compute]) — the kernel's `validateFull`/`validatePart`/
  * `compute` twins, kernel-free.
  */
+/** A `Long` holds a wildcard mask for a path this deep; beyond it `reducedByPatternScan` takes over. */
+private const val MASKABLE_DEPTH = 63
+
 class DmInterpreter private constructor(
     private val model: ModelDef,
     private val clock: EvalClock?,
@@ -363,6 +366,16 @@ class DmInterpreter private constructor(
      * by `EntityIterator.certainlyNotInSameSubtree`. This preserves IF257's row-local answer when one outer row is
      * wildcarded and another is concrete. SumOfProducts does not use this combiner iterator and keeps the separate
      * [starFullyEnumeratedOf] path. See IF262 for the source trace and discriminating cases.
+     *
+     * **Cost.** A candidate is removed exactly when the set contains a tuple whose wildcard mask is a STRICT
+     * SUPERSET of the candidate's and whose remaining coordinates match it — so only masks with a strictly
+     * larger wildcard count can remove anything, which is what [wildcardMasksByBreadth] orders by. Testing a
+     * mask first and materializing the broader tuple only on a hit is what keeps this off the quadratic path:
+     * scanning every distinct mask and hashing a fresh list for each took **1306 ms** on 3000 relevant
+     * identifiers whose masks form an antichain (equal wildcard counts, so nothing removes anything and every
+     * probe was wasted), growing 3.86x when the set doubled — measured, not predicted, by
+     * `StarRelevanceReductionGrowthTest`. The residual worst case is a set mixing many wildcard counts, bounded
+     * by cheap `Long` comparisons rather than allocation.
      */
     private fun reducedStarRelevantCandidates(
         relevant: List<RelevantEntity>,
@@ -376,21 +389,75 @@ class DmInterpreter private constructor(
             }
             .distinctBy { it.indices }
             .toList()
+        if (depth > MASKABLE_DEPTH) return reducedByPatternScan(expanded)
         val tuples = expanded.mapTo(HashSet()) { it.indices }
-        val wildcardPatterns = expanded.asSequence()
+        val byBreadth = wildcardMasksByBreadth(expanded)
+        return expanded.filter { candidate ->
+            val own = wildcardMask(candidate.indices)
+            val ownBreadth = countOneBits(own)
+            byBreadth.none { (breadth, masks) ->
+                breadth > ownBreadth && masks.any { mask ->
+                    mask and own == own && broaderTuple(candidate.indices, mask) in tuples
+                }
+            }
+        }
+    }
+
+    /**
+     * The same reduction for an operand path deeper than a `Long` has bits for — the direct pairwise scan,
+     * kept because it needs no mask and is provably equivalent. It is quadratic, but a path this deep does not
+     * occur: reaching it needs more than [MASKABLE_DEPTH] segments in one field path.
+     */
+    private fun reducedByPatternScan(expanded: List<RelevantEntity>): List<RelevantEntity> {
+        val tuples = expanded.mapTo(HashSet()) { it.indices }
+        val patterns = expanded.asSequence()
             .map { entity -> entity.indices.map { it == RelevantEntity.ALL } }
             .filter { pattern -> pattern.any { it } }
             .distinct()
             .toList()
-        val reduced = expanded.filter { candidate ->
-            wildcardPatterns.none { pattern ->
+        return expanded.filter { candidate ->
+            patterns.none { pattern ->
                 val broader = candidate.indices.mapIndexed { level, index ->
                     if (pattern[level]) RelevantEntity.ALL else index
                 }
                 broader != candidate.indices && broader in tuples
             }
         }
-        return reduced
+    }
+
+    /**
+     * The distinct wildcard masks present, grouped by how many levels each wildcards and ordered by that count.
+     * Only a mask that wildcards strictly MORE levels than a candidate can encompass it, so a candidate whose
+     * own breadth is maximal — the antichain case — skips every group without touching a single mask.
+     */
+    private fun wildcardMasksByBreadth(expanded: List<RelevantEntity>): List<Pair<Int, List<Long>>> =
+        expanded.asSequence()
+            .map { wildcardMask(it.indices) }
+            .filter { it != 0L }
+            .distinct()
+            .groupBy { countOneBits(it) }
+            .toList()
+            .sortedBy { it.first }
+
+    private fun wildcardMask(indices: List<Int>): Long {
+        var mask = 0L
+        indices.forEachIndexed { level, index -> if (index == RelevantEntity.ALL) mask = mask or (1L shl level) }
+        return mask
+    }
+
+    private fun broaderTuple(indices: List<Int>, mask: Long): List<Int> =
+        indices.mapIndexed { level, index ->
+            if (mask shr level and 1L == 1L) RelevantEntity.ALL else index
+        }
+
+    private fun countOneBits(mask: Long): Int {
+        var rest = mask
+        var count = 0
+        while (rest != 0L) {
+            rest = rest and (rest - 1)
+            count++
+        }
+        return count
     }
 
     /** The relevant entities carrying one index per path segment — the shape both gates can reason about. */
