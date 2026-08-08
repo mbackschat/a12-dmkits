@@ -75,15 +75,16 @@ class GroupScopedFillPerfTest {
     @Test
     fun groupScopedFillScalesSubQuadratically() {
         // IF137 paired estimator: interleaved N/4N, median of within-pair ratios (via the shared PerfHarness helper).
-        val g = PerfHarness.pairedGrowth(N, N * 4) { medianMs(it) }
-        println("[perf] %s → %s group-scope fill: %.1fms@%d → %.1fms@%d  median-growth=%.1f× (linear≈4, quadratic≈16)"
-            .format(
-                PerfHarness.measurementLabel(scenario, N),
-                PerfHarness.measurementLabel(scenario, N * 4),
-                g.smallMs, N, g.largeMs, N * 4, g.ratio,
-            ))
-        assertTrue(g.ratio < PerfBounds.SUB_QUADRATIC_MAX,
-            "group-scope fill scaling looks quadratic: 4× the rows took ${g.ratio}× the time (linear≈4, quadratic≈16)")
+        PerfHarness.assertGrowthBelowCatastropheFloor("group-scope fill", "the per-row fill scope scan") {
+            PerfHarness.pairedGrowth(N, N * 4) { medianMs(it) }.also { g ->
+                println("[perf] %s → %s group-scope fill: %.1fms@%d → %.1fms@%d  median-growth=%.1f× (linear≈4, quadratic≈16)"
+                    .format(
+                        PerfHarness.measurementLabel(scenario, N),
+                        PerfHarness.measurementLabel(scenario, N * 4),
+                        g.smallMs, N, g.largeMs, N * 4, g.ratio,
+                    ))
+            }
+        }
     }
 
     @Test

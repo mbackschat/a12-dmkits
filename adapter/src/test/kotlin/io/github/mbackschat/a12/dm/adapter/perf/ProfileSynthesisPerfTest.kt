@@ -1,7 +1,6 @@
 package io.github.mbackschat.a12.dm.adapter.perf
 
 import io.github.mbackschat.a12.dm.adapter.profile.ModelSynthesizer
-import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Tag
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.condition.EnabledIfSystemProperty
@@ -28,19 +27,19 @@ class ProfileSynthesisPerfTest {
         val profiles = listOf(small, large).associateWith(ProfileSynthesisTargetProfiles::extract)
         profiles.values.forEach { profile -> check(ModelSynthesizer.synthesize(profile, SEED).isNotBlank()) }
 
-        val growth = PerfHarness.pairedGrowth(small, large, pairs) { programsPerKind ->
-            timedSynthesisMillis(checkNotNull(profiles[programsPerKind]))
+        PerfHarness.assertGrowthBelowCatastropheFloor(
+            "profile synthesis", "per-program whole-model rewrites regressing toward quadratic growth",
+        ) {
+            PerfHarness.pairedGrowth(small, large, pairs) { programsPerKind ->
+                timedSynthesisMillis(checkNotNull(profiles[programsPerKind]))
+            }.also { growth ->
+                PerfHarness.progress(
+                    "[profile-synthesis] rules+computations=$small+$small->$large+$large " +
+                        "median=${format(growth.smallMs)}->${format(growth.largeMs)} ms " +
+                        "paired-ratio=${format(growth.ratio)}x",
+                )
+            }
         }
-        PerfHarness.progress(
-            "[profile-synthesis] rules+computations=$small+$small->$large+$large " +
-                "median=${format(growth.smallMs)}->${format(growth.largeMs)} ms " +
-                "paired-ratio=${format(growth.ratio)}x",
-        )
-        assertTrue(
-            growth.ratio < PerfBounds.SUB_QUADRATIC_MAX,
-            "profile synthesis growth ${growth.ratio}x reached the ${PerfBounds.SUB_QUADRATIC_MAX}x " +
-                "catastrophe floor; per-program whole-model rewrites regress toward quadratic growth",
-        )
     }
 
     private fun timedSynthesisMillis(profile: String): Double {

@@ -5,7 +5,6 @@ import io.github.mbackschat.a12.dm.interpreter.load.ModelLoader
 import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel
 import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer
-import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.BeforeAll
 import org.junit.jupiter.api.Tag
 import org.junit.jupiter.api.Test
@@ -38,13 +37,13 @@ class PatternPerfTest {
 
     @Test
     fun patternHeavyValidationStaysSubQuadratic() {
-        val growth = PerfHarness.pairedGrowth(N, N * 4) { rows ->
-            PerfHarness.timeInterpreter(scenario, rows, warmup = 2, iters = 3).medianMs
+        PerfHarness.assertGrowthBelowCatastropheFloor(
+            "pattern-heavy validation", "the distinct-pattern cache or the per-row match path",
+        ) {
+            PerfHarness.pairedGrowth(N, N * 4) { rows ->
+                PerfHarness.timeInterpreter(scenario, rows, warmup = 2, iters = 3).medianMs
+            }
         }
-        assertTrue(
-            growth.ratio < PerfBounds.SUB_QUADRATIC_MAX,
-            "pattern-heavy N/4N growth was ${growth.ratio}×; the distinct-pattern cache or per-row match path regressed",
-        )
     }
 
     private companion object {

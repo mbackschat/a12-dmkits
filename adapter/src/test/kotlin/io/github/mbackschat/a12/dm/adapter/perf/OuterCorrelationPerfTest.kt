@@ -121,15 +121,18 @@ class OuterCorrelationPerfTest {
     @TimesInterpreterEntryPoint("validateFull", Document::class, String::class)
     fun equalityOuterCorrelationStaysSubQuadratic() {
         // IF137 paired estimator: interleaved N/4N, median of within-pair ratios (via the shared PerfHarness helper).
-        val g = PerfHarness.pairedGrowth(N, N * 4) { medianMs(defEq, it, ::spread) }
-        println("[perf] %s → %s \$ equality correlation: %.1fms@%d → %.1fms@%d  median-growth=%.1f× (linear≈4, quadratic≈16)"
-            .format(
-                PerfHarness.measurementLabel(eqScenario, N),
-                PerfHarness.measurementLabel(eqScenario, N * 4),
-                g.smallMs, N, g.largeMs, N * 4, g.ratio,
-            ))
-        assertTrue(g.ratio < PerfBounds.SUB_QUADRATIC_MAX,
-            "\$ equality correlation scaling looks quadratic: 4× the rows took ${g.ratio}× the time (linear≈4, quadratic≈16)")
+        PerfHarness.assertGrowthBelowCatastropheFloor(
+            "\$ equality correlation", "the keyed correlation buckets falling back to a nested scan",
+        ) {
+            PerfHarness.pairedGrowth(N, N * 4) { medianMs(defEq, it, ::spread) }.also { g ->
+                println("[perf] %s → %s \$ equality correlation: %.1fms@%d → %.1fms@%d  median-growth=%.1f× (linear≈4, quadratic≈16)"
+                    .format(
+                        PerfHarness.measurementLabel(eqScenario, N),
+                        PerfHarness.measurementLabel(eqScenario, N * 4),
+                        g.smallMs, N, g.largeMs, N * 4, g.ratio,
+                    ))
+            }
+        }
     }
 
     /**
@@ -158,15 +161,18 @@ class OuterCorrelationPerfTest {
     /** The `>` no-witness discriminator must be exact at both scales and stay below the shared quadratic trip. */
     @Test
     fun nonEqualityOuterCorrelationIsExactAndSubQuadratic() {
-        val g = PerfHarness.pairedGrowth(N, N * 4) { medianMs(defGt, it, ::flat) }
-        println("[perf] %s → %s \$ non-equality correlation: %.1fms@%d → %.1fms@%d  median-growth=%.1f× (linear≈4, quadratic≈16)"
-            .format(
-                PerfHarness.measurementLabel(gtScenario, N),
-                PerfHarness.measurementLabel(gtScenario, N * 4),
-                g.smallMs, N, g.largeMs, N * 4, g.ratio,
-            ))
-        assertTrue(g.ratio < PerfBounds.SUB_QUADRATIC_MAX,
-            "\$ non-equality correlation scaling looks quadratic: 4× the rows took ${g.ratio}× the time")
+        PerfHarness.assertGrowthBelowCatastropheFloor(
+            "\$ non-equality correlation", "the ordered-correlation tally falling back to a nested scan",
+        ) {
+            PerfHarness.pairedGrowth(N, N * 4) { medianMs(defGt, it, ::flat) }.also { g ->
+                println("[perf] %s → %s \$ non-equality correlation: %.1fms@%d → %.1fms@%d  median-growth=%.1f× (linear≈4, quadratic≈16)"
+                    .format(
+                        PerfHarness.measurementLabel(gtScenario, N),
+                        PerfHarness.measurementLabel(gtScenario, N * 4),
+                        g.smallMs, N, g.largeMs, N * 4, g.ratio,
+                    ))
+            }
+        }
 
         // Informative oracle curve only: the kernel currently evaluates this arbitrary Having with its own scan.
         // The interpreter's success criterion is the sub-quadratic curve above, never "as slow as the kernel".

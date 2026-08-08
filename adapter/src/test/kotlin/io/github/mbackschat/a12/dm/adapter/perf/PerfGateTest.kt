@@ -4,7 +4,6 @@ import io.github.mbackschat.a12.dm.adapter.perf.PerfBounds.ABS_CEILING_MS
 import io.github.mbackschat.a12.dm.adapter.perf.PerfBounds.CAVEAT
 import io.github.mbackschat.a12.dm.adapter.perf.PerfBounds.N_SMALL
 import io.github.mbackschat.a12.dm.adapter.perf.PerfBounds.RATIO_CEILING
-import io.github.mbackschat.a12.dm.adapter.perf.PerfBounds.SUB_QUADRATIC_MAX
 import io.github.mbackschat.a12.dm.interpreter.eval.Document
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Tag
@@ -36,11 +35,12 @@ class PerfGateTest {
         label: String, small: Int, unit: String, culprit: String,
         identityAt: (Int) -> String, large: Int = small * 4, measureAt: (Int) -> Double,
     ) {
-        val g = PerfHarness.pairedGrowth(small, large, measureAt = measureAt)
-        println("[perf] %s → %s %s: %.1fms@%d → %.1fms@%d %s  median-growth=%.2f× (linear≈4, quadratic≈16)"
-            .format(identityAt(small), identityAt(large), label, g.smallMs, small, g.largeMs, large, unit, g.ratio))
-        assertTrue(g.ratio < SUB_QUADRATIC_MAX,
-            "$label scaling looks super-linear: 4× $unit took ${g.ratio}× the time ($culprit)")
+        PerfHarness.assertGrowthBelowCatastropheFloor(label, culprit) {
+            PerfHarness.pairedGrowth(small, large, measureAt = measureAt).also { g ->
+                println("[perf] %s → %s %s: %.1fms@%d → %.1fms@%d %s  median-growth=%.2f× (linear≈4, quadratic≈16)"
+                    .format(identityAt(small), identityAt(large), label, g.smallMs, small, g.largeMs, large, unit, g.ratio))
+            }
+        }
     }
 
     /**

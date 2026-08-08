@@ -718,6 +718,8 @@ object PerfHarness {
      */
     fun assertGrowthBelowCatastropheFloor(
         label: String,
+        /** What most likely regressed, appended to the failure so a real breach still points somewhere. */
+        culprit: String? = null,
         floor: Double = PerfBounds.SUB_QUADRATIC_MAX,
         attempts: Int = GROWTH_RETRY_ATTEMPTS,
         estimate: () -> Growth,
@@ -734,7 +736,7 @@ object PerfHarness {
                 "$attempts independent re-measurements: " +
                 seen.joinToString(", ") { "${it.ratio} (${it.smallMs}ms -> ${it.largeMs}ms)" } +
                 ". Load inflates one estimate and does not reproduce; an algorithmic blowup does " +
-                "(linear medians ~4x, quadratic ~16x).",
+                "(linear medians ~4x, quadratic ~16x)." + culprit?.let { " Likely cause: $it." }.orEmpty(),
         )
     }
 

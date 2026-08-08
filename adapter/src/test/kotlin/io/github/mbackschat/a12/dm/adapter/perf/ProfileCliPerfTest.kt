@@ -13,7 +13,11 @@ import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.condition.EnabledIfSystemProperty
 import org.junit.jupiter.api.io.TempDir
 
-/** Opt-in, real-JVM-process catastrophe canary for profile-shaped model comprehension and diff reads. */
+/**
+ * Opt-in, real-JVM-process catastrophe canary for profile-shaped model comprehension and diff reads. It
+ * catches an algorithmic blowup and **does not certify linearity**: the floor sits between a linear median
+ * (~4x) and a quadratic one (~16x), so a real regression that stays under it passes here by design.
+ */
 @EnabledIfSystemProperty(named = "perf.profile.cli", matches = "true")
 class ProfileCliPerfTest {
 
@@ -52,23 +56,28 @@ private object ProfileCliCanary {
             profiles.forEach { profile -> preflight(verb, profile, runner) }
             profiles.sortedBy { it.counts.work(verb) }.zipWithNext().forEach { (small, large) ->
                 val byWork = mapOf(small.counts.work(verb) to small, large.counts.work(verb) to large)
-                val growth = PerfHarness.pairedGrowth(
-                    small = small.counts.work(verb),
-                    large = large.counts.work(verb),
-                    pairs = pairs,
-                ) { work ->
-                    val profile = checkNotNull(byWork[work])
-                    timedNormalizedMillis(verb, profile, runner)
-                }
-                PerfHarness.progress(
-                    "[profile-cli] ${verb.id} ${small.id}->${large.id} " +
-                        "work=${small.counts.work(verb)}->${large.counts.work(verb)} " +
-                        "normalized=${format(growth.smallMs, 4)}->${format(growth.largeMs, 4)} ms/unit " +
-                        "paired-ratio=${format(growth.ratio, 2)}x",
-                )
-                check(growth.ratio < PerfBounds.SUB_QUADRATIC_MAX) {
-                    "${verb.id} ${small.id}->${large.id} normalized profile growth ${growth.ratio}x reached " +
-                        "the ${PerfBounds.SUB_QUADRATIC_MAX}x catastrophe floor; this canary does not certify linearity"
+                // Re-measure before calling a breach real. This canary is the estate's MOST load-sensitive
+                // observation — it spawns real JVM processes and reads wall clock, so a shared-vCPU runner
+                // inflates a ratio far more easily than an in-process timing does. The happy path still costs
+                // exactly one estimate; only a breach pays for the repeats that separate load from a blowup.
+                PerfHarness.assertGrowthBelowCatastropheFloor(
+                    "${verb.id} ${small.id}->${large.id} normalized profile",
+                ) {
+                    PerfHarness.pairedGrowth(
+                        small = small.counts.work(verb),
+                        large = large.counts.work(verb),
+                        pairs = pairs,
+                    ) { work ->
+                        val profile = checkNotNull(byWork[work])
+                        timedNormalizedMillis(verb, profile, runner)
+                    }.also { growth ->
+                        PerfHarness.progress(
+                            "[profile-cli] ${verb.id} ${small.id}->${large.id} " +
+                                "work=${small.counts.work(verb)}->${large.counts.work(verb)} " +
+                                "normalized=${format(growth.smallMs, 4)}->${format(growth.largeMs, 4)} ms/unit " +
+                                "paired-ratio=${format(growth.ratio, 2)}x",
+                        )
+                    }
                 }
             }
         }
