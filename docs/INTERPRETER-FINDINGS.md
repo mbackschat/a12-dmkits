@@ -2939,20 +2939,24 @@ The extent gate ([IF264](#if264)) answers *"do I know every row?"*. It does not 
 
 ### IF268: the rule-run gate compares only the levels the rule's ITERATION bound (FIXED 2026-08-08, graduated from IG113) <a id="if268"></a>
 
-The kernel runs a rule only where its error field is relevant — the interpreter's long-standing gate, and correct. What it got wrong is WHICH repetition it compares. The comparison is over the levels the rule's iteration actually BOUND, which is the shared named prefix of the error path and the rule's group. Below that prefix no coordinate was ever chosen: the kernel defaults it to the first repetition for the message POINTER, and does not require the relevant set to name that repetition. The interpreter compared the full resolved instance, so a rule whose error field lives in a repeatable group *deeper* than its own iteration was silently skipped.
+The kernel runs a rule only where its error field is relevant — the interpreter's long-standing gate, and correct. What it got wrong is WHICH repetition it compares. The comparison is over the levels the rule's iteration actually BOUND. Below them no coordinate was ever chosen: the kernel defaults it to the first repetition for the message POINTER, and does not require the relevant set to name that repetition. The interpreter compared the full resolved instance, so a rule whose error field lives in a repeatable group *deeper* than its own iteration was silently skipped.
+
+**Corrected 2026-08-08, before this finding had shipped a day:** the first fix read the bound level off the rule's DECLARED group (`RuleDef.group`). That is wrong by this module's own law — rule iteration is **reference-driven** and the declared group drives nothing (`IterationScopes.prepare`, `IterationLawsTest`). The two blocks below could not see it: the first uses a star-only rule, whose iteration anchor *happens* to equal its declared group, and the second declares the rule on the group it iterates. An external review supplied the case that separates them — declared on `/Order`, non-starred references reaching `/Order/Items`, so the plan iterates `Items` — where the kernel gates per row and the declared-group reading fired all three rows at row 1. The bound count now comes from the **row context** (`EvalContext.boundLevelsOf`), which is the only thing that knows what it actually bound; `Paths.boundLevels`, the path-algebra version, is deleted rather than left as a second answer to the same question.
 
 **Measured, two blocks that only settle the law together** (both kernel strategies, `PartialRuleGateScopeDiffTest`):
 
-| rule group | error field | relevant | kernel |
-|---|---|---|---|
-| `/Order` | `../Items/Tag` | `Items[2]/Tag` only | fires at **`Items[1]/Tag`** |
-| `/Order` | `../Items/Tag` | `Items[2]` (the group) | fires at `Items[1]/Tag` |
-| `/Order` | `../Items/Tag` | the sibling `Ack` only | silent |
-| `/Order/Items` | `../Tag` | `Items[2]/Tag` **+** `Items[3]/Note` | fires at `Items[2]/Tag` **only** |
-| `/Order/Items` | `../Tag` | `Items[2]/Note` only | silent |
+| declared on | iterates | error field | relevant | kernel |
+|---|---|---|---|---|
+| `/Order` (star-only refs) | `/Order` | `../Items/Tag` | `Items[2]/Tag` only | fires at **`Items[1]/Tag`** |
+| `/Order` (star-only refs) | `/Order` | `../Items/Tag` | `Items[2]` (the group) | fires at `Items[1]/Tag` |
+| `/Order` (star-only refs) | `/Order` | `../Items/Tag` | the sibling `Ack` only | silent |
+| `/Order/Items` | `/Order/Items` | `../Tag` | `Items[2]/Tag` **+** `Items[3]/Note` | fires at `Items[2]/Tag` **only** |
+| `/Order/Items` | `/Order/Items` | `../Tag` | `Items[2]/Note` only | silent |
+| **`/Order` (refs into `Items`)** | **`/Order/Items`** | `../Items/Tag` | `Items[2]/Tag` only | fires at **`Items[2]/Tag`** only |
+| `/Order` (refs into `Items`) | `/Order/Items` | `../Items/Tag` | every `Note`, no `Tag` | silent |
 
-Row 1 falsifies the exact-instance reading. Row 4 falsifies the two coarser rivals in one shot: "the error PATH is relevant somewhere" would fire on every row, and "the rule's ELEMENT is relevant" would admit row 3, whose `Note` makes that element relevant. Row 3 and row 5 keep the gate from collapsing into "always run" — the error path must still be relevant *somewhere* under the bound prefix.
+Row 1 falsifies the exact-instance reading. Row 4 falsifies the two coarser rivals in one shot: "the error PATH is relevant somewhere" would fire on every row, and "the rule's ELEMENT is relevant" would admit row 3, whose `Note` makes that element relevant. **Row 6 falsifies the declared-group reading** — same declared group as row 1, same error field, opposite answer, because the references moved the iteration. Rows 3, 5 and 7 keep the gate from collapsing into "always run": the error path must still be relevant *somewhere* under the bound levels.
 
-**Fix.** `ValidationPass.runsForRow` replaces the direct `isRelevant(errorPath, ctx.repsOf(errorPath))` call, and `RelevanceQueries.relevantWithin` answers the bound-level query off the same index the ordinary predicate uses — tuples and wildcard patterns projected onto the bound levels, memoized per (path, bound), which a rule fixes. Where the error field sits inside the iterated element — every per-row rule, so the overwhelming majority — the bound count covers every level and the query is byte-identical to the old one.
+**Fix.** `ValidationPass.runsForRow` replaces the direct `isRelevant(errorPath, ctx.repsOf(errorPath))` call; the bound count is `EvalContext.boundLevelsOf` (a `Document.Ctx` row reports its shared ancestry with the group it iterates, capped by the coordinates it carries; a `ParallelRowContext` reports each joined group's own depth); and `RelevanceQueries.relevantWithin` answers the query off the same index the ordinary predicate uses — tuples and wildcard patterns projected onto the bound levels, memoized per (path, bound), which a rule fixes. Where the error field sits inside the iterated element — every per-row rule, so the overwhelming majority — the bound count covers every level and the query is byte-identical to the old one. The `ParallelRowContext` arm is reasoned from `repsOf`'s own binding, not measured; no probe in the estate reaches a parallel-iteration rule reporting below a joined group.
 
 *Locked by:* `laws/PartialRuleGateScopeDiffTest`.

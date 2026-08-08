@@ -1007,6 +1007,11 @@ class Document(internal val config: DocumentConfig) {
         // raw indexColumnByScope / correlationBucketCache key on, so the overlay's per-step cache matches this row's view.
         override fun scopePrefixOf(groupPath: String, bindDepth: Int): List<Int> = groupScopePrefix(groupPath, bindDepth)
 
+        // The levels this row fixes for [path]: its shared named ancestry with the iterated group, capped by the
+        // coordinates the row actually carries. Everything deeper is defaulted by [repsFor], not chosen.
+        override fun boundLevelsOf(path: String): Int =
+            minOf(commonPrefixLen(partsOf(path), partsOf(group)), rowReps.size)
+
         // A group-scoped / starred-field fill quantifier — "the fields inside the group" (recursively, the kernel
         // ExpandService → getAllContainedFields), across the two kernel ranges (IF49). See [EvalContext.fillScope].
         override fun fillScope(scopePath: String, isGroup: Boolean): FillScope {
@@ -1216,6 +1221,14 @@ class Document(internal val config: DocumentConfig) {
                     else -> 1
                 }
             }
+        }
+
+        // The join binds each participating group's own level, so a path inside one of them is bound down to
+        // that group's depth; anything else is bound only by the shared common-parent ancestry. Deeper levels
+        // (the field's own index, an unmatched side) are defaulted above, never chosen.
+        override fun boundLevelsOf(path: String): Int {
+            val g = groupOf(path) ?: return commonPrefixLen(parts(path), parts(commonParent))
+            return minOf(parts(g).size, parts(path).size)
         }
 
         /** The raw value of [path] in this iteration, or null when its group has no matching row (or it is empty). */

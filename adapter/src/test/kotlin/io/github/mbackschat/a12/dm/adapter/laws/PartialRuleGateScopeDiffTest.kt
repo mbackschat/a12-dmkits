@@ -12,17 +12,23 @@ import org.junit.jupiter.api.Test
 
 /**
  * WHICH repetition of the error field the rule-run gate compares ([IF268]). The kernel runs a rule only where
- * its error field is relevant, but the comparison is over the levels the rule's ITERATION bound — the shared
- * named prefix of the error path and the rule's group. Below that prefix no coordinate was ever chosen, so the
- * kernel defaults it to the first repetition for the message POINTER and does not require the relevant set to
- * name it.
+ * its error field is relevant, but the comparison is over the levels the rule's ITERATION bound. Below them no
+ * coordinate was ever chosen, so the kernel defaults it to the first repetition for the message POINTER and
+ * does not require the relevant set to name it.
  *
- * The two blocks are the discriminating pair, and neither alone settles the law:
- *  - a rule on `/Order` reporting into the repeatable `Items` fires at `Items[1]` when only `Items[2]`'s cell
- *    is relevant — the exact-instance reading predicts silence;
- *  - the per-row twin, with the same paths but `Items` now BOUND by the iteration, still gates row by row —
- *    a coarser "the path is relevant somewhere" reading predicts every row fires.
- * `Tag row2 + Note row3` is the row that separates them: element relevance alone would admit row 3.
+ * Three blocks, and NO TWO of them settle the law — each kills a different rival reading:
+ *  - a star-only rule on `/Order` reporting into the repeatable `Items` fires at `Items[1]` when only
+ *    `Items[2]`'s cell is relevant; the exact-instance reading predicts silence;
+ *  - the per-row twin, `Items` now bound, still gates row by row; "the path is relevant somewhere" predicts
+ *    every row fires, and `Tag row2 + Note row3` also kills "the rule's element is relevant";
+ *  - the third is declared exactly like the first but its NON-STARRED references reach `/Order/Items`, so the
+ *    plan iterates Items. It gates per row. That kills reading the bound level off the rule's DECLARED group —
+ *    which the first two blocks cannot see, because a star-only rule's anchor coincides with its declared
+ *    group and the per-row rule declares itself on what it iterates. The declared-group version shipped and an
+ *    external review caught it here.
+ *
+ * The model memo is keyed by the whole (condition, group, error path) triple on purpose: blocks two and three
+ * share a condition string and differ only in placement, so a condition-keyed memo silently tests one twice.
  */
 class PartialRuleGateScopeDiffTest {
 
@@ -33,7 +39,9 @@ class PartialRuleGateScopeDiffTest {
         }.build().toJson()
 
     private val engines = mutableMapOf<String, RuntimeLaws.JavaKernelEngine>()
-    private val models = mutableMapOf<String, String>()
+    // Keyed by the WHOLE rule shape, not the condition: two blocks here deliberately share a condition string
+    // and differ only in declared group + error path, which is the very distinction under test.
+    private val models = mutableMapOf<Triple<String, String, String>, String>()
     private val defs = mutableMapOf<String, ModelDef>()
 
     @Test
@@ -75,7 +83,7 @@ class PartialRuleGateScopeDiffTest {
             "one row's group" to listOf(Sel(ITEMS, listOf(1, 2))),
             "the sibling Ack only" to listOf(Sel(ACK, listOf(1, 1))),
             "the error path is wildcarded" to listOf(Sel(TAG, listOf(0, 0, 0))),
-        ).map { (label, sel) -> "$label | ${verdicts(ROW_RULE, "/Order/Items", "../Tag", sel)}" }
+        ).map { (label, sel) -> "$label | ${verdicts(REF_DRIVEN_RULE, "/Order/Items", "../Tag", sel)}" }
 
         assertEquals(
             listOf(
@@ -92,8 +100,39 @@ class PartialRuleGateScopeDiffTest {
         )
     }
 
+    /**
+     * The case an external review supplied, and the one the two blocks above could NOT separate: the rule is
+     * DECLARED on `/Order` like block A, but its references are non-starred and reach `/Order/Items`, so the
+     * plan iterates the Items rows like block B. Rule iteration is reference-driven and the declared group
+     * drives nothing (`IterationScopes.prepare`), so the bound level must come from the ITERATION. Block A is
+     * blind to this because a star-only rule's iteration anchor happens to equal its declared group, and block
+     * B is blind because it declares the rule on the group it iterates.
+     */
+    @Test
+    fun theBoundLevelComesFromTheITERATIONNotTheDeclaredGroup() {
+        val readings = listOf(
+            "every Note relevant, one row's Tag" to
+                listOf(Sel(NOTE, listOf(0, 0, 0)), Sel(TAG, listOf(1, 2, 1))),
+            "one row's Tag only" to listOf(Sel(TAG, listOf(1, 2, 1))),
+            "every Note relevant, no Tag at all" to listOf(Sel(NOTE, listOf(0, 0, 0))),
+            "the error path is wildcarded" to listOf(Sel(TAG, listOf(0, 0, 0))),
+        ).map { (label, sel) -> "$label | ${verdicts(REF_DRIVEN_RULE, "/Order", "../Items/Tag", sel)}" }
+
+        assertEquals(
+            listOf(
+                "every Note relevant, one row's Tag | $ROW2",
+                "one row's Tag only | $ROW2",
+                "every Note relevant, no Tag at all | $SILENT",
+                "the error path is wildcarded | $EVERY_ROW",
+            ),
+            readings,
+            "the references bind the Items level even though the rule is declared on /Order, so the gate is " +
+                "exact per row — reading the bound level off the DECLARED group fires all three rows on row 1",
+        )
+    }
+
     private fun verdicts(condition: String, group: String, errorRel: String, selection: List<Sel>): String {
-        val model = models.getOrPut(condition) {
+        val model = models.getOrPut(Triple(condition, group, errorRel)) {
             RuntimeLaws.withRule(json, group, "RG", errorRel, "RG", condition)
         }
         val def = defs.getOrPut(model) { ModelLoader.load(model) }
@@ -126,7 +165,9 @@ class PartialRuleGateScopeDiffTest {
         /** Both conditions hold on every row of the fixture; the `Or` keeps them TRUE even when the relevant
          *  set makes one side UNKNOWN, so the readings measure the GATE and not the condition. */
         const val ROOT_RULE = "FieldFilled(/Order/Ack) Or AtLeastOneFieldFilled(/Order/Items*/Tag)"
-        const val ROW_RULE = "FieldFilled(/Order/Items/Note) Or FieldFilled(/Order/Items/Tag)"
+        /** Non-starred references into `/Order/Items`, so the plan iterates Items wherever this is DECLARED —
+         *  which is the whole point of the third block: same text, two declared groups, one iteration. */
+        const val REF_DRIVEN_RULE = "FieldFilled(/Order/Items/Note) Or FieldFilled(/Order/Items/Tag)"
 
         private const val R1 = "/Order[1]/Items[1]/Tag"
         private const val R2 = "/Order[1]/Items[2]/Tag"

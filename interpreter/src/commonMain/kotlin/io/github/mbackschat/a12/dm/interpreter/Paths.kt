@@ -44,16 +44,3 @@ internal fun resolveErrorPath(rule: RuleDef): String {
     return if (rel.isEmpty()) base else "$base/$rel"
 }
 
-/**
- * How many of [errorPath]'s repetition levels a rule iterating [ruleGroup] actually BINDS — the length of the
- * two paths' shared named prefix. Levels at or above it come from the iterated element and must match the
- * relevant set exactly; levels below it were never chosen by any iteration, so the kernel defaults them to the
- * first repetition for the message pointer without requiring the relevant set to name that repetition ([IF268]).
- */
-internal fun boundLevels(errorPath: String, ruleGroup: String): Int {
-    val e = pathParts(errorPath)
-    val g = pathParts(ruleGroup)
-    var n = 0
-    while (n < e.size && n < g.size && e[n] == g[n]) n++
-    return n
-}

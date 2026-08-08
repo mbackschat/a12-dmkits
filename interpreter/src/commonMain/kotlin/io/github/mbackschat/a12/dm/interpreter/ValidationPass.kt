@@ -67,17 +67,18 @@ internal class ValidationPass(
     }
 
     /**
-     * Whether the rule whose error field is [errorPath], iterating the group [ruleGroup], runs for the row
-     * [ctx] — the kernel executes it only when the error field is relevant, but the levels the iteration never
-     * BOUND (the shared named prefix of the two paths is where binding stops) count as wildcards: a rule on
-     * `/Order` reporting on `/Order/Items/Tag` runs when ANY `Items` row's Tag is relevant, and reports at the
-     * default first repetition. A per-row rule keeps exact gating, because there the error field's repeatable
-     * level IS bound ([IF268]; `PartialRuleGateScopeDiffTest`). Full validation: always.
+     * Whether the rule whose error field is [errorPath] runs for the row [ctx] — the kernel executes it only
+     * when the error field is relevant, but the levels the iteration never BOUND count as wildcards: a rule
+     * that does not iterate `Items` yet reports on `/Order/Items/Tag` runs when ANY `Items` row's Tag is
+     * relevant, and reports at the default first repetition. A rule that DOES iterate `Items` keeps exact
+     * per-row gating. The bound count comes from [EvalContext.boundLevelsOf] — from the context, never from
+     * the rule's declared group, because iteration is reference-driven ([IF268];
+     * `PartialRuleGateScopeDiffTest`). Full validation: always.
      */
-    fun runsForRow(errorPath: String, ruleGroup: String, ctx: EvalContext): Boolean {
+    fun runsForRow(errorPath: String, ctx: EvalContext): Boolean {
         val reps = ctx.repsOf(errorPath)
         val within = relevantWithin ?: return isRelevant(errorPath, reps)
-        return within(errorPath, reps, boundLevels(errorPath, ruleGroup))
+        return within(errorPath, reps, ctx.boundLevelsOf(errorPath))
     }
 
     /** The first referenced field that is "unknown" in [ctx] (malformed value, required-empty, or duplicate index), else null. */

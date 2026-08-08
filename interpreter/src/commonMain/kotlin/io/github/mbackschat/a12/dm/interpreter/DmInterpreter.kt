@@ -277,7 +277,9 @@ class DmInterpreter private constructor(
 
     /**
      * Tolerant **partial** validation — the runtime twin of the kernel's `validatePart(DocumentV2,
-     * relevantEntities, config)`. Only the rules whose **error field instance** is in [relevant] are
+     * relevantEntities, config)`. Only the rules whose **error field** is relevant **at the repetition levels the rule's ITERATION bound** run — a level the iteration never bound (rule iteration is reference-driven, so the declared group does not decide this) counts as a wildcard, and the message reports at the default first repetition (IF268) — measured against
+     * [relevant]; a rule whose error field is in a repeatable group the rule does not iterate therefore
+     * runs when ANY of that group's rows is relevant. Those rules are
      * evaluated; of those, any reference to a field/group instance **not** in [relevant] resolves to
      * `Val.Unknown`, so the existing 3VL produces the kernel's exact suppression — `true And Unknown`
      * suppresses, `true Or Unknown` still fires (the "no possible value could prevent the error" clause is
@@ -919,7 +921,7 @@ class DmInterpreter private constructor(
             // Partial validation: the kernel runs a rule only if its error field is relevant at this row —
             // else the rule is NOT executed for it (no message, not a suppression). "At this row" is the
             // BOUND levels only ([ValidationPass.runsForRow], IF268). Full validation: always.
-            if (!pass.runsForRow(errorPath, rule.group, ctx)) return@map RowOutcome.Passed
+            if (!pass.runsForRow(errorPath, ctx)) return@map RowOutcome.Passed
             // A formally-invalid referenced field resolves to Val.Unknown (NOT a whole-rule skip): the 3VL
             // propagates it, so a bare comparison goes UNKNOWN but `… Or <true>` still FIRES — matching the
             // kernel's operand-level "not check-relevant" behavior (verified). A duplicate-index field is

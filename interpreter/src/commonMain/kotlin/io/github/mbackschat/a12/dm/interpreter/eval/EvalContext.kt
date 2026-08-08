@@ -124,6 +124,18 @@ interface EvalContext {
      */
     fun scopePrefixOf(groupPath: String, bindDepth: Int = -1): List<Int> = emptyList()
 
+    /**
+     * How many of [path]'s repetition levels THIS row context actually **binds** — the levels whose coordinate
+     * the iteration chose, as opposed to the ones [repsOf] resolves to a default because nothing selected them.
+     *
+     * The partial-validation rule-run gate compares the error field's relevance over exactly these levels
+     * ([IF268]). It must come from the CONTEXT and never from the rule's declared group: rule iteration is
+     * REFERENCE-driven (see `IterationScopes.prepare`), so a rule declared on `/Order` whose references reach
+     * `/Order/Items` iterates the Items rows and binds that level, while a star-only rule on the same paths
+     * does not. Default 0 — a context that models no rows binds nothing.
+     */
+    fun boundLevelsOf(path: String): Int = 0
+
     /** The declared FIELD paths inside [groupPath], recursively incl. nested subgroups (the kernel
      *  `ExpandService` → `getAllContainedFields`) — how a GROUP operand of a value aggregate expands (IF99).
      *  Empty when [groupPath] contains no fields (or the context doesn't model structure). */
