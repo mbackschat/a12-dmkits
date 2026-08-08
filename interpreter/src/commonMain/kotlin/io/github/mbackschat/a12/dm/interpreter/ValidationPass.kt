@@ -5,6 +5,7 @@ import io.github.mbackschat.a12.dm.interpreter.eval.AggregateMemoKey
 import io.github.mbackschat.a12.dm.interpreter.eval.Document
 import io.github.mbackschat.a12.dm.interpreter.eval.EvalConfig
 import io.github.mbackschat.a12.dm.interpreter.eval.EvalContext
+import io.github.mbackschat.a12.dm.interpreter.eval.IndexColumn
 import io.github.mbackschat.a12.dm.interpreter.eval.Interpreter
 import io.github.mbackschat.a12.dm.interpreter.model.CustomConditionFieldPointer
 import io.github.mbackschat.a12.dm.interpreter.model.MsgType
@@ -34,6 +35,10 @@ internal class ValidationPass(
     val callerDoc: Document,
     val locale: String,
     val isRelevant: Relevance,
+    /** Partial only: [isRelevant] with every level from the given bound on treated as a wildcard — the
+     *  rule-run gate's query, since a level BELOW the rule's iteration element was never bound and the kernel
+     *  does not require the relevant set to name it ([IF268]). Null in full validation. */
+    private val relevantWithin: ((String, List<Int>, Int) -> Boolean)?,
     val dup: Set<Pair<String, List<Int>>>,
     /** The call-invariant [Interpreter] config — built ONCE per pass (formerly once per rule; identical
      *  content, strictly fewer allocations) and shared by every per-row interpreter of the call. */
@@ -45,6 +50,10 @@ internal class ValidationPass(
     val partial: Boolean = config.cellRelevant != null
     private val aggregateMemo = HashMap<AggregateMemoKey, Val>()
 
+    /** The call's relevance-scoped index columns ([Interpreter.indexColumnOf]). Empty and unread in a FULL
+     *  validation, where the document's own column memo already answers every gate. */
+    private val indexColumns = HashMap<Pair<String, List<Int>>, IndexColumn>()
+
     /**
      * The "unknown-operand" code of the field instance at [path] in [ctx], or null when the field is usable.
      * The single source for "is this operand unknown?" (fed to the [Interpreter] → `Val.Unknown`, and to
@@ -55,6 +64,20 @@ internal class ValidationPass(
      */
     fun formalErrorAt(path: String, reps: List<Int>, ctx: EvalContext): String? {
         return formalResults.failureAt(path, reps, ctx)?.code
+    }
+
+    /**
+     * Whether the rule whose error field is [errorPath], iterating the group [ruleGroup], runs for the row
+     * [ctx] — the kernel executes it only when the error field is relevant, but the levels the iteration never
+     * BOUND (the shared named prefix of the two paths is where binding stops) count as wildcards: a rule on
+     * `/Order` reporting on `/Order/Items/Tag` runs when ANY `Items` row's Tag is relevant, and reports at the
+     * default first repetition. A per-row rule keeps exact gating, because there the error field's repeatable
+     * level IS bound ([IF268]; `PartialRuleGateScopeDiffTest`). Full validation: always.
+     */
+    fun runsForRow(errorPath: String, ruleGroup: String, ctx: EvalContext): Boolean {
+        val reps = ctx.repsOf(errorPath)
+        val within = relevantWithin ?: return isRelevant(errorPath, reps)
+        return within(errorPath, reps, boundLevels(errorPath, ruleGroup))
     }
 
     /** The first referenced field that is "unknown" in [ctx] (malformed value, required-empty, or duplicate index), else null. */
@@ -82,4 +105,5 @@ internal class ValidationPass(
             rnuOutcome = rnuOutcome,
             customFormallyIncorrect = formallyIncorrect)
             .sharingAggregateMemo(aggregateMemo)
+            .sharingIndexColumns(indexColumns)
 }

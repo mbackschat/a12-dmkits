@@ -1,21 +1,25 @@
 package io.github.mbackschat.a12.dm.adapter.laws
 
 import io.github.mbackschat.a12.dm.adapter.laws.RuntimeLaws.Relevant
+import io.github.mbackschat.a12.dm.interpreter.DmInterpreter
+import io.github.mbackschat.a12.dm.interpreter.eval.newDocument
+import io.github.mbackschat.a12.dm.interpreter.load.ModelLoader
+import io.github.mbackschat.a12.dm.interpreter.model.RelevantEntity
 import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 
 /**
- * The kernel law behind IG113: a starred `AtLeastOne` over an INDEX field whose values duplicate. Under partial
- * validation the duplicate relation is built from the RELEVANT cells only ([IF39]), so whether the matching
- * cell is `uniqueIndex`-compromised — and therefore whether the rule runs at all — depends on whether its
- * duplicate PARTNER is in the relevant set. Both kernel strategies agree on every row.
+ * A starred `AtLeastOne` over an INDEX field whose values duplicate. Under partial validation the duplicate
+ * relation is built from the RELEVANT cells only ([IF39]), so whether the matching cell is
+ * `uniqueIndex`-compromised — and therefore whether the rule runs at all — depends on whether its duplicate
+ * PARTNER is in the relevant set. Both kernel strategies and the interpreter agree on every row.
  *
- * **The interpreter does not match this yet** and the comparison is deliberately absent rather than pinned to
- * the wrong answer: `IndexColumn.duplicated` recomputes duplicates from every cell in the column, ignoring
- * relevance, while `AutoChecks.duplicateIndexCells` — the source the `uniqueIndex` messages use — is
- * relevance-aware. Two sources for one fact, and the eval sites consult the blind one, so the interpreter is
- * silent on all seven rows. Reconciling them is IG113; this class gains its interpreter column with the fix.
+ * This is the class that exposed [IF266]: `IndexColumn` derived `duplicated` from every cell in the column
+ * with no relevance filter, while `AutoChecks.duplicateIndexCells` — the source the `uniqueIndex` messages use
+ * — was relevance-aware, and the evaluation sites all read the blind one. Rows 4 and 7 are where the two
+ * readings split; the remaining five are the positive controls that keep "just never compromise anything"
+ * from passing.
  */
 class PartialAtLeastOneScanDiffTest {
 
@@ -34,6 +38,7 @@ class PartialAtLeastOneScanDiffTest {
             "AtLeastOneFieldValueIncludedInValueList(/Order/Items*/Tag In \"A\")",
         )
     }
+    private val def by lazy { ModelLoader.load(model) }
 
     @Test
     fun aDuplicateIndexCellCompromisesTheRuleOnlyWhenItsPartnerIsRelevant() {
@@ -70,21 +75,27 @@ class PartialAtLeastOneScanDiffTest {
     /** Tags: row 1 matches the value list, rows 2 and 3 do not. */
     private fun verdicts(selection: List<Sel>): String {
         val kDoc = RuntimeLaws.doc().group("/Order", 1).field(ACK, "x", 1, 1)
+        val iDoc = def.newDocument().group("/Order", 1).field(ACK, "x", 1, 1)
         // Duplicated index values: rows 1 and 2 both carry "A", so BOTH are uniqueIndex-compromised
         // while still being the cells that match the value list. Row 4 is empty (mandatory-empty).
         listOf("A", "A", "B", null).forEachIndexed { idx, tag ->
             val r = idx + 1
             kDoc.group(ITEMS, 1, r)
+            iDoc.group(ITEMS, 1, r)
             if (tag != null) {
                 kDoc.field(TAG, tag, 1, r, 1)
+                iDoc.field(TAG, tag, 1, r, 1)
             }
         }
         val kRel = selection.map { Relevant.of(it.path, *it.reps.toIntArray()) }.toSet()
+        val iRel = selection.mapTo(HashSet()) { RelevantEntity(it.path, it.reps) }
         fun sig(paths: List<String>) = paths.sorted().joinToString(";").ifEmpty { "-" }
         val dynamic = sig(RuntimeLaws.messagesPart(model, kDoc, kRel).filter { it.code() == "ALO" }.map { it.field() })
         val static = sig(engines.getOrPut(model) { RuntimeLaws.kernelJavaEngine(model) }
             .messagesPart(kDoc, kRel).filter { it.code() == "ALO" }.map { it.field() })
-        return "groovy=$dynamic java=$static"
+        val interp = sig(DmInterpreter(def).validatePart(iDoc, iRel).messages
+            .filter { it.code == "ALO" }.map { it.errorPath })
+        return "groovy=$dynamic java=$static interp=$interp"
     }
 
     private data class Sel(val path: String, val reps: List<Int>)
@@ -93,7 +104,8 @@ class PartialAtLeastOneScanDiffTest {
         const val ACK = "/Order/Ack"
         const val ITEMS = "/Order/Items"
         const val TAG = "/Order/Items/Tag"
-        const val FIRES = "groovy=/Order[1]/Items[1]/Tag java=/Order[1]/Items[1]/Tag"
-        const val SILENT = "groovy=- java=-"
+        const val CELL = "/Order[1]/Items[1]/Tag"
+        const val FIRES = "groovy=$CELL java=$CELL interp=$CELL"
+        const val SILENT = "groovy=- java=- interp=-"
     }
 }

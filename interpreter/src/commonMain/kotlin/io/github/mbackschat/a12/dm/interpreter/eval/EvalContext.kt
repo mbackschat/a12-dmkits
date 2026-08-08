@@ -285,9 +285,19 @@ data class ScanCell(
  * Everything is derived ONCE at construction so a consulting site is O(1) — the per-lookup column rebuild made
  * every indexed read O(rows), and a `validateFull` over a per-row indexed rule O(rows²) (caught by the perf
  * gate's `semanticIndexStaysSubQuadratic`).
+ *
+ * [relevantCell] scopes the DUPLICATE relation to a partial validation's relevant cells, exactly as
+ * `AutoChecks.duplicateIndexCells` does — the kernel builds its index cache from the relevant fields only, so a
+ * relevant cell whose duplicate PARTNER is not relevant is not compromised ([IF39], measured on both kernel
+ * strategies by `PartialAtLeastOneScanDiffTest`; [IF266]). It scopes **only** that relation: an EMPTY or
+ * malformed cell still marks the column irrespective of relevance, because nothing has measured otherwise.
+ * Default "everything relevant" — full validation and the compute path are unchanged.
  */
-class IndexColumn(val cells: List<Pair<List<Int>, Val?>>) {
-    /** The values appearing MORE than once among [cells]. */
+class IndexColumn(
+    val cells: List<Pair<List<Int>, Val?>>,
+    relevantCell: (List<Int>) -> Boolean = { true },
+) {
+    /** The values appearing MORE than once among the RELEVANT [cells]. */
     val duplicated: Set<Val>
 
     /** Any empty, malformed, or duplicated cell — the whole-column not-check-relevant marking (IF107/IF115). */
@@ -303,15 +313,18 @@ class IndexColumn(val cells: List<Pair<List<Int>, Val?>>) {
     init {
         val seen = HashSet<Val>()
         val dups = HashSet<Val>()
-        for ((_, v) in cells) if (v != null && v !is Val.Unknown && !seen.add(v)) dups += v
+        for ((reps, v) in cells) {
+            if (v == null || v is Val.Unknown || !relevantCell(reps)) continue
+            if (!seen.add(v)) dups += v
+        }
         duplicated = dups
         var invalid = false
         var emptyOrDup = false
         var clean = 0
-        for ((_, v) in cells) when {
+        for ((reps, v) in cells) when {
             v == null -> { invalid = true; emptyOrDup = true }
             v is Val.Unknown -> invalid = true
-            v in dups -> { invalid = true; emptyOrDup = true }
+            v in dups && relevantCell(reps) -> { invalid = true; emptyOrDup = true }
             else -> clean++
         }
         anyNotCheckRelevant = invalid

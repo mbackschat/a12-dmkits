@@ -2,6 +2,7 @@ package io.github.mbackschat.a12.dm.interpreter.eval
 
 import io.github.mbackschat.a12.dm.interpreter.Dec
 import io.github.mbackschat.a12.dm.interpreter.UnsupportedConstructException
+import io.github.mbackschat.a12.dm.interpreter.parentGroup
 import io.github.mbackschat.a12.dm.interpreter.ast.CmpOp
 import io.github.mbackschat.a12.dm.interpreter.ast.Cond
 import io.github.mbackschat.a12.dm.interpreter.ast.ValueListQuantOp
@@ -119,6 +120,34 @@ class Interpreter(
         aggregateMemo = memo
     }
 
+    /** Validation-call-local relevance-scoped [IndexColumn]s, keyed like the document's own cache but owned by
+     *  the CALL — a relevance-scoped column may not enter [Document]'s cache, which outlives the call and is
+     *  shared by every relevant set of the same document. Installed only by [ValidationPass], and consulted only
+     *  when [cellRelevant] is non-null; see [indexColumnOf]. */
+    internal var indexColumnMemo: MutableMap<Pair<String, List<Int>>, IndexColumn>? = null
+        private set
+
+    internal fun sharingIndexColumns(memo: MutableMap<Pair<String, List<Int>>, IndexColumn>): Interpreter = apply {
+        indexColumnMemo = memo
+    }
+
+    /**
+     * The [IndexColumn] of starred [path] **as this call sees it** — the single seam every index-column gate
+     * reads, so relevance scoping cannot be applied at some consumers and missed at others ([IF266], the
+     * `AtLeastOne` symptom that exposed it).
+     *
+     * Full validation and compute return the context's own column unchanged (the document memo). A PARTIAL
+     * validation rebuilds it with the call's relevance predicate and memoizes it per (column, star-scope prefix)
+     * — the same key [Document] uses, and for the same reason: a per-lookup rebuild is O(rows), which makes a
+     * per-row indexed rule O(rows²) (`PerfGateTest.semanticIndexStaysSubQuadratic`).
+     */
+    internal fun indexColumnOf(c: EvalContext, path: String, bindDepth: Int = -1): IndexColumn {
+        val relevant = cellRelevant ?: return c.indexColumn(path, bindDepth)
+        fun build() = IndexColumn(c.starCells(path, bindDepth)) { reps -> relevant(path, reps) }
+        val memo = indexColumnMemo ?: return build()
+        return memo.getOrPut(path to c.scopePrefixOf(parentGroup(path), bindDepth)) { build() }
+    }
+
     /** Formal-aware group state for validation; low-level/compute consumers retain structural Boolean presence. */
     internal fun groupPresence(c: EvalContext, path: String): GroupPresenceState =
         config.groupPresence?.invoke(c, path) ?: GroupPresenceState(c.groupFilled(path), erroneous = false)
@@ -177,14 +206,20 @@ class Interpreter(
     /** A sub-interpreter for a `Having` candidate [rc], carrying the SAME config and capturing the
      *  enclosing iteration's complete [ctx] environment for path-specific `$` resolution. */
     internal fun havingInterp(rc: EvalContext): Interpreter =
-        Interpreter(rc, config, customErrorField, invalid, outer = ctx).also { it.aggregateMemo = aggregateMemo }
+        Interpreter(rc, config, customErrorField, invalid, outer = ctx).also {
+            it.aggregateMemo = aggregateMemo
+            it.indexColumnMemo = indexColumnMemo
+        }
 
     /** A sub-interpreter for the overlap predicates' `Having` filter row [rc] — like [havingInterp] but with NO
      *  outer binding ([outerUnbound]): a plain boolean predicate's rep-list arg has no enclosing iteration, so
      *  the codegen makes a `$`-bearing comparison/predicate trivially TRUE (KERNEL-FINDINGS §6). */
     private fun overlapFilterInterp(rc: EvalContext): Interpreter =
         Interpreter(rc, config, customErrorField, invalid, outer = null, outerUnbound = true)
-            .also { it.aggregateMemo = aggregateMemo }
+            .also {
+                it.aggregateMemo = aggregateMemo
+                it.indexColumnMemo = indexColumnMemo
+            }
 
     fun fires(cond: Cond): Boolean = eval(cond) == Tri.TRUE
 
@@ -270,7 +305,7 @@ class Interpreter(
     private fun indexStarFillScope(c: EvalContext, path: String): FillScope {
         val declared = c.fillScope(path, isGroup = false)
         // empty → mandatory-empty, malformed, duplicated → uniqueIndex: all not-check-relevant, in neither t nor f
-        val col = c.indexColumn(path)
+        val col = indexColumnOf(c, path)
         return FillScope(col.cleanFilled, 0, col.cells.size, col.anyNotCheckRelevant,
             declared.allFilledDeclared, declared.anyEmptyDeclared)
     }

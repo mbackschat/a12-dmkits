@@ -53,14 +53,21 @@ private fun Interpreter.vlqOperands(entries: List<Expr>): List<VlqOperand> = ent
             // kernel-diverge on a wildcard beside concrete siblings ([IF264]).
             // Null in full validation → never set → the full path stays byte-identical.
             if (starExtentKnown?.invoke(e.path, e.bindDepth, c.repsOf(e.path)) == false) op.extentUnknown = true
+            // …and, independently of the extent, a NON-RELEVANT cell is not in the kernel's evaluation cache at
+            // all, so it contributes nothing to the scan ([IF267], measured on both strategies: with the only
+            // matching cell non-relevant, the kernel's `AtLeastOne` stays silent). The extent gate answers
+            // "do I know every row?"; this answers "may I read THIS row?" — a starred entry needs both.
             // A starred INDEX field's formal errors are field-LOCAL and make the CELL not check-relevant
             // → UNKNOWN: an empty cell is mandatory-empty (the kernel auto-requires an index field per
             // row), and EVERY cell of a duplicated value carries the uniqueIndex error (over ALL rows, not
             // just filter-kept ones). A clean sibling field in the same row reads normally — the row is not
             // collectively compromised. `ValueListQuantifierStarDiffTest.compromisedIndexRows`.
-            val dupIndexValues = if (e.path in indexFields) c.indexColumn(e.path, e.bindDepth).duplicated else null
+            val dupIndexValues = if (e.path in indexFields) indexColumnOf(c, e.path, e.bindDepth).duplicated else null
             if (e.having == null) {
-                for ((_, v) in c.starCells(e.path, e.bindDepth)) op.classify(v, dupIndexValues)
+                for ((reps, v) in c.starCells(e.path, e.bindDepth)) {
+                    if (cellRelevant?.invoke(e.path, reps) == false) continue   // [IF267]
+                    op.classify(v, dupIndexValues)
+                }
                 if (c.starOmission(e.path, e.bindDepth)) op.omittedTail = true   // un-instantiated declared tail
             } else {
                 // A `Having` filter (IG48): classify ONLY rows the filter keeps (keep iff it fires TRUE — the
@@ -69,6 +76,7 @@ private fun Interpreter.vlqOperands(entries: List<Expr>): List<VlqOperand> = ent
                 // (no data to filter). The operand's polarity effect is the consuming pass's call ([filtered]).
                 val group = e.path.substringBeforeLast('/')
                 for (rc in c.rowContexts(group, e.bindDepth)) {
+                    if (cellRelevant?.invoke(e.path, rc.repsOf(e.path)) == false) continue   // [IF267]
                     if (!havingInterp(rc).fires(e.having)) continue
                     op.classify(if (rc.filled(e.path)) rc.field(e.path) else null, dupIndexValues)
                 }

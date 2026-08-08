@@ -76,7 +76,7 @@ internal fun Interpreter.semanticIndexFilled(e: Expr.SemanticIndex): Boolean = s
  * False for a non-index field or a clean index column.
  */
 private fun Interpreter.indexOperandNonEvaluable(c: EvalContext, path: String, bindDepth: Int = -1): Boolean =
-    path in indexFields && c.indexColumn(path, bindDepth).anyEmptyOrDuplicated
+    path in indexFields && indexColumnOf(c, path, bindDepth).anyEmptyOrDuplicated
 
 /**
  * `NumberOfFilledGroups(...)`'s count — the STARRED single-repeatable-group form `NumberOfFilledGroups(
@@ -239,7 +239,7 @@ private fun Interpreter.computeGuardedIndexCell(e: Expr.SemanticIndex): Val? {
     val matchedKey = c.indexedCell(idx, idx, key)                    // the index-field self-lookup
     if (matchedKey != null) {
         // matched on a malformed (raw-equal) or DUPLICATED key cell → not-check-relevant
-        if (matchedKey is Val.Unknown || matchedKey in c.indexColumn(idx).duplicated) return Val.Unknown
+        if (matchedKey is Val.Unknown || matchedKey in indexColumnOf(c, idx).duplicated) return Val.Unknown
         return c.indexedCell(e.path, idx, key)
     }
     if (indexColumnInvalid(e)) return Val.Unknown                    // unresolvable no-match
@@ -252,7 +252,7 @@ private fun Interpreter.computeGuardedIndexCell(e: Expr.SemanticIndex): Val? {
 private fun Interpreter.indexColumnInvalid(e: Expr.SemanticIndex): Boolean {
     val idx = indexFieldOf(e.path) ?: throw UnsupportedConstructException(
         "SemanticIndex needs an index field on the group of ${e.path}")
-    return ctxOf(e).indexColumn(idx).anyNotCheckRelevant
+    return indexColumnOf(ctxOf(e), idx).anyNotCheckRelevant
 }
 
 /** The matched CELL of `[F For key]`, or null when nothing matches — an empty/absent key field, no row
@@ -1504,7 +1504,7 @@ private fun Interpreter.firstFilledOperand(operand: Expr, walk: FirstFilledWalk)
                 when {
                     matchedKey == null && !computeMode && indexColumnInvalid(operand) ->
                         FirstFilledStep.Stop(Val.Unknown)
-                    matchedKey is Val.Unknown || matchedKey in c.indexColumn(idx).duplicated ->
+                    matchedKey is Val.Unknown || matchedKey in indexColumnOf(c, idx).duplicated ->
                         if (computeMode) throw PoisonedReadException(operand.path)
                         else FirstFilledStep.Stop(Val.Unknown)
                     matchedKey == null -> {

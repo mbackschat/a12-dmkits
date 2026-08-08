@@ -2914,3 +2914,45 @@ The antichain is the shape that matters and the reason the first attempt at this
 **Provenance.** Found by an owner review of a review: the coverage claim was that `validatePart` is timed, and that is true — `PartialSumOfProductsPerfTest` times it. But it grows the relevant set with identifiers of one shape and exercises the `SumOfProducts` gate, so it could not see this. The `p <= 2^depth` bound in the original analysis was correct and the conclusion drawn from it was not.
 
 *Locked by:* `StarRelevanceReductionGrowthTest` (`:interpreter` jvmTest, kernel-free, current-thread CPU time per the algorithmic-work exception) — the antichain builder carries a `check` that the requested mask count was actually available, so it cannot silently measure a smaller set than it claims.
+
+### IF266: two sources for "which index cells duplicate", and the evaluation sites read the relevance-blind one (FIXED 2026-08-08, graduated from IG113) <a id="if266"></a>
+
+Under partial validation the kernel builds its index cache from the RELEVANT fields only ([IF39](#if39)), so a duplicated index cell compromises the rule it feeds **only when its duplicate PARTNER is also relevant**. `AutoChecks.duplicateIndexCells` takes the relevance predicate and honours that. `IndexColumn` derived `duplicated` from every cell in the column with no relevance filter — and `IndexColumn` is what the *evaluation* sites read. So the fact had two sources and the consumers all consulted the blind one: `ValueListQuantEval`'s compromised-index path, `ExprEval` at four sites (`anyEmptyOrDuplicated`, the two indexed reads, `anyNotCheckRelevant`), and `Interpreter`'s index-aware fill tally. Not an `AtLeastOne` bug — a class, of which `AtLeastOne` was merely the operator the fuzz happened to reach.
+
+**Measured** on a four-row index column carrying `A, A, B, ∅`, both kernel strategies agreeing on all seven relevant-set shapes: the rule is suppressed exactly on `{the non-matching row, the matching row's group}` and on the all-wildcard set — the two shapes where both `A` cells are relevant. A relevant cell whose partner is outside the set fires.
+
+**Fix.** `IndexColumn` takes the call's cell-relevance predicate and scopes the duplicate relation to it, so every consumer is corrected at the shared root. It scopes **only** that relation: an empty or malformed cell still marks the column irrespective of relevance, because nothing has measured otherwise — the deliberate narrowness the CLAUDE.md "never broader than its measured basis" rule asks for.
+
+**The constraint that shaped the threading.** `IndexColumn` is memoized per (column, star-scope prefix) on the DOCUMENT, because a per-lookup rebuild is O(rows) and a per-row indexed rule then O(rows²) (`PerfGateTest.semanticIndexStaysSubQuadratic`). A relevance-scoped column may not enter that cache — it outlives the call and is shared by every relevant set of the same document. So the memo moved to the CALL: `Interpreter.indexColumnOf` is now the single seam every gate reads, `ValidationPass` owns the map exactly as it owns the aggregate memo, and full validation still returns the document's own column unchanged.
+
+*Locked by:* `laws/PartialAtLeastOneScanDiffTest` (the seven-shape table, both kernel strategies plus the interpreter).
+
+### IF267: a starred value-list entry must not read a cell outside the relevant set (FIXED 2026-08-08, graduated from IG113) <a id="if267"></a>
+
+The extent gate ([IF264](#if264)) answers *"do I know every row?"*. It does not answer *"may I read THIS row?"*, and the interpreter asked only the first: `vlqOperands` classified every star cell regardless of relevance. `AtLeastOne` never consults the extent at all, so for it the second question was the only gate there was — and it had none.
+
+**Measured** with cells `A, B, C` and the value list `In "A"`: with only row 2 relevant, the kernel is SILENT — the sole matching cell sits in a row the caller did not select. With row 1 relevant, or the path wildcarded, it fires. Both kernel strategies agree. A non-relevant cell contributes nothing to the scan.
+
+**What is deliberately NOT settled.** Whether the kernel *skips* such a cell or classifies it UNKNOWN is not discriminated by any case that could be constructed: the two differ only for the `No`/`NotAll` family, and there the extent gate fires first on every subset shape that excludes a cell — a relevant set narrow enough to exclude one cell is never wildcard enough to establish the extent. The implementation skips. A case that separates them would need an operator that reads cells without reading the extent *and* distinguishes an absent cell from an unknown one; none exists in the catalog today. `PartialValueListCellRelevanceDiffTest`'s second block measures the masking rather than asserting the equivalence.
+
+*Locked by:* `laws/PartialValueListCellRelevanceDiffTest`.
+
+### IF268: the rule-run gate compares only the levels the rule's ITERATION bound (FIXED 2026-08-08, graduated from IG113) <a id="if268"></a>
+
+The kernel runs a rule only where its error field is relevant — the interpreter's long-standing gate, and correct. What it got wrong is WHICH repetition it compares. The comparison is over the levels the rule's iteration actually BOUND, which is the shared named prefix of the error path and the rule's group. Below that prefix no coordinate was ever chosen: the kernel defaults it to the first repetition for the message POINTER, and does not require the relevant set to name that repetition. The interpreter compared the full resolved instance, so a rule whose error field lives in a repeatable group *deeper* than its own iteration was silently skipped.
+
+**Measured, two blocks that only settle the law together** (both kernel strategies, `PartialRuleGateScopeDiffTest`):
+
+| rule group | error field | relevant | kernel |
+|---|---|---|---|
+| `/Order` | `../Items/Tag` | `Items[2]/Tag` only | fires at **`Items[1]/Tag`** |
+| `/Order` | `../Items/Tag` | `Items[2]` (the group) | fires at `Items[1]/Tag` |
+| `/Order` | `../Items/Tag` | the sibling `Ack` only | silent |
+| `/Order/Items` | `../Tag` | `Items[2]/Tag` **+** `Items[3]/Note` | fires at `Items[2]/Tag` **only** |
+| `/Order/Items` | `../Tag` | `Items[2]/Note` only | silent |
+
+Row 1 falsifies the exact-instance reading. Row 4 falsifies the two coarser rivals in one shot: "the error PATH is relevant somewhere" would fire on every row, and "the rule's ELEMENT is relevant" would admit row 3, whose `Note` makes that element relevant. Row 3 and row 5 keep the gate from collapsing into "always run" — the error path must still be relevant *somewhere* under the bound prefix.
+
+**Fix.** `ValidationPass.runsForRow` replaces the direct `isRelevant(errorPath, ctx.repsOf(errorPath))` call, and `RelevanceQueries.relevantWithin` answers the bound-level query off the same index the ordinary predicate uses — tuples and wildcard patterns projected onto the bound levels, memoized per (path, bound), which a rule fixes. Where the error field sits inside the iterated element — every per-row rule, so the overwhelming majority — the bound count covers every level and the query is byte-identical to the old one.
+
+*Locked by:* `laws/PartialRuleGateScopeDiffTest`.

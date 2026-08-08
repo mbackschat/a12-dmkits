@@ -1152,12 +1152,15 @@ object PerfCatalog {
         // outside the differential entirely — which is why IF264's split from the all-rows aggregate gate was
         // invisible here. `NL` and `NX` are the extent-SENSITIVE pair (`No` on the fields side, `NotAll` on the
         // values side). The `K0`/`K1` pool makes both fire on some seeds and not others.
-        // The `AtLeastOne` peer is NOT here yet: adding it turned 6 of 180 combinations red on a divergence
-        // that predates this net and is independent of the extent gate (`AtLeastOne` never reads
-        // `extentUnknown`; `NL` carries the identical rule shape and agrees on all 180). It is IG113, with its
-        // reproducing seeds, and the rule goes in with the fix rather than red.
+        // `AL` is the third of the family and the one that earned the net its keep: adding it turned 6 of 180
+        // combinations red, in BOTH directions, on three independent partial-relevance defects none of the
+        // other rules could reach — [IF266] (a relevance-blind index-duplicate relation), [IF267] (the scan
+        // reading non-relevant cells) and [IF268] (the rule-run gate). It is the only rule here that reads
+        // cells WITHOUT reading the extent, which is why it discriminates where `NL`/`NX` cannot.
         cart.errorRule("NL", fzItem.field(),
             Dsl.noFieldValueIncludedInValueList(listOf("K0", "K1"), itemIds)),
+        cart.errorRule("AL", fzItem.field(),
+            Dsl.atLeastOneFieldValueIncludedInValueList(listOf("K0", "K1"), itemIds)),
         cartLines.errorRule("NX", fzItem.field(),
             Dsl.notAllFieldValuesIncludedInValueList(listOf<FieldOperand>(itemIds), fzItem.field())),
         cartLines.errorRule("DV", fzPrice.field(), fzQty.filled().and(fzPrice.asNumber().dividedBy(fzQty.asNumber()).gt(5))),   // division (+ div-by-zero quiet)

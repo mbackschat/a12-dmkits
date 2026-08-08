@@ -291,17 +291,20 @@ class DmInterpreter private constructor(
      * md-layer behavior); a `CustomCondition` receives the relevant set (IF38); and uniqueness (`uniqueIndex` /
      * `RepetitionNotUnique`) needs the duplicate partner relevant too (IF39). All locked by `…laws/PartialValidation*DiffTest`.
      */
-    fun validatePart(doc: Document, relevant: Set<RelevantEntity>, locale: String = "en_US"): ValidationOutcome =
-        validateWith(
+    fun validatePart(doc: Document, relevant: Set<RelevantEntity>, locale: String = "en_US"): ValidationOutcome {
+        val queries = relevanceQueriesOf(relevant)
+        return validateWith(
             doc,
             locale,
-            relevanceOf(relevant),
+            queries.relevant,
             customRelevantOf(relevant),
             starRelevantOf(relevant),
             starExtentKnownOf(relevant),
             starFullyEnumeratedOf(relevant),
             groupRelevanceOf(relevant),
+            queries::relevantWithin,
         )
+    }
 
     /**
      * Whether a STARRED operation has complete extent in PARTIAL mode (IF42, IF262). The kernel evaluates an
@@ -613,7 +616,9 @@ class DmInterpreter private constructor(
             starRelevant: ((String, Int, List<Int>) -> Boolean)? = null,
             starExtentKnown: ((String, Int, List<Int>) -> Boolean)? = null,
             starFullyEnumerated: ((String, Int, List<Int>) -> Boolean)? = null,
-            groupRelevance: (String, List<Int>) -> GroupRelevance = { _, _ -> GroupRelevance.FULL }): ValidationOutcome =
+            groupRelevance: (String, List<Int>) -> GroupRelevance = { _, _ -> GroupRelevance.FULL },
+            /** Partial only: [RelevanceQueries.relevantWithin] — the rule-run gate's bound-level query ([IF268]). */
+            relevantWithin: ((String, List<Int>, Int) -> Boolean)? = null): ValidationOutcome =
         observeCaches(doc) {
             // The index-default staging split (SPEC-2026-07-23-14): a FULL call stages each eligible
             // clean-empty index cell's S-value into a call-local view — before the generated checks and
@@ -648,7 +653,7 @@ class DmInterpreter private constructor(
             val groupPresence by lazy(LazyThreadSafetyMode.NONE) {
                 GroupPresenceIndex(admittedGroupContent, formallyIncorrect, groupRelevance)
             }
-            val pass = ValidationPass(call, doc, locale, isRelevant, dup,
+            val pass = ValidationPass(call, doc, locale, isRelevant, relevantWithin, dup,
                 validationConfig(isRelevant, customRelevant, starRelevant, starExtentKnown, starFullyEnumerated) { ctx, path -> groupPresence.state(ctx, path) },
                 formalResults, { formallyIncorrect })
             for (rule in model.rules) {
@@ -805,6 +810,7 @@ class DmInterpreter private constructor(
             doc,
             locale,
             ALL_RELEVANT,
+            null,
             dup,
             validationConfig(ALL_RELEVANT, null, null, null, null) { ctx, path -> groupPresence.state(ctx, path) },
             formalResults,
@@ -910,9 +916,10 @@ class DmInterpreter private constructor(
         val rnuSeam: ((EvalContext) -> MsgType?)? =
             rnuCache?.let { cache -> { context -> cache.rows[context.repsOf(errorPath)]?.type } }
         return scopes.iterationContexts(prepared.iteration, pass.doc).map { ctx ->
-            // Partial validation: the kernel runs a rule only if its error-field instance is relevant — else
-            // the rule is NOT executed for this row (no message, not a suppression). Full validation: always.
-            if (!pass.isRelevant(errorPath, ctx.repsOf(errorPath))) return@map RowOutcome.Passed
+            // Partial validation: the kernel runs a rule only if its error field is relevant at this row —
+            // else the rule is NOT executed for it (no message, not a suppression). "At this row" is the
+            // BOUND levels only ([ValidationPass.runsForRow], IF268). Full validation: always.
+            if (!pass.runsForRow(errorPath, rule.group, ctx)) return@map RowOutcome.Passed
             // A formally-invalid referenced field resolves to Val.Unknown (NOT a whole-rule skip): the 3VL
             // propagates it, so a bare comparison goes UNKNOWN but `… Or <true>` still FIRES — matching the
             // kernel's operand-level "not check-relevant" behavior (verified). A duplicate-index field is
@@ -1055,7 +1062,13 @@ class DmInterpreter private constructor(
      * ([PartialRelevanceDepthTest]). Patterns are bounded by the relevant set, so the query can never cost
      * more than the data the caller passed in.
      */
-    private fun relevanceIndexOf(relevant: Set<RelevantEntity>): Relevance {
+    private fun relevanceIndexOf(relevant: Set<RelevantEntity>): Relevance = relevanceQueriesOf(relevant).relevant
+
+    /**
+     * The relevant set's two queries over one shared index: [RelevanceQueries.relevant] (the [Relevance]
+     * predicate above) and [RelevanceQueries.relevantWithin], the rule-run gate's coarser sibling.
+     */
+    private fun relevanceQueriesOf(relevant: Set<RelevantEntity>): RelevanceQueries {
         val tuples = HashMap<String, HashSet<List<Int>>>()
         val patterns = HashMap<String, MutableSet<List<Boolean>>>()
         for (r in relevant) {
@@ -1064,29 +1077,69 @@ class DmInterpreter private constructor(
             tuples.getOrPut(r.path) { HashSet() } += r.indices
             patterns.getOrPut(r.path) { LinkedHashSet() } += r.indices.map { it == RelevantEntity.ALL }
         }
-        return { path, reps ->
-            if (path in model.globalFields) true else {
-                val pParts = pathParts(path)
-                var hit = false
-                var depth = 1
-                while (depth <= pParts.size && depth <= reps.size && !hit) {
-                    val prefix = "/" + pParts.take(depth).joinToString("/")
+        return RelevanceQueries(model.globalFields, tuples, patterns)
+    }
+
+    private class RelevanceQueries(
+        private val globalFields: Set<String>,
+        private val tuples: Map<String, HashSet<List<Int>>>,
+        private val patterns: Map<String, MutableSet<List<Boolean>>>,
+    ) {
+        /** [tuples]/[patterns] projected onto the first `bound` levels, built once per (path, bound). A rule
+         *  fixes both, so the projection is built once per rule and probed once per iteration row. */
+        private val projected = HashMap<Pair<String, Int>, Pair<Set<List<Int>>, Set<List<Boolean>>>>()
+
+        val relevant: Relevance = { path, reps -> relevantWithin(path, reps, reps.size) }
+
+        /**
+         * `(path, reps)` relevance with every level from [bound] on treated as a WILDCARD — an entity filed
+         * under a deeper prefix matches when its first [bound] indices do, whatever it carries below. With
+         * `bound = reps.size` this is exactly [relevant]; the rule-run gate passes the count of levels the
+         * rule's iteration actually BOUND ([IF268]).
+         */
+        fun relevantWithin(path: String, reps: List<Int>, bound: Int): Boolean {
+            if (path in globalFields) return true
+            val pParts = pathParts(path)
+            var depth = 1
+            while (depth <= pParts.size && depth <= reps.size) {
+                val prefix = "/" + pParts.take(depth).joinToString("/")
+                // Every pattern filed under `prefix` has exactly `depth` entries: entities are indexed
+                // only when their index count equals their own path-part count. Below [bound] they are
+                // projected onto the bound levels, which collapses the free indices away.
+                // The ORDINARY query never leaves this branch — its bound is the full tuple length, so it stays
+                // the exact lookup it was before the gate needed a coarser sibling. Keep it that way: this runs
+                // once per field INSTANCE, and a `Pair` allocated here to unify the two branches was enough to
+                // push `PartialSumOfProductsPerfTest` from 3.7x to 9.27x growth.
+                if (depth <= bound) {
                     val bucket = tuples[prefix]
                     if (bucket != null) {
-                        // Every pattern filed under `prefix` has exactly `depth` entries: entities are indexed
-                        // only when their index count equals their own path-part count.
                         val base = reps.take(depth)
                         for (pattern in patterns.getValue(prefix)) {
                             val key = base.mapIndexed { i, rep -> if (pattern[i]) RelevantEntity.ALL else rep }
-                            if (key in bucket) {
-                                hit = true
-                                break
-                            }
+                            if (key in bucket) return true
                         }
                     }
-                    depth++
+                } else {
+                    val projection = projection(prefix, bound)
+                    if (projection != null) {
+                        val base = reps.take(bound)
+                        for (pattern in projection.second) {
+                            val key = base.mapIndexed { i, rep -> if (pattern[i]) RelevantEntity.ALL else rep }
+                            if (key in projection.first) return true
+                        }
+                    }
                 }
-                hit
+                depth++
+            }
+            return false
+        }
+
+        /** Null when nothing at all is filed under [prefix], so the caller skips it like the exact branch does. */
+        private fun projection(prefix: String, levels: Int): Pair<Set<List<Int>>, Set<List<Boolean>>>? {
+            val bucket = tuples[prefix] ?: return null
+            return projected.getOrPut(prefix to levels) {
+                bucket.mapTo(HashSet()) { it.take(levels) } to
+                    patterns.getValue(prefix).mapTo(LinkedHashSet()) { it.take(levels) }
             }
         }
     }
