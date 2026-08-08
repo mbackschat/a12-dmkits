@@ -32,6 +32,26 @@ public final class ModelDrafts {
     }
 
     /**
+     * The basket model — one repeatable group whose fields sit at TWO owning depths ({@code Lines/Qty} and
+     * {@code Lines/Packaging/Weight}), a parallel repeatable group, and a non-repeatable group outside both.
+     * That shape is what separates the two rejection codes of {@code SumOfProducts}: sharing a starred group
+     * is not the same as sharing an owning group, and a plain field inside the starred group rejects
+     * differently from one outside it ({@code SumOfProductsLawsTest}).
+     */
+    public static DocumentModelDraft basket() {
+        return DocumentModelDraft.named("basket").locale("en_US")
+                .rootGroup("Basket", b -> b
+                        .field("Total", FieldKind.NUMBER)
+                        .group("Lines", g -> g
+                                .repeatable(3)
+                                .field("Qty", FieldKind.NUMBER)
+                                .group("Packaging", p -> p.field("Weight", FieldKind.NUMBER)))
+                        .group("Vouchers", g -> g.repeatable(3).field("Amount", FieldKind.NUMBER))
+                        .group("Fees", g -> g.field("Handling", FieldKind.NUMBER)))
+                .build();
+    }
+
+    /**
      * Date fragments of several formats with <b>no base year</b> — for the comparability partition
      * (two date(-fragment) values compare only if both carry a year or neither does; a base year would
      * relax that). BA "Date fragments" L4010-4074.

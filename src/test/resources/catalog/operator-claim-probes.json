@@ -468,6 +468,36 @@
       "control": { "group": "/Project", "field": "../ProjectName", "dsl": "FieldFilled(/Project/ProjectName) And SumOfProducts(/Project/Milestones*/Budget, /Project/Milestones*/Budget) > 0", "verdict": "ACCEPTED" }
     },
     {
+      "id": "SumOfProducts.starred-group-is-not-owning-group",
+      "operator": "SumOfProducts", "kind": "CONDITION", "fixture": "BASKET",
+      "trigger": { "group": "/Basket", "field": "../Total", "dsl": "FieldFilled(Total) And SumOfProducts(Lines*/Qty, Lines*/Packaging/Weight) > 0", "verdict": "REJECTED", "code": "MVK_DIFFERENT_GROUPS" },
+      "control": { "group": "/Basket", "field": "../Total", "dsl": "FieldFilled(Total) And SumOfProducts(Lines*/Packaging/Weight, Lines*/Packaging/Weight) > 0", "verdict": "ACCEPTED" }
+    },
+    {
+      "id": "SumOfProducts.unwildcarded-level",
+      "operator": "SumOfProducts", "kind": "CONDITION", "fixture": "PROJECT",
+      "trigger": { "group": "/Project", "field": "../ProjectName", "dsl": "FieldFilled(ProjectName) And SumOfProducts(Milestones*/Budget, Milestones/Tasks*/Effort) > 0", "verdict": "REJECTED", "code": "MVK_NO_WILDCARD" },
+      "control": { "group": "/Project", "field": "../ProjectName", "dsl": "FieldFilled(ProjectName) And SumOfProducts(Milestones*/Budget, Milestones*/Budget) > 0", "verdict": "ACCEPTED" }
+    },
+    {
+      "id": "SumOfProducts.no-repeatable-level",
+      "operator": "SumOfProducts", "kind": "CONDITION", "fixture": "ORDER",
+      "trigger": { "group": "/Order", "field": "../Quantity", "dsl": "FieldFilled(Quantity) And SumOfProducts(Quantity, BackorderQuantity) > 0", "verdict": "REJECTED", "code": "MVK_REPEATABLE_LEVEL_REQUIRED" },
+      "control": { "group": "/Order", "field": "../Quantity", "dsl": "FieldFilled(Quantity) And SumOfProducts(Items*/Count, Items*/UnitWeight) > 0", "verdict": "ACCEPTED" }
+    },
+    {
+      "id": "SumOfProducts.multi-star",
+      "operator": "SumOfProducts", "kind": "CONDITION", "fixture": "PROJECT",
+      "trigger": { "group": "/Project", "field": "../ProjectName", "dsl": "FieldFilled(ProjectName) And SumOfProducts(Milestones*/Tasks*/Effort, Milestones*/Tasks*/Effort) > 0", "verdict": "REJECTED", "code": "MVK_WILDCARD_ONLY_AT_LOWEST_LEVEL_ALLOWED" },
+      "control": { "group": "/Project", "field": "../ProjectName", "dsl": "FieldFilled(ProjectName) And SumOfProducts(Milestones/Tasks*/Effort, Milestones/Tasks*/Effort) > 0", "verdict": "REJECTED", "code": "MVK_NO_WILDCARD" }
+    },
+    {
+      "id": "SumOfProducts.filtered-operand",
+      "operator": "SumOfProducts", "kind": "CONDITION", "fixture": "ORDER",
+      "trigger": { "group": "/Order", "field": "../Quantity", "dsl": "FieldFilled(Quantity) And SumOfProducts(Items*/Count Having [Items/Sku] == \"X\", Items*/UnitWeight) > 0", "verdict": "REJECTED", "code": "MVK_WILDCARD_AT_LOWEST_LEVEL_REQUIRED" },
+      "control": { "group": "/Order", "field": "../Quantity", "dsl": "FieldFilled(Quantity) And SumOfProducts(Items*/Count, Items*/UnitWeight) > 0", "verdict": "ACCEPTED" }
+    },
+    {
       "id": "RoundDown.digit-bound",
       "operator": "RoundDown", "kind": "CONDITION", "fixture": "ORDER",
       "trigger": { "group": "/Order", "field": "../UnitPrice", "dsl": "FieldFilled(UnitPrice) And RoundDown([UnitPrice], 15) > 1", "verdict": "REJECTED", "code": "MVK_INVALID_DIGIT_FOR_ROUNDING" },

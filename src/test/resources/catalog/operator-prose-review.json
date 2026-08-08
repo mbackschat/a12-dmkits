@@ -7561,7 +7561,27 @@
       "operator": "SumOfProducts",
       "lane": "CONSTRAINT",
       "ordinal": 0,
-      "digest": "sha256:21b077e6fe24d0cc24dfcd278e6904be50f8c31894cb145c9b3aa130926c9018",
+      "digest": "sha256:a1719497f073306d99ef3d08faf276b8bcb8d35b45896567883405a426aaf82a",
+      "classifications": [
+        "REJECTION"
+      ],
+      "evidence": []
+    },
+    {
+      "operator": "SumOfProducts",
+      "lane": "CONSTRAINT",
+      "ordinal": 1,
+      "digest": "sha256:972138292826c4f99c7624ff809d04bb680e04a952aa9cdd8f30d27bc52bd4e5",
+      "classifications": [
+        "REJECTION"
+      ],
+      "evidence": []
+    },
+    {
+      "operator": "SumOfProducts",
+      "lane": "CONSTRAINT",
+      "ordinal": 2,
+      "digest": "sha256:71ccda85b79cf8b5db296da8e90d2ec999e6b7e983a2f4c031a7979913f67d8d",
       "classifications": [
         "REJECTION"
       ],
@@ -10298,13 +10318,13 @@
       ]
     },
     {
-      "id": "literal.SumOfProducts.constraint0.MVK_DIFFERENT_GROUPS",
+      "id": "literal.SumOfProducts.constraint1.MVK_DIFFERENT_GROUPS",
       "operator": "SumOfProducts",
       "kind": "CONDITION",
       "units": [
         {
           "lane": "CONSTRAINT",
-          "ordinal": 0
+          "ordinal": 1
         }
       ],
       "expected": {
@@ -23740,7 +23760,7 @@
       "units": [
         {
           "lane": "CONSTRAINT",
-          "ordinal": 0
+          "ordinal": 1
         }
       ],
       "expected": {
@@ -23762,7 +23782,7 @@
       "units": [
         {
           "lane": "CONSTRAINT",
-          "ordinal": 0
+          "ordinal": 1
         }
       ],
       "expected": {
@@ -23772,6 +23792,327 @@
         {
           "type": "CLAIM_PROBE",
           "id": "SumOfProducts.different-groups",
+          "side": "CONTROL"
+        }
+      ]
+    },
+    {
+      "id": "literal.SumOfProducts.constraint0.owning-group",
+      "operator": "SumOfProducts",
+      "kind": "CONDITION",
+      "units": [
+        {
+          "lane": "CONSTRAINT",
+          "ordinal": 0
+        }
+      ],
+      "expected": {
+        "verdict": "REJECTED",
+        "code": "MVK_DIFFERENT_GROUPS"
+      },
+      "evidence": [
+        {
+          "type": "CLAIM_PROBE",
+          "id": "SumOfProducts.starred-group-is-not-owning-group"
+        }
+      ]
+    },
+    {
+      "id": "review.SumOfProducts.SumOfProducts.starred-group-is-not-owning-group.trigger",
+      "operator": "SumOfProducts",
+      "kind": "CONDITION",
+      "units": [
+        {
+          "lane": "CONSTRAINT",
+          "ordinal": 0
+        }
+      ],
+      "expected": {
+        "verdict": "REJECTED",
+        "code": "MVK_DIFFERENT_GROUPS"
+      },
+      "evidence": [
+        {
+          "type": "CLAIM_PROBE",
+          "id": "SumOfProducts.starred-group-is-not-owning-group",
+          "side": "TRIGGER"
+        }
+      ]
+    },
+    {
+      "id": "review.SumOfProducts.SumOfProducts.starred-group-is-not-owning-group.control",
+      "operator": "SumOfProducts",
+      "kind": "CONDITION",
+      "units": [
+        {
+          "lane": "CONSTRAINT",
+          "ordinal": 0
+        }
+      ],
+      "expected": {
+        "verdict": "ACCEPTED"
+      },
+      "evidence": [
+        {
+          "type": "CLAIM_PROBE",
+          "id": "SumOfProducts.starred-group-is-not-owning-group",
+          "side": "CONTROL"
+        }
+      ]
+    },
+    {
+      "id": "literal.SumOfProducts.constraint1.MVK_NO_WILDCARD",
+      "operator": "SumOfProducts",
+      "kind": "CONDITION",
+      "units": [
+        {
+          "lane": "CONSTRAINT",
+          "ordinal": 1
+        }
+      ],
+      "expected": {
+        "verdict": "REJECTED",
+        "code": "MVK_NO_WILDCARD"
+      },
+      "evidence": [
+        {
+          "type": "CLAIM_PROBE",
+          "id": "SumOfProducts.unwildcarded-level"
+        }
+      ]
+    },
+    {
+      "id": "review.SumOfProducts.SumOfProducts.unwildcarded-level.trigger",
+      "operator": "SumOfProducts",
+      "kind": "CONDITION",
+      "units": [
+        {
+          "lane": "CONSTRAINT",
+          "ordinal": 1
+        }
+      ],
+      "expected": {
+        "verdict": "REJECTED",
+        "code": "MVK_NO_WILDCARD"
+      },
+      "evidence": [
+        {
+          "type": "CLAIM_PROBE",
+          "id": "SumOfProducts.unwildcarded-level",
+          "side": "TRIGGER"
+        }
+      ]
+    },
+    {
+      "id": "review.SumOfProducts.SumOfProducts.unwildcarded-level.control",
+      "operator": "SumOfProducts",
+      "kind": "CONDITION",
+      "units": [
+        {
+          "lane": "CONSTRAINT",
+          "ordinal": 1
+        }
+      ],
+      "expected": {
+        "verdict": "ACCEPTED"
+      },
+      "evidence": [
+        {
+          "type": "CLAIM_PROBE",
+          "id": "SumOfProducts.unwildcarded-level",
+          "side": "CONTROL"
+        }
+      ]
+    },
+    {
+      "id": "literal.SumOfProducts.constraint1.MVK_REPEATABLE_LEVEL_REQUIRED",
+      "operator": "SumOfProducts",
+      "kind": "CONDITION",
+      "units": [
+        {
+          "lane": "CONSTRAINT",
+          "ordinal": 1
+        }
+      ],
+      "expected": {
+        "verdict": "REJECTED",
+        "code": "MVK_REPEATABLE_LEVEL_REQUIRED"
+      },
+      "evidence": [
+        {
+          "type": "CLAIM_PROBE",
+          "id": "SumOfProducts.no-repeatable-level"
+        }
+      ]
+    },
+    {
+      "id": "review.SumOfProducts.SumOfProducts.no-repeatable-level.trigger",
+      "operator": "SumOfProducts",
+      "kind": "CONDITION",
+      "units": [
+        {
+          "lane": "CONSTRAINT",
+          "ordinal": 1
+        }
+      ],
+      "expected": {
+        "verdict": "REJECTED",
+        "code": "MVK_REPEATABLE_LEVEL_REQUIRED"
+      },
+      "evidence": [
+        {
+          "type": "CLAIM_PROBE",
+          "id": "SumOfProducts.no-repeatable-level",
+          "side": "TRIGGER"
+        }
+      ]
+    },
+    {
+      "id": "review.SumOfProducts.SumOfProducts.no-repeatable-level.control",
+      "operator": "SumOfProducts",
+      "kind": "CONDITION",
+      "units": [
+        {
+          "lane": "CONSTRAINT",
+          "ordinal": 1
+        }
+      ],
+      "expected": {
+        "verdict": "ACCEPTED"
+      },
+      "evidence": [
+        {
+          "type": "CLAIM_PROBE",
+          "id": "SumOfProducts.no-repeatable-level",
+          "side": "CONTROL"
+        }
+      ]
+    },
+    {
+      "id": "literal.SumOfProducts.constraint2.MVK_WILDCARD_ONLY_AT_LOWEST_LEVEL_ALLOWED",
+      "operator": "SumOfProducts",
+      "kind": "CONDITION",
+      "units": [
+        {
+          "lane": "CONSTRAINT",
+          "ordinal": 2
+        }
+      ],
+      "expected": {
+        "verdict": "REJECTED",
+        "code": "MVK_WILDCARD_ONLY_AT_LOWEST_LEVEL_ALLOWED"
+      },
+      "evidence": [
+        {
+          "type": "CLAIM_PROBE",
+          "id": "SumOfProducts.multi-star"
+        }
+      ]
+    },
+    {
+      "id": "review.SumOfProducts.SumOfProducts.multi-star.trigger",
+      "operator": "SumOfProducts",
+      "kind": "CONDITION",
+      "units": [
+        {
+          "lane": "CONSTRAINT",
+          "ordinal": 2
+        }
+      ],
+      "expected": {
+        "verdict": "REJECTED",
+        "code": "MVK_WILDCARD_ONLY_AT_LOWEST_LEVEL_ALLOWED"
+      },
+      "evidence": [
+        {
+          "type": "CLAIM_PROBE",
+          "id": "SumOfProducts.multi-star",
+          "side": "TRIGGER"
+        }
+      ]
+    },
+    {
+      "id": "review.SumOfProducts.SumOfProducts.multi-star.control",
+      "operator": "SumOfProducts",
+      "kind": "CONDITION",
+      "units": [
+        {
+          "lane": "CONSTRAINT",
+          "ordinal": 2
+        }
+      ],
+      "expected": {
+        "verdict": "REJECTED",
+        "code": "MVK_NO_WILDCARD"
+      },
+      "evidence": [
+        {
+          "type": "CLAIM_PROBE",
+          "id": "SumOfProducts.multi-star",
+          "side": "CONTROL"
+        }
+      ]
+    },
+    {
+      "id": "literal.SumOfProducts.constraint2.MVK_WILDCARD_AT_LOWEST_LEVEL_REQUIRED",
+      "operator": "SumOfProducts",
+      "kind": "CONDITION",
+      "units": [
+        {
+          "lane": "CONSTRAINT",
+          "ordinal": 2
+        }
+      ],
+      "expected": {
+        "verdict": "REJECTED",
+        "code": "MVK_WILDCARD_AT_LOWEST_LEVEL_REQUIRED"
+      },
+      "evidence": [
+        {
+          "type": "CLAIM_PROBE",
+          "id": "SumOfProducts.filtered-operand"
+        }
+      ]
+    },
+    {
+      "id": "review.SumOfProducts.SumOfProducts.filtered-operand.trigger",
+      "operator": "SumOfProducts",
+      "kind": "CONDITION",
+      "units": [
+        {
+          "lane": "CONSTRAINT",
+          "ordinal": 2
+        }
+      ],
+      "expected": {
+        "verdict": "REJECTED",
+        "code": "MVK_WILDCARD_AT_LOWEST_LEVEL_REQUIRED"
+      },
+      "evidence": [
+        {
+          "type": "CLAIM_PROBE",
+          "id": "SumOfProducts.filtered-operand",
+          "side": "TRIGGER"
+        }
+      ]
+    },
+    {
+      "id": "review.SumOfProducts.SumOfProducts.filtered-operand.control",
+      "operator": "SumOfProducts",
+      "kind": "CONDITION",
+      "units": [
+        {
+          "lane": "CONSTRAINT",
+          "ordinal": 2
+        }
+      ],
+      "expected": {
+        "verdict": "ACCEPTED"
+      },
+      "evidence": [
+        {
+          "type": "CLAIM_PROBE",
+          "id": "SumOfProducts.filtered-operand",
           "side": "CONTROL"
         }
       ]

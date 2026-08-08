@@ -6583,7 +6583,9 @@
       "returns": "number",
       "meaning": "The element-wise sum of products across two parallel number field lists: Σ aᵢ·bᵢ (typically two wildcard repetition lists over the same group). Both operands render as bare entity refs.",
       "constraints": [
-        "exactly two number fields (or wildcard repetition lists), both in the SAME repeatable group (else MVK_DIFFERENT_GROUPS); the asterisk notates their lowest repeatable layer"
+        "exactly two number wildcard repetition lists whose FIELDS share one owning group — sharing a starred group is not enough, so SumOfProducts(Lines*/Qty, Lines*/Packaging/Weight) is rejected",
+        "the rejection code depends on the PAIR: an operand below a repeatable level it does not wildcard is MVK_NO_WILDCARD (this also rejects a star above the lowest repeatable layer, and a plain field inside the other's starred group); one outside the other's starred group is MVK_DIFFERENT_GROUPS; only a pair with no repeatable level at all is MVK_REPEATABLE_LEVEL_REQUIRED",
+        "the asterisk notates their lowest repeatable layer — a multi-star operand is MVK_WILDCARD_ONLY_AT_LOWEST_LEVEL_ALLOWED and a Having on either side is MVK_WILDCARD_AT_LOWEST_LEVEL_REQUIRED"
       ],
       "validExample": {
         "dsl": "FieldFilled(UnitPrice) And [UnitPrice] != SumOfProducts(Items*/Count, Items*/UnitWeight)",

@@ -66,6 +66,7 @@ class CatalogKernelClaimEvidenceTest {
     private static String dateRangeFormatsJson;
     private static String fieldValueAsNumberJson;
     private static String enumComparabilityJson;
+    private static String basketJson;
 
     @BeforeAll
     static void loadFixtures() throws Exception {
@@ -81,6 +82,7 @@ class CatalogKernelClaimEvidenceTest {
                         .stringField("RawBlob", field -> field.lineBreaks().noValueValidation())))
                 .build().toJson();
         logisticsJson = ModelDrafts.logistics().toJson();
+        basketJson = ModelDrafts.basket().toJson();
         projectJson = readResource("models/project.dm.json");
         subscriptionJson = readResource("models/subscription.dm.json");
         twoRootJson = DocumentModelDraft.named("claimform").locale("en_US")
@@ -386,6 +388,7 @@ class CatalogKernelClaimEvidenceTest {
             case PRICE_LIST -> priceListJson;
             case LOGISTICS -> logisticsJson;
             case PROJECT -> projectJson;
+            case BASKET -> basketJson;
             case SUBSCRIPTION -> subscriptionJson;
             case TWO_ROOT -> twoRootJson;
             case BASE_YEAR_ORDER -> baseYearOrderJson;
@@ -430,7 +433,8 @@ class CatalogKernelClaimEvidenceTest {
         EXTENSIBLE_ENUM,
         DATE_RANGE_FORMATS,
         FIELD_VALUE_AS_NUMBER,
-        ENUM_COMPARABILITY
+        ENUM_COMPARABILITY,
+        BASKET
     }
 
     enum Verdict {
