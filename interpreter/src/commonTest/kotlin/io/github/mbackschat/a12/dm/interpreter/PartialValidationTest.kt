@@ -12,7 +12,8 @@ import kotlin.test.assertEquals
 /**
  * `validatePart` on the **pure** engine — runs on JVM AND JS, locking the partial-validation contract the
  * `:adapter` differential pins against the real kernel ([io.github.mbackschat...]`PartialValidationDiffTest`):
- * a rule runs only if its error-field instance is relevant, and a non-relevant referenced field is UNKNOWN
+ * a rule runs only if its error field is relevant at the levels its iteration bound (IF268), and a
+ * non-relevant referenced field is UNKNOWN
  * (3VL) — so `And` suppresses but `Or` with a relevant-true operand still fires, and the whole document being
  * relevant equals full validation.
  */

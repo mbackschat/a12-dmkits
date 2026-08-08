@@ -248,7 +248,8 @@ class Interpreter(
 
     /** Partial-validation mode (the caller supplied a relevant set → [cellRelevant] is non-null). In partial the
      *  row-content gate is REPLACED by the upstream relevance gate: [DmInterpreter.rowOutcomes] only reaches an
-     *  eval when the rule's error-field instance is RELEVANT, and the kernel checks every relevant instance —
+     *  eval when the rule's error field is RELEVANT at the levels its iteration bound (IF268), and the kernel
+     *  checks every relevant instance —
      *  firing a comparison's empty-as-0 or an empty-identity aggregate even on a non-content-bearing (empty /
      *  phantom) relevant row (kernel-probed: `MinValue` over `Lines* then Qty` `< 5` on a `/Cart`-relevant empty
      *  document, and `[Note] < 5` on a relevant empty `Note`, both FIRE in partial though neither fires in full). So

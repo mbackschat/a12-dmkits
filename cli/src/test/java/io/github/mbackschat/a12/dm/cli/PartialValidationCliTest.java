@@ -21,8 +21,9 @@ import io.github.mbackschat.a12.dm.rulekit.dsl.Severity;
 
 /**
  * G43 — {@code model eval --relevant} exposes the interpreter's already kernel-matched partial-validation
- * boundary. The CLI encoding is a JSON array of instance paths: an omitted index or {@code [*]} means the
- * kernel's {@code ALL_SEMANTIC}; {@code [n]} selects one repetition.
+ * boundary. The CLI encoding is a JSON array of instance paths: {@code [*]} (or {@code [0]}) is the kernel's
+ * {@code ALL_SEMANTIC} and {@code [n]} selects one repetition; an omitted index on a repeatable segment is
+ * refused, never guessed — see {@link #anOmittedIndexOnARepeatableSegmentIsRefusedWithBothCorrectives} below.
  */
 class PartialValidationCliTest {
 
