@@ -214,7 +214,7 @@ class InterpreterDocumentationTest {
             // browser build, while `verifyInterpreterBrowserSizeDocumentation` derives the real figure from
             // the packed bundle's `bundle-size.json` and fails if a README drifts from it. Update both when
             // the bundle moves — the Gradle task's message names the number to use.
-            assertTrue(text.contains("237 kB gzip"), "$surface omits the measured browser footprint")
+            assertTrue(text.contains("236 kB gzip"), "$surface omits the measured browser footprint")
             assertTrue(text.contains("10.5 ms median"), "$surface omits the representative browser timing")
             assertTrue(text.contains("203.6 ms median"), "$surface omits the stress browser timing")
             assertTrue(text.contains("2026-08-03"), "$surface omits the measurement date")
