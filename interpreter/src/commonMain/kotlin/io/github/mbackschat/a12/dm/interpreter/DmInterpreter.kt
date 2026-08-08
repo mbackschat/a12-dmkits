@@ -917,7 +917,7 @@ class DmInterpreter private constructor(
         }
         val rnuSeam: ((EvalContext) -> MsgType?)? =
             rnuCache?.let { cache -> { context -> cache.rows[context.repsOf(errorPath)]?.type } }
-        return scopes.iterationContexts(prepared.iteration, pass.doc).map { ctx ->
+        return scopes.iterationContexts(prepared.iteration, pass.doc, pass.config.cellRelevant).map { ctx ->
             // Partial validation: the kernel runs a rule only if its error field is relevant at this row —
             // else the rule is NOT executed for it (no message, not a suppression). "At this row" is the
             // BOUND levels only ([ValidationPass.runsForRow], IF268). Full validation: always.

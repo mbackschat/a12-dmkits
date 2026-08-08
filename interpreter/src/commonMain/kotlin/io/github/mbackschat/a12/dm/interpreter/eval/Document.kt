@@ -563,14 +563,17 @@ class Document(internal val config: DocumentConfig) {
      * common-parent row.
      */
     fun parallelContexts(groups: List<String>, indexFieldName: String, commonParent: String,
-            frameGroup: String? = null, deepestFrame: String? = null): List<EvalContext> {
+            frameGroup: String? = null, deepestFrame: String? = null,
+            /** Partial validation only: gates which INDEX cells key the join ([IF269]). Null = every cell. */
+            cellRelevant: ((String, List<Int>) -> Boolean)? = null): List<EvalContext> {
         val out = ArrayList<EvalContext>()
         for (cReps in parentRowsOf(commonParent)) {
             // The NON-framed (clean) groups are shared across every frame row — build their value maps + invalid
             // flags ONCE per common-parent row, NOT per frame row (else a clean group of M rows is rescanned per
             // frame row → O(frames × M)). Only the framed group's map depends on the current frame row.
             val cleanInvalid = HashSet<String>()
-            val cleanMaps = groups.filter { it != frameGroup }.associateWith { indexMap(it, indexFieldName, cReps, cleanInvalid) }
+            val cleanMaps = groups.filter { it != frameGroup }
+                .associateWith { indexMap(it, indexFieldName, cReps, cleanInvalid, cellRelevant) }
             // An over-limit FRAME row is outside the kernel's cache, so the join never runs inside it (the same
             // exclusion as the joined groups below and the star domain, SPEC-2026-07-23-13 / IF220).
             val frameRows = if (deepestFrame != null)
@@ -581,7 +584,7 @@ class Document(internal val config: DocumentConfig) {
                 val parentReps = groups.associateWith { g -> if (g == frameGroup) fr else cReps }
                 val invalid = HashSet(cleanInvalid)
                 val perGroup = if (frameGroup == null) cleanMaps
-                    else cleanMaps + (frameGroup to indexMap(frameGroup, indexFieldName, fr, invalid))
+                    else cleanMaps + (frameGroup to indexMap(frameGroup, indexFieldName, fr, invalid, cellRelevant))
                 val values = LinkedHashSet<String>().apply { groups.forEach { addAll(perGroup.getValue(it).keys) } }
                 for (v in values) {
                     out += ParallelRowContext(commonParent, cReps, groups, parentReps,
@@ -605,12 +608,19 @@ class Document(internal val config: DocumentConfig) {
      *  OVER-LIMIT row is EXCLUDED from the join: the kernel never inserts it into the `IndexFieldCache`, so its
      *  index value is not a join key and a reference to it reads UNMATCHED (empty-as-0), never its poisoned cell —
      *  the same [overLimitRows] exclusion the star/quantifier domain uses (SPEC-2026-07-23-13 / IF220). */
-    private fun indexMap(group: String, indexFieldName: String, ctxReps: List<Int>, invalidOut: MutableSet<String>): Map<String, List<Int>> {
+    private fun indexMap(group: String, indexFieldName: String, ctxReps: List<Int>, invalidOut: MutableSet<String>,
+            cellRelevant: ((String, List<Int>) -> Boolean)?): Map<String, List<Int>> {
         val idxPath = "$group/$indexFieldName"
         val overLimit = overLimitRows(group)
         val byValue = LinkedHashMap<String, List<Int>>()
         for (row in rowsWithPrefix(group, ctxReps)) {
             if (row in overLimit) continue                                  // over-limit row: outside the join
+            // Partial validation: the join is keyed by the INDEX field and the kernel builds that cache from the
+            // RELEVANT cells only (IF39), so a row whose own index cell is outside the relevant set contributes
+            // no key — the group is then the outer join's "not specified" side for that value, pointer
+            // `Demand[-5]`, exactly like a group with no row at all ([IF269]). A relevant GROUP covers its index
+            // cell, which is why selecting a whole row keeps its iteration.
+            if (cellRelevant?.invoke(idxPath, row + 1) == false) continue
             val v = valueAt(idxPath, row + 1)?.value
             if (v.isNullOrEmpty()) invalidOut.add(group)                    // empty index cell → group invalid here
             else if (byValue.put(v, row) != null) invalidOut.add(group)     // duplicate value → group invalid here
@@ -1223,12 +1233,16 @@ class Document(internal val config: DocumentConfig) {
             }
         }
 
-        // The join binds each participating group's own level, so a path inside one of them is bound down to
-        // that group's depth; anything else is bound only by the shared common-parent ancestry. Deeper levels
-        // (the field's own index, an unmatched side) are defaulted above, never chosen.
+        // The join binds each participating group's own level, so a path inside a MATCHED group is bound down
+        // to that group's depth; anything else is bound only by the shared common-parent ancestry. An UNMATCHED
+        // group has no row for this value, so its own level was never chosen — [repsOf] reports the kernel's
+        // UNKNOWN repetition there, and the gate must not ask the relevant set to name a repetition that does
+        // not exist. Same principle as [IF268] one step further: what the iteration did not choose is not
+        // compared, whether because the level sits below it or because the join found nothing.
         override fun boundLevelsOf(path: String): Int {
             val g = groupOf(path) ?: return commonPrefixLen(parts(path), parts(commonParent))
-            return minOf(parts(g).size, parts(path).size)
+            val bound = if (matches[g] == null) parentReps.getValue(g).size else parts(g).size
+            return minOf(bound, parts(path).size)
         }
 
         /** The raw value of [path] in this iteration, or null when its group has no matching row (or it is empty). */

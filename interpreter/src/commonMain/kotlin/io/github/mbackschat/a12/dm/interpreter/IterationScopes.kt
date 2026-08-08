@@ -72,7 +72,13 @@ internal class IterationScopes(private val model: ModelDef) {
     }
 
     /** Execute the already-prepared iteration decision against one document. */
-    fun iterationContexts(plan: IterationPlan, doc: Document): List<EvalContext> = when (plan) {
+    fun iterationContexts(
+        plan: IterationPlan,
+        doc: Document,
+        /** Partial validation only: gates which INDEX cells key a parallel join ([IF269]). Null = every cell,
+         *  which is full validation and every compute consumer. */
+        cellRelevant: ((String, List<Int>) -> Boolean)? = null,
+    ): List<EvalContext> = when (plan) {
         is IterationPlan.Rows -> doc.contextsFor(plan.group)
         is IterationPlan.Once -> doc.onceContextFor(plan.rootGroup)
         is IterationPlan.Parallel -> doc.parallelContexts(
@@ -81,6 +87,7 @@ internal class IterationScopes(private val model: ModelDef) {
             plan.commonParent,
             plan.frameGroup,
             plan.deepestFrame,
+            cellRelevant,
         )
     }
 

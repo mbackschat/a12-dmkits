@@ -2960,3 +2960,32 @@ Row 1 falsifies the exact-instance reading. Row 4 falsifies the two coarser riva
 **Fix.** `ValidationPass.runsForRow` replaces the direct `isRelevant(errorPath, ctx.repsOf(errorPath))` call; the bound count is `EvalContext.boundLevelsOf` (a `Document.Ctx` row reports its shared ancestry with the group it iterates, capped by the coordinates it carries; a `ParallelRowContext` reports each joined group's own depth); and `RelevanceQueries.relevantWithin` answers the query off the same index the ordinary predicate uses — tuples and wildcard patterns projected onto the bound levels, memoized per (path, bound), which a rule fixes. Where the error field sits inside the iterated element — every per-row rule, so the overwhelming majority — the bound count covers every level and the query is byte-identical to the old one. The `ParallelRowContext` arm is reasoned from `repsOf`'s own binding, not measured; no probe in the estate reaches a parallel-iteration rule reporting below a joined group.
 
 *Locked by:* `laws/PartialRuleGateScopeDiffTest`.
+
+### IF269: a parallel-iteration row exists only where its INDEX cell is relevant (FIXED 2026-08-08) <a id="if269"></a>
+
+Parallel iteration is an outer join keyed by the groups' shared **index field**, and under partial validation the kernel builds that key cache from the RELEVANT cells only ([IF39](#if39)). So a relevant set that names the payload field but not the index produces **no join keys and therefore no iterations at all** — the rule never runs, whatever else is relevant. The interpreter built the join from every cell and over-fired.
+
+**Measured**, `Demand ⊥ Supply` under `/Staffing` sharing `Department`; rule on `/Staffing`, error field `../Demand/Headcount`; both kernel strategies agreeing on all fourteen shapes:
+
+| relevant set | kernel |
+|---|---|
+| `Demand[1]/Headcount` (payload only) | **silent** |
+| payload only — other row, wildcarded, or both rows | **silent** |
+| `Demand[1]` (the whole group) | fires at `Demand[1]` |
+| `Demand[1]/Department` (index only, no payload) | silent |
+| `Demand[1]/{Department, Headcount}` | fires at `Demand[1]` |
+| `Demand[2]/{Department, Headcount}` | fires at `Demand[2]` |
+| both rows' index + payload, or both wildcarded | fires at both |
+| the far side only | silent |
+| `Supply[1]/{Department, Headcount}` + `Demand[1]/Headcount` | fires at **`Demand[-5]`** |
+| `Supply[2]=Ops` + `Demand[1]/Headcount` | fires at **`Demand[-5]`** |
+
+Two independent gates have to hold, and the table separates them: **the index cell decides whether the ITERATION exists**, the error field decides whether the rule RUNS in it ([IF268]). `Demand[1]/Department alone` is the row that proves the second gate is still there; the group row is the one that shows why selecting a whole row works — a relevant group covers its own index cell.
+
+**The unmatched side is the sharper half.** Leaving one group's index cell out of an otherwise relevant row does **not** remove the iteration — the far side still supplies the key, and this group becomes the outer join's "not specified" side, reporting at the kernel's `IIdentifier.UNKNOWN` repetition. That forced the second half of the fix: `ParallelRowContext.boundLevelsOf` must treat an unmatched group's own level as **unbound**, because nothing chose it. This is [IF268]'s principle one step further — what the iteration did not choose is not compared, whether because the level sits below the iteration or because the join found no row.
+
+**Fix.** `Document.parallelContexts` takes the call's cell-relevance predicate and `indexMap` skips a row whose index cell is outside the set; `IterationScopes.iterationContexts` threads it; `DmInterpreter` supplies `config.cellRelevant`. Null everywhere else, so full validation and every compute consumer are unchanged.
+
+**Provenance.** Found while probing the ONE arm of [IF268]'s fix that had been reasoned rather than measured — whether a parallel context binds its joined groups' own levels. That reasoning was correct, and this defect was sitting next to it. The standing lesson is the cheaper one: the probe cost minutes and the arm it was written to check turned out fine, which is not an argument against having run it.
+
+*Locked by:* `laws/PartialParallelJoinKeyDiffTest` (fourteen shapes, both kernel strategies plus the interpreter; both halves of the fix independently mutant-checked).
