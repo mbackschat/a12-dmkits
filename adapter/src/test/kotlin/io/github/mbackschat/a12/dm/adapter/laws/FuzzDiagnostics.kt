@@ -347,6 +347,75 @@ object FuzzDiagnostics {
     /** Single source of the partial fuzz's reproducible document-seed/relevant-seed pairing. */
     fun partialRelevantSeed(docSeed: Int, relevantSeed: Int): Int = docSeed * 131 + relevantSeed
 
+    /** One placement of a generated document, in the shape a relevance meter classifies. */
+    data class Cell(val path: String, val reps: List<Int>, val isGroup: Boolean)
+
+    /**
+     * A generated document's cells paired with the **EFFECTIVE** relevance a relevant set induces — the query a
+     * coverage meter must ask. Raw set membership is the wrong question: a cell is also relevant through an
+     * ANCESTOR GROUP entity (kernel `expandRelevantGroup` ⇄ the interpreter's ancestor-prefix match) and through
+     * an [RelevantEntity.ALL] wildcard at any coordinate level, both of which [relevantSets] generates. A meter
+     * that tested `path in entities` would report shapes the runtime never sees — e.g. "payload relevant but its
+     * index cell is not" for a row whose whole GROUP was selected, where in fact both are relevant.
+     *
+     * This mirrors `DmInterpreter.RelevanceQueries.relevant` (the `bound = reps.size` case). It is a coverage
+     * instrument, not an oracle: correctness of relevance is the differential's job, so a drift here shows up as
+     * the meter's shapes shifting, never as a silent pass. [RelevantViewTest] pins the semantics.
+     */
+    class RelevantView internal constructor(
+        val cells: List<Cell>,
+        entities: Set<RelevantEntity>,
+        private val globalFields: Set<String>,
+    ) {
+        private val tuples = HashMap<String, HashSet<List<Int>>>()
+        private val patterns = HashMap<String, LinkedHashSet<List<Boolean>>>()
+
+        init {
+            for (e in entities) {
+                // An entity carrying the wrong number of coordinates can never match — the same admission the
+                // interpreter's index applies, so an ill-formed entity is inert here too rather than throwing.
+                if (e.indices.size != segments(e.path).size) continue
+                tuples.getOrPut(e.path) { HashSet() } += e.indices
+                patterns.getOrPut(e.path) { LinkedHashSet() } += e.indices.map { it == RelevantEntity.ALL }
+            }
+        }
+
+        fun isRelevant(path: String, reps: List<Int>): Boolean {
+            if (path in globalFields) return true
+            val parts = segments(path)
+            for (depth in 1..minOf(parts.size, reps.size)) {
+                val prefix = "/" + parts.take(depth).joinToString("/")
+                val bucket = tuples[prefix] ?: continue
+                val base = reps.take(depth)
+                for (pattern in patterns.getValue(prefix)) {
+                    if (base.mapIndexed { i, rep -> if (pattern[i]) RelevantEntity.ALL else rep } in bucket) return true
+                }
+            }
+            return false
+        }
+
+        private fun segments(path: String): List<String> = path.trim('/').split('/')
+    }
+
+    /** [scenario]'s [docSeed] document and the effective relevance [relevantSeed]'s set induces over it. */
+    fun relevantView(scenario: PerfScenario, docSeed: Int, relevantSeed: Int): RelevantView {
+        val places = record(scenario, docSeed)
+        return RelevantView(
+            places.map { Cell(it.path, it.reps, it.kind == Place.Kind.GROUP) },
+            relevantSets(places, relevantSeed).second,
+            scenario.interpModel.globalFields,
+        )
+    }
+
+    /** The kernel's fired-code set under PARTIAL validation — the vacuity oracle for a partial fuzz regime.
+     *  [kernelCodes] answers the same question for full validation and cannot stand in for it: a partial run can
+     *  be silent for its own reasons, so "the kernel ever fired here" has to be measured under the relevant set. */
+    fun kernelPartialCodes(scenario: PerfScenario, seed: Int, relevantSeed: Int): Set<String> {
+        val places = record(scenario, seed)
+        val (kRel, _) = relevantSets(places, relevantSeed)
+        return RuntimeLaws.messagesPart(scenario.kernelModel, kernelDoc(places), kRel).map { it.code() }.toSet()
+    }
+
     private const val RELEVANT_SHAPE_CLASSES = 3
 
     private fun interpPartialSignatures(model: ModelDef, places: List<Place>, rel: Set<RelevantEntity>): List<String> =
