@@ -300,33 +300,71 @@ class DmInterpreter private constructor(
         )
 
     /**
-     * Whether a STARRED operation has complete extent in PARTIAL mode (IF42). The kernel evaluates an
-     * all-rows aggregate (`Sum`/`Max`/`Min`/`NumberOfDifferentValues`, but NOT `SumOfProducts`) only when the relevant set
-     * **wildcards** every repeatable level of the path — `ALL_SEMANTIC` at the starred group, or a relevant
-     * ANCESTOR group (whose descent makes all rows relevant). Enumerating concrete rows — even ALL of them — is
-     * NOT enough (kernel-probed: the `*` reference is "fully known" only via a wildcard). A relevant entity covers
-     * the star iff it is an ancestor-or-equal prefix AND wildcards every repeatable level it itself specifies
-     * (levels deeper than it are covered by group descent). `FirstFilled` does NOT use this — it is order-aware.
-     * The same fact also gates a starred VALUE-LIST quantifier's complete extent (`No` either side / `NotAll`
-     * values side — [io.github.mbackschat.a12.dm.interpreter.eval.evalValueListQuant], SPEC-2026-07-22-09).
+     * Whether a STARRED operation has complete extent in PARTIAL mode (IF42, IF262). The kernel evaluates an
+     * all-rows aggregate (`Sum`/`Max`/`Min`/`NumberOfDifferentValues`, but NOT `SumOfProducts`) only when its reduced
+     * relevant identifiers wildcard every repeatable level traversed by the star. Relevant ancestor groups first
+     * expand to the operand path, and a broader wildcard identifier removes every narrower identifier it encompasses.
+     * After that reduction, ANY remaining concrete coordinate at a starred level makes the extent unknown.
+     * `FirstFilled` does not use this path because it is order-aware. The same fact also gates a starred VALUE-LIST
+     * quantifier's complete extent (`No` either side / `NotAll` values side, SPEC-2026-07-22-09).
      */
     private fun starRelevantOf(relevant: Set<RelevantEntity>): (String, Int, List<Int>) -> Boolean {
         val candidates = wellFormed(relevant)
+        val reducedByPath = HashMap<String, List<RelevantEntity>>()
         val decided = HashMap<Triple<String, Int, List<Int>>, Boolean>()
         return { starPath, bindDepth, rowReps ->
             val scope = starScope(starPath, bindDepth, rowReps)
             decided.getOrPut(Triple(starPath, bindDepth, scope.bound)) {
-                // Wildcard-only, and per ITERATION ROW: ONE entity must address this row and wildcard every
-                // level the star iterates. Asking it globally rejected a set that wildcards one outer row and
-                // enumerates the next, where the kernel evaluates the wildcarded row (IF257). It is deliberately
-                // NOT a union across entities: two entities that each pin a different outer row and wildcard
-                // the inner one cover every cell between them, and the kernel is still silent (IF259).
-                candidates.any { e ->
-                    covers(e, starPath) && addressesRow(e, scope.bound) &&
-                        scope.levels.all { i -> i >= e.indices.size || e.indices[i] == RelevantEntity.ALL }
-                }
+                reducedByPath.getOrPut(starPath) { reducedStarRelevantCandidates(candidates, starPath) }
+                    .filter { addressesRow(it, scope.bound) }
+                    .let { scoped ->
+                        scoped.isNotEmpty() && scope.levels.none { level ->
+                            scoped.any { it.indices[level] != RelevantEntity.ALL }
+                        }
+                    }
             }
         }
+    }
+
+    /**
+     * The kernel expands each relevant ancestor group into an identifier for every contained field, then removes
+     * identifiers encompassed by a broader wildcard identifier of the same field name. Its `EntityIterator`
+     * rejects an aggregate extent when ANY identifier left for that operand is concrete at a starred level.
+     * Therefore "any wildcard wins" is wrong: `[1,*,1]` beside an expanded `[0,1,*]` stays mixed and is UNKNOWN,
+     * while `[*,*,*]` encompasses and removes the concrete sibling before the iterator asks.
+     *
+     * Reduction happens before the per-row subtree filter, matching `ValidationCache.reduceRedundancies` followed
+     * by `EntityIterator.certainlyNotInSameSubtree`. This preserves IF257's row-local answer when one outer row is
+     * wildcarded and another is concrete. SumOfProducts does not use this combiner iterator and keeps the separate
+     * [starFullyEnumeratedOf] path. See IF262 for the source trace and discriminating cases.
+     */
+    private fun reducedStarRelevantCandidates(
+        relevant: List<RelevantEntity>,
+        starPath: String,
+    ): List<RelevantEntity> {
+        val depth = pathParts(starPath).size
+        val expanded = relevant.asSequence()
+            .filter { covers(it, starPath) }
+            .map { entity ->
+                RelevantEntity(starPath, entity.indices + List(depth - entity.indices.size) { RelevantEntity.ALL })
+            }
+            .distinctBy { it.indices }
+            .toList()
+        val tuples = expanded.mapTo(HashSet()) { it.indices }
+        val wildcardPatterns = expanded.asSequence()
+            .map { entity -> entity.indices.map { it == RelevantEntity.ALL } }
+            .filter { pattern -> pattern.any { it } }
+            .distinct()
+            .toList()
+        val reduced = expanded.filter { candidate ->
+            wildcardPatterns.none { pattern ->
+                val broader = candidate.indices.mapIndexed { level, index ->
+                    if (pattern[level]) RelevantEntity.ALL else index
+                }
+                broader != candidate.indices && broader in tuples
+            }
+        }
+        return reduced
     }
 
     /** The relevant entities carrying one index per path segment — the shape both gates can reason about. */

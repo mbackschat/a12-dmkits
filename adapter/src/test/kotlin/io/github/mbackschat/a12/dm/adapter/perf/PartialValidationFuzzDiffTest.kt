@@ -1,6 +1,8 @@
 package io.github.mbackschat.a12.dm.adapter.perf
 
 import io.github.mbackschat.a12.dm.adapter.laws.FuzzDiagnostics
+import io.github.mbackschat.a12.dm.adapter.laws.FuzzDiagnostics.PartialRelevantShape
+import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Tag
 import org.junit.jupiter.api.Test
@@ -23,12 +25,37 @@ import org.junit.jupiter.api.Test
 class PartialValidationFuzzDiffTest {
 
     @Test
+    fun generatorCoversTheStructuralAxesOfPartialAggregateRelevance() {
+        val scenario = PerfCatalog.fuzz()
+        val coverage = FuzzDiagnostics.partialRelevantShapeCoverage(
+            scenario,
+            0 until DOC_SEEDS,
+            0 until REL_SEEDS,
+        )
+
+        assertEquals(
+            PartialRelevantShape.entries.toSet(), coverage,
+            "the partial fuzz must generate explicit wildcards, mixed concrete/wildcard coordinates, and " +
+                "several wildcard patterns at one path; random document values cannot cover a missing shape",
+        )
+
+        val conditions = PerfCatalog.fuzzConditions()
+        assertTrue(conditions.any { "SumOfProducts(Parts*/Weight, Parts*/Weight)" in it }) {
+            "the partial fuzz needs a legal nested single-star SumOfProducts whose outer repetition is row-bound"
+        }
+        assertTrue(conditions.any { "Lines*/Parts*/Weight" in it }) {
+            "the partial fuzz needs a multi-star aggregate whose binding stops before the first star"
+        }
+    }
+
+    @Test
     fun randomRelevantSubsetsAgreeWithKernel() {
         val scenario = PerfCatalog.fuzz()
         val diverging = buildList {
             for (docSeed in 0 until DOC_SEEDS) for (relSeed in 0 until REL_SEEDS) {
-                if (!FuzzDiagnostics.partialSignaturesAgree(scenario, docSeed, docSeed * 131 + relSeed)) {
-                    add(docSeed to (docSeed * 131 + relSeed))
+                val relevantSeed = FuzzDiagnostics.partialRelevantSeed(docSeed, relSeed)
+                if (!FuzzDiagnostics.partialSignaturesAgree(scenario, docSeed, relevantSeed)) {
+                    add(docSeed to relevantSeed)
                 }
             }
         }

@@ -12,9 +12,12 @@ import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel
 import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl
 import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer
 import io.github.mbackschat.a12.dm.rulekit.dsl.NumberExpr
+import io.github.mbackschat.a12.dm.rulekit.dsl.Severity
 import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft
 import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft.GroupBuilder
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertFalse
+import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import java.util.function.Consumer
 
@@ -71,6 +74,139 @@ class PartialValidationAggregateDiffTest {
     @Test fun wildcardLinesFiresBoth() =
         agree(setOf(Relevant.of(TOTAL, 0, 0), Relevant.of(LINES, 0, 0)),
             setOf(RelevantEntity.anyRep(TOTAL), RelevantEntity.anyRep(LINES)), "wildcard Lines")
+
+    @Test fun aWildcardFieldCanEstablishTheStarredExtent() {
+        val kernelRelevant = setOf(Relevant.of(TOTAL, 0, 0), Relevant.of(PRICE, 0, 0, 0))
+        val interpreterRelevant = setOf(RelevantEntity.anyRep(TOTAL), RelevantEntity.anyRep(PRICE))
+        val kernelFires = RuntimeLaws.messagesPart(kModel, kDoc(), kernelRelevant).any { it.code == "SUM" }
+        val interpreterFires = DmInterpreter(def).validatePart(iDoc(), interpreterRelevant).messages.any { it.code == "SUM" }
+
+        assertTrue(kernelFires, "the kernel accepts a wildcard field as a complete starred extent")
+        assertEquals(kernelFires, interpreterFires, "the field-wildcard positive control must agree")
+    }
+
+    @Test fun concreteGroupRowsThatSurviveReductionMakeTheStarredExtentUnknown() {
+        val kernelRelevant = setOf(
+            Relevant.of(TOTAL, 0, 0),
+            Relevant.of(PRICE, 1, 0, 1),
+            Relevant.of(LINES, 0, 1),
+            Relevant.of(LINES, 0, 2),
+        )
+        val interpreterRelevant = setOf(
+            RelevantEntity.anyRep(TOTAL),
+            RelevantEntity(PRICE, listOf(1, 0, 1)),
+            RelevantEntity(LINES, listOf(0, 1)),
+            RelevantEntity(LINES, listOf(0, 2)),
+        )
+        val kernelFires = RuntimeLaws.messagesPart(kModel, kDoc(), kernelRelevant).any { it.code == "SUM" }
+        val interpreterFires = DmInterpreter(def).validatePart(iDoc(), interpreterRelevant).messages.any { it.code == "SUM" }
+
+        assertFalse(kernelFires, "the kernel does not merge physical-root and semantic-root selections into one extent")
+        assertEquals(kernelFires, interpreterFires, "mixed root-coordinate modes must not be unioned")
+    }
+
+    @Test fun mixedRelevantIdentifiersAreReducedBeforeTheStarredLevelGate() {
+        val aggregate = Dsl.numberOfDifferentValues(m.flatten("$LINES*/Price")).ge(2)
+        val rule = m.rule(m.group(CART)).name("ND_COORDINATES").errorField(m.num(PRICE))
+            .`when`(aggregate).code("ND_COORDINATES").severity(Severity.ERROR).message(Dsl.en("x")).build()
+        val kernelModel = RuntimeLaws.withRule(
+            json, CART, rule.name(), rule.errorEntityRelPath(), rule.code(), rule.render(),
+        )
+        val interpreterModel = ModelDef(
+            listOf(FieldDef(TOTAL, Kind.NUMBER), FieldDef(QTY, Kind.NUMBER), FieldDef(PRICE, Kind.NUMBER)),
+            listOf(RuleDef("$CART/${rule.name()}", CART, rule.render(), rule.code(), rule.errorEntityRelPath())),
+            repeatableGroups = setOf(LINES),
+            declaredReps = mapOf(LINES to 2),
+        )
+        val kernelDoc = RuntimeLaws.doc().group(CART, 1)
+            .group(LINES, 1, 1).field(PRICE, "600", 1, 1, 1)
+            .group(LINES, 1, 2).field(PRICE, "700", 1, 2, 1)
+        val interpreterDoc = interpreterModel.newDocument().group(CART, 1)
+            .group(LINES, 1, 1).field(PRICE, "600", 1, 1, 1)
+            .group(LINES, 1, 2).field(PRICE, "700", 1, 2, 1)
+        val field = Relevant.of(PRICE, 1, 0, 1)
+        val interpreterField = RelevantEntity(PRICE, listOf(1, 0, 1))
+        val semanticField = Relevant.of(PRICE, 0, 0, 0)
+        val interpreterSemanticField = RelevantEntity.anyRep(PRICE)
+        val selections = listOf(
+            "field-only" to (setOf(field) to setOf(interpreterField)),
+            "semantic-root groups" to (
+                setOf(field, Relevant.of(LINES, 0, 1), Relevant.of(LINES, 0, 2)) to
+                    setOf(
+                        interpreterField,
+                        RelevantEntity(LINES, listOf(0, 1)),
+                        RelevantEntity(LINES, listOf(0, 2)),
+                    )
+                ),
+            "semantic field with concrete groups" to (
+                setOf(semanticField, Relevant.of(LINES, 0, 1), Relevant.of(LINES, 0, 2)) to
+                    setOf(
+                        interpreterSemanticField,
+                        RelevantEntity(LINES, listOf(0, 1)),
+                        RelevantEntity(LINES, listOf(0, 2)),
+                    )
+                ),
+            "physical field with wildcard group" to (
+                setOf(field, Relevant.of(LINES, 0, 0)) to
+                    setOf(interpreterField, RelevantEntity.anyRep(LINES))
+                ),
+            "physical-root groups" to (
+                setOf(field, Relevant.of(LINES, 1, 1), Relevant.of(LINES, 1, 2)) to
+                    setOf(
+                        interpreterField,
+                        RelevantEntity(LINES, listOf(1, 1)),
+                        RelevantEntity(LINES, listOf(1, 2)),
+                    )
+                ),
+        )
+        val readings = selections.map { (label, relevant) ->
+            val (kernelRelevant, interpreterRelevant) = relevant
+            val kernelFires = RuntimeLaws.messagesPart(kernelModel, kernelDoc, kernelRelevant)
+                .any { it.code == rule.code() }
+            val interpreterFires = DmInterpreter(interpreterModel).validatePart(interpreterDoc, interpreterRelevant)
+                .messages.any { it.code == rule.code() }
+            "$label kernel=$kernelFires interpreter=$interpreterFires"
+        }
+
+        assertEquals(
+            listOf(
+                "field-only kernel=true interpreter=true",
+                "semantic-root groups kernel=false interpreter=false",
+                "semantic field with concrete groups kernel=true interpreter=true",
+                "physical field with wildcard group kernel=true interpreter=true",
+                "physical-root groups kernel=false interpreter=false",
+            ),
+            readings,
+            "semantic and physical coordinate modes are distinct partial-validation selections",
+        )
+    }
+
+    @Test fun sumOfProductsAcceptsCompleteWildcardFieldExtents() {
+        val rule = cond(Dsl.sumOfProducts(m.flatten("$LINES*/Qty"), m.flatten("$LINES*/Price")))
+        val kernelModel = RuntimeLaws.withRule(json, CART, "SOP_FIELDS", "../Total", "SOP_FIELDS", rule)
+        val interpreterModel = ModelDef(
+            listOf(FieldDef(TOTAL, Kind.NUMBER), FieldDef(QTY, Kind.NUMBER), FieldDef(PRICE, Kind.NUMBER)),
+            listOf(RuleDef("$CART/SOP_FIELDS", CART, rule, "SOP_FIELDS", "../Total")),
+            repeatableGroups = setOf(LINES),
+            declaredReps = mapOf(LINES to 2),
+        )
+        val kernelRelevant = setOf(
+            Relevant.of(TOTAL, 0, 0),
+            Relevant.of(QTY, 0, 0, 0),
+            Relevant.of(PRICE, 0, 0, 0),
+        )
+        val interpreterRelevant = setOf(
+            RelevantEntity.anyRep(TOTAL),
+            RelevantEntity.anyRep(QTY),
+            RelevantEntity.anyRep(PRICE),
+        )
+        val kernelFires = RuntimeLaws.messagesPart(kernelModel, kDoc(), kernelRelevant).any { it.code == "SOP_FIELDS" }
+        val interpreterFires = DmInterpreter(interpreterModel).validatePart(iDoc(), interpreterRelevant)
+            .messages.any { it.code == "SOP_FIELDS" }
+
+        assertTrue(kernelFires, "SumOfProducts uses complete field extent rather than the combiner group gate")
+        assertEquals(kernelFires, interpreterFires, "the SumOfProducts sibling must retain its weaker field-extent gate")
+    }
 
     @Test fun concreteBothRowsOnlyFirstFilled() =
         agree(setOf(Relevant.of(TOTAL, 0, 0), Relevant.of(LINES, 0, 1), Relevant.of(LINES, 0, 2)),

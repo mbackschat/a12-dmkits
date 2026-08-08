@@ -46,6 +46,13 @@ import kotlin.random.Random
  */
 object FuzzDiagnostics {
 
+    /** Structural relevant-set shapes the partial fuzz must generate, independently of document values. */
+    enum class PartialRelevantShape {
+        EXPLICIT_WILDCARD,
+        MIXED_COORDINATES,
+        MULTIPLE_PATTERNS_AT_ONE_PATH,
+    }
+
     /** A recorded placement, so a seed's generated document can be replayed (and subsetted for [shrink]). */
     private data class Place(val kind: Kind, val path: String, val reps: List<Int>, val value: String?) {
         enum class Kind { GROUP, FIELD, EMPTY }
@@ -276,21 +283,66 @@ object FuzzDiagnostics {
 
     /**
      * Build matching relevant sets — the kernel's [RuntimeLaws.Relevant] form and the interpreter's
-     * [RelevantEntity] form — from [places]: each placement is included with ~50% probability under a
-     * [relevantSeed]-seeded RNG, as a CONCRETE pointer (its placement reps). A relevant GROUP makes its
-     * descendants relevant on BOTH engines (kernel `expandRelevantGroup` ⇄ interpreter ancestor-prefix match),
-     * so including groups exercises that expansion. The two sets are the same instances in the two encodings.
+     * [RelevantEntity] form from [places]. Each placement is included with ~50% probability under a
+     * [relevantSeed]-seeded RNG. One seed class keeps its coordinates concrete; the others replace deterministic
+     * coordinate subsets with ALL. A relevant GROUP makes its descendants relevant on BOTH engines (kernel
+     * `expandRelevantGroup` ⇄ interpreter ancestor-prefix match), so including groups exercises that expansion.
+     * The two sets are the same instances in the two encodings.
      */
     private fun relevantSets(places: List<Place>, relevantSeed: Int): Pair<Set<RuntimeLaws.Relevant>, Set<RelevantEntity>> {
         val rng = Random(relevantSeed)
         val k = HashSet<RuntimeLaws.Relevant>()
         val i = HashSet<RelevantEntity>()
-        for (p in places) if (rng.nextBoolean()) {
-            k += RuntimeLaws.Relevant.of(p.path, *p.reps.toIntArray())
-            i += RelevantEntity(p.path, p.reps)
+        for ((ordinal, p) in places.withIndex()) if (rng.nextBoolean()) {
+            val indices = relevantIndices(p.reps, ordinal, relevantSeed)
+            k += RuntimeLaws.Relevant.of(p.path, *indices.toIntArray())
+            i += RelevantEntity(p.path, indices)
         }
         return k to i
     }
+
+    /**
+     * Concrete-only seeds retain the old subset net. The other two deterministic seed classes wildcard a
+     * different subset of coordinate levels for each placement, which produces the mixed wildcard/concrete
+     * patterns the starred gates branch on without making a failing case irreproducible.
+     */
+    private fun relevantIndices(indices: List<Int>, ordinal: Int, relevantSeed: Int): List<Int> =
+        when (relevantSeed % RELEVANT_SHAPE_CLASSES) {
+            0 -> indices
+            1 -> indices.mapIndexed { level, index ->
+                if ((ordinal + level + relevantSeed) % 2 == 0) RelevantEntity.ALL else index
+            }
+            else -> indices.mapIndexed { level, index ->
+                if ((ordinal * 31 + level * 17 + relevantSeed) % 3 == 0) RelevantEntity.ALL else index
+            }
+        }
+
+    /** The structural relevant-set shapes reached by the same deterministic seed matrix as the differential. */
+    fun partialRelevantShapeCoverage(
+        scenario: PerfScenario,
+        docSeeds: IntRange,
+        relevantSeeds: IntRange,
+    ): Set<PartialRelevantShape> = buildSet {
+        for (docSeed in docSeeds) for (relevantSeed in relevantSeeds) {
+            val effectiveSeed = partialRelevantSeed(docSeed, relevantSeed)
+            val entities = relevantSets(record(scenario, docSeed), effectiveSeed).second
+            val patternsByPath = HashMap<String, MutableSet<List<Boolean>>>()
+            for (entity in entities) {
+                val pattern = entity.indices.map { it == RelevantEntity.ALL }
+                if (pattern.any { it }) add(PartialRelevantShape.EXPLICIT_WILDCARD)
+                if (pattern.any { it } && pattern.any { !it }) add(PartialRelevantShape.MIXED_COORDINATES)
+                patternsByPath.getOrPut(entity.path) { HashSet() } += pattern
+            }
+            if (patternsByPath.values.any { it.size > 1 }) {
+                add(PartialRelevantShape.MULTIPLE_PATTERNS_AT_ONE_PATH)
+            }
+        }
+    }
+
+    /** Single source of the partial fuzz's reproducible document-seed/relevant-seed pairing. */
+    fun partialRelevantSeed(docSeed: Int, relevantSeed: Int): Int = docSeed * 131 + relevantSeed
+
+    private const val RELEVANT_SHAPE_CLASSES = 3
 
     private fun interpPartialSignatures(model: ModelDef, places: List<Place>, rel: Set<RelevantEntity>): List<String> =
         DmInterpreter(model).validatePart(interpDoc(model, places), rel).messages
@@ -336,7 +388,12 @@ object FuzzDiagnostics {
         val j = javaPartialSignatures(scenario.kernelModel, places, kRel)
         val report = splitReport(i, k, j)
         return if (report.isEmpty()) "seed=$seed/rel=$relevantSeed: signatures agree"
-        else "seed=$seed/rel=$relevantSeed  relevant=${iRel.size}/${places.size}$report"
+        else "seed=$seed/rel=$relevantSeed  relevant=${iRel.size}/${places.size}$report\n" +
+            "  full-interpreter=${interpDetail(scenario.interpModel, places).signatures}\n" +
+            "  full-kernel=${kernelDetail(scenario.kernelModel, places).signatures}\n" +
+            iRel.sortedWith(compareBy<RelevantEntity> { it.path }.thenBy { it.indices.joinToString(",") })
+                .joinToString("\n") { "  relevant ${it.path}${it.indices}" } + "\n" +
+            places.joinToString("\n") { "  ${it.kind} ${it.path}${it.reps} ${it.value ?: ""}".trimEnd() }
     }
 
     /** Multiset difference `a − b` (each element of [b] cancels at most one of [a]). */

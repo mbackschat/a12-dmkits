@@ -1119,6 +1119,8 @@ object PerfCatalog {
     private val fzOrdered = cartLines.date("OrderedOn")
     private val fzDue = cartLines.date("DueBy")
     private val fzWeight = cartParts.num("Weight")
+    private val nestedWeights = cartLines.flatten("Parts*/Weight")
+    private val allWeights = cart.flatten("Lines*/Parts*/Weight")
     private val fuzzFields = listOf(
         FieldDef("/Cart/Lines/ItemId", Kind.STRING),
         FieldDef("/Cart/Lines/Qty", Kind.NUMBER, scale = 0),
@@ -1142,6 +1144,8 @@ object PerfCatalog {
         cart.errorRule("TP", fzPrice.field(), Dsl.sum(cart.flatten("Lines*/Price")).gt(1000)),
         cart.errorRule("FF", fzQty.field(), Dsl.firstFilledNumber(cart.flatten("Lines*/Qty")).gt(50)),   // first specified row, skip empties
         cart.errorRule("SP", fzQty.field(), Dsl.sumOfProducts(cart.flatten("Lines*/Qty"), cart.flatten("Lines*/Price")).gt(100000)),   // Σ qᵢ·pᵢ, row-paired
+        cartLines.errorRule("NS", fzQty.field(), fzQty.filled().and(Dsl.sumOfProducts(nestedWeights, nestedWeights).gt(100000))), // Parts* is row-bound by the current Line
+        cart.errorRule("MS", fzWeight.field(), Dsl.sum(allWeights).gt(1000)), // legal two-star extent
         cartLines.errorRule("DV", fzPrice.field(), fzQty.filled().and(fzPrice.asNumber().dividedBy(fzQty.asNumber()).gt(5))),   // division (+ div-by-zero quiet)
         cartLines.errorRule("PW", fzQty.field(), fzQty.asNumber().toThePowerOf(Dsl.number("2")).gt(100)),                       // power
         cartLines.errorRule("AB", fzPrice.field(), Dsl.abs(fzPrice.asNumber()).gt(500)),                                        // |x|
