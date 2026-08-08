@@ -703,6 +703,45 @@ object PerfHarness {
     }
 
     /**
+     * Assert a growth estimate stays under a CATASTROPHE floor, **re-measuring before it fails**.
+     *
+     * The floor exists to catch an algorithmic blowup: linear medians ≈4x, quadratic ≈16x, and the trip line
+     * sits at [PerfBounds.SUB_QUADRATIC_MAX] between them. A blowup is a property of the code, so it breaches
+     * every independent re-measurement; a contended CI slice inflates one estimate by a few percent and does
+     * not reproduce. Requiring the breach to repeat therefore removes the false RED without touching the floor
+     * or admitting a single false GREEN — a genuine 16x can never produce a sub-floor attempt.
+     *
+     * This is not a licence to run perf assertions under load. It is the acknowledgement that a ratio of two
+     * timings amplifies noise on both ends, and that a shared-vCPU runner (GitHub's free tier) is a normal
+     * place for this estate to run. The happy path costs exactly one estimate, as before; only a breach pays
+     * for the retry, and the failure names every attempt so a real regression is unmistakable.
+     */
+    fun assertGrowthBelowCatastropheFloor(
+        label: String,
+        floor: Double = PerfBounds.SUB_QUADRATIC_MAX,
+        attempts: Int = GROWTH_RETRY_ATTEMPTS,
+        estimate: () -> Growth,
+    ) {
+        require(attempts > 0) { "attempts must be positive" }
+        val seen = mutableListOf<Growth>()
+        repeat(attempts) {
+            val growth = estimate()
+            if (growth.ratio < floor) return
+            seen += growth
+        }
+        throw AssertionError(
+            "$label median within-pair N/4N growth stayed at or above the ${floor}x catastrophe floor on all " +
+                "$attempts independent re-measurements: " +
+                seen.joinToString(", ") { "${it.ratio} (${it.smallMs}ms -> ${it.largeMs}ms)" } +
+                ". Load inflates one estimate and does not reproduce; an algorithmic blowup does " +
+                "(linear medians ~4x, quadratic ~16x).",
+        )
+    }
+
+    /** Independent re-measurements a catastrophe floor demands before it calls a breach real. */
+    const val GROWTH_RETRY_ATTEMPTS = 3
+
+    /**
      * Apply the paired estimator to interpreter, dynamic Groovy, and generated Java in one reusable-engine run.
      * Both exact instances are tri-checked before timing. The result is accepted only when the interpreter beats
      * both strategies at N and 4N and its median within-pair growth is no worse than either kernel strategy.

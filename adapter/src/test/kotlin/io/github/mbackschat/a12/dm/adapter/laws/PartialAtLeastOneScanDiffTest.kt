@@ -25,7 +25,15 @@ class PartialAtLeastOneScanDiffTest {
                 .group("Items") { it.repeatable(50).indexField("Tag").stringField("Tag") { } }
         }.build().toJson()
 
+    // One model and one static-Java engine for all seven shapes — see the sibling class on why a per-case
+    // rebuild is not acceptable in a task that also carries timing floors.
     private val engines = mutableMapOf<String, RuntimeLaws.JavaKernelEngine>()
+    private val model by lazy {
+        RuntimeLaws.withRule(
+            json, "/Order", "ALO", "../Items/Tag", "ALO",
+            "AtLeastOneFieldValueIncludedInValueList(/Order/Items*/Tag In \"A\")",
+        )
+    }
 
     @Test
     fun aDuplicateIndexCellCompromisesTheRuleOnlyWhenItsPartnerIsRelevant() {
@@ -61,8 +69,6 @@ class PartialAtLeastOneScanDiffTest {
 
     /** Tags: row 1 matches the value list, rows 2 and 3 do not. */
     private fun verdicts(selection: List<Sel>): String {
-        val cond = "AtLeastOneFieldValueIncludedInValueList(/Order/Items*/Tag In \"A\")"
-        val model = RuntimeLaws.withRule(json, "/Order", "ALO", "../Items/Tag", "ALO", cond)
         val kDoc = RuntimeLaws.doc().group("/Order", 1).field(ACK, "x", 1, 1)
         // Duplicated index values: rows 1 and 2 both carry "A", so BOTH are uniqueIndex-compromised
         // while still being the cells that match the value list. Row 4 is empty (mandatory-empty).

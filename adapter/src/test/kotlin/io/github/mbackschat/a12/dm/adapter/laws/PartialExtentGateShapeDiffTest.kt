@@ -4,6 +4,7 @@ import io.github.mbackschat.a12.dm.adapter.laws.RuntimeLaws.Relevant
 import io.github.mbackschat.a12.dm.interpreter.DmInterpreter
 import io.github.mbackschat.a12.dm.interpreter.eval.newDocument
 import io.github.mbackschat.a12.dm.interpreter.load.ModelLoader
+import io.github.mbackschat.a12.dm.interpreter.model.ModelDef
 import io.github.mbackschat.a12.dm.interpreter.model.RelevantEntity
 import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft
 import org.junit.jupiter.api.Assertions.assertEquals
@@ -23,7 +24,12 @@ class PartialExtentGateShapeDiffTest {
                 .group("Items") { it.repeatable(50).stringField("Tag") { }.numberField("Qty") { } }
         }.build().toJson()
 
+    // Model text, loaded interpreter model, and the static-Java engine are built ONCE per condition and shared
+    // across the seven relevant-set shapes. Rebuilding them per case is what the CLAUDE.md rule about new tests
+    // perturbing timing floors in the same task is about: the codegen is the cost, not the seven comparisons.
     private val engines = mutableMapOf<String, RuntimeLaws.JavaKernelEngine>()
+    private val models = mutableMapOf<String, String>()
+    private val defs = mutableMapOf<String, ModelDef>()
 
     @Test
     fun theValueListAndAggregateExtentGatesReadTheSameRelevantSet() {
@@ -71,9 +77,10 @@ class PartialExtentGateShapeDiffTest {
     }
 
     private fun verdicts(condition: String, selection: List<Sel>): String {
-        val cond = "FieldFilled(/Order/Ack) And ($condition)"
-        val model = RuntimeLaws.withRule(json, "/Order", "EXT", "../Ack", "EXT", cond)
-        val def = ModelLoader.load(model)
+        val model = models.getOrPut(condition) {
+            RuntimeLaws.withRule(json, "/Order", "EXT", "../Ack", "EXT", "FieldFilled(/Order/Ack) And ($condition)")
+        }
+        val def = defs.getOrPut(model) { ModelLoader.load(model) }
         val kDoc = RuntimeLaws.doc().group("/Order", 1).field(ACK, "X", 1, 1)
         val iDoc = def.newDocument().group("/Order", 1).field(ACK, "X", 1, 1)
         listOf("C", "D").forEachIndexed { idx, tag ->

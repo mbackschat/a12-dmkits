@@ -25,18 +25,26 @@ import kotlin.test.assertTrue
  */
 class StarRelevanceReductionGrowthTest {
 
+    /**
+     * Re-measured before failing. The claim is that doubling the pattern count does not quadruple the work, and
+     * a quadratic reduction breaches that on every attempt; a contended slice inflates one ratio and does not
+     * reproduce. The bar is unchanged and a real 4x can never produce a passing attempt.
+     */
     @Test
     fun theDominanceReductionStaysSubQuadraticInDistinctWildcardPatterns() {
-        val small = measure(PATTERNS)
-        val large = measure(PATTERNS * 2)
-        val growth = large.toDouble() / small.coerceAtLeast(1)
-
+        val seen = mutableListOf<String>()
+        repeat(ATTEMPTS) {
+            val small = measure(PATTERNS)
+            val large = measure(PATTERNS * 2)
+            val growth = large.toDouble() / small.coerceAtLeast(1)
+            if (growth < 3.0) return
+            seen += "${"%.2f".format(growth)}x (${small / 1_000_000}ms -> ${large / 1_000_000}ms)"
+        }
         assertTrue(
-            growth < 3.0,
+            false,
             "doubling the number of distinct wildcard patterns at one operand path must not quadruple the " +
-                "reduction's cost: ${PATTERNS} patterns took ${small / 1_000_000}ms, ${PATTERNS * 2} took " +
-                "${large / 1_000_000}ms, growth ${"%.2f".format(growth)}x against a 3.0x bar " +
-                "(quadratic would be 4.0x)",
+                "reduction's cost (${PATTERNS} -> ${PATTERNS * 2} patterns). All $ATTEMPTS independent " +
+                "re-measurements breached the 3.0x bar: ${seen.joinToString(", ")} (quadratic would be 4.0x)",
         )
     }
 
@@ -82,6 +90,7 @@ class StarRelevanceReductionGrowthTest {
         const val PATTERNS = 1500
         const val WARMUP = 2
         const val REPEATS = 3
+        const val ATTEMPTS = 3
         const val FIELD = "/Cart/G1/G2/G3/G4/G5/G6/G7/G8/G9/G10/G11/G12/G13/G14/Qty"
 
         private val groups = (1..DEPTH).map { "/Cart/" + (1..it).joinToString("/") { i -> "G$i" } }

@@ -63,14 +63,11 @@ class CharsetPerfTest {
     }
 
     @Test fun bmpAndGraphemePathsStayBelowTheFourfoldGrowthCatastropheFloor() {
-        val bmpGrowth = medianWithinPairGrowth(LegalCharset.BMP)
-        val graphemeGrowth = medianWithinPairGrowth(dinWithGraphemes)
-        assertTrue(bmpGrowth.ratio < PerfBounds.SUB_QUADRATIC_MAX,
-            "BMP median within-pair N/4N growth ${bmpGrowth.ratio} must stay below the " +
-                "${PerfBounds.SUB_QUADRATIC_MAX}× catastrophe floor")
-        assertTrue(graphemeGrowth.ratio < PerfBounds.SUB_QUADRATIC_MAX,
-            "grapheme median within-pair N/4N growth ${graphemeGrowth.ratio} must stay below the " +
-                "${PerfBounds.SUB_QUADRATIC_MAX}× catastrophe floor")
+        // Re-measured before failing: this class is UNTAGGED, so it runs on every build including shared CI,
+        // where a contended slice inflates a ratio by a few percent. A virtual-call blowup is ~16x and
+        // breaches every attempt, so the floor is unchanged and no false green is admitted.
+        PerfHarness.assertGrowthBelowCatastropheFloor("BMP") { medianWithinPairGrowth(LegalCharset.BMP) }
+        PerfHarness.assertGrowthBelowCatastropheFloor("grapheme") { medianWithinPairGrowth(dinWithGraphemes) }
     }
 
     private fun medianWithinPairGrowth(charset: LegalCharset): Growth {

@@ -210,7 +210,11 @@ class InterpreterDocumentationTest {
             "public repository README" to publicReadme,
             "current release notes" to currentReleaseNotes,
         )) {
-            assertTrue(text.contains("234 kB gzip"), "$surface omits the measured browser footprint")
+            // The literal is the CHEAP half of a two-guard pair, deliberately: this test runs without the
+            // browser build, while `verifyInterpreterBrowserSizeDocumentation` derives the real figure from
+            // the packed bundle's `bundle-size.json` and fails if a README drifts from it. Update both when
+            // the bundle moves — the Gradle task's message names the number to use.
+            assertTrue(text.contains("236 kB gzip"), "$surface omits the measured browser footprint")
             assertTrue(text.contains("10.5 ms median"), "$surface omits the representative browser timing")
             assertTrue(text.contains("203.6 ms median"), "$surface omits the stress browser timing")
             assertTrue(text.contains("2026-08-03"), "$surface omits the measurement date")
