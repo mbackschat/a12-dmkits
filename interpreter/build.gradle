@@ -2851,7 +2851,11 @@ def verifyInterpreterBrowserSizeDocumentation = tasks.register(
         if (!(measurement.gzipBytes instanceof Number) || measurement.gzipBytes <= 0) {
             throw new GradleException("invalid browser bundle measurement: ${measurement.gzipBytes}")
         }
-        def expected = "${Math.round(measurement.gzipBytes / 1_000.0d)} kB gzip"
+        // The public prose says "about": publish the nearest 10 kB, while retaining exact bytes in the report.
+        // A 1 kB bucket manufactured documentation churn for 106-byte movements around a rounding boundary.
+        def publicBucketKb = 10
+        def expectedKb = Math.round(measurement.gzipBytes / (publicBucketKb * 1_000.0d)) * publicBucketKb
+        def expected = "${expectedKb} kB gzip"
         [
             rootProject.file('README.md'),
             file('README.md'),
@@ -2859,7 +2863,7 @@ def verifyInterpreterBrowserSizeDocumentation = tasks.register(
         ].each { readme ->
             if (!readme.getText('UTF-8').contains(expected)) {
                 throw new GradleException(
-                    "${rootProject.relativePath(readme)} must state measured browser size '${expected}' " +
+                    "${rootProject.relativePath(readme)} must state approximate browser size '${expected}' " +
                         "from ${rootProject.relativePath(browserBundleSize.get().asFile)}",
                 )
             }

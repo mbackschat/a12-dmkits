@@ -204,17 +204,33 @@ class InterpreterDocumentationTest {
             releases.first().range.first,
             releases.getOrNull(1)?.range?.first ?: changelog.length,
         )
-        for ((surface, text) in listOf(
+        val surfaces = listOf(
             "main repository README" to Files.readString(repoFile("README.md")),
             "interpreter package README" to Files.readString(repoFile("interpreter/README.md")),
             "public repository README" to publicReadme,
             "current release notes" to currentReleaseNotes,
-        )) {
-            // The literal is the CHEAP half of a two-guard pair, deliberately: this test runs without the
-            // browser build, while `verifyInterpreterBrowserSizeDocumentation` derives the real figure from
-            // the packed bundle's `bundle-size.json` and fails if a README drifts from it. Update both when
-            // the bundle moves — the Gradle task's message names the number to use.
-            assertTrue(text.contains("240 kB gzip"), "$surface omits the measured browser footprint")
+        )
+        val footprint = Regex("""(\d+) kB gzip""")
+        val publishedFootprints = surfaces.associate { (surface, text) ->
+            surface to footprint.find(text)?.groupValues?.get(1)?.toInt()
+        }
+        assertTrue(
+            publishedFootprints.values.none { it == null },
+            "public surfaces omit the measured browser footprint: $publishedFootprints",
+        )
+        assertEquals(
+            1,
+            publishedFootprints.values.toSet().size,
+            "public surfaces disagree on the approximate browser footprint: $publishedFootprints",
+        )
+        assertEquals(
+            0,
+            publishedFootprints.values.filterNotNull().toSet().single() % 10,
+            "the public 'about' footprint must use the nearest 10 kB bucket",
+        )
+        for ((surface, text) in surfaces) {
+            // This is the CHEAP half of a two-guard pair: it locks cross-surface consistency without a browser
+            // build. `verifyInterpreterBrowserSizeDocumentation` derives the 10 kB bucket from exact packed bytes.
             assertTrue(text.contains("10.5 ms median"), "$surface omits the representative browser timing")
             assertTrue(text.contains("203.6 ms median"), "$surface omits the stress browser timing")
             assertTrue(text.contains("2026-08-03"), "$surface omits the measurement date")
