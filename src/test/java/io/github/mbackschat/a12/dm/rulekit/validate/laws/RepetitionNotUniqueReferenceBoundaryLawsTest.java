@@ -35,15 +35,14 @@ import io.github.mbackschat.a12.dm.rulekit.validate.ValidationResult;
  *         ExtraNote            position 3
  * </pre>
  *
- * <p><b>Position 4 of the requested matrix — "the terminal key group when it differs from {@code @From}" — is
- * structurally unreachable, and NOT because of the reference rule.</b> It needs a key crossing two repeatable
- * levels, and there two wildcard laws close the door from both sides: a star in an RNU key is refused
- * ({@code MVK_NO_WILDCARDS_ALLOWED}) while an unstarred key whose inner repeatable level the error field does not
- * pin demands one ({@code MVK_NO_WILDCARD} — "Missing specification of an asterisk for 'Block/Lines/Parts'"). The
- * only surviving shape puts the error field IN the terminal key group, and that is then refused
- * {@code MVK_ERROR_FIELD_AND_ITERATION_INVALID} when {@code @From} is authored, or
- * {@code MVK_ERROR_FIELD_NOT_REFERENCED} when it is not — so the reference rule is never what decides it.
- * Locked below as the second case.
+ * <p><b>Position 4 of the requested matrix is measured here only for one single terminal key and a distinct
+ * non-key terminal error field.</b> In that fixture two wildcard laws close the door from both sides: a star in an
+ * RNU key is refused ({@code MVK_NO_WILDCARDS_ALLOWED}) while an unstarred key whose inner repeatable level the
+ * error field does not pin demands one ({@code MVK_NO_WILDCARD}). The remaining terminal-error shape is refused
+ * {@code MVK_ERROR_FIELD_AND_ITERATION_INVALID} with {@code @From}, or
+ * {@code MVK_ERROR_FIELD_NOT_REFERENCED} without it. This does not generalize to a composite ancestor and
+ * descendant key whose descendant is the error field; {@code RepetitionNotUniqueKeyOrderDiffTest} locks that
+ * admitted counterexample.
  */
 class RepetitionNotUniqueReferenceBoundaryLawsTest {
 
@@ -64,7 +63,7 @@ class RepetitionNotUniqueReferenceBoundaryLawsTest {
                 .build().toJson();
     }
 
-    /** A key crossing TWO repeatable levels — the only shape in which position 4 is expressible at all. */
+    /** The measured single-key fixture for position 4. */
     private static String twoLevelJson() {
         return DocumentModelDraft.named("catalog2").locale("en_US")
                 .rootGroup("Catalog", c -> c
@@ -118,15 +117,13 @@ class RepetitionNotUniqueReferenceBoundaryLawsTest {
     }
 
     @Test
-    void aTwoLevelKeyForcesTheErrorFieldIntoTheTerminalKeyGroupAndIsThenRefusedAnyway() {
+    void aSingleTerminalKeyWithADistinctErrorFieldIsClosedFromBothSides() {
         String json = twoLevelJson();
         String bare = "RepetitionNotUnique(Block/Lines/Parts/PartKey)";
         String starred = "RepetitionNotUnique(Block/Lines/Parts*/PartKey)";
 
         Map<String, String> actual = new LinkedHashMap<>();
         // the error field IN the terminal key group: the only shape the wildcard laws leave open
-        actual.put("in key group | bare | @From",
-                outcome(json, "../Block/Lines/Parts/PartNote", bare + "".replace(")", ")")));
         actual.put("in key group | bare | @From scope",
                 outcome(json, "../Block/Lines/Parts/PartNote",
                         "RepetitionNotUnique(Block/Lines/Parts/PartKey @From Block/Lines)"));
@@ -135,10 +132,9 @@ class RepetitionNotUniqueReferenceBoundaryLawsTest {
         actual.put("in key group | starred", outcome(json, "../Block/Lines/Parts/PartNote", starred));
 
         Map<String, String> expected = new LinkedHashMap<>();
-        expected.put("in key group | bare | @From", "MVK_ERROR_FIELD_NOT_REFERENCED");
         expected.put("in key group | bare | @From scope", "MVK_ERROR_FIELD_AND_ITERATION_INVALID");
         expected.put("in key group | bare | no @From", "MVK_ERROR_FIELD_NOT_REFERENCED");
         expected.put("in key group | starred", "MVK_NO_WILDCARDS_ALLOWED");
-        assertEquals(expected, actual, "the two-level key is closed from both sides");
+        assertEquals(expected, actual, "the single terminal key with a distinct non-key error is closed from both sides");
     }
 }

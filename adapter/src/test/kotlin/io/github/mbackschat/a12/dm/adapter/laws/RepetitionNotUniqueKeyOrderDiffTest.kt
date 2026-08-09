@@ -12,8 +12,9 @@ import org.junit.jupiter.api.Test
 
 /**
  * Tri-engine law for the order-independent row domain of a same-path composite `RepetitionNotUnique` key.
- * The ancestor and descendant key spellings are the same relation; authored order may change neither model
- * support nor duplicate pointers. Parallel key paths remain kernel-rejected by `IterationLawsTest`.
+ * The ancestor and descendant key spellings are the same relation, with or without an ancestor `@From`;
+ * authored order may change neither model support nor duplicate pointers. Parallel key paths remain
+ * kernel-rejected by `IterationLawsTest`.
  */
 class RepetitionNotUniqueKeyOrderDiffTest {
 
@@ -43,6 +44,20 @@ class RepetitionNotUniqueKeyOrderDiffTest {
                     .`when`(Dsl.repetitionNotUnique(bound.field(OPTIONAL), bound.field(MARKER)))
                     .severity(Severity.ERROR).message(Dsl.en("The nested key tuple is duplicated.")).build()
             }
+            session.addRule { bound ->
+                bound.rule(bound.group(ROOT)).name("ScopedAncestorFirst").code(SCOPED_ANCESTOR_FIRST)
+                    .errorField(bound.str(OPTIONAL))
+                    .`when`(Dsl.repetitionNotUnique(bound.field(MARKER), bound.field(OPTIONAL))
+                        .from(bound.group(OUTER)))
+                    .severity(Severity.ERROR).message(Dsl.en("The scoped nested key tuple is duplicated.")).build()
+            }
+            session.addRule { bound ->
+                bound.rule(bound.group(ROOT)).name("ScopedDescendantFirst").code(SCOPED_DESCENDANT_FIRST)
+                    .errorField(bound.str(OPTIONAL))
+                    .`when`(Dsl.repetitionNotUnique(bound.field(OPTIONAL), bound.field(MARKER))
+                        .from(bound.group(OUTER)))
+                    .severity(Severity.ERROR).message(Dsl.en("The scoped nested key tuple is duplicated.")).build()
+            }
             session.validate()
         }
         .toJson()
@@ -57,6 +72,10 @@ class RepetitionNotUniqueKeyOrderDiffTest {
                 "$ANCESTOR_FIRST|OMISSION_ERROR@/Root[1]/Outer[2]/Middle[1]/Inner[1]/Optional",
                 "$DESCENDANT_FIRST|OMISSION_ERROR@/Root[1]/Outer[1]/Middle[1]/Inner[1]/Optional",
                 "$DESCENDANT_FIRST|OMISSION_ERROR@/Root[1]/Outer[2]/Middle[1]/Inner[1]/Optional",
+                "$SCOPED_ANCESTOR_FIRST|OMISSION_ERROR@/Root[1]/Outer[1]/Middle[1]/Inner[1]/Optional",
+                "$SCOPED_ANCESTOR_FIRST|OMISSION_ERROR@/Root[1]/Outer[2]/Middle[1]/Inner[1]/Optional",
+                "$SCOPED_DESCENDANT_FIRST|OMISSION_ERROR@/Root[1]/Outer[1]/Middle[1]/Inner[1]/Optional",
+                "$SCOPED_DESCENDANT_FIRST|OMISSION_ERROR@/Root[1]/Outer[2]/Middle[1]/Inner[1]/Optional",
             ),
         )
         assertTriEngine(
@@ -76,7 +95,7 @@ class RepetitionNotUniqueKeyOrderDiffTest {
             markers.forEachIndexed { index, marker -> doc.field(MARKER, marker, 1, index + 1, 1) }
             for (inner in 1..4) doc.field(OPTIONAL, "V$inner", 1, 3, 2, inner, 1)
         }
-        val codes = setOf(ANCESTOR_FIRST, DESCENDANT_FIRST)
+        val codes = setOf(ANCESTOR_FIRST, DESCENDANT_FIRST, SCOPED_ANCESTOR_FIRST, SCOPED_DESCENDANT_FIRST)
         fun kernelSignatures(messages: List<RuntimeLaws.Msg>) = messages.filter { it.code() in codes }
             .mapTo(sortedSetOf()) { "${it.code()}|${it.type()}@${it.field()}" }
         val dynamic = kernelSignatures(RuntimeLaws.messages(modelJson, kernelDocument()))
@@ -93,10 +112,13 @@ class RepetitionNotUniqueKeyOrderDiffTest {
 
     private companion object {
         const val ROOT = "/Root"
+        const val OUTER = "/Root/Outer"
         const val INNER = "/Root/Outer/Middle/Inner"
         const val MARKER = "/Root/Outer/Marker"
         const val OPTIONAL = "/Root/Outer/Middle/Inner/Optional"
         const val ANCESTOR_FIRST = "RNU_ANCESTOR_FIRST"
         const val DESCENDANT_FIRST = "RNU_DESCENDANT_FIRST"
+        const val SCOPED_ANCESTOR_FIRST = "RNU_SCOPED_ANCESTOR_FIRST"
+        const val SCOPED_DESCENDANT_FIRST = "RNU_SCOPED_DESCENDANT_FIRST"
     }
 }
