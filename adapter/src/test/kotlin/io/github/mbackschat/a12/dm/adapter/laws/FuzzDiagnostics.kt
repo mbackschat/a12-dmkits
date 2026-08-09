@@ -100,11 +100,10 @@ object FuzzDiagnostics {
         return builder
     }
 
-    // The static-JAVA codegen engine per model — WI-1's third engine. The in-memory javac compile is
-    // once-per-model, so it is cached and reused across every seed of a scenario (keyed on the model JSON).
-    private val javaEngines = java.util.concurrent.ConcurrentHashMap<String, RuntimeLaws.JavaKernelEngine>()
+    // The static-JAVA codegen engine per model — WI-1's third engine. The shared exact-model cache is bounded,
+    // so a long fuzz task cannot retain every generated class loader for the lifetime of its JVM fork.
     private fun javaEngine(kernelModel: String): RuntimeLaws.JavaKernelEngine =
-        javaEngines.getOrPut(kernelModel) { RuntimeLaws.kernelJavaEngine(kernelModel) }
+        RuntimeLaws.sharedKernelJavaEngine(kernelModel)
 
     /** The `code|type|pointer` signature of a kernel [RuntimeLaws.Msg] — the full-message granularity. */
     private fun msgSig(m: RuntimeLaws.Msg): String = "${m.code()}|${m.type().name}|${m.field()}"

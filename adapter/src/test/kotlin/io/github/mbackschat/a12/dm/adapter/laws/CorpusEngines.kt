@@ -9,7 +9,6 @@ import java.time.LocalDateTime
 import java.time.ZoneId
 import java.util.Date
 import java.util.Locale
-import java.util.concurrent.ConcurrentHashMap
 
 /**
  * The **conformance corpus engine core** — runs a case's `(model, placements, op, clock?)` through each of the
@@ -37,12 +36,10 @@ object CorpusEngines {
     /** The kernel version the corpus is captured against — bump on a KERNEL-UPGRADE (drives `meta.kernelVersion`). */
     const val KERNEL_VERSION = "30.8.1"
 
-    // The static-JAVA engine is an in-memory javac compile per model (~hundreds of ms); cache it per model JSON
-    // so a corpus with many cases over one model compiles once.
-    private val javaEngines = ConcurrentHashMap<String, RuntimeLaws.JavaKernelEngine>()
-
+    // The static-JAVA engine is an in-memory javac compile per model (~hundreds of ms). RuntimeLaws owns the
+    // shared bounded exact-model cache, so corpus replay and fuzzing neither recompile nor retain engines twice.
     private fun javaEngine(modelJson: String): RuntimeLaws.JavaKernelEngine =
-        javaEngines.getOrPut(modelJson) { RuntimeLaws.kernelJavaEngine(modelJson) }
+        RuntimeLaws.sharedKernelJavaEngine(modelJson)
 
     /** The interpreter's rendered signatures for [op] — delegated to the multiplatform [InterpreterReplay] so the
      *  interpreter leg is identical to what the JS replay runs (a JS-vs-JVM split then shows as a corpus FAIL). */

@@ -21,6 +21,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Properties;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -106,6 +107,13 @@ import com.mgmtp.a12.kernel.md.serializer.MDSerializerFactory;
  * package-private to {@code laws}.
  */
 public final class RuntimeLaws {
+
+    private static final int SHARED_KERNEL_ENGINE_LIMIT = 64;
+    private static final BoundedLruCache<String, KernelEngine> SHARED_KERNEL_ENGINES =
+            new BoundedLruCache<>(SHARED_KERNEL_ENGINE_LIMIT);
+    private static final AtomicInteger SHARED_KERNEL_ENGINE_BUILDS = new AtomicInteger();
+    private static final BoundedLruCache<String, JavaKernelEngine> SHARED_JAVA_KERNEL_ENGINES =
+            new BoundedLruCache<>(SHARED_KERNEL_ENGINE_LIMIT);
 
     private static final Pattern HEADER_ID = Pattern.compile("\"id\"\\s*:\\s*\"([^\"]+)\"");
 
@@ -383,12 +391,8 @@ public final class RuntimeLaws {
     /** Run the kernel's {@code validateFull} over the instance, in the given locale (the modern {@link DocumentV2}
      *  + {@link DocumentProcessingConfig} path — the deprecated {@code validateFull(IDocument, Locale)} form is gone). */
     private static IDocumentValidationResult validate(String modelJson, Doc doc, Locale locale) {
-        IDocumentModel model = expandedModel(modelJson);
-        IDocumentModelResolver resolver = id -> model;
-        DocumentServiceFactory dsf = new DocumentServiceFactory(resolver);
-        IDocumentRtService rt = new DocumentRtServiceFactory(resolver).createDocumentRtService(dynamicConfig());
-        DocumentV2 v2 = dsf.createDocumentV1V2Converter().ofDocumentV1(buildInstance(modelJson, dsf.createDocumentFactory(), doc));
-        return rt.validateFull(v2, config(null, locale));
+        KernelEngine engine = sharedKernelEngine(modelJson);
+        return engine.rt.validateFull(engine.instance(doc), config(null, locale));
     }
 
     /** Evaluate an explicit document instance; return every message (code + pointer) the kernel raised. */
@@ -416,8 +420,8 @@ public final class RuntimeLaws {
      * A12's value conversion at all.
      */
     static JsonIngress jsonIngress(String modelJson, String documentJson) {
-        IDocumentModel model = expandedModel(modelJson);
-        IDocumentModelResolver resolver = id -> model;
+        KernelEngine engine = sharedKernelEngine(modelJson);
+        IDocumentModelResolver resolver = id -> engine.model;
         IDocumentV2Serializer serializer = new MDSerializerFactory().createDocumentSerializerV2(resolver);
         DocumentV2 v2 = deserializeV2(serializer, modelJson, documentJson);
 
@@ -425,8 +429,7 @@ public final class RuntimeLaws {
         serializer.serializeV2(v2, rewritten, DocumentSerializationConfig.builder()
                 .prettyJsonPrinter(new MinimalPrettyPrinter()).build());
 
-        IDocumentRtService rt = new DocumentRtServiceFactory(resolver).createDocumentRtService(dynamicConfig());
-        List<String> codes = rt.validateFull(v2, config(null, Locale.US)).getMessages().stream()
+        List<String> codes = engine.rt.validateFull(v2, config(null, Locale.US)).getMessages().stream()
                 .map(IMessage::getErrorCode).sorted().toList();
         return new JsonIngress(rewritten.toString(), codes);
     }
@@ -486,16 +489,11 @@ public final class RuntimeLaws {
      */
     private static IDocumentValidationResult validateWithConditions(String modelJson, Doc doc,
             Map<String, ICustomCondition> customConditions) {
-        IDocumentModel model = expandedModel(modelJson);
-        IDocumentModelResolver resolver = id -> model;
-        DocumentServiceFactory dsf = new DocumentServiceFactory(resolver);
-        IDocumentRtService rt = new DocumentRtServiceFactory(resolver).createDocumentRtService(dynamicConfig());
-        IDocumentFactory df = dsf.createDocumentFactory();
-        DocumentV2 v2 = dsf.createDocumentV1V2Converter().ofDocumentV1(buildInstance(modelJson, df, doc));
+        KernelEngine engine = sharedKernelEngine(modelJson);
         DocumentProcessingConfig config = DocumentProcessingConfig.builder(Locale.US)
                 .customConditionFactory(ICustomConditionFactory.fromMap(customConditions))
                 .build();
-        return rt.validateFull(v2, config);
+        return engine.rt.validateFull(engine.instance(doc), config);
     }
 
     /** Every message from the modern custom-condition path (see {@link #validateWithConditions}). */
@@ -514,14 +512,10 @@ public final class RuntimeLaws {
      */
     private static IDocumentValidationResult validateWithFieldTypes(
             String modelJson, Doc doc, ICustomFieldTypeFactory fieldTypeFactory, Locale locale) {
-        IDocumentModel model = expandedModel(modelJson);
-        IDocumentModelResolver resolver = id -> model;
-        DocumentServiceFactory dsf = new DocumentServiceFactory(resolver);
-        IDocumentRtService rt = new DocumentRtServiceFactory(resolver).createDocumentRtService(dynamicConfig());
-        DocumentV2 v2 = dsf.createDocumentV1V2Converter().ofDocumentV1(buildInstance(modelJson, dsf.createDocumentFactory(), doc));
+        KernelEngine engine = sharedKernelEngine(modelJson);
         DocumentProcessingConfig config = DocumentProcessingConfig.builder(locale)
                 .customFieldTypeFactory(fieldTypeFactory).build();
-        return rt.validateFull(v2, config);
+        return engine.rt.validateFull(engine.instance(doc), config);
     }
 
     static List<Msg> messages(String modelJson, Doc doc, ICustomFieldTypeFactory fieldTypeFactory) {
@@ -583,18 +577,14 @@ public final class RuntimeLaws {
      *  IG10 differential probes (the kernel feeds it the partial relevant entities, null for full). */
     static List<Msg> messagesPart(String modelJson, Doc doc, Set<Relevant> relevant,
             Map<String, ICustomCondition> customConditions) {
-        IDocumentModel model = expandedModel(modelJson);
-        IDocumentModelResolver resolver = id -> model;
-        DocumentServiceFactory dsf = new DocumentServiceFactory(resolver);
-        IDocumentRtService rt = new DocumentRtServiceFactory(resolver).createDocumentRtService(dynamicConfig());
-        IDocumentFactory df = dsf.createDocumentFactory();
-        DocumentV2 v2 = dsf.createDocumentV1V2Converter().ofDocumentV1(buildInstance(modelJson, df, doc));
+        KernelEngine engine = sharedKernelEngine(modelJson);
+        DocumentV2 v2 = engine.instance(doc);
         Set<DocumentMultiPointer> relevantPointers = relevant.stream()
                 .map(r -> DocumentMultiPointer.of(r.path(), r.reps())).collect(Collectors.toSet());
         DocumentProcessingConfig config = DocumentProcessingConfig.builder(Locale.US)
                 .customConditionFactory(ICustomConditionFactory.fromMap(customConditions))
                 .build();
-        return rt.validatePart(v2, relevantPointers, config).getMessages().stream().map(RuntimeLaws::toMsg).toList();
+        return engine.rt.validatePart(v2, relevantPointers, config).getMessages().stream().map(RuntimeLaws::toMsg).toList();
     }
 
     /** The kernel's fully-rendered (localized, params substituted) error text for {@code errorCode}. */
@@ -637,22 +627,13 @@ public final class RuntimeLaws {
     /** Compute with the same per-call custom-field-type binding used by validation differentials. */
     static List<Computed> compute(
             String modelJson, Doc doc, ICustomFieldTypeFactory fieldTypeFactory) {
-        IDocumentModel model = expandedModel(modelJson);
-        IDocumentModelResolver resolver = id -> model;
-        DocumentServiceFactory dsf = new DocumentServiceFactory(resolver);
-        IDocumentRtService rt = new DocumentRtServiceFactory(resolver).createDocumentRtService(dynamicConfig());
-        DocumentV2 v2 = dsf.createDocumentV1V2Converter().ofDocumentV1(buildInstance(modelJson, dsf.createDocumentFactory(), doc));
-        return computeDetail(rt, v2, config(null, Locale.US, Map.of(), fieldTypeFactory));
+        KernelEngine engine = sharedKernelEngine(modelJson);
+        return computeDetail(engine.rt, engine.instance(doc), config(null, Locale.US, Map.of(), fieldTypeFactory));
     }
 
     static ComputationDetail computeWithFormalErrors(String modelJson, Doc doc) {
-        IDocumentModel model = expandedModel(modelJson);
-        IDocumentModelResolver resolver = id -> model;
-        DocumentServiceFactory dsf = new DocumentServiceFactory(resolver);
-        IDocumentRtService rt = new DocumentRtServiceFactory(resolver).createDocumentRtService(dynamicConfig());
-        DocumentV2 v2 = dsf.createDocumentV1V2Converter().ofDocumentV1(
-                buildInstance(modelJson, dsf.createDocumentFactory(), doc));
-        return computeDetailWithFormalErrors(rt, v2);
+        KernelEngine engine = sharedKernelEngine(modelJson);
+        return computeDetailWithFormalErrors(engine.rt, engine.instance(doc));
     }
 
     /**
@@ -706,13 +687,8 @@ public final class RuntimeLaws {
     }
 
     static ResultChannels resultChannels(String modelJson, Doc doc) {
-        IDocumentModel model = expandedModel(modelJson);
-        IDocumentModelResolver resolver = id -> model;
-        DocumentServiceFactory dsf = new DocumentServiceFactory(resolver);
-        IDocumentRtService rt = new DocumentRtServiceFactory(resolver).createDocumentRtService(dynamicConfig());
-        DocumentV2 v2 = dsf.createDocumentV1V2Converter().ofDocumentV1(
-                buildInstance(modelJson, dsf.createDocumentFactory(), doc));
-        return resultChannelsOf(rt.compute(v2, config(null, Locale.US)));
+        KernelEngine engine = sharedKernelEngine(modelJson);
+        return resultChannelsOf(engine.rt.compute(engine.instance(doc), config(null, Locale.US)));
     }
 
     private static ResultChannels resultChannelsOf(IDocumentComputationResult result) {
@@ -776,22 +752,18 @@ public final class RuntimeLaws {
 
     /** As {@link #messagesModern(String, Doc, Date)} but at an explicit locale (the sweep's model-declared locale). */
     static List<Msg> messagesModern(String modelJson, Doc doc, Date clock, Locale locale) {
-        IDocumentModelResolver resolver = resolverOf(modelJson);
-        DocumentServiceFactory dsf = new DocumentServiceFactory(resolver);
-        IDocumentRtService rt = new DocumentRtServiceFactory(resolver).createDocumentRtService(dynamicConfig());
-        DocumentV2 v2 = dsf.createDocumentV1V2Converter().ofDocumentV1(buildInstance(modelJson, dsf.createDocumentFactory(), doc));
-        return rt.validateFull(v2, config(clock, locale)).getMessages().stream().map(RuntimeLaws::toMsg).toList();
+        KernelEngine engine = sharedKernelEngine(modelJson);
+        return engine.rt.validateFull(engine.instance(doc), config(clock, locale)).getMessages().stream()
+                .map(RuntimeLaws::toMsg).toList();
     }
 
     /** Groovy-dynamic {@code validatePart(DocumentV2, relevant, config)} — clock-pinnable. */
     static List<Msg> messagesPartModern(String modelJson, Doc doc, Set<Relevant> relevant, Date clock) {
-        IDocumentModelResolver resolver = resolverOf(modelJson);
-        DocumentServiceFactory dsf = new DocumentServiceFactory(resolver);
-        IDocumentRtService rt = new DocumentRtServiceFactory(resolver).createDocumentRtService(dynamicConfig());
-        DocumentV2 v2 = dsf.createDocumentV1V2Converter().ofDocumentV1(buildInstance(modelJson, dsf.createDocumentFactory(), doc));
+        KernelEngine engine = sharedKernelEngine(modelJson);
         Set<DocumentMultiPointer> rel = relevant.stream()
                 .map(r -> DocumentMultiPointer.of(r.path(), r.reps())).collect(Collectors.toSet());
-        return rt.validatePart(v2, rel, config(clock)).getMessages().stream().map(RuntimeLaws::toMsg).toList();
+        return engine.rt.validatePart(engine.instance(doc), rel, config(clock)).getMessages().stream()
+                .map(RuntimeLaws::toMsg).toList();
     }
 
     /** Groovy-dynamic {@code compute(DocumentV2, config)} — clock-pinnable (the corpus compute capture path). */
@@ -801,17 +773,8 @@ public final class RuntimeLaws {
 
     /** As {@link #computeModern(String, Doc, Date)} but at an explicit locale (the sweep's model-declared locale). */
     static List<Computed> computeModern(String modelJson, Doc doc, Date clock, Locale locale) {
-        IDocumentModelResolver resolver = resolverOf(modelJson);
-        DocumentServiceFactory dsf = new DocumentServiceFactory(resolver);
-        IDocumentRtService rt = new DocumentRtServiceFactory(resolver).createDocumentRtService(dynamicConfig());
-        DocumentV2 v2 = dsf.createDocumentV1V2Converter().ofDocumentV1(buildInstance(modelJson, dsf.createDocumentFactory(), doc));
-        return computeDetailOf(rt.compute(v2, config(clock, locale)));
-    }
-
-    /** A single-model {@link IDocumentModelResolver} for {@code modelJson} (deserialized + expanded once). */
-    private static IDocumentModelResolver resolverOf(String modelJson) {
-        IDocumentModel model = expandedModel(modelJson);
-        return id -> model;
+        KernelEngine engine = sharedKernelEngine(modelJson);
+        return computeDetailOf(engine.rt.compute(engine.instance(doc), config(clock, locale)));
     }
 
     /** Whether {@code path} computed a (non-empty) value under {@code compute()}. */
@@ -837,14 +800,11 @@ public final class RuntimeLaws {
      * mutate in place like the old {@code applyTo(IDocument)}), and the returned instance is what gets validated.
      */
     static List<Msg> messagesAfterCompute(String modelJson, Doc doc, Locale locale) {
-        IDocumentModel model = expandedModel(modelJson);
-        IDocumentModelResolver resolver = id -> model;
-        DocumentServiceFactory dsf = new DocumentServiceFactory(resolver);
-        IDocumentRtService rt = new DocumentRtServiceFactory(resolver).createDocumentRtService(dynamicConfig());
-        DocumentV2 v2 = dsf.createDocumentV1V2Converter().ofDocumentV1(buildInstance(modelJson, dsf.createDocumentFactory(), doc));
+        KernelEngine engine = sharedKernelEngine(modelJson);
+        DocumentV2 v2 = engine.instance(doc);
         DocumentProcessingConfig config = config(null, locale);
-        DocumentV2 applied = rt.compute(v2, config).applyTo(v2);   // changes set, errored/cleared emptied — new immutable doc
-        return rt.validateFull(applied, config).getMessages().stream().map(RuntimeLaws::toMsg).toList();
+        DocumentV2 applied = engine.rt.compute(v2, config).applyTo(v2);   // changes set, errored/cleared emptied — new immutable doc
+        return engine.rt.validateFull(applied, config).getMessages().stream().map(RuntimeLaws::toMsg).toList();
     }
 
     /** Whether the rule with {@code errorCode} fires for the given explicit instance. */
@@ -867,12 +827,9 @@ public final class RuntimeLaws {
      * {@code DmInterpreter.applyComputations} (KERNEL-FINDINGS §11 "post-application cell state").
      */
     static List<String> appliedStates(String modelJson, Doc doc, List<CellProbe> probes) {
-        IDocumentModel model = expandedModel(modelJson);
-        IDocumentModelResolver resolver = id -> model;
-        DocumentServiceFactory dsf = new DocumentServiceFactory(resolver);
-        IDocumentRtService rt = new DocumentRtServiceFactory(resolver).createDocumentRtService(dynamicConfig());
-        DocumentV2 v2 = dsf.createDocumentV1V2Converter().ofDocumentV1(buildInstance(modelJson, dsf.createDocumentFactory(), doc));
-        DocumentV2 applied = rt.compute(v2, config(null, Locale.US)).applyTo(v2);
+        KernelEngine engine = sharedKernelEngine(modelJson);
+        DocumentV2 v2 = engine.instance(doc);
+        DocumentV2 applied = engine.rt.compute(v2, config(null, Locale.US)).applyTo(v2);
         return probes.stream().map(p -> p.path() + "|" + appliedStateAt(applied, p)).toList();
     }
 
@@ -881,15 +838,10 @@ public final class RuntimeLaws {
      *  from recomputing classification at application time (SPEC-2026-07-22-08; EXP-2026-07-30-02). */
     static List<String> appliedStatesToDestination(
             String modelJson, Doc source, Doc destination, List<CellProbe> probes) {
-        IDocumentModel model = expandedModel(modelJson);
-        IDocumentModelResolver resolver = id -> model;
-        DocumentServiceFactory dsf = new DocumentServiceFactory(resolver);
-        IDocumentRtService rt = new DocumentRtServiceFactory(resolver).createDocumentRtService(dynamicConfig());
-        DocumentV2 sourceV2 = dsf.createDocumentV1V2Converter().ofDocumentV1(
-                buildInstance(modelJson, dsf.createDocumentFactory(), source));
-        DocumentV2 destinationV2 = dsf.createDocumentV1V2Converter().ofDocumentV1(
-                buildInstance(modelJson, dsf.createDocumentFactory(), destination));
-        DocumentV2 applied = rt.compute(sourceV2, config(null, Locale.US)).applyTo(destinationV2);
+        KernelEngine engine = sharedKernelEngine(modelJson);
+        DocumentV2 sourceV2 = engine.instance(source);
+        DocumentV2 destinationV2 = engine.instance(destination);
+        DocumentV2 applied = engine.rt.compute(sourceV2, config(null, Locale.US)).applyTo(destinationV2);
         return probes.stream().map(p -> p.path() + "|" + appliedStateAt(applied, p)).toList();
     }
 
@@ -921,8 +873,9 @@ public final class RuntimeLaws {
     /**
      * A build-ONCE kernel evaluator for the performance harness (INTERPRETER-PERFORMANCE.md). The model is
      * deserialized + expanded and the rt service + document factory are created a SINGLE time, so a benchmark
-     * can build an instance once and time only {@code validateFull} — a fair against-kernel comparison, not
-     * polluted by per-call model rebuild (which the convenience {@link #firedCodes(String, Doc)} incurs).
+     * can build an instance once and time only {@code validateFull} — a fair against-kernel comparison. The
+     * correctness-law convenience methods now reuse this same engine shape through a bounded exact-model cache,
+     * but still rebuild the document instance on every assertion; performance code keeps both outside its timer.
      */
     public static final class KernelEngine {
         private final String modelJson;
@@ -1048,10 +1001,10 @@ public final class RuntimeLaws {
 
         /**
          * PARTIAL validation over an already-built instance — the build-once twin of
-         * {@link RuntimeLaws#messagesPart}, which expands the model, constructs both service factories and
-         * converts V1&rarr;V2 on <em>every</em> invocation. Timing a partial-validation entry point against that
-         * charges the kernel a whole engine construction per iteration while the interpreter reuses its
-         * prepared model, which inflates the reported advantage by roughly an order of magnitude.
+         * {@link RuntimeLaws#messagesPart}, which reuses the engine but converts V1&rarr;V2 on <em>every</em>
+         * invocation. Timing a partial-validation entry point against that still charges the kernel document
+         * construction while the interpreter reuses its prepared document, so the explicit performance seam
+         * remains necessary for a symmetric comparison.
          *
          * <p>Relevant-pointer conversion stays <em>inside</em> the timed call on purpose: the interpreter
          * re-indexes its own relevant set per {@code validatePart} too, so paying it on both sides is what makes
@@ -1077,6 +1030,35 @@ public final class RuntimeLaws {
 
     public static KernelEngine kernelEngine(String modelJson) {
         return new KernelEngine(modelJson);
+    }
+
+    private static KernelEngine sharedKernelEngine(String modelJson) {
+        return SHARED_KERNEL_ENGINES.getOrCompute(modelJson, json -> {
+            SHARED_KERNEL_ENGINE_BUILDS.incrementAndGet();
+            return new KernelEngine(json);
+        });
+    }
+
+    static void clearSharedKernelEngines() {
+        SHARED_KERNEL_ENGINES.clear();
+        SHARED_JAVA_KERNEL_ENGINES.clear();
+        SHARED_KERNEL_ENGINE_BUILDS.set(0);
+    }
+
+    static int sharedKernelEngineBuildCount() {
+        return SHARED_KERNEL_ENGINE_BUILDS.get();
+    }
+
+    static int sharedKernelEngineCacheSize() {
+        return SHARED_KERNEL_ENGINES.size();
+    }
+
+    static int sharedKernelEngineCacheLimit() {
+        return SHARED_KERNEL_ENGINE_LIMIT;
+    }
+
+    static JavaKernelEngine sharedKernelJavaEngine(String modelJson) {
+        return SHARED_JAVA_KERNEL_ENGINES.getOrCompute(modelJson, RuntimeLaws::kernelJavaEngine);
     }
 
     /**
