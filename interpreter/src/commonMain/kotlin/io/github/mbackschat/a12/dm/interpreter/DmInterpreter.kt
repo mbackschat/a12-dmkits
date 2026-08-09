@@ -7,6 +7,7 @@ import io.github.mbackschat.a12.dm.interpreter.eval.Document
 import io.github.mbackschat.a12.dm.interpreter.eval.ComputationApplication
 import io.github.mbackschat.a12.dm.interpreter.eval.EvalConfig
 import io.github.mbackschat.a12.dm.interpreter.eval.EvalContext
+import io.github.mbackschat.a12.dm.interpreter.eval.EffectiveRelevanceIndex
 import io.github.mbackschat.a12.dm.interpreter.eval.FunctionOp
 import io.github.mbackschat.a12.dm.interpreter.eval.GroupRelevance
 import io.github.mbackschat.a12.dm.interpreter.eval.UNKNOWN_REP
@@ -300,13 +301,13 @@ class DmInterpreter private constructor(
         return validateWith(
             doc,
             locale,
-            queries.relevant,
+            queries::isRelevant,
             customRelevantOf(relevant),
             starRelevantOf(relevant),
             starExtentKnownOf(relevant),
             starFullyEnumeratedOf(relevant),
             groupRelevanceOf(relevant),
-            queries::relevantWithin,
+            queries::isRelevantWithin,
         )
     }
 
@@ -621,7 +622,7 @@ class DmInterpreter private constructor(
             starExtentKnown: ((String, Int, List<Int>) -> Boolean)? = null,
             starFullyEnumerated: ((String, Int, List<Int>) -> Boolean)? = null,
             groupRelevance: (String, List<Int>) -> GroupRelevance = { _, _ -> GroupRelevance.FULL },
-            /** Partial only: [RelevanceQueries.relevantWithin] — the rule-run gate's bound-level query ([IF268]). */
+            /** Partial only: [EffectiveRelevanceIndex.isRelevantWithin] — the rule-run gate's bound-level query ([IF268]). */
             relevantWithin: ((String, List<Int>, Int) -> Boolean)? = null): ValidationOutcome =
         observeCaches(doc) {
             // The index-default staging split (SPEC-2026-07-23-14): a FULL call stages each eligible
@@ -1088,127 +1089,9 @@ class DmInterpreter private constructor(
         }
     }
 
-    /**
-     * Build the [Relevance] predicate from a relevant-entity set: an instance `(path, reps)` is relevant iff
-     * some [RelevantEntity] **is** it or is an **ancestor group** of it, with the shared-prefix repetition
-     * indices matching ([RelevantEntity.ALL] wildcards a level). A relevant group thus makes every descendant
-     * relevant (the kernel rule). An empty set → nothing relevant (no rule runs).
-     */
-    private fun relevanceOf(relevant: Set<RelevantEntity>): Relevance =
-        // The kernel's md-runtime-service auto-adds every GLOBAL field (wildcarded at all reps) to the relevant
-        // set before validating (LowKernelApiUtils.addGlobalFieldsToRelevantEntities), so a global field's
-        // instances are relevant regardless of the caller's set — IG11→IF37, KERNEL-FINDINGS "Partial validation".
-        relevanceIndexOf(relevant)
-
-    /**
-     * The relevance query, INDEXED. It used to be `relevant.any { matches(it, path, reps) }` — a linear scan of
-     * the caller's relevant set, run once per field INSTANCE. That is quadratic **when the relevant set itself
-     * grows with the document**, which is exactly what a concrete row enumeration does — measured 8.36× growth
-     * for 4× rows on `laws/PartialSumOfProductsPerfTest`. It is not aggregate-specific: every partial
-     * validation over such a set paid it. It is equally not universal — a single wildcard entity keeps the set
-     * constant and the same scan stays linear, so "partial validation was quadratic" overstates it.
-     *
-     * (The kernel RATIOS once quoted here came from a harness that rebuilt the kernel engine inside the timed
-     * call, so they were inflated and have been dropped rather than restated; the growth figures above are
-     * interpreter-only and stand. Corrected 2026-08-08, IF255.)
-     *
-     * [matches] admits an entity whose path is an ancestor-or-equal prefix and whose every index is either the
-     * query's repetition or [RelevantEntity.ALL]. So bucket the set by path, and answer a query by trying each
-     * ancestor prefix. A concrete repetition is 1-based, so it can never collide with the `ALL` sentinel.
-     *
-     * Within a prefix, probe **one key per distinct wildcard PATTERN the caller actually supplied**, not every
-     * combination of the level count. The two are equivalent — an entity with pattern `p` matches iff its
-     * indices equal the query's repetitions with `ALL` substituted at `p`'s wildcard positions, so one probe
-     * settles the whole pattern — but the cost is completely different, and the first version enumerated
-     * `2^depth` combinations on the strength of a comment asserting "depth is the model's nesting depth
-     * (single digits)". [ModelPreparation] admits **64** by default and 128 as its hard limit, so that bound
-     * was never the model's: measured, a depth-24 model took 4.7 s per partial validation of a ONE-FIELD
-     * document, and at depth 31 `1 shl depth` overflows `Int` to a negative bound, which skipped the probe
-     * loop entirely and silently answered "not relevant" for every query — messages simply vanished
-     * ([PartialRelevanceDepthTest]). Patterns are bounded by the relevant set, so the query can never cost
-     * more than the data the caller passed in.
-     */
-    private fun relevanceIndexOf(relevant: Set<RelevantEntity>): Relevance = relevanceQueriesOf(relevant).relevant
-
-    /**
-     * The relevant set's two queries over one shared index: [RelevanceQueries.relevant] (the [Relevance]
-     * predicate above) and [RelevanceQueries.relevantWithin], the rule-run gate's coarser sibling.
-     */
-    private fun relevanceQueriesOf(relevant: Set<RelevantEntity>): RelevanceQueries {
-        val tuples = HashMap<String, HashSet<List<Int>>>()
-        val patterns = HashMap<String, MutableSet<List<Boolean>>>()
-        for (r in relevant) {
-            // matches() requires exactly one index per path part; anything else can never match.
-            if (r.indices.size != pathParts(r.path).size) continue
-            tuples.getOrPut(r.path) { HashSet() } += r.indices
-            patterns.getOrPut(r.path) { LinkedHashSet() } += r.indices.map { it == RelevantEntity.ALL }
-        }
-        return RelevanceQueries(model.globalFields, tuples, patterns)
-    }
-
-    private class RelevanceQueries(
-        private val globalFields: Set<String>,
-        private val tuples: Map<String, HashSet<List<Int>>>,
-        private val patterns: Map<String, MutableSet<List<Boolean>>>,
-    ) {
-        /** [tuples]/[patterns] projected onto the first `bound` levels, built once per (path, bound). A rule
-         *  fixes both, so the projection is built once per rule and probed once per iteration row. */
-        private val projected = HashMap<Pair<String, Int>, Pair<Set<List<Int>>, Set<List<Boolean>>>>()
-
-        val relevant: Relevance = { path, reps -> relevantWithin(path, reps, reps.size) }
-
-        /**
-         * `(path, reps)` relevance with every level from [bound] on treated as a WILDCARD — an entity filed
-         * under a deeper prefix matches when its first [bound] indices do, whatever it carries below. With
-         * `bound = reps.size` this is exactly [relevant]; the rule-run gate passes the count of levels the
-         * rule's iteration actually BOUND ([IF268]).
-         */
-        fun relevantWithin(path: String, reps: List<Int>, bound: Int): Boolean {
-            if (path in globalFields) return true
-            val pParts = pathParts(path)
-            var depth = 1
-            while (depth <= pParts.size && depth <= reps.size) {
-                val prefix = "/" + pParts.take(depth).joinToString("/")
-                // Every pattern filed under `prefix` has exactly `depth` entries: entities are indexed
-                // only when their index count equals their own path-part count. Below [bound] they are
-                // projected onto the bound levels, which collapses the free indices away.
-                // The ORDINARY query never leaves this branch — its bound is the full tuple length, so it stays
-                // the exact lookup it was before the gate needed a coarser sibling. Keep it that way: this runs
-                // once per field INSTANCE, and a `Pair` allocated here to unify the two branches was enough to
-                // push `PartialSumOfProductsPerfTest` from 3.7x to 9.27x growth.
-                if (depth <= bound) {
-                    val bucket = tuples[prefix]
-                    if (bucket != null) {
-                        val base = reps.take(depth)
-                        for (pattern in patterns.getValue(prefix)) {
-                            val key = base.mapIndexed { i, rep -> if (pattern[i]) RelevantEntity.ALL else rep }
-                            if (key in bucket) return true
-                        }
-                    }
-                } else {
-                    val projection = projection(prefix, bound)
-                    if (projection != null) {
-                        val base = reps.take(bound)
-                        for (pattern in projection.second) {
-                            val key = base.mapIndexed { i, rep -> if (pattern[i]) RelevantEntity.ALL else rep }
-                            if (key in projection.first) return true
-                        }
-                    }
-                }
-                depth++
-            }
-            return false
-        }
-
-        /** Null when nothing at all is filed under [prefix], so the caller skips it like the exact branch does. */
-        private fun projection(prefix: String, levels: Int): Pair<Set<List<Int>>, Set<List<Boolean>>>? {
-            val bucket = tuples[prefix] ?: return null
-            return projected.getOrPut(prefix to levels) {
-                bucket.mapTo(HashSet()) { it.take(levels) } to
-                    patterns.getValue(prefix).mapTo(LinkedHashSet()) { it.take(levels) }
-            }
-        }
-    }
+    /** One shared production index for concrete-cell and bound-level rule-gate relevance. */
+    private fun relevanceQueriesOf(relevant: Set<RelevantEntity>): EffectiveRelevanceIndex =
+        EffectiveRelevanceIndex.build(model.globalFields, relevant)
 
     /**
      * Partial validation's two group-relevance levels. Any selected descendant makes its ancestors PARTIAL,

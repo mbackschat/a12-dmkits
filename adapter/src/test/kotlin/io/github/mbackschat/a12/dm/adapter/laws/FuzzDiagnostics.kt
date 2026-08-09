@@ -6,6 +6,7 @@ import io.github.mbackschat.a12.dm.interpreter.conformance.Placement
 import io.github.mbackschat.a12.dm.interpreter.conformance.PlacementKind
 import io.github.mbackschat.a12.dm.interpreter.conformance.kernelComputeGranularity
 import io.github.mbackschat.a12.dm.interpreter.eval.Document
+import io.github.mbackschat.a12.dm.interpreter.eval.EffectiveRelevanceIndex
 import io.github.mbackschat.a12.dm.interpreter.eval.formatPointer
 import io.github.mbackschat.a12.dm.interpreter.eval.newDocument
 import io.github.mbackschat.a12.dm.interpreter.gen.PlacementSink
@@ -359,47 +360,19 @@ object FuzzDiagnostics {
      * that tested `path in entities` would report shapes the runtime never sees — e.g. "payload relevant but its
      * index cell is not" for a row whose whole GROUP was selected, where in fact both are relevant.
      *
-     * This **re-implements** `DmInterpreter.RelevanceQueries.relevant` (the `bound = reps.size` case), because
-     * that query is private to `:interpreter` and no public API exposes it. [RelevantViewTest] pins THIS
-     * implementation's semantics case by case; it cannot pin the two against each other, so **nothing mechanically
-     * fails if production's relevance changes and this copy does not** — and the failure would be silent in the
-     * worst direction: an over-reporting copy lets the shape meter assert full coverage of shapes the runtime
-     * never realises. Tracked as IG115 with what would settle it. Correctness of relevance itself is not at
-     * stake here — that is the differential's job, and it runs the real query.
+     * The view delegates to [EffectiveRelevanceIndex], the exact production query used by partial validation.
+     * This prevents the relevance half of the coverage meter from drifting. The key-admission and collision
+     * classifier remains an independent implementation, directly locked by `ParallelRelevanceShapeTest`, so the
+     * meter does not hide production identity defects by asking production to classify itself.
      */
     class RelevantView internal constructor(
         val cells: List<Cell>,
         entities: Set<RelevantEntity>,
-        private val globalFields: Set<String>,
+        globalFields: Set<String>,
     ) {
-        private val tuples = HashMap<String, HashSet<List<Int>>>()
-        private val patterns = HashMap<String, LinkedHashSet<List<Boolean>>>()
+        private val relevance = EffectiveRelevanceIndex.build(globalFields, entities)
 
-        init {
-            for (e in entities) {
-                // An entity carrying the wrong number of coordinates can never match — the same admission the
-                // interpreter's index applies, so an ill-formed entity is inert here too rather than throwing.
-                if (e.indices.size != segments(e.path).size) continue
-                tuples.getOrPut(e.path) { HashSet() } += e.indices
-                patterns.getOrPut(e.path) { LinkedHashSet() } += e.indices.map { it == RelevantEntity.ALL }
-            }
-        }
-
-        fun isRelevant(path: String, reps: List<Int>): Boolean {
-            if (path in globalFields) return true
-            val parts = segments(path)
-            for (depth in 1..minOf(parts.size, reps.size)) {
-                val prefix = "/" + parts.take(depth).joinToString("/")
-                val bucket = tuples[prefix] ?: continue
-                val base = reps.take(depth)
-                for (pattern in patterns.getValue(prefix)) {
-                    if (base.mapIndexed { i, rep -> if (pattern[i]) RelevantEntity.ALL else rep } in bucket) return true
-                }
-            }
-            return false
-        }
-
-        private fun segments(path: String): List<String> = path.trim('/').split('/')
+        fun isRelevant(path: String, reps: List<Int>): Boolean = relevance.isRelevant(path, reps)
     }
 
     /** [scenario]'s [docSeed] document and the effective relevance [relevantSeed]'s set induces over it. */
