@@ -6,6 +6,7 @@ import io.github.mbackschat.a12.dm.interpreter.ast.emptyValue
 import io.github.mbackschat.a12.dm.interpreter.eval.Document
 import io.github.mbackschat.a12.dm.interpreter.eval.EvalConfig
 import io.github.mbackschat.a12.dm.interpreter.eval.EvalContext
+import io.github.mbackschat.a12.dm.interpreter.eval.IndexColumn
 import io.github.mbackschat.a12.dm.interpreter.eval.Interpreter
 import io.github.mbackschat.a12.dm.interpreter.eval.OverlayContext
 import io.github.mbackschat.a12.dm.interpreter.eval.OverlayViews
@@ -142,9 +143,10 @@ internal class ComputationEngine(
         // and an EMPTY index cell — unlike an ordinary required-empty field — poisons its reader (the
         // preliminary mandatory rule marks it invalid-for-validation before the calculations run). Both are
         // computed on the STAGED document, so a defaulted cell participates as its S-value instead.
-        val dup = checks.duplicateIndexCells(doc)
+        val valueAdmissions = ValueAdmissionCache(checks, locale)
+        val dup = checks.duplicateIndexCells(doc, valueAdmissions)
         val emptyIndexCells = checks.preliminaryEmptyIndexCells(doc)
-        val formalResults = FormalResultCache(checks, locale, dup)
+        val formalResults = FormalResultCache(checks, locale, dup, valueAdmissions = valueAdmissions)
         val operands = operandSelection(comps)
         val operandRelevant: Relevance = { path, _ -> path in operands.fields }
         val selectedIndexRelevant: Relevance = { path, _ -> path in operands.indexFields }
@@ -168,6 +170,7 @@ internal class ComputationEngine(
             predefinedTypes = predefinedTypes,
             customFieldTypes = customFieldTypes,
             patternMatches = patterns::matches,
+            indexIdentityAdmitted = formalResults::admitsIdentityAt,
             computeScanState = { cell ->
                 when {
                     cell.baseState != CellState.FILLED ->
@@ -213,7 +216,7 @@ internal class ComputationEngine(
                         invalid = { path ->
                             if (operandNotCheckRelevant(path, ectx, formalResults, emptyIndexCells)) throw PoisonedReadException(path)
                             else false
-                        })
+                        }).sharingIndexColumns(views)
                     // A read of a formally-invalid cell — an input field, or a POISONED computed dependency — aborts
                     // this instance (IF85, the kernel's CalculationFieldException → "fehlerhaft berechnet"): it skips
                     // the remaining alternatives, produces no value (reported CLEARED under the report-all contract;
@@ -284,7 +287,7 @@ internal class ComputationEngine(
                     .distinct().filter { it != targetScope && !targetScope.startsWith("$it/") }
                 if (parallelGroups.isNotEmpty()) {
                     val joined = (listOf(targetScope) + parallelGroups).distinct()
-                    val invalidCoords = joined.associateWith { g -> invalidIndexParentCoords(doc, g) }
+                    val invalidCoords = joined.associateWith { g -> invalidIndexParentCoords(doc, g, formalResults) }
                         .filterValues { it.isNotEmpty() }
                     if (invalidCoords.isNotEmpty()) {
                         var markedAny = false
@@ -306,7 +309,12 @@ internal class ComputationEngine(
                             }
                         ) continue
                     }
-                    for (pctx in scopes.parallelIterationContexts(targetScope, parallelGroups, doc)) {
+                    for (pctx in scopes.parallelIterationContexts(
+                        targetScope,
+                        parallelGroups,
+                        doc,
+                        formalResults::admitsIdentityAt,
+                    )) {
                         val reps = pctx.repsOf(comp.targetPath)
                         if (UNKNOWN_REP in reps) continue   // no TARGET row for this key — the calc creates none
                         computeAt(pctx)
@@ -338,16 +346,28 @@ internal class ComputationEngine(
      * Duplication is judged on the canonical [indexKeyOf] form, never raw text ([IF272]) — a Number index field
      * spelled `5` in one row and `5.00` in another compromises the column exactly as `5`/`5` does.
      */
-    private fun invalidIndexParentCoords(doc: Document, group: String): Set<List<Int>> {
+    private fun invalidIndexParentCoords(
+        doc: Document,
+        group: String,
+        formalResults: FormalResultCache,
+    ): Set<List<Int>> {
         val indexField = model.indexFields.firstOrNull { parentGroup(it) == group } ?: return emptySet()
         val parentDepth = pathParts(group).size - 1
         return doc.contextsFor(group)
+            .filter { doc.indexCacheContainsRow(group, it.repsOf(group)) }
             .groupBy { it.repsOf(group).take(parentDepth) }
             .filterValues { rows ->
-                val values = rows.map { ctx ->
-                    ctx.displayValue(indexField)?.let { indexKeyOf(it, ctx.declaredKind(indexField)) }
+                val candidates = rows.map { ctx ->
+                    val reps = ctx.repsOf(indexField)
+                    val raw = ctx.displayValue(indexField)
+                    val admitted = !raw.isNullOrEmpty() && formalResults.admitsIdentityAt(indexField, reps, raw)
+                    IndexIdentityCandidate(
+                        repetitions = reps,
+                        key = raw?.let { indexKeyOf(it, ctx.declaredKind(indexField)) }?.takeIf { admitted },
+                        compromises = !admitted,
+                    )
                 }
-                values.any { it.isNullOrEmpty() } || values.size != values.distinct().size
+                resolveIndexIdentity(candidates).compromised
             }
             .keys
     }

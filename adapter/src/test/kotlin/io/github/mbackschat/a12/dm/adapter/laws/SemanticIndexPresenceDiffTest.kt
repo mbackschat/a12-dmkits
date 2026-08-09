@@ -18,8 +18,9 @@ import org.junit.jupiter.api.Test
  *
  *  - a matched, check-relevant filled cell → TRUE (filled);
  *  - a matched row with an EMPTY cell, an ABSENT row (no row carries the key), or an empty/no-match KEY
- *    field → FALSE ("not filled" — an absent row is judged like an empty cell, NOT skipped);
- *  - a malformed matched cell → UNKNOWN (present but not check-relevant), so neither polarity fires.
+ *    field over a clean index column → FALSE ("not filled" — an absent row is judged like an empty cell, NOT skipped);
+ *  - a malformed matched cell, or an empty/no-match key over a compromised column → UNKNOWN (present but not
+ *    check-relevant), so neither polarity fires.
  *
  * `FieldValueAsString` over an indexed cell reads the matched cell's stored value; an absent/empty cell reads
  * as `""` (which suppresses a string comparison — the kernel's `vergleicheSTRING` empty rule).

@@ -62,9 +62,11 @@ private fun Interpreter.vlqOperands(entries: List<Expr>): List<VlqOperand> = ent
             // row), and EVERY cell of a duplicated value carries the uniqueIndex error (over ALL rows, not
             // just filter-kept ones). A clean sibling field in the same row reads normally — the row is not
             // collectively compromised. `ValueListQuantifierStarDiffTest.compromisedIndexRows`.
-            val dupIndexValues = if (e.path in indexFields) indexColumnOf(c, e.path, e.bindDepth).duplicated else null
+            val indexColumn = if (e.path in indexFields) indexColumnOf(c, e.path, e.bindDepth) else null
+            val dupIndexValues = indexColumn?.duplicated
             if (e.having == null) {
-                for ((reps, v) in c.starCells(e.path, e.bindDepth)) {
+                val cells = indexColumn?.cells ?: c.starCells(e.path, e.bindDepth)
+                for ((reps, v) in cells) {
                     if (cellRelevant?.invoke(e.path, reps) == false) continue   // [IF267]
                     op.classify(v, dupIndexValues)
                 }
@@ -75,10 +77,19 @@ private fun Interpreter.vlqOperands(entries: List<Expr>): List<VlqOperand> = ent
                 // the kept subset. A dropped row contributes nothing; the un-instantiated tail is unreachable
                 // (no data to filter). The operand's polarity effect is the consuming pass's call ([filtered]).
                 val group = e.path.substringBeforeLast('/')
+                val indexValuesByRepetitions = indexColumn?.cells?.toMap()
                 for (rc in c.rowContexts(group, e.bindDepth)) {
-                    if (cellRelevant?.invoke(e.path, rc.repsOf(e.path)) == false) continue   // [IF267]
+                    val repetitions = rc.repsOf(e.path)
+                    if (cellRelevant?.invoke(e.path, repetitions) == false) continue   // [IF267]
                     if (!havingInterp(rc).fires(e.having)) continue
-                    op.classify(if (rc.filled(e.path)) rc.field(e.path) else null, dupIndexValues)
+                    val value = if (indexValuesByRepetitions != null) {
+                        indexValuesByRepetitions[repetitions]
+                    } else if (rc.filled(e.path)) {
+                        rc.field(e.path)
+                    } else {
+                        null
+                    }
+                    op.classify(value, dupIndexValues)
                 }
             }
             op

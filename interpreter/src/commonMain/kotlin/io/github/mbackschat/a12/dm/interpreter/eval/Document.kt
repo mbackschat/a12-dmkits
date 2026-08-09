@@ -5,7 +5,9 @@ import io.github.mbackschat.a12.dm.interpreter.CacheObserver
 import io.github.mbackschat.a12.dm.interpreter.CacheOwnerKind
 import io.github.mbackschat.a12.dm.interpreter.messagePointerHouseForm
 import io.github.mbackschat.a12.dm.interpreter.UnsupportedConstructException
+import io.github.mbackschat.a12.dm.interpreter.IndexIdentityCandidate
 import io.github.mbackschat.a12.dm.interpreter.indexKeyOf
+import io.github.mbackschat.a12.dm.interpreter.resolveIndexIdentity
 import io.github.mbackschat.a12.dm.interpreter.ast.Val
 import io.github.mbackschat.a12.dm.interpreter.ast.emptyValue
 import io.github.mbackschat.a12.dm.interpreter.ast.typedValue
@@ -230,9 +232,9 @@ class Document(internal val config: DocumentConfig) {
         // row domain is the WHOLE list, so a per-ROW-CONTEXT memo would duplicate one identical O(rows) map
         // across O(rows) contexts — O(rows²) MEMORY (the perf gate's OOM). Keyed by the scope prefix, every
         // row context (and every sibling target of the index field) shares the one map.
-        val indexRowByValue: MutableMap<Pair<String, List<Int>>, Map<String, List<Int>>> = HashMap()
+        val indexRowsByValue: MutableMap<Pair<String, List<Int>>, Map<String, List<List<Int>>>> = HashMap()
         // The [IndexColumn] state per (index field, star-scope prefix) — the same DOCUMENT-level sharing as
-        // [indexRowByValue], for the same reason: the IF107/IF115 gates consult the column per LOOKUP, so a
+        // [indexRowsByValue], for the same reason: the IF107/IF115 gates consult the column per LOOKUP, so a
         // per-read rebuild is O(rows) each and a per-row indexed rule turns validateFull O(rows²) (the perf
         // gate's semanticIndexStaysSubQuadratic hang).
         val indexColumnByScope: MutableMap<Pair<String, List<Int>>, IndexColumn> = HashMap()
@@ -273,7 +275,7 @@ class Document(internal val config: DocumentConfig) {
                 idx.contextsByGroup.size +
                 idx.prefixRowsByGroup.size +
                 idx.nonRepFilledByGroup.size +
-                idx.indexRowByValue.size +
+                idx.indexRowsByValue.size +
                 idx.indexColumnByScope.size +
                 idx.starOmissionByScope.size +
                 idx.overLimitRowsByGroup.values.sumOf { it.size } +
@@ -492,6 +494,11 @@ class Document(internal val config: DocumentConfig) {
     fun contextsFor(groupPath: String): List<EvalContext> =
         index().contextsByGroup.getOrPut(groupPath) { computeContextsFor(groupPath) }
 
+    /** One already-selected concrete row context. Index resolution owns selection; this reconstructs the normal
+     *  evaluation environment so the rule and its message pointer inherit the identical repetition. */
+    internal fun contextFor(groupPath: String, repetitions: List<Int>): EvalContext =
+        RowContext(groupPath, repetitions, evaluated = true)
+
     /**
      * Contexts for a COMPUTATION's iteration scope. Like [contextsFor], but when [groupPath] is
      * **all-non-repeatable** (no repeatable ancestor, itself included) and has NO instantiated row, it still
@@ -566,7 +573,9 @@ class Document(internal val config: DocumentConfig) {
     fun parallelContexts(groups: List<String>, indexFieldName: String, commonParent: String,
             frameGroup: String? = null, deepestFrame: String? = null,
             /** Partial validation only: gates which INDEX cells key the join ([IF269]). Null = every cell. */
-            cellRelevant: ((String, List<Int>) -> Boolean)? = null): List<EvalContext> {
+            cellRelevant: ((String, List<Int>) -> Boolean)? = null,
+            /** Complete formal-admission gate supplied by the validation/compute pass. */
+            indexIdentityAdmitted: ((String, List<Int>, String) -> Boolean)? = null): List<EvalContext> {
         val out = ArrayList<EvalContext>()
         for (cReps in parentRowsOf(commonParent)) {
             // The NON-framed (clean) groups are shared across every frame row — build their value maps + invalid
@@ -574,7 +583,9 @@ class Document(internal val config: DocumentConfig) {
             // frame row → O(frames × M)). Only the framed group's map depends on the current frame row.
             val cleanInvalid = HashSet<String>()
             val cleanMaps = groups.filter { it != frameGroup }
-                .associateWith { indexMap(it, indexFieldName, cReps, cleanInvalid, cellRelevant) }
+                .associateWith {
+                    indexMap(it, indexFieldName, cReps, cleanInvalid, cellRelevant, indexIdentityAdmitted)
+                }
             // An over-limit FRAME row is outside the kernel's cache, so the join never runs inside it (the same
             // exclusion as the joined groups below and the star domain, SPEC-2026-07-23-13 / IF220).
             val frameRows = if (deepestFrame != null)
@@ -585,7 +596,14 @@ class Document(internal val config: DocumentConfig) {
                 val parentReps = groups.associateWith { g -> if (g == frameGroup) fr else cReps }
                 val invalid = HashSet(cleanInvalid)
                 val perGroup = if (frameGroup == null) cleanMaps
-                    else cleanMaps + (frameGroup to indexMap(frameGroup, indexFieldName, fr, invalid, cellRelevant))
+                    else cleanMaps + (frameGroup to indexMap(
+                        frameGroup,
+                        indexFieldName,
+                        fr,
+                        invalid,
+                        cellRelevant,
+                        indexIdentityAdmitted,
+                    ))
                 val values = LinkedHashSet<String>().apply { groups.forEach { addAll(perGroup.getValue(it).keys) } }
                 for (v in values) {
                     out += ParallelRowContext(commonParent, cReps, groups, parentReps,
@@ -621,11 +639,11 @@ class Document(internal val config: DocumentConfig) {
      *  text ([IF272]) — on a Number index field `5` and `5.00` are one kernel key, so they collide within a group
      *  and match across groups. */
     private fun indexMap(group: String, indexFieldName: String, ctxReps: List<Int>, invalidOut: MutableSet<String>,
-            cellRelevant: ((String, List<Int>) -> Boolean)?): Map<String, List<Int>> {
+            cellRelevant: ((String, List<Int>) -> Boolean)?,
+            indexIdentityAdmitted: ((String, List<Int>, String) -> Boolean)?): Map<String, List<Int>> {
         val idxPath = "$group/$indexFieldName"
         val overLimit = overLimitRows(group)
-        val byValue = LinkedHashMap<String, List<Int>>()
-        val collided = HashSet<String>()
+        val candidates = ArrayList<IndexIdentityCandidate<String>>()
         for (row in rowsWithPrefix(group, ctxReps)) {
             if (row in overLimit) continue                                  // over-limit row: outside the join
             // Partial validation: the join is keyed by the INDEX field and the kernel builds that cache from the
@@ -640,25 +658,32 @@ class Document(internal val config: DocumentConfig) {
             // difference, which is why [IF269]'s shapes — all measured with `FieldFilled(…) Or FieldFilled(…)`,
             // true whenever the far side is filled — pinned the pointer but not the validity.
             if (cellRelevant?.invoke(idxPath, row + 1) == false) {
-                invalidOut.add(group)
+                candidates += IndexIdentityCandidate(row, null, compromises = true)
                 continue
             }
             val raw = valueAt(idxPath, row + 1)?.value
             if (raw.isNullOrEmpty()) {                                      // empty index cell → group invalid here
-                invalidOut.add(group)
+                candidates += IndexIdentityCandidate(row, null, compromises = true)
                 continue
             }
-            val v = indexKeyOf(raw, kinds[idxPath])
-            when {
-                v in collided -> Unit                                       // 3rd+ occurrence: already keys nothing
-                byValue.put(v, row) != null -> {                            // duplicate value → group invalid here
-                    invalidOut.add(group)
-                    collided.add(v)
-                    byValue.remove(v)                                       // …and the value keys NOTHING at all
-                }
+            val cellReps = row + 1
+            val admitted = indexIdentityAdmitted?.invoke(idxPath, cellReps, raw)
+                ?: !formallyInvalid(idxPath, raw)
+            if (!admitted) {
+                // Formal admission precedes identity. The invalid cell compromises the column like an empty one,
+                // but contributes no key and therefore cannot collide with or match a valid value.
+                candidates += IndexIdentityCandidate(row, null, compromises = true)
+                continue
             }
+            candidates += IndexIdentityCandidate(
+                row,
+                indexKeyOf(raw, kinds[idxPath]),
+                compromises = false,
+            )
         }
-        return byValue
+        val resolved = resolveIndexIdentity(candidates)
+        if (resolved.compromised) invalidOut += group
+        return resolved.uniqueRowsByKey
     }
 
     /**
@@ -948,37 +973,86 @@ class Document(internal val config: DocumentConfig) {
         /**
          * SemanticIndex `[F For "v"]`: the value of [targetPath] in the in-scope row whose sibling [indexField]
          * cell equals [indexValue]. The kernel's `IndexFieldCache` analog — an `indexValue → row` memo built
-         * ONCE per (indexField, star-scope prefix) at the DOCUMENT level ([Index.indexRowByValue]) and shared
-         * across every reference, every rule, and every ROW CONTEXT of the scope (first match wins, matching a
-         * scan) — a per-context memo would duplicate the whole-list map per row since IF93 (O(rows²) memory).
+         * ONCE per (indexField, star-scope prefix) at the DOCUMENT level ([Index.indexRowsByValue]) and shared
+         * across every reference, every rule, and every ROW CONTEXT of the scope (only a unique admitted key
+         * selects) — a per-context memo would duplicate the whole-list map per row since IF93 (O(rows²) memory).
          * Rows of the index field's group == `starRows(targetPath)` (same group, sibling leaves), and the row
          * reps address the leaf for any sibling, so the map is shared across sibling targets too.
          */
-        override fun indexedCell(targetPath: String, indexField: String, indexValue: String): Val? {
-            val reps = indexedCellReps(targetPath, indexField, indexValue) ?: return null
-            val raw = valueAt(targetPath, reps)?.value
+        override fun indexedCell(targetPath: String, indexField: String, indexValue: String): Val? =
+            indexedCell(targetPath, indexField, indexValue, null)
+
+        override fun indexedCell(
+            targetPath: String,
+            indexField: String,
+            indexValue: String,
+            indexIdentityAdmitted: ((String, List<Int>, String) -> Boolean)?,
+        ): Val? {
+            val reps = indexedCellReps(targetPath, indexField, indexValue, indexIdentityAdmitted) ?: return null
+            return indexedValueAt(targetPath, reps)
+        }
+
+        override fun indexedValueAt(targetPath: String, repetitions: List<Int>): Val? {
+            val raw = valueAt(targetPath, repetitions)?.value
             return if (!raw.isNullOrEmpty()) resolveValue(targetPath, raw) else null
         }
 
-        private fun indexedCellReps(targetPath: String, indexField: String, indexValue: String): List<Int>? {
+        override fun indexedCellRepetitions(
+            targetPath: String,
+            indexField: String,
+            indexValue: String,
+            indexIdentityAdmitted: ((String, List<Int>, String) -> Boolean)?,
+        ): List<Int>? = indexedCellReps(targetPath, indexField, indexValue, indexIdentityAdmitted)
+
+        private fun indexedCellReps(
+            targetPath: String,
+            indexField: String,
+            indexValue: String,
+            indexIdentityAdmitted: ((String, List<Int>, String) -> Boolean)? = null,
+        ): List<Int>? {
             val kind = declaredKind(indexField)
-            val byValue = index().indexRowByValue.getOrPut(indexField to starScopePrefix(targetPath)) {
-                val m = HashMap<String, List<Int>>()
-                for (reps in starRows(targetPath)) {
-                    val key = valueAt(indexField, reps)?.value?.let { indexKeyOf(it, kind) } ?: continue
-                    if (key !in m) m[key] = reps                          // FIRST placement per key wins (matches a scan)
+            val indexGroup = parentGroup(indexField)
+            val indexDepth = partsOf(indexGroup).size
+            val scope = groupScopePrefix(indexGroup, bindDepth = -1)
+            val byValue = index().indexRowsByValue.getOrPut(indexField to scope) {
+                val m = HashMap<String, MutableList<List<Int>>>()
+                val overLimit = overLimitRows(indexGroup)
+                for (row in rowsWithPrefix(indexGroup, scope)) {
+                    if (row in overLimit) continue
+                    val reps = row + 1
+                    val raw = valueAt(indexField, reps)?.value ?: continue
+                    val key = indexKeyOf(raw, kind)
+                    m.getOrPut(key) { ArrayList(1) }.add(reps)
                 }
                 m
             }
-            return byValue[indexKeyOf(indexValue, kind)]
+            val queryKey = indexKeyOf(indexValue, kind)
+            val candidates = byValue[queryKey].orEmpty().mapNotNull { reps ->
+                val raw = valueAt(indexField, reps)?.value ?: return@mapNotNull null
+                val admitted = indexIdentityAdmitted?.invoke(indexField, reps, raw) ?: !formallyInvalid(indexField, raw)
+                IndexIdentityCandidate(
+                    repetitions = reps,
+                    key = queryKey.takeIf { admitted },
+                    compromises = !admitted,
+                )
+            }
+            val selected = resolveIndexIdentity(candidates).uniqueRowsByKey[queryKey] ?: return null
+            val currentTarget = reps(targetPath)
+            return selected.take(indexDepth) + currentTarget.drop(indexDepth)
         }
 
         override fun indexedContainedFieldCells(
             groupPath: String,
             indexField: String,
             indexValue: String,
+            indexIdentityAdmitted: ((String, List<Int>, String) -> Boolean)?,
         ): Sequence<ScanCell> {
-            val indexCellReps = indexedCellReps(indexField, indexField, indexValue) ?: return emptySequence()
+            val indexCellReps = indexedCellReps(
+                indexField,
+                indexField,
+                indexValue,
+                indexIdentityAdmitted,
+            ) ?: return emptySequence()
             val selectedGroupReps = indexCellReps.dropLast(1)
             return RowContext(groupPath, selectedGroupReps, evaluated = true)
                 .containedFieldCells(groupPath, declaredRange = false)
@@ -1328,6 +1402,7 @@ class Document(internal val config: DocumentConfig) {
             groupPath: String,
             indexField: String,
             indexValue: String,
+            indexIdentityAdmitted: ((String, List<Int>, String) -> Boolean)?,
         ): Sequence<ScanCell> = unsupportedInParallel()
         private fun unsupportedInParallel(): Nothing =
             throw UnsupportedConstructException("an aggregate/filter inside a parallel iteration is not modeled")
@@ -1374,6 +1449,11 @@ class Document(internal val config: DocumentConfig) {
             }
         }
     }
+
+    /** Whether [reps] belongs to the kernel-equivalent evaluation/index cache for [groupPath]. Over-limit rows
+     * remain instantiated for formal reporting but never reach an index identity relation. */
+    internal fun indexCacheContainsRow(groupPath: String, reps: List<Int>): Boolean =
+        reps !in overLimitRows(groupPath)
 
     private fun kindOf(path: String): Kind = kinds[path] ?: error("no kind declared for $path")
 

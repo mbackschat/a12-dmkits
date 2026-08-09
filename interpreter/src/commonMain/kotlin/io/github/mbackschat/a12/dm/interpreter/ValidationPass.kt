@@ -66,6 +66,11 @@ internal class ValidationPass(
         return formalResults.failureAt(path, reps, ctx)?.code
     }
 
+    /** The stored-cell admission gate used before an index value is projected into a join key. Relevance is the
+     * first, short-circuiting stage so an excluded custom cell is neither validated nor admitted. */
+    fun admitsIndexIdentity(path: String, reps: List<Int>, raw: String): Boolean =
+        isRelevant(path, reps) && formalResults.admitsIdentityAt(path, reps, raw)
+
     /**
      * Whether the rule whose error field is [errorPath] runs for the row [ctx] — the kernel executes it only
      * when the error field is relevant, but the levels the iteration never BOUND count as wildcards: a rule

@@ -83,6 +83,7 @@ internal class OverlayContext(
     override fun indexColumn(path: String, bindDepth: Int): IndexColumn =
         if (path == selfTarget) IndexColumn(starCells(path, bindDepth))
         else views.indexColumn(path, d.scopePrefixOf(parentGroupOf(path), bindDepth)) { IndexColumn(starCells(path, bindDepth)) }
+    override fun indexColumnCacheable(path: String): Boolean = path != selfTarget
     override fun starScanStates(path: String, bindDepth: Int): List<CellState> {
         val states = d.starScanStates(path, bindDepth)
         val rows = d.starCells(path, bindDepth)
@@ -105,8 +106,34 @@ internal class OverlayContext(
         groupPath: String,
         indexField: String,
         indexValue: String,
+        indexIdentityAdmitted: ((String, List<Int>, String) -> Boolean)?,
     ): Sequence<ScanCell> =
-        d.indexedContainedFieldCells(groupPath, indexField, indexValue).map(::overlaidScanCell)
+        d.indexedContainedFieldCells(groupPath, indexField, indexValue, indexIdentityAdmitted).map(::overlaidScanCell)
+
+    override fun indexedCell(
+        targetPath: String,
+        indexField: String,
+        indexValue: String,
+        indexIdentityAdmitted: ((String, List<Int>, String) -> Boolean)?,
+    ): Val? {
+        val repetitions = indexedCellRepetitions(targetPath, indexField, indexValue, indexIdentityAdmitted)
+            ?: return null
+        return indexedValueAt(targetPath, repetitions)
+    }
+
+    override fun indexedCellRepetitions(
+        targetPath: String,
+        indexField: String,
+        indexValue: String,
+        indexIdentityAdmitted: ((String, List<Int>, String) -> Boolean)?,
+    ): List<Int>? = d.indexedCellRepetitions(targetPath, indexField, indexValue, indexIdentityAdmitted)
+
+    override fun indexedValueAt(targetPath: String, repetitions: List<Int>): Val? {
+        val key = targetPath to repetitions
+        if (key in poisoned) throw PoisonedReadException(targetPath)
+        if (key in cleared) return null
+        return overlay[key] ?: d.indexedValueAt(targetPath, repetitions)
+    }
 
     private fun overlaidScanCell(cell: ScanCell): ScanCell {
         val key = cell.path to cell.reps

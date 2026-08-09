@@ -124,11 +124,14 @@ class Interpreter(
      *  the CALL — a relevance-scoped column may not enter [Document]'s cache, which outlives the call and is
      *  shared by every relevant set of the same document. Installed only by [ValidationPass], and consulted only
      *  when [cellRelevant] is non-null; see [indexColumnOf]. */
-    internal var indexColumnMemo: MutableMap<Pair<String, List<Int>>, IndexColumn>? = null
-        private set
+    private var indexColumnMemo: ((Pair<String, List<Int>>, () -> IndexColumn) -> IndexColumn)? = null
 
     internal fun sharingIndexColumns(memo: MutableMap<Pair<String, List<Int>>, IndexColumn>): Interpreter = apply {
-        indexColumnMemo = memo
+        indexColumnMemo = { key, build -> memo.getOrPut(key, build) }
+    }
+
+    internal fun sharingIndexColumns(views: OverlayViews): Interpreter = apply {
+        indexColumnMemo = { (path, scope), build -> views.indexColumn(path, scope, build) }
     }
 
     /**
@@ -136,16 +139,30 @@ class Interpreter(
      * reads, so relevance scoping cannot be applied at some consumers and missed at others ([IF266], the
      * `AtLeastOne` symptom that exposed it).
      *
-     * Full validation and compute return the context's own column unchanged (the document memo). A PARTIAL
-     * validation rebuilds it with the call's relevance predicate and memoizes it per (column, star-scope prefix)
-     * — the same key [Document] uses, and for the same reason: a per-lookup rebuild is O(rows), which makes a
-     * per-row indexed rule O(rows²) (`PerfGateTest.semanticIndexStaysSubQuadratic`).
+     * A low-level consumer with neither relevance nor a complete admission gate returns the context's own column
+     * unchanged. A validation/computation call rebuilds it from identity-preserving scan cells so registered
+     * custom-type rejection participates in the same admission stage as built-in format checks. The result is
+     * memoized per (column, star-scope prefix), except for a computation overlay writing that column, whose
+     * context declares it unstable through [EvalContext.indexColumnCacheable].
      */
     internal fun indexColumnOf(c: EvalContext, path: String, bindDepth: Int = -1): IndexColumn {
-        val relevant = cellRelevant ?: return c.indexColumn(path, bindDepth)
-        fun build() = IndexColumn(c.starCells(path, bindDepth)) { reps -> relevant(path, reps) }
+        val relevant = cellRelevant
+        val admitted = config.indexIdentityAdmitted
+        if (relevant == null && admitted == null) return c.indexColumn(path, bindDepth)
+        fun build(): IndexColumn {
+            val cells = c.starScanCells(path, bindDepth).map { cell ->
+                val value = when {
+                    relevant?.invoke(path, cell.reps) == false -> Val.Unknown
+                    cell.raw != null && admitted?.invoke(path, cell.reps, cell.raw) == false -> Val.Unknown
+                    else -> cell.value
+                }
+                cell.reps to value
+            }.toList()
+            return IndexColumn(cells)
+        }
+        if (!c.indexColumnCacheable(path)) return build()
         val memo = indexColumnMemo ?: return build()
-        return memo.getOrPut(path to c.scopePrefixOf(parentGroup(path), bindDepth)) { build() }
+        return memo(path to c.scopePrefixOf(parentGroup(path), bindDepth), ::build)
     }
 
     /** Formal-aware group state for validation; low-level/compute consumers retain structural Boolean presence. */
@@ -166,6 +183,14 @@ class Interpreter(
     /** The independently-correlatable key operand of a field-keyed semantic index. */
     internal fun indexKeyCtx(node: Expr.SemanticIndex): EvalContext =
         if (node.indexFieldOuter) outerOrThrow() else ctx
+
+    /** One semantic-index cell read through the call's complete admission boundary. */
+    internal fun indexedCell(c: EvalContext, targetPath: String, indexField: String, indexValue: String): Val? =
+        c.indexedCell(targetPath, indexField, indexValue, config.indexIdentityAdmitted)
+
+    /** Narrow accessor for semantic-row selection; keeps the rest of [EvalConfig] encapsulated. */
+    internal fun indexIdentityAdmitted(): ((String, List<Int>, String) -> Boolean)? =
+        config.indexIdentityAdmitted
 
     /** Whether a `$`-marked node is UNBOUND in this context — an overlap-predicate `Having` ([outerUnbound]) has
      *  no enclosing iteration; its complete comparison/predicate becomes trivially TRUE (not [outer], not a throw). */

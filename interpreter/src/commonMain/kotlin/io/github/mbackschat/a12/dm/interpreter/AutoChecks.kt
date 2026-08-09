@@ -132,14 +132,14 @@ internal class AutoChecks(
             if (model.requirednessOf(path) == Requiredness.ABSOLUTE && lowestRepeatableAncestor(path) == null) {
                 val reps = List(pathParts(path).size) { 1 }
                 val ctx = doc.onceContextFor(rootGroupOf(path)).single()
-                if (isRelevant(path, reps) && cache.failureAt(path, reps, ctx)?.code == MANDATORY_FIELD) {
+                if (isRelevant(path, reps) && cache.hasInvalidCodeAt(path, reps, ctx, MANDATORY_FIELD)) {
                     mandatoryMessage(doc, path, reps, locale, unsupported)?.let(out::add)
                 }
             } else {
                 for (ctx in doc.contextsFor(emissionScope(path))) {
                     val r = ctx.repsOf(path)
                     // An over-limit row's mandatory check is suppressed (it carries the over-repetition code instead).
-                    if (isRelevant(path, r) && cache.failureAt(path, r, ctx)?.code == MANDATORY_FIELD) {
+                    if (isRelevant(path, r) && cache.hasInvalidCodeAt(path, r, ctx, MANDATORY_FIELD)) {
                         mandatoryMessage(doc, path, r, locale, unsupported)?.let(out::add)
                     }
                 }
@@ -166,7 +166,11 @@ internal class AutoChecks(
      * Cells are compared by their canonical [indexKeyOf] form, never raw text ([IF272]) — a Number index field
      * spelled `5` in one row and `5.00` in another is ONE kernel key, so both rows are flagged.
      */
-    fun duplicateIndexCells(doc: Document, isRelevant: Relevance = ALL_RELEVANT): Set<Pair<String, List<Int>>> {
+    fun duplicateIndexCells(
+        doc: Document,
+        valueAdmissions: ValueAdmissionCache,
+        isRelevant: Relevance = ALL_RELEVANT,
+    ): Set<Pair<String, List<Int>>> {
         val out = mutableSetOf<Pair<String, List<Int>>>()
         for (indexField in model.indexFields) {
             val rows = doc.contextsFor(parentGroup(indexField)).mapNotNull { ctx ->
@@ -176,12 +180,17 @@ internal class AutoChecks(
                 // index cache from the relevant fields only (`ValidationCommand.befuelleCacheMitRelevantenFeldern`),
                 // so a relevant row whose duplicate PARTNER is not relevant is NOT flagged (IF39). Full: all cells.
                 if (!isRelevant(indexField, reps)) return@mapNotNull null
-                ctx.displayValue(indexField)?.takeIf { it.isNotEmpty() }
-                    ?.let { reps to indexKeyOf(it, ctx.declaredKind(indexField)) }
+                val raw = ctx.displayValue(indexField)?.takeIf { it.isNotEmpty() } ?: return@mapNotNull null
+                val admitted = valueAdmissions.participatesInIdentityAt(indexField, reps, raw)
+                val candidate = IndexIdentityCandidate(
+                    repetitions = reps,
+                    key = indexKeyOf(raw, ctx.declaredKind(indexField)).takeIf { admitted },
+                    compromises = !admitted,
+                )
+                reps.dropLast(2) to candidate
             }
-            rows.groupBy { it.first.dropLast(2) }.forEach { (_, scope) ->
-                val duplicated = scope.groupingBy { it.second }.eachCount().filterValues { it > 1 }.keys
-                for ((reps, _) in scope.filter { it.second in duplicated }) out += indexField to reps
+            rows.groupBy({ it.first }, { it.second }).forEach { (_, scope) ->
+                for (reps in resolveIndexIdentity(scope).duplicateRows) out += indexField to reps
             }
         }
         return out
@@ -362,6 +371,29 @@ internal class AutoChecks(
         }
     }
 
+    /** The uncached value-owned admission result for one filled cell, before identity relations are built. */
+    fun computeValueAdmissionAt(
+        path: String,
+        reps: List<Int>,
+        raw: String,
+        locale: String,
+    ): FormalResult {
+        paths.exceededBound(path, reps)?.let { exceeded ->
+            return FormalResult.Invalid(FormalFailure.Generated(overRepetitionType(exceeded).code))
+        }
+        val kind = model.kinds[path] ?: return FormalResult.Valid
+        formalErrorCached(kind, raw, model.scaleOf(path), model.dateLikeFormatOf(path), model.datePrecisionOf(path),
+            model.rangeSeparatorOf(path), model.constraintsOf(path), legalCharset, model.baseYear ?: 2000,
+            model.timeZone, patterns::matches)?.let { return FormalResult.Invalid(FormalFailure.Format(it)) }
+        return try {
+            customTypeRejection(path, raw, locale)?.let {
+                FormalResult.Invalid(FormalFailure.Custom(it))
+            } ?: FormalResult.Valid
+        } catch (e: UnsupportedConstructException) {
+            FormalResult.Unsupported(e.message ?: "custom field type could not be evaluated")
+        }
+    }
+
     /** The uncached, complete formal/mandatory/duplicate-index result for one cell. */
     fun computeFormalResultAt(
         path: String,
@@ -369,7 +401,7 @@ internal class AutoChecks(
         raw: String?,
         ctx: EvalContext?,
         dup: Set<Pair<String, List<Int>>>,
-        locale: String,
+        valueAdmissions: ValueAdmissionCache,
         groupFilled: (EvalContext, String) -> Boolean = { context, group -> context.groupFilled(group) },
     ): FormalResult {
         // An over-limit cell (a group coordinate exceeds its effective maximum) is "unknown" — it carries the
@@ -379,16 +411,10 @@ internal class AutoChecks(
             return FormalResult.Invalid(FormalFailure.Generated(overRepetitionType(exceeded).code))
         }
         if (raw != null) {
-            val kind = model.kinds[path] ?: return FormalResult.Valid
-            formalErrorCached(kind, raw, model.scaleOf(path), model.dateLikeFormatOf(path), model.datePrecisionOf(path),
-                model.rangeSeparatorOf(path), model.constraintsOf(path), legalCharset, model.baseYear ?: 2000,
-                model.timeZone, patterns::matches)?.let { return FormalResult.Invalid(FormalFailure.Format(it)) }
-            try {
-                customTypeRejection(path, raw, locale)?.let {
-                    return FormalResult.Invalid(FormalFailure.Custom(it))
-                }
-            } catch (e: UnsupportedConstructException) {
-                return FormalResult.Unsupported(e.message ?: "custom field type could not be evaluated")
+            when (val admission = valueAdmissions.resultAt(path, reps, raw)) {
+                FormalResult.Valid -> Unit
+                is FormalResult.Invalid -> return admission
+                is FormalResult.Unsupported -> return admission
             }
             return if (path to reps in dup) FormalResult.Invalid(FormalFailure.Generated(UNIQUE_INDEX))
             else FormalResult.Valid

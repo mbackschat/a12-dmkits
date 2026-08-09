@@ -1,6 +1,7 @@
 package io.github.mbackschat.a12.dm.interpreter
 
 import io.github.mbackschat.a12.dm.interpreter.ast.Cond
+import io.github.mbackschat.a12.dm.interpreter.ast.Expr
 import io.github.mbackschat.a12.dm.interpreter.model.ComputationDef
 import io.github.mbackschat.a12.dm.interpreter.model.ModelDef
 import io.github.mbackschat.a12.dm.interpreter.model.RuleDef
@@ -33,6 +34,14 @@ import kotlin.jvm.JvmSynthetic
  */
 internal class ModelStaticPlans private constructor(private val model: ModelDef) {
 
+    private data class SemanticIndexTarget(
+        val group: String,
+        val indexValue: String?,
+        val indexFieldPath: String?,
+        val outer: Boolean,
+        val indexFieldOuter: Boolean,
+    )
+
     companion object {
         /**
          * Kotlin emits an `internal` constructor as `ACC_PUBLIC`, so this type is built through a
@@ -42,7 +51,6 @@ internal class ModelStaticPlans private constructor(private val model: ModelDef)
         @JvmSynthetic
         internal fun of(model: ModelDef): ModelStaticPlans = ModelStaticPlans(model)
     }
-
 
     /** Nullable, instance-local deterministic seam used only by the model-static work guards. */
     internal var preparationObserver: PreparationObserver? = null
@@ -131,10 +139,33 @@ internal class ModelStaticPlans private constructor(private val model: ModelDef)
     private fun buildRulePlan(rule: RuleDef): PreparedRulePlan {
         val ast = parsed.condAstOf(rule)
         val rnu = repetitionNotUnique.prepare(rule, ast)
+        val iteration = scopes.prepare(rule, ast)
+        val errorPath = resolveErrorPath(rule)
+        fun selectedGroup(semanticIndex: Expr.SemanticIndex): String =
+            nearestIndexFieldOf(model.indexFields, semanticIndex.path)?.let(::parentGroup)
+                ?: if (semanticIndex.path in model.groupPaths) semanticIndex.path else parentGroup(semanticIndex.path)
+        fun targetOf(semanticIndex: Expr.SemanticIndex) = SemanticIndexTarget(
+            selectedGroup(semanticIndex),
+            semanticIndex.indexValue,
+            semanticIndex.indexFieldPath,
+            semanticIndex.outer,
+            semanticIndex.indexFieldOuter,
+        )
+        val semanticErrorIndex = semanticIndexes(ast)
+            .filter { semanticIndex ->
+                semanticIndex.path == errorPath ||
+                    (semanticIndex.path in model.groupPaths && errorPath.startsWith("${semanticIndex.path}/"))
+            }
+            .distinctBy(::targetOf)
+            .singleOrNull()
+            ?.takeUnless { semanticIndex ->
+                scopes.bindsRepeatableGroup(iteration, selectedGroup(semanticIndex))
+            }
         return PreparedRulePlan(
             ast = ast,
-            iteration = scopes.prepare(rule, ast),
+            iteration = iteration,
             repetitionNotUnique = rnu,
+            semanticErrorIndex = semanticErrorIndex,
             messageReferences = messageReferences(ast, excludeRepetitionNotUniqueKeys = rnu != null)
                 .flatMap(::expandMessageReference).distinct(),
             hasFilterConditions = starRefs(ast).any { it.having != null },

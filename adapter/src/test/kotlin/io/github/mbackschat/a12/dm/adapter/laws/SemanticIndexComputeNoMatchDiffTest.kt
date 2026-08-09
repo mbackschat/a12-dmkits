@@ -5,9 +5,11 @@ import io.github.mbackschat.a12.dm.interpreter.eval.Document
 import io.github.mbackschat.a12.dm.interpreter.eval.newDocument
 import io.github.mbackschat.a12.dm.interpreter.load.ModelLoader
 import io.github.mbackschat.a12.dm.interpreter.model.ComputeOutcome
+import io.github.mbackschat.a12.dm.edit.EditSession
 import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel
 import io.github.mbackschat.a12.dm.rulekit.dsl.ConditionLanguage
+import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl
 import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
@@ -25,31 +27,98 @@ class SemanticIndexComputeNoMatchDiffTest {
 
     private companion object {
         const val KEY = "/Shop/LookupKey"
+        const val SEED_KEY = "/Shop/SeedKey"
         const val RESULT = "/Shop/Result"
+        const val GROUP_RESULT = "/Shop/GroupResult"
         const val ITEM_NO = "/Shop/Items/ItemNo"
         const val PRICE = "/Shop/Items/Price"
+        const val PROJECTION = "/Shop/Items/Projection"
         const val ITEMS = "/Shop/Items"
     }
 
     private val base = DocumentModelDraft.named("pricelookup").locale("en_US")
         .rootGroup("Shop") { s ->
             s.numberField("LookupKey") { it.fractionDigits(0, 0) }
+            s.numberField("SeedKey") { it.fractionDigits(0, 0) }
             s.numberField("Result") { it.fractionDigits(2, 2) }
+            s.numberField("GroupResult") { it.fractionDigits(2, 2) }
             s.group("Items") { i ->
-                i.repeatable(10).numberField("ItemNo") { it.fractionDigits(0, 0) }
-                    .numberField("Price") { it.fractionDigits(2, 2) }.indexField("ItemNo")
+                i.repeatable(10).numberField("Projection") { it.fractionDigits(2, 2) }
+                    .numberField("ItemNo") { it.fractionDigits(0, 0) }
+                    .numberField("Price") { it.fractionDigits(2, 2) }
+                    .indexField("ItemNo")
             }
         }.build().toJson()
 
     private val kModel = RuntimeLaws.withComputation(base, "/Shop", "LookupComp", "../Result",
         "[Items/Price For LookupKey]")
 
+    private val cascadeModel by lazy {
+        val session = EditSession.read(base)
+        val items = session.group(ITEMS)
+        items.addComputation(items.num("Projection")) { computation ->
+            computation.name("BuildProjection")
+                .calc(items.num("Price").value())
+                .message(Dsl.en("Project the source price."))
+                .build()
+        }
+        val shop = session.group("/Shop")
+        shop.addComputation(shop.num("Result")) { computation ->
+            computation.name("ReadProjection")
+                .calc(items.num("Projection").forIndex(shop.num("LookupKey").field()).expression())
+                .message(Dsl.en("Read the projected price by semantic key."))
+                .build()
+        }
+        val bound = BoundModel.ofJson(base)
+        shop.addComputation(shop.num("GroupResult")) { computation ->
+            computation.name("ReadGroupProjection")
+                .calc(
+                    Dsl.firstFilledNumber(
+                        bound.firstFilledGroupFor(ITEMS, bound.field(KEY)),
+                    ).expression(),
+                )
+                .message(Dsl.en("Read the first projected value from the selected group."))
+                .build()
+        }
+        session.validate().toJson()
+    }
+
+    private val computedQueryModel by lazy {
+        val session = EditSession.read(base)
+        val shop = session.group("/Shop")
+        shop.addComputation(shop.num("LookupKey")) { computation ->
+            computation.name("BuildLookupKey")
+                .calc(shop.num("SeedKey").value())
+                .message(Dsl.en("Build the semantic lookup key."))
+                .build()
+        }
+        val items = session.group(ITEMS)
+        shop.addComputation(shop.num("Result")) { computation ->
+            computation.name("ReadWithComputedKey")
+                .calc(items.num("Price").forIndex(shop.num("LookupKey").field()).expression())
+                .message(Dsl.en("Read the price through the computed semantic key."))
+                .build()
+        }
+        session.validate().toJson()
+    }
+
     /** [rows]: (itemNo?, price?) per row. Returns the tri-checked Result outcome. */
-    private fun triOutcome(key: String, rows: List<Pair<String?, String?>>): String {
-        val def = ModelLoader.load(kModel)
+    private fun triOutcome(key: String, rows: List<Pair<String?, String?>>): String =
+        triCompute(kModel, key, rows)
+
+    private fun triCompute(
+        model: String,
+        key: String?,
+        rows: List<Pair<String?, String?>>,
+        target: String = RESULT,
+        seedKey: String? = null,
+    ): String {
+        val def = ModelLoader.load(model)
         fun build(k: RuntimeLaws.Doc, i: Document) {
-            k.group("/Shop", 1).field(KEY, key, 1, 1).field(RESULT, "999.99", 1, 1)
-            i.group("/Shop", 1).field(KEY, key, 1, 1).field(RESULT, "999.99", 1, 1)
+            k.group("/Shop", 1).field(RESULT, "999.99", 1, 1).field(GROUP_RESULT, "999.99", 1, 1)
+            i.group("/Shop", 1).field(RESULT, "999.99", 1, 1).field(GROUP_RESULT, "999.99", 1, 1)
+            key?.let { k.field(KEY, it, 1, 1); i.field(KEY, it, 1, 1) }
+            seedKey?.let { k.field(SEED_KEY, it, 1, 1); i.field(SEED_KEY, it, 1, 1) }
             rows.forEachIndexed { idx, (no, price) ->
                 val r = idx + 1
                 k.group(ITEMS, 1, r); i.group(ITEMS, 1, r)
@@ -59,14 +128,14 @@ class SemanticIndexComputeNoMatchDiffTest {
         }
         val kDoc = RuntimeLaws.doc(); val iDoc = def.newDocument()
         build(kDoc, iDoc)
-        val groovy = RuntimeLaws.compute(kModel, kDoc).firstOrNull { it.pointer() == "/Shop[1]/Result" }
+        val groovy = RuntimeLaws.compute(model, kDoc).firstOrNull { it.pointer() == "/Shop[1]/${target.substringAfterLast('/')}" }
             .let { c -> if (c == null) "NONE" else if (c.cleared()) "CLEARED" else if (c.errored()) "ERRORED" else "VALUE|${c.value().orElse("")}" }
-        val engine = RuntimeLaws.kernelJavaEngine(kModel)
+        val engine = RuntimeLaws.kernelJavaEngine(model)
         val kDoc2 = RuntimeLaws.doc(); val iDoc2 = def.newDocument()
         build(kDoc2, iDoc2)
-        val javaStatic = engine.computeOutcomesSorted(engine.instance(kDoc2)).firstOrNull { it.startsWith("$RESULT|") }
-            ?.substringAfter("$RESULT|")?.let { if (it == "ERR") "ERRORED" else if (it == "CLEARED") "CLEARED" else "VALUE|$it" } ?: "NONE"
-        val interp = DmInterpreter(def).compute(iDoc).firstOrNull { it.path == RESULT }
+        val javaStatic = engine.computeOutcomesSorted(engine.instance(kDoc2)).firstOrNull { it.startsWith("$target|") }
+            ?.substringAfter("$target|")?.let { if (it == "ERR") "ERRORED" else if (it == "CLEARED") "CLEARED" else "VALUE|$it" } ?: "NONE"
+        val interp = DmInterpreter(def).compute(iDoc).firstOrNull { it.path == target }
             .let { c -> when (c?.outcome) {
                 null -> "NONE"
                 ComputeOutcome.CLEARED -> "CLEARED"
@@ -84,6 +153,33 @@ class SemanticIndexComputeNoMatchDiffTest {
 
     @Test fun matchingRowComputesItsPrice() =
         assertEquals("VALUE|5.25", triOutcome("12", listOf("534" to "0.01", "12" to "5.25")))
+
+    @Test fun semanticReadSeesAPayloadComputedEarlierInTheCascade() =
+        assertEquals(
+            "VALUE|5.25",
+            triCompute(cascadeModel, "12", listOf("534" to "0.01", "12" to "5.25")),
+            "row selection may use the stored index, but the selected payload must come from the current " +
+                "computation overlay",
+        )
+
+    @Test fun semanticGroupReadSeesPayloadsComputedEarlierInTheCascade() =
+        assertEquals(
+            "VALUE|5.25",
+            triCompute(cascadeModel, "12", listOf("534" to "0.01", "12" to "5.25"), GROUP_RESULT),
+            "the selected group's contained-field scan must project the computation overlay, not the stored row",
+        )
+
+    @Test fun semanticReadSeesAQueryKeyComputedEarlierInTheCascade() =
+        assertEquals(
+            "VALUE|5.25",
+            triCompute(
+                computedQueryModel,
+                key = null,
+                rows = listOf("534" to "0.01", "12" to "5.25"),
+                seedKey = "12",
+            ),
+            "semantic row selection must resolve its field-valued query from the current computation overlay",
+        )
 
     @Test fun noMatchWithAnInvalidIndexCellClears() =
         assertEquals("CLEARED", triOutcome("274", listOf("534" to "0.01", "9999999999999999" to "0.01")),

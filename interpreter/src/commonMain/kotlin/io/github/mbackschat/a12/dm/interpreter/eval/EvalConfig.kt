@@ -24,6 +24,11 @@ class EvalConfig(
     /** Repeatable groups' index-field paths (the kernel's `indexFieldName`s) — the `SemanticIndex`
      *  (`[field For "value"]`) lookup resolves a group's index field from this. */
     val indexFields: Set<String> = emptySet(),
+    /** Complete call-local formal-admission gate for stored index identities. A semantic-index row is selected
+     *  only after this predicate admits its index cell, so built-in constraints, registered custom types,
+     *  over-limit coordinates, and partial-call unavailability all precede key projection. Null retains the
+     *  document's model-derived built-in check for low-level [Interpreter] consumers. */
+    val indexIdentityAdmitted: ((String, List<Int>, String) -> Boolean)? = null,
     /** The model's configured time zone ([ModelTimeZone], `modelConfig.timeZone`, default UTC) — drives
      *  datetime instant math, stateful `DifferenceInDays` calendar steps, wall-day AddDays landings, and
      *  legacy-calendar Date construction (KERNEL-FINDINGS §6). */

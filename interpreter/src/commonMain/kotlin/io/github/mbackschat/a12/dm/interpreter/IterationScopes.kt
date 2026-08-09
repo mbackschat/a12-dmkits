@@ -56,12 +56,14 @@ internal class IterationScopes(private val model: ModelDef) {
      */
     fun prepare(rule: RuleDef, ast: Cond): IterationPlan {
         val refs = nonStarredRefs(ast)
-        val scope = deepestRepeatableAnchor(refs) ?: run {
+        val semanticAnchors = semanticIndexes(ast).flatMap(::repeatableDescendantsOfSelectedIndex)
+        val scope = (listOfNotNull(deepestRepeatableAnchor(refs)) + semanticAnchors)
+            .maxByOrNull { it.count { c -> c == '/' } } ?: run {
             val starAnchor = starBindingAnchor(ast)
             return if (starAnchor != null) IterationPlan.Rows(starAnchor)
             else IterationPlan.Once(rootGroupOf(resolveErrorPath(rule)))
         }
-        val parallelGroups = refs.flatMap { ancestorGroups(it).filter { g -> g in model.repeatable } }
+        val parallelGroups = (refs.flatMap { ancestorGroups(it).filter { g -> g in model.repeatable } } + semanticAnchors)
             .distinct().filter { it != scope && !scope.startsWith("$it/") }
         if (parallelGroups.isNotEmpty()) {
             val plan = prepareParallel(scope, parallelGroups)
@@ -78,6 +80,9 @@ internal class IterationScopes(private val model: ModelDef) {
         /** Partial validation only: gates which INDEX cells key a parallel join ([IF269]). Null = every cell,
          *  which is full validation and every compute consumer. */
         cellRelevant: ((String, List<Int>) -> Boolean)? = null,
+        /** Complete formal-admission gate for a stored index cell. Null is reserved for callers without a
+         * validation pass; [Document] then applies its model-derived built-in formal check. */
+        indexIdentityAdmitted: ((String, List<Int>, String) -> Boolean)? = null,
     ): List<EvalContext> = when (plan) {
         is IterationPlan.Rows -> doc.contextsFor(plan.group)
         is IterationPlan.Once -> doc.onceContextFor(plan.rootGroup)
@@ -88,7 +93,16 @@ internal class IterationScopes(private val model: ModelDef) {
             plan.frameGroup,
             plan.deepestFrame,
             cellRelevant,
+            indexIdentityAdmitted,
         )
+    }
+
+    /** Whether [plan] directly iterates [group]. A descendant iteration still needs semantic selection to replace
+     * the indexed ancestor coordinate while retaining its own lower repetition coordinates. */
+    fun bindsRepeatableGroup(plan: IterationPlan, group: String): Boolean = when (plan) {
+        is IterationPlan.Once -> false
+        is IterationPlan.Rows -> plan.group == group
+        is IterationPlan.Parallel -> group in plan.joined
     }
 
     /** The deepest repeatable BINDING level across the condition's starred refs (tier 2), or null. */
@@ -119,9 +133,14 @@ internal class IterationScopes(private val model: ModelDef) {
      * index (duplicate/empty) is NOT declined — modeled exactly: the compromised group's unmatched references
      * read 3VL UNKNOWN (KERNEL-FINDINGS §9), and the auto checks still emit `uniqueIndex`/`mandatoryField`.
      */
-    fun parallelIterationContexts(scope: String, parallelGroups: List<String>, doc: Document): List<EvalContext> {
+    fun parallelIterationContexts(
+        scope: String,
+        parallelGroups: List<String>,
+        doc: Document,
+        indexIdentityAdmitted: ((String, List<Int>, String) -> Boolean)? = null,
+    ): List<EvalContext> {
         val plan = prepareParallel(scope, parallelGroups)
-        return iterationContexts(plan, doc)
+        return iterationContexts(plan, doc, indexIdentityAdmitted = indexIdentityAdmitted)
     }
 
     /** Prepare and validate the document-independent shape of one parallel join. */
@@ -236,4 +255,14 @@ internal class IterationScopes(private val model: ModelDef) {
             (ancestorGroups(ref) + listOfNotNull(ref.takeIf { model.kinds[ref] == null }))
                 .filter { it in model.repeatable }
         }.maxByOrNull { it.count { c -> c == '/' } }
+
+    /** Repeatable levels below the group selected by a semantic key remain ordinary iteration dimensions. The
+     * selected indexed group itself is absolute and therefore excluded. */
+    private fun repeatableDescendantsOfSelectedIndex(semanticIndex: Expr.SemanticIndex): List<String> {
+        val indexGroup = nearestIndexFieldOf(model.indexFields, semanticIndex.path)?.let(::parentGroup)
+            ?: return emptyList()
+        val targetGroups = ancestorGroups(semanticIndex.path) +
+            listOfNotNull(semanticIndex.path.takeIf { it in model.groupPaths })
+        return targetGroups.filter { it in model.repeatable && it.startsWith("$indexGroup/") }
+    }
 }

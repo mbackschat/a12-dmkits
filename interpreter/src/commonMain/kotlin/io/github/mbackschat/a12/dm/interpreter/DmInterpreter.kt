@@ -9,7 +9,9 @@ import io.github.mbackschat.a12.dm.interpreter.eval.EvalConfig
 import io.github.mbackschat.a12.dm.interpreter.eval.EvalContext
 import io.github.mbackschat.a12.dm.interpreter.eval.FunctionOp
 import io.github.mbackschat.a12.dm.interpreter.eval.GroupRelevance
+import io.github.mbackschat.a12.dm.interpreter.eval.UNKNOWN_REP
 import io.github.mbackschat.a12.dm.interpreter.eval.renderMessage
+import io.github.mbackschat.a12.dm.interpreter.eval.semanticIndexRepetitions
 import io.github.mbackschat.a12.dm.interpreter.model.ComputeOutcome
 import io.github.mbackschat.a12.dm.interpreter.model.Computed
 import io.github.mbackschat.a12.dm.interpreter.model.CustomCondition
@@ -631,14 +633,20 @@ class DmInterpreter private constructor(
             val full = isRelevant === ALL_RELEVANT
             val call = if (full && indexDefaults.isNotEmpty()) doc.withComputed(indexDefaults) else doc
             val unavailable = if (full) emptySet() else indexDefaults.keys
-            val dup = checks.duplicateIndexCells(call, isRelevant)   // computed ONCE: feeds both the uniqueIndex messages and the suppression
+            val valueAdmissions = ValueAdmissionCache(checks, locale)
+            val dup = checks.duplicateIndexCells(call, valueAdmissions, isRelevant)   // computed ONCE: feeds both the uniqueIndex messages and the suppression
             lateinit var formalResults: FormalResultCache
             val admittedGroupContent by lazy(LazyThreadSafetyMode.NONE) {
                 AdmittedGroupContentIndex.build(model, call, isRelevant, groupRelevance, formalResults, paths)
             }
-            formalResults = FormalResultCache(checks, locale, dup, unavailable) { ctx, path ->
-                admittedGroupContent.isFilled(ctx, path)
-            }
+            formalResults = FormalResultCache(
+                checks,
+                locale,
+                dup,
+                unavailable,
+                { ctx, path -> admittedGroupContent.isFilled(ctx, path) },
+                valueAdmissions,
+            )
             // Custom-type unsupported is collected up front (cells whose type is in NEITHER registry); formalErrors
             // ADDS to it any REGISTERED code-based type whose validate() can't run (a JS worker down / errored), so
             // that degrades to unsupported per cell rather than crashing the whole validation.
@@ -655,8 +663,18 @@ class DmInterpreter private constructor(
             val groupPresence by lazy(LazyThreadSafetyMode.NONE) {
                 GroupPresenceIndex(admittedGroupContent, formallyIncorrect, groupRelevance)
             }
+            val indexIdentityAdmitted: (String, List<Int>, String) -> Boolean = { path, reps, raw ->
+                isRelevant(path, reps) && formalResults.admitsIdentityAt(path, reps, raw)
+            }
             val pass = ValidationPass(call, doc, locale, isRelevant, relevantWithin, dup,
-                validationConfig(isRelevant, customRelevant, starRelevant, starExtentKnown, starFullyEnumerated) { ctx, path -> groupPresence.state(ctx, path) },
+                validationConfig(
+                    isRelevant,
+                    customRelevant,
+                    starRelevant,
+                    starExtentKnown,
+                    starFullyEnumerated,
+                    indexIdentityAdmitted,
+                ) { ctx, path -> groupPresence.state(ctx, path) },
                 formalResults, { formallyIncorrect })
             for (rule in model.rules) {
                 try {
@@ -792,15 +810,20 @@ class DmInterpreter private constructor(
         // Full-call semantics, so the eligible index defaults are staged exactly as in [validate] (SPEC-2026-07-23-14).
         val indexDefaults = checks.eligibleIndexDefaults(doc)
         val call = if (indexDefaults.isEmpty()) doc else doc.withComputed(indexDefaults)
-        val dup = checks.duplicateIndexCells(call)
+        val valueAdmissions = ValueAdmissionCache(checks, locale)
+        val dup = checks.duplicateIndexCells(call, valueAdmissions)
         val groupRelevance = { _: String, _: List<Int> -> GroupRelevance.FULL }
         lateinit var formalResults: FormalResultCache
         val admittedGroupContent by lazy(LazyThreadSafetyMode.NONE) {
             AdmittedGroupContentIndex.build(model, call, ALL_RELEVANT, groupRelevance, formalResults, paths)
         }
-        formalResults = FormalResultCache(checks, locale, dup) { ctx, path ->
-            admittedGroupContent.isFilled(ctx, path)
-        }
+        formalResults = FormalResultCache(
+            checks,
+            locale,
+            dup,
+            groupFilled = { ctx, path -> admittedGroupContent.isFilled(ctx, path) },
+            valueAdmissions = valueAdmissions,
+        )
         val formallyIncorrect by lazy(LazyThreadSafetyMode.NONE) {
             formalResults.invalidPointers()
         }
@@ -814,7 +837,14 @@ class DmInterpreter private constructor(
             ALL_RELEVANT,
             null,
             dup,
-            validationConfig(ALL_RELEVANT, null, null, null, null) { ctx, path -> groupPresence.state(ctx, path) },
+            validationConfig(
+                ALL_RELEVANT,
+                null,
+                null,
+                null,
+                null,
+                formalResults::admitsIdentityAt,
+            ) { ctx, path -> groupPresence.state(ctx, path) },
             formalResults,
             { formallyIncorrect },
         )
@@ -855,10 +885,12 @@ class DmInterpreter private constructor(
             starRelevant: ((String, Int, List<Int>) -> Boolean)?,
             starExtentKnown: ((String, Int, List<Int>) -> Boolean)?,
             starFullyEnumerated: ((String, Int, List<Int>) -> Boolean)?,
+            indexIdentityAdmitted: (String, List<Int>, String) -> Boolean,
             groupPresence: (EvalContext, String) -> io.github.mbackschat.a12.dm.interpreter.eval.GroupPresenceState): EvalConfig =
         EvalConfig(clock, model.baseYear, model.indexFields, timeZone = model.timeZone,
             predefinedTypes = predefinedTypes, customConditions = customConditions, customFieldTypes = customFieldTypes,
             patternMatches = patterns::matches,
+            indexIdentityAdmitted = indexIdentityAdmitted,
             cellRelevant = if (isRelevant === ALL_RELEVANT) null else { path, reps -> isRelevant(path, reps) },
             starRelevant = starRelevant, starExtentKnown = starExtentKnown,
             starFullyEnumerated = starFullyEnumerated,
@@ -917,7 +949,39 @@ class DmInterpreter private constructor(
         }
         val rnuSeam: ((EvalContext) -> MsgType?)? =
             rnuCache?.let { cache -> { context -> cache.rows[context.repsOf(errorPath)]?.type } }
-        return scopes.iterationContexts(prepared.iteration, pass.doc, pass.config.cellRelevant).map { ctx ->
+        val iterationContexts = scopes.iterationContexts(
+            prepared.iteration,
+            pass.doc,
+            pass.config.cellRelevant,
+            pass::admitsIndexIdentity,
+        ).map { iterationContext ->
+            prepared.semanticErrorIndex?.let { semanticIndex ->
+                val selector = pass.interpreterFor(iterationContext, errorPath, rnuSeam)
+                val selectedGroup = nearestIndexFieldOf(model.indexFields, semanticIndex.path)
+                    ?.let(::parentGroup)
+                    ?: if (semanticIndex.path in model.groupPaths) semanticIndex.path else parentGroup(semanticIndex.path)
+                val selectedFieldReps = selector.semanticIndexRepetitions(semanticIndex)
+                val errorGroup = parentGroup(errorPath)
+                val selectedDepth = pathParts(selectedGroup).size
+                val errorDepth = pathParts(errorGroup).size
+                val errorGroupReps = selectedFieldReps?.let { repetitions ->
+                    if (semanticIndex.path in model.groupPaths) {
+                        repetitions.take(selectedDepth) + List(errorDepth - selectedDepth) { 1 }
+                    } else {
+                        repetitions.take(errorDepth)
+                    }
+                } ?: run {
+                    iterationContext.repsOf(errorPath).dropLast(1).toMutableList().also { repetitions ->
+                        repetitions[selectedDepth - 1] = UNKNOWN_REP
+                    }
+                }
+                pass.doc.contextFor(errorGroup, errorGroupReps)
+            } ?: iterationContext
+        }.let { contexts ->
+            if (prepared.semanticErrorIndex == null) contexts
+            else contexts.distinctBy { context -> context.repsOf(errorPath) }
+        }
+        return iterationContexts.map { ctx ->
             // Partial validation: the kernel runs a rule only if its error field is relevant at this row —
             // else the rule is NOT executed for it (no message, not a suppression). "At this row" is the
             // BOUND levels only ([ValidationPass.runsForRow], IF268). Full validation: always.

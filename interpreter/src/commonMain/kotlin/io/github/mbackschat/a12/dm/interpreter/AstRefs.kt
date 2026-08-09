@@ -184,6 +184,50 @@ internal fun semanticIndexTargets(cond: Cond): List<String> = when (cond) {
     is Cond.Custom -> emptyList()
 }
 
+/** Every concrete semantic-index node in evaluation order. Unlike [semanticIndexTargets], this retains the key
+ *  specification because a rule whose repeated error field is semantically addressed inherits the selected
+ *  repetition as its evaluation/error context. */
+internal fun semanticIndexes(cond: Cond): List<Expr.SemanticIndex> = when (cond) {
+    is Cond.Cmp -> semanticIndexes(cond.left) + semanticIndexes(cond.right)
+    is Cond.Tolerance -> semanticIndexes(cond.left) + semanticIndexes(cond.right)
+    is Cond.ValueListQuant -> (cond.fields + cond.values).flatMap(::semanticIndexes)
+    is Cond.And -> semanticIndexes(cond.left) + semanticIndexes(cond.right)
+    is Cond.Or -> semanticIndexes(cond.left) + semanticIndexes(cond.right)
+    is Cond.Not -> semanticIndexes(cond.c)
+    is Cond.Pred -> cond.args.flatMap(::semanticIndexes)
+    is Cond.Pattern -> semanticIndexes(cond.value) + semanticIndexes(cond.pattern)
+    is Cond.Custom -> emptyList()
+}
+
+private fun semanticIndexes(expr: Expr): List<Expr.SemanticIndex> = when (expr) {
+    is Expr.SemanticIndex -> listOf(expr)
+    is Expr.Star -> expr.having?.let(::semanticIndexes).orEmpty()
+    is Expr.Func -> expr.args.flatMap(::semanticIndexes)
+    is Expr.Arith -> semanticIndexes(expr.left) + semanticIndexes(expr.right)
+    is Expr.EntitySpec -> {
+        val source = expr.source as? Expr.Field
+        val indexed = source?.let { field ->
+            when (val index = expr.semanticIndex) {
+                null -> null
+                is Expr.EntityIndex.Literal -> Expr.SemanticIndex(
+                    field.path,
+                    indexValue = index.value,
+                    outer = field.outer,
+                )
+                is Expr.EntityIndex.Field -> Expr.SemanticIndex(
+                    field.path,
+                    indexFieldPath = index.path,
+                    outer = field.outer,
+                    indexFieldOuter = index.outer,
+                )
+            }
+        }
+        listOfNotNull(indexed) + semanticIndexes(expr.source)
+    }
+    is Expr.Field, is Expr.NumLit, is Expr.StrLit, is Expr.BoolLit, is Expr.Const, is Expr.EnumCategory ->
+        emptyList()
+}
+
 internal fun condRefsOrEmpty(cond: Cond?): List<String> = cond?.let { nonStarredRefs(it) } ?: emptyList()
 
 // ---------------------------------------------------------------------------------------------------------

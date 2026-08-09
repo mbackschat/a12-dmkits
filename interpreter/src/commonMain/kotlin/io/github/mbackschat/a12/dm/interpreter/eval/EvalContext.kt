@@ -1,6 +1,8 @@
 package io.github.mbackschat.a12.dm.interpreter.eval
 
 import io.github.mbackschat.a12.dm.interpreter.UnsupportedConstructException
+import io.github.mbackschat.a12.dm.interpreter.IndexIdentityCandidate
+import io.github.mbackschat.a12.dm.interpreter.resolveIndexIdentity
 import io.github.mbackschat.a12.dm.interpreter.ast.Val
 import io.github.mbackschat.a12.dm.interpreter.model.CustomConditionData
 import io.github.mbackschat.a12.dm.interpreter.model.DatePrecision
@@ -102,11 +104,37 @@ interface EvalContext {
      *  matched cell is empty (the caller then reads it as the kind's empty value). Default: unsupported. */
     fun indexedCell(targetPath: String, indexField: String, indexValue: String): Val? = null
 
+    /** Admission-aware twin used by a complete validation/computation call. The default preserves the
+     *  low-level context contract; the general [Document] filters every candidate before choosing a row. */
+    fun indexedCell(
+        targetPath: String,
+        indexField: String,
+        indexValue: String,
+        indexIdentityAdmitted: ((String, List<Int>, String) -> Boolean)?,
+    ): Val? = indexedCell(targetPath, indexField, indexValue)
+
+    /** The repetitions of the admitted row selected by the semantic index. This is distinct from the value:
+     *  an empty target cell still selects a row, and the rule error context follows that selected repetition. */
+    fun indexedCellRepetitions(
+        targetPath: String,
+        indexField: String,
+        indexValue: String,
+        indexIdentityAdmitted: ((String, List<Int>, String) -> Boolean)?,
+    ): List<Int>? = null
+
+    /** The semantic-index payload at an already selected [repetitions] identity. Kept separate from row
+     * selection so a computation overlay can project a value produced earlier in the cascade. */
+    fun indexedValueAt(targetPath: String, repetitions: List<Int>): Val? = null
+
     /** The [IndexColumn] state of a starred INDEX field's column. The general [Document]'s raw row context
      *  memoizes it per (column, star-scope prefix) at the DOCUMENT level (the kernel's `IndexFieldCache`
      *  analog, like [indexedCell]'s row map); this default rebuilds per read — a cascade OVERLAY's view
      *  changes as computations land, so only the RAW context may cache. */
     fun indexColumn(path: String, bindDepth: Int = -1): IndexColumn = IndexColumn(starCells(path, bindDepth))
+
+    /** Whether a call-local admission-aware [IndexColumn] may be memoized. A computation overlay that writes
+     * [path] overrides this because its column changes between row evaluations of one computation step. */
+    fun indexColumnCacheable(path: String): Boolean = true
 
     /** One [EvalContext] per row of [groupPath] WITHIN this context's scope — for evaluating a `Having`
      *  per-row filter inside an aggregate. Default empty (the flat spike contexts don't model rows). */
@@ -254,6 +282,7 @@ interface EvalContext {
         groupPath: String,
         indexField: String,
         indexValue: String,
+        indexIdentityAdmitted: ((String, List<Int>, String) -> Boolean)?,
     ): Sequence<ScanCell> =
         throw UnsupportedConstructException("indexed-group scan needs the general Document context, not $this")
 }
@@ -298,12 +327,10 @@ data class ScanCell(
  * every indexed read O(rows), and a `validateFull` over a per-row indexed rule O(rows²) (caught by the perf
  * gate's `semanticIndexStaysSubQuadratic`).
  *
- * [relevantCell] scopes the DUPLICATE relation to a partial validation's relevant cells, exactly as
- * `AutoChecks.duplicateIndexCells` does — the kernel builds its index cache from the relevant fields only, so a
- * relevant cell whose duplicate PARTNER is not relevant is not compromised ([IF39], measured on both kernel
- * strategies by `PartialAtLeastOneScanDiffTest`; [IF266]). It scopes **only** that relation: an EMPTY or
- * malformed cell still marks the column irrespective of relevance, because nothing has measured otherwise.
- * Default "everything relevant" — full validation and the compute path are unchanged.
+ * [relevantCell] is the identity-stage relevance gate. A non-relevant cell participates in neither key projection
+ * nor collision and compromises the column as unavailable ([IF271]); a relevant admitted cell participates, while
+ * an empty or malformed cell compromises it. The interpreter's call-level path normally maps those classifications
+ * into [cells] first; the predicate remains the equivalent low-level constructor seam. Default: every cell relevant.
  */
 class IndexColumn(
     val cells: List<Pair<List<Int>, Val?>>,
@@ -315,33 +342,30 @@ class IndexColumn(
     /** Any empty, malformed, or duplicated cell — the whole-column not-check-relevant marking (IF107/IF115). */
     val anyNotCheckRelevant: Boolean
 
-    /** Any empty or DUPLICATED cell — malformed NOT re-counted (the aggregate caller already reads a malformed
-     *  cell as [Val.Unknown], IF15/IF60). */
+    /** Any empty, unavailable, or DUPLICATED cell. The aggregate caller sees built-in malformed values as
+     * [Val.Unknown] directly; this flag additionally carries call-local custom/relevance unavailability that the
+     * raw document value cannot encode. */
     val anyEmptyOrDuplicated: Boolean
 
     /** The count of clean cells (filled, well-formed, unique) — the index-aware fill tally's `t`. */
     val cleanFilled: Int
 
     init {
-        val seen = HashSet<Val>()
-        val dups = HashSet<Val>()
-        for ((reps, v) in cells) {
-            if (v == null || v is Val.Unknown || !relevantCell(reps)) continue
-            if (!seen.add(v)) dups += v
+        val candidates = cells.map { (reps, value) ->
+            val relevant = relevantCell(reps)
+            IndexIdentityCandidate(
+                repetitions = reps,
+                key = value?.takeUnless { it is Val.Unknown }?.takeIf { relevant },
+                compromises = !relevant || value == null || value is Val.Unknown,
+            )
         }
-        duplicated = dups
-        var invalid = false
-        var emptyOrDup = false
-        var clean = 0
-        for ((reps, v) in cells) when {
-            v == null -> { invalid = true; emptyOrDup = true }
-            v is Val.Unknown -> invalid = true
-            v in dups && relevantCell(reps) -> { invalid = true; emptyOrDup = true }
-            else -> clean++
+        val resolved = resolveIndexIdentity(candidates)
+        duplicated = resolved.duplicatedKeys
+        anyNotCheckRelevant = resolved.compromised
+        anyEmptyOrDuplicated = resolved.compromised
+        cleanFilled = candidates.count { candidate ->
+            candidate.key != null && candidate.key !in duplicated
         }
-        anyNotCheckRelevant = invalid
-        anyEmptyOrDuplicated = emptyOrDup
-        cleanFilled = clean
     }
 }
 

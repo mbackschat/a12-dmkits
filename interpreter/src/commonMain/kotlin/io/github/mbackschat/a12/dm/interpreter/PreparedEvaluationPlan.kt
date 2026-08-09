@@ -21,6 +21,10 @@ internal data class PreparedRulePlan(
     val ast: Cond,
     val iteration: IterationPlan,
     val repetitionNotUnique: RnuPlan?,
+    /** One exact authored semantic-key expression targeting the repeated error field at a level ordinary
+     *  iteration does not bind. Sibling payload refs do not enter this set; two distinct authored key expressions
+     *  fall back to ordinary iteration even when their runtime values select the same row. */
+    val semanticErrorIndex: Expr.SemanticIndex?,
     /** Rich message operands in deterministic AST order; RNU keys are excluded because its duplicate-cluster projector owns
      *  their concrete peer pointers. */
     val messageReferences: List<MessageReference>,
@@ -259,8 +263,7 @@ internal class PreparedEvaluationPlan(
                     throw UnsupportedConstructException(
                         "a group semantic index is only a value entity inside FirstFilledValue")
                 }
-                val group = if (isField) expr.path.substringBeforeLast('/') else expr.path
-                if (model.indexFields.none { it.substringBeforeLast('/') == group }) {
+                if (nearestIndexFieldOf(model.indexFields, expr.path) == null) {
                     throw UnsupportedConstructException(
                         "SemanticIndex needs an index field on the group of ${expr.path}")
                 }

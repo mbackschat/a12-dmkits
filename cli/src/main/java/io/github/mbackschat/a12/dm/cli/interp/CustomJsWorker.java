@@ -40,8 +40,10 @@ import io.github.mbackschat.a12.dm.interpreter.model.CustomConditionFieldPointer
  * shutdown hook here ({@link Process#destroyForcibly()}) for the graceful path.
  *
  * <p><b>Graceful degrade.</b> If {@code node} is absent, the worker fails to start, or a check errors, the bridge
- * throws {@link UnsupportedConstructException} — so the interpreter reports that rule {@code unsupported}
- * (the G29 visible-ignore surfacing), never a crash. Node is an optional dependency.
+ * throws {@link UnsupportedConstructException}. A field-type failure is reported as visible CELL unsupported;
+ * only a rule-owned value read adds ELEMENT unsupported, while identity-only consumers retain the documented
+ * lenient raw-key fallback. A custom-condition failure reports its rule unsupported. Neither path crashes.
+ * Node is an optional dependency.
  */
 public final class CustomJsWorker implements AutoCloseable {
 

@@ -6,6 +6,7 @@ import io.github.mbackschat.a12.dm.interpreter.RoundMode
 import io.github.mbackschat.a12.dm.interpreter.UnsupportedConstructException
 import io.github.mbackschat.a12.dm.interpreter.dec
 import io.github.mbackschat.a12.dm.interpreter.decOrNull
+import io.github.mbackschat.a12.dm.interpreter.nearestIndexFieldOf
 import io.github.mbackschat.a12.dm.interpreter.ast.ArithOp
 import io.github.mbackschat.a12.dm.interpreter.ast.Cond
 import io.github.mbackschat.a12.dm.interpreter.ast.Expr
@@ -61,16 +62,16 @@ internal data class AggregateMemoKey(
 /** `RangeAsNumber` parses its substring ONLY when it is a run of digits (kernel `\d+`); else the value is 0. */
 private val DIGITS = Regex("""\d+""")
 
-/** Whether a SemanticIndex resolves to a present (filled) cell — vs an absent row / empty cell (or an
- *  empty/absent key field for the field-keyed form, which also yields no match). */
+/** Whether a SemanticIndex resolves to a present cell for polarity projection; [semanticIndexPresence] retains
+ * the distinct UNKNOWN state of a compromised lookup. */
 internal fun Interpreter.semanticIndexFilled(e: Expr.SemanticIndex): Boolean = semanticIndexCell(e) != null
 
 /**
  * Whether a starred INDEX-field operand carries ANY NOT-CHECK-RELEVANT cell — the kernel's field-local index
  * errors (IF15/IF60, the VLQ [classifyVlqCell] mechanism generalized to the aggregate/count path): a
  * mandatory-EMPTY (or absent) cell of the auto-required index field, and EVERY cell of a DUPLICATED value
- * (`uniqueIndex`). A malformed cell is already not-check-relevant via [resolveValue] → [Val.Unknown], so it is
- * NOT re-counted here. The kernel's shared aggregate loop `combineFeldListe` (Sum/Min/Max/NumberOfDifferentValues)
+ * (`uniqueIndex`). A malformed or call-locally unavailable cell is [Val.Unknown]. The kernel's shared aggregate
+ * loop `combineFeldListe` (Sum/Min/Max/NumberOfDifferentValues)
  * and `anzahlAngegebenerFelder` (NumberOfFilledFields) return the NOT-CHECK-RELEVANT value on the FIRST such
  * cell, so the whole aggregate is non-evaluable and the referencing rule is suppressed (`IndexAggregateDiffTest`).
  * False for a non-index field or a clean index column.
@@ -235,15 +236,22 @@ private fun Interpreter.computeGuardedIndexCell(e: Expr.SemanticIndex): Val? {
     }
     val idx = indexFieldOf(e.path) ?: throw UnsupportedConstructException(
         "SemanticIndex needs an index field on the group of ${e.path}")
-    val key = resolveIndexKey(e) ?: return null                      // empty/absent key → not-given
-    val matchedKey = c.indexedCell(idx, idx, key)                    // the index-field self-lookup
+    val key = resolveIndexKey(e) ?: return unmatchedSemanticIndexValue(e)
+    val matchedKey = indexedCell(c, idx, idx, key)                  // the index-field self-lookup
     if (matchedKey != null) {
         // matched on a malformed (raw-equal) or DUPLICATED key cell → not-check-relevant
         if (matchedKey is Val.Unknown || matchedKey in indexColumnOf(c, idx).duplicated) return Val.Unknown
-        return c.indexedCell(e.path, idx, key)
+        return indexedCell(c, e.path, idx, key)
     }
-    if (indexColumnInvalid(e)) return Val.Unknown                    // unresolvable no-match
-    return null                                                      // clean no-match → not-given
+    return unmatchedSemanticIndexValue(e)
+}
+
+/** One classification for every unmatched semantic consumer: a clean column gives the fillable no-value result,
+ * while any compromised index cell makes the lookup unavailable. Computation treats that unavailability as poison. */
+private fun Interpreter.unmatchedSemanticIndexValue(e: Expr.SemanticIndex): Val? {
+    if (!indexColumnInvalid(e)) return null
+    if (computeMode) throw PoisonedReadException(e.path)
+    return Val.Unknown
 }
 
 /** Whether the index COLUMN of `[F For key]` carries ANY invalid cell — malformed, duplicated, or empty
@@ -260,19 +268,31 @@ private fun Interpreter.indexColumnInvalid(e: Expr.SemanticIndex): Boolean {
 internal fun Interpreter.semanticIndexCell(e: Expr.SemanticIndex): Val? {
     val idx = indexFieldOf(e.path) ?: throw UnsupportedConstructException("SemanticIndex needs an index field on the group of ${e.path}")
     val key = resolveIndexKey(e) ?: return null
-    return ctxOf(e).indexedCell(e.path, idx, key)
+    return indexedCell(ctxOf(e), e.path, idx, key)
+}
+
+/** The concrete admitted row selected by [e], for the kernel's semantic error-context re-anchor. */
+internal fun Interpreter.semanticIndexRepetitions(e: Expr.SemanticIndex): List<Int>? {
+    val idx = indexFieldOf(e.path) ?: throw UnsupportedConstructException(
+        "SemanticIndex needs an index field on the group of ${e.path}")
+    val key = resolveIndexKey(e) ?: return null
+    return ctxOf(e).indexedCellRepetitions(e.path, idx, key, indexIdentityAdmitted())
 }
 
 /**
  * The 3VL presence of `[F For key]` — the kernel resolves the indexed row and answers `isWertAngegeben` on
- * the ONE matched cell: matched + check-relevant filled → TRUE; an ABSENT row, an empty matched cell, or an
- * empty/no-match key → FALSE (an absent row is judged like an empty cell, NOT skipped — kernel
+ * the ONE matched cell: matched + check-relevant filled → TRUE; an ABSENT row, an empty matched cell, or a
+ * clean-column empty/no-match key → FALSE (an absent row is judged like an empty cell, NOT skipped — kernel
  * `ValidationCache.resolveSemanticIndex` → `isEntityFilled`); a malformed matched cell, or a formally
- * invalid KEY field, → UNKNOWN (not check-relevant). `SemanticIndexPresenceDiffTest`.
+ * invalid KEY field, or an empty query over a compromised column → UNKNOWN (not check-relevant).
+ * `SemanticIndexPresenceDiffTest` / `NumericIndexKeyDiffTest`.
  */
 internal fun Interpreter.semanticIndexPresence(e: Expr.SemanticIndex): Tri {
     e.indexFieldPath?.let { if (indexKeyCtx(e).cellState(it) == CellState.INVALID) return Tri.UNKNOWN }
-    val cell = semanticIndexCell(e) ?: return Tri.FALSE
+    // Presence and value reads share the admitted-key lookup. In particular, a malformed stored key contributes
+    // no identity, yet keeps the column invalid: no admitted equal key means UNKNOWN, while a later admitted equal
+    // key remains selectable regardless of the malformed row elsewhere in the column (IF115/IF272).
+    val cell = computeGuardedIndexCell(e) ?: return Tri.FALSE
     return if (cell is Val.Unknown) Tri.UNKNOWN else Tri.TRUE
 }
 
@@ -282,15 +302,10 @@ internal fun Interpreter.semanticIndexPresence(e: Expr.SemanticIndex): Tri {
 private fun Interpreter.resolveIndexKey(e: Expr.SemanticIndex): String? =
     e.indexValue ?: e.indexFieldPath?.let { indexKeyCtx(e).displayValue(it)?.takeIf { v -> v.isNotEmpty() } }
 
-/** The index-field path of [fieldPath]'s repeatable group (its sibling index field), or null if none. */
-private fun Interpreter.indexFieldOf(fieldPath: String): String? {
-    val group = if (indexFields.any { it.substringBeforeLast('/') == fieldPath }) {
-        fieldPath
-    } else {
-        fieldPath.substringBeforeLast('/')
-    }
-    return indexFields.firstOrNull { it.substringBeforeLast('/') == group }
-}
+/** The index field of [fieldPath]'s nearest indexed ancestor group, or null if none. The target may sit below
+ * nonrepeatable or repeatable descendants; semantic selection binds the indexed ancestor and preserves lower
+ * coordinates from the current iteration. */
+private fun Interpreter.indexFieldOf(fieldPath: String): String? = nearestIndexFieldOf(indexFields, fieldPath)
 
 /**
  * A no-operand constant. `Today` resolves to the injected clock's current date and `Now` to its current
@@ -1494,25 +1509,19 @@ private fun Interpreter.firstFilledOperand(operand: Expr, walk: FirstFilledWalk)
                 "SemanticIndex needs an index field on the group of ${operand.path}")
             val key = resolveIndexKey(operand)
             if (key == null) {
-                walk.fillable = true
-                FirstFilledStep.Continue
+                firstFilledSemanticNoMatch(operand, walk)
             } else {
-                val matchedKey = c.indexedCell(idx, idx, key)
+                val matchedKey = indexedCell(c, idx, idx, key)
                 if (computeMode && indexColumnInvalid(operand)) {
                     throw PoisonedReadException(operand.path)
                 }
                 when {
-                    matchedKey == null && !computeMode && indexColumnInvalid(operand) ->
-                        FirstFilledStep.Stop(Val.Unknown)
                     matchedKey is Val.Unknown || matchedKey in indexColumnOf(c, idx).duplicated ->
                         if (computeMode) throw PoisonedReadException(operand.path)
                         else FirstFilledStep.Stop(Val.Unknown)
-                    matchedKey == null -> {
-                        walk.fillable = true
-                        FirstFilledStep.Continue
-                    }
+                    matchedKey == null -> firstFilledSemanticNoMatch(operand, walk)
                     else -> firstFilledContainedCells(
-                        c.indexedContainedFieldCells(operand.path, idx, key),
+                        c.indexedContainedFieldCells(operand.path, idx, key, indexIdentityAdmitted()),
                         walk,
                     )
                 }
@@ -1529,6 +1538,14 @@ private fun Interpreter.firstFilledOperand(operand: Expr, walk: FirstFilledWalk)
     }
     is Expr.EntitySpec -> firstFilledEntitySpec(operand, walk)
     else -> FirstFilledStep.Stop(evalExpr(operand))
+}
+
+private fun Interpreter.firstFilledSemanticNoMatch(
+    operand: Expr.SemanticIndex,
+    walk: FirstFilledWalk,
+): FirstFilledStep = unmatchedSemanticIndexValue(operand)?.let(FirstFilledStep::Stop) ?: run {
+    walk.fillable = true
+    FirstFilledStep.Continue
 }
 
 private fun Interpreter.firstFilledEntitySpec(
