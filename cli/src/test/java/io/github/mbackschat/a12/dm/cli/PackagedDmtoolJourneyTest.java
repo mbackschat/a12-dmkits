@@ -11,8 +11,11 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
+import org.junit.jupiter.api.parallel.Execution;
+import org.junit.jupiter.api.parallel.ExecutionMode;
 
 /** The documented cold-start authoring journey, executed only through the packaged process boundary. */
+@Execution(ExecutionMode.CONCURRENT)
 class PackagedDmtoolJourneyTest {
 
     private static final ObjectMapper MAPPER = new ObjectMapper();

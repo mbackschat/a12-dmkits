@@ -19,8 +19,11 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
+import org.junit.jupiter.api.parallel.Execution;
+import org.junit.jupiter.api.parallel.ExecutionMode;
 
 /** The black-box public contract, executed against the exact packaged launcher selected by Gradle. */
+@Execution(ExecutionMode.CONCURRENT)
 class DmtoolPublicContractTest {
 
     private static final ObjectMapper MAPPER = new ObjectMapper();

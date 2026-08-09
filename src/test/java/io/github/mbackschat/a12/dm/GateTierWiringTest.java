@@ -103,6 +103,35 @@ class GateTierWiringTest {
                 "the repo-file-reading prose guards must not also run in the input-blind main CLI test task");
     }
 
+    @Test
+    void packagedPublicContractOverlapsOnlyReviewedProcessOwners() throws IOException {
+        String build = Files.readString(locate("cli/build.gradle"));
+        String task = gradleTask(build, "publicContractTest");
+
+        assertTrue(task.contains("junit.jupiter.execution.parallel.enabled', 'true'"),
+                "the packaged lane must retain task-local JUnit concurrency or its independent process waits "
+                        + "return to the measured 410-second serial wall time");
+        assertTrue(task.contains("junit.jupiter.execution.parallel.config.strategy', 'fixed'"),
+                "the packaged lane must use a bounded fixed pool, not JUnit's machine-dependent dynamic pool");
+        assertTrue(task.contains("Math.min(4, Runtime.runtime.availableProcessors())"),
+                "the packaged lane must cap process concurrency at four so it does not turn wait overlap into "
+                        + "CPU and memory contention");
+
+        for (String className : new String[] {
+                "CommandRouteEquivalenceTest",
+                "DmtoolMutationSafetyTest",
+                "DmtoolPublicContractTest",
+                "PackagedDmtoolJourneyTest",
+        }) {
+            String source = Files.readString(locate(
+                    "cli/src/test/java/io/github/mbackschat/a12/dm/cli/" + className + ".java"));
+            assertTrue(source.contains("@Execution(ExecutionMode.CONCURRENT)"),
+                    className + " owns an independent @TempDir and packaged process runner, so removing its "
+                            + "reviewed opt-in silently serializes its methods; new classes stay serial until "
+                            + "they receive the same explicit review");
+        }
+    }
+
     /** The literal list of lanes that exclusively own their test classes, which the broad task derives from. */
     private static String dedicatedTaskList(String build) {
         int start = build.indexOf("def dedicatedTestTasks = [");

@@ -21,8 +21,11 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
+import org.junit.jupiter.api.parallel.Execution;
+import org.junit.jupiter.api.parallel.ExecutionMode;
 
 /** Byte-level mutation safety across all 49 mutating profiles, through the packaged process boundary. */
+@Execution(ExecutionMode.CONCURRENT)
 class DmtoolMutationSafetyTest {
 
     private static final ObjectMapper MAPPER = new ObjectMapper();

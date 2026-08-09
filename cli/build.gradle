@@ -544,6 +544,14 @@ tasks.register('publicContractTest', Test) {
     systemProperty 'dmtool.executable', dmtoolContractExecutable
     inputs.file(file(dmtoolContractExecutable))
     inputs.file(rootProject.file('skill/SKILL.md'))
+    // Every method owns an independent @TempDir and PackagedDmtool instance. The expensive work is waiting for
+    // separate launcher processes, so run methods concurrently without replacing or batching away that public
+    // process boundary. Keep this task-local: the native-agent capture merges into `test`, whose metadata output
+    // is deliberately serialized above.
+    def processParallelism = Math.max(2, Math.min(4, Runtime.runtime.availableProcessors()))
+    systemProperty 'junit.jupiter.execution.parallel.enabled', 'true'
+    systemProperty 'junit.jupiter.execution.parallel.config.strategy', 'fixed'
+    systemProperty 'junit.jupiter.execution.parallel.config.fixed.parallelism', processParallelism
     // The ONE place the version-resource normalization above must not reach. This lane asserts the PACKAGED
     // launcher's reported revision equals `git rev-parse HEAD`, so provenance is a genuine input to it and a
     // bare commit MUST re-run it — otherwise the stale-launcher property stops being checked per commit, and

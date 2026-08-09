@@ -12,8 +12,11 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
+import org.junit.jupiter.api.parallel.Execution;
+import org.junit.jupiter.api.parallel.ExecutionMode;
 
 /** Equivalent public routes must produce the same observation or persisted model, not merely all exit zero. */
+@Execution(ExecutionMode.CONCURRENT)
 class CommandRouteEquivalenceTest {
 
     private static final ObjectMapper MAPPER = new ObjectMapper();
