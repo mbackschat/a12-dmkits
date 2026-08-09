@@ -448,6 +448,19 @@ Three parts, at the shared root rather than on the reported instance:
 
 - **The summary states the split**, derived from each child's own envelope: `<n> of <m> exited nonzero (<f> failed, <v> reported a negative verdict or comparison)`. A child whose stdout is not a result envelope has no `ok` to read and counts as a failure — correct, since those verbs hold no verdict.
 - **`ok`, `data.allSucceeded` and the exit code are untouched.** Forking the aggregate contract for observation mode was the rejected alternative: it would make one verb's exit mean something different from every other batch, to save a caller one field read. So the answer to "does the exit distinguish them?" is *no, and here is what does* — the envelope (`outcome:completed` + `written:true` = the capture succeeded; `outcome:rejected` = a preflight refusal that wrote nothing; `outcome:error`/exit 70 = the artifact write failed) and each child's `ok` beside `valid`/`data.matches`.
+
+  *Amended 2026-08-09 after the reporting consumer re-examined it.* The **information** half is confirmed: they could produce no artifact where `outcome` plus `written` fails to separate a successful capture, and withdrew the operational claim. The **reasoning** half is weaker than it reads: `CommandContracts` exists precisely to describe argument-dependent modes and requires an explicit selector for each, so "one verb's exit meaning something different" is a cost this project already pays and already has machinery for. The residual friction is real but ergonomic — exit 1 under `set -e` — and is answered by the pattern below. A realignment is therefore **deferred, not refused**: [CLI-CONFORMANCE-GAPS](CLI-CONFORMANCE-GAPS.md) CG9 carries it with its re-open trigger.
+
+**Scripting a negative control (the `set -e` pattern).** A capture whose candidates include a deliberately invalid one exits 1 by design, so read the envelope rather than the status:
+
+```bash
+out="$(dmtool batch --observations obs.json cases.json)" || true   # exit 1 is expected data
+outcome="$(jq -r '.outcome' <<<"$out")"
+written="$(jq -r '.written' <<<"$out")"
+[[ "$outcome" == "completed" && "$written" == "true" ]] || { echo "capture failed" >&2; exit 1; }
+```
+
+`|| true` is the load-bearing part under `set -e`; `outcome:completed` with `written:true` is the capture's own success statement, and each candidate's verdict is read from its child's `ok` beside `valid`/`data.matches`.
 - **The class-level rule rides `batch --help` and `schema batch`**, with observation mode named as the place it fires routinely rather than as the rule's home. `BatchObservationNegativeControlTest` locks the ordinary-batch split, its failed-child positive control, the observation dispositions, and the presence of the statement on both surfaces.
 
 The sibling sweep is complete and bounded: the fold exists in exactly one place, `ResultEnvelope.dispatchCompleted`/`dispatchData`, which both batch profiles share — so the root fix reaches both. The other multi-subject aggregates do not compress the axes and were each measured: `workspace check` exits 1 with an aggregate `valid:false` beside `ok:true` (its exit *is* the verdict, unambiguously), `workspace list --validate` keeps per-entry `valid` informational and never lets it reach the exit, and `apply`'s ops are edits inside one transaction with a terminal gate, so a rejection is a genuine failure rather than a finding.
