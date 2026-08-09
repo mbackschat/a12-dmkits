@@ -2856,18 +2856,63 @@ def verifyInterpreterBrowserSizeDocumentation = tasks.register(
         def publicBucketKb = 10
         def expectedKb = Math.round(measurement.gzipBytes / (publicBucketKb * 1_000.0d)) * publicBucketKb
         def expected = "${expectedKb} kB gzip"
+        // EVERY occurrence, not `contains`. The main README states the size twice, so an any-match read let
+        // the second one drift while this guard stayed green. The CHANGELOG needs no entry here: it is pinned
+        // transitively, because InterpreterDocumentationTest forces all four public surfaces to agree and this
+        // task anchors three of them to the packed bytes.
+        def stated = java.util.regex.Pattern.compile(/\d+ kB gzip/)
         [
             rootProject.file('README.md'),
             file('README.md'),
             file('public-release/README.md'),
         ].each { readme ->
-            if (!readme.getText('UTF-8').contains(expected)) {
+            def matcher = stated.matcher(readme.getText('UTF-8'))
+            def found = []
+            while (matcher.find()) {
+                found << matcher.group()
+            }
+            if (found.isEmpty() || found.any { it != expected }) {
                 throw new GradleException(
-                    "${rootProject.relativePath(readme)} must state approximate browser size '${expected}' " +
-                        "from ${rootProject.relativePath(browserBundleSize.get().asFile)}",
+                    "${rootProject.relativePath(readme)} must state approximate browser size '${expected}' at " +
+                        "EVERY occurrence, from ${rootProject.relativePath(browserBundleSize.get().asFile)}; " +
+                        "found ${found}. Run `./build.sh :interpreter:syncInterpreterBrowserSize`",
                 )
             }
         }
+    }
+}
+
+// The regenerator half of the pair above, following the `syncDocSnippets` pattern: it WRITES the measured
+// claim instead of asserting it, so one command updates every public surface from one measurement.
+tasks.register('syncInterpreterBrowserSize') {
+    group = 'documentation'
+    description = 'Rewrite every public browser-size claim from the packed showcase measurement.'
+    dependsOn verifyExternalInterpreterBrowserConsumer
+    inputs.file(browserBundleSize)
+    doLast {
+        def measurement = new groovy.json.JsonSlurper().parse(browserBundleSize.get().asFile)
+        if (!(measurement.gzipBytes instanceof Number) || measurement.gzipBytes <= 0) {
+            throw new GradleException("invalid browser bundle measurement: ${measurement.gzipBytes}")
+        }
+        def publicBucketKb = 10
+        def expected =
+            "${Math.round(measurement.gzipBytes / (publicBucketKb * 1_000.0d)) * publicBucketKb} kB gzip"
+        def stated = /\d+ kB gzip/
+        [
+            rootProject.file('README.md'),
+            file('README.md'),
+            file('public-release/README.md'),
+        ].each { surface ->
+            def before = surface.getText('UTF-8')
+            def after = before.replaceAll(stated, expected)
+            if (after != before) {
+                surface.setText(after, 'UTF-8')
+                logger.lifecycle("updated ${rootProject.relativePath(surface)} -> ${expected}")
+            }
+        }
+        // The CHANGELOG is deliberately NOT a surface here: a release note carries no byte count, so there is
+        // nothing to sync and no risk of rewriting a past release's entry. InterpreterDocumentationTest asserts
+        // that absence, so the two halves cannot drift apart on which surfaces the measurement owns.
     }
 }
 def browserPerformanceReport = rootProject.layout.buildDirectory.file(

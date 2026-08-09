@@ -211,21 +211,31 @@ class InterpreterDocumentationTest {
             "current release notes" to currentReleaseNotes,
         )
         val footprint = Regex("""(\d+) kB gzip""")
-        val publishedFootprints = surfaces.associate { (surface, text) ->
-            surface to footprint.find(text)?.groupValues?.get(1)?.toInt()
+        // The CHANGELOG deliberately carries NO size number. A release note records what changed, and a byte
+        // count there is both meaningless to its reader and a fourth surface to keep in sync — including in
+        // entries for past releases, which must never be rewritten. The size lives on the three READMEs only.
+        val sizeSurfaces = surfaces.filterNot { (surface, _) -> surface == "current release notes" }
+        assertTrue(
+            footprint.findAll(changelog).none(),
+            "interpreter/CHANGELOG.md must state no browser size; it is not a surface the measurement syncs",
+        )
+        // EVERY occurrence per surface, not the first. The main README states the footprint twice, so a
+        // first-match read let the second one drift while both this test and the packed-bytes guard stayed green.
+        val publishedFootprints = sizeSurfaces.associate { (surface, text) ->
+            surface to footprint.findAll(text).map { it.groupValues[1].toInt() }.toList()
         }
         assertTrue(
-            publishedFootprints.values.none { it == null },
+            publishedFootprints.values.none { it.isEmpty() },
             "public surfaces omit the measured browser footprint: $publishedFootprints",
         )
         assertEquals(
             1,
-            publishedFootprints.values.toSet().size,
+            publishedFootprints.values.flatten().toSet().size,
             "public surfaces disagree on the approximate browser footprint: $publishedFootprints",
         )
         assertEquals(
             0,
-            publishedFootprints.values.filterNotNull().toSet().single() % 10,
+            publishedFootprints.values.flatten().toSet().single() % 10,
             "the public 'about' footprint must use the nearest 10 kB bucket",
         )
         for ((surface, text) in surfaces) {
