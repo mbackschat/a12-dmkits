@@ -418,6 +418,25 @@ object FuzzDiagnostics {
     fun partialObservation(scenario: PerfScenario, seed: Int, relevantSeed: Int): PartialObservation {
         val places = record(scenario, seed)
         val (kRel, iRel) = relevantSets(places, relevantSeed)
+        return partialObservation(scenario, places, kRel, iRel)
+    }
+
+    /** The paired-control input for a partial silence row: same model, rule, and document, with every generated
+     *  placement relevant. It still runs the PARTIAL entry point on all three engines; it is not a full-validation
+     *  result used as a proxy. */
+    fun allRelevantPartialObservation(scenario: PerfScenario, seed: Int): PartialObservation {
+        val places = record(scenario, seed)
+        val kRel = places.mapTo(LinkedHashSet()) { RuntimeLaws.Relevant.of(it.path, *it.reps.toIntArray()) }
+        val iRel = places.mapTo(LinkedHashSet()) { RelevantEntity(it.path, it.reps) }
+        return partialObservation(scenario, places, kRel, iRel)
+    }
+
+    private fun partialObservation(
+        scenario: PerfScenario,
+        places: List<Place>,
+        kRel: Set<RuntimeLaws.Relevant>,
+        iRel: Set<RelevantEntity>,
+    ): PartialObservation {
         val i = interpPartialSignatures(scenario.interpModel, places, iRel)
         val k = kernelPartialSignatures(scenario.kernelModel, places, kRel)
         val j = javaPartialSignatures(scenario.kernelModel, places, kRel)

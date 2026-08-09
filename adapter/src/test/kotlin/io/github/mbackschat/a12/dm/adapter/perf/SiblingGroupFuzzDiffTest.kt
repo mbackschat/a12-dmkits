@@ -100,27 +100,64 @@ class SiblingGroupFuzzDiffTest {
     @Test
     fun parallelIterationAgreesWithKernelUnderPartialRelevance() {
         val failures = mutableListOf<String>()
-        val silentCases = mutableListOf<String>()
-        for (c in 0 until SiblingGroupFuzz.PARALLEL_CASES) {
-            val case = SiblingGroupFuzz.parallelCase(c)
-            var fired = false
+        val cases = (0 until SiblingGroupFuzz.PARALLEL_CASES).map(SiblingGroupFuzz::parallelCase)
+        val observations = mutableMapOf<PartialInput, FuzzDiagnostics.PartialObservation>()
+
+        fun observe(input: PartialInput): FuzzDiagnostics.PartialObservation = observations.getOrPut(input) {
+            val case = cases[input.caseIndex]
+            if (input.relevantSeed == null) {
+                FuzzDiagnostics.allRelevantPartialObservation(case.scenario, input.docSeed)
+            } else {
+                FuzzDiagnostics.partialObservation(
+                    case.scenario,
+                    input.docSeed,
+                    FuzzDiagnostics.partialRelevantSeed(input.docSeed, input.relevantSeed),
+                )
+            }
+        }
+
+        for (c in cases.indices) {
+            val case = cases[c]
             for (d in 0 until PARTIAL_DOCS) for (r in 0 until PARTIAL_REL_SEEDS) {
-                val rel = FuzzDiagnostics.partialRelevantSeed(d, r)
-                val observation = FuzzDiagnostics.partialObservation(case.scenario, d, rel)
-                if (case.code in observation.kernelCodes) fired = true
+                val observation = observe(PartialInput(c, d, r))
                 if (!observation.agrees) {
-                    failures += "${case.scenario.name} :: " + FuzzDiagnostics.partialDivergence(case.scenario, d, rel)
+                    failures += "${case.scenario.name} :: " + FuzzDiagnostics.partialDivergence(
+                        case.scenario, d, FuzzDiagnostics.partialRelevantSeed(d, r),
+                    )
                 }
             }
-            if (!fired) silentCases += case.scenario.name
         }
         assertTrue(failures.isEmpty()) {
             "partial parallel-iteration fuzz: interpreter diverged from the kernel on ${failures.size} " +
                 "(case, doc, relevant) combinations:\n" + failures.take(5).joinToString("\n")
         }
-        assertTrue(silentCases.isEmpty()) {
-            "the kernel never fired these parallel-iteration cases under ANY relevant set, so they are agreeing " +
-                "about silence, which no relevant-set bug could disturb: $silentCases"
+
+        val expectedControlKeys = cases.indices.flatMap { caseIndex ->
+            SiblingGroupFuzz.ParallelRelevanceShape.entries.map { caseIndex to it }
+        }.toSet()
+        val actualControlKeys = PARTIAL_CONTROLS.map { it.caseIndex to it.shape }
+        assertEquals(expectedControlKeys, actualControlKeys.toSet(), "every promised rule/shape class owns a control")
+        assertEquals(expectedControlKeys.size, actualControlKeys.size, "the control matrix contains no duplicate owner")
+
+        val brokenControls = buildList {
+            for (pair in PARTIAL_CONTROLS) {
+                val case = cases[pair.caseIndex]
+                val silent = observe(PartialInput(pair.caseIndex, pair.docSeed, pair.silentRelevantSeed))
+                val control = observe(PartialInput(pair.caseIndex, pair.docSeed, pair.controlRelevantSeed))
+                val silentRel = FuzzDiagnostics.partialRelevantSeed(pair.docSeed, pair.silentRelevantSeed)
+                val shapes = SiblingGroupFuzz.parallelRelevanceShapes(
+                    FuzzDiagnostics.relevantView(case.scenario, pair.docSeed, silentRel),
+                )
+                if (pair.shape !in shapes) add("${case.code}/${pair.shape}: silence seed no longer reaches the shape")
+                if (case.code in silent.kernelCodes) add("${case.code}/${pair.shape}: silence seed now fires")
+                if (case.code !in control.kernelCodes) add("${case.code}/${pair.shape}: paired control does not fire")
+                if (!silent.agrees || !control.agrees) add("${case.code}/${pair.shape}: tri-engine control split")
+            }
+        }
+        assertTrue(brokenControls.isEmpty()) {
+            "every promised (parallel rule, relevance shape) silence class needs a paired kernel-firing control " +
+                "on the same model, rule, and document, changing only relevance; broken controls:\n" +
+                brokenControls.joinToString("\n")
         }
     }
 
@@ -134,6 +171,35 @@ class SiblingGroupFuzzDiffTest {
             FuzzDiagnostics.placementDump(scenario, docSeed)
 
     private companion object {
+        data class PartialInput(val caseIndex: Int, val docSeed: Int, val relevantSeed: Int?)
+
+        data class PartialControl(
+            val caseIndex: Int,
+            val shape: SiblingGroupFuzz.ParallelRelevanceShape,
+            val docSeed: Int,
+            val silentRelevantSeed: Int,
+            /** Null means every generated placement is relevant. */
+            val controlRelevantSeed: Int?,
+        )
+
+        val PARTIAL_CONTROLS = listOf(
+            PartialControl(0, SiblingGroupFuzz.ParallelRelevanceShape.PAYLOAD_WITHOUT_ITS_INDEX, 1, 2, 0),
+            PartialControl(0, SiblingGroupFuzz.ParallelRelevanceShape.INDEX_WITHOUT_ITS_PAYLOAD, 1, 4, 0),
+            PartialControl(0, SiblingGroupFuzz.ParallelRelevanceShape.ONE_SIDE_ONLY, 1, 2, 0),
+            PartialControl(0, SiblingGroupFuzz.ParallelRelevanceShape.BOTH_SIDES, 2, 8, 0),
+            PartialControl(0, SiblingGroupFuzz.ParallelRelevanceShape.COMPROMISED_COLUMN, 1, 2, 0),
+            PartialControl(1, SiblingGroupFuzz.ParallelRelevanceShape.PAYLOAD_WITHOUT_ITS_INDEX, 6, 12, null),
+            PartialControl(1, SiblingGroupFuzz.ParallelRelevanceShape.INDEX_WITHOUT_ITS_PAYLOAD, 6, 2, 0),
+            PartialControl(1, SiblingGroupFuzz.ParallelRelevanceShape.ONE_SIDE_ONLY, 6, 2, 0),
+            PartialControl(1, SiblingGroupFuzz.ParallelRelevanceShape.BOTH_SIDES, 6, 26, null),
+            PartialControl(1, SiblingGroupFuzz.ParallelRelevanceShape.COMPROMISED_COLUMN, 6, 2, 0),
+            PartialControl(2, SiblingGroupFuzz.ParallelRelevanceShape.PAYLOAD_WITHOUT_ITS_INDEX, 2, 5, 0),
+            PartialControl(2, SiblingGroupFuzz.ParallelRelevanceShape.INDEX_WITHOUT_ITS_PAYLOAD, 2, 5, 0),
+            PartialControl(2, SiblingGroupFuzz.ParallelRelevanceShape.ONE_SIDE_ONLY, 2, 3, 0),
+            PartialControl(2, SiblingGroupFuzz.ParallelRelevanceShape.BOTH_SIDES, 2, 8, 0),
+            PartialControl(2, SiblingGroupFuzz.ParallelRelevanceShape.COMPROMISED_COLUMN, 2, 3, 0),
+        )
+
         const val MODELS = 40
         const val DOCS = 5
 
@@ -146,8 +212,10 @@ class SiblingGroupFuzzDiffTest {
          */
         const val PARALLEL_DOCS = 40
 
-        /** The partial regime's budget goes on DOCUMENTS × RELEVANT SETS, the two axes that vary its outcome:
-         *  12 × 10 × [SiblingGroupFuzz.PARALLEL_CASES] = 360 tri-engine partial validations. */
+        /** The partial regime's random budget goes on DOCUMENTS × RELEVANT SETS, the two axes that vary its
+         *  outcome: 12 × 10 × [SiblingGroupFuzz.PARALLEL_CASES] = 360 tri-engine partial validations. Thirteen
+         *  paired controls reuse those observations; two extra PX silence seeds share one all-relevant control,
+         *  for 363 distinct observations in total. */
         const val PARTIAL_DOCS = 12
         const val PARTIAL_REL_SEEDS = 10
     }
