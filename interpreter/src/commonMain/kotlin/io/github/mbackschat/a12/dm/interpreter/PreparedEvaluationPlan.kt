@@ -21,9 +21,10 @@ internal data class PreparedRulePlan(
     val ast: Cond,
     val iteration: IterationPlan,
     val repetitionNotUnique: RnuPlan?,
-    /** One exact authored semantic-key expression targeting the repeated error field at a level ordinary
-     *  iteration does not bind. Sibling payload refs do not enter this set; two distinct authored key expressions
-     *  fall back to ordinary iteration even when their runtime values select the same row. */
+    /** The deepest error-containing selector for one exact authored semantic-key target, at a level ordinary
+     *  iteration does not bind. An ordinary message reference to the error field vetoes reanchoring; sibling
+     *  payload refs do not enter the target set; two distinct authored key expressions fall back to ordinary
+     *  iteration even when their runtime values select the same row. */
     val semanticErrorIndex: Expr.SemanticIndex?,
     /** Rich message operands in deterministic AST order; RNU keys are excluded because its duplicate-cluster projector owns
      *  their concrete peer pointers. */

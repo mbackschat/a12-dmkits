@@ -159,11 +159,17 @@ class FirstFilledValueEntitySpecDiffTest {
                 .field(INDEXED_PARENT_KEY, "0", 1, 1, 1)
                 .group(INDEXED_CHILDREN, 1, 1, 2)
                 .field(INDEXED_CHILD_VALUE, "7", 1, 1, 2, 1)
+            kernelDocument.group(INDEXED_PARENTS, 1, 2)
+                .field(INDEXED_PARENT_KEY, "1", 1, 2, 1)
+                .group(INDEXED_CHILDREN, 1, 2, 2)
+                .field(INDEXED_CHILD_VALUE, "7", 1, 2, 2, 1)
         }
 
         val clock = Date(0)
-        val dynamic = RuntimeLaws.messagesModern(modelJson, kernelDocument, clock).map { it.code() }.toSet()
-        val generated = java.messagesModern(kernelDocument, clock).map { it.code() }.toSet()
+        val dynamicMessages = RuntimeLaws.messagesModern(modelJson, kernelDocument, clock)
+        val generatedMessages = java.messagesModern(kernelDocument, clock)
+        val dynamic = dynamicMessages.map { it.code() }.toSet()
+        val generated = generatedMessages.map { it.code() }.toSet()
 
         val document = definition.newDocument().group(ROOT, 1)
             .field(FALLBACK_TEXT, "x", 1, 1)
@@ -190,6 +196,10 @@ class FirstFilledValueEntitySpecDiffTest {
                 .field(INDEXED_PARENT_KEY, "0", 1, 1, 1)
                 .group(INDEXED_CHILDREN, 1, 1, 2)
                 .field(INDEXED_CHILD_VALUE, "7", 1, 1, 2, 1)
+            document.group(INDEXED_PARENTS, 1, 2)
+                .field(INDEXED_PARENT_KEY, "1", 1, 2, 1)
+                .group(INDEXED_CHILDREN, 1, 2, 2)
+                .field(INDEXED_CHILD_VALUE, "7", 1, 2, 2, 1)
         }
         val outcome = DmInterpreter(definition).validate(document)
         val interpreted = outcome.messages.map { it.code }.toSet()
@@ -198,6 +208,50 @@ class FirstFilledValueEntitySpecDiffTest {
         assertEquals(dynamic, generated, "generated Java")
         assertEquals(dynamic, interpreted, "kernel-free interpreter")
         assertEquals(emptyList<Any>(), outcome.unsupported, "every owner entitySpec is supported")
+        if (filledSelectors) {
+            val pointerCodes = setOf(
+                INDEXED_ANCESTOR_GROUP_POINTER,
+                DESCENDANT_INDEXED_GROUP,
+                SHALLOW_THEN_DEEP_GROUP_POINTER,
+                DEEP_THEN_SHALLOW_GROUP_POINTER,
+                SHALLOW_GROUP_THEN_SCALAR_POINTER,
+                SCALAR_THEN_SHALLOW_GROUP_POINTER,
+                ORDINARY_ERROR_REF_WITH_MATCHING_GROUP,
+                ORDINARY_ERROR_REF_WITH_NO_MATCH_GROUP,
+                ORDINARY_GROUP_WITH_SEMANTIC_GROUP,
+            )
+            val expectedPointers = listOf(
+                "$INDEXED_ANCESTOR_GROUP_POINTER|OMISSION_ERROR@" +
+                    "/Selection[1]/IndexedParents[1]/Children[1]/Value",
+                "$DESCENDANT_INDEXED_GROUP|VALUE_ERROR@/Selection[1]/IndexedParents[1]/Children[2]/Value",
+                "$SHALLOW_THEN_DEEP_GROUP_POINTER|OMISSION_ERROR@" +
+                    "/Selection[1]/IndexedParents[1]/Children[2]/Value",
+                "$DEEP_THEN_SHALLOW_GROUP_POINTER|OMISSION_ERROR@" +
+                    "/Selection[1]/IndexedParents[1]/Children[2]/Value",
+                "$SHALLOW_GROUP_THEN_SCALAR_POINTER|OMISSION_ERROR@" +
+                    "/Selection[1]/IndexedParents[1]/Children[2]/Value",
+                "$SCALAR_THEN_SHALLOW_GROUP_POINTER|OMISSION_ERROR@" +
+                    "/Selection[1]/IndexedParents[1]/Children[2]/Value",
+                "$ORDINARY_ERROR_REF_WITH_MATCHING_GROUP|VALUE_ERROR@" +
+                    "/Selection[1]/IndexedParents[1]/Children[2]/Value",
+                "$ORDINARY_ERROR_REF_WITH_MATCHING_GROUP|VALUE_ERROR@" +
+                    "/Selection[1]/IndexedParents[2]/Children[2]/Value",
+                "$ORDINARY_ERROR_REF_WITH_NO_MATCH_GROUP|OMISSION_ERROR@" +
+                    "/Selection[1]/IndexedParents[1]/Children[2]/Value",
+                "$ORDINARY_ERROR_REF_WITH_NO_MATCH_GROUP|OMISSION_ERROR@" +
+                    "/Selection[1]/IndexedParents[2]/Children[2]/Value",
+                "$ORDINARY_GROUP_WITH_SEMANTIC_GROUP|VALUE_ERROR@" +
+                    "/Selection[1]/IndexedParents[1]/Children[2]/Value",
+                "$ORDINARY_GROUP_WITH_SEMANTIC_GROUP|VALUE_ERROR@" +
+                    "/Selection[1]/IndexedParents[2]/Children[2]/Value",
+            ).sorted()
+            assertEquals(expectedPointers, dynamicMessages.filter { it.code() in pointerCodes }
+                .map { "${it.code()}|${it.type().name}@${it.field()}" }.sorted(), "dynamic semantic-group pointers")
+            assertEquals(expectedPointers, generatedMessages.filter { it.code() in pointerCodes }
+                .map { "${it.code()}|${it.type().name}@${it.field()}" }.sorted(), "static semantic-group pointers")
+            assertEquals(expectedPointers, outcome.messages.filter { it.code in pointerCodes }
+                .map { "${it.code}|${it.type}_ERROR@${it.errorPath}" }.sorted(), "interpreter semantic-group pointers")
+        }
     }
 
     private fun rules(): List<Rule> = listOf(
@@ -241,6 +295,38 @@ class FirstFilledValueEntitySpecDiffTest {
                 model.firstFilledGroupFor(INDEXED_PARENTS, "0"),
                 model.num(FALLBACK_NUMBER).field().firstFilledOperand(),
             ).eq(7)),
+        rule(INDEXED_ANCESTOR_GROUP_POINTER, model.num(INDEXED_CHILD_VALUE).field(),
+            Dsl.firstFilledNumber(model.firstFilledGroupFor(INDEXED_PARENTS, "0")).eq(7)),
+        rule(DESCENDANT_INDEXED_GROUP, model.num(INDEXED_CHILD_VALUE).field(),
+            Dsl.firstFilledNumber(model.firstFilledGroupFor(INDEXED_CHILDREN, "0")).eq(7)),
+        rule(SHALLOW_THEN_DEEP_GROUP_POINTER, model.num(INDEXED_CHILD_VALUE).field(),
+            Dsl.firstFilledNumber(model.firstFilledGroupFor(INDEXED_PARENTS, "0")).eq(7).and(
+                Dsl.firstFilledNumber(model.firstFilledGroupFor(INDEXED_CHILDREN, "0")).eq(7),
+            )),
+        rule(DEEP_THEN_SHALLOW_GROUP_POINTER, model.num(INDEXED_CHILD_VALUE).field(),
+            Dsl.firstFilledNumber(model.firstFilledGroupFor(INDEXED_CHILDREN, "0")).eq(7).and(
+                Dsl.firstFilledNumber(model.firstFilledGroupFor(INDEXED_PARENTS, "0")).eq(7),
+            )),
+        rule(SHALLOW_GROUP_THEN_SCALAR_POINTER, model.num(INDEXED_CHILD_VALUE).field(),
+            Dsl.firstFilledNumber(model.firstFilledGroupFor(INDEXED_PARENTS, "0")).eq(7).and(
+                model.num(INDEXED_CHILD_VALUE).forIndex("0").eq(7),
+            )),
+        rule(SCALAR_THEN_SHALLOW_GROUP_POINTER, model.num(INDEXED_CHILD_VALUE).field(),
+            model.num(INDEXED_CHILD_VALUE).forIndex("0").eq(7).and(
+                Dsl.firstFilledNumber(model.firstFilledGroupFor(INDEXED_PARENTS, "0")).eq(7),
+            )),
+        rule(ORDINARY_ERROR_REF_WITH_MATCHING_GROUP, model.num(INDEXED_CHILD_VALUE).field(),
+            model.num(INDEXED_CHILD_VALUE).filled().and(
+                Dsl.firstFilledNumber(model.firstFilledGroupFor(INDEXED_CHILDREN, "0")).eq(7),
+            )),
+        rule(ORDINARY_ERROR_REF_WITH_NO_MATCH_GROUP, model.num(INDEXED_CHILD_VALUE).field(),
+            model.num(INDEXED_CHILD_VALUE).filled().and(
+                Dsl.firstFilledNumber(model.firstFilledGroupFor(INDEXED_CHILDREN, "9")).eq(0),
+            )),
+        rule(ORDINARY_GROUP_WITH_SEMANTIC_GROUP, model.num(INDEXED_CHILD_VALUE).field(),
+            Dsl.firstFilledNumber(model.firstFilledGroup(INDEXED_CHILDREN)).eq(7).and(
+                Dsl.firstFilledNumber(model.firstFilledGroupFor(INDEXED_CHILDREN, "0")).eq(7),
+            )),
         rule(OUTER_DIRECT_GROUP, model.num(FILTER_CANDIDATE).field(),
             Dsl.firstFilledNumber(model.flatten(FILTER_CANDIDATE_STAR).having(
                 model.num(FILTER_CANDIDATE).eq(model.num(FALLBACK_NUMBER).outer()).and(
@@ -299,6 +385,15 @@ class FirstFilledValueEntitySpecDiffTest {
         const val INDEXED_GROUP_CODE = "FFV_INDEXED_GROUP"
         const val NESTED_DIRECT_GROUP = "FFV_NESTED_DIRECT_GROUP"
         const val NESTED_INDEXED_GROUP = "FFV_NESTED_INDEXED_GROUP"
+        const val INDEXED_ANCESTOR_GROUP_POINTER = "FFV_INDEXED_ANCESTOR_GROUP_POINTER"
+        const val DESCENDANT_INDEXED_GROUP = "FFV_DESCENDANT_INDEXED_GROUP"
+        const val SHALLOW_THEN_DEEP_GROUP_POINTER = "FFV_SHALLOW_THEN_DEEP_GROUP_POINTER"
+        const val DEEP_THEN_SHALLOW_GROUP_POINTER = "FFV_DEEP_THEN_SHALLOW_GROUP_POINTER"
+        const val SHALLOW_GROUP_THEN_SCALAR_POINTER = "FFV_SHALLOW_GROUP_THEN_SCALAR_POINTER"
+        const val SCALAR_THEN_SHALLOW_GROUP_POINTER = "FFV_SCALAR_THEN_SHALLOW_GROUP_POINTER"
+        const val ORDINARY_ERROR_REF_WITH_MATCHING_GROUP = "FFV_ORDINARY_ERROR_REF_WITH_MATCHING_GROUP"
+        const val ORDINARY_ERROR_REF_WITH_NO_MATCH_GROUP = "FFV_ORDINARY_ERROR_REF_WITH_NO_MATCH_GROUP"
+        const val ORDINARY_GROUP_WITH_SEMANTIC_GROUP = "FFV_ORDINARY_GROUP_WITH_SEMANTIC_GROUP"
         const val OUTER_DIRECT_GROUP = "FFV_OUTER_DIRECT_GROUP"
         val OUTER_CODES = setOf(OUTER_DIRECT_GROUP)
         val ROUND_TRIP_CODES = OUTER_CODES + setOf(COMPOUND_INDEX_CATEGORY, COMPOUND_FILTER_CATEGORY)
@@ -309,6 +404,19 @@ class FirstFilledValueEntitySpecDiffTest {
             INDEXED_GROUP_CODE,
             NESTED_DIRECT_GROUP,
         )
-        val FILLED_CODES = setOf(NESTED_INDEXED_GROUP, COMPOUND_INDEX_CATEGORY, COMPOUND_FILTER_CATEGORY) + OUTER_CODES
+        val FILLED_CODES = setOf(
+            NESTED_INDEXED_GROUP,
+            INDEXED_ANCESTOR_GROUP_POINTER,
+            DESCENDANT_INDEXED_GROUP,
+            SHALLOW_THEN_DEEP_GROUP_POINTER,
+            DEEP_THEN_SHALLOW_GROUP_POINTER,
+            SHALLOW_GROUP_THEN_SCALAR_POINTER,
+            SCALAR_THEN_SHALLOW_GROUP_POINTER,
+            ORDINARY_ERROR_REF_WITH_MATCHING_GROUP,
+            ORDINARY_ERROR_REF_WITH_NO_MATCH_GROUP,
+            ORDINARY_GROUP_WITH_SEMANTIC_GROUP,
+            COMPOUND_INDEX_CATEGORY,
+            COMPOUND_FILTER_CATEGORY,
+        ) + OUTER_CODES
     }
 }

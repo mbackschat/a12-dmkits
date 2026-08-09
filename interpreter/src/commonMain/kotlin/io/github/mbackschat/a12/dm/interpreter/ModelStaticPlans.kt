@@ -151,23 +151,31 @@ internal class ModelStaticPlans private constructor(private val model: ModelDef)
             semanticIndex.outer,
             semanticIndex.indexFieldOuter,
         )
-        val semanticErrorIndex = semanticIndexes(ast)
+        val directMessageRefs = messageReferences(ast, excludeRepetitionNotUniqueKeys = rnu != null)
+            .flatMap(::expandMessageReference).distinct()
+        val ordinaryErrorReference = errorPath in nonStarredRefs(ast) || directMessageRefs.any { reference ->
+            reference is MessageReference.Ordinary && reference.path == errorPath
+        }
+        val semanticErrorIndexesByTarget = semanticIndexes(ast)
             .filter { semanticIndex ->
                 semanticIndex.path == errorPath ||
                     (semanticIndex.path in model.groupPaths && errorPath.startsWith("${semanticIndex.path}/"))
             }
-            .distinctBy(::targetOf)
-            .singleOrNull()
-            ?.takeUnless { semanticIndex ->
-                scopes.bindsRepeatableGroup(iteration, selectedGroup(semanticIndex))
-            }
+            .groupBy(::targetOf)
+        val semanticErrorIndex = if (ordinaryErrorReference) null else {
+            semanticErrorIndexesByTarget.values
+                .singleOrNull()
+                ?.maxBy { semanticIndex -> pathParts(semanticIndex.path).size }
+                ?.takeUnless { semanticIndex ->
+                    scopes.bindsRepeatableGroup(iteration, selectedGroup(semanticIndex))
+                }
+        }
         return PreparedRulePlan(
             ast = ast,
             iteration = iteration,
             repetitionNotUnique = rnu,
             semanticErrorIndex = semanticErrorIndex,
-            messageReferences = messageReferences(ast, excludeRepetitionNotUniqueKeys = rnu != null)
-                .flatMap(::expandMessageReference).distinct(),
+            messageReferences = directMessageRefs,
             hasFilterConditions = starRefs(ast).any { it.having != null },
         )
     }

@@ -1103,13 +1103,12 @@ class Document(internal val config: DocumentConfig) {
             indexValue: String,
             indexIdentityAdmitted: ((String, List<Int>, String) -> Boolean)?,
         ): Sequence<ScanCell> {
-            val indexCellReps = indexedCellReps(
-                indexField,
+            val selectedGroupReps = indexedCellReps(
+                groupPath,
                 indexField,
                 indexValue,
                 indexIdentityAdmitted,
             ) ?: return emptySequence()
-            val selectedGroupReps = indexCellReps.dropLast(1)
             return RowContext(groupPath, selectedGroupReps, evaluated = true)
                 .containedFieldCells(groupPath, declaredRange = false)
         }

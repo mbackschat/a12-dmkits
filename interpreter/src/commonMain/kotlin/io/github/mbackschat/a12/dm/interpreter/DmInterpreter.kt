@@ -967,7 +967,8 @@ class DmInterpreter private constructor(
                 val errorDepth = pathParts(errorGroup).size
                 val errorGroupReps = selectedFieldReps?.let { repetitions ->
                     if (semanticIndex.path in model.groupPaths) {
-                        repetitions.take(selectedDepth) + List(errorDepth - selectedDepth) { 1 }
+                        val targetDepth = pathParts(semanticIndex.path).size
+                        repetitions.take(targetDepth) + List(errorDepth - targetDepth) { 1 }
                     } else {
                         repetitions.take(errorDepth)
                     }

@@ -34,6 +34,12 @@ class SemanticIndexComputeNoMatchDiffTest {
         const val PRICE = "/Shop/Items/Price"
         const val PROJECTION = "/Shop/Items/Projection"
         const val ITEMS = "/Shop/Items"
+        const val NESTED_RESULT = "/Tariff/Result"
+        const val NESTED_OFFERED = "/Tariff/Offered"
+        const val NESTED_ITEM_NO = "/Tariff/Offered/ItemNo"
+        const val NESTED_DETAILS = "/Tariff/Offered/Details"
+        const val NESTED_SOURCE = "/Tariff/Offered/Details/Source"
+        const val NESTED_PREMIUM = "/Tariff/Offered/Details/Premium"
     }
 
     private val base = DocumentModelDraft.named("pricelookup").locale("en_US")
@@ -97,6 +103,39 @@ class SemanticIndexComputeNoMatchDiffTest {
             computation.name("ReadWithComputedKey")
                 .calc(items.num("Price").forIndex(shop.num("LookupKey").field()).expression())
                 .message(Dsl.en("Read the price through the computed semantic key."))
+                .build()
+        }
+        session.validate().toJson()
+    }
+
+    private val nestedGroupCascadeModel by lazy {
+        val nestedBase = DocumentModelDraft.named("semantic-nested-group-compute").locale("en_US")
+            .rootGroup("Tariff") { tariff ->
+                tariff.numberField("Result") { it.fractionDigits(0, 0) }
+                    .group("Offered") { offered ->
+                        offered.repeatable(10)
+                            .numberField("ItemNo") { it.fractionDigits(0, 0) }
+                            .group("Details") { details ->
+                                details.numberField("Source") { it.fractionDigits(0, 0) }
+                                    .numberField("Premium") { it.fractionDigits(0, 0) }
+                            }
+                            .indexField("ItemNo")
+                    }
+            }.build().toJson()
+        val session = EditSession.read(nestedBase)
+        val details = session.group(NESTED_DETAILS)
+        details.addComputation(details.num("Premium")) { computation ->
+            computation.name("BuildPremium")
+                .calc(details.num("Source").value())
+                .message(Dsl.en("Build the nested premium."))
+                .build()
+        }
+        val tariff = session.group("/Tariff")
+        val bound = BoundModel.ofJson(nestedBase)
+        tariff.addComputation(tariff.num("Result")) { computation ->
+            computation.name("ReadSelectedDetails")
+                .calc(Dsl.firstFilledNumber(bound.firstFilledGroupFor(NESTED_DETAILS, "5")).expression())
+                .message(Dsl.en("Read the selected nested group."))
                 .build()
         }
         session.validate().toJson()
@@ -180,6 +219,44 @@ class SemanticIndexComputeNoMatchDiffTest {
             ),
             "semantic row selection must resolve its field-valued query from the current computation overlay",
         )
+
+    @Test
+    fun nestedSemanticGroupReadSeesPayloadComputedEarlierInTheCascade() {
+        val model = nestedGroupCascadeModel
+        val definition = ModelLoader.load(model)
+        fun kernelDocument(): RuntimeLaws.Doc = RuntimeLaws.doc().also { kernel ->
+            kernel.group("/Tariff", 1).field(NESTED_RESULT, "999", 1, 1)
+            listOf("6" to "10", "5" to "20").forEachIndexed { index, (itemNo, source) ->
+                val row = index + 1
+                kernel.group(NESTED_OFFERED, 1, row)
+                    .field(NESTED_ITEM_NO, itemNo, 1, row, 1)
+                    .group(NESTED_DETAILS, 1, row, 1)
+                    .field(NESTED_SOURCE, source, 1, row, 1, 1)
+            }
+        }
+        fun interpreterDocument(): Document = definition.newDocument().also { interpreter ->
+            interpreter.group("/Tariff", 1).field(NESTED_RESULT, "999", 1, 1)
+            listOf("6" to "10", "5" to "20").forEachIndexed { index, (itemNo, source) ->
+                val row = index + 1
+                interpreter.group(NESTED_OFFERED, 1, row)
+                    .field(NESTED_ITEM_NO, itemNo, 1, row, 1)
+                    .group(NESTED_DETAILS, 1, row, 1)
+                    .field(NESTED_SOURCE, source, 1, row, 1, 1)
+            }
+        }
+
+        val dynamic = RuntimeLaws.compute(model, kernelDocument())
+            .single { it.pointer() == "/Tariff[1]/Result" }.value().orElseThrow()
+        val engine = RuntimeLaws.kernelJavaEngine(model)
+        val javaStatic = engine.computeOutcomesSorted(engine.instance(kernelDocument()))
+            .single { it.startsWith("$NESTED_RESULT|") }.substringAfter('|')
+        val interpreted = DmInterpreter(definition).compute(interpreterDocument())
+            .single { it.path == NESTED_RESULT }.value
+
+        assertEquals("20", dynamic, "dynamic kernel")
+        assertEquals(dynamic, javaStatic, "generated Java")
+        assertEquals(dynamic, interpreted, "interpreter overlay")
+    }
 
     @Test fun noMatchWithAnInvalidIndexCellClears() =
         assertEquals("CLEARED", triOutcome("274", listOf("534" to "0.01", "9999999999999999" to "0.01")),
