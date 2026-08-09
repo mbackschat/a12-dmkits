@@ -11,7 +11,9 @@ This doc is the **stable method**. The generator's *consumers* have their own ho
 
 ## Why a generator at all
 
-Hand-writing document fixtures to test the interpreter is the obvious approach — and it is exactly what the per-operator `*DiffTest`s do (one pinned case each). But hand-picked cases only catch the divergences you *think* to write. The exact-match bar needs the opposite: **random combinations a human would not pick** — odd row counts across nested groups, mixed fill/empty/malformed patterns, colliding index keys, an aggregate over a list that happens to be empty. To generate those *and feed the same document to both engines*, you need one generator that builds a document once and can target either backing — that is the generator's reason to exist.
+Hand-written differentials establish the owner semantics, but isolated anecdotes do not prove that a multi-stage mechanism has been covered. A finite deterministic semantic matrix comes first: partition the mechanism's states, declare infeasible pairs, exhaust the small constrained state space or use a reviewed pairwise covering array, and lock each owner-semantic row against dynamic Groovy plus Java-static co-evidence. Metamorphic relations are used only with their preconditions and permitted-change clauses, as defined in [TESTING-SPEC](TESTING-SPEC.md#systematic-semantic-matrices-before-fuzzing); row permutation remains owned by property-pack property 3 rather than acquiring a second fuzz home.
+
+Fuzzing supplies the complementary breadth: **random combinations a human would not pick** such as odd row counts across nested groups, mixed fill/empty/malformed patterns, colliding index keys, and an aggregate over a list that happens to be empty. To generate those *and feed the same document to both engines*, one generator builds a document once and targets either backing. Fuzz agreement is not evidence that a named semantic partition was reached; any advertised denominator needs its own deterministic seed-shape matrix, classifier law, classifier mutation check, and a kernel-fired control for every `(rule shape, promised shape)` pair.
 
 It is **best-effort, model-derived** on purpose: the structure comes from the model (placements are addressable and row counts stay within declared repeatability) and the default per-field value is in-format for the field's kind — but this is **not** a whole-model validity guarantee because `ValidValues` is a per-field local heuristic. A test that wants value invalidity (the fuzz net does) layers it on top via a value strategy.
 
@@ -76,6 +78,8 @@ The exact-scale overload applies the same atomic boundary before emission. It re
 
 ## The differential fuzz net
 
+The net is the composition and exploration layer after the deterministic semantic matrices. It may discover a missing partition, but the durable fix graduates into a minimal tri-engine matrix row plus a fast host-level guard where useful. Increasing the seed count is not a substitute for adding the discriminator that separates the missed mechanisms.
+
 `InterpreterKernelFuzzTest.randomValidDocumentsAgreeWithKernel` is the gate:
 
 ```
@@ -107,9 +111,9 @@ The fuzz uses its **own** model (`fuzz.dm.json`, an own-domain e-commerce cart) 
 
 Row counts are random per group (`Lines` 0–6, `Parts` 0–4), so list lengths — and whether an aggregate sees an empty list — vary across seeds.
 
-### Why it is the exactness multiplier
+### Why it is the composition multiplier
 
-A hand-written `*DiffTest` proves one operator behaves on one input. The fuzz net proves **the operators compose correctly under inputs no one curated** — and it has paid for itself repeatedly. Track record (each found by the net, root-caused, fixed clean-room, and locked with a dedicated `*DiffTest`):
+A deterministic semantic matrix proves named partitions of one mechanism. The fuzz net samples **operator compositions under inputs no one curated** and reports counterexamples; a green sample does not prove the unbounded composition space. It has nevertheless paid for itself repeatedly. Track record (each found by the net, root-caused, fixed clean-room, and locked with a dedicated `*DiffTest`):
 
 | # | Divergence the fuzz surfaced | Fix |
 |---|---|---|
@@ -154,9 +158,11 @@ The generator + fuzz are **reactive** (catch a divergence *after* you implement)
 ```
    ┌─ A. probe the kernel ──► learn the semantics (empty/malformed/boundary/sparse) BEFORE coding
    │
-   ├─ implement clean-room  ──► the operator + its *DiffTest (the pinned cases)
+   ├─ model the mechanism ───► finite state partitions + tri-engine matrix + metamorphic relations
    │
-   ├─ B. fuzz + localize ───► random docs catch what you didn't pin; localize the failing row/code
+   ├─ implement clean-room ─► shared-root fix + fast host guards
+   │
+   ├─ B. fuzz + localize ───► random compositions catch what the matrix omitted; localize the row/code
    │
    └─ C. parity meter ──────► a guard that fails when a catalog operator is unhandled / un-fuzzed
 ```
@@ -166,10 +172,10 @@ The generator + fuzz are **reactive** (catch a divergence *after* you implement)
 | **A · Kernel probe battery** (`adapter.laws.KernelProbe`) | Inject a candidate condition + run the REAL kernel over a battery of edge documents; report per-scenario *fires? / message type / all fired codes*. Learn the semantics **before** implementing (the `CurrentRepetition` miss — shipped wrong because I guessed instead of probing). | **Built** |
 | **B · Fuzz divergence localization** (`adapter.laws.FuzzDiagnostics`) | On a failing seed, diff the **(code, pointer)** pairs (not just codes) so the output names the *row* + code that diverged; + a delta-debug **shrink** to the minimal failing doc. | **Built** |
 | **C · Catalog-parity meter** (`adapter.laws.CatalogParityTest`) | A test that **fails** when an `operators.json` construct is unhandled by the interpreter (or un-fuzzed) — turns "what's left" into a derived checklist + a silent-gap guard. | **Built** |
-| **D · Full-message differential** (`adapter.laws.FullMessageFuzzDiffTest`, via `FuzzDiagnostics.signaturesAgree`) | Deepen the fuzz beyond firing: assert the full signature **code\|type\|pointer** agrees (NOT text — we diverge on text by design, [INTERPRETER-FINDINGS](INTERPRETER-FINDINGS.md) IF3), so a wrong **polarity** or **row** trips it. Caught the `CurrentRepetition`/`FirstFilledValue` mis-typed OMISSION (117/200 seeds — KERNEL-FINDINGS §1/§3 supplement). | **Built** |
-| **E · Model fuzzing** (`adapter.perf.ModelFuzz` + `ModelFuzzDiffTest`) | Vary the **model**: random-depth (2..4) nested repeatable models, valid-by-construction via modelkit `DocumentModelDraft.toJson()` + a matching `ModelDef`, then fuzz docs and assert the full signature `code\|type\|pointer` agrees — the **deep-nesting** space the fixed 2-level fuzz model can't reach. Surfaced the structural over-repetition check (`zuGrosseZeile`/`zuGrosseKontextnummer`) as an interpreter scope boundary (KERNEL-FINDINGS). | **Built** |
-| **F · Computation-cascade fuzz** (`adapter.perf.ComputationFuzz` + `ComputationFuzzDiffTest`, via `FuzzDiagnostics.computeOutcomesAgree`) | Fuzz the **compute** path (every other net fuzzes *validation* only): random chains of scalar computations where each `C{i}` references `C{i-1}` (a guaranteed cascade at random depth) over a non-repeatable `/Calc` group, asserting the computed-field outcome multiset agrees with the kernel. Closes the blind spot that let a silent cascade bug (a dependent reading its dependency's stored-empty operand, not its computed value) survive when one hand-picked case was the *only* compute test. | **Built** |
-| **G · Sibling-group fuzz** (`adapter.perf.SiblingGroupFuzz` + `SiblingGroupFuzzDiffTest`) | Produce **two sibling repeatable groups** (`A` ⊥ `B` under a common root) — the shape no other net generates (they do nested *chains* or one fixed model), and the shape the silent parallel-iteration bug hid in. Two regimes: **supported** rules (single-group per-row, or cross-sibling **aggregates** that collapse the sibling) must agree with the kernel at the full-message level (multi-sibling coverage — incl. the aggregate-error-on-a-repeatable-field pointer, previously untested); **parallel-iteration** rules (a per-row reference into BOTH siblings — the index-keyed outer join) must **agree with the kernel** across matched rows, the synthetic `-5` unmatched side, polarity, and the invalid-index 3VL corner. *(That regime was the acceptance gate for the join while it was unimplemented, and until it landed it asserted the opposite — that the interpreter fail loud while the kernel fires.)* Both regimes run under **full** validation, and the parallel one **also under partial relevance** — the cell no other net reaches, since the only other partial net's model is a nested chain, which `IterationScopes.prepare` can never plan as parallel. The partial regime carries its own **coverage meter** (`parallelRelevanceShapes`, pinned by `ParallelRelevanceShapeTest`): random document *values* cannot cover a relevance shape, so agreement would otherwise be vacuous — and each rule shape's kernel-ever-fired control is **per case**, since a shared flag lets a firing case vouch for a sibling that never fires at all. | **Built** |
+| **D · Full-message differential** (`adapter.laws.FullMessageFuzzDiffTest`, via `FuzzDiagnostics.signaturesAgree`) | Deepen the fuzz beyond firing: assert the full signature **code\|type\|pointer** agrees (not text, which deliberately differs per [INTERPRETER-FINDINGS](INTERPRETER-FINDINGS.md) IF3), so a wrong **polarity** or **row** trips it. Caught the `CurrentRepetition`/`FirstFilledValue` mis-typed OMISSION (117/200 seeds, KERNEL-FINDINGS §1/§3 supplement). This harness makes no denominator claim; it samples compositions. | **Built** |
+| **E · Model fuzzing** (`adapter.perf.ModelFuzz` + `ModelFuzzDiffTest`) | Vary the **model**: random-depth (2..4) nested repeatable models, valid-by-construction via modelkit `DocumentModelDraft.toJson()` plus a matching `ModelDef`, then fuzz docs and assert the full signature `code\|type\|pointer` agrees. It samples the deep-nesting space the fixed 2-level fuzz model cannot reach and makes no denominator claim. | **Built** |
+| **F · Computation-cascade fuzz** (`adapter.perf.ComputationFuzz` + `ComputationFuzzDiffTest`, via `FuzzDiagnostics.computeOutcomesAgree`) | Fuzz the **compute** path: random chains of scalar computations where each `C{i}` references `C{i-1}` over a non-repeatable `/Calc` group, asserting the computed-field outcome multiset agrees with the kernel. It samples cascade compositions and makes no denominator claim. | **Built** |
+| **G · Sibling-group fuzz** (`adapter.perf.SiblingGroupFuzz` + `SiblingGroupFuzzDiffTest`) | Produce **two sibling repeatable groups** (`A` and `B` under a common root), the topology no other net generates. Supported rules and parallel-iteration rules compare full messages under full validation; the parallel regime also runs under partial relevance. Random agreement remains useful composition evidence, but the partial regime makes no denominator claim while [IG117](INTERPRETER-GAPS.md) is open. | **Built** |
 
 ### A — the kernel probe battery
 
