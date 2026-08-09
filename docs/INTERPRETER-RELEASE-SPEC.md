@@ -168,6 +168,8 @@ Qualification writes a receipt containing the exact source commit, source tag, r
 
 Note also that `interpreter_release_source_preflight` requires a clean tree **and** `HEAD` at the tagged commit, so no edit — not even a docs commit — can land between tagging and `--go-live`.
 
+**Then a fifth step, after `--go-live`: freeze the changelog.** `interpreter/CHANGELOG.md`'s first section is the rolling `## [@VERSION@]` placeholder that the publisher renders into the release notes. It is not frozen automatically, so promote it to the literal `## [<version>]` you just shipped and open a fresh `## [@VERSION@]` above it, carrying a Performance entry (the current-section assertions in `InterpreterDocumentationTest` require one). **This has been missed twice.** It was missed for 0.11.0 and caught only by `39b48205`, whose message records that publishing 0.12.0 would have re-announced 0.11.0's entries as new; it was then missed again for 0.12.1 and caught during post-release cleanup. There is no mechanical detector — the repository cannot know what is published — so it is a step in this list rather than a guard, and its absence is exactly why it belongs written down here.
+
 The publisher follows this state machine:
 
 1. Require all live gap ledgers to have drained Open sections, then require a clean source checkout whose local and origin source tag resolve to the current commit and whose root version matches both tags.

@@ -6,6 +6,12 @@ This changelog covers the independently consumable interpreter packages, API doc
 
 ## [@VERSION@]
 
+### Performance
+
+- **Fast, and measured — never assumed.** On the fixed Apple M1/Chrome runner on 2026-08-03, a 200-row Document validated in a **10.5 ms median** and the 10,000-row stress Document with 4,900 findings in a **203.6 ms median**. Against the A12 Kernel's generated validator compiled as Java, with code generation outside the clock, the interpreter led by **2.1×–12.5×** across the default inventory and **10×–16.7×** on repeated-document evaluation, with the closest hostile point still ahead by 1.32×. These are bounded same-machine measurements after exact result preflight, not universal promises; see [the benchmark method and complete tables](https://github.com/mbackschat/a12-dmkits/blob/main/docs/INTERPRETER-PERFORMANCE.md).
+
+## [0.12.1]
+
 ### Added
 
 - **The showcase states its own independence.** The published landing page and the showcase itself now carry, visibly rather than only in a README, that this is not affiliated with, endorsed by, or supported by mgm technology partners and is not an A12 product or service, that it is provided as is with no warranty or commitment as to correctness, and a link to the full disclaimer. Nothing about how the showcase handles your files changed: models and Documents are still read and processed locally and are never uploaded.
