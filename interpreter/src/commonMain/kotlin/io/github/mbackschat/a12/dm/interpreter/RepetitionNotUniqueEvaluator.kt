@@ -77,7 +77,7 @@ internal class RepetitionNotUniqueEvaluator(private val model: ModelDef, private
     fun prepare(rule: RuleDef, cond: Cond): RnuPlan? {
         val rnu = findRnu(cond) ?: return null
         val keys = rnu.keys
-        val keyGroup = parentGroup(keys.first())     // the keys' shared repeatable group (kernel: keys on one path)
+        val keyGroup = keyRowGroup(keys)
         // The iteration scope must be the keys' group or ABOVE it — a guard/branch reaching a DEEPER group would
         // need a different iteration granularity (unmodeled; the pre-IF149 recognizer declined it too).
         val scope = scopes.scopeFromRefs(nonStarredRefs(cond), rule.group)
@@ -86,8 +86,23 @@ internal class RepetitionNotUniqueEvaluator(private val model: ModelDef, private
                 "RepetitionNotUnique with an iteration scope ($scope) deeper than its key group ($keyGroup) is not modeled")
         }
         val errorPath = resolveErrorPath(rule)
-        val scopeLen = scopePrefixLen(rule, rnu)
+        val scopeLen = scopePrefixLen(rule, rnu, keyGroup)
         return RnuPlan(keys, keyGroup, errorPath, scopeLen)
+    }
+
+    /**
+     * The row group is the deepest key parent, independent of authored key order. Kernel admission requires all
+     * key groups to lie on one hierarchy path; enforce that same finite boundary here so a hand-built [ModelDef]
+     * cannot make an invalid parallel tuple silently select one branch.
+     */
+    private fun keyRowGroup(keys: List<String>): String {
+        val groups = keys.map(::parentGroup).distinct()
+        val deepest = groups.maxBy { pathParts(it).size }
+        if (groups.any { it != deepest && !deepest.startsWith("$it/") }) {
+            throw UnsupportedConstructException(
+                "RepetitionNotUnique key groups must lie on one hierarchy path: ${groups.joinToString()}")
+        }
+        return deepest
     }
 
     /** Build one call's duplicate cache from the already-validated, document-independent [plan]. */
@@ -191,11 +206,11 @@ internal class RepetitionNotUniqueEvaluator(private val model: ModelDef, private
      * repeatable levels deep (`/Project/Milestones/Tasks/Effort`, rule at `/Project`) is by default checked
      * across ALL milestones (scope = the `/Project` row); `@From Milestones/Tasks` narrows it to per-milestone.
      */
-    private fun scopePrefixLen(rule: RuleDef, rnu: RnuKeys): Int {
+    private fun scopePrefixLen(rule: RuleDef, rnu: RnuKeys, keyGroup: String): Int {
         if (rnu.fromScope != null) return resolveGroupRef(rnu.fromScope, rule.group).trim('/').split('/').size - 1
-        val parts = rnu.keys.first().trim('/').split('/')
+        val parts = pathParts(keyGroup)
         var d = rule.group.trim('/').split('/').size + 1     // first group strictly below the rule group
-        while (d < parts.size && "/" + parts.take(d).joinToString("/") !in model.repeatable) d++
+        while (d <= parts.size && "/" + parts.take(d).joinToString("/") !in model.repeatable) d++
         return d - 1                                          // parent(referenceGroup) depth
     }
 

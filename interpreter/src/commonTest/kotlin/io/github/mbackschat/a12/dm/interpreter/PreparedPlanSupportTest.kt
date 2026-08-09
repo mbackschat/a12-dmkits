@@ -21,6 +21,7 @@ class PreparedPlanSupportTest {
                 FieldDef("/Order/Items/Key", Kind.STRING),
                 FieldDef("/Order/Items/Other", Kind.STRING),
                 FieldDef("/Order/Items/Details/Value", Kind.NUMBER),
+                FieldDef("/Order/OtherRows/Key", Kind.STRING),
             ),
             rules = listOf(
                 rule(
@@ -37,9 +38,18 @@ class PreparedPlanSupportTest {
                     "../Items/Key",
                     code = "DEEP_SCOPE",
                 ),
+                rule(
+                    "RepetitionNotUnique(Items/Key, OtherRows/Key)",
+                    "../Items/Key",
+                    code = "PARALLEL_KEYS",
+                ),
             ),
-            repeatableGroups = setOf("/Order/Items", "/Order/Items/Details"),
-            declaredReps = mapOf("/Order/Items" to 10, "/Order/Items/Details" to 10),
+            repeatableGroups = setOf("/Order/Items", "/Order/Items/Details", "/Order/OtherRows"),
+            declaredReps = mapOf(
+                "/Order/Items" to 10,
+                "/Order/Items/Details" to 10,
+                "/Order/OtherRows" to 10,
+            ),
         )
 
         val reasons = DmInterpreter(model).supportAudit().map { it.reason }
@@ -47,6 +57,7 @@ class PreparedPlanSupportTest {
         assertTrue(reasons.any { "more than one RepetitionNotUnique" in it }, "$reasons")
         assertTrue(reasons.any { "plain field" in it }, "$reasons")
         assertTrue(reasons.any { "deeper than its key group" in it }, "$reasons")
+        assertTrue(reasons.any { "key groups must lie on one hierarchy path" in it }, "$reasons")
     }
 
     @Test

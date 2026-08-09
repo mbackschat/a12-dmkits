@@ -131,8 +131,8 @@ class RepeatableRowContentDiffTest {
             session.addRule { bound ->
                 bound.rule(bound.group(NESTED_ROOT)).name("NestedRnu").code("RNU_NESTED")
                     .errorField(bound.str(NESTED_OPTIONAL))
-                    // Deepest key first keeps this row-domain law inside the modeled RNU envelope. IG119 owns
-                    // the independently measured key-order defect for the same-path ancestor-first spelling.
+                    // This row-domain law uses one authored order; RepetitionNotUniqueKeyOrderDiffTest locks the
+                    // independent invariant that reversing these same-path components changes nothing (IF278).
                     .`when`(Dsl.repetitionNotUnique(bound.field(NESTED_OPTIONAL), bound.field(NESTED_MARKER)))
                     .severity(Severity.ERROR).message(Dsl.en("The nested key tuple is duplicated.")).build()
             }

@@ -6,7 +6,7 @@
 >
 > **Section invariant (the placement rule):** every section holds exactly one **live** status — **§1 = open, §2 = deferred / ongoing-incremental, §3 = out-of-scope**. A FULLY-shipped/graduated entry belongs in **none** of them: completing it *deletes* its row (see the lifecycle). So §1 reads `_None open._` whenever nothing is open — the marker every `-GAPS` ledger uses, so one grep rolls up the whole family (`GapLedgerTemplateGuardTest`) — and a fully-FIXED entry **anywhere** in this ledger is a bug in *this doc* — git already records the fix. (A partially-shipped *ongoing* refactor in §2 is not "fixed" — it stays until all of it lands.)
 >
-> **Current state.** IG114 and IG118 shipped as [IF276](INTERPRETER-FINDINGS.md#if276) and [IF277](INTERPRETER-FINDINGS.md#if277). The IG118 caller sweep exposed IG119, an independent `RepetitionNotUnique` key-order defect; it remains in §1 with its own finite gate. New semantic or performance defects belong in §1 only while they have actionable work and a defined completion gate.
+> **Current state.** IG114, IG118, and IG119 shipped as [IF276](INTERPRETER-FINDINGS.md#if276), [IF277](INTERPRETER-FINDINGS.md#if277), and [IF278](INTERPRETER-FINDINGS.md#if278). New semantic or performance defects belong in §1 only while they have actionable work and a defined completion gate.
 >
 > **Scope.** `:interpreter` only — the kernel-free Kotlin evaluator (parser, evaluation semantics, model loader, the differential/perf harnesses' interpreter side). dmkit (rulekit/modelkit/edit) authoring gaps go to [`DEV-API-GAPS.md`](DEV-API-GAPS.md); kernel-coverage classification stays in the MVK / RT-semantics / grammar ledgers.
 
@@ -14,9 +14,7 @@
 
 ## 1. Open
 
-- **IG119: `RepetitionNotUnique` wrongly derives its row group from the first key, making a same-path composite key order-sensitive.** Observed 2026-08-09 during IF277's row-domain caller sweep. Accepted model `/Root/Outer[]/Middle[]/Inner[]`, rule at `/Root`, error `Inner/Optional`, composite key `(Outer/Marker, Inner/Optional)`: dynamic Groovy and generated Java emit OMISSION duplicates on the two implicit `Outer[1..2]/Middle[1]/Inner[1]` rows. The interpreter declines the rule because `RepetitionNotUniqueEvaluator.prepare` treats the first key's immediate parent (`Outer`) as the key group and then rejects the real iteration scope (`Inner`) as deeper. Reversing the authored key order makes the same relation executable, proving the defect is order rather than topology.
-
-  **What settles it:** one typed tri-engine table crossing ancestor-first and descendant-first key order on the same model, plus a different-branch rejection control. Both same-path orders must produce the same duplicate pointers and polarity; keys on genuinely parallel paths must remain loudly unsupported or kernel-rejected according to the existing admission law. The fix belongs in one order-independent key-row resolver: select the deepest repeatable group shared by the key path, then validate every key lies on that one ancestor chain. **Blocks:** valid composite `RepetitionNotUnique` rules whose first authored key is above another key on the same repeatable path.
+_None open._
 
 ---
 
