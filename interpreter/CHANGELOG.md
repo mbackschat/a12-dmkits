@@ -8,6 +8,7 @@ This changelog covers the independently consumable interpreter packages, API doc
 
 ### Added
 
+- **The showcase states its own independence.** The published landing page and the showcase itself now carry, visibly rather than only in a README, that this is not affiliated with, endorsed by, or supported by mgm technology partners and is not an A12 product or service, that it is provided as is with no warranty or commitment as to correctness, and a link to the full disclaimer. Nothing about how the showcase handles your files changed: models and Documents are still read and processed locally and are never uploaded.
 - **One prepared model serves concurrent requests.** Model-static preparation is owned by the `PreparedModel` rather than by each `Interpreter`, so a bounded server-side cache holds one entry per model instead of one per (model × configuration), and a retained interpreter adds only 2–5% over the prepared model. Sharing a single `Interpreter` across threads is now refused (`CONCURRENT_USE`) instead of letting a custom condition observe another thread's Document — a `PreparedModel` is what may be shared, an interpreter is per request.
 
 ### Performance
