@@ -420,6 +420,8 @@ tasks.register('deliveryGuardTest', Test) {
             'installer self-test'     : file('scripts/selftest-ensure-dmtool.sh'),
             'dmtool launcher'         : file('bin/dmtool'),
             'launcher self-test'      : file('scripts/selftest-dmtool-launcher.sh'),
+            'source preparation'      : file('scripts/prepare-dmtool-source.sh'),
+            'source prep self-test'   : file('scripts/selftest-prepare-dmtool-source.sh'),
             'native build contract'   : file('cli/build.gradle'),
             'native no-Java smoke'    : file('scripts/native-no-java-smoke.sh'),
             'Codex activation smoke'  : file('scripts/codex-plugin-activation-smoke.sh'),

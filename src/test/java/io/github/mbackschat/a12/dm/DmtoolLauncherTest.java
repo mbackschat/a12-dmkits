@@ -29,6 +29,18 @@ class DmtoolLauncherTest {
         assertEquals(0, code, () -> "scripts/selftest-dmtool-launcher.sh failed:\n" + output);
     }
 
+    @Test
+    void sourcePreparationNeverServesAStaleOrUnidentifiedLauncher() throws IOException, InterruptedException {
+        assumeTrue(!System.getProperty("os.name", "").toLowerCase().contains("win"),
+                "POSIX-only source-preparation self-test");
+        Path script = repoFile("scripts/selftest-prepare-dmtool-source.sh");
+        Process process = new ProcessBuilder("bash", script.toString())
+                .redirectErrorStream(true).start();
+        String output = new String(process.getInputStream().readAllBytes());
+        int code = process.waitFor();
+        assertEquals(0, code, () -> "scripts/selftest-prepare-dmtool-source.sh failed:\n" + output);
+    }
+
     private static Path repoFile(String relative) {
         for (String base : List.of(".", "..", "../..")) {
             Path candidate = Path.of(base, relative);
