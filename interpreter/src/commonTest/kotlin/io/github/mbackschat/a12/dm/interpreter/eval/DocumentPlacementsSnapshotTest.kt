@@ -1,5 +1,6 @@
 package io.github.mbackschat.a12.dm.interpreter.eval
 
+import io.github.mbackschat.a12.dm.interpreter.ModelEntityKind
 import io.github.mbackschat.a12.dm.interpreter.model.Kind
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -32,6 +33,7 @@ class DocumentPlacementsSnapshotTest {
                 DocumentPlacementRecord("/Order", listOf(1), isGroup = true, raw = null),
                 DocumentPlacementRecord("/Order/Total", listOf(1, 1), isGroup = false, raw = "12.50"),
                 DocumentPlacementRecord("/Order/Note", listOf(1, 1), isGroup = false, raw = null),
+                DocumentPlacementRecord("/Order/Items", listOf(1, 1), isGroup = true, raw = null),
                 DocumentPlacementRecord("/Order/Items", listOf(1, 2), isGroup = true, raw = null),
                 DocumentPlacementRecord("/Order/Items/Qty", listOf(1, 2, 1), isGroup = false, raw = "2"),
             ),
@@ -47,5 +49,36 @@ class DocumentPlacementsSnapshotTest {
         val record = document.placementsSnapshot().single { !it.isGroup }
 
         assertEquals("", record.raw, "an explicit empty string stays distinguishable from an unfilled cell")
+    }
+
+    @Test
+    fun nestedGroupPlacementMaterializesOnlyTheAddressedBranchesPredecessors() {
+        val document = Document(mapOf("/Root/Outer/Inner/Value" to Kind.NUMBER))
+
+        document.group("/Root/Outer/Inner", 1, 3, 4)
+
+        assertEquals(listOf(listOf(1)), document.instantiatedRows("/Root"))
+        assertEquals(listOf(listOf(1, 1), listOf(1, 2), listOf(1, 3)), document.instantiatedRows("/Root/Outer"))
+        assertEquals(
+            listOf(listOf(1, 3, 1), listOf(1, 3, 2), listOf(1, 3, 3), listOf(1, 3, 4)),
+            document.instantiatedRows("/Root/Outer/Inner"),
+            "predecessor Outer rows stay empty; the Inner gap is closed only below addressed Outer[3]",
+        )
+    }
+
+    @Test
+    fun denseMaterializationEmitsEachGroupRowOnceAcrossSequentialFields() {
+        val emitted = mutableListOf<Pair<String, List<Int>>>()
+        val materializer = DenseGroupTreeMaterializer { path, reps -> emitted += path to reps }
+
+        for (row in 1..10_000) {
+            materializer.materialize("/Perf/Lines/Qty", listOf(1, row, 1), ModelEntityKind.FIELD)
+            materializer.materialize("/Perf/Lines/Amount", listOf(1, row, 1), ModelEntityKind.FIELD)
+        }
+
+        assertEquals(10_001, emitted.size, "one root row plus each Lines row must be emitted exactly once")
+        assertEquals("/Perf" to listOf(1), emitted.first())
+        assertEquals("/Perf/Lines" to listOf(1, 10_000), emitted.last())
+        assertEquals(emitted.size, emitted.toSet().size, "no materialized group row may be revisited")
     }
 }

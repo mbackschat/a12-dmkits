@@ -3,6 +3,7 @@ package io.github.mbackschat.a12.dm.adapter.laws
 import io.github.mbackschat.a12.dm.interpreter.DmInterpreter
 import io.github.mbackschat.a12.dm.interpreter.eval.Document
 import io.github.mbackschat.a12.dm.interpreter.eval.DocumentConfig
+import io.github.mbackschat.a12.dm.interpreter.eval.newDocument
 import io.github.mbackschat.a12.dm.interpreter.model.FieldDef
 import io.github.mbackschat.a12.dm.interpreter.model.Kind
 import io.github.mbackschat.a12.dm.interpreter.model.ModelDef
@@ -32,16 +33,19 @@ import java.util.function.Consumer
  *  - **empty-identity aggregate** `MinValue` over `Lines* then Qty`, `< 5` (scope = the non-repeatable `/Cart`): the
  *    instantiated `Lines` rows make `/Cart` content-bearing, so the aggregate evaluates (0 < 5 → OMISSION @ first row).
  *  - **zero rows**: the group is empty → `/Cart` has no content → neither shape fires (both engines agree).
+ *  - **sparse V1 placement**: runtime V1-to-V2 conversion pads every missing predecessor with an instantiated
+ *    empty row, whether repetition 5 is addressed by a group or only by one of its fields (KF178 / IF276).
  *
- * Each case compares kernel-vs-interpreter (no hardcoded expectation). Surfaced by the aggregate-fuzz extension
- * (the deferred `MinValue < n` rule); the durable net is `perf.InterpreterKernelFuzzTest` (MN re-added).
+ * The original cases compare kernel vs interpreter. The sparse lifecycle also pins the exact shared output so a
+ * shared no-fire cannot pass. Surfaced by the aggregate-fuzz extension (the deferred `MinValue < n` rule); the
+ * durable breadth net is `perf.InterpreterKernelFuzzTest` (MN re-added).
  */
 class RepeatableRowContentDiffTest {
 
     private val json = DocumentModelDraft.named("cart").locale("en_US")
         .rootGroup("Cart", Consumer { g: GroupBuilder ->
             g.numberField("Note", Consumer { })
-                .group("Lines", Consumer<GroupBuilder> { it.repeatable(3).numberField("Qty", Consumer { }) })
+                .group("Lines", Consumer<GroupBuilder> { it.repeatable(10).numberField("Qty", Consumer { }) })
         })
         .build().toJson()
 
@@ -61,14 +65,14 @@ class RepeatableRowContentDiffTest {
         for (r in 1..rows) { d.group(LINES, 1, r); if (emptyPlacements) d.emptyField(QTY, 1, r, 1) }
         d
     }
-    private fun iDoc(rows: Int, emptyPlacements: Boolean) = Document(DocumentConfig(KINDS, mapOf(LINES to 3)))
+    private fun iDoc(rows: Int, emptyPlacements: Boolean) = Document(DocumentConfig(KINDS, mapOf(LINES to 10)))
         .group(CART, 1).let { d ->
             for (r in 1..rows) { d.group(LINES, 1, r); if (emptyPlacements) d.emptyField(QTY, 1, r, 1) }
             d
         }
 
     private fun defOf(r: Rule) = ModelDef(listOf(FieldDef(NOTE, Kind.NUMBER), FieldDef(QTY, Kind.NUMBER)),
-        listOf(TypedRules.def(r)), repeatableGroups = setOf(LINES), declaredReps = mapOf(LINES to 3))
+        listOf(TypedRules.def(r)), repeatableGroups = setOf(LINES), declaredReps = mapOf(LINES to 10))
 
     private fun agree(label: String, r: Rule, rows: Int, emptyPlacements: Boolean) {
         val kModel = TypedRules.inject(json, r)
@@ -122,6 +126,51 @@ class RepeatableRowContentDiffTest {
         val pln = cartRule("PLNpc", note.field(), note.lt(5))
         agreePart("plain Note<5, Note relevant, empty Note (empty-as-0 fires)", pln, 0,
             setOf(Relevant.of(NOTE, 1, 1)), setOf(RelevantEntity(NOTE, listOf(1, 1))))
+    }
+
+    @Test
+    fun sparseGroupAndFieldPlacementsMaterializeV2PredecessorRows() {
+        val row = rowRule("SPARSE", qty.field(), qty.lt(5))
+        val rowModel = TypedRules.inject(json, row)
+        val rowDef = defOf(row)
+        assertTriEngine(
+            label = "explicit Lines[5] group",
+            kernelModel = rowModel,
+            interpreterModel = rowDef,
+            kernelDocument = RuntimeLaws.doc().group(CART, 1).group(LINES, 1, 5),
+            interpreterDocument = rowDef.newDocument().group(CART, 1).group(LINES, 1, 5),
+            expected = (1..5).mapTo(sortedSetOf()) { "OMISSION_ERROR@/Cart[1]/Lines[$it]/Qty" },
+        )
+        assertTriEngine(
+            label = "field-only Lines[5] placement",
+            kernelModel = rowModel,
+            interpreterModel = rowDef,
+            kernelDocument = RuntimeLaws.doc().field(QTY, "7", 1, 5, 1),
+            interpreterDocument = rowDef.newDocument().field(QTY, "7", 1, 5, 1),
+            expected = (1..4).mapTo(sortedSetOf()) { "OMISSION_ERROR@/Cart[1]/Lines[$it]/Qty" },
+        )
+    }
+
+    private fun assertTriEngine(
+        label: String,
+        kernelModel: String,
+        interpreterModel: ModelDef,
+        kernelDocument: RuntimeLaws.Doc,
+        interpreterDocument: Document,
+        expected: Set<String>,
+    ) {
+        fun kernelSignatures(messages: List<RuntimeLaws.Msg>) = messages
+            .filter { it.code() == "SPARSE" }
+            .mapTo(sortedSetOf()) { "${it.type()}@${it.field()}" }
+        val dynamic = kernelSignatures(RuntimeLaws.messages(kernelModel, kernelDocument))
+        val java = RuntimeLaws.sharedKernelJavaEngine(kernelModel)
+        val static = kernelSignatures(java.messages(java.instance(kernelDocument)))
+        val interpreter = DmInterpreter(interpreterModel).validate(interpreterDocument).messages
+            .filter { it.code == "SPARSE" }
+            .mapTo(sortedSetOf()) { "${it.type}_ERROR@${it.errorPath}" }
+        assertEquals(expected, dynamic, "$label: dynamic kernel")
+        assertEquals(expected, static, "$label: static kernel")
+        assertEquals(expected, interpreter, "$label: interpreter")
     }
 
     private companion object {

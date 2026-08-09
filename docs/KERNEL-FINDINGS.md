@@ -2666,3 +2666,15 @@ Canonical in §6 "Dates and time". Found while reconciling the lean project's `S
 **Left uncalibrated deliberately:** the reading twin reports **`CLEARED`**, not the `ERRORED` §11's general prose predicts for a read of a formally invalid cell. That is an observation, not a mechanism — this probe was not built to separate a clearing read from an aborting one, and no claim here rests on which it is. It is recorded so the next reader does not mistake the general rule for a measured one at this shape.
 
 *(Locked: `adapter.laws.FixedGroupCountComputeDiffTest` — the three-row channel matrix over both kernel strategies plus the formal-invalidity control.)*
+
+## §9 supplement: runtime V1-to-V2 conversion pads sparse repetition predecessors before evaluation (kernel source + tri-engine differential, 2026-08-09) <a id="kf178"></a>
+
+> Fold: folded → §9.
+
+The mutable V1 document does **not** itself materialize a sparse address: `DocumentImpl.addEntityInstance` stores only the exact entity instance. Every runtime entry point converts that V1 input through `DocumentV1V2ConverterImpl.ofDocumentV1`, whose batch inserts reach `ImmutableRepetitionsImpl.Builder.insertInPlace`; inserting repetition `n` appends `GroupInstanceV2.empty()` until positions `1..n-1` exist. Missing ancestors are likewise created along the inserted pointer. At nested levels the padding belongs only to the concrete parent being traversed, so addressing `Outer[3]/Inner[4]` creates `Outer[1..3]` and `Inner[1..4]` below `Outer[3]`, not child rows below the synthetic predecessor parents.
+
+The runtime discriminator separates conversion from raw-builder behavior. On a model with a per-row `Qty < 5` rule, an explicit `Lines[5]` V1 group makes dynamic Groovy and generated Java fire OMISSION on rows 1 through 5; placing only `Lines[5]/Qty = 7` fires on rows 1 through 4. The addressed row is content in the first case and non-firing in the second, while every padded predecessor is an instantiated empty repeatable row. The interpreter formerly kept only the addressed row and therefore missed those outputs.
+
+Canonical Document JSON is not a competing sparse representation. An array of length five contains five row positions; `{}` is an explicit empty row, and both readers already instantiate it. The corrected interpreter placement seam now builds the same V2-effective group tree for group and field inputs without changing JSON encoding or ingress.
+
+*(Locked: `adapter.laws.RepeatableRowContentDiffTest.sparseGroupAndFieldPlacementsMaterializeV2PredecessorRows` across dynamic Groovy, generated Java, and the interpreter; `interpreter.eval.DocumentPlacementsSnapshotTest` on JVM and Node for nested parent scoping and exact linear materialization work. Interpreter treatment: [IF276](INTERPRETER-FINDINGS.md#if276).)*

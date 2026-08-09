@@ -6,6 +6,7 @@ import io.github.mbackschat.a12.dm.interpreter.CacheOwnerKind
 import io.github.mbackschat.a12.dm.interpreter.messagePointerHouseForm
 import io.github.mbackschat.a12.dm.interpreter.UnsupportedConstructException
 import io.github.mbackschat.a12.dm.interpreter.IndexIdentityCandidate
+import io.github.mbackschat.a12.dm.interpreter.ModelEntityKind
 import io.github.mbackschat.a12.dm.interpreter.indexKeyOf
 import io.github.mbackschat.a12.dm.interpreter.resolveIndexIdentity
 import io.github.mbackschat.a12.dm.interpreter.ast.Val
@@ -41,7 +42,9 @@ internal const val UNKNOWN_REP = -5
  * field all resolve correctly. A starred aggregate collects the field across every row of its deepest
  * repeatable group ancestor.
  *
- * Building a field auto-instantiates its ancestor groups (mirrors the kernel's instance model).
+ * Building any placement materializes the same group tree the kernel's V1-to-V2 conversion evaluates: ancestors
+ * are present, and addressing repetition `n` creates empty predecessor rows `1..n-1` at that level. For nested
+ * repetitions, a child gap is closed only below the addressed parent row, never below synthetic predecessors.
  *
  * **Performance (INTERPRETER-PERFORMANCE.md).** Placement lookups are **indexed**, not linear scans: an
  * immutable [Index] — built once on first query, invalidated on mutation — maps `(path, reps) → value` and
@@ -120,6 +123,7 @@ class Document(internal val config: DocumentConfig) {
     private val placements = mutableListOf<Placement>()
     /** Group `(path, reps)` already instantiated — O(1) dedup for [autoGroup] (avoids an O(P²) build scan). */
     private val instantiatedGroups = HashSet<Pair<String, List<Int>>>()
+    private val groupTreeMaterializer = DenseGroupTreeMaterializer(::autoGroup)
 
     /** Every stored placement — explicit and auto-instantiated groups, present-empty cells, raw lexical text —
      *  in insertion order. The Document encoder reads this; the mutable list itself never leaks. */
@@ -133,7 +137,7 @@ class Document(internal val config: DocumentConfig) {
     /** A present-but-valueless (unfilled) field. */
     fun emptyField(path: String, vararg reps: Int): Document = add(path, reps, null, false)
 
-    /** A group row at the given 1-based indices (one per path part). */
+    /** A group row at the given 1-based indices (one per path part); its ancestors and predecessor rows appear too. */
     fun group(path: String, vararg reps: Int): Document = add(path, reps, null, true)
 
     /**
@@ -164,10 +168,12 @@ class Document(internal val config: DocumentConfig) {
         numberIdentity: DecimalObjectIdentity? = null,
     ): Document {
         val r = reps.toList()
-        if (isGroup) {
-            if (instantiatedGroups.add(path to r)) placements += Placement(path, r, value, true)
-        } else {
-            ancestorGroups(path).forEachIndexed { i, g -> autoGroup(g, r.take(i + 1)) }
+        groupTreeMaterializer.materialize(
+            path,
+            r,
+            if (isGroup) ModelEntityKind.GROUP else ModelEntityKind.FIELD,
+        )
+        if (!isGroup) {
             val evaluationValue = if (value.isNullOrEmpty()) null else value
             placements += Placement(path, r, evaluationValue, false, raw = stored, numberIdentity = numberIdentity)
         }
@@ -1583,6 +1589,76 @@ internal data class DocumentPlacementRecord(
     val isGroup: Boolean,
     val raw: String?,
 )
+
+/**
+ * Materializes the dense group structure that A12's V1-to-V2 runtime conversion evaluates. The high-water mark
+ * is scoped by `(group path, concrete parent repetitions)`, so addressing row `n` emits only the predecessor
+ * suffix not already seen. Sequential construction is therefore linear in the number of rows, including when
+ * several fields are placed in every row.
+ */
+internal class DenseGroupTreeMaterializer(
+    private val emit: (path: String, reps: List<Int>) -> Unit,
+) {
+    private data class Scope(val groupPath: String, val parentReps: List<Int>)
+    private data class PathInfo(val coordinateCount: Int, val groupPaths: List<String>)
+
+    private val fieldPathInfo = HashMap<String, PathInfo>()
+    private val groupPathInfo = HashMap<String, PathInfo>()
+    private val highestRepetitionByScope = HashMap<Scope, Int>()
+
+    fun materialize(path: String, reps: List<Int>, kind: ModelEntityKind) {
+        val pathInfo = when (kind) {
+            ModelEntityKind.FIELD -> fieldPathInfo.getOrPut(path) { pathInfoOf(path, kind) }
+            ModelEntityKind.GROUP -> groupPathInfo.getOrPut(path) { pathInfoOf(path, kind) }
+        }
+        if (reps.size != pathInfo.coordinateCount) {
+            emitMalformedPlacement(path, reps, kind, pathInfo.groupPaths)
+            return
+        }
+
+        for (level in pathInfo.groupPaths.indices) {
+            val parentReps = reps.take(level)
+            val addressedRepetition = reps[level]
+            if (addressedRepetition < 1) {
+                emit(pathInfo.groupPaths[level], parentReps + addressedRepetition)
+                continue
+            }
+
+            val scope = Scope(pathInfo.groupPaths[level], parentReps)
+            val previous = highestRepetitionByScope[scope] ?: 0
+            if (addressedRepetition <= previous) continue
+            for (repetition in previous + 1..addressedRepetition) {
+                emit(pathInfo.groupPaths[level], parentReps + repetition)
+            }
+            highestRepetitionByScope[scope] = addressedRepetition
+        }
+    }
+
+    /** Preserve the former deferred-validation behavior for malformed addresses; [Document.build] owns refusal. */
+    private fun emitMalformedPlacement(
+        path: String,
+        reps: List<Int>,
+        kind: ModelEntityKind,
+        groupPaths: List<String>,
+    ) {
+        if (kind == ModelEntityKind.GROUP) {
+            emit(path, reps)
+            return
+        }
+        groupPaths.forEachIndexed { level, groupPath -> emit(groupPath, reps.take(level + 1)) }
+    }
+
+    private fun pathInfoOf(path: String, kind: ModelEntityKind): PathInfo {
+        val parts = pathParts(path)
+        val groupCount = if (kind == ModelEntityKind.GROUP) parts.size else parts.size - 1
+        return PathInfo(
+            coordinateCount = parts.size,
+            groupPaths = (1..groupCount).map { depth -> "/" + parts.take(depth).joinToString("/") },
+        )
+    }
+
+    private fun pathParts(path: String): List<String> = path.trim('/').split('/')
+}
 
 /**
  * Build the `$`-correlation hash-join buckets — per join-key: `[t, f, n]` over [rows] (`t`/`f` = the star cell
