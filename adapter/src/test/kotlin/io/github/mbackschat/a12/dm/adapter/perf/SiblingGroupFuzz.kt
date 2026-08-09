@@ -46,7 +46,10 @@ object SiblingGroupFuzz {
     data class ParallelCase(val scenario: PerfScenario, val code: String, val rulePath: String)
 
     /** How many DISTINCT parallel-iteration rule shapes [parallelCase] can produce — its `caseIndex` domain. */
-    const val PARALLEL_CASES = 2
+    const val PARALLEL_CASES = 3
+
+    /** Maximum rows generated for either sibling group. Kept below the model's declared repetition limit. */
+    const val PARALLEL_MAX_ROWS = 5
 
     /**
      * The relevance shapes a PARALLEL join can be in — the axes the partial-relevance gates branch on, and the
@@ -67,6 +70,10 @@ object SiblingGroupFuzz {
          *  shared value is what makes this a discriminating shape: "each side has some complete row" is satisfied
          *  by two sides whose key domains are disjoint, where nothing ever joins. */
         BOTH_SIDES,
+        /** At least one side's index column is unusable because an instantiated index cell is non-relevant,
+         *  absent/empty, or collides with another admitted cell. An unmatched reference into that side is UNKNOWN,
+         *  not definitely empty; positive-only rules cannot distinguish those outcomes. */
+        COMPROMISED_COLUMN,
     }
 
     /**
@@ -76,6 +83,11 @@ object SiblingGroupFuzz {
      * has a payload, and it is precisely the row that realises [ParallelRelevanceShape.PAYLOAD_WITHOUT_ITS_INDEX]
      * most sharply — keying the loop off the index cell made it invisible, so the meter could report full
      * coverage while never seeing it.
+     *
+     * This classifier deliberately implements only Harness G's guarded key envelope: unconstrained [Kind.STRING]
+     * index fields and generated row counts below the declared repetition limit. Relevance comes from [view];
+     * empty and collision admission are independently modelled here so the meter does not inherit the join's
+     * implementation. [ParallelRelevanceShapeTest] pins both the policy and the generator/model envelope.
      */
     fun parallelRelevanceShapes(view: FuzzDiagnostics.RelevantView): Set<ParallelRelevanceShape> = buildSet {
         val completeKeys = mutableMapOf(A to mutableSetOf<String>(), B to mutableSetOf<String>())
@@ -83,19 +95,36 @@ object SiblingGroupFuzz {
             val index = "$group/Dept"
             val depth = group.trim('/').split('/').size
             val valueAt = view.cells.filter { it.path == index }.associate { it.reps to it.value }
+            val keyCounts = mutableMapOf<String, Int>()
+            val completeCandidates = mutableSetOf<String>()
             for (row in view.cells.filter { it.path == group || it.path.startsWith("$group/") }
                 .map { it.reps.take(depth) }.distinct()) {
                 val cell = row + 1
                 val indexRelevant = view.isRelevant(index, cell)
                 val payloadRelevant = view.isRelevant(payload, cell)
-                when {
-                    payloadRelevant && !indexRelevant -> add(ParallelRelevanceShape.PAYLOAD_WITHOUT_ITS_INDEX)
-                    indexRelevant && !payloadRelevant -> add(ParallelRelevanceShape.INDEX_WITHOUT_ITS_PAYLOAD)
-                    // A complete row keys the join only if its index cell actually carries a value — an absent or
-                    // empty one invalidates the column instead of contributing a key ([IF270]/[IF271]).
-                    indexRelevant -> valueAt[cell]?.let { completeKeys.getValue(group) += it }
+                if (payloadRelevant && !indexRelevant) {
+                    add(ParallelRelevanceShape.PAYLOAD_WITHOUT_ITS_INDEX)
                 }
+                if (indexRelevant && !payloadRelevant) {
+                    add(ParallelRelevanceShape.INDEX_WITHOUT_ITS_PAYLOAD)
+                }
+                if (!indexRelevant) {
+                    add(ParallelRelevanceShape.COMPROMISED_COLUMN)
+                    continue
+                }
+                val key = valueAt[cell]
+                if (key.isNullOrEmpty()) {
+                    add(ParallelRelevanceShape.COMPROMISED_COLUMN)
+                    continue
+                }
+                keyCounts[key] = keyCounts.getOrDefault(key, 0) + 1
+                if (payloadRelevant) completeCandidates += key
             }
+            val collided = keyCounts.filterValues { it > 1 }.keys
+            if (collided.isNotEmpty()) {
+                add(ParallelRelevanceShape.COMPROMISED_COLUMN)
+            }
+            completeKeys.getValue(group) += completeCandidates - collided
         }
         val shared = completeKeys.getValue(A) intersect completeKeys.getValue(B)
         if (shared.isNotEmpty()) add(ParallelRelevanceShape.BOTH_SIDES)
@@ -141,13 +170,14 @@ object SiblingGroupFuzz {
      * There are exactly [PARALLEL_CASES] shapes, and — unlike [supported], which varies its threshold by
      * `modelSeed % 90` — nothing else here varies with the argument. Iterate it over `0 until PARALLEL_CASES`
      * and spend the rest of the budget on DOCUMENT seeds, which is the axis that actually varies the join:
-     * a wider first loop only replays the same two models.
+     * a wider first loop only replays the same three models.
      */
     fun parallelCase(caseIndex: Int): ParallelCase {
         require(caseIndex in 0 until PARALLEL_CASES) { "parallel case index out of range: $caseIndex" }
         val spec = when (caseIndex) {
             0 -> Spec(ROOT, "PC", "../A/Va", "FieldsNotCollectivelyFilled(A/Va, B/Vb)")
-            else -> Spec(ROOT, "PX", "../A/Va", "FieldFilled(A/Va) And FieldFilled(B/Vb) And [A/Va] > [B/Vb]")
+            1 -> Spec(ROOT, "PX", "../A/Va", "FieldFilled(A/Va) And FieldFilled(B/Vb) And [A/Va] > [B/Vb]")
+            else -> Spec(ROOT, "PN", "../A/Va", "FieldNotFilled(A/Va) And FieldFilled(B/Vb)")
         }
         return ParallelCase(scenario("siblingparallel#$caseIndex ${spec.code}", spec), spec.code, "${spec.group}/${spec.code}")
     }
@@ -167,7 +197,9 @@ object SiblingGroupFuzz {
         // `mandatoryField`) or a fixed `DUP` collision (→ `uniqueIndex`) — exercising the invalid-index 3VL
         // (an unmatched ref into a compromised group reads UNKNOWN, KERNEL-FINDINGS §9), which the interpreter
         // now models exactly. Numbers: random 0..100 or ~30% empty (→ empty-as-0 across the join).
-        val rows: (String, List<Int>, Random) -> Int = { g, _, r -> if (g == A || g == B) r.nextInt(0, 6) else 0 }
+        val rows: (String, List<Int>, Random) -> Int = { g, _, r ->
+            if (g == A || g == B) r.nextInt(0, PARALLEL_MAX_ROWS + 1) else 0
+        }
         val indexFields = setOf("$A/Dept", "$B/Dept")
         val values = ValueStrategy { f, reps, r ->
             when {

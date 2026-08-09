@@ -20,7 +20,7 @@ import org.junit.jupiter.api.Test
  *     is iterated jointly over the union of the shared index values; across MANY fuzzed documents the
  *     interpreter must agree with the kernel at the full-message level (matched rows, the synthetic `-5` side,
  *     polarity, empty-as-0, AND the invalid-index 3VL corner — the strategy injects occasional duplicate/empty
- *     index values, KERNEL-FINDINGS §9).
+ *     index values and includes a negative unmatched-reference probe, KERNEL-FINDINGS §9).
  */
 @Tag("fuzz")
 class SiblingGroupFuzzDiffTest {
@@ -85,7 +85,7 @@ class SiblingGroupFuzzDiffTest {
         assertEquals(
             SiblingGroupFuzz.ParallelRelevanceShape.entries.toSet(), coverage,
             "the partial parallel regime must separate a row's INDEX cell from its payload in both directions " +
-                "and reach one-sided and two-sided joins; document values cannot cover a shape the relevant-set " +
+                "and reach one-sided, two-sided, and compromised-column joins; document values cannot cover a shape the relevant-set " +
                 "generator never produces, so agreement below would be vacuous without this",
         )
     }
@@ -106,11 +106,9 @@ class SiblingGroupFuzzDiffTest {
             var fired = false
             for (d in 0 until PARTIAL_DOCS) for (r in 0 until PARTIAL_REL_SEEDS) {
                 val rel = FuzzDiagnostics.partialRelevantSeed(d, r)
-                // Short-circuited PER CASE: once THIS case's rule has fired under some relevant set its oracle is
-                // satisfied, and the extra kernel run is skipped for its remaining combinations. Sharing one flag
-                // across cases would let a firing case vouch for a sibling that never fires at all.
-                if (!fired && case.code in FuzzDiagnostics.kernelPartialCodes(case.scenario, d, rel)) fired = true
-                if (!FuzzDiagnostics.partialSignaturesAgree(case.scenario, d, rel)) {
+                val observation = FuzzDiagnostics.partialObservation(case.scenario, d, rel)
+                if (case.code in observation.kernelCodes) fired = true
+                if (!observation.agrees) {
                     failures += "${case.scenario.name} :: " + FuzzDiagnostics.partialDivergence(case.scenario, d, rel)
                 }
             }
@@ -148,8 +146,8 @@ class SiblingGroupFuzzDiffTest {
          */
         const val PARALLEL_DOCS = 40
 
-        /** The partial regime's budget goes on DOCUMENTS × RELEVANT SETS, the two axes that vary its outcome —
-         *  12 × 10 × [SiblingGroupFuzz.PARALLEL_CASES] = 240 tri-engine partial validations. */
+        /** The partial regime's budget goes on DOCUMENTS × RELEVANT SETS, the two axes that vary its outcome:
+         *  12 × 10 × [SiblingGroupFuzz.PARALLEL_CASES] = 360 tri-engine partial validations. */
         const val PARTIAL_DOCS = 12
         const val PARTIAL_REL_SEEDS = 10
     }

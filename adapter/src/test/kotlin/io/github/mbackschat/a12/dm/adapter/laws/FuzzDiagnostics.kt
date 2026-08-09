@@ -436,6 +436,24 @@ object FuzzDiagnostics {
     private fun javaPartialSignatures(kernelModel: String, places: List<Place>, rel: Set<RuntimeLaws.Relevant>): List<String> =
         javaEngine(kernelModel).messagesPart(kernelDoc(places), rel).map(::msgSig).sorted()
 
+    /** One materialization and one call to each engine for a partial-validation input. The kernel code set is
+     *  derived from the same normative Groovy result used by [agrees], so a vacuity control does not pay for a
+     *  second kernel validation of the identical document and relevant set. */
+    class PartialObservation internal constructor(val agrees: Boolean, val kernelCodes: Set<String>)
+
+    /** Observe one partial-validation input once across interpreter, dynamic Groovy, and static Java. */
+    fun partialObservation(scenario: PerfScenario, seed: Int, relevantSeed: Int): PartialObservation {
+        val places = record(scenario, seed)
+        val (kRel, iRel) = relevantSets(places, relevantSeed)
+        val i = interpPartialSignatures(scenario.interpModel, places, iRel)
+        val k = kernelPartialSignatures(scenario.kernelModel, places, kRel)
+        val j = javaPartialSignatures(scenario.kernelModel, places, kRel)
+        return PartialObservation(
+            agrees = i == k && k == j,
+            kernelCodes = k.mapTo(mutableSetOf()) { it.substringBefore('|') },
+        )
+    }
+
     /**
      * Whether [seed]'s generated document, under a random relevant subset ([relevantSeed]), produces the SAME
      * fired-message signatures (`code|type|pointer`) from the interpreter's `validatePart`, the kernel's
@@ -449,14 +467,8 @@ object FuzzDiagnostics {
      * field pointer is listed — subtler than the blanket IF35 gate), so the fuzz runs those codes unfiltered (the
      * former `ignoreCodes` filter is retired).
      */
-    fun partialSignaturesAgree(scenario: PerfScenario, seed: Int, relevantSeed: Int): Boolean {
-        val places = record(scenario, seed)
-        val (kRel, iRel) = relevantSets(places, relevantSeed)
-        val i = interpPartialSignatures(scenario.interpModel, places, iRel)
-        val k = kernelPartialSignatures(scenario.kernelModel, places, kRel)
-        val j = javaPartialSignatures(scenario.kernelModel, places, kRel)
-        return i == k && k == j
-    }
+    fun partialSignaturesAgree(scenario: PerfScenario, seed: Int, relevantSeed: Int): Boolean =
+        partialObservation(scenario, seed, relevantSeed).agrees
 
     /** A localized partial report for ([seed], [relevantSeed]): which engine pair's signatures split. */
     fun partialDivergence(scenario: PerfScenario, seed: Int, relevantSeed: Int): String {
