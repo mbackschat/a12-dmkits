@@ -293,21 +293,37 @@ ext.routeExclusivelyHostedTests = { Test broad, List<String> owningTaskNames,
         // second, instead of a 27-minute capture that dies on the first absorbed class.
         //
         // Deliberately narrow, and the narrowness is the honest part: this compares `systemProperties` KEYS
-        // only. It does NOT see a property set inside a `doFirst` (root `deliveryGuardTest` does exactly that),
-        // a wrong VALUE for a key that is present, a `dependsOn` (the other half of the fix this guard was
-        // written for is `dependsOn installDist`, which nothing derives), or an `inputs.file`. Widening it
-        // means resolving execution-time state at configuration time, which Gradle does not offer. So: this
-        // catches the one failure mode that actually occurred, and the rest of the absorption contract stays
-        // the author's job — do not read a green here as "the lane is fully supplied".
+        // only. A task may classify a key in `nativeCaptureNonRuntimeSystemProperties` only when it controls
+        // JUnit scheduling rather than test/product inputs. The capture intentionally re-hosts those tests
+        // serially, so copying such a property would alter scheduling without adding a reachable product shape.
+        // Every classification carries a reason and must name a property the owner actually declares.
+        // It does NOT see a property set inside a `doFirst` (root `deliveryGuardTest` does exactly that), a
+        // wrong VALUE for a key that is present, a `dependsOn` (the other half of the fix this guard was written
+        // for is `dependsOn installDist`, which nothing derives), or an `inputs.file`. Widening it means resolving
+        // execution-time state at configuration time, which Gradle does not offer. So: this catches the one
+        // failure mode that actually occurred, and the rest of the absorption contract stays the author's job.
         (owningTaskNames - untracedDuringCapture.keySet()).each { name ->
             def owner = broad.project.tasks.named(name, Test).get()
-            def unsupplied = owner.systemProperties.keySet() - broad.systemProperties.keySet()
+            def classified = owner.extensions.extraProperties.has('nativeCaptureNonRuntimeSystemProperties')
+                    ? owner.extensions.extraProperties.get('nativeCaptureNonRuntimeSystemProperties') : [:]
+            if (!(classified instanceof Map) || classified.any { key, reason ->
+                    !owner.systemProperties.containsKey(key) || !(reason instanceof String) || reason.isBlank()
+            }) {
+                throw new GradleException(
+                        "'${name}' has an invalid nativeCaptureNonRuntimeSystemProperties classification; " +
+                        'every row must name one declared system property and give a non-blank reason.')
+            }
+            def unsupplied = owner.systemProperties.keySet() - broad.systemProperties.keySet() - classified.keySet()
             if (!unsupplied.isEmpty()) {
                 throw new GradleException(
                         "-PrkNativeAgent makes ${broad.path} run '${name}''s classes, but ${unsupplied.sort()} " +
                         "is declared on '${name}' and not here. Supply it on the traced lane; do NOT exclude " +
                         "the classes unless they are build tooling — a lane can drive the product in-process " +
                         "as well, and dropping it shrinks the captured metadata silently.")
+            }
+            if (!classified.isEmpty()) {
+                logger.lifecycle("${broad.path}: '${name}' capture re-host omits scheduler-only properties " +
+                        "${classified.keySet().sort()} (${classified.values().join('; ')})")
             }
         }
         broad.doFirst {

@@ -26,8 +26,15 @@ cd "$ROOT"
 
 DEST="cli/src/main/resources/META-INF/native-image/rulekit-agent"
 CFG="${RK_NATIVE_CFG:-/tmp/rk-native-capture}"
-BASELINE="$(mktemp /tmp/rk-native-metadata-baseline.XXXXXX)"
-trap 'rm -f "$BASELINE"' EXIT
+CAPTURE_HEAD="$(git rev-parse --verify HEAD)"
+REGRESSION_DIR="${RK_NATIVE_REGRESSION_DIR:-$ROOT/build/native-metadata-regression/${CAPTURE_HEAD:0:12}}"
+BASELINE="$REGRESSION_DIR/baseline-reachability-metadata.json"
+RAW_RECAPTURE="$REGRESSION_DIR/raw-recapture-reachability-metadata.json"
+SHIPPED_RECAPTURE="$REGRESSION_DIR/shipped-recapture-reachability-metadata.json"
+mkdir -p "$REGRESSION_DIR"
+# Preserve the previous committed capture as a durable regression input for this entire build/gate cycle.
+# Git remains the permanent owner, but a capture must not hide its own baseline in a temporary file that its
+# EXIT trap deletes before a reviewer can inspect the exact old/raw/sanitized triple.
 if ! git show "HEAD:$DEST/reachability-metadata.json" > "$BASELINE" 2>/dev/null; then
   [[ -f "$DEST/reachability-metadata.json" ]] || {
     echo "no committed or working native metadata baseline found" >&2
@@ -56,7 +63,8 @@ files=("$CFG"/*.json)
   echo "capture did not produce the expected unified reachability-metadata.json" >&2
   exit 1
 }
-./scripts/check-native-metadata-removals.sh "$BASELINE" "$CFG/reachability-metadata.json"
+\cp -f "$CFG/reachability-metadata.json" "$RAW_RECAPTURE"
+./scripts/check-native-metadata-removals.sh "$BASELINE" "$RAW_RECAPTURE" "$REGRESSION_DIR/member-diff"
 # Drop own-resource globs that ONLY a TEST resource tree provides. The agent records what production code
 # ASKS for, including a test fixture loaded on the test classpath (`schema/broken-ref.schema.json`, reached
 # through SpecKeys.forSchema) — the derived access filter removes test CLASSES and nothing removed test
@@ -105,6 +113,8 @@ path.write_text(json.dumps(data, indent=2) + "\n")
 print(f"stripped {len(dropped)} test-classpath own-resource glob(s): {', '.join(dropped) or '(none)'}")
 STRIP
 
+\cp -f "$CFG/reachability-metadata.json" "$SHIPPED_RECAPTURE"
+
 \cp -f "${files[@]}" "$DEST/"   # \cp bypasses a `cp -i` alias that would prompt and skip the overwrite
 
 # Now the hygiene assertion has the artifact it owns. Run it outside the agent so its test machinery does not
@@ -121,4 +131,5 @@ STRIP
 # same freshness with none of them behind it.
 ./build.sh -PrkCaptureInProgress :cli:nativeCaptureStamp
 
+echo "metadata regression artifacts preserved in $REGRESSION_DIR"
 echo "captured (test-suite) → $DEST/ ($(ls "$DEST" | tr '\n' ' '))"

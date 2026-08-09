@@ -181,6 +181,17 @@ def nativeCaptureStampDigest = {
             add(rootProject.relativePath(f), f.bytes)
         }
     }
+    // Capture ROUTING is an input too. A build-script edit can exclude a test class, omit a required runtime
+    // property, or change the traced classpath without touching one source file. The old source-only digest
+    // therefore certified a narrower capture as fresh. Derive every project build file rather than naming the
+    // current modules, and include the two scripts that decide how loss is accepted and what artifact is copied.
+    def captureControlFiles = rootProject.fileTree(rootProject.projectDir) {
+        include 'build.gradle', '*/build.gradle', 'settings.gradle', 'gradle.properties', 'gradle/*.toml'
+        include 'scripts/capture-native-config.sh', 'scripts/check-native-metadata-removals.sh'
+    }
+    captureControlFiles.files.toSorted { a, b -> a.absolutePath <=> b.absolutePath }.each { f ->
+        add(rootProject.relativePath(f), f.bytes)
+    }
     // External dependency IDENTITY, not content: the file name carries the version, which is what changes a
     // reflective surface (a kernel bump, a Jackson bump). Project entries are skipped — their sources are
     // already hashed above, and their build outputs would make the stamp depend on compilation state.
@@ -339,6 +350,11 @@ tasks.named('test', Test) {
         executable = "${graalHome}/bin/java"
         jvmArgs "-agentlib:native-image-agent=config-merge-dir=${cfgDir},caller-filter-file=${callerFilter},access-filter-file=${nativeAgentAccessFilter.get().asFile}"
         maxParallelForks = 1
+        // Picocli's AUTO ANSI path reflectively calls System.console(). Ambient colour hints can bypass that
+        // lookup: a capture run with NO_COLOR=1 lost the committed reflection member even though the runtime
+        // path still exists. Normalize on the child process, not capture-native-config.sh's shell, because an
+        // already-running Gradle daemon can otherwise reintroduce the environment it started with.
+        ['NO_COLOR', 'CLICOLOR', 'CLICOLOR_FORCE', 'ANSICON', 'ConEmuANSI'].each { environment.remove(it) }
         // A capture DISABLES the exclusive-lane exclusion (root build.gradle), so this lane absorbs the four
         // `publicContractTest` classes — and must therefore also supply that lane's RUNTIME INPUT. Absorbing
         // the classes without it is what made the first capture after both features existed die on 13 execs of
@@ -552,6 +568,17 @@ tasks.register('publicContractTest', Test) {
     systemProperty 'junit.jupiter.execution.parallel.enabled', 'true'
     systemProperty 'junit.jupiter.execution.parallel.config.strategy', 'fixed'
     systemProperty 'junit.jupiter.execution.parallel.config.fixed.parallelism', processParallelism
+    // The native capture re-hosts these classes inside :cli:test. These three keys affect only JUnit's method
+    // scheduler, never a test or dmtool input, so that serial capture classifies rather than copies them. The
+    // absorption guard still requires `dmtool.executable`, whose absence measurably fails/shrinks the capture.
+    extensions.extraProperties.set('nativeCaptureNonRuntimeSystemProperties', [
+            'junit.jupiter.execution.parallel.enabled':
+                    'capture keeps one serial test fork while reaching the same methods',
+            'junit.jupiter.execution.parallel.config.strategy':
+                    'fixed-pool selection affects wall time only',
+            'junit.jupiter.execution.parallel.config.fixed.parallelism':
+                    'worker count affects wall time only',
+    ])
     // The ONE place the version-resource normalization above must not reach. This lane asserts the PACKAGED
     // launcher's reported revision equals `git rev-parse HEAD`, so provenance is a genuine input to it and a
     // bare commit MUST re-run it — otherwise the stale-launcher property stops being checked per commit, and

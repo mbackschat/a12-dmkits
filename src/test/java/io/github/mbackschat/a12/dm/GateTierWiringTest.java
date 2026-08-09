@@ -116,6 +116,13 @@ class GateTierWiringTest {
         assertTrue(task.contains("Math.min(4, Runtime.runtime.availableProcessors())"),
                 "the packaged lane must cap process concurrency at four so it does not turn wait overlap into "
                         + "CPU and memory contention");
+        assertTrue(task.contains("nativeCaptureNonRuntimeSystemProperties"),
+                "the native capture re-hosts these classes serially, so the JUnit scheduling-only properties "
+                        + "need an explicit reasoned classification rather than weakening runtime-input parity");
+        assertTrue(task.contains("capture keeps one serial test fork while reaching the same methods"),
+                "the classification must state why omitting concurrency cannot shrink native reachability");
+        assertTrue(task.contains("systemProperty 'dmtool.executable', dmtoolContractExecutable"),
+                "dmtool.executable is a real absorbed-class runtime input and must remain supplied separately");
 
         for (String className : new String[] {
                 "CommandRouteEquivalenceTest",

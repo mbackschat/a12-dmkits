@@ -100,6 +100,28 @@ class BuildPerformancePolicyTest {
         assertTrue(script.contains("./build.sh -PrkCaptureInProgress :cli:nativeCaptureStamp"),
                 "only a completed capture may mint the freshness stamp, so this script must be what authorizes "
                         + "it; dropping the property makes the task refuse (cli/build.gradle nativeCaptureStamp)");
+        assertTrue(script.contains("build/native-metadata-regression/${CAPTURE_HEAD:0:12}"),
+                "the previous committed capture must survive the run as an inspectable regression baseline");
+        assertTrue(script.contains("baseline-reachability-metadata.json"),
+                "the preserved regression directory must identify the committed baseline explicitly");
+        assertTrue(script.contains("raw-recapture-reachability-metadata.json"),
+                "the unsanitized agent result must remain available for member-level loss analysis");
+        assertTrue(script.contains("shipped-recapture-reachability-metadata.json"),
+                "the sanitized shipping candidate must remain beside the baseline and raw capture");
+        assertTrue(script.contains("\"$REGRESSION_DIR/member-diff\""),
+                "the baseline-versus-recapture comparison must retain its canonical member inventories and "
+                        + "added/removed reports instead of deleting the regression evidence on exit");
+        String removalCheck = Files.readString(locate("scripts/check-native-metadata-removals.sh"));
+        assertTrue(removalCheck.contains("org.codehaus.groovy.runtime.callsite.CallSite"),
+                "capture-only kernel-generated Groovy classes must be classified by their actual constructor "
+                        + "dependency, not a brittle generated class-name pattern");
+        assertTrue(removalCheck.contains("raw-removed.entries")
+                        && removalCheck.contains("capture-only-removed.entries")
+                        && removalCheck.contains("removed.entries"),
+                "the report must retain every raw loss while separating native-inapplicable capture noise from "
+                        + "the actionable removals that fail the capture");
+        assertFalse(script.contains("rk-native-metadata-baseline.XXXXXX"),
+                "a temporary baseline deleted on exit cannot support post-capture regression review");
     }
 
     /**
@@ -130,6 +152,24 @@ class BuildPerformancePolicyTest {
                     "the capture stamp digest reads '" + name + "', which is bound from ambient state earlier "
                             + "in cli/build.gradle. Hoisting the read out of the closure leaves the stamp "
                             + "exactly as machine-specific as reading it inline");
+        }
+    }
+
+    @Test
+    void nativeCaptureCannotHideReachabilityBehindAmbientAnsiSettingsOrUnhashedRouting() throws IOException {
+        String cliBuild = Files.readString(locate("cli/build.gradle"));
+        assertTrue(cliBuild.contains("environment.remove(it)")
+                        && cliBuild.contains("['NO_COLOR', 'CLICOLOR', 'CLICOLOR_FORCE', 'ANSICON', 'ConEmuANSI']"),
+                "NO_COLOR and related ambient hints can short-circuit picocli's reflective System.console "
+                        + "lookup, so the traced Test process itself must normalize them; changing only the "
+                        + "calling shell does not override an already-running Gradle daemon's environment");
+
+        String digest = closureBody(cliBuild, "nativeCaptureStampDigest");
+        for (String input : List.of("build.gradle", "*/build.gradle", "scripts/capture-native-config.sh",
+                "scripts/check-native-metadata-removals.sh")) {
+            assertTrue(digest.contains(input),
+                    "the capture stamp must hash " + input + " because it can change test routing, agent "
+                            + "inputs, or whether a narrower capture is accepted");
         }
     }
 

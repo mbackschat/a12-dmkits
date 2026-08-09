@@ -11,8 +11,8 @@
 # `RK_NATIVE_REMOVAL_REASON` would then have been used for.
 set -euo pipefail
 
-if [[ $# -ne 2 ]]; then
-  echo "usage: $0 <committed-baseline.json> <recaptured.json>" >&2
+if [[ $# -lt 2 || $# -gt 3 ]]; then
+  echo "usage: $0 <committed-baseline.json> <recaptured.json> [report-dir]" >&2
   exit 2
 fi
 
@@ -25,14 +25,22 @@ NEW="$2"
 [[ -f "$OLD" ]] || { echo "native metadata removal check: baseline not found: $OLD" >&2; exit 2; }
 [[ -f "$NEW" ]] || { echo "native metadata removal check: recapture not found: $NEW" >&2; exit 2; }
 
-WORK="$(mktemp -d /tmp/rk-native-metadata-removals.XXXXXX)"
-trap 'rm -rf "$WORK"' EXIT
+if [[ $# -eq 3 ]]; then
+  WORK="$3"
+  mkdir -p "$WORK"
+else
+  WORK="$(mktemp -d /tmp/rk-native-metadata-removals.XXXXXX)"
+  trap 'rm -rf "$WORK"' EXIT
+fi
 
 # One line per REACHABLE THING, not per entry: the type itself, each field, each method (with its parameter
 # types, so an overload cannot mask another), and each remaining key with its value (`allPublicMethods` and
 # friends — a flag flipping off is a real loss). Resources have no members, so they stay whole entries.
 canonical_entries() {
-  jq -e -S -c '
+  jq -e -S -c --arg scope "$2" '
+    def capture_only:
+      any(.methods[]?;
+          any(.parameterTypes[]?; . == "org.codehaus.groovy.runtime.callsite.CallSite"));
     def members:
       (.type | tojson) as $t
       | {section:"reflection", type:$t, member:"<the type itself>"},
@@ -42,14 +50,30 @@ canonical_entries() {
         (. as $e | keys_unsorted[]
            | select(. != "type" and . != "fields" and . != "methods")
            | {section:"reflection", type:$t, member:(. + "=" + ($e[.] | tojson))});
-    (.reflection // [] | .[] | members),
+    (.reflection // [] | .[] | select($scope == "all" or (capture_only | not)) | members),
     (.resources  // [] | .[] | {section:"resources", type:tojson, member:"<the resource>"})
   ' "$1" | sort -u
 }
 
-canonical_entries "$OLD" > "$WORK/old.entries"
-canonical_entries "$NEW" > "$WORK/new.entries"
-comm -23 "$WORK/old.entries" "$WORK/new.entries" > "$WORK/removed.entries"
+canonical_entries "$OLD" all > "$WORK/old.entries"
+canonical_entries "$NEW" all > "$WORK/new.entries"
+canonical_entries "$OLD" native > "$WORK/old-native-relevant.entries"
+canonical_entries "$NEW" native > "$WORK/new-native-relevant.entries"
+comm -23 "$WORK/old.entries" "$WORK/new.entries" > "$WORK/raw-removed.entries"
+comm -13 "$WORK/old.entries" "$WORK/new.entries" > "$WORK/raw-added.entries"
+comm -23 "$WORK/old-native-relevant.entries" "$WORK/new-native-relevant.entries" > "$WORK/removed.entries"
+comm -13 "$WORK/old-native-relevant.entries" "$WORK/new-native-relevant.entries" > "$WORK/added.entries"
+comm -23 "$WORK/raw-removed.entries" "$WORK/removed.entries" > "$WORK/capture-only-removed.entries"
+comm -23 "$WORK/raw-added.entries" "$WORK/added.entries" > "$WORK/capture-only-added.entries"
+
+ADDED_COUNT="$(wc -l < "$WORK/added.entries" | tr -d ' ')"
+CAPTURE_ONLY_ADDED_COUNT="$(wc -l < "$WORK/capture-only-added.entries" | tr -d ' ')"
+CAPTURE_ONLY_REMOVED_COUNT="$(wc -l < "$WORK/capture-only-removed.entries" | tr -d ' ')"
+echo "native metadata addition report: $ADDED_COUNT native-relevant members added"
+echo "native metadata capture-only report: $CAPTURE_ONLY_ADDED_COUNT added, $CAPTURE_ONLY_REMOVED_COUNT removed"
+if [[ $# -eq 3 ]]; then
+  echo "native metadata member-level regression reports preserved in $WORK"
+fi
 
 if [[ ! -s "$WORK/removed.entries" ]]; then
   echo "native metadata removal check: 0 committed entries removed"
