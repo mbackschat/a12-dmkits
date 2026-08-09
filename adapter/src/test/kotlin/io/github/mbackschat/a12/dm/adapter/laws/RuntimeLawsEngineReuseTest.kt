@@ -3,9 +3,11 @@ package io.github.mbackschat.a12.dm.adapter.laws
 import com.mgmtp.a12.kernel.md.document.api.IDocument
 import com.mgmtp.a12.kernel.md.document.api.IEntityInstance
 import com.mgmtp.a12.kernel.md.rt.api.ICustomCondition
+import io.github.mbackschat.a12.dm.edit.EditSession
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel
 import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl
 import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer
+import io.github.mbackschat.a12.dm.rulekit.dsl.Severity
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.BeforeEach
@@ -70,6 +72,41 @@ class RuntimeLawsEngineReuseTest {
     }
 
     @Test
+    fun cachedEngineKeepsAlternatingDocumentsIsolated() {
+        val model = EditSession.read(base).also { session ->
+            session.addRule { bound ->
+                val tier = bound.field(TIER)
+                bound.rule(bound.group(SUBSCRIPTION)).name("Filled").code("FILLED")
+                    .errorField(tier)
+                    .`when`(tier.filled())
+                    .severity(Severity.ERROR)
+                    .message(Dsl.en("Tier is filled."), Dsl.de("Tarifstufe ist ausgefüllt."))
+                    .build()
+            }
+            session.addRule { bound ->
+                val tier = bound.field(TIER)
+                bound.rule(bound.group(SUBSCRIPTION)).name("Empty").code("EMPTY")
+                    .errorField(tier)
+                    .`when`(tier.notFilled())
+                    .severity(Severity.ERROR)
+                    .message(Dsl.en("Tier is empty."), Dsl.de("Tarifstufe ist leer."))
+                    .build()
+            }
+            session.validate()
+        }.toJson()
+
+        fun authoredCodes(document: RuntimeLaws.Doc): List<String> = RuntimeLaws.messages(model, document)
+            .map { it.code() }
+            .filter { it == "FILLED" || it == "EMPTY" }
+
+        assertEquals(listOf("FILLED"), authoredCodes(filledDocument()))
+        assertEquals(listOf("EMPTY"), authoredCodes(emptyDocument()))
+        assertEquals(listOf("FILLED"), authoredCodes(filledDocument()))
+        assertEquals(1, RuntimeLaws.sharedKernelEngineBuildCount())
+        assertEquals(1, RuntimeLaws.sharedKernelEngineCacheSize())
+    }
+
+    @Test
     fun cachedEngineKeepsTheClockBindingPerCall() {
         val order = RuntimeLaws.model("models/order.dm.json")
         val model = RuntimeLaws.withRule(
@@ -129,8 +166,13 @@ class RuntimeLawsEngineReuseTest {
     }
 
     private fun filledDocument() = RuntimeLaws.doc()
-        .group("/Subscription", 1)
-        .field("/Subscription/Tier", "BASIC", 1, 1)
+        .group(SUBSCRIPTION, 1)
+        .field(TIER, "BASIC", 1, 1)
 
-    private fun emptyDocument() = RuntimeLaws.doc().group("/Subscription", 1)
+    private fun emptyDocument() = RuntimeLaws.doc().group(SUBSCRIPTION, 1)
+
+    private companion object {
+        const val SUBSCRIPTION = "/Subscription"
+        const val TIER = "/Subscription/Tier"
+    }
 }

@@ -31,7 +31,7 @@ import kotlin.random.Random
  *   so the row-permutation property can relabel rows and rebuild.
  *
  * A property author pairs an authored condition with the [Scenario] group it iterates (property 1/2/6) or uses
- * the [Scenario]'s own rules through `DmInterpreter` (property 3/7).
+ * the [Scenario]'s own rules through `DmInterpreter` (property 3/7 and rule independence).
  */
 internal object PropertySupport {
 
@@ -143,7 +143,7 @@ internal object PropertySupport {
         Scenario("nested", model, zeroToFourRows, fuzzValues(setOf(k1, k2)))
     }
 
-    /** All rule-bearing scenarios — the diversity axis for the whole-model properties (3, 7). */
+    /** All rule-bearing scenarios — the diversity axis for the whole-model properties (3, 7, rule independence). */
     val scenarios: List<Scenario> = listOf(flat, singleRep, nested)
 
     // ---- authored conditions (for the per-condition properties 1 & 2) ----------------------------------------
