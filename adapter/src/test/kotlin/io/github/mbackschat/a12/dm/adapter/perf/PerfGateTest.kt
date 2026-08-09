@@ -213,6 +213,36 @@ class PerfGateTest {
         }
     }
 
+    @Test
+    fun numberIndexValidationBeatsBothKernelStrategiesAndScalesNoWorse() {
+        assertNumberIndexCurve(PerfCatalog.numberIndexValidation())
+    }
+
+    @Test
+    fun numberIndexComputationBeatsBothKernelStrategiesAndScalesNoWorse() {
+        assertNumberIndexCurve(PerfCatalog.numberIndexComputation())
+    }
+
+    /** Fixed-size tri-engine ratios are the primary Number-key cost oracle; the paired curve additionally catches
+     *  a catastrophic rescan. [PerfHarness.pairedScenarioGrowth] refuses a loss to either kernel strategy at
+     *  both sizes and refuses worse growth, after proving exact semantic agreement. */
+    private fun assertNumberIndexCurve(scenario: PerfScenario) {
+        val curve = PerfHarness.pairedScenarioGrowth(
+            scenario,
+            small = NUMBER_INDEX_N,
+            large = NUMBER_INDEX_N * 4,
+            pairs = 3,
+            warmup = 5,
+            iters = 5,
+        )
+        println(PerfHarness.format(curve.small, CAVEAT))
+        println(PerfHarness.format(curve.large, CAVEAT))
+        for (row in listOf(curve.small, curve.large)) {
+            assertTrue(row.interp.medianMs < ABS_CEILING_MS,
+                "${row.scenario}: Number-index interpreter ${row.interp.medianMs}ms exceeds ${ABS_CEILING_MS}ms at N=${row.n}")
+        }
+    }
+
     /**
      * **Framed** parallel iteration (`/Plan/X/A ⋈ B`, X a repeatable frame) must stay **linear in the frame-row
      * count**. N scales the frame (X); the shared clean group B has a BOUNDED key set, built ONCE per
@@ -384,5 +414,8 @@ class PerfGateTest {
         /** Row count for the index-column compute-overlay gate — smaller than [N_SMALL] (the compute cascade is
          *  heavier), yet the per-row `indexColumn` rebuild dominates, so the O(rows²) is unmistakable here. */
         const val CO_N = 1_500
+
+        /** Fixed-size Number-index anchor; 4× is large enough to expose a per-row rescan without dominating gate time. */
+        const val NUMBER_INDEX_N = 500
     }
 }

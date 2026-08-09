@@ -1,5 +1,6 @@
 package io.github.mbackschat.a12.dm.adapter.perf
 
+import io.github.mbackschat.a12.dm.interpreter.model.Kind
 import io.github.mbackschat.a12.dm.interpreter.model.ModelTimeZone
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertThrows
@@ -11,11 +12,30 @@ import org.junit.jupiter.api.Test
  * kernel-ratio benchmark sweep ([PerfBenchTest] derives its sweep from it, so registration here IS benchmark
  * inclusion — a fair-Java-capable scenario can't be silently dropped). This guard locks the inventory's shape so a
  * case can't drift from its declared identity: unique versioned ids, reviewed content fingerprints and expected
- * cardinalities, identity/model agreement, B9 Europe/Berlin present, and zero unsupported constructs. It is
- * **untagged** (runs in the default `:adapter:test`, not gated behind `-PrunPerf`) because it is a cheap structural
- * contract guard, not a timing benchmark.
+ * cardinalities, identity/model agreement, B9 Europe/Berlin present, and zero unsupported constructs.
+ * The same cheap tier also locks that the routine gate's targeted Number-index validation and computation
+ * scenarios cannot drift back to the String fast path. It is **untagged** (runs in the default `:adapter:test`,
+ * not gated behind `-PrunPerf`) because it is a structural contract guard, not a timing benchmark.
  */
 class ScenarioInventoryTest {
+
+    @Test
+    fun routineGateCoversNumberIndexValidationAndComputation() {
+        val validation = PerfCatalog.numberIndexValidation()
+        val computation = PerfCatalog.numberIndexComputation()
+        val scenarios = listOf(validation, computation)
+
+        assertEquals(listOf(PerfOp.VALIDATE, PerfOp.COMPUTE), scenarios.map { it.op })
+        scenarios.forEach { scenario ->
+            assertEquals(2, scenario.interpModel.indexFields.size, "${scenario.name}: both joined groups need an index")
+            assertTrue(scenario.interpModel.indexFields.all { scenario.interpModel.kinds[it] == Kind.NUMBER },
+                "${scenario.name}: the routine gate must exercise Number canonicalization, not the String fast path")
+        }
+        assertEquals(1, validation.interpModel.rules.size,
+            "validation must reach the parallel rule as well as the automatic uniqueness pass")
+        assertEquals(1, computation.interpModel.computations.size,
+            "computation must reach compute-side invalid-index detection")
+    }
 
     @Test
     fun closedCatalogIsExhaustivelyDispositionedAndPinsTheRequiredCases() {

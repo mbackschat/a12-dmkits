@@ -852,6 +852,120 @@ object PerfCatalog {
         }
     }
 
+    // ---- Number-index lifecycle: unlike the String-key scenarios above, every index cell takes the
+    //      decOrNull -> Dec.display canonical-key path introduced by IF272. The first two A rows deliberately
+    //      carry admitted spellings of one value (1 / 1.00), so validation reaches auto uniqueness and the
+    //      parallel join's collision policy, while computation reaches invalidIndexParentCoords and clears its
+    //      target column. Remaining rows use value-equal/text-different spellings across A/B and join normally.
+    private const val NI_ROOT = "/NumberPlan"
+    private const val NI_A = "$NI_ROOT/A"
+    private const val NI_B = "$NI_ROOT/B"
+    private const val NI_A_KEY = "$NI_A/Key"
+    private const val NI_A_VALUE = "$NI_A/Value"
+    private const val NI_B_KEY = "$NI_B/Key"
+    private const val NI_B_VALUE = "$NI_B/Value"
+
+    private val numberIndexJson: String by lazy {
+        DocumentModelDraft.named("number-index-perf").locale("en_US")
+            .rootGroup("NumberPlan", Consumer { root ->
+                for (name in listOf("A", "B")) {
+                    root.group(name, Consumer { group ->
+                        group.repeatable(DECLARED_MAX).indexField("Key")
+                        group.numberField("Key", Consumer<NumberFieldBuilder> { it.fractionDigits(2) })
+                        group.numberField("Value", Consumer<NumberFieldBuilder> { it.fractionDigits(0) })
+                    })
+                }
+            })
+            .build().toJson()
+    }
+    private val numberIndexSession: EditSession by lazy { EditSession.read(numberIndexJson) }
+    private val numberIndexFields = listOf(
+        FieldDef(NI_A_KEY, Kind.NUMBER, scale = 2),
+        FieldDef(NI_A_VALUE, Kind.NUMBER, scale = 0),
+        FieldDef(NI_B_KEY, Kind.NUMBER, scale = 2),
+        FieldDef(NI_B_VALUE, Kind.NUMBER, scale = 0),
+    )
+
+    private fun numberIndexRows(n: Int): RowsFn = { group, _, _ -> if (group == NI_A || group == NI_B) n else 0 }
+
+    private fun numberIndexKey(path: String, row: Int): String = when {
+        path == NI_A_KEY && row == 1 -> "1"
+        path == NI_A_KEY && row == 2 -> "1.00"
+        path == NI_A_KEY -> "$row.00"
+        path == NI_B_KEY -> "$row.0"
+        else -> error("not a Number-index key field: $path")
+    }
+
+    /** Number-index validation reaches both per-cell lifecycle paths: auto `uniqueIndex` and the parallel join. */
+    fun numberIndexValidation(): PerfScenario {
+        val aValue = numberIndexSession.group(NI_A).num("Value")
+        val bValue = numberIndexSession.group(NI_B).num("Value")
+        val rule = numberIndexSession.group(NI_ROOT).errorRule(
+            "NIV", aValue.field(), Dsl.fieldsNotCollectivelyFilled(aValue.field(), bValue.field()),
+        )
+        val kernelModel = TypedRules.inject(numberIndexJson, rule)
+        val interpModel = ModelDef(
+            numberIndexFields,
+            listOf(TypedRules.def(rule)),
+            repeatableGroups = setOf(NI_A, NI_B),
+            declaredReps = mapOf(NI_A to DECLARED_MAX, NI_B to DECLARED_MAX),
+            indexFields = setOf(NI_A_KEY, NI_B_KEY),
+        )
+        val generator = SeedGenerator(interpModel)
+        return PerfScenario("Number index validate", kernelModel, interpModel) { sink, n, variant ->
+            generator.populate(
+                sink,
+                rowsOf = numberIndexRows(n),
+                value = ValueStrategy { field, reps, _ ->
+                    val row = reps[1]
+                    when (field.path) {
+                        NI_A_KEY, NI_B_KEY -> numberIndexKey(field.path, row)
+                        NI_A_VALUE -> if ((row + variant) % 2 == 0) null else "1"
+                        NI_B_VALUE -> "1"
+                        else -> null
+                    }
+                },
+            )
+        }
+    }
+
+    /**
+     * Number-index computation reaches `invalidIndexParentCoords`: A's admitted 1/1.00 collision compromises
+     * the source column and clears every B target, a semantic discriminator as well as the timed path.
+     */
+    fun numberIndexComputation(): PerfScenario {
+        val aValue = numberIndexSession.group(NI_A).num("Value")
+        val bGroup = numberIndexSession.group(NI_B)
+        val computation = bGroup.computation(bGroup.num("Value")) {
+            it.name("NumberIndexCopy").calc(aValue.value()).message(Dsl.en("x")).build()
+        }
+        val kernelModel = TypedRules.inject(numberIndexJson, computation)
+        val interpModel = ModelDef(
+            numberIndexFields,
+            emptyList(),
+            computations = listOf(TypedRules.def(computation)),
+            repeatableGroups = setOf(NI_A, NI_B),
+            declaredReps = mapOf(NI_A to DECLARED_MAX, NI_B to DECLARED_MAX),
+            indexFields = setOf(NI_A_KEY, NI_B_KEY),
+        )
+        val generator = SeedGenerator(interpModel)
+        return PerfScenario("Number index compute", kernelModel, interpModel, PerfOp.COMPUTE) { sink, n, variant ->
+            generator.populate(
+                sink,
+                rowsOf = numberIndexRows(n),
+                value = ValueStrategy { field, reps, _ ->
+                    val row = reps[1]
+                    when (field.path) {
+                        NI_A_KEY, NI_B_KEY -> numberIndexKey(field.path, row)
+                        NI_A_VALUE -> (row + variant).toString()
+                        NI_B_VALUE -> "7"
+                        else -> null
+                    }
+                },
+            )
+        }
+    }
+
     // ---- framed parallel iteration (a repeatable frame X above one joined group) — the O(frames × clean-rows) trap
     private const val FX = "/Plan/X"
     private const val FXA = "/Plan/X/A"
