@@ -155,6 +155,19 @@ Qualification writes a receipt containing the exact source commit, source tag, r
 
 ## 9. Publication protocol
 
+**Four commands, in this order.** The first one is not part of the publisher and is the step most easily missed:
+
+```bash
+./build.sh :interpreter:check                                          # PRODUCES the release assets
+./scripts/publish-interpreter-release.sh interpreter-vX.Y.Z --qualify  # verifies them, writes the receipt
+./scripts/publish-interpreter-release.sh interpreter-vX.Y.Z            # stage: mirror, draft, public build
+./scripts/publish-interpreter-release.sh interpreter-vX.Y.Z --go-live  # promote after the build passes
+```
+
+`--qualify` **verifies and never builds**: it checks `build/interpreter-release/public-assets` and `public-mirror` against the exact expected inventory. The producer is `assembleInterpreterPublicMirror`, which hangs off `:interpreter:check` and deletes both directories in its `doFirst` before regenerating them. So a `release payload does not match the exact asset inventory` refusal with the *previous* version's asset names is a stale `build/interpreter-release/` from that version's staging, not a build defect; `:interpreter:check` is the fix, and the refusal now says so.
+
+Note also that `interpreter_release_source_preflight` requires a clean tree **and** `HEAD` at the tagged commit, so no edit — not even a docs commit — can land between tagging and `--go-live`.
+
 The publisher follows this state machine:
 
 1. Require all live gap ledgers to have drained Open sections, then require a clean source checkout whose local and origin source tag resolve to the current commit and whose root version matches both tags.

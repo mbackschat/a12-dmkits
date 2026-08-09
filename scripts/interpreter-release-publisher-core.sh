@@ -140,7 +140,11 @@ interpreter_release_verify_payload() {
   if ! diff -u "$expected" "$actual" >/dev/null; then
     diff -u "$expected" "$actual" >&2 || true
     rm -f "$expected" "$actual"
-    interpreter_release_fail "release payload does not match the exact asset inventory"
+    # Name the PRODUCER, not just the diff. Qualification verifies these assets; it never builds them. The
+    # usual cause is a stale build/interpreter-release/ left by a previous version's staging, and the diff
+    # alone reads as a build defect rather than a missing step — it was misread twice that way.
+    interpreter_release_fail "release payload does not match the exact asset inventory;" \
+      "run './build.sh :interpreter:check' to regenerate $assets at the current version"
   fi
   rm -f "$expected" "$actual"
 
