@@ -862,8 +862,8 @@ Generated with [Tokei](https://github.com/XAMPPRocky/tokei) from the production 
 
 | Language | Files | Code | Comments | Blanks |
 |---|---:|---:|---:|---:|
-| Java | 470 | 46797 | 12830 | 6854 |
-| Kotlin | 110 | 17618 | 6553 | 2232 |
+| Java | 470 | 46836 | 12846 | 6859 |
+| Kotlin | 113 | 18448 | 6935 | 2317 |
 | TypeScript | 17 | 3190 | 269 | 277 |
 
 Maintainers regenerate this table with the local statistics updater; both release publishers compare it with fresh counts before any public mutation.
