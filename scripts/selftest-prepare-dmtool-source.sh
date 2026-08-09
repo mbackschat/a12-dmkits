@@ -24,6 +24,13 @@ cat > "$REPO/build.sh" <<'EOF'
 #!/usr/bin/env bash
 set -euo pipefail
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# Model the REAL build.sh, which ends in `exec "$ROOT/gradlew" "$@"` with no `cd` and no `-p`: Gradle takes
+# the CALLER's directory as the project directory. A fake that computed its own root would be better behaved
+# than the thing under test and could never reproduce the defect.
+[[ "$PWD" == "$root" ]] || {
+  echo "fake build: Gradle would treat $PWD as the project directory, not $root" >&2
+  exit 1
+}
 launcher="$root/cli/build/install/dmtool/bin/dmtool"
 mkdir -p "$(dirname "$launcher")"
 printf '%s\n' build >> "$root/cli/build/prepare-build-count"
@@ -89,4 +96,13 @@ set -e
 [[ "$stale_out" == *"does not report"* ]] || fail "provenance refusal was not corrective: $stale_out"
 [[ "$stale_out" != *"$LAUNCHER"$'\n'* ]] || fail "failed preparation printed a ready launcher path"
 
-echo "SELFTEST OK: clean-revision reuse, stale rebuild, dirty refusal, and post-build provenance"
+# 5. A rebuild triggered from an UNRELATED working directory still succeeds. This is the cross-project route:
+#    a sibling repository calls the script by absolute path and never chdirs, so a preparation that hands the
+#    build off without anchoring its own directory works only while a current launcher happens to exist.
+install_fake_launcher 3333333333333333333333333333333333333333
+resolved="$(cd "$WORK" && bash "$REPO/scripts/prepare-dmtool-source.sh")"
+[[ "$resolved" == "$LAUNCHER" ]] || fail "rebuild from an unrelated directory resolved as '$resolved'"
+"$LAUNCHER" --version | grep -Fq "source: $HEAD_REVISION (clean)" \
+  || fail "the rebuild from an unrelated directory did not produce a current launcher"
+
+echo "SELFTEST OK: clean-revision reuse, stale rebuild, dirty refusal, post-build provenance, foreign cwd"

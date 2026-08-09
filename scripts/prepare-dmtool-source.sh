@@ -5,6 +5,11 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+# Anchor the working directory, as every other script here does. `build.sh` ends in `exec "$ROOT/gradlew"`
+# with no `cd` and no `-p`, so Gradle takes the CALLER's directory as the project directory: a sibling repo
+# calling this by absolute path got a working launcher only while one already matched HEAD, and any rebuild
+# failed. This is the cross-project entry point, so it is the one that must not depend on where it is called.
+cd "$ROOT"
 LAUNCHER="$ROOT/cli/build/install/dmtool/bin/dmtool"
 
 fail() {
