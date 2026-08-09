@@ -8,6 +8,7 @@ import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl
 import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import java.time.Instant
 import java.util.Date
@@ -20,8 +21,13 @@ class RuntimeLawsEngineReuseTest {
 
     private val base = RuntimeLaws.model("models/subscription.dm.json")
 
+    @BeforeEach
+    fun clearSharedOracleStateBeforeEachTest() {
+        RuntimeLaws.clearSharedKernelEngines()
+    }
+
     @AfterEach
-    fun clearSharedOracleState() {
+    fun clearSharedOracleStateAfterEachTest() {
         RuntimeLaws.clearSharedKernelEngines()
     }
 
