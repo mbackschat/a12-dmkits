@@ -109,6 +109,9 @@ import com.mgmtp.a12.kernel.md.serializer.MDSerializerFactory;
 public final class RuntimeLaws {
 
     private static final int SHARED_KERNEL_ENGINE_LIMIT = 64;
+    // Adapter JUnit methods stay serial within a fork: KernelEngine service concurrency is unmeasured, and the
+    // kernel's DocumentModelCodeGenerator serializes same-header-id generation across engine-local caches.
+    // GateTierWiringTest.adapterOracleLanesUseForksInsteadOfInForkThreads pins forks as the parallelism boundary.
     private static final BoundedLruCache<String, KernelEngine> SHARED_KERNEL_ENGINES =
             new BoundedLruCache<>(SHARED_KERNEL_ENGINE_LIMIT);
     private static final AtomicInteger SHARED_KERNEL_ENGINE_BUILDS = new AtomicInteger();

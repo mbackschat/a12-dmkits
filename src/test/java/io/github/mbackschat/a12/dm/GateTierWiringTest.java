@@ -72,6 +72,19 @@ class GateTierWiringTest {
     }
 
     @Test
+    void adapterOracleLanesUseForksInsteadOfInForkThreads() throws IOException {
+        String adapterBuild = Files.readString(locate("adapter/build.gradle"));
+
+        assertTrue(adapterBuild.contains("systemProperty 'junit.jupiter.execution.parallel.enabled', 'false'"),
+                "adapter lanes share RuntimeLaws' exact-model KernelEngine instances inside one fork; their "
+                        + "service concurrency is unmeasured, and same-header-id generation is serialized by "
+                        + "the kernel DocumentModelCodeGenerator. Pin JUnit in-fork parallelism false and scale "
+                        + "with maxParallelForks instead");
+        assertFalse(adapterBuild.contains("systemProperty 'junit.jupiter.execution.parallel.enabled', 'true'"),
+                "adapter lanes must not override the shared-oracle concurrency pin");
+    }
+
+    @Test
     void packagedPublicContractDeclaresTheCanonicalSkillInput() throws IOException {
         String rootBuild = Files.readString(locate("build.gradle"));
         String cliBuild = Files.readString(locate("cli/build.gradle"));

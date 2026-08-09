@@ -194,6 +194,13 @@ def kernelRuntimeClosureReport = tasks.register('kernelRuntimeClosureReport') {
 }
 tasks.named('check') { dependsOn kernelRuntimeClosureReport }
 
+tasks.withType(Test).configureEach {
+    // RuntimeLaws shares exact-model KernelEngine instances inside each test fork. Concurrent service use has
+    // not been measured, and the kernel serializes same-header-id code generation across engine-local caches.
+    // Keep methods serial and scale through isolated Gradle forks; GateTierWiringTest pins this boundary.
+    systemProperty 'junit.jupiter.execution.parallel.enabled', 'false'
+}
+
 tasks.named('test') {
     // Gate tiering (docs/TESTING-SPEC "Test tiers"): the heavyweight perf tests (@Tag 'perf') + the differential
     // fuzzers (@Tag 'fuzz') are EXCLUDED from the default local run. Opt in with -PrunPerf / -PrunFuzz (or
