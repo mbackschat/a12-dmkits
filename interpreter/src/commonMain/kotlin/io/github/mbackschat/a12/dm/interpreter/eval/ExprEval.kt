@@ -255,8 +255,9 @@ private fun Interpreter.unmatchedSemanticIndexValue(e: Expr.SemanticIndex): Val?
 }
 
 /** Whether the index COLUMN of `[F For key]` carries ANY invalid cell — malformed, duplicated, or empty
- *  (the IndexFieldCache marking, IF107): every read through the index is then poisoned (compute) or
- *  not-check-relevant (validation, IF115). O(1) per lookup via [EvalContext.indexColumn]. */
+ *  (the IndexFieldCache marking, IF107). Computation poisons every read; validation still resolves a clean
+ *  match and uses this only to classify an unmatched lookup as not-check-relevant (IF115). O(1) per lookup
+ *  via [EvalContext.indexColumn]. */
 private fun Interpreter.indexColumnInvalid(e: Expr.SemanticIndex): Boolean {
     val idx = indexFieldOf(e.path) ?: throw UnsupportedConstructException(
         "SemanticIndex needs an index field on the group of ${e.path}")
