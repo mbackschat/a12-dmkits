@@ -353,7 +353,7 @@ internal class ComputationEngine(
     ): Set<List<Int>> {
         val indexField = model.indexFields.firstOrNull { parentGroup(it) == group } ?: return emptySet()
         val parentDepth = pathParts(group).size - 1
-        return doc.contextsFor(group)
+        return doc.instantiatedContextsFor(group)
             .filter { doc.indexCacheContainsRow(group, it.repsOf(group)) }
             .groupBy { it.repsOf(group).take(parentDepth) }
             .filterValues { rows ->

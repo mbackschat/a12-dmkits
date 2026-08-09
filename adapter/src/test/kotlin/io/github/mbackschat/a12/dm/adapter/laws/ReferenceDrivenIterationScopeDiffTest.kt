@@ -15,8 +15,7 @@ import org.junit.jupiter.api.Test
  * Tri-engine controls for the SPEC-2026-07-24-01 separating cases the existing iteration estate did not pin:
  * ordinary rule iteration derives from the CONDITION's iteration-bearing references (KERNEL-FINDINGS §9;
  * `RuleIterationLimitCreator`/`AnalyseService.isIteration` per level) — the error field is separately
- * VALIDATED (referenced + compatible scope) but never adds an iteration level, and an iterating scope
- * evaluates only ACTUAL rows.
+ * VALIDATED (referenced + compatible scope) but never adds an iteration level.
  *
  * The three corners locked here (the rest of the estate: per-row ref + matching error field and the
  * error-inside-a-bare-group-ref shape in [CollectivelyFilledGroupScopeDiffTest], star-never-surrounding in
@@ -24,12 +23,12 @@ import org.junit.jupiter.api.Test
  * scope-compatibility rejections in `validate.laws.IterationLawsTest`):
  *
  *  1. **Compatible NESTED references select the deepest path** — a condition reading both an outer
- *     (`Lines/Weight`) and an inner (`Lines/Items/Qty`) repeatable field iterates the INNER rows, once per
- *     actual inner row across all outer rows, with the outer operand resolving against the CURRENT row's own
- *     parent coordinates (collapsing/aliasing to another parent's row would flip the fire set below).
- *  2. **Zero actual rows produce zero evaluations** — an outer row with no inner rows contributes nothing
- *     (no synthesized row), while
- *  3. **an instantiated-but-empty row is an actual row** — it is evaluated exactly once and can fire.
+ *     (`Lines/Weight`) and an inner (`Lines/Items/Qty`) resolves the outer operand against the CURRENT row's
+ *     own parent coordinates (collapsing/aliasing to another parent's row would flip the fire set below).
+ *  2. **A missing child cannot satisfy a positive child guard** — validation does synthesize child row 1, but
+ *     its empty operand keeps the guarded rules in this class silent. [RepeatableRowContentDiffTest] owns the
+ *     empty-as-zero discriminator that makes the implicit evaluation observable.
+ *  3. **an instantiated-but-empty row with a filled guard is observable** — it fires exactly once.
  *
  * E-commerce domain (own fixtures): an order's Lines (with a per-line weight limit) each carry Items rows
  * whose Qty is checked per item against its own line's limit.
@@ -134,10 +133,10 @@ class ReferenceDrivenIterationScopeDiffTest {
         agree(OVER,
             listOf(Line(10, listOf(Item(5), Item(20))), Line(50, listOf(Item(60), Item(30)))),
             listOf(at(1, 2), at(2, 1)),
-            "one evaluation per ACTUAL inner row; [../Weight] reads the current row's own parent")
+            "concrete child pointers stay distinct; [../Weight] reads the current row's own parent")
 
-    /** Zero inner rows under an outer row contribute zero evaluations — no synthesized row. */
-    @Test fun anOuterRowWithZeroInnerRowsContributesNoEvaluations() =
+    /** The implicit child of Lines[1] cannot satisfy `Qty > Weight`; the concrete child of Lines[2] does. */
+    @Test fun aMissingChildDoesNotSatisfyThePositiveComparison() =
         agree(OVER,
             listOf(Line(1, emptyList()), Line(1, listOf(Item(5)))),
             listOf(at(2, 1)),
@@ -150,10 +149,10 @@ class ReferenceDrivenIterationScopeDiffTest {
             listOf(at(1, 1, "OMISSION_ERROR")),
             "Items[1] exists (Note filled) with Qty empty — one row, one evaluation, one fire")
 
-    /** The zero-rows twin of the case above: no Items rows → zero evaluations → silent. */
-    @Test fun zeroRowsEvaluateZeroTimes() =
+    /** The implicit child has no Note, so the positive `FieldFilled(Note)` guard remains false. */
+    @Test fun anImplicitChildDoesNotSatisfyThePositivePresenceGuard() =
         agree(EMPTYQ,
             listOf(Line(7, emptyList())),
             emptyList(),
-            "no Items rows exist — the kernel runs no rule instance, nothing is synthesized")
+            "no concrete Items row exists — the implicit row has no Note, so the guarded rule stays silent")
 }

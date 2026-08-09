@@ -221,7 +221,13 @@ class Document(internal val config: DocumentConfig) {
         // interpreter on-par with the kernel at high rule counts (many rules share a handful of iteration scopes;
         // the kernel computes the row structure once and reuses it across rules — this is the direct analog).
         val attachByGroup: MutableMap<String, Map<Int, Set<List<Int>>>> = HashMap()
-        val contextsByGroup: MutableMap<String, List<EvalContext>> = HashMap()
+        val validationContextsByGroup: MutableMap<String, List<EvalContext>> = HashMap()
+        // Computation iterates only stored V2 rows, unlike validation's implicit nested-child domain (IF277).
+        val storedContextsByGroup: MutableMap<String, List<EvalContext>> = HashMap()
+        // The runtime iteration tree, distinct from stored V2 rows: below every existing repeatable parent, a
+        // missing nested repeatable child contributes its implicit all-1 row. Memoized recursively per group so
+        // N parent rows and N concrete children are projected once, never rescanned per rule (IF277).
+        val iterationRowsByGroup: MutableMap<String, List<List<Int>>> = HashMap()
         // Per-group rows indexed by EVERY prefix of their rep tuple (built once on first use): `prefix → rows
         // whose reps start with it`. This replaces [starRows]'s O(all-rows) `.filter` per call with an O(1)
         // lookup — the lever that kills the **O(rows²)** in semantic-index lookups (`[F For "v"]`) and
@@ -278,7 +284,9 @@ class Document(internal val config: DocumentConfig) {
                 idx.content.size +
                 idx.partsByPath.size +
                 idx.attachByGroup.size +
-                idx.contextsByGroup.size +
+                idx.validationContextsByGroup.size +
+                idx.storedContextsByGroup.size +
+                idx.iterationRowsByGroup.size +
                 idx.prefixRowsByGroup.size +
                 idx.nonRepFilledByGroup.size +
                 idx.indexRowsByValue.size +
@@ -491,14 +499,18 @@ class Document(internal val config: DocumentConfig) {
     private fun emptyCopy(): Document = Document(config)
 
     /**
-     * One [EvalContext] per instantiated row of [groupPath]; empty if the group has no rows. Each row's
-     * `evaluated` flag is computed here in a single amortized pass over the valued fields: a row is
-     * evaluated iff some valued field is in its scope, i.e. its index-prefix matches the field at the depth
-     * where the field's path diverges from the group (`common`). Recording each valued field's prefix at its
+     * One [EvalContext] per runtime iteration row of [groupPath]. This is normally its instantiated V2 rows.
+     * Below an existing repeatable parent, however, a nested repeatable group with no concrete row contributes
+     * one implicit all-1 child; the rule composes recursively across any nesting depth (IF277). An absent
+     * outermost repeatable group still yields no context.
+     *
+     * Each row's `evaluated` flag is computed here in a single amortized pass over the content-bearing fields
+     * and rows: a row is evaluated iff some content is in its scope, i.e. its index-prefix matches at the depth
+     * where the content path diverges from the group (`common`). Recording each content item's prefix at its
      * attach-depth turns the per-row "is anything in scope?" check into a set lookup.
      */
     fun contextsFor(groupPath: String): List<EvalContext> =
-        index().contextsByGroup.getOrPut(groupPath) { computeContextsFor(groupPath) }
+        index().validationContextsByGroup.getOrPut(groupPath) { computeValidationContextsFor(groupPath) }
 
     /** One already-selected concrete row context. Index resolution owns selection; this reconstructs the normal
      *  evaluation environment so the rule and its message pointer inherit the identical repetition. */
@@ -514,12 +526,17 @@ class Document(internal val config: DocumentConfig) {
      * yields its real rows unchanged (so the row's `evaluated` flag / content are preserved).
      */
     fun computeContexts(groupPath: String): List<EvalContext> {
-        val rows = contextsFor(groupPath)
+        val rows = instantiatedContextsFor(groupPath)
         if (rows.isNotEmpty()) return rows
         val segs = parts(groupPath)
         val allNonRepeatable = (1..segs.size).none { d -> "/" + segs.take(d).joinToString("/") in declaredReps }
         return if (allNonRepeatable) listOf(RowContext(groupPath, List(segs.size) { 1 }, false)) else emptyList()
     }
+
+    /** Stored V2 row contexts. Computations and index-cache scans must not inherit validation's implicit nested
+     * child rows: the kernel evaluates validation rules on those rows but computes only concrete targets (IF277). */
+    internal fun instantiatedContextsFor(groupPath: String): List<EvalContext> =
+        index().storedContextsByGroup.getOrPut(groupPath) { contextsForRows(groupPath, rowsOf(groupPath)) }
 
     /**
      * The ONCE-evaluation context at [groupPath] — a rule with no repeatable reference level evaluates exactly
@@ -537,12 +554,45 @@ class Document(internal val config: DocumentConfig) {
         return listOf(RowContext(groupPath, reps, attach.any { (d, pfx) -> reps.take(d) in pfx }))
     }
 
-    private fun computeContextsFor(groupPath: String): List<EvalContext> {
-        val rows = rowsOf(groupPath)
+    private fun computeValidationContextsFor(groupPath: String): List<EvalContext> {
+        return contextsForRows(groupPath, iterationRowsOf(groupPath))
+    }
+
+    private fun contextsForRows(groupPath: String, rows: List<List<Int>>): List<EvalContext> {
         if (rows.isEmpty()) return emptyList()
         val attach = attachByDepth(groupPath)
         return rows.map { reps ->
             RowContext(groupPath, reps, attach.any { (depth, prefixes) -> reps.take(depth) in prefixes })
+        }
+    }
+
+    private fun iterationRowsOf(groupPath: String): List<List<Int>> =
+        index().iterationRowsByGroup.getOrPut(groupPath) { computeIterationRowsFor(groupPath) }
+
+    /**
+     * Project A12's nested iteration domain without mutating the stored document. A nested group with no actual
+     * row below one concrete parent gets exactly one row with every lower coordinate set to 1. Grouping actual
+     * children by parent makes the projection O(parent rows + child rows), and recursion supplies the same rule
+     * when one missing level sits below another.
+     */
+    private fun computeIterationRowsFor(groupPath: String): List<List<Int>> {
+        val actualRows = rowsOf(groupPath)
+        val repeatableParent = ancestorGroups(groupPath)
+            .filter { it in repeatableGroups }
+            .maxByOrNull { partsOf(it).size }
+            ?: return actualRows
+        val parentRows = iterationRowsOf(repeatableParent)
+        if (parentRows.isEmpty()) return emptyList()
+
+        val parentDepth = partsOf(repeatableParent).size
+        val childDepth = partsOf(groupPath).size
+        val actualByParent = actualRows.groupBy { it.take(parentDepth) }
+        return buildList {
+            for (parentReps in parentRows) {
+                val children = actualByParent[parentReps]
+                if (children.isNullOrEmpty()) add(parentReps + List(childDepth - parentDepth) { 1 })
+                else addAll(children)
+            }
         }
     }
 

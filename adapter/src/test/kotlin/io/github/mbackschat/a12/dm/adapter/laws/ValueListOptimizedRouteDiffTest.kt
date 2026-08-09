@@ -86,7 +86,7 @@ class ValueListOptimizedRouteDiffTest {
     @Test
     fun `both routes agree when no fields cell exists at all`() =
         agree(rows = emptyList(), cat = listOf("A", "B"), expected = false,
-            label = "no Items row at all — an iterating rule over zero rows evaluates zero times")
+            label = "no concrete Items row — the implicit row cannot satisfy FieldFilled(Items/Code)")
 
     @Test
     fun `both routes agree on a firing row`() =

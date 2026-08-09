@@ -136,7 +136,7 @@ internal class AutoChecks(
                     mandatoryMessage(doc, path, reps, locale, unsupported)?.let(out::add)
                 }
             } else {
-                for (ctx in doc.contextsFor(emissionScope(path))) {
+                for (ctx in doc.instantiatedContextsFor(emissionScope(path))) {
                     val r = ctx.repsOf(path)
                     // An over-limit row's mandatory check is suppressed (it carries the over-repetition code instead).
                     if (isRelevant(path, r) && cache.hasInvalidCodeAt(path, r, ctx, MANDATORY_FIELD)) {
@@ -173,7 +173,7 @@ internal class AutoChecks(
     ): Set<Pair<String, List<Int>>> {
         val out = mutableSetOf<Pair<String, List<Int>>>()
         for (indexField in model.indexFields) {
-            val rows = doc.contextsFor(parentGroup(indexField)).mapNotNull { ctx ->
+            val rows = doc.instantiatedContextsFor(parentGroup(indexField)).mapNotNull { ctx ->
                 val reps = ctx.repsOf(indexField)
                 if (paths.overLimitLevel(indexField, reps) != null) return@mapNotNull null   // over-limit rows are suppressed
                 // Partial validation: only RELEVANT cells participate in duplicate detection — the kernel builds its

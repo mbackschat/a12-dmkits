@@ -11,9 +11,9 @@ import kotlin.test.assertEquals
 /**
  * Multiplatform (JVM + JS) twin of `adapter.laws.ReferenceDrivenIterationScopeDiffTest` — ordinary rule
  * iteration derives from the CONDITION's references (SPEC-2026-07-24-01; KERNEL-FINDINGS §9): compatible
- * NESTED references select the DEEPEST repeatable path, one evaluation per ACTUAL inner row with the outer
- * operand resolving against the current row's own parent coordinates, and zero rows evaluate zero times
- * while an existing row with an empty target cell evaluates exactly once.
+ * NESTED references select the DEEPEST repeatable path and resolve the outer operand against the current row's
+ * own parent coordinates. A missing nested child contributes one implicit validation row at coordinate 1;
+ * positive guards stay false there, while an empty-as-zero comparison makes the row directly observable.
  */
 class ReferenceDrivenIterationScopeTest {
 
@@ -28,7 +28,9 @@ class ReferenceDrivenIterationScopeTest {
             RuleDef("/Order/Lines/Items/QtyOverWeight", "/Order/Lines/Items",
                 "[Qty] > [../Weight]", "OVER", "../Qty"),
             RuleDef("/Order/Lines/Items/QtyMissing", "/Order/Lines/Items",
-                "FieldFilled(Note) And FieldNotFilled(Qty)", "EMPTYQ", "../Qty")),
+                "FieldFilled(Note) And FieldNotFilled(Qty)", "EMPTYQ", "../Qty"),
+            RuleDef("/Order/Lines/Items/ImplicitQty", "/Order/Lines/Items",
+                "[Qty] < 5", "IMPLICIT", "../Qty")),
         computations = emptyList(),
         repeatableGroups = setOf("/Order/Lines", "/Order/Lines/Items"),
     )
@@ -57,7 +59,7 @@ class ReferenceDrivenIterationScopeTest {
         fired("OVER", listOf(10 to listOf(5 to null, 20 to null), 50 to listOf(60 to null, 30 to null))),
         "Lines[2]/Items[2] (30) exceeds Lines[1]'s weight but not its OWN line's — must not fire")
 
-    @Test fun anOuterRowWithZeroInnerRowsContributesNoEvaluations() = assertEquals(
+    @Test fun aMissingChildDoesNotSatisfyThePositiveComparison() = assertEquals(
         listOf(at(2, 1)),
         fired("OVER", listOf(1 to emptyList(), 1 to listOf(5 to null))))
 
@@ -65,7 +67,11 @@ class ReferenceDrivenIterationScopeTest {
         listOf(at(1, 1)),
         fired("EMPTYQ", listOf(7 to listOf(null to "fragile"))))
 
-    @Test fun zeroRowsEvaluateZeroTimes() = assertEquals(
+    @Test fun anImplicitChildDoesNotSatisfyThePositivePresenceGuard() = assertEquals(
         emptyList(),
         fired("EMPTYQ", listOf(7 to emptyList())))
+
+    @Test fun anImplicitChildIsEvaluatedAtCoordinateOne() = assertEquals(
+        listOf(at(1, 1)),
+        fired("IMPLICIT", listOf(7 to emptyList())))
 }
