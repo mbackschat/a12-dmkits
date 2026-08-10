@@ -1425,6 +1425,9 @@ def interpreterTypeScriptModule = rootProject.layout.projectDirectory.file(
 def stageInterpreterNpmPackage = tasks.register('stageInterpreterNpmPackage', Sync) {
     group = 'build'
     description = 'Stage the private Kotlin bridge and public TypeScript façade for npm packaging.'
+    // Kotlin's browser and Node distribution tasks both declare the shared productionLibrary directory.
+    // A full build schedules both producers, so every producer must precede this consumer under Gradle 9.
+    dependsOn tasks.named('jsBrowserProductionLibraryDistribution')
     dependsOn tasks.named('jsNodeProductionLibraryDistribution')
     from(new File(interpreterTypeScriptSourceDir, 'src')) {
         into('src')
