@@ -71,7 +71,10 @@ class PrivateMarkerLeakGuardTest {
                     Pattern.compile("\\bartifacts\\.[a-z0-9-]+(?:\\.[a-z0-9-]+)*"
                             + "\\.(?:com|net|org|io|dev|de|eu|ch|at|co|cloud|local)\\b"),
                     List.of("https://artifacts.example-corp.com/maven-repos",
-                            "artifacts.intern.example-corp.de", "artifacts.example-corp.cloud")),
+                            "artifacts.intern.example-corp.de", "artifacts.example-corp.cloud",
+                            // A private host carrying an allowlisted public one as its prefix. Blanking the
+                            // allowlisted text instead of filtering matches used to hide exactly this.
+                            "artifacts.spring.io.build.example-corp.de/repo")),
             // The lookbehind is load-bearing: without it the prose "the workflow/home/task chain" matched.
             new Marker("machine-local path",
                     Pattern.compile("(?<![A-Za-z0-9_-])(?:/Users/|/home/)[A-Za-z0-9_-]+"
@@ -100,7 +103,8 @@ class PrivateMarkerLeakGuardTest {
             "Please contact a12-license@mgm-tp.com for more information.",
             "A personal exploration, not affiliated with or endorsed by mgm",
             "reported `/Users/.../person.dm.json` there",
-            "`GateTierWiringTest` locks the workflow/home/task chain");
+            "`GateTierWiringTest` locks the workflow/home/task chain",
+            "resolved from https://artifacts.spring.io/release");
 
     /**
      * Public hosts whose shape matches a marker. Each entry is a reasoned exception, not a silencer: adding
@@ -180,8 +184,9 @@ class PrivateMarkerLeakGuardTest {
     void noMarkerFlagsAStringThisRepositoryLegitimatelyContains() {
         var falsePositives = new ArrayList<String>();
         for (String legitimate : MUST_NOT_CATCH) {
+            // Through the same helper the scan uses, so the allowlist is exercised rather than bypassed.
             MARKERS.stream()
-                    .filter(marker -> marker.pattern().matcher(legitimate).find())
+                    .filter(marker -> matchesBeyondPublicHosts(marker, legitimate))
                     .forEach(marker -> falsePositives.add(marker.name() + " would fail the build on: " + legitimate));
         }
         assertTrue(falsePositives.isEmpty(),
@@ -230,7 +235,7 @@ class PrivateMarkerLeakGuardTest {
                 if (exempt.contains(marker.name())) {
                     continue;
                 }
-                if (marker.pattern().matcher(withoutPublicHosts(text)).find()) {
+                if (matchesBeyondPublicHosts(marker, text)) {
                     violations.add(relative + ": " + marker.name());
                 }
             }
@@ -238,13 +243,20 @@ class PrivateMarkerLeakGuardTest {
         return new Scan(List.copyOf(violations), filesRead);
     }
 
-    /** Blanks the allowlisted public hosts so a legitimate mention cannot trip the hostname marker. */
-    private static String withoutPublicHosts(String text) {
-        String result = text;
-        for (String host : PUBLIC_HOSTS.keySet()) {
-            result = result.replace(host, "");
+    /**
+     * Ignores a hostname match that IS an allowlisted public host. Filtering the matches rather than blanking
+     * the text matters twice over: blanking hid `artifacts.spring.io.build.example-corp.de` (a private host
+     * carrying a public one as a prefix), and it could splice two harmless fragments into a false positive.
+     * The allowlist also applies to this marker only, never to tokens, keys or machine-local paths.
+     */
+    private static boolean matchesBeyondPublicHosts(Marker marker, String text) {
+        var matcher = marker.pattern().matcher(text);
+        while (matcher.find()) {
+            if (!marker.name().equals("private registry hostname") || !PUBLIC_HOSTS.containsKey(matcher.group())) {
+                return true;
+            }
         }
-        return result;
+        return false;
     }
 
     /** {@code git ls-files} is the published set. Failing loudly beats scanning nothing and passing. */

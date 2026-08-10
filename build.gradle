@@ -546,7 +546,10 @@ tasks.register('docGuardTest', Test) {
             // BuildPerformancePolicyTest reads both at runtime: the repository declaration order and the
             // public-only marker. Undeclared, removing either would leave this lane UP-TO-DATE and unrun.
             'root settings'    : file('settings.gradle'),
-            'public-only marker': file('.no-global-gradle-repos'),
+            // NOT the .no-global-gradle-repos marker: deleting it is the sanctioned way to build through a
+            // private registry, and guardInputs treats a missing input as infrastructure breakage with a
+            // misleading message. BuildPerformancePolicyTest asserts the marker directly, so removing it
+            // still fails — with a diagnostic that names what actually happened.
             'cli build'        : file('cli/build.gradle'),
             'Gradle environment': file('scripts/gradle-environment.sh'),
             'gradle.properties': file('gradle.properties'),

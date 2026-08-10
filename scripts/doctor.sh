@@ -46,45 +46,49 @@ if [[ -n "${GRADLE_USER_HOME:-}" ]]; then
 else
     note "GRADLE_USER_HOME unset; ./build.sh would use $home, a bare ./gradlew would use \$HOME/.gradle"
 fi
-own_init='public-repos.init.gradle'
-foreign=()
-for candidate in "$home"/init.d/*.gradle "$home"/init.d/*.gradle.kts "$home"/init.gradle; do
-    [[ -f "$candidate" ]] || continue
-    [[ "$(basename "$candidate")" == "$own_init" ]] && continue
-    foreign+=("$(basename "$candidate")")
-done
-if ((${#foreign[@]} == 0)); then
-    pass "no foreign init script in that home"
-else
-    fail "that home runs init script(s) this project does not own: ${foreign[*]}"
-    note "an init script adds repositories to every build and cannot be removed from inside one"
-fi
+note "a bare ./gradlew would use \$HOME/.gradle regardless"
 
-# 3 — the machine-default home, which a bare ./gradlew uses, and the marker that opts this build out.
+# 3 — what actually decides whether anything injects: init scripts that do NOT honour the marker. Listing
+#     init scripts alone is the PRE-marker question and answering it would fail the very configuration this
+#     project now makes correct, so both homes are judged by the same rule.
 printf '\nPublic-only resolution\n'
 if [[ -f "$ROOT/.no-global-gradle-repos" ]]; then
     pass "the .no-global-gradle-repos marker is present in this checkout"
 else
     fail "the .no-global-gradle-repos marker is missing; an init script that honours it would inject again"
 fi
-default_init=("$HOME"/.gradle/init.d/*.gradle "$HOME"/.gradle/init.gradle)
-default_present=0
-for candidate in "${default_init[@]}"; do [[ -f "$candidate" ]] && default_present=1; done
-if ((default_present == 0)); then
-    pass "the machine-default Gradle home runs no init script"
-else
-    honoured=0
-    for candidate in "${default_init[@]}"; do
-        [[ -f "$candidate" ]] || continue
-        grep -q 'no-global-gradle-repos' "$candidate" && honoured=1
+
+own_init='public-repos.init.gradle'
+# Enumerate every form Gradle loads: init.d/*.gradle[.kts] plus the single init.gradle[.kts].
+init_scripts_of() {
+    local base="$1" candidate
+    for candidate in "$base"/init.d/*.gradle "$base"/init.d/*.gradle.kts "$base"/init.gradle \
+                     "$base"/init.gradle.kts; do
+        [[ -f "$candidate" ]] && printf '%s\n' "$candidate"
     done
-    if ((honoured == 1)); then
-        pass "the machine-default home has init script(s), and they honour the marker"
+}
+report_home() {
+    local label="$1" base="$2" candidate name unhonoured=() ours=0
+    while IFS= read -r candidate; do
+        name="$(basename "$candidate")"
+        if [[ "$name" == "$own_init" ]]; then ours=1; continue; fi
+        grep -q 'no-global-gradle-repos' "$candidate" || unhonoured+=("$name")
+    done < <(init_scripts_of "$base")
+
+    if ((${#unhonoured[@]} == 0)); then
+        if ((ours == 1)); then
+            pass "$label runs only this project's own init script"
+        else
+            pass "$label injects nothing into this build"
+        fi
     else
-        warn "the machine-default home has init script(s) that do NOT honour the marker"
-        note "a bare ./gradlew resolves through whatever they inject; use ./build.sh, or teach them the marker"
+        warn "$label runs init script(s) that ignore the marker: ${unhonoured[*]}"
+        note "a build using that home resolves through whatever they inject; ./build.sh avoids it"
     fi
-fi
+}
+report_home "the machine-default home" "$HOME/.gradle"
+[[ "$(cd "$home" 2>/dev/null && pwd)" != "$(cd "$HOME/.gradle" 2>/dev/null && pwd)" ]] \
+    && report_home "the home this build would use" "$home"
 
 # 4 — the kernel, which no public repository serves.
 printf '\nKernel\n'

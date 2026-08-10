@@ -86,9 +86,24 @@ class BuildPerformancePolicyTest {
                         + "so ours are tried first only by being declared here");
         assertTrue(settings.contains("gradlePluginPortal()") && settings.contains("mavenCentral()"),
                 "the declared plugin repositories must be the public ones this project actually resolves from");
+        assertFalse(settings.contains("mavenLocal()"),
+                "no plugin here comes from mavenLocal, and putting a mutable unchecksummed local repository "
+                        + "in the plugin path would change resolution for every contributor and both CI jobs");
         assertTrue(Files.isRegularFile(repositoryRoot.resolve(".no-global-gradle-repos")),
                 "the committed marker is what makes an init-script-injecting machine skip this build entirely; "
                         + "deleting it is how you deliberately build through such a registry");
+    }
+
+    @Test
+    void theLeakScanAlwaysRunsAndIsNeverRestoredFromCache() throws IOException {
+        String task = gradleTask(Files.readString(locate("build.gradle")), "leakGuardTest");
+
+        assertTrue(task.contains("outputs.upToDateWhen { false }"),
+                "a leak scan that can go UP-TO-DATE is one that can be stale, which is worse than none: "
+                        + "\"the git-tracked set\" is not expressible as a Gradle input");
+        assertTrue(task.contains("outputs.cacheIf { false }"),
+                "without this the task stores a cache entry on every build and its always-runs guarantee "
+                        + "rests on undocumented restore behaviour rather than on the declaration");
     }
 
     @Test

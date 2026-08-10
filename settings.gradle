@@ -3,9 +3,10 @@
 // private registry degrades to a fallback instead of deciding where our plugins come from. The committed
 // `.no-global-gradle-repos` marker removes the injection entirely on a machine whose init script honours it.
 // Together: a bare `./gradlew` resolves from public repositories. See docs/BUILD-ENVIRONMENT.md.
+// Deliberately NOT mavenLocal(): no plugin here comes from it, and putting a mutable, unchecksummed local
+// repository first in the plugin path would change resolution for every contributor and both CI jobs.
 pluginManagement {
     repositories {
-        mavenLocal()
         gradlePluginPortal()
         mavenCentral()
     }
