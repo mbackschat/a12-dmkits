@@ -882,6 +882,7 @@ Start at the 📚 **[documentation index →](docs/README.md)**; the rest of the
 | 🧩 The API design findings | **[API findings →](docs/API-FINDINGS.md)** |
 | 🛠️ The CLI contract | **[CLI specification →](docs/CLI-SPEC.md)** |
 | 🔬 Verified Kernel facts | **[Kernel findings →](docs/KERNEL-FINDINGS.md)** · **[Kernel integration notes →](docs/KERNEL-INTEGRATION-NOTES.md)** |
+| 🩺 Getting a build to run on a machine | **[Build environment →](docs/BUILD-ENVIRONMENT.md)** · run **[`scripts/doctor.sh`](scripts/doctor.sh)** |
 
 ## Prerequisites
 

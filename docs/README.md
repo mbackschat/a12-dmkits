@@ -10,6 +10,7 @@ Agent-first router: find your job, follow the links. The per-doc entries below d
 |---|---|
 | answer a **kernel runtime-semantics** question (what fires, empty-value, iteration, polarity) | [KERNEL-SEMANTICS](KERNEL-SEMANTICS.md) → [SEMANTICS-MAP](SEMANTICS-MAP.md) → [KERNEL-FINDINGS](KERNEL-FINDINGS.md) |
 | know **where a new test goes** (which tier, which law lane) | [TESTING-SPEC](TESTING-SPEC.md) |
+| get a build **running on a machine** (Gradle home, JDK pin, private-registry injection, build cache) | [BUILD-ENVIRONMENT](BUILD-ENVIRONMENT.md) — or just run [`scripts/doctor.sh`](../scripts/doctor.sh) |
 | resolve an issued **interpreter API/release gap id**, including shipped work | [INTERPRETER-GAP-ID-REGISTRY](INTERPRETER-GAP-ID-REGISTRY.md) |
 | know **where a finding / doc lands** (the same-commit obligation) | [DOC-DISCIPLINE](DOC-DISCIPLINE.md) + [CLAUDE.md](../CLAUDE.md)'s trigger table |
 | use the **CLI verb surface + diagnostics** | [CLI-SPEC](CLI-SPEC.md) / [CLI-CONFORMANCE-SPEC](CLI-CONFORMANCE-SPEC.md) |

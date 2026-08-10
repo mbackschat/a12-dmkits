@@ -11,6 +11,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 
 /**
  * Locks the attribution disclaimers on every surface a reader can reach.
@@ -56,18 +57,7 @@ class AttributionDisclaimerLockTest {
 
     @Test
     void everyPublishedSurfaceStillCarriesItsAttributionDisclaimer() throws IOException {
-        Path repositoryRoot = repositoryRoot();
-        var violations = new ArrayList<String>();
-
-        for (Disclaimer disclaimer : REQUIRED) {
-            Path file = repositoryRoot.resolve(disclaimer.path());
-            if (!Files.isRegularFile(file)) {
-                violations.add(disclaimer.path() + ": the file itself is gone");
-                continue;
-            }
-            missingPhrases(Files.readString(file), disclaimer)
-                    .forEach(phrase -> violations.add(disclaimer.path() + ": missing \"" + phrase + "\""));
-        }
+        var violations = violations(repositoryRoot(), REQUIRED);
 
         assertTrue(violations.isEmpty(),
                 "attribution disclaimers were removed or reworded — restore the exact wording:\n"
@@ -75,18 +65,35 @@ class AttributionDisclaimerLockTest {
     }
 
     /**
-     * The mechanism's positive control. Without it the guard above could pass because the phrase check never
-     * reports anything, which is indistinguishable from every disclaimer being present.
+     * The mechanism's positive control, driving the real loop rather than the phrase helper alone. Both ways a
+     * disclaimer can vanish are covered: reworded away, and the whole surface deleted. Without this, the guard
+     * could pass by never reporting anything, which is indistinguishable from every disclaimer being present.
      */
     @Test
-    void theLockReportsAPhraseThatIsNoLongerThere() {
-        var sample = new Disclaimer("sample.md", List.of("not affiliated with or endorsed by mgm"));
+    void theLockReportsBothARewordedSurfaceAndAMissingOne(@TempDir Path sandbox) throws IOException {
+        String phrase = "not affiliated with or endorsed by mgm";
+        Files.writeString(sandbox.resolve("kept.md"), "Independent; " + phrase + ".");
+        Files.writeString(sandbox.resolve("reworded.md"), "A personal exploration on the public A12 Kernel.");
+        var required = List.of(new Disclaimer("kept.md", List.of(phrase)),
+                new Disclaimer("reworded.md", List.of(phrase)),
+                new Disclaimer("deleted.md", List.of(phrase)));
 
-        assertEquals(List.of("not affiliated with or endorsed by mgm"),
-                missingPhrases("A personal exploration built against the public A12 Kernel.", sample),
-                "a surface that dropped the disclaimer must be reported");
-        assertTrue(missingPhrases("Independent; not affiliated with or endorsed by mgm.", sample).isEmpty(),
-                "a surface that kept the disclaimer must not be reported");
+        assertEquals(List.of("reworded.md: missing \"" + phrase + "\"", "deleted.md: the file itself is gone"),
+                violations(sandbox, required));
+    }
+
+    private static List<String> violations(Path root, List<Disclaimer> required) throws IOException {
+        var violations = new ArrayList<String>();
+        for (Disclaimer disclaimer : required) {
+            Path file = root.resolve(disclaimer.path());
+            if (!Files.isRegularFile(file)) {
+                violations.add(disclaimer.path() + ": the file itself is gone");
+                continue;
+            }
+            missingPhrases(Files.readString(file), disclaimer)
+                    .forEach(phrase -> violations.add(disclaimer.path() + ": missing \"" + phrase + "\""));
+        }
+        return List.copyOf(violations);
     }
 
     @Test
