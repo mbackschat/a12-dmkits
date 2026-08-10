@@ -18,9 +18,12 @@ import org.junit.jupiter.api.Test;
  * <p>These are legal statements, not prose: the project is an independent build against the public A12 Kernel
  * and must say so wherever it is read. A reword that drops the statement is indistinguishable from an edit
  * that keeps it, so the removal has to break the build rather than depend on someone noticing in review.
- * Two of the family are covered elsewhere and deliberately not repeated here: the assembled release mirror is
- * asserted by {@code InterpreterReleaseMirrorAssemblerTest}, and the interpreter CHANGELOG entry is history
- * rather than a live surface.
+ *
+ * <p>Three near neighbours are deliberately absent. The assembled release mirror is asserted by
+ * {@code InterpreterReleaseMirrorAssemblerTest}; the interpreter CHANGELOG entry is history rather than a
+ * live surface; and {@code docs/LICENSING.md}'s "No &quot;mgm A12&quot; name/logo" is a licensing constraint
+ * on branding, not a statement of independence, so locking it here would have mislabelled what this guard
+ * protects.
  */
 class AttributionDisclaimerLockTest {
 
@@ -36,8 +39,6 @@ class AttributionDisclaimerLockTest {
                     List.of("Not an official A12 artifact", "not affiliated with or endorsed by mgm")),
             new Disclaimer("docs/INTERPRETER-RELEASE-SPEC.md",
                     List.of("not an official A12 or mgm artifact")),
-            new Disclaimer("docs/LICENSING.md",
-                    List.of("No \"mgm A12\" name/logo")),
             new Disclaimer("interpreter/public-release/DISCLAIMER.md",
                     List.of("not an official A12 or mgm product")),
             new Disclaimer("interpreter/public-release/README.md",

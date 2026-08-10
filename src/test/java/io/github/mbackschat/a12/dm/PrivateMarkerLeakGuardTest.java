@@ -11,101 +11,156 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.regex.Pattern;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 
 /**
- * Repository-wide leak scan: no git-tracked file may publish a private registry, an access token, or a key.
+ * Repository-wide leak scan: no tracked file may publish a private registry, a machine-local path, an access
+ * token, or a key.
  *
- * <p>The denominator is {@code git ls-files}, because that is exactly the set a push serves. Four occurrences
- * of a private registry reached the public repository before this guard existed, and all four were found by
- * hand, after the fact. Grepping catches what someone remembers to grep for; this runs on every build.
+ * <p><strong>Denominator.</strong> {@code git ls-files} supplies the paths and the WORKING TREE supplies the
+ * content, which is what a commit from here would publish. Two things are therefore out of scope by
+ * construction: a file that is not tracked yet (it is scanned once it is added) and a leak already sitting in
+ * history (removing that needs a rewrite, a separate decision).
  *
- * <p>The markers carry their own controls. Each one names the leak shapes it must catch and the legitimate
- * strings it must not, and both sets are asserted in this JVM's regex engine. That is deliberate: an earlier
- * version of these patterns was validated with {@code git grep}, whose POSIX engine does not support
- * {@code \b}, so a marker that matched nothing looked like a marker that found nothing.
+ * <p><strong>Why this one is the authority.</strong> Three narrower scanners already existed —
+ * {@code interpreter/build.gradle}'s release secret patterns, {@code InterpreterApiDocumentationTest}'s
+ * forbidden markers, and {@code release_scan_public_tree} in {@code scripts/release-mirror-common.sh}. They
+ * guard the published interpreter artifacts, i.e. a tree assembled *from* this repository, so a marker family
+ * only has to be complete here for the whole chain to be covered. Sharing the pattern *strings* with them was
+ * deliberately rejected: those scanners run POSIX ERE and Groovy, and Java's regex is a different language —
+ * a {@code \b} that silently matches nothing in ERE is exactly the defect that produced this guard's second
+ * wrong version. Each engine keeps its own expression; this scan keeps the widest coverage.
+ *
+ * <p><strong>Controls.</strong> Every marker names the leak shapes it must catch and legitimate strings it
+ * must not, both asserted in this JVM. The scan loop has its own positive control against a planted file, and
+ * the run asserts a floor on how many files it actually read, so "found nothing" cannot mean "looked at
+ * nothing".
  */
 class PrivateMarkerLeakGuardTest {
 
     private record Marker(String name, Pattern pattern, List<String> mustCatch) {}
 
     /**
-     * Note what is absent: the company name. All three prose leaks said "Artifactory", so the product name
-     * alone discriminates, and this project has no legitimate reason to name that product. A marker built
-     * from the company name would instead have to be excluded from ~1900 legitimate lines.
+     * Note the absent company name: all three prose leaks that reached the public repository said
+     * "Artifactory", so the product name alone discriminates, and this project has no reason to name it.
      */
     private static final List<Marker> MARKERS = List.of(
-            // No trailing \b: `_` is a word character, so `\bartifactory\b` missed artifactory_user=,
-            // artifactoryUrl and ARTIFACTORY_TOKEN — the canonical Gradle/Jenkins credential spellings, and
-            // the likeliest way a credential would actually leak from here.
+            // No trailing \b — `_` is a word character, so `\bartifactory\b` missed artifactory_user= and
+            // ARTIFACTORY_TOKEN, the canonical Gradle/Jenkins credential spellings.
             new Marker("private registry product name",
                     Pattern.compile("(?i)\\bartifactory"),
-                    List.of("routes through the private Artifactory registry",
-                            "can't resolve plugins from the company Artifactory; GRAALVM_HOME feeds the rest",
-                            "artifactory_user=jdoe", "artifactoryUrl = 'https://example'",
-                            "ARTIFACTORY_TOKEN=abc", "systemProp.artifactoryPassword=s3cret")),
+                    List.of("routes through the private Artifactory registry", "artifactory_user=jdoe",
+                            "artifactoryUrl = 'https://example'", "ARTIFACTORY_TOKEN=abc",
+                            "systemProp.artifactoryPassword=s3cret")),
+            new Marker("private registry URL",
+                    Pattern.compile("(?i)https?://[^\\s\"'<>]*nexus"),
+                    List.of("https://nexus.example-corp.com/repository/maven",
+                            "url 'https://build-nexus.example-corp.net/repo'")),
+            // Case-sensitive and TLD-terminated on purpose: `(?i)` plus a bare `[a-z]{2,}` tail made this
+            // match Gradle's own `artifacts.component.ModuleComponentIdentifier` and `artifacts.artifacts
+            // .collect`. Hostnames are lowercase, so requiring a real TLD is what separates one from a Java
+            // package path. A public host that still matches is allowlisted below with its reason.
             new Marker("private registry hostname",
-                    Pattern.compile("(?i)\\b(?:artifacts|artifactory)\\.[a-z0-9-]+\\.(?:com|net|org|io|dev|de|eu)\\b"),
-                    List.of("https://artifacts.example-corp.com/artifactory/maven-repos",
-                            "request.url().includes(\"artifacts.example-corp.de\")")),
+                    Pattern.compile("\\bartifacts\\.[a-z0-9-]+(?:\\.[a-z0-9-]+)*"
+                            + "\\.(?:com|net|org|io|dev|de|eu|ch|at|co|cloud|local)\\b"),
+                    List.of("https://artifacts.example-corp.com/maven-repos",
+                            "artifacts.intern.example-corp.de", "artifacts.example-corp.cloud")),
+            // The lookbehind is load-bearing: without it the prose "the workflow/home/task chain" matched.
+            new Marker("machine-local path",
+                    Pattern.compile("(?<![A-Za-z0-9_-])(?:/Users/|/home/)[A-Za-z0-9_-]+"
+                            + "|[A-Za-z]:\\\\Users\\\\[A-Za-z0-9_-]+"),
+                    List.of("/Users/jdoe/Projects/thing", "/home/jdoe/work", "file:///Users/jdoe/x",
+                            "C:\\Users\\jdoe\\src")),
+            // `_` is excluded on purpose: real tokens are base62 after the prefix, while npm_package_* env
+            // names are not, and admitting `_` flagged npm_package_dependencies_typescript.
             new Marker("access token",
-                    Pattern.compile("(?i)(?:gh[pousr]|github_pat|npm)_[A-Za-z0-9_]{20,}"),
-                    List.of("credential: ghp_" + "0123456789abcdefghijklmnopqrst")),
+                    Pattern.compile("(?i)(?:gh[pousr]|npm)_[A-Za-z0-9]{20,}|github_pat_[A-Za-z0-9_]{20,}"),
+                    List.of("credential: ghp_0123456789abcdefghijklmnopqrst",
+                            "github_pat_11ABCDEFG0123456789_abcdefghij")),
             new Marker("private key",
-                    Pattern.compile("-----BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY-----"),
-                    List.of("-----BEGIN OPENSSH PRIVATE KEY-----", "-----BEGIN PRIVATE KEY-----")));
+                    Pattern.compile("-----BEGIN [A-Z0-9 ]*PRIVATE KEY"),
+                    List.of("-----BEGIN OPENSSH PRIVATE KEY-----", "-----BEGIN PRIVATE KEY-----",
+                            "-----BEGIN DSA PRIVATE KEY-----", "-----BEGIN ENCRYPTED PRIVATE KEY-----",
+                            "-----BEGIN PGP PRIVATE KEY BLOCK-----")));
 
-    /**
-     * Strings this repository legitimately contains. The first two are the reason the first draft of the
-     * hostname marker was wrong: it matched Gradle's own {@code org.gradle.api.artifacts.component} package
-     * on nine lines while missing three of the four real leaks.
-     */
+    /** Strings this repository legitimately contains, each of which a wrong marker has already flagged. */
     private static final List<String> MUST_NOT_CATCH = List.of(
             "org.gradle.api.artifacts.component.ModuleComponentIdentifier",
             "def artifacts = configuration.incoming.artifactView {}.artifacts.artifacts.collect { artifact ->",
+            "npm_package_dependencies_typescript",
+            "npm_config_cache_lockfile_stale_timeout_seconds",
             "path: ~/.m2/repository/com/mgmtp",
             "Please contact a12-license@mgm-tp.com for more information.",
             "A personal exploration, not affiliated with or endorsed by mgm",
-            "Not an official A12 / mgm artifact.");
+            "reported `/Users/.../person.dm.json` there",
+            "`GateTierWiringTest` locks the workflow/home/task chain");
 
     /**
-     * Files exempt from the scan because they ARE the detectors: each must contain a marker to do its job.
-     * The exemption is narrow and self-checking — {@link #everyAllowlistedDetectorStillExistsAndCarriesAMarker}
-     * fails if one of these stops carrying a marker, so a stale entry cannot quietly become a blanket hole.
+     * Public hosts whose shape matches a marker. Each entry is a reasoned exception, not a silencer: adding
+     * one is a one-line change that says which host and why.
      */
-    private static final Set<String> DETECTORS = Set.of(
-            "interpreter/build.gradle",
-            "interpreter/src/jvmTest/kotlin/io/github/mbackschat/a12/dm/interpreter/InterpreterApiDocumentationTest.kt",
-            "interpreter/consumer-tests/browser/scripts/offline.ts",
-            "src/test/java/io/github/mbackschat/a12/dm/PrivateMarkerLeakGuardTest.java");
+    private static final Map<String, String> PUBLIC_HOSTS = Map.of(
+            "artifacts.spring.io", "Spring's public artifact repository");
+
+    /**
+     * Per-marker exemptions. A file appears here only for the marker it exists to carry, never blanket: a
+     * detector that stops carrying its marker is a dead exemption, which
+     * {@link #everyExemptionStillCarriesTheMarkerItClaims} turns into a failure.
+     */
+    private static final Map<String, Set<String>> EXEMPT = exemptions();
+
+    private static Map<String, Set<String>> exemptions() {
+        var exempt = new LinkedHashMap<String, Set<String>>();
+        // The three narrower scanners named in the class doc: each must spell the product name to detect it.
+        exempt.put("interpreter/build.gradle", Set.of("private registry product name"));
+        exempt.put("interpreter/src/jvmTest/kotlin/io/github/mbackschat/a12/dm/interpreter/"
+                + "InterpreterApiDocumentationTest.kt", Set.of("private registry product name"));
+        exempt.put("interpreter/consumer-tests/browser/scripts/offline.ts",
+                Set.of("private registry product name"));
+        // The mirror assembler's own leak fixture is a placeholder home directory.
+        exempt.put("src/releaseGuardTest/java/io/github/mbackschat/a12/dm/"
+                + "InterpreterReleaseMirrorAssemblerTest.java", Set.of("machine-local path"));
+        // This guard carries a fixture for every marker; that is what proves the markers still work.
+        exempt.put("src/test/java/io/github/mbackschat/a12/dm/PrivateMarkerLeakGuardTest.java",
+                MARKERS.stream().map(Marker::name).collect(java.util.stream.Collectors.toUnmodifiableSet()));
+        return Map.copyOf(exempt);
+    }
 
     @Test
-    void noTrackedFilePublishesAPrivateRegistryTokenOrKey() throws Exception {
+    void noTrackedFilePublishesAPrivateMarker() throws Exception {
         Path root = repositoryRoot();
-        var violations = new ArrayList<String>();
+        List<String> tracked = trackedFiles(root);
 
-        for (String relative : trackedFiles(root)) {
-            if (DETECTORS.contains(relative)) {
-                continue;
-            }
-            String text = readTextOrNull(root.resolve(relative));
-            if (text == null) {
-                continue;
-            }
-            for (Marker marker : MARKERS) {
-                if (marker.pattern().matcher(text).find()) {
-                    violations.add(relative + ": " + marker.name());
-                }
-            }
-        }
+        var scan = scan(root, tracked);
 
-        assertTrue(violations.isEmpty(),
+        assertTrue(scan.violations().isEmpty(),
                 "tracked files would publish private markers — scrub them before this can be pushed:\n"
-                        + String.join("\n", violations));
+                        + String.join("\n", scan.violations()));
+        assertTrue(scan.filesRead() >= tracked.size() * 9 / 10,
+                "the scan read only " + scan.filesRead() + " of " + tracked.size() + " tracked files, so a"
+                        + " clean result would mean it looked at almost nothing rather than found nothing");
+    }
+
+    /**
+     * The scan LOOP's positive control. The marker fixtures prove the patterns match strings; only this proves
+     * a violating FILE is reported, so an inverted match or a misplaced skip cannot pass unnoticed.
+     */
+    @Test
+    void theScanReportsAViolatingFile(@TempDir Path sandbox) throws Exception {
+        Files.writeString(sandbox.resolve("leaky.md"), "url = https://artifacts.example-corp.com/repo\n");
+        Files.writeString(sandbox.resolve("clean.md"), "Nothing private lives in this file.\n");
+
+        var scan = scan(sandbox, List.of("leaky.md", "clean.md"));
+
+        assertEquals(List.of("leaky.md: private registry hostname"), scan.violations());
+        assertEquals(2, scan.filesRead());
     }
 
     @Test
@@ -134,23 +189,62 @@ class PrivateMarkerLeakGuardTest {
     }
 
     @Test
-    void everyAllowlistedDetectorStillExistsAndCarriesAMarker() throws IOException {
+    void everyExemptionStillCarriesTheMarkerItClaims() throws IOException {
         Path root = repositoryRoot();
         var stale = new ArrayList<String>();
 
-        for (String detector : DETECTORS) {
-            Path file = root.resolve(detector);
+        for (var entry : EXEMPT.entrySet()) {
+            Path file = root.resolve(entry.getKey());
             if (!Files.isRegularFile(file)) {
-                stale.add(detector + ": the file is gone, so this entry now exempts nothing");
+                stale.add(entry.getKey() + ": the file is gone, so this exemption covers nothing");
                 continue;
             }
             String text = Files.readString(file);
-            if (MARKERS.stream().noneMatch(marker -> marker.pattern().matcher(text).find())) {
-                stale.add(detector + ": carries no marker, so exempting it only widens the blind spot");
+            for (String markerName : entry.getValue()) {
+                Marker marker = MARKERS.stream().filter(m -> m.name().equals(markerName)).findFirst()
+                        .orElseThrow(() -> new IllegalStateException("unknown marker exempted: " + markerName));
+                if (!marker.pattern().matcher(text).find()) {
+                    stale.add(entry.getKey() + ": no longer carries \"" + markerName
+                            + "\", so exempting it only widens the blind spot");
+                }
             }
         }
 
-        assertTrue(stale.isEmpty(), "the detector allowlist drifted:\n" + String.join("\n", stale));
+        assertTrue(stale.isEmpty(), "the exemption list drifted:\n" + String.join("\n", stale));
+    }
+
+    private record Scan(List<String> violations, int filesRead) {}
+
+    private static Scan scan(Path root, List<String> relativePaths) throws IOException {
+        var violations = new ArrayList<String>();
+        int filesRead = 0;
+
+        for (String relative : relativePaths) {
+            String text = readTextOrNull(root.resolve(relative));
+            if (text == null) {
+                continue;
+            }
+            filesRead++;
+            Set<String> exempt = EXEMPT.getOrDefault(relative, Set.of());
+            for (Marker marker : MARKERS) {
+                if (exempt.contains(marker.name())) {
+                    continue;
+                }
+                if (marker.pattern().matcher(withoutPublicHosts(text)).find()) {
+                    violations.add(relative + ": " + marker.name());
+                }
+            }
+        }
+        return new Scan(List.copyOf(violations), filesRead);
+    }
+
+    /** Blanks the allowlisted public hosts so a legitimate mention cannot trip the hostname marker. */
+    private static String withoutPublicHosts(String text) {
+        String result = text;
+        for (String host : PUBLIC_HOSTS.keySet()) {
+            result = result.replace(host, "");
+        }
+        return result;
     }
 
     /** {@code git ls-files} is the published set. Failing loudly beats scanning nothing and passing. */

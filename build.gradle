@@ -156,6 +156,9 @@ tasks.register('leakGuardTest', Test) {
     testClassesDirs = sourceSets.test.output.classesDirs
     classpath = sourceSets.test.runtimeClasspath
     outputs.upToDateWhen { false }
+    // Both halves, matching what GateTierWiringTest already asserts for perfGateTest: without cacheIf the
+    // task stores an entry on every build and "always runs" rests on undocumented restore behaviour.
+    outputs.cacheIf { false }
     filter {
         includeTestsMatching 'io.github.mbackschat.a12.dm.PrivateMarkerLeakGuardTest'
     }
@@ -532,7 +535,6 @@ tasks.register('docGuardTest', Test) {
                     'core/src/main/java/io/github/mbackschat/a12/dm/package-info.java',
                     'docs/PROJECT-DESIGN.md',
                     'docs/INTERPRETER-RELEASE-SPEC.md',
-                    'docs/LICENSING.md',
                     'interpreter/public-release/DISCLAIMER.md',
                     'interpreter/public-release/README.md',
                     'interpreter/public-release/index.html',
@@ -556,6 +558,9 @@ tasks.register('docGuardTest', Test) {
             'adapter build'    : file('adapter/build.gradle'),
             'interpreter build': file('interpreter/build.gradle'),
             'native capture'   : file('scripts/capture-native-config.sh'),
+            // BuildPerformancePolicyTest reads the removal classifier at runtime too; undeclared since it was
+            // added, so a script-only edit could leave this lane UP-TO-DATE and the assertion unrun.
+            'native removals'  : file('scripts/check-native-metadata-removals.sh'),
             // dsl sources + the operator catalog moved to :rulekit in the Stage-4 module cut.
             'dsl sources'      : fileTree('rulekit/src/main/java/io/github/mbackschat/a12/dm/rulekit/dsl') { include '**/*.java' },
             'operator catalog' : fileTree('rulekit/src/main/resources/catalog')])
