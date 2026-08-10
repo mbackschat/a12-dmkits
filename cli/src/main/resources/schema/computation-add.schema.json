@@ -20,7 +20,7 @@
         "additionalProperties": false,
         "properties": {
           "precondition": { "type": "string", "description": "the tier's guard in A12 DSL (omit for the single unconditional alternative)" },
-          "operation": { "type": "string", "description": "the value-expression in A12 DSL, assigned to the computed field when the precondition holds" },
+          "operation": { "type": "string", "description": "the value-expression in A12 DSL, assigned to the computed field when the precondition holds. It may not read the computed field itself — plainly (MVK_ERROR_REFERENCE_TO_CALCULATED_FIELD) or through an enum category / semantic index (MVK_ERROR_SEMANTIC_INDEX_OR_CATEGORY_FOR_ERRORFIELD, which pre-empts the plain code); the same ban covers precondition. A derived-scale mismatch against the target is reported BEFORE either, so such an operation is a two-repair rejection" },
           "toleranceRangeOp": {
             "type": "string",
             "enum": ["DiffersWithToleranceRange1", "DiffersWithToleranceRange2", "DiffersWithToleranceRange5", "DiffersWithToleranceRange10"],

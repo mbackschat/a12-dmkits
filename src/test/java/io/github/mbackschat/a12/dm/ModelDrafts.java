@@ -99,6 +99,35 @@ public final class ModelDrafts {
                 .build();
     }
 
+    /**
+     * The routing model — a shipment's service tier, chosen from a requested/fallback pair whose three enum
+     * fields all carry the same {@code ServiceTier} classification over one value domain (so a projection of
+     * any of them is assignable to any other), plus an index-keyed repeatable {@code Legs} group and a
+     * non-repeatable distance outside it. That shape reaches <b>both</b> halves of the kernel's projected-read
+     * class on a computed field: a <em>category</em> projection of the computed field and a
+     * <em>semantic-index</em> read of it, each with an accepted different-target control.
+     */
+    public static DocumentModelDraft routing() {
+        return DocumentModelDraft.named("routing").locale("en_US")
+                .rootGroup("Routing", root -> root
+                        .enumField("SelectedTier", e -> e.value("ECONOMY").value("EXPRESS")
+                                .category("ServiceTier", "ECONOMY", "EXPRESS"))
+                        .enumField("RequestedTier", e -> e.value("ECONOMY").value("EXPRESS")
+                                .category("ServiceTier", "ECONOMY", "EXPRESS"))
+                        .enumField("FallbackTier", e -> e.value("ECONOMY").value("EXPRESS")
+                                .category("ServiceTier", "ECONOMY", "EXPRESS"))
+                        .numberField("PlannedDistance", n -> n.fractionDigits(0))
+                        // two STRING peers of the Legs index field, so a semantic-index KEY can be the
+                        // computed field itself (the kernel matches the key against the error field too)
+                        // and a second, non-target key is available as the accepted control
+                        .stringField("PlannedLeg", f -> f.maxLength(10))
+                        .stringField("PreferredLeg", f -> f.maxLength(10))
+                        .group("Legs", g -> g.repeatable(10).indexField("LegRef")
+                                .stringField("LegRef", f -> f.maxLength(10))
+                                .numberField("Distance", n -> n.fractionDigits(0))))
+                .build();
+    }
+
     /** A repeatable root group (multi-form) + a plain root group — for the NumberOfFilledGroups root-group rule. */
     public static DocumentModelDraft repeatableRoot() {
         return DocumentModelDraft.named("multiform").locale("en_US")

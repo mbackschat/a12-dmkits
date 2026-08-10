@@ -818,9 +818,18 @@ public record io.github.mbackschat.a12.dm.rulekit.dsl.ConditionReferences
   public final int hashCode()
   public static io.github.mbackschat.a12.dm.rulekit.dsl.ConditionReferences of(io.github.mbackschat.a12.dm.rulekit.dsl.Calculation)
   public static io.github.mbackschat.a12.dm.rulekit.dsl.ConditionReferences of(io.github.mbackschat.a12.dm.rulekit.dsl.Condition)
+  public static io.github.mbackschat.a12.dm.rulekit.dsl.ConditionReferences.ReadMode readMode(io.github.mbackschat.a12.dm.rulekit.dsl.Calculation, java.lang.String)
+  public static io.github.mbackschat.a12.dm.rulekit.dsl.ConditionReferences.ReadMode readMode(io.github.mbackschat.a12.dm.rulekit.dsl.Condition, java.lang.String)
   public boolean referencesField(java.lang.String)
   public static boolean referencesRuleGroup(io.github.mbackschat.a12.dm.rulekit.dsl.Condition)
   public final java.lang.String toString()
+
+public static enum io.github.mbackschat.a12.dm.rulekit.dsl.ConditionReferences.ReadMode
+  public static final io.github.mbackschat.a12.dm.rulekit.dsl.ConditionReferences.ReadMode NONE
+  public static final io.github.mbackschat.a12.dm.rulekit.dsl.ConditionReferences.ReadMode PLAIN
+  public static final io.github.mbackschat.a12.dm.rulekit.dsl.ConditionReferences.ReadMode PROJECTED
+  public static io.github.mbackschat.a12.dm.rulekit.dsl.ConditionReferences.ReadMode valueOf(java.lang.String)
+  public static io.github.mbackschat.a12.dm.rulekit.dsl.ConditionReferences.ReadMode[] values()
 
 public record io.github.mbackschat.a12.dm.rulekit.dsl.ConfirmRef
   public ConfirmRef(io.github.mbackschat.a12.dm.rulekit.dsl.FieldRef)

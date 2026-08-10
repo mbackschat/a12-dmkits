@@ -50,6 +50,23 @@ class ConditionEditTest {
         assertEquals(Kind.STRUCTURE, ConditionEdit.classify(base, head));
     }
 
+    /**
+     * The invariant that keeps {@code ConditionReferences.ReadMode} out of that record's identity (API-FINDINGS
+     * 120): swapping a plain read for a category projection of the SAME field changes the operation, not which
+     * entities the condition depends on, so it must not be classified as a reference edit. Folding the reading
+     * mode into the record's equality would relabel exactly this pair — which is why it is pinned here rather
+     * than left to a comment.
+     */
+    @Test
+    void swappingAPlainReadForACategoryProjectionIsNotAReferenceEdit() {
+        String tier = "/Subscription/Tier";
+        Condition plain = m.enumOf(tier).eq("BASIC");
+        Condition projected = m.enumOf(tier).category("Pricing").eq("PAID");
+
+        assertEquals(Kind.OPERAND, ConditionEdit.classify(plain, projected),
+                "same node count, same references, and the operator multiset covers only condition nodes");
+    }
+
     @Test
     void structureWinsEvenWhenTheNewClauseAddsAReference() {
         // a clause add that also brings a new ref reads as STRUCTURE (more informative than REFERENCES)

@@ -10,6 +10,14 @@ import java.util.Set;
  * the sealed AST (cheap thanks to D14's model-resolved refs). This is the seed of F9's
  * referenced-fields projection; today it powers the {@link Rule} builder's error-field-referenced
  * pre-check (directly, or indirectly via an enclosing group reference — kernel-verified semantics).
+ *
+ * <p>{@link #readMode(Condition, String)} answers a second question over the same traversal: <em>how</em> one
+ * path is read — plainly, or through a semantic index or enum category. The reading mode is deliberately
+ * <b>not</b> part of this record's identity, because a projection changes the operation and not which
+ * entities the condition depends on: {@code ConditionEdit} classifies an {@code [A]} → {@code [A -> Cat]}
+ * swap as an OPERAND edit (same node count, same references, and its operator multiset covers only condition
+ * nodes), and folding the mode into this record's equality would relabel it a REFERENCES edit
+ * ({@code ConditionEditTest.swappingAPlainReadForACategoryProjectionIsNotAReferenceEdit}).
  */
 public record ConditionReferences(Set<String> fieldPaths, Set<String> groupPaths) {
 
@@ -26,18 +34,76 @@ public record ConditionReferences(Set<String> fieldPaths, Set<String> groupPaths
     }
 
     public static ConditionReferences of(Condition condition) {
-        Set<String> fields = new LinkedHashSet<>();
-        Set<String> groups = new LinkedHashSet<>();
-        collect(condition, fields, groups);
-        return new ConditionReferences(fields, groups);
+        Refs refs = new Refs();
+        collect(condition, refs);
+        return new ConditionReferences(refs.fields, refs.groups);
     }
 
     /** The references of a value expression — e.g. a computation slot's {@code operation}. */
     public static ConditionReferences of(Calculation calculation) {
-        Set<String> fields = new LinkedHashSet<>();
-        Set<String> groups = new LinkedHashSet<>();
-        collect(calculation, fields, groups);
-        return new ConditionReferences(fields, groups);
+        Refs refs = new Refs();
+        collect(calculation, refs);
+        return new ConditionReferences(refs.fields, refs.groups);
+    }
+
+    /**
+     * How a field is read: not at all, plainly, or through a <b>projection</b> — an enum category
+     * ({@code [f -> Cat]}) or a semantic index ({@code [f For key]}, whose <em>key</em> field counts as
+     * projected too, as the kernel matches it against the calculated field).
+     *
+     * <p>Ordered weakest-first, so {@code compareTo} folds several readings into the strongest one. That
+     * ordering is the kernel's: where a computation touches its own computed field, a plain self-read is
+     * {@code MVK_ERROR_REFERENCE_TO_CALCULATED_FIELD}, a projected one is
+     * {@code MVK_ERROR_SEMANTIC_INDEX_OR_CATEGORY_FOR_ERRORFIELD}, and the projected class pre-empts the
+     * plain one wherever both readings occur in the computation (kernel-measured, KERNEL-FINDINGS KF182).
+     */
+    public enum ReadMode {
+        NONE, PLAIN, PROJECTED
+    }
+
+    /** How {@code fieldPath} is read by {@code condition} — one traversal, no intermediate collections. */
+    public static ReadMode readMode(Condition condition, String fieldPath) {
+        Refs refs = new Refs();
+        collect(condition, refs);
+        return refs.readModeOf(fieldPath);
+    }
+
+    /** How {@code fieldPath} is read by a value expression — the {@link #of(Calculation)} peer. */
+    public static ReadMode readMode(Calculation calculation, String fieldPath) {
+        Refs refs = new Refs();
+        collect(calculation, refs);
+        return refs.readModeOf(fieldPath);
+    }
+
+    /**
+     * The channels one traversal fills. {@code projected} is a subset of {@code fields}: a projected read
+     * is still a reference to its underlying field.
+     */
+    private static final class Refs {
+        private final Set<String> fields = new LinkedHashSet<>();
+        private final Set<String> groups = new LinkedHashSet<>();
+        private final Set<String> projected = new LinkedHashSet<>();
+
+        void field(String path) {
+            fields.add(path);
+        }
+
+        void group(String path) {
+            groups.add(path);
+        }
+
+        /** A field read through a semantic index or an enum category — a reference AND a projection. */
+        void projectedField(String path) {
+            fields.add(path);
+            projected.add(path);
+        }
+
+        ReadMode readModeOf(String fieldPath) {
+            if (projected.contains(fieldPath)) {
+                return ReadMode.PROJECTED;
+            }
+            return fields.contains(fieldPath) ? ReadMode.PLAIN : ReadMode.NONE;
+        }
     }
 
     /** Whether {@code fieldPath} is referenced directly or lies under a referenced group. */
@@ -72,136 +138,140 @@ public record ConditionReferences(Set<String> fieldPaths, Set<String> groupPaths
         };
     }
 
-    private static void collect(Condition condition, Set<String> fields, Set<String> groups) {
+    private static void collect(Condition condition, Refs refs) {
         switch (condition) {
-            case FieldPresenceCondition f -> fields.add(f.field().path());
-            case FieldListPredicate p -> p.fields().forEach(f -> collectOperand(f, fields, groups));
+            case FieldPresenceCondition f -> refs.field(f.field().path());
+            case FieldListPredicate p -> p.fields().forEach(f -> collectOperand(f, refs));
             case ComparisonCondition c -> {
-                collect(c.left(), fields, groups);
-                collect(c.right(), fields, groups);
+                collect(c.left(), refs);
+                collect(c.right(), refs);
             }
             case LogicCondition l -> {
-                collect(l.left(), fields, groups);
-                collect(l.right(), fields, groups);
+                collect(l.left(), refs);
+                collect(l.right(), refs);
             }
-            case GroupPresenceCondition g -> groups.add(g.group().path());
+            case GroupPresenceCondition g -> refs.group(g.group().path());
             // RuleGroup is the rule's OWN group; its path is unknown here (no rule context), so it
             // contributes no concrete reference. Rule.deferredChecks() treats it as covering the error
             // field via referencesRuleGroup(...) below (the field is always under the rule's group).
             case RuleGroupPresenceCondition ignored -> { }
-            case IndexedPresenceCondition p -> collect(p.index(), fields, groups);
+            case IndexedPresenceCondition p -> collect(p.index(), refs);
             case GroupListPredicate p -> p.operands().forEach(operand -> {
                 switch (operand) {
-                    case FieldRef field -> fields.add(field.path());
-                    case GroupListRef scope -> groups.add(scope.path());
+                    case FieldRef field -> refs.field(field.path());
+                    case GroupListRef scope -> refs.group(scope.path());
                 }
             });
-            case PatternCondition p -> fields.add(p.field().path());
+            case PatternCondition p -> refs.field(p.field().path());
             case ValueListCondition v -> {
-                fields.add(v.field().path());
-                v.values().forEach(value -> collect(value, fields, groups));
+                refs.field(v.field().path());
+                v.values().forEach(value -> collect(value, refs));
             }
             case FieldListValueListCondition v -> {
-                v.fields().forEach(f -> collectOperand(f, fields, groups));
-                v.values().forEach(value -> collect(value, fields, groups));
+                v.fields().forEach(f -> collectOperand(f, refs));
+                v.values().forEach(value -> collect(value, refs));
             }
             case FieldListEntityListCondition v -> {
-                v.fields().forEach(f -> collectOperand(f, fields, groups));
-                v.valueFields().forEach(f -> collectOperand(f, fields, groups));
+                v.fields().forEach(f -> collectOperand(f, refs));
+                v.valueFields().forEach(f -> collectOperand(f, refs));
             }
-            case GroupScopedFieldFill v -> v.scopes().forEach(s -> groups.add(s.group().path()));
+            case GroupScopedFieldFill v -> v.scopes().forEach(s -> refs.group(s.group().path()));
             // The @From scope DOES count as a reference — measured 2026-07-25: with @From the kernel accepts an
             // error field that only the scope contains, and without it the same shape draws
             // MVK_ERROR_FIELD_NOT_REFERENCED, so the keys' own group is NOT an implicit reference
             // (validate.laws.RepetitionNotUniqueKeyKindLawsTest). Omitting the scope produced a false advisory
             // on a kernel-legal rule; this comment previously recorded the honoring as unverified.
             case RepetitionNotUniqueCondition r -> {
-                r.keys().forEach(k -> fields.add(k.path()));
-                r.scope().ifPresent(s -> groups.add(s.path()));
+                r.keys().forEach(k -> refs.field(k.path()));
+                r.scope().ifPresent(s -> refs.group(s.path()));
             }
             case CustomConditionRef ignored -> { /* references nothing — host-defined */ }
-            case DateValidity v -> collect(v.dateConstruct(), fields, groups);
-            case CustomTypeValidity v -> fields.add(v.field().path());
+            case DateValidity v -> collect(v.dateConstruct(), refs);
+            case CustomTypeValidity v -> refs.field(v.field().path());
         }
     }
 
-    private static void collect(Calculation calculation, Set<String> fields, Set<String> groups) {
+    private static void collect(Calculation calculation, Refs refs) {
         switch (calculation) {
-            case FieldValue v -> fields.add(v.field().path());
-            case LengthOf l -> fields.add(l.field().path());
+            case FieldValue v -> refs.field(v.field().path());
+            case LengthOf l -> refs.field(l.field().path());
             case NumberLiteral n -> { }
             case StringLiteral s -> { }
             case DateLiteral d -> { }
             case TimeLiteral t -> { }
             case EnumValueLiteral e -> { }
             case BoolLiteral b -> { }
-            case EnumCategoryAccess c -> fields.add(c.field().path());
+            case EnumCategoryAccess c -> refs.projectedField(c.field().path());
             case CountAggregate a -> {
-                a.fields().forEach(f -> collectOperand(f, fields, groups));
-                a.groups().forEach(g -> groups.add(g.path()));
+                a.fields().forEach(f -> collectOperand(f, refs));
+                a.groups().forEach(g -> refs.group(g.path()));
             }
-            case ListAggregate a -> a.operands().forEach(o -> collectOperand(o, fields, groups));
-            case CurrentRepetition r -> groups.add(r.group().path());
+            case ListAggregate a -> a.operands().forEach(o -> collectOperand(o, refs));
+            case CurrentRepetition r -> refs.group(r.group().path());
             case Today ignored -> { }
             case Now ignored -> { }
             case BaseYear ignored -> { }
             case DateDifference d -> {
-                collect(d.left(), fields, groups);
-                collect(d.right(), fields, groups);
+                collect(d.left(), refs);
+                collect(d.right(), refs);
             }
             case DateShift s -> {
-                collect(s.date(), fields, groups);
-                collect(s.amount(), fields, groups);
+                collect(s.date(), refs);
+                collect(s.amount(), refs);
             }
-            case SemanticIndexValue v -> fields.add(v.field().path());
+            case SemanticIndexValue v -> refs.projectedField(v.field().path());
             case SemanticIndexFieldValue v -> {
-                fields.add(v.field().path());
-                fields.add(v.indexField().path());
+                refs.projectedField(v.field().path());
+                // The KEY counts as projected too — measured, not assumed: a computation whose operation reads
+                // `[Legs/LegRef For <computedField>]` draws MVK_ERROR_SEMANTIC_INDEX_OR_CATEGORY_FOR_ERRORFIELD,
+                // not the plain class, so the kernel matches the calculated field against the key as well
+                // (KF182; ComputedTargetProjectedReadLawsTest).
+                refs.projectedField(v.indexField().path());
             }
             case Arithmetic a -> {
-                collect(a.left(), fields, groups);
-                collect(a.right(), fields, groups);
+                collect(a.left(), refs);
+                collect(a.right(), refs);
             }
-            case Rounding r -> collect(r.operand(), fields, groups);
-            case Concatenation c -> c.parts().forEach(p -> collect(p, fields, groups));
-            case DateListAggregate a -> collectOperand(a.scope(), fields, groups);
-            case FirstFilledValue a -> a.operands().forEach(o -> collectFirstFilledOperand(o, fields, groups));
-            case FieldValueAsString c -> fields.add(c.field().path());
-            case IndexedFieldValueAsString c -> collect(c.index(), fields, groups);
-            case RangeAsString c -> fields.add(c.field().path());
-            case FieldValueAsNumber c -> fields.add(c.field().path());
-            case RangeAsNumber c -> fields.add(c.field().path());
-            case OpListMath m -> m.operands().forEach(o -> collect(o, fields, groups));
+            case Rounding r -> collect(r.operand(), refs);
+            case Concatenation c -> c.parts().forEach(p -> collect(p, refs));
+            case DateListAggregate a -> collectOperand(a.scope(), refs);
+            case FirstFilledValue a -> a.operands().forEach(o -> collectFirstFilledOperand(o, refs));
+            case FieldValueAsString c -> refs.field(c.field().path());
+            case IndexedFieldValueAsString c -> collect(c.index(), refs);
+            case RangeAsString c -> refs.field(c.field().path());
+            case FieldValueAsNumber c -> refs.field(c.field().path());
+            case RangeAsNumber c -> refs.field(c.field().path());
+            case OpListMath m -> m.operands().forEach(o -> collect(o, refs));
             case NumberOfValueInFields n -> {
-                collect(n.value(), fields, groups);
-                n.fields().forEach(f -> collectOperand(f, fields, groups));
+                collect(n.value(), refs);
+                n.fields().forEach(f -> collectOperand(f, refs));
             }
-            case ValueAsDate v -> fields.add(v.field().path());
-            case DateExtraction e -> collect(e.source(), fields, groups);
-            case DateTimePart e -> collect(e.source(), fields, groups);
+            case ValueAsDate v -> refs.field(v.field().path());
+            case DateExtraction e -> collect(e.source(), refs);
+            case DateTimePart e -> collect(e.source(), refs);
             case SumOfProducts s -> {
-                collectOperand(s.left(), fields, groups);
-                collectOperand(s.right(), fields, groups);
+                collectOperand(s.left(), refs);
+                collectOperand(s.right(), refs);
             }
             case DateConstruction dc -> {
-                collect(dc.day(), fields, groups);
-                collect(dc.month(), fields, groups);
-                collect(dc.year1(), fields, groups);
-                dc.year2().ifPresent(y -> collect(y, fields, groups));
+                collect(dc.day(), refs);
+                collect(dc.month(), refs);
+                collect(dc.year1(), refs);
+                dc.year2().ifPresent(y -> collect(y, refs));
             }
             case TimeConstruction tc -> {
-                tc.components().forEach(component -> collect(component, fields, groups));
+                tc.components().forEach(component -> collect(component, refs));
             }
             case DateTimeConstruction dtc -> {
-                collect(dtc.date(), fields, groups);
-                collect(dtc.time(), fields, groups);
+                collect(dtc.date(), refs);
+                collect(dtc.time(), refs);
             }
-            case FieldRounding r -> fields.add(r.field().path());
-            case DateRangeBound b -> collect(b.source(), fields, groups);
-            case RootGroupCount c -> groups.add(c.rootGroup().path());
+            case FieldRounding r -> refs.field(r.field().path());
+            case DateRangeBound b -> collect(b.source(), refs);
+            case RootGroupCount c -> refs.group(c.rootGroup().path());
             case DateRangeConstruction dr -> {
-                collect(dr.start(), fields, groups);
-                collect(dr.end(), fields, groups);
+                collect(dr.start(), refs);
+                collect(dr.end(), refs);
             }
         }
     }
@@ -209,22 +279,37 @@ public record ConditionReferences(Set<String> fieldPaths, Set<String> groupPaths
     /** A list operand contributes its field path (a category projection → its underlying enum field) plus —
      *  for a filtered list — its Having filter's refs. Accepts the wider {@link ValueListOperand} so an enum
      *  category projection in a value-list quantifier is collected too. */
-    private static void collectOperand(ValueListOperand op, Set<String> fields, Set<String> groups) {
-        fields.add(op.fieldPath());
+    private static void collectOperand(ValueListOperand op, Refs refs) {
+        if (op instanceof EnumCategoryAccess) {
+            refs.projectedField(op.fieldPath());
+        } else {
+            refs.field(op.fieldPath());
+        }
         if (op instanceof FieldListRef list) {
-            list.filter().ifPresent(f -> collect(f, fields, groups));
+            list.filter().ifPresent(f -> collect(f, refs));
         }
     }
 
+    /**
+     * A {@code FirstFilledValue} operand carries its category/semantic-index modifiers on the operand
+     * itself rather than in the target node, so the projection is read from {@code operand} — a plain
+     * {@link #collectOperand} of its field would otherwise report the read as plain.
+     */
     private static void collectFirstFilledOperand(
-            FirstFilledOperand operand, Set<String> fields, Set<String> groups) {
-        operand.field().ifPresent(field -> collectOperand(field, fields, groups));
+            FirstFilledOperand operand, Refs refs) {
+        boolean projected = operand.category().isPresent() || operand.semanticIndex().isPresent();
+        operand.field().ifPresent(field -> {
+            if (projected) {
+                refs.projectedField(field.fieldPath());
+            }
+            collectOperand(field, refs);
+        });
         operand.group().ifPresent(group -> {
-            groups.add(group.path());
-            operand.expandedGroupFields().forEach(field -> fields.add(field.path()));
+            refs.group(group.path());
+            operand.expandedGroupFields().forEach(field -> refs.field(field.path()));
         });
         operand.semanticIndex().filter(FirstFilledOperand.FieldIndex.class::isInstance)
                 .map(FirstFilledOperand.FieldIndex.class::cast)
-                .ifPresent(index -> fields.add(index.field().path()));
+                .ifPresent(index -> refs.projectedField(index.field().path()));   // the key, as above
     }
 }

@@ -142,6 +142,36 @@ class DiagnosticEnricherTest {
                 () -> "names the derived-scale/capability == / != corrective, got: " + fix);
     }
 
+    /**
+     * KF182 — the PROJECTED half of the calculated-field-reference ban. No operator documents this code, so the
+     * catalog-join can reach nothing and the kernel's own message ("must not specify a semantic index or a
+     * category access") names the defect without naming a repair. The two facts an author needs are that
+     * projecting a <em>different</em> field is accepted, and that removing only the projection leaves the plain
+     * self-reference behind — otherwise the obvious edit trades one rejection for another.
+     */
+    @Test
+    void theProjectedCalculatedFieldReadGetsItsOwnCorrective() {
+        Diagnostic enriched = ENRICHER.enrich(raw("MVK_ERROR_SEMANTIC_INDEX_OR_CATEGORY_FOR_ERRORFIELD"));
+
+        String fix = enriched.fix().orElse("");
+        assertTrue(fix.contains("PROJECTION") && fix.contains("precondition"),
+                () -> "names what to drop and both slots, got: " + fix);
+        assertTrue(fix.contains("MVK_ERROR_REFERENCE_TO_CALCULATED_FIELD"),
+                () -> "warns that dropping only the projection leaves the plain self-reference, got: " + fix);
+        assertTrue(fix.contains("DIFFERENT field"),
+                () -> "names the accepted alternative — projecting another field, got: " + fix);
+        assertTrue(enriched.explain().orElse("").contains("pre-empts"),
+                () -> "the explain carries the measured pre-emption, got: " + enriched.explain());
+    }
+
+    /** KF181 — the scale gate's corrective must warn that a self-reference can surface behind it. */
+    @Test
+    void theDecimalScaleHintWarnsThatASelfReferenceCanSurfaceBehindIt() {
+        String fix = ENRICHER.enrich(raw("MVK_INVALID_COMPARE_DEC_PLACES")).fix().orElse("");
+        assertTrue(fix.contains("SECOND rejection") && fix.contains("its own computed field"),
+                () -> "names the two-repair sequence, got: " + fix);
+    }
+
     @Test
     void rawTypeValueUseGetsThePresenceCorrective() {
         Diagnostic enriched = ENRICHER.enrich(raw("MVK_INVALID_RAW_TYPE"));

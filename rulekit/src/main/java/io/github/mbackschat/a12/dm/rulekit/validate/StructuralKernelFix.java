@@ -207,6 +207,19 @@ public final class StructuralKernelFix {
                             + "accepts exactly that comparison as a meta-length restraint (codegen removes the rule and "
                             + "tightens the generated max length); every other Length use of a raw-type field is "
                             + "rejected because its value is never available to evaluation.")),
+            Map.entry("MVK_ERROR_SEMANTIC_INDEX_OR_CATEGORY_FOR_ERRORFIELD", new Hint(
+                    "Drop the PROJECTION from the read of the computed field, not just the reference: a computation "
+                            + "may not read its own computed field through an enum category (`[Target -> Cat]`) or a "
+                            + "semantic index (`[Group/Target For \"key\"]`), in an operation OR a precondition. "
+                            + "Compute from a DIFFERENT field's projection instead (`[Source -> Cat]` is accepted, "
+                            + "including as a FirstFilledValue entry), or read the same indexed field into a different "
+                            + "target. Removing only the projection still leaves the plain self-reference "
+                            + "(MVK_ERROR_REFERENCE_TO_CALCULATED_FIELD), so the operand has to change, not its form.",
+                    "MVK_ERROR_SEMANTIC_INDEX_OR_CATEGORY_FOR_ERRORFIELD (\"the calculated field must not specify a "
+                            + "semantic index or a category access\") is the PROJECTED half of the "
+                            + "calculated-field-reference ban, and it pre-empts the plain half when both readings occur "
+                            + "in one operation — so this code identifies the reading MODE, while the plain code is what "
+                            + "an unprojected self-read reports (kernel-measured, KERNEL-FINDINGS kf182).")),
             Map.entry("MVK_INVALID_COMPARE_DEC_PLACES", new Hint(
                     "The kernel could not establish compatible DERIVED decimal scales here. Numeric == / != carries "
                             + "a known SIGNED scale or unknown plus an independent multiplicative-constant capability: "
@@ -215,7 +228,9 @@ public final class StructuralKernelFix {
                             + "(1) a COMPUTED FIELD whose declared scale is incompatible with its expression "
                             + "(e.g. a field re-scaled to 2 places while the Sum-computed field stays scale 0) — "
                             + "re-scale the computed field or explicitly round the expression, doing both edits in ONE "
-                            + "`apply` so the terminal gate sees a consistent model; (2) numeric == / != with "
+                            + "`apply` so the terminal gate sees a consistent model; expect a SECOND rejection to "
+                            + "surface if the operation also reads its own computed field, because this scale "
+                            + "comparison is decided ahead of that refusal; (2) numeric == / != with "
                             + "incompatible derived scales — round one side to a known compatible scale, or accept it with "
                             + "allowDifferingDecimals:true on the rule spec (the kernel's one suppressible warning — it "
                             + "prepends @SuppressWarning(MVK_INVALID_COMPARE_DEC_PLACES)).",

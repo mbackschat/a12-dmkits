@@ -20,7 +20,10 @@ import io.github.mbackschat.a12.dm.rulekit.validate.PrecheckException;
  * either exactly one <em>unconditional</em> {@code calc(...)} or all <em>preconditioned</em>
  * {@code when(...).calc(...)} — mixing is rejected by the kernel ({@code MVK_ERROR_EMPTY_PRECONDITION});
  * the computed field must not be referenced in preconditions or operations
- * ({@code MVK_ERROR_REFERENCE_TO_CALCULATED_FIELD}); each operation's value kind must match the
+ * ({@code MVK_ERROR_REFERENCE_TO_CALCULATED_FIELD}, or
+ * {@code MVK_ERROR_SEMANTIC_INDEX_OR_CATEGORY_FOR_ERRORFIELD} when that self-read carries a semantic
+ * index or an enum category — the kernel's own separate class, which pre-empts the plain one);
+ * each operation's value kind must match the
  * computed field's kind, except the kernel-defined numeric role of polymorphic {@code BaseYear}
  * (e.g. a string operation into a number field —
  * {@code MVK_INVALID_COMPARE_TO_ENUM_OR_STRING}); error text is required
@@ -228,20 +231,12 @@ public record Computation(
                         "the operation '" + new DslRenderer().render(a.operation()) + "' yields "
                                 + a.operation().kind() + " but the computed field " + computedPath
                                 + " is " + computedField.kind() + " — kinds must match");
-                require(!ConditionReferences.of(a.operation()).referencesField(computedPath),
-                        "the computed field " + computedPath + " must not be referenced in its own"
-                                + " operation (MVK_ERROR_REFERENCE_TO_CALCULATED_FIELD)");
-                a.precondition().ifPresent(p -> {
-                    require(!ConditionReferences.of(p).referencesField(computedPath),
-                            "the computed field " + computedPath + " must not be referenced in a"
-                                    + " precondition (MVK_ERROR_REFERENCE_TO_CALCULATED_FIELD)");
-                    requireNoCustomCondition(p);
-                });
+            }
+            requireNoSelfReference(strongestSelfRead(computedPath), computedPath);
+            for (Alternative a : alternatives) {
+                a.precondition().ifPresent(this::requireNoCustomCondition);
             }
             if (commonPrecondition != null) {
-                require(!ConditionReferences.of(commonPrecondition).referencesField(computedPath),
-                        "the computed field " + computedPath + " must not be referenced in the"
-                                + " common precondition (MVK_ERROR_REFERENCE_TO_CALCULATED_FIELD)");
                 requireNoCustomCondition(commonPrecondition);
             }
 
@@ -252,6 +247,60 @@ public record Computation(
             return new Computation(groupPath, name, computedField,
                     Optional.ofNullable(commonPrecondition), alternatives, messages, finalComments,
                     errorCodesToSuppress);
+        }
+
+        /** One slot's reading of the computed field, kept with the slot so a rejection can name it. */
+        private record SelfRead(ConditionReferences.ReadMode mode, String slot) {
+
+            static final SelfRead NONE = new SelfRead(ConditionReferences.ReadMode.NONE, "");
+
+            /** The stronger of two readings — {@link ConditionReferences.ReadMode} is ordered weakest-first. */
+            SelfRead or(SelfRead other) {
+                return other.mode.compareTo(mode) > 0 ? other : this;
+            }
+        }
+
+        /**
+         * The strongest reading of the computed field across <b>every</b> slot. The fold is global on purpose:
+         * the kernel decides these two classes over the whole generated condition, so a projected read in a
+         * precondition pre-empts a plain read in an operation (measured — a plain {@code FirstFilledValue}
+         * self-read beside a projected common <em>or</em> alternative precondition reports the projected class).
+         * Checking slot by slot would have reported whichever slot happened to be visited first.
+         */
+        private SelfRead strongestSelfRead(String computedPath) {
+            SelfRead strongest = SelfRead.NONE;
+            for (Alternative a : alternatives) {
+                strongest = strongest.or(new SelfRead(
+                        ConditionReferences.readMode(a.operation(), computedPath), "its own operation"));
+                if (a.precondition().isPresent()) {
+                    strongest = strongest.or(new SelfRead(
+                            ConditionReferences.readMode(a.precondition().get(), computedPath), "a precondition"));
+                }
+            }
+            if (commonPrecondition != null) {
+                strongest = strongest.or(new SelfRead(
+                        ConditionReferences.readMode(commonPrecondition, computedPath),
+                        "the common precondition"));
+            }
+            return strongest;
+        }
+
+        /**
+         * The self-reference ban, with the kernel's own two classes kept apart: a <b>projected</b> self-read
+         * (an enum category, a semantic index, or a semantic-index key) is
+         * {@code MVK_ERROR_SEMANTIC_INDEX_OR_CATEGORY_FOR_ERRORFIELD}, exactly as measured through
+         * {@code checkConsistency} (KERNEL-FINDINGS KF182). Naming the plain code for a projected read pointed
+         * the author at the wrong repair — dropping the reference rather than dropping the projection.
+         */
+        private void requireNoSelfReference(SelfRead selfRead, String computedPath) {
+            switch (selfRead.mode()) {
+                case PROJECTED -> fail("the computed field " + computedPath + " must not be read through a"
+                        + " semantic index or category projection in " + selfRead.slot()
+                        + " (MVK_ERROR_SEMANTIC_INDEX_OR_CATEGORY_FOR_ERRORFIELD)");
+                case PLAIN -> fail("the computed field " + computedPath + " must not be referenced in "
+                        + selfRead.slot() + " (MVK_ERROR_REFERENCE_TO_CALCULATED_FIELD)");
+                case NONE -> { }
+            }
         }
 
         private boolean operationMatchesComputedKind(Calculation operation) {

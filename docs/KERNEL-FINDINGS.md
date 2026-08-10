@@ -1915,7 +1915,7 @@ Two facts the one-probe reading could not see. **Sharing a starred group is not 
 > Fold: folded → §11.
 
 - **Alternatives are all-or-nothing about preconditions**: either a single alternative *without* a precondition, or several that *all* carry one — mixing a precondition-less "otherwise" in is rejected with **`MVK_ERROR_EMPTY_PRECONDITION`**. The default branch must be an explicit complementary precondition (as the demo's `BonusComp` does with `[WeekPay] < 500`).
-- The computed field may not be referenced in preconditions **nor in operations** — both directions draw the same **`MVK_ERROR_REFERENCE_TO_CALCULATED_FIELD`** (KERNEL-SEMANTICS §11 states the precondition half). **The ban is on a *direct field* reference, not the field's containing group** (BA-doc cross-check, 2026-06-08): guarding a *repeatable* computed field with `GroupFilled`/`CurrentRepetition` on its **containing group** is kernel-legal — it's exactly the BA doc's current-repetition pattern (`CurrentRepetition(RuleGroup) == 1 → "…"` where the computed field lives in `RuleGroup`). rulekit's pre-check therefore uses **exact field-match** (`ConditionReferences.referencesField`), not the group-prefix `covers()` it uses for the rule error-field check — the earlier `covers()` over-rejected this valid shape.
+- The computed field may not be referenced in preconditions **nor in operations** — both directions draw the same **`MVK_ERROR_REFERENCE_TO_CALCULATED_FIELD`** (KERNEL-SEMANTICS §11 states the precondition half) *while the self-read is plain*; a **projected** self-read (enum category, semantic index, or semantic-index key) is the separate class [KF182](#kf182) measures, and it pre-empts this one. **The ban is on a *direct field* reference, not the field's containing group** (BA-doc cross-check, 2026-06-08): guarding a *repeatable* computed field with `GroupFilled`/`CurrentRepetition` on its **containing group** is kernel-legal — it's exactly the BA doc's current-repetition pattern (`CurrentRepetition(RuleGroup) == 1 → "…"` where the computed field lives in `RuleGroup`). rulekit's pre-check therefore uses **exact field-match** (`ConditionReferences.referencesField`), not the group-prefix `covers()` it uses for the rule error-field check — the earlier `covers()` over-rejected this valid shape.
 - **`CurrentRepetition(group)` contributes no computed-value dependency edge** (source + differential, both strategies, 2026-07-21). The kernel's calculation-operand collector excludes the structural group operand: it supplies the current row coordinate, not the values of fields contained by that group. A computation guarded by `CurrentRepetition(Lines) > 0` may therefore coexist with a second computation that reads its target; expanding `Lines` into every computed descendant invents a cycle the kernel does not have. *(Locked: `CurrentRepetitionComputationDependencyDiffTest` tri-checks the independent guard plus the real downstream value dependency; multiplatform `CurrentRepetitionComputationDependencyTest` locks dependency ordering on JVM and Node.)*
 - A wrong-kind operation (string expression into a number computed field) is **`MVK_INVALID_COMPARE_TO_ENUM_OR_STRING`**.
 - Computations require error text like rules do (`MVK_ERROR_MESSAGE_MISSING`).
@@ -2708,3 +2708,56 @@ The category projection's admission surface was only ever measured for the value
 So the class of positions an `IEntityId` can carry `getCategoryName()` through is wider than the quantifier members, which is what makes a per-site conversion fix insufficient and the `verifyCategoryPreserved` backstop necessary (API-FINDINGS finding 119). The one shape the matrix could NOT decide is category-vs-category on this fixture: it fails on `MVK_ERROR_FIELD_NOT_REFERENCED` because neither operand is the rule's error field — a fixture artifact, not a statement about the shape, and it is left explicitly undecided rather than reported as a rejection.
 
 *(Locked: `adapter … EnumCategoryValueExpressionReadTest` — the computation and value-list-entry rows round-trip; the comparison-right-operand row is the backstop's does-fire case, since that operand is not category-threaded and now degrades to `Opaque` instead of converting to a different condition.)*
+
+
+## §11 supplement — the implicit target-scale comparison is decided BEFORE the target-self-reference refusal (kernel `checkConsistency`, 2026-08-11) <a id="kf181"></a>
+
+> Fold: folded → §11.
+
+Canonical in §11 "Computations". The reconciliation request is the lean project's `SPEC-2026-08-10-02`; every verdict below was reproduced here rather than accepted as reported.
+
+Two rejections can apply to the same computation — the scale gate [KF174](#kf174) describes, and the ban on reading the computed field inside its own operation. The kernel reports exactly one of them, and it is the scale gate. Over a scale-0 target, changing only the operand that decides the derived scale flips the reported class:
+
+| operation into the scale-0 target | reported code list |
+|---|---|
+| `[Total] * 2`, `[Total] + [Units]` (derived scale 0 — matched) | `MVK_ERROR_REFERENCE_TO_CALCULATED_FIELD` |
+| `[Total] * 1.5`, `[Total] + 1.5`, `1.5 * [Total]`, `[Total] - 1.5` (derived scale 1) | `MVK_INVALID_COMPARE_DEC_PLACES` |
+| the same mismatched operations under `errorCodesToSuppress: ["MVK_INVALID_COMPARE_DEC_PLACES"]` | `MVK_ERROR_REFERENCE_TO_CALCULATED_FIELD` |
+
+Each row's list is complete and a singleton (the locks assert the diagnostic *count* beside the codes, so a kernel notification carrying no `MVK_` token could not hide in an "empty" row), so this is an order and not a co-report. **The suppression row is what makes it an order rather than a coincidence:** the kernel's own escape hatch cannot legalize a computation that still reads its target, so what surfaces underneath the suppressed gate is the refusal the gate had been reported ahead of. The order is independent of operand position (`1.5 * [Total]` behaves as `[Total] * 1.5`), of the operator (`+`, `-`, `*` alike), and of which slot carries the self-read — a self-reference in a *precondition* also yields to a scale mismatch in the operation, and with the scale matched that same precondition self-reference is what surfaces. It also holds over the projected self-read class of [KF182](#kf182): `[Legs/Distance For "L-1"] * 1.5` into `Legs/Distance` reports the scale gate, while the same read with a matched factor reports the projected class.
+
+Controls, because a same-code pair proves nothing without them: a scale mismatch with **no** self-reference reports the same gate, so the gate is not self-reference-specific; and the scale-matched operation over a different field is accepted with an empty diagnostic list, so the model itself is not the rejection.
+
+The practical consequence for an authoring surface is that a scale-mismatched self-referencing computation is a **two-repair** rejection reported one repair at a time: fixing the scale exposes the self-reference. Nothing generalizes to *why* the kernel orders them this way — that is unmeasured, and this entry claims only the reported class per shape.
+
+*(Locked: `validate.laws.ComputedTargetScaleLawsTest` — the matched/mismatched/suppressed rows for `*`, `+`, `-` in both operand positions, plus the unrelated-mismatch and accepted controls, each asserting the complete emitted code list.)*
+
+
+## §11 supplement — a PROJECTED read of the computed field is its own rejection class, and it pre-empts the plain one (kernel `checkConsistency`, 2026-08-11) <a id="kf182"></a>
+
+> Fold: folded → §11.
+
+Canonical in §11 "Computations". The reconciliation request is the lean project's `SPEC-2026-08-10-03`; the category half is theirs, the semantic-index half was measured here.
+
+A computation that reads its own computed field **through a projection** — an enum category `[Selected -> ServiceTier]` or a semantic index `[Legs/Distance For "L-1"]` — is rejected as `MVK_ERROR_SEMANTIC_INDEX_OR_CATEGORY_FOR_ERRORFIELD`, not as the plain `MVK_ERROR_REFERENCE_TO_CALCULATED_FIELD`. Every list below is a complete singleton, on one model whose three enum fields carry the same `ServiceTier` classification over one value domain:
+
+| shape, computing `SelectedTier` (or `Legs/Distance`) | reported code list |
+|---|---|
+| `[SelectedTier -> ServiceTier]`, either target position in `FirstFilledValue(… -> ServiceTier, … -> ServiceTier)` | `MVK_ERROR_SEMANTIC_INDEX_OR_CATEGORY_FOR_ERRORFIELD` |
+| `[Legs/Distance For "L-1"]`, and the same read nested in `… * 2` | `MVK_ERROR_SEMANTIC_INDEX_OR_CATEGORY_FOR_ERRORFIELD` |
+| the computed field as the semantic-index **KEY** rather than the indexed field — `[Legs/LegRef For /Routing/PlannedLeg]` computing `PlannedLeg`, and its `FirstFilledValue` form | `MVK_ERROR_SEMANTIC_INDEX_OR_CATEGORY_FOR_ERRORFIELD` |
+| a projected self-read **beside a plain one** (`FirstFilledValue(SelectedTier, SelectedTier -> ServiceTier)`, both orders) | `MVK_ERROR_SEMANTIC_INDEX_OR_CATEGORY_FOR_ERRORFIELD` |
+| a **plain** self-read in the operation beside a **projected** one in either precondition slot | `MVK_ERROR_SEMANTIC_INDEX_OR_CATEGORY_FOR_ERRORFIELD` |
+| the same two shapes **without** the projection (`[SelectedTier]`, `FirstFilledValue(SelectedTier, RequestedTier)`) | `MVK_ERROR_REFERENCE_TO_CALCULATED_FIELD` |
+| a projection of any **other** field of the same category, alone or as a two-entry list | **accepted** |
+| the identical indexed read into a **different** target (`PlannedDistance`), or keyed by a **different** field (`PreferredLeg`) | **accepted** |
+
+Both precondition slots — common and per-alternative — split the same way: a projected self-read reports the projected class, a plain one the plain class. So the discriminator is the *reading mode*, and the projected class **pre-empts** the plain one wherever both readings occur: in one operation, in either operand order, **and across slots**. That last row is the one with client consequences, because it means the classes cannot be decided slot by slot.
+
+Two boundaries this does **not** establish, stated so neither is read as measured. The **key** row above extends the code past "the read of the computed field" to "the computed field named anywhere in a semantic-index expression", but only for the key position measured. And a projection living **only inside a `Having` filter** is unmeasured: both authoring forms attempted are refused earlier for wildcard iteration (`MVK_INVALID_WILDCARD`, then `MVK_NO_ITERATION_FOR_WILDCARD` — the `$` correlation has no enclosing iteration in a computation over a non-repeatable target), including the control with no self-read at all, so nothing about the filter case was observed either way.
+
+**The MVK ledger row for this code was wrong, and the reason it was wrong generalizes.** It read *erased — the computed-field slot is a plain field handle/path, so semantic-index or category decoration on it is unrepresentable*. That is true of the slot and irrelevant to the code: the code fires on the **read** of the computed field inside an operation or precondition, which is ordinary authorable DSL. An unrepresentability argument has to name the shape the kernel actually checks; this one named a neighbour.
+
+Client-side consequence, now fixed: `Computation.build()` refused all of these shapes — correctly, the kernel rejects every one — but named `MVK_ERROR_REFERENCE_TO_CALCULATED_FIELD` in the message, which `PrecheckException` lifts into `Diagnostic.code()`. An author was therefore told to drop the reference when the kernel's own repair is to drop the projection. `ConditionReferences.readMode(...)` now answers *how* a path is read over one traversal, and the builder **folds that mode across every slot** before it reports one — which is what the cross-slot row above requires, and what a per-slot check got wrong by reporting whichever slot it visited first.
+
+*(Locked: `validate.laws.ComputedTargetProjectedReadLawsTest` — every row above, each asserting the complete emitted code list; `dsl.ComputationAuthoringTest` for the client-side class and its plain control.)*

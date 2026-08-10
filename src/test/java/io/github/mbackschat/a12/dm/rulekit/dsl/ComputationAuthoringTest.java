@@ -15,6 +15,7 @@ import java.util.Optional;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
+import io.github.mbackschat.a12.dm.ModelDrafts;
 import io.github.mbackschat.a12.dm.core.ModelIndex;
 import io.github.mbackschat.a12.dm.rulekit.validate.PrecheckException;
 import io.github.mbackschat.a12.dm.rulekit.validate.RuleValidator;
@@ -24,9 +25,10 @@ import io.github.mbackschat.a12.dm.rulekit.validate.ValidationResult;
  * The {@code Computation} authoring object (F2, study §4.3). Slot rules are kernel-verified and
  * pre-checked at {@code build()}: no mixing of unconditional and preconditioned alternatives
  * (MVK_ERROR_EMPTY_PRECONDITION), no reference to the computed field in preconditions/operations
- * (MVK_ERROR_REFERENCE_TO_CALCULATED_FIELD), operation kind matches the computed field, message
- * required. Notably this killed the study's original {@code .otherwise(...)} sketch — it was
- * kernel-illegal.
+ * (MVK_ERROR_REFERENCE_TO_CALCULATED_FIELD for a plain self-read,
+ * MVK_ERROR_SEMANTIC_INDEX_OR_CATEGORY_FOR_ERRORFIELD for a projected one — the last family below),
+ * operation kind matches the computed field, message required. Notably this killed the study's original
+ * {@code .otherwise(...)} sketch — it was kernel-illegal.
  */
 class ComputationAuthoringTest {
 
@@ -170,6 +172,103 @@ class ComputationAuthoringTest {
                 .calc(computed.value())
                 .message(en("nope"), de("nein"));
         assertThrows(IllegalStateException.class, inOperation::build);
+    }
+
+    // ── KF182: the pre-check must name the kernel's PROJECTED self-read class, not the plain one ──────
+    //
+    // Every shape below was refused before this family existed; what it locks is WHICH code the refusal
+    // names, because the code is what the author reads as the repair. The kernel verdicts these mirror are
+    // in validate.laws.ComputedTargetProjectedReadLawsTest.
+
+    private static BoundModel routing;
+
+    private static synchronized BoundModel routing() {
+        if (routing == null) {
+            routing = BoundModel.ofJson(ModelDrafts.routing().toJson());
+        }
+        return routing;
+    }
+
+    private static final String PROJECTED = "MVK_ERROR_SEMANTIC_INDEX_OR_CATEGORY_FOR_ERRORFIELD";
+    private static final String PLAIN = "MVK_ERROR_REFERENCE_TO_CALCULATED_FIELD";
+
+    /** Builds and asserts the code the refusal names. */
+    private static void refusesWith(String expectedCode, String name,
+            java.util.function.UnaryOperator<Computation.Builder> shape) {
+        BoundModel m = routing();
+        Computation.Builder builder = shape.apply(
+                m.computation(m.enumOf(SELECTED).field()).name(name).message(en("nope")));
+        PrecheckException ex = assertThrows(PrecheckException.class, builder::build);
+        assertEquals(Optional.of(expectedCode), ex.diagnostic().code(), ex::getMessage);
+    }
+
+    private static final String SELECTED = "/Routing/SelectedTier";
+    private static final String REQUESTED = "/Routing/RequestedTier";
+
+    private static CategoryRef tier(String path) {
+        return routing().enumOf(path).category("ServiceTier");
+    }
+
+    @Test
+    void aCategoryProjectedSelfReadNamesTheProjectedClassNotThePlainOne() {
+        refusesWith(PROJECTED, "SelfCategory", b -> b.calc(tier(SELECTED).value()));
+        refusesWith(PROJECTED, "SelfCategoryListed", b -> b.calc(Dsl.firstFilledEnum(
+                tier(REQUESTED).firstFilledOperand(), tier(SELECTED).firstFilledOperand()).expression()));
+    }
+
+    /**
+     * Pre-emption, and it is a CROSS-SLOT rule: the kernel decides these classes over the whole generated
+     * condition, so a projected read anywhere wins over a plain read anywhere — measured on both the
+     * common-precondition and the alternative-precondition pairing. A per-slot check reported whichever slot
+     * it happened to visit first, which is the defect this pair exists to catch.
+     */
+    @Test
+    void aProjectedSelfReadAnywherePreEmptsAPlainOneAnywhere() {
+        refusesWith(PROJECTED, "SelfCategoryMixed", b -> b.calc(Dsl.firstFilledEnum(
+                routing().enumOf(SELECTED).field().firstFilledOperand(),
+                tier(SELECTED).firstFilledOperand()).expression()));
+        refusesWith(PROJECTED, "SelfPlainOpProjectedCommonPre", b -> b
+                .commonPrecondition(tier(SELECTED).eq("ECONOMY"))
+                .calc(Dsl.firstFilledEnum(routing().enumOf(SELECTED).field().firstFilledOperand(),
+                        routing().enumOf(REQUESTED).field().firstFilledOperand()).expression()));
+        refusesWith(PROJECTED, "SelfPlainOpProjectedTierPre", b -> b
+                .when(tier(SELECTED).eq("ECONOMY"))
+                .calc(Dsl.firstFilledEnum(routing().enumOf(SELECTED).field().firstFilledOperand(),
+                        routing().enumOf(REQUESTED).field().firstFilledOperand()).expression()));
+    }
+
+    /** Each precondition slot on its own, with the plain control that must keep the plain code. */
+    @Test
+    void aProjectedSelfReadInEitherPreconditionSlotIsClassifiedByItsProjection() {
+        refusesWith(PROJECTED, "SelfCategoryCommonPre", b -> b
+                .commonPrecondition(tier(SELECTED).eq("ECONOMY")).calc(tier(REQUESTED).value()));
+        refusesWith(PROJECTED, "SelfCategoryTierPre", b -> b
+                .when(tier(SELECTED).eq("ECONOMY")).calc(tier(REQUESTED).value()));
+        refusesWith(PLAIN, "SelfPlainPre", b -> b
+                .commonPrecondition(routing().enumOf(SELECTED).eq("ECONOMY")).calc(tier(REQUESTED).value()));
+    }
+
+    /**
+     * The SEMANTIC-INDEX half of the same class, including the shape that reads the computed field as the
+     * index KEY rather than as the indexed field — kernel-measured as the projected class too, which a
+     * reading of the key as a plain lookup value would have got wrong.
+     */
+    @Test
+    void aSemanticIndexProjectedSelfReadNamesTheProjectedClassToo() {
+        BoundModel m = routing();
+        NumberRef distance = m.num("/Routing/Legs/Distance");
+        PrecheckException indexed = assertThrows(PrecheckException.class, () ->
+                m.computation(distance).name("SelfIndexed")
+                        .calc(distance.forIndex("L-1").expression())
+                        .message(en("nope")).build());
+        assertEquals(Optional.of(PROJECTED), indexed.diagnostic().code(), indexed::getMessage);
+
+        StringRef plannedLeg = m.str("/Routing/PlannedLeg");
+        PrecheckException keyed = assertThrows(PrecheckException.class, () ->
+                m.computation(plannedLeg.field()).name("SelfIsTheKey")
+                        .calc(m.str("/Routing/Legs/LegRef").forIndex(plannedLeg.field()).expression())
+                        .message(en("nope")).build());
+        assertEquals(Optional.of(PROJECTED), keyed.diagnostic().code(), keyed::getMessage);
     }
 
     @Test
