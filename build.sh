@@ -1,12 +1,13 @@
 #!/usr/bin/env bash
 # Gradle wrapper that pins the public-repos-only Gradle home + JDK 21 — so a *bare* `./gradlew` can't be
 # silently contaminated by the machine's global `~/.gradle/init.d/repositories.gradle`, which force-injects
-# the private registry registry into EVERY project (incl. this one) at the plugin, dependency, AND
+# a private, credentialed registry into EVERY project (incl. this one) at the plugin, dependency, AND
 # buildscript levels. A project cannot remove an init-script-added repository from inside; the only complete
 # defense is an ISOLATED Gradle home (init scripts load from $GRADLE_USER_HOME/init.d/, so a home without that
 # file loads no init script at all). Forgetting the env var fails confusingly — looks like a network/auth
-# error, not "you forgot a var". Root cause + the manual fallback: docs/KERNEL-INTEGRATION-NOTES.md
-# "Gradle build-env isolation".
+# error, not "you forgot a var". settings.gradle declares public plugin repositories first and the committed
+# .no-global-gradle-repos marker opts this build out of such injection, so a bare ./gradlew resolves publicly
+# too; this wrapper additionally pins the shared cache + JDK 21. Root cause: docs/BUILD-ENVIRONMENT.md.
 #
 #   ./build.sh test            # == ./gradlew test, but with the isolated home + JDK 21 guaranteed
 #   ./build.sh :cli:installDist

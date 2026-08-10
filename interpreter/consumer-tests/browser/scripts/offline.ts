@@ -30,7 +30,7 @@ await withStaticServer(async (url) => {
         headers.authorization !== undefined ||
         headers.cookie !== undefined ||
         request.url().includes("/Users/") ||
-        request.url().includes("registry.internal.invalid")
+        /(?:artifactory|nexus|\bartifacts\.)/i.test(request.url())
       ) {
         unsafeRequests.push(request.url());
       }

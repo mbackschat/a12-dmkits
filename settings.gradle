@@ -1,3 +1,16 @@
+// Our plugin repositories are declared FIRST, and that ordering is the point. A machine-global Gradle init
+// script appends its own in `settingsEvaluated` — after this file — so ours are tried first and an injected
+// private registry degrades to a fallback instead of deciding where our plugins come from. The committed
+// `.no-global-gradle-repos` marker removes the injection entirely on a machine whose init script honours it.
+// Together: a bare `./gradlew` resolves from public repositories. See docs/BUILD-ENVIRONMENT.md.
+pluginManagement {
+    repositories {
+        mavenLocal()
+        gradlePluginPortal()
+        mavenCentral()
+    }
+}
+
 rootProject.name = 'a12-dmkits'
 
 // The per-kit module cut (kernel-decoupling Stage 4, KERNEL-DECOUPLING-PROPOSAL §3a). Root's single source

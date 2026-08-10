@@ -137,7 +137,7 @@ say "1. mac arm64 native binary + verification gate (§3a/§5)"
 # STALE binary — it bit v0.8.1, where a leftover 0.8.0 nativeCompile output (predating the release source)
 # was reused, and the gate caught a 0.8.0 `--version` + a missing report-wrap under the 0.8.1 tag. Existence
 # is not freshness. Route through ./build.sh — it pins the isolated, init.d-free GRADLE_USER_HOME + JDK 21 so
-# a bare ./gradlew can't resolve native-image/Kotlin plugins from the private registry; GRAALVM_HOME
+# a bare ./gradlew can't resolve native-image/Kotlin plugins from a private, credentialed registry; GRAALVM_HOME
 # feeds the native-image toolchain detection.
 ./build.sh :cli:nativeCompile -Porg.gradle.java.installations.fromEnv=GRAALVM_HOME
 # Guard the whole STALE-BINARY class (not just the reused-artifact path above): the binary we are about to

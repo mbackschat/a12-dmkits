@@ -1,0 +1,11 @@
+# Marker: this build resolves from PUBLIC repositories only.
+#
+# A machine-global Gradle init script (~/.gradle/init.d/*.gradle) can inject a private, credentialed registry
+# into every project on that machine, and a build cannot remove an init-script-added repository from inside.
+# An init script that honours this marker skips this build entirely, so a bare `./gradlew` resolves from
+# mavenLocal + Maven Central + the plugin portal, exactly as settings.gradle and build.gradle declare.
+#
+# Delete this file to build through such a registry on purpose, e.g. inside a network where it is the only
+# reachable mirror. The deletion shows up in `git status` and affects this checkout only.
+#
+# See docs/BUILD-ENVIRONMENT.md.

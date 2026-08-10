@@ -892,7 +892,7 @@ The A12 Kernel is resolved from your **local Maven repository** (`~/.m2`) — no
 ./bootstrap.sh
 ```
 
-This publishes kernel `30.8.1` (Java only) to `mavenLocal`. You also need **JDK 21** — the build toolchain is pinned to 21 (a newer JDK isn't used even if installed; [why](docs/KERNEL-INTEGRATION-NOTES.md) — Groovy 3.0.25 + the validated baseline). GraalVM 25 is used only for the native build.
+This publishes kernel `30.8.1` (Java only) to `mavenLocal`. You also need **JDK 21** — the build toolchain is pinned to 21 (a newer JDK isn't used even if installed; [why](docs/BUILD-ENVIRONMENT.md) — Groovy 3.0.25 + the validated baseline). GraalVM 25 is used only for the native build.
 
 ## Build & test
 
@@ -905,7 +905,9 @@ export JAVA_HOME="$(/usr/libexec/java_home -v 21)"   # macOS; or point at any JD
 ./gradlew test
 ```
 
-**To avoid forgetting either variable** — the machine's global Gradle config can otherwise inject a private registry and fail confusingly ([root cause](docs/KERNEL-INTEGRATION-NOTES.md) under "Build / environment gotchas") — use the committed wrapper `./build.sh test` (it pins both, then runs Gradle), or [`.envrc`](.envrc) if you have [direnv](https://direnv.net).
+**To avoid forgetting either variable** — the machine's global Gradle config can otherwise inject a private registry and fail confusingly ([root cause](docs/BUILD-ENVIRONMENT.md)) — use the committed wrapper `./build.sh test` (it pins both, then runs Gradle), or [`.envrc`](.envrc) if you have [direnv](https://direnv.net).
+
+A plain `./gradlew test` works too, and not by luck: `settings.gradle` declares the public plugin repositories **first**, so anything a machine-global init script appends afterwards becomes a fallback rather than the first thing tried, and the committed `.no-global-gradle-repos` marker makes such a script skip this build outright. The wrapper is still what you want day to day, because it also pins JDK 21 and the Gradle home shared across the sibling A12 checkouts. To build *through* a private registry on purpose, delete the marker.
 
 The repository enables Gradle's local build cache and gives the shared Kotlin compiler daemon enough heap for overlapping cold JVM, JS, and adapter test compilation in [`gradle.properties`](gradle.properties). `build.sh` resolves Git's common directory, so even a linked worktree under `/private/tmp` uses the primary checkout's one isolated Gradle home; relocatable compiler output is restored instead of repeated after a same-commit landing. CI persists the same isolated user home through the official Gradle setup action, so hosted-runner dependencies, transforms, and relocatable compilation outputs survive between runs; performance measurements remain explicitly non-cacheable. [`scripts/verify-build-cache.sh`](scripts/verify-build-cache.sh) proves the local contract with two clean worktrees while Gradle is offline, ruling out a remote cache or dependency download. A truly cold full suite still performs all compilation and tests; for bounded automation, run `:interpreter:check`, `:adapter:test`, and `:cli:test` as separate commands instead of one monolithic invocation.
 

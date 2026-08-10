@@ -104,13 +104,15 @@ tasks.named('test') {
     dependsOn 'catalogProseReviewGuardTest'
     dependsOn 'deliveryGuardTest'
     dependsOn 'releaseGapGuardTest'
+    dependsOn 'leakGuardTest'
     // Repo-file-reading guards run in input-declared dedicated tasks; keep them out of the broad suite so a
     // doc/marker/golden/script-only edit cannot leave a stale-green `test` (TESTING-SPEC "Tests that read
     // repo files at runtime"). Derived from those tasks — see `routeExclusivelyHostedTests`. `dumpKitApi` and
     // `syncDocSnippets` are regenerators over classes `apiGuardTest`/`docGuardTest` already own, and
     // `interpreterReleaseGuardTest` runs its own `releaseGuardTest` source set, so neither owns anything here.
     routeExclusivelyHostedTests(it, ['docGuardTest', 'jsonConstructionGuardTest', 'apiGuardTest',
-                                     'catalogProseReviewGuardTest', 'deliveryGuardTest', 'releaseGapGuardTest'],
+                                     'catalogProseReviewGuardTest', 'deliveryGuardTest', 'releaseGapGuardTest',
+                                     'leakGuardTest'],
             ['dumpKitApi'     : 'regenerator over apiGuardTest\'s class — writes the goldens instead of asserting',
              'syncDocSnippets': 'regenerator over docGuardTest\'s class — writes the snippets instead of asserting'])
 }
@@ -141,6 +143,22 @@ tasks.register('jsonConstructionGuardTest', Test) {
             'interpreter jvmMain'     : fileTree('interpreter/src/jvmMain') { include '**/*.java', '**/*.kt' },
             'interpreter jsMain'      : fileTree('interpreter/src/jsMain') { include '**/*.java', '**/*.kt' },
     ])
+}
+
+// PrivateMarkerLeakGuardTest scans every git-tracked file, and "the git-tracked set" is not something a
+// Gradle input can express: a newly tracked file under any excluded directory would leave the task UP-TO-DATE
+// and the scan silently unrun. A leak guard that can be stale is worse than no leak guard, so this one always
+// runs — a few hundred text files, costing about as much as the fork that hosts it.
+tasks.register('leakGuardTest', Test) {
+    description = 'Repository-wide scan: no tracked file may publish a private registry, access token, or key.'
+    group = 'verification'
+    useJUnitPlatform()
+    testClassesDirs = sourceSets.test.output.classesDirs
+    classpath = sourceSets.test.runtimeClasspath
+    outputs.upToDateWhen { false }
+    filter {
+        includeTestsMatching 'io.github.mbackschat.a12.dm.PrivateMarkerLeakGuardTest'
+    }
 }
 
 // CatalogProseReviewGuardTest resolves authored evidence links by scanning test source files across six
@@ -481,6 +499,7 @@ tasks.register('docGuardTest', Test) {
         // `skipped=0` as evidence — a real skip would hide against that baseline. `syncDocSnippets` selects it.
         excludeTestsMatching 'io.github.mbackschat.a12.dm.DocSnippetFreshnessTest.regenerateLockedDocSnippetsFromTheirRunTests'
         includeTestsMatching 'io.github.mbackschat.a12.dm.BuildPerformancePolicyTest'
+        includeTestsMatching 'io.github.mbackschat.a12.dm.AttributionDisclaimerLockTest'
         includeTestsMatching 'io.github.mbackschat.a12.dm.GateTierWiringTest'
         includeTestsMatching 'io.github.mbackschat.a12.dm.VersionMentionFreshnessTest'
         includeTestsMatching 'io.github.mbackschat.a12.dm.rulekit.catalog.DslCatalogBridgeTest'
@@ -506,7 +525,26 @@ tasks.register('docGuardTest', Test) {
                     'plugin/.claude-plugin/plugin.json',
                     'plugin-codex/.codex-plugin/plugin.json',
                     'interpreter/public-release/README.md'),
+            // AttributionDisclaimerLockTest reads each attribution surface at runtime. These are legal
+            // statements: undeclared, deleting one would leave this lane UP-TO-DATE and the guard unrun.
+            'attribution surfaces': files(
+                    'README.md',
+                    'core/src/main/java/io/github/mbackschat/a12/dm/package-info.java',
+                    'docs/PROJECT-DESIGN.md',
+                    'docs/INTERPRETER-RELEASE-SPEC.md',
+                    'docs/LICENSING.md',
+                    'interpreter/public-release/DISCLAIMER.md',
+                    'interpreter/public-release/README.md',
+                    'interpreter/public-release/index.html',
+                    'interpreter/consumer-tests/browser/index.html',
+                    'plugin/README.md',
+                    'plugin-codex/AGENTS.md',
+                    'scripts/assemble-release-repo.sh'),
             'root build'       : file('build.gradle'),
+            // BuildPerformancePolicyTest reads both at runtime: the repository declaration order and the
+            // public-only marker. Undeclared, removing either would leave this lane UP-TO-DATE and unrun.
+            'root settings'    : file('settings.gradle'),
+            'public-only marker': file('.no-global-gradle-repos'),
             'cli build'        : file('cli/build.gradle'),
             'Gradle environment': file('scripts/gradle-environment.sh'),
             'gradle.properties': file('gradle.properties'),

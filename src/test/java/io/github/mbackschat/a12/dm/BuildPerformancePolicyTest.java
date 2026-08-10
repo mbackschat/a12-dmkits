@@ -73,6 +73,25 @@ class BuildPerformancePolicyTest {
     }
 
     @Test
+    void publicRepositoriesComeFirstAndTheOptOutMarkerIsCommitted() throws IOException {
+        Path repositoryRoot = locate("settings.gradle").getParent();
+        String settings = uncommented(Files.readString(locate("settings.gradle")));
+
+        int declaration = settings.indexOf("pluginManagement {");
+        assertTrue(declaration >= 0,
+                "settings.gradle must declare its own plugin repositories; with none declared, Gradle resolves "
+                        + "plugins from whatever a machine-global init script injects");
+        assertTrue(declaration < settings.indexOf("rootProject.name"),
+                "the declaration has to come first: an init script appends its repositories in settingsEvaluated, "
+                        + "so ours are tried first only by being declared here");
+        assertTrue(settings.contains("gradlePluginPortal()") && settings.contains("mavenCentral()"),
+                "the declared plugin repositories must be the public ones this project actually resolves from");
+        assertTrue(Files.isRegularFile(repositoryRoot.resolve(".no-global-gradle-repos")),
+                "the committed marker is what makes an init-script-injecting machine skip this build entirely; "
+                        + "deleting it is how you deliberately build through such a registry");
+    }
+
+    @Test
     void demoVerifierDelegatesItsBuildToTheWorktreeSafeWrapper() throws IOException {
         String script = Files.readString(locate("scripts/verify-demos.sh"));
 
