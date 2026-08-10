@@ -43,6 +43,12 @@ class NvvRawTypeLawsTest {
     }
 
     @Test
+    void integerTokenWithTrailingZeroesIsAccepted() {
+        // The parsed number can have a negative scale, but the raw Length contract is lexical: no decimal point.
+        KernelLaws.acceptsModel(CLAIM, "/Claim", "../IncidentNote", "Length(IncidentNote) > 100");
+    }
+
+    @Test
     void mirroredConstantLessThanLengthIsAccepted() {
         KernelLaws.acceptsModel(CLAIM, "/Claim", "../IncidentNote", "-1 < Length(IncidentNote)");
     }
