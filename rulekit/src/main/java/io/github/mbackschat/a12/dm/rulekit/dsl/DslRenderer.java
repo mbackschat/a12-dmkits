@@ -247,18 +247,14 @@ public final class DslRenderer {
     }
 
     /**
-     * The operand list of a count aggregate. A lone repeatable group is the wildcard form
-     * {@code NumberOfFilledGroups(Group*)} — count its filled repetitions; every other shape renders
-     * its fields/groups bare (distinct entities).
+     * The operand list of a count aggregate. Every repeatable group in {@code NumberOfFilledGroups}
+     * is a wildcard scope, including a repeatable operand mixed with fixed groups.
      */
     private String countOperands(CountAggregate a) {
-        if (a.op() == CountAggregate.CountOp.FILLED_GROUPS
-                && a.fields().isEmpty() && a.groups().size() == 1 && a.groups().get(0).repeating()) {
-            return path(a.groups().get(0).path()) + "*";
-        }
         return java.util.stream.Stream.concat(
                         a.fields().stream().map(this::operand),
-                        a.groups().stream().map(g -> path(g.path())))
+                        a.groups().stream().map(g -> path(g.path())
+                                + (a.op() == CountAggregate.CountOp.FILLED_GROUPS && g.repeating() ? "*" : "")))
                 .collect(java.util.stream.Collectors.joining(", "));
     }
 

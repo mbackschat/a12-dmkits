@@ -69,6 +69,25 @@ class FilledCountReadTest {
     }
 
     @Test
+    void roundTripsNumberOfFilledGroupsOverMixedRepeatableAndFixedGroups() {
+        BoundModel m = order();
+        Condition c = m.field("/Order/CustomerName").filled()
+                .and(Dsl.numberOfFilledGroups(
+                        m.group("/Order/Items"),
+                        m.group("/Order/ShippingAddress")).lt(2));
+
+        Rule r = m.rule(m.group("/Order")).name("MixedGroupCountRule")
+                .errorField(m.field("/Order/CustomerName"))
+                .when(c).code("C").severity(Severity.ERROR).message(en("x")).build();
+        KernelAdapter adapter = KernelAdapter.of(m.add(r));
+
+        assertEquals(
+                "FieldFilled(/Order/CustomerName) And NumberOfFilledGroups(/Order/Items*, /Order/ShippingAddress) < 2",
+                RENDER.render(c));
+        assertEquals(RENDER.render(c), RENDER.render(converted(adapter.read("/Order/MixedGroupCountRule"))));
+    }
+
+    @Test
     void numberOfFilledGroupsOverASingleRepeatableGroupIsKernelValid() {
         BoundModel m = order();
         Condition c = m.field("/Order/CustomerName").filled()

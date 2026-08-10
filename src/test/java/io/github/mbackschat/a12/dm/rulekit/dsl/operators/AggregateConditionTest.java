@@ -34,9 +34,9 @@ class AggregateConditionTest {
         // NumberOfFilledGroups needs ≥2 groups (MVK_PARAMSIZE_INVALIDGN erased by signature)
         Condition g = Dsl.numberOfFilledGroups(
                 m.group("/Subscription/Addons"), m.group("/Subscription/Billing")).eq(2);
-        assertEquals("NumberOfFilledGroups(/Subscription/Addons, /Subscription/Billing) == 2",
+        assertEquals("NumberOfFilledGroups(/Subscription/Addons*, /Subscription/Billing) == 2",
                 new DslRenderer().render(g));
-        assertEquals("AnzahlAngegebenerKontexte(/Subscription/Addons, /Subscription/Billing) == 2",
+        assertEquals("AnzahlAngegebenerKontexte(/Subscription/Addons*, /Subscription/Billing) == 2",
                 new DslRenderer(ConditionLanguage.DE).render(g));
     }
 
