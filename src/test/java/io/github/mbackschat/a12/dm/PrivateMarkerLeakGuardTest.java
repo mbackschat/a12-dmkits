@@ -76,17 +76,29 @@ class PrivateMarkerLeakGuardTest {
                             // allowlisted text instead of filtering matches used to hide exactly this.
                             "artifacts.spring.io.build.example-corp.de/repo")),
             // The lookbehind is load-bearing: without it the prose "the workflow/home/task chain" matched.
+            // /Volumes is here because a mounted product install is as machine-local as a home directory.
             new Marker("machine-local path",
-                    Pattern.compile("(?<![A-Za-z0-9_-])(?:/Users/|/home/)[A-Za-z0-9_-]+"
+                    Pattern.compile("(?<![A-Za-z0-9_-])(?:/Users/|/home/|/Volumes/)[A-Za-z0-9_-]+"
                             + "|[A-Za-z]:\\\\Users\\\\[A-Za-z0-9_-]+"),
                     List.of("/Users/jdoe/Projects/thing", "/home/jdoe/work", "file:///Users/jdoe/x",
-                            "C:\\Users\\jdoe\\src")),
+                            "/Volumes/Buffer/Apps/Some Product", "C:\\Users\\jdoe\\src")),
+            // Narrow on purpose. A generic password=/secret= rule flags prose and sample config everywhere;
+            // these are the two shapes that actually carry a credential in a Gradle setup.
+            new Marker("credential property",
+                    Pattern.compile("(?i)(?:repository_(?:password|username)|systemProp\\.[A-Za-z.]*password)"
+                            + "\\s*=\\s*\\S+"),
+                    List.of("repository_password=s3cr3tvalue", "repository_username=jdoe",
+                            "systemProp.artifactoryPassword = hunter2")),
             // `_` is excluded on purpose: real tokens are base62 after the prefix, while npm_package_* env
             // names are not, and admitting `_` flagged npm_package_dependencies_typescript.
+            // Beyond GitHub/npm: the class doc promises "an access token", so the common cloud shapes belong.
             new Marker("access token",
-                    Pattern.compile("(?i)(?:gh[pousr]|npm)_[A-Za-z0-9]{20,}|github_pat_[A-Za-z0-9_]{20,}"),
+                    Pattern.compile("(?i)(?:gh[pousr]|npm)_[A-Za-z0-9]{20,}|github_pat_[A-Za-z0-9_]{20,}"
+                            + "|AKIA[0-9A-Z]{16}|xox[baprs]-[A-Za-z0-9-]{10,}|AIza[A-Za-z0-9_-]{35}"),
                     List.of("credential: ghp_0123456789abcdefghijklmnopqrst",
-                            "github_pat_11ABCDEFG0123456789_abcdefghij")),
+                            "github_pat_11ABCDEFG0123456789_abcdefghij", "AKIAIOSFODNN7EXAMPLE",
+                            "xoxb-123456789012-abcdefghijkl",
+                            "AIza" + "SyD_0123456789abcdefghijklmnopqrstuv")),
             new Marker("private key",
                     Pattern.compile("-----BEGIN [A-Z0-9 ]*PRIVATE KEY"),
                     List.of("-----BEGIN OPENSSH PRIVATE KEY-----", "-----BEGIN PRIVATE KEY-----",
@@ -128,6 +140,9 @@ class PrivateMarkerLeakGuardTest {
                 + "InterpreterApiDocumentationTest.kt", Set.of("private registry product name"));
         exempt.put("interpreter/consumer-tests/browser/scripts/offline.ts",
                 Set.of("private registry product name"));
+        // The probe audit greps transcripts for a licensed product's mount path to catch an agent reading it;
+        // that is a detector, and genericising the path would blind it.
+        exempt.put("probe/audit-probe.sh", Set.of("machine-local path"));
         // The mirror assembler's own leak fixture is a placeholder home directory.
         exempt.put("src/releaseGuardTest/java/io/github/mbackschat/a12/dm/"
                 + "InterpreterReleaseMirrorAssemblerTest.java", Set.of("machine-local path"));

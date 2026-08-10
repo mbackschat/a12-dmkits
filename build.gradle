@@ -503,6 +503,7 @@ tasks.register('docGuardTest', Test) {
         excludeTestsMatching 'io.github.mbackschat.a12.dm.DocSnippetFreshnessTest.regenerateLockedDocSnippetsFromTheirRunTests'
         includeTestsMatching 'io.github.mbackschat.a12.dm.BuildPerformancePolicyTest'
         includeTestsMatching 'io.github.mbackschat.a12.dm.AttributionDisclaimerLockTest'
+        includeTestsMatching 'io.github.mbackschat.a12.dm.DoctorScriptTest'
         includeTestsMatching 'io.github.mbackschat.a12.dm.GateTierWiringTest'
         includeTestsMatching 'io.github.mbackschat.a12.dm.VersionMentionFreshnessTest'
         includeTestsMatching 'io.github.mbackschat.a12.dm.rulekit.catalog.DslCatalogBridgeTest'
@@ -564,6 +565,10 @@ tasks.register('docGuardTest', Test) {
             // BuildPerformancePolicyTest reads the removal classifier at runtime too; undeclared since it was
             // added, so a script-only edit could leave this lane UP-TO-DATE and the assertion unrun.
             'native removals'  : file('scripts/check-native-metadata-removals.sh'),
+            // DoctorScriptTest executes this script against fabricated machines; undeclared, editing the
+            // script would leave the lane UP-TO-DATE with its verdicts unchecked — which is how its first
+            // version shipped with two wrong ones.
+            'doctor'           : file('scripts/doctor.sh'),
             // dsl sources + the operator catalog moved to :rulekit in the Stage-4 module cut.
             'dsl sources'      : fileTree('rulekit/src/main/java/io/github/mbackschat/a12/dm/rulekit/dsl') { include '**/*.java' },
             'operator catalog' : fileTree('rulekit/src/main/resources/catalog')])

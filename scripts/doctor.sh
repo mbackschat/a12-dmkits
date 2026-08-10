@@ -84,6 +84,7 @@ report_home() {
     else
         warn "$label runs init script(s) that ignore the marker: ${unhonoured[*]}"
         note "a build using that home resolves through whatever they inject; ./build.sh avoids it"
+        note "detection is textual: a script is treated as honouring the marker if it names it at all"
     fi
 }
 report_home "the machine-default home" "$HOME/.gradle"
