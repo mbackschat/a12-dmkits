@@ -290,7 +290,10 @@ class DmtoolMutationSafetyTest {
         Path observationArtifact = batchDir.resolve("observations.json");
         PackagedDmtool.Result observed = dmtool.run("-m", batchModel.toString(), "batch",
                 observationOps.toString(), "--observations", observationArtifact.toString());
-        assertEquals(1, observed.code(), observed::out);
+        assertEquals(0, observed.code(), observed::out);
+        JsonNode observedEnvelope = MAPPER.readTree(observed.out());
+        assertTrue(observedEnvelope.path("ok").asBoolean(), observed::out);
+        assertFalse(observedEnvelope.path("data").path("allExitedZero").asBoolean(), observed::out);
         JsonNode recorded = MAPPER.readTree(Files.readString(observationArtifact)).path("observations");
         assertEquals(2, recorded.size(), "the artifact is written after a failed child");
         assertEquals("continues", recorded.get(1).path("id").asText(), "the later child was still dispatched");

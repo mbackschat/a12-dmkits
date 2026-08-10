@@ -81,9 +81,9 @@ class CommandContractsTest {
                 "ALL_CHILD_EXITS_ZERO");
         assertProfile(manifest, "batch", "dispatch-with-observations", "ARTIFACT_WRITE",
                 "CONTINUE_AFTER_CHILD_FAILURE",
-                "ALL_CHILD_EXITS_ZERO_AND_ARTIFACT_WRITTEN");
+                "DISPATCHED_AND_ARTIFACT_WRITTEN");
         JsonNode observations = profile(manifest, "batch", "dispatch-with-observations");
-        assertEquals("ALL_CHILD_EXITS_ZERO_AND_ARTIFACT_WRITTEN",
+        assertEquals("DISPATCHED_AND_ARTIFACT_WRITTEN",
                 observations.path("topLevelOk").asText());
         assertProfile(manifest, "group extract", "commit", "MULTI_FILE_WRITE", "PARTIAL", "SELF");
         assertProfile(manifest, "export", "directory", "MULTI_FILE_WRITE", "PARTIAL", "SELF");

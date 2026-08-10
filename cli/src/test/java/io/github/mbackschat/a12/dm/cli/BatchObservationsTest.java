@@ -43,8 +43,11 @@ class BatchObservationsTest {
         CliTestSupport.Result first = CliTestSupport.run("-m", model.toString(), "batch", ops.toString(),
                 "--observations", observations.toString());
 
-        assertEquals(1, first.code(), first::out);
+        assertEquals(0, first.code(), first::out);
         JsonNode batch = MAPPER.readTree(first.out());
+        assertTrue(batch.path("ok").asBoolean(), "the completed artifact write is the observation operation");
+        assertFalse(batch.path("data").path("allExitedZero").asBoolean(),
+                "the rejected child remains visible independently of observation success");
         assertTrue(batch.path("written").asBoolean(), "the outer envelope owns the artifact write");
         assertEquals(observations.toAbsolutePath().normalize().toString(), batch.path("output").asText());
         JsonNode artifact = MAPPER.readTree(Files.readString(observations));
@@ -115,7 +118,10 @@ class BatchObservationsTest {
                 "--observations", observations.toString());
 
         assertEquals(0, result.code(), () -> result.out() + result.err());
-        JsonNode child = MAPPER.readTree(result.out()).path("data").path("results").get(0).path("result");
+        JsonNode envelope = MAPPER.readTree(result.out());
+        assertTrue(envelope.path("ok").asBoolean());
+        assertTrue(envelope.path("data").path("allExitedZero").asBoolean());
+        JsonNode child = envelope.path("data").path("results").get(0).path("result");
         JsonNode recorded = MAPPER.readTree(Files.readString(observations)).path("observations").get(0);
         assertEquals(sha256(authored), recorded.path("inputHash").asText());
         assertEquals(child.path("ok").asBoolean(), recorded.path("ok").asBoolean());
@@ -209,7 +215,7 @@ class BatchObservationsTest {
         CliTestSupport.Result result = CliTestSupport.run("batch", ops.toString(),
                 "--observations", observations.toString());
 
-        assertEquals(1, result.code(), result::out);
+        assertEquals(0, result.code(), result::out);
         JsonNode artifact = MAPPER.readTree(Files.readString(observations));
         assertFalse(artifact.has("model"), "a hash is common only when every child has the same effective model");
         assertEquals(2, artifact.path("observations").size());

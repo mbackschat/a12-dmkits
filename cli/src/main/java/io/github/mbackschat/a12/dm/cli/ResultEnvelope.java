@@ -22,9 +22,9 @@ import io.github.mbackschat.a12.dm.rulekit.validate.ValidationResult;
  * adds the three orthogonal axes an agent must not conflate:
  *
  * <ul>
- *   <li>{@code ok} — <b>the operation succeeded</b>. For ordinary aggregate dispatch this means every child
- *       succeeded; observation dispatch additionally requires its selected artifact write. {@code data.dispatched}
- *       separately says whether every child was attempted. Never a property of the subject.</li>
+ *   <li>{@code ok} — <b>the operation succeeded</b>. Ordinary aggregate dispatch follows whether every child
+ *       exited zero; observation dispatch means every child was attempted and its selected artifact was written.
+ *       {@code data.allExitedZero} retains the independent child-exit aggregate. Never a property of the subject.</li>
  *   <li>{@code valid} — <b>the subject model is kernel-valid</b>. A consistency <em>verdict</em>, so it exists only
  *       where a gate produced one: {@code model check} that finds the model invalid is {@code ok:true, valid:false}.</li>
  *   <li>{@code verification} / {@code engine}+{@code engineVersion}+{@code toolVersion} — <b>who vouches</b> for
@@ -91,9 +91,9 @@ public final class ResultEnvelope {
         COMPARISON,
         /** A write, a preview of one, or a staged step of a transaction. */
         MUTATION,
-        /** Every child of a stateless multi-verb dispatch was run and returned zero. */
+        /** The selected stateless multi-verb dispatch operation succeeded. */
         DISPATCH,
-        /** Every child was dispatched, but at least one returned nonzero. Non-transactional writes remain. */
+        /** Every child ran in ordinary batch mode, but at least one returned nonzero. */
         DISPATCH_WITH_FAILURES,
         /** A safety gate refused before mutating (CLI-SPEC §6) — exit 2, nothing written. */
         REFUSAL,
@@ -330,32 +330,37 @@ public final class ResultEnvelope {
     }
 
     /**
-     * Every child of a stateless multi-verb dispatch was attempted — {@code batch}. This is the sole construction
-     * path for the aggregate: it derives {@code data.allSucceeded}, the family that drives {@code ok}/exit, and the
-     * status-bearing summary from the same child exits, so those representations cannot contradict one another.
+     * Every child of an ordinary stateless multi-verb dispatch was attempted. This derives
+     * {@code data.allExitedZero}, the family that drives {@code ok}/exit, and the status-bearing summary from the
+     * same child exits, so those representations cannot contradict one another.
      */
     public static ResultEnvelope dispatchCompleted(
             ResultIdentity identity, String summary, ArrayNode results) {
-        return dispatchCompleted(identity, summary, results, null);
+        ObjectNode data = dispatchData(results);
+        boolean allExitedZero = data.path("allExitedZero").asBoolean();
+        Family family = allExitedZero ? Family.DISPATCH : Family.DISPATCH_WITH_FAILURES;
+        return new Draft(family, identity, Outcome.COMPLETED, dispatchSummary(summary, results, allExitedZero))
+                .data(data)
+                .build();
     }
 
-    /** Every child ran and the selected post-dispatch artifact was written. */
+    /** Every child ran and the selected post-dispatch artifact was written, completing observation mode. */
     public static ResultEnvelope dispatchCompletedWithArtifact(
             ResultIdentity identity, String summary, ArrayNode results, String output) {
         if (output == null || output.isBlank()) {
             throw new IllegalArgumentException("a written dispatch artifact needs its output path");
         }
-        return dispatchCompleted(identity, summary, results, output);
+        ObjectNode data = dispatchData(results);
+        boolean allExitedZero = data.path("allExitedZero").asBoolean();
+        return new Draft(Family.DISPATCH, identity, Outcome.COMPLETED,
+                dispatchSummary(summary, results, allExitedZero))
+                .data(data)
+                .writtenTo(output)
+                .build();
     }
 
-    private static ResultEnvelope dispatchCompleted(
-            ResultIdentity identity, String summary, ArrayNode results, String output) {
-        ObjectNode data = dispatchData(results);
-        boolean allSucceeded = data.path("allSucceeded").asBoolean();
-        Family family = allSucceeded ? Family.DISPATCH : Family.DISPATCH_WITH_FAILURES;
-        String aggregateSummary = summary + (allSucceeded ? "; all succeeded" : nonzeroBreakdown(results));
-        Draft draft = new Draft(family, identity, Outcome.COMPLETED, aggregateSummary).data(data);
-        return output == null ? draft.build() : draft.writtenTo(output).build();
+    private static String dispatchSummary(String summary, ArrayNode results, boolean allExitedZero) {
+        return summary + (allExitedZero ? "; all children exited zero" : nonzeroBreakdown(results));
     }
 
     /**
@@ -375,9 +380,9 @@ public final class ResultEnvelope {
      * {@code --text} render) has no {@code ok} to read and counts as a failure — which is right: those verbs hold
      * no verdict, so a nonzero exit from one is nothing else.
      *
-     * <p>{@code ok}, {@code data.allSucceeded} and the process exit are deliberately untouched. The aggregate
-     * contract stays {@code ALL_CHILD_EXITS_ZERO} for every mode — forking it for the one mode that meets
-     * rejections routinely would make a single verb's exit mean something different from every other batch.
+     * <p>{@code data.allExitedZero} retains that child aggregate for both modes. Ordinary batch derives
+     * {@code ok}/exit from it. Observation mode derives {@code ok}/exit from full dispatch plus artifact write,
+     * leaving each captured child verdict and exit independently inspectable.
      */
     private static String nonzeroBreakdown(ArrayNode results) {
         int failed = 0;
@@ -406,17 +411,17 @@ public final class ResultEnvelope {
     }
 
     private static ObjectNode dispatchData(ArrayNode results) {
-        boolean allSucceeded = true;
+        boolean allExitedZero = true;
         for (JsonNode result : results) {
             if (result.path("exit").asInt(1) != 0) {
-                allSucceeded = false;
+                allExitedZero = false;
                 break;
             }
         }
         ObjectNode data = MAPPER.createObjectNode();
         data.put("ops", results.size());
         data.put("dispatched", true);
-        data.put("allSucceeded", allSucceeded);
+        data.put("allExitedZero", allExitedZero);
         data.set("results", results.deepCopy());
         return data;
     }

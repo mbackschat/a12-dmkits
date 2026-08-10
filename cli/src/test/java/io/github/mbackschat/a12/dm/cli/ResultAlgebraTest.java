@@ -319,7 +319,8 @@ class ResultAlgebraTest {
         assertEquals("completed", j.path("outcome").asText());
         assertTrue(j.path("ok").asBoolean());
         assertTrue(j.path("data").path("dispatched").asBoolean());
-        assertTrue(j.path("data").path("allSucceeded").asBoolean());
+        assertTrue(j.path("data").path("allExitedZero").asBoolean());
+        assertFalse(j.path("data").has("allSucceeded"));
     }
 
     @Test
@@ -336,9 +337,28 @@ class ResultAlgebraTest {
         assertEquals("completed", j.path("outcome").asText(), "dispatch still reached every child");
         assertFalse(j.path("ok").asBoolean(), "completed dispatch is not the same as successful children");
         assertTrue(j.path("data").path("dispatched").asBoolean());
-        assertFalse(j.path("data").path("allSucceeded").asBoolean());
+        assertFalse(j.path("data").path("allExitedZero").asBoolean());
+        assertFalse(j.path("data").has("allSucceeded"));
         assertEquals(0, j.path("data").path("results").get(0).path("exit").asInt());
         assertEquals(1, j.path("data").path("results").get(1).path("exit").asInt());
+    }
+
+    @Test
+    void aWrittenObservationArtifactSucceedsAfterFullDispatchEvenWhenAChildExitsNonzero() {
+        ArrayNode results = M.createArrayNode();
+        results.addObject().put("exit", 0);
+        results.addObject().put("exit", 1);
+
+        ResultEnvelope env = ResultEnvelope.dispatchCompletedWithArtifact(
+                ResultIdentity.BATCH_RUN, "dispatched 2 ops", results, "/tmp/observations.json");
+
+        assertEquals(0, env.exitCode());
+        JsonNode j = env.toJson();
+        assertEquals("completed", j.path("outcome").asText());
+        assertTrue(j.path("ok").asBoolean(), "full dispatch plus artifact write is observation success");
+        assertTrue(j.path("written").asBoolean());
+        assertFalse(j.path("data").path("allExitedZero").asBoolean(),
+                "child exits remain an independent aggregate axis");
     }
 
     // --- 7/8/9. refusal, rejection, internal error ----------------------------------------------------

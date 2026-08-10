@@ -199,14 +199,21 @@ cat > /tmp/edit-ops.json <<'EOF'
   {"id":"reject-duplicate","verb":"field","args":["add","/tmp/batch-field.json"]}
 ]
 EOF
-dmtool -m /tmp/batch-contract.dm.json batch /tmp/edit-ops.json | jq -c '{outcome,ok,dispatched:.data.dispatched,allSucceeded:.data.allSucceeded,results:[.data.results[] | {id,exit,written:.result.written}]}'
+dmtool -m /tmp/batch-contract.dm.json batch /tmp/edit-ops.json \
+  | jq -c '{
+      outcome,
+      ok,
+      dispatched: .data.dispatched,
+      allExitedZero: .data.allExitedZero,
+      results: [.data.results[] | {id, exit, written: .result.written}]
+    }'
 ```
 
 ```output
-{"outcome":"completed","ok":false,"dispatched":true,"allSucceeded":false,"results":[{"id":"write","exit":0,"written":true},{"id":"reject-duplicate","exit":1,"written":false}]}
+{"outcome":"completed","ok":false,"dispatched":true,"allExitedZero":false,"results":[{"id":"write","exit":0,"written":true},{"id":"reject-duplicate","exit":1,"written":false}]}
 ```
 
-`completed` means every child was dispatched; `allSucceeded:false`, outer `ok:false`, and process exit 1 report the aggregate failure. The first child nevertheless remains persisted:
+`completed` means every child was dispatched; `allExitedZero:false`, outer `ok:false`, and process exit 1 report the ordinary-mode aggregate failure. The first child nevertheless remains persisted:
 
 ```bash
 dmtool -m /tmp/batch-contract.dm.json field read /Subscription/Billing/BatchCommitted | jq -c '{outcome,field:.data.field}'

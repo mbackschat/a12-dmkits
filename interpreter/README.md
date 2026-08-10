@@ -59,15 +59,15 @@ Four things to know before sizing a cache:
   and no serialization, so only the expanded DM-JSON can live in a shared tier.
 
 The complete pattern — cache keying, single-flight loading, eviction safety, and the trade-offs — is in
-[the developer API guide](https://github.com/mbackschat/a12-interpreter-releases/blob/v0.12.1/site/api/v0.12.1/INTERPRETER-API-GUIDE.md).
+[the developer API guide](https://github.com/mbackschat/a12-interpreter-releases/blob/v0.13.0/site/api/v0.13.0/INTERPRETER-API-GUIDE.md).
 
 ## Install
 
-Version `0.12.1` is distributed from the public `a12-interpreter-releases` repository.
+Version `0.13.0` is distributed from the public `a12-interpreter-releases` repository.
 
-For TypeScript or JavaScript, install the release tarball with `pnpm add https://github.com/mbackschat/a12-interpreter-releases/releases/download/v0.12.1/a12-interpreter-0.12.1.tgz`.
+For TypeScript or JavaScript, install the release tarball with `pnpm add https://github.com/mbackschat/a12-interpreter-releases/releases/download/v0.13.0/a12-interpreter-0.13.0.tgz`.
 
-For Kotlin or Java, add the Maven repository `https://mbackschat.github.io/a12-interpreter-releases/maven` and dependency `io.github.mbackschat.a12.dm:dm-interpreter:0.12.1`. Public third-party dependencies continue to resolve from Maven Central or npm.
+For Kotlin or Java, add the Maven repository `https://mbackschat.github.io/a12-interpreter-releases/maven` and dependency `io.github.mbackschat.a12.dm:dm-interpreter:0.13.0`. Public third-party dependencies continue to resolve from Maven Central or npm.
 
 ## TypeScript
 
@@ -175,10 +175,10 @@ Maintainers regenerate this table with the local statistics updater; both releas
 ## Documentation
 
 - 🚀 **[Try the live browser showcase →](https://mbackschat.github.io/a12-interpreter-releases/showcase/)**
-- 📘 **[Read the developer API guide →](https://github.com/mbackschat/a12-interpreter-releases/blob/v0.12.1/site/api/v0.12.1/INTERPRETER-API-GUIDE.md)**
+- 📘 **[Read the developer API guide →](https://github.com/mbackschat/a12-interpreter-releases/blob/v0.13.0/site/api/v0.13.0/INTERPRETER-API-GUIDE.md)**
 - 🧭 **[Browse the TypeScript API →](https://mbackschat.github.io/a12-interpreter-releases/api/latest/typescript/)**
 - 🧭 **[Browse the Kotlin API →](https://mbackschat.github.io/a12-interpreter-releases/api/latest/kotlin/)**
 - 🛠️ **[Explore the main `a12-dmkits` project →](https://github.com/mbackschat/a12-dmkits)** — source, design, benchmark method, and complete test evidence
-- ⚖️ **[Read the MIT license →](https://github.com/mbackschat/a12-interpreter-releases/blob/v0.12.1/LICENSE)**
+- ⚖️ **[Read the MIT license →](https://github.com/mbackschat/a12-interpreter-releases/blob/v0.13.0/LICENSE)**
 
-Version-matched references plus `llms.txt` are also packaged in `dm-interpreter-0.12.1-api-docs.zip` under `api/v0.12.1/`.
+Version-matched references plus `llms.txt` are also packaged in `dm-interpreter-0.13.0-api-docs.zip` under `api/v0.13.0/`.

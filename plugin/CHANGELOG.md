@@ -6,7 +6,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/);
 
 **Headline topics only.** An entry names the capabilities and breaking changes a user would notice, not every fix behind them; the source repo's git history is the complete record.
 
-## [Unreleased]
+## [0.13.0] - kernel 30.8.1 (A12 Tools 2025.06-ext5)
+
+### Changed
+
+- **BREAKING:** successful `batch --observations` now returns outer `ok:true` and exit 0 after full dispatch plus artifact write, even when a captured child exits nonzero. `data.allExitedZero` replaces `data.allSucceeded` as the independent child-exit aggregate. Ordinary batch continues to derive outer `ok` and exit 0/1 from the child exits.
+- Manifest `schema` and `operationalSchema` pointers can be passed directly as one argument to `dmtool schema`; scalar and tokenized forms return byte-identical contracts.
+
+### Fixed
+
+- Operator guidance and correctives now match the kernel for `NumberOfFilledGroups` mixed references, `FieldValuesNotUnique` CONFIRM operands, pattern-comparison operand slots, and strict raw-field `Length` declarations.
 
 ## [0.12.0] — kernel 30.8.1 (A12 Tools 2025.06-ext5)
 

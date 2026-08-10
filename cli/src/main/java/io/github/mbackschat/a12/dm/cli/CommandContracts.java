@@ -87,11 +87,11 @@ final class CommandContracts {
     enum DryRun { NOT_APPLICABLE, SUPPORTED, ACTIVE }
     enum AggregateSuccess {
         SELF, TRANSACTION_COMMITTED, TRANSACTION_SUCCEEDED, ALL_CHILD_EXITS_ZERO,
-        ALL_CHILD_EXITS_ZERO_AND_ARTIFACT_WRITTEN
+        DISPATCHED_AND_ARTIFACT_WRITTEN
     }
     enum TopLevelOk {
         OUTCOME_SUCCEEDED, EXECUTION_COMPLETED, ALL_CHILD_EXITS_ZERO,
-        ALL_CHILD_EXITS_ZERO_AND_ARTIFACT_WRITTEN
+        DISPATCHED_AND_ARTIFACT_WRITTEN
     }
     /**
      * What stdout <i>is</i>, so a consumer knows how to read it. {@code NDJSON_STREAM} is not a JSON document:
@@ -613,8 +613,8 @@ final class CommandContracts {
                             .when(supplied("--observations"))
                             .effect(Effect.ARTIFACT_WRITE)
                             .failurePersistence(FailurePersistence.CONTINUE_AFTER_CHILD_FAILURE)
-                            .aggregateSuccess(AggregateSuccess.ALL_CHILD_EXITS_ZERO_AND_ARTIFACT_WRITTEN)
-                            .topLevelOk(TopLevelOk.ALL_CHILD_EXITS_ZERO_AND_ARTIFACT_WRITTEN)
+                            .aggregateSuccess(AggregateSuccess.DISPATCHED_AND_ARTIFACT_WRITTEN)
+                            .topLevelOk(TopLevelOk.DISPATCHED_AND_ARTIFACT_WRITTEN)
                             .provenance(Consistency.CHILD_DEFINED, Runtime.NONE)
                             .build());
             case GROUP_EXTRACT -> List.of(

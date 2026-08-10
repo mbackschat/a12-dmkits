@@ -13,17 +13,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
-/**
- * <b>An observation capture containing a negative control exits nonzero, and the label for that has to be where a
- * caller looks.</b>
- *
- * <p>A rejected candidate is a nonzero child exit, and the observation profile's aggregate is
- * {@code ALL_CHILD_EXITS_ZERO_AND_ARTIFACT_WRITTEN} — so the process exits 1 while the artifact is complete and
- * correct. Rejections are the <em>point</em> of a separating matrix, so this fires on every well-designed capture
- * rather than in an edge case, and a {@code set -e} caller reading only the exit cannot tell it from a capture that
- * failed. The contract is not being forked for one mode; instead the two dispositions are distinguishable on the
- * envelope, and this test pins that they really are, alongside the two surfaces that say so.
- */
+/** Observation capture success is dispatch plus artifact write, independently of each captured child verdict. */
 class BatchObservationNegativeControlTest {
 
     private static final ObjectMapper M = new ObjectMapper();
@@ -43,7 +33,7 @@ class BatchObservationNegativeControlTest {
     }
 
     @Test
-    void aRejectedCandidateExitsNonzeroWhileTheArtifactStaysAuthoritative(@TempDir Path dir) throws Exception {
+    void aRejectedCandidateStillProducesASuccessfulAuthoritativeCapture(@TempDir Path dir) throws Exception {
         Path model = dir.resolve("subscription.dm.json");
         Files.writeString(model, CliTestSupport.subscriptionJson());
         Path observations = dir.resolve("observations.json");
@@ -51,14 +41,15 @@ class BatchObservationNegativeControlTest {
         CliTestSupport.Result res = CliTestSupport.run("batch", matrix(dir, model).toString(),
                 "--observations", observations.toString());
 
-        assertEquals(1, res.code(), () -> "a rejected child is a nonzero child exit: " + res.out());
+        assertEquals(0, res.code(), () -> "full dispatch plus artifact write is a successful capture: " + res.out());
         JsonNode envelope = M.readTree(res.out());
-        // The three signals the documented label tells a caller to read instead of the bare exit.
         assertEquals("completed", envelope.path("outcome").asText(), res::out);
+        assertTrue(envelope.path("ok").asBoolean(), () -> "the observation operation did its job: " + res.out());
         assertTrue(envelope.path("written").asBoolean(), () -> "the capture itself succeeded: " + res.out());
         assertEquals(observations.toAbsolutePath().normalize().toString(), envelope.path("output").asText());
-        assertFalse(envelope.path("data").path("allSucceeded").asBoolean(),
-                () -> "…and the nonzero exit is explained by a failed child, not by the capture: " + res.out());
+        assertFalse(envelope.path("data").path("allExitedZero").asBoolean(),
+                () -> "the independent child-exit aggregate retains the rejected candidate: " + res.out());
+        assertFalse(envelope.path("data").has("allSucceeded"), "the ambiguous pre-CG9 key must be removed");
 
         JsonNode recorded = M.readTree(Files.readString(observations)).path("observations");
         assertEquals(2, recorded.size(), recorded::toPrettyString);
@@ -87,7 +78,8 @@ class BatchObservationNegativeControlTest {
 
         assertEquals(1, res.code(), res::out);
         JsonNode envelope = M.readTree(res.out());
-        assertFalse(envelope.path("data").path("allSucceeded").asBoolean(), res::out);
+        assertFalse(envelope.path("data").path("allExitedZero").asBoolean(), res::out);
+        assertFalse(envelope.path("data").has("allSucceeded"), res::out);
         String summary = envelope.path("summary").asText();
         assertTrue(summary.contains("0 failed"),
                 () -> "nothing failed here — the rejected candidate is a verdict, and the summary must not call "
@@ -142,29 +134,30 @@ class BatchObservationNegativeControlTest {
         CliTestSupport.Result res = CliTestSupport.run("batch", ops.toString(),
                 "--observations", observations.toString());
 
+        assertEquals(1, res.code(), res::out);
         assertEquals("rejected", M.readTree(res.out()).path("outcome").asText(), res::out);
         assertFalse(M.readTree(res.out()).path("written").asBoolean(), res::out);
         assertFalse(Files.exists(observations), "a refused capture leaves no artifact to mistake for one");
     }
 
     @Test
-    void bothSelfDescribingSurfacesCarryTheExitLabel() throws Exception {
+    void bothSelfDescribingSurfacesCarryTheModeSpecificSuccessRule() throws Exception {
         CliTestSupport.Result help = CliTestSupport.run("batch", "--help");
         assertEquals(0, help.code(), help::err);
         String helpText = help.out().replaceAll("\\s+", " ");
         assertTrue(helpText.contains("A nonzero child is NOT always a failed child"),
                 () -> "`batch --help` must state the CLASS, not only the observation instance: " + help.out());
-        assertTrue(helpText.contains("negative control"),
-                () -> "…and name where it fires routinely: " + help.out());
+        assertTrue(helpText.contains("observation mode exits 0 after full dispatch and artifact write"),
+                () -> "`batch --help` must state the observation-mode success rule: " + help.out());
 
         CliTestSupport.Result schema = CliTestSupport.run("schema", "batch");
         assertEquals(0, schema.code(), schema::err);
         String description = M.readTree(schema.out()).path("description").asText();
         assertTrue(description.contains("NONZERO CHILD IS NOT NECESSARILY A FAILED CHILD"),
                 () -> "`schema batch` must carry the same class-level rule: " + description);
-        assertTrue(description.contains("negative control"),
-                () -> "…and name the case it fires on: " + description);
-        assertTrue(description.contains("outcome") && description.contains("written:true"),
-                () -> "…and how to tell it from a capture failure: " + description);
+        assertTrue(description.contains("data.allExitedZero"),
+                () -> "the independent child-exit aggregate must be named: " + description);
+        assertTrue(description.contains("observation mode") && description.contains("exits 0"),
+                () -> "the observation-mode exit rule must be explicit: " + description);
     }
 }

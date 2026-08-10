@@ -39,8 +39,15 @@ final class ResultEnvelopeAssertions {
             assertTrue(envelope.has("verification"), () -> context + " verdict lacks verification: " + envelope);
         }
         if ("batch".equals(envelope.path("target").asText()) && "completed".equals(outcome)) {
-            assertEquals(envelope.path("data").path("allSucceeded").asBoolean(), envelope.path("ok").asBoolean(),
-                    () -> context + " batch aggregate success drifted: " + envelope);
+            assertTrue(envelope.path("data").path("allExitedZero").isBoolean(),
+                    () -> context + " batch lacks its child-exit aggregate: " + envelope);
+            assertFalse(envelope.path("data").has("allSucceeded"),
+                    () -> context + " batch retains the ambiguous pre-CG9 key: " + envelope);
+            if (!envelope.path("written").asBoolean()) {
+                assertEquals(envelope.path("data").path("allExitedZero").asBoolean(),
+                        envelope.path("ok").asBoolean(),
+                        () -> context + " ordinary batch aggregate success drifted: " + envelope);
+            }
         }
     }
 

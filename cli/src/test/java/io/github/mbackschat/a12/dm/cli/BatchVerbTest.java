@@ -65,7 +65,7 @@ class BatchVerbTest {
         JsonNode envelope = MAPPER.readTree(res.out());
         assertFalse(envelope.path("ok").asBoolean(), res::out);
         assertTrue(envelope.path("data").path("dispatched").asBoolean(), res::out);
-        assertFalse(envelope.path("data").path("allSucceeded").asBoolean(), res::out);
+        assertFalse(envelope.path("data").path("allExitedZero").asBoolean(), res::out);
         JsonNode arr = batchItems(res.out());
         assertEquals(3, arr.size(), () -> "one result per op: " + res.out());
 
@@ -213,7 +213,7 @@ class BatchVerbTest {
         JsonNode envelope = MAPPER.readTree(res.out());
         assertTrue(envelope.path("ok").asBoolean(), res::out);
         assertTrue(envelope.path("data").path("dispatched").asBoolean(), res::out);
-        assertTrue(envelope.path("data").path("allSucceeded").asBoolean(), res::out);
+        assertTrue(envelope.path("data").path("allExitedZero").asBoolean(), res::out);
         JsonNode arr = batchItems(res.out());
         assertEquals(0, arr.get(0).get("exit").asInt(), () -> "model check used the batch -m: " + arr);
         assertEquals(0, arr.get(1).get("exit").asInt(), () -> "config read used the batch -m: " + arr);
@@ -267,7 +267,7 @@ class BatchVerbTest {
         assertEquals("completed", envelope.path("outcome").asText(), res::out);
         assertFalse(envelope.path("ok").asBoolean(), res::out);
         assertTrue(envelope.path("data").path("dispatched").asBoolean(), res::out);
-        assertFalse(envelope.path("data").path("allSucceeded").asBoolean(), res::out);
+        assertFalse(envelope.path("data").path("allExitedZero").asBoolean(), res::out);
         JsonNode results = envelope.path("data").path("results");
         assertEquals(0, results.get(0).path("exit").asInt(), results::toString);
         assertTrue(results.get(0).path("result").path("written").asBoolean(), results::toString);

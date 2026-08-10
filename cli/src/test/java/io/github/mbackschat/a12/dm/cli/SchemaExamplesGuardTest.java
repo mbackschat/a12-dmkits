@@ -125,7 +125,7 @@ class SchemaExamplesGuardTest {
                     () -> "batch frame example identifies the aggregate operation: " + res.out());
             assertTrue(envelope.path("data").path("dispatched").asBoolean(),
                     () -> "batch reports that every child was dispatched: " + res.out());
-            assertTrue(envelope.path("data").path("allSucceeded").asBoolean(),
+            assertTrue(envelope.path("data").path("allExitedZero").asBoolean(),
                     () -> "the schema examples contain only successful children: " + res.out());
             JsonNode results = envelope.path("data").path("results");
             assertTrue(results.isArray(),
@@ -138,6 +138,15 @@ class SchemaExamplesGuardTest {
                 assertEquals(0, result.path("exit").intValue(),
                         () -> "batch frame example child exits 0: " + result);
             }
+
+            Path observations = dir.resolve("batch-ex-" + (i - 1) + "-observations.json");
+            CliTestSupport.Result observed = CliTestSupport.run("-m", model.toString(), "batch",
+                    opsFile.toString(), "--observations", observations.toString());
+            assertEquals(0, observed.code(), () -> "batch observation example failed: " + observed.out());
+            JsonNode observedEnvelope = MAPPER.readTree(observed.out());
+            assertTrue(observedEnvelope.path("ok").asBoolean(), observed::out);
+            assertTrue(observedEnvelope.path("data").path("allExitedZero").asBoolean(), observed::out);
+            assertTrue(Files.isRegularFile(observations), "the example's observation artifact was written");
         }
     }
 

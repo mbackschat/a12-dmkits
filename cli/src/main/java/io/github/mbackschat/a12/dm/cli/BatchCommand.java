@@ -22,8 +22,10 @@ import picocli.CommandLine.Parameters;
  * JVM startup + the kernel's one-time StringTemplate warm-up across all ops (the N6 runner enabler).
  * Reads a JSON array of ops {@code {"verb","args":[…],"id"?}}, dispatches each through {@link Cli#run}
  * (the same seam as a standalone call), and emits self-describing per-op results in an aggregate envelope.
- * A batch-level error (missing/malformed file) exits 2; a fully dispatched batch exits 0 iff every child did,
- * while retaining every child's exact exit code. Dispatch is non-transactional and never rolls writes back.
+ * A batch-level error (missing/malformed file) exits 2. An ordinary fully dispatched batch exits 0 iff every child
+ * did. Observation mode exits 0 iff every child was dispatched and its artifact was written, while retaining every
+ * child's exact exit code and the aggregate under {@code data.allExitedZero}. Dispatch is non-transactional and
+ * never rolls writes back.
  * A batch-level {@code -m} is the <b>default model</b> for ops that omit their own (G18 — the universal
  * {@code -m} convention); an op carrying its own {@code -m} keeps it.
  *
@@ -35,7 +37,8 @@ import picocli.CommandLine.Parameters;
  */
 @Command(name = "batch", mixinStandardHelpOptions = true,
         description = "Dispatch independent verb invocations in one process (non-transactional; never rolls back). "
-                + "Exits 0 iff every child did. A nonzero child is NOT always a failed child: a verdict verb "
+                + "Ordinary mode exits 0 iff every child did; observation mode exits 0 after full dispatch and "
+                + "artifact write. A nonzero child is NOT always a failed child: a verdict verb "
                 + "(rule/model/workspace check) exits 1 on a negative verdict, and a comparison exits 1 when it "
                 + "differs, both with ok:true — so read the child's own `ok` (did it run) beside `valid`/`matches` "
                 + "(what it found). The aggregate summary reports that split.")
@@ -51,15 +54,12 @@ final class BatchCommand extends BaseCommand {
 
     @Option(names = "--observations", paramLabel = "<file>",
             description = "overwrite a deterministic static-kernel verdict artifact for caller-tagged rule checks "
-                    + "and computation-spec dry-runs (see `dmtool schema batch`). EXIT: the aggregate rule above "
-                    + "applies unchanged, and it bites here routinely — a candidate the kernel REJECTED is a "
-                    + "nonzero child, so a capture containing an intentional negative control exits 1 by design, "
-                    + "not because the capture failed. The artifact is still complete and authoritative: the "
-                    + "capture succeeded exactly when the envelope reports `outcome:completed` with "
-                    + "`written:true` (a preflight refusal is `outcome:rejected` and writes nothing; an artifact "
-                    + "write failure is `outcome:error`, exit 70). Per child, the artifact keeps the two axes "
-                    + "apart: `ok:true` with `valid:false` is a correctly rejected candidate, while `ok:false` is "
-                    + "a child that failed to run")
+                    + "and computation-spec dry-runs (see `dmtool schema batch`). Observation mode exits 0 after "
+                    + "full dispatch and artifact write, even when a captured child exits nonzero; "
+                    + "`data.allExitedZero` retains that independent aggregate. A preflight refusal is "
+                    + "`outcome:rejected` and writes nothing; an artifact write failure is `outcome:error`, exit "
+                    + "70. Per child, `ok:true` with `valid:false` is a correctly rejected candidate, while "
+                    + "`ok:false` is a child that failed to run")
     String observationsFile;
 
     @Override
