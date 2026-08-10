@@ -2706,11 +2706,11 @@
       "returns": "number",
       "meaning": "The plain multi-group form counts definitely filled groups; the starred single-repeatable-group form counts instantiated rows structurally, including empty rows.",
       "constraints": [
-        "either a list of two or more groups, where starred repeatable groups may be mixed with fixed groups, OR a single repeatable group as a wildcard (Group*) counting its filled repetitions (MVK_PARAMSIZE_INVALIDGN); groups only (MVK_NO_FIELDS_ALLOWED); a wildcard is legal only on a repeatable group (MVK_INVALID_WILDCARD); a root group is allowed only as the sole, starred repeatable operand (NumberOfFilledGroups(/Root*)), never alongside another group"
+        "either a list of two or more distinct, non-overlapping groups, where starred repeatable groups may be mixed with fixed groups, OR a single repeatable group as a wildcard (Group*) counting its filled repetitions; one fixed group is MVK_PARAMSIZE_INVALIDGN, an exact duplicate is MVK_DUPLICATE_PARAM1, ancestor/descendant overlap (including a root beside its contained group) is MVK_DUPLICATE_PARAM2, and a repeatable group without * is MVK_NO_WILDCARD; groups only (MVK_NO_FIELDS_ALLOWED); a wildcard is legal only on a repeatable group (MVK_INVALID_WILDCARD); a root group is allowed only as the sole, starred repeatable operand (NumberOfFilledGroups(/Root*)), never alongside another group"
       ],
       "gotchas": [
         {
-          "text": "the operand is either a group list of two or more groups, which may mix a starred repeatable group with fixed groups as in NumberOfFilledGroups(Items*, ShippingAddress), or a single repeatable group wildcard as in NumberOfFilledGroups(Items*); it takes groups, not fields (MVK_NO_FIELDS_ALLOWED), and starring a non-repeatable group is MVK_INVALID_WILDCARD",
+          "text": "the operand is either a distinct, non-overlapping group list of two or more groups, which may mix a starred repeatable group with fixed groups as in NumberOfFilledGroups(Items*, ShippingAddress), or a single repeatable group wildcard as in NumberOfFilledGroups(Items*); a fixed singleton is MVK_PARAMSIZE_INVALIDGN, an exact duplicate is MVK_DUPLICATE_PARAM1, ancestor/descendant overlap is MVK_DUPLICATE_PARAM2, and omitting * from a repeatable group is MVK_NO_WILDCARD; it takes groups, not fields (MVK_NO_FIELDS_ALLOWED)",
           "kind": "AUTHORING"
         },
         {

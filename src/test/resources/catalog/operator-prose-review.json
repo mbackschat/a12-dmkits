@@ -3358,7 +3358,7 @@
       "operator": "NumberOfFilledGroups",
       "lane": "CONSTRAINT",
       "ordinal": 0,
-      "digest": "sha256:7e2d5c1d5f2ac66323c10ba466f3981d944db9467d93dfdd71a11f2e0386391c",
+      "digest": "sha256:0246925ca89fd627bf780c0b0fec723d5568c9c5da79d05fb77e5b7c26cb7ecd",
       "classifications": [
         "REJECTION",
         "ADMISSION",
@@ -3385,7 +3385,7 @@
       "operator": "NumberOfFilledGroups",
       "lane": "GOTCHA",
       "ordinal": 0,
-      "digest": "sha256:34077fc79602e3fca985484dbd52fdbc047b0da84b6824c8acf6f87514fedd6b",
+      "digest": "sha256:e9cbf9027d6c1007b41f65e750f051a6790844915c0568d64100f3d3246e56ab",
       "classifications": [
         "REJECTION",
         "ADMISSION",
@@ -8664,27 +8664,6 @@
       "evidence": [
         {
           "type": "INVALID_EXAMPLE"
-        }
-      ]
-    },
-    {
-      "id": "literal.NumberOfFilledGroups.gotcha0.MVK_INVALID_WILDCARD",
-      "operator": "NumberOfFilledGroups",
-      "kind": "CONDITION",
-      "units": [
-        {
-          "lane": "GOTCHA",
-          "ordinal": 0
-        }
-      ],
-      "expected": {
-        "verdict": "REJECTED",
-        "code": "MVK_INVALID_WILDCARD"
-      },
-      "evidence": [
-        {
-          "type": "CLAIM_PROBE",
-          "id": "NumberOfFilledGroups.nonrepeatable-wildcard"
         }
       ]
     },
@@ -18388,6 +18367,159 @@
         {
           "type": "CLAIM_PROBE",
           "id": "NumberOfFilledGroups.minimum-arity",
+          "side": "CONTROL"
+        }
+      ]
+    },
+    {
+      "id": "review.NumberOfFilledGroups.NumberOfFilledGroups.exact-duplicate.trigger",
+      "operator": "NumberOfFilledGroups",
+      "kind": "CONDITION",
+      "units": [
+        {
+          "lane": "CONSTRAINT",
+          "ordinal": 0
+        },
+        {
+          "lane": "GOTCHA",
+          "ordinal": 0
+        }
+      ],
+      "expected": {
+        "verdict": "REJECTED",
+        "code": "MVK_DUPLICATE_PARAM1"
+      },
+      "evidence": [
+        {
+          "type": "CLAIM_PROBE",
+          "id": "NumberOfFilledGroups.exact-duplicate",
+          "side": "TRIGGER"
+        }
+      ]
+    },
+    {
+      "id": "review.NumberOfFilledGroups.NumberOfFilledGroups.exact-duplicate.control",
+      "operator": "NumberOfFilledGroups",
+      "kind": "CONDITION",
+      "units": [
+        {
+          "lane": "CONSTRAINT",
+          "ordinal": 0
+        },
+        {
+          "lane": "GOTCHA",
+          "ordinal": 0
+        }
+      ],
+      "expected": {
+        "verdict": "ACCEPTED"
+      },
+      "evidence": [
+        {
+          "type": "CLAIM_PROBE",
+          "id": "NumberOfFilledGroups.exact-duplicate",
+          "side": "CONTROL"
+        }
+      ]
+    },
+    {
+      "id": "review.NumberOfFilledGroups.NumberOfFilledGroups.ancestor-overlap.trigger",
+      "operator": "NumberOfFilledGroups",
+      "kind": "CONDITION",
+      "units": [
+        {
+          "lane": "CONSTRAINT",
+          "ordinal": 0
+        },
+        {
+          "lane": "GOTCHA",
+          "ordinal": 0
+        }
+      ],
+      "expected": {
+        "verdict": "REJECTED",
+        "code": "MVK_DUPLICATE_PARAM2"
+      },
+      "evidence": [
+        {
+          "type": "CLAIM_PROBE",
+          "id": "NumberOfFilledGroups.ancestor-overlap",
+          "side": "TRIGGER"
+        }
+      ]
+    },
+    {
+      "id": "review.NumberOfFilledGroups.NumberOfFilledGroups.ancestor-overlap.control",
+      "operator": "NumberOfFilledGroups",
+      "kind": "CONDITION",
+      "units": [
+        {
+          "lane": "CONSTRAINT",
+          "ordinal": 0
+        },
+        {
+          "lane": "GOTCHA",
+          "ordinal": 0
+        }
+      ],
+      "expected": {
+        "verdict": "ACCEPTED"
+      },
+      "evidence": [
+        {
+          "type": "CLAIM_PROBE",
+          "id": "NumberOfFilledGroups.ancestor-overlap",
+          "side": "CONTROL"
+        }
+      ]
+    },
+    {
+      "id": "review.NumberOfFilledGroups.NumberOfFilledGroups.repeatable-needs-wildcard.trigger",
+      "operator": "NumberOfFilledGroups",
+      "kind": "CONDITION",
+      "units": [
+        {
+          "lane": "CONSTRAINT",
+          "ordinal": 0
+        },
+        {
+          "lane": "GOTCHA",
+          "ordinal": 0
+        }
+      ],
+      "expected": {
+        "verdict": "REJECTED",
+        "code": "MVK_NO_WILDCARD"
+      },
+      "evidence": [
+        {
+          "type": "CLAIM_PROBE",
+          "id": "NumberOfFilledGroups.repeatable-needs-wildcard",
+          "side": "TRIGGER"
+        }
+      ]
+    },
+    {
+      "id": "review.NumberOfFilledGroups.NumberOfFilledGroups.repeatable-needs-wildcard.control",
+      "operator": "NumberOfFilledGroups",
+      "kind": "CONDITION",
+      "units": [
+        {
+          "lane": "CONSTRAINT",
+          "ordinal": 0
+        },
+        {
+          "lane": "GOTCHA",
+          "ordinal": 0
+        }
+      ],
+      "expected": {
+        "verdict": "ACCEPTED"
+      },
+      "evidence": [
+        {
+          "type": "CLAIM_PROBE",
+          "id": "NumberOfFilledGroups.repeatable-needs-wildcard",
           "side": "CONTROL"
         }
       ]

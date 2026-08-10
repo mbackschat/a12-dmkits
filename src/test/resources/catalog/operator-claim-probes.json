@@ -308,6 +308,24 @@
       "control": { "group": "/Order", "field": "../CustomerName", "dsl": "FieldFilled(CustomerName) And NumberOfFilledGroups(ShippingAddress, BillingAddress) > 0", "verdict": "ACCEPTED" }
     },
     {
+      "id": "NumberOfFilledGroups.exact-duplicate",
+      "operator": "NumberOfFilledGroups", "kind": "CONDITION", "fixture": "ORDER",
+      "trigger": { "group": "/Order", "field": "../CustomerName", "dsl": "FieldFilled(CustomerName) And NumberOfFilledGroups(ShippingAddress, ShippingAddress) > 0", "verdict": "REJECTED", "code": "MVK_DUPLICATE_PARAM1" },
+      "control": { "group": "/Order", "field": "../CustomerName", "dsl": "FieldFilled(CustomerName) And NumberOfFilledGroups(ShippingAddress, BillingAddress) > 0", "verdict": "ACCEPTED" }
+    },
+    {
+      "id": "NumberOfFilledGroups.ancestor-overlap",
+      "operator": "NumberOfFilledGroups", "kind": "CONDITION", "fixture": "ORDER",
+      "trigger": { "group": "/Order", "field": "../CustomerName", "dsl": "FieldFilled(CustomerName) And NumberOfFilledGroups(/Order, ShippingAddress) > 0", "verdict": "REJECTED", "code": "MVK_DUPLICATE_PARAM2" },
+      "control": { "group": "/Order", "field": "../CustomerName", "dsl": "FieldFilled(CustomerName) And NumberOfFilledGroups(ShippingAddress, BillingAddress) > 0", "verdict": "ACCEPTED" }
+    },
+    {
+      "id": "NumberOfFilledGroups.repeatable-needs-wildcard",
+      "operator": "NumberOfFilledGroups", "kind": "CONDITION", "fixture": "ORDER",
+      "trigger": { "group": "/Order", "field": "../CustomerName", "dsl": "FieldFilled(CustomerName) And NumberOfFilledGroups(Items, ShippingAddress) < 2", "verdict": "REJECTED", "code": "MVK_NO_WILDCARD" },
+      "control": { "group": "/Order", "field": "../CustomerName", "dsl": "FieldFilled(CustomerName) And NumberOfFilledGroups(Items*, ShippingAddress) < 2", "verdict": "ACCEPTED" }
+    },
+    {
       "id": "NumberOfFilledGroups.mixed-starred-fixed",
       "operator": "NumberOfFilledGroups", "kind": "CONDITION", "fixture": "ORDER",
       "trigger": { "group": "/Order", "field": "../CustomerName", "dsl": "FieldFilled(CustomerName) And NumberOfFilledGroups(Items*, ShippingAddress) < 2", "verdict": "ACCEPTED" },
