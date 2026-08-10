@@ -29,6 +29,9 @@ import picocli.CommandLine.Parameters;
  *       what it <em>consumes</em> (a rich JSON input like the rule-spec) and whether it <em>returns</em> the
  *       result envelope or an artifact. One call, unambiguous direction. Flag-only ops carry no {@code input}
  *       (their params are in the manifest); reads note that their payload rides the envelope's {@code data}.</li>
+ *   <li>A manifest {@code schema} / {@code operationalSchema} pointer may be passed as one scalar argument
+ *       ({@code schema "field add"}) or as ordinary command tokens ({@code schema field add}); both forms serve
+ *       byte-identical output.</li>
  *   <li>Every runnable leaf, including a directionally exempt artifact/catalog verb, serves the operational
  *       profiles projected from {@link CommandContracts}; exempt leaves return an operational-only contract.</li>
  * </ul>
@@ -38,7 +41,7 @@ import picocli.CommandLine.Parameters;
  */
 @Command(name = "schema", mixinStandardHelpOptions = true,
         description = "Emit a structure schema or a verb's directional/operational contract "
-                + "(`schema <target> <op>`), on demand.")
+                + "(`schema <target> <op>` or one manifest pointer argument), on demand.")
 final class SchemaCommand extends BaseCommand {
 
     private static final ObjectMapper MAPPER = new ObjectMapper();
@@ -178,30 +181,43 @@ final class SchemaCommand extends BaseCommand {
 
     @Parameters(arity = "0..*", paramLabel = "<schema>",
             description = "result | diagnostic (structures), or a verb's directional contract "
+                    + "as one manifest pointer or tokenized address "
                     + "(e.g. `rule add`, `computation modify`, `field read`)")
     List<String> tokens = new ArrayList<>();
 
     @Override
     public Integer call() {
-        if (tokens.isEmpty()) {
+        List<String> argv = List.copyOf(tokens);
+        if (argv.isEmpty()) {
             out().print("Structure schemas: " + String.join(", ", STRUCTURES)
                     + "\nBatch frames: " + String.join(", ", FRAMES)
-                    + "\nVerb contracts: `schema <target> <op>` (e.g. `schema rule add`, `schema field read`).\n"
+                    + "\nVerb contracts: pass a manifest pointer as one argument or tokenize it "
+                    + "(e.g. `schema \"rule add\"` or `schema rule add`).\n"
                     + SELF_CONTAINED_NOTE);
             return 0;
         }
-        if (tokens.size() == 1 && (STRUCTURES.contains(tokens.get(0)) || FRAMES.contains(tokens.get(0)))) {
-            return serveStructure(tokens.get(0));
+        if (argv.size() == 1 && (STRUCTURES.contains(argv.get(0)) || FRAMES.contains(argv.get(0)))) {
+            return serveStructure(argv.get(0));
         }
-        String verb = String.join(" ", tokens);
-        if (!resolvesToLeaf(tokens)) {
-            return fail("unknown schema: " + verb + "   (structures: " + String.join(", ", STRUCTURES)
+        List<String> address = addressTokens(argv);
+        String verb = String.join(" ", address);
+        if (!resolvesToLeaf(address)) {
+            return fail("unknown schema argv " + MAPPER.valueToTree(argv) + ": " + verb
+                    + "   (structures: " + String.join(", ", STRUCTURES)
                     + "; or a verb contract like `rule add`, `field read`, `meta`)");
         }
         if (CONTRACT_EXEMPT.containsKey(verb)) {
-            return operationalContract(verb);
+            return operationalContract(verb, address);
         }
-        return contract(verb);
+        return contract(verb, address);
+    }
+
+    /** Expand exactly one manifest-style qualified name; multi-token argv and structures remain untouched. */
+    private static List<String> addressTokens(List<String> argv) {
+        if (argv.size() != 1 || !argv.get(0).contains(" ")) {
+            return argv;
+        }
+        return List.of(argv.get(0).split(" ", -1));
     }
 
     /**
@@ -278,8 +294,8 @@ final class SchemaCommand extends BaseCommand {
     }
 
     /** The table-owned contract for a leaf that deliberately has no directional I/O contract. */
-    private int operationalContract(String verb) {
-        CommandSpec command = resolveLeaf(tokens);
+    private int operationalContract(String verb, List<String> address) {
+        CommandSpec command = resolveLeaf(address);
         if (command == null) {
             return fail("cannot resolve live command contract: " + verb);
         }
@@ -334,7 +350,7 @@ final class SchemaCommand extends BaseCommand {
         }
     }
 
-    private int contract(String verb) {
+    private int contract(String verb, List<String> address) {
         ObjectNode c = MAPPER.createObjectNode();
         c.put("op", verb);
         String input = INPUT_OPS.get(verb);
@@ -385,7 +401,7 @@ final class SchemaCommand extends BaseCommand {
                 c.put("verdict", "the kernel verdict rides the envelope's `valid` (true iff no ERROR diagnostic)"
                         + " and `diagnostics` — there is no `data` payload; see `schema result` and `schema diagnostic`");
             } else {
-                if (READ_OPS.contains(tokens.get(tokens.size() - 1)) || DATA_SCHEMA.containsKey(verb)) {
+                if (READ_OPS.contains(address.get(address.size() - 1)) || DATA_SCHEMA.containsKey(verb)) {
                     c.put("data", "this read returns its payload in the result envelope's `data` field");
                 }
                 // … and where that payload has its own published schema, surface it so the shape is discoverable
@@ -398,7 +414,7 @@ final class SchemaCommand extends BaseCommand {
                 }
             }
         }
-        CommandSpec command = resolveLeaf(tokens);
+        CommandSpec command = resolveLeaf(address);
         if (command == null) {
             return fail("cannot resolve live command contract: " + verb);
         }

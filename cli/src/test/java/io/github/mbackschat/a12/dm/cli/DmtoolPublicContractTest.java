@@ -9,9 +9,11 @@ import java.nio.file.Path;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 import com.fasterxml.jackson.databind.JsonNode;
@@ -100,13 +102,24 @@ class DmtoolPublicContractTest {
     void packagedSchemaAndManifestRenderTheSameOperationalOwner(@TempDir Path dir) throws Exception {
         PackagedDmtool dmtool = new PackagedDmtool(dir);
         JsonNode manifest = MAPPER.readTree(dmtool.run("manifest").out());
+        Map<String, PackagedDmtool.Result> rendered = new HashMap<>();
         int checked = 0;
         for (JsonNode verb : manifest.path("verbs")) {
             String name = verb.path("verb").asText();
             assertEquals(name, verb.path("operationalSchema").asText(), () -> name + " lacks its operational pointer");
-            PackagedDmtool.Result result = dmtool.run(
-                    ("schema " + verb.path("operationalSchema").asText()).split(" "));
-            assertEquals(0, result.code(), () -> name + ": " + result.err());
+            for (String key : List.of("schema", "operationalSchema")) {
+                if (!verb.hasNonNull(key)) {
+                    continue;
+                }
+                String pointer = verb.path(key).asText();
+                PackagedDmtool.Result scalar = rendered.get(pointer);
+                if (scalar == null) {
+                    scalar = dmtool.run("schema", pointer);
+                    rendered.put(pointer, scalar);
+                }
+                assertEquals(0, scalar.code(), name + " scalar " + key + ": " + scalar.err());
+            }
+            PackagedDmtool.Result result = rendered.get(verb.path("operationalSchema").asText());
             JsonNode contract = MAPPER.readTree(result.out());
             assertEquals(verb.path("operationalProfiles"), contract.path("operationalProfiles"),
                     () -> name + " manifest/schema profiles drifted");
@@ -114,6 +127,12 @@ class DmtoolPublicContractTest {
         }
         assertEquals(ManifestVerbTest.EXPECTED_VERBS.size(), checked,
                 "every live leaf projects its operational owner through schema");
+
+        PackagedDmtool.Result scalarFieldAdd = rendered.get("field add");
+        PackagedDmtool.Result tokenizedFieldAdd = dmtool.run("schema", "field", "add");
+        assertEquals(0, scalarFieldAdd.code(), scalarFieldAdd::err);
+        assertEquals(tokenizedFieldAdd.out(), scalarFieldAdd.out(),
+                "the reported field-add failure must stay locked through the packaged launcher");
 
         for (String frame : List.of("apply", "batch")) {
             JsonNode schema = MAPPER.readTree(dmtool.run("schema", frame).out());

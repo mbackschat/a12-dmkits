@@ -5,7 +5,9 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.Iterator;
+import java.util.List;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -67,6 +69,45 @@ class SchemaVerbTest {
     void unknownSchemaFails() {
         assertEquals(2, CliTestSupport.run("schema", "nope").code());
         assertEquals(2, CliTestSupport.run("schema", "rule", "bogus").code(), "a non-existent op has no contract");
+    }
+
+    @Test
+    void unknownSchemaDiagnosticsPreserveOriginalArgvBoundaries() {
+        CliTestSupport.Result scalar = CliTestSupport.run("schema", "field nope");
+        CliTestSupport.Result tokenized = CliTestSupport.run("schema", "field", "nope");
+
+        assertEquals(2, scalar.code());
+        assertEquals(2, tokenized.code());
+        assertTrue(scalar.err().contains("[\"field nope\"]"), scalar::err);
+        assertTrue(tokenized.err().contains("[\"field\",\"nope\"]"), tokenized::err);
+        assertFalse(scalar.err().equals(tokenized.err()),
+                "the error must retain whether the caller supplied one scalar or two argv tokens");
+    }
+
+    @Test
+    void everyManifestSchemaPointerAcceptsScalarAndTokenizedAddressingByteIdentically() throws Exception {
+        JsonNode manifest = MAPPER.readTree(CliTestSupport.run("manifest").out());
+        int pointers = 0;
+        for (JsonNode verb : manifest.path("verbs")) {
+            for (String key : List.of("schema", "operationalSchema")) {
+                if (!verb.hasNonNull(key)) {
+                    continue;
+                }
+                String pointer = verb.path(key).asText();
+                CliTestSupport.Result scalar = CliTestSupport.run("schema", pointer);
+                List<String> tokenizedArgv = new ArrayList<>();
+                tokenizedArgv.add("schema");
+                tokenizedArgv.addAll(List.of(pointer.split(" ")));
+                CliTestSupport.Result tokenized = CliTestSupport.run(tokenizedArgv.toArray(String[]::new));
+
+                assertEquals(0, scalar.code(), () -> key + " scalar pointer " + pointer + ": " + scalar.err());
+                assertEquals(0, tokenized.code(), () -> key + " tokenized pointer " + pointer + ": " + tokenized.err());
+                assertEquals(tokenized.out(), scalar.out(),
+                        () -> key + " pointer must render byte-identically in both forms: " + pointer);
+                pointers++;
+            }
+        }
+        assertTrue(pointers > 0, "the live manifest must publish schema pointers");
     }
 
     @Test
@@ -186,6 +227,15 @@ class SchemaVerbTest {
         JsonNode c = MAPPER.readTree(CliTestSupport.run("schema", "field", "add").out());
         assertEquals("result", c.path("returns").asText());
         assertTrue(c.path("input").has("properties"), () -> "field add's contract carries the input schema: " + c);
+    }
+
+    @Test
+    void fieldAddScalarPointerMatchesTheTokenizedContractExactly() {
+        CliTestSupport.Result scalar = CliTestSupport.run("schema", "field add");
+        CliTestSupport.Result tokenized = CliTestSupport.run("schema", "field", "add");
+
+        assertEquals(0, scalar.code(), scalar::err);
+        assertEquals(tokenized.out(), scalar.out());
     }
 
     @Test
