@@ -364,23 +364,53 @@ public final class ResultEnvelope {
     }
 
     /**
-     * Why the nonzero children exited nonzero, split on the axis this envelope refuses to conflate anywhere else.
+     * What a nonzero child's OWN envelope says it was — the two-way split the batch summary reports.
      *
-     * <p><b>A nonzero child exit is not the same as a failed child.</b> Exactly two families exit nonzero while
-     * reporting {@code ok:true} — a {@link Family#VERDICT} whose {@code valid} is false, and a
-     * {@link Family#COMPARISON} that {@code DIFFERS} — and both of those RAN successfully and reported a negative
-     * finding. This line used to call every one of them "failed", which is the conflation the envelope contract
-     * forbids ({@code schema result}: three orthogonal axes, never conflated), stated in the first line an
-     * operator reads. It bites hardest on a deliberately separating batch: a negative control is a
-     * kernel-REJECTED candidate, so a well-designed capture always tripped the wording, and a caller reading it
-     * could not tell a correct rejection from a broken run.
+     * <p><b>A nonzero child exit is not the same as a failed child</b>, and {@code ok} alone cannot tell them
+     * apart. Two axes each establish a negative finding, and they are independent:
      *
-     * <p>The counts are derived from each child's OWN envelope, so the classification is the child's own claim
-     * rather than a guess about its exit code. A child whose stdout is not a result envelope (a raw-JSON verb, a
-     * {@code --text} render) has no {@code ok} to read and counts as a failure — which is right: those verbs hold
-     * no verdict, so a nonzero exit from one is nothing else.
+     * <ul>
+     *   <li><b>{@code ok:true} with a nonzero exit</b> — structurally only a {@link Family#VERDICT} whose
+     *       {@code valid} is false or a {@link Family#COMPARISON} that {@code DIFFERS} (see {@link #exitCode()}).
+     *       Both ran and reported a negative finding;</li>
+     *   <li><b>{@code valid:false}</b> — the subject verdict itself, wherever it appears. A kernel
+     *       {@link Family#REJECTION} publishes it ({@link RejectionBasis.KernelRejection}: the gate RAN and
+     *       arbitrated, so {@code valid} and {@code verification} both ride the envelope) while reporting
+     *       {@code ok:false}, because the <em>operation</em> did not succeed. Reading {@code ok} alone called
+     *       that an executed rejection a failure — the 2026-08-10 field report, and exactly the shape a
+     *       deliberate negative control takes when it is a {@code computation add --dry-run} rather than a
+     *       {@code rule check}.</li>
+     * </ul>
      *
-     * <p>{@code data.allExitedZero} retains that child aggregate for both modes. Ordinary batch derives
+     * <p>The discriminator is therefore "did this child's own envelope establish a negative subject verdict or
+     * finding", not "is {@code ok} true". A rejection the CLI's own pre-flight raised
+     * ({@link RejectionBasis.PreflightRejection}) publishes neither {@code valid} nor {@code verification} —
+     * nothing arbitrated it — so it stays a failure, as does a child whose stdout is not a result envelope at
+     * all (a raw-JSON verb, a {@code --text} render): those hold no verdict, so a nonzero exit from one is
+     * nothing else.
+     */
+    private enum ChildDisposition {
+        /** The child ran a gate or comparison and reported a negative outcome. */
+        REPORTED_NEGATIVE,
+        /** The child did not produce a verdict — it failed to do its job. */
+        FAILED;
+
+        /** Classify from the child's serialized envelope; {@code result} is missing for a non-envelope child. */
+        private static ChildDisposition of(JsonNode result) {
+            if (result.path("ok").asBoolean(false)) {
+                return REPORTED_NEGATIVE;
+            }
+            JsonNode valid = result.path("valid");
+            return valid.isBoolean() && !valid.asBoolean() ? REPORTED_NEGATIVE : FAILED;
+        }
+    }
+
+    /**
+     * Why the nonzero children exited nonzero, split on the axis this envelope refuses to conflate anywhere else
+     * ({@code schema result}: three orthogonal axes, never conflated), stated in the first line an operator reads.
+     * {@link ChildDisposition} owns the classification and its rationale.
+     *
+     * <p>{@code data.allExitedZero} retains the child aggregate for both modes. Ordinary batch derives
      * {@code ok}/exit from it. Observation mode derives {@code ok}/exit from full dispatch plus artifact write,
      * leaving each captured child verdict and exit independently inspectable.
      */
@@ -391,10 +421,9 @@ public final class ResultEnvelope {
             if (result.path("exit").asInt(1) == 0) {
                 continue;
             }
-            if (result.path("result").path("ok").asBoolean(false)) {
-                reported++;
-            } else {
-                failed++;
+            switch (ChildDisposition.of(result.path("result"))) {
+                case REPORTED_NEGATIVE -> reported++;
+                case FAILED -> failed++;
             }
         }
         return "; " + (failed + reported) + " of " + results.size() + " exited nonzero (" + failed + " failed, "

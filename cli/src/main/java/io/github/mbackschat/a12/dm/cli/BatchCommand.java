@@ -31,17 +31,21 @@ import picocli.CommandLine.Parameters;
  *
  * <p><b>A nonzero child exit is not necessarily a failed child</b>, and the aggregate says which it was rather
  * than guessing: a verdict verb ({@code rule check}, {@code model check}, …) exits 1 when its verdict is
- * negative while reporting {@code ok:true}, as does a comparison that differs. Both RAN. The summary's
- * breakdown is derived from each child's own envelope — see {@code ResultEnvelope}'s nonzero-breakdown note for
- * why the exit code alone cannot classify them.
+ * negative while reporting {@code ok:true}, as does a comparison that differs; a kernel-gated candidate the
+ * kernel refuses ({@code computation add --dry-run}) exits 1 with {@code ok:false} but publishes the verdict it
+ * was arbitrated by ({@code valid:false} plus {@code verification}). All of them RAN. The summary's breakdown is
+ * derived from each child's own envelope — see {@code ResultEnvelope.ChildDisposition} for why neither the exit
+ * code nor {@code ok} alone can classify them.
  */
 @Command(name = "batch", mixinStandardHelpOptions = true,
         description = "Dispatch independent verb invocations in one process (non-transactional; never rolls back). "
                 + "Ordinary mode exits 0 iff every child did; observation mode exits 0 after full dispatch and "
                 + "artifact write. A nonzero child is NOT always a failed child: a verdict verb "
-                + "(rule/model/workspace check) exits 1 on a negative verdict, and a comparison exits 1 when it "
-                + "differs, both with ok:true — so read the child's own `ok` (did it run) beside `valid`/`matches` "
-                + "(what it found). The aggregate summary reports that split.")
+                + "(rule/model/workspace check) exits 1 on a negative verdict and a comparison exits 1 when it "
+                + "differs, both with ok:true, while a kernel-gated candidate the kernel refuses exits 1 with "
+                + "ok:false AND valid:false — so classify a child by what its envelope established (`valid`, "
+                + "`data.matches`), and read `ok` as whether the operation itself succeeded. A child that failed "
+                + "to run carries no `valid` at all. The aggregate summary reports that split.")
 final class BatchCommand extends BaseCommand {
 
     private static final ObjectMapper MAPPER = new ObjectMapper();
@@ -58,8 +62,9 @@ final class BatchCommand extends BaseCommand {
                     + "full dispatch and artifact write, even when a captured child exits nonzero; "
                     + "`data.allExitedZero` retains that independent aggregate. A preflight refusal is "
                     + "`outcome:rejected` and writes nothing; an artifact write failure is `outcome:error`, exit "
-                    + "70. Per child, `ok:true` with `valid:false` is a correctly rejected candidate, while "
-                    + "`ok:false` is a child that failed to run")
+                    + "70. Per child, `valid:false` is a correctly rejected candidate whichever way `ok` reads "
+                    + "(a rule-check verdict rejects with ok:true, a kernel-gated computation dry-run with "
+                    + "ok:false); a child that failed to run has `ok:false` and NO `valid`")
     String observationsFile;
 
     @Override
