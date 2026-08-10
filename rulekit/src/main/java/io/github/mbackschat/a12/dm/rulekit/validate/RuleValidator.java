@@ -64,8 +64,9 @@ public final class RuleValidator {
      * {@code resolver} (F-RES) — the multi-file-application path (use {@link ReferenceResolvers#directory}).
      */
     public ValidationResult check(String modelJson, DraftRule rule, ModelResolver resolver) {
-        return checkDraft(modelJson, rule.groupPath(), rule.name(), "rule",
+        ValidationResult result = checkDraft(modelJson, rule.groupPath(), rule.name(), "rule",
                 () -> inject(modelJson, rule), resolver);
+        return RawLengthDiagnostic.enrich(result, modelJson, rule, resolver);
     }
 
     /** Check {@code computation} against a model whose references are resolved by {@code resolver} (F-RES). */

@@ -15,7 +15,7 @@ import io.github.mbackschat.a12.dm.modelkit.FieldKind;
  *     {@code MVK_PARAMSIZE_INVALIDN} — but a single <em>starred</em> slot is admitted, because it expands to a
  *     row stream and so already is many fields. The shared param law of the count aggregates
  *     (KERNEL-FINDINGS "Param law is shared with the count aggregates").</li>
- * <li><b>Which kinds at all.</b> Boolean and DateRange are refused outright with
+ * <li><b>Which kinds at all.</b> Boolean, Confirm, and DateRange are refused outright with
  *     {@code MVK_ONLY_STRING_ENUM_NUMBER_DATE_ALLOWED} — and a Boolean beside a String reports <em>that</em> code
  *     rather than the mixing one, so the kind gate runs first. Every other field kind is admissible, Custom
  *     included.</li>
@@ -115,6 +115,8 @@ class FieldValuesNotUniqueAdmissionLawsTest {
                         .dateRangeField("AuditWindow", r -> r.format("dd.MM.yyyy").separator("-"))
                         .field("Recount", FieldKind.BOOLEAN)
                         .field("Discrepancy", FieldKind.BOOLEAN)
+                        .field("CountConfirmed", FieldKind.CONFIRM)
+                        .field("AuditConfirmed", FieldKind.CONFIRM)
                         .group("Counts", counts -> counts.repeatable(50)
                                 .numberField("Counted", n -> n.fractionDigits(0))
                                 .stringField("CounterInitials", s -> { })))
@@ -176,12 +178,30 @@ class FieldValuesNotUniqueAdmissionLawsTest {
                 "MVK_VARYING_TYPES_NOT_ALLOWED");
     }
 
-    // ── which kinds at all: only Boolean and DateRange are refused outright ───────────────────────────
+    // ── which kinds at all: Boolean, Confirm, and DateRange are refused outright ──────────────────────
 
     @Test
     void twoBooleanFieldsAreRejected() {
         refuses("BinCode", "FieldValuesNotUnique(Recount, Discrepancy)",
                 "MVK_ONLY_STRING_ENUM_NUMBER_DATE_ALLOWED");
+    }
+
+    @Test
+    void twoConfirmFieldsAreRejected() {
+        refuses("BinCode", "FieldValuesNotUnique(CountConfirmed, AuditConfirmed)",
+                "MVK_ONLY_STRING_ENUM_NUMBER_DATE_ALLOWED");
+    }
+
+    @Test
+    void aConfirmBesideAStringReportsTheKindGateRatherThanTheMix() {
+        refusesInsteadOf("AisleCode", "FieldValuesNotUnique(CountConfirmed, BinCode)",
+                "MVK_ONLY_STRING_ENUM_NUMBER_DATE_ALLOWED", "MVK_VARYING_TYPES_NOT_ALLOWED");
+    }
+
+    @Test
+    void aSingleConfirmStillReportsTheArityGateFirst() {
+        refusesInsteadOf("BinCode", "FieldValuesNotUnique(CountConfirmed)",
+                "MVK_PARAMSIZE_INVALIDN", "MVK_ONLY_STRING_ENUM_NUMBER_DATE_ALLOWED");
     }
 
     @Test
@@ -304,6 +324,18 @@ class FieldValuesNotUniqueAdmissionLawsTest {
         // The control: with the Boolean moved ahead of the mismatched String, both readings agree — which is why
         // the pair is what carries the claim and neither row does alone.
         refusesInsteadOf("AisleCode", "FieldValuesNotUnique(CountedOn, Recount, BinCode)",
+                "MVK_ONLY_STRING_ENUM_NUMBER_DATE_ALLOWED", "MVK_VARYING_TYPES_NOT_ALLOWED");
+    }
+
+    @Test
+    void aConfirmAfterACategoryMismatchStillReportsTheKindGate() {
+        refusesInsteadOf("AisleCode", "FieldValuesNotUnique(CountedOn, BinCode, CountConfirmed)",
+                "MVK_ONLY_STRING_ENUM_NUMBER_DATE_ALLOWED", "MVK_VARYING_TYPES_NOT_ALLOWED");
+    }
+
+    @Test
+    void theSameConfirmListReorderedReportsTheSameKindGate() {
+        refusesInsteadOf("AisleCode", "FieldValuesNotUnique(CountedOn, CountConfirmed, BinCode)",
                 "MVK_ONLY_STRING_ENUM_NUMBER_DATE_ALLOWED", "MVK_VARYING_TYPES_NOT_ALLOWED");
     }
 

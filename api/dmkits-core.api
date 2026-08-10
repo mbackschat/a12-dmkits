@@ -129,6 +129,7 @@ public final class io.github.mbackschat.a12.dm.core.ModelIndex
   public static java.lang.String resolvePath(java.lang.String, java.lang.String)
   public java.util.OptionalInt stringMaxLength(java.lang.String)
   public java.util.OptionalInt stringMinLength(java.lang.String)
+  public boolean stringNoValueValidation(java.lang.String)
   public java.util.Optional<java.lang.String> stringPattern(java.lang.String)
   public java.util.Optional<java.lang.String> typeReferenceOf(java.lang.String)
   public java.util.Optional<java.lang.String> usageTypeOfGroup(java.lang.String)

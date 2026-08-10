@@ -72,6 +72,21 @@ class ModelIndexTest {
     }
 
     @Test
+    void readsTheStringNoValueValidationDeclaration() {
+        String model = DocumentModelDraft.named("claim").locale("en_US")
+                .rootGroup("Claim", root -> root
+                        .stringField("Raw", field -> field.lineBreaks().noValueValidation())
+                        .stringField("Ordinary", field -> { })
+                        .numberField("Amount", field -> { }))
+                .build().toJson();
+        ModelIndex claim = ModelIndex.ofSelfContained(model);
+
+        assertTrue(claim.stringNoValueValidation("/Claim/Raw"));
+        assertFalse(claim.stringNoValueValidation("/Claim/Ordinary"));
+        assertFalse(claim.stringNoValueValidation("/Claim/Amount"));
+    }
+
+    @Test
     void failsFastOnUnknownPath() {
         assertThrows(IllegalArgumentException.class, () -> index.kindOf("/Subscription/Nope"));
     }

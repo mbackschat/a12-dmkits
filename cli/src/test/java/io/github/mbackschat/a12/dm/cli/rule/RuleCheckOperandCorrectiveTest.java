@@ -34,8 +34,8 @@ class RuleCheckOperandCorrectiveTest {
         return null;
     }
 
-    private static String catalogFix(String... operands) {
-        return OperatorCatalog.load().correctiveFix("LessThan", "MVK_INVALID_TYPE_FOR_COMPARISON",
+    private static String catalogFix(String operator, String code, String... operands) {
+        return OperatorCatalog.load().correctiveFix(operator, code,
                 java.util.List.of(operands)).orElseThrow();
     }
 
@@ -45,7 +45,7 @@ class RuleCheckOperandCorrectiveTest {
         var res = CliTestSupport.run("-m", model.toString(), "rule", "check",
                 "--field", "/Order/OrderDate", "--condition", "[/Order/OrderDate] < \"2024-12-31\"", "--code", "X");
         String fix = fixFor(res.out(), "MVK_INVALID_TYPE_FOR_COMPARISON");
-        assertEquals(catalogFix("date", "string-literal"), fix,
+        assertEquals(catalogFix("LessThan", "MVK_INVALID_TYPE_FOR_COMPARISON", "date", "string-literal"), fix,
                 () -> "date-vs-ISO-literal gets the date-literal corrective, not the union: " + res.out());
     }
 
@@ -56,7 +56,54 @@ class RuleCheckOperandCorrectiveTest {
                 "--field", "/Order/CustomerName",
                 "--condition", "[/Order/CustomerName] < [/Order/ProductCode]", "--code", "X");
         String fix = fixFor(res.out(), "MVK_INVALID_TYPE_FOR_COMPARISON");
-        assertEquals(catalogFix("string", "string"), fix,
+        assertEquals(catalogFix("LessThan", "MVK_INVALID_TYPE_FOR_COMPARISON", "string", "string"), fix,
                 () -> "string-vs-string gets the string corrective, not the union: " + res.out());
+    }
+
+    @Test
+    void patternRightFieldGetsTheStringLiteralCorrective(@TempDir Path dir) throws Exception {
+        Path model = CliTestSupport.orderRuled(dir);
+        var res = CliTestSupport.run("-m", model.toString(), "rule", "check",
+                "--field", "/Order/CustomerName",
+                "--condition", "[/Order/CustomerName] PatternMatched [/Order/ProductCode]", "--code", "X");
+        assertEquals(catalogFix("PatternMatched", "MVK_MISSING_CONST_IN_PATTERN_COMP", "string", "string"),
+                fixFor(res.out(), "MVK_MISSING_CONST_IN_PATTERN_COMP"),
+                () -> "a field in the regex slot gets the quoted-regex corrective: " + res.out());
+    }
+
+    @Test
+    void patternRightNumberGetsTheStringLiteralCorrective(@TempDir Path dir) throws Exception {
+        Path model = CliTestSupport.orderRuled(dir);
+        var res = CliTestSupport.run("-m", model.toString(), "rule", "check",
+                "--field", "/Order/CustomerName",
+                "--condition", "[/Order/CustomerName] PatternMatched 1", "--code", "X");
+        assertEquals(catalogFix("PatternMatched", "MVK_INVALID_TYPE_FOR_PATTERN_COMPARISON",
+                        "string", "number-literal"),
+                fixFor(res.out(), "MVK_INVALID_TYPE_FOR_PATTERN_COMPARISON"),
+                () -> "a number in the regex slot gets the quoted-regex corrective: " + res.out());
+    }
+
+    @Test
+    void patternLeftNumberGetsTheStringFieldCorrective(@TempDir Path dir) throws Exception {
+        Path model = CliTestSupport.orderRuled(dir);
+        var res = CliTestSupport.run("-m", model.toString(), "rule", "check",
+                "--field", "/Order/Quantity",
+                "--condition", "[/Order/Quantity] PatternMatched \"A+\"", "--code", "X");
+        assertEquals(catalogFix("PatternMatched", "MVK_INVALID_TYPE_FOR_PATTERN_COMPARISON",
+                        "number", "string-literal"),
+                fixFor(res.out(), "MVK_INVALID_TYPE_FOR_PATTERN_COMPARISON"),
+                () -> "a number field on the left gets the String-field corrective: " + res.out());
+    }
+
+    @Test
+    void patternViolatedUsesTheSameOperandAwarePath(@TempDir Path dir) throws Exception {
+        Path model = CliTestSupport.orderRuled(dir);
+        var res = CliTestSupport.run("-m", model.toString(), "rule", "check",
+                "--field", "/Order/CustomerName",
+                "--condition", "[/Order/CustomerName] PatternViolated 1", "--code", "X");
+        assertEquals(catalogFix("PatternViolated", "MVK_INVALID_TYPE_FOR_PATTERN_COMPARISON",
+                        "string", "number-literal"),
+                fixFor(res.out(), "MVK_INVALID_TYPE_FOR_PATTERN_COMPARISON"),
+                () -> "PatternViolated must use the shared slot classifier: " + res.out());
     }
 }

@@ -30,7 +30,7 @@ import io.github.mbackschat.a12.dm.rulekit.validate.DiagnosticSource;
  * by contract — so historically the entry-level <em>union</em> fix (naming both remedies) was served. This
  * closes that gap at the CLI seam (the only module that depends on {@code :interpreter}): it tolerantly parses
  * the candidate's text with the kernel-free interpreter parser (which parses ill-typed text fine), classifies
- * the pinned comparison's operands against a {@link ModelIndex}, and serves the SAME operand-matched corrective
+ * the pinned comparison or pattern-comparison operands against a {@link ModelIndex}, and serves the SAME operand-matched corrective
  * the typed path would — so {@code MVK_INVALID_TYPE_FOR_COMPARISON} on a date-vs-ISO-literal gets the
  * date-literal corrective, never the string-vs-string one (the D1 incident).
  *
@@ -57,7 +57,7 @@ public final class TextConditionCorrective {
         PARSE_FAILED,
         /** The model index could not be built (an unresolved include, an unreadable model). */
         MODEL_INDEX_FAILED,
-        /** The text parsed and carried no comparison node, so there was nothing to pin. */
+        /** The text parsed and carried no comparison or pattern-comparison node, so there was nothing to pin. */
         NO_COMPARISON,
         /** Parsed with comparisons, but no unique candidate operator — the union fix IS the correct answer. */
         NO_UNIQUE_CANDIDATE
@@ -133,9 +133,9 @@ public final class TextConditionCorrective {
         if (conditionText == null || conditionText.isBlank() || diagnostics.isEmpty()) {
             return new Result(diagnostics, Outcome.NO_COMPARISON);
         }
-        Map<String, List<Cond.Cmp>> byOperator;
+        Map<String, List<OperandPair>> byOperator;
         try {
-            byOperator = comparisonsByOperator(conditionText, baseGroup);
+            byOperator = operandsByOperator(conditionText, baseGroup);
         } catch (RuntimeException parseFailure) {
             return new Result(diagnostics, Outcome.PARSE_FAILED);
         }
@@ -147,7 +147,7 @@ public final class TextConditionCorrective {
                 upgraded.equals(diagnostics) ? Outcome.NO_UNIQUE_CANDIDATE : Outcome.UPGRADED);
     }
 
-    private Diagnostic upgrade(Diagnostic d, Map<String, List<Cond.Cmp>> byOperator, ModelIndex index) {
+    private Diagnostic upgrade(Diagnostic d, Map<String, List<OperandPair>> byOperator, ModelIndex index) {
         if (d.source() != DiagnosticSource.KERNEL || d.code().isEmpty()) {
             return d;
         }
@@ -158,7 +158,7 @@ public final class TextConditionCorrective {
         if (pinned.size() != 1) {
             return d;   // no unique candidate operator in the text → keep the union
         }
-        List<Cond.Cmp> nodes = byOperator.get(pinned.get(0));
+        List<OperandPair> nodes = byOperator.get(pinned.get(0));
         if (nodes.size() != 1) {
             return d;   // the operator appears more than once → ambiguous → keep the union
         }
@@ -192,17 +192,18 @@ public final class TextConditionCorrective {
      * defect {@code TextCorrectiveOutcomeTest} pins. The single caller classifies the throw as
      * {@link Outcome#PARSE_FAILED} and still returns the diagnostics untouched.
      */
-    private Map<String, List<Cond.Cmp>> comparisonsByOperator(String conditionText, String baseGroup) {
+    private Map<String, List<OperandPair>> operandsByOperator(String conditionText, String baseGroup) {
         Cond ast = ParserKt.parseCondition(conditionText, baseGroup, ParserKt.getDEFAULT_RESOLVER());
-        Map<String, List<Cond.Cmp>> byOperator = new LinkedHashMap<>();
+        Map<String, List<OperandPair>> byOperator = new LinkedHashMap<>();
         collect(ast, byOperator);
         return byOperator;
     }
 
-    private void collect(Cond c, Map<String, List<Cond.Cmp>> out) {
+    private void collect(Cond c, Map<String, List<OperandPair>> out) {
         switch (c) {
             case Cond.Cmp cmp -> {
-                out.computeIfAbsent(operatorId(cmp.getOp()), k -> new ArrayList<>()).add(cmp);
+                out.computeIfAbsent(operatorId(cmp.getOp()), k -> new ArrayList<>())
+                        .add(new OperandPair(cmp.getLeft(), cmp.getRight()));
                 // …and into its OPERANDS: a comparison can be nested inside one, via a starred operand's filter.
                 collectIn(cmp.getLeft(), out);
                 collectIn(cmp.getRight(), out);
@@ -210,7 +211,13 @@ public final class TextConditionCorrective {
             case Cond.And a -> { collect(a.getLeft(), out); collect(a.getRight(), out); }
             case Cond.Or o -> { collect(o.getLeft(), out); collect(o.getRight(), out); }
             case Cond.Not n -> collect(n.getC(), out);
-            case Cond.Pattern p -> { collectIn(p.getValue(), out); collectIn(p.getPattern(), out); }
+            case Cond.Pattern p -> {
+                String operator = p.getExpectMatch() ? "PatternMatched" : "PatternViolated";
+                out.computeIfAbsent(operator, k -> new ArrayList<>())
+                        .add(new OperandPair(p.getValue(), p.getPattern()));
+                collectIn(p.getValue(), out);
+                collectIn(p.getPattern(), out);
+            }
             case Cond.Tolerance t -> { collectIn(t.getLeft(), out); collectIn(t.getRight(), out); }
             case Cond.Pred pred -> pred.getArgs().forEach(arg -> collectIn(arg, out));
             case Cond.ValueListQuant q -> {
@@ -233,7 +240,7 @@ public final class TextConditionCorrective {
      * kernel refused. Counting them makes the case correctly ambiguous, and an ambiguous case keeps the hedged
      * union fix — a defect turned back into an honest "I don't know".
      */
-    private void collectIn(Expr e, Map<String, List<Cond.Cmp>> out) {
+    private void collectIn(Expr e, Map<String, List<OperandPair>> out) {
         // NOTE the absence of `default`. Both switches here used to have one, and that is the mechanism behind three
         // successive misses: `Cond` and `Expr` are SEALED, so an exhaustive switch would have named every variant the
         // walk was skipping — but `default -> { }` silences exactly that check and turns each omission into a comment
@@ -261,11 +268,13 @@ public final class TextConditionCorrective {
 
     /** The comparison's operand-class tokens, or empty when either operand is outside the vocabulary. Mirrors
      *  {@link io.github.mbackschat.a12.dm.rulekit.lint.SpanResolver}'s classification, off the interpreter AST. */
-    private static List<String> classify(Cond.Cmp cmp, ModelIndex index) {
-        String left = operandToken(cmp.getLeft(), index);
-        String right = operandToken(cmp.getRight(), index);
+    private static List<String> classify(OperandPair operands, ModelIndex index) {
+        String left = operandToken(operands.left(), index);
+        String right = operandToken(operands.right(), index);
         return left == null || right == null ? List.of() : List.of(left, right);
     }
+
+    private record OperandPair(Expr left, Expr right) { }
 
     private static String operandToken(Expr operand, ModelIndex index) {
         return switch (operand) {

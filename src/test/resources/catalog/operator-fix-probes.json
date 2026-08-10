@@ -279,6 +279,42 @@
     },
     {
       "locator": {
+        "operator": "PatternMatched",
+        "source": "CORRECTIVE",
+        "ordinal": 0
+      },
+      "digest": "sha256:c666223f7bfaee93e812a6caed467c34a06724fcf1e8e27bd32ed366c3779db4",
+      "fixture": "ORDER",
+      "group": "/Order",
+      "field": "../CustomerName",
+      "dsl": "FieldFilled(CustomerName) And [CustomerName] PatternMatched \"A+\""
+    },
+    {
+      "locator": {
+        "operator": "PatternMatched",
+        "source": "CORRECTIVE",
+        "ordinal": 1
+      },
+      "digest": "sha256:4366fd82878381db6eca471b97cb748d3171b384cb4b716a033361731430af56",
+      "fixture": "ORDER",
+      "group": "/Order",
+      "field": "../CustomerName",
+      "dsl": "FieldFilled(CustomerName) And [CustomerName] PatternMatched \"A+\""
+    },
+    {
+      "locator": {
+        "operator": "PatternMatched",
+        "source": "CORRECTIVE",
+        "ordinal": 2
+      },
+      "digest": "sha256:b6671d649bee7d7ed2d1f2b7a1f792303423d27395c0c93f44f6e6a6176003f2",
+      "fixture": "ORDER",
+      "group": "/Order",
+      "field": "../CustomerName",
+      "dsl": "FieldFilled(CustomerName) And [CustomerName] PatternMatched \"A+\""
+    },
+    {
+      "locator": {
         "operator": "PatternViolated",
         "source": "INVALID_EXAMPLE",
         "ordinal": 0
@@ -288,6 +324,42 @@
       "group": "/Order",
       "field": "../CustomerName",
       "dsl": "FieldFilled(CustomerName) And [CustomerName] PatternViolated \"[^A-Za-z]+\""
+    },
+    {
+      "locator": {
+        "operator": "PatternViolated",
+        "source": "CORRECTIVE",
+        "ordinal": 0
+      },
+      "digest": "sha256:c666223f7bfaee93e812a6caed467c34a06724fcf1e8e27bd32ed366c3779db4",
+      "fixture": "ORDER",
+      "group": "/Order",
+      "field": "../CustomerName",
+      "dsl": "FieldFilled(CustomerName) And [CustomerName] PatternViolated \"A+\""
+    },
+    {
+      "locator": {
+        "operator": "PatternViolated",
+        "source": "CORRECTIVE",
+        "ordinal": 1
+      },
+      "digest": "sha256:4366fd82878381db6eca471b97cb748d3171b384cb4b716a033361731430af56",
+      "fixture": "ORDER",
+      "group": "/Order",
+      "field": "../CustomerName",
+      "dsl": "FieldFilled(CustomerName) And [CustomerName] PatternViolated \"A+\""
+    },
+    {
+      "locator": {
+        "operator": "PatternViolated",
+        "source": "CORRECTIVE",
+        "ordinal": 2
+      },
+      "digest": "sha256:b6671d649bee7d7ed2d1f2b7a1f792303423d27395c0c93f44f6e6a6176003f2",
+      "fixture": "ORDER",
+      "group": "/Order",
+      "field": "../CustomerName",
+      "dsl": "FieldFilled(CustomerName) And [CustomerName] PatternViolated \"A+\""
     },
     {
       "locator": {
@@ -403,7 +475,7 @@
         "source": "CORRECTIVE",
         "ordinal": 1
       },
-      "digest": "sha256:570991b946e0be1fcd3d944e8f55226295e6032c90babb7924f3f50af95b83d7",
+      "digest": "sha256:0d567c95423efa430c7d4780260093628d0c54cd517716ad5602e6ee5da4a4bf",
       "fixture": "ORDER",
       "group": "/Order",
       "field": "../CustomerName",

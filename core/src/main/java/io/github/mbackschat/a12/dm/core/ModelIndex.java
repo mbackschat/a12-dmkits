@@ -136,6 +136,12 @@ public final class ModelIndex {
         return pattern.isEmpty() ? Optional.empty() : Optional.of(pattern);
     }
 
+    /** Whether the string field declares {@code noValueValidation}; false for other kinds and an ordinary string. */
+    public boolean stringNoValueValidation(String fieldPath) {
+        JsonNode string = stringTypeOf(fieldPath);
+        return string != null && string.path("noValueValidation").asBoolean(false);
+    }
+
     /**
      * The allowed stored values of the enumeration field at {@code fieldPath} (the enum domain). Enums compare
      * by stored value, never display text (§5b), so these are the values to compare to.

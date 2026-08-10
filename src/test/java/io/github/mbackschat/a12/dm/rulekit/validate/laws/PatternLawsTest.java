@@ -20,6 +20,28 @@ class PatternLawsTest {
     }
 
     @Test
+    void aNumericRightOperandIsRejectedAsTheWrongPatternComparisonType() {
+        KernelLaws.rejects("/Subscription/Billing", "../InvoiceEmail",
+                "[InvoiceEmail] PatternMatched 1", "MVK_INVALID_TYPE_FOR_PATTERN_COMPARISON");
+    }
+
+    @Test
+    void aNumberFieldOnTheLeftIsRejectedAsTheWrongPatternComparisonType() {
+        KernelLaws.rejectsOrder("/Order", "../Quantity",
+                "[Quantity] PatternMatched \"A+\"", "MVK_INVALID_TYPE_FOR_PATTERN_COMPARISON");
+    }
+
+    @Test
+    void patternViolatedHasTheSameThreeSlotRejections() {
+        KernelLaws.rejects("/Subscription/Billing", "../InvoiceEmail",
+                "[InvoiceEmail] PatternViolated [InvoiceEmail]", "MVK_MISSING_CONST_IN_PATTERN_COMP");
+        KernelLaws.rejects("/Subscription/Billing", "../InvoiceEmail",
+                "[InvoiceEmail] PatternViolated 1", "MVK_INVALID_TYPE_FOR_PATTERN_COMPARISON");
+        KernelLaws.rejectsOrder("/Order", "../Quantity",
+                "[Quantity] PatternViolated \"A+\"", "MVK_INVALID_TYPE_FOR_PATTERN_COMPARISON");
+    }
+
+    @Test
     void stringLiteralsEscapeByQuoteDoubling() {
         // StringLiteral : '"' ( '""' | ~["] )* '"' — embedded quotes are DOUBLED...
         KernelLaws.accepts("/Subscription/Billing", "../InvoiceEmail",

@@ -29,4 +29,16 @@ class RootGroupCountLawsTest {
         KernelLaws.acceptsOrder("/Order", "../CustomerName",
                 "FieldFilled(CustomerName) And NumberOfFilledGroups(Items*) < 2");
     }
+
+    @Test
+    void aStarredRepeatableGroupCanBeMixedWithAFixedGroup() {
+        KernelLaws.acceptsOrder("/Order", "../CustomerName",
+                "FieldFilled(CustomerName) And NumberOfFilledGroups(Items*, ShippingAddress) < 2");
+    }
+
+    @Test
+    void starringANonRepeatableRootGroupIsRejectedAsAnInvalidWildcard() {
+        KernelLaws.rejectsOrder("/Order", "../CustomerName",
+                "FieldFilled(CustomerName) And NumberOfFilledGroups(/Order*) < 2", "MVK_INVALID_WILDCARD");
+    }
 }

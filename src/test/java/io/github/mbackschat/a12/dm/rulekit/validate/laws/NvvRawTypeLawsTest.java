@@ -1,6 +1,7 @@
 package io.github.mbackschat.a12.dm.rulekit.validate.laws;
 
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.List;
@@ -46,6 +47,45 @@ class NvvRawTypeLawsTest {
         KernelLaws.acceptsModel(CLAIM, "/Claim", "../IncidentNote", "-1 < Length(IncidentNote)");
     }
 
+    @Test
+    void theAcceptedConstantDomainIncludesBothSignedIntEndpoints() {
+        KernelLaws.acceptsModel(CLAIM, "/Claim", "../IncidentNote", "Length(IncidentNote) > -2147483648");
+        KernelLaws.acceptsModel(CLAIM, "/Claim", "../IncidentNote", "2147483647 < Length(IncidentNote)");
+    }
+
+    @Test
+    void decimalPointConstantsAreRejectedInBothStrictOrientations() {
+        for (String condition : List.of(
+                "Length(IncidentNote) > 5.0",
+                "Length(IncidentNote) > 0.5",
+                "5.0 < Length(IncidentNote)",
+                "0.5 < Length(IncidentNote)")) {
+            rejectsWithExactCode(condition, "MVK_INTERNAL_ERROR");
+        }
+    }
+
+    @Test
+    void oneStepSignedIntOverflowsAreRejected() {
+        rejectsWithExactCode("Length(IncidentNote) > 2147483648", "MVK_INTERNAL_ERROR");
+        rejectsWithExactCode("-2147483649 < Length(IncidentNote)", "MVK_INTERNAL_ERROR");
+    }
+
+    @Test
+    void strictRawLengthConstantFailuresGetAFocusedCorrective() {
+        for (String condition : List.of(
+                "Length(IncidentNote) > 5.0",
+                "2147483648 < Length(IncidentNote)")) {
+            ValidationResult result = KernelLaws.checkModel(CLAIM, "/Claim", "../IncidentNote", condition);
+            String fix = result.diagnostics().stream()
+                    .filter(d -> d.code().filter("MVK_INTERNAL_ERROR"::equals).isPresent())
+                    .flatMap(d -> d.fix().stream())
+                    .findFirst()
+                    .orElse("");
+            assertTrue(fix.contains("decimal-point-free signed-32-bit integer constant"),
+                    () -> "raw Length needs its focused integer-domain corrective: " + result.diagnostics());
+        }
+    }
+
     // ---- presence checks are unrestricted ----
 
     @Test
@@ -73,6 +113,19 @@ class NvvRawTypeLawsTest {
         // the allowed-shape switch is GT / mirrored LT ONLY — `>=` is not a meta-length declaration
         KernelLaws.rejectsModel(CLAIM, "/Claim", "../IncidentNote", "Length(IncidentNote) >= 5",
                 "MVK_INVALID_LENGTH_OF_RAW_TYPE");
+    }
+
+
+    @Test
+    void shapeValidationPreemptsTheConstantDomain() {
+        rejectsWithExactCode("Length(IncidentNote) >= 5.0", "MVK_INVALID_LENGTH_OF_RAW_TYPE");
+        rejectsWithExactCode("Length(IncidentNote) > 5.0 And FieldFilled(Other)",
+                "MVK_INVALID_LENGTH_OF_RAW_TYPE");
+    }
+
+    @Test
+    void ordinaryStringLengthDoesNotUseTheRawConstantRestriction() {
+        KernelLaws.acceptsModel(CLAIM, "/Claim", "../Other", "Length(Other) >= 5.0");
     }
 
     @Test
@@ -106,5 +159,13 @@ class NvvRawTypeLawsTest {
         assertFalse(r.ok(), () -> "expected rejection of computation '" + operation + "' (precond " + precondition + ")");
         assertTrue(r.diagnostics().stream().anyMatch(p -> p.code().filter(code::equals).isPresent()),
                 () -> "expected " + code + ", got: " + r.diagnostics());
+    }
+
+
+    private static void rejectsWithExactCode(String condition, String code) {
+        ValidationResult result = KernelLaws.checkModel(CLAIM, "/Claim", "../IncidentNote", condition);
+        assertFalse(result.ok(), () -> "expected rejection of '" + condition + "'");
+        List<String> codes = result.diagnostics().stream().flatMap(d -> d.code().stream()).toList();
+        assertEquals(List.of(code), codes, () -> "unexpected diagnostics for '" + condition + "': " + result.diagnostics());
     }
 }

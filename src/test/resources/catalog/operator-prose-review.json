@@ -2282,12 +2282,18 @@
       "operator": "Length",
       "lane": "GOTCHA",
       "ordinal": 3,
-      "digest": "sha256:5233cf1e98ddd8fe73c0f22f80d1bebba4450b54baaf450e56e0aa4a1798b399",
+      "digest": "sha256:0d072f86ec78be07cfdabd7bd4e5e749d8f8dc2e243b576068948c0245820b87",
       "classifications": [
         "REJECTION",
+        "ADMISSION",
         "RUNTIME"
       ],
       "evidence": [
+        {
+          "classification": "ADMISSION",
+          "type": "KERNEL_LAW",
+          "id": "NvvRawTypeLawsTest#theAcceptedConstantDomainIncludesBothSignedIntEndpoints"
+        },
         {
           "classification": "RUNTIME",
           "type": "TEST",
@@ -3352,12 +3358,22 @@
       "operator": "NumberOfFilledGroups",
       "lane": "CONSTRAINT",
       "ordinal": 0,
-      "digest": "sha256:ffadbde4d70d1c01bd373c2b7a016f1fbc027aad2524a2e43e99c18b3636ad77",
+      "digest": "sha256:7e2d5c1d5f2ac66323c10ba466f3981d944db9467d93dfdd71a11f2e0386391c",
       "classifications": [
         "REJECTION",
+        "ADMISSION",
         "RUNTIME"
       ],
       "evidence": [
+        {
+          "classification": "ADMISSION",
+          "type": "CLAIM_PROBE",
+          "id": "NumberOfFilledGroups.mixed-starred-fixed",
+          "side": "TRIGGER",
+          "expected": {
+            "verdict": "ACCEPTED"
+          }
+        },
         {
           "classification": "RUNTIME",
           "type": "TEST",
@@ -3369,12 +3385,22 @@
       "operator": "NumberOfFilledGroups",
       "lane": "GOTCHA",
       "ordinal": 0,
-      "digest": "sha256:8c07ff965a9cb2d9fcb57d175fb4e5904bee3902ea80d5ffb0d8cdb14ccbbaec",
+      "digest": "sha256:34077fc79602e3fca985484dbd52fdbc047b0da84b6824c8acf6f87514fedd6b",
       "classifications": [
         "REJECTION",
+        "ADMISSION",
         "RUNTIME"
       ],
       "evidence": [
+        {
+          "classification": "ADMISSION",
+          "type": "CLAIM_PROBE",
+          "id": "NumberOfFilledGroups.mixed-starred-fixed",
+          "side": "TRIGGER",
+          "expected": {
+            "verdict": "ACCEPTED"
+          }
+        },
         {
           "classification": "RUNTIME",
           "type": "TEST",
@@ -3768,7 +3794,7 @@
       "operator": "FieldValuesNotUnique",
       "lane": "CONSTRAINT",
       "ordinal": 3,
-      "digest": "sha256:08a94eb53bb4a16bb4f5b5f0065b48e46158ab3fd188efb98d5209774bfda20f",
+      "digest": "sha256:a563aae70397e98cc2dc12142964b05bbd48a04e28ac4c7c4c34c1ebf0d9db5c",
       "classifications": [
         "REJECTION",
         "ADMISSION"
@@ -8353,6 +8379,27 @@
       ]
     },
     {
+      "id": "literal.Length.gotcha3.MVK_INTERNAL_ERROR",
+      "operator": "Length",
+      "kind": "CONDITION",
+      "units": [
+        {
+          "lane": "GOTCHA",
+          "ordinal": 3
+        }
+      ],
+      "expected": {
+        "verdict": "REJECTED",
+        "code": "MVK_INTERNAL_ERROR"
+      },
+      "evidence": [
+        {
+          "type": "CLAIM_PROBE",
+          "id": "Length.raw-constant-integer-domain"
+        }
+      ]
+    },
+    {
       "id": "literal.Arithmetic.constraint2.MVK_TOO_MANY_DIV_FOR_CALC",
       "operator": "Arithmetic",
       "kind": "CONDITION",
@@ -8580,6 +8627,27 @@
       ]
     },
     {
+      "id": "literal.NumberOfFilledGroups.constraint0.MVK_INVALID_WILDCARD",
+      "operator": "NumberOfFilledGroups",
+      "kind": "CONDITION",
+      "units": [
+        {
+          "lane": "CONSTRAINT",
+          "ordinal": 0
+        }
+      ],
+      "expected": {
+        "verdict": "REJECTED",
+        "code": "MVK_INVALID_WILDCARD"
+      },
+      "evidence": [
+        {
+          "type": "CLAIM_PROBE",
+          "id": "NumberOfFilledGroups.nonrepeatable-wildcard"
+        }
+      ]
+    },
+    {
       "id": "literal.NumberOfFilledGroups.gotcha0.MVK_NO_FIELDS_ALLOWED",
       "operator": "NumberOfFilledGroups",
       "kind": "CONDITION",
@@ -8596,6 +8664,27 @@
       "evidence": [
         {
           "type": "INVALID_EXAMPLE"
+        }
+      ]
+    },
+    {
+      "id": "literal.NumberOfFilledGroups.gotcha0.MVK_INVALID_WILDCARD",
+      "operator": "NumberOfFilledGroups",
+      "kind": "CONDITION",
+      "units": [
+        {
+          "lane": "GOTCHA",
+          "ordinal": 0
+        }
+      ],
+      "expected": {
+        "verdict": "REJECTED",
+        "code": "MVK_INVALID_WILDCARD"
+      },
+      "evidence": [
+        {
+          "type": "CLAIM_PROBE",
+          "id": "NumberOfFilledGroups.nonrepeatable-wildcard"
         }
       ]
     },

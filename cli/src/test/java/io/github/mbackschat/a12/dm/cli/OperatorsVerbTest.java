@@ -101,6 +101,45 @@ class OperatorsVerbTest {
     }
 
     @Test
+    void servesTheCorrectedNumberOfFilledGroupsOperandForms() throws Exception {
+        JsonNode operator = MAPPER.readTree(CliTestSupport.run("operators", "NumberOfFilledGroups").out());
+        String authoring = operator.path("constraints").toString() + operator.path("gotchas");
+
+        assertTrue(authoring.contains("mixed") && authoring.contains("Items*, ShippingAddress"),
+                () -> "the mixed starred/fixed form must be discoverable: " + operator);
+        assertTrue(authoring.contains("repeatable") && authoring.contains("MVK_INVALID_WILDCARD"),
+                () -> "starring a non-repeatable group must be refused explicitly: " + operator);
+    }
+
+    @Test
+    void servesConfirmAsAFieldValuesNotUniqueKindRefusal() throws Exception {
+        JsonNode operator = MAPPER.readTree(CliTestSupport.run("operators", "FieldValuesNotUnique").out());
+        assertTrue(operator.path("constraints").toString().contains("Confirm"),
+                () -> "the kind constraint must include Confirm: " + operator);
+        assertTrue(operator.path("correctives").toString().contains("Confirm"),
+                () -> "the corrective must include Confirm: " + operator);
+    }
+
+    @Test
+    void servesTheExactRawLengthConstantDomain() throws Exception {
+        JsonNode operator = MAPPER.readTree(CliTestSupport.run("operators", "Length").out());
+        assertTrue(operator.path("gotchas").toString()
+                        .contains("decimal-point-free signed-32-bit integer constant"),
+                () -> "the raw Length integer domain must be explicit: " + operator);
+    }
+
+    @Test
+    void servesPatternSlotCorrectivesForBothOperators() throws Exception {
+        for (String id : java.util.List.of("PatternMatched", "PatternViolated")) {
+            JsonNode correctives = MAPPER.readTree(CliTestSupport.run("operators", id).out()).path("correctives");
+            assertTrue(correctives.toString().contains("MVK_MISSING_CONST_IN_PATTERN_COMP"),
+                    () -> id + " must correct a field in the regex slot: " + correctives);
+            assertTrue(correctives.toString().contains("MVK_INVALID_TYPE_FOR_PATTERN_COMPARISON"),
+                    () -> id + " must correct wrong operand types: " + correctives);
+        }
+    }
+
+    @Test
     void unknownOperatorFails() {
         CliTestSupport.Result res = CliTestSupport.run("operators", "NoSuchOp");
         assertEquals(2, res.code());

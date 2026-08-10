@@ -33,46 +33,69 @@ class TextConditionCorrectiveTest {
                 new Diagnostic.Where("/Order/R", Optional.empty()), Optional.of(UNION), Optional.empty());
     }
 
-    private String fixFor(String condition) {
-        List<Diagnostic> out = corrective.enrich(List.of(union("MVK_INVALID_TYPE_FOR_COMPARISON")),
+    private String fixFor(String code, String condition) {
+        List<Diagnostic> out = corrective.enrich(List.of(union(code)),
                 condition, "/Order", index);
         return out.get(0).fix().orElse("");
     }
 
-    private static String catalogFix(String... operands) {
-        return OperatorCatalog.load().correctiveFix("LessThan", "MVK_INVALID_TYPE_FOR_COMPARISON",
+    private static String catalogFix(String operator, String code, String... operands) {
+        return OperatorCatalog.load().correctiveFix(operator, code,
                 List.of(operands)).orElseThrow();
     }
 
     @Test
     void upgradesDateVsIsoLiteralToTheDateCorrective() {
-        assertEquals(catalogFix("date", "string-literal"),
-                fixFor("[/Order/OrderDate] < \"2024-12-31\""),
+        assertEquals(catalogFix("LessThan", "MVK_INVALID_TYPE_FOR_COMPARISON", "date", "string-literal"),
+                fixFor("MVK_INVALID_TYPE_FOR_COMPARISON", "[/Order/OrderDate] < \"2024-12-31\""),
                 "a classifiable date-vs-ISO-literal is upgraded off the union");
     }
 
     @Test
     void upgradesStringVsStringToTheStringCorrective() {
-        assertEquals(catalogFix("string", "string"),
-                fixFor("[/Order/CustomerName] < [/Order/ProductCode]"));
+        assertEquals(catalogFix("LessThan", "MVK_INVALID_TYPE_FOR_COMPARISON", "string", "string"),
+                fixFor("MVK_INVALID_TYPE_FOR_COMPARISON", "[/Order/CustomerName] < [/Order/ProductCode]"));
     }
 
     @Test
     void unparseableTextKeepsTheUnion() {
         // a syntactically broken candidate — the tolerant parse throws → diagnostics unchanged
-        assertEquals(UNION, fixFor("[/Order/OrderDate] < < ((("));
+        assertEquals(UNION, fixFor("MVK_INVALID_TYPE_FOR_COMPARISON", "[/Order/OrderDate] < < ((("));
     }
 
     @Test
     void anAbsentFieldKeepsTheUnion() {
         // the field isn't in the model → the operand doesn't classify → union kept
-        assertEquals(UNION, fixFor("[/Order/NoSuchField] < \"2024-12-31\""));
+        assertEquals(UNION, fixFor("MVK_INVALID_TYPE_FOR_COMPARISON", "[/Order/NoSuchField] < \"2024-12-31\""));
     }
 
     @Test
     void ambiguousCandidateOperatorsKeepTheUnion() {
         // two candidate operators (< and >) both produce the code → no unique pin → union kept
-        assertEquals(UNION, fixFor("[/Order/OrderDate] < \"a\" Or [/Order/DeliveryDate] > \"b\""));
+        assertEquals(UNION, fixFor("MVK_INVALID_TYPE_FOR_COMPARISON",
+                "[/Order/OrderDate] < \"a\" Or [/Order/DeliveryDate] > \"b\""));
+    }
+
+
+    @Test
+    void upgradesPatternRightFieldToTheStringLiteralCorrective() {
+        assertEquals(catalogFix("PatternMatched", "MVK_MISSING_CONST_IN_PATTERN_COMP", "string", "string"),
+                fixFor("MVK_MISSING_CONST_IN_PATTERN_COMP",
+                        "[/Order/CustomerName] PatternMatched [/Order/ProductCode]"));
+    }
+
+    @Test
+    void upgradesPatternRightNumberToTheStringLiteralCorrective() {
+        assertEquals(catalogFix("PatternMatched", "MVK_INVALID_TYPE_FOR_PATTERN_COMPARISON",
+                        "string", "number-literal"),
+                fixFor("MVK_INVALID_TYPE_FOR_PATTERN_COMPARISON", "[/Order/CustomerName] PatternMatched 1"));
+    }
+
+    @Test
+    void upgradesPatternLeftNumberToTheStringFieldCorrective() {
+        assertEquals(catalogFix("PatternViolated", "MVK_INVALID_TYPE_FOR_PATTERN_COMPARISON",
+                        "number", "string-literal"),
+                fixFor("MVK_INVALID_TYPE_FOR_PATTERN_COMPARISON", "[/Order/Quantity] PatternViolated \"A+\""));
     }
 
     @Test

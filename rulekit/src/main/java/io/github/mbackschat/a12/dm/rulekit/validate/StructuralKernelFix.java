@@ -196,8 +196,9 @@ public final class StructuralKernelFix {
                             + "max-length declaration, not an evaluated rule.")),
             Map.entry("MVK_INVALID_LENGTH_OF_RAW_TYPE", new Hint(
                     "Length over a noValueValidation (raw-type) field is allowed ONLY as the WHOLE rule condition "
-                            + "`Length(f) > <constant>` (or the mirrored `<constant> < Length(f)`) — no And/Or around "
-                            + "it, strict > only (no >=, ==, <=), and never inside a computation. Know what you author: "
+                            + "`Length(f) > <constant>` (or the mirrored `<constant> < Length(f)`), where the constant "
+                            + "is a decimal-point-free signed-32-bit integer. Use no And/Or around it, strict > only "
+                            + "(no >=, ==, <=), and never inside a computation. Know what you author: "
                             + "that one shape is a MAX-LENGTH DECLARATION the kernel lifts into the field's metadata and "
                             + "ELIMINATES as a rule — it never fires at runtime, so do not expect a validation message "
                             + "from it.",
