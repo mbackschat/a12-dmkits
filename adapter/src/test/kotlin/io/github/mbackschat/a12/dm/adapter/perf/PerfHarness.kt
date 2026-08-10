@@ -861,6 +861,26 @@ object PerfHarness {
 
     /** Time the INTERPRETER only at scale [n] (profile/scaling use — no kernel, so high N stays cheap). */
     fun timeInterpreter(scenario: PerfScenario, n: Int, warmup: Int, iters: Int): Stats {
+        val inst = preparedInterpreterInstance(scenario, n)
+        return measure(warmup, iters) { inst.run() }
+    }
+
+    /**
+     * The same work, measured as CURRENT-THREAD CPU TIME, for the sub-quadratic growth gates.
+     *
+     * A growth floor asserts how the algorithm's own work scales, not how long a user waits, so time in which
+     * a sibling Gradle test fork preempts this JVM is noise that lands straight in the ratio. It has tripped
+     * gates twice: `CharsetPerfTest` in 2026-08-03 (fixed by moving to this clock) and the multi-star gate on
+     * hosted runners, where the SAME commit passed one night and failed the next two. Cross-engine throughput
+     * and user-facing latency stay on [measure] — [timeInterpreter] — by the same rule.
+     */
+    fun timeInterpreterCpu(scenario: PerfScenario, n: Int, warmup: Int, iters: Int): Stats {
+        val inst = preparedInterpreterInstance(scenario, n)
+        return measureCurrentThreadCpu(warmup, iters) { inst.run() }
+    }
+
+    /** Preflight, build and prove eligibility, all outside any clock the callers above start. */
+    private fun preparedInterpreterInstance(scenario: PerfScenario, n: Int): RunInstance {
         preflight(scenario, n)
         val engine = InterpreterPerfEngine.build(scenario)
         val inst = engine.instance(n)
@@ -873,7 +893,7 @@ object PerfHarness {
                 "${scenario.name} (N=$n, variant=0): refusing to time — ${e.message}", e)
         }
         requireEligible(scenario, n, 0, outcome)
-        return measure(warmup, iters) { inst.run() }
+        return inst
     }
 
     /** Median PER-EVAL ms over [timedLoops] loops (each evaluating every instance once) after [warmupLoops]. */

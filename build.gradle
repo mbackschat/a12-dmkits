@@ -161,6 +161,7 @@ tasks.register('leakGuardTest', Test) {
     outputs.cacheIf { false }
     filter {
         includeTestsMatching 'io.github.mbackschat.a12.dm.PrivateMarkerLeakGuardTest'
+        includeTestsMatching 'io.github.mbackschat.a12.dm.TrackedOutputGuardTest'
     }
 }
 

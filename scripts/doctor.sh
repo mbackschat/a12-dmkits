@@ -91,6 +91,16 @@ report_home "the machine-default home" "$HOME/.gradle"
 [[ "$(cd "$home" 2>/dev/null && pwd)" != "$(cd "$HOME/.gradle" 2>/dev/null && pwd)" ]] \
     && report_home "the home this build would use" "$home"
 
+# 3b — the staging hook. Ignored files can still be force-added, so .gitignore is not the defence here.
+hooks_path="$(git -C "$ROOT" config --get core.hooksPath || true)"
+if [[ "$hooks_path" == ".githooks" ]]; then
+    pass "the pre-commit hook is wired (core.hooksPath=.githooks)"
+else
+    warn "the pre-commit hook is not wired in this clone"
+    note "run: git -C \"$ROOT\" config core.hooksPath .githooks"
+    note "it refuses staged build output and logs; TrackedOutputGuardTest still catches them in CI"
+fi
+
 # 4 — the kernel, which no public repository serves.
 printf '\nKernel\n'
 if [[ -d "$HOME/.m2/repository/com/mgmtp" ]]; then

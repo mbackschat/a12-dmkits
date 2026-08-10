@@ -1,0 +1,33 @@
+#!/usr/bin/env bash
+# Refuses to stage build output or log files.
+#
+# .gitignore does NOT cover this: it is consulted only for UNTRACKED paths, so `git add -f` walks straight
+# past it and, once a path is tracked, the ignore rule is never consulted again. That is exactly how 72
+# `build/*-red.log` files entered this repository across ~20 commits on 2026-07-26/27 and published 591 copies
+# of an absolute home path. This hook is the early, local half of the defence; the authoritative half is
+# `TrackedOutputGuardTest`, which runs in CI where a hook cannot be assumed.
+#
+# Wire it once per clone:  git config core.hooksPath .githooks   (scripts/doctor.sh checks that you did)
+set -euo pipefail
+
+staged="$(git diff --cached --name-only --diff-filter=ACMR)"
+[ -z "$staged" ] && exit 0
+
+offenders="$(printf '%s\n' "$staged" | grep -E '(^|/)build/|\.log$' || true)"
+[ -z "$offenders" ] && exit 0
+
+printf '\nRefusing to commit build output or log files:\n\n' >&2
+printf '  %s\n' $offenders >&2
+cat >&2 <<'MESSAGE'
+
+These are ignored by .gitignore, so they can only have been staged with `git add -f`.
+Build output is reproducible and logs carry absolute machine paths; neither belongs in history.
+
+  Unstage:  git restore --staged <path>
+  Evidence you want to keep: quote the failing assertion in the owning doc, not the raw log
+                             (docs/TESTING-SPEC.md, "Red-step evidence belongs in the owning doc")
+
+If you are certain, `git commit --no-verify` bypasses this hook — TrackedOutputGuardTest will still fail
+the build, which is deliberate: a local bypass must not be able to make the repository wrong.
+MESSAGE
+exit 1
