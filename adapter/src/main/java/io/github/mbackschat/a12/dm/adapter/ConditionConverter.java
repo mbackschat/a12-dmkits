@@ -170,15 +170,37 @@ final class ConditionConverter {
      * catches by comparing this source count to the markers actually rendered after conversion.
      */
     int countOuterRefs(ICondition root) {
+        return countEntities(root, IEntityId::isOuter);
+    }
+
+    /**
+     * Count the enum-category projections ({@code [field -> Cat]}) the source AST carries — the category peer
+     * of {@link #countOuterRefs} and the input to {@link #verifyCategoryPreserved}. Takes any parse-tree node,
+     * because a category rides a computation's {@link IOperation} exactly as it rides a rule's condition.
+     */
+    int countCategoryRefs(IParseTreeEntity root) {
+        return countEntities(root, id -> {
+            String category = id.getCategoryName();
+            return category != null && !category.isEmpty();
+        });
+    }
+
+    /**
+     * Every {@link IEntityId} the node reaches, {@code matches} applied to each. The kernel's {@code traverse()}
+     * does not descend into {@code Having} filters, so those are walked explicitly (breadth-first, including
+     * filters nested inside filters) — the reason both counters share this walk rather than calling
+     * {@code traverse} directly.
+     */
+    private static int countEntities(IParseTreeEntity root, java.util.function.Predicate<IEntityId> matches) {
         int[] count = {0};
-        Deque<ICondition> filters = new ArrayDeque<>();
-        filters.add(root);
-        while (!filters.isEmpty()) {
-            List<ICondition> nested = new ArrayList<>();
-            filters.poll().traverse(new ASTVisitor() {
+        Deque<IParseTreeEntity> pending = new ArrayDeque<>();
+        pending.add(root);
+        while (!pending.isEmpty()) {
+            List<IParseTreeEntity> nested = new ArrayList<>();
+            pending.poll().traverse(new ASTVisitor() {
                 @Override
                 public boolean visit(IEntityId id) {
-                    if (id.isOuter()) {
+                    if (matches.test(id)) {
                         count[0]++;
                     }
                     ICondition filter = id.getFilterCondition();
@@ -188,7 +210,7 @@ final class ConditionConverter {
                     return true;
                 }
             });
-            filters.addAll(nested);
+            pending.addAll(nested);
         }
         return count[0];
     }
@@ -216,6 +238,37 @@ final class ConditionConverter {
                     + "correlation (D13): the source carries " + expectedOuter + " marker(s) but conversion "
                     + "rendered only " + renderedOuter + " — the comparison kind is not yet outer-threaded, "
                     + "so the rule is preserved verbatim [kernel node: outer correlation ($)]");
+        }
+    }
+
+    /**
+     * The same backstop for enum-category projections. An {@code EntityRef} carrying {@code getCategoryName()}
+     * is a DIFFERENT operation from the bare field — it reads the field's value in the category's domain — so a
+     * conversion that erases it produces a wrong read that still reports itself converted.
+     *
+     * <p>This exists because that erasure has now shipped twice from different sites: SPEC-2026-07-22-05 fixed
+     * the value-list quantifiers, and the 2026-08-10 field report found the value-expression sites still doing
+     * it. A per-site fix leaves the next unthreaded site silent, which is what a backstop is for: a dropped
+     * projection degrades the subject to a verbatim {@code Opaque} instead of corrupting it.
+     *
+     * <p>{@code ->} is the {@code EnumCategory} operator's rendering in <b>every</b> language (its catalog
+     * keywords are {@code ->} for both {@code en} and {@code de}) and the DSL gives that token no other job, so
+     * counting it outside string literals is exact.
+     *
+     * @param rendered the converted subject's rendered DSL — a condition, or a computation's slots concatenated
+     * @throws UnsupportedConstructException when a projection was dropped — caught by the read entry points
+     */
+    void verifyCategoryPreserved(String rendered, int expectedCategories) {
+        if (expectedCategories == 0) {
+            return;
+        }
+        int renderedCategories = countOccurrences(rendered.replaceAll("\"[^\"]*\"", ""), "->");
+        if (renderedCategories < expectedCategories) {
+            throw new UnsupportedConstructException("F10 converter would silently drop an enum category "
+                    + "projection ([field -> Category]): the source carries " + expectedCategories
+                    + " projection(s) but conversion rendered only " + renderedCategories + " — that operand "
+                    + "position is not yet category-threaded, so the subject is preserved verbatim "
+                    + "[kernel node: IEntityId.getCategoryName()]");
         }
     }
 
@@ -667,6 +720,29 @@ final class ConditionConverter {
         return toFieldOperand(entity);
     }
 
+    /**
+     * A {@code FieldValue} entity as a <b>value expression</b> — the {@link Calculation} peer of
+     * {@link #toValueListOperand}: an enum category projection ({@code [field -> Cat]}) stays an
+     * {@link EnumCategoryAccess}, everything else is the plain field value.
+     *
+     * <p>Its absence is what let {@code getCategoryName()} be dropped on every value-expression site while the
+     * quantifier sites preserved it (SPEC-2026-07-22-05 fixed only the latter) — a computation
+     * {@code Selected = [Requested -> ServiceTier]} read back as {@code [Requested]} and still claimed to be
+     * converted (field report 2026-08-10). {@link #verifyCategoryPreserved} is the backstop for any site this
+     * helper does not reach.
+     *
+     * @param outer the caller's {@code $}-correlation decision (D13) — the sites differ in whether they thread
+     *              it, and a dropped {@code $} has its own backstop in {@link #verifyOuterPreserved}
+     */
+    private Calculation fieldValueCalculation(IEntityId entity, boolean outer) {
+        String category = entity.getCategoryName();
+        if (category == null || category.isEmpty()) {
+            return new FieldValue(model.field(entity.getFullName()), outer);
+        }
+        CategoryRef cat = model.enumOf(entity.getFullName()).category(category);
+        return (outer ? cat.outer() : cat).value();
+    }
+
     /** An enum-list quantifier member (literal value-list side) — a direct {@link EnumRef} or, when the
      *  entity carries {@code getCategoryName()}, a {@link CategoryRef} projection; the union of their
      *  domains admits the literals. */
@@ -760,10 +836,11 @@ final class ConditionConverter {
         throw unsupported("value-list entry that is not a constant", origin);
     }
 
-    /** One entry of a value list — a field reference ({@code [Other]}) or a literal matching the field's kind. */
+    /** One entry of a value list — a field reference ({@code [Other]}, or {@code [Other -> Cat]}) or a literal
+     *  matching the field's kind. */
     private Calculation valueListEntry(IOperation op, ValueKind fieldKind, ICondition origin) {
         if (op instanceof IFieldIdOperation field && field.getOperatorName() == FieldIdOperationName.FieldValue) {
-            return new FieldValue(model.field(field.getField().getFullName()));
+            return fieldValueCalculation(field.getField(), false);
         }
         if (op instanceof IConstantOperation constant) {
             return fieldKind == ValueKind.NUMBER ? NumberLiteral.of(constant.getValue())
@@ -1652,7 +1729,7 @@ final class ConditionConverter {
             if (kind != ValueKind.STRING && kind != ValueKind.CUSTOM && kind != ValueKind.ENUMERATION) {
                 throw unsupported("string-family expression compared against a " + kind + " field", origin);
             }
-            StringExpr other = new StringExpr(new FieldValue(model.field(path), rf.getField().isOuter()));
+            StringExpr other = new StringExpr(fieldValueCalculation(rf.getField(), rf.getField().isOuter()));
             return switch (op) {
                 case EQ -> left.eq(other);
                 case NE -> left.ne(other);
@@ -2433,9 +2510,10 @@ final class ConditionConverter {
         if (op instanceof IConstantOperation || op instanceof IBoolConstantOperation) {
             return constantOperand(op, op);
         }
-        // A plain field value of any kind ([OtherField]) → the field's value as a Calculation.
+        // A plain field value of any kind ([OtherField]) → the field's value as a Calculation, including an
+        // enum category projection ([OtherField -> Cat]), which is a different operation and must not be erased.
         if (op instanceof IFieldIdOperation fv && fv.getOperatorName() == FieldIdOperationName.FieldValue) {
-            return new FieldValue(model.field(fv.getField().getFullName()), fv.getField().isOuter());
+            return fieldValueCalculation(fv.getField(), fv.getField().isOuter());
         }
         if (op instanceof IEntityListOperation aggregate
                 && aggregate.getOperatorName() == EntityListOperationName.FirstFilledValue) {

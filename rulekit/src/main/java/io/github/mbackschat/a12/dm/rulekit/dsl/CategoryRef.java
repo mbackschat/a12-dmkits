@@ -32,6 +32,18 @@ public record CategoryRef(FieldRef field, String name, List<String> values, bool
         return new EnumCategoryAccess(field, name, correlated);
     }
 
+    /**
+     * This category projection as a <b>value expression</b> — {@code [field -> name]} — the operand form a
+     * computation assigns ({@code Selected = [Requested -> ServiceTier]}) and a comparison reads.
+     *
+     * <p>The role peer of {@link #listOperand()} and {@link #firstFilledOperand()}. It was the one role a
+     * category could play that the handle did not hand out, so the adapter's computation read path had no
+     * typed way to rebuild the projection and erased it to the bare field (field report 2026-08-10).
+     */
+    public Calculation value() {
+        return access();
+    }
+
     /** This category projection as an A12 entity operand of {@code FirstFilledValue}. */
     public FirstFilledOperand firstFilledOperand() {
         return FirstFilledOperand.of(access());

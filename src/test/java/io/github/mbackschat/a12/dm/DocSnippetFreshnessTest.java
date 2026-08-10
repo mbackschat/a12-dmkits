@@ -101,6 +101,8 @@ class DocSnippetFreshnessTest {
             new Lock("field-rounding", "docs/API-GUIDE.md", NEW_SHAPES),
             new Lock("category-number-coercion", "docs/API-GUIDE.md",
                     "adapter/src/test/java/io/github/mbackschat/a12/dm/adapter/FieldValueAsNumberCategoryReadTest.java"),
+            new Lock("category-value-expression", "docs/API-GUIDE.md",
+                    "adapter/src/test/java/io/github/mbackschat/a12/dm/adapter/EnumCategoryValueExpressionReadTest.java"),
             new Lock("indexed-presence", "docs/API-GUIDE.md", NEW_SHAPES),
             new Lock("indexed-coercion", "docs/API-GUIDE.md", NEW_SHAPES),
             new Lock("rule-group", "docs/API-GUIDE.md", NEW_SHAPES),

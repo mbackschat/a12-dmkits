@@ -374,8 +374,10 @@ public final class KernelAdapter {
             ConditionConverter converter = new ConditionConverter(model);
             ICondition parsed = parseCondition(ruleFullName);
             int outerRefs = converter.countOuterRefs(parsed);   // $ correlations the source carries (N8)
+            int categoryRefs = converter.countCategoryRefs(parsed);   // [field -> Cat] projections it carries
             Condition converted = converter.convert(parsed);
             converter.verifyOuterPreserved(converted, outerRefs);   // backstop: a dropped $ → Opaque, never silent
+            converter.verifyCategoryPreserved(new DslRenderer().render(converted), categoryRefs);
             return new ReadResult.Converted(converted);
         } catch (UnsupportedConstructException unconverted) {
             return new ReadResult.Opaque(verbatimConditionText(ruleFullName), unconverted.getMessage());
@@ -626,14 +628,47 @@ public final class KernelAdapter {
             if (info.isEmpty()) {
                 return new ReadComputation.Opaque(verbatim, "the kernel could not extract calculation info");
             }
-            Computation computation = new ConditionConverter(model)
-                    .convertComputation(info.get(), recoverMessages(cr.getRule()), errorCodesToSuppress);
+            ConditionConverter converter = new ConditionConverter(model);
+            int categoryRefs = countCategoryRefs(converter, info.get());
+            Computation computation =
+                    converter.convertComputation(info.get(), recoverMessages(cr.getRule()), errorCodesToSuppress);
+            // backstop: a dropped [field -> Cat] projection → Opaque, never a silently different operation
+            converter.verifyCategoryPreserved(renderedSlots(computation), categoryRefs);
             return new ReadComputation.Converted(computation);
         } catch (UnsupportedConstructException unconverted) {
             return new ReadComputation.Opaque(verbatim, unconverted.getMessage());
         } catch (RuntimeException unexpected) {
             return new ReadComputation.Opaque(verbatim, opaqueFailureReason(unexpected));
         }
+    }
+
+    /** The category projections a computation's source AST carries — its common precondition plus every
+     *  alternative's precondition and value expression. */
+    private static int countCategoryRefs(ConditionConverter converter, ICalculationInfo info) {
+        int count = info.getCommonPrecondition().map(converter::countCategoryRefs).orElse(0);
+        for (var partial : info.getPartialCalculations()) {
+            if (partial.getLeft() != null) {
+                count += converter.countCategoryRefs(partial.getLeft());
+            }
+            count += converter.countCategoryRefs(partial.getRight());
+        }
+        return count;
+    }
+
+    /** Every rendered slot of a converted computation, concatenated — the text the category backstop counts. */
+    private static String renderedSlots(Computation computation) {
+        var draft = computation.draft();
+        StringBuilder out = new StringBuilder();
+        if (draft.commonPrecondition() != null) {
+            out.append(draft.commonPrecondition()).append('\n');
+        }
+        for (var alternative : draft.alternatives()) {
+            if (alternative.precondition() != null) {
+                out.append(alternative.precondition()).append('\n');
+            }
+            out.append(alternative.operation()).append('\n');
+        }
+        return out.toString();
     }
 
     private static List<String> errorCodesToSuppress(ICalculationRule calculation) {

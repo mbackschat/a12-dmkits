@@ -651,6 +651,20 @@ NumberExpr multiplier = Dsl.fieldValueAsNumber(
 Condition premiumMultiplier = multiplier.ge("1.5");
 ```
 
+**A category projection is a value expression, not only a quantifier member.** `CategoryRef` hands out its projection once per role: `listOperand()` for a value-list quantifier, `firstFilledOperand()` for `FirstFilledValue`, and `value()` for the plain value-expression slots a computation assigns and a comparison reads. `[field -> Cat]` is a *different operation* from `[field]` — it reads the field's value in the category's domain, and the kernel's static diagnostics against a computed field differ accordingly — so it must never be flattened to the bare field on either the write or the read side:
+
+<!-- snippet: category-value-expression -->
+```java
+// A category projection is a value expression too, not only a quantifier member: `value()` is the
+// Calculation peer of listOperand()/firstFilledOperand(), so a computation can assign one directly.
+Computation direct = m.computation(m.enumOf("/Fulfilment/SelectedTier").field())
+        .name("SelectedTierFromRequest")
+        .calc(m.enumOf("/Fulfilment/RequestedTier").category("ServiceTier").value())
+        .message(en("The selected tier follows the requested service tier.")).build();
+```
+
+Read-back preserves the projection in every value-expression slot the converter threads, and an operand position that is *not* yet threaded degrades the rule/computation to a verbatim `Opaque` naming the dropped projection — never to a converted-looking read of a different operation (finding 119).
+
 **Presence over a semantic index.** `ref.semanticIndex(key)` is a dedicated handle for a semantic index (`[Field For key]`); `.filled()`/`.notFilled()` author its presence — rendered bare (no value brackets). Presence lives only on this handle, never on the `forIndex(...)` value expression, so the non-index misuse `sum(...).filled()` is a compile error rather than a runtime throw (finding 63, superseding finding 59):
 
 <!-- snippet: indexed-presence -->

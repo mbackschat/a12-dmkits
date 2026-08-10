@@ -2690,3 +2690,21 @@ The implicit row is an evaluation context, not stored content. `GroupFilled(Rule
 The previous §9 nested-iteration claim was based on positive-guard silence and said that a parent with no child contributed no evaluation. That oracle could not separate no context from an empty context whose guard was false. The empty-as-zero rule is the discriminator that rules out the old reading; the stored-consumer matrix rules out the rival mechanism that materializes a real child row.
 
 *(Locked: `adapter.laws.RepeatableRowContentDiffTest.missingNestedBranchesContributeOneImplicitChildRowPerRepeatableLevel`, `.implicitRowsAreValidationAndRnuContextsButNotStoredGroupOrAutoCheckRows`, and `.computationsRemainBoundedToConcreteNestedRows`, all dynamic Groovy + generated Java + interpreter; multiplatform `ReferenceDrivenIterationScopeTest` for the host iteration projection. Interpreter treatment: [IF277](INTERPRETER-FINDINGS.md#if277).)*
+
+
+## §8 supplement — a category projection is admitted in the VALUE-EXPRESSION positions too, not only as a quantifier member (kernel probe, 2026-08-10) <a id="kf180"></a>
+
+> Fold: not-foldable — a static admission fact about where `[field -> Cat]` may appear, not an evaluation semantic.
+
+The category projection's admission surface was only ever measured for the value-list *quantifier members* (SPEC-2026-07-22-05). A cold `RuleValidator.check` matrix over a model whose `RequestedTier`/`FallbackTier` carry a `ServiceTier` category over `SelectedTier`'s own value domain settles the value-expression side:
+
+| shape | verdict |
+|---|---|
+| `[SelectedTier] == [RequestedTier -> ServiceTier]` (projection as the comparison's RIGHT operand) | **accepted** |
+| `[RequestedTier -> ServiceTier] == [SelectedTier]` (projection as the LEFT operand, bare field right) | **accepted** |
+| `FieldValueIncludedInValueList(SelectedTier, [RequestedTier -> ServiceTier])` (projection as a value-list ENTRY) | **accepted** |
+| a computation `SelectedTier = [RequestedTier -> ServiceTier]` | **accepted** (the field report's original observation) |
+
+So the class of positions an `IEntityId` can carry `getCategoryName()` through is wider than the quantifier members, which is what makes a per-site conversion fix insufficient and the `verifyCategoryPreserved` backstop necessary (API-FINDINGS finding 119). The one shape the matrix could NOT decide is category-vs-category on this fixture: it fails on `MVK_ERROR_FIELD_NOT_REFERENCED` because neither operand is the rule's error field — a fixture artifact, not a statement about the shape, and it is left explicitly undecided rather than reported as a rejection.
+
+*(Locked: `adapter … EnumCategoryValueExpressionReadTest` — the computation and value-list-entry rows round-trip; the comparison-right-operand row is the backstop's does-fire case, since that operand is not category-threaded and now degrades to `Opaque` instead of converting to a different condition.)*
