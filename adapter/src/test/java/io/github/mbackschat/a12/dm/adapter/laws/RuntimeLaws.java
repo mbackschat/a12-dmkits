@@ -942,6 +942,21 @@ public final class RuntimeLaws {
                     .map(RuntimeLaws::validationSignature).sorted().toList();
         }
 
+        /**
+         * Every kernel {@link IMessage} of one {@code validateFull} over an already-built instance,
+         * <b>unprojected</b> — the channel {@link KernelRuntimeProbe} reads, with the identically-named
+         * {@link JavaKernelEngine#validationMessages} as its static-JAVA twin.
+         *
+         * <p>It exists instead of widening {@link Msg}, and the reason is a measured cost rather than taste: the
+         * probe needs {@code getSeverity} and the <em>interpolated</em> {@code getErrorText}, and
+         * {@link RuntimeLaws#toMsg} is the one construction site every differential, fuzzer, and corpus leg in
+         * this module goes through. Adding text interpolation there would charge each of them for a channel none
+         * of them reads — including the classes that share a Gradle task with a timing floor.
+         */
+        List<IMessage> validationMessages(DocumentV2 instance, Date clock, Locale locale) {
+            return List.copyOf(rt.validateFull(instance, config(clock, locale)).getMessages());
+        }
+
         /** Full signatures under explicit runtime bindings; model/document construction stays build-once. */
         public List<String> validationSignaturesSorted(DocumentV2 instance, Locale locale, Date clock,
                 Map<String, ICustomCondition> customConditions) {
@@ -1174,6 +1189,11 @@ public final class RuntimeLaws {
         public List<String> validationSignaturesSorted(DocumentV2 instance, Locale locale) {
             return rt.validateFull(instance, config(null, locale)).getMessages().stream()
                     .map(RuntimeLaws::validationSignature).sorted().toList();
+        }
+
+        /** The static-JAVA twin of {@link KernelEngine#validationMessages} — same contract, same reason. */
+        List<IMessage> validationMessages(DocumentV2 instance, Date clock, Locale locale) {
+            return List.copyOf(rt.validateFull(instance, config(clock, locale)).getMessages());
         }
 
         /** Full signatures under explicit runtime bindings; code generation remains outside every timed call. */

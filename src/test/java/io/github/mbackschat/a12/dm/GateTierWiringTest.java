@@ -110,6 +110,30 @@ class GateTierWiringTest {
                 "…and on failure too, since a breach is exactly when the numbers are wanted");
     }
 
+    /**
+     * The kernel-runtime observation probe (docs/KERNEL-PROBE-SPEC.md) is a MEASUREMENT, and must stay one.
+     *
+     * <p>It runs the kernel's Groovy runtime code generation — the very thing the released binary was severed
+     * from — so wiring it into a gate would put a kernel runtime evaluation on every verification run and give
+     * the release boundary a reason to bend. Its classpath is the assertion that keeps it out of any shipped
+     * artifact: a JavaExec over the TEST runtime classpath cannot ride a published jar or the native image.
+     */
+    @Test
+    void theKernelRuntimeProbeIsAMeasurementAndNotAGate() throws IOException {
+        String adapterBuild = Files.readString(locate("adapter/build.gradle"));
+        String probe = taskBlock(adapterBuild, "tasks.register('kernelProbe', JavaExec)");
+
+        assertFalse(probe.isEmpty(), "adapter must provide the kernel-runtime observation probe");
+        assertTrue(probe.contains("classpath = sourceSets.test.runtimeClasspath"),
+                "the probe must run off TEST source, so it cannot enter a published artifact or the native image");
+        assertTrue(probe.contains("group = 'measurement'"),
+                "the probe reports an observation; it asserts nothing and belongs in the measurement group");
+        assertTrue(probe.contains("outputs.upToDateWhen { false }") && probe.contains("outputs.cacheIf { false }"),
+                "an observation of the live kernel must never be restored from a previous run");
+        assertFalse(adapterBuild.contains("dependsOn 'kernelProbe'") || adapterBuild.contains("dependsOn kernelProbe"),
+                "no gate may depend on the probe: `check` would then run kernel Groovy codegen on every build");
+    }
+
     @Test
     void adapterOracleLanesUseForksInsteadOfInForkThreads() throws IOException {
         String adapterBuild = Files.readString(locate("adapter/build.gradle"));

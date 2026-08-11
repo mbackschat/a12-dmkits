@@ -4,11 +4,21 @@
 >
 > **Lifecycle.** A shipped gap is deleted. Its stable contract graduates into [INTERPRETER-API-SPEC](INTERPRETER-API-SPEC.md) in the same commit, while git and an appropriate numbered finding retain the history and rationale.
 
-> **Current state.** The public v1 surface, browser qualification, anonymous publication, computation diagnostics, and the two owner-shaped pointer types are complete as IF224–IF226 and IF241–IF242. The house spelling remains an internal tool/corpus projection rather than a second published A12 format. §1 is drained; §2 tracks later API products.
+> **Current state.** The public v1 surface, browser qualification, anonymous publication, computation diagnostics, and the two owner-shaped pointer types are complete as IF224–IF226 and IF241–IF242. The house spelling remains an internal tool/corpus projection rather than a second published A12 format. IAG15 opened on 2026-08-11 when a second publishing seam appeared and had to re-derive the message-address policy; §2 tracks later API products.
 
 ## 1. Open
 
-_None open._
+### IAG15 — the published message-address policy has no home both publishing seams can reach <a id="iag15"></a>
+
+The rule for publishing an A12 message address is settled and guarded: canonical A12 when the address names exactly one cell, the house form when it does not, decided on the typed pointer and never by re-reading a string ([CLI-SPEC](CLI-SPEC.md) §5, `PublishedPointerCanonicalTest`). Its implementation is `cli.interp.A12Pointers.canonical`, which carries the full reasoning.
+
+The kernel-runtime probe ([KERNEL-PROBE-SPEC](KERNEL-PROBE-SPEC.md)) is now a **second** seam that publishes those addresses, and it lives in `:adapter` — which `:cli` depends on, not the reverse. So it re-derives the one-branch policy from the same public interpreter primitives (`A12PartiallyKnownMultiPointer.toExactPointer` plus `A12PointerFormat.render`, else `formatPointer`). Two implementations of one contract, in modules that cannot see each other and therefore cannot be cross-checked by a guard.
+
+**What it blocks:** nothing shipping — both seams are correct today, and each is checked against real output on its own side. It costs the property that the contract has one enforcement locus, which is exactly the property the next seam will need.
+
+**Shape under consideration:** the policy's natural home is the interpreter, beside the two pointer types it dispatches on. That is a **public-API addition to a published library**, and a careful one: IAG11 closed by deciding the house spelling stays tool-owned and gets no published renderer, so a function whose fallback *is* the house form must be shaped as "publish this address" rather than as "render the house form", or it re-opens what IAG11 settled.
+
+**Re-open trigger:** a third publishing seam, or any change to the per-address rule — at which point two implementations must be edited in lockstep with nothing to catch a miss.
 
 ## 2. Deferred — with re-open triggers
 

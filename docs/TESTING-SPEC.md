@@ -98,6 +98,7 @@ Consequence: the kernel is an unstable dependency, so the suite is also an **ear
 | **Catalog examples (N7)** | is every catalog `validExample` actually kernel-valid? | `catalog/CatalogExamplesAreKernelValidTest` (incl. the correctives' reject probes — each rejected with its code) | real kernel |
 | **Catalog facet probes** | is every catalog *facet claim* (the `semantics` machine tier + the `emptyOperandDefaults` header) true on the kernel **runtime**? Every claim carries embedded probes; each is (1) kernel-ACCEPTED and (2) fires ⟺ declared — so a facet value cannot rot ([CATALOG-SPEC §5](CATALOG-SPEC.md)) | `adapter/…/laws/CatalogFacetProbesTest` (execution) + `catalog/OperatorCatalogTest` (structural: a claim without a probe fails) | real kernel runtime (`RuntimeLaws`) |
 | **Self-sufficiency eval (N6)** | can a cold LLM author/read rules from the CLI + skill alone? | the Workflow runner | clean subagent + judge — [`EVAL-SPEC.md`](EVAL-SPEC.md) |
+| **Kernel-runtime observation probe** *(not a gate — a measurement)* | what does the real kernel do at runtime on **this** model + document, on both codegen strategies? | `./gradlew :adapter:kernelProbe -Prequest=… -Pout=…` → a byte-reproducible artifact; locked by `adapter/…/laws/KernelRuntimeProbeTest` + `KernelProbeArtifactTest` | real kernel `validateFull` on both strategies — [`KERNEL-PROBE-SPEC.md`](KERNEL-PROBE-SPEC.md). Absent from `check`: it asserts nothing, and it exists so a runtime question does not cost a purpose-written test |
 
 ### Systematic semantic matrices before fuzzing
 

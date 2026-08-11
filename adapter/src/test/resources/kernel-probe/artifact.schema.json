@@ -1,0 +1,153 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/mbackschat/a12-dmkits/kernel-probe/artifact.schema.json",
+  "title": "KernelProbeArtifact",
+  "description": "The `-Pout=` output of `./gradlew :adapter:kernelProbe`: what the REAL A12 kernel's runtime validation reported, per request row and PER KERNEL STRATEGY. Deterministic by construction — messages are totally ordered, the header carries no clock reading, and the renderer pins a `\\n` indenter — so two runs over identical input and an identical source tree produce identical bytes and a consumer can pin the artifact by SHA-256. The normative contract is docs/KERNEL-PROBE-SPEC.md.",
+  "type": "object",
+  "required": ["schemaVersion", "producer", "request", "rows"],
+  "additionalProperties": false,
+  "properties": {
+    "schemaVersion": {
+      "const": 1,
+      "description": "this artifact shape's version; bumped when a key's presence or meaning changes. An artifact stays readable after the producer moves on because it carries its own version."
+    },
+    "producer": {
+      "type": "object",
+      "required": ["dmtoolVersion", "kernel", "source"],
+      "additionalProperties": false,
+      "description": "what produced the observation. A12-dmkits owns kernel invocation, engine identity, and this schema; the consumer owns pinning the bytes.",
+      "properties": {
+        "dmtoolVersion": {
+          "type": "string",
+          "description": "the a12-dmkits release that ran the probe, or `(unknown)`"
+        },
+        "kernel": {
+          "type": "object",
+          "required": ["builtAgainst", "runtime"],
+          "additionalProperties": false,
+          "properties": {
+            "builtAgainst": {
+              "type": "string",
+              "description": "the kernel version pin the probe compiled against"
+            },
+            "runtime": {
+              "type": "string",
+              "description": "the kernel jar actually on the classpath, read from its own manifest. May be NEWER than `builtAgainst` — the project's F11 tolerance posture — so the two are reported separately rather than collapsed."
+            }
+          }
+        },
+        "source": {
+          "type": "object",
+          "required": ["revision", "state"],
+          "additionalProperties": false,
+          "properties": {
+            "revision": {
+              "type": "string",
+              "description": "the full 40-character Git revision of the producing tree, or `(unknown)`"
+            },
+            "state": {
+              "enum": ["CLEAN", "DIRTY", "UNKNOWN"],
+              "description": "whether the REVISION or the WORKTREE produced this observation: `CLEAN` means the tree matched `revision` exactly, `DIRTY` that tracked or untracked content differed from it, so the artifact is not reproducible from `revision` alone. Measured by the same program that stamps dmtool's own version resource."
+            }
+          }
+        }
+      }
+    },
+    "request": {
+      "type": "object",
+      "required": ["model", "locale"],
+      "additionalProperties": false,
+      "description": "the request's own inputs, echoed so the artifact states what it observed",
+      "properties": {
+        "model": {
+          "type": "string",
+          "description": "the model reference, verbatim as the request spelled it"
+        },
+        "locale": {
+          "type": "string",
+          "description": "the evaluation locale in A12's `language_COUNTRY` form; it decides the `message` channel's language and nothing else, and the kernel refuses a locale the model does not declare"
+        },
+        "clock": {
+          "type": "string",
+          "format": "date-time",
+          "description": "the pinned evaluation instant; ABSENT when the request pinned none, in which case the real clock was used and a clock-reading rule will not reproduce"
+        }
+      }
+    },
+    "rows": {
+      "type": "array",
+      "minItems": 1,
+      "description": "one entry per request row, in request order",
+      "items": {
+        "type": "object",
+        "required": ["name", "enginesAgree", "engines"],
+        "additionalProperties": false,
+        "properties": {
+          "name": { "type": "string", "description": "the request row's name" },
+          "enginesAgree": {
+            "type": "boolean",
+            "description": "whether every strategy in `engines` produced the identical message list. DERIVED from `engines`, never asserted independently — the per-strategy blocks are always both present, so a disagreement is visible in full rather than merged away. `false` is a KERNEL FACT to record: the production-normative strategy is `kernel-groovy-dynamic` and a `kernel-java-static` split is characterized, never adopted (docs/CONFORMANCE-CORPUS-SPEC.md §11)."
+          },
+          "engines": {
+            "type": "array",
+            "minItems": 1,
+            "description": "one complete observation per kernel strategy",
+            "items": {
+              "type": "object",
+              "required": ["engine", "messages"],
+              "additionalProperties": false,
+              "properties": {
+                "engine": {
+                  "enum": ["kernel-groovy-dynamic", "kernel-java-static"],
+                  "description": "the kernel codegen strategy that produced these messages, in the conformance corpus' vocabulary. `kernel-groovy-dynamic` is the production-normative anchor; `kernel-java-static` is the kernel's own validator generated as Java and compiled in memory."
+                },
+                "messages": {
+                  "type": "array",
+                  "description": "every message this strategy raised, in a total order over the published channels. Ordering is by `code`, then `field`, `type`, `severity`, `referenced`, `fillToFix`, `message` — never kernel emission order, which nothing guarantees to be stable. Duplicates are retained, so a per-row rule firing on K rows appears K times.",
+                  "items": {
+                    "type": "object",
+                    "required": ["code", "field", "severity", "type", "message", "referenced", "fillToFix"],
+                    "additionalProperties": false,
+                    "properties": {
+                      "code": {
+                        "type": "string",
+                        "description": "the rule's error code, or a kernel formal-check code"
+                      },
+                      "field": {
+                        "type": "string",
+                        "format": "a12-message-address",
+                        "description": "the offending field's address (`IMessage.getErrorFieldPointer`). Canonical A12 pointer — no leading slash, `[1]` omitted — exactly when the address names ONE cell; otherwise, when it carries a wildcard or a level that matched no row, the interpreter house form (`/Order[1]/Items[0]/Quantity`), because A12 defines no pointer string for such a value. Test the leading slash to tell them apart."
+                      },
+                      "severity": {
+                        "enum": ["ERROR", "WARNING", "INFO"],
+                        "description": "the message's severity (`IMessage.getSeverity`)"
+                      },
+                      "type": {
+                        "enum": ["VALUE_ERROR", "OMISSION_ERROR"],
+                        "description": "A12's value-vs-omission typing (`IMessage.getMessageType`): OMISSION_ERROR means filling more fields could clear it, VALUE_ERROR that what is entered is wrong"
+                      },
+                      "message": {
+                        "type": "string",
+                        "description": "the kernel's fully interpolated end-user text (`IMessage.getErrorText`) at the probe's fixed en-US locale, with every `$Field$` token resolved against this document"
+                      },
+                      "referenced": {
+                        "type": "array",
+                        "items": { "type": "string", "format": "a12-message-address" },
+                        "description": "the fields the rule READ — its operands (`IMessage.getReferencedFieldsPointers`), sorted. Same per-address form contract as `field`, decided per address: one message legitimately shows both spellings. Sorted rather than in kernel emission order, which nothing guarantees to be stable and which an artifact pinned by SHA-256 cannot depend on; no position is being discarded, since this channel is compared as a set everywhere it is compared."
+                      },
+                      "fillToFix": {
+                        "type": "array",
+                        "items": { "type": "string", "format": "a12-message-address" },
+                        "description": "for an OMISSION_ERROR, the operand fields whose filling could clear it (`IMessage.getRefOmissionErrorResponsiblePointers`) — measured to be ALL of the rule's operands, not only the empty ones; EMPTY for a VALUE_ERROR. Same per-address form contract as `field`, and sorted for the same reason as `referenced`."
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

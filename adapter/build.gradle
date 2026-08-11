@@ -116,6 +116,10 @@ dependencies {
     // bare kernel ships none → degenerate no-op). The impl 30.8.1 depends on this api 28.2.0 (ABI-consistent).
     testImplementation "com.mgmtp.a12.kernel:kernel-core-customfieldtype-api:28.2.0"
 
+    // The kernel-probe artifact's published schema is checked against real output, the way :cli's schemas are —
+    // an unchecked schema drifts, and this one is what an external consumer reads the artifact through.
+    testImplementation 'com.networknt:json-schema-validator:1.5.7'
+
     testImplementation platform('org.junit:junit-bom:5.11.4')
     testImplementation 'org.junit.jupiter:junit-jupiter'
     testImplementation 'org.junit.platform:junit-platform-launcher'
@@ -734,6 +738,64 @@ tasks.register('interpreterNativePerformance', JavaExec) {
                 "native first-answer report did not write ${nativePerformanceOutput.get().asFile}")
         }
         println "[performance] native first-answer report → ${nativePerformanceOutput.get().asFile}"
+    }
+}
+
+// The kernel-runtime observation probe (docs/KERNEL-PROBE-SPEC.md): run the REAL kernel's runtime validation over
+// a supplied model + documents and write a deterministic JSON artifact an external consumer can pin by SHA-256.
+//
+// A MEASUREMENT instrument, deliberately not a gate and deliberately not a verb. It is absent from `check`, so no
+// lane's cost or determinism depends on it; and it lives here rather than in the CLI because kernel runtime
+// evaluation does Groovy runtime codegen and is not AOT-compilable — which is exactly why dmtool's runtime verbs
+// run the kernel-free interpreter and why `--kernel` was retired (docs/ARCHITECTURE.md "The Groovy wall").
+// Nothing about the released binary, the native profile, `Cli.JVM_ONLY_VERBS`, or the Groovy exclusion changes.
+//
+// Provenance is single-sourced from the same portable program that stamps :cli's version resource, so an artifact
+// cannot claim a revision or a clean tree the build did not measure. It is queried in `doFirst` rather than at
+// configuration time: only this task needs it, and every other adapter build should stay free of the git calls.
+def probeProvenanceProgram = rootProject.file('scripts/SourceProvenance.java')
+def probeJava = new File(System.getProperty('java.home'), 'bin/'
+        + (System.getProperty('os.name').toLowerCase(java.util.Locale.ROOT).contains('win') ? 'java.exe' : 'java'))
+def probeProvenanceExec = providers.exec {
+    commandLine probeJava, probeProvenanceProgram, rootProject.projectDir
+    ignoreExitValue = true
+}
+def probeProvenance = probeProvenanceExec.standardOutput.asText.zip(probeProvenanceExec.result) { output, result ->
+    def lines = output.readLines()
+    result.exitValue == 0 && lines.size() == 2 ? [revision: lines[0], state: lines[1]]
+            : [revision: '(unknown)', state: 'UNKNOWN']
+}
+def probeRequest = providers.gradleProperty('request')
+def probeOut = providers.gradleProperty('out')
+def probeUsage = 'usage: ./gradlew :adapter:kernelProbe -Prequest=<request.json> -Pout=<artifact.json>'
+tasks.register('kernelProbe', JavaExec) {
+    description = 'Observe the real kernel runtime over a supplied model + documents; write a JSON artifact.'
+    group = 'measurement'
+    dependsOn tasks.named('testClasses')
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = 'io.github.mbackschat.a12.dm.adapter.laws.KernelRuntimeProbe'
+    args probeRequest.getOrElse(''), probeOut.getOrElse('')
+    // Supplied through an argument provider rather than `systemProperty`, so the git calls happen when the probe
+    // runs — not while configuring any other adapter task.
+    def probeVersion = rootProject.version.toString()
+    jvmArgumentProviders.add({
+        def provenance = probeProvenance.get()
+        ["-Da12.probe.dmtoolVersion=${probeVersion}".toString(),
+         "-Da12.probe.kernelBuiltAgainst=${kernelVersion}".toString(),
+         "-Da12.probe.sourceRevision=${provenance.revision}".toString(),
+         "-Da12.probe.sourceState=${provenance.state}".toString()]
+    } as CommandLineArgumentProvider)
+    // A measurement, never a restorable result: the kernel on the classpath and the request's own files decide
+    // the answer, and neither is expressible as a task input here.
+    outputs.upToDateWhen { false }
+    outputs.cacheIf { false }
+    doFirst {
+        if (!probeRequest.isPresent() || !probeOut.isPresent()) {
+            throw new GradleException(probeUsage)
+        }
+    }
+    doLast {
+        println '[kernel-probe] artifact schema: adapter/src/test/resources/kernel-probe/artifact.schema.json'
     }
 }
 

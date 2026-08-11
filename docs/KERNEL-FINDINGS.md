@@ -2789,3 +2789,22 @@ Controls, because a set that merely looks plausible proves nothing: the starred 
 Nothing here generalizes to `fillToFix`, to filtered stars, or to `RepetitionNotUnique`'s duplicate-cluster projection; those channels were not read.
 
 *(Locked: `adapter.laws.UnstarredGroupReferenceDiffTest` — the three operand positions and both controls, tri-checked dynamic Groovy == generated Java == interpreter on complete sorted sets, plus the starred-versus-unstarred coordinate pair. The interpreter already agreed on every row; no production change was needed.)*
+
+## §12 supplement — a fired OMISSION's `refOmissionErrorResponsible` set is ALL of the rule's operands, the already-filled ones included (kernel runtime, 2026-08-11) <a id="kf184"></a>
+
+> Fold: pending — newly measured message-channel fact; folds into §12 on the next canonical KERNEL-SEMANTICS pass.
+
+Canonical in §12 "The validation model", and the channel [KF183](#kf183) explicitly did not read. `IMessage.getRefOmissionErrorResponsiblePointers` — the `fillToFix` channel dmtool publishes — reads naturally as "the fields you still have to fill", which would make it the *empty* subset of the operands. It is not.
+
+Measured on `Quantity > 5 And BackorderQuantity >= 0`, error field `../Quantity`, over a document with `Quantity` filled at 50 and `BackorderQuantity` **present but empty** (so the value branch holds on a filled operand and the omission branch holds on an empty one, which is the shape that types the firing OMISSION):
+
+| channel | value |
+|---|---|
+| `type` | `OMISSION_ERROR` |
+| `fillToFix` | `Order/BackorderQuantity`, `Order/Quantity` — **both** operands |
+
+So the set names every field whose *change* could clear the message, not the subset that is currently unfilled: `Quantity` is filled and still appears. The rival reading — "only the empty operands" — is refuted by that single row, since dropping the filled `Quantity` is exactly what it predicts. The VALUE control on the same document (`Quantity < 100`, firing on the same filled cell) reports an **empty** `fillToFix` with a non-empty `referenced`, so the channel is coupled to polarity rather than being a copy of the operand set that happens to coincide here.
+
+Both kernel strategies agree (dynamic Groovy == generated Java). Nothing here settles the `Or` shape, a filtered star, or `RepetitionNotUnique`'s duplicate cluster; those were not read.
+
+*(Locked: `adapter.laws.KernelRuntimeProbeTest.anOmissionCarriesFillToFixWhereAValueErrorCarriesNone` — the OMISSION content, the VALUE control, and the two-strategy agreement, observed through the kernel-runtime probe. `adapter.laws.RichMessageDiffTest` separately locks that the interpreter reproduces this set; it compares the two engines and never pinned the content, which is why the fact was unrecorded until now.)*
