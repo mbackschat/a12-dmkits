@@ -540,7 +540,7 @@ The catalog must favor **non-obvious** combinations (nesting × aggregation × c
 
 ### Checkpoint 2026-08-12 — each parity row's OWN ratio noise, measured instead of borrowed
 
-**Three sequential isolated runs of the 17 parity lanes, quiet local machine, same revision** (records: [`2026-08-11T233333Z`](../perf-results/darwin-aarch64/), `T2336`, `T2339` under `perf-results/darwin-aarch64/`). Motivated by a comparison that was wrong twice over: the tightest row's margin had been held against `1.78×`, a run-to-run figure measured on *different scenarios* on a *different machine class*, and then described as "below" it when `1.9 > 1.78`. Borrowing a noise figure across scenarios is the same trap as borrowing one across quantities. So this measures each row's own.
+**Three sequential isolated runs of the 17 parity lanes, quiet local machine, same revision** (records `2026-08-11T233842Z`, `T233949Z`, `T234053Z` under [`perf-results/darwin-aarch64/`](../perf-results/darwin-aarch64/)). Motivated by a comparison that was wrong twice over: the tightest row's margin had been held against `1.78×`, a run-to-run figure measured on *different scenarios* on a *different machine class*, and then described as "below" it when `1.9 > 1.78`. Borrowing a noise figure across scenarios is the same trap as borrowing one across quantities. So this measures each row's own.
 
 | quantity | value |
 |---|---|
