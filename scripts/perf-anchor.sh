@@ -95,10 +95,13 @@ for input_path in inputs:
             if record.get("kind") == "run":
                 header = record
             elif record.get("kind") == "observation":
-                # Only `accepted` may set a bar. `breached` would ratchet the anchor to a value the gate rejected;
-                # `unasserted` was taken outside the isolated single-fork lane, where an absolute time is a coin
-                # flip. A record predating the status field (an imported run) is trusted, as it always was.
-                if record.get("status", "accepted") != "accepted":
+                # `breached` would ratchet the anchor to a value the gate REJECTED, and `unasserted` was taken
+                # outside the isolated single-fork lane where an absolute time is a coin flip — neither may set a
+                # bar. `unanchored` may: it means this key had no anchor at all, so there is nothing to ratchet
+                # against, and it is precisely the observation a refresh needs to AUTHOR that key. Excluding it
+                # left the documented recovery path with no way forward but ALLOW_REMOVALS. A record predating
+                # the status field (an imported run) is trusted, as it always was.
+                if record.get("status", "accepted") not in ("accepted", "unanchored"):
                     continue
                 samples.setdefault(record["key"], []).append(float(record["medianMs"]))
     if header is None:

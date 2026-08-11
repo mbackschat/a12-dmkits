@@ -50,7 +50,7 @@ class PerformanceRecordShapeGuardTest {
      * existed, which {@code perf-anchor.sh} treats as {@code accepted} — so the values must stay in step with that
      * script's filter, and an unknown one would be silently folded into an anchor as if it had been accepted.
      */
-    private static final Set<String> KNOWN_STATUSES = Set.of("accepted", "breached", "unasserted");
+    private static final Set<String> KNOWN_STATUSES = Set.of("accepted", "breached", "unasserted", "unanchored");
 
     /**
      * How many runs one environment may carry before the record must be pruned. About a month of nightlies, and

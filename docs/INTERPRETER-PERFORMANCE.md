@@ -528,6 +528,35 @@ The catalog must favor **non-obvious** combinations (nesting × aggregation × c
 
 ## Results log
 
+### Checkpoint 2026-08-12 — the cross-engine bar extended from 2 scenarios to 17, and what that did to the margin (IF281)
+
+`KernelParityGateTest`, one isolated local run, Apple Silicon (`darwin-aarch64`, 8 processors, JDK 21.0.12). 17 lanes, 34 rows, **55.2 s** for the whole tier. Ratios are `interp/kernel`, so **lower is better and 1.00 is parity**; each row is the worse of the two strategies.
+
+| envelope over all 34 rows | value |
+|---|---|
+| worst | **0.60** — `CO-correlation @800` against generated Java (`1.7×` margin) |
+| median | 0.16 (`6.3×`) |
+| best | 0.02 — `PRA-per-row-global-agg @500` (`50×`) |
+| rows at `2.3×` margin or better | **32 of 34** |
+| rows the interpreter loses | **0** |
+
+The eight tightest, since they are what any future bar has to clear:
+
+| scenario | N | interp/groovy | interp/java | margin |
+|---|---|---|---|---|
+| `CO-correlation` | 800 | 0.42 | **0.60** | 1.7× |
+| `CO-correlation` | 200 | 0.41 | 0.51 | 2.0× |
+| `complexRealWorld-111f-82r` | 240 | 0.31 | 0.43 | 2.3× |
+| `PF-framed` | 250 | 0.36 | 0.41 | 2.4× |
+| `PF-framed` | 1000 | 0.36 | 0.40 | 2.5× |
+| `Berlin-AddDays-historical` | 250 | 0.35 | 0.37 | 2.7× |
+| `DT-Berlin` | 250 | 0.30 | 0.34 | 2.9× |
+| `complexRealWorld-111f-82r` | 60 | 0.26 | 0.32 | 3.1× |
+
+**The tightest row's margin is smaller than this estate's own measured noise for that quantity, and that is the finding.** The earlier hosted measurement (Checkpoint 2026-08-11) put worst run-to-run noise on the **level** ratio at `1.78×` against generated Java and `2.16×` against Groovy. `CO-correlation`'s `1.67×` sits *below* both. The `1.41×` figure that first appeared beside it is the noise of a **different quantity** — per-unit cost — and comparing the two is the "name the quantity before you compare numbers" trap this project has an explicit rule about. The consequence is not that the bar is wrong but that it needed the growth floor's protection: a comparative breach is now **re-measured** and accepted on the median of the attempts, so one contended slice cannot red the nightly (`PerfHarness.pairedScenarioGrowth`).
+
+**Prior coverage, for the record.** Before this run the bar existed on **two** scenarios (`Number-index` validation and computation). All 17 growth-gated scenarios were uncovered by it: their only relative bar was `RATIO_CEILING`, `interp/groovy < 5.0`, which tolerates the interpreter being five times *slower*, and nothing measured generated Java at all.
+
 *The current headline + the naive baseline it improved on. The intermediate optimization-journey entries were collapsed away (2026-06-27) — the *method* and the *lessons* live above (the optimization catalog, the kernel-technique map, the biases-to-re-check); this log keeps only the **current** measures and the **pre-optimization yardstick** they're read against. Dates are when each axis was last measured.*
 
 ### Checkpoint 2026-08-11 — the hosted runner class measured, and a concurrent-dispatch method error (IF280 / IG120)

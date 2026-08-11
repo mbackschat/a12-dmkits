@@ -764,6 +764,38 @@ object PerfHarness {
     /** Independent re-measurements a catastrophe floor demands before it calls a breach real. */
     const val GROWTH_RETRY_ATTEMPTS = 3
 
+    /** Every attempt taken, and the one acceptance was decided on. */
+    internal data class RetryOutcome<T>(val accepted: T, val taken: List<T>)
+
+    /**
+     * Take one sample; while it breaches, take more up to [attempts]; accept the **median** by [rank].
+     *
+     * This is [assertGrowthBelowCatastropheFloor]'s acceptance rule, factored out so the comparative bars can use
+     * the same one. The median is the whole correctness of it: returning as soon as any attempt passes makes a
+     * real breach *more* likely to be admitted the more often it is retried, which is the shape an external review
+     * falsified once already. The happy path costs exactly one sample; only a breach pays.
+     */
+    internal fun <T> acceptOnMedianOfRetries(
+        attempts: Int = GROWTH_RETRY_ATTEMPTS,
+        breaches: (T) -> Boolean,
+        rank: (T) -> Double,
+        sample: () -> T,
+    ): RetryOutcome<T> {
+        require(attempts > 0 && attempts % 2 == 1) { "attempts must be a positive odd number, was $attempts" }
+        val taken = mutableListOf(sample())
+        // Once the first sample breaches, take the FULL count — never "stop as soon as one passes". Two reasons,
+        // and the first one bites immediately: an even number of attempts has no median, and `sorted[size / 2]`
+        // then silently returns the UPPER of the two, which is the opposite of the value that was intended. The
+        // second is that stopping on the first passing sample is optional stopping, which is on this project's
+        // own refuted list (IF281) — it inflates exactly the error budget the retry is supposed to control.
+        if (breaches(taken.single())) {
+            while (taken.size < attempts) {
+                taken += sample()
+            }
+        }
+        return RetryOutcome(taken.sortedBy(rank)[taken.size / 2], taken)
+    }
+
     /**
      * Apply the paired estimator to interpreter, dynamic Groovy, and generated Java in one reusable-engine run.
      * Both exact instances are tri-checked before timing, then **three** independent bars must hold:
@@ -807,20 +839,41 @@ object PerfHarness {
         val smallResult = assertInstanceAgreement(scenario, small, iSmall, gSmall, jSmall)
         val largeResult = assertInstanceAgreement(scenario, large, iLarge, gLarge, jLarge)
 
-        val iSmallMs = DoubleArray(pairs)
-        val gSmallMs = DoubleArray(pairs)
-        val jSmallMs = DoubleArray(pairs)
-        val iLargeMs = DoubleArray(pairs)
-        val gLargeMs = DoubleArray(pairs)
-        val jLargeMs = DoubleArray(pairs)
-        for (pair in 0 until pairs) {
-            gSmallMs[pair] = measure(warmup, iters) { gSmall.run() }.medianMs
-            jSmallMs[pair] = measure(warmup, iters) { jSmall.run() }.medianMs
-            iSmallMs[pair] = measure(warmup, iters) { iSmall.run() }.medianMs
-            gLargeMs[pair] = measure(warmup, iters) { gLarge.run() }.medianMs
-            jLargeMs[pair] = measure(warmup, iters) { jLarge.run() }.medianMs
-            iLargeMs[pair] = measure(warmup, iters) { iLarge.run() }.medianMs
+        fun sample(): ParitySample {
+            val s = ParitySample(pairs)
+            for (pair in 0 until pairs) {
+                s.groovySmall[pair] = measure(warmup, iters) { gSmall.run() }.medianMs
+                s.javaSmall[pair] = measure(warmup, iters) { jSmall.run() }.medianMs
+                s.interpSmall[pair] = measure(warmup, iters) { iSmall.run() }.medianMs
+                s.groovyLarge[pair] = measure(warmup, iters) { gLarge.run() }.medianMs
+                s.javaLarge[pair] = measure(warmup, iters) { jLarge.run() }.medianMs
+                s.interpLarge[pair] = measure(warmup, iters) { iLarge.run() }.medianMs
+            }
+            return s
         }
+
+        // A COMPARATIVE breach is re-measured before it fails, on the same rule the growth floor has used since
+        // 2026-08-08: take independent samples and accept the MEDIAN of them, never the best.
+        //
+        // This is not caution for its own sake. The tightest row in the estate is the compute-overlay
+        // $-correlation path at 1.67x against generated Java, and this estate's own measured run-to-run noise for
+        // a LEVEL ratio is 1.78x on a hosted runner — larger than that margin. Without re-measurement one
+        // contended slice reds the nightly, which is precisely the failure mode the whole enforcement split
+        // exists to remove. Retrying until one attempt passes would be worse than nothing (it hides a real loss
+        // the more often it is retried); the median keeps the asymmetry honest, and the happy path pays for
+        // exactly one sample.
+        val outcome = acceptOnMedianOfRetries(
+            breaches = { it.worstInterpreterRatio() >= 1.0 },
+            rank = ParitySample::worstInterpreterRatio,
+            sample = ::sample,
+        )
+        val accepted = outcome.accepted
+        val iSmallMs = accepted.interpSmall
+        val gSmallMs = accepted.groovySmall
+        val jSmallMs = accepted.javaSmall
+        val iLargeMs = accepted.interpLarge
+        val gLargeMs = accepted.groovyLarge
+        val jLargeMs = accepted.javaLarge
 
         val smallRow = PerfRow(
             scenario.completeIdentity(small, listOf(smallResult.size), listOf(0)),
@@ -841,6 +894,10 @@ object PerfHarness {
         val iGrowth = growth(iSmallMs, iLargeMs, small, large)
         val gGrowth = growth(gSmallMs, gLargeMs, small, large)
         val jGrowth = growth(jSmallMs, jLargeMs, small, large)
+        if (outcome.taken.size > 1) {
+            println("[perf] ${scenario.name}: comparative breach re-measured ${outcome.taken.size}x, accepted the " +
+                "median of " + outcome.taken.joinToString(", ") { "%.2f".format(it.worstInterpreterRatio()) })
+        }
         requireInterpreterBeatsBoth(scenario, smallRow)
         requireInterpreterBeatsBoth(scenario, largeRow)
         PairedAcceptance.requireInterpreterHasLowestPerUnitCost(
@@ -859,6 +916,32 @@ object PerfHarness {
             }
         }
         return PairedPerfCurve(smallRow, largeRow, iGrowth, gGrowth, jGrowth)
+    }
+
+    /**
+     * One independent measurement of all three engines at both scales, so a comparative breach can be re-measured
+     * as a whole. Every array is `pairs` long; index `i` is the i-th interleaved pair, which is what keeps the
+     * engines' samples comparable within a pair.
+     */
+    internal class ParitySample(pairs: Int) {
+        val interpSmall = DoubleArray(pairs)
+        val groovySmall = DoubleArray(pairs)
+        val javaSmall = DoubleArray(pairs)
+        val interpLarge = DoubleArray(pairs)
+        val groovyLarge = DoubleArray(pairs)
+        val javaLarge = DoubleArray(pairs)
+
+        /**
+         * The worst `interp/kernel` median ratio over both scales and both strategies — one number that decides
+         * whether this sample breaches, so re-measurement can be ordered by it exactly as the growth floor orders
+         * its attempts by their growth ratio. `>= 1.0` is a loss to at least one strategy somewhere.
+         */
+        fun worstInterpreterRatio(): Double = maxOf(
+            median(interpSmall.copyOf()) / median(groovySmall.copyOf()),
+            median(interpSmall.copyOf()) / median(javaSmall.copyOf()),
+            median(interpLarge.copyOf()) / median(groovyLarge.copyOf()),
+            median(interpLarge.copyOf()) / median(javaLarge.copyOf()),
+        )
     }
 
     private fun growth(smalls: DoubleArray, larges: DoubleArray, smallScale: Int, largeScale: Int): Growth {

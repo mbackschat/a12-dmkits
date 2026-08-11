@@ -106,10 +106,17 @@ class PerfAnchorBudgetTest {
         budget(anchorMs = null).assertWithinBudget(key, 8.40) { 8.40 }
     }
 
-    /** The dangerous case: the class is anchored, so a missing key means a bar went missing, not a new machine. */
+    /**
+     * The dangerous case: the class is anchored, so a missing key means a bar went missing, not a new machine.
+     *
+     * The exception TYPE is load-bearing, not incidental. `TimingEnforcement` downgrades a timing breach to a
+     * report on shared hardware, and both failures used to be a plain `IllegalStateException` from a `check` — so
+     * the hosted flag swallowed this one too, putting "a bar silently disappeared" back on the one runner nobody
+     * watches interactively. Asserting the distinct type is what keeps the two apart.
+     */
     @Test
     fun anUnanchoredKeyInsideAnAnchoredClassFailsWhereTheBarIsRequired() {
-        val failure = assertThrows(IllegalStateException::class.java) {
+        val failure = assertThrows(UnanchoredObservationException::class.java) {
             budget(unanchoredIsAFailure = true, anchorMs = null).assertWithinBudget(key, 8.40) { 8.40 }
         }
         assertTrue(PerfAnchors.REQUIRED_PROPERTY in failure.message.orEmpty()) {
@@ -124,10 +131,26 @@ class PerfAnchorBudgetTest {
     @Test
     fun aChangedScenarioFingerprintDropsItsAnchor() {
         val refreshed = key.copy(identityLabel = "diagnostic/B1-per-row@1 fingerprint=0000ff")
-        val failure = assertThrows(IllegalStateException::class.java) {
+        val failure = assertThrows(UnanchoredObservationException::class.java) {
             budget(unanchoredIsAFailure = true).assertWithinBudget(refreshed, 8.40) { 8.40 }
         }
         assertTrue("UNANCHORED" in failure.message.orEmpty()) { failure.message.orEmpty() }
+    }
+
+    /**
+     * The other half of the type split: a TOLERANCE breach must NOT be the structural type, or the enforcement
+     * branch would refuse to downgrade a genuine timing failure on shared hardware and the nightly would red on
+     * exactly the noise the split exists to absorb.
+     */
+    @Test
+    fun aToleranceBreachIsNotTheStructuralRefusal() {
+        val failure = assertThrows(IllegalStateException::class.java) {
+            budget(unanchoredIsAFailure = true).assertWithinBudget(key, 99.0) { 99.0 }
+        }
+        assertTrue(failure !is UnanchoredObservationException) {
+            "a slow measurement is a timing failure, which TimingEnforcement governs; only a MISSING key is " +
+                "structural: ${failure.message}"
+        }
     }
 
     /** One scenario at one scale is measured under two regimes; they must never share a number. */

@@ -287,6 +287,16 @@ internal object PerfAnchors {
         val accepted = try {
             AnchorBudget(anchored, required, PerfBounds.ANCHOR_TOLERANCE)
                 .assertWithinBudget(key, observedMs, remeasure)
+        } catch (structural: UnanchoredObservationException) {
+            // Recorded as its own status rather than `breached`: there is no anchor here to ratchet, so this
+            // observation is exactly what a refresh needs to AUTHOR the missing key, and `scripts/perf-anchor.sh`
+            // folds it for that reason. Then rethrown unconditionally — see the type's own doc.
+            try {
+                PerfObservations.record(key, observedMs, status = "unanchored")
+            } catch (unrecordable: Exception) {
+                structural.addSuppressed(unrecordable)
+            }
+            throw structural
         } catch (failure: Throwable) {
             // A failed record must not REPLACE the breach it was recording: the perf failure is the finding, and
             // an IO error thrown from here would bury it behind an unrelated message. Attached, never swallowed —
@@ -316,6 +326,19 @@ internal object PerfAnchors {
  * on scripted numbers ([PerfAnchorBudgetTest]) instead of only by a timed run — the sibling of
  * [PairedAcceptance] and `GrowthFloorRetryTest`.
  */
+/**
+ * The anchor carries no number for this key while its runner class IS anchored — a lane was added, or a
+ * scenario's fingerprint moved and took its anchor with it.
+ *
+ * **A distinct type because it is not a timing failure.** No clock is involved and no machine can make a key
+ * appear, so `TimingEnforcement` must not govern it: shared-hardware contention is a reason to downgrade a
+ * *measurement*, never a reason to stop noticing that a bar has gone missing. Before this type existed both
+ * failures were `IllegalStateException` from a `check`, so the hosted flag swallowed this one too — which put
+ * "a bar silently disappeared" back on exactly the runner nobody watches interactively, the inversion the
+ * unconditional `perf.anchor.required` was introduced to remove.
+ */
+internal class UnanchoredObservationException(message: String) : IllegalStateException(message)
+
 internal class AnchorBudget(
     /** `null` when this runner class has no committed block yet — reported, never failed (see the class doc). */
     private val anchored: Map<String, Double>?,
@@ -348,9 +371,11 @@ internal class AnchorBudget(
             val message = "[perf] UNANCHORED ${PerfEnvironment.key}: ${key.text} measured ${ms(observedMs)} " +
                 "while this runner class IS anchored (${anchored.size} observations) — refresh it " +
                 "(scripts/perf-anchor.sh) to arm the budget for this key"
-            check(!unanchoredIsAFailure) {
-                "$message; -D${PerfAnchors.REQUIRED_PROPERTY}=true refuses an unanchored observation in an " +
-                    "anchored runner class, because that is how a bar silently disappears"
+            if (unanchoredIsAFailure) {
+                throw UnanchoredObservationException(
+                    "$message; -D${PerfAnchors.REQUIRED_PROPERTY}=true refuses an unanchored observation in an " +
+                        "anchored runner class, because that is how a bar silently disappears",
+                )
             }
             println(message)
             return observedMs

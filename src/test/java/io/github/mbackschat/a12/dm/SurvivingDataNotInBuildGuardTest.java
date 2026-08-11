@@ -39,9 +39,9 @@ import org.junit.jupiter.api.Test;
  * .java} only. Shell and Gradle sources name ~40 {@code build/} paths, essentially all of them legitimate derived
  * output (install dists, native binaries, release staging, reports); requiring a declaration for each would turn
  * this list into a set of permissions nobody reviews, which is the failure mode the fully-used assertion exists to
- * prevent. (2) A literal is only a candidate when a path-constructing call ({@link #PATH_APIS}) appears within
+ * prevent. (2) A single-literal path is only a candidate when a path-constructing call ({@link #PATH_APIS}) appears within
  * {@link #API_WINDOW} characters before it, so message text and regex patterns that merely mention {@code build/}
- * are not declarations to maintain. Comments are stripped before matching, so a doc comment may freely illustrate
+ * are not declarations to maintain, and a literal containing whitespace is prose rather than a path. Comments are stripped before matching, so a doc comment may freely illustrate
  * the pattern — for instance {@code Path.of("build/whatever")} right here, which the earlier constructor-anchored
  * matcher would have flagged against this very file.
  */
@@ -78,6 +78,10 @@ class SurvivingDataNotInBuildGuardTest {
             new Declaration(BuildPathUse.WRITES_TRANSIENT_OUTPUT,
                     "the default output directory for a synthesized profiling model; the synthesis is "
                             + "deterministic in its seed, so the model is reproduced rather than recovered"),
+            "build/reports/capability-evidence/certificate-summary.md",
+            new Declaration(BuildPathUse.WRITES_TRANSIENT_OUTPUT,
+                    "a generated report of the capability-evidence matrix, rewritten from the matrix on every run "
+                            + "of the test that produces it, and read back only by that same test"),
             "build/classes/java/main",
             new Declaration(BuildPathUse.READS_DERIVED_OUTPUT,
                     "the compiled main classes the public-API dump READS; the golden it compares against lives "
@@ -88,6 +92,16 @@ class SurvivingDataNotInBuildGuardTest {
      * {@code +}: it is a directory-name comparison, never a file this rule can be about.
      */
     private static final Pattern BUILD_PATH_LITERAL = Pattern.compile("\"([^\"\\n]*build/[^\"\\n]+)\"");
+
+    /**
+     * The SEGMENT-WISE form: {@code Path.of("build", "reports", …)}. No literal contains {@code build/} at all,
+     * so {@link #BUILD_PATH_LITERAL} cannot see it — and it is the natural idiom, which is how a live write site
+     * sat undeclared. The trailing literals are re-joined with {@code /} so it declares like any other path.
+     */
+    private static final Pattern BUILD_PATH_SEGMENTS =
+            Pattern.compile("(?:File|Path\\.of|Paths\\.get)\\(\\s*\"build\"((?:\\s*,\\s*\"[^\"\\n]*\")+)");
+
+    private static final Pattern SEGMENT = Pattern.compile("\"([^\"\\n]*)\"");
 
     /** Calls that turn a string into a filesystem path. A literal reached by none of them is not a path. */
     private static final List<String> PATH_APIS =
@@ -157,17 +171,26 @@ class SurvivingDataNotInBuildGuardTest {
         var seen = new ArrayList<String>();
         Path root = repoRoot();
         for (Path source : sources) {
-            String code = withoutComments(Files.readString(source));
+            // Kotlin nests block comments; Java does NOT. Applying Kotlin's rule to Java is not a harmless
+            // over-approximation: one `/*` inside a Javadoc — `{@code build/*-red.log}` is a real occurrence in
+            // this very repository — drives the depth to 2, so the closing `*/` only returns it to 1 and the
+            // REST OF THE FILE is treated as comment. Measured before the fix: 10 Java files ended in a
+            // non-neutral state and 1,179 lines of real code were blanked, any write site among them invisible.
+            String code = withoutComments(Files.readString(source), source.getFileName().toString().endsWith(".kt"));
             Matcher found = BUILD_PATH_LITERAL.matcher(code);
             while (found.find()) {
-                if (!constructedAsPath(code, found.start())) {
-                    continue;
+                if (looksLikeAPath(found.group(1)) && constructedAsPath(code, found.start())) {
+                    classify(found.group(1), source, root, seen, undeclared);
                 }
-                String literal = found.group(1);
-                seen.add(literal);
-                if (!DECLARED.containsKey(literal)) {
-                    undeclared.add(root.relativize(source) + " -> \"" + literal + "\"");
+            }
+            Matcher segments = BUILD_PATH_SEGMENTS.matcher(code);
+            while (segments.find()) {
+                var joined = new StringBuilder("build");
+                Matcher segment = SEGMENT.matcher(segments.group(1));
+                while (segment.find()) {
+                    joined.append('/').append(segment.group(1));
                 }
+                classify(joined.toString(), source, root, seen, undeclared);
             }
         }
 
@@ -189,6 +212,24 @@ class SurvivingDataNotInBuildGuardTest {
         }
     }
 
+    /**
+     * A path in this tree never contains whitespace; an assertion message that happens to mention {@code build/}
+     * always does. Without this the API window alone produces false positives — the first Java file the fixed
+     * comment stripper made visible was one: a `.gitignore must keep ignoring build/, so …` message sitting a
+     * few lines under an unrelated `resolve(` call. A genuine path with a space would be missed, which is the
+     * recall this buys the precision with, and none exists here.
+     */
+    private static boolean looksLikeAPath(String literal) {
+        return literal.chars().noneMatch(Character::isWhitespace);
+    }
+
+    private static void classify(String literal, Path source, Path root, List<String> seen, List<String> undeclared) {
+        seen.add(literal);
+        if (!DECLARED.containsKey(literal)) {
+            undeclared.add(root.relativize(source) + " -> \"" + literal + "\"");
+        }
+    }
+
     /** True when a path-constructing call sits close enough before [start] to own the literal that begins there. */
     private static boolean constructedAsPath(String code, int start) {
         String window = code.substring(Math.max(0, start - API_WINDOW), start);
@@ -202,7 +243,7 @@ class SurvivingDataNotInBuildGuardTest {
      * indistinguishable from a write, and the previous guard had to delete its own illustration to stay green.
      * Kotlin block comments nest, so the depth is counted rather than closed on the first {@code *}{@code /}.
      */
-    private static String withoutComments(String source) {
+    static String withoutComments(String source, boolean nestsBlockComments) {
         var out = new StringBuilder(source.length());
         int blockDepth = 0;
         boolean lineComment = false;
@@ -221,7 +262,7 @@ class SurvivingDataNotInBuildGuardTest {
                     out.append(' ');
                 }
             } else if (blockDepth > 0) {
-                if ("/*".equals(rest2)) {
+                if (nestsBlockComments && "/*".equals(rest2)) {
                     blockDepth++;
                     out.append("  ");
                     i++;
@@ -278,6 +319,29 @@ class SurvivingDataNotInBuildGuardTest {
             }
         }
         return out.toString();
+    }
+
+    /**
+     * The discriminator for the language rule, because getting it wrong is silent in the dangerous direction.
+     *
+     * Kotlin nests block comments; Java does not. Under Kotlin's rule one {@code /*} inside a Javadoc — and
+     * {@code build/}{@code *-red.log} is a real occurrence in this repository — drives the depth to 2, so the
+     * closing delimiter only returns it to 1 and the REST OF THE FILE reads as comment. Measured before the fix:
+     * 10 Java files ended in a non-neutral state, 1,179 lines of real code blanked, and the scan reported clean.
+     *
+     * <p>The fixture is assembled by concatenation on purpose: written as one literal, {@code "build/planted.txt"}
+     * would be a genuine match in THIS file and the scan would flag its own test data.
+     */
+    @Test
+    void aJavadocContainingASlashStarDoesNotSwallowTheRestOfAJavaFile() {
+        String planted = "\"build" + "/planted.txt\"";
+        String source = "/** {@code build" + "/*-red.log} */\nclass X { void m() { Path.of(" + planted + "); } }";
+
+        assertTrue(withoutComments(source, false).contains(planted),
+                "under Java's rule the code after the Javadoc must survive, or a write site there is invisible");
+        assertTrue(!withoutComments(source, true).contains(planted),
+                "…and Kotlin's rule is what hid it: this half pins the discriminator, so the fix cannot be "
+                        + "undone without the test noticing");
     }
 
     /**

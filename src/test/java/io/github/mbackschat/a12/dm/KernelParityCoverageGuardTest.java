@@ -23,8 +23,9 @@ import org.junit.jupiter.api.Test;
  * estate's stated first priority, and it was asserted on <b>two</b> scenarios. The eighteen growth lanes time the
  * interpreter alone — cheap at N=20,000, and blind to the kernel by construction — while the benchmark tier's
  * only relative bar is {@code RATIO_CEILING}, which is {@code interp/groovy < 5.0} and therefore tolerates the
- * interpreter being five times <i>slower</i>, with nothing at all against generated Java. Fifteen scenarios could
- * have lost to the kernel without a red build. {@code KernelParityGateTest} closed that; this stops it reopening,
+ * interpreter being five times <i>slower</i>, with nothing at all against generated Java. The two lanes that
+ * did carry the bar are the Number-index scenarios, which are not growth-gated at all — so all <b>seventeen</b>
+ * growth-gated scenarios could have lost to the kernel without a red build, not fifteen. {@code KernelParityGateTest} closed that; this stops it reopening,
  * because the cheap way to add a lane is to copy a growth lane, and a growth lane carries no kernel.
  *
  * <p>The oracle is source text, which is weaker than an executed assertion. It is chosen for the same reason
@@ -121,7 +122,13 @@ class KernelParityCoverageGuardTest {
                 "KernelParityGateTest must route through pairedScenarioGrowth: it is the only production path that "
                         + "reaches requireInterpreterBeatsBoth and PairedAcceptance, so without it these lanes "
                         + "measure three engines and assert nothing about their relationship");
-        assertTrue(parity.contains("ABS_CEILING_MS"),
+        // Matched as the ASSERTION, not as the symbol: `parity.contains("ABS_CEILING_MS")` is satisfied by the
+        // import line alone, so deleting the whole assertion block left seventeen green tests that time three
+        // engines and check nothing about the absolute ceiling. Kotlin reports an unused import as a warning.
+        assertTrue(parity.contains("row.interp.medianMs < ABS_CEILING_MS"),
                 "…and keep the absolute backstop, which pairedScenarioGrowth deliberately does not own");
+        assertTrue(parity.contains("PerfObservations.record("),
+                "…and record all three engines' medians: this family carries the headline gate, and a ratio with "
+                        + "no series behind it cannot be compared against its own history");
     }
 }
