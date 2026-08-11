@@ -1,0 +1,117 @@
+package io.github.mbackschat.a12.dm.cli;
+
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.List;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+
+import org.junit.jupiter.api.Test;
+
+/**
+ * <b>Dated evidence belongs in a results log, never in a findings doc.</b> The two homes are set by their own
+ * preambles: {@code INTERPRETER-PERFORMANCE.md} is "the single detailed source of truth for … measurement … and
+ * dated evidence", while {@code INTERPRETER-FINDINGS.md} is "a rationale record, not a status surface — the
+ * timeless fact, the decision, the why". DOC-DISCIPLINE §61 states the same split for every spec: "Specs hold the
+ * stable method; measured results live in a dated log."
+ *
+ * <p><b>Why a guard.</b> This was violated on 2026-08-11: three hosted runs' medians, wall times, run ids and
+ * exceedance counts were written into IF280 rather than the results log, and it took the owner noticing to catch
+ * it. The misfile is attractive precisely because the finding is where the reasoning lives, so the numbers that
+ * motivated it feel like they belong beside it — they do not, because they go stale on the next machine or the
+ * next day, and a findings doc is read as durable.
+ *
+ * <p><b>What is asserted here — the STRUCTURAL forms only, all three measured clean when this landed:</b> a
+ * results-log entry heading ({@code ### Checkpoint <date> …}) must not appear in a findings doc (0 in all three,
+ * against 14 in the performance doc); a CI run URL must not appear in one (0 in all three); and inside the
+ * performance doc every {@code Checkpoint} heading must sit under {@code ## Results log}, so dated evidence cannot
+ * drift up into the method sections.
+ *
+ * <p><b>What this deliberately does NOT guard, measured rather than assumed.</b> The judgment itself — is this
+ * paragraph dated evidence or a timeless argument? — has no reliable textual marker, and two candidates were
+ * tested and rejected: a <em>run-id-shaped number</em> is legitimate in a findings doc (a 17-digit precision
+ * literal in the number-fidelity finding, a public build id cited as provenance), and a <em>table of
+ * measurements</em> is too (IF279's {@code 4 - 3f} derivation table is an argument, and a guard that fails honest
+ * content gets disabled, which is worse than no guard — the reasoning
+ * {@link KernelDocsBasisContractTest} already records). That judgment is carried by the decision test in
+ * {@code docs/CLAUDE.md} instead: <i>would this sentence still be true if the same code were measured tomorrow, or
+ * on another machine?</i> If not, it is dated evidence.
+ *
+ * <p>Rides {@code docGuardTest}, whose input set already declares the whole {@code docs/*.md} tree, so a doc edit
+ * re-runs this lane alone and cannot restore from the build cache into a false green.
+ */
+class DocsEvidencePlacementGuardTest {
+
+    /** The rationale records. Each is read as durable knowhow, so a machine- or day-dependent number rots there. */
+    private static final List<Path> FINDINGS = List.of(
+            Path.of("../docs/INTERPRETER-FINDINGS.md"),
+            Path.of("../docs/KERNEL-FINDINGS.md"),
+            Path.of("../docs/API-FINDINGS.md"));
+
+    private static final Path PERFORMANCE = Path.of("../docs/INTERPRETER-PERFORMANCE.md");
+
+    /** The results-log entry shape: `### Checkpoint 2026-08-11 — …`. */
+    private static final Pattern CHECKPOINT_HEADING =
+            Pattern.compile("(?m)^#{2,4} +Checkpoint +\\d{4}-\\d{2}-\\d{2}");
+
+    /** A link to one CI run — provenance for a measurement, so it belongs with the measurement. */
+    private static final Pattern RUN_URL = Pattern.compile("actions/runs/\\d+");
+
+    @Test
+    void aFindingsDocCarriesNoResultsLogEntry() throws IOException {
+        for (Path doc : FINDINGS) {
+            Matcher found = CHECKPOINT_HEADING.matcher(read(doc));
+            assertTrue(!found.find(), () -> doc.getFileName()
+                    + " carries a results-log entry heading (\"" + found.group() + "\"). A dated checkpoint is "
+                    + "evidence, and evidence lives in INTERPRETER-PERFORMANCE.md's \"Results log\" — this doc is "
+                    + "a rationale record, so a reader takes what it says as durable. Move the numbers, keep the "
+                    + "reasoning, and link the checkpoint");
+        }
+    }
+
+    @Test
+    void aFindingsDocDoesNotSourceItselfFromOneCiRun() throws IOException {
+        for (Path doc : FINDINGS) {
+            Matcher found = RUN_URL.matcher(read(doc));
+            assertTrue(!found.find(), () -> doc.getFileName() + " cites a CI run URL (" + found.group()
+                    + "). A single run's identity is the provenance of a measurement, so it belongs beside that "
+                    + "measurement in the results log, not in the doc that states the timeless conclusion");
+        }
+    }
+
+    /** Dated evidence must not drift up out of the log into the method prose the log's own preamble separates. */
+    @Test
+    void everyDatedCheckpointInThePerformanceDocSitsUnderTheResultsLog() throws IOException {
+        String text = read(PERFORMANCE);
+        int resultsLog = text.indexOf("\n## Results log");
+        assertTrue(resultsLog > 0, "INTERPRETER-PERFORMANCE.md must keep its \"## Results log\" section — it is the "
+                + "home every findings doc points dated evidence at");
+
+        Matcher heading = CHECKPOINT_HEADING.matcher(text);
+        while (heading.find()) {
+            int at = heading.start();
+            assertTrue(at > resultsLog, () -> "INTERPRETER-PERFORMANCE.md has a dated checkpoint (\""
+                    + heading.group() + "\") ABOVE its \"## Results log\" heading, i.e. inside the method prose. "
+                    + "The method is the stable part and the log is the churny part; mixing them is how a spec "
+                    + "starts rotting (DOC-DISCIPLINE: specs hold the method, a dated log holds the numbers)");
+        }
+    }
+
+    private static String read(Path relative) throws IOException {
+        return Files.readString(locate(relative));
+    }
+
+    private static Path locate(Path relative) {
+        if (Files.exists(relative)) {
+            return relative;
+        }
+        Path fromRoot = Path.of(relative.toString().replaceFirst("^\\.\\./", ""));
+        if (Files.exists(fromRoot)) {
+            return fromRoot;
+        }
+        throw new IllegalStateException("cannot locate " + relative + " from " + Path.of("").toAbsolutePath());
+    }
+}

@@ -32,8 +32,12 @@
 # (The `find` is deliberate: the artifact keeps whatever directory prefix upload-artifact chose, and that is not
 # worth asserting from here.)
 #
-# Dispatch it once per run you want in the median (the artifact name is stable, so download each into its own
-# directory and pass them all to one refresh).
+# DISPATCH THE RUNS ONE AT A TIME. Hosted runners are VMs on SHARED physical hosts, so concurrent jobs of your own
+# contend for cache and memory bandwidth — which is spent in user-mode cycles and therefore inflates the CPU clock
+# too. Three concurrently dispatched runs differed by 1.94x at the whole-run level, tracking their wall times
+# monotonically; `gh workflow run` xN is not isolation just because each job gets its own VM. This is the remote
+# form of CLAUDE.md's "a task carrying a timing assertion gets the machine to itself". Wait for each run to finish
+# before dispatching the next, then download each artifact into its own directory and pass them all to one refresh.
 set -uo pipefail
 cd "$(dirname "$0")/.."
 

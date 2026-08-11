@@ -517,6 +517,23 @@ The catalog must favor **non-obvious** combinations (nesting × aggregation × c
 
 *The current headline + the naive baseline it improved on. The intermediate optimization-journey entries were collapsed away (2026-06-27) — the *method* and the *lessons* live above (the optimization catalog, the kernel-technique map, the biases-to-re-check); this log keeps only the **current** measures and the **pre-optimization yardstick** they're read against. Dates are when each axis was last measured.*
 
+### Checkpoint 2026-08-11 — the hosted runner class measured, and a concurrent-dispatch method error (IF280 / IG120)
+
+First measurements of the `linux-amd64-ci` runner class, taken to author its absolute-time anchor block. Three `workflow_dispatch` runs of `1845f8af` on `ubuntu-latest` (`processors=2`, JDKs `21.0.12`/`21.0.11`/`21.0.11`), each recording all 36 gate observations. Evidence, not a promoted bar.
+
+| quantity | measured |
+|---|---|
+| whole-run level, pairwise medians over the 36 lanes | `run2/run1 = 1.58×`, `run3/run1 = 1.94×`, `run3/run2 = 1.19×` |
+| gate step wall time, same order | `6m37s`, `9m27s`, `11m57s` |
+| absolute run2/run1 envelope, CPU clock | `0.97×–2.38×`, median `1.58×` (local `darwin-aarch64`: `0.92×–1.36×`) |
+| observations above the ratified `1.8× + 1 ms`, runs 1 vs 2 | **10 of 36** |
+| …after dividing out the whole-run level | **0 of 36** (spread unchanged at `2.47×`) |
+| growth ratios, all 18 lanes over the three runs | `2.48×–7.98×` (local: `4.00×–5.99×`); the worst is 89 % of the 9.0 floor |
+| `FVNU-uniqueness` growth, the previously documented "control" | `5.85×`, `3.94×`, `6.10×` — a `1.55×` spread, so it is not a stability control here |
+| hosted/local absolute ratio, run 1 vs the committed block | `0.58×–1.59×` (a `2.74×` spread, cf. the `2.07×–2.69×` cross-class drift recorded above) |
+
+**The method error, recorded because every number above is contaminated by it.** The three runs were dispatched **concurrently**: they started within 12 s of each other, and the per-run level ordering tracks the gate wall time monotonically (`1.00 / 1.58 / 1.94` against `6m37s / 9m27s / 11m57s`). Hosted runners are VMs on shared physical hosts, so three of one's own jobs evict each other's cache lines and consume each other's memory bandwidth — spent in **user-mode** cycles, so it inflates a CPU-clock median as readily as a wall-clock one, and `getCurrentThreadUserTime` would not have filtered it either. **`gh workflow run` ×N is not isolation just because each job gets its own VM**: this is the remote form of CLAUDE.md's rule that a task carrying a timing assertion gets the machine to itself, traded away to save wall time. The interleaved N/4N paired estimator gives a *growth* figure some protection, since both halves of a pair meet similar conditions; an *absolute* median has none, and the anchor needs absolute medians. Corrected by three strictly **sequential** runs; until those land nothing here bounds the hosted class's genuine run-to-run variance, and the hosted block stays uncommitted (IG120).
+
 ### Checkpoint 2026-08-08 — the façade's quadratic allocation, and why a timing guard missed it (IF256)
 
 The public `Interpreter` façade copied a pointer list the engine had deliberately **shared** across the findings of a dense `RepetitionNotUnique` cluster ([IF191](INTERPRETER-FINDINGS.md#if191)), so one N-element list was copied N times. Fixed by removing the copy: the engine publishes an immutable snapshot and the façade recognizes it ([IF261](INTERPRETER-FINDINGS.md#if261)).
