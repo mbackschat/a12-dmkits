@@ -280,6 +280,7 @@ tasks.named('test') {
         excludeTestsMatching 'io.github.mbackschat.a12.dm.adapter.perf.FootprintScenarioFixtureGuardTest'
         excludeTestsMatching 'io.github.mbackschat.a12.dm.adapter.perf.PerformanceScenarioFixtureGuardTest'
         excludeTestsMatching 'io.github.mbackschat.a12.dm.adapter.perf.PerfScriptContractTest'
+        excludeTestsMatching 'io.github.mbackschat.a12.dm.adapter.perf.PerfAnchorScriptTest'
         excludeTestsMatching 'io.github.mbackschat.a12.dm.adapter.profile.ComputationPreconditionFidelityTest'
         excludeTestsMatching 'io.github.mbackschat.a12.dm.adapter.profile.ModelSynthesisFidelityTest'
         excludeTestsMatching 'io.github.mbackschat.a12.dm.adapter.profile.ProfileFixtureGuardTest'
@@ -332,17 +333,24 @@ tasks.register('verifySemanticsMapRegistration') {
 }
 
 tasks.register('perfScriptGuardTest', Test) {
-    description = 'Verify the performance launcher routes the routine gate and propagates Node failures.'
+    description = 'Verify the performance launcher routes the routine gate, and that the anchor refresh refuses to ' +
+            'take a bar away.'
     group = 'verification'
     testClassesDirs = sourceSets.test.output.classesDirs
     classpath = sourceSets.test.runtimeClasspath
     useJUnitPlatform()
     def script = rootProject.file('scripts/perf.sh')
+    def anchorScript = rootProject.file('scripts/perf-anchor.sh')
     systemProperty 'perf.script', script.absolutePath
+    // PerfAnchorScriptTest EXECUTES this one against a temporary anchor (ANCHOR_FILE), which is a far stronger
+    // oracle than reading its text — its refusals are what keep a partial run from silently unarming a lane.
+    systemProperty 'perf.anchor.script', anchorScript.absolutePath
     filter {
         includeTestsMatching 'io.github.mbackschat.a12.dm.adapter.perf.PerfScriptContractTest'
+        includeTestsMatching 'io.github.mbackschat.a12.dm.adapter.perf.PerfAnchorScriptTest'
     }
     inputs.file(script)
+    inputs.file(anchorScript)
 }
 
 tasks.register('perfGateTest', Test) {
@@ -361,13 +369,16 @@ tasks.register('perfGateTest', Test) {
     filter {
         includeTestsMatching 'io.github.mbackschat.a12.dm.adapter.perf.PerfGateTest'
     }
-    // Where the anchor bar (PerfAnchors) is REQUIRED, an observation this runner class has not committed a number
-    // for is a failure rather than a note — otherwise adding a lane, or refreshing a scenario's fingerprint, would
-    // silently switch off the only bar that can see a uniform regression. A runner class with no block at all
-    // stays the bootstrap case and passes; the distinction lives in PerfAnchors, not here.
-    if (System.getenv('CI') != null || project.hasProperty('perfAnchorRequired')) {
-        systemProperty 'perf.anchor.required', 'true'
-    }
+    // An observation this runner class has not committed a number for is a failure rather than a note — otherwise
+    // adding a lane, or changing a scenario's content so its fingerprint (and with it its anchor key) moves, would
+    // silently switch off the only bar that can see a uniform regression. A runner class with no block at all stays
+    // the bootstrap case and passes; the distinction lives in PerfAnchors, not here.
+    //
+    // Unconditional, deliberately: this used to be `CI != null || -PperfAnchorRequired`, which put the failure on
+    // the one runner nobody watches interactively. A fingerprint change keeps the observation COUNT intact, so
+    // PerfAnchorCoverageGuardTest cannot see it either — the local gate printing a note while the nightly went red
+    // was a defect, not a courtesy. Whoever changes a scenario is the one who can refresh the anchor.
+    systemProperty 'perf.anchor.required', 'true'
     // The anchor is an ABSOLUTE-time bar, so it may only be ASSERTED where the measurement is valid: this task,
     // single-fork and isolated. A broad `:adapter:test -PrunPerf` also runs PerfGateTest, under up to four parallel
     // forks — the configuration TESTING-SPEC warns "can manufacture a false growth failure" — so there the lanes

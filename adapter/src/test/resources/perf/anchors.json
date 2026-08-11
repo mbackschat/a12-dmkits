@@ -1,5 +1,5 @@
 {
-  "note": "Committed per-runner-class absolute-time anchors for the routine performance gate. Absolute timings are only comparable within one runner class, so each block stands alone; a missing block means the lane prints UNANCHORED and, under -Dperf.anchor.required=true, fails. Refresh with scripts/perf-anchor.sh in the same commit as the change that made a cost legitimately higher. See docs/INTERPRETER-PERFORMANCE.md 'the blind-band audit' and IF280.",
+  "note": "Committed per-runner-class absolute-time anchors for the routine performance gate. Absolute timings are only comparable within one runner class, so each block stands alone. A runner class with NO block here is the bootstrap case: the lane prints UNANCHORED and passes. A key missing from a block that DOES exist is the dangerous one and fails, since that is how a bar silently disappears. Refresh with scripts/perf-anchor.sh in the same commit as the change that made a cost legitimately higher. See docs/INTERPRETER-PERFORMANCE.md 'the blind-band audit' and IF280.",
   "environments": {
     "darwin-aarch64": {
       "capturedAt": "2026-08-11",

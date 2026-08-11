@@ -141,7 +141,9 @@ internal data class AnchorTolerance(val factor: Double, val slackMs: Double) {
  *   A runner class with **no block at all** is the bootstrap state: reported, never failed, because a first run on
  *   a new machine or a new hosted-runner generation is not a regression. A **missing key inside an anchored class**
  *   is the dangerous one — a new lane, or a scenario whose fingerprint changed and took its anchor with it — so
- *   under `-Dperf.anchor.required=true` (which CI sets) it FAILS rather than quietly switching the bar off.
+ *   under `-Dperf.anchor.required=true`, which the isolated `perfGateTest` lane sets unconditionally, it FAILS
+ *   rather than quietly switching the bar off. It was CI-only until 2026-08-11, which put the failure on the one
+ *   runner nobody watches while the local gate printed a note.
  * - **The anchor is committed, not inferred.** A rolling baseline would let `K` successive within-tolerance
  *   degradations compound into an unbounded one; a committed number only moves when a human moves it, and moving it
  *   is a reviewable diff.

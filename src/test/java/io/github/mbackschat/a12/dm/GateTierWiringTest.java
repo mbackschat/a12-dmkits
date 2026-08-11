@@ -80,8 +80,17 @@ class GateTierWiringTest {
                 "the absolute-time anchor bar (PerfAnchors, IF280) is armed only in this single-fork lane; without "
                         + "the property every lane records and asserts nothing, which is the bar silently off");
         assertTrue(perfTask.contains("systemProperty 'perf.anchor.required', 'true'"),
-                "and an observation this runner class has not committed a number for must be a failure in CI, or "
-                        + "adding a lane silently switches its bar off");
+                "and an observation this runner class has not committed a number for must be a failure, or adding a "
+                        + "lane silently switches its bar off");
+        // Matched on the two CALL forms a re-gating would have to use, not on the whole expression: an exact-literal
+        // match is defeated by reindenting, and a bare `perfAnchorRequired` is tripped by a comment explaining why
+        // the gate was removed — which is how this assertion first failed.
+        assertFalse(perfTask.contains("System.getenv('CI')")
+                        || perfTask.contains("hasProperty('perfAnchorRequired')"),
+                "…unconditionally, not gated on CI or on an opt-in property: a scenario whose fingerprint moves "
+                        + "takes its anchor key with it while leaving the observation COUNT intact, so "
+                        + "PerfAnchorCoverageGuardTest cannot see it either, and gating the failure on CI put it on "
+                        + "the one runner nobody watches interactively");
     }
 
     /**

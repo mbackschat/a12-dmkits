@@ -12,24 +12,37 @@
 #
 # Usage:
 #   scripts/perf-anchor.sh refresh [observations.jsonl ...]   fold run observations into the anchor
-#                                                            (refuses to DELETE anchors the inputs did not
-#                                                             measure; ALLOW_REMOVALS=1 overrides)
+#                                                            (refuses to leave any lane the anchor carries
+#                                                             without a bar; ALLOW_REMOVALS=1 overrides)
 #   scripts/perf-anchor.sh show    [observations.jsonl ...]   print the diff a refresh WOULD make, change nothing
 #
 # PREFER SEVERAL RUNS. With more than one input the per-key anchor is their MEDIAN, which is what makes the
 # tolerance tightenable: a single run's sample gives a lane anchored on a fast run a tighter-than-advertised bar
 # and one anchored on a slow run a looser one (IG120). All inputs must come from the same runner class.
 #
-# The input defaults to adapter/build/perf-observations.jsonl, which `scripts/perf.sh gate` writes. A hosted
-# runner's block can only be authored from a hosted run, so take that file from the nightly workflow's uploaded
-# `perf-observations` artifact and pass it here.
+# The input defaults to adapter/build/perf-observations.jsonl, which `scripts/perf.sh gate` writes.
+#
+# AUTHORING A HOSTED RUNNER'S BLOCK. Its numbers can only come from a hosted run, and the nightly is dispatchable,
+# so no schedule has to be waited for — once the revision under measurement is on the remote:
+#
+#   gh workflow run 'Nightly performance' --ref <branch>     # then `gh run watch` to follow it
+#   gh run download <run-id> --name perf-observations --dir /tmp/anchor
+#   scripts/perf-anchor.sh show "$(find /tmp/anchor -name perf-observations.jsonl)"
+#
+# (The `find` is deliberate: the artifact keeps whatever directory prefix upload-artifact chose, and that is not
+# worth asserting from here.)
+#
+# Dispatch it once per run you want in the median (the artifact name is stable, so download each into its own
+# directory and pass them all to one refresh).
 set -uo pipefail
 cd "$(dirname "$0")/.."
 
 mode="${1:-show}"
 shift || true
 if [ "$#" -eq 0 ]; then set -- adapter/build/perf-observations.jsonl; fi
-anchor="adapter/src/test/resources/perf/anchors.json"
+# The committed anchor. Overridable so PerfAnchorScriptTest can EXECUTE this script — its refusals are the
+# mechanism, so they are worth an executed oracle rather than a source-text guard.
+anchor="${ANCHOR_FILE:-adapter/src/test/resources/perf/anchors.json}"
 
 case "$mode" in
     refresh|show) ;;
@@ -90,8 +103,17 @@ with open(anchor_path) as handle:
 block = anchor.setdefault("environments", {}).get(environment, {})
 previous = block.get("observations", {})
 
+# The invariant is "the input measured every lane the anchor knows about", NOT "every lane THIS block had" — a key
+# names the lane, scenario fingerprint, scale, engine and clock, never the machine, so the key sets of two runner
+# classes are directly comparable. That difference is the whole point for a NEW class: it has no previous block, so a
+# same-block comparison cannot see a hole in it (found by rehearsing the IG120 step against a 34-of-36 input).
+anchored_elsewhere = {}
+for other_name, other_block in anchor.get("environments", {}).items():
+    for key in other_block.get("observations", {}):
+        anchored_elsewhere.setdefault(key, []).append(other_name)
+
 added = sorted(k for k in observations if k not in previous)
-removed = sorted(k for k in previous if k not in observations)
+missing = sorted(k for k in anchored_elsewhere if k not in observations)
 changed = sorted(k for k in observations if k in previous and previous[k] != observations[k])
 
 print(f"environment {environment}  ({len(observations)} observations from {runs} run(s))")
@@ -100,23 +122,31 @@ for key in added:
 for key in changed:
     old, new = previous[key], observations[key]
     print(f"  ~ {key} = {old}ms -> {new}ms ({new / old:.2f}x)")
-for key in removed:
-    print(f"  - {key} (was {previous[key]}ms, not measured in this run)")
-if not (added or changed or removed):
+for key in missing:
+    if key in previous:
+        print(f"  - {key} (was {previous[key]}ms, not measured in this run)")
+    else:
+        print(f"  ! {key} (not measured; anchored on {', '.join(anchored_elsewhere[key])})")
+if not (added or changed or missing):
     print("  (no change)")
 
 if mode == "show":
     print("\nshow only — pass 'refresh' to write it")
     raise SystemExit(0)
 
-# A refresh REPLACES the block, so a key the input did not measure would be deleted — and deleting an anchor is
-# exactly the "the bar silently disappears" case this mechanism exists to refuse. It is not hypothetical: a lane
-# whose growth floor breached contributes no observation, and the nightly uploads its record precisely when the run
-# breached, so the documented recovery path is the one most likely to be fed a partial run.
-if removed and not os.environ.get("ALLOW_REMOVALS"):
+# A refresh REPLACES the block, so a lane the input did not measure ends up with no bar — deleted from an existing
+# block, or never written into a new one. Both are the "the bar silently disappears" case this mechanism exists to
+# refuse, and neither is hypothetical: a lane whose growth floor breached contributes no observation, and the nightly
+# uploads its record precisely WHEN the run breached, so the documented recovery path is the one most likely to be fed
+# a partial run.
+if missing and not os.environ.get("ALLOW_REMOVALS"):
+    shown = "".join(f"\n    {key}" for key in missing[:5])
+    if len(missing) > 5:
+        shown += f"\n    … and {len(missing) - 5} more"
     print(
-        f"\nREFUSED: this input does not measure {len(removed)} anchor(s) that {environment} currently carries, and a"
-        f" refresh would delete them — removing the only bar that sees a uniform regression on those lanes."
+        f"\nREFUSED: this input does not measure {len(missing)} lane(s) the anchor carries, so the block it would"
+        f" write for {environment} leaves them with no bar — and this is the only bar that sees a uniform regression:"
+        f"{shown}"
         f"\nFeed a COMPLETE gate run, or, if the lanes are genuinely gone, re-run with ALLOW_REMOVALS=1.",
         file=sys.stderr,
     )
