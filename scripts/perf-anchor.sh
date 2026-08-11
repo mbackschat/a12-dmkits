@@ -20,17 +20,15 @@
 # tolerance tightenable: a single run's sample gives a lane anchored on a fast run a tighter-than-advertised bar
 # and one anchored on a slow run a looser one (IG120). All inputs must come from the same runner class.
 #
-# The input defaults to adapter/build/perf-observations.jsonl, which `scripts/perf.sh gate` writes.
+# The input defaults to the newest run recorded under `perf-results/`, which `scripts/perf.sh gate` writes there.
 #
 # AUTHORING A HOSTED RUNNER'S BLOCK. Its numbers can only come from a hosted run, and the nightly is dispatchable,
 # so no schedule has to be waited for — once the revision under measurement is on the remote:
 #
 #   gh workflow run 'Nightly performance' --ref <branch>     # then `gh run watch` to follow it
 #   gh run download <run-id> --name perf-observations --dir /tmp/anchor
-#   scripts/perf-anchor.sh show "$(find /tmp/anchor -name perf-observations.jsonl)"
-#
-# (The `find` is deliberate: the artifact keeps whatever directory prefix upload-artifact chose, and that is not
-# worth asserting from here.)
+#   scripts/perf-anchor.sh show /tmp/anchor/perf-results/*/*.jsonl
+
 #
 # DISPATCH THE RUNS ONE AT A TIME. Hosted runners are VMs on SHARED physical hosts, so concurrent jobs of your own
 # contend for cache and memory bandwidth — which is spent in user-mode cycles and therefore inflates the CPU clock
@@ -43,7 +41,13 @@ cd "$(dirname "$0")/.."
 
 mode="${1:-show}"
 shift || true
-if [ "$#" -eq 0 ]; then set -- adapter/build/perf-observations.jsonl; fi
+# Default: the single newest recorded run. Pass a glob (perf-results/<environment>/*.jsonl) to anchor at the
+# per-key MEDIAN over several runs, which is what makes the tolerance tightenable.
+if [ "$#" -eq 0 ]; then
+    newest="$(find perf-results -name '*.jsonl' -type f -print0 2>/dev/null | xargs -0 ls -t 2>/dev/null | head -1)"
+    [ -n "$newest" ] || { echo "no recorded runs under perf-results/ — run scripts/perf.sh gate first" >&2; exit 1; }
+    set -- "$newest"
+fi
 # The committed anchor. Overridable so PerfAnchorScriptTest can EXECUTE this script — its refusals are the
 # mechanism, so they are worth an executed oracle rather than a source-text guard.
 anchor="${ANCHOR_FILE:-adapter/src/test/resources/perf/anchors.json}"
@@ -59,8 +63,10 @@ done
 [ -f "$anchor" ] || { echo "missing anchor file $anchor" >&2; exit 1; }
 
 commit="$(git rev-parse --short HEAD)" || { echo 'cannot resolve HEAD' >&2; exit 1; }
-# An anchor captured from a dirty tree does not correspond to the commit it names.
-if [ -n "$(git status --porcelain)" ]; then commit="$commit-DIRTY"; fi
+# An anchor captured from a dirty tree does not correspond to the commit it names. perf-results/ is excluded on
+# purpose: a gate run always leaves a NEW record file there, and that file is the refresh's own input, so counting
+# it as dirt would mark every honest anchor DIRTY.
+if [ -n "$(git status --porcelain -- . ':(exclude)perf-results')" ]; then commit="$commit-DIRTY"; fi
 captured="$(date -u +%F)"
 
 MODE="$mode" ANCHOR="$anchor" COMMIT="$commit" CAPTURED="$captured" python3 - "$@" <<'PY'

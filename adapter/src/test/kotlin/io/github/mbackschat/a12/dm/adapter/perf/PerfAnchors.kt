@@ -2,6 +2,10 @@ package io.github.mbackschat.a12.dm.adapter.perf
 
 import com.fasterxml.jackson.databind.ObjectMapper
 import java.io.File
+import java.nio.file.Path
+import java.time.Instant
+import java.time.ZoneOffset
+import java.time.format.DateTimeFormatter
 
 /**
  * The runner class an observation belongs to. Absolute timings are only comparable **within** one of these: the
@@ -40,31 +44,84 @@ internal object PerfEnvironment {
 }
 
 /**
- * Every median this run measured, appended as JSON Lines to `build/perf-observations.jsonl`.
+ * Every median this run measured, as JSON Lines under **`perf-results/<environment>/<utc-timestamp>.jsonl`** — one
+ * file per run, committed, text only.
  *
- * This is what makes an anchor refreshable: a hosted-runner block can only be authored from a hosted run, so the
- * nightly uploads this file and [scripts/perf-anchor.sh] folds it into the committed anchor. Same append-per-call,
- * truncate-once-per-JVM discipline as `PerfHarness.progress` — Gradle buffers test stdout until a task ends, so a
- * file written incrementally is the only readable record of a long run.
+ * **Not under `build/`, and that is the whole point** (CLAUDE.md, owner rule 2026-08-11; the guard is
+ * `SurvivingDataNotInBuildGuardTest`). This record is read back *across* runs: it is what a historic table is
+ * rendered from (`scripts/perf-history.sh`) and what an anchor is refreshed from (`scripts/perf-anchor.sh`, which
+ * folds several run files at their per-key median). It lived in `adapter/build/` until 2026-08-11, where `clean`
+ * deleted it, so a run could be compared against one committed anchor but never against its own history.
+ *
+ * **Each run records the conditions it ran under**, because the same commit measured on a loaded laptop and on a
+ * 2-vCPU hosted runner are not comparable numbers: environment key, os/arch/JDK, processor count, the commit read
+ * straight from `.git`, the CI run id when present, and the **system load average sampled per observation** so a
+ * run that got busy halfway through is visible rather than merely puzzling.
+ *
+ * Append-per-call, as `PerfHarness.progress` is: Gradle buffers test stdout until a task ends, so an incrementally
+ * written file is the only readable record of a long run.
  */
 internal object PerfObservations {
 
     private val file: File by lazy {
-        File("build/perf-observations.jsonl").apply {
+        val stamp = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HHmmss'Z'")
+            .withZone(ZoneOffset.UTC).format(Instant.now())
+        resultsDirectory().resolve(PerfEnvironment.key).resolve("$stamp.jsonl").toFile().apply {
             parentFile?.mkdirs()
             writeText("")
             appendLine(
                 mapOf(
                     "kind" to "run",
                     "environment" to PerfEnvironment.key,
+                    "capturedAt" to stamp,
+                    "commit" to headCommit(),
                     "os" to System.getProperty("os.name"),
                     "arch" to System.getProperty("os.arch"),
                     "jdk" to System.getProperty("java.version"),
                     "processors" to PerfEnvironment.processors,
+                    "loadAverage" to loadAverage(),
+                    "ci" to !System.getenv("CI").isNullOrBlank(),
+                    "runId" to System.getenv("GITHUB_RUN_ID"),
+                    "runnerName" to System.getenv("RUNNER_NAME"),
                 ),
             )
         }
     }
+
+    /**
+     * `-Dperf.results.dir`, which the Gradle test tasks set to the repository's `perf-results`. The fallback walks
+     * up for `settings.gradle` so a run outside Gradle still lands in the committed tree rather than in whatever
+     * working directory happened to be current.
+     */
+    private fun resultsDirectory(): Path {
+        System.getProperty("perf.results.dir")?.takeIf { it.isNotBlank() }?.let { return Path.of(it) }
+        var here: Path? = Path.of("").toAbsolutePath()
+        while (here != null) {
+            if (here.resolve("settings.gradle").toFile().exists()) return here.resolve("perf-results")
+            here = here.parent
+        }
+        error("cannot locate the repository root to place the performance record; pass -Dperf.results.dir")
+    }
+
+    /** Read from `.git` directly: a record whose commit is unknown cannot be placed in a history. */
+    private fun headCommit(): String? = runCatching {
+        var here: Path? = Path.of("").toAbsolutePath()
+        while (here != null && !here.resolve(".git").toFile().exists()) here = here.parent
+        val git = here?.resolve(".git") ?: return null
+        val head = git.resolve("HEAD").toFile().readText().trim()
+        val sha = if (head.startsWith("ref: ")) {
+            val ref = head.removePrefix("ref: ")
+            git.resolve(ref).toFile().takeIf { it.exists() }?.readText()?.trim()
+                ?: git.resolve("packed-refs").toFile().readLines()
+                    .firstOrNull { it.endsWith(" $ref") }?.substringBefore(' ')
+        } else {
+            head
+        }
+        sha?.take(8)
+    }.getOrNull()
+
+    private fun loadAverage(): Double =
+        java.lang.management.ManagementFactory.getOperatingSystemMXBean().systemLoadAverage
 
     private fun File.appendLine(record: Map<String, Any?>) =
         runCatching { appendText(MAPPER.writeValueAsString(record) + "\n") }
@@ -76,10 +133,14 @@ internal object PerfObservations {
                 "environment" to PerfEnvironment.key,
                 "key" to key.text,
                 "scenario" to key.identityLabel,
+                "lane" to key.lane,
                 "n" to key.n,
                 "engine" to key.engine,
                 "clock" to key.clock,
                 "medianMs" to medianMs,
+                // Per observation, not per run: a machine that got busy halfway through is then visible in the
+                // record rather than showing up later as an unexplained outlier.
+                "loadAverage" to loadAverage(),
             ),
         )
     }

@@ -202,6 +202,7 @@ tasks.withType(Test).configureEach {
 }
 
 tasks.named('test') {
+    systemProperty 'perf.results.dir', rootProject.file('perf-results')
     // Gate tiering (docs/TESTING-SPEC "Test tiers"): the heavyweight perf tests (@Tag 'perf') + the differential
     // fuzzers (@Tag 'fuzz') are EXCLUDED from the default local run. Opt in with -PrunPerf / -PrunFuzz (or
     // -PallTests for both). CI runs fuzz on every push and the isolated PerfGateTest nightly.
@@ -384,6 +385,8 @@ tasks.register('perfGateTest', Test) {
     // forks — the configuration TESTING-SPEC warns "can manufacture a false growth failure" — so there the lanes
     // record their observations and assert nothing.
     systemProperty 'perf.anchor.lane', 'true'
+    // The measurement RECORD is committed data, never build output (CLAUDE.md; SurvivingDataNotInBuildGuardTest).
+    systemProperty 'perf.results.dir', rootProject.file('perf-results')
     // Measurements are observations, never reusable task outputs. Persist compilation/dependencies, not results.
     outputs.upToDateWhen { false }
     outputs.cacheIf { false }

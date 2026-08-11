@@ -23,7 +23,7 @@
   ```
   gh workflow run 'Nightly performance' --ref <branch>
   gh run download <run-id> --name perf-observations --dir /tmp/anchor
-  scripts/perf-anchor.sh show "$(find /tmp/anchor -name perf-observations.jsonl)"
+  scripts/perf-anchor.sh show /tmp/anchor/perf-results/*/*.jsonl
   ```
 
   **Everything that can be prepared without a hosted run is done, and the one step was rehearsed end to end** against a synthesized hosted record (2026-08-11): the refresh is purely **additive** — it writes the second block and leaves `darwin-aarch64` byte-identical — `PerfAnchorResourceTest` and `PerfAnchorCoverageGuardTest` both hold with two blocks, and a deliberately partial **34-of-36** input, which is what a run with a breached growth floor uploads, is refused by the script naming the missing lanes. That refusal is new: it compared only against the keys *that block* already had, so it was blind to exactly the case the blocked step exercises — a new class with no previous block. `PerfAnchorScriptTest` now executes each refusal against a temporary anchor.

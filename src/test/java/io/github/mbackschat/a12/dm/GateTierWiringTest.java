@@ -103,8 +103,9 @@ class GateTierWiringTest {
 
         assertTrue(workflow.contains("actions/upload-artifact"),
                 "the nightly must upload its performance observations");
-        assertTrue(workflow.contains("perf-observations.jsonl"),
-                "…specifically the JSON-Lines record scripts/perf-anchor.sh reads");
+        assertTrue(workflow.contains("perf-results/**/*.jsonl"),
+                "…specifically the committed JSON-Lines record under perf-results/, which is where the gate writes "
+                        + "it (never build/, which clean deletes — SurvivingDataNotInBuildGuardTest)");
         assertTrue(workflow.contains("if: always()"),
                 "…and on failure too, since a breach is exactly when the numbers are wanted");
     }
