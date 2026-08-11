@@ -1,5 +1,6 @@
 package io.github.mbackschat.a12.dm.adapter.perf
 
+import io.github.mbackschat.a12.dm.adapter.perf.PerfBounds
 import io.github.mbackschat.a12.dm.adapter.perf.PerfBounds.ABS_CEILING_MS
 import io.github.mbackschat.a12.dm.adapter.perf.PerfBounds.CAVEAT
 import io.github.mbackschat.a12.dm.adapter.perf.PerfBounds.N_SMALL
@@ -54,7 +55,7 @@ class PerfGateTest {
                     clock = clock,
                 ),
                 observed,
-            ) { measureAt(scale) }
+            ) { PerfHarness.medianOf(PerfBounds.GROWTH_PAIRS) { measureAt(scale) } }
         }
     }
 
@@ -229,12 +230,12 @@ class PerfGateTest {
     }
 
     @Test
-    fun numberIndexValidationBeatsBothKernelStrategiesAndScalesNoWorse() {
+    fun numberIndexValidationBeatsBothKernelStrategiesAndCostsLessPerRow() {
         assertNumberIndexCurve(PerfCatalog.numberIndexValidation())
     }
 
     @Test
-    fun numberIndexComputationBeatsBothKernelStrategiesAndScalesNoWorse() {
+    fun numberIndexComputationBeatsBothKernelStrategiesAndCostsLessPerRow() {
         assertNumberIndexCurve(PerfCatalog.numberIndexComputation())
     }
 

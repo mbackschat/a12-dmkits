@@ -43,18 +43,27 @@ internal object PerfBounds {
      * same runner class's own number, the tolerance covers run-to-run noise only, not the 2.07×–2.69× drift between
      * environments that defeats every portable constant.
      *
-     * **Measured basis (2026-08-11).** Across two isolated full gate runs of the same commit on one machine, the
-     * CPU-clock growth-lane medians this budget guards moved **1.01×–1.16×** (`B1@5000` 8.3 → 9.6 ms is the widest).
-     * The small *wall-clock* fixed-size rows moved up to **1.54×** (`Number-index-compute@500`: 3.04 → 2.39 →
-     * 1.98 ms) — which is why the anchored set is the CPU-clock lanes and not those. `1.5` therefore sits well
-     * above the observed noise of what it measures, a breach is re-measured and accepted on the median of the
-     * attempts, and the `slackMs` term keeps a sub-2 ms lane (`wideGroups@50` anchors at ~1.1 ms) from flapping on
-     * a fraction of a millisecond — the same shape as `CharsetPerfTest`'s `FACTOR × … + 50 ms`.
+     * **Measured basis (2026-08-11, corrected the same day after review).** The honest basis is the **envelope of
+     * every anchored observation across every run available**, not a comparison of a few lanes across two runs.
+     * Replaying a third isolated full gate run against the committed block gives `observed/anchor` of
+     * **0.92×–1.36×** over all 36 observations: `NDV@20000` 45.82 → 62.30 ms is the widest, then `PI@20000` 1.28×,
+     * `COLD@5000` 1.26× (the one wall-clock lane), `constrained@20000` 1.24×, `MSC@5000` 1.23×. The first version of
+     * this comment claimed `1.01×–1.16×` from `B1@5000` (8.3 → 9.6 ms) and was falsified by that run's own log:
+     * a 1.5 factor would have left `NDV@20000` just 10 % of margin, so the next contended nightly reds a healthy
+     * gate. `1.8` sits 1.32× above the widest observation.
      *
-     * Tighten it once several nightlies have shown the per-lane spread; never widen it to make a real regression
-     * pass — refresh the anchor deliberately instead, which is a reviewable diff.
+     * A breach is additionally re-measured and accepted on the median of the attempts, and the `slackMs` term keeps
+     * a sub-2 ms lane (`wideGroups@50` anchors at ~1.1 ms) from flapping on a fraction of a millisecond — the same
+     * shape as `CharsetPerfTest`'s `FACTOR × … + 50 ms`.
+     *
+     * **What this costs in detection, stated plainly:** a uniform regression below ~1.8× on a large lane, and below
+     * ~2.4×–3× on the sub-5 ms lanes where the slack dominates, still passes. That is a real bar where none existed
+     * (the growth ratios cannot see a uniform slowdown at any factor), and it is weaker than the 1.5 first shipped.
+     * Tightening it needs the noise reduced rather than the number lowered: anchor from the median of several runs
+     * instead of one, or raise the lanes' sampling. Never widen it to make a real regression pass — refresh the
+     * anchor deliberately instead, which is a reviewable diff.
      */
-    val ANCHOR_TOLERANCE = AnchorTolerance(factor = 1.5, slackMs = 1.0)
+    val ANCHOR_TOLERANCE = AnchorTolerance(factor = 1.8, slackMs = 1.0)
 
     /** Near-linear: an entry point's growth may exceed the row factor by this much before it reads super-linear.
      *  STRICTER than [SUB_QUADRATIC_MAX] by construction (5.4 at a 4× factor, against that 9.0 trip line) — a

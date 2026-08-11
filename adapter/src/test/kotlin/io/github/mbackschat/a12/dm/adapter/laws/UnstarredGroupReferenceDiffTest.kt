@@ -4,7 +4,6 @@ import io.github.mbackschat.a12.dm.interpreter.DmInterpreter
 import io.github.mbackschat.a12.dm.interpreter.eval.Document
 import io.github.mbackschat.a12.dm.interpreter.eval.newDocument
 import io.github.mbackschat.a12.dm.interpreter.load.ModelLoader
-import io.github.mbackschat.a12.dm.interpreter.model.MsgType
 import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
@@ -25,7 +24,7 @@ import org.junit.jupiter.api.Test
  *
  * Both controls the request specified are here, on this same model, so a null result cannot be an instrument
  * artifact: [starredGroupOperandExpandsRecursively] reads the already-measured starred expansion through this
- * exact code path, and [plainFieldOperandContributesItself] proves a retained set is the operand's contribution
+ * exact code path, and [plainFieldOperandsContributeThemselves] proves a retained set is the operand's contribution
  * rather than an echo of the error field.
  */
 class UnstarredGroupReferenceDiffTest {
@@ -70,8 +69,15 @@ class UnstarredGroupReferenceDiffTest {
 
     private val definition = ModelLoader.load(model)
 
-    /** Fill every operand so all five conditions are true and each rule contributes exactly one message. */
-    private fun kernelDocument(): RuntimeLaws.Doc = RuntimeLaws.doc().apply {
+    /**
+     * One placement list, applied to both engines' documents — so the tri-check cannot silently compare two
+     * different documents, which two hand-maintained copies of the same eleven lines eventually would.
+     */
+    private fun placements(kernel: RuntimeLaws.Doc, interpreter: Document) {
+        fun group(path: String, vararg reps: Int) { kernel.group(path, *reps); interpreter.group(path, *reps) }
+        fun field(path: String, value: String, vararg reps: Int) {
+            kernel.field(path, value, *reps); interpreter.field(path, value, *reps)
+        }
         group("/Order", 1)
         field("/Order/Reference", "ORD-7", 1, 1)
         group("/Order/Billing", 1, 1)
@@ -85,19 +91,12 @@ class UnstarredGroupReferenceDiffTest {
         field("/Order/Items/Quantity", "3", 1, 1, 1)
     }
 
-    private fun interpreterDocument(): Document = definition.newDocument().apply {
-        group("/Order", 1)
-        field("/Order/Reference", "ORD-7", 1, 1)
-        group("/Order/Billing", 1, 1)
-        field("/Order/Billing/Street", "12 Kingsway", 1, 1, 1)
-        field("/Order/Billing/City", "Leeds", 1, 1, 1)
-        group("/Order/Billing/Contact", 1, 1, 1)
-        field("/Order/Billing/Contact/Email", "buyer@example.com", 1, 1, 1, 1)
-        group("/Order/Shipping", 1, 1)
-        field("/Order/Shipping/Carrier", "DPD", 1, 1, 1)
-        group("/Order/Items", 1, 1)
-        field("/Order/Items/Quantity", "3", 1, 1, 1)
-    }
+    /** Fill every operand so all five conditions are true and each rule contributes exactly one message. */
+    private fun kernelDocument(): RuntimeLaws.Doc =
+        RuntimeLaws.doc().also { placements(it, definition.newDocument()) }
+
+    private fun interpreterDocument(): Document =
+        definition.newDocument().also { placements(RuntimeLaws.doc(), it) }
 
     /** `code → the complete sorted referenced set`, from dynamic Groovy. */
     private fun dynamicReferenced(): Map<String, List<String>> =
@@ -113,11 +112,18 @@ class UnstarredGroupReferenceDiffTest {
         DmInterpreter(definition).validateFull(interpreterDocument())
             .associate { it.code to it.referenced.sorted() }
 
-    /** Every rule must actually fire, or a "no contribution" reading would be an instrument artifact. */
+    /**
+     * Every rule must fire EXACTLY once, or a "no contribution" reading would be an instrument artifact — and the
+     * count is asserted rather than inferred from the keys, because the maps below are built with `associate`,
+     * which keeps only the last pair per key and would hide a second message.
+     */
     @Test
-    fun everyOperandPositionFires() {
-        assertEquals(RULES.map { it.first }.sorted(), dynamicReferenced().keys.sorted(),
-            "each of the three operand positions and both controls must contribute exactly one message")
+    fun everyOperandPositionFiresExactlyOnce() {
+        val byCode = RuntimeLaws.messages(model, kernelDocument()).groupBy { it.code() }
+        assertEquals(RULES.map { it.first }.sorted(), byCode.keys.sorted(),
+            "each of the three operand positions and both controls must contribute a message")
+        assertEquals(RULES.associate { it.first to 1 }, byCode.mapValues { (_, messages) -> messages.size },
+            "exactly one message per rule, so a single referenced set per position is the whole contribution")
     }
 
     @Test
@@ -125,7 +131,7 @@ class UnstarredGroupReferenceDiffTest {
         val dynamic = dynamicReferenced()
         val javaStatic = javaStaticReferenced()
         RULES.forEach { (code, condition, position) ->
-            assertEquals(dynamic[code], javaStatic[code],
+            assertEquals(dynamic.getValue(code), javaStatic.getValue(code),
                 "dynamic Groovy and generated Java must agree on '$condition' ($position)")
         }
     }
@@ -135,7 +141,7 @@ class UnstarredGroupReferenceDiffTest {
         val dynamic = dynamicReferenced()
         val interpreter = interpreterReferenced()
         RULES.forEach { (code, condition, position) ->
-            assertEquals(dynamic[code], interpreter[code],
+            assertEquals(dynamic.getValue(code), interpreter.getValue(code),
                 "the interpreter must agree with the kernel on '$condition' ($position)")
         }
     }
@@ -145,7 +151,7 @@ class UnstarredGroupReferenceDiffTest {
     fun starredGroupOperandExpandsRecursively() {
         assertEquals(
             listOf("/Order[1]/Billing[1]/Street", "/Order[1]/Items[0]/Quantity"),
-            dynamicReferenced()["STARSUM"],
+            dynamicReferenced().getValue("STARSUM"),
             "the measured starred expansion must still be visible here, or a null result above proves nothing",
         )
     }
@@ -177,7 +183,7 @@ class UnstarredGroupReferenceDiffTest {
     fun plainFieldOperandsContributeThemselves() {
         assertEquals(
             listOf("/Order[1]/Billing[1]/Street", "/Order[1]/Reference"),
-            dynamicReferenced()["PLAINFIELD"],
+            dynamicReferenced().getValue("PLAINFIELD"),
             "both plain-field operands appear, and nothing else does",
         )
     }
@@ -198,7 +204,7 @@ class UnstarredGroupReferenceDiffTest {
         val dynamic = dynamicReferenced()
         assertEquals(
             mapOf("GRPFILLED" to billing, "ANYFILLED" to billingAndShipping, "COUNTPOS" to billingAndShipping),
-            RULES.take(3).associate { it.first to dynamic[it.first] },
+            RULES.take(3).associate { it.first to dynamic.getValue(it.first) },
             "the presence position, the entity-list position and the numeric count atom expand alike",
         )
     }

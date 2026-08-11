@@ -875,6 +875,16 @@ object PerfHarness {
     /** The middle value of a sorted copy (does not mutate the caller's array). */
     private fun median(a: DoubleArray): Double = a.sortedArray().let { it[it.size / 2] }
 
+    /**
+     * The median of [samples] independent measurements — the estimator [pairedGrowth] applies at one scale, exposed
+     * so a re-measurement can reproduce it. Mixing a median-of-N observation with single-sample retries would take a
+     * median over samples of different variance, which is not the acceptance rule such a retry claims to apply.
+     */
+    fun medianOf(samples: Int, measure: () -> Double): Double {
+        require(samples > 0 && samples % 2 == 1) { "samples must be a positive odd number, was $samples" }
+        return median(DoubleArray(samples) { measure() })
+    }
+
     /** Time the INTERPRETER only at scale [n] (profile/scaling use — no kernel, so high N stays cheap). */
     fun timeInterpreter(scenario: PerfScenario, n: Int, warmup: Int, iters: Int): Stats {
         val inst = preparedInterpreterInstance(scenario, n)

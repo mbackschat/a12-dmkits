@@ -73,6 +73,31 @@ class GateTierWiringTest {
                 "the routine performance task must not be failFast: it exists to MEASURE, and aborting on the "
                         + "first breach discards every later lane's observation — the 2026-08-11 nightly "
                         + "reported 21 of 26 rows and hid five behind the one that tripped");
+        assertFalse(perfTask.contains("failFast = true"),
+                "…and the negative half, so the assertion above cannot be satisfied by a comment while the "
+                        + "setting says otherwise");
+        assertTrue(perfTask.contains("systemProperty 'perf.anchor.lane', 'true'"),
+                "the absolute-time anchor bar (PerfAnchors, IF280) is armed only in this single-fork lane; without "
+                        + "the property every lane records and asserts nothing, which is the bar silently off");
+        assertTrue(perfTask.contains("systemProperty 'perf.anchor.required', 'true'"),
+                "and an observation this runner class has not committed a number for must be a failure in CI, or "
+                        + "adding a lane silently switches its bar off");
+    }
+
+    /**
+     * The anchor is refreshable only from a run's own observation record, and a hosted runner's block can be
+     * authored from nowhere else — so the upload is part of the mechanism, not a convenience (IF280).
+     */
+    @Test
+    void theNightlyUploadsTheObservationRecordTheAnchorIsRefreshedFrom() throws IOException {
+        String workflow = Files.readString(locate(".github/workflows/nightly-performance.yml"));
+
+        assertTrue(workflow.contains("actions/upload-artifact"),
+                "the nightly must upload its performance observations");
+        assertTrue(workflow.contains("perf-observations.jsonl"),
+                "…specifically the JSON-Lines record scripts/perf-anchor.sh reads");
+        assertTrue(workflow.contains("if: always()"),
+                "…and on failure too, since a breach is exactly when the numbers are wanted");
     }
 
     @Test

@@ -368,6 +368,11 @@ tasks.register('perfGateTest', Test) {
     if (System.getenv('CI') != null || project.hasProperty('perfAnchorRequired')) {
         systemProperty 'perf.anchor.required', 'true'
     }
+    // The anchor is an ABSOLUTE-time bar, so it may only be ASSERTED where the measurement is valid: this task,
+    // single-fork and isolated. A broad `:adapter:test -PrunPerf` also runs PerfGateTest, under up to four parallel
+    // forks — the configuration TESTING-SPEC warns "can manufacture a false growth failure" — so there the lanes
+    // record their observations and assert nothing.
+    systemProperty 'perf.anchor.lane', 'true'
     // Measurements are observations, never reusable task outputs. Persist compilation/dependencies, not results.
     outputs.upToDateWhen { false }
     outputs.cacheIf { false }

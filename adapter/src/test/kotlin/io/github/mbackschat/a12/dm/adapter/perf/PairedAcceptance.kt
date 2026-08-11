@@ -73,8 +73,10 @@ internal object PairedAcceptance {
         }
     }
 
+    /** [java.util.Locale.ROOT], so a refusal reads the same on a German JVM as on an English one. */
     private fun render(curve: EngineCurve, step: ScaleStep): String =
         "%s %.4fms/unit (%.3fms@%d → %.3fms@%d, ratio %.2f×)".format(
+            java.util.Locale.ROOT,
             curve.engine, curve.perUnitMs(step),
             curve.growth.smallMs, step.small, curve.growth.largeMs, step.large, curve.growth.ratio,
         )

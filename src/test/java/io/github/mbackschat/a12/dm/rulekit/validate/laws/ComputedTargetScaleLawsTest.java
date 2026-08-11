@@ -1,13 +1,16 @@
 package io.github.mbackschat.a12.dm.rulekit.validate.laws;
 
 import static io.github.mbackschat.a12.dm.rulekit.dsl.Dsl.en;
+import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Function;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.function.Executable;
 
 import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft;
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel;
@@ -87,9 +90,16 @@ class ComputedTargetScaleLawsTest {
         return VALIDATOR.check(json, comp.draft());
     }
 
+    /**
+     * Admitted, AND with nothing to report. {@code ok()} alone would leave the sub-ERROR diagnostics a
+     * {@link ValidationResult} may still carry unasserted, and KF181's accepted-control sentence claims an empty
+     * list — so the list is what is asserted.
+     */
     private static void admits(String target, Function<BoundModel, NumberExpr> operation) {
         ValidationResult r = assign(target, operation);
         assertTrue(r.ok(), () -> "assignment to " + target + " must be admitted: " + r.diagnostics());
+        assertEquals(List.of(), r.diagnostics(),
+                () -> "an admitted assignment to " + target + " must report nothing at all: " + r.diagnostics());
     }
 
     private static void refuses(String target, Function<BoundModel, NumberExpr> operation) {
@@ -201,8 +211,12 @@ class ComputedTargetScaleLawsTest {
     }
 
     private static void reports(String expected, String operation, String... suppress) {
-        assertEquals(List.of(expected), codes("TotalScale0", operation, suppress),
-                () -> "'" + operation + "' into the scale-0 target must report " + expected + " alone");
+        reportsInto("TotalScale0", expected, operation, suppress);
+    }
+
+    private static void reportsInto(String target, String expected, String operation, String... suppress) {
+        assertEquals(List.of(expected), codes(target, operation, suppress),
+                () -> "'" + operation + "' into " + target + " must report " + expected + " alone");
     }
 
     @Test
@@ -263,42 +277,80 @@ class ComputedTargetScaleLawsTest {
     /** Which side of the operator reads the computed target. */
     private enum Position { TARGET_LEFT, TARGET_RIGHT }
 
-    private static String selfReading(Operator operator, Position position, Operand other) {
-        String target = "[/Quote/TotalScale0]";
+    /**
+     * A computation target the grid assigns into. BOTH are measured, and that is load-bearing twice over:
+     * at scale 0 the two {@link Operator#derivedScale} branches are arithmetically indistinguishable
+     * ({@code 0 + s == max(0, s)} for every operand scale here), and the rival account "the OPERAND's own scale must
+     * equal the target's" predicts every scale-0 cell identically to the derived-scale account. Scale 2 separates
+     * both: {@code [TotalScale2] * [Rate]} derives 4 against a scale-2 target while the operand's own scale matches
+     * it exactly, so the two accounts predict opposite codes and the operator branch decides the answer.
+     */
+    private enum Target {
+        SCALE_0("TotalScale0", 0),
+        SCALE_2("TotalScale2", 2);
+
+        private final String field;
+        private final int scale;
+
+        Target(String field, int scale) {
+            this.field = field;
+            this.scale = scale;
+        }
+
+        String read() {
+            return "[/Quote/" + field + "]";
+        }
+    }
+
+    private static String selfReading(Target target, Operator operator, Position position, Operand other) {
         return switch (position) {
-            case TARGET_LEFT -> target + " " + operator.symbol + " " + other.text;
-            case TARGET_RIGHT -> other.text + " " + operator.symbol + " " + target;
+            case TARGET_LEFT -> target.read() + " " + operator.symbol + " " + other.text;
+            case TARGET_RIGHT -> other.text + " " + operator.symbol + " " + target.read();
         };
     }
 
     /**
-     * The order's COMPLETE denominator: every operator × operand position × operand kind, at a matched and at a
-     * mismatched operand scale, with a suppression row under every mismatch (the lean project's
+     * The order's COMPLETE denominator: every target scale × operator × operand position × operand kind, at a
+     * matched and at a mismatched operand scale, with a suppression row under every mismatch (the lean project's
      * {@code SPEC-2026-08-11-01} and {@code SPEC-2026-08-11-02}).
      *
      * <p>This replaced four hand-picked rows that claimed independence "of operand position and of the operator"
      * while measuring the target on the right for {@code *} only and a field operand for {@code +} only — the
      * denominator {@code SPEC-2026-08-11-02} enumerated. Each cell's expectation is <b>derived from the §5 scale
-     * rule first</b> ({@code *} sums operand scales, {@code +}/{@code -} take the maximum; the target is scale 0),
-     * so a cell asserts a prediction rather than whatever the kernel happened to say.
+     * rule first</b> ({@code *} sums operand scales, {@code +}/{@code -} take the maximum), so a cell asserts a
+     * prediction rather than whatever the kernel happened to say. See {@link Target} for why one target scale could
+     * not establish that, and why the second one makes the operator branch decide.
+     *
+     * <p><b>What the encoded predicate deliberately does NOT cover.</b> The kernel admits a <em>smaller</em> derived
+     * scale while the whole operation stays constant-capable (the first law in this file), so exact equality is not
+     * the general admission rule. Every operand here has a non-negative scale and every target scale is ≤ the
+     * largest of them, so no cell can derive a smaller scale than its target and the capability clause is
+     * unreachable by construction. Adding an operand like the integer literal {@code 100} — signed scale −2 — would
+     * reach it and would need the clause encoded.
+     *
+     * <p>Assertions are collected with {@code assertAll} so a kernel upgrade that shifts the order reports every
+     * moved cell at once instead of only the first.
      */
     @Test
-    void theOrderHoldsAcrossEveryOperatorPositionAndOperandKind() {
-        int targetScale = 0;
-        for (Operator operator : Operator.values()) {
-            for (Position position : Position.values()) {
-                for (Operand other : Operand.values()) {
-                    String operation = selfReading(operator, position, other);
-                    boolean scaleMatches = operator.derivedScale(targetScale, other.scale) == targetScale;
-                    reports(scaleMatches ? SELF_REFERENCE : SCALE_GATE, operation);
-                    if (!scaleMatches) {
-                        // The kernel's own escape hatch cannot legalize a computation that still reads its
-                        // target, so what surfaces under the suppressed gate is what the gate was reported ahead of.
-                        reports(SELF_REFERENCE, operation, SCALE_GATE);
+    void theOrderHoldsAcrossEveryTargetScaleOperatorPositionAndOperandKind() {
+        List<Executable> cells = new ArrayList<>();
+        for (Target target : Target.values()) {
+            for (Operator operator : Operator.values()) {
+                for (Position position : Position.values()) {
+                    for (Operand other : Operand.values()) {
+                        String operation = selfReading(target, operator, position, other);
+                        boolean scaleMatches = operator.derivedScale(target.scale, other.scale) == target.scale;
+                        cells.add(() -> reportsInto(target.field, scaleMatches ? SELF_REFERENCE : SCALE_GATE, operation));
+                        if (!scaleMatches) {
+                            // The kernel's own escape hatch cannot legalize a computation that still reads its target,
+                            // so what surfaces under the suppressed gate is what the gate was reported ahead of.
+                            cells.add(() -> reportsInto(target.field, SELF_REFERENCE, operation, SCALE_GATE));
+                        }
                     }
                 }
             }
         }
+        assertAll(cells);
     }
 
     /**

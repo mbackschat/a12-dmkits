@@ -138,7 +138,10 @@ internal object PerfAnchors {
 
     const val REQUIRED_PROPERTY = "perf.anchor.required"
 
-    private const val ANCHOR_RESOURCE = "/perf/anchors.json"
+    /** Set only by the dedicated single-fork `perfGateTest` task — see its comment in `adapter/build.gradle`. */
+    const val LANE_PROPERTY = "perf.anchor.lane"
+
+    internal const val ANCHOR_RESOURCE = "/perf/anchors.json"
 
     /** `null` when this runner class has no block at all — the bootstrap state, which is not a failure. */
     private val anchored: Map<String, Double>? by lazy {
@@ -162,8 +165,20 @@ internal object PerfAnchors {
      * clock; it is called only when the first observation breaches.
      */
     fun assertWithinBudget(key: ObservationKey, observedMs: Double, remeasure: () -> Double) {
-        PerfObservations.record(key, observedMs)
-        AnchorBudget(anchored, required, PerfBounds.ANCHOR_TOLERANCE).assertWithinBudget(key, observedMs, remeasure)
+        if (System.getProperty(LANE_PROPERTY) != "true") {
+            // Not the isolated lane: an absolute-time bar measured under parallel forks would be a coin flip, so
+            // record the observation and assert nothing. Announced, because a silently skipped bar is the defect
+            // this whole mechanism exists to avoid.
+            println("[perf] anchor not asserted (-D$LANE_PROPERTY absent): ${key.text} measured $observedMs ms")
+            PerfObservations.record(key, observedMs)
+            return
+        }
+        // Recorded AFTER acceptance, and it is the ACCEPTED value: the record is what `scripts/perf-anchor.sh`
+        // refreshes an anchor from, and the nightly uploads it even on failure, so a breaching first sample here
+        // would ratchet a future anchor up to a spike the assertion itself rejected.
+        val accepted = AnchorBudget(anchored, required, PerfBounds.ANCHOR_TOLERANCE)
+            .assertWithinBudget(key, observedMs, remeasure)
+        PerfObservations.record(key, accepted)
     }
 }
 
@@ -184,7 +199,8 @@ internal class AnchorBudget(
         require(attempts > 0 && attempts % 2 == 1) { "attempts must be a positive odd number, was $attempts" }
     }
 
-    fun assertWithinBudget(key: ObservationKey, observedMs: Double, remeasure: () -> Double) {
+    /** @return the value acceptance was decided on: [observedMs], or the median of the re-measured attempts. */
+    fun assertWithinBudget(key: ObservationKey, observedMs: Double, remeasure: () -> Double): Double {
         if (anchored == null) {
             // Bootstrap: nothing has ever been recorded for this runner class, so there is nothing to compare and
             // no guard to lose. Loud, but never a failure — a first run on a new machine or a new hosted-runner
@@ -193,7 +209,7 @@ internal class AnchorBudget(
                 "[perf] UNANCHORED ${PerfEnvironment.key} (no block for this runner class yet): ${key.text} " +
                     "measured ${ms(observedMs)} — author it from this run (scripts/perf-anchor.sh refresh)",
             )
-            return
+            return observedMs
         }
         val anchor = anchored[key.text]
         if (anchor == null) {
@@ -208,10 +224,10 @@ internal class AnchorBudget(
                     "anchored runner class, because that is how a bar silently disappears"
             }
             println(message)
-            return
+            return observedMs
         }
         val ceiling = tolerance.ceilingFor(anchor)
-        if (observedMs <= ceiling) return
+        if (observedMs <= ceiling) return observedMs
         val seen = mutableListOf(observedMs)
         while (seen.size < attempts) seen += remeasure()
         val accepted = seen.sorted()[seen.size / 2]
@@ -224,6 +240,7 @@ internal class AnchorBudget(
                 "pass. A growth ratio cannot see this class of regression at all — it is unchanged by a uniform " +
                 "slowdown. If the new cost is intended, refresh the anchor (scripts/perf-anchor.sh) in the same commit."
         }
+        return accepted
     }
 
     /** [java.util.Locale.ROOT], so a number a maintainer may copy into the anchor file is not `12,45` on a German

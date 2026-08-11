@@ -12,6 +12,8 @@
 #
 # Usage:
 #   scripts/perf-anchor.sh refresh [observations.jsonl]   fold a run's observations into the anchor
+#                                                        (refuses to DELETE anchors the input did not
+#                                                         measure; ALLOW_REMOVALS=1 overrides)
 #   scripts/perf-anchor.sh show    [observations.jsonl]   print the diff the refresh WOULD make, change nothing
 #
 # The input defaults to adapter/build/perf-observations.jsonl, which `scripts/perf.sh gate` writes. A hosted
@@ -32,7 +34,9 @@ esac
 [ -f "$input" ] || { echo "no observations at $input — run scripts/perf.sh gate first" >&2; exit 1; }
 [ -f "$anchor" ] || { echo "missing anchor file $anchor" >&2; exit 1; }
 
-commit="$(git rev-parse --short HEAD)"
+commit="$(git rev-parse --short HEAD)" || { echo 'cannot resolve HEAD' >&2; exit 1; }
+# An anchor captured from a dirty tree does not correspond to the commit it names.
+if [ -n "$(git status --porcelain)" ]; then commit="$commit-DIRTY"; fi
 captured="$(date -u +%F)"
 
 MODE="$mode" INPUT="$input" ANCHOR="$anchor" COMMIT="$commit" CAPTURED="$captured" python3 - <<'PY'
@@ -81,6 +85,19 @@ if not (added or changed or removed):
 if mode == "show":
     print("\nshow only — pass 'refresh' to write it")
     raise SystemExit(0)
+
+# A refresh REPLACES the block, so a key the input did not measure would be deleted — and deleting an anchor is
+# exactly the "the bar silently disappears" case this mechanism exists to refuse. It is not hypothetical: a lane
+# whose growth floor breached contributes no observation, and the nightly uploads its record precisely when the run
+# breached, so the documented recovery path is the one most likely to be fed a partial run.
+if removed and not os.environ.get("ALLOW_REMOVALS"):
+    print(
+        f"\nREFUSED: this input does not measure {len(removed)} anchor(s) that {environment} currently carries, and a"
+        f" refresh would delete them — removing the only bar that sees a uniform regression on those lanes."
+        f"\nFeed a COMPLETE gate run, or, if the lanes are genuinely gone, re-run with ALLOW_REMOVALS=1.",
+        file=sys.stderr,
+    )
+    raise SystemExit(1)
 
 anchor["environments"][environment] = {
     "capturedAt": os.environ["CAPTURED"],
