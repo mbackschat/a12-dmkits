@@ -103,22 +103,18 @@ internal object PerfObservations {
         error("cannot locate the repository root to place the performance record; pass -Dperf.results.dir")
     }
 
-    /** Read from `.git` directly: a record whose commit is unknown cannot be placed in a history. */
-    private fun headCommit(): String? = runCatching {
-        var here: Path? = Path.of("").toAbsolutePath()
-        while (here != null && !here.resolve(".git").toFile().exists()) here = here.parent
-        val git = here?.resolve(".git") ?: return null
-        val head = git.resolve("HEAD").toFile().readText().trim()
-        val sha = if (head.startsWith("ref: ")) {
-            val ref = head.removePrefix("ref: ")
-            git.resolve(ref).toFile().takeIf { it.exists() }?.readText()?.trim()
-                ?: git.resolve("packed-refs").toFile().readLines()
-                    .firstOrNull { it.endsWith(" $ref") }?.substringBefore(' ')
-        } else {
-            head
-        }
-        sha?.take(8)
-    }.getOrNull()
+    /**
+     * Asked of `git`, not reconstructed from `.git`. The first version walked up and read `.git/HEAD` itself, which
+     * is correct in an ordinary checkout and **wrong in a worktree**, where `.git` is a FILE holding `gitdir: …`:
+     * `readText()` threw, `runCatching` swallowed it, and the run was recorded with no commit at all. Delegating
+     * covers worktrees, detached HEAD and packed-refs-only for free. Runs once per JVM, outside every timed region.
+     */
+    private fun headCommit(): String = runCatching {
+        val process = ProcessBuilder("git", "rev-parse", "--short", "HEAD")
+            .redirectErrorStream(true).start()
+        val text = process.inputStream.bufferedReader().readText().trim()
+        if (process.waitFor() == 0 && text.isNotEmpty()) text else null
+    }.getOrNull() ?: "unknown"
 
     private fun loadAverage(): Double =
         java.lang.management.ManagementFactory.getOperatingSystemMXBean().systemLoadAverage
@@ -126,7 +122,7 @@ internal object PerfObservations {
     private fun File.appendLine(record: Map<String, Any?>) =
         runCatching { appendText(MAPPER.writeValueAsString(record) + "\n") }
 
-    fun record(key: ObservationKey, medianMs: Double) {
+    fun record(key: ObservationKey, medianMs: Double, status: String) {
         file.appendLine(
             mapOf(
                 "kind" to "observation",
@@ -138,6 +134,7 @@ internal object PerfObservations {
                 "engine" to key.engine,
                 "clock" to key.clock,
                 "medianMs" to medianMs,
+                "status" to status,
                 // Per observation, not per run: a machine that got busy halfway through is then visible in the
                 // record rather than showing up later as an unexplained outlier.
                 "loadAverage" to loadAverage(),
@@ -257,15 +254,25 @@ internal object PerfAnchors {
             // record the observation and assert nothing. Announced, because a silently skipped bar is the defect
             // this whole mechanism exists to avoid.
             println("[perf] anchor not asserted (-D$LANE_PROPERTY absent): ${key.text} measured $observedMs ms")
-            PerfObservations.record(key, observedMs)
+            // `unasserted`, not `accepted`: this ran outside the isolated single-fork lane, where an absolute time
+            // is a coin flip, so the refresh must not fold it even though it is a real observation.
+            PerfObservations.record(key, observedMs, status = "unasserted")
             return
         }
-        // Recorded AFTER acceptance, and it is the ACCEPTED value: the record is what `scripts/perf-anchor.sh`
-        // refreshes an anchor from, and the nightly uploads it even on failure, so a breaching first sample here
-        // would ratchet a future anchor up to a spike the assertion itself rejected.
-        val accepted = AnchorBudget(anchored, required, PerfBounds.ANCHOR_TOLERANCE)
-            .assertWithinBudget(key, observedMs, remeasure)
-        PerfObservations.record(key, accepted)
+        // Recorded on BOTH paths, and the status says which. The accepted value is what `scripts/perf-anchor.sh`
+        // refreshes from — a breaching sample must never ratchet a future anchor up to a spike the assertion
+        // rejected — but a failure that records NOTHING is worse: the missing-key throw (a lane added, or a
+        // scenario whose fingerprint moved) used to suppress the very observation a refresh needs to author that
+        // key, leaving no way forward but ALLOW_REMOVALS. So the failing path records too, marked `breached`, and
+        // the refresh consumes only `accepted`.
+        val accepted = try {
+            AnchorBudget(anchored, required, PerfBounds.ANCHOR_TOLERANCE)
+                .assertWithinBudget(key, observedMs, remeasure)
+        } catch (failure: Throwable) {
+            PerfObservations.record(key, observedMs, status = "breached")
+            throw failure
+        }
+        PerfObservations.record(key, accepted, status = "accepted")
     }
 }
 

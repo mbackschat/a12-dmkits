@@ -22,7 +22,7 @@ results="perf-results"
 [ -d "$results" ] || { echo "no $results directory — run scripts/perf.sh gate first" >&2; exit 1; }
 
 PATTERN="${1:-}" RUNS="${RUNS:-8}" ONLY_ENV="${ENV:-}" RESULTS="$results" python3 - <<'PY'
-import json, os, sys
+import json, os, statistics, sys
 from pathlib import Path
 
 results = Path(os.environ["RESULTS"])
@@ -31,7 +31,7 @@ window = int(os.environ.get("RUNS", "8"))
 only = os.environ.get("ONLY_ENV", "")
 
 runs = {}   # environment -> [ (stamp, header, {key: (ms, load)}) ], oldest first
-for path in sorted(results.rglob("*.jsonl")):
+for path in sorted(results.rglob("*.jsonl"), key=lambda p: (p.parent.name, p.name)):
     header, obs = None, {}
     for line in path.read_text().splitlines():
         line = line.strip()
@@ -92,8 +92,7 @@ for env in sorted(runs):
         # Trend compares the newest value with the median of the earlier ones, which is the only comparison a
         # two-point read can support; it is a report, never a verdict.
         if len(values) >= 2:
-            earlier = sorted(values[:-1])
-            base = earlier[len(earlier) // 2]
+            base = statistics.median(values[:-1])   # a real median: for two earlier runs this is their MEAN.
             trend = "%+7.0f%%" % (100 * (values[-1] / base - 1)) if base else "      ?"
         else:
             trend = "      -"

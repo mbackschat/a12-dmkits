@@ -44,7 +44,9 @@ shift || true
 # Default: the single newest recorded run. Pass a glob (perf-results/<environment>/*.jsonl) to anchor at the
 # per-key MEDIAN over several runs, which is what makes the tolerance tightenable.
 if [ "$#" -eq 0 ]; then
-    newest="$(find perf-results -name '*.jsonl' -type f -print0 2>/dev/null | xargs -0 ls -t 2>/dev/null | head -1)"
+    # Ordered by the filename's UTC stamp, never by mtime: a clone, checkout or stash rewrites mtime, which would
+    # make "newest" depend on when the tree was materialized rather than when the run happened.
+    newest="$(find perf-results -name '*.jsonl' -type f 2>/dev/null | sort | tail -1)"
     [ -n "$newest" ] || { echo "no recorded runs under perf-results/ — run scripts/perf.sh gate first" >&2; exit 1; }
     set -- "$newest"
 fi
@@ -75,7 +77,7 @@ import json, os, statistics, sys
 mode, anchor_path = os.environ["MODE"], os.environ["ANCHOR"]
 inputs = sys.argv[1:]
 
-run, samples = None, {}
+run, samples, headers = None, {}, []
 for input_path in inputs:
     header = None
     with open(input_path) as handle:
@@ -87,14 +89,23 @@ for input_path in inputs:
             if record.get("kind") == "run":
                 header = record
             elif record.get("kind") == "observation":
+                # Only `accepted` may set a bar. `breached` would ratchet the anchor to a value the gate rejected;
+                # `unasserted` was taken outside the isolated single-fork lane, where an absolute time is a coin
+                # flip. A record predating the status field (an imported run) is trusted, as it always was.
+                if record.get("status", "accepted") != "accepted":
+                    continue
                 samples.setdefault(record["key"], []).append(float(record["medianMs"]))
     if header is None:
         sys.exit(f"{input_path} has no run header — it was not written by a complete gate run")
-    if run is not None and header["environment"] != run["environment"]:
-        sys.exit(
-            f"{input_path} was measured on {header['environment']} but a previous input on {run['environment']};"
-            " absolute times are only comparable within one runner class"
-        )
+    for field, why in (("environment", "absolute times are only comparable within one runner class"),
+                       ("processors", "a processor count is the machine discriminator inside a runner class"),
+                       ("commit", "folding revisions would average away the change one of them introduced")):
+        if run is not None and header.get(field) != run.get(field):
+            sys.exit(
+                f"{input_path} reports {field}={header.get(field)!r} but a previous input {run.get(field)!r}; {why}."
+                " Refresh from runs of one machine and one revision."
+            )
+    headers.append(header)
     run = header
 
 if not samples:
@@ -162,12 +173,18 @@ if missing and not os.environ.get("ALLOW_REMOVALS"):
     )
     raise SystemExit(1)
 
+# Derived from the INPUTS, not from HEAD and today: the block describes the runs it was measured from. Stamping
+# the current checkout made a block of 1845f8af data claim the commit that happened to be checked out at refresh
+# time, and `jdk` silently took the last input's value while hiding that another run used a different one.
+jdks = sorted({h.get("jdk") for h in headers if h.get("jdk")})
 anchor["environments"][environment] = {
-    "capturedAt": os.environ["CAPTURED"],
-    "commit": os.environ["COMMIT"],
+    "capturedAt": max((h.get("capturedAt") or "" for h in headers), default="") or os.environ["CAPTURED"],
+    "refreshedAt": os.environ["CAPTURED"],
+    "commit": run.get("commit") or os.environ["COMMIT"],
+    "runs": len(headers),
     "os": run.get("os"),
     "arch": run.get("arch"),
-    "jdk": run.get("jdk"),
+    "jdk": jdks[0] if len(jdks) == 1 else ",".join(jdks),
     "processors": run.get("processors"),
     "observations": dict(sorted(observations.items())),
 }

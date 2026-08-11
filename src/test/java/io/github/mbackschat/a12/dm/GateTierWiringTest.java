@@ -82,11 +82,12 @@ class GateTierWiringTest {
         assertTrue(perfTask.contains("systemProperty 'perf.anchor.required', 'true'"),
                 "and an observation this runner class has not committed a number for must be a failure, or adding a "
                         + "lane silently switches its bar off");
-        // Matched on the two CALL forms a re-gating would have to use, not on the whole expression: an exact-literal
-        // match is defeated by reindenting, and a bare `perfAnchorRequired` is tripped by a comment explaining why
-        // the gate was removed — which is how this assertion first failed.
-        assertFalse(perfTask.contains("System.getenv('CI')")
-                        || perfTask.contains("hasProperty('perfAnchorRequired')"),
+        // Forbids the MECHANISMS a re-gating needs (an env lookup, a project property, a provider, a conditional)
+        // rather than two spellings of one of them: an exact-literal match is defeated by reindenting or by
+        // double quotes, and the earlier two-spelling version passed `if (System.getenv("CI") != null)` unchanged.
+        // The task body is small and has no legitimate conditional, so forbidding `if (` outright is affordable.
+        assertFalse(perfTask.contains("getenv") || perfTask.contains("hasProperty")
+                        || perfTask.contains("environmentVariable") || perfTask.contains("if ("),
                 "…unconditionally, not gated on CI or on an opt-in property: a scenario whose fingerprint moves "
                         + "takes its anchor key with it while leaving the observation COUNT intact, so "
                         + "PerfAnchorCoverageGuardTest cannot see it either, and gating the failure on CI put it on "

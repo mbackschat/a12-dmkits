@@ -143,9 +143,34 @@ class SurvivingDataNotInBuildGuardTest {
         assertTrue(Files.isDirectory(results), "perf-results/ must exist as the committed home of the performance "
                 + "record; the gate's observations are read back across runs, so they cannot be derived output");
 
-        Process ignored = new ProcessBuilder("git", "check-ignore", "-q", "perf-results")
-                .directory(repoRoot().toFile()).start();
-        assertEquals(1, ignored.waitFor(), "git must NOT ignore perf-results/ (exit 1 means 'not ignored'); an "
-                + "ignored record is the same defect as one under build/, just harder to notice");
+        // Asked of a real record FILE, not of the directory. `git check-ignore perf-results` exits 1 ("not
+        // ignored") even when a rule such as `perf-results/**/*.jsonl` ignores everything inside it, so the
+        // directory-level question passes in precisely the state this assertion exists to catch.
+        List<Path> records;
+        try (Stream<Path> walk = Files.walk(results)) {
+            records = walk.filter(p -> p.getFileName().toString().endsWith(".jsonl")).toList();
+        }
+        assertTrue(!records.isEmpty(), "perf-results/ must hold at least one recorded run: a guard that only forbids "
+                + "the wrong location would pass just as well if the record were written nowhere at all");
+
+        Path sample = repoRoot().relativize(records.get(0));
+        // `--no-index` is load-bearing: by default check-ignore consults the index and reports a TRACKED path as
+        // not-ignored even when a rule matches it, so without this flag the assertion cannot see a rule that would
+        // swallow the NEXT record. Found by planting `perf-results/**/*.jsonl` and watching the guard stay green.
+        assertEquals(1, git("check-ignore", "-q", "--no-index", sample.toString()),
+                "git must NOT ignore " + sample + " (exit 1 means 'not ignored'); an ignored record is the same "
+                        + "defect as one under build/, just harder to notice");
+        assertEquals(0, git("ls-files", "--error-unmatch", sample.toString()),
+                sample + " must be TRACKED, not merely un-ignored: an untracked record is deleted by `git clean` "
+                        + "and invisible to anyone who did not run the measurement");
+    }
+
+    /** @return the exit status, so a guard can assert on "not ignored" (1) as well as on success (0). */
+    private static int git(String... arguments) throws IOException, InterruptedException {
+        var command = new ArrayList<String>(List.of("git"));
+        command.addAll(List.of(arguments));
+        Process process = new ProcessBuilder(command).directory(repoRoot().toFile())
+                .redirectErrorStream(true).redirectOutput(ProcessBuilder.Redirect.DISCARD).start();
+        return process.waitFor();
     }
 }
