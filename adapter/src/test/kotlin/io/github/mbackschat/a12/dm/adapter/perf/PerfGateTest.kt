@@ -224,8 +224,9 @@ class PerfGateTest {
     }
 
     /** Fixed-size tri-engine ratios are the primary Number-key cost oracle; the paired curve additionally catches
-     *  a catastrophic rescan. [PerfHarness.pairedScenarioGrowth] refuses a loss to either kernel strategy at
-     *  both sizes and refuses worse growth, after proving exact semantic agreement. */
+     *  a catastrophic rescan. [PerfHarness.pairedScenarioGrowth] refuses a loss to either kernel strategy at both
+     *  sizes, refuses a higher interpreter per-unit cost than either strategy, and refuses the interpreter's own
+     *  CPU-clock growth reaching the catastrophe floor — all after proving exact semantic agreement (IF279). */
     private fun assertNumberIndexCurve(scenario: PerfScenario) {
         val curve = PerfHarness.pairedScenarioGrowth(
             scenario,

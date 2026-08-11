@@ -22,8 +22,8 @@ internal object PerfBounds {
      *
      * **Never relax a stricter stated limit to this number.** It is the weakest of three and supersedes none:
      * the standing development acceptance rule (INTERPRETER-PERFORMANCE.md "Performance contract") requires
-     * beating **both** kernel strategies at every scale with growth no worse than either, and
-     * `PerfHarness.requireInterpreterBeatsBoth` enforces that on the comparison path.
+     * beating **both** kernel strategies at every scale with a per-unit cost no higher than either (IF279), and
+     * `PerfHarness.requireInterpreterBeatsBoth` plus [PairedAcceptance] enforce those on the comparison path.
      *
      * **What it is measured against:** dynamic Groovy. The guards drive `RuntimeLaws.kernelEngine`, so this
      * says nothing on its own about generated Java, which is the faster strategy (the ~1.0–1.3× Groovy tax in

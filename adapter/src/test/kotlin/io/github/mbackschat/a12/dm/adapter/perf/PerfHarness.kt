@@ -749,8 +749,18 @@ object PerfHarness {
 
     /**
      * Apply the paired estimator to interpreter, dynamic Groovy, and generated Java in one reusable-engine run.
-     * Both exact instances are tri-checked before timing. The result is accepted only when the interpreter beats
-     * both strategies at N and 4N and its median within-pair growth is no worse than either kernel strategy.
+     * Both exact instances are tri-checked before timing, then **three** independent bars must hold:
+     *
+     * 1. the interpreter beats both strategies at N and at 4N ([requireInterpreterBeatsBoth]) — the absolute bar;
+     * 2. the interpreter's **per-unit cost** is the lowest of the three ([PairedAcceptance]) — the cross-engine
+     *    scaling bar. It replaced a comparison of raw N/4N growth ratios, which ranks engines by fixed-cost share
+     *    and so is failed deterministically by the leanest one (IF279, mechanism established in IF205);
+     * 3. the interpreter's **own** N/4N growth stays under [PerfBounds.SUB_QUADRATIC_MAX], measured on the CPU
+     *    clock and re-measured before failing ([assertGrowthBelowCatastropheFloor]) — the catastrophe bar, which
+     *    is self-referential because (2) leaves ~10× of slope headroom over the kernel and cannot see a blowup.
+     *
+     * The kernel strategies' own growth ratios stay in the returned [PairedPerfCurve] for the log line; they are
+     * reported, not gated.
      */
     fun pairedScenarioGrowth(
         scenario: PerfScenario,
@@ -816,17 +826,20 @@ object PerfHarness {
         val jGrowth = growth(jSmallMs, jLargeMs, small, large)
         requireInterpreterBeatsBoth(scenario, smallRow)
         requireInterpreterBeatsBoth(scenario, largeRow)
-        val smallGroovyMs = checkNotNull(smallRow.groovy).medianMs
-        val smallJavaMs = checkNotNull(smallRow.java).medianMs
-        val largeGroovyMs = checkNotNull(largeRow.groovy).medianMs
-        val largeJavaMs = checkNotNull(largeRow.java).medianMs
-        check(iGrowth.ratio <= gGrowth.ratio && iGrowth.ratio <= jGrowth.ratio) {
-            "${scenario.name}: interpreter growth ${"%.2f".format(iGrowth.ratio)}x must be no worse than " +
-                "Groovy ${"%.2f".format(gGrowth.ratio)}x and Java ${"%.2f".format(jGrowth.ratio)}x; " +
-                "N=$small interp=${"%.3f".format(smallRow.interp.medianMs)}ms " +
-                "groovy=${"%.3f".format(smallGroovyMs)}ms java=${"%.3f".format(smallJavaMs)}ms; " +
-                "N=$large interp=${"%.3f".format(largeRow.interp.medianMs)}ms " +
-                "groovy=${"%.3f".format(largeGroovyMs)}ms java=${"%.3f".format(largeJavaMs)}ms"
+        PairedAcceptance.requireInterpreterHasLowestPerUnitCost(
+            scenario.name,
+            ScaleStep(small, large),
+            EngineCurve("interpreter", iGrowth),
+            listOf(EngineCurve("Groovy", gGrowth), EngineCurve("Java", jGrowth)),
+        )
+        val byScale = mapOf(small to iSmall, large to iLarge)
+        assertGrowthBelowCatastropheFloor(
+            "${scenario.name} interpreter",
+            culprit = "a rescan or per-row rebuild on this scenario's shape",
+        ) {
+            pairedGrowth(small, large, pairs) { n ->
+                measureCurrentThreadCpu(warmup, iters) { byScale.getValue(n).run() }.medianMs
+            }
         }
         return PairedPerfCurve(smallRow, largeRow, iGrowth, gGrowth, jGrowth)
     }
