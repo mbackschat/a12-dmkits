@@ -62,14 +62,33 @@ class SurvivingDataNotInBuildGuardTest {
         throw new IllegalStateException("cannot locate the repository root from " + Path.of("").toAbsolutePath());
     }
 
+    /**
+     * Excluded directory names, matched as whole path SEGMENTS of the repo-relative path — never as a substring of
+     * the absolute one. Both halves of that sentence are load-bearing, and getting either wrong makes the scan
+     * silently empty rather than loud: this project's own worktrees live under {@code .claude/worktrees/<name>},
+     * so inside one every absolute path contains {@code /.claude/} and a substring test excludes the entire
+     * repository. The scan then finds nothing, {@link #noSourceWritesSurvivingDataUnderBuild}'s undeclared-site
+     * assertion passes over zero files, and only the allowlist-usage half fails — which reads as a stale
+     * permission and invites deleting a live entry.
+     */
+    private static final List<String> EXCLUDED_SEGMENTS = List.of("build", ".git", ".gradle", ".claude");
+
+    private static boolean excluded(Path relative) {
+        for (Path segment : relative) {
+            if (EXCLUDED_SEGMENTS.contains(segment.toString())) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     private static List<Path> sources() throws IOException {
-        try (Stream<Path> walk = Files.walk(repoRoot())) {
+        Path root = repoRoot();
+        try (Stream<Path> walk = Files.walk(root)) {
             return walk.filter(Files::isRegularFile)
                     .filter(p -> {
-                        String s = p.toString();
-                        return (s.endsWith(".kt") || s.endsWith(".java"))
-                                && !s.contains("/build/") && !s.contains("/.git/") && !s.contains("/.gradle/")
-                                && !s.contains("/.claude/");
+                        String name = p.getFileName().toString();
+                        return (name.endsWith(".kt") || name.endsWith(".java")) && !excluded(root.relativize(p));
                     })
                     .toList();
         }
@@ -77,9 +96,18 @@ class SurvivingDataNotInBuildGuardTest {
 
     @Test
     void noSourceWritesSurvivingDataUnderBuild() throws IOException {
+        List<Path> sources = sources();
+        // Before anything is concluded from the scan: prove it HAPPENED. Every assertion below is satisfied by an
+        // empty scan, so a filter that excludes the whole tree reads as "no violations" plus one confusing
+        // allowlist failure. That is the exact shape this guard shipped in, and it survived because the loud half
+        // pointed at the innocent list rather than at the scan.
+        assertTrue(sources.size() > 100, () -> "the source scan collapsed to " + sources.size() + " file(s); every "
+                + "other assertion here is vacuously true over an empty scan, so this is a broken filter (see "
+                + "EXCLUDED_SEGMENTS), never a clean repository");
+
         var undeclared = new ArrayList<String>();
         var seen = new ArrayList<String>();
-        for (Path source : sources()) {
+        for (Path source : sources) {
             Matcher found = BUILD_PATH.matcher(Files.readString(source));
             while (found.find()) {
                 String literal = found.group(1);
