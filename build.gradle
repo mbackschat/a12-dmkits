@@ -508,6 +508,7 @@ tasks.register('docGuardTest', Test) {
         includeTestsMatching 'io.github.mbackschat.a12.dm.GateTierWiringTest'
         includeTestsMatching 'io.github.mbackschat.a12.dm.PerfAnchorCoverageGuardTest'
         includeTestsMatching 'io.github.mbackschat.a12.dm.PerformanceRecordShapeGuardTest'
+        includeTestsMatching 'io.github.mbackschat.a12.dm.KernelParityCoverageGuardTest'
         includeTestsMatching 'io.github.mbackschat.a12.dm.SurvivingDataNotInBuildGuardTest'
         includeTestsMatching 'io.github.mbackschat.a12.dm.VersionMentionFreshnessTest'
         includeTestsMatching 'io.github.mbackschat.a12.dm.rulekit.catalog.DslCatalogBridgeTest'

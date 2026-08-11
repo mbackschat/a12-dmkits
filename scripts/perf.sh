@@ -49,7 +49,11 @@ run_gradle() {  # $1 = task, the rest = extra Gradle args; writes RAW to $out (n
 case "$mode" in
     gate)
         # counts doubles as an optional METHOD pattern: 'semanticIndex*' → --tests "*PerfGateTest.semanticIndex*"
-        run_gradle :adapter:perfGateTest --tests "*PerfGateTest${counts:+.$counts}" ;;
+        if [ -n "$counts" ]; then
+            run_gradle :adapter:perfGateTest --tests "*PerfGateTest.$counts" --tests "*KernelParityGateTest.$counts"
+        else
+            run_gradle :adapter:perfGateTest --tests "*PerfGateTest" --tests "*KernelParityGateTest"
+        fi ;;
     bench)
         if [ -n "$counts" ]; then
             run_gradle :adapter:test -PrunPerf --tests "*PerfBenchTest.gatesEveryInventoryScenario" -Dperf.scenario="$counts"

@@ -373,6 +373,10 @@ tasks.register('perfGateTest', Test) {
     failFast = false
     filter {
         includeTestsMatching 'io.github.mbackschat.a12.dm.adapter.perf.PerfGateTest'
+        // The cross-engine parity lanes: the interpreter must beat BOTH kernel strategies on every gated
+        // scenario. They belong in this isolated task and not in the checkpoint bench tier, because "always
+        // faster than the kernel" is the estate's #1 requirement and therefore a per-landing question.
+        includeTestsMatching 'io.github.mbackschat.a12.dm.adapter.perf.KernelParityGateTest'
     }
     // An observation this runner class has not committed a number for is a failure rather than a note — otherwise
     // adding a lane, or changing a scenario's content so its fingerprint (and with it its anchor key) moves, would
