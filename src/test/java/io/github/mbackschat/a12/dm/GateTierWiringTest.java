@@ -69,6 +69,10 @@ class GateTierWiringTest {
                 "the routine performance task must always execute");
         assertTrue(perfTask.contains("outputs.cacheIf { false }"),
                 "the routine performance task must never restore a cached measurement");
+        assertTrue(perfTask.contains("failFast = false"),
+                "the routine performance task must not be failFast: it exists to MEASURE, and aborting on the "
+                        + "first breach discards every later lane's observation — the 2026-08-11 nightly "
+                        + "reported 21 of 26 rows and hid five behind the one that tripped");
     }
 
     @Test

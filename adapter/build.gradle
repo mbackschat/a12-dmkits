@@ -353,7 +353,11 @@ tasks.register('perfGateTest', Test) {
     classpath = sourceSets.test.runtimeClasspath
     useJUnitPlatform()
     maxParallelForks = 1
-    failFast = true
+    // NOT failFast: this lane exists to MEASURE, and one breach used to discard every later lane's numbers —
+    // the 2026-08-11 nightly reported 21 of 26 rows and hid the five behind the one that tripped. A breach now
+    // pays for the full run (each growth floor re-measures up to GROWTH_RETRY_ATTEMPTS times), which is minutes
+    // against the workflow's 60-minute timeout and buys the complete picture the diagnosis needs.
+    failFast = false
     filter {
         includeTestsMatching 'io.github.mbackschat.a12.dm.adapter.perf.PerfGateTest'
     }
