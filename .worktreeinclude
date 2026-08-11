@@ -1,0 +1,21 @@
+# Files copied into a newly created agent worktree. Gitignore syntax; a file is copied only
+# when it matches a pattern here AND is gitignored, so tracked content is never duplicated.
+
+# Accumulated Claude Code permission grants (~12 KB of them). A worktree is a fresh checkout,
+# so without this a session there starts with none and re-prompts for things already approved
+# in the main checkout: git add/commit, python3 -, reads of the sibling ../a12-kernel source.
+# Ignored per-developer via a global gitignore rather than this repo's, so if you have no such
+# file nothing is copied and this line is inert.
+.claude/settings.local.json
+
+# Deliberately NOT copied, so nobody adds them later thinking it was an oversight:
+#   .claude/scheduled_tasks.lock   a lock — a stale one copied into a fresh worktree is worse
+#                                  than none
+#   .claude/worktrees/             the worktree root itself; recursive
+#   .uv-cache/ .uv-tools/          derived caches, regenerated on demand
+#   build/ .gradle/ .kotlin/       derived output; the isolated GRADLE_USER_HOME lives OUTSIDE
+#                                  the repo (../.gradle-isolated) and is already shared
+#   corpus/**/settings.yaml        written by A12 Tools when a folder is opened as a workspace.
+#                                  Copy it only if you routinely open corpus models from inside
+#                                  a worktree — the tool recreates it, and a copied one carries
+#                                  stale workspace state.
