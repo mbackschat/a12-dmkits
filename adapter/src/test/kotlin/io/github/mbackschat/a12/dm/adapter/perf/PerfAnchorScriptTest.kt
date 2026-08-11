@@ -51,6 +51,43 @@ class PerfAnchorScriptTest {
         assertEquals(setOf("darwin-aarch64"), blocksIn(anchor), "a refused refresh must write nothing")
     }
 
+    /**
+     * Two anchored classes legitimately carry different key sets for a while: a scenario's fingerprint is part of
+     * its key, so a content change re-keys every lane and the classes are re-measured one at a time. Holding an
+     * EXISTING block to the union refuses the first refresh of either one for carrying the other's stale keys,
+     * which makes `ALLOW_REMOVALS` the routine way to run the script — and an override nobody can avoid is not a
+     * refusal at all.
+     */
+    @Test
+    fun anExistingBlockIsNotHeldToAnotherClassesDivergentLanes() {
+        val anchor = anchorWithBlocks(
+            "darwin-aarch64" to listOf(laneA to 1.0, laneB to 2.0),
+            "linux-amd64-ci" to listOf(laneA to 3.0),   // this class never carried laneB
+        )
+
+        val run = refresh(anchor, observations("hosted.jsonl", laneA to 3.4))
+
+        assertEquals(0, run.status,
+            "refreshing a block must not require lanes only ANOTHER class carries: ${run.stderr}")
+        assertEquals(mapOf(laneA to 3.4), observationsOf(anchor, "linux-amd64-ci"))
+        assertEquals(mapOf(laneA to 1.0, laneB to 2.0), observationsOf(anchor, "darwin-aarch64"),
+            "the other class must be untouched")
+    }
+
+    /** The positive control for the case above: the refusal must survive for the block's OWN lanes. */
+    @Test
+    fun aRunThatDropsALaneItsOwnBlockCarriesIsStillRefused() {
+        val anchor = anchorWithBlocks("linux-amd64-ci" to listOf(laneA to 3.0, laneB to 4.0))
+
+        val run = refresh(anchor, observations("hosted.jsonl", laneA to 3.4))
+
+        assertNotEquals(0, run.status,
+            "dropping a lane THIS block anchors is a real removal and must still be refused")
+        assertTrue(laneB in run.stderr) { "the refusal must name the dropped lane: ${run.stderr}" }
+        assertEquals(mapOf(laneA to 3.0, laneB to 4.0), observationsOf(anchor, "linux-amd64-ci"),
+            "a refused refresh must write nothing")
+    }
+
     /** The documented escape hatch, for when a lane is genuinely gone rather than merely unmeasured. */
     @Test
     fun theRefusalIsOverridableSoARemovedLaneCanStillBeRefreshedAway() {
@@ -108,24 +145,24 @@ class PerfAnchorScriptTest {
         assertEquals(before, Files.readString(anchor), "show must leave the anchor byte-identical")
     }
 
-    private fun anchorCarrying(vararg observations: Pair<String, Double>): Path {
-        val block = observations.joinToString(",\n") { (key, ms) -> """      "$key": $ms""" }
+    private fun anchorCarrying(vararg observations: Pair<String, Double>): Path =
+        anchorWithBlocks("darwin-aarch64" to observations.toList())
+
+    private fun anchorWithBlocks(vararg blocks: Pair<String, List<Pair<String, Double>>>): Path {
+        val rendered = blocks.joinToString(",\n") { (environment, observations) ->
+            val body = observations.joinToString(",\n") { (key, ms) -> """      "$key": $ms""" }
+            """    "$environment": {
+      "capturedAt": "2026-08-11",
+      "commit": "abc1234",
+      "processors": 8,
+      "observations": {
+$body
+      }
+    }"""
+        }
         return Files.writeString(
             work.resolve("anchors.json"),
-            """
-            {
-              "environments": {
-                "darwin-aarch64": {
-                  "capturedAt": "2026-08-11",
-                  "commit": "abc1234",
-                  "processors": 8,
-                  "observations": {
-            $block
-                  }
-                }
-              }
-            }
-            """.trimIndent(),
+            "{\n  \"environments\": {\n$rendered\n  }\n}\n",
         )
     }
 

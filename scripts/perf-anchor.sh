@@ -12,8 +12,9 @@
 #
 # Usage:
 #   scripts/perf-anchor.sh refresh [observations.jsonl ...]   fold run observations into the anchor
-#                                                            (refuses to leave any lane the anchor carries
-#                                                             without a bar; ALLOW_REMOVALS=1 overrides)
+#                                                            (refuses to leave a lane of THIS block without a bar —
+#                                                             of every anchored class when the block is new;
+#                                                             ALLOW_REMOVALS=1 overrides)
 #   scripts/perf-anchor.sh show    [observations.jsonl ...]   print the diff a refresh WOULD make, change nothing
 #
 # PREFER SEVERAL RUNS. With more than one input the per-key anchor is their MEDIAN, which is what makes the
@@ -124,17 +125,28 @@ with open(anchor_path) as handle:
 block = anchor.setdefault("environments", {}).get(environment, {})
 previous = block.get("observations", {})
 
-# The invariant is "the input measured every lane the anchor knows about", NOT "every lane THIS block had" — a key
-# names the lane, scenario fingerprint, scale, engine and clock, never the machine, so the key sets of two runner
-# classes are directly comparable. That difference is the whole point for a NEW class: it has no previous block, so a
-# same-block comparison cannot see a hole in it (found by rehearsing the IG120 step against a 34-of-36 input).
-anchored_elsewhere = {}
+# Which keys are anchored where. A key names the lane, scenario fingerprint, scale, engine and clock, never the
+# machine, so the key sets of two runner classes are directly comparable.
+anchored_anywhere = {}
 for other_name, other_block in anchor.get("environments", {}).items():
     for key in other_block.get("observations", {}):
-        anchored_elsewhere.setdefault(key, []).append(other_name)
+        anchored_anywhere.setdefault(key, []).append(other_name)
+
+# WHAT THIS INPUT MUST MEASURE, and the two cases differ:
+#   * an EXISTING block -> its own keys. Anything it carried that this run did not measure is a real removal.
+#   * a NEW block -> the union across the other classes, since there is no own set to compare against and a partial
+#     run would otherwise author a block full of silent holes. That is the IG120 case, and it is not hypothetical:
+#     the nightly uploads its record precisely WHEN a lane breached, so the documented recovery path is the one
+#     most likely to be fed an incomplete run (rehearsed against a 34-of-36 input).
+# Requiring the union of an EXISTING block was wrong. Two classes legitimately diverge while a scenario's
+# fingerprint is re-measured class by class, and under that rule the FIRST refresh of either one is refused for
+# carrying the other's now-stale keys — so ALLOW_REMOVALS becomes the routine way to run this, which retires the
+# refusal altogether. A bar nobody can refresh without the override is a bar nobody keeps.
+required = set(previous) if previous else set(anchored_anywhere)
 
 added = sorted(k for k in observations if k not in previous)
-missing = sorted(k for k in anchored_elsewhere if k not in observations)
+missing = sorted(k for k in required if k not in observations)
+elsewhere_only = sorted(k for k in anchored_anywhere if k not in observations and k not in required)
 changed = sorted(k for k in observations if k in previous and previous[k] != observations[k])
 
 print(f"environment {environment}  ({len(observations)} observations from {runs} run(s))")
@@ -147,7 +159,10 @@ for key in missing:
     if key in previous:
         print(f"  - {key} (was {previous[key]}ms, not measured in this run)")
     else:
-        print(f"  ! {key} (not measured; anchored on {', '.join(anchored_elsewhere[key])})")
+        print(f"  ! {key} (not measured; anchored on {', '.join(anchored_anywhere[key])})")
+for key in elsewhere_only:
+    where = ", ".join(anchored_anywhere[key])
+    print(f"  · {key} (not measured; anchored only on {where}, so not required of this block)")
 if not (added or changed or missing):
     print("  (no change)")
 
