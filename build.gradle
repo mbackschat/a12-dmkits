@@ -507,6 +507,7 @@ tasks.register('docGuardTest', Test) {
         includeTestsMatching 'io.github.mbackschat.a12.dm.DoctorScriptTest'
         includeTestsMatching 'io.github.mbackschat.a12.dm.GateTierWiringTest'
         includeTestsMatching 'io.github.mbackschat.a12.dm.PerfAnchorCoverageGuardTest'
+        includeTestsMatching 'io.github.mbackschat.a12.dm.PerformanceRecordShapeGuardTest'
         includeTestsMatching 'io.github.mbackschat.a12.dm.SurvivingDataNotInBuildGuardTest'
         includeTestsMatching 'io.github.mbackschat.a12.dm.VersionMentionFreshnessTest'
         includeTestsMatching 'io.github.mbackschat.a12.dm.rulekit.catalog.DslCatalogBridgeTest'
@@ -535,6 +536,10 @@ tasks.register('docGuardTest', Test) {
             // PerfAnchorCoverageGuardTest reads the committed absolute-time anchor beside PerfGateTest's source
             // (already covered above) to check that every growth lane is anchored at both scales — IF280.
             'perf anchors': file('adapter/src/test/resources/perf/anchors.json'),
+            // PerformanceRecordShapeGuardTest reads every committed run at runtime. Undeclared, committing a
+            // malformed record would leave this lane UP-TO-DATE and the shape unchecked — and the record is
+            // exactly the artifact whose readability nothing else verifies.
+            'performance record': fileTree('perf-results') { include '**/*.jsonl' },
             // VersionMentionFreshnessTest reads each of these at runtime; undeclared, a prose-only edit left
             // the broad `test` task UP-TO-DATE and the drift guard silently unrun.
             'version mentions' : files(
