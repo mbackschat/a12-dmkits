@@ -62,15 +62,32 @@ jobs:
           JAVA_HOME: ${{ env.JAVA_HOME_21_X64 }}
         run: ./scripts/perf.sh gate
 
-      # The run writes its record to the COMMITTED perf-results/ tree (never build/, which clean deletes). CI does not
-      # commit, so the artifact is how a hosted run's record leaves the runner: a hosted block can only be authored
-      # from a hosted run. Uploaded even on failure — a breach is exactly when the numbers are wanted.
+      # The run writes its record INTO the committed perf-results/ tree (never build/, which clean deletes), so the
+      # tree now holds this run's file beside every previously committed one. Uploading the tree would hand the
+      # operator an artifact of mostly other machines' and other revisions' numbers, presented as this run's output.
+      # `git ls-files --others` is exactly the set this run added, because CI checks out clean and the gate only
+      # appends. Runs on failure too — a breach is exactly when the numbers are wanted.
+      - name: Collect this run's own performance record
+        if: always()
+        working-directory: a12-dmkits
+        run: |
+          mkdir -p "$RUNNER_TEMP/perf-record"
+          git ls-files --others --exclude-standard -- perf-results | while read -r record; do
+            mkdir -p "$RUNNER_TEMP/perf-record/$(dirname "$record")"
+            cp "$record" "$RUNNER_TEMP/perf-record/$record"
+          done
+          # Staged alongside the record so the artifact has ONE root: upload-artifact makes paths relative to the
+          # least common ancestor of everything matched, and a second path elsewhere on the filesystem would bury
+          # the record under the runner's absolute directories.
+          cp build/perf-gate.log "$RUNNER_TEMP/perf-record/" 2>/dev/null || true
+          find "$RUNNER_TEMP/perf-record" -type f -print
+
+      # CI does not commit, so this artifact is how a hosted run's record leaves the runner: a hosted anchor block
+      # can be authored from nowhere else.
       - name: Upload the run's performance observations
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: perf-observations
-          path: |
-            a12-dmkits/perf-results/**/*.jsonl
-            a12-dmkits/build/perf-gate.log
+          path: ${{ runner.temp }}/perf-record/**
           if-no-files-found: warn

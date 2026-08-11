@@ -104,9 +104,16 @@ class GateTierWiringTest {
 
         assertTrue(workflow.contains("actions/upload-artifact"),
                 "the nightly must upload its performance observations");
-        assertTrue(workflow.contains("perf-results/**/*.jsonl"),
-                "…specifically the committed JSON-Lines record under perf-results/, which is where the gate writes "
-                        + "it (never build/, which clean deletes — SurvivingDataNotInBuildGuardTest)");
+        assertTrue(workflow.contains("git ls-files --others --exclude-standard -- perf-results"),
+                "…collected as the files THIS run added. The gate writes into the committed perf-results/ tree "
+                        + "(never build/, which clean deletes — SurvivingDataNotInBuildGuardTest), so an artifact "
+                        + "of the whole tree would ship other machines' and other revisions' committed numbers as "
+                        + "if this run had produced them");
+        assertFalse(workflow.contains("a12-dmkits/perf-results/**"),
+                "…and never the committed tree itself, which is the shape that regression takes");
+        assertTrue(workflow.contains("path: ${{ runner.temp }}/perf-record/**"),
+                "…uploaded from the staging directory the collection step fills, which is also what keeps the "
+                        + "artifact rooted at the record rather than at the runner's absolute paths");
         assertTrue(workflow.contains("if: always()"),
                 "…and on failure too, since a breach is exactly when the numbers are wanted");
     }

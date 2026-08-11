@@ -27,8 +27,13 @@
 # so no schedule has to be waited for — once the revision under measurement is on the remote:
 #
 #   gh workflow run 'Nightly performance' --ref <branch>     # then `gh run watch` to follow it
-#   gh run download <run-id> --name perf-observations --dir /tmp/anchor
-#   scripts/perf-anchor.sh show /tmp/anchor/perf-results/*/*.jsonl
+#   gh run download <run-id> --name perf-observations --dir /tmp/anchor-<n>
+#   scripts/perf-anchor.sh show /tmp/anchor-*/perf-results/*/*.jsonl
+#
+# The artifact carries ONLY that run's own record, so each download needs its own directory and the glob above then
+# feeds every downloaded run to one refresh. Passing runs of two machines or two revisions is refused rather than
+# averaged — absolute times are a property of the machine, and folding revisions averages away the change one of
+# them introduced.
 
 #
 # DISPATCH THE RUNS ONE AT A TIME. Hosted runners are VMs on SHARED physical hosts, so concurrent jobs of your own
