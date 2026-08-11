@@ -401,13 +401,13 @@ Partial validation never enters either correlation plan for a rule containing `H
 
 ### 11. The compute-overlay read path (the estate's tightest cross-engine row, 2026-08-12)
 
-- **Rationale.** The parity lanes (optimization-independent, IF281) exposed one row far tighter than the rest: `CO-correlation` — a per-Row `$`-equality self-correlation precondition under an ACTIVE cascade overlay — beat generated Java by only **1.6×**, against 5×–50× everywhere else, which is *below* this estate's measured hosted run-to-run noise for a level ratio (`1.78×`). A margin thinner than the noise is not a margin. JFR on `compute` at N=800 found the cost in three places, none of them the algorithm: an operator lookup, the overlay's key handling, and a wrapper allocation.
+- **Rationale.** The parity lanes (optimization-independent, IF281) exposed one row far tighter than the rest: `CO-correlation` — a per-Row `$`-equality self-correlation precondition under an ACTIVE cascade overlay — beat generated Java by only **1.6×**, against 5×–50× everywhere else, which is thinner than that row's own run-to-run noise. A margin thinner than the noise is not a margin. JFR on `compute` at N=800 found the cost in three places, none of them the algorithm: an operator lookup, the overlay's key handling, and a wrapper allocation.
 - **Implementation, three independent fixes.**
   1. **`FunctionOp.byName` was a linear scan** — `entries.firstOrNull { it.kernelName == name }` over **53 entries with a string comparison each** — called from the expression evaluator on *every* evaluation of a node rather than once at parse time. `CurrentRepetition` sits at position 47, and the scenario's `Having` filter evaluates two of them per row pair. It is now a precomputed `Map<String, FunctionOp>`; `PredicateOp`, `ConstantOp` and `ValueListQuantOp` got the same treatment. The swap is only behaviour-preserving while `kernelName` is unique — `firstOrNull` returns the first match, `associateBy` keeps the last — so `OperatorLookupTest` asserts uniqueness rather than assuming it.
   2. **The overlay asked its question three times per read.** `field`/`filled`/`displayValue`/`cellState` each called a separate `poisoned` / `cleared` / `overlaid` helper, so one logical read cost three `repsOf` lookups, three `Pair` allocations and three hashes of a `Pair<String, List<Int>>` — whose `hashCode` walks the list. One `stateOf(path)` now resolves the cell once into a four-state answer, keeping the poisoned-beats-cleared-beats-overlaid order the helpers encoded.
   3. **The wrapped row contexts are shared per computation step.** `OverlayContext.rowContexts` re-wrapped *every* row in a fresh `OverlayContext` on every call, and `scanFilled` asks for them per outer row — O(rows) allocation per row. They are now cached in the per-step `OverlayViews`, keyed on the scope prefix rather than the bind depth, because different outer rows resolve one depth to different row sets. **This cache is safer than the value views beside it and needs no `selfTarget` bypass:** what it holds is *wrappers*, and a wrapper consults the live overlay on every read, so one handed out early in a step returns the cascade's latest answer exactly as a fresh one would.
 - **Example.** `PerfCatalog.computeOverlayCorrelation` — `[C] := [Src]` guarded by `AtLeastOneFieldFilled(Row* then Src Having CurrentRepetition(Row) != CurrentRepetition($Row) and [Src] == [$Src])`, under a cascade that writes `C` per Row.
-- **Results & discussion.** One isolated run, Apple Silicon. `CO-correlation` at N=800: interpreter **34.39 ms → 23.49 ms** and the worse-strategy ratio **0.63 → 0.42**, i.e. the margin **1.6× → 2.4×**; at N=200, `0.56 → 0.54`. Estate-wide the worst of 38 parity rows moved `0.63 → 0.54` (**1.6× → 1.9×**) and the median `0.17 → 0.14` (**5.9× → 7.1×**), with the growth band also tightening from `4.19×–6.40×` to `3.77×–5.43×`. In the profile `byName` fell from **7.7 % to 2.3 %** of samples. **The tightest row is still tighter than the level noise** — 1.9× against 1.78× — so the re-measurement on a comparative breach remains what makes that lane safe, and the next candidates are named by the same profile: formal-error checking (`numberFormalError` + `decOrNull` + the result-cache key ≈ 16 %) and the String-keyed `reps`/`placeOf` path lookups (≈ 15 %).
+- **Results & discussion.** One isolated run, Apple Silicon. `CO-correlation` at N=800: interpreter **34.39 ms → 23.49 ms** and the worse-strategy ratio **0.63 → 0.42**, i.e. the margin **1.6× → 2.4×**; at N=200, `0.56 → 0.54`. Estate-wide the worst of 38 parity rows moved `0.63 → 0.54` (**1.6× → 1.9×**) and the median `0.17 → 0.14` (**5.9× → 7.1×**), with the growth band also tightening from `4.19×–6.40×` to `3.77×–5.43×`. In the profile `byName` fell from **7.7 % to 2.3 %** of samples. **The margin is still smaller than that row's own run-to-run noise** (see the noise checkpoint below: `CO-correlation @200` spreads `1.90×` across three sequential isolated runs, against a `1.4×` margin at its worst observation), so the re-measurement on a comparative breach remains what makes that lane safe. The next candidates are named by the same profile: formal-error checking (`numberFormalError` + `decOrNull` + the result-cache key ≈ 16 %) and the String-keyed `reps`/`placeOf` path lookups (≈ 15 %).
 
 ### JS performance — one code path, so every optimization carries (2026-06-24)
 
@@ -538,6 +538,23 @@ The catalog must favor **non-obvious** combinations (nesting × aggregation × c
 
 ## Results log
 
+### Checkpoint 2026-08-12 — each parity row's OWN ratio noise, measured instead of borrowed
+
+**Three sequential isolated runs of the 17 parity lanes, quiet local machine, same revision.** Motivated by a comparison that was wrong twice over: the tightest row's margin had been held against `1.78×`, a run-to-run figure measured on *different scenarios* on a *different machine class*, and then described as "below" it when `1.9 > 1.78`. Borrowing a noise figure across scenarios is the same trap as borrowing one across quantities. So this measures each row's own.
+
+| quantity | value |
+|---|---|
+| rows measured in all three runs | 34 |
+| worst per-row ratio spread | **1.90×** — `CO-correlation @200` (`0.39`, `0.74`, `0.46`) |
+| its worst observation | **0.74**, a margin of only **1.4×** — against `0.54` in the single run reported before |
+| that row's margin ÷ its own spread | **0.71×** — the noise is LARGER than the margin |
+| next four thinnest (margin ÷ own spread) | `DT-Berlin @250` 1.6×, `complexRealWorld @60` 1.7×, `PF-framed @250` 1.8×, `Berlin-AddDays @250` 2.0× |
+
+**Two conclusions, both actionable.**
+
+1. **The single-run figure was optimistic, and the retry is load-bearing rather than belt-and-braces.** With samples `0.39 / 0.74 / 0.46` the accepted median is `0.46`, which passes comfortably — but any one of them alone could have been reported as the row's ratio, and `0.74` is one contended slice away from parity. `PerfHarness.acceptOnMedianOfRetries` is what stands between this lane and a false red; that is now measured rather than argued.
+2. **Noise concentrates at the SMALL scale of each pair, not in particular scenarios.** Every thin row above is the small arm — `@200`, `@250`, `@60` — while their large arms are nearly noise-free (`CO-correlation @800` spreads `1.05×`, `complexRealWorld @240` `1.00×`, `PF-framed @1000` `1.10×`). That is the expected shape: a smaller instance has a larger fixed-cost share and fewer timed iterations. It also says the cheapest reliability win is not more optimization but **more sampling on the small arm only**, which costs the least of anything in the pair.
+
 ### Checkpoint 2026-08-12 — the compute-overlay read path, after the tightest row was optimized (catalog #11)
 
 The same 17 parity lanes re-run after the three compute-overlay fixes, one isolated run, same machine. Record: [`perf-results/darwin-aarch64/2026-08-11T231938Z.jsonl`](../perf-results/darwin-aarch64/2026-08-11T231938Z.jsonl).
@@ -552,7 +569,7 @@ The same 17 parity lanes re-run after the three compute-overlay fixes, one isola
 
 `CO-correlation` itself, the row that motivated the work: at N=800 the interpreter went **34.39 ms → 23.49 ms** and its worse-strategy ratio **0.63 → 0.42**, so that row moved from `1.6×` to `2.4×`. The estate's worst row is now `CO-correlation @200` and `complexRealWorld-111f-82r @60`, both at `0.54`.
 
-**It is still tighter than the noise, and that is the honest reading.** `1.9×` sits barely above the `1.78×` worst level-ratio noise measured on a hosted runner, so what keeps this lane from false-redding is the re-measurement of a comparative breach, not the margin. The same profile names the next two candidates — formal-error checking (≈16 % of samples) and the String-keyed `reps`/`placeOf` lookups (≈15 %) — neither of which is specific to this scenario.
+**A single run understates how thin this is** — see the noise checkpoint below, which measures it properly. What keeps the lane from false-redding is the re-measurement of a comparative breach, not the margin. The same profile names the next two candidates — formal-error checking (≈16 % of samples) and the String-keyed `reps`/`placeOf` lookups (≈15 %) — neither of which is specific to this scenario.
 
 ### Checkpoint 2026-08-12 — the cross-engine bar extended from 2 scenarios to 17, and what that did to the margin (IF281)
 
