@@ -67,8 +67,11 @@ internal object PerfObservations {
         val stamp = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HHmmss'Z'")
             .withZone(ZoneOffset.UTC).format(Instant.now())
         resultsDirectory().resolve(PerfEnvironment.key).resolve("$stamp.jsonl").toFile().apply {
-            parentFile?.mkdirs()
-            writeText("")
+            // Through the same guarded path as every observation. `writeText("")` used to sit here bare, so an
+            // unwritable results directory — the exact shape a mistyped `-Dperf.results.dir` produces — surfaced
+            // as a raw FileNotFoundException from a lazy initializer instead of the explanation this mechanism
+            // advertises, and it did so BEFORE any observation could reach the guarded append.
+            truncate(this)
             appendLine(
                 mapOf(
                     "kind" to "run",
@@ -126,9 +129,15 @@ internal object PerfObservations {
      * useful recovery here, so the only honest options are to write the line or to say that it could not be
      * written; a measurement that never reached the record is not a measurement anyone can compare against.
      */
-    internal fun appendRecordTo(target: File, record: Map<String, Any?>) {
+    /** Start the run's file empty, with the same loud failure an append gets. */
+    internal fun truncate(target: File) = write(target) { target.writeText("") }
+
+    internal fun appendRecordTo(target: File, record: Map<String, Any?>) =
+        write(target) { target.appendText(MAPPER.writeValueAsString(record) + "\n") }
+
+    private fun write(target: File, body: () -> Unit) {
         try {
-            target.appendText(MAPPER.writeValueAsString(record) + "\n")
+            body()
         } catch (failure: Exception) {
             throw IllegalStateException(
                 "cannot write the performance record to $target — the run measured its numbers and would have " +

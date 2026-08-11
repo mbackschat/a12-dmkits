@@ -20,9 +20,15 @@ import org.junit.jupiter.api.Test;
  *
  * <p><b>Why this exists.</b> The record is written by one producer ({@code PerfObservations}) and read by two
  * independent consumers ({@code scripts/perf-history.sh} renders it as a table, {@code scripts/perf-anchor.sh}
- * folds it into the committed anchor). Nothing connected the three: a file could be committed in a shape neither
- * consumer could read, and the first symptom would be a silently short table or an anchor refresh that skipped
- * lanes. Three runs imported from hosted artifacts were in fact missing a field the writer emits.
+ * folds it into the committed anchor). Nothing connected the three, and three runs imported from hosted artifacts
+ * were committed missing a field the writer emits.
+ *
+ * <p><b>What that field was, stated precisely, because the obvious framing overstates it.</b> The missing field was
+ * {@code lane}, and <i>neither</i> consumer reads it — {@code perf-history.sh} derives the lane from the first
+ * segment of {@code key}. So the imported files were readable; what they were not was <i>consistent</i> with what
+ * the producer writes, and an inconsistent record is what a later reader trips over. Of the eight required
+ * observation fields only {@code key}, {@code medianMs} and {@code status} are read by a consumer today; the rest
+ * are required so the record stays queryable on its own terms rather than only through the packed key.
  *
  * <p><b>The strong assertion is agreement, not presence.</b> Each observation carries a packed {@code key} AND its
  * exploded components ({@code lane}, {@code scenario}, {@code n}, {@code engine}, {@code clock}), because the
@@ -179,6 +185,30 @@ class PerformanceRecordShapeGuardTest {
      * keeping — an anchor-refresh input and a cited checkpoint measurement — and this bounds what happens when
      * that rule is not followed, since the alternative to a stated cap is an unbounded tree nobody prunes.
      */
+    /**
+     * {@link #KNOWN_STATUSES} is a hand-written mirror of the vocabulary {@code scripts/perf-anchor.sh} folds on,
+     * and a mirror with nothing binding it is a claim without a locus. Read the script's own literals instead of
+     * trusting the copy: a status the script learns and this guard does not would be reported as unknown, and one
+     * this guard allows but the script drops would vanish from a refresh silently.
+     */
+    @Test
+    void theFoldedStatusVocabularyMatchesTheScriptThatConsumesIt() throws IOException {
+        String script = Files.readString(repoRoot().resolve("scripts/perf-anchor.sh"));
+        var folded = new java.util.LinkedHashSet<String>();
+        java.util.regex.Matcher filter = java.util.regex.Pattern
+                .compile("status\", \"accepted\"\\) not in \\(([^)]*)\\)").matcher(script);
+        assertTrue(filter.find(), "perf-anchor.sh must still decide which statuses may set a bar; if that filter "
+                + "moved, this guard is comparing against nothing");
+        java.util.regex.Matcher literal = java.util.regex.Pattern.compile("\"([a-z]+)\"").matcher(filter.group(1));
+        while (literal.find()) {
+            folded.add(literal.group(1));
+        }
+        assertTrue(!folded.isEmpty(), "the script's fold list parsed empty: " + filter.group(1));
+        assertTrue(KNOWN_STATUSES.containsAll(folded), "perf-anchor.sh folds " + folded + " but this guard only "
+                + "knows " + KNOWN_STATUSES + "; a status one side knows and the other does not is how an "
+                + "observation silently stops reaching the anchor");
+    }
+
     @Test
     void noEnvironmentOutgrowsTheStatedRetentionBound() throws IOException {
         var perEnvironment = new java.util.TreeMap<String, Integer>();

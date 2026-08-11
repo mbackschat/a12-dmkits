@@ -13,9 +13,10 @@ package io.github.mbackschat.a12.dm.adapter.perf
  * **The two kinds of self-referential bar do NOT share a precondition, and collapsing them switches guards off.**
  *
  * - A **growth ratio** is measured on the current-thread CPU clock, which already filters a sibling Gradle fork
- *   preempting the JVM — that was the 2026-08-03 fix. So the isolated lane is not a precondition for it, and
- *   requiring one would silently disarm `CharsetPerfTest` and `CustomTypePerfTest`, the only timing bars that run
- *   on an ordinary push. Only the machine matters: [forGrowthFloor].
+ *   preempting the JVM — that was the 2026-08-03 fix. So the isolated lane is not a precondition for it:
+ *   requiring one would make `CharsetPerfTest` and `CustomTypePerfTest` [UNJUDGED] wherever they run, including on
+ *   a maintainer's own machine, which after this split is the only place they can still fail — a hosted push sets
+ *   `CI` and therefore flags them like everything else. Only the machine matters: [forGrowthFloor].
  * - An **absolute time** against a stored number has no clock that filters anything out of it, so it needs the
  *   isolated single-fork lane as well as a dedicated machine: [forAbsoluteAnchor].
  *

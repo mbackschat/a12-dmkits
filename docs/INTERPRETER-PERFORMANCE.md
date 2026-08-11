@@ -510,7 +510,7 @@ The catalog must favor **non-obvious** combinations (nesting × aggregation × c
 
   **The hosted axis is measured, not assumed.** `perfGateTest` is single-fork and non-cacheable, so it satisfies the lane axis on a hosted runner too — and the estate still red-lined there: the same commit passed one night and failed the next two on `MSC-multi-star-correlation` at a median `9.11×` against the `9.0` floor, and across three hosted runs the 18 growth observations spanned `2.48×–7.98×`, leaving the closest lane at **89 %** of its floor. `CharsetPerfTest` has the same history at `9.37×` and `10.22×`, all of them false. A hosted runner is a VM on a shared physical host; neighbours evict cache lines and consume memory bandwidth, which is spent in **user-mode** cycles, so the CPU clock does not filter it and no finer clock would. A red that cannot be told apart from a real regression, on a lane nobody watches interactively, is a false positive by construction — and the standing requirement is that the nightly never produces one.
 
-  **What this costs, stated plainly:** on any hosted runner, the growth floors and the anchor no longer stop the build. What remains gated there is the whole cross-engine family — `requireInterpreterBeatsBoth`, `PairedAcceptance`'s per-unit cost, `RATIO_CEILING`, `ABS_CEILING_MS` — which is the "always faster than the kernel, including scaling" requirement itself, and which contention cannot fake because both engines meet it in the same run. A flag is not silence: the breach prints a greppable `[perf][FLAG]` line and the gate's numbers are in the committed record with their status, so `scripts/perf-history.sh` shows the trend rather than a build that happened to be green.
+  **What this costs, stated plainly:** on any hosted runner, the growth floors and the anchor no longer stop the build. What remains gated there is the cross-engine family — `requireInterpreterBeatsBoth`, `PairedAcceptance`'s per-unit cost, `RATIO_CEILING` — which is the "always faster than the kernel, including scaling" requirement itself, and which contention cannot fake because both engines meet it in the same run. `ABS_CEILING_MS` also still gates everywhere and is **not** a cross-engine bar: it is this run's median against a constant, so by the definition above it is self-referential. It is a deliberate always-gated exception rather than an oversight — at 410×–3800× of headroom no contention reaches it — and it is named here so the taxonomy stays true rather than tidy. A flag is not silence: the breach prints a greppable `[perf][FLAG]` line and the gate's numbers are in the committed record with their status, so `scripts/perf-history.sh` shows the trend rather than a build that happened to be green.
 
 - **Per comparison scenario:** bind and verify the reviewed content fingerprint; build the instance once; require zero unsupported and authoritative agreement with dynamic Groovy plus every declared Java-capable strategy; warm up (JIT); time `K` iterations of each eligible engine; report `interp_ms`, `kernel_ms`, and ratio under `id@version + SHA-256`. The fingerprint covers both model representations (including the complete legal-charset definition), the generated placements and generator metadata/seed/variants, scale, operation, locale/zone, semantic result regime, and expected cardinality (review-corrected IF158). Fingerprint format v2 serializes every `ModelDef`/field/rule/computation property explicitly, including the two field-owned message maps; it no longer depends on Kotlin data-class `toString()`, whose shape changes when an unrelated defaulted property is added. The fingerprinted locale is the locale all three engines actually execute. Every actual interpreter instance retains its outcome-bearing `unsupported.isEmpty()` check before timing; comparison scenarios additionally establish complete-signature strategy agreement outside the clocks (IF156). Every structured, formatted, or direct diagnostic measurement row carries the complete identity.
 - **A catastrophe floor RE-MEASURES before it fails — every one of them, not the noisy one (2026-08-08).** A ratio of two timings amplifies noise on both ends, and a shared-vCPU runner (GitHub's free tier) is a normal place for this estate to run, so a contended slice can push a healthy guard a few percent over its trip line. `PerfHarness.assertGrowthBelowCatastropheFloor` takes the estimate as a **closure** and, when the first estimate breaches, re-measures to `GROWTH_RETRY_ATTEMPTS` and accepts on the **MEDIAN** of them. The median is the whole correctness of the thing, and the first version got it wrong: returning as soon as *any* attempt fell below the floor makes a real breach **more** likely to be admitted the more often it is retried — `10x, 10x, 8x` cleared a 9x floor. On the median that sequence fails and `9.5x, 4x, 4x` passes, which is the intended asymmetry. **Corrected 2026-08-08 after an external review falsified the original claim here, which said this admitted "not a single false GREEN".** It does not: a timing floor is a statistical instrument, and what this buys is a lower false-GREEN probability than retry-until-pass plus a single-estimate happy path exactly as strict as the guard was before any retry existed. `GrowthFloorRetryTest` scripts the acceptance rule on fixed sequences, including that one, so the helper every floor now depends on is itself checked. The happy path still costs exactly one estimate; only a breach pays. **Every** `SUB_QUADRATIC_MAX` growth assertion routes through it — `PerfGateTest.assertSubQuadratic` (and with it every gate it serves), `CharsetPerfTest`, `CustomTypePerfTest`, `GroupScopedFillPerfTest`, `PatternPerfTest`, both `OuterCorrelationPerfTest` curves, `ProfileSynthesisPerfTest`, `ProfileCliPerfTest`. Fixing only the class member that had been observed flaking would have left the same false RED live in seven other guards — the most load-sensitive of them, the process-spawning `ProfileCliPerfTest`, among them. This is **not** a licence to run perf assertions under load: the isolation rule in CLAUDE.md stands, and the interp/kernel *ratio* assertions (`RATIO_CEILING`, `MIN_KERNEL_ADVANTAGE`) are a different question and keep their single observation.
@@ -530,34 +530,35 @@ The catalog must favor **non-obvious** combinations (nesting × aggregation × c
 
 ### Checkpoint 2026-08-12 — the cross-engine bar extended from 2 scenarios to 17, and what that did to the margin (IF281)
 
-`KernelParityGateTest`, one isolated local run, Apple Silicon (`darwin-aarch64`, 8 processors, JDK 21.0.12). 17 lanes, 34 rows, **55.2 s** for the whole tier. Ratios are `interp/kernel`, so **lower is better and 1.00 is parity**; each row is the worse of the two strategies.
+One isolated `scripts/perf.sh gate` run with the machine to itself, Apple Silicon (`darwin-aarch64`, 8 processors, JDK 21.0.12). The record is [`perf-results/darwin-aarch64/2026-08-11T224400Z.jsonl`](../perf-results/darwin-aarch64/2026-08-11T224400Z.jsonl), so every figure below is recomputable rather than quoted.
 
-| envelope over all 34 rows | value |
+**Cross-engine (the gate).** Ratios are `interp/kernel`, so **lower is better and 1.00 is parity**; each row takes the worse of the two kernel strategies.
+
+| over all 38 scenario×scale rows | value |
 |---|---|
-| worst | **0.60** — `CO-correlation @800` against generated Java (`1.7×` margin) |
-| median | 0.16 (`6.3×`) |
-| best | 0.02 — `PRA-per-row-global-agg @500` (`50×`) |
-| rows at `2.3×` margin or better | **32 of 34** |
-| rows the interpreter loses | **0** |
+| rows the interpreter **loses** | **0** |
+| worst | **0.63** — `CO-correlation @800` against generated Java (`1.6×` margin) |
+| median | 0.17 (`6.1×`) |
+| best | 0.02 (`50×`) |
 
 The eight tightest, since they are what any future bar has to clear:
 
 | scenario | N | interp/groovy | interp/java | margin |
 |---|---|---|---|---|
-| `CO-correlation` | 800 | 0.42 | **0.60** | 1.7× |
-| `CO-correlation` | 200 | 0.41 | 0.51 | 2.0× |
-| `complexRealWorld-111f-82r` | 240 | 0.31 | 0.43 | 2.3× |
-| `PF-framed` | 250 | 0.36 | 0.41 | 2.4× |
-| `PF-framed` | 1000 | 0.36 | 0.40 | 2.5× |
-| `Berlin-AddDays-historical` | 250 | 0.35 | 0.37 | 2.7× |
-| `DT-Berlin` | 250 | 0.30 | 0.34 | 2.9× |
-| `complexRealWorld-111f-82r` | 60 | 0.26 | 0.32 | 3.1× |
+| `CO-correlation` | 800 | 0.52 | 0.63 | 1.6× |
+| `CO-correlation` | 200 | 0.42 | 0.56 | 1.8× |
+| `Berlin-AddDays-historical` | 250 | 0.46 | 0.53 | 1.9× |
+| `PF-framed` | 1000 | 0.40 | 0.45 | 2.2× |
+| `PF-framed` | 250 | 0.38 | 0.42 | 2.4× |
+| `complexRealWorld-111f-82r-low-firing` | 240 | 0.35 | 0.40 | 2.5× |
+| `complexRealWorld-111f-82r-low-firing` | 60 | 0.28 | 0.37 | 2.7× |
+| `Berlin-AddDays-historical` | 1000 | 0.31 | 0.34 | 2.9× |
 
-**The tightest row's margin is smaller than this estate's own measured noise for that quantity, and that is the finding.** The earlier hosted measurement (Checkpoint 2026-08-11) put worst run-to-run noise on the **level** ratio at `1.78×` against generated Java and `2.16×` against Groovy. `CO-correlation`'s `1.67×` sits *below* both. The `1.41×` figure that first appeared beside it is the noise of a **different quantity** — per-unit cost — and comparing the two is the "name the quantity before you compare numbers" trap this project has an explicit rule about. The consequence is not that the bar is wrong but that it needed the growth floor's protection: a comparative breach is now **re-measured** and accepted on the median of the attempts, so one contended slice cannot red the nightly (`PerfHarness.pairedScenarioGrowth`).
+**Self-referential (the growth floors).** All 18 lanes over their 4× step: **4.19×–6.40×**, median **4.95×** — implied exponents `n^1.03`–`n^1.34` against linear `n^1.00`, the `9.0×` floor at `n^1.58` and quadratic at `n^2.00`. **Zero lanes at or above the floor**, and none within reach of quadratic.
 
-**Prior coverage, for the record.** Before this run the bar existed on **two** scenarios (`Number-index` validation and computation). All 17 growth-gated scenarios were uncovered by it: their only relative bar was `RATIO_CEILING`, `interp/groovy < 5.0`, which tolerates the interpreter being five times *slower*, and nothing measured generated Java at all.
+**The tightest cross-engine row's margin is smaller than this estate's own measured noise for that quantity, and that is the finding.** Checkpoint 2026-08-11 put worst run-to-run noise on the **level** ratio at `1.78×` against generated Java and `2.16×` against Groovy. `CO-correlation`'s `1.6×` sits below both. The `1.41×` figure that first appeared beside it is the noise of a **different quantity** — per-unit cost — and comparing the two is the "name the quantity before you compare numbers" trap this project has an explicit rule about. The consequence is not that the bar is wrong but that it needed the growth floor's protection: a comparative breach is now **re-measured** and accepted on the median of the attempts, so one contended slice cannot red the nightly (`PerfHarness.acceptOnMedianOfRetries`).
 
-*The current headline + the naive baseline it improved on. The intermediate optimization-journey entries were collapsed away (2026-06-27) — the *method* and the *lessons* live above (the optimization catalog, the kernel-technique map, the biases-to-re-check); this log keeps only the **current** measures and the **pre-optimization yardstick** they're read against. Dates are when each axis was last measured.*
+**Prior coverage, for the record.** Before this the bar existed on **two** scenarios (`Number-index` validation and computation), and those are not growth-gated — so all 17 growth-gated scenarios were uncovered by it. Their only relative bar was `RATIO_CEILING`, `interp/groovy < 5.0`, which tolerates the interpreter being five times *slower*, and nothing measured generated Java at all. The 17 parity lanes add **≈55 s** to the gate.
 
 ### Checkpoint 2026-08-11 — the hosted runner class measured, and a concurrent-dispatch method error (IF280 / IG120)
 
