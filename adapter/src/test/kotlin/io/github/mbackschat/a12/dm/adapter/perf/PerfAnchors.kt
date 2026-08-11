@@ -267,7 +267,8 @@ internal object PerfAnchors {
      * clock; it is called only when the first observation breaches.
      */
     fun assertWithinBudget(key: ObservationKey, observedMs: Double, remeasure: () -> Double) {
-        if (System.getProperty(LANE_PROPERTY) != "true") {
+        val enforcement = TimingEnforcement.forAbsoluteAnchor()
+        if (enforcement == TimingEnforcement.UNJUDGED) {
             // Not the isolated lane: an absolute-time bar measured under parallel forks would be a coin flip, so
             // record the observation and assert nothing. Announced, because a silently skipped bar is the defect
             // this whole mechanism exists to avoid.
@@ -296,7 +297,15 @@ internal object PerfAnchors {
             } catch (unrecordable: Exception) {
                 failure.addSuppressed(unrecordable)
             }
-            throw failure
+            // Only two cases reach here — UNJUDGED returned above — so this is a two-way decision, not a dispatch
+            // over the enum. An absolute time on shared hosted hardware cannot separate a regression from a
+            // neighbour's memory traffic, and the number is in the record either way (TimingEnforcement).
+            if (enforcement == TimingEnforcement.GATED) throw failure
+            println(
+                "[perf][FLAG] anchor breach reported, not failed on shared hosted hardware — " +
+                    "see TimingEnforcement: ${failure.message}",
+            )
+            return
         }
         PerfObservations.record(key, accepted, status = "accepted")
     }

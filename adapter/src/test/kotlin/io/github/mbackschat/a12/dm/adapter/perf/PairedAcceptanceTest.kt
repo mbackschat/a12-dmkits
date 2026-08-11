@@ -71,7 +71,9 @@ class PairedAcceptanceTest {
         }
         PairedAcceptance.requireInterpreterHasLowestPerUnitCost("number-index", step, quadratic, listOf(groovy, java))
         assertThrows(AssertionError::class.java) {
-            PerfHarness.assertGrowthBelowCatastropheFloor("number-index interpreter") { quadratic.growth }
+            PerfHarness.assertGrowthBelowCatastropheFloor(
+                "number-index interpreter", enforcement = TimingEnforcement.GATED,
+            ) { quadratic.growth }
         }
     }
 

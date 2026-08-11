@@ -384,10 +384,13 @@ tasks.register('perfGateTest', Test) {
     // PerfAnchorCoverageGuardTest cannot see it either — the local gate printing a note while the nightly went red
     // was a defect, not a courtesy. Whoever changes a scenario is the one who can refresh the anchor.
     systemProperty 'perf.anchor.required', 'true'
-    // The anchor is an ABSOLUTE-time bar, so it may only be ASSERTED where the measurement is valid: this task,
-    // single-fork and isolated. A broad `:adapter:test -PrunPerf` also runs PerfGateTest, under up to four parallel
-    // forks — the configuration TESTING-SPEC warns "can manufacture a false growth failure" — so there the lanes
-    // record their observations and assert nothing.
+    // Marks this as the ISOLATED lane — the first of the two axes in TimingEnforcement. A self-referential timing
+    // bar (the anchor's absolute time, the growth floors' constant) may only be judged where the measurement is
+    // valid: this task, single-fork. A broad `:adapter:test -PrunPerf` also runs PerfGateTest, under up to four
+    // parallel forks — the configuration TESTING-SPEC warns "can manufacture a false growth failure" — so there
+    // the lanes record their observations and claim nothing. The second axis is the MACHINE: on a hosted runner
+    // these same bars report instead of failing, because contention there cannot be told apart from a regression.
+    // Neither axis touches the cross-engine bars, which gate everywhere.
     systemProperty 'perf.anchor.lane', 'true'
     // The measurement RECORD is committed data, never build output (CLAUDE.md; SurvivingDataNotInBuildGuardTest).
     systemProperty 'perf.results.dir', rootProject.file('perf-results')

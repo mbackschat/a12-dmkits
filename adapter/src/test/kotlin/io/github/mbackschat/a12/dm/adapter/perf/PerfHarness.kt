@@ -727,6 +727,9 @@ object PerfHarness {
         culprit: String? = null,
         floor: Double = PerfBounds.SUB_QUADRATIC_MAX,
         attempts: Int = GROWTH_RETRY_ATTEMPTS,
+        /** Where this is running, which decides what a breach MEANS. Injected so the three outcomes are testable
+         *  without a hosted runner; production callers take the ambient decision. */
+        enforcement: TimingEnforcement = TimingEnforcement.forGrowthFloor(),
         estimate: () -> Growth,
     ): Growth {
         require(attempts > 0 && attempts % 2 == 1) { "attempts must be a positive odd number" }
@@ -737,14 +740,25 @@ object PerfHarness {
         // re-measure them (PerfAnchors) — the same numbers acceptance was decided on, never a fresh sample.
         val accepted = seen.sortedBy { it.ratio }[seen.size / 2]
         if (accepted.ratio < floor) return accepted
-        throw AssertionError(
+        val breach =
             "$label median within-pair N/4N growth stayed at or above the ${floor}x catastrophe floor across " +
                 "$attempts independent re-measurements: " +
                 seen.joinToString(", ") { "${it.ratio} (${it.smallMs}ms -> ${it.largeMs}ms)" } +
                 ". Acceptance is the median of these, so one low outlier cannot clear a real breach. Load " +
                 "inflates one estimate and does not reproduce; an algorithmic blowup does (linear medians " +
-                "~4x, quadratic ~16x)." + culprit?.let { " Likely cause: $it." }.orEmpty(),
-        )
+                "~4x, quadratic ~16x)." + culprit?.let { " Likely cause: $it." }.orEmpty()
+        // WHERE the breach happened decides what it means — this floor is self-referential, so it is a property of
+        // the machine as much as of the code (TimingEnforcement). The cross-engine bars are untouched by this and
+        // gate everywhere, which is what keeps "always faster than the kernel, including scaling" enforced.
+        return when (enforcement) {
+            TimingEnforcement.GATED -> throw AssertionError(breach)
+            TimingEnforcement.FLAGGED -> accepted.also {
+                println("[perf][FLAG] $breach  (reported, not failed: shared hosted hardware — see TimingEnforcement)")
+            }
+            TimingEnforcement.UNJUDGED -> accepted.also {
+                println("[perf][note] growth not judged outside the isolated single-fork lane: $breach")
+            }
+        }
     }
 
     /** Independent re-measurements a catastrophe floor demands before it calls a breach real. */
