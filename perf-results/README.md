@@ -30,3 +30,14 @@ Every run of the routine performance gate writes one **text** file here. Nothing
 ## Writing it
 
 A local run on a fixed machine is the reliable instrument: `scripts/perf.sh gate`. Hosted runs also record, and the nightly uploads its file as the `perf-observations` artifact; folding a hosted run in requires downloading that artifact, since a hosted runner's numbers can only be authored from a hosted run.
+
+## What gets committed, and what does not
+
+**Every gate run writes a file here; most of them should never be committed.** A run is worth keeping only when something else refers to it:
+
+- it is an **input to an anchor refresh** (`scripts/perf-anchor.sh` folds several runs at their per-key median, and the block should be traceable to the runs it came from), or
+- it is a **checkpoint measurement** a doc cites.
+
+An ad-hoc run from an inner loop is neither. It stays untracked and goes away with `git clean -f perf-results` — expected, not a mess to tidy up.
+
+**The bound is enforced, not advised.** `PerformanceRecordShapeGuardTest` fails when one environment carries more than 30 committed runs, which is about a month of nightlies and well past `perf-history.sh`'s default 8-run window. Beyond that horizon the durable references are the committed anchor and the checkpoints, not the raw runs of superseded revisions — so pruning the oldest files is the fix, and it loses nothing that is still cited. The cap exists because an unbounded committed tree is how a text record turns into a liability that someone eventually deletes wholesale.

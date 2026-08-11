@@ -52,6 +52,14 @@ class PerformanceRecordShapeGuardTest {
      */
     private static final Set<String> KNOWN_STATUSES = Set.of("accepted", "breached", "unasserted");
 
+    /**
+     * How many runs one environment may carry before the record must be pruned. About a month of nightlies, and
+     * far past {@code perf-history.sh}'s default 8-run window; beyond that horizon the durable references are the
+     * committed anchor and the checkpoints rather than raw runs of superseded revisions. A committed tree that
+     * grows without a stated bound is how a text record becomes the liability someone eventually deletes whole.
+     */
+    private static final int MAX_RUNS_PER_ENVIRONMENT = 30;
+
     private static Path repoRoot() {
         for (Path candidate = Path.of("").toAbsolutePath(); candidate != null; candidate = candidate.getParent()) {
             if (Files.exists(candidate.resolve("settings.gradle"))) {
@@ -164,5 +172,29 @@ class PerformanceRecordShapeGuardTest {
                 + "the per-observation assertions never ran");
         assertEquals(List.of(), problems, () -> "committed performance records must stay readable by "
                 + "scripts/perf-history.sh and scripts/perf-anchor.sh:\n  " + String.join("\n  ", problems));
+    }
+
+    /**
+     * The record is committed, so it grows every time someone keeps a run. Only two kinds of run are worth
+     * keeping — an anchor-refresh input and a cited checkpoint measurement — and this bounds what happens when
+     * that rule is not followed, since the alternative to a stated cap is an unbounded tree nobody prunes.
+     */
+    @Test
+    void noEnvironmentOutgrowsTheStatedRetentionBound() throws IOException {
+        var perEnvironment = new java.util.TreeMap<String, Integer>();
+        for (Path record : records()) {
+            perEnvironment.merge(record.getParent().getFileName().toString(), 1, Integer::sum);
+        }
+        assertTrue(!perEnvironment.isEmpty(), "perf-results/ must hold at least one environment");
+
+        var over = perEnvironment.entrySet().stream()
+                .filter(entry -> entry.getValue() > MAX_RUNS_PER_ENVIRONMENT)
+                .map(entry -> entry.getKey() + " carries " + entry.getValue() + " runs")
+                .toList();
+        assertEquals(List.of(), over, () -> "the committed record has outgrown its retention bound of "
+                + MAX_RUNS_PER_ENVIRONMENT + " runs per environment:\n  " + String.join("\n  ", over)
+                + "\n\nDelete the oldest files: past this horizon the durable references are the committed anchor "
+                + "and the checkpoints that cite a run, never the raw runs of superseded revisions. See "
+                + "perf-results/README.md, \"What gets committed, and what does not\"");
     }
 }
