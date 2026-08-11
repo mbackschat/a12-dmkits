@@ -119,8 +119,26 @@ internal object PerfObservations {
     private fun loadAverage(): Double =
         java.lang.management.ManagementFactory.getOperatingSystemMXBean().systemLoadAverage
 
-    private fun File.appendLine(record: Map<String, Any?>) =
-        runCatching { appendText(MAPPER.writeValueAsString(record) + "\n") }
+    /**
+     * A write that fails FAILS the run. It used to be swallowed by a discarded `runCatching`, which made the one
+     * outcome this mechanism exists to prevent — measuring everything and recording nothing — indistinguishable
+     * from success: an unwritable or full `perf-results/` produced a green gate and an empty history. There is no
+     * useful recovery here, so the only honest options are to write the line or to say that it could not be
+     * written; a measurement that never reached the record is not a measurement anyone can compare against.
+     */
+    internal fun appendRecordTo(target: File, record: Map<String, Any?>) {
+        try {
+            target.appendText(MAPPER.writeValueAsString(record) + "\n")
+        } catch (failure: Exception) {
+            throw IllegalStateException(
+                "cannot write the performance record to $target — the run measured its numbers and would have " +
+                    "discarded them, which is the failure this record exists to prevent",
+                failure,
+            )
+        }
+    }
+
+    private fun File.appendLine(record: Map<String, Any?>) = appendRecordTo(this, record)
 
     fun record(key: ObservationKey, medianMs: Double, status: String) {
         file.appendLine(
@@ -269,7 +287,15 @@ internal object PerfAnchors {
             AnchorBudget(anchored, required, PerfBounds.ANCHOR_TOLERANCE)
                 .assertWithinBudget(key, observedMs, remeasure)
         } catch (failure: Throwable) {
-            PerfObservations.record(key, observedMs, status = "breached")
+            // A failed record must not REPLACE the breach it was recording: the perf failure is the finding, and
+            // an IO error thrown from here would bury it behind an unrelated message. Attached, never swallowed —
+            // the silent-loss path this closes was a discarded `runCatching`, and a mask is the same defect with
+            // better manners.
+            try {
+                PerfObservations.record(key, observedMs, status = "breached")
+            } catch (unrecordable: Exception) {
+                failure.addSuppressed(unrecordable)
+            }
             throw failure
         }
         PerfObservations.record(key, accepted, status = "accepted")
