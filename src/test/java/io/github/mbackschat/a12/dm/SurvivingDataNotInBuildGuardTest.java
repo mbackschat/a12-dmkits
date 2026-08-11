@@ -364,16 +364,32 @@ class SurvivingDataNotInBuildGuardTest {
         assertTrue(!records.isEmpty(), "perf-results/ must hold at least one recorded run: a guard that only forbids "
                 + "the wrong location would pass just as well if the record were written nowhere at all");
 
-        Path sample = repoRoot().relativize(records.get(0));
-        // `--no-index` is load-bearing: by default check-ignore consults the index and reports a TRACKED path as
-        // not-ignored even when a rule matches it, so without this flag the assertion cannot see a rule that would
-        // swallow the NEXT record. Found by planting `perf-results/**/*.jsonl` and watching the guard stay green.
-        assertEquals(1, git("check-ignore", "-q", "--no-index", sample.toString()),
-                "git must NOT ignore " + sample + " (exit 1 means 'not ignored'); an ignored record is the same "
-                        + "defect as one under a cleaned directory, just harder to notice");
-        assertEquals(0, git("ls-files", "--error-unmatch", sample.toString()),
-                sample + " must be TRACKED, not merely un-ignored: an untracked record is deleted by `git clean` "
-                        + "and invisible to anyone who did not run the measurement");
+        // EVERY record must be un-ignorable, not one sampled arbitrarily. `--no-index` is load-bearing: by
+        // default check-ignore consults the index and reports a TRACKED path as not-ignored even when a rule
+        // matches it, so without this flag the assertion cannot see a rule that would swallow the NEXT record.
+        // Found by planting `perf-results/**/*.jsonl` and watching the guard stay green.
+        for (Path record : records) {
+            Path relative = repoRoot().relativize(record);
+            assertEquals(1, git("check-ignore", "-q", "--no-index", relative.toString()),
+                    "git must NOT ignore " + relative + " (exit 1 means 'not ignored'); an ignored record is the "
+                            + "same defect as one under a cleaned directory, just harder to notice");
+        }
+
+        // At least one must be TRACKED — but NOT all of them, and the difference is the whole point. Every gate
+        // run writes a file here and perf-results/README.md says most of those stay untracked and are swept with
+        // `git clean`; requiring each one to be committed would fail on any machine that had just measured
+        // anything, which is precisely when a developer is least inclined to trust a guard. What must hold is
+        // that the record has a COMMITTED home, so a reader who did not run the measurement can still find one.
+        var tracked = new ArrayList<String>();
+        for (Path record : records) {
+            Path relative = repoRoot().relativize(record);
+            if (git("ls-files", "--error-unmatch", relative.toString()) == 0) {
+                tracked.add(relative.toString());
+            }
+        }
+        assertTrue(!tracked.isEmpty(), "none of the " + records.size() + " record file(s) under perf-results/ is "
+                + "tracked, so the whole tree is one `git clean` from empty and invisible to anyone who did not "
+                + "run the measurement — commit the runs an anchor or a checkpoint cites");
     }
 
     /** @return the exit status, so a guard can assert on "not ignored" (1) as well as on success (0). */
