@@ -3441,6 +3441,27 @@
       ]
     },
     {
+      "operator": "NumberOfFilledGroups",
+      "lane": "GOTCHA",
+      "ordinal": 3,
+      "digest": "sha256:c250fff0d7d36f9f126a8829566b197a3aba6dc3cbf61935c9a73cc61cb86f01",
+      "classifications": [
+        "REJECTION",
+        "ADMISSION"
+      ],
+      "evidence": [
+        {
+          "classification": "ADMISSION",
+          "type": "CLAIM_PROBE",
+          "id": "NumberOfFilledGroups.sole-repeatable-inside",
+          "side": "CONTROL",
+          "expected": {
+            "verdict": "ACCEPTED"
+          }
+        }
+      ]
+    },
+    {
       "operator": "RepetitionNotUnique",
       "lane": "MEANING",
       "ordinal": 0,
@@ -3541,7 +3562,7 @@
       "operator": "RepetitionNotUnique",
       "lane": "GOTCHA",
       "ordinal": 2,
-      "digest": "sha256:f070537c2c1e923b7c5d6311c924bf72e081b3f9d7c7f4a664bd9d9feaf53ddb",
+      "digest": "sha256:fbd65ecc594c1b3a482a6e78068e033e01d3b92f4fc09895e7c3ddaf8efe8d25",
       "classifications": [
         "REJECTION"
       ],
@@ -8664,6 +8685,50 @@
       "evidence": [
         {
           "type": "INVALID_EXAMPLE"
+        }
+      ]
+    },
+    {
+      "id": "literal.NumberOfFilledGroups.gotcha3.MVK_NO_WILDCARD",
+      "operator": "NumberOfFilledGroups",
+      "kind": "CONDITION",
+      "units": [
+        {
+          "lane": "GOTCHA",
+          "ordinal": 3
+        }
+      ],
+      "expected": {
+        "verdict": "REJECTED",
+        "code": "MVK_NO_WILDCARD"
+      },
+      "evidence": [
+        {
+          "type": "CLAIM_PROBE",
+          "id": "NumberOfFilledGroups.sole-repeatable-outside",
+          "side": "TRIGGER"
+        }
+      ]
+    },
+    {
+      "id": "literal.NumberOfFilledGroups.gotcha3.MVK_PARAMSIZE_INVALIDGN",
+      "operator": "NumberOfFilledGroups",
+      "kind": "CONDITION",
+      "units": [
+        {
+          "lane": "GOTCHA",
+          "ordinal": 3
+        }
+      ],
+      "expected": {
+        "verdict": "REJECTED",
+        "code": "MVK_PARAMSIZE_INVALIDGN"
+      },
+      "evidence": [
+        {
+          "type": "CLAIM_PROBE",
+          "id": "NumberOfFilledGroups.sole-repeatable-inside",
+          "side": "TRIGGER"
         }
       ]
     },

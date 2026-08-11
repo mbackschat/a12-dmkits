@@ -2720,6 +2720,10 @@
         {
           "text": "the starred single-group form is structural: every instantiated repeat row counts even when empty or containing a formally invalid field value",
           "kind": "SURPRISE"
+        },
+        {
+          "text": "an unstarred repeatable group operand has no single diagnostic: NumberOfFilledGroups(Items) draws MVK_NO_WILDCARD from a rule whose error field sits OUTSIDE Items, and MVK_PARAMSIZE_INVALIDGN from one whose error field sits inside it, so the code depends on the rule's anchoring and not only on the operand; NumberOfFilledGroups(Items*) is admitted from either",
+          "kind": "SURPRISE"
         }
       ],
       "validExample": {
@@ -2787,7 +2791,7 @@
           "kind": "SURPRISE"
         },
         {
-          "text": "the rule must sit at the PARENT of the repeated group — each key field needs a repeatable group between the rule's group and the field, so authoring it INSIDE the repeated group is rejected (MVK_REPEATABLE_GROUP_MISSING)",
+          "text": "the rule must sit at the PARENT of the repeated group — each key field needs a repeatable group between the rule's group and the field, so authoring it INSIDE the repeated group is rejected (MVK_REPEATABLE_GROUP_MISSING); that code does not identify which mistake was made, because a key in a non-repeatable group draws it too, whether it is the sole key or sits beside a good one",
           "kind": "SURPRISE"
         },
         {

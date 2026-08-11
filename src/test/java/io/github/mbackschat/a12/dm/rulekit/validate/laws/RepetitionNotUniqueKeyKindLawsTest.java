@@ -33,6 +33,7 @@ class RepetitionNotUniqueKeyKindLawsTest {
                         .dateTimeField("PublishedAt", dt -> dt.format("yyyy-MM-dd'T'HH:mm:ss"))
                         .field("TaxIncluded", FieldKind.BOOLEAN)
                         .field("Approved", FieldKind.CONFIRM)
+                        .field("SeatCount", FieldKind.NUMBER)
                         .stringField("Note", s -> { })
                         .stringField("RawBlob", s -> s.lineBreaks().noValueValidation())))
                 .build().toJson();
@@ -88,6 +89,13 @@ class RepetitionNotUniqueKeyKindLawsTest {
     void aBooleanKeyIsAdmitted() {
         KernelLaws.acceptsModel(priceList(), "/PriceList", "../Tiers/TaxIncluded",
                 "RepetitionNotUnique(Tiers/TaxIncluded)");
+    }
+
+    /** The kind the "no Number/String-only restriction" claim is most often read as excluding — it is not. */
+    @Test
+    void aNumberKeyIsAdmitted() {
+        KernelLaws.acceptsModel(priceList(), "/PriceList", "../Tiers/SeatCount",
+                "RepetitionNotUnique(Tiers/SeatCount)");
     }
 
     @Test

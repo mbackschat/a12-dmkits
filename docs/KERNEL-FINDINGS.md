@@ -2808,3 +2808,55 @@ So the set names every field whose *change* could clear the message, not the sub
 Both kernel strategies agree (dynamic Groovy == generated Java). Nothing here settles the `Or` shape, a filtered star, or `RepetitionNotUnique`'s duplicate cluster; those were not read.
 
 *(Locked: `adapter.laws.KernelRuntimeProbeTest.anOmissionCarriesFillToFixWhereAValueErrorCarriesNone` — the OMISSION content, the VALUE control, and the two-strategy agreement, observed through the kernel-runtime probe. `adapter.laws.RichMessageDiffTest` separately locks that the interpreter reproduces this set; it compares the two engines and never pinned the content, which is why the fact was unrecorded until now.)*
+
+## §1 supplement — the group-list ROOT classes are real, and the error field's LOCUS selects the class for an unstarred repeatable operand (kernel `checkConsistency`, 2026-08-11) <a id="kf185"></a>
+
+> Fold: pending — newly measured admission-diagnostic identities; folds into §1 on the next canonical KERNEL-SEMANTICS pass.
+
+Canonical in §1 "Group-list quantifiers", which states the admission *rules* but assigns them no diagnostic identity. Reconciling a12-kernel-lean `SPEC-2026-08-11-03` measured the identities, and two of that entry's generalizations do not survive a fixture that can separate their variables. The whole table is `validate.laws.GroupListDiagnosticIdentityLawsTest`, asserting the **complete** emitted code list per row.
+
+**A one-root model cannot see the root classes, because every co-operand of the root is also its descendant and the overlap gate runs first.** With a *second, disjoint* root the root classes appear:
+
+| shape (rule group `/Shipment`, error field outside every repeatable group) | `AllGroupsFilled` / `NotAllGroupsFilled` | `AtLeastOneGroupFilled` / `NumberOfFilledGroups` |
+|---|---|---|
+| root beside a **disjoint** operand | `MVK_ROOT_GROUP_REFERENCED` | `MVK_ROOT_GROUP_WITH_OTHER_PARAMETERS` |
+| root beside its **own descendant** | `MVK_DUPLICATE_PARAM2` | `MVK_DUPLICATE_PARAM2` |
+| **sole** root | `MVK_ROOT_GROUP_REFERENCED` | admitted |
+
+The sole-root row is the second, independent refutation of "the root rule is a consequence of the ancestor relation plus arity": there is no co-operand at all, so no ancestor relation exists, and the two families still split.
+
+**The error field's locus selects the class for an unstarred repeatable operand** — same operand shape in every row below, only the error field moves:
+
+| shape | error field OUTSIDE the repeatable group | error field INSIDE it (or that group is the rule group) |
+|---|---|---|
+| `NumberOfFilledGroups(Parcels)` | `MVK_NO_WILDCARD` | `MVK_PARAMSIZE_INVALIDGN` |
+| `NumberOfFilledGroups(Parcels, Destination)` | `MVK_NO_WILDCARD` | `MVK_NEG_CONDITION_IN_ITERATION` |
+| `AllGroupsFilled(Parcels, Destination)` | `MVK_NO_WILDCARD` | **admitted** |
+| `AtLeastOneGroupFilled(Parcels)` | `MVK_NO_WILDCARD` | **admitted** |
+| `GroupFilled(Parcels)` | `MVK_NO_WILDCARD` | **admitted** |
+
+So neither code is "the" class for that shape, and the count carrier's arity class is reachable only from the inside anchoring. A claim that names the shape without the locus is half-measured whichever code it names — including the mirror-image claim that the count draws `MVK_PARAMSIZE_INVALIDGN` for *any* single unstarred operand: true for a non-repeatable operand in both the relative and the absolute spelling, false for a repeatable one seen from outside.
+
+Unchanged and confirmed across all four carriers, so these three stay separable from everything above: an exact duplicate is `MVK_DUPLICATE_PARAM1` and an ancestor/descendant pair `MVK_DUPLICATE_PARAM2` (also at list length three); the three wildcard classes are `MVK_NO_WILDCARDS_G_ALLOWED` for a starred operand where stars are barred, `MVK_NO_WILDCARDS_ALLOWED` for scalar `GroupFilled(G*)`, and `MVK_NO_WILDCARD` for the unstarred repeatable operand above; an unknown path is `MVK_INVALID_ENTITY`; and the iteration guard is its own gate — an unguarded sole `NoGroupFilled` on the iterated group draws `MVK_NEG_CONDITION_IN_ITERATION` where the `GroupFilled`-guarded form is admitted.
+
+*(Locked: `validate.laws.GroupListDiagnosticIdentityLawsTest` — six tables, 45 rows. The pre-existing single-gate owners are unchanged: `GroupQuantifierLawsTest` for the root bars, `GroupListEntityOperandLawsTest` for duplicate/arity/wildcard on the entity list, `RootGroupCountLawsTest` for the count carrier's computation-side admission.)*
+
+## §9 supplement — `RepetitionNotUnique` key-path admission mostly REUSES the group-list classes, and one class collapses THREE structurally different shapes (kernel `checkConsistency`, 2026-08-11) <a id="kf186"></a>
+
+> Fold: pending — newly measured admission-diagnostic identities; folds into §9 on the next canonical KERNEL-SEMANTICS pass.
+
+Canonical in §9 "RepetitionNotUnique". Reconciling a12-kernel-lean `SPEC-2026-08-11-04`. The operator adds almost no vocabulary of its own — a key-path defect is reported with the class the group-list families already use, so an authoring surface must not invent a key-specific unknown-entity or duplicate class:
+
+| key-path shape (rule group `/Basket` above the repeatable `Lines`) | class |
+|---|---|
+| a repeated key | `MVK_DUPLICATE_PARAM1` |
+| an unresolvable key path | `MVK_INVALID_ENTITY` |
+| a starred key path | `MVK_NO_WILDCARDS_ALLOWED` |
+| an error field that leaves a repetition level unpinned | `MVK_NO_WILDCARD` |
+| keys naming a sibling rather than the error field | `MVK_ERROR_FIELD_NOT_REFERENCED` |
+
+**`MVK_REPEATABLE_GROUP_MISSING` is the one class of its own, and THREE structurally different shapes land in it** — a second key in a non-repeatable group, a sole key whose group is not repeatable at all, and the rule group sitting **at** the repeated group rather than above it. The third is measured in both the absolute (`RepetitionNotUnique(/Basket/Lines/Sku)`) and the relative (`RepetitionNotUnique(Sku)`) key spelling, and agrees with the pre-existing `IterationLawsTest` lock; a claim that this shape draws `MVK_INVALID_ENTITY` is refuted by both spellings. Splitting the class in an authoring surface would report a distinction the engine does not make.
+
+A key in a **parallel repeatable** group is *not* part of that collapse and is not one class either: on an index-free fixture it draws `MVK_NO_WILDCARD` both from the parent and from inside one of the two groups, while `MVK_NOT_IN_SAME_PATH` is what fires on the index-keyed logistics fixture (`IterationLawsTest.repetitionNotUniqueKeysMustLieOnOnePath`). What makes the same-path gate reachable there is **not** established — the obvious candidate, the semantic index, was not isolated, and an attempt to isolate it drew `MVK_ERROR_FIELD_INVALID_INDEX` on the error field instead.
+
+*(Locked: `validate.laws.RepetitionNotUniqueKeyPathLawsTest` — one table, 11 rows, complete code list per row. The kind axis stays in `RepetitionNotUniqueKeyKindLawsTest`, which gains the **Number** key it had never covered: the "no Number/String-only restriction" claim had no Number row in its own denominator.)*

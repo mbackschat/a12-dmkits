@@ -94,13 +94,29 @@ public final class StructuralKernelFix {
                             + "field-presence predicate (FieldFilled) must name a field, not a group. The required form "
                             + "depends on the operator, so this code is not specific to any single one.")),
             Map.entry("MVK_REPEATABLE_GROUP_MISSING", new Hint(
-                    "Place the RepetitionNotUnique rule at the PARENT of the repeated group while keeping its error "
-                            + "field inside that group. Via the CLI, use `rule check --group <parentGroup> "
-                            + "--field <parentGroup>/<repeatedGroup>/<field>`; for example, `--group /Order "
-                            + "--field /Order/Items/Sku` with `RepetitionNotUnique(Items/Sku)`.",
+                    "Check BOTH causes — this one code covers them and does not say which applies. (1) The rule sits "
+                            + "INSIDE the repeated group: place it at the PARENT while keeping its error field inside "
+                            + "that group — via the CLI, `rule check --group <parentGroup> "
+                            + "--field <parentGroup>/<repeatedGroup>/<field>`, for example `--group /Order "
+                            + "--field /Order/Items/Sku` with `RepetitionNotUnique(Items/Sku)`. (2) A key names a "
+                            + "field whose group is not repeatable at all — whether it is the sole key or sits beside "
+                            + "a good one; moving the rule cannot fix that, so drop the key or make its group "
+                            + "repeatable.",
                     "Every RepetitionNotUnique key must cross a repeatable-group boundary relative to the rule group. "
-                            + "Declaring the rule inside the repeated row removes that boundary, so the kernel cannot "
-                            + "form the repetition set whose key should be unique.")),
+                            + "Declaring the rule inside the repeated row removes that boundary, and a key in a "
+                            + "non-repeatable group never had one; the kernel reports both as this single class, so "
+                            + "the code identifies the missing boundary and not which edit restores it.")),
+            Map.entry("MVK_PARAMSIZE_INVALIDGN", new Hint(
+                    "If the sole operand is a REPEATABLE group, star it — NumberOfFilledGroups(Items*) — rather than "
+                            + "adding a second group, which the kernel's own message suggests but which can then draw "
+                            + "MVK_NEG_CONDITION_IN_ITERATION inside an iterating rule. Add a second distinct, "
+                            + "non-overlapping group only when the operands are NON-repeatable groups you genuinely "
+                            + "want counted together.",
+                    "The count admits either two or more distinct groups or a single STARRED repeatable group, so "
+                            + "\"there must be more than one group\" names only one of the two ways out. Which code a "
+                            + "sole unstarred repeatable operand draws depends on the rule's anchoring: "
+                            + "MVK_NO_WILDCARD when the error field sits outside that group, this code when it sits "
+                            + "inside — and the star satisfies both.")),
             Map.entry("MVK_NOT_IN_SAME_PATH", new Hint(
                     "Keep every RepetitionNotUnique key on one repetition path. Do not mix fields from sibling or "
                             + "parallel repeatable groups in one key; choose one path, or enforce the independent "

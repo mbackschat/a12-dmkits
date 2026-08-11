@@ -103,6 +103,34 @@ class DiagnosticEnricherTest {
                 () -> "the hint moves the rule to the repeated group's parent, got: " + fix);
     }
 
+    /**
+     * The same code is drawn by a key whose group is not repeatable AT ALL, where moving the rule group cannot
+     * help (KF186 — three shapes collapse into this class). A hint that names only the nesting cause sends that
+     * author to a repair measured not to work.
+     */
+    @Test
+    void theCollapsedRepeatableGroupCodeNamesTheNonRepeatableKeyCauseToo() {
+        Diagnostic enriched = ENRICHER.enrich(raw("MVK_REPEATABLE_GROUP_MISSING"));
+        String fix = enriched.fix().orElse("");
+        assertTrue(fix.contains("not repeatable"),
+                () -> "the hint must name the second cause — a key in a non-repeatable group — got: " + fix);
+    }
+
+    /**
+     * The kernel's own text says "There must be more than one group", which is the WRONG repair when the sole
+     * operand is a repeatable group inside an iterating rule: adding a second group then draws
+     * MVK_NEG_CONDITION_IN_ITERATION (KF185). The corrective must lead with the star.
+     */
+    @Test
+    void theGroupCountArityCodeLeadsWithTheStarNotWithAddingASecondGroup() {
+        Diagnostic enriched = ENRICHER.enrich(raw("MVK_PARAMSIZE_INVALIDGN"));
+        String fix = enriched.fix().orElse("");
+        assertTrue(fix.contains("*"),
+                () -> "the hint must offer the starred single-group form, got: " + fix);
+        assertTrue(fix.contains("MVK_NEG_CONDITION_IN_ITERATION"),
+                () -> "the corrective must warn that adding a second group can draw the iteration class, got: " + fix);
+    }
+
     @Test
     void repetitionKeysOnParallelPathsGetTheSinglePathFix() {
         Diagnostic enriched = ENRICHER.enrich(raw("MVK_NOT_IN_SAME_PATH"));
