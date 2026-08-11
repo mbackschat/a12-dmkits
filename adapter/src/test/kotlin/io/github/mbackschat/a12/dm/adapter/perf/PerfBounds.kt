@@ -35,6 +35,27 @@ internal object PerfBounds {
      */
     const val MIN_KERNEL_ADVANTAGE = 1.5
 
+    /**
+     * How far above its committed per-runner-class anchor an absolute median may sit before [PerfAnchors] trips.
+     *
+     * **This is the only bar that can see a UNIFORM regression** (IF280): a growth ratio is unchanged by a uniform
+     * `k×` slowdown at every `k`, and the interp/kernel bars need 2.4×–3800×. Because the comparison is against the
+     * same runner class's own number, the tolerance covers run-to-run noise only, not the 2.07×–2.69× drift between
+     * environments that defeats every portable constant.
+     *
+     * **Measured basis (2026-08-11).** Across two isolated full gate runs of the same commit on one machine, the
+     * CPU-clock growth-lane medians this budget guards moved **1.01×–1.16×** (`B1@5000` 8.3 → 9.6 ms is the widest).
+     * The small *wall-clock* fixed-size rows moved up to **1.54×** (`Number-index-compute@500`: 3.04 → 2.39 →
+     * 1.98 ms) — which is why the anchored set is the CPU-clock lanes and not those. `1.5` therefore sits well
+     * above the observed noise of what it measures, a breach is re-measured and accepted on the median of the
+     * attempts, and the `slackMs` term keeps a sub-2 ms lane (`wideGroups@50` anchors at ~1.1 ms) from flapping on
+     * a fraction of a millisecond — the same shape as `CharsetPerfTest`'s `FACTOR × … + 50 ms`.
+     *
+     * Tighten it once several nightlies have shown the per-lane spread; never widen it to make a real regression
+     * pass — refresh the anchor deliberately instead, which is a reviewable diff.
+     */
+    val ANCHOR_TOLERANCE = AnchorTolerance(factor = 1.5, slackMs = 1.0)
+
     /** Near-linear: an entry point's growth may exceed the row factor by this much before it reads super-linear.
      *  STRICTER than [SUB_QUADRATIC_MAX] by construction (5.4 at a 4× factor, against that 9.0 trip line) — a
      *  linear entry point has no reason to need the wider catastrophe band, so do not harmonize it upward. */

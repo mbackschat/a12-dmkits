@@ -728,12 +728,15 @@ object PerfHarness {
         floor: Double = PerfBounds.SUB_QUADRATIC_MAX,
         attempts: Int = GROWTH_RETRY_ATTEMPTS,
         estimate: () -> Growth,
-    ) {
+    ): Growth {
         require(attempts > 0 && attempts % 2 == 1) { "attempts must be a positive odd number" }
         val seen = mutableListOf(estimate())
-        if (seen.single().ratio < floor) return          // clean first estimate: one measurement, as before
+        if (seen.single().ratio < floor) return seen.single()   // clean first estimate: one measurement, as before
         while (seen.size < attempts) seen += estimate()  // a breach must survive the MEDIAN of independent re-runs
-        if (median(seen.map { it.ratio }.toDoubleArray()) < floor) return
+        // The ACCEPTED estimate is returned so a caller can anchor its absolute medians without paying to
+        // re-measure them (PerfAnchors) — the same numbers acceptance was decided on, never a fresh sample.
+        val accepted = seen.sortedBy { it.ratio }[seen.size / 2]
+        if (accepted.ratio < floor) return accepted
         throw AssertionError(
             "$label median within-pair N/4N growth stayed at or above the ${floor}x catastrophe floor across " +
                 "$attempts independent re-measurements: " +

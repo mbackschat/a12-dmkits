@@ -61,3 +61,16 @@ jobs:
         env:
           JAVA_HOME: ${{ env.JAVA_HOME_21_X64 }}
         run: ./scripts/perf.sh gate
+
+      # The per-runner-class anchor block for a hosted runner can only be authored from a hosted run, and the
+      # observations are the record a refresh reads (scripts/perf-anchor.sh). Uploaded even on failure: a breach is
+      # exactly when the numbers are wanted.
+      - name: Upload the run's performance observations
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: perf-observations
+          path: |
+            a12-dmkits/adapter/build/perf-observations.jsonl
+            a12-dmkits/build/perf-gate.log
+          if-no-files-found: warn

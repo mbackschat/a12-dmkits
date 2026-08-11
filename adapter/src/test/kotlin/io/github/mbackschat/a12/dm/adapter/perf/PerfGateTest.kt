@@ -33,13 +33,28 @@ class PerfGateTest {
      */
     private fun assertSubQuadratic(
         label: String, small: Int, unit: String, culprit: String,
-        identityAt: (Int) -> String, large: Int = small * 4, measureAt: (Int) -> Double,
+        identityAt: (Int) -> String, large: Int = small * 4, clock: String = CPU_CLOCK,
+        measureAt: (Int) -> Double,
     ) {
-        PerfHarness.assertGrowthBelowCatastropheFloor(label, culprit) {
+        val accepted = PerfHarness.assertGrowthBelowCatastropheFloor(label, culprit) {
             PerfHarness.pairedGrowth(small, large, measureAt = measureAt).also { g ->
                 println("[perf] %s → %s %s: %.1fms@%d → %.1fms@%d %s  median-growth=%.2f× (linear≈4, quadratic≈16)"
                     .format(identityAt(small), identityAt(large), label, g.smallMs, small, g.largeMs, large, unit, g.ratio))
             }
+        }
+        // The growth ratio above is blind to a UNIFORM slowdown — it is unchanged at every factor — so the same
+        // accepted medians are also held against this runner class's committed anchor (IF280).
+        for ((scale, observed) in listOf(small to accepted.smallMs, large to accepted.largeMs)) {
+            PerfAnchors.assertWithinBudget(
+                ObservationKey(
+                    lane = label,
+                    identityLabel = identityAt(scale),
+                    n = scale,
+                    engine = "interpreter",
+                    clock = clock,
+                ),
+                observed,
+            ) { measureAt(scale) }
         }
     }
 
@@ -272,7 +287,7 @@ class PerfGateTest {
     fun coldStartStaysSubQuadratic() {
         val b1 = PerfCatalog.b1()
         assertSubQuadratic("COLD first-call (startup)", N_SMALL, "rows", "a cold-path O(N²) regression?",
-            identityAt = { n -> PerfHarness.measurementLabel(b1, n) }) { n ->
+            identityAt = { n -> PerfHarness.measurementLabel(b1, n) }, clock = WALL_CLOCK) { n ->
             PerfHarness.freshRunMedianMillis(b1, n)
         }
     }
@@ -409,6 +424,10 @@ class PerfGateTest {
     }
 
     private companion object {
+        /** The clock an anchored observation was taken on — part of its key, since the two are not comparable. */
+        const val CPU_CLOCK = "cpu"
+        const val WALL_CLOCK = "wall"
+
         /** Rows for the historical AddDays gate: enough repetitions to expose per-row allocation/scaling. */
         const val AD_N = 1_000
 
