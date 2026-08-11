@@ -118,6 +118,19 @@ class ComputedTargetProjectedReadLawsTest {
         assertEquals(List.of(PROJECTED), tier("FirstFilledValue(" + category(SELECTED) + ", " + SELECTED + ")"));
     }
 
+    /**
+     * The entry beside a projected self-read need not be a self-read at all: a plain read of a DIFFERENT field
+     * is inert for this class, so the pair still reports the projected class in either operand order. Measured
+     * because the composition — "an other-field read contributes nothing, therefore only the projected self-read
+     * decides" — is exactly the kind of reasoning that reads as settled and is not; the accepted control above
+     * (two other-field projections) is what makes the other entry's inertness visible rather than assumed.
+     */
+    @Test
+    void aPlainReadOfAnotherFieldBesideAProjectedSelfReadIsInert() {
+        assertEquals(List.of(PROJECTED), tier("FirstFilledValue(" + REQUESTED + ", " + category(SELECTED) + ")"));
+        assertEquals(List.of(PROJECTED), tier("FirstFilledValue(" + category(SELECTED) + ", " + REQUESTED + ")"));
+    }
+
     /** Both precondition slots report the same two classes, split the same way. */
     @Test
     void aPreconditionSelfReadIsClassifiedByItsProjectionToo() {
