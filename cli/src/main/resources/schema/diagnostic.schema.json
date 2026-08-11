@@ -9,7 +9,7 @@
   "properties": {
     "severity": { "type": "string", "enum": ["ERROR", "WARNING", "INFO"], "description": "ERROR = blocks the result (the envelope's outcome is refused [exit 2] or rejected [exit 1]; nothing written); WARNING = valid-but-suspicious advisory (outcome stays applied/read, exit 0); INFO = a note (e.g. a version skew), exit 0. Rule of thumb: an ERROR-severity diagnostic explains a non-zero exit; WARNING/INFO ride a successful one." },
     "source": { "type": "string", "enum": ["KERNEL", "PRECHECK", "LINT", "ENVIRONMENT", "INTERNAL"], "description": "KERNEL = checkConsistency problem; PRECHECK = a kit pre-check; LINT = valid-but-suspicious advisory; ENVIRONMENT = toolchain note; INTERNAL = the tool itself failed (an unexpected throwable at the boundary — RK_INTERNAL_ERROR)" },
-    "code": { "type": "string", "description": "the MVK_* (kernel) or RK_* (rulekit/structure) code; absent for some kernel problems. Look up an RK_* code's meaning + fix with `dmtool diagnostics <CODE>`; MVK_* codes are kernel codes (see `operators`/`explain`)." },
+    "code": { "type": "string", "description": "the MVK_* (kernel) or RK_* (rulekit/structure) code; absent for some kernel problems. Look up an RK_* code's meaning + fix with `dmtool diagnostics <CODE>`, which also serves the MVK_* codes carrying a structural/placement corrective; an operator-specific MVK_* code is explained by `operators`/`explain` instead." },
     "summary": { "type": "string", "description": "human-readable description (the `what`)" },
     "where": {
       "type": "object",
