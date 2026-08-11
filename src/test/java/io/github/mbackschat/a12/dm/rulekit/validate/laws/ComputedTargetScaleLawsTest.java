@@ -162,8 +162,11 @@ class ComputedTargetScaleLawsTest {
     void aFieldBearingOperationIsAdmittedOnlyAtItsExactScale() {
         admits("TotalScale4", rateTimesFactor());
         refuses("TotalScale0", rateTimesFactor());
-        // Derived scale 4 exactly as rateTimesFraction, but not capable — so scale 2 flips from admitted to
-        // refused. This is the pair that shows the gate reads capability and not only the numbers.
+        // Derived scale 4 exactly as rateTimesFraction, and refused here for the same reason: 4 is LARGER than
+        // the declared 2, which is rejected whether or not the operation is capable. Capability is what
+        // aCapableSmallerDerivedScaleIsAdmittedAtALargerDeclaredScale versus anAdditionOfTwoFieldsIsAdmitted-
+        // OnlyAtItsExactScale discriminate — both derive SMALLER than declared 4, and only the capable one is
+        // admitted. (Corrected 2026-08-11: this comment claimed scale 2 "flips from admitted to refused".)
         refuses("TotalScale2", rateTimesFactor());
     }
 

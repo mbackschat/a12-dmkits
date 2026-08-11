@@ -24,8 +24,19 @@ internal object PerfEnvironment {
         "$os-$arch$hosted"
     }
 
+    /**
+     * A cheap machine discriminator INSIDE a runner class. [key] names an os/arch family, which is what an artifact
+     * and a committed block are addressed by — but absolute timings are a property of the MACHINE, and two Apple
+     * Silicon generations differ materially at the same `darwin-aarch64` key. A block records this alongside its
+     * numbers and [PerfAnchors] declines to assert against a block captured on a different one, so a second machine
+     * reads as bootstrap instead of reddening 18 lanes. It **narrows** the class rather than closing it: two machines
+     * with the same core count and different generations still collide, so the standing rule is one anchoring
+     * machine per runner class (IG120).
+     */
+    val processors: Int get() = Runtime.getRuntime().availableProcessors()
+
     val describe: String
-        get() = "$key jdk=${System.getProperty("java.version")}"
+        get() = "$key jdk=${System.getProperty("java.version")} processors=$processors"
 }
 
 /**
@@ -49,6 +60,7 @@ internal object PerfObservations {
                     "os" to System.getProperty("os.name"),
                     "arch" to System.getProperty("os.arch"),
                     "jdk" to System.getProperty("java.version"),
+                    "processors" to PerfEnvironment.processors,
                 ),
             )
         }
@@ -153,8 +165,20 @@ internal object PerfAnchors {
             "$ANCHOR_RESOURCE must anchor at least one runner class"
         }
         val block = environments.path(PerfEnvironment.key)
-        if (block.isMissingNode) null
-        else block.path("observations").properties().associate { (key, value) -> key to value.asDouble() }
+        if (block.isMissingNode) return@lazy null
+        // Captured on a different machine in the same os/arch family: absolute times are not comparable across
+        // those, so this is the bootstrap case, not a regression. Reported, never failed. A block without the
+        // field predates it and is trusted.
+        val capturedOn = block.path("processors")
+        if (capturedOn.isInt && capturedOn.asInt() != PerfEnvironment.processors) {
+            println(
+                "[perf] anchor for ${PerfEnvironment.key} was captured on a ${capturedOn.asInt()}-processor " +
+                    "machine and this one has ${PerfEnvironment.processors} — not asserting, since an absolute " +
+                    "time is a property of the machine (IG120: one anchoring machine per runner class)",
+            )
+            return@lazy null
+        }
+        block.path("observations").properties().associate { (key, value) -> key to value.asDouble() }
     }
 
     private val required: Boolean get() = System.getProperty(REQUIRED_PROPERTY) == "true"

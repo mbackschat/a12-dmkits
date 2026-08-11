@@ -5,6 +5,10 @@ import io.github.mbackschat.a12.dm.interpreter.eval.Document
 import io.github.mbackschat.a12.dm.interpreter.eval.newDocument
 import io.github.mbackschat.a12.dm.interpreter.load.ModelLoader
 import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft
+import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel
+import io.github.mbackschat.a12.dm.rulekit.dsl.Condition
+import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl
+import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 
@@ -29,19 +33,18 @@ import org.junit.jupiter.api.Test
  */
 class UnstarredGroupReferenceDiffTest {
 
+    /** One rule of the sweep: its error code, its condition, and the operand position it exercises. */
+    private data class Lane(val code: String, val condition: String, val position: String)
+
     private companion object {
         const val ERROR_FIELD = "../Billing/Street"
 
-        /** Every rule sits on `/Order` and reports on the same error field, so only the operand differs. */
-        val RULES = listOf(
-            Triple("GRPFILLED", "GroupFilled(/Order/Billing)", "single-operand presence"),
-            Triple("ANYFILLED", "AtLeastOneGroupFilled(/Order/Billing, /Order/Shipping)", "entity-list"),
-            Triple("COUNTPOS", "NumberOfFilledGroups(/Order/Billing, /Order/Shipping) > 0", "numeric count atom"),
-            Triple("STARSUM", "FieldFilled(/Order/Billing/Street) And Sum(/Order/Items*) > 0",
-                "control: the measured starred expansion"),
-            Triple("PLAINFIELD", "FieldFilled(/Order/Billing/Street) And FieldFilled(/Order/Reference)",
-                "control: plain field operands only"),
-        )
+        /**
+         * The starred control's operand is a star over the GROUP (`Sum(/Order/Items*)`), which the typed DSL has no
+         * operand for — `Dsl.sum` takes field operands. Recorded as a library gap (DEV-API-GAPS) rather than worked
+         * around silently; every other condition here is authored typed and rendered.
+         */
+        const val GROUP_STAR_SUM = "Sum(/Order/Items*)"
     }
 
     /**
@@ -49,22 +52,41 @@ class UnstarredGroupReferenceDiffTest {
      * group below it (so recursive and direct-child expansion differ), a disjoint nonrepeatable `Shipping` group
      * for the entity-list positions, a repeatable `Items` group for the starred control, and a plain field.
      */
-    private val model: String = run {
-        var json = DocumentModelDraft.named("order-reference").locale("en_US")
-            .rootGroup("Order") { g ->
-                g.stringField("Reference") { }
-                g.group("Billing") { b ->
-                    b.stringField("Street") { }
-                    b.stringField("City") { }
-                    b.group("Contact") { c -> c.stringField("Email") { } }
-                }
-                g.group("Shipping") { s -> s.stringField("Carrier") { } }
-                g.group("Items") { i -> i.repeatable(10).numberField("Quantity") { it.fractionDigits(0, 0) } }
-            }.build().toJson()
-        RULES.forEach { (code, condition, _) ->
-            json = RuntimeLaws.withRule(json, "/Order", "R$code", ERROR_FIELD, code, condition)
-        }
-        json
+    private val base: String = DocumentModelDraft.named("order-reference").locale("en_US")
+        .rootGroup("Order") { g ->
+            g.stringField("Reference") { }
+            g.group("Billing") { b ->
+                b.stringField("Street") { }
+                b.stringField("City") { }
+                b.group("Contact") { c -> c.stringField("Email") { } }
+            }
+            g.group("Shipping") { s -> s.stringField("Carrier") { } }
+            g.group("Items") { i -> i.repeatable(10).numberField("Quantity") { it.fractionDigits(0, 0) } }
+        }.build().toJson()
+
+    /**
+     * Conditions are authored with the rulekit typed DSL and rendered to the canonical string fed to BOTH engines —
+     * each path written once, validated at the call site (the `GroupFilledDiffTest` route). Every rule sits on
+     * `/Order` and reports on the same error field, so only the operand differs.
+     */
+    private val lanes: List<Lane> = BoundModel.ofJson(base).let { m ->
+        val billing = m.group("/Order/Billing")
+        val shipping = m.group("/Order/Shipping")
+        val street = m.str("/Order/Billing/Street").filled()
+        fun render(condition: Condition): String = DslRenderer().render(condition)
+        listOf(
+            Lane("GRPFILLED", render(billing.filled()), "single-operand presence"),
+            Lane("ANYFILLED", render(Dsl.atLeastOneGroupFilled(billing, shipping)), "entity-list"),
+            Lane("COUNTPOS", render(Dsl.numberOfFilledGroups(billing, shipping).gt(0)), "numeric count atom"),
+            Lane("STARSUM", "${render(street)} And $GROUP_STAR_SUM > 0",
+                "control: the measured starred expansion"),
+            Lane("PLAINFIELD", render(street.and(m.str("/Order/Reference").filled())),
+                "control: plain field operands only"),
+        )
+    }
+
+    private val model: String = lanes.fold(base) { json, lane ->
+        RuntimeLaws.withRule(json, "/Order", "R${lane.code}", ERROR_FIELD, lane.code, lane.condition)
     }
 
     private val definition = ModelLoader.load(model)
@@ -120,9 +142,9 @@ class UnstarredGroupReferenceDiffTest {
     @Test
     fun everyOperandPositionFiresExactlyOnce() {
         val byCode = RuntimeLaws.messages(model, kernelDocument()).groupBy { it.code() }
-        assertEquals(RULES.map { it.first }.sorted(), byCode.keys.sorted(),
+        assertEquals(lanes.map { it.code }.sorted(), byCode.keys.sorted(),
             "each of the three operand positions and both controls must contribute a message")
-        assertEquals(RULES.associate { it.first to 1 }, byCode.mapValues { (_, messages) -> messages.size },
+        assertEquals(lanes.associate { it.code to 1 }, byCode.mapValues { (_, messages) -> messages.size },
             "exactly one message per rule, so a single referenced set per position is the whole contribution")
     }
 
@@ -130,7 +152,7 @@ class UnstarredGroupReferenceDiffTest {
     fun bothKernelStrategiesAgreeOnEveryReferencedSet() {
         val dynamic = dynamicReferenced()
         val javaStatic = javaStaticReferenced()
-        RULES.forEach { (code, condition, position) ->
+        lanes.forEach { (code, condition, position) ->
             assertEquals(dynamic.getValue(code), javaStatic.getValue(code),
                 "dynamic Groovy and generated Java must agree on '$condition' ($position)")
         }
@@ -140,7 +162,7 @@ class UnstarredGroupReferenceDiffTest {
     fun theInterpreterAgreesWithBothKernelStrategies() {
         val dynamic = dynamicReferenced()
         val interpreter = interpreterReferenced()
-        RULES.forEach { (code, condition, position) ->
+        lanes.forEach { (code, condition, position) ->
             assertEquals(dynamic.getValue(code), interpreter.getValue(code),
                 "the interpreter must agree with the kernel on '$condition' ($position)")
         }
@@ -204,7 +226,7 @@ class UnstarredGroupReferenceDiffTest {
         val dynamic = dynamicReferenced()
         assertEquals(
             mapOf("GRPFILLED" to billing, "ANYFILLED" to billingAndShipping, "COUNTPOS" to billingAndShipping),
-            RULES.take(3).associate { it.first to dynamic.getValue(it.first) },
+            lanes.take(3).associate { it.code to dynamic.getValue(it.code) },
             "the presence position, the entity-list position and the numeric count atom expand alike",
         )
     }

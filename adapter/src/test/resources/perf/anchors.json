@@ -7,6 +7,7 @@
       "os": "Mac OS X",
       "arch": "aarch64",
       "jdk": "21.0.12",
+      "processors": 8,
       "observations": {
         "B1 sub-quadratic check|diagnostic/B1-per-row@1 fingerprint=475bcd9981145546c73daccf362813d58d6296c92f885a95ad8a1bbbf512a4ab|n=5000|interpreter|cpu": 9.6,
         "B1 sub-quadratic check|diagnostic/B1-per-row@1 fingerprint=fda086e1153aa86f7868e1a660086ebe3349cbbd10bafda785d00f6dfb46d866|n=20000|interpreter|cpu": 56.45,

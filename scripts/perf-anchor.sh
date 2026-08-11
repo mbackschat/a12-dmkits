@@ -11,10 +11,14 @@
 # the same commit as the change that made the cost legitimately higher.
 #
 # Usage:
-#   scripts/perf-anchor.sh refresh [observations.jsonl]   fold a run's observations into the anchor
-#                                                        (refuses to DELETE anchors the input did not
-#                                                         measure; ALLOW_REMOVALS=1 overrides)
-#   scripts/perf-anchor.sh show    [observations.jsonl]   print the diff the refresh WOULD make, change nothing
+#   scripts/perf-anchor.sh refresh [observations.jsonl ...]   fold run observations into the anchor
+#                                                            (refuses to DELETE anchors the inputs did not
+#                                                             measure; ALLOW_REMOVALS=1 overrides)
+#   scripts/perf-anchor.sh show    [observations.jsonl ...]   print the diff a refresh WOULD make, change nothing
+#
+# PREFER SEVERAL RUNS. With more than one input the per-key anchor is their MEDIAN, which is what makes the
+# tolerance tightenable: a single run's sample gives a lane anchored on a fast run a tighter-than-advertised bar
+# and one anchored on a slow run a looser one (IG120). All inputs must come from the same runner class.
 #
 # The input defaults to adapter/build/perf-observations.jsonl, which `scripts/perf.sh gate` writes. A hosted
 # runner's block can only be authored from a hosted run, so take that file from the nightly workflow's uploaded
@@ -23,7 +27,8 @@ set -uo pipefail
 cd "$(dirname "$0")/.."
 
 mode="${1:-show}"
-input="${2:-adapter/build/perf-observations.jsonl}"
+shift || true
+if [ "$#" -eq 0 ]; then set -- adapter/build/perf-observations.jsonl; fi
 anchor="adapter/src/test/resources/perf/anchors.json"
 
 case "$mode" in
@@ -31,7 +36,9 @@ case "$mode" in
     *) echo "usage: scripts/perf-anchor.sh {refresh|show} [observations.jsonl]" >&2; exit 2 ;;
 esac
 
-[ -f "$input" ] || { echo "no observations at $input — run scripts/perf.sh gate first" >&2; exit 1; }
+for input in "$@"; do
+    [ -f "$input" ] || { echo "no observations at $input — run scripts/perf.sh gate first" >&2; exit 1; }
+done
 [ -f "$anchor" ] || { echo "missing anchor file $anchor" >&2; exit 1; }
 
 commit="$(git rev-parse --short HEAD)" || { echo 'cannot resolve HEAD' >&2; exit 1; }
@@ -39,27 +46,43 @@ commit="$(git rev-parse --short HEAD)" || { echo 'cannot resolve HEAD' >&2; exit
 if [ -n "$(git status --porcelain)" ]; then commit="$commit-DIRTY"; fi
 captured="$(date -u +%F)"
 
-MODE="$mode" INPUT="$input" ANCHOR="$anchor" COMMIT="$commit" CAPTURED="$captured" python3 - <<'PY'
-import json, os, sys
+MODE="$mode" ANCHOR="$anchor" COMMIT="$commit" CAPTURED="$captured" python3 - "$@" <<'PY'
+import json, os, statistics, sys
 
-mode, input_path, anchor_path = os.environ["MODE"], os.environ["INPUT"], os.environ["ANCHOR"]
+mode, anchor_path = os.environ["MODE"], os.environ["ANCHOR"]
+inputs = sys.argv[1:]
 
-run, observations = None, {}
-with open(input_path) as handle:
-    for line in handle:
-        line = line.strip()
-        if not line:
-            continue
-        record = json.loads(line)
-        if record.get("kind") == "run":
-            run = record
-        elif record.get("kind") == "observation":
-            observations[record["key"]] = round(float(record["medianMs"]), 2)
+run, samples = None, {}
+for input_path in inputs:
+    header = None
+    with open(input_path) as handle:
+        for line in handle:
+            line = line.strip()
+            if not line:
+                continue
+            record = json.loads(line)
+            if record.get("kind") == "run":
+                header = record
+            elif record.get("kind") == "observation":
+                samples.setdefault(record["key"], []).append(float(record["medianMs"]))
+    if header is None:
+        sys.exit(f"{input_path} has no run header — it was not written by a complete gate run")
+    if run is not None and header["environment"] != run["environment"]:
+        sys.exit(
+            f"{input_path} was measured on {header['environment']} but a previous input on {run['environment']};"
+            " absolute times are only comparable within one runner class"
+        )
+    run = header
 
-if run is None:
-    sys.exit(f"{input_path} has no run header — it was not written by a complete gate run")
-if not observations:
-    sys.exit(f"{input_path} carries no observations")
+if not samples:
+    sys.exit("the inputs carry no observations")
+
+# With several runs the anchor is the per-key MEDIAN, so one fast or one contended run cannot set the bar.
+observations = {key: round(statistics.median(values), 2) for key, values in samples.items()}
+runs = len(inputs)
+partial = sorted(key for key, values in samples.items() if len(values) != runs)
+if partial:
+    print(f"note: {len(partial)} key(s) were not measured by all {runs} input(s); their median uses fewer samples")
 
 environment = run["environment"]
 with open(anchor_path) as handle:
@@ -71,7 +94,7 @@ added = sorted(k for k in observations if k not in previous)
 removed = sorted(k for k in previous if k not in observations)
 changed = sorted(k for k in observations if k in previous and previous[k] != observations[k])
 
-print(f"environment {environment}  ({len(observations)} observations)")
+print(f"environment {environment}  ({len(observations)} observations from {runs} run(s))")
 for key in added:
     print(f"  + {key} = {observations[key]}ms")
 for key in changed:
@@ -105,6 +128,7 @@ anchor["environments"][environment] = {
     "os": run.get("os"),
     "arch": run.get("arch"),
     "jdk": run.get("jdk"),
+    "processors": run.get("processors"),
     "observations": dict(sorted(observations.items())),
 }
 with open(anchor_path, "w") as handle:
