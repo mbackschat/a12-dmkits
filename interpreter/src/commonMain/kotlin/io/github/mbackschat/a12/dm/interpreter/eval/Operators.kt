@@ -69,7 +69,10 @@ enum class PredicateOp(val kernelName: String, val polarity: MsgType?, val count
     ;
 
     companion object {
-        fun byName(name: String): PredicateOp? = entries.firstOrNull { it.kernelName == name }
+        private val BY_NAME: Map<String, PredicateOp> = entries.associateBy { it.kernelName }
+
+        /** O(1) by name — see [FunctionOp.byName] for why a linear scan was wrong here. */
+        fun byName(name: String): PredicateOp? = BY_NAME[name]
     }
 }
 
@@ -85,7 +88,10 @@ enum class ConstantOp(val kernelName: String) {
     ;
 
     companion object {
-        fun byName(name: String): ConstantOp? = entries.firstOrNull { it.kernelName == name }
+        private val BY_NAME: Map<String, ConstantOp> = entries.associateBy { it.kernelName }
+
+        /** O(1) by name — see [FunctionOp.byName] for why a linear scan was wrong here. */
+        fun byName(name: String): ConstantOp? = BY_NAME[name]
     }
 }
 
@@ -167,7 +173,16 @@ enum class FunctionOp(val kernelName: String) {
     ;
 
     companion object {
-        fun byName(name: String): FunctionOp? = entries.firstOrNull { it.kernelName == name }
+        private val BY_NAME: Map<String, FunctionOp> = entries.associateBy { it.kernelName }
+
+        /**
+         * O(1) by name. This was `entries.firstOrNull { it.kernelName == name }` — a linear scan with a string
+         * comparison per entry — and it is called from the expression evaluator on EVERY evaluation of the node,
+         * not once at parse time. With 53 entries and `CurrentRepetition` sitting at position 47, the compute-overlay
+         * correlation scenario walked most of the enum twice per row pair: JFR put this single method at **7.7%
+         * of all samples**, the hottest frame in the whole profile.
+         */
+        fun byName(name: String): FunctionOp? = BY_NAME[name]
     }
 }
 

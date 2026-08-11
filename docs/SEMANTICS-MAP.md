@@ -65,6 +65,7 @@ Lock-tree classes whose subject is not one kernel-semantics section — the conc
 
 | Lane | Guards |
 |---|---|
+| Operator name resolution — the AST name → operator-enum lookup every strategy shares | `OperatorLookupTest` |
 | Condition concrete syntax (lexing, comments, directives — KERNEL-FINDINGS "Condition lexing"/"Condition comments"/"Condition directives") | `DirectiveLawsTest`, `CommentConditionDiffTest`, `ParserDiffTest`, `ParserCorpusSweepTest`, `KeywordCaseVariantParseTest`, `ConditionLanguageParseTest`, `CommentSkipParseTest`, `ForIndexArgParseTest`, `QuotedPathSegmentParseTest`, `ValueListLiteralParseTest`, `ValueListQuantifierHavingParseTest` |
 | Operator-catalog verification lanes ([CATALOG-SPEC.md](CATALOG-SPEC.md) §5) | `CatalogFacetProbesTest`, `CatalogParityTest`, `CatalogOperatorStrategyDiffTest`, `CapabilityEvidenceMatrixTest`, `OperatorAdmissionLawsTest` |
 | Conformance corpus — capture, replay, schema ([CONFORMANCE-CORPUS-SPEC.md](CONFORMANCE-CORPUS-SPEC.md)) | `CorpusCaptureTest`, `CorpusReplayTest`, `CorpusSchemaGuardTest`, `CorpusModelPreparerTest`, `CorpusReplayCommonTest`, `CaseJsonTest`, `ConformanceDivergenceEnforcementTest`, `CorpusDocumentCanonicalTest` |

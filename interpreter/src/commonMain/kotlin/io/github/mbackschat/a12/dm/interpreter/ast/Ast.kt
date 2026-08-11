@@ -52,7 +52,10 @@ enum class ValueListQuantOp(val kernelName: String) {
     ;
 
     companion object {
-        fun byName(name: String): ValueListQuantOp? = entries.firstOrNull { it.kernelName == name }
+        private val BY_NAME: Map<String, ValueListQuantOp> = entries.associateBy { it.kernelName }
+
+        /** O(1) by name — see `FunctionOp.byName` for why a linear scan was wrong here. */
+        fun byName(name: String): ValueListQuantOp? = BY_NAME[name]
     }
 }
 

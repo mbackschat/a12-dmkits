@@ -27,39 +27,72 @@ internal class OverlayContext(
     private val views: OverlayViews,
     private val selfTarget: String,
 ) : EvalContext by d, GroupListEnvironmentProvider {
-    private fun overlaid(path: String): Val? = overlay[path to d.repsOf(path)]
-    private fun isCleared(path: String): Boolean = path to d.repsOf(path) in cleared
+    /**
+     * What the cascade says about ONE cell, resolved with a single key.
+     *
+     * Every public read below needs all three answers — poisoned, cleared, overlaid — and each used to ask its
+     * own question through its own helper: three `repsOf(path)` calls, three `Pair` allocations and three hashes
+     * of a `Pair<String, List<Int>>` for one logical read. The overlay is on the hot path of every compute
+     * cascade, and JFR duly found `overlaid` at 5.6 % of samples with `Pair.hashCode` and `ArrayList.hashCode`
+     * under it. One key, asked once, is the same answer at a third of the cost.
+     *
+     * The order is load-bearing and matches what it replaced: poisoned beats cleared beats overlaid.
+     */
+    private enum class CascadeState { POISONED, CLEARED, OVERLAID, ABSENT }
+
+    private fun stateOf(path: String): Pair<CascadeState, Val?> {
+        // `repsOf` is itself a map lookup, so it is asked once and the key built once.
+        val key = path to d.repsOf(path)
+        return when {
+            key in poisoned -> CascadeState.POISONED to null
+            key in cleared -> CascadeState.CLEARED to null
+            else -> overlay[key]?.let { CascadeState.OVERLAID to it } ?: (CascadeState.ABSENT to null)
+        }
+    }
+
     // A POISONED cascade target (an errored value / an itself-poisoned instance) poisons EVERY read — value,
     // presence, or display (IF85; the kernel's CalculationCache.getWertXML/isEntityFilled throw for an
     // invalid-marked field). The set carries cell identity only: producer cause/payload/message is deliberately
     // unavailable to the dependent (SPEC-2026-07-26-04). A CLEARED target instead reads as EMPTY (IF77).
-    private fun poisonIfPoisoned(path: String) {
-        if (path to d.repsOf(path) in poisoned) throw PoisonedReadException(path)
-    }
     override fun field(path: String): Val {
-        poisonIfPoisoned(path)
-        return if (isCleared(path)) emptyOf(path) else overlaid(path) ?: d.field(path)
-    }
-    override fun filled(path: String): Boolean {
-        poisonIfPoisoned(path)
-        return if (isCleared(path)) false else overlaid(path)?.let { it !is Val.Unknown } ?: d.filled(path)
-    }
-    override fun displayValue(path: String): String? {
-        poisonIfPoisoned(path)
-        return if (isCleared(path)) null else when (val v = overlaid(path)) {
-            // The STORED form of a computed number (padded to the target's minFractionalDigits, IF82/IF90) —
-            // so a downstream poison gate sees the same value the kernel stored, not an unpadded `10`.
-            is Val.Num -> v.v.display(minFracOf(path))
-            is Val.Txt -> v.v
-            is Val.Bool -> v.v.toString()
-            else -> d.displayValue(path)
+        val (state, value) = stateOf(path)
+        return when (state) {
+            CascadeState.POISONED -> throw PoisonedReadException(path)
+            CascadeState.CLEARED -> emptyOf(path)
+            CascadeState.OVERLAID -> value!!
+            CascadeState.ABSENT -> d.field(path)
         }
     }
-    override fun cellState(path: String): CellState = when {
-        path to d.repsOf(path) in poisoned -> CellState.INVALID
-        isCleared(path) -> CellState.EMPTY
-        overlaid(path) != null -> CellState.FILLED
-        else -> d.cellState(path)
+    override fun filled(path: String): Boolean {
+        val (state, value) = stateOf(path)
+        return when (state) {
+            CascadeState.POISONED -> throw PoisonedReadException(path)
+            CascadeState.CLEARED -> false
+            CascadeState.OVERLAID -> value !is Val.Unknown
+            CascadeState.ABSENT -> d.filled(path)
+        }
+    }
+    override fun displayValue(path: String): String? {
+        val (state, value) = stateOf(path)
+        return when (state) {
+            CascadeState.POISONED -> throw PoisonedReadException(path)
+            CascadeState.CLEARED -> null
+            // The STORED form of a computed number (padded to the target's minFractionalDigits, IF82/IF90) —
+            // so a downstream poison gate sees the same value the kernel stored, not an unpadded `10`.
+            CascadeState.OVERLAID -> when (value) {
+                is Val.Num -> value.v.display(minFracOf(path))
+                is Val.Txt -> value.v
+                is Val.Bool -> value.v.toString()
+                else -> d.displayValue(path)
+            }
+            CascadeState.ABSENT -> d.displayValue(path)
+        }
+    }
+    override fun cellState(path: String): CellState = when (stateOf(path).first) {
+        CascadeState.POISONED -> CellState.INVALID
+        CascadeState.CLEARED -> CellState.EMPTY
+        CascadeState.OVERLAID -> CellState.FILLED
+        CascadeState.ABSENT -> d.cellState(path)
     }
 
     // Each row's value is the overlaid (computed) value if present, a CLEARED cascade cell is empty, a
@@ -163,7 +196,21 @@ internal class OverlayContext(
     // quantifiers) see an overlaid value, a cleared target as EMPTY (IF77), and a poisoned one as a
     // poisoning read (IF85) — the raw delegation read the STALE stored cell (IF98).
     override fun rowContexts(groupPath: String, bindDepth: Int): List<EvalContext> =
-        d.rowContexts(groupPath, bindDepth).map { OverlayContext(it, overlay, cleared, poisoned, emptyOf, minFracOf, views, selfTarget) }
+        // Shared across the step's outer rows, like the derived views below — and SAFER than any of them, because
+        // what is cached here is the WRAPPERS, not values. An `OverlayContext` holds references to the live
+        // overlay/cleared/poisoned collections and consults them on every read, so a wrapper handed out early in a
+        // step returns the cascade's latest answer just as a freshly built one would. That is why this needs no
+        // `selfTarget` bypass, which every value-caching view above does need.
+        //
+        // Keyed on the scope prefix rather than the raw bind depth for the same reason the correlation cache is:
+        // different outer rows resolve the same `bindDepth` to different row sets, so the depth alone would hand
+        // one row's contexts to another. Worth doing because `scanFilled` asks for these per outer row, so the
+        // wrapper allocation was O(rows) per row — 13.3 % of samples on the compute-overlay correlation profile.
+        views.rowContexts(groupPath, d.scopePrefixOf(groupPath, bindDepth)) {
+            d.rowContexts(groupPath, bindDepth).map {
+                OverlayContext(it, overlay, cleared, poisoned, emptyOf, minFracOf, views, selfTarget)
+            }
+        }
 
     override fun groupListEnvironments(groupPath: String, bindDepth: Int): List<EvalContext> =
         d.groupListEnvironments(groupPath, bindDepth)
@@ -215,6 +262,15 @@ internal class OverlayViews(private val observer: CacheObserver? = null) {
     private val indexColumns = HashMap<Pair<String, List<Int>>, IndexColumn>()
     private val correlations = HashMap<List<Any?>, Map<List<Val>, IntArray>>()
     private val orderedCorrelations = HashMap<List<Any?>, OrderedCorrelation>()
+    private val rowContexts = HashMap<Pair<String, List<Int>>, List<EvalContext>>()
+
+    /**
+     * The overlay-WRAPPED row contexts of one group in one scope. Unlike the derived views below this caches no
+     * value: a wrapper reads the live cascade collections on every access, so sharing one across a step's outer
+     * rows cannot serve a stale answer — it only avoids rebuilding the wrappers.
+     */
+    fun rowContexts(groupPath: String, scope: List<Int>, build: () -> List<EvalContext>): List<EvalContext> =
+        rowContexts.getOrPut(groupPath to scope, build).also { observe() }
 
     fun indexColumn(path: String, scope: List<Int>, build: () -> IndexColumn): IndexColumn =
         indexColumns.getOrPut(path to scope, build).also { observe() }
@@ -238,12 +294,13 @@ internal class OverlayViews(private val observer: CacheObserver? = null) {
         indexColumns.clear()
         correlations.clear()
         orderedCorrelations.clear()
+        rowContexts.clear()
         observe()
     }
 
     private fun observe() {
         val active = observer ?: return
         active.cacheEntries(this, CacheOwnerKind.OVERLAY_VIEWS,
-            indexColumns.size + correlations.size + orderedCorrelations.size)
+            indexColumns.size + correlations.size + orderedCorrelations.size + rowContexts.size)
     }
 }
