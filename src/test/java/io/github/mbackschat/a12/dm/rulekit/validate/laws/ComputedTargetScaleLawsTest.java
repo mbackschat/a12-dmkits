@@ -226,12 +226,79 @@ class ComputedTargetScaleLawsTest {
         reports(SELF_REFERENCE, "[/Quote/TotalScale0] + 1.5", SCALE_GATE);
     }
 
+    /** An arithmetic operator and how it derives a result scale from its two operand scales (§5). */
+    private enum Operator {
+        TIMES("*"), PLUS("+"), MINUS("-");
+
+        private final String symbol;
+
+        Operator(String symbol) {
+            this.symbol = symbol;
+        }
+
+        int derivedScale(int left, int right) {
+            return switch (this) {
+                case TIMES -> left + right;
+                case PLUS, MINUS -> Math.max(left, right);
+            };
+        }
+    }
+
+    /** The other operand of a self-reading operation: its text and its scale, one per kind × scale-state cell. */
+    private enum Operand {
+        MATCHED_LITERAL("2", 0),
+        MISMATCHED_LITERAL("1.5", 1),
+        MATCHED_FIELD("[/Quote/Units]", 0),
+        MISMATCHED_FIELD("[/Quote/Rate]", 2);
+
+        private final String text;
+        private final int scale;
+
+        Operand(String text, int scale) {
+            this.text = text;
+            this.scale = scale;
+        }
+    }
+
+    /** Which side of the operator reads the computed target. */
+    private enum Position { TARGET_LEFT, TARGET_RIGHT }
+
+    private static String selfReading(Operator operator, Position position, Operand other) {
+        String target = "[/Quote/TotalScale0]";
+        return switch (position) {
+            case TARGET_LEFT -> target + " " + operator.symbol + " " + other.text;
+            case TARGET_RIGHT -> other.text + " " + operator.symbol + " " + target;
+        };
+    }
+
+    /**
+     * The order's COMPLETE denominator: every operator × operand position × operand kind, at a matched and at a
+     * mismatched operand scale, with a suppression row under every mismatch (the lean project's
+     * {@code SPEC-2026-08-11-01} and {@code SPEC-2026-08-11-02}).
+     *
+     * <p>This replaced four hand-picked rows that claimed independence "of operand position and of the operator"
+     * while measuring the target on the right for {@code *} only and a field operand for {@code +} only — the
+     * denominator {@code SPEC-2026-08-11-02} enumerated. Each cell's expectation is <b>derived from the §5 scale
+     * rule first</b> ({@code *} sums operand scales, {@code +}/{@code -} take the maximum; the target is scale 0),
+     * so a cell asserts a prediction rather than whatever the kernel happened to say.
+     */
     @Test
-    void theOrderIsIndependentOfOperandPositionAndOfTheOperator() {
-        reports(SCALE_GATE, "1.5 * [/Quote/TotalScale0]");
-        reports(SELF_REFERENCE, "2 * [/Quote/TotalScale0]");
-        reports(SCALE_GATE, "[/Quote/TotalScale0] - 1.5");
-        reports(SELF_REFERENCE, "[/Quote/TotalScale0] - 2");
+    void theOrderHoldsAcrossEveryOperatorPositionAndOperandKind() {
+        int targetScale = 0;
+        for (Operator operator : Operator.values()) {
+            for (Position position : Position.values()) {
+                for (Operand other : Operand.values()) {
+                    String operation = selfReading(operator, position, other);
+                    boolean scaleMatches = operator.derivedScale(targetScale, other.scale) == targetScale;
+                    reports(scaleMatches ? SELF_REFERENCE : SCALE_GATE, operation);
+                    if (!scaleMatches) {
+                        // The kernel's own escape hatch cannot legalize a computation that still reads its
+                        // target, so what surfaces under the suppressed gate is what the gate was reported ahead of.
+                        reports(SELF_REFERENCE, operation, SCALE_GATE);
+                    }
+                }
+            }
+        }
     }
 
     /**
