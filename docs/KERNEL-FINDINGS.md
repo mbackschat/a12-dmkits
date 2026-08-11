@@ -2765,3 +2765,27 @@ Two boundaries this does **not** establish, stated so neither is read as measure
 Client-side consequence, now fixed: `Computation.build()` refused all of these shapes — correctly, the kernel rejects every one — but named `MVK_ERROR_REFERENCE_TO_CALCULATED_FIELD` in the message, which `PrecheckException` lifts into `Diagnostic.code()`. An author was therefore told to drop the reference when the kernel's own repair is to drop the projection. `ConditionReferences.readMode(...)` now answers *how* a path is read over one traversal, and the builder **folds that mode across every slot** before it reports one — which is what the cross-slot row above requires, and what a per-slot check got wrong by reporting whichever slot it visited first.
 
 *(Locked: `validate.laws.ComputedTargetProjectedReadLawsTest` — every row above, each asserting the complete emitted code list; `dsl.ComputationAuthoringTest` for the client-side class and its plain control.)*
+
+## §12 supplement — an UNSTARRED group operand expands recursively into a message's `referenced` set, with concrete coordinates (kernel runtime, 2026-08-11) <a id="kf183"></a>
+
+> Fold: pending — newly measured message-channel fact; folds into §12 on the next canonical KERNEL-SEMANTICS pass.
+
+Canonical in §12 "The validation model". The experiment request is the lean project's `EXP-2026-08-11-01`, which asked it because `adapter.laws.GroupStarValueAggregateDiffTest` settles the question only for a **starred** group (the operand-expansion mechanism itself is [KF12](#kf12)'s `ExpandService`) — and the star is what turns an operand into a field set in the first place, so a fixed group could have been an entity reference contributing no field pointer at all. Three refusals in that project's structural reference projection shared this one witness.
+
+Measured on one nonrepeatable model (`/Order/Billing` holding `Street` and `City` plus a deeper nonrepeatable `/Order/Billing/Contact` holding `Email`, a disjoint `/Order/Shipping` holding `Carrier`), reading each fired message's complete `referenced` set:
+
+| condition operand position | `referenced` |
+|---|---|
+| `GroupFilled(/Order/Billing)` — single-operand presence | `Billing[1]/City`, `Billing[1]/Contact[1]/Email`, `Billing[1]/Street` |
+| `AtLeastOneGroupFilled(/Order/Billing, /Order/Shipping)` — entity list | the same three **plus** `Shipping[1]/Carrier` |
+| `NumberOfFilledGroups(/Order/Billing, /Order/Shipping) > 0` — numeric count atom | identical to the entity-list row |
+
+So the answer is **recursive expansion**, and it is the *same* relation in all three positions. Of the four accounts on the table, three are refuted: **direct-child expansion** would have dropped the deeper `Contact[1]/Email`; **no contribution** is refuted because `City` and `Contact/Email` are neither the error field nor named anywhere in the condition, so they can only come from the operand; and a **group pointer** never appears, matching the starred result.
+
+**The coordinates differ from the starred case, which is the second half of the finding.** A starred group's expanded field carries the wildcard repetition — `/Order[1]/Items[0]/Quantity` — while an unstarred group's expanded fields are **concrete at the firing row**, `Billing[1]` and `Contact[1]` included. Both readings come from the same run through the same code path.
+
+Controls, because a set that merely looks plausible proves nothing: the starred expansion is re-read on this same model and still wildcards (so a null result here could not have been an instrument artifact), and a plain-field condition contributes exactly its two operands. One authoring constraint shaped both controls: the kernel refuses a rule whose error field the condition never references (`MVK_ERROR_FIELD_NOT_REFERENCED`), so the request's "references only a plain field" control is not authorable — each control names the error field as one of its operands. The same constraint is why the three measured rules can carry an error field *inside* the tested group at all: the group operand satisfies the reference gate indirectly, for `AtLeastOneGroupFilled` and `NumberOfFilledGroups` exactly as for `GroupFilled`.
+
+Nothing here generalizes to `fillToFix`, to filtered stars, or to `RepetitionNotUnique`'s duplicate-cluster projection; those channels were not read.
+
+*(Locked: `adapter.laws.UnstarredGroupReferenceDiffTest` — the three operand positions and both controls, tri-checked dynamic Groovy == generated Java == interpreter on complete sorted sets, plus the starred-versus-unstarred coordinate pair. The interpreter already agreed on every row; no production change was needed.)*
