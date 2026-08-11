@@ -6,7 +6,7 @@
 >
 > **Section invariant (the placement rule):** every section holds exactly one **live** status — **§1 = open, §2 = deferred / ongoing-incremental, §3 = out-of-scope**. A FULLY-shipped/graduated entry belongs in **none** of them: completing it *deletes* its row (see the lifecycle). So §1 reads `_None open._` whenever nothing is open — the marker every `-GAPS` ledger uses, so one grep rolls up the whole family (`GapLedgerTemplateGuardTest`) — and a fully-FIXED entry **anywhere** in this ledger is a bug in *this doc* — git already records the fix. (A partially-shipped *ongoing* refactor in §2 is not "fixed" — it stays until all of it lands.)
 >
-> **Current state.** IG114, IG118, and IG119 shipped as [IF276](INTERPRETER-FINDINGS.md#if276), [IF277](INTERPRETER-FINDINGS.md#if277), and [IF278](INTERPRETER-FINDINGS.md#if278). New semantic or performance defects belong in §1 only while they have actionable work and a defined completion gate.
+> **Current state.** IG114, IG118, and IG119 shipped as [IF276](INTERPRETER-FINDINGS.md#if276), [IF277](INTERPRETER-FINDINGS.md#if277), and [IF278](INTERPRETER-FINDINGS.md#if278). IG120 is open and carries two owner decisions before it can be built. New semantic or performance defects belong in §1 only while they have actionable work and a defined completion gate.
 >
 > **Scope.** `:interpreter` only — the kernel-free Kotlin evaluator (parser, evaluation semantics, model loader, the differential/perf harnesses' interpreter side). dmkit (rulekit/modelkit/edit) authoring gaps go to [`DEV-API-GAPS.md`](DEV-API-GAPS.md); kernel-coverage classification stays in the MVK / RT-semantics / grammar ledgers.
 
@@ -14,7 +14,7 @@
 
 ## 1. Open
 
-_None open._
+- **IG120 — the perf estate detects catastrophes, not regressions: nothing fails below a ~2.4× uniform slowdown.** Measured 2026-08-11 ([INTERPRETER-PERFORMANCE.md](INTERPRETER-PERFORMANCE.md) "the blind-band audit"): every executable bar is a catastrophe floor with 2.4×–3800× of slack, the tightest one (`MIN_KERNEL_ADVANTAGE`, 2.1×) never runs in CI, and the 14 interpreter-only growth lanes are asymptotic-only — a uniform `k×` slowdown leaves their ratio unchanged at every `k`. **A single-run budget cannot close this** (same audit): the three candidate normalizers drift 2.07×–2.69× between Apple Silicon and the hosted runner, and `B1`-relative normalization buys exactly nothing, so a budget derived from that data would trip at ~3× — no better than what exists. **What would settle it:** compare each observation against **the same runner class's own recent history** rather than against a portable constant. The concrete shape to build: `perf.sh gate` emits a machine-readable per-observation record (scenario id + reviewed fingerprint + N + engine + median, plus commit/OS/arch/JDK); the nightly retains the last `K` runs per runner class and fails when an observation degrades past a tolerance versus the median of those, which also removes the single-machine sampling noise that dominates the 2.07× figure. **Two decisions belong to the owner before it is built:** where the baseline lives (a `actions/cache` entry keyed by runner class — the recommendation, since it needs no repo writes — versus a committed anchor file or artifact-only with manual review), and the tolerance plus the drift guard that stops `K` successive within-tolerance degradations from compounding. **Blocks:** nothing shipping; it is the difference between noticing a 20 % regression and noticing a 3× one.
 
 ---
 
