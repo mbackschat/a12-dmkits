@@ -1,30 +1,45 @@
 # Proposal — making the performance gate both sensitive and false-positive-free
 
-> **Status: proposal, nothing implemented.** It exists because the two standing requirements are currently in conflict: the interpreter must **always** be faster than both kernel strategies (the project's #1 performance rule, [INTERPRETER-PERFORMANCE](INTERPRETER-PERFORMANCE.md) "Standing development acceptance rule"), and the nightly gate must **never** fail on noise. Every red the gate has produced was a measurement artifact, and every widening of a threshold to stop that bought blindness to the regressions the gate exists to catch.
+> **Status: proposal, nothing implemented. Revision 2 (2026-08-11), rewritten after an external adversarial review returned 41 findings.** Revision 1 claimed to reconcile the two standing requirements and did not: it moved the uniform-regression class to a non-failing detector while asserting the #1 rule was enforced, and it phrased the cross-engine invariant as an aggregate when that invariant is universally quantified. Both are corrected below, and the review's other accepted findings are folded in where they land. What revision 1 got right is kept: the evidence leads, and the refuted table stays so nobody re-proposes what the data killed.
 >
-> **Scope.** The decision rule and the measurement conditions of the routine performance gate (`:adapter:perfGateTest`, `scripts/perf.sh gate`, the nightly workflow). **Not** in scope: the NFR certification protocol and its ratified numbers (IF137), the benchmark catalog's content, the correctness differential, and the local developer loop, which is fine as it is.
+> **The requirements this must satisfy.** (1) The interpreter must **always** be faster than both kernel strategies and cost no more per unit; a repeatable loss is an active defect ([INTERPRETER-PERFORMANCE](INTERPRETER-PERFORMANCE.md) "Standing development acceptance rule"). (2) The nightly gate must **never** fail on noise.
+>
+> **Scope.** The decision rule and measurement conditions of the routine performance gate (`:adapter:perfGateTest`, `scripts/perf.sh gate`, the nightly workflow). **Not** in scope: the NFR certification protocol and its ratified numbers (IF137), the benchmark catalog's content, the correctness differential, the local developer loop.
 
-## 1. What is measured today, and what it costs
+## 1. The two requirements cannot both be absolute, and saying so is part of the design
 
-| mechanism | quantity | decision |
+For a true ratio `r = interp/kernel` arbitrarily close to `1`, no finite test can have both zero false-failure probability and reliable detection. Any design that claims otherwise is hiding the trade rather than making it. So the first deliverable is not a mechanism, it is three declared numbers:
+
+| quantity | what it is | who sets it |
 |---|---|---|
-| 18 growth lanes | interleaved N/4N paired estimator, median of within-pair ratios, CPU clock (17 lanes) or wall clock (1, `COLD first-call`) | fail if the median exceeds a `9.0×` catastrophe floor, after re-measuring up to `GROWTH_RETRY_ATTEMPTS` and taking the median of attempts |
-| cross-engine rows | `interp`, `groovy`, `java` medians in one JVM at `warmup=5, iters=5` | fail if the interpreter does not beat both, or costs more per unit (IF279) |
-| absolute anchor | each growth lane's accepted median against a committed per-runner-class number | fail above `1.8× + 1 ms`; unarmed on CI, where no block exists (IG120) |
+| **indifference margin `δ`** | the smallest loss worth failing a build over, per invariant | owner |
+| **familywise false-red target** | probability of zero false reds over a month of nightly runs | owner |
+| **power at `δ`** | probability of catching a real regression of size `δ` | derived, then reported |
 
-The growth floor is an exponent bar in disguise: over a 4× step a floor of `9.0×` is an exponent of `log 9 / log 4 = 1.585`, and linear is `4.0×`.
+Until those exist, "sensitive" and "quiet" are adjectives, and every threshold argument is unfalsifiable. The decision rule then has **three** outcomes, and a loss smaller than `δ` is reported rather than failed.
 
-## 2. The measurements this proposal rests on
+**Corrected arithmetic for the familywise target.** With `k` gating decisions per night over 30 nights, `P(no false red) = (1-p)^(30k)`. Revision 1 said a clean month needs `p` below about `6e-4`; that is the **50 % break-even** (`0.5230` at `k=36`), not a clean month. Verified targets at `k=36`:
 
-All of the following are the **same commit** (`1845f8af`) on `ubuntu-latest` (`processors=2`), 36 anchor observations per run. Full dated evidence: [INTERPRETER-PERFORMANCE](INTERPRETER-PERFORMANCE.md) "Checkpoint 2026-08-11".
+| target `P(no false red per month)` | exact per-decision `p` | Bonferroni bound |
+|---|---|---|
+| 0.95 | `4.75e-5` | `4.63e-5` |
+| 0.99 | `9.31e-6` | `9.26e-6` |
 
-**(a) Absolute times are unusable as a hosted gate.** Three runs' whole-run levels stood at `1.00 / 1.58 / 1.94`, and `10 of 36` observations moved more than the ratified `1.8× + 1 ms` tolerance between two of them. Dividing out the whole-run level takes that to `0 of 36` while leaving the multiplicative spread at `2.47×`, which identifies the term as a common-mode level rather than per-lane noise. The same 36 observations on the fixed local machine span `0.92×–1.36×`.
+**And `k=36` is itself wrong.** Revision 1 counted observations as decisions. The real denominator must be enumerated from the implementation and includes, at minimum, 18 growth decisions, 18 anchor decisions where armed, every cross-engine row × engine comparison (≥12 today), and every per-unit-cost decision. **Independence is also falsified by our own data:** all lanes share the same whole-run level (§2a), so decision errors are dependent. Use a method that does not assume independence (Bonferroni, or an empirically estimated joint null from repeated unchanged-commit runs).
 
-**(b) The growth ratio straddles its own floor on the same commit.** The `COLD first-call` lane, the one lane still on the wall clock, measured `4.13×, 6.46×, 6.74×, 8.39×, 9.27×` across five hosted runs against a `9.0×` floor, versus `5.05×` locally. The two **sequential** runs produced the two worst numbers and one failed the build, while the three **concurrent** runs all passed: contention inflates the small end of the ratio and therefore flatters it. A ratio whose failure probability *falls* under load is not measuring what its floor claims.
+## 2. The measurements, and what each does *not* establish
 
-**(c) A failing lane also destroys the run's usefulness.** A breached growth floor throws before the lane records its observation, so the failing run produced 34 of 36 observations and `scripts/perf-anchor.sh` correctly refused it. Roughly half of hosted runs cannot author or refresh an anchor.
+Same commit (`1845f8af`), `ubuntu-latest`, `processors=2`, 36 anchor observations per run. Dated evidence: [INTERPRETER-PERFORMANCE](INTERPRETER-PERFORMANCE.md) "Checkpoint 2026-08-11".
 
-**(d) At current sampling, a cross-engine ratio is not more stable than an absolute, and `min` is worse than the median.** Three sequential runs, the 6 cross-engine rows present in all three:
+**(a) Absolute times are unusable as a hosted gate at the current stratification.** Three runs' whole-run levels: `1.00 / 1.58 / 1.94`. Ten of 36 observations moved more than `1.8× + 1 ms` between two of them. The same 36 observations span `0.92×–1.36×` on the fixed local machine.
+*Does not establish:* that **no** cloud absolute bar is possible. A deliberately broad catastrophe anchor, or one stratified by hardware fingerprint, is untested. Revision 1's blanket exclusion overreached. *Also circular where revision 1 leaned on it:* dividing each run by a level computed from those same 36 observations removes the common component **mechanically**, so "0 of 36 after removing the level" cannot distinguish an environmental level from a genuine uniform interpreter change. It bounds neither.
+
+**(b) A growth ratio straddles its own floor on one commit.** `COLD first-call`: `4.13×, 6.46×, 6.74×, 8.39×, 9.27×` across five cloud runs against a `9.0×` floor; `5.05×` locally. The two sequential runs produced the two worst numbers and one failed; the three concurrent runs passed.
+*Does not establish* the mechanism. "Contention inflated the small-N end" is a **hypothesis**; host CPU class, classload state, JIT state, and provider load fit the same data, and the comparison is n=2 against n=3 with dispatch mode confounded with time. Settling it needs the separate N and 4N times retained plus randomized co-tenant load.
+
+**(c) A breached lane destroys its own evidence.** The floor throws before the lane records, so a failing run yielded 34 of 36 observations. This is **missing-not-at-random censoring**: the worst observations are exactly the ones absent, so any trend baseline built from these files is biased toward health. Revision 1 noted the symptom (an anchor cannot be refreshed) and missed the consequence.
+
+**(d) At current sampling a cross-engine ratio is not steadier than an absolute, and `min` is worse than the median.** Three sequential runs, the 6 rows present in all three:
 
 | quantity | median spread | worst |
 |---|---|---|
@@ -33,87 +48,88 @@ All of the following are the **same commit** (`1845f8af`) on `ubuntu-latest` (`p
 | `interp/java` | 1.35× | 1.78× |
 | `min`-of-N in place of the median | 1.55× | 1.93× |
 
-A ratio cancels common-mode noise and amplifies independent noise; at `warmup=5, iters=5` the independent term dominates. `min` is an extreme order statistic whose variance is high at `N=5`.
+*Contingent, not general:* both results hold **at `warmup=5, iters=5`** and say nothing about a ratio or a minimum at the sampling item 3.4 would establish. `min` at `N=5` is an extreme order statistic; it is a legitimate best-case estimand at large fixed `N`.
 
-**(e) The tail lives in the short measurements.** Of those 12 observations, both cases above `2×` are interpreter regions under 21 ms, and nothing at or above 30 ms exceeds `1.30×` (`under 30 ms`: median `1.24×`, worst `2.08×`; `30 ms and up`: median `1.18×`, worst `1.30×`). At n=6 per bucket this is suggestive on the tail, not established on the median.
+**(e) The tail lives in the short regions.** Both cases above `2×` are interpreter regions under 21 ms; nothing at or above 30 ms exceeds `1.30×`.
+*Does not establish causation:* duration is confounded with scenario, n=6 per bucket. Randomized batch sizes **within the same rows** would settle it.
 
-**(f) The arithmetic of 36 nightly decisions.** 18 lanes × 2 scales is ~36 gating decisions per night. A month without a false red needs a per-decision false-alarm probability below about `6 × 10⁻⁴` (`1 − (1−p)^1080 ≈ 0.5` at that p). No hand-set threshold on a quantity with a `1.24×` median spread reaches that.
+**(f) Replication unit.** Five timed iterations inside one JVM share host, JIT, GC, code-cache and ordering state. They are **not** independent samples, so any interval computed over inner iterations understates uncertainty. The independent unit for cloud uncertainty is at least the **fork**, often the runner.
 
 ## 3. Design
 
-Four items, in this order, because each earlier one changes what the later ones should be.
+Ordered so that no item's work is invalidated by a later one. This ordering is the review's, not revision 1's, and the argument is decisive: calibrating sampling on cloud runners and then moving to fixed hardware discards the calibration.
 
-### 3.1 (Required) Sampling before statistic
+### 3.1 (Required, first) Declare the estimand, the margins, and the family
 
-**The contract.** Before any decision rule changes, the gate's sampling is raised until the interpreter's timed region is tens of milliseconds rather than 3 to 20, and §2(d)'s table is re-measured on three sequential hosted runs plus three local runs. The decision statistic (absolute, cross-engine ratio, `min`, trimmed mean) is then **selected from that measurement**, and the selected statistic is recorded with the measurement that chose it.
+§1's three numbers, plus, per invariant: the null hypothesis, the direction, the confidence level, and the explicit pass / inconclusive / fail regions. "Fail on the conservative bound" is not a decision rule until the direction is fixed: failing when the interval's **lower** bound reaches `1+δ` avoids false reds and leaves near-threshold losses inconclusive; failing when the **upper** bound reaches `1` manufactures them near equality. Also enumerate the family (§1) and pick the dependence-robust correction.
 
-**Why this is first.** §2(d) refuted two statistic choices that were argued for on theory, in opposite directions. Sampling is the only lever that moves all of them at once, and the nightly currently spends 7 to 12 minutes of a 60-minute budget, so the headroom exists. This item deliberately produces no new bar.
+### 3.2 (Required, second) Stop censoring the evidence
 
-**Falsifiable claim.** If the re-measured spreads do not improve materially with longer regions, §2(e) was an artifact of n=6 and the whole ordering below has to be reconsidered.
+Every observation is recorded **before** any assertion, with a status flag (`accepted` / `breached` / `inconclusive`). The anchor refresh consumes only `accepted` records, which preserves the existing anti-ratchet property, while the trend series consumes all of them. Without this, §3.5's baseline is built from a biased sample and no amount of later statistics repairs it.
 
-### 3.2 (Required) Sample hygiene, and a third outcome
+### 3.3 (Required, third) Decide the runner, or time-box the experiment
 
-**The contract.** Each timed observation carries metadata about the conditions it was taken under, and the decision has three outcomes rather than two:
+Either a **self-hosted runner on the fixed machine**, or cloud with no absolute bar. Basis: §2(a), plus §2(d) showing 2× worst-case even when cloud runs are strictly sequential. A fixed machine also unlocks the OS controls cloud does not expose (governor, turbo, SMT, `taskset`, THP policy).
 
-| outcome | when | effect on the build |
+**Two costs, both stated.** It is a machine that must exist, stay online, be trusted with repository workflows, and it serializes the perf lane. **And it buys repeatability, not portability:** a stable Apple Silicon runner cannot see an x86-specific JIT or code-generation regression, so if x86 is a shipping target the gate needs coverage on both architectures, which is a second decision rather than a detail.
+
+### 3.4 (Required, fourth) Sampling and blocking, then select the statistic on held-out data
+
+Raise sampling so timed regions are tens of milliseconds, replicate at the **fork** level (§2f), **counterbalance engine order across forks** (in one process, an earlier engine changes code cache, heap occupancy, compiler queues and thermal state for a later one), and **equalize warmup per engine by state rather than by iteration count** — a fixed `warmup=5` compares engines at different compilation tiers, which is unfair in the direction the #1 rule cares about.
+
+Then select the decision statistic by **train, freeze, evaluate on held-out runs**, scoring A/A false-alarm rate and power against injected regressions of size `δ`. Revision 1 proposed choosing it from the same data used to compare candidates, which is selection bias with no power measurement.
+
+**Two exemptions.** `COLD first-call` must **not** be batched into a long region: repeating a first call stops it being a first call. Cold measurement belongs to the existing fresh-process protocol (one sample per fresh JVM, many processes), not to this item. And every timed region must consume a correctness checksum **outside** the clock with data-dependent inputs, so that JIT elimination or an unintended cache cannot quietly reduce the measured work.
+
+### 3.5 (Required, fifth) One gate per invariant, and honest coverage for the uniform class
+
+Revision 1's central defect: a uniform 20 % interpreter slowdown that still beats both kernels passes the cross-engine gate, leaves every growth exponent unchanged, and would only be *reported* by a trend detector. That is the class the anchor existed for, and the project's rule calls a repeatable per-unit loss a defect. So:
+
+| invariant | gate | why this instrument |
 |---|---|---|
-| pass | the bar holds | green |
-| **inconclusive** | the sample's hygiene metadata says the environment interfered | **green**, reported, not counted as evidence |
-| fail | the bar is exceeded on a hygienic sample | red |
+| **faster than both kernels, per row** | per-row paired comparison, decided per §3.1, confirmed on a fresh runner before failing | The invariant is universally quantified over scenarios and scales, so it **cannot** be aggregated. Revision 1's "gate on aggregates" was simply wrong here: one row at `1.2` among five at `0.5` passes an aggregate while the invariant is false. Aggregation applies to *detection*, never to a universally quantified claim. Every row × engine × scale therefore enters the §1 family. |
+| **no uniform regression against ourselves** | **paired A/B against the previous release** in alternating isolated forks on the same runner, same block | A reference that does not move when we regress, unlike a self-normalizer. This is the gate revision 1 lacked. Alternating isolated forks rather than two classloaders in one JVM, for state separation. |
+| **shape / complexity** | exponent of a log-log fit over ≥4 scales, failing when the interval's lower bound exceeds the bar | A two-point ratio is the least reliable estimator of shape and is where the failures are. Today's `9.0×` floor is exactly exponent `1.585`. **Poor fit must escalate, never pass:** a cliff at the largest scale produces a bad fit *because* the regression is severe, so `inconclusive` there requires an explicit largest-scale check. |
+| **resource cost** | process- or cgroup-level CPU and allocation, not measuring-thread CPU | Work shifted to compiler, GC or helper threads makes thread CPU **fall** while true cost rises. The "cost no more per unit" invariant cannot be enforced on a thread clock. |
 
-Hygiene signals, all cheap and already exposed by the platform: hypervisor **steal time** (`/proc/stat`), **cgroup throttling** (`cpu.stat` `nr_throttled` / `throttled_usec`), **GC** activity in the window (`GarbageCollectorMXBean` deltas), **JIT compilation** in the window (`CompilationMXBean.getTotalCompilationTime` delta), and the run's own **whole-run level** against its canary.
+Trend detection over the accumulated series remains, as **reporting only**, for drifts below `δ`. It needs its own change-point and multiplicity policy and must be segmented by environment identity (commit, JDK, runner image, hardware fingerprint), or it will confound platform changes with code regressions.
 
-**The rule that makes this unbiased: reject on metadata, never on value.** Discarding a sample because it is slow biases the estimate. Discarding a sample because the cgroup throttled during it does not.
+### 3.6 (Required, alongside) Hygiene that cannot launder a regression
 
-**Why this is independent of everything else.** It can only ever remove false reds, whichever statistic §3.1 selects, so it is the one item that cannot be invalidated by the open questions.
+`inconclusive` is the most dangerous idea in this proposal, because a predicate that swallows samples turns requirement 1 off while the board stays green. Four rules, all from the review:
 
-### 3.3 (Required) Decide the runner
+- **Exogenous predicates only.** Hypervisor steal time and cgroup throttling are external to our code. **GC and JIT activity are post-treatment variables:** an allocation regression *causes* more GC, so excluding GC windows censors exactly the evidence of the regression. Record and model them; never exclude on them.
+- **Predeclared, never tuned after seeing values.** Reject on metadata, never on the value.
+- **Quorum.** A verdict requires the power-derived `n_min` accepted samples **and** at least 80 % of scheduled samples accepted.
+- **Inconclusive is not a resting state.** Two consecutive nights, or three of seven, on the same lane produces a distinct non-green `HARNESS_UNHEALTHY` result, and scheduled / accepted / rejected counts are published by reason. If no infrastructure-red is permitted at all, nothing prevents permanent laundering.
 
-**The choice.** Either run the gate on a **self-hosted runner on the fixed machine** already used to author the local anchor (`mac-mini-m1`), or keep it on hosted runners and accept that no absolute bar can be armed there.
+Note the ceiling on this item: **steal time can read zero while co-tenant cache and memory-bandwidth contention still slows scheduled execution.** These signals are coarse, so they reduce false reds without bounding them.
 
-**The basis.** §2(a): `0.92×–1.36×` on the fixed machine against a `1.94×` whole-run level and a `2.47×` spread on hosted, with §2(d) showing 2× worst-case even when hosted runs are strictly sequential. A fixed machine additionally makes the OS-level controls available that hosted runners do not expose: CPU governor, turbo, SMT, `taskset` pinning, THP defrag policy.
+## 4. Optional, and excluded
 
-**The cost, stated.** A self-hosted runner is a machine that must exist, stay online, and be trusted with repository workflows; it also serializes the perf lane behind itself. This is the standard arrangement for projects whose performance is a release contract, and it is a decision rather than a technique.
+**Optional, none load-bearing:** deterministic work counters on the existing seams (`PreparationObserver`/`PreparationWork`, the eval-time `CacheObserver`) as a zero-noise complexity oracle, which should be load-bearing for *complexity* invariants but never presented as a latency oracle; `getThreadAllocatedBytes` per operation, scoped narrowly since it misses helper-thread, native and retained-heap growth; measurement-JVM flags (`-Xms == -Xmx`, `AlwaysPreTouch`, `CICompilerCount=1`, `-Xbatch`, SerialGC or Epsilon, `PerfDisableSharedMem`, AppCDS for cold) with the caveat that each changes the system under measurement, so rankings and sensitivity must be compared under production flags too; hardware counters on a self-hosted runner as secondary evidence; JMH for one representative row as a **secondary oracle** rather than a migration.
 
-### 3.4 (Required) Gate on aggregates, detect on trends
-
-**The contract.** Per-lane thresholds stop being the gating mechanism. Instead:
-
-- **The gate** fails only on the cross-engine invariant, which is the actual #1 rule: the interpreter must beat both kernel strategies and cost no more per unit. It fails on the **conservative bound** of a confidence interval over paired samples, so that noise widens the interval and makes failure **less** likely, rather than inflating a point estimate and making it more likely. A failure additionally requires a **confirmation run on a fresh runner**, because the dominant noise term is per-run and cannot be averaged away inside one VM.
-- **Detection** of the uniform and constant-factor regressions that no per-run bar can see moves to a **trend over the accumulated observation series** (the `perf-observations.jsonl` the nightly already uploads), keyed by `(lane, fingerprint, N, engine, clock, runner class)`. It **reports**, and never fails a build.
-- **Shape** regressions are decided over ≥4 scales by the exponent of a log-log fit with a confidence interval, failing only when the interval's lower bound exceeds the bar, and reporting **inconclusive** when the fit is poor. Today's `9.0×` floor translates directly to an exponent bar of `1.585`.
-
-**Why.** §2(f): with 36 independent decisions a night, per-lane gating cannot be made quiet by tuning. §2(b): a two-point ratio is the least reliable available estimator of shape, and it is where the failures are.
-
-## 4. Required, optional, excluded
-
-**Required:** §3.1 through §3.4.
-
-**Optional, each independently useful and none load-bearing:**
-- **Deterministic work counters** as a zero-noise shape oracle, on the seams that already exist (`PreparationObserver` / `PreparationWork`, the eval-time `CacheObserver`). A count is a pure function of the input, so it cannot false-positive; it cannot see constant-factor regressions.
-- **`ThreadMXBean.getThreadAllocatedBytes`** per operation, a near-deterministic regression signal requiring no product instrumentation.
-- **Measurement-JVM flags** for reproducibility: `-Xms == -Xmx`, `-XX:+AlwaysPreTouch`, `-XX:CICompilerCount=1` and `-Xbatch` on a 2-core runner, `-XX:+UseSerialGC` or Epsilon, `-XX:+PerfDisableSharedMem`, AppCDS for the cold lane.
-- **Fork per scenario**, against cross-scenario profile pollution: measuring several scenarios in one JVM can leave a call site megamorphic and slow a later scenario. This is a correctness concern about the harness, not only a noise concern.
-
-**Excluded, with reasons:**
-- **Arming an absolute anchor on hosted runners.** §2(a). The mechanism stays for the fixed machine.
-- **Normalizing by another interpreter scenario.** It divides out a genuine uniform slowdown, which is the blindness the bar exists to remove. A reference that does not move when we regress (the kernel, a synthetic canary) is not covered by this exclusion.
-- **Raising the `9.0×` floor.** Every widening buys blindness and leaves the estimator untouched.
-- **Migrating to JMH now.** Its techniques are adopted above; a harness migration is a separate decision and would not be settled by this evidence.
+**Excluded, with reasons:** a **tight** absolute bar on cloud runners at the current stratification (§2a, and the exclusion is now scoped to "tight" and "current stratification"); normalizing by another **interpreter** scenario, since it divides out a genuine uniform slowdown, though a reference that does not move when we regress (kernel, previous release, a validated canary) is not covered; raising the `9.0×` floor, which buys blindness and leaves the estimator untouched.
 
 ## 5. Open questions
 
-1. **Runner (§3.3).** Self-hosted on the fixed machine, or hosted with no absolute bar? This is the only item that is a policy decision rather than a measurement.
-2. **What sampling is enough (§3.1)?** The target of "tens of milliseconds per region" is derived from n=6 and should be set by the re-measurement, not by this doc.
-3. **Does the `COLD first-call` lane keep a growth bar at all?** Its ratio divides two cold singletons. Its unique coverage is the super-linear index build that the warm harness structurally cannot see ([INTERPRETER-PERFORMANCE](INTERPRETER-PERFORMANCE.md) optimization #7), so dropping the bar loses real coverage. A deterministic work counter over the index build may be the honest replacement.
-4. **Where does the accumulated series live** (§3.4): committed in-repo, a workflow artifact retention window, or an external store?
+1. **The three numbers of §1** (`δ` per invariant, familywise target, power). Nothing downstream is well-posed without them.
+2. **Runner (§3.3),** including whether x86 coverage is required, which makes it two runners rather than one.
+3. **Budget and power.** 18 lanes × ≥4 scales × fork-level replication × 3 engines × true cold processes × fresh-runner confirmation may exceed the 60-minute nightly budget. A power calculation and a timed dry run are needed before the matrix is fixed; no such calculation exists yet.
+4. **Does `COLD first-call` keep a growth bar?** Its unique coverage is the super-linear index build the warm harness structurally cannot see ([INTERPRETER-PERFORMANCE](INTERPRETER-PERFORMANCE.md) optimization #7). A deterministic work counter over the index build may be the honest replacement for a ratio of two cold singletons.
+5. **Where the series lives** (§3.5): in-repo, artifact retention, or an external store.
+6. **Is a canary worth it at all?** It must be validated on held-out runs to track the disturbance without tracking our own regression; "independent of the interpreter" is necessary and not sufficient.
 
-## 6. What was already refuted, so it is not re-proposed
+## 6. Refuted, so it is not re-proposed
 
-| idea | why it fails | evidence |
+| idea | status | basis |
 |---|---|---|
-| CPU clock removes contention | cache and bandwidth interference inflate cycles, which CPU time counts; it excludes the compiler threads' cost, not the interference | §2(a), §2(d) |
-| cross-engine ratio is inherently steadier | true only against common-mode noise; at current sampling the independent term dominates and the ratio is worse | §2(d) |
-| `min`-of-N is the least-polluted estimator | high variance as an extreme order statistic at `N=5` | §2(d) |
-| retry-and-take-the-median defends against false positives | the dominant term is per-run, and retries stay inside the same VM | §2(a) |
-| dispatching runs concurrently to save wall time | contends them against each other; the level tracked wall time monotonically | "Checkpoint 2026-08-11" |
+| CPU clock removes contention | **false as stated.** Cache and bandwidth interference inflate cycles, which thread CPU counts; frequency and SMT effects too. Our runs do not identify contention as *the* cause | §2(a), §2(d) |
+| gate the cross-engine invariant on an aggregate | **wrong in kind.** A universally quantified invariant cannot be aggregated | review finding 3 |
+| trend detection covers the uniform class | **insufficient as a gate.** It reports; the rule calls a repeatable loss a defect | review finding 2 |
+| a cross-engine ratio is inherently steadier | **contingent, currently false** at `warmup=5, iters=5`; open above that sampling | §2(d) |
+| `min`-of-N is the least-polluted estimator | **contingent, currently false** at `N=5`; legitimate at large fixed `N` | §2(d) |
+| retry-and-take-the-median is no defense | **overstated.** Under independent attempts it is `3q²−2q³`, a 556× reduction at `q=6e-4`; the real objection is that same-VM retries are correlated | verified arithmetic |
+| a fresh-runner confirmation squares the false-alarm rate | **not automatic.** Runners share image, provider epoch, CPU class and temporal load | review finding 14 |
+| concurrent dispatch caused the level spread | **hypothesis, not established.** Monotone with wall time, but n=2 vs n=3 and confounded with time and host allocation | "Checkpoint 2026-08-11" |
+| a fixed runner solves the problem | **repeatability, not portability.** It cannot see an architecture-specific regression | review finding 30 |
