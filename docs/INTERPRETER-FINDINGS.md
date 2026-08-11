@@ -3191,3 +3191,46 @@ Four properties make it a guard rather than a report:
 Separately, the lane stopped being `failFast`: the 2026-08-11 nightly reported 21 of 26 rows because one breach aborted the run, and a lane whose purpose is measurement must not discard measurements (`GateTierWiringTest` locks it).
 
 *Locked by:* `PerfAnchorBudgetTest` on scripted observations — the uniform-slowdown case that no growth ratio can see, the tolerance boundary, the absolute-slack boundary on a tiny lane, one-low-outlier-cannot-clear-a-real-slowdown, bootstrap versus missing-key-in-an-anchored-class in both required modes, and that a changed fingerprint or a different lane drops the anchor rather than inheriting one. `PerfAnchorScriptTest` **executes** `scripts/perf-anchor.sh` against a temporary anchor (`ANCHOR_FILE`) for each of its refusals — an incomplete input for a new runner class, the `ALLOW_REMOVALS` escape, inputs from two runner classes, `show` writing nothing — and for the median-of-several-runs and don't-touch-the-other-block properties, which were claims in prose until then. End-to-end: with the anchor authored from one full run, two further independent full runs held all 36 observations inside the tolerance (no false red), and mutating one committed key made the assertion fire. `GateTierWiringTest` covers the `failFast` half and that the required flag is not CI-gated.
+
+### IF281: only the cross-engine comparison survives shared hardware, so it is the gate and everything self-referential is a flag (measured 2026-08-11, three sequential hosted runs) <a id="if281"></a>
+
+**The interpreter and both kernel strategies execute in the same JVM, on the same vCPUs, in the same run, so a comparison between them is dimensionless.** Machine speed, VM generation, JDK patch level, co-tenant interference and thermal state divide out because both engines experience them. A bar that judges this run's numbers against a constant or against a number recorded earlier has no such protection: it is a property of the machine as much as of the code. That asymmetry, not a statistical argument, is why the two kinds of bar get different treatment.
+
+**Measured margins, from three sequential `workflow_dispatch` runs of `1845f8af` on `ubuntu-latest` (`processors=2`):**
+
+| comparison | median | worst run-to-run noise | distance to the `1.0` boundary |
+|---|---|---|---|
+| level, `interp/groovy` | 0.12–0.14 | 2.16× | 5–8× |
+| level, `interp/java` | 0.20–0.22 | 1.78× | 5× |
+| **per-unit cost**, `interp/groovy` | 0.150 / 0.073 | **1.10×** | 6.7× / 13.7× |
+| **per-unit cost**, `interp/java` | 0.145 / 0.059 | 1.23× / **1.41×** | 6.9× / 17.0× |
+
+At the tightest row the margin is `6.7×` against worst-case noise of `1.41×` — a **4.7× safety factor**, so both cross-engine gates are decidable with the crudest possible bar, on any machine, at current sampling. Meanwhile every false red the nightly produced came from a **self-referential** bar with no kernel in it: `MSC-multi-star-correlation` at `9.11×` and `COLD first-call` at `9.27×` against a `9.0×` floor. Those sit a few percent from their trip line while the comparative bars sit 470 % from theirs.
+
+**Per-unit cost is the cross-engine scaling quantity, not the growth factor.** Over a 4× step a linear engine's measured growth factor is `4 − 3f` in the fixed cost's share `f`, so comparing growth factors ranks engines by fixed-cost share and the leanest engine loses deterministically ([IF279](#if279)). The gate is `(t_large − t_small)/(n_large − n_small)`, per row × scale × strategy, decided from medians measured in one run — **no aggregation across rows**, because the invariant is universally quantified and one row losing is a loss.
+
+**What follows for enforcement** is `TimingEnforcement` (INTERPRETER-PERFORMANCE, "Which bars may FAIL depends on where they run"): the cross-engine family gates everywhere; the growth floors and the absolute anchor gate on a dedicated machine and **report** on a hosted one. The self-referential bars were **not** retired, which an intermediate design proposed: retiring them would strictly loosen coverage, because the parity gate is only a `10.4×–13.1×` equivalent growth bar and covers a fraction of the scenarios. They keep their full strength where the measurement supports them.
+
+**The COLD lane is the one place where a flag is a real loss.** Its unique coverage is the super-linear index build that the warm harness structurally cannot see (optimization #7), and it is the estate's only wall-clock lane — run 2 of the three hosted runs recorded 34 of 36 observations precisely because both its scales dropped out. If that needs a *gate* on shared hardware rather than a flag, the honest instrument is a **deterministic work counter** over the index build on the existing seams (`PreparationObserver`/`PreparationWork`, the eval-time `CacheObserver`), which is a pure function of the input and cannot false-positive. Timing one cold call and dividing it by another cannot be made reliable.
+
+**Recorded so they are not re-proposed**, each with what falsified it:
+
+| idea | status | basis |
+|---|---|---|
+| an absolute growth floor is a usable gate on a shared runner | **retired there.** A few percent of margin against 2× noise; both nightly false reds came from here | the margins above |
+| gate the cross-engine invariant on an aggregate | **wrong in kind.** A universally quantified invariant cannot be aggregated | review finding |
+| a growth **factor** compares engines fairly | **false.** `4 − 3f` ranks by fixed-cost share; the leanest engine loses | [IF279](#if279) |
+| the CPU clock removes contention | **false as stated.** Cache and bandwidth interference inflate cycles, which thread CPU time counts | IF280, the hosted runs |
+| GC/JIT activity is a valid sample-rejection predicate | **no.** Post-treatment: an allocation regression causes GC, so rejecting GC windows censors the evidence | review finding |
+| `δ=0` for a self-comparison | **retracted by its author.** At a true ratio of `1.00` the interval always straddles the boundary, so the verdict is permanently inconclusive | measured half-widths: 1.9 % at `σ=0.02, n=24` |
+| "add forks while the interval crosses the boundary" | **retracted by its author.** Optional stopping without alpha spending (Lan-DeMets O'Brien-Fleming) | — |
+| a cross-engine ratio is inherently steadier than an absolute | **contingent, currently false** at `warmup=5, iters=5` (`1.15×`/`2.16×` against `1.24×`/`2.08×`); irrelevant at these margins | measured |
+| `min`-of-N is the least-polluted estimator | **contingent, currently false** at `N=5` (`1.55×`); legitimate at large fixed `N` | measured |
+| retry-and-take-the-median is no defense | **overstated.** `3q²−2q³` under independence, a 556× reduction at `q=6e-4`; the real objection is same-VM correlation | verified arithmetic |
+| a fresh-runner confirmation squares the false-alarm rate | **not automatic.** Runners share image, provider epoch, CPU class and temporal load | review finding |
+| normalizing by another interpreter scenario | **excluded.** It divides out a genuine uniform slowdown. A reference that does not move when we regress — the kernel, a previous release, a validated canary — is not covered by this exclusion | IF280 |
+| a fixed runner solves the problem | **repeatability, not portability.** It cannot see an architecture-specific regression | review finding |
+
+**The trigger that would make this insufficient.** The gates are crude *because* the margin is 5×–17×. Should any row's ratio climb past `0.5` — still 2× from failing, and far outside the `1.41×` noise — that row stops being a crude comparison and becomes a near-boundary decision needing a real statistical treatment **for that row only**: a `1 + δ` boundary for any self-comparison with `δ` above the interval half-width plus a pinned epoch carrying the cumulative bound; power specified at an alternative beyond the boundary and reported rather than promised; Holm within the night at a per-night familywise budget of `0.01/30 = 3.33e-4` for a 0.99 clean 30-night period (Holm needs no independence assumption, which matters because the lanes share a whole-run level); sample size quadratic in the within-fork paired `σ` and only logarithmic in `α` (`σ=0.02` ≈ 6 forks per cell, `σ=0.04` ≈ 24, `σ=0.06` ≈ 53); and the replication unit is the **fork**, not the inner iteration, with engine order counterbalanced across forks. None of it is built, deliberately.
+
+*Locked by:* `GrowthFloorRetryTest` pins both enforcement rules on scripted inputs and all three outcomes of the growth floor; `PairedAcceptanceTest` pins the per-unit-cost comparison, including that a quadratic interpreter still has the lowest per-unit cost — which is why the floor stays a separate check. Dated evidence: INTERPRETER-PERFORMANCE "Checkpoint 2026-08-11".

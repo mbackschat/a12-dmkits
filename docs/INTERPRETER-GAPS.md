@@ -22,6 +22,15 @@
 
   **What the hosted block does and does not buy, after the enforcement split.** On a hosted runner the anchor is `FLAGGED`, not `GATED` (`TimingEnforcement` — a hosted breach cannot be told apart from a neighbour's memory traffic, and the nightly must never false-red). So the committed hosted block is what a nightly breach is *reported against* and what `scripts/perf-history.sh` renders a hosted trend from; the enforcing copy of this bar is the local isolated run. That is a deliberate narrowing of IF280's original claim, not an unnoticed loss.
 
+- **IG121 — the flag surface is a print and a recorded number, with no trend detection over the series.** [IF281](INTERPRETER-FINDINGS.md#if281) makes every self-referential bar a flag on shared hardware and the cross-engine comparison the gate. The gate half is built and enforced; the flag half is only half-built. A breach prints `[perf][FLAG]` and the run's medians land in [`perf-results/`](../perf-results/README.md) with their status, which `scripts/perf-history.sh` renders as a table with a crude newest-vs-median-of-earlier trend column — so a regression is *visible to someone who looks*, and nothing looks.
+
+  **Three pieces are named and unbuilt, in the order they would pay off.**
+  1. **The `0.5` early-warning band on both cross-engine gates.** They fire only at parity (`< 1.0`), so they say nothing until a catastrophe; the measured margins are 5×–17×, and a ratio crossing `0.5` is still 2× from failing and far outside the `1.41×` worst run-to-run noise. This is the cheapest of the three and the one that watches the invariant the owner actually cares about.
+  2. **Trend / change-point detection over the recorded series**, segmented on JDK, OS and hardware identity, since a platform change re-bases every number and would otherwise read as a regression. The record exists and carries the conditions; nothing reads it but the table renderer.
+  3. **Environment-quality fields per observation** — steal time, cgroup throttling, GC and JIT activity in the window — **recorded, never used to reject a sample**. Rejection on a post-treatment variable launders the evidence: an allocation regression causes GC, so excluding GC windows censors exactly what proves it.
+
+  **Also unbuilt, and separately triggered:** a deterministic work counter over the index build (`PreparationObserver`/`PreparationWork`, the eval-time `CacheObserver`) is what would let the `COLD first-call` lane be *gated* on shared hardware instead of flagged — the one lane where a flag is a real loss, since its coverage is the super-linear index build the warm harness structurally cannot see. **Re-open trigger:** a cold-path regression reaches a release, or the COLD lane flags twice on hosted runs without a local reproduction.
+
 ---
 
 ## 2. Deferred / ongoing-incremental (recorded with status; detail in [`INTERPRETER-FINDINGS.md`](INTERPRETER-FINDINGS.md))
