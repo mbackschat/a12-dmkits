@@ -521,7 +521,9 @@ The catalog must favor **non-obvious** combinations (nesting × aggregation × c
 
 First measurements of the `linux-amd64-ci` runner class, taken to author its absolute-time anchor block. Three `workflow_dispatch` runs of `1845f8af` on `ubuntu-latest` (`processors=2`, JDKs `21.0.12`/`21.0.11`/`21.0.11`), each recording all 36 gate observations. Evidence, not a promoted bar.
 
-| quantity | measured |
+**Every number in the table below comes from the CONCURRENTLY dispatched runs and is contaminated** (the method error is explained under it). The corrected sequential runs are the ones committed under [`perf-results/linux-amd64-ci/`](../perf-results/linux-amd64-ci/); their result is the second table. The two sets are not comparable, and reading a figure from one against a figure from the other is precisely the mistake this labelling exists to prevent — it has already been made once.
+
+| quantity | measured (concurrent — contaminated) |
 |---|---|
 | whole-run level, pairwise medians over the 36 lanes | `run2/run1 = 1.58×`, `run3/run1 = 1.94×`, `run3/run2 = 1.19×` |
 | gate step wall time, same order | `6m37s`, `9m27s`, `11m57s` |
@@ -532,7 +534,21 @@ First measurements of the `linux-amd64-ci` runner class, taken to author its abs
 | `FVNU-uniqueness` growth, the previously documented "control" | `5.85×`, `3.94×`, `6.10×` — a `1.55×` spread, so it is not a stability control here |
 | hosted/local absolute ratio, run 1 vs the committed block | `0.58×–1.59×` (a `2.74×` spread, cf. the `2.07×–2.69×` cross-class drift recorded above) |
 
-**The method error, recorded because every number above is contaminated by it.** The three runs were dispatched **concurrently**: they started within 12 s of each other, and the per-run level ordering tracks the gate wall time monotonically (`1.00 / 1.58 / 1.94` against `6m37s / 9m27s / 11m57s`). Hosted runners are VMs on shared physical hosts, so three of one's own jobs evict each other's cache lines and consume each other's memory bandwidth — spent in **user-mode** cycles, so it inflates a CPU-clock median as readily as a wall-clock one, and `getCurrentThreadUserTime` would not have filtered it either. **`gh workflow run` ×N is not isolation just because each job gets its own VM**: this is the remote form of CLAUDE.md's rule that a task carrying a timing assertion gets the machine to itself, traded away to save wall time. The interleaved N/4N paired estimator gives a *growth* figure some protection, since both halves of a pair meet similar conditions; an *absolute* median has none, and the anchor needs absolute medians. Corrected by three strictly **sequential** runs; until those land nothing here bounds the hosted class's genuine run-to-run variance, and the hosted block stays uncommitted (IG120).
+**The method error, recorded because every number above is contaminated by it.** The three runs were dispatched **concurrently**: they started within 12 s of each other, and the per-run level ordering tracks the gate wall time monotonically (`1.00 / 1.58 / 1.94` against `6m37s / 9m27s / 11m57s`). Hosted runners are VMs on shared physical hosts, so three of one's own jobs evict each other's cache lines and consume each other's memory bandwidth — spent in **user-mode** cycles, so it inflates a CPU-clock median as readily as a wall-clock one, and `getCurrentThreadUserTime` would not have filtered it either. **`gh workflow run` ×N is not isolation just because each job gets its own VM**: this is the remote form of CLAUDE.md's rule that a task carrying a timing assertion gets the machine to itself, traded away to save wall time. The interleaved N/4N paired estimator gives a *growth* figure some protection, since both halves of a pair meet similar conditions; an *absolute* median has none, and the anchor needs absolute medians.
+
+**The correction: three strictly sequential runs of the same revision, each dispatched only after the previous finished.** They are committed as the record under [`perf-results/linux-amd64-ci/`](../perf-results/linux-amd64-ci/) and every figure here is recomputed from those files.
+
+| quantity | measured (sequential) |
+|---|---|
+| whole-run level, pairwise per-key medians | `1.003×`, `0.923×`, `0.927×` — no run-level shift at all, against `1.58×`/`1.94×` concurrent |
+| per-key spread, same pairs | `0.74–1.98×`, `0.66–1.91×`, `0.60–1.24×` |
+| pairwise observations above `1.8× + 1 ms`, either direction | **0**, over all three pairs |
+| observations above the ceiling of the anchor a refresh would write | **0 of 106** (the folded anchor is the per-key median of the three runs) |
+| tightest observation against that ceiling | **73 %** — `Berlin historical AddDays @1000`, 31.97 ms against a 23.77 ms anchor |
+
+**This settles IG120 in favour of arming the hosted block**, reversing the disposition recorded above: with the dispatch pattern fixed, the ratified `1.8× + 1 ms` tolerance holds on the hosted class with 27 % of margin at its tightest point, so the class's run-to-run variance is bounded by measurement rather than assumed. The contaminated figures stay recorded because the method error, not the numbers, is the durable lesson.
+
+**One lane did not survive all three runs, and it is the informative one.** Run 2 recorded 34 of 36 observations: both scales of `COLD first-call (startup)` are absent, and that is the estate's only **wall-clock** lane. Those imports predate the record-on-both-paths fix, so a breached lane contributed nothing at all — which is consistent with the cold path being the most contention-sensitive measurement in the gate, exactly as its clock predicts. It is why the growth-floor split keeps COLD gated only in the isolated lane.
 
 ### Checkpoint 2026-08-08 — the façade's quadratic allocation, and why a timing guard missed it (IF256)
 
