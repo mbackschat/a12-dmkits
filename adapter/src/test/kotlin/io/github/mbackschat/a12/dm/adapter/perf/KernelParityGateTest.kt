@@ -41,6 +41,20 @@ import org.junit.jupiter.api.Test
  * where they are: a reduced scale dilutes a quadratic term's share, so it is a weaker place to detect a blowup and
  * these lanes never replace those.
  *
+ * <p><b>The WORST case, which a three-run basis cannot see (added 2026-08-12, {@code scripts/perf-trend.sh
+ * --ratio} over the 27-run record).</b> The medians above hold — over 68 margin rows (the 34 scenario-scale rows
+ * against each kernel strategy) the median margin is <b>7.80x</b> and 66 of 68 clear 2.5x. What the wider basis
+ * adds is the low tail: by <em>worst observed</em> margin only <b>55 of 68</b> stay above 2.5x, and the tightest
+ * row in the whole record is <b>{@code CO-correlation @200} vs generated Java at 1.35x</b> — still a pass, but
+ * 35 % of headroom rather than the 99 % the median pairing suggests. The five tightest are both
+ * {@code CO-correlation} scales, {@code complexRealWorld @60} and {@code Berlin-AddDays @250}, all against Java.
+ *
+ * <p><b>Do not "reconcile" the two spread figures — they are different statistics.</b> The `1.036x`/`1.134x`/
+ * `1.544x` above are that basis's own dispersion measure; `perf-trend.sh --ratio` reports a MAD-based `±%` (median
+ * ±19.7 %, widest ±35.3 %). Comparing them as if they were one quantity is the mistake KERNEL-FINDINGS' "name the
+ * quantity before you compare numbers" rule exists to prevent. What is comparable across the two bases is the
+ * margin itself.
+ *
  * **These lanes are deliberately NOT anchored.** An anchor is an absolute-time bar against a committed number, and
  * it is the cross-engine ratio that matters here — a ratio needs no history, and adding 26 keys would make every
  * anchor refresh larger for nothing.

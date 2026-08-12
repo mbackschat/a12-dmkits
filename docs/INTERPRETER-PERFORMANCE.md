@@ -547,6 +547,24 @@ The catalog must favor **non-obvious** combinations (nesting × aggregation × c
 
 ## Results log
 
+### Checkpoint 2026-08-12 — the cross-engine margin's low tail, over 27 runs instead of three
+
+The parity gate's documented margins were medians over **three** isolated runs. Reading the whole committed series (`scripts/perf-trend.sh --ratio`, 27 runs, `darwin-aarch64`, one machine and JDK) keeps every median and adds the tail that a three-run basis structurally cannot see.
+
+| quantity (68 margin rows = 34 scenario-scale rows × 2 kernel strategies) | measured |
+|---|---|
+| median margin | **7.80×** (the 3-run figure was 8.50×) |
+| rows whose **median** margin clears 2.5× | **66 of 68** |
+| rows whose **worst observed** margin clears 2.5× | **55 of 68** |
+| lowest worst-case margin in the record | **1.35×** — `CO-correlation @200` vs generated Java |
+| median / widest per-row margin spread (MAD-based) | **±19.7 % / ±35.3 %** |
+
+The five tightest rows by worst observed margin are `CO-correlation @200` (1.35×), `CO-correlation @800` (1.58×), `CO-correlation @200` vs Groovy (1.67×), `complexRealWorld @60` (1.85×) and `Berlin-AddDays @250` (1.88×) — every one of them against generated Java, which is the fair algorithmic arm.
+
+**Nothing here is a breach**, and no bar moved: every row stayed above parity in all 27 runs. What changed is the *headroom* the gate is understood to have on its tightest row — 35 %, not the ~99 % that pairing a 1.99× median with a 1.036× spread implies.
+
+**Two method notes, both of which cost a round when they were missing before.** The margin's spread is **not** its operands' spread: both engines share a JVM, vCPUs and load slice, so an excursion largely cancels in the ratio — a synthetic row whose absolutes swing 2× at a fixed ratio reports ±1.0 % (`PerfTrendScriptTest.theMarginSpreadIsTheRatiosOwnAndNotItsOperands`). And the older `1.036×`/`1.134×`/`1.544×` figures are a **different statistic** from the MAD-based `±%` here; they are not to be reconciled with each other, only the margins are comparable across the two bases.
+
 ### Checkpoint 2026-08-12 — the warm outcome and the measurement cost enter the record
 
 The first run to carry them is [`2026-08-12T124426Z`](../perf-results/darwin-aarch64/2026-08-12T124426Z.jsonl) (`Macmini9,1 Apple M1`, `loadAverage` 4.96, commit `813c553a-DIRTY` — the feature *is* the recording, so it was measured on the working tree that added it): **138 observations, 102 warm outcomes, 17 cost rows**, and **0 warm rows that fail to join** an observation in the same run. All 102 warms in that run ended `flattened` — no budget cap, which is the state [IF282](INTERPRETER-FINDINGS.md#if282) set the 8 s cap to reach, now recorded rather than asserted from a log.

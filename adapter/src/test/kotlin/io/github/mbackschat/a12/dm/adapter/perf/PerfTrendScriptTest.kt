@@ -226,6 +226,63 @@ class PerfTrendScriptTest {
         }
     }
 
+    // ── the --ratio view: a margin's noise is not its operands' noise ──────────────────────────────────
+
+    /**
+     * **THE DISCRIMINATOR for the whole ratio view.** Both engines swing 2x together across runs while their
+     * ratio stays fixed at 4.00x — because they share a JVM, vCPUs and load slice, so an excursion largely
+     * cancels in the ratio. A view that sized a cross-engine band from the operands' spread would read ±40 % of
+     * noise here; the ratio's own spread is zero, and the report must say so (the ±1.0 % floor).
+     *
+     * This is the measured reason piece 1's band belongs on the ratio series rather than on the medians piece 2
+     * already reports, and the reason the ratio series has to be *derived* — it is not a key in the record.
+     */
+    @Test
+    fun theMarginSpreadIsTheRatiosOwnAndNotItsOperands() {
+        val dir = work.resolve("results")
+        val env = dir.resolve("darwin-aarch64").also { Files.createDirectories(it) }
+        // interpreter and kernel move together: 5/20, 10/40, 7.5/30 — ratio constant, absolutes span 2x.
+        listOf(5.0 to 20.0, 10.0 to 40.0, 7.5 to 30.0, 5.0 to 20.0, 10.0 to 40.0, 7.5 to 30.0)
+            .forEachIndexed { i, (interp, kernel) ->
+                val stamp = "2026-08-%02dT000000Z".format(i + 1)
+                Files.writeString(
+                    env.resolve("$stamp.jsonl"),
+                    """
+                    {"kind":"run","environment":"darwin-aarch64","capturedAt":"$stamp","commit":"c$i","os":"Mac OS X","arch":"x","jdk":"21.0.12","processors":8,"machine":"M","loadAverage":2.0,"ci":false}
+                    {"kind":"observation","environment":"darwin-aarch64","key":"kernel parity|diagnostic/CO@1 fingerprint=a|n=200|interpreter|wall","scenario":"diagnostic/CO@1 fingerprint=a","lane":"kernel parity","n":200,"engine":"interpreter","clock":"wall","medianMs":$interp}
+                    {"kind":"observation","environment":"darwin-aarch64","key":"kernel parity|diagnostic/CO@1 fingerprint=a|n=200|java|wall","scenario":"diagnostic/CO@1 fingerprint=a","lane":"kernel parity","n":200,"engine":"java","clock":"wall","medianMs":$kernel}
+                    """.trimIndent() + "\n",
+                )
+            }
+
+        val run = run(dir, "--ratio")
+
+        assertEquals(0, run.status, run.output)
+        assertTrue(Regex("""margin=\s*4\.00x""").containsMatchIn(run.output)) {
+            "the margin is kernel/interpreter = 4.00x: ${run.output}"
+        }
+        assertTrue(Regex("""spread=±\s*1\.0%""").containsMatchIn(run.output)) {
+            "a constant ratio has no spread, however much its operands moved — sizing a band from the operands " +
+                "would have read ±40% here: ${run.output}"
+        }
+        assertTrue(Regex("""worst=\s*4\.00x""").containsMatchIn(run.output)) {
+            "the worst margin equals the constant one: ${run.output}"
+        }
+    }
+
+    /** A row with no kernel arm has no margin, and must be omitted rather than counted as parity. */
+    @Test
+    fun aRowWithoutAKernelArmIsNotReportedAsAMargin() {
+        val dir = record("darwin-aarch64", runs = listOf(10.0, 10.4, 9.7, 10.2, 9.9, 10.3))
+
+        val run = run(dir, "--ratio")
+
+        assertNotEquals(0, run.status) {
+            "the fixture's only row is interpreter-only, so there is no margin to report; inventing one (or " +
+                "printing an empty table as success) is how a missing kernel arm reads as parity: ${run.output}"
+        }
+    }
+
     // ── refusals: the instrument must never report an empty record as a clean result ───────────────────
 
     @Test
@@ -304,6 +361,7 @@ class PerfTrendScriptTest {
     private class Run(val status: Int, val output: String)
 
     private fun run(resultsDir: Path, vararg args: String): Run {
+        // args go BEFORE the pattern, since --ratio is consumed by a leading shift.
         val builder = ProcessBuilder(listOf("bash", script.toString()) + args)
             .directory(script.parent.parent.toFile())
             .redirectErrorStream(true)

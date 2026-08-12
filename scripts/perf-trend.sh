@@ -32,14 +32,29 @@
 # clears MIN_SHIFT. Both must hold: the score alone would flag a 2% shift on a very quiet row, and the shift alone
 # would flag ordinary wander on a noisy one.
 #
+# THE --ratio VIEW, and why it is a different quantity rather than a convenience. The cross-engine gates assert a
+# RATIO (interpreter vs each kernel strategy), and a ratio's noise is not its operands' noise: both engines run in
+# the same JVM on the same vCPUs in the same run, so a load excursion moves them together and largely cancels. A
+# band for those gates must therefore be sized on the ratio series, which is not a key in the record at all — it is
+# derived by joining the engines of one (lane, scenario, n, clock) row WITHIN each run. `--ratio` reports each
+# row's current margin over each kernel strategy, the margin's own run-to-run spread, and the worst margin the
+# record holds, which is what a band has to survive.
+#
 # Usage:
 #   scripts/perf-trend.sh                    every lane, every environment
 #   scripts/perf-trend.sh <pattern>          only lanes/scenarios matching (case-insensitive substring)
+#   scripts/perf-trend.sh --ratio [pattern]  cross-engine margins and their spread, per row
 #   ENV=darwin-aarch64 scripts/perf-trend.sh one environment only
 #   MIN_SIDE=4 MIN_SHIFT=1.10 Z=2.5 scripts/perf-trend.sh   loosen or tighten the report
 #   PERF_RESULTS_DIR=<dir> scripts/perf-trend.sh            read a record elsewhere (the guard's seam)
 set -uo pipefail
 cd "$(dirname "$0")/.."
+
+VIEW=steps
+if [ "${1:-}" = "--ratio" ]; then
+    VIEW=ratio
+    shift
+fi
 
 results="${PERF_RESULTS_DIR:-perf-results}"
 if [ ! -d "$results" ]; then
@@ -47,7 +62,7 @@ if [ ! -d "$results" ]; then
     exit 1
 fi
 
-PATTERN="${1:-}" ONLY_ENV="${ENV:-}" RESULTS="$results" \
+PATTERN="${1:-}" ONLY_ENV="${ENV:-}" RESULTS="$results" VIEW="$VIEW" \
 MIN_SIDE="${MIN_SIDE:-3}" MIN_SHIFT="${MIN_SHIFT:-1.15}" Z="${Z:-3.0}" python3 - <<'PY'
 import json, math, os, statistics, sys
 from pathlib import Path
@@ -58,6 +73,8 @@ only = os.environ.get("ONLY_ENV", "")
 min_side = int(os.environ["MIN_SIDE"])
 min_shift = float(os.environ["MIN_SHIFT"])
 z_min = float(os.environ["Z"])
+view = os.environ.get("VIEW", "steps")
+KERNEL_ENGINES = ("groovy", "java")
 
 # --- read: one entry per run, oldest first within an environment -------------------------------------
 runs = []
@@ -142,6 +159,76 @@ def best_split(logs):
         if best is None or score > best[0]:
             best = (score, i, ml, mr)
     return best
+
+def row_identity(key):
+    """(lane, scenario-with-fingerprint, n, clock) — everything but the ENGINE, which is what a ratio varies."""
+    parts = key.split("|")
+    if len(parts) < 5:
+        return None
+    n = next((p[2:] for p in parts if p.startswith("n=")), "?")
+    return (parts[0], parts[1], n, parts[-1])
+
+
+def ratio_label(identity):
+    lane, scenario, n, clock = identity
+    return f"{lane} · {scenario.split('@')[0].strip()} @{n} [{clock}]"
+
+
+if view == "ratio":
+    total, tightest = 0, None
+    for segment in sorted(segments, key=lambda s: tuple("" if p is None else p for p in s)):
+        series = segments[segment]
+        env, jdk, os_name, machine = segment
+        head = f"{env} · jdk {jdk or '?'} · {os_name or '?'} · " + (machine or "machine unrecorded")
+
+        # margins[(identity, kernel_engine)] -> [interp_ms / kernel_ms per run]
+        margins = {}
+        for _, _, obs in series:
+            per_row = {}
+            for key, ms in obs.items():
+                identity = row_identity(key)
+                if identity is None:
+                    continue
+                per_row.setdefault(identity, {})[key.split("|")[-2]] = ms
+            for identity, engines in per_row.items():
+                interp = engines.get("interpreter")
+                if interp is None or interp <= 0:
+                    continue
+                for kernel in KERNEL_ENGINES:
+                    other = engines.get(kernel)
+                    if other is None or other <= 0:
+                        continue
+                    # The MARGIN is how many times faster the interpreter is: kernel / interp. Parity is 1.0 and
+                    # the gate fails below it, so a bigger number is more headroom.
+                    margins.setdefault((identity, kernel), []).append(other / interp)
+
+        rows = sorted(margins, key=lambda r: (ratio_label(r[0]), r[1]))
+        if pattern:
+            rows = [r for r in rows if pattern in ratio_label(r[0]).lower()]
+        if not rows:
+            continue
+        print(f"\n=== {head} — {len(series)} run(s), cross-engine margins (kernel/interpreter; parity = 1.00) ===")
+        width = max(len(ratio_label(r[0])) for r in rows)
+        for identity, kernel in rows:
+            values = margins[(identity, kernel)]
+            logs = [math.log(v) for v in values]
+            centre = statistics.median(logs)
+            noise_pct = 100 * (math.exp(spread(logs, centre)) - 1)
+            worst = min(values)
+            total += 1
+            current = math.exp(centre)
+            if tightest is None or worst < tightest[0]:
+                tightest = (worst, ratio_label(identity), kernel)
+            print(f"  {'%-*s' % (width, ratio_label(identity))}  vs {kernel:<7} runs={len(values):<3} "
+                  f"margin={current:6.2f}x  spread=±{noise_pct:4.1f}%  worst={worst:6.2f}x")
+
+    if tightest is not None:
+        worst, name, kernel = tightest
+        print(f"\n{total} cross-engine row(s). Tightest margin in the record: {worst:.2f}x on {name} vs {kernel}. "
+              f"A band must sit below that and outside each row's own spread, or it fires on history.")
+    else:
+        sys.exit("the record holds no row with both an interpreter and a kernel arm — the ratio view needs both")
+    sys.exit(0)
 
 changed = 0
 for segment in sorted(segments, key=lambda s: tuple("" if p is None else p for p in s)):
