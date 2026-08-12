@@ -44,6 +44,10 @@
 
   **Re-open trigger:** any parity row's ratio crosses `0.5` on a VALIDATE scenario (the `Placement`-keyed option becomes worth its matrix), or a scenario with deep repetition nesting enters the catalog — the key's cost is linear in repetition depth, so the measured 4-level shapes understate it.
 
+- **IG123 — the warm budget runs out on the dearest engine of the tightest row, and that direction flatters us.** The steady-state warm ([IF282](INTERPRETER-FINDINGS.md#if282)) caps one instance at 1 s, and on a measured gate run exactly one instance hit it: `CO-correlation`'s dynamic-Groovy arm at N=800, ended by the time cap after **9 runs** rather than by flattening. The gate now says so — `[perf][note] … ran out of warm budget after 9 runs (time-cap)` — which is the difference between a known limitation and a silent one, but the bias is not neutral: a kernel measurement still falling reads *higher* than its settled cost, so `interp/groovy` reads *lower* and the margin on the estate's tightest row looks better than it is.
+
+  **Why it was not simply fixed in the slice that found it.** Raising `maxMillis` is a two-character change and costs about 1.5 s per capped instance, so the obstacle is not the code — it is that the change moves the tightest row's measured ratio, which is the number three checkpoints and two class docs were just written around. Re-measuring them is the work, not the edit. **Closing step:** raise the cap until no instance reports a cap stop on a full gate run, then re-take the parity envelope and update the 2026-08-12 checkpoints and `KernelParityGateTest`'s KDoc together. **Re-open trigger sooner:** a second instance starts reporting a cap stop, which would mean the budget is systematically short rather than short for one arm.
+
 ---
 
 ## 2. Deferred / ongoing-incremental (recorded with status; detail in [`INTERPRETER-FINDINGS.md`](INTERPRETER-FINDINGS.md))
