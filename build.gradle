@@ -492,6 +492,15 @@ tasks.register('releaseGapGuardTest', Test) {
 tasks.register('docGuardTest', Test) {
     description = 'Freshness/bridge guards that read repo docs + dsl sources at runtime (split out so such an edit re-runs only these).'
     group = 'verification'
+    // THE DOC GUARDS ARE SPLIT ACROSS MODULES, so this name has to mean ALL of them (2026-08-12). This task owns
+    // the root-module readers; the ledger-shape, CLI-contract and index readers live in `:cli` under the SAME task
+    // name plus `:cli:staleGapGuardTest`. "Run the doc guards" is the scoping decision a docs-only change actually
+    // makes, and with two same-named tasks it silently selected the wrong half: a malformed `IG126` ledger row
+    // shipped in 53326fa0 and survived because the row's grammar is asserted in `:cli:staleGapGuardTest`, while the
+    // docs-only checkpoint ran this task. Aggregating is preferred over asserting the ledger grammar twice — one
+    // regex in two modules is the duplication-that-must-stay-in-sync smell. These are cross-module TASK edges (not
+    // project edges) and both targets declare their inputs, so they cost nothing when no doc input changed.
+    dependsOn ':cli:docGuardTest', ':cli:staleGapGuardTest'
     useJUnitPlatform()
     testClassesDirs = sourceSets.test.output.classesDirs
     classpath = sourceSets.test.runtimeClasspath
