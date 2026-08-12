@@ -372,12 +372,17 @@ internal data class WarmUpBudget(
      * budget instead of flattening: `CO-correlation`'s dynamic-Groovy arm at N=800, ended by this cap after 9 runs
      * at ~110 ms each. That bias is not neutral — a kernel measurement still falling reads HIGHER than its settled
      * cost, so `interp/groovy` reads LOWER and the margin on the estate's tightest row looks better than it is. The
-     * cap has to be loose enough that the dearest engine can reach two consecutive flat batches: 4 s buys ~36 runs
-     * at that arm's cost and ~20 at the dearest observation in the estate, against the 9 it had. The [maxRuns] cap
-     * still bounds a cheap instance, so this only ever spends more on the instances whose coldness distorts a ratio
-     * most.
+     * cap has to be loose enough that the dearest engine can reach two consecutive flat batches.
+     *
+     * **8 s, and the number is the second measurement rather than the first.** At 4 s that arm flattened, and a
+     * DIFFERENT one took its place in one of three runs: `Number index validate`'s dynamic-Groovy arm at N=2,000,
+     * the dearest instance in the estate at ~266 ms per evaluation, ended by the cap after 15 runs. It flattened
+     * inside 4 s in the other two runs, so it sits exactly on that boundary and noise decides — which is what makes
+     * a factor of headroom the right answer rather than another boundary value. The [maxRuns] cap still bounds a
+     * cheap instance, so this only ever spends more on the instances whose coldness distorts a ratio most, and it
+     * spends it only when the curve has not flattened.
      */
-    val maxMillis: Double = 4_000.0,
+    val maxMillis: Double = 8_000.0,
     /** Hard stop on one instance's total warm runs — the guard for a cheap one. */
     val maxRuns: Int = 60,
     /** A batch within this factor of the previous counts as flat: the curve has stopped improving. */
