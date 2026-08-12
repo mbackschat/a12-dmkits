@@ -545,6 +545,21 @@ The catalog must favor **non-obvious** combinations (nesting × aggregation × c
 
 ## Results log
 
+### Checkpoint 2026-08-12 — the `darwin-aarch64` anchor, refreshed as a median of three (IG120 residual closed)
+
+Three sequential isolated `perfGateTest` runs at `087c39f5` on a quiet machine (`loadAverage` 3.3 on eight processors, all 36 keys measured in every run, zero flags), folded at the per-key median: records `2026-08-12T015324Z`, `T015814Z`, `T020249Z`. The block moves from **one run's sample at `4ea0bf3a`** to a **median of three at the current revision**, which is what IG120's first residual asked for and what makes tightening `ANCHOR_TOLERANCE` possible later.
+
+**What the diff showed, and why it matters more than the refresh itself.** Absolute anchors are the only bar in this estate that sees a *uniform* slowdown, and a stale block silently loosens it. Four families had drifted far:
+
+| lane | anchored | measured | the ceiling had been |
+|---|---|---|---|
+| `PF-framed` @5000 / @20000 | 88.46 / 369.69 ms | **32.09 / 144.72 ms** | 2.8× / 2.6× the real cost |
+| `CO-correlation` @1500 / @6000 | 52.14 / 306.36 ms | **33.41 / 131.59 ms** | 1.6× / 2.3× |
+| `PI-parallel` @5000 / @20000 | 27.21 / 138.01 ms | **15.80 / 89.53 ms** | 1.7× / 1.5× |
+| `tiered-compute` @5000 | 17.39 ms | **12.89 ms** | 1.3× |
+
+The `PF-framed` and `PI-parallel` rows are catalog #12 carrying to the growth scales — the parity tier measured the same change at a tenth of the scale — and `CO-correlation` is catalog #11, which landed after the block was captured and was never folded in. The remaining 29 keys move within `0.82×`–`1.08×`, which is a median-of-three replacing a single sample rather than a change in cost. **The lesson is the trigger, not the numbers: an optimization must refresh the anchors of the scenarios it speeds up, in its own commit, or it leaves a bar that cannot fail.**
+
 ### Checkpoint 2026-08-12 — the parallel row context, profiled and memoized (catalog #12, [IF283](INTERPRETER-FINDINGS.md#if283))
 
 **Why these two scenarios.** After the parity bar was extended to all 17 gated scenarios, the thinnest VALIDATE rows were `PF-framed` (`0.39`) and `complexRealWorld` (`0.38`), and the two optimization slices queued behind them had both been derived from a single COMPUTE profile of `CO-correlation`. A hot path found on one scenario is not a shared one, so both were profiled through the same driver (`EvalProfileTest`, JFR, ~1,400–1,650 samples each).
