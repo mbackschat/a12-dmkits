@@ -63,6 +63,16 @@ internal object PerfBounds {
      * instead of one, or raise the lanes' sampling. Never widen it to make a real regression pass — refresh the
      * anchor deliberately instead, which is a reviewable diff.
      *
+     * **Both blocks became a median of three, and the tightening it was supposed to unlock is REFUSED by
+     * measurement (2026-08-12).** The quantity that binds is not the anchor's precision but how far a single run's
+     * median lands from it, and that has now been measured three times over 36 keys each: `1.147×` on an unusually
+     * quiet local machine (`loadAverage` 2.9–4.9), **`1.421×`** on the same machine under ordinary load (4.3–8.4),
+     * and `1.345×` on the 2-vCPU hosted runner. So `1.8` sits `1.27×` above the worst of them, and the `1.45` the
+     * quiet sample alone would have justified would have red-lined a healthy `FVNU@5000` (6.65 / 6.95 / 9.87 ms in
+     * three consecutive runs). Two consequences worth stating because both are counter-intuitive: a **per-class**
+     * tolerance has no basis either — the local class is the NOISIER of the two — and a median-of-N anchor narrows
+     * where the bar sits without bounding the next run at all, exactly as IF280 warned.
+     *
      * **The stale fraction is the band's other edge, and it is a report rather than a bar.** An observation below
      * `0.6 × anchor − slack` says the anchor stopped describing the code: the 2026-08-12 refresh found `PF-framed`
      * at `0.36×`/`0.39×` of its recorded numbers, i.e. ceilings sitting at up to `2.8×` the real cost, and nothing

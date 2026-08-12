@@ -54,6 +54,30 @@ class PerfAnchorResourceTest {
         }
     }
 
+    /**
+     * A block the gated lane will not assert against is a bar that never fires, and `machine` is what it matches on
+     * ([MachineIdentity.check]) — so a block for a class that GATES must name the machine it was captured on, and its
+     * processor count, or the whole class silently reads as bootstrap.
+     *
+     * A hosted class (`-ci`) is the one kind that legitimately names none: its runner is a VM the provider chooses
+     * per job, so that block is a bar over the class rather than over one machine and `TimingEnforcement` flags it
+     * instead of failing. The suffix is the same discriminator `PerfEnvironment` appends to its key, which is why it
+     * can be read here without a second source of truth.
+     */
+    @Test
+    fun everyGatedRunnerClassNamesTheMachineItWasCapturedOn() {
+        environments.properties().filterNot { (environment, _) -> environment.endsWith("-ci") }
+            .forEach { (environment, block) ->
+                assertTrue(block.path("machine").isTextual && block.path("machine").asText().isNotBlank()) {
+                    "$environment does not name its machine, so PerfAnchors will not assert against it and the " +
+                        "only bar that sees a uniform regression is off: refresh it (scripts/perf-anchor.sh)"
+                }
+                assertTrue(block.path("processors").isInt) {
+                    "$environment does not name its processor count, which is part of the machine's identity"
+                }
+            }
+    }
+
     /** The key shape `PerfAnchors` matches on, so a hand-edited or truncated key cannot silently stop matching. */
     @Test
     fun everyKeyCarriesItsLaneScenarioFingerprintScaleEngineAndClock() {
