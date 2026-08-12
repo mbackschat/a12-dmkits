@@ -1077,6 +1077,12 @@ object PerfHarness {
             )
         }
 
+        // A per-pair ratio series was built here as a within-run stand-in for the row's run-to-run noise, so an
+        // early-warning band could be derived per row (IG121). It is measurably NOT one and was removed rather
+        // than kept unused: a pair ratio divides two three-iteration medians while the reported row divides two
+        // nine-sample medians, so it is dispersed by construction — `FVNU-uniqueness @250` spread 3.21x between
+        // its pairs in one run against a run-to-run spread near 1.3x. The record's own series is the quantity.
+
         /** [Locale.ROOT]: a trace is aggregated with `sort -n`/`awk`, which read `12,45` as `12`. */
         private fun traceLine(label: String, pair: Int, n: Int, i: Double, g: Double, j: Double): String =
             "[perf][trace] %s pair=%d N=%d interp=%.2fms groovy=%.2fms java=%.2fms i/g=%.3f i/j=%.3f"
