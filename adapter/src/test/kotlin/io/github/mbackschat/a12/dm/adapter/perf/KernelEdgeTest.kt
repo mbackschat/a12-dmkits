@@ -1,5 +1,6 @@
 package io.github.mbackschat.a12.dm.adapter.perf
 
+import java.util.Locale
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.condition.EnabledIfSystemProperty
 
@@ -73,7 +74,7 @@ class KernelEdgeTest {
         )) {
             val small = PerfHarness.timeInterpreter(sc, 2000, warmup = 5, iters = 6)
             val large = PerfHarness.timeInterpreter(sc, 8000, warmup = 5, iters = 6)
-            println("  %s → %s %-24s %.1fms@2000 → %.1fms@8000  x%.2f".format(
+            println("  %s → %s %-24s %.1fms@2000 → %.1fms@8000  x%.2f".format(Locale.ROOT, 
                 PerfHarness.measurementLabel(sc, 2000),
                 PerfHarness.measurementLabel(sc, 8000),
                 name, small.medianMs, large.medianMs, large.medianMs / small.medianMs,
@@ -103,7 +104,7 @@ class KernelEdgeTest {
         var prev = 0.0
         for (g in listOf(25, 50, 100, 200)) {
             val row = PerfHarness.runScenario(PerfCatalog.wideGroups(g), 20)
-            val growth = if (prev > 0) "  interp×%.2f".format(row.interp.medianMs / prev) else ""
+            val growth = if (prev > 0) "  interp×%.2f".format(Locale.ROOT, row.interp.medianMs / prev) else ""
             println("  groups=%4d  %s%s".format(g, PerfHarness.format(row), growth))
             prev = row.interp.medianMs
         }
@@ -145,9 +146,9 @@ class KernelEdgeTest {
         for (rows in listOf(1_000, 5_000, 10_000, maxRows)) {
             val s = PerfHarness.timeInterpreter(b1, rows, warmup = 3, iters = 5)
             val growth = prevRows?.let {
-                "  ×%.2f vs %s".format(s.medianMs / prev, PerfHarness.measurementLabel(b1, it))
+                "  ×%.2f vs %s".format(Locale.ROOT, s.medianMs / prev, PerfHarness.measurementLabel(b1, it))
             } ?: ""
-            println("  %s B1 per-row     N=%6d  interp=%8.2fms  %.4f ms/row%s".format(
+            println("  %s B1 per-row     N=%6d  interp=%8.2fms  %.4f ms/row%s".format(Locale.ROOT, 
                 PerfHarness.measurementLabel(b1, rows), rows, s.medianMs, s.medianMs / rows, growth))
             prev = s.medianMs
             prevRows = rows
@@ -211,9 +212,9 @@ class KernelEdgeTest {
             for (count in counts) {
                 val scenario = PerfCatalog.manyRules(count, firing = firing)
                 val s = PerfHarness.timeInterpreter(scenario, n, warmup = 8, iters = 8)
-                val perRule = "%.3fms/rule".format(s.medianMs / count)
+                val perRule = "%.3fms/rule".format(Locale.ROOT, s.medianMs / count)
                 val growth = previousScenario?.let {
-                    "  ×%.2f vs %s".format(s.medianMs / prev, PerfHarness.measurementLabel(it, n))
+                    "  ×%.2f vs %s".format(Locale.ROOT, s.medianMs / prev, PerfHarness.measurementLabel(it, n))
                 } ?: ""
                 println("  %s %s rules=%4d  interp=%7.2fms  %s%s".format(
                     PerfHarness.measurementLabel(scenario, n), regime, count, s.medianMs, perRule, growth))
@@ -260,7 +261,7 @@ class KernelEdgeTest {
         var last = 0.0
         for (n in listOf(500, 1000, 2000, 4000)) {
             val row = PerfHarness.runScenario(sc, n, withJava = false)
-            val gi = if (prevInterp > 0) "  interp×%.1f".format(row.interp.medianMs / prevInterp) else ""
+            val gi = if (prevInterp > 0) "  interp×%.1f".format(Locale.ROOT, row.interp.medianMs / prevInterp) else ""
             println("  N=%5d  %s%s".format(n, PerfHarness.format(row), gi))
             if (first == 0.0) first = row.interp.medianMs
             last = row.interp.medianMs
@@ -269,7 +270,7 @@ class KernelEdgeTest {
         // 8× the rows: linear ≈ ×8 (+ fixed overhead), quadratic ≈ ×64. Trip well below quadratic.
         org.junit.jupiter.api.Assertions.assertTrue(last / first < 20.0,
             "semantic-index scaling looks super-linear: 8× rows took ${last / first}× the time (the row-prefix index regressed?)")
-        println("  %s → %s (8× rows ⇒ linear ~×8, quadratic ~×64; measured ×${"%.1f".format(last / first)})"
+        println("  %s → %s (8× rows ⇒ linear ~×8, quadratic ~×64; measured ×${"%.1f".format(Locale.ROOT, last / first)})"
             .format(
                 PerfHarness.measurementLabel(sc, 500),
                 PerfHarness.measurementLabel(sc, 4000),
@@ -319,7 +320,7 @@ class KernelEdgeTest {
             val n1 = PerfHarness.timeInterpreter(sc, small, warmup = 4, iters = 6)
             val n4 = PerfHarness.timeInterpreter(sc, small * 4, warmup = 4, iters = 6)
             println("  %s → %s %s interp-only  %.1fms@%d → %.1fms@%d claims  N→4N=×%.2f (linear≈4, quadratic≈16)"
-                .format(
+                .format(Locale.ROOT, 
                     PerfHarness.measurementLabel(sc, small),
                     PerfHarness.measurementLabel(sc, small * 4),
                     regime, n1.medianMs, small, n4.medianMs, small * 4, n4.medianMs / n1.medianMs,

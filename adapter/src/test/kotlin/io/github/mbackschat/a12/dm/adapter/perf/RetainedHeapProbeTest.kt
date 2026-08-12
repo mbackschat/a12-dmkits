@@ -3,6 +3,7 @@ package io.github.mbackschat.a12.dm.adapter.perf
 import io.github.mbackschat.a12.dm.interpreter.DmInterpreter
 import io.github.mbackschat.a12.dm.interpreter.eval.newDocument
 import io.github.mbackschat.a12.dm.interpreter.gen.asSink
+import java.util.Locale
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Tag
 import org.junit.jupiter.api.Test
@@ -42,13 +43,13 @@ class RetainedHeapProbeTest {
 
         val growthMb = (afterRepeats - warmed) / 1e6
         println("[heap] %s same-owner endpoints: warmed=%.1fMB → after %d evals=%.1fMB  Δ=%.1fMB (diagnostic slack %.0fMB)"
-            .format(
+            .format(Locale.ROOT, 
                 PerfHarness.measurementLabel(sc, N),
                 warmed / 1e6, REPEATS, afterRepeats / 1e6, growthMb, ENDPOINT_SLACK_MB,
             ))
         // Diagnostic only: this catches gross endpoint growth, not bounded slope, owner release, or leak freedom.
         assertTrue(growthMb < ENDPOINT_SLACK_MB,
-            "retained heap grew ${"%.1f".format(growthMb)}MB across $REPEATS repeated evaluations of the SAME " +
+            "retained heap grew ${"%.1f".format(Locale.ROOT, growthMb)}MB across $REPEATS repeated evaluations of the SAME " +
                 "prepared engine+document — the diagnostic endpoint slack was exceeded; investigate ownership/GC")
     }
 

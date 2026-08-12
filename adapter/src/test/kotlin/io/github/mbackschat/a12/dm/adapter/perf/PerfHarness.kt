@@ -510,7 +510,7 @@ object PerfHarness {
         progress("[perf] $label …")
         val t = System.nanoTime()
         val r = block()
-        progress("[perf] $label — done in %.1fs".format((System.nanoTime() - t) / 1e9))
+        progress("[perf] $label — done in %.1fs".format(Locale.ROOT, (System.nanoTime() - t) / 1e9))
         return r
     }
 
@@ -1009,7 +1009,7 @@ object PerfHarness {
         val jGrowth = growth(jSmallMs, jLargeMs, small, large)
         if (outcome.taken.size > 1) {
             println("[perf] ${scenario.name}: comparative breach re-measured ${outcome.taken.size}x, accepted the " +
-                "median of " + outcome.taken.joinToString(", ") { "%.2f".format(it.worstInterpreterRatio()) })
+                "median of " + outcome.taken.joinToString(", ") { "%.2f".format(Locale.ROOT, it.worstInterpreterRatio()) })
         }
         if (TRACE_PER_PAIR) {
             progress("[perf][trace] ${scenario.name} steady-state warm runs: ${warmRuns.joinToString(" ")}")
@@ -1097,7 +1097,7 @@ object PerfHarness {
         val java = checkNotNull(row.ratioJava)
         check(groovy < 1.0 && java < 1.0) {
             "${scenario.name}: interpreter must beat both kernel strategies at N=${row.n}; " +
-                "ratioGroovy=${"%.2f".format(groovy)}, ratioJava=${"%.2f".format(java)}"
+                "ratioGroovy=${"%.2f".format(Locale.ROOT, groovy)}, ratioJava=${"%.2f".format(Locale.ROOT, java)}"
         }
     }
 
@@ -1240,8 +1240,8 @@ object PerfHarness {
 
     private fun triple(interp: Stats, groovy: Stats?, java: Stats?, ratioGroovy: Double?, ratioJava: Double?, groovyTax: Double?): String =
         "interp=${ms(interp.medianMs)} (min ${ms(interp.minMs)})  " +
-            (if (groovy != null) "groovy=${ms(groovy.medianMs)}  ratioG=${"%.2f".format(ratioGroovy)}  " else "") +
-            (if (java != null) "java=${ms(java.medianMs)}  ratioJava=${"%.2f".format(ratioJava)}  groovyTax=${"%.2f".format(groovyTax)}×" else "")
+            (if (groovy != null) "groovy=${ms(groovy.medianMs)}  ratioG=${"%.2f".format(Locale.ROOT, ratioGroovy)}  " else "") +
+            (if (java != null) "java=${ms(java.medianMs)}  ratioJava=${"%.2f".format(Locale.ROOT, ratioJava)}  groovyTax=${"%.2f".format(Locale.ROOT, groovyTax)}×" else "")
 
-    private fun ms(v: Double): String = "%.2fms".format(v)
+    private fun ms(v: Double): String = "%.2fms".format(Locale.ROOT, v)
 }

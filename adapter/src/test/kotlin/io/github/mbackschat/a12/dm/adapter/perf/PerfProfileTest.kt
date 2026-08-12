@@ -1,5 +1,6 @@
 package io.github.mbackschat.a12.dm.adapter.perf
 
+import java.util.Locale
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.condition.EnabledIfSystemProperty
 
@@ -45,10 +46,10 @@ class PerfProfileTest {
         val times = DoubleArray(ITERS) {
             val t = System.nanoTime(); prep.run(); (System.nanoTime() - t) / 1e6
         }
-        times.forEachIndexed { i, ms -> println("  $measurement iter ${i + 1}: ${"%.1f".format(ms)}ms") }
+        times.forEachIndexed { i, ms -> println("  $measurement iter ${i + 1}: ${"%.1f".format(Locale.ROOT, ms)}ms") }
         val sorted = times.sorted()
-        println("[profile] $measurement ${scenario.name} N=$n  median=${"%.1f".format(sorted[ITERS / 2])}ms " +
-            "min=${"%.1f".format(sorted.first())}ms max=${"%.1f".format(sorted.last())}ms")
+        println("[profile] $measurement ${scenario.name} N=$n  median=${"%.1f".format(Locale.ROOT, sorted[ITERS / 2])}ms " +
+            "min=${"%.1f".format(Locale.ROOT, sorted.first())}ms max=${"%.1f".format(Locale.ROOT, sorted.last())}ms")
     }
 
     private companion object {

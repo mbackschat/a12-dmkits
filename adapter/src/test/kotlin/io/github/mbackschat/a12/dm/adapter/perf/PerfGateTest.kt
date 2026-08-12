@@ -6,6 +6,7 @@ import io.github.mbackschat.a12.dm.adapter.perf.PerfBounds.CAVEAT
 import io.github.mbackschat.a12.dm.adapter.perf.PerfBounds.N_SMALL
 import io.github.mbackschat.a12.dm.adapter.perf.PerfBounds.RATIO_CEILING
 import io.github.mbackschat.a12.dm.interpreter.eval.Document
+import java.util.Locale
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Tag
 import org.junit.jupiter.api.Test
@@ -40,7 +41,7 @@ class PerfGateTest {
         val accepted = PerfHarness.assertGrowthBelowCatastropheFloor(label, culprit) {
             PerfHarness.pairedGrowth(small, large, measureAt = measureAt).also { g ->
                 println("[perf] %s → %s %s: %.1fms@%d → %.1fms@%d %s  median-growth=%.2f× (linear≈4, quadratic≈16)"
-                    .format(identityAt(small), identityAt(large), label, g.smallMs, small, g.largeMs, large, unit, g.ratio))
+                    .format(Locale.ROOT, identityAt(small), identityAt(large), label, g.smallMs, small, g.largeMs, large, unit, g.ratio))
             }
         }
         // The growth ratio above is blind to a UNIFORM slowdown — it is unchanged at every factor — so the same

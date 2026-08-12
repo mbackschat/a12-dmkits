@@ -1,6 +1,7 @@
 package io.github.mbackschat.a12.dm.adapter.perf
 
 import io.github.mbackschat.a12.dm.adapter.profile.ModelSynthesizer
+import java.util.Locale
 import org.junit.jupiter.api.Tag
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.condition.EnabledIfSystemProperty
@@ -50,7 +51,7 @@ class ProfileSynthesisPerfTest {
         return elapsed
     }
 
-    private fun format(value: Double): String = "%.2f".format(java.util.Locale.ROOT, value)
+    private fun format(value: Double): String = "%.2f".format(Locale.ROOT, value)
 
     private companion object {
         const val SEED = 20260721L

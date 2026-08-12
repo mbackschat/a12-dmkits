@@ -3,6 +3,7 @@ package io.github.mbackschat.a12.dm.adapter.perf
 import io.github.mbackschat.a12.dm.interpreter.DmInterpreter
 import io.github.mbackschat.a12.dm.interpreter.eval.newDocument
 import io.github.mbackschat.a12.dm.interpreter.gen.asSink
+import java.util.Locale
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.condition.EnabledIfSystemProperty
 
@@ -40,7 +41,7 @@ class ComputeOverlayProfileTest {
         var loops = 0
         while (System.nanoTime() < deadline) { interp.compute(doc, scenario.locale); loops++ }
         println("[profile] $label @ N=$n: $loops compute calls in ~${SECONDS}s " +
-            "(${"%.2f".format(SECONDS * 1000.0 / loops)} ms/call)")
+            "(${"%.2f".format(Locale.ROOT, SECONDS * 1000.0 / loops)} ms/call)")
     }
 
     private companion object { const val SECONDS = 20 }

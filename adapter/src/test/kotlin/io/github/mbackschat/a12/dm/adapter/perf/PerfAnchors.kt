@@ -6,6 +6,7 @@ import java.nio.file.Path
 import java.time.Instant
 import java.time.ZoneOffset
 import java.time.format.DateTimeFormatter
+import java.util.Locale
 
 /**
  * The runner class an observation belongs to. Absolute timings are only comparable **within** one of these: the
@@ -408,5 +409,5 @@ internal class AnchorBudget(
 
     /** [java.util.Locale.ROOT], so a number a maintainer may copy into the anchor file is not `12,45` on a German
      *  JVM and `12.45` on an English one — the surrounding `[perf]` log lines still carry that locale dependence. */
-    private fun ms(value: Double): String = "%.2fms".format(java.util.Locale.ROOT, value)
+    private fun ms(value: Double): String = "%.2fms".format(Locale.ROOT, value)
 }

@@ -5,6 +5,7 @@ import io.github.mbackschat.a12.dm.adapter.perf.PerfBounds.CAVEAT
 import io.github.mbackschat.a12.dm.adapter.perf.PerfBounds.RATIO_CEILING
 import io.github.mbackschat.a12.dm.interpreter.eval.Document
 import io.github.mbackschat.a12.dm.interpreter.model.ModelTimeZone
+import java.util.Locale
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Tag
 import org.junit.jupiter.api.Test
@@ -53,7 +54,7 @@ class PerfBenchTest {
         val berlin = rows.entries.firstOrNull { it.key.id.zone == ModelTimeZone.EUROPE_BERLIN }?.value
         val utc = rows.entries.firstOrNull { it.key.id.id == "B9-utc-control" }?.value
         if (berlin != null && utc != null)
-            println("[perf] %s | %s Berlin/UTC offset overhead: %.2f×".format(
+            println("[perf] %s | %s Berlin/UTC offset overhead: %.2f×".format(Locale.ROOT, 
                 "${berlin.identity.label} fingerprint=${berlin.identity.fingerprint}",
                 "${utc.identity.label} fingerprint=${utc.identity.fingerprint}",
                 berlin.interp.medianMs / utc.interp.medianMs,

@@ -342,8 +342,8 @@ tasks.register('verifySemanticsMapRegistration') {
 }
 
 tasks.register('perfScriptGuardTest', Test) {
-    description = 'Verify the performance launcher routes the routine gate, and that the anchor refresh refuses to ' +
-            'take a bar away.'
+    description = 'Verify the performance launcher routes the routine gate, that the anchor refresh refuses to ' +
+            'take a bar away, and that every perf number is printed in one locale.'
     group = 'verification'
     testClassesDirs = sourceSets.test.output.classesDirs
     classpath = sourceSets.test.runtimeClasspath
@@ -357,9 +357,15 @@ tasks.register('perfScriptGuardTest', Test) {
     filter {
         includeTestsMatching 'io.github.mbackschat.a12.dm.adapter.perf.PerfScriptContractTest'
         includeTestsMatching 'io.github.mbackschat.a12.dm.adapter.perf.PerfAnchorScriptTest'
+        // Reads the perf sources as TEXT, so it belongs on a task that declares them (TESTING-SPEC, "Tests that
+        // read repo files at runtime") rather than on :adapter:test, where the declaration would re-run the whole
+        // suite on any perf edit — and omitting it would let the guard go up-to-date into a false green.
+        includeTestsMatching 'io.github.mbackschat.a12.dm.adapter.perf.PerfNumberLocaleContractTest'
     }
     inputs.file(script)
     inputs.file(anchorScript)
+    inputs.dir(file('src/test/kotlin/io/github/mbackschat/a12/dm/adapter/perf'))
+        .withPropertyName('perfSources')
 }
 
 tasks.register('perfGateTest', Test) {

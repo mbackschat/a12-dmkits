@@ -10,6 +10,7 @@ import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel
 import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl
 import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer
+import java.util.Locale
 import org.junit.jupiter.api.BeforeAll
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Tag
@@ -126,7 +127,7 @@ class OuterCorrelationPerfTest {
         ) {
             PerfHarness.pairedGrowth(N, N * 4) { medianMs(defEq, it, ::spread) }.also { g ->
                 println("[perf] %s → %s \$ equality correlation: %.1fms@%d → %.1fms@%d  median-growth=%.1f× (linear≈4, quadratic≈16)"
-                    .format(
+                    .format(Locale.ROOT, 
                         PerfHarness.measurementLabel(eqScenario, N),
                         PerfHarness.measurementLabel(eqScenario, N * 4),
                         g.smallMs, N, g.largeMs, N * 4, g.ratio,
@@ -147,7 +148,7 @@ class OuterCorrelationPerfTest {
         val ratioSmall = iSmall / kSmall
         val ratioLarge = iLarge / kLarge
         println("[perf] %s | %s \$ correlation vs kernel: N=%d interp=%.1f kernel=%.1f (%.2f×) | N=%d interp=%.1f kernel=%.1f (%.2f×)"
-            .format(
+            .format(Locale.ROOT, 
                 PerfHarness.measurementLabel(eqScenario, N),
                 PerfHarness.measurementLabel(eqScenario, N * 4),
                 N, iSmall, kSmall, ratioSmall, N * 4, iLarge, kLarge, ratioLarge,
@@ -166,7 +167,7 @@ class OuterCorrelationPerfTest {
         ) {
             PerfHarness.pairedGrowth(N, N * 4) { medianMs(defGt, it, ::flat) }.also { g ->
                 println("[perf] %s → %s \$ non-equality correlation: %.1fms@%d → %.1fms@%d  median-growth=%.1f× (linear≈4, quadratic≈16)"
-                    .format(
+                    .format(Locale.ROOT, 
                         PerfHarness.measurementLabel(gtScenario, N),
                         PerfHarness.measurementLabel(gtScenario, N * 4),
                         g.smallMs, N, g.largeMs, N * 4, g.ratio,
@@ -181,7 +182,7 @@ class OuterCorrelationPerfTest {
         val ratioSmall = iSmall / kSmall
         val ratioLarge = iLarge / kLarge
         println("[perf] %s | %s \$ non-equality vs kernel: N=%d interp=%.1f kernel=%.1f (%.2f×) | N=%d interp=%.1f kernel=%.1f (%.2f×)"
-            .format(
+            .format(Locale.ROOT, 
                 PerfHarness.measurementLabel(gtScenario, N),
                 PerfHarness.measurementLabel(gtScenario, N * 4),
                 N, iSmall, kSmall, ratioSmall, N * 4, iLarge, kLarge, ratioLarge,

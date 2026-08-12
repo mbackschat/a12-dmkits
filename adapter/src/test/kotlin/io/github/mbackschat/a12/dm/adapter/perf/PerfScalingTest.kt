@@ -1,5 +1,6 @@
 package io.github.mbackschat.a12.dm.adapter.perf
 
+import java.util.Locale
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.condition.EnabledIfSystemProperty
 
@@ -32,7 +33,7 @@ class PerfScalingTest {
         println("[scaling] interp-only at production scale (linearity check — no kernel, stays cheap):")
         for (n in listOf(30_000, 100_000, 300_000)) {
             val s = PerfHarness.timeInterpreter(scenario, n, warmup = 4, iters = 6)
-            println("  %s N=%7d  interp=%.1fms (min %.1fms)  -> %.2f µs/row".format(
+            println("  %s N=%7d  interp=%.1fms (min %.1fms)  -> %.2f µs/row".format(Locale.ROOT, 
                 PerfHarness.measurementLabel(scenario, n), n, s.medianMs, s.minMs, s.minMs * 1000 / n))
         }
     }
@@ -60,11 +61,11 @@ class PerfScalingTest {
         val measurement = PerfHarness.measurementLabel(scenario, 48)
 
         println("[startup] interpreter, 48-rule model (kernel preparation/compile is outside this interpreter-only measurement):")
-        println("  %s engine build       = %.2f ms (lazy AST wrappers, no parse)".format(measurement, buildMs))
-        println("  %s first validateFull = %.2f ms (one-time lazy index build + first parse)".format(measurement, coldMs))
-        println("  %s steady-state/call  = %.2f ms".format(measurement, warmMs))
+        println("  %s engine build       = %.2f ms (lazy AST wrappers, no parse)".format(Locale.ROOT, measurement, buildMs))
+        println("  %s first validateFull = %.2f ms (one-time lazy index build + first parse)".format(Locale.ROOT, measurement, coldMs))
+        println("  %s steady-state/call  = %.2f ms".format(Locale.ROOT, measurement, warmMs))
         println("  %s → one-time startup overhead ≈ %.2f ms; no generated-validator preparation"
-            .format(measurement, buildMs + (coldMs - warmMs)))
+            .format(Locale.ROOT, measurement, buildMs + (coldMs - warmMs)))
     }
 
     /**
@@ -80,14 +81,14 @@ class PerfScalingTest {
         for (rules in listOf(6, 48, 192)) {
             val scenario = PerfCatalog.manyRules(rules)
             val ms = PerfHarness.freshRunMedianMillis(scenario, n = 100, repeats = 1)
-            println("  %s rules=%-3d  small doc (100 Lines × 5)   cold = %.1f ms".format(
+            println("  %s rules=%-3d  small doc (100 Lines × 5)   cold = %.1f ms".format(Locale.ROOT, 
                 PerfHarness.measurementLabel(scenario, 100), rules, ms))
         }
         // Axis 2 — document size, one rule: the lazy index build + cold (un-JIT-warmed) per-row eval.
         val scenario = PerfCatalog.b1()
         for (n in listOf(10_000, 100_000)) {
             val ms = PerfHarness.freshRunMedianMillis(scenario, n, repeats = 1)
-            println("  %s 1 rule    %-7d rows              cold = %.1f ms".format(
+            println("  %s 1 rule    %-7d rows              cold = %.1f ms".format(Locale.ROOT, 
                 PerfHarness.measurementLabel(scenario, n), n, ms))
         }
     }

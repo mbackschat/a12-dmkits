@@ -7,6 +7,7 @@ import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel
 import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl
 import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer
+import java.util.Locale
 import org.junit.jupiter.api.BeforeAll
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Tag
@@ -78,7 +79,7 @@ class GroupScopedFillPerfTest {
         PerfHarness.assertGrowthBelowCatastropheFloor("group-scope fill", "the per-row fill scope scan") {
             PerfHarness.pairedGrowth(N, N * 4) { medianMs(it) }.also { g ->
                 println("[perf] %s → %s group-scope fill: %.1fms@%d → %.1fms@%d  median-growth=%.1f× (linear≈4, quadratic≈16)"
-                    .format(
+                    .format(Locale.ROOT, 
                         PerfHarness.measurementLabel(scenario, N),
                         PerfHarness.measurementLabel(scenario, N * 4),
                         g.smallMs, N, g.largeMs, N * 4, g.ratio,
@@ -93,7 +94,7 @@ class GroupScopedFillPerfTest {
         val (iLarge, kLarge) = medianMs(N * 4) to kernelMedianMs(N * 4)
         val ratioSmall = iSmall / kSmall; val ratioLarge = iLarge / kLarge
         println("[perf] %s | %s group-scope fill vs kernel: N=%d interp=%.1f kernel=%.1f (%.2f×) | N=%d interp=%.1f kernel=%.1f (%.2f×)"
-            .format(
+            .format(Locale.ROOT, 
                 PerfHarness.measurementLabel(scenario, N),
                 PerfHarness.measurementLabel(scenario, N * 4),
                 N, iSmall, kSmall, ratioSmall, N * 4, iLarge, kLarge, ratioLarge,

@@ -2,6 +2,7 @@ package io.github.mbackschat.a12.dm.adapter.perf
 
 import io.github.mbackschat.a12.dm.adapter.perf.PerfBounds.MIN_KERNEL_ADVANTAGE
 import io.github.mbackschat.a12.dm.adapter.perf.PerfBounds.NEAR_LINEAR_SLACK
+import java.util.Locale
 import org.junit.jupiter.api.Assertions.assertTrue
 
 /**
@@ -52,18 +53,18 @@ internal object KernelAdvantage {
 
         for (r in listOf(small, large)) println(
             "[perf] %s@%d  interp=%.1fms kernel=%.1fms advantage=%.2f×"
-                .format(label, r.n, r.interpreterMs, r.kernelMs, r.advantage))
-        println("[perf] %s growth %.2f× for %.0f× rows (linear≈%.0f)".format(label, growth, factor, factor))
+                .format(Locale.ROOT, label, r.n, r.interpreterMs, r.kernelMs, r.advantage))
+        println("[perf] %s growth %.2f× for %.0f× rows (linear≈%.0f)".format(Locale.ROOT, label, growth, factor, factor))
 
         assertTrue(growth < factor * NEAR_LINEAR_SLACK) {
-            "$label scales super-linearly: ${"%.2f".format(growth)}× for ${"%.0f".format(factor)}× rows " +
-                "(linear≈${"%.0f".format(factor)}). A per-call cost that grows with the document turns an " +
+            "$label scales super-linearly: ${"%.2f".format(Locale.ROOT, growth)}× for ${"%.0f".format(Locale.ROOT, factor)}× rows " +
+                "(linear≈${"%.0f".format(Locale.ROOT, factor)}). A per-call cost that grows with the document turns an " +
                 "entry point quadratic exactly where the scenario sweep cannot see it."
         }
         for (r in listOf(small, large)) assertTrue(r.advantage >= MIN_KERNEL_ADVANTAGE) {
             "$label must beat the kernel by ≥${MIN_KERNEL_ADVANTAGE}× at ${r.n} rows, measured " +
-                "${"%.2f".format(r.advantage)}× (interp=${"%.1f".format(r.interpreterMs)}ms " +
-                "kernel=${"%.1f".format(r.kernelMs)}ms)"
+                "${"%.2f".format(Locale.ROOT, r.advantage)}× (interp=${"%.1f".format(Locale.ROOT, r.interpreterMs)}ms " +
+                "kernel=${"%.1f".format(Locale.ROOT, r.kernelMs)}ms)"
         }
     }
 }
