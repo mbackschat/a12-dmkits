@@ -547,6 +547,24 @@ The catalog must favor **non-obvious** combinations (nesting × aggregation × c
 
 ## Results log
 
+### Checkpoint 2026-08-12 — the PARTIAL-validation key profile: one of IG126's four closed, and a 12 % member nobody had listed
+
+The first profile of `validatePart` (`scripts/perf-keys.sh validate-partial`, new driver `EvalProfileTest.loopPartialSemanticIndexForProfiler`, `SI-cliff` at N=1,000, 1,374 `ExecutionSample`s). IG126 was reopened because four memos read 0 on scenarios that structurally could not execute them; this is the path that does.
+
+| frame | samples | share | reading |
+|---|---|---|---|
+| `EffectiveRelevanceIndex.isRelevantWithin` | 165 | **12.01 %** | **the largest key-mechanic caller here, and it was on no list** |
+| `IndexIdentityKt.resolveIndexIdentity` | 25 | 1.82 % | — |
+| `ValueAdmissionCache.resultAt` | 19 | 1.38 % | IG127's prelude, **1.38 % here against 16.90 % in a full validation** |
+| `Interpreter.sharingIndexColumns$lambda…` | 5 | **0.36 %** | `ValidationPass.indexColumns`, now genuinely **reached and cold** |
+| `CascadeOverlay.rowsAt` | 0 | 0.00 % | not exercised — a compute-mode path, so this 0 is again by construction, not evidence |
+
+Top self frames are the mechanic itself: `ArrayList.hashCodeRange` 1.46 %, `ArrayList.equals` 1.24 %, `HashMap.putVal` 1.09 %.
+
+**`indexColumns` is closed as cold, and this time the 0.36 % is a measurement**: the frame is present, so the memo was consulted, which is exactly what its previous 0 could not establish. **`decided`, the group-relevance map, and `rows` remain unmeasured** — no frame carries them on this run, and `rows` needs an `RepetitionNotUnique`/index-group model this driver does not build. `CascadeOverlay.rowsAt`'s 0 is stated rather than folded in, because reading it as "cheap" would repeat the precise error that reopened IG126.
+
+**The 12 % member is not a memo key at all.** `isRelevantWithin` walks each path prefix and, for every relevance pattern at that depth, builds a **fresh `List<Int>`** (`mapIndexed`) and probes a `HashSet<List<Int>>`. So the cost is `depth × patterns` allocations-plus-list-hashes per relevance question, and relevance is asked per cell. It is [IF284](INTERPRETER-FINDINGS.md#if284)'s shape with yet another multiplier, on a path no profile had covered — the third time this class's real members turned up by profiling rather than by enumeration. Owned as [IG128](INTERPRETER-GAPS.md).
+
 ### Checkpoint 2026-08-12 — the cross-engine margin's low tail, over 27 runs instead of three
 
 The parity gate's documented margins were medians over **three** isolated runs. Reading the whole committed series (`scripts/perf-trend.sh --ratio`, 27 runs, `darwin-aarch64`, one machine and JDK) keeps every median and adds the tail that a three-run basis structurally cannot see.

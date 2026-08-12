@@ -17,6 +17,7 @@
 # Usage:
 #   scripts/perf-keys.sh validate            # profile the validate driver (complexRealWorld), then report
 #   scripts/perf-keys.sh compute             # profile the compute driver (CO-correlation), then report
+#   scripts/perf-keys.sh validate-partial    # profile PARTIAL validation over a semantic-index model (IG126)
 #   scripts/perf-keys.sh <recording.jfr>     # report on an existing recording; measures nothing
 #   scripts/perf-keys.sh validate Foo.bar    # add frames to the by-caller view (repeatable)
 #
@@ -39,6 +40,11 @@ stamp="$(date -u +%Y%m%dT%H%M%SZ)"
 case "$mode" in
     validate) test_filter="*EvalProfileTest.loopComplexRealWorldForProfiler"; jfr="$PWD/$out/validate-$stamp.jfr" ;;
     compute)  test_filter="*ComputeOverlayProfileTest.loopCorrelationForProfiler"; jfr="$PWD/$out/compute-$stamp.jfr" ;;
+    # PARTIAL validation over a semantic-index model — the driver IG126 was reopened for. Three of its four
+    # memos are unreachable from the two modes above BY CONSTRUCTION (indexColumns documents itself as
+    # "Empty and unread in a FULL validation"; the group-relevance map is only built by validatePart), so a
+    # 0 read off those profiles was guaranteed rather than measured.
+    validate-partial) test_filter="*EvalProfileTest.loopPartialSemanticIndexForProfiler"; jfr="$PWD/$out/validate-partial-$stamp.jfr" ;;
     *.jfr)    test_filter=""; jfr="$mode" ;;
     *)        echo "unknown mode '$mode' — see the header of $0" >&2; exit 2 ;;
 esac

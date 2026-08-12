@@ -4,6 +4,7 @@ import io.github.mbackschat.a12.dm.interpreter.DmInterpreter
 import io.github.mbackschat.a12.dm.interpreter.eval.Document
 import io.github.mbackschat.a12.dm.interpreter.eval.newDocument
 import io.github.mbackschat.a12.dm.interpreter.gen.asSink
+import io.github.mbackschat.a12.dm.interpreter.model.RelevantEntity
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.condition.EnabledIfSystemProperty
 
@@ -48,6 +49,42 @@ class EvalProfileTest {
     @Test
     fun loopComplexRealWorldForProfiler() = profile(PerfCatalog.complexRealWorldGate(firing = false),
         System.getProperty("perf.n", "240").toInt(), "complexRealWorld")
+
+    /**
+     * **PARTIAL validation over a semantic-index model** — the driver IG126 was reopened for.
+     *
+     * Three of the four memos that reopened it cannot be reached by the two existing drivers *by construction*:
+     * `ValidationPass.indexColumns` says of itself "Empty and unread in a FULL validation", `decided` is the same
+     * shape, and the group-relevance map is built by `groupRelevanceOf`, which only `validatePart` calls. Reading a
+     * 0 for them off a full-validation profile was the defect [IF285](../docs/INTERPRETER-FINDINGS.md) corrected —
+     * a measurement whose denominator was never checked — so measuring them needs this path, not a longer run of
+     * the old one.
+     *
+     * Two choices, both deliberate. The scenario is `semanticIndexPerRow` because `indexColumns` memoizes an INDEX
+     * COLUMN and a model without a semantic-index gate would leave it empty for a second, unrelated reason. And the
+     * relevant set wildcards every repetition (`RelevantEntity.anyRep`), which makes the whole document relevant:
+     * that maximizes CONSULTATIONS of each memo, which is the quantity in question, while still running the partial
+     * code path (`ValidationPass.partial` keys on `config.cellRelevant != null`, not on the subset's size). A
+     * narrower set would measure less of the memo, not more of it.
+     */
+    @Test
+    fun loopPartialSemanticIndexForProfiler() {
+        val scenario = PerfCatalog.semanticIndexPerRow()
+        val n = System.getProperty("perf.n", "1000").toInt()
+        val measurement = PerfHarness.measurementLabel(scenario, n)
+        val model = scenario.interpModel
+        val doc = model.newDocument()
+        scenario.instance(doc.asSink(), n, 0)
+        val interp = DmInterpreter(model)
+        // Derived from the model rather than a path literal, so the driver cannot drift from the scenario it
+        // profiles: every declared field, at every repetition.
+        val relevant = model.fields.map { RelevantEntity.anyRep(it.path) }.toSet()
+        repeat(20) { interp.validatePart(doc, relevant) }
+        val deadline = System.nanoTime() + SECONDS * 1_000_000_000L
+        var loops = 0
+        while (System.nanoTime() < deadline) { interp.validatePart(doc, relevant); loops++ }
+        println("[profile] $measurement partial-semanticIndex @ N=$n: $loops validatePart calls in ~${SECONDS}s")
+    }
 
     private fun profile(scenario: io.github.mbackschat.a12.dm.adapter.perf.PerfScenario, n: Int, label: String) {
         val measurement = PerfHarness.measurementLabel(scenario, n)
