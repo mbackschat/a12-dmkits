@@ -15,6 +15,8 @@ Every run of the routine performance gate writes one **text** file here. Nothing
  "engine":"interpreter","clock":"cpu","medianMs":9.6,"loadAverage":2.44}
 ```
 
+**`commit` carries a `-DIRTY` suffix when the working tree did not match the revision it names** (everything outside this directory, since a run always leaves a new file inside it). A measurement taken mid-edit did not measure the commit it cites, and a record's only value is that a later run can be compared against it — `scripts/perf-anchor.sh` has marked this since it was written, and `PerfObservationWriteTest` now holds the record to the same rule.
+
 **Why the conditions are recorded, per observation and not just per run.** The same commit measured on a busy laptop and on a 2-vCPU hosted runner produces numbers that are not comparable, and a run that becomes busy halfway through otherwise shows up later as an unexplained outlier. `loadAverage`, `processors`, `jdk`, `ci`, `runId` and `runnerName` are what make a historic row interpretable instead of merely numeric.
 
 **The key is content-addressed.** It carries the lane, the scenario's `id@version fingerprint=<sha256>`, the scale, the engine and the clock. The fingerprint covers the model, the generated placements, the scale and the runtime bindings, so **changing a scenario's content changes its key** and a new measurement is never silently compared against an old, different workload.

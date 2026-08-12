@@ -17,6 +17,35 @@ import org.junit.jupiter.api.io.TempDir
  */
 class PerfObservationWriteTest {
 
+    /**
+     * A record's whole value is that a later run can be compared against it, and a measurement taken on an edited
+     * tree did not measure the commit it names. `scripts/perf-anchor.sh` has marked that since it was written; the
+     * record did not, so an uncommitted change could be compared against its own baseline with nothing saying so.
+     */
+    @Test
+    fun anEditedTreeIsNamedAsSuchRatherThanBorrowingItsCommit() {
+        assertEquals("abc1234", PerfObservations.commitLabel("abc1234", dirty = false))
+        assertEquals("abc1234-DIRTY", PerfObservations.commitLabel("abc1234", dirty = true))
+    }
+
+    /**
+     * …and the header genuinely applies that rule, checked against `git` run independently by this test so the
+     * assertion holds on a clean checkout and on a working tree mid-edit alike. Asserting the marker outright
+     * would pass only in the state the author happened to be in — which is the one state a guard must not assume.
+     */
+    @Test
+    fun theRecordedCommitAgreesWithTheTreeItWasMeasuredOn() {
+        val recorded = PerfObservations.headCommit()
+        val dirty = ProcessBuilder("git", "status", "--porcelain", "--", ":/", ":(top,exclude)perf-results")
+            .redirectErrorStream(true).start()
+            .let { it.inputStream.bufferedReader().readText().trim().also { _ -> check(it.waitFor() == 0) } }
+            .isNotEmpty()
+
+        assertEquals(dirty, recorded.endsWith("-DIRTY"),
+            "the record says \"$recorded\" while git reports the tree ${if (dirty) "edited" else "clean"} — a " +
+                "record that names a commit it was not measured at is worse than one that names none")
+    }
+
     @Test
     fun aWrittenLineIsTheRecordItWasGiven(@TempDir dir: File) {
         val target = dir.resolve("run.jsonl")

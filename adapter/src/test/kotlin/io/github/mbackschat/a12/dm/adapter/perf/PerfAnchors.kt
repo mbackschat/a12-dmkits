@@ -108,17 +108,37 @@ internal object PerfObservations {
     }
 
     /**
+     * The revision this run measured, `-DIRTY` when the tree did not match it.
+     *
      * Asked of `git`, not reconstructed from `.git`. The first version walked up and read `.git/HEAD` itself, which
      * is correct in an ordinary checkout and **wrong in a worktree**, where `.git` is a FILE holding `gitdir: …`:
      * `readText()` threw, `runCatching` swallowed it, and the run was recorded with no commit at all. Delegating
      * covers worktrees, detached HEAD and packed-refs-only for free. Runs once per JVM, outside every timed region.
+     *
+     * **The dirty marker is the point, not decoration.** A record's whole value is that a later run can be compared
+     * against it, and a measurement taken on an edited tree did not measure the commit it names — `scripts/perf-anchor.sh`
+     * has marked exactly this since it was written, and the record did not, so an uncommitted change could be
+     * compared against its own baseline without anything saying so.
      */
-    private fun headCommit(): String = runCatching {
-        val process = ProcessBuilder("git", "rev-parse", "--short", "HEAD")
-            .redirectErrorStream(true).start()
+    internal fun headCommit(): String {
+        val head = git("rev-parse", "--short", "HEAD")?.takeIf { it.isNotEmpty() } ?: return "unknown"
+        // Repo-wide (`:/`) because the test JVM's working directory is the module, not the root — and excluding
+        // `perf-results`, since this very run leaves a new file there and would otherwise mark every honest
+        // record DIRTY. The same pathspec the anchor refresh uses, for the same reason.
+        val status = git("status", "--porcelain", "--", ":/", ":(top,exclude)perf-results")
+            ?: return "$head-UNKNOWN-STATE"
+        return commitLabel(head, dirty = status.isNotEmpty())
+    }
+
+    /** The rule, apart from the process call so it can be checked without a repository. */
+    internal fun commitLabel(head: String, dirty: Boolean): String = if (dirty) "$head-DIRTY" else head
+
+    /** Trimmed stdout of a git command, or `null` if it could not be run or failed. */
+    private fun git(vararg args: String): String? = runCatching {
+        val process = ProcessBuilder(listOf("git", *args)).redirectErrorStream(true).start()
         val text = process.inputStream.bufferedReader().readText().trim()
-        if (process.waitFor() == 0 && text.isNotEmpty()) text else null
-    }.getOrNull() ?: "unknown"
+        if (process.waitFor() == 0) text else null
+    }.getOrNull()
 
     private fun loadAverage(): Double =
         java.lang.management.ManagementFactory.getOperatingSystemMXBean().systemLoadAverage
