@@ -1024,8 +1024,8 @@ object PerfHarness {
         // 2026-08-08: take independent samples and accept the MEDIAN of them, never the best.
         //
         // This is not caution for its own sake. The tightest row in the estate is the compute-overlay
-        // $-correlation path, whose margin is 1.97x against generated Java at N=200 while its OWN spread across
-        // three sequential isolated runs is 1.07x. The margin is the larger of the two only since the steady-state
+        // $-correlation path, whose margin is 1.99x against generated Java at N=200 while its OWN spread across
+        // three sequential isolated runs is 1.036x (re-measured 2026-08-12). The margin is the larger of the two only since the steady-state
         // warm above; before it the same row spread 1.90x and came within 1.35x of a loss, so a single contended
         // sample could red the nightly — precisely the failure mode the whole enforcement split exists to remove.
         // Retrying until one attempt passes would be worse than nothing (it hides a real loss the more often it is

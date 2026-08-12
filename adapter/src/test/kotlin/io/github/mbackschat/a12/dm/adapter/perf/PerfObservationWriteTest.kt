@@ -87,6 +87,28 @@ class PerfObservationWriteTest {
     }
 
     /**
+     * **The header names the machine**, which is the field the rest of the mechanism rests on: the refresh script
+     * refuses an input that omits it and the gated lane refuses a block that does not name one. Renaming or dropping
+     * it here would leave every test green and surface only as a refresh dying with "does not name the machine it was
+     * measured on" — a producer/consumer pair with no guard between them, which a cold review found.
+     */
+    @Test
+    fun theRunHeaderNamesEveryConditionAConsumerReads() {
+        val header = PerfObservations.runHeader("2026-08-12T120000Z")
+
+        assertEquals(
+            setOf("kind", "environment", "capturedAt", "commit", "os", "arch", "jdk", "processors", "machine",
+                "loadAverage", "ci", "runId", "runnerName"),
+            header.keys,
+            "scripts/perf-anchor.sh reads environment, machine, processors, commit and jdk; perf-history.sh and " +
+                "PerformanceRecordShapeGuardTest read the rest. A key renamed here is a consumer broken there",
+        )
+        assertEquals("run", header["kind"])
+        assertEquals(PerfEnvironment.machine.model, header["machine"])
+        assertTrue((header["machine"] as String).isNotBlank())
+    }
+
+    /**
      * The failing half, and the reason this file exists. A regular file standing where the record's DIRECTORY
      * should be is the portable way to make the append fail without permission games, and it is a real shape: the
      * results directory is resolved from a system property, so one pointed at a file produces exactly this.

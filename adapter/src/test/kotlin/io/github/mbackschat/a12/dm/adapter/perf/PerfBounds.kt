@@ -63,24 +63,38 @@ internal object PerfBounds {
      * instead of one, or raise the lanes' sampling. Never widen it to make a real regression pass — refresh the
      * anchor deliberately instead, which is a reviewable diff.
      *
-     * **Both blocks became a median of three, and the tightening it was supposed to unlock is REFUSED by
-     * measurement (2026-08-12).** The quantity that binds is not the anchor's precision but how far a single run's
-     * median lands from it, and that has now been measured three times over 36 keys each: `1.147×` on an unusually
-     * quiet local machine (`loadAverage` 2.9–4.9), **`1.421×`** on the same machine under ordinary load (4.3–8.4),
-     * and `1.345×` on the 2-vCPU hosted runner. So `1.8` sits `1.27×` above the worst of them, and the `1.45` the
-     * quiet sample alone would have justified would have red-lined a healthy `FVNU@5000` (6.65 / 6.95 / 9.87 ms in
-     * three consecutive runs). Two consequences worth stating because both are counter-intuitive: a **per-class**
-     * tolerance has no basis either — the local class is the NOISIER of the two — and a median-of-N anchor narrows
-     * where the bar sits without bounding the next run at all, exactly as IF280 warned.
+     * **Tightened to 1.65 once the right quantity was named (2026-08-12).** Both blocks became a median of three,
+     * which was the stated prerequisite — and the first attempt at this paragraph then compared the wrong number.
+     * A breach is `observed > anchor × factor + slack`, so what a factor must clear is not `observed/anchor` but
+     * **`observed/anchor − slack/anchor`**, and the slack term is far from negligible: it is 3.7× the anchor on the
+     * smallest lane and 0.4 % of it on the largest. Measured over **322 observations** in three sets — 108 local
+     * in-sample, 108 local out-of-sample against the block they did not author, 106 hosted:
+     *
+     * | set | worst `observed/anchor` | worst `observed/anchor − slack/anchor` | margin of 1.65 |
+     * |---|---|---|---|
+     * | local, in-sample | 1.420 | 1.276 | 1.29× |
+     * | local, out-of-sample | 1.471 | **1.352** | **1.22×** |
+     * | hosted, 2 vCPU | 1.345 | 1.303 | 1.27× |
+     *
+     * **Zero of the 322 would breach at 1.65** (nor at 1.50, which is why the number is set by the margin rule
+     * rather than by the first value that passes). The claim this replaces — that `1.45` "would have red-lined a
+     * healthy `FVNU@5000`" — is arithmetically false: that lane anchors at 6.95 ms, so its ceiling at 1.45 is
+     * `6.95 × 1.45 + 1 = 11.08 ms` and its worst observation of 9.87 ms passes with 11 % to spare.
+     *
+     * One conclusion of that first attempt does survive, and it is counter-intuitive enough to keep: a
+     * **per-class** tolerance has no basis, because the local class is the NOISIER of the two on both quantities.
+     * So one number serves both, and a median-of-N anchor narrows where the bar sits without bounding the next run
+     * at all, exactly as IF280 warned.
      *
      * **The stale fraction is the band's other edge, and it is a report rather than a bar.** An observation below
      * `0.6 × anchor − slack` says the anchor stopped describing the code: the 2026-08-12 refresh found `PF-framed`
      * at `0.36×`/`0.39×` of its recorded numbers, i.e. ceilings sitting at up to `2.8×` the real cost, and nothing
-     * in the estate could notice. Measured basis, with the slack absorbing the sub-2 ms lanes: across the three
-     * committed runs of each class the tightest fraction any single observation reached is `0.933` locally and
-     * `0.765` on the hosted runner, so `0.6` sits `1.27×` clear of the noisier of the two.
+     * in the estate could notice. Measured basis, as the largest fraction any single observation would have tripped
+     * (`(observed + slack) / anchor`, so the slack absorbs the sub-2 ms lanes): `0.863` and `0.904` across the two
+     * local three-run sets and `0.765` on the hosted runner — binding on `COLD@20000` locally and on
+     * `complexRealWorld@1000` hosted. `0.6` therefore sits `1.27×` clear of the noisier class.
      */
-    val ANCHOR_TOLERANCE = AnchorTolerance(factor = 1.8, slackMs = 1.0, staleFraction = 0.6)
+    val ANCHOR_TOLERANCE = AnchorTolerance(factor = 1.65, slackMs = 1.0, staleFraction = 0.6)
 
     /** Near-linear: an entry point's growth may exceed the row factor by this much before it reads super-linear.
      *  STRICTER than [SUB_QUADRATIC_MAX] by construction (5.4 at a 4× factor, against that 9.0 trip line) — a

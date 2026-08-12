@@ -29,12 +29,15 @@ internal sealed interface FormalFailure {
 }
 
 /**
- * One call-local cache for the value-owned half of formal admission: repetition bounds, built-in format and
- * constraints, and a registered custom field type. Duplicate-index and required-empty failures are deliberately
- * outside it because they are relations over cells rather than properties of one stored value.
+ * One call-local cache for the value-owned half of formal admission: built-in format and constraints, and a
+ * declared custom field type. Duplicate-index and required-empty failures are deliberately outside it because they
+ * are relations over cells rather than properties of one stored value, and so is the **repetition-bound** check,
+ * which [resultAt] applies before either map (it depends on the coordinates, so keeping it inside would force the
+ * cell into the key — IF284).
  *
- * The duplicate-index prepass and [FormalResultCache] share this cache. Besides avoiding repeated parsing, this
- * preserves the custom-field-type contract of one invocation per reached concrete value.
+ * The duplicate-index prepass and [FormalResultCache] share this cache. Besides avoiding repeated parsing, it
+ * preserves the custom-field-type contract of one invocation **per cell** for a code-based validator, which is why
+ * those fields keep a cell-shaped key while everything else shares by value.
  */
 internal class ValueAdmissionCache(
     private val checks: AutoChecks,
@@ -80,9 +83,16 @@ internal class ValueAdmissionCache(
 }
 
 /**
- * One call-local formal-result cache shared by message emission and every operand read. The key includes the
- * current raw value because a computation's overlay can change a cell during the call; `(path, reps)` alone
- * would retain a stale pre-overlay result. The cache is never shared across public calls.
+ * One call-local formal-result cache shared by message emission and every operand read. Never shared across public
+ * calls.
+ *
+ * **A FILLED cell is not memoized here at all** (IF284): its result is a bound walk, a hit in the value-keyed
+ * admission memo below, and one set membership — cheaper than the key that would cache it. That also disposes of the
+ * hazard this doc used to describe: the key carried the current raw value "because a computation's overlay can change
+ * a cell during the call", and recomputing is a stronger answer to the same problem than keying around it. Only the
+ * EMPTY branch keeps a memo, on `(path, reps)`, because `requiredEmpty` reads the row context rather than a value.
+ * That memo's key is byte-for-byte the one it had before — `raw` was always `null` in the entries it held — and it
+ * therefore inherits the pre-existing property that a mid-call change to the *group's* filled-ness is not re-read.
  */
 internal class FormalResultCache(
     private val checks: AutoChecks,

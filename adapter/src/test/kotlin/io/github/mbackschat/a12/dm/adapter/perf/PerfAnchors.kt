@@ -183,27 +183,35 @@ internal object PerfObservations {
             // as a raw FileNotFoundException from a lazy initializer instead of the explanation this mechanism
             // advertises, and it did so BEFORE any observation could reach the guarded append.
             truncate(this)
-            appendLine(
-                mapOf(
-                    "kind" to "run",
-                    "environment" to PerfEnvironment.key,
-                    "capturedAt" to stamp,
-                    "commit" to headCommit(),
-                    "os" to System.getProperty("os.name"),
-                    "arch" to System.getProperty("os.arch"),
-                    "jdk" to System.getProperty("java.version"),
-                    "processors" to PerfEnvironment.processors,
-                    // The MACHINE, not just its core count: an absolute number is only comparable on the machine it
-                    // was measured on, and a refresh writes this into the block so the check can be made (IF280).
-                    "machine" to PerfEnvironment.machine.model,
-                    "loadAverage" to loadAverage(),
-                    "ci" to !System.getenv("CI").isNullOrBlank(),
-                    "runId" to System.getenv("GITHUB_RUN_ID"),
-                    "runnerName" to System.getenv("RUNNER_NAME"),
-                ),
-            )
+            appendLine(runHeader(stamp))
         }
     }
+
+    /**
+     * The run header, as a function so its **shape** can be held by a test.
+     *
+     * `machine` is the field the whole anchor mechanism rests on — `scripts/perf-anchor.sh` refuses an input that
+     * omits it and the gated lane refuses a block that does not name one — so renaming or dropping it here would
+     * break the refresh with a message about a missing machine and leave every test green.
+     * [PerfObservationWriteTest] asserts the keys a consumer reads.
+     */
+    internal fun runHeader(stamp: String): Map<String, Any?> = mapOf(
+        "kind" to "run",
+        "environment" to PerfEnvironment.key,
+        "capturedAt" to stamp,
+        "commit" to headCommit(),
+        "os" to System.getProperty("os.name"),
+        "arch" to System.getProperty("os.arch"),
+        "jdk" to System.getProperty("java.version"),
+        "processors" to PerfEnvironment.processors,
+        // The MACHINE, not just its core count: an absolute number is only comparable on the machine it
+        // was measured on, and a refresh writes this into the block so the check can be made (IF280).
+        "machine" to PerfEnvironment.machine.model,
+        "loadAverage" to loadAverage(),
+        "ci" to !System.getenv("CI").isNullOrBlank(),
+        "runId" to System.getenv("GITHUB_RUN_ID"),
+        "runnerName" to System.getenv("RUNNER_NAME"),
+    )
 
     /**
      * `-Dperf.results.dir`, which the Gradle test tasks set to the repository's `perf-results`. The fallback walks
@@ -403,19 +411,35 @@ internal object PerfAnchors {
         check(environments.isObject && !environments.isEmpty) {
             "$ANCHOR_RESOURCE must anchor at least one runner class"
         }
-        val block = environments.path(PerfEnvironment.key)
-        if (block.isMissingNode) return@lazy null
-        // Captured on a different machine in the same os/arch family: absolute times are not comparable across
-        // those, so a mismatch is the bootstrap case, not a regression. Decided once per JVM, which is why the
-        // note lives here rather than beside a per-key assertion that would print it 36 times.
-        val decision = MachineIdentity.check(
-            captured = capturedMachine(block),
-            current = PerfEnvironment.machine,
-            enforcement = TimingEnforcement.forAbsoluteAnchor(),
-        )
-        decision.note?.let { println(it) }
-        if (!decision.assertAgainstBlock) return@lazy null
-        block.path("observations").properties().associate { (key, value) -> key to value.asDouble() }
+        observationsFor(root, PerfEnvironment.key, PerfEnvironment.machine, TimingEnforcement.forAbsoluteAnchor())
+    }
+
+    /**
+     * The numbers this run may be held against, or `null` when there are none — a class with no block at all, or one
+     * whose block belongs to another machine.
+     *
+     * **Separated from the lazy and from the classpath so the JOIN is checkable.** [MachineIdentity.check] is
+     * scripted in [PerfMachineIdentityTest] and the block's `machine` field is held by [PerfAnchorResourceTest],
+     * while nothing exercised "the block names machine M, this run is on N, therefore do not assert" — the
+     * parsed-but-never-consumed shape, on the wiring between two tested ends. [PerfAnchorWiringTest] now drives
+     * this function directly.
+     *
+     * The note is emitted once per JVM because the decision is: it lives here rather than beside a per-key
+     * assertion that would print it 36 times.
+     */
+    internal fun observationsFor(
+        root: JsonNode,
+        environmentKey: String,
+        current: MachineIdentity,
+        enforcement: TimingEnforcement,
+        announce: (String) -> Unit = ::println,
+    ): Map<String, Double>? {
+        val block = root.path("environments").path(environmentKey)
+        if (block.isMissingNode) return null
+        val decision = MachineIdentity.check(capturedMachine(block), current, enforcement)
+        decision.note?.let(announce)
+        if (!decision.assertAgainstBlock) return null
+        return block.path("observations").properties().associate { (key, value) -> key to value.asDouble() }
     }
 
     /** The machine a block names, or `null` when it names none — which the gated check refuses to trust. */

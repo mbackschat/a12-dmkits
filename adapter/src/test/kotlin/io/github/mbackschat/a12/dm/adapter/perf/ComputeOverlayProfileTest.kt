@@ -11,8 +11,8 @@ import org.junit.jupiter.api.condition.EnabledIfSystemProperty
  * **Profiling driver for the compute-overlay scenarios** — the COMPUTE sibling of [EvalProfileTest], which loops
  * `validateFull` and so cannot reach this path at all.
  *
- * `CO-correlation` is the estate's tightest cross-engine row: the interpreter beats generated Java by 1.97x at
- * N=200, against 2.5x-50x everywhere else. This driver exists to find out why. Opt-in, asserts nothing.
+ * `CO-correlation` is the estate's tightest cross-engine row: the interpreter beats generated Java by 1.99x at
+ * N=200, against 2.5x-72x on 32 of the other 33 rows (re-measured 2026-08-12). This driver exists to find out why. Opt-in, asserts nothing.
  *
  * ```
  * ./build.sh :adapter:test --tests "*ComputeOverlayProfileTest" -PrunPerf -Dperf.profile=true \
