@@ -30,14 +30,14 @@ import org.junit.jupiter.api.Test
  * **Why a REDUCED scale, and why that costs nothing.** A per-unit cost needs two scales, not large ones, and the
  * kernel pays codegen per scenario plus 5x-8x the interpreter's time per evaluation — which is exactly why the
  * growth lanes went interpreter-only at N=5,000/20,000. The comparison is dimensionless (both engines run in the
- * same JVM on the same vCPUs in the same run), so a bar at a tenth of the scale decides it. Over the five runs
- * of 2026-08-12 that carry the current code, the margin is 2.5x or better on 31 of the 34 rows and 1.92x on the
- * tightest (`CO-correlation` at N=200); over the three cleaner runs taken before the parallel-context
- * optimization it is 33 of 34 and 1.97x, and that row's own spread across those was 1.07x — so the margin now
+ * same JVM on the same vCPUs in the same run), so a bar at a tenth of the scale decides it. Over the three
+ * isolated runs of 2026-08-12 that carry the current code (`094119Z` and the two before it, `loadAverage` 2.8-7.1),
+ * the margin is **2.5x or better on 32 of the 34 rows**, the median row sits at **8.50x**, and the tightest is
+ * `CO-correlation @200` at **1.99x** with a run-to-run spread of its own ratio of **1.036x** — so the margin
  * exceeds the noise it has to survive, which it did not before the steady-state warm
- * ([PerfHarness.warmToSteadyState]). Both sets are named because they are not interchangeable: the five ran under
- * measurably heavier load. The re-measurement of a comparative breach stays behind all of it as the backstop
- * (IF281, IF282). The high-N growth floors stay exactly
+ * ([PerfHarness.warmToSteadyState]). The two rows under 2.5x are that row and `CO-correlation @800` (2.49x); the
+ * widest ratio spread in the set is 1.544x and the median 1.134x. The re-measurement of a comparative breach stays
+ * behind all of it as the backstop (IF281, IF282). The high-N growth floors stay exactly
  * where they are: a reduced scale dilutes a quadratic term's share, so it is a weaker place to detect a blowup and
  * these lanes never replace those.
  *
