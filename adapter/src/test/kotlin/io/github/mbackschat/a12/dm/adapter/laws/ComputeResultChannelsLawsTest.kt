@@ -116,6 +116,10 @@ class ComputeResultChannelsLawsTest {
      * genuinely computed empty string. That is why `KernelProbeArtifact.Outcome` normalizes a clear to an
      * absent value rather than passing this through: the kernel's `""` here is a constant, carrying no
      * information, and dropping it is what keeps the two states distinguishable.
+     *
+     * **Both codegen strategies are asserted**, added 2026-08-12 after a peer review observed that the helper
+     * read the shared dynamic engine alone: a normalization applied to every artifact cannot rest on one
+     * generator's behaviour, and "for every clear" was a claim wider than the run behind it.
      */
     @Test
     fun aClearedInstanceReportsAnEmptyStringValueRatherThanTheInputItErased() {
@@ -129,8 +133,13 @@ class ComputeResultChannelsLawsTest {
                 .field("/LineItem/UnitPrice", "9.00", 1, 1))
 
         assertEquals(
-            listOf("/LineItem[1]/UnitPrice|<present>|"), channels,
-            "the cleared UnitPrice reports a PRESENT empty string, not an absent value and not the input 9.00",
+            listOf(
+                "groovy-dynamic|/LineItem[1]/UnitPrice|<present>|",
+                "java-static|/LineItem[1]/UnitPrice|<present>|",
+            ),
+            channels,
+            "the cleared UnitPrice reports a PRESENT empty string on BOTH strategies, not an absent value " +
+                "and not the input 9.00",
         )
     }
 

@@ -13,10 +13,17 @@ import io.github.mbackschat.a12.dm.rulekit.dsl.NumberExpr;
 
 /**
  * KERNEL-FINDINGS §9 — the <b>GROUP-scope operand</b> of the entity-list aggregates, measured 2026-08-12 on
- * kernel 30.8.1 and identical for {@code Sum}, {@code MaxValue}, {@code MinValue} and
- * {@code NumberOfDifferentValues}. The kernel expands a group operand to its contained fields
- * ({@code ExpandService}, KERNEL-FINDINGS {@code kf12}) and applies the ordinary entity-list gates to the
- * expansion.
+ * kernel 30.8.1. The kernel expands a group operand to its contained fields ({@code ExpandService},
+ * KERNEL-FINDINGS {@code kf12}) and applies the ordinary entity-list gates to the expansion.
+ *
+ * <p><b>What is carrier-independent and what is not</b>, because an earlier draft of this javadoc said
+ * "identical for" the whole family and that is wrong for one row. The <i>structural</i> gates — the param law,
+ * the wildcard requirement, the two duplicate arms — are measured across carriers and agree. The <b>kind</b>
+ * gate does not: it reports the carrier's own code for the same operand ({@code MVK_NO_NUMBER} under
+ * {@code Sum}, {@code MVK_NOT_SORTABLE} under {@code MaxValue},
+ * {@code MVK_STRING_ENUM_AND_NON_STRING_ENUM} under {@code NumberOfDifferentValues}), so it is the expansion's
+ * kinds judged against <i>this</i> aggregate's admitted set, not one shared verdict. Read each row below for
+ * the carriers it actually names.
  *
  * <p><b>The measured set is the design</b> — it is what decided which gates {@code AggregateOperand}
  * pre-checks and which it delegates:
@@ -30,6 +37,8 @@ import io.github.mbackschat.a12.dm.rulekit.dsl.NumberExpr;
  *   <tr><td>a group + a descendant of itself</td><td>{@code MVK_DUPLICATE_PARAM2}</td></tr>
  *   <tr><td>a REPEATABLE group, unstarred</td><td>{@code MVK_NO_WILDCARD}</td></tr>
  *   <tr><td>a NON-repeatable group, unstarred</td><td>ACCEPT</td></tr>
+ *   <tr><td>a NON-repeatable group, STARRED</td><td><i>not measured</i> — no row below authors it, so do not
+ *       read the row above as "a star is refused here"</td></tr>
  *   <tr><td>an expansion of the wrong kind</td><td>{@code MVK_NO_NUMBER} / {@code MVK_NOT_SORTABLE} / …</td></tr>
  * </table>
  *

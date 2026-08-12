@@ -752,14 +752,24 @@ public final class RuntimeLaws {
         return resultChannelsOf(engine.rt.compute(engine.instance(doc), config(null, Locale.US)));
     }
 
-    /** Each cleared instance as {@code pointer|<present>|<text>} or {@code pointer|<absent>} — the measurement
-     *  behind normalizing a clear to an absent value in the probe artifact rather than passing the kernel's
-     *  own string through ({@link ComputeResultChannelsLawsTest}). Presence and text are reported separately
-     *  because that is exactly the distinction under test. */
+    /** Each cleared instance as {@code strategy|pointer|<present>|<text>} or {@code strategy|pointer|<absent>} —
+     *  the measurement behind normalizing a clear to an absent value in the probe artifact rather than passing
+     *  the kernel's own string through ({@link ComputeResultChannelsLawsTest}). Presence and text are reported
+     *  separately because that is exactly the distinction under test, and <b>both codegen strategies</b> are
+     *  read because the claim it grounds is about the kernel rather than about one generator — reading only the
+     *  shared dynamic engine would have stated a one-strategy result as the contract. */
     static List<String> clearedInstanceValues(String modelJson, Doc doc) {
-        KernelEngine engine = sharedKernelEngine(modelJson);
-        return engine.rt.compute(engine.instance(doc), config(null, Locale.US)).getClearedFieldInstances()
-                .stream().map(c -> fmtPointer(c.pointer()) + "|"
+        KernelEngine dynamic = sharedKernelEngine(modelJson);
+        JavaKernelEngine statik = sharedKernelJavaEngine(modelJson);
+        List<String> out = new ArrayList<>(
+                clearedInstanceValues("groovy-dynamic", dynamic.rt, dynamic.instance(doc)));
+        out.addAll(clearedInstanceValues("java-static", statik.rt, statik.instance(doc)));
+        return List.copyOf(out);
+    }
+
+    private static List<String> clearedInstanceValues(String strategy, IDocumentRtService rt, DocumentV2 instance) {
+        return rt.compute(instance, config(null, Locale.US)).getClearedFieldInstances().stream()
+                .map(c -> strategy + "|" + fmtPointer(c.pointer()) + "|"
                         + c.getStringValue().map(value -> "<present>|" + value).orElse("<absent>"))
                 .toList();
     }
