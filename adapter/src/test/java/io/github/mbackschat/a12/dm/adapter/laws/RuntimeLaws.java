@@ -618,6 +618,33 @@ public final class RuntimeLaws {
     }
 
     /**
+     * One computed-field outcome with its pointer still <b>typed</b> — the same three buckets {@link Computed}
+     * carries, before either rendering. {@link KernelRuntimeProbe} needs the typed value because dmtool's
+     * published {@code a12-message-address} form is decided <em>on the pointer</em> (canonical A12 when it names
+     * one cell, the house form otherwise) rather than by re-reading a string, so a pre-rendered
+     * {@link Computed#pointer} would reach the artifact in the wrong dialect for the artifact's own contract.
+     */
+    record ComputedInstance(String path, DocumentPointer pointer, Optional<String> value, boolean cleared,
+            boolean errored) {
+    }
+
+    /**
+     * The <b>unprojected</b> {@code compute()} observation: every outcome with its typed pointer, plus the raw
+     * formal operand errors — the compute twin of {@link KernelEngine#validationMessages}, and it exists for the
+     * same measured reason. {@link Msg} carries neither {@code getSeverity} nor the interpolated
+     * {@code getErrorText}, and {@link #toMsg} is the one construction site every differential, fuzzer and
+     * corpus leg goes through, so widening it to serve the probe would charge all of them — including classes
+     * sharing a Gradle task with a timing floor — for channels none of them reads.
+     */
+    record ComputationObservation(List<ComputedInstance> outcomes, List<IMessage> formalErrorsInOperands) {
+
+        ComputationObservation {
+            outcomes = List.copyOf(outcomes);
+            formalErrorsInOperands = List.copyOf(formalErrorsInOperands);
+        }
+    }
+
+    /**
      * Run the kernel's {@code compute()} over an explicit document instance and return every
      * computed-field outcome (value / cleared / errored). The discriminator for "does an empty operand
      * yield a value or nothing": a field in {@link #cleared(List, String)} computed nothing, a field with
@@ -658,10 +685,9 @@ public final class RuntimeLaws {
     }
 
     private static ComputationDetail computeDetailWithFormalErrors(IDocumentRtService rt, DocumentV2 instance) {
-        IDocumentComputationResult result = rt.compute(instance, config(null, Locale.US));
-        return new ComputationDetail(
-                computeDetailOf(result),
-                result.getFormalErrorsInOperands().stream().map(RuntimeLaws::toMsg).toList());
+        ComputationObservation observation = observationOf(rt.compute(instance, config(null, Locale.US)));
+        return new ComputationDetail(rendered(observation.outcomes()),
+                observation.formalErrorsInOperands().stream().map(RuntimeLaws::toMsg).toList());
     }
 
     /** Select the <b>three-channel change projection</b> from the fuller five-channel {@link IDocumentComputationResult}
@@ -670,14 +696,46 @@ public final class RuntimeLaws {
      *  five-channel supplement, locked by {@link ComputeResultChannelsLawsTest}). Shared by the legacy
      *  {@link #computeDetail} and the modern clock-pinnable {@link #computeModern} path. */
     private static List<Computed> computeDetailOf(IDocumentComputationResult result) {
-        List<Computed> out = new ArrayList<>();
+        return rendered(instancesOf(result));
+    }
+
+    /** Render classified instances the interpreter's way — the projection {@link Computed} publishes. */
+    private static List<Computed> rendered(List<ComputedInstance> instances) {
+        return instances.stream()
+                .map(c -> new Computed(c.path(), fmtPointer(c.pointer()), c.value(), c.cleared(), c.errored()))
+                .toList();
+    }
+
+    /**
+     * The one site <b>this file</b> classifies a computed instance at: every route out of a {@code compute()}
+     * result that carries the value/cleared/errored distinction — {@link #computeDetailOf},
+     * {@link #computeDetailWithFormalErrors} and {@link #observationOf} — reaches it, so the differentials and
+     * the probe cannot come to disagree about a kernel fact. It is <em>not</em> the only classifier in the
+     * repository: {@link #computeSorted} and {@link #resultChannelsOf} enumerate the same channels for their
+     * own payloads here, and {@code adapter/src/main/java/…/KernelAdapter.compute} is the shipped one.
+     *
+     * <p><b>The cleared arm normalizes deliberately</b> rather than passing the kernel's value through. A
+     * cleared instance's {@code getStringValue()} is {@code Optional.of("")} — present and empty, measured
+     * 2026-08-12 and locked by {@link ComputeResultChannelsLawsTest} — for <em>every</em> clear, so the string
+     * carries no information; forwarding it would make a clear indistinguishable from a genuinely computed
+     * empty string in any consumer that reads value presence. Dropping the constant is what keeps the two
+     * states apart.
+     */
+    private static List<ComputedInstance> instancesOf(IDocumentComputationResult result) {
+        List<ComputedInstance> out = new ArrayList<>();
         result.getComputedFieldInstancesWithChanges().forEach(c ->
-                out.add(new Computed(c.getPath(), fmtPointer(c.pointer()), c.getStringValue(), false, false)));
+                out.add(new ComputedInstance(c.getPath(), c.pointer(), c.getStringValue(), false, false)));
         result.getComputedFieldInstancesWithErrors().forEach(c ->
-                out.add(new Computed(c.getPath(), fmtPointer(c.pointer()), c.getStringValue(), false, true)));
+                out.add(new ComputedInstance(c.getPath(), c.pointer(), c.getStringValue(), false, true)));
         result.getClearedFieldInstances().forEach(c ->
-                out.add(new Computed(c.getPath(), fmtPointer(c.pointer()), Optional.empty(), true, false)));
+                out.add(new ComputedInstance(c.getPath(), c.pointer(), Optional.empty(), true, false)));
         return out;
+    }
+
+    /** The unprojected observation of one {@code compute()} run, shared by both codegen strategies' probe seams
+     *  exactly as {@link #instancesOf} is shared by both differential seams. */
+    private static ComputationObservation observationOf(IDocumentComputationResult result) {
+        return new ComputationObservation(instancesOf(result), List.copyOf(result.getFormalErrorsInOperands()));
     }
 
     /** All five {@link IDocumentComputationResult} channels plus the {@code noErrorOccurred} predicate, over a
@@ -692,6 +750,18 @@ public final class RuntimeLaws {
     static ResultChannels resultChannels(String modelJson, Doc doc) {
         KernelEngine engine = sharedKernelEngine(modelJson);
         return resultChannelsOf(engine.rt.compute(engine.instance(doc), config(null, Locale.US)));
+    }
+
+    /** Each cleared instance as {@code pointer|<present>|<text>} or {@code pointer|<absent>} — the measurement
+     *  behind normalizing a clear to an absent value in the probe artifact rather than passing the kernel's
+     *  own string through ({@link ComputeResultChannelsLawsTest}). Presence and text are reported separately
+     *  because that is exactly the distinction under test. */
+    static List<String> clearedInstanceValues(String modelJson, Doc doc) {
+        KernelEngine engine = sharedKernelEngine(modelJson);
+        return engine.rt.compute(engine.instance(doc), config(null, Locale.US)).getClearedFieldInstances()
+                .stream().map(c -> fmtPointer(c.pointer()) + "|"
+                        + c.getStringValue().map(value -> "<present>|" + value).orElse("<absent>"))
+                .toList();
     }
 
     private static ResultChannels resultChannelsOf(IDocumentComputationResult result) {
@@ -957,6 +1027,18 @@ public final class RuntimeLaws {
             return List.copyOf(rt.validateFull(instance, config(clock, locale)).getMessages());
         }
 
+        /**
+         * One {@code compute()} over an already-built instance, <b>unprojected</b> — the compute twin of
+         * {@link #validationMessages}, with {@link JavaKernelEngine#computation} as its static-JAVA counterpart,
+         * and it exists for the same reason ({@link ComputationObservation}).
+         *
+         * <p>Clock- and locale-pinnable on the same grounds as validation: an observation a consumer pins by
+         * SHA-256 cannot read the wall clock, and a formal operand error carries localized text.
+         */
+        ComputationObservation computation(DocumentV2 instance, Date clock, Locale locale) {
+            return observationOf(rt.compute(instance, config(clock, locale)));
+        }
+
         /** Full signatures under explicit runtime bindings; model/document construction stays build-once. */
         public List<String> validationSignaturesSorted(DocumentV2 instance, Locale locale, Date clock,
                 Map<String, ICustomCondition> customConditions) {
@@ -1194,6 +1276,11 @@ public final class RuntimeLaws {
         /** The static-JAVA twin of {@link KernelEngine#validationMessages} — same contract, same reason. */
         List<IMessage> validationMessages(DocumentV2 instance, Date clock, Locale locale) {
             return List.copyOf(rt.validateFull(instance, config(clock, locale)).getMessages());
+        }
+
+        /** The static-JAVA twin of {@link KernelEngine#computation} — same contract, same reason. */
+        ComputationObservation computation(DocumentV2 instance, Date clock, Locale locale) {
+            return observationOf(rt.compute(instance, config(clock, locale)));
         }
 
         /** Full signatures under explicit runtime bindings; code generation remains outside every timed call. */

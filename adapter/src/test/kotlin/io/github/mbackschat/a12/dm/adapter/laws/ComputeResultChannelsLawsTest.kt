@@ -105,6 +105,35 @@ class ComputeResultChannelsLawsTest {
         )
     }
 
+    /**
+     * What a CLEARED instance carries in `getStringValue()` — measured 2026-08-12, because the accessor's own
+     * javadoc covers only a *computed* value ("can be empty in case of errors") and says nothing about an
+     * instance that was filled in the input and deliberately NOT computed.
+     *
+     * **It is `Optional.of("")` — PRESENT and empty, not absent**, and it does not echo the input cell: the
+     * stale `9.00` is gone. So the optional is not a has-value flag on this channel, and any consumer that
+     * renders `getStringValue()` verbatim would publish `""` for every clear — aliasing a clear with a
+     * genuinely computed empty string. That is why `KernelProbeArtifact.Outcome` normalizes a clear to an
+     * absent value rather than passing this through: the kernel's `""` here is a constant, carrying no
+     * information, and dropping it is what keeps the two states distinguishable.
+     */
+    @Test
+    fun aClearedInstanceReportsAnEmptyStringValueRatherThanTheInputItErased() {
+        val channels = RuntimeLaws.clearedInstanceValues(model,
+            RuntimeLaws.doc().group("/LineItem", 1)
+                .field("/LineItem/Sku", "ACME-1", 1, 1)
+                .field("/LineItem/DisplaySku", "ACME-1", 1, 1)
+                .field("/LineItem/Label", "ACME-1", 1, 1)
+                .field("/LineItem/GrossAmount", "10", 1, 1)
+                .field("/LineItem/Units", "0", 1, 1)
+                .field("/LineItem/UnitPrice", "9.00", 1, 1))
+
+        assertEquals(
+            listOf("/LineItem[1]/UnitPrice|<present>|"), channels,
+            "the cleared UnitPrice reports a PRESENT empty string, not an absent value and not the input 9.00",
+        )
+    }
+
     @Test
     fun anOperandDomainFailurePopulatesTheFormalOperandChannelAndFlipsNoErrorOccurred() {
         // Units 0 → RoundAccounting([GrossAmount] / 0, 2) is a domain failure: the UnitPrice target is invalid,

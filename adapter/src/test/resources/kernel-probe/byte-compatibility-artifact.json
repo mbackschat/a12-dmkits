@@ -1,0 +1,89 @@
+{
+  "schemaVersion" : 1,
+  "producer" : {
+    "dmtoolVersion" : "0.0.0-test",
+    "kernel" : {
+      "builtAgainst" : "30.8.1",
+      "runtime" : "30.8.1"
+    },
+    "source" : {
+      "revision" : "0000000000000000000000000000000000000000",
+      "state" : "CLEAN"
+    }
+  },
+  "request" : {
+    "model" : "order.dm.json",
+    "locale" : "en_US",
+    "clock" : "2026-08-11T00:00:00Z"
+  },
+  "rows" : [
+    {
+      "name" : "filled-and-unfilled",
+      "enginesAgree" : true,
+      "engines" : [
+        {
+          "engine" : "kernel-groovy-dynamic",
+          "messages" : [
+            {
+              "code" : "POLOMISSION",
+              "field" : "Order/Quantity",
+              "severity" : "ERROR",
+              "type" : "OMISSION_ERROR",
+              "message" : "Quantity is missing.",
+              "referenced" : [
+                "Order/BackorderQuantity",
+                "Order/Quantity"
+              ],
+              "fillToFix" : [
+                "Order/BackorderQuantity",
+                "Order/Quantity"
+              ]
+            },
+            {
+              "code" : "POLVALUE",
+              "field" : "/Order[1]/Items[0]/Count",
+              "severity" : "ERROR",
+              "type" : "VALUE_ERROR",
+              "message" : "Count is too large.",
+              "referenced" : [
+                "/Order[1]/Items[0]/Count"
+              ],
+              "fillToFix" : [ ]
+            }
+          ]
+        },
+        {
+          "engine" : "kernel-java-static",
+          "messages" : [
+            {
+              "code" : "POLOMISSION",
+              "field" : "Order/Quantity",
+              "severity" : "ERROR",
+              "type" : "OMISSION_ERROR",
+              "message" : "Quantity is missing.",
+              "referenced" : [
+                "Order/BackorderQuantity",
+                "Order/Quantity"
+              ],
+              "fillToFix" : [
+                "Order/BackorderQuantity",
+                "Order/Quantity"
+              ]
+            },
+            {
+              "code" : "POLVALUE",
+              "field" : "/Order[1]/Items[0]/Count",
+              "severity" : "ERROR",
+              "type" : "VALUE_ERROR",
+              "message" : "Count is too large.",
+              "referenced" : [
+                "/Order[1]/Items[0]/Count"
+              ],
+              "fillToFix" : [ ]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

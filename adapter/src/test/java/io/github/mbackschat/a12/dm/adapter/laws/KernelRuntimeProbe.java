@@ -8,16 +8,21 @@ import java.nio.file.Path;
 import java.time.Instant;
 import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.Date;
+import java.util.EnumSet;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Optional;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.mgmtp.a12.kernel.md.document.apiV2.DocumentPointer;
 import com.mgmtp.a12.kernel.md.document.apiV2.PartiallyKnownDocumentMultiPointer;
 import com.mgmtp.a12.kernel.md.rt.api.IMessage;
 
@@ -31,10 +36,14 @@ import io.github.mbackschat.a12.dm.interpreter.eval.PointerKt;
 import io.github.mbackschat.a12.dm.rulekit.validate.KernelVersion;
 
 /**
- * Runs the <b>real kernel's runtime validation</b> over a supplied model and documents and writes a deterministic
- * observation artifact — the JVM-only, non-shipped route by which a consumer asks a kernel runtime question
- * without a bespoke Kotlin test per question. Driven by {@code ./gradlew :adapter:kernelProbe
+ * Runs the <b>real kernel's runtime entry points</b> over a supplied model and documents and writes a
+ * deterministic observation artifact — the JVM-only, non-shipped route by which a consumer asks a kernel runtime
+ * question without a bespoke Kotlin test per question. Driven by {@code ./gradlew :adapter:kernelProbe
  * -Prequest=<request.json> -Pout=<artifact.json>}.
+ *
+ * <p><b>What is observed is the request's choice</b> ({@link Observation}): {@code validateFull} always, and
+ * {@code compute} when asked for. A request that does not ask for compute produces the artifact it always
+ * produced, byte for byte, because consumers pin these bytes by SHA-256.
  *
  * <p><b>It is a measurement instrument, not a verb.</b> Kernel runtime evaluation does Groovy runtime code
  * generation and is not AOT-compilable, which is exactly why dmtool's runtime verbs run the kernel-free
@@ -80,10 +89,66 @@ public final class KernelRuntimeProbe {
     public record Row(String name, String documentJson) {
     }
 
-    /** A parsed request: the model to evaluate, the evaluation locale, an optional pinned clock, and the rows. */
-    public record Request(String modelRef, String modelJson, Locale locale, Optional<Date> clock, List<Row> rows) {
+    /**
+     * A kernel runtime entry point the probe can be asked to observe. Named on the wire exactly as the kernel
+     * names the method, so a request says which kernel API produced a block rather than a probe-local synonym.
+     */
+    public enum Observation {
 
+        /** {@code IDocumentRtService.validateFull} — the message channel, always observed. */
+        VALIDATE_FULL("validateFull"),
+
+        /** {@code IDocumentRtService.compute} — the computed-field outcomes and the operand formal errors. */
+        COMPUTE("compute");
+
+        private final String wireName;
+
+        Observation(String wireName) {
+            this.wireName = wireName;
+        }
+
+        /** The name a request spells. */
+        public String wireName() {
+            return wireName;
+        }
+
+        static Observation of(String wireName) {
+            for (Observation observation : values()) {
+                if (observation.wireName.equals(wireName)) {
+                    return observation;
+                }
+            }
+            throw new IllegalArgumentException("'observe' names an unknown observation '" + wireName
+                    + "'; the probe observes " + names());
+        }
+
+        static String names() {
+            return Arrays.stream(values()).map(Observation::wireName).collect(Collectors.joining(", "));
+        }
+    }
+
+    /**
+     * A parsed request: the model to evaluate, the evaluation locale, an optional pinned clock, what to observe,
+     * and the rows.
+     */
+    public record Request(String modelRef, String modelJson, Locale locale, Optional<Date> clock,
+            Set<Observation> observe, List<Row> rows) {
+
+        /**
+         * The {@code validateFull} invariant lives HERE, not in the request parser, because this record is
+         * public: a caller that built one directly would otherwise produce engine blocks whose {@code messages}
+         * was empty because nobody looked — indistinguishable from a row where nothing fired, which is the
+         * failure mode §5's refusal exists to prevent. Checked before {@code EnumSet.copyOf}, whose own
+         * "Collection is empty" would otherwise speak in place of the domain rule.
+         */
         public Request {
+            if (!observe.contains(Observation.VALIDATE_FULL)) {
+                throw new IllegalArgumentException("'observe' must include '"
+                        + Observation.VALIDATE_FULL.wireName() + "': the artifact carries no key saying a "
+                        + "channel went unobserved, so an empty message list nobody looked at would be "
+                        + "indistinguishable from one where nothing fired. Received " + observe);
+            }
+            observe = Collections.unmodifiableSet(EnumSet.copyOf(observe));
             rows = List.copyOf(rows);
         }
     }
@@ -124,6 +189,9 @@ public final class KernelRuntimeProbe {
         Locale locale = root.hasNonNull("locale") ? locale(root.get("locale").asText()) : DEFAULT_LOCALE;
         Optional<Date> clock = root.hasNonNull("clock") ? Optional.of(clock(root.get("clock").asText()))
                 : Optional.empty();
+        // Read BEFORE any file is opened: a syntactic mistake in the request should be reported as itself,
+        // not masked by whichever document path happens to be missing too.
+        Set<Observation> observe = observe(root);
 
         JsonNode rowNodes = required(root, "rows");
         if (!rowNodes.isArray() || rowNodes.isEmpty()) {
@@ -139,7 +207,28 @@ public final class KernelRuntimeProbe {
             }
             rows.add(new Row(name, document(rowNode, base, name)));
         }
-        return new Request(modelRef, read(base, modelRef), locale, clock, rows);
+        return new Request(modelRef, read(base, modelRef), locale, clock, observe, rows);
+    }
+
+    /**
+     * What the request asked the kernel for, defaulting to validation alone — the shape every request had
+     * before {@code compute} was observable, and the reason an existing request's artifact is unchanged.
+     *
+     * <p>The {@code validateFull} requirement itself is {@link Request}'s invariant, not this parser's; here
+     * only the wire-level shape is decided.
+     */
+    private static Set<Observation> observe(JsonNode root) {
+        if (!root.hasNonNull("observe")) {
+            return EnumSet.of(Observation.VALIDATE_FULL);
+        }
+        JsonNode node = root.get("observe");
+        if (!node.isArray() || node.isEmpty()) {
+            throw new IllegalArgumentException("'observe' must be a non-empty array naming what to observe ("
+                    + Observation.names() + "), or be omitted for " + Observation.VALIDATE_FULL.wireName());
+        }
+        Set<Observation> observe = EnumSet.noneOf(Observation.class);
+        node.forEach(entry -> observe.add(Observation.of(entry.asText())));
+        return observe;
     }
 
     /** A12 spells a locale {@code language_COUNTRY} ({@code en_US}, {@code de_DE}), not as a BCP-47 tag. */
@@ -205,14 +294,24 @@ public final class KernelRuntimeProbe {
         Date clock = request.clock().orElse(null);
         Locale locale = request.locale();
 
+        boolean compute = request.observe().contains(Observation.COMPUTE);
+
         List<KernelProbeArtifact.Row> rows = new ArrayList<>();
         for (Row row : request.rows()) {
-            String document = row.documentJson();
+            // One immutable DocumentV2 per strategy, observed by every requested entry point: DocumentV2 is
+            // immutable and neither validateFull nor compute writes to it, so a second deserialization would
+            // only be a second chance to differ.
+            var groovyInstance = groovyDynamic.instance(row.documentJson());
+            var javaInstance = javaStatic.instance(row.documentJson());
             rows.add(new KernelProbeArtifact.Row(row.name(), List.of(
-                    new KernelProbeArtifact.Engine(GROOVY_DYNAMIC, project(groovyDynamic.validationMessages(
-                            groovyDynamic.instance(document), clock, locale))),
-                    new KernelProbeArtifact.Engine(JAVA_STATIC, project(javaStatic.validationMessages(
-                            javaStatic.instance(document), clock, locale))))));
+                    new KernelProbeArtifact.Engine(GROOVY_DYNAMIC,
+                            project(groovyDynamic.validationMessages(groovyInstance, clock, locale)),
+                            compute ? Optional.of(project(groovyDynamic.computation(groovyInstance, clock, locale)))
+                                    : Optional.empty()),
+                    new KernelProbeArtifact.Engine(JAVA_STATIC,
+                            project(javaStatic.validationMessages(javaInstance, clock, locale)),
+                            compute ? Optional.of(project(javaStatic.computation(javaInstance, clock, locale)))
+                                    : Optional.empty()))));
         }
         return new KernelProbeArtifact(header, rows);
     }
@@ -248,6 +347,22 @@ public final class KernelRuntimeProbe {
                 addresses(message.getRefOmissionErrorResponsiblePointers()));
     }
 
+    /**
+     * One strategy's {@code compute()} run. The operand formal errors are projected through the <b>same</b>
+     * {@link #project(IMessage)} the message channel uses, so one parser reads both and a consumer comparing an
+     * operand error with the validation message it explains is comparing like with like.
+     */
+    private static KernelProbeArtifact.Computations project(RuntimeLaws.ComputationObservation observation) {
+        return new KernelProbeArtifact.Computations(
+                observation.outcomes().stream().map(KernelRuntimeProbe::project).toList(),
+                project(observation.formalErrorsInOperands()));
+    }
+
+    private static KernelProbeArtifact.Outcome project(RuntimeLaws.ComputedInstance instance) {
+        return new KernelProbeArtifact.Outcome(
+                address(instance.pointer()), instance.value(), instance.cleared(), instance.errored());
+    }
+
     private static List<String> addresses(Collection<PartiallyKnownDocumentMultiPointer> pointers) {
         return pointers.stream().map(KernelRuntimeProbe::address).toList();
     }
@@ -263,11 +378,26 @@ public final class KernelRuntimeProbe {
      * {@code docs/INTERPRETER-API-GAPS.md} rather than left as silent duplication.
      */
     private static String address(PartiallyKnownDocumentMultiPointer pointer) {
+        return address(pointer.fullName(), pointer.repetitionIndexes());
+    }
+
+    /**
+     * The same policy over a computed field instance's {@link DocumentPointer}. It is a different A12 type from
+     * a message pointer — exact rather than partially known — but the artifact publishes <b>one</b> address
+     * contract, so it is decided by the same branch rather than by a second rendering rule. In practice an
+     * exact pointer takes the canonical arm; running it through the same code is what keeps that a measured
+     * outcome instead of an assumption.
+     */
+    private static String address(DocumentPointer pointer) {
+        return address(pointer.fullName(), pointer.repetitionIndexes());
+    }
+
+    private static String address(String fullName, List<Integer> repetitionIndexes) {
         A12PartiallyKnownMultiPointer typed =
-                A12PartiallyKnownMultiPointer.Companion.of(pointer.fullName(), pointer.repetitionIndexes());
+                A12PartiallyKnownMultiPointer.Companion.of(fullName, repetitionIndexes);
         A12Pointer exact = typed.getRepetitionIndexes().isEmpty() ? null : typed.toExactPointer();
         return exact != null ? A12PointerFormat.INSTANCE.render(exact)
-                : PointerKt.formatPointer(pointer.fullName(), pointer.repetitionIndexes());
+                : PointerKt.formatPointer(fullName, repetitionIndexes);
     }
 
     // ---- entry point -----------------------------------------------------------------------------

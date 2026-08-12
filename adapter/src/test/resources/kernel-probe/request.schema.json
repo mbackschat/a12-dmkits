@@ -22,6 +22,17 @@
       "format": "date-time",
       "description": "an ISO-8601 instant pinning the kernel's `currentDateForTest` (both Today and Now) on BOTH strategies. Required for a byte-reproducible artifact whenever any rule reads the current date; omitted, the real clock is used and only clock-independent models reproduce."
     },
+    "observe": {
+      "type": "array",
+      "minItems": 1,
+      "default": ["validateFull"],
+      "contains": { "const": "validateFull" },
+      "items": {
+        "enum": ["validateFull", "compute"],
+        "description": "a kernel runtime entry point, named as the kernel names the method: `validateFull` produces each engine block's `messages`, `compute` its `computations`."
+      },
+      "description": "which kernel runtime entry points to observe. OMIT IT for validation alone — that is the default, and a request without this key produces a BYTE-IDENTICAL artifact to the one it produced before `compute` was observable, so an already-pinned SHA-256 stays valid. `validateFull` may not be dropped: an engine block's `messages` is a REQUIRED key of schemaVersion 1, so a list left empty because nobody looked would be indistinguishable from one where nothing fired. (`computations` avoids that ambiguity by being absent when unobserved; `messages` was not given the same treatment because making a required key optional changes the shape of artifacts consumers already pin. The refusal is therefore a compatibility decision, and it costs a compute-only consumer a validation pass per row per strategy.) Duplicates are accepted — this is a set. An explicit empty array is refused: omitting the key means the default, writing `[]` means a mistake."
+    },
     "rows": {
       "type": "array",
       "minItems": 1,
@@ -55,6 +66,13 @@
       "rows": [
         { "name": "billing-filled", "document": "billing-filled.json" },
         { "name": "empty-order", "documentInline": { "Order": {} } }
+      ]
+    },
+    {
+      "model": "order.dm.json",
+      "observe": ["validateFull", "compute"],
+      "rows": [
+        { "name": "shipping-fee-malformed", "document": "shipping-fee-malformed.json" }
       ]
     }
   ]

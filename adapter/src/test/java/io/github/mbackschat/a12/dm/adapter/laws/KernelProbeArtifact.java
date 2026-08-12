@@ -22,17 +22,26 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
  * no probe (the ratified oracle records a static-Java split, never adopts it — INTERPRETER-FINDINGS IF136,
  * {@code docs/CONFORMANCE-CORPUS-SPEC.md} §11).
  *
- * <p><b>Determinism is structural, not conventional.</b> {@link Engine} sorts its messages in its compact
- * constructor, the header carries no clock reading, and the renderer pins a {@code "\n"} indenter rather than
- * inheriting the platform separator. So two runs over identical input and an identical tree produce identical
- * bytes, which is what lets a consumer pin the artifact by SHA-256.
+ * <p><b>Determinism is structural, not conventional.</b> {@link Engine} sorts its messages and {@link
+ * Computations} its outcomes and operand errors, each in a compact constructor; the header carries no clock
+ * reading; and the renderer pins a {@code "\n"} indenter rather than inheriting the platform separator. So two
+ * runs over identical input and an identical tree produce identical bytes, which is what lets a consumer pin the
+ * artifact by SHA-256.
  *
  * <p>Contract + key meanings: {@code docs/KERNEL-PROBE-SPEC.md}; machine-readable shape:
  * {@code adapter/src/test/resources/kernel-probe/artifact.schema.json}.
  */
 public record KernelProbeArtifact(Header header, List<Row> rows) {
 
-    /** The artifact shape's own version, bumped when a key's presence or meaning changes. */
+    /**
+     * The artifact shape's own version, bumped when a key's presence or meaning changes.
+     *
+     * <p><b>Why the optional {@code computations} block did NOT bump it.</b> A consumer only receives that block
+     * by asking for it ({@code observe: ["validateFull", "compute"]}), so no artifact any existing consumer can
+     * obtain changes shape, and no existing key changes meaning. Bumping would instead have broken the harder
+     * guarantee: a request that does not ask for compute must produce <em>byte-identical</em> output, because
+     * consumers pin these bytes by SHA-256, and the version rides in the first line of every artifact.
+     */
     public static final int SCHEMA_VERSION = 1;
 
     public KernelProbeArtifact {
@@ -64,22 +73,103 @@ public record KernelProbeArtifact(Header header, List<Row> rows) {
         }
 
         /**
-         * Whether every strategy produced the identical message list. Derived from {@link #engines} — see the
-         * class note on why this is not a field a caller may set.
+         * Whether every strategy produced the identical observation — <b>every</b> channel it reported, not the
+         * messages alone: a compute-only split is exactly as much a kernel fact as a message split, and an
+         * agreement flag that ignored a channel would state agreement the row's own content contradicts. Derived
+         * from {@link #engines}; see the class note on why this is not a field a caller may set.
          */
         public boolean enginesAgree() {
-            return engines.stream().map(Engine::messages).distinct().count() <= 1;
+            return engines.stream().map(Engine::observation).distinct().count() <= 1;
         }
+    }
+
+    /** What a strategy reported, minus which strategy reported it — the value {@link Row#enginesAgree} compares. */
+    private record Observation(List<Message> messages, Optional<Computations> computations) {
     }
 
     /**
      * One strategy's complete observation of a row. {@code engine} uses the corpus strategy vocabulary
      * ({@code kernel-groovy-dynamic}, {@code kernel-java-static}) rather than a probe-local one.
+     *
+     * <p>{@code computations} is present exactly when the request asked for {@code compute}. Absent is
+     * <b>not</b> "nothing computed": it is "not observed", and the distinction is the same one the probe's
+     * refusal of an inconsistent model protects — an empty observation that reads as an answer is worse than no
+     * answer. So the block is omitted from the JSON entirely rather than rendered empty.
      */
-    public record Engine(String engine, List<Message> messages) {
+    public record Engine(String engine, List<Message> messages, Optional<Computations> computations) {
 
         public Engine {
             messages = messages.stream().sorted().toList();
+        }
+
+        /** The strategy observed for validation only — the shape every request produced before compute existed. */
+        public Engine(String engine, List<Message> messages) {
+            this(engine, messages, Optional.empty());
+        }
+
+        private Observation observation() {
+            return new Observation(messages, computations);
+        }
+    }
+
+    /**
+     * One strategy's {@code compute()} observation of a row: what each computed field became, plus the operand
+     * formal errors that would otherwise be invisible.
+     *
+     * <p><b>The two lists are separate channels, not two views of one.</b> {@code formalErrorsInOperands} is the
+     * kernel's PRE-COMPUTATION formal validation of operand fields — per {@code IDocumentRtService.compute},
+     * every <em>non-computed</em> field that is an operand of any computation is validated first, and
+     * "regardless of the formal errors found, computations will be performed. Any computations relying directly
+     * or indirectly on invalid fields will be skipped."
+     *
+     * <p>So it is an <b>inventory, not a causal attribution</b>: it is emitted whether or not anything was
+     * skipped and it names no edge to the outcome it explains. What it adds over the three buckets is real
+     * nonetheless — a cleared outcome accompanied by an operand error and one accompanied by none are different
+     * kernel facts, and the outcome alone cannot tell them apart — but a consumer that wants the edge joins the
+     * two channels itself, leaning on the kernel's skip guarantee. The exact operand set is the kernel's
+     * {@code CalculationOperandsCollector} (it includes fields merely CONTAINED by a referenced group), locked
+     * by {@link ComputationEagerPrepassLawsTest}.
+     */
+    public record Computations(List<Outcome> outcomes, List<Message> formalErrorsInOperands) {
+
+        public Computations {
+            outcomes = outcomes.stream().sorted().toList();
+            formalErrorsInOperands = formalErrorsInOperands.stream().sorted().toList();
+        }
+    }
+
+    /**
+     * What one computed field instance became under {@code compute()}, in three channels that stay separate:
+     * {@code value} is the computed text, {@code cleared} that the kernel emptied a filled target without
+     * computing one, {@code errored} that the value was formally invalid for its target.
+     *
+     * <p><b>No pair collapses.</b> A cleared field is not a field that computed the empty string — which is why
+     * {@code value} is <em>absent</em> on a clear and {@code ""} really does mean a computed empty string. That
+     * absence is a DELIBERATE normalization rather than a passthrough: a cleared instance's
+     * {@code getStringValue()} is {@code Optional.of("")} for every clear (measured 2026-08-12, locked by
+     * {@link ComputeResultChannelsLawsTest}), so the kernel's own string here is a constant carrying no
+     * information, and forwarding it would alias the two states. And an errored instance can carry a value: the
+     * kernel returns an out-of-range computed number and flags it (KERNEL-FINDINGS `kf19`), so {@code errored}
+     * is not "no value" either.
+     */
+    public record Outcome(String field, Optional<String> value, boolean cleared, boolean errored)
+            implements Comparable<Outcome> {
+
+        /**
+         * A total order over every published channel, for the reason {@link Message} sorts: the kernel
+         * guarantees no emission order across its result channels, and an artifact pinned by SHA-256 cannot
+         * depend on one. Value <em>presence</em> is ordered before value text, so an absent value and a computed
+         * empty string cannot tie.
+         */
+        private static final Comparator<Outcome> ORDER = Comparator.comparing(Outcome::field)
+                .thenComparing(Outcome::cleared)
+                .thenComparing(Outcome::errored)
+                .thenComparing(outcome -> outcome.value().isPresent())
+                .thenComparing(outcome -> outcome.value().orElse(""));
+
+        @Override
+        public int compareTo(Outcome other) {
+            return ORDER.compare(this, other);
         }
     }
 
@@ -161,21 +251,39 @@ public record KernelProbeArtifact(Header header, List<Row> rows) {
                 ObjectNode engineNode = engineNodes.addObject();
                 engineNode.put("engine", engine.engine());
                 ArrayNode messageNodes = engineNode.putArray("messages");
-                for (Message message : engine.messages()) {
-                    ObjectNode messageNode = messageNodes.addObject();
-                    messageNode.put("code", message.code());
-                    messageNode.put("field", message.field());
-                    messageNode.put("severity", message.severity());
-                    messageNode.put("type", message.type());
-                    messageNode.put("message", message.message());
-                    ArrayNode referenced = messageNode.putArray("referenced");
-                    message.referenced().forEach(referenced::add);
-                    ArrayNode fillToFix = messageNode.putArray("fillToFix");
-                    message.fillToFix().forEach(fillToFix::add);
-                }
+                engine.messages().forEach(message -> write(messageNodes.addObject(), message));
+                engine.computations().ifPresent(computations -> write(
+                        engineNode.putObject("computations"), computations));
             }
         }
         return render(mapper, root);
+    }
+
+    private static void write(ObjectNode messageNode, Message message) {
+        messageNode.put("code", message.code());
+        messageNode.put("field", message.field());
+        messageNode.put("severity", message.severity());
+        messageNode.put("type", message.type());
+        messageNode.put("message", message.message());
+        ArrayNode referenced = messageNode.putArray("referenced");
+        message.referenced().forEach(referenced::add);
+        ArrayNode fillToFix = messageNode.putArray("fillToFix");
+        message.fillToFix().forEach(fillToFix::add);
+    }
+
+    private static void write(ObjectNode node, Computations computations) {
+        ArrayNode outcomeNodes = node.putArray("outcomes");
+        for (Outcome outcome : computations.outcomes()) {
+            ObjectNode outcomeNode = outcomeNodes.addObject();
+            outcomeNode.put("field", outcome.field());
+            outcomeNode.put("cleared", outcome.cleared());
+            outcomeNode.put("errored", outcome.errored());
+            // Written LAST and only when there is one: `value` absent and `value: ""` are different kernel
+            // facts, and putting the conditional key at the end keeps the others' order the same either way.
+            outcome.value().ifPresent(value -> outcomeNode.put("value", value));
+        }
+        ArrayNode formalErrors = node.putArray("formalErrorsInOperands");
+        computations.formalErrorsInOperands().forEach(message -> write(formalErrors.addObject(), message));
     }
 
     /**
