@@ -270,6 +270,97 @@ class PerfTrendScriptTest {
         }
     }
 
+    /**
+     * **THE BACKTEST'S LOAD-BEARING RESTRICTION, and the bug the first version shipped.** A candidate band is
+     * counted against the row's CURRENT level only. This series steps from a 2x margin to a 6x one — an
+     * optimization — so a band at half the current median (3x) sits above every pre-step margin. Counting those
+     * would report 4 firings that are not regressions at all but the row's older, slower level, which is exactly
+     * what a whole-series backtest did: at 0.40x it reported 28 firings across the real record, all of them
+     * pre-optimization margins. The gap named this trap ("segmented by revision, not only by platform") before it
+     * was hit.
+     */
+    @Test
+    fun theBandIsBacktestedAgainstTheCurrentLevelOnlyNotAcrossAStep() {
+        val dir = work.resolve("results")
+        val env = dir.resolve("darwin-aarch64").also { Files.createDirectories(it) }
+        // margin = kernel/interp: 2x for four runs, then 6x for four — a step up, i.e. an optimization.
+        listOf(2.0, 2.0, 2.05, 1.95, 6.0, 6.1, 5.9, 6.0).forEachIndexed { i, margin ->
+            val stamp = "2026-08-%02dT000000Z".format(i + 1)
+            Files.writeString(
+                env.resolve("$stamp.jsonl"),
+                """
+                {"kind":"run","environment":"darwin-aarch64","capturedAt":"$stamp","commit":"c$i","os":"Mac OS X","arch":"x","jdk":"21.0.12","processors":8,"machine":"M","loadAverage":2.0,"ci":false}
+                {"kind":"observation","environment":"darwin-aarch64","key":"kernel parity|diagnostic/CO@1 fingerprint=a|n=200|interpreter|wall","scenario":"diagnostic/CO@1 fingerprint=a","lane":"kernel parity","n":200,"engine":"interpreter","clock":"wall","medianMs":1.0}
+                {"kind":"observation","environment":"darwin-aarch64","key":"kernel parity|diagnostic/CO@1 fingerprint=a|n=200|java|wall","scenario":"diagnostic/CO@1 fingerprint=a","lane":"kernel parity","n":200,"engine":"java","clock":"wall","medianMs":$margin}
+                """.trimIndent() + "\n",
+            )
+        }
+
+        val run = run(dir, "--ratio", env = mapOf("BAND" to "0.50"))
+
+        assertEquals(0, run.status, run.output)
+        assertTrue("would have fired 0 time(s)" in run.output) {
+            "the four pre-step 2x margins sit below half the current 6x median, but they are the row's older " +
+                "level and not regressions — counting them is the false-positive engine this restriction " +
+                "removes: ${run.output}"
+        }
+        assertTrue(Regex("""runs=4/8""").containsMatchIn(run.output)) {
+            "the row must report that it is judging 4 of its 8 runs, so a reader can see the step was excluded: " +
+                "${run.output}"
+        }
+    }
+
+    /**
+     * **`BAND_SIGMA` scales with the row's own spread; `BAND` does not — which is the whole reason the second
+     * formulation exists.** Two rows share a median margin of 10x and differ only in noise: one wanders ±2 %, the
+     * other ±30 %. A fraction of the median gives them the SAME floor, so it is simultaneously too loose for the
+     * quiet row (unguarded until it halves) and too tight for the noisy one (fires on ordinary wander — measured:
+     * the only rows a 0.50x fraction tripped on the real record were the two noisiest). Expressed in robust
+     * deviations, the quiet row's floor sits just under its median and the noisy row's far below it.
+     */
+    @Test
+    fun theSigmaBandTightensOnAQuietRowAndLoosensOnANoisyOneUnlikeAFraction() {
+        val dir = work.resolve("results")
+        val env = dir.resolve("darwin-aarch64").also { Files.createDirectories(it) }
+        val quiet = listOf(10.0, 10.2, 9.8, 10.1, 9.9, 10.0)      // ±2%
+        val noisy = listOf(7.0, 13.0, 8.0, 12.5, 10.0, 10.0)      // ±30%, same median
+        quiet.indices.forEach { i ->
+            val stamp = "2026-08-%02dT000000Z".format(i + 1)
+            Files.writeString(
+                env.resolve("$stamp.jsonl"),
+                """
+                {"kind":"run","environment":"darwin-aarch64","capturedAt":"$stamp","commit":"c$i","os":"Mac OS X","arch":"x","jdk":"21.0.12","processors":8,"machine":"M","loadAverage":2.0,"ci":false}
+                {"kind":"observation","environment":"darwin-aarch64","key":"kernel parity|diagnostic/QUIET@1 fingerprint=a|n=100|interpreter|wall","scenario":"diagnostic/QUIET@1 fingerprint=a","lane":"kernel parity","n":100,"engine":"interpreter","clock":"wall","medianMs":1.0}
+                {"kind":"observation","environment":"darwin-aarch64","key":"kernel parity|diagnostic/QUIET@1 fingerprint=a|n=100|java|wall","scenario":"diagnostic/QUIET@1 fingerprint=a","lane":"kernel parity","n":100,"engine":"java","clock":"wall","medianMs":${quiet[i]}}
+                {"kind":"observation","environment":"darwin-aarch64","key":"kernel parity|diagnostic/NOISY@1 fingerprint=b|n=100|interpreter|wall","scenario":"diagnostic/NOISY@1 fingerprint=b","lane":"kernel parity","n":100,"engine":"interpreter","clock":"wall","medianMs":1.0}
+                {"kind":"observation","environment":"darwin-aarch64","key":"kernel parity|diagnostic/NOISY@1 fingerprint=b|n=100|java|wall","scenario":"diagnostic/NOISY@1 fingerprint=b","lane":"kernel parity","n":100,"engine":"java","clock":"wall","medianMs":${noisy[i]}}
+                """.trimIndent() + "\n",
+            )
+        }
+
+        val sigma = run(dir, "--ratio", env = mapOf("BAND_SIGMA" to "3"))
+        assertEquals(0, sigma.status, sigma.output)
+        val quietBand = bandOf(sigma.output, "QUIET")
+        val noisyBand = bandOf(sigma.output, "NOISY")
+        assertTrue(quietBand > noisyBand * 1.5) {
+            "at one sigma multiple the quiet row's floor must sit far above the noisy row's, though their medians " +
+                "match — otherwise the band is not reading the spread at all: quiet=$quietBand noisy=$noisyBand\n" +
+                sigma.output
+        }
+
+        val fraction = run(dir, "--ratio", env = mapOf("BAND" to "0.50"))
+        assertEquals(bandOf(fraction.output, "QUIET"), bandOf(fraction.output, "NOISY"), 0.05) {
+            "the control: a fraction of the median gives two equally-noisy-looking rows the SAME floor, which is " +
+                "what makes it the wrong shape here\n" + fraction.output
+        }
+    }
+
+    /** The `band=` figure printed for the row whose label contains [marker]. */
+    private fun bandOf(output: String, marker: String): Double {
+        val line = output.lines().first { marker in it && "band=" in it }
+        return Regex("""band=\s*([\d.]+)x""").find(line)!!.groupValues[1].toDouble()
+    }
+
     /** A row with no kernel arm has no margin, and must be omitted rather than counted as parity. */
     @Test
     fun aRowWithoutAKernelArmIsNotReportedAsAMargin() {
@@ -360,12 +451,13 @@ class PerfTrendScriptTest {
 
     private class Run(val status: Int, val output: String)
 
-    private fun run(resultsDir: Path, vararg args: String): Run {
+    private fun run(resultsDir: Path, vararg args: String, env: Map<String, String> = emptyMap()): Run {
         // args go BEFORE the pattern, since --ratio is consumed by a leading shift.
         val builder = ProcessBuilder(listOf("bash", script.toString()) + args)
             .directory(script.parent.parent.toFile())
             .redirectErrorStream(true)
         builder.environment()["PERF_RESULTS_DIR"] = resultsDir.toString()
+        builder.environment().putAll(env)
         val process = builder.start()
         val output = process.inputStream.bufferedReader().readText()
         return Run(process.waitFor(), output)

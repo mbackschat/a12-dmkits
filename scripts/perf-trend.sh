@@ -44,6 +44,8 @@
 #   scripts/perf-trend.sh                    every lane, every environment
 #   scripts/perf-trend.sh <pattern>          only lanes/scenarios matching (case-insensitive substring)
 #   scripts/perf-trend.sh --ratio [pattern]  cross-engine margins and their spread, per row
+#   BAND=0.45 scripts/perf-trend.sh --ratio       BACKTEST a floor at a fraction of each row's own median
+#   BAND_SIGMA=4 scripts/perf-trend.sh --ratio    …or at k robust deviations below it (the noise-aware shape)
 #   ENV=darwin-aarch64 scripts/perf-trend.sh one environment only
 #   MIN_SIDE=4 MIN_SHIFT=1.10 Z=2.5 scripts/perf-trend.sh   loosen or tighten the report
 #   PERF_RESULTS_DIR=<dir> scripts/perf-trend.sh            read a record elsewhere (the guard's seam)
@@ -63,7 +65,7 @@ if [ ! -d "$results" ]; then
 fi
 
 PATTERN="${1:-}" ONLY_ENV="${ENV:-}" RESULTS="$results" VIEW="$VIEW" \
-MIN_SIDE="${MIN_SIDE:-3}" MIN_SHIFT="${MIN_SHIFT:-1.15}" Z="${Z:-3.0}" python3 - <<'PY'
+MIN_SIDE="${MIN_SIDE:-3}" MIN_SHIFT="${MIN_SHIFT:-1.15}" Z="${Z:-3.0}" BAND="${BAND:-}" BAND_SIGMA="${BAND_SIGMA:-}" python3 - <<'PY'
 import json, math, os, statistics, sys
 from pathlib import Path
 
@@ -74,6 +76,8 @@ min_side = int(os.environ["MIN_SIDE"])
 min_shift = float(os.environ["MIN_SHIFT"])
 z_min = float(os.environ["Z"])
 view = os.environ.get("VIEW", "steps")
+band = float(os.environ["BAND"]) if os.environ.get("BAND") else None
+band_sigma = float(os.environ["BAND_SIGMA"]) if os.environ.get("BAND_SIGMA") else None
 KERNEL_ENGINES = ("groovy", "java")
 
 # --- read: one entry per run, oldest first within an environment -------------------------------------
@@ -145,7 +149,16 @@ def spread(logs, centre):
     return max(1.4826 * mad, math.log(1.01))
 
 def best_split(logs):
-    """The split maximizing |shift| / pooled-noise, or None when the series is too short to claim one."""
+    """The best two-level split, or None when the series is too short to claim one.
+
+    The split is LOCATED by best fit — the smallest pooled absolute deviation from the two side medians, an L1
+    two-level fit — and only then SCORED against the robust noise. Locating it by the score instead is what the
+    first version did, and it mislocates a step by one run: MAD is deliberately insensitive to a single outlier, so
+    moving the last pre-step value across the boundary leaves both medians and the noise estimate essentially
+    unchanged, the candidate splits TIE, and the tie breaks arbitrarily. One leaked pre-step value is not cosmetic
+    downstream — it lands in the "current level" a band is backtested against and reports itself as a firing, which
+    is precisely the false positive the level restriction exists to remove.
+    """
     n = len(logs)
     if n < 2 * min_side:
         return None
@@ -154,11 +167,13 @@ def best_split(logs):
         left, right = logs[:i], logs[i:]
         ml, mr = statistics.median(left), statistics.median(right)
         residuals = [abs(v - ml) for v in left] + [abs(v - mr) for v in right]
+        fit = math.fsum(residuals)
         noise = max(1.4826 * statistics.median(residuals), math.log(1.01))
         score = abs(mr - ml) / noise
-        if best is None or score > best[0]:
-            best = (score, i, ml, mr)
-    return best
+        if best is None or fit < best[0]:
+            best = (fit, score, i, ml, mr)
+    fit, score, i, ml, mr = best
+    return (score, i, ml, mr)
 
 def row_identity(key):
     """(lane, scenario-with-fingerprint, n, clock) — everything but the ENGINE, which is what a ratio varies."""
@@ -176,6 +191,7 @@ def ratio_label(identity):
 
 if view == "ratio":
     total, tightest = 0, None
+    firings, rows_firing = 0, 0
     for segment in sorted(segments, key=lambda s: tuple("" if p is None else p for p in s)):
         series = segments[segment]
         env, jdk, os_name, machine = segment
@@ -207,11 +223,31 @@ if view == "ratio":
             rows = [r for r in rows if pattern in ratio_label(r[0]).lower()]
         if not rows:
             continue
-        print(f"\n=== {head} — {len(series)} run(s), cross-engine margins (kernel/interpreter; parity = 1.00) ===")
+        band_note = (f", band={band_sigma:.1f} robust deviations below its own median" if band_sigma
+                     else f", band={band:.2f}x its own median" if band else "")
+        print(f"\n=== {head} — {len(series)} run(s), cross-engine margins "
+              f"(kernel/interpreter; parity = 1.00{band_note}) ===")
         width = max(len(ratio_label(r[0])) for r in rows)
         for identity, kernel in rows:
-            values = margins[(identity, kernel)]
-            logs = [math.log(v) for v in values]
+            allValues = margins[(identity, kernel)]
+            allLogs = [math.log(v) for v in allValues]
+
+            # THE CURRENT LEVEL, not the whole series — piece 2 composed into piece 1 rather than duplicated.
+            # A margin series spanning an optimization holds two levels, and a band derived from the newer one
+            # trips on every older run: at 0.40x of each row's median the whole-series backtest fired 28 times,
+            # none of which is a regression — they are pre-optimization margins. The gap named this trap
+            # explicitly ("segmented by revision, not only by platform"), and measuring it is what caught the
+            # first version of this backtest doing exactly that.
+            step = best_split(allLogs)
+            stepped = False
+            start = 0
+            if step is not None:
+                score, i, ml, mr = step
+                ratio = math.exp(mr - ml)
+                if score >= z_min and (ratio >= min_shift or ratio <= 1 / min_shift):
+                    stepped, start = True, i
+            values, logs = allValues[start:], allLogs[start:]
+
             centre = statistics.median(logs)
             noise_pct = 100 * (math.exp(spread(logs, centre)) - 1)
             worst = min(values)
@@ -219,13 +255,42 @@ if view == "ratio":
             current = math.exp(centre)
             if tightest is None or worst < tightest[0]:
                 tightest = (worst, ratio_label(identity), kernel)
-            print(f"  {'%-*s' % (width, ratio_label(identity))}  vs {kernel:<7} runs={len(values):<3} "
-                  f"margin={current:6.2f}x  spread=±{noise_pct:4.1f}%  worst={worst:6.2f}x")
+            level = f"{len(values)}/{len(allValues)}" if stepped else f"{len(values)}"
+            line = (f"  {'%-*s' % (width, ratio_label(identity))}  vs {kernel:<7} runs={level:<7} "
+                    f"margin={current:6.2f}x  spread=±{noise_pct:4.1f}%  worst={worst:6.2f}x")
+            if band or band_sigma:
+                # THE BACKTEST. A candidate band is always relative to the row's OWN history, because a flat one
+                # cannot serve rows spanning 2x-19x. Counting how many historical runs it would have tripped is
+                # what makes the choice evidence rather than the third guess: the two earlier attempts at this
+                # band were a flat constant and a per-pair dispersion, and both were falsified AFTER being built.
+                # A fraction of the median IGNORES the row's spread, so it fires on the noisiest rows
+                # while leaving a very stable one unguarded until it halves. BAND_SIGMA expresses the floor in the
+                # row's OWN robust deviations instead: tight where the row is quiet (a 2% row is guarded at 0.92x
+                # of its median), tolerant where it genuinely wanders (a 34% row at 0.31x). That is the shape the
+                # gap asked for, and it is only computable now that the noise is the within-level run-to-run
+                # spread rather than the per-pair dispersion the falsified attempt used.
+                floor = (math.exp(centre - band_sigma * spread(logs, centre)) if band_sigma
+                         else current * band)
+                trips = sum(1 for v in values if v < floor)
+                worst_trips = worst < floor
+                firings += trips
+                if trips:
+                    rows_firing += 1
+                line += f"  band={floor:6.2f}x  wouldHaveFired={trips}/{len(values)}"
+                if worst_trips:
+                    line += " (incl. its worst)"
+            print(line)
 
     if tightest is not None:
         worst, name, kernel = tightest
         print(f"\n{total} cross-engine row(s). Tightest margin in the record: {worst:.2f}x on {name} vs {kernel}. "
               f"A band must sit below that and outside each row's own spread, or it fires on history.")
+        if band or band_sigma:
+            what = (f"{band_sigma:.1f} robust deviations below" if band_sigma else f"{band:.2f}x of")
+            print(f"BACKTEST band={what} each row's own median: it would have fired {firings} time(s) "
+                  f"across {rows_firing} of {total} rows in the committed series. Every one of those is a FALSE "
+                  f"positive unless that run actually regressed — which is the number to drive to zero before a "
+                  f"band is allowed to fail anything.")
     else:
         sys.exit("the record holds no row with both an interpreter and a kernel arm — the ratio view needs both")
     sys.exit(0)
