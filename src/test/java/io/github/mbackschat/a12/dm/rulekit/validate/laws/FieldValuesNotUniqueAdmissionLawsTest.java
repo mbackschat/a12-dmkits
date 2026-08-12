@@ -4,6 +4,9 @@ import org.junit.jupiter.api.Test;
 
 import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft;
 import io.github.mbackschat.a12.dm.modelkit.FieldKind;
+import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel;
+import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl;
+import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer;
 
 /**
  * KERNEL-FINDINGS §4 — {@code FieldValuesNotUnique} <b>operand admission</b> (SPEC-2026-08-04-02, extended and
@@ -450,5 +453,31 @@ class FieldValuesNotUniqueAdmissionLawsTest {
     @Test
     void aGroupWhoseExpansionMixesCategoriesReportsTheMixingGate() {
         refuses("BinCode", "FieldValuesNotUnique(Counts*)", "MVK_VARYING_TYPES_NOT_ALLOWED");
+    }
+
+    /**
+     * …and the TYPED form now authors it (DG33). This closes the loop the rows above opened: they measured that
+     * the kernel admits a group operand, and this asserts the shape rulekit renders for it is the one the kernel
+     * accepts — so the widened factory cannot drift from the measurement that justified it.
+     */
+    @Test
+    void theTypedGroupScopedFactoryRendersAnAcceptedCondition() {
+        BoundModel model = BoundModel.ofJson(stockCount());
+        String condition = new DslRenderer().render(
+                Dsl.fieldFilled(model.field("/StockCount/BinCode"))
+                        .and(Dsl.fieldValuesNotUnique(model.flattenGroup("/StockCount/Bin"))));
+
+        KernelLaws.acceptsModel(stockCount(), GROUP, "../BinCode", condition);
+    }
+
+    /** The starred repeatable peer, so the typed factory is measured on both group shapes rather than one. */
+    @Test
+    void theTypedGroupScopedFactoryAlsoRendersTheStarredRepeatableForm() {
+        BoundModel model = BoundModel.ofJson(stockCount());
+        String condition = new DslRenderer().render(
+                Dsl.fieldFilled(model.field("/StockCount/BinCode"))
+                        .and(Dsl.fieldValuesNotUnique(model.flattenGroup("/StockCount/Tallies*"))));
+
+        KernelLaws.acceptsModel(stockCount(), GROUP, "../BinCode", condition);
     }
 }

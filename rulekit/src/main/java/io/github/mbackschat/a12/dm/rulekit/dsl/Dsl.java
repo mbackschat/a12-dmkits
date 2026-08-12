@@ -1712,6 +1712,30 @@ public final class Dsl {
         return groupScopedFieldFill(Quantifier.MORE_THAN_ONE_FIELD_FILLED, first, rest);
     }
 
+    /**
+     * {@code FieldValuesNotUnique(Group*)} — the values of the fields inside the group scope(s) are not all
+     * distinct. The kernel expands the group to its contained fields and compares their cells, so this is the
+     * group peer of {@link #fieldValuesNotUnique(FieldOperand, FieldOperand...)} exactly as the seven fill
+     * quantifiers above have theirs.
+     *
+     * <p><b>Two gates behave differently on a group operand</b>, both kernel-measured (KERNEL-FINDINGS
+     * {@code kf173}, {@code validate.laws.FieldValuesNotUniqueAdmissionLawsTest}): the <em>arity</em> gate is
+     * satisfied by the group slot alone — a group expanding to a single field is admitted where that field named
+     * directly is {@code MVK_PARAMSIZE_INVALIDN} — while the <em>comparability</em> gate reads the EXPANSION, so a
+     * group whose fields mix categories is {@code MVK_VARYING_TYPES_NOT_ALLOWED} just as the equivalent explicit
+     * list would be. That second gate stays kernel-arbitrated (F4) rather than pre-checked here, for the same
+     * reason {@link AggregateOperand} delegates it: owning it would mean owning the expansion's extent.
+     *
+     * <p>Added 2026-08-12 (DG33). It had been unauthorable, and the omission was a <b>type-level erasure with no
+     * measured basis</b> — the kernel admitted the shape all along. Widening it also required fixing a real
+     * evaluator divergence first: both kernel strategies fire on a duplicate among the expanded cells and the
+     * interpreter did not, so authoring this would otherwise have admitted a form that was silently answered
+     * wrong ({@code adapter.laws.FieldValuesNotUniqueGroupOperandDiffTest}).
+     */
+    public static Condition fieldValuesNotUnique(GroupListRef first, GroupListRef... rest) {
+        return groupScopedFieldFill(Quantifier.FIELD_VALUES_NOT_UNIQUE, first, rest);
+    }
+
     private static Condition groupScopedFieldFill(Quantifier q, GroupListRef first, GroupListRef... rest) {
         var scopes = new java.util.ArrayList<GroupListRef>();
         scopes.add(first);

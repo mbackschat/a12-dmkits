@@ -1262,6 +1262,7 @@ public final class io.github.mbackschat.a12.dm.rulekit.dsl.Dsl
   public static io.github.mbackschat.a12.dm.rulekit.dsl.StringExpr fieldValueAsString(io.github.mbackschat.a12.dm.rulekit.dsl.FieldRef)
   public static io.github.mbackschat.a12.dm.rulekit.dsl.StringExpr fieldValueAsString(io.github.mbackschat.a12.dm.rulekit.dsl.SemanticIndex)
   public static io.github.mbackschat.a12.dm.rulekit.dsl.Condition fieldValuesNotUnique(io.github.mbackschat.a12.dm.rulekit.dsl.FieldOperand, io.github.mbackschat.a12.dm.rulekit.dsl.FieldOperand[])
+  public static io.github.mbackschat.a12.dm.rulekit.dsl.Condition fieldValuesNotUnique(io.github.mbackschat.a12.dm.rulekit.dsl.GroupListRef, io.github.mbackschat.a12.dm.rulekit.dsl.GroupListRef[])
   public static io.github.mbackschat.a12.dm.rulekit.dsl.Condition fieldValuesNotUnique(java.util.List<? extends io.github.mbackschat.a12.dm.rulekit.dsl.FieldOperand>)
   public static io.github.mbackschat.a12.dm.rulekit.dsl.Condition fieldsNotCollectivelyFilled(io.github.mbackschat.a12.dm.rulekit.dsl.FieldOperand, io.github.mbackschat.a12.dm.rulekit.dsl.FieldOperand[])
   public static io.github.mbackschat.a12.dm.rulekit.dsl.Condition fieldsNotCollectivelyFilled(io.github.mbackschat.a12.dm.rulekit.dsl.GroupListRef, io.github.mbackschat.a12.dm.rulekit.dsl.GroupListRef[])

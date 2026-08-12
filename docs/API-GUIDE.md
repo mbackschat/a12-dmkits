@@ -384,6 +384,16 @@ Condition multiple = Dsl.moreThanOneFieldFilled(address);
 
 The traversal order is observable in computations: fields stream recursively in declaration order, field-major then repetition-major, and each quantifier stops as soon as its result is decisive. A malformed cell after that decision is not read; one reached before it can poison the computation. The typed render/read forms are locked by `GroupScopedFieldFillReadTest`; the transitive poison discriminator is `BareGroupComputePoisonDiffTest`.
 
+**`FieldValuesNotUnique` takes a group scope too**, though it is a value-distinctness predicate rather than a fill quantifier — "no two values inside this group are equal", with the group expanded to its contained fields the same way:
+
+<!-- teaser -->
+```java
+Condition duplicateInAddress = Dsl.fieldValuesNotUnique(m.flattenGroup("/Order/ShippingAddress"));
+Condition duplicateAcrossRows = Dsl.fieldValuesNotUnique(m.flattenGroup("/Order/Items*"));
+```
+
+Two gates read the group differently, and the pair is worth knowing because neither is guessable from the other. **Arity** is satisfied by the group slot alone — a group expanding to a *single* field is admitted, while that same field named directly is `MVK_PARAMSIZE_INVALIDN`. **Comparability** reads the expansion, so a group whose fields mix categories is `MVK_VARYING_TYPES_NOT_ALLOWED` exactly as the equivalent explicit list would be; that gate stays kernel-arbitrated for the same reason the aggregates delegate theirs. (Finding 122; measured in `FieldValuesNotUniqueAdmissionLawsTest`, runtime agreement in `FieldValuesNotUniqueGroupOperandDiffTest`.)
+
 ### 3.5b Group presence and group-count quantifiers
 
 Group presence is validation-stage state, not merely JSON object existence. For a repeatable group, an instantiated row is content even when every field in that row is empty. For a non-repeatable group, `GroupRef.filled()` needs a formally admitted descendant value or an instantiated repeatable descendant row; the group's own structural presence is not enough. A non-repeatable group containing only formally invalid values is neither filled nor definitely empty, so `filled()` and `notFilled()` are not strict Boolean complements in that state.

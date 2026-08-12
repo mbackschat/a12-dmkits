@@ -1140,8 +1140,7 @@ class Interpreter(
             // keep-law; unlike SumOfProducts, which the kernel authoring-rejects), and filtering the rows changes
             // which values are compared for distinctness (IF72).
             val filtered = a is Expr.Star && a.having != null
-            val cells = if (a is Expr.Star) filteredStarCells(a)          // kept row values, empties already dropped
-                else if (ctx.filled(pathOf(a))) listOf(evalExpr(a)) else emptyList()
+            val cells = comparedCells(a)
             for (cell in cells) {
                 val key = Aggregates.distinctKeyOrNull(cell) ?: continue   // unconvertible / uncomparable → skipped
                 if (filtered) escalated = true
@@ -1149,6 +1148,48 @@ class Interpreter(
             }
         }
         return Res.of(Tri.FALSE, MsgType.VALUE)
+    }
+
+    /**
+     * The compared cells of ONE `FieldValuesNotUnique` operand, expanding a **GROUP** operand to its contained
+     * fields recursively — the same `ExpandService` behaviour [starOperandVals] already implements for the value
+     * aggregates, and which this operator did not share.
+     *
+     * **Measured before it was written, and it was a real divergence.** The kernel admits a group operand here
+     * (KERNEL-FINDINGS KF173): arity treats the group slot as already-many, while the category gate reads the
+     * expansion. Both kernel strategies then FIRE on a duplicate among the expanded cells, and this evaluator
+     * returned FALSE — a silent false negative on a kernel-legal shape, which for a uniqueness rule means a
+     * duplicate goes unreported. The unstarred arm failed because `pathOf` + `filled` ask about a group path
+     * where no field is declared, and the starred arm because [filteredStarCells] does not expand. Locked by
+     * `adapter.laws.FieldValuesNotUniqueGroupOperandDiffTest`.
+     *
+     * The expansion is deliberately **not** pushed into [filteredStarCells]: its other caller is the date-range
+     * overlap operator, whose behaviour over a group operand is unmeasured, and widening a shared path past its
+     * measured basis is the defect class CLAUDE.md's "never broader than its measured basis" rule names.
+     */
+    private fun comparedCells(a: Expr): List<Val> {
+        val path = when (a) {
+            is Expr.Star -> a.path
+            is Expr.Field -> a.path
+            else -> null
+        }
+        if (path != null && ctxOf(a).declaredKind(path) == null) {
+            val contained = ctxOf(a).containedFields(path)
+            if (contained.isNotEmpty()) {
+                // The star's Having and binding ride each expanded field, exactly as starOperandVals preserves
+                // them (IF99) — the filter belongs to the authored operand, not to one of its expanded cells.
+                return contained.flatMap { field ->
+                    comparedCells(
+                        when (a) {
+                            is Expr.Star -> Expr.Star(field, a.having, a.outer, a.bindDepth)
+                            else -> Expr.Field(field, (a as Expr.Field).outer)
+                        },
+                    )
+                }
+            }
+        }
+        return if (a is Expr.Star) filteredStarCells(a)                   // kept row values, empties already dropped
+        else if (ctx.filled(pathOf(a))) listOf(evalExpr(a)) else emptyList()
     }
 
     /** The path of a plain field-ref operand. Any other operand shape in a field-ref position is a construct
