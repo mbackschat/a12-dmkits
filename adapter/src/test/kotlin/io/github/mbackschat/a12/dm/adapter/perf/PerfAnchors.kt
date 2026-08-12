@@ -332,17 +332,30 @@ internal data class ObservationKey(
 }
 
 /**
- * How far above an anchor a median may sit: a multiplicative [factor] for the measurement's own scale plus an
- * absolute [slackMs] so a sub-millisecond lane cannot flap on a fraction of a millisecond. The shape mirrors
- * `CharsetPerfTest`'s `FACTOR × baseline + 50 ms`.
+ * The band an observation must stay inside to say nothing.
+ *
+ * Above: how far above an anchor a median may sit before it FAILS — a multiplicative [factor] for the measurement's
+ * own scale plus an absolute [slackMs] so a sub-millisecond lane cannot flap on a fraction of a millisecond. The
+ * shape mirrors `CharsetPerfTest`'s `FACTOR × baseline + 50 ms`.
+ *
+ * Below: how far below it may sit before the anchor is REPORTED as stale ([staleFraction]) — an anchor is only a bar
+ * for the revision it was captured on, and an observation at a third of its anchor means the ceiling is sitting at
+ * three times the real cost. That side never fails: the usual cause is a legitimate optimization, and a red until
+ * someone refreshes would make green mean "nobody sped anything up lately".
  */
-internal data class AnchorTolerance(val factor: Double, val slackMs: Double) {
+internal data class AnchorTolerance(val factor: Double, val slackMs: Double, val staleFraction: Double) {
     init {
         require(factor > 1.0) { "a factor of $factor would fail an unchanged measurement" }
         require(slackMs >= 0.0) { "slack must not be negative, was $slackMs" }
+        require(staleFraction > 0.0 && staleFraction < 1.0) {
+            "a stale fraction of $staleFraction would report every honest observation below the anchor"
+        }
     }
 
     fun ceilingFor(anchorMs: Double): Double = anchorMs * factor + slackMs
+
+    /** The same absolute term as the ceiling, because the same tiny lanes need it for the same reason. */
+    fun staleFloorFor(anchorMs: Double): Double = anchorMs * staleFraction - slackMs
 
     override fun toString(): String = "${factor}× + ${slackMs}ms"
 }
@@ -533,6 +546,7 @@ internal class AnchorBudget(
             println(message)
             return observedMs
         }
+        staleReportFor(key, observedMs)?.let { println(it) }
         val ceiling = tolerance.ceilingFor(anchor)
         if (observedMs <= ceiling) return observedMs
         val seen = mutableListOf(observedMs)
@@ -548,6 +562,23 @@ internal class AnchorBudget(
                 "slowdown. If the new cost is intended, refresh the anchor (scripts/perf-anchor.sh) in the same commit."
         }
         return accepted
+    }
+
+    /**
+     * Why this run says the anchor no longer describes the code, or `null` when it does not say so.
+     *
+     * Separated from the assertion so the rule can be checked on scripted numbers, exactly as acceptance is
+     * ([PerfStaleAnchorTest]). An unanchored key has nothing to be stale against.
+     */
+    internal fun staleReportFor(key: ObservationKey, observedMs: Double): String? {
+        val anchor = anchored?.get(key.text) ?: return null
+        val floor = tolerance.staleFloorFor(anchor)
+        if (observedMs >= floor) return null
+        return "[perf][STALE] ${key.identityLabel} at n=${key.n} (${key.lane}): ${key.engine} measured " +
+            "${ms(observedMs)} against an anchor of ${ms(anchor)} — ${"%.2f".format(Locale.ROOT, observedMs / anchor)}× " +
+            "of it, so the ceiling this lane is held to sits at ${"%.1f".format(Locale.ROOT, anchor / observedMs)}× " +
+            "the real cost and cannot fail. An anchor is only a bar for the revision it was captured on: refresh it " +
+            "(scripts/perf-anchor.sh) in the commit that made the lane faster."
     }
 
     /** [java.util.Locale.ROOT], so a number a maintainer may copy into the anchor file is not `12,45` on a German

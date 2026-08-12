@@ -62,8 +62,15 @@ internal object PerfBounds {
      * Tightening it needs the noise reduced rather than the number lowered: anchor from the median of several runs
      * instead of one, or raise the lanes' sampling. Never widen it to make a real regression pass — refresh the
      * anchor deliberately instead, which is a reviewable diff.
+     *
+     * **The stale fraction is the band's other edge, and it is a report rather than a bar.** An observation below
+     * `0.6 × anchor − slack` says the anchor stopped describing the code: the 2026-08-12 refresh found `PF-framed`
+     * at `0.36×`/`0.39×` of its recorded numbers, i.e. ceilings sitting at up to `2.8×` the real cost, and nothing
+     * in the estate could notice. Measured basis, with the slack absorbing the sub-2 ms lanes: across the three
+     * committed runs of each class the tightest fraction any single observation reached is `0.933` locally and
+     * `0.765` on the hosted runner, so `0.6` sits `1.27×` clear of the noisier of the two.
      */
-    val ANCHOR_TOLERANCE = AnchorTolerance(factor = 1.8, slackMs = 1.0)
+    val ANCHOR_TOLERANCE = AnchorTolerance(factor = 1.8, slackMs = 1.0, staleFraction = 0.6)
 
     /** Near-linear: an entry point's growth may exceed the row factor by this much before it reads super-linear.
      *  STRICTER than [SUB_QUADRATIC_MAX] by construction (5.4 at a 4× factor, against that 9.0 trip line) — a

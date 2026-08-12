@@ -23,7 +23,7 @@ class PerfAnchorBudgetTest {
         clock = "cpu",
     )
 
-    private val tolerance = AnchorTolerance(factor = 1.5, slackMs = 1.0)
+    private val tolerance = AnchorTolerance(factor = 1.5, slackMs = 1.0, staleFraction = 0.6)
 
     private fun budget(unanchoredIsAFailure: Boolean = false, anchorMs: Double? = 8.30) = AnchorBudget(
         anchored = anchorMs?.let { mapOf(key.text to it) } ?: emptyMap(),
@@ -166,10 +166,12 @@ class PerfAnchorBudgetTest {
     @Test
     fun aToleranceThatWouldFailAnUnchangedMeasurementIsRejected() {
         val failure = assertThrows(IllegalArgumentException::class.java) {
-            AnchorTolerance(factor = 1.0, slackMs = 0.0)
+            AnchorTolerance(factor = 1.0, slackMs = 0.0, staleFraction = 0.6)
         }
         assertTrue("unchanged" in failure.message.orEmpty()) { failure.message.orEmpty() }
-        assertThrows(IllegalArgumentException::class.java) { AnchorTolerance(factor = 1.5, slackMs = -1.0) }
+        assertThrows(IllegalArgumentException::class.java) {
+            AnchorTolerance(factor = 1.5, slackMs = -1.0, staleFraction = 0.6)
+        }
         assertThrows(IllegalArgumentException::class.java) {
             AnchorBudget(anchored = emptyMap(), unanchoredIsAFailure = false, tolerance = tolerance, attempts = 2)
         }
