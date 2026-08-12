@@ -1,5 +1,6 @@
 package io.github.mbackschat.a12.dm.adapter.perf
 
+import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.ObjectMapper
 import java.io.File
 import java.nio.file.Path
@@ -29,20 +30,128 @@ internal object PerfEnvironment {
         "$os-$arch$hosted"
     }
 
-    /**
-     * A cheap machine discriminator INSIDE a runner class. [key] names an os/arch family, which is what an artifact
-     * and a committed block are addressed by — but absolute timings are a property of the MACHINE, and two Apple
-     * Silicon generations differ materially at the same `darwin-aarch64` key. A block records this alongside its
-     * numbers and [PerfAnchors] declines to assert against a block captured on a different one, so a second machine
-     * reads as bootstrap instead of reddening 18 lanes. It **narrows** the class rather than closing it: two machines
-     * with the same core count and different generations still collide, so the standing rule is one anchoring
-     * machine per runner class (IG120).
-     */
     val processors: Int get() = Runtime.getRuntime().availableProcessors()
 
+    /**
+     * The MACHINE this run measured on, inside the runner class [key] names — see [MachineIdentity].
+     *
+     * Probed from the operating system, because the JVM exposes no CPU identity at all: `os.arch` names an
+     * instruction set and `availableProcessors` a core count, and two machines can agree on both while differing
+     * materially in absolute time. Probed once per JVM and lazily, so the cost lands between measurements rather
+     * than inside one; a probe that fails degrades to [MachineIdentity.UNKNOWN_MODEL], which the gated check then
+     * refuses to treat as an identity.
+     */
+    val machine: MachineIdentity by lazy { MachineIdentity(probeModel(), processors) }
+
+    private fun probeModel(): String {
+        val os = System.getProperty("os.name").orEmpty().lowercase()
+        val probed = when {
+            // Both, and in this order: `hw.model` names the product (a Mac mini and a MacBook Air of the same
+            // generation cool differently and time differently), `machdep.cpu.brand_string` names the chip.
+            os.startsWith("mac") || os.startsWith("darwin") ->
+                listOfNotNull(capture(null, "sysctl", "-n", "hw.model"), capture(null, "sysctl", "-n", "machdep.cpu.brand_string"))
+                    .joinToString(" ")
+            os.startsWith("windows") -> System.getenv("PROCESSOR_IDENTIFIER")
+            // A file read rather than a subprocess. `lscpu` would name the same chip through a formatter that
+            // varies by distribution, and this is the field a hosted Linux runner actually carries.
+            else -> File("/proc/cpuinfo").takeIf { it.canRead() }?.useLines { lines ->
+                lines.firstOrNull { it.startsWith("model name") }?.substringAfter(':')
+            }
+        }
+        return probed?.trim()?.ifBlank { null } ?: MachineIdentity.UNKNOWN_MODEL
+    }
+
     val describe: String
-        get() = "$key jdk=${System.getProperty("java.version")} processors=$processors"
+        get() = "$key jdk=${System.getProperty("java.version")} machine=${machine.text}"
 }
+
+/**
+ * The machine an absolute number belongs to: an OS-level model string plus the core count.
+ *
+ * **Why the runner class is not enough.** `PerfEnvironment.key` names an os/arch family, which is what an artifact
+ * and a committed block are addressed by — but absolute timings are a property of the machine. The block used to
+ * record only [processors], which narrows the family without closing it: two machines with the same core count and
+ * different generations still collided, and the rule that kept them apart ("one anchoring machine per runner class")
+ * lived in prose that nothing could check. This is that rule, mechanized (IF280).
+ */
+internal data class MachineIdentity(val model: String, val processors: Int) {
+
+    val text: String get() = "$model ×$processors"
+
+    val isKnown: Boolean get() = model != UNKNOWN_MODEL
+
+    internal companion object {
+
+        /** A machine the probe could not name. Never an identity: it would match every other unnamed machine. */
+        const val UNKNOWN_MODEL = "unknown"
+
+        /**
+         * Whether a block captured on [captured] may be compared with a run on [current], and what to say about it.
+         *
+         * The three enforcement levels want three different things, so this switches on the enum rather than
+         * applying one rule everywhere:
+         * - [TimingEnforcement.GATED] — the number decides the build, so an identity is **required**: a mismatch, a
+         *   block that does not name its machine, and a run that cannot name its own all read as bootstrap
+         *   (reported, never failed). That is the same treatment a brand-new machine already got, and it is what
+         *   makes "one anchoring machine per runner class" a check instead of a convention.
+         * - [TimingEnforcement.FLAGGED] — a hosted runner is a VM on a shared physical host, chosen by the provider
+         *   for that job. Demanding an identity there would leave the nightly with no absolute bar on any night the
+         *   provider handed out different hardware, which trades a possibly-noisy signal for none at all. So the bar
+         *   stays armed and the run states its machine, which is what lets a flag be attributed later.
+         * - [TimingEnforcement.UNJUDGED] — nothing is asserted, so there is nothing for a machine to qualify.
+         */
+        fun check(
+            captured: MachineIdentity?,
+            current: MachineIdentity,
+            enforcement: TimingEnforcement,
+        ): MachineCheck = when (enforcement) {
+            TimingEnforcement.UNJUDGED -> MachineCheck(assertAgainstBlock = false, note = null)
+            TimingEnforcement.FLAGGED -> MachineCheck(
+                assertAgainstBlock = true,
+                note = "[perf] anchor for ${PerfEnvironment.key} is a bar over the runner CLASS, not over one " +
+                    "machine: this run measured on ${current.text}" +
+                    (captured?.let { ", the block was captured on ${it.text}" } ?: ", the block names no machine") +
+                    " — a breach here is flagged, never failed (TimingEnforcement)",
+            )
+            TimingEnforcement.GATED -> when {
+                captured == null -> MachineCheck(
+                    assertAgainstBlock = false,
+                    note = "[perf] the anchor block for ${PerfEnvironment.key} does not name the machine it was " +
+                        "captured on, so it could have come from any machine in the class — not asserting; " +
+                        "refresh it on this machine (scripts/perf-anchor.sh refresh) to arm the bar",
+                )
+                !current.isKnown -> MachineCheck(
+                    assertAgainstBlock = false,
+                    note = "[perf] this run cannot name its own machine (${current.text}), so it cannot claim to be " +
+                        "the one ${captured.text} was captured on — not asserting",
+                )
+                captured != current -> MachineCheck(
+                    assertAgainstBlock = false,
+                    note = "[perf] anchor for ${PerfEnvironment.key} was captured on ${captured.text} and this run " +
+                        "is on ${current.text} — not asserting, since an absolute time is a property of the " +
+                        "machine, and a second machine must read as bootstrap rather than redden every lane",
+                )
+                else -> MachineCheck(assertAgainstBlock = true, note = null)
+            }
+        }
+    }
+}
+
+/** [MachineIdentity.check]'s outcome: whether to hold this run against the block, and what to print either way. */
+internal data class MachineCheck(val assertAgainstBlock: Boolean, val note: String?)
+
+/**
+ * Trimmed stdout of a command, or `null` if it could not be run or failed. [dir] is its working directory when the
+ * command needs one. Runs once per JVM per call site, outside every timed region.
+ */
+private fun capture(dir: File?, vararg args: String): String? = runCatching {
+    val process = ProcessBuilder(args.toList())
+        .apply { if (dir != null) directory(dir) }
+        .redirectErrorStream(true)
+        .start()
+    val text = process.inputStream.bufferedReader().readText().trim()
+    if (process.waitFor() == 0) text else null
+}.getOrNull()
 
 /**
  * Every median this run measured, as JSON Lines under **`perf-results/<environment>/<utc-timestamp>.jsonl`** — one
@@ -84,6 +193,9 @@ internal object PerfObservations {
                     "arch" to System.getProperty("os.arch"),
                     "jdk" to System.getProperty("java.version"),
                     "processors" to PerfEnvironment.processors,
+                    // The MACHINE, not just its core count: an absolute number is only comparable on the machine it
+                    // was measured on, and a refresh writes this into the block so the check can be made (IF280).
+                    "machine" to PerfEnvironment.machine.model,
                     "loadAverage" to loadAverage(),
                     "ci" to !System.getenv("CI").isNullOrBlank(),
                     "runId" to System.getenv("GITHUB_RUN_ID"),
@@ -144,11 +256,7 @@ internal object PerfObservations {
     internal fun commitLabel(head: String, dirty: Boolean): String = if (dirty) "$head-DIRTY" else head
 
     /** Trimmed stdout of a git command run in [dir], or `null` if it could not be run or failed. */
-    private fun git(dir: File, vararg args: String): String? = runCatching {
-        val process = ProcessBuilder(listOf("git", *args)).directory(dir).redirectErrorStream(true).start()
-        val text = process.inputStream.bufferedReader().readText().trim()
-        if (process.waitFor() == 0) text else null
-    }.getOrNull()
+    private fun git(dir: File, vararg args: String): String? = capture(dir, "git", *args)
 
     private fun loadAverage(): Double =
         java.lang.management.ManagementFactory.getOperatingSystemMXBean().systemLoadAverage
@@ -285,18 +393,23 @@ internal object PerfAnchors {
         val block = environments.path(PerfEnvironment.key)
         if (block.isMissingNode) return@lazy null
         // Captured on a different machine in the same os/arch family: absolute times are not comparable across
-        // those, so this is the bootstrap case, not a regression. Reported, never failed. A block without the
-        // field predates it and is trusted.
-        val capturedOn = block.path("processors")
-        if (capturedOn.isInt && capturedOn.asInt() != PerfEnvironment.processors) {
-            println(
-                "[perf] anchor for ${PerfEnvironment.key} was captured on a ${capturedOn.asInt()}-processor " +
-                    "machine and this one has ${PerfEnvironment.processors} — not asserting, since an absolute " +
-                    "time is a property of the machine (IG120: one anchoring machine per runner class)",
-            )
-            return@lazy null
-        }
+        // those, so a mismatch is the bootstrap case, not a regression. Decided once per JVM, which is why the
+        // note lives here rather than beside a per-key assertion that would print it 36 times.
+        val decision = MachineIdentity.check(
+            captured = capturedMachine(block),
+            current = PerfEnvironment.machine,
+            enforcement = TimingEnforcement.forAbsoluteAnchor(),
+        )
+        decision.note?.let { println(it) }
+        if (!decision.assertAgainstBlock) return@lazy null
         block.path("observations").properties().associate { (key, value) -> key to value.asDouble() }
+    }
+
+    /** The machine a block names, or `null` when it names none — which the gated check refuses to trust. */
+    private fun capturedMachine(block: JsonNode): MachineIdentity? {
+        val model = block.path("machine").takeIf { it.isTextual }?.asText()?.takeIf { it.isNotBlank() }
+        val processors = block.path("processors").takeIf { it.isInt }?.asInt()
+        return if (model == null || processors == null) null else MachineIdentity(model, processors)
     }
 
     private val required: Boolean get() = System.getProperty(REQUIRED_PROPERTY) == "true"
