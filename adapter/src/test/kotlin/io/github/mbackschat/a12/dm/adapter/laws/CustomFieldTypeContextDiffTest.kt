@@ -43,7 +43,7 @@ class CustomFieldTypeContextDiffTest {
      * ([IF284]: a field with a code-based `CustomFieldType` is keyed `(path, reps, raw)` while every other field
      * collapses to `(path, raw)`, and the per-cell contract is the only reason the cheaper key is not used
      * everywhere). It was locked interpreter-against-interpreter and had no kernel oracle at all (IG125), while
-     * three doc sites stated it in per-VALUE terms — the opposite reading.
+     * five doc sites stated it in per-VALUE terms — the opposite reading.
      *
      * Two in-cap rows of the same repeatable group carry the SAME value, so the two keys disagree by construction:
      * a per-value contract invokes once, a per-cell contract twice. One axis changed from

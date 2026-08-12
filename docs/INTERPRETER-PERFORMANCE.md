@@ -549,19 +549,25 @@ The catalog must favor **non-obvious** combinations (nesting × aggregation × c
 
 ### Checkpoint 2026-08-12 — the warm outcome and the measurement cost enter the record
 
-The first run to carry them is [`2026-08-12T124426Z`](../perf-results/darwin-aarch64/2026-08-12T124426Z.jsonl) (`Macmini9,1 Apple M1`, `loadAverage` 4.96): **138 observations, 102 warm outcomes, 17 cost rows**, and **0 warm rows that fail to join** an observation in the same run. All 102 warms in that run ended `flattened` — no budget cap, which is the state [IF282](INTERPRETER-FINDINGS.md#if282) set the 8 s cap to reach, now recorded rather than asserted from a log.
+The first run to carry them is [`2026-08-12T124426Z`](../perf-results/darwin-aarch64/2026-08-12T124426Z.jsonl) (`Macmini9,1 Apple M1`, `loadAverage` 4.96, commit `813c553a-DIRTY` — the feature *is* the recording, so it was measured on the working tree that added it): **138 observations, 102 warm outcomes, 17 cost rows**, and **0 warm rows that fail to join** an observation in the same run. All 102 warms in that run ended `flattened` — no budget cap, which is the state [IF282](INTERPRETER-FINDINGS.md#if282) set the 8 s cap to reach, now recorded rather than asserted from a log.
 
 Its 17 `cost` rows sum to **98.1 s** for the parity tier. That is **not** comparable to the 71.5 s IF282 quotes: this is the sum of each lane's own measured span (agreement checks, six warms, timed pairs, and any re-measurement), while the earlier figure came from a build log's task time. The point of recording it is that from here the number has one definition and a history; the two should not be differenced.
 
-Method: `scripts/perf-keys.sh compute` before and after, then three isolated `perfGateTest` runs on the same machine (`Macmini9,1 Apple M1`, 8 processors), nothing else running, folded at their per-key median through `scripts/perf-anchor.sh show`. Records [`2026-08-12T120652Z`](../perf-results/darwin-aarch64/2026-08-12T120652Z.jsonl) / [`T121253Z`](../perf-results/darwin-aarch64/2026-08-12T121253Z.jsonl) / [`T121706Z`](../perf-results/darwin-aarch64/2026-08-12T121706Z.jsonl), `loadAverage` 8.32 / 6.07 / 4.38 — all three `-DIRTY`, because they measured this change's working tree before it landed, which is what that marker is for. The anchor they are compared against is `80a4b99e`, measured at loads 2.8–7.1.
+**Coverage, stated because it is narrower than the feature sounds:** the 102 rows are `kernel parity`'s 17 scenarios × 6 instances. The two Number-index lanes and the synthesized-model lane call the same warm protocol without passing a lane, so they still only print their outcome — including the exact instance whose cap set the 8 s budget (IF282's `Number index validate` Groovy arm at N=2,000). That remainder is IG121's, not fixed here.
 
-**The key mechanics on the compute path are gone** ([IF286](INTERPRETER-FINDINGS.md#if286)). Presence anywhere in the stack, before → after, on ~1,600 samples each:
+### Checkpoint 2026-08-12 — the cascade overlay's three hashes of one key
+
+Method: `scripts/perf-keys.sh compute` before and after, then three isolated `perfGateTest` runs on the same machine (`Macmini9,1 Apple M1`, 8 processors), nothing else running, folded at their per-key median through `scripts/perf-anchor.sh show`. Records [`2026-08-12T120652Z`](../perf-results/darwin-aarch64/2026-08-12T120652Z.jsonl) / [`T121253Z`](../perf-results/darwin-aarch64/2026-08-12T121253Z.jsonl) / [`T121706Z`](../perf-results/darwin-aarch64/2026-08-12T121706Z.jsonl), `loadAverage` 8.32 / 6.07 / 4.38 — all three `-DIRTY`, because they measured this change's working tree before it landed, which is what that marker is for.
+
+The anchor they are compared against is the committed `darwin-aarch64` block at **`03594677`** (`capturedAt 2026-08-12T092018Z`, a median of three), whose own input runs carried per-observation load **4.31–8.44**. *(Corrected 2026-08-12: this first read `80a4b99e … loads 2.8–7.1`. Both were wrong — the block names `03594677`, and folding that trio reproduces all 36 anchor values while the `80a4b99e` trio reproduces none. The load contrast that supports reading the validate movement as contention is therefore 4.31–8.44 against 4.58–10.57, which is thinner than the original sentence implied and is the honest basis.)*
+
+**The key mechanics on the compute path are gone** ([IF286](INTERPRETER-FINDINGS.md#if286)). Presence anywhere in the stack, before → after, on ~1,600 samples each. The two `ArrayList` rows are **nested, not independent** — `perf-keys.sh` matches a frame by substring, and `ArrayList.hashCode` is a prefix of `hashCodeRange`, so the first row contains the second (measured 108 against 107 samples before the change):
 
 | frame | before | after |
 |---|---|---|
 | `kotlin.Pair.hashCode` | 9.97 % | **0.25 %** |
-| `java.util.ArrayList.hashCode` | 6.95 % | **0.18 %** |
-| `ArrayList.hashCodeRange` (self) | 6.89 %, 3rd hottest | **0.18 %** present |
+| `java.util.ArrayList.hashCode` (contains the row below) | 6.95 % | **0.18 %** |
+| `ArrayList.hashCodeRange` | 6.89 %, 3rd hottest self frame | **0.18 %** present |
 | the lookup itself | `OverlayContext.stateOf` present in 29.67 %, innermost-mechanic caller for 16.09 % | `CascadeOverlay.rowsAt` present in 4.32 %, 2.16 % self |
 
 **The four compute-overlay lanes and the tiered-compute lane fell; nothing breached.** Median of three against the anchor:
@@ -576,23 +582,32 @@ Method: `scripts/perf-keys.sh compute` before and after, then three isolated `pe
 
 **The validate lanes read 1.03×–1.34× higher, and this is recorded as unexplained-but-bounded rather than as no-change.** No lane breached (the gate reported no breach, no cap stop and no stale anchor across all three runs), every value sits inside this machine's measured `1.42×` run-to-run band, and the largest moves are the *small* scales (`B1 @5000` 1.34×, `FVNU @5000` 1.25×, `COLD first-call` 1.18 % wall) — the signature of a shorter measurement on a busier machine, which these runs were. Separately, and as a mechanism rather than an observation: `OverlayContext` has exactly one construction site, in `ComputationEngine`, so no validate path can reach this code at all. A quiet machine would be needed to read those lanes as anything but noise, and the anchor was deliberately **not** refreshed from these runs — refreshing would raise the validate ceilings from a contended measurement, which is the compounding the committed anchor exists to prevent.
 
-One run of the three printed `[perf][note] tiered compute: interp@1000 ran out of warm budget after 60 runs (run-cap)`. The other two did not. Recorded rather than smoothed: the run cap is the `maxRuns` guard, not the 8 s time cap [IF282](INTERPRETER-FINDINGS.md#if282) set, and because the warm outcome is still not in the committed record (IG121's fourth piece) there is no history to say whether this lane has done it before.
+One run of the three printed `[perf][note] tiered compute: interp@1000 ran out of warm budget after 60 runs (run-cap)`. The other two did not. Recorded rather than smoothed: the run cap is the `maxRuns` guard, not the 8 s time cap [IF282](INTERPRETER-FINDINGS.md#if282) set, and at the time of these runs the warm outcome was not yet in the committed record, so there was no history to say whether this lane had done it before. It is recorded from the next checkpoint onward, which is what IG121's fourth piece shipped for.
 
-### Checkpoint 2026-08-12 — the list-in-key sweep: the five suspected memos are cold, the live ones are elsewhere
+### Checkpoint 2026-08-12 — the list-in-key sweep: one memo measured cold, four not exercised, the live ones elsewhere
 
-Method: `scripts/perf-keys.sh validate` and `scripts/perf-keys.sh compute` on `73bc4a04`, machine `Macmini9,1 Apple M1` (8 processors), one 20 s single-scenario loop each under `jdk.ExecutionSample`, nothing else running. Recordings `build/perf-keys/{validate,compute}.jfr` (transient; the script regenerates them). Validate = `complexRealWorld @ N=240`, **1,615 samples**; compute = `CO-correlation @ N=200`, **1,554 samples**. A profile is a proportion, not a bar: these are read against their own totals, and a contended machine moves them.
+Method: `scripts/perf-keys.sh validate` and `scripts/perf-keys.sh compute` on `73bc4a04`, machine `Macmini9,1 Apple M1` (8 processors), one 20 s single-scenario loop each under `jdk.ExecutionSample`, nothing else running. Validate = `complexRealWorld @ N=240`, **1,615 samples**; compute = `CO-correlation @ N=200`, **1,554 samples**. A profile is a proportion, not a bar: these are read against their own totals, and a contended machine moves them. *(The recordings live under `build/` and are transient. The compute baseline no longer exists: `perf-keys.sh` writes one fixed filename per mode, so profiling `compute` again after the [IF286](INTERPRETER-FINDINGS.md#if286) fix overwrote it — a defect in the instrument, recorded in IG127. The before figures below were taken from that run and are reproducible only by re-profiling the parent commit.)*
 
-**1. The five memos [IG126] named are cold on both scenarios.** Presence anywhere in the stack:
+**1. What the five memos [IG126] named actually measured — and for four of them it is NOT "cold".** *(Corrected 2026-08-12 after a cold review. This table first read "the five memos are cold on both scenarios"; that claim is unsupported for four of the five, and the correction is the interesting part.)* Two distinct reasons a row reads 0:
 
-| memo | validate | compute |
-|---|---|---|
-| `AggregateMemoKey(expression, scopePrefixes)` | 2 samples (0.12 %) | 0 |
-| `ValidationPass.indexColumns` / `indexColumnByScope` | 0 | 0 |
-| `DmInterpreter.decided` | 0 | 0 |
-| group-relevance `HashMap<String, HashMap<List<Int>, …>>` | 0 | 0 |
-| `RepetitionNotUniqueEvaluator.rows` | 0 | 0 |
+| memo | validate | compute | what the 0 means |
+|---|---|---|---|
+| `AggregateMemoKey(expression, scopePrefixes)` | 2 samples (0.12 %) | 0 | **measured.** It is a `data class`, so its `hashCode`/`equals` appear as frames and a hot one would be visible |
+| `ValidationPass.indexColumns` | 0 | 0 | **not exercised.** Its own KDoc says "Empty and unread in a FULL validation", and both profiled scenarios are full validations — the 0 was guaranteed by construction |
+| `DmInterpreter.decided` | 0 | 0 | **not exercised.** The enclosing `starRelevantOf` appears in 0 samples anywhere in either profile |
+| group-relevance `HashMap<String, HashMap<List<Int>, …>>` | 0 | 0 | **not exercised.** Same: its enclosing function never appears |
+| `RepetitionNotUniqueEvaluator.rows` | 0 | 0 | **not exercised.** The feature does not run in either scenario |
 
-**2. The class has 28 sites in `commonMain`, and its two live members were not on that list.**
+The four are also invisible to this instrument even if hot: they are *fields*, not classes, so no frame carries their name and only the enclosing function can be attributed. Establishing whether they are cheap needs a scenario that engages each — partial validation for `indexColumns` and `decided`, a model with an `RepetitionNotUnique`/index group for `rows`, a relevance-scoped call for group relevance. That is reopened as IG126.
+
+**2. The class's live members were not on that list.** The shape is common enough that a count is a judgement call rather than a fact — the query below yields **22 declaration sites**, a looser one 74, so what is published is the query, not a number:
+
+```
+grep -rnE '(val|var) [a-zA-Z]+(: [^=]+)? = (HashMap|LinkedHashMap|HashSet|LinkedHashSet)<(Pair<String, List<Int>>|Triple<String, Int, List<Int>>|List<Int>|String, (HashMap|Map)<List<Int>)' \
+  interpreter/src/commonMain --include='*.kt' | grep -v '/build/'
+```
+
+Most of those are **accumulators** — one entry per computed cell, written about once per unit of work, where key hashing is proportional to the work rather than multiplied by it. The ones that are memos consulted repeatedly are `Document.kt:307` (`valueByKey`, the hottest member of the class and already nested for exactly this reason), `Document.kt:803`, `ValidationPass.kt:55`, `DmInterpreter.kt:1111`, and `OverlayContext.kt:248/251`.
 
 | site | measured | mechanism |
 |---|---|---|

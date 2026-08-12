@@ -92,7 +92,7 @@ internal class ComputationEngine(
      *
      * **Cascade** — a computation may reference ANOTHER computation's target field; the kernel computes the
      * dependency first and the dependent reads its computed value (the CalculationCache). We mirror that
-     * **side-effect-free**: compute in dependency order, accumulating each result into an [overlay] (the
+     * **side-effect-free**: compute in dependency order, accumulating each result into a [CascadeOverlay] (the
      * computed values), and evaluate a dependent through an [OverlayContext] that returns those overlaid
      * values for computed-field reads. Without this the dependent read the stored (empty) operand → a wrong
      * value (verified vs the kernel). No doc mutation, so a reused doc never accumulates placements; for a
@@ -121,12 +121,19 @@ internal class ComputationEngine(
         // alternative ends it, whether or not it stored a value (SPEC-2026-07-26-03).
         val outcomeByCell = LinkedHashMap<Pair<String, List<Int>>, Computed>()
         val decided = HashSet<Pair<String, List<Int>>>()
+        // The cascade's own state: one entry per cell, carrying overlaid / cleared / poisoned (IF286).
+        //
+        // `Cleared` is load-bearing and not merely the absence of a value. A computed field a PRIOR computation
+        // CLEARED must be read as EMPTY (empty-as-0 / skip), NOT as the stale STORED (seeded) value the raw
+        // document still holds. Without it a dependent's `FieldFilled(dep)` reads the stale seed as filled and
+        // computes where the kernel (seeing dep empty) clears — a large slice of the IF76/IF77 CVV class, AND the
+        // root of the IF76 gate's over-suppression (a cleared dependency read stale-and-invalid would wrongly trip
+        // the gate). KERNEL-FINDINGS §11 (cascade clearing).
+        //
+        // `Poisoned` is cause-blind by contract (SPEC-2026-07-26-04): once invalid, a computed cell contributes
+        // only its identity to dependent reads. Never retain the failed payload, exception subtype, message, or
+        // producer cause; every such producer class must collapse to the same poisoned observation.
         val cascade = CascadeOverlay()
-        // A computed field a PRIOR computation CLEARED — dependents must read it as EMPTY (empty-as-0 / skip), NOT
-        // the stale STORED (seeded) value the overlay would otherwise fall through to. Without this a dependent's
-        // `FieldFilled(dep)` reads the stale seed as filled and computes where the kernel (seeing dep empty) clears
-        // — a large slice of the IF76/IF77 CVV class, AND the root of the IF76 gate's over-suppression (a cleared
-        // dependency read stale-and-invalid would wrongly trip the gate). KERNEL-FINDINGS §11 (cascade clearing).
         val emptyOf: (String) -> Val = { p -> emptyValue(model.kinds[p] ?: Kind.STRING) }
         // A computed NUMBER is STORED padded to its field's minFractionalDigits (IF82) — so a downstream read of
         // a cascade-overlaid value must see that SAME stored form. Without this an integer-valued computed
@@ -134,9 +141,6 @@ internal class ComputationEngine(
         // field's poison gate wrongly flags it `zahlFalscheAnzahlNachkommastellen` →
         // poisons a downstream computation the kernel computes fine (IF90).
         val minFracOf: (String) -> Int = { p -> model.constraintsOf(p).minFractionalDigits ?: 0 }
-        // Cause-blind by contract (SPEC-2026-07-26-04): once invalid, a computed cell contributes only its
-        // identity to dependent reads. Never retain the failed payload, exception subtype, message, or producer
-        // cause here; every such producer class must collapse to the same poisoned-membership observation.
         // The kernel's PRELIMINARY index invalidation reaches the compute path (SPEC-2026-07-23-15): a
         // DUPLICATED index cell is formally invalid for a reading computation (the `uniqueIndex` prepass),
         // and an EMPTY index cell — unlike an ordinary required-empty field — poisons its reader (the

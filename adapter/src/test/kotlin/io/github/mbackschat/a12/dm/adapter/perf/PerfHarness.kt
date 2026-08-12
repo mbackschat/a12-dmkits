@@ -991,6 +991,11 @@ object PerfHarness {
         val jLarge = java.instance(large)
         val smallResult = assertInstanceAgreement(scenario, small, iSmall, gSmall, jSmall)
         val largeResult = assertInstanceAgreement(scenario, large, iLarge, gLarge, jLarge)
+        // ONE identity per scale, shared by the warm rows and the PerfRows below. Two copies of the same
+        // expression would let a later edit drift the label or fingerprint apart, which is exactly what the
+        // record's join check would then reject.
+        val smallIdentity = scenario.completeIdentity(small, listOf(smallResult.size), listOf(0))
+        val largeIdentity = scenario.completeIdentity(large, listOf(largeResult.size), listOf(0))
 
         // Every instance is warmed towards steady state ONCE, before the first timed pair. Without this the first
         // pair is measured on six differently-cold engines and the ratio reports their warm curves rather than
@@ -1014,12 +1019,7 @@ object PerfHarness {
         // beside the medians in the committed record — otherwise the cap's justification lives in a build/ log
         // that clean deletes, a returning cap stop fails nothing, and no later run can compare against it (IG121).
         if (lane != null) {
-            // Built from the SAME call the rows below use, so the label and fingerprint cannot drift apart. The
-            // result sizes it needs are already proven by the agreement check above.
-            val identityFor = mapOf(
-                small to scenario.completeIdentity(small, listOf(smallResult.size), listOf(0)),
-                large to scenario.completeIdentity(large, listOf(largeResult.size), listOf(0)),
-            )
+            val identityFor = mapOf(small to smallIdentity, large to largeIdentity)
             for ((engine, n, outcome) in warmed) {
                 val identity = identityFor.getValue(n)
                 PerfObservations.recordWarm(
@@ -1077,7 +1077,7 @@ object PerfHarness {
         val jLargeMs = accepted.javaLarge
 
         val smallRow = PerfRow(
-            scenario.completeIdentity(small, listOf(smallResult.size), listOf(0)),
+            smallIdentity,
             small,
             smallResult.size,
             stats(iSmallMs.copyOf()),
@@ -1085,7 +1085,7 @@ object PerfHarness {
             stats(jSmallMs.copyOf()),
         )
         val largeRow = PerfRow(
-            scenario.completeIdentity(large, listOf(largeResult.size), listOf(0)),
+            largeIdentity,
             large,
             largeResult.size,
             stats(iLargeMs.copyOf()),

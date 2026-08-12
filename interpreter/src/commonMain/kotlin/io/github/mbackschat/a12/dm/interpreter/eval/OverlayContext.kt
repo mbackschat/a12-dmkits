@@ -42,7 +42,7 @@ internal class OverlayContext(
 
     // A POISONED cascade target (an errored value / an itself-poisoned instance) poisons EVERY read — value,
     // presence, or display (IF85; the kernel's CalculationCache.getWertXML/isEntityFilled throw for an
-    // invalid-marked field). The set carries cell identity only: producer cause/payload/message is deliberately
+    // invalid-marked field). The entry carries cell identity only: producer cause/payload/message is deliberately
     // unavailable to the dependent (SPEC-2026-07-26-04). A CLEARED target instead reads as EMPTY (IF77).
     override fun field(path: String): Val = when (val entry = entryAt(path)) {
         null -> d.field(path)
@@ -252,7 +252,7 @@ internal class OverlayViews(private val observer: CacheObserver? = null) {
 
     /**
      * The overlay-WRAPPED row contexts of one group in one scope. Unlike the derived views below this caches no
-     * value: a wrapper reads the live cascade collections on every access, so sharing one across a step's outer
+     * value: a wrapper reads the live cascade overlay on every access, so sharing one across a step's outer
      * rows cannot serve a stale answer — it only avoids rebuilding the wrappers.
      */
     fun rowContexts(groupPath: String, scope: List<Int>, build: () -> List<EvalContext>): List<EvalContext> =
