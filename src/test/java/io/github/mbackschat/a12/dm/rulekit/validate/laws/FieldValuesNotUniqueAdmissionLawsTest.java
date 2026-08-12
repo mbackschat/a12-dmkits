@@ -85,6 +85,11 @@ class FieldValuesNotUniqueAdmissionLawsTest {
      * DateFragments, two Times, two DateTimes), the two refused kinds (Boolean, DateRange), and a repeatable
      * {@code Counts} group for the starred forms.
      *
+     * <p>{@code Bin} and {@code Tallies} exist for the <b>group-operand</b> rows at the bottom and are
+     * deliberately <em>homogeneous</em> — two Strings and two same-scale Numbers. A mixed group such as
+     * {@code Counts} cannot carry that measurement: its expansion would offend the category gate, so a
+     * rejection would not distinguish "a group operand is refused" from "this group's contents are refused".
+     *
      * <p>Time and DateTime carry no explicit format because the kernel admits exactly one declared format for each
      * ({@code HH:mm:ss} and {@code yyyy-MM-dd'T'HH:mm:ss}) — a probe declaring {@code HH:mm} was refused at the
      * model level, so their same-format rows cannot be separated from their kind rows and are not asserted as such.
@@ -119,7 +124,14 @@ class FieldValuesNotUniqueAdmissionLawsTest {
                         .field("AuditConfirmed", FieldKind.CONFIRM)
                         .group("Counts", counts -> counts.repeatable(50)
                                 .numberField("Counted", n -> n.fractionDigits(0))
-                                .stringField("CounterInitials", s -> { })))
+                                .stringField("CounterInitials", s -> { }))
+                        .group("Bin", bin -> bin
+                                .stringField("Zone", s -> { })
+                                .stringField("Rack", s -> { }))
+                        .group("Tallies", t -> t.repeatable(50)
+                                .numberField("FirstTally", n -> n.fractionDigits(0))
+                                .numberField("SecondTally", n -> n.fractionDigits(0)))
+                        .group("Slot", slot -> slot.stringField("SlotCode", s -> { })))
                 .build().toJson();
     }
 
@@ -359,5 +371,84 @@ class FieldValuesNotUniqueAdmissionLawsTest {
         // temporal format gate does.
         refusesInsteadOf("AisleCode", "FieldValuesNotUnique(UnitsOnHand, BinCode, Recount)",
                 "MVK_ONLY_STRING_ENUM_NUMBER_DATE_ALLOWED", "MVK_VARYING_TYPES_NOT_ALLOWED");
+    }
+
+    // ── a GROUP-scope operand: refused here, while the entity-list aggregates expand it ────────────────
+
+    /*
+     * Measured 2026-08-12, closing an unmeasured client-side refusal rather than adding a capability.
+     *
+     * `Dsl.fieldValuesNotUnique` takes a `FieldOperand`, which permits `FieldRef` and `FieldListRef` but NOT
+     * `GroupListRef` — so a group operand is TYPE-LEVEL unrepresentable here, the quiet form of a refusal the
+     * "a client-side refusal needs a measured kernel basis" rule names explicitly: no runtime error, just a
+     * missing factory, so the shape reads as "not a thing" rather than "refused". `4b244b84` widened exactly
+     * that slot for Sum/MaxValue/MinValue/NumberOfDifferentValues/NumberOfFilledFields, which made the omission
+     * here a live question instead of a latent one: the two operators sit one `permits` clause apart.
+     *
+     * These rows are therefore authored as literals — the only legitimate reason to hand-write a condition in
+     * this estate is to reach a shape the typed surface exists to prevent. Each rejection is paired with the
+     * SAME fields as explicit operands, admitted, so the measurement cannot be satisfied by a kernel that
+     * simply dislikes the fixture's groups.
+     */
+
+    /**
+     * A NON-repeatable group operand is <b>ADMITTED</b> — the measurement that refuted the hypothesis this
+     * section was written to confirm. It was written expecting {@code MVK_NO_GROUPS_ALLOWED}, by analogy with
+     * {@code NumberOfFilledGroups}' mirror-image {@code MVK_NO_FIELDS_ALLOWED}; the kernel accepts.
+     */
+    @Test
+    void aNonRepeatableGroupOperandIsAdmitted() {
+        admits("BinCode", "FieldValuesNotUnique(Bin)");
+    }
+
+    /** The control: {@code Bin}'s own two fields, listed explicitly, are admitted. */
+    @Test
+    void theSameTwoFieldsListedExplicitlyAreAdmitted() {
+        admits("BinCode", "FieldValuesNotUnique(Bin/Zone, Bin/Rack)");
+    }
+
+    @Test
+    void aStarredRepeatableGroupOperandIsAdmitted() {
+        admits("BinCode", "FieldValuesNotUnique(Tallies*)");
+    }
+
+    /** The control for the starred row: the same group's fields as starred field lists are admitted. */
+    @Test
+    void theSameStarredGroupsFieldsAreAdmitted() {
+        admits("BinCode", "FieldValuesNotUnique(Tallies*/FirstTally, Tallies*/SecondTally)");
+    }
+
+    /**
+     * THE ARITY DISCRIMINATOR, and the two gates turn out to disagree about what a group operand <em>is</em>.
+     * A group is one authored slot, so "a group is admitted" had two rival mechanisms: the arity gate counts the
+     * group's <em>expansion</em>, or it treats any group as already-many the way it treats a starred slot. A
+     * group containing exactly ONE field separates them — and it is <b>ADMITTED</b>, so the arity gate does not
+     * count the expansion. A group slot satisfies the param law unconditionally, exactly as a starred slot does
+     * ({@code AggregateGroupOperandLawsTest.aStarredGroupScopeSatisfiesTheParamLawAlone} is the same fact in the
+     * aggregate family).
+     *
+     * <p>Read together with the category row below, the split is the finding: <b>arity</b> reads the authored
+     * slots and treats a group as many, while <b>category</b> reads the expansion. Neither row alone shows it.
+     */
+    @Test
+    void aGroupWhoseExpansionIsASingleFieldSatisfiesTheArityGateAnyway() {
+        admits("BinCode", "FieldValuesNotUnique(Slot)");
+    }
+
+    /** The control that keeps the row above from being read as "one operand is always fine": a single FIELD is not. */
+    @Test
+    void thatSameSingleFieldAuthoredDirectlyStillFailsTheArityGate() {
+        refuses("BinCode", "FieldValuesNotUnique(Slot/SlotCode)", "MVK_PARAMSIZE_INVALIDN");
+    }
+
+    /**
+     * THE KIND DISCRIMINATOR. {@code Counts} expands to a Number beside a String, so if the category gate reads
+     * the expansion this is the ordinary mixing refusal; if a group operand were waved past the type gates it
+     * would be admitted. Pairs with the two homogeneous admissions above — those alone are equally consistent
+     * with a kernel that type-checks nothing it reaches through a group.
+     */
+    @Test
+    void aGroupWhoseExpansionMixesCategoriesReportsTheMixingGate() {
+        refuses("BinCode", "FieldValuesNotUnique(Counts*)", "MVK_VARYING_TYPES_NOT_ALLOWED");
     }
 }

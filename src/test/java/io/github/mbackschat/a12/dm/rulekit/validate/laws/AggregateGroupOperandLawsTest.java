@@ -1,5 +1,9 @@
 package io.github.mbackschat.a12.dm.rulekit.validate.laws;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
 import org.junit.jupiter.api.Test;
 
 import io.github.mbackschat.a12.dm.Fixtures;
@@ -37,8 +41,8 @@ import io.github.mbackschat.a12.dm.rulekit.dsl.NumberExpr;
  *   <tr><td>a group + a descendant of itself</td><td>{@code MVK_DUPLICATE_PARAM2}</td></tr>
  *   <tr><td>a REPEATABLE group, unstarred</td><td>{@code MVK_NO_WILDCARD}</td></tr>
  *   <tr><td>a NON-repeatable group, unstarred</td><td>ACCEPT</td></tr>
- *   <tr><td>a NON-repeatable group, STARRED</td><td><i>not measured</i> — no row below authors it, so do not
- *       read the row above as "a star is refused here"</td></tr>
+ *   <tr><td>a NON-repeatable group, STARRED</td><td>{@code MVK_INVALID_WILDCARD} — measured 2026-08-12, which
+ *       is also what grounds {@code BoundModel.flattenGroup}'s own pre-check</td></tr>
  *   <tr><td>an expansion of the wrong kind</td><td>{@code MVK_NO_NUMBER} / {@code MVK_NOT_SORTABLE} / …</td></tr>
  * </table>
  *
@@ -88,6 +92,16 @@ class AggregateGroupOperandLawsTest {
         return INVOICE.flattenGroup("/Invoice/Lines*");
     }
 
+    /**
+     * The unstarred non-repeatable group scope as a literal, and the same condition with the star this file
+     * could not previously author. Kept as one pair of constants so the two probes differ in exactly the star.
+     */
+    private static final String NON_REPEATABLE_GROUP_SCOPE =
+            "FieldFilled(/Order/Quantity) And NumberOfDifferentValues(/Order/ShippingAddress) > 0";
+
+    private static final String STARRED_NON_REPEATABLE_GROUP_SCOPE =
+            NON_REPEATABLE_GROUP_SCOPE.replace("ShippingAddress", "ShippingAddress*");
+
     /** Every aggregate over the same group scope, so the shared-gate claim is measured and not assumed. */
     private static NumberExpr[] overLines() {
         return new NumberExpr[] {
@@ -133,6 +147,50 @@ class AggregateGroupOperandLawsTest {
     void aNonRepeatableGroupScopeIsLegalUnstarred() {
         KernelLaws.acceptsOrder("/Order", "../Quantity", guardedOrder(
                 Dsl.numberOfDifferentValues(ORDER.flattenGroup("/Order/ShippingAddress"))));
+    }
+
+    // ── the builder-refused shape, measured on the kernel anyway ───────────────────────────────────
+
+    /**
+     * The hand-authored spelling of the row above, asserted accepted <b>before</b> the starred probe below uses
+     * the same spelling. Without this control a rejection there could equally be a typo in a string the typed
+     * surface never produced, which is the standing hazard of authoring a condition by hand.
+     */
+    @Test
+    void theHandAuthoredSpellingOfTheUnstarredFormIsTheSameConditionTheBuilderRenders() {
+        KernelLaws.acceptsOrder("/Order", "../Quantity", NON_REPEATABLE_GROUP_SCOPE);
+        assertEquals(NON_REPEATABLE_GROUP_SCOPE, guardedOrder(
+                Dsl.numberOfDifferentValues(ORDER.flattenGroup("/Order/ShippingAddress"))),
+                "the literal must be character-identical to the rendered form, else the starred probe below "
+                        + "measures a different condition than the accepted control");
+    }
+
+    /**
+     * <b>Starring a NON-repeatable group</b> — the row this file previously carried as "not measured", closed
+     * 2026-08-12. {@code BoundModel.flattenGroup} refuses the shape itself, citing {@code MVK_INVALID_WILDCARD}
+     * in its message, so the kernel never sees it through the typed surface: it must therefore be authored as a
+     * literal, which is the only legitimate reason to hand-write a condition in this estate.
+     *
+     * <p><b>Why the builder's basis was not already sufficient.</b> {@code MVK_INVALID_WILDCARD} was measured on
+     * {@code NumberOfFilledGroups(/Order*)} — a different carrier, and a root group (KERNEL-FINDINGS §9). This
+     * file has just established that the <em>kind</em> gate reports the carrier's own code, so transferring a
+     * code across carriers by analogy is exactly the reasoning the "a client-side refusal needs a measured
+     * kernel basis" rule forbids. The star gate turns out to be carrier-independent after all — but that is now
+     * an observation rather than an inference.
+     */
+    @Test
+    void aStarredNonRepeatableGroupScopeIsRejected() {
+        KernelLaws.rejectsOrder("/Order", "../Quantity", STARRED_NON_REPEATABLE_GROUP_SCOPE,
+                "MVK_INVALID_WILDCARD");
+    }
+
+    /** …and the builder refuses the same shape locally, so the pre-check and the kernel agree. */
+    @Test
+    void theBuilderRefusesTheSameShapeItsMessageNames() {
+        var thrown = assertThrows(IllegalArgumentException.class,
+                () -> ORDER.flattenGroup("/Order/ShippingAddress*"));
+        assertTrue(thrown.getMessage().contains("MVK_INVALID_WILDCARD"),
+                "the pre-check must cite the code the kernel actually reports: " + thrown.getMessage());
     }
 
     // ── the delegated rejections ──────────────────────────────────────────────────────────────────
