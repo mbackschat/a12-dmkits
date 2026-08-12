@@ -3,6 +3,7 @@ package io.github.mbackschat.a12.dm.interpreter
 import io.github.mbackschat.a12.dm.interpreter.ast.Tri
 import io.github.mbackschat.a12.dm.interpreter.ast.Val
 import io.github.mbackschat.a12.dm.interpreter.ast.emptyValue
+import io.github.mbackschat.a12.dm.interpreter.eval.CascadeOverlay
 import io.github.mbackschat.a12.dm.interpreter.eval.Document
 import io.github.mbackschat.a12.dm.interpreter.eval.EvalConfig
 import io.github.mbackschat.a12.dm.interpreter.eval.EvalContext
@@ -120,13 +121,12 @@ internal class ComputationEngine(
         // alternative ends it, whether or not it stored a value (SPEC-2026-07-26-03).
         val outcomeByCell = LinkedHashMap<Pair<String, List<Int>>, Computed>()
         val decided = HashSet<Pair<String, List<Int>>>()
-        val overlay = HashMap<Pair<String, List<Int>>, Val>()
+        val cascade = CascadeOverlay()
         // A computed field a PRIOR computation CLEARED — dependents must read it as EMPTY (empty-as-0 / skip), NOT
         // the stale STORED (seeded) value the overlay would otherwise fall through to. Without this a dependent's
         // `FieldFilled(dep)` reads the stale seed as filled and computes where the kernel (seeing dep empty) clears
         // — a large slice of the IF76/IF77 CVV class, AND the root of the IF76 gate's over-suppression (a cleared
         // dependency read stale-and-invalid would wrongly trip the gate). KERNEL-FINDINGS §11 (cascade clearing).
-        val cleared = HashSet<Pair<String, List<Int>>>()
         val emptyOf: (String) -> Val = { p -> emptyValue(model.kinds[p] ?: Kind.STRING) }
         // A computed NUMBER is STORED padded to its field's minFractionalDigits (IF82) — so a downstream read of
         // a cascade-overlaid value must see that SAME stored form. Without this an integer-valued computed
@@ -137,7 +137,6 @@ internal class ComputationEngine(
         // Cause-blind by contract (SPEC-2026-07-26-04): once invalid, a computed cell contributes only its
         // identity to dependent reads. Never retain the failed payload, exception subtype, message, or producer
         // cause here; every such producer class must collapse to the same poisoned-membership observation.
-        val poisoned = HashSet<Pair<String, List<Int>>>()
         // The kernel's PRELIMINARY index invalidation reaches the compute path (SPEC-2026-07-23-15): a
         // DUPLICATED index cell is formally invalid for a reading computation (the `uniqueIndex` prepass),
         // and an EMPTY index cell — unlike an ordinary required-empty field — poisons its reader (the
@@ -208,8 +207,8 @@ internal class ComputationEngine(
                 fun computeAt(ctx: EvalContext) {
                     val targetKey = comp.targetPath to ctx.repsOf(comp.targetPath)
                     if (targetKey in decided) return   // an earlier computation's non-empty outcome already won (IF87)
-                    val ectx = if (overlay.isEmpty() && cleared.isEmpty() && poisoned.isEmpty()) ctx
-                        else OverlayContext(ctx, overlay, cleared, poisoned, emptyOf, minFracOf, views, comp.targetPath)
+                    val ectx = if (cascade.isEmpty) ctx
+                        else OverlayContext(ctx, cascade, emptyOf, minFracOf, views, comp.targetPath)
                     val interp = Interpreter(ectx, computeConfig,
                         // The compute gate THROWS (IF85): consulting it on a filled formally-invalid operand IS the
                         // kernel's poisoning read (validation's gate stays Boolean → the 3VL exclusion).
@@ -246,15 +245,14 @@ internal class ComputationEngine(
                             if (v is Val.DomainFailure) {
                                 // No stored value/delta distinguishes a domain failure from an ordinary clear,
                                 // but the target is invalid for the rest of this computation cascade.
-                                poisoned += targetKey
-                                cleared -= targetKey
+                                cascade.poison(targetKey.first, targetKey.second)
                                 decided += targetKey
                             } else {
                                 when (c.outcome) {
-                                    ComputeOutcome.ERRORED -> { poisoned += targetKey; cleared -= targetKey; decided += targetKey }
-                                    ComputeOutcome.VALUE -> { overlay[targetKey] = v; cleared -= targetKey; decided += targetKey }
+                                    ComputeOutcome.ERRORED -> { cascade.poison(targetKey.first, targetKey.second); decided += targetKey }
+                                    ComputeOutcome.VALUE -> { cascade.overlay(targetKey.first, targetKey.second, v); decided += targetKey }
                                     ComputeOutcome.CLEARED -> {
-                                        cleared += targetKey
+                                        cascade.clear(targetKey.first, targetKey.second)
                                         if (selection.selected) decided += targetKey
                                     }
                                 }
@@ -263,7 +261,7 @@ internal class ComputationEngine(
                     } catch (_: PoisonedReadException) {
                         // The immediate read path is useful only inside expression-order locks. At the computation
                         // boundary even that path is erased: the reader becomes an identity-only poisoned target.
-                        poisoned += targetKey; cleared -= targetKey; decided += targetKey
+                        cascade.poison(targetKey.first, targetKey.second); decided += targetKey
                         Computed(comp.targetPath, ComputeOutcome.CLEARED, indices = targetKey.second)
                     }
                     outcomeByCell[targetKey] = computed   // a decided cell is skipped above → a later computation overwrites only a tentative (unselected) clear
@@ -299,7 +297,7 @@ internal class ComputationEngine(
                                 }
                             ) continue
                             markedAny = true
-                            poisoned += targetKey; cleared -= targetKey; decided += targetKey
+                            cascade.poison(targetKey.first, targetKey.second); decided += targetKey
                             outcomeByCell[targetKey] = Computed(comp.targetPath, ComputeOutcome.CLEARED, indices = targetKey.second)
                         }
                         // A malformed key OUTSIDE every target instance's shared prefix marks nothing, and the

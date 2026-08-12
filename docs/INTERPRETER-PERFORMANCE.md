@@ -547,6 +547,33 @@ The catalog must favor **non-obvious** combinations (nesting × aggregation × c
 
 ## Results log
 
+### Checkpoint 2026-08-12 — the cascade overlay's three hashes of one key
+
+Method: `scripts/perf-keys.sh compute` before and after, then three isolated `perfGateTest` runs on the same machine (`Macmini9,1 Apple M1`, 8 processors), nothing else running, folded at their per-key median through `scripts/perf-anchor.sh show`. Records [`2026-08-12T120652Z`](../perf-results/darwin-aarch64/2026-08-12T120652Z.jsonl) / [`T121253Z`](../perf-results/darwin-aarch64/2026-08-12T121253Z.jsonl) / [`T121706Z`](../perf-results/darwin-aarch64/2026-08-12T121706Z.jsonl), `loadAverage` 8.32 / 6.07 / 4.38 — all three `-DIRTY`, because they measured this change's working tree before it landed, which is what that marker is for. The anchor they are compared against is `80a4b99e`, measured at loads 2.8–7.1.
+
+**The key mechanics on the compute path are gone** ([IF286](INTERPRETER-FINDINGS.md#if286)). Presence anywhere in the stack, before → after, on ~1,600 samples each:
+
+| frame | before | after |
+|---|---|---|
+| `kotlin.Pair.hashCode` | 9.97 % | **0.25 %** |
+| `java.util.ArrayList.hashCode` | 6.95 % | **0.18 %** |
+| `ArrayList.hashCodeRange` (self) | 6.89 %, 3rd hottest | **0.18 %** present |
+| the lookup itself | `OverlayContext.stateOf` present in 29.67 %, innermost-mechanic caller for 16.09 % | `CascadeOverlay.rowsAt` present in 4.32 %, 2.16 % self |
+
+**The four compute-overlay lanes and the tiered-compute lane fell; nothing breached.** Median of three against the anchor:
+
+| lane | anchor → median | |
+|---|---|---|
+| `CO-correlation @6000` | 128.88 → 104.84 ms | **0.81×** |
+| `CO-correlation @1500` | 32.18 → 26.47 ms | **0.82×** |
+| `CO-index @6000` | 33.91 → 28.88 ms | **0.85×** |
+| `tiered compute @20000` | 57.54 → 52.11 ms | **0.91×** |
+| `CO-index @1500` | 6.17 → 5.75 ms | **0.93×** |
+
+**The validate lanes read 1.03×–1.34× higher, and this is recorded as unexplained-but-bounded rather than as no-change.** No lane breached (the gate reported no breach, no cap stop and no stale anchor across all three runs), every value sits inside this machine's measured `1.42×` run-to-run band, and the largest moves are the *small* scales (`B1 @5000` 1.34×, `FVNU @5000` 1.25×, `COLD first-call` 1.18 % wall) — the signature of a shorter measurement on a busier machine, which these runs were. Separately, and as a mechanism rather than an observation: `OverlayContext` has exactly one construction site, in `ComputationEngine`, so no validate path can reach this code at all. A quiet machine would be needed to read those lanes as anything but noise, and the anchor was deliberately **not** refreshed from these runs — refreshing would raise the validate ceilings from a contended measurement, which is the compounding the committed anchor exists to prevent.
+
+One run of the three printed `[perf][note] tiered compute: interp@1000 ran out of warm budget after 60 runs (run-cap)`. The other two did not. Recorded rather than smoothed: the run cap is the `maxRuns` guard, not the 8 s time cap [IF282](INTERPRETER-FINDINGS.md#if282) set, and because the warm outcome is still not in the committed record (IG121's fourth piece) there is no history to say whether this lane has done it before.
+
 ### Checkpoint 2026-08-12 — the list-in-key sweep: the five suspected memos are cold, the live ones are elsewhere
 
 Method: `scripts/perf-keys.sh validate` and `scripts/perf-keys.sh compute` on `73bc4a04`, machine `Macmini9,1 Apple M1` (8 processors), one 20 s single-scenario loop each under `jdk.ExecutionSample`, nothing else running. Recordings `build/perf-keys/{validate,compute}.jfr` (transient; the script regenerates them). Validate = `complexRealWorld @ N=240`, **1,615 samples**; compute = `CO-correlation @ N=200`, **1,554 samples**. A profile is a proportion, not a bar: these are read against their own totals, and a contended machine moves them.

@@ -1,6 +1,7 @@
 package io.github.mbackschat.a12.dm.interpreter
 
 import io.github.mbackschat.a12.dm.interpreter.eval.newDocument
+import io.github.mbackschat.a12.dm.interpreter.eval.CascadeOverlay
 import io.github.mbackschat.a12.dm.interpreter.eval.OverlayContext
 import io.github.mbackschat.a12.dm.interpreter.eval.OverlayViews
 import io.github.mbackschat.a12.dm.interpreter.eval.EvalConfig
@@ -109,11 +110,12 @@ class BareGroupComputeExactnessTest {
             consumerCondition = "AtLeastOneFieldFilled(Details)",
         )
         val ctx = model.newDocument().field(FLAG, "9", 1, 1).computeContexts(ROOT).single()
+        val cascade = CascadeOverlay().apply {
+            overlay(SOURCE, listOf(1, 1, 1), io.github.mbackschat.a12.dm.interpreter.ast.Val.Num(dec(5)))
+        }
         val overlay = OverlayContext(
             ctx,
-            mapOf((SOURCE to listOf(1, 1, 1)) to io.github.mbackschat.a12.dm.interpreter.ast.Val.Num(dec(5))),
-            emptySet(),
-            emptySet(),
+            cascade,
             { io.github.mbackschat.a12.dm.interpreter.ast.emptyValue(model.kinds.getValue(it)) },
             { 0 },
             OverlayViews(),
