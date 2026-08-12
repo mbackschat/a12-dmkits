@@ -52,6 +52,28 @@ class PerformanceRecordShapeGuardTest {
             List.of("environment", "key", "lane", "scenario", "n", "engine", "clock", "medianMs");
 
     /**
+     * A warm outcome's fields. The first four are its join key onto an observation — the outcome's whole value is
+     * that it QUALIFIES a median (only {@code flattened} means the instance reached steady state, and a
+     * still-falling kernel arm makes our ratio read better than it is), so a row that cannot be joined says nothing.
+     */
+    private static final List<String> REQUIRED_WARM_FIELDS =
+            List.of("environment", "lane", "scenario", "n", "engine", "runs", "stop");
+
+    /** A lane's measurement cost. Coarser than a warm row: per lane and scenario, not per instance. */
+    private static final List<String> REQUIRED_COST_FIELDS =
+            List.of("environment", "lane", "scenario", "wallMs");
+
+    /** Every {@code kind} a record line may carry after the header. An unknown one is a producer/guard drift. */
+    private static final Set<String> KNOWN_KINDS = Set.of("observation", "warm", "cost");
+
+    /**
+     * How a warm ended. Only {@code flattened} is not a caveat on every ratio measured on that instance; the two
+     * caps mean the budget ran out first, which is the state {@code IF282} set the 8 s cap to avoid and which
+     * nothing could see historically because the outcome was printed and never recorded (IG121's fourth piece).
+     */
+    private static final Set<String> KNOWN_WARM_STOPS = Set.of("flattened", "run-cap", "time-cap");
+
+    /**
      * What acceptance the observation was recorded under. Absent means an imported run written before the field
      * existed, which {@code perf-anchor.sh} treats as {@code accepted} — so the values must stay in step with that
      * script's filter, and an unknown one would be silently folded into an anchor as if it had been accepted.
@@ -65,6 +87,12 @@ class PerformanceRecordShapeGuardTest {
      * grows without a stated bound is how a text record becomes the liability someone eventually deletes whole.
      */
     private static final int MAX_RUNS_PER_ENVIRONMENT = 30;
+
+    /** The grain a warm outcome and the median it qualifies share: one engine instance at one scale in one lane. */
+    private static String joinKey(JsonNode row) {
+        return "%s|%s|n=%d|%s".formatted(row.path("lane").asText(), row.path("scenario").asText(),
+                row.path("n").asInt(), row.path("engine").asText());
+    }
 
     private static Path repoRoot() {
         for (Path candidate = Path.of("").toAbsolutePath(); candidate != null; candidate = candidate.getParent()) {
@@ -91,6 +119,7 @@ class PerformanceRecordShapeGuardTest {
 
         var problems = new ArrayList<String>();
         int observations = 0;
+        int warms = 0;
         for (Path record : records) {
             String relative = repoRoot().relativize(record).toString();
             List<String> lines = Files.readAllLines(record).stream().map(String::strip)
@@ -120,6 +149,9 @@ class PerformanceRecordShapeGuardTest {
                 problems.add(relative + ": filed under " + directory + " but reports environment="
                         + header.path("environment").asText("<absent>"));
             }
+            // Per FILE: a warm outcome qualifies a median measured in the same run, never one from another.
+            var warmKeys = new ArrayList<String>();
+            var observedKeys = new java.util.HashSet<String>();
             String stamp = record.getFileName().toString().replace(".jsonl", "");
             if (!stamp.equals(header.path("capturedAt").asText())) {
                 problems.add(relative + ": named " + stamp + " but reports capturedAt="
@@ -135,9 +167,27 @@ class PerformanceRecordShapeGuardTest {
                     problems.add(where + ": not JSON — " + malformed.getMessage());
                     continue;
                 }
-                if (!"observation".equals(observation.path("kind").asText())) {
-                    problems.add(where + ": only the first line may be a run header, was kind="
-                            + observation.path("kind").asText("<absent>"));
+                String kind = observation.path("kind").asText("<absent>");
+                if (!KNOWN_KINDS.contains(kind)) {
+                    problems.add(where + ": only the first line may be a run header, and every later line must "
+                            + "carry a known kind " + KNOWN_KINDS + ", was kind=" + kind);
+                    continue;
+                }
+                if ("warm".equals(kind)) {
+                    REQUIRED_WARM_FIELDS.stream().filter(field -> observation.path(field).isMissingNode())
+                            .forEach(field -> problems.add(where + ": warm outcome lacks " + field));
+                    String stop = observation.path("stop").asText("<absent>");
+                    if (!observation.path("stop").isMissingNode() && !KNOWN_WARM_STOPS.contains(stop)) {
+                        problems.add(where + ": unknown warm stop " + stop + "; a reader tells 'flattened' from a "
+                                + "cap to know whether the medians it qualifies are on a settled curve");
+                    }
+                    warmKeys.add(joinKey(observation) + "  (" + where + ")");
+                    warms++;
+                    continue;
+                }
+                if ("cost".equals(kind)) {
+                    REQUIRED_COST_FIELDS.stream().filter(field -> observation.path(field).isMissingNode())
+                            .forEach(field -> problems.add(where + ": cost row lacks " + field));
                     continue;
                 }
                 observations++;
@@ -147,6 +197,7 @@ class PerformanceRecordShapeGuardTest {
                 if (!missing.isEmpty()) {
                     continue;
                 }
+                observedKeys.add(joinKey(observation));
                 if (!observation.path("environment").asText().equals(header.path("environment").asText())) {
                     problems.add(where + ": observation environment disagrees with its run header");
                 }
@@ -172,10 +223,22 @@ class PerformanceRecordShapeGuardTest {
                             + "either a typo or a value that script has not been taught");
                 }
             }
+
+            // A warm outcome that joins to nothing is the shape a renamed field or a changed label produces, and
+            // it fails silently: the row is still well-formed, it simply stops qualifying anything.
+            warmKeys.stream().filter(entry -> !observedKeys.contains(entry.substring(0, entry.indexOf("  ("))))
+                    .forEach(entry -> problems.add(entry + ": warm outcome joins no observation in its own run; "
+                            + "(lane, scenario, n, engine) must match a median measured in the same file"));
         }
 
         assertTrue(observations > 0, "the scan read " + records.size() + " file(s) but no observation at all, so "
                 + "the per-observation assertions never ran");
+        // The bound of what committed data can prove about a PRODUCER: this cannot see an emitter that was deleted
+        // while old records keep their rows, but it does fail once no committed run carries a warm outcome — which
+        // is the state that made IF282's cap justification unverifiable and is what IG121's fourth piece fixed.
+        assertTrue(warms > 0, "no committed run carries a warm outcome, so every assertion about them above is "
+                + "vacuous; a warm that ends on a budget cap rather than by flattening is a caveat on every "
+                + "cross-engine ratio in its lane, and recording it is the only way a later run can compare");
         assertEquals(List.of(), problems, () -> "committed performance records must stay readable by "
                 + "scripts/perf-history.sh and scripts/perf-anchor.sh:\n  " + String.join("\n  ", problems));
     }

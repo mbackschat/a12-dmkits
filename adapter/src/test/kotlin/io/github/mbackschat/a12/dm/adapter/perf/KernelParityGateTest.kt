@@ -138,6 +138,9 @@ class KernelParityGateTest {
     private fun assertBeatsBothKernelStrategies(scenario: PerfScenario, small: Int, large: Int = small * 4) {
         val curve = PerfHarness.pairedScenarioGrowth(
             scenario, small = small, large = large, pairs = PAIRS, warmup = WARMUP, iters = ITERS,
+            // Named here, not defaulted in the harness: it is what joins this lane's warm-outcome and cost rows to
+            // the medians they qualify, and the same constant labels the observations below.
+            lane = LANE,
         )
         println(PerfHarness.format(curve.small, CAVEAT))
         println(PerfHarness.format(curve.large, CAVEAT))
@@ -158,12 +161,11 @@ class KernelParityGateTest {
      * bar against a committed number, and what matters here is the ratio, which needs no history to be decided.
      */
     private fun record(scenario: PerfScenario, row: PerfRow) {
-        val lane = "kernel parity"
         val identity = "${row.identity.label} fingerprint=${row.identity.fingerprint}"
         for ((engine, stats) in listOf("interpreter" to row.interp, "groovy" to row.groovy, "java" to row.java)) {
             if (stats == null) continue
             PerfObservations.record(
-                ObservationKey(lane = lane, identityLabel = identity, n = row.n, engine = engine, clock = "wall"),
+                ObservationKey(lane = LANE, identityLabel = identity, n = row.n, engine = engine, clock = "wall"),
                 stats.medianMs,
                 status = "unasserted",
             )
@@ -181,6 +183,9 @@ class KernelParityGateTest {
          * decides whether the tier fits the routine gate. The Number-index lanes keep their own richer
          * `warmup=5, iters=5`: they were tuned for canonical decimal projection, not this sweep.
          */
+        /** Single-sourced: the observations, the warm outcomes and the cost rows must share one lane label. */
+        const val LANE = "kernel parity"
+
         const val PAIRS = 3
         const val WARMUP = 3
         const val ITERS = 3

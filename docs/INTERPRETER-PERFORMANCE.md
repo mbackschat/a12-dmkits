@@ -547,7 +547,11 @@ The catalog must favor **non-obvious** combinations (nesting × aggregation × c
 
 ## Results log
 
-### Checkpoint 2026-08-12 — the cascade overlay's three hashes of one key
+### Checkpoint 2026-08-12 — the warm outcome and the measurement cost enter the record
+
+The first run to carry them is [`2026-08-12T124426Z`](../perf-results/darwin-aarch64/2026-08-12T124426Z.jsonl) (`Macmini9,1 Apple M1`, `loadAverage` 4.96): **138 observations, 102 warm outcomes, 17 cost rows**, and **0 warm rows that fail to join** an observation in the same run. All 102 warms in that run ended `flattened` — no budget cap, which is the state [IF282](INTERPRETER-FINDINGS.md#if282) set the 8 s cap to reach, now recorded rather than asserted from a log.
+
+Its 17 `cost` rows sum to **98.1 s** for the parity tier. That is **not** comparable to the 71.5 s IF282 quotes: this is the sum of each lane's own measured span (agreement checks, six warms, timed pairs, and any re-measurement), while the earlier figure came from a build log's task time. The point of recording it is that from here the number has one definition and a history; the two should not be differenced.
 
 Method: `scripts/perf-keys.sh compute` before and after, then three isolated `perfGateTest` runs on the same machine (`Macmini9,1 Apple M1`, 8 processors), nothing else running, folded at their per-key median through `scripts/perf-anchor.sh show`. Records [`2026-08-12T120652Z`](../perf-results/darwin-aarch64/2026-08-12T120652Z.jsonl) / [`T121253Z`](../perf-results/darwin-aarch64/2026-08-12T121253Z.jsonl) / [`T121706Z`](../perf-results/darwin-aarch64/2026-08-12T121706Z.jsonl), `loadAverage` 8.32 / 6.07 / 4.38 — all three `-DIRTY`, because they measured this change's working tree before it landed, which is what that marker is for. The anchor they are compared against is `80a4b99e`, measured at loads 2.8–7.1.
 

@@ -4,7 +4,7 @@ Every run of the routine performance gate writes one **text** file here. Nothing
 
 **Layout.** `perf-results/<environment>/<utc-timestamp>.jsonl`, one file per run. The environment key is `<os>-<arch>[-ci]`, so a laptop and a hosted runner never mix: absolute timings are only comparable within one of them.
 
-**Format.** JSON Lines, no database, no binary. Line 1 is the run header, then one line per observation.
+**Format.** JSON Lines, no database, no binary. Line 1 is the run header, then one line per record. Three kinds follow it, told apart by `kind`: an **`observation`** (one engine's median for one lane/scenario/scale/clock), a **`warm`** outcome (how one engine instance's steady-state warm ended), and a **`cost`** row (what one lane spent measuring one scenario).
 
 ```
 {"kind":"run","environment":"darwin-aarch64","capturedAt":"2026-08-11T190455Z","commit":"1845f8af",
@@ -13,7 +13,14 @@ Every run of the routine performance gate writes one **text** file here. Nothing
 {"kind":"observation","environment":"darwin-aarch64","key":"<lane>|<scenario>@<v> fingerprint=<sha256>|n=<N>|interpreter|cpu",
  "scenario":"diagnostic/B1-per-row@1 fingerprint=…","lane":"B1 sub-quadratic check","n":5000,
  "engine":"interpreter","clock":"cpu","medianMs":9.6,"loadAverage":2.44}
+{"kind":"warm","environment":"darwin-aarch64","lane":"kernel parity","scenario":"diagnostic/CO-correlation@1 fingerprint=…",
+ "n":800,"engine":"groovy","runs":15,"stop":"time-cap","loadAverage":4.96}
+{"kind":"cost","environment":"darwin-aarch64","lane":"kernel parity","scenario":"CO correlation","wallMs":9214.6,"loadAverage":4.96}
 ```
+
+**A `warm` row QUALIFIES the medians measured on that instance, which is why it is recorded rather than printed.** `stop` is `flattened`, `run-cap` or `time-cap`, and only the first means the instance actually reached steady state — a still-falling kernel arm reads higher than its settled cost, so a ratio measured against it looks better than it is. It carries the observation's own `(lane, scenario, n, engine)`, so the two join; `PerformanceRecordShapeGuardTest` fails a row that joins nothing, which is what a renamed field or a shorthand engine name silently produces. This existed only as a `[perf][note]` on stdout until 2026-08-12, so the 8 s budget cap's justification lived in a `build/` log that `clean` deletes, a returning cap stop failed nothing, and no later run could compare against it.
+
+**A `cost` row is what a lane spent measuring one scenario** — agreement checks, six warms, the timed pairs, and any re-measurement a breach forced. Summing a run's `cost` rows gives the tier's wall time, the other number that previously existed only in a run log.
 
 **`commit` carries a `-DIRTY` suffix when the working tree did not match the revision it names** (everything outside this directory, since a run always leaves a new file inside it). A measurement taken mid-edit did not measure the commit it cites, and a record's only value is that a later run can be compared against it — `scripts/perf-anchor.sh` has marked this since it was written, and `PerfObservationWriteTest` now holds the record to the same rule.
 

@@ -962,7 +962,16 @@ object PerfHarness {
         pairs: Int = PerfBounds.GROWTH_PAIRS,
         warmup: Int = 12,
         iters: Int = 8,
+        /**
+         * The lane a caller records its observations under, or `null` to record nothing about this run's warm.
+         *
+         * Passed in rather than fixed here because this helper serves three callers with three lanes, and the warm
+         * outcome's only value is being **joinable** to the medians it qualifies — a label invented here would
+         * attach it to no observation at all. `null` is the honest answer for a caller that records no rows.
+         */
+        lane: String? = null,
     ): PairedPerfCurve {
+        val started = System.nanoTime()
         require(small > 0) { "small scale must be positive" }
         require(large > small) { "large scale must be greater than small scale" }
         require(pairs > 0 && pairs % 2 == 1) { "pairs must be a positive odd number" }
@@ -995,15 +1004,39 @@ object PerfHarness {
         // LARGE first, deliberately. JIT compilation is per method and both scales run the same methods, so the
         // large instance warms them with four times fewer evaluations — and the small instance then settles in
         // the two probes its own rule needs rather than warming the shared code from cold a second time.
+        // The engine names are the OBSERVATION's, not shorthand: a warm outcome's only value is that it joins to
+        // the median it qualifies, and "interp" against a recorded "interpreter" is a row that qualifies nothing.
         val warmed = listOf(
-            "groovy@$large" to gLarge, "java@$large" to jLarge, "interp@$large" to iLarge,
-            "groovy@$small" to gSmall, "java@$small" to jSmall, "interp@$small" to iSmall,
-        ).map { (label, instance) -> label to warmToSteadyState(instance) }
-        val warmRuns = warmed.map { (label, outcome) -> "$label=$outcome" }
-        val capped = warmed.filter { (_, outcome) -> outcome.stop != WarmStop.FLATTENED }
+            Triple("groovy", large, gLarge), Triple("java", large, jLarge), Triple("interpreter", large, iLarge),
+            Triple("groovy", small, gSmall), Triple("java", small, jSmall), Triple("interpreter", small, iSmall),
+        ).map { (engine, n, instance) -> Triple(engine, n, warmToSteadyState(instance)) }
+        // RECORDED, not just printed. The outcome qualifies every ratio measured on that instance, so it belongs
+        // beside the medians in the committed record — otherwise the cap's justification lives in a build/ log
+        // that clean deletes, a returning cap stop fails nothing, and no later run can compare against it (IG121).
+        if (lane != null) {
+            // Built from the SAME call the rows below use, so the label and fingerprint cannot drift apart. The
+            // result sizes it needs are already proven by the agreement check above.
+            val identityFor = mapOf(
+                small to scenario.completeIdentity(small, listOf(smallResult.size), listOf(0)),
+                large to scenario.completeIdentity(large, listOf(largeResult.size), listOf(0)),
+            )
+            for ((engine, n, outcome) in warmed) {
+                val identity = identityFor.getValue(n)
+                PerfObservations.recordWarm(
+                    lane = lane,
+                    scenario = "${identity.label} fingerprint=${identity.fingerprint}",
+                    n = n,
+                    engine = engine,
+                    runs = outcome.runs,
+                    stop = outcome.stop.label,
+                )
+            }
+        }
+        val warmRuns = warmed.map { (engine, n, outcome) -> "$engine@$n=$outcome" }
+        val capped = warmed.filter { (_, _, outcome) -> outcome.stop != WarmStop.FLATTENED }
         if (capped.isNotEmpty()) {
-            progress("[perf][note] ${scenario.name}: " + capped.joinToString(", ") { (label, outcome) ->
-                "$label ran out of warm budget after ${outcome.runs} runs (${outcome.stop.label})"
+            progress("[perf][note] ${scenario.name}: " + capped.joinToString(", ") { (engine, n, outcome) ->
+                "$engine@$n ran out of warm budget after ${outcome.runs} runs (${outcome.stop.label})"
             } + " — its timed observations may still be on a falling curve")
         }
 
@@ -1088,6 +1121,12 @@ object PerfHarness {
             pairedGrowth(small, large, pairs) { n ->
                 measureCurrentThreadCpu(warmup, iters) { byScale.getValue(n).run() }.medianMs
             }
+        }
+        // Recorded LAST, so it covers everything this lane spent: agreement, six warms, the timed pairs, and any
+        // re-measurement a breach forced. The tier's own wall time is the sum of these, which is the number IF282
+        // quoted from a run log because nothing put it anywhere a later run could read (IG121).
+        if (lane != null) {
+            PerfObservations.recordCost(lane, scenario.name, (System.nanoTime() - started) / 1e6)
         }
         return PairedPerfCurve(smallRow, largeRow, iGrowth, gGrowth, jGrowth)
     }

@@ -109,6 +109,49 @@ class PerfObservationWriteTest {
     }
 
     /**
+     * **The warm outcome qualifies every cross-engine ratio in its lane, so it belongs beside the medians.**
+     *
+     * A still-falling kernel arm reads higher than its settled cost, which makes our ratio look better than it is
+     * ([IF282]) — and until this record existed the outcome was only ever printed, so the 8 s cap's justification
+     * lived in a `build/` log that `clean` deletes, a returning cap stop failed nothing, and no later run could
+     * compare against it. That is IG121's fourth piece, and it stopped being hypothetical the day a `run-cap` stop
+     * appeared in one of three gate runs with no history to say whether that lane had done it before.
+     */
+    @Test
+    fun theWarmRecordNamesTheOutcomeThatQualifiesItsLanesRatios() {
+        val record = PerfObservations.warmRecord(
+            lane = "kernel parity",
+            scenario = "diagnostic/CO-correlation@1 fingerprint=abc",
+            n = 800,
+            engine = "groovy",
+            runs = 15,
+            stop = "time-cap",
+        )
+
+        assertEquals(
+            setOf("kind", "environment", "lane", "scenario", "n", "engine", "runs", "stop", "loadAverage"),
+            record.keys,
+            "a reader joins this to an observation on (lane, scenario, n, engine); dropping one makes it unjoinable",
+        )
+        assertEquals("warm", record["kind"])
+        assertEquals("time-cap", record["stop"], "the CAP is the point — 'flattened' is the only outcome that is not a caveat")
+        assertEquals(15, record["runs"])
+    }
+
+    /** What a lane cost to MEASURE, which is the other number IG121's fourth piece found only in run logs. */
+    @Test
+    fun theCostRecordNamesWhatItMeasuredAndHowLongItTook() {
+        val record = PerfObservations.costRecord(lane = "kernel parity", scenario = "diagnostic/CO-correlation@1", wallMs = 8123.5)
+
+        assertEquals(
+            setOf("kind", "environment", "lane", "scenario", "wallMs", "loadAverage"),
+            record.keys,
+        )
+        assertEquals("cost", record["kind"])
+        assertEquals(8123.5, record["wallMs"])
+    }
+
+    /**
      * The failing half, and the reason this file exists. A regular file standing where the record's DIRECTORY
      * should be is the portable way to make the append fail without permission games, and it is a real shape: the
      * results directory is resolved from a system property, so one pointed at a file produces exactly this.

@@ -296,6 +296,50 @@ internal object PerfObservations {
 
     private fun File.appendLine(record: Map<String, Any?>) = appendRecordTo(this, record)
 
+    /**
+     * One engine instance's steady-state warm outcome, as a function so its **shape** can be held by a test.
+     *
+     * Recorded because it **qualifies** every cross-engine ratio measured on that instance: only `flattened` means
+     * the instance actually reached steady state, and a still-falling kernel arm reads higher than its settled cost,
+     * which makes our ratio look better than it is ([IF282]). It used to be printed and nothing more — so the cap's
+     * justification lived in a `build/` log, a returning cap stop failed nothing, and no later run could compare
+     * against it (IG121's fourth piece). The fields are the observation's own join key plus the outcome.
+     */
+    internal fun warmRecord(
+        lane: String,
+        scenario: String,
+        n: Int,
+        engine: String,
+        runs: Int,
+        stop: String,
+    ): Map<String, Any?> = mapOf(
+        "kind" to "warm",
+        "environment" to PerfEnvironment.key,
+        "lane" to lane,
+        "scenario" to scenario,
+        "n" to n,
+        "engine" to engine,
+        "runs" to runs,
+        "stop" to stop,
+        "loadAverage" to loadAverage(),
+    )
+
+    /** What one lane cost to MEASURE — the other number that lived only in a run log (IG121's fourth piece). */
+    internal fun costRecord(lane: String, scenario: String, wallMs: Double): Map<String, Any?> = mapOf(
+        "kind" to "cost",
+        "environment" to PerfEnvironment.key,
+        "lane" to lane,
+        "scenario" to scenario,
+        "wallMs" to wallMs,
+        "loadAverage" to loadAverage(),
+    )
+
+    fun recordWarm(lane: String, scenario: String, n: Int, engine: String, runs: Int, stop: String) =
+        file.appendLine(warmRecord(lane, scenario, n, engine, runs, stop))
+
+    fun recordCost(lane: String, scenario: String, wallMs: Double) =
+        file.appendLine(costRecord(lane, scenario, wallMs))
+
     fun record(key: ObservationKey, medianMs: Double, status: String) {
         file.appendLine(
             mapOf(
