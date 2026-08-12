@@ -7,12 +7,13 @@ import org.junit.jupiter.api.Test
 /**
  * The re-measurement rule the CROSS-ENGINE bars use, on scripted samples rather than a clock.
  *
- * Why the comparative bars need one at all: the estate's tightest row is the compute-overlay `$`-correlation path
- * at `1.67x` against generated Java, and this estate's own measured run-to-run noise for a level ratio is `1.78x`
- * on a hosted runner — *larger than that margin*. A single sample there is a coin flip on a gate that must never
- * false-red. The rule is the growth floor's, reused rather than reinvented: retry only on a breach, and accept the
- * MEDIAN of the attempts, because retrying until one attempt passes makes a real loss more likely to be admitted
- * the more often it is retried.
+ * Why the comparative bars need one at all: the estate's tightest row is the compute-overlay `$`-correlation
+ * path, and before the steady-state warm it came within `1.35x` of a loss while spreading `1.90x` across three
+ * sequential isolated runs — *the noise was larger than the margin*, so a single sample there was a coin flip on
+ * a gate that must never false-red. The warm inverted that (margin `1.97x`, spread `1.07x`); this rule stays as
+ * the backstop, since a warm instance is still a timed one. It is the growth floor's rule, reused rather than
+ * reinvented: retry only on a breach, and accept the MEDIAN of the attempts, because retrying until one attempt
+ * passes makes a real loss more likely to be admitted the more often it is retried.
  */
 class ComparativeRetryTest {
 

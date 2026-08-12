@@ -538,6 +538,37 @@ The catalog must favor **non-obvious** combinations (nesting × aggregation × c
 
 ## Results log
 
+### Checkpoint 2026-08-12 — the first pair was measured cold, on every engine ([IF282](INTERPRETER-FINDINGS.md#if282))
+
+The checkpoint below concluded that the parity noise sat in the small arm and prescribed more sampling there. Tracing the individual observations (`-Dperf.trace=true`, which prints what the medians reduce away) says it is not a *scale* effect at all: **the first pair is measured on cold engines, at both scales.** Pair 0 divided by pair 2, `CO-correlation`, three sequential isolated runs:
+
+| series | run 1 | run 2 | run 3 |
+|---|---|---|---|
+| interpreter @200 | 2.09× | 1.88× | 2.34× |
+| Groovy @200 | 2.11× | 2.03× | 1.84× |
+| Java @200 | 1.75× | 1.80× | 1.80× |
+| interpreter @800 | 1.15× | 1.11× | 1.19× |
+| Groovy @800 | 1.70× | 1.51× | 1.60× |
+| Java @800 | 1.51× | 1.46× | 1.54× |
+
+**All eighteen are above 1.0**, which is the discriminator: contention is symmetric and would put about half of them below. The small arm looked noisier only because it warms slowest — it runs the shared methods a quarter as often per evaluation. And because the three engines warm at *different* rates, none of it cancels out of a cross-engine ratio the way it cancels out of one engine's growth factor.
+
+`PerfHarness.warmToSteadyState` now brings each of the six instances to steady state once, before the first pair, adaptively (batches of three, stop after two consecutive flat probes, capped at 60 runs or 1 s per instance). Afterwards the same drift spans `0.94×`–`1.28×` and is no longer one-signed. Like-for-like, **three sequential isolated runs of all 17 lanes before and after** (records `2026-08-11T233842Z`/`T233949Z`/`T234053Z` against `2026-08-12T001016Z`/`T001139Z`/`T001258Z` under [`perf-results/darwin-aarch64/`](../perf-results/darwin-aarch64/)):
+
+| quantity | before | after |
+|---|---|---|
+| worst per-row ratio spread | **1.90×** (`CO-correlation @200`) | **1.52×** (`CO-index @200`) |
+| that row's spread | — | `CO-correlation @200`: **1.07×** |
+| worst single observation, all 34 rows × 3 runs | **0.743** — margin `1.35×` | **0.512** — margin `1.95×` |
+| thinnest row's margin ÷ its own spread | **0.71×** | **1.83×** |
+| rows at margin ≥ 2.5× | 29/34 | 33/34 |
+| median per-row spread | 1.203× | 1.152× |
+| parity tier wall time | ~65 s | ~82 s |
+
+**What this does and does not buy.** It removes the systematic component, which was concentrated precisely in the rows that had it worst: every one of the six noisiest rows improved, and the tightest went from `1.90×` spread to `1.07×`. It does nothing for the residual sampling noise — the median spread barely moves and 13 of 34 rows are marginally worse, which at three samples per row is what an unchanged quantity looks like. The point is the thinnest row: its margin used to be `0.71×` of its own noise and is now `1.83×` of it, which is the difference between a number that can be judged and one that cannot.
+
+**The measured level is also more honest, and in one place less flattering.** `CO-correlation @200` reads `0.509` warm against `0.460` cold: generated Java was the engine furthest from steady state, so the old figure credited the interpreter with part of the kernel's warm-up. Most rows move the other way (`PI-parallel @250` `0.305` → `0.164`, `MSC @150` `0.142` → `0.098`) — whichever engine was more under-warmed decides the direction, which is exactly why a cold ratio means nothing.
+
 ### Checkpoint 2026-08-12 — each parity row's OWN ratio noise, measured instead of borrowed
 
 **Three sequential isolated runs of the 17 parity lanes, quiet local machine, same revision** (records `2026-08-11T233842Z`, `T233949Z`, `T234053Z` under [`perf-results/darwin-aarch64/`](../perf-results/darwin-aarch64/)). Motivated by a comparison that was wrong twice over: the tightest row's margin had been held against `1.78×`, a run-to-run figure measured on *different scenarios* on a *different machine class*, and then described as "below" it when `1.9 > 1.78`. Borrowing a noise figure across scenarios is the same trap as borrowing one across quantities. So this measures each row's own.
@@ -553,7 +584,7 @@ The catalog must favor **non-obvious** combinations (nesting × aggregation × c
 **Two conclusions, both actionable.**
 
 1. **The single-run figure was optimistic, and the retry is load-bearing rather than belt-and-braces.** With samples `0.39 / 0.74 / 0.46` the accepted median is `0.46`, which passes comfortably — but any one of them alone could have been reported as the row's ratio, and `0.74` is one contended slice away from parity. `PerfHarness.acceptOnMedianOfRetries` is what stands between this lane and a false red; that is now measured rather than argued.
-2. **Noise concentrates at the SMALL scale of each pair, not in particular scenarios.** Every thin row above is the small arm — `@200`, `@250`, `@60` — while their large arms are nearly noise-free (`CO-correlation @800` spreads `1.05×`, `complexRealWorld @240` `1.00×`, `PF-framed @1000` `1.10×`). That is the expected shape: a smaller instance has a larger fixed-cost share and fewer timed iterations. It also says the cheapest reliability win is not more optimization but **more sampling on the small arm only**, which costs the least of anything in the pair.
+2. **Noise concentrates at the SMALL scale of each pair, not in particular scenarios.** Every thin row above is the small arm — `@200`, `@250`, `@60` — while their large arms are nearly noise-free (`CO-correlation @800` spreads `1.05×`, `complexRealWorld @240` `1.00×`, `PF-framed @1000` `1.10×`). *(Corrected 2026-08-12, same day: the observation holds, the explanation and the prescription that followed from it do not. It read the small arm's larger fixed-cost share and fewer iterations as the cause, and prescribed **more sampling on the small arm only**. Tracing the individual observations found the cause is that the first pair is measured **cold on every engine at both scales** — the small arm simply warms slowest. More sampling would have averaged the cold pair in more precisely rather than removing it; the fix is a steady-state warm before the first pair, and the checkpoint above measures both. Recorded rather than deleted because the wrong prescription was reached from a correct observation, which is the failure mode the "match the oracle to the CLAIM KIND" rule exists for: the observation was measured, the mechanism was inferred.)*
 
 ### Checkpoint 2026-08-12 — the compute-overlay read path, after the tightest row was optimized (catalog #11)
 

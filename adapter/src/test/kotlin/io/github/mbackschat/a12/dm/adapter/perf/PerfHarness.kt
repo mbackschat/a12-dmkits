@@ -355,6 +355,77 @@ private class CapturingDocumentSink(
 /** Wall-clock distribution (ms) of a timed operation — robust stats, not a single cold number. */
 data class Stats(val medianMs: Double, val minMs: Double, val p90Ms: Double)
 
+/**
+ * What one instance's steady-state warm may spend, and when it decides the warm curve has flattened.
+ *
+ * The two caps guard opposite shapes and both are needed: without [maxRuns] a sub-millisecond instance keeps
+ * improving for thousands of runs before it flattens, and without [maxMillis] a 200 ms kernel evaluation spends
+ * a minute reaching the run cap.
+ */
+internal data class WarmUpBudget(
+    /** Runs per probe; the batch MEDIAN is what the flattening rule reads, so one slow run cannot end a warm. */
+    val batch: Int = 3,
+    /** Hard stop on one instance's total warm time — the guard for an expensive scenario. */
+    val maxMillis: Double = 1_000.0,
+    /** Hard stop on one instance's total warm runs — the guard for a cheap one. */
+    val maxRuns: Int = 60,
+    /** A batch within this factor of the previous counts as flat: the curve has stopped improving. */
+    val flatRatio: Double = 1.05,
+    /**
+     * Consecutive flat batches the warm must see before it believes them.
+     *
+     * One is not enough, measured: at `flatBatches = 1` the warm stopped after ~8 runs per instance and generated
+     * Java at N=200 was still falling 1.19x across the pairs afterwards. A warm curve is noisy at batch
+     * granularity, so a single flat-looking probe is one observation and two are a confirmation — the same
+     * asymmetry the comparative bars apply to a breach, pointed the other way.
+     */
+    val flatBatches: Int = 2,
+) {
+    init {
+        require(batch > 0 && batch % 2 == 1) { "batch must be a positive odd number so it has a median, was $batch" }
+        require(maxMillis > 0) { "maxMillis must be positive, was $maxMillis" }
+        require(maxRuns >= batch) { "maxRuns ($maxRuns) must allow at least one batch ($batch)" }
+        require(flatRatio > 1.0) { "flatRatio must be greater than 1, was $flatRatio" }
+        require(flatBatches > 0) { "flatBatches must be positive, was $flatBatches" }
+    }
+}
+
+/**
+ * The stop rule for a steady-state warm: keep going while the per-run cost is still improving, stop at the first
+ * flat batch or at either cap.
+ *
+ * Separated from the clock so the rule is checked on scripted numbers ([SteadyStateWarmUpTest]), which is how
+ * every other acceptance rule in this estate is verified.
+ */
+internal class SteadyStateWarmUp(private val budget: WarmUpBudget) {
+
+    private var previousMs: Double? = null
+    private var flatRun = 0
+
+    /** Runs the caller has been asked to pay for so far. */
+    var runs: Int = 0
+        private set
+
+    /** Time those runs took, derived from the batch medians rather than clocked separately. */
+    var elapsedMs: Double = 0.0
+        private set
+
+    /** Feed one batch's median run cost; answer whether the warm has finished. */
+    fun hasSettled(batchMedianMs: Double): Boolean {
+        require(batchMedianMs.isFinite() && batchMedianMs > 0.0) {
+            "a warm batch median must be finite and positive, was $batchMedianMs"
+        }
+        runs += budget.batch
+        elapsedMs += batchMedianMs * budget.batch
+        // A batch that got WORSE counts as flat too: whatever moved it, it is no longer JIT warming, and warming
+        // through noise would spend the budget chasing it.
+        val improvement = previousMs?.div(batchMedianMs)
+        flatRun = if (improvement != null && improvement < budget.flatRatio) flatRun + 1 else 0
+        previousMs = batchMedianMs
+        return runs >= budget.maxRuns || elapsedMs >= budget.maxMillis || flatRun >= budget.flatBatches
+    }
+}
+
 /** The result of the IF137-ratified [PerfHarness.pairedGrowth] estimator: the median within-pair growth [ratio]
  *  and a representative [smallMs]/[largeMs] (the medians across pairs) for the log line. */
 data class Growth(val ratio: Double, val smallMs: Double, val largeMs: Double)
@@ -402,6 +473,9 @@ object PerfHarness {
 
     private const val SIGNATURE_SAMPLE_LIMIT = 10
     private const val SIGNATURE_DISPLAY_LIMIT = 240
+
+    /** `-Dperf.trace=true` prints every per-pair observation a parity row reduces away ([ParitySample.trace]). */
+    private val TRACE_PER_PAIR: Boolean = System.getProperty("perf.trace") == "true"
 
     private data class SignatureSample(val signature: String, val occurrences: Int)
 
@@ -761,6 +835,32 @@ object PerfHarness {
         }
     }
 
+    /**
+     * Run [instance] until its per-run cost stops improving, and report how many runs that took.
+     *
+     * **Why a cross-engine comparison needs this and a single engine's growth factor does not.** A growth factor
+     * divides one engine's two scales, so a cold JVM inflates both and largely cancels. A parity row divides two
+     * DIFFERENT engines, which warm at different rates: traced per pair on `CO-correlation`, the interpreter at
+     * N=200 was 1.88x-2.34x slower in the first pair than the third while generated Java was 1.75x-1.80x and the
+     * Groovy validator at N=800 was 1.51x-1.70x — all eighteen series, in all three runs. Nothing cancels there;
+     * the ratio simply reports where on each engine's warm curve the sample landed.
+     *
+     * Adaptive rather than a bigger constant [measure] warmup, for two reasons. The scenarios span 0.2 ms to
+     * 100 ms per evaluation, so no single count is warm for the cheap ones without being wasteful for the dear
+     * ones; and a per-observation warmup is paid again by every pair, while this is paid once per instance.
+     */
+    internal fun warmToSteadyState(instance: RunInstance, budget: WarmUpBudget = WarmUpBudget()): Int {
+        val warm = SteadyStateWarmUp(budget)
+        do {
+            val batch = DoubleArray(budget.batch) {
+                val started = System.nanoTime()
+                instance.run()
+                (System.nanoTime() - started) / 1e6
+            }
+        } while (!warm.hasSettled(median(batch)))
+        return warm.runs
+    }
+
     /** Independent re-measurements a catastrophe floor demands before it calls a breach real. */
     const val GROWTH_RETRY_ATTEMPTS = 3
 
@@ -839,6 +939,19 @@ object PerfHarness {
         val smallResult = assertInstanceAgreement(scenario, small, iSmall, gSmall, jSmall)
         val largeResult = assertInstanceAgreement(scenario, large, iLarge, gLarge, jLarge)
 
+        // Every instance reaches steady state ONCE, before the first timed pair. Without this the first pair is
+        // measured on six differently-cold engines and the ratio reports their warm curves rather than their
+        // costs — see warmToSteadyState for the traced evidence. Paid per instance, not per pair, and outside
+        // the retry loop below, so a re-measurement never re-warms.
+        //
+        // LARGE first, deliberately. JIT compilation is per method and both scales run the same methods, so the
+        // large instance warms them with four times fewer evaluations — and the small instance then settles in
+        // the two probes its own rule needs rather than warming the shared code from cold a second time.
+        val warmRuns = listOf(
+            "groovy@$large" to gLarge, "java@$large" to jLarge, "interp@$large" to iLarge,
+            "groovy@$small" to gSmall, "java@$small" to jSmall, "interp@$small" to iSmall,
+        ).map { (label, instance) -> "$label=${warmToSteadyState(instance)}" }
+
         fun sample(): ParitySample {
             val s = ParitySample(pairs)
             for (pair in 0 until pairs) {
@@ -856,12 +969,12 @@ object PerfHarness {
         // 2026-08-08: take independent samples and accept the MEDIAN of them, never the best.
         //
         // This is not caution for its own sake. The tightest row in the estate is the compute-overlay
-        // $-correlation path at 1.67x against generated Java, and this estate's own measured run-to-run noise for
-        // a LEVEL ratio is 1.78x on a hosted runner — larger than that margin. Without re-measurement one
-        // contended slice reds the nightly, which is precisely the failure mode the whole enforcement split
-        // exists to remove. Retrying until one attempt passes would be worse than nothing (it hides a real loss
-        // the more often it is retried); the median keeps the asymmetry honest, and the happy path pays for
-        // exactly one sample.
+        // $-correlation path, whose margin is 1.97x against generated Java at N=200 while its OWN spread across
+        // three sequential isolated runs is 1.07x. The margin is the larger of the two only since the steady-state
+        // warm above; before it the same row spread 1.90x and came within 1.35x of a loss, so a single contended
+        // sample could red the nightly — precisely the failure mode the whole enforcement split exists to remove.
+        // Retrying until one attempt passes would be worse than nothing (it hides a real loss the more often it is
+        // retried); the median keeps the asymmetry honest, and the happy path pays for exactly one sample.
         val outcome = acceptOnMedianOfRetries(
             breaches = { it.worstInterpreterRatio() >= 1.0 },
             rank = ParitySample::worstInterpreterRatio,
@@ -897,6 +1010,12 @@ object PerfHarness {
         if (outcome.taken.size > 1) {
             println("[perf] ${scenario.name}: comparative breach re-measured ${outcome.taken.size}x, accepted the " +
                 "median of " + outcome.taken.joinToString(", ") { "%.2f".format(it.worstInterpreterRatio()) })
+        }
+        if (TRACE_PER_PAIR) {
+            progress("[perf][trace] ${scenario.name} steady-state warm runs: ${warmRuns.joinToString(" ")}")
+            outcome.taken.forEachIndexed { attempt, taken ->
+                taken.trace("${scenario.name} attempt=$attempt", small, large).forEach(::progress)
+            }
         }
         requireInterpreterBeatsBoth(scenario, smallRow)
         requireInterpreterBeatsBoth(scenario, largeRow)
@@ -942,6 +1061,26 @@ object PerfHarness {
             median(interpLarge.copyOf()) / median(groovyLarge.copyOf()),
             median(interpLarge.copyOf()) / median(javaLarge.copyOf()),
         )
+
+        /**
+         * Every individual observation, one line per pair and scale — what the medians above throw away.
+         *
+         * Two very different mechanisms leave the SAME spread in a reduced row and are told apart only here: a
+         * **cold first pair** (the interpreter's per-row methods still below the C2 threshold when the first
+         * observation is taken) drifts monotonically down the pair index, while **machine contention** does not
+         * order itself that way. Enabled by `-Dperf.trace=true`; it asserts nothing and costs nothing when off.
+         */
+        fun trace(label: String, small: Int, large: Int): List<String> = interpSmall.indices.flatMap { pair ->
+            listOf(
+                traceLine(label, pair, small, interpSmall[pair], groovySmall[pair], javaSmall[pair]),
+                traceLine(label, pair, large, interpLarge[pair], groovyLarge[pair], javaLarge[pair]),
+            )
+        }
+
+        /** [Locale.ROOT]: a trace is aggregated with `sort -n`/`awk`, which read `12,45` as `12`. */
+        private fun traceLine(label: String, pair: Int, n: Int, i: Double, g: Double, j: Double): String =
+            "[perf][trace] %s pair=%d N=%d interp=%.2fms groovy=%.2fms java=%.2fms i/g=%.3f i/j=%.3f"
+                .format(Locale.ROOT, label, pair, n, i, g, j, i / g, i / j)
     }
 
     private fun growth(smalls: DoubleArray, larges: DoubleArray, smallScale: Int, largeScale: Int): Growth {

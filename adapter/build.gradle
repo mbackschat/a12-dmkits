@@ -203,6 +203,10 @@ tasks.withType(Test).configureEach {
     // not been measured, and the kernel serializes same-header-id code generation across engine-local caches.
     // Keep methods serial and scale through isolated Gradle forks; GateTierWiringTest pins this boundary.
     systemProperty 'junit.jupiter.execution.parallel.enabled', 'false'
+    // The per-pair parity trace is a pure diagnostic (asserts nothing, prints when on) and its question — where
+    // does THIS row's noise come from — is asked of whichever lane produced the suspect number, so it is forwarded
+    // to every Test task rather than to `test` alone. The isolated `perfGateTest` is the lane it is usually run in.
+    if (System.getProperty('perf.trace') != null) systemProperty 'perf.trace', System.getProperty('perf.trace')
 }
 
 tasks.named('test') {

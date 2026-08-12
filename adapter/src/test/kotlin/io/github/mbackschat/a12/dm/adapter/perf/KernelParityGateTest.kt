@@ -30,10 +30,11 @@ import org.junit.jupiter.api.Test
  * **Why a REDUCED scale, and why that costs nothing.** A per-unit cost needs two scales, not large ones, and the
  * kernel pays codegen per scenario plus 5x-8x the interpreter's time per evaluation — which is exactly why the
  * growth lanes went interpreter-only at N=5,000/20,000. The comparison is dimensionless (both engines run in the
- * same JVM on the same vCPUs in the same run), so a bar at a tenth of the scale decides it. The margin is 2.3x or
- * better on 32 of the 34 rows — but 1.67x on the tightest, which is BELOW this estate's measured level noise of
- * 1.78x on a hosted runner, so the margin alone is not what makes this safe: `pairedScenarioGrowth` re-measures a
- * comparative breach and accepts the median of the attempts (IF281, and the checkpoint of 2026-08-12). The high-N growth floors stay exactly
+ * same JVM on the same vCPUs in the same run), so a bar at a tenth of the scale decides it. The margin is 2.5x or
+ * better on 33 of the 34 rows and 1.97x on the tightest (`CO-correlation` at N=200), against that row's own
+ * measured spread of 1.07x across three sequential isolated runs — so the margin now exceeds the noise it has to
+ * survive, which it did not before the steady-state warm ([PerfHarness.warmToSteadyState]). The re-measurement of
+ * a comparative breach stays behind it as the backstop (IF281, IF282). The high-N growth floors stay exactly
  * where they are: a reduced scale dilutes a quadratic term's share, so it is a weaker place to detect a blowup and
  * these lanes never replace those.
  *
@@ -168,12 +169,14 @@ class KernelParityGateTest {
 
     private companion object {
         /**
-         * Three pairs keep the median of the within-pair ratios robust to one contended slice; three warmup and three timed
-         * iterations are the smallest that still let the kernel's Groovy validator JIT-warm, and every timed
-         * iteration here costs 5x-8x an interpreter one, so this is the term that decides whether the whole tier
-         * fits the routine gate. What protects the tightest row is not this sampling but the re-measurement of a
-         * comparative breach; raising these numbers would cost every lane to help one. The Number-index lanes keep
-         * their own richer `warmup=5, iters=5`: they were tuned for canonical decimal projection, not this sweep.
+         * Three pairs keep the median of the within-pair ratios robust to one contended slice. Three warmup and
+         * three timed iterations are what a **warm** instance needs; they are emphatically not enough to warm a
+         * cold one, and the claim that they were is what the per-pair trace falsified — the Groovy validator at
+         * N=800 was still 1.51x-1.70x above its settled cost after two full pairs. Reaching steady state is
+         * [PerfHarness.warmToSteadyState]'s job now, paid once per instance instead of again by every pair, which
+         * matters because every timed iteration here costs 5x-8x an interpreter one and this is the term that
+         * decides whether the tier fits the routine gate. The Number-index lanes keep their own richer
+         * `warmup=5, iters=5`: they were tuned for canonical decimal projection, not this sweep.
          */
         const val PAIRS = 3
         const val WARMUP = 3
