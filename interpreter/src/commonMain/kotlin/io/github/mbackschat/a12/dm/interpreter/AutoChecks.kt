@@ -371,16 +371,46 @@ internal class AutoChecks(
         }
     }
 
-    /** The uncached value-owned admission result for one filled cell, before identity relations are built. */
+    /**
+     * The over-limit cell's result, or `null` when the cell is inside its declared repeatability.
+     *
+     * An over-limit cell (a group coordinate exceeds its effective maximum) is "unknown" — it carries the
+     * over-repetition code, suppressing any rule that references it AND its own format/required/unique checks,
+     * exactly as the kernel skips an over-limit instance's ordinary checks (KERNEL-FINDINGS "over-repetition").
+     *
+     * Extracted so it can be applied OUTSIDE the value-admission memo: it is the one part of a filled cell's
+     * formal result that depends on the cell's COORDINATES rather than on its value, and keeping it out of the
+     * memoized computation is what lets that memo key on `(path, raw)` instead of carrying the repetition list.
+     */
+    fun overRepetitionResultAt(path: String, reps: List<Int>): FormalResult.Invalid? =
+        paths.exceededBound(path, reps)?.let { exceeded ->
+            FormalResult.Invalid(FormalFailure.Generated(overRepetitionType(exceeded).code))
+        }
+
+    /**
+     * Whether [path] declares a **code-based** [CustomFieldType] — a consumer's own callback.
+     *
+     * The one thing in an admission that is not a pure function of the field and the value: its invocation count is
+     * observable to the consumer, and the contract is one invocation per CELL (IF150/IF152). So
+     * [ValueAdmissionCache] keeps the cell-shaped key for these fields and shares by value for every other, which
+     * is what `CustomFieldTypeMultiplatformTest` measures by counting the calls a stateful validator sees. A
+     * declarative [PredefinedType] and an UNREGISTERED custom type are both pure and need no exception.
+     */
+    fun hasCodeBasedValidatorAt(path: String): Boolean =
+        model.customTypeOf(path)?.let { it.name !in predefinedTypes && it.name in customFieldTypes } == true
+
+    /**
+     * The uncached value-owned admission result for one filled cell, before identity relations are built.
+     *
+     * A function of the FIELD and the VALUE only — except for the consumer callback [hasCodeBasedValidatorAt]
+     * names, whose invocation count is part of the contract. The coordinate-dependent gate is
+     * [overRepetitionResultAt], which [ValueAdmissionCache] applies before consulting this.
+     */
     fun computeValueAdmissionAt(
         path: String,
-        reps: List<Int>,
         raw: String,
         locale: String,
     ): FormalResult {
-        paths.exceededBound(path, reps)?.let { exceeded ->
-            return FormalResult.Invalid(FormalFailure.Generated(overRepetitionType(exceeded).code))
-        }
         val kind = model.kinds[path] ?: return FormalResult.Valid
         formalErrorCached(kind, raw, model.scaleOf(path), model.dateLikeFormatOf(path), model.datePrecisionOf(path),
             model.rangeSeparatorOf(path), model.constraintsOf(path), legalCharset, model.baseYear ?: 2000,
@@ -404,21 +434,24 @@ internal class AutoChecks(
         valueAdmissions: ValueAdmissionCache,
         groupFilled: (EvalContext, String) -> Boolean = { context, group -> context.groupFilled(group) },
     ): FormalResult {
-        // An over-limit cell (a group coordinate exceeds its effective maximum) is "unknown" — it carries the
-        // over-repetition code, suppressing any rule that references it AND its own format/required/unique checks,
-        // exactly as the kernel skips an over-limit instance's ordinary checks (KERNEL-FINDINGS "over-repetition").
-        paths.exceededBound(path, reps)?.let { exceeded ->
-            return FormalResult.Invalid(FormalFailure.Generated(overRepetitionType(exceeded).code))
-        }
         if (raw != null) {
+            // The admission applies [overRepetitionResultAt] itself — it must precede every value check — so this
+            // branch does not repeat the bound walk.
             when (val admission = valueAdmissions.resultAt(path, reps, raw)) {
                 FormalResult.Valid -> Unit
                 is FormalResult.Invalid -> return admission
                 is FormalResult.Unsupported -> return admission
             }
-            return if (path to reps in dup) FormalResult.Invalid(FormalFailure.Generated(UNIQUE_INDEX))
-            else FormalResult.Valid
+            // `isNotEmpty()` first, and the same guard rides every set keyed by `(path, reps)` here: `path to reps`
+            // allocates a Pair and hashes the repetition list BEFORE an empty set can answer "no", and this set is
+            // empty unless the document really does have a duplicated index value.
+            return if (dup.isNotEmpty() && path to reps in dup) {
+                FormalResult.Invalid(FormalFailure.Generated(UNIQUE_INDEX))
+            } else {
+                FormalResult.Valid
+            }
         }
+        overRepetitionResultAt(path, reps)?.let { return it }
         return if (ctx != null && requiredEmpty(path, ctx, groupFilled)) FormalResult.Invalid(FormalFailure.Generated(MANDATORY_FIELD))
         else FormalResult.Valid
     }

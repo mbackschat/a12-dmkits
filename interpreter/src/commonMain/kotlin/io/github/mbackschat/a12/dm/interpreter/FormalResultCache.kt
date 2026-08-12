@@ -40,14 +40,37 @@ internal class ValueAdmissionCache(
     private val checks: AutoChecks,
     private val locale: String,
 ) {
-    private data class Key(val path: String, val reps: List<Int>, val raw: String)
+    /**
+     * `(path, raw)` — **not** the cell. What this memoizes is a function of the field and the value, so every cell
+     * holding that value shares one entry and the key is two Strings whose hashes the platform has already cached.
+     *
+     * The repetition list used to ride in here, and it cost more than the check it protected: hashing the key walked
+     * the list on every lookup and comparing it walked the list again, so `HashMap` mechanics plus `ArrayList`/`Key`
+     * equality were 79 % of the time inside this family against 2.6 % in the work being cached.
+     */
+    private data class ValueKey(val path: String, val raw: String)
 
-    private val results = HashMap<Key, FormalResult>()
+    /**
+     * `(path, reps, raw)` — the cell, kept for the one field kind whose admission is NOT a pure function of the
+     * value: a code-based [io.github.mbackschat.a12.dm.interpreter.model.CustomFieldType] is a consumer callback
+     * invoked once per CELL (IF150/IF152), so two cells holding the same value must each consult it. Sharing them
+     * changes an observable count, which is why this is a second map rather than one cheaper key.
+     */
+    private data class CellKey(val path: String, val reps: List<Int>, val raw: String)
 
-    fun resultAt(path: String, reps: List<Int>, raw: String): FormalResult =
-        results.getOrPut(Key(path, reps, raw)) {
-            checks.computeValueAdmissionAt(path, reps, raw, locale)
+    private val byValue = HashMap<ValueKey, FormalResult>()
+    private val byCell = HashMap<CellKey, FormalResult>()
+
+    fun resultAt(path: String, reps: List<Int>, raw: String): FormalResult {
+        // Cell-shaped, so it stays out of the memo — and it must run FIRST, because an over-limit cell is exempt
+        // from every value check (see AutoChecks.overRepetitionResultAt).
+        checks.overRepetitionResultAt(path, reps)?.let { return it }
+        return if (checks.hasCodeBasedValidatorAt(path)) {
+            byCell.getOrPut(CellKey(path, reps, raw)) { checks.computeValueAdmissionAt(path, raw, locale) }
+        } else {
+            byValue.getOrPut(ValueKey(path, raw)) { checks.computeValueAdmissionAt(path, raw, locale) }
         }
+    }
 
     /** The duplicate prepass must not turn the interpreter's tolerant unsupported-cell result into a whole-call
      * exception. Unsupported values retain the previous lenient identity behavior; the ordinary formal pass still
@@ -73,7 +96,11 @@ internal class FormalResultCache(
     private val groupFilled: (EvalContext, String) -> Boolean = { ctx, path -> ctx.groupFilled(path) },
     private val valueAdmissions: ValueAdmissionCache = ValueAdmissionCache(checks, locale),
 ) {
-    private data class Key(val path: String, val reps: List<Int>, val raw: String?)
+    /**
+     * The EMPTY branch's key only. A filled cell is not memoized here at all — see [resultAt] — so `raw` was
+     * always `null` in the entries this map ever held, and dropping it changes nothing it could distinguish.
+     */
+    private data class Key(val path: String, val reps: List<Int>)
 
     private val results = HashMap<Key, FormalResult>()
     private val invalidPointers =
@@ -89,12 +116,20 @@ internal class FormalResultCache(
         resultAt(path, reps, raw, null)
 
     private fun resultAt(path: String, reps: List<Int>, raw: String?, ctx: EvalContext?): FormalResult {
-        if (path to reps in unavailable) {
+        // Empty outside PARTIAL validation, and `path to reps` allocates a Pair and hashes the repetition list
+        // before an empty set can answer "no" — so the emptiness is checked first, on the path every call takes.
+        if (unavailable.isNotEmpty() && path to reps in unavailable) {
             return FormalResult.Invalid(FormalFailure.Generated(INDEX_DEFAULT_SUPPRESSED))
         }
-        val key = Key(path, reps, raw)
-        val result = results.getOrPut(key) {
+        // A FILLED cell is not memoized here: its result is a walk over the path's declared bounds, a hit in the
+        // value-keyed admission memo, and one set membership — cheaper than the key that would memoize it. Only the
+        // EMPTY branch keeps a memo, because `requiredEmpty` reads the row context rather than a cached value.
+        val result = if (raw != null) {
             checks.computeFormalResultAt(path, reps, raw, ctx, duplicates, valueAdmissions, groupFilled)
+        } else {
+            results.getOrPut(Key(path, reps)) {
+                checks.computeFormalResultAt(path, reps, null, ctx, duplicates, valueAdmissions, groupFilled)
+            }
         }
         if (result is FormalResult.Invalid) invalidPointers += CustomConditionFieldPointer(path, reps)
         return result
@@ -129,5 +164,6 @@ internal class FormalResultCache(
      * the collision. Partial-call unavailability stays an admission failure. An unregistered custom type follows
      * the interpreter API's documented lenient fallback, while the ordinary formal pass reports it unsupported. */
     fun admitsIdentityAt(path: String, reps: List<Int>, raw: String): Boolean =
-        path to reps !in unavailable && valueAdmissions.participatesInIdentityAt(path, reps, raw)
+        (unavailable.isEmpty() || path to reps !in unavailable) &&
+            valueAdmissions.participatesInIdentityAt(path, reps, raw)
 }
