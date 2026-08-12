@@ -16,8 +16,8 @@ import java.nio.file.Path
  * The script writes to the committed anchor, so it exposes `ANCHOR_FILE` for exactly this: each case drives the real
  * script against a temporary two-key anchor and asserts its exit status and its diff.
  *
- * The sharp case is a **new** runner class. The blocked step in IG120 is authoring the hosted block from a nightly
- * artifact, and that artifact is uploaded `if: always()` — so the run most likely to be fed here is one where a
+ * The sharp case is a **new** runner class, which is how a hosted block is authored: from a nightly artifact uploaded
+ * `if: always()` — so the run most likely to be fed here is one where a
  * growth floor breached, which throws before its lane records an observation. A new block has no previous keys to
  * compare against, so the "would delete an anchor" refusal cannot see the hole; the keys the *other* anchored classes
  * carry are what makes it visible, and they are comparable because a key names the lane, scenario fingerprint, scale,
@@ -115,7 +115,7 @@ class PerfAnchorScriptTest {
         assertEquals(before, observationsOf(anchor, "darwin-aarch64"),
             "authoring one runner class must never move another's numbers — they are independent machines")
         assertEquals(mapOf(laneA to 2.5, laneB to 4.5), observationsOf(anchor, "linux-amd64-ci"),
-            "with several runs the anchor is their median, which is what makes the tolerance tightenable (IG120)")
+            "with several runs the anchor is their median, which is what made the tolerance tightenable (IF280)")
     }
 
     /** Absolute times are only comparable within a runner class, so a mixed fold would average two machines. */
@@ -130,6 +130,49 @@ class PerfAnchorScriptTest {
         )
 
         assertNotEquals(0, run.status, "folding two runner classes into one anchor must be refused")
+        assertEquals(setOf("darwin-aarch64"), blocksIn(anchor), "a refused refresh must write nothing")
+    }
+
+    /**
+     * A block that does not name its machine is one the gated lane refuses to assert against at all
+     * ([MachineIdentity.check]), so writing one is another way for the bar to disappear — the same class as dropping
+     * a lane, one level up.
+     */
+    @Test
+    fun aRefreshRecordsTheMachineTheRunWasMeasuredOn() {
+        val anchor = anchorCarrying(laneA to 1.0, laneB to 2.0)
+
+        val run = refresh(anchor, observations("hosted.jsonl", laneA to 2.0, laneB to 4.0, machine = "AMD EPYC 7763"))
+
+        assertEquals(0, run.status, run.stderr)
+        assertEquals("AMD EPYC 7763", machineOf(anchor, "linux-amd64-ci"))
+    }
+
+    @Test
+    fun aRunThatDoesNotNameItsMachineCannotAuthorABlock() {
+        val anchor = anchorCarrying(laneA to 1.0, laneB to 2.0)
+
+        val run = refresh(anchor, observations("hosted.jsonl", laneA to 2.0, laneB to 4.0, machine = null))
+
+        assertNotEquals(0, run.status,
+            "a block with no machine is one the gated lane will not assert against, so it is a bar that never fires")
+        assertTrue("machine" in run.stderr) { "the refusal must say what is missing: ${run.stderr}" }
+        assertEquals(setOf("darwin-aarch64"), blocksIn(anchor), "a refused refresh must write nothing")
+    }
+
+    /** Two machines' numbers averaged into one anchor is the collision the machine field exists to refuse. */
+    @Test
+    fun inputsFromDifferentMachinesAreRefused() {
+        val anchor = anchorCarrying(laneA to 1.0, laneB to 2.0)
+
+        val run = refresh(
+            anchor,
+            observations("first.jsonl", laneA to 2.0, laneB to 4.0, machine = "AMD EPYC 7763"),
+            observations("second.jsonl", laneA to 2.0, laneB to 4.0, machine = "Intel Xeon Platinum 8370C"),
+        )
+
+        assertNotEquals(0, run.status, "folding two machines into one anchor must be refused")
+        assertTrue("machine" in run.stderr) { run.stderr }
         assertEquals(setOf("darwin-aarch64"), blocksIn(anchor), "a refused refresh must write nothing")
     }
 
@@ -170,9 +213,13 @@ $body
         name: String,
         vararg medians: Pair<String, Double>,
         environment: String = "linux-amd64-ci",
+        machine: String? = "AMD EPYC 7763",
     ): Path {
+        val names = machine?.let { ""","machine":"$it"""" } ?: ""
         val lines = buildString {
-            appendLine("""{"kind":"run","environment":"$environment","os":"Linux","arch":"amd64","processors":4}""")
+            appendLine(
+                """{"kind":"run","environment":"$environment","os":"Linux","arch":"amd64","processors":4$names}""",
+            )
             medians.forEach { (key, ms) ->
                 appendLine(
                     """{"kind":"observation","environment":"$environment","key":"$key","medianMs":$ms}""",
@@ -200,6 +247,10 @@ $body
     private fun blocksIn(anchor: Path): Set<String> =
         PerfObservations.MAPPER.readTree(anchor.toFile()).path("environments")
             .properties().map { it.key }.toSet()
+
+    private fun machineOf(anchor: Path, environment: String): String? =
+        PerfObservations.MAPPER.readTree(anchor.toFile())
+            .path("environments").path(environment).path("machine").takeIf { it.isTextual }?.asText()
 
     private fun observationsOf(anchor: Path, environment: String): Map<String, Double> =
         PerfObservations.MAPPER.readTree(anchor.toFile())

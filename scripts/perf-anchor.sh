@@ -17,9 +17,10 @@
 #                                                             ALLOW_REMOVALS=1 overrides)
 #   scripts/perf-anchor.sh show    [observations.jsonl ...]   print the diff a refresh WOULD make, change nothing
 #
-# PREFER SEVERAL RUNS. With more than one input the per-key anchor is their MEDIAN, which is what makes the
+# PREFER SEVERAL RUNS. With more than one input the per-key anchor is their MEDIAN, which is what made the
 # tolerance tightenable: a single run's sample gives a lane anchored on a fast run a tighter-than-advertised bar
-# and one anchored on a slow run a looser one (IG120). All inputs must come from the same runner class.
+# and one anchored on a slow run a looser one (IF280). All inputs must come from the same runner class AND the same
+# machine — the block records which one, because the gated lane refuses to assert against a block it cannot match.
 #
 # The input defaults to the newest run recorded under `perf-results/`, which `scripts/perf.sh gate` writes there.
 #
@@ -106,8 +107,16 @@ for input_path in inputs:
                 samples.setdefault(record["key"], []).append(float(record["medianMs"]))
     if header is None:
         sys.exit(f"{input_path} has no run header — it was not written by a complete gate run")
+    if not header.get("machine"):
+        sys.exit(
+            f"{input_path} does not name the machine it was measured on, so the block it would write cannot be"
+            " asserted against: the gated lane refuses a block whose machine it cannot match, which makes it a bar"
+            " that never fires. Re-measure with a current gate run (records written before 2026-08-12 predate the"
+            " field)."
+        )
     for field, why in (("environment", "absolute times are only comparable within one runner class"),
-                       ("processors", "a processor count is the machine discriminator inside a runner class"),
+                       ("machine", "an absolute time is a property of the machine, so two machines cannot be folded"),
+                       ("processors", "a processor count is part of that machine's identity"),
                        ("commit", "folding revisions would average away the change one of them introduced")):
         if run is not None and header.get(field) != run.get(field):
             sys.exit(
@@ -143,7 +152,8 @@ for other_name, other_block in anchor.get("environments", {}).items():
 # WHAT THIS INPUT MUST MEASURE, and the two cases differ:
 #   * an EXISTING block -> its own keys. Anything it carried that this run did not measure is a real removal.
 #   * a NEW block -> the union across the other classes, since there is no own set to compare against and a partial
-#     run would otherwise author a block full of silent holes. That is the IG120 case, and it is not hypothetical:
+#     run would otherwise author a block full of silent holes. That is the hosted-authoring case, and it is not
+#     hypothetical:
 #     the nightly uploads its record precisely WHEN a lane breached, so the documented recovery path is the one
 #     most likely to be fed an incomplete run (rehearsed against a 34-of-36 input).
 # Requiring the union of an EXISTING block was wrong. Two classes legitimately diverge while a scenario's
@@ -209,6 +219,9 @@ anchor["environments"][environment] = {
     "arch": run.get("arch"),
     "jdk": jdks[0] if len(jdks) == 1 else ",".join(jdks),
     "processors": run.get("processors"),
+    # The machine, not just its core count: the gated lane asserts only against a block captured on the machine it is
+    # running on, so a block that does not name one is a bar that never fires (IF280).
+    "machine": run.get("machine"),
     "observations": dict(sorted(observations.items())),
 }
 with open(anchor_path, "w") as handle:
