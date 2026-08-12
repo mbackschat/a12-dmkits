@@ -36,6 +36,7 @@ Every run of the routine performance gate writes one **text** file here. Nothing
 |---|---|
 | a historic table for one lane or scenario | `scripts/perf-history.sh <pattern>` |
 | every lane's latest values, per environment | `scripts/perf-history.sh` |
+| whether a row actually STEPPED, when, and its run-to-run noise | `scripts/perf-trend.sh [pattern]` |
 | to fold runs into the committed anchor | `scripts/perf-anchor.sh refresh perf-results/<environment>/*.jsonl` (per-key median over every run given) |
 
 ## Writing it

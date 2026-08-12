@@ -291,6 +291,7 @@ tasks.named('test') {
         excludeTestsMatching 'io.github.mbackschat.a12.dm.adapter.perf.PerfScriptContractTest'
         excludeTestsMatching 'io.github.mbackschat.a12.dm.adapter.perf.PerfAnchorScriptTest'
         excludeTestsMatching 'io.github.mbackschat.a12.dm.adapter.perf.PerfKeysScriptTest'
+        excludeTestsMatching 'io.github.mbackschat.a12.dm.adapter.perf.PerfTrendScriptTest'
         excludeTestsMatching 'io.github.mbackschat.a12.dm.adapter.perf.PerfNumberLocaleContractTest'
         excludeTestsMatching 'io.github.mbackschat.a12.dm.adapter.profile.ComputationPreconditionFidelityTest'
         excludeTestsMatching 'io.github.mbackschat.a12.dm.adapter.profile.ModelSynthesisFidelityTest'
@@ -353,6 +354,7 @@ tasks.register('perfScriptGuardTest', Test) {
     def script = rootProject.file('scripts/perf.sh')
     def anchorScript = rootProject.file('scripts/perf-anchor.sh')
     def keysScript = rootProject.file('scripts/perf-keys.sh')
+    def trendScript = rootProject.file('scripts/perf-trend.sh')
     systemProperty 'perf.script', script.absolutePath
     // PerfAnchorScriptTest EXECUTES this one against a temporary anchor (ANCHOR_FILE), which is a far stronger
     // oracle than reading its text — its refusals are what keep a partial run from silently unarming a lane.
@@ -361,10 +363,15 @@ tasks.register('perfScriptGuardTest', Test) {
     // the recording from stdin, so the embedded-heredoc form every sibling script uses would take stdin over and
     // silently measure nothing — which is exactly what the first version did.
     systemProperty 'perf.keys.script', keysScript.absolutePath
+    // Also EXECUTED, against synthetic records (PERF_RESULTS_DIR). It is the prerequisite piece 1 sizes its band
+    // from, so a wrong noise figure here would propagate into a gate — and its load-bearing case is the one
+    // asserting a stable series reports NOTHING.
+    systemProperty 'perf.trend.script', trendScript.absolutePath
     filter {
         includeTestsMatching 'io.github.mbackschat.a12.dm.adapter.perf.PerfScriptContractTest'
         includeTestsMatching 'io.github.mbackschat.a12.dm.adapter.perf.PerfAnchorScriptTest'
         includeTestsMatching 'io.github.mbackschat.a12.dm.adapter.perf.PerfKeysScriptTest'
+        includeTestsMatching 'io.github.mbackschat.a12.dm.adapter.perf.PerfTrendScriptTest'
         // Reads the perf sources as TEXT, so it belongs on a task that declares them (TESTING-SPEC, "Tests that
         // read repo files at runtime") rather than on :adapter:test, where the declaration would re-run the whole
         // suite on any perf edit — and omitting it would let the guard go up-to-date into a false green.
@@ -373,6 +380,7 @@ tasks.register('perfScriptGuardTest', Test) {
     inputs.file(script)
     inputs.file(anchorScript)
     inputs.file(keysScript)
+    inputs.file(trendScript)
     inputs.dir(file('src/test/kotlin/io/github/mbackschat/a12/dm/adapter/perf'))
         .withPropertyName('perfSources')
 }
