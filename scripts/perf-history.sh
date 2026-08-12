@@ -18,7 +18,9 @@
 set -uo pipefail
 cd "$(dirname "$0")/.."
 
-results="perf-results"
+# PERF_RESULTS_DIR is the guard's seam (as in perf-trend.sh): a renderer asserted against the live record would
+# be coupled to whatever the last real run happened to measure.
+results="${PERF_RESULTS_DIR:-perf-results}"
 [ -d "$results" ] || { echo "no $results directory — run scripts/perf.sh gate first" >&2; exit 1; }
 
 PATTERN="${1:-}" RUNS="${RUNS:-8}" ONLY_ENV="${ENV:-}" RESULTS="$results" python3 - <<'PY'
@@ -56,12 +58,19 @@ if not runs:
     sys.exit("the record holds no complete runs yet" + (f" for {only}" if only else ""))
 
 def label(key):
-    # "<lane>|<scenario>@<v> fingerprint=<sha>|n=<N>|<engine>|<clock>" -> "<lane> @N <engine>/<clock>"
+    """"<lane>|<scenario>@<v> fingerprint=<sha>|n=<N>|<engine>|<clock>" -> "<lane> · <scenario> @N [<engine>/<clock>]".
+
+    The SCENARIO belongs in the label. Without it one lane's many scenarios all render identically — the real
+    record holds ten `kernel parity` rows that every printed as "kernel parity @1000 [groovy/wall]", so a table
+    whose purpose is to show which cost drifted could not say which row it was. Found 2026-08-12 while building
+    the sibling perf-trend.sh, which inherited this function.
+    """
     parts = key.split("|")
     lane = parts[0]
     n = next((p[2:] for p in parts if p.startswith("n=")), "?")
     engine, clock = (parts[-2], parts[-1]) if len(parts) >= 2 else ("?", "?")
-    return f"{lane} @{n} [{engine}/{clock}]"
+    scenario = parts[1].split("@")[0].strip() if len(parts) > 1 else "?"
+    return f"{lane} · {scenario} @{n} [{engine}/{clock}]"
 
 for env in sorted(runs):
     series = runs[env][-window:]
