@@ -62,6 +62,35 @@ class PerfKeysScriptTest {
         assertTrue("no recording" in empty.output) { "the refusal must name it: ${empty.output}" }
     }
 
+    /**
+     * **The positive control, and the reason the four refusals below are not enough on their own.** Every other
+     * case here asserts that the script FAILS on bad input, which a script that failed on *everything* would also
+     * satisfy — including the original stdin defect, whose symptom is an empty profile and therefore a loud
+     * failure on every input. So one case has to prove the instrument actually reads a recording and reports what
+     * is in it. `PERF_KEYS_JFR` stands in for the JDK's `jfr` tool (the same kind of seam as `perf-anchor.sh`'s
+     * `ANCHOR_FILE`) because a guard cannot carry a binary flight recording.
+     */
+    @Test
+    fun aReadableProfileIsReportedWithItsSampleCountAndItsCallers() {
+        val fake = work.resolve("fake-jfr").apply {
+            Files.writeString(this, FAKE_JFR_TOOL)
+            toFile().setExecutable(true)
+        }
+        val recording = Files.writeString(work.resolve("any.jfr"), "stand-in; the fake tool ignores it")
+
+        val run = run(recording.toString(), "ValueAdmissionCache.resultAt", env = mapOf("PERF_KEYS_JFR" to fake.toString()))
+
+        assertEquals(0, run.status, "a readable profile is not a failure: ${run.output}")
+        assertTrue("total ExecutionSamples = 3" in run.output) {
+            "the report must state what it actually read, not an empty profile: ${run.output}"
+        }
+        assertTrue("java.util.HashMap.getNode" in run.output) { "the self-frame view must name the mechanic" }
+        // The discriminating view: the mechanic is charged to the interpreter frame that built the key.
+        assertTrue(Regex("""ValueAdmissionCache\.resultAt: in 2 samples""").containsMatchIn(run.output)) {
+            "the by-caller view must attribute both samples to the requested frame: ${run.output}"
+        }
+    }
+
     @Test
     fun anUnknownModeIsRefusedWithItsUsage() {
         val run = run("bench")
@@ -80,12 +109,48 @@ class PerfKeysScriptTest {
 
     private class Run(val status: Int, val output: String)
 
-    private fun run(vararg args: String): Run {
-        val process = ProcessBuilder(listOf("bash", script.toString()) + args)
+    private fun run(vararg args: String, env: Map<String, String> = emptyMap()): Run {
+        val builder = ProcessBuilder(listOf("bash", script.toString()) + args)
             .directory(script.parent.parent.toFile())
             .redirectErrorStream(true)
-            .start()
+        builder.environment().putAll(env)
+        val process = builder.start()
         val output = process.inputStream.bufferedReader().readText()
         return Run(process.waitFor(), output)
+    }
+
+    private companion object {
+        /**
+         * Stands in for `jfr print`, emitting three samples in the real tool's shape: two charged to
+         * `ValueAdmissionCache.resultAt` through a `HashMap` mechanic, one to unrelated interpreter work. Enough
+         * to distinguish "read the profile" from "reported nothing", which is the whole point of the control.
+         */
+        val FAKE_JFR_TOOL = """
+            #!/usr/bin/env bash
+            cat <<'SAMPLES'
+            jdk.ExecutionSample {
+              startTime = 13:17:21.489
+              stackTrace = [
+                java.util.HashMap.getNode(HashMap.java:1) line: 1
+                io.github.mbackschat.a12.dm.interpreter.ValueAdmissionCache.resultAt(F.kt:2) line: 2
+                io.github.mbackschat.a12.dm.interpreter.AutoChecks.computeFormalResultAt(A.kt:3) line: 3
+              ]
+            }
+            jdk.ExecutionSample {
+              startTime = 13:17:21.499
+              stackTrace = [
+                java.util.HashMap.getNode(HashMap.java:1) line: 1
+                io.github.mbackschat.a12.dm.interpreter.ValueAdmissionCache.resultAt(F.kt:2) line: 2
+                io.github.mbackschat.a12.dm.interpreter.AutoChecks.computeFormalResultAt(A.kt:3) line: 3
+              ]
+            }
+            jdk.ExecutionSample {
+              startTime = 13:17:21.509
+              stackTrace = [
+                io.github.mbackschat.a12.dm.interpreter.eval.ExprEvalKt.evalExpr(E.kt:9) line: 9
+              ]
+            }
+            SAMPLES
+        """.trimIndent()
     }
 }

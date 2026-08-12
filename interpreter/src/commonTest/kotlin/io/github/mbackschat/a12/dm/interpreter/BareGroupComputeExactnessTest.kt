@@ -103,6 +103,53 @@ class BareGroupComputeExactnessTest {
         assertEquals("VALUE|1", outcome(one, FLAG), one.toString())
     }
 
+    /**
+     * **A path the cascade never wrote must not even resolve its coordinates** — the property [IF286] claims and
+     * the one nothing was watching. `entryAt` asks `rowsAt(path)` first and only then `repsOf(path)`, so an
+     * untouched column exits on a cached `String` hash; `repsOf` is itself a map lookup, so reordering those two
+     * lines would quietly restore the cost the change removed while every other test stayed green.
+     */
+    @Test
+    fun anUntouchedColumnIsResolvedWithoutAskingForItsCoordinates() {
+        val model = cascadeModel(
+            producer = ComputationDef(SOURCE, DETAILS, "5"),
+            consumerCondition = "AtLeastOneFieldFilled(Details)",
+        )
+        val ctx = model.newDocument().field(FLAG, "9", 1, 1).computeContexts(ROOT).single()
+        val counting = CountingRepsContext(ctx)
+        val cascade = CascadeOverlay().apply {
+            overlay(SOURCE, listOf(1, 1, 1), io.github.mbackschat.a12.dm.interpreter.ast.Val.Num(dec(5)))
+        }
+        val overlay = OverlayContext(
+            counting,
+            cascade,
+            { io.github.mbackschat.a12.dm.interpreter.ast.emptyValue(model.kinds.getValue(it)) },
+            { 0 },
+            OverlayViews(),
+            FLAG,
+        )
+
+        overlay.field(FLAG)
+        overlay.filled(FLAG)
+        overlay.cellState(FLAG)
+        assertEquals(0, counting.repsCalls,
+            "FLAG is not in the cascade, so none of the three reads may resolve its repetition coordinates")
+
+        overlay.field(SOURCE)
+        assertEquals(1, counting.repsCalls, "a path the cascade DID write must resolve its coordinates exactly once")
+    }
+
+    /** Counts only what [OverlayContext] asks of its delegate; the real context's internal calls are its own. */
+    private class CountingRepsContext(
+        private val d: io.github.mbackschat.a12.dm.interpreter.eval.EvalContext,
+    ) : io.github.mbackschat.a12.dm.interpreter.eval.EvalContext by d {
+        var repsCalls = 0
+        override fun repsOf(path: String): List<Int> {
+            repsCalls++
+            return d.repsOf(path)
+        }
+    }
+
     @Test
     fun containedScanRetainsOverlayCellIdentity() {
         val model = cascadeModel(

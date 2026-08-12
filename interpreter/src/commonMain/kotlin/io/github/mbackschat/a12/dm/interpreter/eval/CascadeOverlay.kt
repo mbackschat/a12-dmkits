@@ -60,7 +60,10 @@ internal class CascadeOverlay {
 
     private fun put(path: String, reps: List<Int>, entry: Entry) {
         val rows = byPath.getOrPut(path) { HashMap() }
-        if (rows[reps] == Entry.Poisoned && entry != Entry.Poisoned) return   // absorbing — see the class doc
-        rows[reps] = entry
+        // ONE probe on the path every write takes. Reading before writing would hash the repetition list twice in
+        // a class whose whole purpose is not doing that; `put` returns the displaced entry, so the absorbing rule
+        // becomes a restore that only fires on a write after a poison.
+        val displaced = rows.put(reps, entry)
+        if (displaced == Entry.Poisoned && entry != Entry.Poisoned) rows[reps] = displaced
     }
 }

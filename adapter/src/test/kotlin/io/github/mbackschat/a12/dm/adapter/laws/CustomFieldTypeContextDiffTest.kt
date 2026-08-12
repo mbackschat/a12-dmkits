@@ -62,14 +62,21 @@ class CustomFieldTypeContextDiffTest {
         val context = Seen(Locale.US, 3, 5, false)
 
         val dynamicFactory = CapturingFactory()
-        val dynamicCodes = RuntimeLaws.messages(model, doc, dynamicFactory, Locale.US).map { it.code() }
-        // The positive control: without a rejection per cell the count below could be measuring nothing.
-        assertEquals(listOf(REJECTION, REJECTION), dynamicCodes, "Groovy-dynamic formal result, one per cell")
+        // (code @ pointer), not codes alone: the validator context carries no cell identity, so a count of two
+        // cannot by itself tell two cells apart from one cell visited twice. The pointers can.
+        val dynamicCodes = RuntimeLaws.messages(model, doc, dynamicFactory, Locale.US).map { it.code() to it.field() }
+        // The positive control: without a rejection per cell the count below could be measuring nothing. Both rows
+        // are in-cap (the group's declared maximum is 2), so neither message can be over-repetition.
+        assertEquals(2, dynamicCodes.size, "Groovy-dynamic formal result, one per cell: $dynamicCodes")
+        assertEquals(setOf(REJECTION), dynamicCodes.map { it.first }.toSet(), "both are the custom rejection")
+        assertEquals(2, dynamicCodes.map { it.second }.toSet().size,
+            "the two rejections must sit at DISTINCT cell pointers, else this measures one cell twice: $dynamicCodes")
         assertEquals(listOf(context, context), dynamicFactory.seen, "Groovy-dynamic invocation count for one value")
 
         val staticFactory = CapturingFactory()
         val staticEngine = RuntimeLaws.kernelJavaEngine(model)
-        val staticCodes = staticEngine.messages(staticEngine.instance(doc), staticFactory, Locale.US).map { it.code() }
+        val staticCodes = staticEngine.messages(staticEngine.instance(doc), staticFactory, Locale.US)
+            .map { it.code() to it.field() }
         assertEquals(dynamicCodes, staticCodes, "static-Java formal result")
         assertEquals(dynamicFactory.seen, staticFactory.seen, "static-Java invocation count for one value")
 
@@ -84,7 +91,7 @@ class CustomFieldTypeContextDiffTest {
             .group(LINES, 1, 1).field(LINE_CODE, "bad", 1, 1, 1)
             .group(LINES, 1, 2).field(LINE_CODE, "bad", 1, 2, 1)
         val interpreterCodes = DmInterpreter(interpreterModel, customFieldTypes = customTypes)
-            .validate(interpreterDoc, "en_US").messages.map { it.code }
+            .validate(interpreterDoc, "en_US").messages.map { it.code to it.errorPath }
         assertEquals(dynamicCodes, interpreterCodes, "interpreter formal result")
         assertEquals(
             dynamicFactory.seen.size,

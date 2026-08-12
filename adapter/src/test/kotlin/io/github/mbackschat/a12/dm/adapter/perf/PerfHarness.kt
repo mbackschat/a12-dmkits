@@ -1105,28 +1105,33 @@ object PerfHarness {
                 taken.trace("${scenario.name} attempt=$attempt", small, large).forEach(::progress)
             }
         }
-        requireInterpreterBeatsBoth(scenario, smallRow)
-        requireInterpreterBeatsBoth(scenario, largeRow)
-        PairedAcceptance.requireInterpreterHasLowestPerUnitCost(
-            scenario.name,
-            ScaleStep(small, large),
-            EngineCurve("interpreter", iGrowth),
-            listOf(EngineCurve("Groovy", gGrowth), EngineCurve("Java", jGrowth)),
-        )
-        val byScale = mapOf(small to iSmall, large to iLarge)
-        assertGrowthBelowCatastropheFloor(
-            "${scenario.name} interpreter",
-            culprit = "a rescan or per-row rebuild on this scenario's shape",
-        ) {
-            pairedGrowth(small, large, pairs) { n ->
-                measureCurrentThreadCpu(warmup, iters) { byScale.getValue(n).run() }.medianMs
+        // In a FINALLY, because the four assertions below throw on a breach — and a breaching lane is the one whose
+        // cost is most worth having. Written after them it was silently absent from exactly that run, which would
+        // make the tier total a sum over the lanes that happened to pass (IG127, found by a cold review).
+        try {
+            requireInterpreterBeatsBoth(scenario, smallRow)
+            requireInterpreterBeatsBoth(scenario, largeRow)
+            PairedAcceptance.requireInterpreterHasLowestPerUnitCost(
+                scenario.name,
+                ScaleStep(small, large),
+                EngineCurve("interpreter", iGrowth),
+                listOf(EngineCurve("Groovy", gGrowth), EngineCurve("Java", jGrowth)),
+            )
+            val byScale = mapOf(small to iSmall, large to iLarge)
+            assertGrowthBelowCatastropheFloor(
+                "${scenario.name} interpreter",
+                culprit = "a rescan or per-row rebuild on this scenario's shape",
+            ) {
+                pairedGrowth(small, large, pairs) { n ->
+                    measureCurrentThreadCpu(warmup, iters) { byScale.getValue(n).run() }.medianMs
+                }
             }
-        }
-        // Recorded LAST, so it covers everything this lane spent: agreement, six warms, the timed pairs, and any
-        // re-measurement a breach forced. The tier's own wall time is the sum of these, which is the number IF282
-        // quoted from a run log because nothing put it anywhere a later run could read (IG121).
-        if (lane != null) {
-            PerfObservations.recordCost(lane, scenario.name, (System.nanoTime() - started) / 1e6)
+        } finally {
+            // Covers everything this lane spent: agreement, six warms, the timed pairs, any re-measurement a breach
+            // forced, and the catastrophe-floor re-measurement above. The tier's wall time is the sum of these.
+            if (lane != null) {
+                PerfObservations.recordCost(lane, scenario.name, (System.nanoTime() - started) / 1e6)
+            }
         }
         return PairedPerfCurve(smallRow, largeRow, iGrowth, gGrowth, jGrowth)
     }
