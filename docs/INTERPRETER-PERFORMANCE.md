@@ -547,6 +547,29 @@ The catalog must favor **non-obvious** combinations (nesting × aggregation × c
 
 ## Results log
 
+### Checkpoint 2026-08-12 — the list-in-key sweep: the five suspected memos are cold, the live ones are elsewhere
+
+Method: `scripts/perf-keys.sh validate` and `scripts/perf-keys.sh compute` on `73bc4a04`, machine `Macmini9,1 Apple M1` (8 processors), one 20 s single-scenario loop each under `jdk.ExecutionSample`, nothing else running. Recordings `build/perf-keys/{validate,compute}.jfr` (transient; the script regenerates them). Validate = `complexRealWorld @ N=240`, **1,615 samples**; compute = `CO-correlation @ N=200`, **1,554 samples**. A profile is a proportion, not a bar: these are read against their own totals, and a contended machine moves them.
+
+**1. The five memos [IG126] named are cold on both scenarios.** Presence anywhere in the stack:
+
+| memo | validate | compute |
+|---|---|---|
+| `AggregateMemoKey(expression, scopePrefixes)` | 2 samples (0.12 %) | 0 |
+| `ValidationPass.indexColumns` / `indexColumnByScope` | 0 | 0 |
+| `DmInterpreter.decided` | 0 | 0 |
+| group-relevance `HashMap<String, HashMap<List<Int>, …>>` | 0 | 0 |
+| `RepetitionNotUniqueEvaluator.rows` | 0 | 0 |
+
+**2. The class has 28 sites in `commonMain`, and its two live members were not on that list.**
+
+| site | measured | mechanism |
+|---|---|---|
+| `AutoChecks.overRepetitionResultAt` → `ModelPathIndex.exceededBound` → `info(path)` | **20.25 %** of validate samples (327 of 1,615); `exceededBound` present in 22.91 %, of which `info`'s `HashMap<String, PathInfo>` lookup is 16.90 % | an **unmemoized prelude**: `ValueAdmissionCache.resultAt` runs it before consulting its memo, on every consultation by every consumer. IF284 moved it out of the memo to make the key value-shaped and assumed it cheap |
+| `OverlayContext.stateOf` | present in **29.67 %** of compute samples; **16.09 %** of all samples are a key mechanic innermost with `stateOf` nearest (`displayValue` 16.54 %, `field` 6.95 %, `cellState` 6.18 %) | exactly IF284's shape: **three** lookups (`poisoned`, `cleared`, `overlay`) of one `Pair<String, List<Int>>`, so the repetition list is walked three times per logical read. `ArrayList.hashCodeRange` is the third-hottest self frame in the compute profile at 6.89 % |
+
+Two more leads, recorded and not pursued: `AdmittedGroupContentIndex.build$addAncestors` is 26.87 % of validate samples through one `validateWith` lambda (an index **build**, not a key), and `PredicateOp.byName` spends 3.59 % in a map lookup that a resolved-once handle would remove.
+
 ### Checkpoint 2026-08-12 — the stacked formal-result memos, and the tightening the anchor was supposed to unlock
 
 Two results, one of them negative. Method: three isolated `perfGateTest` runs per state on the same machine (`Macmini9,1 Apple M1`, 8 processors), nothing else running, `loadAverage` recorded per observation. Records `2026-08-12T091153Z`/`T091605Z`/`T092018Z` (after the change, `loadAverage` 4.3–8.4) against the committed block at `087c39f5`, then `T093210Z`/`T093617Z`/`T094119Z` (2.8–7.1) against the refreshed block.
