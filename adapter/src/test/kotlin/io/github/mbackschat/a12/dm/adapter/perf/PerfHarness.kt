@@ -365,8 +365,19 @@ data class Stats(val medianMs: Double, val minMs: Double, val p90Ms: Double)
 internal data class WarmUpBudget(
     /** Runs per probe; the batch MEDIAN is what the flattening rule reads, so one slow run cannot end a warm. */
     val batch: Int = 3,
-    /** Hard stop on one instance's total warm time — the guard for an expensive scenario. */
-    val maxMillis: Double = 1_000.0,
+    /**
+     * Hard stop on one instance's total warm time — the guard for an expensive scenario.
+     *
+     * **Why not 1 s, which it was until 2026-08-12.** At 1 s exactly one instance in a full gate run ran out of
+     * budget instead of flattening: `CO-correlation`'s dynamic-Groovy arm at N=800, ended by this cap after 9 runs
+     * at ~110 ms each. That bias is not neutral — a kernel measurement still falling reads HIGHER than its settled
+     * cost, so `interp/groovy` reads LOWER and the margin on the estate's tightest row looks better than it is. The
+     * cap has to be loose enough that the dearest engine can reach two consecutive flat batches: 4 s buys ~36 runs
+     * at that arm's cost and ~20 at the dearest observation in the estate, against the 9 it had. The [maxRuns] cap
+     * still bounds a cheap instance, so this only ever spends more on the instances whose coldness distorts a ratio
+     * most.
+     */
+    val maxMillis: Double = 4_000.0,
     /** Hard stop on one instance's total warm runs — the guard for a cheap one. */
     val maxRuns: Int = 60,
     /** A batch within this factor of the previous counts as flat: the curve has stopped improving. */
