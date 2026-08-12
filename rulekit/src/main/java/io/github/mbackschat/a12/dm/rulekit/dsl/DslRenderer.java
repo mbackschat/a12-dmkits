@@ -247,14 +247,19 @@ public final class DslRenderer {
     }
 
     /**
-     * The operand list of a count aggregate. Every repeatable group in {@code NumberOfFilledGroups}
-     * is a wildcard scope, including a repeatable operand mixed with fixed groups.
+     * The operand list of a count aggregate. <b>A repeatable group operand is always a wildcard scope</b>,
+     * whichever count operator holds it, and mixing it with fixed groups is fine.
+     *
+     * <p>It used to be starred for {@code NumberOfFilledGroups} only, which made
+     * {@code Dsl.numberOfFilledFields(GroupRef)} emit a condition the kernel refuses outright —
+     * {@code MVK_NO_WILDCARD}, measured 2026-08-12 on a repeatable group, alongside the acceptance of the
+     * same operand starred and of an unstarred NON-repeatable group. The star is a property of the operand,
+     * not of the operator ({@code rulekit.validate.laws.AggregateGroupOperandLawsTest}).
      */
     private String countOperands(CountAggregate a) {
         return java.util.stream.Stream.concat(
-                        a.fields().stream().map(this::operand),
-                        a.groups().stream().map(g -> path(g.path())
-                                + (a.op() == CountAggregate.CountOp.FILLED_GROUPS && g.repeating() ? "*" : "")))
+                        a.fields().stream().map(this::aggregateOperand),
+                        a.groups().stream().map(g -> path(g.path()) + (g.repeating() ? "*" : "")))
                 .collect(java.util.stream.Collectors.joining(", "));
     }
 
@@ -326,6 +331,19 @@ public final class DslRenderer {
         };
     }
 
+    /**
+     * An entity-list aggregate operand. A group scope renders as its starred path and nothing else — it
+     * carries no correlation marker and no {@code Having} filter, the latter because the kernel rejects a
+     * filter on a group operand outright ({@code MVK_NO_GROUPS_ALLOWED}, locked by
+     * {@code adapter.laws.GroupStarValueAggregateDiffTest}).
+     */
+    private String aggregateOperand(AggregateOperand op) {
+        return switch (op) {
+            case FieldOperand field -> operand(field);
+            case GroupListRef group -> path(group.renderedPath());
+        };
+    }
+
     private String operand(ValueListOperand op) {
         // an enum category projection as a value-list quantifier member renders BARE: `path -> Cat` (no
         // brackets — the bracketed [field -> Cat] form is the comparison-operand rendering, not the
@@ -383,7 +401,7 @@ public final class DslRenderer {
                     "[" + (c.outer() ? "$" : "") + path(c.field().path()) + " " + keyword(c.operatorId())
                             + " " + c.category() + "]";
             case ListAggregate a -> keyword(a.operatorId()) + "("
-                    + a.operands().stream().map(this::operand)
+                    + a.operands().stream().map(this::aggregateOperand)
                             .collect(java.util.stream.Collectors.joining(", "))
                     + ")";
             case CountAggregate a -> keyword(a.operatorId()) + "(" + countOperands(a) + ")";

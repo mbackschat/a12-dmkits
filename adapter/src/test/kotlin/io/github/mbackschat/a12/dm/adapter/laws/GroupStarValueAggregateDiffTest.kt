@@ -8,6 +8,11 @@ import io.github.mbackschat.a12.dm.interpreter.load.ModelLoader
 import io.github.mbackschat.a12.dm.interpreter.model.ComputeOutcome
 import io.github.mbackschat.a12.dm.interpreter.model.MsgType
 import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft
+import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel
+import io.github.mbackschat.a12.dm.rulekit.dsl.Calculation
+import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl
+import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer
+import io.github.mbackschat.a12.dm.rulekit.dsl.NumberExpr
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 
@@ -52,8 +57,18 @@ class GroupStarValueAggregateDiffTest {
             }
         }.build().toJson()
 
+    private val m = BoundModel.ofJson(base)
+
+    /** The typed aggregate over a GROUP star — `AggregateOperand`, the shape DG32 added; every path is
+     *  written once and validated at the call site instead of living in an operation string. */
+    private fun starOf(groupPath: String) = m.flattenGroup("$groupPath*")
+
+    private fun render(calculation: Calculation): String = DslRenderer().render(calculation)
+
     private fun computeModel(operation: String): String =
         RuntimeLaws.withComputation(base, "/Invoice", "AggComp", "../Total", operation)
+
+    private fun computeModel(aggregate: NumberExpr): String = computeModel(render(aggregate.expression()))
 
     private class Both(val kDoc: RuntimeLaws.Doc, val iDoc: Document) {
         fun group(path: String, vararg reps: Int): Both { kDoc.group(path, *reps); iDoc.group(path, *reps); return this }
@@ -66,8 +81,10 @@ class GroupStarValueAggregateDiffTest {
     }
 
     /** Tri-check the Total outcome of [operation] over the instance [build] creates. */
-    private fun agreeCompute(operation: String, expectTotal: String, msg: String, build: (Both) -> Unit) {
-        val kModel = computeModel(operation)
+    private fun agreeCompute(aggregate: NumberExpr, expectTotal: String, msg: String, build: (Both) -> Unit) =
+        agreeCompute(computeModel(aggregate), expectTotal, msg, build)
+
+    private fun agreeCompute(kModel: String, expectTotal: String, msg: String, build: (Both) -> Unit) {
         val def = ModelLoader.load(kModel)
         val b = Both(RuntimeLaws.doc(), def.newDocument())
         build(b)
@@ -93,20 +110,20 @@ class GroupStarValueAggregateDiffTest {
     // ── the corpus shape: a single-number-field group star ─────────────────────────────────────────────────
 
     @Test fun sumOverSingleFieldGroupStar() =
-        agreeCompute("Sum(/Invoice/Lines*)", "VALUE|30.75", "Sum(Lines*) sums the contained Amount cells") { b ->
+        agreeCompute(Dsl.sum(starOf(LINES)), "VALUE|30.75", "Sum(Lines*) sums the contained Amount cells") { b ->
             b.group("/Invoice", 1).field(TOTAL, "999.99", 1, 1).lines("10.50", "20.25")
         }
 
     @Test fun aggregateSiblingsOverGroupStar() {
-        agreeCompute("MinValue(/Invoice/Lines*)", "VALUE|10.5", "MinValue(Lines*)") { b ->
+        agreeCompute(Dsl.minValue(starOf(LINES)), "VALUE|10.5", "MinValue(Lines*)") { b ->
             b.group("/Invoice", 1).field(TOTAL, "999.99", 1, 1).lines("10.50", "20.25")
         }
-        agreeCompute("MaxValue(/Invoice/Lines*)", "VALUE|20.25", "MaxValue(Lines*)") { b ->
+        agreeCompute(Dsl.maxValue(starOf(LINES)), "VALUE|20.25", "MaxValue(Lines*)") { b ->
             b.group("/Invoice", 1).field(TOTAL, "999.99", 1, 1).lines("10.50", "20.25")
         }
         // NDV's static scale is 0 (`MVK_INVALID_COMPARE_DEC_PLACES` into the frac-2 Total) → a scale-0 target
         val kModel = RuntimeLaws.withComputation(base, "/Invoice", "NdvComp", "../DistinctCount",
-            "NumberOfDifferentValues(/Invoice/Lines*)")
+            render(Dsl.numberOfDifferentValues(starOf(LINES)).expression()))
         val def = ModelLoader.load(kModel)
         val b = Both(RuntimeLaws.doc(), def.newDocument())
         b.group("/Invoice", 1).field("/Invoice/DistinctCount", "9", 1, 1).lines("10.50", "20.25", "10.50")
@@ -121,7 +138,7 @@ class GroupStarValueAggregateDiffTest {
     // ── the expansion's extent: multiple contained fields + a nested subgroup ──────────────────────────────
 
     @Test fun sumOverMultiFieldGroupStarWithNestedSubgroup() =
-        agreeCompute("Sum(/Invoice/Charges*)", "VALUE|6.5",
+        agreeCompute(Dsl.sum(starOf(CHARGES)), "VALUE|6.5",
             "Sum(Charges*) feeds Fee+Tax cells AND the nested Extras/Surcharge (recursive expansion)") { b ->
             b.group("/Invoice", 1).field(TOTAL, "999.99", 1, 1)
             b.group(CHARGES, 1, 1).field(FEE, "1.00", 1, 1, 1).field(TAX, "2.00", 1, 1, 1)
@@ -132,7 +149,7 @@ class GroupStarValueAggregateDiffTest {
     // ── the shared-path arms: poison, empty selection, and the validation side ─────────────────────────────
 
     @Test fun malformedCellPoisonsTheGroupStarSum() =
-        agreeCompute("Sum(/Invoice/Lines*)", "CLEARED", "a 3-frac Amount poisons the compute aggregate") { b ->
+        agreeCompute(Dsl.sum(starOf(LINES)), "CLEARED", "a 3-frac Amount poisons the compute aggregate") { b ->
             b.group("/Invoice", 1).field(TOTAL, "999.99", 1, 1).lines("10.50", "5.123")
         }
 
@@ -148,7 +165,7 @@ class GroupStarValueAggregateDiffTest {
     }
 
     @Test fun emptyGroupStarSum() =
-        agreeCompute("Sum(/Invoice/Lines*)", "VALUE|0", "no Lines rows → the empty-selection 0") { b ->
+        agreeCompute(Dsl.sum(starOf(LINES)), "VALUE|0", "no Lines rows → the empty-selection 0") { b ->
             b.group("/Invoice", 1).field(TOTAL, "999.99", 1, 1)
         }
 

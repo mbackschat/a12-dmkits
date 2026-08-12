@@ -13,8 +13,12 @@ import io.github.mbackschat.a12.dm.core.ValueKind;
  * than one field or a repetition list ({@code MVK_PARAMSIZE_INVALIDN}), no repeated DIRECT field
  * ({@code MVK_DUPLICATE_PARAM1}) — a wildcarded operand may repeat, mirroring the kernel skipping
  * wildcarded refs in {@code checkDuplicatesInDirectRefs} — all pre-checked here.
+ *
+ * <p>An operand may also be a <b>group scope</b> ({@link GroupListRef}), which the kernel expands to the
+ * group's contained fields; the two gates that behave differently for it, and why they are delegated rather
+ * than pre-checked, are on {@link AggregateOperand}.
  */
-public record ListAggregate(AggOp op, List<FieldOperand> operands) implements Calculation {
+public record ListAggregate(AggOp op, List<AggregateOperand> operands) implements Calculation {
 
     public enum AggOp {
         SUM("Sum"),
@@ -34,30 +38,51 @@ public record ListAggregate(AggOp op, List<FieldOperand> operands) implements Ca
 
     public ListAggregate {
         operands = List.copyOf(operands);
-        if (operands.size() < 2 && operands.stream().noneMatch(o -> o instanceof FieldListRef)) {
-            throw new IllegalArgumentException(op.operatorId() + " needs more than one field or a"
-                    + " repetition list (MVK_PARAMSIZE_INVALIDN)");
+        if (operands.size() < 2 && operands.stream().noneMatch(ListAggregate::satisfiesArityAlone)) {
+            throw new IllegalArgumentException(op.operatorId() + " needs more than one field, a"
+                    + " repetition list, or a group scope (MVK_PARAMSIZE_INVALIDN)");
         }
-        for (FieldOperand o : operands) {
-            if (o.kind() != ValueKind.NUMBER) {
-                String code = op == AggOp.SUM ? "MVK_NO_NUMBER" : "MVK_NOT_SORTABLE";
-                throw new IllegalArgumentException(op.operatorId() + " takes number fields; "
-                        + o.renderedPath() + " is " + o.kind() + " (" + code
-                        + "; the date variant of Max/Min lands with the date family)");
+        for (AggregateOperand o : operands) {
+            switch (o) {
+                case FieldOperand f -> requireNumber(op, f);
+                // A group carries no kind of its own: the rule applies to the fields the kernel EXPANDS it
+                // to, whose extent recurses into nested subgroups. Delegated rather than re-implemented —
+                // see AggregateOperand.
+                case GroupListRef ignored -> { }
             }
         }
         checkNoDuplicates(op.operatorId(), operands);
     }
 
-    static void checkNoDuplicates(String opName, List<FieldOperand> operands) {
+    private static void requireNumber(AggOp op, FieldOperand operand) {
+        if (operand.kind() != ValueKind.NUMBER) {
+            String code = op == AggOp.SUM ? "MVK_NO_NUMBER" : "MVK_NOT_SORTABLE";
+            throw new IllegalArgumentException(op.operatorId() + " takes number fields; "
+                    + operand.renderedPath() + " is " + operand.kind() + " (" + code
+                    + "; the date variant of Max/Min lands with the date family)");
+        }
+    }
+
+    /** Whether one operand alone satisfies the param law — a repetition list or a group scope does. */
+    static boolean satisfiesArityAlone(AggregateOperand operand) {
+        return operand instanceof FieldListRef || operand instanceof GroupListRef;
+    }
+
+    static void checkNoDuplicates(String opName, List<AggregateOperand> operands) {
         var seen = new java.util.HashSet<String>();
-        for (FieldOperand o : operands) {
+        for (AggregateOperand o : operands) {
             // The kernel's checkDuplicatesInDirectRefs continues past ref.hasWildCards() outside HModel, so a
             // flattened repetition list may occupy several authored slots and is expanded and consumed again at
             // each — only repeated DIRECT (non-wildcard) fields draw MVK_DUPLICATE_PARAM1. This mirrors the
             // value-list identity in Dsl.referenceIdentity (a FieldListRef scope has no dedup identity).
+            //
+            // A GroupListRef has no dedup identity either, and the two halves of that are measured separately:
+            // the same starred group listed twice is ACCEPTED, while a group beside its own descendant is
+            // MVK_DUPLICATE_PARAM2 — an INDIRECT overlap this direct check never saw, and which stays
+            // kernel-arbitrated because deciding it here would mean owning the expansion's extent.
             String identity = switch (o) {
                 case FieldListRef ignored -> null;
+                case GroupListRef ignored -> null;
                 case FieldRef f -> f.renderedPath();
             };
             if (identity == null) {

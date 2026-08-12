@@ -218,12 +218,12 @@ record ConditionComplexity(int nodeCount, int depth, int maxBooleanArity,
                             .filter(GroupRef::repeating)
                             .map(group -> group.path() + "/")
                             .forEach(collectionPaths::add);
-                    yield 1 + maxOperandDepth(a.fields());
+                    yield 1 + maxAggregateOperandDepth(a.fields());
                 }
                 case ListAggregate a -> {
                     op(a.operatorId());
                     constructs.add(Construct.AGGREGATE);
-                    yield 1 + maxOperandDepth(a.operands());
+                    yield 1 + maxAggregateOperandDepth(a.operands());
                 }
                 case CurrentRepetition r -> {
                     op(r.operatorId());
@@ -379,6 +379,29 @@ record ConditionComplexity(int nodeCount, int depth, int maxBooleanArity,
             int max = 0;
             for (ValueListOperand o : operands) {
                 max = Math.max(max, operandDepth(o));
+            }
+            return max;
+        }
+
+        /**
+         * The entity-list aggregates' operand list, which may hold a group scope beside its fields.
+         *
+         * <p>A starred group scope is an iteration exactly as a flattened repetition list is, so it feeds
+         * {@code collectionPaths} and {@code maxStarSegments} the same way — a profile that counted only the
+         * field operands would rate {@code Sum(/Invoice/Lines*)} as though it iterated nothing.
+         */
+        private int maxAggregateOperandDepth(java.util.List<AggregateOperand> operands) {
+            int max = 0;
+            for (AggregateOperand o : operands) {
+                max = Math.max(max, switch (o) {
+                    case FieldOperand field -> operandDepth(field);
+                    case GroupListRef group -> {
+                        nodeCount++;
+                        group.flattened().forEach(starred -> collectionPaths.add(starred.path()));
+                        maxStarSegments = Math.max(maxStarSegments, group.flattened().size());
+                        yield 1;                    // no filter is possible here: MVK_NO_GROUPS_ALLOWED
+                    }
+                });
             }
             return max;
         }

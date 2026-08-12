@@ -7,6 +7,7 @@ import com.networknt.schema.SpecVersion
 import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel
 import io.github.mbackschat.a12.dm.rulekit.dsl.Condition
+import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl
 import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer
 import java.nio.file.Files
 import java.nio.file.Path
@@ -28,8 +29,8 @@ import org.junit.jupiter.api.io.TempDir
  * them would leave that step unmeasured.
  *
  * The two models are authored with modelkit + the rulekit typed DSL and the conditions rendered to the canonical
- * string — each path written once, validated at the call site — with one deliberate exception noted at
- * [GROUP_STAR_SUM].
+ * string, so every path is written once and validated at the call site. The group-star aggregate used to be the
+ * one authored string here; it is typed since `AggregateOperand` closed DG32.
  */
 class KernelRuntimeProbeTest {
 
@@ -217,12 +218,8 @@ class KernelRuntimeProbeTest {
         private const val POLARITY_OMISSION = "POLOMISSION"
         private const val POLARITY_VALUE = "POLVALUE"
 
-        /**
-         * A star over the GROUP, which the typed DSL has no operand for — `Dsl.sum` takes field operands. Kept
-         * as the one authored string because KF183's measured witness is exactly this shape; the gap is already
-         * recorded as `DG32` in `docs/DEV-API-GAPS.md` by the sibling `UnstarredGroupReferenceDiffTest`.
-         */
-        private const val GROUP_STAR_SUM = "Sum(/Order/Items*)"
+        /** A star over the GROUP — KF183's measured witness, now authored typed (`AggregateOperand`, DG32). */
+        private fun groupStarSum(m: BoundModel) = Dsl.sum(m.flattenGroup("/Order/Items*"))
 
         @JvmStatic
         @TempDir
@@ -242,10 +239,13 @@ class KernelRuntimeProbeTest {
                     g.group("Items") { i -> i.repeatable(10).numberField("Count") { it.fractionDigits(0, 0) } }
                 }.build().toJson()
             val m = BoundModel.ofJson(base)
-            val street = render(m.str("/Order/Billing/Street").filled())
             listOf(
                 Triple(COORD_UNSTARRED, render(m.group("/Order/Billing").filled()), "../Billing/Street"),
-                Triple(COORD_STARRED, "$street And $GROUP_STAR_SUM > 0", "../Billing/Street"),
+                Triple(
+                    COORD_STARRED,
+                    render(m.str("/Order/Billing/Street").filled().and(groupStarSum(m).gt(0))),
+                    "../Billing/Street",
+                ),
             ).fold(base) { json, (code, condition, errorField) ->
                 RuntimeLaws.withRule(json, "/Order", "R$code", errorField, code, condition)
             }

@@ -203,10 +203,10 @@ public record ConditionReferences(Set<String> fieldPaths, Set<String> groupPaths
             case BoolLiteral b -> { }
             case EnumCategoryAccess c -> refs.projectedField(c.field().path());
             case CountAggregate a -> {
-                a.fields().forEach(f -> collectOperand(f, refs));
+                a.fields().forEach(f -> collectAggregateOperand(f, refs));
                 a.groups().forEach(g -> refs.group(g.path()));
             }
-            case ListAggregate a -> a.operands().forEach(o -> collectOperand(o, refs));
+            case ListAggregate a -> a.operands().forEach(o -> collectAggregateOperand(o, refs));
             case CurrentRepetition r -> refs.group(r.group().path());
             case Today ignored -> { }
             case Now ignored -> { }
@@ -279,6 +279,15 @@ public record ConditionReferences(Set<String> fieldPaths, Set<String> groupPaths
     /** A list operand contributes its field path (a category projection → its underlying enum field) plus —
      *  for a filtered list — its Having filter's refs. Accepts the wider {@link ValueListOperand} so an enum
      *  category projection in a value-list quantifier is collected too. */
+    /** An entity-list aggregate operand: a group scope is a GROUP reference, exactly as the count
+     *  aggregate's own group list already is; everything else is a field operand. */
+    private static void collectAggregateOperand(AggregateOperand op, Refs refs) {
+        switch (op) {
+            case FieldOperand field -> collectOperand(field, refs);
+            case GroupListRef group -> refs.group(group.path());
+        }
+    }
+
     private static void collectOperand(ValueListOperand op, Refs refs) {
         if (op instanceof EnumCategoryAccess) {
             refs.projectedField(op.fieldPath());

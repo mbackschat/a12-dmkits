@@ -11,7 +11,7 @@ package io.github.mbackschat.a12.dm.rulekit.dsl;
  * type so they can additionally take an enum category projection ({@link EnumCategoryAccess}) — which
  * is NOT a {@code FieldOperand}, so it cannot leak into the other slots the kernel forbids it in.
  */
-public sealed interface FieldOperand extends ValueListOperand permits FieldRef, FieldListRef {
+public sealed interface FieldOperand extends ValueListOperand, AggregateOperand permits FieldRef, FieldListRef {
 
     /** This checked field/list as one compositional {@code FirstFilledValue} owner entity. */
     default FirstFilledOperand firstFilledOperand() {

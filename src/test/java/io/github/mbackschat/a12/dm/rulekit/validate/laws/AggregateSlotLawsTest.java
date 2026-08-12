@@ -28,9 +28,10 @@ import io.github.mbackschat.a12.dm.rulekit.dsl.NumberExpr;
  * entity-list wildcard-skip.
  *
  * <p><b>Typed-surface boundary.</b> The repeated-wildcard <em>acceptance</em> is authored through the typed DSL
- * (a {@link FieldListRef} operand). The indirect group/descendant overlap is NOT expressible through the typed
- * aggregate surface — {@code FieldOperand} permits only {@code FieldRef}/{@code FieldListRef}, no group operand —
- * so it is locked here as a raw kernel-string law only, not a typed authoring control.
+ * (a {@link FieldListRef} operand). The indirect group/descendant overlap needs a GROUP operand, which the typed
+ * aggregates gained with {@code AggregateOperand} (DG32) — it is locked typed in
+ * {@code AggregateGroupOperandLawsTest}, and stays a raw-string law here so this class keeps measuring the gate
+ * itself rather than the builder in front of it.
  */
 class AggregateSlotLawsTest {
 
@@ -206,7 +207,8 @@ class AggregateSlotLawsTest {
     }
 
     /** An indirect group/descendant overlap is rejected — a group operand whose expansion covers a listed
-     *  descendant field. Raw string only: the typed aggregate surface cannot carry a group operand. */
+     *  descendant field. Kept as a raw string so the gate is measured without a builder in between; the typed
+     *  peer is {@code AggregateGroupOperandLawsTest.aGroupScopeBesideItsOwnDescendantIsRejected}. */
     @Test
     void entityListAggregatesRejectIndirectGroupFieldOverlap() {
         KernelLaws.rejectsOrder("/Order", "../Quantity",

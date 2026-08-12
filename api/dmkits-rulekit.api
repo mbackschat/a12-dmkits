@@ -504,6 +504,9 @@ public static record io.github.mbackschat.a12.dm.rulekit.context.RuleExplanation
   public java.lang.String path()
   public final java.lang.String toString()
 
+public sealed interface io.github.mbackschat.a12.dm.rulekit.dsl.AggregateOperand
+  public abstract java.lang.String renderedPath()
+
 public record io.github.mbackschat.a12.dm.rulekit.dsl.Annotation
   public Annotation(java.lang.String, java.lang.String)
   public final boolean equals(java.lang.Object)
@@ -843,9 +846,9 @@ public record io.github.mbackschat.a12.dm.rulekit.dsl.ConfirmRef
   public final java.lang.String toString()
 
 public record io.github.mbackschat.a12.dm.rulekit.dsl.CountAggregate implements io.github.mbackschat.a12.dm.rulekit.dsl.Calculation
-  public CountAggregate(io.github.mbackschat.a12.dm.rulekit.dsl.CountAggregate.CountOp, java.util.List<io.github.mbackschat.a12.dm.rulekit.dsl.FieldOperand>, java.util.List<io.github.mbackschat.a12.dm.rulekit.dsl.GroupRef>)
+  public CountAggregate(io.github.mbackschat.a12.dm.rulekit.dsl.CountAggregate.CountOp, java.util.List<io.github.mbackschat.a12.dm.rulekit.dsl.AggregateOperand>, java.util.List<io.github.mbackschat.a12.dm.rulekit.dsl.GroupRef>)
   public final boolean equals(java.lang.Object)
-  public java.util.List<io.github.mbackschat.a12.dm.rulekit.dsl.FieldOperand> fields()
+  public java.util.List<io.github.mbackschat.a12.dm.rulekit.dsl.AggregateOperand> fields()
   public java.util.List<io.github.mbackschat.a12.dm.rulekit.dsl.GroupRef> groups()
   public final int hashCode()
   public io.github.mbackschat.a12.dm.core.ValueKind kind()
@@ -1331,12 +1334,12 @@ public final class io.github.mbackschat.a12.dm.rulekit.dsl.Dsl
   public static io.github.mbackschat.a12.dm.rulekit.dsl.DateTimeExpr max(io.github.mbackschat.a12.dm.rulekit.dsl.DateTimeOperand, io.github.mbackschat.a12.dm.rulekit.dsl.DateTimeOperand[])
   public static io.github.mbackschat.a12.dm.rulekit.dsl.NumberExpr max(io.github.mbackschat.a12.dm.rulekit.dsl.NumberExpr, io.github.mbackschat.a12.dm.rulekit.dsl.NumberExpr[])
   public static io.github.mbackschat.a12.dm.rulekit.dsl.TimeExpr max(io.github.mbackschat.a12.dm.rulekit.dsl.TimeOperand, io.github.mbackschat.a12.dm.rulekit.dsl.TimeOperand[])
-  public static io.github.mbackschat.a12.dm.rulekit.dsl.NumberExpr maxValue(io.github.mbackschat.a12.dm.rulekit.dsl.FieldOperand, io.github.mbackschat.a12.dm.rulekit.dsl.FieldOperand[])
+  public static io.github.mbackschat.a12.dm.rulekit.dsl.NumberExpr maxValue(io.github.mbackschat.a12.dm.rulekit.dsl.AggregateOperand, io.github.mbackschat.a12.dm.rulekit.dsl.AggregateOperand[])
   public static io.github.mbackschat.a12.dm.rulekit.dsl.DateExpr min(io.github.mbackschat.a12.dm.rulekit.dsl.DateOperand, io.github.mbackschat.a12.dm.rulekit.dsl.DateOperand[])
   public static io.github.mbackschat.a12.dm.rulekit.dsl.DateTimeExpr min(io.github.mbackschat.a12.dm.rulekit.dsl.DateTimeOperand, io.github.mbackschat.a12.dm.rulekit.dsl.DateTimeOperand[])
   public static io.github.mbackschat.a12.dm.rulekit.dsl.NumberExpr min(io.github.mbackschat.a12.dm.rulekit.dsl.NumberExpr, io.github.mbackschat.a12.dm.rulekit.dsl.NumberExpr[])
   public static io.github.mbackschat.a12.dm.rulekit.dsl.TimeExpr min(io.github.mbackschat.a12.dm.rulekit.dsl.TimeOperand, io.github.mbackschat.a12.dm.rulekit.dsl.TimeOperand[])
-  public static io.github.mbackschat.a12.dm.rulekit.dsl.NumberExpr minValue(io.github.mbackschat.a12.dm.rulekit.dsl.FieldOperand, io.github.mbackschat.a12.dm.rulekit.dsl.FieldOperand[])
+  public static io.github.mbackschat.a12.dm.rulekit.dsl.NumberExpr minValue(io.github.mbackschat.a12.dm.rulekit.dsl.AggregateOperand, io.github.mbackschat.a12.dm.rulekit.dsl.AggregateOperand[])
   public static io.github.mbackschat.a12.dm.rulekit.dsl.NumberExpr minutesFromTime(io.github.mbackschat.a12.dm.rulekit.dsl.DateTimeOperand)
   public static io.github.mbackschat.a12.dm.rulekit.dsl.NumberExpr minutesFromTime(io.github.mbackschat.a12.dm.rulekit.dsl.TimeOperand)
   public static io.github.mbackschat.a12.dm.rulekit.dsl.NumberExpr monthFromDate(io.github.mbackschat.a12.dm.rulekit.dsl.DateOperand)
@@ -1376,9 +1379,10 @@ public final class io.github.mbackschat.a12.dm.rulekit.dsl.Dsl
   public static io.github.mbackschat.a12.dm.rulekit.dsl.NumberExpr number(java.lang.String)
   public static io.github.mbackschat.a12.dm.rulekit.dsl.NumberExpr number(java.math.BigDecimal)
   public static io.github.mbackschat.a12.dm.rulekit.dsl.NumberExpr number(long)
-  public static io.github.mbackschat.a12.dm.rulekit.dsl.NumberExpr numberOfDifferentValues(io.github.mbackschat.a12.dm.rulekit.dsl.FieldOperand, io.github.mbackschat.a12.dm.rulekit.dsl.FieldOperand[])
+  public static io.github.mbackschat.a12.dm.rulekit.dsl.NumberExpr numberOfDifferentValues(io.github.mbackschat.a12.dm.rulekit.dsl.AggregateOperand, io.github.mbackschat.a12.dm.rulekit.dsl.AggregateOperand[])
+  public static io.github.mbackschat.a12.dm.rulekit.dsl.NumberExpr numberOfFilledFields(io.github.mbackschat.a12.dm.rulekit.dsl.AggregateOperand, io.github.mbackschat.a12.dm.rulekit.dsl.AggregateOperand, io.github.mbackschat.a12.dm.rulekit.dsl.AggregateOperand[])
   public static io.github.mbackschat.a12.dm.rulekit.dsl.NumberExpr numberOfFilledFields(io.github.mbackschat.a12.dm.rulekit.dsl.FieldListRef)
-  public static io.github.mbackschat.a12.dm.rulekit.dsl.NumberExpr numberOfFilledFields(io.github.mbackschat.a12.dm.rulekit.dsl.FieldOperand, io.github.mbackschat.a12.dm.rulekit.dsl.FieldOperand, io.github.mbackschat.a12.dm.rulekit.dsl.FieldOperand[])
+  public static io.github.mbackschat.a12.dm.rulekit.dsl.NumberExpr numberOfFilledFields(io.github.mbackschat.a12.dm.rulekit.dsl.GroupListRef)
   public static io.github.mbackschat.a12.dm.rulekit.dsl.NumberExpr numberOfFilledFields(io.github.mbackschat.a12.dm.rulekit.dsl.GroupRef, io.github.mbackschat.a12.dm.rulekit.dsl.GroupRef[])
   public static io.github.mbackschat.a12.dm.rulekit.dsl.NumberExpr numberOfFilledGroups(io.github.mbackschat.a12.dm.rulekit.dsl.GroupRef)
   public static io.github.mbackschat.a12.dm.rulekit.dsl.NumberExpr numberOfFilledGroups(io.github.mbackschat.a12.dm.rulekit.dsl.GroupRef, io.github.mbackschat.a12.dm.rulekit.dsl.GroupRef, io.github.mbackschat.a12.dm.rulekit.dsl.GroupRef[])
@@ -1412,7 +1416,7 @@ public final class io.github.mbackschat.a12.dm.rulekit.dsl.Dsl
   public static io.github.mbackschat.a12.dm.rulekit.dsl.NumberExpr secondsFromTime(io.github.mbackschat.a12.dm.rulekit.dsl.TimeOperand)
   public static io.github.mbackschat.a12.dm.rulekit.dsl.DateExpr startOfBaseYear()
   public static io.github.mbackschat.a12.dm.rulekit.dsl.DateExpr startOfDateRange(io.github.mbackschat.a12.dm.rulekit.dsl.DateRangeRef)
-  public static io.github.mbackschat.a12.dm.rulekit.dsl.NumberExpr sum(io.github.mbackschat.a12.dm.rulekit.dsl.FieldOperand, io.github.mbackschat.a12.dm.rulekit.dsl.FieldOperand[])
+  public static io.github.mbackschat.a12.dm.rulekit.dsl.NumberExpr sum(io.github.mbackschat.a12.dm.rulekit.dsl.AggregateOperand, io.github.mbackschat.a12.dm.rulekit.dsl.AggregateOperand[])
   public static io.github.mbackschat.a12.dm.rulekit.dsl.NumberExpr sumOfProducts(io.github.mbackschat.a12.dm.rulekit.dsl.FieldOperand, io.github.mbackschat.a12.dm.rulekit.dsl.FieldOperand)
   public static io.github.mbackschat.a12.dm.rulekit.dsl.TemporalComponent temporalComponent(java.lang.String)
   public static io.github.mbackschat.a12.dm.rulekit.dsl.StringExpr text(java.lang.String)
@@ -1609,7 +1613,7 @@ public record io.github.mbackschat.a12.dm.rulekit.dsl.FieldListValueListConditio
   public final java.lang.String toString()
   public java.util.List<io.github.mbackschat.a12.dm.rulekit.dsl.Calculation> values()
 
-public sealed interface io.github.mbackschat.a12.dm.rulekit.dsl.FieldOperand extends io.github.mbackschat.a12.dm.rulekit.dsl.ValueListOperand
+public sealed interface io.github.mbackschat.a12.dm.rulekit.dsl.FieldOperand extends io.github.mbackschat.a12.dm.rulekit.dsl.AggregateOperand, io.github.mbackschat.a12.dm.rulekit.dsl.ValueListOperand
   public default io.github.mbackschat.a12.dm.rulekit.dsl.FirstFilledOperand firstFilledOperand()
 
 public record io.github.mbackschat.a12.dm.rulekit.dsl.FieldPresenceCondition implements io.github.mbackschat.a12.dm.rulekit.dsl.Condition
@@ -1781,7 +1785,7 @@ public final class io.github.mbackschat.a12.dm.rulekit.dsl.GroupListPredicate im
   public io.github.mbackschat.a12.dm.rulekit.dsl.GroupQuantifier quantifier()
   public java.lang.String toString()
 
-public record io.github.mbackschat.a12.dm.rulekit.dsl.GroupListRef implements io.github.mbackschat.a12.dm.rulekit.dsl.GroupListOperand
+public record io.github.mbackschat.a12.dm.rulekit.dsl.GroupListRef implements io.github.mbackschat.a12.dm.rulekit.dsl.AggregateOperand, io.github.mbackschat.a12.dm.rulekit.dsl.GroupListOperand
   public GroupListRef(io.github.mbackschat.a12.dm.rulekit.dsl.GroupRef, java.util.List<io.github.mbackschat.a12.dm.rulekit.dsl.GroupRef>)
   public final boolean equals(java.lang.Object)
   public java.util.List<io.github.mbackschat.a12.dm.rulekit.dsl.GroupRef> flattened()
@@ -1866,12 +1870,12 @@ public record io.github.mbackschat.a12.dm.rulekit.dsl.LengthOf implements io.git
   public final java.lang.String toString()
 
 public record io.github.mbackschat.a12.dm.rulekit.dsl.ListAggregate implements io.github.mbackschat.a12.dm.rulekit.dsl.Calculation
-  public ListAggregate(io.github.mbackschat.a12.dm.rulekit.dsl.ListAggregate.AggOp, java.util.List<io.github.mbackschat.a12.dm.rulekit.dsl.FieldOperand>)
+  public ListAggregate(io.github.mbackschat.a12.dm.rulekit.dsl.ListAggregate.AggOp, java.util.List<io.github.mbackschat.a12.dm.rulekit.dsl.AggregateOperand>)
   public final boolean equals(java.lang.Object)
   public final int hashCode()
   public io.github.mbackschat.a12.dm.core.ValueKind kind()
   public io.github.mbackschat.a12.dm.rulekit.dsl.ListAggregate.AggOp op()
-  public java.util.List<io.github.mbackschat.a12.dm.rulekit.dsl.FieldOperand> operands()
+  public java.util.List<io.github.mbackschat.a12.dm.rulekit.dsl.AggregateOperand> operands()
   public java.lang.String operatorId()
   public final java.lang.String toString()
 

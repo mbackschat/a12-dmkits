@@ -14,7 +14,7 @@ import io.github.mbackschat.a12.dm.core.ValueKind;
  * MVK_NO_FIELDS_ALLOWED}); root groups are banned in both ({@code MVK_ROOT_GROUP_REFERENCED}). The
  * {@link Dsl} entry points enforce all of that by signature + pre-check; field kinds may be mixed.
  */
-public record CountAggregate(CountOp op, List<FieldOperand> fields, List<GroupRef> groups)
+public record CountAggregate(CountOp op, List<AggregateOperand> fields, List<GroupRef> groups)
         implements Calculation {
 
     public enum CountOp {
@@ -38,9 +38,9 @@ public record CountAggregate(CountOp op, List<FieldOperand> fields, List<GroupRe
         groups = List.copyOf(groups);
         switch (op) {
             case FILLED_FIELDS, DIFFERENT_VALUES -> {
-                // a single flattened repetition list also satisfies the param law (verified)
+                // a single flattened repetition list or group scope also satisfies the param law (verified)
                 if (fields.size() < 2 && groups.isEmpty()
-                        && fields.stream().noneMatch(f -> f instanceof FieldListRef)) {
+                        && fields.stream().noneMatch(ListAggregate::satisfiesArityAlone)) {
                     throw new IllegalArgumentException(op.operatorId() + " needs more than one field,"
                             + " a repetition list, or a group (MVK_PARAMSIZE_INVALIDN)");
                 }
@@ -83,7 +83,15 @@ public record CountAggregate(CountOp op, List<FieldOperand> fields, List<GroupRe
      * incompatible is {@code MVK_DATEFORMATS_NOT_COMPATIBLE} — format compatibility is model data the kernel
      * arbitrates, so pre-checking it here would risk refusing a legal pair.
      */
-    private static void checkValueComparable(List<FieldOperand> fields) {
+    private static void checkValueComparable(List<AggregateOperand> operands) {
+        // Group scopes carry no kind of their own — the rule applies to the fields the kernel expands them
+        // to, and both the admissible set and the homogeneity verdict over an expansion stay kernel-arbitrated
+        // (AggregateOperand). So the partition below runs over the FIELD operands, which is all it can see.
+        List<FieldOperand> fields = operands.stream()
+                .filter(FieldOperand.class::isInstance).map(FieldOperand.class::cast).toList();
+        if (fields.isEmpty()) {
+            return;
+        }
         for (FieldOperand f : fields) {
             switch (f.kind()) {
                 case STRING, ENUMERATION, NUMBER, DATE, TIME, DATE_TIME -> { }

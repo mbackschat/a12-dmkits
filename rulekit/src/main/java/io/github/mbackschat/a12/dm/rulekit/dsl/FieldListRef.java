@@ -89,10 +89,17 @@ public record FieldListRef(FieldRef field, List<GroupRef> flattened, Optional<Co
         }
     }
 
+    /** The aggregate-operand arm: a group scope carries no filter, so only its field siblings are checked. */
+    private static void rejectNestedHavingInOperand(AggregateOperand op) {
+        if (op instanceof FieldOperand field) {
+            rejectNestedHaving(field);
+        }
+    }
+
     private static void rejectNestedHavingIn(Calculation value) {
         switch (value) {
-            case CountAggregate a -> a.fields().forEach(FieldListRef::rejectNestedHaving);
-            case ListAggregate a -> a.operands().forEach(FieldListRef::rejectNestedHaving);
+            case CountAggregate a -> a.fields().forEach(FieldListRef::rejectNestedHavingInOperand);
+            case ListAggregate a -> a.operands().forEach(FieldListRef::rejectNestedHavingInOperand);
             default -> { }
         }
     }

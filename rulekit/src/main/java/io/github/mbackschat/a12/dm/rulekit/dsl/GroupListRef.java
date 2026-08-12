@@ -11,7 +11,7 @@ import java.util.List;
  * of this group"; the legal {@code NoGroupFilled(G*)}/{@code AtLeastOneGroupFilled(G*)} forms use it
  * to scan instantiated group repetitions. Obtain via {@link BoundModel#flattenGroup(String)}.
  */
-public record GroupListRef(GroupRef group, List<GroupRef> flattened) implements GroupListOperand {
+public record GroupListRef(GroupRef group, List<GroupRef> flattened) implements GroupListOperand, AggregateOperand {
 
     public GroupListRef {
         flattened = List.copyOf(flattened);

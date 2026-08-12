@@ -78,11 +78,11 @@ public final class OperatorUsage {
             case EnumCategoryAccess c -> ops.add(c.operatorId());
             case CountAggregate a -> {
                 ops.add(a.operatorId());
-                a.fields().forEach(f -> collectOperand(f, ops));
+                a.fields().forEach(f -> collectAggregateOperand(f, ops));
             }
             case ListAggregate a -> {
                 ops.add(a.operatorId());
-                a.operands().forEach(o -> collectOperand(o, ops));
+                a.operands().forEach(o -> collectAggregateOperand(o, ops));
             }
             case CurrentRepetition r -> ops.add(r.operatorId());
             case Today t -> ops.add(t.operatorId());
@@ -190,6 +190,14 @@ public final class OperatorUsage {
 
     /** A list operand may be a category projection (its own catalog operator) or carry a {@code Having}
      *  filter — either is a sub-construct with a catalog entry. Accepts the wider {@link ValueListOperand}. */
+    /** An entity-list aggregate operand. A group scope contributes no operator of its own: it carries
+     *  neither a category projection nor a {@code Having} filter (the kernel rejects one on a group). */
+    private static void collectAggregateOperand(AggregateOperand operand, Set<String> ops) {
+        if (operand instanceof FieldOperand field) {
+            collectOperand(field, ops);
+        }
+    }
+
     private static void collectOperand(ValueListOperand operand, Set<String> ops) {
         if (operand instanceof EnumCategoryAccess c) {
             ops.add(c.operatorId());   // the `->` category projection is its own catalog operator

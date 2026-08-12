@@ -74,8 +74,9 @@ public final class Dsl {
      * {@code NumberOfFilledFields(f1, f2, …)} — ≥2 fields by signature; kinds may be mixed.
      * Operands may be flattened repetition lists ({@link BoundModel#flatten}). catalog:NumberOfFilledFields
      */
-    public static NumberExpr numberOfFilledFields(FieldOperand first, FieldOperand second, FieldOperand... rest) {
-        var fields = new java.util.ArrayList<FieldOperand>();
+    public static NumberExpr numberOfFilledFields(AggregateOperand first, AggregateOperand second,
+            AggregateOperand... rest) {
+        var fields = new java.util.ArrayList<AggregateOperand>();
         fields.add(first);
         fields.add(second);
         fields.addAll(java.util.List.of(rest));
@@ -93,6 +94,20 @@ public final class Dsl {
                 java.util.List.of(scope), java.util.List.of()));
     }
 
+    /**
+     * {@code NumberOfFilledFields(scope)} over a single GROUP scope — counts the filled fields the kernel
+     * expands that group to. The single-scope form is valid on its own for the same reason the repetition
+     * list is, and a repeatable group must carry its star, which {@link BoundModel#flattenGroup} derives
+     * from the model ({@code MVK_NO_WILDCARD} otherwise).
+     *
+     * <p>Declared separately from the two-or-more form rather than widening it, so a single BARE field stays
+     * a compile error instead of becoming a runtime arity failure.
+     */
+    public static NumberExpr numberOfFilledFields(GroupListRef scope) {
+        return new NumberExpr(new CountAggregate(CountAggregate.CountOp.FILLED_FIELDS,
+                java.util.List.of(scope), java.util.List.of()));
+    }
+
     /** {@code NumberOfFilledFields(group, …)} — counts the filled fields inside the group(s). */
     public static NumberExpr numberOfFilledFields(GroupRef first, GroupRef... rest) {
         var groups = new java.util.ArrayList<GroupRef>();
@@ -102,7 +117,7 @@ public final class Dsl {
     }
 
     /** {@code Sum(…)} over number fields/repetition lists — unspecified fields count as 0 (§9). catalog:Sum */
-    public static NumberExpr sum(FieldOperand first, FieldOperand... rest) {
+    public static NumberExpr sum(AggregateOperand first, AggregateOperand... rest) {
         return listAggregate(ListAggregate.AggOp.SUM, first, rest);
     }
 
@@ -150,12 +165,12 @@ public final class Dsl {
     }
 
     /** {@code MaxValue(…)} over number fields/repetition lists — unspecified fields are ignored. catalog:MaxValue */
-    public static NumberExpr maxValue(FieldOperand first, FieldOperand... rest) {
+    public static NumberExpr maxValue(AggregateOperand first, AggregateOperand... rest) {
         return listAggregate(ListAggregate.AggOp.MAX_VALUE, first, rest);
     }
 
     /** {@code MinValue(…)} over number fields/repetition lists — unspecified fields are ignored. catalog:MinValue */
-    public static NumberExpr minValue(FieldOperand first, FieldOperand... rest) {
+    public static NumberExpr minValue(AggregateOperand first, AggregateOperand... rest) {
         return listAggregate(ListAggregate.AggOp.MIN_VALUE, first, rest);
     }
 
@@ -556,8 +571,9 @@ public final class Dsl {
         };
     }
 
-    private static NumberExpr listAggregate(ListAggregate.AggOp op, FieldOperand first, FieldOperand... rest) {
-        var operands = new java.util.ArrayList<FieldOperand>();
+    private static NumberExpr listAggregate(ListAggregate.AggOp op, AggregateOperand first,
+            AggregateOperand... rest) {
+        var operands = new java.util.ArrayList<AggregateOperand>();
         operands.add(first);
         operands.addAll(java.util.List.of(rest));
         return new NumberExpr(new ListAggregate(op, operands));
@@ -1240,8 +1256,8 @@ public final class Dsl {
     }
 
     /** {@code NumberOfDifferentValues(…)} — distinct-value count over type-homogeneous operands. catalog:NumberOfDifferentValues */
-    public static NumberExpr numberOfDifferentValues(FieldOperand first, FieldOperand... rest) {
-        var fields = new java.util.ArrayList<FieldOperand>();
+    public static NumberExpr numberOfDifferentValues(AggregateOperand first, AggregateOperand... rest) {
+        var fields = new java.util.ArrayList<AggregateOperand>();
         fields.add(first);
         fields.addAll(java.util.List.of(rest));
         return new NumberExpr(new CountAggregate(CountAggregate.CountOp.DIFFERENT_VALUES, fields, java.util.List.of()));
