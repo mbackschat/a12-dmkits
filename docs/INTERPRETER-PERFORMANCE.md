@@ -547,6 +547,36 @@ The catalog must favor **non-obvious** combinations (nesting × aggregation × c
 
 ## Results log
 
+### Checkpoint 2026-08-13 — the over-repetition prelude, and a load asymmetry that inverted the reading
+
+The IG127.1 fix ([IF288](INTERPRETER-FINDINGS.md#if288)). Machine `Macmini9,1 Apple M1` (8 processors), JDK 21.0.12.
+
+**1. The mechanism, paired on one machine in one session.** `scripts/perf-keys.sh validate` (`complexRealWorld @ N=240`), the working tree against its own parent rather than against the committed anchor's revision — the anchor is at `03594677` and predates both [IF286](INTERPRETER-FINDINGS.md#if286) and `e1a7fdd6`, so it is not "before this change" for any lane.
+
+| frame, by nearest caller | before (1,674 samples) | after (1,712 samples) |
+|---|---|---|
+| `ModelPathIndex.info` via `exceededBound` | **10.33 %** (173) | **0.41 %** (7) |
+| `info` via `anyExceedsBound` (the new scan) | — | 0.06 % (1) |
+| `ModelPathIndex.info`, all callers | 11.35 % | 2.34 % (now dominated by `ancestorsOf`, untouched) |
+
+**Two live magnitudes exist for what reads as one quantity, and they are NOT reconciled.** The list-in-key sweep below records `16.90 %` for `info` under `exceededBound` on `73bc4a04`; the same instrument on the same scenario measures `10.33 %` on `f8cc5f3f`. Nothing in the intervening work explains a 1.6x fall (IF286 is compute-only and cannot reach this frame). Either a single 20 s `ExecutionSample` run is a coarser magnitude estimator than two decimal places suggest, or an intervening commit moved it. **Only the paired pair above may be quoted for this change**; the older figure belongs to its own revision and is not differenced against this one. The direction (173 -> 7 samples) is far outside sampling noise either way.
+| `ValueAdmissionCache.resultAt` present anywhere | 33.75 % | 18.87 % |
+
+A first version of the scan probed per CELL rather than per path and showed up as `Document.valuedFields` at 2.95 % self plus `anyExceedsBound`'s ancestor at 2.16 %; the path-major form is what the table above measures. Recording it because the intermediate state is the instructive one: an optimization whose own instrument costs a fifth of what it saves is easy to bank without noticing.
+
+**2. The lane comparison is DIRECTIONAL ONLY, and the reason is in the record.** Three isolated `perfGateTest` runs per side, folded at their per-key median, both sides against the same anchor so its staleness cancels. Median across 36 lanes **0.945×**, spanning `0.721×` (`constrained-fields @5000`) to `1.093×` (`B1-per-row @5000`). Seven lanes read above 1.0 and every one is the SMALL member of its scale pair, which is the signature of a fixed per-call cost — but it is not what happened here:
+
+| trio | per-observation `loadAverage`, median of each run |
+|---|---|
+| after (`f8cc5f3f-DIRTY`) | **9.53 / 3.85 / 4.62** |
+| before (`f8cc5f3f`) | **3.03 / 3.23 / 4.88** |
+
+The after side was measured on the busier machine and still won the median, so the improvement is understated. **The seven small-N readings are CONFOUNDED, not explained**, and the distinction is the point: this change does introduce a fixed per-call cost (the scan is `O(|entityPaths| + |distinct placed paths|)` per public call, independent of document size), so a rival mechanism lives inside the diff and predicts exactly the same seven readings that the load asymmetry does. A load table cannot discriminate between them. Settling it needs one matched-load trio pair, or a direct measurement of the scan on the smallest scenario; neither was run, because the landing decision did not turn on it. This is the `loadAverage` field added by IG121 piece 3 doing the job it was added for; without it the honest conclusion would have been "possible small-scale regression, unresolved". **No per-lane number here should be quoted as clean.** A clean pair would need both trios re-run under matched load, which the landing decision did not require.
+
+**The six run records are NOT committed.** Every pre-existing record under `perf-results/darwin-aarch64/` is cited by some checkpoint, and the tree is at its 30-run cap, so committing these would have evicted cited records to make a DIRECTIONAL comparison recomputable — the wrong trade, and the first attempt at it broke two markdown links and falsified a neighbouring checkpoint's "every figure below is recomputable" claim. To reproduce: three isolated `:adapter:perfGateTest` runs per side, folded with `scripts/perf-anchor.sh show <the three files>`, both sides against the same anchor so its staleness cancels.
+
+**The anchor was deliberately NOT refreshed.** Refreshing from the contended trio is the compounding the committed anchor exists to prevent, and no lane fell below the `0.6 ×` stale-band floor (the largest drop is `constrained-fields @5000` at 0.89× of anchor), so nothing is disarmed by leaving it.
+
 ### Checkpoint 2026-08-12 — the PARTIAL-validation key profile: one of IG126's four closed, and a 12 % member nobody had listed
 
 The first profile of `validatePart` (`scripts/perf-keys.sh validate-partial`, new driver `EvalProfileTest.loopPartialSemanticIndexForProfiler`, `SI-cliff` at N=1,000, 1,374 `ExecutionSample`s). IG126 was reopened because four memos read 0 on scenarios that structurally could not execute them; this is the path that does.

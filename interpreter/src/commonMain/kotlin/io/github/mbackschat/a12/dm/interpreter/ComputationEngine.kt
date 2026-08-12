@@ -146,7 +146,9 @@ internal class ComputationEngine(
         // and an EMPTY index cell — unlike an ordinary required-empty field — poisons its reader (the
         // preliminary mandatory rule marks it invalid-for-validation before the calculations run). Both are
         // computed on the STAGED document, so a defaulted cell participates as its S-value instead.
-        val valueAdmissions = ValueAdmissionCache(checks, locale)
+        // Once per compute call, on the document every gate below reads (IG127.1).
+        val gateNeeded = checks.overRepetitionGateNeeded(doc)
+        val valueAdmissions = ValueAdmissionCache(checks, locale, gateNeeded)
         val dup = checks.duplicateIndexCells(doc, valueAdmissions)
         val emptyIndexCells = checks.preliminaryEmptyIndexCells(doc)
         val formalResults = FormalResultCache(checks, locale, dup, valueAdmissions = valueAdmissions)
@@ -159,7 +161,7 @@ internal class ComputationEngine(
             checks.formalErrors(doc, locale, operandRelevant, formalResults, unsupported) +
                 checks.mandatoryErrors(doc, locale, selectedIndexRelevant, formalResults, unsupported) +
                 checks.uniquenessMessages(doc, dup, locale, selectedIndexRelevant) +
-                checks.overRepetitionMessages(doc, locale, operandRelevant)
+                checks.overRepetitionMessages(doc, locale, operandRelevant, gateNeeded)
         ).forEach { formalErrorsInOperands[it.code to it.errorPath] = it }
         val computedErrors = LinkedHashMap<Pair<String, List<Int>>, Message>()
         // The compute-invariant config, built once for every instance's Interpreter (computeMode; no

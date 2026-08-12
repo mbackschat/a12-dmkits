@@ -24,10 +24,16 @@ import kotlin.test.assertEquals
  * - **the over-repetition gate**, which depends on the cell's coordinates against the declared repeatability;
  * - **duplicate-index membership**, which depends on which siblings a cell has.
  *
- * Both are cheap to compute per cell — a walk over the path's declared bounds, and a set membership — so they belong
- * OUTSIDE the memo rather than inside its key. That is what makes the key affordable: carrying the repetition list
- * in it cost more than the work it saved (79 % of the time inside `resultAt` was key mechanics against 2.6 % in the
- * check being cached).
+ * Both belong OUTSIDE the memo rather than inside its key. That is what makes the key affordable: carrying the
+ * repetition list in it cost more than the work it saved (79 % of the time inside `resultAt` was key mechanics
+ * against 2.6 % in the check being cached).
+ *
+ * *(Amended 2026-08-13: this used to add "both are cheap to compute per cell", which measurement contradicted.
+ * Duplicate membership is — an empty-set test guards it. The over-repetition gate is a `HashMap<String, PathInfo>`
+ * probe that every consumer pays again for the same cell, and it was **10.33 %** of a validate profile. Moving it
+ * out of the key was still right; assuming what remained was free was not. It is now guarded by the same
+ * document-level precondition its sibling has — `AutoChecks.overRepetitionGateNeeded`, IG127.1 — which is what
+ * `OverLimitAddressPresenceMultiplatformTest` locks.)*
  *
  * The differential twins are `adapter.laws.OverRepetitionFormalGateDiffTest` and
  * `adapter.laws.RepetitionNotUniqueFormalKeyDiffTest`, whose expectations are the real kernel's.

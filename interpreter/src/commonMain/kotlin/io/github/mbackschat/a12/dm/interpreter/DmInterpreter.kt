@@ -634,7 +634,9 @@ class DmInterpreter private constructor(
             val full = isRelevant === ALL_RELEVANT
             val call = if (full && indexDefaults.isNotEmpty()) doc.withComputed(indexDefaults) else doc
             val unavailable = if (full) emptySet() else indexDefaults.keys
-            val valueAdmissions = ValueAdmissionCache(checks, locale)
+            // Computed on the STAGED document (the one every gate below consults), once per call (IG127.1).
+            val gateNeeded = checks.overRepetitionGateNeeded(call)
+            val valueAdmissions = ValueAdmissionCache(checks, locale, gateNeeded)
             val dup = checks.duplicateIndexCells(call, valueAdmissions, isRelevant)   // computed ONCE: feeds both the uniqueIndex messages and the suppression
             lateinit var formalResults: FormalResultCache
             val admittedGroupContent by lazy(LazyThreadSafetyMode.NONE) {
@@ -655,7 +657,7 @@ class DmInterpreter private constructor(
             val messages = (checks.formalErrors(call, locale, isRelevant, formalResults, unsupported) +
                     checks.mandatoryErrors(call, locale, isRelevant, formalResults, unsupported)
                     + checks.uniquenessMessages(call, dup, locale, isRelevant)
-                    + checks.overRepetitionMessages(call, locale, isRelevant)).toMutableList()
+                    + checks.overRepetitionMessages(call, locale, isRelevant, gateNeeded)).toMutableList()
             // The per-call seam (IF117): the formal-status memo spans ALL rules of this validation (the doc is
             // immutable here), and the EvalConfig is built once for the whole call.
             val formallyIncorrect by lazy(LazyThreadSafetyMode.NONE) {
@@ -811,7 +813,7 @@ class DmInterpreter private constructor(
         // Full-call semantics, so the eligible index defaults are staged exactly as in [validate] (SPEC-2026-07-23-14).
         val indexDefaults = checks.eligibleIndexDefaults(doc)
         val call = if (indexDefaults.isEmpty()) doc else doc.withComputed(indexDefaults)
-        val valueAdmissions = ValueAdmissionCache(checks, locale)
+        val valueAdmissions = ValueAdmissionCache(checks, locale, checks.overRepetitionGateNeeded(call))
         val dup = checks.duplicateIndexCells(call, valueAdmissions)
         val groupRelevance = { _: String, _: List<Int> -> GroupRelevance.FULL }
         lateinit var formalResults: FormalResultCache

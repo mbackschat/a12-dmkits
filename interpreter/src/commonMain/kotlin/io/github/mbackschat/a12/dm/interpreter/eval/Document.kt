@@ -360,6 +360,18 @@ class Document(internal val config: DocumentConfig) {
     fun valuedFields(): List<ValuedField> =
         index().valued.map { ValuedField(it.path, it.reps, it.value!!) }
 
+    /**
+     * Every placed non-group address, path-major and uncopied: `path → its coordinates`. A superset of
+     * [valuedFields] (a present-but-empty cell is here too), which is the safe direction for the caller this
+     * exists for.
+     *
+     * The over-repetition gate precondition (`AutoChecks.overRepetitionGateNeeded`, IG127.1) resolves ONE bound set per
+     * path and then compares coordinates, so it must iterate path-major; walking [valuedFields] instead cost a
+     * [io.github.mbackschat.a12.dm.interpreter.model.ValuedField] allocation per cell and a map probe per cell
+     * (measured at 2.95 % of a validate profile before this existed).
+     */
+    internal fun placedAddresses(): Map<String, Map<List<Int>, *>> = index().valueByKey
+
     /** Instantiated rows of one group, without constructing evaluation contexts or scanning document content. */
     internal fun instantiatedRows(groupPath: String): List<List<Int>> = rowsOf(groupPath)
 
@@ -1514,8 +1526,11 @@ class Document(internal val config: DocumentConfig) {
      * over the in-cap (declared-range) rows only. It stays instantiated for per-row rule suppression and structural
      * over-repetition emission, which read [rowsOf] directly (unfiltered). Decided from the SAME
      * [effectiveGroupRepetitionMaximums] the emission gate
-     * ([io.github.mbackschat.a12.dm.interpreter.ModelPathIndex.exceededBound]) uses — one address-bound fact, two
-     * readers — so the star-domain bound and the emitted over-repetition codes can never disagree.
+     * ([io.github.mbackschat.a12.dm.interpreter.ModelPathIndex.exceededBound]) uses — one address-bound fact, now
+     * THREE readers (this one, `exceededBound`, and its hoisted twin `anyExceedsBound`) — so the star-domain bound
+     * and the emitted over-repetition codes can never disagree. The two `ModelPathIndex` walks are held in
+     * agreement by `OverLimitAddressPresenceMultiplatformTest`; this one is a separate implementation reading the
+     * DOCUMENT's own configured maximums rather than the model's, which is pre-existing and outside that lock.
      * Computed once per group (empty for a well-formed document → the exclusion is a no-op) and memoized with the [Index].
      */
     private fun overLimitRows(groupPath: String): Set<List<Int>> {

@@ -54,6 +54,23 @@ internal class ModelPathIndex(model: ModelDef) {
         return null
     }
 
+    /**
+     * Whether ANY of [coordinates] exceeds a bound of [path] — the path is resolved ONCE, so the per-coordinate
+     * cost is integer comparisons instead of a `HashMap<String, PathInfo>` probe each (IG127.1).
+     *
+     * This is loop-invariant hoisting, not a memo, and the distinction is the whole reason it works. The memo that
+     * was built and reverted (INTERPRETER-PERFORMANCE, the list-in-key sweep) cached a resolved handle ACROSS
+     * calls, which arrive path-interleaved and missed nearly every time. A caller that already holds every
+     * coordinate of one path has no such miss.
+     */
+    fun anyExceedsBound(path: String, coordinates: Iterable<List<Int>>): Boolean {
+        val bounds = info(path).bounds
+        if (bounds.isEmpty()) return false
+        return coordinates.any { reps ->
+            bounds.any { bound -> bound.level < reps.size && reps[bound.level] > bound.maximum }
+        }
+    }
+
     /** The level of [exceededBound], retained for consumers that need only suppression, not code selection. */
     fun overLimitLevel(path: String, reps: List<Int>): Int? {
         return exceededBound(path, reps)?.level

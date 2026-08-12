@@ -382,6 +382,59 @@ internal class AutoChecks(
      * formal result that depends on the cell's COORDINATES rather than on its value, and keeping it out of the
      * memoized computation is what lets that memo key on `(path, raw)` instead of carrying the repetition list.
      */
+    /**
+     * Whether the per-cell over-repetition gate has to run at all for [doc] — the once-per-call precondition that
+     * lets it be skipped wholesale (IG127.1).
+     *
+     * That gate ([overRepetitionResultAt]) is a `HashMap<String, PathInfo>` probe plus a bound walk, and
+     * [ValueAdmissionCache.resultAt] must run it BEFORE consulting its memo, because an over-limit cell is exempt
+     * from every value check. It depends on the coordinate, so it cannot ride in the value-shaped key without
+     * reintroducing the list-in-key IF284 removed, and it is therefore unmemoized: emission, suppression,
+     * `RepetitionNotUnique` and the computation poison gate each pay it again for the same cell. Measured at
+     * **10.33 %** of a full validation. A per-PATH memo of any shape is the same probe (built, measured and
+     * reverted; INTERPRETER-PERFORMANCE), so the lever that remains is not to ask per cell at all.
+     *
+     * This is the third member of a family the neighbouring code already guards the same way: `duplicates` and
+     * `unavailable` are both coordinate-keyed sets that are empty in the ordinary case, and both are tested with
+     * `isNotEmpty()` first, on the path every call takes. Over-limit was the member without the guard.
+     *
+     * **Why these two domains.** They mirror the two [overRepetitionMessages] walks — cells, then instantiated
+     * rows — so "no gate needed" and "the emitter emits nothing" are one statement rather than an argument joining
+     * two different domains. Each is deliberately a SUPERSET of the emitter's: [Document.placedAddresses] carries
+     * present-but-EMPTY cells too (an address no valued placement holds, and exactly what the empty branch of
+     * [computeFormalResultAt] consults), and the row scan covers every declared entity rather than only the BOUNDED
+     * groups the emitter iterates. Scanning more addresses can only make a `false` answer stronger.
+     *
+     * **The name says "gate needed", not "an over-limit address exists", and the difference is load-bearing:** a
+     * model whose declared maximum is below 1 returns `true` for an EMPTY document with no addresses at all. That
+     * refusal is conservative on purpose — [mandatoryErrors] synthesises an all-1s address for an absolutely
+     * required field that no placement need carry, and refusing outright is cheaper than reasoning about which
+     * branch that address takes.
+     *
+     * **There is deliberately no `maximums.isEmpty()` early return.** It looks free and is not: both scans resolve
+     * their path through the same `info`, whose assertion is the only thing that rejects an undeclared placement
+     * once the gate is skipped, and returning before them silently drops it for any model that declares no bounds
+     * — reachable through the public `ModelDef`, whose `groupPaths` defaults to empty. A cold review caught exactly
+     * that regression here. When no bound is declared, `anyExceedsBound` still resolves each path and then returns
+     * on its empty bound list, which is the cheap outcome without the lost assertion.
+     *
+     * A field address's verdict IS its containing group row's verdict: field paths carry no bound of their own
+     * ([ModelDef.effectiveGroupRepetitionMaximums] excludes them), so every bound level of a field lies at an
+     * ancestor group level and reads the same coordinates as that row. The row scan therefore already covers every
+     * cell; the cell scan earns its place by carrying the `info` assertion for paths no row scan visits.
+     */
+    fun overRepetitionGateNeeded(doc: Document): Boolean {
+        if (model.effectiveGroupRepetitionMaximums.values.any { it < 1 }) return true
+        for ((path, addresses) in doc.placedAddresses()) {
+            if (paths.anyExceedsBound(path, addresses.keys)) return true
+        }
+        for (entity in model.entityPaths) {
+            val rows = doc.instantiatedRows(entity)
+            if (rows.isNotEmpty() && paths.anyExceedsBound(entity, rows)) return true
+        }
+        return false
+    }
+
     fun overRepetitionResultAt(path: String, reps: List<Int>): FormalResult.Invalid? =
         paths.exceededBound(path, reps)?.let { exceeded ->
             FormalResult.Invalid(FormalFailure.Generated(overRepetitionType(exceeded).code))
@@ -451,7 +504,9 @@ internal class AutoChecks(
                 FormalResult.Valid
             }
         }
-        overRepetitionResultAt(path, reps)?.let { return it }
+        // The EMPTY branch. Same document-level precondition as the filled branch's gate, read from the admission
+        // cache so the call has exactly ONE answer to "can any address here be over-limit?" (IG127.1).
+        if (valueAdmissions.overRepetitionGateNeeded) overRepetitionResultAt(path, reps)?.let { return it }
         return if (ctx != null && requiredEmpty(path, ctx, groupFilled)) FormalResult.Invalid(FormalFailure.Generated(MANDATORY_FIELD))
         else FormalResult.Valid
     }
@@ -510,8 +565,16 @@ internal class AutoChecks(
      * over-limit instance is "unknown": [computeFormalResultAt] suppresses rules over it and [formalErrors] skips
      * its format check (it carries the over-repetition code instead).
      */
-    fun overRepetitionMessages(doc: Document, locale: String, isRelevant: Relevance): List<Message> {
-        if (model.effectiveGroupRepetitionMaximums.isEmpty()) return emptyList()
+    fun overRepetitionMessages(
+        doc: Document,
+        locale: String,
+        isRelevant: Relevance,
+        /** The call's [overRepetitionGateNeeded]. Both loops below compute [ModelPathIndex.exceededBound]
+         *  BEFORE consulting relevance, so on an ordinary document this walk is two full scans that emit nothing.
+         *  No default, for the reason [ValueAdmissionCache.overRepetitionGateNeeded] gives. */
+        gateNeeded: Boolean,
+    ): List<Message> {
+        if (!gateNeeded || model.effectiveGroupRepetitionMaximums.isEmpty()) return emptyList()
         val out = mutableListOf<Message>()
         for (vf in doc.valuedFields()) {
             val exceeded = paths.exceededBound(vf.path, vf.reps) ?: continue

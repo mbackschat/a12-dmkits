@@ -42,6 +42,15 @@ internal sealed interface FormalFailure {
 internal class ValueAdmissionCache(
     private val checks: AutoChecks,
     private val locale: String,
+    /**
+     * Whether the coordinate-dependent gate below has to run for this call's document
+     * ([AutoChecks.overRepetitionGateNeeded], computed once per call). When it does not — the ordinary document —
+     * the gate cannot produce a result for ANY cell, so it is skipped outright rather than re-answered per
+     * consultation. **Deliberately has no default:** every construction site is per-call and knows the answer, so
+     * a defaulted `true` would only let a missed wiring site compile silently into the old behaviour instead of
+     * failing the build.
+     */
+    val overRepetitionGateNeeded: Boolean,
 ) {
     /**
      * `(path, raw)` — **not** the cell. What this memoizes is a function of the field and the value, so every cell
@@ -66,8 +75,11 @@ internal class ValueAdmissionCache(
 
     fun resultAt(path: String, reps: List<Int>, raw: String): FormalResult {
         // Cell-shaped, so it stays out of the memo — and it must run FIRST, because an over-limit cell is exempt
-        // from every value check (see AutoChecks.overRepetitionResultAt).
-        checks.overRepetitionResultAt(path, reps)?.let { return it }
+        // from every value check (see AutoChecks.overRepetitionResultAt). Guarded by the document-level
+        // precondition for the same reason `dup`/`unavailable` are guarded by `isNotEmpty()`: the gate walks a
+        // path's bounds through a map probe BEFORE it can answer "no", and on an ordinary document the answer is
+        // "no" for every cell (IG127.1).
+        if (overRepetitionGateNeeded) checks.overRepetitionResultAt(path, reps)?.let { return it }
         return if (checks.hasCodeBasedValidatorAt(path)) {
             byCell.getOrPut(CellKey(path, reps, raw)) { checks.computeValueAdmissionAt(path, raw, locale) }
         } else {
@@ -104,7 +116,7 @@ internal class FormalResultCache(
      *  containing groups erroneous EAGERLY, before any rule runs). Empty outside partial validation. */
     private val unavailable: Set<Pair<String, List<Int>>> = emptySet(),
     private val groupFilled: (EvalContext, String) -> Boolean = { ctx, path -> ctx.groupFilled(path) },
-    private val valueAdmissions: ValueAdmissionCache = ValueAdmissionCache(checks, locale),
+    private val valueAdmissions: ValueAdmissionCache,
 ) {
     /**
      * The EMPTY branch's key only. A filled cell is not memoized here at all — see [resultAt] — so `raw` was
