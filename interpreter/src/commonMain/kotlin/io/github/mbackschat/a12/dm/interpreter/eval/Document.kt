@@ -1359,18 +1359,42 @@ class Document(internal val config: DocumentConfig) {
         // A row over a present index value is always evaluated (the value exists in at least one group).
         override val evaluated: Boolean = true
 
+        /**
+         * Everything below is memoized by path for this row, exactly as [RowContext] memoizes `reps`/`placeOf`
+         * and for the same measured reason — this class simply never got it. `groupOf`, `repsOf` and the
+         * placement are deterministic in the path plus this context's immutable fields, and each is asked many
+         * times per row: once per referenced field, again for the error pointer, again for the formal-cache key,
+         * again by the suppressor scan, and `field`/`filled`/`displayValue` each resolve independently. Profiled
+         * on `PF-framed`, `repsOf` was 63.6 % of samples inclusive and the biggest single self cost in the whole
+         * run was the `ArrayList.add` behind its per-call `List(segs.size)` (16.7 %). Stable for the same reason
+         * [RowContext]'s caches are: the document's structure is immutable for the length of a call, and an
+         * overlay changes values rather than rows.
+         */
+        private val groupCache = HashMap<String, String?>()
+        private val repsCache = HashMap<String, List<Int>>()
+        private val placeCache = HashMap<String, Placement?>()
+
+        /** Group depths, once per context rather than a path split per lookup — [groups] is fixed here. */
+        private val groupDepths: Map<String, Int> = groups.associateWith { partsOf(it).size }
+
         /** The parallel group [path] belongs to (itself or a descendant), or null when [path] is outside them. */
-        private fun groupOf(path: String): String? = groups.firstOrNull { path == it || path.startsWith("$it/") }
+        private fun groupOf(path: String): String? {
+            if (path in groupCache) return groupCache[path]
+            return groups.firstOrNull { path == it || path.startsWith("$it/") }
+                .also { groupCache[path] = it }
+        }
 
         /** Whether [path]'s group has no row for the current index value (the outer-join "not specified" side). */
         private fun unmatched(path: String): Boolean = groupOf(path)?.let { matches[it] == null } ?: false
 
-        override fun repsOf(path: String): List<Int> {
+        override fun repsOf(path: String): List<Int> = repsCache.getOrPut(path) { computeReps(path) }
+
+        private fun computeReps(path: String): List<Int> {
             val g = groupOf(path) ?: return repsFor(path, commonParent, cReps)
-            val gDepth = parts(g).size
+            val gDepth = groupDepths.getValue(g)
             val parent = parentReps.getValue(g)   // the group's join parent: a frame row, else the common parent
             val matched = matches[g]
-            val segs = parts(path)
+            val segs = partsOf(path)
             return List(segs.size) { i ->
                 when {
                     i < parent.size -> parent[i]            // the group's parent prefix (frame / common-parent — real)
@@ -1391,21 +1415,25 @@ class Document(internal val config: DocumentConfig) {
         // not exist. Same principle as [IF268] one step further: what the iteration did not choose is not
         // compared, whether because the level sits below it or because the join found nothing.
         override fun boundLevelsOf(path: String): Int {
-            val g = groupOf(path) ?: return commonPrefixLen(parts(path), parts(commonParent))
-            val bound = if (matches[g] == null) parentReps.getValue(g).size else parts(g).size
-            return minOf(bound, parts(path).size)
+            val g = groupOf(path) ?: return commonPrefixLen(partsOf(path), partsOf(commonParent))
+            val bound = if (matches[g] == null) parentReps.getValue(g).size else groupDepths.getValue(g)
+            return minOf(bound, partsOf(path).size)
+        }
+
+        /** The placement of [path] in this iteration, resolved once — `resolved`, `resolvedDisplay`, `field`,
+         *  `filled` and `displayValue` otherwise repeat the same reps walk and map lookup independently. */
+        private fun placeOf(path: String): Placement? {
+            if (path in placeCache) return placeCache[path]
+            val reps = repsOf(path)
+            val place = if (reps.any { it == UNKNOWN_REP }) null else valueAt(path, reps)
+            placeCache[path] = place
+            return place
         }
 
         /** The raw value of [path] in this iteration, or null when its group has no matching row (or it is empty). */
-        private fun resolved(path: String): String? {
-            val reps = repsOf(path)
-            return if (reps.any { it == UNKNOWN_REP }) null else valueAt(path, reps)?.value
-        }
+        private fun resolved(path: String): String? = placeOf(path)?.value
 
-        private fun resolvedDisplay(path: String): String? {
-            val reps = repsOf(path)
-            return if (reps.any { it == UNKNOWN_REP }) null else valueAt(path, reps)?.raw
-        }
+        private fun resolvedDisplay(path: String): String? = placeOf(path)?.raw
 
         // An UNMATCHED reference into an INVALID-index group reads as 3VL UNKNOWN (not empty) — the kernel's
         // invalid-index behavior (KERNEL-FINDINGS §9), routed through [presenceUnknown] for presence predicates
