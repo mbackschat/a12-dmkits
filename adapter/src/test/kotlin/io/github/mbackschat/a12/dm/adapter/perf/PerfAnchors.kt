@@ -340,7 +340,26 @@ internal object PerfObservations {
     fun recordCost(lane: String, scenario: String, wallMs: Double) =
         file.appendLine(costRecord(lane, scenario, wallMs))
 
+    /**
+     * The environment-quality counters at the previous observation write, so each row can carry the delta over the
+     * window that CONTAINS its measurement (IG121's third piece; the window's exact definition and the reason these
+     * may never gate are on [PerfEnvironmentQuality]).
+     */
+    private var lastQuality: PerfEnvironmentQuality.Snapshot? = null
+
+    /**
+     * `@Synchronized` because the quality delta is **order-dependent** state, unlike everything else written here:
+     * two interleaved writers would each read the other's snapshot and both report a wrong window, silently. The
+     * lanes are single-fork and JUnit parallelism is off, so this changes no behaviour today — it stops a future
+     * parallel lane from corrupting a number nothing would flag. (The plain file append is unsynchronized for every
+     * record kind, which is pre-existing and left alone: a torn *line* is malformed JSON the record guard rejects
+     * loudly, whereas a torn *delta* is well-formed and wrong, which is why only this one needs the lock.)
+     */
+    @Synchronized
     fun record(key: ObservationKey, medianMs: Double, status: String) {
+        val quality = PerfEnvironmentQuality.snapshot()
+        val window = PerfEnvironmentQuality.delta(lastQuality, quality)
+        lastQuality = quality
         file.appendLine(
             mapOf(
                 "kind" to "observation",
@@ -356,7 +375,7 @@ internal object PerfObservations {
                 // Per observation, not per run: a machine that got busy halfway through is then visible in the
                 // record rather than showing up later as an unexplained outlier.
                 "loadAverage" to loadAverage(),
-            ),
+            ) + window,
         )
     }
 

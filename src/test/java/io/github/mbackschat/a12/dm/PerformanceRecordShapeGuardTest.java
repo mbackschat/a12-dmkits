@@ -63,6 +63,28 @@ class PerformanceRecordShapeGuardTest {
     private static final List<String> REQUIRED_COST_FIELDS =
             List.of("environment", "lane", "scenario", "wallMs");
 
+    /**
+     * Environment-quality fields every observation carries (IG121's third piece). GC and JIT come from JVM beans
+     * and are always present; the Linux-only counters are deliberately absent-or-null off Linux rather than 0, so
+     * they are not required here — {@code null} means "not observable on this platform", which a 0 would misreport
+     * as "none observed".
+     */
+    private static final List<String> REQUIRED_QUALITY_FIELDS =
+            List.of("windowSince", "gcCountInWindow", "gcMsInWindow");
+
+    /** How a quality window is defined. The first observation of a run measures from JVM start. */
+    private static final Set<String> KNOWN_QUALITY_WINDOWS = Set.of("jvm-start", "previous-observation");
+
+    /**
+     * The quality fields exist to make a historic outlier interpretable and must NEVER reach a bar — they are
+     * post-treatment variables, so filtering on them would censor the very evidence a regression produces (an
+     * allocation regression causes GC). {@link #noQualityFieldIsReadOutsideTheRecorder()} holds that structurally;
+     * this is the list it sweeps for.
+     */
+    private static final List<String> QUALITY_FIELD_NAMES = List.of(
+            "gcCountInWindow", "gcMsInWindow", "jitMsInWindow", "stealJiffiesInWindow",
+            "cgroupThrottledUsecInWindow", "cgroupThrottledPeriodsInWindow");
+
     /** Every {@code kind} a record line may carry after the header. An unknown one is a producer/guard drift. */
     private static final Set<String> KNOWN_KINDS = Set.of("observation", "warm", "cost");
 
@@ -201,6 +223,30 @@ class PerformanceRecordShapeGuardTest {
                 if (!observation.path("environment").asText().equals(header.path("environment").asText())) {
                     problems.add(where + ": observation environment disagrees with its run header");
                 }
+                // The quality fields arrived after 30 runs were already committed, exactly as `machine` did, so
+                // they are validated WHEN PRESENT rather than required of history — a row written before the
+                // producer existed is legitimately without them, and rewriting old records to satisfy a new guard
+                // would forge measurements. `windowSince` is the marker that a row came from the new producer;
+                // the PRODUCER's own shape is held in :adapter by PerfEnvironmentQualityTest, which is where it
+                // can actually be called.
+                if (!observation.path("windowSince").isMissingNode()) {
+                    String window = observation.path("windowSince").asText("<absent>");
+                    if (!KNOWN_QUALITY_WINDOWS.contains(window)) {
+                        problems.add(where + ": unknown quality window " + window + "; a reader must be able to "
+                                + "tell a first-observation window from a between-observations one, since they "
+                                + "measure different spans");
+                    }
+                    REQUIRED_QUALITY_FIELDS.stream().filter(field -> observation.path(field).isMissingNode())
+                            .forEach(field -> problems.add(where + ": a row carrying windowSince lacks " + field
+                                    + " — a partial quality window is worse than none, since a reader cannot tell "
+                                    + "an absent counter from an unwritten one"));
+                }
+                QUALITY_FIELD_NAMES.stream()
+                        .filter(field -> observation.path(field).isNumber()
+                                && observation.path(field).asLong() < 0)
+                        .forEach(field -> problems.add(where + ": " + field + " is negative; a counter that went "
+                                + "backwards must be recorded as null, because a negative delta is not a smaller "
+                                + "measurement but an unusable one"));
                 String reconstructed = "%s|%s|n=%d|%s|%s".formatted(
                         observation.path("lane").asText(),
                         observation.path("scenario").asText(),
@@ -289,5 +335,53 @@ class PerformanceRecordShapeGuardTest {
                 + "\n\nDelete the oldest files: past this horizon the durable references are the committed anchor "
                 + "and the checkpoints that cite a run, never the raw runs of superseded revisions. See "
                 + "perf-results/README.md, \"What gets committed, and what does not\"");
+    }
+
+    /**
+     * The environment-quality fields are <b>recorded and never used to reject a sample</b>, and this is what makes
+     * that claim checkable instead of a comment. They are post-treatment variables: an allocation regression causes
+     * GC, so a bar or filter keyed on them would censor exactly the evidence that proves the regression — and steal
+     * time correlates with the load a run competed against, so excluding busy windows quietly selects the
+     * flattering ones.
+     *
+     * <p>The sweep is over the perf estate's sources: each field name may appear only where it is <em>produced</em>
+     * ({@code PerfEnvironmentQuality}, which defines it, and this guard, which lists it). Any other mention is a
+     * consumer, and the point of failing here is that a consumer is exactly what a future gate author would add.
+     * This is the "advertise nothing you cannot point at" rule applied to a policy rather than to an invariant.
+     */
+    @Test
+    void noQualityFieldIsReadOutsideTheRecorder() throws IOException {
+        Path perf = repoRoot().resolve("adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/perf");
+        assertTrue(Files.isDirectory(perf), () -> "the perf source tree moved: " + perf
+                + " — this guard would otherwise sweep nothing and pass vacuously");
+
+        List<String> offenders = new ArrayList<>();
+        try (var walk = Files.walk(perf)) {
+            for (Path source : walk.filter(p -> p.toString().endsWith(".kt")).toList()) {
+                // The producer, and the producer's own shape test which asserts the exact key set. Both are
+                // named individually rather than matched by a `*Test.kt` pattern: a blanket test exemption
+                // would let a future perf TEST assert on a quality field, which is a gate in all but name.
+                String name = source.getFileName().toString();
+                if (name.equals("PerfEnvironmentQuality.kt") || name.equals("PerfEnvironmentQualityTest.kt")) {
+                    continue;
+                }
+                List<String> lines = Files.readAllLines(source);
+                for (int i = 0; i < lines.size(); i++) {
+                    String line = lines.get(i);
+                    for (String field : QUALITY_FIELD_NAMES) {
+                        if (line.contains(field)) {
+                            offenders.add(source.getFileName() + ":" + (i + 1) + " mentions " + field + " — "
+                                    + line.trim());
+                        }
+                    }
+                }
+            }
+        }
+        assertEquals(List.of(), offenders, () -> "an environment-quality field is referenced outside its recorder:\n  "
+                + String.join("\n  ", offenders)
+                + "\n\nThese fields are recorded to make a historic outlier interpretable and must never gate: they "
+                + "are post-treatment variables, so rejecting samples on them censors the evidence a regression "
+                + "produces. If a lane genuinely needs one, that is a decision to take deliberately and document "
+                + "in INTERPRETER-GAPS IG121 — not by adding a read here.");
     }
 }
