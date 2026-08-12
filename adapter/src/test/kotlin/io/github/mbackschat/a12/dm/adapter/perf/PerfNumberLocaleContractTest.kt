@@ -27,7 +27,18 @@ import org.junit.jupiter.api.Test
  */
 class PerfNumberLocaleContractTest {
 
-    private val floatLiteral = Regex("\"(?:[^\"\\\\\\n]|\\\\.)*%\\.[0-9]+f(?:[^\"\\\\\\n]|\\\\.)*\"")
+    /**
+     * Every locale-sensitive conversion, not just the `%.2f` shape.
+     *
+     * The narrow version of this pattern missed `%8.2f` and `%7.2f` — and missed them in a file the sweep had
+     * otherwise visited, because the sweep was written from the same shape. A guard derived from the same reading
+     * as the change it checks cannot catch that change's blind spot, so the pattern is written from the format
+     * grammar instead: flags, then an optional width, then an optional precision, then a conversion whose
+     * rendering depends on the locale. The space flag is deliberately excluded — it would make prose like
+     * `100% faster` a match.
+     */
+    private val conversion = "%[-+0,(#]*[0-9]*(?:\\.[0-9]+)?[fFeEgG]|%[-+0(#]*,[0-9]*[dD]"
+    private val floatLiteral = Regex("\"(?:[^\"\\\\\\n]|\\\\.)*(?:$conversion)(?:[^\"\\\\\\n]|\\\\.)*\"")
     private val formatCall = Regex("^\\s*\\.format\\(")
     private val localeFirst = Regex("^\\s*\\.format\\(\\s*Locale\\.ROOT\\b")
 
@@ -60,9 +71,12 @@ class PerfNumberLocaleContractTest {
         val formatted = formattedLiterals()
 
         // The denominator first: a scan that stopped matching would report zero offenders and read as a pass.
-        assertTrue(formatted.size >= 40,
-            "expected at least 40 formatted floating-point literals in the perf package, found ${formatted.size} " +
-                "— the pattern has stopped matching, so the check below is vacuous")
+        // Held close to the real count (55 at the time of writing) rather than at a round number well below it:
+        // a loose floor tolerates a PARTIAL decay, which is exactly how the `%8.2f` shape stayed invisible.
+        assertTrue(formatted.size >= 52,
+            "expected at least 52 formatted locale-sensitive literals in the perf package, found ${formatted.size} " +
+                "— the pattern has stopped matching some of them, so the check below is partly vacuous. If they " +
+                "were genuinely deleted, lower this floor in the same commit")
 
         val offenders = formatted.filterNot { (_, namesLocale) -> namesLocale }.map { (where, _) -> where }
         assertEquals(emptyList<String>(), offenders,
@@ -77,9 +91,15 @@ class PerfNumberLocaleContractTest {
      *
      * The placeholder is held in a `val` rather than written inline because the scan above is a source-text one:
      * an inline literal here would be a genuine hit on a control that must format in the wrong locale on purpose.
-     * That is also the scan's recall limit, stated rather than discovered — a format string reached through a
-     * variable is invisible to it. It is not currently used anywhere in this package, and the cost of missing one
-     * is a mis-rendered log line, so the cheap textual rule is kept.
+     *
+     * **The scan's recall limits, stated rather than discovered — the list is the point.** It sees only a literal
+     * *immediately followed by* `.format(`, so it misses (a) a format string reached through a variable, as here;
+     * (b) a literal passed as an ARGUMENT — `String.format(fmt, …)`, `"…".formatted(…)`, or a literal stored and
+     * formatted elsewhere. Both are currently absent from this package (`grep` for `String.format`, `.formatted(`
+     * → zero hits), and the cost of missing one is a mis-rendered log line, so the cheap textual rule is kept
+     * rather than replaced by a parser. A third limit — conversions carrying a width, `%8.2f` — was **not** on
+     * this list until it was found in the source, which is why the pattern is now written from the format grammar
+     * instead of from the shapes the author happened to have in mind.
      */
     @Test
     fun theDefaultLocaleGenuinelyRendersADifferentNumber() {

@@ -37,7 +37,7 @@ class ParityTraceTest {
     }
 
     @Test
-    fun aRowsOwnNoiseIsVisibleAsTheSpreadOfItsPerPairRatios() {
+    fun theTraceShowsAFallingCurveThatTheReducedRowHides() {
         val sample = PerfHarness.ParitySample(pairs = 3)
         // The interpreter's small-scale observation halves across the pairs; both kernel strategies hold steady.
         listOf(16.0, 10.0, 8.0).forEachIndexed { pair, ms ->
@@ -45,12 +45,15 @@ class ParityTraceTest {
             sample.interpLarge[pair] = 30.0; sample.groovyLarge[pair] = 80.0; sample.javaLarge[pair] = 64.0
         }
 
-        assertEquals(
-            listOf(1.0, 0.625, 0.5),
-            sample.interpSmall.indices.map { sample.interpSmall[it] / sample.javaSmall[it] },
+        // Read off the TRACE, which is the production surface — deriving the same ratios from the arrays the
+        // test just wrote would assert arithmetic rather than anything the trace does.
+        val smallRatios = sample.trace("CO", small = 200, large = 800)
+            .filter { "N=200" in it }
+            .map { it.substringAfter("i/j=") }
+
+        assertEquals(listOf("1.000", "0.625", "0.500"), smallRatios,
             "the trace's whole point: the reduced row reports the median 0.625 and looks merely noisy, while the " +
-                "observations behind it fall monotonically — the signature of a cold first pair, not contention",
-        )
+                "observations behind it fall monotonically — the signature of a cold first pair, not contention")
         assertEquals(0.625, sample.worstInterpreterRatio(),
             "and the reduction the gate decides on is unchanged by tracing it")
     }

@@ -55,9 +55,10 @@ internal object PerfEnvironment {
  * deleted it, so a run could be compared against one committed anchor but never against its own history.
  *
  * **Each run records the conditions it ran under**, because the same commit measured on a loaded laptop and on a
- * 2-vCPU hosted runner are not comparable numbers: environment key, os/arch/JDK, processor count, the commit read
- * straight from `.git`, the CI run id when present, and the **system load average sampled per observation** so a
- * run that got busy halfway through is visible rather than merely puzzling.
+ * 2-vCPU hosted runner are not comparable numbers: environment key, os/arch/JDK, processor count, the commit
+ * asked of `git` and marked `-DIRTY` when the tree did not match it, the CI run id when present, and the
+ * **system load average sampled per observation** so a run that got busy halfway through is visible rather than
+ * merely puzzling.
  *
  * Append-per-call, as `PerfHarness.progress` is: Gradle buffers test stdout until a task ends, so an incrementally
  * written file is the only readable record of a long run.
@@ -120,12 +121,21 @@ internal object PerfObservations {
      * has marked exactly this since it was written, and the record did not, so an uncommitted change could be
      * compared against its own baseline without anything saying so.
      */
-    internal fun headCommit(): String {
-        val head = git("rev-parse", "--short", "HEAD")?.takeIf { it.isNotEmpty() } ?: return "unknown"
+    internal fun headCommit(): String = headCommitIn(File("."))
+
+    /**
+     * The working directory is a parameter so the rule can be exercised against a REAL throwaway repository.
+     * Without that seam the only available test compared this function against `git` run with the same pathspec,
+     * which on a clean checkout asserts `false == false` — it passes for an implementation that never marks
+     * anything, and CI only ever runs on a clean checkout.
+     */
+    internal fun headCommitIn(dir: File): String {
+        val head = git(dir, "rev-parse", "--short", "HEAD")?.takeIf { it.isNotEmpty() } ?: return "unknown"
         // Repo-wide (`:/`) because the test JVM's working directory is the module, not the root — and excluding
         // `perf-results`, since this very run leaves a new file there and would otherwise mark every honest
-        // record DIRTY. The same pathspec the anchor refresh uses, for the same reason.
-        val status = git("status", "--porcelain", "--", ":/", ":(top,exclude)perf-results")
+        // record DIRTY. Same RULE as the anchor refresh's, not the same pathspec text: that script runs from the
+        // repository root and can spell it `.` with a plain `exclude`, while this must anchor both at the root.
+        val status = git(dir, "status", "--porcelain", "--", ":/", ":(top,exclude)perf-results")
             ?: return "$head-UNKNOWN-STATE"
         return commitLabel(head, dirty = status.isNotEmpty())
     }
@@ -133,9 +143,9 @@ internal object PerfObservations {
     /** The rule, apart from the process call so it can be checked without a repository. */
     internal fun commitLabel(head: String, dirty: Boolean): String = if (dirty) "$head-DIRTY" else head
 
-    /** Trimmed stdout of a git command, or `null` if it could not be run or failed. */
-    private fun git(vararg args: String): String? = runCatching {
-        val process = ProcessBuilder(listOf("git", *args)).redirectErrorStream(true).start()
+    /** Trimmed stdout of a git command run in [dir], or `null` if it could not be run or failed. */
+    private fun git(dir: File, vararg args: String): String? = runCatching {
+        val process = ProcessBuilder(listOf("git", *args)).directory(dir).redirectErrorStream(true).start()
         val text = process.inputStream.bufferedReader().readText().trim()
         if (process.waitFor() == 0) text else null
     }.getOrNull()
@@ -428,6 +438,7 @@ internal class AnchorBudget(
     }
 
     /** [java.util.Locale.ROOT], so a number a maintainer may copy into the anchor file is not `12,45` on a German
-     *  JVM and `12.45` on an English one — the surrounding `[perf]` log lines still carry that locale dependence. */
+     *  JVM and `12.45` on an English one. The surrounding `[perf]` log lines now hold the same rule, which
+     *  `PerfNumberLocaleContractTest` enforces across the package. */
     private fun ms(value: Double): String = "%.2fms".format(Locale.ROOT, value)
 }

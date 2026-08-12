@@ -157,7 +157,7 @@ class KernelEdgeTest {
         val b5 = PerfCatalog.b5()
         for (rows in listOf(1_000, 2_000, maxRows / 5)) {
             val s = PerfHarness.timeInterpreter(b5, rows, warmup = 3, iters = 5)
-            println("  %s B5 nested-star N=%6d (=%d sub rows)  interp=%8.2fms".format(
+            println("  %s B5 nested-star N=%6d (=%d sub rows)  interp=%8.2fms".format(Locale.ROOT,
                 PerfHarness.measurementLabel(b5, rows),
                 rows, rows * PerfCatalog.SUBS_PER_LINE, s.medianMs,
             ))
@@ -216,7 +216,7 @@ class KernelEdgeTest {
                 val growth = previousScenario?.let {
                     "  ×%.2f vs %s".format(Locale.ROOT, s.medianMs / prev, PerfHarness.measurementLabel(it, n))
                 } ?: ""
-                println("  %s %s rules=%4d  interp=%7.2fms  %s%s".format(
+                println("  %s %s rules=%4d  interp=%7.2fms  %s%s".format(Locale.ROOT,
                     PerfHarness.measurementLabel(scenario, n), regime, count, s.medianMs, perRule, growth))
                 prev = s.medianMs
                 previousScenario = scenario

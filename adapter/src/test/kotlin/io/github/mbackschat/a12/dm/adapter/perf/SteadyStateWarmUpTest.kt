@@ -68,6 +68,8 @@ class SteadyStateWarmUpTest {
         assertTrue(warm.hasSettled(12.5), "12 runs is the cap, and a sub-millisecond instance would otherwise " +
             "keep improving for thousands of them")
         assertEquals(12, warm.runs)
+        assertEquals(WarmStop.RUN_CAP, warm.stop,
+            "and it says so: a warm that ran out of budget did NOT reach steady state, and the caller reports it")
     }
 
     @Test
@@ -79,6 +81,19 @@ class SteadyStateWarmUpTest {
         assertTrue(warm.hasSettled(50.0), "1050ms spent, past the budget — an expensive scenario must not warm " +
             "for its own run cap's worth of 200ms evaluations")
         assertEquals(9, warm.runs, "and the run cap has not been reached")
+        assertEquals(WarmStop.TIME_CAP, warm.stop)
+    }
+
+    @Test
+    fun aWarmThatSettledOnTheSameBatchThatExhaustedACapCountsAsSETTLED() {
+        // Flat on the batch that also reaches the run cap. The caps are the fallback, not the verdict — reporting
+        // this as a cap would make the note that warns about a still-falling curve cry wolf on a settled engine.
+        val warm = SteadyStateWarmUp(budget(maxRuns = 9))
+
+        assertFalse(warm.hasSettled(100.0))
+        assertFalse(warm.hasSettled(99.0))
+        assertTrue(warm.hasSettled(98.5))
+        assertEquals(WarmStop.FLATTENED, warm.stop)
     }
 
     @Test
@@ -88,10 +103,11 @@ class SteadyStateWarmUpTest {
             override fun outcome() = PerfOutcome(listOf("x")).also { calls++ }
         }
 
-        val runs = PerfHarness.warmToSteadyState(instance, budget(maxRuns = 12))
+        val outcome = PerfHarness.warmToSteadyState(instance, budget(maxRuns = 12))
 
-        assertEquals(calls, runs, "the reported cost is what the instance was actually asked to do")
-        assertEquals(0, runs % 3, "whole batches only: a partial batch has no median to judge flattening by")
-        assertTrue(runs in 3..12, "at least one batch, never past the cap, was $runs")
+        assertEquals(calls, outcome.runs, "the reported cost is what the instance was actually asked to do")
+        assertEquals(0, outcome.runs % 3, "whole batches only: a partial batch has no median to judge flattening by")
+        assertTrue(outcome.runs in 3..12, "at least one batch, never past the cap, was ${outcome.runs}")
+        assertTrue(outcome.stop in WarmStop.entries, "and every warm names how it ended")
     }
 }

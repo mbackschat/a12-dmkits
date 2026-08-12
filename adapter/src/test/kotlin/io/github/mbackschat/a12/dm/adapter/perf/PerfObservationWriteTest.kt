@@ -29,21 +29,49 @@ class PerfObservationWriteTest {
     }
 
     /**
-     * …and the header genuinely applies that rule, checked against `git` run independently by this test so the
-     * assertion holds on a clean checkout and on a working tree mid-edit alike. Asserting the marker outright
-     * would pass only in the state the author happened to be in — which is the one state a guard must not assume.
+     * …and the header applies that rule to a REAL repository, in both states.
+     *
+     * The first version of this compared `headCommit()` against `git` invoked with the same pathspec by the test
+     * itself. On a clean checkout that asserts `false == false`, which passes for an implementation that never
+     * marks anything and cannot see a wrong pathspec at all — and a clean checkout is the only state CI runs in.
+     * A throwaway repository is what makes the marker's two states, and the `perf-results` exclusion, all fire.
      */
     @Test
-    fun theRecordedCommitAgreesWithTheTreeItWasMeasuredOn() {
-        val recorded = PerfObservations.headCommit()
-        val dirty = ProcessBuilder("git", "status", "--porcelain", "--", ":/", ":(top,exclude)perf-results")
-            .redirectErrorStream(true).start()
-            .let { it.inputStream.bufferedReader().readText().trim().also { _ -> check(it.waitFor() == 0) } }
-            .isNotEmpty()
+    fun theMarkerFiresOnAnEditedTreeAndNotOnACleanOne(@TempDir dir: File) {
+        git(dir, "init", "--quiet")
+        git(dir, "config", "user.email", "guard@example.invalid")
+        git(dir, "config", "user.name", "guard")
+        dir.resolve("tracked.txt").writeText("one\n")
+        git(dir, "add", "-A")
+        git(dir, "commit", "--quiet", "-m", "first")
 
-        assertEquals(dirty, recorded.endsWith("-DIRTY"),
-            "the record says \"$recorded\" while git reports the tree ${if (dirty) "edited" else "clean"} — a " +
-                "record that names a commit it was not measured at is worse than one that names none")
+        val clean = PerfObservations.headCommitIn(dir)
+        assertTrue(clean.isNotEmpty() && !clean.endsWith("-DIRTY") && clean != "unknown",
+            "a committed tree names its revision with no marker, was \"$clean\"")
+
+        // The exclusion, exercised rather than asserted about: a gate run ALWAYS leaves a new file here, so if
+        // this counted as dirt every honest record would be marked and the marker would mean nothing.
+        dir.resolve("perf-results/darwin-aarch64").mkdirs()
+        dir.resolve("perf-results/darwin-aarch64/run.jsonl").writeText("{}\n")
+        assertEquals(clean, PerfObservations.headCommitIn(dir),
+            "a new record under perf-results/ is this run's own output, not an edit to the revision it measures")
+
+        dir.resolve("tracked.txt").writeText("two\n")
+        assertEquals("$clean-DIRTY", PerfObservations.headCommitIn(dir),
+            "and an edit anywhere else means the run did not measure the commit it names")
+    }
+
+    /** A directory that is not a repository cannot be labelled, and must not be labelled CLEAN. */
+    @Test
+    fun aTreeGitCannotReadIsUnknownRatherThanClean(@TempDir dir: File) {
+        assertEquals("unknown", PerfObservations.headCommitIn(dir),
+            "no revision is resolvable here; reporting a bare commit would invent one")
+    }
+
+    private fun git(dir: File, vararg args: String) {
+        val process = ProcessBuilder(listOf("git", *args)).directory(dir).redirectErrorStream(true).start()
+        val output = process.inputStream.bufferedReader().readText()
+        check(process.waitFor() == 0) { "git ${args.joinToString(" ")} failed in $dir: $output" }
     }
 
     @Test

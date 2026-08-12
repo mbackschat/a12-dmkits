@@ -397,10 +397,25 @@ internal data class WarmUpBudget(
  * Separated from the clock so the rule is checked on scripted numbers ([SteadyStateWarmUpTest]), which is how
  * every other acceptance rule in this estate is verified.
  */
+/**
+ * Why a warm ended. Only [FLATTENED] means the instance actually reached steady state; the two caps mean the
+ * budget ran out first, which for the most expensive engine in the estate is the likeliest outcome and exactly
+ * the case a comment claiming "every instance reaches steady state" would paper over.
+ */
+internal enum class WarmStop(val label: String) {
+    FLATTENED("flattened"),
+    RUN_CAP("run-cap"),
+    TIME_CAP("time-cap"),
+}
+
 internal class SteadyStateWarmUp(private val budget: WarmUpBudget) {
 
     private var previousMs: Double? = null
     private var flatRun = 0
+
+    /** Set once [hasSettled] returns true; null while the warm is still running. */
+    var stop: WarmStop? = null
+        private set
 
     /** Runs the caller has been asked to pay for so far. */
     var runs: Int = 0
@@ -422,7 +437,15 @@ internal class SteadyStateWarmUp(private val budget: WarmUpBudget) {
         val improvement = previousMs?.div(batchMedianMs)
         flatRun = if (improvement != null && improvement < budget.flatRatio) flatRun + 1 else 0
         previousMs = batchMedianMs
-        return runs >= budget.maxRuns || elapsedMs >= budget.maxMillis || flatRun >= budget.flatBatches
+        // Flattening is checked FIRST so a warm that settled on the same batch that exhausted a cap is reported
+        // as settled — the caps are the fallback, not the verdict.
+        stop = when {
+            flatRun >= budget.flatBatches -> WarmStop.FLATTENED
+            runs >= budget.maxRuns -> WarmStop.RUN_CAP
+            elapsedMs >= budget.maxMillis -> WarmStop.TIME_CAP
+            else -> null
+        }
+        return stop != null
     }
 }
 
@@ -849,7 +872,7 @@ object PerfHarness {
      * 100 ms per evaluation, so no single count is warm for the cheap ones without being wasteful for the dear
      * ones; and a per-observation warmup is paid again by every pair, while this is paid once per instance.
      */
-    internal fun warmToSteadyState(instance: RunInstance, budget: WarmUpBudget = WarmUpBudget()): Int {
+    internal fun warmToSteadyState(instance: RunInstance, budget: WarmUpBudget = WarmUpBudget()): WarmOutcome {
         val warm = SteadyStateWarmUp(budget)
         do {
             val batch = DoubleArray(budget.batch) {
@@ -858,7 +881,12 @@ object PerfHarness {
                 (System.nanoTime() - started) / 1e6
             }
         } while (!warm.hasSettled(median(batch)))
-        return warm.runs
+        return WarmOutcome(warm.runs, checkNotNull(warm.stop))
+    }
+
+    /** What one instance's warm cost, and whether it reached steady state or ran out of budget. */
+    internal data class WarmOutcome(val runs: Int, val stop: WarmStop) {
+        override fun toString(): String = "$runs${if (stop == WarmStop.FLATTENED) "" else "!${stop.label}"}"
     }
 
     /** Independent re-measurements a catastrophe floor demands before it calls a breach real. */
@@ -939,18 +967,29 @@ object PerfHarness {
         val smallResult = assertInstanceAgreement(scenario, small, iSmall, gSmall, jSmall)
         val largeResult = assertInstanceAgreement(scenario, large, iLarge, gLarge, jLarge)
 
-        // Every instance reaches steady state ONCE, before the first timed pair. Without this the first pair is
-        // measured on six differently-cold engines and the ratio reports their warm curves rather than their
-        // costs — see warmToSteadyState for the traced evidence. Paid per instance, not per pair, and outside
-        // the retry loop below, so a re-measurement never re-warms.
+        // Every instance is warmed towards steady state ONCE, before the first timed pair. Without this the first
+        // pair is measured on six differently-cold engines and the ratio reports their warm curves rather than
+        // their costs — see warmToSteadyState for the traced evidence. Paid per instance, not per pair, and
+        // outside the retry loop below, so a re-measurement never re-warms.
+        //
+        // "Towards", not "to": a budget cap can end a warm before the curve flattens, and the engine most likely
+        // to hit one is the dearest — exactly the engine whose coldness distorts a ratio most. That outcome is
+        // therefore REPORTED rather than assumed away, since a silent cap would restore the state IF282 is about.
         //
         // LARGE first, deliberately. JIT compilation is per method and both scales run the same methods, so the
         // large instance warms them with four times fewer evaluations — and the small instance then settles in
         // the two probes its own rule needs rather than warming the shared code from cold a second time.
-        val warmRuns = listOf(
+        val warmed = listOf(
             "groovy@$large" to gLarge, "java@$large" to jLarge, "interp@$large" to iLarge,
             "groovy@$small" to gSmall, "java@$small" to jSmall, "interp@$small" to iSmall,
-        ).map { (label, instance) -> "$label=${warmToSteadyState(instance)}" }
+        ).map { (label, instance) -> label to warmToSteadyState(instance) }
+        val warmRuns = warmed.map { (label, outcome) -> "$label=$outcome" }
+        val capped = warmed.filter { (_, outcome) -> outcome.stop != WarmStop.FLATTENED }
+        if (capped.isNotEmpty()) {
+            progress("[perf][note] ${scenario.name}: " + capped.joinToString(", ") { (label, outcome) ->
+                "$label ran out of warm budget after ${outcome.runs} runs (${outcome.stop.label})"
+            } + " — its timed observations may still be on a falling curve")
+        }
 
         fun sample(): ParitySample {
             val s = ParitySample(pairs)
