@@ -36,6 +36,19 @@ class EvalProfileTest {
     fun loopDeepRichForProfiler() = profile(PerfCatalog.deepRich(firing = false),
         System.getProperty("perf.n", "500").toInt(), "deepRich")
 
+    /**
+     * The two thinnest VALIDATE rows against the kernel, so a hot path found on one scenario can be checked for
+     * being shared before it is optimized. `CO-correlation` is thinner still but is a COMPUTE scenario, which this
+     * driver cannot reach — [ComputeOverlayProfileTest] is its sibling.
+     */
+    @Test
+    fun loopParallelFramedForProfiler() = profile(PerfCatalog.parallelFramed(),
+        System.getProperty("perf.n", "1000").toInt(), "PF-framed")
+
+    @Test
+    fun loopComplexRealWorldForProfiler() = profile(PerfCatalog.complexRealWorldGate(firing = false),
+        System.getProperty("perf.n", "240").toInt(), "complexRealWorld")
+
     private fun profile(scenario: io.github.mbackschat.a12.dm.adapter.perf.PerfScenario, n: Int, label: String) {
         val measurement = PerfHarness.measurementLabel(scenario, n)
         val model = scenario.interpModel
