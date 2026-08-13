@@ -86,7 +86,14 @@ class PerformanceRecordShapeGuardTest {
             "cgroupThrottledUsecInWindow", "cgroupThrottledPeriodsInWindow");
 
     /** Every {@code kind} a record line may carry after the header. An unknown one is a producer/guard drift. */
-    private static final Set<String> KNOWN_KINDS = Set.of("observation", "warm", "cost");
+    private static final Set<String> KNOWN_KINDS = Set.of("observation", "warm", "cost", "margin");
+
+    /** A margin row's own shape: the cross-engine headroom and the verdict it was given (IF292). */
+    private static final List<String> REQUIRED_MARGIN_FIELDS =
+            List.of("environment", "key", "scenario", "lane", "n", "engine", "clock", "margin", "status");
+
+    /** The band's vocabulary. A row outside it means the producer and this guard disagree about the contract. */
+    private static final Set<String> KNOWN_MARGIN_STATUSES = Set.of("lost", "unbanded", "warn", "ok");
 
     /**
      * How a warm ended. Only {@code flattened} is not a caveat on every ratio measured on that instance; the two
@@ -205,6 +212,23 @@ class PerformanceRecordShapeGuardTest {
                     }
                     warmKeys.add(joinKey(observation) + "  (" + where + ")");
                     warms++;
+                    continue;
+                }
+                if ("margin".equals(kind)) {
+                    REQUIRED_MARGIN_FIELDS.stream().filter(field -> observation.path(field).isMissingNode())
+                            .forEach(field -> problems.add(where + ": margin row lacks " + field));
+                    String status = observation.path("status").asText("<absent>");
+                    if (!observation.path("status").isMissingNode() && !KNOWN_MARGIN_STATUSES.contains(status)) {
+                        problems.add(where + ": unknown margin status " + status + "; the band's vocabulary is "
+                                + KNOWN_MARGIN_STATUSES);
+                    }
+                    // `floor` is absent exactly when the row is unbanded, and that pairing is the contract: a
+                    // floor with no verdict, or an `ok` with no floor, would both read as coverage that is not there.
+                    boolean banded = !observation.path("floor").isMissingNode();
+                    if (banded == "unbanded".equals(status)) {
+                        problems.add(where + ": a margin row must carry a floor iff its status is not 'unbanded', "
+                                + "was status=" + status + " floor=" + (banded ? "present" : "absent"));
+                    }
                     continue;
                 }
                 if ("cost".equals(kind)) {

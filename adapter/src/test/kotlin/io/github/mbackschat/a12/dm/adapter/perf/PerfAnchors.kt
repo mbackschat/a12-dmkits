@@ -341,6 +341,28 @@ internal object PerfObservations {
         file.appendLine(costRecord(lane, scenario, wallMs))
 
     /**
+     * One engine arm's cross-engine MARGIN and the committed floor it was held against ([IF292]). Its own
+     * record kind rather than a field on `observation`, because a margin is not a measurement of one engine: it
+     * joins two arms of the same row, so it has no `medianMs` and would have to null out half an observation's
+     * shape. [floor] is absent for a row the committed file does not band.
+     */
+    fun recordMargin(key: ObservationKey, margin: Double, floor: Double?, status: String) =
+        file.appendLine(
+            mapOf(
+                "kind" to "margin",
+                "environment" to PerfEnvironment.key,
+                "key" to key.text,
+                "scenario" to key.identityLabel,
+                "lane" to key.lane,
+                "n" to key.n,
+                "engine" to key.engine,
+                "clock" to key.clock,
+                "margin" to margin,
+                "status" to status,
+            ) + (floor?.let { mapOf("floor" to it) } ?: emptyMap()),
+        )
+
+    /**
      * The environment-quality counters at the previous observation write, so each row can carry the delta over the
      * window that CONTAINS its measurement (IG121's third piece; the window's exact definition and the reason these
      * may never gate are on [PerfEnvironmentQuality]).

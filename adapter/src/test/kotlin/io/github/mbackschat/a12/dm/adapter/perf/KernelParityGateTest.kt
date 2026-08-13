@@ -170,8 +170,7 @@ class KernelParityGateTest {
      *
      * Without this the family that now carries the estate's headline gate leaves no trace: a run wrote 36
      * interpreter-only growth observations and not one cross-engine row, so the ratios could not be compared
-     * against their own history and IG121's cheapest unbuilt piece — an early-warning band on these very
-     * ratios — had no series to read. These rows are recorded but NOT anchored: an anchor is an absolute-time
+     * against their own history and the early-warning band on these very ratios (IF292) had no series to read. These rows are recorded but NOT anchored: an anchor is an absolute-time
      * bar against a committed number, and what matters here is the ratio, which needs no history to be decided.
      */
     private fun record(scenario: PerfScenario, row: PerfRow) {
@@ -182,6 +181,18 @@ class KernelParityGateTest {
                 ObservationKey(lane = LANE, identityLabel = identity, n = row.n, engine = engine, clock = "wall"),
                 stats.medianMs,
                 status = "unasserted",
+            )
+        }
+        // The early-warning band (IF292) lives HERE, not in the harness: this is where the lane and the
+        // fingerprinted identity that key the floor file are already correct, and it is the lane whose series the
+        // floors were derived from. The margin is `kernel / interpreter` — the reciprocal of the ratio the gate
+        // asserts — because a band reads as headroom, which is also the quantity `perf-trend.sh --ratio` derives.
+        for ((engine, stats) in listOf("groovy" to row.groovy, "java" to row.java)) {
+            val kernelMs = stats?.medianMs ?: continue
+            if (row.interp.medianMs <= 0.0) continue
+            PerfMarginFloors.report(
+                ObservationKey(lane = LANE, identityLabel = identity, n = row.n, engine = engine, clock = "wall"),
+                margin = kernelMs / row.interp.medianMs,
             )
         }
     }

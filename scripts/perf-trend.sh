@@ -46,6 +46,7 @@
 #   scripts/perf-trend.sh --ratio [pattern]  cross-engine margins and their spread, per row
 #   BAND=0.45 scripts/perf-trend.sh --ratio       BACKTEST a floor at a fraction of each row's own median
 #   BAND_SIGMA=4 scripts/perf-trend.sh --ratio    …or at k robust deviations below it (the noise-aware shape)
+#   EMIT_FLOORS=1 BAND_SIGMA=6 …  --ratio         emit those floors as the committed margin-floor JSON
 #   ENV=darwin-aarch64 scripts/perf-trend.sh one environment only
 #   MIN_SIDE=4 MIN_SHIFT=1.10 Z=2.5 scripts/perf-trend.sh   loosen or tighten the report
 #   PERF_RESULTS_DIR=<dir> scripts/perf-trend.sh            read a record elsewhere (the guard's seam)
@@ -65,7 +66,7 @@ if [ ! -d "$results" ]; then
 fi
 
 PATTERN="${1:-}" ONLY_ENV="${ENV:-}" RESULTS="$results" VIEW="$VIEW" \
-MIN_SIDE="${MIN_SIDE:-3}" MIN_SHIFT="${MIN_SHIFT:-1.15}" Z="${Z:-3.0}" BAND="${BAND:-}" BAND_SIGMA="${BAND_SIGMA:-}" python3 - <<'PY'
+MIN_SIDE="${MIN_SIDE:-3}" MIN_SHIFT="${MIN_SHIFT:-1.15}" Z="${Z:-3.0}" BAND="${BAND:-}" BAND_SIGMA="${BAND_SIGMA:-}" EMIT_FLOORS="${EMIT_FLOORS:-}" python3 - <<'PY'
 import json, math, os, statistics, sys
 from pathlib import Path
 
@@ -78,6 +79,10 @@ z_min = float(os.environ["Z"])
 view = os.environ.get("VIEW", "steps")
 band = float(os.environ["BAND"]) if os.environ.get("BAND") else None
 band_sigma = float(os.environ["BAND_SIGMA"]) if os.environ.get("BAND_SIGMA") else None
+# Emitting the floors is the SAME computation the backtest prints, deliberately: a floor authored by one code
+# path and validated by another is two contracts. The backtest is how the sigma is chosen; this writes the
+# chosen one out, so what ships is what was measured.
+emit_floors = bool(os.environ.get("EMIT_FLOORS"))
 KERNEL_ENGINES = ("groovy", "java")
 
 # --- read: one entry per run, oldest first within an environment -------------------------------------
@@ -192,6 +197,8 @@ def ratio_label(identity):
 if view == "ratio":
     total, tightest = 0, None
     firings, rows_firing = 0, 0
+    emitted = {}
+    unbandable = []
     for segment in sorted(segments, key=lambda s: tuple("" if p is None else p for p in s)):
         series = segments[segment]
         env, jdk, os_name, machine = segment
@@ -225,8 +232,9 @@ if view == "ratio":
             continue
         band_note = (f", band={band_sigma:.1f} robust deviations below its own median" if band_sigma
                      else f", band={band:.2f}x its own median" if band else "")
-        print(f"\n=== {head} — {len(series)} run(s), cross-engine margins "
-              f"(kernel/interpreter; parity = 1.00{band_note}) ===")
+        if not emit_floors:
+            print(f"\n=== {head} — {len(series)} run(s), cross-engine margins "
+                  f"(kernel/interpreter; parity = 1.00{band_note}) ===")
         width = max(len(ratio_label(r[0])) for r in rows)
         for identity, kernel in rows:
             allValues = margins[(identity, kernel)]
@@ -271,6 +279,14 @@ if view == "ratio":
                 # spread rather than the per-pair dispersion the falsified attempt used.
                 floor = (math.exp(centre - band_sigma * spread(logs, centre)) if band_sigma
                          else current * band)
+                lane, scenario, n, clock = identity
+                # A floor at or below PARITY is vacuous: the cross-engine gate already fails there, so emitting it
+                # would advertise a warning that can never fire before the build does. Such a row is reported as
+                # having too little headroom to band rather than banded at a number that reads like coverage.
+                if floor > 1.0:
+                    emitted.setdefault(env, {})[f"{lane}|{scenario}|n={n}|{kernel}|{clock}"] = round(floor, 4)
+                else:
+                    unbandable.append((ratio_label(identity), kernel, current, floor))
                 trips = sum(1 for v in values if v < floor)
                 worst_trips = worst < floor
                 firings += trips
@@ -279,7 +295,24 @@ if view == "ratio":
                 line += f"  band={floor:6.2f}x  wouldHaveFired={trips}/{len(values)}"
                 if worst_trips:
                     line += " (incl. its worst)"
-            print(line)
+            if not emit_floors:
+                print(line)
+
+    if emit_floors:
+        if not (band or band_sigma):
+            sys.exit("EMIT_FLOORS needs a band: set BAND_SIGMA=<k> (or BAND=<fraction>) so there is a floor to emit")
+        if not emitted:
+            sys.exit("no row produced a floor — nothing to emit")
+        # Printed to stdout as the whole file, so authoring it is a redirect and reviewing it is a diff. The
+        # sigma is recorded IN the file: a floor is meaningless without the multiple it was derived at, and a
+        # later refresh at a different sigma must be visible as a change rather than as a silent retune.
+        doc = {env: {"sigma": band_sigma, "fraction": band, "floors": dict(sorted(rows.items()))}
+               for env, rows in sorted(emitted.items())}
+        print(json.dumps(doc, indent=2, sort_keys=False))
+        for label, kernel, current, floor in unbandable:
+            print(f"[skipped] {label} vs {kernel}: median {current:.2f}x leaves a floor of {floor:.2f}x, "
+                  f"at or below parity — too little headroom to band", file=sys.stderr)
+        sys.exit(0)
 
     if tightest is not None:
         worst, name, kernel = tightest

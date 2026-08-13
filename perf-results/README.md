@@ -4,7 +4,7 @@ Every run of the routine performance gate writes one **text** file here. Nothing
 
 **Layout.** `perf-results/<environment>/<utc-timestamp>.jsonl`, one file per run. The environment key is `<os>-<arch>[-ci]`, so a laptop and a hosted runner never mix: absolute timings are only comparable within one of them.
 
-**Format.** JSON Lines, no database, no binary. Line 1 is the run header, then one line per record. Three kinds follow it, told apart by `kind`: an **`observation`** (one engine's median for one lane/scenario/scale/clock), a **`warm`** outcome (how one engine instance's steady-state warm ended), and a **`cost`** row (what one lane spent measuring one scenario).
+**Format.** JSON Lines, no database, no binary. Line 1 is the run header, then one line per record. Four kinds follow it, told apart by `kind`: an **`observation`** (one engine's median for one lane/scenario/scale/clock), a **`warm`** outcome (how one engine instance's steady-state warm ended), a **`cost`** row (what one lane spent measuring one scenario), and a **`margin`** row (one kernel arm's cross-engine headroom, against its committed floor).
 
 ```
 {"kind":"run","environment":"darwin-aarch64","capturedAt":"2026-08-11T190455Z","commit":"1845f8af",
@@ -16,9 +16,12 @@ Every run of the routine performance gate writes one **text** file here. Nothing
 {"kind":"warm","environment":"darwin-aarch64","lane":"kernel parity","scenario":"diagnostic/CO-correlation@1 fingerprint=…",
  "n":800,"engine":"groovy","runs":15,"stop":"time-cap","loadAverage":4.96}
 {"kind":"cost","environment":"darwin-aarch64","lane":"kernel parity","scenario":"CO correlation","wallMs":9214.6,"loadAverage":4.96}
+{"kind":"margin","environment":"darwin-aarch64","key":"kernel parity|…|n=200|java|wall","lane":"kernel parity","n":200,"engine":"java","clock":"wall","margin":2.99,"floor":2.6514,"status":"ok"}
 ```
 
 **A `warm` row QUALIFIES the medians measured on that instance, which is why it is recorded rather than printed.** `stop` is `flattened`, `run-cap` or `time-cap`, and only the first means the instance actually reached steady state — a still-falling kernel arm reads higher than its settled cost, so a ratio measured against it looks better than it is. It carries the observation's own `(lane, scenario, n, engine)`, so the two join; `PerformanceRecordShapeGuardTest` fails a row that joins nothing, which is what a renamed field or a shorthand engine name silently produces. This existed only as a `[perf][note]` on stdout until 2026-08-12, so the 8 s budget cap's justification lived in a `build/` log that `clean` deletes, a returning cap stop failed nothing, and no later run could compare against it.
+
+**A `margin` row is the cross-engine early-warning band's verdict** (IG121 piece 1): `margin` is `kernel_median / interpreter_median`, so parity is `1.00` and bigger is more headroom, and `floor` is the value committed for that row in `adapter/src/test/resources/perf/margin-floors.json`. `status` is one of `ok`, `warn`, `lost` (at or below parity — the comparative gate owns that and has already failed) or `unbanded`. **`floor` is present exactly when the status is not `unbanded`**, and the guard enforces that pairing: a floor with no verdict, or an `ok` with no floor, would both read as coverage that is not there. Six rows are deliberately unbanded because their floor would land at or below parity. **The band never fails a build** — no candidate floor reaches zero historical firings, because a margin cannot separate a real regression from a contended run, so it warns and the existing re-measurement backstop decides.
 
 **A `cost` row is what a lane spent measuring one scenario** — agreement checks, six warms, the timed pairs, and any re-measurement a breach forced. Summing a run's `cost` rows gives the tier's wall time, the other number that previously existed only in a run log. A lane that **breaches** records its cost too — the row is written in a `finally`, because the run whose cost is most worth having is the one that failed.
 
