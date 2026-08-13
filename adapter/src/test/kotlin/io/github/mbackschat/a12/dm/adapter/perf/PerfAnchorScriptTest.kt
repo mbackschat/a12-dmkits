@@ -199,6 +199,35 @@ class PerfAnchorScriptTest {
         assertEquals(setOf("darwin-aarch64"), blocksIn(anchor), "a refused refresh must write nothing")
     }
 
+    /**
+     * **A hosted FLAG must stay foldable.** On shared hardware a breach is flagged rather than failed, and marking
+     * it `breached` put it outside this script's fold — so one noise-driven flag dropped that lane from the
+     * artifact and the next refresh was REFUSED for incomplete coverage, defeating the documented recovery path
+     * with the very noise the flag exists to tolerate. Latent while the hosted ceilings were loose enough that
+     * nothing breached; live from the 2026-08-13 refresh that tightened them.
+     */
+    @Test
+    fun aFlaggedObservationIsFoldedSoAHostedFlagCannotBlockTheNextRefresh() {
+        val anchor = anchorCarrying(laneA to 1.0, laneB to 2.0)
+
+        val run = refresh(anchor, observations("hosted.jsonl", laneA to 2.0, laneB to 4.0, status = "flagged"))
+
+        assertEquals(0, run.status, "a flagged observation is a measurement, not a rejection: ${run.stderr}")
+        assertEquals(mapOf(laneA to 2.0, laneB to 4.0), observationsOf(anchor, "linux-amd64-ci"))
+    }
+
+    /** The other half of the same decision: a GATED rejection must never ratchet the bar it failed against. */
+    @Test
+    fun aBreachedObservationIsStillExcludedFromTheFold() {
+        val anchor = anchorCarrying(laneA to 1.0, laneB to 2.0)
+
+        val run = refresh(anchor, observations("gated.jsonl", laneA to 2.0, laneB to 4.0, status = "breached"))
+
+        assertNotEquals(0, run.status,
+            "folding a value the gate REJECTED would ratchet the anchor to a number a build already failed on")
+        assertEquals(setOf("darwin-aarch64"), blocksIn(anchor), "a refused refresh must write nothing")
+    }
+
     @Test
     fun showReportsTheDiffAndWritesNothing() {
         val anchor = anchorCarrying(laneA to 1.0, laneB to 2.0)
@@ -237,15 +266,17 @@ $body
         vararg medians: Pair<String, Double>,
         environment: String = "linux-amd64-ci",
         machine: String? = "AMD EPYC 7763",
+        status: String? = null,
     ): Path {
         val names = machine?.let { ""","machine":"$it"""" } ?: ""
+        val marked = status?.let { ""","status":"$it"""" } ?: ""
         val lines = buildString {
             appendLine(
                 """{"kind":"run","environment":"$environment","os":"Linux","arch":"amd64","processors":4$names}""",
             )
             medians.forEach { (key, ms) ->
                 appendLine(
-                    """{"kind":"observation","environment":"$environment","key":"$key","medianMs":$ms}""",
+                    """{"kind":"observation","environment":"$environment","key":"$key","medianMs":$ms$marked}""",
                 )
             }
         }

@@ -102,7 +102,11 @@ for input_path in inputs:
                 # against, and it is precisely the observation a refresh needs to AUTHOR that key. Excluding it
                 # left the documented recovery path with no way forward but ALLOW_REMOVALS. A record predating
                 # the status field (an imported run) is trusted, as it always was.
-                if record.get("status", "accepted") not in ("accepted", "unanchored"):
+                # `flagged` folds too: on shared hosted hardware a breach is a FLAG, not a verdict, and excluding
+                # it made one noise-driven flag drop that lane from the artifact — after which this script refuses
+                # the whole refresh for incomplete coverage. `breached` stays excluded: there the gate REJECTED the
+                # number, so folding it would ratchet the bar to a value a build already failed on.
+                if record.get("status", "accepted") not in ("accepted", "unanchored", "flagged"):
                     continue
                 samples.setdefault(record["key"], []).append(float(record["medianMs"]))
     if header is None:

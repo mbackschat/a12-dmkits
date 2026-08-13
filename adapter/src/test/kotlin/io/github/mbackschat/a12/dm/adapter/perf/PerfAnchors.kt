@@ -577,8 +577,16 @@ internal object PerfAnchors {
             // an IO error thrown from here would bury it behind an unrelated message. Attached, never swallowed —
             // the silent-loss path this closes was a discarded `runCatching`, and a mask is the same defect with
             // better manners.
+            // `breached` ONLY where the breach is a verdict. On shared hosted hardware it is a FLAG, and marking it
+            // `breached` there had a consequence one layer away: `scripts/perf-anchor.sh` folds only `accepted`/
+            // `unanchored`, so one noise-driven hosted flag drops that lane from the artifact and the next refresh
+            // is REFUSED for incomplete coverage — the documented recovery path defeated by the noise it was
+            // designed to tolerate. Latent while the hosted ceilings were 2-5x loose (nothing could breach); live
+            // from the 2026-08-13 refresh that tightened them. A flag is a foldable observation, and the ratchet
+            // this separation risks is bounded by the refresh being a reviewed diff (`perf-anchor.sh show` first).
+            val status = if (enforcement == TimingEnforcement.GATED) "breached" else "flagged"
             try {
-                PerfObservations.record(key, observedMs, status = "breached")
+                PerfObservations.record(key, observedMs, status = status)
             } catch (unrecordable: Exception) {
                 failure.addSuppressed(unrecordable)
             }
