@@ -8,8 +8,6 @@ import io.github.mbackschat.a12.dm.interpreter.model.RelevantEntity
 import io.github.mbackschat.a12.dm.interpreter.model.RuleDef
 import kotlin.test.Test
 import kotlin.test.assertEquals
-import kotlin.test.assertTrue
-import kotlin.time.TimeSource
 
 /**
  * **The relevance index must answer exactly what a linear scan of the relevant set would, at every LEGAL model
@@ -34,6 +32,11 @@ import kotlin.time.TimeSource
  * The bound that was asserted rather than measured ("depth is the model's nesting depth (single digits)") is
  * the reason both shipped, which is why the guard is written against the contract's limit and not against a
  * shape that happens to occur in the fixtures.
+ *
+ * **Only the correctness half lives here** (2026-08-13, IF295). The cost half was an `elapsed < 300` ms
+ * assertion in this file, which made a clock the verdict in a module that has no performance tier and, at the
+ * time, no CI lane at all. It is now `adapter/…/perf/RelevanceQueryDepthPerfTest`, measuring GROWTH across two
+ * depths rather than an absolute time — machine-independent, and the instrument that actually matches the claim.
  */
 class PartialRelevanceDepthTest {
 
@@ -71,35 +74,8 @@ class PartialRelevanceDepthTest {
         }
     }
 
-    @Test
-    fun theRelevanceQueryDoesNotEnumerateCombinationsOfTheModelDepth() {
-        // 2^24 probes per query is already ~17M; the contract admits 64, where an exponential never returns.
-        // A wall-clock bound is crude but it is the only thing that separates "bounded by the relevant set"
-        // from "bounded by the depth" without reaching into the private index.
-        val depth = 24
-        val def = nestedModel(depth)
-        val doc = instance(def, depth)
-        val relevant = deepOnlyRelevant(depth)
-        val interpreter = DmInterpreter(def)
-
-        interpreter.validatePart(doc, relevant)   // prime: parse + plan, outside the measured call
-        val start = TimeSource.Monotonic.markNow()
-        repeat(REPEATS) { interpreter.validatePart(doc, relevant) }
-        val elapsed = start.elapsedNow().inWholeMilliseconds
-
-        assertTrue(
-            elapsed < 300,
-            "$REPEATS partial validations of a depth-$depth model took ${elapsed}ms. The relevance query is " +
-                "enumerating combinations of the DEPTH rather than probing the patterns the caller's relevant " +
-                "set actually contains, so cost doubles per nesting level while the model contract admits 64.",
-        )
-    }
-
     private companion object {
         const val CODE = "DEEP"
-
-        /** Few, because the failing shape costs seconds per call — the guard must fail fast, not hang. */
-        const val REPEATS = 3
 
         /** `/G1/G2/.../G{depth-1}/F` — [depth] path parts, the field's own included. */
         fun fieldPath(depth: Int): String =

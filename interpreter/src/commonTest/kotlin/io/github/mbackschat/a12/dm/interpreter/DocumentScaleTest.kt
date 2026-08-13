@@ -8,23 +8,22 @@ import io.github.mbackschat.a12.dm.interpreter.model.ModelDef
 import io.github.mbackschat.a12.dm.interpreter.model.RuleDef
 import kotlin.test.Test
 import kotlin.test.assertEquals
-import kotlin.test.assertTrue
-import kotlin.time.Duration.Companion.seconds
 import kotlin.time.measureTime
 
 /**
- * Scaling benchmark over the REAL general [Document] (the production path), NOT the spike's map-backed
- * `RepDoc` — the honest counterpart of [InterpreterMultiplatformTest.scalesToManyRepetitionRows]
- * (INTERPRETER-PERFORMANCE.md). It is the regression guard for the #28 indexing: a quadratic `Document`
- * (O(P) per field lookup, O(P²) build) cannot evaluate this under the bound — it would take many seconds /
- * blow up — so this test trips on a reintroduced O(N²). Pure engine, kernel-free, runs on JVM **and** JS
- * (Node). **10k real-Document rows is the JS-scaling guard**: it was *impossible* on JS until the index
- * build's O(N²) `!in` dedup was removed (a single cold JS pass at this N took >2 s — the Mocha framework cap —
- * and ~14 s at 20k), and is now ~100 ms on JS. (We hold at 10k, not higher, only for CI headroom under that
- * hard 2000 ms per-test cap.) Correctness here = the row count we computed; kernel parity is the `:adapter` job.
+ * Correctness at scale over the REAL general [Document] (the production path), NOT the spike's map-backed
+ * `RepDoc`. It exercises the #28 indexing at 10 000 rows on JVM **and** JS (Node): a quadratic `Document`
+ * (O(P) per field lookup, O(P²) build) made this shape impossible on JS until the index build's O(N²) `!in`
+ * dedup was removed — a single cold JS pass then took >2 s at this N and ~14 s at 20k, against ~100 ms now.
+ * Correctness here = the row count we computed; kernel parity is the `:adapter` job.
  *
- * NOT the against-kernel perf differential (that lives in `:adapter`, needs the kernel + a build-once
- * pipeline — the next #29 increment). This slice establishes the harness + proves the real `Document` scales.
+ * **It asserts no elapsed time** (2026-08-13, IF295). It used to carry `elapsed < 20.seconds` per case, and that
+ * bound was neither a performance requirement nor a working liveness net: on JS the Mocha framework's hard
+ * 2000 ms per-test cap fires an order of magnitude earlier, and on the JVM the same regression is measured
+ * properly — as a paired N/4N growth ratio under isolation — by `:adapter`'s routine tier, which carries 19
+ * sub-quadratic scenarios including the general per-row one. A wall-clock assertion here would have added a
+ * clock-dependent verdict to a lane that forks tests in parallel, without covering anything those two do not.
+ * The elapsed time is still printed, because a number a human reads costs nothing and decides nothing.
  */
 class DocumentScaleTest {
 
@@ -58,9 +57,6 @@ class DocumentScaleTest {
         val elapsed = measureTime { fired = interp.validateFull(d).count { it.code == "HQ" } }
         assertEquals(n / 100 * 49, fired, "rows with Qty in 51..99 fire (49 per 100)")
         println("[interpreter] per-row rule over $n real-Document rows in $elapsed")
-        // O(N) indexed Document is milliseconds; a reintroduced O(N²) would blow far past this (generous
-        // headroom for JS/Node + CI variance).
-        assertTrue(elapsed < 20.seconds, "scaling regression: $n rows took $elapsed")
     }
 
     @Test
@@ -78,6 +74,5 @@ class DocumentScaleTest {
         val elapsed = measureTime { fired = interp.validateFull(d).count { it.code == "TP" } }
         assertEquals(1, fired, "Sum(1 × $n) > 0 fires once at /Perf")
         println("[interpreter] Sum aggregate over $n real-Document rows in $elapsed")
-        assertTrue(elapsed < 20.seconds, "aggregate scaling regression: $n rows took $elapsed")
     }
 }

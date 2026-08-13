@@ -17,7 +17,6 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
-import kotlin.time.Duration.Companion.seconds
 import kotlin.time.measureTime
 
 /**
@@ -141,8 +140,10 @@ class InterpreterMultiplatformTest {
 
     @Test
     fun scalesToManyRepetitionRows() {
-        // Throughput sanity: a per-row rule over N rows + a starred aggregate. Correctness at scale +
-        // a printed timing (no hard bound — CI-variance-free). Runs on JVM and JS (Node).
+        // Correctness at scale: a per-row rule over N rows + a starred aggregate, on JVM and JS (Node). The
+        // timing is PRINTED, never asserted — the comment here claimed "no hard bound" while the method ended in
+        // `elapsed < 5.seconds`, and a cold review caught the contradiction (IF295, 2026-08-13). Growth is
+        // measured where it can be: `:adapter`'s isolated routine tier, as a paired N/4N ratio.
         val n = 20_000
         val rows = (1..n).map { mapOf(ic to (it % 100).toString()) }
         val rep = RepDoc("/Order", "/Order/Items", mapOf(cn to "Acme"), rows, kinds)
@@ -158,10 +159,6 @@ class InterpreterMultiplatformTest {
         assertEquals(n / 100 * 49, firing, "rows with Count in 51..99 fire (49 per 100)")
         assertTrue(sumFires)
         println("[interpreter] interpreted $n rows (per-row + Sum aggregate) in $elapsed")
-        // Regression guard: ~30ms actual on the JVM; a gross O(n^2)-type regression would blow past this.
-        // Generous headroom so JS (Node, interpreted) and CI variance don't flake. A real perf-regression
-        // harness (JMH / tracked baselines) is Phase-1 work — this just trips on catastrophic slowdowns.
-        assertTrue(elapsed < 5.seconds, "throughput regression: $n rows took $elapsed (expected well under 5s)")
     }
 
     @Test

@@ -26,6 +26,14 @@ class GateTierWiringTest {
 
         assertTrue(ci.contains("-PrunFuzz"),
                 "CI must run the fuzz lane (-PrunFuzz) on every push — else the differential fuzzers are dropped");
+        // The JS/Node target is tested NOWHERE else. `test`, `:adapter:test` and `:noBackendTest` select no
+        // interpreter task, so before this was wired the module ran only on a developer's machine and Node
+        // coverage was a matter of who happened to run `:interpreter:check` locally (IF295, measured 2026-08-13).
+        // `allTests` deliberately, not `check`: `check` additionally drags release packaging, API generation,
+        // Maven/npm publication verification and runtime-closure work into every push.
+        assertTrue(ci.contains(":interpreter:allTests"),
+                "CI must run :interpreter:allTests on every push — it is the only lane that executes the JS/Node "
+                        + "target, and :interpreter:check would pull the release machinery in with it");
         assertFalse(ci.contains("schedule:"),
                 "push/PR correctness CI must not rerun on the nightly schedule");
         assertTrue(ci.contains("uses: gradle/actions/setup-gradle@v6"),

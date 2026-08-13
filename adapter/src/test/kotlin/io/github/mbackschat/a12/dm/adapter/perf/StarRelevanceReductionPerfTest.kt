@@ -1,14 +1,15 @@
-package io.github.mbackschat.a12.dm.interpreter
+package io.github.mbackschat.a12.dm.adapter.perf
 
+import io.github.mbackschat.a12.dm.interpreter.DmInterpreter
 import io.github.mbackschat.a12.dm.interpreter.eval.newDocument
 import io.github.mbackschat.a12.dm.interpreter.model.FieldDef
 import io.github.mbackschat.a12.dm.interpreter.model.Kind
 import io.github.mbackschat.a12.dm.interpreter.model.ModelDef
 import io.github.mbackschat.a12.dm.interpreter.model.RelevantEntity
 import io.github.mbackschat.a12.dm.interpreter.model.RuleDef
-import java.lang.management.ManagementFactory
-import kotlin.test.Test
-import kotlin.test.assertTrue
+import org.junit.jupiter.api.Assertions.assertTrue
+import org.junit.jupiter.api.Tag
+import org.junit.jupiter.api.Test
 
 /**
  * The wildcard-dominance reduction behind the all-rows aggregate relevance gate ([IF262]) costs
@@ -23,39 +24,43 @@ import kotlin.test.assertTrue
  * reason to pay for a kernel JVM. CPU time on the measuring thread, per the algorithmic-work exception in
  * CLAUDE.md: the claim is about work performed, not user-visible latency.
  */
-class StarRelevanceReductionGrowthTest {
+@Tag("perf")
+class StarRelevanceReductionPerfTest {
 
     /**
-     * Re-measured before failing. The claim is that doubling the pattern count does not quadruple the work, and
-     * a quadratic reduction breaches that on every attempt; a contended slice inflates one ratio and does not
-     * reproduce. The bar is unchanged and a real 4x can never produce a passing attempt.
+     * The claim is that doubling the pattern count does not quadruple the work. A quadratic reduction breaches
+     * that on every attempt while a contended slice inflates one ratio and does not reproduce, so the harness's
+     * shared retry-on-breach path applies exactly: one estimate on the happy path, and a breach must survive the
+     * median of independent re-measurements. This class hand-rolled that loop before it moved into the routine
+     * tier (2026-08-13, IF295); the behaviour is the same and the machine-conditional enforcement is now the
+     * shared one, so a hosted breach flags rather than fails like every other growth floor.
      */
     @Test
     fun theDominanceReductionStaysSubQuadraticInDistinctWildcardPatterns() {
-        val seen = mutableListOf<String>()
-        repeat(ATTEMPTS) {
-            val small = measure(PATTERNS)
-            val large = measure(PATTERNS * 2)
-            val growth = large.toDouble() / small.coerceAtLeast(1)
-            if (growth < 3.0) return
-            seen += "${"%.2f".format(growth)}x (${small / 1_000_000}ms -> ${large / 1_000_000}ms)"
-        }
-        assertTrue(
-            false,
-            "doubling the number of distinct wildcard patterns at one operand path must not quadruple the " +
-                "reduction's cost (${PATTERNS} -> ${PATTERNS * 2} patterns). All $ATTEMPTS independent " +
-                "re-measurements breached the 3.0x bar: ${seen.joinToString(", ")} (quadratic would be 4.0x)",
-        )
-    }
+        val relevantSets = listOf(PATTERNS, PATTERNS * 2).associateWith { relevantSet(it) }
+        relevantSets.values.forEach { set -> repeat(WARMUP) { DmInterpreter(model).validatePart(document, set) } }
 
-    /** CPU nanos for one `validatePart` over a relevant set carrying [patterns] distinct wildcard shapes. */
-    private fun measure(patterns: Int): Long {
-        val relevant = relevantSet(patterns)
-        repeat(WARMUP) { DmInterpreter(model).validatePart(document, relevant) }
-        val bean = ManagementFactory.getThreadMXBean()
-        val start = bean.currentThreadCpuTime
-        repeat(REPEATS) { DmInterpreter(model).validatePart(document, relevant) }
-        return (bean.currentThreadCpuTime - start) / REPEATS
+        val accepted = PerfHarness.assertGrowthBelowCatastropheFloor(
+            "star-relevance dominance reduction, $PATTERNS -> ${PATTERNS * 2} distinct wildcard patterns",
+            culprit = "the dominance scan comparing every candidate against every pattern (entities x patterns) " +
+                "instead of short-circuiting on the antichain",
+            floor = QUADRATIC_FLOOR,
+        ) {
+            PerfHarness.pairedGrowth(PATTERNS, PATTERNS * 2) { patterns ->
+                val relevant = relevantSets.getValue(patterns)
+                PerfHarness.measureCurrentThreadCpu(warmup = 0, iters = REPEATS) {
+                    DmInterpreter(model).validatePart(document, relevant)
+                }.medianMs
+            }
+        }
+
+        // A ratio over two unmeasurably small numbers passes whatever the reduction did. The antichain is built
+        // so that one pass costs milliseconds, so a measurement rounding to zero means the clock answered.
+        assertTrue(
+            accepted.smallMs > 0.0,
+            "the $PATTERNS-pattern measurement was ${accepted.smallMs}ms — too small to carry a ratio, so this " +
+                "run asserted nothing about growth",
+        )
     }
 
     /**
@@ -90,7 +95,9 @@ class StarRelevanceReductionGrowthTest {
         const val PATTERNS = 1500
         const val WARMUP = 2
         const val REPEATS = 3
-        const val ATTEMPTS = 3
+
+        /** Doubling the patterns doubles a linear reduction and QUADRUPLES a quadratic one, so the bar sits between. */
+        const val QUADRATIC_FLOOR = 3.0
         const val FIELD = "/Cart/G1/G2/G3/G4/G5/G6/G7/G8/G9/G10/G11/G12/G13/G14/Qty"
 
         private val groups = (1..DEPTH).map { "/Cart/" + (1..it).joinToString("/") { i -> "G$i" } }
