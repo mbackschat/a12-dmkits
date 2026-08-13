@@ -27,9 +27,17 @@ import java.lang.reflect.Modifier
  * with a single wildcard entity the same code stayed linear, so the unqualified claim overstated it).
  *
  * So the entry points are **discovered by reflection**, not enumerated by hand: adding a public method that
- * takes a [Document] fails this test until a live, perf-tagged `@Test` method names it with
+ * takes a [Document] fails this test until a live `@Test` method in a performance lane names it with
  * [TimesInterpreterEntryPoint]. A hand-written list would have to be remembered; two derived sets cannot be
  * forgotten or drift apart.
+ *
+ * **The bound: a lane tag is not executable coverage** (stated after a review raised it, 2026-08-13). This check
+ * proves a claim is owned by a live `@Test` that a performance lane *selects*; it does not prove that lane ever
+ * runs it. JUnit discovery sees a `@EnabledIfSystemProperty` test, so a declaration parked on one would satisfy
+ * the denominator while measuring nothing. No declaration sits on such a test today — the carriers are
+ * `PerfGateTest`, `EntryPointPerfTest`, `OuterCorrelationPerfTest`, `PartialSumOfProductsPerfTest` and
+ * `PerfBenchTest`, none of them property-gated — and the release gate now refuses a run that skipped anything,
+ * which closes the same hole one layer out for the routine tier.
  *
  * This guard is deliberately **not** `@Tag("perf")` — it is a cheap reflection check that must run in the
  * ordinary lane, so the coverage question is answered on every build rather than only when someone opts into
@@ -48,8 +56,9 @@ class InterpreterPerfCoverageTest {
         assertEquals(
             discovered.map(::signature).toSortedSet(), guarded.map { signature(it.entryPoint) }.toSortedSet(),
             "the set of DmInterpreter evaluation entry points changed. Every public method taking a Document " +
-                "must be named by @TimesInterpreterEntryPoint on the live, perf-tagged @Test method that times " +
-                "it. Missing a guard is how validatePart stayed quadratic unnoticed. Discovered claims: " +
+                "must be named by @TimesInterpreterEntryPoint on the live @Test method that times it, in a " +
+                "performance lane (@Tag perf or perf-bench). " +
+                "Missing a guard is how validatePart stayed quadratic unnoticed. Discovered claims: " +
                 guardOwners,
         )
     }

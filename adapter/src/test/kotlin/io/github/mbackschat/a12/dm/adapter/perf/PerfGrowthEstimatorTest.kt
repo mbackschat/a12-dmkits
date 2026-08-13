@@ -5,6 +5,21 @@ import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
 
+/**
+ * The paired-growth estimator's acceptance rule, on **scripted** observations — plus the one clock-reading case in
+ * this file, which is called out here because it is the estate's only timing assertion outside a performance lane.
+ *
+ * **Why [currentThreadCpuExcludesBlockedWallTime] stays untagged, deliberately (2026-08-13).** It protects the
+ * contract every growth floor rests on — that `measureCurrentThreadCpu` excludes time the thread spent blocked,
+ * which is what lets `forGrowthFloor` gate without the isolated lane — so it has to be answered on **every push**,
+ * not only in a 4m44s gate. That is safe here because its sensitivity runs the protective way: fork contention can
+ * only *add* wall time and leaves CPU-during-`sleep` at ~0, so load pushes both `wallMs >= 80.0` and
+ * `measured < wallMs / 4.0` further into passing. A contended machine cannot turn it red.
+ *
+ * The bound to keep in view: that reasoning is directional and specific to this assertion's shape. It is **not** a
+ * general licence, and nothing mechanically stops a *new* clock-reading assertion from being added to this lane —
+ * `PerfTestClassificationTest` is syntactic and would not see one (see IG131).
+ */
 class PerfGrowthEstimatorTest {
 
     @Test

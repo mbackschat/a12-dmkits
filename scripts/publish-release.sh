@@ -79,7 +79,27 @@ if grep -qE 'not asserting|anchor not asserted' "$PERF_LOG"; then
     echo "Refresh the anchor on THIS machine (scripts/perf-anchor.sh refresh) or release from the machine that authored it." >&2
     exit 1
 fi
-echo "   performance gate asserted and passed"
+# A SKIPPED bar is the other way a green gate can carry no evidence, and it is not hypothetical: three
+# routine-tier candidates are @EnabledIfSystemProperty and would report as skipped if they were ever tagged into
+# this lane (they are `perf-bench` precisely so they are not). JUnit reports a skip as success, so without this
+# the release would license a gate in which a bar silently did not run. Read from the result XMLs rather than the
+# log, because the lane's own report is the artifact and a log line can be absent for other reasons.
+PERF_XML_DIR="$ROOT/adapter/build/test-results/perfGateTest"
+# awk, not `paste | bc`: bc is absent from minimal images, and this is a release-blocking path that must not fail
+# for a missing arithmetic tool. Empty input yields an empty string, which the next branch treats as "no XMLs".
+SKIPPED="$(grep -ho 'skipped="[0-9]*"' "$PERF_XML_DIR"/*.xml 2>/dev/null \
+    | grep -o '[0-9]*' | awk '{n += $1} END {if (NR) print n}')"
+if [ -z "${SKIPPED:-}" ]; then
+    echo "PERFORMANCE GATE LEFT NO RESULT XMLs in $PERF_XML_DIR — cannot confirm what ran." >&2
+    exit 1
+fi
+if [ "$SKIPPED" -ne 0 ]; then
+    echo "PERFORMANCE GATE SKIPPED $SKIPPED test(s) — a skipped bar is not a passed bar." >&2
+    grep -l 'skipped="[1-9]' "$PERF_XML_DIR"/*.xml 2>/dev/null | sed 's|.*TEST-|  |;s|\.xml$||' >&2
+    echo "Either give the skipped bar what it needs to run, or move it out of the routine tier (@Tag 'perf-bench')." >&2
+    exit 1
+fi
+echo "   performance gate asserted and passed (0 skipped)"
 
 KVER="$(grep -oE "kernelVersion *= *'[^']+'" build.gradle | sed -E "s/.*'([^']+)'.*/\1/")"
 A12="$(grep -oE "a12Distribution *= *'[^']+'" build.gradle | sed -E "s/.*'([^']+)'.*/\1/")"

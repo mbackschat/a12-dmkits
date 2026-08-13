@@ -87,8 +87,9 @@ class CustomTypePerfTest {
         fun run(d: Document) = DmInterpreter(customDef, predefinedTypes = registry).validate(d)
         repeat(WARM) { docs.values.forEach { run(it) } }
         // IF137 paired estimator: interleaved N/4N, median of within-pair ratios (via the shared PerfHarness helper).
-        // Re-measured before failing — same reason as the sibling charset guard: untagged, so it runs
-        // unattended on every build, and only a real O(N²) regression reproduces across attempts.
+        // Re-measured before failing — same reason as the sibling charset guard: it runs unattended on a shared
+        // hosted runner in the nightly (routine tier since 2026-08-13; previously untagged and run on every
+        // build), and only a real O(N²) regression reproduces across attempts.
         PerfHarness.assertGrowthBelowCatastropheFloor("custom-type validation") {
             PerfHarness.pairedGrowth(N_SMALL, N_SMALL * 4) { n ->
                 PerfHarness.measureCurrentThreadCpu(warmup = 0, iters = REPEATS) { run(docs.getValue(n)) }.medianMs

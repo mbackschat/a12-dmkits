@@ -50,7 +50,10 @@ case "$mode" in
     gate)
         # counts doubles as an optional METHOD pattern: 'semanticIndex*' → --tests "*PerfGateTest.semanticIndex*"
         if [ -n "$counts" ]; then
-            run_gradle :adapter:perfGateTest --tests "*PerfGateTest.$counts" --tests "*KernelParityGateTest.$counts"
+            # A method pattern across the WHOLE routine tier, not just the two original classes: the task already
+            # restricts to @Tag('perf'), so `*.$counts` cannot reach anything outside it, and naming classes here
+            # made `gate groupScopedFillScalesSubQuadratically` fail with "No tests found" (review, 2026-08-13).
+            run_gradle :adapter:perfGateTest --tests "*.$counts"
         else
             # No --tests: the task selects the whole @Tag('perf') routine tier itself (adapter/build.gradle), so a
             # new perf test cannot be left out of the gate by forgetting to name it here. A --tests pattern would

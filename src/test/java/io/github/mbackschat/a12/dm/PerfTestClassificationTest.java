@@ -70,9 +70,13 @@ class PerfTestClassificationTest {
     void everyClassNamedPerfTestIsTaggedIntoAPerformanceLane() throws IOException {
         var untagged = new TreeSet<String>();
         for (var source : testSources()) {
-            String name = className(source);
-            if (name.endsWith("PerfTest") && perfTagOf(source) == null) {
-                untagged.add(name);
+            if (perfTagOf(source) != null) {
+                continue;
+            }
+            for (String name : declaredNames(source)) {
+                if (name.endsWith("PerfTest")) {
+                    untagged.add(name);
+                }
             }
         }
 
@@ -89,12 +93,19 @@ class PerfTestClassificationTest {
      */
     @Test
     void everyPerformanceTaggedClassIsNamedForWhatItMeasures() throws IOException {
+        // ANY declared name may carry a measuring suffix, not EVERY one: a perf-tagged file legitimately declares
+        // private helpers beside its test class (`ProfileCliPerfTest.kt` declares `object ProfileCliCanary`), and
+        // requiring every declaration to be named for a measurement fails those for no reason. What must not exist
+        // is a perf-tagged file where NOTHING is named for what it measures.
         var misnamed = new TreeMap<String, String>();
         for (var source : testSources()) {
             String tag = perfTagOf(source);
-            String name = className(source);
-            if (tag != null && MEASURING_SUFFIXES.stream().noneMatch(name::endsWith)) {
-                misnamed.put(name, tag);
+            if (tag == null) {
+                continue;
+            }
+            var names = declaredNames(source);
+            if (names.stream().noneMatch(name -> MEASURING_SUFFIXES.stream().anyMatch(name::endsWith))) {
+                misnamed.put(String.join("/", names), tag);
             }
         }
 
@@ -113,9 +124,12 @@ class PerfTestClassificationTest {
      */
     @Test
     void thePerformanceTagVocabularyIsClosed() throws IOException {
+        // Any indentation (so a METHOD-level tag is seen too) and a permissive tag body: the character class was
+        // `[a-z-]*`, which silently accepted `perf2` and `perf_bench` — a typo that selects no lane at all, which
+        // is the exact failure this assertion exists to catch. Digits and underscores are now inside it.
         var found = new TreeSet<String>();
         for (var source : testSources()) {
-            Matcher tags = Pattern.compile("^\\s*@Tag\\(\"(perf[a-z-]*)\"\\)", Pattern.MULTILINE)
+            Matcher tags = Pattern.compile("^\\s*@Tag\\(\"(perf[A-Za-z0-9_-]*)\"\\)", Pattern.MULTILINE)
                     .matcher(Files.readString(source));
             while (tags.find()) {
                 found.add(tags.group(1));
@@ -140,7 +154,9 @@ class PerfTestClassificationTest {
      */
     @Test
     void theRoutinePerformanceGateSelectsByTag() throws IOException {
-        String gate = gradleTask(Files.readString(locate("adapter/build.gradle")), "perfGateTest");
+        // Comment-stripped: `contains` cannot tell live configuration from a line that quotes it, and this task's
+        // block is heavily commented — commenting out the selection while leaving the text would otherwise pass.
+        String gate = uncommented(gradleTask(Files.readString(locate("adapter/build.gradle")), "perfGateTest"));
 
         assertTrue(gate.contains("useJUnitPlatform { includeTags 'perf' }"),
                 "perfGateTest must select the routine tier by tag; an includeTestsMatching list is how a "
@@ -165,7 +181,7 @@ class PerfTestClassificationTest {
         String build = Files.readString(locate("adapter/build.gradle"));
         int test = build.indexOf("tasks.named('test')");
         assertTrue(test >= 0, "adapter/build.gradle must configure its broad test task");
-        String broad = build.substring(test, build.indexOf("\ntasks.register(", test));
+        String broad = uncommented(build.substring(test, build.indexOf("\ntasks.register(", test)));
 
         for (String tag : new TreeSet<>(PERF_TAGS)) {
             assertTrue(broad.contains("excludeTags '" + tag + "'"),
@@ -193,16 +209,49 @@ class PerfTestClassificationTest {
         }
     }
 
-    private static String className(Path source) {
-        String name = source.getFileName().toString();
-        return name.substring(0, name.lastIndexOf('.'));
+    /**
+     * Every type this file DECLARES, plus its filename stem.
+     *
+     * <p>The filename alone was the denominator and that is unsound in Kotlin, which does not require the two to
+     * agree: `NeutralTest.kt` may declare `class HiddenPerfTest`, and a filename-keyed check would never see it.
+     * The stem is retained as well, because a Java file's public class must match it and keeping both costs
+     * nothing — the union can only widen what the assertions inspect.
+     */
+    private static Set<String> declaredNames(Path source) throws IOException {
+        var names = new TreeSet<String>();
+        String fileName = source.getFileName().toString();
+        names.add(fileName.substring(0, fileName.lastIndexOf('.')));
+        Matcher declared = Pattern.compile(
+                        "^(?:(?:public|final|abstract|internal|open|private|sealed|data|annotation)\\s+)*"
+                                + "(?:class|object|interface)\\s+(\\w+)", Pattern.MULTILINE)
+                .matcher(Files.readString(source));
+        while (declared.find()) {
+            names.add(declared.group(1));
+        }
+        return names;
     }
 
-    /** The performance lane tag on a class, or {@code null}. Annotation lines only — prose quoting a tag is not one. */
+    /**
+     * The CLASS-level performance lane tag, or {@code null}.
+     *
+     * <p><b>Column 0, deliberately.</b> A top-level class annotation is unindented in both languages, while a
+     * method-level `@Tag` is indented inside the class body. Matching any indentation would let one tagged method
+     * make a class read as tagged, so a file could carry an *untagged* timing method beside it and pass — and a
+     * class-level classification is what both lanes actually select on. All 14 tagged classes in the estate are
+     * matched by this form. The vocabulary assertion deliberately keeps the looser pattern, because a
+     * lane-selecting typo is worth catching wherever it sits.
+     */
     private static String perfTagOf(Path source) throws IOException {
-        Matcher tag = Pattern.compile("^\\s*@Tag\\(\"(perf|perf-bench)\"\\)", Pattern.MULTILINE)
+        Matcher tag = Pattern.compile("^@Tag\\(\"(perf|perf-bench)\"\\)", Pattern.MULTILINE)
                 .matcher(Files.readString(source));
         return tag.find() ? tag.group(1) : null;
+    }
+
+    /** Source with comment lines dropped, so a check matches LIVE configuration and never a line quoting it. */
+    private static String uncommented(String source) {
+        return source.lines()
+                .filter(line -> !line.strip().startsWith("//"))
+                .collect(java.util.stream.Collectors.joining("\n"));
     }
 
     private static String gradleTask(String build, String name) {

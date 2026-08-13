@@ -65,9 +65,11 @@ class CharsetPerfTest {
     }
 
     @Test fun bmpAndGraphemePathsStayBelowTheFourfoldGrowthCatastropheFloor() {
-        // Re-measured before failing: this class is UNTAGGED, so it runs on every build including shared CI,
-        // where a contended slice inflates a ratio by a few percent. A virtual-call blowup is ~16x and
-        // breaches every attempt, so the floor is unchanged and no false green is admitted.
+        // Re-measured before failing: routine tier, so the NIGHTLY runs this on a hosted runner, where a
+        // contended slice inflates a ratio by a few percent. (Until 2026-08-13 this class was untagged and the
+        // reason read "runs on every build including shared CI"; the retry matters just as much now, only the
+        // shared machine is the runner rather than the push lane.) A virtual-call blowup is ~16x and breaches
+        // every attempt, so the floor is unchanged and no false green is admitted.
         PerfHarness.assertGrowthBelowCatastropheFloor("BMP") { medianWithinPairGrowth(LegalCharset.BMP) }
         PerfHarness.assertGrowthBelowCatastropheFloor("grapheme") { medianWithinPairGrowth(dinWithGraphemes) }
     }

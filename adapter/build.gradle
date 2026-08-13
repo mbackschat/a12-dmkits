@@ -216,10 +216,18 @@ tasks.named('test') {
     // run. Opt in with -PrunPerf / -PrunFuzz (or -PallTests for all three). CI runs fuzz on every push and the
     // isolated perfGateTest nightly.
     //
-    // NO timing assertion may run here, in either tier: this task forks 2-4 JVMs in parallel, which is the
-    // configuration CLAUDE.md forbids for a timed task ("a task carrying a timing assertion gets the machine to
-    // itself") and which manufactured a false 10.24x growth failure once. -PrunPerf is a deliberate local override
-    // for a drill, not a lane anything automated uses.
+    // NO bar on interpreter performance may run here, in either tier: 2-4 parallel forks are the configuration
+    // CLAUDE.md forbids for a timed task ("a task carrying a timing assertion gets the machine to itself") and
+    // which manufactured a false 10.24x growth failure once. -PrunPerf is a deliberate local override for a drill,
+    // not a lane anything automated uses.
+    //
+    // ONE clock-reading assertion stays here on purpose, and a review found it before this comment named it:
+    // PerfGrowthEstimatorTest.currentThreadCpuExcludesBlockedWallTime. It protects the contract every growth floor
+    // rests on — that measureCurrentThreadCpu excludes blocked time — so it must be answered on every push rather
+    // than only in a 4m44s gate. It is safe because its sensitivity runs the protective way: contention only ADDS
+    // wall time and leaves CPU-during-sleep near zero, so load pushes both of its assertions further into passing.
+    // That reasoning is specific to its shape, not a general licence, and nothing mechanical stops a NEW
+    // clock-reading assertion from landing in this lane — PerfTestClassificationTest is syntactic (IG131).
     useJUnitPlatform {
         def all = project.hasProperty('allTests')
         if (!all && !project.hasProperty('runPerf')) { excludeTags 'perf'; excludeTags 'perf-bench' }
