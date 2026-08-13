@@ -1206,3 +1206,18 @@ Measured on `darwin-aarch64` (Macmini9,1 Apple M1, 8 processors, JDK 21.0.12) wh
 **Run-to-run stability, three sequential isolated gates.** Per-key spread (`max/min`) medians **1.14×** across all 64 keys. The two lanes fed by `KernelAdvantage` were the worst before their estimator changed from a mean to a median — `computeField` **1.89×** on `[3.13, 5.84, 3.09]`, `applyComputations` **1.82×** — and left the worst-five list afterwards. Four keys still reach the `1.65× + 1 ms` tolerance: `custom-type validation` **2.86×** at n=40000 (`[6.85, 2.83, 2.39]`) and **2.10×** at n=10000, `partial-SOP/complete-concrete` **1.78×**, `group-scope fill` **1.68×**. All six gate runs passed, so no false red occurred; the open question is whether those four are noisy estimators or a noisy hour, and it is IG134.
 
 **Cost of arming.** Six gate runs at 4m07s–4m25s, plus five anchor refreshes. Two of those runs existed only because `assertWithinBudget` rethrew on the first unanchored key and left the lane's second endpoint unrecorded — fixed in the same change, so a new lane now arms in one run.
+
+### Checkpoint 2026-08-14 — what makes a routine-tier lane noisy: magnitude, not the clock
+
+Read from the committed record with `scripts/perf-trend.sh` over 174 keys on `darwin-aarch64` (27 runs, 2026-08-12 .. 2026-08-13). The question was which lanes are too noisy for the `1.65× + 1 ms` anchor tolerance to be a real bar; the first attempt answered it from the `max/min` of three runs and got both the set and the reason wrong.
+
+**Estate median noise: ±7.3%.** Fourteen keys sit at or above ±20% with at least 7 runs.
+
+| hypothesis | discriminator | verdict |
+|---|---|---|
+| wall-clock lanes are contention-exposed where CPU-clock lanes are not | median noise by clock: **wall ±6.9%** (n=124) vs **cpu ±9.4%** (n=50) | **falsified** — CPU lanes are the noisier population, and carry 8 of the 14 noisy keys from a quarter of the rows |
+| noise is a function of the measurement's magnitude | noisy keys by current median: `0-2 ms` 1/34 · `2-5 ms` 6/37 · `5-10 ms` 7/29 · `10-30 ms` **0/41** · `30 ms+` **0/33** | **confirmed** — every noisy key in the estate is under 10 ms, and nothing above it is noisy |
+
+The corrective follows from the mechanism rather than from the list: lift a lane's measured median out of the sub-10 ms band, by batching inside the timed block or by a larger N. Both cost nothing in fidelity, since a growth ratio is a quotient and a constant factor on both scales cancels — but a batch changes *what one block measures*, so it belongs in the observation key, while warmup and iteration counts do not.
+
+**A note on the statistic.** `max/min` over three samples routinely reaches 1.5–1.7× on a distribution whose true spread is ±20%, which is why the first diagnosis produced four plausible names that were mostly not the worst offenders. The record's own instrument was already computing the right quantity over 20+ runs.
