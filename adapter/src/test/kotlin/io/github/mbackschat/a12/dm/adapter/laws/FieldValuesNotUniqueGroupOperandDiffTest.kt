@@ -99,9 +99,9 @@ class FieldValuesNotUniqueGroupOperandDiffTest {
 
     /**
      * **TWO levels of repeatable subgroup** below the operand: `Depot` (non-repeatable) → `Handovers` (repeatable)
-     * → `Scans` (repeatable). Distinct from [nested] because `bindDepth` pins the segments above the *first*
-     * iterated level, so one level iterating fully does not establish that a second does — the reason this was a
-     * separate question rather than a corollary.
+     * → `Scans` (repeatable). A separate question from [nested] rather than a corollary: one level iterating fully
+     * does not establish that a second does, and the binding rule is not derivable by reading — three successive
+     * readings of `Document.groupScopePrefix` predicted a pin here and every one was falsified (IF287).
      */
     private val deepNested = DocumentModelDraft.named("depot").locale("en_US")
         .rootGroup("Shipment") { g ->
@@ -143,9 +143,11 @@ class FieldValuesNotUniqueGroupOperandDiffTest {
         expected: Boolean,
         msg: String,
         model: String = base,
+        ruleGroup: String = "/Shipment",
+        errorPath: String = "../Reference",
         build: (Both) -> Unit,
     ) {
-        val kModel = RuntimeLaws.withRule(model, "/Shipment", "R", "../Reference", CODE, condition)
+        val kModel = RuntimeLaws.withRule(model, ruleGroup, "R", errorPath, CODE, condition)
         val def = ModelLoader.load(kModel)
 
         val dynamic = Both(RuntimeLaws.doc(), def.newDocument()).also(build)
@@ -337,6 +339,47 @@ class FieldValuesNotUniqueGroupOperandDiffTest {
                 .group(HANDOVERS, 1, 1, 1).group(SCANS, 1, 1, 1, 1).field(SCAN_CODE, "AA1", 1, 1, 1, 1, 1)
                 .group(HANDOVERS, 1, 1, 2).group(SCANS, 1, 1, 2, 1).field(SCAN_CODE, "BB2", 1, 1, 2, 1, 1)
                 .group(SCANS, 1, 1, 2, 2).field(SCAN_CODE, "CC3", 1, 1, 2, 2, 1)
+        }
+
+    // ── the operand read from a DEEPER iterating rule group, where the binding cap can bite ──────────────
+
+    /**
+     * **The placement every other row here leaves untested, and probably the commonest one.** All the cases above
+     * author their rule on the root group, so the shared-ancestry binding is one level and nothing below it is ever
+     * pinned. A rule authored on a *repeatable* group — ordinary per-row validation — makes that ancestry as deep as
+     * the rule group, and the operand names an ANCESTOR of it (`/Shipment/Depot` from a rule on
+     * `/Shipment/Depot/Handovers`).
+     *
+     * The duplicate spans **two different `Handovers` rows**, with a distinct `Name`, which is what makes this
+     * two-way: if each rule instance sees only its own row's `Scans` the pair is never in one compared set and
+     * nothing fires; if the operand's scope spans the rows regardless of where the rule sits, every instance sees
+     * both and it fires. `theSameDeeperRuleStillFiresWithinOneRow` is the control proving the rule evaluates at all.
+     *
+     * **Measured: it fires** — the compared set is bounded by the OPERAND, not by the rule's own row. All three arms
+     * agree. The prediction written here first was the opposite, from reading the binding code; see IF287 on why a
+     * source reading of that function is not an oracle.
+     */
+    @Test
+    fun aGroupOperandReadFromADeeperRuleGroupStillSpansTheWholeOperand() =
+        agreeFires(guarded("FieldValuesNotUnique(/Shipment/Depot)"), expected = true,
+            msg = "the duplicate spans Handovers[1] and Handovers[2]; the rule iterates Handovers",
+            model = deepNested, ruleGroup = HANDOVERS, errorPath = "../../../Reference") { b ->
+            b.group("/Shipment", 1).field(REFERENCE, "SHP-1", 1, 1)
+                .field(DEPOT_NAME, "N0", 1, 1, 1)
+                .group(HANDOVERS, 1, 1, 1).group(SCANS, 1, 1, 1, 1).field(SCAN_CODE, "XX1", 1, 1, 1, 1, 1)
+                .group(HANDOVERS, 1, 1, 2).group(SCANS, 1, 1, 2, 1).field(SCAN_CODE, "XX1", 1, 1, 2, 1, 1)
+        }
+
+    /** The control: with the duplicate INSIDE one `Handovers` row, a per-row scope and a spanning one both fire. */
+    @Test
+    fun theSameDeeperRuleStillFiresWithinOneRow() =
+        agreeFires(guarded("FieldValuesNotUnique(/Shipment/Depot)"), expected = true,
+            msg = "Name repeats in Handovers[2]'s own Scans, so scope cannot be the reason it fires",
+            model = deepNested, ruleGroup = HANDOVERS, errorPath = "../../../Reference") { b ->
+            b.group("/Shipment", 1).field(REFERENCE, "SHP-1", 1, 1)
+                .field(DEPOT_NAME, "N0", 1, 1, 1)
+                .group(HANDOVERS, 1, 1, 1).group(SCANS, 1, 1, 1, 1).field(SCAN_CODE, "XX1", 1, 1, 1, 1, 1)
+                .group(HANDOVERS, 1, 1, 2).group(SCANS, 1, 1, 2, 1).field(SCAN_CODE, "N0", 1, 1, 2, 1, 1)
         }
 
     // ── an AUTHORED star on a repeatable group that itself holds a repeatable subgroup ───────────────────
