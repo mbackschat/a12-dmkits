@@ -547,6 +547,21 @@ The catalog must favor **non-obvious** combinations (nesting × aggregation × c
 
 ## Results log
 
+### Checkpoint 2026-08-13 — three sequential hosted runs of one revision, and what they say about a hosted absolute bar
+
+Method: three **strictly sequential** `gh workflow run 'Nightly performance' --ref main` dispatches of `15b3ed0`, each waited to completion before the next (the isolation rule of [IF280](INTERPRETER-FINDINGS.md#if280)); artifacts committed under [`perf-results/linux-amd64-ci/`](../perf-results/README.md) as `2026-08-13T095150Z`, `T100152Z`, `T101123Z`. All three: JDK `21.0.11`, 2 processors, 36 accepted observations, run ids `31688252078` / `31689198281` / `31689900737`.
+
+**The runner class spans CPU models within one hour.** Runs 1 and 2 measured on `AMD EPYC 7763 64-Core Processor`, run 3 on `AMD EPYC 9V74 80-Core Processor`. `scripts/perf-anchor.sh` correctly refused the fold ("two machines cannot be folded"), so no block was authored.
+
+**The finding is not the machine split — it is that the split does not matter next to the noise.** Per-key ratios over the 36 lanes all three measured:
+
+| comparison | median | max | `> 20 ms` lanes (n=20) |
+|---|---|---|---|
+| run 3 vs median(run 1, run 2) — **different** machines | 1.07× | 2.01× | median 1.06×, max 2.01× |
+| run 1 vs run 2 — the **same** machine | 1.04× | 2.05× | median 1.02×, max 2.05× |
+
+The same-machine spread is as large as the cross-machine one, and its outliers sit in the **large** lanes rather than in sub-millisecond ones, so this is not an absolute-resolution artifact. Consequence for the bar: `PerfBounds.ANCHOR_TOLERANCE` is `1.65×` + 1 ms slack, which is **below** the measured same-machine run-to-run spread of this runner class — so an absolute assertion there would flag on ordinary noise, independent of which machine served the job. Two conclusions follow, and only the first is a measurement: the hosted numbers support a **trend line**, and a hosted absolute **bar** has no tolerance that is both meaningful and quiet. This is [IF280](INTERPRETER-FINDINGS.md#if280)'s own re-open trigger firing on evidence ("if the recorded hosted models show the runner class spans several machines, decide whether that block is a bar or only a trend line"); the disposition is an owner decision recorded in IG124, not settled here.
+
 ### Checkpoint 2026-08-13 — the last three list-in-key memos, on a scenario that runs them
 
 Method: `scripts/perf-keys.sh validate-memos` (new mode, driver `EvalProfileTest.loopPartialMemoProbeForProfiler` over `PerfCatalog.partialMemoProbe`), `Macmini9,1 Apple M1`, 1,297 `ExecutionSample`s. The scenario carries a STARRED aggregate and a `RepetitionNotUnique` rule under `validatePart` — the constructs no existing scenario had, which is why these three read 0 before ([IF290](INTERPRETER-FINDINGS.md#if290) closes IG126).
