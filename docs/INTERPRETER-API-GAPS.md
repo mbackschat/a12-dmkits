@@ -8,17 +8,7 @@
 
 ## 1. Open
 
-### IAG15 — the published message-address policy has no home both publishing seams can reach <a id="iag15"></a>
-
-The rule for publishing an A12 message address is settled and guarded: canonical A12 when the address names exactly one cell, the house form when it does not, decided on the typed pointer and never by re-reading a string ([CLI-SPEC](CLI-SPEC.md) §5, `PublishedPointerCanonicalTest`). Its implementation is `cli.interp.A12Pointers.canonical`, which carries the full reasoning.
-
-The kernel-runtime probe ([KERNEL-PROBE-SPEC](KERNEL-PROBE-SPEC.md)) is now a **second** seam that publishes those addresses, and it lives in `:adapter` — which `:cli` depends on, not the reverse. So it re-derives the one-branch policy from the same public interpreter primitives (`A12PartiallyKnownMultiPointer.toExactPointer` plus `A12PointerFormat.render`, else `formatPointer`). Two implementations of one contract, in modules that cannot see each other and therefore cannot be cross-checked by a guard.
-
-**What it blocks:** nothing shipping — both seams are correct today, and each is checked against real output on its own side. It costs the property that the contract has one enforcement locus, which is exactly the property the next seam will need.
-
-**Shape under consideration:** the policy's natural home is the interpreter, beside the two pointer types it dispatches on. That is a **public-API addition to a published library**, and a careful one: IAG11 closed by deciding the house spelling stays tool-owned and gets no published renderer, so a function whose fallback *is* the house form must be shaped as "publish this address" rather than as "render the house form", or it re-opens what IAG11 settled.
-
-**Re-open trigger:** a third publishing seam, or any change to the per-address rule — at which point two implementations must be edited in lockstep with nothing to catch a miss.
+_None open._
 
 ## 2. Deferred — with re-open triggers
 
@@ -37,6 +27,21 @@ across JVM and JS and would be worse than none if fabricated.
 
 **Re-open trigger:** a real backend service needs to bound its hot-model cache, or NFR-F3's numeric half is put
 up for certification.
+
+### IAG15 — the published message-address policy has no home both publishing seams can reach <a id="iag15"></a>
+
+The rule for publishing an A12 message address is settled and guarded: canonical A12 when the address names exactly one cell, the house form when it does not, decided on the typed pointer and never by re-reading a string ([CLI-SPEC](CLI-SPEC.md) §5, `PublishedPointerCanonicalTest`). Its implementation is `cli.interp.A12Pointers.canonical`, which carries the full reasoning.
+
+The kernel-runtime probe ([KERNEL-PROBE-SPEC](KERNEL-PROBE-SPEC.md)) is now a **second** seam that publishes those addresses, and it lives in `:adapter` — which `:cli` depends on, not the reverse. So it re-derives the one-branch policy from the same public interpreter primitives (`A12PartiallyKnownMultiPointer.toExactPointer` plus `A12PointerFormat.render`, else `formatPointer`). Two implementations of one contract, in modules that cannot see each other and therefore cannot be cross-checked by a guard.
+
+**What it blocks:** nothing shipping — both seams are correct today, and each is checked against real output on its own side. It costs the property that the contract has one enforcement locus, which is exactly the property the next seam will need.
+
+**Shape under consideration:** the policy's natural home is the interpreter, beside the two pointer types it dispatches on. That is a **public-API addition to a published library**, and a careful one: IAG11 closed by deciding the house spelling stays tool-owned and gets no published renderer, so a function whose fallback *is* the house form must be shaped as "publish this address" rather than as "render the house form", or it re-opens what IAG11 settled.
+
+**Re-open trigger:** a third publishing seam, or any change to the per-address rule — at which point two implementations must be edited in lockstep with nothing to catch a miss.
+
+*(Moved from §1 to §2 on 2026-08-13. It was misfiled: the row already carried a "shape under consideration" and a re-open trigger and states that it blocks nothing shipping, which is §2's definition and is structurally identical to IAG14 above. Closing it is not a coding task — it means ADDING PUBLIC API to a published library, which is the owner's call and must be shaped so it does not re-open what IAG11 settled about the house spelling staying tool-owned.)*
+
 
 ### IAG1 — Kernel-shaped TypeScript import replacement <a id="iag1"></a>
 

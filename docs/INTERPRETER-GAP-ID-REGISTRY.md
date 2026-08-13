@@ -20,7 +20,7 @@ This is the append-only registry for every `IAG<n>` and `IRG<n>` identifier issu
 | IAG12 <a id="iag12"></a> | shipped | `A12PointerFormat` is not on the npm surface |
 | IAG13 <a id="iag13"></a> | shipped | concurrent misuse of one Interpreter corrupts instead of failing |
 | IAG14 <a id="iag14"></a> | deferred | per-entry cost surface for bounding a model cache in bytes |
-| IAG15 <a id="iag15"></a> | open | the published message-address policy has no home both publishing seams can reach |
+| IAG15 <a id="iag15"></a> | deferred | the published message-address policy has no home both publishing seams can reach |
 | IRG1 <a id="irg1"></a> | deferred | publish the separate Kernel drop-in artifact |
 | IRG2 <a id="irg2"></a> | shipped | deploy the showcase semantics badge after v0.9.1 |
 | IRG3 <a id="irg3"></a> | shipped | make both Kotlin ABI goldens member-level |
