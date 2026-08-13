@@ -43,7 +43,12 @@ class PartialSumOfProductsPerfTest {
     @TimesInterpreterEntryPoint("validatePart", Document::class, Set::class, String::class)
     fun completeConcreteEnumerationStaysSubQuadraticAndBeatsTheKernel() {
         KernelAdvantage.assertBeatsKernelAndScales(
-            "partial-SOP/complete-concrete", measure(SMALL), measure(LARGE))
+            label = "partial-SOP/complete-concrete",
+            smallN = SMALL,
+            largeN = LARGE,
+            identityAt = { rows -> "cart SumOfProducts over $rows complete-concrete Lines rows" },
+            readAt = ::measure,
+        )
     }
 
     private fun measure(rows: Int): KernelAdvantage.Reading {

@@ -38,26 +38,13 @@ class PerfGateTest {
         identityAt: (Int) -> String, large: Int = small * 4, clock: String = CPU_CLOCK,
         measureAt: (Int) -> Double,
     ) {
-        val accepted = PerfHarness.assertGrowthBelowCatastropheFloor(label, culprit) {
-            PerfHarness.pairedGrowth(small, large, measureAt = measureAt).also { g ->
-                println("[perf] %s → %s %s: %.1fms@%d → %.1fms@%d %s  median-growth=%.2f× (linear≈4, quadratic≈16)"
-                    .format(Locale.ROOT, identityAt(small), identityAt(large), label, g.smallMs, small, g.largeMs, large, unit, g.ratio))
-            }
-        }
-        // The growth ratio above is blind to a UNIFORM slowdown — it is unchanged at every factor — so the same
-        // accepted medians are also held against this runner class's committed anchor (IF280).
-        for ((scale, observed) in listOf(small to accepted.smallMs, large to accepted.largeMs)) {
-            PerfAnchors.assertWithinBudget(
-                ObservationKey(
-                    lane = label,
-                    identityLabel = identityAt(scale),
-                    n = scale,
-                    engine = "interpreter",
-                    clock = clock,
-                ),
-                observed,
-            ) { PerfHarness.medianOf(PerfBounds.GROWTH_PAIRS) { measureAt(scale) } }
-        }
+        // The body of this helper is now `PerfHarness.assertSubQuadraticLane`. It lived here, private, which is
+        // precisely why seven other routine-tier classes measured and recorded nothing (IF296): the record-and-arm
+        // step was not reachable from them. Kept as a thin delegate so this class's 19 call sites stay readable.
+        PerfHarness.assertSubQuadraticLane(
+            label = label, small = small, identityAt = identityAt, culprit = culprit,
+            large = large, clock = clock, unit = unit, measureAt = measureAt,
+        )
     }
 
     /**

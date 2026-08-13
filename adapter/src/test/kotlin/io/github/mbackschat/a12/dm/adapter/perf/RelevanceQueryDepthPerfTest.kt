@@ -41,17 +41,18 @@ class RelevanceQueryDepthPerfTest {
             Triple(interpreter, doc, relevant)
         }
 
-        val accepted = PerfHarness.assertGrowthBelowCatastropheFloor(
-            "relevance query over model depth ${DEPTHS.first()} -> ${DEPTHS.last()}",
+        val accepted = PerfHarness.assertSubQuadraticLane(
+            label = "relevance query over model depth",
+            small = DEPTHS.first(),
+            large = DEPTHS.last(),
+            identityAt = { depth -> "nested non-repeatable model depth=$depth, deep-only relevant set" },
             culprit = "the relevance query enumerating wildcard/concrete combinations of the DEPTH instead of " +
                 "probing the patterns the caller's relevant set actually contains",
-        ) {
-            PerfHarness.pairedGrowth(DEPTHS.first(), DEPTHS.last()) { depth ->
-                val (interpreter, doc, relevant) = prepared.getValue(depth)
-                PerfHarness.measureCurrentThreadCpu(warmup = 0, iters = REPEATS) {
-                    interpreter.validatePart(doc, relevant)
-                }.medianMs
-            }
+        ) { depth ->
+            val (interpreter, doc, relevant) = prepared.getValue(depth)
+            PerfHarness.measureCurrentThreadCpu(warmup = 0, iters = REPEATS) {
+                repeat(BATCH) { interpreter.validatePart(doc, relevant) }
+            }.medianMs
         }
 
         // A ratio over two unmeasurably small numbers passes no matter what the engine did. The correct query is
@@ -67,6 +68,15 @@ class RelevanceQueryDepthPerfTest {
     private companion object {
         const val CODE = "DEEP"
         const val REPEATS = 3
+
+        /**
+         * Calls per timed block. One correct query at these depths costs ~0.02 ms, and the absolute anchor carries
+         * a **1 ms** slack term so a sub-millisecond lane cannot flap on a fraction of a millisecond — which would
+         * have left this lane's anchor guarding "under 1.06 ms" against a 0.06 ms observation, decorative rather
+         * than a bar. Batching lifts the recorded median clear of the slack without changing what is measured: the
+         * growth ratio is a quotient, so a constant factor on both scales cancels exactly.
+         */
+        const val BATCH = 50
 
         /** Doubling the depth multiplies an exponential query's probes by `2^12`, and a bounded one by ~2. */
         val DEPTHS = listOf(12, 24)

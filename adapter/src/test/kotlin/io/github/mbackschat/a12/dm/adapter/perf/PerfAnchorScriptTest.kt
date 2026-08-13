@@ -261,6 +261,57 @@ $body
         )
     }
 
+    /**
+     * **With no arguments the refresh must pick the newest run by its STAMP, across every recorded environment.**
+     *
+     * This is the no-argument path — the one a maintainer actually types — and it was the only path with no case
+     * here, which is exactly where the defect was. The default selection sorted whole PATHS, so the environment
+     * directory sorted ahead of the timestamp and `linux-amd64-ci/…` beat every `darwin-aarch64/…` no matter how
+     * old it was. Measured 2026-08-13 on the real tree: a gate run finished seconds earlier, the refresh ignored
+     * it, and rewrote the *linux* block from a stale record — downgrading a committed 2-run median to a 1-run
+     * block on different silicon.
+     */
+    @Test
+    fun theDefaultInputIsTheNewestRunByStampAcrossEveryEnvironment() {
+        val anchor = anchorCarrying(laneA to 1.0)
+        val tree = Files.createDirectories(work.resolve("cwd/perf-results"))
+        // The older run sits in the directory that sorts LAST, so a path-ordered selection prefers it.
+        Files.createDirectories(tree.resolve("zz-late-alphabetically"))
+        Files.writeString(
+            tree.resolve("zz-late-alphabetically/2026-01-01T000000Z.jsonl"),
+            recordText("zz-late-alphabetically", laneA to 9.99),
+        )
+        Files.createDirectories(tree.resolve("aa-early-alphabetically"))
+        Files.writeString(
+            tree.resolve("aa-early-alphabetically/2026-12-31T235959Z.jsonl"),
+            recordText("aa-early-alphabetically", laneA to 1.23),
+        )
+
+        val run = run("refresh", anchor, emptyList(), resultsDirectory = tree)
+
+        assertEquals(0, run.status, "the refresh failed: ${run.stderr}")
+        assertTrue(
+            blocksIn(anchor).contains("aa-early-alphabetically"),
+            "the newest run by stamp (2026-12-31, in the directory that sorts FIRST) must be the default input; " +
+                "the refresh chose ${blocksIn(anchor)} instead, so it is ordering by path rather than by stamp",
+        )
+        assertEquals(
+            mapOf(laneA to 1.23), observationsOf(anchor, "aa-early-alphabetically"),
+            "and it must anchor from that run's numbers",
+        )
+    }
+
+    /** One run header plus its observations, as the record's JSON-Lines text. */
+    private fun recordText(environment: String, vararg medians: Pair<String, Double>): String = buildString {
+        appendLine(
+            """{"kind":"run","environment":"$environment","os":"Linux","arch":"amd64","processors":4,""" +
+                """"machine":"AMD EPYC 7763"}""",
+        )
+        medians.forEach { (key, ms) ->
+            appendLine("""{"kind":"observation","environment":"$environment","key":"$key","medianMs":$ms}""")
+        }
+    }
+
     private fun observations(
         name: String,
         vararg medians: Pair<String, Double>,
@@ -286,11 +337,18 @@ $body
     private fun refresh(anchor: Path, vararg inputs: Path, allowRemovals: Boolean = false) =
         run("refresh", anchor, inputs.toList(), allowRemovals)
 
-    private fun run(mode: String, anchor: Path, inputs: List<Path>, allowRemovals: Boolean = false): Result {
+    private fun run(
+        mode: String,
+        anchor: Path,
+        inputs: List<Path>,
+        allowRemovals: Boolean = false,
+        resultsDirectory: Path? = null,
+    ): Result {
         val process = ProcessBuilder(listOf(script.toString(), mode) + inputs.map { it.toString() })
             .apply {
                 environment()["ANCHOR_FILE"] = anchor.toString()
                 if (allowRemovals) environment()["ALLOW_REMOVALS"] = "1"
+                resultsDirectory?.let { environment()["RESULTS_DIR"] = it.toString() }
             }
             .start()
         val stdout = process.inputStream.bufferedReader().readText()

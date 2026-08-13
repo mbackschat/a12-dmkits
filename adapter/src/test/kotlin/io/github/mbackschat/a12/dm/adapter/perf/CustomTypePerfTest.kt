@@ -90,10 +90,12 @@ class CustomTypePerfTest {
         // Re-measured before failing — same reason as the sibling charset guard: it runs unattended on a shared
         // hosted runner in the nightly (routine tier since 2026-08-13; previously untagged and run on every
         // build), and only a real O(N²) regression reproduces across attempts.
-        PerfHarness.assertGrowthBelowCatastropheFloor("custom-type validation") {
-            PerfHarness.pairedGrowth(N_SMALL, N_SMALL * 4) { n ->
-                PerfHarness.measureCurrentThreadCpu(warmup = 0, iters = REPEATS) { run(docs.getValue(n)) }.medianMs
-            }
+        PerfHarness.assertSubQuadraticLane(
+            label = "custom-type validation",
+            small = N_SMALL,
+            identityAt = { n -> "custom-type IBAN rows n=$n" },
+        ) { n ->
+            PerfHarness.measureCurrentThreadCpu(warmup = 0, iters = REPEATS) { run(docs.getValue(n)) }.medianMs
         }
     }
 

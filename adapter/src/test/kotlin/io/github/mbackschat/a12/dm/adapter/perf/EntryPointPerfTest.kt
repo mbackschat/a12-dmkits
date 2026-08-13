@@ -161,7 +161,12 @@ class EntryPointPerfTest {
             kernel: (RuntimeLaws.KernelEngine, DocumentV2) -> Unit,
         ) {
             PerfHarness.preflight(scenario, large)
-            val readings = listOf(small, large).map { n ->
+            KernelAdvantage.assertBeatsKernelAndScales(
+                label = label,
+                smallN = small,
+                largeN = large,
+                identityAt = { n -> PerfHarness.measurementLabel(scenario, n) },
+            ) { n ->
                 val iDoc = interpDoc(n)
                 val kDoc = kernelDoc(n)
                 KernelAdvantage.read(
@@ -170,7 +175,6 @@ class EntryPointPerfTest {
                     kernel = { kernel(this.kernel, kDoc) },
                 )
             }
-            KernelAdvantage.assertBeatsKernelAndScales(label, readings[0], readings[1])
         }
     }
 

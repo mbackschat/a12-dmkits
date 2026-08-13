@@ -40,18 +40,19 @@ class StarRelevanceReductionPerfTest {
         val relevantSets = listOf(PATTERNS, PATTERNS * 2).associateWith { relevantSet(it) }
         relevantSets.values.forEach { set -> repeat(WARMUP) { DmInterpreter(model).validatePart(document, set) } }
 
-        val accepted = PerfHarness.assertGrowthBelowCatastropheFloor(
-            "star-relevance dominance reduction, $PATTERNS -> ${PATTERNS * 2} distinct wildcard patterns",
+        val accepted = PerfHarness.assertSubQuadraticLane(
+            label = "star-relevance dominance reduction",
+            small = PATTERNS,
+            large = PATTERNS * 2,
+            identityAt = { patterns -> "antichain depth=$DEPTH wildcards=$WILDCARDS patterns=$patterns" },
             culprit = "the dominance scan comparing every candidate against every pattern (entities x patterns) " +
                 "instead of short-circuiting on the antichain",
             floor = QUADRATIC_FLOOR,
-        ) {
-            PerfHarness.pairedGrowth(PATTERNS, PATTERNS * 2) { patterns ->
-                val relevant = relevantSets.getValue(patterns)
-                PerfHarness.measureCurrentThreadCpu(warmup = 0, iters = REPEATS) {
-                    DmInterpreter(model).validatePart(document, relevant)
-                }.medianMs
-            }
+        ) { patterns ->
+            val relevant = relevantSets.getValue(patterns)
+            PerfHarness.measureCurrentThreadCpu(warmup = 0, iters = REPEATS) {
+                DmInterpreter(model).validatePart(document, relevant)
+            }.medianMs
         }
 
         // A ratio over two unmeasurably small numbers passes whatever the reduction did. The antichain is built

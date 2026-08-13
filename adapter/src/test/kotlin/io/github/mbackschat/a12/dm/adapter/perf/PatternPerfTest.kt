@@ -37,12 +37,15 @@ class PatternPerfTest {
 
     @Test
     fun patternHeavyValidationStaysSubQuadratic() {
-        PerfHarness.assertGrowthBelowCatastropheFloor(
-            "pattern-heavy validation", "the distinct-pattern cache or the per-row match path",
-        ) {
-            PerfHarness.pairedGrowth(N, N * 4) { rows ->
-                PerfHarness.timeInterpreter(scenario, rows, warmup = 2, iters = 3).medianMs
-            }
+        PerfHarness.assertSubQuadraticLane(
+            label = "pattern-heavy validation",
+            small = N,
+            identityAt = { rows -> PerfHarness.measurementLabel(scenario, rows) },
+            culprit = "the distinct-pattern cache or the per-row match path",
+            clock = "wall",
+            unit = "rows",
+        ) { rows ->
+            PerfHarness.timeInterpreter(scenario, rows, warmup = 2, iters = 3).medianMs
         }
     }
 

@@ -53,7 +53,17 @@ shift || true
 if [ "$#" -eq 0 ]; then
     # Ordered by the filename's UTC stamp, never by mtime: a clone, checkout or stash rewrites mtime, which would
     # make "newest" depend on when the tree was materialized rather than when the run happened.
-    newest="$(find perf-results -name '*.jsonl' -type f 2>/dev/null | sort | tail -1)"
+    #
+    # Sorted on the BASENAME, not the path. Sorting whole paths puts the environment DIRECTORY ahead of the stamp,
+    # so with more than one recorded environment "newest" degenerates to "whichever directory name sorts last" —
+    # `perf-results/linux-amd64-ci/…` beats every `perf-results/darwin-aarch64/…` however old it is. Measured
+    # 2026-08-13: a fresh local gate run was ignored and the refresh silently rewrote the LINUX block instead,
+    # downgrading a committed 2-run median to a 1-run block measured on different silicon.
+    # RESULTS_DIR is overridable for the same reason ANCHOR_FILE is: this script `cd`s to the repo root, so the
+    # default-input path cannot otherwise be executed by a test — and it was the one path with no case, which is
+    # where the path-sort defect survived.
+    newest="$(find "${RESULTS_DIR:-perf-results}" -name '*.jsonl' -type f 2>/dev/null \
+        | awk -F/ '{ print $NF "\t" $0 }' | sort | tail -1 | cut -f2-)"
     [ -n "$newest" ] || { echo "no recorded runs under perf-results/ — run scripts/perf.sh gate first" >&2; exit 1; }
     set -- "$newest"
 fi

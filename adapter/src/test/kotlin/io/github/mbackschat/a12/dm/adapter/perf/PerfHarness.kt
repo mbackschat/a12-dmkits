@@ -466,8 +466,18 @@ internal class SteadyStateWarmUp(private val budget: WarmUpBudget) {
 }
 
 /** The result of the IF137-ratified [PerfHarness.pairedGrowth] estimator: the median within-pair growth [ratio]
- *  and a representative [smallMs]/[largeMs] (the medians across pairs) for the log line. */
-data class Growth(val ratio: Double, val smallMs: Double, val largeMs: Double)
+ *  and a representative [smallMs]/[largeMs] (the medians across pairs) for the log line.
+ *
+ *  [smallN]/[largeN] carry the scales the two medians were measured at, so a caller that wants to ANCHOR them does
+ *  not have to thread the scales separately and cannot pair a median with the wrong one. They default to zero for
+ *  the harness's own unit tests, which script the ratios rather than measuring them. */
+data class Growth(
+    val ratio: Double,
+    val smallMs: Double,
+    val largeMs: Double,
+    val smallN: Int = 0,
+    val largeN: Int = 0,
+)
 
 /** A complete same-run N/4N comparison, paired independently for all three engines. */
 data class PairedPerfCurve(
@@ -812,11 +822,100 @@ object PerfHarness {
             val l = checkedGrowthObservation(measureAt(large), large, i)
             smalls[i] = s; larges[i] = l; ratios[i] = l / s
         }
-        return Growth(median(ratios), median(smalls), median(larges))
+        return Growth(median(ratios), median(smalls), median(larges), smallN = small, largeN = large)
+    }
+
+    /**
+     * **A routine-tier growth lane: assert the floor AND record both endpoints against this runner class's anchor.**
+     *
+     * This is the seam every `@Tag("perf")` growth bar goes through, and it exists because seven of the nine
+     * routine-tier classes recorded *nothing*: the record-and-arm step lived in one class's private helper, so
+     * every other lane could measure, pass, and leave no trace. `perf-history.sh`, the change-point detection, the
+     * cross-engine margin band and the absolute anchor are all built on the record, which made those lanes
+     * invisible to every trend instrument the project has (IF296).
+     *
+     * **Why both halves are needed, and neither substitutes for the other.** A growth ratio is blind to a UNIFORM
+     * slowdown — it is unchanged at every constant factor — so a 2x-slower engine passes the floor forever. The
+     * absolute anchor catches exactly that, and only within one runner class, which is why it is keyed by
+     * [PerfEnvironment] and asserted only in the isolated single-fork lane.
+     *
+     * [identityAt] must produce a label that changes when the measured WORK changes (a scenario fingerprint, not a
+     * prose name): the label is part of the anchor key, so a scenario whose content moves drops its anchor rather
+     * than silently comparing new work against an old number.
+     */
+    fun assertSubQuadraticLane(
+        label: String,
+        small: Int,
+        identityAt: (Int) -> String,
+        culprit: String? = null,
+        large: Int = small * 4,
+        clock: String = "cpu",
+        engine: String = "interpreter",
+        floor: Double = PerfBounds.SUB_QUADRATIC_MAX,
+        unit: String? = null,
+        measureAt: (Int) -> Double,
+    ): Growth {
+        val accepted = assertGrowthBelowCatastropheFloor(label, culprit, floor) {
+            pairedGrowth(small, large, measureAt = measureAt).also { g ->
+                if (unit != null) {
+                    println(
+                        "[perf] %s → %s %s: %.1fms@%d → %.1fms@%d %s  median-growth=%.2f× (linear≈4, quadratic≈16)"
+                            .format(Locale.ROOT, identityAt(small), identityAt(large), label,
+                                g.smallMs, small, g.largeMs, large, unit, g.ratio),
+                    )
+                }
+            }
+        }
+        anchorBothEndpoints(label, identityAt, clock, engine, accepted, small, large, measureAt)
+        return accepted
+    }
+
+    /**
+     * Anchor a lane's two endpoints, recording **both** before letting either one fail.
+     *
+     * The order matters and is not cosmetic. `assertWithinBudget` records an unanchored observation and then
+     * rethrows, so anchoring endpoint-by-endpoint means a lane whose small scale is unanchored never records its
+     * large one — and `perf-anchor.sh` can only author keys the record contains. Arming a new lane then costs TWO
+     * full gate runs, a class with two lanes four, and the 13 lanes added on 2026-08-13 would have needed roughly
+     * half an hour of 4-minute gates to arm. Collecting the failure and rethrowing after both have recorded makes
+     * one run enough, and loses nothing: the same exception still fails the same test.
+     */
+    private fun anchorBothEndpoints(
+        label: String,
+        identityAt: (Int) -> String,
+        clock: String,
+        engine: String,
+        accepted: Growth,
+        small: Int,
+        large: Int,
+        measureAt: (Int) -> Double,
+    ) {
+        var failure: Throwable? = null
+        for ((scale, observed) in listOf(small to accepted.smallMs, large to accepted.largeMs)) {
+            try {
+                PerfAnchors.assertWithinBudget(
+                    ObservationKey(
+                        lane = label,
+                        identityLabel = identityAt(scale),
+                        n = scale,
+                        engine = engine,
+                        clock = clock,
+                    ),
+                    observed,
+                ) { medianOf(PerfBounds.GROWTH_PAIRS) { measureAt(scale) } }
+            } catch (unanchored: UnanchoredObservationException) {
+                if (failure == null) failure = unanchored else failure.addSuppressed(unanchored)
+            }
+        }
+        failure?.let { throw it }
     }
 
     /**
      * Assert a growth estimate stays under a CATASTROPHE floor, **re-measuring before it fails**.
+     *
+     * The low-level primitive. A routine-tier lane calls [assertSubQuadraticLane] instead, which adds the
+     * record-and-arm step; this one stays public for the harness's own unit tests (which script their ratios and
+     * must not record) and for the checkpoint tier.
      *
      * The floor exists to catch an algorithmic blowup: linear medians ≈4x, quadratic ≈16x, and the trip line
      * sits at [PerfBounds.SUB_QUADRATIC_MAX] between them. A contended CI slice inflates one estimate by a few

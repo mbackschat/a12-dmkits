@@ -70,11 +70,12 @@ class CharsetPerfTest {
         // reason read "runs on every build including shared CI"; the retry matters just as much now, only the
         // shared machine is the runner rather than the push lane.) A virtual-call blowup is ~16x and breaches
         // every attempt, so the floor is unchanged and no false green is admitted.
-        PerfHarness.assertGrowthBelowCatastropheFloor("BMP") { medianWithinPairGrowth(LegalCharset.BMP) }
-        PerfHarness.assertGrowthBelowCatastropheFloor("grapheme") { medianWithinPairGrowth(dinWithGraphemes) }
+        assertCharsetGrowthLane("BMP", LegalCharset.BMP)
+        assertCharsetGrowthLane("grapheme", dinWithGraphemes)
     }
 
-    private fun medianWithinPairGrowth(charset: LegalCharset): Growth {
+    /** One charset's N/4N lane: exact-semantics preflight, warm, then the shared growth floor + anchor. */
+    private fun assertCharsetGrowthLane(label: String, charset: LegalCharset) {
         val nModel = model(GROWTH_N)
         val fourNModel = model(GROWTH_N * 4)
         val nEngine = DmInterpreter(nModel, legalCharset = charset)
@@ -87,7 +88,12 @@ class CharsetPerfTest {
         assertClean(runN(), "N semantic preflight")
         assertClean(runFourN(), "4N semantic preflight")
         repeat(WARM) { runN(); runFourN() }
-        return PerfHarness.pairedGrowth(GROWTH_N, GROWTH_N * 4) { rows ->
+        PerfHarness.assertSubQuadraticLane(
+            label = "charset $label",
+            small = GROWTH_N,
+            identityAt = { rows -> "charset $label grapheme rows n=$rows" },
+            culprit = "the per-code-point membership test regressing to a virtual call",
+        ) { rows ->
             val run = if (rows == GROWTH_N) ::runN else ::runFourN
             PerfHarness.measureCurrentThreadCpu(warmup = 0, iters = REPEATS) { run() }.medianMs
         }
