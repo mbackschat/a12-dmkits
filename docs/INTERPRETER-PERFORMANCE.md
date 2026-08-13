@@ -570,9 +570,19 @@ The IG128 slice ([IF289](INTERPRETER-FINDINGS.md#if289)). Machine `Macmini9,1 Ap
 | `EffectiveRelevanceIndex.projectedKey` | — (did not exist) | **8.23 %**, now the top frame |
 | `ArrayList.hashCodeRange` + `equalsArrayList` | 2.80 % | 7.24 % |
 
+**The second half, same day: the probe key itself.** With the string building gone, `projectedKey` was the top frame, so the tuple became an `IntArray`-backed key with a REUSED probe instance:
+
+| | `validatePart` calls in ~20 s |
+|---|---|
+| original | 3,329 |
+| after the level plan | 11,108 |
+| after the primitive key | **11,880** (**3.57x** cumulative) |
+
+`projectedKey`, `ArrayList.hashCodeRange` and `ArrayList.equalsArrayList` all leave the top-18 self frames; `RepKey.reset` + `RepKey.hashCode` cost **6.57 %** where those three cost **15.47 %**.
+
 **The method note is the durable part of this checkpoint.** IG128 was written from `perf-keys.sh`, which reports the nearest interpreter caller of a `java.util.*` **key mechanic**. `isRelevantWithin` topped that view at 12 %, and the row recorded the list key as the cost. It was not: that instrument filters by mechanism, so it ranks callers **within** the hashing family and is blind by construction to the string building that turned out to dominate. A hot frame it surfaces still needs a plain self-time profile before its cost is explained — the two views answer different questions and only the second one apportions.
 
-The list-key mechanics are now proportionally larger than before precisely because the string work is gone; that half of IG128 is real, unfixed, and stays open.
+The list-key mechanics were proportionally larger once the string work was gone, which is what promoted them to the top frame and made the second half worth doing the same day.
 
 ### Checkpoint 2026-08-13 — the over-repetition prelude, and a load asymmetry that inverted the reading
 
@@ -620,7 +630,7 @@ Top self frames are the mechanic itself: `ArrayList.hashCodeRange` 1.46 %, `Arra
 
 **`indexColumns` is closed as cold, and this time the 0.36 % is a measurement**: the frame is present, so the memo was consulted, which is exactly what its previous 0 could not establish. **`decided`, the group-relevance map, and `rows` remain unmeasured** — no frame carries them on this run, and `rows` needs an `RepetitionNotUnique`/index-group model this driver does not build. `CascadeOverlay.rowsAt`'s 0 is stated rather than folded in, because reading it as "cheap" would repeat the precise error that reopened IG126.
 
-**The 12 % member is not a memo key at all.** `isRelevantWithin` walks each path prefix and, for every relevance pattern at that depth, builds a **fresh `List<Int>`** (`mapIndexed`) and probes a `HashSet<List<Int>>`. So the cost is `depth × patterns` allocations-plus-list-hashes per relevance question, and relevance is asked per cell. It is [IF284](INTERPRETER-FINDINGS.md#if284)'s shape with yet another multiplier, on a path no profile had covered — the third time this class's real members turned up by profiling rather than by enumeration. Owned as [IG128](INTERPRETER-GAPS.md).
+**The 12 % member is not a memo key at all.** `isRelevantWithin` walks each path prefix and, for every relevance pattern at that depth, builds a **fresh `List<Int>`** (`mapIndexed`) and probes a `HashSet<List<Int>>`. So the cost is `depth × patterns` allocations-plus-list-hashes per relevance question, and relevance is asked per cell. It is [IF284](INTERPRETER-FINDINGS.md#if284)'s shape with yet another multiplier, on a path no profile had covered — the third time this class's real members turned up by profiling rather than by enumeration. *(Superseded 2026-08-13: this mechanism reading is wrong — the list key was ~2.8 % and the dominant cost was prefix-string building. See [IF289](INTERPRETER-FINDINGS.md#if289) and the checkpoint of that date; both halves have since shipped.)*
 
 ### Checkpoint 2026-08-12 — the cross-engine margin's low tail, over 27 runs instead of three
 

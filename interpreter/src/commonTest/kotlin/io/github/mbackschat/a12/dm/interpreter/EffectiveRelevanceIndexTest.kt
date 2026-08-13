@@ -87,6 +87,29 @@ class EffectiveRelevanceIndexTest {
         )
     }
 
+    /**
+     * **The reusable probe key must not leak into what it probes.** One `RepKey` instance is refilled for every
+     * `(depth, pattern)` lookup, which is only safe because `Set.contains` never retains its argument. The
+     * discriminator is an INTERLEAVED sequence: a miss between two hits, and a repeat of the first query at the
+     * end. A probe that was captured by a bucket, or one whose stale `length` survived a shorter query, changes a
+     * later answer rather than its own — so a single query, or a run of identical ones, would not show it.
+     */
+    @Test
+    fun theReusableProbeKeyDoesNotDisturbLaterQueries() {
+        val relevance = index(RelevantEntity(SKU, listOf(1, 2, 1)), RelevantEntity(ORDER, listOf(7)))
+        assertEquals(
+            listOf(true, false, true, true, false),
+            listOf(
+                relevance.isRelevant(SKU, listOf(1, 2, 1)),        // hit at depth 3
+                relevance.isRelevant(SKU, listOf(1, 5, 1)),        // miss, same path
+                relevance.isRelevant(SKU, listOf(7, 9, 1)),        // hit at depth 1, a SHORTER probe
+                relevance.isRelevant(SKU, listOf(1, 2, 1)),        // the first query again, still a hit
+                relevance.isRelevant(SKU, listOf(1, 5, 1)),        // and the miss is still a miss
+            ),
+            "each lookup must see the buckets exactly as the previous one left them",
+        )
+    }
+
     private fun index(
         vararg entities: RelevantEntity,
         globalFields: Set<String> = emptySet(),
