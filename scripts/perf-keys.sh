@@ -18,6 +18,7 @@
 #   scripts/perf-keys.sh validate            # profile the validate driver (complexRealWorld), then report
 #   scripts/perf-keys.sh compute             # profile the compute driver (CO-correlation), then report
 #   scripts/perf-keys.sh validate-partial    # profile PARTIAL validation over a semantic-index model (IG126)
+#   scripts/perf-keys.sh validate-memos      # PARTIAL over a starred + RepetitionNotUnique model (IF290; now IG129)
 #   scripts/perf-keys.sh <recording.jfr>     # report on an existing recording; measures nothing
 #   scripts/perf-keys.sh validate Foo.bar    # add frames to the by-caller view (repeatable)
 #
@@ -28,7 +29,7 @@ set -uo pipefail
 cd "$(dirname "$0")/.."
 
 mode="${1:-}"
-[ -n "$mode" ] || { echo "usage: $0 <validate|compute|recording.jfr> [frame ...]" >&2; exit 2; }
+[ -n "$mode" ] || { echo "usage: $0 <validate|validate-partial|validate-memos|compute|recording.jfr> [frame ...]" >&2; exit 2; }
 shift || true
 
 out="build/perf-keys"
@@ -45,6 +46,9 @@ case "$mode" in
     # "Empty and unread in a FULL validation"; the group-relevance map is only built by validatePart), so a
     # 0 read off those profiles was guaranteed rather than measured.
     validate-partial) test_filter="*EvalProfileTest.loopPartialSemanticIndexForProfiler"; jfr="$PWD/$out/validate-partial-$stamp.jfr" ;;
+    # The memo probe (IF290): a starred operand plus an RNU rule, both under validatePart — the only path that
+    # builds `starRelevantOf.decided`, the group-relevance cache, and the RNU row cache.
+    validate-memos) test_filter="*EvalProfileTest.loopPartialMemoProbeForProfiler"; jfr="$PWD/$out/validate-memos-$stamp.jfr" ;;
     *.jfr)    test_filter=""; jfr="$mode" ;;
     *)        echo "unknown mode '$mode' — see the header of $0" >&2; exit 2 ;;
 esac

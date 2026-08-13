@@ -68,22 +68,37 @@ class EvalProfileTest {
      * narrower set would measure less of the memo, not more of it.
      */
     @Test
-    fun loopPartialSemanticIndexForProfiler() {
-        val scenario = PerfCatalog.semanticIndexPerRow()
-        val n = System.getProperty("perf.n", "1000").toInt()
+    fun loopPartialSemanticIndexForProfiler() =
+        profilePartial(PerfCatalog.semanticIndexPerRow(),
+            System.getProperty("perf.n", "1000").toInt(), "semanticIndex")
+
+    /**
+     * **PARTIAL validation over the memo probe** — the driver for the three memos [IF290] closed, which the
+     * semantic-index driver above cannot reach: `starRelevantOf`'s `decided` needs a starred operand evaluated in
+     * partial mode, `groupRelevanceOf`'s cache is built only by `validatePart`, and `RepetitionNotUniqueEvaluator`
+     * needs an RNU rule. [PerfCatalog.partialMemoProbe] carries both constructs and populates real duplicate
+     * clusters, so a 0 read here is a measurement rather than a scenario that could not execute the code.
+     */
+    @Test
+    fun loopPartialMemoProbeForProfiler() =
+        profilePartial(PerfCatalog.partialMemoProbe(), System.getProperty("perf.n", "1000").toInt(), "memo-probe")
+
+    private fun profilePartial(scenario: PerfScenario, n: Int, label: String) {
         val measurement = PerfHarness.measurementLabel(scenario, n)
         val model = scenario.interpModel
         val doc = model.newDocument()
         scenario.instance(doc.asSink(), n, 0)
         val interp = DmInterpreter(model)
-        // Derived from the model rather than a path literal, so the driver cannot drift from the scenario it
-        // profiles: every declared field, at every repetition.
+        // Derived from the model rather than a path literal, so a driver cannot drift from the scenario it
+        // profiles: every declared field, at every repetition. Wildcarding every repetition maximizes the
+        // CONSULTATIONS of each per-call memo — the quantity these drivers exist to measure — while still running
+        // the partial code path, which keys on `config.cellRelevant != null` rather than on the subset's size.
         val relevant = model.fields.map { RelevantEntity.anyRep(it.path) }.toSet()
         repeat(20) { interp.validatePart(doc, relevant) }
         val deadline = System.nanoTime() + SECONDS * 1_000_000_000L
         var loops = 0
         while (System.nanoTime() < deadline) { interp.validatePart(doc, relevant); loops++ }
-        println("[profile] $measurement partial-semanticIndex @ N=$n: $loops validatePart calls in ~${SECONDS}s")
+        println("[profile] $measurement partial-$label @ N=$n: $loops validatePart calls in ~${SECONDS}s")
     }
 
     private fun profile(scenario: io.github.mbackschat.a12.dm.adapter.perf.PerfScenario, n: Int, label: String) {

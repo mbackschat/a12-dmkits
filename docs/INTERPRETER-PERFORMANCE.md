@@ -547,6 +547,18 @@ The catalog must favor **non-obvious** combinations (nesting × aggregation × c
 
 ## Results log
 
+### Checkpoint 2026-08-13 — the last three list-in-key memos, on a scenario that runs them
+
+Method: `scripts/perf-keys.sh validate-memos` (new mode, driver `EvalProfileTest.loopPartialMemoProbeForProfiler` over `PerfCatalog.partialMemoProbe`), `Macmini9,1 Apple M1`, 1,297 `ExecutionSample`s. The scenario carries a STARRED aggregate and a `RepetitionNotUnique` rule under `validatePart` — the constructs no existing scenario had, which is why these three read 0 before ([IF290](INTERPRETER-FINDINGS.md#if290) closes IG126).
+
+| memo's enclosing frame | present in | reading |
+|---|---|---|
+| `DmInterpreter.starRelevantOf` (holds `decided`) | **5 samples, 0.39 %** | measured cold; frame present through two callers |
+| `DmInterpreter.groupRelevanceOf` (holds the group cache) | **1 sample, 0.08 %** | measured cold; frame present |
+| `RepetitionNotUniqueEvaluator` (holds the row cache) | **534 samples, 41.17 %** | measured HOT |
+
+**Read the denominator before the 41 %:** this probe runs two rules and is built to stress RNU, so that share describes the probe, not a realistic workload. What it isolates is the *shape* of RNU's cost, which no mixed model would separate — and the shape splits into two mechanisms, only one of which is the class being tracked: `ArrayList.hashCodeRange` encloses **16.11 %** of all samples (the two `groupBy` keys), while `MutableBigInteger.divideOneWord` + `divideKnuth` + `BigDecimal.<init>` account for **~14 %** (`rnuNumericKey` re-normalizing every NUMBER key cell per call). The second is not a key mechanic and would never have appeared in the view that opened this class — the same blind spot the 2026-08-13 relevance-query checkpoint records. Owned as IG129.
+
 ### Checkpoint 2026-08-13 — the relevance query: 3.34x, and an instrument that ranked the wrong member
 
 The IG128 slice ([IF289](INTERPRETER-FINDINGS.md#if289)). Machine `Macmini9,1 Apple M1` (8 processors), JDK 21.0.12, `scripts/perf-keys.sh validate-partial` (`SI-cliff` at N=1,000).

@@ -3360,3 +3360,19 @@ Measured on the `validate-partial` driver, both arms without JFR: **3,329 → 11
 A reused mutable key needs a discriminator that a single query cannot supply, because a leak or a stale field changes a LATER answer rather than its own. `theReusableProbeKeyDoesNotDisturbLaterQueries` interleaves a hit, a miss, a **shorter** probe, then repeats the first two — and it does fail on the obvious mutant (`length` updated only when it grows), which also takes two neighbouring tests with it.
 
 *Locked by:* `EffectiveRelevanceIndexTest` — the existing readings plus `eachAncestorLevelIsMatchedAgainstItsOwnTuples`, which puts buckets at two levels of one path and decides three queries at different levels, so a plan that collapsed or mis-indexed them cannot produce the expected triple.
+
+### IF290: the last three list-in-key memos, measured on a scenario built to execute them (2026-08-13; closes IG126) <a id="if290"></a>
+
+IG126 was reopened because four of five memos read 0 on scenarios that structurally could not run them, and a 0 from unreachable code is not evidence of cheapness. `indexColumns` closed on the partial driver; the other three needed constructs no scenario carried. `PerfCatalog.partialMemoProbe` supplies them — a **starred** aggregate and a **`RepetitionNotUnique`** rule, evaluated through `validatePart`, with `Amount` duplicated in pairs so RNU builds real clusters rather than finding none and returning early. Driver `EvalProfileTest.loopPartialMemoProbeForProfiler`, reachable as `scripts/perf-keys.sh validate-memos`; 1,297 `ExecutionSample`s.
+
+| memo | its enclosing frame | reading |
+|---|---|---|
+| `DmInterpreter.starRelevantOf`'s `decided` | **5 samples, 0.39 %** | **measured cold.** The frame is present through two distinct callers (`evalFunc`, `validatePart`), which is what the previous 0 could not establish |
+| `groupRelevanceOf`'s `HashMap<String, HashMap<List<Int>, …>>` | **1 sample, 0.08 %** | **measured cold**, frame present |
+| `RepetitionNotUniqueEvaluator`'s row cache | **534 samples, 41.17 %** | **measured HOT** — see below |
+
+**The denominator matters and is stated rather than buried:** this scenario carries two rules and is built to stress RNU, so 41 % is a share of a probe, not of a realistic workload. What the probe establishes is the *shape* of RNU's cost, which no proportion of a mixed model would isolate.
+
+**Inside that 41 %, two distinct mechanisms, and only one of them is the class IG126 was tracking.** `ArrayList.hashCodeRange` is the immediately-enclosing frame for **16.11 %** of all samples — the `groupBy { it.errorReps.take(scopeLen) }` scope key and the `groupBy { it.key }` cluster key, each a fresh list hashed by walking it. Separately, `MutableBigInteger.divideOneWord` + `divideKnuth` + `BigDecimal.<init>` account for **~14 %**: `rnuNumericKey` re-normalizes every NUMBER key cell through `BigDecimal` on every call. The second is not a key mechanic at all and would never have surfaced in the view that opened this class.
+
+**The disposition is deliberate.** IG126 asked whether these memos had ever been measured on code that runs them; that question is now answered for all five, so it closes. The RNU cost is **newly discovered work with its own mechanisms**, not a leftover of IG126, so it opens its own row (IG129) with a completion gate rather than riding out as a sentence in a closing finding. Note for whoever takes it: `outcomes` runs ONCE per pass and its O(rows) shape is necessary work, so the avoidable part is the key hashing, and the two `groupBy` keys are not equally tractable — the scope prefix is a coordinate tuple, while the cluster key is a `List<KeyAtom?>` whose comparison is the operator's semantics. Split them before optimizing either.

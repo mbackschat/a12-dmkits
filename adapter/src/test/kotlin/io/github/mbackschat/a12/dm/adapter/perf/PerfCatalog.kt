@@ -166,6 +166,41 @@ object PerfCatalog {
         }
     }
 
+    /**
+     * **The partial-validation memo probe** ([IF290], which closed IG126). Three of the list-in-key memos had never been measured
+     * because no scenario executes them: `DmInterpreter.starRelevantOf`'s `decided` needs a STARRED operand
+     * evaluated in PARTIAL mode, `groupRelevanceOf`'s per-group cache is built only by `validatePart`, and
+     * `RepetitionNotUniqueEvaluator`'s row cache needs an RNU rule, which no other scenario carries.
+     *
+     * This model carries both constructs so one partial profile reaches all three. `Amount` is deliberately
+     * DUPLICATED in pairs (`row / 2`) so RNU builds real duplicate clusters rather than finding none and
+     * returning early — a memo measured on a document that never populates it would repeat the vacuous-zero
+     * mistake that had reopened IG126. The index keys stay unique, so no `uniqueIndex` error suppresses the rules.
+     */
+    fun partialMemoProbe(): PerfScenario {
+        val rules = listOf(
+            perfRoot.errorRule("RNU", amount.field(), Dsl.repetitionNotUnique(amount.field())),
+            perfRoot.errorRule("STAR", qty.field(), Dsl.sum(perfRoot.flatten("Lines*/Amount")).gt(1_000_000L)),
+        )
+        val kernelModel = rules.fold(perfJson) { json, r -> TypedRules.inject(json, r) }
+        val interpModel = ModelDef(
+            fields, rules.map { TypedRules.def(it) },
+            repeatableGroups = setOf(LINES, SUBS),
+            declaredReps = mapOf(LINES to DECLARED_MAX, SUBS to DECLARED_MAX),
+            indexFields = setOf(LINE_KEY, SUB_KEY),
+        )
+        val gen = SeedGenerator(interpModel)
+        return PerfScenario("partial-memo-probe", kernelModel, interpModel) { sink, n, _ ->
+            gen.populate(sink, rowsOf = flatRows(n), value = ValueStrategy { field, reps, _ ->
+                when (field.path) {
+                    LINE_KEY -> "K" + reps.joinToString("_")
+                    AMOUNT -> (reps[1] / 2).toString()
+                    else -> "0"
+                }
+            })
+        }
+    }
+
     /** **NDV — `NumberOfDifferentValues` over a large star** (`> 999999`, never fires): one aggregate eval whose
      *  distinct count was computed by a linear scan per element → O(values²). Each Line's Amount is UNIQUE (the
      *  row index) so the distinct set grows to N — the worst case that exposes the quadratic. */
