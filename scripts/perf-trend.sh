@@ -66,7 +66,7 @@ if [ ! -d "$results" ]; then
 fi
 
 PATTERN="${1:-}" ONLY_ENV="${ENV:-}" RESULTS="$results" VIEW="$VIEW" \
-MIN_SIDE="${MIN_SIDE:-3}" MIN_SHIFT="${MIN_SHIFT:-1.15}" Z="${Z:-3.0}" BAND="${BAND:-}" BAND_SIGMA="${BAND_SIGMA:-}" EMIT_FLOORS="${EMIT_FLOORS:-}" python3 - <<'PY'
+MIN_FLOOR="${MIN_FLOOR:-1.5}" MIN_SIDE="${MIN_SIDE:-3}" MIN_SHIFT="${MIN_SHIFT:-1.15}" Z="${Z:-3.0}" BAND="${BAND:-}" BAND_SIGMA="${BAND_SIGMA:-}" EMIT_FLOORS="${EMIT_FLOORS:-}" python3 - <<'PY'
 import json, math, os, statistics, sys
 from pathlib import Path
 
@@ -78,6 +78,7 @@ min_shift = float(os.environ["MIN_SHIFT"])
 z_min = float(os.environ["Z"])
 view = os.environ.get("VIEW", "steps")
 band = float(os.environ["BAND"]) if os.environ.get("BAND") else None
+min_floor = float(os.environ.get("MIN_FLOOR", "1.5"))
 band_sigma = float(os.environ["BAND_SIGMA"]) if os.environ.get("BAND_SIGMA") else None
 # Emitting the floors is the SAME computation the backtest prints, deliberately: a floor authored by one code
 # path and validated by another is two contracts. The backtest is how the sigma is chosen; this writes the
@@ -283,7 +284,14 @@ if view == "ratio":
                 # A floor at or below PARITY is vacuous: the cross-engine gate already fails there, so emitting it
                 # would advertise a warning that can never fire before the build does. Such a row is reported as
                 # having too little headroom to band rather than banded at a number that reads like coverage.
-                if floor > 1.0:
+                #
+                # The bar is MIN_FLOOR rather than parity itself, because "just above 1.0" is vacuous for the same
+                # reason 1.0 is, and it is reachable by a mechanism that is invisible here: when `best_split` misses
+                # a step, the pooled bimodal series' spread explodes and the floor lands just over parity. Measured
+                # on `deepRich@240`, where the SAME step is detected on the groovy arm (runs=11/28, spread ±8.5%)
+                # and missed on the java arm (runs=28, spread ±25.5%), putting its floor at 1.006x. A band emitted
+                # there would read as coverage while being unable to fire before the parity gate does.
+                if floor > min_floor:
                     emitted.setdefault(env, {})[f"{lane}|{scenario}|n={n}|{kernel}|{clock}"] = round(floor, 4)
                 else:
                     unbandable.append((ratio_label(identity), kernel, current, floor))
@@ -311,7 +319,8 @@ if view == "ratio":
         print(json.dumps(doc, indent=2, sort_keys=False))
         for label, kernel, current, floor in unbandable:
             print(f"[skipped] {label} vs {kernel}: median {current:.2f}x leaves a floor of {floor:.2f}x, "
-                  f"at or below parity — too little headroom to band", file=sys.stderr)
+                  f"below the {min_floor:.2f}x a band must clear to be able to fire — too little headroom",
+                  file=sys.stderr)
         sys.exit(0)
 
     if tightest is not None:
