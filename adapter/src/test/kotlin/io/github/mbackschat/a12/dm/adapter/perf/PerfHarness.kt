@@ -569,6 +569,15 @@ object PerfHarness {
      * given prose identities (`"charset BMP grapheme rows n=8000"`), which read fine and carry no fingerprint at
      * all, so a fixture edit would have kept the anchor and compared different work against it.
      */
+    /**
+     * Re-fingerprint an existing `id@version fingerprint=<sha256>` label for a batched lane, preserving the key
+     * grammar `PerfAnchorResourceTest` pins while guaranteeing the key differs from the unbatched one.
+     */
+    private fun rebatchedLabel(label: String, batch: Int): String {
+        val id = label.substringBefore('@')
+        return fingerprintedLabel(id, "$label|batch=$batch")
+    }
+
     fun fingerprintedLabel(id: String, content: String): String {
         require(id.isNotBlank() && ' ' !in id && '|' !in id) { "a lane id must be a single unspaced token: '$id'" }
         val digest = java.security.MessageDigest.getInstance("SHA-256").digest(content.toByteArray())
@@ -874,9 +883,20 @@ object PerfHarness {
         engine: String = "interpreter",
         floor: Double = PerfBounds.SUB_QUADRATIC_MAX,
         unit: String? = null,
+        batch: Int = 1,
         measureAt: (Int) -> Double,
     ): Growth {
         PerfLaneGate.requireMeasuringLane()
+        require(batch >= 1) { "$label: batch must be at least 1" }
+        // [batch] DECLARES how many calls the caller repeats inside its own timed block, and the only thing this
+        // seam does with it is fold it into the KEY. It cannot do the repeating: [measureAt] hands back an
+        // already-timed median, so the loop has to live inside the caller's timed region. What the declaration buys
+        // is that the key can no longer drift from the batch — a batch changes what one observation MEANS, and the
+        // first batched lane was re-keyed by hand while the second was not, whose next gate run then failed against
+        // its own stale anchor. Sampling parameters stay out of the key by the same rule: more warmups or
+        // iterations estimate the SAME quantity, a bigger batch is a different one.
+        val identityForKey: (Int) -> String =
+            if (batch == 1) identityAt else { n -> rebatchedLabel(identityAt(n), batch) }
         val accepted = assertGrowthBelowCatastropheFloor(label, culprit, floor) {
             pairedGrowth(small, large, measureAt = measureAt).also { g ->
                 if (unit != null) {
@@ -888,7 +908,7 @@ object PerfHarness {
                 }
             }
         }
-        anchorBothEndpoints(label, identityAt, clock, engine, accepted, small, large, measureAt)
+        anchorBothEndpoints(label, identityForKey, clock, engine, accepted, small, large, measureAt)
         return accepted
     }
 

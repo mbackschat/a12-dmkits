@@ -48,9 +48,10 @@ class RelevanceQueryDepthPerfTest {
             identityAt = { depth ->
                 PerfHarness.fingerprintedLabel(
                     "relevance-query-depth",
-                    "nested-non-repeatable|depth=$depth|deep-only|${fieldPath(depth)}|batch=$BATCH",
+                    "nested-non-repeatable|depth=$depth|deep-only|${fieldPath(depth)}",
                 )
             },
+            batch = BATCH,
             culprit = "the relevance query enumerating wildcard/concrete combinations of the DEPTH instead of " +
                 "probing the patterns the caller's relevant set actually contains",
         ) { depth ->

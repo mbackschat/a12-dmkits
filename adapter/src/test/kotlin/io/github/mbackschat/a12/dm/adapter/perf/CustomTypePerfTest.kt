@@ -93,12 +93,8 @@ class CustomTypePerfTest {
         PerfHarness.assertSubQuadraticLane(
             label = "custom-type validation",
             small = N_SMALL,
-            identityAt = { n ->
-                // `batch` belongs in the identity: it multiplies what one timed block measures, so a key without
-                // it would hold 8 calls against an anchor authored for 1. Sampling parameters (warmup, iters) are
-                // deliberately NOT here — more samples estimate the same quantity, a bigger batch is a different one.
-                PerfHarness.fingerprintedLabel("custom-type-iban", "$IBAN|customDef|rows=$n|batch=$BATCH")
-            },
+            identityAt = { n -> PerfHarness.fingerprintedLabel("custom-type-iban", "$IBAN|customDef|rows=$n") },
+            batch = BATCH,
         ) { n ->
             PerfHarness.measureCurrentThreadCpu(warmup = 0, iters = REPEATS) {
                 repeat(BATCH) { run(docs.getValue(n)) }
