@@ -93,7 +93,7 @@ class CustomTypePerfTest {
         PerfHarness.assertSubQuadraticLane(
             label = "custom-type validation",
             small = N_SMALL,
-            identityAt = { n -> "custom-type IBAN rows n=$n" },
+            identityAt = { n -> PerfHarness.fingerprintedLabel("custom-type-iban", "$IBAN|customDef|rows=$n") },
         ) { n ->
             PerfHarness.measureCurrentThreadCpu(warmup = 0, iters = REPEATS) { run(docs.getValue(n)) }.medianMs
         }

@@ -44,7 +44,12 @@ class StarRelevanceReductionPerfTest {
             label = "star-relevance dominance reduction",
             small = PATTERNS,
             large = PATTERNS * 2,
-            identityAt = { patterns -> "antichain depth=$DEPTH wildcards=$WILDCARDS patterns=$patterns" },
+            identityAt = { patterns ->
+                PerfHarness.fingerprintedLabel(
+                    "star-relevance-antichain",
+                    "depth=$DEPTH|wildcards=$WILDCARDS|segments=$SEGMENTS|${starred()}|patterns=$patterns",
+                )
+            },
             culprit = "the dominance scan comparing every candidate against every pattern (entities x patterns) " +
                 "instead of short-circuiting on the antichain",
             floor = QUADRATIC_FLOOR,

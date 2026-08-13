@@ -347,6 +347,10 @@ $body
         val process = ProcessBuilder(listOf(script.toString(), mode) + inputs.map { it.toString() })
             .apply {
                 environment()["ANCHOR_FILE"] = anchor.toString()
+                // Cleared, never merely left unset: ProcessBuilder inherits the caller's environment, so a shell
+                // that exported ALLOW_REMOVALS turns every refusal case here into a silent pass. That is not
+                // hypothetical — it happened while re-authoring anchors by hand (2026-08-13).
+                environment().remove("ALLOW_REMOVALS")
                 if (allowRemovals) environment()["ALLOW_REMOVALS"] = "1"
                 resultsDirectory?.let { environment()["RESULTS_DIR"] = it.toString() }
             }

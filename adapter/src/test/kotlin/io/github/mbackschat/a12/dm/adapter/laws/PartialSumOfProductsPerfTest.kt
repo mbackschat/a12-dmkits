@@ -2,6 +2,7 @@ package io.github.mbackschat.a12.dm.adapter.laws
 
 import io.github.mbackschat.a12.dm.adapter.laws.RuntimeLaws.Relevant
 import io.github.mbackschat.a12.dm.adapter.perf.KernelAdvantage
+import io.github.mbackschat.a12.dm.adapter.perf.PerfHarness
 import io.github.mbackschat.a12.dm.adapter.perf.TimesInterpreterEntryPoint
 import io.github.mbackschat.a12.dm.interpreter.DmInterpreter
 import io.github.mbackschat.a12.dm.interpreter.eval.Document
@@ -46,7 +47,9 @@ class PartialSumOfProductsPerfTest {
             label = "partial-SOP/complete-concrete",
             smallN = SMALL,
             largeN = LARGE,
-            identityAt = { rows -> "cart SumOfProducts over $rows complete-concrete Lines rows" },
+            identityAt = { rows ->
+                PerfHarness.fingerprintedLabel("partial-sop-complete-concrete", "cart|Qty*Price|lines=$rows")
+            },
             readAt = ::measure,
         )
     }

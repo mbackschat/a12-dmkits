@@ -76,6 +76,7 @@ internal object KernelAdvantage {
         identityAt: (Int) -> String,
         readAt: (Int) -> Reading,
     ) {
+        PerfLaneGate.requireMeasuringLane()
         var small = readAt(smallN)
         var large = readAt(largeN)
         require(large.n > small.n) { "$label: the large reading must be at a bigger scale than the small one" }

@@ -554,6 +554,27 @@ object PerfHarness {
     fun measurementLabel(scenario: PerfScenario, n: Int, variants: List<Int> = listOf(0)): String =
         scenario.measurementLabel(n, variants)
 
+    /**
+     * The same `id@version fingerprint=<sha256>` label for a lane that builds its **own** fixture rather than
+     * running a [PerfScenario].
+     *
+     * Several routine-tier classes construct a model and document inline — a charset document, an IBAN custom
+     * type, an antichain of wildcard masks — so they have no scenario to derive an identity from. They still need
+     * one, for the reason every key carries a fingerprint: the identity must **change when the measured work
+     * changes**, so that editing a fixture drops its anchor rather than silently comparing new work against an old
+     * number. [content] is therefore whatever describes the work — the shape parameters, the scale, the rule —
+     * and the caller is responsible for it naming everything it varies.
+     *
+     * `PerfAnchorResourceTest` pins the key grammar, and it caught the first version of these lanes: they were
+     * given prose identities (`"charset BMP grapheme rows n=8000"`), which read fine and carry no fingerprint at
+     * all, so a fixture edit would have kept the anchor and compared different work against it.
+     */
+    fun fingerprintedLabel(id: String, content: String): String {
+        require(id.isNotBlank() && ' ' !in id && '|' !in id) { "a lane id must be a single unspaced token: '$id'" }
+        val digest = java.security.MessageDigest.getInstance("SHA-256").digest(content.toByteArray())
+        return "$id@1 fingerprint=" + digest.joinToString("") { "%02x".format(it) }
+    }
+
     /** Time [block], streaming a `<label> …` line before and the `<label> = <ms>` after (live [progress]). */
     inline fun <T> step(label: String, block: () -> T): T {
         progress("[perf] $label …")
@@ -855,6 +876,7 @@ object PerfHarness {
         unit: String? = null,
         measureAt: (Int) -> Double,
     ): Growth {
+        PerfLaneGate.requireMeasuringLane()
         val accepted = assertGrowthBelowCatastropheFloor(label, culprit, floor) {
             pairedGrowth(small, large, measureAt = measureAt).also { g ->
                 if (unit != null) {

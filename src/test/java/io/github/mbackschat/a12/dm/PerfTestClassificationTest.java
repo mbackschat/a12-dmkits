@@ -40,15 +40,19 @@ import org.junit.jupiter.api.Test;
  *       {@code includeTags 'perf'}, which is what {@link #theRoutinePerformanceGateSelectsByTag} pins.</li>
  * </ol>
  *
- * <p><b>The bound of this guard, stated rather than implied.</b> It is deliberately syntactic — a name and a tag,
- * both exact — so it can never produce a false red. It therefore cannot recognize a timing bar written under a
- * neutral name with no tag at all ({@code FooTest} calling {@code PerfHarness.timeInterpreter}), and the estate
- * contains one such assertion today. Several text detectors for "asserts a machine measurement" were tried and
- * each leaked in both directions: the harness's own unit tests call {@code assertWithinBudget} and
- * {@code assertGrowthBelowCatastropheFloor} on scripted values and are correctly untagged, while
- * {@code KernelParityCoverageGuardTest} matched every pattern because it scans the perf sources as text. That
- * residue is <b>not</b> covered by convention — it is open work with a named mechanism (instrument the harness to
- * refuse a real measurement outside an opted-in lane, plus an exact raw-clock API census), tracked as IG131.
+ * <p><b>The bound of this guard, and what covers it.</b> This one is deliberately syntactic — a name and a tag,
+ * both exact — so it can never produce a false red, and it therefore cannot recognize a timing bar written under a
+ * neutral name with no tag at all ({@code FooTest} calling {@code PerfHarness.timeInterpreter}). Several text
+ * detectors for "asserts a machine measurement" were tried and each leaked in both directions: the harness's own
+ * unit tests call {@code assertWithinBudget} and {@code assertGrowthBelowCatastropheFloor} on scripted values and
+ * are correctly untagged, while {@code KernelParityCoverageGuardTest} matched every pattern because it scans the
+ * perf sources as text.
+ *
+ * <p>That residue is closed by two <b>other</b> mechanisms rather than by widening this one (IF297):
+ * {@code PerfLaneGate} refuses at runtime when a real measurement is taken from a class in no lane, and
+ * {@code RawClockCensusTest} reads the sources for the clock APIs themselves — which is the half a runtime seam
+ * cannot see, since a direct {@code System.nanoTime()} never reaches the harness. Both use the same derived
+ * exemption rule as this class, so the three cannot disagree about what a lane is.
  */
 class PerfTestClassificationTest {
 
@@ -210,7 +214,7 @@ class PerfTestClassificationTest {
      * timing assertion at all: {@code PerfGrowthEstimatorTest.currentThreadCpuExcludesBlockedWallTime} deliberately
      * remains there, because it protects the CPU-clock contract every growth floor rests on and must be answered
      * per push. Its exposure is directional — contention only adds wall time and leaves CPU-during-sleep near zero,
-     * so load pushes both of its assertions further into passing. IG131 owns the general residue.
+     * so load pushes both of its assertions further into passing. IF297 owns the general residue.
      */
     @Test
     void theBroadAdapterSuiteExcludesBothPerformanceTiers() throws IOException {

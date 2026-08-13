@@ -18,7 +18,7 @@ import org.junit.jupiter.api.assertThrows
  *
  * The bound to keep in view: that reasoning is directional and specific to this assertion's shape. It is **not** a
  * general licence, and nothing mechanically stops a *new* clock-reading assertion from being added to this lane —
- * `PerfTestClassificationTest` is syntactic and would not see one (see IG131).
+ * `PerfTestClassificationTest` is syntactic and would not see one (see IF297).
  */
 class PerfGrowthEstimatorTest {
 

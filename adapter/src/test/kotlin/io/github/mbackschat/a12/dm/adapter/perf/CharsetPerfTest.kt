@@ -64,13 +64,22 @@ class CharsetPerfTest {
                 "a per-codepoint virtual call regressed")
     }
 
-    @Test fun bmpAndGraphemePathsStayBelowTheFourfoldGrowthCatastropheFloor() {
+    @Test fun theBmpPathStaysBelowTheFourfoldGrowthCatastropheFloor() {
         // Re-measured before failing: routine tier, so the NIGHTLY runs this on a hosted runner, where a
         // contended slice inflates a ratio by a few percent. (Until 2026-08-13 this class was untagged and the
         // reason read "runs on every build including shared CI"; the retry matters just as much now, only the
         // shared machine is the runner rather than the push lane.) A virtual-call blowup is ~16x and breaches
         // every attempt, so the floor is unchanged and no false green is admitted.
         assertCharsetGrowthLane("BMP", LegalCharset.BMP)
+    }
+
+    /**
+     * A SECOND test method, not a second call inside the first (split 2026-08-13). Two lanes in one method meant
+     * the first one's failure aborted before the second recorded anything, so the grapheme lane could not be
+     * armed at all while the BMP lane was still unanchored — visible as `charset grapheme: 0 rows` in a run that
+     * recorded everything else.
+     */
+    @Test fun theGraphemePathStaysBelowTheFourfoldGrowthCatastropheFloor() {
         assertCharsetGrowthLane("grapheme", dinWithGraphemes)
     }
 
@@ -91,7 +100,9 @@ class CharsetPerfTest {
         PerfHarness.assertSubQuadraticLane(
             label = "charset $label",
             small = GROWTH_N,
-            identityAt = { rows -> "charset $label grapheme rows n=$rows" },
+            identityAt = { rows ->
+                PerfHarness.fingerprintedLabel("charset-$label", "$charset|graphemeDoc|rows=$rows")
+            },
             culprit = "the per-code-point membership test regressing to a virtual call",
         ) { rows ->
             val run = if (rows == GROWTH_N) ::runN else ::runFourN
