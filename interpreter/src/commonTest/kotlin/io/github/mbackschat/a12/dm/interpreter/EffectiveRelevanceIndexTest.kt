@@ -65,6 +65,28 @@ class EffectiveRelevanceIndexTest {
         )
     }
 
+    /**
+     * Two levels of ONE path carrying buckets at once — the case the per-path level plan aligns by depth, and the
+     * one a plan built with an off-by-one would answer from the wrong ancestor's tuples. Each reading is decided by
+     * a different level, so a plan that collapsed or mis-indexed them cannot produce this pair.
+     */
+    @Test
+    fun eachAncestorLevelIsMatchedAgainstItsOwnTuples() {
+        val relevance = index(
+            RelevantEntity(LINES, listOf(1, 3)),          // the GROUP level names row 3
+            RelevantEntity(SKU, listOf(1, 2, 1)),         // the FIELD level names row 2
+        )
+        assertEquals(
+            listOf(true, true, false),
+            listOf(
+                relevance.isRelevant(SKU, listOf(1, 2, 1)),   // decided at the field level
+                relevance.isRelevant(SKU, listOf(1, 3, 1)),   // decided at the group level
+                relevance.isRelevant(SKU, listOf(1, 4, 1)),   // named by neither
+            ),
+            "a level's coordinates must be probed against that level's bucket, not another's",
+        )
+    }
+
     private fun index(
         vararg entities: RelevantEntity,
         globalFields: Set<String> = emptySet(),

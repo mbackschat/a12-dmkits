@@ -547,6 +547,33 @@ The catalog must favor **non-obvious** combinations (nesting × aggregation × c
 
 ## Results log
 
+### Checkpoint 2026-08-13 — the relevance query: 3.34x, and an instrument that ranked the wrong member
+
+The IG128 slice ([IF289](INTERPRETER-FINDINGS.md#if289)). Machine `Macmini9,1 Apple M1` (8 processors), JDK 21.0.12, `scripts/perf-keys.sh validate-partial` (`SI-cliff` at N=1,000).
+
+**Throughput, the primary measure** — the driver's own loop count over a fixed 20 s window, both arms run **without** JFR so the pair is symmetric (the first after-reading, 10,611, carried recording overhead and is discarded in favour of a like-for-like one):
+
+| | `validatePart` calls in ~20 s |
+|---|---|
+| before | **3,329** |
+| after | **11,108** |
+| | **3.34x** |
+
+**Where it went.** `EffectiveRelevanceIndex.isRelevantWithin`'s whole subtree fell from **72.84 %** (1,070 of 1,469 samples) to **33.79 %** (513 of 1,518).
+
+| self frame | before | after |
+|---|---|---|
+| `java.lang.StringBuilder.append` | **16.95 %** | 1.84 % |
+| `joinTo` + `joinToString` + `StringBuilder.toString` | 9.94 % | absent from the top 18 |
+| `CollectionsKt.take` / `StringsKt.split` | 3.81 % | absent from the top 18 |
+| `EffectiveRelevanceIndex.isRelevantWithin` itself | 11.16 % | 5.27 % |
+| `EffectiveRelevanceIndex.projectedKey` | — (did not exist) | **8.23 %**, now the top frame |
+| `ArrayList.hashCodeRange` + `equalsArrayList` | 2.80 % | 7.24 % |
+
+**The method note is the durable part of this checkpoint.** IG128 was written from `perf-keys.sh`, which reports the nearest interpreter caller of a `java.util.*` **key mechanic**. `isRelevantWithin` topped that view at 12 %, and the row recorded the list key as the cost. It was not: that instrument filters by mechanism, so it ranks callers **within** the hashing family and is blind by construction to the string building that turned out to dominate. A hot frame it surfaces still needs a plain self-time profile before its cost is explained — the two views answer different questions and only the second one apportions.
+
+The list-key mechanics are now proportionally larger than before precisely because the string work is gone; that half of IG128 is real, unfixed, and stays open.
+
 ### Checkpoint 2026-08-13 — the over-repetition prelude, and a load asymmetry that inverted the reading
 
 The IG127.1 fix ([IF288](INTERPRETER-FINDINGS.md#if288)). Machine `Macmini9,1 Apple M1` (8 processors), JDK 21.0.12.
