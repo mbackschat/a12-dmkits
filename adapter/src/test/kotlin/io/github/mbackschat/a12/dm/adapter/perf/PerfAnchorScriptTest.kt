@@ -160,6 +160,29 @@ class PerfAnchorScriptTest {
         assertEquals(setOf("darwin-aarch64"), blocksIn(anchor), "a refused refresh must write nothing")
     }
 
+    /**
+     * **The probe's own failure sentinel is not an identity either.** [MachineIdentity.UNKNOWN_MODEL] is the literal
+     * `"unknown"` the probe emits when it cannot name the machine, and a truthiness test on the field passes it
+     * straight through. The block it authors is worse than one with no machine at all: `MachineIdentity.check`
+     * falls to its *mismatch* arm, so the lane never asserts **and** reports "captured on unknown ×N and this run
+     * measured on …", which reads as a machine swap rather than as a block that was authored wrong.
+     */
+    @Test
+    fun aRunWhoseMachineProbeFailedCannotAuthorABlockEither() {
+        val anchor = anchorCarrying(laneA to 1.0, laneB to 2.0)
+
+        val run = refresh(
+            anchor,
+            observations("hosted.jsonl", laneA to 2.0, laneB to 4.0, machine = MachineIdentity.UNKNOWN_MODEL),
+        )
+
+        assertNotEquals(0, run.status,
+            "a block whose machine is the probe's failure sentinel is refused by the gated lane forever, so " +
+                "authoring one is the never-fires block this refusal exists to prevent")
+        assertTrue("machine" in run.stderr) { "the refusal must say what is unusable: ${run.stderr}" }
+        assertEquals(setOf("darwin-aarch64"), blocksIn(anchor), "a refused refresh must write nothing")
+    }
+
     /** Two machines' numbers averaged into one anchor is the collision the machine field exists to refuse. */
     @Test
     fun inputsFromDifferentMachinesAreRefused() {

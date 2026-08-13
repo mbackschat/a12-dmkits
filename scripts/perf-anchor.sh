@@ -107,12 +107,23 @@ for input_path in inputs:
                 samples.setdefault(record["key"], []).append(float(record["medianMs"]))
     if header is None:
         sys.exit(f"{input_path} has no run header — it was not written by a complete gate run")
-    if not header.get("machine"):
+    # Two ways a run fails to identify its machine, with DIFFERENT correctives — and a truthiness test only sees
+    # the first. `"unknown"` is the probe's own failure sentinel (MachineIdentity.UNKNOWN_MODEL, emitted when the
+    # OS-level model string cannot be read; reachable on linux-aarch64, whose /proc/cpuinfo carries CPU
+    # implementer/part and no model name). A block carrying it is WORSE than one carrying nothing: the gated lane
+    # falls to its MISMATCH arm and reports "captured on unknown xN and this run measured on ...", which reads as a
+    # machine swap rather than as a block that was authored wrong. Re-measuring cannot fix that one — the probe has
+    # to learn the machine — so the two say different things.
+    machine = (header.get("machine") or "").strip()
+    if not machine or machine == "unknown":
         sys.exit(
             f"{input_path} does not name the machine it was measured on, so the block it would write cannot be"
             " asserted against: the gated lane refuses a block whose machine it cannot match, which makes it a bar"
-            " that never fires. Re-measure with a current gate run (records written before 2026-08-12 predate the"
-            " field)."
+            " that never fires."
+            + (" Re-measure with a current gate run (records written before 2026-08-12 predate the field)."
+               if not machine else
+               " It reports machine='unknown', the probe's own failure sentinel rather than an identity, so"
+               " re-measuring will produce it again: teach PerfAnchors.machine to name this machine first.")
         )
     for field, why in (("environment", "absolute times are only comparable within one runner class"),
                        ("machine", "an absolute time is a property of the machine, so two machines cannot be folded"),
