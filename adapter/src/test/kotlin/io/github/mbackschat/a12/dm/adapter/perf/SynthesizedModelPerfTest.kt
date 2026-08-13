@@ -13,6 +13,7 @@ import java.time.Instant
 import java.time.ZoneId
 import java.time.ZoneOffset
 import java.util.Locale
+import org.junit.jupiter.api.Tag
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.condition.EnabledIfSystemProperty
 
@@ -27,6 +28,7 @@ import org.junit.jupiter.api.condition.EnabledIfSystemProperty
  *   -Dperf.synth.profile=compact -Dperf.synth.op=validate
  * ```
  */
+@Tag("perf-bench")
 @EnabledIfSystemProperty(named = "perf.synthesized", matches = "true")
 class SynthesizedModelPerfTest {
 

@@ -52,7 +52,11 @@ case "$mode" in
         if [ -n "$counts" ]; then
             run_gradle :adapter:perfGateTest --tests "*PerfGateTest.$counts" --tests "*KernelParityGateTest.$counts"
         else
-            run_gradle :adapter:perfGateTest --tests "*PerfGateTest" --tests "*KernelParityGateTest"
+            # No --tests: the task selects the whole @Tag('perf') routine tier itself (adapter/build.gradle), so a
+            # new perf test cannot be left out of the gate by forgetting to name it here. A --tests pattern would
+            # not even work as a widening — Gradle ANDs the command-line filter with the task's own, so
+            # `--tests "*PerfTest"` against the old two-class filter matched NOTHING (measured 2026-08-13).
+            run_gradle :adapter:perfGateTest
         fi ;;
     bench)
         if [ -n "$counts" ]; then

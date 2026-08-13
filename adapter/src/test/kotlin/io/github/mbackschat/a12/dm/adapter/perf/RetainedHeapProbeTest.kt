@@ -20,7 +20,7 @@ import org.junit.jupiter.api.Test
  * The sound multi-scale JVM/Node measurement is the independently forked `interpreterFootprint` lane (IF162).
  * `@Tag("perf")` (opt-in): this GC-sensitive endpoint smoke runs only at relevant checkpoints.
  */
-@Tag("perf")
+@Tag("perf-bench")
 class RetainedHeapProbeTest {
 
     /** Post-GC used heap (bytes): settle allocations so a leak (retained) is distinguishable from transient churn. */

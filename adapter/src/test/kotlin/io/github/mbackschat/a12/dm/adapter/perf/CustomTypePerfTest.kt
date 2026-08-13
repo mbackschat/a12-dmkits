@@ -10,6 +10,7 @@ import io.github.mbackschat.a12.dm.interpreter.model.ModelDef
 import io.github.mbackschat.a12.dm.interpreter.model.PredefinedType
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertTrue
+import org.junit.jupiter.api.Tag
 import org.junit.jupiter.api.Test
 
 /**
@@ -32,6 +33,7 @@ import org.junit.jupiter.api.Test
  *  2. **Sub-quadratic in row count** — validating 4× the rows must stay ~linear (≈4×), never ≈16×; catches an
  *     O(N²) regression in the per-cell custom-type machinery.
  */
+@Tag("perf")
 class CustomTypePerfTest {
 
     private val s = "/C/S"

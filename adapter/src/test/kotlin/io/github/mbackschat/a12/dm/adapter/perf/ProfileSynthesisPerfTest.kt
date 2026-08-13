@@ -7,7 +7,7 @@ import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.condition.EnabledIfSystemProperty
 
 /** Opt-in catastrophe guard for the profile synthesizer's program-population write path. */
-@Tag("perf")
+@Tag("perf-bench")
 @EnabledIfSystemProperty(named = "perf.profile.synthesis", matches = "true")
 class ProfileSynthesisPerfTest {
 

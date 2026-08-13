@@ -56,6 +56,13 @@ jobs:
 
       # This launcher targets the dedicated non-cacheable, single-fork perfGateTest task. Compilation and
       # dependencies may restore from cache; the timed measurements themselves always execute fresh.
+      #
+      # This is the ONLY automated lane that runs a timing bar (owner policy 2026-08-13: ordinary pushes are
+      # covered by this nightly with full perf coverage, and a release is blocked on regressions). The task
+      # selects the whole @Tag('perf') routine tier BY TAG, so a new perf test is gated here by existing — the
+      # enumerated filter this replaced ran 2 of 9 such classes. On a hosted runner the self-referential bars
+      # (growth floors, the absolute anchor) report rather than fail: contention here cannot be told apart from
+      # a regression (IF280/IF293). The cross-engine bars gate everywhere and are the real nightly signal.
       - name: Run the isolated routine performance gate
         working-directory: a12-dmkits
         env:

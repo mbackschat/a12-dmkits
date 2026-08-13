@@ -211,12 +211,18 @@ tasks.withType(Test).configureEach {
 
 tasks.named('test') {
     systemProperty 'perf.results.dir', rootProject.file('perf-results')
-    // Gate tiering (docs/TESTING-SPEC "Test tiers"): the heavyweight perf tests (@Tag 'perf') + the differential
-    // fuzzers (@Tag 'fuzz') are EXCLUDED from the default local run. Opt in with -PrunPerf / -PrunFuzz (or
-    // -PallTests for both). CI runs fuzz on every push and the isolated PerfGateTest nightly.
+    // Gate tiering (docs/TESTING-SPEC "Test tiers"): the performance tests (@Tag 'perf' routine tier + @Tag
+    // 'perf-bench' checkpoint tier) and the differential fuzzers (@Tag 'fuzz') are EXCLUDED from the default local
+    // run. Opt in with -PrunPerf / -PrunFuzz (or -PallTests for all three). CI runs fuzz on every push and the
+    // isolated perfGateTest nightly.
+    //
+    // NO timing assertion may run here, in either tier: this task forks 2-4 JVMs in parallel, which is the
+    // configuration CLAUDE.md forbids for a timed task ("a task carrying a timing assertion gets the machine to
+    // itself") and which manufactured a false 10.24x growth failure once. -PrunPerf is a deliberate local override
+    // for a drill, not a lane anything automated uses.
     useJUnitPlatform {
         def all = project.hasProperty('allTests')
-        if (!all && !project.hasProperty('runPerf')) excludeTags 'perf'
+        if (!all && !project.hasProperty('runPerf')) { excludeTags 'perf'; excludeTags 'perf-bench' }
         if (!all && !project.hasProperty('runFuzz')) excludeTags 'fuzz'
         // The corpus generator mutates the working tree (writes corpus/cases/**); opt in with -PrunCorpusCapture.
         // The everyday guard is CorpusReplayTest, which replays the committed files (no exclusion).
@@ -396,20 +402,25 @@ tasks.register('perfGateTest', Test) {
     dependsOn 'perfScriptGuardTest'
     testClassesDirs = sourceSets.test.output.classesDirs
     classpath = sourceSets.test.runtimeClasspath
-    useJUnitPlatform()
+    // Selected BY TAG, never by a class list (owner policy, 2026-08-13: performance is priority #1, a release is
+    // blocked on regressions with full coverage, and the nightly carries that coverage for ordinary pushes). The
+    // enumerated list this replaced named exactly two classes, so the routine gate ran 2 of the 9 routine-tier
+    // timing bars and the other 7 — Charset, CustomType, GroupScopedFill, OuterCorrelation, Pattern, EntryPoint,
+    // PartialSumOfProducts — executed in NO automated lane at all. Selecting by tag makes the coverage claim
+    // structural: a new @Tag('perf') class joins this lane by existing, and the classification guard
+    // (PerfTestClassificationTest) fails a timing bar that carries no tag.
+    //
+    // 'perf' is the routine tier. The checkpoint tier is @Tag('perf-bench') — PerfBenchTest's per-scenario kernel
+    // codegen, the GC-sensitive RetainedHeapProbeTest, and the three externally-parameterized canaries that own
+    // dedicated `measurement` tasks — and it is excluded here rather than reported as skipped, so a green gate
+    // never counts a bar that did not run.
+    useJUnitPlatform { includeTags 'perf' }
     maxParallelForks = 1
     // NOT failFast: this lane exists to MEASURE, and one breach used to discard every later lane's numbers —
     // the 2026-08-11 nightly reported 21 of 26 rows and hid the five behind the one that tripped. A breach now
     // pays for the full run (each growth floor re-measures up to GROWTH_RETRY_ATTEMPTS times), which is minutes
     // against the workflow's 60-minute timeout and buys the complete picture the diagnosis needs.
     failFast = false
-    filter {
-        includeTestsMatching 'io.github.mbackschat.a12.dm.adapter.perf.PerfGateTest'
-        // The cross-engine parity lanes: the interpreter must beat BOTH kernel strategies on every gated
-        // scenario. They belong in this isolated task and not in the checkpoint bench tier, because "always
-        // faster than the kernel" is the estate's #1 requirement and therefore a per-landing question.
-        includeTestsMatching 'io.github.mbackschat.a12.dm.adapter.perf.KernelParityGateTest'
-    }
     // An observation this runner class has not committed a number for is a failure rather than a note — otherwise
     // adding a lane, or changing a scenario's content so its fingerprint (and with it its anchor key) moves, would
     // silently switch off the only bar that can see a uniform regression. A runner class with no block at all stays

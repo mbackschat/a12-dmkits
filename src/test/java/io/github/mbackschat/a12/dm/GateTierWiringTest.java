@@ -10,11 +10,13 @@ import java.nio.file.Path;
 import org.junit.jupiter.api.Test;
 
 /**
- * Anti-rot guard for the test tiers (docs/TESTING-SPEC "Test tiers"). The heavy perf benchmark
- * (@Tag {@code perf}) and the differential fuzzers (@Tag {@code fuzz}) are EXCLUDED from the default run
- * (adapter/build.gradle), so this asserts CI still RUNS them on separate defined triggers — fuzz on every push
- * and the isolated routine perf gate in its own nightly workflow. If someone removes, combines, or broadens a
- * lane, the build fails loudly here (the F11 "loud detection at build" discipline).
+ * Anti-rot guard for the test tiers (docs/TESTING-SPEC "Test tiers"). The performance tests (@Tag {@code perf}
+ * routine tier, @Tag {@code perf-bench} checkpoint tier) and the differential fuzzers (@Tag {@code fuzz}) are
+ * EXCLUDED from the default run (adapter/build.gradle), so this asserts CI still RUNS them on separate defined
+ * triggers — fuzz on every push and the isolated routine perf gate in its own nightly workflow. If someone
+ * removes, combines, or broadens a lane, the build fails loudly here (the F11 "loud detection at build"
+ * discipline). The complementary question — WHICH classes belong in a performance lane, and whether their names
+ * say so — is {@link PerfTestClassificationTest}.
  */
 class GateTierWiringTest {
 
@@ -59,8 +61,9 @@ class GateTierWiringTest {
                 "the gate launcher must target its dedicated Gradle test task");
         assertTrue(perfScript.contains(":adapter:test -PrunPerf"),
                 "non-gate performance modes must still opt into the tagged performance tests");
-        assertTrue(perfScript.contains("--tests \"*PerfGateTest"),
-                "the gate mode must isolate PerfGateTest from heavyweight benchmark classes");
+        // WHICH classes the gate runs is PerfTestClassificationTest's invariant (it must be the whole @Tag('perf')
+        // routine tier, selected by tag). This assertion used to pin `--tests "*PerfGateTest"` — the enumerated
+        // form that left 7 of 9 routine-tier bars in no lane — so pinning it here would now defend the defect.
         assertFalse(perfTask.isEmpty(),
                 "adapter must provide a dedicated routine performance task");
         assertTrue(perfTask.contains("maxParallelForks = 1"),

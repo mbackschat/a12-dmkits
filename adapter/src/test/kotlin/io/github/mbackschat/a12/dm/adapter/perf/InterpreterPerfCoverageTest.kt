@@ -115,9 +115,18 @@ class InterpreterPerfCoverageTest {
         private const val ADAPTER_PACKAGE = "io.github.mbackschat.a12.dm.adapter"
 
         /**
+         * The performance lane tags — `perf` is the routine gate's tier, `perf-bench` the checkpoint tier. Both
+         * are accepted here because both denote a lane that actually times: `PerfBenchTest` owns the `compute`
+         * declaration and is checkpoint-tier, so requiring `perf` alone would reject a real coverage claim (it did,
+         * the moment the tiers were split — 2026-08-13). What must stay rejected is an *untagged* claim, which no
+         * performance lane selects. The pair is closed and `PerfTestClassificationTest` keeps it that way.
+         */
+        private val PERFORMANCE_LANE_TAGS = setOf("perf", "perf-bench")
+
+        /**
          * Discover the coverage declarations from a JUnit plan as executable test methods. An
          * annotation on a helper is rejected, as is one in an untagged class: a declaration is a timing guard only
-         * when the ordinary JUnit engine sees a `@Test` and the perf lane selects it.
+         * when the ordinary JUnit engine sees a `@Test` and a performance lane selects it.
          */
         fun timingGuards(): List<TimingGuard> {
             val request = LauncherDiscoveryRequestBuilder.request()
@@ -138,9 +147,12 @@ class InterpreterPerfCoverageTest {
                 check(testMethod.isAnnotationPresent(Test::class.java)) {
                     "${owner.name}.${testMethod.name} claims interpreter timing coverage but is not a @Test"
                 }
-                check(owner.getAnnotationsByType(Tag::class.java).any { it.value == "perf" } ||
-                    testMethod.getAnnotationsByType(Tag::class.java).any { it.value == "perf" }) {
-                    "${owner.name}.${testMethod.name} claims interpreter timing coverage but is not @Tag(\"perf\")"
+                val lanes = (owner.getAnnotationsByType(Tag::class.java).asSequence() +
+                    testMethod.getAnnotationsByType(Tag::class.java).asSequence()).map { it.value }.toSet()
+                check(lanes.any { it in PERFORMANCE_LANE_TAGS }) {
+                    "${owner.name}.${testMethod.name} claims interpreter timing coverage but carries none of " +
+                        "$PERFORMANCE_LANE_TAGS, so no performance lane selects it — an untagged claim would be " +
+                        "satisfied by a test that never times anything"
                 }
                 val entryPoint = runCatching {
                     DmInterpreter::class.java.getMethod(

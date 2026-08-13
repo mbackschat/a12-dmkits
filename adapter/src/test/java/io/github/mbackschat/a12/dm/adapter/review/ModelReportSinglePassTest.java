@@ -26,7 +26,7 @@ import io.github.mbackschat.a12.dm.rulekit.dsl.Severity;
  * F-independence assertion pins it can't quietly regress by growing with the field count. The wall-clock
  * before/after evidence lives in the opt-in {@link #reportTiming()} (perf evidence is a measurement, not a gate).
  */
-class ModelReportUsagePerfTest {
+class ModelReportSinglePassTest {
 
     /** An insurance-domain model with {@code fields} number fields, {@code rules} validation rules (each over
      *  a distinct low field), and {@code comps} computations (each computing a distinct high field) — authored
@@ -95,7 +95,7 @@ class ModelReportUsagePerfTest {
     }
 
     /**
-     * Opt-in wall-clock evidence (not a gate): {@code ./build.sh :adapter:test --tests "*ModelReportUsagePerfTest"
+     * Opt-in wall-clock evidence (not a gate): {@code ./build.sh :adapter:test --tests "*ModelReportSinglePassTest"
      * -Drp.perf=true}. Prints the end-to-end {@code model report} assembly time on a several-hundred-field model,
      * so the before (per-field) vs after (single-pass) numbers can be recorded in the set report.
      */

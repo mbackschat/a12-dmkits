@@ -13,7 +13,6 @@ import io.github.mbackschat.a12.dm.interpreter.model.RuleDef
 import io.github.mbackschat.a12.dm.interpreter.model.UnsupportedRule
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Assertions.assertEquals
-import org.junit.jupiter.api.Tag
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
 
@@ -25,8 +24,12 @@ import org.junit.jupiter.api.assertThrows
  * before-timing assertion on the outcome the caller can read. A fully-supported scenario passes untouched; an
  * unsupported one is REFUSED, naming the offending rule, so it can never be benchmarked as if it evaluated
  * everything (a silently-unsupported rule would make the interpreter look fast by doing less work than the kernel).
+ *
+ * **A guard of the harness, not a performance test, so it carries no perf tag** (2026-08-13): every case here is
+ * a deterministic `assertThrows`/pass on a tiny scenario (`n` of 1, 50, 201) and asserts nothing about a clock.
+ * It named `timeInterpreter` and `freshRunMedianMillis` only to prove they REFUSE an ineligible scale, which is
+ * why the tag looked right and was not — it excluded a cheap, deterministic check from the ordinary lane.
  */
-@Tag("perf")
 class PerfPreflightTest {
 
     private val cn = "/Order/CustomerName"

@@ -21,7 +21,7 @@ import org.junit.jupiter.api.Test
  * before timing) and the same [PerfBounds] trips. Set `perf.scenario` to one exact inventory id for a targeted
  * drill; an unmatched id fails. The fairness caveat: [PerfBounds.CAVEAT].
  */
-@Tag("perf")
+@Tag("perf-bench")
 class PerfBenchTest {
 
     @Test

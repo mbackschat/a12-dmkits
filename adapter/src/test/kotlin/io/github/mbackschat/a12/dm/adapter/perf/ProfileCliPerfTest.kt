@@ -9,6 +9,7 @@ import java.nio.file.Files
 import java.nio.file.Path
 import java.util.Locale
 import java.util.concurrent.TimeUnit
+import org.junit.jupiter.api.Tag
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.condition.EnabledIfSystemProperty
 import org.junit.jupiter.api.io.TempDir
@@ -18,6 +19,7 @@ import org.junit.jupiter.api.io.TempDir
  * catches an algorithmic blowup and **does not certify linearity**: the floor sits between a linear median
  * (~4x) and a quadratic one (~16x), so a real regression that stays under it passes here by design.
  */
+@Tag("perf-bench")
 @EnabledIfSystemProperty(named = "perf.profile.cli", matches = "true")
 class ProfileCliPerfTest {
 

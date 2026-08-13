@@ -10,6 +10,7 @@ import io.github.mbackschat.a12.dm.interpreter.model.ModelDef
 import io.github.mbackschat.a12.dm.interpreter.model.ValidationOutcome
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertTrue
+import org.junit.jupiter.api.Tag
 import org.junit.jupiter.api.Test
 
 /**
@@ -21,6 +22,7 @@ import org.junit.jupiter.api.Test
  * custom charset is within a small factor of BMP — a virtual-call regression is 10×+ and trips this. JVM-only,
  * current-thread CPU time (algorithmic work without another Gradle fork's preemption). Pure engine, no kernel.
  */
+@Tag("perf")
 class CharsetPerfTest {
 
     private val s = "/C/S"
