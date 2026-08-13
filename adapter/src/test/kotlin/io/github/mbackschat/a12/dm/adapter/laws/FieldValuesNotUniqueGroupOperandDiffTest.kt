@@ -46,6 +46,18 @@ class FieldValuesNotUniqueGroupOperandDiffTest {
         const val CARRIER_NAME = "/Shipment/Carrier/Name"
         const val HANDOFFS = "/Shipment/Carrier/Handoffs"
         const val SITE = "/Shipment/Carrier/Handoffs/Site"
+
+        // two repeatable levels below the operand
+        const val DEPOT_NAME = "/Shipment/Depot/Name"
+        const val HANDOVERS = "/Shipment/Depot/Handovers"
+        const val SCANS = "/Shipment/Depot/Handovers/Scans"
+        const val SCAN_CODE = "/Shipment/Depot/Handovers/Scans/Code"
+
+        // a repeatable outer group with a nested repeatable subgroup, for the STARRED arm
+        const val CONSIGNMENTS = "/Shipment/Consignments"
+        const val CONSIGNMENT_REF = "/Shipment/Consignments/Ref"
+        const val MARKS = "/Shipment/Consignments/Marks"
+        const val MARK = "/Shipment/Consignments/Marks/Mark"
     }
 
     /**
@@ -82,6 +94,36 @@ class FieldValuesNotUniqueGroupOperandDiffTest {
                 c.group("Handoffs") { h ->
                     h.repeatable(10).stringField("Site") { }
                 }
+            }
+        }.build().toJson()
+
+    /**
+     * **TWO levels of repeatable subgroup** below the operand: `Depot` (non-repeatable) → `Handovers` (repeatable)
+     * → `Scans` (repeatable). Distinct from [nested] because `bindDepth` pins the segments above the *first*
+     * iterated level, so one level iterating fully does not establish that a second does — the reason this was a
+     * separate question rather than a corollary.
+     */
+    private val deepNested = DocumentModelDraft.named("depot").locale("en_US")
+        .rootGroup("Shipment") { g ->
+            g.stringField("Reference") { }
+            g.group("Depot") { d ->
+                d.stringField("Name") { }
+                d.group("Handovers") { h ->
+                    h.repeatable(10).group("Scans") { s -> s.repeatable(10).stringField("Code") { } }
+                }
+            }
+        }.build().toJson()
+
+    /**
+     * A **repeatable** outer group carrying a nested repeatable subgroup, for the STARRED arm — [nested] uses a
+     * non-repeatable outer group, so it exercises the converted star rather than an authored one.
+     */
+    private val starredNested = DocumentModelDraft.named("consignment").locale("en_US")
+        .rootGroup("Shipment") { g ->
+            g.stringField("Reference") { }
+            g.group("Consignments") { c ->
+                c.repeatable(10).stringField("Ref") { }
+                c.group("Marks") { m -> m.repeatable(10).stringField("Mark") { } }
             }
         }.build().toJson()
 
@@ -249,6 +291,98 @@ class FieldValuesNotUniqueGroupOperandDiffTest {
                 .field(CARRIER_NAME, "MSC", 1, 1, 1)
                 .group(HANDOFFS, 1, 1, 1).field(SITE, "UPS", 1, 1, 1, 1)
                 .group(HANDOFFS, 1, 1, 2).field(SITE, "MSC", 1, 1, 2, 1)
+        }
+
+    // ── TWO repeatable levels below the operand ─────────────────────────────────────────────────────────
+
+    /**
+     * **The second level must iterate too.** The duplicate pairs the direct field with `Handovers[2]/Scans[2]`, so
+     * it is reachable only if BOTH repeatable levels advance past their first row. An implementation that binds the
+     * segments above the innermost star — the natural single-level reading — pins `Handovers` at the ambient row and
+     * misses this while still passing every one-level row.
+     */
+    @Test
+    fun aGroupScopeIteratesEveryLevelOfTwoNestedRepeatableSubgroups() =
+        agreeFires(guarded("FieldValuesNotUnique(/Shipment/Depot)"), expected = true,
+            msg = "Name repeats in Handovers[2]/Scans[2] — two levels down, neither at row 1",
+            model = deepNested) { b ->
+            b.group("/Shipment", 1).field(REFERENCE, "SHP-1", 1, 1)
+                .field(DEPOT_NAME, "ZZ9", 1, 1, 1)
+                .group(HANDOVERS, 1, 1, 1).group(SCANS, 1, 1, 1, 1).field(SCAN_CODE, "AA1", 1, 1, 1, 1, 1)
+                .group(HANDOVERS, 1, 1, 2).group(SCANS, 1, 1, 2, 1).field(SCAN_CODE, "BB2", 1, 1, 2, 1, 1)
+                .group(SCANS, 1, 1, 2, 2).field(SCAN_CODE, "ZZ9", 1, 1, 2, 2, 1)
+        }
+
+    /** The same fixture with the duplicate spanning two different `Handovers` rows' `Scans`, and no direct field. */
+    @Test
+    fun aDuplicateAcrossTwoBranchesOfTheDeepestRepetitionIsFound() =
+        agreeFires(guarded("FieldValuesNotUnique(/Shipment/Depot)"), expected = true,
+            msg = "Handovers[1]/Scans[1] and Handovers[2]/Scans[2] both 'CC3'",
+            model = deepNested) { b ->
+            b.group("/Shipment", 1).field(REFERENCE, "SHP-1", 1, 1)
+                .field(DEPOT_NAME, "ZZ9", 1, 1, 1)
+                .group(HANDOVERS, 1, 1, 1).group(SCANS, 1, 1, 1, 1).field(SCAN_CODE, "CC3", 1, 1, 1, 1, 1)
+                .group(HANDOVERS, 1, 1, 2).group(SCANS, 1, 1, 2, 1).field(SCAN_CODE, "BB2", 1, 1, 2, 1, 1)
+                .group(SCANS, 1, 1, 2, 2).field(SCAN_CODE, "CC3", 1, 1, 2, 2, 1)
+        }
+
+    /** The negative control on the deep fixture: every cell distinct across both levels must stay silent. */
+    @Test
+    fun theDeepGroupScopeStaysSilentWhenEveryCellAcrossBothLevelsIsDistinct() =
+        agreeFires(guarded("FieldValuesNotUnique(/Shipment/Depot)"), expected = false,
+            msg = "four distinct codes across two Handovers rows plus a distinct Name",
+            model = deepNested) { b ->
+            b.group("/Shipment", 1).field(REFERENCE, "SHP-1", 1, 1)
+                .field(DEPOT_NAME, "ZZ9", 1, 1, 1)
+                .group(HANDOVERS, 1, 1, 1).group(SCANS, 1, 1, 1, 1).field(SCAN_CODE, "AA1", 1, 1, 1, 1, 1)
+                .group(HANDOVERS, 1, 1, 2).group(SCANS, 1, 1, 2, 1).field(SCAN_CODE, "BB2", 1, 1, 2, 1, 1)
+                .group(SCANS, 1, 1, 2, 2).field(SCAN_CODE, "CC3", 1, 1, 2, 2, 1)
+        }
+
+    // ── an AUTHORED star on a repeatable group that itself holds a repeatable subgroup ───────────────────
+
+    /**
+     * The starred arm's nesting row. [nested] converts a non-starred operand into a star, so it says nothing about
+     * an **authored** star whose group carries a repeatable subgroup: there the operand's own `bindDepth` rides
+     * each expanded field, which is a different value from the converted arm's.
+     */
+    @Test
+    fun aStarredGroupScopeReachesItsNestedRepeatableSubgroupsLaterRows() =
+        agreeFires(guarded("FieldValuesNotUnique(/Shipment/Consignments*)"), expected = true,
+            msg = "Consignments[1]/Ref repeats in that row's Marks[2]",
+            model = starredNested) { b ->
+            b.group("/Shipment", 1).field(REFERENCE, "SHP-1", 1, 1)
+                .group(CONSIGNMENTS, 1, 1).field(CONSIGNMENT_REF, "K7", 1, 1, 1)
+                .group(MARKS, 1, 1, 1).field(MARK, "M1", 1, 1, 1, 1)
+                .group(MARKS, 1, 1, 2).field(MARK, "K7", 1, 1, 2, 1)
+        }
+
+    /** The duplicate spanning two OUTER rows' nested subgroups — both levels of the authored star must iterate. */
+    @Test
+    fun aStarredGroupScopeFindsADuplicateAcrossTwoOuterRowsNestedSubgroups() =
+        agreeFires(guarded("FieldValuesNotUnique(/Shipment/Consignments*)"), expected = true,
+            msg = "Consignments[1]/Marks[2] and Consignments[2]/Marks[1] both 'M9'",
+            model = starredNested) { b ->
+            b.group("/Shipment", 1).field(REFERENCE, "SHP-1", 1, 1)
+                .group(CONSIGNMENTS, 1, 1).field(CONSIGNMENT_REF, "K7", 1, 1, 1)
+                .group(MARKS, 1, 1, 1).field(MARK, "M1", 1, 1, 1, 1)
+                .group(MARKS, 1, 1, 2).field(MARK, "M9", 1, 1, 2, 1)
+                .group(CONSIGNMENTS, 1, 2).field(CONSIGNMENT_REF, "K8", 1, 2, 1)
+                .group(MARKS, 1, 2, 1).field(MARK, "M9", 1, 2, 1, 1)
+        }
+
+    /** The negative control for the starred nesting rows. */
+    @Test
+    fun theStarredGroupScopeStaysSilentWhenEveryNestedCellIsDistinct() =
+        agreeFires(guarded("FieldValuesNotUnique(/Shipment/Consignments*)"), expected = false,
+            msg = "two outer rows, four distinct marks and two distinct refs",
+            model = starredNested) { b ->
+            b.group("/Shipment", 1).field(REFERENCE, "SHP-1", 1, 1)
+                .group(CONSIGNMENTS, 1, 1).field(CONSIGNMENT_REF, "K7", 1, 1, 1)
+                .group(MARKS, 1, 1, 1).field(MARK, "M1", 1, 1, 1, 1)
+                .group(MARKS, 1, 1, 2).field(MARK, "M2", 1, 1, 2, 1)
+                .group(CONSIGNMENTS, 1, 2).field(CONSIGNMENT_REF, "K8", 1, 2, 1)
+                .group(MARKS, 1, 2, 1).field(MARK, "M3", 1, 2, 1, 1)
         }
 
     /**
