@@ -30,22 +30,25 @@ import org.junit.jupiter.api.Test;
  *       name as a classification and tagging it {@code perf} removed two deterministic guards from every push. It
  *       is now {@code ModelReportSinglePassTest}.</li>
  *   <li><b>Every performance test must be selected by a lane.</b> The routine gate named exactly two classes in a
- *       {@code filter} block, so 7 of the 9 routine-tier timing bars ran in no automated lane at all — and a
- *       {@code --tests} pattern could not widen it, because Gradle ANDs the command-line filter with the task's
- *       own (measured 2026-08-13: {@code --tests "*CharsetPerfTest"} against that filter matched nothing). The
- *       lane now selects {@code includeTags 'perf'}, which is what {@link #theRoutinePerformanceGateSelectsByTag}
- *       pins.</li>
+ *       {@code filter} block, and that produced <b>two distinct defects</b> across the 9 routine-tier timing
+ *       bars: <b>five</b> were tagged and ran in no lane at all, while <b>two</b> ({@code CharsetPerfTest},
+ *       {@code CustomTypePerfTest}) carried no tag and therefore ran inside the broad 2-4-fork suite, where a
+ *       timing observation measures contention. Missing coverage and <i>invalid</i> coverage, not one thing —
+ *       the discriminator is the tag census at the parent commit. A {@code --tests} pattern could not widen the
+ *       lane either, because Gradle ANDs the command-line filter with the task's own (measured 2026-08-13:
+ *       {@code --tests "*CharsetPerfTest"} against that filter matched nothing). The lane now selects
+ *       {@code includeTags 'perf'}, which is what {@link #theRoutinePerformanceGateSelectsByTag} pins.</li>
  * </ol>
  *
  * <p><b>The bound of this guard, stated rather than implied.</b> It is deliberately syntactic — a name and a tag,
  * both exact — so it can never produce a false red. It therefore cannot recognize a timing bar written under a
- * neutral name with no tag at all ({@code FooTest} calling {@code PerfHarness.timeInterpreter}). Several text
- * detectors for "asserts a machine measurement" were tried and each leaked in both directions: the harness's own
- * unit tests call {@code assertWithinBudget} and {@code assertGrowthBelowCatastropheFloor} on scripted values and
- * are correctly untagged, while {@code KernelParityCoverageGuardTest} matched every pattern because it scans the
- * perf sources as text. What covers the residue is the convention this guard enforces at the two ends plus the
- * reviewed classification in {@code docs/TESTING-SPEC.md} — not a heuristic that would eventually fail a build
- * for the wrong reason.
+ * neutral name with no tag at all ({@code FooTest} calling {@code PerfHarness.timeInterpreter}), and the estate
+ * contains one such assertion today. Several text detectors for "asserts a machine measurement" were tried and
+ * each leaked in both directions: the harness's own unit tests call {@code assertWithinBudget} and
+ * {@code assertGrowthBelowCatastropheFloor} on scripted values and are correctly untagged, while
+ * {@code KernelParityCoverageGuardTest} matched every pattern because it scans the perf sources as text. That
+ * residue is <b>not</b> covered by convention — it is open work with a named mechanism (instrument the harness to
+ * refuse a real measurement outside an opted-in lane, plus an exact raw-clock API census), tracked as IG131.
  */
 class PerfTestClassificationTest {
 
@@ -148,6 +151,33 @@ class PerfTestClassificationTest {
     }
 
     /**
+     * <b>A lane tag is CLASS-level, at column 0.</b> {@link #perfTagOf} recognizes exactly that form, which makes
+     * an <i>indented</i> perf tag invisible to it — a valid class-level tag on a nested class, or a method-level
+     * one, would read as untagged and silently escape both directions above. Rather than widen the pattern (which
+     * would let one tagged method make a whole file read as tagged, the hole a review found), the alternative form
+     * is <b>refused</b> here with the diagnostic that says why. That is what makes column-0 recognition complete
+     * instead of merely conventional.
+     */
+    @Test
+    void everyPerformanceLaneTagSitsAtClassLevel() throws IOException {
+        var indented = new TreeMap<String, String>();
+        Pattern anywhere = Pattern.compile("^(\\s+)@Tag\\(\"(perf|perf-bench)\"\\)", Pattern.MULTILINE);
+        for (var source : testSources()) {
+            Matcher tags = anywhere.matcher(Files.readString(source));
+            while (tags.find()) {
+                indented.put(source.getFileName().toString(), tags.group(2));
+            }
+        }
+
+        assertEquals(Set.of(), indented.keySet(),
+                "a performance lane tag must sit on the CLASS at column 0. An indented @Tag is either method-level "
+                        + "(which puts one method in the lane while the file's other timing methods stay in the "
+                        + "broad parallel-fork suite) or on a nested class (which no reader of a directory listing "
+                        + "can see). Both are refused so that the class-level form is the only one, and the "
+                        + "classification checks can rely on it. Found: " + indented);
+    }
+
+    /**
      * <b>The routine gate selects by TAG, never by a class list.</b> This is what makes "full coverage" structural
      * instead of a promise: a new {@code @Tag("perf")} class joins the lane by existing. The enumerated
      * {@code filter} this replaced is the exact mechanism by which 7 bars ran nowhere.
@@ -172,9 +202,15 @@ class PerfTestClassificationTest {
     }
 
     /**
-     * <b>No timing assertion in the broad suite.</b> {@code :adapter:test} forks 2-4 JVMs in parallel, which is
-     * the configuration CLAUDE.md forbids for a timed task and which manufactured a false 10.24x growth failure
-     * once. Both tiers must be excluded there, so the exclusion cannot be half-applied.
+     * <b>Neither performance tier runs in the broad suite.</b> {@code :adapter:test} forks 2-4 JVMs in parallel,
+     * which is the configuration CLAUDE.md forbids for a timed task and which manufactured a false 10.24x growth
+     * failure once. Both tiers must be excluded there, so the exclusion cannot be half-applied.
+     *
+     * <p>This is an assertion about the two <i>tiers</i>, not the stronger claim that the broad suite contains no
+     * timing assertion at all: {@code PerfGrowthEstimatorTest.currentThreadCpuExcludesBlockedWallTime} deliberately
+     * remains there, because it protects the CPU-clock contract every growth floor rests on and must be answered
+     * per push. Its exposure is directional — contention only adds wall time and leaves CPU-during-sleep near zero,
+     * so load pushes both of its assertions further into passing. IG131 owns the general residue.
      */
     @Test
     void theBroadAdapterSuiteExcludesBothPerformanceTiers() throws IOException {
@@ -234,12 +270,14 @@ class PerfTestClassificationTest {
     /**
      * The CLASS-level performance lane tag, or {@code null}.
      *
-     * <p><b>Column 0, deliberately.</b> A top-level class annotation is unindented in both languages, while a
-     * method-level `@Tag` is indented inside the class body. Matching any indentation would let one tagged method
-     * make a class read as tagged, so a file could carry an *untagged* timing method beside it and pass — and a
-     * class-level classification is what both lanes actually select on. All 14 tagged classes in the estate are
-     * matched by this form. The vocabulary assertion deliberately keeps the looser pattern, because a
-     * lane-selecting typo is worth catching wherever it sits.
+     * <p><b>Column 0, deliberately — and the alternative is refused, not merely unmatched.</b> A top-level class
+     * annotation is unindented in both languages, while a method-level {@code @Tag} is indented inside the class
+     * body. Matching any indentation would let one tagged method make a class read as tagged, so a file could carry
+     * an <i>untagged</i> timing method beside it and pass. But leaving the indented form merely unmatched hid a
+     * second hole: a valid class-level tag on a nested class would read as untagged.
+     * {@link #everyPerformanceLaneTagSitsAtClassLevel} closes that by failing on any indented perf tag, so this
+     * pattern's denominator is the whole estate rather than a convention. The vocabulary assertion deliberately
+     * keeps the looser pattern, because a lane-selecting typo is worth catching wherever it sits.
      */
     private static String perfTagOf(Path source) throws IOException {
         Matcher tag = Pattern.compile("^@Tag\\(\"(perf|perf-bench)\"\\)", Pattern.MULTILINE)
@@ -247,9 +285,16 @@ class PerfTestClassificationTest {
         return tag.find() ? tag.group(1) : null;
     }
 
-    /** Source with comment lines dropped, so a check matches LIVE configuration and never a line quoting it. */
+    /**
+     * Source with comments dropped, so a check matches LIVE configuration and never a line quoting it.
+     *
+     * <p><b>Both comment forms.</b> Line comments alone left a bypass a review constructed: wrapping the live
+     * selection in {@code /* … *}{@code /} keeps the text present, so a {@code contains} check on it passes while
+     * the configuration is dead. Block comments are stripped first, since a block may open and close mid-line.
+     */
     private static String uncommented(String source) {
-        return source.lines()
+        String withoutBlocks = Pattern.compile("/\\*.*?\\*/", Pattern.DOTALL).matcher(source).replaceAll("");
+        return withoutBlocks.lines()
                 .filter(line -> !line.strip().startsWith("//"))
                 .collect(java.util.stream.Collectors.joining("\n"));
     }
