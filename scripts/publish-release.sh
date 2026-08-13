@@ -51,6 +51,36 @@ VER="${TAG#v}"
 ./scripts/check-release-gaps.sh
 ./scripts/update-code-statistics.sh --check --artifact dmtool
 
+# PERFORMANCE GATE — a breach STOPS the release (owner requirement, 2026-08-13).
+#
+# It runs HERE, locally, and that placement is the whole point: `TimingEnforcement.forAbsoluteAnchor` returns
+# GATED only in the isolated single-fork lane on a machine that is not shared, so a 1.65x anchor breach THROWS
+# here while the same breach on a hosted runner is only flagged. The nightly therefore cannot be the release
+# gate, and until now nothing in this script measured performance at all — a release could ship a regression
+# that every committed bar had already seen.
+#
+# It runs BEFORE the native build so a regression costs seconds, not a full native cycle, and it gets the
+# machine to itself (CLAUDE.md: a task carrying a timing assertion is never run beside anything else).
+PERF_LOG="$ROOT/build/release-perf-gate.log"
+mkdir -p "$ROOT/build"
+echo "0. performance gate (a breach stops the release)"
+if ! ./scripts/perf.sh gate > "$PERF_LOG" 2>&1; then
+    echo "PERFORMANCE GATE FAILED — the release is stopped. See $PERF_LOG" >&2
+    grep -E '\[perf\]|FAILED|expected|breach' "$PERF_LOG" | head -20 >&2
+    exit 1
+fi
+# A PASS is only a pass if the bar actually asserted. The anchor silently declines to assert when the block was
+# captured on another machine, when this run cannot name its own, or outside the isolated lane — all of which
+# print a "not asserting" / "not asserted" note and leave the gate green. Shipping on that would advertise a
+# check that never ran, so the release refuses it and says which condition to fix.
+if grep -qE 'not asserting|anchor not asserted' "$PERF_LOG"; then
+    echo "PERFORMANCE GATE WAS VACUOUS — it ran but asserted nothing, so it cannot license a release." >&2
+    grep -E 'not asserting|anchor not asserted' "$PERF_LOG" | head -5 >&2
+    echo "Refresh the anchor on THIS machine (scripts/perf-anchor.sh refresh) or release from the machine that authored it." >&2
+    exit 1
+fi
+echo "   performance gate asserted and passed"
+
 KVER="$(grep -oE "kernelVersion *= *'[^']+'" build.gradle | sed -E "s/.*'([^']+)'.*/\1/")"
 A12="$(grep -oE "a12Distribution *= *'[^']+'" build.gradle | sed -E "s/.*'([^']+)'.*/\1/")"
 TITLE="$TAG — kernel $KVER (A12 Tools $A12)"

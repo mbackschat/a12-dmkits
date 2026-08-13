@@ -119,6 +119,16 @@ The three jobs and why they're shaped this way:
 
 **Meta-lesson — there are TWO bug classes, and only one is locally catchable.** **(a) Logic bugs** (the colon spacing, the SIGPIPE, the missing arg) reproduce instantly against the local native binary — e.g. `bash -c 'set -o pipefail; ./dmtool manifest | sed "s/\r$//" | grep -Eq PAT; echo $?'` prints `141` (piped) vs `0` (file form) — so **always drive the smoke locally first** to flush these before a ~10-min CI round-trip. **(b) Windows/git-bash quirks** (MSYS path conversion, CRLF) are **invisible on mac/linux** and surface only on the actual Windows runner (or a local git-bash). Expect a Windows-only round even after the logic is locally green; budget for it, and keep `/`-prefixed args out of git-bash or guard them with `MSYS_NO_PATHCONV=1`.
 
+## 5a. The performance gate — a breach stops the release
+
+**`scripts/publish-release.sh` runs `scripts/perf.sh gate` before anything is built, and a breach aborts the release** (owner requirement, 2026-08-13). Until then nothing in the release path measured performance at all: a regression every committed bar had already seen could still ship.
+
+**Why it runs locally rather than on the nightly.** `TimingEnforcement.forAbsoluteAnchor` returns `GATED` only in the isolated single-fork lane on a machine that is not shared. So a `1.65×` anchor breach **throws** here, while the identical breach on a hosted runner is only flagged — hosted hardware cannot separate a regression from a neighbour's memory traffic ([IF280](INTERPRETER-FINDINGS.md#if280), and the 2026-08-13 checkpoint measuring a `2.05×` same-machine spread there). The nightly is therefore a trend instrument and can never be the release gate.
+
+**A pass counts only if the bar actually asserted.** The anchor silently declines to assert when the block was captured on another machine, when the run cannot name its own, or outside the isolated lane — each prints a `not asserting` / `anchor not asserted` note and leaves the gate green. The release **refuses** that state rather than treating it as success, because shipping on it would advertise a check that never ran. The fix is named in the refusal: refresh the anchor on this machine, or release from the machine that authored it.
+
+**Placement.** Before the native build, so a regression costs seconds instead of a full native cycle, and with the machine to itself — a task carrying a timing assertion is never run beside anything else.
+
 ## 5. The verification gate — native↔JVM byte-identity
 
 Every freshly built **native** binary is re-verified against the `examples/` showboat demos before it ships:
