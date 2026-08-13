@@ -146,6 +146,26 @@ class GroupStarValueAggregateDiffTest {
             b.group(EXTRAS, 1, 1, 1).field(SURCHARGE, "0.50", 1, 1, 1, 1)
         }
 
+    /**
+     * **The nesting case above places ONE `Extras` row, which cannot discriminate the extent.** With a single
+     * nested row, "the expansion visits every row of the nested repetition" and "it visits that repetition at one
+     * coordinate" predict the same total, so the sibling row is what turns that lock into a measurement. Two rows
+     * under `Charges[1]` plus one under `Charges[2]`: `1.00 + 2.00 + 3.00 + 0.50 + 0.25 + 0.75 = 7.50`.
+     *
+     * Written because the same one-row blind spot hid a real single-coordinate collapse in
+     * `FieldValuesNotUnique`'s group expansion, which shares this recursion's shape.
+     */
+    @Test fun sumOverAGroupStarVisitsEveryRowOfANestedRepeatableSubgroup() =
+        agreeCompute(Dsl.sum(starOf(CHARGES)), "VALUE|7.5",
+            "Sum(Charges*) must reach Extras rows 1 AND 2, not only the first") { b ->
+            b.group("/Invoice", 1).field(TOTAL, "999.99", 1, 1)
+            b.group(CHARGES, 1, 1).field(FEE, "1.00", 1, 1, 1).field(TAX, "2.00", 1, 1, 1)
+            b.group(CHARGES, 1, 2).field(FEE, "3.00", 1, 2, 1)
+            b.group(EXTRAS, 1, 1, 1).field(SURCHARGE, "0.50", 1, 1, 1, 1)
+            b.group(EXTRAS, 1, 1, 2).field(SURCHARGE, "0.25", 1, 1, 2, 1)
+            b.group(EXTRAS, 1, 2, 1).field(SURCHARGE, "0.75", 1, 2, 1, 1)
+        }
+
     // ── the shared-path arms: poison, empty selection, and the validation side ─────────────────────────────
 
     @Test fun malformedCellPoisonsTheGroupStarSum() =

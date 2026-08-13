@@ -41,6 +41,11 @@ class FieldValuesNotUniqueGroupOperandDiffTest {
         const val FIRST = "/Shipment/Legs/FirstScan"
         const val SECOND = "/Shipment/Legs/SecondScan"
         const val CODE = "DUP"
+
+        // the nesting fixture
+        const val CARRIER_NAME = "/Shipment/Carrier/Name"
+        const val HANDOFFS = "/Shipment/Carrier/Handoffs"
+        const val SITE = "/Shipment/Carrier/Handoffs/Site"
     }
 
     /**
@@ -63,6 +68,23 @@ class FieldValuesNotUniqueGroupOperandDiffTest {
             }
         }.build().toJson()
 
+    /**
+     * A second fixture for the **nesting** question: `Carrier` holds ONE direct String and a nested *repeatable*
+     * `Handoffs` carrying one String. Exactly one direct field is the point — a single cell cannot duplicate
+     * itself, so any firing here can only mean the expansion crossed into the nested rows. Homogeneous
+     * (all Strings) so the category gate cannot be the thing that answers.
+     */
+    private val nested = DocumentModelDraft.named("carrier").locale("en_US")
+        .rootGroup("Shipment") { g ->
+            g.stringField("Reference") { }
+            g.group("Carrier") { c ->
+                c.stringField("Name") { }
+                c.group("Handoffs") { h ->
+                    h.repeatable(10).stringField("Site") { }
+                }
+            }
+        }.build().toJson()
+
     private class Both(val kDoc: RuntimeLaws.Doc, val iDoc: Document) {
         fun group(path: String, vararg reps: Int): Both {
             kDoc.group(path, *reps); iDoc.group(path, *reps); return this
@@ -74,8 +96,14 @@ class FieldValuesNotUniqueGroupOperandDiffTest {
     }
 
     /** Tri-check whether [condition] fires over the instance [build] creates. */
-    private fun agreeFires(condition: String, expected: Boolean, msg: String, build: (Both) -> Unit) {
-        val kModel = RuntimeLaws.withRule(base, "/Shipment", "R", "../Reference", CODE, condition)
+    private fun agreeFires(
+        condition: String,
+        expected: Boolean,
+        msg: String,
+        model: String = base,
+        build: (Both) -> Unit,
+    ) {
+        val kModel = RuntimeLaws.withRule(model, "/Shipment", "R", "../Reference", CODE, condition)
         val def = ModelLoader.load(kModel)
 
         val dynamic = Both(RuntimeLaws.doc(), def.newDocument()).also(build)
@@ -168,5 +196,74 @@ class FieldValuesNotUniqueGroupOperandDiffTest {
             b.group("/Shipment", 1).field(REFERENCE, "SHP-1", 1, 1)
                 .group(LEGS, 1, 1).field(FIRST, "4", 1, 1, 1).field(SECOND, "4", 1, 1, 1)
                 .group(LEGS, 1, 2).field(FIRST, "5", 1, 2, 1).field(SECOND, "9", 1, 2, 1)
+        }
+
+    // ── a group holding a NESTED REPEATABLE subgroup: how far does the expansion reach? ─────────────────
+
+    /**
+     * The nesting extent, which [§7.3 of the 2026-08-13 handover] listed as unmeasured. `Carrier` declares one
+     * direct String, so this cell cannot duplicate itself: firing is possible only if the expansion descends into
+     * the nested repeatable `Handoffs` rows. A **non-starred** operand naming a group that *contains* a repeatable
+     * one is the interesting case precisely because the star is not written anywhere.
+     */
+    @Test
+    fun aGroupScopeDescendsIntoANestedRepeatableSubgroup() =
+        agreeFires(guarded("FieldValuesNotUnique(/Shipment/Carrier)"), expected = true,
+            msg = "Carrier's one direct field cannot duplicate itself, so firing proves the nested rows are in " +
+                "the set — with no star written anywhere",
+            model = nested) { b ->
+            b.group("/Shipment", 1).field(REFERENCE, "SHP-1", 1, 1)
+                .field(CARRIER_NAME, "DHL", 1, 1, 1)
+                .group(HANDOFFS, 1, 1, 1).field(SITE, "DHL", 1, 1, 1, 1)
+        }
+
+    /**
+     * The same shape with the duplicate lying **entirely inside** the nested subgroup, across two of its rows —
+     * so the compared set is not merely "the direct fields plus one nested cell": the nested rows are compared
+     * against each other too.
+     */
+    @Test
+    fun aDuplicateInsideTheNestedRepeatableSubgroupIsAlsoFound() =
+        agreeFires(guarded("FieldValuesNotUnique(/Shipment/Carrier)"), expected = true,
+            msg = "two Handoffs rows both 'UPS' — inside the nested group, still one compared set",
+            model = nested) { b ->
+            b.group("/Shipment", 1).field(REFERENCE, "SHP-1", 1, 1)
+                .field(CARRIER_NAME, "DHL", 1, 1, 1)
+                .group(HANDOFFS, 1, 1, 1).field(SITE, "UPS", 1, 1, 1, 1)
+                .group(HANDOFFS, 1, 1, 2).field(SITE, "UPS", 1, 1, 2, 1)
+        }
+
+    /**
+     * **The mechanism discriminator**, kept because it is what identified the defect these three rows locked.
+     * The duplicate pairs the direct field with the nested subgroup's **second** row. Before the fix the
+     * interpreter missed it, which falsifies "expands every nested row but compares them only against the direct
+     * fields" (that reading finds this one) and leaves "reads the nested repetition at a single row-1 coordinate"
+     * as the only survivor — the plain field ref the expansion used to build.
+     */
+    @Test
+    fun aDuplicateBetweenTheDirectFieldAndTheNestedSubgroupsSecondRowIsFound() =
+        agreeFires(guarded("FieldValuesNotUnique(/Shipment/Carrier)"), expected = true,
+            msg = "Name 'MSC' repeats in Handoffs row 2, not row 1",
+            model = nested) { b ->
+            b.group("/Shipment", 1).field(REFERENCE, "SHP-1", 1, 1)
+                .field(CARRIER_NAME, "MSC", 1, 1, 1)
+                .group(HANDOFFS, 1, 1, 1).field(SITE, "UPS", 1, 1, 1, 1)
+                .group(HANDOFFS, 1, 1, 2).field(SITE, "MSC", 1, 1, 2, 1)
+        }
+
+    /**
+     * The **positive control** for the rows above: the nested subgroup's own field, named directly with a star,
+     * finds a duplicate the group scope may or may not. Without this row a `false` above could mean "the rule
+     * never evaluated" rather than a statement about the expansion's extent.
+     */
+    @Test
+    fun theNestedSubgroupsOwnStarredFieldDoesFindTheDuplicate() =
+        agreeFires(guarded("FieldValuesNotUnique(/Shipment/Carrier/Handoffs*/Site)"), expected = true,
+            msg = "naming the nested field with its own star finds the duplicate the group scope did not",
+            model = nested) { b ->
+            b.group("/Shipment", 1).field(REFERENCE, "SHP-1", 1, 1)
+                .field(CARRIER_NAME, "DHL", 1, 1, 1)
+                .group(HANDOFFS, 1, 1, 1).field(SITE, "UPS", 1, 1, 1, 1)
+                .group(HANDOFFS, 1, 1, 2).field(SITE, "UPS", 1, 1, 2, 1)
         }
 }

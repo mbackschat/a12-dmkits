@@ -1178,11 +1178,18 @@ class Interpreter(
             if (contained.isNotEmpty()) {
                 // The star's Having and binding ride each expanded field, exactly as starOperandVals preserves
                 // them (IF99) — the filter belongs to the authored operand, not to one of its expanded cells.
+                //
+                // BOTH arms expand to a STARRED field, including the non-starred one. A contained field may live
+                // under a repeatable SUBGROUP, and a plain field ref reads it at one ambient coordinate — which
+                // silently dropped every row but the first, so a duplicate pairing a direct field with nested row 2
+                // went unreported while both kernel strategies fire on it. `bindDepth = -1` binds above the leaf
+                // group's parent, so that nested repetition iterates fully; for a field directly in a
+                // non-repeatable group it degenerates to the single row the plain ref used to read.
                 return contained.flatMap { field ->
                     comparedCells(
                         when (a) {
                             is Expr.Star -> Expr.Star(field, a.having, a.outer, a.bindDepth)
-                            else -> Expr.Field(field, (a as Expr.Field).outer)
+                            else -> Expr.Star(field, null, (a as Expr.Field).outer)
                         },
                     )
                 }
