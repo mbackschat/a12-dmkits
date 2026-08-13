@@ -61,45 +61,12 @@ VER="${TAG#v}"
 #
 # It runs BEFORE the native build so a regression costs seconds, not a full native cycle, and it gets the
 # machine to itself (CLAUDE.md: a task carrying a timing assertion is never run beside anything else).
-PERF_LOG="$ROOT/build/release-perf-gate.log"
-mkdir -p "$ROOT/build"
+#
+# The gate and its refusals live in their own script because every one of them is a REFUSAL, and a refusal is
+# shippable here only once its firing is tested. They could not be driven from inside this file — it builds
+# native images and pushes to a public mirror — and one of them was consequently broken on arrival.
 echo "0. performance gate (a breach stops the release)"
-if ! ./scripts/perf.sh gate > "$PERF_LOG" 2>&1; then
-    echo "PERFORMANCE GATE FAILED — the release is stopped. See $PERF_LOG" >&2
-    grep -E '\[perf\]|FAILED|expected|breach' "$PERF_LOG" | head -20 >&2
-    exit 1
-fi
-# A PASS is only a pass if the bar actually asserted. The anchor silently declines to assert when the block was
-# captured on another machine, when this run cannot name its own, or outside the isolated lane — all of which
-# print a "not asserting" / "not asserted" note and leave the gate green. Shipping on that would advertise a
-# check that never ran, so the release refuses it and says which condition to fix.
-if grep -qE 'not asserting|anchor not asserted' "$PERF_LOG"; then
-    echo "PERFORMANCE GATE WAS VACUOUS — it ran but asserted nothing, so it cannot license a release." >&2
-    grep -E 'not asserting|anchor not asserted' "$PERF_LOG" | head -5 >&2
-    echo "Refresh the anchor on THIS machine (scripts/perf-anchor.sh refresh) or release from the machine that authored it." >&2
-    exit 1
-fi
-# A SKIPPED bar is the other way a green gate can carry no evidence, and it is not hypothetical: three
-# routine-tier candidates are @EnabledIfSystemProperty and would report as skipped if they were ever tagged into
-# this lane (they are `perf-bench` precisely so they are not). JUnit reports a skip as success, so without this
-# the release would license a gate in which a bar silently did not run. Read from the result XMLs rather than the
-# log, because the lane's own report is the artifact and a log line can be absent for other reasons.
-PERF_XML_DIR="$ROOT/adapter/build/test-results/perfGateTest"
-# awk, not `paste | bc`: bc is absent from minimal images, and this is a release-blocking path that must not fail
-# for a missing arithmetic tool. Empty input yields an empty string, which the next branch treats as "no XMLs".
-SKIPPED="$(grep -ho 'skipped="[0-9]*"' "$PERF_XML_DIR"/*.xml 2>/dev/null \
-    | grep -o '[0-9]*' | awk '{n += $1} END {if (NR) print n}')"
-if [ -z "${SKIPPED:-}" ]; then
-    echo "PERFORMANCE GATE LEFT NO RESULT XMLs in $PERF_XML_DIR — cannot confirm what ran." >&2
-    exit 1
-fi
-if [ "$SKIPPED" -ne 0 ]; then
-    echo "PERFORMANCE GATE SKIPPED $SKIPPED test(s) — a skipped bar is not a passed bar." >&2
-    grep -l 'skipped="[1-9]' "$PERF_XML_DIR"/*.xml 2>/dev/null | sed 's|.*TEST-|  |;s|\.xml$||' >&2
-    echo "Either give the skipped bar what it needs to run, or move it out of the routine tier (@Tag 'perf-bench')." >&2
-    exit 1
-fi
-echo "   performance gate asserted and passed (0 skipped)"
+./scripts/release-perf-gate.sh
 
 KVER="$(grep -oE "kernelVersion *= *'[^']+'" build.gradle | sed -E "s/.*'([^']+)'.*/\1/")"
 A12="$(grep -oE "a12Distribution *= *'[^']+'" build.gradle | sed -E "s/.*'([^']+)'.*/\1/")"

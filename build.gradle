@@ -425,7 +425,7 @@ ext.routeExclusivelyHostedTests = { Test broad, List<String> owningTaskNames,
 }
 
 tasks.register('deliveryGuardTest', Test) {
-    description = 'Input-declared behavioral guards for binary delivery, native independence, and activation.'
+    description = 'Input-declared behavioral guards for release preconditions, binary delivery, native independence, and activation.'
     group = 'verification'
     useJUnitPlatform()
     testClassesDirs = sourceSets.test.output.classesDirs
@@ -436,8 +436,11 @@ tasks.register('deliveryGuardTest', Test) {
         includeTestsMatching 'io.github.mbackschat.a12.dm.NativeNoJavaSmokeTest'
         includeTestsMatching 'io.github.mbackschat.a12.dm.CodexPluginActivationEvidenceTest'
         includeTestsMatching 'io.github.mbackschat.a12.dm.SourceStatisticsReleaseBoundaryTest'
+        includeTestsMatching 'io.github.mbackschat.a12.dm.ReleasePerfGateRefusalTest'
     }
     guardInputs(it, [
+            'release perf gate'       : file('scripts/release-perf-gate.sh'),
+            'release perf self-test'  : file('scripts/selftest-release-perf-gate.sh'),
             'plugin installer'        : file('scripts/ensure-dmtool.sh'),
             'installer self-test'     : file('scripts/selftest-ensure-dmtool.sh'),
             'dmtool launcher'         : file('bin/dmtool'),
