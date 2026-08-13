@@ -22,8 +22,12 @@ import org.junit.jupiter.api.Assertions.assertTrue
  */
 internal object KernelAdvantage {
 
-    private const val WARMUP = 3
-    private const val REPEATS = 5
+    // WARMUP 3 -> 5 and REPEATS 5 -> 7 on 2026-08-13: `partial-SOP/complete-concrete` spanned 1.78x across three
+    // sequential isolated gates (`[3.45, 2.54, 4.52]` at n=250), against a 1.65x anchor tolerance. Both arms of
+    // every reading here are wall-clock, so this helper has no CPU-clock protection from a neighbour's slice and
+    // has to buy its stability with samples.
+    private const val WARMUP = 5
+    private const val REPEATS = 7
 
     /** Independent re-measurements a breaching growth estimate must survive. Odd, so the median is one of them. */
     private const val GROWTH_ATTEMPTS = 3

@@ -62,8 +62,15 @@ class GroupScopedFillPerfTest {
         return d
     }
 
+    /**
+     * `warmup = 5, iters = 5`, raised from `2, 3` on 2026-08-13. At three samples the median is one middle value,
+     * so a single contended slice moves it; measured over three sequential isolated gates this lane spanned
+     * 1.68x (`[7.28, 7.27, 12.21]` at n=8000) — two tight readings and one outlier, which is the shape a
+     * three-sample median cannot absorb. The deeper warmup also matters here because the first gate run after a
+     * rebuild was systematically the slowest of the three.
+     */
     private fun medianMs(n: Int): Double {
-        return PerfHarness.timeInterpreter(scenario, n, warmup = 2, iters = 3).medianMs
+        return PerfHarness.timeInterpreter(scenario, n, warmup = 5, iters = 5).medianMs
     }
 
     private fun kernelMedianMs(n: Int): Double {

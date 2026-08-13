@@ -93,9 +93,16 @@ class CustomTypePerfTest {
         PerfHarness.assertSubQuadraticLane(
             label = "custom-type validation",
             small = N_SMALL,
-            identityAt = { n -> PerfHarness.fingerprintedLabel("custom-type-iban", "$IBAN|customDef|rows=$n") },
+            identityAt = { n ->
+                // `batch` belongs in the identity: it multiplies what one timed block measures, so a key without
+                // it would hold 8 calls against an anchor authored for 1. Sampling parameters (warmup, iters) are
+                // deliberately NOT here — more samples estimate the same quantity, a bigger batch is a different one.
+                PerfHarness.fingerprintedLabel("custom-type-iban", "$IBAN|customDef|rows=$n|batch=$BATCH")
+            },
         ) { n ->
-            PerfHarness.measureCurrentThreadCpu(warmup = 0, iters = REPEATS) { run(docs.getValue(n)) }.medianMs
+            PerfHarness.measureCurrentThreadCpu(warmup = 0, iters = REPEATS) {
+                repeat(BATCH) { run(docs.getValue(n)) }
+            }.medianMs
         }
     }
 
@@ -106,6 +113,15 @@ class CustomTypePerfTest {
         const val MAX = 200_000          // declared repeatability ceiling — above the largest doc, so no over-repetition noise
         const val WARM = 3
         const val REPEATS = 5
+
+        /**
+         * Calls per timed block. The small scale measured ~1 ms, which is exactly the anchor's `slackMs` term, so
+         * its bar was "under 2 ms" against a 1 ms observation — and its run-to-run spread was the widest in the
+         * estate (2.10x at n=10000, 2.86x at n=40000, three sequential isolated gates, 2026-08-13). Batching lifts
+         * the recorded median clear of both the slack and the clock's granularity; the growth ratio is a quotient,
+         * so a constant factor on both scales cancels exactly.
+         */
+        const val BATCH = 8
         const val FACTOR = 6             // generous; a per-cell virtual-call/boxing blowup is far larger (+ 50 ms slack)
     }
 }
