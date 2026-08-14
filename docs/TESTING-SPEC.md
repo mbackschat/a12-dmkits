@@ -372,6 +372,20 @@ The perf lane and differential fuzzers dominate the kernel-backed suite's wall t
 | adapter differential | `./build.sh -Pfast :adapter:test --tests "<Class>"` | ~1m40s | **~8 s** |
 | interpreter | `./build.sh :interpreter:jvmTest --tests "<Class>"` | — | **~5 s** |
 
+**What the perf gate does and does not see, so "the gate is green" is never mistaken for "no regression" (2026-08-15).** A full `scripts/perf.sh gate` records **168 observations** and the three kinds are not interchangeable:
+
+| kind | count (darwin) | what bounds it |
+|---|---|---|
+| anchored absolutes | 66 | a committed per-runner-class number, `1.65× + 1 ms` |
+| growth observations | 23 | the `9.0` sub-quadratic catastrophe floor |
+| `status: unasserted` | 102 | **not unguarded** — all belong to the kernel-parity lane, whose 34 rows carry 17 `assertBeatsBothKernelStrategies` ratio assertions, a per-row absolute ceiling, and the IF292 margin band against 62 committed floors. The status marks the *absolute* as recorded-for-history rather than anchored, because the lane's decidable quantity is the ratio |
+
+Three things it genuinely cannot see, each with its answer rather than a shrug:
+
+- **Drift below the tolerance.** An anchor fires only above `1.65× + 1 ms`, so a smaller slowdown never trips it and successive ones could compound — the reason anchors are committed rather than rolling. `scripts/perf-trend.sh` is the other half: it segments the committed series by `(environment, jdk, os, machine)` and reports where a row's level **stepped**. It existed and nothing invoked it; it now runs in the **nightly** (`Report step changes in the committed performance record`). It always exits 0 — a change point is what a deliberate optimization looks like too — so it surfaces drift without being able to fail a build.
+- **The bench tier, which the gate never runs.** `scripts/perf.sh bench` (`@Tag("perf-bench")`) owns the B-series dynamic-Groovy/generated-Java ratio sweep, the GC-sensitive retained-heap probe, and the externally parameterized canaries. **Its trigger: run it when a change can move the interpreter's cost RELATIVE to the kernel, or its heap** — an evaluation-path change, a codegen or dispatch change, a data-structure change in the hot path, or a kernel bump. A change confined to authoring/analysis, tooling, tests, or docs does not qualify. Record the run in [INTERPRETER-PERFORMANCE](INTERPRETER-PERFORMANCE.md)'s results log when you do.
+- **The authoring surface, which no lane measures at all.** Every perf scenario times interpreter *evaluation*; rulekit/modelkit/edit/cli model analysis, rendering and read-back are outside the estate by construction. A change there is covered by correctness tests and by nothing else, so "the perf gate is green" says nothing about it — state that explicitly rather than letting a green gate imply coverage it does not have.
+
 **`-Pfast` drops EIGHT guards, so name the one your change needs and run it before committing (2026-08-14).** The flag exists to stop a one-class run paying for every guard on the lane, and the cost of that is real: those guards then run **nowhere** in the inner loop, so a surface they protect can drift for several commits under uninterrupted green. Measured the day the flag landed — `RkCode.MOVE_CHANGES_GROUP_EXPANSION` was added, every targeted run stayed green, and the stale `api/` golden only surfaced when an unrelated change regenerated it. Match the change to its guard:
 
 | you changed… | run |

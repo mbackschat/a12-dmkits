@@ -69,6 +69,18 @@ jobs:
           JAVA_HOME: ${{ env.JAVA_HOME_21_X64 }}
         run: ./scripts/perf.sh gate
 
+      # The gate can only see a breach ABOVE its tolerance (1.65x + 1ms), so a slowdown that stays under it is
+      # invisible to every step above — and successive within-tolerance degradations are exactly what a committed
+      # (rather than rolling) anchor exists to stop compounding silently. `perf-trend.sh` is the other half: it
+      # segments the committed series by (environment, jdk, os, machine) and reports where a row's LEVEL stepped.
+      # It is a REPORT and always exits 0 on a readable record, so it cannot fail the nightly — a change point is
+      # what a deliberate optimization looks like too, and only a human can tell the two apart. Running it here is
+      # what makes drift SURFACED rather than merely detectable: the script existed and nothing invoked it.
+      - name: Report step changes in the committed performance record
+        if: always()
+        working-directory: a12-dmkits
+        run: ./scripts/perf-trend.sh
+
       # The run writes its record INTO the committed perf-results/ tree (never build/, which clean deletes), so the
       # tree now holds this run's file beside every previously committed one. Uploading the tree would hand the
       # operator an artifact of mostly other machines' and other revisions' numbers, presented as this run's output.
