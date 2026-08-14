@@ -4,6 +4,7 @@ import io.github.mbackschat.a12.dm.interpreter.DmInterpreter
 import io.github.mbackschat.a12.dm.interpreter.eval.Document
 import io.github.mbackschat.a12.dm.interpreter.eval.newDocument
 import io.github.mbackschat.a12.dm.interpreter.load.ModelLoader
+import io.github.mbackschat.a12.dm.interpreter.model.MsgType
 import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertTrue
@@ -85,15 +86,18 @@ class ComputeGroupScopeFromADeepRowDiffTest {
             "$msg — the kernel REJECTED the shape " +
                 "(${kernelMessages.map { it.code() }.filter { it.startsWith("MVK_") }})"
         }
-        val groovy = kernelMessages.filter { it.code() == CODE }.map { it.field() }.sorted()
+        val groovy = kernelMessages.filter { it.code() == CODE }
+            .map { "${it.field()}|${it.type().name}" }.sorted()
 
         val staticDoc = Both(RuntimeLaws.doc(), def.newDocument()).also(build).kDoc
         val javaStatic = RuntimeLaws.kernelJavaEngine(kModel)
             .messagesModern(staticDoc, null, java.util.Locale.US)
-            .filter { it.code() == CODE }.map { it.field() }.sorted()
+            .filter { it.code() == CODE }.map { "${it.field()}|${it.type().name}" }.sorted()
 
         val interpreter = DmInterpreter(def).validateFull(dynamic.iDoc)
-            .filter { it.code == CODE }.map { it.errorPath }.sorted()
+            .filter { it.code == CODE }
+            .map { "${it.errorPath}|${if (it.type == MsgType.OMISSION) "OMISSION_ERROR" else "VALUE_ERROR"}" }
+            .sorted()
 
         assertEquals(expected, groovy, "$msg — the kernel groovy-dynamic fire set")
         assertEquals(groovy, javaStatic, "$msg — groovy vs java-static (tri-check)")
@@ -115,9 +119,11 @@ class ComputeGroupScopeFromADeepRowDiffTest {
     fun theGroupOperandsFirstFilledValueIsTheSameFromEveryRow() =
         agreeFireRows(
             "FieldFilled($FINDING) And FirstFilledValue($HANDLING) == \"AAA\"",
+            // OMISSION here and VALUE in the control below: the direct field is empty in this document, so a
+            // fill could still change the answer. The widened projection is what makes that distinction visible.
             expected = listOf(
-                "/Doc[1]/Handling[1]/Inspections[1]/Finding",
-                "/Doc[1]/Handling[1]/Inspections[2]/Finding",
+                "/Doc[1]/Handling[1]/Inspections[1]/Finding|OMISSION_ERROR",
+                "/Doc[1]/Handling[1]/Inspections[2]/Finding|OMISSION_ERROR",
             ),
             msg = "FirstFilledValue over the operand answers AAA from both rows",
             build = ::twoDistinctNestedFindings,
@@ -145,8 +151,8 @@ class ComputeGroupScopeFromADeepRowDiffTest {
         agreeFireRows(
             "FieldFilled($FINDING) And FirstFilledValue($HANDLING) == \"DIRECT\"",
             expected = listOf(
-                "/Doc[1]/Handling[1]/Inspections[1]/Finding",
-                "/Doc[1]/Handling[1]/Inspections[2]/Finding",
+                "/Doc[1]/Handling[1]/Inspections[1]/Finding|VALUE_ERROR",
+                "/Doc[1]/Handling[1]/Inspections[2]/Finding|VALUE_ERROR",
             ),
             msg = "control: the direct PrimaryNote precedes both nested rows",
         ) { b ->

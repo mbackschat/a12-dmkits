@@ -4,6 +4,7 @@ import io.github.mbackschat.a12.dm.interpreter.DmInterpreter
 import io.github.mbackschat.a12.dm.interpreter.eval.Document
 import io.github.mbackschat.a12.dm.interpreter.eval.newDocument
 import io.github.mbackschat.a12.dm.interpreter.load.ModelLoader
+import io.github.mbackschat.a12.dm.interpreter.model.MsgType
 import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertTrue
@@ -86,15 +87,18 @@ class GroupScopeFromADeepRuleRowDiffTest {
             "$msg — the kernel REJECTED the shape " +
                 "(${kernelMessages.map { it.code() }.filter { it.startsWith("MVK_") }})"
         }
-        val groovy = kernelMessages.filter { it.code() == CODE }.map { it.field() }.sorted()
+        val groovy = kernelMessages.filter { it.code() == CODE }
+            .map { "${it.field()}|${it.type().name}" }.sorted()
 
         val staticDoc = Both(RuntimeLaws.doc(), def.newDocument()).also(build).kDoc
         val javaStatic = RuntimeLaws.kernelJavaEngine(kModel)
             .messagesModern(staticDoc, null, java.util.Locale.US)
-            .filter { it.code() == CODE }.map { it.field() }.sorted()
+            .filter { it.code() == CODE }.map { "${it.field()}|${it.type().name}" }.sorted()
 
         val interpreter = DmInterpreter(def).validateFull(dynamic.iDoc)
-            .filter { it.code == CODE }.map { it.errorPath }.sorted()
+            .filter { it.code == CODE }
+            .map { "${it.errorPath}|${if (it.type == MsgType.OMISSION) "OMISSION_ERROR" else "VALUE_ERROR"}" }
+            .sorted()
 
         assertEquals(expected, groovy, "$msg — the kernel groovy-dynamic fire set")
         assertEquals(groovy, javaStatic, "$msg — groovy vs java-static (tri-check)")
@@ -138,7 +142,7 @@ class GroupScopeFromADeepRuleRowDiffTest {
     fun theOppositePolarityFiresFromTheRowThatCanReport() =
         agreeFireRows(
             "FieldFilled($FINDING) And NotAllFieldsFilled($HANDLING)",
-            expected = listOf("/Return[1]/Handling[1]/Inspections[2]/Finding"),
+            expected = listOf("/Return[1]/Handling[1]/Inspections[2]/Finding|OMISSION_ERROR"),
             msg = "NotAllFieldsFilled is true over the operand's extent; only row 2 passes the guard",
             build = ::theFirstRowsFindingIsMissing,
         )
@@ -152,8 +156,8 @@ class GroupScopeFromADeepRuleRowDiffTest {
         agreeFireRows(
             "FieldFilled($FINDING) And AllFieldsFilled($HANDLING)",
             expected = listOf(
-                "/Return[1]/Handling[1]/Inspections[1]/Finding",
-                "/Return[1]/Handling[1]/Inspections[2]/Finding",
+                "/Return[1]/Handling[1]/Inspections[1]/Finding|VALUE_ERROR",
+                "/Return[1]/Handling[1]/Inspections[2]/Finding|VALUE_ERROR",
             ),
             msg = "control: every cell below the operand is filled",
         ) { b ->

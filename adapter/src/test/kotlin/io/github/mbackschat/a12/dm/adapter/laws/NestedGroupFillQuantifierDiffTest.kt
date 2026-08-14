@@ -4,6 +4,7 @@ import io.github.mbackschat.a12.dm.interpreter.DmInterpreter
 import io.github.mbackschat.a12.dm.interpreter.eval.Document
 import io.github.mbackschat.a12.dm.interpreter.eval.newDocument
 import io.github.mbackschat.a12.dm.interpreter.load.ModelLoader
+import io.github.mbackschat.a12.dm.interpreter.model.MsgType
 import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertTrue
@@ -98,8 +99,16 @@ class NestedGroupFillQuantifierDiffTest {
             .group(INSPECTIONS, 1, 1, 3)
     }
 
-    /** `(groovy, javaStatic, interpreter)` for one condition, with a kernel rejection reported as a rejection. */
-    private fun verdicts(condition: String): Triple<Boolean, Boolean, Boolean> {
+    /**
+     * `(groovy, javaStatic, interpreter)` for one condition as full `errorPath|type` SIGNATURES, with a kernel
+     * rejection reported as a rejection.
+     *
+     * **Signatures rather than booleans**, because a message of the wrong TYPE reads as agreement under a boolean
+     * and this file measures seven quantifiers whose polarity a later fix in the same session changed. That is not
+     * a hypothetical: widening five sibling differentials from `any { code }` to this projection is what exposed
+     * the seventeenth instance of this defect class, on a row written an hour earlier.
+     */
+    private fun verdicts(condition: String): Triple<List<String>, List<String>, List<String>> {
         val kModel = RuntimeLaws.withRule(base, "/Return", "R", "../Reference", CODE,
             "FieldFilled($REF) And $condition")
         val def = ModelLoader.load(kModel)
@@ -112,10 +121,12 @@ class NestedGroupFillQuantifierDiffTest {
         }
         val staticDoc = Both(RuntimeLaws.doc(), def.newDocument()).also(::twoFilledOneOfThemNested).kDoc
         return Triple(
-            messages.any { it.code() == CODE },
-            RuntimeLaws.kernelJavaEngine(kModel)
-                .messagesModern(staticDoc, null, java.util.Locale.US).any { it.code() == CODE },
-            DmInterpreter(def).validateFull(dynamic.iDoc).any { it.code == CODE },
+            messages.filter { it.code() == CODE }.map { "${it.field()}|${it.type().name}" }.sorted(),
+            RuntimeLaws.kernelJavaEngine(kModel).messagesModern(staticDoc, null, java.util.Locale.US)
+                .filter { it.code() == CODE }.map { "${it.field()}|${it.type().name}" }.sorted(),
+            DmInterpreter(def).validateFull(dynamic.iDoc).filter { it.code == CODE }
+                .map { "${it.errorPath}|${if (it.type == MsgType.OMISSION) "OMISSION_ERROR" else "VALUE_ERROR"}" }
+                .sorted(),
         )
     }
 
@@ -129,7 +140,7 @@ class NestedGroupFillQuantifierDiffTest {
         for (row in QUANTIFIERS) {
             for ((spelling, operand) in listOf("GROUP" to HANDLING, "explicit-control" to EXPLICIT)) {
                 val (groovy, javaStatic, interpreter) = verdicts("${row.op}($operand)")
-                if (groovy != row.fires) {
+                if (groovy.isNotEmpty() != row.fires) {
                     mismatches += "${row.op}/$spelling: expected the kernel to fire=${row.fires}, got $groovy"
                 }
                 if (javaStatic != groovy) {
@@ -146,12 +157,28 @@ class NestedGroupFillQuantifierDiffTest {
     }
 
     /**
-     * The guard that keeps the table above from going vacuous: at least one row must be a genuine discriminator,
-     * so a future edit cannot quietly reduce this file to seven rows that a row-1-pinned engine would also pass.
+     * The guard that keeps the table above from going vacuous — and it asserts a property of the **DOCUMENT**, not
+     * a count of hand-written flags.
+     *
+     * The flag version a cold review caught could not do its stated job: its purpose is that a future edit cannot
+     * quietly reduce this file to rows a row-1-pinned engine would also pass, and a fixture change that destroys
+     * the discrimination leaves the flags intact and the guard green. What the rows actually need is that the
+     * document's filled-cell count DIFFERS between the operand's full extent and a row-1-only read — two filled
+     * cells versus one — because that difference is the only reason `MoreThanOneFieldFilled` and
+     * `NotExactlyOneFieldFilled` can separate the readings at all.
      */
     @Test
-    fun theTableContainsARowThatARowOnePinnedExpansionWouldFail() =
-        assertTrue(QUANTIFIERS.count { it.pinnedWouldDiffer } >= 2) {
-            "this file's whole point is the rows a row-1 pin answers differently; none are left"
+    fun theFixtureItselfSeparatesTheFullExtentFromARowOneRead() {
+        val b = Both(RuntimeLaws.doc(), ModelLoader.load(base).newDocument())
+        twoFilledOneOfThemNested(b)
+        val kModel = RuntimeLaws.withRule(base, "/Return", "R", "../Reference", CODE,
+            "FieldFilled($REF) And NumberOfFilledFields($HANDLING) > 1")
+        val def = ModelLoader.load(kModel)
+        val doc = Both(RuntimeLaws.doc(), def.newDocument()).also(::twoFilledOneOfThemNested)
+        val fullExtentFires = RuntimeLaws.messages(kModel, doc.kDoc).any { it.code() == CODE }
+        assertTrue(fullExtentFires) {
+            "the fixture no longer holds MORE than one filled cell below the operand, so no row in this table can " +
+                "separate the full extent from a row-1-only read and every row would pass a pinned engine"
         }
+    }
 }

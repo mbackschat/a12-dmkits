@@ -89,15 +89,17 @@ class OuterMarkedAggregateOperandDiffTest {
                 "(${kernelMessages.map { it.code() }.filter { it.startsWith("MVK_") }}); that is a measurement " +
                 "about admission, and it is what a first attempt at this file got wrong"
         }
-        val groovy = kernelMessages.filter { it.code() == CODE }.map { it.field() }.sorted()
+        val groovy = kernelMessages.filter { it.code() == CODE }
+            .map { "${it.field()}|${it.type().name}" }.sorted()
 
         val staticDoc = Both(RuntimeLaws.doc(), def.newDocument()).also(build).kDoc
         val javaStatic = RuntimeLaws.kernelJavaEngine(kModel)
             .messagesModern(staticDoc, null, java.util.Locale.US)
-            .filter { it.code() == CODE }.map { it.field() }.sorted()
+            .filter { it.code() == CODE }.map { "${it.field()}|${it.type().name}" }.sorted()
 
-        val interpreter = DmInterpreter(def).validateFull(dynamic.iDoc)
-            .filter { it.code == CODE }.map { it.errorPath }.sorted()
+        val interpreter = DmInterpreter(def).validateFull(dynamic.iDoc).filter { it.code == CODE }
+            .map { "${it.errorPath}|${if (it.type == MsgType.OMISSION) "OMISSION_ERROR" else "VALUE_ERROR"}" }
+            .sorted()
 
         assertEquals(expected, groovy, "$msg — the kernel groovy-dynamic rows")
         assertEquals(groovy, javaStatic, "$msg — groovy vs java-static (tri-check)")
@@ -129,7 +131,7 @@ class OuterMarkedAggregateOperandDiffTest {
     fun theOuterMarkedOperandsResolveInTheRulesOwnRow() =
         agreeFireRows(
             "FieldFilled($SKU) And Sum($LOTS*/Amount Having ([$SKU] == \"A\" And Sum(\$$BONUS, \$$EXTRA) > 0)) > 0",
-            expected = listOf("/Claim[1]/Lots[2]/Sku"),
+            expected = listOf("/Claim[1]/Lots[2]/Sku|OMISSION_ERROR"),
             msg = "the \$-marked Bonus+Extra is positive only in row 2",
             build = ::onlyTheSecondRowCarriesABonus,
         )
@@ -212,7 +214,10 @@ class OuterMarkedAggregateOperandDiffTest {
     fun theFilteredAggregateFiresWithoutTheOuterRequirement() =
         agreeFireRows(
             "FieldFilled($SKU) And Sum($LOTS*/Amount Having [$SKU] == \"A\") > 0",
-            expected = listOf("/Claim[1]/Lots[1]/Sku", "/Claim[1]/Lots[2]/Sku"),
+            expected = listOf(
+                "/Claim[1]/Lots[1]/Sku|OMISSION_ERROR",
+                "/Claim[1]/Lots[2]/Sku|OMISSION_ERROR",
+            ),
             msg = "control: the filter keeps row 1, whose Amount is 10",
             build = ::onlyTheSecondRowCarriesABonus,
         )
