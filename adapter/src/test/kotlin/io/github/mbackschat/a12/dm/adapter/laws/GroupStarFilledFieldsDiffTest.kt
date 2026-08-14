@@ -4,6 +4,7 @@ import io.github.mbackschat.a12.dm.interpreter.DmInterpreter
 import io.github.mbackschat.a12.dm.interpreter.eval.Document
 import io.github.mbackschat.a12.dm.interpreter.eval.newDocument
 import io.github.mbackschat.a12.dm.interpreter.load.ModelLoader
+import io.github.mbackschat.a12.dm.interpreter.model.MsgType
 import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel
 import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl
@@ -101,6 +102,38 @@ class GroupStarFilledFieldsDiffTest {
     @Test
     fun theCountSpansEveryRowOfTheStarredGroup() =
         agreeFires(atLeast = 3, expected = true, msg = "4 filled cells across 2 rows satisfies >= 3", build = ::twoFullRows)
+
+    /**
+     * **A SHRINK-direction bar, which is the only way the polarity of this count is observable.** Every row here
+     * uses `>=`, and a `>=` bar can only ever grow more true as cells fill, so both a correct and a group-blind
+     * polarity read answer VALUE and the boolean rows cannot separate them. `< 5` inverts that. The review that
+     * found the polarity defect in `Sum` named this as the same shape one operator over: `countFill` skips a star
+     * with no `Having` outright and falls back to a leaf-omission reading of the group path.
+     */
+    @Test
+    fun theCountFiresWithTheKernelsPolarityAtAShrinkBar() {
+        val condition = DslRenderer().render(
+            m.field(REF).filled().and(Dsl.numberOfFilledFields(m.flattenGroup("$LINES*")).lt(5L)),
+        )
+        val kModel = RuntimeLaws.withRule(base, "/Order", "R", "../Ref", CODE, condition)
+        val def = ModelLoader.load(kModel)
+
+        val dynamic = Both(RuntimeLaws.doc(), def.newDocument()).also(::twoFullRows)
+        val groovy = RuntimeLaws.messages(kModel, dynamic.kDoc).filter { it.code() == CODE }
+            .map { "${it.field()}|${it.type().name}" }.sorted()
+
+        val staticDoc = Both(RuntimeLaws.doc(), def.newDocument()).also(::twoFullRows).kDoc
+        val javaStatic = RuntimeLaws.kernelJavaEngine(kModel)
+            .messagesModern(staticDoc, null, java.util.Locale.US).filter { it.code() == CODE }
+            .map { "${it.field()}|${it.type().name}" }.sorted()
+
+        val interpreter = DmInterpreter(def).validateFull(dynamic.iDoc).filter { it.code == CODE }
+            .map { "${it.errorPath}|${if (it.type == MsgType.OMISSION) "OMISSION_ERROR" else "VALUE_ERROR"}" }
+            .sorted()
+
+        assertEquals(groovy, javaStatic, "groovy vs java-static (tri-check)")
+        assertEquals(groovy, interpreter, "kernel vs INTERPRETER — the polarity of the filled-field count")
+    }
 
     /** The negative control on the same document: 4 filled cells do not satisfy `>= 5`. */
     @Test
