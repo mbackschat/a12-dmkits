@@ -112,7 +112,7 @@ public final class OperatorUsage {
             case Concatenation c -> c.parts().forEach(p -> collect(p, ops));
             case DateListAggregate a -> {
                 ops.add(a.operatorId());
-                collectOperand(a.scope(), ops);
+                collectAggregateOperand(a.scope(), ops);
             }
             case FirstFilledValue a -> {
                 ops.add(a.operatorId());

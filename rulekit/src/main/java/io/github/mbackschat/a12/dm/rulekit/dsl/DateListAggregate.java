@@ -12,7 +12,7 @@ import io.github.mbackschat.a12.dm.core.ValueKind;
  * Build via {@link Dsl#latestOf}/{@link Dsl#earliestOf} (DATE), {@link Dsl#latestTimeOf}/{@link Dsl#earliestTimeOf}
  * (TIME), or {@link Dsl#latestDateTimeOf}/{@link Dsl#earliestDateTimeOf} (DATETIME).
  */
-public record DateListAggregate(Mode mode, FieldListRef scope) implements Calculation {
+public record DateListAggregate(Mode mode, AggregateOperand scope, ValueKind kind) implements Calculation {
 
     /** The two date aggregations, carrying the catalog operator-id shared with the numeric variant. */
     public enum Mode {
@@ -31,16 +31,25 @@ public record DateListAggregate(Mode mode, FieldListRef scope) implements Calcul
     }
 
     public DateListAggregate {
-        ValueKind scopeKind = scope.kind();
-        if (scopeKind != ValueKind.DATE && scopeKind != ValueKind.TIME && scopeKind != ValueKind.DATE_TIME) {
+        if (kind != ValueKind.DATE && kind != ValueKind.TIME && kind != ValueKind.DATE_TIME) {
             throw new IllegalArgumentException(mode.operatorId() + " over date-like values needs a DATE, TIME, or"
-                    + " DATETIME field list; " + scope.renderedPath() + " is " + scopeKind + " (MVK_NOT_SORTABLE)");
+                    + " DATETIME operand; " + scope.renderedPath() + " was declared " + kind
+                    + " (MVK_NOT_SORTABLE)");
+        }
+        // The FIELD arm keeps its equality check: a field list KNOWS its kind, so a DATE list handed to the TIME
+        // factory must still fail fast rather than mis-type the aggregate. A GROUP carries no kind of its own —
+        // a group's kind lives in its EXPANSION, which `AggregateOperand` delegates to the kernel rather than
+        // re-implementing the extent — so its arm takes the factory's declared kind and lets the kernel's own
+        // gate judge the expansion (`MVK_NOT_SORTABLE`), exactly as the numeric aggregates already do.
+        if (scope instanceof FieldListRef fields && fields.kind() != kind) {
+            throw new IllegalArgumentException(mode.operatorId() + " was built for " + kind + " but "
+                    + fields.renderedPath() + " is " + fields.kind());
         }
     }
 
     @Override
     public ValueKind kind() {
-        return scope.kind();
+        return kind;
     }
 
     public String operatorId() {

@@ -2483,8 +2483,8 @@ final class ConditionConverter {
     private DateListAggregate temporalListAggregate(IEntityListOperation aggregate) {
         FieldListRef scope = flattenScope(aggregate.getEntityList().getEntityIdList().getFirst());
         return switch (aggregate.getOperatorName()) {
-            case MaxValue -> new DateListAggregate(DateListAggregate.Mode.LATEST, scope);
-            case MinValue -> new DateListAggregate(DateListAggregate.Mode.EARLIEST, scope);
+            case MaxValue -> new DateListAggregate(DateListAggregate.Mode.LATEST, scope, scope.kind());
+            case MinValue -> new DateListAggregate(DateListAggregate.Mode.EARLIEST, scope, scope.kind());
             default -> throw unsupported("temporal extremum operator " + aggregate.getOperatorName(), aggregate);
         };
     }

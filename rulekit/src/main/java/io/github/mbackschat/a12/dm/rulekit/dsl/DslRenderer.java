@@ -422,7 +422,7 @@ public final class DslRenderer {
                     + r.decimalPlaces().map(places -> ", " + places).orElse("") + ")";
             case Concatenation c -> c.parts().stream().map(this::render)
                     .collect(java.util.stream.Collectors.joining(" + "));
-            case DateListAggregate a -> keyword(a.operatorId()) + "(" + operand(a.scope()) + ")";
+            case DateListAggregate a -> keyword(a.operatorId()) + "(" + aggregateOperand(a.scope()) + ")";
             case FirstFilledValue a -> keyword(a.operatorId()) + "("
                     + a.operands().stream().map(this::firstFilledOperand)
                             .collect(java.util.stream.Collectors.joining(", "))

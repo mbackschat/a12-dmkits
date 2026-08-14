@@ -394,6 +394,16 @@ Condition duplicateAcrossRows = Dsl.fieldValuesNotUnique(m.flattenGroup("/Order/
 
 Two gates read the group differently, and the pair is worth knowing because neither is guessable from the other. **Arity** is satisfied by the group slot alone — a group expanding to a *single* field is admitted, while that same field named directly is `MVK_PARAMSIZE_INVALIDN`. **Comparability** reads the expansion, so a group whose fields mix categories is `MVK_VARYING_TYPES_NOT_ALLOWED` exactly as the equivalent explicit list would be; that gate stays kernel-arbitrated for the same reason the aggregates delegate theirs. (Finding 122; measured in `FieldValuesNotUniqueAdmissionLawsTest`, runtime agreement in `FieldValuesNotUniqueGroupOperandDiffTest`.)
 
+**The DATE extrema take a starred group too**, and the shape of that widening is worth a sentence because it differs from the others. `MaxValue`/`MinValue` over date-like values carry a KIND, and a `GroupListRef` has none — a group's kind lives in its expansion, which the kit delegates to the kernel rather than re-deriving the extent. So the aggregate now takes its kind explicitly, from the factory that already names it:
+
+<!-- teaser -->
+```java
+GroupListRef inspections = m.flattenGroup("/Claim/Inspections*");
+Condition late = Dsl.latestOf(inspections).after(m.date("/Claim/ClaimedOn"));
+```
+
+`latestOf` is the DATE one, `latestTimeOf` the TIME one, `latestDateTimeOf` the DATETIME one — the information was always at the call site and merely re-derived from the operand afterwards. The **field** arm keeps its equality check, so a DATE list handed to `latestTimeOf` still fails fast. Only the starred group form is offered, for the same reason as above. (`DateExtremaGroupOperandLawsTest`.)
+
 **`NumberOfValueInFields` counts across a starred group's expansion.** It is an entity-list operator like the aggregates, so its operand list is an `AggregateOperand` list and a `GroupListRef` sits in it for the same reason it sits under `Sum` — "how many cells anywhere below this group equal X", without naming one field:
 
 <!-- teaser -->

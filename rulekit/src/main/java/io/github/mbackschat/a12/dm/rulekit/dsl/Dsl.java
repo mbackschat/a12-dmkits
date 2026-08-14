@@ -174,34 +174,74 @@ public final class Dsl {
         return listAggregate(ListAggregate.AggOp.MIN_VALUE, first, rest);
     }
 
+    // --- the DATE extrema ---------------------------------------------------------------------
+    // Each factory NAMES the kind it means, so it supplies it to the aggregate rather than letting the record
+    // re-derive it from the operand. That is what lets a GROUP scope in: a group carries no kind of its own
+    // (its kind lives in the expansion, kernel-delegated), while the information was always present here at
+    // the call site. Only the STARRED group form is offered — see DateListAggregate (DG35, KF187).
+
     /** {@code MaxValue(…)} over a date repetition list — the latest specified date (a date operand). catalog:MaxValue */
     public static DateExpr latestOf(FieldListRef dateScope) {
-        return new DateExpr(new DateListAggregate(DateListAggregate.Mode.LATEST, dateScope));
+        return new DateExpr(new DateListAggregate(DateListAggregate.Mode.LATEST, dateScope, ValueKind.DATE));
+    }
+
+    /** {@code MaxValue(Group*)} over a starred group of DATE fields — the latest specified date. catalog:MaxValue */
+    public static DateExpr latestOf(GroupListRef dateScope) {
+        return new DateExpr(new DateListAggregate(DateListAggregate.Mode.LATEST, dateScope, ValueKind.DATE));
     }
 
     /** {@code MinValue(…)} over a date repetition list — the earliest specified date (a date operand). catalog:MinValue */
     public static DateExpr earliestOf(FieldListRef dateScope) {
-        return new DateExpr(new DateListAggregate(DateListAggregate.Mode.EARLIEST, dateScope));
+        return new DateExpr(new DateListAggregate(DateListAggregate.Mode.EARLIEST, dateScope, ValueKind.DATE));
+    }
+
+    /** {@code MinValue(Group*)} over a starred group of DATE fields — the earliest specified date. catalog:MinValue */
+    public static DateExpr earliestOf(GroupListRef dateScope) {
+        return new DateExpr(new DateListAggregate(DateListAggregate.Mode.EARLIEST, dateScope, ValueKind.DATE));
     }
 
     /** {@code MaxValue(…)} over a TIME repetition list — the latest time-of-day (a time operand). catalog:MaxValue */
     public static TimeExpr latestTimeOf(FieldListRef timeScope) {
-        return new TimeExpr(new DateListAggregate(DateListAggregate.Mode.LATEST, timeScope));
+        return new TimeExpr(new DateListAggregate(DateListAggregate.Mode.LATEST, timeScope, ValueKind.TIME));
+    }
+
+    /** {@code MaxValue(Group*)} over a starred group of TIME fields — the latest time-of-day. catalog:MaxValue */
+    public static TimeExpr latestTimeOf(GroupListRef timeScope) {
+        return new TimeExpr(new DateListAggregate(DateListAggregate.Mode.LATEST, timeScope, ValueKind.TIME));
     }
 
     /** {@code MinValue(…)} over a TIME repetition list — the earliest time-of-day (a time operand). catalog:MinValue */
     public static TimeExpr earliestTimeOf(FieldListRef timeScope) {
-        return new TimeExpr(new DateListAggregate(DateListAggregate.Mode.EARLIEST, timeScope));
+        return new TimeExpr(new DateListAggregate(DateListAggregate.Mode.EARLIEST, timeScope, ValueKind.TIME));
+    }
+
+    /** {@code MinValue(Group*)} over a starred group of TIME fields — the earliest time-of-day. catalog:MinValue */
+    public static TimeExpr earliestTimeOf(GroupListRef timeScope) {
+        return new TimeExpr(new DateListAggregate(DateListAggregate.Mode.EARLIEST, timeScope, ValueKind.TIME));
     }
 
     /** {@code MaxValue(…)} over a DATETIME repetition list — the latest instant (a date-time operand). catalog:MaxValue */
     public static DateTimeExpr latestDateTimeOf(FieldListRef dateTimeScope) {
-        return new DateTimeExpr(new DateListAggregate(DateListAggregate.Mode.LATEST, dateTimeScope));
+        return new DateTimeExpr(
+                new DateListAggregate(DateListAggregate.Mode.LATEST, dateTimeScope, ValueKind.DATE_TIME));
+    }
+
+    /** {@code MaxValue(Group*)} over a starred group of DATETIME fields — the latest instant. catalog:MaxValue */
+    public static DateTimeExpr latestDateTimeOf(GroupListRef dateTimeScope) {
+        return new DateTimeExpr(
+                new DateListAggregate(DateListAggregate.Mode.LATEST, dateTimeScope, ValueKind.DATE_TIME));
     }
 
     /** {@code MinValue(…)} over a DATETIME repetition list — the earliest instant (a date-time operand). catalog:MinValue */
     public static DateTimeExpr earliestDateTimeOf(FieldListRef dateTimeScope) {
-        return new DateTimeExpr(new DateListAggregate(DateListAggregate.Mode.EARLIEST, dateTimeScope));
+        return new DateTimeExpr(
+                new DateListAggregate(DateListAggregate.Mode.EARLIEST, dateTimeScope, ValueKind.DATE_TIME));
+    }
+
+    /** {@code MinValue(Group*)} over a starred group of DATETIME fields — the earliest instant. catalog:MinValue */
+    public static DateTimeExpr earliestDateTimeOf(GroupListRef dateTimeScope) {
+        return new DateTimeExpr(
+                new DateListAggregate(DateListAggregate.Mode.EARLIEST, dateTimeScope, ValueKind.DATE_TIME));
     }
 
     /** {@code FirstFilledValue(…)} over a number repetition list — the first specified value, as a number. catalog:FirstFilledValue */
