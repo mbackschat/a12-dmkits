@@ -123,11 +123,8 @@ private fun Interpreter.filledGroupsValue(args: List<Expr>): Val {
  */
 /** Whether [arg] names a GROUP rather than a declared field — a group holds no value of its own, so an operand
  *  that names one has to be expanded to the fields below it before anything can read a cell. */
-internal fun Interpreter.namesAGroup(arg: Expr): Boolean = when (arg) {
-    is Expr.Star -> ctxOf(arg).declaredKind(arg.path) == null
-    is Expr.Field -> ctxOf(arg).declaredKind(arg.path) == null
-    else -> false
-}
+internal fun Interpreter.namesAGroup(arg: Expr): Boolean =
+    arg is Expr.EntitySource && ctxOf(arg).declaredKind(arg.path) == null
 
 /**
  * **The one place that knows HOW a group operand expands** — recursively to every declared field below it (the
@@ -144,12 +141,11 @@ internal fun Interpreter.namesAGroup(arg: Expr): Boolean = when (arg) {
  * cannot silently erase an operand.
  */
 internal fun Interpreter.expandOneGroupOperand(arg: Expr): List<Expr> {
-    val star = arg as? Expr.Star
-    val path = star?.path ?: (arg as Expr.Field).path
-    val outer = star?.outer ?: (arg as Expr.Field).outer
-    val depth = expansionBindDepth(path, star?.bindDepth ?: -1)
-    return ctxOf(arg).containedFields(path)
-        .map { Expr.Star(it, star?.having, outer, depth) }
+    val source = arg as? Expr.EntitySource ?: return listOf(arg)
+    val having = (source as? Expr.Star)?.having
+    val depth = expansionBindDepth(source.path, (source as? Expr.Star)?.bindDepth ?: -1)
+    return ctxOf(arg).containedFields(source.path)
+        .map { Expr.Star(it, having, source.outer, depth) }
         .ifEmpty { listOf(arg) }
 }
 

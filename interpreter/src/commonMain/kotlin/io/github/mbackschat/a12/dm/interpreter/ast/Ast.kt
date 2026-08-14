@@ -111,7 +111,24 @@ enum class ArithOp { ADD, SUB, MUL, DIV, POW }
 sealed interface Expr {
     /** An owner `entitySpec` source. Both a scalar field and a wildcard field may carry the grammar's
      * category projection; only a scalar source may also carry a semantic index. */
-    sealed interface EntitySource : Expr
+    /**
+     * An operand that NAMES a model path — the two shapes an entity slot accepts, [Field] and [Star].
+     *
+     * [path] and [outer] are declared here rather than on each shape because every site that resolves an
+     * operand needs them without caring which shape it got: whether the path names a group, what a group
+     * expands to, which context a `$`-marked operand resolves against. Those sites used to hand-destructure
+     * (`arg as? Star`, then `?: (arg as Field)`), which is a cast the compiler cannot check and a site can
+     * silently get wrong — `pathOf` rejects a [Star] outright, so reaching for it on an operand slot throws
+     * rather than answering. Hoisting the two members makes the shared shape a TYPE fact: a new
+     * `EntitySource` cannot be added without supplying them, and no caller has to remember the pair exists.
+     */
+    sealed interface EntitySource : Expr {
+        /** The model path this operand names. It may name a FIELD or a GROUP; only the model decides which. */
+        val path: String
+
+        /** The `$` correlation marker — resolve against the enclosing repetition environment, not the inner row. */
+        val outer: Boolean
+    }
 
     /** The key of an owner semantic-index suffix. Keeping the two grammar alternatives explicit avoids the
      * nullable-pair invariant of [SemanticIndex] in the compositional `entitySpec` representation. */
@@ -123,7 +140,7 @@ sealed interface Expr {
     /** A field/value reference. [outer] marks the `$` correlation: inside a `Having` filter it resolves
      *  its own named path against the complete ENCLOSING repetition environment, not the inner filtered
      *  row. Different paths can select different captured repetition coordinates. Default `false`. */
-    data class Field(val path: String, val outer: Boolean = false) : EntitySource
+    data class Field(override val path: String, override val outer: Boolean = false) : EntitySource
 
     /** A numeric literal. [asVal] is the typed value, built ONCE at parse (the AST is cached per rule, #31)
      *  so evaluating the literal costs zero allocation per (rule, row) — the kernel's constant is likewise
@@ -147,7 +164,7 @@ sealed interface Expr {
      *  levels — the first starred level and everything below iterate fully (a multi-star `A* / B* / F` binds
      *  above `A`). −1 (a hand-built node) means "the leaf group's parent" — the single-star default, where
      *  the two coincide. */
-    data class Star(val path: String, val having: Cond? = null, val outer: Boolean = false,
+    data class Star(override val path: String, val having: Cond? = null, override val outer: Boolean = false,
                     val bindDepth: Int = -1) : EntitySource
 
     /** A value-valued function, e.g. Min(a, b) (operand-list) or Sum(Star) (aggregate). */

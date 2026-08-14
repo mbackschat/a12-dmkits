@@ -1068,16 +1068,14 @@ class Interpreter(
         // which the degrade net does not catch, so it sank the whole evaluation. `DateRangesOverlap` refuses a
         // group operand outright, but the plural form ADMITS one in its `In` slot ([KF187]), which is what made
         // this reachable and what corrected IF287's reason for leaving `filteredStarCells` unexpanded.
-        // An empty group contributes no range rather than recursing on itself.
-        // An empty group contributes no range rather than recursing on itself. The identity check spots the
-        // owner's "yield the operand unchanged" fallback, which a review called a coupling smell — correctly, but
-        // the obvious replacement is WORSE and was measured so: asking `containedFields(pathOf(arg))` throws
-        // "unsupported operand Star in a field-reference position", because `pathOf` rejects a `Star` outright.
-        // Removing the coupling therefore needs a path accessor that accepts both operand shapes, not a local
-        // rewrite; kept as-is deliberately.
-        namesAGroup(arg) -> expandOneGroupOperand(arg).let { expanded ->
-            if (expanded.singleOrNull() === arg) emptyList() else expanded.flatMap { overlapCells(it) }
-        }
+        // An EMPTY group contributes no range rather than recursing on itself. This used to read the expansion
+        // owner's "yield the operand unchanged" fallback back out by IDENTITY (`expanded.singleOrNull() === arg`),
+        // which coupled this site to that fallback's representation; the honest reason it stayed was that
+        // `pathOf` REJECTS a `Star`, so there was no accessor to ask for the path here. `EntitySource.path` is
+        // that accessor, so the emptiness question is now asked of the model directly.
+        namesAGroup(arg) ->
+            if (ctxOf(arg).containedFields((arg as Expr.EntitySource).path).isEmpty()) emptyList()
+            else expandOneGroupOperand(arg).flatMap { overlapCells(it) }
         arg is Expr.Star -> filteredStarCells(arg).filterIsInstance<Val.Range>()
         else -> listOfNotNull(evalExpr(arg) as? Val.Range)
     }
