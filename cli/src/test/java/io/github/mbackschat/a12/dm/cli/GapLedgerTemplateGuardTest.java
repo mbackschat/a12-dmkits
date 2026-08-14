@@ -132,6 +132,85 @@ class GapLedgerTemplateGuardTest {
                 + "the family in that table:\n  " + String.join("\n  ", unidentified));
     }
 
+    /**
+     * <b>A shipped gap must be RETIRED from the Open section, in every {@code -GAPS} ledger.</b>
+     *
+     * <p>The lifecycle every ledger states is that a gap lives there only while open: when it ships its row is
+     * DELETED, its rationale graduates to the owning spec/finding, and git carries the what/when. The section
+     * invariant in {@code docs/CLAUDE.md} says the same from the other side — §1 holds exactly one live status,
+     * so a fully-shipped entry belongs in none of the sections and "a fully-FIXED entry anywhere in this ledger
+     * is a bug in <em>this doc</em>".
+     *
+     * <p>Both were prose only, and prose did not hold: a 2026-08-14 session left three shipped rows sitting under
+     * {@code ## 1. Open} annotated "FIXED", which is precisely the shape that makes a ledger stop answering
+     * "what remains?" — the one question it exists for. The owner caught it, not the build. This is that rule
+     * mechanized.
+     *
+     * <p><b>Deliberately narrow.</b> It fires on a shipped marker in an <em>item lead</em> only, because a row
+     * legitimately says what a fix already landed when the REST of it is still open — CG15 and CG16 both do, and
+     * flagging those would push the guard toward being disabled. The lead is where "this row is done" is
+     * claimed, and a row whose lead says FIXED has nothing left to track.
+     */
+    @Test
+    void noShippedItemRemainsInAnOpenSection() throws IOException {
+        List<String> shipped = new ArrayList<>();
+        for (Path ledger : ledgers()) {
+            shipped.addAll(auditShipped(ledger.getFileName().toString(), Files.readString(ledger)));
+        }
+        assertTrue(shipped.isEmpty(), () -> "these OPEN items announce themselves as already shipped, so the "
+                + "section no longer answers \"what remains?\". DELETE each row — its rationale graduates to the "
+                + "owning spec/finding and git carries the what/when — or, if only PART of it shipped, rewrite "
+                + "the lead to state the open remainder:\n  " + String.join("\n  ", shipped));
+    }
+
+    /** Does-fire proof for the shipped-marker check, including the partial-fix shape that must NOT fire. */
+    @Test
+    void theShippedGuardFiresOnARetiredRowLeftInOpen() {
+        String fixedBullet = "# x — gaps\n\n## 1. Open\n\n- **CG14 — FIXED 2026-08-14.** it shipped\n";
+        String doneHeading = "# x — gaps\n\n## 1. Open\n\n### IG9 — DONE 2026-08-14 <a id=\"ig9\"></a>\n\nbody\n";
+        String stillOpen = "# x — gaps\n\n## 1. Open\n\n- **CG15 — the arms that still lose a star.** body\n";
+        String partialLead = "# x — gaps\n\n## 1. Open\n\n- **CG16 — the diff surfaces still read exactly.**"
+                + " The readers are FIXED; these three are not.\n";
+        String deferredSection = "# x — gaps\n\n## 2. Deferred\n\n- **IG9 — FIXED 2026-08-14.** parked\n";
+
+        assertTrue(!auditShipped("a.md", fixedBullet).isEmpty(), "a FIXED lead under Open must fire");
+        assertTrue(!auditShipped("b.md", doneHeading).isEmpty(), "a DONE heading under Open must fire");
+        assertTrue(auditShipped("c.md", stillOpen).isEmpty(), "an ordinary open row must not fire");
+        assertTrue(auditShipped("d.md", partialLead).isEmpty(),
+                "a row whose LEAD states the open remainder must not fire just because its body says what "
+                        + "already landed — that is the shape CG15/CG16 legitimately have");
+        assertTrue(auditShipped("e.md", deferredSection).isEmpty(),
+                "this guard is scoped to the Open section; §2/§3 have their own lifecycle");
+    }
+
+    /** One violation per open item whose LEAD announces the item as already shipped. */
+    private static List<String> auditShipped(String name, String markdown) {
+        List<String> out = new ArrayList<>();
+        String[] lines = markdown.split("\n", -1);
+        boolean inOpen = false;
+        for (int i = 0; i < lines.length; i++) {
+            String line = lines[i];
+            if (line.startsWith("## ")) {
+                inOpen = line.matches("^## \\d*\\.?\\s*Open\\b.*");
+                continue;
+            }
+            if (!inOpen || !(line.startsWith("### ") || line.startsWith("- **"))) {
+                continue;
+            }
+            // The LEAD only: up to the end of the bolded title, or the first sentence of a heading.
+            int lead = line.startsWith("- **") ? line.indexOf("**", 4) : line.length();
+            String head = line.substring(0, lead < 0 ? line.length() : Math.min(line.length(), lead + 2));
+            if (SHIPPED.matcher(head).find()) {
+                out.add(name + ":" + (i + 1) + "  " + head.substring(0, Math.min(96, head.length())));
+            }
+        }
+        return out;
+    }
+
+    /** A marker that announces the item itself as complete. */
+    private static final java.util.regex.Pattern SHIPPED =
+            java.util.regex.Pattern.compile("\\b(FIXED|SHIPPED|DONE|RESOLVED|COMPLETED)\\b");
+
     /** Does-fire proof for the id check, on the exact shapes the estate uses. */
     @Test
     void theIdGuardFiresOnAnUnidentifiedOpenItem() {
