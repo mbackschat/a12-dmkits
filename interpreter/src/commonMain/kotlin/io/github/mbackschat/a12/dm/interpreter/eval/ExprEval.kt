@@ -106,9 +106,33 @@ private fun Interpreter.filledGroupsValue(args: List<Expr>): Val {
  * surfaced that "count the valid ones" was WRONG: a malformed cell among valid ones suppresses, not skips;
  * IF51). Empties are simply not counted. Linear: O(rows) per star, O(instantiated cells) per group.
  */
+/**
+ * A **starred GROUP** operand expands to its contained fields, each starred the same way.
+ *
+ * The un-starred group arm below already expands (via [EvalContext.fillScope] with `isGroup = true`); the starred
+ * arm did not, and for a *repeatable* group the star is the only legal spelling — the un-starred form is rejected
+ * `MVK_NO_WILDCARD` — so the branch that could not expand was the only one a real author can reach. Unexpanded,
+ * `ctx.star` resolves through the group's PARENT rows and then reads a value at the group path, where no field is
+ * declared: the count came back **0**, a well-formed answer that simply never fires. Measured against both kernel
+ * strategies, `NumberOfFilledFields(/Order/Lines*) >= 3` over two fully-filled rows fired on the kernel and not
+ * here (IF287's class, fifth instance).
+ *
+ * The `Having`, `outer` and `bindDepth` of the authored operand ride each expanded field, exactly as
+ * [starOperandVals] preserves them — the filter belongs to the operand, not to one of its expanded cells.
+ */
+private fun Interpreter.expandGroupStars(args: List<Expr>): List<Expr> {
+    if (args.none { it is Expr.Star && ctx.declaredKind(it.path) == null }) return args
+    return args.flatMap { arg ->
+        if (arg !is Expr.Star || ctx.declaredKind(arg.path) != null) listOf(arg)
+        else ctx.containedFields(arg.path)
+            .map { Expr.Star(it, arg.having, arg.outer, arg.bindDepth) }
+            .ifEmpty { listOf(arg) }
+    }
+}
+
 private fun Interpreter.filledFieldsValue(args: List<Expr>): Val {
     var count = 0
-    for (arg in args) when (arg) {
+    for (arg in expandGroupStars(args)) when (arg) {
         is Expr.Star -> {
             if (arg.having != null) {
                 // The count HONORS a Having filter (IF94 — the kernel's `anzahlAngegebenerFelder` rides the
