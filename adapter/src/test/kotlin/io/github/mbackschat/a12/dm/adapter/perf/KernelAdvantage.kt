@@ -60,8 +60,16 @@ internal object KernelAdvantage {
         return if (repeats % 2 == 1) samples[repeats / 2] else (samples[repeats / 2 - 1] + samples[repeats / 2]) / 2
     }
 
-    fun read(n: Int, interpreter: () -> Unit, kernel: () -> Unit): Reading =
-        Reading(n, timeMs(body = interpreter), timeMs(body = kernel))
+    /**
+     * [batch] calls per timed block on BOTH arms, so a lane whose single call lands in the noisy sub-10 ms band
+     * lifts its median out of it. Both arms are batched by the same factor, so the advantage ratio is unchanged.
+     */
+    fun read(n: Int, interpreter: () -> Unit, kernel: () -> Unit, batch: Int = 1): Reading =
+        Reading(
+            n,
+            timeMs { repeat(batch) { interpreter() } },
+            timeMs { repeat(batch) { kernel() } },
+        )
 
     /**
      * Print both readings, then assert the two bars. [label] names the timed entry point; the scale factor is
@@ -78,9 +86,14 @@ internal object KernelAdvantage {
         smallN: Int,
         largeN: Int,
         identityAt: (Int) -> String,
+        batch: Int = 1,
         readAt: (Int) -> Reading,
     ) {
         PerfLaneGate.requireMeasuringLane()
+        // Same rule as the growth seam: a batch changes what one observation MEANS, so it belongs in the key.
+        val identityForKey: (Int) -> String =
+            if (batch == 1) identityAt else { n -> PerfHarness.fingerprintedLabel(
+                identityAt(n).substringBefore('@'), "${identityAt(n)}|batch=$batch") }
         var small = readAt(smallN)
         var large = readAt(largeN)
         require(large.n > small.n) { "$label: the large reading must be at a bigger scale than the small one" }
@@ -143,7 +156,7 @@ internal object KernelAdvantage {
                 PerfAnchors.assertWithinBudget(
                     ObservationKey(
                         lane = label,
-                        identityLabel = identityAt(r.n),
+                        identityLabel = identityForKey(r.n),
                         n = r.n,
                         engine = "interpreter",
                         clock = "wall",

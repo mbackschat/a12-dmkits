@@ -107,7 +107,14 @@ class CustomTypePerfTest {
         const val N = 50_000
         const val N_SMALL = 10_000
         const val MAX = 200_000          // declared repeatability ceiling — above the largest doc, so no over-repetition noise
-        const val WARM = 3
+        /**
+         * Document-level warms before the paired estimator runs. Raised 3 -> 10 on 2026-08-14: after batching, this
+         * lane's median sits at ~18 ms — clear of the sub-10 ms band where the estate's noise lives — yet its
+         * three-run spread stayed at 1.68x on `[28.73, 18.36, 17.06]`. That shape is not magnitude noise but the
+         * first-run-after-rebuild effect: one high reading followed by two consistent ones. Warming the engine
+         * further is the corrective for that, where a bigger batch is the corrective for the other.
+         */
+        const val WARM = 10
         const val REPEATS = 5
 
         /**

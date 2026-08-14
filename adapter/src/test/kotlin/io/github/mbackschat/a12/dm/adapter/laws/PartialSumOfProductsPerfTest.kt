@@ -50,11 +50,12 @@ class PartialSumOfProductsPerfTest {
             identityAt = { rows ->
                 PerfHarness.fingerprintedLabel("partial-sop-complete-concrete", "cart|Qty*Price|lines=$rows")
             },
-            readAt = ::measure,
+            batch = NOISE_BATCH,
+            readAt = { rows -> measure(rows, NOISE_BATCH) },
         )
     }
 
-    private fun measure(rows: Int): KernelAdvantage.Reading {
+    private fun measure(rows: Int, batch: Int = 1): KernelAdvantage.Reading {
         val json = DocumentModelDraft.named("cart").locale("en_US")
             .rootGroup("Cart", Consumer { g: GroupBuilder ->
                 g.numberField("Total", Consumer { })
@@ -96,6 +97,7 @@ class PartialSumOfProductsPerfTest {
             rows,
             interpreter = { interpreter.validatePart(iDocument, iRel) },
             kernel = { kernel.partialMessageCount(kDocument, kRel) },
+            batch = batch,
         )
     }
 
@@ -103,5 +105,8 @@ class PartialSumOfProductsPerfTest {
         const val CART = "/Cart"; const val TOTAL = "/Cart/Total"
         const val LINES = "/Cart/Lines"; const val QTY = "/Cart/Lines/Qty"; const val PRICE = "/Cart/Lines/Price"
         const val SMALL = 250; const val LARGE = 1000
+
+        /** See `EntryPointPerfTest.NOISE_BATCH`: this lane measured 2.85 ms with ±27.0% run-to-run noise. */
+        const val NOISE_BATCH = 4
     }
 }

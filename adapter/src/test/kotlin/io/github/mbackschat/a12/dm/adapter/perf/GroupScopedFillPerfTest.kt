@@ -69,9 +69,8 @@ class GroupScopedFillPerfTest {
      * three-sample median cannot absorb. The deeper warmup also matters here because the first gate run after a
      * rebuild was systematically the slowest of the three.
      */
-    private fun medianMs(n: Int): Double {
-        return PerfHarness.timeInterpreter(scenario, n, warmup = 5, iters = 5).medianMs
-    }
+    private fun medianMs(n: Int, batch: Int = 1): Double =
+        PerfHarness.timeInterpreter(scenario, n, warmup = 5, iters = 5, batch = batch).medianMs
 
     private fun kernelMedianMs(n: Int): Double {
         val instance = kernelEngine.instance(kDoc(n))
@@ -91,7 +90,8 @@ class GroupScopedFillPerfTest {
             culprit = "the per-row fill scope scan",
             clock = "wall",
             unit = "rows",
-        ) { medianMs(it) }
+            batch = NOISE_BATCH,
+        ) { medianMs(it, NOISE_BATCH) }
     }
 
     @Test
@@ -110,6 +110,9 @@ class GroupScopedFillPerfTest {
     }
 
     private companion object {
+        /** See `PerfGateTest.NOISE_BATCH`: this lane measured 9.06 ms at n=8000 with ±28.4% run-to-run noise. */
+        const val NOISE_BATCH = 3
+
         const val N = 2000
         const val MAX = 200_000   // Items repeatability — FAR above 4×N, so the kernel evaluates group-fill at scale
         const val CN = "/Order/CustomerName"

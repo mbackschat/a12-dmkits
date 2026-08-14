@@ -166,6 +166,7 @@ class EntryPointPerfTest {
                 smallN = small,
                 largeN = large,
                 identityAt = { n -> PerfHarness.measurementLabel(scenario, n) },
+                batch = NOISE_BATCH,
             ) { n ->
                 val iDoc = interpDoc(n)
                 val kDoc = kernelDoc(n)
@@ -173,12 +174,20 @@ class EntryPointPerfTest {
                     n,
                     interpreter = { interpreter(this.interpreter, iDoc) },
                     kernel = { kernel(this.kernel, kDoc) },
+                    batch = NOISE_BATCH,
                 )
             }
         }
     }
 
     private companion object {
+        /**
+         * Calls per timed block. These four lanes were the estate's noisiest — `testRule@500` measured **0.35 ms**,
+         * and every key at or above ±20% run-to-run noise sits under 10 ms (2026-08-14 census). Both engine arms
+         * are batched by the same factor, so neither the advantage ratio nor the growth ratio moves.
+         */
+        const val NOISE_BATCH = 10
+
         /** B1's flat Line rows. 4× apart, so the growth reading is the same shape the sweep's gates use. */
         const val SMALL_ROWS = 500
         const val LARGE_ROWS = 2_000

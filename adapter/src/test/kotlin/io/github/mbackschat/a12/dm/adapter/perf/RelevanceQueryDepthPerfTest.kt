@@ -76,13 +76,15 @@ class RelevanceQueryDepthPerfTest {
         const val REPEATS = 3
 
         /**
-         * Calls per timed block. One correct query at these depths costs ~0.02 ms, and the absolute anchor carries
-         * a **1 ms** slack term so a sub-millisecond lane cannot flap on a fraction of a millisecond — which would
-         * have left this lane's anchor guarding "under 1.06 ms" against a 0.06 ms observation, decorative rather
-         * than a bar. Batching lifts the recorded median clear of the slack without changing what is measured: the
-         * growth ratio is a quotient, so a constant factor on both scales cancels exactly.
+         * Calls per timed block. One correct query at these depths costs ~**0.015 ms**, which is why this number is
+         * large: at 50 the lane still measured 0.77-1.71 ms and was the noisiest pair left in the estate (2.97x and
+         * 2.22x over three sequential gates), since the anchor's own 1 ms slack term swamps a sub-millisecond
+         * median. At 1000 it lands near 15 ms and 26 ms, clear of the band where every noisy key in the record
+         * sits. Batching does not change what is measured: the growth ratio is a quotient, so a constant factor on
+         * both scales cancels exactly — and the batch rides in the observation key, so it cannot silently diverge
+         * from the anchor authored for it.
          */
-        const val BATCH = 50
+        const val BATCH = 1000
 
         /** Doubling the depth multiplies an exponential query's probes by `2^12`, and a bounded one by ~2. */
         val DEPTHS = listOf(12, 24)

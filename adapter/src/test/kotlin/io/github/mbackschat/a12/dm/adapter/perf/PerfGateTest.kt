@@ -35,7 +35,7 @@ class PerfGateTest {
      */
     private fun assertSubQuadratic(
         label: String, small: Int, unit: String, culprit: String,
-        identityAt: (Int) -> String, large: Int = small * 4, clock: String = CPU_CLOCK,
+        identityAt: (Int) -> String, large: Int = small * 4, clock: String = CPU_CLOCK, batch: Int = 1,
         measureAt: (Int) -> Double,
     ) {
         // The body of this helper is now `PerfHarness.assertSubQuadraticLane`. It lived here, private, which is
@@ -43,7 +43,7 @@ class PerfGateTest {
         // step was not reachable from them. Kept as a thin delegate so this class's 19 call sites stay readable.
         PerfHarness.assertSubQuadraticLane(
             label = label, small = small, identityAt = identityAt, culprit = culprit,
-            large = large, clock = clock, unit = unit, measureAt = measureAt,
+            large = large, clock = clock, unit = unit, batch = batch, measureAt = measureAt,
         )
     }
 
@@ -57,8 +57,8 @@ class PerfGateTest {
     fun scalingIsSubQuadratic() {
         val b1 = PerfCatalog.b1()
         assertSubQuadratic("B1 sub-quadratic check", N_SMALL, "rows", "the #28 indexing regressed to a linear scan?",
-            identityAt = { n -> PerfHarness.measurementLabel(b1, n) }) { n ->
-            PerfHarness.timeInterpreterCpu(b1, n, warmup = 5, iters = 7).medianMs
+            identityAt = { n -> PerfHarness.measurementLabel(b1, n) }, batch = NOISE_BATCH) { n ->
+            PerfHarness.timeInterpreterCpu(b1, n, warmup = 5, iters = 7, batch = NOISE_BATCH).medianMs
         }
     }
 
@@ -118,8 +118,8 @@ class PerfGateTest {
         val ndv = PerfCatalog.numDifferentValues()
         assertSubQuadratic("NumberOfDifferentValues sub-quadratic", N_SMALL, "values",
             "the distinct sort regressed to a linear scan?",
-            identityAt = { n -> PerfHarness.measurementLabel(ndv, n) }) { n ->
-            PerfHarness.timeInterpreterCpu(ndv, n, warmup = 5, iters = 7).medianMs
+            identityAt = { n -> PerfHarness.measurementLabel(ndv, n) }, batch = NOISE_BATCH) { n ->
+            PerfHarness.timeInterpreterCpu(ndv, n, warmup = 5, iters = 7, batch = NOISE_BATCH).medianMs
         }
     }
 
@@ -134,8 +134,8 @@ class PerfGateTest {
         val fvnu = PerfCatalog.fieldValuesNotUniqueStar()
         assertSubQuadratic("FieldValuesNotUnique sub-quadratic", N_SMALL, "values",
             "the key-set regressed to a pairwise scan?",
-            identityAt = { n -> PerfHarness.measurementLabel(fvnu, n) }) { n ->
-            PerfHarness.timeInterpreterCpu(fvnu, n, warmup = 5, iters = 7).medianMs
+            identityAt = { n -> PerfHarness.measurementLabel(fvnu, n) }, batch = NOISE_BATCH) { n ->
+            PerfHarness.timeInterpreterCpu(fvnu, n, warmup = 5, iters = 7, batch = NOISE_BATCH).medianMs
         }
     }
 
@@ -355,7 +355,8 @@ class PerfGateTest {
             "rows",
             "wall-day landing rebuilt candidate collections per row?",
             identityAt = { n -> PerfHarness.measurementLabel(dt, n) },
-        ) { n -> PerfHarness.timeInterpreterCpu(dt, n, warmup = 5, iters = 7).medianMs }
+            batch = NOISE_BATCH,
+        ) { n -> PerfHarness.timeInterpreterCpu(dt, n, warmup = 5, iters = 7, batch = NOISE_BATCH).medianMs }
     }
 
     /**
@@ -414,6 +415,14 @@ class PerfGateTest {
 
     private companion object {
         /** The clock an anchored observation was taken on — part of its key, since the two are not comparable. */
+        /**
+         * Evaluations per timed block for the lanes whose single-run median lands in the noisy sub-10 ms band.
+         * Measured over the committed record (2026-08-14): every key at or above ±20% run-to-run noise sits under
+         * 10 ms and nothing above it is noisy, so lifting the median past that band is the corrective. The growth
+         * ratio is a quotient, so a constant factor on both scales cancels exactly.
+         */
+        const val NOISE_BATCH = 3
+
         const val CPU_CLOCK = "cpu"
         const val WALL_CLOCK = "wall"
 

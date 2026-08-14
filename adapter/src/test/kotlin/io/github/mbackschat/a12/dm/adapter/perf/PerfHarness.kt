@@ -1368,9 +1368,9 @@ object PerfHarness {
     }
 
     /** Time the INTERPRETER only at scale [n] (profile/scaling use — no kernel, so high N stays cheap). */
-    fun timeInterpreter(scenario: PerfScenario, n: Int, warmup: Int, iters: Int): Stats {
+    fun timeInterpreter(scenario: PerfScenario, n: Int, warmup: Int, iters: Int, batch: Int = 1): Stats {
         val inst = preparedInterpreterInstance(scenario, n)
-        return measure(warmup, iters) { inst.run() }
+        return measure(warmup, iters) { repeat(batch) { inst.run() } }
     }
 
     /**
@@ -1382,9 +1382,14 @@ object PerfHarness {
      * hosted runners, where the SAME commit passed one night and failed the next two. Cross-engine throughput
      * and user-facing latency stay on [measure] — [timeInterpreter] — by the same rule.
      */
-    fun timeInterpreterCpu(scenario: PerfScenario, n: Int, warmup: Int, iters: Int): Stats {
+    /**
+     * [batch] evaluations per timed block, so a lane whose single run lands in the noisy sub-10 ms band can lift
+     * its median out of it. Declare the same value to [assertSubQuadraticLane], which folds it into the key —
+     * a batch changes what one observation means.
+     */
+    fun timeInterpreterCpu(scenario: PerfScenario, n: Int, warmup: Int, iters: Int, batch: Int = 1): Stats {
         val inst = preparedInterpreterInstance(scenario, n)
-        return measureCurrentThreadCpu(warmup, iters) { inst.run() }
+        return measureCurrentThreadCpu(warmup, iters) { repeat(batch) { inst.run() } }
     }
 
     /** Preflight, build and prove eligibility, all outside any clock the callers above start. */

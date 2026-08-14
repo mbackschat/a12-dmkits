@@ -104,9 +104,12 @@ class CharsetPerfTest {
                 PerfHarness.fingerprintedLabel("charset-$label", "$charset|graphemeDoc|rows=$rows")
             },
             culprit = "the per-code-point membership test regressing to a virtual call",
+            batch = NOISE_BATCH,
         ) { rows ->
             val run = if (rows == GROWTH_N) ::runN else ::runFourN
-            PerfHarness.measureCurrentThreadCpu(warmup = 0, iters = REPEATS) { run() }.medianMs
+            PerfHarness.measureCurrentThreadCpu(warmup = 0, iters = REPEATS) {
+                repeat(NOISE_BATCH) { run() }
+            }.medianMs
         }
     }
 
@@ -117,6 +120,9 @@ class CharsetPerfTest {
 
     private companion object {
         const val N = 50_000
+        /** See `PerfGateTest.NOISE_BATCH`: BMP measured 1.15 ms at n=8000, deep in the noisy band. */
+        const val NOISE_BATCH = 8
+
         const val GROWTH_N = 8_000
         const val WARM = 3
         const val REPEATS = 5
