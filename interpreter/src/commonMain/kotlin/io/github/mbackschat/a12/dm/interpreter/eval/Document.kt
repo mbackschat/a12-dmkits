@@ -1199,7 +1199,7 @@ class Document(internal val config: DocumentConfig) {
 
         // A group-scoped / starred-field fill quantifier — "the fields inside the group" (recursively, the kernel
         // ExpandService → getAllContainedFields), across the two kernel ranges (IF49). See [EvalContext.fillScope].
-        override fun fillScope(scopePath: String, isGroup: Boolean): FillScope {
+        override fun fillScope(scopePath: String, isGroup: Boolean, bindDepth: Int): FillScope {
             val descendants = if (isGroup) kinds.keys.filter { it.startsWith("$scopePath/") }.sorted()
                 else listOf(scopePath)
             var t = 0; var f = 0; var n = 0; var unknown = false
@@ -1217,7 +1217,14 @@ class Document(internal val config: DocumentConfig) {
             // opposite way — two fire sets displacing in opposite directions, which is the signature of a scope
             // pin rather than of a wrong verdict ([IF287]; `GroupScopeFromADeepRuleRowDiffTest`). A FIELD scope is
             // unaffected: `scopePath` is then the field itself, so the cap is never the binding term.
-            val scopeDepth = partsOf(scopePath).size
+            // `bindDepth >= 0` is a STARRED operand's own binding level — its `*`-marked level must ITERATE, so
+            // the cap is the star's parent and not the operand's path depth. That distinction was missing while
+            // this seam took no bindDepth at all: from a rule authored ON the starred level, `AllFieldsFilled(G*)`
+            // bound `G`'s own row and fired where both kernel strategies fire on nothing, while the SAME operand
+            // under `NumberOfFilledFields` went through `expandGroupStars` and spanned every row. Two channels of
+            // one operand disagreeing about its extent is this class's cheapest tell ([IF287]'s twenty-first
+            // instance). `-1` keeps the unstarred group's path-depth cap, which is what that shape needs.
+            val scopeDepth = if (bindDepth >= 0) bindDepth else partsOf(scopePath).size
             for (field in descendants) {
                 val parts = partsOf(field)
                 val common = minOf(commonPrefixLen(parts, partsOf(group)), scopeDepth)

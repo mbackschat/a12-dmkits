@@ -206,7 +206,7 @@ interface EvalContext {
      * rep's cell filled+valid; [FillScope.anyEmptyDeclared] = some declared rep's cell empty — an un-instantiated rep
      * reads empty) drives `AllFieldsFilled`/`NotAllFieldsFilled` and the declared half of `FieldsNotCollectivelyFilled`.
      * Resolved by the general [Document]; the flat spike contexts don't model group structure. */
-    fun fillScope(scopePath: String, isGroup: Boolean): FillScope =
+    fun fillScope(scopePath: String, isGroup: Boolean, bindDepth: Int = -1): FillScope =
         throw UnsupportedConstructException("group-scoped field-fill needs the general Document context, not $this")
 
     /** The document-wide data view for a `CustomCondition` — the kernel's `IData` surface (read field values by

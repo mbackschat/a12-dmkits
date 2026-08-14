@@ -491,7 +491,10 @@ class Interpreter(
                 // no `having` parameter at all, so before this branch the filter was silently dropped for every
                 // operand of a list that any OTHER operand had diverted onto this path — see [filteredFillScope].
                 a is Expr.Star && a.having != null -> filteredFillScope(c, a)
-                else -> c.fillScope(path, isGroup = c.declaredKind(path) == null)
+                // A STARRED operand carries its own binding level; an unstarred one has none, and `-1` then
+                // means "cap at the operand's own path depth".
+                else -> c.fillScope(path, isGroup = c.declaredKind(path) == null,
+                    bindDepth = (a as? Expr.Star)?.bindDepth ?: -1)
             }
             t += fs.tInst; f += fs.fInst; n += fs.nInst; unknown = unknown || fs.hasUnknownInst
             allFilled = allFilled && fs.allFilledDeclared
