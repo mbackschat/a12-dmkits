@@ -102,6 +102,37 @@ class PreparedPlanSupportTest {
         assertTrue(groupFillReasons.any { "non-parallel group" in it }, "$groupFillReasons")
     }
 
+    /**
+     * **A STARRED group operand in a parallel iteration is caught by the star check, not by the group-read scan
+     * — so the scan's blindness to it is unreachable.**
+     *
+     * `parallelGroupReads` collects group-operand paths with `(it as? Expr.Field)?.path`, which drops an
+     * `Expr.Star`. The kernel-legal `NoGroupFilled(G*)` parses to exactly that, so the scan cannot see it, and a
+     * refusal gate that cannot see a shape would evaluate it instead of declining — the wrong direction.
+     *
+     * Measured rather than reasoned, because the claim that the gap is unreachable is a claim about the ORDER of
+     * two checks in one function: `requireParallelDocumentSupport` runs `starRefs(ast).isNotEmpty()` first, and
+     * `starRefs` collects every `Expr.Star` including a starred group operand. Reading says the star check wins;
+     * this row is what makes that a measurement. **The gap is therefore live in the code and dead in practice,
+     * and the right treatment is to leave it alone** — an unreachable branch with a test costs more than the gap.
+     */
+    @Test
+    fun aStarredGroupOperandInAParallelIterationDeclinesAtTheStarCheck() {
+        val starredGroupFill = parallelModel(
+            condition = "[A/Value] > [B/Value] And NoGroupFilled(Other*)",
+            indexFields = setOf("/Plan/A/Key", "/Plan/B/Key"),
+            extraFields = listOf(FieldDef("/Plan/Other/Flag", Kind.STRING)),
+        )
+
+        val reasons = DmInterpreter(starredGroupFill).supportAudit().map { it.reason }
+
+        assertTrue(reasons.isNotEmpty(), "the shape must decline somewhere rather than evaluate")
+        assertTrue(reasons.any { "aggregate/filter" in it && "parallel iteration" in it },
+            "the STAR check is what declines it — if this ever reports the non-parallel-group reason instead, " +
+                "the star check stopped seeing group operands and the scan's `as? Expr.Field` blindness became " +
+                "reachable: $reasons")
+    }
+
     private fun parallelModel(
         condition: String,
         indexFields: Set<String>,
