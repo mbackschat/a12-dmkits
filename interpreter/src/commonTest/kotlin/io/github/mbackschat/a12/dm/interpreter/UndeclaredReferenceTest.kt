@@ -1,5 +1,6 @@
 package io.github.mbackschat.a12.dm.interpreter
 
+import io.github.mbackschat.a12.dm.interpreter.eval.newDocument
 import io.github.mbackschat.a12.dm.interpreter.model.ComputationAlternative
 import io.github.mbackschat.a12.dm.interpreter.model.ComputationDef
 import io.github.mbackschat.a12.dm.interpreter.model.FieldDef
@@ -63,6 +64,22 @@ class UndeclaredReferenceTest {
     // ---------------------------------------------------------------------------------------------------
     // Does-report: the three faces of the defect
     // ---------------------------------------------------------------------------------------------------
+
+    /**
+     * **An undeclared reference must DEGRADE, never sink the model.** `validate` answers anyway on a rule the
+     * model cannot resolve (IF61's per-rule net); the regression this pins is that the net catches only
+     * `UnsupportedConstructException`, so anything else thrown while PREPARING a rule plan escapes it and takes
+     * `audit()`/`validate()` down for every other rule too. It fired for real: the message-reference expansion
+     * briefly resolved a group depth through the prepared-model path index, whose lookup throws on a path the
+     * model does not know — which is exactly the input this test class exists to exercise.
+     */
+    @Test
+    fun validatingAModelWithAnUndeclaredReferenceDoesNotThrow() {
+        val model = orderModel(rules = listOf(
+            rule("MissingRefRule", "/Order/Items", "FieldNotFilled(NoSuchField)", "../Sku")))
+        val messages = interpreter(model).validateFull(model.newDocument())
+        assertEquals(true, messages.none { it.code == "IMPOSSIBLE" }, "the call must complete rather than throw")
+    }
 
     @Test
     fun reportsAPresencePredicateNamingAnUndeclaredField() {

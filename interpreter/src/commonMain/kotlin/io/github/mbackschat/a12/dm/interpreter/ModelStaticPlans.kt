@@ -198,15 +198,22 @@ internal class ModelStaticPlans private constructor(private val model: ModelDef)
      * third row-1 pin found in this operator's group expansion and the first in the *reference* channel rather
      * than the compared value set.
      *
-     * Binding at the group's own group-depth is what makes one rule serve both shapes: levels **above** the
-     * operand keep their concrete coordinate, levels at or below it wildcard **iff repeatable**. A group with no
+     * Binding at the group's own group-depth is what makes one rule serve both shapes: the operand's own
+     * level and everything above it keep their concrete coordinate, and levels **strictly below** it wildcard
+     * **iff repeatable** — the measured example shows it, keeping `Carrier[1]`, the operand's own level, concrete. A group with no
      * repeatable level below it therefore expands to all-concrete references exactly as before, which is why this
      * needs no special case for the non-nesting shape. A reference that is already a wildcard keeps its own
      * `bindDepth`, since a star binds where it was authored rather than where its group sits.
      */
     private fun expandMessageReference(reference: MessageReference): List<MessageReference> {
         if (model.kinds[reference.path] != null) return listOf(reference)
-        val groupDepth = paths.groupsThrough(reference.path).size
+        // `pathParts`, not `paths.groupsThrough`: they agree on every declared group, but `groupsThrough` is
+        // TOTAL only for a path the prepared model knows — it resolves through `ModelPathIndex.info`, whose
+        // `checkNotNull` throws. A rule may reference a path that is declared nowhere, and the per-rule degrade
+        // net catches only `UnsupportedConstructException`, so computing the depth eagerly here turned one
+        // illegal rule into an `IllegalStateException` that sank `audit()`/`validate()` for the WHOLE model
+        // (IF61's per-rule net, defeated). The expansion of such a path is empty anyway.
+        val groupDepth = pathParts(reference.path).size
         return coveredFieldPaths(reference.path).map { path ->
             when (reference) {
                 is MessageReference.Ordinary -> MessageReference.Wildcard(path, groupDepth)

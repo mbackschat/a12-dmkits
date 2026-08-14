@@ -1199,7 +1199,7 @@ class Interpreter(
                 // duplicate spanning two `Handovers` rows' `Scans` fires on both kernel strategies and the
                 // interpreter returned FALSE, because `groupScopePrefix` caps at the common prefix with the
                 // ITERATING group and `-1` left that cap high enough to pin `Handovers`. Binding at the operand's
-                // own depth keeps every level at or below the operand free whatever the rule iterates, which is
+                // own depth keeps every level strictly below the operand free whatever the rule iterates, which is
                 // the same rule `ModelStaticPlans.expandMessageReference` applies to the reference channel — the
                 // two channels of one operand must not disagree about its extent.
                 val operandDepth = path.trim('/').split('/').size
