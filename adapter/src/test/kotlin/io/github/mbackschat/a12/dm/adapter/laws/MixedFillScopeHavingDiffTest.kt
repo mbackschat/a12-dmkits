@@ -4,6 +4,7 @@ import io.github.mbackschat.a12.dm.interpreter.DmInterpreter
 import io.github.mbackschat.a12.dm.interpreter.eval.Document
 import io.github.mbackschat.a12.dm.interpreter.eval.newDocument
 import io.github.mbackschat.a12.dm.interpreter.load.ModelLoader
+import io.github.mbackschat.a12.dm.interpreter.model.MsgType
 import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel
 import org.junit.jupiter.api.Assertions.assertEquals
@@ -82,6 +83,18 @@ class MixedFillScopeHavingDiffTest {
                 "this a measurement about admission and every row a comparison of two silences"
         }
 
+    /**
+     * The full `errorPath|type` signature of every message carrying [CODE], sorted — NOT a boolean.
+     *
+     * A boolean makes a message of the wrong TYPE read as agreement, and that is not hypothetical: the ninth
+     * instance of this defect class shipped green under a boolean lock written in the same commit as its own fix,
+     * and the tenth and thirteenth were both found by widening a projection rather than by adding a case. The
+     * kernel's own verdict is still asserted as a boolean (`expected`), because that is what each row's document
+     * is designed to produce; what is compared ACROSS engines is the signature.
+     */
+    private fun signature(messages: List<RuntimeLaws.Msg>): List<String> =
+        messages.filter { it.code() == CODE }.map { "${it.field()}|${it.type().name}" }.sorted()
+
     private fun agreeFires(condition: String, expected: Boolean, msg: String, build: (Both) -> Unit) {
         val kModel = RuntimeLaws.withRule(base, "/Invoice", "R", "../Reference", CODE, condition)
         val def = ModelLoader.load(kModel)
@@ -89,15 +102,17 @@ class MixedFillScopeHavingDiffTest {
         val dynamic = Both(RuntimeLaws.doc(), def.newDocument()).also(build)
         val kernelMessages = RuntimeLaws.messages(kModel, dynamic.kDoc)
         assertAdmitted(kernelMessages.map { it.code() }, msg)
-        val groovy = kernelMessages.any { it.code() == CODE }
+        val groovy = signature(kernelMessages)
 
         val staticDoc = Both(RuntimeLaws.doc(), def.newDocument()).also(build).kDoc
-        val javaStatic = RuntimeLaws.kernelJavaEngine(kModel)
-            .messagesModern(staticDoc, null, java.util.Locale.US).any { it.code() == CODE }
+        val javaStatic = signature(
+            RuntimeLaws.kernelJavaEngine(kModel).messagesModern(staticDoc, null, java.util.Locale.US))
 
-        val interpreter = DmInterpreter(def).validateFull(dynamic.iDoc).any { it.code == CODE }
+        val interpreter = DmInterpreter(def).validateFull(dynamic.iDoc).filter { it.code == CODE }
+            .map { "${it.errorPath}|${if (it.type == MsgType.OMISSION) "OMISSION_ERROR" else "VALUE_ERROR"}" }
+            .sorted()
 
-        assertEquals(expected, groovy, "$msg — the kernel groovy-dynamic verdict")
+        assertEquals(expected, groovy.isNotEmpty(), "$msg — the kernel groovy-dynamic verdict")
         assertEquals(groovy, javaStatic, "$msg — groovy vs java-static (tri-check)")
         assertEquals(groovy, interpreter, "$msg — kernel vs INTERPRETER")
     }
