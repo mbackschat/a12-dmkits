@@ -37,6 +37,10 @@ Agent-first router: find your job, follow the links. The per-doc entries below d
 | work with the **operator catalog** contract | [CATALOG-SPEC](CATALOG-SPEC.md) |
 | do **JSON-Schema import/export** | [SCHEMAKIT-SPEC](SCHEMAKIT-SPEC.md) |
 
+## Session scaffolding (delete when drained)
+
+- **[SESSION-HANDOFF-2026-08-14.md](SESSION-HANDOFF-2026-08-14.md)** — the group-operand class: what landed, the references to pick up, and the ordered next list. **Not a durable surface** — everything timeless already lives in the specs, findings and ledgers it points at; delete the file once its "next" list is drained.
+
 ## Design & architecture
 
 - **[PROJECT-DESIGN.md](PROJECT-DESIGN.md)** — the one argument: vision (the bidirectional *read → explain → modify → diff → validate* loop), requirements (`Fn`/`Nn`/`Dn`), architecture, the operator-catalog spine, the decision log (§17), the phased roadmap (§16 — phasing *intent*; what's built is shown by the docs + demos), and the **modelkit addendum (§21)** — the structure-authoring peer of rulekit (fork #8): why it's worth it, why not `betterbuilders`, the formalize-the-knowhow gradient + five options, a material-source evaluation, and the read→edit→write-back plan. Densely cross-referenced by stable anchors; component *detail* splits out into specs rather than fragmenting the argument.
