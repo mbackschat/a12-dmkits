@@ -4,6 +4,7 @@ import io.github.mbackschat.a12.dm.interpreter.DmInterpreter
 import io.github.mbackschat.a12.dm.interpreter.eval.Document
 import io.github.mbackschat.a12.dm.interpreter.eval.newDocument
 import io.github.mbackschat.a12.dm.interpreter.load.ModelLoader
+import io.github.mbackschat.a12.dm.interpreter.model.MsgType
 import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
@@ -442,5 +443,136 @@ class FieldValuesNotUniqueGroupOperandDiffTest {
                 .field(CARRIER_NAME, "DHL", 1, 1, 1)
                 .group(HANDOFFS, 1, 1, 1).field(SITE, "UPS", 1, 1, 1, 1)
                 .group(HANDOFFS, 1, 1, 2).field(SITE, "UPS", 1, 1, 2, 1)
+        }
+
+    // ── message MULTIPLICITY and ANCHOR, which "does it fire" cannot answer ───────────────────────────────
+
+    /**
+     * Every row above asks [agreeFires], which reads `any { code }` — a **boolean**. That cannot distinguish one
+     * message from two, nor say where either attaches, so the whole family measured firing and left multiplicity
+     * unmeasured. The lean project's 2026-08-14 disposition named the gap and its discriminator: a group operand
+     * whose expansion holds duplicates **in two distinct rows** — one message or two, and at which address.
+     *
+     * The question is not answerable from §7.1's "compared as one value set". That sentence is about the compared
+     * SET; a kernel could compare one set and still report per involved row. Both accounts predict `FIRES`, which
+     * is exactly why the boolean rows could not separate them.
+     */
+    private fun agreeFireSet(
+        condition: String,
+        expected: List<String>,
+        msg: String,
+        model: String = base,
+        ruleGroup: String = "/Shipment",
+        errorPath: String = "../Reference",
+        build: (Both) -> Unit,
+    ) {
+        val kModel = RuntimeLaws.withRule(model, ruleGroup, "R", errorPath, CODE, condition)
+        val def = ModelLoader.load(kModel)
+
+        val dynamic = Both(RuntimeLaws.doc(), def.newDocument()).also(build)
+        val groovy = RuntimeLaws.messages(kModel, dynamic.kDoc).filter { it.code() == CODE }
+            .map { "${it.field()}|${it.type().name}" }.sorted()
+
+        val staticDoc = Both(RuntimeLaws.doc(), def.newDocument()).also(build).kDoc
+        val javaStatic = RuntimeLaws.kernelJavaEngine(kModel)
+            .messagesModern(staticDoc, null, java.util.Locale.US).filter { it.code() == CODE }
+            .map { "${it.field()}|${it.type().name}" }.sorted()
+
+        val interpreter = DmInterpreter(def).validateFull(dynamic.iDoc).filter { it.code == CODE }
+            .map { "${it.errorPath}|${if (it.type == MsgType.OMISSION) "OMISSION_ERROR" else "VALUE_ERROR"}" }
+            .sorted()
+
+        assertEquals(expected.sorted(), groovy, "$msg — the kernel groovy-dynamic fire set")
+        assertEquals(groovy, javaStatic, "$msg — groovy vs java-static (tri-check)")
+        assertEquals(groovy, interpreter, "$msg — kernel vs INTERPRETER")
+    }
+
+    /** The named discriminator: the duplicate spans two OUTER rows, and the rule sits on the root group. */
+    @Test
+    fun aDuplicateSpanningTwoRowsReportsOnceFromARootPlacedRule() =
+        agreeFireSet(
+            guarded("FieldValuesNotUnique(/Shipment/Consignments*)"),
+            expected = listOf("/Shipment[1]/Reference|VALUE_ERROR"),
+            msg = "Consignments[1]/Marks[2] and Consignments[2]/Marks[1] both 'M9', rule on /Shipment",
+            model = starredNested,
+        ) { b ->
+            b.group("/Shipment", 1).field(REFERENCE, "SHP-1", 1, 1)
+                .group(CONSIGNMENTS, 1, 1).field(CONSIGNMENT_REF, "K7", 1, 1, 1)
+                .group(MARKS, 1, 1, 1).field(MARK, "M1", 1, 1, 1, 1)
+                .group(MARKS, 1, 1, 2).field(MARK, "M9", 1, 1, 2, 1)
+                .group(CONSIGNMENTS, 1, 2).field(CONSIGNMENT_REF, "K8", 1, 2, 1)
+                .group(MARKS, 1, 2, 1).field(MARK, "M9", 1, 2, 1, 1)
+        }
+
+    /**
+     * The placement variant, which is the half their spec answers for the starred FIELD form and not for this one:
+     * the same duplicate, but the rule authored on the **repeatable** group the operand names, whose two rows both
+     * evaluate. The error field still resolves ABOVE that group, so the two rows address the same cell.
+     */
+    @Test
+    fun theSameDuplicateReportsOnceWhenTheRuleSitsOnTheRepeatableGroup() =
+        agreeFireSet(
+            guarded("FieldValuesNotUnique(/Shipment/Consignments*)"),
+            expected = listOf("/Shipment[1]/Reference|VALUE_ERROR"),
+            msg = "the same duplicate, rule authored on /Shipment/Consignments",
+            model = starredNested,
+            ruleGroup = CONSIGNMENTS,
+            errorPath = "../../Reference",
+        ) { b ->
+            b.group("/Shipment", 1).field(REFERENCE, "SHP-1", 1, 1)
+                .group(CONSIGNMENTS, 1, 1).field(CONSIGNMENT_REF, "K7", 1, 1, 1)
+                .group(MARKS, 1, 1, 1).field(MARK, "M1", 1, 1, 1, 1)
+                .group(MARKS, 1, 1, 2).field(MARK, "M9", 1, 1, 2, 1)
+                .group(CONSIGNMENTS, 1, 2).field(CONSIGNMENT_REF, "K8", 1, 2, 1)
+                .group(MARKS, 1, 2, 1).field(MARK, "M9", 1, 2, 1, 1)
+        }
+
+    /**
+     * **The discriminator for the two rows above, which agree on ONE message and do not say why.** Both are
+     * equally explained by "the rule evaluated once over the whole operand" and by "it evaluated per row and both
+     * messages landed on the same address, where one absorbed the other" — the error field resolves above the
+     * repeatable group in each. Moving the error field INSIDE the rule's own group separates them: per-row
+     * evaluation now has two distinct addresses to report at, so a single message can no longer be an artefact of
+     * address collision.
+     */
+    @Test
+    fun aPerRowErrorFieldSeparatesEvaluatingOnceFromCollapsingOnOneAddress() =
+        agreeFireSet(
+            guarded("FieldValuesNotUnique(/Shipment/Consignments*)"),
+            expected = listOf("/Shipment[1]/Consignments[1]/Ref|VALUE_ERROR"),
+            msg = "the same duplicate, rule on /Shipment/Consignments with a per-row error field",
+            model = starredNested,
+            ruleGroup = CONSIGNMENTS,
+            errorPath = "../Ref",
+        ) { b ->
+            b.group("/Shipment", 1).field(REFERENCE, "SHP-1", 1, 1)
+                .group(CONSIGNMENTS, 1, 1).field(CONSIGNMENT_REF, "K7", 1, 1, 1)
+                .group(MARKS, 1, 1, 1).field(MARK, "M1", 1, 1, 1, 1)
+                .group(MARKS, 1, 1, 2).field(MARK, "M9", 1, 1, 2, 1)
+                .group(CONSIGNMENTS, 1, 2).field(CONSIGNMENT_REF, "K8", 1, 2, 1)
+                .group(MARKS, 1, 2, 1).field(MARK, "M9", 1, 2, 1, 1)
+        }
+
+    /**
+     * **Does the anchor follow the duplicate, or is it always the first row?** The case above cannot tell: its
+     * duplicate touches row 1, so "anchored at row 1" and "anchored where the duplicate is" predict the same
+     * address. Here the duplicate lies WHOLLY inside row 2 — `Ref` = `K8` repeats in that same row's `Marks[1]`,
+     * and row 1 holds nothing repeated — so the two accounts finally disagree.
+     */
+    @Test
+    fun theAnchorStaysAtTheFirstRowEvenWhenTheDuplicateLiesWhollyInTheSecond() =
+        agreeFireSet(
+            guarded("FieldValuesNotUnique(/Shipment/Consignments*)"),
+            expected = listOf("/Shipment[1]/Consignments[1]/Ref|VALUE_ERROR"),
+            msg = "duplicate wholly inside Consignments[2], per-row error field",
+            model = starredNested,
+            ruleGroup = CONSIGNMENTS,
+            errorPath = "../Ref",
+        ) { b ->
+            b.group("/Shipment", 1).field(REFERENCE, "SHP-1", 1, 1)
+                .group(CONSIGNMENTS, 1, 1).field(CONSIGNMENT_REF, "K7", 1, 1, 1)
+                .group(MARKS, 1, 1, 1).field(MARK, "M1", 1, 1, 1, 1)
+                .group(CONSIGNMENTS, 1, 2).field(CONSIGNMENT_REF, "K8", 1, 2, 1)
+                .group(MARKS, 1, 2, 1).field(MARK, "K8", 1, 2, 1, 1)
         }
 }
