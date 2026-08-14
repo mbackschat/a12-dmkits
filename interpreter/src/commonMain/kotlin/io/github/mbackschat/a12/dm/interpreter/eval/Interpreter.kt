@@ -801,6 +801,32 @@ class Interpreter(
         }
         val single = args.singleOrNull()
         if (single is Expr.Star) return starQuantTally(single)
+        // MORE THAN ONE operand with a star among them: each contributes its OWN cells and the tally is their
+        // union — measured on both kernel strategies (`TwoFilteredStarsQuantifierDiffTest`), where two filtered
+        // stars each keep their own rows and neither filter reaches the other side. `singleOrNull` sent this list
+        // to `quantTally`, which reads every operand as a plain field reference and throws on the first `Star`,
+        // so the kernel produced a verdict where this evaluator produced nothing (IG136's capability half).
+        if (args.any { it is Expr.Star }) {
+            var t = 0
+            var f = 0
+            var n = 0
+            for (a in args) {
+                if (a is Expr.Star) {
+                    val (st, sf, sn) = starQuantTally(a)
+                    t += st
+                    f += sf
+                    n += sn
+                } else {
+                    when (presenceTri(a)) {
+                        Tri.TRUE -> t++
+                        Tri.FALSE -> f++
+                        Tri.UNKNOWN -> {}
+                    }
+                    n++
+                }
+            }
+            return Triple(t, f, n)
+        }
         val (t, f) = quantTally(args)
         return Triple(t, f, args.size)
     }
