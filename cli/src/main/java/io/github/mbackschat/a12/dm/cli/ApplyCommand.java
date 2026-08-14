@@ -70,7 +70,7 @@ final class ApplyCommand extends BaseCommand {
     enum Op implements ResultIdentity.Source {
         FIELD_ADD("field", "add", FieldSpec.ADD_KEYS),
         FIELD_MODIFY("field", "modify", FieldSpec.MODIFY_KEYS),
-        FIELD_REMOVE("field", "remove", Set.of("fieldPathInModel")),
+        FIELD_REMOVE("field", "remove", Set.of("fieldPathInModel", "cascade")),
         GROUP_ADD("group", "add", Set.of("parent", "name", "repeatable")),
         GROUP_MODIFY("group", "modify", withLocator("groupPathInModel", GroupModification.DIRECTIVE_KEYS)),
         GROUP_REMOVE("group", "remove", Set.of("groupPathInModel", "cascade")),
@@ -392,6 +392,25 @@ final class ApplyCommand extends BaseCommand {
             }
             case FIELD_REMOVE -> {
                 String path = req(op, "fieldPathInModel");
+                boolean cascade = op.path("cascade").asBoolean(false);
+                // the SAME safe-delete gate as the standalone `field remove` verb, run against the live
+                // (transiently-edited) session — this op previously ran NO gate at all, so a batch skipped §6
+                // for fields while its GROUP_REMOVE sibling three cases down enforced it (CG13)
+                KernelAdapter adapter = KernelAdapter.ofJson(session.toJson(), resolver);
+                FieldRemoval.Plan plan = FieldRemoval.plan(adapter, path, cascade,
+                        "set \"cascade\": true to remove the referrers too, or remove them first");
+                if (plan.refused()) {
+                    throw new OperationRefused(which.identity(), plan.refusal().get());
+                }
+                ArrayNode fieldCascaded = changed.putArray("cascaded");
+                for (String r : plan.cascadeRules()) {
+                    session.removeRule(r);
+                    fieldCascaded.add(r);
+                }
+                for (String c : plan.cascadeComputations()) {
+                    session.removeComputation(c);
+                    fieldCascaded.add(c);
+                }
                 session.removeField(path);
                 changed.put("removed", path);
                 yield staged(which, changed, session);

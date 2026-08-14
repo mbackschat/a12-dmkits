@@ -40,8 +40,14 @@ public final class GroupRemoval {
      * those referrers for the caller to remove. No external referrers → an empty, non-refused plan.
      */
     public static Plan plan(KernelAdapter adapter, String group, boolean cascade, String fixHint) {
-        Set<String> rules = new TreeSet<>(adapter.whereUsed(group));
-        Set<String> computations = new TreeSet<>(adapter.whereUsedInComputations(group));
+        // REACHABILITY, not exactness: a rule naming an ANCESTOR group reaches into this one exactly as a rule
+        // naming this group reaches into its fields, and removing the group then narrows that rule's expansion
+        // while leaving the model kernel-valid — so nothing downstream objects (CG13).
+        Set<String> reaching = KernelAdapter.referrersReaching(adapter.referrersByEntity(), group);
+        Set<String> rules = new TreeSet<>(adapter.ruleFullNames());
+        rules.retainAll(reaching);
+        Set<String> computations = new TreeSet<>(reaching);
+        computations.removeAll(rules);
         String subtree = group + "/";
         rules.removeIf(r -> r.startsWith(subtree));
         computations.removeIf(c -> c.startsWith(subtree));

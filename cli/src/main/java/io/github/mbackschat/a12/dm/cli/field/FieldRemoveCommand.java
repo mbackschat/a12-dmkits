@@ -2,6 +2,7 @@ package io.github.mbackschat.a12.dm.cli.field;
 
 import io.github.mbackschat.a12.dm.cli.BaseCommand;
 import io.github.mbackschat.a12.dm.cli.ConsistencyEvidence;
+import io.github.mbackschat.a12.dm.cli.FieldRemoval;
 import io.github.mbackschat.a12.dm.cli.ModelWrite;
 import io.github.mbackschat.a12.dm.cli.ParamKind;
 import io.github.mbackschat.a12.dm.cli.Refusal;
@@ -91,21 +92,20 @@ final class FieldRemoveCommand extends BaseCommand {
         ArrayNode cascaded = MAPPER.createArrayNode();
         try {
             KernelAdapter adapter = KernelAdapter.ofJson(modelJson, resolver);
-            Set<String> refRules = new TreeSet<>(adapter.whereUsed(field));
-            Set<String> refComputations = new TreeSet<>(adapter.whereUsedInComputations(field));
-            if (!refRules.isEmpty() || !refComputations.isEmpty()) {
-                if (!cascade) {
-                    return refuse(SafetyChecks.referencedBy(field, refRules, refComputations,
-                            "pass --cascade to remove the referrers too, or remove them first"));
-                }
-                for (String r : refRules) {
-                    session.removeRule(r);
-                    cascaded.add(r);
-                }
-                for (String c : refComputations) {
-                    session.removeComputation(c);
-                    cascaded.add(c);
-                }
+            // the shared §6 plan, so this verb and `apply`'s field-remove op cannot drift apart again — they
+            // already had, with apply running no gate at all (CG13)
+            FieldRemoval.Plan plan = FieldRemoval.plan(adapter, field, cascade,
+                    "pass --cascade to remove the referrers too, or remove them first");
+            if (plan.refused()) {
+                return refuse(plan.refusal().get());
+            }
+            for (String r : plan.cascadeRules()) {
+                session.removeRule(r);
+                cascaded.add(r);
+            }
+            for (String c : plan.cascadeComputations()) {
+                session.removeComputation(c);
+                cascaded.add(c);
             }
             session.removeField(field);
         } catch (RuntimeException e) {

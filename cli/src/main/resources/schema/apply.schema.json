@@ -62,6 +62,13 @@
       { "target": "group", "op": "remove", "groupPathInModel": "/Subscription/Billing", "cascade": true }
     ],
     [
+      { "target": "rule", "op": "add", "field": "/Subscription/AutoRenew", "code": "FEE_GUARD",
+        "condition": "FieldFilled(/Subscription/AutoRenew) And FieldFilled(/Subscription/Billing/BaseFee)",
+        "messages": [ { "locale": "en_US", "text": "A base fee is required to auto-renew." },
+                      { "locale": "de_DE", "text": "Fuer die Verlaengerung ist eine Grundgebuehr erforderlich." } ] },
+      { "target": "field", "op": "remove", "fieldPathInModel": "/Subscription/Billing/BaseFee", "cascade": true }
+    ],
+    [
       { "target": "rule", "op": "add", "field": "/Subscription/AutoRenew", "code": "AUTO_RENEW_SET",
         "condition": "FieldFilled(/Subscription/AutoRenew)",
         "messages": [ { "locale": "en_US", "text": "Confirm the auto-renew choice." },
