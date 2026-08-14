@@ -1,7 +1,10 @@
 package io.github.mbackschat.a12.dm.cli;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Optional;
 import java.util.Set;
+import java.util.TreeSet;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
@@ -11,6 +14,8 @@ import io.github.mbackschat.a12.dm.core.ModelResolver;
 import io.github.mbackschat.a12.dm.adapter.KernelAdapter;
 import io.github.mbackschat.a12.dm.core.ModelConsistencyException;
 import io.github.mbackschat.a12.dm.modelkit.ModelDocument;
+import io.github.mbackschat.a12.dm.rulekit.validate.Diagnostic;
+import io.github.mbackschat.a12.dm.rulekit.validate.RkCode;
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Mixin;
 import picocli.CommandLine.Option;
@@ -75,6 +80,13 @@ public abstract class ReferenceRewritingRefactorCommand extends BaseCommand {
             return refuse(refusal.get());
         }
         Set<String> rewroteReferences = refactor.referrers(adapter, doc);
+        // A move changes WHICH GROUP-OPERAND EXPANSIONS contain the element, and that has no text to rewrite:
+        // no condition mentions the field, the model stays kernel-valid, and `rewroteReferences: []` is then
+        // literally true and maximally misleading. Measured before this landed — `applied`, `KERNEL_CONFIRMED`,
+        // no diagnostics — while a rule's `AllFieldsFilled(<group>)` silently lost a member (CG18).
+        // An ADVISORY rather than a refusal: the move is legal and usually intended, so refusing it would
+        // block ordinary work; what the author needs is to be told which rules changed meaning.
+        List<Diagnostic> expansionAdvisories = expansionAdvisories(adapter, refactor);
 
         String resultJson;
         // The gated document is the REWRITTEN one, not the `doc` read above — that one only feeds the
@@ -102,8 +114,44 @@ public abstract class ReferenceRewritingRefactorCommand extends BaseCommand {
                         refactor.changedKey() + " " + refactor.source() + " to " + refactor.newPath())
                 .changed(changed)
                 .json(resultJson)
+                .advisories(expansionAdvisories)
                 .gatedBy(ConsistencyEvidence.of(rewritten))
                 .dryRun(dryRun)
                 .destination(outputPath, model));
+    }
+
+    /**
+     * The rules and computations whose GROUP-OPERAND expansion changes because the element moved — one advisory
+     * naming them, or none.
+     *
+     * <p>A move has no reference text to rewrite when the reader reaches the element through an ancestor group:
+     * the kernel expands a group operand to every field below it, so moving a field out of that group silently
+     * removes it from the operand while every condition string stays valid and the model stays kernel-valid.
+     * Nothing downstream objects, which is why this has to be said here ({@code CG18}).
+     *
+     * <p>Computed from the reachability primitive on both sides and DIFFERENCED, so a reader that reaches the
+     * element at its new home too — a move within one group operand's scope — produces no advisory at all. That
+     * difference is what keeps this from firing on every move.
+     */
+    private static List<Diagnostic> expansionAdvisories(KernelAdapter adapter, StructureRefactor refactor) {
+        var byEntity = adapter.referrersByEntity();
+        Set<String> before = new TreeSet<>(KernelAdapter.referrersReaching(byEntity, refactor.source()));
+        before.removeAll(KernelAdapter.referrersReaching(byEntity, refactor.newPath()));
+        // A referrer naming the element ITSELF travels with it (MoveSupportDM rewrites that text), so only a
+        // GROUP-reached reader can be losing it here.
+        before.removeAll(byEntity.getOrDefault(refactor.source(), Set.of()));
+        if (before.isEmpty()) {
+            return List.of();
+        }
+        List<Diagnostic> out = new ArrayList<>();
+        out.add(Diagnostic.precheckWarning(Optional.of(RkCode.MOVE_CHANGES_GROUP_EXPANSION.code()),
+                refactor.source() + " is read through an enclosing group by " + before.size()
+                        + " element(s), and moving it to " + refactor.newPath()
+                        + " removes it from that group's expansion: " + before,
+                Diagnostic.Where.path(refactor.source()),
+                Optional.of("no condition text names the field, so nothing was rewritten and the model stays "
+                        + "valid — check that each listed rule still means what you intend"),
+                Optional.empty()));
+        return out;
     }
 }

@@ -161,6 +161,9 @@ public enum RkCode {
     RETYPE_AFFECTS_READERS(Severity.WARNING, DiagnosticSource.PRECHECK,
             "a field re-type changes the field's KIND, and rules/computations read it — operators that assume the old type (e.g. a pattern comparison on a now-enum) can break; an advisory, not a refusal (the kernel re-validate is the hard gate).",
             "review the listed referrers; if the change is rejected, fix or remove the conditions that depend on the old kind."),
+    MOVE_CHANGES_GROUP_EXPANSION(Severity.WARNING, DiagnosticSource.PRECHECK,
+            "a move takes the element out of an enclosing group that rules/computations read as a GROUP OPERAND — the kernel expands such an operand to every field below the group, so the listed elements silently lose (or gain) a member. There is no reference TEXT to rewrite and the model stays kernel-valid, so nothing downstream reports it; an advisory, not a refusal, because the move is legal and usually intended.",
+            "check that each listed rule or computation still means what you intend over its new expansion; if one must keep the element, name the element directly instead of its group, or move it back."),
 
     // --- environment / version (advisory or fail-fast) ------------------------------------------
     NO_KERNEL_BACKEND(Severity.INFO, DiagnosticSource.ENVIRONMENT,

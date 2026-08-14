@@ -21,10 +21,17 @@ import com.mgmtp.a12.kernel.md.serializer.model.internal.service.ExternalDocumen
  * computed-field references — and returns the rewritten DM-JSON.
  *
  * <p>It lives in {@code adapter} (not core) because {@code MoveSupportDM} is {@code @OnlyForUsage}
- * kernel-internal API — exactly the internal tier this module isolates behind the N8/D15 boundary. Two
- * kernel-stated limitations the caller must honor: it does <b>not</b> move the element itself (the caller
- * renames/moves the declaration afterward), and it deliberately leaves <b>{@code *} (repetition-list)
- * references untouched</b> — so a rename/move a {@code *}-reference would dangle must be refused.
+ * kernel-internal API — exactly the internal tier this module isolates behind the N8/D15 boundary. One
+ * kernel-stated limitation the caller must honor: it does <b>not</b> move the element itself (the caller
+ * renames/moves the declaration afterward).
+ *
+ * <p><b>The {@code *}-reference caveat this javadoc used to carry was MEASURED FALSE (2026-08-14).</b> It said
+ * starred repetition-list references are left untouched, "so a rename/move a {@code *}-reference would dangle
+ * must be refused" — an advertised refusal that never existed. Renaming a repeatable group under a rule reading
+ * {@code Items*}{@code /Qty} in fact carries the starred reference across (`Lines*`{@code /Qty} present, no
+ * stale one left), so there is nothing to refuse. Deleted rather than implemented, which is the right
+ * resolution of an "advertise nothing you cannot point at" violation when the advertisement is the wrong half.
+ * ({@code cli.StarReferenceRenameGateTest}; {@code CG18}.)
  */
 public final class ReferenceRewriter {
 

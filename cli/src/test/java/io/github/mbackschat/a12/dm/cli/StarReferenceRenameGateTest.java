@@ -65,19 +65,52 @@ class StarReferenceRenameGateTest {
         var res = CliTestSupport.run("-m", model.toString(), "group", "rename", "/Order/Items", "--to", "Lines");
 
         String after = Files.readString(model);
-        if (res.code() == 0) {
-            // If it applied, the rewrite must have carried the starred reference across — anything else leaves
-            // a rule naming `/Order/Items*` in a model whose Items no longer exists.
-            assertTrue(after.contains("Lines*/Qty") && !after.contains("Items*/Qty"),
-                    () -> "the rename reported success, so every reference must have moved with it — "
-                            + "the starred one did not. Output: " + res.out());
-        } else {
-            // A refusal is the other acceptable outcome, but it must be the CORRECTIVE one the javadoc
-            // promises, not a downstream kernel rejection the author cannot act on.
-            assertEquals(2, res.code(),
-                    () -> "a safety refusal is exit 2; a kernel-shaped rejection here is the diagnostics half of "
-                            + "CG18: " + res.out());
-            assertEquals(before, after, "a refusing refactor mutates nothing");
-        }
+        assertEquals(0, res.code(), () -> "the rename applies: " + res.out());
+        assertTrue(after.contains("Lines*/Qty"),
+                "MEASURED: the starred reference IS carried across, so ReferenceRewriter's javadoc premise — "
+                        + "that a `*`-reference is left untouched and would dangle — is false for rename");
+        assertTrue(!after.contains("Items*/Qty"), "and no stale starred reference is left behind");
+    }
+
+    /**
+     * <b>THE SUBSTANTIVE HALF.</b> A move does not remove the field; it changes <b>which group-operand
+     * expansions contain it</b>. Moving {@code Street} out of {@code ShippingAddress} silently drops it from
+     * {@code AllFieldsFilled(/Order/ShippingAddress)} — no condition text mentions the field, so there is
+     * nothing for a reference rewrite to touch, and the model stays kernel-valid. `changed.rewroteReferences: []`
+     * is then literally true and maximally misleading.
+     *
+     * <p>This row MEASURES the current behaviour rather than asserting a gate, because the right treatment is a
+     * design call: a refusal is probably wrong (the move is legal and usually intended), so an advisory naming
+     * which operands gain and lose the field is the likely answer.
+     */
+    @Test
+    void movingAFieldOutOfAGroupOperandsScopeIsReportedSomehow(@TempDir Path dir) throws Exception {
+        String base = DocumentModelDraft.named("order").locale("en_US")
+                .rootGroup("Order", o -> o
+                        .field("Reference", FieldKind.STRING)
+                        .group("ShippingAddress", a -> a
+                                .field("Street", FieldKind.STRING)
+                                .field("City", FieldKind.STRING))
+                        .group("Archive", ar -> ar.field("Note", FieldKind.STRING)))
+                .build().toJson();
+        Path model = dir.resolve("order.dm.json");
+        Files.writeString(model, EditSession.read(base)
+                .addRule(m -> m.rule(m.group("/Order")).name("AddressComplete")
+                        .errorField(m.str("/Order/Reference"))
+                        .when(m.str("/Order/Reference").filled()
+                                .and(Dsl.notAllFieldsFilled(m.flattenGroup("/Order/ShippingAddress"))))
+                        .code("ADDR").severity(Severity.ERROR)
+                        .message(en("The address is incomplete.")).build())
+                .toJson());
+
+        var res = CliTestSupport.run("-m", model.toString(), "field", "move",
+                "/Order/ShippingAddress/Street", "--to", "/Order/Archive");
+
+        assertEquals(0, res.code(), () -> "the move is legal and kernel-valid, so it applies: " + res.out());
+        assertTrue(res.out().contains("AddressComplete"),
+                () -> "MEASURED before the fix: `applied` + `KERNEL_CONFIRMED` + `rewroteReferences: []` + no "
+                        + "diagnostics, while AddressComplete's group operand silently lost a field. The move "
+                        + "must NAME the rules whose expansion changed — a refusal would be wrong, since the "
+                        + "move is legal and usually intended: " + res.out());
     }
 }
