@@ -123,7 +123,7 @@ private fun Interpreter.filledGroupsValue(args: List<Expr>): Val {
  */
 /** Whether [arg] names a GROUP rather than a declared field — a group holds no value of its own, so an operand
  *  that names one has to be expanded to the fields below it before anything can read a cell. */
-private fun Interpreter.namesAGroup(arg: Expr): Boolean = when (arg) {
+internal fun Interpreter.namesAGroup(arg: Expr): Boolean = when (arg) {
     is Expr.Star -> ctxOf(arg).declaredKind(arg.path) == null
     is Expr.Field -> ctxOf(arg).declaredKind(arg.path) == null
     else -> false
@@ -143,7 +143,7 @@ private fun Interpreter.namesAGroup(arg: Expr): Boolean = when (arg) {
  * A group with no declared field below it yields the operand unchanged rather than nothing, so an empty group
  * cannot silently erase an operand.
  */
-private fun Interpreter.expandOneGroupOperand(arg: Expr): List<Expr> {
+internal fun Interpreter.expandOneGroupOperand(arg: Expr): List<Expr> {
     val star = arg as? Expr.Star
     val path = star?.path ?: (arg as Expr.Field).path
     val outer = star?.outer ?: (arg as Expr.Field).outer

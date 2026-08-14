@@ -1053,8 +1053,18 @@ class Interpreter(
      * malformed real operand drops them. Distinct from the quantifier-`Having` path ([starOperandVals], `$` bound
      * to the enclosing row). (KERNEL-FINDINGS §6, IF72.)
      */
-    private fun overlapCells(arg: Expr): List<Val.Range> = when (arg) {
-        is Expr.Star -> filteredStarCells(arg).filterIsInstance<Val.Range>()
+    private fun overlapCells(arg: Expr): List<Val.Range> = when {
+        // A GROUP operand names no declared field, so BOTH arms below were blind to it and by different
+        // mechanisms: the starred arm read `star` at the group path (zero cells, a silent non-overlap), while the
+        // unstarred arm asked `evalExpr` for a range at a path holding no value and THREW `no kind declared` —
+        // which the degrade net does not catch, so it sank the whole evaluation. `DateRangesOverlap` refuses a
+        // group operand outright, but the plural form ADMITS one in its `In` slot ([KF187]), which is what made
+        // this reachable and what corrected IF287's reason for leaving `filteredStarCells` unexpanded.
+        // An empty group contributes no range rather than recursing on itself.
+        namesAGroup(arg) -> expandOneGroupOperand(arg).let { expanded ->
+            if (expanded.singleOrNull() === arg) emptyList() else expanded.flatMap { overlapCells(it) }
+        }
+        arg is Expr.Star -> filteredStarCells(arg).filterIsInstance<Val.Range>()
         else -> listOfNotNull(evalExpr(arg) as? Val.Range)
     }
 
