@@ -1841,9 +1841,16 @@ private fun Interpreter.minMaxOperandVals(f: Expr.Func): List<Val> = f.args.map(
  * kinds in both spellings.)
  */
 private fun Interpreter.refuseGroupOperandUnderMinMax(f: Expr.Func) {
-    val group = f.args.firstOrNull { namesAGroup(it) } ?: return
+    // The path comes from `EntitySource`, NOT from `pathOf`: `pathOf` rejects an `Expr.Star`, so the STARRED
+    // spelling used to throw "unsupported operand Star in a field-reference position" over this corrective —
+    // still an `UnsupportedConstructException`, so it degraded and the type-only reachability lock stayed green,
+    // but the author was told about an internal operand position instead of which operator to reach for. The
+    // kernel refuses both spellings identically (`MVK_NO_GROUPS_ALLOWED`, [KF187]), so both are equally
+    // reachable through the channels that carry no MVK pre-flight.
+    // (`MinMaxGroupRefusalDiagnosticTest`, whose unstarred row is the control that this was starred-only.)
+    val group = f.args.firstOrNull { namesAGroup(it) } as? Expr.EntitySource ?: return
     throw UnsupportedConstructException(
-        "${f.name} does not accept a group operand (${pathOf(group)}) — the kernel refuses it with " +
+        "${f.name} does not accept a group operand (${group.path}) — the kernel refuses it with " +
             "MVK_NO_GROUPS_ALLOWED; use MinValue/MaxValue for a group scope, or name the fields explicitly",
     )
 }
