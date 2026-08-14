@@ -567,17 +567,18 @@ The catalog must favor **non-obvious** combinations (nesting × aggregation × c
 
 ### Checkpoint 2026-08-15 — the starred-group expansion lane, and what its own guard refused
 
-**The lane.** `GroupStarExpansionPerfTest` measures `NumberOfFilledFields(/Order/Items*)` over a four-field repeatable group, on the local darwin-aarch64 machine, single-fork, each gate run alone. **Three runs of the same commit**, because the first two disagreed enough to be worth reporting as a set rather than as a number:
+**The lane.** `GroupStarExpansionPerfTest` measures `NumberOfFilledFields(/Order/Items*)` over a four-field repeatable group, on the local darwin-aarch64 machine, single-fork, each gate run alone. **Six runs of the same commit**, reported as a set because no single one of them is the number:
 
-| run | n=2000 (CPU) | n=8000 (CPU) | median-growth |
+| n | samples (CPU, ms) | median | spread |
 |---|---|---|---|
-| targeted (`gate '<pattern>'`) | 18.03 ms | 53.99 ms | 2.49× |
-| full gate | 11.42 ms | 41.51 ms | — |
-| targeted, post-anchor | 7.80 ms | 26.1 ms | 3.26× |
+| 2000 | 7.79 · 11.42 · 12.00 · 15.51 · 15.78 · 18.03 | **13.75** | 2.31× |
+| 8000 | 26.12 · 37.77 · 41.51 · 49.04 · 53.99 · 70.42 | **45.28** | 2.70× |
 
-Every growth figure sits far under the 9.0 catastrophe floor and around linear ≈ 4, so **the expansion needs no caching** — which is the question [IG136](INTERPRETER-GAPS.md)(a) asked. The mechanism is consistent with that and is directly readable rather than inferred: `expandGroupStars(args)` is a single call at the head of `filledFieldsValue`, so the expansion is once per evaluation, not once per row.
+Observed median-growth ranged 2.49×–3.26× against linear ≈ 4 and the 9.0 catastrophe floor, so **the expansion needs no caching** — the question [IG136](INTERPRETER-GAPS.md)(a) asked. The mechanism is consistent and directly readable rather than inferred: `expandGroupStars(args)` is a single call at the head of `filledFieldsValue`, so the expansion runs once per evaluation, not once per row.
 
-**The absolute times span 2.31× across three runs of one commit on one machine** (18.03 / 11.42 / 7.80 at n=2000, fastest last as the JIT and page cache warmed across runs). That is the local-laptop analogue of the hosted-runner spread in [IF280](INTERPRETER-FINDINGS.md#if280), and it is why the anchor was armed from the **median of two runs** (14.72 ms / 47.75 ms) rather than from either single sample: anchoring on the 7.80 ms run would have set a bar that the 18.03 ms run fails, and anchoring on the 18.03 ms run would have set one loose enough to hide a real regression. With the median, all three samples clear the `1.65× + 1 ms` tolerance.
+**The spread is the finding, and it changed how the lane was armed twice.** These are six sequential isolated runs of one commit on one machine — the local analogue of the hosted-runner spread in [IF280](INTERPRETER-FINDINGS.md#if280). The anchor was first set from the median of **two** runs (14.72 / 47.75); the very next isolated run measured 7.79 ms and the gate emitted `[perf][STALE] … 0.53× of it, so the ceiling this lane is held to sits at 1.9× the real cost and cannot fail`. Four more samples put the six-run median at 13.75 / 45.28 — within 7 % of the two-run figure, so the warning was reporting **one fast sample, not a wrong anchor**. The anchor now carries the six-run median.
+
+**What this exposes about the anchor model on a noisy lane, and it is not fixed by more sampling.** With an inherent 2.31× spread, a fast run sits at ~0.57× of *any* correct central estimate, so the staleness warning fires on a healthy lane whenever the machine is quiet — while the `1.65× + 1 ms` ceiling has to be loose enough to admit the slow tail. A single scalar cannot be both. That is the same tension [IG137](INTERPRETER-GAPS.md)(a) records for hosted breaches, now with a local witness: the lane is correctly armed and will still cry stale roughly whenever it runs fastest.
 
 **Why this lane exists at all, given `GroupScopedFillPerfTest` looks like it covers the same ground.** It does not. `AtLeastOneFieldFilled(G*)` dispatches onto `EvalContext.fillScope` and never reaches `expandGroupStars`; `NumberOfFilledFields(G*)` opens with `for (a in expandGroupStars(args))`. [IG136](INTERPRETER-GAPS.md)(a) had been closed on the claim that the first scenario drove the second path, which is why it was re-opened — the closure named a path no scenario executed.
 
