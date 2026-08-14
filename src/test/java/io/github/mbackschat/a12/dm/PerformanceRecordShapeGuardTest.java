@@ -114,6 +114,13 @@ class PerformanceRecordShapeGuardTest {
      * far past {@code perf-history.sh}'s default 8-run window; beyond that horizon the durable references are the
      * committed anchor and the checkpoints rather than raw runs of superseded revisions. A committed tree that
      * grows without a stated bound is how a text record becomes the liability someone eventually deletes whole.
+     *
+     * <p><b>This is now a BACKSTOP, not the enforcement.</b> {@code PerfObservations} prunes to the same bound as
+     * it writes, because this guard structurally cannot see the breach it guards: a perf lane must run alone and
+     * therefore runs last, its record is written by that run, and the record is committed <em>after</em> the
+     * session's estate check — so the run that crosses the horizon shipped red by construction, and did
+     * (2026-08-14, {@code darwin-aarch64} at 31). The writer owns the number; if the two ever disagree this fires
+     * on the very next run, so the duplication is self-correcting rather than silent.
      */
     private static final int MAX_RUNS_PER_ENVIRONMENT = 30;
 

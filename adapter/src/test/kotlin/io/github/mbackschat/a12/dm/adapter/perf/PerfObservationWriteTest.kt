@@ -74,6 +74,51 @@ class PerfObservationWriteTest {
         check(process.waitFor() == 0) { "git ${args.joinToString(" ")} failed in $dir: $output" }
     }
 
+    /**
+     * **The record prunes itself to its retention bound, at write time.**
+     *
+     * The bound was enforced only by `PerformanceRecordShapeGuardTest`, which structurally cannot see the breach
+     * it guards: a perf lane must run alone and therefore runs last, its record is written by that run, and the
+     * record is committed *after* the session's estate check — so the run that crosses the horizon ships red by
+     * construction. It did, on 2026-08-14, at 31 runs.
+     */
+    @Test
+    fun theRecordPrunesItselfToTheRetentionBoundBeforeWritingAnother(@TempDir dir: File) {
+        val env = dir.resolve("perf-results/darwin-aarch64").apply { mkdirs() }
+        val stems = (1..PerfObservations.MAX_RUNS_PER_ENVIRONMENT).map { String.format("2026-01-%02dT000000Z", it) }
+        stems.forEach { env.resolve("$it.jsonl").writeText("{}") }
+
+        PerfObservations.pruneToRetentionBound(env)
+
+        val left = env.listFiles()!!.map { it.nameWithoutExtension }.sorted()
+        assertEquals(PerfObservations.MAX_RUNS_PER_ENVIRONMENT - 1, left.size,
+            "one slot must be free for the run about to be written: $left")
+        assertTrue(stems.first() !in left, "the OLDEST run is the one pruned: $left")
+        assertTrue(stems.last() in left, "…and the newest is kept: $left")
+    }
+
+    /**
+     * **A run some document CITES is never pruned**, whatever its age. `perf-results/README.md` states that past
+     * the horizon the durable references are the committed anchor and the checkpoints that cite a run — so a
+     * cited file is precisely the one that must survive its turn in the queue. Without this the prune would
+     * silently break the citations that make the record worth keeping.
+     */
+    @Test
+    fun aCitedRunSurvivesThePrune(@TempDir dir: File) {
+        val env = dir.resolve("perf-results/darwin-aarch64").apply { mkdirs() }
+        dir.resolve("docs").apply { mkdirs() }
+            .resolve("INTERPRETER-PERFORMANCE.md")
+            .writeText("The checkpoint measured `perf-results/darwin-aarch64/2026-01-01T000000Z.jsonl`.")
+        val stems = (1..PerfObservations.MAX_RUNS_PER_ENVIRONMENT).map { String.format("2026-01-%02dT000000Z", it) }
+        stems.forEach { env.resolve("$it.jsonl").writeText("{}") }
+
+        PerfObservations.pruneToRetentionBound(env)
+
+        val left = env.listFiles()!!.map { it.nameWithoutExtension }
+        assertTrue(stems.first() in left, "the cited run is kept even though it is the oldest: $left")
+        assertTrue(stems[1] !in left, "…and the next-oldest UNCITED run is pruned instead: $left")
+    }
+
     @Test
     fun aWrittenLineIsTheRecordItWasGiven(@TempDir dir: File) {
         val target = dir.resolve("run.jsonl")

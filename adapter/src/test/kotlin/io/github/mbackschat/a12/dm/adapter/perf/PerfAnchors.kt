@@ -174,9 +174,24 @@ private fun capture(dir: File?, vararg args: String): String? = runCatching {
  */
 internal object PerfObservations {
 
+    /**
+     * How many runs one environment keeps. Enforced HERE, at the moment of writing, and only backstopped by
+     * `PerformanceRecordShapeGuardTest`.
+     *
+     * **Why the writer has to own it.** The guard cannot see the breach it guards: a perf lane must run alone and
+     * therefore runs last, its record is written by that run, and the record is committed *after* the session's
+     * estate check — so the run that crosses the horizon ships red by construction, which is exactly what
+     * happened (2026-08-14, `darwin-aarch64` at 31). Pruning on write means the tree can never cross it.
+     *
+     * The guard keeps its own number as a backstop. If the two ever disagree the guard fires on the very next
+     * run, loudly, so the duplication is self-correcting rather than silent.
+     */
+    internal const val MAX_RUNS_PER_ENVIRONMENT = 30
+
     private val file: File by lazy {
         val stamp = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HHmmss'Z'")
             .withZone(ZoneOffset.UTC).format(Instant.now())
+        pruneToRetentionBound(resultsDirectory().resolve(PerfEnvironment.key).toFile())
         resultsDirectory().resolve(PerfEnvironment.key).resolve("$stamp.jsonl").toFile().apply {
             // Through the same guarded path as every observation. `writeText("")` used to sit here bare, so an
             // unwritable results directory — the exact shape a mistyped `-Dperf.results.dir` produces — surfaced
@@ -212,6 +227,42 @@ internal object PerfObservations {
         "runId" to System.getenv("GITHUB_RUN_ID"),
         "runnerName" to System.getenv("RUNNER_NAME"),
     )
+
+    /**
+     * Delete the oldest run files until this environment has room for one more, **never touching a run some
+     * document cites**.
+     *
+     * The citation check is what makes the pruning safe rather than merely bounded: `perf-results/README.md`
+     * states that past the horizon the durable references are the committed anchor and the checkpoints that cite
+     * a run, so a cited file is the one thing that must survive its turn in the queue. Filenames are timestamps,
+     * so lexical order IS chronological order.
+     *
+     * Best-effort by design: a prune that cannot run must never fail a measurement, because the record's job is
+     * to observe and a writer that refuses to write loses the observation it was there to keep.
+     */
+    internal fun pruneToRetentionBound(dir: File) {
+        val runs = dir.listFiles { f -> f.isFile && f.name.endsWith(".jsonl") }?.sortedBy { it.name } ?: return
+        val excess = runs.size - (MAX_RUNS_PER_ENVIRONMENT - 1)
+        if (excess <= 0) return
+        val cited = citedRunStems(dir)
+        var removed = 0
+        for (run in runs) {
+            if (removed >= excess) return
+            if (run.nameWithoutExtension in cited) continue
+            if (run.delete()) removed++
+        }
+    }
+
+    /** Run-file stems named anywhere in the committed prose — a cited run is never pruned. */
+    private fun citedRunStems(dir: File): Set<String> {
+        val root = dir.parentFile?.parentFile ?: return emptySet()
+        val prose = sequenceOf(root.resolve("docs"), root.resolve("perf-results"))
+            .flatMap { it.walkTopDown().filter { f -> f.isFile && f.extension == "md" } }
+        return runCatching {
+            val text = prose.joinToString("\n") { it.readText() }
+            Regex("""\d{4}-\d{2}-\d{2}T\d{6}Z""").findAll(text).map { it.value }.toSet()
+        }.getOrDefault(emptySet())
+    }
 
     /**
      * `-Dperf.results.dir`, which the Gradle test tasks set to the repository's `perf-results`. The fallback walks
