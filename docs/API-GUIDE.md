@@ -394,6 +394,16 @@ Condition duplicateAcrossRows = Dsl.fieldValuesNotUnique(m.flattenGroup("/Order/
 
 Two gates read the group differently, and the pair is worth knowing because neither is guessable from the other. **Arity** is satisfied by the group slot alone — a group expanding to a *single* field is admitted, while that same field named directly is `MVK_PARAMSIZE_INVALIDN`. **Comparability** reads the expansion, so a group whose fields mix categories is `MVK_VARYING_TYPES_NOT_ALLOWED` exactly as the equivalent explicit list would be; that gate stays kernel-arbitrated for the same reason the aggregates delegate theirs. (Finding 122; measured in `FieldValuesNotUniqueAdmissionLawsTest`, runtime agreement in `FieldValuesNotUniqueGroupOperandDiffTest`.)
 
+**`NumberOfValueInFields` counts across a starred group's expansion.** It is an entity-list operator like the aggregates, so its operand list is an `AggregateOperand` list and a `GroupListRef` sits in it for the same reason it sits under `Sum` — "how many cells anywhere below this group equal X", without naming one field:
+
+<!-- teaser -->
+```java
+NumberExpr flaggedLines = Dsl.numberOfValueInFields("BACKORDER", m.flattenGroup("/Order/Items*"));
+Condition tooManyBackorders = Dsl.fieldFilled(m.str("/Order/Reference")).and(flaggedLines.gt(2));
+```
+
+Only the **starred** form is offered. The unstarred group operand has no measurement on this carrier, and offering it because a sibling carrier admits one would be an analogy standing in for a measurement — the same move that made the *absence* of this overload look deliberate for as long as it did. (`ValueInFieldsGroupOperandLawsTest` locks the admission; runtime behaviour, including the row-spanning count, is `GroupStarValueInFieldsDiffTest`.)
+
 ### 3.5b Group presence and group-count quantifiers
 
 Group presence is validation-stage state, not merely JSON object existence. For a repeatable group, an instantiated row is content even when every field in that row is empty. For a non-repeatable group, `GroupRef.filled()` needs a formally admitted descendant value or an instantiated repeatable descendant row; the group's own structural presence is not enough. A non-repeatable group containing only formally invalid values is neither filled nor definitely empty, so `filled()` and `notFilled()` are not strict Boolean complements in that state.

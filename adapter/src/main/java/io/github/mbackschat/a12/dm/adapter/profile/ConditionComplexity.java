@@ -290,7 +290,7 @@ record ConditionComplexity(int nodeCount, int depth, int maxBooleanArity,
                 case NumberOfValueInFields n -> {
                     op(n.operatorId());
                     constructs.add(Construct.AGGREGATE);
-                    yield 1 + Math.max(depth(n.value()), maxOperandDepth(n.fields()));
+                    yield 1 + Math.max(depth(n.value()), maxAggregateOperandDepth(n.fields()));
                 }
                 case ValueAsDate v -> {
                     op(v.operatorId());

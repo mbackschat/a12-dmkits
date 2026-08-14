@@ -1232,23 +1232,51 @@ public final class Dsl {
     /** {@code NumberOfValueInFields(True In Group*}{@code /field)} — count over a single flattened repetition
      *  list equal to a boolean constant. catalog:NumberOfValueInFields */
     public static NumberExpr numberOfValueInFields(boolean value, FieldListRef list) {
-        return new NumberExpr(new NumberOfValueInFields(new BoolLiteral(value), List.<FieldOperand>of(list)));
+        return new NumberExpr(new NumberOfValueInFields(new BoolLiteral(value), List.<AggregateOperand>of(list)));
     }
 
     /** {@code NumberOfValueInFields(constant In Group*}{@code /field)} — count over a single flattened
      *  repetition list equal to a string constant. catalog:NumberOfValueInFields */
     public static NumberExpr numberOfValueInFields(String value, FieldListRef list) {
-        return new NumberExpr(new NumberOfValueInFields(new StringLiteral(value), List.<FieldOperand>of(list)));
+        return new NumberExpr(new NumberOfValueInFields(new StringLiteral(value), List.<AggregateOperand>of(list)));
     }
 
     /** {@code NumberOfValueInFields(n In Group*}{@code /field)} — count over a single flattened repetition
      *  list equal to an integer constant. catalog:NumberOfValueInFields */
     public static NumberExpr numberOfValueInFields(long value, FieldListRef list) {
-        return new NumberExpr(new NumberOfValueInFields(NumberLiteral.of(value), List.<FieldOperand>of(list)));
+        return new NumberExpr(new NumberOfValueInFields(NumberLiteral.of(value), List.<AggregateOperand>of(list)));
     }
 
-    private static List<FieldOperand> valueInFields(FieldOperand first, FieldOperand second, FieldOperand... rest) {
-        var fields = new ArrayList<FieldOperand>();
+    // --- group-scope forms: NumberOfValueInFields(value In Group*) --------------------------------
+    // The kernel routes this operator's entities through the same getRefList as the entity-list aggregates, so
+    // a starred group is admitted here exactly as it is under Sum, and the kernel EXPANDS it to its contained
+    // fields before counting (KF187; validate.laws.ValueInFieldsGroupOperandLawsTest). Until 2026-08-14 the
+    // operand list was typed FieldOperand, which made the admitted shape unrepresentable rather than refused —
+    // DG34, a type-level erasure with no measured basis. Only the STARRED form is offered: the unstarred group
+    // operand has no measurement on this carrier, and a refusal (or an admission) by analogy with a sibling
+    // carrier is exactly what this rule forbids.
+
+    /** {@code NumberOfValueInFields(True In Group*)} — count over a starred group's expansion equal to a
+     *  boolean constant. catalog:NumberOfValueInFields */
+    public static NumberExpr numberOfValueInFields(boolean value, GroupListRef scope) {
+        return new NumberExpr(new NumberOfValueInFields(new BoolLiteral(value), List.<AggregateOperand>of(scope)));
+    }
+
+    /** {@code NumberOfValueInFields(constant In Group*)} — count over a starred group's expansion equal to a
+     *  string constant. catalog:NumberOfValueInFields */
+    public static NumberExpr numberOfValueInFields(String value, GroupListRef scope) {
+        return new NumberExpr(new NumberOfValueInFields(new StringLiteral(value), List.<AggregateOperand>of(scope)));
+    }
+
+    /** {@code NumberOfValueInFields(n In Group*)} — count over a starred group's expansion equal to an integer
+     *  constant. catalog:NumberOfValueInFields */
+    public static NumberExpr numberOfValueInFields(long value, GroupListRef scope) {
+        return new NumberExpr(new NumberOfValueInFields(NumberLiteral.of(value), List.<AggregateOperand>of(scope)));
+    }
+
+    private static List<AggregateOperand> valueInFields(FieldOperand first, FieldOperand second,
+            FieldOperand... rest) {
+        var fields = new ArrayList<AggregateOperand>();
         fields.add(first);
         fields.add(second);
         fields.addAll(List.of(rest));

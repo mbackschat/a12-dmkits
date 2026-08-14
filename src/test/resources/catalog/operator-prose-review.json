@@ -4911,7 +4911,7 @@
       "operator": "NumberOfValueInFields",
       "lane": "GOTCHA",
       "ordinal": 0,
-      "digest": "sha256:6ee3370774dc439ec471489c1d2869288036455c04129ff0f604ac79bf3d8094",
+      "digest": "sha256:f39165f766dd92b68d4133a2cce87c2ccdcf00364142ec03e7b80883d0538ff0",
       "classifications": [
         "ADMISSION"
       ],
@@ -4920,6 +4920,11 @@
           "classification": "ADMISSION",
           "type": "KERNEL_LAW",
           "id": "NumberOfValueInFieldsSingleListLawsTest#theKernelAcceptsEverySingleListForm"
+        },
+        {
+          "classification": "ADMISSION",
+          "type": "KERNEL_LAW",
+          "id": "ValueInFieldsGroupOperandLawsTest#aStarredGroupScopeIsAdmittedAsTheWholeOperandList"
         }
       ]
     },

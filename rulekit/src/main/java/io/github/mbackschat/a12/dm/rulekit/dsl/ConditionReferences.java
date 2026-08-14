@@ -244,7 +244,7 @@ public record ConditionReferences(Set<String> fieldPaths, Set<String> groupPaths
             case OpListMath m -> m.operands().forEach(o -> collect(o, refs));
             case NumberOfValueInFields n -> {
                 collect(n.value(), refs);
-                n.fields().forEach(f -> collectOperand(f, refs));
+                n.fields().forEach(f -> collectAggregateOperand(f, refs));
             }
             case ValueAsDate v -> refs.field(v.field().path());
             case DateExtraction e -> collect(e.source(), refs);

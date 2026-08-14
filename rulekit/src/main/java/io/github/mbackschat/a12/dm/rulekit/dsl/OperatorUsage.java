@@ -133,7 +133,7 @@ public final class OperatorUsage {
             case NumberOfValueInFields n -> {
                 ops.add(n.operatorId());
                 collect(n.value(), ops);
-                n.fields().forEach(f -> collectOperand(f, ops));
+                n.fields().forEach(f -> collectAggregateOperand(f, ops));
             }
             case ValueAsDate v -> {
                 ops.add(v.operatorId());

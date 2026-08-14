@@ -437,7 +437,8 @@ public final class DslRenderer {
             case OpListMath m -> keyword(m.operatorId()) + "("
                     + m.operands().stream().map(this::render).collect(java.util.stream.Collectors.joining(", ")) + ")";
             case NumberOfValueInFields n -> keyword(n.operatorId()) + "(" + render(n.value()) + " In "
-                    + n.fields().stream().map(this::operand).collect(java.util.stream.Collectors.joining(", ")) + ")";
+                    + n.fields().stream().map(this::aggregateOperand)
+                            .collect(java.util.stream.Collectors.joining(", ")) + ")";
             case ValueAsDate v -> keyword(v.operatorId()) + "(" + path(v.field().path()) + ", "
                     + keyword(v.dayKeywordId()) + ")";
             case DateExtraction e -> keyword(e.operatorId()) + "(" + renderArg(e.source()) + ")";

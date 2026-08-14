@@ -4104,7 +4104,7 @@
       ],
       "gotchas": [
         {
-          "text": "the operand shape is <value> In <fields>, where <fields> is EITHER a plain field list of two or more fields — NumberOfValueInFields(0 In Quantity, BackorderQuantity) — OR one flattened repetition list over a repeatable group (a starred group then a field) — NumberOfValueInFields(0 In Items*/Count); the constant may be a boolean, number, or string",
+          "text": "the operand shape is <value> In <fields>, which may be a plain field list of two or more fields — NumberOfValueInFields(0 In Quantity, BackorderQuantity) — or one flattened repetition list over a repeatable group (a starred group then a field) — NumberOfValueInFields(0 In Items*/Count) — or a starred GROUP alone, which the kernel expands to the group's contained fields and counts across every row — NumberOfValueInFields(\"X\" In Items*); the constant may be a boolean, number, or string",
           "kind": "AUTHORING"
         },
         {
