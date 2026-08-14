@@ -564,6 +564,17 @@ The catalog must favor **non-obvious** combinations (nesting × aggregation × c
 
 ## Results log
 
+### Checkpoint 2026-08-14 — the group-operand expansion work costs nothing measurable, and one scenario already exercised it
+
+Seven interpreter changes landed this day in the group-operand expansion class (`expandGroupStars`/`expandGroupOperands` and its shared owner, `vlqOperands`, `overlapCells`, `fillScope`, `fillScopeInfo`, `PolarityWalk`, `minMaxOperandVals`). Routine gate, run in isolation on the local 8-processor machine (`darwin-aarch64`, 4m41s, `BUILD SUCCESSFUL`, zero anchor breaches, record `perf-results/darwin-aarch64/2026-08-14T151017Z.jsonl`):
+
+- **All 18 sub-quadratic growth observations land in 3.96×–5.28×** against the 9.0 catastrophe floor (linear ≈4, n·log n ≈4.65). Widest: `NDV-distinct-count` 5.28×, `CO-index` 5.21×, `complexRealWorld-1233f-1017r` 5.06×.
+- **Every cross-engine ratio stays far below 1**: 0.06–0.26 of the Groovy baseline, e.g. `Number-index-validate` at N=2000 `interp=6.62ms` vs `groovy=119.11ms` (0.06), `CO-correlation` 0.20.
+
+**The finding that matters for [IG136] item (h) is which scenario exercised the expansion.** That item predicted a per-row allocation cost, on the correct observation that the expansion builds a fresh `Expr.Star` per expanded field per row although every input is model-static. `GroupScopedFillPerfTest` authors `AtLeastOneFieldFilled(/Order/Items*)` — a starred GROUP operand — so it routes through the expansion on every row, and it measures **group-scope fill growth 3.99×** (indistinguishable from linear) with **interp 1.6ms vs kernel 8.6ms at N=2000, 0.18×**. So the allocation is real in the code and does not appear as a super-linear term or as a loss to either kernel strategy.
+
+**Scope of that negative, stated because it is narrower than "the expansion is free":** the measured scenario is a fill quantifier over a starred group. The value-aggregate, value-list, and date-range group paths carry no perf scenario, and the guard in front of the expansion returns the *same list instance* when no operand names a group — so for every other scenario in the gate the added cost is one predicate scan, not an allocation.
+
 ### Checkpoint 2026-08-13 — what the routine gate costs once it runs the whole routine tier
 
 Measured on `Macmini9,1 Apple M1`, 8 processors, JDK 21.0.12, isolated (nothing else running), `scripts/perf.sh gate`:
