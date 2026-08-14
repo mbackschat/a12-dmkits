@@ -170,6 +170,24 @@ The message **type** a firing carries is not a property of the operator alone; i
 
 A boolean "did it fire" projection cannot see this axis. Widening our own differentials from `any { code }` to a full `errorPath|type` signature is what exposed four defects on our side that had passed as agreements — offered as method, since the same blind spot would hide the same class in any conformance suite.
 
+## Batch 2026-08-14 (b) — the operand-list `Min`/`Max` refusal holds on the COMPUTATION carrier too
+
+**Oracle:** the real kernel's `RuleValidator` over a `DraftComputation`. **Lock:** `MinMaxGroupOperandComputeCarrierLawsTest`.
+
+The `KF187` table above was measured entirely through **rules**. `KF187`'s own finding is that carriers within one family can disagree, so "a different carrier applies the same gate" is precisely the inference it forbids — and a closure that rested on the rule rows alone was therefore under-supported. Measured on the computation carrier, in both positions a condition can occupy:
+
+| position | input | observed |
+|---|---|---|
+| common precondition | `Min([<non-repeatable group>], 5) > 0` | `MVK_NO_GROUPS_ALLOWED` |
+| common precondition | `Max([<non-repeatable group>], 5) > 0` | `MVK_NO_GROUPS_ALLOWED` |
+| common precondition | `Min([<starred repeatable group>], 5) > 0` | `MVK_NO_GROUPS_ALLOWED` |
+| alternative operation | `Min([<non-repeatable group>], 5)` | `MVK_NO_GROUPS_ALLOWED` |
+| alternative operation | `Max([<starred repeatable group>], 5)` | `MVK_NO_GROUPS_ALLOWED` |
+| alternative operation | `Min([<field>], [<field>])` — control | ACCEPT |
+| alternative operation | `Min([<starred FIELD>], 5)` — gate separator | `MVK_NO_WILDCARDS_ALLOWED` |
+
+The last row is the same separator the rule table needs and for the same reason: a starred *group* would report the group code under either gate, so only a starred *field* drawing a **different** code shows which one fired.
+
 ## Mechanisms — hypotheses, not actionable <a id="mechanisms"></a>
 
 Everything above is measured. Everything here is an explanation, carries the confidence of an explanation only, and is **not** a basis for a spec clause.
@@ -185,4 +203,6 @@ Handed over because the peer's own record shows it treats our disclosures as cal
 - **`DG33`** — `Dsl.fieldValuesNotUnique` takes a `FieldOperand`, so the admitted group shape is type-level unrepresentable. Disclosed in batch (b).
 - **`DG34`** — `Dsl.numberOfValueInFields` has no `GroupListRef` overload; same erasure, same absence of a measured basis.
 - **`DG35`** — the DATE extrema and the three plural value-list quantifiers carry six operand overload shapes and not one is a `GroupListRef`, which makes the omission read as deliberate when it is not.
+- **`DG34` is now CLOSED**, and its shape is worth naming because we got the diagnosis wrong at first: the fix was not an added overload but a **record-component widening**. `NumberOfValueInFields` held a `List<FieldOperand>` where the kernel routes its entities through the same `getRefList` as the aggregates, so the erasure was in the operand TYPE, not in a missing factory. `DG35` remains open on a genuinely different obstacle — its record's component carries a *kind* that `GroupListRef` cannot supply.
+- **A cross-component sweep of our own tooling found five defects of the same family** (`CG13`–`CG18`), all downstream of one habit rather than of the kernel: asking an EXACT reference primitive a REACHABILITY question. The kernel expands a group operand recursively to every field below it, so a field read only through `AllFieldsFilled(/Order/Address)` has no direct referrer — and our audit report called it dead, our delete gate found no referrer, and the delete then succeeded against a model that stayed **kernel-valid**, since the rule still named a group that still existed. Offered because the trap is structural rather than ours: any tool that reports "unreferenced" or gates a delete over a model with group operands has the same two questions to keep apart, and the kernel's own validator cannot distinguish them for you.
 - **Twenty-one runtime instances of one class** (`IF287`): our evaluator's group expansion was opt-in at every operand-resolution site. The reliable tell was always **a site disagreeing with a sibling that got it right** — offered because it is a cheap audit any second implementation can run against itself.

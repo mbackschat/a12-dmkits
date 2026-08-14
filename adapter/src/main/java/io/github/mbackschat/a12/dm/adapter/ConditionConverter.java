@@ -349,15 +349,26 @@ final class ConditionConverter {
         // — make that explicit and build a field-list quantifier over the flattened field paths.
         if (isFieldFillQuantifier(name) && entities.stream().anyMatch(e -> !e.isField())
                 && entities.stream().anyMatch(IEntityId::isField)) {
-            List<String> fieldPaths = new ArrayList<>();
+            // The STAR must survive the expansion, on both arms. `getFullName()` drops it and
+            // `descendantFields` returns DECLARED paths, so this arm used to render `Items*` back as
+            // `Items` — the same rule silently narrowed to repetition 1, while the group-only arm below
+            // (`groupScopedFieldFill`, via `reconstructStarPath`) kept it. Two arms of one operator family
+            // with opposite semantics is this defect class's own cheapest tell (CG15).
+            List<FieldOperand> operands = new ArrayList<>();
             for (IEntityId e : entities) {
                 if (e.isField()) {
-                    fieldPaths.add(e.getFullName());
+                    operands.add(isWildcard(e) ? model.flatten(reconstructStarPath(e))
+                            : model.field(e.getFullName()));
                 } else {
-                    descendantFields(e).forEach(f -> fieldPaths.add(f.path()));
+                    String declared = model.group(e.getFullName()).path();
+                    String scope = isWildcard(e) ? reconstructStarPath(e) : declared;
+                    descendantFields(e).forEach(f -> {
+                        String path = scope + f.path().substring(declared.length());
+                        operands.add(isWildcard(e) ? model.flatten(path) : model.field(path));
+                    });
                 }
             }
-            return fieldFillQuantifier(name, fieldPaths.toArray(String[]::new), entityList);
+            return fieldFillQuantifier(name, operands.toArray(FieldOperand[]::new), entityList);
         }
         // A FIXED group-list quantifier whose entity list carries a FIELD (mixed or field-only —
         // SPEC-2026-07-23-09): despite the names, the five admit the common field-or-group entity
