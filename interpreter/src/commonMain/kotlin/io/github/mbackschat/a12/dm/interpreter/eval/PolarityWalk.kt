@@ -6,6 +6,7 @@ import io.github.mbackschat.a12.dm.interpreter.ast.ArithOp
 import io.github.mbackschat.a12.dm.interpreter.ast.CmpOp
 import io.github.mbackschat.a12.dm.interpreter.ast.Cond
 import io.github.mbackschat.a12.dm.interpreter.ast.Expr
+import io.github.mbackschat.a12.dm.interpreter.ast.expansionBindDepth
 import io.github.mbackschat.a12.dm.interpreter.ast.Tri
 import io.github.mbackschat.a12.dm.interpreter.ast.Val
 import io.github.mbackschat.a12.dm.interpreter.model.Kind
@@ -396,7 +397,7 @@ private fun Interpreter.aggregateFillState(arg: Expr): AggregateFillState? = whe
                 val fields = c.containedFields(arg.path)
                 if (fields.isEmpty() || fields.any { c.declaredKind(it) != Kind.NUMBER }) null
                 else fields.fold(AggregateFillState.EMPTY) { acc, path ->
-                    acc + c.numericStarFillState(Expr.Star(path, arg.having, arg.outer, arg.bindDepth))
+                    acc + c.numericStarFillState(Expr.Star(path, arg.having, arg.outer, expansionBindDepth(arg.path, arg.bindDepth)))
                 }
             }
             else -> null

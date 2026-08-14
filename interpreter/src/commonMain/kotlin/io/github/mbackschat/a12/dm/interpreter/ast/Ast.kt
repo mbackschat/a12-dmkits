@@ -208,3 +208,19 @@ fun emptyValue(kind: Kind): Val = when (kind) {
     Kind.CONFIRM -> Val.Bool(false)     // empty confirm → False
     Kind.BOOLEAN, Kind.STRING, Kind.DATE, Kind.TIME, Kind.DATE_RANGE, Kind.DATE_TIME -> Val.Unknown  // not evaluated
 }
+/**
+ * The bind depth to give a field an operand EXPANDS to.
+ *
+ * `bindDepth >= 0` is an absolute count of bound group levels, so it survives being copied onto a deeper path
+ * unchanged. **`-1` does not** — it is path-RELATIVE ("the leaf group's parent"), so re-attaching it to a field
+ * below the operand makes the same stored value denote a different level, and the resolver then caps it against
+ * whatever group the rule happens to iterate. That is not a hypothesis: it is what produced IF287's fourth
+ * defect, where an expanded field took the `-1` default and an anchored intermediate level pinned the compared
+ * set to one row while the operand's own reference channel spanned all of them.
+ *
+ * So expansion resolves the sentinel to the operand's own absolute depth exactly once, at the point where the
+ * path changes. Where the two agree this is a no-op; where they diverge, the operand's depth is the one that
+ * matches the kernel.
+ */
+internal fun expansionBindDepth(operandPath: String, bindDepth: Int): Int =
+if (bindDepth >= 0) bindDepth else operandPath.trim('/').split('/').size

@@ -10,6 +10,7 @@ import io.github.mbackschat.a12.dm.interpreter.nearestIndexFieldOf
 import io.github.mbackschat.a12.dm.interpreter.ast.ArithOp
 import io.github.mbackschat.a12.dm.interpreter.ast.Cond
 import io.github.mbackschat.a12.dm.interpreter.ast.Expr
+import io.github.mbackschat.a12.dm.interpreter.ast.expansionBindDepth
 import io.github.mbackschat.a12.dm.interpreter.ast.Tri
 import io.github.mbackschat.a12.dm.interpreter.ast.Val
 import io.github.mbackschat.a12.dm.interpreter.ast.emptyValue
@@ -125,7 +126,7 @@ internal fun Interpreter.expandGroupStars(args: List<Expr>): List<Expr> {
     return args.flatMap { arg ->
         if (arg !is Expr.Star || ctxOf(arg).declaredKind(arg.path) != null) listOf(arg)
         else ctxOf(arg).containedFields(arg.path)
-            .map { Expr.Star(it, arg.having, arg.outer, arg.bindDepth) }
+            .map { Expr.Star(it, arg.having, arg.outer, expansionBindDepth(arg.path, arg.bindDepth)) }
             .ifEmpty { listOf(arg) }
     }
 }
@@ -1518,7 +1519,7 @@ private fun Interpreter.firstFilledOperand(operand: Expr, walk: FirstFilledWalk)
         val c = ctxOf(operand)
         if (c.declaredKind(operand.path) == null) {
             firstFilledExpandedGroup(c.containedFields(operand.path), walk) { path ->
-                Expr.Star(path, operand.having, operand.outer, operand.bindDepth)
+                Expr.Star(path, operand.having, operand.outer, expansionBindDepth(operand.path, operand.bindDepth))
             }
         } else {
             firstFilledStar(operand, walk)
@@ -1774,7 +1775,7 @@ private fun Interpreter.aggOperandVals(arg: Expr): List<Val> = when (arg) {
         if (ctx.declaredKind(path) == null) {
             val depth = path.trim('/').split('/').size
             val outer = (arg as? Expr.Field)?.outer ?: false
-            ctx.containedFields(path).flatMap { starOperandVals(Expr.Star(it, null, outer, depth)) }
+            ctxOf(arg).containedFields(path).flatMap { starOperandVals(Expr.Star(it, null, outer, depth)) }
         } else if (ctx.filled(path)) listOf(evalExpr(arg)) else emptyList()   // plain field: empty dropped
     }
 }
@@ -1793,7 +1794,8 @@ private fun Interpreter.starOperandVals(star: Expr.Star): List<Val> {
     if (ctxOf(star).declaredKind(star.path) == null) {
         val contained = ctxOf(star).containedFields(star.path)
         if (contained.isNotEmpty()) {
-            return contained.flatMap { starOperandVals(Expr.Star(it, star.having, star.outer, star.bindDepth)) }
+            val depth = expansionBindDepth(star.path, star.bindDepth)
+            return contained.flatMap { starOperandVals(Expr.Star(it, star.having, star.outer, depth)) }
         }
     }
     val having = star.having
