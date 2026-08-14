@@ -272,10 +272,13 @@ public final class KernelAdapter {
      * computation once <em>per field</em> ({@code O(F·(R+C))} kernel parses, the shipped {@code model report}
      * non-termination on huge models). Each rule and computation is parsed exactly once here.
      *
-     * <p>An entity with no referrer is absent from the map, so a field is unreferenced iff it is not a key.
+     * <p>An entity with no referrer is absent from the map. <b>That does NOT make "not a key" the same as
+     * "unreferenced"</b> — this entry used to say it did: a group operand expands recursively to every field
+     * below it, so a field can be read while only its ancestor GROUP is a key. Ask
+     * {@link #isReadByAnything}/{@link #referrersReaching} for that question ({@code CG16}).
      * Referrer sets are insertion-ordered — validation rules first (rule order), then computations
      * (computation order) — matching a per-field {@code whereUsed()}+{@code whereUsedInComputations()} union,
-     * so a consumer that re-sorts (both current callers use a {@code TreeSet}) sees byte-identical output.
+     * so a consumer that re-sorts (the {@code TreeSet} callers) sees byte-identical output.
      */
     public Map<String, java.util.Set<String>> referrersByEntity() {
         Map<String, java.util.Set<String>> byEntity = new java.util.LinkedHashMap<>();
@@ -317,14 +320,51 @@ public final class KernelAdapter {
      * @param byEntity one {@link #referrersByEntity} map, passed in so a model-wide sweep builds it ONCE — the
      *                 {@code O(R+C)} contract this method must not silently turn back into {@code O(F·(R+C))}
      */
+    /**
+     * Whether {@code path} is {@code ancestorPath} itself or lies strictly below it, compared at a <b>path-segment
+     * boundary</b>.
+     *
+     * <p>The whole content of this method is the two ways the obvious spelling is wrong, each of which has shipped
+     * as a defect here. A bare {@code path.startsWith(ancestorPath)} makes {@code /Order/BillingContact/Email}
+     * inside {@code /Order/Billing}, over-reporting a reference that does not exist. Adding the slash —
+     * {@code path.startsWith(ancestorPath + "/")} — fixes that and breaks the other end: a group is then not
+     * inside <em>itself</em>, which is how {@code group extract} came to refuse a rule referencing the very group
+     * being extracted ({@code CG17}).
+     */
+    public static boolean isInside(String path, String ancestorPath) {
+        return path.equals(ancestorPath) || path.startsWith(ancestorPath + "/");
+    }
+
     public static java.util.Set<String> referrersReaching(Map<String, java.util.Set<String>> byEntity,
             String entityPath) {
         java.util.Set<String> reaching =
                 new java.util.LinkedHashSet<>(byEntity.getOrDefault(entityPath, java.util.Set.of()));
+        // EVERY ancestor level contributes — this unions, it does not select the nearest. A field can be read by
+        // one rule naming its parent group and another naming its grandparent, and both are readers.
+        // The walk cuts at each '/', which is segment-correct by construction, and `cut > 0` stops before the
+        // empty prefix. That also means a "/" key is never consulted; no producer makes one today.
         for (int cut = entityPath.lastIndexOf('/'); cut > 0; cut = entityPath.lastIndexOf('/', cut - 1)) {
             reaching.addAll(byEntity.getOrDefault(entityPath.substring(0, cut), java.util.Set.of()));
         }
         return reaching;
+    }
+
+    /**
+     * Whether ANYTHING reads {@code entityPath} — {@link #referrersReaching} for callers that only need the
+     * boolean, short-circuiting on the first hit instead of materializing every referrer of every ancestor.
+     * The dead-field sweep asks this once per field, so building F sets to discard all but their emptiness is
+     * the kind of cost the {@code O(R+C)} contract above exists to keep out.
+     */
+    public static boolean isReadByAnything(Map<String, java.util.Set<String>> byEntity, String entityPath) {
+        if (!byEntity.getOrDefault(entityPath, java.util.Set.of()).isEmpty()) {
+            return true;
+        }
+        for (int cut = entityPath.lastIndexOf('/'); cut > 0; cut = entityPath.lastIndexOf('/', cut - 1)) {
+            if (!byEntity.getOrDefault(entityPath.substring(0, cut), java.util.Set.of()).isEmpty()) {
+                return true;
+            }
+        }
+        return false;
     }
 
     /**
@@ -903,9 +943,14 @@ public final class KernelAdapter {
         List<RuleTestOutcome.Suppression> suppressions = new ArrayList<>();
         for (EvalMessage m : messages) {
             if (isFormalCheck(m)) {
-                for (String field : referenced) {
-                    if (field.equals(m.field().path())) {
-                        suppressions.add(new RuleTestOutcome.Suppression(field, m.errorCode()));
+                for (String entity : referenced) {
+                    // CONTAINMENT, not equality: `referenced` holds what the condition NAMES, which for a group
+                    // operand is the GROUP, while a formal-check message necessarily names the FIELD whose stored
+                    // value would not parse. Those strings can never be equal, so an exact scan found nothing and
+                    // the verdict fell through to PASSED — for a rule the kernel never evaluated, which is the one
+                    // outcome this method exists to prevent (CG14).
+                    if (isInside(m.field().path(), entity)) {
+                        suppressions.add(new RuleTestOutcome.Suppression(m.field().path(), m.errorCode()));
                     }
                 }
             }

@@ -168,8 +168,12 @@ final class FieldModifyCommand extends BaseCommand {
             return List.of();
         }
         KernelAdapter adapter = KernelAdapter.ofJson(modelJson, resolver);
-        Set<String> readers = new TreeSet<>(adapter.whereUsed(fieldPath));
-        readers.addAll(adapter.whereUsedInComputations(fieldPath));
+        // "reads the field" is the REACHABILITY question — the same one `model diff` answers for the same
+        // RETYPE_AFFECTS_READERS code — so it must include a rule reaching the field through an ancestor GROUP
+        // operand. Asking the exact `whereUsed` here left one error code with two definitions in two verbs:
+        // `model diff` warned and `field modify` stayed silent on the identical edit (CG16, found by review).
+        Set<String> readers = new TreeSet<>(
+                KernelAdapter.referrersReaching(adapter.referrersByEntity(), fieldPath));
         if (readers.isEmpty()) {
             return List.of();
         }

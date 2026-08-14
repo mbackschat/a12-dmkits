@@ -401,7 +401,7 @@ public final class ModelReport {
         Map<String, Set<String>> referrers = adapter.referrersByEntity();
         List<String> unreferenced = new ArrayList<>();
         for (ModelCard.Field field : card.fields()) {
-            if (KernelAdapter.referrersReaching(referrers, field.path()).isEmpty()) {
+            if (!KernelAdapter.isReadByAnything(referrers, field.path())) {
                 unreferenced.add(field.path());
             }
         }

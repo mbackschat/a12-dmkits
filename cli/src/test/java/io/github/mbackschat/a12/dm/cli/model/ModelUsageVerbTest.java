@@ -19,7 +19,9 @@ import com.fasterxml.jackson.databind.ObjectMapper;
  * The {@code model usage} verb (FEATURE-GAPS G9) — the model-wide usage/audit read: every field's
  * referencing rules/computations + the unreferenced set, in ONE call. Replaces the {@code where-used}×N
  * loop a maintainer/agent had to write by hand. Built on the same {@code getDirectlyReferencedEntities}
- * primitive {@code where-used} uses, so it can never disagree about what "references" means.
+ * primitive {@code where-used} uses, but it answers the wider REACHABILITY question — a field read only through
+ * an ancestor group operand counts as read — so it deliberately differs from {@code where-used} on exactly those
+ * fields ({@code CG16}; pinned by {@code ModelUsageGroupOperandTest}).
  */
 class ModelUsageVerbTest {
 

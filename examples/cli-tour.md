@@ -336,7 +336,7 @@ dmtool -m examples/models/order-ruled.dm.json model usage \
 }
 ```
 
-→ Four fields carry rules (each value is the referencing rule's full name — `OrderDate` and `DeliveryDate` both feed the delivery-date rule); the other **11** fields nothing reads. That's the audit a `where-used`-per-field loop used to assemble by hand — useful for spotting a field a rule *should* guard, or dead structure. Built on the same reference primitive as `where-used`, so the two never disagree. (For the whole-model *comprehension* view — this plus a glossed rule catalog — see `model report` in [cli-review](cli-review.md).)
+→ Four fields carry rules (each value is the referencing rule's full name — `OrderDate` and `DeliveryDate` both feed the delivery-date rule); the other **11** fields nothing reads. That's the audit a `where-used`-per-field loop used to assemble by hand — useful for spotting a field a rule *should* guard, or dead structure. Seeded by the same reference primitive as `where-used`, but wider on purpose: a field read only through an ancestor **group** operand counts as read here, since the kernel expands a group operand to every field below it. (For the whole-model *comprehension* view — this plus a glossed rule catalog — see `model report` in [cli-review](cli-review.md).)
 
 ## field / group / config read — the structural facts
 

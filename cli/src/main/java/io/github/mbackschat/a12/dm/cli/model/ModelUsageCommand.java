@@ -24,17 +24,20 @@ import picocli.CommandLine.Mixin;
 
 /**
  * {@code dmtool model usage} — the model-wide usage/audit read (FEATURE-GAPS G9): in ONE call, the
- * {@code field → referencing-rules/computations} map for <b>every</b> field, plus the set of fields no
+ * {@code field → reading-rules/computations} map for <b>every</b> field, plus the set of fields no
  * rule or computation reads. The maintainer/audit staple ("which fields are unreferenced?", "what
  * constrains this field?") that previously meant looping {@code where-used} over every field by hand.
  *
- * <p>Built on the same {@code getDirectlyReferencedEntities} primitive {@code where-used} / {@code rule
- * deps} use (via the adapter's {@code whereUsed} + {@code whereUsedInComputations}), so it can never
- * disagree with them about what "references" means — and it works even on conditions rulekit reads as
- * {@code Opaque}. A read op: the payload rides the envelope's {@code data} (shape: {@code model-usage.schema}).
+ * <p>Seeded by the kernel's {@code getDirectlyReferencedEntities} (so it works even on conditions rulekit reads
+ * as {@code Opaque}), but it answers <b>reachability</b> rather than exactness: a field read only through an
+ * ancestor GROUP operand is reported read, because the kernel expands a group operand recursively to every field
+ * below it. So it <em>deliberately</em> reports more than {@code where-used}, which answers "which rules NAME
+ * this entity?" — they differ on exactly the group-reached fields ({@code CG16}; before, this verb called such a
+ * field {@code unreferenced}, which an agent acts on as safe-to-delete).
+ * A read op: the payload rides the envelope's {@code data} (shape: {@code model-usage.schema}).
  */
 @Command(name = "usage", mixinStandardHelpOptions = true,
-        description = "Model-wide usage audit: every field's referencing rules/computations + the unreferenced set, in `data`.")
+        description = "Model-wide usage audit: every field's reading rules/computations (including reach through an ancestor group) + the unreferenced set, in `data`.")
 final class ModelUsageCommand extends BaseCommand {
 
     private static final ObjectMapper MAPPER = new ObjectMapper();

@@ -34,11 +34,13 @@ import io.github.mbackschat.a12.dm.rulekit.dsl.Severity;
  * read only through {@code AllFieldsFilled(/Order/ShippingAddress)} had no direct referrer and was reported
  * {@code unreferenced}.
  *
- * <p><b>Why that is worse than a cosmetic report bug.</b> The published schema promises this map covers every
- * field path, and an agent reads {@code unreferenced} as "safe to delete". Paired with the ungated delete paths
- * ({@code CG13}), the sequence is: the report says unreferenced, the gate says zero referrers, the delete
- * succeeds — and the model stays <b>kernel-valid</b>, because the rule still names the group and merely counts
- * one fewer field, so no terminal check fires either. Nothing in the pipeline says no.
+ * <p><b>Why that is worse than a cosmetic report bug — stated as the HYPOTHESIS it is.</b> The published schema
+ * promises this map covers every field path, and an agent reads {@code unreferenced} as "safe to delete". The
+ * predicted sequence, paired with the ungated delete paths ({@code CG13}): the report says unreferenced, the
+ * gate says zero referrers, the delete succeeds, and the model stays kernel-valid because the rule still names
+ * the group and merely counts one fewer field. <b>That end-to-end sequence is NOT measured</b> — neither here nor
+ * in {@code CG13}, whose own ledger section says none of its rows is measured yet. It is the reason the reader
+ * half was fixed first, not a result this file establishes; what this file measures is the reporting half alone.
  *
  * <p><b>The fixture is built around the two controls, not around the happy path.</b> {@code Warehouse/Note} is
  * reached by nothing and must stay unreferenced — without it, "report every field as referenced" passes every
@@ -83,6 +85,15 @@ class ModelUsageGroupOperandTest {
                                 .and(Dsl.notAllFieldsFilled(m.flattenGroup("/Order/Billing"))))
                         .code("BILL_INCOMPLETE").severity(Severity.ERROR)
                         .message(en("The billing block is incomplete.")).build())
+                // A SECOND rule naming the INNER group, so /Order/ShippingAddress/Region/Code has referrers at
+                // TWO levels of its ancestor chain. Without it, an implementation that stops at the first
+                // non-empty ancestor passes every other row in this file — the walk must UNION, not select.
+                .addRule(m -> m.rule(m.group("/Order")).name("RegionComplete")
+                        .errorField(m.str("/Order/Reference"))
+                        .when(m.str("/Order/Reference").filled()
+                                .and(Dsl.notAllFieldsFilled(m.flattenGroup("/Order/ShippingAddress/Region"))))
+                        .code("REGION_INCOMPLETE").severity(Severity.ERROR)
+                        .message(en("The region block is incomplete.")).build())
                 .toJson();
         Path f = dir.resolve("order.dm.json");
         Files.writeString(f, withRules);
@@ -90,7 +101,17 @@ class ModelUsageGroupOperandTest {
     }
 
     private record Usage(JsonNode byField, List<String> unreferenced) {
+        /**
+         * The referrers reported for {@code field} — asserting the KEY EXISTS first.
+         *
+         * <p>Without that assertion a bare {@code path(field)} yields a {@code MissingNode} that iterates zero
+         * times, so "reported with no referrers" and "silently dropped from the map" are indistinguishable — and
+         * the published schema promises the map covers EVERY field path. Both negative controls below would pass
+         * against an implementation that omitted the field entirely.
+         */
         List<String> referrersOf(String field) {
+            assertTrue(byField.has(field),
+                    () -> "the usage map must carry EVERY field path, and " + field + " is missing: " + byField);
             List<String> out = new ArrayList<>();
             byField.path(field).forEach(r -> out.add(r.asText()));
             return out;
@@ -137,18 +158,33 @@ class ModelUsageGroupOperandTest {
     }
 
     /**
-     * A field reached BOTH directly and through its group is reported ONCE, with both referrers unioned. The
-     * ancestor walk adds to the direct answer rather than replacing it, and a set rather than a list means the
-     * same rule reaching a field by two routes is not double-counted.
+     * <b>THE UNION ROW, and the one that pins the walk's shape.</b> {@code Region/Code} has referrers at TWO
+     * levels of its ancestor chain — {@code RegionComplete} names its immediate parent, {@code AddressComplete}
+     * names the grandparent — so it must report BOTH.
+     *
+     * <p>This is the row a cold review showed the file was missing. Every other assertion here is satisfied by an
+     * implementation that stops at the first non-empty ancestor:
+     * {@code if (a != null) { reaching.addAll(a); break; }}. Only a field whose chain carries referrers at more
+     * than one level can tell "union" from "select the nearest".
      */
     @Test
-    void directAndGroupReachedReferrersAreUnionedWithoutDuplication(@TempDir Path dir) throws Exception {
+    void referrersFromEVERYAncestorLevelAreUnionedNotJustTheNearest(@TempDir Path dir) throws Exception {
         Usage u = usage(dir);
-        List<String> referrers = u.referrersOf("/Order/Reference");
-        assertTrue(referrers.contains("/Order/AddressComplete") && referrers.contains("/Order/BillingComplete"),
-                () -> "/Order/Reference is named directly by both rules: " + referrers);
-        assertEquals(referrers.stream().distinct().toList(), referrers,
-                () -> "a rule reaching a field by two routes must appear once: " + referrers);
+        List<String> referrers = u.referrersOf("/Order/ShippingAddress/Region/Code");
+        assertTrue(referrers.contains("/Order/RegionComplete"),
+                () -> "the rule naming the immediate parent group reaches it: " + referrers);
+        assertTrue(referrers.contains("/Order/AddressComplete"),
+                () -> "and so does the rule naming the GRANDPARENT — a walk that stopped at the nearest "
+                        + "non-empty ancestor would report only the parent: " + referrers);
+    }
+
+    /** A field named DIRECTLY keeps its direct referrers — the ancestor walk adds, it never replaces. */
+    @Test
+    void aDirectlyNamedFieldKeepsItsOwnReferrers(@TempDir Path dir) throws Exception {
+        List<String> referrers = usage(dir).referrersOf("/Order/Reference");
+        assertTrue(referrers.contains("/Order/AddressComplete") && referrers.contains("/Order/BillingComplete")
+                        && referrers.contains("/Order/RegionComplete"),
+                () -> "/Order/Reference is named directly by all three rules: " + referrers);
     }
 
     /**
@@ -192,6 +228,36 @@ class ModelUsageGroupOperandTest {
                 "nothing references /Order/Warehouse or the field itself");
         assertTrue(u.unreferenced().contains("/Order/Warehouse/Note"),
                 () -> "a genuinely unread field must still be reported unreferenced: " + u.unreferenced());
+    }
+
+    /**
+     * <b>The enforcement locus for the claim the schema and CLI-SPEC §6 now ADVERTISE</b> — that {@code where-used}
+     * and {@code model usage} "differ on exactly the group-reached fields, by design". Both surfaces state it;
+     * nothing pinned it, which is the "advertise nothing you cannot point at" failure in its usual form: the
+     * sentence is true today and nothing fails when it stops being.
+     *
+     * <p>Both halves are asserted on ONE model, because either alone is satisfiable by a degenerate answer — the
+     * first by a `where-used` that reports nothing at all, the second by a `model usage` that mirrors it.
+     */
+    @Test
+    void whereUsedStaysExactWhereModelUsageIsReachable(@TempDir Path dir) throws Exception {
+        Path model = model(dir);
+
+        var exact = CliTestSupport.run("-m", model.toString(), "where-used",
+                "/Order/ShippingAddress/Street");
+        assertEquals(0, exact.code(), exact::err);
+        JsonNode exactData = MAPPER.readTree(exact.out()).path("data");
+        assertEquals(0, exactData.path("rules").size() + exactData.path("computations").size(),
+                () -> "where-used answers 'which rules NAME this entity?' — no rule names Street: " + exact.out());
+
+        assertTrue(usage(dir).referrersOf("/Order/ShippingAddress/Street").contains("/Order/AddressComplete"),
+                "…while model usage answers 'what READS it?' and reaches through the group");
+
+        var named = CliTestSupport.run("-m", model.toString(), "where-used", "/Order/Reference");
+        assertEquals(0, named.code(), named::err);
+        assertTrue(MAPPER.readTree(named.out()).path("data").path("rules").size() > 0,
+                () -> "the control: on a DIRECTLY named field the two agree, so the divergence above is about "
+                        + "group reach and not about where-used being empty: " + named.out());
     }
 
     /**

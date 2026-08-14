@@ -180,11 +180,10 @@ public final class SafetyChecks {
         }
     }
 
-    /** Whether {@code path} is the subtree root itself or lies strictly below it — compared at a {@code /}
-     *  boundary, so {@code /Order/ShippingNotes} is NOT inside {@code /Order/Shipping}, and the root group's own
-     *  path IS. A bare {@code startsWith(groupPath + "/")} gets the first right and the second wrong. */
+    /** Whether {@code path} is the subtree root itself or lies strictly below it — {@link KernelAdapter#isInside},
+     *  shared with the suppression scan that needed the same relation from the other side ({@code CG14}). */
     private static boolean inside(String path, String groupPath) {
-        return path.equals(groupPath) || path.startsWith(groupPath + "/");
+        return KernelAdapter.isInside(path, groupPath);
     }
 
     /**

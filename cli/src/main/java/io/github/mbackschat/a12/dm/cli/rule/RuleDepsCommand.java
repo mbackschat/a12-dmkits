@@ -31,9 +31,15 @@ import picocli.CommandLine.Parameters;
  * {@code dmtool rule deps <rulePath>} — a rule's <b>forward dependencies</b>: the fields/groups its condition
  * directly references (each with its model {@code kind}) plus whether it iterates a repeatable group. A
  * focused projection of {@code rule explain} — same reference set, smaller payload — for the question "what
- * does this one rule touch?" without the operator glossary / structural tree / NL gloss. The exact inverse —
- * "what references this field?" — is {@code where-used}; the same kernel primitive
- * ({@code getDirectlyReferencedEntities}) backs both, so they can't disagree (CLI-SPEC §6, KERNEL-FINDINGS §9).
+ * does this one rule touch?" without the operator glossary / structural tree / NL gloss. The rough inverse —
+ * "what references this field?" — is {@code where-used}.
+ *
+ * <p><b>They are NOT backed by the same primitive, despite what this javadoc claimed until 2026-08-14.</b>
+ * {@code where-used} reads the kernel's {@code getDirectlyReferencedEntities}; this verb projects
+ * {@code ModelContext.explain(converted.condition())} — the <em>converted</em> rulekit AST (see the
+ * {@code references} assignment below). Whether the two therefore produce different answers is <b>not
+ * measured</b>; only the "same primitive" premise is refuted, by reading. Tracked in {@code CG16}
+ * (CLI-SPEC §6, KERNEL-FINDINGS §9).
  * A read op: the payload rides {@code data}. A condition the converter doesn't model comes back tolerant as
  * {@code explained:false} + reason (never an error) — use {@code where-used} for the robust inverse there.
  */

@@ -8,6 +8,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import io.github.mbackschat.a12.dm.adapter.KernelAdapter;
 import io.github.mbackschat.a12.dm.core.ValueKind;
 import io.github.mbackschat.a12.dm.modelkit.ElementDraft;
 import io.github.mbackschat.a12.dm.modelkit.FieldMeta;
@@ -94,7 +95,7 @@ final class FieldDiffProjector {
      *  {@code REFERENCED_ELEMENT_REMOVED} nor {@code RETYPE_AFFECTS_READERS} fired for a field a rule reaches only
      *  through its group ({@code CG16}). */
     private static boolean hasReaders(Map<String, Set<String>> referrers, String id) {
-        return !io.github.mbackschat.a12.dm.adapter.KernelAdapter.referrersReaching(referrers, id).isEmpty();
+        return KernelAdapter.isReadByAnything(referrers, id);
     }
 
     private static boolean isRetype(ModelDiff.Delta delta) {
