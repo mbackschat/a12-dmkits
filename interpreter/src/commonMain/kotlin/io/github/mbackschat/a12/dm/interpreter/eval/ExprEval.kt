@@ -1796,8 +1796,31 @@ private fun Interpreter.dateAggregate(f: Expr.Func): Boolean = f.args.any { a ->
 /** The min/max empty-fold identity by operand kind: dates → no value; numbers → `0` (see [dateAggregate]). */
 private fun Interpreter.minMaxEmpty(f: Expr.Func): Val = if (dateAggregate(f)) Val.Unknown else Val.Num(DEC_ZERO)
 
-/** Numeric operand-list Min/Max values. Date Min/Max use [aggregateTemporal], which preserves reason and basis. */
-private fun Interpreter.minMaxOperandVals(f: Expr.Func): List<Val> = f.args.map(::evalExpr)
+/**
+ * Numeric operand-list Min/Max values. Date Min/Max use [aggregateTemporal], which preserves reason and basis.
+ *
+ * **A GROUP operand is REFUSED here rather than expanded, and the refusal has a measured kernel basis:** the
+ * operand-list `Min`/`Max` draw `MVK_NO_GROUPS_ALLOWED` for a group operand in both repetition shapes, while their
+ * `MinValue`/`MaxValue` siblings accept one ([KF187]). So there is no correct expansion semantics to implement —
+ * the shape has no meaning to match — and widening this site "on symmetry" with `aggOperandVals` would invent one.
+ *
+ * It is refused **as a DEGRADE** rather than left to fail on its own, because a kernel refusal only bounds what a
+ * *stored, validated* model can contain: `Expr` is public API, this module's parser accepts the shape in both the
+ * bracketed and the bare spelling, and `dmtool rule eval --condition` evaluates an arbitrary condition with no MVK
+ * pre-flight at all (the native binary has no kernel to pre-flight with). Measured before this guard existed, both
+ * spellings escaped as `IllegalStateException: no kind declared`, which the degrade net does NOT catch — so one
+ * refused shape typed into `rule eval` took the WHOLE evaluation down instead of failing its own rule.
+ * `UnsupportedConstructException` is the one type that net catches. (`KernelRefusedShapeReachabilityTest`.)
+ */
+private fun Interpreter.minMaxOperandVals(f: Expr.Func): List<Val> = f.args.map { arg ->
+    if (namesAGroup(arg)) {
+        throw UnsupportedConstructException(
+            "${f.name} does not accept a group operand (${pathOf(arg)}) — the kernel refuses it with " +
+                "MVK_NO_GROUPS_ALLOWED; use MinValue/MaxValue for a group scope, or name the fields explicitly",
+        )
+    }
+    evalExpr(arg)
+}
 
 /**
  * The FILLED values feeding a value aggregate (`Sum`/`MaxValue`/`MinValue`/`NumberOfDifferentValues`),
