@@ -1192,9 +1192,20 @@ class Document(internal val config: DocumentConfig) {
                 else listOf(scopePath)
             var t = 0; var f = 0; var n = 0; var unknown = false
             var allFilled = true; var anyEmpty = false
+            // The bound prefix is capped at the OPERAND'S OWN depth, so every repeatable level strictly below the
+            // operand iterates whatever the rule iterates — the same rule `ast.expansionBindDepth` applies to a
+            // converted group star. Without the cap, `common` was the shared prefix with the EVALUATING group
+            // alone, so a rule authored ON a repeatable level below the operand already had that level inside
+            // `common`; `multi` then read false and `instCells` returned the single current row's cell. Measured
+            // from a rule on the nested level with the operand naming its ancestor: `AllFieldsFilled` fired on the
+            // row whose own cells were complete where the kernel fires on none, and `NotAllFieldsFilled` moved the
+            // opposite way — two fire sets displacing in opposite directions, which is the signature of a scope
+            // pin rather than of a wrong verdict ([IF287]; `GroupScopeFromADeepRuleRowDiffTest`). A FIELD scope is
+            // unaffected: `scopePath` is then the field itself, so the cap is never the binding term.
+            val scopeDepth = partsOf(scopePath).size
             for (field in descendants) {
                 val parts = partsOf(field)
-                val common = commonPrefixLen(parts, partsOf(group))
+                val common = minOf(commonPrefixLen(parts, partsOf(group)), scopeDepth)
                 for (v in instCells(field, parts, common)) {           // INSTANTIATED tally
                     n++
                     when {
