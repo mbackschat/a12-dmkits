@@ -490,7 +490,7 @@ class Interpreter(
                 // A FILTERED operand must be tallied through its filter even here. [EvalContext.fillScope] takes
                 // no `having` parameter at all, so before this branch the filter was silently dropped for every
                 // operand of a list that any OTHER operand had diverted onto this path — see [filteredFillScope].
-                a is Expr.Star && a.having != null -> filteredFillScope(c, a)
+                a is Expr.Star && a.having != null -> filteredFillScope(c, a, a.having)
                 // A STARRED operand carries its own binding level; an unstarred one has none, and `-1` then
                 // means "cap at the operand's own path depth".
                 else -> c.fillScope(path, isGroup = c.declaredKind(path) == null,
@@ -531,8 +531,7 @@ class Interpreter(
      * instantiated, so the interaction between a filter and an un-instantiated declared TAIL is deliberately left
      * unmeasured rather than guessed at here.
      */
-    private fun filteredFillScope(c: EvalContext, star: Expr.Star): FillScope {
-        val having = star.having ?: return c.fillScope(star.path, isGroup = false)
+    private fun filteredFillScope(c: EvalContext, star: Expr.Star, having: Cond): FillScope {
         var t = 0
         var f = 0
         var n = 0
@@ -1070,6 +1069,12 @@ class Interpreter(
         // group operand outright, but the plural form ADMITS one in its `In` slot ([KF187]), which is what made
         // this reachable and what corrected IF287's reason for leaving `filteredStarCells` unexpanded.
         // An empty group contributes no range rather than recursing on itself.
+        // An empty group contributes no range rather than recursing on itself. The identity check spots the
+        // owner's "yield the operand unchanged" fallback, which a review called a coupling smell — correctly, but
+        // the obvious replacement is WORSE and was measured so: asking `containedFields(pathOf(arg))` throws
+        // "unsupported operand Star in a field-reference position", because `pathOf` rejects a `Star` outright.
+        // Removing the coupling therefore needs a path accessor that accepts both operand shapes, not a local
+        // rewrite; kept as-is deliberately.
         namesAGroup(arg) -> expandOneGroupOperand(arg).let { expanded ->
             if (expanded.singleOrNull() === arg) emptyList() else expanded.flatMap { overlapCells(it) }
         }
