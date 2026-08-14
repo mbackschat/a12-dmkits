@@ -2873,7 +2873,7 @@ A key in a **parallel repeatable** group is *not* part of that collapse and is n
 
 ## §9 supplement — a GROUP-scope operand's admission is per-CARRIER; two families split internally, and ACCEPT means the kernel EXPANDED (kernel `rule check`, 2026-08-14) <a id="kf187"></a>
 
-> Fold: pending
+> Fold: pending — §9 carries no per-carrier operand-admission table yet, and this one is not stable enough to fold: two families split INTERNALLY (`Min`/`Max` versus `MinValue`/`MaxValue`, and the singular versus plural date-range forms), so the canonical prose would have to state the split rather than a family rule, and DG35 will change which of these shapes the typed surface can even express.
 
 A group operand is not a shape the kernel admits or refuses globally. Swept across every carrier a group-expansion audit had named, the verdicts partition into three sets, and **two carriers disagree with their own family member** — which is why "the family admits it" was never a safe inference from one measured sibling.
 
