@@ -1756,7 +1756,21 @@ private fun Interpreter.starVals(f: Expr.Func): List<Val> = f.args.flatMap { agg
 
 private fun Interpreter.aggOperandVals(arg: Expr): List<Val> = when (arg) {
     is Expr.Star -> starOperandVals(arg)
-    else -> if (ctx.filled(pathOf(arg))) listOf(evalExpr(arg)) else emptyList()   // plain field: empty dropped
+    else -> {
+        val path = pathOf(arg)
+        // A GROUP operand contributes its contained fields, exactly as [starOperandVals] does for the starred
+        // form. Without this the `filled` test below decides it: a group holds no value of its own, so
+        // `ctx.filled` is false for every group path, the operand was DROPPED, and the aggregate folded to its
+        // empty identity — a silent `Sum` of 0 that fires nothing. Measured against both kernel strategies:
+        // `Sum(/Order/Billing) > 5` over 3 + 4 fires on the kernel and returned false here (IF287's class, sixth
+        // instance; the kernel's admission of the shape is asserted in the lock so a rejection cannot pass as
+        // agreement). The unstarred spelling is the only legal one for a non-repeatable group.
+        if (ctx.declaredKind(path) == null) {
+            val depth = path.trim('/').split('/').size
+            val outer = (arg as? Expr.Field)?.outer ?: false
+            ctx.containedFields(path).flatMap { starOperandVals(Expr.Star(it, null, outer, depth)) }
+        } else if (ctx.filled(path)) listOf(evalExpr(arg)) else emptyList()   // plain field: empty dropped
+    }
 }
 
 /** A starred aggregate operand's filled values — its group's row cells (empties dropped, like [EvalContext.star]);
