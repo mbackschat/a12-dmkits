@@ -149,6 +149,13 @@ class GroupOperandCarrierAdmissionLawsTest {
         s.add(Shape.accepted("MinValue/date-field-control", "[ClaimedOn] > MinValue(Inspections*/VisitedOn)"));
         s.add(Shape.accepted("MaxValue/date-field-control", "[ClaimedOn] > MaxValue(Inspections*/VisitedOn)"));
 
+        // ── The three shapes `dateGroupFill` turns out to reach but does not name, all admission-first because a
+        //    refusal closes each without any runtime work (IG136 item (m)). ──
+        s.add(Shape.refused("Sum/date-group", "Sum(Milestones) > 0", "MVK_NO_NUMBER"));
+        s.add(Shape.refused("MinValue/mixed-kind-group", "MinValue(Lines*) > 0", "MVK_NOT_SORTABLE"));
+        s.add(Shape.accepted("MinValue/date-group-plus-date-field",
+                "[ClaimedOn] > MinValue(Milestones, ClaimedOn)"));
+
         // ── the seven field-list FILL quantifiers over a group operand, each with its explicit-field control ──
         for (String op : new String[] {
             "AllFieldsFilled", "NoFieldFilled", "AtLeastOneFieldFilled", "NotAllFieldsFilled",

@@ -449,27 +449,50 @@ private fun EvalContext.numericStarFillState(star: Expr.Star): AggregateFillStat
  * OR-ed across the expansion, which is exactly the shape the date arm below already has: a DATE aggregate's fill is
  * symmetric, so there is no direction for a per-field disagreement to disturb.
  *
- * Scoped to the DATE family deliberately: the numeric group operand is already handled by [aggregateFillState]'s
- * own group arms, and a group of some OTHER non-numeric kind reaching a min/max is unmeasured — it keeps the
- * previous behaviour rather than inheriting an answer measured for dates.
+ * **Scope, and every boundary of it is measured rather than assumed.** The numeric group operand is handled by
+ * [aggregateFillState]'s own group arms. `Sum` cannot reach here over a date group at all (`MVK_NO_NUMBER`) and a
+ * MIXED-kind group cannot reach min/max either (`MVK_NOT_SORTABLE`), so the order-dependent
+ * [firstFilledEntityKind] read a review flagged for a mixed group is unreachable — both refusals measured in
+ * [KF187]. What IS reachable and was missed is the MULTI-operand form: this function once took
+ * `f.args.singleOrNull()`, so `MinValue(<date group>, <date field>)` fell through to `leafOmission` and answered
+ * OMISSION where the kernel answers VALUE. It now walks every operand and ORs their missingness, which is the
+ * same shape the single-operand case always had.
  */
 private fun Interpreter.dateGroupFill(f: Expr.Func): Fill? {
-    val arg = f.args.singleOrNull() ?: return null
+    if (f.args.none { namesADateGroup(it) }) return null
+    var om = false
+    for (arg in f.args) {
+        val c = ctxOf(arg)
+        val path = when (arg) {
+            is Expr.Star -> arg.path
+            is Expr.Field -> arg.path
+            else -> return null                              // an operand shape this fill cannot account for
+        }
+        om = om || if (c.declaredKind(path) == null) {
+            val fields = c.containedFields(path)
+            if (fields.isEmpty()) return null
+            val star = arg as? Expr.Star
+            val depth = expansionBindDepth(path, star?.bindDepth ?: -1)
+            star?.having != null || fields.any { c.starOmission(it, depth) }
+        } else {
+            !c.filled(path)                                  // a plain date operand is missing iff empty
+        }
+    }
+    return Fill.of(om, om)
+}
+
+/** Whether [arg] names a GROUP whose expansion is DATE-like — the operand shape [dateGroupFill] accounts for. */
+private fun Interpreter.namesADateGroup(arg: Expr): Boolean {
     val path = when (arg) {
         is Expr.Star -> arg.path
         is Expr.Field -> arg.path
-        else -> return null
+        else -> return false
     }
     val c = ctxOf(arg)
-    if (c.declaredKind(path) != null) return null                       // a declared field: not this shape
-    if (!dateLike(firstFilledEntityKind(c, path))) return null
-    val fields = c.containedFields(path)
-    if (fields.isEmpty()) return null
-    val star = arg as? Expr.Star
-    val depth = expansionBindDepth(path, star?.bindDepth ?: -1)
-    val om = star?.having != null || fields.any { c.starOmission(it, depth) }
-    return Fill.of(om, om)
+    return c.declaredKind(path) == null && dateLike(firstFilledEntityKind(c, path)) &&
+        c.containedFields(path).isNotEmpty()
 }
+
 
 /** The pre-declaration-summary behavior retained for non-numeric/date/unsupported aggregate shapes. A
  *  DATE-like star has symmetric fill; a numeric single star keeps its former exhausted and directional cases. */

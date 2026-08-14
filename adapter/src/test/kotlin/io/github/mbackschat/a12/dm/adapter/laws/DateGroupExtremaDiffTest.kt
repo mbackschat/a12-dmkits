@@ -268,6 +268,24 @@ class DateGroupExtremaDiffTest {
             .field(VISITED, "12.07.2026", 1, 2, 1).field(CLOSED, "25.06.2026", 1, 2, 1)
     }
 
+    /**
+     * **The MULTI-OPERAND date min/max, which `dateGroupFill` excludes and the kernel admits.** That function
+     * takes `f.args.singleOrNull()`, so `MinValue(<date group>, <date field>)` never reaches it and keeps the old
+     * `leafOmission` reading — where `!filled(groupPath)` is TRUE for every group and the answer is OMISSION.
+     * Every cell here is filled, so nothing is missing and the kernel's answer must be VALUE.
+     *
+     * Its two siblings are CLOSED as measured negatives rather than tested here, because the kernel refuses them:
+     * `Sum(<date group>)` draws `MVK_NO_NUMBER` and `MinValue(<mixed-kind group>)` draws `MVK_NOT_SORTABLE`
+     * ([KF187](../../../../../../../../../docs/KERNEL-FINDINGS.md#kf187)). So the order-dependent
+     * `firstFilledEntityKind` read a review flagged for a mixed group is unreachable through min/max, and `Sum`
+     * cannot reach `dateGroupFill` at all.
+     */
+    @Test
+    fun theMultiOperandDateMinFiresWithTheKernelsPolarity() =
+        assertSamePolarity(
+            "FieldFilled(/Claim/Reference) And [ClaimedOn] > MinValue($MILESTONES, $CLAIMED_ON)",
+            "the multi-operand date min's polarity", ::milestonesBeforeTheClaim)
+
     /** Both milestone dates PRECEDE the claim date, so `[ClaimedOn] > MinValue(…)` holds and the rule fires. */
     private fun milestonesBeforeTheClaim(b: Both) {
         b.group("/Claim", 1).field(REF, "C-1", 1, 1).field(CLAIMED_ON, "15.06.2026", 1, 1)
