@@ -1760,7 +1760,7 @@ private fun Interpreter.firstFilledKind(f: Expr.Func): Kind? = f.args.firstNotNu
     }
 }
 
-private fun firstFilledEntityKind(c: EvalContext, path: String): Kind? =
+internal fun firstFilledEntityKind(c: EvalContext, path: String): Kind? =
     c.declaredKind(path) ?: c.containedFields(path).firstNotNullOfOrNull(c::declaredKind)
 
 /** DATE-like kinds ride the kernel's date machinery (`VkDate`) — min/max over them dispatch to the

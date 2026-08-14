@@ -63,6 +63,9 @@ class DateGroupExtremaDiffTest {
         /** The starred spellings: the `*` marks the REPEATABLE LEVEL, so it rides `Inspections`, not the leaf. */
         const val VISITED_STAR = "/Claim/Inspections*/VisitedOn"
         const val INSPECTIONS_STAR = "/Claim/Inspections*"
+        const val MILESTONES = "/Claim/Milestones"
+        const val REPORTED = "/Claim/Milestones/ReportedOn"
+        const val SETTLED = "/Claim/Milestones/SettledOn"
         const val CODE = "DGX"
     }
 
@@ -76,6 +79,10 @@ class DateGroupExtremaDiffTest {
         .rootGroup("Claim") { g ->
             g.stringField("Reference") { }
             g.dateField("ClaimedOn") { it.format("dd.MM.yyyy") }
+            g.group("Milestones") { ms ->
+                ms.dateField("ReportedOn") { it.format("dd.MM.yyyy") }
+                    .dateField("SettledOn") { it.format("dd.MM.yyyy") }
+            }
             g.group("Inspections") { i ->
                 i.repeatable(2)
                     .dateField("VisitedOn") { it.format("dd.MM.yyyy") }
@@ -215,18 +222,69 @@ class DateGroupExtremaDiffTest {
      * The POLARITY of the firing, which the boolean rows above cannot see. A wrong message TYPE reads as
      * agreement under `any { code }` — the exact blindness that shipped a fresh defect green in this class's
      * ninth instance, in the same commit as the lock that was supposed to catch it.
+     *
+     * **This row asserts the GROUP form, and it did not always.** Its first version asserted the single-field
+     * CONTROL, which is the one condition whose polarity was never in question — so the group operand's polarity
+     * channel went unmeasured inside the very lock added to measure it. A cold review caught that, and the
+     * mistake is worth recording because it is the ninth instance's lesson recurring one level up: the assertion
+     * was widened to `field|type` correctly and then pointed at the wrong condition.
      */
     @Test
     fun theGroupExtremumFiresWithTheKernelsPolarity() {
         assertOperandSubstituted()
-        val kModel = RuntimeLaws.withRule(base, "/Claim", "R", "../Reference", CODE, earliestVisitAfterClaim)
+        assertSamePolarity(earliestInGroupAfterClaim, "the starred DATE group's polarity",
+            ::everyInspectionDateAfterTheClaim)
+    }
+
+    /**
+     * The UNSTARRED arm, over a NON-repeatable date group — a different `PolarityWalk` path, and the one a review
+     * predicted would answer OMISSION where the kernel answers VALUE: `aggregateFillState`'s `Expr.Field` arm
+     * returns null for a group, `numericAggregateFill` falls to `legacyStarFill`, whose
+     * `singleOrNull() as? Expr.Star` is null for a `Field`, and the polarity then comes from a leaf-omission read
+     * of the group path — where `!filled(groupPath)` is TRUE for every group. Both dates are filled here, so
+     * nothing is missing and the kernel's answer must be VALUE.
+     */
+    @Test
+    fun theUnstarredDateGroupFiresWithTheKernelsPolarity() {
+        val control = "FieldFilled(/Claim/Reference) And [ClaimedOn] > MinValue($REPORTED, $SETTLED)"
+        val group = "FieldFilled(/Claim/Reference) And [ClaimedOn] > MinValue($MILESTONES)"
+        assertSamePolarity(control, "control: the explicit date field list", ::milestonesBeforeTheClaim)
+        assertSamePolarity(group, "the UNSTARRED date group's polarity", ::milestonesBeforeTheClaim)
+    }
+
+    /**
+     * Every date below `Inspections` follows the claim date, so the GROUP form's extremum is after it and the rule
+     * fires. The discriminator document cannot serve here: it is built so the group's answer is FALSE, and a row
+     * that does not fire measures no polarity at all — which [assertSamePolarity] now refuses outright.
+     */
+    private fun everyInspectionDateAfterTheClaim(b: Both) {
+        b.group("/Claim", 1).field(REF, "C-1", 1, 1).field(CLAIMED_ON, "01.06.2026", 1, 1)
+            .group(INSPECTIONS, 1, 1)
+            .field(VISITED, "10.07.2026", 1, 1, 1).field(CLOSED, "20.06.2026", 1, 1, 1)
+            .group(INSPECTIONS, 1, 2)
+            .field(VISITED, "12.07.2026", 1, 2, 1).field(CLOSED, "25.06.2026", 1, 2, 1)
+    }
+
+    /** Both milestone dates PRECEDE the claim date, so `[ClaimedOn] > MinValue(…)` holds and the rule fires. */
+    private fun milestonesBeforeTheClaim(b: Both) {
+        b.group("/Claim", 1).field(REF, "C-1", 1, 1).field(CLAIMED_ON, "15.06.2026", 1, 1)
+            .field(REPORTED, "01.06.2026", 1, 1, 1).field(SETTLED, "05.06.2026", 1, 1, 1)
+            .group(INSPECTIONS, 1, 1)
+            .group(INSPECTIONS, 1, 2)
+    }
+
+    /** Compare the full `errorPath|type` signature across both kernel strategies and the interpreter. */
+    private fun assertSamePolarity(condition: String, msg: String, build: (Both) -> Unit) {
+        val kModel = RuntimeLaws.withRule(base, "/Claim", "R", "../Reference", CODE, condition)
         val def = ModelLoader.load(kModel)
 
-        val dynamic = Both(RuntimeLaws.doc(), def.newDocument()).also(::visitsAfterButClosuresBefore)
-        val groovy = RuntimeLaws.messages(kModel, dynamic.kDoc).filter { it.code() == CODE }
+        val dynamic = Both(RuntimeLaws.doc(), def.newDocument()).also(build)
+        val kernelMessages = RuntimeLaws.messages(kModel, dynamic.kDoc)
+        assertAdmitted(kernelMessages.map { it.code() }, msg)
+        val groovy = kernelMessages.filter { it.code() == CODE }
             .map { "${it.field()}|${it.type().name}" }.sorted()
 
-        val staticDoc = Both(RuntimeLaws.doc(), def.newDocument()).also(::visitsAfterButClosuresBefore).kDoc
+        val staticDoc = Both(RuntimeLaws.doc(), def.newDocument()).also(build).kDoc
         val javaStatic = RuntimeLaws.kernelJavaEngine(kModel)
             .messagesModern(staticDoc, null, java.util.Locale.US).filter { it.code() == CODE }
             .map { "${it.field()}|${it.type().name}" }.sorted()
@@ -235,7 +293,8 @@ class DateGroupExtremaDiffTest {
             .map { "${it.errorPath}|${if (it.type == MsgType.OMISSION) "OMISSION_ERROR" else "VALUE_ERROR"}" }
             .sorted()
 
-        assertEquals(groovy, javaStatic, "groovy vs java-static (tri-check)")
-        assertEquals(groovy, interpreter, "kernel vs INTERPRETER — the polarity of a date extremum")
+        assertTrue(groovy.isNotEmpty()) { "$msg — the kernel did not fire, so the row measures no polarity" }
+        assertEquals(groovy, javaStatic, "$msg — groovy vs java-static (tri-check)")
+        assertEquals(groovy, interpreter, "$msg — kernel vs INTERPRETER")
     }
 }
