@@ -317,6 +317,17 @@ public final class KernelAdapter {
      * that operator's expansion". For a safety gate that is the correct direction to err, and for a usage report
      * it matches what the kernel actually evaluates.
      *
+     * <p><b>Not every {@link #referrersByEntity} consumer wants this</b>, and the two that keep the exact answer
+     * do so for a reason worth writing down rather than re-deriving:
+     * <ul>
+     *   <li>{@code StructureRefactor}'s referrer scans feed {@code changed.rewroteReferences} — a report of which
+     *       condition TEXTS a rename/move actually rewrote. A rule naming an ancestor group has no text to
+     *       rewrite, so including it would report a change that did not happen; a rule naming a descendant is
+     *       already covered, because that scan enumerates the subtree.</li>
+     *   <li>{@code ModelDiffState} merely holds the shared map; its consumers decide individually
+     *       ({@code FieldDiffProjector} reaches, {@code ModelDiff}'s group arm is tracked in {@code CG16}).</li>
+     * </ul>
+     *
      * @param byEntity one {@link #referrersByEntity} map, passed in so a model-wide sweep builds it ONCE — the
      *                 {@code O(R+C)} contract this method must not silently turn back into {@code O(F·(R+C))}
      */
