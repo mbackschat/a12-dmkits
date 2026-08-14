@@ -1182,14 +1182,24 @@ class Interpreter(
                 // BOTH arms expand to a STARRED field, including the non-starred one. A contained field may live
                 // under a repeatable SUBGROUP, and a plain field ref reads it at one ambient coordinate — which
                 // silently dropped every row but the first, so a duplicate pairing a direct field with nested row 2
-                // went unreported while both kernel strategies fire on it. `bindDepth = -1` binds above the leaf
-                // group's parent, so that nested repetition iterates fully; for a field directly in a
-                // non-repeatable group it degenerates to the single row the plain ref used to read.
+                // went unreported while both kernel strategies fire on it.
+                //
+                // The expanded field binds at the OPERAND'S OWN group depth, not at `-1`. `-1` means "the leaf
+                // group's parent", which iterates the nested repetition fully only while nothing else anchors an
+                // intermediate level — and iteration here is reference-driven, so a sibling ref can anchor one.
+                // Measured: with the guard `FieldFilled(…/Handovers/Marker)` anchoring the middle level, a
+                // duplicate spanning two `Handovers` rows' `Scans` fires on both kernel strategies and the
+                // interpreter returned FALSE, because `groupScopePrefix` caps at the common prefix with the
+                // ITERATING group and `-1` left that cap high enough to pin `Handovers`. Binding at the operand's
+                // own depth keeps every level at or below the operand free whatever the rule iterates, which is
+                // the same rule `ModelStaticPlans.expandMessageReference` applies to the reference channel — the
+                // two channels of one operand must not disagree about its extent.
+                val operandDepth = path.trim('/').split('/').size
                 return contained.flatMap { field ->
                     comparedCells(
                         when (a) {
                             is Expr.Star -> Expr.Star(field, a.having, a.outer, a.bindDepth)
-                            else -> Expr.Star(field, null, (a as Expr.Field).outer)
+                            else -> Expr.Star(field, null, (a as Expr.Field).outer, operandDepth)
                         },
                     )
                 }

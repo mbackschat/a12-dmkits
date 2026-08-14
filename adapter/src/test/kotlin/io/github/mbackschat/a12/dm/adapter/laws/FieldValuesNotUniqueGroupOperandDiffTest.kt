@@ -141,6 +141,25 @@ class FieldValuesNotUniqueGroupOperandDiffTest {
             }
         }.build().toJson()
 
+    /**
+     * [deepNested] plus a direct `Marker` field on the **middle** repeatable level, which is what lets a rule
+     * ANCHOR ITERATION there: iteration is reference-driven, so a guard naming `Handovers/Marker` makes
+     * `Handovers` the iterating group while the operand still names its ancestor `/Shipment/Depot`. Without such a
+     * field every condition over this shape binds `Once`, and the declared rule group drives nothing — which is
+     * why the existing deeper-rule-group row does not reach this question despite looking like it does.
+     */
+    private val deepNestedMarked = DocumentModelDraft.named("markeddepot").locale("en_US")
+        .rootGroup("Shipment") { g ->
+            g.stringField("Reference") { }
+            g.group("Depot") { d ->
+                d.stringField("Name") { }
+                d.group("Handovers") { h ->
+                    h.repeatable(10).stringField("Marker") { }
+                    h.group("Scans") { s -> s.repeatable(10).stringField("Code") { } }
+                }
+            }
+        }.build().toJson()
+
     private class Both(val kDoc: RuntimeLaws.Doc, val iDoc: Document) {
         fun group(path: String, vararg reps: Int): Both {
             kDoc.group(path, *reps); iDoc.group(path, *reps); return this
@@ -657,5 +676,61 @@ class FieldValuesNotUniqueGroupOperandDiffTest {
                 .group(HANDOFFS, 1, 1, 1).field(SITE, "AAA", 1, 1, 1, 1)
                 .group(HANDOFFS, 1, 1, 2).field(SITE, "UPS", 1, 1, 2, 1)
                 .group(HANDOFFS, 1, 1, 3).field(SITE, "UPS", 1, 1, 3, 1)
+        }
+
+    // ── the operand vs the ITERATING ROW: does an anchored middle level pin the compared set? ─────────────
+
+    /**
+     * **The case the deeper-rule-group row above looks like it covers and does not.** Iteration here is
+     * reference-driven, so `ruleGroup` alone drives nothing: over [deepNested] every reference is non-repeatable,
+     * the plan is `Once`, and no level is ever pinned. This row uses [deepNestedMarked] so the guard
+     * `FieldFilled(…/Handovers/Marker)` genuinely ANCHORS iteration at the middle repeatable level while the
+     * operand still names its ancestor `/Shipment/Depot`.
+     *
+     * The duplicate spans **two different `Handovers` rows'** `Scans`, and `Name` is distinct, so the two accounts
+     * separate cleanly: an operand-bounded compared set sees both codes and fires; one pinned to the iterating row
+     * sees one code per row and never finds a pair. IF287 already established operand-boundedness for an
+     * unanchored placement — this asks whether an anchored middle level changes it.
+     */
+    @Test
+    fun anAnchoredMiddleLevelDoesNotPinTheOperandsComparedSet() =
+        agreeFires(
+            "FieldFilled(/Shipment/Depot/Handovers/Marker) And FieldValuesNotUnique(/Shipment/Depot)",
+            expected = true,
+            msg = "duplicate spans Handovers[1]/Scans[1] and Handovers[2]/Scans[1]; iteration anchored at Handovers",
+            model = deepNestedMarked,
+            ruleGroup = "/Shipment/Depot/Handovers",
+            errorPath = "../Marker",
+        ) { b ->
+            b.group("/Shipment", 1).field(REFERENCE, "SHP-1", 1, 1)
+                .field(DEPOT_NAME, "N0", 1, 1, 1)
+                .group(HANDOVERS, 1, 1, 1).field("/Shipment/Depot/Handovers/Marker", "M1", 1, 1, 1, 1)
+                .group(SCANS, 1, 1, 1, 1).field(SCAN_CODE, "SAME", 1, 1, 1, 1, 1)
+                .group(HANDOVERS, 1, 1, 2).field("/Shipment/Depot/Handovers/Marker", "M2", 1, 1, 2, 1)
+                .group(SCANS, 1, 1, 2, 1).field(SCAN_CODE, "SAME", 1, 1, 2, 1, 1)
+        }
+
+    /**
+     * The same question for the **authored star**, whose arm keeps its own `bindDepth` rather than the operand
+     * depth. Guarding on `Consignments/Ref` — a direct field of the starred group — anchors iteration there, so
+     * this asks whether an authored star's expansion is pinned by its own iterating row. The existing cross-row
+     * row guards on the non-repeatable `/Shipment/Reference`, which binds `Once` and cannot reach it.
+     */
+    @Test
+    fun anAnchoredStarredGroupStillComparesAcrossItsOwnRows() =
+        agreeFires(
+            "FieldFilled(/Shipment/Consignments/Ref) And FieldValuesNotUnique(/Shipment/Consignments*)",
+            expected = true,
+            msg = "duplicate spans Consignments[1]/Marks[2] and Consignments[2]/Marks[1]; anchored at Consignments",
+            model = starredNested,
+            ruleGroup = CONSIGNMENTS,
+            errorPath = "../Ref",
+        ) { b ->
+            b.group("/Shipment", 1).field(REFERENCE, "SHP-1", 1, 1)
+                .group(CONSIGNMENTS, 1, 1).field(CONSIGNMENT_REF, "K7", 1, 1, 1)
+                .group(MARKS, 1, 1, 1).field(MARK, "M1", 1, 1, 1, 1)
+                .group(MARKS, 1, 1, 2).field(MARK, "M9", 1, 1, 2, 1)
+                .group(CONSIGNMENTS, 1, 2).field(CONSIGNMENT_REF, "K8", 1, 2, 1)
+                .group(MARKS, 1, 2, 1).field(MARK, "M9", 1, 2, 1, 1)
         }
 }
