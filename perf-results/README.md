@@ -46,6 +46,8 @@ Two conventions carry the meaning. **`windowSince`** says which span the deltas 
 | whether a row actually STEPPED, when, and its run-to-run noise | `scripts/perf-trend.sh [pattern]` |
 | to fold runs into the committed anchor | `scripts/perf-anchor.sh refresh perf-results/<environment>/*.jsonl` (per-key median over every run given) |
 
+**Aggregating one of these files by hand? `export LC_ALL=C` first.** Every number in this tree is *written* in `Locale.ROOT` — `PerfNumberLocaleContractTest` holds the producing side to it — but a *reader* inherits the shell's locale, and this estate is developed on a `de_DE` one. There, `awk` parses `0.57` as `0` and renders `3.0` as `3,000`; `sort -n` truncates at the dot. Neither malforms anything or fails, so the wrong number simply travels. The scripts above are unaffected (they delegate every decimal to the JVM and do no arithmetic in shell), which is exactly why the exposure is the ad-hoc pipeline you type instead — and that has already produced one wrong growth median.
+
 ## Writing it
 
 A local run on a fixed machine is the reliable instrument: `scripts/perf.sh gate`. Hosted runs also record, and the nightly uploads its file as the `perf-observations` artifact; folding a hosted run in requires downloading that artifact, since a hosted runner's numbers can only be authored from a hosted run.
