@@ -484,13 +484,60 @@ class Interpreter(
             // A starred index-field operand's instantiated tally is index-aware (mandatory-empty / duplicated
             // cells are not-check-relevant → the UNKNOWN bucket), so a fill quantifier over an index field matches
             // the kernel's `isWertAngegeben` (AtLeastOne stops firing on a fully-duplicated index; IF15/IF60).
-            val fs = if (a is Expr.Star && a.having == null && a.path in indexFields) indexStarFillScope(c, a.path)
-                     else c.fillScope(path, isGroup = c.declaredKind(path) == null)
+            val fs = when {
+                a is Expr.Star && a.having == null && a.path in indexFields -> indexStarFillScope(c, a.path)
+                // A FILTERED operand must be tallied through its filter even here. [EvalContext.fillScope] takes
+                // no `having` parameter at all, so before this branch the filter was silently dropped for every
+                // operand of a list that any OTHER operand had diverted onto this path — see [filteredFillScope].
+                a is Expr.Star && a.having != null -> filteredFillScope(c, a)
+                else -> c.fillScope(path, isGroup = c.declaredKind(path) == null)
+            }
             t += fs.tInst; f += fs.fInst; n += fs.nInst; unknown = unknown || fs.hasUnknownInst
             allFilled = allFilled && fs.allFilledDeclared
             anyEmpty = anyEmpty || fs.anyEmptyDeclared
         }
         return FillScope(t, f, n, unknown, allFilled, anyEmpty)
+    }
+
+    /**
+     * The [FillScope] of a `Having`-FILTERED starred operand, tallied over the rows the filter KEEPS — the same
+     * kept-row scan and the same 3-state classification as [naiveStarQuantTally], which is the measured path a
+     * filtered operand takes when it is alone in its list.
+     *
+     * **Why this exists.** A fill quantifier is diverted onto the group/starred-scope path as soon as ANY operand
+     * qualifies ([hasFillScopeOperand]), and that path called [EvalContext.fillScope] for EVERY operand — a
+     * function with no `having` parameter, so the filter could not be honoured there even in principle. A mixed
+     * list holding one unfiltered star (which diverts) and one filtered star (which is then mis-tallied) therefore
+     * counted the filtered operand over ALL its rows. Measured against both kernel strategies on a document whose
+     * only filled cell sits in the row the filter DROPS: `NoFieldFilled` returned false where the kernel fires and
+     * `AtLeastOneFieldFilled` returned true where it does not — opposite directions, so the evidence is about the
+     * dropped filter and not about either quantifier's verdict ([IF287]'s class; `MixedFillScopeHavingDiffTest`).
+     *
+     * **The DECLARED-range flags are derived from the same kept-row scan, and that is a measured choice rather than
+     * a convenience.** A filter is a predicate over a row, so it cannot be evaluated on a repetition that does not
+     * exist — there is no kept/dropped answer for an un-instantiated declared rep. The kernel's answer for the
+     * instantiated case is measured (`AllFieldsFilled` fires over a filled kept row while an unfiltered reading
+     * sees the dropped row's empty cell), and every row of that measurement has its full declared range
+     * instantiated, so the interaction between a filter and an un-instantiated declared TAIL is deliberately left
+     * unmeasured rather than guessed at here.
+     */
+    private fun filteredFillScope(c: EvalContext, star: Expr.Star): FillScope {
+        val having = star.having ?: return c.fillScope(star.path, isGroup = false)
+        var t = 0
+        var f = 0
+        var n = 0
+        var unknown = false
+        for (rc in c.rowContexts(star.path.substringBeforeLast('/'), star.bindDepth)) {
+            if (!havingInterp(rc).fires(having)) continue
+            n++
+            when {
+                rc.presenceUnknown(star.path) -> {}
+                !rc.filled(star.path) -> f++
+                rc.field(star.path) is Val.Unknown -> unknown = true
+                else -> t++
+            }
+        }
+        return FillScope(t, f, n, unknown, allFilledDeclared = f == 0 && !unknown, anyEmptyDeclared = f > 0)
     }
 
     /** Whether a field-fill quantifier fires over a group/starred scope — `AllFieldsFilled`/`NotAllFieldsFilled`

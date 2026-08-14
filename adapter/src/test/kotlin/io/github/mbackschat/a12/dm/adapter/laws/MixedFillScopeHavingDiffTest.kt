@@ -165,6 +165,54 @@ class MixedFillScopeHavingDiffTest {
         }
 
     /**
+     * `AllFieldsFilled` on the same mixed list, measured rather than reasoned about. It is the one quantifier
+     * whose scope-path answer comes from the DECLARED range (`fillScopeFires` → `allFilledDeclared`) instead of
+     * the instantiated tally, so what a filter even MEANS for it is a kernel question and not a derivation — and
+     * the fix must not invent an answer for it. Both declared rows are instantiated, so no un-instantiated tail
+     * supplies its own explanation.
+     */
+    @Test
+    fun theDeclaredRangeQuantifierAgreesOnTheSameMixedList() =
+        agreeFires(guarded("AllFieldsFilled($UNFILTERED_SIBLING, $FILTERED)"), expected = false,
+            msg = "mixed list/All: the kept row's Amount is empty, so not all are filled",
+            build = ::theFilledCellIsInTheDroppedRow)
+
+    /**
+     * …and its companion on the document where every KEPT cell is filled. Read with the row above, this is what
+     * pins whether the declared-range quantifier honours the filter at all: unfiltered, the dropped row's empty
+     * `Amount` keeps it false; filtered, only the kept row counts.
+     */
+    @Test
+    fun theDeclaredRangeQuantifierOverAFullyFilledKeptRow() =
+        agreeFires(guarded("AllFieldsFilled($UNFILTERED_SIBLING, $FILTERED)"), expected = false,
+            msg = "mixed list/All: the sibling's Charges rows are empty, so not all are filled") { b ->
+            b.group("/Invoice", 1).field(REF, "I-1", 1, 1)
+                .group(CHARGES, 1, 1)
+                .group(CHARGES, 1, 2)
+                .group(LINES, 1, 1).field(SKU, "A", 1, 1, 1).field(LINE_AMOUNT, "42.00", 1, 1, 1)
+                .group(LINES, 1, 2).field(SKU, "B", 1, 2, 1)
+        }
+
+    /**
+     * **THE DECLARED-RANGE DISCRIMINATOR**, and the reason the two rows above could not serve as one: in both of
+     * them the sibling's `Charges` cells are empty, which makes `AllFieldsFilled` false whatever the filter does.
+     * Here every `Charges` cell is filled, so the sibling cannot decide, and the two readings split: with the
+     * filter honoured the only kept cell (`Lines[1]/Amount`) is filled and the quantifier fires; with the filter
+     * dropped `Lines[2]/Amount` is empty and it does not. This is what gives the declared-range half of the fix a
+     * measured basis instead of a derivation.
+     */
+    @Test
+    fun theDeclaredRangeQuantifierHonoursTheFilterWhenTheSiblingCannotDecide() =
+        agreeFires(guarded("AllFieldsFilled($UNFILTERED_SIBLING, $FILTERED)"), expected = true,
+            msg = "mixed list/All: every Charges cell and the only KEPT Lines cell are filled") { b ->
+            b.group("/Invoice", 1).field(REF, "I-1", 1, 1)
+                .group(CHARGES, 1, 1).field(CHARGE_AMOUNT, "1.00", 1, 1, 1)
+                .group(CHARGES, 1, 2).field(CHARGE_AMOUNT, "2.00", 1, 2, 1)
+                .group(LINES, 1, 1).field(SKU, "A", 1, 1, 1).field(LINE_AMOUNT, "42.00", 1, 1, 1)
+                .group(LINES, 1, 2).field(SKU, "B", 1, 2, 1)
+        }
+
+    /**
      * The unfiltered sibling must still be tallied — otherwise a fix could "pass" the rows above by ignoring the
      * diverting operand instead of honouring the filter. Its cell is the only filled one anywhere.
      */

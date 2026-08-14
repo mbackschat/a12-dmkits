@@ -238,6 +238,22 @@ class GroupOperandCarrierAdmissionLawsTest {
         s.add(Shape.accepted("outer-marker/unmarked-control",
                 "Sum(Assessment/Deductible, Assessment/Excess) > 0"));
 
+        // ── The `$` marker WHERE IT IS LEGAL: inside a filter. The rows above establish only that it is refused
+        //    outside one, so they cannot say whether an aggregate operand can carry it — and that question is the
+        //    precondition for `aggOperandVals`' context mismatch being reachable at all. A first attempt drew
+        //    MVK_NO_ITERATION_FOR_WILDCARD in its marked AND unmarked form, which means its filter body simply
+        //    referenced no field on a starred level; the filter here does, so the marker is the only variable. ──
+        String inFilter = "[/Claim/Lines/Sku] == \"A\"";
+        s.add(Shape.accepted("outer-marker/in-filter-unmarked-control",
+                "Sum(Lines*/Amount Having (" + inFilter
+                        + " And Sum(Assessment/Deductible, Assessment/Excess) > 0)) > 0"));
+        s.add(Shape.accepted("outer-marker/in-filter-field-operands",
+                "Sum(Lines*/Amount Having (" + inFilter
+                        + " And Sum($/Claim/Assessment/Deductible, $/Claim/Assessment/Excess) > 0)) > 0"));
+        s.add(Shape.accepted("outer-marker/in-filter-GROUP-operand",
+                "Sum(Lines*/Amount Having (" + inFilter
+                        + " And Sum($/Claim/Assessment, $/Claim/ExcessDue) > 0)) > 0"));
+
         return s;
     }
 
