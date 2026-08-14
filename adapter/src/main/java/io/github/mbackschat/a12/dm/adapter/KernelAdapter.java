@@ -294,6 +294,40 @@ public final class KernelAdapter {
     }
 
     /**
+     * The rules and computations that <b>READ</b> {@code entityPath} — directly, <em>or through an ancestor
+     * GROUP operand</em>. The <b>reachability</b> peer of {@link #referrersByEntity}'s exactness.
+     *
+     * <p><b>Why both exist, and why the exact one is not the bug.</b> {@link #whereUsed} is exact by design and
+     * says so: a rule referencing an enclosing group is not listed for a field inside it. That is the right
+     * answer to <i>"which rules name this entity?"</i>. It is the wrong answer to <i>"does anything read this
+     * field?"</i>, because the kernel's {@code ExpandService} expands a group operand <b>recursively</b> to every
+     * field below it — so {@code AllFieldsFilled(/Order/Address)} reads {@code /Order/Address/Region/Code} while
+     * naming neither. Consumers that asked the reachability question through the exactness primitive reported a
+     * live field as {@code unreferenced}, which an agent reads as safe-to-delete ({@code CG16}).
+     *
+     * <p><b>Ancestors are walked by cutting at each {@code /}, which is segment-correct by construction</b> — the
+     * one thing a {@code startsWith} test gets wrong, since {@code "/Order/BillingContact/Email"} starts with
+     * {@code "/Order/Billing"} without being inside it. That trap is live one file over, as {@code CG17}'s
+     * {@code "/Order/Address".startsWith("/Order/Address/")} over-refusal.
+     *
+     * <p>Conservative on purpose: it answers "a rule reaches into this group", not "this particular field enters
+     * that operator's expansion". For a safety gate that is the correct direction to err, and for a usage report
+     * it matches what the kernel actually evaluates.
+     *
+     * @param byEntity one {@link #referrersByEntity} map, passed in so a model-wide sweep builds it ONCE — the
+     *                 {@code O(R+C)} contract this method must not silently turn back into {@code O(F·(R+C))}
+     */
+    public static java.util.Set<String> referrersReaching(Map<String, java.util.Set<String>> byEntity,
+            String entityPath) {
+        java.util.Set<String> reaching =
+                new java.util.LinkedHashSet<>(byEntity.getOrDefault(entityPath, java.util.Set.of()));
+        for (int cut = entityPath.lastIndexOf('/'); cut > 0; cut = entityPath.lastIndexOf('/', cut - 1)) {
+            reaching.addAll(byEntity.getOrDefault(entityPath.substring(0, cut), java.util.Set.of()));
+        }
+        return reaching;
+    }
+
+    /**
      * The entities a computation <em>directly</em> references — the {@link #referencedFields} peer for a
      * computation (the kernel's own answer over the computation rule: calculated field + every operand and
      * precondition field). The seed of {@link #whereUsedInComputations}.

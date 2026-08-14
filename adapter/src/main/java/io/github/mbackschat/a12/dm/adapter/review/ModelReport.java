@@ -390,13 +390,18 @@ public final class ModelReport {
     }
 
     /** The dead-field set — served from the whole-model reference inverse ({@link KernelAdapter#referrersByEntity},
-     *  built once), so it is {@code O(R+C+F)} instead of re-parsing every rule/computation per field. A field is
-     *  unreferenced iff no rule or computation references it, i.e. iff it is not a key in the inverse. */
+     *  built once), so it is {@code O(R+C+F)} instead of re-parsing every rule/computation per field.
+     *
+     *  <p>A field is unreferenced iff nothing <b>READS</b> it, which is not the same as "it is not a key in the
+     *  inverse": a group operand expands recursively to every field below it, so a field reached only through
+     *  {@code AllFieldsFilled(/Order/Address)} is a live field with no key of its own. Asking the key directly
+     *  reported such fields dead ({@code CG16}) — {@link KernelAdapter#referrersReaching} is the reachability
+     *  peer, and it walks ancestors segment-wise rather than by string prefix. */
     private static Usage usage(KernelAdapter adapter, ModelCard card) {
         Map<String, Set<String>> referrers = adapter.referrersByEntity();
         List<String> unreferenced = new ArrayList<>();
         for (ModelCard.Field field : card.fields()) {
-            if (!referrers.containsKey(field.path())) {
+            if (KernelAdapter.referrersReaching(referrers, field.path()).isEmpty()) {
                 unreferenced.add(field.path());
             }
         }

@@ -64,7 +64,10 @@ final class ModelUsageCommand extends BaseCommand {
             ObjectNode usage = data.putObject("usage");
             ArrayNode unreferenced = data.putArray("unreferenced");
             for (String field : fields) {
-                Set<String> referrers = new TreeSet<>(byEntity.getOrDefault(field, Set.of()));
+                // reachability, NOT exactness: a group operand expands recursively to every field below it, so a
+                // field read only through `AllFieldsFilled(/Order/Address)` has no direct referrer. Reporting it
+                // `unreferenced` is what an agent acts on when it decides a field is safe to delete (CG16).
+                Set<String> referrers = new TreeSet<>(KernelAdapter.referrersReaching(byEntity, field));
                 ArrayNode arr = usage.putArray(field);
                 referrers.forEach(arr::add);
                 if (referrers.isEmpty()) {

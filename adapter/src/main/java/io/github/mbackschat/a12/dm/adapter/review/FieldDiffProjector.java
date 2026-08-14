@@ -89,8 +89,12 @@ final class FieldDiffProjector {
         return isMetadata(aspect) ? "METADATA_CHANGED" : "FIELD_CONFIG_CHANGED";
     }
 
+    /** Whether anything READS {@code id} — including through an ancestor group operand, which the kernel expands
+     *  recursively to every field below it. An exact key lookup missed exactly those readers, so neither
+     *  {@code REFERENCED_ELEMENT_REMOVED} nor {@code RETYPE_AFFECTS_READERS} fired for a field a rule reaches only
+     *  through its group ({@code CG16}). */
     private static boolean hasReaders(Map<String, Set<String>> referrers, String id) {
-        return !referrers.getOrDefault(id, Set.of()).isEmpty();
+        return !io.github.mbackschat.a12.dm.adapter.KernelAdapter.referrersReaching(referrers, id).isEmpty();
     }
 
     private static boolean isRetype(ModelDiff.Delta delta) {

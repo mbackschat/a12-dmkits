@@ -228,7 +228,8 @@ dmtool -m order.dm.json rule format /Order/DeliveryNotBeforeOrder --lang DE
 # the inverse: which rules/computations use a field
 dmtool -m order.dm.json where-used /Order/DeliveryDate
 
-# whole-model audit: every field's referrers + the unreferenced set
+# whole-model audit: every field's readers + the unreferenced set
+# (a field reached only through an ancestor GROUP operand counts as read)
 dmtool -m order.dm.json model usage
 
 # the comprehension dashboard: identity + structure outline + the dead-field set

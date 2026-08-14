@@ -2,14 +2,14 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://github.com/mbackschat/a12-dmkits/schema/model-usage.schema.json",
   "title": "ModelUsage",
-  "description": "The `data` payload of `dmtool -m <model> model usage` (CLI-SPEC §6) — the model-wide usage/audit read. `usage` maps EVERY field path to the full names of the rules and computations whose condition directly references it (an empty array = referenced by nothing); `unreferenced` is the subset of fields with no referrer. Built on the same `getDirectlyReferencedEntities` primitive as `where-used`, so the two can never disagree about what 'references' means. Fields are in model order; referrers are sorted.",
+  "description": "The `data` payload of `dmtool -m <model> model usage` (CLI-SPEC §6) — the model-wide usage/audit read. `usage` maps EVERY field path to the full names of the rules and computations that READ it (an empty array = read by nothing); `unreferenced` is the subset of fields nothing reads. Reading includes reaching the field through an ancestor GROUP operand, because the kernel expands a group operand recursively to every field below it: `AllFieldsFilled(/Order/Address)` reads `/Order/Address/Region/Code` while naming neither. This is DELIBERATELY wider than `where-used`, which answers the exact question 'which rules name this entity?' and does not list a rule that names an enclosing group — so the two differ on exactly those fields, by design. Fields are in model order; referrers are sorted.",
   "type": "object",
   "additionalProperties": false,
   "required": ["usage", "unreferenced"],
   "properties": {
     "usage": {
       "type": "object",
-      "description": "field path → the rule/computation full names that directly reference it (empty array = nothing reads the field)",
+      "description": "field path → the rule/computation full names that read it, whether by naming it or by naming an ancestor group (empty array = nothing reads the field)",
       "additionalProperties": {
         "type": "array",
         "items": { "type": "string", "description": "a referencing rule's or computation's full name" }
