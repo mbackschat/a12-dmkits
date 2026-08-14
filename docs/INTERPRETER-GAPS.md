@@ -14,7 +14,7 @@
 
 ## 1. Open
 
-_None open._
+- **IG135 — `FirstFilledValue` and the other field-list quantifiers have no group-operand runtime row, and the item was tracked only outside this repo.** [KF173](KERNEL-FINDINGS.md#kf173) records that `FirstFilledValue` routes through the same shared entity-list checker as `FieldValuesNotUnique`, whose group-operand runtime contract is now fully measured ([IF287](INTERPRETER-FINDINGS.md#if287): recursive expansion over every `(row × field)` cell below the operand, one message anchored at the error field's concrete first row). Routing through one checker is a **source-level reading, not a measured mechanism**, so nothing here establishes that the sibling carriers behave the same way — and the `FieldValuesNotUnique` history is the reason to distrust the inference: the same shape produced **two** silent wrong answers in our evaluator, each found only by a differential, each reporting a missed duplicate as "no error". **Why this row exists at all:** the residual was carried only in the a12-kernel-lean handover document, which lives outside version control on one machine, so an open item had no in-repo home and would have been lost with that file. **Actionable work:** extend `adapter.laws.FieldValuesNotUniqueGroupOperandDiffTest`'s pattern to `FirstFilledValue` and the six other field-list quantifiers — a group operand over the nesting fixture, the duplicate-in-nested-row-2 discriminator, a per-row error field for multiplicity, and the equivalent explicit field list as the control on each. **Completion gate:** every field-list quantifier that admits a group operand has a tri-checked runtime row (both kernel strategies + interpreter), or a measured static rejection recorded for the ones that do not admit the shape.
 
 ---
 
