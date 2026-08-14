@@ -552,7 +552,15 @@ class Interpreter(
      * declared repetition reads empty without a value read, so it cannot poison.
      */
     private fun scanFilled(args: List<Expr>, declaredTail: Boolean): Sequence<Boolean> = sequence {
-        for (a in args) when {
+        // A starred GROUP expands here through the SHARED owner, which is the point rather than a convenience.
+        // The bare-group arm below already expanded and the starred one did not, so this operator was correct on
+        // the validation path — which dispatches on `fillScope(isGroup = …)` — and read ZERO cells on the compute
+        // path. A mode split is the worst member of the class: the operator is demonstrably right wherever the
+        // estate pairs it and wrong on the path nobody paired. Measured on both kernel strategies with every cell
+        // filled, `NoFieldFilled(Charges*)` answered TRUE here and `AtLeastOneFieldFilled(Charges*)` answered
+        // FALSE — opposite directions, which is the signature of a quantifier over an EMPTY selection rather than
+        // of a wrong verdict (IF287's class, seventh instance).
+        for (a in expandGroupStars(args)) when {
             a is Expr.Star && a.having == null -> {
                 val c = ctxOf(a)
                 for (cell in c.starScanCells(a.path, a.bindDepth, declaredTail)) yield(filledOrPoison(cell))

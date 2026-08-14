@@ -120,11 +120,11 @@ private fun Interpreter.filledGroupsValue(args: List<Expr>): Val {
  * The `Having`, `outer` and `bindDepth` of the authored operand ride each expanded field, exactly as
  * [starOperandVals] preserves them — the filter belongs to the operand, not to one of its expanded cells.
  */
-private fun Interpreter.expandGroupStars(args: List<Expr>): List<Expr> {
-    if (args.none { it is Expr.Star && ctx.declaredKind(it.path) == null }) return args
+internal fun Interpreter.expandGroupStars(args: List<Expr>): List<Expr> {
+    if (args.none { it is Expr.Star && ctxOf(it).declaredKind(it.path) == null }) return args
     return args.flatMap { arg ->
-        if (arg !is Expr.Star || ctx.declaredKind(arg.path) != null) listOf(arg)
-        else ctx.containedFields(arg.path)
+        if (arg !is Expr.Star || ctxOf(arg).declaredKind(arg.path) != null) listOf(arg)
+        else ctxOf(arg).containedFields(arg.path)
             .map { Expr.Star(it, arg.having, arg.outer, arg.bindDepth) }
             .ifEmpty { listOf(arg) }
     }
