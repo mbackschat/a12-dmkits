@@ -7,6 +7,7 @@ import java.util.Map;
 import java.util.Random;
 import java.util.Set;
 
+import io.github.mbackschat.a12.dm.core.EntityPaths;
 import io.github.mbackschat.a12.dm.core.ValueKind;
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Condition;
@@ -639,7 +640,8 @@ final class RuleModelSynthesizer {
             for (int second = first + 1; second < repetitions.size(); second++) {
                 String left = repetitions.get(first);
                 String right = repetitions.get(second);
-                if (!left.startsWith(right + "/") && !right.startsWith(left + "/")) {
+                if (!EntityPaths.isStrictlyInside(left, right)
+                        && !EntityPaths.isStrictlyInside(right, left)) {
                     return List.of(cells.get(first), cells.get(second));
                 }
             }

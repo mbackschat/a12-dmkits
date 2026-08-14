@@ -38,6 +38,7 @@ import io.github.mbackschat.a12.dm.rulekit.validate.PrecheckException;
 import io.github.mbackschat.a12.dm.rulekit.validate.RkCode;
 import io.github.mbackschat.a12.dm.rulekit.validate.ValidationResult;
 import io.github.mbackschat.a12.dm.core.Backends;
+import io.github.mbackschat.a12.dm.core.EntityPaths;
 import io.github.mbackschat.a12.dm.core.ReferenceResolvers;
 import io.github.mbackschat.a12.dm.core.ModelIndex;
 import io.github.mbackschat.a12.dm.core.ModelResolver;
@@ -331,21 +332,6 @@ public final class KernelAdapter {
      * @param byEntity one {@link #referrersByEntity} map, passed in so a model-wide sweep builds it ONCE — the
      *                 {@code O(R+C)} contract this method must not silently turn back into {@code O(F·(R+C))}
      */
-    /**
-     * Whether {@code path} is {@code ancestorPath} itself or lies strictly below it, compared at a <b>path-segment
-     * boundary</b>.
-     *
-     * <p>The whole content of this method is the two ways the obvious spelling is wrong, each of which has shipped
-     * as a defect here. A bare {@code path.startsWith(ancestorPath)} makes {@code /Order/BillingContact/Email}
-     * inside {@code /Order/Billing}, over-reporting a reference that does not exist. Adding the slash —
-     * {@code path.startsWith(ancestorPath + "/")} — fixes that and breaks the other end: a group is then not
-     * inside <em>itself</em>, which is how {@code group extract} came to refuse a rule referencing the very group
-     * being extracted ({@code CG17}).
-     */
-    public static boolean isInside(String path, String ancestorPath) {
-        return path.equals(ancestorPath) || path.startsWith(ancestorPath + "/");
-    }
-
     public static java.util.Set<String> referrersReaching(Map<String, java.util.Set<String>> byEntity,
             String entityPath) {
         java.util.Set<String> reaching =
@@ -960,7 +946,7 @@ public final class KernelAdapter {
                     // value would not parse. Those strings can never be equal, so an exact scan found nothing and
                     // the verdict fell through to PASSED — for a rule the kernel never evaluated, which is the one
                     // outcome this method exists to prevent (CG14).
-                    if (isInside(m.field().path(), entity)) {
+                    if (EntityPaths.isInside(m.field().path(), entity)) {
                         suppressions.add(new RuleTestOutcome.Suppression(m.field().path(), m.errorCode()));
                     }
                 }

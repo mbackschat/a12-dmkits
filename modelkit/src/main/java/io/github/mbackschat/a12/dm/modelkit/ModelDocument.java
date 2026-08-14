@@ -24,6 +24,7 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 
 import io.github.mbackschat.a12.dm.core.DmKeys;
 import io.github.mbackschat.a12.dm.core.ElementType;
+import io.github.mbackschat.a12.dm.core.EntityPaths;
 import io.github.mbackschat.a12.dm.core.ModelConsistencyException;
 import io.github.mbackschat.a12.dm.core.ModelLoader;
 import io.github.mbackschat.a12.dm.core.ModelResolver;
@@ -1472,7 +1473,7 @@ public final class ModelDocument {
         if (node == null) {
             throw new IllegalArgumentException("no group at: " + groupPath);
         }
-        if (newParentPath.equals(groupPath) || newParentPath.startsWith(groupPath + "/")) {
+        if (EntityPaths.isInside(newParentPath, groupPath)) {
             throw new IllegalArgumentException(
                     "cannot move group " + groupPath + " into itself or its own subtree: " + newParentPath);
         }
@@ -1504,7 +1505,7 @@ public final class ModelDocument {
             return;
         }
         String id = obj.path(DmKeys.ID).asText(null);
-        if (id != null && (id.equals(oldPrefix) || id.startsWith(oldPrefix + "/"))) {
+        if (id != null && EntityPaths.isInside(id, oldPrefix)) {
             obj.put(DmKeys.ID, newPrefix + id.substring(oldPrefix.length()));
         }
         if (DmNodes.is(ElementType.GROUP, obj)) {

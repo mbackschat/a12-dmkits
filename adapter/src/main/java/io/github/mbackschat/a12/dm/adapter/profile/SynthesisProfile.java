@@ -10,6 +10,7 @@ import java.util.Objects;
 import java.util.Set;
 
 import io.github.mbackschat.a12.dm.adapter.KernelAdapter;
+import io.github.mbackschat.a12.dm.core.EntityPaths;
 import io.github.mbackschat.a12.dm.rulekit.read.ReadComputation;
 import io.github.mbackschat.a12.dm.rulekit.read.ReadResult;
 import io.github.mbackschat.a12.dm.rulekit.context.ModelCard;
@@ -776,7 +777,8 @@ record SynthesisProfile(Structure structure, Rules rules, Computations computati
         }
         for (String a : nearestReps) {
             for (String b : nearestReps) {
-                if (!a.equals(b) && !a.startsWith(b + "/") && !b.startsWith(a + "/")) {
+                if (!a.equals(b) && !EntityPaths.isStrictlyInside(a, b)
+                        && !EntityPaths.isStrictlyInside(b, a)) {
                     return true;                                // incomparable branches → parallel iteration
                 }
             }
@@ -946,7 +948,7 @@ record SynthesisProfile(Structure structure, Rules rules, Computations computati
     }
 
     private static int walkUp(String scope, int scopeDepth, String refGroup, Set<String> groupPaths) {
-        if (groupPaths.contains(refGroup) && scope.startsWith(refGroup + "/")) {
+        if (groupPaths.contains(refGroup) && EntityPaths.isStrictlyInside(scope, refGroup)) {
             return scopeDepth - depthOf(refGroup);
         }
         return 0;

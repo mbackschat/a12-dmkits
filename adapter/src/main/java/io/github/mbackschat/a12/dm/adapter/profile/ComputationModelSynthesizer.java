@@ -7,6 +7,7 @@ import java.util.Map;
 import java.util.Random;
 import java.util.Set;
 
+import io.github.mbackschat.a12.dm.core.EntityPaths;
 import io.github.mbackschat.a12.dm.core.ValueKind;
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoolLiteral;
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel;
@@ -895,7 +896,8 @@ final class ComputationModelSynthesizer {
             for (int j = i + 1; j < reps.size(); j++) {
                 String a = reps.get(i);
                 String b = reps.get(j);
-                if (!a.startsWith(b + "/") && !b.startsWith(a + "/")) {   // incomparable → sibling branches
+                if (!EntityPaths.isStrictlyInside(a, b)
+                        && !EntityPaths.isStrictlyInside(b, a)) {   // incomparable → sibling branches
                     return List.of(cells.get(i), cells.get(j));
                 }
             }

@@ -10,6 +10,7 @@ import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 
 import io.github.mbackschat.a12.dm.adapter.KernelAdapter;
+import io.github.mbackschat.a12.dm.core.EntityPaths;
 import io.github.mbackschat.a12.dm.modelkit.ModelDocument;
 import io.github.mbackschat.a12.dm.rulekit.validate.Diagnostic;
 import io.github.mbackschat.a12.dm.rulekit.validate.RkCode;
@@ -171,19 +172,14 @@ public final class SafetyChecks {
     private static void collectEscaping(KernelAdapter adapter, String groupPath, Set<String> elements,
             java.util.function.Function<String, Set<String>> referencesOf, Set<String> escaping) {
         for (String element : elements) {
-            if (!inside(element, groupPath)) {
+            if (!EntityPaths.isInside(element, groupPath)) {
                 continue;   // only elements that would move into the sub-model
             }
-            if (referencesOf.apply(element).stream().anyMatch(entity -> !inside(entity, groupPath))) {
+            if (referencesOf.apply(element).stream()
+                    .anyMatch(entity -> !EntityPaths.isInside(entity, groupPath))) {
                 escaping.add(element);
             }
         }
-    }
-
-    /** Whether {@code path} is the subtree root itself or lies strictly below it — {@link KernelAdapter#isInside},
-     *  shared with the suppression scan that needed the same relation from the other side ({@code CG14}). */
-    private static boolean inside(String path, String groupPath) {
-        return KernelAdapter.isInside(path, groupPath);
     }
 
     /**
@@ -356,7 +352,7 @@ public final class SafetyChecks {
      */
     public static SafetyCheck notIntoOwnSubtree(String groupPath, String newParentPath) {
         return () -> {
-            if (!newParentPath.equals(groupPath) && !newParentPath.startsWith(groupPath + "/")) {
+            if (!EntityPaths.isInside(newParentPath, groupPath)) {
                 return Optional.empty();
             }
             Diagnostic diagnostic = Diagnostic.precheck(Optional.of("RK_MOVE_INTO_SELF"),

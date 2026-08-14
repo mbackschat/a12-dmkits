@@ -1,5 +1,6 @@
 package io.github.mbackschat.a12.dm.rulekit.dsl;
 
+import io.github.mbackschat.a12.dm.core.EntityPaths;
 import io.github.mbackschat.a12.dm.core.ValueKind;
 
 /**
@@ -55,7 +56,8 @@ public record SumOfProducts(FieldOperand left, FieldOperand right) implements Ca
 
     private static boolean unwildcardedBelowTheOthersStar(FieldOperand operand, FieldOperand other) {
         return other instanceof FieldListRef list && list.flattened().stream().anyMatch(starred ->
-                operand.fieldPath().startsWith(starred.path() + "/") && !wildcards(operand, starred.path()));
+                EntityPaths.isStrictlyInside(operand.fieldPath(), starred.path())
+                        && !wildcards(operand, starred.path()));
     }
 
     private static boolean wildcards(FieldOperand operand, String groupPath) {

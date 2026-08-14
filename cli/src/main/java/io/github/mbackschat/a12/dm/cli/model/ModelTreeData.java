@@ -21,6 +21,7 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import io.github.mbackschat.a12.dm.core.ComputationInfo;
 import io.github.mbackschat.a12.dm.core.DmKeys;
 import io.github.mbackschat.a12.dm.core.ElementType;
+import io.github.mbackschat.a12.dm.core.EntityPaths;
 import io.github.mbackschat.a12.dm.core.ModelIndex;
 import io.github.mbackschat.a12.dm.core.ModelReader;
 import io.github.mbackschat.a12.dm.core.ModelResolver;
@@ -201,8 +202,9 @@ final class ModelTreeData {
         return out;
     }
 
+    /** {@code "/"} is this verb's whole-model sentinel, which {@link EntityPaths} deliberately does not absorb. */
     private static boolean isInSubtree(String root, String path) {
-        return "/".equals(root) || path.equals(root) || path.startsWith(root + "/");
+        return "/".equals(root) || EntityPaths.isInside(path, root);
     }
 
     private static int depthFrom(String root, String path) {

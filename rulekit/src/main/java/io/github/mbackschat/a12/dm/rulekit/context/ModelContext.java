@@ -9,6 +9,7 @@ import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import io.github.mbackschat.a12.dm.core.EntityPaths;
 import io.github.mbackschat.a12.dm.rulekit.catalog.GotchaKind;
 import io.github.mbackschat.a12.dm.rulekit.catalog.OperatorCatalog;
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel;
@@ -181,7 +182,7 @@ public final class ModelContext {
     private List<String> errorFieldCandidates(ConditionReferences refs) {
         Optional<String> scope = iterationScope(refs);
         return refs.fieldPaths().stream().sorted()
-                .filter(p -> scope.isEmpty() || p.startsWith(scope.get() + "/"))
+                .filter(p -> scope.isEmpty() || EntityPaths.isStrictlyInside(p, scope.get()))
                 .toList();
     }
 
@@ -195,7 +196,7 @@ public final class ModelContext {
         }
         return refs.groupPaths().stream()
                 .filter(g -> repeatableGroupPaths.contains(g)
-                        || repeatableGroupPaths.stream().anyMatch(r -> g.startsWith(r + "/")))
+                        || repeatableGroupPaths.stream().anyMatch(r -> EntityPaths.isStrictlyInside(g, r)))
                 .sorted().findFirst();
     }
 

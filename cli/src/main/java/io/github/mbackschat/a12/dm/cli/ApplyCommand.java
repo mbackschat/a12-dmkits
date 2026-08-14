@@ -20,6 +20,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import io.github.mbackschat.a12.dm.core.EntityPaths;
 import io.github.mbackschat.a12.dm.core.ModelResolver;
 
 import io.github.mbackschat.a12.dm.adapter.KernelAdapter;
@@ -483,7 +484,7 @@ final class ApplyCommand extends BaseCommand {
                 // the rule group defaults to the error field's parent; `group` overrides it (mirrors the standalone
                 // verb + `rule check --group`) for RepetitionNotUnique-style rules that sit at the repeated group's parent.
                 String group = op.hasNonNull("group") ? op.get("group").asText() : field.substring(0, s);
-                if (!field.startsWith(group + "/")) {
+                if (!EntityPaths.isStrictlyInside(field, group)) {
                     throw new IllegalArgumentException("rule add 'field' " + field + " must be inside the rule group " + group);
                 }
                 String errorEntityRelPath = "../" + field.substring(group.length() + 1);

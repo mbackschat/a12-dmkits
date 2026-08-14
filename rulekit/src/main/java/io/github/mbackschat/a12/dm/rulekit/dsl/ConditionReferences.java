@@ -1,5 +1,6 @@
 package io.github.mbackschat.a12.dm.rulekit.dsl;
 
+import io.github.mbackschat.a12.dm.core.EntityPaths;
 import java.util.Collections;
 import java.util.LinkedHashSet;
 import java.util.Objects;
@@ -109,7 +110,7 @@ public record ConditionReferences(Set<String> fieldPaths, Set<String> groupPaths
     /** Whether {@code fieldPath} is referenced directly or lies under a referenced group. */
     public boolean covers(String fieldPath) {
         return fieldPaths.contains(fieldPath)
-                || groupPaths.stream().anyMatch(g -> fieldPath.startsWith(g + "/"));
+                || groupPaths.stream().anyMatch(g -> EntityPaths.isStrictlyInside(fieldPath, g));
     }
 
     /**

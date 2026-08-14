@@ -18,6 +18,7 @@ import java.util.Optional;
 
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import io.github.mbackschat.a12.dm.core.EntityPaths;
 import io.github.mbackschat.a12.dm.core.ModelResolver;
 
 import io.github.mbackschat.a12.dm.adapter.KernelAdapter;
@@ -90,7 +91,7 @@ final class RuleCheckCommand extends BaseCommand {
             int slash = field.lastIndexOf('/');
             effectiveGroup = field.substring(0, slash);
         }
-        if (!field.startsWith(effectiveGroup + "/")) {
+        if (!EntityPaths.isStrictlyInside(field, effectiveGroup)) {
             return fail("--field " + field + " must be inside --group " + effectiveGroup);
         }
         String errorEntityRelPath = "../" + field.substring(effectiveGroup.length() + 1);

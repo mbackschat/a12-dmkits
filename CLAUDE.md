@@ -245,6 +245,15 @@ Research kernel facts by **SOURCE, never by jar** (the golden rule): the consult
 | a proposal item shipped / a gap fixed | graduate the contract into the owning spec; **DELETE** the `-GAPS` row; archive an emptied proposal under `docs/archived/` | — |
 | touched a top-level `README.md` sample's subject | fix the sample (typed builder only — never a raw condition string; capability wording, never status/roadmap) | — |
 | kernel / `a12-kernel-mm` bump | follow [`docs/KERNEL-UPGRADE.md`](docs/KERNEL-UPGRADE.md) | the ledger guardians |
+| measured a kernel fact that **corrects or extends `a12-kernel-lean`'s `spec/`**, or fixed a defect worth disclosing to it | amend the outbound letter (below) in the same pass | **none possible** — it lives outside this repo |
+
+### The `a12-kernel-lean` handback letter — keep it in sync, and never copy it in here (standing requirement, 2026-08-14)
+
+**The single authority is `~/Downloads/a12-kernel-lean-spec-corrections-2026-08-12.md`.** It is an **outbound letter to another project**, not one of our docs: a running document where the filename dates the *exchange*, later batches are appended, and a correction to an earlier batch is made **in place and marked** — never in a successor file. Keep it current as you work; a measurement that corrects a peer clause is worth little to them a month late.
+
+**Do not give it an in-repo home.** That was tried on 2026-08-14 under IG137(e) and is withdrawn: within a day the two copies had diverged in *both* directions, because the letter's state is defined by the **peer's receipts** and ours by our commits, so a copy creates two heads with no merge base. "Outside version control on one machine" is the letter's intended shape, not a defect to fix. Before adding any file "so it isn't lost", establish that it has no home already — reading a stated absence as measured is the same error the "match the oracle to the CLAIM KIND" rule exists to prevent.
+
+**Its structure is load-bearing, because the reader is an agent doing a delta.** Section 0 states the peer's last receipt and marks every section absorbed / sent-no-receipt / NEW, so they can skip what they hold; payload rows stay *(input → observed → oracle → status)*; mechanisms are quarantined in their own section and marked as hypotheses. Keep those three properties through any edit.
 
 Writing style (human voice; tables/diagrams over prose walls; formalize only when a consumer exists), the per-surface procedures (README, demos, indexes, `dmtool` call formatting), and the doc lifecycle (spec vs proposal vs `-GAPS` vs `-LEDGER`; the full-sweep checklist) are [`docs/DOC-DISCIPLINE.md`](docs/DOC-DISCIPLINE.md) §3–§6.
 

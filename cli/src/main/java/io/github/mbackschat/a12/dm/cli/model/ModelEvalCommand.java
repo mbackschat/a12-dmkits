@@ -14,6 +14,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
 
+import io.github.mbackschat.a12.dm.core.EntityPaths;
 import io.github.mbackschat.a12.dm.interpreter.DocumentInputError;
 import io.github.mbackschat.a12.dm.interpreter.UnsupportedModelTimeZoneException;
 import io.github.mbackschat.a12.dm.interpreter.InvalidModelTimeZoneException;
@@ -141,7 +142,7 @@ final class ModelEvalCommand extends BaseCommand {
                 int slash = field.lastIndexOf('/');
                 effectiveGroup = field.substring(0, slash);
             }
-            if (!field.startsWith(effectiveGroup + "/")) {
+            if (!EntityPaths.isStrictlyInside(field, effectiveGroup)) {
                 return fail("--field " + field + " must be inside --group " + effectiveGroup);
             }
             errorEntityRelPath = "../" + field.substring(effectiveGroup.length() + 1);

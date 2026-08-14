@@ -21,6 +21,7 @@ import java.util.Optional;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import io.github.mbackschat.a12.dm.core.EntityPaths;
 import io.github.mbackschat.a12.dm.core.ModelResolver;
 
 import io.github.mbackschat.a12.dm.edit.EditSession;
@@ -108,7 +109,7 @@ final class RuleAddCommand extends BaseCommand {
         // the rule group (iteration scope) defaults to the error field's parent; `group` overrides it (mirrors
         // `rule check --group`) for an operator that must sit at the PARENT of a repeated group — RepetitionNotUnique.
         String group = spec.hasNonNull("group") ? spec.get("group").asText() : field.substring(0, slash);
-        if (!field.startsWith(group + "/")) {
+        if (!EntityPaths.isStrictlyInside(field, group)) {
             return fail("field " + field + " must be inside the rule group " + group);
         }
         String errorEntityRelPath = "../" + field.substring(group.length() + 1);

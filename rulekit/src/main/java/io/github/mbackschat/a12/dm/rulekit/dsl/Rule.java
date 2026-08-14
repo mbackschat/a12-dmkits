@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
+import io.github.mbackschat.a12.dm.core.EntityPaths;
 import io.github.mbackschat.a12.dm.rulekit.validate.Diagnostic;
 import io.github.mbackschat.a12.dm.rulekit.validate.DraftRule;
 import io.github.mbackschat.a12.dm.rulekit.validate.PrecheckException;
@@ -268,7 +269,7 @@ public record Rule(
                     "a rule needs at least one error message (the kernel rejects message-less rules"
                             + " with MVK_ERROR_MESSAGE_MISSING) — message(en(...))", "message(en(...))");
             LocalizedText.checkDeclared(declaredLocales, messages, "rule");
-            check(errorField.path().startsWith(group.path() + "/"), "RK_ERROR_FIELD_OUTSIDE_GROUP",
+            check(EntityPaths.isStrictlyInside(errorField.path(), group.path()), "RK_ERROR_FIELD_OUTSIDE_GROUP",
                     "the error field " + errorField.path() + " must lie under the rule's group "
                             + group.path() + " — author the rule in a containing group",
                     "author the rule in a group that contains " + errorField.path());

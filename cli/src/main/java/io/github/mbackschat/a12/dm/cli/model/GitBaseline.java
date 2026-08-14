@@ -13,6 +13,7 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 
+import io.github.mbackschat.a12.dm.core.EntityPaths;
 import io.github.mbackschat.a12.dm.core.ModelResolver;
 import io.github.mbackschat.a12.dm.core.UnresolvedReferenceException;
 import io.github.mbackschat.a12.dm.modelkit.ModelDocument;
@@ -207,8 +208,7 @@ final class GitBaseline {
         }
         LinkedHashSet<String> ordered = new LinkedHashSet<>();
         for (String root : roots) {
-            paths.stream().filter(path -> path.equals(root) || path.startsWith(root + "/"))
-                    .forEach(ordered::add);
+            paths.stream().filter(path -> EntityPaths.isInside(path, root)).forEach(ordered::add);
         }
         return List.copyOf(ordered);
     }
