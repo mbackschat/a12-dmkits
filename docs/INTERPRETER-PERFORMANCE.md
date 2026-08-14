@@ -565,6 +565,26 @@ The catalog must favor **non-obvious** combinations (nesting × aggregation × c
 ## Results log
 
 
+### Checkpoint 2026-08-15 — the starred-group expansion lane, and what its own guard refused
+
+**The lane.** `GroupStarExpansionPerfTest` measures `NumberOfFilledFields(/Order/Items*)` over a four-field repeatable group, on the local darwin-aarch64 machine, single-fork, each gate run alone. **Three runs of the same commit**, because the first two disagreed enough to be worth reporting as a set rather than as a number:
+
+| run | n=2000 (CPU) | n=8000 (CPU) | median-growth |
+|---|---|---|---|
+| targeted (`gate '<pattern>'`) | 18.03 ms | 53.99 ms | 2.49× |
+| full gate | 11.42 ms | 41.51 ms | — |
+| targeted, post-anchor | 7.80 ms | 26.1 ms | 3.26× |
+
+Every growth figure sits far under the 9.0 catastrophe floor and around linear ≈ 4, so **the expansion needs no caching** — which is the question [IG136](INTERPRETER-GAPS.md)(a) asked. The mechanism is consistent with that and is directly readable rather than inferred: `expandGroupStars(args)` is a single call at the head of `filledFieldsValue`, so the expansion is once per evaluation, not once per row.
+
+**The absolute times span 2.31× across three runs of one commit on one machine** (18.03 / 11.42 / 7.80 at n=2000, fastest last as the JIT and page cache warmed across runs). That is the local-laptop analogue of the hosted-runner spread in [IF280](INTERPRETER-FINDINGS.md#if280), and it is why the anchor was armed from the **median of two runs** (14.72 ms / 47.75 ms) rather than from either single sample: anchoring on the 7.80 ms run would have set a bar that the 18.03 ms run fails, and anchoring on the 18.03 ms run would have set one loose enough to hide a real regression. With the median, all three samples clear the `1.65× + 1 ms` tolerance.
+
+**Why this lane exists at all, given `GroupScopedFillPerfTest` looks like it covers the same ground.** It does not. `AtLeastOneFieldFilled(G*)` dispatches onto `EvalContext.fillScope` and never reaches `expandGroupStars`; `NumberOfFilledFields(G*)` opens with `for (a in expandGroupStars(args))`. [IG136](INTERPRETER-GAPS.md)(a) had been closed on the claim that the first scenario drove the second path, which is why it was re-opened — the closure named a path no scenario executed.
+
+**The reachability proof is the eligibility check, not a separate assertion.** An engine that skips the expansion reads cells at a path holding no value and counts zero ([IF287](INTERPRETER-FINDINGS.md#if287)'s fifth instance, measured), so the rule's `> 0` bar never fires and `assertSemanticAgreement` fails against both kernel strategies at both sizes. Agreement is therefore only obtainable if the expansion ran.
+
+**The guard refused the first run, correctly, and the refusal is the transferable part.** A new observation in an *already-anchored* runner class fails closed (`UnanchoredObservationException`) rather than recording an un-bounded lane — "that is how a bar silently disappears". Arming it then exposed a second edge: `scripts/perf-anchor.sh` folds a run's observations into the anchor, so refreshing from a **targeted** gate (`perf.sh gate '<pattern>'`) would have added these two keys and removed the ~64 keys that simply did not run. The script refuses that too. The consequence for anyone adding an anchored lane: a targeted run is enough to *develop* the scenario, and a **full gate run is required to arm it** — there is no cheaper path, and both refusals are the system working.
+
 ### Checkpoint 2026-08-14 — the group-operand slice, and prune-on-write exercised for real
 
 The session's interpreter/adapter/cli changes cost nothing measurable: 22 growth observations, **4.55×–5.76×** against the 9.0 sub-quadratic floor, **zero anchor breaches**, gate green in 4m 47s on `darwin-aarch64` (Macmini9,1 Apple M1 ×8), run alone.
