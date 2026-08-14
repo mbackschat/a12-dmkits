@@ -609,7 +609,10 @@ private fun Interpreter.predType(p: Cond.Pred): MsgType {
 }
 
 private fun Interpreter.leafOmission(e: Expr): Boolean = when (e) {
-    is Expr.Field -> !ctx.filled(e.path)
+    // Through `ctxOf`, like its `EnumCategory` sibling on the next line — which is how this one was found. A
+    // `$`-marked node resolves in the OUTER context, so the ambient `ctx` answers about a different row
+    // ([IF287]'s fourteenth and twenty-third instances, the same two-line pattern in two other functions).
+    is Expr.Field -> !ctxOf(e).filled(e.path)
     is Expr.EnumCategory -> !ctxOf(e).filled(e.path)
     // A reached `Having`-FILTERED star escalates a fired consumer to TRUE_AF unconditionally — the kernel's
     // filtered-iterator escalation (IF101/IF104). FirstFilledValue delegates to its ordered scan so a filter

@@ -178,6 +178,30 @@ class OuterMarkedAggregateOperandDiffTest {
         }
 
     /**
+     * **The THIRD function carrying the same two-line pattern, and the one that made it a class fix.** After the
+     * two measured instances, a `grep` for `ctx.filled(` beside an `evalExpr(` returned three more sites:
+     * `numberOfValueInFields` (here), `filledFieldsValue`'s plain-field arm, and `PolarityWalk.leafOmission`'s
+     * `Expr.Field` arm — the last of which sits directly above an `Expr.EnumCategory` arm that already used
+     * `ctxOf`, the sibling-disagreement tell this whole class shares. All three were fixed together; this row is
+     * the lock, because it is the one whose fill test and value read sit on adjacent lines.
+     */
+    @Test
+    fun theOuterMarkedOperandsOfAValueCountResolveInTheRulesOwnRow() =
+        agreeFireRows(
+            "FieldFilled($SKU) And Sum($LOTS*/Amount Having ([$SKU] == \"A\" " +
+                "And NumberOfValueInFields(5 In \$$BONUS, \$$EXTRA) > 1)) > 0",
+            expected = listOf("/Claim[1]/Lots[2]/Sku|OMISSION_ERROR"),
+            msg = "the \$-marked pair both hold 5 only in row 2",
+        ) { b ->
+            b.group("/Claim", 1).field(REF, "C-1", 1, 1)
+                .group(LOTS, 1, 1)
+                .field(AMOUNT, "10", 1, 1, 1).field(SKU, "A", 1, 1, 1)
+                .group(LOTS, 1, 2)
+                .field(AMOUNT, "20", 1, 2, 1).field(SKU, "B", 1, 2, 1)
+                .field(BONUS, "5", 1, 2, 1).field(EXTRA, "5", 1, 2, 1)
+        }
+
+    /**
      * **THE REFERENCE-CHANNEL row — [IG136] item (g), and a possible regression of my own.** A `$`-marked GROUP
      * reference inside a `Having` is deliberately kept `Ordinary` by `AstRefs`, precisely so it resolves in the
      * ENCLOSING row rather than iterating. `ModelStaticPlans.expandMessageReference` was then changed to convert an

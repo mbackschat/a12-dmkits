@@ -213,8 +213,10 @@ private fun Interpreter.filledFieldsValue(args: List<Expr>): Val {
                 }
                 count += fs.tInst
             } else {                                           // plain field
-                if (ctx.filled(path) && invalid(path)) return Val.Unknown   // malformed → non-evaluable
-                if (ctx.filled(path)) count++
+                // `ctxOf`, not the ambient `ctx`: a `$`-marked operand resolves in the OUTER context, and asking
+                // the wrong one counts a different row's cell ([IF287]'s fourteenth/twenty-third instances).
+                if (ctxOf(arg).filled(path) && invalid(path)) return Val.Unknown   // malformed → non-evaluable
+                if (ctxOf(arg).filled(path)) count++
             }
         }
     }
@@ -784,7 +786,9 @@ private fun Interpreter.numberOfValueInFields(args: List<Expr>): Val {
             }
             else -> {
                 val path = pathOf(arg)
-                if (!ctx.filled(path)) continue  // empty → not counted (kernel: b == FALSE)
+                // The fill test and the value read must ask ONE context — `evalExpr` goes through `ctxOf`, which
+                // is the OUTER one for a `$`-marked node ([IF287]'s fourteenth/twenty-third instances).
+                if (!ctxOf(arg).filled(path)) continue  // empty → not counted (kernel: b == FALSE)
                 val v = evalExpr(arg)
                 if (v is Val.Unknown) return Val.Unknown // a filled-but-malformed operand → non-evaluable
                 if (ValCompare.equal(v, target)) count++
