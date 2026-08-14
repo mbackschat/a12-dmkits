@@ -4,6 +4,7 @@ import io.github.mbackschat.a12.dm.interpreter.DmInterpreter
 import io.github.mbackschat.a12.dm.interpreter.eval.Document
 import io.github.mbackschat.a12.dm.interpreter.eval.newDocument
 import io.github.mbackschat.a12.dm.interpreter.load.ModelLoader
+import io.github.mbackschat.a12.dm.interpreter.model.MsgType
 import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel
 import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl
@@ -121,6 +122,39 @@ class UnstarredGroupSumOperandDiffTest {
     @Test
     fun theGroupScopeDoesNotOversum() =
         agreeFires(groupScope(9), expected = false, msg = "Sum(/Order/Billing) = 7 does not exceed 9", build = ::threeAndFour)
+
+    /**
+     * **The POLARITY of the firing, which every row above is blind to.** They assert `any { code }`, a boolean, so
+     * a message of the wrong TYPE reads as agreement — and a cold review predicted exactly that: the value channel
+     * now expands a group operand while `PolarityWalk`'s own `Expr.Field` arm returns null for a group path,
+     * falling through to a leaf-omission reading that answers "not filled" for a path that holds no value. Both
+     * `First` and `Second` are filled here, so nothing is missing and the kernel's answer must be VALUE.
+     *
+     * This row exists because the fix above MADE the question reachable: before it the operand was dropped, `Sum`
+     * folded to 0 and the rule never fired, so a mistyped polarity was unobservable.
+     */
+    @Test
+    fun theGroupScopeFiresWithTheKernelsPolarity() {
+        val kModel = RuntimeLaws.withRule(base, "/Order", "R", "../Ref", CODE, groupScope(5))
+        val def = ModelLoader.load(kModel)
+
+        val dynamic = Both(RuntimeLaws.doc(), def.newDocument()).also(::threeAndFour)
+        val groovy = RuntimeLaws.messages(kModel, dynamic.kDoc).filter { it.code() == CODE }
+            .map { "${it.field()}|${it.type().name}" }.sorted()
+
+        val staticDoc = Both(RuntimeLaws.doc(), def.newDocument()).also(::threeAndFour).kDoc
+        val javaStatic = RuntimeLaws.kernelJavaEngine(kModel)
+            .messagesModern(staticDoc, null, java.util.Locale.US).filter { it.code() == CODE }
+            .map { "${it.field()}|${it.type().name}" }.sorted()
+
+        val interpreter = DmInterpreter(def).validateFull(dynamic.iDoc).filter { it.code == CODE }
+            .map { "${it.errorPath}|${if (it.type == MsgType.OMISSION) "OMISSION_ERROR" else "VALUE_ERROR"}" }
+            .sorted()
+
+        assertEquals(listOf("/Order[1]/Ref|VALUE_ERROR"), groovy, "the kernel groovy-dynamic message")
+        assertEquals(groovy, javaStatic, "groovy vs java-static (tri-check)")
+        assertEquals(groovy, interpreter, "kernel vs INTERPRETER — the polarity channel, not just the firing")
+    }
 
     /**
      * The discriminator against a *partial* expansion: only the SECOND field is filled. A sum that reads one

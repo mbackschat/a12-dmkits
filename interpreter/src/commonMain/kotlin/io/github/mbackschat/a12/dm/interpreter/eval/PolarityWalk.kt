@@ -385,9 +385,28 @@ private data class AggregateFillState(
 private fun Interpreter.aggregateFillState(arg: Expr): AggregateFillState? = when (arg) {
     is Expr.Field -> {
         val c = ctxOf(arg)
-        if (c.declaredKind(arg.path) != Kind.NUMBER) null
-        else if (c.filled(arg.path)) AggregateFillState(true, false, false)
-        else AggregateFillState(false, true, c.signed(arg.path))
+        when {
+            c.declaredKind(arg.path) == Kind.NUMBER ->
+                if (c.filled(arg.path)) AggregateFillState(true, false, false)
+                else AggregateFillState(false, true, c.signed(arg.path))
+            // A GROUP operand contributes its contained fields, exactly as the `Expr.Star` arm below already
+            // does. Returning `null` here sent it to `legacyStarFill`, whose `singleOrNull() as? Expr.Star` is
+            // null for a Field, so the polarity came from `leafOmission(Expr.Field(groupPath))` — and
+            // `!ctx.filled(groupPath)` is TRUE for every group, since a group holds no value of its own. The
+            // result was a symmetric fill state and an OMISSION where the kernel answers VALUE. Measured:
+            // `Sum(/Order/Billing) > 5` over 3 + 4 gives `VALUE_ERROR` on both kernel strategies and gave
+            // `OMISSION_ERROR` here. The VALUE channel's fix made this reachable — before it the operand was
+            // dropped, the sum folded to 0 and the rule never fired, so the mistyping was unobservable (IF287).
+            c.declaredKind(arg.path) == null -> {
+                val fields = c.containedFields(arg.path)
+                if (fields.isEmpty() || fields.any { c.declaredKind(it) != Kind.NUMBER }) null
+                else fields.fold(AggregateFillState.EMPTY) { acc, path ->
+                    acc + (if (c.filled(path)) AggregateFillState(true, false, false)
+                    else AggregateFillState(false, true, c.signed(path)))
+                }
+            }
+            else -> null
+        }
     }
     is Expr.Star -> {
         val c = ctxOf(arg)
