@@ -987,7 +987,19 @@ class Document(internal val config: DocumentConfig) {
 
         override fun starScanCells(path: String, bindDepth: Int, declaredRange: Boolean): Sequence<ScanCell> {
             val fieldParts = partsOf(path)
-            val common = commonPrefixLen(fieldParts, partsOf(group))
+            // The DECLARED branch caps the bound prefix exactly as [groupScopePrefix] does for the instantiated
+            // one — same `cap`, same meaning. It previously ignored `bindDepth` outright, although the parameter
+            // is right here and the `else` branch below consumes it, so `common` was the shared prefix with the
+            // EVALUATING group alone. A larger `common` binds MORE levels to this row, so the scan under-reported:
+            // with a MULTI-star operand and the computation authored ON an inner starred level, every level the
+            // stars say must iterate was pinned to the current row. Measured — `AllFieldsFilled(A*/B*/F)` as a
+            // computation precondition with one `F` empty: both kernel strategies clear every target, and this
+            // engine computed the three rows whose OWN cell was filled ([IF287]'s twentieth instance; the third
+            // and last member of the `fillScope`/`containedFieldCells`/`starScanCells` family, all three of which
+            // turned out to carry the same defect).
+            val parentParts = partsOf(parentGroup(path))
+            val cap = if (bindDepth >= 0) minOf(parentParts.size - 1, bindDepth) else parentParts.size - 1
+            val common = minOf(commonPrefixLen(fieldParts, partsOf(group)), cap)
             val reps = if (declaredRange) declaredCellReps(fieldParts, common)
                 else starRows(path, bindDepth).asSequence()
             return reps.map { scanCell(path, it) }
