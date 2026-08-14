@@ -257,6 +257,12 @@ class GroupOperandCarrierAdmissionLawsTest {
         s.add(Shape.accepted("outer-marker/in-filter-field-operands",
                 "Sum(Lines*/Amount Having (" + inFilter
                         + " And Sum($/Claim/Assessment/Deductible, $/Claim/Assessment/Excess) > 0)) > 0"));
+        // Is a `$`-marked operand reachable under FieldValuesNotUnique? That decides whether `comparedCells`'
+        //    own ambient-vs-outer context mismatch has any authorable input (IG136 item (n)).
+        s.add(Shape.accepted("outer-marker/in-filter-under-FieldValuesNotUnique",
+                "Sum(Lines*/Amount Having (" + inFilter
+                        + " And FieldValuesNotUnique($/Claim/Assessment/Deductible,"
+                        + " $/Claim/Assessment/Excess))) > 0"));
         s.add(Shape.accepted("outer-marker/in-filter-GROUP-operand",
                 "Sum(Lines*/Amount Having (" + inFilter
                         + " And Sum($/Claim/Assessment, $/Claim/ExcessDue) > 0)) > 0"));

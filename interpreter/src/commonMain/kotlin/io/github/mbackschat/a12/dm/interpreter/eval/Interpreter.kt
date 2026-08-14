@@ -1261,8 +1261,14 @@ class Interpreter(
             val expanded = expandOneGroupOperand(a)
             if (expanded.singleOrNull() !== a) return expanded.flatMap { comparedCells(it) }
         }
+        // The fill test and the value read must ask the SAME context: `evalExpr` resolves through `ctxOf`, which
+        // is the OUTER one for a `$`-marked node, so asking the ambient `ctx` here consulted a different row.
+        // Identical to [IF287]'s fourteenth instance in `aggOperandVals`, one function over — measured with a
+        // `$`-marked pair under `FieldValuesNotUnique` inside a filter (a shape the kernel admits): the marked
+        // cells duplicate in the rule's own row and are empty in the row the filter keeps, so reading the
+        // filtered row dropped both operands, found no duplicate, and the enclosing sum never cleared its bar.
         return if (a is Expr.Star) filteredStarCells(a)                   // kept row values, empties already dropped
-        else if (ctx.filled(pathOf(a))) listOf(evalExpr(a)) else emptyList()
+        else if (ctxOf(a).filled(pathOf(a))) listOf(evalExpr(a)) else emptyList()
     }
 
     /** The path of a plain field-ref operand. Any other operand shape in a field-ref position is a construct

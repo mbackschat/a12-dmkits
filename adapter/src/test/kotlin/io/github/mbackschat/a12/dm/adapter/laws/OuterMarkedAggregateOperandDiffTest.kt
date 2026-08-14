@@ -151,6 +151,33 @@ class OuterMarkedAggregateOperandDiffTest {
         )
 
     /**
+     * **The SAME context mismatch one function over — `comparedCells`, [IG136] item (n).** Its final arm reads
+     * `ctx.filled(pathOf(a))` and then `evalExpr(a)`, so the FILL test asks the ambient (filtered-row) context
+     * while the VALUE read goes through `ctxOf` to the outer one — byte-identical to the defect this file's
+     * discriminator above found in `aggOperandVals`. The kernel ADMITS a `$`-marked operand under
+     * `FieldValuesNotUnique` inside a filter, so it is reachable.
+     *
+     * The document makes the two contexts disagree: the marked cells are EMPTY in the row the filter keeps and
+     * hold a DUPLICATE pair in the rule's own row 2. Reading the filtered row drops both operands, finds no
+     * duplicate, drops every row from the filter, and the sum never clears the bar.
+     */
+    @Test
+    fun theOuterMarkedOperandsOfAUniquenessPredicateResolveInTheRulesOwnRow() =
+        agreeFireRows(
+            "FieldFilled($SKU) And Sum($LOTS*/Amount Having ([$SKU] == \"A\" " +
+                "And FieldValuesNotUnique(\$$BONUS, \$$EXTRA))) > 0",
+            expected = listOf("/Claim[1]/Lots[2]/Sku|OMISSION_ERROR"),
+            msg = "the \$-marked Bonus/Extra pair duplicates only in row 2",
+        ) { b ->
+            b.group("/Claim", 1).field(REF, "C-1", 1, 1)
+                .group(LOTS, 1, 1)
+                .field(AMOUNT, "10", 1, 1, 1).field(SKU, "A", 1, 1, 1)
+                .group(LOTS, 1, 2)
+                .field(AMOUNT, "20", 1, 2, 1).field(SKU, "B", 1, 2, 1)
+                .field(BONUS, "5", 1, 2, 1).field(EXTRA, "5", 1, 2, 1)
+        }
+
+    /**
      * **THE REFERENCE-CHANNEL row — [IG136] item (g), and a possible regression of my own.** A `$`-marked GROUP
      * reference inside a `Having` is deliberately kept `Ordinary` by `AstRefs`, precisely so it resolves in the
      * ENCLOSING row rather than iterating. `ModelStaticPlans.expandMessageReference` was then changed to convert an
