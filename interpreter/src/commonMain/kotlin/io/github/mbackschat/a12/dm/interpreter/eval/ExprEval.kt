@@ -1820,11 +1820,11 @@ private fun Interpreter.aggOperandVals(arg: Expr): List<Val> = when (arg) {
         // `Sum(/Order/Billing) > 5` over 3 + 4 fires on the kernel and returned false here (IF287's class, sixth
         // instance; the kernel's admission of the shape is asserted in the lock so a rejection cannot pass as
         // agreement). The unstarred spelling is the only legal one for a non-repeatable group.
-        if (ctx.declaredKind(path) == null) {
-            val depth = path.trim('/').split('/').size
-            val outer = (arg as? Expr.Field)?.outer ?: false
-            ctxOf(arg).containedFields(path).flatMap { starOperandVals(Expr.Star(it, null, outer, depth)) }
-        } else if (ctx.filled(path)) listOf(evalExpr(arg)) else emptyList()   // plain field: empty dropped
+        if (ctxOf(arg).declaredKind(path) == null) {
+            // Through the shared owner, so the depth formula is not re-derived here. It used to be inlined, which
+            // is how the same quantity came to be spelled three different ways across five resolvers (IF287).
+            expandOneGroupOperand(arg).flatMap { aggOperandVals(it) }
+        } else if (ctxOf(arg).filled(path)) listOf(evalExpr(arg)) else emptyList()   // plain field: empty dropped
     }
 }
 

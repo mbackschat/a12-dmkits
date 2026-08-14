@@ -7,6 +7,7 @@ import io.github.mbackschat.a12.dm.interpreter.ast.CmpOp
 import io.github.mbackschat.a12.dm.interpreter.ast.Cond
 import io.github.mbackschat.a12.dm.interpreter.ast.ValueListQuantOp
 import io.github.mbackschat.a12.dm.interpreter.ast.Expr
+import io.github.mbackschat.a12.dm.interpreter.ast.expansionBindDepth
 import io.github.mbackschat.a12.dm.interpreter.ast.Tri
 import io.github.mbackschat.a12.dm.interpreter.ast.Val
 import io.github.mbackschat.a12.dm.interpreter.model.CustomCondition
@@ -1249,12 +1250,14 @@ class Interpreter(
                 // own depth keeps every level strictly below the operand free whatever the rule iterates, which is
                 // the same rule `ModelStaticPlans.expandMessageReference` applies to the reference channel — the
                 // two channels of one operand must not disagree about its extent.
-                val operandDepth = path.trim('/').split('/').size
+                // The depth comes from `ast.expansionBindDepth`, the single owner of this formula — it was
+                // inlined here, which is how one quantity came to be spelled three ways across five resolvers.
                 return contained.flatMap { field ->
                     comparedCells(
                         when (a) {
                             is Expr.Star -> Expr.Star(field, a.having, a.outer, a.bindDepth)
-                            else -> Expr.Star(field, null, (a as Expr.Field).outer, operandDepth)
+                            else -> Expr.Star(field, null, (a as Expr.Field).outer,
+                                expansionBindDepth(path, -1))
                         },
                     )
                 }
