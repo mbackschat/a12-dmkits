@@ -59,6 +59,19 @@ class FieldValuesNotUniqueGroupOperandDiffTest {
         const val CONSIGNMENT_REF = "/Shipment/Consignments/Ref"
         const val MARKS = "/Shipment/Consignments/Marks"
         const val MARK = "/Shipment/Consignments/Marks/Mark"
+
+        /**
+         * The `referenced` set a group operand contributes, measured 2026-08-14. The expansion names each
+         * declared field with a **wildcard** coordinate at every repeatable level (`Consignments[0]`,
+         * `Handoffs[0]`) and a concrete one at every non-repeatable level (`Carrier[1]`), while the message's
+         * own anchor is concrete throughout — the two are different addresses of the same firing. The guard's
+         * `/Shipment[1]/Reference` rides along because `FieldFilled` references it.
+         */
+        const val CONSIGNMENT_REFS =
+            "[/Shipment[1]/Consignments[0]/Marks[0]/Mark, /Shipment[1]/Consignments[0]/Ref, " +
+                "/Shipment[1]/Reference]"
+        const val CARRIER_REFS =
+            "[/Shipment[1]/Carrier[1]/Handoffs[0]/Site, /Shipment[1]/Carrier[1]/Name, /Shipment[1]/Reference]"
     }
 
     /**
@@ -471,15 +484,18 @@ class FieldValuesNotUniqueGroupOperandDiffTest {
 
         val dynamic = Both(RuntimeLaws.doc(), def.newDocument()).also(build)
         val groovy = RuntimeLaws.messages(kModel, dynamic.kDoc).filter { it.code() == CODE }
-            .map { "${it.field()}|${it.type().name}" }.sorted()
+            .map { "${it.field()}|${it.type().name}|${it.referenced().sorted()}" }.sorted()
 
         val staticDoc = Both(RuntimeLaws.doc(), def.newDocument()).also(build).kDoc
         val javaStatic = RuntimeLaws.kernelJavaEngine(kModel)
             .messagesModern(staticDoc, null, java.util.Locale.US).filter { it.code() == CODE }
-            .map { "${it.field()}|${it.type().name}" }.sorted()
+            .map { "${it.field()}|${it.type().name}|${it.referenced().sorted()}" }.sorted()
 
         val interpreter = DmInterpreter(def).validateFull(dynamic.iDoc).filter { it.code == CODE }
-            .map { "${it.errorPath}|${if (it.type == MsgType.OMISSION) "OMISSION_ERROR" else "VALUE_ERROR"}" }
+            .map {
+                "${it.errorPath}|${if (it.type == MsgType.OMISSION) "OMISSION_ERROR" else "VALUE_ERROR"}" +
+                    "|${it.referenced.sorted()}"
+            }
             .sorted()
 
         assertEquals(expected.sorted(), groovy, "$msg — the kernel groovy-dynamic fire set")
@@ -492,7 +508,7 @@ class FieldValuesNotUniqueGroupOperandDiffTest {
     fun aDuplicateSpanningTwoRowsReportsOnceFromARootPlacedRule() =
         agreeFireSet(
             guarded("FieldValuesNotUnique(/Shipment/Consignments*)"),
-            expected = listOf("/Shipment[1]/Reference|VALUE_ERROR"),
+            expected = listOf("/Shipment[1]/Reference|VALUE_ERROR|$CONSIGNMENT_REFS"),
             msg = "Consignments[1]/Marks[2] and Consignments[2]/Marks[1] both 'M9', rule on /Shipment",
             model = starredNested,
         ) { b ->
@@ -513,7 +529,7 @@ class FieldValuesNotUniqueGroupOperandDiffTest {
     fun theSameDuplicateReportsOnceWhenTheRuleSitsOnTheRepeatableGroup() =
         agreeFireSet(
             guarded("FieldValuesNotUnique(/Shipment/Consignments*)"),
-            expected = listOf("/Shipment[1]/Reference|VALUE_ERROR"),
+            expected = listOf("/Shipment[1]/Reference|VALUE_ERROR|$CONSIGNMENT_REFS"),
             msg = "the same duplicate, rule authored on /Shipment/Consignments",
             model = starredNested,
             ruleGroup = CONSIGNMENTS,
@@ -539,7 +555,7 @@ class FieldValuesNotUniqueGroupOperandDiffTest {
     fun aPerRowErrorFieldSeparatesEvaluatingOnceFromCollapsingOnOneAddress() =
         agreeFireSet(
             guarded("FieldValuesNotUnique(/Shipment/Consignments*)"),
-            expected = listOf("/Shipment[1]/Consignments[1]/Ref|VALUE_ERROR"),
+            expected = listOf("/Shipment[1]/Consignments[1]/Ref|VALUE_ERROR|$CONSIGNMENT_REFS"),
             msg = "the same duplicate, rule on /Shipment/Consignments with a per-row error field",
             model = starredNested,
             ruleGroup = CONSIGNMENTS,
@@ -563,7 +579,7 @@ class FieldValuesNotUniqueGroupOperandDiffTest {
     fun theAnchorStaysAtTheFirstRowEvenWhenTheDuplicateLiesWhollyInTheSecond() =
         agreeFireSet(
             guarded("FieldValuesNotUnique(/Shipment/Consignments*)"),
-            expected = listOf("/Shipment[1]/Consignments[1]/Ref|VALUE_ERROR"),
+            expected = listOf("/Shipment[1]/Consignments[1]/Ref|VALUE_ERROR|$CONSIGNMENT_REFS"),
             msg = "duplicate wholly inside Consignments[2], per-row error field",
             model = starredNested,
             ruleGroup = CONSIGNMENTS,
@@ -574,5 +590,72 @@ class FieldValuesNotUniqueGroupOperandDiffTest {
                 .group(MARKS, 1, 1, 1).field(MARK, "M1", 1, 1, 1, 1)
                 .group(CONSIGNMENTS, 1, 2).field(CONSIGNMENT_REF, "K8", 1, 2, 1)
                 .group(MARKS, 1, 2, 1).field(MARK, "K8", 1, 2, 1, 1)
+        }
+
+    // ── the UNSTARRED group operand, whose message contract the four rows above do NOT reach ──────────────
+
+    /**
+     * **Every row above authors the star**, so "the group operand reports once at the first row" was measured for
+     * exactly one of the two forms. The lean project's 2026-08-14 reply flagged the over-claim, and it is not
+     * pedantry about a form nobody runs: a *repeatable* group operand MUST carry its `*`, so the unstarred form is
+     * necessarily the non-repeatable-group-with-a-repeatable-subgroup shape — the arm where the iteration is
+     * implicit in the MODEL and there is no star anywhere in the condition from which to read a level off.
+     */
+    @Test
+    fun anUnstarredGroupOperandAlsoReportsOnceFromARootPlacedRule() =
+        agreeFireSet(
+            guarded("FieldValuesNotUnique(/Shipment/Carrier)"),
+            expected = listOf("/Shipment[1]/Reference|VALUE_ERROR|$CARRIER_REFS"),
+            msg = "unstarred /Shipment/Carrier, Name duplicates Handoffs[1]/Site, rule on /Shipment",
+            model = nested,
+        ) { b ->
+            b.group("/Shipment", 1).field(REFERENCE, "SHP-1", 1, 1)
+                .field(CARRIER_NAME, "DHL", 1, 1, 1)
+                .group(HANDOFFS, 1, 1, 1).field(SITE, "DHL", 1, 1, 1, 1)
+        }
+
+    /**
+     * **The level question, which is the whole point of the unstarred arm.** The error field sits INSIDE the nested
+     * repeatable subgroup, so per-row addresses exist to report at — and the duplicate lies wholly within that
+     * subgroup, at rows 1 and 2, with the direct `Name` distinct. Nothing in the condition is starred, so whatever
+     * level the anchor is read off is a property of the model's repeatability alone.
+     */
+    @Test
+    fun anUnstarredGroupOperandAnchorsAtTheNestedSubgroupsFirstRow() =
+        agreeFireSet(
+            guarded("FieldValuesNotUnique(/Shipment/Carrier)"),
+            expected = listOf("/Shipment[1]/Carrier[1]/Handoffs[1]/Site|VALUE_ERROR|$CARRIER_REFS"),
+            msg = "unstarred operand, duplicate inside Handoffs rows 1+2, error field inside Handoffs",
+            model = nested,
+            ruleGroup = HANDOFFS,
+            errorPath = "../Site",
+        ) { b ->
+            b.group("/Shipment", 1).field(REFERENCE, "SHP-1", 1, 1)
+                .field(CARRIER_NAME, "DHL", 1, 1, 1)
+                .group(HANDOFFS, 1, 1, 1).field(SITE, "UPS", 1, 1, 1, 1)
+                .group(HANDOFFS, 1, 1, 2).field(SITE, "UPS", 1, 1, 2, 1)
+        }
+
+    /**
+     * The case above places the duplicate at nested rows 1 and 2, so "anchored at the first row" and "anchored
+     * where the duplicate is" still predict the same address — the same blind spot the starred arm needed a fourth
+     * row to escape. Here rows **2 and 3** carry it and row 1 is distinct, so the two accounts finally disagree on
+     * the unstarred form too.
+     */
+    @Test
+    fun theUnstarredAnchorStaysAtTheFirstNestedRowWhenTheDuplicateSitsInLaterOnes() =
+        agreeFireSet(
+            guarded("FieldValuesNotUnique(/Shipment/Carrier)"),
+            expected = listOf("/Shipment[1]/Carrier[1]/Handoffs[1]/Site|VALUE_ERROR|$CARRIER_REFS"),
+            msg = "unstarred operand, duplicate in Handoffs rows 2+3, row 1 distinct",
+            model = nested,
+            ruleGroup = HANDOFFS,
+            errorPath = "../Site",
+        ) { b ->
+            b.group("/Shipment", 1).field(REFERENCE, "SHP-1", 1, 1)
+                .field(CARRIER_NAME, "DHL", 1, 1, 1)
+                .group(HANDOFFS, 1, 1, 1).field(SITE, "AAA", 1, 1, 1, 1)
+                .group(HANDOFFS, 1, 1, 2).field(SITE, "UPS", 1, 1, 2, 1)
+                .group(HANDOFFS, 1, 1, 3).field(SITE, "UPS", 1, 1, 3, 1)
         }
 }

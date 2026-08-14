@@ -151,10 +151,15 @@ internal class ModelStaticPlans private constructor(private val model: ModelDef)
             semanticIndex.outer,
             semanticIndex.indexFieldOuter,
         )
-        val directMessageRefs = messageReferences(ast, excludeRepetitionNotUniqueKeys = rnu != null)
-            .flatMap(::expandMessageReference).distinct()
-        val ordinaryErrorReference = errorPath in nonStarredRefs(ast) || directMessageRefs.any { reference ->
-            reference is MessageReference.Ordinary && reference.path == errorPath
+        val rawMessageRefs = messageReferences(ast, excludeRepetitionNotUniqueKeys = rnu != null)
+        val directMessageRefs = rawMessageRefs.flatMap(::expandMessageReference).distinct()
+        // Two DIFFERENT questions, which is why this one is asked before the expansion rather than after it.
+        // `ordinaryErrorReference` asks how the CONDITION names the error path — an authored star does not fix an
+        // error context, anything else does. A group operand's expansion is not an authored star, so it must still
+        // count here even though its pointers wildcard (below). Reading it off the expanded list conflated the two
+        // and silently changed which rules take the semantic-index error-context path.
+        val ordinaryErrorReference = errorPath in nonStarredRefs(ast) || rawMessageRefs.any { reference ->
+            reference is MessageReference.Ordinary && errorPath in coveredFieldPaths(reference.path)
         }
         val semanticErrorIndexesByTarget = semanticIndexes(ast)
             .filter { semanticIndex ->
@@ -180,20 +185,40 @@ internal class ModelStaticPlans private constructor(private val model: ModelDef)
         )
     }
 
-    /** The kernel's meta-reference inventory is field-only and consumes the partially expanded condition: a
-     *  group operand recursively contributes its contained fields, never a group pointer. */
+    /**
+     * The kernel's meta-reference inventory is field-only and consumes the partially expanded condition: a
+     * group operand recursively contributes its contained fields, never a group pointer.
+     *
+     * **An expanded field is WILDCARDED below the group's own depth, and that is not the same as keeping the
+     * group reference's kind.** A group operand's expansion descends through nested *repeatable* subgroups whose
+     * rows the reference cannot name — there is no coordinate to put there, and the kernel writes its wildcard.
+     * Preserving `Ordinary` instead resolved those levels through `ctx.repsOf`, which pins row 1: measured against
+     * both kernel strategies, `FieldValuesNotUnique(/Shipment/Carrier)` referenced
+     * `…/Carrier[1]/Handoffs[1]/Site` where the kernel writes `…/Carrier[1]/Handoffs[0]/Site` ([IF287]). It is the
+     * third row-1 pin found in this operator's group expansion and the first in the *reference* channel rather
+     * than the compared value set.
+     *
+     * Binding at the group's own group-depth is what makes one rule serve both shapes: levels **above** the
+     * operand keep their concrete coordinate, levels at or below it wildcard **iff repeatable**. A group with no
+     * repeatable level below it therefore expands to all-concrete references exactly as before, which is why this
+     * needs no special case for the non-nesting shape. A reference that is already a wildcard keeps its own
+     * `bindDepth`, since a star binds where it was authored rather than where its group sits.
+     */
     private fun expandMessageReference(reference: MessageReference): List<MessageReference> {
         if (model.kinds[reference.path] != null) return listOf(reference)
-        return model.fields.asSequence().map { it.path }
-            .filter { it.startsWith("${reference.path}/") }
-            .map { path ->
-                when (reference) {
-                    is MessageReference.Ordinary -> MessageReference.Ordinary(path)
-                    is MessageReference.Wildcard -> MessageReference.Wildcard(path, reference.bindDepth)
-                }
+        val groupDepth = paths.groupsThrough(reference.path).size
+        return coveredFieldPaths(reference.path).map { path ->
+            when (reference) {
+                is MessageReference.Ordinary -> MessageReference.Wildcard(path, groupDepth)
+                is MessageReference.Wildcard -> MessageReference.Wildcard(path, reference.bindDepth)
             }
-            .toList()
+        }
     }
+
+    /** The field paths a reference covers: itself when it names a field, else every field the group contains. */
+    private fun coveredFieldPaths(path: String): List<String> =
+        if (model.kinds[path] != null) listOf(path)
+        else model.fields.map { it.path }.filter { it.startsWith("$path/") }
 
     /**
      * Dependency-order the computations reachable from [roots]. A field's computations are GROUPED by target in
