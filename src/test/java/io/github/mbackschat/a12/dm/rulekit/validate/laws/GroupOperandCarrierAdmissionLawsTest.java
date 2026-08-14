@@ -153,6 +153,19 @@ class GroupOperandCarrierAdmissionLawsTest {
         //    refusal closes each without any runtime work (IG136 item (m)). ──
         s.add(Shape.refused("Sum/date-group", "Sum(Milestones) > 0", "MVK_NO_NUMBER"));
         s.add(Shape.refused("MinValue/mixed-kind-group", "MinValue(Lines*) > 0", "MVK_NOT_SORTABLE"));
+
+        // ── A HOMOGENEOUS non-numeric, non-date group under the extrema — [IG136](b)'s last residual, and the
+        //    one shape `legacyStarFill` would still receive if the kernel admitted it. The mixed-kind row above
+        //    does NOT settle this: it is refused because its expansion is heterogeneous, which says nothing
+        //    about a group that is uniformly of one unsortable kind. Both repetition shapes, each with the
+        //    equivalent explicit field list as its control, so a refusal is attributable to the operand's KIND
+        //    rather than to the group spelling or to the `> 0` comparison. ──
+        s.add(Shape.refused("MinValue/string-group/non-repeatable", "MinValue(Contact) > 0", "MVK_NOT_SORTABLE"));
+        s.add(Shape.refused("MaxValue/string-group/non-repeatable", "MaxValue(Contact) > 0", "MVK_NOT_SORTABLE"));
+        s.add(Shape.refused("MinValue/string-group/starred-repeatable",
+                "MinValue(Adjusters*) > 0", "MVK_NOT_SORTABLE"));
+        s.add(Shape.refused("MinValue/string-field-list-control",
+                "MinValue(Adjusters*/Name) > 0", "MVK_NOT_SORTABLE"));
         s.add(Shape.accepted("MinValue/date-group-plus-date-field",
                 "[ClaimedOn] > MinValue(Milestones, ClaimedOn)"));
 

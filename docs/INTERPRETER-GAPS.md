@@ -14,13 +14,7 @@
 
 ## 1. Open
 
-- **IG136 — one residual measurement of the group-expansion class.** The class itself (an operand may name a GROUP, and expansion is opt-in at every site that resolves one) is settled and its twenty-five measured instances live in [IF287](INTERPRETER-FINDINGS.md#if287); what remains here is what has **not** been measured. *(Sub-item (a), a perf scenario that actually routes the expansion, **shipped 2026-08-15**: `GroupStarExpansionPerfTest` drives `NumberOfFilledFields(G*)` through `expandGroupStars` — the path `GroupScopedFillPerfTest` was wrongly claimed to reach — and the tri-engine agreement check is itself the reachability proof, since a non-expanding engine counts zero and cannot agree. Growth is linear-ish against a 9.0 floor across three runs, so the expansion needs no caching; evidence and the 2.31× run-to-run spread that decided how the anchor was armed are in [INTERPRETER-PERFORMANCE](INTERPRETER-PERFORMANCE.md) "Checkpoint 2026-08-15".)*
-
-  **(b) Two polarity residuals in `PolarityWalk.legacyStarFill`.** The DATE family is measured and fixed ([IF287](INTERPRETER-FINDINGS.md#if287)'s thirteenth instance) and two neighbouring shapes were measured as kernel REFUSALS, but a group of some **other non-numeric kind** remains unmeasured, as does `firstFilledEntityKind`'s order-dependence on a mixed-kind group — it takes the first declared field's kind, which is an order-dependent verdict wherever it is still reachable. **Actionable work:** establish each shape's kernel admission first; a refused shape needs no runtime row, and several neighbours in this family turned out to be refused.
-
-
-
-
+_None open._
 
 ---
 

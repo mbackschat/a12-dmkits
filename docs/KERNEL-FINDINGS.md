@@ -2890,10 +2890,13 @@ A group operand is not a shape the kernel admits or refuses globally. Swept acro
 | **`Max`** (the operand-LIST form) | `MVK_NO_GROUPS_ALLOWED` | `MVK_NO_GROUPS_ALLOWED` |
 | **`DateRangesOverlap`** | `MVK_NO_GROUPS_ALLOWED` | `MVK_NO_GROUPS_ALLOWED` |
 | **`AtLeastOneDateRangeOverlaps`**, group in the `In` slot | — | ACCEPT |
+| **`MinValue`/`MaxValue`** over a homogeneous **STRING** group | `MVK_NOT_SORTABLE` | `MVK_NOT_SORTABLE` |
 | **`Valid`/`Invalid`** (the `ValidType` custom-field-type overload) | `MVK_NO_GROUPS_ALLOWED` | — |
 | **`FieldValueAsString`** | `MVK_NO_GROUPS_ALLOWED` | — |
 | **`ValueAsDate`** | `MVK_NO_GROUPS_ALLOWED` | — |
 | **`RangeAsString`** | `MVK_NO_GROUPS_ALLOWED` | — |
+
+**Amended 2026-08-15 — a HOMOGENEOUS unsortable group is refused for its kind, which is a different row from the mixed-kind one and does not follow from it.** The table already carried `MinValue(<mixed-kind group>)` → `MVK_NOT_SORTABLE`, refused because its expansion is *heterogeneous*. That says nothing about a group uniformly of one unsortable kind, so the extrema over an all-STRING group were measured in both repetition shapes: `MVK_NOT_SORTABLE` for both, **and the equivalent explicit field list draws the same code**. The control failing *alongside* is the point here rather than a problem — together the two rows say the refusal is about the KIND and not about groupness, so a group behaves exactly as its expansion does at this gate. This closes the interpreter's last group-expansion residual by making it unreachable: `PolarityWalk.legacyStarFill` cannot receive a non-numeric, non-date group operand, because no such rule can be stored.
 
 **Amended 2026-08-14 — the value-list quantifiers' ENTITY form is a separate carrier from their literal form, and it admits a group in both slots.** The three quantifiers take either a literal value side (`… In "a", "b"`) or a list of entity paths, and the two are different records with different slots. The original row measured only the literal form; `DG35`'s type decision hinged on the other one, because the shared `ValueListOperand` type feeds both. Measured rather than inferred (`rulekit.validate.laws.EntityListValueListGroupOperandLawsTest`, both slots plus an all-fields control): **ACCEPT in both**. The verdicts agree with the literal form — which is the *less* useful outcome, since it means this row would have survived the analogy while the two split families above still would not. Worth recording precisely because a same-answer result is the one that tempts the next reader to stop measuring.
 

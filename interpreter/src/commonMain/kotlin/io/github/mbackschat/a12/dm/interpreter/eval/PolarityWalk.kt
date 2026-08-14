@@ -453,7 +453,11 @@ private fun EvalContext.numericStarFillState(star: Expr.Star): AggregateFillStat
  * [aggregateFillState]'s own group arms. `Sum` cannot reach here over a date group at all (`MVK_NO_NUMBER`) and a
  * MIXED-kind group cannot reach min/max either (`MVK_NOT_SORTABLE`), so the order-dependent
  * [firstFilledEntityKind] read a review flagged for a mixed group is unreachable — both refusals measured in
- * [KF187]. What IS reachable and was missed is the MULTI-operand form: this function once took
+ * [KF187]. A HOMOGENEOUS non-numeric, non-date group is refused too, and that is a **separate** measurement
+ * rather than a consequence of the mixed one: the mixed group is refused for being heterogeneous, which is
+ * silent about a group uniformly of one unsortable kind. Measured 2026-08-15 in both repetition shapes, with
+ * the equivalent explicit field list drawing the same code — so the gate is about the KIND, not about
+ * groupness, and this function cannot receive that shape either. What IS reachable and was missed is the MULTI-operand form: this function once took
  * `f.args.singleOrNull()`, so `MinValue(<date group>, <date field>)` fell through to `leafOmission` and answered
  * OMISSION where the kernel answers VALUE. It now walks every operand and ORs their missingness, which is the
  * same shape the single-operand case always had.
