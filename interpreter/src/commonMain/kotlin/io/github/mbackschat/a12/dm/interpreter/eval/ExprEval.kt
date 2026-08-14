@@ -712,8 +712,14 @@ private fun Interpreter.roundExpr(args: List<Expr>, mode: RoundMode): Val {
 private fun Interpreter.numberOfValueInFields(args: List<Expr>): Val {
     val target = evalExpr(args[0])
     var count = 0
-    for (i in 1 until args.size) {
-        when (val arg = args[i]) {
+    // `args[0]` is the counted constant and never an operand, so only the tail is expanded. A starred GROUP goes
+    // through the shared owner: unexpanded, the `Expr.Star` arm below took the group's PARENT rows and read a
+    // value at the group path, where no field is declared, so the count was 0 on every document. Measured — the
+    // kernel ADMITS the operand (asserted in the lock, since our DSL type-erases it and an erasure needs a
+    // measured basis) and counts one match per row across two rows; the interpreter returned false (IF287's
+    // class, eighth instance). The UNSTARRED group operand is a separate, unmeasured question and is left alone.
+    for (arg in expandGroupStars(args.subList(1, args.size))) {
+        when (arg) {
             is Expr.Star -> {                    // a `Group* / Field` list (kernel: a group/wildcard expansion)
                 val group = arg.path.substringBeforeLast('/')
                 val rows = ctxOf(arg).rowContexts(group, arg.bindDepth)

@@ -40,7 +40,7 @@ The gaps below were the **ergonomic and consistency remainder** — what added f
 
 ## 2. Open
 
-_None open._
+- **DG34 — `Dsl.numberOfValueInFields` type-erases a group operand the kernel admits.** The factory takes `FieldOperand`s and has no `GroupListRef` overload, so `NumberOfValueInFields("X" In /Order/Lines*)` cannot be authored through the typed surface at all — the quiet form of a refusal, indistinguishable from "not a thing" rather than "refused", which is exactly the shape DG33 turned out to be for `FieldValuesNotUnique`. **Measured 2026-08-14**: the kernel ADMITS the starred group operand and counts matches across every row (`adapter.laws.GroupStarValueInFieldsDiffTest`, which asserts admission as its own test). So the erasure has no measured basis, which CLAUDE.md's "a client-side refusal needs a measured kernel basis" rule forbids. The interpreter's runtime arm for the shape was wrong at the same time and is now fixed ([IF287](INTERPRETER-FINDINGS.md#if287)), so the blocker DG33 had — never widen authoring onto an evaluator that answers the shape wrongly — does not apply here. **Actionable work:** add the `GroupListRef` overload beside the existing `FieldOperand` ones, mirroring the DG33 widening, and lock it in `rulekit.validate.laws`. **Completion gate:** the shape is authorable through the typed surface and its admission is locked against the real kernel; the unstarred group operand stays out until separately measured.
 
 ---
 
