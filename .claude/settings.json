@@ -13,5 +13,17 @@
         ]
       }
     ]
+  },
+  "permissions": {
+    "allow": [
+      "Bash(./scripts/perf-trend.sh)",
+      "Bash(./scripts/perf-trend.sh *)",
+      "Bash(./scripts/perf-anchor.sh)",
+      "Bash(./scripts/perf-anchor.sh show)",
+      "Bash(./scripts/perf-history.sh)",
+      "Bash(./scripts/perf-history.sh *)",
+      "Bash(./scripts/check-release-gaps.sh)",
+      "Bash(./scripts/doctor.sh)"
+    ]
   }
 }
