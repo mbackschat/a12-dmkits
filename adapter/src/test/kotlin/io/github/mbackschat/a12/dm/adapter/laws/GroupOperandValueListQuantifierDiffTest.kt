@@ -47,9 +47,11 @@ class GroupOperandValueListQuantifierDiffTest {
         const val REF = "/Policy/Reference"
         const val ADJUSTERS = "/Policy/Adjusters"
         const val NAME_STAR = "/Policy/Adjusters*/Name"
+        const val REGION_STAR = "/Policy/Adjusters*/Region"
         const val ADJUSTERS_STAR = "/Policy/Adjusters*"
         const val NAME = "/Policy/Adjusters/Name"
         const val REGION = "/Policy/Adjusters/Region"
+        const val SCREENED = "/Policy/Screened"
         const val CODE = "VLQG"
 
         /** The value list every condition below screens against. */
@@ -63,6 +65,7 @@ class GroupOperandValueListQuantifierDiffTest {
     private val base = DocumentModelDraft.named("policy").locale("en_US")
         .rootGroup("Policy") { g ->
             g.stringField("Reference") { }
+            g.stringField("Screened") { }
             g.group("Adjusters") { a ->
                 a.repeatable(2).stringField("Name") { }.stringField("Region") { }
             }
@@ -198,6 +201,60 @@ class GroupOperandValueListQuantifierDiffTest {
                 .group(ADJUSTERS, 1, 2)
                 .field(NAME, "Brenner", 1, 2, 1).field(REGION, "SOUTH", 1, 2, 1)
         }
+    }
+
+    /**
+     * **THE VALUES-SIDE ROW.** `vlqOperands` serves BOTH of the operator's lists — the fields side and the value
+     * list — and every row above puts the group on the fields side against literal values. One fix covers both
+     * loci, but a lock that measures one side and claims the operator would repeat this class's own recurring
+     * failure: a lock consistent with either reading. Here the group IS the value list, and the screened field's
+     * value appears only in `Adjusters[2]/Region`, so an empty values side gives an empty value SET — which does
+     * not fire — while a correct expansion finds the match.
+     */
+    @Test
+    fun theGroupOperandWorksOnTheVALUESSideToo() {
+        val control = DslRenderer().render(
+            m.field(REF).filled().and(
+                Dsl.atLeastOneFieldValueIncludedInValueList(
+                    listOf(m.flatten(REGION_STAR)), m.field(SCREENED),
+                ),
+            ),
+        )
+        agreeFires(control.replace(REGION_STAR, ADJUSTERS_STAR), expected = true,
+            msg = "VALUES side/GROUP: the screened value appears in Adjusters[2]/Region",
+            build = ::screenedValueOnlyInTheSecondRowsRegion)
+        agreeFires(control, expected = true,
+            msg = "VALUES side/control: the explicit Region list holds the screened value",
+            build = ::screenedValueOnlyInTheSecondRowsRegion)
+    }
+
+    /** The negative on the values side, so the pair above is a statement about the value set. */
+    @Test
+    fun theValuesSideGroupDoesNotMatchAnAbsentValue() {
+        val control = DslRenderer().render(
+            m.field(REF).filled().and(
+                Dsl.atLeastOneFieldValueIncludedInValueList(
+                    listOf(m.flatten(REGION_STAR)), m.field(SCREENED),
+                ),
+            ),
+        )
+        agreeFires(control.replace(REGION_STAR, ADJUSTERS_STAR), expected = false,
+            msg = "VALUES side/GROUP: nothing below the group equals the screened value") { b ->
+            b.group("/Policy", 1).field(REF, "P-1", 1, 1).field(SCREENED, "ZZZ", 1, 1)
+                .group(ADJUSTERS, 1, 1)
+                .field(NAME, "Alvarez", 1, 1, 1).field(REGION, "WEST", 1, 1, 1)
+                .group(ADJUSTERS, 1, 2)
+                .field(NAME, "Brenner", 1, 2, 1).field(REGION, "EAST", 1, 2, 1)
+        }
+    }
+
+    /** The screened value is `SOUTH`, present only in the SECOND row's `Region`. */
+    private fun screenedValueOnlyInTheSecondRowsRegion(b: Both) {
+        b.group("/Policy", 1).field(REF, "P-1", 1, 1).field(SCREENED, "SOUTH", 1, 1)
+            .group(ADJUSTERS, 1, 1)
+            .field(NAME, "Alvarez", 1, 1, 1).field(REGION, "WEST", 1, 1, 1)
+            .group(ADJUSTERS, 1, 2)
+            .field(NAME, "Brenner", 1, 2, 1).field(REGION, "SOUTH", 1, 2, 1)
     }
 
     /**
