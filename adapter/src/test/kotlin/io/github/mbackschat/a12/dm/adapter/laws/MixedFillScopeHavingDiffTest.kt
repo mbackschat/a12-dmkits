@@ -45,6 +45,14 @@ class MixedFillScopeHavingDiffTest {
         const val LINES = "/Invoice/Lines"
         const val LINE_AMOUNT = "/Invoice/Lines/Amount"
         const val SKU = "/Invoice/Lines/Sku"
+        const val CHARGE_TAG = "/Invoice/Charges/Tag"
+
+        /** A SECOND filtered operand, so a list can hold two of them and no unfiltered star at all. */
+        const val FILTERED_CHARGE =
+            "/Invoice/Charges*/Amount Having [/Invoice/Charges/Tag] == \"T\""
+
+        /** A bare (starred) GROUP operand, the other shape that diverts a list onto the scope path. */
+        const val BARE_GROUP = "/Invoice/Charges*"
         const val CODE = "MFS"
 
         /** The filtered operand, spelled once so the subject and the control cannot drift apart. */
@@ -57,7 +65,9 @@ class MixedFillScopeHavingDiffTest {
     private val base = DocumentModelDraft.named("invoice").locale("en_US")
         .rootGroup("Invoice") { g ->
             g.stringField("Reference") { }
-            g.group("Charges") { c -> c.repeatable(2).numberField("Amount") { it.fractionDigits(0, 2) } }
+            g.group("Charges") { c ->
+                c.repeatable(2).numberField("Amount") { it.fractionDigits(0, 2) }.stringField("Tag") { }
+            }
             g.group("Lines") { l ->
                 l.repeatable(2).numberField("Amount") { it.fractionDigits(0, 2) }.stringField("Sku") { }
             }
@@ -224,6 +234,49 @@ class MixedFillScopeHavingDiffTest {
                 .group(CHARGES, 1, 1).field(CHARGE_AMOUNT, "1.00", 1, 1, 1)
                 .group(CHARGES, 1, 2).field(CHARGE_AMOUNT, "2.00", 1, 2, 1)
                 .group(LINES, 1, 1).field(SKU, "A", 1, 1, 1).field(LINE_AMOUNT, "42.00", 1, 1, 1)
+                .group(LINES, 1, 2).field(SKU, "B", 1, 2, 1)
+        }
+
+    /**
+     * **(k) A filled-but-MALFORMED cell in a KEPT row.** `filteredFillScope` classifies it as unknown (so the
+     * quantifier can be suppressed) where the sibling it is modelled on, `naiveStarQuantTally`, silently drops it;
+     * it matches `Document.fillScope` instead. That was an unmeasured choice until this row — no other row places
+     * a malformed cell in a row the filter keeps.
+     */
+    @Test
+    fun aMalformedCellInAKeptRowIsClassifiedTheKernelsWay() =
+        agreeFires(guarded("NoFieldFilled($UNFILTERED_SIBLING, $FILTERED)"), expected = false,
+            msg = "the kept row's Amount is filled-but-malformed") { b ->
+            b.group("/Invoice", 1).field(REF, "I-1", 1, 1)
+                .group(CHARGES, 1, 1)
+                .group(CHARGES, 1, 2)
+                .group(LINES, 1, 1).field(SKU, "A", 1, 1, 1).field(LINE_AMOUNT, "5.555", 1, 1, 1)
+                .group(LINES, 1, 2).field(SKU, "B", 1, 2, 1)
+        }
+
+    /*
+     * (l1) TWO filtered stars and no unfiltered operand at all was measured here and moved OUT, because it does
+     * not measure the escalation this file is about. The kernel ADMITS the shape; this evaluator refuses to
+     * evaluate it — `validateFull` reports "unsupported operand Star in a field-reference position", because with
+     * no operand qualifying as a fill scope the list falls to `quantTally`, whose `singleOrNull as? Expr.Star`
+     * handles ONE starred operand and treats a second as a plain field reference. That is a capability gap with a
+     * clean degrade rather than a wrong answer, so it is recorded in [IG136] rather than fixed inside a slice
+     * about group expansion. Its polarity — which the reordered escalation would now type OMISSION — is
+     * unobservable until the construct evaluates at all.
+     */
+
+    /**
+     * **(l2) A bare GROUP operand beside a filtered star** — the other diverting shape, and the second
+     * configuration the reorder changed without a measurement.
+     */
+    @Test
+    fun aBareGroupOperandBesideAFilteredStar() =
+        agreeFires(guarded("NoFieldFilled($BARE_GROUP, $FILTERED)"), expected = false,
+            msg = "the bare group holds a filled Amount, so nothing-is-filled is false") { b ->
+            b.group("/Invoice", 1).field(REF, "I-1", 1, 1)
+                .group(CHARGES, 1, 1).field(CHARGE_AMOUNT, "7.50", 1, 1, 1)
+                .group(CHARGES, 1, 2)
+                .group(LINES, 1, 1).field(SKU, "A", 1, 1, 1)
                 .group(LINES, 1, 2).field(SKU, "B", 1, 2, 1)
         }
 
