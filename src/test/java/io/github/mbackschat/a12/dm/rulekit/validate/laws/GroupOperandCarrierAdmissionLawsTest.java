@@ -24,10 +24,14 @@ import io.github.mbackschat.a12.dm.rulekit.validate.ValidationResult;
  * assertion aborts at the first divergence and hides the rest of the matrix, which is exactly what a reader needs
  * to see when a kernel upgrade shifts one gate.
  *
- * <p>Every group in the fixture is <b>homogeneous</b> in field kind. That is load-bearing rather than tidy: a mixed
- * group's expansion offends the kind gate first, so its rejection cannot distinguish "this carrier refuses a group
- * operand" from "this carrier refuses these kinds" — the trap {@code FieldValuesNotUniqueAdmissionLawsTest}
- * documents on its own {@code Counts} group.
+ * <p><b>Every group a row uses AS a group operand is homogeneous in field kind</b>, and that is load-bearing rather
+ * than tidy: a mixed group's expansion offends the kind gate first, so its rejection could not distinguish "this
+ * carrier refuses a group operand" from "this carrier refuses these kinds" — the trap
+ * {@code FieldValuesNotUniqueAdmissionLawsTest} documents on its own {@code Counts} group. The claim is scoped to
+ * those groups deliberately: {@code Lines} mixes a NUMBER and a STRING and is reached only through
+ * the flatten of {@code Lines*} then {@code Amount}, and {@code [Lines/Sku]}, never as a group operand. A blanket "every group here is
+ * homogeneous" was the wording a review corrected, because it is the sentence a later reader would rely on when
+ * adding a group-operand row over exactly that group.
  *
  * <p>Already measured elsewhere and therefore NOT repeated here: the four value aggregates over a NUMBER group
  * ({@code AggregateGroupOperandLawsTest}), {@code FieldValuesNotUnique} over both group shapes
@@ -77,6 +81,7 @@ class GroupOperandCarrierAdmissionLawsTest {
                                 .dateRangeField("Grace", r -> r.format("dd.MM.yyyy").separator("-")))
                         .group("Charges", g -> g.repeatable(20)
                                 .numberField("Amount", n -> n.fractionDigits(0, 2)))
+                        .group("Note", g -> g.stringField("Text", f -> { }))
                         .group("Lines", g -> g.repeatable(20)
                                 .numberField("Amount", n -> n.fractionDigits(0, 2))
                                 .stringField("Sku", f -> { })))
@@ -85,8 +90,25 @@ class GroupOperandCarrierAdmissionLawsTest {
 
     private static final String CLAIM_JSON = claim();
 
-    /** One swept shape: its label, the condition body, and the verdict the sweep records. */
-    private record Shape(String label, String body) { }
+    /**
+     * One swept shape: its label, the condition body, and the measured verdict.
+     *
+     * <p>The verdict lives <b>in</b> the record rather than in a lookup keyed by label, because the lookup form
+     * this replaced ended in a {@code default -> "ACCEPT"} arm and was therefore <b>fail-OPEN</b>: a typo or a
+     * rename in any label silently converted a refusal expectation into an ACCEPT expectation and the assertion
+     * still passed. With eleven hand-written labels and two that are string-concatenated in loops, that was one
+     * character away from a silent flip.
+     */
+    private record Shape(String label, String body, String verdict) {
+
+        static Shape accepted(String label, String body) {
+            return new Shape(label, body, "ACCEPT");
+        }
+
+        static Shape refused(String label, String body, String code) {
+            return new Shape(label, body, code);
+        }
+    }
 
     /**
      * Every candidate, guarded so the rule references its own error field
@@ -94,29 +116,47 @@ class GroupOperandCarrierAdmissionLawsTest {
      */
     private static List<Shape> shapes() {
         List<Shape> s = new ArrayList<>();
+        String NO_GROUPS = "MVK_NO_GROUPS_ALLOWED";
 
-        // ── the operand-list Min/Max, which are NOT the MinValue/MaxValue aggregates already measured.
-        //    Their operands are VALUE expressions, so a field rides in brackets and a group must too. ──
-        s.add(new Shape("Min/operand-list/non-repeatable-group", "Min([Assessment], 5) > 0"));
-        s.add(new Shape("Max/operand-list/non-repeatable-group", "Max([Assessment], 5) > 0"));
-        s.add(new Shape("Min/operand-list/starred-repeatable-group", "Min([Payouts*], 5) > 0"));
-        s.add(new Shape("Min/operand-list/field-control", "Min([Assessment/Deductible], 5) > 0"));
+        // ── The operand-list Min/Max, which are NOT the MinValue/MaxValue aggregates measured elsewhere. Their
+        //    operands are VALUE expressions, so an entity rides in brackets.
+        //
+        //    A GATE-ORDER CAVEAT that a cold review caught, and it narrows what the starred row can claim:
+        //    `CheckFeldWertOpImpl.check` runs `checkIsField` (which throws the group code) BEFORE
+        //    `checkNoWildCards`, and `[...]` admits NO wildcard operand of any kind. So the starred-group row
+        //    below cannot distinguish "a starred group is refused" from "brackets refuse wildcards", and no field
+        //    control for it can exist — which is why the starred FIELD row is here to state the broader gate
+        //    instead of pretending to be that control. MEASURED: the starred FIELD draws MVK_NO_WILDCARDS_ALLOWED — a
+        //    DIFFERENT code from the group rows, which is what makes the two gates separable at all. The honest
+        //    joint claim is the stronger one: Min/Max admit no group operand and no wildcard operand. ──
+        s.add(Shape.refused("Min/operand-list/non-repeatable-group", "Min([Assessment], 5) > 0", NO_GROUPS));
+        s.add(Shape.refused("Max/operand-list/non-repeatable-group", "Max([Assessment], 5) > 0", NO_GROUPS));
+        s.add(Shape.refused("Min/operand-list/starred-repeatable-group", "Min([Payouts*], 5) > 0", NO_GROUPS));
+        s.add(Shape.refused("Max/operand-list/starred-repeatable-group", "Max([Payouts*], 5) > 0", NO_GROUPS));
+        s.add(Shape.refused("Min/operand-list/starred-FIELD-not-a-control",
+                "Min([Payouts*/Gross], 5) > 0", "MVK_NO_WILDCARDS_ALLOWED"));
+        s.add(Shape.accepted("Min/operand-list/field-control", "Min([Assessment/Deductible], 5) > 0"));
+        s.add(Shape.accepted("Max/operand-list/field-control", "Max([Assessment/Deductible], 5) > 0"));
 
-        // ── the aggregates over a DATE group. Compared against a DATE field of the same declared format:
-        //    a `> 0` comparison draws MVK_INVALID_COMPARE_TO_DATE on the field control too, so it measures
-        //    the comparison rather than the operand. ──
-        s.add(new Shape("MinValue/date-group/non-repeatable", "[ClaimedOn] > MinValue(Milestones)"));
-        s.add(new Shape("MinValue/date-group/starred-repeatable", "[ClaimedOn] > MinValue(Inspections*)"));
-        s.add(new Shape("MaxValue/date-group/starred-repeatable", "[ClaimedOn] > MaxValue(Inspections*)"));
-        s.add(new Shape("MinValue/date-field-control", "[ClaimedOn] > MinValue(Inspections*/VisitedOn)"));
+        // ── The aggregates over a DATE group. Compared against a DATE field of the same declared format: a
+        //    `> 0` comparison draws MVK_INVALID_COMPARE_TO_DATE on the field control too, so it would measure the
+        //    comparison rather than the operand. Both carriers appear in both repetition shapes, because a table
+        //    that measured one and asserted both is what a review caught here. ──
+        s.add(Shape.accepted("MinValue/date-group/non-repeatable", "[ClaimedOn] > MinValue(Milestones)"));
+        s.add(Shape.accepted("MaxValue/date-group/non-repeatable", "[ClaimedOn] > MaxValue(Milestones)"));
+        s.add(Shape.accepted("MinValue/date-group/starred-repeatable", "[ClaimedOn] > MinValue(Inspections*)"));
+        s.add(Shape.accepted("MaxValue/date-group/starred-repeatable", "[ClaimedOn] > MaxValue(Inspections*)"));
+        s.add(Shape.accepted("MinValue/date-field-control", "[ClaimedOn] > MinValue(Inspections*/VisitedOn)"));
+        s.add(Shape.accepted("MaxValue/date-field-control", "[ClaimedOn] > MaxValue(Inspections*/VisitedOn)"));
 
-        // ── the seven field-list FILL quantifiers over a group operand ──
+        // ── the seven field-list FILL quantifiers over a group operand, each with its explicit-field control ──
         for (String op : new String[] {
             "AllFieldsFilled", "NoFieldFilled", "AtLeastOneFieldFilled", "NotAllFieldsFilled",
             "FieldsNotCollectivelyFilled", "NotExactlyOneFieldFilled", "MoreThanOneFieldFilled",
         }) {
-            s.add(new Shape(op + "/non-repeatable-group", op + "(Contact)"));
-            s.add(new Shape(op + "/starred-repeatable-group", op + "(Adjusters*)"));
+            s.add(Shape.accepted(op + "/non-repeatable-group", op + "(Contact)"));
+            s.add(Shape.accepted(op + "/starred-repeatable-group", op + "(Adjusters*)"));
+            s.add(Shape.accepted(op + "/field-control", op + "(Contact/Email, Contact/Phone)"));
         }
 
         // ── the value-list quantifiers over a group operand ──
@@ -124,44 +164,78 @@ class GroupOperandCarrierAdmissionLawsTest {
             "AtLeastOneFieldValueIncludedInValueList", "NoFieldValueIncludedInValueList",
             "NotAllFieldValuesIncludedInValueList",
         }) {
-            s.add(new Shape(op + "/non-repeatable-group", op + "(Contact In \"x\", \"y\")"));
-            s.add(new Shape(op + "/starred-repeatable-group", op + "(Adjusters* In \"x\", \"y\")"));
-            s.add(new Shape(op + "/field-control", op + "(Contact/Email In \"x\", \"y\")"));
+            s.add(Shape.accepted(op + "/non-repeatable-group", op + "(Contact In \"x\", \"y\")"));
+            s.add(Shape.accepted(op + "/starred-repeatable-group", op + "(Adjusters* In \"x\", \"y\")"));
+            s.add(Shape.accepted(op + "/field-control", op + "(Contact/Email In \"x\", \"y\")"));
         }
 
+        // ── THE EXPANSION-VISIBILITY DISCRIMINATORS. Every ACCEPT above is over a HOMOGENEOUS group, so on its
+        //    own the table is equally consistent with "this carrier EXPANDS the group and type-checks the result"
+        //    and "this carrier waves anything reached through a group past its type gates". The runtime work
+        //    assumes the first, so the difference has to be measured, not assumed. A DATE group against a STRING
+        //    value list is refusable only if the expansion is what gets checked. (The sibling
+        //    `FieldValuesNotUniqueAdmissionLawsTest.aGroupWhoseExpansionMixesCategoriesReportsTheMixingGate` is
+        //    the same discriminator for its own carrier; this table had no analogue until a review said so.) ──
+        s.add(Shape.refused("AtLeastOneFieldValueIncludedInValueList/date-group-vs-string-list",
+                "AtLeastOneFieldValueIncludedInValueList(Milestones In \"x\", \"y\")",
+                "MVK_ONLY_STRING_ENUM_NUMBER_ALLOWED"));
+        s.add(Shape.accepted("AtLeastOneFieldValueIncludedInValueList/string-group-control",
+                "AtLeastOneFieldValueIncludedInValueList(Contact In \"x\", \"y\")"));
+
+        // ── The ARITY discriminator: `Note` expands to exactly ONE field. If the param law counted the
+        //    expansion, a one-field group would fail it exactly as the bare field does; if a group slot is
+        //    "already many" the way a starred slot is, it passes. MEASURED: the group is ACCEPTED and the bare
+        //    field draws MVK_PARAMSIZE_INVALIDN, so the arity gate does NOT count the expansion — the pair is
+        //    what shows it, and neither row alone does. ──
+        s.add(Shape.accepted("MoreThanOneFieldFilled/single-field-group", "MoreThanOneFieldFilled(Note)"));
+        s.add(Shape.refused("MoreThanOneFieldFilled/that-single-field-directly",
+                "MoreThanOneFieldFilled(Note/Text)", "MVK_PARAMSIZE_INVALIDN"));
+
         // ── FirstFilledValue's STARRED group form (the non-repeatable one is measured in the doc snippets) ──
-        s.add(new Shape("FirstFilledValue/starred-repeatable-group", "FirstFilledValue(Adjusters*) == \"x\""));
+        s.add(Shape.accepted("FirstFilledValue/starred-repeatable-group", "FirstFilledValue(Adjusters*) == \"x\""));
+        s.add(Shape.accepted("FirstFilledValue/field-control", "FirstFilledValue(Adjusters*/Name) == \"x\""));
 
         // ── NumberOfFilledFields over the unstarred non-repeatable group ──
-        s.add(new Shape("NumberOfFilledFields/non-repeatable-group", "NumberOfFilledFields(Contact) > 0"));
+        s.add(Shape.accepted("NumberOfFilledFields/non-repeatable-group", "NumberOfFilledFields(Contact) > 0"));
+        s.add(Shape.accepted("NumberOfFilledFields/field-control",
+                "NumberOfFilledFields(Contact/Email, Contact/Phone) > 0"));
 
-        // ── DateRangesOverlap: filteredStarCells' other caller, which IF287 left deliberately unexpanded ──
-        s.add(new Shape("DateRangesOverlap/non-repeatable-group", "DateRangesOverlap(Cover)"));
-        s.add(new Shape("DateRangesOverlap/starred-repeatable-group", "DateRangesOverlap(Periods*)"));
-        s.add(new Shape("DateRangesOverlap/field-control",
+        // ── The date-range family, whose two forms DISAGREE — the row a reader would least expect, and the one
+        //    that reopened a question IF287 had closed on the strength of "unmeasured". ──
+        s.add(Shape.refused("DateRangesOverlap/non-repeatable-group", "DateRangesOverlap(Cover)", NO_GROUPS));
+        s.add(Shape.refused("DateRangesOverlap/starred-repeatable-group", "DateRangesOverlap(Periods*)", NO_GROUPS));
+        s.add(Shape.accepted("DateRangesOverlap/field-control",
                 "DateRangesOverlap(Cover/PolicyWindow, Cover/ExtensionWindow)"));
-        s.add(new Shape("AtLeastOneDateRangeOverlaps/starred-repeatable-group",
+        s.add(Shape.accepted("AtLeastOneDateRangeOverlaps/starred-repeatable-group",
                 "AtLeastOneDateRangeOverlaps(Cover/PolicyWindow In Periods*)"));
-        s.add(new Shape("AtLeastOneDateRangeOverlaps/field-control",
+        s.add(Shape.accepted("AtLeastOneDateRangeOverlaps/field-control",
                 "AtLeastOneDateRangeOverlaps(Cover/PolicyWindow In Periods*/Window)"));
 
-        // ── the MIXED fill-quantifier list: one plain operand beside one FILTERED one (fillScopeInfo) ──
-        s.add(new Shape("AtLeastOneFieldFilled/plain-plus-filtered-field",
+        // ── the MIXED fill-quantifier list: one plain operand beside one FILTERED one (fillScopeInfo). The
+        //    third row is the CONTROL, not a live case: with a single Having-bearing star nothing diverts the
+        //    dispatch onto the scope path, so the filter is honoured there. ──
+        s.add(Shape.accepted("AtLeastOneFieldFilled/plain-plus-filtered-field",
                 "AtLeastOneFieldFilled(Charges*/Amount, Lines*/Amount Having [Lines/Sku] == \"A\")"));
-        s.add(new Shape("AllFieldsFilled/plain-plus-filtered-field",
+        s.add(Shape.accepted("AllFieldsFilled/plain-plus-filtered-field",
                 "AllFieldsFilled(Charges*/Amount, Lines*/Amount Having [Lines/Sku] == \"A\")"));
-        s.add(new Shape("AtLeastOneFieldFilled/filtered-field-alone",
+        s.add(Shape.accepted("AtLeastOneFieldFilled/filtered-field-alone-CONTROL",
                 "AtLeastOneFieldFilled(Lines*/Amount Having [Lines/Sku] == \"A\")"));
 
-        // ── the `$` OUTER operand shapes. Whether an aggregate can carry one at all is the precondition for
-        //    `aggOperandVals`' context mismatch being reachable: it decides the operand's FILL on the ambient
-        //    context while reading its VALUE through `ctxOf`, which is the outer one for a `$` node. Each row
-        //    is authored with TWO operands, because a one-operand aggregate draws the arity gate first and that
-        //    masks the verdict this table is asking for. ──
-        s.add(new Shape("Sum/outer-marked-group-operand", "Sum($/Claim/Assessment, [ExcessDue]) > 0"));
-        s.add(new Shape("Sum/outer-marked-field-operands",
-                "Sum($/Claim/Assessment/Deductible, $/Claim/Assessment/Excess) > 0"));
-        s.add(new Shape("Sum/unmarked-field-operands-control",
+        // ── The `$` OUTER marker. These rows measure a UNIVERSAL gate, not anything about aggregates, and
+        //    saying so is a correction: a cold review traced MVK_INVALID_OUTER_ITERATION to its single locus,
+        //    `CheckEntitySpecImpl.checkOuter` (`ctx.outer != null && !isInFilterCondition()`), which names no
+        //    carrier at all — and KERNEL-FINDINGS already records "`$` is filter-only". The non-aggregate row is
+        //    what makes that visible in the table: the same marker on a bare comparison draws the same code, so
+        //    the aggregate rows say nothing about `Sum`. The reachable spelling is `$` INSIDE a filter, which
+        //    these rows do NOT cover — see the class javadoc. ──
+        s.add(Shape.refused("outer-marker/bare-comparison-NOT-an-aggregate", "[$/Claim/ExcessDue] > 0",
+                "MVK_INVALID_OUTER_ITERATION"));
+        s.add(Shape.refused("outer-marker/under-Sum-group-operand", "Sum($/Claim/Assessment, [ExcessDue]) > 0",
+                "MVK_INVALID_OUTER_ITERATION"));
+        s.add(Shape.refused("outer-marker/under-Sum-field-operands",
+                "Sum($/Claim/Assessment/Deductible, $/Claim/Assessment/Excess) > 0",
+                "MVK_INVALID_OUTER_ITERATION"));
+        s.add(Shape.accepted("outer-marker/unmarked-control",
                 "Sum(Assessment/Deductible, Assessment/Excess) > 0"));
 
         return s;
@@ -179,62 +253,14 @@ class GroupOperandCarrierAdmissionLawsTest {
                         .flatMap(d -> d.code().stream()).findFirst().orElse("no-code"));
     }
 
-    /**
-     * The measured verdict per shape, asserted as one table.
-     *
-     * <p><b>What each verdict decides</b>, since this table is the gate the runtime work is planned against:
-     *
-     * <ul>
-     * <li><b>The operand-list {@code Min}/{@code Max} refuse a group operand</b> — so the missing group branch in
-     *     {@code minMaxOperandVals} is unreachable by authoring. Widening it "on symmetry" with its measured
-     *     {@code aggOperandVals} twin would have been a change to dead code, which is exactly the widening
-     *     {@code IF287} declined to make on the strength of a source reading.</li>
-     * <li><b>{@code MinValue}/{@code MaxValue} over a DATE group are admitted</b> — so {@code dateAggregate}'s
-     *     group-blindness (it asks {@code declaredKind} of a group path, which is null, and takes the NUMERIC
-     *     branch with its {@code 0} empty identity) is a live runtime question.</li>
-     * <li><b>Both date-range forms disagree with each other</b>, which is the row a reader would least expect:
-     *     {@code DateRangesOverlap} refuses a group operand outright, while the plural
-     *     {@code AtLeastOneDateRangeOverlaps} admits one in its {@code In} slot. IF287 left the shared
-     *     {@code filteredStarCells} unexpanded because the date-range caller's group behaviour was unmeasured;
-     *     half of that is now measured as unreachable and the other half as reachable.</li>
-     * <li><b>A {@code $}-marked aggregate operand is refused</b> {@code MVK_INVALID_OUTER_ITERATION}, for a group
-     *     and a field operand alike, while the same list unmarked is admitted — so the refusal is about the
-     *     marker and not about the operands. That bears on the context mismatch in {@code aggOperandVals}, which
-     *     decides an operand's fill on the ambient context while reading its value through {@code ctxOf}, the
-     *     OUTER context for a {@code $} node. <b>Scope of this row, stated because it is narrower than the claim
-     *     it supports:</b> the refusal is measured at the TOP LEVEL of a condition only. The nested spelling — a
-     *     {@code Sum} inside an overlap predicate's {@code Having}, where {@code $} is otherwise meaningful — is
-     *     NOT measured here: both the marked and the unmarked form of it draw
-     *     {@code MVK_NO_ITERATION_FOR_WILDCARD}, so that probe measured the {@code Having} construction rather
-     *     than the marker, exactly as two discarded rows above did. Whether some other construct can place an
-     *     {@code outer} node into an aggregate's operand list is therefore open, and it is a question about the
-     *     PARSER rather than about this table.</li>
-     * <li><b>Every fill quantifier, every value-list quantifier, and {@code FirstFilledValue} admit both group
-     *     shapes</b> — 24 rows, and the reason [IG135] and the value-list candidate are runtime work rather
-     *     than speculation.</li>
-     * </ul>
-     */
-    private static String expected(String label) {
-        return switch (label) {
-            case "Min/operand-list/non-repeatable-group",
-                 "Max/operand-list/non-repeatable-group",
-                 "Min/operand-list/starred-repeatable-group",
-                 "DateRangesOverlap/non-repeatable-group",
-                 "DateRangesOverlap/starred-repeatable-group" -> "MVK_NO_GROUPS_ALLOWED";
-            case "Sum/outer-marked-group-operand",
-                 "Sum/outer-marked-field-operands" -> "MVK_INVALID_OUTER_ITERATION";
-            default -> "ACCEPT";
-        };
-    }
-
     @Test
     void everyCandidateCarriersVerdictIsTheMeasuredOne() {
         List<String> mismatches = new ArrayList<>();
         for (Shape shape : shapes()) {
             String actual = verdict(shape);
-            if (!expected(shape.label()).equals(actual)) {
+            if (!shape.verdict().equals(actual)) {
                 mismatches.add("%s: expected %s, got %s%n    condition: %s"
-                        .formatted(shape.label(), expected(shape.label()), actual, shape.body()));
+                        .formatted(shape.label(), shape.verdict(), actual, shape.body()));
             }
         }
         org.junit.jupiter.api.Assertions.assertEquals(List.of(), mismatches,

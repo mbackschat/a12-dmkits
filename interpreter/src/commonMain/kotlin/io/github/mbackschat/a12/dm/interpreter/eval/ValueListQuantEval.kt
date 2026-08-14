@@ -41,7 +41,14 @@ private class VlqOperand(val filtered: Boolean) {
     fun anyPresent(): Boolean = cells.any { it != null && it !is Val.Unknown }
 }
 
-private fun Interpreter.vlqOperands(entries: List<Expr>): List<VlqOperand> = entries.map { e ->
+// A GROUP operand is expanded to its contained fields FIRST, in either repetition shape, through the shared
+// [expandGroupOperands] owner. Without it neither arm below could read a cell: the `Star` arm calls
+// `starCells` at the starred path, of which a group path has none, and the `Field` arm takes `presenceTri`,
+// FALSE for a group — so the quantifier ran over an EMPTY selection and still returned a well-formed verdict.
+// Measured against both kernel strategies, which ADMIT the shape ([KF187]): on a document holding a listed
+// value, `AtLeastOne` returned false and `No` returned true — the opposite-direction signature of an empty
+// selection rather than of a wrong verdict ([IF287]'s class; `GroupOperandValueListQuantifierDiffTest`).
+private fun Interpreter.vlqOperands(entries: List<Expr>): List<VlqOperand> = expandGroupOperands(entries).map { e ->
     when (e) {
         is Expr.Star -> {
             val op = VlqOperand(filtered = e.having != null)

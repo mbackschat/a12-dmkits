@@ -121,14 +121,52 @@ private fun Interpreter.filledGroupsValue(args: List<Expr>): Val {
  * The `Having`, `outer` and `bindDepth` of the authored operand ride each expanded field, exactly as
  * [starOperandVals] preserves them — the filter belongs to the operand, not to one of its expanded cells.
  */
+/** Whether [arg] names a GROUP rather than a declared field — a group holds no value of its own, so an operand
+ *  that names one has to be expanded to the fields below it before anything can read a cell. */
+private fun Interpreter.namesAGroup(arg: Expr): Boolean = when (arg) {
+    is Expr.Star -> ctxOf(arg).declaredKind(arg.path) == null
+    is Expr.Field -> ctxOf(arg).declaredKind(arg.path) == null
+    else -> false
+}
+
+/**
+ * **The one place that knows HOW a group operand expands** — recursively to every declared field below it (the
+ * kernel's `ExpandService` → `getAllContainedFields`), each field carrying the authored operand's `Having`,
+ * `$`-outer marking, and a bind depth resolved to the operand's OWN level so every repeatable level strictly
+ * below it stays free ([expansionBindDepth]; [IF287]'s fourth instance is what a raw `-1` cost).
+ *
+ * Both shapes expand to a **starred** field, including the unstarred one: the star form iterates every repeatable
+ * level below the evaluating row, while a field sitting directly in a non-repeatable group degenerates to the
+ * single row a plain reference would have read. Choosing the node shape from the *operand's* shape instead was
+ * [IF287]'s third defect.
+ *
+ * A group with no declared field below it yields the operand unchanged rather than nothing, so an empty group
+ * cannot silently erase an operand.
+ */
+private fun Interpreter.expandOneGroupOperand(arg: Expr): List<Expr> {
+    val star = arg as? Expr.Star
+    val path = star?.path ?: (arg as Expr.Field).path
+    val outer = star?.outer ?: (arg as Expr.Field).outer
+    val depth = expansionBindDepth(path, star?.bindDepth ?: -1)
+    return ctxOf(arg).containedFields(path)
+        .map { Expr.Star(it, star?.having, outer, depth) }
+        .ifEmpty { listOf(arg) }
+}
+
+/** Expand STARRED group operands only — the shape a repeatable group operand must use (`MVK_NO_WILDCARD`
+ *  refuses it unstarred). Kept distinct from [expandGroupOperands] because its callers each have their own
+ *  measured handling of the unstarred shape, and widening a shared path past its measured basis is the mirror
+ *  of the defect class this function exists to close. */
 internal fun Interpreter.expandGroupStars(args: List<Expr>): List<Expr> {
-    if (args.none { it is Expr.Star && ctxOf(it).declaredKind(it.path) == null }) return args
-    return args.flatMap { arg ->
-        if (arg !is Expr.Star || ctxOf(arg).declaredKind(arg.path) != null) listOf(arg)
-        else ctxOf(arg).containedFields(arg.path)
-            .map { Expr.Star(it, arg.having, arg.outer, expansionBindDepth(arg.path, arg.bindDepth)) }
-            .ifEmpty { listOf(arg) }
-    }
+    if (args.none { it is Expr.Star && namesAGroup(it) }) return args
+    return args.flatMap { arg -> if (arg is Expr.Star && namesAGroup(arg)) expandOneGroupOperand(arg) else listOf(arg) }
+}
+
+/** Expand a group operand in **either** repetition shape — the starred one and the unstarred one a
+ *  NON-repeatable group must use. For a carrier that admits both and treats them alike. */
+internal fun Interpreter.expandGroupOperands(args: List<Expr>): List<Expr> {
+    if (args.none { namesAGroup(it) }) return args
+    return args.flatMap { arg -> if (namesAGroup(arg)) expandOneGroupOperand(arg) else listOf(arg) }
 }
 
 private fun Interpreter.filledFieldsValue(args: List<Expr>): Val {
