@@ -563,10 +563,16 @@ private fun Interpreter.evalFunc(f: Expr.Func): Val {
     // no-value (Unknown), not the number combiner's 0 (DateAggregateDiffTest).
     // operand-list forms: every operand counts (an empty number arrives as the substituted 0; a DATE-like
     // empty operand is SKIPPED — the kernel's `minDatum` combine keeps the date-bearing side)
-    FunctionOp.MIN -> if (dateAggregate(f)) evalTemporal(f).asTemporalVal()
+    FunctionOp.MIN -> {
+        refuseGroupOperandUnderMinMax(f)
+        if (dateAggregate(f)) evalTemporal(f).asTemporalVal()
         else combine(minMaxOperandVals(f)) { Aggregates.min(it, minMaxEmpty(f)) }
-    FunctionOp.MAX -> if (dateAggregate(f)) evalTemporal(f).asTemporalVal()
+    }
+    FunctionOp.MAX -> {
+        refuseGroupOperandUnderMinMax(f)
+        if (dateAggregate(f)) evalTemporal(f).asTemporalVal()
         else combine(minMaxOperandVals(f)) { Aggregates.max(it, minMaxEmpty(f)) }
+    }
     // starred aggregates: empties are SKIPPED (Sum substitutes 0 = same result; Max/distinct ignore)
     FunctionOp.SUM -> combine(starVals(f), Aggregates::sum)
     FunctionOp.MAX_VALUE -> combine(starVals(f)) { Aggregates.max(it, minMaxEmpty(f)) }
@@ -1812,14 +1818,34 @@ private fun Interpreter.minMaxEmpty(f: Expr.Func): Val = if (dateAggregate(f)) V
  * refused shape typed into `rule eval` took the WHOLE evaluation down instead of failing its own rule.
  * `UnsupportedConstructException` is the one type that net catches. (`KernelRefusedShapeReachabilityTest`.)
  */
-private fun Interpreter.minMaxOperandVals(f: Expr.Func): List<Val> = f.args.map { arg ->
-    if (namesAGroup(arg)) {
-        throw UnsupportedConstructException(
-            "${f.name} does not accept a group operand (${pathOf(arg)}) — the kernel refuses it with " +
-                "MVK_NO_GROUPS_ALLOWED; use MinValue/MaxValue for a group scope, or name the fields explicitly",
-        )
-    }
-    evalExpr(arg)
+private fun Interpreter.minMaxOperandVals(f: Expr.Func): List<Val> = f.args.map(::evalExpr)
+
+/**
+ * The operand-list `Min`/`Max` REFUSE a group operand, and the refusal sits at the DISPATCH rather than inside the
+ * numeric arm — which is the correction a cold review forced.
+ *
+ * **The measured basis** is that these two carriers draw `MVK_NO_GROUPS_ALLOWED` for a group operand in both
+ * repetition shapes, while their `MinValue`/`MaxValue` siblings accept one ([KF187]). So there is no correct
+ * expansion semantics to implement here — the shape has no meaning to match — and widening the site "on symmetry"
+ * with `aggOperandVals` would invent one. It is refused as a DEGRADE rather than left to fail on its own because a
+ * kernel refusal only bounds what a *stored, validated* model can contain: `Expr` is public API, this module's
+ * parser accepts the shape in both the bracketed and the bare spelling, and `dmtool rule eval --condition`
+ * evaluates an arbitrary condition with no MVK pre-flight at all.
+ *
+ * **Why the position matters, and it is the slice's own convergence lesson.** The guard first lived inside
+ * [minMaxOperandVals], which the dispatch reaches only on its NUMERIC branch. The same session's fix that made
+ * [dateAggregate] resolve a GROUP's kind through its contained fields therefore routed a group of DATE fields past
+ * the guard into [evalTemporal], where reading a value at the group path threw `no kind declared` — the very crash
+ * class this refusal exists to close, re-opened by a sibling fix in the same slice, and invisible to the original
+ * lock because its fixture group held two NUMBER fields. (`KernelRefusedShapeReachabilityTest` now carries both
+ * kinds in both spellings.)
+ */
+private fun Interpreter.refuseGroupOperandUnderMinMax(f: Expr.Func) {
+    val group = f.args.firstOrNull { namesAGroup(it) } ?: return
+    throw UnsupportedConstructException(
+        "${f.name} does not accept a group operand (${pathOf(group)}) — the kernel refuses it with " +
+            "MVK_NO_GROUPS_ALLOWED; use MinValue/MaxValue for a group scope, or name the fields explicitly",
+    )
 }
 
 /**

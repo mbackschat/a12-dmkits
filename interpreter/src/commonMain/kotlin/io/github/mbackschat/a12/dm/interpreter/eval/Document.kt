@@ -1192,9 +1192,12 @@ class Document(internal val config: DocumentConfig) {
                 else listOf(scopePath)
             var t = 0; var f = 0; var n = 0; var unknown = false
             var allFilled = true; var anyEmpty = false
-            // The bound prefix is capped at the OPERAND'S OWN depth, so every repeatable level strictly below the
-            // operand iterates whatever the rule iterates — the same rule `ast.expansionBindDepth` applies to a
-            // converted group star. Without the cap, `common` was the shared prefix with the EVALUATING group
+            // The bound prefix is capped at the OPERAND'S OWN PATH depth. For an UNSTARRED group operand that is
+            // the same quantity `ast.expansionBindDepth` yields; for a STARRED one it is one level deeper, because
+            // this seam takes no bindDepth at all — the same structural gap as the missing `having` one branch up
+            // — so the star's own level stays bound here while `expandGroupStars` frees it. That difference is
+            // UNMEASURED and is recorded in [IG136]; the original comment claimed the two were the same rule, which
+            // a cold review corrected. Without the cap, `common` was the shared prefix with the EVALUATING group
             // alone, so a rule authored ON a repeatable level below the operand already had that level inside
             // `common`; `multi` then read false and `instCells` returned the single current row's cell. Measured
             // from a rule on the nested level with the operand naming its ancestor: `AllFieldsFilled` fired on the
@@ -1226,9 +1229,16 @@ class Document(internal val config: DocumentConfig) {
         // declared-range form interleaves a field's uninstantiated repetitions BEFORE the next field (RV04-1).
         override fun containedFieldCells(groupPath: String, declaredRange: Boolean): Sequence<ScanCell> = sequence {
             val fields = containedFields(groupPath)
+            // Capped at the OPERAND'S OWN depth, exactly as [fillScope] is — this is that fix's sibling site, and
+            // a cold review caught it unswept. Uncapped, `common` is the shared prefix with the EVALUATING group
+            // alone, so a rule or computation authored ON a repeatable level below the operand already has that
+            // level inside `common` and the scan collapses to the single current row. The two callers that reach
+            // it are the compute-path bare-group fill scan and `FirstFilledValue`'s group operand, so the same pin
+            // that displaced two validation fire sets in opposite directions was live on both of those.
+            val scopeDepth = partsOf(groupPath).size
             for (field in fields) {
                 val fieldParts = partsOf(field)
-                val common = commonPrefixLen(fieldParts, partsOf(group))
+                val common = minOf(commonPrefixLen(fieldParts, partsOf(group)), scopeDepth)
                 val reps = if (declaredRange) declaredCellReps(fieldParts, common)
                     else instantiatedCellReps(field, fieldParts, common)
                 for (r in reps) yield(scanCell(field, r))

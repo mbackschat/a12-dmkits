@@ -108,8 +108,11 @@ class DateGroupExtremaDiffTest {
     private fun assertOperandSubstituted() {
         assertNotEquals(earliestVisitAfterClaim, earliestInGroupAfterClaim,
             "the group operand substitution did not apply — every row would compare the control to itself")
-        assertTrue(earliestInGroupAfterClaim.contains(INSPECTIONS_STAR)) {
-            "the derived condition does not name the group operand: $earliestInGroupAfterClaim"
+        // Checks the REPLACED operand is GONE, not that the group operand is present: the group path is a PREFIX
+        // of the field path it replaces, so a `contains(group)` check is satisfied by the un-substituted control
+        // and guards nothing. A cold review caught it.
+        assertTrue(!earliestInGroupAfterClaim.contains(VISITED_STAR)) {
+            "the derived condition still names the replaced operand: $earliestInGroupAfterClaim"
         }
     }
 

@@ -94,11 +94,23 @@ class GroupOperandValueListQuantifierDiffTest {
 
     private enum class Quantifier { AT_LEAST_ONE, NONE, NOT_ALL }
 
-    private fun assertSubstituted(quantifier: Quantifier) {
-        assertNotEquals(control(quantifier), overGroup(quantifier),
+    private fun assertSubstituted(quantifier: Quantifier) =
+        assertSubstitutionApplied(control(quantifier), overGroup(quantifier), NAME_STAR)
+
+    /**
+     * The guard against a vacuous row: a derived condition that still equals its control compares the control to
+     * itself and passes.
+     *
+     * **The second assertion checks the REPLACED operand is GONE, not that the group operand is present** — and
+     * that correction matters, because the group path is a PREFIX of the field path it replaces
+     * (`/Policy/Adjusters*` inside `/Policy/Adjusters*{@code /}Name`), so a `contains(group)` check is satisfied by
+     * the un-substituted control and guards nothing. A cold review caught it in both files that use this pattern.
+     */
+    private fun assertSubstitutionApplied(control: String, derived: String, replaced: String) {
+        assertNotEquals(control, derived,
             "the group substitution did not apply — the row would compare the control to itself")
-        assertTrue(overGroup(quantifier).contains(ADJUSTERS_STAR)) {
-            "the derived condition does not name the group operand: ${overGroup(quantifier)}"
+        assertTrue(!derived.contains(replaced)) {
+            "the derived condition still names the replaced operand `$replaced`: $derived"
         }
     }
 
@@ -235,6 +247,7 @@ class GroupOperandValueListQuantifierDiffTest {
                 ),
             ),
         )
+        assertSubstitutionApplied(control, control.replace(REGION_STAR, ADJUSTERS_STAR), REGION_STAR)
         agreeFires(control.replace(REGION_STAR, ADJUSTERS_STAR), expected = true,
             msg = "VALUES side/GROUP: the screened value appears in Adjusters[2]/Region",
             build = ::screenedValueOnlyInTheSecondRowsRegion)
@@ -253,6 +266,7 @@ class GroupOperandValueListQuantifierDiffTest {
                 ),
             ),
         )
+        assertSubstitutionApplied(control, control.replace(REGION_STAR, ADJUSTERS_STAR), REGION_STAR)
         agreeFires(control.replace(REGION_STAR, ADJUSTERS_STAR), expected = false,
             msg = "VALUES side/GROUP: nothing below the group equals the screened value") { b ->
             b.group("/Policy", 1).field(REF, "P-1", 1, 1).field(SCREENED, "ZZZ", 1, 1)

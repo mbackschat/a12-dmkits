@@ -41,6 +41,8 @@ class KernelRefusedShapeReachabilityTest {
             FieldDef(ANCHOR, Kind.STRING),
             FieldDef(FIRST, Kind.NUMBER),
             FieldDef(SECOND, Kind.NUMBER),
+            FieldDef(REPORTED, Kind.DATE),
+            FieldDef(SETTLED, Kind.DATE),
         ),
         rules = emptyList(),
     )
@@ -49,6 +51,7 @@ class KernelRefusedShapeReachabilityTest {
     private fun outcome(condition: String): String {
         val doc = model.newDocument().field(ANCHOR, "present", 1, 1)
             .field(FIRST, "3", 1, 1, 1).field(SECOND, "4", 1, 1, 1)
+            .field(REPORTED, "2026-06-01", 1, 1, 1).field(SETTLED, "2026-06-05", 1, 1, 1)
         val ctx = doc.contextsFor(ROOT).single()
         return try {
             val parsed = parseCondition(condition, ROOT)
@@ -71,6 +74,22 @@ class KernelRefusedShapeReachabilityTest {
     /** The same shape in the BARE spelling, which is the one the review pointed at as parsing here. */
     @Test fun theBareSpellingOfTheSameShapeDoesNotCrashTheEvaluator() = assertDegradesOrWorks(
         "Min($BILLING, 5) > 0", "the operand-list Min over a bare group path")
+
+    /**
+     * **The DATE-group spelling of the same shape, and the row a cold review had to add.** The refusal in
+     * `minMaxOperandVals` is only reached on the NUMERIC branch: `FunctionOp.MIN` dispatches
+     * `if (dateAggregate(f)) evalTemporal(f) else combine(minMaxOperandVals(f))`, and the same session's fix that
+     * made `dateAggregate` resolve a GROUP's kind through its contained fields therefore routes a group of DATE
+     * fields *past* the refusal into `evalTemporal`, where reading a value at the group path crashes. Two fixes
+     * inside one slice interacting, with the later one's evidence built on the earlier one's blind spot — which is
+     * why the original fixture (two NUMBER fields) could not see it.
+     */
+    @Test fun theSameShapeOverADATEGroupDoesNotCrashTheEvaluator() = assertDegradesOrWorks(
+        "Min([$MILESTONES], 5) > 0", "the operand-list Min over a bracketed DATE group")
+
+    /** …and its bare spelling, since the two reach `evalExpr` by different routes. */
+    @Test fun theBareDATEGroupSpellingDoesNotCrashTheEvaluator() = assertDegradesOrWorks(
+        "Min($MILESTONES, 5) > 0", "the operand-list Min over a bare DATE group path")
 
     /** `DateRangesOverlap` over a group — the other closure, and the arm whose sibling crashed once already. */
     @Test fun dateRangesOverlapOverAGroupDoesNotCrashTheEvaluator() = assertDegradesOrWorks(
@@ -100,5 +119,8 @@ class KernelRefusedShapeReachabilityTest {
         const val BILLING = "/Order/Billing"
         const val FIRST = "/Order/Billing/First"
         const val SECOND = "/Order/Billing/Second"
+        const val MILESTONES = "/Order/Milestones"
+        const val REPORTED = "/Order/Milestones/ReportedOn"
+        const val SETTLED = "/Order/Milestones/SettledOn"
     }
 }

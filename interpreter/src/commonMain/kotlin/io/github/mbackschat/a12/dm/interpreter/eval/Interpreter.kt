@@ -502,8 +502,14 @@ class Interpreter(
 
     /**
      * The [FillScope] of a `Having`-FILTERED starred operand, tallied over the rows the filter KEEPS — the same
-     * kept-row scan and the same 3-state classification as [naiveStarQuantTally], which is the measured path a
-     * filtered operand takes when it is alone in its list.
+     * kept-row scan as [naiveStarQuantTally], which is the measured path a filtered operand takes when it is alone
+     * in its list.
+     *
+     * **The classification is NOT identical to that sibling, and saying so was a correction.** A filled-but-
+     * malformed kept cell sets [FillScope.hasUnknownInst] here (so the quantifier can be suppressed) where
+     * [naiveStarQuantTally] silently drops it. This branch matches [EvalContext.fillScope]'s classification instead
+     * — the right neighbour for a value handed to `fillScopeInfo` — but that is an unmeasured semantic choice, not
+     * a parity: no row places a malformed cell in a KEPT row, so nothing in the estate separates the two readings.
      *
      * **Why this exists.** A fill quantifier is diverted onto the group/starred-scope path as soon as ANY operand
      * qualifies ([hasFillScopeOperand]), and that path called [EvalContext.fillScope] for EVERY operand — a
@@ -1234,44 +1240,23 @@ class Interpreter(
      * measured basis is the defect class CLAUDE.md's "never broader than its measured basis" rule names.
      */
     private fun comparedCells(a: Expr): List<Val> {
-        val path = when (a) {
-            is Expr.Star -> a.path
-            is Expr.Field -> a.path
-            else -> null
-        }
-        if (path != null && ctxOf(a).declaredKind(path) == null) {
-            val contained = ctxOf(a).containedFields(path)
-            if (contained.isNotEmpty()) {
-                // The star's Having and binding ride each expanded field, exactly as starOperandVals preserves
-                // them (IF99) — the filter belongs to the authored operand, not to one of its expanded cells.
-                //
-                // BOTH arms expand to a STARRED field, including the non-starred one. A contained field may live
-                // under a repeatable SUBGROUP, and a plain field ref reads it at one ambient coordinate — which
-                // silently dropped every row but the first, so a duplicate pairing a direct field with nested row 2
-                // went unreported while both kernel strategies fire on it.
-                //
-                // The expanded field binds at the OPERAND'S OWN group depth, not at `-1`. `-1` means "the leaf
-                // group's parent", which iterates the nested repetition fully only while nothing else anchors an
-                // intermediate level — and iteration here is reference-driven, so a sibling ref can anchor one.
-                // Measured: with the guard `FieldFilled(…/Handovers/Marker)` anchoring the middle level, a
-                // duplicate spanning two `Handovers` rows' `Scans` fires on both kernel strategies and the
-                // interpreter returned FALSE, because `groupScopePrefix` caps at the common prefix with the
-                // ITERATING group and `-1` left that cap high enough to pin `Handovers`. Binding at the operand's
-                // own depth keeps every level strictly below the operand free whatever the rule iterates, which is
-                // the same rule `ModelStaticPlans.expandMessageReference` applies to the reference channel — the
-                // two channels of one operand must not disagree about its extent.
-                // The depth comes from `ast.expansionBindDepth`, the single owner of this formula — it was
-                // inlined here, which is how one quantity came to be spelled three ways across five resolvers.
-                return contained.flatMap { field ->
-                    comparedCells(
-                        when (a) {
-                            is Expr.Star -> Expr.Star(field, a.having, a.outer, a.bindDepth)
-                            else -> Expr.Star(field, null, (a as Expr.Field).outer,
-                                expansionBindDepth(path, -1))
-                        },
-                    )
-                }
-            }
+        // Routed through the SHARED owner rather than expanding here. This site used to carry a complete private
+        // copy — `containedFields` + `Expr.Star` construction + recursion — with only the depth formula delegated,
+        // so the "one owner" claim was false and, worse, the copy DIVERGED: its starred arm passed `bindDepth` raw
+        // where the owner normalizes it through `ast.expansionBindDepth`. That difference is inert for parsed input
+        // (whose bindDepth is always >= 0) and live for a hand-built `Expr.Star(path)`, which is exactly the input
+        // the normalizer is kept for. A cold review caught both halves.
+        //
+        // What the owner preserves, and why each matters here: the star's `Having` and binding ride each expanded
+        // field ([IF99] — the filter belongs to the authored operand, not to one of its expanded cells); BOTH arms
+        // expand to a STARRED field, including the non-starred one, because a contained field may live under a
+        // repeatable subgroup where a plain ref reads one ambient coordinate and silently drops every row but the
+        // first; and the expanded field binds at the OPERAND'S OWN depth, so every level strictly below it stays
+        // free whatever the rule iterates — the same rule the reference channel applies, since the two channels of
+        // one operand must not disagree about its extent ([IF287]'s third and fourth instances).
+        if (namesAGroup(a)) {
+            val expanded = expandOneGroupOperand(a)
+            if (expanded.singleOrNull() !== a) return expanded.flatMap { comparedCells(it) }
         }
         return if (a is Expr.Star) filteredStarCells(a)                   // kept row values, empties already dropped
         else if (ctx.filled(pathOf(a))) listOf(evalExpr(a)) else emptyList()
