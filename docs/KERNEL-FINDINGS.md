@@ -2917,3 +2917,21 @@ A group operand is not a shape the kernel admits or refuses globally. Swept acro
 **What the refusals do and do not license.** Each refusal makes a corresponding interpreter path unreachable *through the kernel's own validator* — the missing group branch in `minMaxOperandVals`, and the deliberately unexpanded group case in the `filteredStarCells` path `DateRangesOverlap` shares. It does **not** make them unreachable: `Expr` is public API, our parser accepts a bare group path as a function argument, and `dmtool rule eval --condition` evaluates an arbitrary condition with no MVK pre-flight at all (the native binary carries no kernel). So "the kernel refuses it" bounds what a *stored, validated* model can contain, and nothing more.
 
 *(Locked: `validate.laws.GroupOperandCarrierAdmissionLawsTest` — one asserted table whose verdict rides in each row rather than in a lookup with a `default -> ACCEPT` arm, so a mistyped label can no longer silently downgrade a refusal expectation. The fixture carries a homogeneous group per field kind in both repetition shapes, since a mixed group's expansion offends the kind gate first and its rejection then cannot distinguish "this carrier refuses a group" from "this carrier refuses these kinds". Every ACCEPT family carries an explicit-field control; the `Min`/`Max` and `DateRangesOverlap` refusals carry an admitted field control each, and the starred-group cells additionally carry the starred-field row that separates the wildcard gate from the group gate.)*
+
+## §9 supplement — the WILDCARD gate reads the AUTHORED slot, so a group operand covers nested repeatable levels that an explicit field path must star itself (kernel `checkConsistency`, 2026-08-15) <a id="kf188"></a>
+
+> Fold: pending — it belongs beside the arity/category split in the §9 group-operand table, which [KF187](#kf187) has not folded either.
+
+A group operand whose expansion crosses a **nested repeatable** group is admitted without the author naming any inner star: `FieldsNotCollectivelyFilled(Sections*, Note)` is ACCEPTED where `Sections` repeats and contains a repeatable `Answers`. The **same expansion written out** is refused: naming `Sections*/Answers/Text` draws `MVK_NO_WILDCARD` — *"Missing specification of an asterisk for 'Sections/Answers'"* — and starring both levels is accepted again, which is the control that attributes the refusal to the missing inner star rather than to the spelling.
+
+So this is the **third** gate in the split [KF187](#kf187) opens, and it lands on the *authored* side with arity rather than on the *expansion* side with the kind/category gate:
+
+| gate | reads |
+|---|---|
+| arity (`MVK_PARAMSIZE_INVALIDN`) | the **authored** slots — a group is already-many ([KF187](#kf187)) |
+| **wildcard (`MVK_NO_WILDCARD`)** | the **authored** path — a group operand is checked at its own level only |
+| kind / category (`MVK_VARYING_TYPES_NOT_ALLOWED`, `MVK_NO_NUMBER`, …) | the **expansion** ([KF187](#kf187), [KF173](#kf173)) |
+
+**Why it is worth its own entry rather than an inference from either neighbour.** The two rows say opposite things about the same operand, so neither predicts this one: an implementation that reasoned "the kind gate reads the expansion, therefore every gate does" would expect the group form to be refused, and one that reasoned from arity alone would have no view on the explicit form at all. It also has a direct consumer consequence — **any rewrite of a group operand into its expansion must star every repeatable level it crosses**, because what the kernel waves through as a group it refuses as a path. Ours did not, and turned a legal model into an unauthorable condition ([CG15](CLI-CONFORMANCE-GAPS.md#cg15)).
+
+*(Locked: `adapter.MixedScopeStarPreservationTest` — the nested-repeatable row asserts the read-back is itself kernel-accepted, with a non-repeatable subgroup as the control that gains no inner star.)*

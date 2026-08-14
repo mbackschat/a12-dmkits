@@ -40,7 +40,9 @@ The gaps below were the **ergonomic and consistency remainder** — what added f
 
 ## 2. Open
 
-_None open._
+- **DG36 — a fill quantifier cannot take a group beside a field, because we model one kernel construct as two records.** <a id="dg36"></a> The kernel has **one** `IEntityListCondition` per fill quantifier, holding one entity list whose members may each be a field or a group; `FieldsNotCollectivelyFilled(Sections*, Note)` is an ordinary member of it and is kernel-ACCEPTED. rulekit splits that into `FieldListPredicate(Quantifier, List<FieldOperand>)` and `GroupScopedFieldFill(Quantifier, List<GroupListRef>)`, so a **mixed** list is unrepresentable and every `Dsl` fill factory comes in two disjoint overload families. That is an invented shape where A12 defines one, and it has a live consequence: the converter must *replay* the kernel's expansion into explicit field operands for the mixed arm, which is where [KF188](KERNEL-FINDINGS.md#kf188) was found — the replay is now star-correct, but the read-back still cannot be the authored text, so [CG15](CLI-CONFORMANCE-GAPS.md#cg15)'s round-trip gate can never be met for that arm while the split stands.
+
+  **The shape of the fix**, since it is a public API change and not a widened overload (the DG34 lesson): merge the two records into one holding `List<AggregateOperand>` — the sealed union `FieldOperand | GroupListRef` that already exists for exactly this reason on the aggregate side — and delete the group-only record. The eight `Dsl` factory pairs then collapse to one family each. **Not taken in the 2026-08-15 slice** because it changes a published record's shape and the converter defect it enables was fixable without it; the harm (a legal model reading back as an unauthorable condition) is closed either way.
 
 ---
 

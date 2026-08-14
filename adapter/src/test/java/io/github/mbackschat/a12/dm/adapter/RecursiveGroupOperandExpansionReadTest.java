@@ -10,8 +10,15 @@ import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer;
 import io.github.mbackschat.a12.dm.rulekit.read.ReadResult;
 
 /**
- * A group operand expands to every descendant field, not only the fields declared directly in the
- * group. This applies to both field-fill quantifiers and numeric value aggregates.
+ * A group operand covers every descendant field, not only the fields declared directly in the group — and the
+ * two operator families now say so in <b>different</b> ways, which is the point of keeping both rows here.
+ *
+ * <p>The MIXED group+field fill quantifier still replays the expansion into explicit field operands, because no
+ * fill-quantifier operand type can hold a group beside a field. The value aggregates no longer do: their operand
+ * stays a {@code GroupListRef}, so the recursion is the kernel's ({@code ExpandService}) and the read-back is the
+ * authored text. The replay is what CG15 measured as lossy — see {@code GroupScopeAggregateRoundTripTest} for the
+ * four shapes it could not represent, and the fill arm's own remaining loss recorded in the CLI conformance
+ * ledger.
  */
 class RecursiveGroupOperandExpansionReadTest {
 
@@ -31,18 +38,20 @@ class RecursiveGroupOperandExpansionReadTest {
                 rendered);
     }
 
+    /**
+     * The aggregate arm keeps the group, so the nested {@code Adjustment/Correction} is reached by the kernel
+     * rather than named here. {@code Adjustment} is NON-repeatable, so the old explicit form happened to be
+     * correct on this fixture — which is exactly why the defect survived this test: make it repeatable and the
+     * replay emits it unstarred.
+     */
     @Test
-    void expandsNestedNumberFieldsInAStarredGroupAggregate() {
+    void aStarredGroupAggregateKeepsTheGroupAndLetsTheKernelRecurse() {
         String condition =
                 "AtLeastOneFieldFilled(Samples*/Reading) And [Total] != Sum(Samples*)";
 
         String rendered = read(condition, "../Total");
 
-        assertTrue(rendered.contains(
-                        "Sum("
-                                + "/Calibration/Samples*/Reading, "
-                                + "/Calibration/Samples*/Adjustment/Correction)"),
-                rendered);
+        assertTrue(rendered.contains("Sum(/Calibration/Samples*)"), rendered);
     }
 
     private static String read(String condition, String errorEntityRelPath) {

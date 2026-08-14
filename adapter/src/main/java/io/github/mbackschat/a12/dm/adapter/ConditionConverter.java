@@ -114,6 +114,7 @@ import io.github.mbackschat.a12.dm.rulekit.dsl.FieldValueAsNumber;
 import io.github.mbackschat.a12.dm.rulekit.dsl.FirstFilledValue;
 import io.github.mbackschat.a12.dm.rulekit.dsl.FirstFilledOperand;
 import io.github.mbackschat.a12.dm.rulekit.dsl.RangeAsNumber;
+import io.github.mbackschat.a12.dm.rulekit.dsl.GroupInfo;
 import io.github.mbackschat.a12.dm.rulekit.dsl.GroupListOperand;
 import io.github.mbackschat.a12.dm.rulekit.dsl.GroupListRef;
 import io.github.mbackschat.a12.dm.rulekit.dsl.GroupRef;
@@ -362,10 +363,8 @@ final class ConditionConverter {
                 } else {
                     String declared = model.group(e.getFullName()).path();
                     String scope = isWildcard(e) ? reconstructStarPath(e) : declared;
-                    descendantFields(e).forEach(f -> {
-                        String path = scope + f.path().substring(declared.length());
-                        operands.add(isWildcard(e) ? model.flatten(path) : model.field(path));
-                    });
+                    descendantFields(e).forEach(f ->
+                            operands.add(expandedDescendant(scope, declared, f.path())));
                 }
             }
             return fieldFillQuantifier(name, operands.toArray(FieldOperand[]::new), entityList);
@@ -1175,16 +1174,18 @@ final class ConditionConverter {
         if (entities.size() != 1) {
             throw unsupported("aggregate " + name + " over a non-single-field scope", aggregate);
         }
-        // a single GROUP wildcard scope (Sum(Group*)) — the kernel expands it to the group's contained number
-        // fields (KERNEL-FINDINGS §9), so we make that explicit: Sum(Group*/f1, Group*/f2, …).
+        // A single GROUP scope (Sum(Group*), MaxValue(Group), …) stays a GROUP operand: `GroupListRef` is an
+        // `AggregateOperand`, so the expansion to contained fields remains the kernel's (KERNEL-FINDINGS §9,
+        // [KF187]) instead of being replayed here. Rebuilding it as an explicit field list is what produced
+        // every remaining CG15 arm — see GroupScopeAggregateRoundTripTest for the four it produced.
         if (!entities.get(0).isField()) {
-            FieldOperand[] ops = groupNumberFieldOperands(entities.get(0), aggregate);
-            FieldOperand[] rest = Arrays.copyOfRange(ops, 1, ops.length);
+            GroupListRef scope = groupScope(entities.get(0), aggregate);
             return switch (name) {
-                case Sum -> Dsl.sum(ops[0], rest);
-                case MaxValue -> Dsl.maxValue(ops[0], rest);
-                case MinValue -> Dsl.minValue(ops[0], rest);
-                case NumberOfDifferentValues -> Dsl.numberOfDifferentValues(ops[0], rest);
+                case Sum -> Dsl.sum(scope);
+                case MaxValue -> Dsl.maxValue(scope);
+                case MinValue -> Dsl.minValue(scope);
+                case NumberOfDifferentValues -> Dsl.numberOfDifferentValues(scope);
+                case NumberOfFilledFields -> Dsl.numberOfFilledFields(scope);
                 default -> throw unsupported("group-scope aggregate operator " + name, aggregate);
             };
         }
@@ -1273,21 +1274,54 @@ final class ConditionConverter {
     }
 
     /**
-     * The descendant number fields of a group, each as a flattened wildcard list — the recursive expansion
-     * of a group-scoped aggregate ({@code Sum(Group*)} becomes a Sum over each {@code Group* / fN} list),
-     * matching the kernel's "a group argument is expanded to its contained fields" semantic (KERNEL-FINDINGS §9).
+     * A group-scope aggregate operand, kept as the group the author wrote.
+     *
+     * <p>This replaced a recursive rebuild into the group's descendant NUMBER fields. That rebuild could not
+     * represent a nested repeatable subgroup (it emitted the inner group unstarred, which the kernel refuses
+     * {@code MVK_NO_WILDCARD}), fed a legal unstarred non-repeatable group to {@link BoundModel#flatten}, which
+     * demands a {@code *}, and erased every non-number kind — so an all-STRING group under
+     * {@code NumberOfDifferentValues} came back as "a group with no number fields". The expansion is the
+     * kernel's ({@code ExpandService}) and {@link GroupListRef} is exactly the operand that says so.
+     *
+     * <p>A {@code Having} filter on a group operand is reported unsupported rather than dropped: the kernel
+     * refuses a filtered group operand outright ({@code MVK_NO_GROUPS_ALLOWED},
+     * {@code adapter.laws.FilteredGroupStarFillDiffTest}), so this arm is unreachable from a stored model — but
+     * silently discarding a filter would turn a narrowed rule into a broad one, which is the failure mode worth
+     * being loud about even on an unreachable path.
      */
-    private FieldOperand[] groupNumberFieldOperands(IEntityId groupEntity, IEntityListOperation origin) {
-        String groupPath = groupEntity.getFullName();
-        String star = reconstructStarPath(groupEntity);
-        FieldOperand[] ops = descendantFields(groupEntity).stream()
-                .filter(f -> f.kind() == ValueKind.NUMBER)
-                .map(f -> (FieldOperand) model.flatten(star + f.path().substring(groupPath.length())))
-                .toArray(FieldOperand[]::new);
-        if (ops.length == 0) {
-            throw unsupported("group-scope aggregate over a group with no number fields", origin);
+    private GroupListRef groupScope(IEntityId groupEntity, IEntityListOperation origin) {
+        if (groupEntity.getFilterCondition() != null) {
+            throw unsupported("group-scope aggregate with a Having filter", origin);
         }
-        return ops;
+        return model.flattenGroup(reconstructStarPath(groupEntity));
+    }
+
+    /**
+     * One field of a group's expansion, addressed so that <b>every</b> repeatable level on the way to it
+     * carries its star — the operand's own and each nested subgroup's.
+     *
+     * <p>Only the operand's own star used to be restored (from {@code reconstructStarPath}); the tail came from
+     * the field's DECLARED path, which has none. A nested repeatable group therefore arrived unstarred, and the
+     * kernel refuses that spelling: a legal model read back as a condition the kernel rejects
+     * {@code MVK_NO_WILDCARD}. Locked by {@code MixedScopeStarPreservationTest}, whose control asserts a
+     * non-repeatable subgroup still gains none — the rule is "star what repeats", not "star every segment".
+     *
+     * @param scope     the operand as addressed by the author (starred iff the operand's own group repeats)
+     * @param declared  that group's declared path, the prefix {@code fieldPath} shares with it
+     * @param fieldPath the descendant field's declared path
+     */
+    private FieldOperand expandedDescendant(String scope, String declared, String fieldPath) {
+        StringBuilder rendered = new StringBuilder(scope);
+        StringBuilder walked = new StringBuilder(declared);
+        for (String segment : fieldPath.substring(declared.length() + 1).split("/")) {
+            walked.append('/').append(segment);
+            rendered.append('/').append(segment);
+            if (model.groupAt(walked.toString()).filter(GroupInfo::repeating).isPresent()) {
+                rendered.append('*');
+            }
+        }
+        String path = rendered.toString();
+        return path.indexOf('*') < 0 ? model.field(path) : model.flatten(path);
     }
 
     /** Every field below a group, recursively and in model order. */

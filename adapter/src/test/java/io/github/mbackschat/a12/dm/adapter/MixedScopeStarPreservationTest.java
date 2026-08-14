@@ -83,6 +83,71 @@ class MixedScopeStarPreservationTest {
                 () -> "a non-repeatable group has no repetitions to span, so no star may appear: " + rendered);
     }
 
+    /**
+     * A survey model whose starred group nests a SECOND repeatable group — the shape the two rows above cannot
+     * reach, because {@code Items} has no subgroup at all.
+     */
+    private static String surveyJson() {
+        return DocumentModelDraft.named("survey").locale("en_US")
+                .rootGroup("Survey", s -> s
+                        .stringField("Note", f -> { })
+                        .group("Sections", g -> g.repeatable(20)
+                                .stringField("Title", f -> { })
+                                .group("Answers", a -> a.repeatable(20).stringField("Text", f -> { }))))
+                .build().toJson();
+    }
+
+    /**
+     * <b>EVERY repeatable level in the expansion needs its own star, not just the operand's own.</b> The
+     * expansion walks the group's DECLARED descendant paths, so a nested repeatable subgroup arrived unstarred
+     * while the outer star was correctly restored — and the kernel refuses that spelling outright.
+     *
+     * <p>Measured before the fix: the rule below is kernel-VALID as authored, and reading it produced
+     * {@code FieldsNotCollectivelyFilled(…Sections*}{@code /Title, …Sections*}{@code /Answers/Text, …Note)},
+     * which the kernel then rejects with <i>"Missing specification of an asterisk for 'Sections/Answers'"</i>
+     * ({@code MVK_NO_WILDCARD}). A read path that turns a legal model into an unauthorable condition is the
+     * sharpest form of this defect class, and no star-count assertion catches it — the outer star was there.
+     */
+    @Test
+    void aNestedRepeatableGroupInTheExpansionGetsItsOwnStar() {
+        String json = surveyJson();
+        String authored = "FieldsNotCollectivelyFilled(Sections*, Note)";
+        var converted = assertInstanceOf(ReadResult.Converted.class,
+                KernelAdapter.ofJson(injectInto(json, "/Survey", authored)).read("/Survey/MixedRule"),
+                "the nested-repeatable mixed form converts");
+
+        String rendered = RENDER.render(converted.condition());
+        assertTrue(rendered.contains("/Survey/Sections*/Answers*/Text"),
+                () -> "the nested repeatable must carry its own star: " + rendered);
+        assertTrue(KernelAdapter.ofJson(injectInto(json, "/Survey", rendered))
+                        .diagnose("/Survey/MixedRule").ok(),
+                () -> "the read-back must itself be authorable — the kernel refuses a repeatable group "
+                        + "addressed without its star: " + rendered);
+    }
+
+    /**
+     * The CONTROL for the row above: a NON-repeatable subgroup under a starred group must gain no inner star,
+     * so the fix is "star what repeats" rather than "star every segment".
+     */
+    @Test
+    void aNonRepeatableSubgroupUnderAStarredGroupGainsNoInnerStar() {
+        String json = DocumentModelDraft.named("survey").locale("en_US")
+                .rootGroup("Survey", s -> s
+                        .stringField("Note", f -> { })
+                        .group("Sections", g -> g.repeatable(20)
+                                .stringField("Title", f -> { })
+                                .group("Meta", m -> m.stringField("Author", f -> { }))))
+                .build().toJson();
+        var converted = assertInstanceOf(ReadResult.Converted.class,
+                KernelAdapter.ofJson(injectInto(json, "/Survey", "FieldsNotCollectivelyFilled(Sections*, Note)"))
+                        .read("/Survey/MixedRule"),
+                "the non-repeatable-subgroup mixed form converts");
+
+        String rendered = RENDER.render(converted.condition());
+        assertTrue(rendered.contains("/Survey/Sections*/Meta/Author"),
+                () -> "a non-repeatable subgroup has no repetitions to span: " + rendered);
+    }
+
     private static String inject(String modelJson, String rawCondition) {
         return injectInto(modelJson, "/Order", rawCondition);
     }
