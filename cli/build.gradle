@@ -606,12 +606,18 @@ def dedicatedTestTasks = ['docGuardTest', 'evalGuardTest', 'semanticsMapGuardTes
                           'mutationTailGuardTest', 'sourceProvenanceGuardTest', 'publicContractTest']
 
 tasks.named('test') {
-    dependsOn 'docGuardTest'
-    dependsOn 'evalGuardTest'
-    dependsOn 'semanticsMapGuardTest'
-    dependsOn 'staleGapGuardTest'
-    dependsOn 'mutationTailGuardTest'
-    dependsOn 'sourceProvenanceGuardTest'
+    // `-Pfast` drops the guard prerequisites for the dev inner loop, the same lever `:adapter:test` already
+    // carries and for the same reason: `--tests` filters only the test task, NOT its dependencies, so a
+    // single-class run paid for every guard below on each iteration. A full run (no -Pfast) still drives them,
+    // and the checkpoint gate and CI are unchanged. Measured 2026-08-14: single class ~20 s → ~5 s.
+    if (!project.hasProperty('fast')) {
+        dependsOn 'docGuardTest'
+        dependsOn 'evalGuardTest'
+        dependsOn 'semanticsMapGuardTest'
+        dependsOn 'staleGapGuardTest'
+        dependsOn 'mutationTailGuardTest'
+        dependsOn 'sourceProvenanceGuardTest'
+    }
     // This suite contains the two tests that READ the provenance resource (`VersionVerbTest`,
     // `BatchObservationsTest`), so it declares it explicitly and keeps re-running on every commit — the
     // normalization above must not cause a test that used to run to stop running. Only the six guard tasks,

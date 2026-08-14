@@ -97,14 +97,20 @@ dependencies {
 
 tasks.named('test') {
     useJUnitPlatform()
-    dependsOn 'docGuardTest'
-    dependsOn 'jsonConstructionGuardTest'
-    dependsOn 'apiGuardTest'
-    dependsOn 'interpreterReleaseGuardTest'
-    dependsOn 'catalogProseReviewGuardTest'
-    dependsOn 'deliveryGuardTest'
-    dependsOn 'releaseGapGuardTest'
-    dependsOn 'leakGuardTest'
+    // `-Pfast` drops the guard prerequisites for the dev inner loop — the same lever `:adapter:test` and
+    // `:cli:test` carry, and for the same reason: `--tests` filters only the test task, NOT its dependencies,
+    // so a single law-test run paid for all eight guards on every iteration. A full run (no -Pfast) still
+    // drives them; the checkpoint gate and CI are unchanged.
+    if (!project.hasProperty('fast')) {
+        dependsOn 'docGuardTest'
+        dependsOn 'jsonConstructionGuardTest'
+        dependsOn 'apiGuardTest'
+        dependsOn 'interpreterReleaseGuardTest'
+        dependsOn 'catalogProseReviewGuardTest'
+        dependsOn 'deliveryGuardTest'
+        dependsOn 'releaseGapGuardTest'
+        dependsOn 'leakGuardTest'
+    }
     // Repo-file-reading guards run in input-declared dedicated tasks; keep them out of the broad suite so a
     // doc/marker/golden/script-only edit cannot leave a stale-green `test` (TESTING-SPEC "Tests that read
     // repo files at runtime"). Derived from those tasks — see `routeExclusivelyHostedTests`. `dumpKitApi` and
