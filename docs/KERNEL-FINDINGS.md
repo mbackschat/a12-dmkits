@@ -2870,3 +2870,29 @@ Canonical in §9 "RepetitionNotUnique". Reconciling a12-kernel-lean `SPEC-2026-0
 A key in a **parallel repeatable** group is *not* part of that collapse and is not one class either: on an index-free fixture it draws `MVK_NO_WILDCARD` both from the parent and from inside one of the two groups, while `MVK_NOT_IN_SAME_PATH` is what fires on the index-keyed logistics fixture (`IterationLawsTest.repetitionNotUniqueKeysMustLieOnOnePath`). What makes the same-path gate reachable there is **not** established — the obvious candidate, the semantic index, was not isolated, and an attempt to isolate it drew `MVK_ERROR_FIELD_INVALID_INDEX` on the error field instead.
 
 *(Locked: `validate.laws.RepetitionNotUniqueKeyPathLawsTest` — one table, 11 rows, complete code list per row. The kind axis stays in `RepetitionNotUniqueKeyKindLawsTest`, which gains the **Number** key it had never covered: the "no Number/String-only restriction" claim had no Number row in its own denominator.)*
+
+## §9 supplement — a GROUP-scope operand's admission is per-CARRIER, and the min/max and date-range families each split internally (kernel `rule check`, 2026-08-14) <a id="kf187"></a>
+
+> Fold: pending
+
+A group operand is not a shape the kernel admits or refuses globally. Swept across every carrier a group-expansion audit had named, the verdicts partition into three sets, and **two carriers disagree with their own family member** — which is why "the family admits it" was never a safe inference from one measured sibling.
+
+| carrier | non-repeatable group (unstarred) | repeatable group (starred) |
+|---|---|---|
+| the 7 field-fill quantifiers (`AllFieldsFilled`, `NoFieldFilled`, `AtLeastOneFieldFilled`, `NotAllFieldsFilled`, `FieldsNotCollectivelyFilled`, `NotExactlyOneFieldFilled`, `MoreThanOneFieldFilled`) | ACCEPT | ACCEPT |
+| the 3 plural value-list quantifiers (`AtLeastOneFieldValueIncludedInValueList`, `NoFieldValueIncludedInValueList`, `NotAllFieldValuesIncludedInValueList`) | ACCEPT | ACCEPT |
+| `FirstFilledValue` | ACCEPT ([KF173](#kf173) records the routing) | ACCEPT |
+| `NumberOfFilledFields` | ACCEPT | ACCEPT |
+| `MinValue` / `MaxValue` over a **DATE** group | ACCEPT | ACCEPT |
+| **`Min` / `Max`** (the operand-LIST form) | `MVK_NO_GROUPS_ALLOWED` | `MVK_NO_GROUPS_ALLOWED` |
+| **`DateRangesOverlap`** | `MVK_NO_GROUPS_ALLOWED` | `MVK_NO_GROUPS_ALLOWED` |
+| **`AtLeastOneDateRangeOverlaps`**, group in the `In` slot | — | ACCEPT |
+| a `$`-marked operand under `Sum` (group or field) | `MVK_INVALID_OUTER_ITERATION` | — |
+
+**The two internal splits are the finding.** `Min`/`Max` refuse a group operand while their `MinValue`/`MaxValue` siblings accept one, so the min/max *name* does not predict the gate — the operand-list form and the entity-list aggregate are different carriers that happen to share a concept. And `DateRangesOverlap` refuses a group outright while the plural `AtLeastOneDateRangeOverlaps` accepts one in its `In` slot, so within one predicate family the singular and plural forms disagree. An implementation that generalizes either verdict across its family gets the other half wrong.
+
+**Three rows measure a SPELLING, not a gate, and are excluded on that basis** — each was caught by its own field control failing alongside it, which is the only reason they are not in the table as verdicts. `Min(Assessment, 5)` draws `MVK_UNEXPECTED_TOKEN` because `Min`'s operands are value expressions and a reference must ride in brackets; `MinValue(<dates>) > 0` draws `MVK_INVALID_COMPARE_TO_DATE` from the comparison rather than the operand; and a `Sum` inside an overlap predicate's `Having` draws `MVK_NO_ITERATION_FOR_WILDCARD` in its marked *and* unmarked form, so the `$` refusal above is established at the top level of a condition only.
+
+**What the refusals do and do not license.** Each refusal makes a corresponding interpreter code path unreachable *by authoring* — the missing group branch in `minMaxOperandVals`, and the deliberately unexpanded group case in the `filteredStarCells` path that `DateRangesOverlap` shares. It does not make them unreachable through a hand-built `Expr` tree, which is public API surface. The distinction matters because the whole point of measuring admission first is that a differential over a refused shape compares two silences while passing green.
+
+*(Locked: `validate.laws.GroupOperandCarrierAdmissionLawsTest` — one asserted table over a fixture carrying a HOMOGENEOUS group per field kind in both repetition shapes, since a mixed group's expansion offends the kind gate first and its rejection then cannot distinguish "this carrier refuses a group" from "this carrier refuses these kinds". Every rejection is paired with the same fields listed explicitly, admitted, so no verdict can be satisfied by a kernel that merely dislikes the fixture.)*
