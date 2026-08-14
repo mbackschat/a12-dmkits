@@ -564,6 +564,13 @@ The catalog must favor **non-obvious** combinations (nesting × aggregation × c
 
 ## Results log
 
+
+### Checkpoint 2026-08-14 — the group-operand slice, and prune-on-write exercised for real
+
+The session's interpreter/adapter/cli changes cost nothing measurable: 22 growth observations, **4.55×–5.76×** against the 9.0 sub-quadratic floor, **zero anchor breaches**, gate green in 4m 47s on `darwin-aarch64` (Macmini9,1 Apple M1 ×8), run alone.
+
+The run also exercised [`PerfObservations.pruneToRetentionBound`](../adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/perf/PerfAnchors.kt) in production for the first time: the environment sat at the 30-run bound, so writing this run pruned the oldest uncited file and left exactly 30. That is the point of moving the bound into the writer — the guard that enforces it cannot see a breach the perf lane creates, because the lane runs last and its record is committed after the estate check.
+
 ### Checkpoint 2026-08-14 — the group-operand expansion work costs nothing measurable, and one scenario already exercised it
 
 Seven interpreter changes landed this day in the group-operand expansion class (`expandGroupStars`/`expandGroupOperands` and its shared owner, `vlqOperands`, `overlapCells`, `fillScope`, `fillScopeInfo`, `PolarityWalk`, `minMaxOperandVals`). Routine gate, run in isolation on the local 8-processor machine (`darwin-aarch64`, 4m41s, `BUILD SUCCESSFUL`, zero anchor breaches, record `perf-results/darwin-aarch64/2026-08-14T151017Z.jsonl`):
