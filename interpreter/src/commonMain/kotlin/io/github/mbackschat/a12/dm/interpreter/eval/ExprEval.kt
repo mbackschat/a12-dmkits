@@ -1738,8 +1738,18 @@ internal fun dateLike(k: Kind?): Boolean = k == Kind.DATE || k == Kind.TIME || k
  */
 private fun Interpreter.dateAggregate(f: Expr.Func): Boolean = f.args.any { a ->
     when (a) {
-        is Expr.Field -> dateLike(ctxOf(a).declaredKind(a.path))
-        is Expr.Star -> dateLike(ctxOf(a).declaredKind(a.path))
+        // A GROUP operand holds no kind of its own, so it resolves through the same fallback its file-mate
+        // [firstFilledEntityKind] already uses: the kind of the first declared field below it (the operands are
+        // homogeneous by authoring, so one field decides). Without it a group of DATE fields answered `false`
+        // here and took the NUMERIC branch, which cost two things at once — [minMaxEmpty] handed back `0` where
+        // the date branch hands back "no value", and the comparison against a real date then THREW
+        // `incomparable values Num(0) vs Txt(…)` rather than answering wrongly; and [producesDate] routes
+        // through this same predicate, so a counterpart string literal stopped parsing as a German date
+        // (`MinValue(<date group>) < "01.07.2026"` fired on both kernel strategies and returned false here).
+        // Measured against both kernel strategies in `DateGroupExtremaDiffTest`; the kernel admits the shape
+        // ([KF187]). IF287's class, and the fifth time the site disagreed with a sibling that was already right.
+        is Expr.Field -> dateLike(firstFilledEntityKind(ctxOf(a), a.path))
+        is Expr.Star -> dateLike(firstFilledEntityKind(ctxOf(a), a.path))
         is Expr.SemanticIndex -> dateLike(ctx.declaredKind(a.path))
         else -> producesDate(a)
     }
