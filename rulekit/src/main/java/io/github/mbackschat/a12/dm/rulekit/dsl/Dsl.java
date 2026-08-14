@@ -1292,9 +1292,11 @@ public final class Dsl {
     // a starred group is admitted here exactly as it is under Sum, and the kernel EXPANDS it to its contained
     // fields before counting (KF187; validate.laws.ValueInFieldsGroupOperandLawsTest). Until 2026-08-14 the
     // operand list was typed FieldOperand, which made the admitted shape unrepresentable rather than refused —
-    // DG34, a type-level erasure with no measured basis. Only the STARRED form is offered: the unstarred group
-    // operand has no measurement on this carrier, and a refusal (or an admission) by analogy with a sibling
-    // carrier is exactly what this rule forbids.
+    // DG34, a type-level erasure with no measured basis. The factories take any GroupListRef, so BOTH repetition
+    // shapes are authorable; the note that used to sit here scoped the offer to the starred form because the
+    // unstarred one had no measurement on this carrier. It has one now — ACCEPT, on the same fixture and in the
+    // same sweep as the rest of the table (validate.laws.GroupOperandCarrierAdmissionLawsTest) — so the scope
+    // limit is discharged rather than carried forward as a standing caveat.
 
     /** {@code NumberOfValueInFields(True In Group*)} — count over a starred group's expansion equal to a
      *  boolean constant. catalog:NumberOfValueInFields */

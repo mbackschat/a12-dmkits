@@ -100,6 +100,7 @@ import io.github.mbackschat.a12.dm.rulekit.dsl.TimeExpr;
 import io.github.mbackschat.a12.dm.rulekit.dsl.TimeLiteral;
 import io.github.mbackschat.a12.dm.rulekit.dsl.TimeOperand;
 import io.github.mbackschat.a12.dm.rulekit.dsl.TimeRef;
+import io.github.mbackschat.a12.dm.rulekit.dsl.AggregateOperand;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl;
 import io.github.mbackschat.a12.dm.rulekit.dsl.EnumExpr;
 import io.github.mbackschat.a12.dm.rulekit.dsl.EnumListRef;
@@ -495,6 +496,11 @@ final class ConditionConverter {
             case FieldsNotCollectivelyFilled -> groupScopedFieldFill(entities, Dsl::fieldsNotCollectivelyFilled);
             case NotExactlyOneFieldFilled -> groupScopedFieldFill(entities, Dsl::notExactlyOneFieldFilled);
             case MoreThanOneFieldFilled -> groupScopedFieldFill(entities, Dsl::moreThanOneFieldFilled);
+            // FieldValuesNotUnique over a group scope — ADMITTED in both repetition shapes, and its arity gate
+            // is satisfied by the group slot alone even when the expansion is a single field ([KF173]). It sits
+            // with the fill quantifiers rather than in the field branch above because a group-first list never
+            // reaches that branch. A MIXED list still cannot be represented — see DG36.
+            case FieldValuesNotUnique -> groupScopedFieldFill(entities, Dsl::fieldValuesNotUnique);
             default -> throw unsupported("group-list condition " + name, entityList);
         };
     }
@@ -1131,11 +1137,14 @@ final class ConditionConverter {
         // NumberOfValueInFields(constant IN f1, f2, …) — a count-of-value aggregate carrying a constant (family 6)
         if (aggregate instanceof IEntityListOperationWithValue withValue) {
             Calculation value = constantOperand(withValue.getConstantOperation(), aggregate);
-            if (entities.stream().anyMatch(e -> !e.isField())) {
-                throw unsupported("NumberOfValueInFields over a group scope", aggregate);
-            }
-            FieldOperand[] fields = entities.stream().map(this::toFieldOperand).toArray(FieldOperand[]::new);
-            return new NumberExpr(new NumberOfValueInFields(value, java.util.List.of(fields)));
+            // A group operand is admitted here in both repetition shapes and expanded before counting
+            // ([KF187]); `NumberOfValueInFields` holds an AggregateOperand list, so no arm is missing —
+            // this used to throw "over a group scope" for a shape the kernel accepts and DG34 made
+            // authorable, which is a read-path hole rather than a limit.
+            List<AggregateOperand> operands = entities.stream()
+                    .map(e -> e.isField() ? (AggregateOperand) toFieldOperand(e) : groupScope(e, aggregate))
+                    .toList();
+            return new NumberExpr(new NumberOfValueInFields(value, operands));
         }
         if (name == EntityListOperationName.FirstFilledValue) {
             return new NumberExpr(convertFirstFilledValue(aggregate));

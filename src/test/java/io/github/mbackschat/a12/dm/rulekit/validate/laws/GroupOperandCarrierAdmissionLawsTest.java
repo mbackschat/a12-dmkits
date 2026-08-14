@@ -211,6 +211,28 @@ class GroupOperandCarrierAdmissionLawsTest {
         s.add(Shape.refused("MoreThanOneFieldFilled/that-single-field-directly",
                 "MoreThanOneFieldFilled(Note/Text)", "MVK_PARAMSIZE_INVALIDN"));
 
+        // ── `NumberOfValueInFields`' UNSTARRED group operand. The STARRED one is measured in
+        //    `ValueInFieldsGroupOperandLawsTest` and `Dsl` deliberately offers only that shape, citing this
+        //    row's absence as the reason — so measuring it is what decides whether the omission stands. ──
+        s.add(Shape.accepted("NumberOfValueInFields/non-repeatable-group",
+                "NumberOfValueInFields(\"x\" In Contact) > 0"));
+        s.add(Shape.accepted("NumberOfValueInFields/field-control",
+                "NumberOfValueInFields(\"x\" In Contact/Email, Contact/Phone) > 0"));
+
+        // ── MIXED lists, in BOTH operand orders. Every mixed row measured so far puts the group FIRST, and the
+        //    converter branches on exactly `entities.get(0).isField()` — so "the order cannot matter" is a claim
+        //    about the kernel that no existing row establishes. Both orders, three carriers with different
+        //    group verdicts (fill quantifier ACCEPTs, `FieldValuesNotUnique` ACCEPTs, `DateRangesOverlap`
+        //    refuses), so an order effect would show up as a disagreement WITHIN a carrier's pair. ──
+        s.add(Shape.accepted("AllFieldsFilled/mixed-group-then-field", "AllFieldsFilled(Contact, Reference)"));
+        s.add(Shape.accepted("AllFieldsFilled/mixed-field-then-group", "AllFieldsFilled(Reference, Contact)"));
+        s.add(Shape.accepted("FieldValuesNotUnique/mixed-group-then-field",
+                "FieldValuesNotUnique(Contact, Reference)"));
+        s.add(Shape.accepted("FieldValuesNotUnique/mixed-field-then-group",
+                "FieldValuesNotUnique(Reference, Contact)"));
+        s.add(Shape.refused("DateRangesOverlap/mixed-field-then-group",
+                "DateRangesOverlap(Cover/PolicyWindow, Periods*)", NO_GROUPS));
+
         // ── FirstFilledValue's STARRED group form (the non-repeatable one is measured in the doc snippets) ──
         s.add(Shape.accepted("FirstFilledValue/starred-repeatable-group", "FirstFilledValue(Adjusters*) == \"x\""));
         s.add(Shape.accepted("FirstFilledValue/field-control", "FirstFilledValue(Adjusters*/Name) == \"x\""));

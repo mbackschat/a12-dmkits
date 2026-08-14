@@ -51,7 +51,10 @@ class GroupScopeAggregateRoundTripTest {
                                 .numberField("Vat", n -> n.fractionDigits(0, 2)))
                         .group("Contact", c -> c
                                 .stringField("Email", f -> { })
-                                .stringField("Phone", f -> { })))
+                                .stringField("Phone", f -> { }))
+                        .group("Tags", t -> t.repeatable(20)
+                                .stringField("Key", f -> { })
+                                .stringField("Value", f -> { })))
                 .build().toJson();
     }
 
@@ -97,6 +100,20 @@ class GroupScopeAggregateRoundTripTest {
     void aGroupScopeUnderNumberOfFilledFieldsRendersBackAsTheGroup() {
         assertRoundTrips("NumberOfFilledFields(/Order/Contact) > 0");
         assertRoundTrips("NumberOfFilledFields(/Order/Lines*) > 0");
+    }
+
+    /**
+     * <b>The value-carrying aggregate.</b> {@code NumberOfValueInFields} routes its entities through the same
+     * {@code getRefList} as the aggregates above, so a group operand is admitted in both repetition shapes
+     * ([KF187]) and {@code Dsl} has offered the shape since DG34 — the converter simply refused it, which made
+     * an authorable rule unreadable. Both repetition shapes, because DG34's own note recorded the unstarred one
+     * as unmeasured on this carrier; it is measured now
+     * ({@code rulekit.validate.laws.GroupOperandCarrierAdmissionLawsTest}) and it is ACCEPT.
+     */
+    @Test
+    void aGroupScopeUnderNumberOfValueInFieldsRendersBackAsTheGroup() {
+        assertRoundTrips("NumberOfValueInFields(\"x\" In /Order/Contact) > 0");
+        assertRoundTrips("NumberOfValueInFields(\"x\" In /Order/Tags*) > 0");
     }
 
     /**
