@@ -4,6 +4,7 @@ import io.github.mbackschat.a12.dm.interpreter.DmInterpreter
 import io.github.mbackschat.a12.dm.interpreter.eval.Document
 import io.github.mbackschat.a12.dm.interpreter.eval.newDocument
 import io.github.mbackschat.a12.dm.interpreter.load.ModelLoader
+import io.github.mbackschat.a12.dm.interpreter.model.MsgType
 import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertTrue
@@ -41,12 +42,19 @@ class OuterMarkedAggregateOperandDiffTest {
         const val SKU = "/Claim/Lots/Sku"
         const val BONUS = "/Claim/Lots/Bonus"
         const val EXTRA = "/Claim/Lots/Extra"
+        const val EXTRAS = "/Claim/Extras"
+        const val SPARE = "/Claim/Extras/Spare"
+        const val RESERVE = "/Claim/Extras/Reserve"
         const val CODE = "OMAO"
     }
 
     private val base = DocumentModelDraft.named("claim-lots").locale("en_US")
         .rootGroup("Claim") { g ->
             g.stringField("Reference") { }
+            g.group("Extras") { e ->
+                e.numberField("Spare") { it.fractionDigits(0, 0) }
+                    .numberField("Reserve") { it.fractionDigits(0, 0) }
+            }
             g.group("Lots") { l ->
                 l.repeatable(2)
                     .numberField("Amount") { it.fractionDigits(0, 0) }
@@ -139,6 +147,62 @@ class OuterMarkedAggregateOperandDiffTest {
             msg = "unmarked: the filter keeps row 1, whose Bonus and Extra are empty",
             build = ::onlyTheSecondRowCarriesABonus,
         )
+
+    /**
+     * **THE REFERENCE-CHANNEL row — [IG136] item (g), and a possible regression of my own.** A `$`-marked GROUP
+     * reference inside a `Having` is deliberately kept `Ordinary` by `AstRefs`, precisely so it resolves in the
+     * ENCLOSING row rather than iterating. `ModelStaticPlans.expandMessageReference` was then changed to convert an
+     * expanded group reference into a `Wildcard` — measured on a TOP-LEVEL unstarred operand, which is a different
+     * shape. If that conversion also catches this one, the reported pointers would carry wildcard coordinates
+     * where the kernel writes concrete ones.
+     *
+     * So this row asserts `errorPath|type|referenced`, not a firing: the reference SET is the only channel the
+     * defect would show in, and a boolean or even an `errorPath|type` projection is blind to it — which is how the
+     * third instance of this class stayed hidden for nineteen cases.
+     */
+    @Test
+    fun theOuterMarkedGroupReferenceKeepsItsConcreteCoordinates() {
+        val condition = "FieldFilled($SKU) And Sum($LOTS*/Amount Having ([$SKU] == \"A\" " +
+            "And Sum(\$$EXTRAS) > 0)) > 0"
+        val kModel = RuntimeLaws.withRule(base, LOTS, "R", "../Sku", CODE, condition)
+        val def = ModelLoader.load(kModel)
+
+        val build: (Both) -> Unit = { b ->
+            b.group("/Claim", 1).field(REF, "C-1", 1, 1)
+                .group(EXTRAS, 1, 1).field(SPARE, "4", 1, 1, 1).field(RESERVE, "6", 1, 1, 1)
+                .group(LOTS, 1, 1).field(AMOUNT, "10", 1, 1, 1).field(SKU, "A", 1, 1, 1)
+                .group(LOTS, 1, 2).field(AMOUNT, "20", 1, 2, 1).field(SKU, "B", 1, 2, 1)
+        }
+
+        val dynamic = Both(RuntimeLaws.doc(), def.newDocument()).also(build)
+        val kernelMessages = RuntimeLaws.messages(kModel, dynamic.kDoc)
+        assertTrue(kernelMessages.map { it.code() }.none { it.startsWith("MVK_") }) {
+            "the kernel REJECTED the \$-marked group reference inside the filter " +
+                "(${kernelMessages.map { it.code() }.filter { it.startsWith("MVK_") }})"
+        }
+        val groovy = kernelMessages.filter { it.code() == CODE }
+            .map { "${it.field()}|${it.type().name}|${it.referenced().sorted()}" }.sorted()
+
+        val staticDoc = Both(RuntimeLaws.doc(), def.newDocument()).also(build).kDoc
+        val javaStatic = RuntimeLaws.kernelJavaEngine(kModel)
+            .messagesModern(staticDoc, null, java.util.Locale.US).filter { it.code() == CODE }
+            .map { "${it.field()}|${it.type().name}|${it.referenced().sorted()}" }.sorted()
+
+        val interpreter = DmInterpreter(def).validateFull(dynamic.iDoc).filter { it.code == CODE }
+            .map {
+                "${it.errorPath}|${if (it.type == MsgType.OMISSION) "OMISSION_ERROR" else "VALUE_ERROR"}" +
+                    "|${it.referenced.sorted()}"
+            }.sorted()
+
+        assertTrue(groovy.isNotEmpty()) { "the kernel did not fire, so this row measures no reference set" }
+        // NON-VACUITY: the reference set must actually CONTAIN the $-marked group's expansion, or the row would
+        // pass for a reason that has nothing to do with the conversion under test.
+        assertTrue(groovy.any { it.contains("Extras") }) {
+            "the reference set does not mention the \$-marked group's expansion at all: $groovy"
+        }
+        assertEquals(groovy, javaStatic, "groovy vs java-static (tri-check)")
+        assertEquals(groovy, interpreter, "kernel vs INTERPRETER — the REFERENCE set of a \$-marked group ref")
+    }
 
     /**
      * The positive control that the filtered aggregate evaluates at all: with the `$`-marked requirement dropped,
