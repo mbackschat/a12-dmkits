@@ -11,7 +11,8 @@ import java.util.List;
  * of this group"; the legal {@code NoGroupFilled(G*)}/{@code AtLeastOneGroupFilled(G*)} forms use it
  * to scan instantiated group repetitions. Obtain via {@link BoundModel#flattenGroup(String)}.
  */
-public record GroupListRef(GroupRef group, List<GroupRef> flattened) implements GroupListOperand, AggregateOperand {
+public record GroupListRef(GroupRef group, List<GroupRef> flattened)
+        implements GroupListOperand, AggregateOperand, ValueListOperand {
 
     public GroupListRef {
         flattened = List.copyOf(flattened);
@@ -20,6 +21,15 @@ public record GroupListRef(GroupRef group, List<GroupRef> flattened) implements 
     /** The terminal group's absolute path (no stars). */
     public String path() {
         return group.path();
+    }
+
+    /**
+     * {@link ValueListOperand#fieldPath()} — the GROUP's path. The operand references the group; the fields it
+     * contributes to the list are the kernel's expansion of it, which is not enumerated here.
+     */
+    @Override
+    public String fieldPath() {
+        return path();
     }
 
     /** The path with a {@code *} re-inserted after each starred segment, e.g. {@code /X/Categories*&#47;Values*}. */

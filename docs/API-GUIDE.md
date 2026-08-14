@@ -740,6 +740,16 @@ Condition anyForbidden = Dsl.atLeastOneFieldValueIncludedInValueList(
         List.of("A", "B"), m.flatten("/Order/Items*/Sku"));   // …(/Order/Items*/Sku In "A", "B")
 ```
 
+**…and over a GROUP scope, where the kernel expands the fields for you.** The same three quantifiers take a `GroupListRef` (`BoundModel.flattenGroup`) as their whole field side: the kernel expands the group to every field below it, recursing into nested subgroups. This is a **separate entry point** rather than another overload, and the reason is the type system rather than convenience — the overloads above are typed *by kind* (`StringRef`, `EnumRef`), which is how they erase `MVK_VARYING_TYPES_NOT_ALLOWED` without consulting a model, and a group has no kind to type them with. Its expansion's kind is the kernel's verdict, so this arm delegates that one gate instead of inventing a client-side copy of the expansion's extent:
+
+<!-- snippet: group-scope-value-list -->
+```java
+// A value-list quantifier over a GROUP scope — the kernel expands the group's fields (recursively).
+// No kind-typed overload: a group has no kind of its own, so the expansion's kind is kernel-arbitrated.
+Condition addressPlaceholder = Dsl.noFieldValueIncludedInValueList(
+        List.of("unknown", "n/a"), m.flattenGroup("/Order/ShippingAddress"));
+```
+
 **`numberOfValueInFields` — the single-list form.** The multi-field overloads take two-or-more `FieldOperand`s, but the kernel's arity gate is "at least two fields **OR** at least one group", so a **single flattened repetition list** is legal on its own (a starred list is a "group" operand). The `value × FieldListRef` overloads author exactly that — one per constant family (number/string/boolean) — and the list may carry a `Having` filter:
 
 <!-- snippet: number-of-value-single-list -->

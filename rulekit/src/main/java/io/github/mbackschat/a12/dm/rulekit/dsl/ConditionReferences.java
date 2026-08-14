@@ -292,6 +292,12 @@ public record ConditionReferences(Set<String> fieldPaths, Set<String> groupPaths
     private static void collectOperand(ValueListOperand op, Refs refs) {
         if (op instanceof EnumCategoryAccess) {
             refs.projectedField(op.fieldPath());
+        } else if (op instanceof GroupListRef group) {
+            // A GROUP scope registers as a GROUP, not as a field. Registering its path in `fieldPaths` would
+            // typecheck and read plausibly, and it would make `covers` blind to every field the kernel expands
+            // the group to — the exact reachability-vs-exactness confusion that produced CG13-CG18 one layer up.
+            // `covers` already walks `groupPaths` for containment, so this arm gets that for free.
+            refs.group(group.path());
         } else {
             refs.field(op.fieldPath());
         }

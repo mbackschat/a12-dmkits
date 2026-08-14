@@ -196,6 +196,19 @@ class NewShapesSnippetsTest {
     }
 
     @Test
+    void groupScopeValueListSnippet() {
+        // tag::group-scope-value-list[]
+        // A value-list quantifier over a GROUP scope — the kernel expands the group's fields (recursively).
+        // No kind-typed overload: a group has no kind of its own, so the expansion's kind is kernel-arbitrated.
+        Condition addressPlaceholder = Dsl.noFieldValueIncludedInValueList(
+                List.of("unknown", "n/a"), m.flattenGroup("/Order/ShippingAddress"));
+        // end::group-scope-value-list[]
+        assertEquals("NoFieldValueIncludedInValueList(/Order/ShippingAddress In \"unknown\", \"n/a\")",
+                new DslRenderer().render(addressPlaceholder));
+        assertKernelAccepts(m.num("/Order/Quantity").filled().and(addressPlaceholder), "../Quantity");
+    }
+
+    @Test
     void numberOfValueSingleListSnippet() {
         // tag::number-of-value-single-list[]
         // NumberOfValueInFields over ONE flattened repetition list — the single-list overload. The kernel's

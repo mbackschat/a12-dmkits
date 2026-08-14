@@ -13,6 +13,14 @@ package io.github.mbackschat.a12.dm.rulekit.dsl;
  */
 public sealed interface FieldOperand extends ValueListOperand, AggregateOperand permits FieldRef, FieldListRef {
 
+    /**
+     * The declared value kind of the referenced field. Declared HERE rather than on {@link ValueListOperand}
+     * because it is a property of a <em>field-like</em> operand: {@link ValueListOperand}'s
+     * {@link GroupListRef} arm has no kind of its own, since a group's kind belongs to its expansion and is
+     * the kernel's verdict (DG35, 2026-08-14 — the same call {@link AggregateOperand} already makes).
+     */
+    io.github.mbackschat.a12.dm.core.ValueKind kind();
+
     /** This checked field/list as one compositional {@code FirstFilledValue} owner entity. */
     default FirstFilledOperand firstFilledOperand() {
         return FirstFilledOperand.of(this);

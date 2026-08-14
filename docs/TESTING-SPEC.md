@@ -372,6 +372,17 @@ The perf lane and differential fuzzers dominate the kernel-backed suite's wall t
 | adapter differential | `./build.sh -Pfast :adapter:test --tests "<Class>"` | ~1m40s | **~8 s** |
 | interpreter | `./build.sh :interpreter:jvmTest --tests "<Class>"` | — | **~5 s** |
 
+**`-Pfast` drops EIGHT guards, so name the one your change needs and run it before committing (2026-08-14).** The flag exists to stop a one-class run paying for every guard on the lane, and the cost of that is real: those guards then run **nowhere** in the inner loop, so a surface they protect can drift for several commits under uninterrupted green. Measured the day the flag landed — `RkCode.MOVE_CHANGES_GROUP_EXPANSION` was added, every targeted run stayed green, and the stale `api/` golden only surfaced when an unrelated change regenerated it. Match the change to its guard:
+
+| you changed… | run |
+|---|---|
+| a **public signature** in any published kit (`core`/`modelkit`/`rulekit`/`edit`/`schemakit`) | `./build.sh dumpKitApi` then review the `api/` diff, then `./build.sh apiGuardTest` |
+| a **doc, demo, or skill** a guard reads | `./build.sh :docGuardTest` |
+| a **Jackson/kotlinx JSON construction site** | `./build.sh jsonConstructionGuardTest` |
+| an **operator catalog** entry's prose | `./build.sh catalogProseReviewGuardTest` |
+
+None of these is expensive on its own; the full-run cost the flag removes was the *bundle*, paid per iteration.
+
 **The mistake this table exists to prevent is the MODULE-WIDE run, not the missing flag.** A full `:adapter:test` is ~5 minutes and a full `:cli:test` ~1m30s; running either between gap fixes — rather than the one class that covers the change — is what makes a session's test load unbearable, and it happened repeatedly on 2026-08-14 before the owner called it out. The module-wide runs belong to the session-end checkpoint, once, scoped to what changed.
 
 | run | command | what runs |

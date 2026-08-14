@@ -83,6 +83,10 @@ public enum io.github.mbackschat.a12.dm.core.ElementType
   public static io.github.mbackschat.a12.dm.core.ElementType[] values()
   public java.lang.String wireName()
 
+public final class io.github.mbackschat.a12.dm.core.EntityPaths
+  public static boolean isInside(java.lang.String, java.lang.String)
+  public static boolean isStrictlyInside(java.lang.String, java.lang.String)
+
 public final class io.github.mbackschat.a12.dm.core.KernelPatternPolicy
   public static java.util.Optional<io.github.mbackschat.a12.dm.core.KernelPatternPolicy.Rejection> rejection(java.lang.String)
   public static java.lang.String requireAccepted(java.lang.String)

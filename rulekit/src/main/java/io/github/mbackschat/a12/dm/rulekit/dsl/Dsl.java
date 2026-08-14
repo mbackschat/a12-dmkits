@@ -1376,6 +1376,37 @@ public final class Dsl {
         return stringListQuantifier(ValueListQuantifier.NOT_ALL_FIELD_VALUES_INCLUDED, values, first, rest);
     }
 
+    // Group-scope value-list quantifiers — the field side is a GROUP, whose contained fields the kernel expands
+    // (DG35). These are separate entry points rather than overloads of the ones above because those are typed BY
+    // KIND (StringRef / EnumRef), which is how they erase MVK_VARYING_TYPES_NOT_ALLOWED without consulting a
+    // model — and a group has no kind to type them with. Its expansion's kind is the kernel's verdict, so this
+    // arm delegates that gate instead of inventing one. Admission measured in both repetition shapes and on both
+    // value sides: rulekit.validate.laws.EntityListValueListGroupOperandLawsTest, KERNEL-FINDINGS kf187.
+
+    /** {@code AtLeastOneFieldValueIncludedInValueList(G* In "v1", "v2")} — over a group's expanded fields. catalog:AtLeastOneFieldValueIncludedInValueList */
+    public static Condition atLeastOneFieldValueIncludedInValueList(
+            java.util.List<String> values, GroupListRef group) {
+        return groupScopeValueListQuantifier(ValueListQuantifier.AT_LEAST_ONE_FIELD_VALUE_INCLUDED, values, group);
+    }
+
+    /** {@code NoFieldValueIncludedInValueList(G* In "v1", "v2")} — over a group's expanded fields. catalog:NoFieldValueIncludedInValueList */
+    public static Condition noFieldValueIncludedInValueList(
+            java.util.List<String> values, GroupListRef group) {
+        return groupScopeValueListQuantifier(ValueListQuantifier.NO_FIELD_VALUE_INCLUDED, values, group);
+    }
+
+    /** {@code NotAllFieldValuesIncludedInValueList(G* In "v1", "v2")} — over a group's expanded fields. catalog:NotAllFieldValuesIncludedInValueList */
+    public static Condition notAllFieldValuesIncludedInValueList(
+            java.util.List<String> values, GroupListRef group) {
+        return groupScopeValueListQuantifier(ValueListQuantifier.NOT_ALL_FIELD_VALUES_INCLUDED, values, group);
+    }
+
+    private static Condition groupScopeValueListQuantifier(
+            ValueListQuantifier q, java.util.List<String> values, GroupListRef group) {
+        var literals = values.stream().<Calculation>map(StringLiteral::new).toList();
+        return new FieldListValueListCondition(q, java.util.List.of(group), literals);
+    }
+
     // Enum field-list value-list quantifiers. Each literal is admitted against the UNION of the selected
     // members' domains (a direct EnumRef contributes its stored values, a CategoryRef its category
     // values) — a literal need not be in every listed domain; a direct ref and a category ref on the
@@ -1560,6 +1591,21 @@ public final class Dsl {
     /** The three base kinds the value-list quantifier family accepts (the kernel's String/Enumeration/Number). */
     private enum ValueListBaseKind { STRING, ENUMERATION, NUMBER }
 
+    /**
+     * The declared kind of a value-list operand that HAS one. {@link ValueListOperand} deliberately does not
+     * declare {@code kind()}, because its {@link GroupListRef} arm cannot answer it (the kind belongs to the
+     * expansion); callers must therefore decide what to do about a group before asking, which is the point.
+     */
+    private static io.github.mbackschat.a12.dm.core.ValueKind kindOf(ValueListOperand op) {
+        return switch (op) {
+            case FieldOperand field -> field.kind();
+            case EnumCategoryAccess category -> category.kind();
+            case GroupListRef group -> throw new IllegalStateException(
+                    "a group scope has no declared kind — its kind is the kernel's verdict on the expansion of "
+                            + group.renderedPath() + "; the caller must handle the group arm before asking");
+        };
+    }
+
     /** Map a {@link io.github.mbackschat.a12.dm.core.ValueKind} to its value-list base kind, or {@code null} if disallowed. */
     private static ValueListBaseKind baseKind(io.github.mbackschat.a12.dm.core.ValueKind kind) {
         return switch (kind) {
@@ -1582,10 +1628,18 @@ public final class Dsl {
         combined.addAll(values);
         ValueListBaseKind base = null;
         for (ValueListOperand op : combined) {
-            ValueListBaseKind k = baseKind(op.kind());
+            // A GROUP scope has no kind of its own — the base-kind rule applies to its EXPANSION, which recurses
+            // into nested subgroups. Re-implementing that extent here to pre-check it is exactly what
+            // `AggregateOperand` declined to do, and an over-strict copy would refuse a legal model, so the
+            // kernel arbitrates this arm (MVK_VARYING_TYPES_NOT_ALLOWED / MVK_ONLY_STRING_ENUM_NUMBER_ALLOWED).
+            // The kernel ADMITS the shape in both slots — measured, EntityListValueListGroupOperandLawsTest.
+            if (op instanceof GroupListRef) {
+                continue;
+            }
+            ValueListBaseKind k = baseKind(kindOf(op));
             if (k == null) {
                 throw new IllegalArgumentException(opName + " accepts only String, Enumeration, or Number"
-                        + " operands; '" + op.renderedPath() + "' is " + op.kind()
+                        + " operands; '" + op.renderedPath() + "' is " + kindOf(op)
                         + " (MVK_ONLY_STRING_ENUM_NUMBER_ALLOWED)");
             }
             if (base == null) {
@@ -1625,6 +1679,14 @@ public final class Dsl {
             case FieldListRef ignored -> null;   // wildcard/flattened list — kernel skips dedup here
             case FieldRef f -> (f.correlated() ? "$" : "") + f.path();
             case EnumCategoryAccess c -> (c.outer() ? "$" : "") + c.field().path() + " -> " + c.category();
+            // A GROUP scope is DELEGATED, not deduped here. A starred one is measured-skipped by the kernel
+            // (`checkDuplicatesInDirectRefs` skips wildcarded refs — AggregateGroupOperandLawsTest lists the same
+            // starred group twice and it is ACCEPTED), while an unstarred group's dedup behaviour is unmeasured.
+            // Skipping is the only safe direction for the unmeasured half: delegation can under-report and the
+            // kernel still catches it, whereas a dedup we invent here could refuse a legal model with no way for
+            // anyone to notice. The indirect ancestor/descendant arm (MVK_DUPLICATE_PARAM2) is kernel-only
+            // regardless — it is a relation between two operands this identity-based check never sees.
+            case GroupListRef ignored -> null;
         };
     }
 
