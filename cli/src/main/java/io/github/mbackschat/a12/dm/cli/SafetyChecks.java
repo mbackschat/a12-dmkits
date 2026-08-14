@@ -124,23 +124,32 @@ public final class SafetyChecks {
     }
 
     /**
-     * Refuse extracting a group whose subtree contains a rule referencing a field <b>outside</b> the
-     * subtree — that rule can't move into a standalone sub-model (it wouldn't see the field). Rules whose
-     * references stay inside travel fine. References pointing <em>into</em> the subtree from outside are
-     * unaffected (the mount preserves the path), so they don't block. RK_OUTWARD_REFERENCE.
+     * Refuse extracting a group whose subtree contains a rule <b>or computation</b> referencing an entity
+     * <b>outside</b> the subtree — it can't move into a standalone sub-model (it wouldn't see what it reads).
+     * Elements whose references stay inside travel fine. References pointing <em>into</em> the subtree from
+     * outside are unaffected (the mount preserves the path), so they don't block. RK_OUTWARD_REFERENCE.
+     *
+     * <p><b>Both element kinds, and the subtree root counts as inside</b> — the two halves of {@code CG17}, which
+     * were wrong in opposite directions at once:
+     *
+     * <ul>
+     *   <li>{@code ruleFullNames()} deliberately EXCLUDES computations, so looping it alone let a computation
+     *       reading an outside field move into a sub-model that cannot see its own operand. Every other
+     *       reference site in this repo pairs {@code whereUsed} with {@code whereUsedInComputations}; this one
+     *       did not.</li>
+     *   <li>Membership was {@code startsWith(groupPath + "/")}, and {@code "/Order/Shipping"} does not start with
+     *       {@code "/Order/Shipping/"} — so a rule referencing the extracted group ITSELF was reported as
+     *       escaping the subtree it is the root of. The reference travels fine (the group becomes the sub-model's
+     *       root), so that was an over-refusal naming a problem the author cannot fix. A refusal we invent is
+     *       the more dangerous half, because nothing downstream ever asks whether it was right.</li>
+     * </ul>
      */
     public static SafetyCheck subtreeSelfContained(KernelAdapter adapter, String groupPath) {
         return () -> {
-            String inside = groupPath + "/";
             Set<String> escaping = new TreeSet<>();
-            for (String rule : adapter.ruleFullNames()) {
-                if (!rule.startsWith(inside)) {
-                    continue;   // only rules that would move into the sub-model
-                }
-                if (adapter.referencedFields(rule).stream().anyMatch(field -> !field.startsWith(inside))) {
-                    escaping.add(rule);
-                }
-            }
+            collectEscaping(adapter, groupPath, adapter.ruleFullNames(), adapter::referencedFields, escaping);
+            collectEscaping(adapter, groupPath, adapter.computationFullNames(),
+                    adapter::referencedFieldsOfComputation, escaping);
             if (escaping.isEmpty()) {
                 return Optional.empty();
             }
@@ -148,12 +157,34 @@ public final class SafetyChecks {
             ArrayNode array = data.putArray("escapingRules");
             escaping.forEach(array::add);
             Diagnostic diagnostic = Diagnostic.precheck(Optional.of("RK_OUTWARD_REFERENCE"),
-                    "the subtree has " + escaping.size() + " rule(s) referencing fields outside it; they cannot move into a standalone sub-model",
+                    "the subtree has " + escaping.size() + " rule(s)/computation(s) referencing entities outside it; they cannot move into a standalone sub-model",
                     Diagnostic.Where.path(groupPath),
-                    Optional.of("move those rules out of the subtree, or extract a larger group that contains what they reference"),
+                    Optional.of("move those rules or computations out of the subtree, or extract a larger group that contains what they reference"),
                     Optional.empty());
             return Optional.of(new Refusal(groupPath + " has outward references — refusing to extract", data, diagnostic));
         };
+    }
+
+    /** Add every element of {@code elements} that lives inside {@code groupPath} and references something
+     *  outside it, reading each element's references through {@code referencesOf} (the accessor differs by
+     *  element kind, which is exactly what the rule-only version got wrong). */
+    private static void collectEscaping(KernelAdapter adapter, String groupPath, Set<String> elements,
+            java.util.function.Function<String, Set<String>> referencesOf, Set<String> escaping) {
+        for (String element : elements) {
+            if (!inside(element, groupPath)) {
+                continue;   // only elements that would move into the sub-model
+            }
+            if (referencesOf.apply(element).stream().anyMatch(entity -> !inside(entity, groupPath))) {
+                escaping.add(element);
+            }
+        }
+    }
+
+    /** Whether {@code path} is the subtree root itself or lies strictly below it — compared at a {@code /}
+     *  boundary, so {@code /Order/ShippingNotes} is NOT inside {@code /Order/Shipping}, and the root group's own
+     *  path IS. A bare {@code startsWith(groupPath + "/")} gets the first right and the second wrong. */
+    private static boolean inside(String path, String groupPath) {
+        return path.equals(groupPath) || path.startsWith(groupPath + "/");
     }
 
     /**
