@@ -653,9 +653,10 @@ tasks.named('test') {
     //
     // …but only the ones that cost something: a guard cheap enough that dropping it saves nothing is never
     // droppable (the root module's rule — TESTING-SPEC "Test tiers"). Measured per task from a green run's
-    // result XMLs, 2026-08-15: docGuardTest 5.9s, evalGuardTest 3.4s and mutationTailGuardTest 3.4s against
-    // sourceProvenanceGuardTest 1.4s, staleGapGuardTest 0.7s and semanticsMapGuardTest 0.3s. The cheap three
-    // total 2.4s of the ~15s, and each binds a COMMITTED artifact to the source it must mirror — the generated
+    // result XMLs, re-measured 2026-08-16 (median of two isolated runs): docGuardTest 4.2s, evalGuardTest 3.2s
+    // and mutationTailGuardTest 3.4s against sourceProvenanceGuardTest 1.4s, staleGapGuardTest 0.5s and
+    // semanticsMapGuardTest 0.3s. The cheap three total 2.2s of the ~15s, and each binds a COMMITTED artifact
+    // to the source it must mirror — the generated
     // provenance resource, the gap ledgers' live ids, and the semantics-map registration of every lock class.
     // That is precisely the class the root lever let through when the API goldens shipped stale, so they stay
     // unconditional; the three broad ones remain the checkpoint's job. (This mirrors root keeping
