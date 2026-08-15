@@ -74,6 +74,41 @@ Seven interpreter changes landed this day in the group-operand expansion class (
 
 **Two provenance notes on the record itself.** The committed JSONL stores endpoint medians rather than growth ratios, so the band quoted above is re-derivable only up to the paired-estimator/endpoint distinction (endpoint ratios span 3.96×–5.21×; `group-scope fill` computes to 3.90× against the 3.99× paired figure). And that lane records **no kernel-engine observation**, so its `0.18×` lives in console output only — the exact shape [IF296](INTERPRETER-FINDINGS.md#if296) was written about. The run also logged `loadAverage: 3.90` on an 8-processor machine, which is the reviewer agent's own greps rather than a second build, but "run in isolation" overstates it.
 
+### Checkpoint 2026-08-14 — what makes a routine-tier lane noisy: magnitude, not the clock
+
+*Conclusion:* [IF298](INTERPRETER-FINDINGS.md#if298) — lane noise tracks the measurement's magnitude; batching lifts a lane out of the sub-10 ms band.
+
+Read from the committed record with `scripts/perf-trend.sh` over 174 keys on `darwin-aarch64` (27 runs, 2026-08-12 .. 2026-08-13). The question was which lanes are too noisy for the `1.65× + 1 ms` anchor tolerance to be a real bar; the first attempt answered it from the `max/min` of three runs and got both the set and the reason wrong.
+
+**Estate median noise: ±7.3%.** Fourteen keys sit at or above ±20% with at least 7 runs.
+
+| hypothesis | discriminator | verdict |
+|---|---|---|
+| wall-clock lanes are contention-exposed where CPU-clock lanes are not | median noise by clock: **wall ±6.9%** (n=124) vs **cpu ±9.4%** (n=50) | **falsified** — CPU lanes are the noisier population, and carry 8 of the 14 noisy keys from a quarter of the rows |
+| noise is a function of the measurement's magnitude | noisy keys by current median: `0-2 ms` 1/34 · `2-5 ms` 6/37 · `5-10 ms` 7/29 · `10-30 ms` **0/41** · `30 ms+` **0/33** | **confirmed** — every noisy key in the estate is under 10 ms, and nothing above it is noisy |
+
+The corrective follows from the mechanism rather than from the list: lift a lane's measured median out of the sub-10 ms band, by batching inside the timed block or by a larger N. Both cost nothing in fidelity, since a growth ratio is a quotient and a constant factor on both scales cancels — but a batch changes *what one block measures*, so it belongs in the observation key, while warmup and iteration counts do not.
+
+**A note on the statistic.** `max/min` over three samples routinely reaches 1.5–1.7× on a distribution whose true spread is ±20%, which is why the first diagnosis produced four plausible names that were mostly not the worst offenders. The record's own instrument was already computing the right quantity over 20+ runs.
+
+### Checkpoint 2026-08-14 — batching every sub-10 ms lane takes the over-tolerance count to zero
+
+Each stage measured by three **sequential** isolated gate runs on `darwin-aarch64` (Macmini9,1 Apple M1 ×8, JDK 21.0.12), 64 armed keys, spread as `max/min` per key against the `1.65× + 1 ms` anchor tolerance. Mechanism and rationale: [IF298](INTERPRETER-FINDINGS.md#if298).
+
+| stage | keys at/over 1.65× | median spread | max |
+|---|---|---|---|
+| before | 5 | 1.19× | 1.89× |
+| more warmups + iterations | **7** | 1.17× | 2.86× |
+| growth lanes batched (`PerfGateTest` ×4, charset, group-scope fill, custom-type) | 2 | 1.09× | 2.97× |
+| `KernelAdvantage` lanes batched (`testRule`, `evalCandidate`, `computeField`, `applyComputations`, partial-SOP) | 1 | 1.10× | 1.68× |
+| depth lane sized to its ~0.015 ms per call; custom-type warm 3 → 10 | **0** | **1.10×** | **1.52×** |
+
+The second row is the informative one: raising warmups and iteration counts made the count *worse*, which is what fixed the diagnosis. Each figure is already a median of 35 samples (`warmup=5, iters=7` inside `pairedGrowth`'s 5 pairs), so within-run sampling was never the constraint — the variance is between JVM runs.
+
+**A note on reading these numbers.** The third run of the final stage was measured after an interrupted gate left a **truncated** record (140 observations, 38 accepted, against 166/64 for a complete run). Folding it in would have reported "0 over tolerance" from 38 keys rather than 64 — a vacuous pass. The three runs above are all complete; a spread claim has to state its denominator.
+
+**Gate cost** is unchanged at roughly 4m10s–4m50s: the batched lanes are a small fraction of a run dominated by kernel codegen and the parity tier.
+
 ### Checkpoint 2026-08-13 — what the routine gate costs once it runs the whole routine tier
 
 Measured on `Macmini9,1 Apple M1`, 8 processors, JDK 21.0.12, isolated (nothing else running), `scripts/perf.sh gate`:
@@ -178,6 +213,21 @@ The after side was measured on the busier machine and still won the median, so t
 **The six run records are NOT committed.** Every pre-existing record under `perf-results/darwin-aarch64/` is cited by some checkpoint, and the tree is at its 30-run cap, so committing these would have evicted cited records to make a DIRECTIONAL comparison recomputable — the wrong trade, and the first attempt at it broke two markdown links and falsified a neighbouring checkpoint's "every figure below is recomputable" claim. To reproduce: three isolated `:adapter:perfGateTest` runs per side, folded with `scripts/perf-anchor.sh show <the three files>`, both sides against the same anchor so its staleness cancels.
 
 **The anchor was deliberately NOT refreshed.** Refreshing from the contended trio is the compounding the committed anchor exists to prevent, and no lane fell below the `0.6 ×` stale-band floor (the largest drop is `constrained-fields @5000` at 0.89× of anchor), so nothing is disarmed by leaving it.
+
+### Checkpoint 2026-08-13 — what the routine tier records once every lane goes through the recording seam
+
+Measured on `darwin-aarch64` (Macmini9,1 Apple M1, 8 processors, JDK 21.0.12) while wiring [IF296](INTERPRETER-FINDINGS.md#if296). **The machine was not idle:** these are back-to-back 4-minute gate runs over roughly an hour at load ~9, which is a confound the numbers below carry rather than a condition they were measured under.
+
+| | before | after |
+|---|---|---|
+| observation rows per gate run | 138 | **166** |
+| distinct lanes | 20 | **33** |
+| routine-tier classes contributing a row | 2 of 9 | **11 of 11** |
+| armed anchor keys (`darwin-aarch64`) | 36 | **64** |
+
+**Run-to-run stability, three sequential isolated gates.** Per-key spread (`max/min`) medians **1.14×** across all 64 keys. The two lanes fed by `KernelAdvantage` were the worst before their estimator changed from a mean to a median — `computeField` **1.89×** on `[3.13, 5.84, 3.09]`, `applyComputations` **1.82×** — and left the worst-five list afterwards. Four keys still reach the `1.65× + 1 ms` tolerance: `custom-type validation` **2.86×** at n=40000 (`[6.85, 2.83, 2.39]`) and **2.10×** at n=10000, `partial-SOP/complete-concrete` **1.78×**, `group-scope fill` **1.68×**. All six gate runs passed, so no false red occurred; the open question is whether those four are noisy estimators or a noisy hour, and it is IG134.
+
+**Cost of arming.** Six gate runs at 4m07s–4m25s, plus five anchor refreshes. Two of those runs existed only because `assertWithinBudget` rethrew on the first unanchored key and left the lane's second endpoint unrecorded — fixed in the same change, so a new lane now arms in one run.
 
 ### Checkpoint 2026-08-12 — the PARTIAL-validation key profile: one of IG126's four closed, and a 12 % member nobody had listed
 
@@ -342,7 +392,7 @@ Three sequential isolated `perfGateTest` runs at `087c39f5` on a quiet machine (
 
 The `PF-framed` and `PI-parallel` rows are catalog #12 carrying to the growth scales — the parity tier measured the same change at a tenth of the scale — and `CO-correlation` is catalog #11, which landed after the block was captured and was never folded in. The remaining 29 keys move within `0.82×`–`1.08×`, which is a median-of-three replacing a single sample rather than a change in cost. **The lesson is the trigger, not the numbers: an optimization must refresh the anchors of the scenarios it speeds up, in its own commit, or it leaves a bar that cannot fail.**
 
-### Checkpoint 2026-08-12 — the parallel row context, profiled and memoized (catalog #12, [IF283](INTERPRETER-FINDINGS.md#if283))
+### Checkpoint 2026-08-12 — the parallel row context, profiled and memoized (catalog #12, [IF283](INTERPRETER-FINDINGS.md#if283)) <a id="evidence-12"></a>
 
 **Why these two scenarios.** After the parity bar was extended to all 17 gated scenarios, the thinnest VALIDATE rows were `PF-framed` (`0.39`) and `complexRealWorld` (`0.38`), and the two optimization slices queued behind them had both been derived from a single COMPUTE profile of `CO-correlation`. A hot path found on one scenario is not a shared one, so both were profiled through the same driver (`EvalProfileTest`, JFR, ~1,400–1,650 samples each).
 
@@ -408,7 +458,7 @@ The checkpoint below concluded that the parity noise sat in the small arm and pr
 1. **The single-run figure was optimistic, and the retry is load-bearing rather than belt-and-braces.** With samples `0.39 / 0.74 / 0.46` the accepted median is `0.46`, which passes comfortably — but any one of them alone could have been reported as the row's ratio, and `0.74` is one contended slice away from parity. `PerfHarness.acceptOnMedianOfRetries` is what stands between this lane and a false red; that is now measured rather than argued.
 2. **Noise concentrates at the SMALL scale of each pair, not in particular scenarios.** Every thin row above is the small arm — `@200`, `@250`, `@60` — while their large arms are nearly noise-free (`CO-correlation @800` spreads `1.05×`, `complexRealWorld @240` `1.00×`, `PF-framed @1000` `1.10×`). *(Corrected 2026-08-12, same day: the observation holds, the explanation and the prescription that followed from it do not. It read the small arm's larger fixed-cost share and fewer iterations as the cause, and prescribed **more sampling on the small arm only**. Tracing the individual observations found the cause is that the first pair is measured **cold on every engine at both scales** — the small arm simply warms slowest. More sampling would have averaged the cold pair in more precisely rather than removing it; the fix is a steady-state warm before the first pair, and the checkpoint above measures both. Recorded rather than deleted because the wrong prescription was reached from a correct observation, which is the failure mode the "match the oracle to the CLAIM KIND" rule exists for: the observation was measured, the mechanism was inferred.)*
 
-### Checkpoint 2026-08-12 — the compute-overlay read path, after the tightest row was optimized (catalog #11)
+### Checkpoint 2026-08-12 — the compute-overlay read path, after the tightest row was optimized (catalog #11) <a id="evidence-11"></a>
 
 The same 17 parity lanes re-run after the three compute-overlay fixes, one isolated run, same machine. Record: [`perf-results/darwin-aarch64/2026-08-11T231938Z.jsonl`](../perf-results/darwin-aarch64/2026-08-11T231938Z.jsonl).
 
@@ -422,7 +472,7 @@ The same 17 parity lanes re-run after the three compute-overlay fixes, one isola
 
 `CO-correlation` itself, the row that motivated the work: at N=800 the interpreter went **34.39 ms → 23.49 ms** and its worse-strategy ratio **0.63 → 0.42**, so that row moved from `1.6×` to `2.4×`. The estate's worst row is now `CO-correlation @200` and `complexRealWorld-111f-82r @60`, both at `0.54`.
 
-**A single run understates how thin this is** — see the noise checkpoint below, which measures it properly. What keeps the lane from false-redding is the re-measurement of a comparative breach, not the margin. The same profile names the next two candidates — formal-error checking (≈16 % of samples) and the String-keyed `reps`/`placeOf` lookups (≈15 %) — neither of which is specific to this scenario.
+**A single run understates how thin this is** — see the 2026-08-12 checkpoint on each parity row's own ratio noise, which measures it properly. What keeps the lane from false-redding is the re-measurement of a comparative breach, not the margin. The same profile names the next two candidates — formal-error checking (≈16 % of samples) and the String-keyed `reps`/`placeOf` lookups (≈15 %) — neither of which is specific to this scenario.
 
 ### Checkpoint 2026-08-12 — the cross-engine bar extended from 2 scenarios to 17, and what that did to the margin (IF281)
 
@@ -535,6 +585,19 @@ The browser release scenario is `browser-b1-10000-rows-first-answer` v1: 10,000 
 
 On the pinned Apple M1 / Chrome 150.0.7871.186 runner, the original 50-process calibration series on `69e8985d` measured median/p95 193.45/204.4 ms and 195.9/218.4 ms; the first policy-enforced packed-`0.9.1` series on `b644b1e3` measured 190.65/209.3 ms. Corrected by the owner on 2026-07-27: p95 and an unconditional 50-process series were more ceremony than this smoke needs. The active bar is median ≤250 ms under the adaptive 10→50 protocol above. The first corrected-protocol series measured the representative 200-row, 23.1 kB, zero-finding Document at 10.2 ms median and the 10,000-row stress Document at 177.1 ms median; both stopped after 10 stable fresh-process samples. The earlier one-time 50-process characterization measured 10.6 ms and 178.8 ms medians respectively. The 0.11.0 release series on `3cee57e1`, under Chrome 150.0.7871.187, measured 10.0 ms and 187.7 ms medians respectively and also stopped after 10 stable fresh-process samples. The 2026-08-03 clean post-repair series on `961d56af`, under the same Chrome, measured 10.5 ms and 203.6 ms. The current report is written to `build/reports/interpreter-browser-performance/r5.2.json`; policy and negative controls run in ordinary browser verification, while the process collector remains an explicit measurement task.
 
+### Checkpoint 2026-07-22 — IG101 resolved: depth per-row favours the interpreter (no crossover) (IF205)
+
+The G52 depth "growth-ratio loss" recorded in the 2026-07-21 G52 compact/depth sweep prompted a clean full-warmup sweep to large N to settle whether it is a real per-row defect (which would imply a crossover where a kernel strategy overtakes) or a metric artifact. **It is an artifact — IG101 is closed (IF205), no redesign.** Clean depth/validate, warmup 12, Apple Silicon, one run:
+
+| N | interpreter | generated Java | dynamic Groovy | interp vs Java | interp vs Groovy |
+|---:|---:|---:|---:|---:|---:|
+| 4,000 | 153.1 ms | 583.4 ms | 896.4 ms | 3.81× | 5.86× |
+| 16,000 | 712.6 ms | 1519.9 ms | 1905.1 ms | 2.13× | 2.67× |
+
+Decomposing `time = fixed + perRow·N` over 4,000→16,000: **interpreter 0.047 ms/row < generated Java 0.078 < dynamic Groovy 0.084** — the interpreter has the *lowest* per-row cost of all three engines. Therefore there is **no crossover at any N** (measured directly to 16,000 rows, the interpreter is still 2.13×/2.67× faster); the interp-vs-Java speedup asymptotes to ~0.078/0.047 ≈ **1.67×** (>1×) and the *absolute* gap widens with N. The kernel's flat growth *ratio* (~1.4×) is its enormous per-call fixed cost (Java ≈ 583 ms at N=4,000 vs the interpreter's ~12 ms) diluting its per-row cost, while the interpreter's tiny fixed cost makes its (smaller) per-row work a larger *fraction* — inflating its ratio. The interpreter is strictly linear (per-row ~0.04–0.05 ms/row across 100→16,000). The two prior representation attempts failed because there is no per-row inefficiency to remove.
+
+Diagnostic evidence (warmup 12, medians), not an IF137 promotion. **The known limitation this checkpoint recorded is fixed (2026-08-11, IF279):** `synthesizedModelPerfTest` used to fail the depth shape on the *raw* N→4N growth bar (`interpreter growth 3.28× must be no worse than Groovy 1.30× / Java 1.43×`), which is the wrong lens for a lean engine on a fixed-cost-heavy comparison. Both callers share `pairedScenarioGrowth`, so teaching it the per-unit lens closed the parked guard-design decision for this lane and the routine gate together.
+
 ### Checkpoint 2026-07-21 — G52 compact/depth synthesized-model sweep (partial; IF199/IG101→IF205)
 
 The seed-42 compact and depth-shaped artifacts passed exact complete-result preflight at N=100 and N=400 against the interpreter, dynamic Groovy, and generated Java after IF198 corrected empty-string ingestion. Timings are same-run warm medians on Apple Silicon; growth is IF137's median of within-pair N/4N ratios, so it need not equal the quotient of the two displayed row medians. These artifacts predate the in-flight profile-fidelity regeneration and are diagnostic stress evidence, not a final calibration certificate or a promoted NFR bar.
@@ -559,19 +622,6 @@ Compact validation passes both the absolute and growth development rules. Before
 Depth keeps a substantial absolute lead—4.5–9× for validation and 1.6–3.4× for computation—but loses the paired growth criterion to both kernel strategies for validation and narrowly to generated Java as well as Groovy for computation. JFR attributes the shared residual to deep repetition-coordinate construction/hash/equality. The cached-hash wrapper and primitive-coordinate/key attempts did not improve the decisive curve, so IG101 recorded a deferred owner gate. **Superseded by the 2026-07-22 checkpoint below: a clean full-warmup sweep to N=16,000 shows the growth-ratio loss is a fixed-cost-dilution artifact, not a per-row defect — IG101 is resolved (IF205), no redesign.**
 
 The breadth artifact was **not eligible for timing**. Its stale pre-fidelity synthesized form concentrated enough generated rules for dynamic Groovy code generation to fail with `MethodTooLargeException` before the timed region. That is neither a kernel performance result nor permission to omit the strategy. Breadth must be regenerated after structure/rule fidelity lands, then pass exact tri-engine preflight before a curve is recorded.
-
-### Checkpoint 2026-07-22 — IG101 resolved: depth per-row favours the interpreter (no crossover) (IF205)
-
-The G52 depth "growth-ratio loss" above prompted a clean full-warmup sweep to large N to settle whether it is a real per-row defect (which would imply a crossover where a kernel strategy overtakes) or a metric artifact. **It is an artifact — IG101 is closed (IF205), no redesign.** Clean depth/validate, warmup 12, Apple Silicon, one run:
-
-| N | interpreter | generated Java | dynamic Groovy | interp vs Java | interp vs Groovy |
-|---:|---:|---:|---:|---:|---:|
-| 4,000 | 153.1 ms | 583.4 ms | 896.4 ms | 3.81× | 5.86× |
-| 16,000 | 712.6 ms | 1519.9 ms | 1905.1 ms | 2.13× | 2.67× |
-
-Decomposing `time = fixed + perRow·N` over 4,000→16,000: **interpreter 0.047 ms/row < generated Java 0.078 < dynamic Groovy 0.084** — the interpreter has the *lowest* per-row cost of all three engines. Therefore there is **no crossover at any N** (measured directly to 16,000 rows, the interpreter is still 2.13×/2.67× faster); the interp-vs-Java speedup asymptotes to ~0.078/0.047 ≈ **1.67×** (>1×) and the *absolute* gap widens with N. The kernel's flat growth *ratio* (~1.4×) is its enormous per-call fixed cost (Java ≈ 583 ms at N=4,000 vs the interpreter's ~12 ms) diluting its per-row cost, while the interpreter's tiny fixed cost makes its (smaller) per-row work a larger *fraction* — inflating its ratio. The interpreter is strictly linear (per-row ~0.04–0.05 ms/row across 100→16,000). The two prior representation attempts failed because there is no per-row inefficiency to remove.
-
-Diagnostic evidence (warmup 12, medians), not an IF137 promotion. **The known limitation this checkpoint recorded is fixed (2026-08-11, IF279):** `synthesizedModelPerfTest` used to fail the depth shape on the *raw* N→4N growth bar (`interpreter growth 3.28× must be no worse than Groovy 1.30× / Java 1.43×`), which is the wrong lens for a lean engine on a fixed-cost-heavy comparison. Both callers share `pairedScenarioGrowth`, so teaching it the per-unit lens closed the parked guard-design decision for this lane and the routine gate together.
 
 ### Checkpoint 2026-07-21 — IF196 profile-derived breadth validation path preparation
 
@@ -629,7 +679,7 @@ Per-4×-Rows growth factors (linear ⟹ ×4, quadratic ⟹ ×16):
 
 The existing `jsNodeTest` report for the current build records B1 per-row at **140.39 ms** and B2 star-aggregate at **60.88 ms** for 10,000 rows. This is useful plausibility evidence for the 350 ms initial first-answer ceiling, 250 ms design target, and 1,000 ms warm-throughput bar, but it is one shared test process with engine/document construction outside the clock—not a 50-process nearest-rank p95 run or the 2,500→10,000 paired growth protocol. It therefore certifies none of NFR-S2/P1 by itself.
 
-### Checkpoint 2026-07-10 — full `-PrunPerf` lane GREEN after IF116 (the gate's first live catch)
+### Checkpoint 2026-07-10 — full `-PrunPerf` lane GREEN after IF116 (the gate's first live catch) <a id="evidence-10"></a>
 
 The Set-E master-gate perf re-run caught a REAL O(rows²) — the IF107/IF115 per-lookup index-column rebuild (`semanticIndexStaysSubQuadratic` hung 20+ minutes at N=20,000, twice, deterministically) — fixed by the document-level `IndexColumn` memo (catalog #10, IF116). Post-fix, the full tagged perf lane (the routine growth guards plus the benchmark rows that now live in `PerfBenchTest`) took **7 m 51 s** and was green: all twelve growth checks were in the linear band (B1 4.31×, **semantic-index 4.03×**, NumberOfDifferentValues 4.07×, deep-nested Having 4.07×, FieldValuesNotUnique 2.71×, tiered compute 3.00×, wide groups 4.21×, constrained fields 4.33×, parallel iteration 3.45×, framed 4.19×, first-validation growth 3.37×, complex real-world 1233f/1017r 3.88×); the benchmark ratios were healthy (B2 star-aggregate ratioG 0.10, tiered compute 0.02, B6 many-rules 0.44).
 
@@ -703,53 +753,3 @@ All ratios are **`ratioJava` = interp_median / kernel-Java_median** (the *fair* 
 | 192 | 543.2 ms | 502.9 ms | 414.2 ms | **1.31 ← the naive interpreter LOST here** |
 
 The naive tree-walker reached parity at ~96 rules and **lost at 192** (≈1.31× firing, ≈1.70× low-firing) — the real crossover. The optimization catalog in [INTERPRETER-PERFORMANCE.md](INTERPRETER-PERFORMANCE.md) (indexed `Document`, row-prefix index, the `repsOf` memo, the per-row resolution cache, the lazy-polarity walk, allocation interning) roughly halved the per-operation cost and turned 192 into the ~2–2.5× win in the current run — pushing the interpreter ahead at every count the code generator can run.
-
-### Checkpoint 2026-08-13 — what the routine tier records once every lane goes through the recording seam
-
-Measured on `darwin-aarch64` (Macmini9,1 Apple M1, 8 processors, JDK 21.0.12) while wiring [IF296](INTERPRETER-FINDINGS.md#if296). **The machine was not idle:** these are back-to-back 4-minute gate runs over roughly an hour at load ~9, which is a confound the numbers below carry rather than a condition they were measured under.
-
-| | before | after |
-|---|---|---|
-| observation rows per gate run | 138 | **166** |
-| distinct lanes | 20 | **33** |
-| routine-tier classes contributing a row | 2 of 9 | **11 of 11** |
-| armed anchor keys (`darwin-aarch64`) | 36 | **64** |
-
-**Run-to-run stability, three sequential isolated gates.** Per-key spread (`max/min`) medians **1.14×** across all 64 keys. The two lanes fed by `KernelAdvantage` were the worst before their estimator changed from a mean to a median — `computeField` **1.89×** on `[3.13, 5.84, 3.09]`, `applyComputations` **1.82×** — and left the worst-five list afterwards. Four keys still reach the `1.65× + 1 ms` tolerance: `custom-type validation` **2.86×** at n=40000 (`[6.85, 2.83, 2.39]`) and **2.10×** at n=10000, `partial-SOP/complete-concrete` **1.78×**, `group-scope fill` **1.68×**. All six gate runs passed, so no false red occurred; the open question is whether those four are noisy estimators or a noisy hour, and it is IG134.
-
-**Cost of arming.** Six gate runs at 4m07s–4m25s, plus five anchor refreshes. Two of those runs existed only because `assertWithinBudget` rethrew on the first unanchored key and left the lane's second endpoint unrecorded — fixed in the same change, so a new lane now arms in one run.
-
-### Checkpoint 2026-08-14 — what makes a routine-tier lane noisy: magnitude, not the clock
-
-*Conclusion:* [IF298](INTERPRETER-FINDINGS.md#if298) — lane noise tracks the measurement's magnitude; batching lifts a lane out of the sub-10 ms band.
-
-Read from the committed record with `scripts/perf-trend.sh` over 174 keys on `darwin-aarch64` (27 runs, 2026-08-12 .. 2026-08-13). The question was which lanes are too noisy for the `1.65× + 1 ms` anchor tolerance to be a real bar; the first attempt answered it from the `max/min` of three runs and got both the set and the reason wrong.
-
-**Estate median noise: ±7.3%.** Fourteen keys sit at or above ±20% with at least 7 runs.
-
-| hypothesis | discriminator | verdict |
-|---|---|---|
-| wall-clock lanes are contention-exposed where CPU-clock lanes are not | median noise by clock: **wall ±6.9%** (n=124) vs **cpu ±9.4%** (n=50) | **falsified** — CPU lanes are the noisier population, and carry 8 of the 14 noisy keys from a quarter of the rows |
-| noise is a function of the measurement's magnitude | noisy keys by current median: `0-2 ms` 1/34 · `2-5 ms` 6/37 · `5-10 ms` 7/29 · `10-30 ms` **0/41** · `30 ms+` **0/33** | **confirmed** — every noisy key in the estate is under 10 ms, and nothing above it is noisy |
-
-The corrective follows from the mechanism rather than from the list: lift a lane's measured median out of the sub-10 ms band, by batching inside the timed block or by a larger N. Both cost nothing in fidelity, since a growth ratio is a quotient and a constant factor on both scales cancels — but a batch changes *what one block measures*, so it belongs in the observation key, while warmup and iteration counts do not.
-
-**A note on the statistic.** `max/min` over three samples routinely reaches 1.5–1.7× on a distribution whose true spread is ±20%, which is why the first diagnosis produced four plausible names that were mostly not the worst offenders. The record's own instrument was already computing the right quantity over 20+ runs.
-
-### Checkpoint 2026-08-14 — batching every sub-10 ms lane takes the over-tolerance count to zero
-
-Each stage measured by three **sequential** isolated gate runs on `darwin-aarch64` (Macmini9,1 Apple M1 ×8, JDK 21.0.12), 64 armed keys, spread as `max/min` per key against the `1.65× + 1 ms` anchor tolerance. Mechanism and rationale: [IF298](INTERPRETER-FINDINGS.md#if298).
-
-| stage | keys at/over 1.65× | median spread | max |
-|---|---|---|---|
-| before | 5 | 1.19× | 1.89× |
-| more warmups + iterations | **7** | 1.17× | 2.86× |
-| growth lanes batched (`PerfGateTest` ×4, charset, group-scope fill, custom-type) | 2 | 1.09× | 2.97× |
-| `KernelAdvantage` lanes batched (`testRule`, `evalCandidate`, `computeField`, `applyComputations`, partial-SOP) | 1 | 1.10× | 1.68× |
-| depth lane sized to its ~0.015 ms per call; custom-type warm 3 → 10 | **0** | **1.10×** | **1.52×** |
-
-The second row is the informative one: raising warmups and iteration counts made the count *worse*, which is what fixed the diagnosis. Each figure is already a median of 35 samples (`warmup=5, iters=7` inside `pairedGrowth`'s 5 pairs), so within-run sampling was never the constraint — the variance is between JVM runs.
-
-**A note on reading these numbers.** The third run of the final stage was measured after an interrupted gate left a **truncated** record (140 observations, 38 accepted, against 166/64 for a complete run). Folding it in would have reported "0 over tolerance" from 38 keys rather than 64 — a vacuous pass. The three runs above are all complete; a spread claim has to state its denominator.
-
-**Gate cost** is unchanged at roughly 4m10s–4m50s: the batched lanes are a small fraction of a run dominated by kernel codegen and the parity tier.

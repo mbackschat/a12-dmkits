@@ -25,11 +25,16 @@ import org.junit.jupiter.api.Test;
  * motivated it feel like they belong beside it — they do not, because they go stale on the next machine or the
  * next day, and a findings doc is read as durable.
  *
- * <p><b>What is asserted here — the STRUCTURAL forms only, all three measured clean when this landed:</b> a
- * results-log entry heading ({@code ### Checkpoint <date> …}) must not appear in a findings doc (0 in all three,
- * against 14 in the performance doc); a CI run URL must not appear in one (0 in all three); and inside the
- * performance doc every {@code Checkpoint} heading must sit under {@code ## Results log}, so dated evidence cannot
- * drift up into the method sections.
+ * <p><b>What is asserted here — the STRUCTURAL forms only:</b> a results-log entry heading
+ * ({@code ### Checkpoint <date> …}) must not appear in a findings doc (0 in all three); a CI run URL must not
+ * appear in one (0 in all three); and every dated checkpoint sits in the RESULTS half, none in the METHOD half
+ * (0 and 35 as of 2026-08-16), so dated evidence cannot drift into the method sections. The last assertion was
+ * the weaker within-file form — "below the {@code ## Results log} heading" — until the 2026-08-15 split made
+ * the two halves separate files; that heading no longer exists in either.
+ *
+ * <p>Placement is all this guards. Whether the addresses <i>inside</i> those two files resolve — the catalog
+ * ids the results log cites, and the newest-first order a reader relies on to stop — is
+ * {@link PerformancePairAddressingGuardTest}, and both were broken by the same split without failing here.
  *
  * <p><b>What this deliberately does NOT guard, measured rather than assumed.</b> The judgment itself — is this
  * paragraph dated evidence or a timeless argument? — has no reliable textual marker, and two candidates were

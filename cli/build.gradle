@@ -393,6 +393,7 @@ tasks.register('docGuardTest', Test) {
         includeTestsMatching 'io.github.mbackschat.a12.dm.cli.InterpreterGapIdRegistryGuardTest'
         includeTestsMatching 'io.github.mbackschat.a12.dm.cli.DocAnchorResolveGuardTest'
         includeTestsMatching 'io.github.mbackschat.a12.dm.cli.DocsEvidencePlacementGuardTest'
+        includeTestsMatching 'io.github.mbackschat.a12.dm.cli.PerformancePairAddressingGuardTest'
         includeTestsMatching 'io.github.mbackschat.a12.dm.cli.DocumentShapeSingleSourceTest'
         includeTestsMatching 'io.github.mbackschat.a12.dm.cli.DemoOutputIsRealTest'
         includeTestsMatching 'io.github.mbackschat.a12.dm.cli.ProbeRepeatedComputationIdentityTest'
