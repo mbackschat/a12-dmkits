@@ -9,6 +9,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.List;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -294,12 +295,37 @@ class FieldVerbTest {
                 {"group":"/D","name":"Win","kind":"DATERANGE","dateRange":{"format":"YYYY-MM-DD","separator":" - "}}""");
         var res = CliTestSupport.run("-m", m.toString(), "field", "add", spec.toString());
         assertNotEquals(0, res.code(), "the uppercase format + spaced separator is rejected");
-        boolean hasFormFix = false;
+        String found = "";
         for (JsonNode d : M.readTree(res.out()).path("diagnostics")) {
             String fix = d.path("fix").asText("");
-            hasFormFix |= fix.contains("yyyy-MM-dd") && fix.toLowerCase().contains("lowercase");
+            if (fix.contains("yyyy-MM-dd") && fix.toLowerCase().contains("lowercase")) {
+                found = fix;
+            }
         }
-        assertTrue(hasFormFix, () -> "the date-format reject names the valid lowercase forms: " + res.out());
+        final String formFix = found;
+        assertFalse(formFix.isEmpty(), () -> "the date-format reject names the valid lowercase forms: " + res.out());
+
+        // The corrective states which formats are LEGAL, so a kind whose set it under-reports reads as a
+        // prohibition and an agent will not author a legal field. Both understatements below were live until
+        // 2026-08-15: DATE_TIME was published as ISO-only, which is how the interpreter's own time-only defect
+        // (IF301) stayed invisible, and DATE omitted the component-omitting whitelist entirely (KF176). Each
+        // format asserted here is kernel-measured — `IncompleteDateFormatAdmissionLawsTest` for the DATE set,
+        // `FirstFilledValueFamilyLawsTest.theLegalFormatSetPerTemporalKindIsAWhitelist` for the DATE_TIME pair.
+        // Scoped to the DATE_TIME clause on purpose: `HH:mm:ss` also appears in the TIME clause, so a
+        // whole-string contains() would have passed against the ISO-only text this assertion exists to forbid.
+        String dateTimeClause = formFix.substring(formFix.indexOf("DATE_TIME"));
+        assertTrue(dateTimeClause.contains("yyyy-MM-dd'T'HH:mm:ss"),
+                () -> "the DATE_TIME clause must name the ISO format: " + dateTimeClause);
+        // `time-only`, not a bare `HH:mm:ss` scan: the ISO literal ENDS with `HH:mm:ss`, so a contains() on the
+        // format string alone matches the very ISO-only wording this assertion exists to forbid — the first
+        // version of this check was vacuous for exactly that reason and passed its own mutant.
+        assertTrue(dateTimeClause.contains("time-only"),
+                () -> "the DATE_TIME clause must name the time-only format as legal too — publishing it as "
+                        + "ISO-only reads as a prohibition and hid IF301 for three months: " + dateTimeClause);
+        for (String omitting : List.of("`yyyy`", "`yyyy-MM`", "`yyyyMM`", "`MM`")) {
+            assertTrue(formFix.contains(omitting),
+                    () -> "the corrective must name the component-omitting DATE format " + omitting + ": " + formFix);
+        }
     }
 
     /** Write {@code spec} to a temp file and run {@code field add}; return the exit code. */

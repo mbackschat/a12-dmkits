@@ -561,6 +561,22 @@ fun parseDateTimeToIso(raw: String, format: String): String? {
 }
 
 /**
+ * Canonicalize a `DATE_TIME` value by whichever of the kind's **two** legal declared formats [format] is.
+ *
+ * A `DateTimeType` may be declared `yyyy-MM-dd'T'HH:mm:ss` — canonicalized to that ISO shape — or with the
+ * degenerate **time-only** `HH:mm:ss`, which omits every calendar component and canonicalizes to `HH:mm:ss`
+ * exactly as a TIME field does (KERNEL-FINDINGS §6). No format sniffing is needed: [parseTimeToIso] already
+ * returns null for any format carrying `y`/`M`/`d`, so "try the date-bearing reading, else the date-less one"
+ * is total and unambiguous.
+ *
+ * Both the formal check and value resolution route through here so they cannot disagree about whether a cell is
+ * readable — they previously each called [parseDateTimeToIso] alone, which returns null for a time-only format,
+ * so every such cell was simultaneously reported formally invalid AND resolved to Unknown (IF301).
+ */
+fun parseDeclaredDateTime(raw: String, format: String): String? =
+    parseDateTimeToIso(raw, format) ?: parseTimeToIso(raw, format)
+
+/**
  * Validate a TIME value against its [format] (e.g. `HH:mm:ss`) and normalize to `HH:mm:ss`, or null if
  * malformed — the time-only twin of [parseDateTimeToIso] (no date component). A format carrying any date run
  * (`y`/`M`/`d`) is not a time format → null. Out-of-range components (`H>23`, `m`/`s`>59) → null. Used by the

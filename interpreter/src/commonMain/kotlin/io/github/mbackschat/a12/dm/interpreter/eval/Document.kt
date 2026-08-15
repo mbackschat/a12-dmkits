@@ -1684,7 +1684,13 @@ class Document(internal val config: DocumentConfig) {
                         ?.let { Val.Txt(it) } ?: Val.Unknown
                 }
             }
-            Kind.DATE_TIME -> parseDateTimeToIso(raw, dateTimeFormats[path] ?: "yyyy-MM-dd'T'HH:mm:ss")
+            // A DATE_TIME canonicalizes by whichever of the kind's TWO legal declared formats its field carries:
+            // the ISO `yyyy-MM-dd'T'HH:mm:ss`, or the degenerate time-only `HH:mm:ss` — which omits every
+            // calendar component and canonicalizes to `HH:mm:ss`, comparing exactly like a TIME cell. The
+            // formal gate above admits such a cell, so resolution MUST produce a value for it; returning
+            // Unknown made every referencing rule silently non-evaluable (IF301, the DATE_TIME sibling of the
+            // IG110/IF250 class its sweep had ruled out).
+            Kind.DATE_TIME -> parseDeclaredDateTime(raw, dateTimeFormats[path] ?: "yyyy-MM-dd'T'HH:mm:ss")
                 ?.let { Val.Txt(it) } ?: Val.Unknown
             else -> typedValue(kind, raw)
         }

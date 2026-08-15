@@ -284,10 +284,12 @@ public final class StructuralKernelFix {
             return Optional.of(new Hint(
                     "A date/time field FORMAT must be a LOWERCASE Java pattern from the kernel's fixed allowed set "
                             + "(the editor's UPPERCASE labels like YYYY-MM-DD are display labels, NOT format values). "
-                            + "Verified: DATE `yyyy-MM-dd` or `dd.MM.yyyy`; DATERANGE the pair `dd.MM.yyyy`+separator `-` "
+                            + "Verified: DATE `yyyy-MM-dd` or `dd.MM.yyyy`, and the component-omitting `yyyy`, "
+                            + "`yyyy-MM`, `yyyyMM`, `MM` (a whitelist, not a compositional rule — `yyyy/MM` and "
+                            + "`dd.MM` are refused); DATERANGE the pair `dd.MM.yyyy`+separator `-` "
                             + "or `yyyy-MM-dd`+separator `/`; TIME the full `HH:mm:ss` (not `HH:mm`); DATEFRAGMENT "
-                            + "`MM`/`yyyy`/`yyyy-MM`/`MM-dd`; DATE_TIME only the ISO `yyyy-MM-dd'T'HH:mm:ss` (no other "
-                            + "date-bearing datetime format is accepted). See `schema field add`.",
+                            + "`MM`/`yyyy`/`yyyy-MM`/`MM-dd`; DATE_TIME EITHER the ISO `yyyy-MM-dd'T'HH:mm:ss` or the "
+                            + "time-only `HH:mm:ss` — those two and nothing else. See `schema field add`.",
                     "The kernel validates a date/time field's declared format against a fixed allowed set (the same "
                             + "regardless of locale) and rejects anything else with a message but no MVK_ code."));
         }

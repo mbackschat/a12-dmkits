@@ -362,12 +362,16 @@ internal fun typeFormatErrorCached(
         // unchecked entirely, so a malformed time even *escaped* suppression — KERNEL-FINDINGS §6 / IF8.)
         Kind.TIME -> if (parseTimeToIso(raw, format ?: "HH:mm:ss") != null) null else FormalErrorCode.DATE_FORMAT
         Kind.DATE_TIME -> {
-            val iso = parseDateTimeToIso(raw, format ?: "yyyy-MM-dd'T'HH:mm:ss")
+            // Both of the kind's legal declared formats, via the shared canonicalization — a time-only
+            // `HH:mm:ss` DATE_TIME is legal and used to be reported malformed here (IF301).
+            val canonical = parseDeclaredDateTime(raw, format ?: "yyyy-MM-dd'T'HH:mm:ss")
             when {
-                iso == null -> FormalErrorCode.DATE_FORMAT
+                canonical == null -> FormalErrorCode.DATE_FORMAT
                 // A Europe/Berlin wall time inside the spring-forward gap does not exist — the kernel's
                 // non-lenient zone-set parse rejects it with the SAME code (probe-verified, KERNEL-FINDINGS §6).
-                isGapLocal(iso, timeZone) -> FormalErrorCode.DATE_FORMAT
+                // Only a date-bearing value can sit in a gap: a time-only cell names no calendar day, so there
+                // is no transition to fall into, and the guard must not be applied to its `HH:mm:ss` canonical.
+                isIsoDateTime(canonical) && isGapLocal(canonical, timeZone) -> FormalErrorCode.DATE_FORMAT
                 else -> null
             }
         }

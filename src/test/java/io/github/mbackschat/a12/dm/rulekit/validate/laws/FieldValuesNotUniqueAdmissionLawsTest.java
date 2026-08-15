@@ -93,7 +93,7 @@ class FieldValuesNotUniqueAdmissionLawsTest {
      * {@code Counts} cannot carry that measurement: its expansion would offend the category gate, so a
      * rejection would not distinguish "a group operand is refused" from "this group's contents are refused".
      *
-     * <p>Time and DateTime carry no explicit format because the kernel admits exactly one declared format for each
+     * <p>Time and DateTime carry no explicit format because the kernel admits exactly one declared format for Time (DateTime also admits the time-only HH:mm:ss)
      * ({@code HH:mm:ss} and {@code yyyy-MM-dd'T'HH:mm:ss}) — a probe declaring {@code HH:mm} was refused at the
      * model level, so their same-format rows cannot be separated from their kind rows and are not asserted as such.
      */
