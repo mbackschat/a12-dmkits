@@ -16,7 +16,7 @@ import io.github.mbackschat.a12.dm.core.ValueKind;
  * only come from {@link BoundModel}. Grows with the operator catalog.
  *
  * <p><b>This file is intentionally a long, flat facade</b> — one delegating factory per operator, not a
- * candidate for splitting (a single static import is the whole point; see ARCHITECTURE §2). Read it by
+ * candidate for splitting (a single static import is the whole point; see ARCHITECTURE §3.2). Read it by
  * section; the sections, in file order, are:
  * <ol>
  *   <li>presence &amp; pattern — {@code fieldFilled}, {@code matches}, {@code length}</li>
