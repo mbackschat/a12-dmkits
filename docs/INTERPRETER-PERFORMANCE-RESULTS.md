@@ -21,9 +21,6 @@
 > enforcement, and its place in the docs router. The cleaner boundary is by AUTHOR, not by subject — `perf-results/`
 > is machine-written and self-pruning, this is hand-written and guard-verified.
 
-## Results log
-
-
 ### Checkpoint 2026-08-15 — what ONE unchanged commit costs on a hosted runner, measured from the committed record
 
 Read from `perf-results/linux-amd64-ci/` only; nothing was run for it. The record holds two triplets of nightly runs of a **single** commit, which is the only shape that can answer "how far apart can identical code land here?".
