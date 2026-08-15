@@ -14,7 +14,7 @@ import org.junit.jupiter.api.io.TempDir;
 
 /**
  * <b>The `-GAPS` open-section marker guard.</b> "What remains?" is the one question an agent cannot answer
- * with a single grep, because the answer is spread over eight ledgers and most of them are empty. Before
+ * with a single grep, because the answer is spread over nine ledgers and most of them are empty. Before
  * this guard the empty state was written five different ways — {@code _None currently._}, {@code _None._},
  * {@code (none)}, {@code _None open._}, and twice as bare prose with no explicit statement at all — so
  * {@code grep -H '^_None open._' docs/*GAPS*.md} returned two of eight files and silently under-reported.
@@ -40,11 +40,11 @@ class GapLedgerTemplateGuardTest {
     /** The positive assertion of emptiness. Exact text on its own line, so the roll-up grep is exact. */
     private static final String MARKER = "_None open._";
 
-    /** Sanity floor: the estate has eight `-GAPS` ledgers. A scan finding almost none is checking nothing. */
+    /** Sanity floor: the estate has nine `-GAPS` ledgers. A scan finding almost none is checking nothing. */
     private static final int MIN_LEDGERS = 6;
 
     /**
-     * <b>The shared template.</b> The eight ledgers do one job, but they had drifted apart accidentally —
+     * <b>The shared template.</b> The nine ledgers do one job, but they had drifted apart accidentally —
      * eight H1 phrasings, three different labels for the lifecycle paragraph, and open sections that mixed
      * the marker with paragraphs of closure history. Uniform shape is what lets one grep answer "what
      * remains?" across the family, so the shape is checked rather than merely agreed:

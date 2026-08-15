@@ -6,18 +6,18 @@
 
 ## These docs are read by grep + sed, never whole
 
-The knowledge docs total ~1.5 MB (~380k tokens); `INTERPRETER-FINDINGS` alone is ~690 KB. Never `Read` one end to end. A finding's **heading line is the retrieval preview** — it deliberately carries claim + oracle + date, so a grep over headings is usually enough to decide what to fetch.
+The knowledge docs total ~4.6 MB (~1.15M tokens at 4 bytes each); `INTERPRETER-FINDINGS` alone is ~1.0 MB. Never `Read` one end to end. *(Every derived figure in this doc has a recompute command in [CLAUDE.recompute.md](CLAUDE.recompute.md) — run it rather than trusting the number.)* A finding's **heading line is the retrieval preview** — it deliberately carries claim + oracle + date, so a grep over headings is usually enough to decide what to fetch.
 
 | you need… | run |
 |---|---|
 | **which doc at all** | [README.md](README.md) — the "You need… → read…" router; every `docs/*.md` is indexed (guard-locked) |
-| **where a kernel-semantics area lives** | [SEMANTICS-MAP.md](SEMANTICS-MAP.md) — 99 lines, keyed by the canonical `§1`–`§14`, re-derived from its live surfaces by a guard |
-| **what exists** (entry inventory) | `grep -n '^### IF' docs/INTERPRETER-FINDINGS.md` (229) · `grep -n '^#\{2,3\} ' docs/KERNEL-FINDINGS.md` (165) · `grep -n '^[0-9]\+\. \*\*' docs/API-FINDINGS.md` (103) |
+| **where a kernel-semantics area lives** | [SEMANTICS-MAP.md](SEMANTICS-MAP.md) — 104 lines, keyed by the canonical `§1`–`§14`, re-derived from its live surfaces by a guard |
+| **what exists** (entry inventory) | `grep -n '^### IF' docs/INTERPRETER-FINDINGS.md` (299) · `grep -n '^#\{2,3\} ' docs/KERNEL-FINDINGS.md` (188) · `grep -n '^[0-9]\+\. \*\*' docs/API-FINDINGS.md` (125) |
 | **one entry, in full** | `grep -n '^### IF229' <doc>` for the start line, then `sed -n '<start>,<end>p'` bounded by the next heading match |
 | **a fact by keyword** | `grep -n '<term>' docs/KERNEL-FINDINGS.md docs/KERNEL-SEMANTICS.md` — the kernel-truth pair; headings are keyword-rich on purpose |
-| **how certain a claim is** | the heading's oracle token (`probe` / `source-verified` / `source-read` / `differential` / `measured` / `tri-lock`), then pipe the entry range through `grep -i lock` for its test — the lock is prose-embedded (149 of 165 entries name a `*Test`/`*Laws` class inline), so extract it, don't expect a fixed slot |
+| **how certain a claim is** | the heading's oracle token (`probe` / `source-verified` / `source-read` / `differential` / `measured` / `tri-lock`), then pipe the entry range through `grep -i lock` for its test — the lock is prose-embedded (171 of 188 entries name a `*Test`/`*Laws` class inline), so extract it, don't expect a fixed slot |
 | **whether a kernel fact is current** | `grep -A1 '^## <heading>'` — the `> Fold:` marker is the first body line of every KERNEL-FINDINGS entry: `folded → §n` (canonical claim now lives in [KERNEL-SEMANTICS](KERNEL-SEMANTICS.md) §n) · `not-foldable` · `pending` |
-| **what remains** | `grep -H '^_None open._' docs/*GAPS*.md` — the drained ledgers (7 of 8 today); the rest carry rows under their `Open` section |
+| **what remains** | `grep -H '^_None open._' docs/*GAPS*.md` — the drained ledgers — all 9 of 9 today; any that is not drained carries rows under its `Open` section |
 
 ## Addressing — cite by id, never by title text
 
@@ -25,17 +25,17 @@ Every cited entry owns an **explicit anchor**, so a heading may be amended freel
 
 | doc | id | notes |
 |---|---|---|
-| [INTERPRETER-FINDINGS](INTERPRETER-FINDINGS.md) | `IF<n>` → `#ifNN` | all 229 headings carry `<a id="ifNN"></a>`. Never renumber or reuse; a new finding takes the next number and must carry its anchor |
-| [KERNEL-FINDINGS](KERNEL-FINDINGS.md) | `KF<n>` → `#kfNN` | all 165 entries carry `<a id="kfNN"></a>`, **trailing** — never before the `§`-tag, because two guards pin `^## §n `. Ids are dense 1..N in document order; a finding is never deleted or renumbered. `§n` is a section-*class* hint, not an address (`## §9 supplement` matches 25 entries) |
-| [KERNEL-SEMANTICS](KERNEL-SEMANTICS.md) | `§1`–`§14` + heading slugs | the canonical prose; its 14 section slugs are guard-pinned, so linking them is safe. Its 107 verification cites read `§n / [IFm](INTERPRETER-FINDINGS.md#ifm)` — the two halves live in **different** docs, which is why the `IFm` half is an explicit link |
-| [API-FINDINGS](API-FINDINGS.md) | ordinal, cited as `finding N` | ~113 citation sites, including production sources. Greppable exactly (`grep '^67\. '`). It is a markdown ordered list, so **never delete or insert mid-list** — rendered numbering would shift and silently break every later citation |
-| the `-GAPS` ledgers | `IG<n>` `DG<n>` `IAG<n>` `IRG<n>` `MR<n>` `CG<n>` `MG<n>` | `IAG`/`IRG` rows carry `#iagN`/`#irgN` anchors and every issued interpreter API/release id remains resolvable in the [interpreter gap-ID registry](INTERPRETER-GAP-ID-REGISTRY.md), even after its live row is deleted. `CG` rows (CLI conformance) carry `#cgN` anchors. A shipped gap's row is **deleted**, so most ids you meet elsewhere are provenance, not open work — ~99 `IG` ids are cited across `docs/` while only the ledger's own rows are live. Never write `pending IGn` / `IGn stays open` about a gap you have not checked against the ledger |
+| [INTERPRETER-FINDINGS](INTERPRETER-FINDINGS.md) | `IF<n>` → `#ifNN` | all 299 headings carry `<a id="ifNN"></a>`. Never renumber or reuse; a new finding takes the next number and must carry its anchor |
+| [KERNEL-FINDINGS](KERNEL-FINDINGS.md) | `KF<n>` → `#kfNN` | all 188 entries carry `<a id="kfNN"></a>`, **trailing** — never before the `§`-tag, because two guards pin `^## §n `. Ids are dense 1..N in document order; a finding is never deleted or renumbered. `§n` is a section-*class* hint, not an address (`## §9 supplement` matches 32 entries) |
+| [KERNEL-SEMANTICS](KERNEL-SEMANTICS.md) | `§1`–`§14` + heading slugs | the canonical prose; its 14 section slugs are guard-pinned, so linking them is safe. Its 120 verification cites read `§n / [IFm](INTERPRETER-FINDINGS.md#ifm)` — the two halves live in **different** docs, which is why the `IFm` half is an explicit link |
+| [API-FINDINGS](API-FINDINGS.md) | ordinal, cited as `finding N` | ~123 citation sites, including production sources. Greppable exactly (`grep '^67\. '`). It is a markdown ordered list, so **never delete or insert mid-list** — rendered numbering would shift and silently break every later citation |
+| the `-GAPS` ledgers | `IG<n>` `DG<n>` `IAG<n>` `IRG<n>` `MR<n>` `CG<n>` `MG<n>` | `IAG`/`IRG` rows carry `#iagN`/`#irgN` anchors and every issued interpreter API/release id remains resolvable in the [interpreter gap-ID registry](INTERPRETER-GAP-ID-REGISTRY.md), even after its live row is deleted. `CG` rows (CLI conformance) carry `#cgN` anchors. A shipped gap's row is **deleted**, so most ids you meet elsewhere are provenance, not open work — ~134 distinct `IG` ids are cited across `docs/` while only the ledger's own rows are live. Never write `pending IGn` / `IGn stays open` about a gap you have not checked against the ledger |
 
 **Section numbers are load-bearing.** `FEATURE-GAPS §4`, `DEV-API-GAPS §2/§3`, `INTERPRETER-GAPS §3` and `SCHEMAKIT-GAPS §3` are cited from production sources and docs. Do not renumber a `-GAPS` section; add at the end instead.
 
 ## The `-GAPS` template
 
-All eight ledgers share one shape, so a single grep answers "what remains?" across the family. Guarded by `GapLedgerTemplateGuardTest`.
+All nine ledgers share one shape, so a single grep answers "what remains?" across the family. Guarded by `GapLedgerTemplateGuardTest`.
 
 ```markdown
 # <scope> — gaps
