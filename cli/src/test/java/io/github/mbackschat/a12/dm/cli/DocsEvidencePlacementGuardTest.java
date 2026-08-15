@@ -14,10 +14,10 @@ import org.junit.jupiter.api.Test;
 
 /**
  * <b>Dated evidence belongs in a results log, never in a findings doc.</b> The two homes are set by their own
- * preambles: {@code INTERPRETER-PERFORMANCE.md} is "the single detailed source of truth for … measurement … and
- * dated evidence", while {@code INTERPRETER-FINDINGS.md} is "a rationale record, not a status surface — the
- * timeless fact, the decision, the why". DOC-DISCIPLINE §61 states the same split for every spec: "Specs hold the
- * stable method; measured results live in a dated log."
+ * preambles: {@code INTERPRETER-PERFORMANCE-RESULTS.md} is "the dated evidence for interpreter performance: one
+ * dated checkpoint entry per measurement session, newest first", while {@code INTERPRETER-FINDINGS.md} is "a
+ * rationale record, not a status surface — the timeless fact, the decision, the why". DOC-DISCIPLINE §61 states
+ * the same split for every spec: "Specs hold the stable method; measured results live in a dated log."
  *
  * <p><b>Why a guard.</b> This was violated on 2026-08-11: three hosted runs' medians, wall times, run ids and
  * exceedance counts were written into IF280 rather than the results log, and it took the owner noticing to catch
@@ -54,7 +54,7 @@ class DocsEvidencePlacementGuardTest {
 
     private static final Path METHOD = Path.of("../docs/INTERPRETER-PERFORMANCE.md");
 
-    private static final Path PERFORMANCE = Path.of("../docs/INTERPRETER-PERFORMANCE-RESULTS.md");
+    private static final Path RESULTS = Path.of("../docs/INTERPRETER-PERFORMANCE-RESULTS.md");
 
     /** The results-log entry shape: `### Checkpoint 2026-08-11 — …`. */
     private static final Pattern CHECKPOINT_HEADING =
@@ -69,7 +69,7 @@ class DocsEvidencePlacementGuardTest {
             Matcher found = CHECKPOINT_HEADING.matcher(read(doc));
             assertTrue(!found.find(), () -> doc.getFileName()
                     + " carries a results-log entry heading (\"" + found.group() + "\"). A dated checkpoint is "
-                    + "evidence, and evidence lives in INTERPRETER-PERFORMANCE.md's \"Results log\" — this doc is "
+                    + "evidence, and evidence lives in INTERPRETER-PERFORMANCE-RESULTS.md — this doc is "
                     + "a rationale record, so a reader takes what it says as durable. Move the numbers, keep the "
                     + "reasoning, and link the checkpoint");
         }
@@ -102,7 +102,7 @@ class DocsEvidencePlacementGuardTest {
                 + "mechanics. Dated evidence belongs in INTERPRETER-PERFORMANCE-RESULTS.md (DOC-DISCIPLINE: "
                 + "specs hold the method, a dated log holds the numbers)");
 
-        assertTrue(CHECKPOINT_HEADING.matcher(read(PERFORMANCE)).find(),
+        assertTrue(CHECKPOINT_HEADING.matcher(read(RESULTS)).find(),
                 "INTERPRETER-PERFORMANCE-RESULTS.md must carry the checkpoints — it is the home every findings "
                 + "doc points dated evidence at, and an empty one makes the assertion above vacuous");
     }

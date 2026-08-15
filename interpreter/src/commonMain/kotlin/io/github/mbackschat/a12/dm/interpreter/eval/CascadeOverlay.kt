@@ -10,7 +10,7 @@ import io.github.mbackschat.a12.dm.interpreter.ast.Val
  * `Pair<String, List<Int>>` is hashed by walking the repetition list, so one logical read walked it three times,
  * and `starCells` walked it three times **per row**. Measured on the compute-overlay correlation profile,
  * `stateOf` was present in 29.67 % of samples with `ArrayList.hashCodeRange` the third-hottest self frame
- * (INTERPRETER-PERFORMANCE "Checkpoint 2026-08-12 — the list-in-key sweep"; the sweep is [IF285]).
+ * (INTERPRETER-PERFORMANCE-RESULTS "Checkpoint 2026-08-12 — the list-in-key sweep"; the sweep is [IF285]).
  *
  * **Nested `path → reps → entry`, which is the same fix and the same reason as [Document.Index.valueByKey]'s.**
  * The outer `String` lookup is cheap and its hash is cached by the platform, so a path the cascade never touched

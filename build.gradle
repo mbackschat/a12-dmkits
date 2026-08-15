@@ -532,7 +532,7 @@ tasks.register('docGuardTest', Test) {
     // docs-only checkpoint ran this task. Aggregating is preferred over asserting the ledger grammar twice — one
     // regex in two modules is the duplication-that-must-stay-in-sync smell. These are cross-module TASK edges (not
     // project edges) and both targets declare their inputs, so they cost nothing when no doc input changed.
-    dependsOn ':cli:docGuardTest', ':cli:staleGapGuardTest'
+    dependsOn ':cli:docGuardTest', ':cli:staleGapGuardTest', ':cli:referentGuardTest'
     useJUnitPlatform()
     testClassesDirs = sourceSets.test.output.classesDirs
     classpath = sourceSets.test.runtimeClasspath
