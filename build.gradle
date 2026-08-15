@@ -524,6 +524,7 @@ tasks.register('docGuardTest', Test) {
         includeTestsMatching 'io.github.mbackschat.a12.dm.AttributionDisclaimerLockTest'
         includeTestsMatching 'io.github.mbackschat.a12.dm.DoctorScriptTest'
         includeTestsMatching 'io.github.mbackschat.a12.dm.GateTierWiringTest'
+        includeTestsMatching 'io.github.mbackschat.a12.dm.LockCitationResolvesTest'
         includeTestsMatching 'io.github.mbackschat.a12.dm.PerfAnchorCoverageGuardTest'
         includeTestsMatching 'io.github.mbackschat.a12.dm.PerfTestClassificationTest'
         includeTestsMatching 'io.github.mbackschat.a12.dm.RawClockCensusTest'
