@@ -1,7 +1,7 @@
 package io.github.mbackschat.a12.dm;
 
-import static java.util.Map.entry;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.IOException;
@@ -18,7 +18,7 @@ import org.junit.jupiter.api.Test;
 
 /**
  * Class guard for <b>path containment</b>: production code asks whether one model entity path lies inside
- * another through {@link io.github.mbackschat.a12.dm.core.EntityPaths}, never by hand.
+ * another through {@link io.github.mbackschat.a12.dm.core.EntityPath}, never by hand.
  *
  * <p><b>Why a census rather than a fix.</b> The hand-spelled relation shipped as a defect twice in one week, in
  * opposite directions — {@code startsWith(ancestor)} crossing a segment boundary ({@code CG16}) and
@@ -28,10 +28,17 @@ import org.junit.jupiter.api.Test;
  * whack-a-mole this repo's root-cause rule exists to prevent, so the guard covers the siblings rather than the
  * reported case.
  *
+ * <p><b>What DG37 changed, and why this guard is still here.</b> The relation is now a comparison over segment
+ * lists ({@code EntityPath}), so no correct copy of either spelling exists anywhere — the allowlist is empty and
+ * any match is a defect. That is a strictly better position than a named helper alone, because a call site
+ * holding an {@code EntityPath} has no text-prefix operation to reach for. It is not yet complete: paths still
+ * travel as {@code String} across module and public API boundaries, so a future site could extract one and
+ * hand-spell the relation again. This guard covers that residue until they do not (DG37b/c).
+ *
  * <p>The scanner detects the spelling that is mechanically recognizable — a {@code startsWith} whose argument
  * appends the path separator. Its blind spot is the naive {@code startsWith(ancestor)} with no separator, which
- * is indistinguishable from any other string-prefix test; that half is covered by {@code EntityPathsTest}
- * owning the relation and by this guard leaving no in-repo copy for it to be introduced beside.
+ * is indistinguishable from any other string-prefix test; that half is what holding the typed value, rather than
+ * scanning for its absence, is meant to retire.
  */
 class PathContainmentCensusTest {
 
@@ -51,16 +58,15 @@ class PathContainmentCensusTest {
     private static final Pattern SEPARATOR_PREFIX = Pattern.compile(
             "\\.startsWith\\(\\s*[^;()]*\\+\\s*\"/\"\\s*\\)");
 
-    private static final String CANONICAL =
-            "the canonical implementation itself — the one place the relation is spelled out, and the reason "
-                    + "every other module can ask for it by name.";
-
-    private static final Map<String, String> ALLOWLIST = Map.ofEntries(
-            entry("core/src/main/java/io/github/mbackschat/a12/dm/core/EntityPaths.java"
-                    + "::separator-prefix#1", CANONICAL));
+    /**
+     * Empty, and that is the point. It carried one row — {@code EntityPaths}' own {@code startsWith(a + "/")} —
+     * until {@code EntityPath} made the relation a comparison over segment lists (DG37). There is now no correct
+     * place in the repo to spell it, so any match is a defect rather than a site to exempt.
+     */
+    private static final Map<String, String> ALLOWLIST = Map.ofEntries();
 
     @Test
-    void everyPathContainmentTestGoesThroughEntityPaths() throws IOException {
+    void everyPathContainmentTestGoesThroughEntityPath() throws IOException {
         Map<String, Path> actual = scan();
 
         List<String> missing = actual.keySet().stream()
@@ -71,24 +77,34 @@ class PathContainmentCensusTest {
                 .toList();
 
         assertEquals(List.of(), missing,
-                () -> "hand-spelled path containment. Use EntityPaths.isInside (the subtree root counts as "
-                        + "inside) or EntityPaths.isStrictlyInside (it does not) — picking between those two is "
-                        + "the whole defect class, which is why they are named:\n  " + String.join("\n  ", missing));
+                () -> "hand-spelled path containment. Ask an EntityPath: isInside (the subtree root counts as "
+                        + "inside) or isStrictlyInside (it does not) — picking between those two is the whole "
+                        + "defect class, which is why they are named:\n  " + String.join("\n  ", missing));
         assertEquals(List.of(), stale,
                 () -> "stale allowlist row(s) — the site moved or went away, so remove the row:\n  "
                         + String.join("\n  ", stale));
     }
 
     /**
-     * Positive control. A regex that silently stops matching turns this guard into a green that proves nothing,
-     * and the allowlist above is small enough that "no sites found" would otherwise look like success.
+     * Positive control, and it must NOT anchor on live source.
+     *
+     * <p>It used to assert the scanner still found {@code EntityPaths}' own spelling, which worked only while a
+     * correct copy existed to find. Routing the relation through {@code EntityPath} removed the last one, so that
+     * control would now fail for the very reason the guard is succeeding — and deleting it would leave a scanner
+     * whose silence proves nothing. Feeding the matcher a literal keeps the control independent of whether the
+     * repo happens to contain a match.
      */
     @Test
-    void theScannerStillFindsTheCanonicalImplementation() throws IOException {
-        assertTrue(scan().containsKey("core/src/main/java/io/github/mbackschat/a12/dm/core/EntityPaths.java"
-                        + "::separator-prefix#1"),
-                "the scanner found no containment spelling at all, including EntityPaths' own — it has stopped "
-                        + "matching, and every other assertion here is vacuous until it does again");
+    void theScannerStillRecognizesTheSpellingItHunts() {
+        assertTrue(SEPARATOR_PREFIX.matcher("if (path.startsWith(ancestorPath + \"/\")) {").find(),
+                "the scanner no longer matches the spelling it exists to catch — every assertion here is "
+                        + "vacuous until it does again");
+        assertTrue(SEPARATOR_PREFIX.matcher("return id.startsWith(prefix + \"/\");").find(),
+                "…including with a different receiver and argument, since the guard is repo-wide");
+
+        assertFalse(SEPARATOR_PREFIX.matcher("return name.startsWith(\"vk_\");").find(),
+                "a negative control: an ordinary string-prefix test is not a containment spelling, or the "
+                        + "guard would report every unrelated startsWith in the repo");
     }
 
     private static Map<String, Path> scan() throws IOException {

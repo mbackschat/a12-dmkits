@@ -1,5 +1,7 @@
 package io.github.mbackschat.a12.dm.rulekit.dsl;
 
+import io.github.mbackschat.a12.dm.core.HasEntityPath;
+
 /**
  * A model-resolved reference to a group — its absolute path plus whether it repeats (read from the
  * model, §5a). Group and field references are distinct types, so {@code GroupFilled(field)}
@@ -11,7 +13,7 @@ package io.github.mbackschat.a12.dm.rulekit.dsl;
  * as filled. And an enclosing {@code GroupFilled(Group)} counts as referencing the rule's error
  * field (no {@code MVK_ERROR_FIELD_NOT_REFERENCED}).
  */
-public record GroupRef(String path, boolean repeating) implements GroupReference {
+public record GroupRef(String path, boolean repeating) implements GroupReference, HasEntityPath {
 
     /** Identity — a {@code GroupRef} is its own {@link GroupReference}. */
     @Override

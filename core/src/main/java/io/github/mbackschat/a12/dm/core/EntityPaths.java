@@ -22,6 +22,12 @@ package io.github.mbackschat.a12.dm.core;
  * named rather than spelled out — a reader of {@code isStrictlyInside} can see which question is being asked, and
  * a reader of {@code startsWith(x + "/")} cannot.
  *
+ * <p><b>This class is now the STRING-BOUNDARY ADAPTER, not the implementation</b> (DG37). Both methods delegate
+ * to {@link EntityPath}, which holds a path as its segments and therefore offers no text-prefix operation to get
+ * wrong. Prefer {@code EntityPath} wherever a call site can hold one: naming the relation is a discipline a
+ * future site must remember, while holding the typed value makes the two defects above unspellable. Reach for
+ * this class only where a path genuinely arrives as a {@code String} and is compared once.
+ *
  * <p>{@code "/"} is <em>not</em> special-cased. The root group is a named entity ({@code /Order}), so {@code "/"}
  * only ever appears as a caller-level "whole model" sentinel; a caller that means everything tests for its own
  * sentinel before asking about containment.
@@ -41,7 +47,7 @@ public final class EntityPaths {
      * within that subtree", where the subtree root is part of its own subtree.
      */
     public static boolean isInside(String path, String ancestorPath) {
-        return path.equals(ancestorPath) || isStrictlyInside(path, ancestorPath);
+        return EntityPath.of(path).isInside(EntityPath.of(ancestorPath));
     }
 
     /**
@@ -52,6 +58,6 @@ public final class EntityPaths {
      * group is not one of its own fields.
      */
     public static boolean isStrictlyInside(String path, String ancestorPath) {
-        return path.startsWith(ancestorPath + "/");
+        return EntityPath.of(path).isStrictlyInside(EntityPath.of(ancestorPath));
     }
 }

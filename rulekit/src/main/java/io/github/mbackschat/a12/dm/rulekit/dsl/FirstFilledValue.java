@@ -1,12 +1,13 @@
 package io.github.mbackschat.a12.dm.rulekit.dsl;
 
+import io.github.mbackschat.a12.dm.core.HasEntityPath;
+
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
 
-import io.github.mbackschat.a12.dm.core.EntityPaths;
 import io.github.mbackschat.a12.dm.core.ValueKind;
 
 /**
@@ -117,7 +118,7 @@ public record FirstFilledValue(FirstFilledOperand firstOperand, List<FirstFilled
                     continue;
                 }
                 EntityIdentity parentIdentity = identity(candidateParent);
-                if (EntityPaths.isStrictlyInside(childIdentity.path(), parentIdentity.path())
+                if (childIdentity.isStrictlyInside(parentIdentity)
                         && Objects.equals(childIdentity.category(), parentIdentity.category())
                         && Objects.equals(childIdentity.semanticIndex(), parentIdentity.semanticIndex())) {
                     throw new IllegalArgumentException("FirstFilledValue: '" + describe(child)
@@ -142,7 +143,8 @@ public record FirstFilledValue(FirstFilledOperand firstOperand, List<FirstFilled
                 operand.outerReference());
     }
 
-    private record EntityIdentity(String path, String category, Object semanticIndex, boolean correlated) { }
+    private record EntityIdentity(String path, String category, Object semanticIndex, boolean correlated)
+            implements HasEntityPath { }
     private record LiteralIndex(String value) { }
     private record FieldIndex(String path, boolean correlated) { }
 

@@ -1,5 +1,7 @@
 package io.github.mbackschat.a12.dm.rulekit.dsl;
 
+import io.github.mbackschat.a12.dm.core.HasEntityPath;
+
 import io.github.mbackschat.a12.dm.core.ValueKind;
 
 /**
@@ -10,7 +12,7 @@ import io.github.mbackschat.a12.dm.core.ValueKind;
  * (always {@link PathStyle#CANONICAL}); the read converter constructs the hinted form.
  */
 public record FieldRef(String path, ValueKind kind, PathStyle styleHint, boolean correlated)
-        implements FieldOperand, NumericTextSource, GroupListOperand, TemporalComponent {
+        implements FieldOperand, NumericTextSource, GroupListOperand, TemporalComponent, HasEntityPath {
 
     /** A builder-made reference — no authored style; the renderer decides the path form. */
     public FieldRef(String path, ValueKind kind) {
