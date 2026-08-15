@@ -63,7 +63,12 @@ class FirstFilledValueFamilyLawsTest {
                     // A DATE_TIME may ALSO be declared time-only (KERNEL-FINDINGS §6, probe-enumerated
                     // 2026-06-26). That second legal format is what makes the discrimination authorable off
                     // the DATE/DATE_FRAGMENT pair — and it shares its format string with a TIME field.
-                    .dateTimeField("ClockedAt", d -> d.format("HH:mm:ss")))
+                    .dateTimeField("ClockedAt", d -> d.format("HH:mm:ss"))
+                    // DATE_RANGE also carries TWO legal declarations — the (format, separator) PAIR is
+                    // allowlisted (KERNEL-FINDINGS §6), so both discriminating rows are authorable here too.
+                    .dateRangeField("PromoWindow", r -> r.format("dd.MM.yyyy").separator("-"))
+                    .dateRangeField("SaleWindow", r -> r.format("dd.MM.yyyy").separator("-"))
+                    .dateRangeField("AuditWindow", r -> r.format("yyyy-MM-dd").separator("/")))
             .build().toJson();
 
     // ── the temporal gate: declared FORMAT, not kind ───────────────────────────────────────────────
@@ -219,6 +224,36 @@ class FirstFilledValueFamilyLawsTest {
                 "on a pair no one would call one type, two kinds at one format admit and one kind at two "
                         + "formats refuses — the rule is the declared format, and it is not an artifact of "
                         + "DATE and DATE_FRAGMENT being neighbours");
+    }
+
+    /**
+     * The last member of the temporal family, and the one the corrected entry admitted it had skipped.
+     *
+     * <p>The rule was published as "the temporal gate reads the declared format" while `DATE_RANGE` had never
+     * been put under it — an omission inside a claim phrased over the whole family, which is the same shape of
+     * error as the sample-based bound this file already carries. It is askable because a range's
+     * <b>(format, separator) PAIR</b> is allowlisted rather than free, and two legal pairs exist.
+     */
+    @Test
+    void theFormatKeyingCoversDateRangeToo() {
+        Map<String, String> actual = new LinkedHashMap<>();
+        actual.put("RANGE + RANGE, same (format, separator) — control", verdict("PromoWindow",
+                "FirstFilledValue(PromoWindow, SaleWindow) == [PromoWindow]"));
+        actual.put("RANGE + RANGE, two legal pairs", verdict("PromoWindow",
+                "FirstFilledValue(PromoWindow, AuditWindow) == [PromoWindow]"));
+        actual.put("RANGE + DATE — two kinds", verdict("PromoWindow",
+                "FirstFilledValue(PromoWindow, ListedOn) == [PromoWindow]"));
+        actual.put("[RANGE] == [RANGE] — operand control", verdict("PromoWindow",
+                "[PromoWindow] == [SaleWindow]"));
+
+        Map<String, String> expected = new LinkedHashMap<>();
+        expected.put("RANGE + RANGE, same (format, separator) — control", "admitted");
+        expected.put("RANGE + RANGE, two legal pairs", "MVK_VARYING_TYPES_NOT_ALLOWED");
+        expected.put("RANGE + DATE — two kinds", "MVK_VARYING_TYPES_NOT_ALLOWED");
+        expected.put("[RANGE] == [RANGE] — operand control", "admitted");
+        assertEquals(expected, actual,
+                "the declared-format rule holds on DATE_RANGE as well, so the family claim covers every temporal "
+                        + "kind rather than the four that happened to be measured");
     }
 
     // ── the string-side family, which the catalog had right ─────────────────────────────────────────
