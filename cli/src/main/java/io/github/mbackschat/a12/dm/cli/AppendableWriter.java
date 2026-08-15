@@ -7,7 +7,7 @@ import java.io.Writer;
 /**
  * Bridges picocli's {@link Writer}-based output to the {@link Cli#run} seam's {@link Appendable} sinks
  * (a {@code StringBuilder} in tests, {@code System.out}/{@code err} in the process). Keeps the pure,
- * in-process-testable seam (CLI-SPEC §2/§3) intact under picocli.
+ * in-process-testable seam (CLI-SPEC §8/§9) intact under picocli.
  */
 final class AppendableWriter extends Writer {
 

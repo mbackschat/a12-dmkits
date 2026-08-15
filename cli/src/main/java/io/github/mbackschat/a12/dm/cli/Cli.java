@@ -15,7 +15,7 @@ import picocli.CommandLine;
  *
  * <p>{@link #run} is deliberately <b>pure and testable</b>: it returns an exit code and writes to the
  * passed sinks (no {@code System.exit}, no static streams), so every verb is a sub-second JUnit test
- * with no packaging and no spawned process (CLI-SPEC §3 — the fast inner loop). {@link CliMain} is the
+ * with no packaging and no spawned process (CLI-SPEC §9 — the fast inner loop). {@link CliMain} is the
  * thin shell that wires it to the process.
  *
  * <p>Dispatch, parsing, {@code --help}, and the machine-readable manifest are all driven by

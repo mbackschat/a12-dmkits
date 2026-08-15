@@ -23,7 +23,7 @@ import io.github.mbackschat.a12.dm.rulekit.dsl.Rule;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Severity;
 
 /**
- * The {@code export} verb tested at the {@link Cli#run} seam (CLI-SPEC §3 — the fast inner loop: no
+ * The {@code export} verb tested at the {@link Cli#run} seam (CLI-SPEC §9 — the fast inner loop: no
  * packaging, no spawned process). {@code Cli.run} is pure (returns an exit code, writes to passed
  * sinks), so each verb is a sub-second unit test. The agent-files-as-API line shapes (finding 13)
  * are pinned here.

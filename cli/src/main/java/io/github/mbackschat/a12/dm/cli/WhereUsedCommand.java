@@ -14,7 +14,7 @@ import picocli.CommandLine.Option;
 import picocli.CommandLine.Parameters;
 
 /**
- * The {@code where-used} verb (F9a, CLI-SPEC §4) — the exact inverse of a rule's referenced entities:
+ * The {@code where-used} verb (F9a, CLI-SPEC §5) — the exact inverse of a rule's referenced entities:
  * given a field or group, list every <b>rule</b> and every <b>computation</b> whose condition
  * <em>directly</em> references it. Uses the kernel's own {@code getDirectlyReferencedEntities} via the
  * adapter (no converter coverage needed), so it works regardless of whether read models its construct.
