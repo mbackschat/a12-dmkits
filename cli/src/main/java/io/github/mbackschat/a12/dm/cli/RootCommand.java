@@ -22,7 +22,7 @@ import picocli.CommandLine.Spec;
 /**
  * The CLI root (PROJECT-DESIGN N10 / CLI-SPEC). Picocli assembles `--help`, usage, and the machine-readable
  * manifest ({@code manifest} verb) from the subcommand tree below — one declaration per verb, so the
- * tool fully describes itself (CLI-SPEC §1a). Adding a verb = adding it here + its {@code @Command}
+ * tool fully describes itself (CLI-SPEC §2). Adding a verb = adding it here + its {@code @Command}
  * class; nothing else needs to know.
  */
 @Command(

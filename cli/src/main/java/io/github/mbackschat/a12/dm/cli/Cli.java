@@ -20,7 +20,7 @@ import picocli.CommandLine;
  *
  * <p>Dispatch, parsing, {@code --help}, and the machine-readable manifest are all driven by
  * <b>picocli</b> from one declaration per verb (the {@link RootCommand} subcommand tree), so the help
- * can't drift from the parsing (CLI-SPEC §1a — the self-explaining requirement).
+ * can't drift from the parsing (CLI-SPEC §2 — the self-explaining requirement).
  */
 public final class Cli {
 

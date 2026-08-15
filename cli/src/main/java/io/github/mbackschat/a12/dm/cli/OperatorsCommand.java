@@ -17,7 +17,7 @@ import picocli.CommandLine.Parameters;
 /**
  * The {@code operators} verb (CLI-SPEC §4) — exposes the DSL <b>operator catalog</b> so an agent can
  * explore the vocabulary it authors with, on demand, without the N1 skill (the self-explaining
- * requirement, CLI-SPEC §1a). Bare/filtered: a compact list ({@code id, keyword, kind, supported,
+ * requirement, CLI-SPEC §2). Bare/filtered: a compact list ({@code id, keyword, kind, supported,
  * meaning}) — narrowed by a positional substring (matched over id/keyword/meaning, the agent's natural
  * reach), {@code --kind}, or {@code --keyword}; with an exact id: that operator's full semantics (keywords EN/DE, operands, meaning,
  * constraints, gotchas, a valid + an invalid example). This is the proactive complement to

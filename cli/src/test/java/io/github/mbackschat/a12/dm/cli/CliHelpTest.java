@@ -7,7 +7,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import org.junit.jupiter.api.Test;
 
 /**
- * The CLI's self-describing help surface (CLI-SPEC §1a, picocli-driven): {@code --help} on the tool
+ * The CLI's self-describing help surface (CLI-SPEC §2, picocli-driven): {@code --help} on the tool
  * and every verb, generated from the same declarations that drive parsing — so a cold agent can
  * explore without the N1 skill. Also locks the bare/unknown-invocation exit codes.
  */

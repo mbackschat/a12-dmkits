@@ -13,7 +13,7 @@ import io.github.mbackschat.a12.dm.rulekit.catalog.OperatorCatalog;
 import io.github.mbackschat.a12.dm.rulekit.validate.KernelVersion;
 
 /**
- * The release's version surface (CLI-SPEC §1b) — what this {@code dmtool} build <em>is</em> and what it was
+ * The release's version surface (CLI-SPEC §2a) — what this {@code dmtool} build <em>is</em> and what it was
  * built/verified against, for {@code --version} (human) and {@code manifest.version} (machine-readable, so a
  * cold agent can read it). Seven axes, each from its single source of truth:
  *

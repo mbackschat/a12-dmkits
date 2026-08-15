@@ -15,7 +15,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 
 /**
  * The {@code manifest} verb — the machine-readable map of every verb + its parameters, the CLI's
- * agent-exploration surface (CLI-SPEC §1a). Doubles as the <b>discoverability guardian</b> (F11): the
+ * agent-exploration surface (CLI-SPEC §2). Doubles as the <b>discoverability guardian</b> (F11): the
  * known verb set must stay in the manifest with descriptions, so a rename/removal can't silently drop
  * a verb off the self-describing surface.
  */

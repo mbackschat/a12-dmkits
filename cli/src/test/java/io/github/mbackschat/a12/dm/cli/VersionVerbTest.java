@@ -12,7 +12,7 @@ import java.util.Properties;
 import org.junit.jupiter.api.Test;
 
 /**
- * The version surface (CLI-SPEC §1b): {@code --version} (human) and {@code manifest.version} (machine-readable)
+ * The version surface (CLI-SPEC §2a): {@code --version} (human) and {@code manifest.version} (machine-readable)
  * report the same seven axes — the rulekit release, source revision/tree state, kernel built-against/runtime,
  * A12 Tools distribution label, catalog floor, and document-model reference version — so an agent (or human)
  * can identify a clean build or see that a dirty build diverged, and know what it targets.

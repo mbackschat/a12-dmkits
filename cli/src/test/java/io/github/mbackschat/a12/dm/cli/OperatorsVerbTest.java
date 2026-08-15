@@ -12,7 +12,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 
 /**
  * The {@code operators} verb — the CLI exposing the DSL operator catalog so an agent can explore the
- * vocabulary on demand (CLI-SPEC §1a, the self-explaining requirement; answers "can the LLM browse
+ * vocabulary on demand (CLI-SPEC §2, the self-explaining requirement; answers "can the LLM browse
  * available operators?"). List (filterable) + one operator's full semantics.
  */
 class OperatorsVerbTest {

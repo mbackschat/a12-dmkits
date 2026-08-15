@@ -18,7 +18,7 @@ import picocli.CommandLine.Model.OptionSpec;
 import picocli.CommandLine.Model.PositionalParamSpec;
 
 /**
- * The {@code manifest} verb (CLI-SPEC §1a/§2) — a machine-readable map of <b>every runnable op and its
+ * The {@code manifest} verb (CLI-SPEC §2/§2) — a machine-readable map of <b>every runnable op and its
  * parameters</b> as JSON, so an agent discovers the whole tool surface in one call (the self-explaining
  * requirement). It walks the full command tree, so a nested op under a target group is emitted under its
  * <b>qualified</b> name (e.g. {@code "model check"}); the bare group is not itself an op. The {@code
@@ -51,7 +51,7 @@ final class ManifestCommand extends BaseCommand {
         ObjectNode root = MAPPER.createObjectNode();
         // the live root command name (= Cli.TOOL_NAME) — derived, never re-hardcoded, so it can't drift
         root.put("tool", spec.root().name());
-        // the machine-readable version surface (CLI-SPEC §1b) — what this build is + what it was built/
+        // the machine-readable version surface (CLI-SPEC §2a) — what this build is + what it was built/
         // verified against; the human peer is `--version`. A cold agent reads it from `manifest.version`.
         root.set("version", VersionInfo.current().toJson(MAPPER));
         // The standard result-envelope schema remains available even though explicitly described artifact
