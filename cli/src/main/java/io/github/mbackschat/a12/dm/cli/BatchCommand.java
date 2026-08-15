@@ -18,7 +18,7 @@ import picocli.CommandLine.Option;
 import picocli.CommandLine.Parameters;
 
 /**
- * The {@code batch} verb (CLI-SPEC §5) — run a sequence of verb invocations in ONE process, amortizing
+ * The {@code batch} verb (CLI-SPEC §7) — run a sequence of verb invocations in ONE process, amortizing
  * JVM startup + the kernel's one-time StringTemplate warm-up across all ops (the N6 runner enabler).
  * Reads a JSON array of ops {@code {"verb","args":[…],"id"?}}, dispatches each through {@link Cli#run}
  * (the same seam as a standalone call), and emits self-describing per-op results in an aggregate envelope.

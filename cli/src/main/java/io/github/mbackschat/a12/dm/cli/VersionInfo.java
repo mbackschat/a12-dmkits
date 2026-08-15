@@ -33,7 +33,7 @@ import io.github.mbackschat.a12.dm.rulekit.validate.KernelVersion;
  *       ({@link OperatorCatalog#verifiedAgainst()}, the {@code operators.json} floor).</li>
  *   <li><b>model version</b> — the document-model schema version this release authors/expects
  *       ({@link ModelFormat#VERSION}); the reference a loaded model's {@code header.modelVersion}
- *       is compared against (the §8c load-time skew check).</li>
+ *       is compared against (the §2a load-time skew check).</li>
  * </ul>
  */
 record VersionInfo(String rulekit, String sourceRevision, SourceState sourceState, String kernelBuiltAgainst,

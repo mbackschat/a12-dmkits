@@ -45,7 +45,7 @@ dependencies {
     // picocli — the declarative command framework (CLI-SPEC §2, the self-explaining requirement): one
     // `@Command`/`@Option` declaration per verb drives parsing, `--help`, AND the machine-readable
     // manifest, so help can't drift from behavior. codegen (annotation processor) emits the GraalVM
-    // native-image reflection config under META-INF/native-image, so the native build (CLI-SPEC §B2)
+    // native-image reflection config under META-INF/native-image, so the native build (CLI-SPEC §11 phase B2)
     // needs no hand-written config.
     implementation 'info.picocli:picocli:4.7.6'
     annotationProcessor 'info.picocli:picocli-codegen:4.7.6'
@@ -269,7 +269,7 @@ tasks.register('verifyNativeCaptureStamp') {
 }
 
 // picocli-codegen: name the project so the generated native-image config lands under a stable
-// META-INF/native-image/<group>/<artifact>/ path (CLI-SPEC §B2).
+// META-INF/native-image/<group>/<artifact>/ path (CLI-SPEC §11 phase B2).
 tasks.named('compileJava') {
     options.compilerArgs += ['-Aproject=io.github.mbackschat.a12.dm/rulekit-cli']
 }
