@@ -883,3 +883,41 @@ tasks.register('corpusReplayTest', Test) {
     // declare it AND fail loudly if it goes empty, so a moved corpus tree can't silence the replay guard.
     rootProject.guardInputs(it, ['conformance corpus': rootProject.fileTree('corpus') { include '**/*.json' }])
 }
+
+// The broad lane's `excludeTestsMatching` list is hand-written, and a hand-written list drifts from the lanes it
+// mirrors. When it does, the class runs in BOTH — and in the broad one it lacks the runtime inputs its owning
+// task supplies, so it fails there for a reason that has nothing to do with the code under test.
+//
+// Measured, which is why this check exists rather than a comment: `PerfReportScriptTest` was added to
+// `perfScriptGuardTest`'s filter on 2026-08-15 and not here, and the session-end suite reported 5 failures out of
+// 2712 — every row of a class that was green in its own lane seconds earlier, because `perf.report.script` is a
+// system property only the owning task sets.
+//
+// An ASSERTION rather than a derivation: the root module's `routeExclusivelyHostedTests` derives the exclusions
+// and additionally requires every filtering Test task in the project to be classified as an owner or a reasoned
+// non-owner. `:adapter` has seventeen such tasks, and classifying them is a separate piece of work with its own
+// judgement calls (several are regenerators, several are opt-in perf lanes). This closes the drift today without
+// pretending to have made those calls. Adopting the full helper here remains the better end state.
+def exclusivelyOwningLanes = [
+        'corpusReplayTest', 'footprintFixtureGuardTest', 'performanceFixtureGuardTest', 'perfScriptGuardTest',
+        'profileFixtureGuardTest', 'retainedComputationFixtureGuardTest', 'workspacePreparationFixtureGuardTest',
+]
+gradle.projectsEvaluated {
+    def broad = tasks.named('test', Test).get()
+    def excluded = broad.filter.excludePatterns
+    exclusivelyOwningLanes.each { name ->
+        def owned = tasks.named(name, Test).get().filter.includePatterns
+        if (owned.isEmpty()) {
+            throw new GradleException(
+                    "'${name}' is listed as an exclusive owner but its filter includes no test class, so " +
+                    "${broad.path} cannot be checked against it.")
+        }
+        def leaked = owned - excluded
+        if (!leaked.isEmpty()) {
+            throw new GradleException(
+                    "${leaked.join(', ')} is owned by '${name}' but not excluded from ${broad.path}, so it runs " +
+                    "in BOTH lanes — and the broad lane does not supply the runtime inputs '${name}' sets. Add " +
+                    "an excludeTestsMatching for it beside the others.")
+        }
+    }
+}
