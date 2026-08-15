@@ -4,11 +4,11 @@ The component spec for the standalone CLI (N10). The proposal's [§14/§16](PROJ
 
 > **Status.** This spec is the **target surface** — binary `dmtool`, target-first verbs (`dmtool -m <model> <target> <op>`), the standard result envelope, and explicitly profiled raw artifact/catalog outputs (§3). The verb-first migration is **complete** — the CLI is target-first only (the legacy flat aliases were removed 2026-06-19; §5). The structural refactor ops (§6) have **shipped, safety-gated** — `typedef rename`/`extract`/`inline`, `field`/`group`/`rule rename` and `field`/`group move` (both **reference-rewriting** via the kernel's `MoveSupportDM`), `group extract` (group→include), and `include inline` (the extract inverse). The §3.1 refactor set is complete.
 
-## 1. Purpose & persona
+## 1. Purpose & persona <a id="purpose"></a>
 
 `dmtool` is the **modeller/BA's** interaction surface (N10): one engine (core + adapter + the modelkit/rulekit kits), driven by an **agent** through JSON/flags with operationally profiled JSON/text output, the JVM bundled and invisible. It is *not* the developer's surface — a developer uses the kits as libraries (no CLI). It edits the **whole document model** — structure (fields, groups, type definitions, includes, doc config) *and* rules/computations — validates, reads/explains, and batches. The CLI never shells out to `javac`; the agent authors via **JSON / flags**, which `dmtool` deserializes *through the typed builders*, so the BA gets the builder pre-checks **plus** the kernel `Diagnostic`s (F4a) at runtime — the runtime analogue of the developer's compile-time steering.
 
-## 2. Design principle — self-explaining **and** corrective diagnostics (the #1 priority)
+## 2. Design principle — self-explaining **and** corrective diagnostics (the #1 priority) <a id="self-explaining"></a>
 
 The tool exists to be driven by a cold LLM agent. Two properties, above all else, make that work — and they are the tie-breaker for every CLI decision:
 
@@ -76,7 +76,7 @@ a12-dmkits 0.1.1
 
 **Write-back never bumps the version.** Edits are surgical (the `header` is untouched), so a loaded model writes back with its `modelVersion` verbatim — no implicit bump to the reference. (Locked: `cli.ModelVersionPolicyTest`.)
 
-## 3. The op model — one record, two surfaces
+## 3. The op model — one record, two surfaces <a id="op-model"></a>
 
 Every action is one **operation record** — `{ target, op, args }`. A single CLI invocation is *one* record; a batch is an ordered *list* of them ([§7](#7-batching--dispatcher-batch-vs-session-apply)). Its matching operational profile declares the primary output, and a matching view can override it; the resulting effective stdout is the standard result envelope, a raw JSON/text artifact or rendering, or empty after an artifact write. Define the vocabulary once; render it onto both surfaces. Consistency on the two axes — **element family** (modelkit structure ⟂ rulekit rules) × **operation** — then holds by construction, in both the CLI and the batch.
 
@@ -101,7 +101,7 @@ So a workspace resolves with no per-verb flag once the root is set, and a self-c
 
 **Resolution is by the model's `header.id`, not its filename.** `ReferenceResolvers` walks the workspace, parses every `*.json` header, and indexes the `modelType=="document"` models by `id` — so a model file's **name is recognizability, not correctness**: `Person_DM.json`, `person.dm.json`, and `Person.json` all resolve identically if their header `id` matches the reference. The A12 Tools workspace **naming convention** is `<Name>_<TYPE>.json` — `_DM` for a document model, `_TDM` for a type-definition model (`_FM`/`_OM`/… are other model kinds dmtool doesn't author); a12-kernel-demo uses the lowercase `.dm.json`. Because the right suffix is "whatever the workspace already uses" (a context judgment, with `_DM` the fallback), the tool does **not** impose one — it's taught in the agent skill (`skill/SKILL.md`, "Naming model files"), and `group extract`'s auto-derived sub-model name is cosmetic (it resolves by id regardless).
 
-### 3b. The result envelope
+### 3b. The result envelope <a id="result-envelope"></a>
 
 Every invocation whose effective output kind is `RESULT_ENVELOPE`, and every `apply` op, emits the same shape. Resolve the effective kind from a matching `returns.views[]` selector first and the profile's primary `returns.kind` second. `RAW_JSON`, `RAW_TEXT`, and `EMPTY_STDOUT` bypass the envelope for an artifact/catalog value, a rendered view, or a file-only result; `manifest.operationalProfiles` and `schema <target> <op>` expose the discriminator before invocation. The envelope **embeds the existing diagnostics array verbatim** (§4); the new part is only the wrapper around it.
 
@@ -178,7 +178,7 @@ Worked shapes (the real `Diagnostic` fields, inside the envelope):
   "fix":"list groups with `dmtool -m order.dm.json group read`" }
 ```
 
-## 5. Verb surface — target × op
+## 5. Verb surface — target × op <a id="verb-surface"></a>
 
 Model-bound operations use `dmtool -m <model> <target> <op> [args]`. Family (modelkit ⟂ rulekit) is a **grouping in `--help`/manifest**, not a command level — the real two axes (kind × op) *are* the two command levels. Artifact and cross-model operations can replace the `-m` input with their own source: **`model new`** creates a model from scratch; **`profile synthesize --input <profile.json>`** creates a model from a profile; and the `workspace` verbs scan a directory of models. Their exact inputs remain derived in help/manifest and the rows below.
 
@@ -324,7 +324,7 @@ Three guards, three claims: `SchemaResourceSurfaceTest.everyEmittedDocumentResol
 
 The `manifest` is the index that makes assembly *copy, not infer*: every verb entry carries `target`, `op`, its params (each with the CLI `flag` **and** the op-record `key` = the `--`-stripped name an `apply` op uses), a scalar `schema` pointer for every directional contract (result-envelope operations and explicitly registered artifact operations such as `profile synthesize` and `model seed`), and a worked **`example` `{intent, command}`** — a read-only invocation the agent can run to see the verb *in action* (CI-executed by `VerbDemonstrationTest`). Pass the scalar pointer directly as one argument to `schema`; splitting it into target/op tokens is equivalent but not required. Verbs in the reasoned `SchemaCommand.CONTRACT_EXEMPT` ledger carry no pointer. The root carries `resultSchema:"result"` and the global `-m`. So an agent builds any call, single or batched, straight from the manifest. (`schema add` is gone: it splits into `schema rule add` / `schema computation add`.)
 
-## 6. Op taxonomy — Local / Cascading / Refactor
+## 6. Op taxonomy — Local / Cascading / Refactor <a id="op-taxonomy"></a>
 
 Classify every op by **blast radius** — this is the standing rule for adding ops, CRUD or not:
 
@@ -437,13 +437,13 @@ One primitive (`getDirectlyReferencedEntities`) seeds all of these, but they ans
 
 So `where-used` and `model usage` **differ on exactly the group-reached fields, by design** (pinned by `cli.model.ModelUsageGroupOperandTest.whereUsedStaysExactWhereModelUsageIsReachable`, which runs both verbs on one model). The adapter seam is `KernelAdapter.referrersReaching(byEntity, path)` — or `isReadByAnything` for the boolean question — beside the exact `whereUsed` / `whereUsedInComputations` / `referencedFields` / `referencedFieldsOfComputation`.
 
-**Reachability is deliberately CONSERVATIVE, and that is a stated over-report rather than an exact claim.** It answers *"a rule reaches into this group"*, not *"this particular field enters that operator's expansion"*. The two come apart on a repeatable terminal group: `NoGroupFilled(/Order/Items*)` counts instantiated **rows** — an empty created row is still a row (API-GUIDE §3.5b) — so `Items/Qty` is reported read though that operator never inspects its value. Erring toward "read" is the correct direction here, because the surface's `unreferenced` half is what an agent acts on as safe-to-delete; the opposite error deletes a live field. **Not measured:** whether every group-consuming operator's expansion really covers every contained field on a *repeatable* terminal group (KF183 measures the non-repeatable case and shows recursive expansion). The conservative direction makes that gap safe rather than closed.
+**Reachability is deliberately CONSERVATIVE, and that is a stated over-report rather than an exact claim.** It answers *"a rule reaches into this group"*, not *"this particular field enters that operator's expansion"*. The two come apart on a repeatable terminal group: `NoGroupFilled(/Order/Items*)` counts instantiated **rows** — an empty created row is still a row (API-GUIDE [§3.5b](API-GUIDE.md#group-quantifiers)) — so `Items/Qty` is reported read though that operator never inspects its value. Erring toward "read" is the correct direction here, because the surface's `unreferenced` half is what an agent acts on as safe-to-delete; the opposite error deletes a live field. **Not measured:** whether every group-consuming operator's expansion really covers every contained field on a *repeatable* terminal group (KF183 measures the non-repeatable case and shows recursive expansion). The conservative direction makes that gap safe rather than closed.
 
 *(This paragraph used to claim all of these "can never disagree about what 'references' means", which was the thing to fix rather than a fact to preserve. `explain`'s `references` and `rule deps` take theirs from the **converted** AST rather than from the kernel primitive. **Measured 2026-08-15** (`cli.rule.RuleDepsVerbTest`): over a rule whose operand is a group, `rule deps` names the **GROUP** — that is what the condition references — while `where-used` on a field inside it names **nothing**, because it answers the exact question and no rule names that field. The two disagree, and both are right: they are inverses of different questions. Only the reachability reader closes the loop, which is why `model usage` walks ancestors and `where-used` does not.)*
 
 Locks: `cli.WhereUsedVerbTest`, `cli.ModelUsageVerbTest`, `cli.model.ModelUsageGroupOperandTest` (the group-reached rows and both vacuity controls), `adapter.WhereUsedInComputationsTest`, `cli.RemoveVerbTest`, `adapter.ReferenceRewriteTest`.
 
-## 7. Batching — dispatcher `batch` vs session `apply`
+## 7. Batching — dispatcher `batch` vs session `apply` <a id="batching"></a>
 
 Two batch verbs, because they solve different problems — conflating them would break the eval runner:
 
@@ -502,13 +502,13 @@ Rules of the loop: never `clean`; never `installDist`/jlink/jpackage to test *be
 
 `prepare-dmtool-source.sh` is the strict cross-project evidence route. It refuses a dirty source tree, accepts an existing JVM launcher only when `--version` reports the exact current clean commit, otherwise builds `:cli:installDist` once, and rechecks both source and artifact before printing one absolute path. It never consults `RK_NATIVE`, `DMTOOL_CLI`, or native build output, so it needs no native-image metadata capture. A retained capsule records the clean revision before and after its calls; use `batch` when several operations can share one process. It is **working-directory independent**: it anchors its own cwd, because `build.sh` ends in `exec "$ROOT/gradlew"` with no `cd` and no `-p`, so Gradle would otherwise take the caller's directory as the project directory and every rebuild from a sibling repository would fail. That failure hid behind the cache — a caller got a working launcher whenever one already matched HEAD, and only a *required* rebuild surfaced it. `DmtoolLauncherTest` runs its disposable-repository self-test in `deliveryGuardTest`, covering cache reuse, stale rebuild, dirty refusal, a mismatched post-build artifact, and a rebuild forced from a foreign working directory. That last case only discriminates because the fake build models the real one's caller-directory dependence; a fake that computed its own root would be better behaved than the thing under test.
 
-## 10. Sizing
+## 10. Sizing <a id="sizing"></a>
 
 - **Application jars: ~18.5 MB** (51 jars — kernel subset + Jackson + commons + antlr4-runtime + Groovy; Groovy ~7–8 MB).
 - **jlink-trimmed JRE: ~45–70 MB**; jpackage launcher +1–3 MB. **Self-contained app-image: ~65–90 MB/OS; compressed download ~30–50 MB.**
 - **Shrink levers:** drop kernel jars the verbs never exercise (verify with `jdeps`/coverage — Groovy + `kernel-core-runtime`/codegen may be unused; biggest win); `jlink --compress=zip-9 --strip-debug …`; ship per-OS only → could approach ~25–35 MB.
 
-## 11. Packaging phases & licensing
+## 11. Packaging phases & licensing <a id="packaging"></a>
 
 - **Phase A — dev/test:** `application` plugin → `run`/`installDist`/`distZip`. Dev JDK + kernel from `mavenLocal`. CI-testable; redistributes nothing.
 - **Phase B1 — distribution, default: jlink + jpackage app-image.** Self-contained, signed; real JVM (no closed-world issues). `jdeps`-measured JDK modules → ~50–65 MB runtime + the classpath jars. Adds no behavior.

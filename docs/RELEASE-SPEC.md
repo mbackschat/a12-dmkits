@@ -212,7 +212,7 @@ A static Maven repo (one-line `maven { url }` consume) is a later upgrade; it do
 | **Homebrew** formula / **Scoop** manifest | planned | point at the public mirror assets — now unblocked (anonymous) |
 | `curl \| sh` installer | planned | fetches from the mirror |
 
-**Licensing on the mirror (per [`LICENSING.md`](LICENSING.md) / CLI-SPEC §11) — mixed, per-artifact:**
+**Licensing on the mirror (per [`LICENSING.md`](LICENSING.md) / CLI-SPEC [§11](CLI-SPEC.md#packaging)) — mixed, per-artifact:**
 - **CLI native binaries → EUPL-1.2.** They embed the kernel, so each binary/release carries the kernel **LICENSE/NOTICE/THIRD_PARTY** + a source pointer (and **no "mgm A12" branding** — the `dmtool` name respects that).
 - **Developer JARs → MIT.** The five kit jars (`dmkits-core`/`-rulekit`/`-modelkit`/`-edit`/`-schemakit`) + the `dmkits` aggregator POM are **kernel-free** (decoupling Stage 3 — no kernel type, no kernel dep in their POMs), so they stay MIT with no EUPL rider. The broad kernel backend (`:adapter`) is **not** published (owner ruling).
 - **Interpreter Kernel drop-in → EUPL-1.2 by owner policy.** This is a narrow, bytecode-free `IDocumentRtService` compatibility artifact published after the MIT interpreter core, not a publication of `:adapter`. Its deferred API contract and re-open trigger live in [INTERPRETER-API-GAPS](INTERPRETER-API-GAPS.md#iag2), while its artifact gate lives in [INTERPRETER-RELEASE-GAPS](INTERPRETER-RELEASE-GAPS.md#irg1).

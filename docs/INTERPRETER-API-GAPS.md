@@ -30,7 +30,7 @@ up for certification.
 
 ### IAG15 — the published message-address policy has no home both publishing seams can reach <a id="iag15"></a>
 
-The rule for publishing an A12 message address is settled and guarded: canonical A12 when the address names exactly one cell, the house form when it does not, decided on the typed pointer and never by re-reading a string ([CLI-SPEC](CLI-SPEC.md) §5, `PublishedPointerCanonicalTest`). Its implementation is `cli.interp.A12Pointers.canonical`, which carries the full reasoning.
+The rule for publishing an A12 message address is settled and guarded: canonical A12 when the address names exactly one cell, the house form when it does not, decided on the typed pointer and never by re-reading a string ([CLI-SPEC](CLI-SPEC.md) [§5](CLI-SPEC.md#verb-surface), `PublishedPointerCanonicalTest`). Its implementation is `cli.interp.A12Pointers.canonical`, which carries the full reasoning.
 
 The kernel-runtime probe ([KERNEL-PROBE-SPEC](KERNEL-PROBE-SPEC.md)) is now a **second** seam that publishes those addresses, and it lives in `:adapter` — which `:cli` depends on, not the reverse. So it re-derives the one-branch policy from the same public interpreter primitives (`A12PartiallyKnownMultiPointer.toExactPointer` plus `A12PointerFormat.render`, else `formatPointer`). Two implementations of one contract, in modules that cannot see each other and therefore cannot be cross-checked by a guard.
 

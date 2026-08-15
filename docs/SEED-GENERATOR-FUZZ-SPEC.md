@@ -7,7 +7,7 @@ Two coupled pieces that share one engine:
 
 Around these sit a few **companion harnesses** that make the exact-match loop fast: a **kernel probe battery** (learn the kernel's behavior *before* implementing), **fuzz divergence localization** (pinpoint *which* row/code diverged), and a **catalog-parity meter** (guard against unhandled operators). They're documented in "[Companion harnesses](#companion-harnesses--the-probe-first-loop)" below.
 
-This doc is the **stable method**. The generator's *consumers* have their own homes — [INTERPRETER-PERFORMANCE.md](INTERPRETER-PERFORMANCE.md) for the perf harness, the `dmtool model seed` verb ([CLI-SPEC.md](CLI-SPEC.md) §5), and `PreparedModel.documents.seedDocument()` in the [public API spec](INTERPRETER-API-SPEC.md#44-model-shaped-document-seeding). Which operators the interpreter handles is the **catalog-parity meter** (`adapter.laws.CatalogParityTest`, build-checked — 109/109), not a hand-maintained map here.
+This doc is the **stable method**. The generator's *consumers* have their own homes — [INTERPRETER-PERFORMANCE.md](INTERPRETER-PERFORMANCE.md) for the perf harness, the `dmtool model seed` verb ([CLI-SPEC.md](CLI-SPEC.md) [§5](CLI-SPEC.md#verb-surface)), and `PreparedModel.documents.seedDocument()` in the [public API spec](INTERPRETER-API-SPEC.md#44-model-shaped-document-seeding). Which operators the interpreter handles is the **catalog-parity meter** (`adapter.laws.CatalogParityTest`, build-checked — 109/109), not a hand-maintained map here.
 
 ## Why a generator at all
 

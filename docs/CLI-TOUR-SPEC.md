@@ -59,7 +59,7 @@ A demo is read far more often than it is written, and all three of these were le
 
 ## The `bin/dmtool` shim
 
-Demos call the CLI through [`../bin/dmtool`](../bin/dmtool), never a packaging artifact, so the doc text is identical whatever built the CLI. `dmtool` resolves to the **installDist JVM launcher** by default (always current); set **`RK_NATIVE=1`** to opt into a native binary for the startup win. Native is opt-in, never auto-preferred — a stale native artifact would otherwise silently shadow freshly-built code. (Mirrors the packaging policy: [`ARCHITECTURE.md`](ARCHITECTURE.md) §5d, [`CLI-SPEC.md`](CLI-SPEC.md) §11 phases B1/B2.)
+Demos call the CLI through [`../bin/dmtool`](../bin/dmtool), never a packaging artifact, so the doc text is identical whatever built the CLI. `dmtool` resolves to the **installDist JVM launcher** by default (always current); set **`RK_NATIVE=1`** to opt into a native binary for the startup win. Native is opt-in, never auto-preferred — a stale native artifact would otherwise silently shadow freshly-built code. (Mirrors the packaging policy: [`ARCHITECTURE.md`](ARCHITECTURE.md) §5d, [`CLI-SPEC.md`](CLI-SPEC.md) [§11](CLI-SPEC.md#packaging) phases B1/B2.)
 
 ## Determinism — the contract for a passing `verify`
 

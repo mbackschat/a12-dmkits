@@ -427,7 +427,7 @@ Condition tooManyBackorders = Dsl.fieldFilled(m.str("/Order/Reference")).and(fla
 
 Only the **starred** form is offered. The unstarred group operand has no measurement on this carrier, and offering it because a sibling carrier admits one would be an analogy standing in for a measurement — the same move that made the *absence* of this overload look deliberate for as long as it did. (`ValueInFieldsGroupOperandLawsTest` locks the admission; runtime behaviour, including the row-spanning count, is `GroupStarValueInFieldsDiffTest`.)
 
-### 3.5b Group presence and group-count quantifiers
+### 3.5b Group presence and group-count quantifiers <a id="group-quantifiers"></a>
 
 Group presence is validation-stage state, not merely JSON object existence. For a repeatable group, an instantiated row is content even when every field in that row is empty. For a non-repeatable group, `GroupRef.filled()` needs a formally admitted descendant value or an instantiated repeatable descendant row; the group's own structural presence is not enough. A non-repeatable group containing only formally invalid values is neither filled nor definitely empty, so `filled()` and `notFilled()` are not strict Boolean complements in that state.
 
@@ -1007,7 +1007,7 @@ BoundModel m2 = model.replaceCondition("/Subscription/Addons/FeeCapRule", fixed)
 
 Note how 3.3's fragment library closes the loop: **re-expression frequently means recognizing a known idiom** — the LLM maps a foreign rule onto `feeRequired(...)` and the diff shows the cleanup.
 
-## 5b. Editing the model — structure *and* rules (modelkit + `EditSession`)
+## 5b. Editing the model — structure *and* rules (modelkit + `EditSession`) <a id="editing-the-model"></a>
 
 The use case in one place: **read a DM → add fields/groups → add/modify rules → maybe delete → write back.** modelkit (`ModelDocument`) edits *structure*; rulekit edits *rules*; they are siblings over `dm.core` that cannot see each other (`dm.modelkit ⊥ dm.rulekit`), so `dm.edit.EditSession` is the orchestration layer above both. Every edit is surgical on the **authored** DM-JSON tree (includes preserved, never inlined). The kernel-free `dm.core.ModelReader` owns structural parsing, include/type-def expansion, id normalization, and indexing; when the backend is present, its real `checkConsistency` verdict remains the semantic write gate, while a no-backend binding is explicitly structural-only and never presented as kernel-confirmed.
 
@@ -1134,7 +1134,7 @@ ModelDocument.read(json)
     .setAnnotation("/Subscription/Tier", "ui:widget", "dropdown")                        // name/value metadata
     .validate();
 ```
-A label must cover every declared locale (fails fast otherwise); the add/re-type reuse the build-from-scratch emitter, so a configured field is shaped identically to a built one. *Locked by `modelkit.ModelMetadataTest`.* The pattern's error text can be **localized**: the single message in `pattern(regex, msg)` covers every declared locale, and `StringFieldBuilder.patternMessage(locale, text)` (CLI: `string.patternMessages`) overrides it per locale — the string sibling of an enum's per-locale invalid-value text, so a bilingual model carries a German pattern error (*locked by `FieldAddSpecTest`*). Each aspect has its own setter (`setRequiredness`/`setLabel`/`setHelperText`/`setGlobal`/…); `ModelDocument.applyModification(path, FieldModification)` applies a **partial** bundle of them at once (only the present aspects). The CLI splits that library bundle by contract: **`field modify <spec.json>`** owns the field's type and field-specific properties, while **`meta <ref>`** is the sole post-creation writer for labels, descriptions, and annotations across every describable element (G45). Thus an agent can add a STRING `pattern` or merge one locale of a label without delete-and-recreate, and an aspect it asks for is never silently dropped (CLI-SPEC §5). `StringFieldBuilder.noValueValidation()` authors the value-skip flag (the attachment-content idiom), and the builder **fails fast** on the kernel's co-requirement — a no-value-validation string must permit line breaks (`MVK_STRING_TYPE_NO_VAL_AND_NO_LINE_BREAK`) — with a named cause at `build()` rather than a late kernel reject (finding 47).
+A label must cover every declared locale (fails fast otherwise); the add/re-type reuse the build-from-scratch emitter, so a configured field is shaped identically to a built one. *Locked by `modelkit.ModelMetadataTest`.* The pattern's error text can be **localized**: the single message in `pattern(regex, msg)` covers every declared locale, and `StringFieldBuilder.patternMessage(locale, text)` (CLI: `string.patternMessages`) overrides it per locale — the string sibling of an enum's per-locale invalid-value text, so a bilingual model carries a German pattern error (*locked by `FieldAddSpecTest`*). Each aspect has its own setter (`setRequiredness`/`setLabel`/`setHelperText`/`setGlobal`/…); `ModelDocument.applyModification(path, FieldModification)` applies a **partial** bundle of them at once (only the present aspects). The CLI splits that library bundle by contract: **`field modify <spec.json>`** owns the field's type and field-specific properties, while **`meta <ref>`** is the sole post-creation writer for labels, descriptions, and annotations across every describable element (G45). Thus an agent can add a STRING `pattern` or merge one locale of a label without delete-and-recreate, and an aspect it asks for is never silently dropped (CLI-SPEC [§5](CLI-SPEC.md#verb-surface)). `StringFieldBuilder.noValueValidation()` authors the value-skip flag (the attachment-content idiom), and the builder **fails fast** on the kernel's co-requirement — a no-value-validation string must permit line breaks (`MVK_STRING_TYPE_NO_VAL_AND_NO_LINE_BREAK`) — with a named cause at `build()` rather than a late kernel reject (finding 47).
 
 A Number has three distinct textual-size declarations in addition to scale and value bounds: `minLength(n)` / `maxLength(n)` count the rendered stored-number text (including sign and decimal separator), while `maxIntegerDigits(n)` counts only digits before the separator. Do not substitute the latter for `maxLength`: the kernel's `Date(...)` / `Time(...)` component gate consults `maxLength`. The same keys are accepted by the CLI's `number` block and returned by `field read` / `typedef read`; direct `FieldTypeSpec.NumberSpec` construction uses its fluent builder rather than a ten-position constructor (finding 104 / DG26).
 
@@ -1180,7 +1180,7 @@ The **whole rule lifecycle composes with structure edits** in the one session: `
 
 Removing a field a rule still references is rejected at **`validate()`** (`ModelConsistencyException`, the kernel's own dangling-entity diagnostic), **not** at `remove()` — which tolerates the invalid intermediate state so the same session can drop the rule too (the safe ordering: remove the rule, then the field). A *proactive* "what references this?" check (`adapter.whereUsed`) is deferred to the CLI remove verb, where the capability lives — never a silent cascade. *Locked by `edit.EditSessionTest.removingAFieldARuleReferencesIsRejectedByTheGate`; rationale in [`KERNEL-INTEGRATION-NOTES.md`](KERNEL-INTEGRATION-NOTES.md) "Structure edits + the delete-safety rule".*
 
-## 5c. Refs & editors — the L2c ergonomic layer
+## 5c. Refs & editors — the L2c ergonomic layer <a id="refs-and-editors"></a>
 
 > **Status: implemented 2026-06-12 (PROJECT-DESIGN D7 / binding level *L2c*).** This is the agreed design, now built, and **replaces the dropped L2b codegen**. It spans **both kits** — rulekit rule authoring *and* modelkit structure editing. The session-bound handles are the **`Editor`** family — `GroupEditor` / `FieldEditor` / `RuleEditor` / `ComputationEditor` / `TypeDefEditor` / `IncludeEditor` / `ConfigEditor` — a **complete surface**: every editable element has an editor, so asking "what editors exist?" finds no gaps. The earlier working name *"cursor"* was dropped — naming decision + rejected alternatives (`Node`, `Handle`) in PROJECT-DESIGN §18.7 (fork #7). **No deferrals** (§18.7): `IncludeEditor` also does `setReference` (re-point) and `rename` (header + every mount move in step, so rules over mounted content don't ripple).
 
@@ -1572,7 +1572,7 @@ The condition is built — not string-templated — inside the pattern: `Dsl.all
 
 The semantics an agent reads — the queryable operator catalog, the model-context projections, model navigation — and the LLM session loop those feed, for both the developer and the BA persona.
 
-## 6. Semantics as data — the catalog is queryable today
+## 6. Semantics as data — the catalog is queryable today <a id="semantics-as-data"></a>
 
 <!-- snippet: catalog -->
 ```java
@@ -1630,7 +1630,7 @@ grep BirthDate ctx/rules.jsonl
 
 The 10k-field problem dissolves: the files hold everything, only grep hits enter context; `model-card.md` (skeleton) is the single read-whole artifact. JSONL = one line per fact = greppable *and* `jq`/Python-parseable; each artifact stamps the snapshot's model id/version.
 
-### 6c. Navigating the model — jOOQ-`Meta`-style, no query language
+### 6c. Navigating the model — jOOQ-`Meta`-style, no query language <a id="navigating-the-model"></a>
 
 The programmatic counterpart to 6b's files — and the machinery beneath them (`fields.jsonl` *is* `m.fields()` serialized). Streams of rich **info handles**; matching is plain Java; narrowing bridges back to strict authoring handles:
 

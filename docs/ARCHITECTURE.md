@@ -213,7 +213,7 @@ The structural peer of rulekit: build a model from scratch, and read/round-trip/
 
 ### 3.4 `dm.edit` — orchestration over both kits (8 files)
 
-The **only** layer that imports both kits. `EditSession` threads one DM-JSON document through a sequence of structure + rule edits and validates **once** at the end (the read → ordered surgery → one terminal gate → write pattern the CLI `apply` verb exposes). It owns the `*Editor` family — `GroupEditor`, `FieldEditor`, `RuleEditor`, `ComputationEditor`, `ConfigEditor`, `IncludeEditor`, `TypeDefEditor` — the session-bound editor ergonomics (PROJECT-DESIGN D7 / API-GUIDE §5c).
+The **only** layer that imports both kits. `EditSession` threads one DM-JSON document through a sequence of structure + rule edits and validates **once** at the end (the read → ordered surgery → one terminal gate → write pattern the CLI `apply` verb exposes). It owns the `*Editor` family — `GroupEditor`, `FieldEditor`, `RuleEditor`, `ComputationEditor`, `ConfigEditor`, `IncludeEditor`, `TypeDefEditor` — the session-bound editor ergonomics (PROJECT-DESIGN D7 / API-GUIDE [§5c](API-GUIDE.md#refs-and-editors)).
 
 ```
    dm.edit.EditSession   ──imports──▶  dm.modelkit  (structure edits)
@@ -302,7 +302,7 @@ A root **hub** package plus nine **verb-family** sub-packages:
 
 A family's parent and subcommands live together so the subcommands stay package-private; only the family roots and the cross-package shared infra are `public`. (Widening is harmless — `:cli` is a leaf nobody links against. Unlike the sealed `dsl` package, nothing *forces* the CLI flat; the families just make it navigable.) The mirroring test sources live in the same family sub-packages; the cross-cutting/conformance tests stay at the test root.
 
-> The **live verb list is not enumerated here** — that's exactly the kind of fact that rots. It's derived from the picocli tree and served by `dmtool manifest`; see CLI-SPEC §5 for the surface.
+> The **live verb list is not enumerated here** — that's exactly the kind of fact that rots. It's derived from the picocli tree and served by `dmtool manifest`; see CLI-SPEC [§5](CLI-SPEC.md#verb-surface) for the surface.
 
 ### 5b. picocli — declarative parsing, and the manifest derives from the tree
 
