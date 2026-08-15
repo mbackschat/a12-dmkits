@@ -393,6 +393,7 @@ tasks.register('docGuardTest', Test) {
         includeTestsMatching 'io.github.mbackschat.a12.dm.cli.InterpreterGapIdRegistryGuardTest'
         includeTestsMatching 'io.github.mbackschat.a12.dm.cli.DocAnchorResolveGuardTest'
         includeTestsMatching 'io.github.mbackschat.a12.dm.cli.DocRelativeLinkGuardTest'
+        includeTestsMatching 'io.github.mbackschat.a12.dm.cli.OperatorIndexGuardTest'
         includeTestsMatching 'io.github.mbackschat.a12.dm.cli.DocsEvidencePlacementGuardTest'
         includeTestsMatching 'io.github.mbackschat.a12.dm.cli.PerformancePairAddressingGuardTest'
         includeTestsMatching 'io.github.mbackschat.a12.dm.cli.DocumentShapeSingleSourceTest'
@@ -454,6 +455,22 @@ tasks.register('evalGuardTest', Test) {
 // the corpus cases + the three lock-test source trees at runtime — its own dedicated task (same rationale as
 // docGuardTest, but its input set is the map's derivation surfaces, incl. TEST SOURCE TREES, which must not
 // become inputs of the broader guard task).
+// The operator index's fixer, mirroring root `dumpKitApi` over the API goldens: the SAME class that asserts
+// the page also writes it, so the generator and the checker can never diverge. Regenerate whenever a kernel
+// doc gains an entry or the operator catalog changes, and commit the page with that change.
+tasks.register('dumpOperatorIndex', Test) {
+    group = 'documentation'
+    description = 'Regenerate docs/OPERATOR-INDEX.md from the operator catalog and the two kernel docs.'
+    useJUnitPlatform()
+    testClassesDirs = sourceSets.test.output.classesDirs
+    classpath = sourceSets.test.runtimeClasspath
+    systemProperty 'operatorIndex.fix', 'true'
+    outputs.upToDateWhen { false }
+    filter {
+        includeTestsMatching 'io.github.mbackschat.a12.dm.cli.OperatorIndexGuardTest'
+    }
+}
+
 tasks.register('semanticsMapGuardTest', Test) {
     description = 'Resolve-guard for docs/SEMANTICS-MAP.md + the KERNEL-FINDINGS↔KERNEL-SEMANTICS fold contract — every cited §/facet/corpus-family/test-class derives from its live surface, and every finding carries a valid fold-status.'
     group = 'verification'

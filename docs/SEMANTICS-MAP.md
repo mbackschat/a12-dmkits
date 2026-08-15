@@ -4,6 +4,8 @@ One page, keyed by the canonical kernel-truth taxonomy, that answers: *for a giv
 
 **How this page stays honest** — it is derivable-and-checkable, never hand-curated status: `cli … SemanticsMapResolveTest` (the dedicated `semanticsMapGuardTest` task) re-derives every column from its live surface and fails the build on drift — a `§n` findings claim without a `§n`-tagged KERNEL-FINDINGS heading, a facet dimension the catalog doesn't carry (or one it carries that the map omits), a corpus cell that disagrees with the committed cases' `meta.sections`, a cited test class that doesn't exist, or a lock-tree class the map doesn't place. A test class's section is its *primary* navigation home (assignment is judgment; existence and completeness are machine-checked).
 
+**Keyed by AREA, not by operator.** For "which entries discuss `Sum`?" use the generated [OPERATOR-INDEX.md](OPERATOR-INDEX.md) — this page deliberately stays one screen, and 106 operator rows would end that.
+
 ## The taxonomy × surfaces
 
 | § | Area | KERNEL-FINDINGS | Catalog facets | Corpus families |
