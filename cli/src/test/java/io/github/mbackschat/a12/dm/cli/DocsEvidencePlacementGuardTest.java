@@ -1,5 +1,6 @@
 package io.github.mbackschat.a12.dm.cli;
 
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.IOException;
@@ -51,7 +52,9 @@ class DocsEvidencePlacementGuardTest {
             Path.of("../docs/KERNEL-FINDINGS.md"),
             Path.of("../docs/API-FINDINGS.md"));
 
-    private static final Path PERFORMANCE = Path.of("../docs/INTERPRETER-PERFORMANCE.md");
+    private static final Path METHOD = Path.of("../docs/INTERPRETER-PERFORMANCE.md");
+
+    private static final Path PERFORMANCE = Path.of("../docs/INTERPRETER-PERFORMANCE-RESULTS.md");
 
     /** The results-log entry shape: `### Checkpoint 2026-08-11 — …`. */
     private static final Pattern CHECKPOINT_HEADING =
@@ -82,22 +85,26 @@ class DocsEvidencePlacementGuardTest {
         }
     }
 
-    /** Dated evidence must not drift up out of the log into the method prose the log's own preamble separates. */
+    /**
+     * The method doc carries NO dated checkpoint, and the results doc carries them all.
+     *
+     * <p>Until 2026-08-15 both halves were one file and this asserted the weaker within-file form — every
+     * checkpoint below the {@code ## Results log} heading. The split makes the invariant simpler and stronger:
+     * a dated measurement in the method doc is now not merely misplaced within a file, it is in the wrong file.
+     * The second assertion is what stops the first passing vacuously — without it, deleting or renaming the
+     * results doc satisfies "the method doc has no checkpoints" perfectly.
+     */
     @Test
-    void everyDatedCheckpointInThePerformanceDocSitsUnderTheResultsLog() throws IOException {
-        String text = read(PERFORMANCE);
-        int resultsLog = text.indexOf("\n## Results log");
-        assertTrue(resultsLog > 0, "INTERPRETER-PERFORMANCE.md must keep its \"## Results log\" section — it is the "
-                + "home every findings doc points dated evidence at");
+    void everyDatedCheckpointSitsInTheResultsDocAndNoneInTheMethodDoc() throws IOException {
+        Matcher strayed = CHECKPOINT_HEADING.matcher(read(METHOD));
+        assertFalse(strayed.find(), () -> "INTERPRETER-PERFORMANCE.md carries a dated checkpoint (\""
+                + strayed.group() + "\"), but it is the METHOD half — the stable contract, harness and gate "
+                + "mechanics. Dated evidence belongs in INTERPRETER-PERFORMANCE-RESULTS.md (DOC-DISCIPLINE: "
+                + "specs hold the method, a dated log holds the numbers)");
 
-        Matcher heading = CHECKPOINT_HEADING.matcher(text);
-        while (heading.find()) {
-            int at = heading.start();
-            assertTrue(at > resultsLog, () -> "INTERPRETER-PERFORMANCE.md has a dated checkpoint (\""
-                    + heading.group() + "\") ABOVE its \"## Results log\" heading, i.e. inside the method prose. "
-                    + "The method is the stable part and the log is the churny part; mixing them is how a spec "
-                    + "starts rotting (DOC-DISCIPLINE: specs hold the method, a dated log holds the numbers)");
-        }
+        assertTrue(CHECKPOINT_HEADING.matcher(read(PERFORMANCE)).find(),
+                "INTERPRETER-PERFORMANCE-RESULTS.md must carry the checkpoints — it is the home every findings "
+                + "doc points dated evidence at, and an empty one makes the assertion above vacuous");
     }
 
     private static String read(Path relative) throws IOException {
