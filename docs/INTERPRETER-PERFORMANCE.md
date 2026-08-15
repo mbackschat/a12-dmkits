@@ -591,12 +591,6 @@ Observed median-growth ranged 2.49×–3.26× against linear ≈ 4 and the 9.0 c
 
 **The guard refused the first run, correctly, and the refusal is the transferable part.** A new observation in an *already-anchored* runner class fails closed (`UnanchoredObservationException`) rather than recording an un-bounded lane — "that is how a bar silently disappears". Arming it then exposed a second edge: `scripts/perf-anchor.sh` folds a run's observations into the anchor, so refreshing from a **targeted** gate (`perf.sh gate '<pattern>'`) would have added these two keys and removed the ~64 keys that simply did not run. The script refuses that too. The consequence for anyone adding an anchored lane: a targeted run is enough to *develop* the scenario, and a **full gate run is required to arm it** — there is no cheaper path, and both refusals are the system working.
 
-### Checkpoint 2026-08-14 — the group-operand slice, and prune-on-write exercised for real
-
-The session's interpreter/adapter/cli changes cost nothing measurable: 22 growth observations, **4.55×–5.76×** against the 9.0 sub-quadratic floor, **zero anchor breaches**, gate green in 4m 47s on `darwin-aarch64` (Macmini9,1 Apple M1 ×8), run alone.
-
-The run also exercised [`PerfObservations.pruneToRetentionBound`](../adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/perf/PerfAnchors.kt) in production for the first time: the environment sat at the 30-run bound, so writing this run pruned the oldest uncited file and left exactly 30. That is the point of moving the bound into the writer — the guard that enforces it cannot see a breach the perf lane creates, because the lane runs last and its record is committed after the estate check.
-
 ### Checkpoint 2026-08-14 — the group-operand expansion work costs nothing measurable, and one scenario already exercised it
 
 Seven interpreter changes landed this day in the group-operand expansion class (`expandGroupStars`/`expandGroupOperands` and its shared owner, `vlqOperands`, `overlapCells`, `fillScope`, `fillScopeInfo`, `PolarityWalk`, `minMaxOperandVals`). Routine gate, run in isolation on the local 8-processor machine (`darwin-aarch64`, 4m41s, `BUILD SUCCESSFUL`, zero anchor breaches, record `perf-results/darwin-aarch64/2026-08-14T151017Z.jsonl`):
@@ -737,6 +731,8 @@ Top self frames are the mechanic itself: `ArrayList.hashCodeRange` 1.46 %, `Arra
 
 ### Checkpoint 2026-08-12 — the cross-engine margin's low tail, over 27 runs instead of three
 
+*Conclusion:* [IF300](INTERPRETER-FINDINGS.md#if300) — a three-run basis structurally cannot see a tail, and a floor sized from the median is sized from the wrong statistic.
+
 The parity gate's documented margins were medians over **three** isolated runs. Reading the whole committed series (`scripts/perf-trend.sh --ratio`, 27 runs, `darwin-aarch64`, one machine and JDK) keeps every median and adds the tail that a three-run basis structurally cannot see.
 
 | quantity (68 margin rows = 34 scenario-scale rows × 2 kernel strategies) | measured |
@@ -863,6 +859,8 @@ One conclusion of that first attempt survives: a **per-class** tolerance has no 
 
 ### Checkpoint 2026-08-12 — the `darwin-aarch64` anchor, refreshed as a median of three
 
+*Conclusion:* [IF300](INTERPRETER-FINDINGS.md#if300) — the binding quantity for a tolerance is one run's distance from the anchor, not the anchor's own precision.
+
 Three sequential isolated `perfGateTest` runs at `087c39f5` on a quiet machine (`loadAverage` 3.3 on eight processors, all 36 keys measured in every run, zero flags), folded at the per-key median: records `2026-08-12T015324Z`, `T015814Z`, `T020249Z`. The block moves from **one run's sample at `4ea0bf3a`** to a **median of three at the current revision**. *(Corrected 2026-08-12, later the same day: this closed by saying the median-of-three is "what makes tightening `ANCHOR_TOLERANCE` possible later". It does not. Tightening was attempted on that basis and refused — the binding quantity is a single run's distance from the anchor, not the anchor's precision, and it measures `1.421×` on this machine under ordinary load. See the checkpoint above.)*
 
 **What the diff showed, and why it matters more than the refresh itself.** Absolute anchors are the only bar in this estate that sees a *uniform* slowdown, and a stale block silently loosens it. Four families had drifted far:
@@ -924,6 +922,8 @@ The checkpoint below concluded that the parity noise sat in the small arm and pr
 **The measured level is also more honest, and in one place less flattering.** `CO-correlation @200` reads `0.509` warm against `0.460` cold: generated Java was the engine furthest from steady state, so the old figure credited the interpreter with part of the kernel's warm-up. Most rows move the other way (`PI-parallel @250` `0.305` → `0.161`, `MSC @150` `0.142` → `0.095`, both per-row medians of the three runs each side) — whichever engine was more under-warmed decides the direction, which is exactly why a cold ratio means nothing.
 
 ### Checkpoint 2026-08-12 — each parity row's OWN ratio noise, measured instead of borrowed
+
+*Conclusion:* [IF300](INTERPRETER-FINDINGS.md#if300) — a noise figure is only valid for the quantity, scenario and machine class it was measured on.
 
 **Three sequential isolated runs of the 17 parity lanes, quiet local machine, same revision** (records `2026-08-11T233842Z`, `T233949Z`, `T234053Z` under [`perf-results/darwin-aarch64/`](../perf-results/darwin-aarch64/)). Motivated by a comparison that was wrong twice over: the tightest row's margin had been held against `1.78×`, a run-to-run figure measured on *different scenarios* on a *different machine class*, and then described as "below" it when `1.9 > 1.78`. Borrowing a noise figure across scenarios is the same trap as borrowing one across quantities. So this measures each row's own.
 
@@ -1066,10 +1066,6 @@ The packed-browser measurement from clean commit `961d56af` produced a **232,151
 The browser release scenario is `browser-b1-10000-rows-first-answer` v1: 10,000 flat rows, exactly 4,900 `HQ` findings, workspace preparation and Document materialization outside timing, then `createInterpreter()` through complete semantically checked `validateFull`. A routine series uses 10 fresh system-Chrome processes with zero discarded samples and reports the median. If the observed range is greater than half the median, the collector extends the same series to 50 samples before applying the bar.
 
 On the pinned Apple M1 / Chrome 150.0.7871.186 runner, the original 50-process calibration series on `69e8985d` measured median/p95 193.45/204.4 ms and 195.9/218.4 ms; the first policy-enforced packed-`0.9.1` series on `b644b1e3` measured 190.65/209.3 ms. Corrected by the owner on 2026-07-27: p95 and an unconditional 50-process series were more ceremony than this smoke needs. The active bar is median ≤250 ms under the adaptive 10→50 protocol above. The first corrected-protocol series measured the representative 200-row, 23.1 kB, zero-finding Document at 10.2 ms median and the 10,000-row stress Document at 177.1 ms median; both stopped after 10 stable fresh-process samples. The earlier one-time 50-process characterization measured 10.6 ms and 178.8 ms medians respectively. The 0.11.0 release series on `3cee57e1`, under Chrome 150.0.7871.187, measured 10.0 ms and 187.7 ms medians respectively and also stopped after 10 stable fresh-process samples. The 2026-08-03 clean post-repair series on `961d56af`, under the same Chrome, measured 10.5 ms and 203.6 ms. The current report is written to `build/reports/interpreter-browser-performance/r5.2.json`; policy and negative controls run in ordinary browser verification, while the process collector remains an explicit measurement task.
-
-### Checkpoint 2026-07-22 — nightly gate isolation correction
-
-The failed [scheduled CI run 29894300422](https://github.com/mbackschat/a12-dmkits/actions/runs/29894300422) was a measurement-harness failure, not an interpreter regression. The workflow invoked broad `:adapter:test -PrunPerf`: after the normal test/fuzz step had taken 23 m 34 s, the nominal perf step reran 1,889 adapter tests and every perf class under up to four parallel forks for 22 m 18 s. That allowed unrelated kernel-heavy classes to compete with `PerfGateTest` between paired observations; `multiStarCorrelationStaysSubQuadratic` was the sole failure. The same check passed focused at 50.2→290.4 ms / 5.45×. The initial class-filtered launcher passed all 19 checks locally in 4 m 48 s; the final dedicated `perfGateTest` path passed them in 3 m 18 s, with multi-star at 67.1→386.3 ms / 5.74×. No bound or interpreter implementation changed. The final workflow correction makes nightly performance a separate job that does not rerun the same SHA's 22–24-minute correctness/fuzz suite or roughly 9-minute Showboat gate, persists the isolated Gradle home across hosted runners, and executes measurements through the single-fork, non-cacheable task. The input-declared `GateTierWiringTest` locks that complete chain. The old “8-minute” comments were also removed: recent GitHub scheduled perf steps had already varied from 12 m 25 s to 16 m 47 s before this failure, so elapsed time is measured evidence, not a stable tier contract.
 
 ### Checkpoint 2026-07-21 — G52 compact/depth synthesized-model sweep (partial; IF199/IG101→IF205)
 
@@ -1256,6 +1252,8 @@ Measured on `darwin-aarch64` (Macmini9,1 Apple M1, 8 processors, JDK 21.0.12) wh
 **Cost of arming.** Six gate runs at 4m07s–4m25s, plus five anchor refreshes. Two of those runs existed only because `assertWithinBudget` rethrew on the first unanchored key and left the lane's second endpoint unrecorded — fixed in the same change, so a new lane now arms in one run.
 
 ### Checkpoint 2026-08-14 — what makes a routine-tier lane noisy: magnitude, not the clock
+
+*Conclusion:* [IF298](INTERPRETER-FINDINGS.md#if298) — lane noise tracks the measurement's magnitude; batching lifts a lane out of the sub-10 ms band.
 
 Read from the committed record with `scripts/perf-trend.sh` over 174 keys on `darwin-aarch64` (27 runs, 2026-08-12 .. 2026-08-13). The question was which lanes are too noisy for the `1.65× + 1 ms` anchor tolerance to be a real bar; the first attempt answered it from the `max/min` of three runs and got both the set and the reason wrong.
 
