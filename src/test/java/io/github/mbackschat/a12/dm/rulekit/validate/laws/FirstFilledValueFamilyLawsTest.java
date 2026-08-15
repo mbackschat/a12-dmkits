@@ -18,12 +18,14 @@ import io.github.mbackschat.a12.dm.rulekit.validate.ValidationResult;
  * "all expanded values must share one owner family (STRING/CUSTOM/ENUMERATION or DATE/DATE_FRAGMENT are
  * compatible families)" — and `dmtool operators FirstFilledValue` serves it to any agent that asks. It was
  * prose, not a measured row: a12-kernel-lean correctly pointed out that our claim of having closed this operator
- * covered its *admission* only, never its expansion kind class. Measuring it found the published line
- * <b>wrong on the date half</b>: {@code DATE} and {@code DATE_FRAGMENT} are NOT compatible here.
+ * covered its *admission* only, never its expansion kind class. Measuring it found the published line wrong on the date half — though
+ * not in the way this file first concluded: the temporal gate keys on the <b>declared format</b>, so DATE and
+ * DATE_FRAGMENT DO interchange at one format, and a format mismatch is refused within a single kind.
  *
- * <p>Every row is a complete emitted code list, and each refusal is paired with the homogeneous control that
- * attributes it to the operand list rather than to the comparison — {@link #theDateFamilyIsNotOne} is the pair
- * that carries the correction, because a mixed list and a same-shape unmixed list differ only in the kinds.
+ * <p>Every row is a complete emitted code list, and each refusal is paired with the control that attributes it
+ * to the operand list rather than to the comparison. {@link #theTemporalGateKeysOnTheDeclaredFormatNotTheKind}
+ * carries the correction, and its own first version is the cautionary case: one row that varied kind and format
+ * together looked decisive and pointed the wrong way.
  */
 class FirstFilledValueFamilyLawsTest {
 
@@ -45,44 +47,62 @@ class FirstFilledValueFamilyLawsTest {
                     .dateField("ListedOn", d -> d.format("yyyy-MM-dd"))
                     .dateField("SoldOn", d -> d.format("yyyy-MM-dd"))
                     .dateFragmentField("SeasonPeriod", f -> f.fragmentFormat("yyyy-MM"))
-                    .dateFragmentField("SeasonMonth", f -> f.fragmentFormat("MM")))
+                    .dateFragmentField("SeasonMonth", f -> f.fragmentFormat("MM"))
+                    .dateField("StocktakeYear", d -> d.format("yyyy"))
+                    .dateFragmentField("ReportingYear", f -> f.fragmentFormat("yyyy"))
+                    .dateField("AuditedOn", d -> d.format("dd.MM.yyyy")))
             .build().toJson();
 
-    // ── the correction: the date family is not a family ─────────────────────────────────────────────
+    // ── the temporal gate: declared FORMAT, not kind ───────────────────────────────────────────────
 
     /**
-     * THE measurement that corrects the catalog. The first two rows have the same list shape, the same
-     * comparison, and the same error field; only the second operand's kind differs. A homogeneous DATE list
-     * and a homogeneous DATE_FRAGMENT list both pass, so neither kind is individually at fault and the
-     * comparison is not what is refused — the mixed list is.
+     * THE measurement, and it corrects this file's own first version.
+     *
+     * <p>That version asserted "DATE and DATE_FRAGMENT are not a family" from a single row comparing a
+     * {@code yyyy-MM-dd} Date against a {@code yyyy-MM} DateFragment — which varies the KIND and the DECLARED
+     * FORMAT together, so it cannot say which one the kernel refused. Separating them inverts the conclusion:
+     * a Date declared {@code yyyy} beside a DateFragment declared {@code yyyy} is <b>admitted across two kinds</b>,
+     * while two Dates differing only in declared format are <b>refused</b>. The gate reads the declared format.
+     *
+     * <p>This is the same rule {@link FieldValuesNotUniqueAdmissionLawsTest} already locked for its own carrier,
+     * measured there against the same discriminating pair — so the two carriers agree, and a "compatible families"
+     * table phrased in KINDS is wrong on both.
      */
     @Test
-    void theDateFamilyIsNotOne() {
+    void theTemporalGateKeysOnTheDeclaredFormatNotTheKind() {
         Map<String, String> actual = new LinkedHashMap<>();
-        actual.put("DATE + DATE_FRAGMENT", verdict("ListedOn",
-                "FirstFilledValue(ListedOn, SeasonPeriod) == Today"));
-        actual.put("DATE + DATE — control", verdict("ListedOn",
+        actual.put("same FORMAT, different KIND (DATE yyyy + FRAGMENT yyyy)", verdict("StocktakeYear",
+                "FirstFilledValue(StocktakeYear, ReportingYear) == Today"));
+        actual.put("same KIND, different FORMAT (DATE yyyy-MM-dd + DATE dd.MM.yyyy)", verdict("ListedOn",
+                "FirstFilledValue(ListedOn, AuditedOn) == Today"));
+        actual.put("same kind, same format — control", verdict("ListedOn",
                 "FirstFilledValue(ListedOn, SoldOn) == Today"));
-        actual.put("DATE alone in a comparison — control", verdict("ListedOn", "[ListedOn] == Today"));
-        actual.put("DATE_FRAGMENT alone in a comparison — control", verdict("SeasonPeriod",
-                "[SeasonPeriod] == Today"));
-        // A fragment must carry a YEAR to compare with a full date at all — a month-only fragment
-        // draws MVK_INVALID_COMPARE_TO_DATE, which is the comparability partition and a different
-        // gate from the family one under test. Pinned so the control above cannot be read as
-        // "any fragment compares to Today".
-        actual.put("…and a YEARLESS fragment cannot compare to a full date at all",
-                verdict("SeasonMonth", "[SeasonMonth] == Today"));
+        actual.put("different kind AND different format — the confounded row", verdict("ListedOn",
+                "FirstFilledValue(ListedOn, SeasonPeriod) == Today"));
+        actual.put("[DATE yyyy] == Today — operand control", verdict("StocktakeYear", "[StocktakeYear] == Today"));
+        actual.put("[FRAGMENT yyyy] == Today — operand control", verdict("ReportingYear",
+                "[ReportingYear] == Today"));
+        // A fragment must carry a YEAR to compare with a full date at all. That is the comparability
+        // partition, a different gate from the one under test, pinned so the controls above cannot be
+        // read as "any fragment compares to Today".
+        actual.put("a YEARLESS fragment cannot compare to a full date at all", verdict("SeasonMonth",
+                "[SeasonMonth] == Today"));
 
         Map<String, String> expected = new LinkedHashMap<>();
-        expected.put("DATE + DATE_FRAGMENT", "MVK_VARYING_TYPES_NOT_ALLOWED");
-        expected.put("DATE + DATE — control", "admitted");
-        expected.put("DATE alone in a comparison — control", "admitted");
-        expected.put("DATE_FRAGMENT alone in a comparison — control", "admitted");
-        expected.put("…and a YEARLESS fragment cannot compare to a full date at all",
+        expected.put("same FORMAT, different KIND (DATE yyyy + FRAGMENT yyyy)", "admitted");
+        expected.put("same KIND, different FORMAT (DATE yyyy-MM-dd + DATE dd.MM.yyyy)",
+                "MVK_VARYING_TYPES_NOT_ALLOWED");
+        expected.put("same kind, same format — control", "admitted");
+        expected.put("different kind AND different format — the confounded row",
+                "MVK_VARYING_TYPES_NOT_ALLOWED");
+        expected.put("[DATE yyyy] == Today — operand control", "admitted");
+        expected.put("[FRAGMENT yyyy] == Today — operand control", "admitted");
+        expected.put("a YEARLESS fragment cannot compare to a full date at all",
                 "MVK_INVALID_COMPARE_TO_DATE");
         assertEquals(expected, actual,
-                "DATE and DATE_FRAGMENT do NOT share an owner family in a FirstFilledValue operand list — "
-                        + "the catalog claimed they did until 2026-08-15");
+                "the temporal gate reads the DECLARED FORMAT, not the kind — row 1 admits two kinds at one "
+                        + "format, row 2 refuses one kind at two formats, and row 4 is why a single row proves "
+                        + "neither");
     }
 
     // ── the string-side family, which the catalog had right ─────────────────────────────────────────

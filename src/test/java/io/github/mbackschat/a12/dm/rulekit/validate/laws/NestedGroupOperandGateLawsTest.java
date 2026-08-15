@@ -153,6 +153,39 @@ class NestedGroupOperandGateLawsTest {
                 "a Having filter is refused on a group operand, while the same operand unfiltered is admitted");
     }
 
+    /**
+     * The <b>authored-path</b> wildcard gate (KF188), re-locked here because its original lock was deleted.
+     *
+     * <p>These three rows were measured on this exact fixture shape and handed to a12-kernel-lean, whose
+     * `spec/07` clause rests on them — but `adapter.MixedScopeStarPreservationTest` was removed by the refactor
+     * that merged our two entity-list records, so the rows had no live lock and the peer correctly marked the
+     * clause unconfirmed. The neighbouring cases in this file corroborate the phenomenon; they do not assert
+     * these rows, so this method does.
+     *
+     * <p>The law: a <b>group</b> operand is wildcard-checked at its own level only, while its <b>written-out
+     * expansion</b> is checked at every level it names. Row 3 is the control that attributes row 2's refusal to
+     * the missing inner star rather than to the explicit spelling — without it, row 2 is equally consistent with
+     * "the kernel dislikes this operand list for some other reason".
+     */
+    @Test
+    void aGroupOperandAndItsWrittenOutExpansionAreNotInterchangeableSpellings() {
+        Map<String, String> actual = new LinkedHashMap<>();
+        actual.put("the GROUP operand, starred at its own level", verdict(OUTSIDE,
+                "FieldsNotCollectivelyFilled(Sections*, Note)"));
+        actual.put("the same expansion written out, inner level unstarred", verdict(OUTSIDE,
+                "FieldsNotCollectivelyFilled(Sections*/Title, Sections*/Answers/Text, Note)"));
+        actual.put("the same expansion, both levels starred — the control", verdict(OUTSIDE,
+                "FieldsNotCollectivelyFilled(Sections*/Title, Sections*/Answers*/Text, Note)"));
+
+        Map<String, String> expected = new LinkedHashMap<>();
+        expected.put("the GROUP operand, starred at its own level", "admitted");
+        expected.put("the same expansion written out, inner level unstarred", "MVK_NO_WILDCARD");
+        expected.put("the same expansion, both levels starred — the control", "admitted");
+        assertEquals(expected, actual,
+                "what the kernel waves through as a group it refuses as a written-out path with the inner "
+                        + "level unstarred");
+    }
+
     /** {@code admitted}, or the COMPLETE emitted code list — a partial list would hide a co-firing gate. */
     private static String verdict(String errorField, String condition) {
         ValidationResult r = KernelLaws.checkModel(MODEL, "/Survey", errorField, condition);
