@@ -15,6 +15,14 @@ The demos use the bare `dmtool` and read their sample models from [`models/`](mo
 
 The [`profiles/`](profiles/) directory carries the three approved domain-blind performance-calibration artifacts used by the profile-driven synthesis and interpreter scalability workflow. They are current-format `profile′` outputs from own-domain synthesized models, not copies or profiles of private source models.
 
+**What a green `verify-demos.sh` proves, and what it does not (measured 2026-08-15).** The gate proves every
+documented command still produces the documented output — it is not a coverage estate, and the fixtures decide its
+reach. Concretely: across all nine models in [`models/`](models/) there is exactly **one** entity-list quantifier,
+`AllFieldsFilled(OrderDate, DeliveryDate)`, and **no group operand anywhere**. So the whole typed group-scope
+surface (`Sum(Group*)`, a group under the fill quantifiers, `FieldValuesNotUnique(Group)`, a mixed field+group
+list) is invisible to this gate: a regression there passes it green. Worth knowing before reading a green run as
+reassurance about a change in that area — and worth fixing by adding a fixture, not by trusting the gate harder.
+
 ## Demos in this folder
 
 Thematic demos that together exercise **every verb** + the cross-cutting features (the result envelope, `--dry-run`/`-o`, `-w/--workspace`, the safe-delete gate, op-arg/cross-type correctives, the schema contracts, the version surface):
