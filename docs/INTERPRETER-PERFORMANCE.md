@@ -456,18 +456,6 @@ A structural optimization to design toward (not yet committed work):
 - **Beyond prepare-once — Excel-style *incremental* recalc (deferred, trigger-gated):** recompute only a changed cell's dependent closure instead of re-running the whole document. Feasibility + the DEFER decision + the two-part re-open trigger are recorded in the archived [INCREMENTAL-EVAL-PROPOSAL](archived/INCREMENTAL-EVAL-PROPOSAL.md). The prepared model above is its prerequisite substrate; the incumbent kernel does recompute-all-per-run + per-run caches, *not* cross-edit dirty propagation.
 - **Study the kernel's data representation + caches for INSPIRATION (not a copy — the license boundary holds: read for comprehension, write original).** The kernel devs spent *years* optimizing; its instance representation and its caches — `IndexFieldCache`, `ValidationCache`, `CalculationCache`, `GroupFillCache`, `RepetitionNotUniqueErrorCache` — encode hard-won structure (index-by-field, memoized group-fill, cached calculation results within a run). **Do not assume a naive fresh impl will be anywhere near kernel performance.** Get informed by what they cache and how they index, reproduce the *idea* in original Kotlin, and let the against-kernel benchmark (#29) tell the truth. Humility + measurement, not confidence.
 
-## Prerequisite — make the real `Document` non-quadratic (task #28 — DONE 2026-06-23, `d2e85493`)
-
-A naive O(N²) `Document` cannot even run 100k rows, so the first step was structural. **Done:**
-
-- **`valueAt`/`rowsOf` indexed** — a lazily-built, mutation-invalidated `Index` maps `(path, reps) → placement` and `groupPath → rows`, so `field`/`filled`/`displayValue`/`star` are O(1)/O(rows), not O(P).
-- **`evaluated` amortized** — `contextsFor(G)` computes each row's `evaluated` in ONE pass over the valued fields (recording each field's index-prefix at its attach-depth), instead of an O(P) scan per row.
-- **`autoGroup` deduped via a set; sparse V2 closure advances by scope** — group auto-instantiation was an O(P²) `placements.none{…}` build scan. It is O(1) per emitted group now, and IF276's per-parent high-water mark emits each V2-required predecessor once across all placements rather than rescanning the prefix for every field.
-- All `*DiffTest` stay green (behavior unchanged — a perf change, correctness already locked).
-- **Historical residual, subsequently closed:** at the task-#28 landing, `groupFilled` still scanned the valued list per call. Optimizations #6 and #8 above replaced both repeatable and non-repeatable branches with indexed O(1) lookups.
-
-The large-N benchmarks below are now runnable (task #29).
-
 ## Benchmark catalog (the hard cases — grow this list)
 
 Each scenario is a real DM-JSON model + an instance built at parameterized scale `N`, evaluated by all **three applicable engines**—interpreter, dynamic kernel, and generated-Java kernel. Only a proven strategy incapability may exclude an engine; a harness limitation is a gap to fix and cannot make a comparison green. Start with these group-stressing shapes:
