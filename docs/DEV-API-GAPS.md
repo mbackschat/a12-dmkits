@@ -40,11 +40,9 @@ The gaps below were the **ergonomic and consistency remainder** — what added f
 
 ## 2. Open
 
-- **DG37 — an entity path is a `String` at the module and public boundaries, so path relations rest on a discipline rather than a representation** *(2026-08-15, from a12-kernel-lean's reciprocal on our `CG13`–`CG18` fix)*. We shipped both wrong spellings of "is this path inside that subtree" within a week, in opposite directions, and fixed it at `7bcd16d6` with `EntityPaths`' named inclusive/strict pair plus a build census. Correct, but it buys correctness with a permanent tax: every future call site must *remember* to reach for the pair, and the census exists because that memory is unreliable — with a blind spot it admits to, since a naive `startsWith(ancestor)` is indistinguishable from any other string-prefix test. The peer's counterpart carries no such tax: their `GroupPath` is `List String`, `isPrefixOf` recurses over **segments**, and both of our failure directions are **unrepresentable** rather than merely absent.
+_None open._
 
-  **Landed so far:** `EntityPath` (the path as its segments, both relations on it; `EntityPaths` demoted to a delegating string-boundary adapter) and `HasEntityPath` (an additive interface putting the relation on the refs, so a site asks `errorField.isStrictlyInside(group)` instead of extracting two strings to compare). `EntityPath`'s lock asserts the new relation agrees with the exact string expression it replaced over a 13×13 cross-product, including `""`, `"/"` and a trailing slash where a convenient `split` silently diverges.
-
-  **What is still open:** holding the parsed value *as* the component (`FieldRef(EntityPath path, …)`) and parsing at the model-JSON and CLI boundaries, retiring the string form behind them — after which the census becomes dead code to delete. **Re-open trigger if deferred:** the next hand-spelled relation the census catches, or the next public surface that would have to accept the parsed type anyway.
+---
 
 ## 3. Adjacent but out of scope
 
