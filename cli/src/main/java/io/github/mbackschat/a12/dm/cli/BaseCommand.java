@@ -371,7 +371,7 @@ public abstract class BaseCommand implements Callable<Integer> {
     /**
      * The edit-gate twin of {@link #failOrRethrowDomainRejection}: fail with the gate's own message, but let an
      * {@link UnresolvedReferenceException} escape to {@link Cli}'s seam, which owns its documented contract
-     * (a corrective {@code RK_UNRESOLVED_REFERENCE} rejection at exit 1 — CLI-SPEC §"exception seam").
+     * (a corrective {@code RK_UNRESOLVED_REFERENCE} rejection at exit 1 — CLI-SPEC §3b).
      *
      * <p><b>Why a second helper rather than the one above.</b> An edit command must keep handling
      * {@link ModelConsistencyException} <em>itself</em>, because the rejection of an edited candidate is the

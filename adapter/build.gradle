@@ -21,7 +21,7 @@ java {
     }
 }
 
-// Ratchet (A12K-3589 / docs/TESTING-SPEC "no deprecated-kernel-API" guardian): a kernel API MARKED FOR REMOVAL
+// Ratchet (A12K-3589 / docs/KERNEL-INTEGRATION-NOTES "A12K-3589 kernel-API removal surface"): a kernel API MARKED FOR REMOVAL
 // cannot compile in this kernel-facing module. We enable ONLY the `removal` lint (not `deprecation`) and treat
 // it as an error, so a NEW call to a removal-scheduled kernel API (e.g. validateFull(IDocument, Locale),
 // CustomFieldTypeService) fails the build — while the deliberately-retained plain-@Deprecated V1 document

@@ -19,7 +19,7 @@ import org.junit.jupiter.api.io.TempDir;
  * refusal (which it is for), our own {@code toJson()} serialization, and our own resolver's
  * {@link io.github.mbackschat.a12.dm.core.UnresolvedReferenceException} — so an unresolvable {@code include}
  * hit at an <em>edit</em> was published as a kernel consistency rejection, while the identical model read by
- * {@code model read} was published as {@code RK_UNRESOLVED_REFERENCE} (CLI-SPEC §"exception seam", the
+ * {@code model read} was published as {@code RK_UNRESOLVED_REFERENCE} (CLI-SPEC §3b, the
  * documented contract for that exception).
  *
  * <p>Two things made this worse than a wrong code. The rejection basis is derived from the exception's type, so
