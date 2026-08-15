@@ -11,7 +11,7 @@ import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Condition;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl;
 import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer;
-import io.github.mbackschat.a12.dm.rulekit.dsl.FieldListPredicate;
+import io.github.mbackschat.a12.dm.rulekit.dsl.EntityListPredicate;
 import io.github.mbackschat.a12.dm.rulekit.dsl.FieldListRef;
 import io.github.mbackschat.a12.dm.rulekit.dsl.FieldOperand;
 import io.github.mbackschat.a12.dm.rulekit.dsl.FieldPresenceCondition;
@@ -60,14 +60,14 @@ class WildcardFieldFillQuantifierReadTest {
         Rule rule = rule(model, ruleName, authored);
 
         Condition converted = converted(KernelAdapter.of(model.add(rule)).read("/Calibration/" + ruleName));
-        FieldListPredicate readFieldFill =
-                assertInstanceOf(FieldListPredicate.class, assertInstanceOf(LogicCondition.class, converted).right());
+        EntityListPredicate readFieldFill =
+                assertInstanceOf(EntityListPredicate.class, assertInstanceOf(LogicCondition.class, converted).right());
 
         assertEquals(RENDERER.render(authored), RENDERER.render(converted), quantifier + " must retain its star");
-        assertEquals(mixed ? 2 : 1, readFieldFill.fields().size());
-        assertInstanceOf(FieldListRef.class, readFieldFill.fields().get(0));
+        assertEquals(mixed ? 2 : 1, readFieldFill.operands().size());
+        assertInstanceOf(FieldListRef.class, readFieldFill.operands().get(0));
         if (mixed) {
-            assertInstanceOf(FieldRef.class, readFieldFill.fields().get(1));
+            assertInstanceOf(FieldRef.class, readFieldFill.operands().get(1));
         }
     }
 

@@ -115,10 +115,10 @@ import io.github.mbackschat.a12.dm.rulekit.dsl.FieldValueAsNumber;
 import io.github.mbackschat.a12.dm.rulekit.dsl.FirstFilledValue;
 import io.github.mbackschat.a12.dm.rulekit.dsl.FirstFilledOperand;
 import io.github.mbackschat.a12.dm.rulekit.dsl.RangeAsNumber;
-import io.github.mbackschat.a12.dm.rulekit.dsl.GroupInfo;
 import io.github.mbackschat.a12.dm.rulekit.dsl.GroupListOperand;
 import io.github.mbackschat.a12.dm.rulekit.dsl.GroupListRef;
 import io.github.mbackschat.a12.dm.rulekit.dsl.GroupRef;
+import io.github.mbackschat.a12.dm.rulekit.dsl.Quantifier;
 import io.github.mbackschat.a12.dm.rulekit.dsl.NumberExpr;
 import io.github.mbackschat.a12.dm.rulekit.dsl.NumberOfValueInFields;
 import io.github.mbackschat.a12.dm.rulekit.dsl.NumberRef;
@@ -349,26 +349,21 @@ final class ConditionConverter {
         // a field-fill quantifier over a MIXED group+field scope (FieldsNotCollectivelyFilled(A, B/G2), where A
         // is a group and B/G2 a field): the kernel expands each group to every descendant field recursively
         // — make that explicit and build a field-list quantifier over the flattened field paths.
-        if (isFieldFillQuantifier(name) && entities.stream().anyMatch(e -> !e.isField())
+        if (entityListQuantifier(name).isPresent() && entities.stream().anyMatch(e -> !e.isField())
                 && entities.stream().anyMatch(IEntityId::isField)) {
-            // The STAR must survive the expansion, on both arms. `getFullName()` drops it and
-            // `descendantFields` returns DECLARED paths, so this arm used to render `Items*` back as
-            // `Items` — the same rule silently narrowed to repetition 1, while the group-only arm below
-            // (`groupScopedFieldFill`, via `reconstructStarPath`) kept it. Two arms of one operator family
-            // with opposite semantics is this defect class's own cheapest tell (CG15).
-            List<FieldOperand> operands = new ArrayList<>();
-            for (IEntityId e : entities) {
-                if (e.isField()) {
-                    operands.add(isWildcard(e) ? model.flatten(reconstructStarPath(e))
-                            : model.field(e.getFullName()));
-                } else {
-                    String declared = model.group(e.getFullName()).path();
-                    String scope = isWildcard(e) ? reconstructStarPath(e) : declared;
-                    descendantFields(e).forEach(f ->
-                            operands.add(expandedDescendant(scope, declared, f.path())));
-                }
-            }
-            return fieldFillQuantifier(name, operands.toArray(FieldOperand[]::new), entityList);
+            // A MIXED entity list keeps each member as the author wrote it — the kernel's own shape, one
+            // list whose members may be fields or groups (KERNEL-FINDINGS kf187: accepted in both operand
+            // orders). This arm used to REBUILD each group into its descendant fields, and the rebuild was
+            // wrong twice over: it dropped the operand's star until 2026-08-14, and it then dropped a NESTED
+            // repeatable's star, which the kernel refuses outright (kf188) — a read that turned a legal model
+            // into an unauthorable condition. Representing the list faithfully removes the whole class.
+            List<AggregateOperand> operands = entities.stream()
+                    .map(e -> e.isField()
+                            ? (AggregateOperand) (isWildcard(e) ? model.flatten(reconstructStarPath(e))
+                                    : model.field(e.getFullName()))
+                            : model.flattenGroup(reconstructStarPath(e)))
+                    .toList();
+            return Dsl.entityListPredicate(entityListQuantifier(name).orElseThrow(), operands);
         }
         // A FIXED group-list quantifier whose entity list carries a FIELD (mixed or field-only —
         // SPEC-2026-07-23-09): despite the names, the five admit the common field-or-group entity
@@ -523,6 +518,26 @@ final class ConditionConverter {
                     GroupsNotCollectivelyFilled -> true;
             default -> false;
         };
+    }
+
+    /**
+     * The typed quantifier behind an entity-list condition name, for the operators whose entity list may
+     * legitimately mix fields and groups — the seven fill quantifiers plus {@code FieldValuesNotUnique}
+     * (KERNEL-FINDINGS {@code kf187}). {@code DateRangesOverlap} is deliberately absent: it refuses a group
+     * operand outright, so a mixed list of its is not a shape any stored model can contain.
+     */
+    private static java.util.Optional<Quantifier> entityListQuantifier(EntityListConditionName name) {
+        return java.util.Optional.ofNullable(switch (name) {
+            case AllFieldsFilled -> Quantifier.ALL_FIELDS_FILLED;
+            case NoFieldFilled -> Quantifier.NO_FIELD_FILLED;
+            case AtLeastOneFieldFilled -> Quantifier.AT_LEAST_ONE_FIELD_FILLED;
+            case NotAllFieldsFilled -> Quantifier.NOT_ALL_FIELDS_FILLED;
+            case FieldsNotCollectivelyFilled -> Quantifier.FIELDS_NOT_COLLECTIVELY_FILLED;
+            case NotExactlyOneFieldFilled -> Quantifier.NOT_EXACTLY_ONE_FIELD_FILLED;
+            case MoreThanOneFieldFilled -> Quantifier.MORE_THAN_ONE_FIELD_FILLED;
+            case FieldValuesNotUnique -> Quantifier.FIELD_VALUES_NOT_UNIQUE;
+            default -> null;
+        });
     }
 
     /** The seven field-fill quantifier names (over fields, not groups). */
@@ -1303,40 +1318,6 @@ final class ConditionConverter {
             throw unsupported("group-scope aggregate with a Having filter", origin);
         }
         return model.flattenGroup(reconstructStarPath(groupEntity));
-    }
-
-    /**
-     * One field of a group's expansion, addressed so that <b>every</b> repeatable level on the way to it
-     * carries its star — the operand's own and each nested subgroup's.
-     *
-     * <p>Only the operand's own star used to be restored (from {@code reconstructStarPath}); the tail came from
-     * the field's DECLARED path, which has none. A nested repeatable group therefore arrived unstarred, and the
-     * kernel refuses that spelling: a legal model read back as a condition the kernel rejects
-     * {@code MVK_NO_WILDCARD}. Locked by {@code MixedScopeStarPreservationTest}, whose control asserts a
-     * non-repeatable subgroup still gains none — the rule is "star what repeats", not "star every segment".
-     *
-     * @param scope     the operand as addressed by the author (starred iff the operand's own group repeats)
-     * @param declared  that group's declared path, the prefix {@code fieldPath} shares with it
-     * @param fieldPath the descendant field's declared path
-     */
-    private FieldOperand expandedDescendant(String scope, String declared, String fieldPath) {
-        StringBuilder rendered = new StringBuilder(scope);
-        StringBuilder walked = new StringBuilder(declared);
-        for (String segment : fieldPath.substring(declared.length() + 1).split("/")) {
-            walked.append('/').append(segment);
-            rendered.append('/').append(segment);
-            if (model.groupAt(walked.toString()).filter(GroupInfo::repeating).isPresent()) {
-                rendered.append('*');
-            }
-        }
-        String path = rendered.toString();
-        return path.indexOf('*') < 0 ? model.field(path) : model.flatten(path);
-    }
-
-    /** Every field below a group, recursively and in model order. */
-    private List<FieldInfo> descendantFields(IEntityId groupEntity) {
-        String prefix = model.group(groupEntity.getFullName()).path() + "/";
-        return model.fields().filter(field -> field.path().startsWith(prefix)).toList();
     }
 
     /** {@code getFullName()} drops the wildcard; re-insert {@code *} after each segment marked WILDCARD in indices. */

@@ -71,7 +71,7 @@ public record FieldListRef(FieldRef field, List<GroupRef> flattened, Optional<Co
                 rejectForbiddenInFilter(l.left());
                 rejectForbiddenInFilter(l.right());
             }
-            case FieldListPredicate p -> p.fields().forEach(FieldListRef::rejectNestedHaving);
+            case EntityListPredicate p -> p.operands().forEach(FieldListRef::rejectNestedHavingInOperand);
             case FieldListValueListCondition p -> p.fields().forEach(FieldListRef::rejectNestedHaving);
             case ComparisonCondition cmp -> {
                 rejectNestedHavingIn(cmp.left());

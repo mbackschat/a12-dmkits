@@ -84,7 +84,12 @@ class GroupOperandCarrierAdmissionLawsTest {
                         .group("Note", g -> g.stringField("Text", f -> { }))
                         .group("Lines", g -> g.repeatable(20)
                                 .numberField("Amount", n -> n.fractionDigits(0, 2))
-                                .stringField("Sku", f -> { })))
+                                .stringField("Sku", f -> { }))
+                        // the only NESTED repeatable in this fixture — the wildcard-gate rows below are the
+                        // one question that needs a repeatable level INSIDE a repeatable group
+                        .group("Visits", g -> g.repeatable(20)
+                                .stringField("Purpose", f -> { })
+                                .group("Notes", n -> n.repeatable(20).stringField("Text", f -> { }))))
                 .build().toJson();
     }
 
@@ -232,6 +237,19 @@ class GroupOperandCarrierAdmissionLawsTest {
                 "FieldValuesNotUnique(Reference, Contact)"));
         s.add(Shape.refused("DateRangesOverlap/mixed-field-then-group",
                 "DateRangesOverlap(Cover/PolicyWindow, Periods*)", NO_GROUPS));
+
+        // ── THE WILDCARD GATE READS THE AUTHORED SLOT, not the expansion — the third gate in the split this
+        //    table opens, and the one that decides whether a group operand and its written-out expansion are
+        //    interchangeable spellings. They are not. The middle row alone proves nothing (it could be
+        //    refused for any reason); the third row is the control that attributes the refusal to the missing
+        //    INNER star specifically. `Visits` repeats and contains a repeating `Notes`. [KF188] ──
+        s.add(Shape.accepted("wildcard-gate/nested-repeatable-inside-a-group-operand",
+                "FieldsNotCollectivelyFilled(Visits*, Reference)"));
+        s.add(Shape.refused("wildcard-gate/that-same-expansion-with-the-INNER-star-missing",
+                "FieldsNotCollectivelyFilled(Visits*/Purpose, Visits*/Notes/Text, Reference)",
+                "MVK_NO_WILDCARD"));
+        s.add(Shape.accepted("wildcard-gate/that-same-expansion-fully-starred-CONTROL",
+                "FieldsNotCollectivelyFilled(Visits*/Purpose, Visits*/Notes*/Text, Reference)"));
 
         // ── FirstFilledValue's STARRED group form (the non-repeatable one is measured in the doc snippets) ──
         s.add(Shape.accepted("FirstFilledValue/starred-repeatable-group", "FirstFilledValue(Adjusters*) == \"x\""));

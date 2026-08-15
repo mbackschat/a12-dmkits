@@ -54,11 +54,10 @@ public final class ConditionPolarity {
             case LogicCondition l -> deMorgan(l);
             // No clean single complement (a quantifier flip is not just a per-node negation, and the
             // rest carry no polarity bit) — stay conservative so an inversion is never claimed falsely.
-            case FieldListPredicate p -> Optional.empty();
+            case EntityListPredicate p -> Optional.empty();
             case GroupListPredicate p -> Optional.empty();
             case FieldListValueListCondition v -> Optional.empty();
             case FieldListEntityListCondition v -> Optional.empty();
-            case GroupScopedFieldFill v -> Optional.empty();
             case RepetitionNotUniqueCondition r -> Optional.empty();
             case CustomConditionRef c -> Optional.empty();
             case DateValidity v -> Optional.empty();

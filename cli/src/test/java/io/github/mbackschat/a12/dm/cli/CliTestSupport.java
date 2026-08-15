@@ -161,6 +161,34 @@ public final class CliTestSupport {
         return file;
     }
 
+    /**
+     * A policy model whose only rule names a GROUP and no field inside it — the shape that separates a
+     * forward-dependency question ("what does this rule name?") from a reachability one ("what does it read?").
+     * Built here rather than committed as a fixture because it exists for exactly that one distinction.
+     */
+    public static Path groupOperandRuled(Path dir) throws IOException {
+        String base = io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft.named("policy").locale("en_US")
+                .rootGroup("Policy", p -> p
+                        .field("Reference", io.github.mbackschat.a12.dm.modelkit.FieldKind.STRING)
+                        .group("Assessment", a -> a.field("Observed",
+                                io.github.mbackschat.a12.dm.modelkit.FieldKind.NUMBER)))
+                .build().toJson();
+        io.github.mbackschat.a12.dm.edit.EditSession session =
+                io.github.mbackschat.a12.dm.edit.EditSession.read(base);
+        session.addRule(m -> m.rule(m.group("/Policy")).name("AssessmentComplete")
+                .errorField(m.str("/Policy/Reference"))
+                .when(m.str("/Policy/Reference").filled().and(io.github.mbackschat.a12.dm.rulekit.dsl.Dsl
+                        .notAllFieldsFilled(m.flattenGroup("/Policy/Assessment"))))
+                .code("ASSESS_INCOMPLETE")
+                .severity(io.github.mbackschat.a12.dm.rulekit.dsl.Severity.ERROR)
+                .message(new io.github.mbackschat.a12.dm.rulekit.dsl.LocalizedText(
+                        "en_US", "The assessment is incomplete"))
+                .build());
+        Path file = dir.resolve("policy-group-operand.dm.json");
+        Files.writeString(file, session.validate().toJson());
+        return file;
+    }
+
     /** Write the {@code payment-customtype} fixture (a {@code CustomFieldType "Iban"} field) to a temp file. */
     public static Path paymentCustomType(Path dir) throws IOException {
         Path file = dir.resolve("payment-customtype.dm.json");

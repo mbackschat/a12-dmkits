@@ -27,7 +27,7 @@ class OperatorIdTest {
         assertEquals("FieldFilled", new FieldPresenceCondition(NUM, true).operatorId());
         assertEquals("FieldNotFilled", new FieldPresenceCondition(NUM, false).operatorId());
         assertEquals("AllFieldsFilled",
-                new FieldListPredicate(Quantifier.ALL_FIELDS_FILLED, List.of(NUM, STR)).operatorId());
+                new EntityListPredicate(Quantifier.ALL_FIELDS_FILLED, List.of(NUM, STR)).operatorId());
         assertEquals("LessThanOrEqual",
                 new ComparisonCondition(NUM.value(), CompareOp.LE, NumberLiteral.of(0)).operatorId());
         Condition and = new FieldPresenceCondition(NUM, true).and(new FieldPresenceCondition(STR, true));

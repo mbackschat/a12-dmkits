@@ -5,7 +5,9 @@ import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
+import io.github.mbackschat.a12.dm.adapter.KernelAdapter;
 import io.github.mbackschat.a12.dm.modelkit.ElementDraft;
 import io.github.mbackschat.a12.dm.modelkit.GroupMeta;
 import io.github.mbackschat.a12.dm.modelkit.ModelDocument;
@@ -21,10 +23,23 @@ final class GroupDiffProjector {
         return groups;
     }
 
-    static List<String> reasons(ModelDiff.ChangeKind change, List<ModelDiff.Delta> deltas) {
+    /**
+     * The reason codes for one group change.
+     *
+     * <p>The referrer map is what the GROUP arm was missing: a rule may name a group and no field inside it,
+     * so removing the group removes the only thing that rule references — yet it was classified as a bare
+     * {@code STRUCTURE_REMOVED}, indistinguishable from removing a group nothing reads ({@code CG16}). The
+     * fields inside the group are covered already, each by its own FIELD change, so this arm only has to
+     * answer for the group itself and for a rule naming an ancestor of it, which is exactly what
+     * {@link KernelAdapter#isReadByAnything} walks.
+     */
+    static List<String> reasons(ModelDiff.ChangeKind change, String id, List<ModelDiff.Delta> deltas,
+            Map<String, Set<String>> baseReferrers) {
         return switch (change) {
             case ADDED -> List.of("STRUCTURE_ADDED");
-            case REMOVED -> List.of("STRUCTURE_REMOVED");
+            case REMOVED -> KernelAdapter.isReadByAnything(baseReferrers, id)
+                    ? List.of("STRUCTURE_REMOVED", "REFERENCED_ELEMENT_REMOVED")
+                    : List.of("STRUCTURE_REMOVED");
             case MODIFIED -> modifiedReasons(deltas);
             case REORDERED, RENAMED, MOVED -> List.of();
         };

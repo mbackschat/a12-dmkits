@@ -181,9 +181,33 @@ public final class ModelContext {
 
     private List<String> errorFieldCandidates(ConditionReferences refs) {
         Optional<String> scope = iterationScope(refs);
-        return refs.fieldPaths().stream().sorted()
+        return reachableFields(refs).stream().sorted()
                 .filter(p -> scope.isEmpty() || EntityPaths.isStrictlyInside(p, scope.get()))
                 .toList();
+    }
+
+    /**
+     * The fields the condition REFERENCES — its direct field operands plus the fields each GROUP operand
+     * expands to, recursively.
+     *
+     * <p>This used to be the direct field references alone, which made an all-group condition report no
+     * candidate at all and advise the author to "reference a field inside the iteration scope" — advice that
+     * steers away from the only valid picks. The kernel counts a group operand as referencing its members
+     * (KERNEL-SEMANTICS §9; measured for the error-field gate in
+     * {@code rulekit.context.ErrorFieldCandidatesGroupOperandTest}, where each suggested pick is validated
+     * before it is required to be offered). It is the same exactness-versus-reachability split as
+     * {@code KernelAdapter.referrersReaching}, asked in the other direction: there, which rules reach a
+     * field; here, which fields a rule reaches.
+     */
+    private Set<String> reachableFields(ConditionReferences refs) {
+        if (refs.groupPaths().isEmpty()) {
+            return refs.fieldPaths();
+        }
+        Set<String> reachable = new java.util.LinkedHashSet<>(refs.fieldPaths());
+        model.fields().map(FieldInfo::path)
+                .filter(path -> refs.groupPaths().stream().anyMatch(g -> EntityPaths.isStrictlyInside(path, g)))
+                .forEach(reachable::add);
+        return reachable;
     }
 
     /** The repeatable group the condition ranges over, if any (a referenced field's repeatable ancestor, or a repeatable referenced group). */

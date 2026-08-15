@@ -394,6 +394,19 @@ Condition duplicateAcrossRows = Dsl.fieldValuesNotUnique(m.flattenGroup("/Order/
 
 Two gates read the group differently, and the pair is worth knowing because neither is guessable from the other. **Arity** is satisfied by the group slot alone — a group expanding to a *single* field is admitted, while that same field named directly is `MVK_PARAMSIZE_INVALIDN`. **Comparability** reads the expansion, so a group whose fields mix categories is `MVK_VARYING_TYPES_NOT_ALLOWED` exactly as the equivalent explicit list would be; that gate stays kernel-arbitrated for the same reason the aggregates delegate theirs. (Finding 122; measured in `FieldValuesNotUniqueAdmissionLawsTest`, runtime agreement in `FieldValuesNotUniqueGroupOperandDiffTest`.)
 
+**Fields and groups mix in ONE list.** The kernel has a single entity list per quantifier whose members may each be a field or a group, in either order, and rulekit says the same: `Dsl.entityListPredicate` takes a mixed list where the varargs families above take a homogeneous one.
+
+<!-- snippet: mixed-entity-list -->
+```java
+// ONE entity list, mixed members — the kernel's own shape: each member may be a field or a group,
+// in either order. The homogeneous varargs families stay the ergonomic choice; reach for this when
+// a list genuinely mixes, and on the read path, where a mixed list has to be representable at all.
+Condition partiallyFilled = Dsl.entityListPredicate(Quantifier.FIELDS_NOT_COLLECTIVELY_FILLED,
+        List.of(m.flattenGroup("/Order/ShippingAddress"), m.field("/Order/Quantity")));
+```
+
+Reach for it when a list genuinely mixes; the two homogeneous families stay the ergonomic choice otherwise. It also matters on the way IN: `KernelAdapter.read` needs it to represent a mixed list the kernel handed back, and without it the adapter used to rewrite each group into the fields the kernel expands it to — a rewrite that twice lost a `*` and produced a condition the kernel then refused. (Finding 124; `MixedEntityListRoundTripTest`.)
+
 **The DATE extrema take a starred group too**, and the shape of that widening is worth a sentence because it differs from the others. `MaxValue`/`MinValue` over date-like values carry a KIND, and a `GroupListRef` has none — a group's kind lives in its expansion, which the kit delegates to the kernel rather than re-deriving the extent. So the aggregate now takes its kind explicitly, from the factory that already names it:
 
 <!-- teaser -->

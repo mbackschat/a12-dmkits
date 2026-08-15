@@ -19,6 +19,7 @@ import io.github.mbackschat.a12.dm.rulekit.dsl.DateTimeExpr;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl;
 import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer;
 import io.github.mbackschat.a12.dm.rulekit.dsl.NumberExpr;
+import io.github.mbackschat.a12.dm.rulekit.dsl.Quantifier;
 import io.github.mbackschat.a12.dm.rulekit.dsl.StringExpr;
 import io.github.mbackschat.a12.dm.rulekit.dsl.TimeExpr;
 import io.github.mbackschat.a12.dm.rulekit.validate.DraftRule;
@@ -206,6 +207,20 @@ class NewShapesSnippetsTest {
         assertEquals("NoFieldValueIncludedInValueList(/Order/ShippingAddress In \"unknown\", \"n/a\")",
                 new DslRenderer().render(addressPlaceholder));
         assertKernelAccepts(m.num("/Order/Quantity").filled().and(addressPlaceholder), "../Quantity");
+    }
+
+    @Test
+    void mixedEntityListSnippet() {
+        // tag::mixed-entity-list[]
+        // ONE entity list, mixed members — the kernel's own shape: each member may be a field or a group,
+        // in either order. The homogeneous varargs families stay the ergonomic choice; reach for this when
+        // a list genuinely mixes, and on the read path, where a mixed list has to be representable at all.
+        Condition partiallyFilled = Dsl.entityListPredicate(Quantifier.FIELDS_NOT_COLLECTIVELY_FILLED,
+                List.of(m.flattenGroup("/Order/ShippingAddress"), m.field("/Order/Quantity")));
+        // end::mixed-entity-list[]
+        assertEquals("FieldsNotCollectivelyFilled(/Order/ShippingAddress, /Order/Quantity)",
+                new DslRenderer().render(partiallyFilled));
+        assertKernelAccepts(partiallyFilled, "../Quantity");
     }
 
     @Test

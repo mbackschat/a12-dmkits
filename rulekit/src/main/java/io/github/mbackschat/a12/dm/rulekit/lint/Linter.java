@@ -26,8 +26,7 @@ import io.github.mbackschat.a12.dm.rulekit.dsl.Concatenation;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Condition;
 import io.github.mbackschat.a12.dm.rulekit.dsl.CustomConditionRef;
 import io.github.mbackschat.a12.dm.rulekit.dsl.FieldListEntityListCondition;
-import io.github.mbackschat.a12.dm.rulekit.dsl.FieldListPredicate;
-import io.github.mbackschat.a12.dm.rulekit.dsl.GroupScopedFieldFill;
+import io.github.mbackschat.a12.dm.rulekit.dsl.EntityListPredicate;
 import io.github.mbackschat.a12.dm.rulekit.dsl.FieldListValueListCondition;
 import io.github.mbackschat.a12.dm.rulekit.dsl.FieldPresenceCondition;
 import io.github.mbackschat.a12.dm.rulekit.dsl.FieldRef;
@@ -261,8 +260,7 @@ public final class Linter {
                     negatives.add(new String[] {"FieldNotFilled", p.index().field().path()});
                 }
             }
-            case FieldListPredicate p -> hasPositiveGuard[0] |= POSITIVE_PRESENCE.contains(p.operatorId());
-            case GroupScopedFieldFill p -> hasPositiveGuard[0] |= POSITIVE_PRESENCE.contains(p.operatorId());
+            case EntityListPredicate p -> hasPositiveGuard[0] |= POSITIVE_PRESENCE.contains(p.operatorId());
             case GroupListPredicate p -> hasPositiveGuard[0] |= POSITIVE_PRESENCE.contains(p.operatorId());
             case LogicCondition l -> {
                 collectPresence(l.left(), negatives, hasPositiveGuard);
@@ -320,9 +318,9 @@ public final class Linter {
                     guarded.add(f.field().path());
                 }
             }
-            case FieldListPredicate p -> {
+            case EntityListPredicate p -> {
                 if ("AllFieldsFilled".equals(p.operatorId())) {
-                    for (var operand : p.fields()) {
+                    for (var operand : p.operands()) {
                         if (operand instanceof FieldRef fr) {
                             guarded.add(fr.path());
                         }

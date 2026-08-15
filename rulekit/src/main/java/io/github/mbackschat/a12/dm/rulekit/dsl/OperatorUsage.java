@@ -34,7 +34,7 @@ public final class OperatorUsage {
         ops.add(condition.operatorId());
         switch (condition) {
             case FieldPresenceCondition ignored -> { }
-            case FieldListPredicate p -> p.fields().forEach(f -> collectOperand(f, ops));
+            case EntityListPredicate p -> p.operands().forEach(o -> collectAggregateOperand(o, ops));
             case ComparisonCondition c -> {
                 collect(c.left(), ops);
                 collect(c.right(), ops);
@@ -57,7 +57,6 @@ public final class OperatorUsage {
                 v.fields().forEach(f -> collectOperand(f, ops));
                 v.valueFields().forEach(f -> collectOperand(f, ops));
             }
-            case GroupScopedFieldFill ignored -> { /* operatorId already added; group scopes add no ops */ }
             case RepetitionNotUniqueCondition r -> r.scope().ifPresent(s -> ops.add("FromScope"));
             case CustomConditionRef ignored -> { }
             case DateValidity v -> collect(v.dateConstruct(), ops);
@@ -188,8 +187,6 @@ public final class OperatorUsage {
         operand.semanticIndex().ifPresent(ignored -> ops.add("SemanticIndex"));
     }
 
-    /** A list operand may be a category projection (its own catalog operator) or carry a {@code Having}
-     *  filter — either is a sub-construct with a catalog entry. Accepts the wider {@link ValueListOperand}. */
     /** An entity-list aggregate operand. A group scope contributes no operator of its own: it carries
      *  neither a category projection nor a {@code Having} filter (the kernel rejects one on a group). */
     private static void collectAggregateOperand(AggregateOperand operand, Set<String> ops) {
@@ -198,6 +195,8 @@ public final class OperatorUsage {
         }
     }
 
+    /** A list operand may be a category projection (its own catalog operator) or carry a {@code Having}
+     *  filter — either is a sub-construct with a catalog entry. Accepts the wider {@link ValueListOperand}. */
     private static void collectOperand(ValueListOperand operand, Set<String> ops) {
         if (operand instanceof EnumCategoryAccess c) {
             ops.add(c.operatorId());   // the `->` category projection is its own catalog operator

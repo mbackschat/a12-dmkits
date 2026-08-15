@@ -196,8 +196,8 @@ public final class DslRenderer {
         return switch (condition) {
             case FieldPresenceCondition f ->
                     keyword(f.operatorId()) + "(" + (f.field().correlated() ? "$" : "") + path(f.field().path()) + ")";
-            case FieldListPredicate p -> keyword(p.operatorId()) + "("
-                    + p.fields().stream().map(this::operand)
+            case EntityListPredicate p -> keyword(p.operatorId()) + "("
+                    + p.operands().stream().map(this::aggregateOperand)
                             .collect(java.util.stream.Collectors.joining(", "))
                     + ")";
             case ComparisonCondition c ->
@@ -234,10 +234,6 @@ public final class DslRenderer {
                     + " In "
                     // entity-valued: the value list is bare field/repetition-list paths, not quoted values
                     + v.valueFields().stream().map(this::operand)
-                            .collect(java.util.stream.Collectors.joining(", "))
-                    + ")";
-            case GroupScopedFieldFill v -> keyword(v.operatorId()) + "("
-                    + v.scopes().stream().map(s -> path(s.renderedPath()))
                             .collect(java.util.stream.Collectors.joining(", "))
                     + ")";
             case DateValidity v -> keyword(v.operatorId()) + "(" + renderArg(v.dateConstruct()) + ")";

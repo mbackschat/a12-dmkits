@@ -14,9 +14,9 @@ import java.util.function.UnaryOperator;
  * explain (F9) and the text→AST converter (F10) cheap projections over this tree.
  */
 public sealed interface Condition
-        permits FieldPresenceCondition, FieldListPredicate, ComparisonCondition, LogicCondition,
+        permits FieldPresenceCondition, EntityListPredicate, ComparisonCondition, LogicCondition,
         GroupPresenceCondition, RuleGroupPresenceCondition, IndexedPresenceCondition, GroupListPredicate,
-        PatternCondition, ValueListCondition, FieldListValueListCondition, FieldListEntityListCondition, GroupScopedFieldFill,
+        PatternCondition, ValueListCondition, FieldListValueListCondition, FieldListEntityListCondition,
         RepetitionNotUniqueCondition, CustomConditionRef, DateValidity, CustomTypeValidity {
 
     /** The catalog operator-id this node applies — the renderer's only source of keywords. */
@@ -50,7 +50,7 @@ public sealed interface Condition
                 yield (left == l.left() && right == l.right()) ? l : new LogicCondition(l.op(), left, right);
             }
             case FieldPresenceCondition f -> f;
-            case FieldListPredicate p -> p;
+            case EntityListPredicate p -> p;
             case ComparisonCondition c -> c;
             case GroupPresenceCondition g -> g;
             case RuleGroupPresenceCondition r -> r;
@@ -60,7 +60,6 @@ public sealed interface Condition
             case ValueListCondition v -> v;
             case FieldListValueListCondition v -> v;
             case FieldListEntityListCondition v -> v;
-            case GroupScopedFieldFill v -> v;
             case RepetitionNotUniqueCondition r -> r;
             case CustomConditionRef c -> c;
             case DateValidity v -> v;

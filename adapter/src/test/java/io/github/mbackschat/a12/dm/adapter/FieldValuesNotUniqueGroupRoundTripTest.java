@@ -22,10 +22,9 @@ import io.github.mbackschat.a12.dm.rulekit.read.ReadResult;
  *
  * <p><b>Why this is not in the aggregate round-trip file.</b> {@code FieldValuesNotUnique} is an entity-list
  * <i>condition</i>, not an aggregate: it reaches a different converter branch, and a group-first operand list
- * never enters the field branch at all. The MIXED list — one field beside one group — is a different matter
- * again and stays open under {@code DG36}: no fill-quantifier operand type can hold both, so there is nothing
- * to convert it into. That limit is asserted here rather than left implicit, because a silent {@code Opaque}
- * reads exactly like an unsupported kernel shape.
+ * never enters the field branch at all. That branching is also why the MIXED rows below assert both operand
+ * orders — the kernel treats them alike and the converter, keying on whether the FIRST entity is a field, did
+ * not.
  */
 class FieldValuesNotUniqueGroupRoundTripTest {
 
@@ -64,19 +63,16 @@ class FieldValuesNotUniqueGroupRoundTripTest {
     }
 
     /**
-     * The CONTROL, and the DG36 boundary in one row: a list mixing a field with a group is kernel-ACCEPTED
-     * (measured in both operand orders, {@code GroupOperandCarrierAdmissionLawsTest}) and stays {@code Opaque}
-     * here, because no operand type in rulekit holds a field beside a group. Asserting the degrade keeps the
-     * gap visible and fails the moment DG36 lands, which is when this row becomes a round trip.
+     * A list mixing a field with a group, in <b>both</b> operand orders — kernel-ACCEPTED either way
+     * ({@code GroupOperandCarrierAdmissionLawsTest}), and now representable, since DG36 gave the quantifier a
+     * single entity list over {@code AggregateOperand}. This row was authored asserting the {@code Opaque}
+     * degrade, deliberately so that it would fail the moment the type landed; it did, which is what made the
+     * gap's closure visible rather than something to remember.
      */
     @Test
-    void aMixedFieldAndGroupListStaysOpaqueUntilDg36() {
-        String authored = "FieldFilled(/Order/Reference) And FieldValuesNotUnique(/Order/Reference, /Order/Contact)";
-        KernelAdapter adapter = KernelAdapter.ofJson(inject(ORDER_JSON, authored));
-        assertTrue(adapter.diagnose("/Order/UniqueRule").ok(),
-                "the kernel admits the mixed list — the degrade below is ours, not its");
-        assertInstanceOf(ReadResult.Opaque.class, adapter.read("/Order/UniqueRule"),
-                "a mixed field+group list has no typed representation yet (DG36); it must degrade, not guess");
+    void aMixedFieldAndGroupListRoundTripsInBothOrders() {
+        assertRoundTrips("FieldValuesNotUnique(/Order/Reference, /Order/Contact)");
+        assertRoundTrips("FieldValuesNotUnique(/Order/Contact, /Order/Reference)");
     }
 
     private static void assertRoundTrips(String predicate) {

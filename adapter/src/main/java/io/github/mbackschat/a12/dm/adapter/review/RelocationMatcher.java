@@ -146,10 +146,23 @@ final class RelocationMatcher {
         };
     }
 
+    /**
+     * Every ENTITY a rule references — fields <b>and</b> groups.
+     *
+     * <p>It returned {@code fieldPaths()} alone, which is exact but answers a narrower question than either
+     * caller asks. {@code ModelDiff.groupRefactors} matches a rename/move by looking for a rule that dropped
+     * the old path and gained the new one, so with group paths missing a GROUP rename could never be folded
+     * into a refactor no matter how many rules followed it. Relocation similarity has the same interest: a
+     * rule naming a group is as identified by that reference as one naming a field ({@code CG16}).
+     */
     static Set<String> refsOf(KernelAdapter adapter, String ruleName) {
-        return adapter.read(ruleName) instanceof ReadResult.Converted converted
-                ? ConditionReferences.of(converted.condition()).fieldPaths()
-                : Set.of();
+        if (!(adapter.read(ruleName) instanceof ReadResult.Converted converted)) {
+            return Set.of();
+        }
+        ConditionReferences refs = ConditionReferences.of(converted.condition());
+        Set<String> entities = new java.util.LinkedHashSet<>(refs.fieldPaths());
+        entities.addAll(refs.groupPaths());
+        return entities;
     }
 
     static Set<String> refsOf(KernelAdapter adapter, ElementKind element, String name) {

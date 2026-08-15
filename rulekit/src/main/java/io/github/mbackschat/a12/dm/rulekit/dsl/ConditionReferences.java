@@ -142,7 +142,7 @@ public record ConditionReferences(Set<String> fieldPaths, Set<String> groupPaths
     private static void collect(Condition condition, Refs refs) {
         switch (condition) {
             case FieldPresenceCondition f -> refs.field(f.field().path());
-            case FieldListPredicate p -> p.fields().forEach(f -> collectOperand(f, refs));
+            case EntityListPredicate p -> p.operands().forEach(o -> collectAggregateOperand(o, refs));
             case ComparisonCondition c -> {
                 collect(c.left(), refs);
                 collect(c.right(), refs);
@@ -176,7 +176,6 @@ public record ConditionReferences(Set<String> fieldPaths, Set<String> groupPaths
                 v.fields().forEach(f -> collectOperand(f, refs));
                 v.valueFields().forEach(f -> collectOperand(f, refs));
             }
-            case GroupScopedFieldFill v -> v.scopes().forEach(s -> refs.group(s.group().path()));
             // The @From scope DOES count as a reference — measured 2026-07-25: with @From the kernel accepts an
             // error field that only the scope contains, and without it the same shape draws
             // MVK_ERROR_FIELD_NOT_REFERENCED, so the keys' own group is NOT an implicit reference
@@ -277,9 +276,6 @@ public record ConditionReferences(Set<String> fieldPaths, Set<String> groupPaths
         }
     }
 
-    /** A list operand contributes its field path (a category projection → its underlying enum field) plus —
-     *  for a filtered list — its Having filter's refs. Accepts the wider {@link ValueListOperand} so an enum
-     *  category projection in a value-list quantifier is collected too. */
     /** An entity-list aggregate operand: a group scope is a GROUP reference, exactly as the count
      *  aggregate's own group list already is; everything else is a field operand. */
     private static void collectAggregateOperand(AggregateOperand op, Refs refs) {
@@ -289,6 +285,9 @@ public record ConditionReferences(Set<String> fieldPaths, Set<String> groupPaths
         }
     }
 
+    /** A list operand contributes its field path (a category projection → its underlying enum field) plus —
+     *  for a filtered list — its Having filter's refs. Accepts the wider {@link ValueListOperand} so an enum
+     *  category projection in a value-list quantifier is collected too. */
     private static void collectOperand(ValueListOperand op, Refs refs) {
         if (op instanceof EnumCategoryAccess) {
             refs.projectedField(op.fieldPath());

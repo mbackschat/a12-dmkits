@@ -1256,6 +1256,7 @@ public final class io.github.mbackschat.a12.dm.rulekit.dsl.Dsl
   public static io.github.mbackschat.a12.dm.rulekit.dsl.LocalizedText en(java.lang.String)
   public static io.github.mbackschat.a12.dm.rulekit.dsl.DateExpr endOfBaseYear()
   public static io.github.mbackschat.a12.dm.rulekit.dsl.DateExpr endOfDateRange(io.github.mbackschat.a12.dm.rulekit.dsl.DateRangeRef)
+  public static io.github.mbackschat.a12.dm.rulekit.dsl.Condition entityListPredicate(io.github.mbackschat.a12.dm.rulekit.dsl.Quantifier, java.util.List<? extends io.github.mbackschat.a12.dm.rulekit.dsl.AggregateOperand>)
   public static io.github.mbackschat.a12.dm.rulekit.dsl.Condition fieldFilled(io.github.mbackschat.a12.dm.rulekit.dsl.FieldRef)
   public static java.lang.String fieldLabel(io.github.mbackschat.a12.dm.rulekit.dsl.FieldRef)
   public static io.github.mbackschat.a12.dm.rulekit.dsl.Condition fieldNotFilled(io.github.mbackschat.a12.dm.rulekit.dsl.FieldRef)
@@ -1476,6 +1477,16 @@ public static record io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer.Rendere
   public java.lang.String text()
   public final java.lang.String toString()
 
+public record io.github.mbackschat.a12.dm.rulekit.dsl.EntityListPredicate implements io.github.mbackschat.a12.dm.rulekit.dsl.Condition
+  public EntityListPredicate(io.github.mbackschat.a12.dm.rulekit.dsl.Quantifier, java.util.List<io.github.mbackschat.a12.dm.rulekit.dsl.AggregateOperand>)
+  public final boolean equals(java.lang.Object)
+  public boolean hasGroupScope()
+  public final int hashCode()
+  public java.util.List<io.github.mbackschat.a12.dm.rulekit.dsl.AggregateOperand> operands()
+  public java.lang.String operatorId()
+  public io.github.mbackschat.a12.dm.rulekit.dsl.Quantifier quantifier()
+  public final java.lang.String toString()
+
 public record io.github.mbackschat.a12.dm.rulekit.dsl.EnumCategoryAccess implements io.github.mbackschat.a12.dm.rulekit.dsl.Calculation, io.github.mbackschat.a12.dm.rulekit.dsl.ValueListOperand
   public EnumCategoryAccess(io.github.mbackschat.a12.dm.rulekit.dsl.FieldRef, java.lang.String)
   public EnumCategoryAccess(io.github.mbackschat.a12.dm.rulekit.dsl.FieldRef, java.lang.String, boolean)
@@ -1589,15 +1600,6 @@ public record io.github.mbackschat.a12.dm.rulekit.dsl.FieldListEntityListConditi
   public io.github.mbackschat.a12.dm.rulekit.dsl.ValueListQuantifier quantifier()
   public final java.lang.String toString()
   public java.util.List<io.github.mbackschat.a12.dm.rulekit.dsl.ValueListOperand> valueFields()
-
-public record io.github.mbackschat.a12.dm.rulekit.dsl.FieldListPredicate implements io.github.mbackschat.a12.dm.rulekit.dsl.Condition
-  public FieldListPredicate(io.github.mbackschat.a12.dm.rulekit.dsl.Quantifier, java.util.List<io.github.mbackschat.a12.dm.rulekit.dsl.FieldOperand>)
-  public final boolean equals(java.lang.Object)
-  public java.util.List<io.github.mbackschat.a12.dm.rulekit.dsl.FieldOperand> fields()
-  public final int hashCode()
-  public java.lang.String operatorId()
-  public io.github.mbackschat.a12.dm.rulekit.dsl.Quantifier quantifier()
-  public final java.lang.String toString()
 
 public record io.github.mbackschat.a12.dm.rulekit.dsl.FieldListRef implements io.github.mbackschat.a12.dm.rulekit.dsl.FieldOperand
   public FieldListRef(io.github.mbackschat.a12.dm.rulekit.dsl.FieldRef, java.util.List<io.github.mbackschat.a12.dm.rulekit.dsl.GroupRef>)
@@ -1842,15 +1844,6 @@ public record io.github.mbackschat.a12.dm.rulekit.dsl.GroupRef implements io.git
 
 public interface io.github.mbackschat.a12.dm.rulekit.dsl.GroupReference
   public abstract io.github.mbackschat.a12.dm.rulekit.dsl.GroupRef ref()
-
-public record io.github.mbackschat.a12.dm.rulekit.dsl.GroupScopedFieldFill implements io.github.mbackschat.a12.dm.rulekit.dsl.Condition
-  public GroupScopedFieldFill(io.github.mbackschat.a12.dm.rulekit.dsl.Quantifier, java.util.List<io.github.mbackschat.a12.dm.rulekit.dsl.GroupListRef>)
-  public final boolean equals(java.lang.Object)
-  public final int hashCode()
-  public java.lang.String operatorId()
-  public io.github.mbackschat.a12.dm.rulekit.dsl.Quantifier quantifier()
-  public java.util.List<io.github.mbackschat.a12.dm.rulekit.dsl.GroupListRef> scopes()
-  public final java.lang.String toString()
 
 public sealed interface io.github.mbackschat.a12.dm.rulekit.dsl.IndexedFieldValue extends io.github.mbackschat.a12.dm.rulekit.dsl.Calculation
   public abstract io.github.mbackschat.a12.dm.rulekit.dsl.FieldRef field()

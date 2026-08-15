@@ -326,7 +326,7 @@ public final class KernelAdapter {
      *       rewrite, so including it would report a change that did not happen; a rule naming a descendant is
      *       already covered, because that scan enumerates the subtree.</li>
      *   <li>{@code ModelDiffState} merely holds the shared map; its consumers decide individually
-     *       ({@code FieldDiffProjector} reaches, {@code ModelDiff}'s group arm is tracked in {@code CG16}).</li>
+     *       ({@code FieldDiffProjector} reaches for a field, {@code GroupDiffProjector} for a removed group).</li>
      * </ul>
      *
      * @param byEntity one {@link #referrersByEntity} map, passed in so a model-wide sweep builds it ONCE — the

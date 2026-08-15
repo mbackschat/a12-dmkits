@@ -89,6 +89,30 @@ class RuleCheckSuggestVerbTest {
                 () -> "no --suggest-error-field → no candidate data: " + res.out());
     }
 
+    /**
+     * {@code CG16} — an ALL-GROUP condition must still offer a pick. {@code AllFieldsFilled(Addons*)} names a
+     * group and no field, so the candidate list was empty and the note said <i>"the condition references no
+     * field inside its iteration scope — reference one there"</i>: advice that steers the author to edit a
+     * correct condition, when the kernel counts the group operand as referencing every field it expands to.
+     * The {@code valid} verdict here is the kernel's, so this row also proves the offered pick is real.
+     */
+    @Test
+    void anAllGroupConditionOffersTheFieldsTheGroupExpandsTo(@TempDir Path dir) throws Exception {
+        var res = CliTestSupport.run("-m", model(dir).toString(), "rule", "check",
+                "--field", "/Subscription/Addons/MonthlyFee",
+                "--condition", "AllFieldsFilled(/Subscription/Addons*)", "--code", "ADDON_INCOMPLETE",
+                "--suggest-error-field");
+        assertEquals(0, res.code(), res::err);
+        JsonNode root = MAPPER.readTree(res.out());
+        assertTrue(root.path("valid").asBoolean(),
+                () -> "the kernel accepts the chosen error field: " + res.out());
+        assertEquals(List.of("/Subscription/Addons/MonthlyFee", "/Subscription/Addons/Name"),
+                strings(root.path("data").path("candidates")),
+                () -> "the group's expansion is what the condition references: " + res.out());
+        assertTrue(root.path("data").path("fieldIsCandidate").asBoolean(),
+                () -> "the chosen field IS among them, so no corrective note is owed: " + res.out());
+    }
+
     private static List<String> strings(JsonNode array) {
         List<String> out = new ArrayList<>();
         array.forEach(n -> out.add(n.asText()));

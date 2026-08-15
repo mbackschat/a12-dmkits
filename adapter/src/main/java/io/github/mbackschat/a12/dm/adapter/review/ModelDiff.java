@@ -178,7 +178,8 @@ public final class ModelDiff {
         Map<String, Map<String, String>> baseGroups = GroupDiffProjector.project(baseState);
         Map<String, Map<String, String>> headGroups = GroupDiffProjector.project(headState);
         match(ElementKind.GROUP, baseGroups, headGroups,
-                (change, id, deltas) -> GroupDiffProjector.reasons(change, deltas), changes);
+                (change, id, deltas) -> GroupDiffProjector.reasons(change, id, deltas, baseState.referrers()),
+                changes);
         Map<String, Map<String, String>> baseRuleAspects = RuleDiffProjector.project(baseState);
         Map<String, Map<String, String>> headRuleAspects = RuleDiffProjector.project(headState);
         match(ElementKind.RULE, baseRuleAspects, headRuleAspects,

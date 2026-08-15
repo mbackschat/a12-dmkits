@@ -1451,7 +1451,7 @@ public final class Dsl {
         var fields = new java.util.ArrayList<FieldOperand>();
         fields.add(first);
         fields.addAll(java.util.List.of(rest));
-        return new FieldListPredicate(Quantifier.DATE_RANGES_OVERLAP, fields);
+        return new EntityListPredicate(Quantifier.DATE_RANGES_OVERLAP, List.copyOf(fields));
     }
 
     /** {@code AtLeastOneDateRangeOverlaps(range IN r1, r2, …)} — {@code range} overlaps at least one listed range. catalog:AtLeastOneDateRangeOverlaps */
@@ -1804,7 +1804,7 @@ public final class Dsl {
 
     /** Shared construction path — also used by {@link BoundModel}'s string-path convenience forms. */
     static Condition fieldList(Quantifier quantifier, List<? extends FieldOperand> fields) {
-        return new FieldListPredicate(quantifier, List.copyOf(fields));
+        return new EntityListPredicate(quantifier, List.copyOf(fields));
     }
 
     // --- group-scoped field-fill — the fields inside a group scope (optionally across all reps) ----
@@ -1869,10 +1869,20 @@ public final class Dsl {
     }
 
     private static Condition groupScopedFieldFill(Quantifier q, GroupListRef first, GroupListRef... rest) {
-        var scopes = new java.util.ArrayList<GroupListRef>();
+        var scopes = new java.util.ArrayList<AggregateOperand>();
         scopes.add(first);
         scopes.addAll(java.util.List.of(rest));
-        return new GroupScopedFieldFill(q, scopes);
+        return new EntityListPredicate(q, scopes);
+    }
+
+    /**
+     * {@code <quantifier>(a, Group*, …)} over a MIXED entity list — fields, flattened repetition lists and
+     * group scopes in any order, exactly as the kernel's entity list admits them (KERNEL-FINDINGS
+     * {@code kf187}: accepted in both operand orders). The two families above stay as the ergonomic entry
+     * points for a homogeneous list; this is the one a kernel model's read path needs.
+     */
+    public static Condition entityListPredicate(Quantifier quantifier, List<? extends AggregateOperand> operands) {
+        return new EntityListPredicate(quantifier, List.copyOf(operands));
     }
 
     // --- localized error-message texts (F2a) ----------------------------------------------------

@@ -32,20 +32,27 @@ class MixedScopeFieldFillReadTest {
                 .build().toJson();
     }
 
+    /**
+     * The DIRECT-CHILD case: one non-repeatable group beside one field, the shape with no star anywhere.
+     *
+     * <p>This used to assert the converter's <b>expansion</b> of the group into {@code Section/Line1} and
+     * {@code Section/Line2}, and the assertion held for years because this fixture is flat — no repetition, no
+     * nesting, so the rewrite was lossless here and lossy almost everywhere else (CG15, and KF188 for the
+     * spelling the kernel then refuses). The group is now kept as written, and the equivalent explicit form is
+     * still asserted kernel-valid: the two conditions mean the same thing, which is exactly why the expansion
+     * was tempting and why only a fixture with a nested repeatable could tell them apart.
+     */
     @Test
-    void readsAMixedGroupFieldScopeByExpandingTheGroup() {
+    void readsAMixedGroupFieldScopeKeepingTheGroup() {
         String rule = "FieldsNotCollectivelyFilled(Section, Other/Note)";
         var converted = assertInstanceOf(ReadResult.Converted.class,
                 KernelAdapter.ofJson(inject(formJson(), rule)).read("/Form/MixedRule"),
                 "a mixed group+field field-fill quantifier should convert");
         String rendered = RENDER.render(converted.condition());
-        assertTrue(rendered.contains(
-                "FieldsNotCollectivelyFilled(/Form/Section/Line1, /Form/Section/Line2, /Form/Other/Note)"),
-                rendered);
-        // the expanded form is itself kernel-valid — a sound rewrite of the group-scoped form
+        assertTrue(rendered.contains("FieldsNotCollectivelyFilled(/Form/Section, /Form/Other/Note)"), rendered);
         assertTrue(new RuleValidator().check(formJson(), new DraftRule("/Form", "R2", "../Other/Note",
                 "FieldsNotCollectivelyFilled(Section/Line1, Section/Line2, Other/Note)", "C", "ERROR")).ok(),
-                "the expanded field-list form must be kernel-valid");
+                "the equivalent explicit field-list form stays kernel-valid");
     }
 
     /** Inject a raw-text rule into the /Form group (the mixed-scope form can't be built via the typed DSL). */

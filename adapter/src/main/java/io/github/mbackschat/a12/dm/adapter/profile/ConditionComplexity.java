@@ -126,9 +126,13 @@ record ConditionComplexity(int nodeCount, int depth, int maxBooleanArity,
             op(condition.operatorId());
             return switch (condition) {
                 case FieldPresenceCondition ignored -> 1;
-                case FieldListPredicate p -> {
-                    constructs.add(Construct.QUANTIFIER);
-                    yield 1 + maxOperandDepth(p.fields());
+                case EntityListPredicate p -> {
+                    // One record now carries both shapes (DG36). The construct stays what it was for each:
+                    // a group scope reports GROUP_FILL, an explicit list QUANTIFIER — so a profile of an
+                    // unchanged model is unchanged, and a MIXED list reports the group half, which is the
+                    // one that tells a reader the extent is the kernel's.
+                    constructs.add(p.hasGroupScope() ? Construct.GROUP_FILL : Construct.QUANTIFIER);
+                    yield 1 + maxEntityOperandDepth(p.operands());
                 }
                 case ComparisonCondition c -> 1 + Math.max(depth(c.left()), depth(c.right()));
                 case LogicCondition l -> {
@@ -174,10 +178,6 @@ record ConditionComplexity(int nodeCount, int depth, int maxBooleanArity,
                 case FieldListEntityListCondition v -> {
                     constructs.add(Construct.VALUE_LIST);
                     yield 1 + Math.max(maxOperandDepth(v.fields()), maxOperandDepth(v.valueFields()));
-                }
-                case GroupScopedFieldFill ignored -> {
-                    constructs.add(Construct.GROUP_FILL);
-                    yield 1;
                 }
                 case RepetitionNotUniqueCondition r -> {
                     constructs.add(Construct.UNIQUENESS);
@@ -373,6 +373,18 @@ record ConditionComplexity(int nodeCount, int depth, int maxBooleanArity,
                 }
             }
             return 1;
+        }
+
+        /** A group scope contributes no operand depth: it is one slot whose extent the kernel expands. */
+        private int maxEntityOperandDepth(java.util.List<AggregateOperand> operands) {
+            int max = 0;
+            for (AggregateOperand o : operands) {
+                max = Math.max(max, switch (o) {
+                    case FieldOperand field -> operandDepth(field);
+                    case GroupListRef ignored -> 0;
+                });
+            }
+            return max;
         }
 
         private int maxOperandDepth(java.util.List<? extends ValueListOperand> operands) {

@@ -50,6 +50,47 @@ class RuleDepsVerbTest {
         assertFalse(data.get("iterates").asBoolean(), "this rule does not iterate a repeatable group");
     }
 
+    /**
+     * {@code CG16}'s last item, MEASURED rather than reasoned. The ledger recorded a suspicion that
+     * {@code rule deps} and {@code where-used} <i>disagree</i> over a rule whose operand is a GROUP, because
+     * {@code deps} projects the CONVERTED AST while {@code where-used} reads the kernel primitive. Half of it
+     * was settled by reading — the two are backed by different sources — but whether they produce different
+     * ANSWERS was never probed, and a suspicion nobody runs is how a wrong claim survives.
+     *
+     * <p><b>They do differ, and correctly.</b> A group-operand rule's forward dependency IS the group: that is
+     * what its condition names, and {@code deps} says so. {@code where-used} on a field inside that group
+     * lists nothing, because it answers the exact question — which rules NAME this entity — and none does.
+     * Neither is wrong; they are inverses of different questions, and only the reachability reader
+     * ({@code model usage}, {@code KernelAdapter.referrersReaching}) closes the loop. The row asserts both
+     * halves so the pair cannot silently drift into actually contradicting each other.
+     */
+    @Test
+    void depsNamesTheGroupWhileWhereUsedNamesNothingForAFieldInsideIt(@TempDir Path dir) throws Exception {
+        Path model = CliTestSupport.groupOperandRuled(dir);
+
+        var deps = CliTestSupport.run("-m", model.toString(), "rule", "deps", "/Policy/AssessmentComplete");
+        assertEquals(0, deps.code(), deps.err());
+        Set<String> referenced = new HashSet<>();
+        for (JsonNode r : M.readTree(deps.out()).get("data").get("references")) {
+            referenced.add(r.get("path").asText());
+        }
+        assertTrue(referenced.contains("/Policy/Assessment"),
+                () -> "the condition names the GROUP; that is the forward dependency: " + deps.out());
+        assertFalse(referenced.contains("/Policy/Assessment/Observed"),
+                () -> "deps projects what the condition names, not what the kernel expands it to: " + deps.out());
+
+        var used = CliTestSupport.run("-m", model.toString(), "where-used", "/Policy/Assessment/Observed");
+        assertEquals(0, used.code(), used.err());
+        assertFalse(used.out().contains("AssessmentComplete"),
+                () -> "where-used is EXACT by design: no rule names this field: " + used.out());
+
+        // POSITIVE CONTROL — without it the row above passes just as well when where-used finds nothing ever.
+        var named = CliTestSupport.run("-m", model.toString(), "where-used", "/Policy/Reference");
+        assertEquals(0, named.code(), named.err());
+        assertTrue(named.out().contains("AssessmentComplete"),
+                () -> "the same rule DOES name /Policy/Reference directly: " + named.out());
+    }
+
     @Test
     void anUnknownRuleIsACodedRefusalNotABareError(@TempDir Path dir) throws Exception {
         Path model = CliTestSupport.orderRuled(dir);

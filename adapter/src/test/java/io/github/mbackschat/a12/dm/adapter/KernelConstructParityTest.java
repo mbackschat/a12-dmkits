@@ -157,7 +157,7 @@ class KernelConstructParityTest {
         // AddHours/Minutes/Seconds + DifferenceInHours/Minutes/Seconds are now cataloged (sub-day time arithmetic, family 2).
         // HoursFromTime/MinutesFromTime/SecondsFromTime + Date/TimeFromDateTime are now cataloged (TIME/DATE_TIME value kinds).
         // StartOfDateRange/EndOfDateRange are now cataloged (DateRangeBound).
-        // AtLeastOneDateRangeOverlaps + DateRangesOverlap are now cataloged (reusing FieldListPredicate/FieldListEntityListCondition).
+        // AtLeastOneDateRangeOverlaps + DateRangesOverlap are now cataloged (reusing EntityListPredicate/FieldListEntityListCondition).
         put(m, "value-consistency condition — not yet modeled", "EntityListAndValueListConditionName.ValueNotConsistent");
         // NumberOfValueInFields (count-of-value aggregate) is now cataloged (family 6).
         // Abs/Min/Max (operand-list math, distinct from field-list MaxValue/MinValue) are now cataloged (OpListMath, family 5).
