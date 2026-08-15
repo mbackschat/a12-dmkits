@@ -610,13 +610,28 @@ tasks.named('test') {
     // carries and for the same reason: `--tests` filters only the test task, NOT its dependencies, so a
     // single-class run paid for every guard below on each iteration. A full run (no -Pfast) still drives them,
     // and the checkpoint gate and CI are unchanged. Measured 2026-08-14: single class ~20 s → ~5 s.
+    //
+    // …but only the ones that cost something: a guard cheap enough that dropping it saves nothing is never
+    // droppable (the root module's rule — TESTING-SPEC "Test tiers"). Measured per task from a green run's
+    // result XMLs, 2026-08-15: docGuardTest 5.9s, evalGuardTest 3.4s and mutationTailGuardTest 3.4s against
+    // sourceProvenanceGuardTest 1.4s, staleGapGuardTest 0.7s and semanticsMapGuardTest 0.3s. The cheap three
+    // total 2.4s of the ~15s, and each binds a COMMITTED artifact to the source it must mirror — the generated
+    // provenance resource, the gap ledgers' live ids, and the semantics-map registration of every lock class.
+    // That is precisely the class the root lever let through when the API goldens shipped stale, so they stay
+    // unconditional; the three broad ones remain the checkpoint's job. (This mirrors root keeping
+    // apiGuardTest/releaseGapGuardTest and dropping its own docGuardTest, for the same reasons.)
+    dependsOn 'semanticsMapGuardTest'
+    dependsOn 'staleGapGuardTest'
+    dependsOn 'sourceProvenanceGuardTest'
     if (!project.hasProperty('fast')) {
         dependsOn 'docGuardTest'
         dependsOn 'evalGuardTest'
-        dependsOn 'semanticsMapGuardTest'
-        dependsOn 'staleGapGuardTest'
         dependsOn 'mutationTailGuardTest'
-        dependsOn 'sourceProvenanceGuardTest'
+    } else {
+        doFirst {
+            logger.lifecycle('-Pfast: SKIPPING docGuardTest, evalGuardTest, mutationTailGuardTest — this run is '
+                    + 'NOT the estate. Re-run without -Pfast before treating green as a checkpoint.')
+        }
     }
     // This suite contains the two tests that READ the provenance resource (`VersionVerbTest`,
     // `BatchObservationsTest`), so it declares it explicitly and keeps re-running on every commit — the

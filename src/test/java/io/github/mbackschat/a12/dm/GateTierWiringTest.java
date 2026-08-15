@@ -60,57 +60,76 @@ class GateTierWiringTest {
         assertFalse(nightly.contains(":cli:test"), "nightly performance must not run the CLI correctness suite");
     }
 
+    /** The three {@code -Pfast} levers and their measured splits; the rationale is on {@link #assertFastLeverSplit}. */
+    @Test
+    void theCheapGuardsAreNotBehindTheFastLever() throws IOException {
+        // Root: the five that bind a committed artifact — API goldens, catalog prose-review digests, the
+        // JSON-construction classification, the release-gap ledger — against the three broad ones.
+        assertFastLeverSplit("build.gradle",
+                List.of("jsonConstructionGuardTest", "apiGuardTest", "catalogProseReviewGuardTest",
+                        "releaseGapGuardTest", "leakGuardTest"),
+                List.of("docGuardTest", "interpreterReleaseGuardTest", "deliveryGuardTest"));
+        // :adapter — the four FIXTURE guards (6.6s) against the two broad ones (82.7s). A committed fixture
+        // that silently stops matching what the code produces is the same class as a stale golden.
+        assertFastLeverSplit("adapter/build.gradle",
+                List.of("footprintFixtureGuardTest", "performanceFixtureGuardTest",
+                        "retainedComputationFixtureGuardTest", "workspacePreparationFixtureGuardTest"),
+                List.of("corpusReplayTest", "profileFixtureGuardTest"));
+        // :cli — the provenance resource, the gap ledgers' live ids, and the semantics-map registration of
+        // every lock class (2.4s) against the three broad ones (12.7s).
+        assertFastLeverSplit("cli/build.gradle",
+                List.of("semanticsMapGuardTest", "staleGapGuardTest", "sourceProvenanceGuardTest"),
+                List.of("docGuardTest", "evalGuardTest", "mutationTailGuardTest"));
+    }
+
     /**
-     * A guard cheap enough that dropping it saves nothing must never be behind {@code -Pfast}.
+     * A guard cheap enough that dropping it saves nothing must never be behind {@code -Pfast}, in ANY module.
      *
      * <p><b>The incident this exists for.</b> Every guard prerequisite of the root {@code test} task used to sit
      * inside {@code if (!project.hasProperty('fast'))}, so a {@code -Pfast} run silently removed all eight from
      * the task graph — not UP-TO-DATE, absent. The whole DG37 landing was verified that way, and
      * {@code apiGuardTest} never ran: {@code EntityPath}/{@code HasEntityPath} and the {@code FieldRef}
      * /{@code GroupRef} component change shipped against stale API goldens, with the catalog prose-review digest
-     * stale beside them. Both are artifacts nothing else mirrors, so nothing else could notice.
+     * stale beside them. Both are artifacts nothing else mirrors, so nothing else could notice. `:adapter` and
+     * `:cli` carried the same undivided lever and were re-partitioned the same day, from their own measurements.
      *
-     * <p><b>Why the split is where it is.</b> Measured per-task test time on the first green non-fast root run
-     * (2026-08-15): {@code interpreterReleaseGuardTest} 77.2s, {@code docGuardTest} 51.2s,
-     * {@code deliveryGuardTest} 8.8s — against {@code leakGuardTest} 3.6s,
-     * {@code catalogProseReviewGuardTest} 1.5s, {@code jsonConstructionGuardTest} 0.4s, {@code apiGuardTest}
-     * 0.2s, {@code releaseGapGuardTest} 0.1s, with the 1794-test suite itself at 17.0s. Dropping the cheap five
-     * buys 4% of the guard cost and pays for it with the entire false-green class. They also declare their
-     * inputs, so editing a test leaves them UP-TO-DATE at zero cost; they execute exactly when the committed
-     * artifact they mirror could have moved.
+     * <p><b>Why each split is where it is.</b> Per-task test time from a green run's result XMLs (2026-08-15) is
+     * recorded beside each {@code dependsOn} block. The rule is not a pure cost threshold: a guard stays
+     * unconditional when it binds a COMMITTED ARTIFACT to the source it must mirror <em>and</em> costs a small
+     * fraction of the loop it rides on. Those guards also declare their inputs, so editing a test leaves them
+     * UP-TO-DATE at zero cost — they execute exactly when the artifact they mirror could have moved.
      */
-    @Test
-    void theCheapGuardsAreNotBehindTheFastLever() throws IOException {
-        String rootBuild = Files.readString(locate("build.gradle"));
-        String testTask = namedGradleTask(rootBuild, "test");
+    private static void assertFastLeverSplit(String buildFile, List<String> alwaysOn, List<String> behindFast)
+            throws IOException {
+        String build = Files.readString(locate(buildFile));
+        String testTask = namedGradleTask(build, "test");
         String fastMarker = "if (!project.hasProperty('fast'))";
 
         int fastAt = testTask.indexOf(fastMarker);
-        assertTrue(fastAt > 0, "the root test task no longer carries the -Pfast lever, so this guard is vacuous "
-                + "— re-derive the split rather than deleting the assertion");
+        assertTrue(fastAt > 0, buildFile + ": the test task no longer carries the -Pfast lever, so this guard is "
+                + "vacuous — re-derive the split rather than deleting the assertion");
         String unconditional = testTask.substring(0, fastAt);
-        String behindFast = testTask.substring(fastAt);
+        String conditional = testTask.substring(fastAt);
 
-        for (String guard : List.of("jsonConstructionGuardTest", "apiGuardTest", "catalogProseReviewGuardTest",
-                "releaseGapGuardTest", "leakGuardTest")) {
+        for (String guard : alwaysOn) {
             String dependency = "dependsOn '" + guard + "'";
             assertTrue(unconditional.contains(dependency),
-                    guard + " must hang off `test` UNCONDITIONALLY. It costs seconds, and it binds a committed "
-                            + "artifact to the source it mirrors — behind -Pfast it vanishes from the graph and "
-                            + "the artifact goes stale with nothing to notice. That is not hypothetical: it is "
-                            + "how the DG37 API goldens shipped stale.");
-            assertFalse(behindFast.contains(dependency),
-                    guard + " is ALSO declared behind -Pfast; the unconditional declaration above would still "
-                            + "hold, but the duplicate invites deleting the wrong one");
+                    buildFile + ": " + guard + " must hang off `test` UNCONDITIONALLY. It costs a fraction of the "
+                            + "loop, and it binds a committed artifact to the source it mirrors — behind -Pfast it "
+                            + "vanishes from the graph and the artifact goes stale with nothing to notice. That is "
+                            + "not hypothetical: it is how the DG37 API goldens shipped stale.");
+            assertFalse(conditional.contains(dependency),
+                    buildFile + ": " + guard + " is ALSO declared behind -Pfast; the unconditional declaration "
+                            + "above would still hold, but the duplicate invites deleting the wrong one");
         }
-        for (String guard : List.of("docGuardTest", "interpreterReleaseGuardTest", "deliveryGuardTest")) {
-            assertTrue(behindFast.contains("dependsOn '" + guard + "'"),
-                    guard + " is one of the expensive three the fast lever exists to drop — if it moved, "
-                            + "re-measure and re-derive the split instead of editing this list");
+        for (String guard : behindFast) {
+            assertTrue(conditional.contains("dependsOn '" + guard + "'"),
+                    buildFile + ": " + guard + " is one of the expensive guards the fast lever exists to drop — "
+                            + "if it moved, re-measure and re-derive the split instead of editing this list");
         }
-        assertTrue(behindFast.contains("SKIPPING"),
-                "a -Pfast run must ANNOUNCE which guards it dropped: the failure mode here was never a wrong "
-                        + "result, it was a silent absence that read as a clean run");
+        assertTrue(conditional.contains("SKIPPING"),
+                buildFile + ": a -Pfast run must ANNOUNCE which guards it dropped — the failure mode here was "
+                        + "never a wrong result, it was a silent absence that read as a clean run");
     }
 
     @Test
