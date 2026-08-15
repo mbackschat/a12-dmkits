@@ -204,7 +204,7 @@ public final class DslRenderer {
                     render(c.left()) + " " + keyword(c.operatorId()) + " " + render(c.right());
             case LogicCondition l ->
                     child(l, l.left()) + " " + keyword(l.operatorId()) + " " + child(l, l.right());
-            case GroupPresenceCondition g -> keyword(g.operatorId()) + "(" + path(g.group().path()) + ")";
+            case GroupPresenceCondition g -> keyword(g.operatorId()) + "(" + path(g.group().path().value()) + ")";
             case RuleGroupPresenceCondition r -> keyword(r.operatorId()) + "(" + ruleGroupKeyword() + ")";
             case IndexedPresenceCondition p -> keyword(p.operatorId()) + "(" + indexBody(p.index()) + ")";
             case GroupListPredicate p -> keyword(p.operatorId()) + "("
@@ -219,7 +219,7 @@ public final class DslRenderer {
             case CustomConditionRef c -> keyword(c.operatorId()) + " " + quoteSegment(c.name());
             case RepetitionNotUniqueCondition r -> keyword(r.operatorId()) + "("
                     + r.keys().stream().map(k -> path(k.path())).collect(java.util.stream.Collectors.joining(", "))
-                    + r.scope().map(s -> " " + keyword("FromScope") + " " + path(s.path())).orElse("")
+                    + r.scope().map(s -> " " + keyword("FromScope") + " " + path(s.path().value())).orElse("")
                     + ")";
             case FieldListValueListCondition v -> keyword(v.operatorId()) + "("
                     + v.fields().stream().map(this::operand)
@@ -255,7 +255,7 @@ public final class DslRenderer {
     private String countOperands(CountAggregate a) {
         return java.util.stream.Stream.concat(
                         a.fields().stream().map(this::aggregateOperand),
-                        a.groups().stream().map(g -> path(g.path()) + (g.repeating() ? "*" : "")))
+                        a.groups().stream().map(g -> path(g.path().value()) + (g.repeating() ? "*" : "")))
                 .collect(java.util.stream.Collectors.joining(", "));
     }
 
@@ -402,7 +402,7 @@ public final class DslRenderer {
                     + ")";
             case CountAggregate a -> keyword(a.operatorId()) + "(" + countOperands(a) + ")";
             case CurrentRepetition r ->
-                    keyword(r.operatorId()) + "(" + (r.outer() ? "$" : "") + path(r.group().path()) + ")";
+                    keyword(r.operatorId()) + "(" + (r.outer() ? "$" : "") + path(r.group().path().value()) + ")";
             case SemanticIndexValue v -> "[" + indexBody(v) + "]";
             case SemanticIndexFieldValue v -> "[" + indexBody(v) + "]";
             case Today t -> keyword(t.operatorId());
@@ -452,7 +452,7 @@ public final class DslRenderer {
             case FieldRounding r -> keyword(r.operatorId()) + "(" + path(r.field().path())
                     + r.decimalPlaces().map(places -> ", " + places).orElse("") + ")";
             case DateRangeBound b -> keyword(b.operatorId()) + "(" + renderArg(b.source()) + ")";
-            case RootGroupCount c -> keyword(c.operatorId()) + "(" + path(c.rootGroup().path()) + "*)";
+            case RootGroupCount c -> keyword(c.operatorId()) + "(" + path(c.rootGroup().path().value()) + "*)";
         };
     }
 

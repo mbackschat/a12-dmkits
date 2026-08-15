@@ -41,8 +41,8 @@ class PartialValidationFilterSkipDiffTest {
     private val interpreterModel = ModelDef(
         fields = listOf(FieldDef(count.field().path(), Kind.NUMBER, scale = 0)),
         rules = rules.map(TypedRules::def),
-        repeatableGroups = setOf(items.ref().path()),
-        declaredReps = mapOf(items.ref().path() to 3),
+        repeatableGroups = setOf(items.ref().path().value()),
+        declaredReps = mapOf(items.ref().path().value() to 3),
     )
 
     @Test
@@ -85,19 +85,19 @@ class PartialValidationFilterSkipDiffTest {
     }
 
     private fun kernelDocument(values: List<String>): RuntimeLaws.Doc {
-        val document = RuntimeLaws.doc().group(order.ref().path(), 1)
+        val document = RuntimeLaws.doc().group(order.ref().path().value(), 1)
         values.forEachIndexed { index, value ->
             val row = index + 1
-            document.group(items.ref().path(), 1, row).field(count.field().path(), value, 1, row, 1)
+            document.group(items.ref().path().value(), 1, row).field(count.field().path(), value, 1, row, 1)
         }
         return document
     }
 
     private fun interpreterDocument(values: List<String>) = interpreterModel.newDocument().also { document ->
-        document.group(order.ref().path(), 1)
+        document.group(order.ref().path().value(), 1)
         values.forEachIndexed { index, value ->
             val row = index + 1
-            document.group(items.ref().path(), 1, row).field(count.field().path(), value, 1, row, 1)
+            document.group(items.ref().path().value(), 1, row).field(count.field().path(), value, 1, row, 1)
         }
     }
 

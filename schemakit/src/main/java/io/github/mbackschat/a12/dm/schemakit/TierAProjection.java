@@ -87,7 +87,7 @@ final class TierAProjection {
                 && agg.fields().isEmpty() && agg.groups().size() == 1
                 && c.right() instanceof NumberLiteral n) {
             // keep the raw bound; the integer-ness guard + skip-and-report live at the projection site
-            return Optional.of(new MinItemsHit(agg.groups().get(0).path(), n.value()));
+            return Optional.of(new MinItemsHit(agg.groups().get(0).path().value(), n.value()));
         }
         if (condition instanceof LogicCondition logic && logic.op() == LogicCondition.Op.AND) {
             Optional<MinItemsHit> left = findMinItemsConstraint(logic.left());

@@ -20,13 +20,14 @@ package io.github.mbackschat.a12.dm.core;
  */
 public interface HasEntityPath {
 
-    /** The entity's absolute model path, in its canonical string form. */
-    String path();
-
-    /** The same path as segments — parsed on demand, since implementors store the string form. */
-    default EntityPath entityPath() {
-        return EntityPath.of(path());
-    }
+    /**
+     * The entity's absolute model path, as segments.
+     *
+     * <p>Abstract rather than derived from a {@code String path()}, because implementors are migrating: a type
+     * that already holds an {@link EntityPath} returns it directly, while one still holding the string form
+     * parses on demand. Both satisfy the relations below identically, so the migration is invisible to callers.
+     */
+    EntityPath entityPath();
 
     /** Whether this entity is {@code ancestor} itself, or lies below it. */
     default boolean isInside(HasEntityPath ancestor) {

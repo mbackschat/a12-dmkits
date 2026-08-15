@@ -409,7 +409,7 @@ record ConditionComplexity(int nodeCount, int depth, int maxBooleanArity,
                     case FieldOperand field -> operandDepth(field);
                     case GroupListRef group -> {
                         nodeCount++;
-                        group.flattened().forEach(starred -> collectionPaths.add(starred.path()));
+                        group.flattened().forEach(starred -> collectionPaths.add(starred.path().value()));
                         maxStarSegments = Math.max(maxStarSegments, group.flattened().size());
                         yield 1;                    // no filter is possible here: MVK_NO_GROUPS_ALLOWED
                     }

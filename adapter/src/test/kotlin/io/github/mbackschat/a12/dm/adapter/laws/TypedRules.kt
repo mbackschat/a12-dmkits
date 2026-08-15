@@ -31,13 +31,13 @@ object TypedRules {
     /** Inject the typed [rule] into [json] — the kernel side of the differential. */
     fun inject(json: String, rule: Rule): String =
         RuntimeLaws.withRule(
-            json, rule.group().path(), rule.name(), rule.errorEntityRelPath(), rule.code(), cond(rule),
+            json, rule.group().path().value(), rule.name(), rule.errorEntityRelPath(), rule.code(), cond(rule),
         )
 
     /** The interpreter [RuleDef] for the typed [rule] — the interpreter side. */
     fun def(rule: Rule): RuleDef =
         RuleDef(
-            "${rule.group().path()}/${rule.name()}", rule.group().path(),
+            "${rule.group().path().value()}/${rule.name()}", rule.group().path().value(),
             cond(rule), rule.code(), rule.errorEntityRelPath(),
         )
 

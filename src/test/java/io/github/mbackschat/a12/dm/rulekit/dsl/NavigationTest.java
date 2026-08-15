@@ -107,7 +107,7 @@ class NavigationTest {
         FieldInfo fee = m.fieldAt("/Subscription/Addons/MonthlyFee").orElseThrow();
         NumberRef num = fee.asNum();                       // lenient exploring → strict authoring
         assertEquals(2, num.scale());
-        assertEquals("/Subscription/Addons", fee.group().path());
+        assertEquals("/Subscription/Addons", fee.group().path().value());
 
         FieldInfo name = m.fieldAt("/Subscription/Addons/Name").orElseThrow();
         assertThrows(IllegalArgumentException.class, name::asNum, "narrowing keeps the authoring guarantees");
@@ -194,7 +194,7 @@ class NavigationTest {
         assertEquals("/Subscription/Addons/MonthlyFee", sub.num("Addons/MonthlyFee").field().path());
         assertEquals("/Subscription/Addons/Name", sub.str("Addons/Name").field().path());
         assertEquals("/Subscription/Tier", sub.enumOf("Tier").field().path());
-        assertEquals("/Subscription/Billing", sub.group("Billing").path());
+        assertEquals("/Subscription/Billing", sub.group("Billing").path().value());
         assertEquals("/Subscription/Addons/MonthlyFee", sub.field("Addons/MonthlyFee").path());
 
         // groupAt is the non-throwing group peer of fieldAt

@@ -64,7 +64,7 @@ public record CountAggregate(CountOp op, List<AggregateOperand> fields, List<Gro
         }
         ListAggregate.checkNoDuplicates(op.operatorId(), fields);
         for (GroupRef g : groups) {
-            if (g.path().indexOf('/', 1) < 0) {
+            if (g.path().value().indexOf('/', 1) < 0) {
                 throw new IllegalArgumentException("a root group may not be referenced in "
                         + op.operatorId() + ": " + g.path() + " (MVK_ROOT_GROUP_REFERENCED)");
             }

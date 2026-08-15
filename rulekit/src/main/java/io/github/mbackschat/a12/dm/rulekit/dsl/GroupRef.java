@@ -1,5 +1,6 @@
 package io.github.mbackschat.a12.dm.rulekit.dsl;
 
+import io.github.mbackschat.a12.dm.core.EntityPath;
 import io.github.mbackschat.a12.dm.core.HasEntityPath;
 
 /**
@@ -13,7 +14,13 @@ import io.github.mbackschat.a12.dm.core.HasEntityPath;
  * as filled. And an enclosing {@code GroupFilled(Group)} counts as referencing the rule's error
  * field (no {@code MVK_ERROR_FIELD_NOT_REFERENCED}).
  */
-public record GroupRef(String path, boolean repeating) implements GroupReference, HasEntityPath {
+public record GroupRef(EntityPath path, boolean repeating) implements GroupReference, HasEntityPath {
+
+    /** Its own path, already parsed — this ref stores the segments rather than the text. */
+    @Override
+    public EntityPath entityPath() {
+        return path;
+    }
 
     /** Identity — a {@code GroupRef} is its own {@link GroupReference}. */
     @Override

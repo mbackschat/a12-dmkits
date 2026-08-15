@@ -43,7 +43,7 @@ class EditSessionBindMemoizationTest {
         // many navigations with no intervening write — every one sees the same snapshot
         for (int i = 0; i < 10; i++) {
             assertEquals("/Shop/Price", s.field("/Shop/Price").ref().path());
-            assertEquals("/Shop", s.group("/Shop").ref().path());
+            assertEquals("/Shop", s.group("/Shop").ref().path().value());
         }
     }
 }

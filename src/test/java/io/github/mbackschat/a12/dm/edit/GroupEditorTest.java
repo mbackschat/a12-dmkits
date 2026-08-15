@@ -49,12 +49,12 @@ class GroupEditorTest {
 
         // navigate to a child GROUP off a parent editor → a pure GroupRef (repeatability read from the model)
         GroupRef addons = s.group("/Subscription").group("Addons");
-        assertEquals("/Subscription/Addons", addons.path());
+        assertEquals("/Subscription/Addons", addons.path().value());
         assertTrue(addons.repeating());
 
         // relative navigation off a group editor → the SAME pure typed refs as m.num(...) / m.str(...)
         GroupEditor addonsEd = s.group("/Subscription/Addons");
-        assertEquals("/Subscription/Addons", addonsEd.ref().path());
+        assertEquals("/Subscription/Addons", addonsEd.ref().path().value());
         assertEquals("/Subscription/Addons/MonthlyFee", addonsEd.num("MonthlyFee").field().path());
         assertEquals("/Subscription/Addons/Name", addonsEd.str("Name").field().path());
     }
@@ -83,7 +83,7 @@ class GroupEditorTest {
                 .errorField(fee).when(fee.gt(1000))
                 .severity(Severity.ERROR).message(Dsl.en("fee too high"), Dsl.de("Gebühr zu hoch")).build());
 
-        assertEquals("/Subscription/Addons", r.group().path());
+        assertEquals("/Subscription/Addons", r.group().path().value());
         assertEquals("../MonthlyFee", r.errorEntityRelPath());     // derived from the ref, not "../MonthlyFee" typed
         assertEquals("[MonthlyFee] > 1000", r.render());           // group-relative canonical render
         assertFalse(s.toJson().contains("FeeCap"), "rule(...) builds and returns; it must NOT add to the session");
@@ -303,7 +303,7 @@ class GroupEditorTest {
 
         // the builders return real, usable handles (not strings) — the whole point of refs-as-currency
         assertEquals("/Subscription/Billing/Surcharge", surcharge.field().path());
-        assertEquals("/Subscription/ShippingAddress", shipping.path());
+        assertEquals("/Subscription/ShippingAddress", shipping.path().value());
 
         ModelDocument result = ModelDocument.read(s.toJson());
         assertTrue(result.fieldPaths().contains("/Subscription/Billing/Surcharge"));

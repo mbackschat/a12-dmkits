@@ -62,7 +62,7 @@ class FootprintScenarioFixtureGuardTest {
                 .toJson();
         var session = EditSession.read(structure);
         var row = session.group("/FootprintSimple").group("Row");
-        var editor = session.group(row.path());
+        var editor = session.group(row.path().value());
         var value = editor.str("Value");
         editor.addRule(rule -> rule.name("PresentValue")
                 .errorField(value)
@@ -83,7 +83,7 @@ class FootprintScenarioFixtureGuardTest {
                 .toJson();
         var session = EditSession.read(structure);
         var root = session.group("/FootprintCorrelation");
-        var editor = session.group(root.group("Row").path());
+        var editor = session.group(root.group("Row").path().value());
         var key = editor.str("Key");
         var matchingKeys = root.flatten("Row*/Key").having(key.eq(key.outer()));
         editor.addRule(rule -> rule.name("EqualPair")
@@ -110,7 +110,7 @@ class FootprintScenarioFixtureGuardTest {
                 .toJson();
         var session = EditSession.read(structure);
         var root = session.group("/FootprintCompute");
-        var editor = session.group(root.group("Row").path());
+        var editor = session.group(root.group("Row").path().value());
         var source = editor.num("Source");
         var intermediate = editor.num("Intermediate");
         var correlated = editor.num("Correlated");

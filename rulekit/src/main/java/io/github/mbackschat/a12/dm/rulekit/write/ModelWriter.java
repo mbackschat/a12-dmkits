@@ -60,7 +60,7 @@ public final class ModelWriter {
      * model's declared condition language; the raw-slot overload remains verbatim.
      */
     public static String addRule(String modelJson, Rule rule) {
-        return insertTyped(modelJson, rule.group().path(), language ->
+        return insertTyped(modelJson, rule.group().path().value(), language ->
                 ruleNode(rule.group().path() + "/" + rule.name(), rule.name(), rule.errorEntityRelPath(),
                         rule.code(), rule.render(language), rule.severity().name(), rule.messages()));
     }
@@ -203,7 +203,7 @@ public final class ModelWriter {
             Map<String, ArrayNode> elementsByGroup = new HashMap<>();
             for (Rule rule : rules) {
                 Objects.requireNonNull(rule, "rule");
-                elements(root, elementsByGroup, rule.group().path()).add(
+                elements(root, elementsByGroup, rule.group().path().value()).add(
                         ruleNode(
                                 rule.group().path() + "/" + rule.name(),
                                 rule.name(),

@@ -1,5 +1,7 @@
 package io.github.mbackschat.a12.dm.rulekit.dsl;
 
+import io.github.mbackschat.a12.dm.core.EntityPath;
+
 import java.util.Arrays;
 import java.util.List;
 
@@ -307,7 +309,7 @@ public final class BoundModel {
 
     /** A typed group handle (knows repeatability from the model). Throws if the path is not a group. */
     public GroupRef group(String path) {
-        return new GroupRef(path, index.isRepeating(path));
+        return new GroupRef(EntityPath.of(path), index.isRepeating(path));
     }
 
     /**
@@ -355,7 +357,7 @@ public final class BoundModel {
                     throw new IllegalArgumentException("'" + groupPath + "' is not repeatable —"
                             + " a star is only allowed on repeatable groups (MVK_INVALID_WILDCARD)");
                 }
-                flattened.add(new GroupRef(groupPath, true));
+                flattened.add(new GroupRef(EntityPath.of(groupPath), true));
             }
         }
         return new FieldListRef(field(base.toString()), flattened);
@@ -382,7 +384,7 @@ public final class BoundModel {
                     throw new IllegalArgumentException("'" + groupPath + "' is not repeatable —"
                             + " a star is only allowed on repeatable groups (MVK_INVALID_WILDCARD)");
                 }
-                flattened.add(new GroupRef(groupPath, true));
+                flattened.add(new GroupRef(EntityPath.of(groupPath), true));
             }
         }
         return new GroupListRef(group(base.toString()), flattened);
@@ -445,7 +447,7 @@ public final class BoundModel {
 
     /** The fields directly contained in {@code group}, in model order. */
     public java.util.stream.Stream<FieldInfo> fields(GroupRef group) {
-        return index.fieldPaths(group.path()).map(this::fieldInfo);
+        return index.fieldPaths(group.path().value()).map(this::fieldInfo);
     }
 
     /** Every group (root groups included), in model order. */

@@ -20,7 +20,7 @@ public record GroupListRef(GroupRef group, List<GroupRef> flattened)
 
     /** The terminal group's absolute path (no stars). */
     public String path() {
-        return group.path();
+        return group.path().value();
     }
 
     /**
@@ -34,11 +34,11 @@ public record GroupListRef(GroupRef group, List<GroupRef> flattened)
 
     /** The path with a {@code *} re-inserted after each starred segment, e.g. {@code /X/Categories*&#47;Values*}. */
     public String renderedPath() {
-        String path = group.path();
+        String path = group.path().value();
         StringBuilder rendered = new StringBuilder();
         int from = 0;
         for (GroupRef starred : flattened) {
-            int end = starred.path().length();
+            int end = starred.path().value().length();
             rendered.append(path, from, end).append('*');
             from = end;
         }

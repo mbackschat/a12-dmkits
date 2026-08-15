@@ -1,5 +1,7 @@
 package io.github.mbackschat.a12.dm.edit;
 
+import io.github.mbackschat.a12.dm.core.EntityPath;
+
 import java.util.List;
 import java.util.Map;
 import java.util.function.Consumer;
@@ -62,7 +64,7 @@ public final class GroupEditor extends ElementMetadataEditor<GroupEditor> implem
     private final GroupRef location;
 
     GroupEditor(EditSession session, GroupRef location) {
-        super(session, location.path());
+        super(session, location.path().value());
         this.location = location;
     }
 
@@ -153,19 +155,19 @@ public final class GroupEditor extends ElementMetadataEditor<GroupEditor> implem
 
     /** Add a field to this group, then return this editor so edits chain. */
     public GroupEditor addField(String name, FieldKind kind) {
-        session.addField(location.path(), name, kind);
+        session.addField(location.path().value(), name, kind);
         return this;
     }
 
     /** Add a richly-typed field (scale, bounds, pattern, enum domain, …) via a {@link FieldTypeSpec}. Chains. */
     public GroupEditor addField(String name, FieldTypeSpec type) {
-        session.addField(location.path(), name, type);
+        session.addField(location.path().value(), name, type);
         return this;
     }
 
     /** Add a fully-configured field (type + metadata) built by a per-type builder below. Chains. */
     public GroupEditor addField(ElementDraft.Field field) {
-        session.addField(location.path(), field);
+        session.addField(location.path().value(), field);
         return this;
     }
 
@@ -226,7 +228,7 @@ public final class GroupEditor extends ElementMetadataEditor<GroupEditor> implem
 
     /** Add a field typed by a declared type definition {@code typeDefId}. Chains. */
     public GroupEditor addTypedefField(String name, String typeDefId) {
-        session.addTypedefField(location.path(), name, typeDefId);
+        session.addTypedefField(location.path().value(), name, typeDefId);
         return this;
     }
 
@@ -237,15 +239,15 @@ public final class GroupEditor extends ElementMetadataEditor<GroupEditor> implem
      * the new group sits empty — keep adding through it, then bind once at {@link EditSession#validate()}.
      */
     public GroupEditor addGroup(String name, Consumer<GroupEditor> body) {
-        session.addGroup(location.path(), name);
-        body.accept(new GroupEditor(session, new GroupRef(child(name), false)));
+        session.addGroup(location.path().value(), name);
+        body.accept(new GroupEditor(session, new GroupRef(EntityPath.of(child(name)), false)));
         return this;
     }
 
     /** Like {@link #addGroup(String, Consumer)} but the subgroup is repeatable (up to {@code maxRepetitions}). */
     public GroupEditor addRepeatableGroup(String name, int maxRepetitions, Consumer<GroupEditor> body) {
-        session.addRepeatableGroup(location.path(), name, maxRepetitions);
-        body.accept(new GroupEditor(session, new GroupRef(child(name), true)));
+        session.addRepeatableGroup(location.path().value(), name, maxRepetitions);
+        body.accept(new GroupEditor(session, new GroupRef(EntityPath.of(child(name)), true)));
         return this;
     }
 
@@ -319,31 +321,31 @@ public final class GroupEditor extends ElementMetadataEditor<GroupEditor> implem
 
     /** Set this group's per-locale display labels (once any locale is set, all declared ones are required). Chains. */
     public GroupEditor setLabel(Map<String, String> localeToText) {
-        session.setLabel(location.path(), localeToText);
+        session.setLabel(location.path().value(), localeToText);
         return this;
     }
 
     /** Make this group a repeatable list (up to {@code maxRepetitions}, ≥ 2). Chains. */
     public GroupEditor setRepeatable(int maxRepetitions) {
-        session.setRepeatable(location.path(), maxRepetitions);
+        session.setRepeatable(location.path().value(), maxRepetitions);
         return this;
     }
 
     /** Make this group non-repeating (the single default) — the inverse of {@link #setRepeatable(int)}. Chains. */
     public GroupEditor setNonRepeatable() {
-        session.setNonRepeatable(location.path());
+        session.setNonRepeatable(location.path().value());
         return this;
     }
 
     /** Mark a direct child field as this repeatable group's row key ({@code indexField}). Chains. */
     public GroupEditor setIndexField(String fieldName) {
-        session.setIndexField(location.path(), fieldName);
+        session.setIndexField(location.path().value(), fieldName);
         return this;
     }
 
     /** Declare this repeatable group's row {@code sortFields} (in order). Chains. */
     public GroupEditor setSortFields(List<ElementDraft.SortField> fields) {
-        session.setSortFields(location.path(), fields);
+        session.setSortFields(location.path().value(), fields);
         return this;
     }
 

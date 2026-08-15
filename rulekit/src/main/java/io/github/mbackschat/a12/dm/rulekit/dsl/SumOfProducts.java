@@ -56,13 +56,13 @@ public record SumOfProducts(FieldOperand left, FieldOperand right) implements Ca
 
     private static boolean unwildcardedBelowTheOthersStar(FieldOperand operand, FieldOperand other) {
         return other instanceof FieldListRef list && list.flattened().stream().anyMatch(starred ->
-                EntityPaths.isStrictlyInside(operand.fieldPath(), starred.path())
-                        && !wildcards(operand, starred.path()));
+                EntityPaths.isStrictlyInside(operand.fieldPath(), starred.path().value())
+                        && !wildcards(operand, starred.path().value()));
     }
 
     private static boolean wildcards(FieldOperand operand, String groupPath) {
         return operand instanceof FieldListRef list
-                && list.flattened().stream().anyMatch(starred -> starred.path().equals(groupPath));
+                && list.flattened().stream().anyMatch(starred -> starred.path().value().equals(groupPath));
     }
 
     /** The group that directly contains the operand's field — the kernel's {@code checkAllEntitiesInSameGroup}. */

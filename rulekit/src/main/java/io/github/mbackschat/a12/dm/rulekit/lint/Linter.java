@@ -152,7 +152,7 @@ public final class Linter {
         List<Diagnostic> out = new ArrayList<>(lint(rulePath, rule.condition()));
         invertedRequiredness(rule.condition(), rule.errorField().path(), rulePath, out);
         if (model.iteratesForErrorField(rule.errorField().path())) {
-            negativeUnderIteration(rule.condition(), rule.errorField().path(), rule.group().path(),
+            negativeUnderIteration(rule.condition(), rule.errorField().path(), rule.group().path().value(),
                     model, rulePath, out);
         }
         return List.copyOf(out);
@@ -243,7 +243,7 @@ public final class Linter {
                 if (g.filled()) {
                     hasPositiveGuard[0] = true;
                 } else {
-                    negatives.add(new String[] {"GroupNotFilled", g.group().path()});
+                    negatives.add(new String[] {"GroupNotFilled", g.group().path().value()});
                 }
             }
             case RuleGroupPresenceCondition r -> {

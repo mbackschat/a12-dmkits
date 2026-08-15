@@ -151,7 +151,7 @@ public record ConditionReferences(Set<String> fieldPaths, Set<String> groupPaths
                 collect(l.left(), refs);
                 collect(l.right(), refs);
             }
-            case GroupPresenceCondition g -> refs.group(g.group().path());
+            case GroupPresenceCondition g -> refs.group(g.group().path().value());
             // RuleGroup is the rule's OWN group; its path is unknown here (no rule context), so it
             // contributes no concrete reference. Rule.deferredChecks() treats it as covering the error
             // field via referencesRuleGroup(...) below (the field is always under the rule's group).
@@ -183,7 +183,7 @@ public record ConditionReferences(Set<String> fieldPaths, Set<String> groupPaths
             // on a kernel-legal rule; this comment previously recorded the honoring as unverified.
             case RepetitionNotUniqueCondition r -> {
                 r.keys().forEach(k -> refs.field(k.path()));
-                r.scope().ifPresent(s -> refs.group(s.path()));
+                r.scope().ifPresent(s -> refs.group(s.path().value()));
             }
             case CustomConditionRef ignored -> { /* references nothing — host-defined */ }
             case DateValidity v -> collect(v.dateConstruct(), refs);
@@ -204,10 +204,10 @@ public record ConditionReferences(Set<String> fieldPaths, Set<String> groupPaths
             case EnumCategoryAccess c -> refs.projectedField(c.field().path());
             case CountAggregate a -> {
                 a.fields().forEach(f -> collectAggregateOperand(f, refs));
-                a.groups().forEach(g -> refs.group(g.path()));
+                a.groups().forEach(g -> refs.group(g.path().value()));
             }
             case ListAggregate a -> a.operands().forEach(o -> collectAggregateOperand(o, refs));
-            case CurrentRepetition r -> refs.group(r.group().path());
+            case CurrentRepetition r -> refs.group(r.group().path().value());
             case Today ignored -> { }
             case Now ignored -> { }
             case BaseYear ignored -> { }
@@ -268,7 +268,7 @@ public record ConditionReferences(Set<String> fieldPaths, Set<String> groupPaths
             }
             case FieldRounding r -> refs.field(r.field().path());
             case DateRangeBound b -> collect(b.source(), refs);
-            case RootGroupCount c -> refs.group(c.rootGroup().path());
+            case RootGroupCount c -> refs.group(c.rootGroup().path().value());
             case DateRangeConstruction dr -> {
                 collect(dr.start(), refs);
                 collect(dr.end(), refs);

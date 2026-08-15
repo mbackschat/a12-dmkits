@@ -63,7 +63,7 @@ public final class RuleDiagnostics {
         }
 
         List<Diagnostic> kernel = validator.check(model.toJson(), rule.draft()).diagnostics();
-        out.addAll(spanResolver.resolve(kernel, rule.condition(), rule.group().path()));
+        out.addAll(spanResolver.resolve(kernel, rule.condition(), rule.group().path().value()));
         out.addAll(linter.lint(model, rule));
         out.addAll(advisor.advise(rule.group().path() + "/" + rule.name(), rule.condition()));
 

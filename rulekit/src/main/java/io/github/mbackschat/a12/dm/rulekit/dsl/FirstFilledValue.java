@@ -1,5 +1,6 @@
 package io.github.mbackschat.a12.dm.rulekit.dsl;
 
+import io.github.mbackschat.a12.dm.core.EntityPath;
 import io.github.mbackschat.a12.dm.core.HasEntityPath;
 
 import java.util.ArrayList;
@@ -144,7 +145,12 @@ public record FirstFilledValue(FirstFilledOperand firstOperand, List<FirstFilled
     }
 
     private record EntityIdentity(String path, String category, Object semanticIndex, boolean correlated)
-            implements HasEntityPath { }
+            implements HasEntityPath {
+        @Override
+        public EntityPath entityPath() {
+            return EntityPath.of(path);
+        }
+    }
     private record LiteralIndex(String value) { }
     private record FieldIndex(String path, boolean correlated) { }
 

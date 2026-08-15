@@ -115,7 +115,7 @@ public record FieldListRef(FieldRef field, List<GroupRef> flattened, Optional<Co
         StringBuilder rendered = new StringBuilder();
         int from = 0;
         for (GroupRef group : flattened) {
-            int end = group.path().length();
+            int end = group.path().value().length();
             rendered.append(path, from, end).append('*');
             from = end;
         }

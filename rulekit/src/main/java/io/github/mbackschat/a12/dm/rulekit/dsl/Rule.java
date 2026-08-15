@@ -41,7 +41,7 @@ public record Rule(
 
     /** The error entity's path relative to the rule element (which sits inside the group). */
     public String errorEntityRelPath() {
-        return "../" + errorField.path().substring(group.path().length() + 1);
+        return "../" + errorField.path().substring(group.path().value().length() + 1);
     }
 
     /**
@@ -55,7 +55,7 @@ public record Rule(
 
     /** Canonical condition text in {@code language}, with paths relative to the rule's group. */
     public String render(ConditionLanguage language) {
-        return new DslRenderer(language, group.path()).render(condition, comments);
+        return new DslRenderer(language, group.path().value()).render(condition, comments);
     }
 
     /** The bridge to the F4 validator ({@code RuleValidator.check(modelJson, rule.draft())}). */
@@ -65,7 +65,7 @@ public record Rule(
 
     /** The F4 validator draft rendered in the destination model's condition {@code language}. */
     public DraftRule draft(ConditionLanguage language) {
-        return new DraftRule(group.path(), name, errorEntityRelPath(), render(language), code, severity.name());
+        return new DraftRule(group.path().value(), name, errorEntityRelPath(), render(language), code, severity.name());
     }
 
     /**
@@ -289,7 +289,7 @@ public record Rule(
             if (ok) {
                 return;
             }
-            String rulePath = name == null || name.isBlank() ? group.path() : group.path() + "/" + name;
+            String rulePath = name == null || name.isBlank() ? group.path().value() : group.path().value() + "/" + name;
             throw new PrecheckException(Diagnostic.precheck(Optional.of(code), summary,
                     new Diagnostic.Where(rulePath, Optional.empty()), Optional.ofNullable(fix), Optional.empty()));
         }
