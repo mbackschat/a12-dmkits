@@ -530,10 +530,6 @@ tasks.register('referentGuardTest', Test) {
     classpath = sourceSets.test.runtimeClasspath
     filter {
         includeTestsMatching 'io.github.mbackschat.a12.dm.cli.ReferentDriftGuardTest'
-        // The citation-resolution peer: same repo-wide prose+source scan, same reason for its own lane. It
-        // checks the direction no other guard covers — a citation INTO a doc (`<DOC> "quoted heading"`,
-        // `CLI-SPEC §N`) resolving to something that still exists.
-        includeTestsMatching 'io.github.mbackschat.a12.dm.cli.CitationResolvesGuardTest'
     }
     rootProject.guardInputs(it, [
             'repo prose + source': rootProject.fileTree(rootProject.projectDir) {

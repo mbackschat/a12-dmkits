@@ -18,7 +18,7 @@ import picocli.CommandLine.Model.OptionSpec;
 import picocli.CommandLine.Model.PositionalParamSpec;
 
 /**
- * The {@code manifest} verb (CLI-SPEC §2/§2) — a machine-readable map of <b>every runnable op and its
+ * The {@code manifest} verb (CLI-SPEC §2/§5) — a machine-readable map of <b>every runnable op and its
  * parameters</b> as JSON, so an agent discovers the whole tool surface in one call (the self-explaining
  * requirement). It walks the full command tree, so a nested op under a target group is emitted under its
  * <b>qualified</b> name (e.g. {@code "model check"}); the bare group is not itself an op. The {@code
