@@ -269,7 +269,7 @@ The five tightest rows by worst observed margin are `CO-correlation @200` (1.35�
 
 ### Checkpoint 2026-08-12 — the warm outcome and the measurement cost enter the record
 
-The first run to carry them is [`2026-08-12T124426Z`](../perf-results/darwin-aarch64/2026-08-12T124426Z.jsonl) (`Macmini9,1 Apple M1`, `loadAverage` 4.96, commit `813c553a-DIRTY` — the feature *is* the recording, so it was measured on the working tree that added it): **138 observations, 102 warm outcomes, 17 cost rows**, and **0 warm rows that fail to join** an observation in the same run. All 102 warms in that run ended `flattened` — no budget cap, which is the state [IF282](INTERPRETER-FINDINGS.md#if282) set the 8 s cap to reach, now recorded rather than asserted from a log.
+The first run to carry them is `2026-08-12T124426Z` (`Macmini9,1 Apple M1`, `loadAverage` 4.96, commit `813c553a-DIRTY` — the feature *is* the recording, so it was measured on the working tree that added it): **138 observations, 102 warm outcomes, 17 cost rows**, and **0 warm rows that fail to join** an observation in the same run. All 102 warms in that run ended `flattened` — no budget cap, which is the state [IF282](INTERPRETER-FINDINGS.md#if282) set the 8 s cap to reach, now recorded rather than asserted from a log.
 
 Its 17 `cost` rows sum to **98.1 s** for the parity tier. That is **not** comparable to the 71.5 s IF282 quotes: this is the sum of each lane's own measured span (agreement checks, six warms, timed pairs, and any re-measurement), while the earlier figure came from a build log's task time. The point of recording it is that from here the number has one definition and a history; the two should not be differenced.
 
@@ -277,7 +277,7 @@ Its 17 `cost` rows sum to **98.1 s** for the parity tier. That is **not** compar
 
 ### Checkpoint 2026-08-12 — the cascade overlay's three hashes of one key
 
-Method: `scripts/perf-keys.sh compute` before and after, then three isolated `perfGateTest` runs on the same machine (`Macmini9,1 Apple M1`, 8 processors), nothing else running, folded at their per-key median through `scripts/perf-anchor.sh show`. Records [`2026-08-12T120652Z`](../perf-results/darwin-aarch64/2026-08-12T120652Z.jsonl) / [`T121253Z`](../perf-results/darwin-aarch64/2026-08-12T121253Z.jsonl) / [`T121706Z`](../perf-results/darwin-aarch64/2026-08-12T121706Z.jsonl), `loadAverage` 8.32 / 6.07 / 4.38 — all three `-DIRTY`, because they measured this change's working tree before it landed, which is what that marker is for.
+Method: `scripts/perf-keys.sh compute` before and after, then three isolated `perfGateTest` runs on the same machine (`Macmini9,1 Apple M1`, 8 processors), nothing else running, folded at their per-key median through `scripts/perf-anchor.sh show`. Records `2026-08-12T120652Z` / `T121253Z` / `T121706Z`, `loadAverage` 8.32 / 6.07 / 4.38 — all three `-DIRTY`, because they measured this change's working tree before it landed, which is what that marker is for.
 
 The anchor they are compared against is the committed `darwin-aarch64` block at **`03594677`** (`capturedAt 2026-08-12T092018Z`, a median of three), whose own input runs carried per-observation load **4.31–8.44**. *(Corrected 2026-08-12: this first read `80a4b99e … loads 2.8–7.1`. Both were wrong — the block names `03594677`, and folding that trio reproduces all 36 anchor values while the `80a4b99e` trio reproduces none. The load contrast that supports reading the validate movement as contention is therefore 4.31–8.44 against 4.58–10.57, which is thinner than the original sentence implied and is the honest basis.)*
 
@@ -460,7 +460,7 @@ The checkpoint below concluded that the parity noise sat in the small arm and pr
 
 ### Checkpoint 2026-08-12 — the compute-overlay read path, after the tightest row was optimized (catalog #11) <a id="evidence-11"></a>
 
-The same 17 parity lanes re-run after the three compute-overlay fixes, one isolated run, same machine. Record: [`perf-results/darwin-aarch64/2026-08-11T231938Z.jsonl`](../perf-results/darwin-aarch64/2026-08-11T231938Z.jsonl).
+The same 17 parity lanes re-run after the three compute-overlay fixes, one isolated run, same machine. Record: `perf-results/darwin-aarch64/2026-08-11T231938Z.jsonl`.
 
 | over all 38 rows | before | after |
 |---|---|---|
@@ -476,7 +476,7 @@ The same 17 parity lanes re-run after the three compute-overlay fixes, one isola
 
 ### Checkpoint 2026-08-12 — the cross-engine bar extended from 2 scenarios to 17, and what that did to the margin (IF281)
 
-One isolated `scripts/perf.sh gate` run with the machine to itself, Apple Silicon (`darwin-aarch64`, 8 processors, JDK 21.0.12). The record is [`perf-results/darwin-aarch64/2026-08-11T224400Z.jsonl`](../perf-results/darwin-aarch64/2026-08-11T224400Z.jsonl), so every figure below is recomputable rather than quoted.
+One isolated `scripts/perf.sh gate` run with the machine to itself, Apple Silicon (`darwin-aarch64`, 8 processors, JDK 21.0.12). The record is `perf-results/darwin-aarch64/2026-08-11T224400Z.jsonl`, so every figure below is recomputable rather than quoted.
 
 **Cross-engine (the gate).** Ratios are `interp/kernel`, so **lower is better and 1.00 is parity**; each row takes the worse of the two kernel strategies.
 
