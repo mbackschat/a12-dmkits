@@ -25,6 +25,16 @@
 
 - **`--tests` is ANDed with a task's own `filter`, so it can only ever NARROW a lane (measured 2026-08-13).** A `Test` task that declares `filter { includeTestsMatching 'a.b.C' }` and is invoked as `--tests "*PerfTest"` runs **nothing**: Gradle keeps `includePatterns` and `commandLineIncludePatterns` as separate sets and requires a test to match both. The failure is loud but easy to misread — `No tests found for given includes: [a.b.C](filter.includeTestsMatching) [*PerfTest](--tests filter)` names both sets, and the fix people reach for (widen the command line) cannot work. The consequence to remember: **a task filter is the denominator, and no invocation can widen it.** A lane whose membership must not silently shrink therefore selects by TAG (`useJUnitPlatform { includeTags '…' }`) rather than by an enumerated class list — the routine performance gate ran 2 of 9 tagged classes for exactly this reason, and a `--tests` "fix" for it was written and probed before being discarded. Corollary for the everyday inner loop, already relied on elsewhere: `--tests` also does not filter a task's `dependsOn` prerequisites, which is why `-Pfast` exists.
 
+## Why `:adapter:test` takes minutes — and why there is no hotspot to attack (measured 2026-08-15)
+
+Recorded so the question is not re-investigated. On the 8-processor darwin machine: **530 classes, 2711 tests, 759 s of test time in 323 s wall — 2.35× effective parallelism.** The cost is the estate's nature, not a defect: this is the kernel differential, so essentially every test drives the **real A12 kernel**, which does Groovy codegen *and compilation* per rule. That is exactly the work the interpreter exists to avoid at runtime, and paying it here is what makes the differential an oracle.
+
+**It is broad, not concentrated.** The ten slowest classes total 161 s — **21 %** of test time — and the largest single class is 35.5 s. So there is no hot class whose optimization would move the lane; shaving it means removing kernel work, which is the one thing this lane may not do.
+
+**Why it looks like it saturates every core.** `maxParallelForks` is capped at `min(4, processors)`, and the cap is a **memory** guard rather than a CPU one — each fork is an isolated JVM that loads the memory-heavy kernel. Four such JVMs doing Groovy compilation, each with its own JIT and GC threads, will keep 8 logical cores busy even though only 4 test forks exist. `-PtestForks=N` is the documented override; raising it trades wall time against OOM risk and has not been measured.
+
+**The lever that does work is scope, not concurrency:** `-Pfast` plus a single class is ~8 s (see [TESTING-SPEC](TESTING-SPEC.md) "Test tiers"), and the full lane belongs to the session-end checkpoint.
+
 ## Offline and bootstrap limits
 
 - **Wrapper download is blocked in the offline sandbox.** The committed wrapper points at the canonical `services.gradle.org` URL (correct for outside users). Locally, the bootstrap already extracted Gradle 9.0.0 under the a12 parent's `.gradle-dist/gradle-9.0.0/` — run that binary directly when offline.
