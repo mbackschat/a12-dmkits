@@ -1004,7 +1004,7 @@ class DmInterpreter private constructor(
             // VALUE/OMISSION typing on non-firing nodes (the kernel types only firing rows), measured faster in
             // both regimes. (A kernel-style evalCond-then-evalTyped two-phase guard was measured a net loss — the
             // second walk re-traverses + re-evals leaves; the lazy single walk gets the skip without it.
-            // INTERPRETER-PERFORMANCE-RESULTS.md #62 / results log.)
+            // INTERPRETER-PERFORMANCE.md task #62; measurements in INTERPRETER-PERFORMANCE-RESULTS.md.)
             val firedType = interp.firedType(ast)
             if (firedType != null) {
                 val type = firedType
