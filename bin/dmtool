@@ -26,7 +26,7 @@ if [[ "${RK_NATIVE:-}" == "1" ]]; then
   candidates+=(
     "$ROOT/cli/build/native/nativeCompile/dmtool" # GraalVM Gradle plugin output
     "$ROOT/cli/build/native/nativeCompile/dmtool.exe" # Windows GraalVM output under Git Bash
-    "$ROOT/build/native-spike/dmtool-cli-res"   # the CLI-SPEC §B2 spike's resource-bundled binary
+    "$ROOT/build/native-spike/dmtool-cli-res"   # the CLI-SPEC §11 phase B2 spike's resource-bundled binary
   )
 fi
 candidates+=("$ROOT/cli/build/install/dmtool/bin/dmtool")  # installDist launcher — the default
