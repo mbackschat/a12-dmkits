@@ -146,9 +146,13 @@ public final class StructuralKernelFix {
                             + "only for rows that actually exist, not for the empty/absent repetitions. A negative "
                             + "presence predicate used as an iterating Or branch is not guarded by its sibling; rewrite "
                             + "that branch as a positively guarded And, or split it into a separate guarded rule.",
-                    "A bare negative (FieldNotFilled/NoFieldFilled) inside an iterating rule would also fire on the "
-                            + "empty/non-existent repetitions of the iterated group; the kernel requires a positive "
-                            + "guard to scope it to real rows. This is a structural iteration law, not a restriction "
+                    "A condition the kernel reads as able to fire on the empty/non-existent repetitions of the "
+                            + "iterated group needs a positive guard to scope it to real rows. The trigger is NOT the "
+                            + "operator's name: FieldsNotCollectivelyFilled is negative and accepted, while "
+                            + "NumberOfFilledFields(<group>) < 1 has no negation and is refused. Nor is it the "
+                            + "condition's meaning: '< 1' is refused where the equivalent '<= 0' and '== 0' are "
+                            + "accepted. The analysis is syntactic and kernel-owned, so add the guard rather than "
+                            + "predicting the gate. This is a structural iteration law, not a restriction "
                             + "on RepetitionNotUnique composing as an ordinary leaf under a legal And/Or tree.")),
             Map.entry("MVK_INVALID_COMBINATION_OF_REPETITON_NOT_UNIQUE", new Hint(
                     "Keep exactly one RepetitionNotUnique leaf in the condition. Put every component of the "

@@ -65,7 +65,9 @@ added field /Order/ShippingAddress/Country
 
 ## On a REPEATABLE group the star changes what the rule means
 
-`/Order/Items` repeats. Both spellings are legal, and they are different rules: `Items*` judges **all rows at once**, while a bare `Items` makes the rule iterate **per row**. The kernel then refuses a *negative* quantifier in that per-row iteration — `MVK_NEG_CONDITION_IN_ITERATION`, a full truth-propagation law it owns (see `docs/MVK-LEDGER.md`). So the positive quantifiers accept both spellings and the negative ones require the star.
+`/Order/Items` repeats. Here both spellings are legal, and they are different rules: `Items*` judges **all rows at once**, while a bare `Items` makes the rule iterate **per row**. The bare form is only available because this rule's error field sits *inside* `Items` — put the error field outside and the star is required (`MVK_NO_WILDCARD`). What the group declares as its index field makes no difference either way.
+
+Inside that per-row iteration a second gate applies: the kernel refuses a condition it reads as able to fire on the **empty repetitions** of the iterated group (`MVK_NEG_CONDITION_IN_ITERATION`, a truth-propagation law it owns — see `docs/MVK-LEDGER.md`). For the four quantifiers below that lands on the negative pair.
 
 ```bash
 mkdir -p /tmp/grp
@@ -93,6 +95,28 @@ dispatched 8 ops; 2 of 8 exited nonzero (0 failed, 2 reported a negative verdict
 ```
 
 `batch` is the right shape for a sweep like this: eight verdicts in one process rather than eight launches, and its aggregate summary already separates the two nonzero children that reported a **negative verdict** from a child that actually **failed** — the distinction `ok` alone does not carry.
+
+**Do not generalize that to "the kernel refuses negative quantifiers here."** The gate is the kernel's own syntactic analysis, and it matches neither the operator's name nor the condition's meaning. `FieldsNotCollectivelyFilled` is negative and accepted; `NumberOfFilledFields(...) < 1` contains no negation and is refused — and `< 1` is refused where `<= 0`, the same predicate on a count that cannot go below zero, is accepted.
+
+```bash
+jq -n '["FieldsNotCollectivelyFilled(/Order/Items)",
+        "NumberOfFilledFields(/Order/Items) < 1",
+        "NumberOfFilledFields(/Order/Items) <= 0"]
+  | [ .[] | { id: ., verb: "rule",
+      args: ["check","--group","/Order","--field","/Order/Items/Sku","--code","ITEMS",
+             "--condition", .] } ]' > /tmp/grp/gate-ops.json
+dmtool -m examples/models/order-aggregates.dm.json batch /tmp/grp/gate-ops.json \
+  | jq -r '.data.results[] | "  \(.result.diagnostics[0].code // "accepted")  \(.id)"'
+
+```
+
+```output
+  accepted  FieldsNotCollectivelyFilled(/Order/Items)
+  MVK_NEG_CONDITION_IN_ITERATION  NumberOfFilledFields(/Order/Items) < 1
+  accepted  NumberOfFilledFields(/Order/Items) <= 0
+```
+
+So the only reliable way to know is to ask: `rule check` is the kernel. When it refuses, the diagnostic's `fix` tells you to guard the condition with a positive existence check rather than to reason about the gate.
 
 ## The reporting consequence: two readers that disagree, correctly
 
