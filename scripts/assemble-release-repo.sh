@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Assemble the PUBLIC a12-dmtool-releases repo tree for a release — the plugin + the EUPL-1.2 compliance
-# bundle for the kernel-embedding native binary (LICENSING.md §33). Kernel notices are copied FRESH from
+# bundle for the kernel-embedding native binary (LICENSING.md "EUPL-1.2 compliance checklist"). Kernel notices are copied FRESH from
 # the pinned kernel checkout (../a12-kernel), not committed into this MIT source repo; re-run on a kernel
 # bump (KERNEL-UPGRADE.md). The native binaries + SHA256SUMS are uploaded to the Release separately.
 #

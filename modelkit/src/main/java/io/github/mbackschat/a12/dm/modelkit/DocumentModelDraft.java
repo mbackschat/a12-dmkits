@@ -26,7 +26,7 @@ import io.github.mbackschat.a12.dm.core.ElementType;
 
 /**
  * modelkit M1 — a typed builder for document-model <b>structure</b>, the peer of rulekit's rule
- * builder (fork #8 / ARCHITECTURE §5.2; rationale in {@code docs/PROJECT-DESIGN.md} §21). Author a
+ * builder (fork #8 / ARCHITECTURE §3.3; rationale in {@code docs/PROJECT-DESIGN.md} §21). Author a
  * model from scratch — {@code model(id, locale) → group(name) → field(name, kind)} — and emit
  * DM-JSON the real kernel accepts ({@code checkConsistency} + the {@code BasicConsistencyCheck} write
  * gate, proven by {@code DocumentModelDraftTest}).

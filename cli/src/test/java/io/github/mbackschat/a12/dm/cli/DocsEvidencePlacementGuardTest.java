@@ -16,7 +16,7 @@ import org.junit.jupiter.api.Test;
  * <b>Dated evidence belongs in a results log, never in a findings doc.</b> The two homes are set by their own
  * preambles: {@code INTERPRETER-PERFORMANCE-RESULTS.md} is "the dated evidence for interpreter performance: one
  * dated checkpoint entry per measurement session, newest first", while {@code INTERPRETER-FINDINGS.md} is "a
- * rationale record, not a status surface — the timeless fact, the decision, the why". DOC-DISCIPLINE §61 states
+ * rationale record, not a status surface — the timeless fact, the decision, the why". DOC-DISCIPLINE §5 states
  * the same split for every spec: "Specs hold the stable method; measured results live in a dated log."
  *
  * <p><b>Why a guard.</b> This was violated on 2026-08-11: three hosted runs' medians, wall times, run ids and
