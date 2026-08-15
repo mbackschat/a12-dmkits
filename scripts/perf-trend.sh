@@ -349,14 +349,25 @@ for segment in sorted(segments, key=lambda s: tuple("" if p is None else p for p
         continue
     print(f"\n=== {head} — {len(series)} run(s), {series[0][0]} .. {series[-1][0]} ===")
 
+    # Each ENGINE arm of one row is decided independently above, which leaves the reader to correlate them by
+    # eye — and the correlation is the whole signal (IG137 piece c). A step on EVERY arm of a row is the
+    # machine re-basing: all three engines share the JVM, the vCPUs and the load slice, so nothing about our
+    # code can move them together. A step on the interpreter arm ALONE is ours. Reported after the rows rather
+    # than folded into them, because the per-arm numbers are what a downstream band is sized from and must not
+    # be rewritten by this reading.
+    arms = {}
     width = max(len(label(k)) for k in keys)
     for key in keys:
         points = [(stamp, commit, o[key]) for stamp, commit, o in series if key in o]
         values = [ms for _, _, ms in points]
         name = "%-*s" % (width, label(key))
+        engine = key.split("|")[-2]
+        identity = row_identity(key)
         if len(values) < 2 * min_side:
             print(f"  {name}  runs={len(values)}  insufficient runs "
                   f"(need >= {2 * min_side} for a step claim)")
+            if identity:
+                arms.setdefault(identity, {})[engine] = None      # undecided, never counted as agreement
             continue
 
         logs = [math.log(v) for v in values]
@@ -372,6 +383,8 @@ for segment in sorted(segments, key=lambda s: tuple("" if p is None else p for p
         centre = statistics.median(current)
         noise_pct = 100 * (math.exp(spread(current, centre)) - 1)
         tail = f"runs={len(values)}  current={math.exp(centre):.2f}ms  noise=±{noise_pct:.1f}%"
+        if identity:
+            arms.setdefault(identity, {})[engine] = (stepped, ratio)
         if stepped:
             changed += 1
             stamp, commit, _ = points[i]
@@ -379,6 +392,25 @@ for segment in sorted(segments, key=lambda s: tuple("" if p is None else p for p
                   f"{math.exp(ml):.2f} -> {math.exp(mr):.2f}ms ({100 * (ratio - 1):+.0f}%)")
         else:
             print(f"  {name}  {tail}  stable")
+
+    for identity in sorted(arms):
+        decided = {e: v for e, v in arms[identity].items() if v is not None}
+        if len(decided) < 2 or not any(stepped for stepped, _ in decided.values()):
+            continue                                   # nothing to reconcile, or nothing stepped
+        moved = sorted(e for e, (stepped, _) in decided.items() if stepped)
+        held = sorted(e for e, (stepped, _) in decided.items() if not stepped)
+        directions = {ratio > 1 for e, (stepped, ratio) in decided.items() if stepped}
+        if not held and len(directions) == 1:
+            print(f"  ARMS  {ratio_label(identity)}: every arm ({', '.join(moved)}) stepped the same way — "
+                  f"reads as the MACHINE re-basing, not as a code change")
+        elif not held:
+            ways = ", ".join(e + (" up" if r > 1 else " down")
+                             for e, (s, r) in sorted(decided.items()) if s)
+            print(f"  ARMS  {ratio_label(identity)}: every arm stepped but NOT the same way ({ways}) — "
+                  f"opposite directions cannot be one environment shift")
+        else:
+            print(f"  ARMS  {ratio_label(identity)}: {', '.join(moved)} stepped, {', '.join(held)} held — "
+                  f"the arms DISAGREE, so this is not an environment shift; attribute it to the side that moved")
 
 print(f"\n{changed} row(s) reported a change point. This is a report, not a verdict: a change point is what a "
       f"deliberate optimization looks like too.")

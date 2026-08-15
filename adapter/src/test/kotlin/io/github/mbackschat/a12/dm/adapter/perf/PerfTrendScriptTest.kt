@@ -415,6 +415,107 @@ class PerfTrendScriptTest {
     // ── helpers ───────────────────────────────────────────────────────────────────────────────────────
 
     /** A one-environment record whose single row takes the given medians, one run each, oldest first. */
+    // ── the cross-arm reading (IG137 piece c) ─────────────────────────────────────────────────────────
+
+    /**
+     * **The reason this reading exists.** Each engine arm of a row is decided independently, which leaves the
+     * reader to correlate them by eye — and the correlation is the whole signal. All three engines share the
+     * JVM, the vCPUs and the load slice within a run, so nothing about our code can move them together: an
+     * all-arm step is the machine re-basing, and reading it as a regression is how a contended series gets
+     * chased.
+     */
+    @Test
+    fun armsThatAllStepTheSameWayReadAsTheMachineRebasing() {
+        val dir = multiEngineRecord(
+            interpreter = listOf(10.0, 10.1, 9.9, 10.0, 6.0, 6.1, 5.9, 6.0),
+            groovy = listOf(40.0, 40.4, 39.6, 40.0, 24.0, 24.4, 23.6, 24.0),
+            java = listOf(30.0, 30.3, 29.7, 30.0, 18.0, 18.3, 17.7, 18.0),
+        )
+
+        val run = run(dir)
+
+        assertEquals(0, run.status, run.output)
+        assertTrue("MACHINE re-basing" in run.output) {
+            "every arm stepped the same way — no code change moves three engines together: ${run.output}"
+        }
+    }
+
+    /** The interesting one: only OUR arm moved, so the step is attributable rather than environmental. */
+    @Test
+    fun armsThatDisagreeAreAttributedToTheSideThatMoved() {
+        val dir = multiEngineRecord(
+            interpreter = listOf(10.0, 10.1, 9.9, 10.0, 6.0, 6.1, 5.9, 6.0),
+            groovy = listOf(40.0, 40.4, 39.6, 40.0, 40.2, 39.8, 40.1, 39.9),
+            java = listOf(30.0, 30.3, 29.7, 30.0, 30.1, 29.9, 30.2, 29.8),
+        )
+
+        val run = run(dir)
+
+        assertTrue("DISAGREE" in run.output) {
+            "the kernel arms held while ours moved — that is not an environment shift: ${run.output}"
+        }
+        assertTrue("MACHINE re-basing" !in run.output) { "no arm agreement to report: ${run.output}" }
+    }
+
+    /**
+     * All arms stepped, in OPPOSITE directions. Without this case the "every arm stepped" branch would call it
+     * a machine re-base, which is the one reading the data rules out: an environment shift cannot move one
+     * engine down while moving another up.
+     */
+    @Test
+    fun armsSteppingOppositeWaysAreNotAnEnvironmentShift() {
+        val dir = multiEngineRecord(
+            interpreter = listOf(10.0, 10.1, 9.9, 10.0, 6.0, 6.1, 5.9, 6.0),
+            groovy = listOf(40.0, 40.4, 39.6, 40.0, 64.0, 64.4, 63.6, 64.0),
+            java = listOf(30.0, 30.3, 29.7, 30.0, 48.0, 48.3, 47.7, 48.0),
+        )
+
+        val run = run(dir)
+
+        assertTrue("NOT the same way" in run.output) { "one arm down, two up: ${run.output}" }
+        assertTrue("MACHINE re-basing" !in run.output) {
+            "opposite directions rule out the one reading this branch exists to prevent: ${run.output}"
+        }
+    }
+
+    /** THE CONTROL: a row where nothing stepped emits no cross-arm line at all — silence, not a verdict. */
+    @Test
+    fun aStableRowReportsNoCrossArmReading() {
+        val dir = multiEngineRecord(
+            interpreter = listOf(10.0, 10.2, 9.8, 10.1, 9.9, 10.3, 10.0, 9.7),
+            groovy = listOf(40.0, 40.6, 39.4, 40.2, 39.8, 40.5, 40.0, 39.6),
+            java = listOf(30.0, 30.4, 29.6, 30.2, 29.8, 30.3, 30.0, 29.7),
+        )
+
+        val run = run(dir)
+
+        assertTrue("ARMS" !in run.output) {
+            "nothing stepped, so there is nothing to reconcile: ${run.output}"
+        }
+    }
+
+    /** One run per index carrying all three engine arms of the SAME (lane, scenario, n, clock) row. */
+    private fun multiEngineRecord(
+        interpreter: List<Double>,
+        groovy: List<Double>,
+        java: List<Double>,
+    ): Path {
+        val root = work.resolve("results")
+        val dir = root.resolve("darwin-aarch64").also { Files.createDirectories(it) }
+        interpreter.indices.forEach { i ->
+            val stamp = "2026-08-%02dT000000Z".format(i + 1)
+            val observations = listOf("interpreter" to interpreter[i], "groovy" to groovy[i], "java" to java[i])
+                .joinToString("\n") { (engine, ms) ->
+                    """{"kind":"observation","environment":"darwin-aarch64","key":"kernel parity|diagnostic/X@1 fingerprint=abc|n=250|$engine|wall","scenario":"diagnostic/X@1 fingerprint=abc","lane":"kernel parity","n":250,"engine":"$engine","clock":"wall","medianMs":$ms,"loadAverage":2.0}"""
+                }
+            Files.writeString(
+                dir.resolve("$stamp.jsonl"),
+                """{"kind":"run","environment":"darwin-aarch64","capturedAt":"$stamp","commit":"${"c%04d".format(i)}","os":"Mac OS X","arch":"x","jdk":"21.0.12","processors":8,"machine":"Macmini9,1 Apple M1","loadAverage":2.0,"ci":false,"runId":null,"runnerName":null}""" + "\n" + observations + "\n",
+            )
+        }
+        return root
+    }
+
     private fun record(env: String, runs: List<Double>, commits: List<String>? = null): Path {
         val root = work.resolve("results")
         val dir = root.resolve(env).also { Files.createDirectories(it) }
