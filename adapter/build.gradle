@@ -371,6 +371,7 @@ tasks.register('perfScriptGuardTest', Test) {
     def keysScript = rootProject.file('scripts/perf-keys.sh')
     def trendScript = rootProject.file('scripts/perf-trend.sh')
     def historyScript = rootProject.file('scripts/perf-history.sh')
+    def reportScript = rootProject.file('scripts/perf-report.sh')
     systemProperty 'perf.script', script.absolutePath
     // PerfAnchorScriptTest EXECUTES this one against a temporary anchor (ANCHOR_FILE), which is a far stronger
     // oracle than reading its text — its refusals are what keep a partial run from silently unarming a lane.
@@ -384,12 +385,16 @@ tasks.register('perfScriptGuardTest', Test) {
     // asserting a stable series reports NOTHING.
     systemProperty 'perf.trend.script', trendScript.absolutePath
     systemProperty 'perf.history.script', historyScript.absolutePath
+    // Also EXECUTED, against synthetic records. It COMPOSES the three readers above, and a composition fails
+    // silently — a dropped delegation only makes the report shorter, which reads as "nothing to report".
+    systemProperty 'perf.report.script', reportScript.absolutePath
     filter {
         includeTestsMatching 'io.github.mbackschat.a12.dm.adapter.perf.PerfScriptContractTest'
         includeTestsMatching 'io.github.mbackschat.a12.dm.adapter.perf.PerfAnchorScriptTest'
         includeTestsMatching 'io.github.mbackschat.a12.dm.adapter.perf.PerfKeysScriptTest'
         includeTestsMatching 'io.github.mbackschat.a12.dm.adapter.perf.PerfTrendScriptTest'
         includeTestsMatching 'io.github.mbackschat.a12.dm.adapter.perf.PerfHistoryScriptTest'
+        includeTestsMatching 'io.github.mbackschat.a12.dm.adapter.perf.PerfReportScriptTest'
         // Reads the perf sources as TEXT, so it belongs on a task that declares them (TESTING-SPEC, "Tests that
         // read repo files at runtime") rather than on :adapter:test, where the declaration would re-run the whole
         // suite on any perf edit — and omitting it would let the guard go up-to-date into a false green.
@@ -400,6 +405,7 @@ tasks.register('perfScriptGuardTest', Test) {
     inputs.file(keysScript)
     inputs.file(trendScript)
     inputs.file(historyScript)
+    inputs.file(reportScript)
     inputs.dir(file('src/test/kotlin/io/github/mbackschat/a12/dm/adapter/perf'))
         .withPropertyName('perfSources')
 }
