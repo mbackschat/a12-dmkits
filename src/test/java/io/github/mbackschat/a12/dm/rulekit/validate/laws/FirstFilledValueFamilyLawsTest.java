@@ -3,7 +3,9 @@ package io.github.mbackschat.a12.dm.rulekit.validate.laws;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.function.Consumer;
 
 import org.junit.jupiter.api.Test;
 
@@ -50,7 +52,18 @@ class FirstFilledValueFamilyLawsTest {
                     .dateFragmentField("SeasonMonth", f -> f.fragmentFormat("MM"))
                     .dateField("StocktakeYear", d -> d.format("yyyy"))
                     .dateFragmentField("ReportingYear", f -> f.fragmentFormat("yyyy"))
-                    .dateField("AuditedOn", d -> d.format("dd.MM.yyyy")))
+                    .dateField("AuditedOn", d -> d.format("dd.MM.yyyy"))
+                    // The rest of the temporal family. TIME has exactly one legal declared format; DATE_TIME
+                    // has two — see theLegalFormatSetPerTemporalKindIsAWhitelist.
+                    .timeField("OpensAt", t -> t.format("HH:mm:ss"))
+                    .timeField("ClosesAt", t -> t.format("HH:mm:ss"))
+                    .timeField("ShiftEnd", t -> t.format("HH:mm:ss"))
+                    .dateTimeField("ReceivedAt", d -> d.format("yyyy-MM-dd'T'HH:mm:ss"))
+                    .dateTimeField("ShippedAt", d -> d.format("yyyy-MM-dd'T'HH:mm:ss"))
+                    // A DATE_TIME may ALSO be declared time-only (KERNEL-FINDINGS §6, probe-enumerated
+                    // 2026-06-26). That second legal format is what makes the discrimination authorable off
+                    // the DATE/DATE_FRAGMENT pair — and it shares its format string with a TIME field.
+                    .dateTimeField("ClockedAt", d -> d.format("HH:mm:ss")))
             .build().toJson();
 
     // ── the temporal gate: declared FORMAT, not kind ───────────────────────────────────────────────
@@ -105,6 +118,109 @@ class FirstFilledValueFamilyLawsTest {
                         + "neither");
     }
 
+    /**
+     * The legal declared-format set per temporal kind — the enumeration that says WHERE the format-vs-kind
+     * discrimination can even be run.
+     *
+     * <p>Re-measured here rather than assumed, because the first version of this file assumed it and got it
+     * wrong in the direction that matters: it probed six {@code TIME} and five {@code DATE_TIME} candidates,
+     * saw one acceptance each, and concluded "exactly one format per kind, so the discrimination is
+     * unauthorable outside DATE/DATE_FRAGMENT". That is a completeness claim drawn from a sample, and the
+     * sample simply missed a legal value — {@code DATE_TIME} also accepts the degenerate <b>time-only</b>
+     * {@code HH:mm:ss}, which this repository had already probe-enumerated in KERNEL-FINDINGS §6 on
+     * 2026-06-26. The second format is exactly what makes
+     * {@link #theFormatKeyingHoldsOnASecondKindPairSharingOneFormat} authorable.
+     *
+     * <p>{@code DATE} and {@code DATE_FRAGMENT} carry richer sets still (KERNEL-FINDINGS: {@code yyyy-MM-dd},
+     * {@code dd.MM.yyyy}, {@code yyyy}, {@code yyyy-MM}, {@code yyyyMM}, {@code MM}); this test pins the two
+     * kinds whose sets are small enough to enumerate exhaustively against a candidate list, which is what the
+     * bounding argument rests on.
+     */
+    @Test
+    void theLegalFormatSetPerTemporalKindIsAWhitelist() {
+        Map<String, String> actual = new LinkedHashMap<>();
+        for (String format : List.of("HH:mm:ss", "HH:mm", "HH", "H:mm:ss", "hh:mm:ss a", "HH:mm:ss.SSS")) {
+            actual.put("TIME " + format, modelVerdict(g -> g.timeField("T", t -> t.format(format))));
+        }
+        for (String format : List.of("yyyy-MM-dd'T'HH:mm:ss", "HH:mm:ss", "yyyy-MM-dd HH:mm:ss",
+                "dd.MM.yyyy'T'HH:mm:ss", "MM/dd/yyyy'T'HH:mm:ss", "yyyy-MM-dd'T'HH:mm",
+                "yyyy-MM-dd'T'HH:mm:ss.SSS")) {
+            actual.put("DATE_TIME " + format, modelVerdict(g -> g.dateTimeField("D", d -> d.format(format))));
+        }
+
+        Map<String, String> expected = new LinkedHashMap<>();
+        expected.put("TIME HH:mm:ss", "model accepted");
+        expected.put("TIME HH:mm", INVALID_FORMAT);
+        expected.put("TIME HH", INVALID_FORMAT);
+        expected.put("TIME H:mm:ss", INVALID_FORMAT);
+        expected.put("TIME hh:mm:ss a", INVALID_FORMAT);
+        expected.put("TIME HH:mm:ss.SSS", INVALID_FORMAT);
+        // TWO legal DATE_TIME formats, not one — the correction this test exists to pin.
+        expected.put("DATE_TIME yyyy-MM-dd'T'HH:mm:ss", "model accepted");
+        expected.put("DATE_TIME HH:mm:ss", "model accepted");
+        expected.put("DATE_TIME yyyy-MM-dd HH:mm:ss", INVALID_FORMAT);
+        expected.put("DATE_TIME dd.MM.yyyy'T'HH:mm:ss", INVALID_FORMAT);
+        expected.put("DATE_TIME MM/dd/yyyy'T'HH:mm:ss", INVALID_FORMAT);
+        expected.put("DATE_TIME yyyy-MM-dd'T'HH:mm", INVALID_FORMAT);
+        expected.put("DATE_TIME yyyy-MM-dd'T'HH:mm:ss.SSS", INVALID_FORMAT);
+        assertEquals(expected, actual,
+                "TIME admits one declared format and DATE_TIME admits two — the second DATE_TIME format is what "
+                        + "keeps the format-vs-kind discrimination askable outside the DATE/DATE_FRAGMENT pair");
+    }
+
+    /**
+     * THE independent witness: format-keying, measured on a second kind pair that is nothing like the first.
+     *
+     * <p>{@link #theTemporalGateKeysOnTheDeclaredFormatNotTheKind} establishes the rule on {@code DATE} +
+     * {@code DATE_FRAGMENT} — the closest pair in the family, since a fragment IS a partial date, so a sceptic
+     * can fairly ask whether the kernel simply treats those two as one type. {@code TIME} and {@code DATE_TIME}
+     * are not plausibly one type, and because {@code DATE_TIME} admits the time-only {@code HH:mm:ss} they can
+     * be made to <b>share a declared format string exactly</b>. That gives both discriminating rows on a fresh
+     * pair:
+     *
+     * <ul>
+     *   <li><b>Same kind, two formats</b> — two {@code DATE_TIME} fields, one ISO and one time-only.</li>
+     *   <li><b>Two kinds, one format</b> — a {@code TIME} and a {@code DATE_TIME}, both {@code HH:mm:ss}.</li>
+     * </ul>
+     *
+     * <p>Each operand also appears alone against the same comparison, so a refusal cannot be charged to the
+     * comparison rather than to the operand list.
+     */
+    @Test
+    void theFormatKeyingHoldsOnASecondKindPairSharingOneFormat() {
+        Map<String, String> actual = new LinkedHashMap<>();
+        actual.put("TWO KINDS, one shared format (TIME HH:mm:ss + DATE_TIME HH:mm:ss)", verdict("OpensAt",
+                "FirstFilledValue(OpensAt, ClockedAt) == [ShiftEnd]"));
+        actual.put("ONE KIND, two formats (DATE_TIME ISO + DATE_TIME HH:mm:ss)", verdict("ReceivedAt",
+                "FirstFilledValue(ReceivedAt, ClockedAt) == Now"));
+        actual.put("TIME + TIME, one format — control", verdict("OpensAt",
+                "FirstFilledValue(OpensAt, ClosesAt) == [ShiftEnd]"));
+        actual.put("DATE_TIME + DATE_TIME, one format — control", verdict("ReceivedAt",
+                "FirstFilledValue(ReceivedAt, ShippedAt) == Now"));
+        actual.put("TIME + DATE_TIME ISO — two kinds AND two formats, confounded", verdict("OpensAt",
+                "FirstFilledValue(OpensAt, ReceivedAt) == [ShiftEnd]"));
+        actual.put("[TIME] == [TIME] — operand control", verdict("OpensAt", "[OpensAt] == [ShiftEnd]"));
+        actual.put("[DATE_TIME HH:mm:ss] == [TIME] — operand control", verdict("ClockedAt",
+                "[ClockedAt] == [ShiftEnd]"));
+        actual.put("[DATE_TIME ISO] == Now — operand control", verdict("ReceivedAt", "[ReceivedAt] == Now"));
+
+        Map<String, String> expected = new LinkedHashMap<>();
+        expected.put("TWO KINDS, one shared format (TIME HH:mm:ss + DATE_TIME HH:mm:ss)", "admitted");
+        expected.put("ONE KIND, two formats (DATE_TIME ISO + DATE_TIME HH:mm:ss)",
+                "MVK_VARYING_TYPES_NOT_ALLOWED");
+        expected.put("TIME + TIME, one format — control", "admitted");
+        expected.put("DATE_TIME + DATE_TIME, one format — control", "admitted");
+        expected.put("TIME + DATE_TIME ISO — two kinds AND two formats, confounded",
+                "MVK_VARYING_TYPES_NOT_ALLOWED");
+        expected.put("[TIME] == [TIME] — operand control", "admitted");
+        expected.put("[DATE_TIME HH:mm:ss] == [TIME] — operand control", "admitted");
+        expected.put("[DATE_TIME ISO] == Now — operand control", "admitted");
+        assertEquals(expected, actual,
+                "on a pair no one would call one type, two kinds at one format admit and one kind at two "
+                        + "formats refuses — the rule is the declared format, and it is not an artifact of "
+                        + "DATE and DATE_FRAGMENT being neighbours");
+    }
+
     // ── the string-side family, which the catalog had right ─────────────────────────────────────────
 
     @Test
@@ -144,10 +260,29 @@ class FirstFilledValueFamilyLawsTest {
                 "a Confirm operand draws its own class, so the varying-types code is not a catch-all");
     }
 
+    /** The kernel's model-level refusal of a declared temporal format, which carries no {@code MVK_} code. */
+    private static final String INVALID_FORMAT = "The date format is invalid.";
+
+    /**
+     * Whether a MODEL stands at all, measured with a trivially valid rule so the verdict is about the field's
+     * declared format and nothing else. A format refusal fires here, before any operand list is considered.
+     */
+    private static String modelVerdict(Consumer<DocumentModelDraft.GroupBuilder> field) {
+        String model = DocumentModelDraft.named("probe").locale("en_US")
+                .rootGroup("Probe", g -> {
+                    field.accept(g);
+                    g.field("Marker", FieldKind.STRING);
+                })
+                .build().toJson();
+        ValidationResult r = KernelLaws.checkModel(model, "/Probe", "../Marker", "[Marker] == \"x\"");
+        return r.ok() ? "model accepted"
+                : r.diagnostics().get(0).summary().replaceFirst("^Field with path '[^']*': ", "");
+    }
+
     /** {@code admitted}, or the COMPLETE emitted code list — a partial list would hide a co-firing gate. */
     private static String verdict(String errorField, String condition) {
         ValidationResult r = KernelLaws.checkModel(MODEL, "/Item", "../" + errorField, condition);
         return r.ok() ? "admitted" : String.join(" + ", r.diagnostics().stream()
-                .map(d -> d.code().orElse("(no code)")).toList());
+                .map(d -> d.code().orElse("(no code: " + d.summary() + ")")).map(Object::toString).toList());
     }
 }
