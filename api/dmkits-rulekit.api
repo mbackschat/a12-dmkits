@@ -1641,11 +1641,12 @@ public record io.github.mbackschat.a12.dm.rulekit.dsl.FieldPresenceCondition imp
   public java.lang.String operatorId()
   public final java.lang.String toString()
 
-public record io.github.mbackschat.a12.dm.rulekit.dsl.FieldRef implements io.github.mbackschat.a12.dm.rulekit.dsl.FieldOperand, io.github.mbackschat.a12.dm.rulekit.dsl.GroupListOperand, io.github.mbackschat.a12.dm.rulekit.dsl.NumericTextSource, io.github.mbackschat.a12.dm.rulekit.dsl.TemporalComponent
+public record io.github.mbackschat.a12.dm.rulekit.dsl.FieldRef implements io.github.mbackschat.a12.dm.core.HasEntityPath, io.github.mbackschat.a12.dm.rulekit.dsl.FieldOperand, io.github.mbackschat.a12.dm.rulekit.dsl.GroupListOperand, io.github.mbackschat.a12.dm.rulekit.dsl.NumericTextSource, io.github.mbackschat.a12.dm.rulekit.dsl.TemporalComponent
+  public FieldRef(io.github.mbackschat.a12.dm.core.EntityPath, io.github.mbackschat.a12.dm.core.ValueKind, io.github.mbackschat.a12.dm.rulekit.dsl.PathStyle, boolean)
   public FieldRef(java.lang.String, io.github.mbackschat.a12.dm.core.ValueKind)
   public FieldRef(java.lang.String, io.github.mbackschat.a12.dm.core.ValueKind, io.github.mbackschat.a12.dm.rulekit.dsl.PathStyle)
-  public FieldRef(java.lang.String, io.github.mbackschat.a12.dm.core.ValueKind, io.github.mbackschat.a12.dm.rulekit.dsl.PathStyle, boolean)
   public boolean correlated()
+  public io.github.mbackschat.a12.dm.core.EntityPath entityPath()
   public final boolean equals(java.lang.Object)
   public io.github.mbackschat.a12.dm.rulekit.dsl.Calculation expression()
   public io.github.mbackschat.a12.dm.rulekit.dsl.FieldRef field()
@@ -1655,7 +1656,7 @@ public record io.github.mbackschat.a12.dm.rulekit.dsl.FieldRef implements io.git
   public io.github.mbackschat.a12.dm.core.ValueKind kind()
   public io.github.mbackschat.a12.dm.rulekit.dsl.Condition notFilled()
   public io.github.mbackschat.a12.dm.rulekit.dsl.FieldRef outer()
-  public java.lang.String path()
+  public io.github.mbackschat.a12.dm.core.EntityPath path()
   public java.lang.String renderedPath()
   public io.github.mbackschat.a12.dm.rulekit.dsl.SemanticIndex semanticIndex(io.github.mbackschat.a12.dm.rulekit.dsl.FieldRef)
   public io.github.mbackschat.a12.dm.rulekit.dsl.SemanticIndex semanticIndex(java.lang.String)
@@ -1831,13 +1832,14 @@ public enum io.github.mbackschat.a12.dm.rulekit.dsl.GroupQuantifier
   public static io.github.mbackschat.a12.dm.rulekit.dsl.GroupQuantifier valueOf(java.lang.String)
   public static io.github.mbackschat.a12.dm.rulekit.dsl.GroupQuantifier[] values()
 
-public record io.github.mbackschat.a12.dm.rulekit.dsl.GroupRef implements io.github.mbackschat.a12.dm.rulekit.dsl.GroupReference
-  public GroupRef(java.lang.String, boolean)
+public record io.github.mbackschat.a12.dm.rulekit.dsl.GroupRef implements io.github.mbackschat.a12.dm.core.HasEntityPath, io.github.mbackschat.a12.dm.rulekit.dsl.GroupReference
+  public GroupRef(io.github.mbackschat.a12.dm.core.EntityPath, boolean)
+  public io.github.mbackschat.a12.dm.core.EntityPath entityPath()
   public final boolean equals(java.lang.Object)
   public io.github.mbackschat.a12.dm.rulekit.dsl.Condition filled()
   public final int hashCode()
   public io.github.mbackschat.a12.dm.rulekit.dsl.Condition notFilled()
-  public java.lang.String path()
+  public io.github.mbackschat.a12.dm.core.EntityPath path()
   public io.github.mbackschat.a12.dm.rulekit.dsl.GroupRef ref()
   public boolean repeating()
   public final java.lang.String toString()

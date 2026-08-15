@@ -97,19 +97,42 @@ dependencies {
 
 tasks.named('test') {
     useJUnitPlatform()
-    // `-Pfast` drops the guard prerequisites for the dev inner loop — the same lever `:adapter:test` and
-    // `:cli:test` carry, and for the same reason: `--tests` filters only the test task, NOT its dependencies,
-    // so a single law-test run paid for all eight guards on every iteration. A full run (no -Pfast) still
-    // drives them; the checkpoint gate and CI are unchanged.
+    // `-Pfast` drops the EXPENSIVE guard prerequisites for the dev inner loop, because `--tests` filters only
+    // the test task and NOT its dependencies, so a single law-test run otherwise paid for every guard.
+    //
+    // A GUARD CHEAP ENOUGH THAT DROPPING IT SAVES NOTHING IS NEVER DROPPABLE. Measured on this machine
+    // (2026-08-15, first green non-fast root run, per-task test time from the result XMLs):
+    //
+    //   interpreterReleaseGuardTest 77.2s | docGuardTest 51.2s | deliveryGuardTest 8.8s   <- droppable, 137.2s
+    //   leakGuardTest 3.6s | catalogProseReviewGuardTest 1.5s | jsonConstructionGuardTest 0.4s
+    //   apiGuardTest 0.2s | releaseGapGuardTest 0.1s                                       <- always on, 5.8s
+    //
+    // for reference the 1794-test suite itself is 17.0s. Dropping the always-on five saves 4% of guard time
+    // and costs the whole false-green class: each of them binds a COMMITTED ARTIFACT to the source it must
+    // mirror (API goldens, catalog prose-review digests, the JSON-construction classification, the release-gap
+    // ledger), so when one is skipped nothing else notices the artifact went stale. They also declare their
+    // inputs, so in the common inner-loop case (editing a test) they are UP-TO-DATE and cost nothing; they run
+    // exactly when the thing they mirror could have moved.
+    //
+    // This split is not decoration: `-Pfast` silently removed `apiGuardTest` from the graph across the whole
+    // DG37 landing, so `EntityPath`/`HasEntityPath` and the `FieldRef`/`GroupRef` component change shipped
+    // against stale goldens and the catalog prose-review digest went stale beside them. Both were invisible
+    // to every run made that day. Locked by GateTierWiringTest.theCheapGuardsAreNotBehindTheFastLever;
+    // measurements + the retired remembering-rule it replaces: docs/TESTING-SPEC.md "Test tiers".
+    dependsOn 'jsonConstructionGuardTest'
+    dependsOn 'apiGuardTest'
+    dependsOn 'catalogProseReviewGuardTest'
+    dependsOn 'releaseGapGuardTest'
+    dependsOn 'leakGuardTest'
     if (!project.hasProperty('fast')) {
         dependsOn 'docGuardTest'
-        dependsOn 'jsonConstructionGuardTest'
-        dependsOn 'apiGuardTest'
         dependsOn 'interpreterReleaseGuardTest'
-        dependsOn 'catalogProseReviewGuardTest'
         dependsOn 'deliveryGuardTest'
-        dependsOn 'releaseGapGuardTest'
-        dependsOn 'leakGuardTest'
+    } else {
+        doFirst {
+            logger.lifecycle('-Pfast: SKIPPING docGuardTest, interpreterReleaseGuardTest, deliveryGuardTest '
+                    + '— this run is NOT the estate. Re-run without -Pfast before treating green as a checkpoint.')
+        }
     }
     // Repo-file-reading guards run in input-declared dedicated tasks; keep them out of the broad suite so a
     // doc/marker/golden/script-only edit cannot leave a stale-green `test` (TESTING-SPEC "Tests that read

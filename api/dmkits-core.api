@@ -83,9 +83,25 @@ public enum io.github.mbackschat.a12.dm.core.ElementType
   public static io.github.mbackschat.a12.dm.core.ElementType[] values()
   public java.lang.String wireName()
 
+public record io.github.mbackschat.a12.dm.core.EntityPath
+  public EntityPath(java.util.List<java.lang.String>)
+  public final boolean equals(java.lang.Object)
+  public final int hashCode()
+  public boolean isInside(io.github.mbackschat.a12.dm.core.EntityPath)
+  public boolean isStrictlyInside(io.github.mbackschat.a12.dm.core.EntityPath)
+  public static io.github.mbackschat.a12.dm.core.EntityPath of(java.lang.String)
+  public java.util.List<java.lang.String> segments()
+  public java.lang.String toString()
+  public java.lang.String value()
+
 public final class io.github.mbackschat.a12.dm.core.EntityPaths
   public static boolean isInside(java.lang.String, java.lang.String)
   public static boolean isStrictlyInside(java.lang.String, java.lang.String)
+
+public interface io.github.mbackschat.a12.dm.core.HasEntityPath
+  public abstract io.github.mbackschat.a12.dm.core.EntityPath entityPath()
+  public default boolean isInside(io.github.mbackschat.a12.dm.core.HasEntityPath)
+  public default boolean isStrictlyInside(io.github.mbackschat.a12.dm.core.HasEntityPath)
 
 public final class io.github.mbackschat.a12.dm.core.KernelPatternPolicy
   public static java.util.Optional<io.github.mbackschat.a12.dm.core.KernelPatternPolicy.Rejection> rejection(java.lang.String)
