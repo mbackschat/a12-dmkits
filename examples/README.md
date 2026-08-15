@@ -15,13 +15,14 @@ The demos use the bare `dmtool` and read their sample models from [`models/`](mo
 
 The [`profiles/`](profiles/) directory carries the three approved domain-blind performance-calibration artifacts used by the profile-driven synthesis and interpreter scalability workflow. They are current-format `profile′` outputs from own-domain synthesized models, not copies or profiles of private source models.
 
-**What a green `verify-demos.sh` proves, and what it does not (measured 2026-08-15).** The gate proves every
-documented command still produces the documented output — it is not a coverage estate, and the fixtures decide its
-reach. Concretely: across all nine models in [`models/`](models/) there is exactly **one** entity-list quantifier,
-`AllFieldsFilled(OrderDate, DeliveryDate)`, and **no group operand anywhere**. So the whole typed group-scope
-surface (`Sum(Group*)`, a group under the fill quantifiers, `FieldValuesNotUnique(Group)`, a mixed field+group
-list) is invisible to this gate: a regression there passes it green. Worth knowing before reading a green run as
-reassurance about a change in that area — and worth fixing by adding a fixture, not by trusting the gate harder.
+**What a green `verify-demos.sh` proves, and what it does not.** The gate proves every documented command still
+produces the documented output — it is not a coverage estate, and the fixtures decide its reach. That reach is
+worth knowing before reading a green run as reassurance: measured on 2026-08-15, the committed models in
+[`models/`](models/) carried exactly **one** entity-list quantifier between them and **no group operand at all**,
+so the whole typed group-scope surface passed the gate green whatever it did. [`cli-group-operands.md`](cli-group-operands.md)
+closes that particular hole by authoring the shapes at run time rather than by adding a fixture rule. The general
+point stands: when a change lands in an area, check whether any demo actually exercises it instead of trusting the
+green.
 
 ## Demos in this folder
 
@@ -31,6 +32,7 @@ Thematic demos that together exercise **every verb** + the cross-cutting feature
 |---|---|---|
 | [`cli-tour.md`](cli-tour.md) | **read one model** | `model check`/`model describe`/`model read` · `model usage` (the whole-model reference audit) · `rule read`/`rule explain`/`rule format` (kernel-canonical text + EN↔DE)/`rule check` · `field read`/`group read`/`config read` |
 | [`cli-discover.md`](cli-discover.md) | **the self-describing surface** | `manifest` (every verb) · `operators`(+`<id>`) · `patterns`(+`<id>`/scaffold) · `diagnostics`(+`<code>`) · `schema result`/`schema <target> <op>` · `profile extract`/`synthesize`/`compare` |
+| [`cli-group-operands.md`](cli-group-operands.md) | **a rule operand that is a GROUP** | `group read` · `rule check` (the star's per-row vs across-rows meaning, and the negative-quantifier refusal) · `rule add`/`field add`/`model eval` (the rule follows the group when it gains a field) · `where-used` vs `model usage` (exactness vs reachability, and why only one answers "is this safe to delete?") |
 | [`cli-review.md`](cli-review.md) | **review & comprehend** | `model report` (the glossed comprehension catalog — every rule in plain language + polarity + its stored message + the dead-field set) · `model diff` (the independently workspace-bound, structural, impact-ranked semantic diff of complete field/group/rule/computation/typedef/config envelopes plus authored include/import references — incl. typed delta values, reader-sensitive removals/retypes, group repeatability/order, first-class `COMPUTATION_CHANGED`, **`POLARITY_INVERTED`**, and classified non-inverted rule edits) · the `--text` impact-sorted human view |
 | [`cli-workspace.md`](cli-workspace.md) | **multi-file & workspaces** | `model info` (one model's references resolved to files) · `workspace list` (cross-model "ls" — includes/imports resolved to files) · `workspace graph` (the sub/supertype inheritance hierarchy) · `workspace roles` (the access-control lint — resolve each model's `roles` against roles.yaml) |
 | [`cli-edit-loop.md`](cli-edit-loop.md) | **rulekit write/edit** | `where-used` · `rule add`/`rule modify`/`rule remove` · `computation add`/`read`/`explain`/`modify`/`remove` · `batch` (the F8 re-express loop; `--dry-run` preview vs in-place write via the envelope's `outcome`/`written`) · **`;;` comments** (the `comment` key / `--comment`, preserved across a comment-less `modify`) |
