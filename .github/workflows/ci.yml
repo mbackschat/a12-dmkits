@@ -12,6 +12,16 @@ on:
   pull_request:
   workflow_dispatch:
 
+# Supersede, don't finish. A run takes ~53 min while pushes land in bursts, so without this a superseded
+# commit keeps a runner busy long after nobody needs its answer: on 2026-08-14, 16 of 21 CI runs were
+# already obsolete before they completed — 840 billed minutes, 63% of that month's entire Actions spend.
+# Cancelling costs the intermediate commits their green tick; the TIP is what is verified, which is what a
+# batched-push workflow actually depends on. Need a known-green mid-batch commit later (bisect)? Re-run it
+# with workflow_dispatch.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 permissions:
   contents: read
 

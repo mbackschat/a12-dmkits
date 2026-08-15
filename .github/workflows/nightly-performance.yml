@@ -1,7 +1,9 @@
 name: Nightly performance
 
-# Performance-only by design. Every main SHA already runs the deterministic correctness, fuzz, plugin, and
-# Showboat gates in ci.yml; repeating them here adds no coverage and dominates scheduled wall time.
+# Performance-only by design. The deterministic correctness, fuzz, plugin and Showboat gates run in ci.yml;
+# repeating them here adds no coverage and dominates scheduled wall time. Note ci.yml cancels superseded
+# runs, so that cover is per main TIP rather than per main SHA — an intermediate commit in a burst may
+# carry no completed CI run of its own.
 on:
   workflow_dispatch:
   schedule:
