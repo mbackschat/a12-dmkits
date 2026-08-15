@@ -682,7 +682,12 @@ tasks.named('test') {
     inputs.file(generateVersionProperties.map { it.destinationFile })
     // The repo-file-reading guards live in docGuardTest / semanticsMapGuardTest (with the right inputs); keep
     // them OUT of the cacheable main suite so a docs/model-only edit can't invalidate all ~620 tests.
-    rootProject.routeExclusivelyHostedTests(it, dedicatedTestTasks, [:],
+    // `dumpOperatorIndex` runs OperatorIndexGuardTest with `operatorIndex.fix=true`, so it writes
+    // docs/OPERATOR-INDEX.md instead of asserting against it — the same shape as root's `dumpKitApi` over the
+    // API goldens. It owns no class: docGuardTest does, and this lane only re-enters it in fixer mode.
+    rootProject.routeExclusivelyHostedTests(it, dedicatedTestTasks,
+            ['dumpOperatorIndex': 'regenerator over docGuardTest\'s OperatorIndexGuardTest — writes the '
+                    + 'committed index instead of asserting against it'],
             ['mutationTailGuardTest': 'MutationTailSingleSourceTest invokes javac to parse production source, '
                     + 'so tracing it registers jdk.compiler resource bundles that are build tooling, not dmtool '
                     + 'runtime reachability (NativeImageMetadataHygieneTest fails on exactly those globs)'])
