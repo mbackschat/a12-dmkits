@@ -691,7 +691,7 @@ All ratios are **`ratioJava` = interp_median / kernel-Java_median** (the *fair* 
 
 ### Naive baseline (the pre-optimization yardstick — 2026-06-25)
 
-`KernelEdgeTest.ruleCountCrossover`, N=1000 Lines × 5 Subs, median of 8 after 12 warmups; codegen excluded. This is the *before* the optimization catalog (above) is read against:
+`KernelEdgeTest.ruleCountCrossover`, N=1000 Lines × 5 Subs, median of 8 after 12 warmups; codegen excluded. This is the *before* the optimization catalog ([INTERPRETER-PERFORMANCE.md](INTERPRETER-PERFORMANCE.md)) is read against:
 
 | rules | interp | kernel-Groovy | kernel-Java | interp/java |
 |--:|--:|--:|--:|:--:|
@@ -702,7 +702,7 @@ All ratios are **`ratioJava` = interp_median / kernel-Java_median** (the *fair* 
 | 96 | 272.1 ms | 284.7 ms | 274.4 ms | **0.99 ← parity** |
 | 192 | 543.2 ms | 502.9 ms | 414.2 ms | **1.31 ← the naive interpreter LOST here** |
 
-The naive tree-walker reached parity at ~96 rules and **lost at 192** (≈1.31× firing, ≈1.70× low-firing) — the real crossover. The optimization catalog above (indexed `Document`, row-prefix index, the `repsOf` memo, the per-row resolution cache, the lazy-polarity walk, allocation interning) roughly halved the per-operation cost and turned 192 into the ~2–2.5× win in the current run — pushing the interpreter ahead at every count the code generator can run.
+The naive tree-walker reached parity at ~96 rules and **lost at 192** (≈1.31× firing, ≈1.70× low-firing) — the real crossover. The optimization catalog in [INTERPRETER-PERFORMANCE.md](INTERPRETER-PERFORMANCE.md) (indexed `Document`, row-prefix index, the `repsOf` memo, the per-row resolution cache, the lazy-polarity walk, allocation interning) roughly halved the per-operation cost and turned 192 into the ~2–2.5× win in the current run — pushing the interpreter ahead at every count the code generator can run.
 
 ### Checkpoint 2026-08-13 — what the routine tier records once every lane goes through the recording seam
 
