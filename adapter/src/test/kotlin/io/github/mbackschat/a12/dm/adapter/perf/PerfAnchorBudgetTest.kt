@@ -176,4 +176,62 @@ class PerfAnchorBudgetTest {
             AnchorBudget(anchored = emptyMap(), unanchoredIsAFailure = false, tolerance = tolerance, attempts = 2)
         }
     }
+
+    // ── the hosted flag's two tiers (IG137 piece a) ───────────────────────────────────────────────────
+
+    /**
+     * **A breach inside the hosted noise envelope must say so.** The `linux-amd64-ci` class has been measured
+     * producing 2.29x run-to-run spreads on absolute medians for ONE unchanged commit, so a 1.8x breach there is
+     * something identical code has actually done — reporting it in the same words as a 4x breach is what makes a
+     * flag stream unreadable, and an unreadable flag is indistinguishable from no flag.
+     */
+    @Test
+    fun aHostedBreachInsideTheMeasuredSpreadIsMarkedNotAttributable() {
+        val flag = PerfAnchors.hostedFlagFor(breach(accepted = 18.0, anchor = 10.0))
+
+        assertTrue(flag.contains("within the same-commit spread")) { flag }
+        assertTrue(flag.contains("not attributable")) { flag }
+    }
+
+    /** …and one BEYOND it earns the re-measure instruction, which is the whole point of splitting the tiers. */
+    @Test
+    fun aHostedBreachBeyondTheMeasuredSpreadIsMarkedACandidate() {
+        val flag = PerfAnchors.hostedFlagFor(breach(accepted = 40.0, anchor = 10.0))
+
+        assertTrue(flag.contains("BEYOND the same-commit spread")) { flag }
+        assertTrue(flag.contains("re-measure this lane in isolation")) { flag }
+    }
+
+    /**
+     * THE BOUNDARY, asserted from both sides on the same anchor. Without it a classifier that always said
+     * "within" would satisfy the first case and one that always said "BEYOND" the second.
+     */
+    @Test
+    fun theTierBoundaryIsTheWorstMeasuredSameCommitSpread() {
+        val below = PerfAnchors.hostedFlagFor(
+            breach(accepted = 10.0 * (PerfAnchors.HOSTED_SAME_COMMIT_SPREAD - 0.01), anchor = 10.0),
+        )
+        val at = PerfAnchors.hostedFlagFor(
+            breach(accepted = 10.0 * PerfAnchors.HOSTED_SAME_COMMIT_SPREAD, anchor = 10.0),
+        )
+
+        assertTrue(below.contains("within the same-commit spread")) { below }
+        assertTrue(at.contains("BEYOND the same-commit spread")) { at }
+    }
+
+    /**
+     * A failure that is NOT an anchor breach still gets reported, unclassified. The hosted path catches every
+     * throwable from the budget, and a tier claim about something that carries no anchor multiple would be
+     * fabricated.
+     */
+    @Test
+    fun aNonBreachFailureIsReportedWithoutATierClaim() {
+        val flag = PerfAnchors.hostedFlagFor(IllegalStateException("something else went wrong"))
+
+        assertTrue(flag.contains("something else went wrong")) { flag }
+        assertTrue(!flag.contains("same-commit spread")) { "no multiple exists to classify: $flag" }
+    }
+
+    private fun breach(accepted: Double, anchor: Double) =
+        AnchorBreachException("scripted breach", accepted = accepted, anchor = anchor)
 }

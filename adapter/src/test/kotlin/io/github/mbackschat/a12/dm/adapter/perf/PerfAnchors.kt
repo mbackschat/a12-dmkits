@@ -645,14 +645,55 @@ internal object PerfAnchors {
             // over the enum. An absolute time on shared hosted hardware cannot separate a regression from a
             // neighbour's memory traffic, and the number is in the record either way (TimingEnforcement).
             if (enforcement == TimingEnforcement.GATED) throw failure
-            println(
-                "[perf][FLAG] anchor breach reported, not failed on shared hosted hardware — " +
-                    "see TimingEnforcement: ${failure.message}",
-            )
+            println(hostedFlagFor(failure))
             return
         }
         PerfObservations.record(key, accepted, status = "accepted")
     }
+
+    /**
+     * The hosted flag, in TWO TIERS ([IG137](a)).
+     *
+     * **The measurement this rests on, and its limits.** On the `linux-amd64-ci` class the committed record holds
+     * two same-commit triplets. Across the sequential one (`15b3ed0`, 138 shared keys) the *absolute* medians of
+     * identical code span a median of 1.13x, a p90 of 1.85x and a worst of **2.29x** run-to-run; across the
+     * earlier concurrently-dispatched one (`1845f8af`, 34 keys — contended against each other, IF280, so it
+     * overstates) the worst is 1.98x. So identical code on this runner class has actually produced observations
+     * differing by 2.29x, which is why one 1.65x threshold cannot say whether a flag means anything.
+     *
+     * [HOSTED_SAME_COMMIT_SPREAD] is that worst measured figure. Below it a breach is inside what identical code
+     * has been seen to do here and is not attributable; at or above it the observation is outside anything the
+     * record contains for unchanged code, which makes it worth a targeted re-measure. Deliberately a REPORT
+     * boundary and not a bar: the estimate rests on two triplets, one of them contended, and a threshold that
+     * failed a build would need a far stronger basis than that.
+     *
+     * The comparison is conservative in the safe direction — a run-to-run max/min spread is at least as large as
+     * either run's deviation from the true level — so the band over-tolerates rather than crying wolf.
+     */
+    internal fun hostedFlagFor(failure: Throwable): String {
+        val head = "[perf][FLAG] anchor breach reported, not failed on shared hosted hardware — see TimingEnforcement"
+        val breach = failure as? AnchorBreachException
+            ?: return "$head: ${failure.message}"
+        val tier = if (breach.multiple >= HOSTED_SAME_COMMIT_SPREAD) {
+            "BEYOND the same-commit spread this runner class has produced " +
+                "(${"%.2f".format(Locale.ROOT, breach.multiple)}x of anchor, worst measured " +
+                "${"%.2f".format(Locale.ROOT, HOSTED_SAME_COMMIT_SPREAD)}x for UNCHANGED code) — treat as a real " +
+                "candidate and re-measure this lane in isolation before dismissing it"
+        } else {
+            "within the same-commit spread this runner class has produced " +
+                "(${"%.2f".format(Locale.ROOT, breach.multiple)}x of anchor, against " +
+                "${"%.2f".format(Locale.ROOT, HOSTED_SAME_COMMIT_SPREAD)}x measured for UNCHANGED code) — not " +
+                "attributable on its own"
+        }
+        return "$head. Tier: $tier. ${breach.message}"
+    }
+
+    /**
+     * The worst run-to-run spread of absolute medians the committed record holds for ONE commit on a hosted
+     * runner class (`15b3ed0`, three sequential nightly runs, 138 shared keys). See [hostedFlagFor] for what it
+     * does and does not license; re-derive it when the hosted record gains further same-commit runs.
+     */
+    internal const val HOSTED_SAME_COMMIT_SPREAD = 2.29
 }
 
 /**
@@ -672,6 +713,25 @@ internal object PerfAnchors {
  * unconditional `perf.anchor.required` was introduced to remove.
  */
 internal class UnanchoredObservationException(message: String) : IllegalStateException(message)
+
+/**
+ * An absolute-anchor breach, carrying the two numbers that produced it.
+ *
+ * **Why a type rather than the `check` it replaced.** On shared hosted hardware a breach is FLAGGED rather than
+ * failed, and one flag line said the same thing at every size — which is the whole of [IG137](a): a single
+ * threshold cannot separate drift from noise on a runner class whose *same commit* has been measured spanning
+ * over 2x. Classifying the flag needs the accepted median and the anchor at the reporting site, and reading them
+ * back out of a formatted message would be the kind of coupling that rots on the next wording change.
+ */
+internal class AnchorBreachException(
+    message: String,
+    val accepted: Double,
+    val anchor: Double,
+) : IllegalStateException(message) {
+
+    /** How far above its anchor this observation sits — the quantity the hosted tier classifies. */
+    val multiple: Double get() = accepted / anchor
+}
 
 internal class AnchorBudget(
     /** `null` when this runner class has no committed block yet — reported, never failed (see the class doc). */
@@ -720,14 +780,19 @@ internal class AnchorBudget(
         val seen = mutableListOf(observedMs)
         while (seen.size < attempts) seen += remeasure()
         val accepted = seen.sorted()[seen.size / 2]
-        check(accepted <= ceiling) {
-            "${key.identityLabel} at n=${key.n} (${key.lane}): ${key.engine} ${key.clock}-clock median " +
-                "${ms(accepted)} exceeds ${ms(ceiling)} — this runner class (${PerfEnvironment.describe}) is " +
-                "anchored at ${ms(anchor)} and the tolerance is $tolerance. Attempts: " +
-                seen.joinToString { ms(it) } +
-                "; acceptance is their median, so one contended slice cannot fail it and a real slowdown cannot " +
-                "pass. A growth ratio cannot see this class of regression at all — it is unchanged by a uniform " +
-                "slowdown. If the new cost is intended, refresh the anchor (scripts/perf-anchor.sh) in the same commit."
+        if (accepted > ceiling) {
+            throw AnchorBreachException(
+                "${key.identityLabel} at n=${key.n} (${key.lane}): ${key.engine} ${key.clock}-clock median " +
+                    "${ms(accepted)} exceeds ${ms(ceiling)} — this runner class (${PerfEnvironment.describe}) is " +
+                    "anchored at ${ms(anchor)} and the tolerance is $tolerance. Attempts: " +
+                    seen.joinToString { ms(it) } +
+                    "; acceptance is their median, so one contended slice cannot fail it and a real slowdown " +
+                    "cannot pass. A growth ratio cannot see this class of regression at all — it is unchanged by " +
+                    "a uniform slowdown. If the new cost is intended, refresh the anchor " +
+                    "(scripts/perf-anchor.sh) in the same commit.",
+                accepted = accepted,
+                anchor = anchor,
+            )
         }
         return accepted
     }

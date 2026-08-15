@@ -565,6 +565,19 @@ The catalog must favor **non-obvious** combinations (nesting × aggregation × c
 ## Results log
 
 
+### Checkpoint 2026-08-15 — what ONE unchanged commit costs on a hosted runner, measured from the committed record
+
+Read from `perf-results/linux-amd64-ci/` only; nothing was run for it. The record holds two triplets of nightly runs of a **single** commit, which is the only shape that can answer "how far apart can identical code land here?".
+
+| commit | runs | shared keys | median spread | p90 | worst |
+|---|---|---|---|---|---|
+| `15b3ed0` (sequential, ~10 min apart) | 3 | 138 | 1.13× | 1.85× | **2.29×** |
+| `1845f8af` (concurrently dispatched — contended against each other, [IF280](INTERPRETER-FINDINGS.md#if280)) | 3 | 34 | 1.18× | 1.53× | 1.98× |
+
+Spread is each key's max/min of **absolute medians** across the triplet. The concurrent triplet is the *lower* of the two worsts, which is the opposite of what its contention would suggest and is why the sequential figure is the one used: 138 keys against 34 is a far better sample of the tail, and the concurrent set simply never drew its own worst case.
+
+**What it licensed.** The 2.29× is the boundary the hosted flag's two tiers now split on ([IG137](INTERPRETER-GAPS.md) piece a) — below it, a breach is inside what identical code has actually done here; at or above it, the observation is outside anything the record contains for unchanged code. **Recall limits, stated because the figure is load-bearing:** two triplets, one contended, one runner class, and a max/min statistic that is at least as large as either run's own deviation from the true level — so the band over-tolerates by construction. It is a report boundary and deliberately not a bar.
+
 ### Checkpoint 2026-08-15 — the starred-group expansion lane, and what its own guard refused
 
 **The lane.** `GroupStarExpansionPerfTest` measures `NumberOfFilledFields(/Order/Items*)` over a four-field repeatable group, on the local darwin-aarch64 machine, single-fork, each gate run alone. **Six runs of the same commit**, reported as a set because no single one of them is the number:
