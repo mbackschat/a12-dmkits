@@ -92,6 +92,26 @@ class TemporalLiteralFormatGateLawsTest {
         rejects("Date(DayFromDate(\"10:30:45\"), \"01\", \"1963\")", NO_CONST);
     }
 
+    /**
+     * THE VACUITY CONTROL, and it is the row this class shipped without.
+     *
+     * <p>Every other assertion here is a refusal. That whole matrix would pass unchanged if the surrounding
+     * construction were broken rather than the literal — a wrong field, an inadmissible comparison, a
+     * mis-built {@code Date(...)} — because a broken shape is refused too. The specific codes make that
+     * unlikely (a bad entity draws {@code MVK_INVALID_ENTITY}, not {@code MVK_NO_CONST}), but "unlikely" is
+     * not a control. This row shows the identical construction with a FIELD in the extractor's operand slot is
+     * <b>admitted</b>, so the fifteen refusals above are attributable to the quoted literal and to nothing else.
+     *
+     * <p>Added 2026-08-15 after a12-kernel-lean observed that our shared {@code MVK_NO_GROUPS_ALLOWED} sweeps
+     * lean on their ACCEPT rows for exactly this reason and that neither side had articulated why. A table of
+     * nothing but refusals is satisfied equally by a fixture that cannot do anything at all.
+     */
+    @Test
+    void theSameConstructionWithAFieldOperandIsAdmitted() {
+        KernelLaws.acceptsOrder("/Order", "../CustomerName",
+                "FieldFilled(CustomerName) And [DeliveryDate] > Date(\"01\", \"01\", YearFromDate(OrderDate))");
+    }
+
     private static void rejects(String comparand, String code) {
         KernelLaws.rejectsOrder("/Order", "../CustomerName",
                 "FieldFilled(CustomerName) And [DeliveryDate] > " + comparand, code);
