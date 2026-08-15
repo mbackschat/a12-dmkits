@@ -55,8 +55,8 @@ class GroupEditorTest {
         // relative navigation off a group editor → the SAME pure typed refs as m.num(...) / m.str(...)
         GroupEditor addonsEd = s.group("/Subscription/Addons");
         assertEquals("/Subscription/Addons", addonsEd.ref().path().value());
-        assertEquals("/Subscription/Addons/MonthlyFee", addonsEd.num("MonthlyFee").field().path());
-        assertEquals("/Subscription/Addons/Name", addonsEd.str("Name").field().path());
+        assertEquals("/Subscription/Addons/MonthlyFee", addonsEd.num("MonthlyFee").field().path().value());
+        assertEquals("/Subscription/Addons/Name", addonsEd.str("Name").field().path().value());
     }
 
     @Test
@@ -201,17 +201,17 @@ class GroupEditorTest {
         EditSession s = EditSession.read(Fixtures.orderJson());
         GroupEditor order = s.group("/Order");
 
-        assertEquals("/Order/ExpressShipping", order.bool("ExpressShipping").field().path());
-        assertEquals("/Order/Priority", order.enumOf("Priority").field().path());
-        assertEquals("/Order/OrderDate", order.date("OrderDate").field().path());
-        assertEquals("/Order/PickupTime", order.time("PickupTime").field().path());
-        assertEquals("/Order/ScheduledAt", order.dateTime("ScheduledAt").field().path());
-        assertEquals("/Order/ExpressShipping", order.field("ExpressShipping").path()); // kind-agnostic
+        assertEquals("/Order/ExpressShipping", order.bool("ExpressShipping").field().path().value());
+        assertEquals("/Order/Priority", order.enumOf("Priority").field().path().value());
+        assertEquals("/Order/OrderDate", order.date("OrderDate").field().path().value());
+        assertEquals("/Order/PickupTime", order.time("PickupTime").field().path().value());
+        assertEquals("/Order/ScheduledAt", order.dateTime("ScheduledAt").field().path().value());
+        assertEquals("/Order/ExpressShipping", order.field("ExpressShipping").path().value()); // kind-agnostic
 
         // confirm fields live in the subscription fixture
         ConfirmRef terms = EditSession.read(Fixtures.subscriptionJson())
                 .group("/Subscription").confirm("TermsAccepted");
-        assertEquals("/Subscription/TermsAccepted", terms.field().path());
+        assertEquals("/Subscription/TermsAccepted", terms.field().path().value());
     }
 
     @Test
@@ -302,7 +302,7 @@ class GroupEditorTest {
         s.validate();
 
         // the builders return real, usable handles (not strings) — the whole point of refs-as-currency
-        assertEquals("/Subscription/Billing/Surcharge", surcharge.field().path());
+        assertEquals("/Subscription/Billing/Surcharge", surcharge.field().path().value());
         assertEquals("/Subscription/ShippingAddress", shipping.path().value());
 
         ModelDocument result = ModelDocument.read(s.toJson());

@@ -72,7 +72,7 @@ object TypedRules {
     fun def(comp: Computation): ComputationDef {
         val r = DslRenderer(ConditionLanguage.EN, comp.groupPath())
         return ComputationDef(
-            comp.computedField().path(), comp.groupPath(),
+            comp.computedField().path().value(), comp.groupPath(),
             comp.alternatives().map {
                 ComputationAlternative(
                     it.precondition().map { p -> r.render(p) }.orElse(null),

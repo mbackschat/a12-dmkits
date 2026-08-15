@@ -96,7 +96,7 @@ final class ModelReadCommand extends BaseCommand {
     private static void putComputationOutcome(ObjectNode node, ReadComputation read) {
         if (read instanceof ReadComputation.Converted converted) {
             node.put("converted", true);
-            node.put("calculatedField", converted.computation().computedField().path());
+            node.put("calculatedField", converted.computation().computedField().path().value());
         } else if (read instanceof ReadComputation.Opaque opaque) {
             node.put("converted", false);
             node.put("reason", opaque.reason());

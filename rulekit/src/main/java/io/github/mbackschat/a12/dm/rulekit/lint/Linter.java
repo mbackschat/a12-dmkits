@@ -121,8 +121,8 @@ public final class Linter {
         if (op instanceof Concatenation concat) {
             for (Calculation part : concat.parts()) {
                 if (part instanceof FieldValue fv && fv.field().kind() == ValueKind.STRING
-                        && !guarded.contains(fv.field().path()) && !out.contains(fv.field().path())) {
-                    out.add(fv.field().path());
+                        && !guarded.contains(fv.field().path().value()) && !out.contains(fv.field().path().value())) {
+                    out.add(fv.field().path().value());
                 }
             }
         }
@@ -150,9 +150,9 @@ public final class Linter {
     public List<Diagnostic> lint(BoundModel model, Rule rule) {
         String rulePath = rule.group().path() + "/" + rule.name();
         List<Diagnostic> out = new ArrayList<>(lint(rulePath, rule.condition()));
-        invertedRequiredness(rule.condition(), rule.errorField().path(), rulePath, out);
-        if (model.iteratesForErrorField(rule.errorField().path())) {
-            negativeUnderIteration(rule.condition(), rule.errorField().path(), rule.group().path().value(),
+        invertedRequiredness(rule.condition(), rule.errorField().path().value(), rulePath, out);
+        if (model.iteratesForErrorField(rule.errorField().path().value())) {
+            negativeUnderIteration(rule.condition(), rule.errorField().path().value(), rule.group().path().value(),
                     model, rulePath, out);
         }
         return List.copyOf(out);
@@ -187,7 +187,7 @@ public final class Linter {
             List<Diagnostic> out) {
         if (condition instanceof FieldPresenceCondition f
                 && f.filled()
-                && f.field().path().equals(errorFieldPath)) {
+                && f.field().path().value().equals(errorFieldPath)) {
             out.add(new Diagnostic(Severity.WARNING, DiagnosticSource.LINT,
                     Optional.of("RK_INVERTED_REQUIREDNESS"),
                     "the rule errors when '" + f.field().path() + "' IS filled — an errorCondition fires on"
@@ -236,7 +236,7 @@ public final class Linter {
                 if (f.filled()) {
                     hasPositiveGuard[0] = true;
                 } else {
-                    negatives.add(new String[] {"FieldNotFilled", f.field().path()});
+                    negatives.add(new String[] {"FieldNotFilled", f.field().path().value()});
                 }
             }
             case GroupPresenceCondition g -> {
@@ -257,7 +257,7 @@ public final class Linter {
                 if (p.filled()) {
                     hasPositiveGuard[0] = true;
                 } else {
-                    negatives.add(new String[] {"FieldNotFilled", p.index().field().path()});
+                    negatives.add(new String[] {"FieldNotFilled", p.index().field().path().value()});
                 }
             }
             case EntityListPredicate p -> hasPositiveGuard[0] |= POSITIVE_PRESENCE.contains(p.operatorId());
@@ -315,14 +315,14 @@ public final class Linter {
         switch (c) {
             case FieldPresenceCondition f -> {
                 if (f.filled()) {
-                    guarded.add(f.field().path());
+                    guarded.add(f.field().path().value());
                 }
             }
             case EntityListPredicate p -> {
                 if ("AllFieldsFilled".equals(p.operatorId())) {
                     for (var operand : p.operands()) {
                         if (operand instanceof FieldRef fr) {
-                            guarded.add(fr.path());
+                            guarded.add(fr.path().value());
                         }
                     }
                 }
@@ -373,7 +373,7 @@ public final class Linter {
             List<Diagnostic> out) {
         Set<String> flagged = new HashSet<>();
         for (FieldRef field : emptySubstitutableFields(cmp)) {
-            String path = field.path();
+            String path = field.path().value();
             if (guarded.contains(path) || flagged.contains(path)) {
                 continue;
             }
@@ -500,7 +500,7 @@ public final class Linter {
     private BigDecimal valueWhenEmpty(Calculation calc, String emptyField) {
         return switch (calc) {
             case NumberLiteral n -> n.value();
-            case FieldValue fv -> fv.field().path().equals(emptyField)
+            case FieldValue fv -> fv.field().path().value().equals(emptyField)
                     && defaultsToZero(fv.field().kind()) ? BigDecimal.ZERO : null;
             case Arithmetic a -> {
                 BigDecimal l = valueWhenEmpty(a.left(), emptyField);
@@ -516,10 +516,10 @@ public final class Linter {
                     case DIVIDE, POWER -> null;
                 };
             }
-            case LengthOf l -> l.field().path().equals(emptyField)
+            case LengthOf l -> l.field().path().value().equals(emptyField)
                     && asZero("Length", 0, l.field().kind()) ? BigDecimal.ZERO : null;
             case DateExtraction e -> e.source() instanceof FieldValue fv
-                    && fv.field().path().equals(emptyField)
+                    && fv.field().path().value().equals(emptyField)
                     && asZero(e.operatorId(), 0, fv.field().kind()) ? BigDecimal.ZERO : null;
             case DateDifference d -> referencesField(d.left(), emptyField) || referencesField(d.right(), emptyField)
                     ? (asZero(d.operatorId(), 0, ValueKind.DATE) ? BigDecimal.ZERO : null)
@@ -544,18 +544,18 @@ public final class Linter {
                 BigDecimal v = valueWhenEmpty(r.operand(), emptyField);
                 yield v != null && v.signum() == 0 ? BigDecimal.ZERO : null;
             }
-            case FieldRounding fr -> fr.field().path().equals(emptyField)
+            case FieldRounding fr -> fr.field().path().value().equals(emptyField)
                     && defaultsToZero(fr.field().kind()) ? BigDecimal.ZERO : null;
             default -> null;
         };
     }
 
     private static boolean referencesField(Calculation calc, String path) {
-        return calc instanceof FieldValue fv && fv.field().path().equals(path);
+        return calc instanceof FieldValue fv && fv.field().path().value().equals(path);
     }
 
     private void flagUnguardedNumber(FieldRef field, ComparisonCondition cmp, String rulePath, List<Diagnostic> out) {
-        String path = field.path();
+        String path = field.path().value();
         String summary = field.kind() == ValueKind.NUMBER && isOrdering(cmp.operator())
                 // the established wording for the classic shape (pinned by the CLI tour capture)
                 ? "'" + path + "' is a number compared with an ordering operator but its presence isn't"
@@ -610,7 +610,7 @@ public final class Linter {
 
     private static String numberFieldPath(Calculation calc) {
         return calc instanceof FieldValue fv && fv.field().kind() == ValueKind.NUMBER
-                ? fv.field().path() : null;
+                ? fv.field().path().value() : null;
     }
 
     /**
@@ -675,7 +675,7 @@ public final class Linter {
                 if (operands.get(j) instanceof FieldPresenceCondition b
                         && a.field().path().equals(b.field().path())
                         && a.filled() != b.filled()) {
-                    out.add(presencePairLint(op, a.field().path(), rulePath));
+                    out.add(presencePairLint(op, a.field().path().value(), rulePath));
                 }
             }
         }

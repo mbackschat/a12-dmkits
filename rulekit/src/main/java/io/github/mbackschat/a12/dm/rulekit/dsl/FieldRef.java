@@ -12,22 +12,22 @@ import io.github.mbackschat.a12.dm.core.ValueKind;
  * read references remember their authored notation. Obtain handles from {@link BoundModel}
  * (always {@link PathStyle#CANONICAL}); the read converter constructs the hinted form.
  */
-public record FieldRef(String path, ValueKind kind, PathStyle styleHint, boolean correlated)
+public record FieldRef(EntityPath path, ValueKind kind, PathStyle styleHint, boolean correlated)
         implements FieldOperand, NumericTextSource, GroupListOperand, TemporalComponent, HasEntityPath {
 
-    /** Parsed on demand — this ref still stores the text form (DG37c converts it in its own commit). */
+    /** Its own path, already parsed — this ref stores the segments rather than the text. */
     @Override
     public EntityPath entityPath() {
-        return EntityPath.of(path);
+        return path;
     }
 
     /** A builder-made reference — no authored style; the renderer decides the path form. */
     public FieldRef(String path, ValueKind kind) {
-        this(path, kind, PathStyle.CANONICAL, false);
+        this(EntityPath.of(path), kind, PathStyle.CANONICAL, false);
     }
 
     public FieldRef(String path, ValueKind kind, PathStyle styleHint) {
-        this(path, kind, styleHint, false);
+        this(EntityPath.of(path), kind, styleHint, false);
     }
 
     /**
@@ -46,12 +46,12 @@ public record FieldRef(String path, ValueKind kind, PathStyle styleHint, boolean
 
     @Override
     public String renderedPath() {
-        return path;
+        return path.value();
     }
 
     @Override
     public String fieldPath() {
-        return path;
+        return path.value();
     }
 
     /** {@code FieldFilled([path])} — this field currently holds a value. catalog:FieldFilled */

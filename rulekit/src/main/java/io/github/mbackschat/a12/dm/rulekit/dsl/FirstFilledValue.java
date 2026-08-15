@@ -138,7 +138,7 @@ public record FirstFilledValue(FirstFilledOperand firstOperand, List<FirstFilled
         Object index = operand.semanticIndex().map(value -> switch (value) {
             case FirstFilledOperand.LiteralIndex literal -> new LiteralIndex(literal.value());
             case FirstFilledOperand.FieldIndex field ->
-                    new FieldIndex(field.field().path(), field.field().correlated());
+                    new FieldIndex(field.field().path().value(), field.field().correlated());
         }).orElse(null);
         return new EntityIdentity(operand.identityPath(), operand.category().orElse(null), index,
                 operand.outerReference());

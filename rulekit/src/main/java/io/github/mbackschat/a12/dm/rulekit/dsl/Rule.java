@@ -41,7 +41,7 @@ public record Rule(
 
     /** The error entity's path relative to the rule element (which sits inside the group). */
     public String errorEntityRelPath() {
-        return "../" + errorField.path().substring(group.path().value().length() + 1);
+        return "../" + errorField.path().value().substring(group.path().value().length() + 1);
     }
 
     /**
@@ -83,7 +83,7 @@ public record Rule(
      * rulekit's own relative-path math. Neither is deferred.
      */
     public List<Diagnostic> deferredChecks() {
-        if (ConditionReferences.of(condition).covers(errorField.path())
+        if (ConditionReferences.of(condition).covers(errorField.path().value())
                 || ConditionReferences.referencesRuleGroup(condition)) {
             return List.of();
         }

@@ -38,6 +38,6 @@ public record EnumCategoryAccess(FieldRef field, String category, boolean outer)
     /** The base field's path — a category projection references its underlying enum field. */
     @Override
     public String fieldPath() {
-        return field.path();
+        return field.path().value();
     }
 }

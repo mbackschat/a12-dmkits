@@ -111,7 +111,7 @@ public record FieldListRef(FieldRef field, List<GroupRef> flattened, Optional<Co
 
     @Override
     public String renderedPath() {
-        String path = field.path();
+        String path = field.path().value();
         StringBuilder rendered = new StringBuilder();
         int from = 0;
         for (GroupRef group : flattened) {
@@ -125,7 +125,7 @@ public record FieldListRef(FieldRef field, List<GroupRef> flattened, Optional<Co
 
     @Override
     public String fieldPath() {
-        return field.path();
+        return field.path().value();
     }
 
     @Override

@@ -99,7 +99,7 @@ final class TierAProjection {
     /** A field must MATCH a regex iff a rule ERRORS on {@code PatternViolated} — find that anywhere in an AND chain. */
     private static Optional<PatternHit> findPatternConstraint(Condition condition) {
         if (condition instanceof PatternCondition p && !p.matched()) {
-            return Optional.of(new PatternHit(p.field().path(), p.regex()));
+            return Optional.of(new PatternHit(p.field().path().value(), p.regex()));
         }
         if (condition instanceof LogicCondition logic && logic.op() == LogicCondition.Op.AND) {
             Optional<PatternHit> left = findPatternConstraint(logic.left());

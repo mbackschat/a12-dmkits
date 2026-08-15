@@ -83,7 +83,7 @@ public final class ModelContext {
      * computation straight in — it is an ordinary rulekit {@link Computation} by the time it reaches here.
      */
     public ComputationExplanation explainComputation(Computation computation) {
-        String field = computation.computedField().path();
+        String field = computation.computedField().path().value();
         String kind = computation.computedField().kind().name();   // from the typed ref — always a kind, never UNKNOWN
 
         Optional<RuleExplanation> commonPrecondition = computation.commonPrecondition().map(this::explain);

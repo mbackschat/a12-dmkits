@@ -21,7 +21,7 @@ public final class FieldEditor extends ElementMetadataEditor<FieldEditor> {
     private final FieldRef location;
 
     FieldEditor(EditSession session, FieldRef location) {
-        super(session, location.path());
+        super(session, location.path().value());
         this.location = location;
     }
 
@@ -32,51 +32,51 @@ public final class FieldEditor extends ElementMetadataEditor<FieldEditor> {
 
     /** Re-type this field — scale, bounds, pattern, enum domain, … via a {@link FieldTypeSpec}. Chains. */
     public FieldEditor setType(FieldTypeSpec type) {
-        session.setFieldType(location.path(), type);
+        session.setFieldType(location.path().value(), type);
         return this;
     }
 
     /** Set this field's per-locale display labels (once any locale is set, all declared ones are required). Chains. */
     public FieldEditor setLabel(Map<String, String> localeToText) {
-        session.setLabel(location.path(), localeToText);
+        session.setLabel(location.path().value(), localeToText);
         return this;
     }
 
     /** Set this field's requiredness ({@link Requiredness#OPTIONAL} clears it). Chains. */
     public FieldEditor setRequiredness(Requiredness requiredness) {
-        session.setRequiredness(location.path(), requiredness);
+        session.setRequiredness(location.path().value(), requiredness);
         return this;
     }
 
     /** Set this field's per-locale custom REQUIRED-empty error (G23); the field must already be required and
      *  every declared locale must be covered. Chains. */
     public FieldEditor setRequiredErrorMessages(Map<String, String> localeToText) {
-        session.setRequiredErrorMessages(location.path(), localeToText);
+        session.setRequiredErrorMessages(location.path().value(), localeToText);
         return this;
     }
 
     /** Set this field's per-locale helper text (need not cover every locale, unlike a label). Chains. */
     public FieldEditor setHelperText(Map<String, String> localeToText) {
-        session.setHelperText(location.path(), localeToText);
+        session.setHelperText(location.path().value(), localeToText);
         return this;
     }
 
     /** Set this field's {@code global} flag (shared across repetitions); {@code false} clears it. Chains. */
     public FieldEditor setGlobal(boolean global) {
-        session.setGlobal(location.path(), global);
+        session.setGlobal(location.path().value(), global);
         return this;
     }
 
     /** Set this field's {@code transient} flag (not persisted); {@code false} clears it. Chains. */
     public FieldEditor setTransient(boolean isTransient) {
-        session.setTransient(location.path(), isTransient);
+        session.setTransient(location.path().value(), isTransient);
         return this;
     }
 
     /** Apply a partial {@link FieldModification} (type and/or metadata) in place — nothing it carries is dropped,
      *  absent aspects are left untouched. Chains. */
     public FieldEditor modify(FieldModification modification) {
-        session.modifyField(location.path(), modification);
+        session.modifyField(location.path().value(), modification);
         return this;
     }
 }

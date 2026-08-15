@@ -25,7 +25,7 @@ class FieldEditorTest {
         EditSession s = EditSession.read(Fixtures.subscriptionJson());
         FieldEditor monthlyFee = s.field("/Subscription/Addons/MonthlyFee");
 
-        assertEquals("/Subscription/Addons/MonthlyFee", monthlyFee.ref().path());
+        assertEquals("/Subscription/Addons/MonthlyFee", monthlyFee.ref().path().value());
 
         monthlyFee.setType(new FieldTypeSpec.NumberSpec(4, null, null))             // re-scale 2 -> 4
                 .setLabel(Map.of("en_US", "Monthly Fee", "de_DE", "Monatsgebühr"))

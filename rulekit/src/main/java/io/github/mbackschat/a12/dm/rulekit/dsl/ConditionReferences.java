@@ -141,7 +141,7 @@ public record ConditionReferences(Set<String> fieldPaths, Set<String> groupPaths
 
     private static void collect(Condition condition, Refs refs) {
         switch (condition) {
-            case FieldPresenceCondition f -> refs.field(f.field().path());
+            case FieldPresenceCondition f -> refs.field(f.field().path().value());
             case EntityListPredicate p -> p.operands().forEach(o -> collectAggregateOperand(o, refs));
             case ComparisonCondition c -> {
                 collect(c.left(), refs);
@@ -159,13 +159,13 @@ public record ConditionReferences(Set<String> fieldPaths, Set<String> groupPaths
             case IndexedPresenceCondition p -> collect(p.index(), refs);
             case GroupListPredicate p -> p.operands().forEach(operand -> {
                 switch (operand) {
-                    case FieldRef field -> refs.field(field.path());
+                    case FieldRef field -> refs.field(field.path().value());
                     case GroupListRef scope -> refs.group(scope.path());
                 }
             });
-            case PatternCondition p -> refs.field(p.field().path());
+            case PatternCondition p -> refs.field(p.field().path().value());
             case ValueListCondition v -> {
-                refs.field(v.field().path());
+                refs.field(v.field().path().value());
                 v.values().forEach(value -> collect(value, refs));
             }
             case FieldListValueListCondition v -> {
@@ -182,26 +182,26 @@ public record ConditionReferences(Set<String> fieldPaths, Set<String> groupPaths
             // (validate.laws.RepetitionNotUniqueKeyKindLawsTest). Omitting the scope produced a false advisory
             // on a kernel-legal rule; this comment previously recorded the honoring as unverified.
             case RepetitionNotUniqueCondition r -> {
-                r.keys().forEach(k -> refs.field(k.path()));
+                r.keys().forEach(k -> refs.field(k.path().value()));
                 r.scope().ifPresent(s -> refs.group(s.path().value()));
             }
             case CustomConditionRef ignored -> { /* references nothing — host-defined */ }
             case DateValidity v -> collect(v.dateConstruct(), refs);
-            case CustomTypeValidity v -> refs.field(v.field().path());
+            case CustomTypeValidity v -> refs.field(v.field().path().value());
         }
     }
 
     private static void collect(Calculation calculation, Refs refs) {
         switch (calculation) {
-            case FieldValue v -> refs.field(v.field().path());
-            case LengthOf l -> refs.field(l.field().path());
+            case FieldValue v -> refs.field(v.field().path().value());
+            case LengthOf l -> refs.field(l.field().path().value());
             case NumberLiteral n -> { }
             case StringLiteral s -> { }
             case DateLiteral d -> { }
             case TimeLiteral t -> { }
             case EnumValueLiteral e -> { }
             case BoolLiteral b -> { }
-            case EnumCategoryAccess c -> refs.projectedField(c.field().path());
+            case EnumCategoryAccess c -> refs.projectedField(c.field().path().value());
             case CountAggregate a -> {
                 a.fields().forEach(f -> collectAggregateOperand(f, refs));
                 a.groups().forEach(g -> refs.group(g.path().value()));
@@ -219,14 +219,14 @@ public record ConditionReferences(Set<String> fieldPaths, Set<String> groupPaths
                 collect(s.date(), refs);
                 collect(s.amount(), refs);
             }
-            case SemanticIndexValue v -> refs.projectedField(v.field().path());
+            case SemanticIndexValue v -> refs.projectedField(v.field().path().value());
             case SemanticIndexFieldValue v -> {
-                refs.projectedField(v.field().path());
+                refs.projectedField(v.field().path().value());
                 // The KEY counts as projected too — measured, not assumed: a computation whose operation reads
                 // `[Legs/LegRef For <computedField>]` draws MVK_ERROR_SEMANTIC_INDEX_OR_CATEGORY_FOR_ERRORFIELD,
                 // not the plain class, so the kernel matches the calculated field against the key as well
                 // (KF182; ComputedTargetProjectedReadLawsTest).
-                refs.projectedField(v.indexField().path());
+                refs.projectedField(v.indexField().path().value());
             }
             case Arithmetic a -> {
                 collect(a.left(), refs);
@@ -236,17 +236,17 @@ public record ConditionReferences(Set<String> fieldPaths, Set<String> groupPaths
             case Concatenation c -> c.parts().forEach(p -> collect(p, refs));
             case DateListAggregate a -> collectAggregateOperand(a.scope(), refs);
             case FirstFilledValue a -> a.operands().forEach(o -> collectFirstFilledOperand(o, refs));
-            case FieldValueAsString c -> refs.field(c.field().path());
+            case FieldValueAsString c -> refs.field(c.field().path().value());
             case IndexedFieldValueAsString c -> collect(c.index(), refs);
-            case RangeAsString c -> refs.field(c.field().path());
-            case FieldValueAsNumber c -> refs.field(c.field().path());
-            case RangeAsNumber c -> refs.field(c.field().path());
+            case RangeAsString c -> refs.field(c.field().path().value());
+            case FieldValueAsNumber c -> refs.field(c.field().path().value());
+            case RangeAsNumber c -> refs.field(c.field().path().value());
             case OpListMath m -> m.operands().forEach(o -> collect(o, refs));
             case NumberOfValueInFields n -> {
                 collect(n.value(), refs);
                 n.fields().forEach(f -> collectAggregateOperand(f, refs));
             }
-            case ValueAsDate v -> refs.field(v.field().path());
+            case ValueAsDate v -> refs.field(v.field().path().value());
             case DateExtraction e -> collect(e.source(), refs);
             case DateTimePart e -> collect(e.source(), refs);
             case SumOfProducts s -> {
@@ -266,7 +266,7 @@ public record ConditionReferences(Set<String> fieldPaths, Set<String> groupPaths
                 collect(dtc.date(), refs);
                 collect(dtc.time(), refs);
             }
-            case FieldRounding r -> refs.field(r.field().path());
+            case FieldRounding r -> refs.field(r.field().path().value());
             case DateRangeBound b -> collect(b.source(), refs);
             case RootGroupCount c -> refs.group(c.rootGroup().path().value());
             case DateRangeConstruction dr -> {
@@ -321,10 +321,10 @@ public record ConditionReferences(Set<String> fieldPaths, Set<String> groupPaths
         });
         operand.group().ifPresent(group -> {
             refs.group(group.path());
-            operand.expandedGroupFields().forEach(field -> refs.field(field.path()));
+            operand.expandedGroupFields().forEach(field -> refs.field(field.path().value()));
         });
         operand.semanticIndex().filter(FirstFilledOperand.FieldIndex.class::isInstance)
                 .map(FirstFilledOperand.FieldIndex.class::cast)
-                .ifPresent(index -> refs.projectedField(index.field().path()));   // the key, as above
+                .ifPresent(index -> refs.projectedField(index.field().path().value()));   // the key, as above
     }
 }

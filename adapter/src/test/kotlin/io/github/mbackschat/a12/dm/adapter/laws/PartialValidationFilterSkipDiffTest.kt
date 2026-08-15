@@ -39,7 +39,7 @@ class PartialValidationFilterSkipDiffTest {
     )
     private val kernelModel = rules.fold(json) { model, rule -> TypedRules.inject(model, rule) }
     private val interpreterModel = ModelDef(
-        fields = listOf(FieldDef(count.field().path(), Kind.NUMBER, scale = 0)),
+        fields = listOf(FieldDef(count.field().path().value(), Kind.NUMBER, scale = 0)),
         rules = rules.map(TypedRules::def),
         repeatableGroups = setOf(items.ref().path().value()),
         declaredReps = mapOf(items.ref().path().value() to 3),
@@ -73,9 +73,9 @@ class PartialValidationFilterSkipDiffTest {
         assertEquals(kernelFull, interpreterFull, "full values=$values")
 
         val kernelRelevant = setOf(
-            Relevant.of(count.field().path(), RelevantEntity.ALL, RelevantEntity.ALL, RelevantEntity.ALL),
+            Relevant.of(count.field().path().value(), RelevantEntity.ALL, RelevantEntity.ALL, RelevantEntity.ALL),
         )
-        val interpreterRelevant = setOf(RelevantEntity.anyRep(count.field().path()))
+        val interpreterRelevant = setOf(RelevantEntity.anyRep(count.field().path().value()))
         val kernelPartial = RuntimeLaws.messagesPart(kernelModel, kernelDocument, kernelRelevant)
             .map { it.code() }.filterTo(sortedSetOf()) { it in CODES }
         val interpreterPartial = DmInterpreter(interpreterModel).validatePart(interpreterDocument, interpreterRelevant)
@@ -88,7 +88,7 @@ class PartialValidationFilterSkipDiffTest {
         val document = RuntimeLaws.doc().group(order.ref().path().value(), 1)
         values.forEachIndexed { index, value ->
             val row = index + 1
-            document.group(items.ref().path().value(), 1, row).field(count.field().path(), value, 1, row, 1)
+            document.group(items.ref().path().value(), 1, row).field(count.field().path().value(), value, 1, row, 1)
         }
         return document
     }
@@ -97,7 +97,7 @@ class PartialValidationFilterSkipDiffTest {
         document.group(order.ref().path().value(), 1)
         values.forEachIndexed { index, value ->
             val row = index + 1
-            document.group(items.ref().path().value(), 1, row).field(count.field().path(), value, 1, row, 1)
+            document.group(items.ref().path().value(), 1, row).field(count.field().path().value(), value, 1, row, 1)
         }
     }
 

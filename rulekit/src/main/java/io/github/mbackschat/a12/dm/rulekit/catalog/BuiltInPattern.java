@@ -291,7 +291,7 @@ public enum BuiltInPattern implements PatternEntry {
 
     /** A computation's default name — {@code <Field>Comp}, mirroring the CLI computation-spec default. */
     static String computedName(NumberRef computed) {
-        String path = computed.field().path();
+        String path = computed.field().path().value();
         return path.substring(path.lastIndexOf('/') + 1) + "Comp";
     }
 

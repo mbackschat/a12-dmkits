@@ -83,7 +83,7 @@ class GroupListEntityOperandReadTest {
                 assertInstanceOf(LogicCondition.class, converted).right());
 
         assertFalse(presence.filled());
-        assertEquals("/Claim/IncidentNote", presence.field().path());
+        assertEquals("/Claim/IncidentNote", presence.field().path().value());
     }
 
     /** The ≥1 singleton stays a one-operand list, mirroring the single-group `AtLeastOneGroupFilled(G)`. */

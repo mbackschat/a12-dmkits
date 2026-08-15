@@ -282,7 +282,7 @@ record SynthesisProfile(Structure structure, Rules rules, Computations computati
             Set<String> touched = new HashSet<>();
             if (adapter.readComputation(name) instanceof ReadComputation.Converted c) {
                 Computation comp = c.computation();
-                touched.add(comp.computedField().path());
+                touched.add(comp.computedField().path().value());
                 comp.commonPrecondition().ifPresent(p -> touched.addAll(ConditionReferences.of(p).fieldPaths()));
                 for (Computation.Alternative alt : comp.alternatives()) {
                     alt.precondition().ifPresent(p -> touched.addAll(ConditionReferences.of(p).fieldPaths()));
@@ -558,14 +558,14 @@ record SynthesisProfile(Structure structure, Rules rules, Computations computati
                 continue;
             }
             Computation comp = converted.computation();
-            computedFields.add(comp.computedField().path());
+            computedFields.add(comp.computedField().path().value());
             computedKinds.merge(comp.computedField().kind().name(), 1, Integer::sum);
             altCounts.add(comp.alternatives().size());
             if (comp.commonPrecondition().isPresent()
                     || comp.alternatives().stream().anyMatch(a -> a.precondition().isPresent())) {
                 preconditioned++;
             }
-            String scope = parentOf(comp.computedField().path());   // the computed field's group
+            String scope = parentOf(comp.computedField().path().value());   // the computed field's group
             int scopeClass = scopeClass(scope, repeatablePaths);
             switch (scopeClass) {
                 case 0 -> modelLevel++;
@@ -615,8 +615,8 @@ record SynthesisProfile(Structure structure, Rules rules, Computations computati
             // scale-match joint: for aggregating computations, does the computed NUMBER field's scale equal the
             // scale of a repeatable number cell it sums? (matched → the interpreter needs no rescale, synthesis no round)
             if (opConstructs.contains(ConditionComplexity.Construct.AGGREGATE)
-                    && scaleByPath.containsKey(comp.computedField().path())) {
-                int cScale = scaleByPath.get(comp.computedField().path());
+                    && scaleByPath.containsKey(comp.computedField().path().value())) {
+                int cScale = scaleByPath.get(comp.computedField().path().value());
                 boolean matched = opRefFields.stream()
                         .anyMatch(f -> hasRepeatableAncestorOrSelf(parentOf(f), repeatablePaths)
                                 && scaleByPath.getOrDefault(f, Integer.MIN_VALUE) == cScale);
@@ -642,7 +642,7 @@ record SynthesisProfile(Structure structure, Rules rules, Computations computati
             if (isParallelIteration(refFields, repeatablePaths)) {
                 parallelIteration++;
             }
-            reads.put(comp.computedField().path(), refFields);
+            reads.put(comp.computedField().path().value(), refFields);
         }
 
         int feedingOthers = feedingOthers(reads, computedFields);

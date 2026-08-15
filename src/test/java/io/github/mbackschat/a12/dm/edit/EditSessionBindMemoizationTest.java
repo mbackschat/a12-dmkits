@@ -28,13 +28,13 @@ class EditSessionBindMemoizationTest {
     @Test
     void aReadAfterAWriteSeesTheWrite() {
         EditSession s = EditSession.read(model());
-        assertEquals("/Shop/Price", s.field("/Shop/Price").ref().path(), "primes the memoized bind");
+        assertEquals("/Shop/Price", s.field("/Shop/Price").ref().path().value(), "primes the memoized bind");
 
         s.addField("/Shop", "Added", FieldKind.NUMBER);   // a write reassigns json → invalidates the cache
 
         // resolves ONLY if the cached bind was invalidated on the write (else the stale bind lacks Added)
         assertNotNull(s.field("/Shop/Added"), "the post-write navigation sees the added field");
-        assertEquals("/Shop/Added", s.field("/Shop/Added").ref().path());
+        assertEquals("/Shop/Added", s.field("/Shop/Added").ref().path().value());
     }
 
     @Test
@@ -42,7 +42,7 @@ class EditSessionBindMemoizationTest {
         EditSession s = EditSession.read(model());
         // many navigations with no intervening write — every one sees the same snapshot
         for (int i = 0; i < 10; i++) {
-            assertEquals("/Shop/Price", s.field("/Shop/Price").ref().path());
+            assertEquals("/Shop/Price", s.field("/Shop/Price").ref().path().value());
             assertEquals("/Shop", s.group("/Shop").ref().path().value());
         }
     }

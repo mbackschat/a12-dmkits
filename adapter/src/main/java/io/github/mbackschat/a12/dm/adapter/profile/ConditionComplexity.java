@@ -361,7 +361,7 @@ record ConditionComplexity(int nodeCount, int depth, int maxBooleanArity,
                 return 1;
             }
             if (operand instanceof FieldListRef list) {
-                collectionPaths.add(list.field().path());
+                collectionPaths.add(list.field().path().value());
                 maxStarSegments = Math.max(maxStarSegments, list.flattened().size());
                 if (list.correlated()) {
                     outerCorrelations++;                         // $Group*/field — the outer-iteration correlation

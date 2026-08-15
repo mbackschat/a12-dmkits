@@ -191,11 +191,11 @@ class NavigationTest {
         // location-independence: a combinator can take a root GroupInfo and navigate relatively, so it
         // applies to any subtree (e.g. a mounted/included sub-form), not one hardcoded path.
         GroupInfo sub = m.groupAt("/Subscription").orElseThrow();
-        assertEquals("/Subscription/Addons/MonthlyFee", sub.num("Addons/MonthlyFee").field().path());
-        assertEquals("/Subscription/Addons/Name", sub.str("Addons/Name").field().path());
-        assertEquals("/Subscription/Tier", sub.enumOf("Tier").field().path());
+        assertEquals("/Subscription/Addons/MonthlyFee", sub.num("Addons/MonthlyFee").field().path().value());
+        assertEquals("/Subscription/Addons/Name", sub.str("Addons/Name").field().path().value());
+        assertEquals("/Subscription/Tier", sub.enumOf("Tier").field().path().value());
         assertEquals("/Subscription/Billing", sub.group("Billing").path().value());
-        assertEquals("/Subscription/Addons/MonthlyFee", sub.field("Addons/MonthlyFee").path());
+        assertEquals("/Subscription/Addons/MonthlyFee", sub.field("Addons/MonthlyFee").path().value());
 
         // groupAt is the non-throwing group peer of fieldAt
         assertTrue(m.groupAt("/Subscription/Nope").isEmpty());

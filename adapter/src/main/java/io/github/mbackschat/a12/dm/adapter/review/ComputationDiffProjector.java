@@ -68,7 +68,7 @@ final class ComputationDiffProjector {
     private static Map<String, String> convertedAspects(Computation computation) {
         DraftComputation draft = computation.draft();
         Map<String, String> aspects = new LinkedHashMap<>();
-        aspects.put("target", computation.computedField().path());
+        aspects.put("target", computation.computedField().path().value());
         putIfPresent(aspects, "commonPrecondition", draft.commonPrecondition());
         for (int i = 0; i < draft.alternatives().size(); i++) {
             DraftComputation.Alternative alternative = draft.alternatives().get(i);

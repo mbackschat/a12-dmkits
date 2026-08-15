@@ -90,7 +90,7 @@ public final class FirstFilledOperand {
     /** Adds the checked category projection represented by {@code category}. */
     public FirstFilledOperand withCategory(CategoryRef category) {
         Objects.requireNonNull(category, "category");
-        if (field == null || !field.fieldPath().equals(category.field().path())) {
+        if (field == null || !field.fieldPath().equals(category.field().path().value())) {
             throw new IllegalArgumentException("category " + category.name()
                     + " does not belong to FirstFilledValue target " + renderedPath());
         }

@@ -84,7 +84,7 @@ final class ComputationReadCommand extends BaseCommand {
             if (read instanceof ReadComputation.Converted converted) {
                 data.put("converted", true);
                 Computation comp = converted.computation();
-                data.put("calculatedField", comp.computedField().path());
+                data.put("calculatedField", comp.computedField().path().value());
                 // slot parity (probe 07): echo the FORMULA — the commonPrecondition + each alternative's
                 // (precondition?, operation), rendered as DSL — so the computed value is confirmable through
                 // `computation read` alone, not only via `computation format`.

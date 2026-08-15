@@ -246,7 +246,7 @@ final class PatternsCommand extends BaseCommand {
         ObjectNode root = MAPPER.createObjectNode();
         root.put("pattern", pattern.id());
         ObjectNode spec = root.putObject("spec");
-        spec.put("computedField", computation.computedField().path());
+        spec.put("computedField", computation.computedField().path().value());
         spec.put("name", compName);
         if (draft.commonPrecondition() != null) {
             spec.put("commonPrecondition", draft.commonPrecondition());

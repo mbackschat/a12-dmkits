@@ -77,7 +77,7 @@ public record Computation(
 
     /** The computed field's path relative to the computation element (a sibling in the group). */
     public String computedFieldRelPath() {
-        return "../" + computedField.path().substring(groupPath.length() + 1);
+        return "../" + computedField.path().value().substring(groupPath.length() + 1);
     }
 
     /** The kernel-measured domain accepted by A12's {@code IComputation.errorCodesToSuppress}. */
@@ -225,7 +225,7 @@ public record Computation(
             require(!anyUnconditional || alternatives.size() == 1,
                     "only one unconditional alternative is possible — add preconditions to disambiguate");
 
-            String computedPath = computedField.path();
+            String computedPath = computedField.path().value();
             for (Alternative a : alternatives) {
                 require(operationMatchesComputedKind(a.operation()),
                         "the operation '" + new DslRenderer().render(a.operation()) + "' yields "
@@ -329,7 +329,7 @@ public record Computation(
             Matcher matcher = PRECHECK_CODE.matcher(problem);
             Optional<String> code = matcher.find() ? Optional.of(matcher.group()) : Optional.empty();
             throw new PrecheckException(Diagnostic.precheck(code, problem,
-                    new Diagnostic.Where(computedField.path(), Optional.empty()),
+                    new Diagnostic.Where(computedField.path().value(), Optional.empty()),
                     Optional.empty(), Optional.empty()));
         }
 
