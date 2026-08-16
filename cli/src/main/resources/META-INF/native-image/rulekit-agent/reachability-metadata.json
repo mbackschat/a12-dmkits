@@ -4619,22 +4619,7 @@
       ]
     },
     {
-      "type": "com.mgmtp.a12.kernel.core.rt._30_8.internal.core.RuntimeController$alleFelderAngegeben$5",
-      "methods": [
-        {
-          "name": "<init>",
-          "parameterTypes": [
-            "org.codehaus.groovy.runtime.callsite.CallSite",
-            "groovy.lang.MetaClassImpl",
-            "groovy.lang.MetaMethod",
-            "java.lang.Class[]",
-            "java.lang.reflect.Constructor"
-          ]
-        }
-      ]
-    },
-    {
-      "type": "com.mgmtp.a12.kernel.core.rt._30_8.internal.core.RuntimeController$alleKontexteAngegeben$3",
+      "type": "com.mgmtp.a12.kernel.core.rt._30_8.internal.core.RuntimeController$alleKontexteAngegeben$7",
       "methods": [
         {
           "name": "<init>",
@@ -4664,7 +4649,7 @@
       ]
     },
     {
-      "type": "com.mgmtp.a12.kernel.core.rt._30_8.internal.core.RuntimeController$feldWertAlsDatum$9",
+      "type": "com.mgmtp.a12.kernel.core.rt._30_8.internal.core.RuntimeController$feldWertAlsDatum$11",
       "methods": [
         {
           "name": "<init>",
@@ -4694,7 +4679,7 @@
       ]
     },
     {
-      "type": "com.mgmtp.a12.kernel.core.rt._30_8.internal.core.RuntimeController$feldWertAlsZahl$6",
+      "type": "com.mgmtp.a12.kernel.core.rt._30_8.internal.core.RuntimeController$getDifferenzInTagen$12",
       "methods": [
         {
           "name": "<init>",
@@ -4709,22 +4694,7 @@
       ]
     },
     {
-      "type": "com.mgmtp.a12.kernel.core.rt._30_8.internal.core.RuntimeController$getDifferenzInTagen$10",
-      "methods": [
-        {
-          "name": "<init>",
-          "parameterTypes": [
-            "org.codehaus.groovy.runtime.callsite.CallSite",
-            "groovy.lang.MetaClassImpl",
-            "groovy.lang.MetaMethod",
-            "java.lang.Class[]",
-            "java.lang.reflect.Constructor"
-          ]
-        }
-      ]
-    },
-    {
-      "type": "com.mgmtp.a12.kernel.core.rt._30_8.internal.core.RuntimeController$getMaxGesetzterKontext$0",
+      "type": "com.mgmtp.a12.kernel.core.rt._30_8.internal.core.RuntimeController$getMaxGesetzterKontext$5",
       "methods": [
         {
           "name": "<init>",
@@ -4754,52 +4724,7 @@
       ]
     },
     {
-      "type": "com.mgmtp.a12.kernel.core.rt._30_8.internal.core.RuntimeController$getValidationCache$1",
-      "methods": [
-        {
-          "name": "<init>",
-          "parameterTypes": [
-            "org.codehaus.groovy.runtime.callsite.CallSite",
-            "groovy.lang.MetaClassImpl",
-            "groovy.lang.MetaMethod",
-            "java.lang.Class[]",
-            "java.lang.reflect.Constructor"
-          ]
-        }
-      ]
-    },
-    {
-      "type": "com.mgmtp.a12.kernel.core.rt._30_8.internal.core.RuntimeController$keinFeldAngegeben$4",
-      "methods": [
-        {
-          "name": "<init>",
-          "parameterTypes": [
-            "org.codehaus.groovy.runtime.callsite.CallSite",
-            "groovy.lang.MetaClassImpl",
-            "groovy.lang.MetaMethod",
-            "java.lang.Class[]",
-            "java.lang.reflect.Constructor"
-          ]
-        }
-      ]
-    },
-    {
-      "type": "com.mgmtp.a12.kernel.core.rt._30_8.internal.core.RuntimeController$logMessung$12",
-      "methods": [
-        {
-          "name": "<init>",
-          "parameterTypes": [
-            "org.codehaus.groovy.runtime.callsite.CallSite",
-            "groovy.lang.MetaClassImpl",
-            "groovy.lang.MetaMethod",
-            "java.lang.Class[]",
-            "java.lang.reflect.Constructor"
-          ]
-        }
-      ]
-    },
-    {
-      "type": "com.mgmtp.a12.kernel.core.rt._30_8.internal.core.RuntimeController$logMessung$2",
+      "type": "com.mgmtp.a12.kernel.core.rt._30_8.internal.core.RuntimeController$keinFeldAngegeben$8",
       "methods": [
         {
           "name": "<init>",
@@ -4829,7 +4754,22 @@
       ]
     },
     {
-      "type": "com.mgmtp.a12.kernel.core.rt._30_8.internal.core.RuntimeController$makeDecimal$7",
+      "type": "com.mgmtp.a12.kernel.core.rt._30_8.internal.core.RuntimeController$logMessung$6",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": [
+            "org.codehaus.groovy.runtime.callsite.CallSite",
+            "groovy.lang.MetaClassImpl",
+            "groovy.lang.MetaMethod",
+            "java.lang.Class[]",
+            "java.lang.reflect.Constructor"
+          ]
+        }
+      ]
+    },
+    {
+      "type": "com.mgmtp.a12.kernel.core.rt._30_8.internal.core.RuntimeController$makeDecimal$9",
       "methods": [
         {
           "name": "<init>",
@@ -4859,21 +4799,6 @@
       ]
     },
     {
-      "type": "com.mgmtp.a12.kernel.core.rt._30_8.internal.core.RuntimeController$makeIdentifier$11",
-      "methods": [
-        {
-          "name": "<init>",
-          "parameterTypes": [
-            "org.codehaus.groovy.runtime.callsite.CallSite",
-            "groovy.lang.MetaClassImpl",
-            "groovy.lang.MetaMethod",
-            "java.lang.Class[]",
-            "java.lang.reflect.Constructor"
-          ]
-        }
-      ]
-    },
-    {
       "type": "com.mgmtp.a12.kernel.core.rt._30_8.internal.core.RuntimeController$startMesspunkt",
       "methods": [
         {
@@ -4889,7 +4814,7 @@
       ]
     },
     {
-      "type": "com.mgmtp.a12.kernel.core.rt._30_8.internal.core.RuntimeController$vergleiche$8",
+      "type": "com.mgmtp.a12.kernel.core.rt._30_8.internal.core.RuntimeController$vergleiche$10",
       "methods": [
         {
           "name": "<init>",
@@ -18571,6 +18496,15 @@
       "glob": "internal/templates/validation/groovy/utilDir/AddValidatorMessage_WithErrorType.st"
     },
     {
+      "glob": "internal/vk_calc_error_messages/error_messages.properties"
+    },
+    {
+      "glob": "internal/vk_calc_error_messages/error_messages_en.properties"
+    },
+    {
+      "glob": "internal/vk_calc_error_messages/error_messages_en_US.properties"
+    },
+    {
       "glob": "internal/vk_codegen_no_meta_model_ckecks_error_messages/error_messages.properties"
     },
     {
@@ -19516,6 +19450,9 @@
     },
     {
       "bundle": "internal/_30_8/vk_rt_localization_helper/helper"
+    },
+    {
+      "bundle": "internal/vk_calc_error_messages/error_messages"
     },
     {
       "bundle": "internal/vk_codegen_no_meta_model_ckecks_error_messages/error_messages"
