@@ -1053,6 +1053,12 @@ object PerfHarness {
         attempts: Int = GROWTH_RETRY_ATTEMPTS,
         estimate: () -> RatioGrowth,
     ): RatioGrowth {
+        // This builds a BAR, so it asks the lane gate like the other two bar-building seams. It is shaped like
+        // the ungated [assertGrowthBelowCatastropheFloor] — an estimate arrives, nothing is measured here — but
+        // the resemblance is misleading: that rule is only ever reached THROUGH the gated
+        // [assertSubQuadraticLane], while this one is called DIRECTLY by perf classes, so nothing else is in the
+        // path. Both current callers carry a lane tag, which is precisely why the hole was invisible.
+        PerfLaneGate.requireMeasuringLane()
         require(attempts > 0 && attempts % 2 == 1) { "attempts must be a positive odd number" }
         val seen = mutableListOf(estimate())
         if (seen.single().growth < ceiling) return seen.single()

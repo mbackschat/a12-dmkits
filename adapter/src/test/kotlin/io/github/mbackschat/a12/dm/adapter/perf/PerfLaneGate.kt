@@ -12,9 +12,14 @@ import org.junit.jupiter.api.condition.EnabledIfSystemProperty
  * convention (a `*PerfTest` name implies a lane tag, and a lane tag implies a measuring name), and a cold review
  * pointed out what that can never see: a clock-reading assertion written under a neutral name with no tag at all.
  *
- * This is the runtime half. The two seams that build a **bar** — [PerfHarness.assertSubQuadraticLane] and
- * [KernelAdvantage.assertBeatsKernelAndScales] — ask here first, so a lane that asserts on a measurement must be
- * in an opted-in tier whatever its class is called. The complementary half — a test that reads
+ * This is the runtime half. The three seams that build a **bar** — [PerfHarness.assertSubQuadraticLane],
+ * [PerfHarness.assertCrossEngineClassHolds] and [KernelAdvantage.assertBeatsKernelAndScales] — ask here first, so
+ * a lane that asserts on a measurement must be in an opted-in tier whatever its class is called. The third was
+ * added later and did **not** ask for two days: it is shaped like the ungated inner rule
+ * [PerfHarness.assertGrowthBelowCatastropheFloor], and the shape is misleading — that rule is only reachable
+ * through a gated seam, while this one is called directly by perf classes. Both its callers happened to carry a
+ * lane tag, so nothing was red. **When adding a seam that turns a measurement into an assertion, add it here too;
+ * "it looks like the inner rule" is the specific reasoning that got this wrong.** The complementary half — a test that reads
  * `System.nanoTime()` directly and never reaches the harness — is a source census (`RawClockCensusTest`), because
  * no runtime seam can see a call that does not pass through it. Neither mechanism subsumes the other.
  *
@@ -55,6 +60,10 @@ internal object PerfLaneGate {
         "io.github.mbackschat.a12.dm.adapter.perf.PerfGrowthEstimatorTest" to
             "protects the CPU-clock contract itself and is contention-SAFE: load only adds wall time, so both " +
                 "assertions move further into passing",
+        "io.github.mbackschat.a12.dm.adapter.perf.CrossEngineClassRetryTest" to
+            "takes NO measurement: it drives assertCrossEngineClassHolds with scripted constants to check the " +
+                "decision rule, reads no clock, and so cannot be perturbed by load at all — a stronger reason " +
+                "than the entry above, whose exemption at least touches a clock",
     )
 
     /** Infrastructure that measures by definition — the harness, its anchors, and the out-of-process workers. */
