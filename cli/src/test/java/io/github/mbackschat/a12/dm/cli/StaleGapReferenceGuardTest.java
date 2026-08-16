@@ -23,9 +23,12 @@ import org.junit.jupiter.api.Test;
  * {@code IG21}, {@code Dec}-by-identity, and deleted {@code IG63/IG64} all outlived their graduation this way).
  *
  * <p>This makes current-state vs. historical references <b>mechanically distinguishable without banning
- * legitimate provenance</b> — the hard constraint the gap sets (the codebase carries ~250 bare {@code IGn}
- * origin-labels: "the IG44 drill", "the IG56 E3 hunt", "IG13 residual" — all legitimate history, not to be
- * touched). The mechanical signal is <b>present-tense-OPEN framing</b>: a deleted gap cited as {@code pending IGn}
+ * legitimate provenance</b> — the hard constraint the gap sets. The codebase carries <b>286</b> bare {@code IGn}
+ * origin-label occurrences naming <b>81</b> distinct ids (measured 2026-08-16 over this guard's own scope: every
+ * module source root plus every module build file): "the IG44 drill", "the IG56 E3 hunt", "IG13 residual" — all
+ * legitimate history, not to be touched.
+ *
+ * <p>The mechanical signal is <b>present-tense-OPEN framing</b>: a deleted gap cited as {@code pending IGn}
  * / {@code awaits IGn} / {@code future work … IGn} / {@code not yet … IGn} / {@code TODO … IGn} is a CURRENT-STATE
  * claim that misleads (it reads as open work), whereas a bare descriptive cite is history. The guard derives every
  * repository module source root plus every module build file, then delegates to

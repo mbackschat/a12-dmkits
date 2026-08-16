@@ -36,7 +36,8 @@ import org.junit.jupiter.api.Test;
  * positive control as well — it can only pass if the scan really reached those files and really matched.
  *
  * <p><b>Recall limits, stated rather than implied.</b> Two are deliberate. (1) The scan reads {@code .kt}/{@code
- * .java} only. Shell and Gradle sources name ~40 {@code build/} paths, essentially all of them legitimate derived
+ * .java} only. Shell and Gradle sources name <b>45</b> distinct {@code build/} paths across 77 occurrences
+ * (2026-08-16), essentially all of them legitimate derived
  * output (install dists, native binaries, release staging, reports); requiring a declaration for each would turn
  * this list into a set of permissions nobody reviews, which is the failure mode the fully-used assertion exists to
  * prevent. (2) A single-literal path is only a candidate when a path-constructing call ({@link #PATH_APIS}) appears within

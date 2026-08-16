@@ -28,9 +28,15 @@ import java.util.stream.Stream;
  * along, and our `FirstFilledValue` date-family row, which our own `FieldValuesNotUniqueAdmissionLawsTest`
  * already held the separating pair for. A citation that resolves to nothing is the cheap half of that problem,
  * and it is the half a machine can check — provided it checks the right names, which took one wrong version to
- * learn (see {@link #LOCK_CONTEXT}). Scoped to lock assertions it covers <b>~640</b> citations across these
- * documents, all of which resolve today; the three exemptions are each a documented non-citation rather than a
- * defect.
+ * learn (see {@link #LOCK_CONTEXT}). Scoped to lock assertions it covers <b>460 distinct test classes across 837
+ * citation occurrences</b> in these documents (2026-08-16), all of which resolve today; the three exemptions are
+ * each a documented non-citation rather than a defect.
+ *
+ * <p><i>Corrected 2026-08-16:</i> this read <b>~640</b>, which matches <b>neither</b> quantity — the signature of a
+ * figure taken once under a definition that was never written down. Both numbers are given here for that reason:
+ * {@code seen} is a set of distinct names, so the floor below and this sentence would otherwise be about different
+ * things. A derived count in a javadoc has no keeper (the recompute register covers docs, not source), so state
+ * the quantity and the date, and re-derive before citing.
  *
  * <p><b>What this does NOT do, stated so the guard is not oversold.</b> It checks that a cited class
  * <em>exists</em>, never that the class <em>asserts the claim it is cited for</em> — that is not mechanically

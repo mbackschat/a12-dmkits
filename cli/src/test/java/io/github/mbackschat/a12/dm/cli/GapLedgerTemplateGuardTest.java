@@ -59,8 +59,9 @@ class GapLedgerTemplateGuardTest {
      *
      * <p>Section <b>numbers</b> are deliberately NOT normalised: {@code FEATURE-GAPS §4},
      * {@code DEV-API-GAPS §2/§3}, {@code INTERPRETER-GAPS §3} and {@code SCHEMAKIT-GAPS §3} are cited from
-     * production sources and docs, so renumbering would break ~20 live citations. Uniformity therefore lives
-     * in the titles and the preamble, not in the ordinals.
+     * production sources and docs, so renumbering would break <b>27</b> live citations of those four ids
+     * (2026-08-16; occurrences, repo-wide: 10 + 9 + 3 + 5). Uniformity therefore lives in the titles and the
+     * preamble, not in the ordinals.
      */
     @Test
     void everyGapLedgerFollowsTheSharedTemplate() throws IOException {

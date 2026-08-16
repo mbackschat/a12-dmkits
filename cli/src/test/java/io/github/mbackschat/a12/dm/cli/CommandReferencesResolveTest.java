@@ -118,7 +118,8 @@ class CommandReferencesResolveTest {
      *  {@code ${CLI}} variable, not the tool-name literal, so folding it into {@link #MIN_INVOCATIONS} would
      *  let JS commands prop up the rename floor and defeat its trip-wire. This floor instead catches the JS
      *  scan silently going dark (the handle renamed away from {@code ${CLI}}, the workflow moved/emptied).
-     *  The live workflow resolves ~66; 30 leaves ample headroom for prompt-text churn while staying a real
+     *  The live workflow resolves exactly 66 (re-derived 2026-08-16 through this guard's own scan); 30 leaves
+     *  ample headroom for prompt-text churn while staying a real
      *  trip-wire. */
     private static final int MIN_JS_INVOCATIONS = 30;
 
