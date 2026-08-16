@@ -46,8 +46,16 @@ if ! git diff --quiet -- "$FILE" || ! git diff --cached --quiet -- "$FILE"; then
   exit 2
 fi
 
-BACKUP=$(mktemp); cp "$FILE" "$BACKUP"
-restore() { cp "$BACKUP" "$FILE"; /bin/rm -f "$BACKUP"; }
+STARTED=$(mktemp); BACKUP=$(mktemp); cp "$FILE" "$BACKUP"
+# A killed mutant leaves a FAILING result XML behind, and those persist. Left there it makes every later
+# "are you about to commit on red?" check cry wolf, which is how an honest signal gets ignored. The experiment
+# cleans up after itself.
+restore() {
+  cp "$BACKUP" "$FILE"; /bin/rm -f "$BACKUP"
+  find . -name 'TEST-*.xml' -newer "$STARTED" 2>/dev/null \
+    | xargs grep -l -E 'failures="[1-9]|errors="[1-9]' 2>/dev/null | xargs -r /bin/rm -f 2>/dev/null || true
+  /bin/rm -f "$STARTED"
+}
 trap restore EXIT
 
 python3 - "$FILE" "$OLD" "$NEW" <<'PY' || exit 2

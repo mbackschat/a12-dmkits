@@ -43,14 +43,23 @@ else
   DIFF=$(git diff --cached -U0 --src-prefix=a/ --dst-prefix=b/)
 fi
 
-[ -n "$FILES" ] || { echo "no changes to check"; exit 0; }
-
 FIRED=0
 say() { FIRED=1; printf '\n  ▸ %s\n' "$1"; shift; for line in "$@"; do printf '      %s\n' "$line"; done; }
 
-matches() { echo "$FILES" | grep -qE "$1"; }
+# `grep -q` exits at the first match and SIGPIPEs `echo` under `set -o pipefail`, which silently drops the
+# obligation on a large diff (measured: lost at ~5,000 paths). A here-string has no pipe and no such cliff.
+matches() { [ "$NO_DIFF" -eq 0 ] && grep -qE "$1" <<<"$FILES"; }
 
 echo "obligations fired by ${REF:-the staged diff}:"
+
+# The traps below run even with nothing staged — "am I about to commit on red?" does not depend on the diff.
+# Only the path-classified rows need a file list.
+if [ -z "$FILES" ]; then
+  NO_DIFF=1
+  echo "  (no changes to check — the traps below still run)"
+else
+  NO_DIFF=0
+fi
 
 # --- path-classifiable rows of CLAUDE.md's trigger table -------------------------------------------------
 matches '^cli/src/main/' && say \
@@ -99,6 +108,33 @@ matches '^(adapter|interpreter)/src/main/' && say \
   "interpreter/adapter main source changed" \
   "the session-end checkpoint needs the FULL estate (corpus replay + fixture guards), not -Pfast" \
   "guard: the differential; :adapter:test carries the perf lanes and needs its own invocation"
+
+# --- the traps: mistakes a rule in prose demonstrably does NOT prevent -----------------------------------
+# Each of these was written into docs/CLAUDE.md AND then committed anyway, by the author, hours later, in one
+# session. That is the evidence that prose is the wrong mechanism for them: they need to fire at the moment of
+# the act, not be readable beforehand.
+
+# (1) Committing on RED. The repo rule is never to commit failing work; it was broken by not reading a build
+#     result before committing. Result XMLs persist, so a failure here may be stale — that is why this reports
+#     the file and its age rather than blocking.
+RED=$(find . -path ./node_modules -prune -o -name 'TEST-*.xml' -print 2>/dev/null \
+      | xargs grep -l -E 'failures="[1-9]|errors="[1-9]' 2>/dev/null | head -8 || true)
+if [ -n "$RED" ]; then
+  say "a test-result XML records a FAILURE — do not commit red work" \
+      "result XMLs PERSIST, so check the age before believing it; \`scripts/test-evidence.sh\` distinguishes" \
+      "a fresh execution from a leftover, which is the check that makes this actionable:"
+  while IFS= read -r f; do
+    printf '        %s  (written %s)\n' "${f#./}" "$(date -r "$f" '+%H:%M' 2>/dev/null || echo '?')"
+  done <<<"$RED"
+fi
+
+# (2) An unpushed backlog. 129 commits once sat local while CI never ran on any of them, so local green was the
+#     only signal anyone had. Cheap to see, invisible unless asked.
+AHEAD=$(git rev-list --count @{u}..HEAD 2>/dev/null || echo 0)
+if [ "$AHEAD" -ge 10 ]; then
+  say "$AHEAD commits are unpushed — CI has not run on any of them" \
+      "local green is then the only signal; that is how a red lane went unseen for a day"
+fi
 
 # --- the link-rename rule: referent drift ---------------------------------------------------------------
 # A changed prose line whose -/+ pair differs ONLY inside markdown links — LABEL as well as target. Blanking

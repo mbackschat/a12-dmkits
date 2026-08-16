@@ -56,8 +56,8 @@ grep -q 'LINK TARGET changed' <<<"$out" \
 d=$(sandbox); echo x > "$d/readme"; git -C "$d" add -A >/dev/null; git -C "$d" commit -qm base
 out=$("$d/scripts/obligations.sh" 2>&1) || true
 grep -q 'no changes to check' <<<"$out" \
-  && pass "a clean tree reports no changes" \
-  || fail "a clean tree reports no changes" "$out"
+  && pass "a clean tree says so, and still runs the traps" \
+  || fail "a clean tree says so, and still runs the traps" "$out"
 /bin/rm -rf "$d"
 
 # --- 4. a path-classified row fires, and an unrelated path does not --------------------------------------
