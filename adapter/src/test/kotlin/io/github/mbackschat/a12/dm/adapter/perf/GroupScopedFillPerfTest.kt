@@ -100,16 +100,26 @@ class GroupScopedFillPerfTest {
             label = "group-scope fill",
             ceiling = CROSS_ENGINE_CEILING,
         ) {
-            // All four in ONE pass, so they share a load slice, and each arm BATCHED — this lane measures
-            // ~9 ms at n=8000 with ±28.4 % run-to-run noise (see NOISE_BATCH), and a ratio of ratios
-            // multiplies four such samples. It previously took the batch=1 default on both arms.
+            // All four in ONE pass, so they share a load slice. Only the INTERPRETER arms are batched: this lane
+            // measures ~9 ms at n=8000 with ±28.4 % run-to-run noise (see NOISE_BATCH) and a ratio of ratios
+            // multiplies four such samples, while the kernel arms are several times dearer and already sit well
+            // clear of the noisy band, so batching them would triple the lane's dominant cost for nothing.
+            //
+            // Hence `/ NOISE_BATCH`: `timeInterpreter(batch = b)` times the whole `repeat(b)` block and does NOT
+            // normalize, so an unnormalized arm is b evaluations against the kernel's one. The BAR never saw this
+            // — growth is a ratio of ratios and the constant cancels — but the printed line did, reporting the
+            // interpreter 3x dearer than it is, which inverts the very comparison this test exists to publish.
+            // Normalizing here rather than in `medianMs` is deliberate: the growth lane ANCHORS its values, so
+            // changing what they mean would invalidate the committed block. This site anchors nothing.
             PerfHarness.RatioGrowth(
-                iSmall = medianMs(N, NOISE_BATCH),
+                iSmall = medianMs(N, NOISE_BATCH) / NOISE_BATCH,
                 kSmall = kernelMedianMs(N),
-                iLarge = medianMs(N * 4, NOISE_BATCH),
+                iLarge = medianMs(N * 4, NOISE_BATCH) / NOISE_BATCH,
                 kLarge = kernelMedianMs(N * 4),
             )
         }
+        // The PLAIN measurement label is right here, not the rebatched one the growth lane keys its anchor with:
+        // these numbers are per-evaluation after the normalization above, which is exactly what that label names.
         println("[perf] %s | %s group-scope fill vs kernel: N=%d interp=%.1f kernel=%.1f (%.2f×) | N=%d interp=%.1f kernel=%.1f (%.2f×)"
             .format(Locale.ROOT, 
                 PerfHarness.measurementLabel(scenario, N),
