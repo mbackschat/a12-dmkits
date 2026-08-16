@@ -35,12 +35,18 @@ for arg in "$@"; do
   esac
 done
 
+# `--no-ext-diff` is not defensive noise: a maintainer with `GIT_EXTERNAL_DIFF` or `diff.external` set (delta,
+# difftastic — ordinary setups) makes `git diff` hand the work to that tool, which emits its own format or dies.
+# The dangerous half is not the crash. `DIFF` is captured WITHOUT `|| exit 1`, so a mid-stream "external diff
+# died" leaves it TRUNCATED and every rule below runs happily against a partial diff, reporting a clean tree.
+# `--src-prefix`/`--dst-prefix` are pinned for the same reason: `diff.noprefix` or `diff.mnemonicPrefix` in a
+# user's config changes the `a/`…`b/` headers the rules parse.
 if [ -n "$REF" ]; then
-  FILES=$(git diff --name-only "$REF") || exit 1
-  DIFF=$(git diff -U0 --src-prefix=a/ --dst-prefix=b/ "$REF")
+  FILES=$(git diff --no-ext-diff --name-only "$REF") || exit 1
+  DIFF=$(git diff --no-ext-diff -U0 --src-prefix=a/ --dst-prefix=b/ "$REF") || exit 1
 else
-  FILES=$(git diff --cached --name-only)
-  DIFF=$(git diff --cached -U0 --src-prefix=a/ --dst-prefix=b/)
+  FILES=$(git diff --no-ext-diff --cached --name-only) || exit 1
+  DIFF=$(git diff --no-ext-diff --cached -U0 --src-prefix=a/ --dst-prefix=b/) || exit 1
 fi
 
 FIRED=0

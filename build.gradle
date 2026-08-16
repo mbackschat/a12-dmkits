@@ -546,6 +546,7 @@ tasks.register('docGuardTest', Test) {
         includeTestsMatching 'io.github.mbackschat.a12.dm.BuildPerformancePolicyTest'
         includeTestsMatching 'io.github.mbackschat.a12.dm.AttributionDisclaimerLockTest'
         includeTestsMatching 'io.github.mbackschat.a12.dm.DoctorScriptTest'
+        includeTestsMatching 'io.github.mbackschat.a12.dm.ObligationsScriptTest'
         includeTestsMatching 'io.github.mbackschat.a12.dm.GateTierWiringTest'
         includeTestsMatching 'io.github.mbackschat.a12.dm.LockCitationResolvesTest'
         includeTestsMatching 'io.github.mbackschat.a12.dm.PerfAnchorCoverageGuardTest'
@@ -634,6 +635,11 @@ tasks.register('docGuardTest', Test) {
             // script would leave the lane UP-TO-DATE with its verdicts unchecked — which is how its first
             // version shipped with two wrong ones.
             'doctor'           : file('scripts/doctor.sh'),
+            // ObligationsScriptTest executes the selftest, which copies obligations.sh into fabricated repos —
+            // so BOTH are runtime inputs. Declared together: with only the selftest declared, editing the rule
+            // it checks would leave this lane UP-TO-DATE and the new behaviour unverified.
+            'obligations'      : file('scripts/obligations.sh'),
+            'obligations tests': file('scripts/selftest-obligations.sh'),
             // dsl sources + the operator catalog moved to :rulekit in the Stage-4 module cut.
             'dsl sources'      : fileTree('rulekit/src/main/java/io/github/mbackschat/a12/dm/rulekit/dsl') { include '**/*.java' },
             'operator catalog' : fileTree('rulekit/src/main/resources/catalog')])

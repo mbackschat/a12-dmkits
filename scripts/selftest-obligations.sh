@@ -92,7 +92,22 @@ grep -q 'REVIEW TRIGGER' <<<"$out" \
   || fail "the default run states it is a trigger, not a guard" "$out"
 /bin/rm -rf "$d"
 
-# --- 6. THE PINNED CASE: the real commit the rule exists for ---------------------------------------------
+# --- 6. a configured external differ must not change the verdict -----------------------------------------
+# `delta`/`difftastic` via GIT_EXTERNAL_DIFF or diff.external are ordinary maintainer setups, and they make
+# `git diff` emit another format or die mid-stream. The crash is the mild half: DIFF was captured without an
+# error check, so a partial diff read as a CLEAN TREE — the trigger silently reporting nothing.
+d=$(sandbox); mkdir -p "$d/docs"
+printf 'See [OLD.md](OLD.md) for the method and its dated results.\n' > "$d/docs/A.md"
+git -C "$d" add -A >/dev/null; git -C "$d" commit -qm base
+printf 'See [NEW.md](NEW.md) for the method and its dated results.\n' > "$d/docs/A.md"
+git -C "$d" add -A >/dev/null
+out=$(cd "$d" && GIT_EXTERNAL_DIFF=/bin/false ./scripts/obligations.sh 2>&1) || true
+grep -q 'LINK TARGET changed' <<<"$out" \
+  && pass "an external differ does not suppress the verdict" \
+  || fail "an external differ does not suppress the verdict" "$out"
+/bin/rm -rf "$d"
+
+# --- 7. THE PINNED CASE: the real commit the rule exists for ---------------------------------------------
 # f9f92cdb split the performance doc and touched docs/DOC-DISCIPLINE.md by one line carrying link renames
 # ONLY. Every guard passed and the surrounding paragraph was left stating five false things. A first version
 # of the rule blanked only `](target)` and missed this outright, because the rename changed the link LABEL
