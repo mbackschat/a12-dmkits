@@ -25,8 +25,14 @@ import org.junit.jupiter.api.io.TempDir;
  *
  * <p><b>Why this is the cheapest guard in the estate to justify.</b> Its oracle is {@link Files#exists} — for a
  * target this repository contains. For one that leaves the repository it is not an oracle at all, and that
- * distinction is load-bearing: see {@link #UNVERIFIABLE_OUTSIDE_THE_REPO}. Measured when it landed: <b>1513</b> relative
- * link targets across {@code docs/*.md}, <b>7</b> dead — a 0.5 % rate, all seven from one cause.
+ * distinction is load-bearing: see {@link #UNVERIFIABLE_OUTSIDE_THE_REPO}. Measured 2026-08-16 <i>through this
+ * class's own rule</i>: <b>2432</b> relative link targets across <b>66</b> docs, of which <b>7</b> were dead when it
+ * landed — a 0.3 % rate, all seven from one cause.
+ *
+ * <p><i>Corrected 2026-08-16:</i> this paragraph read <b>1513</b>, a figure taken with the narrower extractor used
+ * while scoping the repair rather than with the rule that shipped, and it contradicted {@link #MIN_TARGETS}'s own
+ * comment twelve lines below. Neither the guard nor any register could see it: a derived figure in a javadoc is a
+ * source file, which is the gap {@code docs/CLAUDE.recompute.md} explicitly does not reach. Re-derive before citing.
  *
  * <p>That cause is worth naming, because it is the concrete cost of a rule this repo already adopted. The seven
  * pointed at performance run records under {@code perf-results/} that no longer exist, because they were written
