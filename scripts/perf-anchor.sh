@@ -131,8 +131,8 @@ for input_path in inputs:
     # machine swap rather than as a block that was authored wrong. Re-measuring cannot fix that one — the probe has
     # to learn the machine — so the two say different things.
     # A HOSTED runner class does not have a machine, and pretending otherwise is unmaintainable. The provider
-    # hands out whatever CPU it likes per job: three consecutive dispatches on 2026-08-16 landed on an AMD EPYC
-    # 7763, an Intel Xeon 8370C and an Intel Xeon 8573C, and the committed block had been captured on a fourth.
+    # hands out whatever CPU it likes per job — three consecutive dispatches on 2026-08-16 landed on three
+    # different models while the committed block named a fourth — and the fleet is not enumerable.
     # Requiring one machine there means a refresh can only proceed after enough dispatches happen to collide on
     # one model, which is a lottery that gets worse as the provider's fleet grows. So for a hosted class the
     # machine is NOT required and NOT compared: the block is a bar over the runner CLASS, exactly as the gated
@@ -258,7 +258,10 @@ anchor["environments"][environment] = {
     "os": run.get("os"),
     "arch": run.get("arch"),
     "jdk": jdks[0] if len(jdks) == 1 else ",".join(jdks),
-    "processors": run.get("processors"),
+    # `processors` is dropped for a hosted class for the same reason as `machine`: it is no longer part of the
+    # fold identity there, so writing the last input's value would record the identity of whichever machine
+    # happened to serve the final run, as if it were the class's.
+    **({} if hosted_class else {"processors": run.get("processors")}),
     # The machine, not just its core count: the gated lane asserts only against a block captured on the machine it is
     # running on, so a block that does not name one is a bar that never fires (IF280). A HOSTED class is exempt and
     # records NO machine, because it does not have one — the provider picks the CPU per job. Recording the model that

@@ -88,7 +88,6 @@
       "os": "Linux",
       "arch": "amd64",
       "jdk": "21.0.12",
-      "processors": 2,
       "observations": {
         "$ equality correlation|diagnostic/equality-correlation@1 fingerprint=5311d6e5be00fdcb0fee305414aa8cb4511c2d004f2835367626c4178e0ea81b|n=400|interpreter|wall": 0.84,
         "$ equality correlation|diagnostic/equality-correlation@1 fingerprint=dbb74898d34123fbc2364845d59e326609dc7f29e62d7afa4ec13b29cfe71e6d|n=1600|interpreter|wall": 3.45,

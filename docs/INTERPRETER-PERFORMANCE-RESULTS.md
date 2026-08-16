@@ -122,7 +122,7 @@ Five classes entered an automated lane for the first time and two moved out of t
 
 Method: three **strictly sequential** `gh workflow run 'Nightly performance' --ref main` dispatches of `15b3ed0`, each waited to completion before the next (the isolation rule of [IF280](INTERPRETER-FINDINGS.md#if280)); artifacts committed under [`perf-results/linux-amd64-ci/`](../perf-results/README.md) as `2026-08-13T095150Z`, `T100152Z`, `T101123Z`. All three: JDK `21.0.11`, 2 processors, 36 accepted observations, run ids `31688252078` / `31689198281` / `31689900737`.
 
-**The runner class spans CPU models within one hour.** Runs 1 and 2 measured on one CPU model, run 3 on another. `scripts/perf-anchor.sh` refused the fold at the time, so no block was authored. *(Superseded 2026-08-16: a hosted class is now treated as machine-less and folds across models — [IF293](INTERPRETER-FINDINGS.md#if293). The measurement below is what justified that change.)*
+**The runner class spans CPU models within one hour.** Runs 1 and 2 measured on `AMD EPYC 7763 64-Core Processor`, run 3 on `AMD EPYC 9V74 80-Core Processor`. `scripts/perf-anchor.sh` refused the fold at the time, so no block was authored. *(Superseded 2026-08-16: a hosted class is now treated as machine-less and folds across models — [IF293](INTERPRETER-FINDINGS.md#if293). The models stay recorded **here** because this is the dated evidence log and they are the conditions this measurement ran under; what was removed is every place a model drove a DECISION.)*
 
 **The finding is not the machine split — it is that the split does not matter next to the noise.** Per-key ratios over the 36 lanes all three measured:
 

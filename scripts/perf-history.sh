@@ -11,8 +11,9 @@
 # run's column header carries the conditions (load average, processor count, machine) that make its numbers readable.
 #
 # WHY THE MACHINE IS DISCLOSED AND NOT SPLIT ON. An environment names an os/arch family, not a machine, and an
-# absolute time is a property of the machine (IF280) — which is why `perf-anchor.sh` REFUSES to fold two machines
-# into one anchor. This script must not copy that refusal: it renders a report rather than authoring a bar, and
+# absolute time is a property of the machine (IF280) — which is why `perf-anchor.sh` refuses to fold two machines
+# into one anchor on a NON-hosted class. A hosted class has no machine to fold: the provider picks the CPU per job,
+# so there the machine is neither required, compared nor recorded, and this script does not disclose it either. This script must not copy that refusal: it renders a report rather than authoring a bar, and
 # splitting the table on `machine` would cut the darwin series in two, because 17 of the 28 committed runs predate
 # the field. That destroys the continuity a trend table exists for, to guard against a machine change that probably
 # never happened. So the fold stays VISIBLE instead of forbidden — the escalation the margin band and the
@@ -99,8 +100,11 @@ for env in sorted(runs):
     # would make the row a comparison of two hardware generations. Absence is not a difference: 17 of the 28
     # committed runs predate the field, and treating unknown as its own identity would print this on every
     # invocation over the real record, which is how a warning stops being read.
+    # A HOSTED class is exempt: its machine is a per-job lottery, so "read each row within one machine" is advice
+    # nobody can follow there and it would print on every invocation. IF293 measured that the model is not that
+    # class's dominant variance (same-machine spread 2.05x vs 2.01x across models), so the rows ARE comparable.
     named = sorted({h.get("machine") for _, h, _ in series if h.get("machine")})
-    if len(named) > 1:
+    if len(named) > 1 and not str(env).endswith("-ci"):
         print("    [!] these runs were measured on different machines (%s); an absolute time is a property of the"
               " machine, so read each row within one machine rather than across it (IF280)" % ", ".join(named))
     print()

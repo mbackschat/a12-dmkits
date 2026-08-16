@@ -110,7 +110,8 @@ internal data class MachineIdentity(val model: String, val processors: Int) {
                 assertAgainstBlock = true,
                 note = "[perf] anchor for ${PerfEnvironment.key} is a bar over the runner CLASS, not over one " +
                     "machine: this run measured on ${current.text}" +
-                    (captured?.let { ", the block was captured on ${it.text}" } ?: ", the block names no machine") +
+                    (captured?.let { ", the block was captured on ${it.text}" }
+                        ?: ", and the block names no machine BY DESIGN — a hosted class does not have one") +
                     " — a breach here is flagged, never failed (TimingEnforcement)",
             )
             TimingEnforcement.GATED -> when {

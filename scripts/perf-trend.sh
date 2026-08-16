@@ -21,6 +21,9 @@
 #     so those carry it as null; treating null as its own value would split the local series in two on a SCHEMA
 #     change and halve the history every noise estimate reads. A null resolves to the environment's known value
 #     when that environment has exactly one, and otherwise prints as "machine unrecorded" without splitting.
+#     A HOSTED class never splits on it at all and prints "any machine (hosted class)": the provider picks the
+#     CPU per job, so a model boundary there shatters the series a step claim needs (5 segments where 2 exist)
+#     while buying nothing — IF293 measured same-machine spread (2.05x) at the cross-model spread (2.01x).
 #   * The step SEARCH is what discovers a re-basing revision, so no hand-maintained epoch list is needed: the
 #     change point is reported with the commit at its boundary, which is how a consumer learns which revision
 #     re-based the row.
@@ -114,7 +117,17 @@ if not runs:
              + " — a run needs a 'run' header line and at least one observation")
 
 # --- segment: platform identity, with an absent field resolved rather than split on --------------------
+# `machine` segments a NON-hosted series only. A hosted runner class does not have a machine — the provider picks
+# the CPU per job and the fleet is not enumerable — so keying the series on it shatters the history that a step
+# claim needs: over the committed hosted record it produced 5 segments where 2 exist, every one of them below the
+# >=6-run threshold, i.e. a trend instrument that can never make a claim. IF293 measured why this is safe to drop:
+# same-machine run-to-run spread (2.05x) already matches the cross-model spread (2.01x), so the model is not this
+# class's dominant variance and splitting on it buys nothing it costs.
 FIELDS = ("jdk", "os", "machine")
+
+def machine_splits(env):
+    """A hosted class does not have a machine, so it must not become a segment boundary there."""
+    return not str(env).endswith("-ci")
 known = {}   # (env, field) -> set of non-null values seen
 for env, _, h, _ in runs:
     for f in FIELDS:
@@ -124,6 +137,11 @@ for env, _, h, _ in runs:
 def segment_of(env, h):
     parts = []
     for f in FIELDS:
+        # The arity stays constant so the segment tuple keeps its shape downstream; the hosted machine simply
+        # collapses to one value instead of becoming a boundary.
+        if f == "machine" and not machine_splits(env):
+            parts.append(None)
+            continue
         value = h.get(f)
         if value is None:
             candidates = known.get((env, f), set())
@@ -203,7 +221,8 @@ if view == "ratio":
     for segment in sorted(segments, key=lambda s: tuple("" if p is None else p for p in s)):
         series = segments[segment]
         env, jdk, os_name, machine = segment
-        head = f"{env} · jdk {jdk or '?'} · {os_name or '?'} · " + (machine or "machine unrecorded")
+        head = f"{env} · jdk {jdk or '?'} · {os_name or '?'} · " + (
+            machine or ("any machine (hosted class)" if not machine_splits(env) else "machine unrecorded"))
 
         # margins[(identity, kernel_engine)] -> [interp_ms / kernel_ms per run]
         margins = {}
@@ -341,7 +360,8 @@ changed = 0
 for segment in sorted(segments, key=lambda s: tuple("" if p is None else p for p in s)):
     series = segments[segment]
     env, jdk, os_name, machine = segment
-    head = f"{env} · jdk {jdk or '?'} · {os_name or '?'} · " + (machine or "machine unrecorded")
+    head = f"{env} · jdk {jdk or '?'} · {os_name or '?'} · " + (
+            machine or ("any machine (hosted class)" if not machine_splits(env) else "machine unrecorded"))
     keys = sorted({k for _, _, o in series for k in o}, key=label)
     if pattern:
         keys = [k for k in keys if pattern in label(k).lower() or pattern in k.lower()]

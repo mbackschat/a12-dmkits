@@ -78,6 +78,30 @@ class PerfAnchorResourceTest {
             }
     }
 
+    /**
+     * **The complementary partition, which nothing asserted.** The rule above SKIPS a hosted class, so the policy
+     * "a hosted block records no machine" lived only in the refresh script's output and never in the committed
+     * artifact. A hand edit, a merge, or a refresh run from an older checkout of the script silently restored the
+     * field, and a cold review's mutant re-adding it survived all ten anchor-reading guards. Assert the absence
+     * where the artifact is, not only where the writer is.
+     */
+    @Test
+    fun aHostedRunnerClassRecordsNoMachineAndNoProcessorCount() {
+        environments.properties().filter { (environment, _) -> environment.endsWith("-ci") }
+            .forEach { (environment, block) ->
+                assertTrue(block.path("machine").isMissingNode) {
+                    "$environment names a machine, but a hosted class does not have one — the provider picks the " +
+                        "CPU per job and the fleet is not enumerable, so naming one states an identity the class " +
+                        "cannot honour and makes the next refresh wait on a lottery. Drop the field."
+                }
+                assertTrue(block.path("processors").isMissingNode) {
+                    "$environment names a processor count, which is part of a machine identity a hosted class " +
+                        "does not have; it is not compared on a fold either, so writing it records the last " +
+                        "input's value as if it were the class's"
+                }
+            }
+    }
+
     /** The key shape `PerfAnchors` matches on, so a hand-edited or truncated key cannot silently stop matching. */
     @Test
     fun everyKeyCarriesItsLaneScenarioFingerprintScaleEngineAndClock() {

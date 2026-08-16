@@ -135,8 +135,8 @@ class PerfAnchorScriptTest {
 
     /**
      * **A HOSTED class has no machine, and the anchor must not pretend otherwise.** The provider picks the CPU per
-     * job: three consecutive dispatches on 2026-08-16 landed on an AMD EPYC 7763, an Intel Xeon 8370C and an Intel
-     * Xeon 8573C, while the committed block named a fourth. Recording one model there states an identity the class
+     * job: three consecutive dispatches on 2026-08-16 landed on three different models, while the committed block
+     * named a fourth, and the fleet is not enumerable. Recording one model there states an identity the class
      * cannot honour and makes every later refresh wait on a CPU lottery, so a hosted block records none — matching
      * the lane, which already treats it as a bar over the CLASS ([TimingEnforcement.FLAGGED]).
      */
@@ -144,11 +144,13 @@ class PerfAnchorScriptTest {
     fun aHostedRefreshRecordsNoMachineBecauseTheClassDoesNotHaveOne() {
         val anchor = anchorCarrying(laneA to 1.0, laneB to 2.0)
 
-        val run = refresh(anchor, observations("hosted.jsonl", laneA to 2.0, laneB to 4.0, machine = "AMD EPYC 7763"))
+        val run = refresh(anchor, observations("hosted.jsonl", laneA to 2.0, laneB to 4.0, machine = "hosted-model-a"))
 
         assertEquals(0, run.status, run.stderr)
-        assertEquals(null, machineOf(anchor, "linux-amd64-ci"),
-            "a hosted block that named one model would claim an identity the runner class cannot honour")
+        assertTrue(machineIsAbsentFrom(anchor, "linux-amd64-ci")) {
+            "a hosted block must OMIT the field, not carry an explicit null — `machineOf` maps both to null, so a " +
+                "`\"machine\": null` mutant survived until this asserted absence directly"
+        }
     }
 
     /** A real machine still records its identity: the exemption is about hosted classes, not about all of them. */
@@ -208,14 +210,17 @@ class PerfAnchorScriptTest {
 
         val run = refresh(
             anchor,
-            observations("first.jsonl", laneA to 2.0, laneB to 4.0, machine = "AMD EPYC 7763"),
-            observations("second.jsonl", laneA to 4.0, laneB to 8.0, machine = "Intel Xeon Platinum 8370C"),
-            observations("third.jsonl", laneA to 6.0, laneB to 12.0, machine = "Intel Xeon Platinum 8573C"),
+            observations("first.jsonl", laneA to 2.0, laneB to 4.0, machine = "hosted-model-a"),
+            observations("second.jsonl", laneA to 4.0, laneB to 8.0, machine = "hosted-model-b"),
+            observations("third.jsonl", laneA to 10.0, laneB to 20.0, machine = "hosted-model-c"),
         )
 
         assertEquals(0, run.status, run.stderr)
+        // 2/4/10 is deliberately ASYMMETRIC: its median is 4.0 and its mean is 5.33, so this discriminates the
+        // two. The first version used 2/4/6, where median == mean == 4 — it asserted "MEDIAN" in its message and
+        // a `median -> mean` mutant survived the whole script-guard lane. A cold review planted it.
         assertEquals(mapOf(laneA to 4.0, laneB to 8.0), observationsOf(anchor, "linux-amd64-ci"),
-            "three hosted runs on three CPUs fold to their per-key MEDIAN, which is the point of folding")
+            "three hosted runs on three CPUs fold to their per-key MEDIAN, not their mean")
     }
 
     /** A REAL machine's numbers averaged with another's is still the collision the machine field exists to refuse. */
@@ -340,7 +345,7 @@ $body
     private fun recordText(environment: String, vararg medians: Pair<String, Double>): String = buildString {
         appendLine(
             """{"kind":"run","environment":"$environment","os":"Linux","arch":"amd64","processors":4,""" +
-                """"machine":"AMD EPYC 7763"}""",
+                """"machine":"hosted-model-a"}""",
         )
         medians.forEach { (key, ms) ->
             appendLine("""{"kind":"observation","environment":"$environment","key":"$key","medianMs":$ms}""")
@@ -351,7 +356,7 @@ $body
         name: String,
         vararg medians: Pair<String, Double>,
         environment: String = "linux-amd64-ci",
-        machine: String? = "AMD EPYC 7763",
+        machine: String? = "hosted-model-a",
         status: String? = null,
     ): Path {
         val names = machine?.let { ""","machine":"$it"""" } ?: ""
@@ -398,6 +403,11 @@ $body
     private fun blocksIn(anchor: Path): Set<String> =
         PerfObservations.MAPPER.readTree(anchor.toFile()).path("environments")
             .properties().map { it.key }.toSet()
+
+    /** Absence of the field itself, which `machineOf` cannot distinguish from an explicit null. */
+    private fun machineIsAbsentFrom(anchor: Path, environment: String): Boolean =
+        PerfObservations.MAPPER.readTree(anchor.toFile())
+            .path("environments").path(environment).path("machine").isMissingNode
 
     private fun machineOf(anchor: Path, environment: String): String? =
         PerfObservations.MAPPER.readTree(anchor.toFile())
