@@ -6,8 +6,22 @@ name: Nightly performance
 # carry no completed CI run of its own.
 on:
   workflow_dispatch:
+  # WEEKLY since 2026-08-16, though the workflow keeps its name. This repo is private, so each run bills
+  # Actions minutes: measured over six cron runs the median is 10.3 min, i.e. ~315 min/month daily against a
+  # total steady-state spend near 1,300. Weekly costs ~45.
+  #
+  # Frequency is the right dial because a release is independently gated (scripts/release-perf-gate.sh refuses
+  # a run that proved nothing), so this schedule is not what stops a regression shipping — it is what narrows
+  # WHEN one entered, and a week-wide bisect is cheap. What it must not become is dispatch-only: every manual
+  # dispatch happens while perf work is in flight, so a dispatch-only series has no quiet baseline and a step
+  # cannot be told from an intended change. That unattended baseline is the whole reason a cron survives here.
+  #
+  # The NAME stays `Nightly performance`: it is the dispatch identifier in committed commands
+  # (`gh workflow run 'Nightly performance'` in scripts/perf-anchor.sh and scripts/README.md) and the filename
+  # is a declared Gradle input in build.gradle plus a locus in GateTierWiringTest. Renaming buys accuracy in
+  # one word and costs a rename across ~10 loci, two of them executable.
   schedule:
-    - cron: '0 3 * * *'
+    - cron: '0 3 * * 0'
 
 permissions:
   contents: read
@@ -66,7 +80,10 @@ jobs:
       # dependencies may restore from cache; the timed measurements themselves always execute fresh.
       #
       # This is the ONLY automated lane that runs a timing bar (owner policy 2026-08-13: ordinary pushes are
-      # covered by this nightly with full perf coverage, and a release is blocked on regressions). The task
+      # covered by this workflow with full perf coverage, and a release is blocked on regressions). *Qualified
+      # 2026-08-16 when the schedule went weekly: "ordinary pushes are covered" now means covered WITHIN A WEEK,
+      # not overnight. The release gate is unchanged and is what actually blocks a regression from shipping.*
+      # The task
       # selects the whole @Tag('perf') routine tier BY TAG, so a new perf test is gated here by existing — the
       # enumerated filter this replaced ran 2 of 9 such classes. On a hosted runner the self-referential bars
       # (growth floors, the absolute anchor) report rather than fail: contention here cannot be told apart from
