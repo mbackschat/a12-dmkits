@@ -799,7 +799,16 @@ internal class AnchorBudget(
         // asked for a refresh each time, while the three-run median sits at 0.93x/0.89x of the very anchor it
         // called stale. The CPU lottery is a permanent property of hosted runners, so this is not a gap waiting
         // on better data — an absolute bar there answers a question about the provider's fleet, not the code.
-        // The within-run ratios keep the coverage: they divide out the machine by construction (IF281).
+        // WHAT THIS LOSES ON HOSTED, stated exactly, because the first version of this comment named the wrong
+        // replacement. The within-run cross-engine ratios do NOT keep this coverage: they divide out the machine
+        // by construction (IF281), and that same property makes them blind to the thing STALE detects — an
+        // anchor that stopped describing the code. A uniform speedup leaves every ratio unchanged while the
+        // anchor drifts to a multiple of the real cost, which is precisely the failure a ratio cannot see.
+        // The real replacement is the STEP view of the committed record (`scripts/perf-trend.sh`), which the
+        // nightly runs (`.github/workflows/nightly-performance.yml`) and which reads a level dropping across
+        // runs rather than one run against a constant — so it needs no stable machine. It REPORTS and exits 0,
+        // so on a hosted class this coverage is a report a maintainer reads, not a gate. That is the honest
+        // trade, and it is a downgrade rather than an equivalence.
         if (enforcement != TimingEnforcement.FLAGGED) {
             staleReportFor(key, observedMs)?.let { println(it) }
         }

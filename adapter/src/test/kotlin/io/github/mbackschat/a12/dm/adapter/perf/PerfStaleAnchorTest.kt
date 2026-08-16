@@ -98,8 +98,16 @@ class PerfStaleAnchorTest {
      * 17.12 ms at n=1500 — a **2.16x spread on byte-identical code** (2.46x at n=6000). "Measured well below the
      * anchor" and "drew a fast CPU" are indistinguishable there, so the report asked for a refresh on 2 of 4
      * runs while the three-run median sat at 0.93x of the very anchor it called stale. The CPU lottery is
-     * permanent, so this is not a gap awaiting better data; the within-run ratios keep the coverage because they
-     * divide out the machine by construction (IF281).
+     * permanent — the three runs that authored the current block drew three different CPU models — so this is
+     * not a gap awaiting better data.
+     *
+     * **What it costs, corrected 2026-08-16.** This first read "the within-run ratios keep the coverage because
+     * they divide out the machine". They do divide out the machine, and that is exactly why they CANNOT keep this
+     * coverage: a uniform speedup moves no ratio while the anchor drifts to a multiple of the real cost, which is
+     * the one failure STALE exists to catch. The replacement is the STEP view of the committed record
+     * (`scripts/perf-trend.sh`, run by the nightly), which compares a level across runs instead of one run
+     * against a constant. It reports and exits 0, so on a hosted class this is a maintainer-read signal rather
+     * than a gate — a downgrade, stated as one.
      */
     @Test
     fun aHostedClassMakesNoStaleClaimBecauseItCannotTellAFastCpuFromALooseAnchor() {
