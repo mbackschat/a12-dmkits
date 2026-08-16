@@ -402,6 +402,7 @@ tasks.register('docGuardTest', Test) {
         includeTestsMatching 'io.github.mbackschat.a12.dm.cli.PublicCommandShapeClaimsTest'
         includeTestsMatching 'io.github.mbackschat.a12.dm.cli.PublicOutputClaimsTest'
         includeTestsMatching 'io.github.mbackschat.a12.dm.cli.interp.ModelLoaderParityTest'
+        includeTestsMatching 'io.github.mbackschat.a12.dm.cli.JdkPinGuardTest'
     }
     // guardInputs (root ext, kernel-decoupling §3b #17) declares these runtime-read files as inputs AND fails
     // loudly if any tree goes empty — so a moved folder can't silently turn this guard into a false green.
@@ -423,6 +424,8 @@ tasks.register('docGuardTest', Test) {
             'eval workflow'      : rootProject.file('eval/benchmark.workflow.js'),
             'probe task 14'      : rootProject.file('probe/tasks/14-repeated-computation-outcomes.md'),
             'operator catalog'   : rootProject.fileTree('rulekit/src/main/resources/catalog'),
+            // JdkPinGuardTest reads the workflow files, so an edit there must re-run it rather than cache green.
+            'CI workflows'       : rootProject.fileTree('.github/workflows') { include '**/*.yml', '**/*.yaml' },
             // ModelLoaderParityTest reads every fixture model in both roots.
             'cli test models'    : rootProject.fileTree('cli/src/test/resources/models') { include '**/*.json' },
             'examples/models'    : rootProject.fileTree('examples/models') { include '**/*.json' },

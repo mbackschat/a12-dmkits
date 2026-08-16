@@ -34,9 +34,15 @@ jobs:
         uses: actions/setup-java@v4
         with:
           distribution: temurin
+          # PINNED TO EXACT PATCH VERSIONS, deliberately. `21` alone resolves to whichever 21.0.x the runner
+          # image happens to cache, and that drifted 21.0.11 -> 21.0.12 mid-August: the hosted performance
+          # record then carried two JDK values, which split its trend series into segments too short for a step
+          # claim. A patch version is a lottery draw, not a platform choice, so it is pinned and bumped by a
+          # reviewable edit — the same "committed rather than rolling" rule the performance anchor follows.
+          # 21.0.12 is what every local run in perf-results/ was measured on. Guarded by JdkPinGuardTest.
           java-version: |
-            21
-            25
+            21.0.12
+            25.0.4
 
       - name: Set up Gradle cache
         uses: gradle/actions/setup-gradle@v6
