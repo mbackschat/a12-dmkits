@@ -412,7 +412,8 @@ class VerbDemonstrationTest {
 
     /**
      * <b>Receipt totality</b> (CLI-SPEC §3b "The result envelope"): a mutation that ran the consistency oracle must say
-     * so, over the 31 preview demos rather than the handful anyone thought to write a test for.
+     * so, over the 31 preview demos rather than the handful anyone thought to write a test for — the
+     * {@code expect: "preview"} entries of {@code verb-examples.json}, of which there were 31 on 2026-08-16.
      *
      * <p>This column exists because the evidence type makes a <em>wrong</em> claim unrepresentable but leaves
      * <em>silence</em> cheap. {@code ConsistencyEvidence.of(x)} compiles for any witness, and one holding no

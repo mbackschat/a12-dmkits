@@ -33,7 +33,8 @@ import org.junit.jupiter.api.Test;
  *   <li><b>The §-mirror stays intact</b> — every {@code §n} tag in a KERNEL-FINDINGS heading (incl.
  *       multi-tags like {@code §9/§11}) is within the canonical taxonomy and its section exists.</li>
  *   <li><b>The canonical anchors stay pinned</b> — every {@link #REQUIRED_ANCHORS required anchor} (the
- *       14 numbered sections' GitHub heading slugs + the field-types table) exists, and every intra-doc
+ *       14 numbered sections' GitHub heading slugs + the field-types table; KERNEL-SEMANTICS carried 14
+ *       {@code ## n.} headings on 2026-08-16) exists, and every intra-doc
  *       {@code ](#…)} link resolves to a real heading — so deleting <b>or renaming</b> a canonical section
  *       heading fails the build naming the exact anchor, instead of silently orphaning the fold markers,
  *       SEMANTICS-MAP rows, cross-links, and downstream export consumers that key on it.</li>
@@ -158,7 +159,8 @@ class KernelDocsFoldContractTest {
 
     /**
      * The canonical anchors the ecosystem pins — the 14 numbered sections' GitHub heading slugs plus the
-     * field-types table. Everything that resolves into the canonical doc keys on these: the fold markers'
+     * field-types table, so this list holds 15 entries (2026-08-16). Everything that resolves into the canonical
+     * doc keys on these: the fold markers'
      * {@code §n} targets, SEMANTICS-MAP's taxonomy rows, the doc's own {@code [§n](#…)} cross-links, and a
      * downstream semantic-export consumer's section references. Deleting <b>or renaming</b> one of these
      * headings breaks that keying silently — so the guard fails naming the exact anchor that went missing.

@@ -50,29 +50,37 @@ import org.junit.jupiter.api.Test;
  * those claims was <i>exactly right</i>). A dated figure is a checkable claim. An undated one is not a fact.
  *
  * <p><b>Scope is deliberately narrow, because a guard that fails honest content gets disabled.</b> Only
- * <i>corpus-inventory</i> nouns count — things enumerated over this repository. Fixture sizes are not corpus
- * counts and are excluded by construction: under a looser list admitting {@code rows}, the clear majority of hits
- * were test-fixture sizes and every one of them was honest, which is how a guard earns being switched off.
+ * <i>corpus-inventory</i> nouns count — things enumerated over this repository. Fixture sizes are mostly excluded
+ * by construction: under a looser list admitting {@code rows}, the clear majority of hits were test-fixture sizes
+ * and every one of them was honest, which is how a guard earns being switched off. The noun list is the only
+ * filter, though, so a fixture that happens to be counted in a corpus noun does reach the rule — exactly one does
+ * ({@code 100 random docs}), and it is exempt below rather than pretended away.
  *
- * <p><b>The widening was tried and REJECTED on measurement, 2026-08-16 — so this limit is a decision, not a
- * backlog item.</b> Opening the qualifier slot to any two lowercase words does catch the founding case, and it
- * also admits a class this guard should not police: {@code "converting 26 call sites"}, {@code "this class's 19
- * call sites"}, {@code "the 14 numbered sections"}, {@code "100 random docs"}. Those are <i>narratives about a
- * past change</i> or <i>fixture sizes</i>, not live inventories — they do not rot the way an inventory claim
- * does, so each would need an exemption, and a guard whose exemption list grows faster than its findings is a
- * permissions list wearing a guard's clothes. Two genuine inventory figures the widening would have caught were
- * simply dated by hand instead ({@code DocRelativeLinkGuardTest}'s 2432 targets, {@code OperatorIndexGuardTest}'s
- * 188 records), which is the cheaper half of the benefit at none of the cost. Re-open only if an inventory figure
- * is found rotting <i>because</i> of this slot.
+ * <p><b>The qualifier slot was widened on 2026-08-16, and the measurement that had justified rejecting it was
+ * wrong.</b> The first version admitted only a closed {@code distinct|live|bare} set, which meant an arbitrary
+ * adjective between the number and the noun hid the figure — so this guard could not see <b>its own founding
+ * case</b>, {@code 1513 relative targets}. The note rejecting the widening claimed its extra hits were
+ * "narratives about a past change or fixture sizes, <i>not live inventories</i>". Measured over the tree, the open
+ * slot adds <b>21</b> matches: <b>10</b> already dated, <b>5</b> live inventories, and <b>6</b> non-inventory
+ * figures now exempt below. The claim was false in both directions — the widening does reach live inventories,
+ * and one of them was <b>rotting</b>.
  *
- * <p><b>A third recall limit, and it costs this guard its own founding case.</b> The qualifier slot is a closed
- * {@code distinct|live|bare} set, so an arbitrary adjective between the number and the noun hides the figure:
- * {@code 1513 relative targets} — the exact stale figure that motivated this guard — does <b>not</b> fire, nor
- * does {@code ~2400 relative targets} twelve lines below it. Widening the slot to any two lowercase words was
- * measured and finds about thirteen further live figures (call-site counts, section counts, record counts),
- * several of which are genuinely rotting and one of which is a fixture size. That is a bigger denominator than
- * this guard was reviewed against, so it is deliberately NOT taken here and is logged as its own slice. The hole
- * is stated rather than left silent, which is the whole difference between a limit and a defect.
+ * <p><i>That rotting figure is the sharpest evidence this guard has.</i> {@code PerfGateTest} read "this class's
+ * 19 call sites"; 19 is the count of <b>occurrences</b> of the helper's token, one of which is its own
+ * declaration, so the live call-site count is <b>18</b>. It was mis-certified <b>while being verified for this
+ * very edit</b> — a {@code grep -c} was read as a call-site count — by the identical occurrences-vs-instances
+ * slip recorded three paragraphs above. Two independent confusions of the same unnamed quantity, inside the one
+ * change that exists to name quantities, is why the remedy here is dating rather than trust.
+ *
+ * <p><b>Six exemptions against fifteen policed figures, and that ratio is the thing to watch.</b> A guard whose
+ * exemption list grows faster than its findings is a permissions list wearing a guard's clothes. Two properties
+ * keep it a classification instead: entries are keyed by <i>file <b>and</b> figure text</i> rather than by file,
+ * because one file may hold both an exempt narrative and a policed inventory ({@code VerbDemonstrationTest} does);
+ * and they are asserted fully used, so an entry cannot outlive the line it excuses. Five of the six share one
+ * reason — {@code N call sites} in this estate is nearly always a <i>past-tense</i> account of a landed refactor
+ * ("35 call sites duly passed a literal valid", "the other 52 had not", "what makes converting 26 a
+ * representation change"), which has no live count to re-derive. A <i>new</i> undated {@code N call sites} still
+ * fires.
  *
  * <p><b>Two further recall limits, stated rather than implied.</b> (1) The scan reads {@code .java}/{@code .kt} only, so a
  * corpus figure in a {@code .gradle}, {@code .sh} or {@code .py} comment is out of scope — four live ones sit in
@@ -102,7 +110,12 @@ class DerivedFigureDatingGuardTest {
 
     /**
      * A count over the corpus: an optional tilde, a number of two or more digits (or one grouped with thin
-     * spaces), then one of the nouns above — optionally qualified by {@code distinct}/{@code live}/{@code bare}.
+     * spaces), then one of the nouns above — with up to two lowercase qualifier words between them.
+     *
+     * <p><b>Why the slot is bounded at two.</b> Unbounded, the rule stops being a figure rule and becomes a digit
+     * rule, matching across a whole clause to any noun that happens to follow. One word is what the founding case
+     * needs, two leaves room for the estate's {@code N of the <noun>} form, and the bound is held by a control
+     * below so it cannot quietly grow.
      *
      * <p>Deliberately described rather than illustrated. A literal example of the shape here would make this
      * guard report <b>itself</b>, and the first run did exactly that; the repo's discipline is to write around
@@ -110,7 +123,7 @@ class DerivedFigureDatingGuardTest {
      * than to exclude the guard's own file, which would be a hole of precisely the kind it exists to close.
      */
     private static final Pattern FIGURE = Pattern.compile(
-            "(?:~\\s*)?\\b(?:\\d{1,3}(?:[  ]\\d{3})+|\\d{2,})\\s+(?:distinct\\s+|live\\s+|bare\\s+)?(?:"
+            "(?:~\\s*)?\\b(?:\\d{1,3}(?:[  ]\\d{3})+|\\d{2,})\\s+(?:[a-z][a-z-]*\\s+){0,2}(?:"
                     + CORPUS_NOUNS + ")\\b");
 
     /**
@@ -128,14 +141,46 @@ class DerivedFigureDatingGuardTest {
     /**
      * Figures that are NOT live-corpus claims, each with the reason it is exempt. Asserted <b>fully used</b>
      * below, so an entry cannot outlive the line it excuses and quietly widen the rule.
+     *
+     * <p><b>Keyed by {@code <file>|<figure text>}, not by file.</b> A file may hold both an exempt narrative and a
+     * policed inventory — {@code VerbDemonstrationTest} holds a past-tense call-site narrative <i>and</i> a live
+     * preview-demo inventory — so a filename key would silently excuse the live one too. That is the failure mode
+     * an exemption list is most prone to: it looks like one row and grants two permissions.
      */
-    private static final Map<String, String> NOT_A_LIVE_CORPUS_CLAIM = Map.of(
-            "NotFoundRefusalTest.java", "historical narrative: \"the bare stderr string 11 of 13 verbs returned "
-                    + "BEFORE\" describes the pre-fix behaviour, so there is no live count to re-derive",
-            "Operators.kt", "a source-code fact, not a doc-corpus one: `FunctionOp` has 53 entries and the "
-                    + "compiler keeps that honest, unlike a count over markdown that nothing recomputes");
+    private static final Map<String, String> NOT_A_LIVE_CORPUS_CLAIM = Map.ofEntries(
+            Map.entry("NotFoundRefusalTest.java|13 verbs",
+                    "historical narrative: \"the bare stderr string 11 of 13 verbs returned BEFORE\" describes "
+                            + "the pre-fix behaviour, so there is no live count to re-derive"),
+            Map.entry("Operators.kt|53 entries",
+                    "a source-code fact, not a doc-corpus one: `FunctionOp` has 53 entries and the compiler keeps "
+                            + "that honest, unlike a count over markdown that nothing recomputes"),
+            Map.entry("EntityPathTest.java|26 call sites",
+                    "past-tense refactor narrative: \"what makes converting 26 call sites a representation change "
+                            + "instead of a behaviour change\" describes one landed change; the number never moves "
+                            + "again, and re-deriving it today would measure the wrong thing"),
+            Map.entry("PerfNumberLocaleContractTest.kt|52 call sites",
+                    "past-tense refactor narrative: \"the other 52 call sites had not\" is precisely the pre-fix "
+                            + "state this guard removed, so there is deliberately no live 52 left to count"),
+            Map.entry("ResultAlgebraTest.java|35 call sites",
+                    "past-tense refactor narrative: the 35 sites that passed a literal `valid` are the defect the "
+                            + "typed factories made unrepresentable, so the live count is zero by construction"),
+            Map.entry("VerbDemonstrationTest.java|35 call sites",
+                    "the same past-tense narrative as ResultAlgebraTest, restated on the behavioural backstop for "
+                            + "that structural property — and the reason this map is keyed by figure text, since "
+                            + "the same file's \"31 preview demos\" IS live and is policed"),
+            Map.entry("WorkspaceOption.java|~60 call sites",
+                    "counterfactual design rationale: \"no per-verb flag to thread through ~60 call sites\" counts "
+                            + "the sites of a flag that was deliberately never added, so nothing derives it"),
+            Map.entry("PerfCatalog.kt|100 random docs",
+                    "a fixture size, not a corpus count: the fuzz generates 100 documents, a number set in the "
+                            + "code beside the comment and changed with it"));
 
-    private static final int MIN_FIGURES = 8;
+    /**
+     * Vacuity floor. Measured at <b>46</b> matching figures on 2026-08-16, the day the qualifier slot was widened
+     * from a closed three-word set (which matched 25). Set well below the measurement so ordinary editing does
+     * not trip it, and well above the pre-widening total so a silent revert of the slot fails here.
+     */
+    private static final int MIN_FIGURES = 30;
 
     @Test
     void everyCorpusFigureInASourceCommentCarriesItsMeasurementDate() throws IOException {
@@ -146,19 +191,22 @@ class DerivedFigureDatingGuardTest {
         for (Path file : sources()) {
             List<String> lines = List.of(Files.readString(file).split("\n", -1));
             for (int i = 0; i < lines.size(); i++) {
-                if (!isComment(lines.get(i)) || !FIGURE.matcher(plain(lines.get(i))).find()) {
+                if (!isComment(lines.get(i))) {
+                    continue;
+                }
+                Matcher m = FIGURE.matcher(plain(lines.get(i)));
+                if (!m.find()) {
                     continue;
                 }
                 figures++;
                 String name = file.getFileName().toString();
-                if (NOT_A_LIVE_CORPUS_CLAIM.containsKey(name)) {
-                    exemptionsUsed.add(name);
+                String figure = m.group().trim();
+                if (NOT_A_LIVE_CORPUS_CLAIM.containsKey(name + "|" + figure)) {
+                    exemptionsUsed.add(name + "|" + figure);
                     continue;
                 }
                 if (!MEASURED_ON.matcher(block(lines, i)).find()) {
-                    Matcher m = FIGURE.matcher(plain(lines.get(i)));
-                    m.find();
-                    undated.add(name + ":" + (i + 1) + "  \"" + m.group().trim() + "\"");
+                    undated.add(name + ":" + (i + 1) + "  \"" + figure + "\"");
                 }
             }
         }
@@ -232,7 +280,20 @@ class DerivedFigureDatingGuardTest {
         assertTrue(fires(List.of("    /** 2 432 targets. */")).size() == 1,
                 "a thin-space-grouped number is a figure; that branch was dead and uncontrolled");
         assertTrue(fires(List.of("    /** 460 distinct entries and 81 bare sites. */")).size() == 1,
-                "the distinct/live/bare qualifier group was dead and uncontrolled");
+                "a one-word qualifier is inside the slot");
+
+        // A3.5 — THE FOUNDING CASE, which this guard could not see until 2026-08-16. The qualifier slot was a
+        // closed distinct|live|bare set, so `1513 relative targets` — the exact stale figure that motivated the
+        // whole guard — was invisible to it. Flipping this assertion is what the widening bought.
+        assertTrue(fires(List.of("    /** Measured when it landed: <b>1513</b> relative targets. */")).size() == 1,
+                "the widened qualifier slot must catch the founding case's ACTUAL wording");
+
+        // A3.6 — and the slot is BOUNDED at two words. Unbounded it stops being a figure rule and becomes a digit
+        // rule, reaching across a whole clause to any noun that happens to follow.
+        assertTrue(fires(List.of("    /** 66 of the docs. */")).size() == 1,
+                "two qualifier words are inside the slot — the estate's `N of the <noun>` form");
+        assertTrue(fires(List.of("    /** 66 of the shipped docs. */")).isEmpty(),
+                "three are outside it; without this control the bound could quietly grow to any clause");
 
         // A3.3/A3.4 — emphasis must not hide a figure. Five corrected figures went invisible to the first
         // version of this rule precisely because the correction added <b>…</b>.
@@ -240,9 +301,6 @@ class DerivedFigureDatingGuardTest {
                 "markup around the number must not hide the figure — this is how the rule lost five of them");
         assertTrue(fires(List.of("    /** Measured when it landed: <b>1513</b> targets. */")).size() == 1,
                 "markup must not hide the founding case's SHAPE");
-        assertTrue(fires(List.of("    /** Measured when it landed: <b>1513</b> relative targets. */")).isEmpty(),
-                "and the closed qualifier slot means the founding case's ACTUAL wording does not fire — a stated "
-                        + "recall limit, held by a test so it cannot quietly become true or quietly widen");
     }
 
     /** A comment line with its inline markup removed, so emphasis cannot hide a figure. */

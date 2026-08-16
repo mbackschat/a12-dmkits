@@ -40,7 +40,8 @@ class PerfGateTest {
     ) {
         // The body of this helper is now `PerfHarness.assertSubQuadraticLane`. It lived here, private, which is
         // precisely why seven other routine-tier classes measured and recorded nothing (IF296): the record-and-arm
-        // step was not reachable from them. Kept as a thin delegate so this class's 19 call sites stay readable.
+        // step was not reachable from them. Kept as a thin delegate so this class's 18 call sites stay readable
+        // (2026-08-16; `assertSubQuadratic(` occurs 19 times, one of which is this declaration).
         PerfHarness.assertSubQuadraticLane(
             label = label, small = small, identityAt = identityAt, culprit = culprit,
             large = large, clock = clock, unit = unit, batch = batch, measureAt = measureAt,
