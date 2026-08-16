@@ -186,6 +186,8 @@ class DerivedFigureDatingGuardTest {
     void everyCorpusFigureInASourceCommentCarriesItsMeasurementDate() throws IOException {
         List<String> undated = new ArrayList<>();
         Set<String> exemptionsUsed = new TreeSet<>();
+        Set<String> filesWithAnExemption = new TreeSet<>();
+        Set<String> filesWithAPolicedFigure = new TreeSet<>();
         int figures = 0;
 
         for (Path file : sources()) {
@@ -203,8 +205,10 @@ class DerivedFigureDatingGuardTest {
                 String figure = m.group().trim();
                 if (NOT_A_LIVE_CORPUS_CLAIM.containsKey(name + "|" + figure)) {
                     exemptionsUsed.add(name + "|" + figure);
+                    filesWithAnExemption.add(name);
                     continue;
                 }
+                filesWithAPolicedFigure.add(name);
                 if (!MEASURED_ON.matcher(block(lines, i)).find()) {
                     undated.add(name + ":" + (i + 1) + "  \"" + figure + "\"");
                 }
@@ -219,6 +223,18 @@ class DerivedFigureDatingGuardTest {
         assertEquals(NOT_A_LIVE_CORPUS_CLAIM.keySet(), exemptionsUsed,
                 "an exemption no longer matches any figure, so its written reason can no longer be checked — "
                         + "remove the row rather than leaving a permission nobody reviews");
+
+        // The keying decision, made checkable. Exemptions are keyed by file AND figure text, and the javadoc calls
+        // that load-bearing — but a javadoc calling something load-bearing is not evidence that anything holds it.
+        // This asserts the estate still contains the shape that makes filename keying WRONG: a file carrying an
+        // exempt figure alongside a policed one. Re-key by filename and this fails, naming the figure that would
+        // have been silently excused.
+        Set<String> mixed = new TreeSet<>(filesWithAnExemption);
+        mixed.retainAll(filesWithAPolicedFigure);
+        assertTrue(!mixed.isEmpty(), () -> "no file carries both an exempt figure and a policed one, so nothing "
+                + "here distinguishes keying by <file>|<figure> from keying by <file> alone. Either the estate "
+                + "changed and the finer key is now unjustified, or the key was quietly coarsened. Exempt files: "
+                + filesWithAnExemption + "; policed files: " + filesWithAPolicedFigure.size());
 
         assertTrue(undated.isEmpty(), () -> "corpus figure(s) in a source comment with no measurement date in "
                 + "the same comment block. A derived count in source has no keeper — the recompute register "
