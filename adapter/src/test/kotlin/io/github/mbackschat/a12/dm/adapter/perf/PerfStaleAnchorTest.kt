@@ -92,6 +92,30 @@ class PerfStaleAnchorTest {
         })
     }
 
+    /**
+     * **A STALE claim needs a stable machine, so a hosted class does not make one.** Measured 2026-08-16: three
+     * runs of ONE commit on one JDK, differing only in which CPU the provider handed out, read 7.92 / 15.09 /
+     * 17.12 ms at n=1500 — a **2.16x spread on byte-identical code** (2.46x at n=6000). "Measured well below the
+     * anchor" and "drew a fast CPU" are indistinguishable there, so the report asked for a refresh on 2 of 4
+     * runs while the three-run median sat at 0.93x of the very anchor it called stale. The CPU lottery is
+     * permanent, so this is not a gap awaiting better data; the within-run ratios keep the coverage because they
+     * divide out the machine by construction (IF281).
+     */
+    @Test
+    fun aHostedClassMakesNoStaleClaimBecauseItCannotTellAFastCpuFromALooseAnchor() {
+        val gated = captureStdout {
+            budget(anchorMs = 18.86).assertWithinBudget(key, 7.23, TimingEnforcement.GATED) { 7.23 }
+        }
+        assertTrue("[perf][STALE]" in gated) { "an isolated machine still makes the claim: $gated" }
+
+        val hosted = captureStdout {
+            budget(anchorMs = 18.86).assertWithinBudget(key, 7.23, TimingEnforcement.FLAGGED) { 7.23 }
+        }
+        assertFalse("[perf][STALE]" in hosted) {
+            "a hosted class must NOT claim staleness — the same observation is produced by a fast CPU draw: $hosted"
+        }
+    }
+
     @Test
     fun aStaleFractionThatWouldReportEveryHonestObservationIsRejected() {
         for (fraction in listOf(1.0, 1.5, 0.0, -0.1)) {

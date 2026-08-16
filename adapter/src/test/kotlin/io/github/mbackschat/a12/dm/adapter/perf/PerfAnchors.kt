@@ -613,7 +613,7 @@ internal object PerfAnchors {
         // the refresh consumes only `accepted`.
         val accepted = try {
             AnchorBudget(anchored, required, PerfBounds.ANCHOR_TOLERANCE)
-                .assertWithinBudget(key, observedMs, remeasure)
+                .assertWithinBudget(key, observedMs, enforcement, remeasure)
         } catch (structural: UnanchoredObservationException) {
             // Recorded as its own status rather than `breached`: there is no anchor here to ratchet, so this
             // observation is exactly what a refresh needs to AUTHOR the missing key, and `scripts/perf-anchor.sh`
@@ -747,7 +747,14 @@ internal class AnchorBudget(
     }
 
     /** @return the value acceptance was decided on: [observedMs], or the median of the re-measured attempts. */
-    fun assertWithinBudget(key: ObservationKey, observedMs: Double, remeasure: () -> Double): Double {
+    fun assertWithinBudget(
+        key: ObservationKey,
+        observedMs: Double,
+        /** Where this is running, which decides whether a STALE claim is meaningful. Injected so both arms are
+         *  testable without a hosted runner, exactly as [MachineIdentity.check] takes it. */
+        enforcement: TimingEnforcement = TimingEnforcement.forAbsoluteAnchor(),
+        remeasure: () -> Double,
+    ): Double {
         if (anchored == null) {
             // Bootstrap: nothing has ever been recorded for this runner class, so there is nothing to compare and
             // no guard to lose. Loud, but never a failure — a first run on a new machine or a new hosted-runner
@@ -775,7 +782,18 @@ internal class AnchorBudget(
             println(message)
             return observedMs
         }
-        staleReportFor(key, observedMs)?.let { println(it) }
+        // A STALE claim needs a STABLE machine, so it is not made on a hosted class. Measured 2026-08-16: three
+        // runs of ONE commit on one JDK, differing only in which CPU the provider handed out, read 7.92 / 15.09 /
+        // 17.12 ms at n=1500 and 31.59 / 71.05 / 77.73 at n=6000 — a 2.16x and 2.46x spread on byte-identical
+        // code. "Measured well below the anchor" and "drew a fast CPU" are the same observation there, so the
+        // report is pure noise that generates maintenance work forever: it fired on 2 of 4 earlier runs and
+        // asked for a refresh each time, while the three-run median sits at 0.93x/0.89x of the very anchor it
+        // called stale. The CPU lottery is a permanent property of hosted runners, so this is not a gap waiting
+        // on better data — an absolute bar there answers a question about the provider's fleet, not the code.
+        // The within-run ratios keep the coverage: they divide out the machine by construction (IF281).
+        if (enforcement != TimingEnforcement.FLAGGED) {
+            staleReportFor(key, observedMs)?.let { println(it) }
+        }
         val ceiling = tolerance.ceilingFor(anchor)
         if (observedMs <= ceiling) return observedMs
         val seen = mutableListOf(observedMs)

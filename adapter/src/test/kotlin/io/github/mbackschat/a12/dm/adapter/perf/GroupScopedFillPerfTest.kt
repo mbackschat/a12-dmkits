@@ -96,22 +96,36 @@ class GroupScopedFillPerfTest {
 
     @Test
     fun groupScopedFillMatchesKernelComplexityClass() {
-        val (iSmall, kSmall) = medianMs(N) to kernelMedianMs(N)
-        val (iLarge, kLarge) = medianMs(N * 4) to kernelMedianMs(N * 4)
-        val ratioSmall = iSmall / kSmall; val ratioLarge = iLarge / kLarge
+        val accepted = PerfHarness.assertCrossEngineClassHolds(
+            label = "group-scope fill",
+            ceiling = CROSS_ENGINE_CEILING,
+        ) {
+            // All four in ONE pass, so they share a load slice, and each arm BATCHED — this lane measures
+            // ~9 ms at n=8000 with ±28.4 % run-to-run noise (see NOISE_BATCH), and a ratio of ratios
+            // multiplies four such samples. It previously took the batch=1 default on both arms.
+            PerfHarness.RatioGrowth(
+                iSmall = medianMs(N, NOISE_BATCH),
+                kSmall = kernelMedianMs(N),
+                iLarge = medianMs(N * 4, NOISE_BATCH),
+                kLarge = kernelMedianMs(N * 4),
+            )
+        }
         println("[perf] %s | %s group-scope fill vs kernel: N=%d interp=%.1f kernel=%.1f (%.2f×) | N=%d interp=%.1f kernel=%.1f (%.2f×)"
             .format(Locale.ROOT, 
                 PerfHarness.measurementLabel(scenario, N),
                 PerfHarness.measurementLabel(scenario, N * 4),
-                N, iSmall, kSmall, ratioSmall, N * 4, iLarge, kLarge, ratioLarge,
+                N, accepted.iSmall, accepted.kSmall, accepted.ratioSmall,
+                N * 4, accepted.iLarge, accepted.kLarge, accepted.ratioLarge,
             ))
-        assertTrue(ratioLarge < ratioSmall * 2.5,
-            "interp/kernel ratio grew from $ratioSmall× to $ratioLarge× at 4× rows — interp is a worse class than the kernel")
     }
 
     private companion object {
         /** See `PerfGateTest.NOISE_BATCH`: this lane measured 9.06 ms at n=8000 with ±28.4% run-to-run noise. */
         const val NOISE_BATCH = 3
+
+        /** The ratio may not worsen by more than this between the two scales. Unchanged by the 2026-08-16
+         *  instrument fix — what changed is that a breach is now re-measured, not that the bar moved. */
+        const val CROSS_ENGINE_CEILING = 2.5
 
         const val N = 2000
         const val MAX = 200_000   // Items repeatability — FAR above 4×N, so the kernel evaluates group-fill at scale

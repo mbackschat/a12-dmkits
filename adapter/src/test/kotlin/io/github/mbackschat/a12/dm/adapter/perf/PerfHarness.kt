@@ -1015,6 +1015,67 @@ object PerfHarness {
         }
     }
 
+    /** One cross-engine complexity-class estimate: the interp/kernel ratio at two scales, and its growth. */
+    data class RatioGrowth(
+        val iSmall: Double, val kSmall: Double, val iLarge: Double, val kLarge: Double,
+    ) {
+        val ratioSmall: Double get() = iSmall / kSmall
+        val ratioLarge: Double get() = iLarge / kLarge
+        /** How much WORSE the interpreter got against the kernel between the two scales. */
+        val growth: Double get() = ratioLarge / ratioSmall
+    }
+
+    /**
+     * **A cross-engine complexity-class bar, with the backstop its growth-lane siblings already have.**
+     * The claim is that the interpreter does not worsen RELATIVE to the kernel as N grows — a ratio of ratios,
+     * so four measurements multiply into one number.
+     *
+     * <p><b>Why this needed extracting.</b> Two sites asserted exactly this shape by hand
+     * ({@code GroupScopedFillPerfTest}, {@code OuterCorrelationPerfTest}) and neither had ANY of the
+     * protections the single-engine growth lanes get: no interleaving, no re-measurement of a breach, fixed
+     * warmups as low as two runs per arm. That is the harder measurement getting the weaker instrument, and it
+     * is backwards for a reason this file already documents: a growth factor divides ONE engine's two scales, so
+     * a cold JVM inflates both and largely cancels, while a parity row divides two DIFFERENT engines that warm
+     * at different rates and nothing cancels. Measured consequence: across four hosted runs of BYTE-IDENTICAL
+     * measured code the group-scope bar went fail, pass, fail, pass — while the interpreter stayed 4x-12x faster
+     * than the kernel at both scales in every one of them, including both failures.
+     *
+     * <p><b>What this does and does not change.</b> The ceiling is untouched. A breach is re-measured and must
+     * survive the MEDIAN of [attempts] independent estimates, which is the same contract
+     * [assertGrowthBelowCatastropheFloor] applies and the one IF281/IF282 ratified — so a single contended slice
+     * can no longer fail the build, and a real relative blowup still does. [estimate] must measure all four
+     * numbers in ONE pass so they share a load slice; that is the caller's half and cannot be done here.
+     */
+    fun assertCrossEngineClassHolds(
+        label: String,
+        ceiling: Double,
+        attempts: Int = GROWTH_RETRY_ATTEMPTS,
+        enforcement: TimingEnforcement = TimingEnforcement.forGrowthFloor(),
+        estimate: () -> RatioGrowth,
+    ): RatioGrowth {
+        require(attempts > 0 && attempts % 2 == 1) { "attempts must be a positive odd number" }
+        val seen = mutableListOf(estimate())
+        if (seen.single().growth < ceiling) return seen.single()
+        while (seen.size < attempts) seen += estimate()
+        val accepted = seen.sortedBy { it.growth }[seen.size / 2]
+        if (accepted.growth < ceiling) return accepted
+        val breach = "$label interp/kernel ratio grew ${accepted.ratioSmall}x -> ${accepted.ratioLarge}x " +
+            "(${accepted.growth}x, ceiling ${ceiling}x) across $attempts independent re-measurements: " +
+            seen.joinToString(", ") { "${it.growth}x" } +
+            ". Acceptance is their median, so one contended slice cannot fail it — this is a RELATIVE claim, so " +
+            "note the interpreter may still be far faster than the kernel at both scales while its ADVANTAGE " +
+            "narrows, which is what this bar is about."
+        return when (enforcement) {
+            TimingEnforcement.GATED -> throw AssertionError(breach)
+            TimingEnforcement.FLAGGED -> accepted.also {
+                println("[perf][FLAG] $breach  (reported, not failed: shared hosted hardware — see TimingEnforcement)")
+            }
+            TimingEnforcement.UNJUDGED -> accepted.also {
+                println("[perf][note] cross-engine class not judged outside the isolated lane: $breach")
+            }
+        }
+    }
+
     /**
      * Run [instance] until its per-run cost stops improving, and report how many runs that took.
      *

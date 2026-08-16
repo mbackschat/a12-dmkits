@@ -140,20 +140,27 @@ class OuterCorrelationPerfTest {
      */
     @Test
     fun equalityOuterCorrelationDoesNotWorsenAgainstKernel() {
-        val (iSmall, kSmall) = medianMs(defEq, N, ::spread) to kernelMedianMs(kernelEq, N, ::spread)
-        val (iLarge, kLarge) = medianMs(defEq, N * 4, ::spread) to kernelMedianMs(kernelEq, N * 4, ::spread)
-        val ratioSmall = iSmall / kSmall
-        val ratioLarge = iLarge / kLarge
+        // The ratio must not GROW materially with N. Generous 2.5x headroom for timing noise; a reverted nested
+        // interpreter scan should widen it materially at 4x rows. Both arms measured in ONE pass so they share a
+        // load slice, and a breach re-measured — this site had neither, on the weakest warmup in the class.
+        val accepted = PerfHarness.assertCrossEngineClassHolds(
+            label = "\$ correlation",
+            ceiling = 2.5,
+        ) {
+            PerfHarness.RatioGrowth(
+                iSmall = medianMs(defEq, N, ::spread),
+                kSmall = kernelMedianMs(kernelEq, N, ::spread),
+                iLarge = medianMs(defEq, N * 4, ::spread),
+                kLarge = kernelMedianMs(kernelEq, N * 4, ::spread),
+            )
+        }
         println("[perf] %s | %s \$ correlation vs kernel: N=%d interp=%.1f kernel=%.1f (%.2f×) | N=%d interp=%.1f kernel=%.1f (%.2f×)"
             .format(Locale.ROOT, 
                 PerfHarness.measurementLabel(eqScenario, N),
                 PerfHarness.measurementLabel(eqScenario, N * 4),
-                N, iSmall, kSmall, ratioSmall, N * 4, iLarge, kLarge, ratioLarge,
+                N, accepted.iSmall, accepted.kSmall, accepted.ratioSmall,
+                N * 4, accepted.iLarge, accepted.kLarge, accepted.ratioLarge,
             ))
-        // The ratio must not GROW materially with N. Generous 2.5× headroom for timing noise; a reverted nested
-        // interpreter scan should widen it materially at 4× rows.
-        assertTrue(ratioLarge < ratioSmall * 2.5,
-            "interp/kernel ratio grew from $ratioSmall× to $ratioLarge× at 4× rows — interp is a worse class than the kernel")
     }
 
     /** The `>` no-witness discriminator must be exact at both scales and stay below the shared quadratic trip. */
