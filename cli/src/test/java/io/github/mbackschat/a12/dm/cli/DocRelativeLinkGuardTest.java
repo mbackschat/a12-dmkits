@@ -52,7 +52,7 @@ class DocRelativeLinkGuardTest {
     /** A markdown link target, fragment stripped: {@code [label](../perf-results/x.jsonl#frag)}. */
     private static final Pattern LINK = Pattern.compile("\\]\\(([^)\\s#]+)(?:#[^)\\s]*)?\\)");
 
-    /** Sanity floor, asserted on what the RULE parses — the docs tree carries ~2400 relative targets. */
+    /** Sanity floor, asserted on what the RULE parses — the docs tree carries 2432 relative targets (2026-08-16). */
     private static final int MIN_TARGETS = 2000;
 
     /** Sanity floor on the SCAN SET: a skip filter must not shrink the corpus past the target floor's headroom. */

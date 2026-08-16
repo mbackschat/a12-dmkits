@@ -49,7 +49,7 @@ class OperatorIndexGuardTest {
      */
     private static final int MIN_OPERATORS = 90;
 
-    /** Sanity floor: KERNEL-FINDINGS contributes ~188 addressable records. */
+    /** Sanity floor: KERNEL-FINDINGS contributes 188 addressable records (2026-08-16). */
     private static final int MIN_FINDINGS_ENTRIES = 150;
 
     /** Sanity floor: KERNEL-SEMANTICS contributes its 14 canonical sections. */

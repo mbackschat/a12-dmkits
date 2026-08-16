@@ -54,6 +54,17 @@ import org.junit.jupiter.api.Test;
  * counts and are excluded by construction: under a looser list admitting {@code rows}, the clear majority of hits
  * were test-fixture sizes and every one of them was honest, which is how a guard earns being switched off.
  *
+ * <p><b>The widening was tried and REJECTED on measurement, 2026-08-16 — so this limit is a decision, not a
+ * backlog item.</b> Opening the qualifier slot to any two lowercase words does catch the founding case, and it
+ * also admits a class this guard should not police: {@code "converting 26 call sites"}, {@code "this class's 19
+ * call sites"}, {@code "the 14 numbered sections"}, {@code "100 random docs"}. Those are <i>narratives about a
+ * past change</i> or <i>fixture sizes</i>, not live inventories — they do not rot the way an inventory claim
+ * does, so each would need an exemption, and a guard whose exemption list grows faster than its findings is a
+ * permissions list wearing a guard's clothes. Two genuine inventory figures the widening would have caught were
+ * simply dated by hand instead ({@code DocRelativeLinkGuardTest}'s 2432 targets, {@code OperatorIndexGuardTest}'s
+ * 188 records), which is the cheaper half of the benefit at none of the cost. Re-open only if an inventory figure
+ * is found rotting <i>because</i> of this slot.
+ *
  * <p><b>A third recall limit, and it costs this guard its own founding case.</b> The qualifier slot is a closed
  * {@code distinct|live|bare} set, so an arbitrary adjective between the number and the noun hides the figure:
  * {@code 1513 relative targets} — the exact stale figure that motivated this guard — does <b>not</b> fire, nor
