@@ -50,8 +50,13 @@ class PerformancePairAddressingGuardTest {
     /** Sanity floor, asserted on what the RULE parses — the catalog carries 13 entries (2026-08-16). */
     private static final int MIN_CATALOG_ENTRIES = 10;
 
-    /** Sanity floor, asserted on what the RULE parses — the log carries 35 checkpoints (2026-08-16). */
-    private static final int MIN_CHECKPOINTS = 30;
+    /**
+     * Sanity floor, asserted on what the RULE parses — the log carries 24 checkpoints (2026-08-16, after the
+     * 2026-08-12 collapse folded twelve same-day entries of one workstream into one). Lowered deliberately with
+     * that edit: the floor exists to catch a changed heading shape making this guard check nothing, so it must
+     * track the live count downward rather than block a legitimate compression.
+     */
+    private static final int MIN_CHECKPOINTS = 20;
 
     @Test
     void everyCatalogIdIsUniqueAndDense() throws IOException {
