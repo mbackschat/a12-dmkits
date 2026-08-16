@@ -750,9 +750,18 @@ internal class AnchorBudget(
     fun assertWithinBudget(
         key: ObservationKey,
         observedMs: Double,
-        /** Where this is running, which decides whether a STALE claim is meaningful. Injected so both arms are
-         *  testable without a hosted runner, exactly as [MachineIdentity.check] takes it. */
-        enforcement: TimingEnforcement = TimingEnforcement.forAbsoluteAnchor(),
+        /**
+         * Where this is running, which decides whether a STALE claim is meaningful. Injected so both arms are
+         * testable without a hosted runner, exactly as [MachineIdentity.check] takes it.
+         *
+         * **Required, with no default, and that is the point.** It defaulted to `forAbsoluteAnchor()` — the very
+         * expression [PerfAnchors.assertWithinBudget] computes and passes in — so removing the pass-through at the
+         * call site was a semantic NO-OP and no test could ever distinguish it. A mutation review duly reported it
+         * as an uncovered wiring, which it was not: it was an *equivalent* mutant, and the equivalence was the
+         * defect. Two copies of one decision stay equal only until someone edits one. With the default gone the
+         * value has a single source and dropping the pass-through no longer compiles, which beats any test.
+         */
+        enforcement: TimingEnforcement,
         remeasure: () -> Double,
     ): Double {
         if (anchored == null) {

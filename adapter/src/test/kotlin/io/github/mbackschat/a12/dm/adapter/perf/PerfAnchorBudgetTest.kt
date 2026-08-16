@@ -34,20 +34,20 @@ class PerfAnchorBudgetTest {
     @Test
     fun anUnchangedMeasurementCostsExactlyOneObservation() {
         var remeasured = 0
-        budget().assertWithinBudget(key, 8.40) { remeasured++; 8.40 }
+        budget().assertWithinBudget(key, 8.40, TimingEnforcement.GATED) { remeasured++; 8.40 }
         assertEquals(0, remeasured, "a passing budget must not pay for re-measurements it does not need")
     }
 
     @Test
     fun aMeasurementInsideTheTolerancePasses() {
-        budget().assertWithinBudget(key, 13.44) { 13.44 }   // 8.30 × 1.5 + 1.0 = 13.45
+        budget().assertWithinBudget(key, 13.44, TimingEnforcement.GATED) { 13.44 }   // 8.30 × 1.5 + 1.0 = 13.45
     }
 
     /** The class of regression NO growth ratio can see: every scale slower by the same factor. */
     @Test
     fun aUniformSlowdownFails() {
         val failure = assertThrows(IllegalStateException::class.java) {
-            budget().assertWithinBudget(key, 16.60) { 16.60 }   // exactly 2× the anchor
+            budget().assertWithinBudget(key, 16.60, TimingEnforcement.GATED) { 16.60 }   // exactly 2× the anchor
         }
         assertTrue("16.60ms" in failure.message.orEmpty() && "13.45ms" in failure.message.orEmpty()) {
             "the failure must state what was measured and what the ceiling was: ${failure.message}"
@@ -68,16 +68,16 @@ class PerfAnchorBudgetTest {
             clock = "cpu",
         )
         val budget = AnchorBudget(mapOf(tiny.text to 1.13), unanchoredIsAFailure = true, tolerance = tolerance)
-        budget.assertWithinBudget(tiny, 2.60) { 2.60 }      // inside 1.13 × 1.5 + 1.0 = 2.70
+        budget.assertWithinBudget(tiny, 2.60, TimingEnforcement.GATED) { 2.60 }      // inside 1.13 × 1.5 + 1.0 = 2.70
         assertThrows(IllegalStateException::class.java) {
-            budget.assertWithinBudget(tiny, 3.40) { 3.40 }  // a genuine 3× on a tiny lane still fails
+            budget.assertWithinBudget(tiny, 3.40, TimingEnforcement.GATED) { 3.40 }  // a genuine 3× on a tiny lane still fails
         }
     }
 
     @Test
     fun oneContendedSliceIsAbsorbedByTheMedianOfReMeasurements() {
         var remeasured = 0
-        budget().assertWithinBudget(key, 25.0) { remeasured++; 8.5 }
+        budget().assertWithinBudget(key, 25.0, TimingEnforcement.GATED) { remeasured++; 8.5 }
         assertEquals(2, remeasured, "a breach must be re-measured to the full attempt count")
     }
 
@@ -85,7 +85,7 @@ class PerfAnchorBudgetTest {
     fun oneLowOutlierCannotClearARealSlowdown() {
         val attempts = listOf(20.0, 8.0).iterator()
         val failure = assertThrows(IllegalStateException::class.java) {
-            budget().assertWithinBudget(key, 20.0) { attempts.next() }
+            budget().assertWithinBudget(key, 20.0, TimingEnforcement.GATED) { attempts.next() }
         }
         assertTrue("median" in failure.message.orEmpty()) {
             "acceptance must be the median of the attempts, which is what makes the retry sound: ${failure.message}"
@@ -97,13 +97,13 @@ class PerfAnchorBudgetTest {
     fun aRunnerClassWithNoBlockAtAllIsBootstrapAndNeverFails() {
         for (required in listOf(false, true)) {
             AnchorBudget(anchored = null, unanchoredIsAFailure = required, tolerance = tolerance)
-                .assertWithinBudget(key, 8.40) { 8.40 }
+                .assertWithinBudget(key, 8.40, TimingEnforcement.GATED) { 8.40 }
         }
     }
 
     @Test
     fun anUnanchoredKeyInsideAnAnchoredClassIsReportedAndPassesLocally() {
-        budget(anchorMs = null).assertWithinBudget(key, 8.40) { 8.40 }
+        budget(anchorMs = null).assertWithinBudget(key, 8.40, TimingEnforcement.GATED) { 8.40 }
     }
 
     /**
@@ -117,7 +117,7 @@ class PerfAnchorBudgetTest {
     @Test
     fun anUnanchoredKeyInsideAnAnchoredClassFailsWhereTheBarIsRequired() {
         val failure = assertThrows(UnanchoredObservationException::class.java) {
-            budget(unanchoredIsAFailure = true, anchorMs = null).assertWithinBudget(key, 8.40) { 8.40 }
+            budget(unanchoredIsAFailure = true, anchorMs = null).assertWithinBudget(key, 8.40, TimingEnforcement.GATED) { 8.40 }
         }
         assertTrue(PerfAnchors.REQUIRED_PROPERTY in failure.message.orEmpty()) {
             "the refusal must name the property that demanded it: ${failure.message}"
@@ -132,7 +132,7 @@ class PerfAnchorBudgetTest {
     fun aChangedScenarioFingerprintDropsItsAnchor() {
         val refreshed = key.copy(identityLabel = "diagnostic/B1-per-row@1 fingerprint=0000ff")
         val failure = assertThrows(UnanchoredObservationException::class.java) {
-            budget(unanchoredIsAFailure = true).assertWithinBudget(refreshed, 8.40) { 8.40 }
+            budget(unanchoredIsAFailure = true).assertWithinBudget(refreshed, 8.40, TimingEnforcement.GATED) { 8.40 }
         }
         assertTrue("UNANCHORED" in failure.message.orEmpty()) { failure.message.orEmpty() }
     }
@@ -145,7 +145,7 @@ class PerfAnchorBudgetTest {
     @Test
     fun aToleranceBreachIsNotTheStructuralRefusal() {
         val failure = assertThrows(IllegalStateException::class.java) {
-            budget(unanchoredIsAFailure = true).assertWithinBudget(key, 99.0) { 99.0 }
+            budget(unanchoredIsAFailure = true).assertWithinBudget(key, 99.0, TimingEnforcement.GATED) { 99.0 }
         }
         assertTrue(failure !is UnanchoredObservationException) {
             "a slow measurement is a timing failure, which TimingEnforcement governs; only a MISSING key is " +
@@ -159,7 +159,7 @@ class PerfAnchorBudgetTest {
         val cold = key.copy(lane = "COLD first-call (startup)", clock = "wall")
         assertTrue(cold.text != key.text)
         assertThrows(IllegalStateException::class.java) {
-            budget(unanchoredIsAFailure = true).assertWithinBudget(cold, 8.40) { 8.40 }
+            budget(unanchoredIsAFailure = true).assertWithinBudget(cold, 8.40, TimingEnforcement.GATED) { 8.40 }
         }
     }
 

@@ -83,12 +83,12 @@ class PerfStaleAnchorTest {
     @Test
     fun theReportIsPrintedByTheAssertionItself() {
         val printed = captureStdout {
-            budget(anchorMs = 18.86).assertWithinBudget(key, 7.23) { 7.23 }
+            budget(anchorMs = 18.86).assertWithinBudget(key, 7.23, TimingEnforcement.GATED) { 7.23 }
         }
 
         assertTrue("[perf][STALE]" in printed) { "the gate must say it, not merely be able to: $printed" }
         assertFalse("[perf][STALE]" in captureStdout {
-            budget(anchorMs = 18.86).assertWithinBudget(key, 17.0) { 17.0 }
+            budget(anchorMs = 18.86).assertWithinBudget(key, 17.0, TimingEnforcement.GATED) { 17.0 }
         })
     }
 
