@@ -15,7 +15,8 @@ import org.junit.jupiter.api.io.TempDir;
 
 /**
  * <b>The API-FINDINGS ordinal guard.</b> {@code docs/API-FINDINGS.md} carries its findings as a markdown
- * <b>ordered list</b>, and they are cited as "finding N" from ~113 sites across the docs, the tests, and
+ * <b>ordered list</b>, and they are cited as "finding N" from <b>147</b> sites (2026-08-16, case-insensitive,
+ * excluding the doc itself; a further 22 use the {@code API-FINDINGS n} notation) across the docs, the tests, and
  * <em>production</em> sources ({@code SemanticIndex}, {@code FieldInfo}). That makes the ordinal a public
  * anchor riding the weakest possible carrier: a renderer numbers an ordered list <b>sequentially from the
  * first item</b> and ignores the later source numbers, so deleting or inserting one item silently shifts
@@ -31,9 +32,10 @@ import org.junit.jupiter.api.io.TempDir;
  *   <li><b>Aligned</b> — {@code max == count}, so source numbering equals what a renderer will show.</li>
  * </ol>
  *
- * <p>A floor guards the guard: the live doc carries ~100 findings, so a scan that suddenly finds almost
- * none means the working directory or the list shape moved, and the check would "pass" while checking
- * nothing.
+ * <p>A floor guards the guard: the live doc carries <b>125</b> findings (2026-08-16), so a scan that suddenly
+ * finds almost none means the working directory or the list shape moved, and the check would "pass" while
+ * checking nothing. {@link #MIN_FINDINGS} stays well below the live count deliberately — it is a
+ * did-the-scan-happen floor, not a growth ratchet, so it must not need editing when a finding is added.
  *
  * <p>It reads a repo doc at runtime, so it runs in the root {@code docGuardTest} task with
  * {@code docs/API-FINDINGS.md} declared as that task's input (TESTING-SPEC "Tests that read repo files at

@@ -126,13 +126,13 @@ class DocAnchorResolveGuardTest {
     /**
      * <b>Every kernel finding carries a unique {@code KF<n>} anchor.</b> KERNEL-FINDINGS was the one findings
      * record with <i>no</i> per-entry address: it is cited by quoted heading text (which a retitle breaks) or
-     * by {@code §n}, which is a section-<i>class</i> — {@code ## §9 supplement} alone matches 25 entries. The
-     * ids are assigned once in document order and are <b>dense</b>, which is what makes a silent deletion
-     * visible; the contract is that a finding is never deleted or renumbered.
+     * by {@code §n}, which is a section-<i>class</i> — {@code ## §9 supplement} alone matches <b>32</b> entries
+     * (2026-08-16). The ids are assigned once in document order and are <b>dense</b>, which is what makes a
+     * silent deletion visible; the contract is that a finding is never deleted or renumbered.
      *
      * <p>The anchor is <b>trailing</b>, never a title prefix, and that is load-bearing:
      * {@code KernelDocsFoldContractTest} and {@code SemanticsMapResolveTest} both pin the §-tag with
-     * {@code ^#{2,3} §(\d+)}, so a prefix would silently blind the §-mirror on ~110 headings.
+     * {@code ^#{2,3} §(\d+)}, so a prefix would silently blind the §-mirror on <b>144</b> headings (2026-08-16).
      */
     @Test
     void everyKernelFindingHeadingCarriesAUniqueStableAnchor() throws IOException {
