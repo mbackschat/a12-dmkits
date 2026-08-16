@@ -103,4 +103,15 @@ grep -E "$markers" "$out" | grep -vE "Gradle|daemon|Resolve|Skipping|Caching|mut
 echo
 grep -E "BUILD (SUCCESSFUL|FAILED)|passing|failing" "$out" | tail -2
 echo "full log: $out"
+
+# The record is COMMITTED history (never under build/), and this script does not commit it — that is the
+# maintainer's call. So say so, with the exact command: an uncommitted record is a manual post-step with no
+# mechanical detector, which is precisely how the interpreter changelog freeze got missed twice. Also covers
+# the retention prune, whose deletions are tracked files and land in the same commit.
+if [ -n "$(git status --porcelain -- perf-results 2>/dev/null)" ]; then
+    echo
+    echo "this run left perf-results/ changes — they are COMMITTED history, not build output:"
+    git status --porcelain -- perf-results | sed 's/^/    /'
+    echo "  commit them with:  git add -A perf-results && git commit -m 'chore(perf): record the local gate run [skip ci]'"
+fi
 exit $status

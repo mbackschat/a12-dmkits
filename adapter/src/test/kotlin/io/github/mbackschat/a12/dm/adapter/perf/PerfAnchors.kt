@@ -240,17 +240,29 @@ internal object PerfObservations {
      *
      * Best-effort by design: a prune that cannot run must never fail a measurement, because the record's job is
      * to observe and a writer that refuses to write loses the observation it was there to keep.
+     *
+     * It ANNOUNCES what it deleted, because these files are TRACKED: a gate run that silently removes committed
+     * content leaves a bare `D perf-results/…` in `git status`, which reads as a defect rather than as retention.
+     * That cost a v0.13.0 release-path investigation — the mechanism was correct and documented, and the only
+     * thing missing was the one line saying it had happened.
      */
     internal fun pruneToRetentionBound(dir: File) {
         val runs = dir.listFiles { f -> f.isFile && f.name.endsWith(".jsonl") }?.sortedBy { it.name } ?: return
         val excess = runs.size - (MAX_RUNS_PER_ENVIRONMENT - 1)
         if (excess <= 0) return
         val cited = citedRunStems(dir)
-        var removed = 0
+        val pruned = mutableListOf<String>()
         for (run in runs) {
-            if (removed >= excess) return
+            if (pruned.size >= excess) break
             if (run.nameWithoutExtension in cited) continue
-            if (run.delete()) removed++
+            if (run.delete()) pruned += run.nameWithoutExtension
+        }
+        if (pruned.isNotEmpty()) {
+            println(
+                "[perf][retention] pruned ${pruned.size} uncited record(s) past the $MAX_RUNS_PER_ENVIRONMENT-run " +
+                    "bound for ${dir.name}: ${pruned.joinToString(", ")} — tracked files, so they appear as " +
+                    "deletions in git status",
+            )
         }
     }
 
