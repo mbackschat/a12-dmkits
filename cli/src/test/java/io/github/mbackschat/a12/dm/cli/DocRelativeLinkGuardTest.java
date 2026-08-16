@@ -1,12 +1,15 @@
 package io.github.mbackschat.a12.dm.cli;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Stream;
@@ -20,8 +23,9 @@ import org.junit.jupiter.api.io.TempDir;
  * about the <i>path</i> half, so a link to a file that was never committed or has since been deleted reads as
  * a working citation forever.
  *
- * <p><b>Why this is the cheapest guard in the estate to justify.</b> Its oracle is {@link Files#exists}: there
- * is no interpretation, no slug rule, no window, nothing to tune. Measured when it landed: <b>1513</b> relative
+ * <p><b>Why this is the cheapest guard in the estate to justify.</b> Its oracle is {@link Files#exists} — for a
+ * target this repository contains. For one that leaves the repository it is not an oracle at all, and that
+ * distinction is load-bearing: see {@link #UNVERIFIABLE_OUTSIDE_THE_REPO}. Measured when it landed: <b>1513</b> relative
  * link targets across {@code docs/*.md}, <b>7</b> dead — a 0.5 % rate, all seven from one cause.
  *
  * <p>That cause is worth naming, because it is the concrete cost of a rule this repo already adopted. The seven
@@ -42,18 +46,45 @@ class DocRelativeLinkGuardTest {
     /** A markdown link target, fragment stripped: {@code [label](../perf-results/x.jsonl#frag)}. */
     private static final Pattern LINK = Pattern.compile("\\]\\(([^)\\s#]+)(?:#[^)\\s]*)?\\)");
 
-    /** Sanity floor, asserted on what the RULE parses — the docs tree carries ~1500 relative targets. */
-    private static final int MIN_TARGETS = 1000;
+    /** Sanity floor, asserted on what the RULE parses — the docs tree carries ~2400 relative targets. */
+    private static final int MIN_TARGETS = 2000;
+
+    /** Sanity floor on the SCAN SET: a skip filter must not shrink the corpus past the target floor's headroom. */
+    private static final int MIN_DOCS = 50;
+
+    /**
+     * <b>Targets that leave the repository, enumerated rather than skipped.</b> {@link Files#exists} answers for
+     * something this repository contains; for a sibling-repo path it silently measures the developer's directory
+     * layout. That shipped: this guard was green on the author's checkout (where {@code ../a12-kernel-bootstrap}
+     * happens to exist) and <b>red in every {@code git worktree}</b> — including the ones this project's own
+     * review workflow creates. Worse, the first worktree run returned {@code FROM-CACHE} green, because an
+     * out-of-repo path cannot be a declared task input, so the cache key cannot see it.
+     *
+     * <p>Such a target is therefore excluded from the existence check and <b>named here</b>. A new one fails by
+     * name rather than joining a silent skip.
+     */
+    private static final Set<String> UNVERIFIABLE_OUTSIDE_THE_REPO = Set.of(
+            // KERNEL-31-UPGRADE-PROPOSAL names the sibling kit that publishes the kernel to mavenLocal.
+            "../../a12-kernel-bootstrap");
 
     @Test
     void everyRelativeLinkTargetExists() throws IOException {
         Path docs = locate();
+        List<Path> scanned = markdown(docs);
+        assertTrue(scanned.size() >= MIN_DOCS,
+                () -> "scanned only " + scanned.size() + " docs (floor " + MIN_DOCS + ") — a skip filter or a "
+                        + "moved tree shrinks the scan set, and the target floor alone cannot see it");
+
         List<String> targets = new ArrayList<>();
         List<String> dead = new ArrayList<>();
-        for (Path doc : markdown(docs)) {
-            audit(docs, doc.getFileName().toString(), Files.readString(doc), targets, dead);
+        Set<String> outside = new LinkedHashSet<>();
+        for (Path doc : scanned) {
+            audit(docs, doc.getFileName().toString(), Files.readString(doc), targets, dead, outside);
         }
 
+        assertEquals(UNVERIFIABLE_OUTSIDE_THE_REPO, outside,
+                "the set of link targets that leave the repository changed. `Files.exists` cannot be an oracle "
+                + "for those — it measures whichever sibling checkouts this machine happens to have");
         assertTrue(targets.size() >= MIN_TARGETS,
                 () -> "parsed only " + targets.size() + " relative link targets from " + docs + " (floor "
                         + MIN_TARGETS + ") — wrong working dir or an emptied tree, and the guard checks nothing");
@@ -72,23 +103,27 @@ class DocRelativeLinkGuardTest {
         Files.writeString(dir.resolve("peer.md"), "x");
         String doc = """
                 [live](peer.md) [live-frag](peer.md#anchor) [self](#anchor)
-                [dead](../gone/missing.jsonl) [url](https://example.com/x.md)
+                [dead](../gone/missing.jsonl) [url](https://example.com/x.md) [away](../../escapes-the-repo)
                 Prose about the syntax: `[x](../also-missing.md)` is code, not a link.
                 """;
 
         List<String> targets = new ArrayList<>();
         List<String> dead = new ArrayList<>();
-        audit(dir, "t.md", doc, targets, dead);
+        Set<String> outside = new LinkedHashSet<>();
+        audit(dir, "t.md", doc, targets, dead, outside);
 
         assertTrue(dead.size() == 1 && dead.get(0).contains("missing.jsonl"),
                 () -> "expected exactly the dead relative path to fire, got " + dead);
-        assertTrue(targets.size() == 3,
-                () -> "expected the three resolvable relative targets to be counted toward the floor "
+        assertEquals(Set.of("../../escapes-the-repo"), outside,
+                "a target that leaves the tree must be CLASSIFIED, not resolved against the developer's disk");
+        assertTrue(targets.size() == 4,
+                () -> "expected the four relative targets to be counted toward the floor "
                         + "(a bare fragment and an external URL are neither checked nor counted), got " + targets);
     }
 
-    /** Collect every relative target, and the subset that does not exist on disk. */
-    private static void audit(Path base, String name, String markdown, List<String> targets, List<String> dead) {
+    /** Collect every relative target, those that do not exist, and those that leave the repository. */
+    private static void audit(Path base, String name, String markdown, List<String> targets, List<String> dead,
+            Set<String> outside) {
         Matcher link = LINK.matcher(withoutCode(markdown));
         while (link.find()) {
             String target = link.group(1);
@@ -96,7 +131,15 @@ class DocRelativeLinkGuardTest {
                 continue;
             }
             targets.add(target);
-            if (!Files.exists(base.resolve(target).normalize())) {
+            // normalize() AFTER toAbsolutePath(): a relative base like `../docs` keeps its `..` segment
+            // otherwise, and every containment test then silently answers false.
+            Path root = base.toAbsolutePath().normalize().getParent();
+            Path resolved = base.resolve(target).toAbsolutePath().normalize();
+            if (!resolved.startsWith(root)) {
+                outside.add(target);
+                continue;
+            }
+            if (!Files.exists(resolved)) {
                 dead.add(name + " → " + target);
             }
         }

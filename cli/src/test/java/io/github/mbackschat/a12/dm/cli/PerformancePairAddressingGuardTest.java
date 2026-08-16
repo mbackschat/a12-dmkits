@@ -61,19 +61,10 @@ class PerformancePairAddressingGuardTest {
                 () -> "parsed only " + ids.size() + " catalog entries from " + METHOD.getFileName() + " (floor "
                         + MIN_CATALOG_ENTRIES + ") — a changed heading shape would make this guard check nothing");
 
-        List<Integer> sorted = new ArrayList<>(ids);
-        sorted.sort(null);
-        List<String> broken = new ArrayList<>();
-        for (int i = 0; i < sorted.size(); i++) {
-            if (sorted.get(i) != i + 1) {
-                broken.add("expected #" + (i + 1) + " but the sorted ids read " + sorted);
-                break;
-            }
-        }
-        assertTrue(broken.isEmpty(), () -> "optimization-catalog ids must be unique and dense 1..N — they are "
+        assertTrue(gapsAndDuplicates(ids).isEmpty(), () -> "optimization-catalog ids must be unique and dense 1..N — they are "
                 + "the only cross-file address the results log can cite, so a duplicate gives `catalog #n` two "
                 + "targets and a gap breaks one. APPEND a fresh id; never reshuffle, which repoints every "
-                + "existing citation silently:\n  " + String.join("\n  ", broken));
+                + "existing citation silently:\n  " + String.join("\n  ", gapsAndDuplicates(ids)));
     }
 
     @Test
@@ -90,7 +81,34 @@ class PerformancePairAddressingGuardTest {
                 + "untidy. Move it into date order:\n  " + String.join("\n  ", inversions(dates)));
     }
 
-    /** Does-fire proof for the catalog arm, against fabricated text, through the method the real check calls. */
+    /** One message when the sorted ids are not exactly 1..N — the property that makes an id a stable address. */
+    private static List<String> gapsAndDuplicates(List<Integer> ids) {
+        List<Integer> sorted = new ArrayList<>(ids);
+        sorted.sort(null);
+        List<String> broken = new ArrayList<>();
+        for (int i = 0; i < sorted.size(); i++) {
+            if (sorted.get(i) != i + 1) {
+                broken.add("expected #" + (i + 1) + " but the sorted ids read " + sorted);
+                break;
+            }
+        }
+        return broken;
+    }
+
+    /**
+     * Does-fire proof for the density RULE, not merely the parser beneath it. Until 2026-08-16 the comparison was
+     * inlined in the real test and exercised by nothing, so replacing it with {@code if (false)} left the lane
+     * green — while its twin, the ordering rule, was extracted and controlled.
+     */
+    @Test
+    void theDensityRuleFiresOnADuplicateAndOnAGapButNotOnADenseRun() {
+        assertTrue(gapsAndDuplicates(List.of(1, 2, 3)).isEmpty(), "1..N in order is exactly what dense means");
+        assertTrue(gapsAndDuplicates(List.of(3, 1, 2)).isEmpty(), "document order is irrelevant; the SET is 1..N");
+        assertTrue(!gapsAndDuplicates(List.of(1, 2, 2)).isEmpty(), "a duplicate gives `catalog #n` two targets");
+        assertTrue(!gapsAndDuplicates(List.of(1, 3)).isEmpty(), "a gap breaks the address and must fire");
+    }
+
+    /** Does-fire proof for the PARSER the rule above consumes. */
     @Test
     void theCatalogArmFiresOnADuplicateAndOnAGapButNotOnADenseRun() {
         assertEquals(List.of(1, 2, 3), catalogIds("### 1. a\n\n### 2. b\n\n### 3. c\n"));

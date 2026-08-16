@@ -1,5 +1,6 @@
 package io.github.mbackschat.a12.dm.cli;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -30,7 +31,8 @@ import org.junit.jupiter.api.Test;
  * appear in one (0 in all three); and every dated checkpoint sits in the RESULTS half, none in the METHOD half
  * (0 and 35 as of 2026-08-16), so dated evidence cannot drift into the method sections. The last assertion was
  * the weaker within-file form — "below the {@code ## Results log} heading" — until the 2026-08-15 split made
- * the two halves separate files; that heading no longer exists in either.
+ * the two halves separate files. (A `## Results log` heading survives in the method half as a pointer
+ * stub, but every entry itself lives in INTERPRETER-PERFORMANCE-RESULTS.md.)
  *
  * <p>Placement is all this guards. Whether the addresses <i>inside</i> those two files resolve — the catalog
  * ids the results log cites, and the newest-first order a reader relies on to stop — is
@@ -70,6 +72,8 @@ class DocsEvidencePlacementGuardTest {
 
     @Test
     void aFindingsDocCarriesNoResultsLogEntry() throws IOException {
+        assertEquals(3, FINDINGS.size(), "the rationale records this rule iterates — emptying the list made both "
+                + "findings-doc rules pass over nothing while the lane stayed green (measured 2026-08-16)");
         for (Path doc : FINDINGS) {
             Matcher found = CHECKPOINT_HEADING.matcher(read(doc));
             assertTrue(!found.find(), () -> doc.getFileName()
@@ -82,6 +86,7 @@ class DocsEvidencePlacementGuardTest {
 
     @Test
     void aFindingsDocDoesNotSourceItselfFromOneCiRun() throws IOException {
+        assertEquals(3, FINDINGS.size(), "see the sibling rule: an emptied list is a silent pass");
         for (Path doc : FINDINGS) {
             Matcher found = RUN_URL.matcher(read(doc));
             assertTrue(!found.find(), () -> doc.getFileName() + " cites a CI run URL (" + found.group()
@@ -110,6 +115,23 @@ class DocsEvidencePlacementGuardTest {
         assertTrue(CHECKPOINT_HEADING.matcher(read(RESULTS)).find(),
                 "INTERPRETER-PERFORMANCE-RESULTS.md must carry the checkpoints — it is the home every findings "
                 + "doc points dated evidence at, and an empty one makes the assertion above vacuous");
+    }
+
+    /**
+     * Does-fire proof for BOTH patterns. Neutering {@code RUN_URL} used to leave the lane green — it was the one
+     * regex here with no control — while {@code CHECKPOINT_HEADING} was caught only incidentally, by the sibling
+     * rule's positive assertion that the results doc carries entries.
+     */
+    @Test
+    void bothPatternsMatchTheShapesTheyClaimTo() {
+        assertTrue(CHECKPOINT_HEADING.matcher("### Checkpoint 2026-08-16 — a fabricated entry").find(),
+                "CHECKPOINT_HEADING must match a results-log entry heading");
+        assertFalse(CHECKPOINT_HEADING.matcher("### Checkpoint — undated, so not an entry").find(),
+                "an undated heading is not a results-log entry");
+        assertTrue(RUN_URL.matcher("https://github.com/o/r/actions/runs/1234567890").find(),
+                "RUN_URL must match a CI run URL — an unmatchable pattern here left the whole lane green");
+        assertFalse(RUN_URL.matcher("see the actions/runs page").find(),
+                "prose naming the path without a run id is not a run URL");
     }
 
     private static String read(Path relative) throws IOException {

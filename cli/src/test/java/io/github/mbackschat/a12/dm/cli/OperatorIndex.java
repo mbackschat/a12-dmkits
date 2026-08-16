@@ -57,11 +57,15 @@ record OperatorIndex(List<OperatorIndex.Entry> entries) {
      * docs write only as a <i>symbol</i> cannot be indexed at all: {@code GreaterThanOrEqual} is {@code >=} and
      * {@code LessThanOrEqual} is {@code <=}, and a symbol is indistinguishable from ordinary comparison syntax
      * inside a code span — {@code >} appears in <b>233</b> spans across the two docs and {@code <} in
-     * <b>164</b>, nearly all {@code IF<n>} placeholders, blockquote markers and regex lookbehinds, while even
+     * <b>164</b> — overwhelmingly comparison syntax, blockquote markers and regex lookbehinds inside sample
+     * code; only ONE is an {@code IF<n>}-style placeholder, so an earlier version of this note named the
+     * wrong majority — while even
      * the tighter {@code >=} (42 spans) catches Java source like {@code count >= n}. Those two are reported as
      * unindexed rather than matched. <b>Localized keywords are deliberately not matched either</b>: measured
-     * 2026-08-16, <i>no</i> operator in either doc is reachable only through one, so a keyword arm would be
-     * generality no case exercises. English is the canonical doc language, which is why. Re-check that before
+     * 2026-08-16, <i>no</i> operator in either doc is reachable only through one, so a keyword arm adds no ROW.
+     * It would add <b>entries</b> to rows that already exist — 8 of them name an operator only in German
+     * ({@code FeldAngegeben}, {@code Gueltig}, {@code DatumBereich}) — at the cost of new false positives, since
+     * {@code Gueltig}/{@code Ungueltig} are shared by two operator pairs. Row coverage is what this page is for. English is the canonical doc language, which is why. Re-check that before
      * adding it back.
      */
     static List<String> catalogOperatorIds(Path catalog) throws IOException {
@@ -191,7 +195,9 @@ record OperatorIndex(List<OperatorIndex.Entry> entries) {
                 span**, which is how this estate writes an operator name — prose that happens to contain the English
                 words "sum" or "true" is not a citation and is not indexed. An operator these docs write only as a
                 symbol (`>=`, `<=`) is listed as unindexed below rather than matched, because a symbol cannot be
-                told apart from ordinary comparison syntax.
+                told apart from ordinary comparison syntax. One further shape escapes indexing: where a family is
+                written collapsed (`DiffersWithToleranceRange1/2/5/10`), only the spelled-out member matches, so
+                the others read as unindexed even though the entry discusses them.
 
                 Addresses are permanent: a KERNEL-FINDINGS record is cited by its `KF<n>` anchor and a
                 KERNEL-SEMANTICS section by its slug, neither of which a retitle can move.

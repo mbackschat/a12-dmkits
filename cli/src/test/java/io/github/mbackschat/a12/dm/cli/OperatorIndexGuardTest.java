@@ -42,8 +42,11 @@ class OperatorIndexGuardTest {
     /** Sanity floor, asserted on what the ROWS are built from — the catalog carries ~110 operators. */
     private static final int MIN_OPERATORS = 90;
 
-    /** Sanity floor: KERNEL-FINDINGS alone contributes ~190 addressable records. */
-    private static final int MIN_ENTRIES = 150;
+    /** Sanity floor: KERNEL-FINDINGS contributes ~188 addressable records. */
+    private static final int MIN_FINDINGS_ENTRIES = 150;
+
+    /** Sanity floor: KERNEL-SEMANTICS contributes its 14 canonical sections. */
+    private static final int MIN_SEMANTICS_ENTRIES = 12;
 
     @Test
     void theCommittedIndexMatchesWhatItsSourcesGenerate() throws IOException {
@@ -54,9 +57,15 @@ class OperatorIndexGuardTest {
         assertTrue(operators.size() >= MIN_OPERATORS,
                 () -> "read only " + operators.size() + " operator ids from the catalog (floor " + MIN_OPERATORS
                         + ") — the rows would be built from almost nothing");
-        assertTrue(index.entries().size() >= MIN_ENTRIES,
-                () -> "parsed only " + index.entries().size() + " addressable kernel-doc entries (floor "
-                        + MIN_ENTRIES + ") — a changed heading or anchor shape, and every row would go empty");
+        // Per SOURCE, never a combined floor: KERNEL-FINDINGS alone clears any total, so dropping the
+        // KERNEL-SEMANTICS half entirely regenerated a thinner page and stayed green (measured 2026-08-16).
+        long findings = index.entries().stream().filter(e -> e.doc().startsWith("KERNEL-FINDINGS")).count();
+        long semantics = index.entries().stream().filter(e -> e.doc().startsWith("KERNEL-SEMANTICS")).count();
+        assertTrue(findings >= MIN_FINDINGS_ENTRIES,
+                () -> "parsed only " + findings + " KERNEL-FINDINGS entries (floor " + MIN_FINDINGS_ENTRIES + ")");
+        assertTrue(semantics >= MIN_SEMANTICS_ENTRIES,
+                () -> "parsed only " + semantics + " KERNEL-SEMANTICS sections (floor " + MIN_SEMANTICS_ENTRIES
+                        + ") — small enough to vanish under a combined floor, which is what happened");
 
         String generated = index.render(operators);
         // Resolved off the docs DIRECTORY, never by file existence: the fixer writes a file that is not there
@@ -96,12 +105,15 @@ class OperatorIndexGuardTest {
         OperatorIndex fabricated = new OperatorIndex(List.of(
                 new OperatorIndex.Entry("D.md", "a", "A", "The `Sum` operator over a group."),
                 new OperatorIndex.Entry("D.md", "b", "B", "The sum of the parts, and Sum as prose."),
-                new OperatorIndex.Entry("D.md", "c", "C", "Beware `SumOfSquares`, a different operator.")));
+                new OperatorIndex.Entry("D.md", "c", "C", "Beware `SumOfSquares`, a different operator."),
+                new OperatorIndex.Entry("D.md", "d", "D", "Written inline: `Sum([Qty]) > 0` fires per row.")));
 
-        assertEquals(List.of("a"),
+        assertEquals(List.of("a", "d"),
                 fabricated.mentioning("Sum").stream().map(OperatorIndex.Entry::address).toList(),
                 "only the code-span mention counts: prose must not match, and a longer identifier that merely "
-                + "starts with the operator's name must not either");
+                + "starts with the operator's name must not either. Entry `d` is the DISCRIMINATING case — an "
+                + "operator named inside a larger expression span. Without it, narrowing the matcher to "
+                + "whole-span equality passes every test while thinning the real page by five rows");
     }
 
     private static Path docs() {

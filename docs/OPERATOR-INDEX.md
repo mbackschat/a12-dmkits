@@ -10,7 +10,9 @@ operators appear only in bodies. An entry is listed below when it names the oper
 span**, which is how this estate writes an operator name — prose that happens to contain the English
 words "sum" or "true" is not a citation and is not indexed. An operator these docs write only as a
 symbol (`>=`, `<=`) is listed as unindexed below rather than matched, because a symbol cannot be
-told apart from ordinary comparison syntax.
+told apart from ordinary comparison syntax. One further shape escapes indexing: where a family is
+written collapsed (`DiffersWithToleranceRange1/2/5/10`), only the spelled-out member matches, so
+the others read as unindexed even though the entry discusses them.
 
 Addresses are permanent: a KERNEL-FINDINGS record is cited by its `KF<n>` anchor and a
 KERNEL-SEMANTICS section by its slug, neither of which a retitle can move.
