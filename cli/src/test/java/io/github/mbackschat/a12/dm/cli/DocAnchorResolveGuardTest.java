@@ -62,10 +62,10 @@ class DocAnchorResolveGuardTest {
     /** An interpreter finding's heading, whose {@code IF<n>} id is the cited address. */
     private static final Pattern FINDING_HEADING = Pattern.compile("^### IF(\\d+) .*$", Pattern.MULTILINE);
 
-    /** Sanity floor: the live tree has ~55 docs. A scan finding almost none is checking nothing. */
+    /** Sanity floor: the live tree has 66 docs (2026-08-16). A scan finding almost none is checking nothing. */
     private static final int MIN_DOCS = 30;
 
-    /** Sanity floor: the findings record carries ~229 entries. */
+    /** Sanity floor: the findings record carries 299 entries (2026-08-16). */
     private static final int MIN_FINDINGS = 200;
 
     /** A kernel finding's heading — h2, plus the h3s of the date-family subtree. */
@@ -74,7 +74,7 @@ class DocAnchorResolveGuardTest {
     /** Its assigned address. Trailing, so the §-tag stays at the start of the heading (see the test). */
     private static final Pattern KF_ANCHOR = Pattern.compile("<a id=\"kf(\\d+)\">");
 
-    /** Sanity floor: the kernel-findings record carries ~165 entries. */
+    /** Sanity floor: the kernel-findings record carries 188 entries (2026-08-16). */
     private static final int MIN_KERNEL_FINDINGS = 140;
 
     @Test

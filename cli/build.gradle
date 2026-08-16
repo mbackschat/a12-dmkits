@@ -550,6 +550,7 @@ tasks.register('referentGuardTest', Test) {
     filter {
         includeTestsMatching 'io.github.mbackschat.a12.dm.cli.ReferentDriftGuardTest'
         includeTestsMatching 'io.github.mbackschat.a12.dm.cli.QuotedTitleCitationRatchetTest'
+        includeTestsMatching 'io.github.mbackschat.a12.dm.cli.DerivedFigureDatingGuardTest'
     }
     rootProject.guardInputs(it, [
             'repo prose + source': rootProject.fileTree(rootProject.projectDir) {

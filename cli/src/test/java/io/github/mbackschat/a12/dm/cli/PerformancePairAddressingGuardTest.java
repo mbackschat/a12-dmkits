@@ -47,7 +47,7 @@ class PerformancePairAddressingGuardTest {
     private static final Pattern CHECKPOINT_DATE =
             Pattern.compile("(?m)^#{2,4} +Checkpoint +(\\d{4}-\\d{2}-\\d{2})");
 
-    /** Sanity floor, asserted on what the RULE parses — the catalog carries ~13 entries. */
+    /** Sanity floor, asserted on what the RULE parses — the catalog carries 13 entries (2026-08-16). */
     private static final int MIN_CATALOG_ENTRIES = 10;
 
     /** Sanity floor, asserted on what the RULE parses — the log carries ~35 checkpoints. */

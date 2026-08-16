@@ -39,7 +39,7 @@ class OperatorIndexGuardTest {
 
     private static final Path CATALOG = Path.of("../rulekit/src/main/resources/catalog/operators.json");
 
-    /** Sanity floor, asserted on what the ROWS are built from — the catalog carries ~110 operators. */
+    /** Sanity floor, asserted on what the ROWS are built from — the catalog carries 106 operators (2026-08-16). */
     private static final int MIN_OPERATORS = 90;
 
     /** Sanity floor: KERNEL-FINDINGS contributes ~188 addressable records. */

@@ -48,12 +48,12 @@ class ApiFindingsNumberingGuardTest {
      * A findings item: an ordinal at line start, then the doc's <b>bolded claim</b> convention
      * ({@code 103. **A DM-JSON mapper is a semantic decision** — …}). Anchoring on the bold is deliberate:
      * a bare {@code ^\d+\. } would also swallow unrelated numbered prose that happens to sit at column 0.
-     * Both forms count 103 in the live doc, so the stricter one loses nothing today and cannot drift into
+     * Both forms count 125 in the live doc (2026-08-16), so the stricter one loses nothing today and cannot drift into
      * false positives later. Nested/sub-lists are indented, so the line anchor already excludes them.
      */
     private static final Pattern ITEM = Pattern.compile("^(\\d+)\\. \\*\\*", Pattern.MULTILINE);
 
-    /** The live doc had 103 findings when this landed; the floor only catches a scan that found nothing. */
+    /** The live doc carries 125 findings (2026-08-16); the floor only catches a scan that found nothing. */
     private static final int MIN_FINDINGS = 90;
 
     @Test
