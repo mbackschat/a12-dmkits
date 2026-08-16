@@ -1040,7 +1040,8 @@ object PerfHarness {
      * measured code the group-scope bar went fail, pass, fail, pass — while the interpreter stayed 4x-12x faster
      * than the kernel at both scales in every one of them, including both failures.
      *
-     * <p><b>What this does and does not change.</b> The ceiling is untouched. A breach is re-measured and must
+     * <p><b>What this does and does not change.</b> The ceiling is untouched, and so is WHERE it applies: this
+     * family gates on every machine, hosted included. Only the re-measurement is new. A breach is re-measured and must
      * survive the MEDIAN of [attempts] independent estimates, which is the same contract
      * [assertGrowthBelowCatastropheFloor] applies and the one IF281/IF282 ratified — so a single contended slice
      * can no longer fail the build, and a real relative blowup still does. [estimate] must measure all four
@@ -1050,7 +1051,6 @@ object PerfHarness {
         label: String,
         ceiling: Double,
         attempts: Int = GROWTH_RETRY_ATTEMPTS,
-        enforcement: TimingEnforcement = TimingEnforcement.forGrowthFloor(),
         estimate: () -> RatioGrowth,
     ): RatioGrowth {
         require(attempts > 0 && attempts % 2 == 1) { "attempts must be a positive odd number" }
@@ -1065,15 +1065,16 @@ object PerfHarness {
             ". Acceptance is their median, so one contended slice cannot fail it — this is a RELATIVE claim, so " +
             "note the interpreter may still be far faster than the kernel at both scales while its ADVANTAGE " +
             "narrows, which is what this bar is about."
-        return when (enforcement) {
-            TimingEnforcement.GATED -> throw AssertionError(breach)
-            TimingEnforcement.FLAGGED -> accepted.also {
-                println("[perf][FLAG] $breach  (reported, not failed: shared hosted hardware — see TimingEnforcement)")
-            }
-            TimingEnforcement.UNJUDGED -> accepted.also {
-                println("[perf][note] cross-engine class not judged outside the isolated lane: $breach")
-            }
-        }
+        // GATES EVERYWHERE — deliberately NOT routed through TimingEnforcement, unlike the growth floor.
+        // A cross-engine ratio is dimensionless: both engines run in the same JVM, on the same vCPUs, in the same
+        // load slice, so contention moves both arms and largely cancels — which is exactly why this family is
+        // excluded from the shared/isolated distinction (TimingEnforcement's own doc, adapter/build.gradle:469,
+        // INTERPRETER-PERFORMANCE.md, TESTING-SPEC.md all say so). The first version of this helper defaulted to
+        // `TimingEnforcement.forGrowthFloor()`, which returns FLAGGED whenever `CI` is set — silently turning a
+        // hosted breach from a failure into a println on both call sites, while the doc above claimed the ceiling
+        // was untouched. A cold review caught it. Switching a guard off is exactly what INTERPRETER-PERFORMANCE.md
+        // warns about: "Collapsing those two into one rule switches guards off, and that is not hypothetical."
+        throw AssertionError(breach)
     }
 
     /**
