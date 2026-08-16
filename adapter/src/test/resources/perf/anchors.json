@@ -55,7 +55,7 @@
         "group-scope fill|diagnostic/group-scoped-fill@1 fingerprint=4bfbf9a4c55129849e1fc6034155a7907c0e53e4df8ed42b1d98b952516c9449|n=8000|interpreter|wall": 19.49,
         "group-scope fill|diagnostic/group-scoped-fill@1 fingerprint=6e3c0ebea571d85fb134b4f684ca528de0626d5cc64ce88febe5b66781a649ce|n=2000|interpreter|wall": 5.04,
         "group-star expansion|diagnostic/group-star-expansion@1 fingerprint=dcbe40f14efb64f94da23e517e9bdbd6b2eeea0d761ce7b148115804062861b3|n=8000|interpreter|cpu": 45.28,
-        "group-star expansion|diagnostic/group-star-expansion@1 fingerprint=e97d1efc79974f22c05493c441834e6528408cb6ec904a56cdaecddbf5c26c4b|n=2000|interpreter|cpu": 13.75,
+        "group-star expansion|diagnostic/group-star-expansion@1 fingerprint=e97d1efc79974f22c05493c441834e6528408cb6ec904a56cdaecddbf5c26c4b|n=2000|interpreter|cpu": 5.95,
         "multi-star $-correlation sub-quadratic|diagnostic/MSC-multi-star-correlation@1 fingerprint=15944f3a12f05fc1c2438a1557331b2a2022826ef1d2a1bca6d15768cd243177|n=5000|interpreter|cpu": 52.29,
         "multi-star $-correlation sub-quadratic|diagnostic/MSC-multi-star-correlation@1 fingerprint=91929d272621d0092e85c880a7a2a8529b50c59f378116925524f0ee4eede614|n=20000|interpreter|cpu": 234.28,
         "parallel-iteration sub-quadratic|diagnostic/PI-parallel@1 fingerprint=2188c0a170fa12f472c60a7509bc9e16506a8dc17117ebfb2fba52b11bdfe4b9|n=5000|interpreter|cpu": 11.84,
