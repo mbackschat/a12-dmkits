@@ -6,6 +6,12 @@ This changelog covers the independently consumable interpreter packages, API doc
 
 ## [@VERSION@]
 
+### Performance
+
+- **Fast, and measured — never assumed.** On the fixed Apple M1/Chrome runner on 2026-08-03, a 200-row Document validated in a **10.5 ms median** and the 10,000-row stress Document with 4,900 findings in a **203.6 ms median**. Against the A12 Kernel's generated validator compiled as Java, with code generation outside the clock, the interpreter led by **2.1×–12.5×** across the default inventory and **10×–16.7×** on repeated-document evaluation, with the closest hostile point still ahead by 1.32×. These are bounded same-machine measurements after exact result preflight, not universal promises; see [the benchmark method and complete tables](https://github.com/mbackschat/a12-dmkits/blob/main/docs/INTERPRETER-PERFORMANCE.md).
+
+## [0.13.0]
+
 ### Added
 
 - **An operand may name a GROUP, everywhere the A12 Kernel accepts one.** Where a condition names a repeatable or non-repeatable group instead of a field — `Sum(/Order/Billing)`, `NumberOfFilledFields(/Order/Lines*)`, `FieldValuesNotUnique(/Shipment/Consignments*)`, `FirstFilledValue`, `NumberOfValueInFields`, the value-list quantifiers, the date and number extrema, `AtLeastOneDateRangeOverlaps` — the operand now expands to every field the group contains, recursively through nested subgroups and across their rows, bound at the operand's own level rather than at the rule's. The same expansion runs on the polarity channel, so an error's message type matches the Kernel's too, and on the computation fill scan. Previously these read a value at the group's own path, where no field is declared, and quietly answered from an empty selection — a `Sum` of zero, a count of zero, a duplicate never found.
