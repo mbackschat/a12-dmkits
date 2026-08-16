@@ -43,11 +43,20 @@ done
 # user's config changes the `a/`…`b/` headers the rules parse.
 if [ -n "$REF" ]; then
   FILES=$(git diff --no-ext-diff --name-only "$REF") || exit 1
+  STATUS=$(git diff --no-ext-diff --name-status "$REF") || exit 1
   DIFF=$(git diff --no-ext-diff -U0 --src-prefix=a/ --dst-prefix=b/ "$REF") || exit 1
 else
   FILES=$(git diff --no-ext-diff --cached --name-only) || exit 1
+  STATUS=$(git diff --no-ext-diff --cached --name-status) || exit 1
   DIFF=$(git diff --no-ext-diff --cached -U0 --src-prefix=a/ --dst-prefix=b/) || exit 1
 fi
+
+# Paths whose EXISTENCE changed — added, renamed, deleted — as opposed to edited. An index row is owed when a
+# file appears or disappears, never when its body changes, and a rule that cannot tell the two apart fires on
+# every edit of a directory it watches. That is not a harmless surplus: this trigger's whole value is that a
+# fired row means something, and a row that fires on all traffic is the one people learn to skip. The rename
+# arm (`R100  old  new`) is why the NEW name is taken from the last field rather than the second.
+LIFECYCLE=$(awk '$1 ~ /^[ARD]/ { print $NF }' <<<"$STATUS")
 
 FIRED=0
 say() { FIRED=1; printf '\n  ▸ %s\n' "$1"; shift; for line in "$@"; do printf '      %s\n' "$line"; done; }
@@ -55,6 +64,10 @@ say() { FIRED=1; printf '\n  ▸ %s\n' "$1"; shift; for line in "$@"; do printf 
 # `grep -q` exits at the first match and SIGPIPEs `echo` under `set -o pipefail`, which silently drops the
 # obligation on a large diff (measured: lost at ~5,000 paths). A here-string has no pipe and no such cliff.
 matches() { [ "$NO_DIFF" -eq 0 ] && grep -qE "$1" <<<"$FILES"; }
+
+# The same test restricted to files that were ADDED, RENAMED or DELETED — for an obligation owed by a file's
+# existence rather than its contents.
+appears_or_disappears() { [ "$NO_DIFF" -eq 0 ] && grep -qE "$1" <<<"$LIFECYCLE"; }
 
 echo "obligations fired by ${REF:-the staged diff}:"
 
@@ -84,12 +97,12 @@ matches '^(build\.gradle|settings\.gradle|[a-z]+/build\.gradle)$' && say \
   "update: docs/ARCHITECTURE.md — the as-is view, no roadmap or status" \
   "guard: none — this one is on you"
 
-matches '^scripts/' && say \
+appears_or_disappears '^scripts/' && say \
   "a scripts/ file was added, renamed or removed" \
   "update: scripts/README.md — its index row" \
   "guard: DirectoryIndexGuardTest"
 
-matches '^examples/' && say \
+appears_or_disappears '^examples/' && say \
   "a demo was added, renamed or removed" \
   "update: examples/README.md + the CI-gate list" \
   "guard: DirectoryIndexGuardTest (partial) + the CI demo gate"

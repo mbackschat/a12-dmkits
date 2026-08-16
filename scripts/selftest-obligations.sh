@@ -92,7 +92,29 @@ grep -q 'REVIEW TRIGGER' <<<"$out" \
   || fail "the default run states it is a trigger, not a guard" "$out"
 /bin/rm -rf "$d"
 
-# --- 6. a configured external differ must not change the verdict -----------------------------------------
+# --- 6. an index obligation is owed by EXISTENCE, not by an edit -----------------------------------------
+# The rule says "added, renamed or removed" and used to fire on any modification, because the file list came
+# from `--name-only` and carried no status. It fired on this very script's own bug-fix commit. Both directions
+# are asserted: a guard that cries wolf on ordinary traffic is one people learn to skip.
+d=$(sandbox); mkdir -p "$d/scripts"
+printf 'echo one\n' > "$d/scripts/tool.sh"
+git -C "$d" add -A >/dev/null; git -C "$d" commit -qm base
+printf 'echo two\n' > "$d/scripts/tool.sh"          # MODIFIED — no index row is owed
+git -C "$d" add -A >/dev/null
+out=$("$d/scripts/obligations.sh" 2>&1) || true
+grep -q 'index row' <<<"$out" \
+  && fail "editing a script must NOT demand an index row" "$out" \
+  || pass "editing a script must NOT demand an index row"
+
+printf 'echo three\n' > "$d/scripts/added.sh"        # ADDED — an index row IS owed
+git -C "$d" add -A >/dev/null
+out=$("$d/scripts/obligations.sh" 2>&1) || true
+grep -q 'index row' <<<"$out" \
+  && pass "adding a script DOES demand an index row" \
+  || fail "adding a script DOES demand an index row" "$out"
+/bin/rm -rf "$d"
+
+# --- 7. a configured external differ must not change the verdict -----------------------------------------
 # `delta`/`difftastic` via GIT_EXTERNAL_DIFF or diff.external are ordinary maintainer setups, and they make
 # `git diff` emit another format or die mid-stream. The crash is the mild half: DIFF was captured without an
 # error check, so a partial diff read as a CLEAN TREE — the trigger silently reporting nothing.
@@ -107,7 +129,7 @@ grep -q 'LINK TARGET changed' <<<"$out" \
   || fail "an external differ does not suppress the verdict" "$out"
 /bin/rm -rf "$d"
 
-# --- 7. THE PINNED CASE: the real commit the rule exists for ---------------------------------------------
+# --- 8. THE PINNED CASE: the real commit the rule exists for ---------------------------------------------
 # f9f92cdb split the performance doc and touched docs/DOC-DISCIPLINE.md by one line carrying link renames
 # ONLY. Every guard passed and the surrounding paragraph was left stating five false things. A first version
 # of the rule blanked only `](target)` and missed this outright, because the rename changed the link LABEL

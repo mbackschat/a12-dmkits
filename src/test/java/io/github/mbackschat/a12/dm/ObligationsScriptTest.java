@@ -28,7 +28,7 @@ import org.junit.jupiter.api.Test;
 class ObligationsScriptTest {
 
     /**
-     * Vacuity floor: the script carried 9 cases on 2026-08-16. Asserted rather than pinned exactly, so adding a
+     * Vacuity floor: the script carried 11 cases on 2026-08-16. Asserted rather than pinned exactly, so adding a
      * case does not fail this class, but a script that stops emitting results does.
      */
     private static final int MIN_CASES = 7;
