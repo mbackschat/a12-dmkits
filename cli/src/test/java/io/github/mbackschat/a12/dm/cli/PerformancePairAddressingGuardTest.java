@@ -50,7 +50,7 @@ class PerformancePairAddressingGuardTest {
     /** Sanity floor, asserted on what the RULE parses — the catalog carries 13 entries (2026-08-16). */
     private static final int MIN_CATALOG_ENTRIES = 10;
 
-    /** Sanity floor, asserted on what the RULE parses — the log carries ~35 checkpoints. */
+    /** Sanity floor, asserted on what the RULE parses — the log carries 35 checkpoints (2026-08-16). */
     private static final int MIN_CHECKPOINTS = 30;
 
     @Test

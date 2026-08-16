@@ -65,7 +65,8 @@ class DirectoryIndexGuardTest {
     /** A fenced code block, stripped before link extraction (see the class doc). */
     private static final Pattern FENCE = Pattern.compile("(?ms)^```.*?^```[^\\n]*$");
 
-    /** Sanity floors: 33 scripts + 11 demos live today. If a future refactor makes a scan find almost nothing
+    /** Sanity floors: 55 scripts + 14 demos live (2026-08-16), counted by this guard's own rule — regular
+     *  files, no dotfiles, no README. If a future refactor makes a scan find almost nothing
      *  (wrong working dir, a moved tree), the guard would "pass" while checking nothing — this catches it. */
     private static final int MIN_SCRIPTS = 25;
     private static final int MIN_DEMOS = 8;

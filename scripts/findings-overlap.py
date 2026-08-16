@@ -15,6 +15,9 @@ THE ANSWER IT PRODUCED, 2026-08-16, over 609 entries / 185,136 pairs:
   highest overall ........... 0.723  IF72 | KF80
   highest same-doc .......... 0.517  IF153 | IF163
 
+Two of the 54 cross-doc pairs are IF|API rather than IF|KF and are NOT covered by the pairing argument below:
+IF180|API2 (0.474) and IF234|API106 (0.435). Both were read; both are distinct claims that share vocabulary.
+
 ZERO are restatements, and the reason is structural rather than lucky. The cross-doc mass is
 the estate's deliberate pairing: KERNEL-FINDINGS records what the kernel does, measured against
 the kernel; INTERPRETER-FINDINGS records the clean-room reimplementation matching it. The same
@@ -31,13 +34,21 @@ RE-OPEN TRIGGER, because this answer rests on a current fact. Re-run when the co
 materially (say +50%, or ~900 entries) or when the cross-reference convention visibly lapses.
 If same-doc pairs above 0.40 stop being twins-or-increments on inspection, the deferral expires.
 
-RECALL LIMIT, stated rather than implied. This finds LEXICAL overlap. A genuine restatement in
-wholly different vocabulary is invisible to it, so the measurement bounds the problem from one
-side only: it can prove duplication EXISTS, and it cannot prove none does. Its verdict is
-"nothing in the top of a 185k-pair ranking is a restatement", which is what the deferral needs.
+RECALL LIMITS — all four, because the verdict is a NEGATIVE EXISTENTIAL and those need their
+denominator and their blind spots stated:
+  1. It finds LEXICAL overlap only. A restatement in wholly different vocabulary is invisible, so
+     this bounds the problem from one side: it can prove duplication EXISTS, never that none does.
+  2. MIN_TOKENS silently drops 3 entries (API10, API42, API47). They are never scored.
+  3. The families are parsed at different GRANULARITY — an IF/KF entry contributes its whole body,
+     an API entry only its first line — so every API-involving cosine is biased downward.
+  4. The 0.40 cutoff is CALIBRATED, not assumed: an injected clone of IF112 scores 1.000, and a
+     clone with eight frequent domain terms substituted still scores 0.859, so a real restatement
+     lands far above it. 84 pairs sit above 0.30 and were not read individually.
+Its verdict is "nothing in the top of a 185k-pair ranking is a restatement", which is what the
+deferral needs and no more.
 
 USAGE
-  scripts/findings-overlap.py                 report the ranking and the same-doc split
+  scripts/findings-overlap.py                 report the ranking and EVERY same-doc pair above 0.40
   scripts/findings-overlap.py --threshold 0.5 raise the reporting bar
 """
 import argparse
@@ -119,7 +130,7 @@ def family(entry_id):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--threshold", type=float, default=0.40)
-    ap.add_argument("--show", type=int, default=10)
+    ap.add_argument("--show", type=int, default=0, help="0 = all same-doc pairs above the threshold")
     args = ap.parse_args()
 
     entries = load()
@@ -141,9 +152,9 @@ def main():
     ifkf = sum(1 for _, a, b in cross if {family(a["id"]), family(b["id"])} == {"IF", "KF"})
     print(f"{n} entries, {n * (n - 1) // 2:,} pairs, threshold {args.threshold}")
     print(f"  cross-doc  {len(cross):>4}   (IF|KF pairs: {ifkf}) — the deliberate kernel/interpreter pairing")
-    print(f"  same-doc   {len(same):>4}   — the only genuine duplication candidates\n")
-    print("same-doc pairs, judge these by READING them; the score is a shortlist, never a verdict:")
-    for score, a, b in same[:args.show]:
+    print(f"  same-doc   {len(same):>4}   — candidates to READ; being above the cutoff is not a verdict\n")
+    print("same-doc pairs above the cutoff — a shortlist for READING, never a verdict on duplication:")
+    for score, a, b in (same if args.show == 0 else same[:args.show]):
         print(f"  {score:.3f}  {a['id']} | {b['id']}")
         print(f"          A {a['title'][:100]}")
         print(f"          B {b['title'][:100]}")

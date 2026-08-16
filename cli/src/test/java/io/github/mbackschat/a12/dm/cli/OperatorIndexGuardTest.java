@@ -39,7 +39,14 @@ class OperatorIndexGuardTest {
 
     private static final Path CATALOG = Path.of("../rulekit/src/main/resources/catalog/operators.json");
 
-    /** Sanity floor, asserted on what the ROWS are built from — the catalog carries 106 operators (2026-08-16). */
+    /**
+     * Sanity floor, asserted on what the ROWS are built from — the catalog carries 110 operators (2026-08-16).
+     *
+     * <p><i>Corrected 2026-08-16:</i> briefly read 106, which is a DIFFERENT quantity — the operators this index
+     * actually lists, i.e. those named anywhere in the kernel docs (34 in a heading + 72 heading-blind). The floor
+     * below is asserted on the catalog, so the subset count was the wrong number on this line. A cold review caught
+     * it; the correction had introduced it, which is the unnamed-quantity defect committed inside its own fix.
+     */
     private static final int MIN_OPERATORS = 90;
 
     /** Sanity floor: KERNEL-FINDINGS contributes ~188 addressable records. */

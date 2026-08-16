@@ -53,7 +53,9 @@ class DocsIndexGuardTest {
      *  the target runs to the closing {@code )} (our index uses no {@code )} inside a target). */
     private static final Pattern LINK = Pattern.compile("\\[[^\\]]*\\]\\(([^)]+)\\)");
 
-    /** Sanity floor: the live index covers 66 docs (2026-08-16). If a future refactor makes the scan find almost nothing
+    /** Sanity floor: the live index covers 80 docs (2026-08-16) — `docs/` plus `docs/archived/`, both minus their
+     *  own README, which is the population `inventory()` builds and NOT the 66 that `docs/*.md` alone carries.
+     *  If a future refactor makes the scan find almost nothing
      *  (wrong working dir, an emptied tree), the guard would "pass" while checking nothing — this catches it. */
     private static final int MIN_DOCS = 30;
 

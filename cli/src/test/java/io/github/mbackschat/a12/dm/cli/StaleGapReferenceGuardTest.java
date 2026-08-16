@@ -24,8 +24,11 @@ import org.junit.jupiter.api.Test;
  *
  * <p>This makes current-state vs. historical references <b>mechanically distinguishable without banning
  * legitimate provenance</b> — the hard constraint the gap sets. The codebase carries <b>286</b> bare {@code IGn}
- * origin-label occurrences naming <b>81</b> distinct ids (measured 2026-08-16 over this guard's own scope: every
- * module source root plus every module build file): "the IG44 drill", "the IG56 E3 hunt", "IG13 residual" — all
+ * origin-label occurrences naming <b>81</b> distinct ids (2026-08-16, over the repository's {@code .java}/
+ * {@code .kt} sources excluding this guard's own file). That is NOT this guard's scan scope, which also reads
+ * module build files and excludes its own fixtures differently — a cold review caught the mismatch; the figure
+ * illustrates the size of the legitimate-history population, it is not a reading of the rule below.
+ * Examples: "the IG44 drill", "the IG56 E3 hunt", "IG13 residual" — all
  * legitimate history, not to be touched.
  *
  * <p>The mechanical signal is <b>present-tense-OPEN framing</b>: a deleted gap cited as {@code pending IGn}

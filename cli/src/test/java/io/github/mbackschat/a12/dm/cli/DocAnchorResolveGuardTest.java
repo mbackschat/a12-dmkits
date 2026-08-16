@@ -65,7 +65,11 @@ class DocAnchorResolveGuardTest {
     /** Sanity floor: the live tree has 66 docs (2026-08-16). A scan finding almost none is checking nothing. */
     private static final int MIN_DOCS = 30;
 
-    /** Sanity floor: the findings record carries 299 entries (2026-08-16). */
+    /**
+     * Sanity floor, asserted on what {@link #FINDING_HEADING} parses: 259 headings (2026-08-16). The record holds
+     * 299 {@code IF<n>} entries in total; the 40-entry gap is the {@code ### IF262: title} colon form, which this
+     * pattern's mandatory space excludes. Naming 299 here would describe a population the floor does not measure.
+     */
     private static final int MIN_FINDINGS = 200;
 
     /** A kernel finding's heading — h2, plus the h3s of the date-family subtree. */
@@ -132,7 +136,8 @@ class DocAnchorResolveGuardTest {
      *
      * <p>The anchor is <b>trailing</b>, never a title prefix, and that is load-bearing:
      * {@code KernelDocsFoldContractTest} and {@code SemanticsMapResolveTest} both pin the §-tag with
-     * {@code ^#{2,3} §(\d+)}, so a prefix would silently blind the §-mirror on <b>144</b> headings (2026-08-16).
+     * {@code ^#{2,3} §(\d+)}, so a prefix would silently blind the §-mirror on <b>143</b> headings (2026-08-16 —
+     * those classes require a trailing space, which is what separates 143 from the 144 the looser form matches).
      */
     @Test
     void everyKernelFindingHeadingCarriesAUniqueStableAnchor() throws IOException {
@@ -175,7 +180,8 @@ class DocAnchorResolveGuardTest {
      * <b>Cross-doc fragments resolve too.</b> The canonical KERNEL-SEMANTICS prose cites its verification as
      * {@code §n / IFm}, whose two halves live in <i>different</i> docs — the link named KERNEL-FINDINGS while
      * the precise {@code IFm} address resolves in INTERPRETER-FINDINGS, so following it landed a reader in
-     * the wrong file. Those 107 cites now link explicitly, which is only safe if something checks them.
+     * the wrong file. Those cites now link explicitly — 120 of them (2026-08-16) — which is only safe if
+     * something checks them.
      */
     @Test
     void everyCrossDocAnchorResolves() throws IOException {

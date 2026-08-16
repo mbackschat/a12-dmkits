@@ -15,8 +15,9 @@ import org.junit.jupiter.api.io.TempDir;
 
 /**
  * <b>The API-FINDINGS ordinal guard.</b> {@code docs/API-FINDINGS.md} carries its findings as a markdown
- * <b>ordered list</b>, and they are cited as "finding N" from <b>147</b> sites (2026-08-16, case-insensitive,
- * excluding the doc itself; a further 22 use the {@code API-FINDINGS n} notation) across the docs, the tests, and
+ * <b>ordered list</b>, and they are cited as "finding N" from <b>147</b> occurrences (2026-08-16,
+ * case-insensitive, excluding the doc itself, and counting the {@code finding #N} variant — the bare form alone
+ * is 146; a further 22 use the {@code API-FINDINGS n} notation) across the docs, the tests, and
  * <em>production</em> sources ({@code SemanticIndex}, {@code FieldInfo}). That makes the ordinal a public
  * anchor riding the weakest possible carrier: a renderer numbers an ordered list <b>sequentially from the
  * first item</b> and ignores the later source numbers, so deleting or inserting one item silently shifts
