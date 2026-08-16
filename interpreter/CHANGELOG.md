@@ -6,9 +6,21 @@ This changelog covers the independently consumable interpreter packages, API doc
 
 ## [@VERSION@]
 
+### Added
+
+- **An operand may name a GROUP, everywhere the A12 Kernel accepts one.** Where a condition names a repeatable or non-repeatable group instead of a field — `Sum(/Order/Billing)`, `NumberOfFilledFields(/Order/Lines*)`, `FieldValuesNotUnique(/Shipment/Consignments*)`, `FirstFilledValue`, `NumberOfValueInFields`, the value-list quantifiers, the date and number extrema, `AtLeastOneDateRangeOverlaps` — the operand now expands to every field the group contains, recursively through nested subgroups and across their rows, bound at the operand's own level rather than at the rule's. The same expansion runs on the polarity channel, so an error's message type matches the Kernel's too, and on the computation fill scan. Previously these read a value at the group's own path, where no field is declared, and quietly answered from an empty selection — a `Sum` of zero, a count of zero, a duplicate never found.
+- **A fill quantifier can be asked over two filtered stars**, each carrying its own filter.
+
 ### Performance
 
 - **Fast, and measured — never assumed.** On the fixed Apple M1/Chrome runner on 2026-08-03, a 200-row Document validated in a **10.5 ms median** and the 10,000-row stress Document with 4,900 findings in a **203.6 ms median**. Against the A12 Kernel's generated validator compiled as Java, with code generation outside the clock, the interpreter led by **2.1×–12.5×** across the default inventory and **10×–16.7×** on repeated-document evaluation, with the closest hostile point still ahead by 1.32×. These are bounded same-machine measurements after exact result preflight, not universal promises; see [the benchmark method and complete tables](https://github.com/mbackschat/a12-dmkits/blob/main/docs/INTERPRETER-PERFORMANCE.md).
+- Repeated evaluation over one prepared model got cheaper again: the relevance query no longer rebuilds path strings on every consultation, the cascade overlay holds one entry per cell rather than one per lookup, and the per-cell over-repetition gate is skipped entirely on a Document that cannot need it.
+
+### Fixed
+
+- A `DATE_TIME` field declared with the Kernel-legal **time-only** format is read as a value instead of being reported malformed and then suppressed.
+- An **undeclared field or group reference** in one rule is reported against that rule instead of taking the whole model's evaluation down with it.
+- A group operand under `Min`/`Max` in a condition evaluated without a model pre-flight degrades to its own rule's error rather than aborting the evaluation.
 
 ## [0.12.1]
 

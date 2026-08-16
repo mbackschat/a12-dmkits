@@ -6,7 +6,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/);
 
 **Headline topics only.** An entry names the capabilities and breaking changes a user would notice, not every fix behind them; the source repo's git history is the complete record.
 
-## [0.13.0] - kernel 30.8.1 (A12 Tools 2025.06-ext5)
+## [0.13.0] — kernel 30.8.1 (A12 Tools 2025.06-ext5)
+
+### Added
+
+- **A rule may scope an operand to a GROUP, and the typed surface authors it.** The value-list quantifiers, the DATE extrema, `NumberOfValueInFields` and the entity-list aggregates accept a group scope — starred or plain, per the kernel's own admission — instead of demanding a field. Each operator's catalog entry carries what its carrier actually admits.
+- **The refactoring safety gates see through a group.** `where-used`, `delete` and `extract` now count a field reached through a group operand as referenced on every route, and `move` warns when it would change what a group operand expands to. A field that only one group operand names is no longer reported unreferenced and silently deletable.
 
 ### Changed
 
@@ -16,6 +21,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/);
 ### Fixed
 
 - Operator guidance and correctives now match the kernel for `NumberOfFilledGroups` mixed references, `FieldValuesNotUnique` CONFIRM operands, pattern-comparison operand slots, and strict raw-field `Length` declarations.
+- **Evaluation reads a group operand the way the kernel does.** `model eval`, `rule eval` and `model compute` expand an operand naming a group to every field it contains, recursively through nested subgroups and across their rows, on both the value and the message-type channel. Previously such an operand read a path holding no value and produced a confident empty answer — a `Sum` of zero, a count of zero, a duplicate never found.
+- A `DATE_TIME` field declared with the kernel-legal time-only format is evaluated instead of reported malformed, and an undeclared reference in one rule no longer takes the whole model's evaluation down.
 
 ## [0.12.0] — kernel 30.8.1 (A12 Tools 2025.06-ext5)
 
