@@ -176,6 +176,9 @@ class PerfAnchorScriptTest {
         assertNotEquals(0, run.status,
             "a block with no machine is one the gated lane will not assert against, so it is a bar that never fires")
         assertTrue("machine" in run.stderr) { "the refusal must say what is missing: ${run.stderr}" }
+        assertEquals(mapOf(laneA to 1.0, laneB to 2.0), observationsOf(anchor, "darwin-aarch64"),
+            "a refused refresh must write NOTHING — asserted on the block's CONTENT, because the old form " +
+                "checked which block NAMES existed and went vacuous the moment the fixture became darwin itself")
     }
 
     /**
@@ -196,6 +199,8 @@ class PerfAnchorScriptTest {
             "a block whose machine is the probe's failure sentinel is refused by the gated lane forever, so " +
                 "authoring one is the never-fires block this refusal exists to prevent")
         assertTrue("machine" in run.stderr) { "the refusal must say what is unusable: ${run.stderr}" }
+        assertEquals(mapOf(laneA to 1.0, laneB to 2.0), observationsOf(anchor, "darwin-aarch64"),
+            "a refused refresh must write nothing")
     }
 
     /**
@@ -237,6 +242,12 @@ class PerfAnchorScriptTest {
         )
 
         assertNotEquals(0, run.status, "two real machines cannot be folded into one absolute bar")
+        assertTrue("machine" in run.stderr) {
+            "the refusal must name the MACHINE conflict — without this the test passes on a refusal for any " +
+                "other reason, which is how a guard stops guarding what it was written for: ${run.stderr}"
+        }
+        assertEquals(mapOf(laneA to 1.0, laneB to 2.0), observationsOf(anchor, "darwin-aarch64"),
+            "a refused refresh must write nothing")
     }
 
     /**

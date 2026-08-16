@@ -59,16 +59,21 @@ class DocAnchorResolveGuardTest {
 
     private static final Pattern HEADING = Pattern.compile("^#{1,6}\\s+(.*?)\\s*$", Pattern.MULTILINE);
 
-    /** An interpreter finding's heading, whose {@code IF<n>} id is the cited address. */
-    private static final Pattern FINDING_HEADING = Pattern.compile("^### IF(\\d+) .*$", Pattern.MULTILINE);
+    /**
+     * An interpreter finding's heading, whose {@code IF<n>} id is the cited address. <b>Both title separators</b>
+     * — the space and the colon — because the doc uses both and requiring the space silently skipped the colon
+     * form: 259 of 299 entries checked, so <b>40 (13 %) were never guarded for their stable anchor</b>. All 40
+     * happened to carry one, so nothing was red and the floor could not see it either (259 clears a floor of 200).
+     * A guard that omits part of its population reports a clean bill of health for the part it cannot see.
+     */
+    private static final Pattern FINDING_HEADING = Pattern.compile("^### IF(\\d+)[: ].*$", Pattern.MULTILINE);
 
     /** Sanity floor: the live tree has 66 docs (2026-08-16). A scan finding almost none is checking nothing. */
     private static final int MIN_DOCS = 30;
 
     /**
-     * Sanity floor, asserted on what {@link #FINDING_HEADING} parses: 259 headings (2026-08-16). The record holds
-     * 299 {@code IF<n>} entries in total; the 40-entry gap is the {@code ### IF262: title} colon form, which this
-     * pattern's mandatory space excludes. Naming 299 here would describe a population the floor does not measure.
+     * Sanity floor, asserted on what {@link #FINDING_HEADING} parses: 299 headings (2026-08-16), which is now the
+     * WHOLE population — the pattern was widened to admit the colon form it had been skipping.
      */
     private static final int MIN_FINDINGS = 200;
 
