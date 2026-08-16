@@ -145,29 +145,59 @@ class PerfTrendScriptTest {
     // ── segmentation: a platform change re-bases every number and is not a regression ─────────────────
 
     /**
-     * A JDK change mid-series shifts the level by 40 %, and that must be reported as **two segments** rather than
-     * as a step in one. This is the case the gap names explicitly: a platform change re-bases every number and
-     * would otherwise read as a regression.
+     * A JDK **MAJOR** change mid-series shifts the level by 40 %, and that must be reported as **two segments**
+     * rather than as a step in one. This is the case the gap names explicitly: a platform change re-bases every
+     * number and would otherwise read as a regression.
      */
     @Test
-    fun aJdkChangeSegmentsTheSeriesInsteadOfReadingAsAStep() {
+    fun aJdkMajorChangeSegmentsTheSeriesInsteadOfReadingAsAStep() {
+        val dir = work.resolve("results").resolve("linux-amd64-ci").also { Files.createDirectories(it) }
+        listOf(10.0, 10.2, 9.9).forEachIndexed { i, ms ->
+            writeRun(dir, stamp = "2026-08-0${i + 1}T000000Z", jdk = "21.0.12", ms = ms)
+        }
+        listOf(6.0, 6.1, 5.9).forEachIndexed { i, ms ->
+            writeRun(dir, stamp = "2026-08-1${i + 1}T000000Z", jdk = "25.0.4", ms = ms)
+        }
+
+        val run = run(work.resolve("results"))
+
+        assertEquals(0, run.status, run.output)
+        assertTrue("jdk 21" in run.output && "jdk 25" in run.output) {
+            "both JDK majors must appear as their own segment headers: ${run.output}"
+        }
+        assertTrue("CHANGE" !in run.output) {
+            "a JDK boundary re-bases the number; calling it a change point is the false positive this " +
+                "segmentation exists to prevent: ${run.output}"
+        }
+    }
+
+    /**
+     * **A JDK PATCH change must NOT segment** (owner, 2026-08-16: the minor does not disturb these measurements,
+     * so it can be ignored when comparing). The provider hands out whichever patch its image caches — 21.0.11 and
+     * 21.0.12 both appeared on one day for one commit — so splitting on it shatters the very history a step claim
+     * needs while separating numbers that are directly comparable. Measured over the committed hosted record:
+     * segmenting on the patch left <b>0</b> rows with the six runs a step claim requires; merging them leaves
+     * <b>36</b>, and rows stranded at a single run fall from 148 to 38.
+     */
+    @Test
+    fun aJdkPatchChangeKeepsOneSeriesBecauseItDoesNotMoveTheNumbers() {
         val dir = work.resolve("results").resolve("linux-amd64-ci").also { Files.createDirectories(it) }
         listOf(10.0, 10.2, 9.9).forEachIndexed { i, ms ->
             writeRun(dir, stamp = "2026-08-0${i + 1}T000000Z", jdk = "21.0.11", ms = ms)
         }
-        listOf(6.0, 6.1, 5.9).forEachIndexed { i, ms ->
+        listOf(10.1, 9.8, 10.3).forEachIndexed { i, ms ->
             writeRun(dir, stamp = "2026-08-1${i + 1}T000000Z", jdk = "21.0.12", ms = ms)
         }
 
         val run = run(work.resolve("results"))
 
         assertEquals(0, run.status, run.output)
-        assertTrue("21.0.11" in run.output && "21.0.12" in run.output) {
-            "both JDKs must appear as their own segment headers: ${run.output}"
+        assertTrue("21.0.11" !in run.output && "21.0.12" !in run.output) {
+            "a patch version must not appear as a segment boundary — the header names the MAJOR: ${run.output}"
         }
-        assertTrue("CHANGE" !in run.output) {
-            "a JDK boundary re-bases the number; calling it a change point is the false positive this " +
-                "segmentation exists to prevent: ${run.output}"
+        assertEquals(1, run.output.lines().count { it.startsWith("=== ") }) {
+            "six runs across two patch versions are ONE series, which is what lets a row reach the six-run " +
+                "threshold a step claim needs: ${run.output}"
         }
     }
 

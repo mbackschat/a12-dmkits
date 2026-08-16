@@ -128,11 +128,20 @@ FIELDS = ("jdk", "os", "machine")
 def machine_splits(env):
     """A hosted class does not have a machine, so it must not become a segment boundary there."""
     return not str(env).endswith("-ci")
+
+def segment_value(field, value):
+    """The JDK's MAJOR version only. A patch bump does not move these measurements (owner, 2026-08-16), while
+    the provider hands out whatever patch its image caches — 21.0.11 and 21.0.12 both appeared on one day for
+    one commit. Splitting on the patch therefore shatters the series a step claim needs while separating
+    numbers that are directly comparable. A MAJOR difference is a real platform change and still separates."""
+    if field == "jdk" and value:
+        return str(value).split(".")[0]
+    return value
 known = {}   # (env, field) -> set of non-null values seen
 for env, _, h, _ in runs:
     for f in FIELDS:
         if h.get(f) is not None:
-            known.setdefault((env, f), set()).add(h[f])
+            known.setdefault((env, f), set()).add(segment_value(f, h[f]))
 
 def segment_of(env, h):
     parts = []
@@ -142,7 +151,7 @@ def segment_of(env, h):
         if f == "machine" and not machine_splits(env):
             parts.append(None)
             continue
-        value = h.get(f)
+        value = segment_value(f, h.get(f))
         if value is None:
             candidates = known.get((env, f), set())
             # Exactly one known value in this environment: the absent one is that value, not a new segment.
