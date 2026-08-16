@@ -74,8 +74,14 @@ class DocAnchorResolveGuardTest {
     /**
      * Sanity floor, asserted on what {@link #FINDING_HEADING} parses: 299 headings (2026-08-16), which is now the
      * WHOLE population — the pattern was widened to admit the colon form it had been skipping.
+     *
+     * <p><b>Ratcheted past the pre-widening population, which is the whole point of the number.</b> At 200 this
+     * floor could not see the defect the widening fixed: the narrow pattern parsed 259 headings and 259 clears
+     * 200, so reverting the widening would restore the 13 % blind spot with a green build — the floor would be
+     * measuring that the file exists rather than that the pattern reaches all of it. Set above 259 so a revert
+     * fails here, and below 299 so ordinary deletion does not.
      */
-    private static final int MIN_FINDINGS = 200;
+    private static final int MIN_FINDINGS = 280;
 
     /** A kernel finding's heading — h2, plus the h3s of the date-family subtree. */
     private static final Pattern KERNEL_FINDING_HEADING = Pattern.compile("^#{2,3} .*$", Pattern.MULTILINE);
