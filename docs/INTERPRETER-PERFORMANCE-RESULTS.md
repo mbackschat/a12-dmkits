@@ -327,177 +327,28 @@ A single bounded JFR follow-up tested whether the closest 384-rule low-firing po
 
 The packed-browser measurement from clean commit `961d56af` produced a **232,151-byte gzip JavaScript entry**, 10.5 ms median for the representative 200-row Document, and 203.6 ms median for the 10,000-row/4,900-finding stress Document. Both series used 10 independent fresh Chrome 150.0.7871.187 processes and zero discarded samples; the stress result remains below the 250 ms release bar. The collector's v4 report records the complete Git object id and `worktreeDirty:false`, so a future report cannot silently attribute modified source to `HEAD`.
 
-### Checkpoint 2026-07-27 — packed-browser B1 release bar ratified and enforced (IF225)
+### Checkpoint 2026-07-08 … 2026-07-27 — the pre-August record, compressed
 
-The browser release scenario is `browser-b1-10000-rows-first-answer` v1: 10,000 flat rows, exactly 4,900 `HQ` findings, workspace preparation and Document materialization outside timing, then `createInterpreter()` through complete semantically checked `validateFull`. A routine series uses 10 fresh system-Chrome processes with zero discarded samples and reports the median. If the observed range is greater than half the median, the collector extends the same series to 50 samples before applying the bar.
+*Compressed 2026-08-16 from **eight** checkpoints (175 lines). Unlike the 2026-08-12 collapse above, **the raw data for these does not survive**: `perf-results/` retains back to 2026-08-11 only, so this prose is the sole record of these measurements and the decisive numbers are kept in full rather than summarised away. What went is the surrounding narrative and the intermediate tables; what stayed is every figure another document cites or could re-derive nothing from.*
 
-On the pinned Apple M1 / Chrome 150.0.7871.186 runner, the original 50-process calibration series on `69e8985d` measured median/p95 193.45/204.4 ms and 195.9/218.4 ms; the first policy-enforced packed-`0.9.1` series on `b644b1e3` measured 190.65/209.3 ms. Corrected by the owner on 2026-07-27: p95 and an unconditional 50-process series were more ceremony than this smoke needs. The active bar is median ≤250 ms under the adaptive 10→50 protocol above. The first corrected-protocol series measured the representative 200-row, 23.1 kB, zero-finding Document at 10.2 ms median and the 10,000-row stress Document at 177.1 ms median; both stopped after 10 stable fresh-process samples. The earlier one-time 50-process characterization measured 10.6 ms and 178.8 ms medians respectively. The 0.11.0 release series on `3cee57e1`, under Chrome 150.0.7871.187, measured 10.0 ms and 187.7 ms medians respectively and also stopped after 10 stable fresh-process samples. The 2026-08-03 clean post-repair series on `961d56af`, under the same Chrome, measured 10.5 ms and 203.6 ms. The current report is written to `build/reports/interpreter-browser-performance/r5.2.json`; policy and negative controls run in ordinary browser verification, while the process collector remains an explicit measurement task.
-
-### Checkpoint 2026-07-22 — IG101 resolved: depth per-row favours the interpreter (no crossover) (IF205)
-
-The G52 depth "growth-ratio loss" recorded in the 2026-07-21 G52 compact/depth sweep prompted a clean full-warmup sweep to large N to settle whether it is a real per-row defect (which would imply a crossover where a kernel strategy overtakes) or a metric artifact. **It is an artifact — IG101 is closed (IF205), no redesign.** Clean depth/validate, warmup 12, Apple Silicon, one run:
-
-| N | interpreter | generated Java | dynamic Groovy | interp vs Java | interp vs Groovy |
-|---:|---:|---:|---:|---:|---:|
-| 4,000 | 153.1 ms | 583.4 ms | 896.4 ms | 3.81× | 5.86× |
-| 16,000 | 712.6 ms | 1519.9 ms | 1905.1 ms | 2.13× | 2.67× |
-
-Decomposing `time = fixed + perRow·N` over 4,000→16,000: **interpreter 0.047 ms/row < generated Java 0.078 < dynamic Groovy 0.084** — the interpreter has the *lowest* per-row cost of all three engines. Therefore there is **no crossover at any N** (measured directly to 16,000 rows, the interpreter is still 2.13×/2.67× faster); the interp-vs-Java speedup asymptotes to ~0.078/0.047 ≈ **1.67×** (>1×) and the *absolute* gap widens with N. The kernel's flat growth *ratio* (~1.4×) is its enormous per-call fixed cost (Java ≈ 583 ms at N=4,000 vs the interpreter's ~12 ms) diluting its per-row cost, while the interpreter's tiny fixed cost makes its (smaller) per-row work a larger *fraction* — inflating its ratio. The interpreter is strictly linear (per-row ~0.04–0.05 ms/row across 100→16,000). The two prior representation attempts failed because there is no per-row inefficiency to remove.
-
-Diagnostic evidence (warmup 12, medians), not an IF137 promotion. **The known limitation this checkpoint recorded is fixed (2026-08-11, IF279):** `synthesizedModelPerfTest` used to fail the depth shape on the *raw* N→4N growth bar (`interpreter growth 3.28× must be no worse than Groovy 1.30× / Java 1.43×`), which is the wrong lens for a lean engine on a fixed-cost-heavy comparison. Both callers share `pairedScenarioGrowth`, so teaching it the per-unit lens closed the parked guard-design decision for this lane and the routine gate together.
-
-### Checkpoint 2026-07-21 — G52 compact/depth synthesized-model sweep (partial; IF199/IG101→IF205)
-
-The seed-42 compact and depth-shaped artifacts passed exact complete-result preflight at N=100 and N=400 against the interpreter, dynamic Groovy, and generated Java after IF198 corrected empty-string ingestion. Timings are same-run warm medians on Apple Silicon; growth is IF137's median of within-pair N/4N ratios, so it need not equal the quotient of the two displayed row medians. These artifacts predate the in-flight profile-fidelity regeneration and are diagnostic stress evidence, not a final calibration certificate or a promoted NFR bar.
-
-| profile / operation | engine | N=100 | N=400 | paired growth |
-|---|---|---:|---:|---:|
-| compact / validate | interpreter | **1.34 ms** | **2.02 ms** | **1.48×** |
-|  | dynamic Groovy | 6.59 ms | 11.70 ms | 1.59× |
-|  | generated Java | 2.83 ms | 6.55 ms | 2.22× |
-| compact / compute | interpreter | **0.03 ms** | **0.05 ms** | **0.99×** |
-|  | dynamic Groovy | 2.82 ms | 4.33 ms | 1.52× |
-|  | generated Java | 0.78 ms | 2.26 ms | 2.80× |
-| depth / validate | interpreter | **16.494 ms** | **31.836 ms** | 2.05× |
-|  | dynamic Groovy | 149.147 ms | 212.924 ms | **1.43×** |
-|  | generated Java | 96.114 ms | 143.707 ms | 1.51× |
-| depth / compute | interpreter | **19.943 ms** | **52.050 ms** | 2.58× |
-|  | dynamic Groovy | 67.732 ms | 120.408 ms | **1.78×** |
-|  | generated Java | 34.843 ms | 83.626 ms | 2.50× |
-
-Compact validation passes both the absolute and growth development rules. Before IF199, the compact computation curve rebuilt the immutable input-placement lookup inside every timed projection: interpreter N=100→400 measured 0.151→0.188 ms with 1.71× paired growth versus Groovy's 1.30×, and N=1,000→4,000 measured 0.475→1.704 ms with 3.34× growth versus Groovy's 2.88×. IF199 moved only that input-static lookup outside repeated timing while retaining computation, complete result materialization, filtering, and sorting inside the clock. Compact computation then passed both rules; the larger N=1,000→4,000 confirmation measured interpreter 0.03→0.03 ms (1.37×), Groovy 6.29→18.99 ms (3.02×), and Java 4.46→17.32 ms (3.88×).
-
-Depth keeps a substantial absolute lead—4.5–9× for validation and 1.6–3.4× for computation—but loses the paired growth criterion to both kernel strategies for validation and narrowly to generated Java as well as Groovy for computation. JFR attributes the shared residual to deep repetition-coordinate construction/hash/equality. The cached-hash wrapper and primitive-coordinate/key attempts did not improve the decisive curve, so IG101 recorded a deferred owner gate. **Superseded by the 2026-07-22 IG101 checkpoint: a clean full-warmup sweep to N=16,000 shows the growth-ratio loss is a fixed-cost-dilution artifact, not a per-row defect — IG101 is resolved (IF205), no redesign.**
-
-The breadth artifact was **not eligible for timing**. Its stale pre-fidelity synthesized form concentrated enough generated rules for dynamic Groovy code generation to fail with `MethodTooLargeException` before the timed region. That is neither a kernel performance result nor permission to omit the strategy. Breadth must be regenerated after structure/rule fidelity lands, then pass exact tri-engine preflight before a curve is recorded.
-
-### Checkpoint 2026-07-21 — IF196 profile-derived breadth validation path preparation
-
-The exact breadth-shaped synthesized model (`a12-synth-breadth-bulk.dm.json`, selected leaf `/G1/G17/G18/G19`) first failed the standing curve rule at 100→400 leaf rows: repeat runs put interpreter growth at 1.73–1.82× versus dynamic Groovy at 1.59–1.69×. An interpreter-only JFR located repeated path split/join work in over-repetition checks and IF193 admitted-content ancestor propagation, plus an unnecessary construction of evaluated row contexts in structural over-repetition emission. IF196 prepares model path prefixes/bounds once and reads structural rows directly.
-
-Same-run corrected evidence on Apple Silicon used the fixed clock and custom callback, exact generated documents, complete interpreter/dynamic-Groovy/generated-Java signatures, three interleaved pairs, four warmups, and two timed iterations:
-
-| engine | 100 rows | 400 rows | growth |
-|---|---:|---:|---:|
-| interpreter | 23.04 ms | 35.90 ms | **1.43×** |
-| dynamic Groovy | 127.15 ms | 200.31 ms | 1.53× |
-| generated Java | 53.90 ms | 109.59 ms | 1.84× |
-
-The interpreter is 5.5× faster than dynamic Groovy and 2.3× faster than generated Java at 100 rows, 5.6× and 3.1× faster at 400 rows, and its curve is now better than both. This is diagnostic evidence under the standing development rule, not an IF137 numerical promotion.
-
-### Checkpoint 2026-07-19 — IG98 multi-star `$`-correlation scaling discriminator (interp WORSE than the kernel → optimization owed)
-
-The IG98 decision measurement: is the interpreter's naive multi-star `$`-equality-correlation scan (`MoreThanOneFieldFilled(/Perf/Lines* then Subs* then Cost Having [Cost] == [$Cost])`, per-Sub, star spans all Lines) *worse* than the kernel's complexity class, or does the kernel also scan it? Apple Silicon, `validateFull`, min-of-4 after 3 warmups, N and 4N Lines (×2 Subs each):
-
-| engine | 150 Lines | 600 Lines | growth |
-|---|--:|--:|--:|
-| interpreter (naive multi-star scan) | 21.2 ms | 135.9 ms | **×6.41** |
-| kernel-Java | 41.7 ms | 112.2 ms | **×2.69** |
-| **interp/kernel ratio** | **0.51** | **1.21** | ratio ×2.37 |
-
-**Reading.** The interp starts **2× faster** than kernel-Java (0.51) but ends **1.2× slower** (1.21) — the ratio *widens* ×2.37 over ×4 Lines, which means the interpreter is in a **worse complexity class than the kernel** for this shape (the kernel's ×2.69 is ~linear; the interp's ×6.41 is a soft quadratic). This FAILS IG98's "no worse than the kernel" criterion, so the multi-star hash-join optimization is owed (it is NOT a no-op / parity-by-construction). Legality was settled separately (`MultiStarOuterCorrelationDiffTest`: kernel MVK-accepts + interp matches on a cross-Line correlation).
-
-**After the fix (IF144, the first-star-scope hash join, same scales):** interp **6.8 ms@150 → 16.2 ms@600 (×2.37, linear)**, kernel-Java 40.1 → 103.0 (×2.57), **interp/kernel ratio 0.17 → 0.16** — the ratio is now STABLE (marginally improving) and the interp is **~6× faster than kernel-Java** at both scales. The interp-only growth gate over N=5000/20000 Lines confirms ×4.26 (linear). So IF144 moved the multi-star `$`-correlation from a worse-than-kernel soft-quadratic into the kernel's complexity class, ~6× ahead in absolute terms. The follow-on 4-level differential locks bind depths 0 and 2, closing the former evidence residual.
-
-### Checkpoint 2026-07-19 — IF143 compute-overlay scenarios vs the kernel (against-kernel scaling curve)
-
-After the IF143 per-step overlay-view cache landed, measured both compute-overlay scenarios against BOTH kernel baselines at N = 200 / 800 / 3200 Rows (Apple Silicon, `runScenario` warmup 10 / iters 6, codegen primed out; `compute` op; interp == groovy == java asserted before timing). `ratioJava` = interp / kernel-**Java** (the fair, Groovy-tax-free comparator; < 1 = interp faster).
-
-| scenario | N | interp | groovy | java | ratioJava |
-|---|--:|--:|--:|--:|--:|
-| **CO index** (`[Src For "K1"]` under an active overlay) | 200 | 2.26 ms | 18.50 ms | 13.97 ms | **0.16** |
-| | 800 | 5.68 ms | 44.72 ms | 32.85 ms | **0.17** |
-| | 3200 | 13.07 ms | 164.99 ms | 147.68 ms | **0.09** |
-| **CO correlation** (`$`-equality self-correlation under an active overlay) | 200 | 11.16 ms | 16.27 ms | 13.44 ms | **0.83** |
-| | 800 | 36.66 ms | 55.73 ms | 48.68 ms | **0.75** |
-| | 3200 | 166.40 ms | 263.53 ms | 241.20 ms | **0.69** |
-
-Per-4×-Rows growth factors (linear ⟹ ×4, quadratic ⟹ ×16):
-
-| step | interp | groovy | java |
-|---|--:|--:|--:|
-| CO index 200→800 | ×2.51 | ×2.42 | ×2.35 |
-| CO index 800→3200 | **×2.30** | ×3.69 | ×4.50 |
-| CO correlation 200→800 | ×3.29 | ×3.43 | ×3.62 |
-| CO correlation 800→3200 | **×4.54** | ×4.73 | ×4.95 |
-
-**Reading.** (1) The **interpreter is faster than kernel-Java across the whole curve** — the index scenario by **~6–11×** (13 ms vs 148 ms at 3200), the correlation scenario by **~1.2–1.5×** — and faster than kernel-Groovy by more. (2) The **index path is linear-or-better** and its top-step growth (×2.30) beats kernel-Java's (×4.50), confirming the IF143 cache holds the index-column view O(rows). (3) The equality-correlation path's ~4.5×–5× growth per 4× rows is near-linear and shared by all three engines, confirming that the IF143 per-step cache prevents a rebuild cliff. This historical equality measurement says nothing about whether another correlation shape deserves a general scan; IF159 independently indexes the single-comparator class and keeps only explicit unsupported shapes on fallback.
-
-### Evidence inspection 2026-07-18 — current Node scale report, not NFR-S/P certification
-
-The existing `jsNodeTest` report for the current build records B1 per-row at **140.39 ms** and B2 star-aggregate at **60.88 ms** for 10,000 rows. This is useful plausibility evidence for the 350 ms initial first-answer ceiling, 250 ms design target, and 1,000 ms warm-throughput bar, but it is one shared test process with engine/document construction outside the clock—not a 50-process nearest-rank p95 run or the 2,500→10,000 paired growth protocol. It therefore certifies none of NFR-S2/P1 by itself.
-
-### Checkpoint 2026-07-10 — full `-PrunPerf` lane GREEN after IF116 (the gate's first live catch) <a id="evidence-10"></a>
-
-The Set-E master-gate perf re-run caught a REAL O(rows²) — the IF107/IF115 per-lookup index-column rebuild (`semanticIndexStaysSubQuadratic` hung 20+ minutes at N=20,000, twice, deterministically) — fixed by the document-level `IndexColumn` memo (catalog #10, IF116). Post-fix, the full tagged perf lane (the routine growth guards plus the benchmark rows that now live in `PerfBenchTest`) took **7 m 51 s** and was green: all twelve growth checks were in the linear band (B1 4.31×, **semantic-index 4.03×**, NumberOfDifferentValues 4.07×, deep-nested Having 4.07×, FieldValuesNotUnique 2.71×, tiered compute 3.00×, wide groups 4.21×, constrained fields 4.33×, parallel iteration 3.45×, framed 4.19×, first-validation growth 3.37×, complex real-world 1233f/1017r 3.88×); the benchmark ratios were healthy (B2 star-aggregate ratioG 0.10, tiered compute 0.02, B6 many-rules 0.44).
-
-### Checkpoint 2026-07-08 — `PerfGateTest` GREEN after the IF85 compute rebuild (no regression)
-
-Standing WI-T perf checkpoint (`scripts/perf.sh gate`, Apple Silicon; the IF85 compute poison-on-read rebuild + the IF86 index-aggregate fix had not been perf-measured). **`BUILD SUCCESSFUL` — every ratio ceiling + sub-quadratic guard held.** The compute path (the IF85 territory) is unregressed and strong; sub-quadratic growth (≈4× for 4× data ⟹ linear, far under the quadratic≈16 trip) holds on every axis. Ratios are `ratioG` = interp / kernel-**Groovy** (the gate's baseline; lower = interp faster).
-
-| scenario | scale | interp (min) | groovy | ratioG |
-|---|--:|--:|--:|--:|
-| **tiered compute** | 3000 firings | 3.10 ms | 134.1 ms | **0.02** |
-| **B7 compute** | 600 | 3.48 ms | 102.9 ms | **0.04** |
-| B1 per-row | 3000 (1470 fire) | 12.2 ms | 114.6 ms | 0.12 |
-| B2 star-aggregate | 3000 | 10.8 ms | 99.8 ms | 0.11 |
-| B6 many-rules | 600 (3548 fire) | 19.9 ms | 73.4 ms | 0.29 |
-| combined real-world | 1233f/1017r, 60 rows | 12.1 ms | 66.3 ms | 0.19 |
-
-Sub-quadratic growth (5000 → 20000, min-growth): tiered compute **3.34×**, constrained-field formal check **2.11×**, B1 4.54×, parallel-iteration 3.71×, NDV 4.13×, semantic-index 4.10×, deep-nested Having 4.05×, complex real-world 4.20× — all linear-class. **Tooling gap fixed in the same pass:** `scripts/perf.sh` never passed `-PrunPerf`, so every mode reported "No tests found" (the perf tests are `@Tag("perf")`, excluded by default) — added to `run_gradle`.
-
-### Historical fair-Java run (2026-06-27; superseded by the 2026-08-03 checkpoint)
-
-All ratios are **`ratioJava` = interp_median / kernel-Java_median** (the *fair* algorithmic comparison — same kernel logic, Groovy execution tax removed; **lower = the interpreter is faster**). Measured on the real `Document`/kernel evaluation path (never the spike `RepDoc`). "interp speed" = 1 / ratioJava.
-
-| scenario | scale | ratioJava | interp speed |
+| date | what it established | the decisive numbers | reference |
 |---|---|---|---|
-| **combined real-world** (deep + wide + rule-heavy + data-axis at once) | 1233 fields / 1017 rules, 3000 charge rows | **0.19** (both regimes) | **~5×**; N→4N ×3.45–3.72 (sub-linear) |
-| rule-count sweep, **concentrated** (firing) | 96 → 384 rules @ 1000×5 | 0.47 → 0.34 | 2–3× (lead *improves* with count) |
-| rule-count sweep, **concentrated** (low-firing) | 96 → 384 rules @ 1000×5 | 0.37 → 0.64 | 1.6–2.7× (lead narrows, stays <1) |
-| **distributed** rules ("wide form", low-firing) | 192 → 1000 rules @ N=100 | 0.35 → 0.34 | ~3× (flat) |
-| aggregates (B2/B5/B7 — `Sum` / nested-star / compute) | 3000 rows | 0.02 → 0.04 | 25–50× |
-| deep + rich (4-level, cross-level / `Having` / nested-star) | 100 → 1000 vendors | 0.09 → 0.12 | ~10× |
-| wide sibling-groups (breadth axis) | 25 → 200 groups | 0.06 → 0.07 | ~15× |
-| huge doc (data axis) | 10k → 20k rows | 0.02 → 0.01 | ~50× → ~165× |
+| 2026-07-27 | The packed-browser B1 release bar ratified and enforced | pinned Apple M1 / Chrome 150.0.7871.186, `browser-b1-10000-rows-first-answer` v1 (10,000 rows, 4,900 `HQ` findings); 50-process calibration on `69e8985d` median/p95 **193.45 / 204.4 ms** and **195.9 / 218.4 ms** | [IF225](INTERPRETER-FINDINGS.md#if225) |
+| 2026-07-22 | IG101 resolved — depth per-row **favours the interpreter**, no crossover | decomposing `time = fixed + perRow·N` over 4,000→16,000 rows: interpreter **0.047 ms/row** < generated Java **0.078** < dynamic Groovy **0.084**; at 16,000 rows 712.6 ms vs 1519.9 vs 1905.1 | [IF205](INTERPRETER-FINDINGS.md#if205) |
+| 2026-07-21 | The G52 compact/depth synthesized-model sweep — compact passes both rules, depth keeps a large absolute lead but **loses the paired-growth criterion** | compact/validate interp `1.34 → 2.02 ms` (**1.48×**) against Groovy 1.59× and Java 2.22×; depth/validate interp `16.494 → 31.836 ms` (2.05×) against Groovy **1.43×** — a 4.5–9× absolute lead on validation, 1.6–3.4× on computation | [IF199](INTERPRETER-FINDINGS.md#if199) → [IF205](INTERPRETER-FINDINGS.md#if205) |
+| 2026-07-21 | The profile-derived **breadth** validation path, after the curve rule first failed it | breadth 100→400 leaf rows: interpreter `23.04 → 35.90 ms` (**1.43×**) vs Groovy 1.53× and Java 1.84× — 5.5× faster than Groovy and 2.3× than Java at 100 rows, 5.6× and 3.1× at 400 | [IF196](INTERPRETER-FINDINGS.md#if196) |
+| 2026-07-19 | **IG98's discriminator: the interpreter was WORSE than the kernel** — the naive multi-star `$`-correlation scan, and the optimization it owed | interp `21.2 → 135.9 ms` (**×6.41**) against kernel-Java `41.7 → 112.2` (×2.69); the interp/kernel ratio **0.51 → 1.21**, widening ×2.37 over ×4 Lines. After the first-star-scope hash join: interp **6.8 → 16.2 ms (×2.37, linear)** | [IF144](INTERPRETER-FINDINGS.md#if144) |
+| 2026-07-19 | The compute-overlay scenarios against **both** kernel baselines, after the per-step overlay-view cache | `ratioJava` — CO index **0.16 / 0.17 / 0.09** at N=200/800/3200, CO correlation **0.83 / 0.75 / 0.69**; growth per ×4 rows: CO index 800→3200 **×2.30** (Java ×4.50), CO correlation **×4.54** (Java ×4.95) | [IF143](INTERPRETER-FINDINGS.md#if143) |
+| 2026-07-10 | The gate's **first live catch**: a real O(rows²) — the per-lookup index-column rebuild, which hung `semanticIndexStaysSubQuadratic` for 20+ minutes at N=20,000 <a id="evidence-10"></a> | — | [IF116](INTERPRETER-FINDINGS.md#if116) |
+| 2026-07-08 | The standing gate after the compute rebuild: no regression, and the **rule-count crossover** that started the optimization catalog | `ratioJava` by shape: aggregates **0.02–0.04** (25–50×), huge doc **0.02 → 0.01** (~50× → ~165×), wide sibling-groups 0.06–0.07, deep+rich 0.09–0.12, combined real-world **0.19**; sub-quadratic growth 5,000→20,000: tiered compute 3.34×, B1 4.54× | [IF85](INTERPRETER-FINDINGS.md#if85), [IF86](INTERPRETER-FINDINGS.md#if86) |
 
-**Bottom line for this recorded run:** the interpreter beat generated Java at every measured count—concentrated through 384 rules and distributed through 1,000—and the named data-axis scenarios showed linear-class growth. That is evidence for those points, not proof at every runnable count or NFR certification.
-
-**Coverage caveat—never infer fairness from operator count alone.** The earlier “interpreter is faster because it omits field checks” concern was closed for the then-known per-cell constraints and baseline formal families. The audits nevertheless found legal subdomains outside the measured estate—timezone domain/history (IG83), JS regex semantics (closed by IF164), decimal host exactness (IF163), combined charset graphemes (IF151), custom-validator code/context/cardinality/message semantics (IF150/IF152), composed RNU (IF149), unsupported-result loss (IF139), and computation tolerance metadata plus normalization/polarity (IF148/IF174). A comparative sample is eligible only after the outcome-bearing API proves zero unsupported and the interpreter/dynamic/generated-Java results satisfy the ratified Groovy-dynamic anchor (IF136); IF140 supplies the derived capability × strategy × coverage-tier accounting.
-
-### Historical rule-count crossover + distributed (one consistent run, 2026-06-27)
-
-`KernelEdgeTest.ruleCountCrossover{,LowFiring}` + `distributedRuleScaling` via [`scripts/perf.sh`](../scripts/perf.sh); N=1000 Lines × 5 Subs (concentrated) / N=100 rows (distributed); median of 8 after 12 warmups; **codegen excluded** from every timed region; interp == kernel asserted before timing. interp_ms, kernel-Java_ms and the ratio are **all from the same run**, so an absolute can't contradict its ratio.
-
-**Concentrated** (`manyRules` — `count` rules anchored on ~3 error fields, the codegen's worst packaging case; see the benchmark catalog):
-
-| rules | firing: interp / java → ratioJava | low-firing: interp / java → ratioJava |
-|--:|:--|:--|
-| 96  | 116 / 249 ms → **0.47** | 74 / 199 ms → **0.37** |
-| 192 | 168 / 420 ms → **0.40** | 109 / 210 ms → **0.52** |
-| 384 | 277 / 821 ms → **0.34** | 213 / 335 ms → **0.64** |
-
-**Distributed** (`manyRulesDistributed` — 1 rule per field, the realistic "wide form"; low-firing, N=100):
-
-| rules | interp / java → ratioJava |
-|--:|:--|
-| 192  | 32 / 91 ms → **0.35** |
-| 512  | 82 / 224 ms → **0.37** |
-| 1000 | 156 / 459 ms → **0.34** |
-
-**Read:** the interpreter wins at every measured count in both shapes. The concentrated **firing** ratio *improves* with rule count (0.47→0.34 — the codegen's per-firing-row message-building grows); the concentrated **low-firing** ratio *degrades* (0.37→0.64) but stays <1 through 384, and the concentrated generator hits its method-size wall around 512–768; the **distributed** ratio is flat at ~0.34–0.37 through 1,000 rules. The naive crossover is closed over this measured range.
-
-### Naive baseline (the pre-optimization yardstick — 2026-06-25)
-
-`KernelEdgeTest.ruleCountCrossover`, N=1000 Lines × 5 Subs, median of 8 after 12 warmups; codegen excluded. This is the *before* the optimization catalog ([INTERPRETER-PERFORMANCE.md](INTERPRETER-PERFORMANCE.md)) is read against:
+**The rule-count crossover is kept in full, because it is why the optimization catalog exists.** `KernelEdgeTest.ruleCountCrossover`, N=1000 Lines × 5 Subs, median of 8 after 12 warmups, codegen excluded — the **naive tree-walker** before any optimization:
 
 | rules | interp | kernel-Groovy | kernel-Java | interp/java |
-|--:|--:|--:|--:|:--:|
+|---|---|---|---|---|
 | 6 | 28.0 ms | 118.2 ms | 110.3 ms | **0.25** |
-| 12 | 41.9 ms | 128.8 ms | 118.5 ms | 0.35 |
 | 24 | 78.4 ms | 152.0 ms | 148.9 ms | 0.53 |
-| 48 | 140.6 ms | 201.4 ms | 175.2 ms | 0.80 |
 | 96 | 272.1 ms | 284.7 ms | 274.4 ms | **0.99 ← parity** |
 | 192 | 543.2 ms | 502.9 ms | 414.2 ms | **1.31 ← the naive interpreter LOST here** |
 
-The naive tree-walker reached parity at ~96 rules and **lost at 192** (≈1.31× firing, ≈1.70× low-firing) — the real crossover. The optimization catalog in [INTERPRETER-PERFORMANCE.md](INTERPRETER-PERFORMANCE.md) (indexed `Document`, row-prefix index, the `repsOf` memo, the per-row resolution cache, the lazy-polarity walk, allocation interning) roughly halved the per-operation cost and turned 192 into the ~2–2.5× win in the current run — pushing the interpreter ahead at every count the code generator can run.
+It reached parity at ~96 rules and lost at 192 (≈1.31× firing, ≈1.70× low-firing). Every later entry in this log measures work that exists because of that row. **Post-optimization, the same shapes invert:** concentrated firing improves *with* rule count (0.47 → 0.34 from 96 to 384 rules, the codegen's per-firing cost growing faster), and distributed "wide form" stays flat at ~0.34–0.37 through 1,000 rules.
