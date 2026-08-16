@@ -134,69 +134,104 @@ class PerfAnchorScriptTest {
     }
 
     /**
-     * A block that does not name its machine is one the gated lane refuses to assert against at all
-     * ([MachineIdentity.check]), so writing one is another way for the bar to disappear — the same class as dropping
-     * a lane, one level up.
+     * **A HOSTED class has no machine, and the anchor must not pretend otherwise.** The provider picks the CPU per
+     * job: three consecutive dispatches on 2026-08-16 landed on an AMD EPYC 7763, an Intel Xeon 8370C and an Intel
+     * Xeon 8573C, while the committed block named a fourth. Recording one model there states an identity the class
+     * cannot honour and makes every later refresh wait on a CPU lottery, so a hosted block records none — matching
+     * the lane, which already treats it as a bar over the CLASS ([TimingEnforcement.FLAGGED]).
      */
     @Test
-    fun aRefreshRecordsTheMachineTheRunWasMeasuredOn() {
+    fun aHostedRefreshRecordsNoMachineBecauseTheClassDoesNotHaveOne() {
         val anchor = anchorCarrying(laneA to 1.0, laneB to 2.0)
 
         val run = refresh(anchor, observations("hosted.jsonl", laneA to 2.0, laneB to 4.0, machine = "AMD EPYC 7763"))
 
         assertEquals(0, run.status, run.stderr)
-        assertEquals("AMD EPYC 7763", machineOf(anchor, "linux-amd64-ci"))
+        assertEquals(null, machineOf(anchor, "linux-amd64-ci"),
+            "a hosted block that named one model would claim an identity the runner class cannot honour")
     }
 
+    /** A real machine still records its identity: the exemption is about hosted classes, not about all of them. */
     @Test
-    fun aRunThatDoesNotNameItsMachineCannotAuthorABlock() {
+    fun aLocalRefreshStillRecordsTheMachineItWasMeasuredOn() {
         val anchor = anchorCarrying(laneA to 1.0, laneB to 2.0)
 
-        val run = refresh(anchor, observations("hosted.jsonl", laneA to 2.0, laneB to 4.0, machine = null))
+        val run = refresh(anchor, observations("local.jsonl", laneA to 2.0, laneB to 4.0,
+            environment = "darwin-aarch64", machine = "Macmini9,1 Apple M1"))
+
+        assertEquals(0, run.status, run.stderr)
+        assertEquals("Macmini9,1 Apple M1", machineOf(anchor, "darwin-aarch64"))
+    }
+
+    /** On a real machine an unnamed one is still a bar that never fires, so it is still refused. */
+    @Test
+    fun aLocalRunThatDoesNotNameItsMachineCannotAuthorABlock() {
+        val anchor = anchorCarrying(laneA to 1.0, laneB to 2.0)
+
+        val run = refresh(anchor, observations("local.jsonl", laneA to 2.0, laneB to 4.0,
+            environment = "darwin-aarch64", machine = null))
 
         assertNotEquals(0, run.status,
             "a block with no machine is one the gated lane will not assert against, so it is a bar that never fires")
         assertTrue("machine" in run.stderr) { "the refusal must say what is missing: ${run.stderr}" }
-        assertEquals(setOf("darwin-aarch64"), blocksIn(anchor), "a refused refresh must write nothing")
     }
 
     /**
-     * **The probe's own failure sentinel is not an identity either.** [MachineIdentity.UNKNOWN_MODEL] is the literal
-     * `"unknown"` the probe emits when it cannot name the machine, and a truthiness test on the field passes it
-     * straight through. The block it authors is worse than one with no machine at all: `MachineIdentity.check`
-     * falls to its *mismatch* arm, so the lane never asserts **and** reports "captured on unknown ×N and this run
-     * measured on …", which reads as a machine swap rather than as a block that was authored wrong.
+     * **The probe's own failure sentinel is not an identity either**, on a class that has a machine to name.
+     * [MachineIdentity.UNKNOWN_MODEL] is the literal `"unknown"` the probe emits when it cannot read the model, and
+     * a truthiness test passes it straight through. The block it authors is worse than one with no machine at all:
+     * `MachineIdentity.check` falls to its *mismatch* arm, so the lane never asserts **and** reports a machine swap
+     * rather than a block that was authored wrong.
      */
     @Test
-    fun aRunWhoseMachineProbeFailedCannotAuthorABlockEither() {
+    fun aLocalRunWhoseMachineProbeFailedCannotAuthorABlockEither() {
         val anchor = anchorCarrying(laneA to 1.0, laneB to 2.0)
 
-        val run = refresh(
-            anchor,
-            observations("hosted.jsonl", laneA to 2.0, laneB to 4.0, machine = MachineIdentity.UNKNOWN_MODEL),
-        )
+        val run = refresh(anchor, observations("local.jsonl", laneA to 2.0, laneB to 4.0,
+            environment = "darwin-aarch64", machine = MachineIdentity.UNKNOWN_MODEL))
 
         assertNotEquals(0, run.status,
             "a block whose machine is the probe's failure sentinel is refused by the gated lane forever, so " +
                 "authoring one is the never-fires block this refusal exists to prevent")
         assertTrue("machine" in run.stderr) { "the refusal must say what is unusable: ${run.stderr}" }
-        assertEquals(setOf("darwin-aarch64"), blocksIn(anchor), "a refused refresh must write nothing")
     }
 
-    /** Two machines' numbers averaged into one anchor is the collision the machine field exists to refuse. */
+    /**
+     * **Hosted runs from different CPUs FOLD**, and this is the does-fire for that policy. Requiring one machine on
+     * a class whose machine is a lottery means a refresh can only proceed once enough dispatches collide on one
+     * model — a wait that gets worse as the provider's fleet grows. Folding across models is what makes the median
+     * represent the class instead of one lucky draw.
+     */
     @Test
-    fun inputsFromDifferentMachinesAreRefused() {
+    fun hostedInputsFromDifferentMachinesAreFoldedNotRefused() {
         val anchor = anchorCarrying(laneA to 1.0, laneB to 2.0)
 
         val run = refresh(
             anchor,
             observations("first.jsonl", laneA to 2.0, laneB to 4.0, machine = "AMD EPYC 7763"),
-            observations("second.jsonl", laneA to 2.0, laneB to 4.0, machine = "Intel Xeon Platinum 8370C"),
+            observations("second.jsonl", laneA to 4.0, laneB to 8.0, machine = "Intel Xeon Platinum 8370C"),
+            observations("third.jsonl", laneA to 6.0, laneB to 12.0, machine = "Intel Xeon Platinum 8573C"),
         )
 
-        assertNotEquals(0, run.status, "folding two machines into one anchor must be refused")
-        assertTrue("machine" in run.stderr) { run.stderr }
-        assertEquals(setOf("darwin-aarch64"), blocksIn(anchor), "a refused refresh must write nothing")
+        assertEquals(0, run.status, run.stderr)
+        assertEquals(mapOf(laneA to 4.0, laneB to 8.0), observationsOf(anchor, "linux-amd64-ci"),
+            "three hosted runs on three CPUs fold to their per-key MEDIAN, which is the point of folding")
+    }
+
+    /** A REAL machine's numbers averaged with another's is still the collision the machine field exists to refuse. */
+    @Test
+    fun localInputsFromDifferentMachinesAreRefused() {
+        val anchor = anchorCarrying(laneA to 1.0, laneB to 2.0)
+
+        val run = refresh(
+            anchor,
+            observations("first.jsonl", laneA to 2.0, laneB to 4.0,
+                environment = "darwin-aarch64", machine = "Macmini9,1 Apple M1"),
+            observations("second.jsonl", laneA to 2.0, laneB to 4.0,
+                environment = "darwin-aarch64", machine = "MacBookPro18,3 Apple M1 Pro"),
+        )
+
+        assertNotEquals(0, run.status, "two real machines cannot be folded into one absolute bar")
     }
 
     /**

@@ -21,6 +21,8 @@
 # tolerance tightenable: a single run's sample gives a lane anchored on a fast run a tighter-than-advertised bar
 # and one anchored on a slow run a looser one (IF280). All inputs must come from the same runner class AND the same
 # machine — the block records which one, because the gated lane refuses to assert against a block it cannot match.
+# HOSTED classes (environment ending `-ci`) are the exception and are treated as machine-less: the provider picks
+# the CPU per job, so runs are folded across models and the block records no machine. Do not try to pin one.
 #
 # The input defaults to the newest run recorded under `perf-results/`, which `scripts/perf.sh gate` writes there.
 #
@@ -32,8 +34,8 @@
 #   scripts/perf-anchor.sh show /tmp/anchor-*/perf-results/*/*.jsonl
 #
 # The artifact carries ONLY that run's own record, so each download needs its own directory and the glob above then
-# feeds every downloaded run to one refresh. Passing runs of two machines or two revisions is refused rather than
-# averaged — absolute times are a property of the machine, and folding revisions averages away the change one of
+# feeds every downloaded run to one refresh. Passing runs of two revisions is refused rather than averaged, as is
+# mixing machines on a NON-hosted class — folding revisions averages away the change one of
 # them introduced.
 
 #
@@ -128,8 +130,17 @@ for input_path in inputs:
     # falls to its MISMATCH arm and reports "captured on unknown xN and this run measured on ...", which reads as a
     # machine swap rather than as a block that was authored wrong. Re-measuring cannot fix that one — the probe has
     # to learn the machine — so the two say different things.
+    # A HOSTED runner class does not have a machine, and pretending otherwise is unmaintainable. The provider
+    # hands out whatever CPU it likes per job: three consecutive dispatches on 2026-08-16 landed on an AMD EPYC
+    # 7763, an Intel Xeon 8370C and an Intel Xeon 8573C, and the committed block had been captured on a fourth.
+    # Requiring one machine there means a refresh can only proceed after enough dispatches happen to collide on
+    # one model, which is a lottery that gets worse as the provider's fleet grows. So for a hosted class the
+    # machine is NOT required and NOT compared: the block is a bar over the runner CLASS, exactly as the gated
+    # lane already treats it (TimingEnforcement.FLAGGED — "a breach here is flagged, never failed"), and folding
+    # across models is what makes the median represent the class instead of one lucky draw.
+    hosted = str(header.get("environment", "")).endswith("-ci")
     machine = (header.get("machine") or "").strip()
-    if not machine or machine == "unknown":
+    if not hosted and (not machine or machine == "unknown"):
         sys.exit(
             f"{input_path} does not name the machine it was measured on, so the block it would write cannot be"
             " asserted against: the gated lane refuses a block whose machine it cannot match, which makes it a bar"
@@ -139,14 +150,17 @@ for input_path in inputs:
                " It reports machine='unknown', the probe's own failure sentinel rather than an identity, so"
                " re-measuring will produce it again: teach PerfAnchors.machine to name this machine first.")
         )
-    for field, why in (("environment", "absolute times are only comparable within one runner class"),
-                       ("machine", "an absolute time is a property of the machine, so two machines cannot be folded"),
-                       ("processors", "a processor count is part of that machine's identity"),
-                       ("commit", "folding revisions would average away the change one of them introduced")):
+    identity = [("environment", "absolute times are only comparable within one runner class"),
+                ("commit", "folding revisions would average away the change one of them introduced")]
+    if not hosted:
+        identity += [("machine", "an absolute time is a property of the machine, so two machines cannot be folded"),
+                     ("processors", "a processor count is part of that machine's identity")]
+    for field, why in identity:
         if run is not None and header.get(field) != run.get(field):
             sys.exit(
                 f"{input_path} reports {field}={header.get(field)!r} but a previous input {run.get(field)!r}; {why}."
-                " Refresh from runs of one machine and one revision."
+                + (" Refresh from runs of one revision." if hosted else
+                   " Refresh from runs of one machine and one revision.")
             )
     headers.append(header)
     run = header
@@ -235,6 +249,7 @@ if missing and not os.environ.get("ALLOW_REMOVALS"):
 # the current checkout made a block of 1845f8af data claim the commit that happened to be checked out at refresh
 # time, and `jdk` silently took the last input's value while hiding that another run used a different one.
 jdks = sorted({h.get("jdk") for h in headers if h.get("jdk")})
+hosted_class = str(environment).endswith("-ci")
 anchor["environments"][environment] = {
     "capturedAt": max((h.get("capturedAt") or "" for h in headers), default="") or os.environ["CAPTURED"],
     "refreshedAt": os.environ["CAPTURED"],
@@ -245,8 +260,11 @@ anchor["environments"][environment] = {
     "jdk": jdks[0] if len(jdks) == 1 else ",".join(jdks),
     "processors": run.get("processors"),
     # The machine, not just its core count: the gated lane asserts only against a block captured on the machine it is
-    # running on, so a block that does not name one is a bar that never fires (IF280).
-    "machine": run.get("machine"),
+    # running on, so a block that does not name one is a bar that never fires (IF280). A HOSTED class is exempt and
+    # records NO machine, because it does not have one — the provider picks the CPU per job. Recording the model that
+    # happened to serve one refresh would state an identity the class cannot honour, and the lane already treats a
+    # hosted block as a bar over the CLASS (TimingEnforcement.FLAGGED).
+    **({} if hosted_class else {"machine": run.get("machine")}),
     "observations": dict(sorted(observations.items())),
 }
 with open(anchor_path, "w") as handle:
