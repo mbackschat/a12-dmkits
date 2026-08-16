@@ -135,6 +135,8 @@ The three jobs and why they're shaped this way:
 
 **Placement.** Before the native build, so a regression costs seconds instead of a full native cycle, and with the machine to itself — a task carrying a timing assertion is never run beside anything else.
 
+**The gate runs before the clean-tree precondition, and therefore dirties it — so that precondition excludes `perf-results/`.** A gate run always writes a new record there (records are committed, never under `build/`), and it may also prune an uncited run past the retention bound. Counting either as dirt made `publish-release.sh` structurally unable to pass its own step 0. This is the same exclusion rule [`scripts/perf-anchor.sh`](../scripts/perf-anchor.sh) and `PerfAnchors.headCommit` already apply, for the same reason. It surfaced only at v0.13.0 because no release ran between the committed record tree (2026-08-11), the release perf gate (2026-08-13) and that release — the two features are individually guarded and their *interaction* is on the release path, which nothing exercises but a release. Nothing else is exempt: the mirror tree is assembled from the working tree, so any other uncommitted content would ship.
+
 ## 5. The verification gate — native↔JVM byte-identity
 
 Every freshly built **native** binary is re-verified against the `examples/` showboat demos before it ships:

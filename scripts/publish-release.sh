@@ -114,7 +114,13 @@ fi
 
 # ============================ stage : everything up to the reviewable draft ============================
 say "0. Preconditions"
-[[ -z "$(git status --porcelain)" ]] || { echo "working tree not clean — commit/stash first" >&2; exit 1; }
+# `perf-results/` is excluded on purpose — the SAME rule perf-anchor.sh and PerfAnchors.headCommit already
+# apply, for the same reason: step 0 above runs the release perf gate, and a gate run ALWAYS leaves a new
+# record file there (records are committed, never under build/). Counting that as dirt makes this script
+# structurally unable to get past its own precondition. It went unnoticed because no release ran between the
+# committed record tree (2026-08-11), the release perf gate (2026-08-13) and v0.13.0. Everything else must
+# still be committed: the mirror tree is assembled from the WORKING tree, so uncommitted content would ship.
+[[ -z "$(git status --porcelain -- . ':(exclude)perf-results')" ]] || { echo "working tree not clean — commit/stash first" >&2; exit 1; }
 git rev-parse "$TAG" >/dev/null 2>&1 || { echo "tag $TAG does not exist — bump+commit+tag first (see header)" >&2; exit 1; }
 # The tag MUST be on origin and point at the same commit as the local tag: step 6 dispatches the mirror's
 # build-native CI, which checks out the PRIVATE source at `ref: $TAG` (see .github/mirror-workflows/
