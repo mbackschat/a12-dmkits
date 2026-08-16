@@ -296,7 +296,7 @@ class DerivedFigureDatingGuardTest {
      * {@code DocRelativeLinkGuardTest} had already been bitten by worktrees; that lesson was not applied here
      * until a cold review re-found it from a worktree it was itself running in.
      */
-    private static final Set<String> SKIPPED = Set.of("build", ".git", ".gradle", "node_modules", ".claude");
+    static final Set<String> SKIPPED = RepoWalk.SKIPPED_DIRECTORIES;
 
     /** Files the walk could not resolve (dangling symlinks). Reported, never silently dropped. */
     private static final Set<String> unreadableSources = new TreeSet<>();

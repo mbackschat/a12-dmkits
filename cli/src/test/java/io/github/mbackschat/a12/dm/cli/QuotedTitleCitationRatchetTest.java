@@ -60,7 +60,7 @@ class QuotedTitleCitationRatchetTest {
     private static final Pattern ANCHOR_CITATION =
             Pattern.compile("\\]\\((?:KERNEL|INTERPRETER)-FINDINGS\\.md#(?:kf|if)\\d+\\)");
 
-    private static final Set<String> SKIPPED_DIRECTORIES = Set.of("build", ".git", ".gradle", "node_modules");
+    static final Set<String> SKIPPED_DIRECTORIES = RepoWalk.SKIPPED_DIRECTORIES;
 
     private static final Set<String> SCANNED_SUFFIXES =
             Set.of(".md", ".java", ".kt", ".gradle", ".gradle.kts", ".sh");
