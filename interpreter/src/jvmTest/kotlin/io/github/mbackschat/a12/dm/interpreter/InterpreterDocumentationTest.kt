@@ -241,9 +241,18 @@ class InterpreterDocumentationTest {
         for ((surface, text) in surfaces) {
             // This is the CHEAP half of a two-guard pair: it locks cross-surface consistency without a browser
             // build. `verifyInterpreterBrowserSizeDocumentation` derives the 10 kB bucket from exact packed bytes.
-            assertTrue(text.contains("10.5 ms median"), "$surface omits the representative browser timing")
-            assertTrue(text.contains("203.6 ms median"), "$surface omits the stress browser timing")
-            assertTrue(text.contains("2026-08-03"), "$surface omits the measurement date")
+            // Read from the SINGLE SOURCE, never a literal. Hardcoding these forced every re-measurement to
+            // edit four surfaces plus this test in lockstep, and that is exactly how the READMEs, the showcase
+            // page and its smoke assertion drifted to three different pairs of numbers.
+            assertTrue(
+                text.contains(publishedClaim("representative")),
+                "$surface omits the representative browser timing ${publishedClaim("representative")}",
+            )
+            assertTrue(
+                text.contains(publishedClaim("stress")),
+                "$surface omits the stress browser timing ${publishedClaim("stress")}",
+            )
+            assertTrue(text.contains(publishedMeasurementDate()), "$surface omits the measurement date")
             assertTrue(text.contains("Fast, and measured"), "$surface omits the measured-performance statement")
             assertTrue(
                 text.contains("generated validator compiled as Java"),
@@ -351,4 +360,19 @@ class InterpreterDocumentationTest {
             "yml",
         )
     }
+
+    /** The published median for one scenario, from `interpreter/published-performance.json`. */
+    private fun publishedClaim(scenario: String): String {
+        val json = Files.readString(repoFile("interpreter/published-performance.json"))
+        val block = json.substringAfter("\"$scenario\"")
+        val median = Regex("\"medianMillis\"\\s*:\\s*([0-9.]+)").find(block)
+        return "${requireNotNull(median) { "no medianMillis for $scenario" }.groupValues[1]} ms median"
+    }
+
+    /** The published measurement date, from the same single source. */
+    private fun publishedMeasurementDate(): String {
+        val json = Files.readString(repoFile("interpreter/published-performance.json"))
+        return requireNotNull(Regex("\"measuredOn\"\\s*:\\s*\"([^\"]+)\"").find(json)).groupValues[1]
+    }
+
 }

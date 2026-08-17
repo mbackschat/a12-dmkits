@@ -851,8 +851,29 @@ Runtime evaluation — *which rules fire on this document, what does each comput
 - **Kernel-exact, by verification.** Its results are checked rule-for-rule against the real A12 kernel by a **differential test suite** plus a model-driven fuzzer, and it replays a **conformance corpus** of kernel-verified expected outcomes — captured tri-verified against the kernel's two evaluation strategies — on both JVM and JS.
 - **A standalone library, not just the CLI's engine.** One common engine serves **JVM, Node.js, and browser** applications. The public TypeScript, Kotlin, and Java API prepares finite or provider-backed workspaces, resolves includes and imported type definitions, reads Documents, reuses a prepared interpreter across form changes, runs full or partial validation, computes derived values, and hosts project field/condition callbacks.
 - **A developer-facing public release.** Start with the [public interpreter repository](https://github.com/mbackschat/a12-interpreter-releases), [try the live browser showcase](https://mbackschat.github.io/a12-interpreter-releases/showcase/), or browse the [version-matched API guide and references](https://mbackschat.github.io/a12-interpreter-releases/api/latest/). The packed-artifact-tested [source guide](docs/INTERPRETER-API-GUIDE.md) and [showcase source](interpreter/consumer-tests/browser/) remain here for contributors.
-- **Small enough for a browser.** The showcase's measured production JavaScript entry is about **240 kB gzip**. On the fixed Apple M1/Chrome runner on 2026-08-03, a representative 200-row Document validated in a **10.5 ms median**; a 10,000-row stress Document produced 4,900 findings in a **203.6 ms median**. Both series used 10 independent fresh Chrome processes. The packed tarball is installed into a real browser consumer and exercised in system Chrome—browser support is measured directly, not inferred from Node.js.
-- **Fast, and measured — never assumed.** Against the A12 Kernel's generated validator compiled as Java, with code generation outside the clock, the 2026-08-03 sweep put the interpreter **2.1× to 12.5× ahead** across the 15-case default inventory and **10× to 16.7× ahead** on repeated-document evaluation. The closest hostile point—384 concentrated low-firing rules—still led by **1.32×**; the huge-document edge reached about **155×**. Neither generated Java nor dynamic Groovy won an eligible comparison in the default, repeated, rule-count, or 13-case edge suites. These are bounded same-machine measurements after exact result preflight, not universal promises. Method, timing boundaries, and complete numbers: [`docs/INTERPRETER-PERFORMANCE.md`](docs/INTERPRETER-PERFORMANCE.md).
+### Fast, and measured — never assumed
+
+The same engine runs on the JVM, Node.js and in the browser, and the figures below come from two runtimes — latency measured in system Chrome, cross-engine comparison and memory measured on the JVM.
+
+Small enough to ship to a browser, and quick enough to re-run on every keystroke. The two Documents below bracket the useful range — one the size of a real form, one deliberately punishing:
+
+| Ships as | 200-row Document | 10,000-row Document, 4,900 findings |
+|---|---|---|
+| **240 kB gzip** | **11.55 ms median** | **166.1 ms median** |
+
+The stress Document carries 50× the rows and costs 14× the time.
+
+The comparison baseline is deliberately the toughest one available — the A12 Kernel's own **generated validator compiled as Java**, with code generation outside the clock. Each figure is how many times faster the interpreter finished the same work:
+
+| Default inventory, 15 cases | Repeated documents | Huge document, 20,000 rows | Hardest case, 384 low-firing rules |
+|---|---|---|---|
+| **2.8× – 17.1×** | **12.2× – 16.8×** | **≈152×** | **1.73×** |
+
+The spread does not track model size: the widest margins were measured on computation-heavy and repeated-document scenarios, the narrowest on 384 concentrated rules that almost never fire. Resident memory on the JVM goes the same way — a prepared model costs **4.2× – 8.1×** less than the Kernel's generated Java and **18.5× – 37.9×** less than its dynamic Groovy.
+
+**Not one eligible comparison went the other way.** Across the default, repeated, rule-count and edge suites, neither kernel strategy won a single case — the hardest case above is the narrowest win, not a loss. Browser support is measured directly: the packed tarball is installed into a real consumer and exercised in system Chrome, never inferred from Node.js. These are bounded same-machine measurements after exact result preflight, not universal promises.
+
+<sub>Measured 2026-08-17 · Apple M1 · Chrome 151 · JDK 21 · no discarded samples · [method, timing boundaries and complete tables](docs/INTERPRETER-PERFORMANCE.md)</sub>
 
 ---
 

@@ -151,13 +151,13 @@ await withStaticServer(async (url) => {
     for (const expected of [
       "Representative:",
       "200 group rows",
-      "23.1 kB",
-      "10.2 ms median",
+      "4.5 kB",
+      "11.55 ms median",
       "not measured this browser",
       "Stress:",
       "10,000 rows",
       "4,900 findings",
-      "177.1 ms median",
+      "166.1 ms median",
       "interpreter JS bundle",
     ]) {
       if (!performanceContext?.includes(expected)) {

@@ -21,6 +21,55 @@
 > enforcement, and its place in the docs router. The cleaner boundary is by AUTHOR, not by subject — `perf-results/`
 > is machine-written and self-pruning, this is hand-written and guard-verified.
 
+### Checkpoint 2026-08-17 — the v0.13.0 published-claim refresh: every public number re-measured in one sweep
+
+The four public surfaces carried figures frozen on 2026-08-03 (latency, kernel ratios) and 2026-08-07 (memory). This re-measures every one of them on `690a3b9c`, each lane run **alone** on the local `darwin-aarch64` machine, so a reader comparing two claims in one paragraph is comparing one sweep.
+
+**Browser first answer** — `measureExternalInterpreterBrowserFirstAnswer`, Apple M1, Chrome 151.0.7922.138, one fresh Chrome process per sample, zero discarded.
+
+| Scenario | Published (08-03) | Run 1 | **Run 2 — published** | Warm, validation only |
+|---|---|---|---|---|
+| 200 rows, 0 findings | 10.5 ms | 12.15 ms (50 samples) | **11.55 ms** (10) | **1.1 ms** |
+| 10,000 rows, 4,900 findings | 203.6 ms | 176.1 ms (10) | **166.1 ms** (10) | **53.3 ms** |
+
+**Two runs, because the second added the warm collector** (below), and the published figures are that second sweep so every number in a README comes from one run. The two cold runs sit **1.05× and 1.06×** apart, which is the ordinary run-to-run spread of this lane and the reason a single sample is never the claim.
+
+**Against 08-03 it moved in both directions, which is the finding.** Stress improved ~18 %; the representative case *regressed* ~10 % and is the noisier of the two — run 1's series tripped the adaptive expansion to 50 while the stress series did not. A refresh that had only checked the headline stress figure would have reported an unambiguous win. The 250 ms release bar passed.
+
+**The warm, validation-only lane is new here** ([`src/performance.ts`](../interpreter/consumer-tests/browser/src/performance.ts)). The collector previously produced only a first answer — construction inside the clock, fresh process — which is not the region the JVM lane measures, so no browser figure could be compared with a JVM or Kernel one. It now also builds the interpreter *outside* the clock and times 20 repeated `validateFull` calls in the same process, asserting the finding count on every warm run so a degraded engine cannot report a fast time. That makes one cross-runtime comparison legitimate, on the same 10,000-row Document and the same timed region:
+
+| Engine and runtime | validation only, warm |
+|---|---|
+| Interpreter — JVM | **17.5 ms** |
+| Interpreter — browser (Chrome) | **53.3 ms** |
+| A12 Kernel generated Java — JVM | 695.4 ms |
+| A12 Kernel dynamic Groovy — JVM | 794.7 ms |
+
+The interpreter in a browser is ~13× the Kernel's generated Java on the JVM, and ~3× its own JVM figure. *(An earlier draft of the public tables paired the browser **first answer** with these JVM numbers and explained the gap as "dominated by" construction and cold start — a mechanism that was never measured. The row was removed and the warm lane built instead.)*
+
+**Cross-engine, vs the kernel's generated validator compiled as Java** (`perf.sh bench` / `crossover` / `huge`; codegen outside the clock; speedups recomputed from raw millisecond columns because the logged `ratioJava` is rounded to two decimals and distorts the fast end):
+
+| Suite | Published | **Measured** |
+|---|---|---|
+| Default inventory, 15 cases | 2.1×–12.5× | **2.8×–17.1×** |
+| Repeated-document, 2 cases | 10×–16.7× | **12.2×–16.8×** |
+| Huge-document edge, N=20 000 | ≈155× | **≈152×** (24.94 ms vs 3 786.77 ms) |
+| Hardest case, 384 concentrated low-firing rules | 1.32× | **1.73×** |
+
+All 15 inventory cases and all 14 crossover points are interpreter wins; the narrowest anywhere is 1.73×. Against dynamic Groovy the inventory span is 4.0×–19.7×.
+
+**Resident memory** — `EngineFootprintReportTest`, `hold=12`, JDK 21.0.12, `totalB` = heap + Metaspace + Compressed Class Space, every arm gated on an agreed message-code multiset first.
+
+| | Published (08-07) | **Measured** |
+|---|---|---|
+| vs generated Java | 3.8×–9.2× | **4.2×–8.1×** |
+| vs dynamic Groovy | 22×–41× | **18.5×–37.9×** |
+| Absolute, prepared model | — | **54 kB–325 kB** |
+
+**Not re-derived:** the `1.4 kB/field + 1.55 kB/rule + 2.3 kB/group` sizing fit is still the 2026-08-07 regression; the public README now says so inline rather than letting it inherit this sweep's date. Re-deriving it needs per-model field/rule/group counts, and one of the six models is synthesized rather than a file.
+
+**Why this was a hand sweep at all.** The gzip footprint has both halves of a no-rot pair — `verifyInterpreterBrowserSizeDocumentation` *derives* the claim and `syncInterpreterBrowserSize` rewrites all three surfaces. The timing and memory claims have only the guard half, and it asserts **hardcoded literals**, so the published numbers can only be advanced by editing four surfaces and the test together. That asymmetry, not a decision, is why they sat 14 days and 10 days stale respectively.
+
 ### Checkpoint 2026-08-15 — what ONE unchanged commit costs on a hosted runner, measured from the committed record
 
 Read from `perf-results/linux-amd64-ci/` only; nothing was run for it. The record holds two triplets of nightly runs of a **single** commit, which is the only shape that can answer "how far apart can identical code land here?".

@@ -1,6 +1,6 @@
 # A12 Interpreter
 
-Run A12 Document Models on the JVM, Node.js, and in the browser without the A12 Kernel at runtime.
+A **Kotlin Multiplatform** engine for A12 Document Models: **one implementation, three targets — JVM, Node.js and browser** — with no A12 Kernel at runtime.
 
 The interpreter prepares model workspaces, resolves includes and imported type definitions, reads Documents, runs full or partial validation, and computes derived values. Applications keep control of file, network, storage, and credential access.
 
@@ -19,17 +19,98 @@ The interpreter prepares model workspaces, resolves includes and imported type d
 
 The package does not author models, render forms, persist Documents, provide a virtual filesystem, or bundle Kernel code. Kernel-shaped TypeScript and JVM drop-in adapters are separate, later compatibility products.
 
-## Browser footprint and performance
+## Footprint and performance
 
-**Fast, and measured — never assumed.**
+**Fast, and measured — never assumed.** The same engine runs on the JVM, Node.js and in the browser, and the numbers below come from two different runtimes — browser latency measured in system Chrome, cross-engine comparison and memory measured on the JVM. Each block says which. Browser figures are measured in a real browser, never inferred from Node.js.
 
-Browser execution is a first-class qualified target, not a Node.js inference. The packed npm tarball is installed into an external consumer, its portable behavior corpus is replayed in system Chrome, and the same package powers the [live browser showcase](https://mbackschat.github.io/a12-interpreter-releases/showcase/).
+### What you ship
 
-The showcase's measured production JavaScript entry is about **240 kB gzip**. On the fixed Apple M1/Chrome runner on 2026-08-03, a representative 200-row Document validated in a **10.5 ms median**; the 10,000-row stress Document validated with 4,900 findings in a **203.6 ms median**. Both figures use 10 independent fresh Chrome processes and include interpreter construction through complete result materialization.
+What you actually ship, per target:
 
-The JVM comparison deliberately uses the A12 Kernel's generated validator compiled as Java, with code generation outside the clock, as the fair algorithmic baseline. In the 2026-08-03 sweep, the interpreter was **2.1× to 12.5× faster** across the 15-case default inventory and **10× to 16.7× faster** on repeated-document evaluation. The closest hostile point—384 concentrated low-firing rules—still led by **1.32×**, and the huge-document edge reached about **155×**. Neither generated Java nor dynamic Groovy won an eligible comparison in the default, repeated, rule-count, or 13-case edge suites. These are bounded same-machine measurements after exact result preflight, not universal promises; the scenarios, timing boundaries, and complete tables are documented in [Interpreter performance](https://github.com/mbackschat/a12-dmkits/blob/main/docs/INTERPRETER-PERFORMANCE.md).
+| | Browser / Node.js | Kotlin / JVM |
+|---|---|---|
+| Inside a bundled app | **240 kB gzip** entry, tree-shaken and minified | — |
+| Third-party runtime dependencies | `big.js` (≈7 kB, bundled in) | Kotlin stdlib, kotlinx-serialization |
+| Published artifact | 2.5 MB npm package — Kotlin runtime vendored in | 1.6 MB jar — Kotlin runtime resolved separately |
+
+**Published artifact** and **inside a bundled app** measure different things, which is why they look so far apart: the published artifact is the whole library as distributed, while the bundled figure is what survives into an application after tree-shaking, minification and compression. The jar is the closer analogue of the npm package — and the npm package is in fact the larger of the two, because it vendors the Kotlin standard library and serialization runtime that the JVM resolves as ordinary dependencies.
+
+No Kernel code ships in either target and neither declares a Kernel runtime dependency, which is what keeps the core MIT-licensed.
+
+For scale, the A12 Kernel's own evaluation runtime, resolved from the Kernel artifacts this release targets:
+
+| A12 Kernel runtime | Jars | Size |
+|---|---|---|
+| Generated-Java strategy | 3 | **702 kB** |
+| Document-model runtime service (dynamic Groovy) | 15 | **1 579 kB** |
+
+*Declared first-level `com.mgmtp` dependencies only — the transitive closure is not walked, and Groovy itself, `slf4j`, `commons-lang3` and `base-model-*` are excluded, so both figures are lower bounds.*
+
+The two are not directly substitutable, and the difference is structural rather than a matter of bytes. **The Kernel's runtime is a fixed library plus per-model generated code**: every Document Model is transformed into generated rule and computation classes that ship alongside it, so what a deployment actually carries grows with the number of models. The interpreter generates nothing — the artifact above is the complete cost for any number of models, which is also why its resident memory per model is a fraction of either Kernel strategy.
+
+### How fast it runs (study)
+
+Measured in system Chrome, over the two Documents the collector defines — one representative, one stress. Each is timed **two ways**, because an application experiences both: the **first answer** a user waits for when a form opens, which includes building the interpreter, and the **warm** cost of revalidating after every keystroke, which does not.
+
+| Document | Findings | First answer *(includes building the interpreter)* | Warm *(validation only)* |
+|---|---|---|---|
+| 200 rows — representative | — | **11.55 ms median** | **1.1 ms** |
+| 10,000 rows — stress | 4,900 | **166.1 ms median** | **53.3 ms** |
+
+First answers drawn to scale — the stress Document carries **50× the rows and costs 14× the time**:
+
+```
+   200 rows  ███                                       11.55 ms
+10,000 rows  ████████████████████████████████████████  166.1 ms
+```
+
+Every first answer is the median of independent fresh Chrome processes — 10 for a stable series, automatically extended to 50 for a noisy one — clocked from interpreter construction through complete result materialization. The warm figure is the median of repeated validations against an interpreter built outside the clock. No warm-up credit, no partial results, no discarded samples.
+
+The warm column is the timed region the JVM lane uses, so those runtimes and engines can be put side by side on the same 10,000-row Document:
+
+| Engine and runtime | 10,000 rows, 4,900 findings |
+|---|---|
+| Interpreter — browser (Chrome) | 53.3 ms |
+| **Interpreter — JVM** | **17.5 ms** |
+| A12 Kernel, generated Java — JVM | 695.4 ms |
+| A12 Kernel, dynamic Groovy — JVM | 794.7 ms |
+
+Every row is validation only against an already-prepared engine and decoded Document. On the JVM, where all three engines can be compared directly, the interpreter is about **40× the A12 Kernel's generated Java** and about **45× its dynamic Groovy** on this Document. The browser row sits above them for scale: the same engine, in a browser, still finishes ahead of either Kernel strategy running on the JVM.
+
+### Further results (JVM)
+
+Measured on JDK 21 against both A12 Kernel evaluation strategies. The baseline is deliberately the toughest one available: the A12 Kernel's own **generated validator compiled as Java**, with code generation outside the clock. Each row says how many times faster the interpreter finished the same work.
+
+| Suite | Interpreter is faster by — **JVM** |
+|---|---|
+| Default inventory, 15 cases | **2.8× – 17.1×** |
+| Repeated-document evaluation | **12.2× – 16.8×** |
+| Huge-document edge, 20,000 rows | **≈152×** |
+| Hardest case — 384 concentrated low-firing rules | **1.73×** |
+
+The spread does not track model size. The widest margins were measured on computation-heavy and repeated-document scenarios; the narrowest, 1.73×, on 384 concentrated rules that almost never fire.
+
+**Not one eligible comparison went the other way.** Across the default, repeated, rule-count and edge suites, neither generated Java nor dynamic Groovy won a single case — the hardest case above is the interpreter's narrowest win, not a loss.
+
+### What it costs to keep resident on the JVM
+
+Memory goes the same direction, which is what decides how many models a server can hold in a cache. Holding one prepared model resident on JDK 21, across six models from type-definition-only to 192 rules:
+
+| Engine | Resident cost per model — **JVM** | vs the interpreter |
+|---|---|---|
+| **Interpreter** — prepared model | **54 – 325 kB** | — |
+| A12 Kernel, generated Java | 379 kB – 1.46 MB | **4.2× – 8.1×** more |
+| A12 Kernel, dynamic Groovy | 1.09 – 11.98 MB | **18.5× – 37.9×** more |
+
+The interpreter generates no code, so its cost is entirely heap. Both kernel strategies generate and load classes per model, and that metadata lives in Metaspace — invisible to a heap-only measurement, so all three arms report heap, Metaspace and loaded-class count. Every arm validates the identical Document and must agree on the message codes before it is measured, so this compares engines doing equal work.
+
+Browser execution is a first-class qualified target: the packed npm tarball is installed into an external consumer, its portable behavior corpus is replayed in system Chrome, and that same package powers the [live browser showcase](https://mbackschat.github.io/a12-interpreter-releases/showcase/). These are bounded same-machine measurements taken after an exact result preflight, not universal promises.
+
+<sub>Measured 2026-08-17 · Apple M1 · Chrome 151 · JDK 21 · no discarded samples · [method, timing boundaries and complete tables](https://github.com/mbackschat/a12-dmkits/blob/main/docs/INTERPRETER-PERFORMANCE.md)</sub>
 
 ## Server-side model cache
+
+*Every number in this section is **JVM**.*
 
 **A prepared model is shareable across concurrent requests; an interpreter is not.**
 
@@ -49,8 +130,8 @@ Four things to know before sizing a cache:
   **≈ 1.4 kB × fields + 1.55 kB × rules + 2.3 kB × groups**, which holds within 4% across six models spanning 5 to 79
   fields, 3 to 29 groups and 0 to 192 rules.
 - It is nonetheless far **smaller than the A12 Kernel runtime service it replaces**: on those same models,
-  **3.8× to 9.2×** smaller than the Kernel's generated Java and **22× to 41×** smaller than its dynamic Groovy
-  (measured 2026-08-07, JDK 21). The Kernel's own Document Model is comparable to a prepared model; the difference
+  **4.2× to 8.1×** smaller than the Kernel's generated Java and **18.5× to 37.9×** smaller than its dynamic Groovy.
+  The Kernel's own Document Model is comparable to a prepared model; the difference
   is the generated rule code — and a fifth to a half of it is class metadata in Metaspace, which a heap
   measurement does not show at all.
 - An undersized cache is not slightly worse, it is no cache plus eviction overhead. The same 12 requests through a
@@ -115,6 +196,8 @@ The ordinary form-engine sequence is explicit and Kernel-shaped: `const computat
 
 ## Kotlin
 
+The Kotlin and Java surface has the same shape as the TypeScript one: prepare a workspace, read a Document against the prepared model, then create an interpreter and ask it for validation or computation. The differences are idiomatic rather than structural — model sources are assembled through a typed builder, and `readDocument` takes A12 Document JSON as text.
+
 <!-- snippet: interpreter-kotlin-start -->
 ```kotlin
 import io.github.mbackschat.a12.dm.interpreter.ComputationReport
@@ -143,6 +226,10 @@ fun runInterpreter(modelJson: String): InterpreterResult {
     )
 }
 ```
+
+`ValidationReport` and `ComputationReport` carry the same information as their TypeScript counterparts, including the model-owned pointers that tell apart the rows of a computation inside a repeatable group. Java consumers use these same types directly; a worked Java example lives in the developer API guide linked at the end of this document.
+
+One thing to carry over from *Server-side model cache* above: the `PreparedModel` returned by `prepare` is the expensive, reusable part and is safe to share across concurrent requests, while the `Interpreter` from `createInterpreter()` is per request. Retaining the prepared model and creating an interpreter per call is the intended pattern, not an optimization.
 
 ## Workspaces
 
