@@ -7700,6 +7700,23 @@
     },
     {
       "operator": "FirstFilledValue",
+      "lane": "CONSTRAINT",
+      "ordinal": 1,
+      "digest": "sha256:a6e4da94c9ce95e0dd2a058aa729e9c7a03a40e51218a99ef14d052b9656265a",
+      "classifications": [
+        "REJECTION",
+        "ADMISSION"
+      ],
+      "evidence": [
+        {
+          "classification": "ADMISSION",
+          "type": "KERNEL_LAW",
+          "id": "rulekit.validate.laws.FirstFilledValueDuplicatePrecedenceLawsTest#everyDuplicateAndOverlapBranchHasOneCompleteStaticVerdict"
+        }
+      ]
+    },
+    {
+      "operator": "FirstFilledValue",
       "lane": "GOTCHA",
       "ordinal": 0,
       "digest": "sha256:eedb82b995720ddd9db83ef9882f3ddf2ee6029508e626af80ea8578e3187644",
@@ -11440,6 +11457,50 @@
         {
           "type": "CLAIM_PROBE",
           "id": "FirstFilledValue.single-direct-field"
+        }
+      ]
+    },
+    {
+      "id": "admission.FirstFilledValue.fixed-group-duplicate",
+      "operator": "FirstFilledValue",
+      "kind": "CONDITION",
+      "units": [
+        {
+          "lane": "CONSTRAINT",
+          "ordinal": 1
+        }
+      ],
+      "expected": {
+        "verdict": "REJECTED",
+        "code": "MVK_DUPLICATE_PARAM1"
+      },
+      "evidence": [
+        {
+          "type": "CLAIM_PROBE",
+          "id": "FirstFilledValue.fixed-group-duplicate",
+          "side": "TRIGGER"
+        }
+      ]
+    },
+    {
+      "id": "admission.FirstFilledValue.group-descendant-overlap",
+      "operator": "FirstFilledValue",
+      "kind": "CONDITION",
+      "units": [
+        {
+          "lane": "CONSTRAINT",
+          "ordinal": 1
+        }
+      ],
+      "expected": {
+        "verdict": "REJECTED",
+        "code": "MVK_DUPLICATE_PARAM2"
+      },
+      "evidence": [
+        {
+          "type": "CLAIM_PROBE",
+          "id": "FirstFilledValue.group-descendant-overlap",
+          "side": "TRIGGER"
         }
       ]
     },

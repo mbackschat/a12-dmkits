@@ -19,10 +19,11 @@ import io.github.mbackschat.a12.dm.rulekit.dsl.FieldRef;
  * repetition list may occupy several authored aggregate slots and is expanded and consumed again at each
  * position. Only repeated <em>direct</em> (non-wildcard) fields still draw {@code MVK_DUPLICATE_PARAM1}.
  *
- * <p>The whole entity-list family shares one admission root ({@code ListAggregate.checkNoDuplicates}, reached
- * from {@code ListAggregate}, {@code CountAggregate}, and {@code FirstFilledValue}), so the rule is proven for
- * every affected operator: {@code Sum}, {@code MaxValue}, {@code MinValue}, {@code FirstFilledValue},
- * {@code NumberOfFilledFields}, and {@code NumberOfDifferentValues}.
+ * <p>The field-list aggregates share {@code ListAggregate.checkNoDuplicates}; {@code FirstFilledValue} owns the
+ * corresponding richer entity-selector check because it also admits group, category, and semantic-index shapes.
+ * The matrix therefore proves the wildcard rule through both admission roots for {@code Sum}, {@code MaxValue},
+ * {@code MinValue}, {@code FirstFilledValue}, {@code NumberOfFilledFields}, and
+ * {@code NumberOfDifferentValues}.
  */
 class AggregateDuplicateWildcardTest {
 
