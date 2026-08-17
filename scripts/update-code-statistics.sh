@@ -146,8 +146,8 @@ if [[ "$ARTIFACT" == "all" || "$ARTIFACT" == "dmtool" ]]; then
 fi
 
 if [[ "$ARTIFACT" == "all" || "$ARTIFACT" == "interpreter" ]]; then
-  make_block interpreter-source "the standalone interpreter library and its authored TypeScript facade" "$ZERO" "$KOTLIN" "$TYPESCRIPT_LIBRARY" "$WORK/interpreter-source.md"
-  apply_block "$ROOT/interpreter/README.md" interpreter-source "$WORK/interpreter-source.md"
+  # The npm package README is deliberately minimal and links to the public repository instead of
+  # restating anything, so it carries no statistics block; the human-facing mirror README does.
   make_block interpreter-release "the standalone interpreter library, TypeScript facade, and browser showcase" "$ZERO" "$KOTLIN" "$TYPESCRIPT_ALL" "$WORK/interpreter-release.md"
   apply_block "$ROOT/interpreter/public-release/README.md" interpreter-release "$WORK/interpreter-release.md"
 fi

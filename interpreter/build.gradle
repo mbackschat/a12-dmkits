@@ -2849,6 +2849,7 @@ def verifyInterpreterBrowserSizeDocumentation = tasks.register(
     inputs.file(rootProject.file('README.md'))
     inputs.file(file('README.md'))
     inputs.file(file('public-release/README.md'))
+    inputs.file(file('public-release/PERFORMANCE.md'))
     doLast {
         def measurement = new groovy.json.JsonSlurper().parse(browserBundleSize.get().asFile)
         if (!(measurement.gzipBytes instanceof Number) || measurement.gzipBytes <= 0) {
@@ -2866,8 +2867,7 @@ def verifyInterpreterBrowserSizeDocumentation = tasks.register(
         def stated = java.util.regex.Pattern.compile(/\d+ kB gzip/)
         [
             rootProject.file('README.md'),
-            file('README.md'),
-            file('public-release/README.md'),
+            file('public-release/PERFORMANCE.md'),
         ].each { readme ->
             def matcher = stated.matcher(readme.getText('UTF-8'))
             def found = []
@@ -2901,10 +2901,10 @@ def publishedPerformanceClaim = file('published-performance.json')
 def performanceClaimSurfaces = {
     [
         rootProject.file('README.md'),
-        file('README.md'),
-        file('public-release/README.md'),
         file('consumer-tests/browser/index.html'),
         file('consumer-tests/browser/scripts/smoke.ts'),
+        // The mirror's README keeps only a pointer; its sibling carries the figures.
+        file('public-release/PERFORMANCE.md'),
     ]
 }
 // Bytes are published as kB with the collector's own 1000 base; the showcase already used that base.
@@ -2935,8 +2935,7 @@ def verifyInterpreterPerformanceClaims = tasks.register('verifyInterpreterPerfor
             // The warm figure is published in the two detailed READMEs only; the showcase page, its smoke
             // assertion, the root README and the changelog carry the first-answer figures alone.
             def path = rootProject.relativePath(surface)
-            def publishesWarm = path == 'interpreter/README.md' ||
-                path == 'interpreter/public-release/README.md'
+            def publishesWarm = path == 'interpreter/public-release/PERFORMANCE.md'
             (publishesWarm ? required + warmRequired : required).each { needle ->
                 if (!text.contains(needle)) {
                     throw new GradleException(
@@ -3042,8 +3041,7 @@ tasks.register('syncInterpreterBrowserSize') {
         def stated = /\d+ kB gzip/
         [
             rootProject.file('README.md'),
-            file('README.md'),
-            file('public-release/README.md'),
+            file('public-release/PERFORMANCE.md'),
         ].each { surface ->
             def before = surface.getText('UTF-8')
             def after = before.replaceAll(stated, expected)
@@ -3139,6 +3137,8 @@ def assembleInterpreterPublicMirror = tasks.register(
         externalBrowserConsumerBuildDir.get().dir('dist').asFile.absolutePath,
         '--readme',
         file('public-release/README.md').absolutePath,
+        '--performance',
+        file('public-release/PERFORMANCE.md').absolutePath,
         '--changelog',
         file('CHANGELOG.md').absolutePath,
         '--license',

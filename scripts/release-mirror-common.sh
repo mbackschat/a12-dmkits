@@ -75,7 +75,7 @@ release_check_interpreter_mirror_allowlist() {
   local relative
   while IFS= read -r relative; do
     case "$relative" in
-      README.md|CHANGELOG.md|LICENSE|DISCLAIMER.md|CLAUDE.md|AGENTS.md|release-manifest.json|PUBLIC-FILES.sha256)
+      README.md|PERFORMANCE.md|CHANGELOG.md|LICENSE|DISCLAIMER.md|CLAUDE.md|AGENTS.md|release-manifest.json|PUBLIC-FILES.sha256)
         ;;
       .github/workflows/build-release.yml|.github/workflows/deploy-pages.yml)
         ;;

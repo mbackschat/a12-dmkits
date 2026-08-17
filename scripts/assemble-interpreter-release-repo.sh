@@ -25,6 +25,7 @@ API_DOCUMENTATION=""
 API_DOCS_ARCHIVE=""
 SHOWCASE=""
 README_SOURCE=""
+PERFORMANCE_SOURCE=""
 CHANGELOG_SOURCE=""
 LICENSE_SOURCE=""
 DISCLAIMER_SOURCE=""
@@ -47,6 +48,7 @@ while [[ $# -gt 0 ]]; do
     --api-docs-archive) API_DOCS_ARCHIVE="${2:?missing --api-docs-archive value}"; shift 2 ;;
     --showcase) SHOWCASE="${2:?missing --showcase value}"; shift 2 ;;
     --readme) README_SOURCE="${2:?missing --readme value}"; shift 2 ;;
+    --performance) PERFORMANCE_SOURCE="${2:?missing --performance value}"; shift 2 ;;
     --changelog) CHANGELOG_SOURCE="${2:?missing --changelog value}"; shift 2 ;;
     --license) LICENSE_SOURCE="${2:?missing --license value}"; shift 2 ;;
     --disclaimer) DISCLAIMER_SOURCE="${2:?missing --disclaimer value}"; shift 2 ;;
@@ -76,6 +78,7 @@ for file in \
   "$NPM_TARBALL" \
   "$API_DOCS_ARCHIVE" \
   "$README_SOURCE" \
+  "$PERFORMANCE_SOURCE" \
   "$CHANGELOG_SOURCE" \
   "$LICENSE_SOURCE" \
   "$DISCLAIMER_SOURCE" \
@@ -144,6 +147,8 @@ render_versioned_source() {
 
 mkdir -p "$MIRROR_STAGE/.github/workflows" "$MIRROR_STAGE/site/api" "$MIRROR_STAGE/site/maven"
 render_versioned_source "$README_SOURCE" "$MIRROR_STAGE/README.md"
+# The README links PERFORMANCE.md as a sibling, so the mirror must carry it or that link 404s.
+render_versioned_source "$PERFORMANCE_SOURCE" "$MIRROR_STAGE/PERFORMANCE.md"
 render_versioned_source "$CHANGELOG_SOURCE" "$MIRROR_STAGE/CHANGELOG.md"
 cp "$LICENSE_SOURCE" "$MIRROR_STAGE/LICENSE"
 cp "$DISCLAIMER_SOURCE" "$MIRROR_STAGE/DISCLAIMER.md"

@@ -24,9 +24,15 @@ class InterpreterDocumentationTest {
     private val locks = listOf(
         SnippetLock(
             "interpreter-typescript-start",
-            "interpreter/README.md",
+            "interpreter/public-release/README.md",
             "interpreter/consumer-tests/typescript/src/guide-finite.ts",
             "ts",
+        ),
+        SnippetLock(
+            "interpreter-kotlin-start",
+            "interpreter/public-release/README.md",
+            "interpreter/consumer-tests/kotlin-jvm/src/main/kotlin/GuideExample.kt",
+            "kotlin",
         ),
         SnippetLock(
             "interpreter-typescript-start",
@@ -63,12 +69,6 @@ class InterpreterDocumentationTest {
             "docs/INTERPRETER-API-GUIDE.md",
             "interpreter/consumer-tests/typescript/src/guide-customization.ts",
             "ts",
-        ),
-        SnippetLock(
-            "interpreter-kotlin-start",
-            "interpreter/README.md",
-            "interpreter/consumer-tests/kotlin-jvm/src/main/kotlin/GuideExample.kt",
-            "kotlin",
         ),
         SnippetLock(
             "interpreter-kotlin-start",
@@ -193,6 +193,11 @@ class InterpreterDocumentationTest {
             publicReadme.indexOf("## Performance") > publicReadme.indexOf("## What ships"),
             "the public repository README must present performance immediately after what ships",
         )
+        // The README keeps only a pointer; the figures live in its sibling, which the mirror also carries.
+        assertTrue(
+            publicReadme.contains("](PERFORMANCE.md)"),
+            "the public repository README must link its PERFORMANCE.md sibling",
+        )
         assertTrue(
             publicReadme.indexOf("**Semantics target.**") in
                 publicReadme.indexOf("## What ships") until publicReadme.indexOf("## Performance"),
@@ -206,8 +211,9 @@ class InterpreterDocumentationTest {
         )
         val surfaces = listOf(
             "main repository README" to Files.readString(repoFile("README.md")),
-            "interpreter package README" to Files.readString(repoFile("interpreter/README.md")),
-            "public repository README" to publicReadme,
+            "public performance document" to Files.readString(
+                repoFile("interpreter/public-release/PERFORMANCE.md"),
+            ),
             "current release notes" to currentReleaseNotes,
         )
         val footprint = Regex("""(\d+) kB gzip""")

@@ -886,7 +886,7 @@ Generated with [Tokei](https://github.com/XAMPPRocky/tokei) from the production 
 |---|---:|---:|---:|---:|
 | Java | 475 | 47474 | 13555 | 6957 |
 | Kotlin | 114 | 18703 | 7575 | 2367 |
-| TypeScript | 17 | 3190 | 269 | 277 |
+| TypeScript | 17 | 3209 | 274 | 279 |
 
 Maintainers regenerate this table with the local statistics updater; both release publishers compare it with fresh counts before any public mutation.
 <!-- source-statistics:root:end -->

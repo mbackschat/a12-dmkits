@@ -22,108 +22,23 @@ Use the built-in models and Documents or load your own local workspace. Your sel
 ## What ships
 
 - Finite in-memory workspaces and on-demand model providers
-- Include mounting, imported type definitions, id normalization, and cross-model reference remapping
-- Self-contained expanded model output before evaluator-specific support checks
+- Self-contained model expansion, separate from evaluator preparation
 - Lossless, versioned Document JSON with structured input diagnostics
-- Full and partial validation, computations, support reports, and model-owned pointers
-- Custom field validators and custom conditions
+- Deterministic model-shaped Document seeds containing every declared group and field
+- Full and partial validation, retained computation application, support reports, and model-owned pointers
+- Canonical A12 `DocumentPointer` formatting and parsing, so a repeated computed row is separately addressable
+- Synchronous custom field validators and custom conditions
 - Thread-safe model reuse: one prepared model serves concurrent requests, each with its own interpreter
-- Resource limits, source integrity, cancellation, and prepared models that are immutable to callers
+- Explicit resource limits, integrity checks, cancellation, and prepared models that are immutable to callers
+- The same Kotlin implementation on JVM, Node.js, and browser targets
 
-The package performs no implicit filesystem, network, storage, or credential access. It contains no A12 Kernel bytecode or runtime dependency.
+The package does not author models, render forms, persist Documents, provide a virtual filesystem, or bundle Kernel code. Kernel-shaped TypeScript and JVM drop-in adapters are separate, later compatibility products.
 
 **Semantics target.** This release reproduces the evaluation behavior of **A12 Kernel 30.8.1**, as shipped in the **A12 Tools 2025.06-ext5** distribution. The implementation is clean-room and is verified by differential testing against that kernel; the target version is stated so you can tell which kernel's semantics a given release was matched to.
 
 ## Performance
 
-**Fast, and measured — never assumed.** The same engine runs on the JVM, Node.js and in the browser, and the numbers below come from two different runtimes — browser latency measured in system Chrome, cross-engine comparison and memory measured on the JVM. Each block says which. Browser figures are measured in a real browser, never inferred from Node.js.
-
-### What you ship
-
-What you actually ship, per target:
-
-| | Browser / Node.js | Kotlin / JVM |
-|---|---|---|
-| Inside a bundled app | **240 kB gzip** entry, tree-shaken and minified | — |
-| Third-party runtime dependencies | `big.js` (≈7 kB, bundled in) | Kotlin stdlib, kotlinx-serialization |
-| Published artifact | 2.5 MB npm package — Kotlin runtime vendored in | 1.6 MB jar — Kotlin runtime resolved separately |
-
-**Published artifact** and **inside a bundled app** measure different things, which is why they look so far apart: the published artifact is the whole library as distributed, while the bundled figure is what survives into an application after tree-shaking, minification and compression. The jar is the closer analogue of the npm package — and the npm package is in fact the larger of the two, because it vendors the Kotlin standard library and serialization runtime that the JVM resolves as ordinary dependencies.
-
-No Kernel code ships in either target and neither declares a Kernel runtime dependency, which is what keeps the core MIT-licensed.
-
-For scale, the A12 Kernel's own evaluation runtime, resolved from the 30.8.1 artifacts:
-
-| A12 Kernel runtime | Jars | Size |
-|---|---|---|
-| Generated-Java strategy | 3 | **702 kB** |
-| Document-model runtime service (dynamic Groovy) | 15 | **1 579 kB** |
-
-*Declared first-level `com.mgmtp` dependencies only — the transitive closure is not walked, and Groovy itself, `slf4j`, `commons-lang3` and `base-model-*` are excluded, so both figures are lower bounds.*
-
-The two are not directly substitutable, and the difference is structural rather than a matter of bytes. **The Kernel's runtime is a fixed library plus per-model generated code**: every Document Model is transformed into generated rule and computation classes that ship alongside it, so what a deployment actually carries grows with the number of models. The interpreter generates nothing — the artifact above is the complete cost for any number of models, which is also why its resident memory per model is a fraction of either Kernel strategy.
-
-### How fast it runs (study)
-
-Measured in system Chrome, over the two Documents the collector defines — one representative, one stress. Each is timed **two ways**, because an application experiences both: the **first answer** a user waits for when a form opens, which includes building the interpreter, and the **warm** cost of revalidating after every keystroke, which does not.
-
-| Document | Findings | First answer *(includes building the interpreter)* | Warm *(validation only)* |
-|---|---|---|---|
-| 200 rows — representative | — | **11.55 ms median** | **1.1 ms** |
-| 10,000 rows — stress | 4,900 | **166.1 ms median** | **53.3 ms** |
-
-First answers drawn to scale — the stress Document carries **50× the rows and costs 14× the time**:
-
-```
-   200 rows  ███                                       11.55 ms
-10,000 rows  ████████████████████████████████████████  166.1 ms
-```
-
-Every first answer is the median of independent fresh Chrome processes — 10 for a stable series, automatically extended to 50 for a noisy one — clocked from interpreter construction through complete result materialization. The warm figure is the median of repeated validations against an interpreter built outside the clock. No warm-up credit, no partial results, no discarded samples.
-
-The warm column is the timed region the JVM lane uses, so those runtimes and engines can be put side by side on the same 10,000-row Document:
-
-| Engine and runtime | 10,000 rows, 4,900 findings |
-|---|---|
-| Interpreter — browser (Chrome) | 53.3 ms |
-| **Interpreter — JVM** | **17.5 ms** |
-| A12 Kernel, generated Java — JVM | 695.4 ms |
-| A12 Kernel, dynamic Groovy — JVM | 794.7 ms |
-
-Every row is validation only against an already-prepared engine and decoded Document. On the JVM, where all three engines can be compared directly, the interpreter is about **40× the A12 Kernel's generated Java** and about **45× its dynamic Groovy** on this Document. The browser row sits above them for scale: the same engine, in a browser, still finishes ahead of either Kernel strategy running on the JVM.
-
-### Further results (JVM)
-
-Measured on JDK 21 against both A12 Kernel evaluation strategies. The baseline is deliberately the toughest one available: the A12 Kernel's own **generated validator compiled as Java**, with code generation outside the clock. Each row says how many times faster the interpreter finished the same work.
-
-| Suite | Interpreter is faster by — **JVM** |
-|---|---|
-| Default inventory, 15 cases | **2.8× – 17.1×** |
-| Repeated-document evaluation | **12.2× – 16.8×** |
-| Huge-document edge, 20,000 rows | **≈152×** |
-| Hardest case — 384 concentrated low-firing rules | **1.73×** |
-
-The spread does not track model size. The widest margins were measured on computation-heavy and repeated-document scenarios; the narrowest, 1.73×, on 384 concentrated rules that almost never fire.
-
-**Not one eligible comparison went the other way.** Across the default, repeated, rule-count and edge suites, neither generated Java nor dynamic Groovy won a single case — the hardest case above is the interpreter's narrowest win, not a loss.
-
-### What it costs to keep resident on the JVM
-
-Memory goes the same direction, which is what decides how many models a server can hold in a cache. Holding one prepared model resident on JDK 21, across six models from type-definition-only to 192 rules, the last derived from a real model's shape:
-
-| Engine | Resident cost per model — **JVM** | vs the interpreter |
-|---|---|---|
-| **Interpreter** — prepared model | **54 – 325 kB** | — |
-| A12 Kernel, generated Java | 379 kB – 1.46 MB | **4.2× – 8.1×** more |
-| A12 Kernel, dynamic Groovy | 1.09 – 11.98 MB | **18.5× – 37.9×** more |
-
-The Kernel's own expanded Document Model is comparable in size to a prepared model; what separates them is the generated rule and computation code — and a fifth to a half of that is class metadata in Metaspace, which a heap measurement does not see at all. All three engines are first confirmed to produce identical findings over the identical Document, so this compares engines doing equal work.
-
-For sizing a model cache, a resident prepared model costs about **1.4 kB per field plus 1.55 kB per rule plus 2.3 kB per group**, within 4% across all six.
-
-The interpreter runs the same clean-room Kotlin implementation on the JVM, Node.js, and in the browser. The qualified browser package replays 33 portable conformance cases, and the [live showcase](https://mbackschat.github.io/a12-interpreter-releases/showcase/) proves the packed package in system Chrome rather than inferring browser support from Node.js. These are bounded same-machine measurements after exact result preflight, not universal promises.
-
-<sub>Measured 2026-08-17 · Apple M1 · Chrome 151 · JDK 21 · no discarded samples · sizing fit from an earlier sweep · [method, timing boundaries and complete tables](https://github.com/mbackschat/a12-dmkits/blob/main/docs/INTERPRETER-PERFORMANCE.md)</sub>
+**[→ Performance and footprint](PERFORMANCE.md)** — what the package costs to ship, how fast it validates in the browser and on the JVM, what a resident model costs, and how each figure was measured.
 
 ## TypeScript and JavaScript
 
@@ -133,30 +48,57 @@ Install the npm-compatible tarball directly from the GitHub Release:
 pnpm add https://github.com/mbackschat/a12-interpreter-releases/releases/download/@RELEASE_TAG@/a12-interpreter-@VERSION@.tgz
 ```
 
+Documents are A12's own Document JSON — the shape the A12 Kernel serializes: a nested object tree, a repeating group as an array whose index is the repetition, native JSON for numbers and booleans.
+
+Keep the prepared model and interpreter when a form validates repeated edits; read a new immutable Document snapshot for each change.
+
+The Document shown below is decoded against the prepared model before evaluation. When its structure is not yet known, `prepared.documents.seedDocument()` creates a best-effort candidate with every declared group and field and one row per repeatable group; computation-owned targets remain present-empty for the engine to fill.
+
+<!-- snippet: interpreter-typescript-start -->
 ```ts
 import {
+  type DocumentSnapshot,
+  type Interpreter,
   ModelWorkspace,
   type A12Document,
 } from "@mbackschat/a12-interpreter";
 
-const workspace = ModelWorkspace.fromSources([{json: rawModelJson}]);
-const prepared = workspace.prepare("permit-basic");
-const input: A12Document = {
-  Permit: {ApplicationNo: "P-42", RequestedArea: 120},
-};
-const document = prepared.documents.readDocument(input);
-const result = prepared.createInterpreter().validateFull(document);
+export function runInterpreter(rawModelJson: string) {
+  const workspace = ModelWorkspace.fromSources([{json: rawModelJson}]);
+  const prepared = workspace.prepare("permit-basic");
+  const starter = prepared.documents.encodeDocument(
+    prepared.documents.seedDocument(),
+  );
+  const input: A12Document = {
+    Permit: {ApplicationNo: "P-42", RequestedArea: 120},
+  };
+  const document = prepared.documents.readDocument(input);
+  const interpreter = prepared.createInterpreter();
+  const relevant = prepared.model.relevantPointer(
+    "/Permit/RequestedArea",
+    [1, 1],
+  );
+
+  return {
+    full: interpreter.validateFull(document),
+    partial: interpreter.validatePart(document, [relevant]),
+    computation: interpreter.compute(document),
+    starter,
+    document,
+    prepared,
+  };
+}
 ```
 
-Documents are A12's own Document JSON — the shape the A12 Kernel serializes: a nested object tree, a repeating group as an array whose index is the repetition, native JSON for numbers and booleans.
+`interpreter.compute(source)` returns report-all `results`, target diagnostics for ERRORED results, eager `formalErrorsInOperands`, Kernel-equivalent `noErrorOccurred`, and source-relative `actions`. Retain that report and call `applyTo(destination)` to apply it without recomputing; source and destination must belong to the same `PreparedModel`. `unsupported` remains an independent support axis. `interpreter.applyComputations(source)` is the same-document convenience. Every snapshot remains immutable.
 
-Keep the prepared model and interpreter when a form validates repeated edits; read a new immutable Document snapshot for each change.
+The ordinary form-engine sequence is explicit and Kernel-shaped: `const computation = interpreter.compute(document); const applied = computation.applyTo(document); const validation = interpreter.validateFull(applied);`. The form retains `applied`.
 
 ## Kotlin and Java
 
 Resolve the first-party publication from this repository's [GitHub Pages Maven repository](https://mbackschat.github.io/a12-interpreter-releases/maven/). Third-party Kotlin dependencies continue to resolve from Maven Central.
 
-```kotlin
+```gradle
 repositories {
     maven("https://mbackschat.github.io/a12-interpreter-releases/maven")
     mavenCentral()
@@ -167,24 +109,84 @@ dependencies {
 }
 ```
 
+Java callers use the same JVM artifact; `ModelWorkspaceJava.collect` projects asynchronous model providers through `CompletionStage`.
+
+The Kotlin and Java surface has the same shape as the TypeScript one: prepare a workspace, read a Document against the prepared model, then create an interpreter and ask it for validation or computation. The differences are idiomatic rather than structural — model sources are assembled through a typed builder, and `readDocument` takes A12 Document JSON as text.
+
+<!-- snippet: interpreter-kotlin-start -->
 ```kotlin
-val source = WorkspaceModelSource.builder().json(rawModelJson).build()
-val prepared = ModelWorkspace.fromSources(listOf(source)).prepare("permit-basic")
-val document = prepared.documents.readDocument(
-    """{"Permit":{"ApplicationNo":"P-42","RequestedArea":120}}""",
+import io.github.mbackschat.a12.dm.interpreter.ComputationReport
+import io.github.mbackschat.a12.dm.interpreter.ModelWorkspace
+import io.github.mbackschat.a12.dm.interpreter.ValidationReport
+import io.github.mbackschat.a12.dm.interpreter.WorkspaceModelSource
+
+data class InterpreterResult(
+    val starterJson: String,
+    val validation: ValidationReport,
+    val computation: ComputationReport,
 )
-val report = prepared.createInterpreter().validateFull(document)
+
+fun runInterpreter(modelJson: String): InterpreterResult {
+    val source = WorkspaceModelSource.builder().json(modelJson).build()
+    val prepared = ModelWorkspace.fromSources(listOf(source)).prepare("permit-basic")
+    val starterJson = prepared.documents.encodeDocument(prepared.documents.seedDocument())
+    val document = prepared.documents.readDocument(
+        """{"Permit":{"ApplicationNo":"P-42","RequestedArea":120}}""",
+    )
+    val interpreter = prepared.createInterpreter()
+    return InterpreterResult(
+        starterJson = starterJson,
+        validation = interpreter.validateFull(document),
+        computation = interpreter.compute(document),
+    )
+}
 ```
 
-Java callers use the same JVM artifact; `ModelWorkspaceJava.collect` projects asynchronous model providers through `CompletionStage`.
+`ValidationReport` and `ComputationReport` carry the same information as their TypeScript counterparts, including the model-owned pointers that tell apart the rows of a computation inside a repeatable group. Java consumers use these same types directly; a worked Java example lives in the developer API guide linked above.
+
+One thing to carry over from *Server-side model cache* below: the `PreparedModel` returned by `prepare` is the expensive, reusable part and is safe to share across concurrent requests, while the `Interpreter` from `createInterpreter()` is per request. Retaining the prepared model and creating an interpreter per call is the intended pattern, not an optimization.
 
 ## Workspaces
 
-`ModelWorkspace.fromSources` freezes a caller-supplied finite source set. `ModelWorkspace.collect` asks a caller-owned provider only for dependencies discovered from the entry model and loads each exact id at most once.
+`ModelWorkspace.fromSources` freezes a caller-supplied finite source set. `ModelWorkspace.collect` asks a caller-owned provider only for dependencies discovered from the entry model and loads each exact id at most once. Neither method performs implicit I/O.
 
-`expand(entryModelId)` resolves includes and imported type definitions into self-contained DM-JSON. `prepare(entryModelId)` continues through evaluator support checks and returns a reusable `PreparedModel`. Ambiguous, cyclic, incomplete, oversized, or integrity-invalid workspaces fail with structured diagnostics rather than a source-order guess.
+`expand(entryModelId)` returns self-contained DM-JSON after resolving includes, imported type definitions, exclusions, ids, and cross-model references. `prepare(entryModelId)` continues through evaluator support checks and returns a reusable `PreparedModel`. Use `PreparedModel.loadExpandedJson` when that self-contained artifact is already available.
 
-The browser showcase uses this same public provider/workspace boundary. You can use its built-in examples or select your own local folder, model files, and Document; selected files remain in the browser.
+Preparation rejects ambiguous or incomplete workspaces instead of choosing a source-order winner. Errors carry stable structured diagnostics; provider exception messages, file paths, URLs, and credentials are not copied into them.
+
+What matters for this repository is that the browser showcase uses that same public provider/workspace boundary. You can use its built-in examples or select your own local folder, model files, and Document; selected files remain in the browser.
+
+## Server-side model cache
+
+**A prepared model is shareable across concurrent requests; an interpreter is not.**
+
+A `PreparedModel` owns everything derived from the model alone — condition and operation ASTs, iteration scopes,
+uniqueness plans, the path index, the computation dependency order — memoized in thread-safe lazy state. One cache
+entry therefore serves every tenant and every concurrent request for that model, whatever their configuration, and a
+second interpreter over it performs no model-static work at all. In the shipped consumer example, 12 concurrent
+requests across 4 threads over 3 models cost **3 preparations**.
+
+An `Interpreter` is per request. That is a safety requirement, not a cost preference: it carries snapshot-scoped
+state that custom conditions read, so sharing one across threads is unsupported.
+
+Four things to know before sizing a cache:
+
+- A resident prepared model is **larger than the DM-JSON it came from**, and the ratio moves with model SHAPE rather
+  than size, so size the cache in **bytes, not entries**. The measured per-model cost and the structural budgeting
+  rule are in [Performance and footprint](PERFORMANCE.md).
+- An undersized cache is not slightly worse, it is no cache plus eviction overhead. The same 12 requests through a
+  cache one entry too small cost **12 preparations and 10 evictions**.
+- The cache is necessarily **in-process**: a prepared model is a live instance with a per-instance owner identity
+  and no serialization, so only the expanded DM-JSON can live in a shared tier.
+
+The complete pattern — cache keying, single-flight loading, eviction safety, and the trade-offs — is in
+[the developer API guide](https://github.com/mbackschat/a12-interpreter-releases/blob/@RELEASE_TAG@/site/api/v@VERSION@/INTERPRETER-API-GUIDE.md).
+
+## Compatibility and limits
+
+The clean-room implementation is tested against the normative dynamic-Groovy Kernel strategy and against static Java wherever both Kernel strategies agree. JVM, Node.js, and packed-package Chrome consumers run the same portable behavior corpus.
+
+The core is MIT-licensed and contains no Kernel bytecode or runtime dependency. Supported model time zones are `UTC`, `GMT`, and `Europe/Berlin`; all four A12 Date precisions are supported. `supportReport()` and the `unsupported` members on validation and computation results keep unsupported programs explicit; each entry's `subject` says whether it addresses a model element or a single Document cell.
 
 <!-- source-statistics:interpreter-release:start -->
 ## Source statistics
@@ -195,7 +197,7 @@ Generated with [Tokei](https://github.com/XAMPPRocky/tokei) from the standalone 
 |---|---:|---:|---:|---:|
 | Java | 0 | 0 | 0 | 0 |
 | Kotlin | 114 | 18703 | 7575 | 2367 |
-| TypeScript | 17 | 3190 | 269 | 277 |
+| TypeScript | 17 | 3209 | 274 | 279 |
 
 Maintainers regenerate this table with the local statistics updater; both release publishers compare it with fresh counts before any public mutation.
 <!-- source-statistics:interpreter-release:end -->
