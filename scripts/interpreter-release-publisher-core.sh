@@ -196,6 +196,7 @@ interpreter_release_assemble_public_mirror() {
     --api-docs-archive "$source_root/build/interpreter-release/api-docs/dm-interpreter-$RELEASE_ARTIFACT_VERSION-api-docs.zip" \
     --showcase "$source_root/build/interpreter-release/consumer/browser/dist" \
     --readme "$source_root/interpreter/public-release/README.md" \
+    --performance "$source_root/interpreter/public-release/PERFORMANCE.md" \
     --changelog "$source_root/interpreter/CHANGELOG.md" \
     --license "$source_root/LICENSE" \
     --disclaimer "$source_root/interpreter/public-release/DISCLAIMER.md" \

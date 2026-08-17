@@ -3169,6 +3169,7 @@ def assembleInterpreterPublicMirror = tasks.register(
         interpreterNpmTarball,
         interpreterApiDocsArchive,
         file('public-release/README.md'),
+        file('public-release/PERFORMANCE.md'),
         file('CHANGELOG.md'),
         rootProject.file('LICENSE'),
         file('public-release/DISCLAIMER.md'),

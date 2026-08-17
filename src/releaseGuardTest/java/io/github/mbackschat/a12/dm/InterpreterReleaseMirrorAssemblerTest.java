@@ -53,6 +53,7 @@ class InterpreterReleaseMirrorAssemblerTest {
                 "io/github/mbackschat/a12/dm/dm-interpreter/" + VERSION
                         + "/dm-interpreter-" + VERSION + ".pom"));
         assertTrue(Files.readString(firstMirror.resolve("README.md")).contains(VERSION));
+        assertTrue(Files.readString(firstMirror.resolve("PERFORMANCE.md")).contains(VERSION));
         assertTrue(Files.readString(firstMirror.resolve("site/privacy.html"))
                 .contains("Martin Backschat"));
         assertTrue(Files.readString(firstMirror.resolve("site/privacy.html"))
@@ -156,6 +157,8 @@ class InterpreterReleaseMirrorAssemblerTest {
         write(root.resolve("showcase/assets/app.js"), "console.log('showcase');\n");
         write(root.resolve("public-sources/README.md"),
                 "# A12 Interpreter releases\n\nVersion @VERSION@ for developers.\n");
+        write(root.resolve("public-sources/PERFORMANCE.md"),
+                "# Performance\n\nMeasurements for version @VERSION@.\n");
         write(root.resolve("public-sources/CHANGELOG.md"),
                 "# Changelog\n\n## [@VERSION@]\n\nInitial release.\n");
         write(root.resolve("public-sources/DISCLAIMER.md"),
@@ -197,6 +200,7 @@ class InterpreterReleaseMirrorAssemblerTest {
                 "--api-docs-archive", inputs.apiArchive().toString(),
                 "--showcase", inputs.showcase().toString(),
                 "--readme", inputs.readme().toString(),
+                "--performance", inputs.performance().toString(),
                 "--changelog", inputs.changelog().toString(),
                 "--license", repoFile("LICENSE").toString(),
                 "--disclaimer", inputs.disclaimer().toString(),
@@ -275,6 +279,10 @@ class InterpreterReleaseMirrorAssemblerTest {
 
         Path readme() {
             return publicSource("README.md");
+        }
+
+        Path performance() {
+            return publicSource("PERFORMANCE.md");
         }
 
         Path changelog() {

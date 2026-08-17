@@ -86,6 +86,7 @@ printf '%s\n' 'console.log("showcase");' > "$OUTPUT/consumer/browser/dist/assets
   --api-docs-archive "$OUTPUT/api-docs/dm-interpreter-$VERSION-api-docs.zip" \
   --showcase "$OUTPUT/consumer/browser/dist" \
   --readme "$ROOT/interpreter/public-release/README.md" \
+  --performance "$ROOT/interpreter/public-release/PERFORMANCE.md" \
   --changelog "$ROOT/interpreter/CHANGELOG.md" \
   --license "$ROOT/LICENSE" \
   --disclaimer "$ROOT/interpreter/public-release/DISCLAIMER.md" \

@@ -7,6 +7,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
+import java.util.Map;
 
 import org.junit.jupiter.api.Test;
 
@@ -86,6 +87,36 @@ class InterpreterReleasePublisherRehearsalTest {
         assertTrue(pages.contains("site/api/v*"));
         assertTrue(pages.contains("uses: actions/deploy-pages@"));
         assertFalse(pages.contains("push:"), "a mirror push must not deploy draft content");
+    }
+
+    @Test
+    void everyAssemblerCallerSuppliesThePerformanceDocument() throws Exception {
+        var expectedArguments = Map.of(
+                "interpreter/build.gradle",
+                "file('public-release/PERFORMANCE.md').absolutePath",
+                "scripts/interpreter-release-publisher-core.sh",
+                "--performance \"$source_root/interpreter/public-release/PERFORMANCE.md\"",
+                "scripts/rehearse-interpreter-release.sh",
+                "--performance \"$ROOT/interpreter/public-release/PERFORMANCE.md\"",
+                ".github/interpreter-mirror-workflows/build-release.yml",
+                "--performance \"$GITHUB_WORKSPACE/source/interpreter/public-release/PERFORMANCE.md\"",
+                "src/releaseGuardTest/java/io/github/mbackschat/a12/dm/InterpreterReleaseMirrorAssemblerTest.java",
+                "\"--performance\", inputs.performance().toString()");
+
+        for (var expectation : expectedArguments.entrySet()) {
+            var caller = Files.readString(repoFile(expectation.getKey()));
+            assertTrue(
+                    caller.contains(expectation.getValue()),
+                    () -> expectation.getKey() + " does not supply the required performance document");
+        }
+
+        var interpreterBuild = Files.readString(repoFile("interpreter/build.gradle"));
+        var assemblerTask = interpreterBuild.substring(
+                interpreterBuild.indexOf("def assembleInterpreterPublicMirror"),
+                interpreterBuild.indexOf("// --- Conformance corpus replay"));
+        assertTrue(
+                assemblerTask.contains("file('public-release/PERFORMANCE.md'),"),
+                "the Gradle assembler task must track performance-document content as an input");
     }
 
     @Test

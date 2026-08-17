@@ -100,6 +100,7 @@ jobs:
             --api-docs-archive "$GITHUB_WORKSPACE/source/build/interpreter-release/api-docs/dm-interpreter-${{ inputs.artifact_version }}-api-docs.zip" \
             --showcase "$GITHUB_WORKSPACE/source/build/interpreter-release/consumer/browser/dist" \
             --readme "$GITHUB_WORKSPACE/source/interpreter/public-release/README.md" \
+            --performance "$GITHUB_WORKSPACE/source/interpreter/public-release/PERFORMANCE.md" \
             --changelog "$GITHUB_WORKSPACE/source/interpreter/CHANGELOG.md" \
             --license "$GITHUB_WORKSPACE/source/LICENSE" \
             --disclaimer "$GITHUB_WORKSPACE/source/interpreter/public-release/DISCLAIMER.md" \
