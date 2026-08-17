@@ -25,5 +25,6 @@ This is the append-only registry for every `IAG<n>` and `IRG<n>` identifier issu
 | IRG2 <a id="irg2"></a> | shipped | deploy the showcase semantics badge after v0.9.1 |
 | IRG3 <a id="irg3"></a> | shipped | make both Kotlin ABI goldens member-level |
 | IRG4 <a id="irg4"></a> | shipped | demonstrate per-row computed identity in the browser showcase |
+| IRG5 <a id="irg5"></a> | deferred | a scripted documentation-only mirror refresh |
 
 The corrected identifiers are provenance labels, not live work. `IAG12` shipped with the npm pointer export and was subsequently corrected to the two owner-shaped pointer contracts in [IF242](INTERPRETER-FINDINGS.md#if242). `IRG4` shipped as the repeated permit-model computation in [INTERPRETER-RELEASE-SPEC](INTERPRETER-RELEASE-SPEC.md). `IAG11` closed by keeping the lossy house spelling tool-owned and removing the accidental public `MessagePointers` façade; it is not an A12 format.

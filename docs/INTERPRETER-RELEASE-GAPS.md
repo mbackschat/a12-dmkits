@@ -30,6 +30,16 @@ The API and runtime compatibility work is owned by [IAG2 in INTERPRETER-API-GAPS
 
 **Completion:** the real host consumer, source/license checks, dependency and bytecode scans, complete interface projection, customization lifecycle, validation/computation differentials, and publication smoke all pass. Closing this gap also closes or narrows IAG2 in the same commit.
 
+### IRG5 — a scripted documentation-only mirror refresh <a id="irg5"></a>
+
+The publisher exposes `--qualify` and `--go-live` only, and `interpreter_release_stage` refuses a published tag, so correcting the mirror's landing `README.md` after publication has no scripted path. It was done by hand on 2026-08-17 for v0.13.0 under the boundary exception, following the sequence and the inventory rule in [INTERPRETER-RELEASE-SPEC §10.1](INTERPRETER-RELEASE-SPEC.md).
+
+A `--refresh-docs` mode would re-assemble, update only mutable presentation files, recompute `PUBLIC-FILES.sha256` **over the existing mirror tree** rather than the local assembly, and refuse if any versioned API directory, Maven coordinate tree, release asset or release tag would change. The inventory source is the load-bearing detail: a locally generated inventory describes local artifacts, and javadoc JARs are not byte-reproducible, so the mismatch surfaces at the next release rather than at the refresh.
+
+**Trigger:** a second hand-run refresh, or any refresh that needs to touch more than the landing document.
+
+**Deferred because:** one occurrence does not yet justify a new release-machinery surface, and the hand sequence is now written down with the trap that makes it dangerous.
+
 ## 3. Out of scope
 
 - Publishing first-party packages to npmjs.org, Maven Central, or GitHub Packages.

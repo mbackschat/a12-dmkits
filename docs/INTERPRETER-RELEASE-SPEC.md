@@ -200,6 +200,16 @@ Before deployment, the workflow fetches that immutable tag and requires no Git d
 
 The release assets, public release tag, versioned API content, and Maven artifacts remain unchanged. A change to any of those belongs in a later version.
 
+### 10.1 Refreshing a mirror document, and the inventory trap
+
+The mirror's root `README.md` is mutable presentation, but it is not part of the Pages tree, so `allow_published_refresh` does not reach it. A documentation-only correction there changes two files: the document itself and `PUBLIC-FILES.sha256`, which inventories every public file with its digest and which the publisher verifies before the next release.
+
+**Recompute that inventory over the MIRROR's own tree — never from a local re-assembly.** A local `assembleInterpreterPublicMirror` run is not byte-identical to what CI published for the same version: measured 2026-08-17 against the live v0.13.0 mirror, the two trees differed in the javadoc JARs, `maven-metadata.xml` and all four of its checksums, `release-manifest.json`, and `site/api/v<version>/README.md`. JavaDoc JARs are not byte-reproducible, so an inventory generated locally describes the local artifacts rather than the published ones, and `release_verify_public_inventory` then fails at the *next* release with a digest mismatch on files nobody touched. The failure is displaced in both time and place from its cause, which is what makes it worth writing down.
+
+The safe shape, using the publisher's own functions against a clone of the mirror rather than a reimplementation: swap in the assembled document, then `release_scan_public_tree`, `release_check_interpreter_mirror_allowlist`, `release_write_public_inventory`, and `release_verify_public_inventory`, and confirm the working tree shows exactly the intended files as modified. Commit through `configure_release_git_identity`.
+
+**This remains a hand-run boundary exception, not a supported mode.** The publisher exposes only `--qualify` and `--go-live`, and `interpreter_release_stage` refuses a published tag outright, so re-publishing the same version to correct a document is not available and deleting the published release to reuse its identity is refused by [§9's removal policy](RELEASE-SPEC.md) and by the exercised-identity rule. A document that must reach the *release assets* — the README inside the npm tarball or the api-docs archive — needs a new version; only the mirror's landing page can be refreshed this way. The missing scripted path is tracked in [INTERPRETER-RELEASE-GAPS](INTERPRETER-RELEASE-GAPS.md).
+
 ## 11. External dependencies and hosting
 
 GitHub Releases and GitHub Pages are the first-party host. Public third-party dependencies continue to resolve from their normal upstream registries. The project does not mirror Maven Central or npm dependencies and does not use the private source repository as a consumer resolution fallback.
