@@ -74,6 +74,8 @@ const run = async (): Promise<void> => {
     status.dataset.performanceScenario = measurement.scenario;
     status.dataset.documentRows = measurement.rows.toString();
     status.dataset.documentBytes = measurement.documentBytes.toString();
+    status.dataset.warmValidationMillis = measurement.warmValidationMillis
+      .toFixed(3);
     status.dataset.expectedFindings = measurement.expectedFindings.toString();
     status.dataset.state = "passed";
     status.textContent = `${measurement.scenario} browser first answer: ${

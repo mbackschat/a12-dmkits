@@ -19,6 +19,8 @@ export interface BrowserPerformanceMeasurement {
   readonly scenario: BrowserPerformanceScenario;
   readonly rows: number;
   readonly documentBytes: number;
+  /** Warm validation only: the interpreter is built OUTSIDE the clock, as the JVM lane measures it. */
+  readonly warmValidationMillis: number;
   readonly expectedFindings: number;
   readonly elapsedMillis: number;
 }
@@ -55,6 +57,9 @@ const representativeDocument = (): A12Document => {
   }
   return {Perf: {Lines: lines}};
 };
+
+/** Repeats behind the warm median. Enough to leave the first-run effects, cheap enough per process. */
+const WARM_VALIDATION_RUNS = 20;
 
 const performanceCase = (
   scenario: BrowserPerformanceScenario,
@@ -102,6 +107,24 @@ export const measureBrowserFirstAnswer = async (
       `unsupported=${report.unsupported.length} findings=${report.findings.length}`,
     );
   }
+  // WARM, validation only — the counterpart of the JVM lane's `timeInterpreter`, which builds the interpreter
+  // outside the clock and times repeated runs. Measured in the same fresh process as the cold figure above so
+  // both describe one browser, and asserted on every run so a degraded engine cannot report a fast warm time.
+  const warmInterpreter = prepared.createInterpreter();
+  const warmSamples: number[] = [];
+  for (let run = 0; run < WARM_VALIDATION_RUNS; run += 1) {
+    const warmStarted = performance.now();
+    const warmReport = warmInterpreter.validateFull(snapshot);
+    warmSamples.push(performance.now() - warmStarted);
+    if (warmReport.findings.length !== fixedCase.expectedFindings) {
+      throw new Error(
+        `${scenario} warm validation differs: findings=${warmReport.findings.length}`,
+      );
+    }
+  }
+  const ordered = [...warmSamples].sort((left, right) => left - right);
+  const warmValidationMillis = ordered[Math.floor(ordered.length / 2)]!;
+
   return {
     scenario,
     rows: fixedCase.rows,
@@ -110,5 +133,6 @@ export const measureBrowserFirstAnswer = async (
     ).byteLength,
     expectedFindings: fixedCase.expectedFindings,
     elapsedMillis,
+    warmValidationMillis,
   };
 };

@@ -35,6 +35,7 @@ interface PerformanceScenario {
 interface PerformanceMeasurement {
   readonly documentBytes: number;
   readonly samples: readonly number[];
+  readonly warmSamples: readonly number[];
 }
 
 const scenarios: readonly PerformanceScenario[] = [
@@ -60,6 +61,7 @@ let chromeVersion: string | undefined;
 await withStaticServer(async (url) => {
   for (const scenario of scenarios) {
     const samples: number[] = [];
+    const warmSamples: number[] = [];
     let documentBytes: number | undefined;
     const collectUntil = async (targetCount: number): Promise<void> => {
       for (let index = samples.length; index < targetCount; index += 1) {
@@ -109,6 +111,15 @@ await withStaticServer(async (url) => {
           }
           documentBytes = observedDocumentBytes;
           samples.push(value);
+          const warm = Number(
+            await status.getAttribute("data-warm-validation-millis"),
+          );
+          if (!Number.isFinite(warm) || warm <= 0) {
+            throw new Error(
+              `${scenario.id} warm validation sample ${index + 1} is invalid: ${warm}`,
+            );
+          }
+          warmSamples.push(warm);
         } finally {
           await closeChrome(browser);
         }
@@ -129,7 +140,7 @@ await withStaticServer(async (url) => {
     if (documentBytes === undefined) {
       throw new Error(`${scenario.id} browser measurement has no Document size`);
     }
-    measurements.set(scenario.id, {documentBytes, samples});
+    measurements.set(scenario.id, {documentBytes, samples, warmSamples});
   }
 });
 
@@ -171,6 +182,15 @@ const measuredScenarios = Object.fromEntries(scenarios.map((scenario) => {
           passed: true,
         }
         : null,
+      // Warm, validation only: interpreter built outside the clock, the JVM lane's timed region.
+      warmValidation: {
+        timedRegion: "validateFull-only-warm-prepared-interpreter",
+        medianMillis: (() => {
+          const o = [...measurement.warmSamples].sort((l, r) => l - r);
+          return o[Math.floor(o.length / 2)]!;
+        })(),
+        sampleCount: measurement.warmSamples.length,
+      },
       samplesMillis: measurement.samples,
     },
   ];
