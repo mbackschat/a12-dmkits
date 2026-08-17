@@ -851,15 +851,18 @@ Runtime evaluation — *which rules fire on this document, what does each comput
 - **Kernel-exact, by verification.** Its results are checked rule-for-rule against the real A12 kernel by a **differential test suite** plus a model-driven fuzzer, and it replays a **conformance corpus** of kernel-verified expected outcomes — captured tri-verified against the kernel's two evaluation strategies — on both JVM and JS.
 - **A standalone library, not just the CLI's engine.** One common engine serves **JVM, Node.js, and browser** applications. The public TypeScript, Kotlin, and Java API prepares finite or provider-backed workspaces, resolves includes and imported type definitions, reads Documents, reuses a prepared interpreter across form changes, runs full or partial validation, computes derived values, and hosts project field/condition callbacks.
 - **A developer-facing public release.** Start with the [public interpreter repository](https://github.com/mbackschat/a12-interpreter-releases), [try the live browser showcase](https://mbackschat.github.io/a12-interpreter-releases/showcase/), or browse the [version-matched API guide and references](https://mbackschat.github.io/a12-interpreter-releases/api/latest/). The packed-artifact-tested [source guide](docs/INTERPRETER-API-GUIDE.md) and [showcase source](interpreter/consumer-tests/browser/) remain here for contributors.
-### Fast, and measured — never assumed
+### Performance and footprint
 
 The same engine runs on the JVM, Node.js and in the browser, and the figures below come from two runtimes — latency measured in system Chrome, cross-engine comparison and memory measured on the JVM.
 
-Small enough to ship to a browser, and quick enough to re-run on every keystroke. The two Documents below bracket the useful range — one the size of a real form, one deliberately punishing:
+Small enough to ship to a browser — the production JavaScript entry is **240 kB gzip**, with no A12 Kernel bytecode — and quick enough to re-run on every keystroke.
 
-| Ships as | 200-row Document | 10,000-row Document, 4,900 findings |
-|---|---|---|
-| **240 kB gzip** | **11.55 ms median** | **166.1 ms median** |
+Measured in system Chrome against the packed npm package, the same artifact consumers install, over the two Documents the collector defines. Each is timed **two ways**, because an application experiences both: the **first answer** a user waits for when a form opens, which includes building the interpreter, and the **warm** cost of revalidating after every keystroke, which does not.
+
+| Document | Findings | First answer *(includes building the interpreter)* | Warm *(validation only)* |
+|---|---|---|---|
+| 200 rows — representative | — | **11.55 ms median** | **1.1 ms** |
+| 10,000 rows — stress | 4,900 | **166.1 ms median** | **53.3 ms** |
 
 The stress Document carries 50× the rows and costs 14× the time.
 
@@ -880,15 +883,40 @@ The spread does not track model size: the widest margins were measured on comput
 <!-- source-statistics:root:start -->
 ## Source statistics
 
-Generated with [Tokei](https://github.com/XAMPPRocky/tokei) from the production sources in this repository. Tests, fixtures, generated output, build trees, and code embedded in Markdown are excluded.
+Generated with [Tokei](https://github.com/XAMPPRocky/tokei) from this repository. Fixtures, generated output and build trees are excluded from every count.
 
-| Language | Files | Code | Comments | Blanks |
-|---|---:|---:|---:|---:|
-| Java | 475 | 47474 | 13555 | 6957 |
-| Kotlin | 114 | 18703 | 7575 | 2367 |
-| TypeScript | 17 | 3209 | 274 | 279 |
+### Production
 
-Maintainers regenerate this table with the local statistics updater; both release publishers compare it with fresh counts before any public mutation.
+The shipped product. Counted from `core/src/main/java`, `rulekit/src/main/java`, `modelkit/src/main/java`, `edit/src/main/java`, `schemakit/src/main/java`, `adapter/src/main/java`, `cli/src/main/java`, `interpreter/src/commonMain/kotlin`, `interpreter/src/jvmMain/kotlin`, `interpreter/src/jsMain/kotlin`, `interpreter/typescript/src`, `interpreter/consumer-tests/browser/src`, `cli/src/main/resources/io/github/mbackschat/a12/dm/cli/interp/custom-js-worker.mjs`.
+
+| Language | Files | Lines | Code | Comments | Blanks |
+|---|---:|---:|---:|---:|---:|
+| Java | 475 | 67986 | 47474 | 13555 | 6957 |
+| Kotlin | 114 | 28645 | 18703 | 7575 | 2367 |
+| TypeScript | 17 | 3762 | 3209 | 274 | 279 |
+| JavaScript | 1 | 107 | 72 | 25 | 10 |
+
+### Verification
+
+Tests, laws, kernel differentials, fuzzers, conformance replay, and the external consumer programs compiled against the packed artifacts. Counted from `src/test/java`, `schemakit/src/test/java`, `adapter/src/test/java`, `cli/src/test/java`, `src/noBackendTest/java`, `src/releaseGuardTest/java`, `adapter/src/kernelClosureConsumer/java`, `interpreter/src/jvmTest/java`, `interpreter/consumer-tests/kotlin-jvm/src/main/java`, `adapter/src/test/kotlin`, `interpreter/src/commonTest/kotlin`, `interpreter/src/jvmTest/kotlin`, `interpreter/src/jsTest/kotlin`, `interpreter/consumer-tests/kotlin-jvm/src/main/kotlin`, `interpreter/consumer-tests/kotlin-js/src/jsMain/kotlin`, `interpreter/consumer-tests/typescript/src`, `interpreter/consumer-tests/browser/scripts`.
+
+| Language | Files | Lines | Code | Comments | Blanks |
+|---|---:|---:|---:|---:|---:|
+| Java | 726 | 99182 | 72432 | 14392 | 12358 |
+| Kotlin | 695 | 97059 | 72228 | 14802 | 10029 |
+| TypeScript | 14 | 3285 | 3103 | 50 | 132 |
+
+### Tooling
+
+Build scripts, build-time generators, and the evaluation harness — neither shipped nor a check on what ships. Counted from `scripts/SourceProvenance.java`, `interpreter/consumer-tests/kotlin-jvm/build.gradle.kts`, `interpreter/consumer-tests/kotlin-jvm/settings.gradle.kts`, `interpreter/consumer-tests/kotlin-js/build.gradle.kts`, `interpreter/consumer-tests/kotlin-js/settings.gradle.kts`, `eval/benchmark.workflow.js`, `eval/gap-finder.workflow.js`, `interpreter/typescript/scripts`.
+
+| Language | Files | Lines | Code | Comments | Blanks |
+|---|---:|---:|---:|---:|---:|
+| Java | 1 | 70 | 52 | 10 | 8 |
+| Kotlin | 4 | 90 | 81 | 0 | 9 |
+| JavaScript | 6 | 1835 | 1573 | 129 | 133 |
+
+Maintainers regenerate these tables with the local statistics updater; both release publishers compare them with fresh counts before any public mutation.
 <!-- source-statistics:root:end -->
 
 ---

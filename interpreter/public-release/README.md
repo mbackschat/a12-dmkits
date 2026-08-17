@@ -191,15 +191,27 @@ The core is MIT-licensed and contains no Kernel bytecode or runtime dependency. 
 <!-- source-statistics:interpreter-release:start -->
 ## Source statistics
 
-Generated with [Tokei](https://github.com/XAMPPRocky/tokei) from the standalone interpreter library, TypeScript facade, and browser showcase. Tests, fixtures, generated output, build trees, and code embedded in Markdown are excluded.
+Generated with [Tokei](https://github.com/XAMPPRocky/tokei) from the standalone interpreter library, TypeScript facade, and browser showcase. Fixtures, generated output and build trees are excluded from every count.
 
-| Language | Files | Code | Comments | Blanks |
-|---|---:|---:|---:|---:|
-| Java | 0 | 0 | 0 | 0 |
-| Kotlin | 114 | 18703 | 7575 | 2367 |
-| TypeScript | 17 | 3209 | 274 | 279 |
+### Production
 
-Maintainers regenerate this table with the local statistics updater; both release publishers compare it with fresh counts before any public mutation.
+The shipped product. Counted from `interpreter/src/commonMain/kotlin`, `interpreter/src/jvmMain/kotlin`, `interpreter/src/jsMain/kotlin`, `interpreter/typescript/src`, `interpreter/consumer-tests/browser/src`.
+
+| Language | Files | Lines | Code | Comments | Blanks |
+|---|---:|---:|---:|---:|---:|
+| Kotlin | 114 | 28645 | 18703 | 7575 | 2367 |
+| TypeScript | 17 | 3762 | 3209 | 274 | 279 |
+
+### Verification
+
+Tests, laws, kernel differentials, fuzzers, conformance replay, and the external consumer programs compiled against the packed artifacts. Counted from `interpreter/src/commonTest/kotlin`, `interpreter/src/jvmTest/kotlin`, `interpreter/src/jsTest/kotlin`, `interpreter/consumer-tests/kotlin-jvm/src/main/kotlin`, `interpreter/consumer-tests/kotlin-js/src/jsMain/kotlin`, `interpreter/consumer-tests/typescript/src`, `interpreter/consumer-tests/browser/scripts`.
+
+| Language | Files | Lines | Code | Comments | Blanks |
+|---|---:|---:|---:|---:|---:|
+| Kotlin | 263 | 30485 | 24210 | 2904 | 3371 |
+| TypeScript | 14 | 3285 | 3103 | 50 | 132 |
+
+Maintainers regenerate these tables with the local statistics updater; both release publishers compare them with fresh counts before any public mutation.
 <!-- source-statistics:interpreter-release:end -->
 
 ## Release contents

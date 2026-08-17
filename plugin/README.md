@@ -260,15 +260,28 @@ Want ideas for what to *ask*? [`SCENARIOS.md`](SCENARIOS.md) catalogues realisti
 <!-- source-statistics:dmtool:start -->
 ## Source statistics
 
-Generated with [Tokei](https://github.com/XAMPPRocky/tokei) from the production sources linked into the dmtool artifact. Tests, fixtures, generated output, build trees, and code embedded in Markdown are excluded.
+Generated with [Tokei](https://github.com/XAMPPRocky/tokei) from the sources linked into the dmtool artifact. Fixtures, generated output and build trees are excluded from every count.
 
-| Language | Files | Code | Comments | Blanks |
-|---|---:|---:|---:|---:|
-| Java | 475 | 47474 | 13555 | 6957 |
-| Kotlin | 114 | 18703 | 7575 | 2367 |
-| TypeScript | 0 | 0 | 0 | 0 |
+### Production
 
-Maintainers regenerate this table with the local statistics updater; both release publishers compare it with fresh counts before any public mutation.
+The shipped product. Counted from `core/src/main/java`, `rulekit/src/main/java`, `modelkit/src/main/java`, `edit/src/main/java`, `schemakit/src/main/java`, `adapter/src/main/java`, `cli/src/main/java`, `interpreter/src/commonMain/kotlin`, `interpreter/src/jvmMain/kotlin`, `interpreter/src/jsMain/kotlin`, `cli/src/main/resources/io/github/mbackschat/a12/dm/cli/interp/custom-js-worker.mjs`.
+
+| Language | Files | Lines | Code | Comments | Blanks |
+|---|---:|---:|---:|---:|---:|
+| Java | 475 | 67986 | 47474 | 13555 | 6957 |
+| Kotlin | 114 | 28645 | 18703 | 7575 | 2367 |
+| JavaScript | 1 | 107 | 72 | 25 | 10 |
+
+### Verification
+
+Tests, laws, kernel differentials, fuzzers, conformance replay, and the external consumer programs compiled against the packed artifacts. Counted from `src/test/java`, `schemakit/src/test/java`, `adapter/src/test/java`, `cli/src/test/java`, `src/noBackendTest/java`, `src/releaseGuardTest/java`, `adapter/src/kernelClosureConsumer/java`, `interpreter/src/jvmTest/java`, `interpreter/consumer-tests/kotlin-jvm/src/main/java`, `adapter/src/test/kotlin`, `interpreter/src/commonTest/kotlin`, `interpreter/src/jvmTest/kotlin`, `interpreter/src/jsTest/kotlin`, `interpreter/consumer-tests/kotlin-jvm/src/main/kotlin`, `interpreter/consumer-tests/kotlin-js/src/jsMain/kotlin`.
+
+| Language | Files | Lines | Code | Comments | Blanks |
+|---|---:|---:|---:|---:|---:|
+| Java | 726 | 99182 | 72432 | 14392 | 12358 |
+| Kotlin | 695 | 97059 | 72228 | 14802 | 10029 |
+
+Maintainers regenerate these tables with the local statistics updater; both release publishers compare them with fresh counts before any public mutation.
 <!-- source-statistics:dmtool:end -->
 
 ## Changelog
