@@ -2393,6 +2393,9 @@ def interpreterDocGuardTest = tasks.register('interpreterDocGuardTest', Test) {
     rootProject.guardInputs(it, [
         'root version': rootProject.file('build.gradle'),
         'public interpreter guide': rootProject.file('docs/INTERPRETER-API-GUIDE.md'),
+        // This guard asserts against the ROOT README, which is outside the fileTree below; without it
+        // declared, editing that file left the task UP-TO-DATE and its assertions unrun.
+        'main repository README': rootProject.file('README.md'),
         'interpreter public/source text': fileTree('.') {
             exclude 'build/**'
             include 'README.md'
@@ -2935,7 +2938,8 @@ def verifyInterpreterPerformanceClaims = tasks.register('verifyInterpreterPerfor
             // The warm figure is published in the two detailed READMEs only; the showcase page, its smoke
             // assertion, the root README and the changelog carry the first-answer figures alone.
             def path = rootProject.relativePath(surface)
-            def publishesWarm = path == 'interpreter/public-release/PERFORMANCE.md'
+            def publishesWarm = path == 'interpreter/public-release/PERFORMANCE.md' ||
+                path == 'README.md'
             (publishesWarm ? required + warmRequired : required).each { needle ->
                 if (!text.contains(needle)) {
                     throw new GradleException(
@@ -2969,6 +2973,13 @@ tasks.register('syncInterpreterPerformanceClaims') {
         def swaps = [:]
         // ORDER MATTERS: the "<n> ms median" form first, then the bare "<n> ms" that the ASCII bar uses.
         // Swapping only the first form silently drifted the chart while every table stayed correct.
+        // The measurement DATE is a published claim too: the guard requires every surface to carry the one
+        // in the claim file, so without this swap a re-measure left the docs on the old date and failed the
+        // guard until someone hand-edited them — the manual step this pair exists to remove.
+        if (old.measuredOn) {
+            swaps[old.measuredOn.toString()] =
+                new java.text.SimpleDateFormat('yyyy-MM-dd').format(new Date())
+        }
         ['representative', 'stress'].each { id ->
             swaps["${old[id].medianMillis} ms median".toString()] =
                 "${measured.scenarios[id].estimator.medianMillis} ms median".toString()

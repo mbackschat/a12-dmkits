@@ -259,7 +259,8 @@ class InterpreterDocumentationTest {
                 "$surface omits the stress browser timing ${publishedClaim("stress")}",
             )
             assertTrue(text.contains(publishedMeasurementDate()), "$surface omits the measurement date")
-            assertTrue(text.contains("Fast, and measured"), "$surface omits the measured-performance statement")
+            // Deliberately no pin on a phrase: wording is the author's, and pinning a slogan blocks ordinary
+            // editing while checking nothing. The measurable claims below are what must not drift.
             assertTrue(
                 text.contains("generated validator compiled as Java"),
                 "$surface omits the fair Kernel-codegen comparison basis",

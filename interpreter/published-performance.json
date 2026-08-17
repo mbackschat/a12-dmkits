@@ -1,21 +1,21 @@
 {
-  "_comment": "SINGLE SOURCE of every published browser performance claim. Regenerate with `./build.sh :interpreter:syncInterpreterPerformanceClaims` after `:interpreter:measureExternalInterpreterBrowserFirstAnswer`; never hand-edit.",
-  "measuredOn": "2026-08-17",
-  "runner": {
-    "cpu": "Apple M1",
-    "browser": "151"
-  },
-  "representative": {
-    "rows": 200,
-    "documentBytes": 4512,
-    "medianMillis": 11.55,
-    "warmMedianMillis": 1.1
-  },
-  "stress": {
-    "rows": 10000,
-    "documentBytes": 437914,
-    "findings": 4900,
-    "medianMillis": 166.1,
-    "warmMedianMillis": 53.3
-  }
+    "_comment": "SINGLE SOURCE of every published browser performance claim. Regenerate with `./build.sh :interpreter:syncInterpreterPerformanceClaims` after `:interpreter:measureExternalInterpreterBrowserFirstAnswer`; never hand-edit.",
+    "measuredOn": "2026-08-17",
+    "runner": {
+        "cpu": "Apple M1",
+        "browser": "151"
+    },
+    "representative": {
+        "rows": 200,
+        "documentBytes": 4512,
+        "medianMillis": 11.55,
+        "warmMedianMillis": 1.1
+    },
+    "stress": {
+        "rows": 10000,
+        "documentBytes": 437914,
+        "findings": 4900,
+        "medianMillis": 166.1,
+        "warmMedianMillis": 53.3
+    }
 }
