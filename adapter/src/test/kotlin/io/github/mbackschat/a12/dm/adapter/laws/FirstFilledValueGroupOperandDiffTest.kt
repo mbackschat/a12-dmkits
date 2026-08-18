@@ -49,6 +49,15 @@ class FirstFilledValueGroupOperandDiffTest {
         const val INSPECTIONS = "/Return/Handling/Inspections"
         const val FINDING = "/Return/Handling/Inspections/Finding"
         const val FINDING_STAR = "/Return/Handling/Inspections*/Finding"
+        const val ENCOUNTER = "/Return/Encounter"
+        const val ZETA_DIRECT = "/Return/Encounter/ZetaDirect"
+        const val ALPHA_DIRECT = "/Return/Encounter/AlphaDirect"
+        const val ZETA_NESTED_VALUE = "/Return/Encounter/ZetaNested/Value"
+        const val ALPHA_NESTED_VALUE = "/Return/Encounter/AlphaNested/Value"
+        const val ROWS = "/Return/Rows"
+        const val FIRST = "/Return/Rows/First"
+        const val SECOND = "/Return/Rows/Second"
+        const val FALLBACK = "/Return/Fallback"
         const val CODE = "FFVG"
     }
 
@@ -69,6 +78,32 @@ class FirstFilledValueGroupOperandDiffTest {
 
     private val m = BoundModel.ofJson(base)
 
+    private val fixedBase = DocumentModelDraft.named("fixed-group-first-filled-order").locale("en_US")
+        .rootGroup("Return") { g ->
+            g.stringField("Reference") { }
+            g.group("Encounter") { encounter ->
+                encounter.stringField("ZetaDirect") { }
+                encounter.stringField("AlphaDirect") { }
+                encounter.group("ZetaNested") { nested -> nested.stringField("Value") { } }
+                encounter.group("AlphaNested") { nested -> nested.stringField("Value") { } }
+            }
+        }.build().toJson()
+
+    private val fixedModel = BoundModel.ofJson(fixedBase)
+
+    private val starredBase = DocumentModelDraft.named("starred-group-first-filled-order").locale("en_US")
+        .rootGroup("Return") { g ->
+            g.stringField("Reference") { }
+            g.group("Rows") { rows ->
+                rows.repeatable(3)
+                rows.stringField("First") { }
+                rows.stringField("Second") { }
+            }
+            g.stringField("Fallback") { }
+        }.build().toJson()
+
+    private val starredModel = BoundModel.ofJson(starredBase)
+
     /** `FieldFilled(Reference) And FirstFilledValue(/Return/Handling) == expected` — the GROUP operand, typed. */
     private fun overGroup(expected: String): String = DslRenderer().render(
         m.field(REF).filled().and(Dsl.firstFilledString(m.firstFilledGroup(HANDLING)).eq(expected)),
@@ -80,6 +115,21 @@ class FirstFilledValueGroupOperandDiffTest {
             Dsl.firstFilledString(
                 m.field(PRIMARY_NOTE).firstFilledOperand(),
                 m.flatten(FINDING_STAR).firstFilledOperand(),
+            ).eq(expected),
+        ),
+    )
+
+    private fun overFixedGroup(expected: String): String = DslRenderer().render(
+        fixedModel.field(REF).filled().and(
+            Dsl.firstFilledString(fixedModel.firstFilledGroup(ENCOUNTER)).eq(expected),
+        ),
+    )
+
+    private fun overStarredGroupAndFallback(expected: String): String = DslRenderer().render(
+        starredModel.field(REF).filled().and(
+            Dsl.firstFilledString(
+                starredModel.firstFilledGroup("$ROWS*"),
+                starredModel.field(FALLBACK).firstFilledOperand(),
             ).eq(expected),
         ),
     )
@@ -112,8 +162,15 @@ class FirstFilledValueGroupOperandDiffTest {
     private fun signature(messages: List<RuntimeLaws.Msg>): List<String> =
         messages.filter { it.code() == CODE }.map { "${it.field()}|${it.type().name}" }.sorted()
 
-    private fun agreeFires(condition: String, expected: Boolean, msg: String, build: (Both) -> Unit) {
-        val kModel = RuntimeLaws.withRule(base, "/Return", "R", "../Reference", CODE, condition)
+    private fun agreeFires(
+        condition: String,
+        expected: Boolean,
+        msg: String,
+        modelJson: String = base,
+        expectedType: MsgType? = null,
+        build: (Both) -> Unit,
+    ) {
+        val kModel = RuntimeLaws.withRule(modelJson, "/Return", "R", "../Reference", CODE, condition)
         val def = ModelLoader.load(kModel)
 
         val dynamic = Both(RuntimeLaws.doc(), def.newDocument()).also(build)
@@ -130,8 +187,39 @@ class FirstFilledValueGroupOperandDiffTest {
             .sorted()
 
         assertEquals(expected, groovy.isNotEmpty(), "$msg — the kernel groovy-dynamic verdict")
+        if (expectedType != null) {
+            val expectedKernelType = when (expectedType) {
+                MsgType.OMISSION -> "OMISSION_ERROR"
+                MsgType.VALUE -> "VALUE_ERROR"
+            }
+            assertEquals(listOf(expectedKernelType), groovy.map { it.substringAfter('|') },
+                "$msg — selected-value polarity")
+        }
         assertEquals(groovy, javaStatic, "$msg — groovy vs java-static (tri-check)")
         assertEquals(groovy, interpreter, "$msg — kernel vs INTERPRETER")
+    }
+
+    private fun reference(b: Both): Both =
+        b.group("/Return", 1).field(REF, "RET-1", 1, 1)
+
+    private fun fixedFields(
+        b: Both,
+        zetaDirect: String? = null,
+        alphaDirect: String? = null,
+        zetaNested: String? = null,
+        alphaNested: String? = null,
+    ) {
+        reference(b).group(ENCOUNTER, 1, 1)
+        zetaDirect?.let { b.field(ZETA_DIRECT, it, 1, 1, 1) }
+        alphaDirect?.let { b.field(ALPHA_DIRECT, it, 1, 1, 1) }
+        zetaNested?.let { b.field(ZETA_NESTED_VALUE, it, 1, 1, 1, 1) }
+        alphaNested?.let { b.field(ALPHA_NESTED_VALUE, it, 1, 1, 1, 1) }
+    }
+
+    private fun starredRow(b: Both, row: Int, first: String? = null, second: String? = null) {
+        b.group(ROWS, 1, row)
+        first?.let { b.field(FIRST, it, 1, row, 1) }
+        second?.let { b.field(SECOND, it, 1, row, 1) }
     }
 
     /** All three declared inspection rows instantiated; only nested row 2 carries a finding. */
@@ -213,4 +301,74 @@ class FirstFilledValueGroupOperandDiffTest {
             b.group("/Return", 1).field(REF, "RET-1", 1, 1)
                 .group(INSPECTIONS, 1, 1, 1)
         }
+
+    /** SPEC-2026-08-17-02: lexical path order loses to stable model declaration order at both fixed depths. */
+    @Test
+    fun aFixedGroupUsesStableDeclarationOrderAndPrefixPolarity() {
+        agreeFires(overFixedGroup("zeta"), expected = true,
+            msg = "fixed/direct both: ZetaDirect is declared before AlphaDirect",
+            modelJson = fixedBase, expectedType = MsgType.VALUE) { b ->
+            fixedFields(b, zetaDirect = "zeta", alphaDirect = "alpha")
+        }
+        agreeFires(overFixedGroup("alpha"), expected = true,
+            msg = "fixed/direct second-only: AlphaDirect remains reachable",
+            modelJson = fixedBase, expectedType = MsgType.OMISSION) { b ->
+            fixedFields(b, alphaDirect = "alpha")
+        }
+        agreeFires(overFixedGroup("zeta"), expected = true,
+            msg = "fixed/nested both: ZetaNested is declared before AlphaNested",
+            modelJson = fixedBase, expectedType = MsgType.OMISSION) { b ->
+            fixedFields(b, zetaNested = "zeta", alphaNested = "alpha")
+        }
+        agreeFires(overFixedGroup("alpha"), expected = true,
+            msg = "fixed/nested second-only: AlphaNested remains reachable",
+            modelJson = fixedBase, expectedType = MsgType.OMISSION) { b ->
+            fixedFields(b, alphaNested = "alpha")
+        }
+    }
+
+    /** SPEC-2026-08-17-03: group-star expansion is declaration-major, not row-major. */
+    @Test
+    fun aStarredGroupTraversesDeclarationMajorAcrossRows() {
+        agreeFires(overStarredGroupAndFallback("first"), expected = true,
+            msg = "star/cross-row: row 2 First precedes row 1 Second",
+            modelJson = starredBase, expectedType = MsgType.OMISSION) { b ->
+            reference(b)
+            starredRow(b, 1, second = "second")
+            starredRow(b, 2, first = "first")
+        }
+        agreeFires(overStarredGroupAndFallback("second"), expected = true,
+            msg = "star/second-only: the later declaration is reachable",
+            modelJson = starredBase, expectedType = MsgType.OMISSION) { b ->
+            reference(b)
+            starredRow(b, 1, second = "second")
+            starredRow(b, 2)
+        }
+        agreeFires(overStarredGroupAndFallback("first"), expected = true,
+            msg = "star/later-first-only: row 2 of the earlier declaration is reachable",
+            modelJson = starredBase, expectedType = MsgType.OMISSION) { b ->
+            reference(b)
+            starredRow(b, 1)
+            starredRow(b, 2, first = "first")
+        }
+        agreeFires(overStarredGroupAndFallback("first"), expected = true,
+            msg = "star/immediate-first: later rows do not taint the selected value",
+            modelJson = starredBase, expectedType = MsgType.VALUE) { b ->
+            reference(b)
+            starredRow(b, 1, first = "first")
+            starredRow(b, 2, second = "second")
+        }
+        agreeFires(overStarredGroupAndFallback("fallback"), expected = true,
+            msg = "star/no-row: the selected fallback is OMISSION",
+            modelJson = starredBase, expectedType = MsgType.OMISSION) { b ->
+            reference(b).field(FALLBACK, "fallback", 1, 1)
+        }
+        agreeFires(overStarredGroupAndFallback("fallback"), expected = true,
+            msg = "star/empty-row: the selected fallback is OMISSION",
+            modelJson = starredBase, expectedType = MsgType.OMISSION) { b ->
+            reference(b)
+            starredRow(b, 1)
+            b.field(FALLBACK, "fallback", 1, 1)
+        }
+    }
 }

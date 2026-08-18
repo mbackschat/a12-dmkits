@@ -2972,3 +2972,27 @@ The within-model discriminator reverses only which repeat completes first: `(Fix
 The full maintained matrix also confirms the surrounding branches: one fixed group is admitted; the same fixed group twice draws `MVK_DUPLICATE_PARAM1`; the same starred group twice is admitted as two authored slots; one direct field draws `MVK_PARAMSIZE_INVALIDN`; the same direct field twice draws `MVK_DUPLICATE_PARAM1`; fixed group plus descendant draws `MVK_DUPLICATE_PARAM2`; and a fixed-group duplicate pre-empts a simultaneous overlap. This is static admission evidence only. It establishes neither runtime expansion nor evaluation order.
 
 *(Locked: `validate.laws.FirstFilledValueDuplicatePrecedenceLawsTest`, nine complete-code rows plus both exact witness paths through the real kernel; `dsl.operators.FirstFilledValueDuplicatePrecedenceTest` locks the typed owner's matching pre-check, wildcard preservation, strict-overlap fallback, and independent singleton arity.)*
+
+## §9 supplement: fixed-group `FirstFilledValue` scans stable model declaration order with prefix polarity (tri-engine differential, 2026-08-18) <a id="kf190"></a>
+
+> Fold: folded → §9.
+
+Reconciliation of a12-kernel-lean `SPEC-2026-08-17-02` at local revision `b5f8bb0ec5f9e75cd0066ae1253d7c869a609310` confirms the complete four-row matrix against the maintained runtime owner. The model deliberately declares paths in the opposite order from their lexical sort: `ZetaDirect` before `AlphaDirect`, then `ZetaNested/Value` before `AlphaNested/Value`. Dynamic Groovy, generated Java, and the interpreter all select `ZetaDirect` when both direct fields are filled and `ZetaNested/Value` when both nested fields are filled; the second-only controls select the corresponding `Alpha` declaration, proving the later declaration remains reachable.
+
+The matrix also separates the value result from its message type. Selecting the first direct field is VALUE even though every later nested declaration is empty. Selecting the second direct field or either nested field is OMISSION because an earlier declaration was reached empty. The group therefore enters the ordinary directional prefix scan as a declaration-ordered cell stream; it is not pre-collapsed to one complete/incomplete group flag.
+
+No evaluator change was required. The existing typed `BoundModel.firstFilledGroup` preserves the authored group owner, `Document.containedFields` supplies recursive model declaration order, and `Document.containedFieldCells` yields each declaration's instantiated cells to the existing `firstFilledScan`. No schema or probe route was added.
+
+*(Locked: `adapter.laws.FirstFilledValueGroupOperandDiffTest.aFixedGroupUsesStableDeclarationOrderAndPrefixPolarity`, exact selected token plus VALUE/OMISSION on both kernel strategies and the interpreter; `FirstFilledValueGroupOrderTest.fixedGroupUsesStableDeclarationOrderAndPrefixPolarity`, the same four rows on JVM and Node.)*
+
+## §9 supplement: starred-group `FirstFilledValue` traverses declaration-major across rows (tri-engine differential, 2026-08-18) <a id="kf191"></a>
+
+> Fold: folded → §9.
+
+Reconciliation of a12-kernel-lean `SPEC-2026-08-17-03` at local revision `ac924d381b6a55fff74d6b26fb3de5802887893f` confirms its six-row matrix against the maintained runtime owner. With row 1 `Second = second` and row 2 `First = first`, dynamic Groovy and generated Java select `first` with OMISSION, so the traversal is declaration-major rather than row-major. The independent controls reach row 1 `Second` when no `First` is filled and row 2 `First` when row 1 `First` is empty. An immediate row 1 `First` is VALUE despite a later instantiated row, proving unread suffix rows and declared capacity do not taint a terminal value.
+
+The two fallback controls agree with the existing no-row field-star family: both zero instantiated rows and one instantiated empty row before a filled direct fallback select the fallback with OMISSION. A no-row group star is therefore a not-given prefix, not a neutral empty stream.
+
+No evaluator change was required. The existing typed `BoundModel.firstFilledGroup("/Return/Rows*")` retains the starred group operand, and `firstFilledExpandedGroup` consumes `Document.containedFields` in declaration order before `firstFilledStar` scans each field's rows. This is the same interpreter scan and differential route as the fixed-group owner; no schema, second evaluator, or probe route was added.
+
+*(Locked: `adapter.laws.FirstFilledValueGroupOperandDiffTest.aStarredGroupTraversesDeclarationMajorAcrossRows`, all six selected-token and VALUE/OMISSION outcomes on both kernel strategies and the interpreter; `FirstFilledValueGroupOrderTest.starredGroupTraversesDeclarationMajorAcrossRows`, the same six rows on JVM and Node.)*
