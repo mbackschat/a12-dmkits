@@ -40,11 +40,13 @@ class InterpreterReleasePublisherRehearsalTest {
             "interpreter release rehearsal: OK");
 
     @Test
-    void disposableMirrorExercisesEveryRefusalAndTheCompletePath() throws Exception {
+    void disposableMirrorExercisesEveryRefusalAndTheCompletePathUnderSystemBash() throws Exception {
         var rehearsal = repoFile("scripts/rehearse-interpreter-release.sh");
         assertTrue(Files.isRegularFile(rehearsal), "missing release rehearsal: " + rehearsal);
+        var systemBash = Path.of("/bin/bash");
+        assertTrue(Files.isExecutable(systemBash), "missing executable system Bash: " + systemBash);
 
-        var process = new ProcessBuilder("bash", rehearsal.toString())
+        var process = new ProcessBuilder(systemBash.toString(), rehearsal.toString())
                 .redirectErrorStream(true)
                 .start();
         var output = new String(process.getInputStream().readAllBytes());
@@ -53,6 +55,25 @@ class InterpreterReleasePublisherRehearsalTest {
         for (var outcome : REQUIRED_OUTCOMES) {
             assertTrue(output.contains(outcome), () -> "missing outcome '" + outcome + "':\n" + output);
         }
+    }
+
+    @Test
+    void stableProductionDraftCreationIsSystemBashCompatible() throws Exception {
+        var backend = repoFile("scripts/interpreter-release-github.sh");
+        assertTrue(Files.isRegularFile(backend), "missing production release backend: " + backend);
+
+        var process = new ProcessBuilder(
+                "/bin/bash",
+                "-u",
+                "-c",
+                "gh() { :; }; . \"$1\"; release_host_create_draft v1.2.3 title /dev/null deadbeef",
+                "system-bash-release-host",
+                backend.toString())
+                .redirectErrorStream(true)
+                .start();
+        var output = new String(process.getInputStream().readAllBytes());
+
+        assertEquals(0, process.waitFor(), output);
     }
 
     @Test

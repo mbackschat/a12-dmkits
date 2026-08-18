@@ -25,17 +25,20 @@ release_host_clone_mirror() {
 
 release_host_create_draft() {
   local tag="$1" title="$2" notes="$3" target="$4"
-  local prerelease=()
+  local arguments=(
+    release create "$tag"
+    --repo "$RELEASE_HOST_REPOSITORY"
+    --target "$target"
+    --draft
+  )
   case "$tag" in
-    *-alpha.*|*-beta.*|*-rc.*) prerelease=(--prerelease) ;;
+    *-alpha.*|*-beta.*|*-rc.*) arguments+=(--prerelease) ;;
   esac
-  gh release create "$tag" \
-    --repo "$RELEASE_HOST_REPOSITORY" \
-    --target "$target" \
-    --draft \
-    "${prerelease[@]}" \
-    --title "$title" \
+  arguments+=(
+    --title "$title"
     --notes-file "$notes"
+  )
+  gh "${arguments[@]}"
 }
 
 release_host_dispatch_build() {

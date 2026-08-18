@@ -154,26 +154,25 @@ EOF
 }
 
 publisher_raw() {
-  local extra_environment=()
-  local publisher_arguments=()
+  local publisher_environment=(
+    INTERPRETER_RELEASE_REHEARSAL=1
+    INTERPRETER_RELEASE_HOST_BACKEND="$BACKEND"
+    INTERPRETER_RELEASE_SOURCE_ROOT="$SOURCE"
+    INTERPRETER_RELEASE_WORK_DIRECTORY="$WORK"
+    INTERPRETER_RELEASE_REHEARSAL_STATE="$STATE"
+    INTERPRETER_RELEASE_REHEARSAL_MIRROR_REMOTE="$MIRROR_ORIGIN"
+    INTERPRETER_RELEASE_PAGES_BASE="file://$STATE/pages"
+    INTERPRETER_RELEASE_DOWNLOAD_BASE="file://$STATE/public-assets"
+  )
+  local publisher_command=("$PUBLISHER" "$SOURCE_TAG")
   local argument
   for argument in "$@"; do
     case "$argument" in
-      *=*) extra_environment[${#extra_environment[@]}]="$argument" ;;
-      *) publisher_arguments[${#publisher_arguments[@]}]="$argument" ;;
+      *=*) publisher_environment+=("$argument") ;;
+      *) publisher_command+=("$argument") ;;
     esac
   done
-  env \
-    INTERPRETER_RELEASE_REHEARSAL=1 \
-    INTERPRETER_RELEASE_HOST_BACKEND="$BACKEND" \
-    INTERPRETER_RELEASE_SOURCE_ROOT="$SOURCE" \
-    INTERPRETER_RELEASE_WORK_DIRECTORY="$WORK" \
-    INTERPRETER_RELEASE_REHEARSAL_STATE="$STATE" \
-    INTERPRETER_RELEASE_REHEARSAL_MIRROR_REMOTE="$MIRROR_ORIGIN" \
-    INTERPRETER_RELEASE_PAGES_BASE="file://$STATE/pages" \
-    INTERPRETER_RELEASE_DOWNLOAD_BASE="file://$STATE/public-assets" \
-    "${extra_environment[@]}" \
-    "$PUBLISHER" "$SOURCE_TAG" "${publisher_arguments[@]}"
+  env "${publisher_environment[@]}" "${publisher_command[@]}"
 }
 
 publisher() {
