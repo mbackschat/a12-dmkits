@@ -6694,7 +6694,7 @@
           "kind": "SURPRISE"
         },
         {
-          "text": "operands after the first filled or formally unavailable value are never read (a formal error there is invisible) — but a formal error BEFORE the first filled operand suppresses the rule",
+          "text": "operands after the first filled or formally unavailable value are never read, so a formal error there cannot change the SELECTED value — but a formal error BEFORE the first filled operand suppresses the rule, and a COMPUTATION still lists an unread malformed operand in its eager formal-input inventory (reported, never selected)",
           "kind": "SURPRISE"
         },
         {
@@ -6882,10 +6882,18 @@
         {
           "text": "operands are BARE entity refs, including semantic indexes: write DateRange(OrderDate, DeliveryDate) or DateRange(Items/Date For \"sku1\", Items/Date For SelectedSku), never bracket either operand. Brackets mark a comparison value; a function's arguments are not that, and bracketing them is MVK_UNEXPECTED_TOKEN.",
           "kind": "AUTHORING"
+        },
+        {
+          "text": "passing each construction's own endpoint gate is not enough: == and != additionally require BOTH range operands to declare the SAME date components, and so does a DATE_RANGE computation target. A yyyy construction beside a full yyyy-MM-dd range is MVK_INVALID_COMPARE_TO_DATE_RANGE in either authored order, and two stored ranges of different profiles draw it too. Base-year completion is excluded from this gate.",
+          "kind": "SURPRISE"
+        },
+        {
+          "text": "a component-omitting endpoint completes ASYMMETRICALLY, exactly as a stored range does: the start takes the earliest date its components denote and the FINISH the latest. So DateRange over two MM fields holding 06 and 09 spans 06-01 through 09-30 and equals the stored MM range 06/09; reading both endpoints as ordinary dates would make that equality never hold.",
+          "kind": "SURPRISE"
         }
       ],
       "constraints": [
-        "each operand is a bare full DATE or DATE_FRAGMENT entity reference, and both formats contain the same date components and no time component; DATE and DATE_FRAGMENT may be mixed, lexical spellings may differ, and a computation target must be DATE_RANGE"
+        "each operand is a bare full DATE or DATE_FRAGMENT entity reference, and both formats contain the same date components and no time component; DATE and DATE_FRAGMENT may be mixed, lexical spellings may differ, and a computation target must be a DATE_RANGE declaring those same components"
       ],
       "validExample": {
         "dsl": "DateRange(OrderDate, DeliveryDate) == [CoverageWindow]",

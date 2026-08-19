@@ -7735,7 +7735,7 @@
       "operator": "FirstFilledValue",
       "lane": "GOTCHA",
       "ordinal": 1,
-      "digest": "sha256:9bbffa99ceaf294acd206b8f431c493b7d8d7b9096c13073bcb2a4abc7f9f0ec",
+      "digest": "sha256:f0884d7b2ae7d48179a04baedbbb7bb51250deb89d2939f9b8fa749a3ebcf484",
       "classifications": [
         "RUNTIME"
       ],
@@ -7749,6 +7749,11 @@
           "classification": "RUNTIME",
           "type": "TEST",
           "id": "adapter.laws.FirstFilledValueLawsTest"
+        },
+        {
+          "classification": "RUNTIME",
+          "type": "TEST",
+          "id": "adapter.laws.DirectRangeFirstFilledListDiffTest"
         }
       ]
     },
@@ -7808,7 +7813,7 @@
       "operator": "DateRange",
       "lane": "CONSTRAINT",
       "ordinal": 0,
-      "digest": "sha256:62d5697e83fae4b41675809619e7f0c0afd875f8168b5b00d23b4b5f908d1136",
+      "digest": "sha256:8d7b4fd872619be437b056f1890846b64d512a67d6a8207f92ff4b64bf7f0e3f",
       "classifications": [
         "REJECTION",
         "ADMISSION"
@@ -7831,6 +7836,15 @@
           "expected": {
             "verdict": "ACCEPTED"
           }
+        },
+        {
+          "classification": "ADMISSION",
+          "type": "CLAIM_PROBE",
+          "id": "DateRange.crossed-computation-target",
+          "side": "CONTROL",
+          "expected": {
+            "verdict": "ACCEPTED"
+          }
         }
       ]
     },
@@ -7843,6 +7857,61 @@
         "REJECTION"
       ],
       "evidence": []
+    },
+    {
+      "operator": "DateRange",
+      "lane": "GOTCHA",
+      "ordinal": 1,
+      "digest": "sha256:4b93d0eec06f63648a6d0e16835649a7d3e88b2a78b9239287d0498d6d554c1e",
+      "classifications": [
+        "REJECTION",
+        "ADMISSION"
+      ],
+      "evidence": [
+        {
+          "classification": "ADMISSION",
+          "type": "CLAIM_PROBE",
+          "id": "DateRange.crossed-operand-components",
+          "side": "CONTROL",
+          "expected": {
+            "verdict": "ACCEPTED"
+          }
+        },
+        {
+          "classification": "ADMISSION",
+          "type": "CLAIM_PROBE",
+          "id": "DateRange.crossed-operand-components-reversed",
+          "side": "CONTROL",
+          "expected": {
+            "verdict": "ACCEPTED"
+          }
+        },
+        {
+          "classification": "ADMISSION",
+          "type": "CLAIM_PROBE",
+          "id": "DateRange.crossed-stored-components",
+          "side": "CONTROL",
+          "expected": {
+            "verdict": "ACCEPTED"
+          }
+        }
+      ]
+    },
+    {
+      "operator": "DateRange",
+      "lane": "GOTCHA",
+      "ordinal": 2,
+      "digest": "sha256:47528ac682d85697d8b76c256d83350bc458fae49af4a3512b51862b9c213684",
+      "classifications": [
+        "RUNTIME"
+      ],
+      "evidence": [
+        {
+          "classification": "RUNTIME",
+          "type": "TEST",
+          "id": "adapter.laws.ConstructedRangeFragmentDiffTest"
+        }
+      ]
     }
   ],
   "claims": [
@@ -25941,6 +26010,94 @@
         {
           "type": "CLAIM_PROBE",
           "id": "AtLeastOneFieldValueIncludedInValueList.german-in-separator",
+          "side": "TRIGGER"
+        }
+      ]
+    },
+    {
+      "id": "literal.DateRange.gotcha1.MVK_INVALID_COMPARE_TO_DATE_RANGE.construction-left",
+      "operator": "DateRange",
+      "kind": "CONDITION",
+      "units": [
+        {
+          "lane": "GOTCHA",
+          "ordinal": 1
+        }
+      ],
+      "expected": {
+        "verdict": "REJECTED",
+        "code": "MVK_INVALID_COMPARE_TO_DATE_RANGE"
+      },
+      "evidence": [
+        {
+          "type": "CLAIM_PROBE",
+          "id": "DateRange.crossed-operand-components",
+          "side": "TRIGGER"
+        }
+      ]
+    },
+    {
+      "id": "literal.DateRange.gotcha1.MVK_INVALID_COMPARE_TO_DATE_RANGE.stored-left",
+      "operator": "DateRange",
+      "kind": "CONDITION",
+      "units": [
+        {
+          "lane": "GOTCHA",
+          "ordinal": 1
+        }
+      ],
+      "expected": {
+        "verdict": "REJECTED",
+        "code": "MVK_INVALID_COMPARE_TO_DATE_RANGE"
+      },
+      "evidence": [
+        {
+          "type": "CLAIM_PROBE",
+          "id": "DateRange.crossed-operand-components-reversed",
+          "side": "TRIGGER"
+        }
+      ]
+    },
+    {
+      "id": "literal.DateRange.gotcha1.MVK_INVALID_COMPARE_TO_DATE_RANGE.two-stored",
+      "operator": "DateRange",
+      "kind": "CONDITION",
+      "units": [
+        {
+          "lane": "GOTCHA",
+          "ordinal": 1
+        }
+      ],
+      "expected": {
+        "verdict": "REJECTED",
+        "code": "MVK_INVALID_COMPARE_TO_DATE_RANGE"
+      },
+      "evidence": [
+        {
+          "type": "CLAIM_PROBE",
+          "id": "DateRange.crossed-stored-components",
+          "side": "TRIGGER"
+        }
+      ]
+    },
+    {
+      "id": "closure.DateRange.crossed-computation-target.trigger",
+      "operator": "DateRange",
+      "kind": "COMPUTATION",
+      "units": [
+        {
+          "lane": "CONSTRAINT",
+          "ordinal": 0
+        }
+      ],
+      "expected": {
+        "verdict": "REJECTED",
+        "code": "MVK_INVALID_COMPARE_TO_DATE_RANGE"
+      },
+      "evidence": [
+        {
+          "type": "CLAIM_PROBE",
+          "id": "DateRange.crossed-computation-target",
           "side": "TRIGGER"
         }
       ]

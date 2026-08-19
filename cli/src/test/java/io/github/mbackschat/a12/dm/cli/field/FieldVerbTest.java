@@ -262,6 +262,32 @@ class FieldVerbTest {
         assertNotEquals(0, addFieldRc(m, dir, """
                 {"group":"/D","name":"R3","kind":"DATERANGE","dateRange":{"format":"yyyy-MM-dd","separator":"-"}}"""),
                 "a mismatched separator (yyyy-MM-dd + -) is rejected");
+        // …and FOUR MORE pairs, the component-omitting profiles, all with the slash. The published set used to
+        // name the two exact pairs alone — a sample read as the class, which the diagnostic hint and the two
+        // input schemas then repeated (measured 2026-08-19).
+        for (String fragment : new String[] {"yyyy", "yyyy-MM", "MM", "MM-dd"}) {
+            assertEquals(0, addFieldRc(m, dir, """
+                    {"group":"/D","name":"F%s","kind":"DATERANGE","dateRange":{"format":"%s","separator":"/"}}"""
+                    .formatted(fragment.replace("-", ""), fragment)),
+                    "the component-omitting pair " + fragment + " + / is accepted");
+            assertNotEquals(0, addFieldRc(m, dir, """
+                    {"group":"/D","name":"X%s","kind":"DATERANGE","dateRange":{"format":"%s","separator":"-"}}"""
+                    .formatted(fragment.replace("-", ""), fragment)),
+                    "the same format with the OTHER separator is rejected — the pair is what is allowlisted");
+        }
+        assertNotEquals(0, addFieldRc(m, dir, """
+                {"group":"/D","name":"R6","kind":"DATERANGE","dateRange":{"format":"yyyyMM","separator":"/"}}"""),
+                "yyyyMM is a legal DATE format but not a legal DATERANGE one");
+        // An EMPTY separator is admitted for exactly one format, and the concatenation rule says why: `MM` + ``
+        // is `MMMM`. That one declaration reaches the kernel's split-in-the-middle branch, so it is reachable
+        // rather than hypothetical — the first version of this row asserted the opposite from a single sample
+        // taken on `dd.MM.yyyy`.
+        assertEquals(0, addFieldRc(m, dir, """
+                {"group":"/D","name":"R7","kind":"DATERANGE","dateRange":{"format":"MM","separator":""}}"""),
+                "MM + the empty separator is admitted (MMMM)");
+        assertNotEquals(0, addFieldRc(m, dir, """
+                {"group":"/D","name":"R8","kind":"DATERANGE","dateRange":{"format":"yyyy","separator":""}}"""),
+                "no other format admits the empty separator");
         // DATE_TIME: the ONLY date-bearing datetime format is the ISO yyyy-MM-dd'T'HH:mm:ss; every other date-bearing
         // form is rejected `The date format is invalid` (KERNEL-FINDINGS §6 — IG19 parity-by-construction).
         assertEquals(0, addFieldRc(m, dir, """

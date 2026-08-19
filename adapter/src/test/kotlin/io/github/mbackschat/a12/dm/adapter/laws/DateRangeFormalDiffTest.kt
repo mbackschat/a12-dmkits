@@ -6,6 +6,7 @@ import io.github.mbackschat.a12.dm.interpreter.model.FieldDef
 import io.github.mbackschat.a12.dm.interpreter.model.Kind
 import io.github.mbackschat.a12.dm.interpreter.model.ModelDef
 import io.github.mbackschat.a12.dm.interpreter.model.MsgType
+import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 
@@ -67,6 +68,33 @@ class DateRangeFormalDiffTest {
         assertRangeFormalAgrees("-30.06.2021")                        // empty start endpoint → formatFalsch
         assertRangeFormalAgrees("01.06.2021-")                        // empty end endpoint → formatFalsch
         assertRangeFormalAgrees("-")                                  // both endpoints empty → formatFalsch
+    }
+
+    /**
+     * The one declaration that reaches the kernel's SPLIT-IN-THE-MIDDLE branch. `DateUtil.splitStringBySeparator`
+     * halves the value when the declared separator is empty, and exactly one `(format, separator)` pair makes
+     * that reachable: `MM` + `""` (the allowlist keys on the concatenation `format + separator + format`, so
+     * `MMMM` is admitted while every other format's doubled form is refused — measured 2026-08-19). Splitting
+     * such a value on the empty string instead shreds it per character and reports a well-formed month pair as
+     * malformed, so the branch needs its own row rather than an argument that it cannot occur.
+     */
+    @Test
+    fun anEmptySeparatorSplitsInTheMiddleLikeTheKernel() {
+        val pairModel = DocumentModelDraft.named("month-pair").locale("en_US")
+            .rootGroup("Season") { season ->
+                season.dateRangeField("MonthPair") { it.format("MM").separator("") }
+            }.build().toJson()
+        val path = "/Season/MonthPair"
+        val pairDef = ModelDef(
+            listOf(FieldDef(path, Kind.DATE_RANGE, format = "MM", rangeSeparator = "")), emptyList())
+
+        for (value in listOf("0609", "0606", "0906", "06", "06x9", "1309")) {
+            val kDoc = RuntimeLaws.doc().group("/Season", 1).field(path, value, 1, 1)
+            val iDoc = pairDef.newDocument().group("/Season", 1).field(path, value, 1, 1)
+            val kSigs = RuntimeLaws.messages(pairModel, kDoc).map { "${it.code()}|${it.field()}" }.sorted()
+            val iSigs = DmInterpreter(pairDef).validateFull(iDoc).map { "${it.code}|${it.errorPath}" }.sorted()
+            assertEquals(kSigs, iSigs, "empty-separator range formal signatures must match the kernel ($value)")
+        }
     }
 
     @Test

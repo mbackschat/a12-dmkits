@@ -6,6 +6,12 @@ This changelog covers the independently consumable interpreter packages, API doc
 
 ## [@VERSION@]
 
+### Fixed
+
+- **A `DateRange(start, finish)` construction now equals the stored range it was built to match**, wherever the declared profile omits the day (`MM`, `yyyy`, `yyyy-MM`). Both endpoints were completed to the earliest date they denote; the Kernel completes the START to the earliest and the FINISH to the latest, exactly as it does for a stored range.
+- **A stored date range that visibly carries its separator is no longer reported as missing one.** An extra separator or an empty endpoint is a format error, which is what the Kernel reports; only a value that does not contain the separator at all is the missing-separator error.
+- **A month-pair range declared with an empty separator is read as two months.** That declaration (`MM` with no separator, the one the Kernel admits) halves the stored value; it was previously split per character and every value reported malformed.
+
 ### Performance
 
 - **Fast, and measured — never assumed.** On the fixed Apple M1/Chrome runner on 2026-08-17, a 200-row Document validated in a **11.55 ms median** and the 10,000-row stress Document with 4,900 findings in a **166.1 ms median**. Against the A12 Kernel's generated validator compiled as Java, with code generation outside the clock, the interpreter led by **2.8×–17.1×** across the default inventory and **12.2×–16.8×** on repeated-document evaluation, with the closest hostile point still ahead by 1.73×. These are bounded same-machine measurements after exact result preflight, not universal promises; see [the benchmark method and complete tables](https://github.com/mbackschat/a12-dmkits/blob/main/docs/INTERPRETER-PERFORMANCE.md).

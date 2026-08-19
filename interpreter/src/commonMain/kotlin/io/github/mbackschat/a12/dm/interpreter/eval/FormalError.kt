@@ -392,7 +392,7 @@ internal fun typeFormatErrorCached(
         Kind.DATE_RANGE -> {
             if (format == null || rangeSep == null) null   // no range config → nothing to check
             else {
-                val parts = raw.split(rangeSep)
+                val parts = splitDateRange(raw, rangeSep)
                 when {
                     parts.size == 1 -> FormalErrorCode.DATE_RANGE_SEPARATOR
                     parts.size != 2 || parts[0].isEmpty() || parts[1].isEmpty() ->
@@ -424,6 +424,21 @@ internal fun typeFormatErrorCached(
         Kind.CONFIRM -> if (raw == TRUE_TOKEN) null else FormalErrorCode.CONFIRM_INVALID
     }
 }
+
+/**
+ * Split a stored DATE_RANGE value the way the kernel's `DateUtil.splitStringBySeparator` does: an **EMPTY**
+ * declared separator splits the value in the MIDDLE, any other splits on the token and preserves the empty
+ * pieces (`StringUtils.splitPreserveAllTokens`).
+ *
+ * The empty separator is not a hypothetical: the declaration's `(format, separator)` PAIR is allowlisted as
+ * the concatenation `format + separator + format`, and `MM` + `""` yields `MMMM`, which the kernel admits
+ * (measured 2026-08-19 — `MM` is the only format that admits it). So a legal model can carry
+ * a `0609` month-pair range, and `raw.split("")` would have shredded it into one piece per character and
+ * reported a well-formed value as malformed.
+ */
+private fun splitDateRange(raw: String, sep: String): List<String> =
+    if (sep.isEmpty()) listOf(raw.substring(0, raw.length / 2), raw.substring(raw.length / 2))
+    else raw.split(sep)
 
 private const val TRUE_TOKEN = "true"
 private const val FALSE_TOKEN = "false"
