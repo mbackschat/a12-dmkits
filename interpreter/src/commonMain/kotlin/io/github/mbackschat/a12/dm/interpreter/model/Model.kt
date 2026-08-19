@@ -41,6 +41,20 @@ enum class Kind { NUMBER, STRING, BOOLEAN, CONFIRM, DATE, TIME, DATE_RANGE, DATE
 enum class DatePrecision { FULL, DAY_OPTIONAL, MONTH_OPTIONAL, YEAR_OPTIONAL, FRAGMENT }
 
 /**
+ * A DATE_RANGE's `interpretationOfYear` (the kernel's `Jahresinterpretation`). It exists for the one shape
+ * whose endpoints do not share a year: a WRAPPING yearless range such as `01.11-31.01`. [STANDARD] — the
+ * default, and the only state the declaration expresses by OMITTING the property — completes both endpoints
+ * with the base year, so a wrapping value is simply start-after-end. The other two say WHICH endpoint the
+ * base year labels, and the opposite endpoint moves: under [FROM] the base year is the range's from-year and
+ * the END rolls forward one, under [TO] it is the to-year and the START rolls back one. Only when the value
+ * actually wraps.
+ *
+ * Measured 2026-08-19: `FROM` and `TO` are the accepted DM-JSON spellings; the tool API's
+ * `STANDARD`/`PREVIOUS`/`SUBSEQUENT` are all refused by the model deserializer.
+ */
+enum class RangeYearInterpretation { STANDARD, FROM, TO }
+
+/**
  * The evaluation reference clock — the "current point in time" the kernel reads for the clock constants
  * (`Today`, `Now`). It is **injected**, not read from the platform: `commonMain` stays pure (no
  * `java.time`/`Date.now()`), and a deterministic value makes evaluation testable. The consumer supplies it
@@ -199,6 +213,8 @@ data class FieldDef(
     val format: String? = null,
     /** A [Kind.DATE_RANGE] field's two-date separator (the kernel's `DateRangeType.rangeSeparator`, e.g. `-`). */
     val rangeSeparator: String? = null,
+    /** A [Kind.DATE_RANGE] field's `interpretationOfYear` — see [RangeYearInterpretation]. */
+    val rangeYearInterpretation: RangeYearInterpretation = RangeYearInterpretation.STANDARD,
     /** A [Kind.DATE] field's precision (the kernel's `DateType.datePrecision`); [DatePrecision.DAY_OPTIONAL]
      *  permits a day-omitted `00.MM.yyyy` value. Default [DatePrecision.FULL]. */
     val datePrecision: DatePrecision = DatePrecision.FULL,
@@ -556,6 +572,15 @@ data class ModelDef(
 
     /** The DATE_RANGE field's separator (the formal check splits the value on it), else null. */
     fun rangeSeparatorOf(path: String): String? = rangeConfig[path]?.second
+
+    /** Each [Kind.DATE_RANGE] field's `interpretationOfYear`; [RangeYearInterpretation.STANDARD] when unset. */
+    val rangeYearInterpretations: Map<String, RangeYearInterpretation> = fields
+        .filter { it.kind == Kind.DATE_RANGE && it.rangeYearInterpretation != RangeYearInterpretation.STANDARD }
+        .associate { it.path to it.rangeYearInterpretation }
+
+    /** The DATE_RANGE field's `interpretationOfYear`, [RangeYearInterpretation.STANDARD] when it declares none. */
+    fun rangeYearInterpretationOf(path: String): RangeYearInterpretation =
+        rangeYearInterpretations[path] ?: RangeYearInterpretation.STANDARD
 
     /** Each NUMBER field's scale (`maxFractionalDigits`) — the formal-check input (decimal-places errors); the
      *  [io.github.mbackschat.a12.dm.interpreter.eval.Document] needs it to gate a formally-invalid value to Unknown. */

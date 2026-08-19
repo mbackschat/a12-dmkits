@@ -271,7 +271,7 @@ internal class AutoChecks(
             typeFormatErrorCached(
                 kind, raw, model.scaleOf(path), model.dateLikeFormatOf(path), model.datePrecisionOf(path),
                 model.rangeSeparatorOf(path), model.constraintsOf(path), model.baseYear ?: 2000, model.timeZone,
-                patterns::matches,
+                model.rangeYearInterpretationOf(path), patterns::matches,
             )
         }
         if (error == null && !genericWhenValid) return null
@@ -467,7 +467,7 @@ internal class AutoChecks(
         val kind = model.kinds[path] ?: return FormalResult.Valid
         formalErrorCached(kind, raw, model.scaleOf(path), model.dateLikeFormatOf(path), model.datePrecisionOf(path),
             model.rangeSeparatorOf(path), model.constraintsOf(path), legalCharset, model.baseYear ?: 2000,
-            model.timeZone, patterns::matches)?.let { return FormalResult.Invalid(FormalFailure.Format(it)) }
+            model.timeZone, model.rangeYearInterpretationOf(path), patterns::matches)?.let { return FormalResult.Invalid(FormalFailure.Format(it)) }
         return try {
             customTypeRejection(path, raw, locale)?.let {
                 FormalResult.Invalid(FormalFailure.Custom(it))

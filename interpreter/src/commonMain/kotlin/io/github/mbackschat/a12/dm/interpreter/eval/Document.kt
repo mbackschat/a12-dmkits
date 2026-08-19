@@ -20,6 +20,7 @@ import io.github.mbackschat.a12.dm.interpreter.model.Kind
 import io.github.mbackschat.a12.dm.interpreter.model.FieldConstraints
 import io.github.mbackschat.a12.dm.interpreter.model.ModelDef
 import io.github.mbackschat.a12.dm.interpreter.model.ModelTimeZone
+import io.github.mbackschat.a12.dm.interpreter.model.RangeYearInterpretation
 import io.github.mbackschat.a12.dm.interpreter.model.ValuedField
 
 /**
@@ -66,6 +67,7 @@ fun ModelDef.newDocument(): Document = Document(DocumentConfig(
     declaredReps = declaredReps,
     unsignedFields = unsignedFields,
     rangeConfig = rangeConfig,
+    rangeYearInterpretations = rangeYearInterpretations,
     dateFormats = dateFormats,
     scales = scales,
     dateTimeFormats = dateTimeFormats,
@@ -92,6 +94,7 @@ class Document(internal val config: DocumentConfig) {
     private val declaredReps = config.declaredReps
     private val unsignedFields = config.unsignedFields
     private val rangeConfig = config.rangeConfig
+    private val rangeYearInterpretations = config.rangeYearInterpretations
     private val dateFormats = config.dateFormats
     private val scales = config.scales
     private val dateTimeFormats = config.dateTimeFormats
@@ -1636,8 +1639,13 @@ class Document(internal val config: DocumentConfig) {
             else -> null
         }
         return formalError(kind, raw, scales[path], dateLikeFormat, precision, rangeConfig[path]?.second,
-            fieldConstraints[path] ?: FieldConstraints.NONE, baseYear = baseYear ?: 2000, timeZone = timeZone) != null
+            fieldConstraints[path] ?: FieldConstraints.NONE, baseYear = baseYear ?: 2000, timeZone = timeZone,
+            rangeYearInterpretation = yearInterpretationOf(path)) != null
     }
+
+    /** The DATE_RANGE field's declared `interpretationOfYear`, STANDARD when it declares none. */
+    private fun yearInterpretationOf(path: String): RangeYearInterpretation =
+        rangeYearInterpretations[path] ?: RangeYearInterpretation.STANDARD
 
     private fun resolveValue(path: String, raw: String): Val {
         val kind = kindOf(path)
@@ -1653,7 +1661,8 @@ class Document(internal val config: DocumentConfig) {
             // evaluates instead of going Unknown; a full-format range is unchanged. The base year fills a
             // year-less fragment endpoint (a `MM`/`MM-dd` range), matching the kernel's completion.
             Kind.DATE_RANGE -> rangeConfig[path]?.let { (format, sep) ->
-                parseRangeToIso(raw, format, sep, baseYear ?: 2000)?.let { Val.Range(it.first, it.second) }
+                parseRangeToIso(raw, format, sep, baseYear ?: 2000, yearInterpretationOf(path))
+                    ?.let { Val.Range(it.first, it.second) }
             } ?: Val.Unknown
             // A DATE field canonicalizes to ISO, precision-aware:
             //  - FRAGMENT: the format carries only some components — complete the rest to the earliest concrete

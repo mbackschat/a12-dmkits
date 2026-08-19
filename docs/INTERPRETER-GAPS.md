@@ -14,13 +14,7 @@
 
 ## 1. Open
 
-- **IG140 — the DATE_RANGE construction/comparison boundaries a cold review named but nothing measures.** Opened 2026-08-19 while reconciling `SPEC-2026-08-19-0*`; each is a shape the fixed code handles by reading, with no oracle behind it.
-
-  - `intervalEndOfDeclaredFormat` has no `DatePart.HOUR` short-circuit, which the kernel's `addMonthAndDay` does have. Unreachable today because `ModelDef.dateFormats` is filled only for `Kind.DATE`, so no time-bearing format can arrive — but that is a reachability argument, not a test.
-  - `RuntimeController.constructDateRange` passes a plain base year to both endpoints, while the STORED path routes through `DateUtil.getSupplementaryYears`, which shifts a yearless endpoint by ±1 under `Jahresinterpretation.Vorjahr`/`Folgejahr`. Under a non-Standard interpretation a construction therefore cannot equal its stored twin on `MM`/`MM-dd`. Newly concrete: `dd.MM`+`-` is an admitted DATERANGE pair and the kernel's own `DateUtil` javadoc names `DD.MM-DD.MM` as that feature's carrier. dmkits exposes no authoring surface for `interpretationOfYear`, and there is no read-path handling for a model that declares one.
-  - `Dsl.dateRange` refuses `BaseYear` and every non-DATE/DATE_FRAGMENT operand in `DateRangeConstruction`'s constructor with no measured kernel basis — the client-side-refusal rule's own case, pre-existing and inherited rather than introduced.
-
-  *Re-open trigger for the first two: a model that declares `interpretationOfYear`, or a DATE format carrying an hour component, reaching the interpreter.*
+- **IG140 — `Dsl.dateRange`'s client-side refusals have no measured kernel basis.** Opened 2026-08-19 while reconciling `SPEC-2026-08-19-0*`. `DateRangeConstruction`'s compact constructor refuses `BaseYear` and every non-DATE/DATE_FRAGMENT operand, and nothing shows the kernel refuses the same shapes — the "a client-side refusal needs a measured kernel basis" rule's own case. Pre-existing and inherited rather than introduced by that reconciliation. *(The two sibling items this row opened with are gone: the missing `DatePart.HOUR` short-circuit is now mirrored and locked, and `interpretationOfYear` shipped as [IF305](INTERPRETER-FINDINGS.md#if305).)*
 
 - **IG141 — the launcher-preparation boundaries a cold review named, all outside the JAVA_HOME class the fix owns.** Opened 2026-08-19.
 

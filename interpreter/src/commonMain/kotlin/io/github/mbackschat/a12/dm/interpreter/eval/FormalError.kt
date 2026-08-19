@@ -7,6 +7,7 @@ import io.github.mbackschat.a12.dm.interpreter.model.FieldConstraints
 import io.github.mbackschat.a12.dm.interpreter.model.Kind
 import io.github.mbackschat.a12.dm.interpreter.model.LegalCharset
 import io.github.mbackschat.a12.dm.interpreter.model.ModelTimeZone
+import io.github.mbackschat.a12.dm.interpreter.model.RangeYearInterpretation
 import io.github.mbackschat.a12.dm.interpreter.regex.compilePattern
 
 /**
@@ -253,9 +254,13 @@ fun formalError(
     /** The model's configured time zone — a Europe/Berlin DATE_TIME inside the spring-forward gap is
      *  `datumFormatFalsch` (the kernel's non-lenient zone-set parse rejects it; KERNEL-FINDINGS §6). */
     timeZone: ModelTimeZone = ModelTimeZone.UTC,
+    /** A DATE_RANGE field's `interpretationOfYear` — a WRAPPING yearless value such as `01.11-31.01` is
+     *  ordered under [RangeYearInterpretation.FROM]/[RangeYearInterpretation.TO] and unordered without one. */
+    rangeYearInterpretation: RangeYearInterpretation = RangeYearInterpretation.STANDARD,
 ): FormalErrorCode? {
     return formalErrorCached(
         kind, raw, scale, format, datePrecision, rangeSep, constraints, legalCharset, baseYear, timeZone,
+        rangeYearInterpretation,
     ) { pattern, value -> compilePattern(pattern).matches(value) }
 }
 
@@ -266,6 +271,9 @@ internal fun formalErrorCached(
     legalCharset: LegalCharset = LegalCharset.BMP,
     baseYear: Int = 2000,
     timeZone: ModelTimeZone = ModelTimeZone.UTC,
+    /** A DATE_RANGE field's `interpretationOfYear` — a WRAPPING yearless value such as `01.11-31.01` is
+     *  ordered under [RangeYearInterpretation.FROM]/[RangeYearInterpretation.TO] and unordered without one. */
+    rangeYearInterpretation: RangeYearInterpretation = RangeYearInterpretation.STANDARD,
     patternMatches: (String, String) -> Boolean,
 ): FormalErrorCode? {
     if (raw.isEmpty()) return null
@@ -274,7 +282,8 @@ internal fun formalErrorCached(
     // trailing blank. They pre-empt the type-specific check (a ` 2024-01-01` DATE is `fuehrendesBlank`).
     baselineValueError(raw, legalCharset)?.let { return it }
     return typeFormatErrorCached(
-        kind, raw, scale, format, datePrecision, rangeSep, constraints, baseYear, timeZone, patternMatches,
+        kind, raw, scale, format, datePrecision, rangeSep, constraints, baseYear, timeZone,
+        rangeYearInterpretation, patternMatches,
     )
 }
 
@@ -292,9 +301,13 @@ fun typeFormatError(
     constraints: FieldConstraints = FieldConstraints.NONE,
     baseYear: Int = 2000,
     timeZone: ModelTimeZone = ModelTimeZone.UTC,
+    /** A DATE_RANGE field's `interpretationOfYear` — a WRAPPING yearless value such as `01.11-31.01` is
+     *  ordered under [RangeYearInterpretation.FROM]/[RangeYearInterpretation.TO] and unordered without one. */
+    rangeYearInterpretation: RangeYearInterpretation = RangeYearInterpretation.STANDARD,
 ): FormalErrorCode? {
     return typeFormatErrorCached(
         kind, raw, scale, format, datePrecision, rangeSep, constraints, baseYear, timeZone,
+        rangeYearInterpretation,
     ) { pattern, value -> compilePattern(pattern).matches(value) }
 }
 
@@ -304,6 +317,9 @@ internal fun typeFormatErrorCached(
     constraints: FieldConstraints = FieldConstraints.NONE,
     baseYear: Int = 2000,
     timeZone: ModelTimeZone = ModelTimeZone.UTC,
+    /** A DATE_RANGE field's `interpretationOfYear` — a WRAPPING yearless value such as `01.11-31.01` is
+     *  ordered under [RangeYearInterpretation.FROM]/[RangeYearInterpretation.TO] and unordered without one. */
+    rangeYearInterpretation: RangeYearInterpretation = RangeYearInterpretation.STANDARD,
     patternMatches: (String, String) -> Boolean,
 ): FormalErrorCode? {
     if (raw.isEmpty()) return null
@@ -403,8 +419,14 @@ internal fun typeFormatErrorCached(
                     parts.size != 2 || parts[0].isEmpty() || parts[1].isEmpty() ->
                         FormalErrorCode.DATE_RANGE_FORMAT
                     else -> {
-                        val a = parseDateToIso(parts[0], format) ?: completeFragmentToIso(parts[0], format, baseYear)
-                        val b = parseDateToIso(parts[1], format) ?: completeFragmentToIso(parts[1], format, baseYear)
+                        // The ORDER check must see the endpoints EVALUATION sees. A wrapping yearless range is
+                        // ordered once `interpretationOfYear` has moved one endpoint's year, so comparing two
+                        // base-year completions would report the kernel's ordinary winter season unordered.
+                        val shifted = parseRangeToIso(raw, format, rangeSep, baseYear, rangeYearInterpretation)
+                        val a = shifted?.first
+                            ?: parseDateToIso(parts[0], format) ?: completeFragmentToIso(parts[0], format, baseYear)
+                        val b = shifted?.second
+                            ?: parseDateToIso(parts[1], format) ?: completeFragmentToIso(parts[1], format, baseYear)
                         when {
                             a == null || b == null -> FormalErrorCode.DATE_RANGE_FORMAT
                             a > b -> FormalErrorCode.DATE_RANGE_INVALID   // ISO strings: lexicographic == chronological

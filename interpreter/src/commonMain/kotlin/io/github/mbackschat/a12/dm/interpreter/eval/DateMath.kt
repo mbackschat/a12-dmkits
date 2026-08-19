@@ -1,6 +1,7 @@
 package io.github.mbackschat.a12.dm.interpreter.eval
 
 import io.github.mbackschat.a12.dm.interpreter.model.DatePrecision
+import io.github.mbackschat.a12.dm.interpreter.model.RangeYearInterpretation
 import io.github.mbackschat.a12.dm.interpreter.model.ModelTimeZone
 
 /**
@@ -486,14 +487,56 @@ private fun iso(y: Int, m: Int, d: Int): String =
  * `2024-01-01 .. 2025-12-31` — the widest interval the endpoints denote. A full-format range (`dd.MM.yyyy`,
  * every component present) completes to itself on both sides, so this is a no-op there.
  */
-fun parseRangeToIso(raw: String, format: String, sep: String, baseYear: Int = 2000): Pair<String, String>? {
+fun parseRangeToIso(
+    raw: String,
+    format: String,
+    sep: String,
+    baseYear: Int = 2000,
+    yearInterpretation: RangeYearInterpretation = RangeYearInterpretation.STANDARD,
+): Pair<String, String>? {
     val (frag, comps) = dateFragment(format) ?: return null
     val m = Regex("^$frag${Regex.escape(sep)}$frag$").matchEntire(raw) ?: return null
     val g = m.groupValues.drop(1)
-    val start = buildRangeEndpoint(g.take(comps.size), comps, baseYear, end = false) ?: return null
-    val end = buildRangeEndpoint(g.drop(comps.size), comps, baseYear, end = true) ?: return null
+    val startValues = g.take(comps.size)
+    val endValues = g.drop(comps.size)
+    var startYear = baseYear
+    var endYear = baseYear
+    if (wrapsAcrossTheYear(startValues, endValues, comps)) {
+        // The declaration says WHICH endpoint the base year labels, so the OTHER one moves — measured
+        // 2026-08-19 on `01.11-31.01` with base year 2020: FROM keeps the start at 2020 and rolls the end to
+        // 2021, TO keeps the end at 2020 and rolls the start back to 2019. (Written the other way round first,
+        // and the four accept-only rows could not see it: "no formal error" holds under either direction.)
+        when (yearInterpretation) {
+            RangeYearInterpretation.FROM -> endYear++
+            RangeYearInterpretation.TO -> startYear--
+            RangeYearInterpretation.STANDARD -> Unit
+        }
+    }
+    val start = buildRangeEndpoint(startValues, comps, startYear, end = false) ?: return null
+    val end = buildRangeEndpoint(endValues, comps, endYear, end = true) ?: return null
     return start to end
 }
+
+/**
+ * Does this value's END fall before its START once both endpoints are given the same year — the kernel's
+ * `DateUtil.isYearNotBaseYear`?
+ *
+ * Two things about it are load-bearing and were measured rather than assumed (2026-08-19). It applies **only**
+ * to a format carrying DAY and MONTH and no YEAR, because the kernel's `completeDateAndFormat` supplements a
+ * year in exactly that case: `MM` alone never wraps (its `11/01` stays start-after-end on both engines) and a
+ * year-bearing format never does either, so `TO` does not rescue an inverted `yyyy-MM-dd` range. And the probe
+ * year is the fixed LEAP year 2000, not the base year, so a `29.02` endpoint parses instead of failing the
+ * comparison — a base year of 2001 would otherwise report `01.11-29.02` as unordered.
+ */
+private fun wrapsAcrossTheYear(startValues: List<String>, endValues: List<String>, comps: List<Char>): Boolean {
+    if ('y' in comps || 'd' !in comps || 'M' !in comps) return false
+    val start = buildRangeEndpoint(startValues, comps, LEAP_PROBE_YEAR, end = false) ?: return false
+    val end = buildRangeEndpoint(endValues, comps, LEAP_PROBE_YEAR, end = false) ?: return false
+    return end < start
+}
+
+/** The kernel's fixed wrap-probe year — a leap year so a `29.02` endpoint is parseable. */
+private const val LEAP_PROBE_YEAR = 2000
 
 /**
  * Assemble the ISO `yyyy-MM-dd` for ONE endpoint of a date range from its fragment's captured [values] in

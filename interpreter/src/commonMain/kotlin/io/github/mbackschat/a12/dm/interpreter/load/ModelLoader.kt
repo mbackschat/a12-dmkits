@@ -10,6 +10,7 @@ import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import io.github.mbackschat.a12.dm.interpreter.model.ComputationAlternative
 import io.github.mbackschat.a12.dm.interpreter.model.ConditionLanguage
+import io.github.mbackschat.a12.dm.interpreter.model.RangeYearInterpretation
 import io.github.mbackschat.a12.dm.interpreter.model.ToleranceBand
 import io.github.mbackschat.a12.dm.interpreter.model.ComputationDef
 import io.github.mbackschat.a12.dm.interpreter.model.CustomFieldTypeDeclaration
@@ -372,6 +373,7 @@ object ModelLoader {
         required = requirednessOf(node),
         format = formatOf(node),
         rangeSeparator = rangeSeparatorOf(node),
+        rangeYearInterpretation = rangeYearInterpretationOf(node),
         datePrecision = datePrecisionOf(node, id),
         rejectBefore1900 = typedBool(node, "DateType", "youngerThan1900Check"),
         enumValues = enumValuesOf(node),
@@ -472,6 +474,18 @@ object ModelLoader {
             categories[c.path("name").asText()] = c.path("values").elements().map { it.asText() }
         }
         return categories
+    }
+
+    /** A DATE_RANGE field's `interpretationOfYear` (`DateRangeType.interpretationOfYear`); STANDARD when the
+     *  property is absent, which is how the declaration expresses the default. */
+    private fun rangeYearInterpretationOf(fieldNode: JsonElement?): RangeYearInterpretation {
+        val type = fieldNode.path("Field").path("fieldType")
+        if (type.path("type").asText() != "DateRangeType") return RangeYearInterpretation.STANDARD
+        return when (type.path("DateRangeType").path("interpretationOfYear").asText()) {
+            "FROM" -> RangeYearInterpretation.FROM
+            "TO" -> RangeYearInterpretation.TO
+            else -> RangeYearInterpretation.STANDARD
+        }
     }
 
     /** A DATE_RANGE field's two-date separator (`DateRangeType.rangeSeparator`), else null. */

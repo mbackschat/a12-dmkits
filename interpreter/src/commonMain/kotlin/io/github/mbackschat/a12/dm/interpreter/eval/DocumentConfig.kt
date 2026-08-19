@@ -4,6 +4,7 @@ import io.github.mbackschat.a12.dm.interpreter.model.DatePrecision
 import io.github.mbackschat.a12.dm.interpreter.model.FieldConstraints
 import io.github.mbackschat.a12.dm.interpreter.model.Kind
 import io.github.mbackschat.a12.dm.interpreter.model.ModelTimeZone
+import io.github.mbackschat.a12.dm.interpreter.model.RangeYearInterpretation
 
 /**
  * The full evaluator configuration a [Document] carries — every kind / reps / format / scale / enum / precision /
@@ -24,6 +25,8 @@ data class DocumentConfig(
     /** Each [Kind.DATE_RANGE] field's `(format, rangeSeparator)` — lets `resolveValue` canonicalize a rendered
      *  range value (`01.06.2021-30.06.2021`) to a [io.github.mbackschat.a12.dm.interpreter.ast.Val.Range] of ISO dates, format-aware (locale variants). */
     val rangeConfig: Map<String, Pair<String, String>> = emptyMap(),
+    /** Each DATE_RANGE field's `interpretationOfYear`; absent means [RangeYearInterpretation.STANDARD]. */
+    val rangeYearInterpretations: Map<String, RangeYearInterpretation> = emptyMap(),
     /** Each [Kind.DATE] field's rendering format (the kernel's `DateType.format`) — lets `resolveValue`
      *  canonicalize a rendered date (`15.06.2024` for `dd.MM.yyyy`) to its ISO form, format-aware. Missing/ISO
      *  fields stay ISO. */
