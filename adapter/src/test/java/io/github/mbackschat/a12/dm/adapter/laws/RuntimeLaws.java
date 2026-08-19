@@ -142,6 +142,14 @@ public final class RuntimeLaws {
     /**
      * Inject one rule into {@code groupId}'s {@code elements} and return the new model JSON. The
      * condition is the rule's <em>error</em> condition (it fires when this holds — the polarity law).
+     *
+     * <p><b>The result is NOT kernel-admitted, and the trap is that your own code looks like it gated it.</b>
+     * This is a raw-JSON splice, so it lands DOWNSTREAM of every gate: the usual idiom binds the base with
+     * {@code BoundModel.ofJson} — which really does run {@code checkConsistency} — to get the typed refs the
+     * condition is rendered from, and then splices the rule in afterwards. The gate therefore saw the model
+     * WITHOUT the artifact under test. If a test claims admission, it asserts it
+     * ({@code consistencyMessages(model)} is empty for an admitted model); {@code AdmissionClaimIsAssertedGuardTest}
+     * enforces that, and TESTING-SPEC "the admission gate" records why the harness does not gate here itself.
      */
     public static String withRule(String modelJson, String groupId, String ruleName, String errorEntityRelPath,
             String errorCode, String condition) {

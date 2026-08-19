@@ -20,8 +20,10 @@ import org.junit.jupiter.api.Test
  * `dd.MM`+`-`.
  *
  * **An admitted DECLARATION pair is not thereby an admitted COMPUTATION profile — that is a separate claim, and
- * this matrix is what measures it:** every row is put through `checkConsistency` and both kernel strategies in
- * its own right. The matrix held only the first six for a while and read exactly like the whole class; running
+ * this matrix is what measures it:** [everyProfileAndTheCrossedTargetAreKernelAdmitted] runs the kernel's MVK
+ * gate on all nine models this class executes, and the runtime rows put each through both kernel strategies.
+ * The admission half used to be asserted by nobody — `BoundModel.ofJson` gates the BASE and the computation is
+ * spliced in after it (TESTING-SPEC "the admission gate"). The matrix held only the first six for a while and read exactly like the whole class; running
  * the remaining two is what found IF306. The halved `MM`+`""` — the one declaration whose separator is legally
  * EMPTY — was the row that diverged, and it diverged in the model LOADER rather than the evaluator.
  *
@@ -56,6 +58,23 @@ class DateRangeFirstFilledProfileDiffTest {
                     rows.repeatable(20).indexField("Key")
                         .stringField("Key") { }
                         .dateRangeField("RowWindow") { it.format(profile.format).separator(profile.separator) }
+                }
+            }.build().toJson()
+        val m = BoundModel.ofJson(base)
+        val operation = DslRenderer(ConditionLanguage.EN, ROOT)
+            .render(Dsl.firstFilledDateRange(m.flatten("$ROOT/Rows*/RowWindow")).expression())
+        return RuntimeLaws.withComputation(base, ROOT, "FirstWindowComp", "../FirstWindow", operation)
+    }
+
+    /** The one CROSSED model: an `yyyy-MM-dd` target fed from a `dd.MM.yyyy` column, same component set. */
+    private fun crossedModelJson(): String {
+        val base = DocumentModelDraft.named("cover-crossed").locale("en_US")
+            .rootGroup("Cover") { cover ->
+                cover.dateRangeField("FirstWindow") { it.format("yyyy-MM-dd").separator("/") }
+                cover.group("Rows") { rows ->
+                    rows.repeatable(20).indexField("Key")
+                        .stringField("Key") { }
+                        .dateRangeField("RowWindow") { it.format("dd.MM.yyyy").separator("-") }
                 }
             }.build().toJson()
         val m = BoundModel.ofJson(base)
@@ -105,6 +124,22 @@ class DateRangeFirstFilledProfileDiffTest {
         c.cleared() -> "CLEARED"
         c.errored() -> "ERRORED|${c.value().orElse("")}"
         else -> "VALUE|${c.value().orElse("")}"
+    }
+
+    /**
+     * The ADMISSION half, asserted rather than inferred: the kernel's `checkConsistency` reports NOTHING for
+     * each of the nine models this class executes. Codegen succeeding is not this claim — the MVK gate is a
+     * separate route, and until it was called here the "all of which pass `checkConsistency`" line rested on
+     * the runtime rows, which cannot see it (TESTING-SPEC "the admission gate").
+     */
+    @Test
+    fun everyProfileAndTheCrossedTargetAreKernelAdmitted() {
+        for (profile in Profile.entries) {
+            assertEquals(emptyList<String>(), RuntimeLaws.consistencyMessages(models.getValue(profile)),
+                "the kernel admits the $profile computation profile")
+        }
+        assertEquals(emptyList<String>(), RuntimeLaws.consistencyMessages(crossedModelJson()),
+            "the kernel admits the crossed lexical profile")
     }
 
     @Test fun anExactIsoWindowRetainsItsEndpoints() =
@@ -159,19 +194,7 @@ class DateRangeFirstFilledProfileDiffTest {
      */
     @Test
     fun theTargetFormatDecidesTheStoredForm() {
-        val base = DocumentModelDraft.named("cover-crossed").locale("en_US")
-            .rootGroup("Cover") { cover ->
-                cover.dateRangeField("FirstWindow") { it.format("yyyy-MM-dd").separator("/") }
-                cover.group("Rows") { rows ->
-                    rows.repeatable(20).indexField("Key")
-                        .stringField("Key") { }
-                        .dateRangeField("RowWindow") { it.format("dd.MM.yyyy").separator("-") }
-                }
-            }.build().toJson()
-        val m = BoundModel.ofJson(base)
-        val operation = DslRenderer(ConditionLanguage.EN, ROOT)
-            .render(Dsl.firstFilledDateRange(m.flatten("$ROOT/Rows*/RowWindow")).expression())
-        val json = RuntimeLaws.withComputation(base, ROOT, "FirstWindowComp", "../FirstWindow", operation)
+        val json = crossedModelJson()
 
         val kernelDocument = RuntimeLaws.doc().group(ROOT, 1)
             .group("$ROOT/Rows", 1, 1).field("$ROOT/Rows/Key", "K1", 1, 1, 1)
