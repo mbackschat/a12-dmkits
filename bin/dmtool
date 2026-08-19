@@ -38,52 +38,47 @@ candidates+=("$ROOT/cli/build/install/dmtool/bin/dmtool")  # installDist launche
 # Supported development JDK: 21 (the build's pin). A newer JDK still runs, with a caveat: on 26+ Jackson's
 # reflective deserialization of a kernel final field emits a mutation WARNING on stderr — stdout stays
 # clean JSON, so the machine contract holds, but the announced future block would not.
+# Sourced for `a12_classify_java`, which single-sources the JDK probe this gate and the source-preparation
+# script both need. REQUIRED, not best-effort: a missing helper would otherwise turn the gate off silently,
+# and a gate that disappears when its dependency does is worse than no gate, because the shim keeps claiming
+# to have checked. It ships in the same tree as this shim, so absence is a broken checkout — say so.
+if [[ ! -r "$ROOT/scripts/gradle-environment.sh" ]]; then
+  printf 'dmtool: cannot read %s — this checkout is incomplete.\n' "$ROOT/scripts/gradle-environment.sh" >&2
+  exit 2
+fi
+# shellcheck source=scripts/gradle-environment.sh
+. "$ROOT/scripts/gradle-environment.sh"
+
 require_supported_java() {
   local hint="set JAVA_HOME to a JDK 21 installation, or unset it to use the system default.
   On macOS:  export JAVA_HOME=\$(/usr/libexec/java_home -v 21)"
-  if [[ -n "${JAVA_HOME:-}" && ! -x "${JAVA_HOME}/bin/java" ]]; then
-    printf 'dmtool: JAVA_HOME points at a directory with no java executable:\n  %s\n%s\n' \
-      "$JAVA_HOME" "$hint" >&2
-    printf '  (a versioned Homebrew Cellar path breaks on every `brew upgrade openjdk`)\n' >&2
-    return 2
-  fi
-  local java_bin="${JAVA_HOME:+${JAVA_HOME}/bin/}java"
-  if ! command -v "${java_bin:-java}" >/dev/null 2>&1; then
-    printf 'dmtool: no java found on PATH and JAVA_HOME is unset.\n%s\n' "$hint" >&2
-    return 2
-  fi
-  # Capture the banner and the JVM's OWN exit status separately. Both matter, and both were previously lost:
-  #   - a FAILING `java -version` left `major` empty and the gate returned success (the launcher then died with
-  #     the child's status, so the failure surfaced with no dmtool diagnostic and no recovery hint);
-  #   - an UNPARSEABLE banner did the same, and dmtool exited 0 with empty stdout — the worst outcome for an
-  #     agent, which reads 0 + no output as "ran fine, nothing to report".
-  local banner status
-  set +e
-  banner="$("${java_bin:-java}" -version 2>&1)"
-  status=$?
-  set -e
-  if (( status != 0 )); then
-    printf 'dmtool: `%s -version` failed (exit %s) — this Java is not usable:\n%s\n%s\n' \
-      "${java_bin:-java}" "$status" "$banner" "$hint" >&2
-    return 2
-  fi
-  # Match the version on ANY line, not the first. A JVM prepends "Picked up JAVA_TOOL_OPTIONS: …" (and the
-  # _JAVA_OPTIONS twin) whenever those are set — routine in CI, containers, and IDE-spawned shells — so anchoring
-  # to line 1 yielded an empty version there and the `-n "$major"` test then short-circuited the whole comparison.
-  # That made the gate silently inert in exactly the environments it was written to protect, and it is why the
-  # version is now REQUIRED rather than treated as optional.
-  local major
-  major="$(printf '%s\n' "$banner" | sed -n 's/.*version "\([0-9][0-9]*\).*/\1/p' | head -n 1)"
-  if [[ -z "$major" ]]; then
-    printf 'dmtool: cannot read a Java version from `%s -version` — refusing rather than guessing:\n%s\n%s\n' \
-      "${java_bin:-java}" "$banner" "$hint" >&2
-    return 2
-  fi
-  if (( major < 21 )); then
-    printf 'dmtool: Java %s is too old — the supported development JDK is 21 (a NEWER JDK also runs).\n%s\n' \
-      "$major" "$hint" >&2
-    return 2
-  fi
+  a12_classify_java "${JAVA_HOME:-}"
+  # Every branch REFUSES rather than guessing. Two of them were once silent successes: a FAILING
+  # `java -version` left the version empty and the gate returned 0 (the launcher then died with the child's
+  # status, no dmtool diagnostic, no hint), and an UNPARSEABLE banner did the same, so dmtool exited 0 with
+  # empty stdout — the worst outcome for an agent, which reads that as "ran fine, nothing to report".
+  case "$a12_java_kind" in
+    no-home-binary)
+      printf 'dmtool: JAVA_HOME points at a directory with no java executable:\n  %s\n%s\n' \
+        "$JAVA_HOME" "$hint" >&2
+      printf '  (a versioned Homebrew Cellar path breaks on every `brew upgrade openjdk`)\n' >&2
+      return 2 ;;
+    no-java)
+      printf 'dmtool: no java found on PATH and JAVA_HOME is unset.\n%s\n' "$hint" >&2
+      return 2 ;;
+    failed)
+      printf 'dmtool: `%s -version` failed (exit %s) — this Java is not usable:\n%s\n%s\n' \
+        "$a12_java_bin" "$a12_java_status" "$a12_java_banner" "$hint" >&2
+      return 2 ;;
+    unreadable)
+      printf 'dmtool: cannot read a Java version from `%s -version` — refusing rather than guessing:\n%s\n%s\n' \
+        "$a12_java_bin" "$a12_java_banner" "$hint" >&2
+      return 2 ;;
+    too-old)
+      printf 'dmtool: Java %s is too old — the supported development JDK is 21 (a NEWER JDK also runs).\n%s\n' \
+        "$a12_java_major" "$hint" >&2
+      return 2 ;;
+  esac
   return 0
 }
 

@@ -16,11 +16,9 @@
 
 - **IG141 — the launcher-preparation boundaries a cold review named, all outside the JAVA_HOME class the fix owns.** Opened 2026-08-19.
 
-  - `resolve_launcher_state` reads exit status before output, so a launcher that prints a correct `source:` line and then exits non-zero, or prints it on stderr, is classified `unstartable` rather than read. A launcher that starts, exits 0 and prints nothing is likewise `unstartable`.
-  - The caller note fires exactly when Gradle's start script would die (measured both directions), but says nothing when `JAVA_HOME` names a *runnable* JDK of the wrong major version, nor when `JAVA_HOME` is unset and no `java` is on PATH. `bin/dmtool`'s `require_supported_java` already answers both, with seven cases locked by `selftest-dmtool-launcher.sh`; reusing it means extracting that function into the shared helper, which is its own slice.
-  - The post-build HEAD/worktree recheck is advertised in `scripts/README.md` and unguarded — deleting it leaves the selftest green. Pre-existing.
-  - `a12_pinned_jdk21_home`'s own failure is swallowed by `prepare-dmtool-source.sh` (`2>/dev/null || true`), so a macOS box with no JDK 21 registered is never told the pin was unavailable.
   - Two further JDK-pin encodings remain outside the shared helper on purpose or by omission: `scripts/perf-keys.sh` (deliberately a different policy — pins only when `JAVA_HOME` is unset) and `eval/benchmark.workflow.js` (inline in JS). Neither is covered by `BuildPerformancePolicyTest.everyJdkPinGoesThroughTheOneSharedDerivation`.
+
+  *(Four sibling items are gone: the classifier now reads the launcher's ANSWER before its exit status and keeps a right-provenance-but-failing launcher out of `current`; the caller note runs the shared `a12_classify_java`, so a wrong-major or missing JDK is named too; both post-build rechecks have a selftest whose fake build trips them; and an unavailable JDK pin is reported instead of swallowed.)*
 
 ---
 

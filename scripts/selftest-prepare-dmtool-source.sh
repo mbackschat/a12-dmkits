@@ -273,7 +273,28 @@ nopin_err="$(cat "$WORK/nopin.err")"
   || fail "the launcher's own stderr was not preserved: $nopin_err"
 [[ -z "$nopin_out" ]] || fail "a failed preparation printed something on stdout: $nopin_out"
 
-# 14. The pin's OWN failure is surfaced rather than swallowed. Distinct from case 13: there the platform
+# 14. The caller note covers every reason the caller's own environment will not start the launcher, not just
+#     an empty JAVA_HOME. A runnable JDK of the WRONG major, and an unset JAVA_HOME with no java on PATH,
+#     were both silent — the returned path fails for the caller either way. Same probe `bin/dmtool` uses.
+install_fake_launcher "$HEAD_REVISION"
+old_jdk="$WORK/old-jdk"
+mkdir -p "$old_jdk/bin"
+printf '#!/usr/bin/env bash\n%s\n' 'echo "openjdk version \"17.0.9\" 2023-10-17" >&2; exit 0' \
+  > "$old_jdk/bin/java"
+chmod +x "$old_jdk/bin/java"
+set +e
+old_java_out="$(JAVA_HOME="$old_jdk" bash "$REPO/scripts/prepare-dmtool-source.sh" 2>"$WORK/oldjava.err")"
+old_java_status=$?
+set -e
+old_java_err="$(cat "$WORK/oldjava.err")"
+[[ $old_java_status -eq 0 ]] || fail "a wrong-major caller JDK was made fatal: $old_java_err"
+[[ "$old_java_out" == "$LAUNCHER" ]] || fail "the wrong-major run did not resolve the launcher: '$old_java_out'"
+[[ "$old_java_err" == *"is Java 17"* ]] \
+  || fail "the caller was not told its own JDK is too old for the returned launcher: $old_java_err"
+#     (The remaining `no-java` kind cannot be staged here — emptying PATH would take git, sed and mktemp
+#     with it — so the classifier itself carries that case, in selftest-dmtool-launcher.sh.)
+
+# 15. The pin's OWN failure is surfaced rather than swallowed. Distinct from case 13: there the platform
 #     offers no pin at all (nothing to report), here the pin exists and fails — a macOS box with no JDK 21
 #     registered. The stub keeps java_home present but non-zero, which is exactly that shape.
 sed 's|/usr/libexec/java_home|/usr/bin/false|g' \
@@ -295,4 +316,4 @@ failpin_err="$(cat "$WORK/failpin.err")"
 [[ "$failpin_err" == *"none is registered"* ]] \
   || fail "the pin's own failure was swallowed rather than surfaced: $failpin_err"
 
-echo "SELFTEST OK: clean-revision reuse, stale rebuild, dirty refusal, post-build provenance, foreign cwd, broken JAVA_HOME, corrupt install, empty build, stderr banner, unhealthy launcher, silent launcher, post-build rechecks, no-pin start failure, surfaced pin failure"
+echo "SELFTEST OK: clean-revision reuse, stale rebuild, dirty refusal, post-build provenance, foreign cwd, broken JAVA_HOME, corrupt install, empty build, stderr banner, unhealthy launcher, silent launcher, post-build rechecks, no-pin start failure, caller-environment note, surfaced pin failure"

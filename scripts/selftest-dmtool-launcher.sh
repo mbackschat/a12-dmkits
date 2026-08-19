@@ -152,8 +152,11 @@ echo "…and RK_NATIVE=1 must select Gradle's actual nativeCompile artifact:"
 # RK_NATIVE=1 silently fell through to the JVM launcher.
 TEST_ROOT="$WORK/repo"
 mkdir -p "$TEST_ROOT/bin" "$(dirname "$TEST_ROOT/$EXPECTED_NATIVE_RELATIVE")" \
-  "$TEST_ROOT/cli/build/install/dmtool/bin"
+  "$TEST_ROOT/cli/build/install/dmtool/bin" "$TEST_ROOT/scripts"
 cp "$DMTOOL" "$TEST_ROOT/bin/dmtool"
+# The shim single-sources its JDK probe from here and refuses without it, so a repository-shaped fixture
+# carries it too — omitting it would test a checkout the shim deliberately does not support.
+cp "$ROOT/scripts/gradle-environment.sh" "$TEST_ROOT/scripts/gradle-environment.sh"
 cat > "$TEST_ROOT/$EXPECTED_NATIVE_RELATIVE" <<'EOF'
 #!/usr/bin/env bash
 printf 'NATIVE'
@@ -173,8 +176,9 @@ check_output "RK_NATIVE selects nativeCompile output" NATIVE \
 # candidate cannot hide behind this test's POSIX-only JUnit wrapper.
 WINDOWS_ROOT="$WORK/repo-windows"
 mkdir -p "$WINDOWS_ROOT/bin" "$WINDOWS_ROOT/cli/build/native/nativeCompile" \
-  "$WINDOWS_ROOT/cli/build/install/dmtool/bin"
+  "$WINDOWS_ROOT/cli/build/install/dmtool/bin" "$WINDOWS_ROOT/scripts"
 cp "$DMTOOL" "$WINDOWS_ROOT/bin/dmtool"
+cp "$ROOT/scripts/gradle-environment.sh" "$WINDOWS_ROOT/scripts/gradle-environment.sh"
 cat > "$WINDOWS_ROOT/cli/build/native/nativeCompile/dmtool.exe" <<'EOF'
 #!/usr/bin/env bash
 printf 'NATIVE_EXE'
@@ -189,6 +193,36 @@ chmod +x "$WINDOWS_ROOT/bin/dmtool" \
   "$WINDOWS_ROOT/cli/build/install/dmtool/bin/dmtool"
 check_output "RK_NATIVE selects Windows nativeCompile output" NATIVE_EXE \
   env DMTOOL_CLI= RK_NATIVE=1 JAVA_HOME="$JDK_OK" "$WINDOWS_ROOT/bin/dmtool" --version
+
+echo
+echo "…and the gate must model Gradle's OWN probe, plus refuse a checkout it cannot read:"
+
+# (11) Gradle's start script prefers $JAVA_HOME/jre/sh/java and only then bin/java. A gate that looked for
+#      bin/java alone refused a JAVA_HOME Gradle would have started from perfectly well.
+JDK_JRE_SH="$WORK/jdk-jre-sh"
+mkdir -p "$JDK_JRE_SH/jre/sh"
+printf '#!/usr/bin/env bash\n%s\n' 'echo "openjdk version \"21.0.12\" 2024-07-16" >&2; exit 0' \
+  > "$JDK_JRE_SH/jre/sh/java"
+chmod +x "$JDK_JRE_SH/jre/sh/java"
+check "JAVA_HOME with only jre/sh/java is accepted" 0 \
+  env DMTOOL_CLI="$LAUNCHER" JAVA_HOME="$JDK_JRE_SH" "$DMTOOL" --version
+
+# (12) The shim REQUIRES the shared helper its JDK probe lives in. Without it the gate would silently do
+#      nothing while the shim still claimed to have checked, so absence is a refusal with its own message.
+BROKEN_ROOT="$WORK/repo-no-helper"
+mkdir -p "$BROKEN_ROOT/bin"
+cp "$DMTOOL" "$BROKEN_ROOT/bin/dmtool"
+chmod +x "$BROKEN_ROOT/bin/dmtool"
+check "a checkout without the shared helper is refused" 2 \
+  env DMTOOL_CLI="$LAUNCHER" JAVA_HOME="$JDK_OK" "$BROKEN_ROOT/bin/dmtool" --version
+
+# (13) The one classifier kind no JAVA_HOME can stage: no java anywhere. Exercised directly against the
+#      shared function, because emptying PATH for a whole script would take git, sed and mktemp with it —
+#      inside `bash -c` only builtins are needed. This is the kind `prepare-dmtool-source.sh`'s caller note
+#      reports as "JAVA_HOME is unset and no java is on PATH".
+check_output "no java anywhere classifies as no-java" no-java \
+  env -u JAVA_HOME PATH=/nonexistent /bin/bash -c \
+    '. "$1"; a12_classify_java ""; printf %s "$a12_java_kind"' _ "$ROOT/scripts/gradle-environment.sh"
 
 printf '\n%s passed, %s failed\n' "$pass" "$fail"
 [[ "$fail" -eq 0 ]]

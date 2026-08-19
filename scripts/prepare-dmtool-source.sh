@@ -180,13 +180,28 @@ if [[ "$launcher_state" != current ]]; then
   esac
 fi
 
-# The path printed here is run by the CALLER, in the CALLER's environment. When only the pin made the check
-# work, the caller's very next command would hit the failure this script just absorbed, so name it.
-if [[ -n "$PINNED_JDK21" && -n "${JAVA_HOME:-}" \
-      && ! -x "$JAVA_HOME/bin/java" && ! -x "$JAVA_HOME/jre/sh/java" ]]; then
+# The path printed here is run by the CALLER, in the CALLER's environment — which the pin may have bypassed
+# for the provenance check. So classify what the caller actually has, through the same probe `bin/dmtool`'s
+# gate uses, and name any reason the launcher will not start there. The note used to cover only a JAVA_HOME
+# with no java in it at all, and stayed silent for a runnable JDK of the wrong major version and for an unset
+# JAVA_HOME with no java on PATH — both of which stop the launcher just as surely.
+a12_classify_java "${JAVA_HOME:-}"
+caller_problem=""
+case "$a12_java_kind" in
+  no-home-binary) caller_problem="JAVA_HOME=$JAVA_HOME holds no runnable java" ;;
+  no-java) caller_problem="JAVA_HOME is unset and no java is on PATH" ;;
+  failed) caller_problem="\`$a12_java_bin -version\` failed (exit $a12_java_status)" ;;
+  unreadable) caller_problem="\`$a12_java_bin -version\` reports no readable version" ;;
+  too-old) caller_problem="$a12_java_bin is Java $a12_java_major, and the launcher needs 21 or newer" ;;
+esac
+if [[ -n "$caller_problem" ]]; then
   {
-    echo "dmtool source preparation: note - JAVA_HOME=$JAVA_HOME holds no runnable java;"
-    echo "  the provenance check used $PINNED_JDK21. Export that before running the launcher."
+    echo "dmtool source preparation: note - $caller_problem;"
+    if [[ -n "$PINNED_JDK21" ]]; then
+      echo "  the provenance check used $PINNED_JDK21. Export that before running the launcher."
+    else
+      echo "  the launcher path below starts only once a JDK 21 is on PATH or named by JAVA_HOME."
+    fi
   } >&2
 fi
 

@@ -23,3 +23,67 @@ a12_pinned_jdk21_home() {
   [[ -x /usr/libexec/java_home ]] || return 0
   /usr/libexec/java_home -v 21
 }
+
+# Classify the Java that `$1` (a JAVA_HOME, or empty to mean "whatever PATH resolves") would actually run,
+# against the development floor of JDK 21. Single-sourced because two consumers ask the same question with
+# different severity — `bin/dmtool` REFUSES so the Gradle start script cannot die undiagnosed, while
+# `prepare-dmtool-source.sh` only WARNS, since the launcher path it prints runs in the caller's environment
+# rather than its own. Duplicating the probe would re-encode the version floor in a second place, which is
+# the same defect the JDK pin above was extracted to fix.
+#
+# Results go into globals rather than stdout: the caller needs four values, and a command substitution would
+# run this in a subshell. Always returns 0 — severity is the CALLER's decision, and so is the wording.
+#
+#   a12_java_kind    ok | no-home-binary | no-java | failed | unreadable | too-old
+#   a12_java_bin     the java the classification used ("" when none was found)
+#   a12_java_major   the parsed major version (ok / too-old only)
+#   a12_java_status  the exit status of `java -version` (failed only)
+#   a12_java_banner  the raw `java -version` output, both streams, when one was captured
+a12_classify_java() {
+  local java_home="${1:-}"
+  a12_java_kind=""
+  a12_java_bin=""
+  a12_java_major=""
+  a12_java_status=0
+  a12_java_banner=""
+
+  if [[ -n "$java_home" ]]; then
+    # Probe BOTH locations Gradle's generated start script probes, preferring the same one it prefers. A gate
+    # that only looked for `bin/java` refused a JAVA_HOME that Gradle would have started from `jre/sh/java`.
+    if [[ -x "$java_home/jre/sh/java" ]]; then
+      a12_java_bin="$java_home/jre/sh/java"
+    elif [[ -x "$java_home/bin/java" ]]; then
+      a12_java_bin="$java_home/bin/java"
+    else
+      a12_java_kind=no-home-binary
+      return 0
+    fi
+  else
+    command -v java >/dev/null 2>&1 || { a12_java_kind=no-java; return 0; }
+    a12_java_bin=java
+  fi
+
+  local banner status
+  set +e
+  banner="$("$a12_java_bin" -version 2>&1)"
+  status=$?
+  set -e
+  a12_java_banner="$banner"
+  a12_java_status=$status
+  if (( status != 0 )); then
+    a12_java_kind=failed
+    return 0
+  fi
+
+  # Match the version on ANY line: a JVM prepends "Picked up JAVA_TOOL_OPTIONS: …" (and the _JAVA_OPTIONS
+  # twin) whenever those are set, which is routine in CI, containers, and IDE-spawned shells. Anchoring to
+  # line 1 yielded an empty version there and made the gate silently inert in exactly those environments.
+  local major
+  major="$(printf '%s\n' "$banner" | sed -n 's/.*version "\([0-9][0-9]*\).*/\1/p' | head -n 1)"
+  if [[ -z "$major" ]]; then
+    a12_java_kind=unreadable
+    return 0
+  fi
+  a12_java_major="$major"
+  if (( major < 21 )); then a12_java_kind=too-old; else a12_java_kind=ok; fi
+}
