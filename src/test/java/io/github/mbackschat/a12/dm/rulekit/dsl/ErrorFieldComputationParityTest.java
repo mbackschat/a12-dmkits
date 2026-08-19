@@ -14,7 +14,8 @@ import org.junit.jupiter.api.Test;
  * D10: the two "point at a field by typed handle" surfaces — {@code Rule.Builder.errorField(...)} and
  * {@code BoundModel.computation(...)} — must accept the <em>same</em> set of typed refs. errorField was
  * missing the temporal refs; computation carried only Number/String/Field. This locks the parity so a
- * ref added to one but not the other fails the build.
+ * ref added to one but not the other fails the build — which is exactly what it caught on 2026-08-19, when
+ * closing a gap added {@code computation(DateRangeRef)} and left {@code errorField} behind.
  */
 class ErrorFieldComputationParityTest {
 
@@ -38,7 +39,7 @@ class ErrorFieldComputationParityTest {
         Set<Class<?>> refs = singleParamTypes(Rule.Builder.class, "errorField");
         for (Class<?> expected : Set.of(FieldRef.class, NumberRef.class, StringRef.class, EnumRef.class,
                 BoolRef.class, ConfirmRef.class, DateRef.class, TimeRef.class, DateTimeRef.class,
-                DateFragmentRef.class)) {
+                DateFragmentRef.class, DateRangeRef.class)) {
             assertTrue(refs.contains(expected), () -> "missing errorField/computation overload for " + expected);
         }
     }

@@ -20,6 +20,8 @@ import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl;
 import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer;
 import io.github.mbackschat.a12.dm.rulekit.dsl.NumberExpr;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Quantifier;
+import io.github.mbackschat.a12.dm.rulekit.dsl.Rule;
+import io.github.mbackschat.a12.dm.rulekit.dsl.Severity;
 import io.github.mbackschat.a12.dm.rulekit.dsl.StringExpr;
 import io.github.mbackschat.a12.dm.rulekit.dsl.TimeExpr;
 import io.github.mbackschat.a12.dm.rulekit.validate.DraftRule;
@@ -87,12 +89,21 @@ class NewShapesSnippetsTest {
         Computation coverageWindow = m.computation(m.dateRange("/Order/CoverageWindow"))
                 .name("CoverageWindowComp").calc(requestedWindow.expression())
                 .message(Dsl.en("Coverage window follows the order and delivery dates.")).build();
+        Rule windowMismatch = m.rule(m.group("/Order")).name("CoverageWindowMatchesOrder")
+                .errorField(m.dateRange("/Order/CoverageWindow")).when(windowChanged)
+                .code("COVERAGE_WINDOW_MISMATCH").severity(Severity.ERROR)
+                .message(Dsl.en("The coverage window must span the order and delivery dates.")).build();
         // end::date-range-equality[]
         assertEquals("[/Order/CoverageWindow] != DateRange(/Order/OrderDate, /Order/DeliveryDate)",
                 new DslRenderer().render(windowChanged));
         assertEquals("FirstFilledValue(/Order/Items*/ItemCoverage)",
                 new DslRenderer().render(firstObservedWindow.expression()));
         assertEquals("../CoverageWindow", coverageWindow.computedFieldRelPath());
+        assertEquals("../CoverageWindow", windowMismatch.errorEntityRelPath());
+        // The kernel is the oracle for the new overload too: a DATE_RANGE field IS a legal error entity, which
+        // is what makes the errorField/computation parity meaningful rather than merely symmetric.
+        var ruleResult = new RuleValidator().check(Fixtures.orderJson(), windowMismatch.draft());
+        assertTrue(ruleResult.ok(), () -> "kernel rejected a DATE_RANGE error field: " + ruleResult.diagnostics());
         assertKernelAccepts(windowChanged, "../CoverageWindow");
         assertKernelAccepts(requestedWindowChanged, "../OrderDate");
         assertKernelAccepts(m.dateRange("/Order/CoverageWindow").eq(firstObservedWindow), "../CoverageWindow");

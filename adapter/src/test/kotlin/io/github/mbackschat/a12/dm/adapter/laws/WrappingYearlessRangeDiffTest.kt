@@ -12,8 +12,10 @@ import org.junit.jupiter.api.Test
  * A `DateRangeType` may declare `interpretationOfYear`, and the accepted values are `FROM` and `TO` (measured
  * 2026-08-19 through `model check`; the tool API's `STANDARD`/`PREVIOUS`/`SUBSEQUENT` spellings are all
  * refused, and STANDARD is expressed by omitting the property). `DateUtil.getSupplementaryYears` then breaks
- * the base-year default for a range that wraps: `FROM` moves the START back a year, `TO` moves the END forward
- * one, and only when `isYearNotBaseYear` says the value actually wraps.
+ * the base-year default for a range that wraps, and the direction is the REVERSE of what the names suggest:
+ * the declared value names which endpoint the base year LABELS, so `FROM` keeps the start at the base year
+ * and rolls the END forward one, while `TO` keeps the end and rolls the START back one — measured below, and
+ * only when `isYearNotBaseYear` says the value actually wraps.
  *
  * Without that, `01.11-31.01` reads as start 11-01 and end 01-31 of the SAME year — start after end — so the
  * value is reported invalid where the kernel accepts a perfectly ordinary winter season.
