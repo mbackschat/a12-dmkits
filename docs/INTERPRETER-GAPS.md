@@ -14,7 +14,21 @@
 
 ## 1. Open
 
-_None open._
+- **IG140 — the DATE_RANGE construction/comparison boundaries a cold review named but nothing measures.** Opened 2026-08-19 while reconciling `SPEC-2026-08-19-0*`; each is a shape the fixed code handles by reading, with no oracle behind it.
+
+  - `intervalEndOfDeclaredFormat` has no `DatePart.HOUR` short-circuit, which the kernel's `addMonthAndDay` does have. Unreachable today because `ModelDef.dateFormats` is filled only for `Kind.DATE`, so no time-bearing format can arrive — but that is a reachability argument, not a test.
+  - `RuntimeController.constructDateRange` passes a plain base year to both endpoints, while the STORED path routes through `DateUtil.getSupplementaryYears`, which shifts a yearless endpoint by ±1 under `Jahresinterpretation.Vorjahr`/`Folgejahr`. Under a non-Standard interpretation a construction therefore cannot equal its stored twin on `MM`/`MM-dd`. Newly concrete: `dd.MM`+`-` is an admitted DATERANGE pair and the kernel's own `DateUtil` javadoc names `DD.MM-DD.MM` as that feature's carrier. dmkits exposes no authoring surface for `interpretationOfYear`, and there is no read-path handling for a model that declares one.
+  - `Dsl.dateRange` refuses `BaseYear` and every non-DATE/DATE_FRAGMENT operand in `DateRangeConstruction`'s constructor with no measured kernel basis — the client-side-refusal rule's own case, pre-existing and inherited rather than introduced.
+
+  *Re-open trigger for the first two: a model that declares `interpretationOfYear`, or a DATE format carrying an hour component, reaching the interpreter.*
+
+- **IG141 — the launcher-preparation boundaries a cold review named, all outside the JAVA_HOME class the fix owns.** Opened 2026-08-19.
+
+  - `resolve_launcher_state` reads exit status before output, so a launcher that prints a correct `source:` line and then exits non-zero, or prints it on stderr, is classified `unstartable` rather than read. A launcher that starts, exits 0 and prints nothing is likewise `unstartable`.
+  - The caller note fires exactly when Gradle's start script would die (measured both directions), but says nothing when `JAVA_HOME` names a *runnable* JDK of the wrong major version, nor when `JAVA_HOME` is unset and no `java` is on PATH. `bin/dmtool`'s `require_supported_java` already answers both, with seven cases locked by `selftest-dmtool-launcher.sh`; reusing it means extracting that function into the shared helper, which is its own slice.
+  - The post-build HEAD/worktree recheck is advertised in `scripts/README.md` and unguarded — deleting it leaves the selftest green. Pre-existing.
+  - `a12_pinned_jdk21_home`'s own failure is swallowed by `prepare-dmtool-source.sh` (`2>/dev/null || true`), so a macOS box with no JDK 21 registered is never told the pin was unavailable.
+  - Two further JDK-pin encodings remain outside the shared helper on purpose or by omission: `scripts/perf-keys.sh` (deliberately a different policy — pins only when `JAVA_HOME` is unset) and `eval/benchmark.workflow.js` (inline in JS). Neither is covered by `BuildPerformancePolicyTest.everyJdkPinGoesThroughTheOneSharedDerivation`.
 
 ---
 

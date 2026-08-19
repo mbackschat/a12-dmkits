@@ -36,13 +36,15 @@ if ! command -v node >/dev/null 2>&1; then
   exit 1
 fi
 
-# Pin JAVA_HOME exactly like build.sh (the same footgun, second site): the BUILD runs through build.sh's
-# pin, but the installDist LAUNCHER the demos invoke reads the caller's JAVA_HOME — a stale one (e.g. a
-# Homebrew JDK path emptied by an upgrade) makes every demo's `actual` an error banner and reads as a
-# mass false DRIFT (it did, 2026-07-23). One JDK policy for build and launcher alike.
-if [[ -x /usr/libexec/java_home ]]; then
-  export JAVA_HOME="$(/usr/libexec/java_home -v 21)"
-fi
+# Pin JAVA_HOME through the ONE shared derivation (the same footgun, second site): the BUILD runs through
+# build.sh's pin, but the installDist LAUNCHER the demos invoke reads the caller's JAVA_HOME — a stale one
+# (e.g. a Homebrew JDK path emptied by an upgrade) makes every demo's `actual` an error banner and reads as a
+# mass false DRIFT (it did, 2026-07-23). One JDK policy for build and launcher alike, and one place that
+# decides it: re-encoding `java_home -v 21` per site is how build.sh and this script came to disagree.
+# shellcheck source=scripts/gradle-environment.sh
+. "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/gradle-environment.sh"
+demo_pinned_jdk21_home="$(a12_pinned_jdk21_home)"
+[[ -z "$demo_pinned_jdk21_home" ]] || export JAVA_HOME="$demo_pinned_jdk21_home"
 
 echo "==> building the JVM CLI launcher (installDist — always current; native is never used here)"
 # Delegate the environment policy to the one worktree-safe source of truth. Re-deriving GRADLE_USER_HOME

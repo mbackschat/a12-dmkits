@@ -95,6 +95,17 @@ class ConstructedRangeTargetDiffTest {
             "$ROOT/MonthWindow" to "01/02")
 
     @Test
+    fun invertedMonthDayComponentsAlsoRetainTheAttemptedTextAsErrored() =
+        agree(dayModel, "$ROOT/DayWindow", "ERRORED|07-31/03-01",
+            "$ROOT/FromDay" to "07-31", "$ROOT/ToDay" to "03-01",
+            "$ROOT/DayWindow" to "01-01/02-02")
+
+    @Test
+    fun anEmptyMonthDayEndpointClearsASeededTarget() =
+        agree(dayModel, "$ROOT/DayWindow", "CLEARED",
+            "$ROOT/FromDay" to "03-01", "$ROOT/DayWindow" to "01-01/02-02")
+
+    @Test
     fun anEmptyEndpointClearsASeededTarget() =
         agree(monthModel, "$ROOT/MonthWindow", "CLEARED",
             "$ROOT/FromMonth" to "03", "$ROOT/MonthWindow" to "01/02")

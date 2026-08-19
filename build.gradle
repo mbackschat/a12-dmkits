@@ -476,6 +476,7 @@ tasks.register('deliveryGuardTest', Test) {
             'launcher self-test'      : file('scripts/selftest-dmtool-launcher.sh'),
             'source preparation'      : file('scripts/prepare-dmtool-source.sh'),
             'source prep self-test'   : file('scripts/selftest-prepare-dmtool-source.sh'),
+            'Gradle environment'      : file('scripts/gradle-environment.sh'),
             'native build contract'   : file('cli/build.gradle'),
             'native no-Java smoke'    : file('scripts/native-no-java-smoke.sh'),
             'Codex activation smoke'  : file('scripts/codex-plugin-activation-smoke.sh'),
@@ -618,6 +619,12 @@ tasks.register('docGuardTest', Test) {
             // misleading message. BuildPerformancePolicyTest asserts the marker directly, so removing it
             // still fails — with a diagnostic that names what actually happened.
             'cli build'        : file('cli/build.gradle'),
+            // BuildPerformancePolicyTest has read build.sh at runtime since it was written, and reads the
+            // preparation script since the JDK-pin single-sourcing check joined it. Undeclared, re-encoding the
+            // pin in build.sh left this lane UP-TO-DATE and the guard unrun — found by mutating build.sh and
+            // watching the mutant survive, which is the same class as the selftest's undeclared helper.
+            'build wrapper'    : file('build.sh'),
+            'source preparation': file('scripts/prepare-dmtool-source.sh'),
             'Gradle environment': file('scripts/gradle-environment.sh'),
             'gradle.properties': file('gradle.properties'),
             'cache smoke'      : file('scripts/verify-build-cache.sh'),

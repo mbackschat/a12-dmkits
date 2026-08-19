@@ -1,5 +1,6 @@
 package io.github.mbackschat.a12.dm.interpreter
 
+import io.github.mbackschat.a12.dm.interpreter.eval.intervalEndOfDeclaredFormat
 import io.github.mbackschat.a12.dm.interpreter.eval.newDocument
 import io.github.mbackschat.a12.dm.interpreter.model.DatePrecision
 import io.github.mbackschat.a12.dm.interpreter.model.FieldDef
@@ -55,4 +56,22 @@ class ConstructedRangeFragmentTest {
     /** Both sub-year components are declared, so the two interval rules coincide and nothing is widened. */
     @Test fun aMonthDayConstructionEqualsItsStoredRange() =
         assertEquals(true, fires("MM-dd", "06-01", "09-30", "06-01/09-30"))
+
+    /**
+     * The widening is a DATE rule and stops at an hour, exactly as the kernel's `addMonthAndDay` does. Asserted
+     * on the helper directly because no model can route a time-bearing format into it today — which is why the
+     * guard exists: the reachability argument is about a neighbouring map, not about this function.
+     */
+    @Test fun aTimeBearingFormatIsNeverWidened() {
+        assertEquals("2024-06-01", intervalEndOfDeclaredFormat("2024-06-01", "yyyy-MM-dd'T'HH:mm:ss"))
+        assertEquals("2024-06-01", intervalEndOfDeclaredFormat("2024-06-01", "HH:mm:ss"))
+    }
+
+    /** The date rule itself, per component the format omits — the positive control for the guard above. */
+    @Test fun aDateFormatIsWidenedPerOmittedComponent() {
+        assertEquals("2024-12-31", intervalEndOfDeclaredFormat("2024-01-01", "yyyy"))
+        assertEquals("2024-02-29", intervalEndOfDeclaredFormat("2024-02-01", "yyyy-MM"))
+        assertEquals("2024-06-30", intervalEndOfDeclaredFormat("2024-06-01", "MM"))
+        assertEquals("2024-06-01", intervalEndOfDeclaredFormat("2024-06-01", "dd.MM.yyyy"))
+    }
 }

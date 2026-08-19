@@ -44,6 +44,11 @@ class ConstructedRangeFragmentDiffTest {
             policy.dateFragmentField("FromDay") { it.fragmentFormat("MM-dd") }
             policy.dateFragmentField("ToDay") { it.fragmentFormat("MM-dd") }
             policy.dateRangeField("CoverDays") { it.format("MM-dd").separator("/") }
+            policy.group("Sections") { sections ->
+                sections.repeatable(20).indexField("Key")
+                    .stringField("Key") { }
+                    .dateFragmentField("SectionMonth") { it.fragmentFormat("MM") }
+            }
         }.build().toJson()
 
     private val model = BoundModel.ofJson(base)
@@ -53,6 +58,7 @@ class ConstructedRangeFragmentDiffTest {
         equality("YearsEqual", "FromYear", "ToYear", "CoverYears"),
         equality("PeriodsEqual", "FromPeriod", "ToPeriod", "CoverPeriods"),
         equality("DaysEqual", "FromDay", "ToDay", "CoverDays"),
+        indexedEquality(),
     ).fold(base, TypedRules::inject)
 
     private val java by lazy { RuntimeLaws.kernelJavaEngine(modelJson) }
@@ -71,14 +77,40 @@ class ConstructedRangeFragmentDiffTest {
             .build()
     }
 
+    /**
+     * The same equality with a SEMANTIC-INDEX-selected finish. IF303 claims the widening reaches every operand
+     * shape the constructor admits and singles this one out, and the resolver's two `return value` fallbacks
+     * would silently reproduce the pre-fix wrong answer rather than fail — so the claim needs its own row.
+     */
+    private fun indexedEquality(): Rule {
+        val constructed = Dsl.dateRange(
+            model.dateFragment("$ROOT/FromMonth"),
+            model.dateFragment("$ROOT/Sections/SectionMonth").forIndex("S2"))
+        return model.rule(model.group(ROOT))
+            .name(INDEXED)
+            .errorField(model.dateRange("$ROOT/CoverMonths").field())
+            .`when`(constructed.eq(model.dateRange("$ROOT/CoverMonths")))
+            .code(INDEXED)
+            .severity(Severity.ERROR)
+            .message(Dsl.en("Constructed range with an indexed finish equals the stored cover window."))
+            .build()
+    }
+
     /** The three engines must agree on which equality codes fire for the given cells — and on the SET, so a
      *  construction that stops matching its own stored twin shows up as a missing code, not as parity noise. */
-    private fun agree(expected: Set<String>, vararg cells: Pair<String, String>) {
+    private fun agree(expected: Set<String>, vararg cells: Pair<String, String>, sections: List<String> = emptyList()) {
         val kernelDocument = RuntimeLaws.doc().group(ROOT, 1)
         val document = definition.newDocument().group(ROOT, 1)
         cells.forEach { (path, value) ->
             kernelDocument.field(path, value, 1, 1)
             document.field(path, value, 1, 1)
+        }
+        sections.forEachIndexed { i, month ->
+            val row = i + 1
+            kernelDocument.group("$ROOT/Sections", 1, row).field("$ROOT/Sections/Key", "S$row", 1, row, 1)
+            document.group("$ROOT/Sections", 1, row).field("$ROOT/Sections/Key", "S$row", 1, row, 1)
+            kernelDocument.field(SECTION_MONTH, month, 1, row, 1)
+            document.field(SECTION_MONTH, month, 1, row, 1)
         }
         val dynamic = RuntimeLaws.messages(modelJson, kernelDocument).map { it.code() }.toSet()
         val generated = java.messages(java.instance(kernelDocument)).map { it.code() }.toSet()
@@ -122,7 +154,21 @@ class ConstructedRangeFragmentDiffTest {
         agree(setOf("DaysEqual"),
             "$ROOT/FromDay" to "06-01", "$ROOT/ToDay" to "09-30", "$ROOT/CoverDays" to "06-01/09-30")
 
+    @Test
+    fun aSemanticIndexFinishIsWidenedLikeAPlainOne() =
+        agree(setOf("MonthsEqual", INDEXED),
+            "$ROOT/FromMonth" to "06", "$ROOT/ToMonth" to "09", "$ROOT/CoverMonths" to "06/09",
+            sections = listOf("03", "09"))
+
+    @Test
+    fun aSemanticIndexFinishSelectingAnotherRowDiffers() =
+        agree(setOf("MonthsEqual"),
+            "$ROOT/FromMonth" to "06", "$ROOT/ToMonth" to "09", "$ROOT/CoverMonths" to "06/09",
+            sections = listOf("03", "10"))
+
     private companion object {
         const val ROOT = "/Policy"
+        const val SECTION_MONTH = "/Policy/Sections/SectionMonth"
+        const val INDEXED = "IndexedMonthsEqual"
     }
 }

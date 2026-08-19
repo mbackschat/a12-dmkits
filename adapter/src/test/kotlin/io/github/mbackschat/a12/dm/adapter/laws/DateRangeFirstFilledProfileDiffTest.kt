@@ -130,6 +130,56 @@ class DateRangeFirstFilledProfileDiffTest {
     @Test fun aMalformedRowClearsASeededTarget() =
         agree(Profile.MONTH, "CLEARED", null, "xx/09", seed = "01/02")
 
+    /**
+     * The row that makes "the TARGET's declared format decides the stored form" a claim rather than a
+     * description. Every other row here has source profile == target profile, so a renderer keyed on the
+     * SOURCE would produce byte-identical output on all of them and the mechanism would be untested.
+     *
+     * The kernel's comparability gate reads the component SET, not the lexical profile
+     * (`DateFormat.hasSameComponents`), so `dd.MM.yyyy` and `yyyy-MM-dd` — both `{YEAR, MONTH, DAY}` — are
+     * freely assignable to each other. Measured 2026-08-19: the model is accepted and the computation is
+     * admitted. A source-keyed renderer would store `01.06.2024-30.06.2024`.
+     */
+    @Test
+    fun theTargetFormatDecidesTheStoredForm() {
+        val base = DocumentModelDraft.named("cover-crossed").locale("en_US")
+            .rootGroup("Cover") { cover ->
+                cover.dateRangeField("FirstWindow") { it.format("yyyy-MM-dd").separator("/") }
+                cover.group("Rows") { rows ->
+                    rows.repeatable(20).indexField("Key")
+                        .stringField("Key") { }
+                        .dateRangeField("RowWindow") { it.format("dd.MM.yyyy").separator("-") }
+                }
+            }.build().toJson()
+        val m = BoundModel.ofJson(base)
+        val operation = DslRenderer(ConditionLanguage.EN, ROOT)
+            .render(Dsl.firstFilledDateRange(m.flatten("$ROOT/Rows*/RowWindow")).expression())
+        val json = RuntimeLaws.withComputation(base, ROOT, "FirstWindowComp", "../FirstWindow", operation)
+
+        val kernelDocument = RuntimeLaws.doc().group(ROOT, 1)
+            .group("$ROOT/Rows", 1, 1).field("$ROOT/Rows/Key", "K1", 1, 1, 1)
+            .field(ROW_WINDOW, "01.06.2024-30.06.2024", 1, 1, 1)
+        val dynamic = signature(RuntimeLaws.compute(json, kernelDocument).firstOrNull { it.path() == TARGET })
+        val engine = RuntimeLaws.kernelJavaEngine(json)
+        val generated = signature(engine.compute(engine.instance(kernelDocument)).firstOrNull { it.path() == TARGET })
+
+        val definition = ModelLoader.load(json)
+        val document = definition.newDocument().group(ROOT, 1)
+            .group("$ROOT/Rows", 1, 1).field("$ROOT/Rows/Key", "K1", 1, 1, 1)
+            .field(ROW_WINDOW, "01.06.2024-30.06.2024", 1, 1, 1)
+        val computed = DmInterpreter(definition).compute(document).firstOrNull { it.path == TARGET }
+        val interpreted = when (computed?.outcome) {
+            null -> "NONE"
+            ComputeOutcome.CLEARED -> "CLEARED"
+            ComputeOutcome.ERRORED -> "ERRORED|${computed.value}"
+            ComputeOutcome.VALUE -> "VALUE|${computed.value}"
+        }
+
+        assertEquals("VALUE|2024-06-01/2024-06-30", dynamic, "normative dynamic Groovy (crossed lexical profile)")
+        assertEquals(dynamic, generated, "generated Java (crossed lexical profile)")
+        assertEquals(dynamic, interpreted, "interpreter (crossed lexical profile)")
+    }
+
     private companion object {
         const val ROOT = "/Cover"
         const val TARGET = "/Cover/FirstWindow"

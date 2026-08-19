@@ -72,6 +72,32 @@ class BuildPerformancePolicyTest {
                 "the isolated Gradle home must be anchored at the common checkout shared by every worktree");
     }
 
+    /** An unescaped {@code VAR=$(…java_home…)} capture on a non-comment line — a second place deciding the pin. */
+    private static final java.util.regex.Pattern RE_ENCODED_PIN = java.util.regex.Pattern.compile(
+            "(?m)^[^#\n]*\\b(?:export\\s+)?[A-Za-z_][A-Za-z0-9_]*=\"?\\$\\(/usr/libexec/java_home");
+
+    /**
+     * The JDK-21 pin is advertised as single-sourced by three surfaces ({@code scripts/README.md}, the
+     * preparation script's own comment, and the helper's javadoc), and the defect that created the helper was
+     * exactly two sites deciding it differently — the build pinned, the launcher check did not. A re-encoded
+     * {@code java_home -v 21} is therefore the drift to catch, not a style preference.
+     */
+    @Test
+    void everyJdkPinGoesThroughTheOneSharedDerivation() throws IOException {
+        assertTrue(Files.readString(locate("scripts/gradle-environment.sh")).contains("a12_pinned_jdk21_home()"),
+                "the shared helper must own the pin");
+        for (String consumer : List.of("build.sh", "scripts/prepare-dmtool-source.sh",
+                "scripts/verify-demos.sh", "scripts/doctor.sh")) {
+            String script = Files.readString(locate(consumer));
+            assertTrue(script.contains("a12_pinned_jdk21_home"),
+                    consumer + " must resolve the JDK 21 pin through the shared helper");
+            assertFalse(RE_ENCODED_PIN.matcher(script).find(),
+                    consumer + " assigns from `java_home` directly; two sites deciding one policy is the defect "
+                            + "the helper exists to remove. (Naming the command in a comment or in a corrective "
+                            + "message is fine — capturing its output into a variable is not.)");
+        }
+    }
+
     @Test
     void publicRepositoriesComeFirstAndTheOptOutMarkerIsCommitted() throws IOException {
         Path repositoryRoot = locate("settings.gradle").getParent();

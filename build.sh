@@ -25,7 +25,12 @@ export GRADLE_USER_HOME="$(a12_gradle_user_home "$ROOT")"
 # JDK 21 is the build toolchain. On macOS, pin it via java_home (the footgun's second half: the shell's
 # JAVA_HOME may point at a newer JDK). Elsewhere (Linux/CI) leave JAVA_HOME to the caller. The pin lives in
 # gradle-environment.sh so a launcher check can apply the SAME one — see a12_pinned_jdk21_home.
-pinned_jdk21_home="$(a12_pinned_jdk21_home)"
+# A macOS box with no JDK 21 registered now ABORTS here rather than exporting an empty JAVA_HOME and building
+# under whatever java is on PATH, which is what the previous `export JAVA_HOME="$(...)"` did — `export` is a
+# special builtin whose status is 0 even when its substitution fails, so `set -e` never saw it. Fail-fast is
+# the intent; the silent degrade was not.
+pinned_jdk21_home="$(a12_pinned_jdk21_home)" \
+  || { echo "build.sh: no JDK 21 registered; install one (brew install openjdk@21) so java_home -v 21 resolves" >&2; exit 1; }
 [[ -z "$pinned_jdk21_home" ]] || export JAVA_HOME="$pinned_jdk21_home"
 
 exec "$ROOT/gradlew" "$@"

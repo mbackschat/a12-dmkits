@@ -37,11 +37,12 @@ mkdir -p "$(dirname "$launcher")"
 printf '%s\n' build >> "$root/cli/build/prepare-build-count"
 revision="$(git -C "$root" rev-parse HEAD)"
 [[ "${FAKE_STALE_BUILD:-0}" != 1 ]] || revision=0000000000000000000000000000000000000000
+if [[ "${FAKE_EMPTY_BUILD:-0}" == 1 ]]; then rm -f "$launcher"; exit 0; fi
 cat > "$launcher" <<LAUNCHER
 #!/usr/bin/env bash
 # Mirror Gradle's generated start script: a JAVA_HOME that holds no runnable java is a START failure with a
 # stderr diagnostic and a non-zero exit, NOT a differently-provenanced launcher.
-if [[ -n "\${JAVA_HOME:-}" && ! -x "\$JAVA_HOME/bin/java" ]]; then
+if [[ -n "\${JAVA_HOME:-}" && ! -x "\$JAVA_HOME/jre/sh/java" && ! -x "\$JAVA_HOME/bin/java" ]]; then
   echo "ERROR: JAVA_HOME is set to an invalid directory: \$JAVA_HOME" >&2
   exit 1
 fi
@@ -63,7 +64,7 @@ install_fake_launcher() {
   mkdir -p "$(dirname "$LAUNCHER")"
   cat > "$LAUNCHER" <<EOF
 #!/usr/bin/env bash
-if [[ -n "\${JAVA_HOME:-}" && ! -x "\$JAVA_HOME/bin/java" ]]; then
+if [[ -n "\${JAVA_HOME:-}" && ! -x "\$JAVA_HOME/jre/sh/java" && ! -x "\$JAVA_HOME/bin/java" ]]; then
   echo "ERROR: JAVA_HOME is set to an invalid directory: \$JAVA_HOME" >&2
   exit 1
 fi
@@ -141,4 +142,60 @@ else
     || fail "the launcher start failure was not surfaced: $stale_java_out"
 fi
 
-echo "SELFTEST OK: clean-revision reuse, stale rebuild, dirty refusal, post-build provenance, foreign cwd, broken JAVA_HOME"
+# 7. A launcher that is PRESENT but cannot run — a partial installDist, not an environment problem. The
+#    previous script recovered by rebuilding; the first version of this one refused, which was a regression.
+cat > "$LAUNCHER" <<'CORRUPT'
+#!/usr/bin/env bash
+echo "Error: Could not find or load main class io.github.mbackschat.a12.dm.cli.Cli" >&2
+exit 1
+CORRUPT
+chmod +x "$LAUNCHER"
+before_builds="$(wc -l < "$BUILD_COUNT" | tr -d ' ')"
+resolved="$(bash "$REPO/scripts/prepare-dmtool-source.sh")"
+[[ "$resolved" == "$LAUNCHER" ]] || fail "a corrupt install was not repaired by a rebuild: '$resolved'"
+[[ "$(wc -l < "$BUILD_COUNT" | tr -d ' ')" == "$(( before_builds + 1 ))" ]] \
+  || fail "the corrupt install did not trigger exactly one rebuild"
+
+# 8. A build that reports success but leaves no launcher gets its OWN verdict, never the provenance message.
+rm -f "$LAUNCHER"
+set +e
+empty_out="$(FAKE_EMPTY_BUILD=1 bash "$REPO/scripts/prepare-dmtool-source.sh" 2>&1)"
+empty_status=$?
+set -e
+[[ $empty_status -ne 0 ]] || fail "a build that produced no launcher was accepted: $empty_out"
+[[ "$empty_out" != *"does not report source"* ]] \
+  || fail "a missing launcher borrowed the provenance-mismatch message: $empty_out"
+[[ "$empty_out" == *"left no runnable launcher"* ]] || fail "the empty build was not named: $empty_out"
+
+# 9. The same broken JAVA_HOME with NO pin available — the branch CI runs, and the only one that reaches
+#    fail_unstartable. Case 6's macOS branch is satisfied by the pin alone, so without this case the
+#    unstartable/mismatch classification, the preserved launcher stderr, and the named JAVA_HOME are all
+#    advertised and untested. The pin is removed by stubbing the shared helper — one variable moved, and no
+#    test-only hook in the production script. Last, because the stub has to be committed to keep the
+#    clean-worktree gate satisfied and that moves HEAD.
+sed 's|/usr/libexec/java_home|/nonexistent/java_home|g' \
+  "$ROOT/scripts/gradle-environment.sh" > "$REPO/scripts/gradle-environment.sh"
+! grep -q '/usr/libexec/java_home' "$REPO/scripts/gradle-environment.sh" \
+  || fail "the no-pin stub did not take — the case would silently re-test the pinned path"
+git -C "$REPO" add -A
+git -C "$REPO" commit -qm "no-pin stub"
+NOPIN_REVISION="$(git -C "$REPO" rev-parse HEAD)"
+install_fake_launcher "$NOPIN_REVISION"
+# stdout and stderr are captured SEPARATELY here: the diagnostic legitimately names the launcher path, so a
+# merged capture cannot tell "printed a ready path" from "named the launcher it could not start".
+set +e
+nopin_out="$(JAVA_HOME="$missing_jdk" bash "$REPO/scripts/prepare-dmtool-source.sh" 2>"$WORK/nopin.err")"
+nopin_status=$?
+set -e
+nopin_err="$(cat "$WORK/nopin.err")"
+[[ $nopin_status -ne 0 ]] || fail "an unstartable launcher was accepted with no pin: $nopin_out"
+[[ "$nopin_err" != *"does not report source"* ]] \
+  || fail "with no pin, a start failure was still reported as a provenance mismatch: $nopin_err"
+[[ "$nopin_err" == *"did not start"* ]] || fail "the start failure was not named: $nopin_err"
+[[ "$nopin_err" == *"JAVA_HOME used: $missing_jdk"* ]] \
+  || fail "the diagnostic did not name the JAVA_HOME it actually used: $nopin_err"
+[[ "$nopin_err" == *"| ERROR: JAVA_HOME is set to an invalid directory"* ]] \
+  || fail "the launcher's own stderr was not preserved: $nopin_err"
+[[ -z "$nopin_out" ]] || fail "a failed preparation printed something on stdout: $nopin_out"
+
+echo "SELFTEST OK: clean-revision reuse, stale rebuild, dirty refusal, post-build provenance, foreign cwd, broken JAVA_HOME, corrupt install, empty build, no-pin start failure"

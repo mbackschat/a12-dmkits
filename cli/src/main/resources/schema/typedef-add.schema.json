@@ -74,7 +74,7 @@
       "required": ["format", "separator"],
       "properties": {
         "format": { "type": "string", "description": "a LOWERCASE Java date pattern for both endpoints, from a fixed allowed set (independent of locale/conditionLanguage). VERIFIED (format, separator) pairs: dd.MM.yyyy with -, and yyyy-MM-dd with /. The editor's UPPERCASE preset labels (YYYY-MM-DD, MM/MM, …) are display labels, NOT valid format values." },
-        "separator": { "type": "string", "description": "the range separator PAIRED with the format; the PAIR is allowlisted, and these seven are verified: - for dd.MM.yyyy, / for yyyy-MM-dd, yyyy, yyyy-MM, MM, MM-dd, and the empty separator for MM alone (which halves the stored value). A spaced ' - ' or a mismatched pair (MM + -, yyyy + empty) is rejected ('The date range format is invalid')." }
+        "separator": { "type": "string", "description": "the range separator PAIRED with the format; the PAIR is allowlisted, and exactly eight are admitted: - for dd.MM.yyyy and dd.MM, / for yyyy-MM-dd, yyyy, yyyy-MM, MM, MM-dd, and the empty separator for MM (which halves the stored value). Everything else is rejected ('The date range format is invalid'): every separator swap, the whole '.' column, a spaced ' - ', and yyyyMM with any separator." }
       }
     },
     "dateFragment": {

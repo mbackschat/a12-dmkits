@@ -383,6 +383,11 @@ internal fun typeFormatErrorCached(
         // contain it but whose split is not exactly two NON-EMPTY parts → `datumBereichFormatFalsch` — the
         // kernel's `splitStringBySeparator` preserves empty tokens, so an extra separator and either empty
         // endpoint are SHAPE errors, not a missing separator (SPEC-2026-08-18-01, `DateRangeSplitFormalTest`).
+        // The two empty-endpoint conjuncts carry the kernel's ORDER, not an observable outcome: an empty side
+        // fails `parseDateToIso`/`completeFragmentToIso` one branch later and reaches the same code anyway, so
+        // deleting them changes nothing a test can see (mutation-checked, 2026-08-19). They stay because the
+        // owner decides shape before parsing and a future endpoint parser that accepted "" would diverge
+        // silently without them — but no row here discriminates them, and only the extra-separator case does.
         // Then, on a well-shaped split: a side that is not a valid date for the format (incl. calendar-invalid
         // like 31.02) → `datumBereichFormatFalsch`; two valid dates but start AFTER end →
         // `datumBereichNichtGueltig` (start == end is allowed). A malformed range also resolves to Val.Unknown,
@@ -428,7 +433,13 @@ internal fun typeFormatErrorCached(
 /**
  * Split a stored DATE_RANGE value the way the kernel's `DateUtil.splitStringBySeparator` does: an **EMPTY**
  * declared separator splits the value in the MIDDLE, any other splits on the token and preserves the empty
- * pieces (`StringUtils.splitPreserveAllTokens`).
+ * pieces.
+ *
+ * **The equivalence is exact for a SINGLE-CHARACTER separator, which is every authorable one.** The kernel
+ * delegates to `StringUtils.splitPreserveAllTokens`, whose second argument is a set of separator CHARS rather
+ * than a separator string, so a hypothetical multi-character separator would split on each of its characters
+ * there and on the whole token here. Every one of the eight admitted `(format, separator)` pairs uses `-`,
+ * `/`, or the empty string, so the difference is unreachable — but it is a difference, not an equivalence.
  *
  * The empty separator is not a hypothetical: the declaration's `(format, separator)` PAIR is allowlisted as
  * the concatenation `format + separator + format`, and `MM` + `""` yields `MMMM`, which the kernel admits

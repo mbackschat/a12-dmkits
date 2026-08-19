@@ -321,7 +321,6 @@ class FirstFilledValueFamilyLawsTest {
                 : r.diagnostics().get(0).summary().replaceFirst("^Field with path '[^']*': ", "");
     }
 
-    /** {@code admitted}, or the COMPLETE emitted code list — a partial list would hide a co-firing gate. */
     /**
      * The list is not a pair, and the gate is not positional: the same declared-format rule is applied to every
      * slot, so a cross planted in the LAST of three is refused exactly as one in the second is
@@ -349,6 +348,7 @@ class FirstFilledValueFamilyLawsTest {
                 "the entity-list format gate reads every slot, and it reads fragment profiles the same way");
     }
 
+    /** {@code admitted}, or the COMPLETE emitted code list — a partial list would hide a co-firing gate. */
     private static String verdict(String errorField, String condition) {
         ValidationResult r = KernelLaws.checkModel(MODEL, "/Item", "../" + errorField, condition);
         return r.ok() ? "admitted" : String.join(" + ", r.diagnostics().stream()

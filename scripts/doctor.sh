@@ -23,7 +23,7 @@ printf '\nBuild environment for %s\n\n' "$ROOT"
 # 1 — JDK 21. build.sh pins it through java_home on macOS; elsewhere the caller owns JAVA_HOME.
 printf 'Toolchain\n'
 if [[ -x /usr/libexec/java_home ]]; then
-    if jdk21="$(/usr/libexec/java_home -v 21 2>/dev/null)"; then
+    if jdk21="$(a12_pinned_jdk21_home 2>/dev/null)" && [[ -n "$jdk21" ]]; then
         pass "JDK 21 available — $jdk21"
     else
         fail "no JDK 21 registered; build.sh pins the toolchain with java_home -v 21"

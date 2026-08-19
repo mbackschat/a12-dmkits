@@ -417,6 +417,11 @@ fun completeFragmentToIso(raw: String, format: String, baseYear: Int): String? {
  * read back here. Null if [format] carries no date component or [startIso] is not an ISO date.
  */
 fun intervalEndOfDeclaredFormat(startIso: String, format: String): String? {
+    // The kernel's own first line: `addMonthAndDay` returns immediately when the format carries an HOUR
+    // (`DatePart.HOUR.isInFormat`), so a time-bearing format is never widened. Mirrored rather than argued
+    // away — today `ModelDef.dateFormats` is filled only for `Kind.DATE`, so no such format can reach here,
+    // but that is a reachability claim about a neighbouring map, and the guard costs one scan.
+    if ('H' in format || 'h' in format) return startIso
     // The common case — a format carrying both sub-year components has nothing to widen — costs one scan and
     // no component list, so the ordinary full-format construction pays nothing for the fragment rule.
     if ('M' in format && 'd' in format) return startIso

@@ -9,7 +9,10 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -252,7 +255,8 @@ class FieldVerbTest {
                 {"group":"/D","name":"D1","kind":"DATE","date":{"format":"YYYY-MM-DD"}}"""), "the uppercase editor label is rejected");
         assertEquals(0, addFieldRc(m, dir, """
                 {"group":"/D","name":"D2","kind":"DATE","date":{"format":"yyyy-MM-dd"}}"""), "the lowercase pattern is accepted");
-        // DATERANGE: both verified pairs accepted; a mismatched separator rejected
+        // DATERANGE: the (format, separator) PAIR is allowlisted, and EIGHT are admitted over the
+        // 8x4 grid measured below; a mismatched separator is rejected
         assertEquals(0, addFieldRc(m, dir, """
                 {"group":"/D","name":"R1","kind":"DATERANGE","dateRange":{"format":"yyyy-MM-dd","separator":"/"}}"""),
                 "the ISO pair yyyy-MM-dd + / is accepted");
@@ -262,32 +266,30 @@ class FieldVerbTest {
         assertNotEquals(0, addFieldRc(m, dir, """
                 {"group":"/D","name":"R3","kind":"DATERANGE","dateRange":{"format":"yyyy-MM-dd","separator":"-"}}"""),
                 "a mismatched separator (yyyy-MM-dd + -) is rejected");
-        // …and FOUR MORE pairs, the component-omitting profiles, all with the slash. The published set used to
-        // name the two exact pairs alone — a sample read as the class, which the diagnostic hint and the two
-        // input schemas then repeated (measured 2026-08-19).
-        for (String fragment : new String[] {"yyyy", "yyyy-MM", "MM", "MM-dd"}) {
-            assertEquals(0, addFieldRc(m, dir, """
-                    {"group":"/D","name":"F%s","kind":"DATERANGE","dateRange":{"format":"%s","separator":"/"}}"""
-                    .formatted(fragment.replace("-", ""), fragment)),
-                    "the component-omitting pair " + fragment + " + / is accepted");
-            assertNotEquals(0, addFieldRc(m, dir, """
-                    {"group":"/D","name":"X%s","kind":"DATERANGE","dateRange":{"format":"%s","separator":"-"}}"""
-                    .formatted(fragment.replace("-", ""), fragment)),
-                    "the same format with the OTHER separator is rejected — the pair is what is allowlisted");
+        // …and the rest of the grid. This block is the WHOLE 8x4 denominator — eight candidate formats against
+        // `/`, `-`, `.` and the empty separator — because a ragged grid reads exactly like a measured class and
+        // this fact has now been published wrong twice from one: first as the two exact pairs, then as seven,
+        // the second time because `dd.MM`+`-` sat in a cell nobody had run. Eight of the 32 cells are admitted.
+        String[] formats = {"dd.MM.yyyy", "yyyy-MM-dd", "yyyy", "yyyy-MM", "MM", "MM-dd", "yyyyMM", "dd.MM"};
+        String[] separators = {"/", "-", ".", ""};
+        Set<String> admitted = Set.of("dd.MM.yyyy|-", "yyyy-MM-dd|/", "yyyy|/", "yyyy-MM|/",
+                "MM|/", "MM-dd|/", "MM|", "dd.MM|-");
+        Map<String, Boolean> observed = new LinkedHashMap<>();
+        int probe = 0;
+        for (String format : formats) {
+            for (String separator : separators) {
+                String name = "G" + probe++;
+                boolean accepted = addFieldRc(m, dir, """
+                        {"group":"/D","name":"%s","kind":"DATERANGE","dateRange":{"format":"%s","separator":"%s"}}"""
+                        .formatted(name, format, separator)) == 0;
+                observed.put(format + "|" + separator, accepted);
+            }
         }
-        assertNotEquals(0, addFieldRc(m, dir, """
-                {"group":"/D","name":"R6","kind":"DATERANGE","dateRange":{"format":"yyyyMM","separator":"/"}}"""),
-                "yyyyMM is a legal DATE format but not a legal DATERANGE one");
-        // An EMPTY separator is admitted for exactly one format, and the concatenation rule says why: `MM` + ``
-        // is `MMMM`. That one declaration reaches the kernel's split-in-the-middle branch, so it is reachable
-        // rather than hypothetical — the first version of this row asserted the opposite from a single sample
-        // taken on `dd.MM.yyyy`.
-        assertEquals(0, addFieldRc(m, dir, """
-                {"group":"/D","name":"R7","kind":"DATERANGE","dateRange":{"format":"MM","separator":""}}"""),
-                "MM + the empty separator is admitted (MMMM)");
-        assertNotEquals(0, addFieldRc(m, dir, """
-                {"group":"/D","name":"R8","kind":"DATERANGE","dateRange":{"format":"yyyy","separator":""}}"""),
-                "no other format admits the empty separator");
+        Map<String, Boolean> expected = new LinkedHashMap<>();
+        observed.keySet().forEach(cell -> expected.put(cell, admitted.contains(cell)));
+        assertEquals(expected, observed,
+                "the DATERANGE (format, separator) allowlist is these eight pairs and no others; the whole grid "
+                        + "is asserted at once so a shifted cell cannot hide behind a passing neighbour");
         // DATE_TIME: the ONLY date-bearing datetime format is the ISO yyyy-MM-dd'T'HH:mm:ss; every other date-bearing
         // form is rejected `The date format is invalid` (KERNEL-FINDINGS §6 — IG19 parity-by-construction).
         assertEquals(0, addFieldRc(m, dir, """

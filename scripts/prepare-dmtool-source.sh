@@ -10,9 +10,19 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 # calling this by absolute path got a working launcher only while one already matched HEAD, and any rebuild
 # failed. This is the cross-project entry point, so it is the one that must not depend on where it is called.
 cd "$ROOT"
+LAUNCHER="$ROOT/cli/build/install/dmtool/bin/dmtool"
+
+fail() {
+  echo "dmtool source preparation: $*" >&2
+  exit 2
+}
+
+# Sourced AFTER fail() so a missing or unreadable helper still exits 2 with this script's own message, which is
+# the convention sibling callers key on.
+[[ -r "$ROOT/scripts/gradle-environment.sh" ]] \
+  || fail "cannot read scripts/gradle-environment.sh"
 # shellcheck source=scripts/gradle-environment.sh
 . "$ROOT/scripts/gradle-environment.sh"
-LAUNCHER="$ROOT/cli/build/install/dmtool/bin/dmtool"
 
 # The BUILD's JDK is pinned by build.sh; the LAUNCHER's was not, because it starts under whatever JAVA_HOME the
 # caller exports. A JAVA_HOME naming a JDK that no longer exists therefore stops the launcher from starting at
@@ -21,9 +31,19 @@ LAUNCHER="$ROOT/cli/build/install/dmtool/bin/dmtool"
 # separate outcome from "started and named another revision"; neither ever borrows the other's message.
 PINNED_JDK21="$(a12_pinned_jdk21_home 2>/dev/null || true)"
 
-fail() {
-  echo "dmtool source preparation: $*" >&2
-  exit 2
+# The JDK the launcher check will use, recorded once so the diagnostic cannot re-derive it differently.
+LAUNCHER_JAVA_HOME="${PINNED_JDK21:-${JAVA_HOME:-}}"
+
+# Can the JDK we would use actually run anything? This is the discriminator between "this machine has no JVM
+# for the launcher" — where a rebuild cannot help and `build.sh` would fail naming the wrong cause — and "the
+# launcher itself is broken", e.g. a partial installDist, which a rebuild repairs. The previous script
+# recovered from the second class by always rebuilding; the first version of this one refused instead.
+java_is_runnable() {
+  if [[ -n "$LAUNCHER_JAVA_HOME" ]]; then
+    [[ -x "$LAUNCHER_JAVA_HOME/bin/java" || -x "$LAUNCHER_JAVA_HOME/jre/sh/java" ]]
+  else
+    command -v java >/dev/null 2>&1
+  fi
 }
 
 [[ -d "$ROOT/.git" || -f "$ROOT/.git" ]] \
@@ -56,13 +76,14 @@ resolve_launcher_state() {
 
   local stderr_file status=0
   stderr_file="$(mktemp)"
+  # shellcheck disable=SC2064 -- expand the path now; the trap must survive the local going out of scope
+  trap "rm -f '$stderr_file'" RETURN
   if [[ -n "$PINNED_JDK21" ]]; then
     launcher_version="$(JAVA_HOME="$PINNED_JDK21" "$LAUNCHER" --version 2>"$stderr_file")" || status=$?
   else
     launcher_version="$("$LAUNCHER" --version 2>"$stderr_file")" || status=$?
   fi
-  launcher_diagnostic="$(cat "$stderr_file")"
-  rm -f "$stderr_file"
+  launcher_diagnostic="$(cat "$stderr_file" 2>/dev/null || true)"
 
   if [[ $status -ne 0 || -z "$launcher_version" ]]; then
     launcher_state=unstartable
@@ -79,17 +100,27 @@ fail_unstartable() {
   {
     echo "dmtool source preparation: the JVM launcher did not start, so its source provenance is UNKNOWN"
     echo "  launcher: $LAUNCHER"
-    echo "  JAVA_HOME used: ${PINNED_JDK21:-${JAVA_HOME:-<unset>}}"
+    echo "  JAVA_HOME used: ${LAUNCHER_JAVA_HOME:-<unset>}"
     if [[ -n "$launcher_diagnostic" ]]; then
       printf '%s\n' "$launcher_diagnostic" | sed 's/^/  | /'
     fi
-    echo "  fix: export a working JDK 21, e.g. macOS: export JAVA_HOME=\"\$(/usr/libexec/java_home -v 21)\""
+    if java_is_runnable; then
+      echo "  the JDK above IS runnable, so this is the launcher, not the environment"
+      echo "  fix: rebuild it with ./build.sh :cli:installDist"
+    else
+      echo "  fix: export a working JDK 21, e.g. macOS: export JAVA_HOME=\"\$(/usr/libexec/java_home -v 21)\""
+    fi
   } >&2
   exit 2
 }
 
 resolve_launcher_state
-[[ "$launcher_state" != unstartable ]] || fail_unstartable
+# A launcher that cannot start because this machine has no runnable JDK is refused now: rebuilding cannot fix
+# the environment, and `build.sh` would die naming the build instead. Every other non-current state — missing,
+# stale, or a launcher that is present but broken — earns exactly one rebuild.
+if [[ "$launcher_state" == unstartable ]] && ! java_is_runnable; then
+  fail_unstartable
+fi
 
 if [[ "$launcher_state" != current ]]; then
   echo "dmtool source preparation: rebuilding the JVM launcher for $revision" >&2
@@ -105,6 +136,9 @@ if [[ "$launcher_state" != current ]]; then
   case "$launcher_state" in
     current) ;;
     unstartable) fail_unstartable ;;
+    # `absent` used to fall in with `mismatch` and borrow its message — a provenance verdict on a launcher that
+    # was never asked, which is the very conflation this script exists to undo.
+    absent) fail "the build reported success but left no runnable launcher at $LAUNCHER" ;;
     *) fail "rebuilt launcher does not report source $revision (clean)" ;;
   esac
 fi

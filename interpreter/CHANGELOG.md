@@ -10,6 +10,7 @@ This changelog covers the independently consumable interpreter packages, API doc
 
 - **A `DateRange(start, finish)` construction now equals the stored range it was built to match**, wherever the declared profile omits the day (`MM`, `yyyy`, `yyyy-MM`). Both endpoints were completed to the earliest date they denote; the Kernel completes the START to the earliest and the FINISH to the latest, exactly as it does for a stored range.
 - **A stored date range that visibly carries its separator is no longer reported as missing one.** An extra separator or an empty endpoint is a format error, which is what the Kernel reports; only a value that does not contain the separator at all is the missing-separator error.
+- The two date-range formal messages were reworded to match the narrowed classification: the missing-separator one no longer says "or misplaced", and the format one now says the value is not a pair of two valid dates.
 - **A month-pair range declared with an empty separator is read as two months.** That declaration (`MM` with no separator, the one the Kernel admits) halves the stored value; it was previously split per character and every value reported malformed.
 
 ### Performance
