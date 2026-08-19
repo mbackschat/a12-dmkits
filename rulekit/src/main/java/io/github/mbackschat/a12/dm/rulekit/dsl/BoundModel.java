@@ -579,6 +579,10 @@ public final class BoundModel {
         return computation(computed.field());
     }
 
+    public Computation.Builder computation(DateRangeRef computed) {
+        return computation(computed.field());
+    }
+
     public Computation.Builder computation(FieldRef computed) {
         return new Computation.Builder(computed, index.locales());
     }

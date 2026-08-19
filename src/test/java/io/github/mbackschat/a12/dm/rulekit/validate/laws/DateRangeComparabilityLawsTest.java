@@ -2,6 +2,8 @@ package io.github.mbackschat.a12.dm.rulekit.validate.laws;
 
 import io.github.mbackschat.a12.dm.ModelDrafts;
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel;
+import io.github.mbackschat.a12.dm.rulekit.dsl.Calculation;
+import io.github.mbackschat.a12.dm.rulekit.dsl.Computation;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Condition;
 import io.github.mbackschat.a12.dm.rulekit.dsl.DateRangeOperand;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl;
@@ -29,6 +31,8 @@ class DateRangeComparabilityLawsTest {
             Dsl.dateRange(M.dateFragment("/Cover/FromYear"), M.dateFragment("/Cover/ToYear"));
     private static final DateRangeOperand DATE_CONSTRUCTION =
             Dsl.dateRange(M.date("/Cover/FromDate"), M.date("/Cover/ToDate"));
+    private static final DateRangeOperand ROW_MONTH_WINDOWS =
+            Dsl.firstFilledDateRange(M.flatten("/Cover/Periods*/RowMonthWindow"));
 
     private static Rule rule(String errorField, Condition condition) {
         return M.rule(M.group("/Cover"))
@@ -83,6 +87,44 @@ class DateRangeComparabilityLawsTest {
         KernelLaws.rejectsModel(PROFILES,
                 rule("/Cover/DateWindow",
                         M.dateRange("/Cover/YearWindow").eq(M.dateRange("/Cover/DateWindow"))),
+                "MVK_INVALID_COMPARE_TO_DATE_RANGE");
+    }
+
+    // ── the same gate on a COMPUTATION: the operation's range profile against the TARGET's ────────────────────
+    // A computation assigns rather than compares, but the kernel decides its operand/target fit with the same
+    // range check, so the crossed-profile refusals of SPEC-2026-08-19-03 and -05 are rows of this law.
+
+    private static Computation computation(String target, Calculation operation) {
+        return M.computation(M.dateRange(target))
+                .name("RangeAssign")
+                .calc(operation)
+                .message(Dsl.en("Range assignment probe."))
+                .build();
+    }
+
+    @Test
+    void aMatchingProfileConstructionTargetIsAccepted() {
+        KernelLaws.acceptsModel(PROFILES,
+                computation("/Cover/YearWindow", YEAR_CONSTRUCTION.expression()));
+    }
+
+    @Test
+    void aCrossedProfileConstructionTargetIsRejected() {
+        KernelLaws.rejectsModel(PROFILES,
+                computation("/Cover/DateWindow", YEAR_CONSTRUCTION.expression()),
+                "MVK_INVALID_COMPARE_TO_DATE_RANGE");
+    }
+
+    @Test
+    void aMatchingProfileFirstFilledTargetIsAccepted() {
+        KernelLaws.acceptsModel(PROFILES,
+                computation("/Cover/MonthWindow", ROW_MONTH_WINDOWS.expression()));
+    }
+
+    @Test
+    void aCrossedProfileFirstFilledTargetIsRejected() {
+        KernelLaws.rejectsModel(PROFILES,
+                computation("/Cover/DayWindow", ROW_MONTH_WINDOWS.expression()),
                 "MVK_INVALID_COMPARE_TO_DATE_RANGE");
     }
 }

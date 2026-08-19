@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import io.github.mbackschat.a12.dm.Fixtures;
 import io.github.mbackschat.a12.dm.ModelDrafts;
+import io.github.mbackschat.a12.dm.rulekit.dsl.Computation;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Rule;
 import io.github.mbackschat.a12.dm.rulekit.validate.DraftRule;
 import io.github.mbackschat.a12.dm.rulekit.validate.RuleValidator;
@@ -123,6 +124,21 @@ final class KernelLaws {
     /** Typed-rule variant: every path and the rendered condition derive from the rulekit object. */
     static void rejectsModel(String json, Rule rule, String expectedCode) {
         assertRejects(json, rule, expectedCode);
+    }
+
+    /** Typed-computation variant: the target and the rendered operation derive from the rulekit object. */
+    static void acceptsModel(String json, Computation computation) {
+        ValidationResult r = VALIDATOR.check(json, computation.draft());
+        assertTrue(r.ok(), () -> "expected acceptance of computation '" + computation.name() + "', got: "
+                + r.diagnostics());
+    }
+
+    static void rejectsModel(String json, Computation computation, String expectedCode) {
+        ValidationResult r = VALIDATOR.check(json, computation.draft());
+        assertFalse(r.ok(), () -> "expected rejection of computation '" + computation.name() + "'");
+        assertTrue(r.diagnostics().stream().anyMatch(p -> p.code().filter(expectedCode::equals).isPresent()),
+                () -> "expected " + expectedCode + " for computation '" + computation.name() + "', got: "
+                        + r.diagnostics());
     }
 
     private static void assertAccepts(String json, String group, String errorField, String condition) {

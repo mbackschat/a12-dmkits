@@ -81,7 +81,12 @@ public final class ModelDrafts {
                         .dateRangeField("YearWindow", r -> r.format("yyyy").separator("/"))
                         .dateField("FromDate", d -> d.format("yyyy-MM-dd"))
                         .dateField("ToDate", d -> d.format("yyyy-MM-dd"))
-                        .dateRangeField("DateWindow", r -> r.format("yyyy-MM-dd").separator("/")))
+                        .dateRangeField("DateWindow", r -> r.format("yyyy-MM-dd").separator("/"))
+                        .dateRangeField("MonthWindow", r -> r.format("MM").separator("/"))
+                        .dateRangeField("DayWindow", r -> r.format("MM-dd").separator("/"))
+                        .group("Periods", periods -> periods.repeatable(20).indexField("Key")
+                                .field("Key", FieldKind.STRING)
+                                .dateRangeField("RowMonthWindow", r -> r.format("MM").separator("/"))))
                 .build();
     }
 

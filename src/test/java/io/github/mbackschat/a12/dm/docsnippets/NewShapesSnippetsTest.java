@@ -84,14 +84,21 @@ class NewShapesSnippetsTest {
         Condition requestedWindowChanged = requestedWindow.ne(
                 Dsl.dateRange(m.date("/Order/OrderDate"), m.date("/Order/DeliveryDate")));
         var firstObservedWindow = Dsl.firstFilledDateRange(m.flatten("/Order/Items*/ItemCoverage"));
+        Computation coverageWindow = m.computation(m.dateRange("/Order/CoverageWindow"))
+                .name("CoverageWindowComp").calc(requestedWindow.expression())
+                .message(Dsl.en("Coverage window follows the order and delivery dates.")).build();
         // end::date-range-equality[]
         assertEquals("[/Order/CoverageWindow] != DateRange(/Order/OrderDate, /Order/DeliveryDate)",
                 new DslRenderer().render(windowChanged));
         assertEquals("FirstFilledValue(/Order/Items*/ItemCoverage)",
                 new DslRenderer().render(firstObservedWindow.expression()));
+        assertEquals("../CoverageWindow", coverageWindow.computedFieldRelPath());
         assertKernelAccepts(windowChanged, "../CoverageWindow");
         assertKernelAccepts(requestedWindowChanged, "../OrderDate");
         assertKernelAccepts(m.dateRange("/Order/CoverageWindow").eq(firstObservedWindow), "../CoverageWindow");
+        var computationResult = new RuleValidator().check(Fixtures.orderJson(), coverageWindow.draft());
+        assertTrue(computationResult.ok(), () -> "kernel rejected the date-range computation snippet: "
+                + computationResult.diagnostics());
     }
 
     @Test

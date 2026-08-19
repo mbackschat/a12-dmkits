@@ -8,6 +8,8 @@
 >
 > Interpreter R2.8 differential dogfooding later the same day surfaced and closed DG25: relative rendering attempted to cross a root-group boundary; finding 102 records the absolute cross-root path contract.
 >
+> DG37 surfaced and shipped on 2026-08-19 while locking the range comparability gate for a12-kernel-lean's `SPEC-2026-08-19-01`: `BoundModel.computation` carried a per-kind overload for all nine other scalar refs but not `DateRangeRef`, so a law authoring a range-valued computation had to drop to the kind-erased `FieldRef` — the same "one kind of the set is missing" asymmetry that reads as "not a thing" rather than "not yet". The fix is the additive overload; the durable *why* is the asymmetry itself, so it is recorded here and shown in [API-GUIDE](API-GUIDE.md) beside the range-equality snippet rather than earning its own design finding.
+>
 > A row lands here only when a new developer-facing authoring friction is both surfaced and queued.
 >
 > **Scope — the filter that matters.** dmkits has **model-authoring scope**: it defines, edits, validates, reads, and tests a document **model** — its fields/groups/type-defs/includes/config and its **rules + computations** (the condition-language DSL). It is **not** a runtime form engine, a document-instance data-binding layer, a rendering/UI toolkit, or a persistence/service layer. The kernel dev doc is ~80% about the *runtime consumer* (manipulating document *instances*); those concerns are deliberately **out of scope** (§3).

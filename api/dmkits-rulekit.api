@@ -586,6 +586,7 @@ public final class io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel
   public io.github.mbackschat.a12.dm.rulekit.dsl.Computation.Builder computation(io.github.mbackschat.a12.dm.rulekit.dsl.BoolRef)
   public io.github.mbackschat.a12.dm.rulekit.dsl.Computation.Builder computation(io.github.mbackschat.a12.dm.rulekit.dsl.ConfirmRef)
   public io.github.mbackschat.a12.dm.rulekit.dsl.Computation.Builder computation(io.github.mbackschat.a12.dm.rulekit.dsl.DateFragmentRef)
+  public io.github.mbackschat.a12.dm.rulekit.dsl.Computation.Builder computation(io.github.mbackschat.a12.dm.rulekit.dsl.DateRangeRef)
   public io.github.mbackschat.a12.dm.rulekit.dsl.Computation.Builder computation(io.github.mbackschat.a12.dm.rulekit.dsl.DateRef)
   public io.github.mbackschat.a12.dm.rulekit.dsl.Computation.Builder computation(io.github.mbackschat.a12.dm.rulekit.dsl.DateTimeRef)
   public io.github.mbackschat.a12.dm.rulekit.dsl.Computation.Builder computation(io.github.mbackschat.a12.dm.rulekit.dsl.EnumRef)
