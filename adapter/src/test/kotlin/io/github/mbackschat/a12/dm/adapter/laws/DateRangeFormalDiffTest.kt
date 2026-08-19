@@ -2,6 +2,7 @@ package io.github.mbackschat.a12.dm.adapter.laws
 
 import io.github.mbackschat.a12.dm.interpreter.DmInterpreter
 import io.github.mbackschat.a12.dm.interpreter.eval.newDocument
+import io.github.mbackschat.a12.dm.interpreter.load.ModelLoader
 import io.github.mbackschat.a12.dm.interpreter.model.FieldDef
 import io.github.mbackschat.a12.dm.interpreter.model.Kind
 import io.github.mbackschat.a12.dm.interpreter.model.ModelDef
@@ -77,6 +78,12 @@ class DateRangeFormalDiffTest {
      * `MMMM` is admitted while every other format's doubled form is refused — measured 2026-08-19). Splitting
      * such a value on the empty string instead shreds it per character and reports a well-formed month pair as
      * malformed, so the branch needs its own row rather than an argument that it cannot occur.
+     *
+     * **Both interpreter routes run: the hand-built [ModelDef] AND the same model through [ModelLoader].** The
+     * hand-built definition tests the evaluator; only the loaded one tests whether a declared `""` separator
+     * SURVIVES being read, and it did not — the loader folded it into null, so the range lost its config and
+     * the formal check silently found "nothing to check" (IF306). A declaration-level defect is invisible to a
+     * row that declares the state it is meant to read.
      */
     @Test
     fun anEmptySeparatorSplitsInTheMiddleLikeTheKernel() {
@@ -87,13 +94,17 @@ class DateRangeFormalDiffTest {
         val path = "/Season/MonthPair"
         val pairDef = ModelDef(
             listOf(FieldDef(path, Kind.DATE_RANGE, format = "MM", rangeSeparator = "")), emptyList())
+        val loadedDef = ModelLoader.load(pairModel)
 
         for (value in listOf("0609", "0606", "0906", "06", "06x9", "1309")) {
             val kDoc = RuntimeLaws.doc().group("/Season", 1).field(path, value, 1, 1)
-            val iDoc = pairDef.newDocument().group("/Season", 1).field(path, value, 1, 1)
             val kSigs = RuntimeLaws.messages(pairModel, kDoc).map { "${it.code()}|${it.field()}" }.sorted()
-            val iSigs = DmInterpreter(pairDef).validateFull(iDoc).map { "${it.code}|${it.errorPath}" }.sorted()
-            assertEquals(kSigs, iSigs, "empty-separator range formal signatures must match the kernel ($value)")
+            for ((route, def) in listOf("declared" to pairDef, "loaded" to loadedDef)) {
+                val iDoc = def.newDocument().group("/Season", 1).field(path, value, 1, 1)
+                val iSigs = DmInterpreter(def).validateFull(iDoc).map { "${it.code}|${it.errorPath}" }.sorted()
+                assertEquals(kSigs, iSigs,
+                    "empty-separator range formal signatures must match the kernel ($route, $value)")
+            }
         }
     }
 

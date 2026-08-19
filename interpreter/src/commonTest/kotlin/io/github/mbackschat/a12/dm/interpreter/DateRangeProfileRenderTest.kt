@@ -10,8 +10,9 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 
 /**
- * Multiplatform (JVM + Node) peer for SPEC-2026-08-19-03/-05: what a DATE_RANGE computation STORES, across the
- * six declared range formats. The kernel side is `adapter.laws.DateRangeFirstFilledProfileDiffTest` and
+ * Multiplatform (JVM + Node) peer for SPEC-2026-08-19-03/-05: what a DATE_RANGE computation STORES, across all
+ * eight admitted `(format, separator)` declaration pairs (KERNEL-FINDINGS KF81). The kernel side is
+ * `adapter.laws.DateRangeFirstFilledProfileDiffTest` and
  * `ConstructedRangeTargetDiffTest`; those run only on the JVM, and the ledger entries ask for the JVM/Node
  * route as well.
  *
@@ -76,9 +77,13 @@ class DateRangeProfileRenderTest {
     @Test fun aYearlessMonthDayWindowRetainsItsComponentPair() =
         assertEquals("VALUE|06-01/09-30", sameProfile("MM-dd", "/", "06-01/09-30"))
 
-    /** The eighth admitted pair: `MM` with an empty separator, whose stored value is halved. */
+    /** `MM` with an empty separator, whose stored value is halved. */
     @Test fun aHalvedMonthPairRetainsItsComponentPair() =
         assertEquals("VALUE|0609", sameProfile("MM", "", "0609"))
+
+    /** The eighth pair, `dd.MM`+`-`: day and month on both sides, and again no invented year. */
+    @Test fun aYearlessDayMonthWindowRetainsItsComponentPair() =
+        assertEquals("VALUE|01.06-30.09", sameProfile("dd.MM", "-", "01.06-30.09"))
 
     /** The discriminator: same component set, different spelling — the TARGET's format wins. */
     @Test fun theTargetFormatDecidesTheStoredForm() =

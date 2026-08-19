@@ -14,16 +14,21 @@ import org.junit.jupiter.api.Test
 
 /**
  * Differential — a starred `FirstFilledValue` over a repeatable DATE_RANGE column, computed into a DATE_RANGE
- * target of the SAME declaration profile, across all six FORMATS the kernel admits for a range
- * (SPEC-2026-08-19-03): the two exact ones and the four component subsets `yyyy`, `yyyy-MM`, `MM`, `MM-dd`.
- * The unit the kernel allowlists is the `(format, separator)` PAIR and there is a seventh — `MM` with an EMPTY
- * separator — but it reuses this matrix's `MM` format and only changes how a stored value is SPLIT, which is
- * `DateRangeFormalDiffTest`'s subject rather than this one's.
+ * target of the SAME declaration profile, across ALL EIGHT `(format, separator)` pairs the kernel admits for a
+ * range DECLARATION (SPEC-2026-08-19-03; the enumerated declaration grid is KERNEL-FINDINGS KF81): the two
+ * exact profiles, the four component subsets `yyyy`, `yyyy-MM`, `MM`, `MM-dd`, the halved `MM`+`""`, and
+ * `dd.MM`+`-`.
+ *
+ * **An admitted DECLARATION pair is not thereby an admitted COMPUTATION profile — that is a separate claim, and
+ * this matrix is what measures it:** every row is put through `checkConsistency` and both kernel strategies in
+ * its own right. The matrix held only the first six for a while and read exactly like the whole class; running
+ * the remaining two is what found IF306. The halved `MM`+`""` — the one declaration whose separator is legally
+ * EMPTY — was the row that diverged, and it diverged in the model LOADER rather than the evaluator.
  *
  * The point of the matrix is the *stored form*. A year-bearing profile round-trips its exact endpoints; a
  * yearless one keeps the ordered component labels it declared and gains no synthetic year, because the target
  * renders through its own declared format and never through the completed instant the evaluator carries
- * internally. The model declares no Base Year, so the two yearless rows are measured where there is nothing to
+ * internally. The model declares no Base Year, so the four yearless rows are measured where there is nothing to
  * complete a year from. Crossed profiles are refused before evaluation and are locked as static rows in
  * `rulekit.validate.laws.DateRangeComparabilityLawsTest`.
  *
@@ -39,6 +44,8 @@ class DateRangeFirstFilledProfileDiffTest {
         YEAR_MONTH("yyyy-MM", "/"),
         MONTH("MM", "/"),
         MONTH_DAY("MM-dd", "/"),
+        MONTH_HALVED("MM", ""),
+        DAY_MONTH("dd.MM", "-"),
     }
 
     private fun modelJson(profile: Profile): String {
@@ -119,6 +126,16 @@ class DateRangeFirstFilledProfileDiffTest {
     /** No Base Year: the pair keeps month and day on both sides and gains no year. */
     @Test fun aYearlessMonthDayWindowRetainsItsComponentPair() =
         agree(Profile.MONTH_DAY, "VALUE|06-01/09-30", null, "06-01/09-30")
+
+    /** The halved pair: the one declaration whose stored value splits in the MIDDLE rather than on a separator
+     *  (the split's own shape stays `DateRangeFormalDiffTest`'s subject; this row is about what a computation
+     *  STORES into it). */
+    @Test fun aHalvedMonthPairRetainsItsComponentPair() =
+        agree(Profile.MONTH_HALVED, "VALUE|0609", null, "0609")
+
+    /** No Base Year: the pair keeps day and month on both sides and gains no year. */
+    @Test fun aYearlessDayMonthWindowRetainsItsComponentPair() =
+        agree(Profile.DAY_MONTH, "VALUE|01.06-30.09", null, "01.06-30.09")
 
     @Test fun theFirstFilledRowWinsOverALaterOne() =
         agree(Profile.MONTH, "VALUE|06/09", null, "06/09", "01/12")

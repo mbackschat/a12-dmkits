@@ -488,11 +488,18 @@ object ModelLoader {
         }
     }
 
-    /** A DATE_RANGE field's two-date separator (`DateRangeType.rangeSeparator`), else null. */
+    /** A DATE_RANGE field's two-date separator (`DateRangeType.rangeSeparator`), else null.
+     *
+     *  **An EMPTY declared separator is a VALUE, not "unset"** — `MM`+`""` is one of the eight allowlisted
+     *  `(format, separator)` pairs (KERNEL-FINDINGS KF81) and the split-in-the-middle branch `splitDateRange`
+     *  exists for exactly it. Folding `""` into null dropped the field out of [ModelDef.rangeConfig], which
+     *  disables the range's whole config: the formal check short-circuits to "nothing to check" and a stored
+     *  value never resolves as a range (IF306). Only an ABSENT key — which the kernel's required pair never
+     *  produces — is null. */
     private fun rangeSeparatorOf(fieldNode: JsonElement?): String? {
         val type = fieldNode.path("Field").path("fieldType")
         if (type.path("type").asText() != "DateRangeType") return null
-        return type.path("DateRangeType").path("rangeSeparator").asText().ifEmpty { null }
+        return type.path("DateRangeType").path("rangeSeparator").asTextOrNull()
     }
 
     /** A DATE field's precision: a `DateFragmentType` is [DatePrecision.FRAGMENT] (its format carries only some
