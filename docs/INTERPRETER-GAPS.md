@@ -14,8 +14,6 @@
 
 ## 1. Open
 
-- **IG140 — `Dsl.dateRange`'s client-side refusals have no measured kernel basis.** Opened 2026-08-19 while reconciling `SPEC-2026-08-19-0*`. `DateRangeConstruction`'s compact constructor refuses `BaseYear` and every non-DATE/DATE_FRAGMENT operand, and nothing shows the kernel refuses the same shapes — the "a client-side refusal needs a measured kernel basis" rule's own case. Pre-existing and inherited rather than introduced by that reconciliation. *(The two sibling items this row opened with are gone: the missing `DatePart.HOUR` short-circuit is now mirrored and locked, and `interpretationOfYear` shipped as [IF305](INTERPRETER-FINDINGS.md#if305).)*
-
 - **IG141 — the launcher-preparation boundaries a cold review named, all outside the JAVA_HOME class the fix owns.** Opened 2026-08-19.
 
   - `resolve_launcher_state` reads exit status before output, so a launcher that prints a correct `source:` line and then exits non-zero, or prints it on stderr, is classified `unstartable` rather than read. A launcher that starts, exits 0 and prints nothing is likewise `unstartable`.

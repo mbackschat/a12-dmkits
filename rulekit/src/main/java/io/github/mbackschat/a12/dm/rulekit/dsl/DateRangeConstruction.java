@@ -10,9 +10,16 @@ import io.github.mbackschat.a12.dm.core.ValueKind;
  *
  * <p>It can be assigned to a date-range field or compared with one using {@code ==}/{@code !=}.
  * The overlap predicates and bound extractors still take date-range <em>fields</em>, not nested
- * constructions. Build via {@link Dsl#dateRange}. Each endpoint must be a full date or date-fragment
- * entity reference; their formats must contain the same date components and no time component. Format
- * compatibility is a model property and remains kernel-validated.
+ * constructions. Build via {@link Dsl#dateRange}.
+ *
+ * <p><b>Each endpoint must be a date or date-fragment entity reference</b>, and both refusals below are
+ * measured against the kernel rather than assumed (KERNEL-FINDINGS §6 "admits ONLY an entity reference",
+ * locked by {@code validate.laws.DateRangeConstructionOperandLawsTest}). The kernel grammar admits only an
+ * {@code entitySpec} in either slot, so a constant, a shifted date, or a literal is a parse error there;
+ * and a non-date field draws {@code MVK_WRONG_DATE_FORMAT_FOR_OP}. Three further constraints the kernel
+ * also enforces are deliberately NOT pre-checked here, because delegating can only under-report: a date
+ * whose {@code datePrecision} is partial, a wildcard operand, and endpoints whose formats carry different
+ * date components.
  */
 public record DateRangeConstruction(Calculation start, Calculation end)
         implements Calculation, DateRangeOperand {
