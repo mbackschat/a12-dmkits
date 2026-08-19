@@ -38,6 +38,12 @@ printf '%s\n' build >> "$root/cli/build/prepare-build-count"
 revision="$(git -C "$root" rev-parse HEAD)"
 [[ "${FAKE_STALE_BUILD:-0}" != 1 ]] || revision=0000000000000000000000000000000000000000
 if [[ "${FAKE_EMPTY_BUILD:-0}" == 1 ]]; then rm -f "$launcher"; exit 0; fi
+# A build with a SIDE EFFECT on the source tree. The script rechecks HEAD and cleanliness after building for
+# exactly this, and both branches were advertised and unguarded.
+[[ "${FAKE_DIRTY_BUILD:-0}" != 1 ]] || printf '%s\n' side-effect > "$root/build-side-effect.txt"
+if [[ "${FAKE_MOVE_HEAD:-0}" == 1 ]]; then
+  git -C "$root" commit -q --allow-empty -m "moved by the build"
+fi
 cat > "$launcher" <<LAUNCHER
 #!/usr/bin/env bash
 # Mirror Gradle's generated start script: a JAVA_HOME that holds no runnable java is a START failure with a
@@ -47,6 +53,7 @@ if [[ -n "\${JAVA_HOME:-}" && ! -x "\$JAVA_HOME/jre/sh/java" && ! -x "\$JAVA_HOM
   exit 1
 fi
 printf '%s\n' 'a12-dmkits 9.9.9' '  source: $revision (clean)'
+[[ "${FAKE_UNHEALTHY_BUILD:-0}" != 1 ]] || { echo "boom" >&2; exit 3; }
 LAUNCHER
 chmod +x "$launcher"
 EOF
@@ -59,8 +66,11 @@ git -C "$REPO" add .
 git -C "$REPO" commit -qm initial
 HEAD_REVISION="$(git -C "$REPO" rev-parse HEAD)"
 
+# `mode` shapes the ANSWER, which is what the script classifies on: `stdout` (the real launcher),
+# `stderr` (the same banner on the other stream), `unhealthy` (the right banner, then a non-zero exit),
+# `silent` (starts, exits 0, says nothing).
 install_fake_launcher() {
-  local revision="$1"
+  local revision="$1" mode="${2:-stdout}"
   mkdir -p "$(dirname "$LAUNCHER")"
   cat > "$LAUNCHER" <<EOF
 #!/usr/bin/env bash
@@ -68,7 +78,12 @@ if [[ -n "\${JAVA_HOME:-}" && ! -x "\$JAVA_HOME/jre/sh/java" && ! -x "\$JAVA_HOM
   echo "ERROR: JAVA_HOME is set to an invalid directory: \$JAVA_HOME" >&2
   exit 1
 fi
-printf '%s\n' 'a12-dmkits 9.9.9' '  source: $revision (clean)'
+case "$mode" in
+  stderr) printf '%s\n' 'a12-dmkits 9.9.9' '  source: $revision (clean)' >&2 ;;
+  silent) : ;;
+  unhealthy) printf '%s\n' 'a12-dmkits 9.9.9' '  source: $revision (clean)'; echo boom >&2; exit 3 ;;
+  *) printf '%s\n' 'a12-dmkits 9.9.9' '  source: $revision (clean)' ;;
+esac
 EOF
   chmod +x "$LAUNCHER"
 }
@@ -167,7 +182,67 @@ set -e
   || fail "a missing launcher borrowed the provenance-mismatch message: $empty_out"
 [[ "$empty_out" == *"left no runnable launcher"* ]] || fail "the empty build was not named: $empty_out"
 
-# 9. The same broken JAVA_HOME with NO pin available — the branch CI runs, and the only one that reaches
+# 9. The provenance answer is read from CONTENT, not from the stream it arrived on. A launcher whose banner
+#    goes to stderr has answered; classifying on the exit status first filed it as "never started".
+install_fake_launcher "$HEAD_REVISION" stderr
+before_builds="$(wc -l < "$BUILD_COUNT" | tr -d ' ')"
+resolved="$(bash "$REPO/scripts/prepare-dmtool-source.sh")"
+[[ "$resolved" == "$LAUNCHER" ]] || fail "a banner on stderr was not read as an answer: '$resolved'"
+[[ "$(wc -l < "$BUILD_COUNT" | tr -d ' ')" == "$before_builds" ]] \
+  || fail "a launcher that answered correctly on stderr was rebuilt anyway"
+
+# 10. …but content-first must not make a BROKEN launcher current. It names this revision and still exits
+#     non-zero, so it earns the ordinary rebuild — and when the rebuild reproduces it, its own verdict.
+install_fake_launcher "$HEAD_REVISION" unhealthy
+before_builds="$(wc -l < "$BUILD_COUNT" | tr -d ' ')"
+resolved="$(bash "$REPO/scripts/prepare-dmtool-source.sh")"
+[[ "$resolved" == "$LAUNCHER" ]] || fail "a rebuild did not repair an unhealthy launcher: '$resolved'"
+[[ "$(wc -l < "$BUILD_COUNT" | tr -d ' ')" == "$(( before_builds + 1 ))" ]] \
+  || fail "the unhealthy launcher did not trigger exactly one rebuild"
+
+install_fake_launcher "$HEAD_REVISION" unhealthy
+set +e
+unhealthy_out="$(FAKE_UNHEALTHY_BUILD=1 bash "$REPO/scripts/prepare-dmtool-source.sh" 2>&1)"
+unhealthy_status=$?
+set -e
+[[ $unhealthy_status -ne 0 ]] || fail "a launcher that exits non-zero was accepted: $unhealthy_out"
+[[ "$unhealthy_out" != *"did not start"* ]] \
+  || fail "a launcher that DID start borrowed the start-failure message: $unhealthy_out"
+[[ "$unhealthy_out" != *"does not report source"* ]] \
+  || fail "a launcher with correct provenance was called a mismatch: $unhealthy_out"
+[[ "$unhealthy_out" == *"exits non-zero"* ]] || fail "the unhealthy verdict was not named: $unhealthy_out"
+
+# 11. Starts, exits 0, says nothing — the shape that answers nothing at all. It stays `unstartable` (one
+#     rebuild), which is the only classification the content-first order must NOT change.
+install_fake_launcher "$HEAD_REVISION" silent
+before_builds="$(wc -l < "$BUILD_COUNT" | tr -d ' ')"
+resolved="$(bash "$REPO/scripts/prepare-dmtool-source.sh")"
+[[ "$resolved" == "$LAUNCHER" ]] || fail "a silent launcher was not repaired by a rebuild: '$resolved'"
+[[ "$(wc -l < "$BUILD_COUNT" | tr -d ' ')" == "$(( before_builds + 1 ))" ]] \
+  || fail "the silent launcher did not trigger exactly one rebuild"
+
+# 12. The post-build rechecks. Both are advertised in scripts/README.md and both were unguarded — deleting
+#     either left this file green. A build that dirties the worktree, and one that moves HEAD.
+install_fake_launcher 4444444444444444444444444444444444444444
+set +e
+dirtied_out="$(FAKE_DIRTY_BUILD=1 bash "$REPO/scripts/prepare-dmtool-source.sh" 2>&1)"
+dirtied_status=$?
+set -e
+rm -f "$REPO/build-side-effect.txt"
+[[ $dirtied_status -ne 0 ]] || fail "a build that dirtied the source tree was accepted: $dirtied_out"
+[[ "$dirtied_out" == *"worktree changed while"* ]] \
+  || fail "the post-build worktree recheck did not fire: $dirtied_out"
+
+install_fake_launcher 5555555555555555555555555555555555555555
+set +e
+moved_out="$(FAKE_MOVE_HEAD=1 bash "$REPO/scripts/prepare-dmtool-source.sh" 2>&1)"
+moved_status=$?
+set -e
+git -C "$REPO" reset -q --hard "$HEAD_REVISION"
+[[ $moved_status -ne 0 ]] || fail "a build that moved HEAD was accepted: $moved_out"
+[[ "$moved_out" == *"HEAD changed while"* ]] || fail "the post-build HEAD recheck did not fire: $moved_out"
+
+# 13. The same broken JAVA_HOME with NO pin available — the branch CI runs, and the only one that reaches
 #    fail_unstartable. Case 6's macOS branch is satisfied by the pin alone, so without this case the
 #    unstartable/mismatch classification, the preserved launcher stderr, and the named JAVA_HOME are all
 #    advertised and untested. The pin is removed by stubbing the shared helper — one variable moved, and no
@@ -198,4 +273,26 @@ nopin_err="$(cat "$WORK/nopin.err")"
   || fail "the launcher's own stderr was not preserved: $nopin_err"
 [[ -z "$nopin_out" ]] || fail "a failed preparation printed something on stdout: $nopin_out"
 
-echo "SELFTEST OK: clean-revision reuse, stale rebuild, dirty refusal, post-build provenance, foreign cwd, broken JAVA_HOME, corrupt install, empty build, no-pin start failure"
+# 14. The pin's OWN failure is surfaced rather than swallowed. Distinct from case 13: there the platform
+#     offers no pin at all (nothing to report), here the pin exists and fails — a macOS box with no JDK 21
+#     registered. The stub keeps java_home present but non-zero, which is exactly that shape.
+sed 's|/usr/libexec/java_home|/usr/bin/false|g' \
+  "$ROOT/scripts/gradle-environment.sh" > "$REPO/scripts/gradle-environment.sh"
+! grep -q '/usr/libexec/java_home' "$REPO/scripts/gradle-environment.sh" \
+  || fail "the failing-pin stub did not take"
+git -C "$REPO" add -A
+git -C "$REPO" commit -qm "failing-pin stub"
+FAILPIN_REVISION="$(git -C "$REPO" rev-parse HEAD)"
+install_fake_launcher "$FAILPIN_REVISION"
+set +e
+failpin_out="$(bash "$REPO/scripts/prepare-dmtool-source.sh" 2>"$WORK/failpin.err")"
+failpin_status=$?
+set -e
+failpin_err="$(cat "$WORK/failpin.err")"
+[[ $failpin_status -eq 0 ]] \
+  || fail "a failing pin was made fatal; the caller's JAVA_HOME may still work: $failpin_err"
+[[ "$failpin_out" == "$LAUNCHER" ]] || fail "the failing-pin run did not resolve the launcher: '$failpin_out'"
+[[ "$failpin_err" == *"none is registered"* ]] \
+  || fail "the pin's own failure was swallowed rather than surfaced: $failpin_err"
+
+echo "SELFTEST OK: clean-revision reuse, stale rebuild, dirty refusal, post-build provenance, foreign cwd, broken JAVA_HOME, corrupt install, empty build, stderr banner, unhealthy launcher, silent launcher, post-build rechecks, no-pin start failure, surfaced pin failure"
