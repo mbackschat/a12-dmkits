@@ -77,7 +77,14 @@ class BuildPerformancePolicyTest {
             "(?m)^[^#\n]*\\b(?:export\\s+)?[A-Za-z_][A-Za-z0-9_]*=\"?\\$\\(/usr/libexec/java_home");
 
     /**
-     * The JDK-21 pin is advertised as single-sourced by three surfaces ({@code scripts/README.md}, the
+     * The POSITIVE half of the single-sourcing claim: each named consumer resolves the pin through the shared
+     * helper. The NEGATIVE half — that nobody ELSE re-encodes it — deliberately does not live here, because
+     * this list is authored and an authored list cannot see the consumer nobody remembered. It is
+     * {@code JdkPinSingleSourceGuardTest}, which sweeps every git-tracked non-prose file and therefore runs in
+     * the always-run {@code leakGuardTest}. That split was made after this list read as a complete guard while
+     * the committed {@code .envrc} re-encoded the pin unnoticed.
+     *
+     * <p>The pin is advertised as single-sourced by three surfaces ({@code scripts/README.md}, the
      * preparation script's own comment, and the helper's javadoc), and the defect that created the helper was
      * exactly two sites deciding it differently — the build pinned, the launcher check did not. A re-encoded
      * {@code java_home -v 21} is therefore the drift to catch, not a style preference.

@@ -224,5 +224,39 @@ check_output "no java anywhere classifies as no-java" no-java \
   env -u JAVA_HOME PATH=/nonexistent /bin/bash -c \
     '. "$1"; a12_classify_java ""; printf %s "$a12_java_kind"' _ "$ROOT/scripts/gradle-environment.sh"
 
+# (14) The shim's own `no-java` refusal, staged against `require_supported_java` rather than the classifier.
+#      A mutation sweep found this arm unenforced: deleting it left both selftests green. bin/dmtool needs
+#      only dirname/head/grep externally, so a PATH holding just those three — and no java — reaches it.
+NO_JAVA_BIN="$WORK/no-java-path"
+mkdir -p "$NO_JAVA_BIN"
+# bash is needed for the `#!/usr/bin/env bash` shebang itself; the rest are what the shim and the shared
+# helper actually shell out to before the classifier answers `no-java`. Deliberately NOT java.
+for tool in bash dirname head grep sed; do ln -sf "$(command -v "$tool")" "$NO_JAVA_BIN/$tool"; done
+check "no java anywhere is REFUSED by the shim" 2 \
+  env -u JAVA_HOME PATH="$NO_JAVA_BIN" DMTOOL_CLI="$LAUNCHER" "$DMTOOL" --version
+# …and with its OWN message. The exit code alone is satisfied by the catch-all arm, so deleting the specific
+# one would leave a wrong diagnostic behind a right exit status — a mutant that survived until this line.
+set +e
+no_java_out="$(env -u JAVA_HOME PATH="$NO_JAVA_BIN" DMTOOL_CLI="$LAUNCHER" "$DMTOOL" --version 2>&1)"
+set -e
+if [[ "$no_java_out" == *"no java found on PATH and JAVA_HOME is unset"* ]]; then
+  printf '  ok    the no-java refusal names its own cause\n'; pass=$((pass + 1))
+else
+  printf '  FAIL  the no-java refusal fell through to the catch-all — output: %s\n' "$no_java_out"
+  fail=$((fail + 1))
+fi
+
+# (15) The 8th message — a checkout without the shared helper — asserted on its TEXT, not only its exit code.
+#      Case 12 checks exit 2, which a differently-caused refusal would also satisfy.
+set +e
+broken_out="$(env DMTOOL_CLI="$LAUNCHER" JAVA_HOME="$JDK_OK" "$BROKEN_ROOT/bin/dmtool" --version 2>&1)"
+set -e
+if [[ "$broken_out" == *"this checkout is incomplete"* ]]; then
+  printf '  ok    the incomplete-checkout refusal names itself\n'; pass=$((pass + 1))
+else
+  printf '  FAIL  the incomplete-checkout refusal did not name itself — output: %s\n' "$broken_out"
+  fail=$((fail + 1))
+fi
+
 printf '\n%s passed, %s failed\n' "$pass" "$fail"
 [[ "$fail" -eq 0 ]]

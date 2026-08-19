@@ -87,7 +87,8 @@ class DateRangeConstructionOperandLawsTest {
         verdicts.put("AddMonths", verdict("DateRange(AddMonths(/Policy/Start, 1), /Policy/End) == [/Policy/Window]"));
         verdicts.put("date literal", verdict("DateRange(\"01.01.2020\", /Policy/End) == [/Policy/Window]"));
         // The finish slot is gated by the same grammar rule, not only the start slot.
-        verdicts.put("Today as finish", verdict("DateRange(/Policy/Start, Today) == [/Policy/Window]"));
+        verdicts.put("Today as finish",
+                verdict("DateRange(/Policy/Start, Today) == [/Policy/Window]", "../Start"));
 
         assertEquals(Map.of(
                 "Today", "MVK_UNEXPECTED_TOKEN",
@@ -117,19 +118,26 @@ class DateRangeConstructionOperandLawsTest {
         // Refused: the kind rows the typed surface pre-checks…
         verdicts.put("number field", verdict("DateRange(/Policy/Qty, /Policy/End) == [/Policy/Window]"));
         verdicts.put("string field", verdict("DateRange(/Policy/Note, /Policy/End) == [/Policy/Window]"));
-        verdicts.put("date-time field", verdict("DateRange(/Policy/Stamp, /Policy/Stamp2) == [/Policy/Window]"));
+        verdicts.put("date-time field",
+                verdict("DateRange(/Policy/Stamp, /Policy/Stamp2) == [/Policy/Window]", "../Window"));
         verdicts.put("range field", verdict("DateRange(/Policy/Window, /Policy/End) == [/Policy/Window]"));
         // …and the three it delegates.
         verdicts.put("partial precision", verdict("DateRange(/Policy/DayOptional, /Policy/End) == [/Policy/Window]"));
         verdicts.put("differing components",
-                verdict("DateRange(/Policy/Start, /Policy/MonthOnly) == [/Policy/Window]"));
+                verdict("DateRange(/Policy/Start, /Policy/MonthOnly) == [/Policy/Window]", "../Window"));
         verdicts.put("wildcard", verdict("DateRange(/Policy/Lines*/LineDate, /Policy/End) == [/Policy/Window]"));
-        // A repeating cell reached without either a star or a semantic index, and a group in an operand slot,
-        // are the two shapes that report the OTHER wildcard code — the one that asks for a star rather than
-        // forbidding it. Both are unreachable through the typed surface, which resolves a field by path.
-        verdicts.put("unstarred repeating cell",
+        // The group axis has its OWN code, and which one you get depends on the star: an UNSTARRED group asks
+        // for a star (MVK_NO_WILDCARD, the generic gate), while a STARRED group and the rule-context group are
+        // refused by the construction's own checker as not-a-field (MVK_NO_GROUPS_ALLOWED). Neither is
+        // reachable through the typed surface, whose operands are DateOperand and a group is not one.
+        verdicts.put("unstarred group", verdict("DateRange(/Policy/Lines, /Policy/End) == [/Policy/Window]"));
+        verdicts.put("starred group", verdict("DateRange(/Policy/Lines*, /Policy/End) == [/Policy/Window]"));
+        verdicts.put("rule-context group", verdict("DateRange(RuleGroup, /Policy/End) == [/Policy/Window]"));
+        // An unstarred repeating CELL also reports MVK_NO_WILDCARD here — but that is the rule's iteration
+        // scope talking, not the construction, and the row above it in this file proves it by moving only the
+        // error field. Kept so the code is recorded; read it with that method, never alone.
+        verdicts.put("unstarred repeating cell (error field outside the group)",
                 verdict("DateRange(/Policy/Lines/LineDate, /Policy/End) == [/Policy/Window]"));
-        verdicts.put("group", verdict("DateRange(/Policy/Lines, /Policy/End) == [/Policy/Window]"));
 
         Map<String, String> expected = new LinkedHashMap<>();
         expected.put("two dates, one format", "accepted");
@@ -145,9 +153,26 @@ class DateRangeConstructionOperandLawsTest {
         expected.put("partial precision", "MVK_WRONG_DATE_FORMAT_FOR_OP");
         expected.put("differing components", "MVK_WRONG_DATE_FORMAT_FOR_OP");
         expected.put("wildcard", "MVK_NO_WILDCARDS_ALLOWED");
-        expected.put("unstarred repeating cell", "MVK_NO_WILDCARD");
-        expected.put("group", "MVK_NO_WILDCARD");
+        expected.put("unstarred group", "MVK_NO_WILDCARD");
+        expected.put("starred group", "MVK_NO_GROUPS_ALLOWED");
+        expected.put("rule-context group", "MVK_NO_GROUPS_ALLOWED");
+        expected.put("unstarred repeating cell (error field outside the group)", "MVK_NO_WILDCARD");
         assertEquals(expected, verdicts);
+    }
+
+    /**
+     * A FOURTH delegated constraint, and the only context-dependent one: the `$` outer-iteration marker. The
+     * typed surface admits it — {@code DateRef.outer()} yields an ordinary {@code FieldValue} — and that is
+     * correct, because the shape is legal where a filter supplies the outer iteration. At top level there is
+     * none to correlate with, and the kernel says so. Two rows, because either alone reads as a flat verdict.
+     */
+    @Test
+    void theOuterIterationMarkerIsLegalOnlyWhereAFilterSuppliesTheIteration() {
+        assertEquals("MVK_INVALID_OUTER_ITERATION",
+                verdict("DateRange($/Policy/Start, /Policy/End) == [/Policy/Window]", "../Start"));
+        assertEquals("accepted",
+                verdict("AllFieldsFilled(/Policy/Lines*/Sku Having"
+                        + " ([/Policy/Window] == DateRange($/Policy/Start, LineDate)))", "../Lines/Sku"));
     }
 
     /**
@@ -155,6 +180,21 @@ class DateRangeConstructionOperandLawsTest {
      * shapes it admits are the accepted ones. A refusal here with no refusal above would be the defect the
      * measured-basis rule exists to catch.
      */
+    /**
+     * The discriminator a cold review supplied, and it falsifies the reading the first version of this file
+     * published. `MVK_NO_WILDCARD` on an unstarred repeating operand is a property of the RULE'S ITERATION
+     * SCOPE, not of the construction: hold the condition fixed and move only the error field into the
+     * repeating group, and the same operand is accepted.
+     */
+    @Test
+    void theUnstarredRepeatingRefusalIsTheRulesIterationScopeNotTheConstruction() {
+        String condition = "DateRange(/Policy/Lines/LineDate, /Policy/End) == [/Policy/Window]";
+        assertEquals("MVK_NO_WILDCARD", verdict(condition, "../End"),
+                "error field OUTSIDE the repeating group: the rule cannot iterate it");
+        assertEquals("accepted", verdict(condition, "../Lines/LineDate"),
+                "the SAME condition with the error field INSIDE the repeating group — one variable moved");
+    }
+
     @Test
     void theTypedSurfaceRefusesNothingTheKernelAccepts() {
         BoundModel model = BoundModel.ofJson(MODEL);
@@ -166,6 +206,10 @@ class DateRangeConstructionOperandLawsTest {
                 () -> Dsl.dateRange(model.date("/Policy/Start"), Dsl.today()));
         assertThrows(IllegalArgumentException.class,
                 () -> Dsl.dateRange(Dsl.addMonths(model.date("/Policy/Start"), 1), model.date("/Policy/End")));
+        // BaseYear is a DateOperand too (Dsl.baseYear() returns a DateExpr), so its grammar row needs a mirror
+        // like the other three — it had none until a cold review counted them.
+        assertThrows(IllegalArgumentException.class,
+                () -> Dsl.dateRange(Dsl.baseYear(), model.date("/Policy/End")));
         // Kind-refused above ⇒ refused here. A DateRef over a non-date FieldRef is the only way to reach the
         // check, since BoundModel.date already refuses the path.
         assertThrows(IllegalArgumentException.class,
@@ -186,10 +230,17 @@ class DateRangeConstructionOperandLawsTest {
                 renderer.render(Dsl.dateRange(model.date("/Policy/Lines/LineDate").forIndex("L1"),
                         model.date("/Policy/End"))));
 
-        // Delegated: the surface builds these, and the rows above show the kernel rejecting them.
-        assertTrue(renderer.render(Dsl.dateRange(model.date("/Policy/DayOptional"), model.date("/Policy/End")))
-                .startsWith("DateRange("), "a partial-precision date is left to the kernel");
-        assertTrue(renderer.render(Dsl.dateRange(model.date("/Policy/Start"), model.date("/Policy/MonthOnly")))
-                .startsWith("DateRange("), "component compatibility is left to the kernel");
+        // Delegated: the surface builds these, and the rows above show the kernel rejecting them. Asserted on
+        // the FULL rendering like every other row — a startsWith("DateRange(") would have passed for a mangled
+        // operand, which is weaker than the rest of this file and was flagged as such.
+        assertEquals("DateRange(/Policy/DayOptional, /Policy/End)",
+                renderer.render(Dsl.dateRange(model.date("/Policy/DayOptional"), model.date("/Policy/End"))),
+                "a partial-precision date is built here and left to the kernel");
+        assertEquals("DateRange(/Policy/Start, /Policy/MonthOnly)",
+                renderer.render(Dsl.dateRange(model.date("/Policy/Start"), model.date("/Policy/MonthOnly"))),
+                "component compatibility is left to the kernel");
+        assertEquals("DateRange([$]/Policy/Start, /Policy/End)".replace("[$]", "$"),
+                renderer.render(Dsl.dateRange(model.date("/Policy/Start").outer(), model.date("/Policy/End"))),
+                "the outer-iteration marker is built here; its legality is contextual and kernel-arbitrated");
     }
 }

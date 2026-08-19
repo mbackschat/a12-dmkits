@@ -63,11 +63,11 @@ a12_classify_java() {
     a12_java_bin=java
   fi
 
-  local banner status
-  set +e
-  banner="$("$a12_java_bin" -version 2>&1)"
-  status=$?
-  set -e
+  # `|| status=$?` rather than a `set +e`/`set -e` pair: the pair would turn errexit ON in a caller that
+  # deliberately runs without it (perf-keys.sh does), which contradicts this function's own "always returns 0,
+  # severity is the caller's decision" contract by killing the caller at its next failing command.
+  local banner status=0
+  banner="$("$a12_java_bin" -version 2>&1)" || status=$?
   a12_java_banner="$banner"
   a12_java_status=$status
   if (( status != 0 )); then

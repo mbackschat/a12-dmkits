@@ -46,16 +46,17 @@ fi
 # The JDK the launcher check will use, recorded once so the diagnostic cannot re-derive it differently.
 LAUNCHER_JAVA_HOME="${PINNED_JDK21:-${JAVA_HOME:-}}"
 
-# Can the JDK we would use actually run anything? This is the discriminator between "this machine has no JVM
-# for the launcher" — where a rebuild cannot help and `build.sh` would fail naming the wrong cause — and "the
-# launcher itself is broken", e.g. a partial installDist, which a rebuild repairs. The previous script
-# recovered from the second class by always rebuilding; the first version of this one refused instead.
+# Can the JDK we would use actually run this launcher? This is the discriminator between "this machine has no
+# usable JVM" — where a rebuild cannot help and `build.sh` would fail naming the wrong cause — and "the
+# launcher itself is broken", e.g. a partial installDist, which a rebuild repairs.
+#
+# It asks the SHARED classifier rather than testing for a file. A presence test answers a different question
+# and gets two cases backwards: a JDK 17 and a `java` whose `-version` exits non-zero are both PRESENT, so the
+# old probe called them runnable, and the launcher then died anyway — sending the script down the
+# "the JDK above IS runnable, so this is the launcher" branch, which advises the rebuild it had just done.
 java_is_runnable() {
-  if [[ -n "$LAUNCHER_JAVA_HOME" ]]; then
-    [[ -x "$LAUNCHER_JAVA_HOME/bin/java" || -x "$LAUNCHER_JAVA_HOME/jre/sh/java" ]]
-  else
-    command -v java >/dev/null 2>&1
-  fi
+  a12_classify_java "$LAUNCHER_JAVA_HOME"
+  [[ "$a12_java_kind" == ok ]]
 }
 
 [[ -d "$ROOT/.git" || -f "$ROOT/.git" ]] \
@@ -119,16 +120,19 @@ resolve_launcher_state() {
 # diagnostic — it is the only place the real cause (a JAVA_HOME naming a removed JDK) is written down.
 fail_unstartable() {
   {
-    echo "dmtool source preparation: the JVM launcher did not start, so its source provenance is UNKNOWN"
+    echo "dmtool source preparation: the JVM launcher named no source revision, so its provenance is UNKNOWN"
     echo "  launcher: $LAUNCHER"
     echo "  JAVA_HOME used: ${LAUNCHER_JAVA_HOME:-<unset>}"
     if [[ -n "$launcher_diagnostic" ]]; then
       printf '%s\n' "$launcher_diagnostic" | sed 's/^/  | /'
     fi
     if java_is_runnable; then
-      echo "  the JDK above IS runnable, so this is the launcher, not the environment"
-      echo "  fix: rebuild it with ./build.sh :cli:installDist"
+      # Only reachable AFTER a rebuild — the pre-build branch refuses before getting here when the JDK is
+      # unusable — so do not advise the rebuild that has just run and not helped.
+      echo "  the JDK above runs and reports a supported version, so this is the launcher, not the environment"
+      echo "  a rebuild has already been attempted; inspect $LAUNCHER and the :cli:installDist output"
     else
+      echo "  that JDK is unusable ($a12_java_kind${a12_java_major:+, Java $a12_java_major})"
       echo "  fix: export a working JDK 21, e.g. macOS: export JAVA_HOME=\"\$(/usr/libexec/java_home -v 21)\""
     fi
   } >&2

@@ -81,8 +81,18 @@ if [ -n "${PERF_KEYS_JFR:-}" ]; then
 else
 # The "only when JAVA_HOME is unset" policy is this script's own; the pin it then applies is the project's,
 # so it comes from the shared helper rather than a second copy of `java_home -v 21`.
+#
+# The path is repo-root-relative on purpose. This script `cd`s to the repo root near the top, so resolving
+# `dirname "$BASH_SOURCE"` HERE would resolve a path relative to the ORIGINAL cwd against the new one —
+# invoked as `bash repo/scripts/perf-keys.sh` from the parent directory, that silently fails. And it fails
+# SILENTLY: this script runs `set -uo pipefail` without `-e`, so a failed source just leaves the function
+# undefined and the pin quietly lost. Refuse instead, the way bin/dmtool and prepare-dmtool-source.sh do.
+[ -r scripts/gradle-environment.sh ] || {
+    echo "perf-keys.sh: cannot read scripts/gradle-environment.sh — this checkout is incomplete" >&2
+    exit 2
+}
 # shellcheck source=scripts/gradle-environment.sh
-. "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/gradle-environment.sh"
+. scripts/gradle-environment.sh
 if [ -z "${JAVA_HOME:-}" ]; then
     JAVA_HOME="$(a12_pinned_jdk21_home 2>/dev/null || true)"
 fi

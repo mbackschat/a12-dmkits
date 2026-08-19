@@ -16,10 +16,11 @@ import io.github.mbackschat.a12.dm.core.ValueKind;
  * measured against the kernel rather than assumed — the construction's operand gates in KERNEL-FINDINGS §6,
  * locked by {@code validate.laws.DateRangeConstructionOperandLawsTest}. The kernel grammar admits only an
  * {@code entitySpec} in either slot, so a constant, a shifted date, or a literal is a parse error there;
- * and a non-date field draws {@code MVK_WRONG_DATE_FORMAT_FOR_OP}. Three further constraints the kernel
- * also enforces are deliberately NOT pre-checked here, because delegating can only under-report: a date
- * whose {@code datePrecision} is partial, a wildcard operand, and endpoints whose formats carry different
- * date components.
+ * and a non-date field draws {@code MVK_WRONG_DATE_FORMAT_FOR_OP}. Four further constraints the kernel also
+ * enforces are deliberately NOT pre-checked here, because delegating can only under-report: a date whose
+ * {@code datePrecision} is partial, a wildcard operand, endpoints whose formats carry different date
+ * components, and — the one that is context-dependent rather than local — the {@code $} outer-iteration
+ * marker, which is legal only where a {@code Having} filter supplies the iteration to correlate with.
  */
 public record DateRangeConstruction(Calculation start, Calculation end)
         implements Calculation, DateRangeOperand {

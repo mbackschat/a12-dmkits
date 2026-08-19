@@ -72,7 +72,7 @@ class IncompleteDateFormatAdmissionLawsTest {
     void theAdmittedIncompleteDateFormatsAreAWhitelistNotACompositionalRule() {
         List<String> verdicts = new ArrayList<>();
         for (String format : List.of(
-                "yyyy", "yyyy-MM", "yyyyMM", "MM",              // incomplete and admitted
+                "yyyy", "yyyy-MM", "yyyyMM", "MM", "MM-dd",     // incomplete and admitted
                 "yyyy-MM-dd", "dd.MM.yyyy",                      // the complete controls
                 "MM.yyyy", "MM-yyyy", "yyyy/MM", "dd.MM")) {     // refused
             verdicts.add(format + " => " + formatVerdict(format));
@@ -82,6 +82,10 @@ class IncompleteDateFormatAdmissionLawsTest {
                 "yyyy-MM => admitted",
                 "yyyyMM => admitted",
                 "MM => admitted",
+                // MM-dd was missing from this table until 2026-08-19, which is why three published schema
+                // descriptions named a two-format DATE allowlist: the enumeration they were derived from was
+                // itself short. It is the day-and-month shape the DATERANGE allowlist also admits.
+                "MM-dd => admitted",
                 "yyyy-MM-dd => admitted",
                 "dd.MM.yyyy => admitted",
                 // The separator discriminator: the SAME components as the admitted `yyyy-MM`.

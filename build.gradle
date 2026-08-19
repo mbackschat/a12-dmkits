@@ -191,6 +191,10 @@ tasks.register('leakGuardTest', Test) {
     filter {
         includeTestsMatching 'io.github.mbackschat.a12.dm.PrivateMarkerLeakGuardTest'
         includeTestsMatching 'io.github.mbackschat.a12.dm.TrackedOutputGuardTest'
+        // Derived denominator, so it belongs in the always-run task: an authored list of pin consumers can
+        // only ever check the files someone remembered, which is how the committed .envrc re-encoded the pin
+        // unnoticed while a six-entry list read as a complete guard.
+        includeTestsMatching 'io.github.mbackschat.a12.dm.JdkPinSingleSourceGuardTest'
     }
 }
 

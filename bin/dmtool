@@ -78,8 +78,14 @@ require_supported_java() {
       printf 'dmtool: Java %s is too old — the supported development JDK is 21 (a NEWER JDK also runs).\n%s\n' \
         "$a12_java_major" "$hint" >&2
       return 2 ;;
+    ok) return 0 ;;
+    # A gate with no default arm FAILS OPEN: an unrecognised kind would fall through to success and the shim
+    # would keep claiming it had checked. Name the kind instead of guessing what it means.
+    *)
+      printf 'dmtool: the JDK classifier returned an unrecognised verdict %q — refusing rather than '\
+'guessing.\n%s\n' "$a12_java_kind" "$hint" >&2
+      return 2 ;;
   esac
-  return 0
 }
 
 # Whether $1 will need a JDK: a Gradle/jlink start script is a shell script that resolves `java` through

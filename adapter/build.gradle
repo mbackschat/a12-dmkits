@@ -418,6 +418,10 @@ tasks.register('perfScriptGuardTest', Test) {
     inputs.file(script)
     inputs.file(anchorScript)
     inputs.file(keysScript)
+    // perf-keys.sh SOURCES the shared Gradle environment helper at runtime, and PerfKeysScriptTest executes
+    // the branch that reaches it. Undeclared, editing the helper would leave this guard UP-TO-DATE with that
+    // branch unrun — the same class as every other entry in this list.
+    inputs.file(rootProject.file('scripts/gradle-environment.sh'))
     inputs.file(trendScript)
     inputs.file(historyScript)
     inputs.file(reportScript)

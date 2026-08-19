@@ -78,6 +78,15 @@ if [[ -n "\${JAVA_HOME:-}" && ! -x "\$JAVA_HOME/jre/sh/java" && ! -x "\$JAVA_HOM
   echo "ERROR: JAVA_HOME is set to an invalid directory: \$JAVA_HOME" >&2
   exit 1
 fi
+if [[ -n "\${JAVA_HOME:-}" && -x "\$JAVA_HOME/bin/java" ]]; then
+  # A runnable JDK is not necessarily a USABLE one: the real launcher dies with UnsupportedClassVersionError
+  # on a too-old JVM. A fixture that starts happily there cannot tell a presence test from a version check.
+  fake_major="\$("\$JAVA_HOME/bin/java" -version 2>&1 | sed -n 's/.*version "\\([0-9][0-9]*\\).*/\\1/p' | head -n 1)"
+  if [[ -n "\$fake_major" && "\$fake_major" -lt 21 ]]; then
+    echo "Error: LinkageError occurred while loading main class: UnsupportedClassVersionError" >&2
+    exit 1
+  fi
+fi
 case "$mode" in
   stderr) printf '%s\n' 'a12-dmkits 9.9.9' '  source: $revision (clean)' >&2 ;;
   silent) : ;;
@@ -153,7 +162,7 @@ if [[ -x /usr/libexec/java_home ]] && /usr/libexec/java_home -v 21 >/dev/null 2>
     || fail "the caller was not told its own JAVA_HOME cannot run the returned launcher: $stale_java_out"
 else
   [[ $stale_java_status -ne 0 ]] || fail "an unstartable launcher was accepted without a pin: $stale_java_out"
-  [[ "$stale_java_out" == *"did not start"* && "$stale_java_out" == *"JAVA_HOME"* ]] \
+  [[ "$stale_java_out" == *"named no source revision"* && "$stale_java_out" == *"JAVA_HOME"* ]] \
     || fail "the launcher start failure was not surfaced: $stale_java_out"
 fi
 
@@ -206,7 +215,7 @@ unhealthy_out="$(FAKE_UNHEALTHY_BUILD=1 bash "$REPO/scripts/prepare-dmtool-sourc
 unhealthy_status=$?
 set -e
 [[ $unhealthy_status -ne 0 ]] || fail "a launcher that exits non-zero was accepted: $unhealthy_out"
-[[ "$unhealthy_out" != *"did not start"* ]] \
+[[ "$unhealthy_out" != *"named no source revision"* ]] \
   || fail "a launcher that DID start borrowed the start-failure message: $unhealthy_out"
 [[ "$unhealthy_out" != *"does not report source"* ]] \
   || fail "a launcher with correct provenance was called a mismatch: $unhealthy_out"
@@ -242,7 +251,61 @@ git -C "$REPO" reset -q --hard "$HEAD_REVISION"
 [[ $moved_status -ne 0 ]] || fail "a build that moved HEAD was accepted: $moved_out"
 [[ "$moved_out" == *"HEAD changed while"* ]] || fail "the post-build HEAD recheck did not fire: $moved_out"
 
-# 13. The same broken JAVA_HOME with NO pin available — the branch CI runs, and the only one that reaches
+# 13. The caller note covers every reason the caller's own environment will not start the launcher, not just
+#     an empty JAVA_HOME. A runnable JDK of the WRONG major, and an unset JAVA_HOME with no java on PATH,
+#     were both silent — the returned path fails for the caller either way. Same probe `bin/dmtool` uses.
+#     It must run BEFORE the no-pin stub is committed: the note's whole subject is "the pin carried the
+#     check, your own JDK will not run the result", which needs a pin to exist. Sitting after the stub, it
+#     was reaching a launcher that could not start at all — and only a fixture that tolerated an old JDK
+#     hid that. Revision matters for the same reason: HEAD has not moved yet here.
+install_fake_launcher "$HEAD_REVISION"
+old_jdk="$WORK/old-jdk"
+mkdir -p "$old_jdk/bin"
+printf '#!/usr/bin/env bash\n%s\n' 'echo "openjdk version \"17.0.9\" 2023-10-17" >&2; exit 0' \
+  > "$old_jdk/bin/java"
+chmod +x "$old_jdk/bin/java"
+set +e
+old_java_out="$(JAVA_HOME="$old_jdk" bash "$REPO/scripts/prepare-dmtool-source.sh" 2>"$WORK/oldjava.err")"
+old_java_status=$?
+set -e
+old_java_err="$(cat "$WORK/oldjava.err")"
+[[ $old_java_status -eq 0 ]] || fail "a wrong-major caller JDK was made fatal: $old_java_err"
+[[ "$old_java_out" == "$LAUNCHER" ]] || fail "the wrong-major run did not resolve the launcher: '$old_java_out'"
+[[ "$old_java_err" == *"is Java 17"* ]] \
+  || fail "the caller was not told its own JDK is too old for the returned launcher: $old_java_err"
+#     (The remaining `no-java` kind cannot be staged here — emptying PATH would take git, sed and mktemp
+#     with it — so the classifier itself carries that case, in selftest-dmtool-launcher.sh.)
+
+# The other two note arms, which a mutation sweep found unenforced: a `java` that FAILS, and one whose banner
+# carries no version. Both are real shapes (a broken install, a vendor wrapper) and both were advertised in
+# scripts/README.md with nothing asserting them.
+stage_fake_jdk() {  # $1 = dir name, $2 = script body
+  local home="$WORK/$1"
+  mkdir -p "$home/bin"
+  printf '#!/usr/bin/env bash\n%s\n' "$2" > "$home/bin/java"
+  chmod +x "$home/bin/java"
+  printf '%s' "$home"
+}
+
+failing_jdk="$(stage_fake_jdk failing-jdk 'echo "boom" >&2; exit 42')"
+set +e
+failing_err="$(JAVA_HOME="$failing_jdk" bash "$REPO/scripts/prepare-dmtool-source.sh" 2>&1 >/dev/null)"
+failing_status=$?
+set -e
+[[ $failing_status -eq 0 ]] || fail "a failing caller java was made fatal: $failing_err"
+[[ "$failing_err" == *"-version\` failed (exit 42)"* ]] \
+  || fail "the caller was not told its own java cannot run: $failing_err"
+
+mute_jdk="$(stage_fake_jdk mute-jdk 'echo "some vendor tool, no version here"; exit 0')"
+set +e
+mute_err="$(JAVA_HOME="$mute_jdk" bash "$REPO/scripts/prepare-dmtool-source.sh" 2>&1 >/dev/null)"
+mute_status=$?
+set -e
+[[ $mute_status -eq 0 ]] || fail "an unreadable caller java banner was made fatal: $mute_err"
+[[ "$mute_err" == *"reports no readable version"* ]] \
+  || fail "the caller was not told its own java reports no version: $mute_err"
+
+# 14. The same broken JAVA_HOME with NO pin available — the branch CI runs, and the only one that reaches
 #    fail_unstartable. Case 6's macOS branch is satisfied by the pin alone, so without this case the
 #    unstartable/mismatch classification, the preserved launcher stderr, and the named JAVA_HOME are all
 #    advertised and untested. The pin is removed by stubbing the shared helper — one variable moved, and no
@@ -266,38 +329,32 @@ nopin_err="$(cat "$WORK/nopin.err")"
 [[ $nopin_status -ne 0 ]] || fail "an unstartable launcher was accepted with no pin: $nopin_out"
 [[ "$nopin_err" != *"does not report source"* ]] \
   || fail "with no pin, a start failure was still reported as a provenance mismatch: $nopin_err"
-[[ "$nopin_err" == *"did not start"* ]] || fail "the start failure was not named: $nopin_err"
+[[ "$nopin_err" == *"named no source revision"* ]] || fail "the start failure was not named: $nopin_err"
+# The `unstartable` verdict now covers a launcher that STARTS and says nothing as well as one that never
+# ran, so the message says what was actually observed — no provenance answer — and names the JDK verdict
+# rather than asserting a start that may well have happened.
+[[ "$nopin_err" == *"that JDK is unusable"* ]] \
+  || fail "the diagnostic did not classify the JDK it used: $nopin_err"
 [[ "$nopin_err" == *"JAVA_HOME used: $missing_jdk"* ]] \
   || fail "the diagnostic did not name the JAVA_HOME it actually used: $nopin_err"
 [[ "$nopin_err" == *"| ERROR: JAVA_HOME is set to an invalid directory"* ]] \
   || fail "the launcher's own stderr was not preserved: $nopin_err"
 [[ -z "$nopin_out" ]] || fail "a failed preparation printed something on stdout: $nopin_out"
 
-# 14. The caller note covers every reason the caller's own environment will not start the launcher, not just
-#     an empty JAVA_HOME. A runnable JDK of the WRONG major, and an unset JAVA_HOME with no java on PATH,
-#     were both silent — the returned path fails for the caller either way. Same probe `bin/dmtool` uses.
-install_fake_launcher "$HEAD_REVISION"
-old_jdk="$WORK/old-jdk"
-mkdir -p "$old_jdk/bin"
-printf '#!/usr/bin/env bash\n%s\n' 'echo "openjdk version \"17.0.9\" 2023-10-17" >&2; exit 0' \
-  > "$old_jdk/bin/java"
-chmod +x "$old_jdk/bin/java"
-set +e
-old_java_out="$(JAVA_HOME="$old_jdk" bash "$REPO/scripts/prepare-dmtool-source.sh" 2>"$WORK/oldjava.err")"
-old_java_status=$?
-set -e
-old_java_err="$(cat "$WORK/oldjava.err")"
-[[ $old_java_status -eq 0 ]] || fail "a wrong-major caller JDK was made fatal: $old_java_err"
-[[ "$old_java_out" == "$LAUNCHER" ]] || fail "the wrong-major run did not resolve the launcher: '$old_java_out'"
-[[ "$old_java_err" == *"is Java 17"* ]] \
-  || fail "the caller was not told its own JDK is too old for the returned launcher: $old_java_err"
-#     (The remaining `no-java` kind cannot be staged here — emptying PATH would take git, sed and mktemp
-#     with it — so the classifier itself carries that case, in selftest-dmtool-launcher.sh.)
-
-# 15. The pin's OWN failure is surfaced rather than swallowed. Distinct from case 13: there the platform
+# 15. The pin's OWN failure is surfaced rather than swallowed. Distinct from case 14: there the platform
 #     offers no pin at all (nothing to report), here the pin exists and fails — a macOS box with no JDK 21
 #     registered. The stub keeps java_home present but non-zero, which is exactly that shape.
-sed 's|/usr/libexec/java_home|/usr/bin/false|g' \
+# The stub must WRITE TO STDERR as the real `java_home` does when no matching JVM is installed — pointing it
+# at /usr/bin/false exercised the failure branch but never the stderr passthrough that is the whole reason
+# this block uses a temp file and a trap. A mutation sweep found that passthrough unenforced.
+noisy_java_home="$WORK/noisy-java-home"
+cat > "$noisy_java_home" <<'STUB'
+#!/usr/bin/env bash
+echo 'Unable to find any JVMs matching version "21".' >&2
+exit 1
+STUB
+chmod +x "$noisy_java_home"
+sed "s|/usr/libexec/java_home|$noisy_java_home|g" \
   "$ROOT/scripts/gradle-environment.sh" > "$REPO/scripts/gradle-environment.sh"
 ! grep -q '/usr/libexec/java_home' "$REPO/scripts/gradle-environment.sh" \
   || fail "the failing-pin stub did not take"
@@ -315,5 +372,21 @@ failpin_err="$(cat "$WORK/failpin.err")"
 [[ "$failpin_out" == "$LAUNCHER" ]] || fail "the failing-pin run did not resolve the launcher: '$failpin_out'"
 [[ "$failpin_err" == *"none is registered"* ]] \
   || fail "the pin's own failure was swallowed rather than surfaced: $failpin_err"
+[[ "$failpin_err" == *'| Unable to find any JVMs matching version "21".'* ]] \
+  || fail "the pin resolver's own stderr was not passed through: $failpin_err"
 
-echo "SELFTEST OK: clean-revision reuse, stale rebuild, dirty refusal, post-build provenance, foreign cwd, broken JAVA_HOME, corrupt install, empty build, stderr banner, unhealthy launcher, silent launcher, post-build rechecks, no-pin start failure, caller-environment note, surfaced pin failure"
+# 16. A runnable-but-TOO-OLD caller JDK with no pin available. This is the case a presence test gets wrong:
+#     `$JAVA_HOME/bin/java` exists, so "is it runnable?" says yes, the launcher dies anyway, and the old
+#     script then advised a rebuild it had just performed. The verdict must name the JDK, not the launcher.
+install_fake_launcher "$NOPIN_REVISION"
+set +e
+old_nopin_err="$(JAVA_HOME="$old_jdk" bash "$REPO/scripts/prepare-dmtool-source.sh" 2>&1 >/dev/null)"
+old_nopin_status=$?
+set -e
+[[ $old_nopin_status -ne 0 ]] || fail "a launcher that cannot run on the caller's JDK was accepted"
+[[ "$old_nopin_err" == *"that JDK is unusable (too-old, Java 17)"* ]] \
+  || fail "the unusable JDK was not classified; a presence test would call it runnable: $old_nopin_err"
+[[ "$old_nopin_err" != *"rebuild"* ]] \
+  || fail "a JDK problem was diagnosed as a launcher problem, advising a rebuild: $old_nopin_err"
+
+echo "SELFTEST OK: clean-revision reuse, stale rebuild, dirty refusal, post-build provenance, foreign cwd, broken JAVA_HOME, corrupt install, empty build, stderr banner, unhealthy launcher, silent launcher, post-build rechecks, no-pin start failure, caller-environment note, surfaced pin failure, unusable caller JDK"

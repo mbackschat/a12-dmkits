@@ -88,7 +88,7 @@
     "date": {
       "type": "object", "description": "(kind DATE) complete replacement config", "additionalProperties": false,
       "properties": {
-        "format": { "type": "string", "description": "yyyy-MM-dd or dd.MM.yyyy" },
+        "format": { "type": "string", "description": "a LOWERCASE Java date pattern from a fixed allowed WHITELIST (independent of locale), not a compositional rule. Seven are admitted: the two complete forms yyyy-MM-dd and dd.MM.yyyy, and the component-omitting yyyy, yyyy-MM, yyyyMM, MM, MM-dd. Refused: MM.yyyy, MM-yyyy, yyyy/MM and dd.MM — the SEPARATOR discriminates between formats with the same components. Note dd.MM is refused here yet is a legal DATERANGE format with -." },
         "precision": { "type": "string", "description": "FULL | DAY_OPTIONAL | MONTH_OPTIONAL | YEAR_OPTIONAL" },
         "rejectBefore1900": { "type": "boolean" }
       }
