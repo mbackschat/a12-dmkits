@@ -12,8 +12,11 @@ import org.junit.jupiter.api.Test
 /**
  * Differential — the **formal check for `DATE_RANGE` (the `datumBereich*` family) and calendar-invalid `DATE`s**
  * (KERNEL-FINDINGS §6 / IF12). Probe-verified kernel behavior, now matched:
- *  - a range that doesn't split into two on its separator → **`datumBereichTrennerFehlt`**;
- *  - split, but a side is not a valid date for the format (incl. calendar-invalid like `31.02`) →
+ *  - a value that does not CONTAIN its separator → **`datumBereichTrennerFehlt`**;
+ *  - the separator is present but the split's SHAPE is wrong — more than two parts, or an empty endpoint
+ *    (`splitStringBySeparator` preserves empty tokens) → **`datumBereichFormatFalsch`**, decided before any
+ *    endpoint is parsed (SPEC-2026-08-18-01);
+ *  - a well-shaped split whose side is not a valid date for the format (incl. calendar-invalid like `31.02`) →
  *    **`datumBereichFormatFalsch`**;
  *  - two valid dates but start AFTER end → **`datumBereichNichtGueltig`** (start == end is allowed);
  *  - a calendar-invalid plain `DATE` (`2021-02-31`, a day past the month's length) → **`datumFormatFalsch`**
@@ -51,6 +54,19 @@ class DateRangeFormalDiffTest {
         assertRangeFormalAgrees("01.06.2021-notadate")     // bad date → formatFalsch
         assertRangeFormalAgrees("31.02.2021-30.06.2021")   // calendar-invalid date → formatFalsch
         assertRangeFormalAgrees("30.06.2021-01.06.2021")   // start after end → nichtGueltig
+    }
+
+    /**
+     * The three SPLIT discriminators, which the classifier used to collapse: every non-two-part split reported
+     * a missing separator, so a value visibly carrying its separator drew the wrong public code. Containment is
+     * what `trennerFehlt` tests; shape is a format question.
+     */
+    @Test
+    fun dateRangeSplitShapeMatchesKernel() {
+        assertRangeFormalAgrees("01.06.2021-30.06.2021-31.07.2021")   // extra separator → formatFalsch
+        assertRangeFormalAgrees("-30.06.2021")                        // empty start endpoint → formatFalsch
+        assertRangeFormalAgrees("01.06.2021-")                        // empty end endpoint → formatFalsch
+        assertRangeFormalAgrees("-")                                  // both endpoints empty → formatFalsch
     }
 
     @Test

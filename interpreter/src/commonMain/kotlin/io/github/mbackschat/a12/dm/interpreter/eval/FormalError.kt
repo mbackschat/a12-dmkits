@@ -152,10 +152,12 @@ enum class FormalErrorCode(val id: String) {
     /** A NUMBER with a leading plus sign (`+5`, `+0`) — the kernel forbids an explicit plus. */
     PLUS_SIGN("zahlMitPlus"),
 
-    /** A DATE_RANGE value whose separator is missing or misplaced (it does not split into exactly two dates). */
+    /** A DATE_RANGE value that does not CONTAIN its declared separator. Containment is the whole test: once
+     *  the separator is present, a bad split shape is [DATE_RANGE_FORMAT], not this. */
     DATE_RANGE_SEPARATOR("datumBereichTrennerFehlt"),
 
-    /** A DATE_RANGE value split in two, but a side is not a valid date for the field's format. */
+    /** A DATE_RANGE value that contains its separator but is still not two dates — the split is not exactly two
+     *  parts, an endpoint is empty, or a side is not a valid date for the field's format. */
     DATE_RANGE_FORMAT("datumBereichFormatFalsch"),
 
     /** A DATE_RANGE with two valid dates, but the start is AFTER the end (start == end is allowed). */
@@ -375,20 +377,26 @@ internal fun typeFormatErrorCached(
                 else -> null
             }
         }
-        // A malformed DATE_RANGE carries one of the kernel's `datumBereich*` codes (probe-verified): a value that
-        // does not split into exactly two parts on the separator → `datumBereichTrennerFehlt`; split but a side
-        // is not a valid date for the format (incl. calendar-invalid like 31.02) → `datumBereichFormatFalsch`;
-        // two valid dates but start AFTER end → `datumBereichNichtGueltig` (start == end is allowed). A malformed
-        // range also resolves to Val.Unknown, suppressing a referencing rule. Each side parses BY THE DECLARED
-        // format, whatever its granularity — a FRAGMENT format (a `yyyy` year-range like `2024/2025`, a real
-        // workspace idiom) completes to its earliest concrete date exactly like a fragment DATE field
-        // (`FragmentRangeFormalDiffTest`).
+        // A malformed DATE_RANGE carries one of the kernel's `datumBereich*` codes (probe-verified). The split
+        // is TWO checks, not one, and the kernel decides them in this order (`FormatDefinitionDatumBereich`):
+        // a value that does not CONTAIN the declared separator → `datumBereichTrennerFehlt`; a value that does
+        // contain it but whose split is not exactly two NON-EMPTY parts → `datumBereichFormatFalsch` — the
+        // kernel's `splitStringBySeparator` preserves empty tokens, so an extra separator and either empty
+        // endpoint are SHAPE errors, not a missing separator (SPEC-2026-08-18-01, `DateRangeSplitFormalTest`).
+        // Then, on a well-shaped split: a side that is not a valid date for the format (incl. calendar-invalid
+        // like 31.02) → `datumBereichFormatFalsch`; two valid dates but start AFTER end →
+        // `datumBereichNichtGueltig` (start == end is allowed). A malformed range also resolves to Val.Unknown,
+        // suppressing a referencing rule. Each side parses BY THE DECLARED format, whatever its granularity —
+        // a FRAGMENT format (a `yyyy` year-range like `2024/2025`, a real workspace idiom) completes to its
+        // earliest concrete date exactly like a fragment DATE field (`FragmentRangeFormalDiffTest`).
         Kind.DATE_RANGE -> {
             if (format == null || rangeSep == null) null   // no range config → nothing to check
             else {
                 val parts = raw.split(rangeSep)
                 when {
-                    parts.size != 2 -> FormalErrorCode.DATE_RANGE_SEPARATOR
+                    parts.size == 1 -> FormalErrorCode.DATE_RANGE_SEPARATOR
+                    parts.size != 2 || parts[0].isEmpty() || parts[1].isEmpty() ->
+                        FormalErrorCode.DATE_RANGE_FORMAT
                     else -> {
                         val a = parseDateToIso(parts[0], format) ?: completeFragmentToIso(parts[0], format, baseYear)
                         val b = parseDateToIso(parts[1], format) ?: completeFragmentToIso(parts[1], format, baseYear)
@@ -580,9 +588,9 @@ fun formalErrorText(code: FormalErrorCode, locale: String, scale: Int? = null): 
         FormalErrorCode.PLUS_SIGN ->
             if (de) "Zahl darf kein führendes Pluszeichen haben." else "Number must not have a leading plus sign."
         FormalErrorCode.DATE_RANGE_SEPARATOR ->
-            if (de) "Datumsbereich-Trennzeichen fehlt oder steht falsch." else "Date-range separator is missing or misplaced."
+            if (de) "Datumsbereich-Trennzeichen fehlt." else "Date-range separator is missing."
         FormalErrorCode.DATE_RANGE_FORMAT ->
-            if (de) "Datumsbereich enthält kein gültiges Datum." else "Date range contains an invalid date."
+            if (de) "Datumsbereich ist kein Paar aus zwei gültigen Daten." else "Date range is not a pair of two valid dates."
         FormalErrorCode.DATE_RANGE_INVALID ->
             if (de) "Datumsbereich: Startdatum liegt nach dem Enddatum." else "Date range: the start date is after the end date."
         FormalErrorCode.STRING_TOO_SHORT ->
