@@ -612,13 +612,22 @@ private fun Interpreter.evalFunc(f: Expr.Func): Val {
     // Time(hours, minutes, seconds): the constructed time as `HH:mm:ss`. Components are in range by model
     // validity (an out-of-range constant is MVK_WRONG_DATE_FORMAT_FOR_OP at codegen); empty/malformed → Unknown.
     FunctionOp.TIME -> evalTime(f).asTimeVal()
-    // DateRange(start, end): a date range from two owner entity references — full DATE or DATE_FRAGMENT,
+    // DateRange(start, finish): a date range from two owner entity references — full DATE or DATE_FRAGMENT,
     // optionally semantic-index selected. The value is equality-comparable with another range and renders to
     // the target field's format at the compute() boundary. Empty/malformed → Unknown.
+    //
+    // The two endpoints complete ASYMMETRICALLY, exactly as a STORED fragment range's do: the kernel's
+    // `constructDateRange` pairs each raw operand with that field's declared format and hands the pair to the
+    // same `datesAndFormatsToDateRange` the stored path uses — INTERVAL_START for the start, INTERVAL_END for
+    // the finish ("we have to use the last day possible to correspond with feldWertAlsDateRange", its own
+    // comment). Reading both operands as ordinary dates is INTERVAL_START twice, so a construction over a
+    // day-omitting profile (`MM`, `yyyy`, `yyyy-MM`) never equalled the stored range it was built to match
+    // (SPEC-2026-08-19-02, `ConstructedRangeFragmentDiffTest`). A profile that carries month and day —
+    // `MM-dd`, a full `dd.MM.yyyy` — has nothing to widen and is returned unchanged.
     FunctionOp.DATE_RANGE -> {
         val s = (evalExpr(f.args[0]) as? Val.Txt)?.v
         val e = (evalExpr(f.args[1]) as? Val.Txt)?.v
-        if (s == null || e == null) Val.Unknown else Val.Range(s, e)
+        if (s == null || e == null) Val.Unknown else Val.Range(s, intervalEndOf(e, f.args[1]))
     }
     // ValueAsDate(field, FirstDay|LastDay): resolve a partial (DAY_OPTIONAL) date field's RAW value to a
     // concrete date — FirstDay → day 01, LastDay → the month's last day; a full value → itself. Reads the
@@ -713,6 +722,23 @@ private fun Interpreter.invariantAggregateMemoKey(f: Expr.Func, op: FunctionOp?)
 
 /** A date-range endpoint. `BaseYear` is the one point-in-time operand the kernel admits in this slot and
  * denotes the complete reference year; ordinary operands must resolve to a real range. */
+/**
+ * The interval-END form of a `DateRange(start, finish)` construction's already-evaluated finish [value], read
+ * through the finish [operand]'s own declared date format ([intervalEndOfDeclaredFormat]). An operand shape
+ * that names no single field, or a field with no declared date format, keeps the evaluated value — the
+ * asymmetry is a property of the DECLARATION, so there is nothing to widen without one.
+ */
+private fun Interpreter.intervalEndOf(value: String, operand: Expr): String {
+    val path = when (operand) {
+        is Expr.Field -> operand.path
+        is Expr.SemanticIndex -> operand.path
+        is Expr.EntitySpec -> operand.source.path
+        else -> return value
+    }
+    val format = ctx.dateFormatOf(path) ?: return value
+    return intervalEndOfDeclaredFormat(value, format) ?: value
+}
+
 private fun Interpreter.dateRangeBound(operand: Expr, start: Boolean): Val {
     if (operand is Expr.Const && ConstantOp.byName(operand.name) == ConstantOp.BASE_YEAR) {
         val year = baseYearOrThrow().toString().padStart(4, '0')

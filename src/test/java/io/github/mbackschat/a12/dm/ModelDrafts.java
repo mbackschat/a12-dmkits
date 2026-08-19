@@ -66,6 +66,25 @@ public final class ModelDrafts {
                 .build();
     }
 
+    /**
+     * Date-range declaration profiles with <b>no base year</b> — for the range comparability partition. Carries
+     * a year-only range and a full-date range, plus the fragment and date endpoints each is built from, so a
+     * construction and a stored range can be paired both within and across a declaration profile.
+     */
+    public static DocumentModelDraft dateRangeProfiles() {
+        return DocumentModelDraft.named("range-profiles").locale("en_US")
+                .rootGroup("Cover", c -> c
+                        .field("Ref", FieldKind.STRING)
+                        .dateFragmentField("FromYear", f -> f.fragmentFormat("yyyy"))
+                        .dateFragmentField("ToYear", f -> f.fragmentFormat("yyyy"))
+                        .dateField("ToYearAsDate", d -> d.format("yyyy"))
+                        .dateRangeField("YearWindow", r -> r.format("yyyy").separator("/"))
+                        .dateField("FromDate", d -> d.format("yyyy-MM-dd"))
+                        .dateField("ToDate", d -> d.format("yyyy-MM-dd"))
+                        .dateRangeField("DateWindow", r -> r.format("yyyy-MM-dd").separator("/")))
+                .build();
+    }
+
     /** Enum comparability fixture — textless, identity-labelled, and genuinely remapped declarations. */
     public static DocumentModelDraft enumComparability() {
         return DocumentModelDraft.named("enums").locale("en_US")

@@ -404,6 +404,27 @@ fun completeFragmentToIso(raw: String, format: String, baseYear: Int): String? {
 }
 
 /**
+ * Widen a value already completed to its interval START ([completeFragmentToIso]) into the SAME value's
+ * interval END, by reading which components [format] actually carries: a format without a month ends in
+ * December, a format without a day ends on the completed month's last date (leap-aware); a component the
+ * format carries is never touched, so a full format is returned unchanged.
+ *
+ * This is the endpoint rule of [parseRangeToIso]'s END side, reachable from a value rather than from a raw
+ * fragment — the kernel applies the very same `DateAndFormat.addMonthAndDay(INTERVAL_END)` to a stored range's
+ * finish and to a `DateRange(start, finish)` CONSTRUCTION's finish, because `constructDateRange` hands both to
+ * one `datesAndFormatsToDateRange` (KERNEL-FINDINGS §6, SPEC-2026-08-19-02). Widening the start-completed value
+ * is exact: interval-start completion only fills the components the format omits, which are exactly the ones
+ * read back here. Null if [format] carries no date component or [startIso] is not an ISO date.
+ */
+fun intervalEndOfDeclaredFormat(startIso: String, format: String): String? {
+    val comps = dateFragment(format)?.second ?: return null
+    if ('M' in comps && 'd' in comps) return startIso
+    val (y, m, d) = dateParts(startIso) ?: return null
+    val month = if ('M' in comps) m else 12
+    return iso(y, month, if ('d' in comps) d else daysInMonth(y, month))
+}
+
+/**
  * Resolve a partial DateType value to its concrete ISO boundary. An unknown month selects January/December
  * before an unknown day selects day 1/month-end. An unknown year stays non-relevant and returns null rather
  * than borrowing the formal checker's temporary year 2000.
