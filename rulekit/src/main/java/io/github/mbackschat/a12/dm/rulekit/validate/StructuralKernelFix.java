@@ -287,7 +287,7 @@ public final class StructuralKernelFix {
                             + "Verified: DATE `yyyy-MM-dd` or `dd.MM.yyyy`, and the component-omitting `yyyy`, "
                             + "`yyyy-MM`, `yyyyMM`, `MM` (a whitelist, not a compositional rule — `yyyy/MM` and "
                             + "`dd.MM` are refused); DATERANGE the FORMAT AND SEPARATOR are allowlisted as a PAIR, "
-                            + "and seven pairs are admitted — `dd.MM.yyyy`+`-`, `yyyy-MM-dd`+`/`, the "
+                            + "and these seven are verified — `dd.MM.yyyy`+`-`, `yyyy-MM-dd`+`/`, the "
                             + "component-omitting `yyyy`+`/`, `yyyy-MM`+`/`, `MM`+`/`, `MM-dd`+`/`, and `MM`+`` "
                             + "(the empty separator, which halves the stored value and is admitted for `MM` "
                             + "alone); swapping the separator is refused (`MM`+`-`, `dd.MM.yyyy`+`/`), and "

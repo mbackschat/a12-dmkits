@@ -417,8 +417,10 @@ fun completeFragmentToIso(raw: String, format: String, baseYear: Int): String? {
  * read back here. Null if [format] carries no date component or [startIso] is not an ISO date.
  */
 fun intervalEndOfDeclaredFormat(startIso: String, format: String): String? {
+    // The common case — a format carrying both sub-year components has nothing to widen — costs one scan and
+    // no component list, so the ordinary full-format construction pays nothing for the fragment rule.
+    if ('M' in format && 'd' in format) return startIso
     val comps = dateFragment(format)?.second ?: return null
-    if ('M' in comps && 'd' in comps) return startIso
     val (y, m, d) = dateParts(startIso) ?: return null
     val month = if ('M' in comps) m else 12
     return iso(y, month, if ('d' in comps) d else daysInMonth(y, month))

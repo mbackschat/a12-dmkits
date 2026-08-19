@@ -720,8 +720,6 @@ private fun Interpreter.invariantAggregateMemoKey(f: Expr.Func, op: FunctionOp?)
     return AggregateMemoKey(f, scopes)
 }
 
-/** A date-range endpoint. `BaseYear` is the one point-in-time operand the kernel admits in this slot and
- * denotes the complete reference year; ordinary operands must resolve to a real range. */
 /**
  * The interval-END form of a `DateRange(start, finish)` construction's already-evaluated finish [value], read
  * through the finish [operand]'s own declared date format ([intervalEndOfDeclaredFormat]). An operand shape
@@ -739,6 +737,8 @@ private fun Interpreter.intervalEndOf(value: String, operand: Expr): String {
     return intervalEndOfDeclaredFormat(value, format) ?: value
 }
 
+/** A date-range endpoint. `BaseYear` is the one point-in-time operand the kernel admits in this slot and
+ * denotes the complete reference year; ordinary operands must resolve to a real range. */
 private fun Interpreter.dateRangeBound(operand: Expr, start: Boolean): Val {
     if (operand is Expr.Const && ConstantOp.byName(operand.name) == ConstantOp.BASE_YEAR) {
         val year = baseYearOrThrow().toString().padStart(4, '0')

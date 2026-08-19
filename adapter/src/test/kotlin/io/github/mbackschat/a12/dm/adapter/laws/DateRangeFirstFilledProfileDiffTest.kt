@@ -14,8 +14,11 @@ import org.junit.jupiter.api.Test
 
 /**
  * Differential — a starred `FirstFilledValue` over a repeatable DATE_RANGE column, computed into a DATE_RANGE
- * target of the SAME declaration profile, across all six profiles the kernel admits here (SPEC-2026-08-19-03):
- * the two exact ones and the four component subsets `yyyy`, `yyyy-MM`, `MM`, `MM-dd`.
+ * target of the SAME declaration profile, across all six FORMATS the kernel admits for a range
+ * (SPEC-2026-08-19-03): the two exact ones and the four component subsets `yyyy`, `yyyy-MM`, `MM`, `MM-dd`.
+ * The unit the kernel allowlists is the `(format, separator)` PAIR and there is a seventh — `MM` with an EMPTY
+ * separator — but it reuses this matrix's `MM` format and only changes how a stored value is SPLIT, which is
+ * `DateRangeFormalDiffTest`'s subject rather than this one's.
  *
  * The point of the matrix is the *stored form*. A year-bearing profile round-trips its exact endpoints; a
  * yearless one keeps the ordered component labels it declared and gains no synthetic year, because the target
