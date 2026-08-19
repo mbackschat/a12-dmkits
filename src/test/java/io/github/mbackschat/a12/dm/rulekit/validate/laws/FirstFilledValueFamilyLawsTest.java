@@ -68,7 +68,11 @@ class FirstFilledValueFamilyLawsTest {
                     // allowlisted (KERNEL-FINDINGS §6), so both discriminating rows are authorable here too.
                     .dateRangeField("PromoWindow", r -> r.format("dd.MM.yyyy").separator("-"))
                     .dateRangeField("SaleWindow", r -> r.format("dd.MM.yyyy").separator("-"))
-                    .dateRangeField("AuditWindow", r -> r.format("yyyy-MM-dd").separator("/")))
+                    .dateRangeField("AuditWindow", r -> r.format("yyyy-MM-dd").separator("/"))
+                    .dateRangeField("RenewalWindow", r -> r.format("dd.MM.yyyy").separator("-"))
+                    .dateRangeField("SeasonYears", r -> r.format("yyyy").separator("/"))
+                    .dateRangeField("SeasonPeriods", r -> r.format("yyyy-MM").separator("/"))
+                    .dateRangeField("PriorSeasonYears", r -> r.format("yyyy").separator("/")))
             .build().toJson();
 
     // ── the temporal gate: declared FORMAT, not kind ───────────────────────────────────────────────
@@ -231,8 +235,11 @@ class FirstFilledValueFamilyLawsTest {
      *
      * <p>The rule was published as "the temporal gate reads the declared format" while `DATE_RANGE` had never
      * been put under it — an omission inside a claim phrased over the whole family, which is the same shape of
-     * error as the sample-based bound this file already carries. It is askable because a range's
-     * <b>(format, separator) PAIR</b> is allowlisted rather than free, and two legal pairs exist.
+     * error as the sample-based bound this file already carries. It is askable because a range declares a
+     * <b>(format, separator) PAIR</b>, and several are legal: this file's two exact ones plus the four
+     * component subsets {@code yyyy}, {@code yyyy-MM}, {@code MM}, {@code MM-dd}, all measured under
+     * SPEC-2026-08-19-03. (An earlier version of this comment said "two legal pairs exist", which was a count
+     * of the fields in this fixture rather than of the profiles the kernel admits.)
      */
     @Test
     void theFormatKeyingCoversDateRangeToo() {
@@ -315,6 +322,33 @@ class FirstFilledValueFamilyLawsTest {
     }
 
     /** {@code admitted}, or the COMPLETE emitted code list — a partial list would hide a co-firing gate. */
+    /**
+     * The list is not a pair, and the gate is not positional: the same declared-format rule is applied to every
+     * slot, so a cross planted in the LAST of three is refused exactly as one in the second is
+     * (SPEC-2026-08-19-04). The yearless cross is measured here too, because a fragment pair is the shape the
+     * pairwise rows never reached.
+     */
+    @Test
+    void aThreeSourceRangeListKeysOnEverySlotNotJustTheFirstPair() {
+        Map<String, String> actual = new LinkedHashMap<>();
+        actual.put("three sources, one (format, separator) — control", verdict("PromoWindow",
+                "FirstFilledValue(PromoWindow, SaleWindow, RenewalWindow) == [PromoWindow]"));
+        actual.put("cross planted in the LAST of three", verdict("PromoWindow",
+                "FirstFilledValue(PromoWindow, SaleWindow, AuditWindow) == [PromoWindow]"));
+        actual.put("yyyy + yyyy-MM — two fragment profiles", verdict("SeasonYears",
+                "FirstFilledValue(SeasonYears, SeasonPeriods) == [SeasonYears]"));
+        actual.put("yyyy + yyyy — control", verdict("SeasonYears",
+                "FirstFilledValue(SeasonYears, PriorSeasonYears) == [SeasonYears]"));
+
+        Map<String, String> expected = new LinkedHashMap<>();
+        expected.put("three sources, one (format, separator) — control", "admitted");
+        expected.put("cross planted in the LAST of three", "MVK_VARYING_TYPES_NOT_ALLOWED");
+        expected.put("yyyy + yyyy-MM — two fragment profiles", "MVK_VARYING_TYPES_NOT_ALLOWED");
+        expected.put("yyyy + yyyy — control", "admitted");
+        assertEquals(expected, actual,
+                "the entity-list format gate reads every slot, and it reads fragment profiles the same way");
+    }
+
     private static String verdict(String errorField, String condition) {
         ValidationResult r = KernelLaws.checkModel(MODEL, "/Item", "../" + errorField, condition);
         return r.ok() ? "admitted" : String.join(" + ", r.diagnostics().stream()
