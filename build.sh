@@ -23,9 +23,9 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 export GRADLE_USER_HOME="$(a12_gradle_user_home "$ROOT")"
 
 # JDK 21 is the build toolchain. On macOS, pin it via java_home (the footgun's second half: the shell's
-# JAVA_HOME may point at a newer JDK). Elsewhere (Linux/CI) leave JAVA_HOME to the caller.
-if [[ -x /usr/libexec/java_home ]]; then
-  export JAVA_HOME="$(/usr/libexec/java_home -v 21)"
-fi
+# JAVA_HOME may point at a newer JDK). Elsewhere (Linux/CI) leave JAVA_HOME to the caller. The pin lives in
+# gradle-environment.sh so a launcher check can apply the SAME one — see a12_pinned_jdk21_home.
+pinned_jdk21_home="$(a12_pinned_jdk21_home)"
+[[ -z "$pinned_jdk21_home" ]] || export JAVA_HOME="$pinned_jdk21_home"
 
 exec "$ROOT/gradlew" "$@"

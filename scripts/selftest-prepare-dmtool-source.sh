@@ -16,6 +16,7 @@ fail() { echo "SELFTEST FAIL: $*" >&2; exit 1; }
 
 mkdir -p "$REPO/scripts"
 cp "$SUBJECT" "$REPO/scripts/prepare-dmtool-source.sh"
+cp "$ROOT/scripts/gradle-environment.sh" "$REPO/scripts/gradle-environment.sh"
 chmod +x "$REPO/scripts/prepare-dmtool-source.sh"
 cat > "$REPO/.gitignore" <<'EOF'
 /cli/build/
@@ -38,6 +39,12 @@ revision="$(git -C "$root" rev-parse HEAD)"
 [[ "${FAKE_STALE_BUILD:-0}" != 1 ]] || revision=0000000000000000000000000000000000000000
 cat > "$launcher" <<LAUNCHER
 #!/usr/bin/env bash
+# Mirror Gradle's generated start script: a JAVA_HOME that holds no runnable java is a START failure with a
+# stderr diagnostic and a non-zero exit, NOT a differently-provenanced launcher.
+if [[ -n "\${JAVA_HOME:-}" && ! -x "\$JAVA_HOME/bin/java" ]]; then
+  echo "ERROR: JAVA_HOME is set to an invalid directory: \$JAVA_HOME" >&2
+  exit 1
+fi
 printf '%s\n' 'a12-dmkits 9.9.9' '  source: $revision (clean)'
 LAUNCHER
 chmod +x "$launcher"
@@ -56,6 +63,10 @@ install_fake_launcher() {
   mkdir -p "$(dirname "$LAUNCHER")"
   cat > "$LAUNCHER" <<EOF
 #!/usr/bin/env bash
+if [[ -n "\${JAVA_HOME:-}" && ! -x "\$JAVA_HOME/bin/java" ]]; then
+  echo "ERROR: JAVA_HOME is set to an invalid directory: \$JAVA_HOME" >&2
+  exit 1
+fi
 printf '%s\n' 'a12-dmkits 9.9.9' '  source: $revision (clean)'
 EOF
   chmod +x "$LAUNCHER"
@@ -105,4 +116,29 @@ resolved="$(cd "$WORK" && bash "$REPO/scripts/prepare-dmtool-source.sh")"
 "$LAUNCHER" --version | grep -Fq "source: $HEAD_REVISION (clean)" \
   || fail "the rebuild from an unrelated directory did not produce a current launcher"
 
-echo "SELFTEST OK: clean-revision reuse, stale rebuild, dirty refusal, post-build provenance, foreign cwd"
+# 6. A stale or removed JAVA_HOME must never be reported as a source mismatch. The launcher's provenance is
+#    embedded and correct; only the JVM that would run it is missing. Two outcomes are legitimate — the same
+#    JDK-21 pin build.sh applies makes the check succeed (macOS), or the platform offers no pin and the script
+#    refuses while naming the start failure — and exactly one is forbidden: a provenance verdict.
+install_fake_launcher "$HEAD_REVISION"
+missing_jdk="$WORK/removed-jdk-home"
+set +e
+stale_java_out="$(JAVA_HOME="$missing_jdk" bash "$REPO/scripts/prepare-dmtool-source.sh" 2>&1)"
+stale_java_status=$?
+set -e
+[[ "$stale_java_out" != *"does not report source"* ]] \
+  || fail "a broken JAVA_HOME was reported as a provenance mismatch: $stale_java_out"
+if [[ -x /usr/libexec/java_home ]] && /usr/libexec/java_home -v 21 >/dev/null 2>&1; then
+  [[ $stale_java_status -eq 0 ]] \
+    || fail "the pinned JDK 21 must carry the launcher check through a broken JAVA_HOME: $stale_java_out"
+  [[ "$stale_java_out" == *"$LAUNCHER"* ]] \
+    || fail "the pinned-JDK run did not print the launcher path: $stale_java_out"
+  [[ "$stale_java_out" == *"holds no runnable java"* ]] \
+    || fail "the caller was not told its own JAVA_HOME cannot run the returned launcher: $stale_java_out"
+else
+  [[ $stale_java_status -ne 0 ]] || fail "an unstartable launcher was accepted without a pin: $stale_java_out"
+  [[ "$stale_java_out" == *"did not start"* && "$stale_java_out" == *"JAVA_HOME"* ]] \
+    || fail "the launcher start failure was not surfaced: $stale_java_out"
+fi
+
+echo "SELFTEST OK: clean-revision reuse, stale rebuild, dirty refusal, post-build provenance, foreign cwd, broken JAVA_HOME"
