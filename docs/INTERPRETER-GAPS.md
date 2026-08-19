@@ -14,11 +14,7 @@
 
 ## 1. Open
 
-- **IG141 — the launcher-preparation boundaries a cold review named, all outside the JAVA_HOME class the fix owns.** Opened 2026-08-19.
-
-  - Two further JDK-pin encodings remain outside the shared helper on purpose or by omission: `scripts/perf-keys.sh` (deliberately a different policy — pins only when `JAVA_HOME` is unset) and `eval/benchmark.workflow.js` (inline in JS). Neither is covered by `BuildPerformancePolicyTest.everyJdkPinGoesThroughTheOneSharedDerivation`.
-
-  *(Four sibling items are gone: the classifier now reads the launcher's ANSWER before its exit status and keeps a right-provenance-but-failing launcher out of `current`; the caller note runs the shared `a12_classify_java`, so a wrong-major or missing JDK is named too; both post-build rechecks have a selftest whose fake build trips them; and an unavailable JDK pin is reported instead of swallowed.)*
+_None open._
 
 ---
 

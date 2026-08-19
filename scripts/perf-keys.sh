@@ -79,8 +79,12 @@ fi
 if [ -n "${PERF_KEYS_JFR:-}" ]; then
     jfr_tool="$PERF_KEYS_JFR"
 else
-if [ -z "${JAVA_HOME:-}" ] && [ -x /usr/libexec/java_home ]; then
-    JAVA_HOME="$(/usr/libexec/java_home -v 21 2>/dev/null)"
+# The "only when JAVA_HOME is unset" policy is this script's own; the pin it then applies is the project's,
+# so it comes from the shared helper rather than a second copy of `java_home -v 21`.
+# shellcheck source=scripts/gradle-environment.sh
+. "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/gradle-environment.sh"
+if [ -z "${JAVA_HOME:-}" ]; then
+    JAVA_HOME="$(a12_pinned_jdk21_home 2>/dev/null || true)"
 fi
 jfr_tool="${JAVA_HOME:+$JAVA_HOME/bin/jfr}"
 [ -x "${jfr_tool:-}" ] || jfr_tool="$(command -v jfr)"

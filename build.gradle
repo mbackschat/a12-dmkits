@@ -632,6 +632,10 @@ tasks.register('docGuardTest', Test) {
             'CI workflow'      : file('.github/workflows/ci.yml'),
             'nightly workflow' : file('.github/workflows/nightly-performance.yml'),
             'perf launcher'    : file('scripts/perf.sh'),
+            // Both joined the JDK-pin denominator when they stopped re-encoding `java_home -v 21`. The JS one
+            // is not a shell script but emits one, which is the same policy decision in a different language.
+            'perf key profiler': file('scripts/perf-keys.sh'),
+            'benchmark workflow': file('eval/benchmark.workflow.js'),
             'adapter build'    : file('adapter/build.gradle'),
             'interpreter build': file('interpreter/build.gradle'),
             'native capture'   : file('scripts/capture-native-config.sh'),

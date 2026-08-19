@@ -86,8 +86,13 @@ class BuildPerformancePolicyTest {
     void everyJdkPinGoesThroughTheOneSharedDerivation() throws IOException {
         assertTrue(Files.readString(locate("scripts/gradle-environment.sh")).contains("a12_pinned_jdk21_home()"),
                 "the shared helper must own the pin");
+        // The denominator is every committed file that decides which JDK to run something under — including
+        // `benchmark.workflow.js`, which is not a shell script but emits one, and `perf-keys.sh`, whose own
+        // "only when JAVA_HOME is unset" policy is separate from the pin it then applies. Both re-encoded
+        // `java_home -v 21`, which was also macOS-only in the JS case.
         for (String consumer : List.of("build.sh", "scripts/prepare-dmtool-source.sh",
-                "scripts/verify-demos.sh", "scripts/doctor.sh")) {
+                "scripts/verify-demos.sh", "scripts/doctor.sh", "scripts/perf-keys.sh",
+                "eval/benchmark.workflow.js")) {
             String script = Files.readString(locate(consumer));
             assertTrue(script.contains("a12_pinned_jdk21_home"),
                     consumer + " must resolve the JDK 21 pin through the shared helper");

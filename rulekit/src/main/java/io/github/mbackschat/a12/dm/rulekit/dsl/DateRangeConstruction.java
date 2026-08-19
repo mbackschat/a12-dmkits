@@ -13,8 +13,8 @@ import io.github.mbackschat.a12.dm.core.ValueKind;
  * constructions. Build via {@link Dsl#dateRange}.
  *
  * <p><b>Each endpoint must be a date or date-fragment entity reference</b>, and both refusals below are
- * measured against the kernel rather than assumed (KERNEL-FINDINGS §6 "admits ONLY an entity reference",
- * locked by {@code validate.laws.DateRangeConstructionOperandLawsTest}). The kernel grammar admits only an
+ * measured against the kernel rather than assumed — the construction's operand gates in KERNEL-FINDINGS §6,
+ * locked by {@code validate.laws.DateRangeConstructionOperandLawsTest}. The kernel grammar admits only an
  * {@code entitySpec} in either slot, so a constant, a shifted date, or a literal is a parse error there;
  * and a non-date field draws {@code MVK_WRONG_DATE_FORMAT_FOR_OP}. Three further constraints the kernel
  * also enforces are deliberately NOT pre-checked here, because delegating can only under-report: a date

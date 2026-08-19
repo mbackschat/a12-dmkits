@@ -35,7 +35,10 @@ const K = A.k || 3
 const TASKS = A.tasks || []
 log(`benchmark inputs: ${MODELS.length} model(s) [${MODELS}], k=${K}, ${TASKS.length} task(s)`)
 if (TASKS.length === 0) throw new Error('no tasks passed in args.tasks — nothing to benchmark')
-const CLI = 'JAVA_HOME="$(/usr/libexec/java_home -v 21)" bin/dmtool'
+// The JDK-21 pin comes from the shared helper, not a second copy of `java_home -v 21`: this string is a
+// shell command an agent runs from the repository root, so it can source it like every other consumer.
+// The hard-coded form was also macOS-only, which would have broken the eval anywhere else.
+const CLI = 'JAVA_HOME="$(. scripts/gradle-environment.sh && a12_pinned_jdk21_home)" bin/dmtool'
 // A task names its model by stem (<MODELS_ROOT>/<model>.dm.json) OR carries an explicit `modelPath`
 // (repo-relative) for nested multi-file layouts. `includeDir` (repo-relative) is threaded to every verb
 // as `-w/--workspace` so the recheck/judge can resolve a multi-file model's includes/typedefs.
