@@ -432,6 +432,10 @@ dmtool -m order.dm.json field add --group /Order --name LoyaltyPoints --kind NUM
 # rich: per-kind config + metadata (unit/pattern/suggestions/…) — see `schema field add`
 dmtool -m order.dm.json field add fee-spec.json
 
+# …or pipe the same spec in, so a script needs no temp file (the config-bearing kinds —
+# TIME/DATETIME/DATERANGE/DATEFRAGMENT/ENUM/CUSTOM — cannot be expressed with --kind alone)
+printf '%s' "$SPEC" | dmtool -m order.dm.json field add -
+
 dmtool -m order.dm.json group add --parent /Order --name Shipping
 # repeatable group + its index field (the row-key arming RepetitionNotUnique / parallel iteration)
 dmtool -m order.dm.json group modify /Order/Items --index-field Sku
