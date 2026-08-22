@@ -16,6 +16,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
+import io.github.mbackschat.a12.dm.rulekit.validate.RkCode;
 
 /** The deliberately small, deterministic kernel-verdict artifact produced by {@code batch --observations}. */
 class BatchObservationsTest {
@@ -241,7 +242,10 @@ class BatchObservationsTest {
         assertTrue(envelope.path("data").path("dispatched").asBoolean());
         assertEquals(1, envelope.path("data").path("results").size(), "completed child evidence must survive");
         assertEquals(0, envelope.path("data").path("results").get(0).path("exit").asInt());
-        assertEquals("RK_INTERNAL_ERROR", envelope.path("diagnostics").get(0).path("code").asText());
+        // RK_OUTPUT_UNWRITABLE since G62, and the exit code above is deliberately still 70: every child ran
+        // and wrote, so this is a partial success rather than a refusal. What changed is only the code, which
+        // used to say "a dmtool defect, report it" beside a fix telling the caller to pick a writable path.
+        assertEquals(RkCode.OUTPUT_UNWRITABLE.code(), envelope.path("diagnostics").get(0).path("code").asText());
         assertFalse(envelope.path("written").asBoolean(), "the artifact write did not complete");
         assertFalse(envelope.has("output"));
     }

@@ -154,14 +154,18 @@ class ExportVerbTest {
         Path model = modelWithRule(dir);
         Path ctx = dir.resolve("ctx");
         Files.createDirectories(ctx.resolve("groups.jsonl")); // second Artifact enum entry cannot be written
+        StringBuilder out = new StringBuilder();
         StringBuilder err = new StringBuilder();
 
         int code = Cli.run(new String[]{"-m", model.toString(), "export", "--out-dir", ctx.toString()},
-                new StringBuilder(), err);
+                out, err);
 
-        assertEquals(2, code, () -> "a filesystem write failure is environmental: " + err);
-        assertTrue(err.toString().contains("cannot write output"),
-                () -> "do not misdiagnose an artifact write as a model-read failure: " + err);
+        assertEquals(2, code, () -> "a filesystem write failure is environmental: " + out + err);
+        // Coded on stdout since G62. This case keeps the assertion the newer sweep does NOT make — that the
+        // first artifact is still on DISK — while `UnwritableOutputRefusalTest` owns the twin assertion that the
+        // envelope NAMES it. Effect and report are different claims, so both are kept rather than merged.
+        assertTrue(out.toString().contains(RkCode.OUTPUT_UNWRITABLE.code()),
+                () -> "do not misdiagnose an artifact write as a model-read failure: " + out + err);
         assertTrue(Files.isRegularFile(ctx.resolve("fields.jsonl")),
                 "the first artifact remains: this profile is explicitly PARTIAL, not transactional");
     }

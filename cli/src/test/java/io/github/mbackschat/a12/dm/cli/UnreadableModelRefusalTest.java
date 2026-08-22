@@ -26,10 +26,10 @@ import picocli.CommandLine.Model.PositionalParamSpec;
 /**
  * <b>The {@code -m} model read refuses in coded form, from every verb that performs it</b> (G61).
  *
- * <p><b>Why a swept law and not a per-verb test.</b> The read was written <b>41 times inline plus 24 times
- * through the shared helper (2026-08-22)</b>: two implementations of one two-branch step, which is how the coded
- * refusal that landed on the nine JSON inputs missed the model beside them. A test per verb would have to be
- * remembered for the next verb that reads a model;
+ * <p><b>Why a swept law and not a per-verb test.</b> The read was written in <b>64 command files — 40 hand-
+ * rolling it beside 24 that already called the shared helper (2026-08-22)</b>: two implementations of one
+ * two-branch step, which is how the coded refusal that landed on the nine JSON inputs missed the model beside
+ * them. A test per verb would have to be remembered for the next verb that reads a model;
  * this derives its denominator from {@link ManifestVerbTest#EXPECTED_VERBS} — the project's single source of the
  * live-leaf list, itself reconciled against the real picocli tree — so a new model-reading verb cannot ship
  * without appearing here.
@@ -45,11 +45,12 @@ import picocli.CommandLine.Model.PositionalParamSpec;
  * {@link RkCode#INPUT_UNREADABLE}, the same code the JSON inputs beside it already use. Reporting the first as
  * the second would tell an agent to check a path it never supplied.
  *
- * <p><b>Recall limit, measured rather than implied.</b> The sweep fills a leaf's required positionals and
- * required options with an unusable placeholder, which reached the model read in <b>59 of the 66 read sites
- * (2026-08-22)</b>. The seven it does not reach read a <i>different</i> caller input first — an authoring spec, an
- * op list, a document instance — and that read is already coded, so reaching the model behind it would need a
- * valid fixture per verb. {@link #READERS} is therefore pinned as an exact set rather than a lower bound: a verb that drops out
+ * <p><b>Recall limit, measured rather than implied — and note the two quantities are different.</b> The 64
+ * above counts FILES that performed the read; this counts VERBS whose refusal the sweep actually drives. Filling
+ * a leaf's required positionals and required options with an unusable placeholder reaches the model read for
+ * <b>59 verbs (2026-08-22)</b>. The ones it misses read a <i>different</i> caller input first — an authoring
+ * spec, an op list, a document instance — and that read is already coded, so reaching the model behind it would
+ * need a valid fixture per verb. {@link #READERS} is therefore pinned as an exact set rather than a lower bound: a verb that drops out
  * of it fails {@link #theDeclaredReaderSetIsExactlyWhatTheSweepObserves()} as a silent loss of coverage, and one
  * that appears without being declared fails the same test as an unpinned refusal shape.
  */
