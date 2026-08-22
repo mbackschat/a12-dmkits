@@ -33,11 +33,20 @@ echo "verdict:   ${verdict:-(none — the build did not finish; the log may stil
 # CREATES the log at run start, so its birth time is the right cutoff; mtime is the fallback where the
 # filesystem has no birth time, and there the answer is conservative rather than wrong.
 cutoff="$(mktemp)"
-if birth="$(stat -f %B "$LOG" 2>/dev/null)" && [[ -n "$birth" ]]; then
-  touch -t "$(date -r "$birth" +%Y%m%d%H%M.%S)" "$cutoff"
-else
-  touch -r "$LOG" "$cutoff"
-fi
+# The timestamps come from python3 — already this script's XML reader — because the shell's are dialect-split
+# and the split is silent: `stat -f %B` is BSD-only, and GNU's `stat -f` reads the FORMAT as a FILE, printing a
+# filesystem block on stdout while exiting 1, so a `||` fallback appends the real number to garbage rather than
+# replacing it (that exact shape had left the pre-commit doc-guard check dead on Linux; docs/BUILD-ENVIRONMENT.md
+# "`stat` has two dialects"). `date -r` splits too: an epoch on BSD, a file on GNU. One portable API instead of
+# two dialects. Birth time where the platform reports it, mtime where it does not — there the cutoff is
+# conservative (it can only under-report freshness) rather than wrong.
+python3 - "$LOG" "$cutoff" <<'CUTOFF'
+import os, sys
+log, cutoff = sys.argv[1], sys.argv[2]
+info = os.stat(log)
+start = getattr(info, "st_birthtime", None) or info.st_mtime
+os.utime(cutoff, (start, start))
+CUTOFF
 trap 'rm -f "$cutoff"' EXIT
 
 echo

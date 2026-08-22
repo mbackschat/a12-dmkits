@@ -212,6 +212,10 @@ tasks.register('leakGuardTest', Test) {
         // only ever check the files someone remembered, which is how the committed .envrc re-encoded the pin
         // unnoticed while a six-entry list read as a complete guard.
         includeTestsMatching 'io.github.mbackschat.a12.dm.JdkPinSingleSourceGuardTest'
+        // Same derived-denominator reason: a shell script added tomorrow must be scanned without anyone
+        // declaring it, and a one-dialect `stat` spelling is invisible on this platform by construction
+        // (docs/BUILD-ENVIRONMENT.md "`stat` has two dialects").
+        includeTestsMatching 'io.github.mbackschat.a12.dm.ShellPortabilityGuardTest'
     }
 }
 
