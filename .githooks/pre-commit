@@ -13,6 +13,74 @@ set -euo pipefail
 staged="$(git diff --cached --name-only --diff-filter=ACMR)"
 [ -z "$staged" ] && exit 0
 
+# ---------------------------------------------------------------------------------------------------------
+# Refuse a commit whose staged files can drift a CI-GATED DOC, unless the doc guards have run since.
+#
+# WHY THIS IS A HOOK AND NOT A RULE. The guards exist and work; the gap is that `-Pfast` deliberately drops
+# them (51s + 51s is a real inner-loop tax), so the inner loop cannot see this class at all. That was written
+# down in CLAUDE.md as a trigger table — and then broken three times in one day, the third time hours after the
+# note warning about it, because a prose rule fires only when someone re-reads it. Same reasoning as the
+# tracked-output half of this hook: local and early here, authoritative in CI.
+#
+# THE THREE MEASURED DRIFT PATHS, all invisible to a filtered or -Pfast run:
+#   a schema property DESCRIPTION      -> examples/cli-discover.md pins whole `schema result` blocks verbatim
+#   a new RkCode                       -> the same file pins the diagnostics COUNT
+#   a KERNEL-FINDINGS entry            -> docs/OPERATOR-INDEX.md is DERIVED and regenerated, never authored
+#   an operator-catalog edit           -> cli-discover pins the operator count; cli-tour pins operator prose
+#
+# The trigger set is deliberately BROAD. Over-triggering costs one ~1-minute run; under-triggering ships red,
+# which is what happened. Staleness is decided on mtime against the guards' own result XMLs — the same
+# technique the native-image gate uses — so the hook runs no build and keeps no state of its own.
+# ANY markdown, anywhere — not a curated list of doc directories. The first version of this check listed
+# `docs/`, `examples/`, `skill/` and a root-anchored `README.md`, and promptly let a commit touching `CLAUDE.md`
+# and `scripts/README.md` through with the root guard's results deleted: a false green in the very check written
+# to stop false greens. `CommandReferencesResolveTest` reads CLAUDE.md and every command-bearing markdown in the
+# tree, so the honest trigger is the file type, not its folder.
+doc_triggers="$(printf '%s\n' "$staged" | grep -E \
+  '\.md$|^cli/src/main/resources/schema/|RkCode\.java$|^rulekit/src/main/resources/catalog/|^skill/' \
+  || true)"
+if [ -n "$doc_triggers" ]; then
+  newest_trigger=0
+  for f in $doc_triggers; do
+    [ -e "$f" ] || continue
+    t=$(stat -f %m "$f" 2>/dev/null || stat -c %Y "$f" 2>/dev/null || echo 0)
+    [ "$t" -gt "$newest_trigger" ] && newest_trigger=$t
+  done
+  oldest_evidence=""
+  for d in build/test-results/docGuardTest cli/build/test-results/docGuardTest; do
+    newest_xml=0
+    if [ -d "$d" ]; then
+      for x in "$d"/TEST-*.xml; do
+        [ -e "$x" ] || continue
+        t=$(stat -f %m "$x" 2>/dev/null || stat -c %Y "$x" 2>/dev/null || echo 0)
+        [ "$t" -gt "$newest_xml" ] && newest_xml=$t
+      done
+    fi
+    # Strictly-older is stale. mtimes are second-granular, so a tie means "the guard ran in the same
+    # second as the edit" — treated as fresh, since a ~1-minute guard run cannot realistically predate
+    # the change it validates by less than a second, and CI is the authoritative half regardless.
+    [ "$newest_xml" -lt "$newest_trigger" ] && oldest_evidence="$oldest_evidence $d"
+  done
+  if [ -n "$oldest_evidence" ]; then
+    printf '\nStaged changes can drift a CI-gated doc, and the doc guards have not run since:\n\n' >&2
+    printf '  %s\n' $doc_triggers >&2
+    printf '\nStale (or absent) evidence:\n' >&2
+    printf '  %s\n' $oldest_evidence >&2
+    cat >&2 <<'DOCMESSAGE'
+
+Run them — WITHOUT -Pfast, which skips them by design:
+
+  ./build.sh --console=plain :docGuardTest :cli:docGuardTest
+
+Then commit again. If a demo drifted, the failing guard prints the exact regeneration command.
+
+`git commit --no-verify` bypasses this; CI will still fail, which is deliberate — a local bypass must not be
+able to make the repository wrong.
+DOCMESSAGE
+    exit 1
+  fi
+fi
+
 offenders="$(printf '%s\n' "$staged" | grep -E '(^|/)build/|\.log$' || true)"
 [ -z "$offenders" ] && exit 0
 

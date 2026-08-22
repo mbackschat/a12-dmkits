@@ -41,6 +41,22 @@ class DmtoolLauncherTest {
         assertEquals(0, code, () -> "scripts/selftest-prepare-dmtool-source.sh failed:\n" + output);
     }
 
+    /**
+     * The pre-commit doc-guard staleness check both fires and stays quiet. It exists because a prose trigger
+     * table did not hold — the same drift class shipped three times in one day, the last time hours after the
+     * note warning about it — so the check itself must be shown to work rather than believed.
+     */
+    @Test
+    void thePreCommitHookRefusesACommitWhoseDocGuardEvidenceIsStale() throws IOException, InterruptedException {
+        assumeTrue(!System.getProperty("os.name", "").toLowerCase().contains("win"), "POSIX-only hook self-test");
+        Path script = repoFile("scripts/selftest-precommit-doc-guards.sh");
+        Process process = new ProcessBuilder("bash", script.toString())
+                .redirectErrorStream(true).start();
+        String output = new String(process.getInputStream().readAllBytes());
+        int code = process.waitFor();
+        assertEquals(0, code, () -> "scripts/selftest-precommit-doc-guards.sh failed:\n" + output);
+    }
+
     private static Path repoFile(String relative) {
         for (String base : List.of(".", "..", "../..")) {
             Path candidate = Path.of(base, relative);
