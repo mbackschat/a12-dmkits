@@ -1,6 +1,7 @@
 package io.github.mbackschat.a12.dm.cli;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.ArrayList;
@@ -304,6 +305,23 @@ class UnreadableModelRefusalTest {
         } catch (Exception notAnEnvelope) {
             return "";
         }
+    }
+
+    /**
+     * <b>The summary says what went wrong, not the path twice.</b>
+     *
+     * <p>{@code java.nio.file} exceptions carry the path as their whole message, so the natural composition
+     * rendered as {@code -m <model.json> could not be read from /nonexistent/x: /nonexistent/x} — which reads
+     * as a defect in the tool rather than a missing file, in the one message a stuck agent reads most closely.
+     * Caught by looking at real output rather than by a test, which is why there is now a test.
+     */
+    @Test
+    void theRefusalNamesTheConditionRatherThanEchoingThePath() {
+        CliTestSupport.Result res = CliTestSupport.run("-m", MISSING_MODEL, "model", "check");
+        assertTrue(res.out().contains("could not be read from " + MISSING_MODEL + ": no such file"),
+                () -> "expected the condition, not a repeated path: " + res.out());
+        assertFalse(res.out().contains(MISSING_MODEL + ": " + MISSING_MODEL),
+                () -> "the path must not appear twice in a row: " + res.out());
     }
 
     @Test

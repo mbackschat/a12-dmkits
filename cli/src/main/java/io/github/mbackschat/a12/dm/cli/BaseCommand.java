@@ -250,7 +250,7 @@ public abstract class BaseCommand implements Callable<Integer> {
             IOException failure) {
         String where = JsonInput.STDIN.equals(source) ? "stdin" : source;
         return refusePrecheck(identity, RkCode.INPUT_UNREADABLE,
-                label + " could not be read from " + where + ": " + failure.getMessage(),
+                label + " could not be read from " + where + ": " + reason(where, failure),
                 label, RkCode.INPUT_UNREADABLE.fix());
     }
 
@@ -276,7 +276,7 @@ public abstract class BaseCommand implements Callable<Integer> {
     /** Multi-file counterpart: {@code alreadyWritten} names the files that landed before the failure. */
     protected int refuseUnwritableOutput(ResultIdentity identity, String label, String destination,
             IOException failure, List<String> alreadyWritten) {
-        String summary = label + " could not be written to " + destination + ": " + failure.getMessage()
+        String summary = label + " could not be written to " + destination + ": " + reason(destination, failure)
                 + (alreadyWritten.isEmpty() ? "" : " — " + alreadyWritten.size()
                         + " file(s) were already written and are left behind");
         Diagnostic diagnostic = Diagnostic.environmentFailure(Optional.of(RkCode.OUTPUT_UNWRITABLE.code()),
@@ -288,6 +288,31 @@ public abstract class BaseCommand implements Callable<Integer> {
             alreadyWritten.forEach(written::add);
         }
         return refuse(identity, new Refusal(summary, data, diagnostic));
+    }
+
+    /**
+     * What actually went wrong, with the path not said twice.
+     *
+     * <p>{@code java.nio.file} exceptions carry the PATH as their whole message — {@code NoSuchFileException}'s
+     * message IS the filename — so the obvious {@code "… from " + path + ": " + e.getMessage()} renders as
+     * {@code could not be read from /x: /x}, which reads like a defect in the tool rather than a missing file.
+     * A {@code FileSystemException} prefixes its own reason with the path too ({@code /x: Not a directory}).
+     * So strip a leading path echo, and when nothing informative is left, name the condition instead.
+     */
+    private static String reason(String source, IOException failure) {
+        String message = failure.getMessage() == null ? "" : failure.getMessage();
+        if (message.startsWith(source)) {
+            message = message.substring(source.length()).replaceFirst("^:\\s*", "");
+        }
+        if (!message.isBlank()) {
+            return message;
+        }
+        return switch (failure) {
+            case java.nio.file.NoSuchFileException ignored -> "no such file";
+            case java.nio.file.AccessDeniedException ignored -> "access denied";
+            case java.nio.file.NotDirectoryException ignored -> "not a directory";
+            default -> failure.getClass().getSimpleName();
+        };
     }
 
     /**
