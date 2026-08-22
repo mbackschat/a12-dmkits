@@ -200,7 +200,8 @@ The dialects, the full mapping contract, and the import↔export asymmetry are t
 ### Read & understand a model
 
 ```sh
-# the header dashboard: identity, super/subtypes, includes/imports (resolved to files), counts
+# the header dashboard: identity (`id`, and whether the `fileName` A12 Tools wants it to match does),
+# super/subtypes, includes/imports (resolved to files), counts
 dmtool -m order.dm.json model info
 
 # the model card: fields, kinds, enum domains, groups
@@ -527,7 +528,7 @@ dmtool -m app/storefront.dm.json model check -w lib   # resolves include'd / typ
 
 ### Version & compatibility — tolerant, but explicit
 
-This build targets **A12 Kernel 30.8.1** (A12 Tools distribution **2025.06-ext5**). `dmtool --version` (and `manifest.version`) report that — alongside the base source revision and clean/dirty build state, the kernel actually on the classpath, the operator-catalog floor, and the document-model reference version. A `CLEAN` stamp identifies the exact committed source; `DIRTY` explicitly says the artifact differs from that revision. Loading a model authored for a different format is handled with the kernel as the authority — an older, compatible model loads with an informational `RK_MODEL_VERSION_SKEW`, an incompatible one fails fast with `RK_MODEL_VERSION_INCOMPATIBLE` (and writing a model back never bumps its version).
+This build targets **A12 Kernel 30.8.1** (A12 Tools distribution **2025.06-ext5**). `dmtool --version` (and `manifest.version`) report that — alongside the base source revision and clean/dirty build state, the kernel actually on the classpath, the operator-catalog floor, and the document-model reference version. A `CLEAN` stamp identifies the exact committed source; `DIRTY` explicitly says the artifact differs from that revision. Loading a model authored for a different format is handled with the kernel as the authority — an older, compatible model loads with an informational `RK_MODEL_VERSION_SKEW`, an incompatible one fails fast with `RK_MODEL_VERSION_INCOMPATIBLE` (and writing a model back never bumps its version). A second, A12-Tools-only packaging invariant is made *readable* rather than policed: that distribution requires a model's file basename to equal its `header.id`, the kernel does not care, so `model info` reports `fileName` and `fileNameMatchesId` beside `id` and leaves the call to you.
 
 ### See it all, runnable
 

@@ -64,6 +64,15 @@ final class ModelInfoCommand extends BaseCommand {
 
         ObjectNode data = MAPPER.createObjectNode();
         data.put("id", self.id());
+        // The A12 Tools packaging invariant (file basename equals header id), answered here rather than left to
+        // be inferred from the -m argument or read out of raw JSON. Reported as FACTS on an opt-in read, never
+        // as a diagnostic: the kernel does not enforce the convention, and a warning would fire on every
+        // copy-to-a-scratch-name working file (CLI-SPEC).
+        Path modelFile = Path.of(model).getFileName();
+        if (modelFile != null && !modelFile.toString().isBlank()) {
+            data.put("fileName", modelFile.toString());
+            data.put("fileNameMatchesId", nameAgreesWithId(modelFile.toString(), self.id()));
+        }
         data.put("modelType", self.modelType());
         data.put("modelVersion", doc.modelVersion());
         if (self.label() != null) {
@@ -119,5 +128,27 @@ final class ModelInfoCommand extends BaseCommand {
 
     private static void putStrings(ArrayNode array, List<String> values) {
         values.forEach(array::add);
+    }
+
+    /**
+     * Whether {@code fileName}'s basename agrees with the model {@code id}, tolerating a DOUBLE extension: the
+     * id may equal the name without its last extension ({@code Order_DM.json} → {@code Order_DM}) or without
+     * all of them ({@code cover.dm.json} → {@code cover}).
+     *
+     * <p>The tolerance is deliberate and its basis is stated because it is a claim about another product: A12
+     * Tools' handling of {@code .dm.json} is <b>not measured by this project</b>, and the strict reading would
+     * report every model following that convention — which our own docs and fixtures use throughout — as
+     * disagreeing. Under-reporting is the right bias for an unmeasured rule, so only a name matching neither
+     * stem ({@code cover-ruled.dm.json} against {@code cover}) is reported as a disagreement.
+     */
+    private static boolean nameAgreesWithId(String fileName, String id) {
+        if (id == null || id.isBlank()) {
+            return false;
+        }
+        int last = fileName.lastIndexOf('.');
+        int first = fileName.indexOf('.');
+        return id.equals(fileName)
+                || (last > 0 && id.equals(fileName.substring(0, last)))
+                || (first > 0 && id.equals(fileName.substring(0, first)));
     }
 }
