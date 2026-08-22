@@ -38,15 +38,26 @@ public enum RangeYearInterpretation {
         return this == STANDARD ? java.util.Optional.empty() : java.util.Optional.of(name());
     }
 
-    /** The declaration's meaning: {@link #STANDARD} for an absent, blank, or unrecognized token. */
+    /**
+     * The declaration's meaning. An <b>absent</b> key is {@link #STANDARD} — that is how the declaration
+     * expresses the default — but a PRESENT token this enum does not know is <b>refused</b>, not degraded.
+     *
+     * <p>Degrading it would re-emit the field with the key gone, which is the same silent drop this component
+     * exists to close, relocated from "no slot" to "wrong slot". Failing fast is safe rather than over-strict
+     * because the kernel refuses such a model itself: an empty token fails deserialization, measured
+     * 2026-08-22 by {@code DateRangeYearInterpretationTest.theKernelRefusesAnEmptyTokenRatherThanReadingItAsAbsent},
+     * so no kernel-legal model can carry one and the refusal cannot make a legal model unreadable.
+     */
     public static RangeYearInterpretation fromJson(String token) {
-        if (token == null || token.isBlank()) {
+        if (token == null) {
             return STANDARD;
         }
         return switch (token) {
             case "FROM" -> FROM;
             case "TO" -> TO;
-            default -> STANDARD;
+            default -> throw new IllegalArgumentException(
+                    "unsupported DateRangeType interpretationOfYear: '" + token + "' — the declaration admits "
+                            + "FROM or TO, and expresses STANDARD by omitting the key");
         };
     }
 }

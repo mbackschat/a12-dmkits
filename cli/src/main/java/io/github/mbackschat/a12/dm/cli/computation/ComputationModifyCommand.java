@@ -53,7 +53,7 @@ final class ComputationModifyCommand extends BaseCommand {
 
     @Option(names = "--spec", required = true, paramLabel = "<computation-spec.json>",
             description = "the re-expressed computation as a computation-spec JSON file."
-                    + " Or `-` to read the JSON from stdin instead of a file (once per invocation).")
+                    + JsonInput.HELP)
     String specPath;
 
     @Option(names = {"--output", "-o"}, paramLabel = "<file>",

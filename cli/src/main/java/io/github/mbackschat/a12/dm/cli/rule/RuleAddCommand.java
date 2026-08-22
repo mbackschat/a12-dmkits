@@ -53,7 +53,8 @@ final class RuleAddCommand extends BaseCommand {
 
     @Parameters(index = "0", paramLabel = "<rule-spec.json>",
             description = "the rule envelope as JSON (field, condition, code, messages, …) — see "
-                    + "`schema rule add`. Or `-` to read the JSON from stdin instead of a file (once per invocation).")
+                    + "`schema rule add`."
+                    + JsonInput.HELP)
     String specPath;
 
     @Option(names = {"--output", "-o"}, paramLabel = "<file>",

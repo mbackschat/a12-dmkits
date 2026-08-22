@@ -57,7 +57,7 @@ final class FieldModifyCommand extends BaseCommand {
     @Parameters(index = "0", paramLabel = "<spec.json>",
             description = "a rich field spec (JSON): group + name locate the field; kind + per-kind config "
                     + "become its new type (see `schema field modify`)."
-                    + " Or `-` to read the JSON from stdin instead of a file (once per invocation).")
+                    + JsonInput.HELP)
     String specPath;
 
     @Option(names = {"--output", "-o"}, paramLabel = "<file>",

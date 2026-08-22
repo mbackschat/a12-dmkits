@@ -10,6 +10,10 @@ public final class CliMain {
     }
 
     public static void main(String[] args) {
+        // stdin belongs to the PROCESS, so its `-` claim is cleared here and nowhere else: `Cli.run` is
+        // re-entered per child by `batch` and the MCP invoker, and clearing there would let a second `-`
+        // through the very refusal that exists to stop it.
+        JsonInput.resetForInvocation();
         System.exit(Cli.run(args, System.out, System.err));
     }
 }

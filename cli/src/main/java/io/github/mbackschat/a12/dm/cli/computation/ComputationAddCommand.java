@@ -47,7 +47,8 @@ final class ComputationAddCommand extends BaseCommand {
 
     @Parameters(index = "0", paramLabel = "<computation-spec.json>",
             description = "the computation envelope as JSON (computedField, alternatives, "
-                    + "messages, …). Or `-` to read the JSON from stdin instead of a file (once per invocation).")
+                    + "messages, …)."
+                    + JsonInput.HELP)
     String specPath;
 
     @Option(names = {"--output", "-o"}, paramLabel = "<file>",

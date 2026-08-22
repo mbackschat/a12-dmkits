@@ -56,7 +56,7 @@ final class TypedefAddCommand extends BaseCommand {
     @Parameters(index = "0", arity = "0..1", paramLabel = "<spec.json>",
             description = "a rich type spec (JSON): kind + per-kind config (see `schema typedef add`) — the "
                     + "alternative to --kind."
-                    + " Or `-` to read the JSON from stdin instead of a file (once per invocation).")
+                    + JsonInput.HELP)
     String specPath;
 
     @Option(names = {"--output", "-o"}, paramLabel = "<file>",

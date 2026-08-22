@@ -67,9 +67,6 @@ public final class Cli {
      * self-describing surface) before dispatch.
      */
     static int run(String[] args, Appendable out, Appendable err, boolean nativeProfile) {
-        // stdin is consumable ONCE per invocation, and this method is the invocation boundary (a test harness
-        // calls it many times in one JVM), so the `-` claim is cleared here rather than in any verb.
-        JsonInput.resetForInvocation();
         PrintWriter errW = new PrintWriter(new AppendableWriter(err), true);
         // R2 (CLI-SPEC §2): with --text, capture stdout so a result envelope can be
         // re-rendered as human-readable text; non-envelope output (catalogs, artifacts, --help, errors)

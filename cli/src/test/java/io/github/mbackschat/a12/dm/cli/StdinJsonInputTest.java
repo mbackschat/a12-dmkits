@@ -1,12 +1,15 @@
 package io.github.mbackschat.a12.dm.cli;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.IOException;
+import java.io.Reader;
 import java.io.StringReader;
+import java.util.function.Supplier;
 import java.nio.file.Files;
 import java.nio.file.Path;
 
@@ -36,16 +39,23 @@ class StdinJsonInputTest {
             {"group":"/Order","name":"CoverWindow","kind":"DATERANGE",
              "dateRange":{"format":"dd.MM","separator":"-"}}""";
 
+    private final Supplier<Reader> originalSource = JsonInput.stdinSource;
+
     @BeforeEach
     @AfterEach
-    void clearStdin() {
-        JsonInput.stdinSource = () -> new StringReader("");
+    void restoreStdin() {
+        JsonInput.stdinSource = originalSource;
         JsonInput.resetForInvocation();
     }
 
-    /** Point the stdin seam at fixed text, the way the process's real stdin would arrive. */
+    /**
+     * Point the stdin seam at fixed text. The supplier hands back the SAME reader every time, because that is
+     * what {@code System.in} is — a fresh reader per call would make an exhausted stream unrepresentable, and
+     * an exhausted stream is the condition every refusal in this class exists to prevent.
+     */
     private static void stdin(String text) {
-        JsonInput.stdinSource = () -> new StringReader(text);
+        Reader once = new StringReader(text);
+        JsonInput.stdinSource = () -> once;
         JsonInput.resetForInvocation();
     }
 
@@ -94,26 +104,47 @@ class StdinJsonInputTest {
     }
 
     /**
-     * The claim is cleared by {@code Cli.run}, and this drives it THROUGH {@code Cli.run} rather than calling
-     * the reset itself. The distinction is the whole point: the first version of this test primed stdin with a
-     * helper that also reset the claim, so it supplied the state the production code is supposed to provide and
-     * a mutant deleting {@code Cli.run}'s reset survived. A lock must not hand the code under test its answer.
+     * The claim SURVIVES a nested {@code Cli.run}, and this drives the nesting rather than simulating it.
+     *
+     * <p>The first version of this test asserted the opposite — that two successive runs in one process may
+     * each claim stdin — and that invariant is wrong for production: {@code batch} and the MCP invoker re-enter
+     * {@code Cli.run} per child, so a reset there lets a second {@code -} through the refusal that exists to
+     * stop it. stdin belongs to the PROCESS, so the reset belongs to the process shell. (It reached green by
+     * priming stdin with a helper that also cleared the claim — the lock handing the code its own answer.)
      */
     @Test
-    void twoSuccessiveInvocationsInOneProcessMayEachClaimStdin(@TempDir Path dir) throws Exception {
+    void aNestedInvocationCannotReclaimStdin(@TempDir Path dir) throws Exception {
         Path model = dir.resolve("Cover_DM.json");
         Files.writeString(model, CliTestSupport.orderRuledJson());
+        // The PARENT must claim stdin for the nesting to matter: ops arrive on stdin, and a child then asks
+        // for `-` as well. (An ops FILE plus one `-` child is a single claimant and legitimately succeeds.)
+        stdin("[{\"verb\":\"field\",\"args\":[\"add\",\"-\"]}]");
 
-        JsonInput.stdinSource = () -> new StringReader(RANGE_SPEC);
-        var first = CliTestSupport.run("-m", model.toString(), "field", "add", "-");
-        assertEquals(0, first.code(), first.err());
+        var res = CliTestSupport.run("-m", model.toString(), "batch", "-");
+        assertTrue(res.out().contains("stdin is already being read") || res.err().contains("stdin is already"),
+                () -> "the nested claim must be refused, not served a drained stream: " + res.out() + res.err());
+        assertFalse(res.out().contains("\"outcome\" : \"applied\""),
+                () -> "the child must not have written anything: " + res.out());
+    }
 
-        // Only the SOURCE is re-primed — no reset here, so a second claim can only succeed if Cli.run cleared it.
-        JsonInput.stdinSource = () -> new StringReader(RANGE_SPEC.replace("CoverWindow", "SecondWindow"));
-        var second = CliTestSupport.run("-m", model.toString(), "field", "add", "-");
-        assertEquals(0, second.code(), second.err());
-        assertEquals("/Order/SecondWindow", M.readTree(second.out()).path("changed").path("added").asText(),
-                second::out);
+    /**
+     * And the reason the refusal matters: reading stdin must NOT close it. Closing a reader over
+     * {@code System.in} closes fd 0 for the whole process, which would end an {@code mcp} stdio session
+     * mid-conversation. Asserted on the seam because that is where an exhaustible stream is observable.
+     */
+    @Test
+    void readingStdinDoesNotCloseTheUnderlyingStream() throws Exception {
+        var probe = new StringReader(RANGE_SPEC) {
+            boolean closed;
+            @Override public void close() {
+                closed = true;
+                super.close();
+            }
+        };
+        JsonInput.stdinSource = () -> probe;
+        JsonInput.resetForInvocation();
+        JsonInput.read("-", "<spec.json>");
+        assertFalse(probe.closed, "stdin must not be closed — it is the process's fd 0, not this read's");
     }
 
     @Test
