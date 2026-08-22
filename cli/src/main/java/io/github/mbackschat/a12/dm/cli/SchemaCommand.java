@@ -314,13 +314,15 @@ final class SchemaCommand extends BaseCommand {
         String resource = resourcePath(name);
         try (InputStream in = SchemaCommand.class.getResourceAsStream(resource)) {
             if (in == null) {
-                return fail("schema resource missing: " + resource);
+                // NOT a caller error: this resource ships inside the binary. Escaping to Cli's error boundary
+                // publishes RK_INTERNAL_ERROR, which is what "the tool is missing its own file" means.
+                throw new IllegalStateException("bundled schema resource missing: " + resource);
             }
             String source = new String(in.readAllBytes(), StandardCharsets.UTF_8);
             if (FRAMES.contains(name)) {
                 JsonNode parsed = MAPPER.readTree(source);
                 if (!(parsed instanceof ObjectNode frame)) {
-                    return fail("schema frame is not a JSON object: " + resource);
+                    throw new IllegalStateException("bundled schema frame is not a JSON object: " + resource);
                 }
                 CommandSpec command = resolveLeaf(List.of(name));
                 if (command == null) {
@@ -348,7 +350,9 @@ final class SchemaCommand extends BaseCommand {
             }
             return 0;
         } catch (IOException e) {
-            return fail("cannot read schema: " + e.getMessage());
+            // Same reasoning as the two throws above: the stream is over a classpath resource, so a read
+            // failure here is a defect in the packaged binary and never something the caller can correct.
+            throw new IllegalStateException("cannot read the bundled schema resource: " + e.getMessage(), e);
         }
     }
 

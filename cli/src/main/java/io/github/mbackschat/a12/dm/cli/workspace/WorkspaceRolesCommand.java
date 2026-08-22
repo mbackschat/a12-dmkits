@@ -75,8 +75,21 @@ final class WorkspaceRolesCommand extends BaseCommand {
             resolution = WorkspaceRoles.resolve(root,
                     java.util.Optional.ofNullable(rolesOverride).map(Path::of),
                     java.util.Optional.ofNullable(usersOverride).map(Path::of));
-        } catch (RuntimeException badConfigFile) {
-            return fail("cannot read access-control config: " + badConfigFile.getMessage());
+        } catch (java.io.UncheckedIOException unreadable) {
+            // Split from the parse failure below: `resolve` documents two distinct throws, and one catch over
+            // both reported an unreadable file and an unparseable one identically. A file the caller named that
+            // cannot be READ is the same class as every other unreadable input (G61), so it gets that code; a
+            // file that parsed and was rejected stays on the local-text channel the readers deliberately use.
+            String named = rolesOverride != null ? "--roles <file>"
+                    // Not spelled with the `.dmtool` directory prefix: `CommandReferencesResolveTest` reads
+                    // "dmtool <word>" as a command reference, and this label is a file location, not a verb.
+                    : usersOverride != null ? "--users <file>" : "the workspace access-control config";
+            return refuseUnreadableInput(named,
+                    rolesOverride != null ? rolesOverride : usersOverride != null ? usersOverride : dir,
+                    unreadable.getCause() != null ? unreadable.getCause() : new java.io.IOException(
+                            unreadable.getMessage()));
+        } catch (RuntimeException unparseable) {
+            return fail("cannot read access-control config: " + unparseable.getMessage());
         }
 
         List<Workspace.Model> models;

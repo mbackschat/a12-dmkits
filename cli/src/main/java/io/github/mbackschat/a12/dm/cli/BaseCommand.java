@@ -142,13 +142,14 @@ public abstract class BaseCommand implements Callable<Integer> {
      * Print every defect the A12 Document JSON reader found, then exit 2. An invalid <i>input file</i> stays on
      * the plain-text {@code fail} channel.
      *
-     * <p><b>The reason this used to give is gone.</b> It read "the channel {@code cannot read model:} already
-     * uses — a structured refusal is for a precheck on a resolvable target, not for input the tool could not read
-     * at all". G58 and G61 moved every UNREADABLE input onto coded refusals, so that precedent no longer exists.
-     * What survives is a narrower and different distinction: this is content the reader <i>parsed and rejected</i>,
-     * carrying its own per-defect {@link DocumentInputDiagnostic} list, not a file that could not be read. Giving
-     * that list a coded envelope is a real change of shape rather than a change of channel, so it is its own
-     * slice; the two are not the same class and must not be merged on the strength of a retired sentence.
+     * <p><b>The reason this used to give is gone; the channel is still right.</b> It read "the channel
+     * {@code cannot read model:} already uses — a structured refusal is for a precheck on a resolvable target,
+     * not for input the tool could not read at all". G58/G61/G62 moved every UNREADABLE input and UNWRITABLE
+     * output onto coded refusals, so that precedent no longer exists. What keeps this on the plain-text channel
+     * is the standing design {@link #failOrRethrowDomainRejection} states: a reader's own parse/render failure
+     * reports its local text, and only an invalid stored model or an unresolved reference escapes to the
+     * structured mapper. A document that PARSED and was rejected belongs to that class, not to the unreadable
+     * one — so this is a deliberate position, not a slice waiting to be done.
      *
      * <p>The one enriched case is the retired {@code {"fields": {…}}} wrapper: a document that still carries it
      * fails as an unknown model path {@code /fields}, which is true but unhelpful, so it also gets the migration

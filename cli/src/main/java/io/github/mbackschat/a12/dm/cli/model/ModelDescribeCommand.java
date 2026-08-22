@@ -45,8 +45,10 @@ final class ModelDescribeCommand extends BaseCommand {
             out().print(env.toJsonString());
             return env.exitCode();
         } catch (IOException e) {
-            // No longer the model read — that is readModelJson's. What is left is the card's own round-trip.
-            return fail("describe failed: cannot serialize the model card: " + e.getMessage());
+            // No longer the model read — that is readModelJson's. What is left is the card's own JSON
+            // round-trip, which only fails if our own renderer emitted something unparseable: a tool defect,
+            // so it goes to Cli's error boundary rather than reading as something the caller can fix.
+            throw new IllegalStateException("cannot serialize the model card: " + e.getMessage(), e);
         } catch (RuntimeException e) {
             return failOrRethrowDomainRejection("describe failed: ", e);
         }

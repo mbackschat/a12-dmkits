@@ -141,4 +141,47 @@ class WorkspaceRolesCommandTest {
         assertNotEquals(0, res.code(), "a non-directory must fail");
         assertTrue(res.err().toLowerCase().contains("directory"), () -> "names the cause: " + res.err());
     }
+
+    /**
+     * <b>An UNREADABLE roles file and an UNPARSEABLE one are different answers.</b>
+     *
+     * <p>{@code WorkspaceRoles.resolve} documents two throws — {@code UncheckedIOException} when a resolved
+     * file cannot be read, {@code IllegalArgumentException} when it cannot be parsed — and one
+     * {@code catch (RuntimeException)} reported both as "cannot read access-control config". The unreadable half
+     * is the same class as every other caller-named input that will not open (G61), so it carries
+     * {@code RK_INPUT_UNREADABLE}; the parse failure stays on the local-text channel a reader's own
+     * parse/render failure deliberately uses. This test exists because the exclusion was originally justified by
+     * READING the exception type and assuming it meant "invalid content" — the assumption was half wrong, and
+     * only the two cases side by side show it.
+     *
+     * <p>A DIRECTORY named as the roles file is the portable trigger for the unreadable half: the resolver
+     * accepts a directory as a candidate, then reads it, which fails on every platform without needing
+     * permission games.
+     */
+    @Test
+    void anUnreadableRolesFileIsCodedWhileAnUnparseableOneStaysLocalText(@TempDir Path dir) throws Exception {
+        model(dir, "shop/order.dm.json", "Order_DM", "shopper");
+        Path asDirectory = dir.resolve("roles-as-dir.yaml");
+        Files.createDirectories(asDirectory);
+
+        var unreadable = CliTestSupport.run("workspace", "roles", dir.toString(),
+                "--roles", asDirectory.toString());
+        assertEquals(2, unreadable.code(), () -> unreadable.out() + unreadable.err());
+        assertTrue(unreadable.out().contains("RK_INPUT_UNREADABLE"),
+                () -> "a roles file that will not open is the unreadable-input class: "
+                        + unreadable.out() + unreadable.err());
+        assertTrue(unreadable.out().contains("--roles <file>"),
+                () -> "and it names the argument the caller gave: " + unreadable.out());
+
+        Path unparseableFile = dir.resolve("roles-bad.yaml");
+        Files.writeString(unparseableFile, "roles: [ this is not: valid: yaml\n");
+        var unparseable = CliTestSupport.run("workspace", "roles", dir.toString(),
+                "--roles", unparseableFile.toString());
+        assertEquals(2, unparseable.code(), () -> unparseable.out() + unparseable.err());
+        assertTrue(unparseable.err().contains("cannot read access-control config"),
+                () -> "a file that opened and would not parse keeps the reader's own text: "
+                        + unparseable.err() + unparseable.out());
+        assertTrue(!unparseable.out().contains("RK_INPUT_UNREADABLE"),
+                () -> "and must not claim it could not be read: " + unparseable.out());
+    }
 }
