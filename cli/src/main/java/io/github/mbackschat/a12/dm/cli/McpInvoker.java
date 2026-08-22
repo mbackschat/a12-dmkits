@@ -80,7 +80,14 @@ final class McpInvoker {
             Map<Path, String> before = snapshot(tree);
             StringBuilder out = new StringBuilder();
             StringBuilder err = new StringBuilder();
-            int exit = Cli.run(argv.toArray(String[]::new), out, err);
+            // An MCP request has NO caller stdin, so `-` is refused for the whole dispatch — nested `batch`
+            // children included, which is where it slipped through: the caller-supplied-path check reads
+            // content parameters, not a child's argv. Over stdio, stdin is the protocol channel the verb would
+            // eat; over --http there is none, and a worker would block on the process's until EOF. Set at the
+            // dispatch boundary rather than at server startup so it holds however the dispatcher was reached,
+            // and restored after so one process can serve both routes and a test fork stays clean (G59).
+            int exit = JsonInput.withoutCallerStdin("an MCP request",
+                    () -> Cli.run(argv.toArray(String[]::new), out, err));
             return result(exit, scrub(out.toString(), tree), scrub(err.toString(), tree), changed(tree, before));
         } catch (IOException failure) {
             throw new McpFailure(McpProtocol.INTERNAL_ERROR, "cannot materialise the request: " + failure);

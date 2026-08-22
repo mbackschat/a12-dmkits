@@ -55,6 +55,10 @@ public final class JsonInput {
 
     private static String stdinClaimedBy;
 
+    /** Non-null once a transport has declared that this process has no caller stdin — see {@link
+     *  #markStdinUnavailable}. */
+    private static String stdinUnavailableBecause;
+
     private JsonInput() {
     }
 
@@ -64,6 +68,40 @@ public final class JsonInput {
      */
     static void resetForInvocation() {
         stdinClaimedBy = null;
+        stdinUnavailableBecause = null;
+    }
+
+    /**
+     * Declare that this process has <b>no caller stdin</b>, so {@code -} is refused for its whole life.
+     *
+     * <p>Called by the {@code mcp} verb before any worker starts. The transport decides it, not the request:
+     * over <b>stdio</b> stdin IS the protocol channel, so a verb reading it would consume the caller's frames
+     * and end the session; over <b>--http</b> there is no caller stdin at all, so a worker would block on the
+     * process's until EOF and exhaust the pool. Either way {@code -} names something the caller does not own,
+     * which is the same thing the server already refuses for a caller-supplied PATH — it just arrives one step
+     * further out, through a {@code batch} child's argv, where the content-parameter check does not look.
+     *
+     * <p>Set once, before concurrency begins, and never unset. That ordering is what keeps this class's state
+     * single-threaded in practice: no MCP dispatch can take the claim, so only the ordinary CLI dispatch chain
+     * ever writes it.
+     */
+    static void markStdinUnavailable(String because) {
+        stdinUnavailableBecause = because;
+    }
+
+    /**
+     * Run {@code body} with {@code -} refused because {@code because} has no caller stdin, restoring the prior
+     * posture afterwards. The claim state is deliberately left alone: a nested dispatch inside {@code body}
+     * must still see one consumed stdin, and the point here is only that nothing inside may claim it.
+     */
+    static <T> T withoutCallerStdin(String because, java.util.function.Supplier<T> body) {
+        String previous = stdinUnavailableBecause;
+        stdinUnavailableBecause = because;
+        try {
+            return body.get();
+        } finally {
+            stdinUnavailableBecause = previous;
+        }
     }
 
     /**
@@ -73,6 +111,11 @@ public final class JsonInput {
     public static String read(String source, String label) throws IOException {
         if (!STDIN.equals(source)) {
             return Files.readString(Path.of(source));
+        }
+        if (stdinUnavailableBecause != null) {
+            throw new IOException(label + " cannot be '-': " + stdinUnavailableBecause + " has no caller stdin, "
+                    + "so there is nothing to read. Send the JSON as MCP content instead — the same reason a "
+                    + "caller-supplied path is refused here.");
         }
         if (stdinClaimedBy != null) {
             throw new IOException("stdin is already being read as " + stdinClaimedBy + ", so " + label
