@@ -139,4 +139,36 @@ class DateRangeInterpretationVerbTest {
         assertEquals("TO", M.readTree(read.out()).path("data").path("dateRange")
                 .path("interpretationOfYear").asText(), read::out);
     }
+
+    /**
+     * The {@code --text} channel carries the key too, with its absence meaning absence — pinned because a
+     * consumer reported the opposite (a12-kernel-lean feedback note 03, 2026-08-22) and it did not reproduce at
+     * the revision they pinned. Structurally it cannot: {@code field read} registers no bespoke
+     * {@code VerbText}, so its {@code data} goes through the generic tree walker, which has no key allowlist to
+     * fall out of. That is an argument, not a guarantee — a bespoke renderer added later would silently take
+     * over this verb, and that is exactly the change this case would catch.
+     */
+    @Test
+    void theTextChannelEchoesTheInterpretationAndStaysSilentWhenItIsAbsent(@TempDir Path dir) throws Exception {
+        Path model = model(dir);
+        assertEquals(0, CliTestSupport.run("-m", model.toString(), "field", "add",
+                spec(dir, "declared.json", """
+                        {"group":"/Order","name":"WrapFrom","kind":"DATERANGE",
+                         "dateRange":{"format":"dd.MM","separator":"-","interpretationOfYear":"FROM"}}""")
+                        .toString()).code());
+        assertEquals(0, CliTestSupport.run("-m", model.toString(), "field", "add",
+                spec(dir, "plain.json", """
+                        {"group":"/Order","name":"PlainWindow","kind":"DATERANGE",
+                         "dateRange":{"format":"dd.MM","separator":"-"}}""").toString()).code());
+
+        var declared = CliTestSupport.run("-m", model.toString(), "field", "read", "/Order/WrapFrom", "--text");
+        assertEquals(0, declared.code(), declared.err());
+        assertTrue(declared.out().contains("interpretationOfYear: FROM"),
+                () -> "--text must render the key it just wrote: " + declared.out());
+
+        var plain = CliTestSupport.run("-m", model.toString(), "field", "read", "/Order/PlainWindow", "--text");
+        assertEquals(0, plain.code(), plain.err());
+        assertFalse(plain.out().contains("interpretationOfYear"),
+                () -> "an omitted interpretation must stay unspelled in --text as well: " + plain.out());
+    }
 }
