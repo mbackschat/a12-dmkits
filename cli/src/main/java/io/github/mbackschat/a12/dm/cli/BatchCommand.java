@@ -97,6 +97,17 @@ final class BatchCommand extends BaseCommand {
         }
         String batchModel = model();   // G18: the batch-level -m is the default for ops that omit their own
         BatchObservationCapture.Plan observationPlan = null;
+        if (observationsFile != null && JsonInput.isStdin(opsFile)) {
+            // The artifact commits to the EXACT authored bytes of every candidate, which capture re-reads and
+            // hashes. A stream cannot serve that: it is consumed, unnamed and unre-readable. Refused here rather
+            // than downstream because coercing "-" into a Path fabricates <cwd>/- and puts it in the
+            // overwrite-protection set — falsely protecting a real file of that name while leaving the actual
+            // ops source unprotected (G60).
+            return rejectObservationInput(new BatchObservationCapture.Rejection(-1,
+                    "observation capture needs the ops as a file, and these arrived on stdin",
+                    "write the ops to a file and pass its path; the observation artifact records the exact "
+                            + "authored bytes, which a consumed stream cannot provide"));
+        }
         if (observationsFile != null) {
             try {
                 observationPlan = BatchObservationCapture.prepare(

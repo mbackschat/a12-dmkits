@@ -133,6 +133,11 @@ public final class JsonInput {
         return text;
     }
 
+    /** Whether {@code source} names stdin — for a caller that must refuse a stream it cannot re-read. */
+    public static boolean isStdin(String source) {
+        return STDIN.equals(source);
+    }
+
     /** Read a reader to exhaustion WITHOUT closing it — see the class note on fd 0. */
     private static String drain(Reader in) throws IOException {
         StringBuilder text = new StringBuilder();

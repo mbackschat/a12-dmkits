@@ -176,6 +176,11 @@ final class BatchObservationCapture {
             throw invalid(index, "computation observation " + index + " has no computation-spec file",
                     "pass the authored computation-spec file through the command's documented parameter");
         }
+        if (JsonInput.isStdin(spec)) {
+            throw invalid(index, "computation observation " + index + " takes its spec from stdin",
+                    "pass the authored computation-spec as a file; the observation artifact records its exact "
+                            + "bytes, which a consumed stream cannot provide");
+        }
         Path path = normalize(Path.of(spec));
         protectedInputs.add(path);
         try {
