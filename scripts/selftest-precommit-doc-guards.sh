@@ -85,4 +85,72 @@ git -C "$REPO" add -A
 git -C "$REPO" commit -qm "docs: bypass" --no-verify \
   || fail "--no-verify did not bypass the hook"
 
-echo "SELFTEST OK: non-trigger passes, missing evidence refused, fresh evidence accepted, stale evidence refused, bypass works"
+# 7. THE `stat` DIALECT TRAP, locked on EVERY platform — the defect that shipped. `stat` speaks two
+#    incompatible dialects and picking the wrong one does NOT fail cleanly: GNU's `stat -f %m F` reads `%m`
+#    as a FILE, so it prints F's FILESYSTEM block on stdout and exits 1, and the original
+#    `stat -f %m … || stat -c %Y …` therefore yielded that block CONCATENATED with the real number. Every
+#    later `[ "$t" -gt … ]` died as a non-integer — silently, because a test on the LEFT of a `&&` is exempt
+#    from `set -e` — so every mtime read as 0, `0 -lt 0` was false, and the check NEVER FIRED on Linux. It
+#    worked on macOS, so only CI saw it, and steps 1-6 above could not: they exercise whatever dialect the
+#    host happens to speak. These shims speak exactly ONE dialect each, so both branches are exercised
+#    wherever this selftest runs.
+make_stat_shim() { # $1 = gnu|bsd|garbage -> prints a PATH-prefix directory holding a one-dialect `stat`
+  local dir="$WORK/shim-$1"
+  mkdir -p "$dir"
+  { echo '#!/usr/bin/env bash'; echo "DIALECT=$1"; cat <<'SHIM'
+# A `stat` that speaks exactly one dialect, faithful to the measured behaviour of the real ones
+# (GNU coreutils 9.11 and macOS BSD stat, both probed 2026-08-22). `perl` supplies the mtime so the shim
+# itself needs no dialect.
+set -u
+mtime() { perl -e 'my @s = stat($ARGV[0]) or exit 1; print $s[9], "\n"' "$1"; }
+case "$DIALECT:${1:-}" in
+  gnu:-c)  shift; [ "${1:-}" = %Y ] && shift; [ "${1:-}" = -- ] && shift; mtime "$1";;
+  gnu:-f)  # GNU takes the format as a FILE: filesystem block on STDOUT, complaint on stderr, exit 1
+           echo "  File: \"${3:-}\""; echo "Block size: 4096       Type: ext4"
+           echo "stat: cannot read file system information for '${2:-}': No such file or directory" >&2
+           exit 1;;
+  bsd:-f)  shift; [ "${1:-}" = %m ] && shift; mtime "$1";;
+  bsd:-c)  echo "stat: illegal option -- c" >&2; exit 1;;
+  garbage:*) echo "not-a-number"; exit 1;;
+  *) echo "stat shim: unexpected invocation: $*" >&2; exit 64;;
+esac
+SHIM
+  } > "$dir/stat"
+  chmod +x "$dir/stat"
+  echo "$dir"
+}
+
+for dialect in gnu bsd; do
+  shim="$(make_stat_shim "$dialect")"
+  rm -rf "$REPO/build/test-results" "$REPO/cli/build/test-results"
+  printf '{"description":"%s"}' "$dialect" > "$REPO/cli/src/main/resources/schema/field-add.schema.json"
+  git -C "$REPO" add -A
+  set +e
+  dialect_out="$(PATH="$shim:$PATH" git -C "$REPO" commit -qm "schema edit, $dialect stat" 2>&1)"
+  dialect_status=$?
+  set -e
+  [[ $dialect_status -ne 0 ]] \
+    || fail "with a ${dialect}-only stat, a schema edit with NO evidence was accepted — the mtime read degraded silently"
+  # Positive control: the same commit must pass once the guards have run, so the refusal above is the check
+  # measuring rather than the check refusing everything.
+  mkdir -p "$REPO/build/test-results/docGuardTest" "$REPO/cli/build/test-results/docGuardTest"
+  touch "$REPO/build/test-results/docGuardTest/TEST-x.xml" \
+        "$REPO/cli/build/test-results/docGuardTest/TEST-y.xml"
+  PATH="$shim:$PATH" git -C "$REPO" commit -qm "schema edit, $dialect stat, guards run" \
+    || fail "with a ${dialect}-only stat, fresh doc-guard evidence was rejected"
+done
+
+# 8. When NEITHER dialect answers, the check REFUSES. This is the property whose absence made step 7's bug
+#    invisible: a check that cannot measure must not wave a commit through.
+shim="$(make_stat_shim garbage)"
+rm -rf "$REPO/build/test-results" "$REPO/cli/build/test-results"
+printf '{"description":"blind"}' > "$REPO/cli/src/main/resources/schema/field-add.schema.json"
+git -C "$REPO" add -A
+set +e
+blind_out="$(PATH="$shim:$PATH" git -C "$REPO" commit -qm "schema edit, unusable stat" 2>&1)"
+blind_status=$?
+set -e
+[[ $blind_status -ne 0 ]] || fail "an unusable stat let the commit through — the check passed without measuring"
+[[ "$blind_out" == *"mtime"* ]] || fail "the refusal did not say it could not read mtimes: $blind_out"
+
+echo "SELFTEST OK: non-trigger passes, missing evidence refused, fresh evidence accepted, stale evidence refused, both stat dialects measured, an unusable stat refused, bypass works"

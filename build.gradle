@@ -497,6 +497,12 @@ tasks.register('deliveryGuardTest', Test) {
             'launcher self-test'      : file('scripts/selftest-dmtool-launcher.sh'),
             'source preparation'      : file('scripts/prepare-dmtool-source.sh'),
             'source prep self-test'   : file('scripts/selftest-prepare-dmtool-source.sh'),
+            // DmtoolLauncherTest executes this selftest, which copies .githooks/pre-commit into fabricated
+            // repos — so BOTH are runtime inputs (same pairing as `obligations` in the docGuardTest lane).
+            // Undeclared, this lane sat UP-TO-DATE after either file changed: the 2026-08-22 CI red was first
+            // "verified" locally against a task that had not run, and only reading the task state caught it.
+            'pre-commit hook'         : file('.githooks/pre-commit'),
+            'doc-guard hook self-test': file('scripts/selftest-precommit-doc-guards.sh'),
             'Gradle environment'      : file('scripts/gradle-environment.sh'),
             'native build contract'   : file('cli/build.gradle'),
             'native no-Java smoke'    : file('scripts/native-no-java-smoke.sh'),

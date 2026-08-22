@@ -40,11 +40,51 @@ doc_triggers="$(printf '%s\n' "$staged" | grep -E \
   '\.md$|^cli/src/main/resources/schema/|RkCode\.java$|^rulekit/src/main/resources/catalog/|^skill/' \
   || true)"
 if [ -n "$doc_triggers" ]; then
+  # READING AN mtime PORTABLY, AND REFUSING WHEN WE CANNOT. `stat` speaks two incompatible dialects, and the
+  # first version of this check tried the BSD one and fell back to the GNU one — which does not work, because
+  # the wrong dialect does not fail CLEANLY. GNU's `stat -f %m F` reads `%m` as a FILE: it prints F's
+  # FILESYSTEM block on stdout and exits 1, so `stat -f %m F || stat -c %Y F` returned that block
+  # CONCATENATED with the real number. Every `[ "$t" -gt … ]` then died as a non-integer — and because such a
+  # test sits on the LEFT of a `&&`, `set -e` exempts it — so every mtime silently read as 0, `0 -lt 0` was
+  # false, and this entire check NEVER FIRED on any GNU-coreutils machine, i.e. on Linux and on CI. It worked
+  # on macOS, which is why only CI saw it (2026-08-22). Hence: probe the dialect ONCE, validate that every
+  # reading is an integer, compare with `if` rather than `&&`, and REFUSE if a reading is unusable. A check
+  # that cannot measure must not wave a commit through. Locked in both dialects plus the answers-neither case
+  # by scripts/selftest-precommit-doc-guards.sh, which is CI-run via `:deliveryGuardTest`.
+  is_epoch() { case "${1:-}" in '' | *[!0-9]*) return 1;; *) return 0;; esac; }
+  if is_epoch "$(stat -c %Y -- . 2>/dev/null || true)"; then
+    stat_dialect=gnu
+  elif is_epoch "$(stat -f %m . 2>/dev/null || true)"; then
+    stat_dialect=bsd
+  else
+    printf '\npre-commit: cannot read file mtimes — neither `stat -c %%Y` nor `stat -f %%m` returned a number,\n' >&2
+    printf 'so the doc-guard staleness check cannot run and is refusing rather than passing blind.\n' >&2
+    printf 'Teach the hook this platform, or bypass once with `git commit --no-verify` (CI still gates).\n' >&2
+    exit 1
+  fi
+  mtime_of() { # epoch seconds of $1, or the empty string
+    case "$stat_dialect" in
+      gnu) stat -c %Y -- "$1" 2>/dev/null || true;;
+      bsd) stat -f %m "$1" 2>/dev/null || true;;
+    esac
+  }
+  # Returns non-zero when the reading is unusable; callers must turn that into an exit, since this runs in a
+  # command substitution where an `exit` would only leave the subshell.
+  epoch_or_refuse() {
+    t="$(mtime_of "$1")"
+    if ! is_epoch "$t"; then
+      printf '\npre-commit: could not read the mtime of %s (%s dialect); refusing rather than guessing.\n' \
+        "$1" "$stat_dialect" >&2
+      return 1
+    fi
+    printf '%s' "$t"
+  }
+
   newest_trigger=0
   for f in $doc_triggers; do
     [ -e "$f" ] || continue
-    t=$(stat -f %m "$f" 2>/dev/null || stat -c %Y "$f" 2>/dev/null || echo 0)
-    [ "$t" -gt "$newest_trigger" ] && newest_trigger=$t
+    t="$(epoch_or_refuse "$f")" || exit 1
+    if [ "$t" -gt "$newest_trigger" ]; then newest_trigger=$t; fi
   done
   oldest_evidence=""
   for d in build/test-results/docGuardTest cli/build/test-results/docGuardTest; do
@@ -52,14 +92,14 @@ if [ -n "$doc_triggers" ]; then
     if [ -d "$d" ]; then
       for x in "$d"/TEST-*.xml; do
         [ -e "$x" ] || continue
-        t=$(stat -f %m "$x" 2>/dev/null || stat -c %Y "$x" 2>/dev/null || echo 0)
-        [ "$t" -gt "$newest_xml" ] && newest_xml=$t
+        t="$(epoch_or_refuse "$x")" || exit 1
+        if [ "$t" -gt "$newest_xml" ]; then newest_xml=$t; fi
       done
     fi
     # Strictly-older is stale. mtimes are second-granular, so a tie means "the guard ran in the same
     # second as the edit" — treated as fresh, since a ~1-minute guard run cannot realistically predate
     # the change it validates by less than a second, and CI is the authoritative half regardless.
-    [ "$newest_xml" -lt "$newest_trigger" ] && oldest_evidence="$oldest_evidence $d"
+    if [ "$newest_xml" -lt "$newest_trigger" ]; then oldest_evidence="$oldest_evidence $d"; fi
   done
   if [ -n "$oldest_evidence" ]; then
     printf '\nStaged changes can drift a CI-gated doc, and the doc guards have not run since:\n\n' >&2

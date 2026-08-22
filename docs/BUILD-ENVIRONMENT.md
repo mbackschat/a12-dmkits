@@ -76,6 +76,23 @@ Every local run took the other branch, so the estate looked clean. Three things 
   branch. Note the one limit of that trick: it collides with the case that stubs the pin itself (its `sed`
   becomes a no-op and its commit finds nothing to do), so it validates everything up to that case, not past it.
 
+## `stat` has two dialects, and the wrong one does not fail cleanly (2026-08-22)
+
+The pre-commit doc-guard staleness check read mtimes as `stat -f %m F 2>/dev/null || stat -c %Y F 2>/dev/null || echo 0` — BSD spelling first, GNU as the fallback. Measured on one file, same second:
+
+| invocation | GNU coreutils 9.11 | macOS BSD `stat` |
+|---|---|---|
+| `stat -c %Y F` | `1787433603`, exit 0 | `illegal option -- c`, exit 1 |
+| `stat -f %m F` | reads `%m` as a **file**: prints F's *filesystem* block on **stdout**, exit 1 | `1787433603`, exit 0 |
+
+The fallback chain therefore never worked on Linux, and not because it errored: the "failed" first command still wrote to stdout, so `||` appended the real number to a multi-line filesystem dump. Every later `[ "$t" -gt … ]` then died with *integer expression expected* — and because such a test sits on the **left of a `&&`**, `set -e` exempts it, so the loop continued with `newest_trigger` still `0`. Both evidence readings collapsed to `0` as well, `0 -lt 0` is false, and the check **never fired on any GNU-coreutils machine**. It was dead on CI from the day it landed; only its own selftest, which runs there, ever saw it.
+
+Three things follow, and the first two are why this is an environment trap and not a typo:
+
+- **A dialect fallback needs a probe, not a `||` chain**, because the wrong dialect writes to stdout and exits non-zero at the same time. The hook now probes once (`stat -c %Y -- .`, then `stat -f %m .`), remembers the dialect, validates every reading as digits, and compares with `if` rather than `&&` so an unusable reading cannot be swallowed a second way.
+- **A check that cannot measure must refuse.** Unreadable mtimes now abort the commit with the reason. The old shape failed *open*, which is the property that made a dead check look like a passing one.
+- **Exercise the other dialect with a shim, not with the CI queue.** [`scripts/selftest-precommit-doc-guards.sh`](../scripts/selftest-precommit-doc-guards.sh) now prepends a one-dialect `stat` on `PATH` — GNU semantics, BSD semantics, and an answers-neither case — so all three paths run wherever the selftest runs, and the GNU shim reproduces the CI failure on a Mac in under a second. Same lesson as the section above, one layer down: there the platform branch was written out in the script, here it hid inside a command's argument parsing.
+
 ## Offline and bootstrap limits
 
 - **Wrapper download is blocked in the offline sandbox.** The committed wrapper points at the canonical `services.gradle.org` URL (correct for outside users). Locally, the bootstrap already extracted Gradle 9.0.0 under the a12 parent's `.gradle-dist/gradle-9.0.0/` — run that binary directly when offline.
