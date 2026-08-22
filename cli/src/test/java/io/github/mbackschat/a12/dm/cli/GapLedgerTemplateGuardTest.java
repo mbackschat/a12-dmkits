@@ -134,6 +134,31 @@ class GapLedgerTemplateGuardTest {
     }
 
     /**
+     * <b>No identifier appears twice in one ledger's Open section.</b>
+     *
+     * <p>A duplicated row is worse than a missing one: both copies look authoritative, and an agent updating
+     * "the" row silently leaves a stale twin behind that still answers "what remains?" with the wrong answer.
+     *
+     * <p>Not hypothetical, and the mechanism is worth naming because it will recur: on 2026-08-22 a session
+     * retired two gaps by slicing the file between the row being removed and the NEXT row's marker. The rows had
+     * meanwhile been reordered, so the second slice had {@code end < start} — which in Python string slicing
+     * <em>duplicates</em> the span instead of deleting it. The result was G61 twice and a shipped G60 still
+     * listed, while the section's own "Current state" header said one gap was open. Every other guard passed,
+     * including the one checking that shipped rows are retired, because it audits leads rather than counting ids.
+     */
+    @Test
+    void noOpenSectionListsTheSameIdentifierTwice() throws IOException {
+        List<String> duplicated = new ArrayList<>();
+        for (Path ledger : ledgers()) {
+            duplicated.addAll(auditDuplicateIds(
+                    ledger.getFileName().toString(), Files.readString(ledger)));
+        }
+        assertTrue(duplicated.isEmpty(), () -> "a gap id is listed more than once, so one copy is stale and both "
+                + "read as authoritative — delete the duplicate and reconcile the section's 'Current state' "
+                + "count:\n  " + String.join("\n  ", duplicated));
+    }
+
+    /**
      * <b>A shipped gap must be RETIRED from the Open section, in every {@code -GAPS} ledger.</b>
      *
      * <p>The lifecycle every ledger states is that a gap lives there only while open: when it ships its row is
@@ -249,6 +274,40 @@ class GapLedgerTemplateGuardTest {
         }
         return out;
     }
+
+    /**
+     * Ids listed more than once in an Open section. Walks the same section boundary and the same item shapes as
+     * {@link #auditIds}, so the two cannot disagree about what counts as an open item.
+     */
+    private static List<String> auditDuplicateIds(String name, String markdown) {
+        java.util.Map<String, Integer> counts = new java.util.LinkedHashMap<>();
+        String[] lines = markdown.split("\n", -1);
+        boolean inOpen = false;
+        for (String line : lines) {
+            if (line.startsWith("## ")) {
+                inOpen = line.matches("^## \\d*\\.?\\s*Open\\b.*");
+                continue;
+            }
+            if (!inOpen) {
+                continue;
+            }
+            java.util.regex.Matcher m = DUPLICATE_ID.matcher(line);
+            if (m.find()) {
+                counts.merge(m.group(1), 1, Integer::sum);
+            }
+        }
+        List<String> out = new ArrayList<>();
+        counts.forEach((id, n) -> {
+            if (n > 1) {
+                out.add(name + ": " + id + " is listed " + n + " times in an Open section");
+            }
+        });
+        return out;
+    }
+
+    /** The id itself, captured, in the same three positions {@link #ID} accepts. */
+    private static final java.util.regex.Pattern DUPLICATE_ID =
+            java.util.regex.Pattern.compile("(?:^### |^- \\*\\*|^\\| ?)\\*?\\*?([A-Z]{1,4}\\d+)\\b");
 
     /** An id in any accepted position: a heading/bullet lead, or a table's first cell. */
     private static final java.util.regex.Pattern ID =
