@@ -1,7 +1,5 @@
 package io.github.mbackschat.a12.dm.cli.model;
 
-import java.io.IOException;
-import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -82,14 +80,9 @@ final class ModelSeedCommand extends BaseCommand {
     @Override
     public Integer call() {
         String model = model();
-        if (model == null) {
-            return fail("pass -m <model.json> (before or after the verb)");
-        }
-        String modelJson;
-        try {
-            modelJson = Files.readString(Path.of(model));
-        } catch (IOException e) {
-            return fail("cannot read model: " + e.getMessage());
+        String modelJson = readModelJson(model);
+        if (modelJson == null) {
+            return 2;
         }
 
         // Prepare through the SAME kernel-free boundary the runtime verbs use (IF145): mount includes + inline

@@ -9,9 +9,6 @@ import io.github.mbackschat.a12.dm.cli.ResultEnvelope;
 import io.github.mbackschat.a12.dm.cli.WorkspaceOption;
 import io.github.mbackschat.a12.dm.cli.interp.TextConditionCorrective;
 
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -80,9 +77,6 @@ final class RuleCheckCommand extends BaseCommand {
     @Override
     public Integer call() {
         String model = model();
-        if (model == null) {
-            return fail("pass -m <model.json> (before or after the verb)");
-        }
         if (!ModelPaths.isAbsoluteEntityPath(field)) {
             return fail("--field must be an absolute path (e.g. /Group/Field)");
         }
@@ -96,11 +90,9 @@ final class RuleCheckCommand extends BaseCommand {
         }
         String errorEntityRelPath = "../" + field.substring(effectiveGroup.length() + 1);
 
-        String json;
-        try {
-            json = Files.readString(Path.of(model));
-        } catch (IOException e) {
-            return fail("cannot read model: " + e.getMessage());
+        String json = readModelJson(model);
+        if (json == null) {
+            return 2;
         }
         ModelResolver resolver = workspace.resolverFor(model);
 

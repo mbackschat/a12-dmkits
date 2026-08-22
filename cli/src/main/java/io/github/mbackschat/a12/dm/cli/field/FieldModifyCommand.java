@@ -10,8 +10,6 @@ import io.github.mbackschat.a12.dm.cli.SafetyGate;
 import io.github.mbackschat.a12.dm.cli.WorkspaceOption;
 
 import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
@@ -73,17 +71,12 @@ final class FieldModifyCommand extends BaseCommand {
     @Override
     public Integer call() {
         String model = model();
-        if (model == null) {
-            return fail("pass -m <model.json> (before or after the verb)");
-        }
         if (specPath == null) {
             return fail("pass a <spec.json> (group + name locate the field; kind + config become its new type)");
         }
-        String modelJson;
-        try {
-            modelJson = Files.readString(Path.of(model));
-        } catch (IOException e) {
-            return fail("cannot read model: " + e.getMessage());
+        String modelJson = readModelJson(model);
+        if (modelJson == null) {
+            return 2;
         }
         ModelResolver resolver = workspace.resolverFor(model);
         ModelDocument doc = ModelDocument.read(modelJson);

@@ -160,7 +160,9 @@ final class SchemaCommand extends BaseCommand {
             Map.entry("mcp", "serves a protocol session on stdin/stdout rather than consuming and returning one "
                     + "document; its own contract is published over that protocol, by `server/discover` and "
                     + "`tools/list`, and each tool there carries the schemas of the verb it routes to"),
-            Map.entry("export", "renders an artifact (model card / dot / …), not the result envelope"),
+            Map.entry("export", "renders an artifact (model card / dot / …), not the result envelope — but a "
+                    + "REFUSAL is still an envelope, as everywhere else: the exemption is about the success "
+                    + "shape, and stdout carrying nothing at all was the one thing an agent could not read"),
             Map.entry("model new", "emits a brand-new model document (an artifact) to stdout; with -o stdout carries "
                     + "an additive write-confirmation envelope, but the primary form has no directional contract"),
             Map.entry("model expand", "emits one self-contained expanded DM-JSON model artifact to stdout; with -o "

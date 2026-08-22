@@ -8,8 +8,6 @@ import io.github.mbackschat.a12.dm.cli.ParamKind;
 import io.github.mbackschat.a12.dm.cli.WorkspaceOption;
 
 import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -72,17 +70,12 @@ final class TypedefAddCommand extends BaseCommand {
     @Override
     public Integer call() {
         String model = model();
-        if (model == null) {
-            return fail("pass -m <model.json> (before or after the verb)");
-        }
         if ((kind != null) == (specPath != null)) {
             return fail("pass EITHER --kind <K> (a bare easy kind) OR a <spec.json> (rich config), not both");
         }
-        String modelJson;
-        try {
-            modelJson = Files.readString(Path.of(model));
-        } catch (IOException e) {
-            return fail("cannot read model: " + e.getMessage());
+        String modelJson = readModelJson(model);
+        if (modelJson == null) {
+            return 2;
         }
         ModelResolver resolver = workspace.resolverFor(model);
         ModelDocument doc = ModelDocument.read(modelJson);

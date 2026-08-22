@@ -9,8 +9,6 @@ import io.github.mbackschat.a12.dm.cli.RuntimeEvidence;
 import io.github.mbackschat.a12.dm.cli.WorkspaceOption;
 import io.github.mbackschat.a12.dm.cli.interp.InterpreterEngine;
 
-import java.io.IOException;
-import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
 
@@ -109,9 +107,6 @@ final class ModelEvalCommand extends BaseCommand {
     @Override
     public Integer call() {
         String model = model();
-        if (model == null) {
-            return fail("pass -m <model.json> (before or after the verb)");
-        }
         boolean candidate = condition != null || field != null;
         if (candidate && ruleId != null) {
             return fail("pass either --rule <name> OR a candidate (--condition + --field), not both");
@@ -119,11 +114,9 @@ final class ModelEvalCommand extends BaseCommand {
         if (candidate && (condition == null || field == null)) {
             return fail("a candidate rule needs both --condition and --field");
         }
-        String modelJson;
-        try {
-            modelJson = Files.readString(Path.of(model));
-        } catch (IOException e) {
-            return fail("cannot read model: " + e.getMessage());
+        String modelJson = readModelJson(model);
+        if (modelJson == null) {
+            return 2;
         }
         String documentJson = readInstanceJson(instance);
         if (documentJson == null) {

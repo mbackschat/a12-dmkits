@@ -101,7 +101,8 @@ final class MetaCommand extends BaseCommand {
             return fail("--dry-run and -o/--output require a metadata change");
         }
         String model = model();
-        String modelJson = readModelJson(model);
+        String modelJson = readModelJson(
+                hasWrites ? ResultIdentity.META_MODIFY : ResultIdentity.META_READ, model);
         if (modelJson == null) {
             return 2;
         }

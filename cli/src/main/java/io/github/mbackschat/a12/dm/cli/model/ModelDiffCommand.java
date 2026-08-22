@@ -96,7 +96,7 @@ final class ModelDiffCommand extends BaseCommand {
             try {
                 inputs = ModelDiffInputs.since(modelPath, since, workspace);
             } catch (IOException e) {
-                return fail("cannot read model: " + e.getMessage());
+                return refuseUnreadableInput("-m <model.json>", modelPath, e);
             } catch (GitBaselineException e) {
                 return fail(e.getMessage());
             }
@@ -107,7 +107,8 @@ final class ModelDiffCommand extends BaseCommand {
             try {
                 inputs = ModelDiffInputs.twoFiles(baseFile, headFile, workspace, baseWorkspace, headWorkspace);
             } catch (IOException e) {
-                return fail("cannot read model files: " + e.getMessage());
+                // Names the pair, not one of them: the loader reads both, so which failed is not known here.
+                return refuseUnreadableInput("<baseFile> <headFile>", baseFile + " / " + headFile, e);
             }
         }
         try {

@@ -15,6 +15,7 @@ import org.junit.jupiter.api.Test;
 
 import picocli.CommandLine;
 import picocli.CommandLine.Model.CommandSpec;
+import io.github.mbackschat.a12.dm.rulekit.validate.RkCode;
 
 /**
  * An MCP caller cannot reach {@code -}, on either transport (G59).
@@ -80,7 +81,7 @@ class McpStdinRefusalTest {
         ObjectNode needsModel = MAPPER.createObjectNode();
         needsModel.putObject("files").put("ops.json", """
                 [{"verb":"field","args":["add","-"]}]""");
-        assertTrue(textOf(call("dm.batch", needsModel)).contains("pass -m"),
+        assertTrue(textOf(call("dm.batch", needsModel)).contains(RkCode.MODEL_NOT_NAMED.code()),
                 "link 1: a model-requiring child fails before its spec read, and an MCP caller has no path to give");
 
         ObjectNode nested = MAPPER.createObjectNode();

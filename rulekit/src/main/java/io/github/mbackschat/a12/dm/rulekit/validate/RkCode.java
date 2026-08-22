@@ -154,6 +154,11 @@ public enum RkCode {
                     + "the stdin it was to come from is empty, already consumed, or absent on this transport.",
             "check the path exists and is readable; if the argument was '-', pipe the JSON in and use '-' at "
                     + "most once per process."),
+    // Deliberately NOT folded into INPUT_UNREADABLE: nothing was named, so there is no path to check, and its
+    // corrective would send an agent looking at a file it never supplied.
+    MODEL_NOT_NAMED(Severity.ERROR, DiagnosticSource.PRECHECK,
+            "the verb operates on a document model but no model was named — `-m/--model` was not given.",
+            "pass -m <model.json>; it is inherited, so it may come before or after the verb."),
     INVALID_VALUE(Severity.ERROR, DiagnosticSource.PRECHECK,
             "a recognized spec key carries a value of the wrong type or shape — a string where an object/array is required, or a value outside the key's declared set (e.g. required:\"MANDATORY\" instead of true/false/\"ifParentPresent\").",
             "give the value the type the schema declares for this key (see `schema <target> <op>`); a wrong shape is rejected, never silently coerced to a default."),

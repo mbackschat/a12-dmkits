@@ -5,9 +5,6 @@ import io.github.mbackschat.a12.dm.cli.ConsistencyEvidence;
 import io.github.mbackschat.a12.dm.cli.ResultEnvelope;
 import io.github.mbackschat.a12.dm.cli.WorkspaceOption;
 
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
 
@@ -42,14 +39,9 @@ final class ModelReadCommand extends BaseCommand {
     @Override
     public Integer call() {
         String model = model();
-        if (model == null) {
-            return fail("pass -m <model.json> (before or after the verb)");
-        }
-        String json;
-        try {
-            json = Files.readString(Path.of(model));
-        } catch (IOException e) {
-            return fail("cannot read model: " + e.getMessage());
+        String json = readModelJson(model);
+        if (json == null) {
+            return 2;
         }
         try {
             KernelAdapter adapter = KernelAdapter.ofJson(json, workspace.resolverFor(model));

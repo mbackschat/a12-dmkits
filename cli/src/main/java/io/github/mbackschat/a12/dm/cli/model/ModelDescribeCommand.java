@@ -6,8 +6,6 @@ import io.github.mbackschat.a12.dm.cli.ResultEnvelope;
 import io.github.mbackschat.a12.dm.cli.WorkspaceOption;
 
 import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.util.List;
 
 import com.fasterxml.jackson.databind.JsonNode;
@@ -35,18 +33,20 @@ final class ModelDescribeCommand extends BaseCommand {
     @Override
     public Integer call() {
         String model = model();
-        if (model == null) {
-            return fail("pass -m <model.json> (before or after the verb)");
+        String modelJson = readModelJson(model);
+        if (modelJson == null) {
+            return 2;
         }
         try {
-            BoundModel m = BoundModel.ofJson(Files.readString(Path.of(model)), workspace.resolverFor(model));
+            BoundModel m = BoundModel.ofJson(modelJson, workspace.resolverFor(model));
             JsonNode card = MAPPER.readTree(new ModelContext(m).describe().toJson());
             ResultEnvelope env = ResultEnvelope.queryResult(resultIdentity(), "model card", card,
                     ConsistencyEvidence.of(m));
             out().print(env.toJsonString());
             return env.exitCode();
         } catch (IOException e) {
-            return fail("cannot read model: " + e.getMessage());
+            // No longer the model read — that is readModelJson's. What is left is the card's own round-trip.
+            return fail("describe failed: cannot serialize the model card: " + e.getMessage());
         } catch (RuntimeException e) {
             return failOrRethrowDomainRejection("describe failed: ", e);
         }

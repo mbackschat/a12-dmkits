@@ -11,8 +11,6 @@ import io.github.mbackschat.a12.dm.interpreter.InvalidModelTimeZoneException;
 import io.github.mbackschat.a12.dm.interpreter.model.UndeclaredReference;
 import io.github.mbackschat.a12.dm.rulekit.validate.RkCode;
 
-import java.io.IOException;
-import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
 
@@ -50,14 +48,9 @@ final class ModelComputeCommand extends BaseCommand {
     @Override
     public Integer call() {
         String model = model();
-        if (model == null) {
-            return fail("pass -m <model.json> (before or after the verb)");
-        }
-        String modelJson;
-        try {
-            modelJson = Files.readString(Path.of(model));
-        } catch (IOException e) {
-            return fail("cannot read model: " + e.getMessage());
+        String modelJson = readModelJson(model);
+        if (modelJson == null) {
+            return 2;
         }
         String documentJson = readInstanceJson(instance);
         if (documentJson == null) {

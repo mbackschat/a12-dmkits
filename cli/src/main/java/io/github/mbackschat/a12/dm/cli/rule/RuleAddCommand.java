@@ -13,8 +13,6 @@ import io.github.mbackschat.a12.dm.cli.WorkspaceOption;
 import io.github.mbackschat.a12.dm.cli.interp.TextConditionCorrective;
 
 import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -70,13 +68,14 @@ final class RuleAddCommand extends BaseCommand {
     @Override
     public Integer call() {
         String model = model();
-        if (model == null) {
-            return fail("pass -m <model.json> (before or after the verb)");
+        // Read separately from the spec: sharing one catch attributed an unreadable MODEL to <rule-spec.json>,
+        // naming an argument that was fine and a path the caller never gave for it.
+        String modelJson = readModelJson(model);
+        if (modelJson == null) {
+            return 2;
         }
-        String modelJson;
         JsonNode spec;
         try {
-            modelJson = Files.readString(Path.of(model));
             spec = MAPPER.readTree(JsonInput.read(specPath, "<rule-spec.json>"));
         } catch (IOException e) {
             return refuseUnreadableInput("<rule-spec.json>", specPath, e);

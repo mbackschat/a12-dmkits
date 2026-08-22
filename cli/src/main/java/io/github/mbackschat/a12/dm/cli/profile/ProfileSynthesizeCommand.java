@@ -48,7 +48,7 @@ final class ProfileSynthesizeCommand extends BaseCommand {
         try {
             profileJson = Files.readString(Path.of(inputPath));
         } catch (IOException e) {
-            return fail("cannot read input: " + e.getMessage());
+            return refuseUnreadableInput("--input <profile.json>", inputPath, e);
         }
         JsonNode input;
         try {

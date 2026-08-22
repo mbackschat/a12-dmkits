@@ -23,6 +23,7 @@ public final class ResultIdentity {
     static final ResultIdentity PATTERNS_READ = new ResultIdentity("patterns", "read");
     static final ResultIdentity PATTERNS_SCAFFOLD = new ResultIdentity("patterns", "scaffold");
     static final ResultIdentity APPLY_RUN = new ResultIdentity("apply", "run");
+    static final ResultIdentity EXPORT_RENDER = new ResultIdentity("export", "render");
     static final ResultIdentity BATCH_RUN = new ResultIdentity("batch", "run");
     static final ResultIdentity MODEL_VALIDATE = new ResultIdentity("model", "validate");
     static final ResultIdentity UNPARSED_FALLBACK = new ResultIdentity("model", "");

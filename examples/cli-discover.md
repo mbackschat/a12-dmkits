@@ -256,7 +256,7 @@ dmtool diagnostics | jq '{count, severities: (.diagnostics|map(.severity)|unique
 
 ```output
 {
-  "count": 48,
+  "count": 49,
   "severities": [
     "ERROR",
     "INFO",

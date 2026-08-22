@@ -10,8 +10,6 @@ import io.github.mbackschat.a12.dm.cli.ResultEnvelope;
 import io.github.mbackschat.a12.dm.cli.WorkspaceOption;
 
 import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -64,13 +62,14 @@ final class ComputationAddCommand extends BaseCommand {
     @Override
     public Integer call() {
         String model = model();
-        if (model == null) {
-            return fail("pass -m <model.json> (before or after the verb)");
+        // Read separately from the spec: sharing one catch attributed an unreadable MODEL to <computation-spec.json>,
+        // naming an argument that was fine and a path the caller never gave for it.
+        String modelJson = readModelJson(model);
+        if (modelJson == null) {
+            return 2;
         }
-        String modelJson;
         JsonNode spec;
         try {
-            modelJson = Files.readString(Path.of(model));
             spec = MAPPER.readTree(JsonInput.read(specPath, "<computation-spec.json>"));
         } catch (IOException e) {
             return refuseUnreadableInput("<computation-spec.json>", specPath, e);

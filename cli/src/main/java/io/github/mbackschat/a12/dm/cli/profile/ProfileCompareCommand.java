@@ -39,13 +39,23 @@ final class ProfileCompareCommand extends BaseCommand {
 
     @Override
     public Integer call() {
+        // Read one at a time: a shared catch could not say WHICH operand was unreadable, which is the whole
+        // question when two paths are supplied positionally.
+        String targetJson;
+        try {
+            targetJson = Files.readString(Path.of(targetPath));
+        } catch (IOException e) {
+            return refuseUnreadableInput("<targetProfile.json>", targetPath, e);
+        }
+        String actualJson;
+        try {
+            actualJson = Files.readString(Path.of(actualPath));
+        } catch (IOException e) {
+            return refuseUnreadableInput("<actualProfile.json>", actualPath, e);
+        }
         String comparisonJson;
         try {
-            comparisonJson = ModelProfiles.compare(
-                    Files.readString(Path.of(targetPath)),
-                    Files.readString(Path.of(actualPath)));
-        } catch (IOException e) {
-            return fail("cannot read profiles: " + e.getMessage());
+            comparisonJson = ModelProfiles.compare(targetJson, actualJson);
         } catch (RuntimeException e) {
             return failOrRethrowDomainRejection("profile comparison failed: ", e);
         }

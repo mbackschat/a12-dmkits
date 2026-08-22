@@ -11,6 +11,7 @@ import org.junit.jupiter.api.io.TempDir;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import io.github.mbackschat.a12.dm.rulekit.validate.RkCode;
 
 /** The {@code describe} verb — emits the model card (F9a) as JSON for an agent to orient on. */
 class DescribeVerbTest {
@@ -51,7 +52,9 @@ class DescribeVerbTest {
     void describeMissingArgFails() {
         var res = CliTestSupport.run("model", "describe");
         assertNotEquals(0, res.code(), "no model path is an error");
-        assertTrue(res.err().toLowerCase().contains("-m") || res.err().toLowerCase().contains("model"),
-                "and names the missing model");
+        // On STDOUT as a coded refusal since G61, not as a bare stderr line: an agent parsing the result for a
+        // reason used to get an empty stream. The whole class is swept in UnreadableModelRefusalTest.
+        assertTrue(res.out().contains(RkCode.MODEL_NOT_NAMED.code()) && res.out().contains("-m <model.json>"),
+                () -> "and names the missing model, coded: " + res.out() + res.err());
     }
 }

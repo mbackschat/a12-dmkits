@@ -1,7 +1,6 @@
 package io.github.mbackschat.a12.dm.cli;
 
 import java.io.IOException;
-import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
@@ -74,7 +73,7 @@ final class BatchCommand extends BaseCommand {
         try {
             ops = MAPPER.readTree(JsonInput.read(opsFile, "<ops.json>"));
         } catch (IOException e) {
-            return refuseUnreadableInput("<ops.json>", opsFile, e);
+            return refuseUnreadableInput(ResultIdentity.BATCH_RUN, "<ops.json>", opsFile, e);
         }
         if (!ops.isArray()) {
             return fail("ops file must be a JSON array");

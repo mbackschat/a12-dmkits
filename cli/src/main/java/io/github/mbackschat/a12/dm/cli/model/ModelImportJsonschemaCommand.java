@@ -153,7 +153,7 @@ final class ModelImportJsonschemaCommand extends BaseCommand {
         try {
             schemaJson = Files.readString(Path.of(schemaPath));
         } catch (IOException e) {
-            return fail("cannot read schema: " + e.getMessage());
+            return refuseUnreadableInput("<schema.json>", schemaPath, e);
         }
         MappingProfile profile = buildProfile();
         Dialect resolvedDialect = dialect != null ? dialect : Dialect.AUTO;

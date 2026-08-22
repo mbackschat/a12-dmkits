@@ -21,6 +21,7 @@ import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Rule;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Severity;
+import io.github.mbackschat.a12.dm.rulekit.validate.RkCode;
 
 /**
  * The {@code export} verb tested at the {@link Cli#run} seam (CLI-SPEC §9 — the fast inner loop: no
@@ -119,10 +120,17 @@ class ExportVerbTest {
 
     @Test
     void exportWithoutAModelGivesTheStandardCorrectiveNotAStackTrace(@TempDir Path dir) {
+        StringBuilder out = new StringBuilder();
         StringBuilder err = new StringBuilder();
-        int code = Cli.run(new String[]{"export", "card"}, new StringBuilder(), err);
-        assertEquals(2, code, "no -m → a clean failure (fail() exit code)");
-        assertTrue(err.toString().contains("-m"), () -> "names the universal model option: " + err);
+        int code = Cli.run(new String[]{"export", "card"}, out, err);
+        assertEquals(2, code, "no -m → a clean refusal");
+        // `export` renders an artifact rather than the result envelope, but a REFUSAL is still an envelope — it
+        // had no ResultIdentity at all before G61, which is why this was the one verb whose corrective could
+        // only be plain text.
+        assertTrue(out.toString().contains(RkCode.MODEL_NOT_NAMED.code()),
+                () -> "names the universal model option, coded: " + out + err);
+        assertTrue(out.toString().contains("\"target\" : \"export\""),
+                () -> "and attributes the refusal to `export`: " + out);
     }
 
     @Test

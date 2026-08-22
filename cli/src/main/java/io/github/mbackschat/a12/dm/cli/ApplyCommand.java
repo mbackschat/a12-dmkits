@@ -189,16 +189,17 @@ final class ApplyCommand extends BaseCommand {
     @Override
     public Integer call() {
         String model = model();
-        if (model == null) {
-            return fail("pass -m <model.json> (before or after the verb)");
-        }
         JsonNode ops;
-        String modelJson;
         try {
             ops = MAPPER.readTree(JsonInput.read(opsFile, "<ops.json>"));
-            modelJson = Files.readString(Path.of(model));
         } catch (IOException e) {
-            return refuseUnreadableInput("<ops.json>", opsFile, e);
+            return refuseUnreadableInput(ResultIdentity.APPLY_RUN, "<ops.json>", opsFile, e);
+        }
+        // Read separately from the ops list: sharing one catch attributed an unreadable MODEL to `<ops.json>`,
+        // naming an argument that was fine and a path the caller never gave for it.
+        String modelJson = readModelJson(ResultIdentity.APPLY_RUN, model);
+        if (modelJson == null) {
+            return 2;
         }
         if (!ops.isArray()) {
             return fail("the ops file must be a JSON array of op-records");

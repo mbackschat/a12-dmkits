@@ -79,43 +79,76 @@ public abstract class BaseCommand implements Callable<Integer> {
         return false;
     }
 
+    /** The {@code -m} option as its own help text names it, so the refusal points at the caller's argument. */
+    private static final String MODEL_LABEL = "-m <model.json>";
+
+    /** The document input the three runtime verbs read, likewise named as its help text names it. */
+    private static final String INSTANCE_LABEL = "--instance <document.json>";
+
     /**
-     * The DM-JSON at {@code modelPath}, or {@code null} after printing the corrective failure to stderr (the
-     * caller then returns exit 2). Centralizes the read-the-model-file step every mutating verb opens with —
-     * a missing {@code -m} ({@code modelPath == null}) and an unreadable file both fail with a clear message.
+     * The DM-JSON at {@code modelPath}, or {@code null} after emitting the coded refusal (the caller then returns
+     * exit 2, which is what a {@code refused} envelope carries). The single implementation of the step every
+     * model-aware verb opens with — it was written 41 more times inline before G61, which is how the coded
+     * refusal that landed on the nine JSON inputs came to miss the model argument beside them.
+     *
+     * <p>The two failure modes get <b>different codes on purpose</b>. An unreadable file is
+     * {@link RkCode#INPUT_UNREADABLE}, exactly as for the JSON inputs, and its corrective is to check the path.
+     * An absent {@code -m} is {@link RkCode#MODEL_NOT_NAMED}: there is no path to check, and telling an agent to
+     * check one would send it looking at a file it never supplied.
      */
     protected String readModelJson(String modelPath) {
+        return readModelJson(resultIdentity(), modelPath);
+    }
+
+    /**
+     * Identity-carrying counterpart for the one-token and multi-mode verbs, whose identity cannot be derived
+     * from a depth-2 leaf. Mirrors {@link #refuse(ResultIdentity, Refusal)} and
+     * {@link #rejectInvalidSpec(ResultIdentity, String, JsonNode)}; without it, emitting an envelope here would
+     * throw for {@code meta}, {@code where-used}, {@code patterns}, {@code apply} and {@code export} — a failure
+     * reachable only on the path where the model is already missing, so exactly the one no happy-path test walks.
+     */
+    protected String readModelJson(ResultIdentity identity, String modelPath) {
         if (modelPath == null) {
-            fail("pass -m <model.json> (before or after the verb)");
+            refusePrecheck(identity, RkCode.MODEL_NOT_NAMED,
+                    "no model was named — this verb operates on a document model", MODEL_LABEL,
+                    RkCode.MODEL_NOT_NAMED.fix());
             return null;
         }
         try {
             return Files.readString(Path.of(modelPath));
         } catch (IOException e) {
-            fail("cannot read model: " + e.getMessage());
+            refuseUnreadableInput(identity, MODEL_LABEL, modelPath, e);
             return null;
         }
     }
 
     /**
-     * The document instance at {@code instancePath} as text, or {@code null} after printing the corrective
-     * failure (the caller then returns exit 2). Deliberately <b>unparsed</b>: the runtime verbs hand the text
-     * straight to the interpreter's canonical A12 Document JSON codec, which is the only reader of that shape in
-     * the tool. This is the model-file helper's twin, so the three runtime verbs cannot drift on either input.
+     * The document instance at {@code instancePath} as text, or {@code null} after emitting the coded refusal.
+     * Deliberately <b>unparsed</b>: the runtime verbs hand the text straight to the interpreter's canonical A12
+     * Document JSON codec, which is the only reader of that shape in the tool. This is the model-file helper's
+     * twin, so the three runtime verbs cannot drift on either input — which is also why it refuses in the same
+     * coded form rather than keeping a plain-text channel its twin no longer uses.
      */
     protected String readInstanceJson(String instancePath) {
         try {
             return Files.readString(Path.of(instancePath));
         } catch (IOException e) {
-            fail("cannot read document: " + e.getMessage());
+            refuseUnreadableInput(INSTANCE_LABEL, instancePath, e);
             return null;
         }
     }
 
     /**
      * Print every defect the A12 Document JSON reader found, then exit 2. An invalid <i>input file</i> stays on
-     * the plain-text {@code fail} channel that {@code cannot read model:} already uses — a structured refusal is
-     * for a precheck on a resolvable target, not for input the tool could not read at all.
+     * the plain-text {@code fail} channel.
+     *
+     * <p><b>The reason this used to give is gone.</b> It read "the channel {@code cannot read model:} already
+     * uses — a structured refusal is for a precheck on a resolvable target, not for input the tool could not read
+     * at all". G58 and G61 moved every UNREADABLE input onto coded refusals, so that precedent no longer exists.
+     * What survives is a narrower and different distinction: this is content the reader <i>parsed and rejected</i>,
+     * carrying its own per-defect {@link DocumentInputDiagnostic} list, not a file that could not be read. Giving
+     * that list a coded envelope is a real change of shape rather than a change of channel, so it is its own
+     * slice; the two are not the same class and must not be merged on the strength of a retired sentence.
      *
      * <p>The one enriched case is the retired {@code {"fields": {…}}} wrapper: a document that still carries it
      * fails as an unknown model path {@code /fields}, which is true but unhelpful, so it also gets the migration
@@ -208,8 +241,14 @@ public abstract class BaseCommand implements Callable<Integer> {
      * path or a stream. {@code label} is the parameter as its help text names it, e.g. {@code <spec.json>}.
      */
     protected int refuseUnreadableInput(String label, String source, IOException failure) {
+        return refuseUnreadableInput(resultIdentity(), label, source, failure);
+    }
+
+    /** Identity-carrying counterpart, for the one-token and multi-mode verbs — see {@link #readModelJson}. */
+    protected int refuseUnreadableInput(ResultIdentity identity, String label, String source,
+            IOException failure) {
         String where = JsonInput.STDIN.equals(source) ? "stdin" : source;
-        return refusePrecheck(RkCode.INPUT_UNREADABLE,
+        return refusePrecheck(identity, RkCode.INPUT_UNREADABLE,
                 label + " could not be read from " + where + ": " + failure.getMessage(),
                 label, RkCode.INPUT_UNREADABLE.fix());
     }

@@ -11,8 +11,6 @@ import io.github.mbackschat.a12.dm.cli.SafetyGate;
 import io.github.mbackschat.a12.dm.cli.WorkspaceOption;
 
 import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.util.Optional;
 
 import com.fasterxml.jackson.databind.JsonNode;
@@ -90,9 +88,6 @@ final class FieldAddCommand extends BaseCommand {
     @Override
     public Integer call() {
         String model = model();
-        if (model == null) {
-            return fail("pass -m <model.json> (before or after the verb)");
-        }
         boolean flagsMode = group != null || name != null || type != null;
         if (specPath == null && !flagsMode) {
             return fail("pass a <spec.json>, or --group + --name + (--kind | --typedef)");
@@ -100,11 +95,9 @@ final class FieldAddCommand extends BaseCommand {
         if (specPath != null && flagsMode) {
             return fail("pass EITHER a <spec.json> OR the --group/--name/--kind flags, not both");
         }
-        String modelJson;
-        try {
-            modelJson = Files.readString(Path.of(model));
-        } catch (IOException e) {
-            return fail("cannot read model: " + e.getMessage());
+        String modelJson = readModelJson(model);
+        if (modelJson == null) {
+            return 2;
         }
         ModelResolver resolver = workspace.resolverFor(model);
         ModelDocument doc = ModelDocument.read(modelJson);

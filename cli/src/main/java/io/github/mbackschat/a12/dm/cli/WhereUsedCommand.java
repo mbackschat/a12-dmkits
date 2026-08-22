@@ -63,7 +63,7 @@ final class WhereUsedCommand extends BaseCommand {
         if (entity == null) {
             return fail("pass the entity to inspect — positionally (`where-used /Order/Quantity`) or via --entity");
         }
-        String modelJson = readModelJson(model);
+        String modelJson = readModelJson(ResultIdentity.WHERE_USED_READ, model);
         if (modelJson == null) {
             return 2;
         }

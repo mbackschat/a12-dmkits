@@ -5,9 +5,6 @@ import io.github.mbackschat.a12.dm.cli.ConsistencyEvidence;
 import io.github.mbackschat.a12.dm.cli.ReadPayloads;
 import io.github.mbackschat.a12.dm.cli.ResultEnvelope;
 
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.util.List;
 import java.util.Optional;
 
@@ -54,20 +51,15 @@ final class FieldReadCommand extends BaseCommand {
     @Override
     public Integer call() {
         String model = model();
-        if (model == null) {
-            return fail("pass -m <model.json> (before or after the verb)");
-        }
         String fieldPath;
         try {
             fieldPath = FieldLocator.resolve(field != null ? field : fieldFlag, group, name).orElse(null);
         } catch (IllegalArgumentException e) {
             return fail(e.getMessage());
         }
-        String json;
-        try {
-            json = Files.readString(Path.of(model));
-        } catch (IOException e) {
-            return fail("cannot read model: " + e.getMessage());
+        String json = readModelJson(model);
+        if (json == null) {
+            return 2;
         }
         try {
             ModelDocument doc = ModelDocument.read(json);

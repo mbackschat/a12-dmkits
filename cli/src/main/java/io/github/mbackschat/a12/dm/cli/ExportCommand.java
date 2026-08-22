@@ -66,14 +66,9 @@ final class ExportCommand extends BaseCommand {
             only = artifact.get();
         }
         String model = model();
-        if (model == null) {
-            return fail("pass -m <model.json> (before or after the verb)");
-        }
-        String json;
-        try {
-            json = Files.readString(Path.of(model));
-        } catch (IOException e) {
-            return fail("cannot read model: " + e.getMessage());
+        String json = readModelJson(ResultIdentity.EXPORT_RENDER, model);
+        if (json == null) {
+            return 2;
         }
         BoundModel bound;
         try {

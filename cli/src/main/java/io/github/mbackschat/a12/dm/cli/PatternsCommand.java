@@ -165,14 +165,9 @@ final class PatternsCommand extends BaseCommand {
     /** Scaffold mode — instantiate the idiom, auto-check, and (with --apply) persist. Dispatches on the artifact kind. */
     private Integer scaffold(PatternEntry pattern) {
         String model = model();
-        if (model == null) {
-            return fail("pass -m <model.json> to scaffold from a pattern");
-        }
-        String modelJson;
-        try {
-            modelJson = Files.readString(Path.of(model));
-        } catch (IOException e) {
-            return fail("cannot read model: " + e.getMessage());
+        String modelJson = readModelJson(ResultIdentity.PATTERNS_SCAFFOLD, model);
+        if (modelJson == null) {
+            return 2;
         }
         ModelResolver resolver = workspace.resolverFor(model);
 
