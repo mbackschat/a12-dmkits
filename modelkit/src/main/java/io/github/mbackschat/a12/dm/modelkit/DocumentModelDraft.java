@@ -635,7 +635,6 @@ public final class DocumentModelDraft {
                 ObjectNode b = MAPPER.createObjectNode();
                 copyText(c, "format", b, "format");
                 copyText(c, "rangeSeparator", b, "separator");
-                copyText(c, "interpretationOfYear", b, "interpretationOfYear");
                 if (!b.isEmpty()) out.set("dateRange", b);
             }
             case "DateFragmentType" -> {

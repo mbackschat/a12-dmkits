@@ -150,7 +150,8 @@ class DateRangeYearInterpretationTest {
 
     @Test
     void theTwoArgConstructorStillCompilesAndDefaultsToStandard() {
-        // Retained as a delegating overload so record deconstruction in existing consumers keeps working.
+        // Retained so existing CONSTRUCTION sites keep compiling. Record DECONSTRUCTION is deliberately
+        // NOT covered — a record pattern must match the record's arity, so it cannot be (API-FINDINGS 96).
         assertEquals(RangeYearInterpretation.STANDARD,
                 new FieldTypeSpec.DateRangeSpec("MM", "/").interpretationOfYear());
     }

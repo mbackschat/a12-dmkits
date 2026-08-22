@@ -1158,6 +1158,20 @@ DocumentModelDraft draft = permit()
 
 This emits A12's `DateType.youngerThan1900Check`; the CLI peer is `"date":{"rejectBefore1900":true}`. It applies to stored values and any authorable computed target. Do not infer that a computation may target the partial precision shown above: kernel 30.8.1 rejects `DAY_OPTIONAL`, `MONTH_OPTIONAL`, and `YEAR_OPTIONAL` computation targets because the computation's generated implicit comparison reads the partial target as a value (`MVK_INVALID_DATE_TYPE`), and that code is not suppressible (finding 108 / IF237).
 
+A **date RANGE** adds one property beyond format and separator: `interpretationOfYear` decides which endpoint of a *wrapping* yearless range keeps the base year. Without it, an ordinary winter cover window (`01.11-31.01` on a `dd.MM` range) reads as start-after-end and is reported invalid. The direction is the reverse of what the names suggest — the value names the endpoint the base year **labels**, and the opposite endpoint moves:
+
+<!-- snippet: date-range-year-interpretation -->
+```java
+DocumentModelDraft draft = DocumentModelDraft.named("policy").locale("en_US").baseYear(2026)
+        .rootGroup("Policy", group -> group
+                .dateRangeField("WinterCover", range -> range
+                        .format("dd.MM").separator("-")
+                        .interpretationOfYear(RangeYearInterpretation.TO)))
+        .build();
+```
+
+`TO` keeps the end at the base year and rolls the START back a year; `FROM` keeps the start and rolls the END forward. `STANDARD` is the default and **has no DM-JSON spelling** — it is expressed by omitting the key, which is the kernel's own `NON_EMPTY` write behaviour, so passing it emits nothing. The declaration admits only `FROM` and `TO`; the tool API's `PREVIOUS`/`SUBSEQUENT` spellings are refused by the kernel, and the typed enum makes them unrepresentable rather than deferring to a runtime check. Reading an externally authored model recovers the property, and an unrecognized token **fails fast** rather than degrading to `STANDARD` — degrading would re-emit the field with the key gone, which is the silent drop the component exists to prevent. *(Not yet CLI-authorable — see FEATURE-GAPS G53.)* *Test-backed: `modelkit.DateRangeYearInterpretationTest`; the runtime direction is pinned against both kernel strategies by `adapter.laws.WrappingYearlessRangeDiffTest`.*
+
 A **group** carries a display label too — it is the kernel's `ILabeled` via `IEntity`, exactly like a field. The from-scratch builder authors it (`GroupBuilder.label("en_US", "Order lines").label("de_DE", "Bestellzeilen")`), the edit path sets it on an existing group (`setLabel(groupPath, …)`, CLI `meta <groupPath> --label`), and the same cover-every-declared-locale rule applies to both (finding 56 / DG17). *Locked by `modelkit.GroupLabelTest` (kernel read-back).*
 
 ### Rules *along with* structure — one session

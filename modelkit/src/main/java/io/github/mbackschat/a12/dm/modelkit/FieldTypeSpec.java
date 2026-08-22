@@ -26,8 +26,12 @@ public sealed interface FieldTypeSpec {
      * base year — see {@link RangeYearInterpretation}. The interpretation is never {@code null}: an absent
      * declaration means {@link RangeYearInterpretation#STANDARD}, which is emitted by omitting the key.
      *
-     * <p>Author through {@code DateRangeFieldBuilder}; the 2-arg constructor is retained as a delegating
-     * overload so existing consumers and record deconstruction over {@code (format, separator)} keep working.
+     * <p>Author through {@code DateRangeFieldBuilder}. The 2-arg constructor is retained as a delegating
+     * overload, so existing <em>construction</em> sites keep compiling and its binary descriptor is unchanged.
+     * <b>Record DECONSTRUCTION is NOT compatible</b>: a record pattern's component list must have the record's
+     * arity, so {@code case DateRangeSpec(String f, String s)} no longer compiles and
+     * {@code getRecordComponents()} returns three — the same honest classification API-FINDINGS 96 recorded for
+     * {@code EnumSpec}'s identical change. A delegating constructor cannot help with either.
      */
     record DateRangeSpec(String format, String separator, RangeYearInterpretation interpretationOfYear)
             implements FieldTypeSpec {

@@ -22,7 +22,9 @@ public final class DateRangeFieldBuilder extends FieldAttrs<DateRangeFieldBuilde
      * DM-JSON key, which is how the declaration expresses the default.
      */
     public DateRangeFieldBuilder interpretationOfYear(RangeYearInterpretation interpretation) {
-        this.interpretationOfYear = interpretation == null ? RangeYearInterpretation.STANDARD : interpretation;
+        // No null-coalesce here: the record's canonical constructor owns that normalization, and two
+        // loci for one invariant means neither can be mutation-covered.
+        this.interpretationOfYear = interpretation;
         return this;
     }
 
