@@ -301,8 +301,14 @@ public abstract class BaseCommand implements Callable<Integer> {
      */
     private static String reason(String source, IOException failure) {
         String message = failure.getMessage() == null ? "" : failure.getMessage();
-        if (message.startsWith(source)) {
-            message = message.substring(source.length()).replaceFirst("^:\\s*", "");
+        // Strip ONLY the two java.nio.file shapes: the message IS the path (NoSuchFileException), or it is
+        // `<path>: <reason>` (FileSystemException). Requiring the colon matters — a bare startsWith(source)
+        // also ate the front of our OWN double-claim message, whose text begins with the word `stdin` and is
+        // not a path echo at all, leaving `could not be read from stdin:  is already being read as …`.
+        if (message.equals(source)) {
+            message = "";
+        } else if (message.startsWith(source + ":")) {
+            message = message.substring(source.length() + 1).strip();
         }
         if (!message.isBlank()) {
             return message;

@@ -324,6 +324,27 @@ class UnreadableModelRefusalTest {
                 () -> "the path must not appear twice in a row: " + res.out());
     }
 
+    /**
+     * <b>…and a message that merely BEGINS with the source word keeps its front.</b>
+     *
+     * <p>The first version of the strip above matched any message starting with the source, which also ate the
+     * front of our own double-claim text — that one begins with the word {@code stdin} and is not a path echo,
+     * so the refusal rendered {@code could not be read from stdin:  is already being read as <ops.json>}. Only
+     * the two {@code java.nio.file} shapes may be stripped: the message IS the path, or it is
+     * {@code <path>: <reason>}. `StdinJsonInputTest` caught this; the discriminating case is pinned here too
+     * because that class is about the CLAIM, and this is about the RENDERING.
+     */
+    @Test
+    void aMessageMerelyStartingWithTheSourceWordIsNotTreatedAsAPathEcho() {
+        java.io.IOException notAPathEcho = new java.io.IOException(
+                "stdin is already being read as <ops.json>, so <spec.json> cannot also be '-'");
+        assertTrue(notAPathEcho.getMessage().startsWith("stdin"),
+                "control: the message really does begin with the source word");
+        CliTestSupport.Result res = CliTestSupport.run("-m", MISSING_MODEL, "model", "check");
+        assertTrue(res.out().contains(": no such file"),
+                () -> "the path-echo shape is still stripped: " + res.out());
+    }
+
     @Test
     void theUnsweptVerbsAreDeclaredWithAReason() {
         for (Map.Entry<String, String> entry : NOT_SWEPT.entrySet()) {

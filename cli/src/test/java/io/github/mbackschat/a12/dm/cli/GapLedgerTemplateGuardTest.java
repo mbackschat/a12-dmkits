@@ -1,5 +1,6 @@
 package io.github.mbackschat.a12.dm.cli;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.IOException;
@@ -7,6 +8,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 import java.util.stream.Stream;
 
 import org.junit.jupiter.api.Test;
@@ -336,6 +338,83 @@ class GapLedgerTemplateGuardTest {
     }
 
     /** One violation per open section that is neither populated nor explicitly empty. */
+    /**
+     * <b>No ledger line repeats a long span of itself</b> — the signature of a botched string replace.
+     *
+     * <p><b>Why this shape, and why within a LINE.</b> Editing these ledgers means editing one long paragraph,
+     * and a scripted find-and-replace that matches once but composes wrongly silently DOUBLES part of it. It
+     * happened twice in one session: a bad slice duplicated an open row, and a replaced `Current state.`
+     * paragraph left both the new text and the old stitched together — invisible in review, because the file is
+     * long and the damage is mid-line. Asserting `count(old) == 1` before a replace proves the MATCH, not the
+     * RESULT; this checks the result.
+     *
+     * <p>The discriminator is principled rather than tuned: docs/CLAUDE.md mandates one paragraph per physical
+     * line, so legitimate long repetition lands on DIFFERENT lines (two rows citing one trigger phrase, table
+     * boilerplate) while duplication damage lands INSIDE one. Measured 2026-08-22 across the nine ledgers: the
+     * longest legitimate within-line repeat is <b>76</b> chars; the real damage was <b>120</b>. The bar sits at
+     * {@link #MAX_WITHIN_LINE_REPEAT} with margin either side. A whole-file check cannot work — the longest
+     * legitimate repeat across lines is 147, longer than the damage, so it has no separation at all.
+     */
+    @Test
+    void noLedgerLineRepeatsALongSpanOfItself() throws IOException {
+        List<String> violations = new ArrayList<>();
+        for (Path ledger : ledgers()) {
+            String name = ledger.getFileName().toString();
+            int lineNumber = 0;
+            for (String line : Files.readAllLines(ledger)) {
+                lineNumber++;
+                String repeat = longestRepeatedSpan(line);
+                if (repeat.length() > MAX_WITHIN_LINE_REPEAT) {
+                    violations.add(name + ":" + lineNumber + " repeats " + repeat.length()
+                            + " chars of itself — did a find-and-replace double this paragraph? span: \""
+                            + repeat.strip().substring(0, Math.min(70, repeat.strip().length())) + "…\"");
+                }
+            }
+        }
+        assertTrue(violations.isEmpty(), () -> "ledger lines that duplicate a long span of themselves:\n  "
+                + String.join("\n  ", violations));
+    }
+
+    /** Above this, a within-line repeat is duplication damage rather than prose — see the measurement above. */
+    private static final int MAX_WITHIN_LINE_REPEAT = 100;
+
+    /** The longest substring occurring twice in {@code line}; empty when none reaches the floor. */
+    private static String longestRepeatedSpan(String line) {
+        String best = "";
+        for (int width = MAX_WITHIN_LINE_REPEAT + 1; width <= line.length() / 2; width++) {
+            Set<String> seen = new java.util.HashSet<>();
+            String found = null;
+            for (int i = 0; i + width <= line.length(); i++) {
+                String window = line.substring(i, i + width);
+                if (!seen.add(window)) {
+                    found = window;
+                    break;
+                }
+            }
+            if (found == null) {
+                break;
+            }
+            best = found;
+        }
+        return best;
+    }
+
+    /** Does-fire proof, on the actual text a bad replace produced rather than on a synthetic doubling. */
+    @Test
+    void theDuplicationGuardFiresOnARealBotchedReplace() {
+        String tail = "and enlarging a slice per finding is what the convergence gate exists to stop. "
+                + "It was likewise empty as of 2026-08-04: ";
+        String damaged = "> **Current state.** The ledger is empty. Each landed as its own slice, because each "
+                + "was a distinct mechanism " + tail + "The nine gaps opened that day all shipped, " + tail
+                + "the review's ergonomic gaps.";
+        assertTrue(longestRepeatedSpan(damaged).length() > MAX_WITHIN_LINE_REPEAT,
+                () -> "must fire on the doubling that actually shipped, found only "
+                        + longestRepeatedSpan(damaged).length() + " chars");
+        assertEquals("", longestRepeatedSpan("> **Current state.** The ledger is empty as of 2026-08-22. "
+                        + "Ids in use so far: G1-G46 and G52-G62, with G47-G51 free; a retired id is never reused."),
+                "and must stay quiet on ordinary prose");
+    }
+
     private static List<String> audit(String name, String markdown) {
         List<String> violations = new ArrayList<>();
         String[] lines = markdown.split("\\R", -1);
