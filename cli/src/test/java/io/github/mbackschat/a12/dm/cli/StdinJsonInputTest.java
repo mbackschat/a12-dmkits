@@ -93,14 +93,27 @@ class StdinJsonInputTest {
         assertThrows(java.nio.file.NoSuchFileException.class, () -> JsonInput.read("./-", "<spec.json>"));
     }
 
+    /**
+     * The claim is cleared by {@code Cli.run}, and this drives it THROUGH {@code Cli.run} rather than calling
+     * the reset itself. The distinction is the whole point: the first version of this test primed stdin with a
+     * helper that also reset the claim, so it supplied the state the production code is supposed to provide and
+     * a mutant deleting {@code Cli.run}'s reset survived. A lock must not hand the code under test its answer.
+     */
     @Test
-    void theInvocationBoundaryClearsTheStdinClaim() throws Exception {
-        stdin(RANGE_SPEC);
-        JsonInput.read("-", "<spec.json>");
-        JsonInput.resetForInvocation();
-        // A fresh invocation may claim stdin again — otherwise one test-harness JVM could serve only one run.
+    void twoSuccessiveInvocationsInOneProcessMayEachClaimStdin(@TempDir Path dir) throws Exception {
+        Path model = dir.resolve("Cover_DM.json");
+        Files.writeString(model, CliTestSupport.orderRuledJson());
+
         JsonInput.stdinSource = () -> new StringReader(RANGE_SPEC);
-        assertEquals(RANGE_SPEC, JsonInput.read("-", "<spec.json>"));
+        var first = CliTestSupport.run("-m", model.toString(), "field", "add", "-");
+        assertEquals(0, first.code(), first.err());
+
+        // Only the SOURCE is re-primed — no reset here, so a second claim can only succeed if Cli.run cleared it.
+        JsonInput.stdinSource = () -> new StringReader(RANGE_SPEC.replace("CoverWindow", "SecondWindow"));
+        var second = CliTestSupport.run("-m", model.toString(), "field", "add", "-");
+        assertEquals(0, second.code(), second.err());
+        assertEquals("/Order/SecondWindow", M.readTree(second.out()).path("changed").path("added").asText(),
+                second::out);
     }
 
     @Test
