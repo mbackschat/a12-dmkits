@@ -20,6 +20,23 @@ subprojects {
     version = rootProject.version
 }
 
+// A failing test must say WHY in the build log, on every project and every Test task.
+//
+// Without this, Gradle logs only `AssertionFailedError at SomeTest.java:41` — the assertion MESSAGE, which is
+// where this project puts its evidence (a spawned script's whole output, a kernel diagnostic, an engine
+// disagreement), goes only to an HTML report. On CI that report is not uploaded, so a red run was a diagnosis
+// dead end: the 2026-08-22 `deliveryGuardTest` failure could not be read at all, and it fails only on Linux, so
+// re-running locally reveals nothing. Cheap, and it turns every future CI red into something readable.
+allprojects {
+    tasks.withType(Test).configureEach {
+        testLogging {
+            exceptionFormat = 'full'
+            showStackTraces = true
+            events 'failed'
+        }
+    }
+}
+
 // PUBLIC + LOCAL repositories only. The A12 kernel is resolved from the local Maven
 // repository (~/.m2), where the dedicated a12-kernel-bootstrap kit publishes it from
 // public sources. No private registry is used. See docs/PROJECT-DESIGN.md §19.

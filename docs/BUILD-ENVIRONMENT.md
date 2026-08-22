@@ -35,6 +35,26 @@ Recorded so the question is not re-investigated. On the 8-processor darwin machi
 
 **The lever that does work is scope, not concurrency:** `-Pfast` plus a single class is ~8 s (see [TESTING-SPEC](TESTING-SPEC.md) "Test tiers"), and the full lane belongs to the session-end checkpoint.
 
+## A failing test must say WHY in the build log (2026-08-22)
+
+Gradle's default console output for a failed test is one line — `SomeTest > case() FAILED` plus
+`AssertionFailedError at SomeTest.java:41`. The assertion **message** goes only to the HTML report. This project
+puts its evidence *in* that message on purpose: a spawned script's entire output, a kernel diagnostic, the
+`kernel=… interp=…` of an engine disagreement. So the default hid exactly the part worth reading.
+
+On CI it was worse than inconvenient. `ci.yml` uploads no artifact on failure, so the HTML report dies with the
+runner: a red run left nothing but a file and a line number. The 2026-08-22 `deliveryGuardTest` failure was
+undiagnosable for that reason, and it reproduces **only on Linux** (the launcher self-test branches on
+`/usr/libexec/java_home`, so a Mac takes the other path), which put the one readable copy of the message
+somewhere no local re-run could produce it.
+
+Fixed in `build.gradle` with an `allprojects` block setting `exceptionFormat = 'full'` on every `Test` task.
+Verified by planting a mutant and reading the message back out of the log rather than assuming the setting took.
+
+**The general lesson, which outlives this setting:** when a guard's evidence lives in a channel the failure path
+discards, the guard is only as good as a green run. Ask where the message goes *before* trusting a red one to
+tell you anything.
+
 ## Offline and bootstrap limits
 
 - **Wrapper download is blocked in the offline sandbox.** The committed wrapper points at the canonical `services.gradle.org` URL (correct for outside users). Locally, the bootstrap already extracted Gradle 9.0.0 under the a12 parent's `.gradle-dist/gradle-9.0.0/` — run that binary directly when offline.
