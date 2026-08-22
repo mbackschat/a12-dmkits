@@ -147,6 +147,41 @@ class StdinJsonInputTest {
         assertFalse(probe.closed, "stdin must not be closed — it is the process's fd 0, not this read's");
     }
 
+    /**
+     * An unreadable input is a CODED envelope on stdout, not a bare stderr line. The advertised correctives are
+     * only worth advertising if an agent can branch on them; before this, stdout was empty and the two prefixes
+     * lied once `-` existed ("cannot read ops file" when there is no file).
+     */
+    @Test
+    void anUnreadableInputIsRefusedAsACodedEnvelope(@TempDir Path dir) throws Exception {
+        Path model = dir.resolve("Cover_DM.json");
+        Files.writeString(model, CliTestSupport.orderRuledJson());
+        stdin("");
+
+        var res = CliTestSupport.run("-m", model.toString(), "field", "add", "-");
+        assertNotEquals(0, res.code(), res::out);
+        var envelope = M.readTree(res.out());
+        assertEquals("refused", envelope.path("outcome").asText(), res::out);
+        var d = envelope.path("diagnostics").path(0);
+        assertEquals("RK_INPUT_UNREADABLE", d.path("code").asText(), res::out);
+        assertEquals("<spec.json>", d.path("where").path("path").asText(), res::out);
+        assertTrue(d.path("summary").asText().contains("stdin"), res::out);
+        assertTrue(d.path("fix").asText().contains("'-'"), res::out);
+    }
+
+    /** The same shape for a missing FILE, so the class is closed rather than the stdin instance. */
+    @Test
+    void aMissingSpecFileIsRefusedTheSameWay(@TempDir Path dir) throws Exception {
+        Path model = dir.resolve("Cover_DM.json");
+        Files.writeString(model, CliTestSupport.orderRuledJson());
+
+        var res = CliTestSupport.run("-m", model.toString(), "field", "add", dir.resolve("gone.json").toString());
+        assertNotEquals(0, res.code(), res::out);
+        var d = M.readTree(res.out()).path("diagnostics").path(0);
+        assertEquals("RK_INPUT_UNREADABLE", d.path("code").asText(), res::out);
+        assertEquals("<spec.json>", d.path("where").path("path").asText(), res::out);
+    }
+
     @Test
     void aConfigBearingFieldIsAddableInOneCommandWithNoFileOnDisk(@TempDir Path dir) throws Exception {
         Path model = dir.resolve("Cover_DM.json");

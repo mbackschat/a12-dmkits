@@ -198,7 +198,7 @@ final class ApplyCommand extends BaseCommand {
             ops = MAPPER.readTree(JsonInput.read(opsFile, "<ops.json>"));
             modelJson = Files.readString(Path.of(model));
         } catch (IOException e) {
-            return fail("cannot read input: " + e.getMessage());
+            return refuseUnreadableInput("<ops.json>", opsFile, e);
         }
         if (!ops.isArray()) {
             return fail("the ops file must be a JSON array of op-records");

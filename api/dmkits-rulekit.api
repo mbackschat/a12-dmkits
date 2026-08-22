@@ -2667,6 +2667,7 @@ public enum io.github.mbackschat.a12.dm.rulekit.validate.RkCode
   public static final io.github.mbackschat.a12.dm.rulekit.validate.RkCode ERROR_FIELD_OUTSIDE_GROUP
   public static final io.github.mbackschat.a12.dm.rulekit.validate.RkCode GOTCHA
   public static final io.github.mbackschat.a12.dm.rulekit.validate.RkCode INCOMPLETE_RULE
+  public static final io.github.mbackschat.a12.dm.rulekit.validate.RkCode INPUT_UNREADABLE
   public static final io.github.mbackschat.a12.dm.rulekit.validate.RkCode INTERNAL_ERROR
   public static final io.github.mbackschat.a12.dm.rulekit.validate.RkCode INTERPRETER_INCLUDE_RULES_UNSUPPORTED
   public static final io.github.mbackschat.a12.dm.rulekit.validate.RkCode INTERPRETER_TIMEZONE_UNSUPPORTED

@@ -149,6 +149,11 @@ public enum RkCode {
     UNKNOWN_ARG(Severity.ERROR, DiagnosticSource.PRECHECK,
             "an op-record carries a key that is not a parameter of that verb.",
             "use the verb's documented keys (see `manifest` / `schema <target> <op>`); check the did-you-mean."),
+    INPUT_UNREADABLE(Severity.ERROR, DiagnosticSource.PRECHECK,
+            "a JSON input named on the command line could not be read — the file is missing or unreadable, or "
+                    + "the stdin it was to come from is empty, already consumed, or absent on this transport.",
+            "check the path exists and is readable; if the argument was '-', pipe the JSON in and use '-' at "
+                    + "most once per process."),
     INVALID_VALUE(Severity.ERROR, DiagnosticSource.PRECHECK,
             "a recognized spec key carries a value of the wrong type or shape — a string where an object/array is required, or a value outside the key's declared set (e.g. required:\"MANDATORY\" instead of true/false/\"ifParentPresent\").",
             "give the value the type the schema declares for this key (see `schema <target> <op>`); a wrong shape is rejected, never silently coerced to a default."),

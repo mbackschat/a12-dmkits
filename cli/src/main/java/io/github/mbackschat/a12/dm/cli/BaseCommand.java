@@ -199,6 +199,22 @@ public abstract class BaseCommand implements Callable<Integer> {
     }
 
     /**
+     * Refuse a JSON input that could not be READ — a coded envelope on stdout, not a bare stderr line.
+     *
+     * <p>Single-sourced because there are eleven catch sites and the interesting half is what they must NOT do:
+     * a plain {@code fail} leaves stdout empty, so an agent parsing it for a result gets nothing at all, and two
+     * of the old prefixes lied outright once {@code -} existed ("cannot read ops file" when there is no file).
+     * The code and {@code where} carry that instead, so the message never has to guess whether its source was a
+     * path or a stream. {@code label} is the parameter as its help text names it, e.g. {@code <spec.json>}.
+     */
+    protected int refuseUnreadableInput(String label, String source, IOException failure) {
+        String where = JsonInput.STDIN.equals(source) ? "stdin" : source;
+        return refusePrecheck(RkCode.INPUT_UNREADABLE,
+                label + " could not be read from " + where + ": " + failure.getMessage(),
+                label, RkCode.INPUT_UNREADABLE.fix());
+    }
+
+    /**
      * Refuse a RUNTIME evaluation whose model or candidate names entities it does not declare (G46) — one
      * diagnostic per reference, so a consumer repairs every one of them in a single pass instead of discovering
      * the next only after fixing the last. Exit 2, nothing evaluated and nothing written.

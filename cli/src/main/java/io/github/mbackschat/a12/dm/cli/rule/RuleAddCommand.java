@@ -79,7 +79,7 @@ final class RuleAddCommand extends BaseCommand {
             modelJson = Files.readString(Path.of(model));
             spec = MAPPER.readTree(JsonInput.read(specPath, "<rule-spec.json>"));
         } catch (IOException e) {
-            return fail("cannot read input: " + e.getMessage());
+            return refuseUnreadableInput("<rule-spec.json>", specPath, e);
         }
         Optional<Integer> rejected = rejectInvalidSpec("rule-add", spec);
         if (rejected.isPresent()) {

@@ -74,7 +74,7 @@ final class BatchCommand extends BaseCommand {
         try {
             ops = MAPPER.readTree(JsonInput.read(opsFile, "<ops.json>"));
         } catch (IOException e) {
-            return fail("cannot read ops file: " + e.getMessage());
+            return refuseUnreadableInput("<ops.json>", opsFile, e);
         }
         if (!ops.isArray()) {
             return fail("ops file must be a JSON array");

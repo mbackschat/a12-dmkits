@@ -73,7 +73,7 @@ final class ComputationAddCommand extends BaseCommand {
             modelJson = Files.readString(Path.of(model));
             spec = MAPPER.readTree(JsonInput.read(specPath, "<computation-spec.json>"));
         } catch (IOException e) {
-            return fail("cannot read input: " + e.getMessage());
+            return refuseUnreadableInput("<computation-spec.json>", specPath, e);
         }
         Optional<Integer> rejected = rejectInvalidSpec("computation-add", spec);
         if (rejected.isPresent()) {

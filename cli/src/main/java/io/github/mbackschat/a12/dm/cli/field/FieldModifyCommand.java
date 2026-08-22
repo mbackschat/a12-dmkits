@@ -136,7 +136,7 @@ final class FieldModifyCommand extends BaseCommand {
         } catch (IllegalArgumentException badSpec) {
             return fail("invalid field spec: " + badSpec.getMessage());
         } catch (IOException e) {
-            return fail("cannot read field spec: " + e.getMessage());
+            return refuseUnreadableInput("<spec.json>", specPath, e);
         }
 
         String resultJson;

@@ -89,7 +89,7 @@ final class ComputationModifyCommand extends BaseCommand {
         try {
             spec = MAPPER.readTree(JsonInput.read(specPath, "<computation-spec.json>"));
         } catch (IOException e) {
-            return fail("cannot read --spec: " + e.getMessage());
+            return refuseUnreadableInput("--spec", specPath, e);
         }
         Optional<Integer> rejected = rejectInvalidSpec("computation-add", spec);
         if (rejected.isPresent()) {
