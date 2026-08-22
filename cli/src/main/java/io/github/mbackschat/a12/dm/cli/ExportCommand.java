@@ -21,6 +21,8 @@ import picocli.CommandLine.Command;
 import picocli.CommandLine.Mixin;
 import picocli.CommandLine.Option;
 import picocli.CommandLine.Parameters;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * The {@code export} verb (CLI-SPEC §5) — renders the model-context surface as the finding-13
@@ -77,15 +79,21 @@ final class ExportCommand extends BaseCommand {
             return failOrRethrowDomainRejection("export failed: ", e);
         }
         if (outputDir != null) {
+            Path dir = Path.of(outputDir);
+            // The written list is accumulated rather than derived afterwards: a failure part-way through leaves
+            // real files behind, and `written:false` (the SELECTED destination is the whole set) cannot say so.
+            List<String> landed = new ArrayList<>();
             try {
-                Path dir = Path.of(outputDir);
                 Files.createDirectories(dir);
                 for (Artifact a : Artifact.values()) {
-                    Files.writeString(dir.resolve(a.fileName), render(a, bound, json));
+                    Path file = dir.resolve(a.fileName);
+                    Files.writeString(file, render(a, bound, json));
+                    landed.add(file.toString());
                 }
                 return 0;
             } catch (IOException e) {
-                return fail("cannot write output: " + e.getMessage());
+                return refuseUnwritableOutput(ResultIdentity.EXPORT_RENDER, "--out-dir <dir>", outputDir, e,
+                        landed);
             } catch (RuntimeException e) {
                 return failOrRethrowDomainRejection("export failed: ", e);
             }

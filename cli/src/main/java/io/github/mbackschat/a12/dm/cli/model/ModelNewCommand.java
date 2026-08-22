@@ -80,7 +80,7 @@ final class ModelNewCommand extends BaseCommand {
             try {
                 Files.writeString(Path.of(outputPath), json);
             } catch (IOException e) {
-                return fail("cannot write output: " + e.getMessage());
+                return refuseUnwritableOutput("-o <file>", outputPath, e);
             }
             // -o writes the model to a file, so the model JSON does NOT go to stdout — emit a machine-confirmable
             // WRITE envelope instead (outcome:applied, written:true, output:<path>), so an agent can verify the

@@ -128,10 +128,15 @@ final class BatchCommand extends BaseCommand {
             try {
                 observationPlan.write(results);
             } catch (IOException e) {
-                Diagnostic diagnostic = Diagnostic.internal(java.util.Optional.of(RkCode.INTERNAL_ERROR.code()),
+                // ENVIRONMENT, not INTERNAL: this used to carry RK_INTERNAL_ERROR — "a dmtool defect, report
+                // it" — beside a fix telling the caller to pick a better path. Both cannot be true, and the
+                // path is the caller's. The family and exit code are deliberately unchanged: every child ran
+                // and wrote, so this is a partial success, not the "nothing happened" shape a refusal carries.
+                Diagnostic diagnostic = Diagnostic.environmentFailure(
+                        java.util.Optional.of(RkCode.OUTPUT_UNWRITABLE.code()),
                         "cannot write the observations artifact: " + e.getMessage(),
                         new Diagnostic.Where((String) null, java.util.Optional.empty()),
-                        java.util.Optional.of("choose a writable regular-file destination and rerun the batch"));
+                        java.util.Optional.of(RkCode.OUTPUT_UNWRITABLE.fix()));
                 ResultEnvelope envelope = ResultEnvelope.dispatchArtifactWriteFailed(
                         ResultIdentity.BATCH_RUN, "dispatched " + results.size() + " op"
                                 + (results.size() == 1 ? "" : "s")

@@ -176,6 +176,15 @@ public enum RkCode {
             "check that each listed rule or computation still means what you intend over its new expansion; if one must keep the element, name the element directly instead of its group, or move it back."),
 
     // --- environment / version (advisory or fail-fast) ------------------------------------------
+    // ENVIRONMENT rather than PRECHECK: every check passed and the work was done — the destination refused it.
+    // Calling it a precheck would blame the input; calling it INTERNAL would blame the tool (the mistake the
+    // batch observations write failure made, carrying RK_INTERNAL_ERROR beside a fix about choosing a path).
+    OUTPUT_UNWRITABLE(Severity.ERROR, DiagnosticSource.ENVIRONMENT,
+            "the selected output destination could not be written — a path component is not a directory, the "
+                    + "location is not writable, or the filesystem refused. The model itself was fine and, for a "
+                    + "single-file destination, nothing was written.",
+            "choose a writable destination whose parent is an existing directory and rerun; a multi-file writer "
+                    + "reports any files it had already left behind in `data.written` so they can be cleaned up."),
     NO_KERNEL_BACKEND(Severity.INFO, DiagnosticSource.ENVIRONMENT,
             "no kernel backend is on the classpath, so the authoritative consistency/MVK gate did not run — this result reflects the structural prechecks that ran, not a kernel-confirmed verdict (verification=STRUCTURAL_ONLY). ok() means only 'no ERROR among the checks that ran' and must never be read as kernel-green.",
             "add the kernel backend (the CLI bundles it; a library consumer adds the :adapter module) to obtain KERNEL_CONFIRMED validation — typed authoring and structural reads are fully available without it."),

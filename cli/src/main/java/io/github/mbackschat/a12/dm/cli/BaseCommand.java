@@ -254,6 +254,42 @@ public abstract class BaseCommand implements Callable<Integer> {
     }
 
     /**
+     * Refuse an OUTPUT that could not be WRITTEN — a coded envelope on stdout, the mirror of
+     * {@link #refuseUnreadableInput} (G62). {@code label} names the destination parameter as its help text does.
+     *
+     * <p><b>{@code written} stays false even when bytes reached the disk.</b> The published contract defines it
+     * as whether this invocation wrote its <i>selected</i> destination, and a half-written bundle is not that.
+     * What the caller cannot recover from the boolean is what debris to clean up, so {@code alreadyWritten}
+     * carries it into {@code data.written} — empty for the single-file writers, which really did write nothing.
+     */
+    protected int refuseUnwritableOutput(String label, String destination, IOException failure) {
+        return refuseUnwritableOutput(resultIdentity(), label, destination, failure, List.of());
+    }
+
+    /** Identity-carrying counterpart, for the one-token verbs — same reason as {@link #readModelJson}. */
+    protected int refuseUnwritableOutput(ResultIdentity identity, String label, String destination,
+            IOException failure) {
+        return refuseUnwritableOutput(identity, label, destination, failure, List.of());
+    }
+
+    /** Multi-file counterpart: {@code alreadyWritten} names the files that landed before the failure. */
+    protected int refuseUnwritableOutput(ResultIdentity identity, String label, String destination,
+            IOException failure, List<String> alreadyWritten) {
+        String summary = label + " could not be written to " + destination + ": " + failure.getMessage()
+                + (alreadyWritten.isEmpty() ? "" : " — " + alreadyWritten.size()
+                        + " file(s) were already written and are left behind");
+        Diagnostic diagnostic = Diagnostic.environmentFailure(Optional.of(RkCode.OUTPUT_UNWRITABLE.code()),
+                summary, Diagnostic.Where.path(label), Optional.of(RkCode.OUTPUT_UNWRITABLE.fix()));
+        ObjectNode data = null;
+        if (!alreadyWritten.isEmpty()) {
+            data = JSON.createObjectNode();
+            ArrayNode written = data.putArray("written");
+            alreadyWritten.forEach(written::add);
+        }
+        return refuse(identity, new Refusal(summary, data, diagnostic));
+    }
+
+    /**
      * Refuse a RUNTIME evaluation whose model or candidate names entities it does not declare (G46) — one
      * diagnostic per reference, so a consumer repairs every one of them in a single pass instead of discovering
      * the next only after fixing the last. Exit 2, nothing evaluated and nothing written.
@@ -399,7 +435,7 @@ public abstract class BaseCommand implements Callable<Integer> {
         try {
             Files.writeString(Path.of(write.destination()), write.json());
         } catch (IOException e) {
-            return fail("cannot write output: " + e.getMessage());
+            return refuseUnwritableOutput("-o <file>", write.destination(), e);
         }
         return print(write.applied());
     }

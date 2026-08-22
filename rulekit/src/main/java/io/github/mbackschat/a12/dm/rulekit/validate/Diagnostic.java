@@ -131,6 +131,22 @@ public record Diagnostic(
     }
 
     /**
+     * An <b>environment</b> failure (ENVIRONMENT origin, ERROR): the input was valid and the work was done, but
+     * something outside the tool refused — an unwritable destination being the case this exists for.
+     *
+     * <p>The distinction is load-bearing in both directions. {@link DiagnosticSource#PRECHECK} would say the
+     * caller's input was bad, and {@link DiagnosticSource#INTERNAL} would say the tool is broken and should be
+     * reported as a defect; for a destination the caller chose, both send them to the wrong place. The other
+     * ENVIRONMENT codes are advisories at INFO, so this is the first one that is a failure — the origin marks
+     * WHERE the problem is, not how severe it is.
+     */
+    public static Diagnostic environmentFailure(Optional<String> code, String summary, Where where,
+            Optional<String> fix) {
+        return new Diagnostic(Severity.ERROR, DiagnosticSource.ENVIRONMENT, code, summary, where, fix,
+                Optional.empty());
+    }
+
+    /**
      * A tool-internal failure (INTERNAL origin, ERROR): an unexpected throwable caught at the command
      * boundary — the tool itself broke (e.g. a native-image reflection gap), distinct from a kernel
      * rejection of valid-but-invalid input. The {@code fix} points at recovery; carries no {@code explain}.

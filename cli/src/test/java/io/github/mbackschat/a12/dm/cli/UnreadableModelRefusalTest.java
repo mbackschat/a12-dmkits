@@ -201,8 +201,11 @@ class UnreadableModelRefusalTest {
                 continue;
             }
             String code = outcome.modelRefusalCode().orElse("<no diagnostic naming " + MODEL_LABEL + ">");
-            if (!RkCode.INPUT_UNREADABLE.code().equals(code)) {
-                wrong.put(outcome.verb(), code + " (stderr: " + firstLine(outcome.err()) + ")");
+            // Exit code as well as shape: a refusal that emitted the right envelope under exit 70 would still
+            // tell a shell script the tool broke, and 70 is exactly what two of these verbs used to return.
+            if (!RkCode.INPUT_UNREADABLE.code().equals(code) || outcome.code() != 2) {
+                wrong.put(outcome.verb(), "exit " + outcome.code() + ", " + code
+                        + " (stderr: " + firstLine(outcome.err()) + ")");
             }
         }
         assertTrue(wrong.isEmpty(), () -> "an unreadable -m must refuse as "
@@ -238,8 +241,9 @@ class UnreadableModelRefusalTest {
                 continue;
             }
             String code = outcome.modelRefusalCode().orElse("<no diagnostic naming " + MODEL_LABEL + ">");
-            if (!RkCode.MODEL_NOT_NAMED.code().equals(code)) {
-                wrong.put(outcome.verb(), code + " (stderr: " + firstLine(outcome.err()) + ")");
+            if (!RkCode.MODEL_NOT_NAMED.code().equals(code) || outcome.code() != 2) {
+                wrong.put(outcome.verb(), "exit " + outcome.code() + ", " + code
+                        + " (stderr: " + firstLine(outcome.err()) + ")");
             }
         }
         assertTrue(wrong.isEmpty(), () -> "an absent -m must refuse as " + RkCode.MODEL_NOT_NAMED.code()

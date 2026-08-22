@@ -18,6 +18,8 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Option;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * {@code dmtool model import-jsonschema} — turn a JSON Schema into a kernel-valid Document Model. Import is
@@ -171,7 +173,7 @@ final class ModelImportJsonschemaCommand extends BaseCommand {
             try {
                 Files.writeString(Path.of(outputPath), result.dmJson());
             } catch (IOException e) {
-                return fail("cannot write output: " + e.getMessage());
+                return refuseUnwritableOutput("-o <file>", outputPath, e);
             }
             ObjectNode changed = MAPPER.createObjectNode();
             changed.set("report", JsonSchemaCli.reportNode(MAPPER, result.report()));   // the agent's to-do list, structured
@@ -205,17 +207,19 @@ final class ModelImportJsonschemaCommand extends BaseCommand {
         try {
             Files.createDirectories(dir);
         } catch (IOException e) {
-            return fail("cannot create --out-dir: " + e.getMessage());
+            return refuseUnwritableOutput("--out-dir <dir>", outDir, e);
         }
         ObjectNode changed = MAPPER.createObjectNode();
         ArrayNode models = changed.putArray("models");
+        List<String> landed = new ArrayList<>();
         for (var entry : bundle.models().entrySet()) {
             Path file = dir.resolve(entry.getKey() + ".dm.json");
             try {
                 Files.writeString(file, entry.getValue().dmJson());
             } catch (IOException e) {
-                return fail("cannot write " + file + ": " + e.getMessage());
+                return refuseUnwritableOutput(resultIdentity(), "--out-dir <dir>", file.toString(), e, landed);
             }
+            landed.add(file.toString());
             JsonSchemaCli.printReport(err(), entry.getValue().report());
             ObjectNode m = models.addObject();
             m.put("id", entry.getKey());

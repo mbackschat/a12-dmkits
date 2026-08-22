@@ -84,7 +84,7 @@ final class ModelExportJsonschemaCommand extends BaseCommand {
             try {
                 Files.writeString(Path.of(outputPath), result.jsonSchema());
             } catch (IOException e) {
-                return fail("cannot write output: " + e.getMessage());
+                return refuseUnwritableOutput("-o <file>", outputPath, e);
             }
             ObjectNode changed = MAPPER.createObjectNode();
             changed.set("report", JsonSchemaCli.reportNode(MAPPER, result.report()));   // structured dispositions in the envelope

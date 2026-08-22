@@ -8,6 +8,7 @@ import java.nio.file.Path;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
+import io.github.mbackschat.a12.dm.rulekit.validate.RkCode;
 
 /**
  * A write that cannot reach its destination fails as an <b>environment</b> problem — not as an input rejection and
@@ -40,11 +41,14 @@ class MutationWriteFailureTest {
                 "field", "add", "--group", "/Order", "--name", "PromoCode", "--kind", "STRING",
                 "-o", unwritable(dir).toString());
 
-        assertEquals(2, res.code(), () -> "an unwritable destination is a usage/environment failure: " + res.out());
-        assertTrue(res.err().contains("cannot write output"),
-                () -> "and it says so plainly on stderr: " + res.err() + res.out());
-        assertTrue(res.out().isBlank(),
-                () -> "stdout carries no envelope — nothing was applied, and no verdict was reached: " + res.out());
+        assertEquals(2, res.code(), () -> "an unwritable destination is an environment failure: " + res.out());
+        // Since G62 the reason is a CODED envelope on stdout rather than a stderr line. The classification this
+        // class exists to protect is unchanged — exit 2, ENVIRONMENT source, nothing applied — but stdout is no
+        // longer empty, because a reason only a human can read is not one an agent can branch on.
+        assertTrue(res.out().contains(RkCode.OUTPUT_UNWRITABLE.code()),
+                () -> "and says so in coded form: " + res.out() + res.err());
+        assertTrue(res.out().contains("\"written\" : false"),
+                () -> "nothing was applied, and no verdict was reached: " + res.out());
     }
 
     @Test
@@ -55,7 +59,7 @@ class MutationWriteFailureTest {
                 "rule", "remove", "/Order/EligibilityCheck", "-o", unwritable(dir).toString());
 
         assertEquals(2, res.code(), () -> "same classification from a different verb family: " + res.out());
-        assertTrue(res.err().contains("cannot write output"), res::err);
+        assertTrue(res.out().contains(RkCode.OUTPUT_UNWRITABLE.code()), () -> res.out() + res.err());
     }
 
     /** The model is untouched: a failed write leaves no half-edit behind, whichever destination was refused. */

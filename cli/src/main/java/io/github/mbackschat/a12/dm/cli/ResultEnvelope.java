@@ -95,7 +95,17 @@ public final class ResultEnvelope {
         DISPATCH,
         /** Every child ran in ordinary batch mode, but at least one returned nonzero. */
         DISPATCH_WITH_FAILURES,
-        /** A safety gate refused before mutating (CLI-SPEC §6) — exit 2, nothing written. */
+        /**
+         * The op did not run and its selected destination was not written — exit 2.
+         *
+         * <p>Originally only a refactor safety gate refusing before mutating (CLI-SPEC §6). It now also carries
+         * the input and output failures that cannot be a verdict: an input the caller named that could not be
+         * read, and a destination that could not be written. All three share the one property the exit code and
+         * {@code written:false} assert — nothing the caller asked for was produced — which is why they share a
+         * family rather than each getting one. A <i>partially</i> written multi-file destination stays here too:
+         * the selected destination is the whole set, so it was not written, and the debris is named in
+         * {@code data.written}.
+         */
         REFUSAL,
         /** The input was rejected — by the kernel gate, or by the CLI's own pre-flight. Exit 1. */
         REJECTION,

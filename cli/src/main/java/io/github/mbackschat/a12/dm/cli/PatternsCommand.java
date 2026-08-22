@@ -365,7 +365,7 @@ final class PatternsCommand extends BaseCommand {
         try {
             Files.writeString(Path.of(dest), persisted);
         } catch (IOException e) {
-            return fail("cannot write output: " + e.getMessage());
+            return refuseUnwritableOutput(ResultIdentity.PATTERNS_SCAFFOLD, "-o <file>", outputPath, e);
         }
         payload.put(kind, scaffolded);
         return print(ResultEnvelope.applied(ResultIdentity.PATTERNS_SCAFFOLD,

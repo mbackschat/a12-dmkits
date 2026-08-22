@@ -258,7 +258,7 @@ final class ApplyCommand extends BaseCommand {
                 gateRejection = e;
                 results.add(gateRejection(e).toJson());   // terminal gate rejected the committed sequence → rollback
             } catch (IOException e) {
-                return fail("cannot write output: " + e.getMessage());
+                return refuseUnwritableOutput(ResultIdentity.APPLY_RUN, "-o <file>", outputPath, e);
             }
         }
 

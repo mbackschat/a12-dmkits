@@ -71,7 +71,7 @@ final class ProfileExtractCommand extends BaseCommand {
         try {
             Files.writeString(Path.of(outputPath), profileJson);
         } catch (IOException e) {
-            return fail("cannot write output: " + e.getMessage());
+            return refuseUnwritableOutput("-o <profile.json>", outputPath, e);
         }
         ObjectNode changed = JSON.createObjectNode();
         changed.put("artifact", "model-performance-profile");

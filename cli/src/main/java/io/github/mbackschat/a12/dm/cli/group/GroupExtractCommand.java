@@ -26,6 +26,7 @@ import picocli.CommandLine.Command;
 import picocli.CommandLine.Mixin;
 import picocli.CommandLine.Option;
 import picocli.CommandLine.Parameters;
+import java.util.List;
 
 /**
  * {@code dmtool group extract <groupPath> --reference <subModelId>} — the Tier-3 structural refactor
@@ -132,11 +133,19 @@ final class GroupExtractCommand extends BaseCommand {
             return env.exitCode();
         }
         String dest = outputPath != null ? outputPath : model;
+        // Written one at a time: a shared catch could not say WHICH of the two destinations refused, and could
+        // not report that the sub-model had already landed when the base model's write failed.
         try {
             Files.writeString(subFile, subModel);
+        } catch (IOException e) {
+            return refuseUnwritableOutput("<subModel>", subFile.toString(), e);
+        }
+        try {
             Files.writeString(Path.of(dest), baseJson);
         } catch (IOException e) {
-            return fail("cannot write output: " + e.getMessage());
+            return refuseUnwritableOutput(resultIdentity(),
+                    outputPath != null ? "-o <file>" : "-m <model.json>", dest, e,
+                    List.of(subFile.toString()));
         }
         ResultEnvelope env = ResultEnvelope.applied(resultIdentity(),
                 "extracted " + group + " into sub-model " + reference + " (" + subFile + ")", changed, dest,

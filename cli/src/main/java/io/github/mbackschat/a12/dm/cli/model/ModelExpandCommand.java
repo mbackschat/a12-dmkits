@@ -55,7 +55,7 @@ final class ModelExpandCommand extends BaseCommand {
         try {
             Files.writeString(Path.of(outputPath), expanded);
         } catch (IOException e) {
-            return fail("cannot write output: " + e.getMessage());
+            return refuseUnwritableOutput("-o <file>", outputPath, e);
         }
         ObjectNode changed = JsonNodeFactory.instance.objectNode();
         changed.put("selfContained", true);

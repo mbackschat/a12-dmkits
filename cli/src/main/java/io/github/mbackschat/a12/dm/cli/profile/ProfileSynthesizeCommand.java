@@ -79,7 +79,7 @@ final class ProfileSynthesizeCommand extends BaseCommand {
         try {
             Files.writeString(Path.of(outputPath), modelJson);
         } catch (IOException e) {
-            return fail("cannot write output: " + e.getMessage());
+            return refuseUnwritableOutput("-o <file>", outputPath, e);
         }
 
         ObjectNode changed = JSON.createObjectNode();
