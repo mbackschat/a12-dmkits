@@ -43,7 +43,7 @@
     },
     "valid": {
       "type": "boolean",
-      "description": "the subject model is kernel-valid — a consistency VERDICT, distinct from `ok`. PRESENT ONLY on a genuine verdict (`model check`, `rule check`, `workspace check`, a `patterns` scaffold review) and on a rejection the kernel gate produced (then `false`). ABSENT on every read, runtime evaluation, comparison, mutation, refusal, and pre-flight rejection — none of those establishes a verdict. A per-entry `valid` nested inside `data` (`workspace list --validate`, `workspace check`) is a different, model-scoped fact and never affects the exit code"
+      "description": "the subject model is kernel-valid — a consistency VERDICT, distinct from `ok`. PRESENT ONLY on a genuine verdict (`model check`, `rule check`, `workspace check`, a `patterns` scaffold review) and on a rejection the kernel gate produced (then `false`). ABSENT on every read, runtime evaluation, comparison, mutation, refusal, and pre-flight rejection — none of those establishes a verdict. A per-entry `valid` nested inside `data` (`workspace list --validate`, `workspace check`) is a different, model-scoped fact and never affects the exit code. THE ABSENCE IS ASYMMETRIC, and it is the one trap in this key: a gate that REJECTED emits `valid:false`, while a gate that ACCEPTED emits nothing at all, so an absent `valid` covers both 'no verdict was established' and 'a verdict was established and it was green'. Never read absence as 'nothing was checked' — `verification` is what answers that. An accepted `--dry-run` preview is exactly this case: `ok:true` with `verification:KERNEL_CONFIRMED` and no `valid` means the kernel DID arbitrate the change and passed it"
     },
     "verification": {
       "type": "string",
