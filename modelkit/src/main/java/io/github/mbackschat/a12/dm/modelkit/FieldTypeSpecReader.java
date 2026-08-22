@@ -26,7 +26,8 @@ final class FieldTypeSpecReader {
             case "TimeType" -> new FieldTypeSpec.TimeSpec(text(config, "format"));
             case "DateTimeType" -> new FieldTypeSpec.DateTimeSpec(text(config, "format"));
             case "DateRangeType" -> new FieldTypeSpec.DateRangeSpec(
-                    text(config, "format"), text(config, "rangeSeparator"));
+                    text(config, "format"), text(config, "rangeSeparator"),
+                    RangeYearInterpretation.fromJson(text(config, "interpretationOfYear")));
             case "DateFragmentType" -> new FieldTypeSpec.DateFragmentSpec(text(config, "formatOfFragment"));
             case "TypeDefType" -> new FieldTypeSpec.TypeDefRef(config.path(DmKeys.TYPE_DEFINITION_ID).asText());
             case "BooleanType" -> new FieldTypeSpec.BooleanSpec();

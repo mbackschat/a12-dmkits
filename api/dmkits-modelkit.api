@@ -37,6 +37,7 @@ public enum io.github.mbackschat.a12.dm.modelkit.DatePrecision
 public final class io.github.mbackschat.a12.dm.modelkit.DateRangeFieldBuilder extends io.github.mbackschat.a12.dm.modelkit.FieldAttrs<io.github.mbackschat.a12.dm.modelkit.DateRangeFieldBuilder>
   public DateRangeFieldBuilder()
   public io.github.mbackschat.a12.dm.modelkit.DateRangeFieldBuilder format(java.lang.String)
+  public io.github.mbackschat.a12.dm.modelkit.DateRangeFieldBuilder interpretationOfYear(io.github.mbackschat.a12.dm.modelkit.RangeYearInterpretation)
   public io.github.mbackschat.a12.dm.modelkit.DateRangeFieldBuilder separator(java.lang.String)
   protected io.github.mbackschat.a12.dm.modelkit.FieldTypeSpec spec()
 
@@ -320,9 +321,11 @@ public static record io.github.mbackschat.a12.dm.modelkit.FieldTypeSpec.DateFrag
 
 public static record io.github.mbackschat.a12.dm.modelkit.FieldTypeSpec.DateRangeSpec implements io.github.mbackschat.a12.dm.modelkit.FieldTypeSpec
   public DateRangeSpec(java.lang.String, java.lang.String)
+  public DateRangeSpec(java.lang.String, java.lang.String, io.github.mbackschat.a12.dm.modelkit.RangeYearInterpretation)
   public final boolean equals(java.lang.Object)
   public java.lang.String format()
   public final int hashCode()
+  public io.github.mbackschat.a12.dm.modelkit.RangeYearInterpretation interpretationOfYear()
   public java.lang.String jsonType()
   public java.lang.String separator()
   public final java.lang.String toString()
@@ -770,6 +773,15 @@ public enum io.github.mbackschat.a12.dm.modelkit.NumberTrait
   public java.lang.String json()
   public static io.github.mbackschat.a12.dm.modelkit.NumberTrait valueOf(java.lang.String)
   public static io.github.mbackschat.a12.dm.modelkit.NumberTrait[] values()
+
+public enum io.github.mbackschat.a12.dm.modelkit.RangeYearInterpretation
+  public static final io.github.mbackschat.a12.dm.modelkit.RangeYearInterpretation FROM
+  public static final io.github.mbackschat.a12.dm.modelkit.RangeYearInterpretation STANDARD
+  public static final io.github.mbackschat.a12.dm.modelkit.RangeYearInterpretation TO
+  public static io.github.mbackschat.a12.dm.modelkit.RangeYearInterpretation fromJson(java.lang.String)
+  public java.util.Optional<java.lang.String> json()
+  public static io.github.mbackschat.a12.dm.modelkit.RangeYearInterpretation valueOf(java.lang.String)
+  public static io.github.mbackschat.a12.dm.modelkit.RangeYearInterpretation[] values()
 
 public enum io.github.mbackschat.a12.dm.modelkit.Requiredness
   public static final io.github.mbackschat.a12.dm.modelkit.Requiredness OPTIONAL

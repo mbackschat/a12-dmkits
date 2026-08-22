@@ -471,6 +471,9 @@ public final class DocumentModelDraft {
                 ObjectNode inner = fieldType.putObject("DateRangeType");
                 inner.put("format", dr.format());
                 inner.put("rangeSeparator", dr.separator());
+                // STANDARD has no DM-JSON spelling: the kernel's deserializer refuses the token and reads an
+                // ABSENT key as the default, so the key is written only for FROM/TO.
+                dr.interpretationOfYear().json().ifPresent(v -> inner.put("interpretationOfYear", v));
             }
             case FieldTypeSpec.DateFragmentSpec df ->
                     fieldType.putObject("DateFragmentType").put("formatOfFragment", df.fragmentFormat());
@@ -632,6 +635,7 @@ public final class DocumentModelDraft {
                 ObjectNode b = MAPPER.createObjectNode();
                 copyText(c, "format", b, "format");
                 copyText(c, "rangeSeparator", b, "separator");
+                copyText(c, "interpretationOfYear", b, "interpretationOfYear");
                 if (!b.isEmpty()) out.set("dateRange", b);
             }
             case "DateFragmentType" -> {

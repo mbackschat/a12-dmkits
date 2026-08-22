@@ -20,8 +20,27 @@ public sealed interface FieldTypeSpec {
     /** The kernel DM-JSON {@code fieldType.type} discriminator (e.g. {@code "StringType"}). */
     String jsonType();
 
-    /** A date range with a constant format and a range separator (both required by the kernel, §6). */
-    record DateRangeSpec(String format, String separator) implements FieldTypeSpec {
+    /**
+     * A date range with a constant format and a range separator (both required by the kernel, §6), plus the
+     * {@code interpretationOfYear} that decides which endpoint of a <b>wrapping yearless</b> range keeps the
+     * base year — see {@link RangeYearInterpretation}. The interpretation is never {@code null}: an absent
+     * declaration means {@link RangeYearInterpretation#STANDARD}, which is emitted by omitting the key.
+     *
+     * <p>Author through {@code DateRangeFieldBuilder}; the 2-arg constructor is retained as a delegating
+     * overload so existing consumers and record deconstruction over {@code (format, separator)} keep working.
+     */
+    record DateRangeSpec(String format, String separator, RangeYearInterpretation interpretationOfYear)
+            implements FieldTypeSpec {
+
+        public DateRangeSpec {
+            interpretationOfYear = interpretationOfYear == null
+                    ? RangeYearInterpretation.STANDARD : interpretationOfYear;
+        }
+
+        public DateRangeSpec(String format, String separator) {
+            this(format, separator, RangeYearInterpretation.STANDARD);
+        }
+
         @Override
         public String jsonType() {
             return "DateRangeType";
