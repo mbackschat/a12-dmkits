@@ -3008,3 +3008,28 @@ The two fallback controls agree with the existing no-row field-star family: both
 No evaluator change was required. The existing typed `BoundModel.firstFilledGroup("/Return/Rows*")` retains the starred group operand, and `firstFilledExpandedGroup` consumes `Document.containedFields` in declaration order before `firstFilledStar` scans each field's rows. This is the same interpreter scan and differential route as the fixed-group owner; no schema, second evaluator, or probe route was added.
 
 *(Locked: `adapter.laws.FirstFilledValueGroupOperandDiffTest.aStarredGroupTraversesDeclarationMajorAcrossRows`, all six selected-token and VALUE/OMISSION outcomes on both kernel strategies and the interpreter; `FirstFilledValueGroupOrderTest.starredGroupTraversesDeclarationMajorAcrossRows`, the same six rows on JVM and Node.)*
+
+---
+
+## The consistency gate's diagnostic list is NOT a defect count, in either direction (kernel `checkConsistency`, 2026-08-22) <a id="kf192"></a>
+
+> Fold: not-foldable — this is a property of the consistency GATE's output, not of any kernel-semantics section; its consumer-facing home is the `diagnostics` contract of `schema result`.
+
+Two independently live defects can return **one** diagnostic, and **one** defect can return **two**. Both were measured on the same fixture and the same condition text, varying only the error field, so the pair is a within-model control on a single variable.
+
+| error field | condition | codes returned |
+|---|---|---|
+| `../MonthOnly` (referenced) | `AllFieldsFilled(MonthOnly, YearOnly) And [MonthOnly] == [YearOnly]` | `MVK_INVALID_COMPARE_TO_DATE` |
+| `../Ref` (exists, unreferenced) | *a comparison the kernel accepts* | `MVK_ERROR_FIELD_NOT_REFERENCED` |
+| `../Ref` (exists, unreferenced) | **the same year-class mix** | `MVK_INVALID_COMPARE_TO_DATE` **only** — the error-field objection is suppressed |
+| `../Nope` (does not exist) | **the same year-class mix** | `MVK_ERROR_FIELD_MISSING` **and** `MVK_MISSING_ERROR_FIELD` — two codes for one defect, and now the *comparison* is suppressed |
+
+The first two rows are the controls: each code fires alone, so in row 3 the missing one is suppressed rather than absent. Row 4 is what makes the finding two-sided, and it also **settles the layer question without appealing to our own source**: two kernel codes travel the whole path intact, so row 3's single code cannot be dmtool dropping one.
+
+Note the precedence **reverses** between rows 3 and 4 — the comparison wins over an unreferenced error field, and a missing error field wins over the comparison. A plausible mechanism is that a missing error field is a model-shape objection raised before the rule-semantics checks while an unreferenced one is raised after the comparison check, but that is a HYPOTHESIS from these two observations and is not measured.
+
+**Consequence for a consumer** (the reason G55 was filed): read a lone diagnostic as *an* objection, never *the* objection. To attribute a refusal to a specific gate, remove the other candidate defect and re-run — which is exactly what the reporting campaign had to do. An author never notices, because fixing defects one at a time re-runs the gate anyway.
+
+**Denominator, stated:** two multi-defect pairs on one fixture. Enough to establish that suppression and code-duplication both occur, which is what stops a consumer counting; not a general law about which gate wins, and no wider sweep was run.
+
+*(Locked: `rulekit.validate.laws.DiagnosticMultiplicityLawsTest` — both controls plus both multi-defect rows. Published in the `diagnostics` contract of `schema result`.)*

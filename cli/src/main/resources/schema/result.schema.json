@@ -85,7 +85,7 @@
       "items": {
         "$ref": "https://github.com/mbackschat/a12-dmkits/schema/diagnostic.schema.json"
       },
-      "description": "structured findings — see `schema diagnostic`"
+      "description": "structured findings — see `schema diagnostic`. NOT A DEFECT COUNT, in either direction: the list is neither a complete enumeration of what is wrong nor one entry per problem. A rule carrying two independent defects can return ONE diagnostic (the consistency gate suppresses the other), and a single defect can return TWO (the same problem under two `MVK_*` code names). Which objection wins is not a fixed order — measured both ways. So read a lone diagnostic as AN objection, never THE objection: to attribute a refusal to a specific gate, remove the other candidate defect and re-run. A precheck refusal (`RK_*`, `source: PRECHECK`) additionally means the kernel gate was never asked, so no `MVK_*` can appear beside it however many kernel-level defects the input also carries."
     },
     "written": {
       "type": "boolean",
