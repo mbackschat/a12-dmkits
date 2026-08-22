@@ -98,6 +98,8 @@ class DocSnippetFreshnessTest {
             new Lock("first-filled-owner-entities", "docs/API-GUIDE.md", NEW_SHAPES),
             new Lock("date-before-1900", "docs/API-GUIDE.md",
                     "adapter/src/test/java/io/github/mbackschat/a12/dm/adapter/FieldConfigExtrasTest.java"),
+            new Lock("date-range-year-interpretation", "docs/API-GUIDE.md",
+                    "adapter/src/test/java/io/github/mbackschat/a12/dm/adapter/FieldConfigExtrasTest.java"),
             new Lock("field-rounding", "docs/API-GUIDE.md", NEW_SHAPES),
             new Lock("category-number-coercion", "docs/API-GUIDE.md",
                     "adapter/src/test/java/io/github/mbackschat/a12/dm/adapter/FieldValueAsNumberCategoryReadTest.java"),

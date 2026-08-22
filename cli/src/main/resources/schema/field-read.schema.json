@@ -24,7 +24,7 @@
     "date": { "type": "object", "description": "(one field, DATE) format/precision config" },
     "time": { "type": "object", "description": "(one field, TIME) format config" },
     "dateTime": { "type": "object", "description": "(one field, DATE_TIME) format config" },
-    "dateRange": { "type": "object", "description": "(one field, DATE_RANGE) format/separator config" },
+    "dateRange": { "type": "object", "description": "(one field, DATE_RANGE) format/separator config, plus interpretationOfYear when the declaration carries it (absent means the STANDARD default, which has no spelling). The block is a legal `field add`/`field modify` input, so a read round-trips" },
     "dateFragment": { "type": "object", "description": "(one field, DATE_FRAGMENT) format config" },
     "custom": { "type": "object", "description": "(one field, CUSTOM) typeName/length config" },
     "typedef": { "type": "string", "description": "(one field) the reusable type definition this field is typed by — present only for a typedef-typed field" },

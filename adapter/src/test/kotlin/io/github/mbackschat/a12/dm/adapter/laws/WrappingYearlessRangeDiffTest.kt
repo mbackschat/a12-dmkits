@@ -3,6 +3,9 @@ package io.github.mbackschat.a12.dm.adapter.laws
 import io.github.mbackschat.a12.dm.interpreter.DmInterpreter
 import io.github.mbackschat.a12.dm.interpreter.eval.newDocument
 import io.github.mbackschat.a12.dm.interpreter.load.ModelLoader
+import io.github.mbackschat.a12.dm.modelkit.FieldTypeSpec
+import io.github.mbackschat.a12.dm.modelkit.ModelDocument
+import io.github.mbackschat.a12.dm.modelkit.RangeYearInterpretation
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 
@@ -22,16 +25,21 @@ import org.junit.jupiter.api.Test
  */
 class WrappingYearlessRangeDiffTest {
 
-    /** The order fixture with its coverage window redeclared as the given range profile. */
+    /**
+     * The order fixture with BOTH its date-range fields redeclared as the given profile — through the typed
+     * surface, not by string-replacing raw model JSON.
+     *
+     * This used to be two brittle `.replace` calls keyed on exact JSON indentation, which is how the whole
+     * `interpretationOfYear` gap stayed invisible to this project: the one test that exercised the property
+     * reached around the kit instead of through it, so the missing typed slot cost nothing here (G53 /
+     * API-FINDINGS 126). `setFieldType` is the editing path a real consumer has.
+     */
     private fun model(format: String, separator: String, interpretation: String?): String {
-        val declaration = buildString {
-            append("\"format\": \"$format\",\n                      \"rangeSeparator\": \"$separator\"")
-            if (interpretation != null) append(",\n                      \"interpretationOfYear\": \"$interpretation\"")
-        }
-        return RuntimeLaws.model("models/order.dm.json")
-            .replace("\"format\": \"dd.MM.yyyy\",\n                      \"rangeSeparator\": \"-\"", declaration)
-            .replace("\"format\": \"dd.MM.yyyy\",\n                            \"rangeSeparator\": \"-\"",
-                declaration.replace("\n                      ", "\n                            "))
+        val spec = FieldTypeSpec.DateRangeSpec(format, separator, RangeYearInterpretation.fromJson(interpretation))
+        return ModelDocument.read(RuntimeLaws.model("models/order.dm.json"))
+            .setFieldType(WINDOW, spec)
+            .setFieldType(ITEM_COVERAGE, spec)
+            .toJson()
     }
 
     private fun agree(interpretation: String?, value: String,
@@ -120,6 +128,7 @@ class WrappingYearlessRangeDiffTest {
 
     private companion object {
         const val WINDOW = "/Order/CoverageWindow"
+        const val ITEM_COVERAGE = "/Order/Items/ItemCoverage"
         const val WRAPPING = "01.11-31.01"
     }
 }

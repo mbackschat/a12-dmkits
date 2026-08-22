@@ -635,6 +635,9 @@ public final class DocumentModelDraft {
                 ObjectNode b = MAPPER.createObjectNode();
                 copyText(c, "format", b, "format");
                 copyText(c, "rangeSeparator", b, "separator");
+                // Absent when the declaration omits it, which is how STANDARD is expressed — so the read block
+                // stays a legal `field add`/`field modify` input in both cases.
+                copyText(c, "interpretationOfYear", b, "interpretationOfYear");
                 if (!b.isEmpty()) out.set("dateRange", b);
             }
             case "DateFragmentType" -> {

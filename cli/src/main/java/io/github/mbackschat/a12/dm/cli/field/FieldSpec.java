@@ -14,6 +14,7 @@ import io.github.mbackschat.a12.dm.modelkit.FieldMeta;
 import io.github.mbackschat.a12.dm.modelkit.FieldModification;
 import io.github.mbackschat.a12.dm.modelkit.FieldTypeSpec;
 import io.github.mbackschat.a12.dm.modelkit.NumberTrait;
+import io.github.mbackschat.a12.dm.modelkit.RangeYearInterpretation;
 import io.github.mbackschat.a12.dm.modelkit.Requiredness;
 
 /**
@@ -213,7 +214,10 @@ public final class FieldSpec {
             case "TIME" -> new FieldTypeSpec.TimeSpec(text(spec.path("time"), "format"));
             case "DATETIME", "DATE_TIME" -> new FieldTypeSpec.DateTimeSpec(text(spec.path("dateTime"), "format"));
             case "DATERANGE", "DATE_RANGE" -> new FieldTypeSpec.DateRangeSpec(
-                    req(spec.path("dateRange"), "format"), req(spec.path("dateRange"), "separator"));
+                    req(spec.path("dateRange"), "format"), req(spec.path("dateRange"), "separator"),
+                    // absent key = STANDARD (the default has no DM-JSON spelling); an unknown token throws a
+                    // corrective naming it, which the caller surfaces as an invalid-spec refusal.
+                    RangeYearInterpretation.fromJson(text(spec.path("dateRange"), "interpretationOfYear")));
             case "DATEFRAGMENT", "DATE_FRAGMENT" -> new FieldTypeSpec.DateFragmentSpec(
                     req(spec.path("dateFragment"), "format"));
             case "BOOLEAN" -> new FieldTypeSpec.BooleanSpec();

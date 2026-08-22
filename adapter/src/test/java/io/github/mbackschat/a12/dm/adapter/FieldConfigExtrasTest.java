@@ -7,6 +7,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import org.junit.jupiter.api.Test;
 
 import com.mgmtp.a12.kernel.md.model.api.fieldtypes.ICustomFieldType;
+import com.mgmtp.a12.kernel.md.model.api.fieldtypes.IDateRangeType;
 import com.mgmtp.a12.kernel.md.model.api.fieldtypes.IDateType;
 import com.mgmtp.a12.kernel.md.model.api.fieldtypes.IEnumerationType;
 import com.mgmtp.a12.kernel.md.model.api.fieldtypes.IFieldType;
@@ -15,6 +16,7 @@ import com.mgmtp.a12.kernel.md.model.api.fieldtypes.IStringType;
 
 import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft;
 import io.github.mbackschat.a12.dm.modelkit.NumberTrait;
+import io.github.mbackschat.a12.dm.modelkit.RangeYearInterpretation;
 
 /**
  * Field-config completeness sweep (FEATURE-GAPS). Each slot is verified by a <b>kernel read-back</b>,
@@ -80,6 +82,42 @@ class FieldConfigExtrasTest {
         assertEquals(1, number.getMinLength().orElseThrow(), "minLength honored");
         assertEquals(2, number.getMaxLength().orElseThrow(), "maxLength honored");
         assertEquals(2, number.getMaxIntegerDigits().orElseThrow(), "maxIntegerDigits honored");
+    }
+
+    /**
+     * The endpoint-year interpretation survives a KERNEL round-trip, which is the claim the API-GUIDE snippet
+     * makes. Read back through {@code IDateRangeType} rather than off our own emitted JSON: the point is that
+     * A12 accepts the key and reports the same value, not that we wrote what we wrote.
+     */
+    @Test
+    void dateRangeInterpretationOfYearRoundTripsThroughTheKernel() {
+        // tag::date-range-year-interpretation[]
+        DocumentModelDraft draft = DocumentModelDraft.named("policy").locale("en_US").baseYear(2026)
+                .rootGroup("Policy", group -> group
+                        .dateRangeField("WinterCover", range -> range
+                                .format("dd.MM").separator("-")
+                                .interpretationOfYear(RangeYearInterpretation.TO)))
+                .build();
+        // end::date-range-year-interpretation[]
+
+        IDateRangeType window = (IDateRangeType) fieldTypeAfterRoundTrip(draft, "/Policy/WinterCover");
+        assertEquals(IDateRangeType.InterpretationOfYear.TO, window.getInterpretationOfYear().orElseThrow(),
+                "the kernel reports back the declared endpoint-year interpretation");
+        assertEquals("dd.MM", window.getFormat());
+        assertEquals("-", window.getRangeSeparator());
+    }
+
+    /** …and omitting it leaves the kernel with no value at all — STANDARD has no spelling to report. */
+    @Test
+    void anOmittedInterpretationOfYearReadsBackAsAbsent() {
+        DocumentModelDraft draft = DocumentModelDraft.named("policy").locale("en_US").baseYear(2026)
+                .rootGroup("Policy", group -> group
+                        .dateRangeField("PlainCover", range -> range.format("dd.MM").separator("-")))
+                .build();
+
+        IDateRangeType window = (IDateRangeType) fieldTypeAfterRoundTrip(draft, "/Policy/PlainCover");
+        assertTrue(window.getInterpretationOfYear().isEmpty(),
+                "an omitted key must stay absent, not materialize as a token the declaration cannot express");
     }
 
     @Test

@@ -13,6 +13,7 @@ import io.github.mbackschat.a12.dm.adapter.review.ModelDiff.ElementChange;
 import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft;
 import io.github.mbackschat.a12.dm.modelkit.ModelDocument;
 import io.github.mbackschat.a12.dm.modelkit.NumberTrait;
+import io.github.mbackschat.a12.dm.modelkit.RangeYearInterpretation;
 
 /** Every authored field envelope is visible to semantic diff. */
 class ModelDiffFieldCompletenessTest {
@@ -130,6 +131,39 @@ class ModelDiffFieldCompletenessTest {
         String head = boundedNumber("1.00", "100.0");
 
         assertTrue(ModelDiff.between(base, head).changes().isEmpty());
+    }
+
+    /**
+     * The endpoint-year interpretation is a semantic change, not cosmetics: it decides whether a wrapping
+     * yearless range is valid at all. Before it joined the aspect map, two models differing ONLY in it diffed
+     * as identical — and adding a record component does not break the sealed switch's exhaustiveness, so the
+     * compiler gave no signal. This class's own contract ("every authored field envelope is visible to
+     * semantic diff") is what makes that a defect rather than a gap.
+     */
+    @Test
+    void detectsTheDateRangeEndpointYearInterpretation() {
+        ElementChange change = change(ModelDiff.between(
+                coverWindow(RangeYearInterpretation.FROM), coverWindow(RangeYearInterpretation.TO)),
+                "/Invoice/CoverWindow");
+        assertEquals("FROM", delta(change, "interpretationOfYear").before());
+        assertEquals("TO", delta(change, "interpretationOfYear").after());
+    }
+
+    /** …and the default is not a change: omitting the key and declaring STANDARD are the same declaration. */
+    @Test
+    void treatsAnOmittedInterpretationAndStandardAsEquivalent() {
+        String omitted = DocumentModelDraft.named("invoice").locale("en_US").baseYear(2026)
+                .rootGroup("Invoice", invoice -> invoice.dateRangeField("CoverWindow",
+                        range -> range.format("dd.MM").separator("-")))
+                .build().toJson();
+        assertTrue(ModelDiff.between(omitted, coverWindow(RangeYearInterpretation.STANDARD)).changes().isEmpty());
+    }
+
+    private static String coverWindow(RangeYearInterpretation interpretation) {
+        return DocumentModelDraft.named("invoice").locale("en_US").baseYear(2026)
+                .rootGroup("Invoice", invoice -> invoice.dateRangeField("CoverWindow", range -> range
+                        .format("dd.MM").separator("-").interpretationOfYear(interpretation)))
+                .build().toJson();
     }
 
     private static String number(boolean required, NumberTrait unit) {

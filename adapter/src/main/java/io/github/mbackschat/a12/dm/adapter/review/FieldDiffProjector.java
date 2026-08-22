@@ -153,6 +153,10 @@ final class FieldDiffProjector {
             case FieldTypeSpec.DateRangeSpec range -> {
                 put(aspects, "format", range.format());
                 put(aspects, "rangeSeparator", range.separator());
+                // Without this a diff between two models differing ONLY in the endpoint-year interpretation
+                // reports no change — the record component is new, and adding one does not break the sealed
+                // switch's exhaustiveness, so the compiler gave no signal.
+                aspects.put("interpretationOfYear", range.interpretationOfYear().name());
             }
             case FieldTypeSpec.DateFragmentSpec fragment -> put(aspects, "format", fragment.fragmentFormat());
             case FieldTypeSpec.TypeDefRef reference -> aspects.put("typeDefinition", reference.typeDefinitionId());

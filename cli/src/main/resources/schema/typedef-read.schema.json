@@ -18,7 +18,7 @@
     "date": { "type": "object", "description": "(one, DATE) format/precision config" },
     "time": { "type": "object", "description": "(one, TIME) format config" },
     "dateTime": { "type": "object", "description": "(one, DATE_TIME) format config" },
-    "dateRange": { "type": "object", "description": "(one, DATE_RANGE) format/separator config" },
+    "dateRange": { "type": "object", "description": "(one, DATE_RANGE) format/separator config, plus interpretationOfYear when the declaration carries it (absent means the STANDARD default, which has no spelling). The block is a legal `field add`/`field modify` input, so a read round-trips" },
     "dateFragment": { "type": "object", "description": "(one, DATE_FRAGMENT) format config" },
     "custom": { "type": "object", "description": "(one, CUSTOM) typeName/length config" },
     "typedefs": { "type": "array", "items": { "type": "string" }, "description": "(name-index) every declared local type-def id, in document order — pass one back as `typedef read <id>`" },
