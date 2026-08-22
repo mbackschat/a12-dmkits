@@ -3,6 +3,7 @@ package io.github.mbackschat.a12.dm.cli.field;
 import io.github.mbackschat.a12.dm.cli.BaseCommand;
 import io.github.mbackschat.a12.dm.cli.ConsistencyEvidence;
 import io.github.mbackschat.a12.dm.cli.ModelWrite;
+import io.github.mbackschat.a12.dm.cli.JsonInput;
 import io.github.mbackschat.a12.dm.cli.ParamKind;
 import io.github.mbackschat.a12.dm.cli.Refusal;
 import io.github.mbackschat.a12.dm.cli.SafetyChecks;
@@ -44,7 +45,8 @@ final class FieldAddCommand extends BaseCommand {
 
     @Parameters(index = "0", arity = "0..1", paramLabel = "<spec.json>",
             description = "a rich field spec (JSON): kind + per-kind config + metadata (see `schema field add`) "
-                    + "— the alternative to the --group/--name/--kind flags")
+                    + "— the alternative to the --group/--name/--kind flags."
+                    + " Or `-` to read the JSON from stdin instead of a file (once per invocation).")
     String specPath;
 
     @ParamKind(ParamKind.Kind.GROUP_PATH)
@@ -112,7 +114,7 @@ final class FieldAddCommand extends BaseCommand {
         ObjectNode changed = MAPPER.createObjectNode();
         try {
             if (specPath != null) {
-                JsonNode spec = MAPPER.readTree(Files.readString(Path.of(specPath)));
+                JsonNode spec = MAPPER.readTree(JsonInput.read(specPath, "<spec.json>"));
                 Optional<Integer> rejected = rejectInvalidSpec("field-add", spec);
                 if (rejected.isPresent()) {
                     return rejected.get();

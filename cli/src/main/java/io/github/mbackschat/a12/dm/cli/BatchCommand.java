@@ -53,7 +53,7 @@ final class BatchCommand extends BaseCommand {
     @Parameters(index = "0", paramLabel = "<ops.json>",
             description = "a JSON array of ops [{\"verb\",\"args\":[…argv…],\"id\"?}, …] — each op's args are that "
                     + "verb's CLI argv. See `dmtool schema batch` for the frame + worked examples. (A batch-level "
-                    + "-m is the default model for ops that omit their own.)")
+                    + "-m is the default model for ops that omit their own.) Or `-` to read the JSON from stdin instead of a file (once per invocation).")
     String opsFile;
 
     @Option(names = "--observations", paramLabel = "<file>",
@@ -71,7 +71,7 @@ final class BatchCommand extends BaseCommand {
     public Integer call() {
         JsonNode ops;
         try {
-            ops = MAPPER.readTree(Files.readString(Path.of(opsFile)));
+            ops = MAPPER.readTree(JsonInput.read(opsFile, "<ops.json>"));
         } catch (IOException e) {
             return fail("cannot read ops file: " + e.getMessage());
         }

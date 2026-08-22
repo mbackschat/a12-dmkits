@@ -172,7 +172,7 @@ final class ApplyCommand extends BaseCommand {
     @Parameters(index = "0", paramLabel = "<ops.json>",
             description = "a JSON array of op-records [{\"target\",\"op\",…args}, …] — the per-op fields are that "
                     + "verb's params (copy from `<target> <op> --help`). See `dmtool schema apply` for the frame "
-                    + "+ worked examples (incl. rule/group ops, not just field add).")
+                    + "+ worked examples (incl. rule/group ops, not just field add). Or `-` to read the JSON from stdin instead of a file (once per invocation).")
     String opsFile;
 
     @Option(names = {"--output", "-o"}, paramLabel = "<file>",
@@ -194,7 +194,7 @@ final class ApplyCommand extends BaseCommand {
         JsonNode ops;
         String modelJson;
         try {
-            ops = MAPPER.readTree(Files.readString(Path.of(opsFile)));
+            ops = MAPPER.readTree(JsonInput.read(opsFile, "<ops.json>"));
             modelJson = Files.readString(Path.of(model));
         } catch (IOException e) {
             return fail("cannot read input: " + e.getMessage());

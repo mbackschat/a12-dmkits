@@ -5,6 +5,7 @@ import io.github.mbackschat.a12.dm.cli.ConsistencyEvidence;
 import io.github.mbackschat.a12.dm.cli.ModelWrite;
 import io.github.mbackschat.a12.dm.cli.RejectionBasis;
 import io.github.mbackschat.a12.dm.core.ModelConsistencyException;
+import io.github.mbackschat.a12.dm.cli.JsonInput;
 import io.github.mbackschat.a12.dm.cli.ParamKind;
 import io.github.mbackschat.a12.dm.cli.Refusal;
 import io.github.mbackschat.a12.dm.cli.ResultEnvelope;
@@ -51,7 +52,8 @@ final class ComputationModifyCommand extends BaseCommand {
     String computation;
 
     @Option(names = "--spec", required = true, paramLabel = "<computation-spec.json>",
-            description = "the re-expressed computation as a computation-spec JSON file")
+            description = "the re-expressed computation as a computation-spec JSON file."
+                    + " Or `-` to read the JSON from stdin instead of a file (once per invocation).")
     String specPath;
 
     @Option(names = {"--output", "-o"}, paramLabel = "<file>",
@@ -85,7 +87,7 @@ final class ComputationModifyCommand extends BaseCommand {
         }
         JsonNode spec;
         try {
-            spec = MAPPER.readTree(Files.readString(Path.of(specPath)));
+            spec = MAPPER.readTree(JsonInput.read(specPath, "<computation-spec.json>"));
         } catch (IOException e) {
             return fail("cannot read --spec: " + e.getMessage());
         }

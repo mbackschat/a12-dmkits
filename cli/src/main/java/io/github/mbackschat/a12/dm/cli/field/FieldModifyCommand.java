@@ -2,6 +2,7 @@ package io.github.mbackschat.a12.dm.cli.field;
 
 import io.github.mbackschat.a12.dm.cli.BaseCommand;
 import io.github.mbackschat.a12.dm.cli.ConsistencyEvidence;
+import io.github.mbackschat.a12.dm.cli.JsonInput;
 import io.github.mbackschat.a12.dm.cli.ModelWrite;
 import io.github.mbackschat.a12.dm.cli.Refusal;
 import io.github.mbackschat.a12.dm.cli.SafetyChecks;
@@ -55,7 +56,8 @@ final class FieldModifyCommand extends BaseCommand {
 
     @Parameters(index = "0", paramLabel = "<spec.json>",
             description = "a rich field spec (JSON): group + name locate the field; kind + per-kind config "
-                    + "become its new type (see `schema field modify`)")
+                    + "become its new type (see `schema field modify`)."
+                    + " Or `-` to read the JSON from stdin instead of a file (once per invocation).")
     String specPath;
 
     @Option(names = {"--output", "-o"}, paramLabel = "<file>",
@@ -90,7 +92,7 @@ final class FieldModifyCommand extends BaseCommand {
         ObjectNode changed = MAPPER.createObjectNode();
         List<Diagnostic> advisories;
         try {
-            JsonNode spec = MAPPER.readTree(Files.readString(Path.of(specPath)));
+            JsonNode spec = MAPPER.readTree(JsonInput.read(specPath, "<spec.json>"));
             Optional<Integer> rejected = rejectInvalidSpec("field-modify", spec);
             if (rejected.isPresent()) {
                 return rejected.get();

@@ -5,6 +5,7 @@ import io.github.mbackschat.a12.dm.cli.ConsistencyEvidence;
 import io.github.mbackschat.a12.dm.cli.LintBackstop;
 import io.github.mbackschat.a12.dm.cli.ModelPaths;
 import io.github.mbackschat.a12.dm.cli.ModelWrite;
+import io.github.mbackschat.a12.dm.cli.JsonInput;
 import io.github.mbackschat.a12.dm.cli.ParamKind;
 import io.github.mbackschat.a12.dm.cli.RejectionBasis;
 import io.github.mbackschat.a12.dm.cli.ResultEnvelope;
@@ -51,7 +52,8 @@ final class RuleAddCommand extends BaseCommand {
     private static final ObjectMapper MAPPER = new ObjectMapper();
 
     @Parameters(index = "0", paramLabel = "<rule-spec.json>",
-            description = "the rule envelope as JSON (field, condition, code, messages, …) — see `schema rule add`")
+            description = "the rule envelope as JSON (field, condition, code, messages, …) — see "
+                    + "`schema rule add`. Or `-` to read the JSON from stdin instead of a file (once per invocation).")
     String specPath;
 
     @Option(names = {"--output", "-o"}, paramLabel = "<file>",
@@ -74,7 +76,7 @@ final class RuleAddCommand extends BaseCommand {
         JsonNode spec;
         try {
             modelJson = Files.readString(Path.of(model));
-            spec = MAPPER.readTree(Files.readString(Path.of(specPath)));
+            spec = MAPPER.readTree(JsonInput.read(specPath, "<rule-spec.json>"));
         } catch (IOException e) {
             return fail("cannot read input: " + e.getMessage());
         }

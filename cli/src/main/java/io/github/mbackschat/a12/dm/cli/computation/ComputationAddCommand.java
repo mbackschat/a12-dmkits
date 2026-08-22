@@ -3,6 +3,7 @@ package io.github.mbackschat.a12.dm.cli.computation;
 import io.github.mbackschat.a12.dm.cli.BaseCommand;
 import io.github.mbackschat.a12.dm.cli.ConsistencyEvidence;
 import io.github.mbackschat.a12.dm.cli.ModelWrite;
+import io.github.mbackschat.a12.dm.cli.JsonInput;
 import io.github.mbackschat.a12.dm.cli.ParamKind;
 import io.github.mbackschat.a12.dm.cli.RejectionBasis;
 import io.github.mbackschat.a12.dm.cli.ResultEnvelope;
@@ -45,7 +46,8 @@ final class ComputationAddCommand extends BaseCommand {
     private static final ObjectMapper MAPPER = new ObjectMapper();
 
     @Parameters(index = "0", paramLabel = "<computation-spec.json>",
-            description = "the computation envelope as JSON (computedField, alternatives, messages, …)")
+            description = "the computation envelope as JSON (computedField, alternatives, "
+                    + "messages, …). Or `-` to read the JSON from stdin instead of a file (once per invocation).")
     String specPath;
 
     @Option(names = {"--output", "-o"}, paramLabel = "<file>",
@@ -68,7 +70,7 @@ final class ComputationAddCommand extends BaseCommand {
         JsonNode spec;
         try {
             modelJson = Files.readString(Path.of(model));
-            spec = MAPPER.readTree(Files.readString(Path.of(specPath)));
+            spec = MAPPER.readTree(JsonInput.read(specPath, "<computation-spec.json>"));
         } catch (IOException e) {
             return fail("cannot read input: " + e.getMessage());
         }

@@ -3,6 +3,7 @@ package io.github.mbackschat.a12.dm.cli.typedef;
 import io.github.mbackschat.a12.dm.cli.BaseCommand;
 import io.github.mbackschat.a12.dm.cli.ConsistencyEvidence;
 import io.github.mbackschat.a12.dm.cli.ModelWrite;
+import io.github.mbackschat.a12.dm.cli.JsonInput;
 import io.github.mbackschat.a12.dm.cli.ParamKind;
 import io.github.mbackschat.a12.dm.cli.WorkspaceOption;
 
@@ -57,7 +58,8 @@ final class TypedefModifyCommand extends BaseCommand {
 
     @Parameters(index = "0", arity = "0..1", paramLabel = "<spec.json>",
             description = "a rich type spec (JSON): kind + per-kind config (see `schema typedef modify`) — the "
-                    + "alternative to --kind")
+                    + "alternative to --kind."
+                    + " Or `-` to read the JSON from stdin instead of a file (once per invocation).")
     String specPath;
 
     @Option(names = {"--output", "-o"}, paramLabel = "<file>",
@@ -97,7 +99,7 @@ final class TypedefModifyCommand extends BaseCommand {
 
         try {
             if (specPath != null) {
-                JsonNode spec = MAPPER.readTree(Files.readString(Path.of(specPath)));
+                JsonNode spec = MAPPER.readTree(JsonInput.read(specPath, "<spec.json>"));
                 Optional<Integer> rejected = rejectInvalidSpec("typedef-add", spec);
                 if (rejected.isPresent()) {
                     return rejected.get();
