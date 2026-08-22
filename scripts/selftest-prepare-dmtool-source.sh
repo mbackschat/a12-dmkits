@@ -17,6 +17,16 @@ fail() { echo "SELFTEST FAIL: $*" >&2; exit 1; }
 mkdir -p "$REPO/scripts"
 cp "$SUBJECT" "$REPO/scripts/prepare-dmtool-source.sh"
 cp "$ROOT/scripts/gradle-environment.sh" "$REPO/scripts/gradle-environment.sh"
+
+# Does this platform offer the JDK 21 pin? Asked of the PRODUCTION helper, not by re-testing
+# /usr/libexec/java_home here — the same single-sourcing that the launcher gates already use, so a pin
+# mechanism added for another platform is picked up by the cases below instead of silently skipping them.
+# Two cases below assert "the pin carried the check", which is unassertable where there is no pin (Linux/CI).
+# shellcheck source=scripts/gradle-environment.sh
+source "$ROOT/scripts/gradle-environment.sh"
+PLATFORM_HAS_PIN=0
+[[ -n "$(a12_pinned_jdk21_home 2>/dev/null || true)" ]] && PLATFORM_HAS_PIN=1
+
 chmod +x "$REPO/scripts/prepare-dmtool-source.sh"
 cat > "$REPO/.gitignore" <<'EOF'
 /cli/build/
@@ -153,7 +163,7 @@ stale_java_status=$?
 set -e
 [[ "$stale_java_out" != *"does not report source"* ]] \
   || fail "a broken JAVA_HOME was reported as a provenance mismatch: $stale_java_out"
-if [[ -x /usr/libexec/java_home ]] && /usr/libexec/java_home -v 21 >/dev/null 2>&1; then
+if [[ $PLATFORM_HAS_PIN -eq 1 ]]; then
   [[ $stale_java_status -eq 0 ]] \
     || fail "the pinned JDK 21 must carry the launcher check through a broken JAVA_HOME: $stale_java_out"
   [[ "$stale_java_out" == *"$LAUNCHER"* ]] \
@@ -269,10 +279,23 @@ old_java_out="$(JAVA_HOME="$old_jdk" bash "$REPO/scripts/prepare-dmtool-source.s
 old_java_status=$?
 set -e
 old_java_err="$(cat "$WORK/oldjava.err")"
-[[ $old_java_status -eq 0 ]] || fail "a wrong-major caller JDK was made fatal: $old_java_err"
-[[ "$old_java_out" == "$LAUNCHER" ]] || fail "the wrong-major run did not resolve the launcher: '$old_java_out'"
-[[ "$old_java_err" == *"is Java 17"* ]] \
-  || fail "the caller was not told its own JDK is too old for the returned launcher: $old_java_err"
+if [[ $PLATFORM_HAS_PIN -eq 1 ]]; then
+  # The pin carries the check, so the run SUCCEEDS and the caller is told its own JDK will not run the result.
+  [[ $old_java_status -eq 0 ]] || fail "a wrong-major caller JDK was made fatal: $old_java_err"
+  [[ "$old_java_out" == "$LAUNCHER" ]] \
+    || fail "the wrong-major run did not resolve the launcher: '$old_java_out'"
+  [[ "$old_java_err" == *"is Java 17"* ]] \
+    || fail "the caller was not told its own JDK is too old for the returned launcher: $old_java_err"
+else
+  # No pin: the wrong-major JDK is the ONLY java available, so it genuinely cannot start the launcher and
+  # refusing is correct. The note's subject ("the pin carried the check, your own JDK will not run the
+  # result") PRESUPPOSES a pin, which this platform has none of — so asserting it here asserted a
+  # contradiction. CI failed on exactly that for six days while every Mac run took the branch above.
+  [[ $old_java_status -ne 0 ]] \
+    || fail "with no pin, a launcher startable by nothing was accepted: $old_java_err"
+  [[ "$old_java_err" == *"named no source revision"* ]] \
+    || fail "the unstartable-launcher classification did not fire without a pin: $old_java_err"
+fi
 #     (The remaining `no-java` kind cannot be staged here — emptying PATH would take git, sed and mktemp
 #     with it — so the classifier itself carries that case, in selftest-dmtool-launcher.sh.)
 

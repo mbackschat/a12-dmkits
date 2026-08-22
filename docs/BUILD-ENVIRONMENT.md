@@ -55,6 +55,27 @@ Verified by planting a mutant and reading the message back out of the log rather
 discards, the guard is only as good as a green run. Ask where the message goes *before* trusting a red one to
 tell you anything.
 
+## A platform-branched self-test needs its OTHER branch exercised (2026-08-22)
+
+`scripts/selftest-prepare-dmtool-source.sh` branches on whether the platform offers the JDK 21 pin —
+`/usr/libexec/java_home`, so macOS yes, Linux/CI no. Case 13 asserted "a wrong-major caller JDK is not fatal",
+whose own comment names the precondition: *"the note's whole subject is 'the pin carried the check, your own JDK
+will not run the result', which needs a pin to exist."* It enforced that precondition **by ordering only** —
+running before a later case stubs the pin out — and never by asking whether the platform has one. On Linux there
+is never a pin, so the case asserted a contradiction from the start and CI failed on it for six days.
+
+Every local run took the other branch, so the estate looked clean. Three things follow:
+
+- **The pin question is asked of the production helper** (`a12_pinned_jdk21_home`) once, into `PLATFORM_HAS_PIN`,
+  and both gates read it. The inline `/usr/libexec/java_home` re-test is gone: a pin mechanism added for another
+  platform now switches the cases instead of silently skipping them.
+- **The no-pin branch asserts the opposite outcome**, because without a pin the wrong-major JDK is the only java
+  there is, so refusing to vouch for the launcher is *correct* — not a regression to tolerate.
+- **Exercise the branch you are not on before believing a fix.** Stubbing the pin out of the helper locally
+  reproduced CI's path in seconds, and immediately caught that the repair had put two assertions in the wrong
+  branch. Note the one limit of that trick: it collides with the case that stubs the pin itself (its `sed`
+  becomes a no-op and its commit finds nothing to do), so it validates everything up to that case, not past it.
+
 ## Offline and bootstrap limits
 
 - **Wrapper download is blocked in the offline sandbox.** The committed wrapper points at the canonical `services.gradle.org` URL (correct for outside users). Locally, the bootstrap already extracted Gradle 9.0.0 under the a12 parent's `.gradle-dist/gradle-9.0.0/` — run that binary directly when offline.
