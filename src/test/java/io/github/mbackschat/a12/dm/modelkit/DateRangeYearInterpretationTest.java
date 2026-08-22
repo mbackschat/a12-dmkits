@@ -102,4 +102,13 @@ class DateRangeYearInterpretationTest {
         assertEquals(RangeYearInterpretation.STANDARD,
                 new FieldTypeSpec.DateRangeSpec("MM", "/").interpretationOfYear());
     }
+
+    @Test
+    void anExplicitNullInterpretationNormalizesToStandard() {
+        // The record advertises a never-null component, so the canonical constructor has to enforce it: a null
+        // reaching the emitter would NPE on json(), and a null reaching a consumer would reintroduce exactly
+        // the three-state (null / STANDARD / value) confusion the enum exists to remove.
+        assertEquals(RangeYearInterpretation.STANDARD,
+                new FieldTypeSpec.DateRangeSpec("MM", "/", null).interpretationOfYear());
+    }
 }
