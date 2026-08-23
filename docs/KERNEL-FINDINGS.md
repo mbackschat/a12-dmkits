@@ -1486,7 +1486,7 @@ The behavioral half is canonical (§2's count-family override row; §12's grow-o
 
 **Runtime counting semantics (2026-06-10, RT-semantics drain — `anzahlAngegebenerEntities`):**
 
-- **A formal-error operand makes the whole count non-evaluable** — the rule is suppressed; the broken field is neither counted as filled nor skipped (contrast `FirstFilledValue`, where a broken operand *after* the first filled one is invisible).
+- **A formal-error operand makes the whole count non-evaluable** — the rule is suppressed; the broken field is neither counted as filled nor skipped (contrast `FirstFilledValue`, where a broken operand *after* the first filled one is invisible). *Discriminated 2026-08-24 by the three-rule design of [KF195](#kf195); the single-rule assertion this bullet first carried was satisfied by the skipping account too.*
 - **The count can grow but never shrink**: with unfilled operands left, a fired comparison is an `OMISSION_ERROR`; with every operand filled, a `VALUE_ERROR` — a plain field list has no omitted-tail problem (unlike the starred aggregates, §9 supplement).
 
 *(Locked: `adapter.laws.FilledCountLawsTest`.)*
@@ -3080,3 +3080,28 @@ Reconciliation of a12-kernel-lean `SPEC-2026-08-23-13`, **accepted**; no interpr
 **And the operand grammar is narrower than a general date expression:** the operand is a bare path, so `DateFromDateTime([Moment])` is `MVK_UNEXPECTED_TOKEN`; the extraction is refused as a `Date(...)` **component** with its own `MVK_DATE_OR_TIME_EXTRACT_OP_NOT_ALLOWED`; and it is not a `DifferenceInDays` operand at all. That `Date(...)` row is the one that needed a control, and the control corrected the reading: a Number field in the same position draws a *different* code (`MVK_WRONG_DATE_FORMAT_FOR_OP`), so the refusal is keyed on the extract-op rather than on "the component is not a literal". Nesting inside an ordinary component extractor (`DayFromDate(DateFromDateTime(…))`) stays admitted, so "narrower grammar" must not be read as "never nests".
 
 *(Locked: `adapter.laws.DateFromDateTimeWallDateDiffTest` — the Berlin near-midnight separator plus its midday, all-negative, and UTC-zone controls, tri-checked on both kernel strategies and the interpreter; `rulekit.validate.laws.DateFromDateTimeSurfaceLawsTest` — 18 static rows against the real kernel covering the five admissions, the four comparison refusals, the three source-gate rows, and the three grammar rows with their two controls.)*
+
+---
+
+## §2/§3 supplement: the filled count separates EMPTY from INVALID, and the one-rule assertion that claimed it could not (tri-engine differential, 2026-08-24) <a id="kf195"></a>
+
+> Fold: folded → §2.
+
+Reconciliation of a12-kernel-lean `SPEC-2026-08-23-14`, **accepted**; no interpreter defect and no prose correction. The behavior was already recorded here in [KF98](#kf98)'s runtime-counting bullet — a formal-error operand makes the whole count non-evaluable, neither counted nor skipped. What the peer's entry actually supplies is the **experimental design**, and that mattered: our lock asserted the claim with a single `count == 2` rule that does not fire on a filled-beside-invalid row, and **all three rival accounts satisfy that assertion**. A skipping implementation counts `1`; a counts-it-as-filled implementation counts `2` and fails only the claim, not the test. The claim was true and untested.
+
+**One count, three rules, four rows** — each rival now predicts a different firing rule on the row that matters:
+
+| row | a skipping impl fires | a counts-as-filled impl fires | measured |
+|---|---|---|---|
+| filled + **invalid** (`2024-02-30`) | `COUNT_1` | `COUNT_2` | **nothing** |
+| filled + empty | `COUNT_1` | `COUNT_1` | `COUNT_1` |
+| filled + filled | `COUNT_2` | `COUNT_2` | `COUNT_2` |
+| empty + empty | `COUNT_0` | `COUNT_0` | `COUNT_0` |
+
+The three non-invalid rows are each other's controls, so the silent row is an informative negative rather than a fixture that never fires. Dynamic Groovy, generated Java, and the interpreter agree on every row.
+
+**Emptiness and invalidity are two states in this operator, not one** — the all-empty row is the second delta rather than a control: it counts `0` and compares normally instead of answering unavailable. That is what stops a consumer collapsing "no value" into "unknown" here.
+
+**The count needs no computation-arm rule of its own, and the reason is structural.** `NumberOfFilledGroups` needs one because an invalid *descendant* leaves its group operand present, so the operator must still decide what to count; a field count's invalid operand **is** the operand, so [§11](KERNEL-SEMANTICS.md#11-computations)'s general operand-poison rule fires first and the target is cleared with the invalid operand named. Recorded as the explanation for an asymmetry that otherwise reads as a special case.
+
+*(Locked: `adapter.laws.FilledCountInvalidOperandDiffTest` — the four rows above on both kernel strategies and the interpreter. The neighbouring `adapter.laws.FilledCountLawsTest` keeps the growable-count polarity rows it already owned.)*
