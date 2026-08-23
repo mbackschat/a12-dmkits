@@ -3271,3 +3271,33 @@ The second row is the one that shows the declared format is only an INPUT: two D
 *Mechanism (hypothesis, not measured): the kernel's per-locale presentation record is fetched by exact `Locale` key and passed to the field's own conversion, and a null record makes the conversion return the value unchanged. That reading explains the miss and the fallback together; what stands is the table.*
 
 *(Locked: `adapter.laws.MessageDisplayPresentationDiffTest` — all ten locales over one document carrying every kind, on dynamic Groovy, static Java and the interpreter, with the unmapped `fr_FR` row and the unpadded/negative/unfilled rows as the controls; `interpreter … MessageDisplayPresentationTest` — the same on JVM and Node, including the partial-date markers under two patterns.)*
+
+## §6 supplement: the DateRange overlap operators have TWO admission gates, and neither is the equality gate (kernel + tri-engine, 2026-08-24) <a id="kf200"></a>
+
+> Fold: folded → §6.
+
+Reconciliation of a12-kernel-lean `SPEC-2026-08-22-01` and `SPEC-2026-08-23-01`, **both accepted**; no interpreter defect. They are recorded together because their whole value is that they are *different gates on the same operators*, and a reader who merges them gets both wrong.
+
+**Gate 1 — year class, over the whole authored list.** Every operand carries the year or none does; a mix is `MVK_DATE_WITH_AND_WITHOUT_YEAR`. A declared **Base Year lifts it**.
+
+| condition, one model | no Base Year | Base Year 2024 |
+|---|---|---|
+| `DateRangesOverlap(yyyy-MM-dd, yyyy)` — both year-bearing, **different component sets** | **admitted** | admitted |
+| `DateRangesOverlap(MM, MM-dd)` — both yearless, different component sets | **admitted** | admitted |
+| `DateRangesOverlap(yyyy-MM-dd, MM)`, and the reverse order | `MVK_DATE_WITH_AND_WITHOUT_YEAR` | **admitted** |
+| three operands, one of them mixed | same | **admitted** |
+| `AtLeastOneDateRangeOverlaps(scalar In list*)`, mixed **across** the two sides | same | **admitted** |
+
+The first two rows are what separate this gate from the equality one ([KF's §6 comparability entry](#kf193)): equality requires *equal component sets* and overlap does not. Conflating them refuses lists the kernel admits.
+
+**Gate 2 — an `interpretationOfYear` declaration is refused outright.** `MVK_INVALID_DATE_RANGE_FORMAT`, on either side of `DateRangesOverlap`, on either side of the plural operator, and **with or without a Base Year** — a property of the declaration, not of the value. Its interpretation-FREE twin — same format, same separator, same year class, same model — is admitted, which is what makes the declaration the variable.
+
+**And the second gate is confined to those two operators.** The same interpretation-bearing declaration is admitted by `StartOfDateRange`, `EndOfDateRange` and `==`. Without this row the refusal reads as a blanket ban and a consumer would reject models the kernel accepts.
+
+**Three runtime rows, because two of the admission facts have a meaning a reader would guess wrong.**
+
+- **A Base Year COMPLETES, it does not make the comparison year-blind.** June 2023 against a yearless `06/06` completed to base year 2024 does **not** overlap; the same window in 2024 does. A month-vs-month comparison passes the second row and fails the first.
+- **An all-yearless list with no Base Year compares labels directly**, and a month-only endpoint reaches that month's greatest possible last day: a bare `02` overlaps `02-29` and not `03-01`.
+- **An interpreted endpoint is checked in the year it is PLACED in.** One stored `01.11-29.02` under Base Year 2020: valid under `TO` (the base year is the to-year, so the leap day is in 2020 and the start rolls back to 2019) and `datumBereichFormatFalsch` under `FROM` (the end rolls forward to 2021, which has no 29 February).
+
+*(Locked: `validate.laws.DateRangeOverlapAdmissionLawsTest` — five verdict tables, each asserted whole, with the interpretation-free twin and the bound-extraction confinement rows as the controls; `adapter.laws.DateRangeOverlapYearClassLawsTest` — the three runtime rows plus an explicit admission assertion for the two spliced models, because two of its rows assert a rule does NOT fire and a refused model would satisfy them vacuously.)*
