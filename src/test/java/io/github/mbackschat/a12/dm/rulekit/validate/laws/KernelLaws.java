@@ -3,6 +3,8 @@ package io.github.mbackschat.a12.dm.rulekit.validate.laws;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.util.stream.Collectors;
+
 import io.github.mbackschat.a12.dm.Fixtures;
 import io.github.mbackschat.a12.dm.ModelDrafts;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Computation;
@@ -184,6 +186,18 @@ final class KernelLaws {
     static final String ADMITTED = "ADMITTED";
 
     /**
+     * The kernel's verdict on one COMPUTATION — {@link #ADMITTED} or the comma-joined classes it reported —
+     * for a law whose claim is a table of computation verdicts. The complete class list matters here rather
+     * than a single expected code, because the claim such a table usually carries is <em>which gate reports
+     * first</em>, and a one-code assertion cannot see a co-firing second gate.
+     */
+    static String computationVerdict(String json, Computation computation) {
+        ValidationResult r = VALIDATOR.check(json, computation.draft());
+        return r.ok() ? ADMITTED : r.diagnostics().stream()
+                .map(d -> d.code().orElse("(no code: " + d.summary() + ")")).collect(Collectors.joining(","));
+    }
+
+    /**
      * The kernel's verdict on ONE error-message TEXT — {@link #ADMITTED} or the comma-joined classes it
      * reported — with the condition held fixed. The message axis needs its own entry point because
      * {@link #check} varies the condition and always supplies a placeholder text.
@@ -201,7 +215,7 @@ final class KernelLaws {
         ValidationResult verdict = VALIDATOR.check(json, message(group, errorField, condition, locale, messageText));
         return verdict.ok() ? ADMITTED
                 : verdict.diagnostics().stream().map(d -> d.code().orElse("(no code)"))
-                        .collect(java.util.stream.Collectors.joining(","));
+                        .collect(Collectors.joining(","));
     }
 
     private static DraftRule message(String group, String errorField, String condition,
