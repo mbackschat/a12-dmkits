@@ -3129,3 +3129,21 @@ Reconciliation of a12-kernel-lean `SPEC-2026-08-23-15`, **accepted**; no interpr
 **On the "interval" reading.** The peer states such a value denotes an interval — a whole year, or a whole month — rather than a day. That is a denotation, not a comparison rule, and the two must not be conflated: measured here, a direct comparison completes the value to the interval's **earliest** date (KF176's completion table), so the interval is not observable through comparison at all.
 
 *(Locked: `adapter.laws.IncompleteDateFormatCauseDiffTest` — twelve rows on the real kernel and the interpreter: the all-canonical and all-empty vacuity controls, the four single-cause failures, both separator directions, the three yearless-day bound rows, and the complete-format positive control for `datumFalsch`. The five-format whitelist stays in `validate.laws.IncompleteDateFormatAdmissionLawsTest`; the six comparison rows are the same file's `theseFormatsCompareThroughTheOrdinaryYearPresenceGate` table.)*
+
+## §13 supplement: the rule error-text checker runs per DECLARED locale, so an undeclared one is stored unchecked (measured, 2026-08-24) <a id="kf197"></a>
+
+> Fold: pending — newly recorded error-text fact; folds into §13 (error-message interpolation) on the next canonical KERNEL-SEMANTICS pass.
+
+Measured with its control, on one model declaring `en_US` + `de_DE`, through `rule add --dry-run` (whose gate is the real `checkConsistency`):
+
+| the message's locale | the text | kernel verdict |
+|---|---|---|
+| `en_US` (declared) | `See $Nonexistent$` | **rejected** `INVALID_ENTITY` |
+| `fr_FR` (undeclared) | `See $Nonexistent$` | **accepted**, no diagnostic |
+| `fr_FR` (undeclared) | a well-formed text | accepted, no diagnostic |
+
+The two `fr_FR` rows differ only in whether the text is legal and neither is reported, so the checker is not merely lenient about that locale — it never examines it. The model stays kernel-valid either way, so this is not a legal-model rejection: it is a **silent storage of unchecked text**, and a consumer that offers an author a per-locale message box for an undeclared locale gives them no feedback at all.
+
+**What follows for a candidate checker.** `RuleValidator` injects a placeholder error text per declared locale (so `MVK_ERROR_MESSAGE_MISSING` cannot mask the condition diagnostics), and a supplied message replaces its locale's placeholder. A message for an *undeclared* locale has no placeholder to replace and would simply not be injected anywhere the checker looks — so `rule check --message fr_FR=…` is **refused** (`RK_UNDECLARED_MESSAGE_LOCALE`) rather than answered, because a `valid:true` about a text nothing examined is the one answer that route must not give. That is a deliberate client-side strictness over a model the kernel accepts, and the table above is its measured basis.
+
+*(Locked: `validate.laws.ErrorTextLocaleScopeLawsTest` — the kernel rows, as a within-model pair differing only in the message's locale, plus the indistinguishability row that makes "unexamined" a measurement rather than an inference and the placeholder-merge row. `cli.rule.RuleCheckMessageTest` locks the CLI half: the refusal and its declared-locale twin.)*

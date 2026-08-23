@@ -353,6 +353,11 @@ dmtool -m order.dm.json rule check \
 dmtool -m order.dm.json rule check --field /Order/DeliveryDate \
   --condition '…' --code DELIVERY_BEFORE_ORDER --suggest-error-field   # → data.candidates[]
 
+# …and check the ERROR TEXT too — the kernel's second checker, read-only (omitted locales keep a placeholder):
+dmtool -m order.dm.json rule check --field /Order/DeliveryDate \
+  --condition '…' --code DELIVERY_BEFORE_ORDER \
+  --message 'en_US=Delivery $DeliveryDate.value$ precedes the order date.'
+
 dmtool -m order.dm.json rule add <rule-spec.json>          # persist it (kernel-checked before + after)
 dmtool -m sub.dm.json   computation add <comp-spec.json> --dry-run  # static preflight, writes nothing
 dmtool -m sub.dm.json   computation add <comp-spec.json>   # persist the same kernel-accepted computation

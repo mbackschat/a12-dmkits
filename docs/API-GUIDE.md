@@ -840,6 +840,15 @@ new DslRenderer(ConditionLanguage.DE).render(condition);   // same AST, German k
 ValidationResult vr = new RuleValidator().check(modelJson, draftRule);   // F4: real kernel, no compile
 vr.diagnostics().forEach(d -> System.out.println(d.code() + " " + d.fix()));  // F4a: code + catalog-joined fix
 
+// …and the candidate's ERROR TEXT, through the kernel's SECOND checker. Without messages the validator
+// injects a per-locale placeholder (the rule's own name, always valid), so that checker never fires.
+DraftRule withText = DraftRule.builder()
+        .groupPath("/Order").name("CheckRule").errorEntityRelPath("../DeliveryDate")
+        .errorCondition(condition).errorCode("DELIVERY_BEFORE_ORDER").severity("ERROR")
+        .messages(List.of(Dsl.en("Delivery $DeliveryDate.value$ precedes the order date.")))
+        .build();
+new RuleValidator().undeclaredMessageLocales(modelJson, withText);   // refuse these: the kernel never checks them
+
 // F4a unified surface: KERNEL (span-pointed) + LINT warnings + gotcha INFO in one result
 ValidationResult all = new RuleDiagnostics().diagnose(boundModel, rule);
 System.out.println(all.toJson());                          // agent-parseable, one array, every origin (files-as-API)

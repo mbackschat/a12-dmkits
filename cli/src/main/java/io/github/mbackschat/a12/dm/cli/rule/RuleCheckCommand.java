@@ -4,13 +4,16 @@ import io.github.mbackschat.a12.dm.cli.BaseCommand;
 import io.github.mbackschat.a12.dm.cli.ConsistencyEvidence;
 import io.github.mbackschat.a12.dm.cli.LintBackstop;
 import io.github.mbackschat.a12.dm.cli.ModelPaths;
+import io.github.mbackschat.a12.dm.cli.ParamKind;
 import io.github.mbackschat.a12.dm.cli.RejectionBasis;
 import io.github.mbackschat.a12.dm.cli.ResultEnvelope;
 import io.github.mbackschat.a12.dm.cli.WorkspaceOption;
 import io.github.mbackschat.a12.dm.cli.interp.TextConditionCorrective;
 
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 import com.fasterxml.jackson.databind.node.ArrayNode;
@@ -21,8 +24,10 @@ import io.github.mbackschat.a12.dm.core.ModelResolver;
 import io.github.mbackschat.a12.dm.adapter.KernelAdapter;
 import io.github.mbackschat.a12.dm.rulekit.context.ModelContext;
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel;
+import io.github.mbackschat.a12.dm.rulekit.dsl.LocalizedText;
 import io.github.mbackschat.a12.dm.rulekit.validate.Diagnostic;
 import io.github.mbackschat.a12.dm.rulekit.validate.DraftRule;
+import io.github.mbackschat.a12.dm.rulekit.validate.RkCode;
 import io.github.mbackschat.a12.dm.rulekit.validate.RuleValidator;
 import io.github.mbackschat.a12.dm.rulekit.validate.ValidationResult;
 import picocli.CommandLine.Command;
@@ -62,6 +67,14 @@ final class RuleCheckCommand extends BaseCommand {
     @Option(names = "--name", defaultValue = "CheckRule", paramLabel = "<name>",
             description = "candidate rule name (default: ${DEFAULT-VALUE})")
     String name;
+
+    @ParamKind(ParamKind.Kind.SCALAR)
+    @Option(names = "--message", paramLabel = "<locale>=<text>",
+            description = "also check a per-locale error MESSAGE against the kernel's error-text checker "
+                    + "(repeatable). Locales you omit keep a placeholder, so this reports findings for the text "
+                    + "you gave rather than a missing message for a locale you are not authoring. Without it the "
+                    + "candidate's messages are not checked at all — the placeholder is always valid.")
+    Map<String, String> messages = new LinkedHashMap<>();
 
     @Option(names = "--suggest-error-field",
             description = "also list the valid error-field candidates (the condition's referenced fields inside "
@@ -121,7 +134,11 @@ final class RuleCheckCommand extends BaseCommand {
         // i.e. from the ambient backend, so it published KERNEL_CONFIRMED on exactly that path too.
         ConsistencyEvidence evidence = ConsistencyEvidence.none();
         try {
-            DraftRule draft = new DraftRule(effectiveGroup, name, errorEntityRelPath, condition, code, severity);
+            DraftRule draft = candidate(effectiveGroup, errorEntityRelPath);
+            List<String> undeclared = new RuleValidator().undeclaredMessageLocales(json, draft);
+            if (!undeclared.isEmpty()) {
+                return refuseUndeclaredLocales(json, undeclared);
+            }
             ValidationResult result = new RuleValidator().check(json, draft, resolver);
             evidence = ConsistencyEvidence.of(result);
             // G30: upgrade a rejected text candidate's union fix to the operand-matched corrective (the typed
@@ -156,6 +173,34 @@ final class RuleCheckCommand extends BaseCommand {
         return env.exitCode();
     }
 
+    /** This invocation's candidate rule, messages included — built once so both routes check the same thing. */
+    private DraftRule candidate(String effectiveGroup, String errorEntityRelPath) {
+        return DraftRule.builder()
+                .groupPath(effectiveGroup).name(name).errorEntityRelPath(errorEntityRelPath)
+                .errorCondition(condition).errorCode(code).severity(severity)
+                .messages(messages.entrySet().stream()
+                        .map(e -> new LocalizedText(e.getKey(), e.getValue())).toList())
+                .build();
+    }
+
+    /**
+     * Refuse a {@code --message} locale the model does not declare, rather than checking a candidate whose
+     * message the kernel will not look at. Measured basis in
+     * {@link RuleValidator#undeclaredMessageLocales}: the same invalid parameter is rejected in a declared
+     * locale and accepted in an undeclared one, so passing it through would report {@code valid:true} about an
+     * unexamined text.
+     */
+    private Integer refuseUndeclaredLocales(String json, List<String> undeclared) {
+        List<String> declared = new RuleValidator().declaredLocales(json);
+        Diagnostic d = Diagnostic.precheck(Optional.of(RkCode.UNDECLARED_MESSAGE_LOCALE.code()),
+                "the model does not declare " + String.join(", ", undeclared)
+                        + "; it declares " + String.join(", ", declared),
+                Diagnostic.Where.arg(null, "--message"),
+                Optional.of(RkCode.UNDECLARED_MESSAGE_LOCALE.fix()), Optional.empty());
+        return print(ResultEnvelope.refused(resultIdentity(),
+                "the candidate names an undeclared message locale", List.of(d)));
+    }
+
     /**
      * The {@code --suggest-error-field} payload (G4): the valid error-field candidates for this candidate
      * condition — the referenced fields inside its iteration scope ({@link ModelContext#errorFieldCandidates}),
@@ -172,8 +217,7 @@ final class RuleCheckCommand extends BaseCommand {
         data.put("field", field);
         String candidateFullName = effectiveGroup + "/" + name;
         try {
-            DraftRule draft = new DraftRule(effectiveGroup, name, errorEntityRelPath, condition, code, severity);
-            String injected = new RuleValidator().inject(json, draft);
+            String injected = new RuleValidator().inject(json, candidate(effectiveGroup, errorEntityRelPath));
             BoundModel lenient = BoundModel.ofJsonLenient(injected, resolver);   // tolerates the inconsistent candidate
             // The kernel's own getDirectlyReferencedEntities (via referencedFields) — robust where the
             // rulekit converter NPEs on an inconsistent candidate; it returns the condition's references

@@ -2612,15 +2612,28 @@ public static final class io.github.mbackschat.a12.dm.rulekit.validate.DraftComp
 
 public record io.github.mbackschat.a12.dm.rulekit.validate.DraftRule
   public DraftRule(java.lang.String, java.lang.String, java.lang.String, java.lang.String, java.lang.String, java.lang.String)
+  public DraftRule(java.lang.String, java.lang.String, java.lang.String, java.lang.String, java.lang.String, java.lang.String, java.util.List<io.github.mbackschat.a12.dm.rulekit.dsl.LocalizedText>)
+  public static io.github.mbackschat.a12.dm.rulekit.validate.DraftRule.Builder builder()
   public final boolean equals(java.lang.Object)
   public java.lang.String errorCode()
   public java.lang.String errorCondition()
   public java.lang.String errorEntityRelPath()
   public java.lang.String groupPath()
   public final int hashCode()
+  public java.util.List<io.github.mbackschat.a12.dm.rulekit.dsl.LocalizedText> messages()
   public java.lang.String name()
   public java.lang.String severity()
   public final java.lang.String toString()
+
+public static final class io.github.mbackschat.a12.dm.rulekit.validate.DraftRule.Builder
+  public io.github.mbackschat.a12.dm.rulekit.validate.DraftRule build()
+  public io.github.mbackschat.a12.dm.rulekit.validate.DraftRule.Builder errorCode(java.lang.String)
+  public io.github.mbackschat.a12.dm.rulekit.validate.DraftRule.Builder errorCondition(java.lang.String)
+  public io.github.mbackschat.a12.dm.rulekit.validate.DraftRule.Builder errorEntityRelPath(java.lang.String)
+  public io.github.mbackschat.a12.dm.rulekit.validate.DraftRule.Builder groupPath(java.lang.String)
+  public io.github.mbackschat.a12.dm.rulekit.validate.DraftRule.Builder messages(java.util.List<io.github.mbackschat.a12.dm.rulekit.dsl.LocalizedText>)
+  public io.github.mbackschat.a12.dm.rulekit.validate.DraftRule.Builder name(java.lang.String)
+  public io.github.mbackschat.a12.dm.rulekit.validate.DraftRule.Builder severity(java.lang.String)
 
 public final class io.github.mbackschat.a12.dm.rulekit.validate.KernelDiagnostics
   public static io.github.mbackschat.a12.dm.rulekit.validate.Diagnostic enriched(io.github.mbackschat.a12.dm.core.Notification, java.lang.String)
@@ -2698,6 +2711,7 @@ public enum io.github.mbackschat.a12.dm.rulekit.validate.RkCode
   public static final io.github.mbackschat.a12.dm.rulekit.validate.RkCode RETYPE_AFFECTS_READERS
   public static final io.github.mbackschat.a12.dm.rulekit.validate.RkCode TYPE_MISMATCH
   public static final io.github.mbackschat.a12.dm.rulekit.validate.RkCode UNDECLARED_ENTITY_REFERENCE
+  public static final io.github.mbackschat.a12.dm.rulekit.validate.RkCode UNDECLARED_MESSAGE_LOCALE
   public static final io.github.mbackschat.a12.dm.rulekit.validate.RkCode UNGUARDED_NUMBER_COMPARISON
   public static final io.github.mbackschat.a12.dm.rulekit.validate.RkCode UNGUARDED_STRING_CONCAT
   public static final io.github.mbackschat.a12.dm.rulekit.validate.RkCode UNKNOWN_ARG
@@ -2719,7 +2733,9 @@ public final class io.github.mbackschat.a12.dm.rulekit.validate.RuleValidator
   public io.github.mbackschat.a12.dm.rulekit.validate.ValidationResult check(java.lang.String, io.github.mbackschat.a12.dm.rulekit.validate.DraftComputation, io.github.mbackschat.a12.dm.core.ModelResolver)
   public io.github.mbackschat.a12.dm.rulekit.validate.ValidationResult check(java.lang.String, io.github.mbackschat.a12.dm.rulekit.validate.DraftRule)
   public io.github.mbackschat.a12.dm.rulekit.validate.ValidationResult check(java.lang.String, io.github.mbackschat.a12.dm.rulekit.validate.DraftRule, io.github.mbackschat.a12.dm.core.ModelResolver)
+  public java.util.List<java.lang.String> declaredLocales(java.lang.String)
   public java.lang.String inject(java.lang.String, io.github.mbackschat.a12.dm.rulekit.validate.DraftRule)
+  public java.util.List<java.lang.String> undeclaredMessageLocales(java.lang.String, io.github.mbackschat.a12.dm.rulekit.validate.DraftRule)
 
 public record io.github.mbackschat.a12.dm.rulekit.validate.Span
   public Span(int, int)

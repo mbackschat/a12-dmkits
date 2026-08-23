@@ -129,6 +129,62 @@ class ErrorTextRejectionEnvelopeTest {
         assertEquals("/Order/BAD_TEXT", d.path("where").path("rule").asText(null), res.out());
     }
 
+    /**
+     * {@code rule modify --message} is the third channel the sweep found, and the one that looked correct: it
+     * DID publish an envelope, but built a single {@code PRECHECK}-origin diagnostic wrapping the joined
+     * exception message and published it beside {@code verification: KERNEL_CONFIRMED} — a rulekit-origin
+     * finding attributed to a kernel arbitration, with the kernel's per-problem detail collapsed into prose and
+     * a corrective pointing at {@code rule check}, which could not reach an error text at all. Publishing an
+     * envelope was never the contract; publishing the GATE'S OWN verdict is, which is why {@code source} is
+     * asserted here and not only in the rows above.
+     */
+    @Test
+    void ruleModifyPublishesTheGatesOwnVerdictRatherThanASummaryOfIt(@TempDir Path dir) throws Exception {
+        Path model = CliTestSupport.orderRuled(dir);
+        Path spec = dir.resolve("seed.json");
+        Files.writeString(spec, ruleSpec("Nothing interpolated here."));
+        assertEquals(0, CliTestSupport.run("-m", model.toString(), "rule", "add", spec.toString()).code());
+
+        var res = CliTestSupport.run("-m", model.toString(), "rule", "modify", "/Order/BAD_TEXT",
+                "--message", "en_US=" + BAD_PARAM_TEXT, "--dry-run");
+
+        JsonNode env = M.readTree(res.out());
+        assertEquals("rejected", env.get("outcome").asText(), res.out());
+        assertFalse(env.get("valid").asBoolean(), res.out());
+        JsonNode d = theOnlyDiagnostic(env);
+        assertEquals("KERNEL", d.path("source").asText(null),
+                () -> "the kernel arbitrated it, so the diagnostic is the kernel's: " + res.out());
+        assertEquals(INVALID_ENTITY, d.path("code").asText(null), res.out());
+        assertEquals("/Order/BAD_TEXT", d.path("where").path("rule").asText(null), res.out());
+    }
+
+    /** …and its computation twin, which carried a verbatim copy of that shape. */
+    @Test
+    void computationModifyPublishesTheGatesOwnVerdictToo(@TempDir Path dir) throws Exception {
+        Path model = CliTestSupport.orderRuled(dir);
+        Path seed = dir.resolve("comp-seed.json");
+        Files.writeString(seed, """
+                { "computedField": "/Order/Items/Count",
+                  "alternatives": [ {"operation": "1"} ],
+                  "messages": [ {"locale":"en_US","text":"Nothing interpolated here."} ] }""");
+        assertEquals(0, CliTestSupport.run("-m", model.toString(), "computation", "add", seed.toString()).code());
+
+        Path edit = dir.resolve("comp-edit.json");
+        Files.writeString(edit, """
+                { "computedField": "/Order/Items/Count",
+                  "alternatives": [ {"operation": "1"} ],
+                  "messages": [ {"locale":"en_US","text":"%s"} ] }""".formatted(BAD_PARAM_TEXT));
+
+        var res = CliTestSupport.run("-m", model.toString(), "computation", "modify",
+                "/Order/Items/CountComp", "--spec", edit.toString(), "--dry-run");
+
+        JsonNode env = M.readTree(res.out());
+        assertEquals("rejected", env.get("outcome").asText(), res.out());
+        JsonNode d = theOnlyDiagnostic(env);
+        assertEquals("KERNEL", d.path("source").asText(null), res.out());
+        assertEquals(INVALID_ENTITY, d.path("code").asText(null), res.out());
+    }
+
     /** The stored-model route: an existing rule whose error text is the inconsistency. */
     @Test
     void modelCheckCarriesTheClassAndTheRulePath(@TempDir Path dir) throws Exception {

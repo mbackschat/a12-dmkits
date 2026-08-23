@@ -4,6 +4,8 @@ import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.LinkedHashMap;
+import java.util.Map;
 import java.util.Locale;
 import java.util.Optional;
 import java.util.function.Supplier;
@@ -18,6 +20,7 @@ import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 
 import io.github.mbackschat.a12.dm.rulekit.catalog.OperatorCatalog;
+import io.github.mbackschat.a12.dm.rulekit.dsl.LocalizedText;
 import io.github.mbackschat.a12.dm.core.Backends;
 import io.github.mbackschat.a12.dm.core.ModelResolver;
 import io.github.mbackschat.a12.dm.core.Notification;
@@ -292,15 +295,50 @@ public final class RuleValidator {
         body.put("errorCondition", rule.errorCondition());
         body.put("severity", rule.severity());
 
-        // A rule must carry error text (MVK_ERROR_MESSAGE_MISSING) — inject a placeholder per model
-        // locale so that requirement doesn't mask the condition diagnostics we actually care about.
+        // A rule must carry error text (MVK_ERROR_MESSAGE_MISSING) — inject a placeholder per model locale so
+        // that requirement doesn't mask the condition diagnostics we actually care about. A supplied message
+        // REPLACES its locale's placeholder and nothing else, so a candidate carrying one locale's text is
+        // checked for that text rather than reported missing the other: the caller only claimed to be authoring
+        // what they supplied. The placeholder is also WHY a candidate check could not reach the kernel's
+        // error-text checker before messages could be supplied — the rule's own name is always a valid text.
+        Map<String, String> supplied = new LinkedHashMap<>();
+        rule.messages().forEach(m -> supplied.put(m.locale(), m.text()));
         ArrayNode messages = body.putArray("errorMessage");
         for (String code : localeCodes) {
             ObjectNode message = messages.addObject();
             message.put("locale", code);
-            message.put("text", rule.name());
+            message.put("text", supplied.getOrDefault(code, rule.name()));
         }
         return node;
+    }
+
+    /**
+     * The locales a caller asked about that the model does not declare — refused rather than injected.
+     *
+     * <p><b>Measured basis for refusing rather than passing through</b> (2026-08-24, one model declaring
+     * {@code en_US} + {@code de_DE}): the identical {@code "See $Nonexistent$"} text is rejected
+     * {@code INVALID_ENTITY} in {@code en_US} and accepted with no diagnostic at all in {@code fr_FR}. The
+     * kernel's error-text checker runs per DECLARED locale, so an undeclared one is never examined — and a
+     * check that answers {@code valid:true} about a text nothing looked at is the one answer this route must
+     * not give. Passing it through with an advisory was the alternative and is worse: it discloses the hole
+     * instead of closing it.
+     */
+    public List<String> undeclaredMessageLocales(String modelJson, DraftRule rule) {
+        if (rule.messages().isEmpty()) {
+            return List.of();
+        }
+        List<String> declared = declaredLocales(modelJson);
+        return rule.messages().stream().map(LocalizedText::locale).distinct()
+                .filter(locale -> !declared.contains(locale)).toList();
+    }
+
+    /** The locales the model's header declares — the set an error text is actually checked for. */
+    public List<String> declaredLocales(String modelJson) {
+        try {
+            return localeCodes(mapper.readTree(modelJson));
+        } catch (IOException e) {
+            throw new UncheckedIOException(e);
+        }
     }
 
     private ObjectNode computationNode(DraftComputation computation, List<String> localeCodes) {
