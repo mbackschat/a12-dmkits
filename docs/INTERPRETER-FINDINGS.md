@@ -3820,6 +3820,15 @@ Found by the differential built for a12-kernel-lean's `SPEC-2026-08-23-11`, on o
 
 **The fix is one conjunct in the same `when`**, guarded on `isIsoDateTime` because only a date-bearing value can be below a floor — a time-only `HH:mm:ss` DATE_TIME (legal, [KF81](KERNEL-FINDINGS.md#kf81)) names no calendar day. The opt-in pre-1900 check is deliberately NOT extended: it is a `DateType` declaration and a DATE_TIME field has no such property, so adding it would be a refusal with no measured basis.
 
-**The class this belongs to.** A kind whose diagnostics are *borrowed* from another kind is where a stage goes missing unnoticed: there is no code named after the missing check to prompt the question. The general move is to enumerate the lending kind's stages and ask which of them the borrowing kind reaches — here, three stages for DATE and two implemented for DATE_TIME.
+**The class this belongs to, and the enumeration that closes it.** A kind whose diagnostics are *borrowed* from another kind is where a stage goes missing unnoticed: there is no code named after the missing check to prompt the question. The move is to enumerate the lending kind's stages and ask which of them each borrowing kind reaches. Done, over every arm of `formalError`'s `when`:
+
+| kind | format | shape / precision | Gregorian floor | opt-in pre-1900 |
+|---|---|---|---|---|
+| `DATE` (a fragment is this kind at `FRAGMENT` precision) | ✓ | ✓ | ✓ | ✓ |
+| `DATE_TIME` | ✓ | the DST-gap guard | ✓ **(this fix)** | n/a — no such declaration on the kind |
+| `TIME` | ✓ | n/a | n/a — a clock has no position in time | n/a |
+| `DATE_RANGE` | ✓ | ✓ | ✓ (`datumBereichDatumFalsch`) | n/a — [FEATURE-GAPS](FEATURE-GAPS.md) expert-mode, trigger unfired |
+
+`DATE_TIME` was the only cell missing, so the class is closed rather than one case patched. The two `n/a` columns are stated because an unexplained blank is indistinguishable from the gap this finding is about.
 
 *Locked by:* `adapter.laws.TemporalInputFormalCauseDiffTest.aStoredDateTimeCarriesBothCodesAndTheDateFloor` (both kernel strategies + the interpreter, the floor day beside the day before it) + `interpreter … DateGregorianFloorFormalTest` (JVM and Node, with the time-only declaration as the must-not-fire control).
