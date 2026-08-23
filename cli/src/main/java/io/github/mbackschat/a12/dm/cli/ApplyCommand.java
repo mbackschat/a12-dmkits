@@ -990,7 +990,6 @@ final class ApplyCommand extends BaseCommand {
                 RejectionBasis.preflight());
     }
 
-    /** The terminal gate rejected the committed sequence — surface the kernel's diagnostics; nothing written. */
     /**
      * The terminal gate's rejection: {@code valid:false} plus the arbitrator that decided it (the previous shape
      * reported the verdict but never who reached it). Built by the shared {@link BaseCommand} path — this method was a
