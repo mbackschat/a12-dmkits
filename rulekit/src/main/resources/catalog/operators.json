@@ -5918,9 +5918,19 @@
         }
       ],
       "returns": "date",
-      "meaning": "The date part of a date-time, as a comparable date.",
+      "meaning": "The date part of a date-time, as a comparable date: the SOURCE LABEL'S OWN wall date, with the time dropped and no conversion to the retained instant's UTC day.",
       "constraints": [
-        "the operand is a date-time (a field or expression), rendered as a bare entity ref"
+        "the operand is a COMPLETE date-time (a field or expression), rendered as a bare entity ref — a bracketed value is MVK_UNEXPECTED_TOKEN, and a plain DATE field or a time-only DATE_TIME is MVK_WRONG_DATE_FORMAT_FOR_OP at the operator"
+      ],
+      "gotchas": [
+        {
+          "kind": "SURPRISE",
+          "text": "the extracted date is the stored label's OWN date, never a zone-converted one — at Europe/Berlin a 2024-06-15T00:30:00 extracts to 2024-06-15, and an implementation that resolves the instant first and takes its UTC day is off by one for any label within the zone offset of midnight. The result is a DATE, so comparing it to Now, to a TimeFromDateTime result, to a TIME field, or to its own DATE_TIME source is MVK_INVALID_COMPARE_TO_DATE",
+          "seeAlso": [
+            "TimeFromDateTime",
+            "DateTime"
+          ]
+        }
       ],
       "validExample": {
         "dsl": "FieldFilled(ScheduledAt) And DateFromDateTime(ScheduledAt) > Today",
@@ -5946,7 +5956,7 @@
       "returns": "time",
       "meaning": "The time-of-day part of a date-time, as a comparable time.",
       "constraints": [
-        "the operand is a date-time (a field or expression)"
+        "the operand is a COMPLETE date-time (a field or expression) — a plain DATE field, like a time-only DATE_TIME, is MVK_WRONG_DATE_FORMAT_FOR_OP at the operator"
       ],
       "validExample": {
         "dsl": "FieldFilled(ScheduledAt) And FieldFilled(PickupTime) And [PickupTime] != TimeFromDateTime(ScheduledAt)",

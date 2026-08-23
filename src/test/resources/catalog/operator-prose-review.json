@@ -6719,7 +6719,7 @@
       "operator": "DateFromDateTime",
       "lane": "MEANING",
       "ordinal": 0,
-      "digest": "sha256:8ee9b660baa26d262b1d95f9b9f366487841c26b514a0c633eb71686c69de99b",
+      "digest": "sha256:a0c05751c6311b983f38288e7f48e86c0b732a038203ebfd48b18e4ad318d3a8",
       "classifications": [
         "RUNTIME"
       ],
@@ -6728,6 +6728,11 @@
           "classification": "RUNTIME",
           "type": "TEST",
           "id": "adapter.laws.DateTimeExtractDiffTest"
+        },
+        {
+          "classification": "RUNTIME",
+          "type": "TEST",
+          "id": "adapter.laws.DateFromDateTimeWallDateDiffTest"
         }
       ]
     },
@@ -6735,11 +6740,28 @@
       "operator": "DateFromDateTime",
       "lane": "CONSTRAINT",
       "ordinal": 0,
-      "digest": "sha256:2be59b9ffdf739e7f53d36e0a8c1946632d6a7772fd308523c180d90996c1577",
+      "digest": "sha256:3b07641357db85ad0ae99428d7dff8075182aac26c025e9dd26047257eb2a755",
       "classifications": [
         "REJECTION"
       ],
       "evidence": []
+    },
+    {
+      "operator": "DateFromDateTime",
+      "lane": "GOTCHA",
+      "ordinal": 0,
+      "digest": "sha256:86c1a307abd419f8975c04492516ff65571819699bcccc6d3136c463ea1c69b3",
+      "classifications": [
+        "RUNTIME",
+        "REJECTION"
+      ],
+      "evidence": [
+        {
+          "classification": "RUNTIME",
+          "type": "TEST",
+          "id": "adapter.laws.DateFromDateTimeWallDateDiffTest"
+        }
+      ]
     },
     {
       "operator": "TimeFromDateTime",
@@ -6766,9 +6788,10 @@
       "operator": "TimeFromDateTime",
       "lane": "CONSTRAINT",
       "ordinal": 0,
-      "digest": "sha256:9bbdf94063cd8fe58a53b2480f6866c277b4dc0c15eec4bf881199b31146e7e1",
+      "digest": "sha256:55ee663c8718082dfa23d82cb68fea7a80f22e5f1d68b7f4d7c10185d093e332",
       "classifications": [
-        "ADMISSION"
+        "ADMISSION",
+        "REJECTION"
       ],
       "evidence": [
         {
@@ -26099,6 +26122,198 @@
           "type": "CLAIM_PROBE",
           "id": "DateRange.crossed-computation-target",
           "side": "TRIGGER"
+        }
+      ]
+    },
+    {
+      "id": "literal.DateFromDateTime.constraint0.MVK_UNEXPECTED_TOKEN",
+      "operator": "DateFromDateTime",
+      "kind": "CONDITION",
+      "units": [
+        {
+          "lane": "CONSTRAINT",
+          "ordinal": 0
+        }
+      ],
+      "expected": {
+        "verdict": "REJECTED",
+        "code": "MVK_UNEXPECTED_TOKEN"
+      },
+      "evidence": [
+        {
+          "type": "CLAIM_PROBE",
+          "id": "DateFromDateTime.bracketed-operand"
+        }
+      ]
+    },
+    {
+      "id": "review.DateFromDateTime.bracketed-operand.trigger",
+      "operator": "DateFromDateTime",
+      "kind": "CONDITION",
+      "units": [
+        {
+          "lane": "CONSTRAINT",
+          "ordinal": 0
+        }
+      ],
+      "expected": {
+        "verdict": "REJECTED",
+        "code": "MVK_UNEXPECTED_TOKEN"
+      },
+      "evidence": [
+        {
+          "type": "CLAIM_PROBE",
+          "id": "DateFromDateTime.bracketed-operand",
+          "side": "TRIGGER"
+        }
+      ]
+    },
+    {
+      "id": "review.DateFromDateTime.bracketed-operand.control",
+      "operator": "DateFromDateTime",
+      "kind": "CONDITION",
+      "units": [
+        {
+          "lane": "CONSTRAINT",
+          "ordinal": 0
+        }
+      ],
+      "expected": {
+        "verdict": "ACCEPTED"
+      },
+      "evidence": [
+        {
+          "type": "CLAIM_PROBE",
+          "id": "DateFromDateTime.bracketed-operand",
+          "side": "CONTROL"
+        }
+      ]
+    },
+    {
+      "id": "literal.DateFromDateTime.gotcha0.MVK_INVALID_COMPARE_TO_DATE",
+      "operator": "DateFromDateTime",
+      "kind": "CONDITION",
+      "units": [
+        {
+          "lane": "GOTCHA",
+          "ordinal": 0
+        }
+      ],
+      "expected": {
+        "verdict": "REJECTED",
+        "code": "MVK_INVALID_COMPARE_TO_DATE"
+      },
+      "evidence": [
+        {
+          "type": "CLAIM_PROBE",
+          "id": "DateFromDateTime.not-comparable-with-now"
+        }
+      ]
+    },
+    {
+      "id": "review.DateFromDateTime.not-comparable-with-now.trigger",
+      "operator": "DateFromDateTime",
+      "kind": "CONDITION",
+      "units": [
+        {
+          "lane": "GOTCHA",
+          "ordinal": 0
+        }
+      ],
+      "expected": {
+        "verdict": "REJECTED",
+        "code": "MVK_INVALID_COMPARE_TO_DATE"
+      },
+      "evidence": [
+        {
+          "type": "CLAIM_PROBE",
+          "id": "DateFromDateTime.not-comparable-with-now",
+          "side": "TRIGGER"
+        }
+      ]
+    },
+    {
+      "id": "review.DateFromDateTime.not-comparable-with-now.control",
+      "operator": "DateFromDateTime",
+      "kind": "CONDITION",
+      "units": [
+        {
+          "lane": "GOTCHA",
+          "ordinal": 0
+        }
+      ],
+      "expected": {
+        "verdict": "ACCEPTED"
+      },
+      "evidence": [
+        {
+          "type": "CLAIM_PROBE",
+          "id": "DateFromDateTime.not-comparable-with-now",
+          "side": "CONTROL"
+        }
+      ]
+    },
+    {
+      "id": "literal.TimeFromDateTime.constraint0.MVK_WRONG_DATE_FORMAT_FOR_OP",
+      "operator": "TimeFromDateTime",
+      "kind": "CONDITION",
+      "units": [
+        {
+          "lane": "CONSTRAINT",
+          "ordinal": 0
+        }
+      ],
+      "expected": {
+        "verdict": "REJECTED",
+        "code": "MVK_WRONG_DATE_FORMAT_FOR_OP"
+      },
+      "evidence": [
+        {
+          "type": "CLAIM_PROBE",
+          "id": "TimeFromDateTime.plain-date-source"
+        }
+      ]
+    },
+    {
+      "id": "review.TimeFromDateTime.plain-date-source.trigger",
+      "operator": "TimeFromDateTime",
+      "kind": "CONDITION",
+      "units": [
+        {
+          "lane": "CONSTRAINT",
+          "ordinal": 0
+        }
+      ],
+      "expected": {
+        "verdict": "REJECTED",
+        "code": "MVK_WRONG_DATE_FORMAT_FOR_OP"
+      },
+      "evidence": [
+        {
+          "type": "CLAIM_PROBE",
+          "id": "TimeFromDateTime.plain-date-source",
+          "side": "TRIGGER"
+        }
+      ]
+    },
+    {
+      "id": "review.TimeFromDateTime.plain-date-source.control",
+      "operator": "TimeFromDateTime",
+      "kind": "CONDITION",
+      "units": [
+        {
+          "lane": "CONSTRAINT",
+          "ordinal": 0
+        }
+      ],
+      "expected": {
+        "verdict": "ACCEPTED"
+      },
+      "evidence": [
+        {
+          "type": "CLAIM_PROBE",
+          "id": "TimeFromDateTime.plain-date-source",
+          "side": "CONTROL"
         }
       ]
     }
