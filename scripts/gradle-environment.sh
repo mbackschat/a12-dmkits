@@ -14,14 +14,42 @@ a12_gradle_user_home() {
   printf '%s/.gradle-isolated\n' "$(cd "$common_checkout/.." && pwd)"
 }
 
+# Is `$1` a GraalVM home? GraalVM writes GRAALVM_VERSION into its `release` file and stock OpenJDK does not,
+# so this is a file read rather than a JVM launch — it runs on every ./build.sh.
+a12_is_graalvm_home() {
+  local home="${1:?a JDK home is required}"
+  [[ -r "$home/release" ]] && grep -q '^GRAALVM_VERSION=' "$home/release"
+}
+
+# Every JDK 21 home macOS knows about, one per line. Split out from the selection policy below so that policy
+# is testable against fixture homes without a real java_home (scripts/selftest-jdk-pin.sh overrides this).
+a12_jdk21_homes() {
+  [[ -x /usr/libexec/java_home ]] || return 0
+  /usr/libexec/java_home -V 2>&1 | sed -n 's|^ *21\..* \(/.*\)$|\1|p'
+}
+
 # Resolve the JDK 21 home this project pins for BOTH its Gradle build and any launcher it verifies, or print
 # nothing where the platform offers no pin (Linux/CI leave JAVA_HOME to the caller). Single-sourced because
 # the build pinning a JDK while a post-build launcher check keeps the caller's is exactly how a stale
 # JAVA_HOME was reported as a source-provenance mismatch (dmtool feedback 2026-08-19). A present but broken
 # `java_home -v 21` stays a failure here; each caller decides whether that is fatal.
+#
+# THE PIN IS OPENJDK, AND A GRAALVM HOME IS SKIPPED RATHER THAN ACCEPTED (owner rule 2026-08-23). This used
+# to be `java_home -v 21`, which returns the HIGHEST-versioned JDK 21 present — so `brew install openjdk@21`
+# displaced GraalVM 21.0.12 as the build JDK on 2026-08-19 with no commit here, moving 45 of 91 perf lanes
+# (median 1.15x, worst 1.60x) and reading at first as a code regression. GraalVM belongs to native image
+# alone (GRAALVM_HOME, GraalVM 25). Refusing beats falling back: a silent second-choice JDK is the exact
+# failure this replaces.
 a12_pinned_jdk21_home() {
   [[ -x /usr/libexec/java_home ]] || return 0
-  /usr/libexec/java_home -v 21
+  local home
+  while IFS= read -r home; do
+    [[ -n "$home" ]] || continue
+    a12_is_graalvm_home "$home" && continue
+    printf '%s\n' "$home"
+    return 0
+  done < <(a12_jdk21_homes)
+  return 1
 }
 
 # Classify the Java that `$1` (a JAVA_HOME, or empty to mean "whatever PATH resolves") would actually run,

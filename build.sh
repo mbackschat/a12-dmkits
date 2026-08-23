@@ -30,7 +30,9 @@ export GRADLE_USER_HOME="$(a12_gradle_user_home "$ROOT")"
 # special builtin whose status is 0 even when its substitution fails, so `set -e` never saw it. Fail-fast is
 # the intent; the silent degrade was not.
 pinned_jdk21_home="$(a12_pinned_jdk21_home)" \
-  || { echo "build.sh: no JDK 21 registered; install one (brew install openjdk@21) so java_home -v 21 resolves" >&2; exit 1; }
+  || { echo "build.sh: no OpenJDK 21 registered; install one (brew install openjdk@21). A GraalVM 21 alone is" >&2
+       echo "          deliberately NOT accepted as the build JDK - GraalVM is for native image (GRAALVM_HOME)." >&2
+       exit 1; }
 [[ -z "$pinned_jdk21_home" ]] || export JAVA_HOME="$pinned_jdk21_home"
 
 exec "$ROOT/gradlew" "$@"
