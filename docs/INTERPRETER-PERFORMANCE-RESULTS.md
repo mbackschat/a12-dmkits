@@ -27,14 +27,27 @@
 
 What it actually was: `a12_pinned_jdk21_home` was `/usr/libexec/java_home -v 21`, which returns the **highest-versioned** JDK 21 installed. `brew install openjdk@21` (21.0.12.1) landed on **2026-08-19 01:23** — between the last green gate and the first red one — and displaced Oracle GraalVM 21.0.12 as the build JDK with no commit in this repository. Those are different JIT compilers, and the run records had said so all along: every green run carries `jdk: "21.0.12"`, both red ones `jdk: "21.0.12.1"`.
 
-The control, same commit `f559b5b3`, same machine, same day, 96 timed observations each:
+The first control was same commit `f559b5b3`, same machine, same day, 96 timed observations each: GraalVM **66.07 ms** accepted against OpenJDK **105.88 ms** breached, and across 91 common lanes a median **1.15×** with 45 lanes slower and **10 faster**.
 
-| JDK | grapheme@32k | median across 91 common lanes |
+**Corrected 2026-08-24 — that pair overstated its own precision, and the recapture caught it.** Three fresh OpenJDK gate runs returned 101.13, **63.85** and 109.27 ms for this lane. A single run per side therefore cannot carry a ratio: 63.85 sits inside GraalVM's own band. What does carry it is the distribution now on record:
+
+| runtime | full-gate runs | range | median |
+|---|---|---|---|
+| Oracle GraalVM 21.0.12 (Graal JIT) | 17 | 48.5 – 79.8 ms | **56.3** |
+| Homebrew OpenJDK 21.0.12.1 (HotSpot C2) | 5 | 63.9 – 119.4 ms | **108.6** |
+
+17 of 17 GraalVM runs land under 80 ms and 4 of 5 OpenJDK runs above 100, so the distributions barely touch: the honest magnitude on this lane is **≈1.93× at the median**, not the 1.60× the single pair suggested, and OpenJDK additionally runs *wider* — it is occasionally as fast as GraalVM and usually is not. The 91-lane figure keeps the same caveat (one run per side), so read its **direction** — 45 lanes slower against 10 faster is a systematic skew, not noise — rather than its magnitude. Ten lanes getting faster is what makes it a JIT-characteristics change rather than a regression: no edit to our interpreter slows 45 unrelated lanes and speeds up 10. `charset-grapheme` breached alone because it sat closest to its floor.
+
+**The 2×2 that actually settles it (completed 2026-08-24, at the owner's insistence).** Every cell above still varied *two* things or rested on one run per side, and the cell that answers "is the new code fine?" — HEAD under GraalVM — had simply never been measured. It was the missing one because the gate added in this same slice refuses GraalVM, so obtaining it required a deliberate, temporary bypass:
+
+| commit | GraalVM 21.0.12 | OpenJDK 21.0.12.1 |
 |---|---|---|
-| Oracle GraalVM 21.0.12 (Graal JIT) | **66.07 ms** — accepted | baseline |
-| Homebrew OpenJDK 21.0.12.1 (HotSpot C2) | **105.88 ms** — breached | **1.15× slower**, 45 lanes slower, **10 faster** |
+| `f559b5b3` (last known green) | 66.07 ms — green | 105.88 ms — **breached** |
+| HEAD `4c472d66e` | **55.45 ms — green, 0 breaches of all 66 anchors** | 101.13 / 63.85 / 109.27 ms — breached in 2 of 3 |
 
-Ten lanes getting *faster* is what settles it as a JIT-characteristics change rather than a regression: no edit to our interpreter slows 45 unrelated lanes and speeds up 10. `charset-grapheme` breached alone because it sat closest to its floor.
+At HEAD under GraalVM the **whole gate passes**: all 66 anchors, every one captured during the GraalVM era, zero breaches, with this lane at 55.45 ms against its 55.47 ms anchor. The interpreter changes since `f559b5b3` therefore cost nothing measurable, and flipping only the JDK on that same HEAD breaches. That is a complete 2×2, and it is what the earlier single pair was standing in for. *Caveat kept deliberately: the GraalVM run measured at load 2.61 against ~5 for the OpenJDK runs, so cross-JDK MAGNITUDES remain confounded — but a pass/fail against an anchor a lane exceeds by ~1.9× cannot be bought with a quieter machine, and 55.45 against a 55.47 anchor has no headroom to borrow.*
+
+**Only `darwin-aarch64` was ever contaminated, and the version string invites the opposite conclusion.** CI and the nightly perf job install **Temurin** (`actions/setup-java`, `distribution: temurin`; no GraalVM anywhere in either workflow), so `linux-amd64-ci`'s recorded `jdk: 21.0.12` is Temurin 21.0.12 — OpenJDK throughout, needing no recapture. That string is *identical* to the GraalVM the Mac was using, which is the same indistinguishability this entry is about, one level up: reading the CI block's `21.0.12` and concluding "GraalVM-era" is a mistake made while writing this account. Check the workflow, not the version.
 
 **Two things were wrong, and both were ours.** The pin fixed only the major version, so an unrelated Homebrew install could re-point the build; and the anchor block records `jdk` but **nothing ever read it** — the "parsed but never enforced" class this estate has a rule against. `java.version` could not have carried the check anyway: GraalVM 21 reports `21.0.12` and Homebrew OpenJDK `21.0.12.1`, which differ by coincidence, not by family.
 

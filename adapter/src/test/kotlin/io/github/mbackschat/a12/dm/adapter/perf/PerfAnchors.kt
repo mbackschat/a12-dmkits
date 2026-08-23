@@ -142,7 +142,7 @@ internal data class JdkIdentity(val family: String, val major: String) {
                 "java.vm.version=${System.getProperty("java.vm.version")}."
         }
 
-        /** Called from the one seam every timed observation passes through, so no lane can measure around it. */
+        /** Called from the one seam EVERY record kind reaches, so no lane can measure around it. */
         fun requireSupported() {
             refusalFor(current)?.let { throw IllegalStateException(it) }
         }
@@ -265,6 +265,11 @@ internal object PerfObservations {
     internal const val MAX_RUNS_PER_ENVIRONMENT = 30
 
     private val file: File by lazy {
+        // BEFORE the prune, not merely before the write. A refused run must leave the record tree exactly as it
+        // found it, and `pruneToRetentionBound` below DELETES a committed run to make room for this one — so
+        // gating only the append let a GraalVM run evict real history and then write a 0-byte file in its place.
+        // Both were observed on 2026-08-24 while proving the append gate; this is the ordering that fixes them.
+        JdkIdentity.requireSupported()
         val stamp = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HHmmss'Z'")
             .withZone(ZoneOffset.UTC).format(Instant.now())
         pruneToRetentionBound(resultsDirectory().resolve(PerfEnvironment.key).toFile())
@@ -437,7 +442,17 @@ internal object PerfObservations {
         }
     }
 
-    private fun File.appendLine(record: Map<String, Any?>) = appendRecordTo(this, record)
+    /**
+     * The ONE seam every record kind reaches — observation, warm, cost, margin, and the run header itself — so
+     * the JDK gate below cannot be measured around. It was on `record()` alone for its first hour, which gated
+     * the medians and left `recordWarm`/`recordCost`/`recordMargin` writing: a refused GraalVM run then produced
+     * a file with 102 warm records and 0 observations (measured 2026-08-24), which `PerformanceRecordShapeGuardTest`
+     * correctly rejected as malformed. Gating one entry point of four is the symptom fix; this is the class fix.
+     */
+    private fun File.appendLine(record: Map<String, Any?>) {
+        JdkIdentity.requireSupported()
+        appendRecordTo(this, record)
+    }
 
     /**
      * One engine instance's steady-state warm outcome, as a function so its **shape** can be held by a test.
@@ -522,9 +537,6 @@ internal object PerfObservations {
      */
     @Synchronized
     fun record(key: ObservationKey, medianMs: Double, status: String) {
-        // The gate on WHICH JVM may produce a number at all, at the one seam every timed observation reaches
-        // (IF296) — so a new lane inherits it by existing rather than by remembering. See JdkIdentity.
-        JdkIdentity.requireSupported()
         val quality = PerfEnvironmentQuality.snapshot()
         val window = PerfEnvironmentQuality.delta(lastQuality, quality)
         lastQuality = quality
