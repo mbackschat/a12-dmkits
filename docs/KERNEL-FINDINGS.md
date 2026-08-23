@@ -3147,3 +3147,92 @@ The two `fr_FR` rows differ only in whether the text is legal and neither is rep
 **What follows for a candidate checker.** `RuleValidator` injects a placeholder error text per declared locale (so `MVK_ERROR_MESSAGE_MISSING` cannot mask the condition diagnostics), and a supplied message replaces its locale's placeholder. A message for an *undeclared* locale has no placeholder to replace and would simply not be injected anywhere the checker looks — so `rule check --message fr_FR=…` is **refused** (`RK_UNDECLARED_MESSAGE_LOCALE`) rather than answered, because a `valid:true` about a text nothing examined is the one answer that route must not give. That is a deliberate client-side strictness over a model the kernel accepts, and the table above is its measured basis.
 
 *(Locked: `validate.laws.ErrorTextLocaleScopeLawsTest` — the kernel rows, as a within-model pair differing only in the message's locale, plus the indistinguishability row that makes "unexamined" a measurement rather than an inference and the placeholder-merge row. `cli.rule.RuleCheckMessageTest` locks the CLI half: the refusal and its declared-locale twin.)*
+
+## §13 supplement: the rule-message parameter surface — a category suffix, a Base Year terminal, an index-gated key, a narrower quoting rule, and five bilingual terminals (kernel + tri-engine, 2026-08-24) <a id="kf198"></a>
+
+> Fold: pending — newly recorded error-text fact; folds into §13 (error-message interpolation) on the next canonical KERNEL-SEMANTICS pass.
+
+Reconciliation of a12-kernel-lean `SPEC-2026-08-24-01`, **accepted with three corrections**. §13 named only `$Field$`, `$Field.value$` and `$$`; a rule-owned parameter is four further things besides. The entry also exposed **three interpreter defects**, all fixed here — see the closing note.
+
+**The Enumeration category suffix and its three ordered gates.** `$Field->Category$` is a fourth parameter form, and the two suffixes are **alternatives** rather than decorations: combining them fails to parse in either order.
+
+| parameter | verdict |
+|---|---|
+| `$Tier->Band$` (declared category) | **admitted** |
+| `$Tier->Nope$` | `INVALID_CATEGORY` |
+| `$Tier->$` | `NO_CATEGORY` |
+| `$Premium->Band$` (not an Enumeration) | `FIELD_NO_ENUM` |
+| `$Tier.value->Band$` / `$Tier->Band.value$` | `MVK_UNEXPECTED_TOKEN` |
+
+**Correction to the peer entry: a doubled arrow has no single class.** Its first version called the shape a parse failure and its correction said the category gate reports first. Measured, which gate reports depends on the **first name**: `$Tier->Band->Band$` (declared) draws `MVK_UNEXPECTED_TOKEN`, `$Tier->Nope->Nope$` draws `INVALID_CATEGORY`, and `$Premium->Band->Band$` draws `FIELD_NO_ENUM`. Each statement is true of one row and neither generalizes; only the three rows together say what the gate order is.
+
+**What the category form is exempt from is the value suffix's NON-STARRED gate, not field membership.** Against one condition whose only reference to the field is starred, the three forms split — and the class the value suffix draws is its own:
+
+| parameter, one starred-only condition | verdict |
+|---|---|
+| `$Claims/Severity$` | **admitted** |
+| `$Claims/Severity.value$` | `PARAM_VALUE_WITH_STARREFERENCE` |
+| `$Claims/Severity->Band$` | **admitted** |
+
+Membership still binds every field form alike: with a condition that never names the field, both `$Tier$` and `$Tier->Band$` draw `INVALID_FIELD`. So "neither of the value suffix's extra gates" must be read as *non-starred* + *value-validation*, never as an exemption from membership.
+
+**The quoting rule is narrower than the condition language's, and the two grammars are separately observable.** A field named `For` must be quoted in the *condition* (`FieldFilled('For')` — `FieldFilled(For)` is `MVK_UNEXPECTED_TOKEN`) **and** again in the message; a field named `index` must be quoted in neither. The exempt terminals are value, root-group index, line, USB, form-line, form-name, and `index`.
+
+| parameter | verdict |
+|---|---|
+| `$index$` unquoted / `$'index'$` | **admitted** / **admitted** (the quote is transparent) |
+| `$For$` unquoted / `$'For'$` | `MVK_UNEXPECTED_TOKEN` / **admitted** |
+
+That exemption also settles the disambiguation §13 left open: `value` is not among the names a field may end with unquoted, so `$Premium.value$` is field + suffix and never a field named `Premium.value`.
+
+**The Base Year terminal.** A parameter need not be a field: `$BaseYear$` with an optional signed offset is gated only on the model declaring a Base Year, with no bound on the offset.
+
+| parameter | verdict |
+|---|---|
+| `$BaseYear$`, `$BaseYear+3$`, `$BaseYear-1$`, `$BaseYear+9999$` | **admitted** |
+| `$BaseYear$` with no Base Year declared | `NO_BASE_YEAR` |
+| `$BaseYear+$` / `$BaseYear+x$` / `$BaseYear 3$` | `MVK_EXPECTED_TOKEN_NOT_FOUND` / `MVK_UNEXPECTED_TOKEN` / `MVK_UNEXPECTED_TOKEN` |
+
+**The semantic-index key is gated on the INDEX, not on the field — the load-bearing pair.** Against a condition reading only `Claims/Payout For "C-1"`, a keyed parameter naming a *different* field of that group is admitted while the unkeyed spelling of that same field is refused. Every refusing row quotes a field and a key together, so only the admitted row separates the two accounts.
+
+| condition | parameter | verdict |
+|---|---|---|
+| keyed `Claims/Payout For "C-1"` | `$Claims/ClaimNo For "C-1"$` (field absent from the condition) | **admitted** |
+| the same | `$Claims/ClaimNo$` | `INVALID_FIELD` |
+| the same | `$Claims/Payout For "C-9"$` (different key) | `MVK_INDEX_FOR_ERROR_TEXT_INVALID` |
+| plain per-row read | `$Payout For "C-1"$` (beside its admitted unkeyed control) | `MVK_INDEX_FOR_ERROR_TEXT_INVALID` |
+| field-keyed `For Adjuster` | `$… For Adjuster$` / `$… For "C-1"$` | **admitted** / `MVK_INDEX_FOR_ERROR_TEXT_INVALID` |
+
+The key comes **last**: `$Claims/Payout.value For "C-1"$` is admitted, `$… For "C-1".value$` is `MVK_UNEXPECTED_TOKEN`. It is a quoted literal or a field path, so an unquoted bare word is a field reference (`INVALID_ENTITY`), and a key that is itself keyed is `ILLEGAL_SEMANTIC_INDEX`.
+
+**The grammar is bilingual, five terminals differ, and the other language's spelling is a WRONG VALUE risk rather than a syntax error.** The terminals follow the model's declared **condition language**, not its display locale (a `de_DE`-locale model still parses English conditions until `modelConfig.conditionLanguage` says otherwise). Five differ — value/`Wert`, `For`/`Fuer`, `RuleGroup`/`RegelKontext`, `RootGroup`/`LfdNr`, `BaseYear`/`Referenzjahr` — while `index`, `Zeile`, `Usb`, `Vordruckzeile` and `Vordruckname` are spelled the same, and the bundle's own comments record that **`Zeile` and `Usb` are not permitted in an A12 model**. Measured in both directions:
+
+| terminal, position | own language | other language |
+|---|---|---|
+| value / `Wert` (name) | **admitted** | `INVALID_ENTITY` |
+| `BaseYear` / `Referenzjahr` (name) | **admitted** | `INVALID_ENTITY` |
+| `RuleGroup` / `RegelKontext` (name) | `INVALID_PARAMETER` | `INVALID_ENTITY` |
+| `For` / `Fuer` (keyword) | **admitted** | `MVK_UNEXPECTED_TOKEN` |
+
+The rule-group pair is the sharpest instrument: neither spelling is admitted at a rule-owned parameter, but the own-language one is **recognised** and refused in this position while the other's is **looked up as a field**. That is the mechanism behind the wrong-value risk, measured rather than assumed — a model declaring a field of that name would silently resolve the field. The `For`/`Fuer` pair sits in keyword position, fails to parse, and therefore carries no such risk.
+
+**`RootGroup`/`LfdNr` is not reachable from a rule-owned parameter at all.** Both spellings draw `INVALID_ENTITY` in both languages, at a scalar locus and at an iterating one, with and without a repeatable root group — on the same fixtures where the rule-group pair separates as the positive control. Stated as a measured absence, not as a claim about the terminal bundle, which is shared across parameter owners.
+
+**What they RENDER**, byte-identically on both kernel codegen strategies and now on the interpreter. Two rows are within-model controls because the obvious statement is fixture-true rather than general, and one of them **corrects the peer entry**:
+
+| message | rendered |
+|---|---|
+| `$Tier->Band$` with `Tier` holding `BASIC` | `STANDARD` — the category TOKEN, not the category name, not the stored value |
+| `$Tier.value$`, `BASIC` **labelled** "Basic cover" | `Basic cover` — the LABEL |
+| `$RawTier.value$`, `BASIC` **unlabelled**, same document | `BASIC` — the stored token |
+| `$Tier->Band$` / `$Tier.value$` on an empty Enumeration | `` / `` — while `$Tier$` still renders `Tier` |
+| `$BaseYear$` `$BaseYear+3$` `$BaseYear-1$` `$$` against a declared 2020 | `2020` `2023` `2019` `$` |
+| `$Premium.value$`, unfilled, **max** 2 fractional digits | `0` |
+| `$MinPremium.value$`, unfilled, **min** 2 fractional digits, same document | `0.00` |
+| `$Reference$` unlabelled / `$Handler$` labelled, same document | `Reference` / `Claims handler` |
+
+**Two corrections to the peer's rendered clause, both fixture-true there.** It states that `$Status.value$` renders `open`; measured, an Enumeration's value suffix renders the value's **declared label** and falls back to the stored token only when the declaration carries none — the third row is the discriminator, in one document. And it states that "an unfilled Number declaring two fractional digits renders `0.00`"; the gate is **`minFractionalDigits`**, which §13's own prose already had right, and the sixth and seventh rows separate them in one model. Its short-name and declared-label rows are confirmed as written.
+
+**The three interpreter defects this found.** The tri-engine arm was red on four of the six rendered rows: the category suffix was left in the text as a raw `$Tier->Band$` token, an Enumeration's `.value` rendered the stored token rather than the label, and `$BaseYear$` fell through to an entity lookup and rendered the identifier debug form `/Policy/BaseYear/1.1`. All three are fixed (`FieldDef.enumValueLabels` + `ModelDef.enumValueTextOf`/`enumCategoryTokenOf`, and a language-aware terminal set in `renderMessage`), and the interpreter now agrees with both kernel strategies on every row.
+
+*(Locked: `validate.laws.RuleMessageParameterLawsTest` — the admission tables above, each asserted whole so a kernel upgrade shows the entire matrix rather than its first divergence, and each row preceded by a plain-message control proving the CONDITION is admitted; `validate.laws.RuleMessageParameterLanguageLawsTest` — the bilingual pairs in both directions plus the unreachable root-group pair with its positive control; `adapter.laws.RuleMessageParameterRenderingDiffTest` — the rendered rows on dynamic Groovy, static Java and the interpreter; `interpreter … RuleMessageParameterRenderTest` — the same rendering on JVM and JS, plus the `de_DE` condition language the kernel fixture does not carry.)*

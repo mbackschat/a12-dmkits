@@ -3771,3 +3771,24 @@ The first row is the reported one. The second was predicted from the same null a
 **The class is "an empty string is a legal declared VALUE", not "the loader folds empty to null".** `format`, `formatOfFragment`, and the enum `sValue` keep the same fold: the range separator is the only one of the four with a *measured* legal empty declaration (KF81 enumerates it). An empty `format` has never been in a probed grid, so those three are left as they are rather than reasoned into the class.
 
 *Locked by:* `load.DateRangeSeparatorLoadTest` (declared-empty · ordinary · absent, at the locus, on JVM and Node) + `adapter.laws.DateRangeFirstFilledProfileDiffTest.aHalvedMonthPairRetainsItsComponentPair` (the kernel oracle for the computed value — the row that found it) + `adapter.laws.DateRangeFormalDiffTest.anEmptySeparatorSplitsInTheMiddleLikeTheKernel`, which now runs the declared AND the loaded definition against the kernel on every row.
+
+### IF307: the message renderer knew three of the seven rule-message parameter forms — a category access, an Enumeration's label, and the Base Year terminal all rendered wrong (FIXED 2026-08-24) <a id="if307"></a>
+
+Found by the tri-engine arm of a new rendering differential while reconciling a12-kernel-lean `SPEC-2026-08-24-01` ([KF198](KERNEL-FINDINGS.md#kf198)). Both kernel strategies agreed with each other on all six rows; the interpreter was red on four of them.
+
+| message | kernel (both strategies) | pre-fix interpreter |
+|---|---|---|
+| `cat=[$Tier->Band$] val=[$Tier.value$] name=[$Tier$]`, `Tier` = labelled `BASIC` | `cat=[STANDARD] val=[Basic cover] name=[Tier]` | `cat=[$Tier->Band$] val=[BASIC] name=[Tier]` |
+| the same over an unlabelled Enumeration | `cat=[STANDARD] val=[BASIC]` | `cat=[$RawTier->Band$] val=[BASIC]` |
+| the same over an EMPTY Enumeration | `cat=[] val=[] name=[Tier]` | `cat=[$Tier->Band$] val=[] name=[Tier]` |
+| `[$BaseYear$] [$BaseYear+3$] [$BaseYear-1$] [$$]`, base year 2020 | `[2020] [2023] [2019] [$]` | `[/Policy/BaseYear/1.1] [$BaseYear+3$] [$BaseYear-1$] [$]` |
+
+**One locus, three distinct causes.** `renderMessage`'s token pattern was `\$([\w/]+)(\.value)?\$` — it could express a name and a value suffix and nothing else. So (a) `->Category` never matched and the raw token survived into the end-user text; (b) `$BaseYear$` *did* match, as an ordinary name, and rode the label cascade to its last stage, the identifier debug form — the failure mode is a plausible-looking string rather than a leftover token, which is why only a differential catches it; (c) `.value` matched but resolved to the stored display value, and the kernel renders an Enumeration's **declared label** there.
+
+**The Base Year row is the one worth remembering.** An unimplemented token that survives verbatim is self-announcing; one that resolves *through a legitimate fallback* is not. `/Policy/BaseYear/1.1` is exactly what §13's documented cascade produces for a name nothing declares, so every layer behaved correctly and the composition was wrong.
+
+**The fix carries the bilingual split, because the terminals are language-dependent.** The parameter grammar follows the model's declared CONDITION language, so `$Referenzjahr$` is the Base Year on a `de_DE` model and an ordinary field name on an `en_US` one ([KF198]). Substituting the year for the other language's spelling would convert a kernel refusal into a wrong VALUE — the one outcome the split can produce — so `MessageTerminals` is selected from `ModelDef.conditionLanguage` and the pattern is built from it, rather than accepting both spellings everywhere.
+
+**What the model was missing.** Enum value labels were never loaded: `enumValuesOf` read `values[].value` and dropped `values[].label`. `FieldDef.enumValueLabels` now carries them, and `ModelDef.enumValueTextOf`/`enumCategoryTokenOf` are the two message-side readers; the condition-side `EnumCategory` mapping in `Document` is untouched and stays the operand path.
+
+*Locked by:* `adapter.laws.RuleMessageParameterRenderingDiffTest` (the six rows above against both kernel strategies and the interpreter, with the labelled/unlabelled, min/max-fraction and labelled/unlabelled-name pairs as within-model controls) + `interpreter … RuleMessageParameterRenderTest` (the same on JVM and Node, plus the `de_DE` condition language and the both-directions "the other language's spelling is not the terminal" rows).

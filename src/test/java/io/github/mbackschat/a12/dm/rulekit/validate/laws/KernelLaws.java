@@ -6,6 +6,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import io.github.mbackschat.a12.dm.Fixtures;
 import io.github.mbackschat.a12.dm.ModelDrafts;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Computation;
+import io.github.mbackschat.a12.dm.rulekit.dsl.LocalizedText;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Rule;
 import io.github.mbackschat.a12.dm.rulekit.validate.DraftRule;
 import io.github.mbackschat.a12.dm.rulekit.validate.RuleValidator;
@@ -177,5 +178,38 @@ final class KernelLaws {
 
     private static ValidationResult check(String json, String group, String errorField, String condition) {
         return VALIDATOR.check(json, new DraftRule(group, "ProbeRule", errorField, condition, "PROBE", "ERROR"));
+    }
+
+    /** The verdict word a message-axis law reads when the kernel admits the candidate. */
+    static final String ADMITTED = "ADMITTED";
+
+    /**
+     * The kernel's verdict on ONE error-message TEXT — {@link #ADMITTED} or the comma-joined classes it
+     * reported — with the condition held fixed. The message axis needs its own entry point because
+     * {@link #check} varies the condition and always supplies a placeholder text.
+     *
+     * <p><b>The plain-message control is the point, not politeness.</b> A malformed condition is refused
+     * before the error-text checker ever runs, and that refusal is indistinguishable from a verdict on the
+     * message. Nine rows of the probe behind [KF198] were exactly that mistake, so this asserts the same
+     * condition is admitted with a plain text before it reads the row.
+     */
+    static String messageVerdict(String json, String group, String errorField, String condition,
+            String locale, String messageText) {
+        ValidationResult control = VALIDATOR.check(json, message(group, errorField, condition, locale, "plain"));
+        assertTrue(control.ok(), () -> "the CONDITION is refused, so this row measures nothing about the "
+                + "message: " + control.diagnostics());
+        ValidationResult verdict = VALIDATOR.check(json, message(group, errorField, condition, locale, messageText));
+        return verdict.ok() ? ADMITTED
+                : verdict.diagnostics().stream().map(d -> d.code().orElse("(no code)"))
+                        .collect(java.util.stream.Collectors.joining(","));
+    }
+
+    private static DraftRule message(String group, String errorField, String condition,
+            String locale, String text) {
+        return DraftRule.builder()
+                .groupPath(group).name("ProbeRule").errorEntityRelPath(errorField)
+                .errorCondition(condition).errorCode("PROBE").severity("ERROR")
+                .messages(java.util.List.of(new LocalizedText(locale, text)))
+                .build();
     }
 }

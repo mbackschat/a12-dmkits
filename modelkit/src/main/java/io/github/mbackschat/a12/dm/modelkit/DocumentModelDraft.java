@@ -52,7 +52,9 @@ public final class DocumentModelDraft {
      * kernel's own models (a12-kernel-mm) declare a de_DE display locale yet author English-keyword rules.
      * Single-sourced so the model-config default and the attachment-template authoring can't drift (a de_DE
      * model authoring German attachment conditions against an en_US config is exactly what this prevents).
-     * Change the rare German-keyword case explicitly via {@code config().conditionLanguage("de_DE")}.
+     * Change the rare German-keyword case explicitly with
+     * {@code ModelDocument.read(draft.toJson()).setConditionLanguage("de_DE")} — {@code config()} is the
+     * read-only projection, so it carries no setter.
      */
     static final String DEFAULT_CONDITION_LANGUAGE = "en_US";
 

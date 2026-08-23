@@ -377,6 +377,7 @@ object ModelLoader {
         datePrecision = datePrecisionOf(node, id),
         rejectBefore1900 = typedBool(node, "DateType", "youngerThan1900Check"),
         enumValues = enumValuesOf(node),
+        enumValueLabels = enumValueLabelsOf(node),
         enumCategories = enumCategoriesOf(node),
         enumSValue = enumSValueOf(node),
         customType = customFieldTypeOf(node),
@@ -459,6 +460,20 @@ object ModelLoader {
     private fun enumValuesOf(fieldNode: JsonElement?): List<String> =
         fieldNode.path("Field").path("fieldType").path("EnumerationType").path("values").elements()
             .map { it.path("value").asText() }
+
+    /** An ENUMERATION field's per-value localized labels (stored value -> locale -> text) — what a rule
+     *  message's `$field.value$` renders in place of the stored token when the declaration carries one. */
+    private fun enumValueLabelsOf(fieldNode: JsonElement?): Map<String, Map<String, String>> {
+        val labels = linkedMapOf<String, Map<String, String>>()
+        for (v in fieldNode.path("Field").path("fieldType").path("EnumerationType").path("values").elements()) {
+            val perLocale = linkedMapOf<String, String>()
+            for (l in v.path("label").elements()) {
+                perLocale[l.path("locale").asText()] = l.path("text").asText()
+            }
+            if (perLocale.isNotEmpty()) labels[v.path("value").asText()] = perLocale
+        }
+        return labels
+    }
 
     /** An ENUMERATION field's declared stored-token S-value (DM-JSON `sValue`) — the model-owned index
      *  default (SPEC-2026-07-23-14); null when absent. */

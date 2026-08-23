@@ -345,6 +345,7 @@ public final class BoundModel {
             throw new IllegalArgumentException("no '*' in " + starPath
                     + " — a plain field reference is field(path)/num(path)/…");
         }
+        requireAbsolute(starPath, "flatten");
         var flattened = new java.util.ArrayList<GroupRef>();
         StringBuilder base = new StringBuilder();
         for (String segment : starPath.substring(1).split("/")) {
@@ -372,6 +373,7 @@ public final class BoundModel {
      * analogue of {@link #flatten(String)}).
      */
     public GroupListRef flattenGroup(String starGroupPath) {
+        requireAbsolute(starGroupPath, "flattenGroup");
         var flattened = new java.util.ArrayList<GroupRef>();
         StringBuilder base = new StringBuilder();
         for (String segment : starGroupPath.substring(1).split("/")) {
@@ -412,6 +414,21 @@ public final class BoundModel {
         GroupListRef scope = firstFilledGroupScope(groupPath);
         requireExactSemanticIndexGroup(scope);
         return FirstFilledOperand.group(scope, firstFilledDescendants(scope)).forIndex(indexField);
+    }
+
+    /**
+     * Both starred-path entry points read the model root-first and drop the leading {@code /} before
+     * splitting, so a RELATIVE path loses its first character instead of failing: {@code "Claims*&#47;X"}
+     * became {@code /laims} and reported "no element at path", which reads as a broken model rather than a
+     * mis-spelled argument. (Relative navigation is the editor's {@code GroupInfo.flatten}; this one is
+     * model-absolute.)
+     */
+    private static void requireAbsolute(String starPath, String method) {
+        if (!starPath.startsWith("/")) {
+            throw new IllegalArgumentException(method + " takes a MODEL-ABSOLUTE path and got '" + starPath
+                    + "' — write it from the root (e.g. \"/Order/Items*/Count\"), or navigate relatively off"
+                    + " an editor/info instead");
+        }
     }
 
     private GroupListRef firstFilledGroupScope(String starGroupPath) {
