@@ -3301,3 +3301,47 @@ The first two rows are what separate this gate from the equality one ([KF's §6 
 - **An interpreted endpoint is checked in the year it is PLACED in.** One stored `01.11-29.02` under Base Year 2020: valid under `TO` (the base year is the to-year, so the leap day is in 2020 and the start rolls back to 2019) and `datumBereichFormatFalsch` under `FROM` (the end rolls forward to 2021, which has no 29 February).
 
 *(Locked: `validate.laws.DateRangeOverlapAdmissionLawsTest` — five verdict tables, each asserted whole, with the interpretation-free twin and the bound-extraction confinement rows as the controls; `adapter.laws.DateRangeOverlapYearClassLawsTest` — the three runtime rows plus an explicit admission assertion for the two spliced models, because two of its rows assert a rule does NOT fire and a refused model would satisfy them vacuously.)*
+
+## §6 supplement: a selected DateRange endpoint carries its declaration's components, and its consumers are gated separately (kernel + runtime, 2026-08-24) <a id="kf201"></a>
+
+> Fold: folded → §6.
+
+Reconciliation of a12-kernel-lean `SPEC-2026-08-23-02` and `SPEC-2026-08-23-05`, **accepted with one correction**; no interpreter defect. The two are recorded together because they are one account: what a selected endpoint *is*, and therefore which consumers may read it.
+
+**Extraction is unconditional; the consumers are what is gated.** `StartOfDateRange` and `EndOfDateRange` are admitted on every admitted declaration, including a yearless profile in a model with no Base Year. A checker that required a Base Year before extracting a yearless bound refuses kernel-legal models.
+
+**Gate 1 — the numeric extractor reads the declaration's COMPONENT SET.** The full grid, seven profiles × four extractors, with no Base Year (✓ = admitted, ✗ = `MVK_WRONG_DATE_FORMAT_FOR_OP`):
+
+| declaration | Year | Month | Day | Quarter |
+|---|---|---|---|---|
+| `dd.MM.yyyy`, `yyyy-MM-dd` | ✓ | ✓ | ✓ | ✓ |
+| `yyyy` | ✓ | ✗ | ✗ | ✗ |
+| `yyyy-MM` | ✓ | ✓ | ✗ | ✓ |
+| `MM` | ✗ | ✓ | ✗ | ✓ |
+| `MM-dd`, `dd.MM` | ✗ | ✓ | ✓ | ✓ |
+
+Quarter rides the month, cell for cell. **A declared Base Year supplements YEAR and only YEAR:** the three `✗` in the Year column flip to `✓` and *no other cell moves* — asserted as a diff between the two grids, with `Day of MM` staying refused in the configured model as the live control. Without that control the row is satisfied by a Base Year that simply admits everything.
+
+**Gate 2 — a comparison uses the ordinary DIRECT temporal rule, with a different code.** Same unconfigured model:
+
+| condition | verdict |
+|---|---|
+| `MonthFromDate(StartOfDateRange(MM-range)) >= 1` | **admitted** |
+| `StartOfDateRange(MM-range) == <complete DATE>` | `MVK_INVALID_COMPARE_TO_DATE` |
+| `StartOfDateRange(yyyy-range) == <complete DATE>` | **admitted** |
+| `StartOfDateRange(MM) == StartOfDateRange(MM-dd)` / `== StartOfDateRange(yyyy)` | admitted / `MVK_INVALID_COMPARE_TO_DATE` |
+
+Rows one and two on one declaration are what force the two gates apart; stating one gate for both consumers is the mistake. **Correction to the peer entry:** it says "a yearless *or year-only* profile with no Base Year is refused" — measured, the **year-only** profile is admitted, because the direct gate asks only for matching **year presence** and `yyyy` carries it. Grouping the two rejects a kernel-legal comparison, and the entry's own appeal to the ordinary direct rule is what predicts the admission.
+
+**The component travels to the computation surface unchanged**, and it is a non-expandable **scale-0** operation there: the month of an unconfigured `MM` range assigns to an integer target, its year is still `MVK_WRONG_DATE_FORMAT_FOR_OP`, and a fractional target draws `MVK_INVALID_COMPARE_DEC_PLACES`.
+
+**A ROW endpoint is a sixth member of the rule-locus list, and there the LOCUS gate reports first.** One model, one operand whose profile withholds the requested component, differing only in where the error field sits: a non-iterating error field draws `MVK_NO_WILDCARD` and an iterating one draws `MVK_WRONG_DATE_FORMAT_FOR_OP`. A starred occurrence is `MVK_NO_WILDCARDS_ALLOWED`, so an iterating rule is the only legal way to read a row endpoint's component.
+
+**Four runtime rows, because a reader that passed every gate above can still resolve the wrong value.**
+
+- **Completion is POSITIONAL.** A month-only start completes to the first of its month, so it equals a month-and-day start exactly when that day is `01` — and not when it is `02`. The pair separates positional completion from a month-wide comparison.
+- **An unconfigured yearless range computes its RETAINED label** — a `MM` range's month is a real number with no Base Year anywhere in the model, so the reading does not depend on completion.
+- **An unplaced range computes the real number `0`**, not "no value". A caller treating zero as absent reads it wrong.
+- **A formally invalid range clears its reader's target while a clean sibling still computes** in the same row. The sibling is the control: without it, "cleared" is satisfied by a document that computes nothing at all.
+
+*(Locked: `validate.laws.DateRangeBoundComponentLawsTest` — the unconditional-extraction row, both grids asserted whole with the Base-Year diff and its day control, the two comparison tables, the computation surface with its scale rule, and the locus order including a raw-string starred row the typed builder deliberately cannot express; `adapter.laws.DateRangeBoundComponentValueLawsTest` — the four runtime rows with the positional pair and the computing sibling as controls.)*
