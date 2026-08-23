@@ -88,14 +88,14 @@
     "date": {
       "type": "object", "description": "(kind DATE) complete replacement config", "additionalProperties": false,
       "properties": {
-        "format": { "type": "string", "description": "a LOWERCASE Java date pattern from a fixed allowed WHITELIST (independent of locale), not a compositional rule. Seven are admitted: the two complete forms yyyy-MM-dd and dd.MM.yyyy, and the component-omitting yyyy, yyyy-MM, yyyyMM, MM, MM-dd. Refused: MM.yyyy, MM-yyyy, yyyy/MM and dd.MM — the SEPARATOR discriminates between formats with the same components. Note dd.MM is refused here yet is a legal DATERANGE format with -." },
+        "format": { "type": "string", "description": "a LOWERCASE Java pattern from a fixed allowed WHITELIST, not a compositional rule. The gate reads the STRING and never the field's KIND, so the vocabulary is shared across DATE/TIME/DATETIME. Seven DATE-SHAPED patterns are admitted: the two complete forms yyyy-MM-dd and dd.MM.yyyy, and the component-omitting yyyy, yyyy-MM, yyyyMM, MM, MM-dd. Refused: MM.yyyy, MM-yyyy, yyyy/MM and dd.MM — the SEPARATOR discriminates between formats with the same components. Note dd.MM is refused here yet is a legal DATERANGE format with -." },
         "precision": { "type": "string", "description": "FULL | DAY_OPTIONAL | MONTH_OPTIONAL | YEAR_OPTIONAL" },
         "rejectBefore1900": { "type": "boolean" }
       }
     },
     "time": {
       "type": "object", "description": "(kind TIME) complete replacement config", "additionalProperties": false,
-      "properties": { "format": { "type": "string", "description": "the kernel requires HH:mm:ss" } }
+      "properties": { "format": { "type": "string", "description": "HH:mm (no seconds) is rejected; the whitelist is shared with DATE/DATETIME and is not keyed on the kind" } }
     },
     "dateTime": {
       "type": "object", "description": "(kind DATETIME) complete replacement config", "additionalProperties": false,

@@ -3067,7 +3067,7 @@
       "invalidExample": {
         "dsl": "FieldFilled(CustomerName) And MaxValue(CustomerName, ProductCode) > 0",
         "error": "MVK_NOT_SORTABLE",
-        "fix": "use at least two distinct sortable fields — numbers, or mutually format-compatible DATE/TIME/DATE_TIME fields — or one flattened sortable repetition list"
+        "fix": "use at least two distinct sortable fields — numbers, or date-like fields sharing one temporal COMPONENT SET (DATE and DATE_FRAGMENT may mix; DATE beside TIME or DATE_TIME may not) — or one flattened sortable repetition list"
       },
       "correctives": [
         {
@@ -4022,7 +4022,7 @@
       "invalidExample": {
         "dsl": "FieldFilled(CustomerName) And NumberOfDifferentValues(CustomerName, Quantity) < 2",
         "error": "MVK_STRING_ENUM_AND_NON_STRING_ENUM",
-        "fix": "use one admitted homogeneous class: STRING and ENUM may mix, all NUMBER operands may mix, or use mutually format-compatible date-like fields"
+        "fix": "use one admitted homogeneous class: STRING and ENUM may mix, all NUMBER operands may mix, or use date-like fields sharing one temporal COMPONENT SET"
       },
       "correctives": [
         {

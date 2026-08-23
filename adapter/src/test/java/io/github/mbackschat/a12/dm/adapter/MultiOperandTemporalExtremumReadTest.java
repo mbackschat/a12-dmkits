@@ -48,12 +48,38 @@ class MultiOperandTemporalExtremumReadTest {
                         .dateField("FiledOn", d -> d.format("yyyy-MM-dd"))
                         .dateField("ClosedOn", d -> d.format("dd.MM.yyyy"))
                         .dateField("ReopenedOn", d -> d.format("yyyy-MM-dd"))
+                        .dateField("PolicyYear", d -> d.format("yyyy"))
+                        .dateFragmentField("RenewalYear", f -> f.fragmentFormat("yyyy"))
+                        .dateField("YearTarget", d -> d.format("yyyy"))
                         .timeField("ShiftStart", t -> { })
                         .timeField("ShiftEnd", t -> { })
                         .timeField("ShiftAudit", t -> { })
                         .group("Visits", v -> v.repeatable(20)
                                 .dateField("VisitOn", d -> d.format("yyyy-MM-dd"))))
                 .build().toJson();
+    }
+
+    /**
+     * The CROSS-KIND row. {@code MaxValue(<DATE yyyy>, <DATE_FRAGMENT yyyy>)} is kernel-admitted — the gate
+     * separates temporal CLASSES, and DATE and DATE_FRAGMENT share one — and the authoring side was widened to
+     * match. The read side was not: its classifier kept kind EQUALITY, so this list fell through to the numeric
+     * arm and came back {@code Opaque}, the identical symptom the class-level fix was supposed to have removed.
+     * Both directions now share one definition ({@code DateListAggregate.temporalClassOf}).
+     */
+    @Test
+    void roundTripsACrossKindDateExtremum() {
+        BoundModel m = BoundModel.ofJson(claimJson());
+        Condition latest = m.date("/Claim/YearTarget")
+                .ne(Dsl.latestOf(m.field("/Claim/PolicyYear"), m.field("/Claim/RenewalYear")));
+
+        KernelAdapter adapter = KernelAdapter.of(m.add(rule(m, "CrossKindRule", "/Claim/YearTarget", latest)));
+        assertEquals(RENDER.render(latest), RENDER.render(converted(adapter.read("/Claim/CrossKindRule"))));
+        ValidationResult admitted = new RuleValidator().check(claimJson(),
+                new DraftRule("/Claim", "CrossKindKernel", "../YearTarget",
+                        "FieldFilled(YearTarget) And [/Claim/YearTarget] != MaxValue(PolicyYear, RenewalYear)",
+                        "C", "ERROR"));
+        assertTrue(admitted.ok(), () -> "the kernel must admit the cross-kind extremum this row reads back, got: "
+                + admitted.diagnostics());
     }
 
     @Test

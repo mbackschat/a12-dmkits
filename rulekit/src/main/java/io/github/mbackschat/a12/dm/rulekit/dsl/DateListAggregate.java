@@ -85,8 +85,13 @@ public record DateListAggregate(Mode mode, List<AggregateOperand> operands, Valu
      * The operand's temporal comparability class — what the kernel's gate separates before it compares
      * component sets. DATE and DATE_FRAGMENT share one class (both carry a date and no clock); TIME and
      * DATE_TIME are their own. Anything else has no class and can never match a date-like factory.
+     *
+     * <p>Public because the READ path needs the identical notion: the adapter decides whether a kernel
+     * {@code MaxValue}/{@code MinValue} is temporal, and a classifier keyed on kind EQUALITY there refuses to
+     * read back the very cross-kind list this class admits (cold review 2026-08-24). One definition, both
+     * directions — the alternative was a second copy that could drift from this one.
      */
-    private static ValueKind temporalClassOf(ValueKind kind) {
+    public static ValueKind temporalClassOf(ValueKind kind) {
         return kind == ValueKind.DATE_FRAGMENT ? ValueKind.DATE : kind;
     }
 

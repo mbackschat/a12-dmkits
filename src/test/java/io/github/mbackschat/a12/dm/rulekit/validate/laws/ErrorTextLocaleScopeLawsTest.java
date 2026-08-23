@@ -36,6 +36,14 @@ import io.github.mbackschat.a12.dm.rulekit.validate.ValidationResult;
  * undeclared locale ({@code RK_UNDECLARED_MESSAGE_LOCALE}) rather than reporting {@code valid:true} about a
  * text nothing examined. That is deliberately stricter than the kernel, which accepts the model; the reason is
  * recorded here and in [KF197] rather than left to be rediscovered as a bug.
+ *
+ * <p><b>Where that refusal lives, stated so it is not read as broader than it is.</b> It is in the CLI
+ * ({@code RuleCheckCommand}), NOT in {@link RuleValidator#check}: the library route delegates to the kernel
+ * and therefore returns {@code ok()} for an undeclared-locale text, exactly as {@link
+ * #theSameTextInAnUndeclaredLocaleIsNotCheckedAtAll} measures. A library consumer that wants the stricter
+ * answer asks for it — {@link RuleValidator#undeclaredMessageLocales} is that question, and it is the same
+ * call the CLI makes. Deliberate: the validator's job is to report the kernel's verdict, and a refusal the
+ * kernel does not make belongs at the surface that chose to be stricter.
  */
 class ErrorTextLocaleScopeLawsTest {
 

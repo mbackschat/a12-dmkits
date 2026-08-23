@@ -981,6 +981,7 @@ public record io.github.mbackschat.a12.dm.rulekit.dsl.DateListAggregate implemen
   public io.github.mbackschat.a12.dm.rulekit.dsl.DateListAggregate.Mode mode()
   public java.util.List<io.github.mbackschat.a12.dm.rulekit.dsl.AggregateOperand> operands()
   public java.lang.String operatorId()
+  public static io.github.mbackschat.a12.dm.core.ValueKind temporalClassOf(io.github.mbackschat.a12.dm.core.ValueKind)
   public final java.lang.String toString()
 
 public static enum io.github.mbackschat.a12.dm.rulekit.dsl.DateListAggregate.Mode

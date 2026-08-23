@@ -29,7 +29,7 @@ import io.github.mbackschat.a12.dm.rulekit.validate.ValidationResult;
  * only two ways to reach a per-row range. A checker that reads the endpoint operand as "a direct field" — the
  * shape our own catalog prose describes — rejects kernel-legal models on four carriers at once.
  *
- * <p>The typed surface could not express this at all before {@code DateRangeRef.forIndex} (DEV-API-GAPS DG38):
+ * <p>The typed surface could not express this at all before {@code DateRangeRef.forIndex} (DEV-API-GAPS DG39):
  * every other kind's ref had the factory and the range's did not, so the keyed range cell was
  * <em>unrepresentable</em> rather than refused — the type-level form of the same defect.
  *
@@ -70,8 +70,11 @@ class DateRangeSemanticIndexOperandLawsTest {
     }
 
     /**
-     * Four carriers × two key forms × three loci. The third locus is the sharpest: a rule ITERATING the very
-     * group the lookup keys into still admits the keyed operand, so the index is not shadowed by iteration.
+     * Four carriers × two key forms × <b>two</b> loci — the form's rule, and a rule ITERATING the very group
+     * the lookup keys into. The second is the sharp one: the index is not shadowed by iteration over its own
+     * group. A third locus (iterating some OTHER repeatable group) is deliberately not claimed here: this
+     * model declares one repeatable group, so the fixture cannot produce it, and a row label that named it
+     * would describe a measurement nobody made.
      */
     @Test
     void aKeyedRangeOperandIsAdmittedOnEveryCarrierAtEveryLocus() {
@@ -81,7 +84,7 @@ class DateRangeSemanticIndexOperandLawsTest {
             for (Map.Entry<String, Condition> carrier : carriers(key.getValue()).entrySet()) {
                 String label = key.getKey() + " · " + carrier.getKey();
                 actual.put(label + " — form locus", form(carrier.getValue()));
-                actual.put(label + " — iterating another group's row", iteratingTheKeyedGroup(carrier.getValue()));
+                actual.put(label + " — iterating the keyed group itself", iteratingTheKeyedGroup(carrier.getValue()));
             }
         }
 

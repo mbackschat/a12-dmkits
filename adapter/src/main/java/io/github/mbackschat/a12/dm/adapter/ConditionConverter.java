@@ -89,6 +89,7 @@ import io.github.mbackschat.a12.dm.rulekit.dsl.DateTimeConstruction;
 import io.github.mbackschat.a12.dm.rulekit.dsl.DateTimeExpr;
 import io.github.mbackschat.a12.dm.rulekit.dsl.DateTimeOperand;
 import io.github.mbackschat.a12.dm.rulekit.dsl.TimeConstruction;
+import io.github.mbackschat.a12.dm.rulekit.dsl.DateRangeIndexedValue;
 import io.github.mbackschat.a12.dm.rulekit.dsl.DateRangeRef;
 import io.github.mbackschat.a12.dm.rulekit.dsl.DateRangeConstruction;
 import io.github.mbackschat.a12.dm.rulekit.dsl.DateRangeExpr;
@@ -188,6 +189,15 @@ final class ConditionConverter {
     }
 
     /**
+     * Count the semantic-index reads ({@code [field For key]}) the source AST carries — the third member of
+     * the marker family beside {@link #countOuterRefs} and {@link #countCategoryRefs}, and the input to
+     * {@link #verifySemanticIndexPreserved}.
+     */
+    int countSemanticIndexRefs(IParseTreeEntity root) {
+        return countEntities(root, ConditionConverter::hasSemanticIndex);
+    }
+
+    /**
      * Every {@link IEntityId} the node reaches, {@code matches} applied to each. The kernel's {@code traverse()}
      * does not descend into {@code Having} filters, so those are walked explicitly (breadth-first, including
      * filters nested inside filters) — the reason both counters share this walk rather than calling
@@ -272,6 +282,40 @@ final class ConditionConverter {
                     + "position is not yet category-threaded, so the subject is preserved verbatim "
                     + "[kernel node: IEntityId.getCategoryName()]");
         }
+    }
+
+    /**
+     * The same backstop for semantic-index reads. A keyed cell is a DIFFERENT operation from the bare field —
+     * it reads the value in the repetition whose index field matches the key — so a conversion that erases the
+     * key produces a rule that is still legal, still reports itself converted, and means something else.
+     *
+     * <p>It exists because that erasure had shipped: the DATE_RANGE operand position dropped the key silently
+     * while the comparison's left position threw. A per-site fix leaves the next unthreaded position silent,
+     * which is what a backstop is for — the same argument {@link #verifyCategoryPreserved} records.
+     *
+     * <p>{@code For} / {@code Fuer} is the {@code SemanticIndex} operator's rendering, and it is counted as a
+     * whole word outside string literals. Residual, stated rather than engineered against: a path segment
+     * named exactly {@code For} would inflate the rendered count and could mask a drop in the same condition.
+     *
+     * @param rendered the converted subject's rendered DSL
+     * @throws UnsupportedConstructException when a key was dropped — caught by the read entry points
+     */
+    void verifySemanticIndexPreserved(String rendered, int expectedIndexes) {
+        if (expectedIndexes == 0) {
+            return;
+        }
+        String bare = rendered.replaceAll("\"[^\"]*\"", "");
+        int renderedIndexes = countMatches(bare, "\\bFor\\b") + countMatches(bare, "\\bFuer\\b");
+        if (renderedIndexes < expectedIndexes) {
+            throw new UnsupportedConstructException("F10 converter would silently drop a semantic index "
+                    + "([field For key]): the source carries " + expectedIndexes + " key(s) but conversion "
+                    + "rendered only " + renderedIndexes + " — that operand position is not yet index-threaded, "
+                    + "so the subject is preserved verbatim [kernel node: IEntityId.getSemanticIndex()]");
+        }
+    }
+
+    private static int countMatches(String haystack, String regex) {
+        return (int) java.util.regex.Pattern.compile(regex).matcher(haystack).results().count();
     }
 
     private static int countOccurrences(String haystack, String needle) {
@@ -1057,6 +1101,9 @@ final class ConditionConverter {
                 case DATE, DATE_FRAGMENT -> dateComparison(new DateExpr(semantic), op, other, origin);
                 case TIME -> timeComparison(new TimeExpr(semantic), op, other, origin);
                 case DATE_TIME -> dateTimeComparison(new DateTimeExpr(semantic), op, other, origin);
+                case DATE_RANGE -> dateRangeComparison(
+                        new DateRangeIndexedValue(semanticIndex(field.getField(), origin).index()), op,
+                        convertDateRangeOperand(other, origin), origin);
                 default -> throw unsupported("semantic index ([field For …]) on a " + kind + " field", origin);
             };
         }
@@ -1094,6 +1141,12 @@ final class ConditionConverter {
                 && field.getOperatorName() == FieldIdOperationName.FieldValue
                 && model.fieldAt(field.getField().getFullName())
                         .map(info -> info.kind() == ValueKind.DATE_RANGE).orElse(false)) {
+            // A keyed cell is a DIFFERENT read from the bare field, so it gets its own arm; without one the
+            // `For` key was silently dropped here and the rule round-tripped to another, still-legal condition
+            // (the wrong-value half of the read gap, cold review 2026-08-24).
+            if (hasSemanticIndex(field.getField())) {
+                return new DateRangeIndexedValue(semanticIndex(field.getField(), origin).index());
+            }
             DateRangeRef range = model.dateRange(field.getField().getFullName());
             return field.getField().isOuter() ? range.outer() : range;
         }
@@ -2513,13 +2566,19 @@ final class ConditionConverter {
                 continue;   // a group scope is typed by its expansion — the kernel's verdict, not ours
             }
             ValueKind kind = model.fieldAt(entity.getFullName()).map(i -> i.kind()).orElse(null);
-            if (kind != ValueKind.DATE && kind != ValueKind.TIME && kind != ValueKind.DATE_TIME) {
+            // The COMPARABILITY CLASS, not the kind: DATE and DATE_FRAGMENT share one, and the kernel admits a
+            // list mixing them (rulekit `DateListAggregate.temporalClassOf`, measured). Keying this on kind
+            // equality made an authorable, kernel-admitted `MaxValue(<DATE yyyy>, <DATE_FRAGMENT yyyy>)`
+            // unreadable — it fell to the NUMERIC arm and came back Opaque (cold review 2026-08-24).
+            ValueKind temporalClass = kind == null ? null : DateListAggregate.temporalClassOf(kind);
+            if (temporalClass != ValueKind.DATE && temporalClass != ValueKind.TIME
+                    && temporalClass != ValueKind.DATE_TIME) {
                 return null;
             }
-            if (common != null && common != kind) {
-                return null;   // the kernel refuses a mixed temporal list; leave it to the generic arm
+            if (common != null && common != temporalClass) {
+                return null;   // the kernel refuses a list mixing CLASSES; leave it to the generic arm
             }
-            common = kind;
+            common = temporalClass;
         }
         return common;
     }

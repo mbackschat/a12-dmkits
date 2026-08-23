@@ -8,7 +8,7 @@ package io.github.mbackschat.a12.dm.rulekit.dsl;
  * <p>It is its own arm of {@link DateRangeOperand}, rather than a plain {@link DateRangeExpr}, because the
  * bound extractors accept a <em>field-like</em> range and reject a computed one: keeping the keyed cell
  * distinguishable is what lets {@link Dsl#startOfDateRange(DateRangeIndexedValue)} exist without also
- * admitting {@code StartOfDateRange(FirstFilledValue(…))} (DEV-API-GAPS DG38).
+ * admitting {@code StartOfDateRange(FirstFilledValue(…))} (DEV-API-GAPS DG39).
  */
 public record DateRangeIndexedValue(IndexedFieldValue index) implements DateRangeOperand {
 

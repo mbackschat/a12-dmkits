@@ -446,9 +446,11 @@ public final class KernelAdapter {
             ICondition parsed = parseCondition(ruleFullName);
             int outerRefs = converter.countOuterRefs(parsed);   // $ correlations the source carries (N8)
             int categoryRefs = converter.countCategoryRefs(parsed);   // [field -> Cat] projections it carries
+            int semanticIndexRefs = converter.countSemanticIndexRefs(parsed);   // [field For key] reads
             Condition converted = converter.convert(parsed);
             converter.verifyOuterPreserved(converted, outerRefs);   // backstop: a dropped $ → Opaque, never silent
             converter.verifyCategoryPreserved(new DslRenderer().render(converted), categoryRefs);
+            converter.verifySemanticIndexPreserved(new DslRenderer().render(converted), semanticIndexRefs);
             return new ReadResult.Converted(converted);
         } catch (UnsupportedConstructException unconverted) {
             return new ReadResult.Opaque(verbatimConditionText(ruleFullName), unconverted.getMessage());

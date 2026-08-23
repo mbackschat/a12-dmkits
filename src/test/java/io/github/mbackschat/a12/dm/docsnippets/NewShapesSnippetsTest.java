@@ -197,6 +197,9 @@ class NewShapesSnippetsTest {
         // end::indexed-range[]
         assertEquals("StartOfDateRange(/Shop/Runs/RunWindow For \"spring\") == [/Shop/CheckDate]",
                 new DslRenderer().render(startsOnCheckDate));
+        // The END twin renders its own bound — without this row a START/END swap in either factory is invisible.
+        assertEquals("EndOfDateRange(/Shop/Runs/RunWindow For \"spring\") == [/Shop/CheckDate]",
+                new DslRenderer().render(Dsl.endOfDateRange(springRun).eq(promo.date("/Shop/CheckDate"))));
     }
 
     @Test

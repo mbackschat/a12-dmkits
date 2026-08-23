@@ -23,11 +23,13 @@ import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl;
  * {@code MVK_VARYING_TYPES_NOT_ALLOWED} even though every one of its members is individually assignable to
  * the target. The target gate is not lexical: a uniform dotted list computes into an ISO target.
  *
- * <p>{@link #theListGateDecidesBeforeTheTargetIsConsulted} is the row that makes "ordered" a measurement
- * rather than a description. Its three-source list plants the odd member so that it matches the target
- * EXACTLY; an implementation free to report either refusal first would be entitled to answer
- * {@code MVK_INVALID_COMPARE_TO_DATE_RANGE} there, and would hand a consumer the wrong repair — change the
- * target, rather than change the odd source.
+ * <p><b>Exactly one row of {@link #theListGateDecidesBeforeTheTargetIsConsulted} measures the ORDER</b>, and
+ * it is the last: a list mixing COMPONENT SETS whose first source matches the target. Only there would both
+ * gates refuse, and the kernel reports the list class alone — {@code computationVerdict} joins every code the
+ * kernel emits, so a co-firing target gate would appear. The two three-source rows above it are not ordering
+ * evidence, though they read like it: every one of their sources shares the target's component set, so the
+ * target gate would pass and a target-first checker reaches the list gate and answers the same. Those rows
+ * measure that the list gate is LEXICAL, which is their own job.
  *
  * <p><b>This corrects prose this project published.</b> KERNEL-FINDINGS' 2026-08-19 entry read "sources and
  * target must share one date-COMPONENT SET — not one lexical profile", which is true of the target gate and

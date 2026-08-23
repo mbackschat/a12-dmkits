@@ -292,10 +292,13 @@ public final class StructuralKernelFix {
                             + "`yyyy-MM`+`/`, `MM`+`/`, `MM-dd`+`/`, `MM`+`` (the empty separator, which halves "
                             + "the stored value), and `dd.MM`+`-`; swapping the separator is always refused "
                             + "(`MM`+`-`, `dd.MM.yyyy`+`/`), no format takes `.`, `yyyyMM` is a legal DATE "
-                            + "format but not a legal DATERANGE one, and `dd.MM` is the reverse; TIME the full "
+                            + "format but not a legal DATERANGE one, and `dd.MM` is the reverse; TIME "
                             + "`HH:mm:ss` (not `HH:mm`); DATEFRAGMENT "
-                            + "`MM`/`yyyy`/`yyyy-MM`/`MM-dd`; DATE_TIME EITHER the ISO `yyyy-MM-dd'T'HH:mm:ss` or the "
-                            + "time-only `HH:mm:ss` — those two and nothing else. See `schema field add`.",
+                            + "`MM`/`yyyy`/`yyyy-MM`/`MM-dd`; DATE_TIME the ISO `yyyy-MM-dd'T'HH:mm:ss` or the "
+                            + "time-only `HH:mm:ss`. Those per-kind lists are the CONVENTIONAL declarations, not "
+                            + "restrictions: outside DATERANGE the gate reads the STRING and never the kind, so "
+                            + "one whitelist serves DATE/TIME/DATETIME and a cross-kind spelling is admitted. "
+                            + "See `schema field add`.",
                     "The kernel validates a date/time field's declared format against a fixed allowed set (the same "
                             + "regardless of locale) and rejects anything else with a message but no MVK_ code."));
         }

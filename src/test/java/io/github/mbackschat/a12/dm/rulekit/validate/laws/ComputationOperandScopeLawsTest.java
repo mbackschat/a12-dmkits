@@ -63,7 +63,11 @@ class ComputationOperandScopeLawsTest {
                     .group("Adjustments", a -> a.repeatable(20).indexField("ClaimKey")
                             .field("ClaimKey", FieldKind.STRING)
                             .numberField("AdjAmount", n -> n.fractionDigits(0)))
+                    // Carries the same key FIELD as its siblings and differs from them in exactly one thing:
+                    // it does not DECLARE it as the group's index. Without that field the row would vary two
+                    // things at once and could not sit in the same table as the two index-declaring siblings.
                     .group("Notes", nt -> nt.repeatable(20)
+                            .field("ClaimKey", FieldKind.STRING)
                             .numberField("NoteAmount", n -> n.fractionDigits(0))))
             .build().toJson();
 

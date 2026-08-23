@@ -53,7 +53,7 @@ class DateGregorianFloorFormalTest {
     @Test fun germanFormatValid() = assertEquals(null, code(germanDate, "16.10.1583"), "dd.MM.yyyy at the floor → valid")
 
     // ── DATE_TIME: the SAME floor, because the kernel has no DateTime-specific formal code and reports
-    //    through the Date pair (SPEC-2026-08-23-11, KF206). The interpreter admitted a below-floor instant
+    //    through the Date pair (SPEC-2026-08-23-11, KF207). The interpreter admitted a below-floor instant
     //    until 2026-08-24 — the DATE_TIME branch checked format and the DST gap and never position in time
     //    (IF309). A time-only DATE_TIME names no calendar day, so the floor cannot apply to it. ─────────────
     @Test fun dateTimeBeforeFloorIsTooEarly() =
