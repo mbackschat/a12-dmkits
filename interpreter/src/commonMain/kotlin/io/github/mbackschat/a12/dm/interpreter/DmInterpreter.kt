@@ -11,7 +11,9 @@ import io.github.mbackschat.a12.dm.interpreter.eval.EffectiveRelevanceIndex
 import io.github.mbackschat.a12.dm.interpreter.eval.FunctionOp
 import io.github.mbackschat.a12.dm.interpreter.eval.GroupRelevance
 import io.github.mbackschat.a12.dm.interpreter.eval.UNKNOWN_REP
+import io.github.mbackschat.a12.dm.interpreter.eval.DisplayPresentation
 import io.github.mbackschat.a12.dm.interpreter.eval.MessageTerminals
+import io.github.mbackschat.a12.dm.interpreter.eval.presentDisplayValue
 import io.github.mbackschat.a12.dm.interpreter.eval.renderMessage
 import io.github.mbackschat.a12.dm.interpreter.eval.semanticIndexRepetitions
 import io.github.mbackschat.a12.dm.interpreter.model.ComputeOutcome
@@ -88,6 +90,21 @@ class DmInterpreter private constructor(
 
     /** The message-parameter terminal spellings this model's CONDITION language selects ([KF198]). */
     private val messageTerminals = MessageTerminals.of(model.conditionLanguage)
+
+    /**
+     * A `$field.value$` parameter renders the stored value RE-PRESENTED for the message locale — the locale
+     * date pattern and number separators, never the field's declared storage format ([KF199]). An unmapped
+     * locale has no presentation, which is the kernel's own behaviour and not a fallback we chose.
+     */
+    private fun presentedDisplayValue(stored: String?, path: String, locale: String): String? {
+        if (stored.isNullOrEmpty()) {
+            return stored
+        }
+        val presentation = DisplayPresentation.of(locale) ?: return stored
+        val kind = model.kinds[path] ?: return stored
+        return presentDisplayValue(
+            stored, kind, model.dateLikeFormatOf(path), model.rangeSeparatorOf(path), presentation)
+    }
 
     /**
      * The public construction path, unchanged. It owns a private [ModelStaticPlans], so a directly constructed
@@ -1021,7 +1038,10 @@ class DmInterpreter private constructor(
                         labelOf = { path -> messageLabel(path, pass.locale, ctx) },
                         // `$field.value$` reads the ORIGINAL caller document, not the staged eval view: a staged
                         // enum index cell interpolates as if empty (kernel `getDaten().getValueForDisplay`; IF221).
-                        messageValueOf = { path -> pass.callerDoc.messageDisplayValueAt(path, ctx.repsOf(path)) },
+                        messageValueOf = { path ->
+                            presentedDisplayValue(
+                                pass.callerDoc.messageDisplayValueAt(path, ctx.repsOf(path)), path, pass.locale)
+                        },
                         // An ENUMERATION's `.value` renders its declared LABEL, and `->Category` the mapped
                         // token; the Base Year terminal is a non-field parameter with a signed offset ([KF198]).
                         enumValueOf = { path, stored -> model.enumValueTextOf(path, stored, pass.locale) },

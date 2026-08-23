@@ -3236,3 +3236,38 @@ The rule-group pair is the sharpest instrument: neither spelling is admitted at 
 **The three interpreter defects this found.** The tri-engine arm was red on four of the six rendered rows: the category suffix was left in the text as a raw `$Tier->Band$` token, an Enumeration's `.value` rendered the stored token rather than the label, and `$BaseYear$` fell through to an entity lookup and rendered the identifier debug form `/Policy/BaseYear/1.1`. All three are fixed (`FieldDef.enumValueLabels` + `ModelDef.enumValueTextOf`/`enumCategoryTokenOf`, and a language-aware terminal set in `renderMessage`), and the interpreter now agrees with both kernel strategies on every row.
 
 *(Locked: `validate.laws.RuleMessageParameterLawsTest` — the admission tables above, each asserted whole so a kernel upgrade shows the entire matrix rather than its first divergence, and each row preceded by a plain-message control proving the CONDITION is admitted; `validate.laws.RuleMessageParameterLanguageLawsTest` — the bilingual pairs in both directions plus the unreachable root-group pair with its positive control; `adapter.laws.RuleMessageParameterRenderingDiffTest` — the rendered rows on dynamic Groovy, static Java and the interpreter; `interpreter … RuleMessageParameterRenderTest` — the same rendering on JVM and JS, plus the `de_DE` condition language the kernel fixture does not carry.)*
+
+## §13 supplement: a `$field.value$` renders the MESSAGE LOCALE's presentation, for nine tags and no others — and a partial date keeps its markers (tri-engine, 2026-08-24) <a id="kf199"></a>
+
+> Fold: pending — newly recorded error-text fact; folds into §13 (error-message interpolation) on the next canonical KERNEL-SEMANTICS pass.
+
+Reconciliation of a12-kernel-lean `SPEC-2026-08-23-09`, **accepted and considerably widened**. Their entry states two facts about DATE; measured here, the mechanism reaches four field kinds, is keyed on an exact locale tag that ordinary spellings MISS, and leaves three things alone that an implementation would helpfully change. It also found a fourth interpreter defect ([IF308](INTERPRETER-FINDINGS.md#if308)).
+
+**The presented value is not the stored value and not the declared format.** One document, one rule, ten message locales; only the locale varies:
+
+| kind, stored as | `en_US` / `en` / `us` | `de_DE` / `de` | `ch` | `fr` | `gb` | `nl` | `fr_FR` |
+|---|---|---|---|---|---|---|---|
+| DATE `2024-06-15` (`yyyy-MM-dd`) | `06/15/2024` | `15.06.2024` | `15.06.2024` | `15/06/2024` | `15/06/2024` | `15-06-2024` | **`2024-06-15`** |
+| DATE `15.06.2024` (`dd.MM.yyyy`) | `06/15/2024` | `15.06.2024` | … | … | … | … | **`15.06.2024`** |
+| NUMBER `1234.50` | `1,234.50` | `1.234,50` | `1'234.50` | `1 234,50` | `1,234.50` | `1.234,50` | **`1234.50`** |
+| DATE_TIME `2024-06-15T13:45:00` | `06/15/2024 13:45:00` | `15.06.2024 13:45:00` | … | … | … | … | **`2024-06-15T13:45:00`** |
+| DATE_RANGE `2024-06-15/2024-07-01` | `06/15/2024 07/01/2024` | `15.06.2024 01.07.2024` | … | … | … | … | **`2024-06-15/2024-07-01`** |
+| TIME `13:45:00` | `13:45:00` | `13:45:00` | `13:45:00` | `13:45:00` | `13:45:00` | `13:45:00` | `13:45:00` |
+
+The second row is the one that shows the declared format is only an INPUT: two DATE fields differing solely in their declared format render identically under a mapped locale and differently under an unmapped one.
+
+**The locale map is a LOOKUP on the exact tag, not a cascade.** The nine keys are `en`, `en_US`, `us`, `de`, `de_DE`, `ch`, `fr`, `gb`, `nl`; **`fr_FR` is not among them**, and it is the ordinary spelling a model declares. A miss presents nothing at all — every value renders as stored. So a consumer that implemented presentation as "the locale's own conventions, with a sensible default" would be right on every mapped row and wrong on the one that occurs in practice. Two keys make the same point from the other side: `ch` pairs the German date pattern with an **apostrophe** grouping separator and a dot decimal, and `gb` pairs a day-first date pattern with the English separators — neither is what a locale library would produce.
+
+**Three deliberate non-effects, each measured, each what "being helpful" would break.**
+
+- **TIME is never re-presented.** Its format is identical in every entry, so a time renders as stored under all ten locales.
+- **An unfilled field's DEFAULT is not presented.** A Number declaring two minimum fractional digits renders `0.00` under `de_DE`, whose *filled* values in the same message use a comma. So the default is chosen by the field format downstream of the presentation, which confirms §13's existing sentence rather than contradicting it — the two live side by side in one message here.
+- **Fractional digits are preserved, never padded.** A stored `1234.5` in a `min 0 / max 2` field renders `1,234.5`; only the separators change. A negative keeps its sign in front of the grouped integer: `-1,234,567.50`.
+
+**A partially known DATE interpolates its stored components with the zero markers intact, and is never completed.** `2024-06-00` renders `06/00/2024`, `2024-00-00` renders `00/00/2024`, `0000-00-00` renders `00/00/0000`. The natural implementation resolves such a value before display and would print `06/01/2024` — the earliest date of the interval it denotes, and a date the document never stated. The markers **move with the pattern** (`00.06.2024` under `de_DE`), which puts each marker on its COMPONENT rather than on a text position: an implementation that blanked a fixed offset passes every `en_US` row and fails the German ones.
+
+**The two separators the presentation replaces are worth naming.** A DATE_TIME's `T` becomes a space, and a DATE_RANGE's declared separator (`/` in the fixture) becomes a space too — both fixed across every locale entry rather than per-locale slots.
+
+*Mechanism (hypothesis, not measured): the kernel's per-locale presentation record is fetched by exact `Locale` key and passed to the field's own conversion, and a null record makes the conversion return the value unchanged. That reading explains the miss and the fallback together; what stands is the table.*
+
+*(Locked: `adapter.laws.MessageDisplayPresentationDiffTest` — all ten locales over one document carrying every kind, on dynamic Groovy, static Java and the interpreter, with the unmapped `fr_FR` row and the unpadded/negative/unfilled rows as the controls; `interpreter … MessageDisplayPresentationTest` — the same on JVM and Node, including the partial-date markers under two patterns.)*

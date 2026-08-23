@@ -3792,3 +3792,22 @@ Found by the tri-engine arm of a new rendering differential while reconciling a1
 **What the model was missing.** Enum value labels were never loaded: `enumValuesOf` read `values[].value` and dropped `values[].label`. `FieldDef.enumValueLabels` now carries them, and `ModelDef.enumValueTextOf`/`enumCategoryTokenOf` are the two message-side readers; the condition-side `EnumCategory` mapping in `Document` is untouched and stays the operand path.
 
 *Locked by:* `adapter.laws.RuleMessageParameterRenderingDiffTest` (the six rows above against both kernel strategies and the interpreter, with the labelled/unlabelled, min/max-fraction and labelled/unlabelled-name pairs as within-model controls) + `interpreter … RuleMessageParameterRenderTest` (the same on JVM and Node, plus the `de_DE` condition language and the both-directions "the other language's spelling is not the terminal" rows).
+
+### IF308: a `$field.value$` rendered the STORED text where the kernel re-presents it for the message locale (FIXED 2026-08-24) <a id="if308"></a>
+
+Found the same way as [IF307](#if307), one entry later: the tri-engine arm of a new differential while reconciling a12-kernel-lean `SPEC-2026-08-23-09` ([KF199](KERNEL-FINDINGS.md#kf199)). Both kernel strategies agreed with each other on all ten locale rows; the interpreter rendered the stored text on every one of them, so it was right only for the unmapped locale.
+
+| stored | kernel `en_US` | kernel `de_DE` | pre-fix interpreter, every locale |
+|---|---|---|---|
+| DATE `2024-06-15` | `06/15/2024` | `15.06.2024` | `2024-06-15` |
+| NUMBER `1234.50` | `1,234.50` | `1.234,50` | `1234.50` |
+| DATE_TIME `2024-06-15T13:45:00` | `06/15/2024 13:45:00` | `15.06.2024 13:45:00` | `2024-06-15T13:45:00` |
+| DATE_RANGE `2024-06-15/2024-07-01` | `06/15/2024 07/01/2024` | `15.06.2024 01.07.2024` | `2024-06-15/2024-07-01` |
+
+**Why it stayed invisible.** The interpreter's display channel was correct as a channel — it returns exactly what the document stores, which is what every *evaluation* consumer wants — and `$field.value$` simply used it. Nothing was unimplemented and no token survived; the value was plausible, well-formed, and in a format the model itself declares. It is only wrong against the kernel, in the one channel a human reads.
+
+**The fix is a lookup that is allowed to miss.** `DisplayPresentation` maps the nine exact locale tags the kernel maps and returns null for anything else, and a null presents nothing. That shape is load-bearing: `fr_FR` is a perfectly ordinary declared locale and is NOT a key, so treating presentation as a cascade with a default would have introduced a fresh divergence on the spelling most likely to occur. The presentation is applied in `DmInterpreter`'s message-value lambda rather than in the document, so the evaluation channel keeps returning stored text.
+
+**What it deliberately leaves alone**, each because it is measured that way and each the thing "being helpful" would break: TIME is not re-presented, an unfilled field's default is not presented (`0.00` under `de_DE`), fractional digits are preserved rather than padded, and a partially known date keeps its `00` markers instead of being completed to the interval boundary it denotes.
+
+*Locked by:* `adapter.laws.MessageDisplayPresentationDiffTest` (ten locales over one document carrying DATE ×2 declared formats, NUMBER ×3, TIME, DATE_TIME and DATE_RANGE, on both kernel strategies and the interpreter) + `interpreter … MessageDisplayPresentationTest` (JVM and Node, including the apostrophe-grouping `ch` entry and the unmapped-locale control).
