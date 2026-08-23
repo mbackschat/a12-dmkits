@@ -3400,3 +3400,59 @@ The peer clause states the third row as the whole class. **The three rows above 
 Every target row is seeded, because an untouched target reports no change at all rather than CLEARED and the clear rows would otherwise be vacuous.
 
 *(Locked: `validate.laws.ComputationOperandScopeLawsTest` — the binding table, the below-the-target table, the starred-aggregate route, the three-cell sibling index-name control, and the five-shape spread; `adapter.laws.ComputationOperandOwnPathDiffTest` — the five runtime rows on dynamic Groovy, static Java and the interpreter.)*
+
+## §9 supplement: the operand-locus gate reports FIRST, and every DateRange carrier obeys it (kernel, 2026-08-24) <a id="kf204"></a>
+
+> Fold: folded → §9.
+
+Reconciliation of a12-kernel-lean `SPEC-2026-08-23-04`, **accepted as stated**, with one extension.
+
+**The gate order.** Both gates on an authored rule were separately documented; which one reports was not. Measured with a two-row separator on one model:
+
+| rule | verdict |
+|---|---|
+| unstarred repeatable operand **+** an error field the condition never names | `MVK_NO_WILDCARD` |
+| the same unreferenced error field, scalar operands only | `MVK_ERROR_FIELD_NOT_REFERENCED` |
+| the same condition with the error field referenced — control | admitted |
+
+Row two is what makes row one an ordering fact: remove only the repeatable operand and the error-field gate speaks. A checker that runs the error-field gate first sends the author to fix the wrong half of the condition.
+
+**Extension — the locus gate outranks the ARITY gate too.** A sole bare operand of the whole-list overlap operator is `MVK_PARAMSIZE_INVALIDFN` from an iterating locus and `MVK_NO_WILDCARD` from a non-iterating one. Same rule, same operand, only the error field moved.
+
+**Five DateRange carriers, measured rather than transferred.** The overlap predicate, stored range equality, an extracted endpoint against a fixed Date, an endpoint pair, and the two-endpoint construction are each admitted from an iterating locus and refused `MVK_NO_WILDCARD` from a non-iterating one, every row carrying a presence guard on its own locus's error field so only the locus gate can speak. They agree — which is a result, not a licence to transfer the rule to a sixth carrier without running it.
+
+**The overlap operators, in detail.** For the whole-list operator the *list shape* is locus-independent and the *bare operand* is not: lengths two and three behave alike, a starred occurrence is admitted from either locus, and a list carrying both the bare and the starred spelling of one field is admitted from inside. The distinguished-scalar operator obeys the rule on **both** of its sides — a repeatable distinguished scalar against a scalar list, and a scalar against a repeatable list.
+
+**And the negative-condition-in-iteration gate is presence-shaped, not polarity-shaped.** On one model, one locus and one error field, varying only the condition: an unguarded negative *presence* on the iterated operand is `MVK_NEG_CONDITION_IN_ITERATION`, its guarded twin is admitted, and stored range equality, its inequality, an extracted-endpoint equality, its inequality and an order comparison are all admitted. The refused row is the live control — without it the admitted comparisons could be a fixture that has stopped checking.
+
+*(Locked: `validate.laws.RuleLocusGateOrderLawsTest` — the ordering separator, the five carriers, the negative-gate reach with its live control, and both overlap operators including the two sole-operand rows.)*
+
+## §6/§9 supplement: a DATE_RANGE operand may be selected by a semantic index (kernel + runtime, 2026-08-24) <a id="kf205"></a>
+
+> Fold: folded → §6.
+
+Reconciliation of a12-kernel-lean `SPEC-2026-08-23-07`, **accepted with one correction**; it exposed a typed-surface gap of ours, now closed.
+
+**The keyed operand is admitted wherever the direct field is.** Four carriers — an extracted endpoint, that endpoint's numeric component, stored range equality, and an endpoint pair — × two key forms (literal and field-keyed) × two loci, including the sharp one where the rule **iterates the very group the lookup keys into**: sixteen admitted rows. A checker reading the endpoint operand as "a direct field" rejects kernel-legal models on four carriers at once.
+
+**Our typed surface could not express it at all.** `DateRangeRef` was the one typed ref without `forIndex`, so the keyed range cell was *unrepresentable* rather than refused — the type-level form of the same defect, and exactly the shape the "a client-side refusal needs a measured kernel basis" rule warns about. Closed by `DateRangeRef.forIndex` returning a `DateRangeIndexedValue`, its own arm of `DateRangeOperand` so that `Dsl.startOfDateRange(DateRangeIndexedValue)` can exist without also admitting `StartOfDateRange(FirstFilledValue(…))`, which the bound extractors reject.
+
+**The wildcard half, measured for this carrier.** A **starred** endpoint operand is `MVK_NO_WILDCARDS_ALLOWED` at **either** locus — so no wildcard form of it exists, and an iterating rule or a keyed lookup are the only two ways to reach a per-row endpoint. A **group** operand is `MVK_NO_WILDCARD` instead.
+
+**Two key rules with their own classes.** A field-valued key read from **inside** the indexed group is `MVK_SEMANTIC_INDEX_CONTAINED_IN_INDEX`, against admitted outside-key and literal-key twins at the same locus — so it is a *placement* rule, not a resolution failure. And the literal key is a **quoted** token whatever the index field's kind: against a NUMBER index field `For 2` is `MVK_INVALID_ENTITY` (an entity that does not resolve) while `For "2"` is admitted, and a quoted literal that does not fit the declaration is the separate `MVK_INDEX_VALUE_INVALID`.
+
+**The four read states, separated by a presence operand.** With the absence and presence rules run as a pair on the same document (`<absence fires>/<presence fires>`), on both kernel strategies and the interpreter:
+
+| the keyed cell is | absence / presence | reading |
+|---|---|---|
+| matched and filled | `false/true` | a value |
+| a clean no-match | `true/false` | **empty** |
+| matched but empty | `true/false` | **empty** |
+| a duplicated key | `false/false` | **UNKNOWN** |
+| matched but formally invalid | `false/false` | **UNKNOWN** |
+
+The presence column is what tells the pairs apart; the absence column alone cannot. The duplicate additionally reports `uniqueIndex` on **each** participating index cell.
+
+**Correction to the peer entry — the negative row coordinate is a KNOWN sentinel, not an invented address.** An unguarded keyed negative presence escapes the negative-condition-in-iteration gate (a keyed lookup is not an iterated read), is admitted, and fires once at `/Shop/Runs/RunWindow, [1, -5, 1]`. The peer records this as "a negative row coordinate, which no legal address holds", and advises refusing the shape. Measured, the coordinate is **-5** — the kernel's clean-no-match reanchoring sentinel that [KERNEL-SEMANTICS §9](KERNEL-SEMANTICS.md#9-repetition-iteration-and-cross-array-evaluation) already records for message-pointer targeting. So the address is readable: a consumer maps `-5` to "no matching row" rather than inventing a coordinate or rejecting the rule. The guarded twin and a guarded direct-operand control both address a real row on the same document — and the twin's error field is forced to be a *directly* iterated field, because once a guard puts the rule into iteration the kernel demands an iterating reference to the error field (`MVK_ERROR_FIELD_AND_ITERATION_INVALID`), which a keyed lookup is not. That is the same fact the escape exploits, seen from the other side.
+
+*(Locked: `validate.laws.DateRangeSemanticIndexOperandLawsTest` — the sixteen-row admission grid, both wildcard refusals, the contained-key class with two twins, and the three key-literal rows; `adapter.laws.KeyedRangeReadStateDiffTest` — the four-state table on all three engines, the duplicate's per-cell reports, and the escape's exact address beside its two controls.)*

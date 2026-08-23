@@ -228,7 +228,7 @@ static Condition uniqueBy(GroupRef repeating, FieldRef key) {
 
 The fragments show how the shipped primitives compose into the **business idioms** the proposal's §2 names (`mandatory`, `withinTolerance`, per-row thresholds, `uniqueBy`) — each is 1–3 lines built from the operators in hand.
 
-The per-row threshold uses the **semantic index** `num(f).forIndex(key)` — read *this field's value in the row whose index field equals `key`*. It is **not number-only**: `forIndex` lives on every comparable ref (`num`/`str`/`enumOf`/`date`/`time`/`dateTime`), and the key is either a **constant** (`forIndex("AUTO")`) or **another field** (`forIndex(m.field("/Policy/PreferredCode"))`). The kernel places no kind restriction on the indexed field — its own flagship example indexes an *enum* (`[Addresses/Country For PreferredAddress]`) — so the ref you call it on decides the result kind. (Finding 55 / DEV-API-GAPS DG15.)
+The per-row threshold uses the **semantic index** `num(f).forIndex(key)` — read *this field's value in the row whose index field equals `key`*. It is **not number-only**: `forIndex` lives on every comparable ref (`num`/`str`/`enumOf`/`date`/`time`/`dateTime`/`dateRange`), and the key is either a **constant** (`forIndex("AUTO")`) or **another field** (`forIndex(m.field("/Policy/PreferredCode"))`). The kernel places no kind restriction on the indexed field — its own flagship example indexes an *enum* (`[Addresses/Country For PreferredAddress]`) — so the ref you call it on decides the result kind. (Finding 55 / DEV-API-GAPS DG15.)
 
 ### 3.3 A domain fragment library — packaging reuse
 
@@ -737,6 +737,17 @@ Read-back preserves the projection in every value-expression slot the converter 
 // semanticIndex(key) is the presence handle for the field value a semantic index resolves to;
 // .filled()/.notFilled() test its presence. (The VALUE for a comparison is forIndex(key).)
 Condition present = m.num("/Order/Items/Count").semanticIndex("SKU-1").filled();
+```
+
+**A keyed DATE_RANGE cell keeps its own type.** `dateRange(f).forIndex(key)` yields a `DateRangeIndexedValue` rather than the kind-erased computed `DateRangeExpr`, which is what lets the bound extractors accept it while still rejecting `StartOfDateRange(FirstFilledValue(…))` — the kernel admits the first and refuses the second (KERNEL-FINDINGS [KF205](KERNEL-FINDINGS.md#kf205); DEV-API-GAPS DG39):
+
+<!-- snippet: indexed-range -->
+```java
+// dateRange(f).forIndex(key) is the range cell a semantic index resolves to. It keeps its own type,
+// so the bound extractors take it — which FirstFilledValue's computed range, deliberately, cannot.
+DateRangeIndexedValue springRun = promo.dateRange("/Shop/Runs/RunWindow").forIndex("spring");
+Condition startsOnCheckDate =
+        Dsl.startOfDateRange(springRun).eq(promo.date("/Shop/CheckDate"));
 ```
 
 The same `semanticIndex(...)` handle is the operand of `Dsl.fieldValueAsString`, so a semantic index's field value coerces to string — the kernel's `FieldValueAsString([Field For key])`, the peer of the plain `fieldValueAsString(field)` (D11):

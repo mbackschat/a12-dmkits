@@ -1,12 +1,12 @@
 package io.github.mbackschat.a12.dm.rulekit.dsl;
 
 /**
- * A date-range value: a {@link DateRangeRef field}, a
- * {@link DateRangeConstruction DateRange(start, end)} construction, or a typed computed
+ * A date-range value: a {@link DateRangeRef field}, a {@link DateRangeIndexedValue semantically-indexed
+ * cell} of one, a {@link DateRangeConstruction DateRange(start, end)} construction, or a typed computed
  * {@link DateRangeExpr}. The kernel admits equality and inequality for this kind; ordering comparisons
  * are not part of the domain.
  */
-public sealed interface DateRangeOperand permits DateRangeRef, DateRangeConstruction, DateRangeExpr {
+public sealed interface DateRangeOperand permits DateRangeRef, DateRangeIndexedValue, DateRangeConstruction, DateRangeExpr {
 
     Calculation expression();
 

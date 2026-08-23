@@ -24,6 +24,20 @@ public record DateRangeRef(FieldRef field, boolean correlated) implements DateRa
         return new FieldValue(field, correlated);
     }
 
+    /**
+     * {@code [range For "indexValue"]} — the semantic index: this range's value in the repetition whose
+     * index field equals {@code indexValue}. The enclosing repeatable group must declare an
+     * {@code indexFieldName} (else {@code MVK_NO_INDEX_FIELD}).
+     */
+    public DateRangeIndexedValue forIndex(String indexValue) {
+        return new DateRangeIndexedValue(new SemanticIndexValue(field, indexValue));
+    }
+
+    /** {@code [range For keyField]} — the field-keyed semantic index (the current value of {@code keyField}). */
+    public DateRangeIndexedValue forIndex(FieldRef keyField) {
+        return new DateRangeIndexedValue(new SemanticIndexFieldValue(field, keyField));
+    }
+
     public Condition filled() {
         return field.filled();
     }

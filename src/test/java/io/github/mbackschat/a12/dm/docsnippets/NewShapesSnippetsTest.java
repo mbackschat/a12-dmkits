@@ -15,6 +15,7 @@ import io.github.mbackschat.a12.dm.rulekit.dsl.BoolExpr;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Computation;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Condition;
 import io.github.mbackschat.a12.dm.rulekit.dsl.DateExpr;
+import io.github.mbackschat.a12.dm.rulekit.dsl.DateRangeIndexedValue;
 import io.github.mbackschat.a12.dm.rulekit.dsl.DateTimeExpr;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl;
 import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer;
@@ -43,6 +44,14 @@ class NewShapesSnippetsTest {
                             .field("Approved", FieldKind.BOOLEAN)))
             .build().toJson();
     private static final BoundModel approval = BoundModel.ofJson(APPROVAL_JSON);
+    private static final String PROMO_JSON = DocumentModelDraft.named("promo").locale("en_US")
+            .rootGroup("Shop", root -> root
+                    .dateField("CheckDate", d -> d.format("yyyy-MM-dd"))
+                    .group("Runs", runs -> runs.repeatable(20).indexField("RunKey")
+                            .field("RunKey", FieldKind.STRING)
+                            .dateRangeField("RunWindow", r -> r.format("yyyy-MM-dd").separator("/"))))
+            .build().toJson();
+    private static final BoundModel promo = BoundModel.ofJson(PROMO_JSON);
 
     @Test
     void dateMinMaxSnippet() {
@@ -175,6 +184,19 @@ class NewShapesSnippetsTest {
         // end::indexed-coercion[]
         assertEquals("[/Order/CustomerName] == \"C-\" + FieldValueAsString(/Order/Items/Count For \"SKU-1\")",
                 new DslRenderer().render(c));
+    }
+
+    @Test
+    void indexedRangeSnippet() {
+        // tag::indexed-range[]
+        // dateRange(f).forIndex(key) is the range cell a semantic index resolves to. It keeps its own type,
+        // so the bound extractors take it — which FirstFilledValue's computed range, deliberately, cannot.
+        DateRangeIndexedValue springRun = promo.dateRange("/Shop/Runs/RunWindow").forIndex("spring");
+        Condition startsOnCheckDate =
+                Dsl.startOfDateRange(springRun).eq(promo.date("/Shop/CheckDate"));
+        // end::indexed-range[]
+        assertEquals("StartOfDateRange(/Shop/Runs/RunWindow For \"spring\") == [/Shop/CheckDate]",
+                new DslRenderer().render(startsOnCheckDate));
     }
 
     @Test

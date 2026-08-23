@@ -1028,6 +1028,16 @@ public final class Dsl {
         return new DateExpr(new DateRangeBound(DateRangeBound.Bound.END, range.expression()));
     }
 
+    /** {@code StartOfDateRange(Range For key)} — the start bound of a semantically-indexed range cell. catalog:StartOfDateRange */
+    public static DateExpr startOfDateRange(DateRangeIndexedValue range) {
+        return new DateExpr(new DateRangeBound(DateRangeBound.Bound.START, range.expression()));
+    }
+
+    /** {@code EndOfDateRange(Range For key)} — the end bound of a semantically-indexed range cell. catalog:EndOfDateRange */
+    public static DateExpr endOfDateRange(DateRangeIndexedValue range) {
+        return new DateExpr(new DateRangeBound(DateRangeBound.Bound.END, range.expression()));
+    }
+
     /**
      * {@code StartOfDateRange(BaseYear)} — 01.01 of the model's base year, as a comparable date. The kernel
      * treats {@code BaseYear} as a date range spanning the reference year, so it is the one point-in-time
