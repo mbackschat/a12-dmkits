@@ -21,6 +21,27 @@
 > enforcement, and its place in the docs router. The cleaner boundary is by AUTHOR, not by subject — `perf-results/`
 > is machine-written and self-pruning, this is hand-written and guard-verified.
 
+### Checkpoint 2026-08-23 — the build JDK changed under us, and it read as an interpreter regression for a day
+
+`scripts/perf.sh gate` breached on `charset-grapheme@1` at n=32000. The lane had measured **53.9–68.1 ms** across six full gates on 2026-08-14/16 and now measured **119.4** and **108.6 ms**, against a 92.53 ms budget. Nothing about the framing was right at first: the machine was idle (load 1.40), the observation denominator was identical (355 records every run), and three retries clustered tightly, so it read as a genuine step change in our own code.
+
+What it actually was: `a12_pinned_jdk21_home` was `/usr/libexec/java_home -v 21`, which returns the **highest-versioned** JDK 21 installed. `brew install openjdk@21` (21.0.12.1) landed on **2026-08-19 01:23** — between the last green gate and the first red one — and displaced Oracle GraalVM 21.0.12 as the build JDK with no commit in this repository. Those are different JIT compilers, and the run records had said so all along: every green run carries `jdk: "21.0.12"`, both red ones `jdk: "21.0.12.1"`.
+
+The control, same commit `f559b5b3`, same machine, same day, 96 timed observations each:
+
+| JDK | grapheme@32k | median across 91 common lanes |
+|---|---|---|
+| Oracle GraalVM 21.0.12 (Graal JIT) | **66.07 ms** — accepted | baseline |
+| Homebrew OpenJDK 21.0.12.1 (HotSpot C2) | **105.88 ms** — breached | **1.15× slower**, 45 lanes slower, **10 faster** |
+
+Ten lanes getting *faster* is what settles it as a JIT-characteristics change rather than a regression: no edit to our interpreter slows 45 unrelated lanes and speeds up 10. `charset-grapheme` breached alone because it sat closest to its floor.
+
+**Two things were wrong, and both were ours.** The pin fixed only the major version, so an unrelated Homebrew install could re-point the build; and the anchor block records `jdk` but **nothing ever read it** — the "parsed but never enforced" class this estate has a rule against. `java.version` could not have carried the check anyway: GraalVM 21 reports `21.0.12` and Homebrew OpenJDK `21.0.12.1`, which differ by coincidence, not by family.
+
+Both are closed. The pin now selects OpenJDK and skips GraalVM, refusing rather than falling back ([`scripts/selftest-jdk-pin.sh`](../scripts/selftest-jdk-pin.sh)); and `JdkIdentity.requireSupported()` on the shared record seam refuses to produce a number on anything but OpenJDK 21, naming the JVM it found and pointing at the pin rather than the anchors (`PerfJdkGateTest`, plus an executed refusal of a real lane under GraalVM). GraalVM stays reserved for `:cli:nativeCompile` via `GRAALVM_HOME`, which is a separate GraalVM 25 toolchain and was never involved.
+
+*Method note for anyone reading a future breach: the first two "clean" re-measurements were 60.6 and 73.1 ms in ISOLATION, which looked like exoneration and was actually a second uncontrolled variable — this lane depends on how much work precedes it in the JVM. The comparison that settled it held the entry point, the observation count, the machine and the day fixed, and varied only the JDK.*
+
 ### Checkpoint 2026-08-17 — the v0.13.0 published-claim refresh: every public number re-measured in one sweep
 
 The four public surfaces carried figures frozen on 2026-08-03 (latency, kernel ratios) and 2026-08-07 (memory). This re-measures every one of them on `690a3b9c`, each lane run **alone** on the local `darwin-aarch64` machine, so a reader comparing two claims in one paragraph is comparing one sweep.

@@ -74,6 +74,81 @@ internal object PerfEnvironment {
  * different generations still collided, and the rule that kept them apart ("one anchoring machine per runner class")
  * lived in prose that nothing could check. This is that rule, mechanized (IF280).
  */
+/**
+ * The JVM a perf number was produced on: the VM **family** and the language **major**.
+ *
+ * <p>Not the full version string. `java.version` alone cannot separate the vendors — Oracle GraalVM 21 reports
+ * `21.0.12` and Homebrew OpenJDK reports `21.0.12.1`, which differ by coincidence rather than by family — while a
+ * patch-exact identity would redden CI on every Temurin bump. Family plus major is the granularity that separates
+ * the thing that actually moves numbers from the thing that does not.
+ *
+ * PERF RUNS ON OPENJDK 21 AND NOTHING ELSE (owner rule, 2026-08-23), and [requireSupported] refuses rather than
+ * measures. The rule has a measured basis: on 2026-08-19 `brew install openjdk@21` displaced GraalVM 21.0.12 as
+ * the build JDK — `java_home -v 21` returns the highest-versioned JDK 21 — and the same commit then measured
+ * 105.88 ms under OpenJDK against 66.07 ms under GraalVM on the same machine on the same day, breaching a gate
+ * that was read at first as an interpreter regression. Across all 91 comparable lanes the swap moved 45 of them
+ * (median 1.15x) and made 10 faster, which is a JIT-characteristics change and not something any anchor can
+ * absorb. [io.github.mbackschat.a12.dm.adapter.perf.PerfJdkGateTest] holds both directions.
+ *
+ * <p>Refusing beats disarming here, unlike [MachineIdentity], and the asymmetry is deliberate: a second MACHINE is
+ * a legitimate thing to measure on and reads as bootstrap, whereas a second JDK means the pinned toolchain was not
+ * applied — a misconfiguration to fix, not a state to tolerate. `scripts/gradle-environment.sh` makes it rare; this
+ * makes it impossible to miss.
+ */
+internal data class JdkIdentity(val family: String, val major: String) {
+
+    val text: String get() = "$family $major"
+
+    internal companion object {
+
+        /** Moves together with the build toolchain's `JavaLanguageVersion`; both are deliberately explicit. */
+        const val REQUIRED_FAMILY = "OpenJDK"
+        const val REQUIRED_MAJOR = "21"
+
+        /**
+         * GraalVM is detected by `jvmci` in `java.vm.version` (`21.0.12+7-LTS-jvmci-23.1-b96`) rather than by
+         * vendor, because its `java.vm.name` is the Oracle-branded `Java HotSpot(TM) 64-Bit Server VM` and reads
+         * as stock. An unrecognised VM keeps its own name instead of being bucketed as OpenJDK, so it is refused
+         * and NAMED rather than silently accepted.
+         */
+        fun of(vmName: String, vmVersion: String, specificationVersion: String): JdkIdentity = JdkIdentity(
+            family = when {
+                vmVersion.contains("jvmci", ignoreCase = true) -> "GraalVM"
+                vmName.startsWith("OpenJDK") -> "OpenJDK"
+                else -> vmName.ifBlank { "unknown" }
+            },
+            major = specificationVersion.ifBlank { "unknown" },
+        )
+
+        val current: JdkIdentity by lazy {
+            of(
+                System.getProperty("java.vm.name").orEmpty(),
+                System.getProperty("java.vm.version").orEmpty(),
+                System.getProperty("java.specification.version").orEmpty(),
+            )
+        }
+
+        /** The refusal, worded so the reader can act on it without finding this file. */
+        fun refusalFor(jdk: JdkIdentity): String? {
+            if (jdk.family == REQUIRED_FAMILY && jdk.major == REQUIRED_MAJOR) {
+                return null
+            }
+            return "[perf] REFUSING to measure on ${jdk.text} — perf runs on $REQUIRED_FAMILY $REQUIRED_MAJOR and " +
+                "nothing else (owner rule 2026-08-23), because a JIT change moves absolute numbers by more than " +
+                "any anchor tolerance absorbs and reads as a code regression. Fix the toolchain rather than the " +
+                "anchors: ./build.sh applies the pin in scripts/gradle-environment.sh, which selects OpenJDK 21 " +
+                "and skips GraalVM (GraalVM is for :cli:nativeCompile via GRAALVM_HOME). Running JVM: " +
+                "java.vm.name=${System.getProperty("java.vm.name")}, " +
+                "java.vm.version=${System.getProperty("java.vm.version")}."
+        }
+
+        /** Called from the one seam every timed observation passes through, so no lane can measure around it. */
+        fun requireSupported() {
+            refusalFor(current)?.let { throw IllegalStateException(it) }
+        }
+    }
+}
+
 internal data class MachineIdentity(val model: String, val processors: Int) {
 
     val text: String get() = "$model ×$processors"
@@ -219,6 +294,10 @@ internal object PerfObservations {
         "os" to System.getProperty("os.name"),
         "arch" to System.getProperty("os.arch"),
         "jdk" to System.getProperty("java.version"),
+        // The FAMILY, alongside the version: `java.version` cannot separate Oracle GraalVM 21 (21.0.12) from
+        // Homebrew OpenJDK (21.0.12.1), and it was that indistinguishability that let a compiler swap read as a
+        // code regression for a day. Recorded for provenance; the gate itself is JdkIdentity.requireSupported.
+        "jdkFamily" to JdkIdentity.current.family,
         "processors" to PerfEnvironment.processors,
         // The MACHINE, not just its core count: an absolute number is only comparable on the machine it
         // was measured on, and a refresh writes this into the block so the check can be made (IF280).
@@ -443,6 +522,9 @@ internal object PerfObservations {
      */
     @Synchronized
     fun record(key: ObservationKey, medianMs: Double, status: String) {
+        // The gate on WHICH JVM may produce a number at all, at the one seam every timed observation reaches
+        // (IF296) — so a new lane inherits it by existing rather than by remembering. See JdkIdentity.
+        JdkIdentity.requireSupported()
         val quality = PerfEnvironmentQuality.snapshot()
         val window = PerfEnvironmentQuality.delta(lastQuality, quality)
         lastQuality = quality

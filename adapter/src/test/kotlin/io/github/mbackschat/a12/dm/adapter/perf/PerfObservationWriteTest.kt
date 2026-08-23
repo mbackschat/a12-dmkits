@@ -142,8 +142,8 @@ class PerfObservationWriteTest {
         val header = PerfObservations.runHeader("2026-08-12T120000Z")
 
         assertEquals(
-            setOf("kind", "environment", "capturedAt", "commit", "os", "arch", "jdk", "processors", "machine",
-                "loadAverage", "ci", "runId", "runnerName"),
+            setOf("kind", "environment", "capturedAt", "commit", "os", "arch", "jdk", "jdkFamily", "processors",
+                "machine", "loadAverage", "ci", "runId", "runnerName"),
             header.keys,
             "scripts/perf-anchor.sh reads environment, machine, processors, commit and jdk; perf-history.sh and " +
                 "PerformanceRecordShapeGuardTest read the rest. A key renamed here is a consumer broken there",
@@ -151,6 +151,12 @@ class PerfObservationWriteTest {
         assertEquals("run", header["kind"])
         assertEquals(PerfEnvironment.machine.model, header["machine"])
         assertTrue((header["machine"] as String).isNotBlank())
+        // `jdk` alone cannot identify the runtime: Oracle GraalVM 21 reports 21.0.12 and Homebrew OpenJDK reports
+        // 21.0.12.1, so the strings differ by coincidence rather than by family — and a record that cannot name
+        // its VM family is one a later reader cannot use to explain a step change, which cost a day on
+        // 2026-08-23. The gate itself is JdkIdentity.requireSupported; this field is the provenance beside it.
+        assertEquals(JdkIdentity.current.family, header["jdkFamily"])
+        assertEquals("OpenJDK", header["jdkFamily"], "perf records are only ever produced on OpenJDK 21")
     }
 
     /**
