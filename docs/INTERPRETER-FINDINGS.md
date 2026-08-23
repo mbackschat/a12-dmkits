@@ -3811,3 +3811,15 @@ Found the same way as [IF307](#if307), one entry later: the tri-engine arm of a 
 **What it deliberately leaves alone**, each because it is measured that way and each the thing "being helpful" would break: TIME is not re-presented, an unfilled field's default is not presented (`0.00` under `de_DE`), fractional digits are preserved rather than padded, and a partially known date keeps its `00` markers instead of being completed to the interval boundary it denotes.
 
 *Locked by:* `adapter.laws.MessageDisplayPresentationDiffTest` (ten locales over one document carrying DATE ×2 declared formats, NUMBER ×3, TIME, DATE_TIME and DATE_RANGE, on both kernel strategies and the interpreter) + `interpreter … MessageDisplayPresentationTest` (JVM and Node, including the apostrophe-grouping `ch` entry and the unmapped-locale control).
+
+### IF309: a stored DATE_TIME below the Gregorian floor was admitted where the kernel reports `datumFalsch` (FIXED 2026-08-24) <a id="if309"></a>
+
+Found by the differential built for a12-kernel-lean's `SPEC-2026-08-23-11`, on one row of five: the kernel reports `datumFalsch` for `1583-10-15T00:00:00` and the interpreter reported nothing.
+
+**The mechanism is a missing stage, not a wrong one.** `FormalError`'s `DATE` branch runs format, then the always-on Gregorian floor ([IF88](#if88)), then the opt-in pre-1900 check. Its `DATE_TIME` branch ran format and the DST-gap guard and then returned `null` — it checked well-formedness and wall-clock existence and never **position in time**. Nothing pointed at the gap, because the kernel has no DateTime-specific formal code at all: both codes it can report are the *Date* pair, so the DateTime branch looked complete while missing half of what that pair means.
+
+**The fix is one conjunct in the same `when`**, guarded on `isIsoDateTime` because only a date-bearing value can be below a floor — a time-only `HH:mm:ss` DATE_TIME (legal, [KF81](KERNEL-FINDINGS.md#kf81)) names no calendar day. The opt-in pre-1900 check is deliberately NOT extended: it is a `DateType` declaration and a DATE_TIME field has no such property, so adding it would be a refusal with no measured basis.
+
+**The class this belongs to.** A kind whose diagnostics are *borrowed* from another kind is where a stage goes missing unnoticed: there is no code named after the missing check to prompt the question. The general move is to enumerate the lending kind's stages and ask which of them the borrowing kind reaches — here, three stages for DATE and two implemented for DATE_TIME.
+
+*Locked by:* `adapter.laws.TemporalInputFormalCauseDiffTest.aStoredDateTimeCarriesBothCodesAndTheDateFloor` (both kernel strategies + the interpreter, the floor day beside the day before it) + `interpreter … DateGregorianFloorFormalTest` (JVM and Node, with the time-only declaration as the must-not-fire control).

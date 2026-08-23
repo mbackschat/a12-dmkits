@@ -390,6 +390,13 @@ internal fun typeFormatErrorCached(
                 // Only a date-bearing value can sit in a gap: a time-only cell names no calendar day, so there
                 // is no transition to fall into, and the guard must not be applied to its `HH:mm:ss` canonical.
                 isIsoDateTime(canonical) && isGapLocal(canonical, timeZone) -> FormalErrorCode.DATE_FORMAT
+                // A DateTime carries the SAME always-on Gregorian floor as a Date (KF206): the kernel has no
+                // DateTime-specific formal code and reports through the Date pair, so a date-bearing instant
+                // before 1583-10-16 is `datumFalsch`, not merely malformed. Only a date-bearing value can be
+                // below the floor — a time-only `HH:mm:ss` canonical names no calendar day.
+                isIsoDateTime(canonical) && dateParts(canonical.substring(0, 10))
+                    ?.let { (y, m, d) -> beforeGregorianStart(y, m, d) } == true ->
+                    FormalErrorCode.DATE_TOO_EARLY
                 else -> null
             }
         }

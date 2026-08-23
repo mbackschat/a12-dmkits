@@ -3456,3 +3456,55 @@ The presence column is what tells the pairs apart; the absence column alone cann
 **Correction to the peer entry — the negative row coordinate is a KNOWN sentinel, not an invented address.** An unguarded keyed negative presence escapes the negative-condition-in-iteration gate (a keyed lookup is not an iterated read), is admitted, and fires once at `/Shop/Runs/RunWindow, [1, -5, 1]`. The peer records this as "a negative row coordinate, which no legal address holds", and advises refusing the shape. Measured, the coordinate is **-5** — the kernel's clean-no-match reanchoring sentinel that [KERNEL-SEMANTICS §9](KERNEL-SEMANTICS.md#9-repetition-iteration-and-cross-array-evaluation) already records for message-pointer targeting. So the address is readable: a consumer maps `-5` to "no matching row" rather than inventing a coordinate or rejecting the rule. The guarded twin and a guarded direct-operand control both address a real row on the same document — and the twin's error field is forced to be a *directly* iterated field, because once a guard puts the rule into iteration the kernel demands an iterating reference to the error field (`MVK_ERROR_FIELD_AND_ITERATION_INVALID`), which a keyed lookup is not. That is the same fact the escape exploits, seen from the other side.
 
 *(Locked: `validate.laws.DateRangeSemanticIndexOperandLawsTest` — the sixteen-row admission grid, both wildcard refusals, the contained-key class with two twins, and the three key-literal rows; `adapter.laws.KeyedRangeReadStateDiffTest` — the four-state table on all three engines, the duplicate's per-cell reports, and the escape's exact address beside its two controls.)*
+
+## §6 supplement: the temporal FORMAT gate is a kind-independent vocabulary (kernel, 2026-08-24) <a id="kf206"></a>
+
+> Fold: not-foldable — an authoring-tier declaration rule, like [KF81](#kf81) which it corrects.
+
+Reconciliation of a12-kernel-lean `SPEC-2026-08-23-10`, **accepted as stated**. It corrects the framing of [KF81](#kf81), which is ours.
+
+**KF81 enumerated the admitted formats per KIND** — "DATE: both `yyyy-MM-dd` and `dd.MM.yyyy`; TIME: the full `HH:mm:ss` is required; DATE_TIME: the only date-bearing format is ISO" — and every cell it ran sat inside its own kind's column. A per-kind allowlist and a single shared vocabulary predict identical results on that grid, so the enumeration was complete in one direction and untested in the other. Measured across the kinds, the gate validates the **string** and never consults the kind.
+
+**The discriminating pair, on one field of one kind:** a TIME field is **refused** `HH:mm` — a natural spelling for its kind — and **admitted** `yyyy-MM-dd`, which is not one. No kind-keyed gate produces that pair.
+
+The cross-admissions: `HH:mm:ss` and the ISO datetime format on **DATE**; `yyyy-MM-dd`, `dd.MM.yyyy` and the fragment format `MM` on **TIME**. Each kind's own default is admitted as a control, and each kind's default is therefore not a restriction. The negative half is what makes it a *vocabulary* rather than an absence of checking: nine unrecognized strings are refused at the model level — `HH:mm`, `H:mm:ss`, `HH:mm:ss.SSS`, `hh:mm:ss a`, `HHmmss` and `HH-mm-ss` on TIME, and three space-separated datetime spellings on DATE_TIME. An admitted mismatch is stored **as declared**; the gate accepts the string rather than rewriting it.
+
+**What this does not say.** Static admission only. What a mismatched declaration stores, renders, or is admitted as an operand is a separate question — characterized for the degenerate time-only DATE_TIME in [KF81](#kf81) and untouched here. A consumer must not infer a component set from a field's kind **in either direction**.
+
+*(Locked: `adapter.laws.TemporalFormatVocabularyLawsTest` — the discriminating pair, the cross-admission witnesses with per-kind controls, the nine refusals, and the unnormalized read-back. Its `verdict` deliberately has no `catch`: an exception would be a CLIENT-side refusal, and letting it propagate is what keeps a builder throw from being reported as a kernel rejection.)*
+
+## §6 supplement: which formal cause a rejected temporal input carries (kernel + runtime, 2026-08-24) <a id="kf207"></a>
+
+> Fold: folded → §6.
+
+Reconciliation of a12-kernel-lean `SPEC-2026-08-23-08` and `-11`, **both accepted as stated**; `-11` found an interpreter defect ([IF309](INTERPRETER-FINDINGS.md#if309)).
+
+**A partial Date's cause is chosen in two stages.** A **FULL-precision** declaration reports *any* omission marker as `datumFormatFalsch`, because an omission is not a legal spelling for it at all — so one stored text draws different answers from two declarations differing **only** in precision (`2024-02-00` is the format error at FULL and admitted at `DAY_OPTIONAL`; `2024-00-00` likewise against `MONTH_OPTIONAL`). A declaration that admits omissions splits its rejections:
+
+| input at an omission-admitting precision | cause |
+|---|---|
+| wrong component width (`2024-2-01`) | `datumFormatFalsch` |
+| unreal calendar date among the **present** components (`2024-02-31`) | `datumFormatFalsch` |
+| a zero pattern that is not a monotone suffix (`2024-00-15` at `MONTH_OPTIONAL`) | `datumFalsch` |
+| a suffix deeper than the precision admits (`2024-00-00` at `DAY_OPTIONAL`) | `datumFalsch` |
+| earliest completion below the Gregorian floor (`1583-10-00` at `DAY_OPTIONAL`) | `datumFalsch` |
+
+**The gates run reality, then position in time, then precision.** An impossible month beside a legally omitted day (`2024-13-00` at `DAY_OPTIONAL`) is the **format** error — the omission is admitted and the month is not, so the month's cause wins — while `1583-10-00` at the same precision is the **date** error and `1583-11-00` is admitted. The peer records the trap that order creates: an implementation obtaining its partial value through a constructor that applies the floor internally reports the floor case as a format error, because the constructor's "no value" is indistinguishable from unreality.
+
+**Time and DateTime have no codes of their own.** Both report through the **Date** codes. A **Time** cell reaches only the format one — a width violation and every out-of-range component alike — because a clock has no position in time; and hour **24 is not an end-of-day spelling**: `24:00:00` is refused exactly as `25:00:00` is, while `00:00:00` and `23:59:59` are admitted, so the hour range is 0–23 inclusive. A **DateTime** cell reaches **both**, carries the same `1583-10-16` floor as a Date, and its `'T'` is part of the format rather than tolerated whitespace.
+
+*(Locked: `adapter.laws.TemporalInputFormalCauseDiffTest` — the precision pair, the five-row split, the reality-before-position triple, the seven Time rows, and the four DateTime rows, each on both kernel strategies and the interpreter; the DateTime floor additionally multiplatform in `interpreter … DateGregorianFloorFormalTest`.)*
+
+## §6/§9 supplement: a partial-Date `ValueAsDate` operand is admitted by the READING RULE's scope (kernel, 2026-08-24) <a id="kf208"></a>
+
+> Fold: folded → §6.
+
+Reconciliation of a12-kernel-lean `SPEC-2026-08-23-12`, **accepted as stated**.
+
+A partial-Date `ValueAsDate` operand may lie **inside a repeatable group**, and admission is decided by the reading rule's own iteration scope, not by the operand's spelling. The persisted condition normalises a relative operand to its absolute path, so the *same* text `ValueAsDate(/Intake/Rows/Partial, FirstDay) > [/Intake/Limit]` is admitted by a rule whose group is `/Intake/Rows` and refused `MVK_NO_WILDCARD` by one at `/Intake`, with a nonrepeatable operand admitted from the form locus as the control. A consumer cannot tell the two apart by reading the rule — which is exactly why the locus has to be stated.
+
+Two refusals ride along, each its own gate. A **starred** operand is `MVK_NO_WILDCARDS_ALLOWED` at **either** locus, so no iteration scope admits one; §7 separately records this operator refusing a group-scope operand `MVK_NO_GROUPS_ALLOWED`, and the two together mean it refuses both wildcard shapes while admitting the bound row read. And a bare partial-Date reference is **not a Date operand at all**: `[PartialTop] > [Limit]` on a `DAY_OPTIONAL` declaration is `MVK_INVALID_DATE_TYPE` — precisely the refusal `ValueAsDate` exists to bridge, so a consumer that cannot produce it leaves the author with no hint about which operation to reach for.
+
+This is [KF204](#kf204)'s locus law on a sixth carrier, and the peer's scope limit is kept: the Date-addition, Date-difference and `DateTime(…)` Date-operand carriers are unmeasured for the locus question, and §7's own finding forbids transferring a locus verdict between carriers in this family.
+
+*(Locked: `validate.laws.ValueAsDateLocusLawsTest` — the two-locus pair with its nonrepeatable control, and the starred/bare-reference gates; operand POSITION stays `ValueAsDatePlacementLawsTest`'s subject and holds at either locus.)*

@@ -31,6 +31,8 @@ class DateGregorianFloorFormalTest {
     private val dayOptional = FieldDef("/G/D", Kind.DATE, format = "dd.MM.yyyy", datePrecision = DatePrecision.DAY_OPTIONAL)
     private val rejectBefore1900 = FieldDef("/G/D", Kind.DATE, format = "yyyy-MM-dd", rejectBefore1900 = true)
     private val range = FieldDef("/G/D", Kind.DATE_RANGE, format = "yyyy-MM-dd", rangeSeparator = "/")
+    private val stamp = FieldDef("/G/D", Kind.DATE_TIME, format = "yyyy-MM-dd'T'HH:mm:ss")
+    private val clock = FieldDef("/G/D", Kind.DATE_TIME, format = "HH:mm:ss")
 
     // ── DATE: the floor at 1583-10-16 (datumFalsch), format-aware ──────────────────────────────────────────
     @Test fun ancientYearIsTooEarly() = assertEquals("datumFalsch", code(isoDate, "1000-01-31"), "year 1000 < floor")
@@ -49,6 +51,19 @@ class DateGregorianFloorFormalTest {
     // Format-aware: the floor applies to the field's declared rendering format, not only ISO.
     @Test fun germanFormatTooEarly() = assertEquals("datumFalsch", code(germanDate, "15.10.1583"), "dd.MM.yyyy below floor")
     @Test fun germanFormatValid() = assertEquals(null, code(germanDate, "16.10.1583"), "dd.MM.yyyy at the floor → valid")
+
+    // ── DATE_TIME: the SAME floor, because the kernel has no DateTime-specific formal code and reports
+    //    through the Date pair (SPEC-2026-08-23-11, KF206). The interpreter admitted a below-floor instant
+    //    until 2026-08-24 — the DATE_TIME branch checked format and the DST gap and never position in time
+    //    (IF309). A time-only DATE_TIME names no calendar day, so the floor cannot apply to it. ─────────────
+    @Test fun dateTimeBeforeFloorIsTooEarly() =
+        assertEquals("datumFalsch", code(stamp, "1583-10-15T00:00:00"), "the instant one day below the floor")
+    @Test fun dateTimeAtFloorIsValid() =
+        assertEquals(null, code(stamp, "1583-10-16T00:00:00"), "the floor day itself → valid")
+    @Test fun dateTimeMalformedStaysFormatError() =
+        assertEquals("datumFormatFalsch", code(stamp, "2024-02-15 10:00:00"), "a space for the literal T")
+    @Test fun timeOnlyDateTimeIsNotSubjectToTheFloor() =
+        assertEquals(null, code(clock, "00:00:00"), "a time-only declaration names no calendar day")
 
     // ── DAY_OPTIONAL: an omitted day completes to 01 BEFORE the floor check (the kernel's
     //    `replaceUnknownDateParts` runs ahead of `dateInvalid`), so a day-omitted October 1583 errors even
