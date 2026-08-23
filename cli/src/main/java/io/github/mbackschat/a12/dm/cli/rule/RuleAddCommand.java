@@ -21,6 +21,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import io.github.mbackschat.a12.dm.core.EntityPaths;
+import io.github.mbackschat.a12.dm.core.ModelConsistencyException;
 import io.github.mbackschat.a12.dm.core.ModelResolver;
 
 import io.github.mbackschat.a12.dm.edit.EditSession;
@@ -38,8 +39,9 @@ import picocli.CommandLine.Parameters;
 
 /**
  * {@code dmtool rule add <rule-spec.json>} — persist a rule from a JSON rule-spec, kernel-validated before
- * (the condition) and after (message/locale coverage), then written back (in place; {@code -o} redirects,
- * {@code --dry-run} previews). A rejected condition yields a {@code rejected} envelope (nothing written);
+ * (the condition) and after (the error text + message/locale coverage), then written back (in place;
+ * {@code -o} redirects, {@code --dry-run} previews). EITHER kernel checker's rejection yields the same
+ * {@code rejected} envelope, carrying that checker's own class and locus (nothing written);
  * a kernel-valid persist yields {@code applied}, with the {@code RK_INVERTED_REQUIREDNESS} / unguarded-number
  * lint findings carried as advisory diagnostics so the polarity trap surfaces here too.
  */
@@ -139,9 +141,14 @@ final class RuleAddCommand extends BaseCommand {
         BoundModel reModel;
         try {
             reModel = BoundModel.ofJson(persisted, resolver);
+        } catch (ModelConsistencyException e) {
+            // The kernel's SECOND checker — RuleErrortextChecker over each localized message — reports here, and
+            // its verdict is this verb's result exactly as a rejected condition's is. It used to leave through
+            // `fail`, so a rule refused for its error text produced empty stdout and a prose stderr line while
+            // the same verb refused for its condition produced the envelope.
+            return emitKernelRejection("the rule is rejected by the kernel", e);
         } catch (RuntimeException e) {
-            return fail("persisted rule is invalid (e.g. missing a message for a declared locale): "
-                    + e.getMessage());
+            return failEditGate(e);
         }
         List<Diagnostic> warnings = LintBackstop.lintPersisted(reModel, ruleFullName, field);
 

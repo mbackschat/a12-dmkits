@@ -313,7 +313,10 @@ final class ApplyCommand extends BaseCommand {
                     terminal.written() ? terminal.output() : null, terminal.evidence());
         }
         if (terminal.gateRejection() != null) {
-            // The one gate apply runs, and it rejected: valid:false plus the arbitrator that decided it.
+            // The one gate apply runs, and it rejected: valid:false plus the arbitrator that decided it. The
+            // kernel's own diagnostics are NOT hoisted here: they already ride the terminal gate's own nested
+            // envelope in data.results[] (see #gateRejection), which is where a per-step verdict belongs in this
+            // aggregate. Copying them up would state the same finding twice with two different loci.
             return ResultEnvelope.rejected(ResultIdentity.APPLY_RUN, summary, data, List.of(),
                     RejectionBasis.kernel(ConsistencyEvidence.of(terminal.gateRejection())));
         }

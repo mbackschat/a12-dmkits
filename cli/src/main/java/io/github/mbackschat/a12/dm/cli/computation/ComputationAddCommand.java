@@ -14,6 +14,7 @@ import java.io.IOException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import io.github.mbackschat.a12.dm.core.ModelConsistencyException;
 import io.github.mbackschat.a12.dm.core.ModelResolver;
 
 import java.util.ArrayList;
@@ -34,7 +35,9 @@ import picocli.CommandLine.Parameters;
 /**
  * {@code dmtool computation add <computation-spec.json>} — persist a computation (computed field +
  * alternatives), kernel-validated before + after, written back (in place; {@code -o}/{@code --dry-run}).
- * A rejected computation yields a {@code rejected} envelope (nothing written). See `schema computation add`.
+ * A rejection from EITHER kernel checker — the expression, or the error text — yields the same
+ * {@code rejected} envelope, carrying that checker's own class and locus (nothing written).
+ * See `schema computation add`.
  */
 @Command(name = "add", mixinStandardHelpOptions = true,
         description = "Persist a computation from a JSON computation-spec (kernel-validated before + after); "
@@ -100,9 +103,12 @@ final class ComputationAddCommand extends BaseCommand {
         BoundModel rebound;
         try {
             rebound = BoundModel.ofJson(persisted, resolver);
+        } catch (ModelConsistencyException e) {
+            // The error-text twin of RuleAddCommand's gate: a computation's message runs through the same
+            // RuleErrortextChecker, so its rejection is this verb's verdict and rides the envelope.
+            return emitKernelRejection("the computation is rejected by the kernel", e);
         } catch (RuntimeException e) {
-            return fail("persisted computation is invalid (e.g. missing a message for a declared locale): "
-                    + e.getMessage());
+            return failEditGate(e);
         }
         ObjectNode changed = MAPPER.createObjectNode();
         changed.put("computation", parsed.fullName());

@@ -138,17 +138,20 @@ final class RuleModifyCommand extends BaseCommand {
         BoundModel rebound;
         try {
             rebound = BoundModel.ofJson(modifiedJson, resolver);
+        } catch (ModelConsistencyException e) {
+            // The gate reached a verdict, so the kernel's OWN notifications are the diagnostics — one per
+            // problem, each carrying the class it named. This used to publish a single hand-rolled PRECHECK
+            // diagnostic wrapping the joined message, beside verification:KERNEL_CONFIRMED: a rulekit-origin
+            // finding attributed to a kernel arbitration, and the kernel's per-problem detail discarded. Its
+            // corrective pointed at `rule check`, which cannot reach an error text at all.
+            return emitKernelRejection("edit rejected by the kernel", e);
         } catch (RuntimeException e) {
+            // No verdict was reached (a parse/render failure), so this claims neither a class nor an arbitrator.
             Diagnostic d = Diagnostic.precheck(Optional.empty(),
-                    "the edit is rejected by the kernel (use `rule check` for diagnostics): " + e.getMessage(),
+                    "the edit could not be bound to the model: " + e.getMessage(),
                     new Diagnostic.Where(rule, Optional.empty()), Optional.empty(), Optional.empty());
-            // One broad catch used to serve two different bases. A ModelConsistencyException IS the gate's verdict,
-            // so it reports valid:false with its arbitrator; any other RuntimeException (a parse/render failure)
-            // means we cannot say the gate reached a verdict at all, so it claims neither.
-            ResultEnvelope env = ResultEnvelope.rejected(resultIdentity(), "edit rejected by the kernel", List.of(d),
-                    e instanceof ModelConsistencyException rejection
-                            ? RejectionBasis.kernel(ConsistencyEvidence.of(rejection))
-                            : RejectionBasis.preflight());
+            ResultEnvelope env = ResultEnvelope.rejected(resultIdentity(), "edit rejected before the kernel gate",
+                    List.of(d), RejectionBasis.preflight());
             out().print(env.toJsonString());
             return env.exitCode();
         }

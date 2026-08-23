@@ -15,8 +15,9 @@ import io.github.mbackschat.a12.dm.core.Verification;
  *
  * <p>The fields answer <b>what / where / how / why</b>: {@code summary} (what), {@code where} (which
  * rule, plus the AST operator-id once read lands), {@code fix} (an applicable DSL replacement or
- * curated prose), {@code explain} (the operator meaning / rationale). {@code code} carries the
- * {@code MVK_*} (kernel) or {@code RK_*} (rulekit) identifier when classifiable.
+ * curated prose), {@code explain} (the operator meaning / rationale). {@code code} carries whichever class the
+ * reporting engine named: from the kernel an {@code MVK_*} <em>or</em> an error-text class
+ * ({@code INVALID_ENTITY}, {@code NO_BASE_YEAR}, … — see {@link #fromKernel}), from rulekit an {@code RK_*}.
  *
  * <p><b>Resolving a code's meaning (library consumers).</b> A {@code Diagnostic} is public surface — a dep
  * that drives rulekit/modelkit receives these directly (e.g. from {@link ValidationResult#diagnostics()}).
@@ -39,6 +40,19 @@ public record Diagnostic(
         Optional<String> explain) {
 
     private static final Pattern MVK = Pattern.compile("MVK_[A-Z0-9_]+");
+
+    /**
+     * The kernel's own way of naming the class it reported: {@code MVKErrorLookup.getErrorMessage} returns
+     * {@code getBareErrorMessage(…) + " [" + displayKey + "]"}, so <b>every</b> classified notification ends
+     * with its key in square brackets — {@code MVK_*} being one family of key among many.
+     */
+    private static final Pattern TERMINAL_CLASS = Pattern.compile("\\[([A-Z][A-Z0-9_]+)]\\s*$");
+
+    /**
+     * The kernel's rule attribution, likewise its own: {@code RankedNotificationUtils} prefixes a rule-scoped
+     * notification with {@code "Rule with path '<fullName>': "}. Read only when the caller supplies no path.
+     */
+    private static final Pattern RULE_PREFIX = Pattern.compile("^Rule with path '([^']+)': ");
 
     public Diagnostic {
         code = code == null ? Optional.empty() : code;
@@ -156,20 +170,48 @@ public record Diagnostic(
     }
 
     /**
-     * A raw kernel notification, before catalog-join enrichment. The {@code MVK_*} code is extracted
-     * from the message when present; {@code fix}/{@code explain} stay empty until
-     * {@link DiagnosticEnricher} joins the catalog.
+     * A raw kernel notification, before catalog-join enrichment. The kernel's class and rule attribution are
+     * recovered from the message by the kernel's own emission grammar (see {@link #TERMINAL_CLASS} /
+     * {@link #RULE_PREFIX}); {@code fix}/{@code explain} stay empty until {@link DiagnosticEnricher} joins the
+     * catalog.
+     *
+     * <p><b>Why the terminal bracket rather than a scan for {@code MVK_}.</b> Our {@link Notification} carries
+     * only a severity and a message — the audit that introduced it proved those two are the whole consumed
+     * surface — so any structure has to come out of the text. Reading {@code MVK_*} anywhere in the message
+     * captured one family of key and silently dropped every other, which is how a rule's <em>error-text</em>
+     * rejection ({@code INVALID_ENTITY}, {@code NO_BASE_YEAR}, {@code FIELD_NO_ENUM}, … — the kernel's
+     * {@code FehlertextErrorType}) reached callers with no {@code code} at all. The bracket is not a heuristic
+     * over observed messages: it is where {@code MVKErrorLookup} puts the key, for every key.
+     *
+     * <p>The {@code MVK_} scan stays as the fallback for a message that carries a code but no terminal bracket
+     * (the {@code getBareErrorMessage} paths compose one message out of several), so the change can only add a
+     * classification, never remove one.
      */
     static Diagnostic fromKernel(Notification notification, String rulePath) {
         String message = notification.message() == null ? "" : notification.message();
-        Matcher matcher = MVK.matcher(message);
-        String terminalCode = null;
-        while (matcher.find()) {
-            terminalCode = matcher.group();
+        return new Diagnostic(notification.severity(), DiagnosticSource.KERNEL, kernelClass(message), message,
+                Where.rule(rulePath != null ? rulePath : attributedRule(message)),
+                Optional.empty(), Optional.empty());
+    }
+
+    /** The class the kernel named: its terminal bracketed key, else the last embedded {@code MVK_*}. */
+    private static Optional<String> kernelClass(String message) {
+        Matcher terminal = TERMINAL_CLASS.matcher(message);
+        if (terminal.find()) {
+            return Optional.of(terminal.group(1));
         }
-        Optional<String> code = Optional.ofNullable(terminalCode);
-        return new Diagnostic(notification.severity(), DiagnosticSource.KERNEL, code, message,
-                Where.rule(rulePath), Optional.empty(), Optional.empty());
+        Matcher embedded = MVK.matcher(message);
+        String last = null;
+        while (embedded.find()) {
+            last = embedded.group();
+        }
+        return Optional.ofNullable(last);
+    }
+
+    /** The rule the kernel attributed the notification to, or {@code null} when it named none. */
+    private static String attributedRule(String message) {
+        Matcher prefix = RULE_PREFIX.matcher(message);
+        return prefix.find() ? prefix.group(1) : null;
     }
 
     /** This diagnostic with the catalog-joined {@code fix} and {@code explain} attached. */

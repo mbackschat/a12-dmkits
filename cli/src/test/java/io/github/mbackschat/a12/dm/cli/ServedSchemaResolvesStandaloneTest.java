@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.util.List;
 import java.util.Set;
 
 import org.junit.jupiter.api.Test;
@@ -15,6 +16,7 @@ import com.networknt.schema.JsonSchemaFactory;
 import com.networknt.schema.SchemaValidatorsConfig;
 import com.networknt.schema.SpecVersion;
 import com.networknt.schema.ValidationMessage;
+import com.networknt.schema.resource.DisallowSchemaLoader;
 
 /**
  * <b>The consumer claim, against a real validator.</b> {@code CLI-SPEC} §5a states that a 2020-12 validator
@@ -23,9 +25,20 @@ import com.networknt.schema.ValidationMessage;
  * of claim that rots: {@code SchemaResourceSurfaceTest} only checks that an {@code $id} string appears under
  * some {@code $defs}, so it would still pass if the actual <em>resolution</em> semantics broke.
  *
- * <p>This locks it. The factory is given no schema mappings and no resource loader, so any attempt to resolve a
- * reference outside the served document fails rather than silently succeeding — which is what makes the positive
- * control below meaningful.
+ * <p>This locks it. The factory resolves ONLY from the served document: {@link #hermeticFactory()} installs
+ * {@link DisallowSchemaLoader}, so any attempt to resolve a reference outside it fails — which is what makes the
+ * positive control below meaningful.
+ *
+ * <p><b>The hermetic factory is load-bearing, not hygiene (2026-08-24).</b> This class used to build with a bare
+ * {@code JsonSchemaFactory.getInstance(V202012)} while its own javadoc claimed "no resource loader". That claim
+ * was false: the default factory carries a {@code UriSchemaLoader}, and the served document's {@code $ref} is the
+ * ABSOLUTE {@code https://github.com/mbackschat/a12-dmkits/schema/diagnostic.schema.json}. So the moment
+ * {@link #withoutTheBundleTheSameDocumentNoLongerResolves} stripped {@code $defs}, the validator went to the
+ * public internet for it — the test's verdict depended on whether github.com answered, and a host that neither
+ * answers nor refuses hangs it forever with no socket timeout (measured: a 15-minute {@code :cli:test} with the
+ * worker parked in {@code Net.connect0}). Worse for the claim: had that URL ever served a real document, the
+ * control would have resolved the reference remotely and reported "still validating" — passing for the opposite
+ * reason. The bundling claim is about a consumer with NO network, so the validator must have none.
  */
 class ServedSchemaResolvesStandaloneTest {
 
@@ -33,12 +46,18 @@ class ServedSchemaResolvesStandaloneTest {
 
     private static final String MODEL = "src/test/resources/models/order-ruled.dm.json";
 
+    /** A validator that can reach nothing outside the document it is handed — the whole point of the claim. */
+    private static JsonSchemaFactory hermeticFactory() {
+        return JsonSchemaFactory.builder(JsonSchemaFactory.getInstance(SpecVersion.VersionFlag.V202012))
+                .schemaLoaders(loaders -> loaders.values(List::clear).add(DisallowSchemaLoader.getInstance()))
+                .build();
+    }
+
     private static JsonSchema servedResultSchema() throws Exception {
         CliTestSupport.Result served = CliTestSupport.run("schema", "result");
         assertEquals(0, served.code(), served::err);
         // No mappings, no external loader: resolution must be satisfied from the document itself.
-        return JsonSchemaFactory.getInstance(SpecVersion.VersionFlag.V202012)
-                .getSchema(served.out(), SchemaValidatorsConfig.builder().build());
+        return hermeticFactory().getSchema(served.out(), SchemaValidatorsConfig.builder().build());
     }
 
     @Test
@@ -87,8 +106,7 @@ class ServedSchemaResolvesStandaloneTest {
                 """);
         boolean unresolvable;
         try {
-            JsonSchema schema = JsonSchemaFactory.getInstance(SpecVersion.VersionFlag.V202012)
-                    .getSchema(stripped, SchemaValidatorsConfig.builder().build());
+            JsonSchema schema = hermeticFactory().getSchema(stripped, SchemaValidatorsConfig.builder().build());
             // Either construction or validation must fail; a clean pass would mean the reference was never
             // being enforced in the first place, making the bundle pointless.
             unresolvable = !schema.validate(malformed).isEmpty();

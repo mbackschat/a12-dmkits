@@ -106,16 +106,17 @@ final class ComputationModifyCommand extends BaseCommand {
         BoundModel rebound;
         try {
             rebound = BoundModel.ofJson(modifiedJson, resolver);
+        } catch (ModelConsistencyException e) {
+            // See RuleModifyCommand: the gate's verdict publishes the kernel's own notifications, not a
+            // hand-rolled PRECHECK summary of them.
+            return emitKernelRejection("re-expression rejected by the kernel", e);
         } catch (RuntimeException e) {
+            // No verdict was reached (a parse/render failure), so this claims neither a class nor an arbitrator.
             Diagnostic d = Diagnostic.precheck(Optional.empty(),
-                    "the re-expression is rejected by the kernel: " + e.getMessage(),
+                    "the re-expression could not be bound to the model: " + e.getMessage(),
                     new Diagnostic.Where(computation, Optional.empty()), Optional.empty(), Optional.empty());
-            // See RuleModifyCommand: a ModelConsistencyException is the gate's own verdict (valid:false + its
-            // arbitrator); any other RuntimeException means no verdict was reached, so neither is claimed.
-            ResultEnvelope env = ResultEnvelope.rejected(resultIdentity(), "re-expression rejected by the kernel", List.of(d),
-                    e instanceof ModelConsistencyException rejection
-                            ? RejectionBasis.kernel(ConsistencyEvidence.of(rejection))
-                            : RejectionBasis.preflight());
+            ResultEnvelope env = ResultEnvelope.rejected(resultIdentity(),
+                    "re-expression rejected before the kernel gate", List.of(d), RejectionBasis.preflight());
             out().print(env.toJsonString());
             return env.exitCode();
         }
