@@ -2907,7 +2907,7 @@
           ]
         },
         {
-          "text": "the temporal gate reads the declared FORMAT, not the field kind, so 'all operands the same kind' is neither necessary nor sufficient: a Date declared yyyy beside a DateFragment declared yyyy is ADMITTED across two kinds, while two Date fields differing only in declared format are rejected MVK_ONLY_STRING_ENUM_NUMBER_DATE_ALLOWED",
+          "text": "the temporal gate reads the declared FORMAT STRING, not the field kind, so 'all operands the same kind' is neither necessary nor sufficient: a Date declared yyyy beside a DateFragment declared yyyy is ADMITTED across two kinds, while two Date fields differing only in declared format are rejected MVK_ONLY_STRING_ENUM_NUMBER_DATE_ALLOWED — including 'yyyy-MM-dd' beside 'dd.MM.yyyy', which denote the SAME components. That is the one place this operator disagrees with MaxValue/MinValue/NumberOfDifferentValues, whose gate is the component SET and admits that pair; no Base Year lifts this one",
           "kind": "AUTHORING"
         }
       ],
@@ -3051,7 +3051,7 @@
       "returns": "the operands' common NUMBER, DATE, TIME, or DATETIME kind",
       "meaning": "The largest of the listed values; unspecified fields are ignored. Over number fields it returns a number; over a date repetition list it returns the latest date.",
       "constraints": [
-        "sortable fields only — NUMBER, or mutually format-compatible DATE, TIME, or DATE_TIME fields (MVK_NOT_SORTABLE / MVK_DATEFORMATS_NOT_COMPATIBLE)",
+        "sortable fields only — NUMBER, or temporal fields (DATE, DATEFRAGMENT, TIME, DATE_TIME) whose declared COMPONENT SETS match after optional Base-Year supplementation (MVK_NOT_SORTABLE / MVK_DATEFORMATS_NOT_COMPATIBLE)",
         "more than one field or a repetition list; no repeated direct field, but a wildcarded (starred) operand may repeat (MVK_DUPLICATE_PARAM1)"
       ],
       "gotchas": [
@@ -3193,7 +3193,7 @@
       "returns": "the operands' common NUMBER, DATE, TIME, or DATETIME kind",
       "meaning": "The smallest of the listed values; unspecified fields are ignored. Over number fields it returns a number; over a date repetition list it returns the earliest date.",
       "constraints": [
-        "same slot rules as MaxValue: NUMBER, or mutually format-compatible DATE, TIME, or DATE_TIME fields"
+        "same slot rules as MaxValue: NUMBER, or temporal fields whose declared COMPONENT SETS match after optional Base-Year supplementation"
       ],
       "gotchas": [
         {
@@ -3997,13 +3997,13 @@
       "meaning": "Counts the distinct values among the listed fields (the count/number of different values), typically over a repetition list.",
       "constraints": [
         "operands must be type-homogeneous, in one of three classes: string/enum together, all numbers, or all date-like — DATE/TIME/DATETIME (MVK_STRING_ENUM_AND_NON_STRING_ENUM / MVK_NUMBER_AND_NON_NUMBER / MVK_DATE_AND_NONDATE)",
-        "date-like operands must additionally share COMPATIBLE FORMATS — two date-like fields are not enough (MVK_DATEFORMATS_NOT_COMPATIBLE)",
+        "date-like operands must additionally share one declared COMPONENT SET — two date-like fields are not enough (MVK_DATEFORMATS_NOT_COMPATIBLE)",
         "no booleans/confirms (MVK_ONLY_STRING_ENUM_NUMBER_CMP_DATE_ALLOWED)",
         "more than one field or a repetition list; no repeated direct field, but a wildcarded (starred) operand may repeat (MVK_DUPLICATE_PARAM1)"
       ],
       "gotchas": [
         {
-          "text": "date-like operands ARE allowed here — unlike MaxValue/MinValue, whose date form is a separate operator family, a count of distinct values takes DATE/TIME/DATETIME directly. But sharing a kind is not sufficient: the FORMATS must be compatible, so a 'yyyy-MM-dd' DATE beside a 'yyyy-MM-dd''T''HH:mm:ss' DATETIME is rejected MVK_DATEFORMATS_NOT_COMPATIBLE even though both are date-like",
+          "text": "date-like operands ARE allowed here, and share MaxValue/MinValue's temporal gate exactly. The gate reads the declared COMPONENT SET, not the format spelling and not the kind: 'yyyy-MM-dd' beside 'dd.MM.yyyy' is ADMITTED (same {year,month,day}, different spelling), as is a DATE 'yyyy' beside a DATEFRAGMENT 'yyyy', while 'yyyy-MM-dd' beside a 'yyyy-MM-dd''T''HH:mm:ss' DATETIME is rejected MVK_DATEFORMATS_NOT_COMPATIBLE because the time components differ. A declared Base Year adds the year to BOTH sets first, so a yearless 'MM' joins 'yyyy-MM' but still not the year-only 'yyyy'. Do not carry this gate over to FieldValuesNotUnique, whose temporal gate really is one identical declared FORMAT STRING reported under its own distinct code — it rejects both spelling pairs this operator admits; see `operators FieldValuesNotUnique` for that code and its rows",
           "kind": "AUTHORING",
           "seeAlso": [
             "MaxValue",

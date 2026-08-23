@@ -415,7 +415,18 @@ GroupListRef inspections = m.flattenGroup("/Claim/Inspections*");
 Condition late = Dsl.latestOf(inspections).after(m.date("/Claim/ClaimedOn"));
 ```
 
-`latestOf` is the DATE one, `latestTimeOf` the TIME one, `latestDateTimeOf` the DATETIME one — the information was always at the call site and merely re-derived from the operand afterwards. The **field** arm keeps its equality check, so a DATE list handed to `latestTimeOf` still fails fast. Only the starred group form is offered, for the same reason as above. (`DateExtremaGroupOperandLawsTest`.)
+`latestOf` is the DATE one, `latestTimeOf` the TIME one, `latestDateTimeOf` the DATETIME one — the information was always at the call site and merely re-derived from the operand afterwards. The **field** arm keeps a kind check, so a DATE list handed to `latestTimeOf` still fails fast. Only the starred group form is offered, for the same reason as above. (`DateExtremaGroupOperandLawsTest`.)
+
+**…and they take an operand LIST, not one scope**, exactly as the numeric `maxValue`/`minValue` do. Two or more direct date fields are a legal entity list, and the kernel compares their declared **component sets** rather than their format spellings — so two differently spelled complete dates aggregate fine:
+
+<!-- teaser -->
+```java
+// FiledOn is declared yyyy-MM-dd, ClosedOn dd.MM.yyyy — one component set, two spellings.
+Condition reopenedOutOfOrder = Dsl.latestOf(m.field("/Claim/FiledOn"), m.field("/Claim/ClosedOn"))
+        .after(m.date("/Claim/ReopenedOn"));
+```
+
+This closed a read-path hole, which is the half worth knowing: while the aggregate held a single scope, a stored rule using that kernel-legal shape came back from `rule read` as **Opaque** with *"MaxValue takes number fields"* — the model was unreadable, not merely unauthorable. Mind the neighbouring gate: `FieldValuesNotUnique` refuses that same pair, because its temporal gate is the declared format *string*. (Finding 127; `TemporalAggregateComponentSetLawsTest`, `MultiOperandTemporalExtremumReadTest`.)
 
 **`NumberOfValueInFields` counts across a starred group's expansion.** It is an entity-list operator like the aggregates, so its operand list is an `AggregateOperand` list and a `GroupListRef` sits in it for the same reason it sits under `Sum` — "how many cells anywhere below this group equal X", without naming one field:
 

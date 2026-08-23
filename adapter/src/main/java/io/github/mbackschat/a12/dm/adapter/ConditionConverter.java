@@ -727,10 +727,19 @@ final class ConditionConverter {
         throw unsupported("constant operand " + op.getClass().getSimpleName(), origin);
     }
 
-    /** A field entity to a {@link FieldOperand}: a flattened repetition list if it wildcards, else a plain field. */
+    /**
+     * A field entity to a {@link FieldOperand}: a flattened repetition list if it wildcards, else a plain field.
+     *
+     * <p>A wildcard entity goes through {@link #flattenScope}, so its {@code Having} filter is <b>kept</b>. It
+     * used to call {@link BoundModel#flatten} directly, which silently DROPPED the filter — turning a narrowed
+     * rule into a broad one on every multi-operand aggregate and value-list read, the same failure mode
+     * {@link #groupScope} is loud about. The single-operand aggregate arm and one {@code FirstFilledValue} arm
+     * had each worked around it locally by calling {@code flattenScope} themselves; the fix is here, at the
+     * shared root, so no caller has to remember (DG38).
+     */
     private FieldOperand toFieldOperand(IEntityId entity) {
         FieldOperand op = isWildcard(entity)
-                ? model.flatten(reconstructStarPath(entity)) : model.field(entity.getFullName());
+                ? flattenScope(entity) : model.field(entity.getFullName());
         if (entity.isOuter()) {   // $ correlation (D13): e.g. the value side of an entity-valued value-list
             op = (op instanceof FieldListRef list) ? list.outer() : ((FieldRef) op).outer();
         }
@@ -1242,7 +1251,7 @@ final class ConditionConverter {
     private FirstFilledOperand toFirstFilledOperand(IEntityId entity, IEntityListOperation origin) {
         FirstFilledOperand operand;
         if (entity.isField()) {
-            FieldOperand field = isWildcard(entity) ? flattenScope(entity) : toFieldOperand(entity);
+            FieldOperand field = toFieldOperand(entity);   // wildcard → flattenScope, filter kept
             operand = field.firstFilledOperand();
         } else {
             if (entity.getFilterCondition() != null) {
@@ -2463,7 +2472,7 @@ final class ConditionConverter {
 
     /**
      * True when an aggregate is <em>date-valued</em>: an order/first-filled aggregate
-     * ({@code MaxValue}/{@code MinValue}/{@code FirstFilledValue}) over a single {@code DATE} field scope.
+     * ({@code MaxValue}/{@code MinValue}/{@code FirstFilledValue}) whose field scope is {@code DATE}.
      * Such an aggregate compares as a date, not a number — {@link #convertDateAggregate} builds it.
      */
     private boolean isDateValuedAggregate(IEntityListOperation aggregate) {
@@ -2472,43 +2481,62 @@ final class ConditionConverter {
                 && name != EntityListOperationName.FirstFilledValue) {
             return false;
         }
-        List<IEntityId> entities = aggregate.getEntityList().getEntityIdList();
         if (name == EntityListOperationName.FirstFilledValue) {
             ValueKind kind = firstFilledValueKind(aggregate);
             return kind == ValueKind.DATE || kind == ValueKind.DATE_FRAGMENT;
         }
-        return entities.size() == 1 && entities.getFirst().isField()
-                && model.fieldAt(entities.getFirst().getFullName()).map(i -> i.kind() == ValueKind.DATE).orElse(false);
+        return temporalExtremumKind(aggregate) == ValueKind.DATE;
     }
 
     /**
-     * The value kind of a {@code MaxValue}/{@code MinValue} <em>extremum</em> over a single DATE/TIME/DATETIME
-     * field, or {@code null} when the aggregate is not a temporal extremum (a numeric aggregate, a
-     * {@code FirstFilledValue}, or a multi-field scope). The kernel folds all three date-like kinds through one
-     * {@code DateCombiner} (SPEC-2026-07-21-07), so the extremum lowers to the matching temporal operand.
+     * The value kind of a {@code MaxValue}/{@code MinValue} <em>extremum</em> over DATE/TIME/DATETIME fields,
+     * or {@code null} when the aggregate is not a temporal extremum (a numeric aggregate, a
+     * {@code FirstFilledValue}, or a scope this converter cannot type). The kernel folds all three date-like
+     * kinds through one {@code DateCombiner} (SPEC-2026-07-21-07), so the extremum lowers to the matching
+     * temporal operand.
+     *
+     * <p>The scope may hold <b>several</b> field operands — {@code MaxValue(FiledOn, ClosedOn)} over two direct
+     * DATE fields is kernel-legal, and the operands need only share a component SET, not a format spelling
+     * (KF193 / SPEC-2026-08-23-16). This used to require exactly one entity, which sent every multi-operand
+     * temporal extremum down the numeric arm and made {@code rule read} report a legal rule Opaque with
+     * "MaxValue takes number fields" (DG38). A GROUP operand carries no kind of its own, so it cannot type the
+     * aggregate on its own; it rides along once a field operand has named the kind.
      */
     private ValueKind temporalExtremumKind(IEntityListOperation aggregate) {
         EntityListOperationName name = aggregate.getOperatorName();
         if (name != EntityListOperationName.MaxValue && name != EntityListOperationName.MinValue) {
             return null;
         }
-        List<IEntityId> entities = aggregate.getEntityList().getEntityIdList();
-        if (entities.size() != 1 || !entities.getFirst().isField()) {
-            return null;
+        ValueKind common = null;
+        for (IEntityId entity : aggregate.getEntityList().getEntityIdList()) {
+            if (!entity.isField()) {
+                continue;   // a group scope is typed by its expansion — the kernel's verdict, not ours
+            }
+            ValueKind kind = model.fieldAt(entity.getFullName()).map(i -> i.kind()).orElse(null);
+            if (kind != ValueKind.DATE && kind != ValueKind.TIME && kind != ValueKind.DATE_TIME) {
+                return null;
+            }
+            if (common != null && common != kind) {
+                return null;   // the kernel refuses a mixed temporal list; leave it to the generic arm
+            }
+            common = kind;
         }
-        return model.fieldAt(entities.getFirst().getFullName())
-                .map(i -> i.kind())
-                .filter(k -> k == ValueKind.DATE || k == ValueKind.TIME || k == ValueKind.DATE_TIME)
-                .orElse(null);
+        return common;
     }
 
     /** The kind-agnostic {@code MaxValue}/{@code MinValue} extremum node; the caller wraps it in the matching
      *  temporal operand expression ({@link DateExpr}/{@link TimeExpr}/{@link DateTimeExpr}). */
     private DateListAggregate temporalListAggregate(IEntityListOperation aggregate) {
-        FieldListRef scope = flattenScope(aggregate.getEntityList().getEntityIdList().getFirst());
+        ValueKind kind = temporalExtremumKind(aggregate);
+        if (kind == null) {
+            throw unsupported("temporal extremum over a scope with no date-like field operand", aggregate);
+        }
+        List<AggregateOperand> operands = aggregate.getEntityList().getEntityIdList().stream()
+                .map(e -> e.isField() ? (AggregateOperand) toFieldOperand(e) : groupScope(e, aggregate))
+                .toList();
         return switch (aggregate.getOperatorName()) {
-            case MaxValue -> new DateListAggregate(DateListAggregate.Mode.LATEST, scope, scope.kind());
-            case MinValue -> new DateListAggregate(DateListAggregate.Mode.EARLIEST, scope, scope.kind());
+            case MaxValue -> new DateListAggregate(DateListAggregate.Mode.LATEST, operands, kind);
+            case MinValue -> new DateListAggregate(DateListAggregate.Mode.EARLIEST, operands, kind);
             default -> throw unsupported("temporal extremum operator " + aggregate.getOperatorName(), aggregate);
         };
     }

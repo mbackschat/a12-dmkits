@@ -234,7 +234,7 @@ public record ConditionReferences(Set<String> fieldPaths, Set<String> groupPaths
             }
             case Rounding r -> collect(r.operand(), refs);
             case Concatenation c -> c.parts().forEach(p -> collect(p, refs));
-            case DateListAggregate a -> collectAggregateOperand(a.scope(), refs);
+            case DateListAggregate a -> a.operands().forEach(o -> collectAggregateOperand(o, refs));
             case FirstFilledValue a -> a.operands().forEach(o -> collectFirstFilledOperand(o, refs));
             case FieldValueAsString c -> refs.field(c.field().path().value());
             case IndexedFieldValueAsString c -> collect(c.index(), refs);

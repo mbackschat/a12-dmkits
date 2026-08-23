@@ -265,7 +265,7 @@ record ConditionComplexity(int nodeCount, int depth, int maxBooleanArity,
                     op(a.operatorId());
                     constructs.add(Construct.AGGREGATE);
                     constructs.add(Construct.DATE_MATH);
-                    yield 1 + maxAggregateOperandDepth(java.util.List.of(a.scope()));
+                    yield 1 + maxAggregateOperandDepth(a.operands());
                 }
                 case FirstFilledValue a -> {
                     op(a.operatorId());
