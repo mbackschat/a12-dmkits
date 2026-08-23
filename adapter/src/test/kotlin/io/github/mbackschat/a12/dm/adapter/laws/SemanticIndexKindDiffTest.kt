@@ -29,6 +29,7 @@ class SemanticIndexKindDiffTest {
                 .dateFragmentField("ExpectedMonth", Consumer { it.fragmentFormat("yyyy-MM") })
                 .timeField("ExpectedTime", Consumer { it.format("HH:mm:ss") })
                 .dateTimeField("ExpectedDateTime", Consumer { it.format("yyyy-MM-dd'T'HH:mm:ss") })
+                .dateRangeField("ExpectedWindow", Consumer { it.format("yyyy-MM-dd").separator("/") })
                 .group("Coverages", Consumer { coverage ->
                     coverage.repeatable(20).indexField("Code")
                         .stringField("Code", Consumer { })
@@ -40,6 +41,7 @@ class SemanticIndexKindDiffTest {
                         .dateFragmentField("CoverageMonth", Consumer { it.fragmentFormat("yyyy-MM") })
                         .timeField("StartTime", Consumer { it.format("HH:mm:ss") })
                         .dateTimeField("StartedAt", Consumer { it.format("yyyy-MM-dd'T'HH:mm:ss") })
+                        .dateRangeField("CoverageWindow", Consumer { it.format("yyyy-MM-dd").separator("/") })
                 })
         }).build().toJson()
     private val m = BoundModel.ofJson(base)
@@ -78,6 +80,10 @@ class SemanticIndexKindDiffTest {
             Case("date_time", "dateTime", guard.and(m.dateTime(STARTED_AT).forIndex(KEY).eq(m.dateTime(EXPECTED_DATE_TIME))),
                 STARTED_AT, "2024-06-01T10:30:00", EXPECTED_DATE_TIME, "2024-06-01T10:30:00",
                 STARTED_AT, "2024-06-01T10:31:00"),
+            Case("date_range", "dateRange", guard.and(
+                m.dateRange(COVERAGE_WINDOW).forIndex(KEY).eq(m.dateRange(EXPECTED_WINDOW))),
+                COVERAGE_WINDOW, "2024-06-01/2024-06-30", EXPECTED_WINDOW, "2024-06-01/2024-06-30",
+                COVERAGE_WINDOW, "2024-07-01/2024-07-31"),
         )
 
         val publishedEntryPoints = BoundModel::class.java.methods
@@ -167,11 +173,13 @@ class SemanticIndexKindDiffTest {
         const val EXPECTED_MONTH = "/Policy/ExpectedMonth"
         const val EXPECTED_TIME = "/Policy/ExpectedTime"
         const val EXPECTED_DATE_TIME = "/Policy/ExpectedDateTime"
+        const val EXPECTED_WINDOW = "/Policy/ExpectedWindow"
         const val CODE = "/Policy/Coverages/Code"
         const val LIMIT = "/Policy/Coverages/Limit"
         const val TIER = "/Policy/Coverages/Tier"
         const val RISK_CODE = "/Policy/Coverages/RiskCode"
         const val STATUS = "/Policy/Coverages/Status"
+        const val COVERAGE_WINDOW = "/Policy/Coverages/CoverageWindow"
         const val START_DATE = "/Policy/Coverages/StartDate"
         const val COVERAGE_MONTH = "/Policy/Coverages/CoverageMonth"
         const val START_TIME = "/Policy/Coverages/StartTime"
