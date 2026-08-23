@@ -93,6 +93,29 @@ class MultiOperandTemporalExtremumReadTest {
         assertEquals(RENDER.render(latest), RENDER.render(converted(adapter.read("/Claim/ShiftRule"))));
     }
 
+    /**
+     * A {@code Having} filter on a starred operand SURVIVES the multi-operand read. This is the third root the
+     * same sweep turned up: {@code toFieldOperand} rebuilt a wildcard entity through {@code BoundModel.flatten}
+     * and silently DROPPED its filter, so every multi-operand aggregate and value-list read turned a narrowed
+     * rule into a broad one. Two call sites had each worked around it locally by calling {@code flattenScope}
+     * themselves, which is the tell for a root-level bug; the fix is in {@code toFieldOperand}, and this row is
+     * what stops it regressing. A dropped filter round-trips to a DIFFERENT, still-legal condition, so only an
+     * exact-text assertion can catch it.
+     */
+    @Test
+    void aHavingFilterOnAMultiOperandExtremumSurvivesTheRead() {
+        BoundModel m = BoundModel.ofJson(claimJson());
+        Condition latest = m.date("/Claim/ReopenedOn").ne(Dsl.latestOf(
+                m.field("/Claim/FiledOn"),
+                m.flatten("/Claim/Visits*/VisitOn").having(m.date("/Claim/Visits/VisitOn").after(
+                        m.date("/Claim/FiledOn")))));
+
+        KernelAdapter adapter = KernelAdapter.of(m.add(rule(m, "FilteredRule", "/Claim/ReopenedOn", latest)));
+        String read = RENDER.render(converted(adapter.read("/Claim/FilteredRule")));
+        assertTrue(read.contains("Having"), () -> "the Having filter must survive the read, got: " + read);
+        assertEquals(RENDER.render(latest), read);
+    }
+
     /** The kernel row that makes the round-trips above about a LEGAL shape rather than about our own text. */
     @Test
     void aTwoFieldDateExtremumIsKernelValid() {

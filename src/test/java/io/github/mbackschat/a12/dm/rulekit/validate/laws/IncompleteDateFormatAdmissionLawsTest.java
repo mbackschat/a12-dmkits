@@ -129,6 +129,54 @@ class IncompleteDateFormatAdmissionLawsTest {
                 "yyyy-MM-dd DayFromDate => admitted"), verdicts);
     }
 
+    /**
+     * These formats compare through the ORDINARY coarse temporal gate and need no rule of their own
+     * (a12-kernel-lean {@code SPEC-2026-08-23-15}, [KF196]). After optional Base-Year supplementation the gate
+     * reads matching YEAR presence plus matching date/no-date class and never the component sets, so
+     * {@code yyyy} compares with {@code yyyy-MM} and with a complete date while {@code MM-dd} compares with
+     * {@code MM} and with neither of the year-bearing ones. Asserted as one table so a widened or narrowed gate
+     * reports every row at once, and recorded because reading "same format compares" off the refusals alone
+     * rejects the three admitted mixed pairs.
+     */
+    @Test
+    void theseFormatsCompareThroughTheOrdinaryYearPresenceGate() {
+        List<String> verdicts = new ArrayList<>();
+        for (String[] pair : List.of(
+                new String[] {"yyyy", "yyyy-MM"},
+                new String[] {"yyyy", "yyyy-MM-dd"},
+                new String[] {"MM", "MM-dd"},
+                new String[] {"MM-dd", "yyyy"},
+                new String[] {"MM-dd", "yyyy-MM-dd"},
+                new String[] {"MM", "yyyy-MM"})) {
+            String json = comparisonModel(pair[0], pair[1]);
+            var result = KernelLaws.checkModel(json, "/Visit", "../Probe",
+                    "FieldFilled(Probe) And [Left] == [Right]");
+            verdicts.add(pair[0] + " == " + pair[1] + " => "
+                    + (result.ok() ? "admitted" : result.diagnostics().stream()
+                            .flatMap(d -> d.code().stream()).findFirst().orElse("refused")));
+        }
+        assertEquals(List.of(
+                // both year-bearing — component sets differ and that is irrelevant to this gate
+                "yyyy == yyyy-MM => admitted",
+                "yyyy == yyyy-MM-dd => admitted",
+                // both yearless
+                "MM == MM-dd => admitted",
+                // year presence differs, and no Base Year is declared
+                "MM-dd == yyyy => MVK_INVALID_COMPARE_TO_DATE",
+                "MM-dd == yyyy-MM-dd => MVK_INVALID_COMPARE_TO_DATE",
+                "MM == yyyy-MM => MVK_INVALID_COMPARE_TO_DATE"), verdicts);
+    }
+
+    /** Two omitting-format DATE fields side by side, for the comparison table above. */
+    private static String comparisonModel(String left, String right) {
+        return DocumentModelDraft.named("visit").locale("en_US")
+                .rootGroup("Visit", root -> root
+                        .dateField("Left", d -> d.format(left))
+                        .dateField("Right", d -> d.format(right))
+                        .numberField("Probe", n -> n.fractionDigits(0)))
+                .build().toJson();
+    }
+
     @Test
     void aRefusedFormatFailsTheConsistencyGateAndNotTheDraftBuilder() {
         // Where the refusal lives is load-bearing: the DRAFT builder serializes `MM.yyyy` happily, and only the

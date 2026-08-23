@@ -25,8 +25,10 @@ import io.github.mbackschat.a12.dm.rulekit.dsl.GroupListRef;
  * <p><b>So the kind became explicit, supplied by the factory.</b> That is not a workaround but the accurate
  * model: each factory already names the kind it means — {@code latestOf} is the DATE one, {@code latestTimeOf}
  * the TIME one — so the information was always present at the call site and merely re-derived from the operand
- * afterwards. The field arm keeps its equality check, so a DATE list handed to {@code latestTimeOf} still fails
- * fast rather than mis-typing the aggregate.
+ * afterwards. The field arm keeps a kind check, so a DATE list handed to {@code latestTimeOf} still fails
+ * fast rather than mis-typing the aggregate — narrowed 2026-08-24 from kind EQUALITY to the temporal
+ * CLASS, because the kernel admits a DATE {@code yyyy} beside a DateFragment {@code yyyy} and equality
+ * refused that legal pair ([KF193], {@code TemporalAggregateComponentSetLawsTest}).
  *
  * <p><b>Scope: the STARRED form only.</b> `KF187` measures both repetition shapes as ACCEPT for this carrier, but
  * the unstarred group is left out until a runtime row exists for it — widening authoring past what the evaluator
@@ -78,8 +80,9 @@ class DateExtremaGroupOperandLawsTest {
     }
 
     /**
-     * The FIELD arm keeps its kind check — the control that making the kind explicit did not disable the
-     * fast failure a wrong-kind field list used to get.
+     * The FIELD arm keeps a kind check — the control that making the kind explicit did not disable the fast
+     * failure a wrong-kind field list used to get. It reads the temporal CLASS, and a DATE list under the TIME
+     * factory crosses it: date-presence differs, which is exactly what the kernel refuses.
      */
     @Test
     void aFieldListOfTheWrongKindStillFailsFast() {
