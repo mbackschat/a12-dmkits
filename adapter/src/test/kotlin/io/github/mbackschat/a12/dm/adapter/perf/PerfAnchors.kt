@@ -556,7 +556,11 @@ internal object PerfObservations {
      * window that CONTAINS its measurement (IG121's third piece; the window's exact definition and the reason these
      * may never gate are on [PerfEnvironmentQuality]).
      */
-    private var lastQuality: PerfEnvironmentQuality.Snapshot? = null
+    // `internal`, not private, so the gate above it has a control. Deleting `requireSupported()` from
+    // `record` cannot be caught through the FILE — an unbound `file` lazy re-enters `newRunFile`, which
+    // refuses anyway — so the only observable difference a refused call makes is this baseline. The test
+    // reads it rather than asserting a write did not happen (cold review 2026-08-24).
+    internal var lastQuality: PerfEnvironmentQuality.Snapshot? = null
 
     /**
      * `@Synchronized` because the quality delta is **order-dependent** state, unlike everything else written here:

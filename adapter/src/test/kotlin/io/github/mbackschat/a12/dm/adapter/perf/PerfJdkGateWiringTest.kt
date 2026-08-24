@@ -5,6 +5,7 @@ import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Assertions.assertDoesNotThrow
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertSame
 import org.junit.jupiter.api.Assertions.assertThrows
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
@@ -69,6 +70,23 @@ class PerfJdkGateWiringTest {
         assertThrows(IllegalStateException::class.java) { PerfObservations.recordWarm("l", "s", 1, "interpreter", 1, "cap") }
         assertThrows(IllegalStateException::class.java) { PerfObservations.recordCost("l", "s", 1.0) }
         assertThrows(IllegalStateException::class.java) { PerfObservations.recordMargin(key(), 1.0, null, "accepted") }
+    }
+
+    @Test
+    fun `a refused record leaves the shared quality baseline where it found it`() {
+        // The control for the gate at the TOP of `record()`. It cannot be held through the record file: with an
+        // unbound `file` lazy the call re-enters `newRunFile`, which refuses too, so deleting the entry gate
+        // still throws and writes nothing (mutant SURVIVED, measured 2026-08-24). What the entry gate uniquely
+        // protects is in-memory — `record` snapshots and advances `lastQuality` before it appends, so a refusal
+        // that fired downstream would leave the NEXT genuine observation measuring its window against this
+        // test's snapshot. Comparing before/after rather than asserting null, so the lane's history is irrelevant.
+        val before = PerfObservations.lastQuality
+        JdkIdentity.judged = graalvm
+
+        assertThrows(IllegalStateException::class.java) { PerfObservations.record(key(), 1.0, "accepted") }
+
+        assertSame(before, PerfObservations.lastQuality,
+            "a refused record must not advance the window baseline the next real observation is measured against")
     }
 
     @Test
