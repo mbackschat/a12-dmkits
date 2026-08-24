@@ -54,8 +54,11 @@ class PerfJdkGateWiringTest {
 
     /**
      * What this does and does NOT isolate, stated because a mutation run settled it — and the earlier version of
-     * this note over-generalized that run (corrected 2026-08-24, cold review). Removing the gate from
-     * `newRunFile` kills the third case below (mutant DIES). Removing it from `File.appendLine` kills nothing
+     * this note over-generalized that run (corrected 2026-08-24, cold review). All four verdicts below are
+     * measured with `scripts/mutant.sh` against this class. Removing the gate from `newRunFile` DIES (caught by
+     * the neither-writes-nor-prunes case); replacing `requireSupported`'s body with an unconditional throw DIES
+     * (the happy-path case, which is why that case goes through `newRunFile` and not `refusalFor`); removing the
+     * gate from `record` DIES (the quality-baseline case). Removing it from `File.appendLine` kills nothing
      * IN THIS LANE, because `:adapter:test` excludes the `perf` tag, so the lazy is unbound and every call
      * re-enters `newRunFile`. That is a property of the lane, not of the code: under `-PallTests`/`-PrunPerf` a
      * perf class binds the lazy first and the `appendLine` gate becomes the only one left. So this asserts the
