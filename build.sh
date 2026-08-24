@@ -35,4 +35,47 @@ pinned_jdk21_home="$(a12_pinned_jdk21_home)" \
        exit 1; }
 [[ -z "$pinned_jdk21_home" ]] || export JAVA_HOME="$pinned_jdk21_home"
 
+# THE LANE GUARD — refuse a test lane this change cannot reach (owner rule, 2026-08-24). CLAUDE.md already
+# carried this as prose and the session that wrote the prose still ran `:cli:check`, the estate's heaviest
+# lane, against a scripts-only diff. CI is exempt on purpose: it deliberately runs everything, and a guard
+# that reddens CI is disabled within the week. `RK_LANE=all` overrides and SAYS SO, so an override is visible
+# in the log rather than silent. Rationale + mapping: scripts/lane-guard.sh.
+if [[ -z "${CI:-}" ]]; then
+  . "$ROOT/scripts/lane-guard.sh"
+  if [[ "${RK_LANE:-}" == "all" ]]; then
+    echo "build.sh: RK_LANE=all - lane guard overridden for this run" >&2
+  else
+    unjustified="$(a12_lane_refusals "$@")"
+    if [[ -n "$unjustified" ]]; then
+      echo "build.sh: REFUSING a lane this change cannot reach:" >&2
+      printf '%s' "$unjustified" >&2
+      echo "  changed: $(a12_changed_paths | head -4 | tr '\n' ' ')" >&2
+      echo "  Run the lane the change reaches, or RK_LANE=all ./build.sh ... to override deliberately." >&2
+      echo "  Why: a broader run is never criticised on thoroughness and its cost lands on the maintainer" >&2
+      echo "  (CLAUDE.md, the budget smell). scripts/lane-guard.sh carries the mapping." >&2
+      exit 1
+    fi
+  fi
+fi
+
+# THE LANE GUARD — refuse a test lane this change cannot reach (owner rule, 2026-08-24). CLAUDE.md carried
+# this as prose, and the session that quoted the prose still ran `:cli:check`, the estate's heaviest lane
+# (~281 s spawning packaged launchers four at a time, load 23 on 8 cores), against a scripts-only diff whose
+# cli-side guards had already gone green minutes earlier. CI is exempt on purpose: it deliberately runs
+# everything, and a guard that reddens CI is switched off within the week. `RK_LANE=all` overrides and SAYS
+# so, so an override is visible in the log instead of silent. Mapping + rationale: scripts/lane-guard.sh.
+if [[ -z "${CI:-}" && "${RK_LANE:-}" != "all" ]]; then
+  . "$ROOT/scripts/lane-guard.sh"
+  unjustified="$(a12_lane_refusals "$@")"
+  if [[ -n "$unjustified" ]]; then
+    echo "build.sh: REFUSING a lane this change cannot reach:" >&2
+    printf '%s' "$unjustified" >&2
+    echo "  changed: $(a12_changed_paths | head -4 | tr '\n' ' ')" >&2
+    echo "  Run the lane the change reaches, or RK_LANE=all ./build.sh ... to override deliberately." >&2
+    exit 1
+  fi
+elif [[ "${RK_LANE:-}" == "all" && -z "${CI:-}" ]]; then
+  echo "build.sh: RK_LANE=all - lane guard overridden for this run" >&2
+fi
+
 exec "$ROOT/gradlew" "$@"
