@@ -3,6 +3,7 @@ package io.github.mbackschat.a12.dm.adapter.perf
 import java.io.File
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
+import org.junit.jupiter.api.Assertions.assertDoesNotThrow
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertThrows
 import org.junit.jupiter.api.Assertions.assertTrue
@@ -27,11 +28,14 @@ class PerfJdkGateWiringTest {
     private val graalvm = JdkIdentity.of("Java HotSpot(TM) 64-Bit Server VM", "21.0.12+7-LTS-jvmci-23.1-b96", "21")
 
     /**
-     * EVERY case is sandboxed, not just the one that inspects the directory. The first version scoped
-     * `perf.results.dir` to a single test, and the others reached `PerfObservations.file` — whose lazy
-     * initializer prunes and creates against the REAL tree. It deleted two committed runs and left a 0-byte
-     * file behind, which `PerfReportScriptTest` then failed on. A test that can damage the record it guards is
-     * the same defect class as the code it is testing.
+     * EVERY case sets `perf.results.dir`, but be precise about what that buys (corrected 2026-08-24, cold
+     * review). `resultsDirectory()` is read inside the `file` lazy, so the property only takes effect for a case
+     * that reaches an UNBOUND lazy — cases 3 and 4, which call `newRunFile()` directly, are genuinely sandboxed.
+     * Cases 1 and 2 are protected by the gate itself: they refuse before any write, which is the contract under
+     * test. The sandbox is still set for all of them because the first version scoped it to a single test and
+     * the others pruned the REAL tree — two committed runs deleted and a 0-byte file left behind, which
+     * `PerfReportScriptTest` then failed on. A test that can damage the record it guards is the same defect
+     * class as the code it is testing.
      */
     private var previousDir: String? = null
 
@@ -48,11 +52,13 @@ class PerfJdkGateWiringTest {
     private fun key() = ObservationKey("lane", "scenario@1", 100, "interpreter", "cpu")
 
     /**
-     * What this does and does NOT isolate, stated because a mutation run settled it. Removing the gate from
-     * `newRunFile` kills the third case below (mutant DIES); removing it from `File.appendLine` kills nothing
-     * (mutant SURVIVES) — every write reaches the record tree through the `file` lazy, which refuses first, and
-     * the JVM identity cannot change mid-process. So this asserts the CONTRACT ("no record kind writes on a
-     * foreign JVM") and not which of the two gates enforces it; the load-bearing one is `newRunFile`.
+     * What this does and does NOT isolate, stated because a mutation run settled it — and the earlier version of
+     * this note over-generalized that run (corrected 2026-08-24, cold review). Removing the gate from
+     * `newRunFile` kills the third case below (mutant DIES). Removing it from `File.appendLine` kills nothing
+     * IN THIS LANE, because `:adapter:test` excludes the `perf` tag, so the lazy is unbound and every call
+     * re-enters `newRunFile`. That is a property of the lane, not of the code: under `-PallTests`/`-PrunPerf` a
+     * perf class binds the lazy first and the `appendLine` gate becomes the only one left. So this asserts the
+     * CONTRACT ("no record kind writes on a foreign JVM") and deliberately not which gate enforces it.
      */
     @Test
     fun `every record kind refuses on a foreign JVM, not just the medians`() {
@@ -90,10 +96,22 @@ class PerfJdkGateWiringTest {
     }
 
     @Test
-    fun `the happy path is untouched — the gate admits this suite's own JVM`() {
-        // The positive control. Without it, a gate that refused EVERYTHING would satisfy the three cases above.
+    fun `the happy path is untouched — the gate admits this suite's own JVM`(@TempDir dir: File) {
+        // The positive control, and it must run through the WIRED seam. Asserting `refusalFor(current) == null`
+        // was not one: it calls the pure decision directly, so an unconditional `throw` planted in
+        // `requireSupported()` — the very seam that was wired wrong twice — passed all four cases (cold review
+        // 2026-08-24, mutant SURVIVED). Going through `newRunFile` kills that mutant, and it is the right entry
+        // point: it exercises the load-bearing gate without binding the `file` lazy, which would pin the rest of
+        // this fork to a @TempDir that JUnit is about to delete.
+        System.setProperty("perf.results.dir", dir.absolutePath)
         JdkIdentity.judged = null
-        assertEquals(null, JdkIdentity.refusalFor(JdkIdentity.current),
-            "this suite runs on ${JdkIdentity.current.text}, which the gate must admit")
+
+        val created = assertDoesNotThrow<File>(
+            { PerfObservations.newRunFile() },
+            "this suite runs on ${JdkIdentity.current.text}, which the gate must admit",
+        )
+
+        assertTrue(created.isFile, "an admitted run must create its record file")
+        assertTrue(created.readText().contains("\"kind\":\"run\""), "an admitted run writes its header: ${created.readText()}")
     }
 }

@@ -287,8 +287,15 @@ internal object PerfObservations {
         JdkIdentity.requireSupported()
         val stamp = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HHmmss'Z'")
             .withZone(ZoneOffset.UTC).format(Instant.now())
-        pruneToRetentionBound(resultsDirectory().resolve(PerfEnvironment.key).toFile())
-        return resultsDirectory().resolve(PerfEnvironment.key).resolve("$stamp.jsonl").toFile().apply {
+        // The environment directory is created, not assumed. Every committed one already exists, so the first
+        // run under a NEW environment key — a different machine model, a changed processor count, a new CI
+        // runner class — used to die on the write with "cannot write the performance record", which reads as a
+        // permissions fault and is really a missing bootstrap (found 2026-08-24 by the positive control in
+        // PerfJdkGateWiringTest, which writes into an empty @TempDir and is exactly that first-run shape).
+        val environment = resultsDirectory().resolve(PerfEnvironment.key).toFile()
+        environment.mkdirs()
+        pruneToRetentionBound(environment)
+        return File(environment, "$stamp.jsonl").apply {
             // Through the same guarded path as every observation. `writeText("")` used to sit here bare, so an
             // unwritable results directory — the exact shape a mistyped `-Dperf.results.dir` produces — surfaced
             // as a raw FileNotFoundException from a lazy initializer instead of the explanation this mechanism
@@ -464,12 +471,14 @@ internal object PerfObservations {
      * a file with 102 warm records and 0 observations (measured 2026-08-24), which `PerformanceRecordShapeGuardTest`
      * correctly rejected as malformed. Gating one entry point of four was the symptom fix.
      *
-     * <p><b>This gate is defence-in-depth and CANNOT fire in production — measured, not assumed (2026-08-24).</b>
-     * Every write reaches `perf-results/` through the [file] lazy, which calls [newRunFile], which refuses
-     * FIRST; and [JdkIdentity.current] derives from immutable system properties, so a JVM past [newRunFile] is
-     * still OpenJDK 21 at every later append. Deleting this call therefore kills no test — the mutant SURVIVES
-     * by design, and PerfJdkGateWiringTest says so rather than pretending otherwise. It is kept because
-     * [JdkIdentity.judged] makes the identity substitutable; the load-bearing gate is in [newRunFile].
+     * <p><b>This gate is load-bearing exactly when the [file] lazy is ALREADY BOUND, and the earlier claim that
+     * it "cannot fire" was one lane stated as a property of the code (corrected 2026-08-24, cold review).</b> In
+     * `:adapter:test` the `perf` tag is excluded, so no recording class has run and the lazy is unbound: a
+     * record call re-enters [newRunFile], which refuses first, and deleting THIS call changes nothing — that is
+     * the lane the surviving-mutant measurement was taken in. Under `-PallTests`/`-PrunPerf` the perf classes
+     * share the fork and bind the lazy to the real tree before this test runs; there [newRunFile] is never
+     * re-entered, and this call is the only thing standing between a foreign JVM and a committed record. So it
+     * is not defence-in-depth, and [JdkIdentity.judged] is what makes it substitutable at all.
      */
     private fun File.appendLine(record: Map<String, Any?>) {
         JdkIdentity.requireSupported()
@@ -559,6 +568,11 @@ internal object PerfObservations {
      */
     @Synchronized
     fun record(key: ObservationKey, medianMs: Double, status: String) {
+        // BEFORE the snapshot, not at the append: `lastQuality` is shared fork state, so a refusal that fired
+        // downstream would still have advanced the baseline and silently mis-widened the NEXT genuine
+        // observation's window (cold review 2026-08-24). A refused call must leave nothing behind, in memory
+        // as well as on disk.
+        JdkIdentity.requireSupported()
         val quality = PerfEnvironmentQuality.snapshot()
         val window = PerfEnvironmentQuality.delta(lastQuality, quality)
         lastQuality = quality
