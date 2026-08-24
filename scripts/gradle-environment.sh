@@ -42,13 +42,25 @@ a12_jdk21_homes() {
 # failure this replaces.
 a12_pinned_jdk21_home() {
   [[ -x /usr/libexec/java_home ]] || return 0
-  local home
+  local home saw_any=0
   while IFS= read -r home; do
     [[ -n "$home" ]] || continue
+    saw_any=1
     a12_is_graalvm_home "$home" && continue
     printf '%s\n' "$home"
     return 0
   done < <(a12_jdk21_homes)
+  # BOTH refusals say why, on stderr, because the caller shows it: `prepare-dmtool-source.sh` surfaces this
+  # text and selftest-prepare-dmtool-source.sh pins the pass-through. The two cases are genuinely different
+  # and must not be collapsed — java_home FOUND a JDK 21 in the first, so only we can explain the rejection,
+  # while in the second java_home's own wording ("Unable to find any JVMs matching version 21") is the real
+  # diagnosis and is better than anything restated here.
+  if (( saw_any )); then
+    echo "the only JDK 21 registered is a GraalVM, which is reserved for native image (GRAALVM_HOME) and is" >&2
+    echo "not accepted as the build JDK. Install one: brew install openjdk@21" >&2
+  else
+    /usr/libexec/java_home -v 21 >/dev/null || true
+  fi
   return 1
 }
 

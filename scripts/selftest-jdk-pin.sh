@@ -52,10 +52,20 @@ a12_jdk21_homes() { printf '%s\n' "$openjdk"; }
 check "takes the only OpenJDK"                     "$openjdk" "$(a12_pinned_jdk21_home || echo '<refused>')"
 
 a12_jdk21_homes() { printf '%s\n' "$graal"; }
-check "REFUSES when GraalVM is the only JDK 21"    "<refused>" "$(a12_pinned_jdk21_home || echo '<refused>')"
+check "REFUSES when GraalVM is the only JDK 21"    "<refused>" "$(a12_pinned_jdk21_home 2>/dev/null || echo '<refused>')"
 
 a12_jdk21_homes() { return 0; }
-check "REFUSES when no JDK 21 is registered"       "<refused>" "$(a12_pinned_jdk21_home || echo '<refused>')"
+check "REFUSES when no JDK 21 is registered"       "<refused>" "$(a12_pinned_jdk21_home 2>/dev/null || echo '<refused>')"
+
+# A SILENT refusal is the regression this locks. The first version of this resolver replaced
+# `java_home -v 21` with an enumeration and returned 1 without a word, which swallowed the diagnostic
+# `prepare-dmtool-source.sh` surfaces to its caller — caught only by that script's own selftest, one lane
+# later. A refusal the user cannot act on is barely better than a wrong answer.
+echo "a12_pinned_jdk21_home — a refusal explains itself"
+a12_jdk21_homes() { printf '%s\n' "$graal"; }
+graal_err="$(a12_pinned_jdk21_home 2>&1 >/dev/null || true)"
+check "names GraalVM as the reason it refused" "yes" "$([[ "$graal_err" == *GraalVM* ]] && echo yes || echo no)"
+check "tells the reader how to fix it"         "yes" "$([[ "$graal_err" == *"brew install openjdk@21"* ]] && echo yes || echo no)"
 
 echo
 if (( failures )); then echo "selftest-jdk-pin: $failures check(s) failed"; exit 1; fi
