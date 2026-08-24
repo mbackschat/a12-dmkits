@@ -44,6 +44,11 @@ check "recognises a GraalVM home"            "yes" "$(a12_is_graalvm_home "$graa
 check "does not flag stock OpenJDK"          "no"  "$(a12_is_graalvm_home "$openjdk" && echo yes || echo no)"
 check "a home with no release file is not GraalVM" "no" "$(a12_is_graalvm_home "$bare" && echo yes || echo no)"
 
+# Substituted together with the enumeration: the policy asks the platform probe first, and on a machine
+# without /usr/libexec/java_home (Linux CI) the real probe answers "no pin here" and every case below would
+# read empty. Overriding it is what makes the policy testable off macOS.
+a12_has_java_home_tool() { return 0; }
+
 echo "a12_pinned_jdk21_home — the selection policy"
 a12_jdk21_homes() { printf '%s\n%s\n' "$graal" "$openjdk"; }
 check "skips GraalVM even when it is listed first" "$openjdk" "$(a12_pinned_jdk21_home || echo '<refused>')"

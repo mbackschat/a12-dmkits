@@ -23,8 +23,14 @@ a12_is_graalvm_home() {
 
 # Every JDK 21 home macOS knows about, one per line. Split out from the selection policy below so that policy
 # is testable against fixture homes without a real java_home (scripts/selftest-jdk-pin.sh overrides this).
+# The platform probe is its OWN function so the selection policy can be exercised anywhere. Folded inline it
+# short-circuited `a12_pinned_jdk21_home` before the enumeration was ever read, so the selftest's substituted
+# homes were unreachable on any machine without `java_home`: six checks passed on macOS and failed on Linux
+# CI (2026-08-24). Which home to pick is not a question about which OS is running.
+a12_has_java_home_tool() { [[ -x /usr/libexec/java_home ]]; }
+
 a12_jdk21_homes() {
-  [[ -x /usr/libexec/java_home ]] || return 0
+  a12_has_java_home_tool || return 0
   /usr/libexec/java_home -V 2>&1 | sed -n 's|^ *21\..* \(/.*\)$|\1|p'
 }
 
@@ -41,7 +47,10 @@ a12_jdk21_homes() {
 # alone (GRAALVM_HOME, GraalVM 25). Refusing beats falling back: a silent second-choice JDK is the exact
 # failure this replaces.
 a12_pinned_jdk21_home() {
-  [[ -x /usr/libexec/java_home ]] || return 0
+  # A platform without java_home has no pin to express: return EMPTY and SUCCEED, which is what tells
+  # build.sh to leave the caller's JAVA_HOME alone on Linux/CI. Making this a refusal would abort every
+  # Linux build.sh run.
+  a12_has_java_home_tool || return 0
   local home saw_any=0
   while IFS= read -r home; do
     [[ -n "$home" ]] || continue
@@ -59,7 +68,9 @@ a12_pinned_jdk21_home() {
     echo "the only JDK 21 registered is a GraalVM, which is reserved for native image (GRAALVM_HOME) and is" >&2
     echo "not accepted as the build JDK. Install one: brew install openjdk@21" >&2
   else
-    /usr/libexec/java_home -v 21 >/dev/null || true
+    # Guarded on the real binary, not on the probe: under the selftest the probe is substituted, and running
+    # a nonexistent command here would put a bash "No such file" line where java_home's diagnosis belongs.
+    [[ -x /usr/libexec/java_home ]] && { /usr/libexec/java_home -v 21 >/dev/null || true; }
   fi
   return 1
 }
