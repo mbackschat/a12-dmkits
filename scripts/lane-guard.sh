@@ -15,6 +15,22 @@
 # "probably won't break it". Over-permitting costs one run; over-refusing costs trust and gets the guard
 # disabled. Root build files justify everything, because task wiring can move any lane.
 #
+# NOT WIRED — see build.sh. A cold review on 2026-08-24 found this refuses justified work, so the wiring was
+# removed the same night and the file is kept for a corrected re-landing. Fix ALL of these first:
+#   1. a12_is_test_lane judges a bare `--tests` OPERAND as a lane, so `:adapter:test --tests <FQCN>Test`,
+#      `perf.sh bench` and `perf.sh scaling` are all refused. Skip the operand of --tests/-D/-P, and accept
+#      only real task selectors (leading `:`, or a known task name).
+#   2. The docGuard branch refuses the pre-commit hook's own prescribed fix command for two of its four
+#      trigger classes (a staged schema JSON, a staged RkCode.java): root `:docGuardTest` is not `:*:*` and
+#      falls through to the tail grep, which does not match `cli/`.
+#   3. a12_changed_paths runs git in the process CWD, not $ROOT, so it fails OPEN outside a repo — and
+#      prepare-dmtool-source.sh documents calling build.sh by absolute path from anywhere. A 1-commit repo and
+#      a detached HEAD also yield an empty baseline. Paths containing a space come back git-quoted.
+#   4. selftest-lane-guard.sh survives 5 of 6 permissiveness mutants: it never drives the real
+#      a12_changed_paths, its refuse-cases all name a `:module:task`, and its non-test cases use a path set the
+#      tail grep justifies anyway. Add a root-scoped refuse case, a non-test case whose paths would NOT
+#      justify, and one case exercising the real baseline in a fabricated repo.
+#
 # BASELINE: uncommitted changes, or — on a clean tree — the files HEAD itself changed. That matches the loop
 # (edit, run a lane, commit): right after a commit the tree is clean and HEAD's diff is what you just did.
 

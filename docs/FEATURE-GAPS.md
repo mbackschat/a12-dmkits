@@ -4,7 +4,7 @@
 >
 > **Lifecycle.** §3 stays OPEN-only. A gap lives here only while open; when it ships, **delete its row in the same commit** and record its *why* in its home. There is **no "shipped" list** anywhere in this doc — git is the *what/when*, the finding/spec is the *why*. Never leave a shipped item here, and never re-add a "shipped" sub-list.
 >
-> **Current state.** §3 is empty as of 2026-08-24. **Ids in use: G1–G46 and G52–G62, with G47–G51 free** — a retired id is never reused (§2). Deferred and out-of-scope decisions are in §4.
+> **Current state.** §3 is empty as of 2026-08-24. **Ids in use: G1–G46 and G52–G62, with G47–G51 free** — a retired id is never reused (§2). **Seven ids are cited in source with no `.md` home** — `G17`, `G38`, `G39`, `G44`, `G56`, `G58`, `G60` — because §2's "named by its `Gn` so code refs resolve" convention was applied unevenly; at those sites the comment states the contract and the id is provenance. Enumerated 2026-08-24; naming them in their graduation targets is the fix, not another list here. Deferred and out-of-scope decisions are in §4.
 >
 > **Section map.** Same `-GAPS` discipline as its siblings [`DEV-API-GAPS.md`](DEV-API-GAPS.md) and [`INTERPRETER-GAPS.md`](INTERPRETER-GAPS.md). What this doc keeps is the **review's framing** (§1), the no-history policy + how legacy `Gn`/`§N` refs resolve (§2), the **open backlog** (§3), and the **deferred / out-of-scope decisions** (§4 — the durable part).
 

@@ -249,6 +249,11 @@ if missing and not os.environ.get("ALLOW_REMOVALS"):
 # the current checkout made a block of 1845f8af data claim the commit that happened to be checked out at refresh
 # time, and `jdk` silently took the last input's value while hiding that another run used a different one.
 jdks = sorted({h.get("jdk") for h in headers if h.get("jdk")})
+# The VM FAMILY beside the version, because the version alone cannot separate the runtimes: Oracle GraalVM 21
+# reports 21.0.12 and Homebrew OpenJDK reports 21.0.12.1, differing by coincidence rather than by family. The
+# run record gained this field on 2026-08-23; the BLOCK is the artifact a reader actually consults, and it was
+# reading the block's bare `21.0.12` that produced the "GraalVM-era" misreading recorded in the results log.
+jdk_families = sorted({h.get("jdkFamily") for h in headers if h.get("jdkFamily")})
 hosted_class = str(environment).endswith("-ci")
 anchor["environments"][environment] = {
     "capturedAt": max((h.get("capturedAt") or "" for h in headers), default="") or os.environ["CAPTURED"],
@@ -258,6 +263,8 @@ anchor["environments"][environment] = {
     "os": run.get("os"),
     "arch": run.get("arch"),
     "jdk": jdks[0] if len(jdks) == 1 else ",".join(jdks),
+    **({"jdkFamily": jdk_families[0] if len(jdk_families) == 1 else ",".join(jdk_families)}
+       if jdk_families else {}),
     # `processors` is dropped for a hosted class for the same reason as `machine`: it is no longer part of the
     # fold identity there, so writing the last input's value would record the identity of whichever machine
     # happened to serve the final run, as if it were the class's.

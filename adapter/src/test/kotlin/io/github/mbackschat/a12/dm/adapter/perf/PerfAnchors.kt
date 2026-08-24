@@ -142,9 +142,18 @@ internal data class JdkIdentity(val family: String, val major: String) {
                 "java.vm.version=${System.getProperty("java.vm.version")}."
         }
 
+        /**
+         * The identity the gate JUDGES. Normally [current]; a test may substitute one, and must restore it.
+         *
+         * Without this seam the gate is unfalsifiable: [current] reads live `java.vm.*`, so on the only JVM the
+         * suite is allowed to run on the check is provably a no-op and deleting it fails nothing. A cold review
+         * on 2026-08-24 made exactly that point — being unable to name the control class IS the finding.
+         */
+        internal var judged: JdkIdentity? = null
+
         /** Called from the one seam EVERY record kind reaches, so no lane can measure around it. */
         fun requireSupported() {
-            refusalFor(current)?.let { throw IllegalStateException(it) }
+            refusalFor(judged ?: current)?.let { throw IllegalStateException(it) }
         }
     }
 }
@@ -264,7 +273,13 @@ internal object PerfObservations {
      */
     internal const val MAX_RUNS_PER_ENVIRONMENT = 30
 
-    private val file: File by lazy {
+    private val file: File by lazy { newRunFile() }
+
+    /**
+     * Create this run's record file. Extracted from the `by lazy` ONLY so the gate's ordering is testable — a
+     * lazy is one-shot per JVM, so a test can never observe its refusal path through [file].
+     */
+    internal fun newRunFile(): File {
         // BEFORE the prune, not merely before the write. A refused run must leave the record tree exactly as it
         // found it, and `pruneToRetentionBound` below DELETES a committed run to make room for this one — so
         // gating only the append let a GraalVM run evict real history and then write a 0-byte file in its place.
@@ -273,7 +288,7 @@ internal object PerfObservations {
         val stamp = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HHmmss'Z'")
             .withZone(ZoneOffset.UTC).format(Instant.now())
         pruneToRetentionBound(resultsDirectory().resolve(PerfEnvironment.key).toFile())
-        resultsDirectory().resolve(PerfEnvironment.key).resolve("$stamp.jsonl").toFile().apply {
+        return resultsDirectory().resolve(PerfEnvironment.key).resolve("$stamp.jsonl").toFile().apply {
             // Through the same guarded path as every observation. `writeText("")` used to sit here bare, so an
             // unwritable results directory — the exact shape a mistyped `-Dperf.results.dir` produces — surfaced
             // as a raw FileNotFoundException from a lazy initializer instead of the explanation this mechanism
@@ -447,7 +462,14 @@ internal object PerfObservations {
      * the JDK gate below cannot be measured around. It was on `record()` alone for its first hour, which gated
      * the medians and left `recordWarm`/`recordCost`/`recordMargin` writing: a refused GraalVM run then produced
      * a file with 102 warm records and 0 observations (measured 2026-08-24), which `PerformanceRecordShapeGuardTest`
-     * correctly rejected as malformed. Gating one entry point of four is the symptom fix; this is the class fix.
+     * correctly rejected as malformed. Gating one entry point of four was the symptom fix.
+     *
+     * <p><b>This gate is defence-in-depth and CANNOT fire in production — measured, not assumed (2026-08-24).</b>
+     * Every write reaches `perf-results/` through the [file] lazy, which calls [newRunFile], which refuses
+     * FIRST; and [JdkIdentity.current] derives from immutable system properties, so a JVM past [newRunFile] is
+     * still OpenJDK 21 at every later append. Deleting this call therefore kills no test — the mutant SURVIVES
+     * by design, and PerfJdkGateWiringTest says so rather than pretending otherwise. It is kept because
+     * [JdkIdentity.judged] makes the identity substitutable; the load-bearing gate is in [newRunFile].
      */
     private fun File.appendLine(record: Map<String, Any?>) {
         JdkIdentity.requireSupported()
@@ -727,6 +749,14 @@ internal object PerfAnchors {
             try {
                 PerfObservations.record(key, observedMs, status = "unanchored")
             } catch (unrecordable: Exception) {
+                // The JDK refusal is never demoted to a suppressed cause. Suppressing it would present an
+                // ANCHOR BREACH as the primary failure on a foreign JVM — precisely the "reads as a code
+                // regression" misdiagnosis this gate exists to prevent, and the one that cost a day on
+                // 2026-08-23. Every other recording failure stays suppressed: it is incidental to the verdict.
+                if (unrecordable is IllegalStateException
+                    && unrecordable.message?.startsWith("[perf] REFUSING to measure on ") == true) {
+                    throw unrecordable
+                }
                 structural.addSuppressed(unrecordable)
             }
             throw structural
@@ -746,6 +776,14 @@ internal object PerfAnchors {
             try {
                 PerfObservations.record(key, observedMs, status = status)
             } catch (unrecordable: Exception) {
+                // The JDK refusal is never demoted to a suppressed cause. Suppressing it would present an
+                // ANCHOR BREACH as the primary failure on a foreign JVM — precisely the "reads as a code
+                // regression" misdiagnosis this gate exists to prevent, and the one that cost a day on
+                // 2026-08-23. Every other recording failure stays suppressed: it is incidental to the verdict.
+                if (unrecordable is IllegalStateException
+                    && unrecordable.message?.startsWith("[perf] REFUSING to measure on ") == true) {
+                    throw unrecordable
+                }
                 failure.addSuppressed(unrecordable)
             }
             // Only two cases reach here — UNJUDGED returned above — so this is a two-way decision, not a dispatch
