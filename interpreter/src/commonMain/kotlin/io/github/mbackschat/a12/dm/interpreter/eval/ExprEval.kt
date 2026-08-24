@@ -519,18 +519,11 @@ internal fun Interpreter.producesString(e: Expr): Boolean = when (e) {
 
 private fun Interpreter.evalFunc(f: Expr.Func): Val {
     val op = FunctionOp.byName(f.name)
-    // Partial validation only: an ALL-ROWS starred aggregate (Sum/Max/Min/distinct) is UNKNOWN unless the
-    // relevant set WILDCARDS its starred level — concrete per-row enumeration, even of all rows, is not enough
-    // (kernel-probed, IF42). `FirstFilled` is EXEMPT (order-aware in its own branch).
-    //
-    // `SumOfProducts` gets a WEAKER gate, not NO gate. It walks its two lists in a hand-written loop with no
-    // three-value pre-survey, so it evaluates under a COMPLETE concrete enumeration where the others stay
-    // UNKNOWN — but under a PARTIAL enumeration the kernel is silent, and exempting it outright made the
-    // interpreter fire where the kernel does not, on 5 of the fuzz net's 180 combinations. Both readings are
-    // measured in `PartialValidationAggregateDiffTest`; the completeness predicate is DmInterpreter's.
+    // Partial validation chooses the extent predicate by operator family. Most direct starred functions use
+    // the reduced-universal all-rows gate. `NumberOfValueInFields` instead shares the existential value-list
+    // gate, `SumOfProducts` accepts a complete concrete enumeration, and `FirstFilledValue` is order-aware via
+    // per-cell relevance. These are four measured contracts, not interchangeable completeness spellings.
     if (op != FunctionOp.FIRST_FILLED_VALUE) {
-        val fullyEnumerated = starFullyEnumerated
-        val relevant = starRelevant
         f.args.forEach { arg ->
             val star = arg as? Expr.Star
             if (star != null) {
@@ -541,12 +534,12 @@ private fun Interpreter.evalFunc(f: Expr.Func): Val {
                 // it is what says WHICH levels the row binds — a multi-star operand spans every row of its
                 // outer levels (IF94), so a gate deriving that from the path alone binds a level the star
                 // iterates and reads a pinned outer row as wildcarded (PartialMultiStarScopeDiffTest).
-                val gated = if (op == FunctionOp.SUM_OF_PRODUCTS) {
-                    fullyEnumerated != null && !fullyEnumerated.invoke(sp, star.bindDepth, ctx.repsOf(sp))
-                } else {
-                    relevant != null && !relevant.invoke(sp, star.bindDepth, ctx.repsOf(sp))
+                val gate = when (op) {
+                    FunctionOp.SUM_OF_PRODUCTS -> starFullyEnumerated
+                    FunctionOp.NUMBER_OF_VALUE_IN_FIELDS -> starExtentKnown
+                    else -> starRelevant
                 }
-                if (gated) return Val.Unknown
+                if (gate != null && !gate.invoke(sp, star.bindDepth, ctx.repsOf(sp))) return Val.Unknown
             }
         }
     }

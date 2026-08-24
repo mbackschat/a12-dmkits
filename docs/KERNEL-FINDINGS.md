@@ -3510,3 +3510,46 @@ Two refusals ride along, each its own gate. A **starred** operand is `MVK_NO_WIL
 This is [KF204](#kf204)'s locus law on a sixth carrier, and the peer's scope limit is kept: the Date-addition, Date-difference and `DateTime(…)` Date-operand carriers are unmeasured for the locus question, and §7's own finding forbids transferring a locus verdict between carriers in this family.
 
 *(Locked: `validate.laws.ValueAsDateLocusLawsTest` — the two-locus pair with its nonrepeatable control, and the starred/bare-reference gates; operand POSITION stays `ValueAsDatePlacementLawsTest`'s subject and holds at either locus.)*
+
+## §12 supplement: the three direct starred count loops use three distinct partial-validation patterns (kernel, 2026-08-24) <a id="kf209"></a>
+
+> Fold: folded → §12.
+
+Reconciliation of a12-kernel-lean `EXP-2026-08-24-01`, **answered by measurement**. The same nine relevance selections were applied to three rules over one two-row `Items*/Qty` column. Dynamic Groovy and generated Java agreed on every exact fired-code set:
+
+| relevance selection | `NumberOfFilledFields` | `NumberOfFilledGroups` | `NumberOfValueInFields` |
+|---|---:|---:|---:|
+| field wildcard alone | fires | silent | fires |
+| field wildcard + both concrete group rows | silent | silent | fires |
+| field wildcard + concrete identifier for that field | fires | silent | fires |
+| concrete field identifier + wildcard group | fires | fires | fires |
+| all-semantic field wildcard + concrete group rows | fires | silent | fires |
+| field wildcard + physical-root concrete group rows | silent | silent | fires |
+| both concrete group rows only | silent | silent | silent |
+| row 1 only | silent | silent | silent |
+| row 2 only | silent | silent | silent |
+
+The competing-account disposition is therefore exact. `NumberOfFilledFields` selects the reduced-universal pattern, rows 1, 3, 4, and 5. `NumberOfValueInFields` selects the existential value-list pattern, rows 1 through 6. `NumberOfFilledGroups` selects none of the four proposed accounts: it fires only on row 4, the concrete field plus wildcard-group shape. This fifth pattern also falsifies the source-derived prediction that the first two operators would share one observable result.
+
+The inert-fixture controls are exact on both strategies: wildcard relevance with two quantities of `11` fires only the filled-field and filled-group rules; two instantiated empty rows fire only the filled-group rule; and no `Items` rows fire none. These controls establish that all three operator routes are live and that the matrix's silence is relevance-driven.
+
+*(Locked: `adapter.laws.PartialExtentGateShapeDiffTest.theThreeCountLoopsSelectTheirMeasuredExtentGates` for the nine rows on both strategies and the interpreter, plus `theCountMatrixControlsReachEachOperator` for the three exact controls; interpreter correction [IF310](INTERPRETER-FINDINGS.md#if310).)*
+
+## §6/§11 supplement: interpreted DateRange presentation is declaration-order dependent through shared codegen formats (kernel, 2026-08-24) <a id="kf210"></a>
+
+> Fold: not-foldable — this is a kernel codegen defect rather than field-local DateRange semantics.
+
+Reconciliation of a12-kernel-lean `SPEC-2026-08-24-02`, **superseded by a missing declaration-order control**. The peer's model put interpreted `dd.MM` fields before its interpreted and standard `MM` fields. A typed two-model discriminator keeps the semantic declarations, computations, document, and canonical JSON ingress fixed and reverses only those two declaration blocks. The header ids differ solely to isolate generated-engine caches; `MetaGemeinsameFormate` enumerates field definitions and never reads that id. Both models pass `checkConsistency`; both kernel strategies agree within each model; the results differ across the order:
+
+| input and target | dotted declarations first | month declarations first |
+|---|---|---|
+| interpreted `MM` source `11/02` into interpreted `MM` target | admitted, `VALUE\|01.11-01.02` | `datumBereichNichtGueltig` on the source |
+| standard `MM` source `03/10` into interpreted `MM` target | `VALUE\|01.03-31.10` | `VALUE\|03/10` |
+
+The peer observation is real for its model, but its proposed field-local clauses are not. Neither “an unconfigured interpretation admits wrapping `MM`” nor “an interpreted target chooses the dotted carrier” survives the order reversal.
+
+The source mechanism predicts the separator. `IDateRangeType.getFormatOfDateRange` maps every nonstandard declaration of one direction to a canonical `dd.MM-dd.MM (…)` shared-format key, regardless of that field's declared date format and separator. `MetaGemeinsameFormate` uses a `LinkedHashMap.computeIfAbsent`, while `CodeGenDateRangeTypeImpl` retains the first equal definition's actual `dateFormat` and separator for the emitted runtime format. A dotted field first therefore lends `dd.MM` plus `-` to later equal definitions; an `MM` field first lends `MM` plus `/`. The order-only runtime control is the discriminating case that the field-local account predicts incorrectly.
+
+The independent interpreter stays declaration-local and therefore produces the month-first result under both declaration orders. Encoding the peer clause would replace one measured divergence with an incorrect universal rule. The unresolved conformance work is tracked as [IG141](INTERPRETER-GAPS.md); this reconciliation does not widen it without the full shared-format denominator.
+
+*(Locked: `adapter.laws.DateRangeSharedFormatOrderDiffTest` on both kernel strategies and the independent interpreter, with the exact wrap validity and ordered computation outputs.)*

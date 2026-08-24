@@ -3832,3 +3832,23 @@ Found by the differential built for a12-kernel-lean's `SPEC-2026-08-23-11`, on o
 `DATE_TIME` was the only cell missing, so the class is closed rather than one case patched. The two `n/a` columns are stated because an unexplained blank is indistinguishable from the gap this finding is about.
 
 *Locked by:* `adapter.laws.TemporalInputFormalCauseDiffTest.aStoredDateTimeCarriesBothCodesAndTheDateFloor` (both kernel strategies + the interpreter, the floor day beside the day before it) + `interpreter … DateGregorianFloorFormalTest` (JVM and Node, with the time-only declaration as the must-not-fire control).
+
+### IF310: `NumberOfValueInFields` uses the existential partial extent gate, while the other two direct counts keep their measured paths (FIXED 2026-08-24) <a id="if310"></a>
+
+The nine-row experiment requested by a12-kernel-lean `EXP-2026-08-24-01` separated all three direct starred count loops. `NumberOfFilledFields` follows the reduced-universal pattern; `NumberOfFilledGroups` has its own one-row pattern; and `NumberOfValueInFields` follows the existential value-list pattern. Both kernel strategies produced the same exact code set on every row.
+
+The interpreter already matched the first two. Its shared `evalFunc` preflight sent `NumberOfValueInFields` through `starRelevant`, so it was silent on the two selections that distinguish existential from reduced-universal: field wildcard plus concrete group rows, in both semantic-root and physical-root forms. Every runtime count operation was otherwise correct.
+
+The fix is one enum-based dispatch at the existing gate seam. `FIRST_FILLED_VALUE` remains per-cell and order-aware; `SUM_OF_PRODUCTS` uses complete concrete enumeration; `NUMBER_OF_VALUE_IN_FIELDS` now uses the existing existential `starExtentKnown`; every other direct starred function keeps `starRelevant`. No relevance predicate, count loop, AST shape, or scan was added.
+
+*Locked by:* `adapter.laws.PartialExtentGateShapeDiffTest.theThreeCountLoopsSelectTheirMeasuredExtentGates` for all nine exact code sets on dynamic Groovy, generated Java, and the interpreter, plus `theCountMatrixControlsReachEachOperator` for the two-11, two-empty, and no-row controls. Kernel fact: [KF209](KERNEL-FINDINGS.md#kf209).
+
+### IF311: the proposed unconfigured DateRange correction was an order-dependent shared-format observation, not a field-local interpreter defect (MEASURED 2026-08-24) <a id="if311"></a>
+
+The model behind a12-kernel-lean `SPEC-2026-08-24-02` really produces dotted, wrapping month results on both kernel strategies. The missing control is declaration order. With the same declaration blocks reversed, the kernel rejects the wrapping `MM` source and keeps the ordered result as `03/10`; the interpreter produces that declaration-local result under either order.
+
+The cause is the kernel's shared codegen format key, not `FirstFilledValue` selection or target rendering. Nonstandard DateRange declarations of one direction collapse to a canonical `dd.MM-dd.MM (…)` key, and the first equal definition supplies the actual date format and separator used by the shared runtime format. The peer model's leading dotted declarations therefore lend their carrier to later month declarations. Moving the month declarations first changes both formal validity and computation presentation.
+
+This is a known divergence, not a completed fix. The entry as written is superseded because its field-local contract is false, and adopting it would make the month-first control wrong. The broader first-wins conformance problem has a changed acceptance denominator and is tracked as [IG141](INTERPRETER-GAPS.md); it needs the shared-format equivalence classes and every consumer measured before implementation.
+
+*Locked by:* `adapter.laws.DateRangeSharedFormatOrderDiffTest`, which changes only the two declaration blocks and pins both kernel strategies plus the interpreter on the wrapping and ordered separators. Kernel fact and source loci: [KF210](KERNEL-FINDINGS.md#kf210).

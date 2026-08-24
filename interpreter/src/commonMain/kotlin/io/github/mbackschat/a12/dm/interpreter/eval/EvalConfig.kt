@@ -63,12 +63,12 @@ class EvalConfig(
      *  starred level; concrete per-row enumeration (even of all rows) is NOT enough (IF42). This one is
      *  UNIVERSAL over the reduced identifier set: a surviving concrete sibling suppresses it even beside a
      *  wildcard ([IF262]). `SumOfProducts` is NOT one of them — it carries the weaker [starFullyEnumerated]
-     *  gate instead ([IF255]); a starred value-list entry uses [starExtentKnown], which is the EXISTENTIAL
-     *  gate and NOT this one ([IF264]); `FirstFilled` uses none of the three (it is order-aware via
-     *  [cellRelevant]). **Null in full validation.** */
+     *  gate instead ([IF255]); a starred value-list entry and `NumberOfValueInFields` use [starExtentKnown],
+     *  which is the EXISTENTIAL gate and NOT this one ([IF264], [IF310]); `FirstFilled` uses none of the three
+     *  (it is order-aware via [cellRelevant]). **Null in full validation.** */
     val starRelevant: ((String, Int, List<Int>) -> Boolean)? = null,
-    /** Partial validation only: whether a starred VALUE-LIST entry's complete extent is established. Same star
-     *  anchor and per-iteration-row scope as [starRelevant], but **existential** — ONE covering relevant
+    /** Partial validation only: whether a starred VALUE-LIST or `NumberOfValueInFields` entry's complete extent
+     *  is established. Same star anchor and per-iteration-row scope as [starRelevant], but **existential**: ONE covering relevant
      *  identifier that wildcards every reopened level is enough, and concrete siblings beside it do not
      *  suppress. The two gates split on exactly that shape, measured on both kernel strategies by
      *  `PartialExtentGateShapeDiffTest` ([IF264]). **Null in full validation.** */
