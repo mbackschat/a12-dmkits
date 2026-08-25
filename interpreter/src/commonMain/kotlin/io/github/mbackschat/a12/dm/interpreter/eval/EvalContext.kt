@@ -294,11 +294,23 @@ interface EvalContext {
  */
 internal interface GroupListEnvironmentProvider {
     fun groupListEnvironments(groupPath: String, bindDepth: Int): List<EvalContext>
+
+    /**
+     * The DECLARED maximum repetition count of [groupPath], or null when the group does not carry one — an
+     * unbounded repeatable group, a non-repeatable group, or a context that does not know the model. This is the
+     * extent the kernel's entity iterator spans after `setzeEndIndicesAufMaxGesetzt`, so a group-counting
+     * aggregate's fillability reads it: unused declared capacity is an uncounted entity even at zero
+     * instantiated rows, and "no declared maximum" means the tail never closes.
+     */
+    fun declaredGroupRepetitions(groupPath: String): Int? = null
 }
 
 internal fun EvalContext.groupListEnvironments(groupPath: String, bindDepth: Int): List<EvalContext> =
     (this as? GroupListEnvironmentProvider)?.groupListEnvironments(groupPath, bindDepth)
         ?: rowContexts(groupPath, bindDepth)
+
+internal fun EvalContext.declaredGroupRepetitions(groupPath: String): Int? =
+    (this as? GroupListEnvironmentProvider)?.declaredGroupRepetitions(groupPath)
 
 /** A cell's COMPUTE-mode read state ([EvalContext.cellState], IF85) — a visited [INVALID] cell poisons the
  *  reading computation instance ([PoisonedReadException]). "Cell" (a repetition's field value) is a HOUSE

@@ -774,13 +774,14 @@ private fun Interpreter.roundExpr(args: List<Expr>, mode: RoundMode): Val {
 private fun Interpreter.numberOfValueInFields(args: List<Expr>): Val {
     val target = evalExpr(args[0])
     var count = 0
-    // `args[0]` is the counted constant and never an operand, so only the tail is expanded. A starred GROUP goes
-    // through the shared owner: unexpanded, the `Expr.Star` arm below took the group's PARENT rows and read a
-    // value at the group path, where no field is declared, so the count was 0 on every document. Measured — the
-    // kernel ADMITS the operand (asserted in the lock, since our DSL type-erases it and an erasure needs a
-    // measured basis) and counts one match per row across two rows; the interpreter returned false (IF287's
-    // class, eighth instance). The UNSTARRED group operand is a separate, unmeasured question and is left alone.
-    for (arg in expandGroupStars(args.subList(1, args.size))) {
+    // `args[0]` is the counted constant and never an operand, so only the tail is expanded. BOTH repetition
+    // shapes of a GROUP operand go through the shared owner: unexpanded, the `Expr.Star` arm below took the
+    // group's PARENT rows and read a value at the group path, where no field is declared, while the plain arm
+    // asked `filled` of that same valueless path — so the count was 0 on every document either way. Measured
+    // on both: the kernel ADMITS the starred operand and counts one match per row across two rows (IF287's
+    // class, eighth instance), and it ADMITS the UNSTARRED one over a non-repeatable group and expands its
+    // direct declarations, where the interpreter still answered 0 (a12-kernel-lean SPEC-2026-08-24-05, IF311).
+    for (arg in expandGroupOperands(args.subList(1, args.size))) {
         when (arg) {
             is Expr.Star -> {                    // a `Group* / Field` list (kernel: a group/wildcard expansion)
                 val group = arg.path.substringBeforeLast('/')
@@ -841,7 +842,7 @@ private fun Interpreter.sumOfProducts(args: List<Expr>): Val {
  * reported unsupported), never SILENTLY ignored (which would compute the wrong answer). Contrast
  * `FieldValuesNotUnique`, which the kernel ACCEPTS + EVALUATES — it filters via [filteredStarCells], not here.
  */
-private fun rejectHaving(args: List<Expr>, op: String) {
+internal fun rejectHaving(args: List<Expr>, op: String) {
     if (args.any { it is Expr.Star && it.having != null })
         throw UnsupportedConstructException("$op does not support a Having filter on its operand")
 }

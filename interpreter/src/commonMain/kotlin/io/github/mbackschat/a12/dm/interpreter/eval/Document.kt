@@ -1162,6 +1162,8 @@ class Document(internal val config: DocumentConfig) {
          * addressed terminal is non-repeatable. Resolving [groupPath] from that row keeps the complete ancestry,
          * so [GroupPresenceState] remains the sole terminal product owner (SPEC-2026-07-26-02).
          */
+        override fun declaredGroupRepetitions(groupPath: String): Int? = declaredReps[groupPath]
+
         override fun groupListEnvironments(groupPath: String, bindDepth: Int): List<EvalContext> {
             var environment = groupPath
             while (environment !in repeatableGroups && partsOf(environment).size > bindDepth) {

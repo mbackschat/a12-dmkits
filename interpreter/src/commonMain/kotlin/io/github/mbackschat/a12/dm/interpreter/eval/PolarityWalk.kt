@@ -257,12 +257,19 @@ private fun Interpreter.funcFill(f: Expr.Func): Fill = when (FunctionOp.byName(f
     // a VALUE error (filling can't clear it) while `count < n` / `count == n` stays OMISSION (filling still
     // MultiFieldAggregateDiffTest.firedPolarityMatchesKernel, NumberOfFilledDiffTest). The filter-sensitive
     // counts additionally carry the kernel's own filter flags ([countFill], IF114/SPEC-2026-07-23-12).
-    FunctionOp.NUMBER_OF_FILLED_FIELDS, FunctionOp.NUMBER_OF_FILLED_GROUPS -> countFill(f)
+    // The two split on WHAT they count, so they cannot share one operand read. `NumberOfFilledFields` counts
+    // CELLS, so a group operand contributes its expansion — the same read its value arm already does through
+    // `fillScope(isGroup = true)`. `NumberOfFilledGroups` counts GROUPS, so its group operand IS the counted
+    // entity and expanding it would be wrong in kind; it gets its own entity tally.
+    FunctionOp.NUMBER_OF_FILLED_FIELDS -> countFill(f, expandGroupOperands(f.args))
+    FunctionOp.NUMBER_OF_FILLED_GROUPS -> filledGroupCountFill(f)
     // NumberOfValueInFields rides the same count rule, but a filtered cell only makes the count SHRINKABLE
     // when its value MATCHED the counted constant (the `containsFilteredValue` value gate) — so a filtered
     // selected non-match is a grow-only zero, not both-directional (SPEC-2026-07-23-12).
     FunctionOp.NUMBER_OF_VALUE_IN_FIELDS -> evalExpr(f.args[0]).let { target ->
-        countFill(f) { rc, path -> ValCompare.equal(rc.field(path), target) }
+        // The counted constant rides along unexpanded (it is no entity); the operand tail's GROUPS expand to the
+        // same declarations the value walk counts — the shared owner, so the two walks cannot disagree.
+        countFill(f, expandGroupOperands(f.args)) { rc, path -> ValCompare.equal(rc.field(path), target) }
     }
     // NumberOfDifferentValues follows the value-combiner rule for a filter (blanketed both-directional by the
     // [fill] escalation above); unfiltered it is grow-only like the other counts.
@@ -307,12 +314,26 @@ private fun Interpreter.funcFill(f: Expr.Func): Fill = when (FunctionOp.byName(f
  * "the value equals the constant" for `NumberOfValueInFields` — so a filtered selected NON-match leaves a
  * grow-only zero (the filter is present ⇒ growable, but no match came through it ⇒ not shrinkable), while a
  * filtered current MATCH is both-directional.
+ *
+ * [operands] is the list this fill READS, stated by each caller rather than defaulted, because a GROUP operand
+ * means different things to the three counts. `NumberOfValueInFields` counts CELLS, so its group operand is
+ * expanded to the declarations below it — unexpanded, no arm sees a `Star`, and `leafOmission(Expr.Field(<group
+ * path>))` is `!filled(<group path>)`, which is TRUE for every group because a group holds no value of its own.
+ * That answered a permanently growable count regardless of contents: measured, a fired comparison over a FULL
+ * fixed group was typed OMISSION where both kernel strategies answer VALUE ([IF287]'s class in the fill walk,
+ * `FixedGroupValueInFieldsPolarityDiffTest`). `NumberOfFilledGroups` counts GROUPS, so its group operand is the
+ * counted entity and expanding it would be wrong in kind; it keeps the authored list and reads its entities
+ * through [filledGroupCountFill] instead.
  */
-private fun Interpreter.countFill(f: Expr.Func, qualifies: (EvalContext, String) -> Boolean = { _, _ -> true }): Fill {
+private fun Interpreter.countFill(
+    f: Expr.Func,
+    operands: List<Expr> = f.args,
+    qualifies: (EvalContext, String) -> Boolean = { _, _ -> true },
+): Fill {
     var counted = 0
     var total = 0
     var anyFilteredCounted = false
-    for (a in f.args) {
+    for (a in operands) {
         val st = a as? Expr.Star ?: continue
         val having = st.having ?: continue
         val group = st.path.substringBeforeLast('/')
@@ -324,7 +345,44 @@ private fun Interpreter.countFill(f: Expr.Func, qualifies: (EvalContext, String)
         }
     }
     if (anyFilteredCounted) return Fill.of(true, true)
-    return Fill.of(canGrow = total > counted || leafOmission(f), canShrink = false)
+    return Fill.of(canGrow = total > counted || operands.any { leafOmission(it) }, canShrink = false)
+}
+
+/**
+ * The GROUP-counting fill — `NumberOfFilledGroups`. The kernel routes `anzahlAngegebenerKontexte` through the
+ * very same `anzahlAngegebenerEntities` as the field count, so there is ONE rule — `anzAllerEntities >
+ * anzAngEntities`, never shrinkable — and only the counted ENTITY differs: a group, not a cell. That is exactly
+ * why this count cannot share the cell expansion its two siblings use; expanding would report a group that is
+ * already counted as still growable.
+ *
+ * `given` is the number of entities whose group product state is FILLED, read through [Interpreter.groupFillStates] —
+ * the same stream the group-fill quantifiers tally, so group presence is decided in one place. `total` is the
+ * DECLARED extent, matching the kernel's `setzeEndIndicesAufMaxGesetzt(fIt, true)`: one entity per unstarred
+ * operand, and the declared capacity for a starred repeatable one. Reading the declared extent rather than the
+ * instantiated rows is what makes an EMPTY repeatable group growable — with no rows at all there is nothing for
+ * [Interpreter.groupFillStates] to yield, and an instantiated-row tally would answer `0 > 0` and type a fired
+ * comparison VALUE. An unbounded repeatable operand never closes its tail.
+ *
+ * Before this, every shape here fell through to `leafOmission(Expr.Field(<group path>))`, whose `!filled(<group
+ * path>)` is TRUE for any group because a group holds no value of its own — so the count read as permanently
+ * growable regardless of content, except at zero rows where the starred shape read as permanently fixed. Both
+ * measured against both kernel strategies in `FixedGroupValueInFieldsPolarityDiffTest` /
+ * `StarredGroupCountPolarityDiffTest` ([IF312], [IF287]'s class in the fill walk).
+ */
+private fun Interpreter.filledGroupCountFill(f: Expr.Func): Fill {
+    // A `Having` on a group-counting operand is not authorable through the typed surface and has no measured
+    // basis here, so it degrades LOUD rather than borrowing either branch's answer (IF61, as `rejectHaving` does).
+    rejectHaving(f.args, "NumberOfFilledGroups")
+    var given = 0
+    for (state in groupFillStates(f.args)) if (state == Tri.TRUE) given++
+    var total = 0
+    for (arg in f.args) {
+        if (arg !is Expr.Star) { total++; continue }
+        val declared = ctxOf(arg).declaredGroupRepetitions(arg.path)
+            ?: return Fill.of(canGrow = true, canShrink = false)   // unbounded: the tail never closes
+        total += declared
+    }
+    return Fill.of(canGrow = total > given, canShrink = false)
 }
 
 /** Directional fill of an operand-list `Min`/`Max` — [ArithFill.min]/[ArithFill.max] left-folded over the
