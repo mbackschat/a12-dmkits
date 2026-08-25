@@ -936,6 +936,26 @@ public final class RuntimeLaws {
         return probes.stream().map(p -> p.path() + "|" + appliedStateAt(applied, p)).toList();
     }
 
+    /**
+     * The APPLIED document itself for the separate-destination route — the same {@code compute → applyTo} pair
+     * {@link #appliedStatesToDestination} probes, handed back whole. Deliberately NOT a projection: the two
+     * things a cell probe cannot answer are how many repetitions the applied document holds and what a later
+     * validation over it reports, and both decide the applied state rather than describing it
+     * (a12-kernel-lean {@code EXP-2026-08-25-01}). The caller owns the normalization, so this adds no topology
+     * vocabulary to the harness.
+     */
+    static DocumentV2 appliedDocumentToDestination(String modelJson, Doc source, Doc destination) {
+        KernelEngine engine = sharedKernelEngine(modelJson);
+        return engine.rt.compute(engine.instance(source), config(null, Locale.US))
+                .applyTo(engine.instance(destination));
+    }
+
+    /** Full validation of an ALREADY-APPLIED document on the groovy-dynamic leg — the later-validation half of
+     *  {@link #appliedDocumentToDestination}, with no second computation in between. */
+    static List<String> appliedValidationSignaturesSorted(String modelJson, DocumentV2 applied) {
+        return sharedKernelEngine(modelJson).validationSignaturesSorted(applied);
+    }
+
     /** Walk the applied document to {@code probe} — absent / presentEmpty / presentValue|text kept distinct. */
     private static String appliedStateAt(DocumentV2 applied, CellProbe probe) {
         String[] segments = probe.path().substring(1).split("/");
@@ -1424,6 +1444,12 @@ public final class RuntimeLaws {
             DocumentV2 destinationV2 = instance(destination);
             DocumentV2 applied = rt.compute(sourceV2, config(null, Locale.US)).applyTo(destinationV2);
             return probes.stream().map(p -> p.path() + "|" + appliedStateAt(applied, p)).toList();
+        }
+
+        /** The applied document itself over the static-JAVA strategy — the twin of
+         *  {@link RuntimeLaws#appliedDocumentToDestination(String, Doc, Doc)}. */
+        DocumentV2 appliedDocumentToDestination(Doc source, Doc destination) {
+            return rt.compute(instance(source), config(null, Locale.US)).applyTo(instance(destination));
         }
 
         /** The form-engine flow ({@code compute → applyTo → validateFull}) over the static-JAVA strategy —
