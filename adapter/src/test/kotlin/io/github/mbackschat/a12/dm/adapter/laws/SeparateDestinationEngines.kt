@@ -28,8 +28,23 @@ internal class SeparateDestinationEngines(
     private val java = RuntimeLaws.kernelJavaEngine(model)
     private val prepared = PreparedModel.loadExpandedJson(model)
 
-    /** The complete normalized applied extent, asserted identical on all three engines. */
+    /**
+     * The complete normalized applied extent, asserted identical on all three engines.
+     *
+     * **The three engines are not fed through the same A12 ingress route, so this comparison has a
+     * precondition** — [CrossRouteSourceGate.requireRouteAgnostic] enforces it rather than leaving it to the
+     * fixture author.
+     * The kernel arms build from [RuntimeLaws.Doc], A12's V1 String factory; the standalone arm reads canonical
+     * Document JSON, A12's typed route. `applyTo` applies only the CHANGED actions, and the two routes classify
+     * a SOURCE-IDENTICAL cell differently — on V1 a typed cell holds unconverted text and never compares equal,
+     * so every non-STRING kind is changed there and none on the typed route (KERNEL-FINDINGS §11,
+     * [SourceIdentityIngressRouteDiffTest]). A fixture that seeds a computed cell with its own computed value
+     * would therefore diverge here for a reason that has nothing to do with topology, and it would read exactly
+     * like a padding defect. Measured: a source holding `7.00` for a `7.00` computation has the destination
+     * overwritten on the kernel arms and untouched on the standalone arm.
+     */
     fun appliedExtent(source: RuntimeLaws.Doc, destination: RuntimeLaws.Doc): String {
+        CrossRouteSourceGate.requireRouteAgnostic(model, prepared, source)
         val dynamic = AppliedTopology.ofKernel(
             RuntimeLaws.appliedDocumentToDestination(model, source, destination), chain, cells,
         )
