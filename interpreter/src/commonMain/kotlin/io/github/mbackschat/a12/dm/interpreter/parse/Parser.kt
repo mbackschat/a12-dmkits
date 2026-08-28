@@ -208,8 +208,11 @@ private class ConditionParser(
                         in CONSTANTS -> Expr.Const(checkNotNull(keyword))
                         // `RuleGroup` (the kernel's RegelKontext) is the rule's OWN group — the [base] itself, not a
                         // child field/group. See [readRef] for the full rationale (IF63); this is the BARE-argument
-                        // form (`GroupFilled(RuleGroup)`), which never reaches [readRef].
-                        "RuleGroup" -> Expr.Field(base)
+                        // form (`GroupFilled(RuleGroup)`), which never reaches [readRef]. It carries an
+                        // `entitySpec` suffix like any other entity reference (`RuleGroup For "a"` selects the
+                        // rule's group by semantic index), and applies it here because the shared call site
+                        // around [readRef] is the one it bypasses.
+                        "RuleGroup" -> entitySuffix(Expr.Field(base))
                         else -> {
                             skipWs()
                             if (peek() == '(') {
