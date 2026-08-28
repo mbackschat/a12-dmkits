@@ -9,8 +9,16 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 
+import io.github.mbackschat.a12.dm.adapter.KernelAdapter;
+import io.github.mbackschat.a12.dm.cli.rule.RuleMessages;
 import io.github.mbackschat.a12.dm.modelkit.ElementDraft;
 import io.github.mbackschat.a12.dm.modelkit.ModelDocument;
+import io.github.mbackschat.a12.dm.rulekit.dsl.Computation;
+import io.github.mbackschat.a12.dm.rulekit.dsl.ConditionLanguage;
+import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer;
+import io.github.mbackschat.a12.dm.rulekit.read.ReadComputation;
+import io.github.mbackschat.a12.dm.rulekit.read.ReadResult;
+import io.github.mbackschat.a12.dm.rulekit.validate.DraftComputation;
 
 /**
  * Shared {@code data}-payload builders for the read verbs (T3). The standalone {@code field/group/config/
@@ -22,6 +30,7 @@ import io.github.mbackschat.a12.dm.modelkit.ModelDocument;
 public final class ReadPayloads {
 
     private static final ObjectMapper MAPPER = new ObjectMapper();
+    private static final DslRenderer EN = new DslRenderer(ConditionLanguage.EN);
 
     private ReadPayloads() {
     }
@@ -139,6 +148,73 @@ public final class ReadPayloads {
         doc.includes().forEach(include -> includes.addObject()
                 .put("alias", include.alias())
                 .put("reference", include.reference()));
+        return data;
+    }
+
+    /**
+     * The full targeted {@code rule read} payload. The condition rides {@code converted}+{@code condition}
+     * when the converter models it, else {@code canonicalText}+{@code reason} — tolerant, never an error, so a
+     * read never fails on an Opaque construct. {@code doc} supplies the metadata projection, which sits on the
+     * element node rather than in the adapter's condition/message view.
+     */
+    public static ObjectNode rule(KernelAdapter adapter, ModelDocument doc, String rule) {
+        ObjectNode data = MAPPER.createObjectNode();
+        data.put("rule", rule);
+        data.put("severity", adapter.ruleSeverity(rule));
+        data.put("errorCode", adapter.ruleErrorCode(rule));
+        adapter.ruleErrorField(rule).ifPresent(f -> data.put("errorField", f));
+        ReadResult read = adapter.read(rule);
+        if (read instanceof ReadResult.Converted converted) {
+            data.put("converted", true);
+            data.put("condition", EN.render(converted.condition()));
+        } else if (read instanceof ReadResult.Opaque opaque) {
+            data.put("converted", false);
+            data.put("canonicalText", opaque.canonicalText());
+            data.put("reason", opaque.reason());
+        }
+        RuleMessages.putInto(data, adapter.ruleMessages(rule));
+        putIfNotEmpty(data, "annotations", doc.annotations(rule));
+        putIfNotEmpty(data, "internalDescription", doc.internalDescription(rule));
+        putIfNotEmpty(data, "externalDescription", doc.externalDescription(rule));
+        return data;
+    }
+
+    /**
+     * The full targeted {@code computation read} payload. Beyond the target field it echoes the FORMULA — the
+     * common precondition and each alternative's (precondition?, operation) as DSL — so the computed value is
+     * confirmable from a read alone rather than only through {@code computation format}.
+     */
+    public static ObjectNode computation(KernelAdapter adapter, String computation) {
+        ObjectNode data = MAPPER.createObjectNode();
+        data.put("computation", computation);
+        ArrayNode suppressions = data.putArray("errorCodesToSuppress");
+        adapter.computationErrorCodesToSuppress(computation).forEach(suppressions::add);
+        ReadComputation read = adapter.readComputation(computation);
+        if (read instanceof ReadComputation.Converted converted) {
+            data.put("converted", true);
+            Computation comp = converted.computation();
+            data.put("calculatedField", comp.computedField().path().value());
+            DraftComputation draft = comp.draft();
+            if (draft.commonPrecondition() != null) {
+                data.put("commonPrecondition", draft.commonPrecondition());
+            }
+            ArrayNode alternatives = data.putArray("alternatives");
+            for (DraftComputation.Alternative alt : draft.alternatives()) {
+                ObjectNode node = alternatives.addObject();
+                if (alt.precondition() != null) {
+                    node.put("precondition", alt.precondition());
+                }
+                node.put("operation", alt.operation());
+                if (alt.toleranceRangeOp() != null) {
+                    node.put("toleranceRangeOp", alt.toleranceRangeOp().wire());
+                }
+            }
+            RuleMessages.putInto(data, comp.messages());
+        } else {
+            ReadComputation.Opaque opaque = (ReadComputation.Opaque) read;
+            data.put("converted", false);
+            data.put("reason", opaque.reason());
+        }
         return data;
     }
 

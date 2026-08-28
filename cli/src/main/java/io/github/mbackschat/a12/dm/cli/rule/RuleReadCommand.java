@@ -3,20 +3,15 @@ package io.github.mbackschat.a12.dm.cli.rule;
 import io.github.mbackschat.a12.dm.cli.BaseCommand;
 import io.github.mbackschat.a12.dm.cli.ConsistencyEvidence;
 import io.github.mbackschat.a12.dm.cli.ModelPaths;
+import io.github.mbackschat.a12.dm.cli.ReadPayloads;
 import io.github.mbackschat.a12.dm.cli.ResultEnvelope;
 import io.github.mbackschat.a12.dm.cli.WorkspaceOption;
 
-import java.util.List;
-import java.util.Map;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 
 import io.github.mbackschat.a12.dm.adapter.KernelAdapter;
-import io.github.mbackschat.a12.dm.rulekit.read.ReadResult;
 import io.github.mbackschat.a12.dm.modelkit.ModelDocument;
-import io.github.mbackschat.a12.dm.rulekit.dsl.ConditionLanguage;
-import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer;
 import io.github.mbackschat.a12.dm.rulekit.validate.RkCode;
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Mixin;
@@ -34,8 +29,6 @@ import picocli.CommandLine.Parameters;
         description = "Read a rule's condition back as DSL (typed AST, tolerant of Opaque constructs).")
 final class RuleReadCommand extends BaseCommand {
 
-    private static final ObjectMapper MAPPER = new ObjectMapper();
-    private static final DslRenderer EN = new DslRenderer(ConditionLanguage.EN);
 
     @Parameters(index = "0", arity = "0..1", paramLabel = "<rulePathInModel>",
             description = "the rule's full name — its slash-path in the model, e.g. /Order/SomeRule; "
@@ -72,46 +65,17 @@ final class RuleReadCommand extends BaseCommand {
                 // fix — so a missing read target is machine-readable, not a plain-text stderr line
                 return refuseNotFound(RkCode.NO_SUCH_RULE, "no rule at '" + rule + "'", rule, problem);
             }
-            ReadResult read = adapter.read(rule);
-            ObjectNode data = MAPPER.createObjectNode();
-            data.put("rule", rule);
-            data.put("severity", adapter.ruleSeverity(rule));
-            data.put("errorCode", adapter.ruleErrorCode(rule));
-            adapter.ruleErrorField(rule).ifPresent(f -> data.put("errorField", f));
-            putRuleOutcome(data, read);
-            RuleMessages.putInto(data, adapter.ruleMessages(rule));
-            // target-specific reads retain their metadata projection (G45); `meta` is the write owner
-            // (rules have no label slot). Read from ModelDocument — the metadata sits on the element node,
-            // not the KernelAdapter's condition/message view.
-            ModelDocument doc = ModelDocument.read(json);
-            putIfNotEmpty(data, "annotations", doc.annotations(rule));
-            putIfNotEmpty(data, "internalDescription", doc.internalDescription(rule));
-            putIfNotEmpty(data, "externalDescription", doc.externalDescription(rule));
+            // the SAME builder the apply-embedded RULE_READ op uses, so the two shapes cannot drift. The
+            // metadata projection (G45) needs the ModelDocument: it sits on the element node, not in the
+            // adapter's condition/message view.
+            ObjectNode data = ReadPayloads.rule(adapter, ModelDocument.read(json), rule);
             ResultEnvelope env = ResultEnvelope.queryResult(resultIdentity(),
-                    read instanceof ReadResult.Converted ? "read " + rule : "read " + rule + " (Opaque)",
+                    data.path("converted").asBoolean() ? "read " + rule : "read " + rule + " (Opaque)",
                     data, ConsistencyEvidence.of(adapter));
             out().print(env.toJsonString());
             return env.exitCode();
         } catch (RuntimeException e) {
             return failOrRethrowDomainRejection("read failed: ", e);
-        }
-    }
-
-    /** Echo a per-locale/per-name metadata map under {@code key}, only when it carries something (mirrors group read). */
-    private static void putIfNotEmpty(ObjectNode data, String key, Map<String, String> m) {
-        if (m != null && !m.isEmpty()) {
-            data.set(key, MAPPER.valueToTree(m));
-        }
-    }
-
-    private static void putRuleOutcome(ObjectNode node, ReadResult read) {
-        if (read instanceof ReadResult.Converted converted) {
-            node.put("converted", true);
-            node.put("condition", EN.render(converted.condition()));
-        } else if (read instanceof ReadResult.Opaque opaque) {
-            node.put("converted", false);
-            node.put("canonicalText", opaque.canonicalText());
-            node.put("reason", opaque.reason());
         }
     }
 }

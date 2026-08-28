@@ -2,20 +2,13 @@ package io.github.mbackschat.a12.dm.cli.computation;
 
 import io.github.mbackschat.a12.dm.cli.BaseCommand;
 import io.github.mbackschat.a12.dm.cli.ConsistencyEvidence;
+import io.github.mbackschat.a12.dm.cli.ReadPayloads;
 import io.github.mbackschat.a12.dm.cli.ResultEnvelope;
 import io.github.mbackschat.a12.dm.cli.WorkspaceOption;
 
-import java.util.List;
-
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 
 import io.github.mbackschat.a12.dm.adapter.KernelAdapter;
-import io.github.mbackschat.a12.dm.rulekit.read.ReadComputation;
-import io.github.mbackschat.a12.dm.cli.rule.RuleMessages;
-import io.github.mbackschat.a12.dm.rulekit.dsl.Computation;
-import io.github.mbackschat.a12.dm.rulekit.validate.DraftComputation;
 import io.github.mbackschat.a12.dm.rulekit.validate.RkCode;
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Mixin;
@@ -30,8 +23,6 @@ import picocli.CommandLine.Parameters;
 @Command(name = "read", mixinStandardHelpOptions = true,
         description = "Read a computation back into rulekit's typed form (tolerant of Opaque constructs).")
 final class ComputationReadCommand extends BaseCommand {
-
-    private static final ObjectMapper MAPPER = new ObjectMapper();
 
     @Parameters(index = "0", arity = "0..1", paramLabel = "<computationPathInModel>",
             description = "the computation's full name — its slash-path in the model, e.g. /Order/TotalComp; "
@@ -68,39 +59,8 @@ final class ComputationReadCommand extends BaseCommand {
                         "pass an existing computation's full name (list them with `computation read` — no arg); "
                                 + "computations: " + adapter.computationFullNames());
             }
-            ReadComputation read = adapter.readComputation(computation);
-            ObjectNode data = MAPPER.createObjectNode();
-            data.put("computation", computation);
-            ArrayNode suppressions = data.putArray("errorCodesToSuppress");
-            adapter.computationErrorCodesToSuppress(computation).forEach(suppressions::add);
-            if (read instanceof ReadComputation.Converted converted) {
-                data.put("converted", true);
-                Computation comp = converted.computation();
-                data.put("calculatedField", comp.computedField().path().value());
-                // slot parity (probe 07): echo the FORMULA — the commonPrecondition + each alternative's
-                // (precondition?, operation), rendered as DSL — so the computed value is confirmable through
-                // `computation read` alone, not only via `computation format`.
-                DraftComputation draft = comp.draft();
-                if (draft.commonPrecondition() != null) {
-                    data.put("commonPrecondition", draft.commonPrecondition());
-                }
-                ArrayNode alternatives = data.putArray("alternatives");
-                for (DraftComputation.Alternative alt : draft.alternatives()) {
-                    ObjectNode node = alternatives.addObject();
-                    if (alt.precondition() != null) {
-                        node.put("precondition", alt.precondition());
-                    }
-                    node.put("operation", alt.operation());
-                    if (alt.toleranceRangeOp() != null) {
-                        node.put("toleranceRangeOp", alt.toleranceRangeOp().wire());
-                    }
-                }
-                RuleMessages.putInto(data, comp.messages());
-            } else {
-                ReadComputation.Opaque opaque = (ReadComputation.Opaque) read;
-                data.put("converted", false);
-                data.put("reason", opaque.reason());
-            }
+            // the SAME builder the apply-embedded COMPUTATION_READ op uses, so the two shapes cannot drift
+            ObjectNode data = ReadPayloads.computation(adapter, computation);
             ResultEnvelope env = ResultEnvelope.queryResult(resultIdentity(), "read " + computation,
                     data, ConsistencyEvidence.of(adapter));
             out().print(env.toJsonString());
