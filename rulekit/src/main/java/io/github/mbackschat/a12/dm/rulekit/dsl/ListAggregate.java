@@ -47,8 +47,10 @@ public record ListAggregate(AggOp op, List<AggregateOperand> operands) implement
                 case FieldOperand f -> requireNumber(op, f);
                 // A group carries no kind of its own: the rule applies to the fields the kernel EXPANDS it
                 // to, whose extent recurses into nested subgroups. Delegated rather than re-implemented —
-                // see AggregateOperand.
+                // see AggregateOperand. An index-selected group is the same shape (still no kind of its
+                // own — the index only picks WHICH repetition, not what it expands to).
                 case GroupListRef ignored -> { }
+                case IndexedGroupValue ignored -> { }
             }
         }
         checkNoDuplicates(op.operatorId(), operands);
@@ -88,11 +90,14 @@ public record ListAggregate(AggOp op, List<AggregateOperand> operands) implement
             // field under two different index keys is NOT a duplicate, so identity folds
             // in the key (and every $ correlation in the shape) via the shared IndexedFieldValue#duplicateIdentity,
             // rather than repeating that compound computation here (see Dsl.referenceIdentity's identical arm).
+            // An indexed GROUP (IndexedGroupValue) is the same shape one level up, sharing the identical
+            // duplicateIdentity contract.
             String identity = switch (o) {
                 case FieldListRef ignored -> null;
                 case GroupListRef ignored -> null;
                 case FieldRef f -> (f.correlated() ? "$" : "") + f.renderedPath();
                 case IndexedFieldValue indexed -> indexed.duplicateIdentity();
+                case IndexedGroupValue indexed -> indexed.duplicateIdentity();
             };
             if (identity == null) {
                 continue;

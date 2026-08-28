@@ -319,11 +319,13 @@ public final class DslRenderer {
         };
     }
 
-    /** A fixed group-list entity: a checked field renders its plain path, a group scope its starred path. */
+    /** A fixed group-list entity: a checked field renders its plain path, a group scope its starred path,
+     *  an index-selected group its localized {@code Group For key} body. */
     private String entityOperand(GroupListOperand op) {
         return switch (op) {
             case FieldRef field -> path(field.path().value());
             case GroupListRef scope -> path(scope.renderedPath());
+            case IndexedGroupValue indexed -> groupIndexBody(indexed);
         };
     }
 
@@ -331,12 +333,14 @@ public final class DslRenderer {
      * An entity-list aggregate operand. A group scope renders as its starred path and nothing else — it
      * carries no correlation marker and no {@code Having} filter, the latter because the kernel rejects a
      * filter on a group operand outright ({@code MVK_NO_GROUPS_ALLOWED}, locked by
-     * {@code adapter.laws.GroupStarValueAggregateDiffTest}).
+     * {@code adapter.laws.GroupStarValueAggregateDiffTest}). An index-selected group is never starred (an
+     * index and a wildcard can't address the same group), so it renders its localized index body instead.
      */
     private String aggregateOperand(AggregateOperand op) {
         return switch (op) {
             case FieldOperand field -> operand(field);
             case GroupListRef group -> path(group.renderedPath());
+            case IndexedGroupValue indexed -> groupIndexBody(indexed);
         };
     }
 
@@ -536,6 +540,21 @@ public final class DslRenderer {
             case SemanticIndexFieldValue v ->   // field key: a bare field path, not a quoted literal
                     (v.field().correlated() ? "$" : "") + path(v.field().path().value()) + " "
                             + keyword(v.operatorId()) + " "
+                            + (v.indexField().correlated() ? "$" : "") + path(v.indexField().path().value());
+        };
+    }
+
+    /**
+     * The group analog of {@link #indexBody} — {@code Group For key} — for the entity-list / group-list
+     * member form; a group is never itself {@code $}-correlated (see {@link IndexedGroupValue}'s own
+     * javadoc), so only the key side can carry one.
+     */
+    private String groupIndexBody(IndexedGroupValue index) {
+        return switch (index) {
+            case GroupSemanticIndexValue v ->
+                    path(v.group().path()) + " " + keyword("SemanticIndex") + " " + quote(v.indexValue());
+            case GroupSemanticIndexFieldValue v ->
+                    path(v.group().path()) + " " + keyword("SemanticIndex") + " "
                             + (v.indexField().correlated() ? "$" : "") + path(v.indexField().path().value());
         };
     }

@@ -161,6 +161,7 @@ public record ConditionReferences(Set<String> fieldPaths, Set<String> groupPaths
                 switch (operand) {
                     case FieldRef field -> refs.field(field.path().value());
                     case GroupListRef scope -> refs.group(scope.path());
+                    case IndexedGroupValue indexed -> collectIndexedGroup(indexed, refs);
                 }
             });
             case PatternCondition p -> refs.field(p.field().path().value());
@@ -282,6 +283,29 @@ public record ConditionReferences(Set<String> fieldPaths, Set<String> groupPaths
         switch (op) {
             case FieldOperand field -> collectOperand(field, refs);
             case GroupListRef group -> refs.group(group.path());
+            case IndexedGroupValue indexed -> collectIndexedGroup(indexed, refs);
+        }
+    }
+
+    /**
+     * An index-selected group still references the GROUP for this bookkeeping — the index only picks
+     * which repetition, not what it references — plus, for the field-keyed form, the KEY field itself:
+     * that field's value is what the condition depends on to pick the repetition, so it must count
+     * toward {@code fieldPaths()}/{@code covers()} the same way {@code IndexedFieldValue}'s own key
+     * already does for the direct-value path (KF182's principle, applied to the shape it does not by
+     * itself reach — {@code IndexedGroupValue} is never a {@link Calculation}, so it never flows through
+     * this class's OTHER exhaustive switch, the one with the dedicated {@code SemanticIndexValue}/
+     * {@code SemanticIndexFieldValue} arms). Shared by both call sites (this one and {@code
+     * GroupListPredicate}'s own entity-list collection) rather than repeating the key-field check twice.
+     *
+     * <p>Registered PLAIN, not projected: {@code ReadMode.PROJECTED} exists to feed self-reference
+     * detection for a COMPUTED FIELD's own formula, which a group — never itself a {@link Calculation} —
+     * can never participate in.
+     */
+    private static void collectIndexedGroup(IndexedGroupValue indexed, Refs refs) {
+        refs.group(indexed.group().path());
+        if (indexed instanceof GroupSemanticIndexFieldValue keyed) {
+            refs.field(keyed.indexField().path().value());
         }
     }
 

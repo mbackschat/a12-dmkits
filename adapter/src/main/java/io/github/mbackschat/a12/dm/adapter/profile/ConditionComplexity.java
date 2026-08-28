@@ -382,6 +382,7 @@ record ConditionComplexity(int nodeCount, int depth, int maxBooleanArity,
                 max = Math.max(max, switch (o) {
                     case FieldOperand field -> operandDepth(field);
                     case GroupListRef ignored -> 0;
+                    case IndexedGroupValue ignored -> 0;
                 });
             }
             return max;
@@ -412,6 +413,12 @@ record ConditionComplexity(int nodeCount, int depth, int maxBooleanArity,
                         group.flattened().forEach(starred -> collectionPaths.add(starred.path().value()));
                         maxStarSegments = Math.max(maxStarSegments, group.flattened().size());
                         yield 1;                    // no filter is possible here: MVK_NO_GROUPS_ALLOWED
+                    }
+                    case IndexedGroupValue ignored -> {
+                        // Never starred (an index and a wildcard can't address the same group), so no
+                        // collectionPaths/maxStarSegments contribution — just the one node.
+                        nodeCount++;
+                        yield 1;
                     }
                 });
             }

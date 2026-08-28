@@ -35,11 +35,17 @@ public sealed interface IndexedFieldValue extends Calculation, FieldOperand
      * method is path-only; the fold happens at every CALL site that cares, exactly as it does for a
      * plain {@link FieldRef} elsewhere in this package). Like every other arm's {@code renderedPath()}
      * this is not localized and does not need to match {@link DslRenderer}'s actual condition-text
-     * output for this type ({@code DslRenderer}'s private {@code indexBody} owns that).
+     * output for this type ({@code DslRenderer}'s private {@code indexBody} owns that). Computed via
+     * {@link SemanticIndexIdentity}, shared with {@link IndexedGroupValue}'s identical-shaped identity.
      */
     @Override
     default String renderedPath() {
-        return (field().correlated() ? "$" : "") + field().renderedPath() + " For " + keyText();
+        return switch (this) {
+            case SemanticIndexValue v -> SemanticIndexIdentity.of(field().correlated(), field().renderedPath(),
+                    v.indexValue());
+            case SemanticIndexFieldValue v -> SemanticIndexIdentity.of(field().correlated(), field().renderedPath(),
+                    v.indexField());
+        };
     }
 
     @Override
@@ -53,11 +59,9 @@ public sealed interface IndexedFieldValue extends Calculation, FieldOperand
      * field-keyed form — the key field's own too, since a correlated key reads a different repetition
      * than an uncorrelated one and the two must stay distinguishable). Shared by both {@code
      * ListAggregate.checkNoDuplicates} and {@code Dsl.referenceIdentity} so the compound computation
-     * lives in one place; folding {@code $} is the same rule commit {@code 2a5c9a409} applied to a plain
-     * {@link FieldRef} — {@code (f.correlated() ? "$" : "") + f.renderedPath()} — extended to the index.
-     * Deliberately excludes the indirect-overlap case ({@code MVK_DUPLICATE_PARAM2}, an indexed field
-     * reached once directly and once through a group scope): that stays kernel-arbitrated, exactly as it
-     * already does for the {@link GroupListRef} arm.
+     * lives in one place. Deliberately excludes the indirect-overlap case ({@code MVK_DUPLICATE_PARAM2},
+     * an indexed field reached once directly and once through a group scope): that stays
+     * kernel-arbitrated, exactly as it already does for the {@link GroupListRef} arm.
      *
      * <p>Identical to {@link #renderedPath()} today — two references that print the same diagnostic
      * path ARE the same identity — so this delegates rather than re-computing the same string; its own
@@ -66,13 +70,5 @@ public sealed interface IndexedFieldValue extends Calculation, FieldOperand
      */
     default String duplicateIdentity() {
         return renderedPath();
-    }
-
-    /** The index key's own text, correlation-folded for the field-keyed form. */
-    private String keyText() {
-        return switch (this) {
-            case SemanticIndexValue v -> "\"" + v.indexValue() + "\"";
-            case SemanticIndexFieldValue v -> (v.indexField().correlated() ? "$" : "") + v.indexField().renderedPath();
-        };
     }
 }

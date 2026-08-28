@@ -68,6 +68,9 @@ public final class GroupListPredicate implements Condition {
             case GroupListRef scope -> scope.group();
             case FieldRef field -> throw new IllegalStateException(
                     "the entity list contains field operand [" + field.path() + "] — use operands()");
+            case IndexedGroupValue indexed -> throw new IllegalStateException(
+                    "the entity list contains an index-selected group [" + indexed.renderedPath()
+                            + "] — use operands()");
         }).toList();
     }
 
