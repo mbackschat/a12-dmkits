@@ -195,8 +195,6 @@ class A12JsonConstructionGuardTest {
                     + "::jackson-object-mapper#1", CLI_OWNED_JSON),
             entry("cli/src/main/java/io/github/mbackschat/a12/dm/cli/computation/ComputationModifyCommand.java"
                     + "::jackson-object-mapper#1", CLI_OWNED_JSON),
-            entry("cli/src/main/java/io/github/mbackschat/a12/dm/cli/computation/ComputationReadCommand.java"
-                    + "::jackson-object-mapper#1", CLI_OWNED_JSON),
             entry("cli/src/main/java/io/github/mbackschat/a12/dm/cli/computation/ComputationRemoveCommand.java"
                     + "::jackson-object-mapper#1", CLI_OWNED_JSON),
             entry("cli/src/main/java/io/github/mbackschat/a12/dm/cli/config/ConfigModifyCommand.java"
@@ -289,8 +287,6 @@ class A12JsonConstructionGuardTest {
             entry("cli/src/main/java/io/github/mbackschat/a12/dm/cli/rule/RuleExplainData.java"
                     + "::jackson-object-mapper#1", CLI_OWNED_JSON),
             entry("cli/src/main/java/io/github/mbackschat/a12/dm/cli/rule/RuleModifyCommand.java"
-                    + "::jackson-object-mapper#1", CLI_OWNED_JSON),
-            entry("cli/src/main/java/io/github/mbackschat/a12/dm/cli/rule/RuleReadCommand.java"
                     + "::jackson-object-mapper#1", CLI_OWNED_JSON),
             entry("cli/src/main/java/io/github/mbackschat/a12/dm/cli/rule/RuleRemoveCommand.java"
                     + "::jackson-object-mapper#1", CLI_OWNED_JSON),
