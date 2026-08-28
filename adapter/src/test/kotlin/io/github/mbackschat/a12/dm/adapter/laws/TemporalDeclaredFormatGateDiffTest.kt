@@ -69,6 +69,45 @@ class TemporalDeclaredFormatGateDiffTest {
             "",             // empty is present and value-free
         )
 
+        /** One admitted format and the stored values that discriminate the classifier it selects. */
+        class Vocab(val name: String, val format: String, val values: List<String>)
+
+        /**
+         * The COMPLETE admitted temporal format vocabulary: [KF196](../../../../../../../../docs/KERNEL-FINDINGS.md)'s
+         * measured whitelist — the two complete date forms plus the five partial ones — together with the clock
+         * and the ISO instant. **Nine formats.** An earlier revision of this grid carried eight and reported the
+         * shortfall as a complete denominator; the missing one was `yyyyMM`, which our own whitelist finding
+         * already listed, so nothing had to be measured to catch it. Each row's values are chosen to separate
+         * admitted from each of the two causes, since a format that only ever reports one cause proves nothing
+         * about which variable selects it.
+         */
+        val VOCABULARY = listOf(
+            Vocab("Iso", "yyyy-MM-dd",
+                listOf("2024-06-15", "1583-10-16", "1583-10-15", "0000-06-15", "2024-02-31", "10:30:00", "")),
+            Vocab("Dotted", "dd.MM.yyyy",
+                listOf("15.06.2024", "16.10.1583", "15.10.1583", "15.06.0000", "31.02.2024", "10:30:00", "")),
+            Vocab("Clock", "HH:mm:ss",
+                listOf("10:30:00", "24:00:00", "2024-06-15", "1583-10-15", "")),
+            Vocab("Stamp", "yyyy-MM-dd'T'HH:mm:ss",
+                listOf("2024-06-15T10:30:00", "1583-10-15T00:00:00", "0000-06-15T10:30:00", "2024-06-15",
+                    "10:30:00", "")),
+            Vocab("Year", "yyyy", listOf("2024", "1583", "1582", "0000", "0001", "10:30:00", "")),
+            Vocab("YearMonth", "yyyy-MM", listOf("2024-06", "1583-10", "202406", "2024-13", "0000-06", "")),
+            Vocab("YearMonthCompact", "yyyyMM", listOf("202406", "158310", "2024-06", "202413", "000006", "")),
+            Vocab("Month", "MM", listOf("06", "13", "00", "2024-06-15", "")),
+            Vocab("MonthDay", "MM-dd", listOf("06-15", "02-29", "02-30", "04-31", "")),
+        )
+
+        /** Every admitted format declared on every date-bearing kind: nine by three, in one model. */
+        val GRID_MODEL: String = DocumentModelDraft.named("declared-format-grid").locale("en_US")
+            .rootGroup("Grid") { g ->
+                VOCABULARY.forEach { v ->
+                    g.dateField("${v.name}AsDate") { it.format(v.format) }
+                        .timeField("${v.name}AsTime") { it.format(v.format) }
+                        .dateTimeField("${v.name}AsStamp") { it.format(v.format) }
+                }
+            }.build().toJson()
+
         /** One model: three date-format declarations across three kinds, the clock control, and a dotted pair. */
         val MODEL: String = DocumentModelDraft.named("declared-format-gate").locale("en_US")
             .rootGroup("Probe") { p ->
@@ -98,26 +137,51 @@ class TemporalDeclaredFormatGateDiffTest {
     // ── the formal channel: which cause a stored value carries ───────────────────────────────────────────────
 
     /** Every stored value's formal codes at [field], asserted equal on both kernel strategies and the interpreter. */
-    private fun formalCodes(field: String): Map<String, List<String>> {
-        val groovy = STORED.associateWith { RuntimeLaws.messages(MODEL, oneCell(field, it)).map { m -> m.code() }.sorted() }
-        assertEquals(groovy, STORED.associateWith { staticCodes(MODEL, oneCell(field, it)) },
+    private fun formalCodes(
+        field: String,
+        model: String = MODEL,
+        values: List<String> = STORED,
+    ): Map<String, List<String>> {
+        val groovy = values.associateWith { RuntimeLaws.messages(model, oneCell(field, it)).map { m -> m.code() }.sorted() }
+        assertEquals(groovy, values.associateWith { staticCodes(model, oneCell(field, it)) },
             "$field — groovy-dynamic vs generated-java on the formal channel")
-        assertEquals(groovy, STORED.associateWith { interpreterCodes(MODEL, field, it) },
+        assertEquals(groovy, values.associateWith { interpreterCodes(model, field, it) },
             "$field — kernel vs interpreter on the formal channel")
         return groovy
     }
 
     private fun oneCell(field: String, value: String): RuntimeLaws.Doc =
-        RuntimeLaws.doc().group("/Probe", 1).also { if (value.isNotEmpty()) it.field(field, value, 1, 1) }
+        RuntimeLaws.doc().group(field.substringBeforeLast('/'), 1)
+            .also { if (value.isNotEmpty()) it.field(field, value, 1, 1) }
 
     private fun staticCodes(model: String, doc: RuntimeLaws.Doc): List<String> =
         javaEngine(model).let { it.firedCodesSorted(it.instance(doc)) }
 
     private fun interpreterCodes(model: String, field: String, value: String): List<String> {
         val def = loaded(model)
-        val doc = def.newDocument().group("/Probe", 1)
+        val doc = def.newDocument().group(field.substringBeforeLast('/'), 1)
         if (value.isNotEmpty()) doc.field(field, value, 1, 1)
         return DmInterpreter(def).validateFull(doc).map { it.code }.sorted()
+    }
+
+    /**
+     * The kind-independence claim over the COMPLETE vocabulary, on the kernel rather than by extrapolation from
+     * the ISO rows. Each format is declared on all three date-bearing kinds and every one of its discriminating
+     * values is read back through both codegen strategies and the interpreter; the three kinds must then agree
+     * cell for cell. Model consistency is asserted first, because a declaration the kernel refuses would make
+     * every row below vacuous rather than false.
+     */
+    @Test fun theCompleteFormatVocabularyIsClassifiedByItsDeclarationOnEveryKind() {
+        assertEquals(emptyList<String>(), RuntimeLaws.consistencyMessages(GRID_MODEL),
+            "all ${VOCABULARY.size * 3} declarations must be model-legal for the grid to measure anything")
+
+        for (v in VOCABULARY) {
+            val byDate = formalCodes("/Grid/${v.name}AsDate", GRID_MODEL, v.values)
+            assertEquals(byDate, formalCodes("/Grid/${v.name}AsTime", GRID_MODEL, v.values),
+                "${v.format}: DATE vs TIME — the kind must not move the classifier")
+            assertEquals(byDate, formalCodes("/Grid/${v.name}AsStamp", GRID_MODEL, v.values),
+                "${v.format}: DATE vs DATE_TIME — the kind must not move the classifier")
+        }
     }
 
     @Test fun aDateDeclaredCellReportsTheDateErrorWhateverItsKind() {

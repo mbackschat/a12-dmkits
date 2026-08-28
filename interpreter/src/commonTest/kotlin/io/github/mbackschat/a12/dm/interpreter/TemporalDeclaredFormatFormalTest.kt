@@ -12,15 +12,24 @@ import kotlin.test.assertEquals
  * Multiplatform (JVM + JS) lock for KF211 — **a temporal cell's formal classifier is selected by its DECLARED
  * FORMAT, never by the field's kind.** The kernel's format vocabulary is kind-independent (KF206: a TIME field
  * is refused `HH:mm` and admitted `yyyy-MM-dd`), and the value tier follows the same rule: measured over the
- * complete 8-format × 3-kind grid, every one of the 24 cells is admitted at the model level and every format
+ * complete 9-format × 3-kind grid, every one of the 27 cells is admitted at the model level and every format
  * behaves identically on all three date-bearing kinds.
+ *
+ * The nine are KF196's measured whitelist — `yyyy-MM-dd`, `dd.MM.yyyy` and the five partial forms — plus the
+ * clock and the ISO instant. *(Corrected 2026-08-29: this grid ran eight and called that complete, omitting
+ * `yyyyMM`, which KF196 already listed. A peer review of the handback caught it; the denominator was in our own
+ * findings the whole time.)*
  *
  * The two sharpest cells have their own named arms below, because they are the ones the kind-keyed reading gets
  * backwards in opposite directions: a TIME field carrying the Gregorian floor, and a DATE field admitting a
  * clock. Both were wrong here until 2026-08-28 (IG144, and its unreported mirror).
  *
  * Kernel oracle for every expectation: `adapter.laws.TemporalDeclaredFormatGateDiffTest`, on both codegen
- * strategies. The kind still owns the DEFAULT format for a field that declares none.
+ * strategies — its `theCompleteFormatVocabularyIsClassifiedByItsDeclarationOnEveryKind` runs this same nine-format
+ * vocabulary across the same three kinds and asserts kernel-vs-interpreter agreement cell by cell. *(That arm
+ * dates from 2026-08-29. Before it, this sentence named a class whose kernel coverage was the ISO rows and two
+ * controls — the grid's short formats were interpreter-only, and the citation said otherwise.)* The kind still
+ * owns the DEFAULT format for a field that declares none.
  */
 class TemporalDeclaredFormatFormalTest {
 
@@ -62,6 +71,10 @@ class TemporalDeclaredFormatFormalTest {
         ),
         "yyyy-MM" to listOf(
             Cell("2024-06", null), Cell("1583-10", DATE), Cell("202406", FMT), Cell("2024-13", FMT),
+        ),
+        "yyyyMM" to listOf(
+            Cell("202406", null), Cell("158310", DATE), Cell("2024-06", FMT), Cell("202413", FMT),
+            Cell("000006", FMT),
         ),
         "MM-dd" to listOf(Cell("06-15", null), Cell("02-30", FMT), Cell("04-31", FMT), Cell("02-29", null)),
     )
