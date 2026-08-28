@@ -1133,6 +1133,14 @@ public record io.github.mbackschat.a12.dm.rulekit.dsl.DateTimeExpr implements io
   public final int hashCode()
   public final java.lang.String toString()
 
+public record io.github.mbackschat.a12.dm.rulekit.dsl.DateTimeLiteral implements io.github.mbackschat.a12.dm.rulekit.dsl.Calculation
+  public DateTimeLiteral(java.lang.String)
+  public final boolean equals(java.lang.Object)
+  public final int hashCode()
+  public io.github.mbackschat.a12.dm.core.ValueKind kind()
+  public final java.lang.String toString()
+  public java.lang.String value()
+
 public sealed interface io.github.mbackschat.a12.dm.rulekit.dsl.DateTimeOperand extends io.github.mbackschat.a12.dm.rulekit.dsl.TemporalOperand
   public default io.github.mbackschat.a12.dm.rulekit.dsl.Condition after(io.github.mbackschat.a12.dm.rulekit.dsl.DateOperand)
   public default io.github.mbackschat.a12.dm.rulekit.dsl.Condition after(io.github.mbackschat.a12.dm.rulekit.dsl.DateTimeOperand)
@@ -1246,6 +1254,7 @@ public final class io.github.mbackschat.a12.dm.rulekit.dsl.Dsl
   public static io.github.mbackschat.a12.dm.rulekit.dsl.DateRangeConstruction dateRange(io.github.mbackschat.a12.dm.rulekit.dsl.DateOperand, io.github.mbackschat.a12.dm.rulekit.dsl.DateOperand)
   public static io.github.mbackschat.a12.dm.rulekit.dsl.Condition dateRangesOverlap(io.github.mbackschat.a12.dm.rulekit.dsl.FieldOperand, io.github.mbackschat.a12.dm.rulekit.dsl.FieldOperand[])
   public static io.github.mbackschat.a12.dm.rulekit.dsl.DateTimeExpr dateTime(io.github.mbackschat.a12.dm.rulekit.dsl.DateOperand, io.github.mbackschat.a12.dm.rulekit.dsl.TimeOperand)
+  public static io.github.mbackschat.a12.dm.rulekit.dsl.DateTimeExpr dateTimeValue(java.lang.String)
   public static io.github.mbackschat.a12.dm.rulekit.dsl.DateExpr dateValue(java.lang.String)
   public static io.github.mbackschat.a12.dm.rulekit.dsl.DateExpr dateValue(java.time.LocalDate)
   public static io.github.mbackschat.a12.dm.rulekit.dsl.NumberExpr dayFromDate(io.github.mbackschat.a12.dm.rulekit.dsl.DateOperand)

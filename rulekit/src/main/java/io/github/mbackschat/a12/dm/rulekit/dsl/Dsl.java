@@ -759,6 +759,15 @@ public final class Dsl {
         return timeValue(time.format(TIME_LITERAL_FORMAT));
     }
 
+    /**
+     * A date-time constant for comparison — {@code [ScheduledAt] > dateTimeValue("01.01.2022T17:00:00")}
+     * ({@code dd.MM.yyyy'T'HH:mm:ss}), the temporal-literal family's date-time twin of {@link #dateValue}/
+     * {@link #timeValue}.
+     */
+    public static DateTimeExpr dateTimeValue(String ddMMyyyyThhmmss) {
+        return new DateTimeExpr(new DateTimeLiteral(ddMMyyyyThhmmss));
+    }
+
     /** {@code DifferenceInDays(a, b)} over dates — signed complete model-zone legacy-calendar day steps. catalog:DifferenceInDays */
     public static NumberExpr differenceInDays(DateOperand a, DateOperand b) {
         return new NumberExpr(new DateDifference(DateDifference.Unit.DAYS, a.expression(), b.expression()));

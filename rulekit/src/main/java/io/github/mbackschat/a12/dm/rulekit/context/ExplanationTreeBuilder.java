@@ -26,6 +26,7 @@ import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer;
 import io.github.mbackschat.a12.dm.rulekit.dsl.EnumCategoryAccess;
 import io.github.mbackschat.a12.dm.rulekit.dsl.DateLiteral;
 import io.github.mbackschat.a12.dm.rulekit.dsl.DateTimeConstruction;
+import io.github.mbackschat.a12.dm.rulekit.dsl.DateTimeLiteral;
 import io.github.mbackschat.a12.dm.rulekit.dsl.EnumValueLiteral;
 import io.github.mbackschat.a12.dm.rulekit.dsl.EntityListPredicate;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Arithmetic;
@@ -117,6 +118,7 @@ final class ExplanationTreeBuilder {
             case StringLiteral s -> List.of();
             case DateLiteral d -> List.of();
             case TimeLiteral t -> List.of();
+            case DateTimeLiteral dt -> List.of();
             case EnumValueLiteral e -> List.of();
             case BoolLiteral b -> List.of();
             case LengthOf l -> List.of(leaf(l.operatorId(), l));

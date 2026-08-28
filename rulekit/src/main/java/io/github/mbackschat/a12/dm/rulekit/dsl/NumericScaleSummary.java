@@ -47,6 +47,7 @@ record NumericScaleSummary(State state, int scale, boolean expandable) {
             case BoolLiteral ignored -> deferred();
             case DateLiteral ignored -> deferred();
             case TimeLiteral ignored -> deferred();
+            case DateTimeLiteral ignored -> deferred();
             case EnumCategoryAccess ignored -> deferred();
             case ListAggregate ignored -> deferred();
             case Today ignored -> deferred();

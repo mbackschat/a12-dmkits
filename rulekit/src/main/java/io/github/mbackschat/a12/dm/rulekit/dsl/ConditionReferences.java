@@ -200,6 +200,7 @@ public record ConditionReferences(Set<String> fieldPaths, Set<String> groupPaths
             case StringLiteral s -> { }
             case DateLiteral d -> { }
             case TimeLiteral t -> { }
+            case DateTimeLiteral dt -> { }
             case EnumValueLiteral e -> { }
             case BoolLiteral b -> { }
             case EnumCategoryAccess c -> refs.projectedField(c.field().path().value());

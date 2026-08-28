@@ -207,6 +207,7 @@ record ConditionComplexity(int nodeCount, int depth, int maxBooleanArity,
                 case StringLiteral ignored -> 1;
                 case DateLiteral ignored -> 1;
                 case TimeLiteral ignored -> 1;
+                case DateTimeLiteral ignored -> 1;
                 case EnumValueLiteral ignored -> 1;
                 case BoolLiteral b -> { op(b.operatorId()); yield 1; }
                 case LengthOf l -> { op(l.operatorId()); yield 1; }
