@@ -425,6 +425,14 @@ private class ConditionParser(
         // matchKeyword("In") accepts all three language-independent variants. For every other function the next
         // token is `,`/`)`.
         if (matchKeyword("In")) { args.add(parseArg()); skipWs() }
+        // A second such infix literal, `To` (DE `Zu`) — ValueNotConsistent's field/value pair
+        // (`ValueNotConsistent(field To value, dependent1, …)`, kernel
+        // `EntityListAndValueListConditionName.ValueNotConsistent`). The construct itself stays unmodeled
+        // (KernelConstructParityTest/KeywordReverseParityTest both exclude it deliberately); reading the
+        // infix carries a call using it past this grammar boundary, so parsePrimary's "not a supported
+        // condition shape" check is what refuses it — an UnsupportedConstructException, which classifies
+        // the rule as unmodeled rather than as malformed text.
+        if (matchKeyword("To")) { args.add(parseArg()); skipWs() }
         while (peek() == ',') { next(); args.add(parseArg()); skipWs() }
         // `@From <group>` (localized `@Von`) — RepetitionNotUnique's optional reference-group selector. The
         // group ref (a relative name/path, `RuleGroup`, `..`, or absolute) is captured raw as a trailing

@@ -115,6 +115,7 @@ enum class ConditionLanguage(val code: String) {
             "ApplikationsBedingung" to "CustomCondition",
             "Fuer" to "For",
             "Von" to "From",
+            "Zu" to "To",
             "Heute" to "Today",
             "DifferenzInTagen" to "DifferenceInDays",
             "DifferenzInMonaten" to "DifferenceInMonths",
