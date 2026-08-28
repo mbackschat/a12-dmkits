@@ -80,10 +80,13 @@ public record ListAggregate(AggOp op, List<AggregateOperand> operands) implement
             // the same starred group listed twice is ACCEPTED, while a group beside its own descendant is
             // MVK_DUPLICATE_PARAM2 — an INDIRECT overlap this direct check never saw, and which stays
             // kernel-arbitrated because deciding it here would mean owning the expansion's extent.
+            // The `$` outer-iteration correlation is part of the identity, exactly as it is in
+            // FirstFilledValue's richer EntityIdentity: `$path` reads the outer row and `path` the current
+            // one, so the two are different operands and may share a slot list.
             String identity = switch (o) {
                 case FieldListRef ignored -> null;
                 case GroupListRef ignored -> null;
-                case FieldRef f -> f.renderedPath();
+                case FieldRef f -> (f.correlated() ? "$" : "") + f.renderedPath();
             };
             if (identity == null) {
                 continue;
