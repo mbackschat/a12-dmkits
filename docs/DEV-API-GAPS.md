@@ -36,7 +36,11 @@ The gaps below were the **ergonomic and consistency remainder** — what added f
 
 ## 2. Open
 
-_None open._
+- **DG40 — the typed temporal surface is KIND-keyed, so a kernel-legal cross-format temporal condition is unrepresentable (opened 2026-08-28, measured).** [KF206](KERNEL-FINDINGS.md#kf206) makes `timeField("F").format("yyyy-MM-dd")` a legal declaration and [KF211](KERNEL-FINDINGS.md#kf211) measures that the kernel then treats that cell as a date at every gate: it **admits** `[TimeAsDate] == [DateAsDate]`, `[TimeAsDate] > [DateAsDate]`, `YearFromDate(TimeAsDate)` and `DifferenceInDays(TimeAsDate, DateAsDate)`, while refusing `HoursFromTime` on the same cell and `[TimeAsTime] == [DateAsDate]` on a clock-declared sibling. Our surface can express **none** of the admitted four: `m.time(path)` yields a `TimeRef` whose only comparison is `agreesWith(TimeRef)`, and `m.date(path)` **throws** on a TIME field (`BoundModel.date`, `kind != ValueKind.DATE`). So the gate we present is the field's `kind`; the kernel's is the declared format's component set.
+
+  This is the **type-level** form of an ungrounded client-side refusal — API-FINDINGS finding 128's shape, where there is no error to measure, only a missing factory, so the gap reads as "not a thing" rather than "refused". The refusal is *correct* for every conventional declaration (the kernel refuses `HH:mm:ss` TIME against a DATE, measured), which is exactly why it went unnoticed: kind and format agree everywhere except on the exotic declaration.
+
+  **Why it is a row rather than a fix.** Making the temporal refs format-keyed is a public-surface design decision with fan-out across `DateRef`/`TimeRef`/`DateTimeRef`/`DateFragmentRef`, the comparability laws, and the operator catalog, and the honest question — *should the typed surface model A12's component sets instead of its kinds?* — is the owner's, not a side effect of the task that found it. Until then `adapter.laws.TemporalDeclaredFormatGateKernelTest` authors these conditions as raw strings and says why. **What would settle it:** a decision on whether the kind-keyed accessors stay the front door with a format-aware escape hatch beside them, or the refs become format-keyed throughout.
 
 ---
 
