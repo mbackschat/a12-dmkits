@@ -3996,7 +3996,7 @@
       "returns": "number",
       "meaning": "Counts the distinct values among the listed fields (the count/number of different values), typically over a repetition list.",
       "constraints": [
-        "operands must be type-homogeneous, in one of three classes: string/enum together, all numbers, or all date-like — DATE/TIME/DATETIME (MVK_STRING_ENUM_AND_NON_STRING_ENUM / MVK_NUMBER_AND_NON_NUMBER / MVK_DATE_AND_NONDATE)",
+        "operands must be type-homogeneous, in one of three classes: string/enum/custom together, all numbers, or all date-like — DATE/DATEFRAGMENT/TIME/DATETIME (MVK_STRING_ENUM_AND_NON_STRING_ENUM / MVK_NUMBER_AND_NON_NUMBER / MVK_DATE_AND_NONDATE)",
         "date-like operands must additionally share one declared COMPONENT SET — two date-like fields are not enough (MVK_DATEFORMATS_NOT_COMPATIBLE)",
         "no booleans/confirms (MVK_ONLY_STRING_ENUM_NUMBER_CMP_DATE_ALLOWED)",
         "more than one field or a repetition list; no repeated direct field, but a wildcarded (starred) operand may repeat (MVK_DUPLICATE_PARAM1)"

@@ -73,9 +73,13 @@ public record CountAggregate(CountOp op, List<AggregateOperand> fields, List<Gro
 
     /**
      * NumberOfDifferentValues compares values, so its operands must be type-homogeneous (verified
-     * 2026-06-04; temporal operands added 2026-07-25): string/enum together, all numbers, or all
-     * <b>date-like</b> (DATE/TIME/DATETIME — the kernel's own code name says so and it accepts each pair,
-     * {@code validate.laws.AggregateSlotLawsTest}). Booleans/confirms never.
+     * 2026-06-04; temporal operands added 2026-07-25): string/enum/custom together, all numbers, or all
+     * <b>date-like</b> (DATE/DATE_FRAGMENT/TIME/DATETIME — the kernel's own code name says so and it accepts
+     * each pair, {@code validate.laws.NumberOfDifferentValuesKindLawsTest}). Booleans/confirms never.
+     *
+     * <p>A custom field type counts as textual and a date fragment as date-like — both are ordinary kinds the
+     * model produces, and the kernel compares them here. {@code OpListMath.resultKind} folds DATE_FRAGMENT
+     * into DATE for the Min/Max sibling on the same grounds.
      *
      * <p>Two temporal laws are deliberately NOT pre-checked and stay F4-arbitrated, as the MVK ledger
      * classifies them: mixing a date with a non-date is {@code MVK_DATE_AND_NONDATE} (caught by the
@@ -94,7 +98,7 @@ public record CountAggregate(CountOp op, List<AggregateOperand> fields, List<Gro
         }
         for (FieldOperand f : fields) {
             switch (f.kind()) {
-                case STRING, ENUMERATION, NUMBER, DATE, TIME, DATE_TIME -> { }
+                case STRING, ENUMERATION, CUSTOM, NUMBER, DATE, DATE_FRAGMENT, TIME, DATE_TIME -> { }
                 default -> throw new IllegalArgumentException("NumberOfDifferentValues cannot compare "
                         + f.renderedPath() + " (" + f.kind()
                         + ") — MVK_ONLY_STRING_ENUM_NUMBER_CMP_DATE_ALLOWED");
@@ -129,7 +133,7 @@ public record CountAggregate(CountOp op, List<AggregateOperand> fields, List<Gro
         static ValueClass of(ValueKind kind) {
             return switch (kind) {
                 case NUMBER -> NUMERIC;
-                case DATE, TIME, DATE_TIME -> TEMPORAL;
+                case DATE, DATE_FRAGMENT, TIME, DATE_TIME -> TEMPORAL;
                 default -> TEXTUAL;
             };
         }
