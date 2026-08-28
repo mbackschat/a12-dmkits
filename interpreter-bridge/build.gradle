@@ -1,0 +1,84 @@
+// :interpreter-bridge — the kernel-free ConditionReadBack provider foreseen as ruling 6 in
+// KERNEL-DECOUPLING-PROPOSAL §2a: the interpreter parses the full grammar into its own AST, and this module
+// maps that AST onto rulekit's typed Condition. Building through the rulekit DSL is what runs rulekit's
+// checks, so the mapping IS the validation — no check is re-implemented here.
+//
+// Its own module, beside :adapter rather than inside either kit: it is the one place that depends on BOTH
+// :rulekit and :interpreter, and the `dm.modelkit ⊥ dm.rulekit` sibling layering keeps a kit from taking on
+// a sibling. Kernel-free, like the kits — the kernel-backed provider stays in :adapter.
+plugins {
+    id 'java-library'
+    // Kotlin JVM — this module's own sources. The source AST it maps FROM is the interpreter's Kotlin AST, and
+    // Kotlin's `internal` is what keeps the mapping's helper surface module-visible rather than public: the port
+    // (InterpreterConditionReadBack) is the only type a consumer resolves, and Java has no visibility that says so.
+    id 'org.jetbrains.kotlin.jvm'
+}
+
+base { archivesName = 'dmkits-interpreter-bridge' }
+
+repositories {
+    mavenLocal()
+    mavenCentral()
+}
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(21)
+    }
+}
+
+dependencies {
+    // The target AST and the port this module implements.
+    api project(':rulekit')
+    // The source AST + its parser. The JVM variant of the multiplatform publication.
+    implementation project(':interpreter')
+    // Walking a model's rules out of DM-JSON.
+    implementation 'com.fasterxml.jackson.core:jackson-databind:2.18.2'
+
+    testImplementation platform('org.junit:junit-bom:5.11.4')
+    testImplementation 'org.junit.jupiter:junit-jupiter'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+}
+
+tasks.named('test') {
+    useJUnitPlatform()
+}
+
+// The module's kernel-freedom, enforced. The mapping exists so rulekit's checks can run with NO kernel on
+// the classpath, and it holds in TEST scope too: these tests reach rulekit's builders directly rather than
+// through :adapter, which is what lets them run in a lane that has no kernel artifacts at all.
+def verifyInterpreterBridgePurity = tasks.register('verifyInterpreterBridgePurity') {
+    group = 'verification'
+    description = 'Fail if any interpreter-bridge source imports or references com.mgmtp.*/groovy.*.'
+    def sourceDirs = [file('src/main'), file('src/test')]
+    inputs.files(sourceDirs)
+    doLast {
+        def forbidden = ['com.mgmtp.', 'groovy.']
+        def violations = []
+        def scanned = 0
+        sourceDirs.each { dir ->
+            if (!dir.exists()) return
+            dir.eachFileRecurse { f ->
+                if (!(f.name.endsWith('.kt') || f.name.endsWith('.java'))) return
+                scanned++
+                // Strip block comments (incl. KDoc/Javadoc) then line comments; any survivor is real code.
+                def code = f.text.replaceAll(/(?s)\/\*.*?\*\//, '').replaceAll(/(?m)\/\/.*$/, '')
+                forbidden.each { bad ->
+                    (code =~ /\Q${bad}\E[\w.]+/).each { hit ->
+                        violations << "${rootDir.toPath().relativize(f.toPath())}: ${hit}".toString()
+                    }
+                }
+            }
+        }
+        if (scanned == 0) {
+            throw new GradleException('interpreter-bridge purity scanned no files — the guard is not looking at the source')
+        }
+        if (violations) {
+            throw new GradleException(
+                "interpreter-bridge purity violated — the module maps the interpreter AST onto rulekit's typed\n" +
+                "Condition so that rulekit's checks run with NO kernel present; the kernel-backed provider is\n" +
+                ":adapter. Forbidden references:\n  " + violations.join('\n  '))
+        }
+    }
+}
+tasks.named('check') { dependsOn verifyInterpreterBridgePurity }

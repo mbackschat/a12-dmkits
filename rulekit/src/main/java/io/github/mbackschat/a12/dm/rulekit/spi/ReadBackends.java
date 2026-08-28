@@ -37,10 +37,11 @@ public final class ReadBackends {
     /** The read-back backend, or a fail-fast {@link BackendRequiredException} if none is present. */
     public static ConditionReadBack require() {
         return current().orElseThrow(() -> new BackendRequiredException(
-                "condition read-back requires a kernel backend, but none is on the classpath — read-back "
+                "condition read-back requires a provider, but none is on the classpath — read-back "
                         + "parses a stored condition into a typed AST, which has no structural-only fallback. "
-                        + "Add the kernel backend (the CLI bundles it; a library consumer adds the :adapter "
-                        + "module) to read conditions back; typed authoring and model reads work without it."));
+                        + "Add one to read conditions back: the kernel-backed :adapter (the CLI bundles it), or "
+                        + "the kernel-free :interpreter-bridge; typed authoring and model reads work without "
+                        + "either."));
     }
 
     /** Inject a read-back backend for a test ({@code null} simulates its absence). Wins over discovery until {@link #reset}. */

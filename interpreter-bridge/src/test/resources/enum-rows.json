@@ -1,0 +1,97 @@
+{
+    "header": {
+        "id": "enum-rows",
+        "modelType": "document",
+        "modelVersion": "28.4.0",
+        "locales": [
+            {
+                "code": "en_US"
+            }
+        ],
+        "labels": [],
+        "annotations": [],
+        "modelReferences": []
+    },
+    "content": {
+        "modelInfo": {
+            "name": "enum-rows",
+            "variant": "cockpit",
+            "revision": "Arbeitsversion",
+            "baseYear": "2020",
+            "immutable": false
+        },
+        "modelConfig": {
+            "decimalSeparator": ".",
+            "timeZone": "Europe/Berlin",
+            "conditionLanguage": {
+                "code": "en_US"
+            },
+            "fieldRefByShortNameAllowed": true
+        },
+        "modelRoot": {
+            "rootGroups": [
+                {
+                    "type": "Group",
+                    "id": "/Basket",
+                    "name": "Basket",
+                    "Group": {
+                        "repeatability": 1,
+                        "elements": [
+                            {
+                                "type": "Field",
+                                "id": "/Basket/Reference",
+                                "name": "Reference",
+                                "Field": {
+                                    "fieldType": {
+                                        "type": "StringType"
+                                    }
+                                }
+                            },
+                            {
+                                "type": "Group",
+                                "id": "/Basket/Lines",
+                                "name": "Lines",
+                                "Group": {
+                                    "repeatability": 20,
+                                    "elements": [
+                                        {
+                                            "type": "Field",
+                                            "id": "/Basket/Lines/Label",
+                                            "name": "Label",
+                                            "Field": {
+                                                "fieldType": {
+                                                    "type": "StringType"
+                                                }
+                                            }
+                                        },
+                                        {
+                                            "type": "Field",
+                                            "id": "/Basket/Lines/Status",
+                                            "name": "Status",
+                                            "Field": {
+                                                "fieldType": {
+                                                    "type": "EnumerationType",
+                                                    "EnumerationType": {
+                                                        "values": [
+                                                            {
+                                                                "value": "OPEN"
+                                                            },
+                                                            {
+                                                                "value": "SHIPPED"
+                                                            }
+                                                        ],
+                                                        "categories": []
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    ]
+                                }
+                            }
+                        ]
+                    }
+                }
+            ]
+        }
+    }
+}

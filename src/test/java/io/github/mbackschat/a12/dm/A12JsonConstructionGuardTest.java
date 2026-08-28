@@ -39,6 +39,7 @@ class A12JsonConstructionGuardTest {
             "schemakit/src/main",
             "cli/src/main",
             "adapter/src/main",
+            "interpreter-bridge/src/main",
             "interpreter/src/commonMain",
             "interpreter/src/jvmMain",
             "interpreter/src/jsMain");
@@ -333,6 +334,9 @@ class A12JsonConstructionGuardTest {
                     + "::jackson-object-mapper#1", REVIEW_JSON),
             entry("adapter/src/main/java/io/github/mbackschat/a12/dm/adapter/review/DeltaValueParser.java"
                     + "::jackson-object-mapper#1", REVIEW_JSON),
+
+            entry("interpreter-bridge/src/main/kotlin/io/github/mbackschat/a12/dm/bridge/"
+                    + "InterpreterConditionReadBack.kt::jackson-json-mapper-builder#1", A12_MODEL_CODEC),
 
             entry("interpreter/src/commonMain/kotlin/io/github/mbackschat/a12/dm/interpreter/A12Json.kt"
                     + "::kotlinx-default-json#1", A12_INTERPRETER_CODEC),
