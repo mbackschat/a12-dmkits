@@ -203,16 +203,28 @@ class RepeatableTimeComponentScopeDiffTest {
      * The stale targets are seeded on purpose: they turn the observation into `CLEARED` rather than an absent
      * outcome, so the arm cannot pass vacuously on a build where the computation disappeared entirely.
      */
-    @Test fun aZeroPaddedNumberComponentProducesNoClockWhateverTheLengthDeclaration() =
-        agree(SLOT_NUM, "the padded spelling the checked digit-String carrier converts yields no clock here",
-            mapOf(at(SLOT_NUM, 1, 1) to "CLEARED",
-                  at(SLOT_NUM, 1, 2) to "CLEARED",
-                  at(SLOT_NUM, 2, 1) to "CLEARED")) { d ->
+    @Test fun aZeroPaddedNumberComponentProducesNoClockWhateverTheLengthDeclaration() {
+        val build: (Both) -> Unit = { d ->
             d.topology().numbers("05", "02", "04", "09", "10", "09")
             d.field(SLOT_NUM, "07:15:00", 1, 1, 1, 1)
             d.field(SLOT_NUM, "07:15:00", 1, 1, 2, 1)
             d.field(SLOT_NUM, "07:15:00", 1, 2, 1, 1)
         }
+        agree(SLOT_NUM, "the padded spelling the checked digit-String carrier converts yields no clock here",
+            mapOf(at(SLOT_NUM, 1, 1) to "CLEARED",
+                  at(SLOT_NUM, 1, 2) to "CLEARED",
+                  at(SLOT_NUM, 2, 1) to "CLEARED"), build)
+        assertEquals(
+            listOf("zahlHatFuehrendeNullen|$ROOT[1]/Parents[1]/ParentMinute",
+                   "zahlHatFuehrendeNullen|$ROOT[1]/Parents[1]/Tasks[1]/RowSecond",
+                   "zahlHatFuehrendeNullen|$ROOT[1]/Parents[2]/ParentMinute",
+                   "zahlHatFuehrendeNullen|$ROOT[1]/Parents[2]/Tasks[1]/RowSecond",
+                   "zahlHatFuehrendeNullen|$ROOT[1]/RootHour"),
+            formalErrors(build),
+            "the kernel names the cause itself: a padded Number component is a leading-zero formal error at "
+                + "every scope, so the clear is poison-driven rather than an incomplete construction",
+        )
+    }
 
     // ── SPEC-05: checked digit-String components ────────────────────────────────────────────────────────────
 
