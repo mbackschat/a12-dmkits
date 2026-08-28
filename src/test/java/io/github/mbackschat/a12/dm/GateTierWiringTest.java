@@ -44,6 +44,31 @@ class GateTierWiringTest {
     }
 
     @Test
+    void infographicFreshnessBlocksPaidSetupWithoutStartingASecondJob() throws IOException {
+        String ci = Files.readString(locate(".github/workflows/ci.yml"));
+        int buildStart = ci.indexOf("  build:");
+        assertTrue(buildStart >= 0, "missing CI build job");
+        assertFalse(ci.contains("  infographic-preflight:"),
+                "a separate preflight job duplicates runner startup and repository checkout on every green run");
+
+        String build = ci.substring(buildStart);
+        int checkout = build.indexOf("- name: Checkout rulekit");
+        int preflight = build.indexOf("- name: Verify infographic claims, placements, and public copies");
+        int kernelCheckout = build.indexOf("- name: Checkout the kernel bootstrap kit");
+        int javaSetup = build.indexOf("- name: Set up JDK 21 + 25");
+        int gradleSetup = build.indexOf("- name: Set up Gradle cache");
+        int kernelBootstrap = build.indexOf("- name: Bootstrap the A12 kernel from public sources");
+        assertTrue(checkout >= 0 && checkout < preflight,
+                "the preflight needs only the already-required rulekit checkout");
+        assertTrue(preflight < kernelCheckout && preflight < javaSetup && preflight < gradleSetup
+                        && preflight < kernelBootstrap,
+                "the preflight must fail before Kernel checkout, toolchain setup, cache restore, or bootstrap");
+        assertTrue(build.substring(preflight, kernelCheckout)
+                        .contains("run: ./scripts/check-infographic-freshness.sh"),
+                "the first post-checkout step must execute the shell-only infographic freshness guard");
+    }
+
+    @Test
     void nightlyWorkflowRunsOnlyTheRoutinePerformanceGate() throws IOException {
         String nightly = Files.readString(locate(".github/workflows/nightly-performance.yml"));
 

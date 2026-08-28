@@ -33,6 +33,7 @@ Agent-first router: find your job, follow the links. The per-doc entries below d
 | understand **A12's canonical document shape** and why we speak only it | the format spec in [KERNEL-FINDINGS](KERNEL-FINDINGS.md) "The canonical Document JSON …", the rule in [CLAUDE.md](../CLAUDE.md), the boundary contracts in [INTERPRETER-API-SPEC](INTERPRETER-API-SPEC.md) §4 / [CLI-SPEC](CLI-SPEC.md) / [CONFORMANCE-CORPUS-SPEC](CONFORMANCE-CORPUS-SPEC.md) §4, and the account in [INTERPRETER-FINDINGS](INTERPRETER-FINDINGS.md) IF227–IF230 *(the migration plan is retired: [archived](archived/A12-SHAPE-CONSOLIDATION.md))* |
 | settle a **licensing** question | [LICENSING](LICENSING.md) |
 | see the **big-picture architecture** (modules, boundaries, dependency edges) | [ARCHITECTURE](ARCHITECTURE.md) |
+| regenerate or refine the **README infographics** | [INFOGRAPHICS](INFOGRAPHICS.md) |
 | read the **vision + decision log** | [PROJECT-DESIGN](PROJECT-DESIGN.md) |
 | work with the **operator catalog** contract | [CATALOG-SPEC](CATALOG-SPEC.md) |
 | do **JSON-Schema import/export** | [SCHEMAKIT-SPEC](SCHEMAKIT-SPEC.md) |
@@ -41,6 +42,7 @@ Agent-first router: find your job, follow the links. The per-doc entries below d
 
 - **[PROJECT-DESIGN.md](PROJECT-DESIGN.md)** — the one argument: vision (the bidirectional *read → explain → modify → diff → validate* loop), requirements (`Fn`/`Nn`/`Dn`), architecture, the operator-catalog spine, the decision log (§17), the phased roadmap (§16 — phasing *intent*; what's built is shown by the docs + demos), and the **modelkit addendum (§21)** — the structure-authoring peer of rulekit (fork #8): why it's worth it, why not `betterbuilders`, the formalize-the-knowhow gradient + five options, a material-source evaluation, and the read→edit→write-back plan. Densely cross-referenced by stable anchors; component *detail* splits out into specs rather than fragmenting the argument.
 - **[ARCHITECTURE.md](ARCHITECTURE.md)** — the *structural* view of the system **as it is today**: the big-picture component map, the Gradle units (library `:` / opt-in `:adapter` / `:cli`) and their dependencies, the library's package layering (`dm.core` + the sibling kits `dm.rulekit` ⊥ `dm.modelkit` + `dm.edit`), the N8/D15 kernel-coupling boundary, the public API + data-only out-surface, and the **CLI** (picocli, the self-describing surface, native-image complications, how the eval/probe harnesses exercise it). Describes the present only — no roadmap/status (§7 explains why and how it stays living). Complements the design's conceptual component view (§15).
+- **[INFOGRAPHICS.md](INFOGRAPHICS.md)** — the regeneration and refinement source for the README infographic series: exact copy, relationships, compiled image-generation prompts, factual sources, freshness triggers, canonical and public-release asset paths, README placement, and visual acceptance gates.
 
 ## The kits (library)
 

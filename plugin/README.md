@@ -34,6 +34,13 @@ It is built **agent-first** — the #1 use is inside a coding-agent session (Cla
 - **Judgment where `--help` can't reach.** A bundled skill teaches what the catalog can't — condition *polarity*, error-field paths, iteration scope — so a scaffolded rule has the right shape before the kernel ever sees it.
 - **Safe by construction.** Envelope-producing operations share one standard result shape, while raw artifact/catalog and text-view modes are explicit in the operational profile; deletes and structural refactors are **gated** (a referenced field won't silently vanish); a multi-op `apply` session is **atomic** (rollback on any failure).
 
+<p align="center">
+  <a href="assets/infographics/dmtool-safe-editing.png">
+    <img src="assets/infographics/dmtool-safe-editing.png" alt="dmtool discovery, typed authoring, Kernel gate, atomic write, and result mechanisms" width="720">
+  </a>
+</p>
+<p align="center"><sub>Click the infographic to open the full-resolution image.</sub></p>
+
 ### A session, in natural language
 
 You don't type `dmtool` — your agent does. You state the rule in plain language; the agent resolves the model, reasons about **polarity** and **operator semantics**, and the **real kernel** confirms the authored rule before anything is written:
@@ -256,6 +263,17 @@ Import is **best-effort** — it maps as much as possible (even unbounded arrays
 End-to-end walkthroughs of **every verb** — command + real captured output — live in [`examples/`](examples/) (full [index](examples/README.md)): discovering the tool, reading & **reviewing** a model (`model report` / `model diff`), the rule/computation edit loop, structure editing with the safe-delete gate, the atomic `apply` session, runtime evaluation, **JSON Schema ⇄ model** interop, custom field types & conditions, multi-file **workspaces**, and the version/compatibility surface.
 
 Want ideas for what to *ask*? [`SCENARIOS.md`](SCENARIOS.md) catalogues realistic **multi-step sessions** — ordered, plain-language asks you can hand to your agent verbatim: from-scratch authoring, evolving an existing model's rules, refactors, computations, and more.
+
+## Runtime performance and memory
+
+The embedded Interpreter is the runtime engine behind dmtool's evaluation verbs. These measurements cover that in-process engine, not dmtool process startup or CLI parsing; the full method and boundaries are in the public Interpreter [performance report](https://github.com/mbackschat/a12-interpreter-releases/blob/main/PERFORMANCE.md).
+
+<p align="center">
+  <a href="assets/infographics/interpreter-vs-kernel.png">
+    <img src="assets/infographics/interpreter-vs-kernel.png" alt="Measured A12 Interpreter performance and resident memory compared with the A12 Kernel" width="720">
+  </a>
+</p>
+<p align="center"><sub>Click the infographic to open the full-resolution image.</sub></p>
 
 <!-- source-statistics:dmtool:start -->
 ## Source statistics

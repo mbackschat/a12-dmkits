@@ -57,6 +57,17 @@ class DmtoolLauncherTest {
         assertEquals(0, code, () -> "scripts/selftest-precommit-doc-guards.sh failed:\n" + output);
     }
 
+    @Test
+    void thePrePushHookRunsTheCheapCiGuardsAndRefusesBlindValidation() throws IOException, InterruptedException {
+        assumeTrue(!System.getProperty("os.name", "").toLowerCase().contains("win"), "POSIX-only hook self-test");
+        Path script = repoFile("scripts/selftest-prepush-ci.sh");
+        Process process = new ProcessBuilder("bash", script.toString())
+                .redirectErrorStream(true).start();
+        String output = new String(process.getInputStream().readAllBytes());
+        int code = process.waitFor();
+        assertEquals(0, code, () -> "scripts/selftest-prepush-ci.sh failed:\n" + output);
+    }
+
     private static Path repoFile(String relative) {
         for (String base : List.of(".", "..", "../..")) {
             Path candidate = Path.of(base, relative);

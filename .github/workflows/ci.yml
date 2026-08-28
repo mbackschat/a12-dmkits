@@ -39,6 +39,13 @@ jobs:
         with:
           path: a12-dmkits
 
+      # Shell-only and first after the checkout already required by every green run. A failure stops before the
+      # Kernel checkout, JDK and Gradle setup, cache restore, or bootstrap, without paying for a second job and
+      # duplicate checkout on every successful run.
+      - name: Verify infographic claims, placements, and public copies
+        working-directory: a12-dmkits
+        run: ./scripts/check-infographic-freshness.sh
+
       # The bootstrap clones the kernel sources as siblings under its parent dir, so checking it out
       # next to rulekit makes A12_ROOT = the workspace (the layout the script expects locally).
       - name: Checkout the kernel bootstrap kit

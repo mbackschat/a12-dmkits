@@ -91,14 +91,20 @@ report_home "the machine-default home" "$HOME/.gradle"
 [[ "$(cd "$home" 2>/dev/null && pwd)" != "$(cd "$HOME/.gradle" 2>/dev/null && pwd)" ]] \
     && report_home "the home this build would use" "$home"
 
-# 3b — the staging hook. Ignored files can still be force-added, so .gitignore is not the defence here.
+# 3b — committed Git hooks. Ignored files can still be force-added, and CI changes need a local push gate.
 hooks_path="$(git -C "$ROOT" config --get core.hooksPath || true)"
 if [[ "$hooks_path" == ".githooks" ]]; then
-    pass "the pre-commit hook is wired (core.hooksPath=.githooks)"
+    pass "the commit and push hooks are wired (core.hooksPath=.githooks)"
 else
-    warn "the pre-commit hook is not wired in this clone"
+    warn "the committed Git hooks are not wired in this clone"
     note "run: git -C \"$ROOT\" config core.hooksPath .githooks"
-    note "it refuses staged build output and logs; TrackedOutputGuardTest still catches them in CI"
+    note "the hooks guard commit messages, staged output/doc drift, and the pre-push CI preflight"
+fi
+if actionlint_command="$(command -v "${ACTIONLINT:-actionlint}" 2>/dev/null)"; then
+    pass "actionlint is available for the pre-push workflow check ($actionlint_command)"
+else
+    warn "actionlint is unavailable, so the pre-push hook will refuse rather than skip workflow validation"
+    note "install it on macOS with: brew install actionlint"
 fi
 
 # 4 — the kernel, which no public repository serves.

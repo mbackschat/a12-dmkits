@@ -387,6 +387,7 @@ tasks.register('docGuardTest', Test) {
         includeTestsMatching 'io.github.mbackschat.a12.dm.cli.CommandReferencesResolveTest'
         includeTestsMatching 'io.github.mbackschat.a12.dm.cli.CliSpecVerbTableTest'
         includeTestsMatching 'io.github.mbackschat.a12.dm.cli.SharedReadmeRegionTest'
+        includeTestsMatching 'io.github.mbackschat.a12.dm.cli.InfographicAssetGuardTest'
         includeTestsMatching 'io.github.mbackschat.a12.dm.cli.DocsIndexGuardTest'
         includeTestsMatching 'io.github.mbackschat.a12.dm.cli.DirectoryIndexGuardTest'
         includeTestsMatching 'io.github.mbackschat.a12.dm.cli.GapLedgerTemplateGuardTest'
@@ -415,6 +416,12 @@ tasks.register('docGuardTest', Test) {
             // CommandReferencesResolveTest scans the project instructions too (root AGENTS.md is a symlink to it).
             'CLAUDE.md'          : rootProject.file('CLAUDE.md'),
             'plugin/README.md'   : rootProject.file('plugin/README.md'),
+            'infographic assets': rootProject.fileTree('.') {
+                include 'assets/infographics/*.png'
+                include 'plugin/assets/infographics/*.png'
+                include 'interpreter/public-release/assets/infographics/*.png'
+            },
+            'interpreter release README': rootProject.file('interpreter/public-release/README.md'),
             'skill/SKILL.md'     : rootProject.file('skill/SKILL.md'),
             'plugin-codex/AGENTS.md': rootProject.file('plugin-codex/AGENTS.md'),
             'docs/CLI-SPEC.md'   : rootProject.file('docs/CLI-SPEC.md'),

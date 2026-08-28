@@ -1,0 +1,27 @@
+#!/usr/bin/env bash
+# Agent-neutral push gate. Git invokes this hook for terminal, IDE, Claude Code, and Codex CLI pushes alike.
+# Wire the committed hooks once per clone with: git config core.hooksPath .githooks
+set -euo pipefail
+
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+ACTIONLINT_COMMAND="${ACTIONLINT:-actionlint}"
+
+"$ROOT/scripts/check-infographic-freshness.sh"
+
+if ! command -v "$ACTIONLINT_COMMAND" >/dev/null 2>&1; then
+  cat >&2 <<'MESSAGE'
+
+pre-push: actionlint is required to validate the GitHub Actions workflows before push.
+
+Install it once on macOS with:
+
+  brew install actionlint
+
+Then push again. Set ACTIONLINT=/path/to/actionlint when it is installed outside PATH.
+`git push --no-verify` bypasses this local guard; GitHub CI remains authoritative.
+MESSAGE
+  exit 1
+fi
+
+"$ACTIONLINT_COMMAND" "$ROOT/.github/workflows/"*.yml
+echo "pre-push: infographic preflight and GitHub Actions workflows are valid"

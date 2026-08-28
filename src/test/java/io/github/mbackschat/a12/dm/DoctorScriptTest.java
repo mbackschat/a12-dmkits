@@ -81,6 +81,17 @@ class DoctorScriptTest {
         assertEquals(1, run.exitCode(), "an unpublished kernel must fail, it is the first-run trap:\n" + run.output());
     }
 
+    @Test
+    void theAgentNeutralPushPrerequisitesAreReported(@TempDir Path home) throws Exception {
+        var run = runDoctorWith(home, home.resolve("missing-actionlint").toString());
+
+        assertTrue(run.output().contains("the commit and push hooks are wired (core.hooksPath=.githooks)"),
+                run.output());
+        assertTrue(run.output().contains("actionlint is unavailable, so the pre-push hook will refuse"),
+                run.output());
+        assertTrue(run.output().contains("brew install actionlint"), run.output());
+    }
+
     private record Run(String output, int exitCode) {}
 
     /** Fabricates an otherwise healthy machine: the kernel is published, nothing else is assumed. */
@@ -89,13 +100,25 @@ class DoctorScriptTest {
         return runDoctor(home);
     }
 
+    private static Run runDoctorWith(Path home, String actionlint) throws IOException, InterruptedException {
+        Files.createDirectories(home.resolve(".m2/repository/com/mgmtp"));
+        return runDoctor(home, actionlint);
+    }
+
     private static Run runDoctor(Path home) throws IOException, InterruptedException {
+        return runDoctor(home, null);
+    }
+
+    private static Run runDoctor(Path home, String actionlint) throws IOException, InterruptedException {
         Path root = repositoryRoot();
         var builder = new ProcessBuilder("bash", root.resolve("scripts/doctor.sh").toString());
         builder.directory(root.toFile());
         builder.redirectErrorStream(true);
         builder.environment().put("HOME", home.toString());
         builder.environment().remove("GRADLE_USER_HOME");
+        if (actionlint != null) {
+            builder.environment().put("ACTIONLINT", actionlint);
+        }
 
         Process process = builder.start();
         String output = new String(process.getInputStream().readAllBytes(), StandardCharsets.UTF_8)

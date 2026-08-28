@@ -13,6 +13,13 @@ Author, read, and safely edit the **rules** and **structure** of A12 Kernel docu
 - **the interpreter** — **[PUBLIC RELEASE REPOSITORY →](https://github.com/mbackschat/a12-interpreter-releases)** — kernel-free runtime evaluation (validate / compute); one engine for the JVM, native binary, Node.js, and browser, with a production browser JavaScript entry of about 250 kB gzip
 - **`dmtool`** — **[PUBLIC RELEASE REPOSITORY →](https://github.com/mbackschat/a12-dmtool-releases)** — the CLI over all of it: self-describing, machine-readable by default, explicitly profiled artifacts, agent-first
 
+<p align="center">
+  <a href="assets/infographics/a12-dmkits-toolchain.png">
+    <img src="assets/infographics/a12-dmkits-toolchain.png" alt="A12 dmkits toolchain from typed authoring through Kernel acceptance to runtime evaluation" width="720">
+  </a>
+</p>
+<p align="center"><sub>Click the infographic to open the full-resolution image.</sub></p>
+
 ---
 
 <!-- shared:dmtool-story — canonical HERE; mirrored verbatim into plugin/README.md (guarded by SharedReadmeRegionTest). Keep it link-light: NO docs/ links (the public mirror has no docs/ tree). -->
@@ -33,6 +40,13 @@ It is built **agent-first** — the #1 use is inside a coding-agent session (Cla
 - **Self-describing — a cold agent needs no external docs.** `manifest` lists every verb × parameter with a worked example; `operators` / `patterns` / `diagnostics` / `schema` expose the DSL vocabulary, the validation idioms, each diagnostic code, and the exact I/O shape — all from the binary itself.
 - **Judgment where `--help` can't reach.** A bundled skill teaches what the catalog can't — condition *polarity*, error-field paths, iteration scope — so a scaffolded rule has the right shape before the kernel ever sees it.
 - **Safe by construction.** Envelope-producing operations share one standard result shape, while raw artifact/catalog and text-view modes are explicit in the operational profile; deletes and structural refactors are **gated** (a referenced field won't silently vanish); a multi-op `apply` session is **atomic** (rollback on any failure).
+
+<p align="center">
+  <a href="assets/infographics/dmtool-safe-editing.png">
+    <img src="assets/infographics/dmtool-safe-editing.png" alt="dmtool discovery, typed authoring, Kernel gate, atomic write, and result mechanisms" width="720">
+  </a>
+</p>
+<p align="center"><sub>Click the infographic to open the full-resolution image.</sub></p>
 
 ### A session, in natural language
 
@@ -861,11 +875,26 @@ Runtime evaluation — *which rules fire on this document, what does each comput
 - **Kernel-exact, by verification.** Its results are checked rule-for-rule against the real A12 kernel by a **differential test suite** plus a model-driven fuzzer, and it replays a **conformance corpus** of kernel-verified expected outcomes — captured tri-verified against the kernel's two evaluation strategies — on both JVM and JS.
 - **A standalone library, not just the CLI's engine.** One common engine serves **JVM, Node.js, and browser** applications. The public TypeScript, Kotlin, and Java API prepares finite or provider-backed workspaces, resolves includes and imported type definitions, reads Documents, reuses a prepared interpreter across form changes, runs full or partial validation, computes derived values, and hosts project field/condition callbacks.
 - **A developer-facing public release.** Start with the [public interpreter repository](https://github.com/mbackschat/a12-interpreter-releases), [try the live browser showcase](https://mbackschat.github.io/a12-interpreter-releases/showcase/), or browse the [version-matched API guide and references](https://mbackschat.github.io/a12-interpreter-releases/api/latest/). The packed-artifact-tested [source guide](docs/INTERPRETER-API-GUIDE.md) and [showcase source](interpreter/consumer-tests/browser/) remain here for contributors.
+
+<p align="center">
+  <a href="assets/infographics/a12-interpreter-runtime.png">
+    <img src="assets/infographics/a12-interpreter-runtime.png" alt="A12 Interpreter preparation, reusable request lifecycle, outputs, and Kernel conformance evidence" width="720">
+  </a>
+</p>
+<p align="center"><sub>Click the infographic to open the full-resolution image.</sub></p>
+
 ### Performance and footprint
 
 The same engine runs on the JVM, Node.js and in the browser, and the figures below come from two runtimes — latency measured in system Chrome, cross-engine comparison and memory measured on the JVM.
 
 Small enough to ship to a browser — the production JavaScript entry is **250 kB gzip**, with no A12 Kernel bytecode — and quick enough to re-run on every keystroke.
+
+<p align="center">
+  <a href="assets/infographics/interpreter-vs-kernel.png">
+    <img src="assets/infographics/interpreter-vs-kernel.png" alt="Measured A12 Interpreter performance and resident memory compared with the A12 Kernel" width="720">
+  </a>
+</p>
+<p align="center"><sub>Click the infographic to open the full-resolution image.</sub></p>
 
 Measured in system Chrome against the packed npm package, the same artifact consumers install, over the two Documents the collector defines. Each is timed **two ways**, because an application experiences both: the **first answer** a user waits for when a form opens, which includes building the interpreter, and the **warm** cost of revalidating after every keystroke, which does not.
 
@@ -990,17 +1019,18 @@ Other useful tasks:
 
 `./gradlew :test` runs the cross-kit library suite (root `:` is the integration-test host over the four kernel-free kit modules `:core`/`:rulekit`/`:modelkit`/`:edit`); the kits' main stays kernel-free and the kernel enters only as a test-scope oracle. See [`docs/CLI-SPEC.md`](docs/CLI-SPEC.md) for the CLI.
 
-## Commit hooks
+## Commit and push hooks
 
-The committed hooks enforce the commit-message convention and two pre-commit checks. Enable them once per clone:
+The committed hooks enforce the commit-message convention, two pre-commit checks, and a pre-push CI check. Install the workflow validator and enable all hooks once per clone:
 
 ```sh
+brew install actionlint
 git config core.hooksPath .githooks
 ```
 
-The `commit-msg` hook hard-rejects mechanical convention violations and reminds on the judgment rule. The `pre-commit` hook refuses to stage build output or log files, and refuses a commit whose staged files can drift a CI-gated doc unless the doc guards have run since — the latter because `-Pfast` skips those guards by design, so the inner loop cannot otherwise see that class of drift.
+The `commit-msg` hook hard-rejects mechanical convention violations and reminds on the judgment rule. The `pre-commit` hook refuses to stage build output or log files, and refuses a commit whose staged files can drift a CI-gated doc unless the doc guards have run since — the latter because `-Pfast` skips those guards by design, so the inner loop cannot otherwise see that class of drift. The `pre-push` hook runs the shell-only infographic freshness and CI-cost-ordering check, then validates every GitHub Actions workflow with `actionlint`; it refuses when `actionlint` is missing instead of claiming a check it could not perform. Native Git hooks make this neutral to the caller: terminal Git, an IDE, Claude Code, and Codex CLI all trigger the same gate.
 
-**Both pre-commit checks are the early, local half of a defence, never the whole of one.** They are unwired in a fresh clone until you run the command above, and `--no-verify` bypasses them on purpose. That is deliberate: a local hook must not be the only thing standing between a mistake and the repository, so each has an authoritative counterpart that runs in CI where no hook can be assumed — `TrackedOutputGuardTest` for staged build output, and the doc guards themselves for doc drift. `scripts/doctor.sh` reports whether you wired them. Source statistics are intentionally not a push or CI concern: the maintainer-only Tokei updater is run locally, and each release assembler checks the README it publishes. To apply the commit-message check across all your repos, point your global Git template at it — copy that hook into `~/.git-template/hooks` and set `git config --global init.templateDir ~/.git-template`.
+**The local hooks are the early half of a defence, never the whole of one.** They are unwired in a fresh clone until you run the command above, and `--no-verify` bypasses them on purpose. That is deliberate: a local hook must not be the only thing standing between a mistake and the repository, so each has an authoritative counterpart in the test and CI estate. `scripts/doctor.sh` reports both hook wiring and `actionlint` availability. Source statistics are intentionally not a push or CI concern: the maintainer-only Tokei updater is run locally, and each release assembler checks the README it publishes. To apply the commit-message check across all your repos, point your global Git template at it — copy that hook into `~/.git-template/hooks` and set `git config --global init.templateDir ~/.git-template`.
 
 ## License
 
