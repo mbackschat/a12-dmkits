@@ -347,6 +347,13 @@ public final class DslRenderer {
         if (op instanceof EnumCategoryAccess c) {
             return (c.outer() ? "$" : "") + path(c.field().path().value()) + " " + keyword(c.operatorId()) + " " + c.category();
         }
+        // An index-selected field entity renders the same bare "Field For key" body a presence condition
+        // does — indexBody already folds correlation and localizes/quotes the key, so this must not fall
+        // through to the generic path(op.renderedPath()) below, which would emit that diagnostic form's
+        // hardcoded "For" and unquoted key instead of the actual condition text.
+        if (op instanceof IndexedFieldValue indexed) {
+            return indexBody(indexed);
+        }
         // a $ outer-iteration correlation on a bare reference (D13): NoFieldFilled($a, $b), or the value
         // side of an entity-valued value-list ($Group*/field). Applies to both FieldRef and FieldListRef.
         String dollar = (op instanceof FieldRef fr && fr.correlated()) || (op instanceof FieldListRef fl && fl.correlated())

@@ -1856,10 +1856,13 @@ public record io.github.mbackschat.a12.dm.rulekit.dsl.GroupRef implements io.git
 public interface io.github.mbackschat.a12.dm.rulekit.dsl.GroupReference
   public abstract io.github.mbackschat.a12.dm.rulekit.dsl.GroupRef ref()
 
-public sealed interface io.github.mbackschat.a12.dm.rulekit.dsl.IndexedFieldValue extends io.github.mbackschat.a12.dm.rulekit.dsl.Calculation
+public sealed interface io.github.mbackschat.a12.dm.rulekit.dsl.IndexedFieldValue extends io.github.mbackschat.a12.dm.rulekit.dsl.Calculation, io.github.mbackschat.a12.dm.rulekit.dsl.FieldOperand
+  public default java.lang.String duplicateIdentity()
   public abstract io.github.mbackschat.a12.dm.rulekit.dsl.FieldRef field()
+  public default java.lang.String fieldPath()
   public default io.github.mbackschat.a12.dm.rulekit.dsl.FirstFilledOperand firstFilledOperand()
   public abstract java.lang.String operatorId()
+  public default java.lang.String renderedPath()
 
 public record io.github.mbackschat.a12.dm.rulekit.dsl.IndexedFieldValueAsString implements io.github.mbackschat.a12.dm.rulekit.dsl.Calculation
   public IndexedFieldValueAsString(io.github.mbackschat.a12.dm.rulekit.dsl.IndexedFieldValue)

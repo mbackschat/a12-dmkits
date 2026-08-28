@@ -83,10 +83,16 @@ public record ListAggregate(AggOp op, List<AggregateOperand> operands) implement
             // The `$` outer-iteration correlation is part of the identity, exactly as it is in
             // FirstFilledValue's richer EntityIdentity: `$path` reads the outer row and `path` the current
             // one, so the two are different operands and may share a slot list.
+            //
+            // An indexed field (IndexedFieldValue) behaves like a single field entity here too: the same
+            // field under two different index keys is NOT a duplicate, so identity folds
+            // in the key (and every $ correlation in the shape) via the shared IndexedFieldValue#duplicateIdentity,
+            // rather than repeating that compound computation here (see Dsl.referenceIdentity's identical arm).
             String identity = switch (o) {
                 case FieldListRef ignored -> null;
                 case GroupListRef ignored -> null;
                 case FieldRef f -> (f.correlated() ? "$" : "") + f.renderedPath();
+                case IndexedFieldValue indexed -> indexed.duplicateIdentity();
             };
             if (identity == null) {
                 continue;

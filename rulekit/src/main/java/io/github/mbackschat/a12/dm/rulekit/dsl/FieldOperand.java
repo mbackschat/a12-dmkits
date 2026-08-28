@@ -10,8 +10,15 @@ package io.github.mbackschat.a12.dm.rulekit.dsl;
  * <p>A field operand is also a {@link ValueListOperand}; the value-list quantifiers accept the wider
  * type so they can additionally take an enum category projection ({@link EnumCategoryAccess}) — which
  * is NOT a {@code FieldOperand}, so it cannot leak into the other slots the kernel forbids it in.
+ *
+ * <p>The third arm, {@link IndexedFieldValue} — an index-selected field ({@code [Field For key]}) —
+ * behaves like a single field entity at every one of these slots: it never satisfies arity alone the
+ * way a starred {@link FieldListRef} does, and it participates in exact-duplicate detection keyed on
+ * field path AND index. Adding it here, rather than growing {@link AggregateOperand}
+ * a THIRD arm, satisfies both sealed hierarchies at once.
  */
-public sealed interface FieldOperand extends ValueListOperand, AggregateOperand permits FieldRef, FieldListRef {
+public sealed interface FieldOperand extends ValueListOperand, AggregateOperand
+        permits FieldRef, FieldListRef, IndexedFieldValue {
 
     /**
      * The declared value kind of the referenced field. Declared HERE rather than on {@link ValueListOperand}

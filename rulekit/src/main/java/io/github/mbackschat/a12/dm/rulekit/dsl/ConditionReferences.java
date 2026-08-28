@@ -287,10 +287,22 @@ public record ConditionReferences(Set<String> fieldPaths, Set<String> groupPaths
 
     /** A list operand contributes its field path (a category projection → its underlying enum field) plus —
      *  for a filtered list — its Having filter's refs. Accepts the wider {@link ValueListOperand} so an enum
-     *  category projection in a value-list quantifier is collected too. */
+     *  category projection in a value-list quantifier is collected too.
+     *
+     *  <p>An operand reached through a list slot is the same read as one reached directly, so the projected
+     *  forms are enumerated here as well as in the value-expression switch. This chain is {@code instanceof}
+     *  rather than a switch over the sealed type, so widening {@link FieldOperand} does not fail the build —
+     *  a new arm has to be added by hand or it silently lands in the plain-field {@code else}. */
     private static void collectOperand(ValueListOperand op, Refs refs) {
         if (op instanceof EnumCategoryAccess) {
             refs.projectedField(op.fieldPath());
+        } else if (op instanceof SemanticIndexValue indexed) {
+            refs.projectedField(indexed.field().path().value());
+        } else if (op instanceof SemanticIndexFieldValue indexed) {
+            // Both halves projected, exactly as the value-expression switch above reads them: the kernel
+            // matches a calculated field against the KEY as well as against the read (KF182).
+            refs.projectedField(indexed.field().path().value());
+            refs.projectedField(indexed.indexField().path().value());
         } else if (op instanceof GroupListRef group) {
             // A GROUP scope registers as a GROUP, not as a field. Registering its path in `fieldPaths` would
             // typecheck and read plausibly, and it would make `covers` blind to every field the kernel expands

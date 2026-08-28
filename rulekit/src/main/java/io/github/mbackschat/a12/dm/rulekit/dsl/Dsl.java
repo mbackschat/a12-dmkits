@@ -1668,6 +1668,11 @@ public final class Dsl {
         return switch (op) {
             case FieldListRef ignored -> null;   // wildcard/flattened list — kernel skips dedup here
             case FieldRef f -> (f.correlated() ? "$" : "") + f.path();
+            // An indexed field behaves like a single field entity here too: the same field under two
+            // different index keys is NOT a duplicate. Identity folds in the key (and
+            // every $ correlation in the shape) via the shared IndexedFieldValue#duplicateIdentity,
+            // rather than repeating that compound computation here (see ListAggregate's identical arm).
+            case IndexedFieldValue indexed -> indexed.duplicateIdentity();
             case EnumCategoryAccess c -> (c.outer() ? "$" : "") + c.field().path() + " -> " + c.category();
             // A GROUP scope is DELEGATED, not deduped here. A starred one is measured-skipped by the kernel
             // (`checkDuplicatesInDirectRefs` skips wildcarded refs — AggregateGroupOperandLawsTest lists the same
