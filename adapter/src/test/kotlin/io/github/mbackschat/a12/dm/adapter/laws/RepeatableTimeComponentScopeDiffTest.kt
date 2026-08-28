@@ -305,7 +305,8 @@ class RepeatableTimeComponentScopeDiffTest {
         assertEquals(
             listOf("datumFormatFalsch|$ROOT[1]/Parents[1]/Tasks[1]/RowStamp"),
             formalErrors(build),
-            "PLACEHOLDER — the formal operand channel for a malformed extractor source",
+            "a malformed extractor source reports datumFormatFalsch at the SOURCE DateTime, not at the "
+                + "computed target, and exactly once — the clean sibling row contributes no error",
         )
     }
 }

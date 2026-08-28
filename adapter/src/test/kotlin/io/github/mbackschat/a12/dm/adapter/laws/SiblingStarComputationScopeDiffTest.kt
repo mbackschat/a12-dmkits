@@ -164,8 +164,10 @@ class SiblingStarComputationScopeDiffTest {
     // ── exhaustion and placement: a policy with no source rows clears only its own stale target ────────────
 
     /** Number carries the empty-selection identity 0, so exhaustion OVERWRITES a stale target rather than
-     *  clearing it — the clear arm SPEC-2026-08-27-01 reports belongs to the temporal carriers, which have no
-     *  such identity. Independence is the point here: policy 1's value must not follow policy 2's exhaustion. */
+     *  clearing it. That bounds SPEC-2026-08-27-01's "clears only source-filled targets on exhaustion" to a
+     *  carrier this arm does not exercise; WHICH carriers clear is unmeasured here, so read this as a limit on
+     *  the Number row and not as a claim about the temporal ones. Independence is the second half of the lock:
+     *  policy 1's value must not follow policy 2's exhaustion. */
     @Test fun anExhaustedParentOverwritesItsOwnStaleTargetAndLeavesTheOtherAlone() =
         agree("policy 2 has no source rows → its stale 42 becomes the identity 0; policy 1 still selects 100",
             mapOf(selectedAt(1, 1) to "VALUE|100", selectedAt(2, 1) to "VALUE|0")) { d ->
