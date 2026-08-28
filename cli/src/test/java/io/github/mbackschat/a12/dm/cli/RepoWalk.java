@@ -28,7 +28,14 @@ final class RepoWalk {
     /**
      * Never repository content: build output, VCS and tool state, dependency trees, and this project's own agent
      * worktrees. Add to this set rather than to a caller's private copy.
+     *
+     * <p>{@code bin} is the same double-count one tool over: an Eclipse-derived IDE (Buildship, the VS Code Java
+     * extension) compiles each Gradle source set into {@code <module>/bin/<sourceSet>/}, so every scanned source
+     * file appears twice while that IDE is open on the checkout. It is gitignored (a per-module {@code bin} entry) and CI never
+     * has it, which is what makes it the worst shape of false red — reproducible only on the machine that is
+     * editing. The one tracked path under any {@code bin/} is the {@code bin/dmtool} launcher, which carries no
+     * scanned suffix, so skipping the name costs no real content.
      */
     static final Set<String> SKIPPED_DIRECTORIES =
-            Set.of("build", ".git", ".gradle", "node_modules", ".claude");
+            Set.of("build", "bin", ".git", ".gradle", "node_modules", ".claude");
 }
