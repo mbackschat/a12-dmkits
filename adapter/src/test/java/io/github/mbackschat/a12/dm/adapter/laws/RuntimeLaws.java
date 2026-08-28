@@ -1366,6 +1366,18 @@ public final class RuntimeLaws {
         }
 
         /**
+         * The static-JAVA twin of {@link KernelEngine#computeAndApply} — {@code compute()} then
+         * {@code applyTo}. It exists because a re-apply observation (compute over a document whose stored cell
+         * IS this computation's own previous output) is the only construction in which "source-identical" is
+         * beyond doubt, and a one-strategy version of that claim would state a generator's behaviour as the
+         * kernel's ({@code RepeatableTimeConstructionChangedDiffTest}).
+         */
+        public DocumentV2 computeAndApply(DocumentV2 instance) {
+            DocumentProcessingConfig cfg = config(null, Locale.US);
+            return rt.compute(instance, cfg).applyTo(instance);
+        }
+
+        /**
          * Every validation message (code + type + clean pointer) for an already-built instance — the full
          * {@code code|type|pointer} signature the codegen tri-differential (WI-1) compares, mirroring the Groovy
          * {@link RuntimeLaws#messages(String, Doc)}. So the static-JAVA codegen strategy is diffed against the

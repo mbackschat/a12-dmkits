@@ -100,10 +100,37 @@ class ComputedTimeTargetTest {
         assertTrue(
             retained.applications.filter { it.path == TARGET || it.path == PROJECTED }
                 .all { it.outcome == ComputeOutcome.VALUE },
-            "Time is the measured same-clock exception to ordinary typed source equality",
+            "a SEEDED source-equal clock is a retained action — matching the kernel on a seeded document; "
+                + "the re-apply case is where the two part company (IG142)",
         )
         assertEquals(StoredCellState.PresentValue("10:30:45"), applied.cellStateAt(TARGET, CELL))
         assertEquals(StoredCellState.PresentValue("10:30:45"), applied.cellStateAt(PROJECTED, CELL))
+    }
+
+    /**
+     * **Pins the IG142 divergence, not the contract.** Compute over a document whose Time cell IS this
+     * computation's own previous output. Both kernel strategies report NO change there
+     * (`adapter.laws.RepeatableTimeConstructionChangedDiffTest`, and `ComputedTimeTargetDiffTest`'s
+     * discriminator, whose successful channel confirms the second pass ran); the interpreter still emits a
+     * `VALUE` action, because `Document.computedValueEquals` answers `Kind.TIME -> false` unconditionally.
+     *
+     * The expectation below is therefore the WRONG answer, recorded so the row cannot rot: when IG142 is fixed
+     * this test fails and points at it. Do not "restore" it — change it to the kernel's empty action set.
+     */
+    @Test
+    fun aReapplyOverTheInterpretersOwnAppliedClockIsMeasured() {
+        val model = model(ModelTimeZone.EUROPE_BERLIN)
+        val interpreter = DmInterpreter(model)
+        val applied = interpreter.applyComputations(validDocument(model))
+        val secondPass = interpreter.retainedComputations(applied).applications
+            .filter { it.path == TARGET || it.path == PROJECTED }
+            .map { "${it.path}|${it.outcome}" }
+            .sorted()
+        assertEquals(
+            listOf("$PROJECTED|VALUE", "$TARGET|VALUE"),
+            secondPass,
+            "IG142: the interpreter re-applies a Time cell the kernel leaves alone",
+        )
     }
 
     private fun validDocument(
