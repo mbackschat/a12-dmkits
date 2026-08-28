@@ -19,13 +19,19 @@ import org.junit.jupiter.api.Test
  * hand-seeded identical clock is reported as changed at both. So the discriminating variable is how the stored
  * cell came to be there, not where the target sits, and our always-changed claim rested on a seeded document.
  *
- * The INTERPRETER half of this comparison is measured in its own module, where the retention equality is
- * visible: `ComputedTimeTargetTest.aReapplyOverTheInterpretersOwnAppliedClockIsMeasured` records that it still
- * emits a `VALUE` action here — the open divergence [IG142].
+ * The INTERPRETER half is measured in its own module and now AGREES:
+ * `ComputedTimeTargetTest.aReapplyOverTheInterpretersOwnAppliedClockRetainsNothing`. It used to emit a `VALUE`
+ * action here, which was `IG142`, retired once the mechanism below was measured.
  *
- * **No mechanism is published.** The obvious candidate — the harness seeding raw text while equality reads the
- * model-zone carrier — was tested and REFUTED: seeding the carrier form `1970-01-01T09:30:45Z` is reported as
- * changed too. What a consumer needs is the method rule: a seeded value cannot establish source identity, so an
+ * **The mechanism is the INGRESS ROUTE, and it is measured** by
+ * [SourceIdentityIngressRouteDiffTest]: A12 compares the stored and computed V2 objects, its V1 String factory
+ * leaves a typed cell holding unconverted text, and so every non-STRING kind is unconditionally changed on that
+ * route while the typed route compares converted values. Nothing about Time. *(An earlier note here published
+ * a REFUTATION of the text-form candidate on the grounds that the carrier form `1970-01-01T09:30:45Z` is also
+ * reported as changed. That control moved two variables — a `HH:mm:ss` field cannot convert that spelling
+ * either — so it distinguished nothing, and the claim is withdrawn rather than merely superseded.)*
+ *
+ * The method rule it leaves behind is unchanged: a seeded value cannot establish source identity, so an
  * apply-fidelity claim must be built on a re-apply.
  *
  * Own-domain (an insurance portfolio whose task slots carry a constructed appointment clock).

@@ -24,10 +24,10 @@ import org.junit.jupiter.api.Test
  *
  * Dynamic Groovy is normative and generated Java is checked independently. The interpreter comparison uses its
  * deliberate report-all computation contract. The change classification is checked on both kernel strategies
- * through the five-channel owner, in the two constructions that answer different questions: a hand-SEEDED
- * identical clock (reported as changed) and a RE-APPLY over the computation's own output (reported as
- * unchanged). Only the second establishes source identity, which is why the class no longer states an
- * always-changed policy — see `aReapplyOverTheConstructedNonrepeatableTargetIsTheIdentityDiscriminator`.
+ * through the five-channel owner, in the two constructions that answer different questions: a SEEDED identical
+ * clock on the V1 String route (reported as changed) and a RE-APPLY over the computation's own output
+ * (reported as unchanged). Only the second establishes source identity. What separates them is the INGRESS
+ * ROUTE rather than anything about Time, measured per kind by `SourceIdentityIngressRouteDiffTest`.
  */
 class ComputedTimeTargetDiffTest {
 
@@ -197,16 +197,19 @@ class ComputedTimeTargetDiffTest {
     }
 
     /**
-     * A hand-SEEDED source cell holding the same clock is reported as changed and overwrites the destination.
-     * This is deliberately no longer stated as an always-changed policy of `Time(...)`: the re-apply
-     * discriminator above shows a genuinely source-identical target reports no change, on both placements and
-     * both strategies, and a carrier-form seed (`1970-01-01T09:30:45Z`) is reported as changed too — so the
-     * text form is not the discriminating variable either. **What separates the two observations is unmeasured**
-     * and is left as such rather than guessed; what a consumer needs is here: a seeded value is not evidence of
-     * source identity, so an apply-fidelity claim must be built on a re-apply.
+     * On the **V1 String ingress route** a seeded cell holding the same clock is reported as changed and
+     * overwrites the destination — because that route leaves a Time cell holding unconverted text, which can
+     * never equal a converted Instant. That is a property of the ROUTE and of every non-STRING kind, not of
+     * `Time(...)`: `SourceIdentityIngressRouteDiffTest` moves only the ingress route and shows the same seed
+     * text comparing equal on the typed route, for all six kinds at once.
+     *
+     * Kept as its own arm because `RuntimeLaws.Doc` is the profile every ordinary runtime law here seeds
+     * through, so this is the classification those laws actually observe. The consumer-facing consequence is
+     * unchanged: a seeded value is not evidence of source identity, so an apply-fidelity claim must be built
+     * on a re-apply.
      */
     @Test
-    fun aHandSeededIdenticalClockIsStillReportedAsChangedAndApplied() {
+    fun aSeededIdenticalClockIsChangedAndAppliedOnTheV1StringRoute() {
         val fixture = Fixture("Europe/Berlin")
         assertChangedClassification(fixture, Input(target = "09:00:00"))
         assertChangedClassification(fixture, Input(target = "10:30:45"))

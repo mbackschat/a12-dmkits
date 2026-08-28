@@ -474,11 +474,26 @@ class Document(internal val config: DocumentConfig) {
         return copy
     }
 
-    /** Whether this source cell's stored V2 object equals a clean computed value. */
+    /**
+     * Whether this source cell's stored V2 object equals a clean computed value — the test that decides
+     * whether a successful result is a retained ACTION or a silent unchanged success.
+     *
+     * A12 classifies this by comparing the stored and computed V2 OBJECTS, so what a cell holds decides the
+     * answer, and that depends on how the document was ingested. Its typed ingress (`DocumentV2JsonReader` +
+     * `FieldValueConverter`) stores `String | Boolean | BigDecimal | Instant | InstantRange`, while its V1
+     * String factory leaves a typed cell holding the unconverted text — which never equals a converted value,
+     * making every non-STRING kind unconditionally changed on that route. Our public transport is
+     * `readDocument`, i.e. the TYPED route, so this compares converted values.
+     *
+     * NUMBER needs [DecimalObjectIdentity] because `BigDecimal` equality includes a scale its plain text can
+     * hide. Every other kind's stored text already IS its converted identity — the date family in particular,
+     * where a non-canonical spelling fails conversion outright rather than normalizing — so text equality is
+     * object equality for them. Measured on both kernel strategies across all six kinds and both ingress
+     * routes by `adapter.laws.SourceIdentityIngressRouteDiffTest`.
+     */
     internal fun computedValueEquals(path: String, reps: List<Int>, computed: String): Boolean {
         val placement = valueAt(path, reps) ?: return false
         return when (kinds[path]) {
-            Kind.TIME -> false
             Kind.NUMBER -> placement.numberIdentity == DecimalObjectIdentity.parse(computed)
             else -> placement.raw == computed
         }

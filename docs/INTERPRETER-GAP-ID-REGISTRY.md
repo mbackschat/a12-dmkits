@@ -21,7 +21,7 @@ This is the append-only registry for every `IAG<n>` and `IRG<n>` identifier issu
 | IAG13 <a id="iag13"></a> | shipped | concurrent misuse of one Interpreter corrupts instead of failing |
 | IAG14 <a id="iag14"></a> | deferred | per-entry cost surface for bounding a model cache in bytes |
 | IAG15 <a id="iag15"></a> | deferred | the published message-address policy has no home both publishing seams can reach |
-| IG142 <a id="ig142"></a> | open | a computed TIME is never source-equal in the interpreter, so a re-apply rewrites the cell |
+| IG142 <a id="ig142"></a> | shipped → [IF313](INTERPRETER-FINDINGS.md#if313) | a computed TIME is never source-equal in the interpreter, so a re-apply rewrites the cell |
 | IRG1 <a id="irg1"></a> | deferred | publish the separate Kernel drop-in artifact |
 | IRG2 <a id="irg2"></a> | shipped | deploy the showcase semantics badge after v0.9.1 |
 | IRG3 <a id="irg3"></a> | shipped | make both Kotlin ABI goldens member-level |
