@@ -694,6 +694,32 @@ private fun dateTimeFragment(format: String): Pair<String, List<Char>>? {
     return if (comps.isEmpty()) null else sb.toString() to comps
 }
 
+/** Which classifier a DECLARED temporal format selects. */
+internal enum class TemporalFormatShape { DATE, TIME, DATE_TIME }
+
+/**
+ * The classifier [format] selects, read off its **component set alone**.
+ *
+ * A12's temporal format vocabulary is kind-independent, and so is the value tier: measured over the complete
+ * 8-format × 3-kind grid, all 24 cells are model-legal and every format behaves identically on DATE, TIME and
+ * DATE_TIME (KF211). So a TIME field declared `yyyy-MM-dd` is a date cell that carries the Gregorian floor, and
+ * a DATE field declared `HH:mm:ss` is a clock cell that cannot reach it. The kind decides only the DEFAULT
+ * format of a field that declares none.
+ *
+ * A format carrying no recognizable component is DATE-shaped, which is where an unrecognizable declaration was
+ * already routed: it fails every parse, so each of its values is the format error either way.
+ */
+internal fun temporalFormatShape(format: String): TemporalFormatShape {
+    val comps = dateTimeFragment(format)?.second ?: return TemporalFormatShape.DATE
+    val date = comps.any { it == 'y' || it == 'M' || it == 'd' }
+    val time = comps.any { it == 'H' || it == 'm' || it == 's' }
+    return when {
+        date && time -> TemporalFormatShape.DATE_TIME
+        time -> TemporalFormatShape.TIME
+        else -> TemporalFormatShape.DATE
+    }
+}
+
 /** Assemble ISO `yyyy-MM-dd'T'HH:mm:ss` from a date-time fragment's captured component [values] in [comps]
  *  order; omitted time components default to 0; null if any component is out of range. */
 private fun buildIsoDateTime(values: List<String>, comps: List<Char>): String? {

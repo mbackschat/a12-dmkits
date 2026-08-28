@@ -3606,14 +3606,14 @@ The independent interpreter stays declaration-local and therefore produces the m
 
 **The formal channel.**
 
-| declaration | `2024-06-15` | `1583-10-16` | `1583-10-15` | `2024-02-31` | `10:30:00` | `24:00:00` |
-|---|---|---|---|---|---|---|
-| TIME `yyyy-MM-dd` | admitted | admitted | **`datumFalsch`** | `datumFormatFalsch` | `datumFormatFalsch` | `datumFormatFalsch` |
-| DATE `yyyy-MM-dd` | admitted | admitted | `datumFalsch` | `datumFormatFalsch` | `datumFormatFalsch` | `datumFormatFalsch` |
-| DATE_TIME `yyyy-MM-dd` | admitted | admitted | `datumFalsch` | `datumFormatFalsch` | `datumFormatFalsch` | `datumFormatFalsch` |
-| TIME `HH:mm:ss` | `datumFormatFalsch` | `datumFormatFalsch` | `datumFormatFalsch` | `datumFormatFalsch` | admitted | `datumFormatFalsch` |
+| declaration | `2024-06-15` | `1583-10-16` | `1583-10-15` | `0000-06-15` | `2024-02-31` | `10:30:00` | `24:00:00` |
+|---|---|---|---|---|---|---|---|
+| TIME `yyyy-MM-dd` | admitted | admitted | **`datumFalsch`** | `datumFormatFalsch` | `datumFormatFalsch` | `datumFormatFalsch` | `datumFormatFalsch` |
+| DATE `yyyy-MM-dd` | admitted | admitted | `datumFalsch` | `datumFormatFalsch` | `datumFormatFalsch` | `datumFormatFalsch` | `datumFormatFalsch` |
+| DATE_TIME `yyyy-MM-dd` | admitted | admitted | `datumFalsch` | `datumFormatFalsch` | `datumFormatFalsch` | `datumFormatFalsch` | `datumFormatFalsch` |
+| TIME `HH:mm:ss` | `datumFormatFalsch` | `datumFormatFalsch` | `datumFormatFalsch` | `datumFormatFalsch` | `datumFormatFalsch` | admitted | `datumFormatFalsch` |
 
-Empty stored text is present and value-free on all four. **Two controls, one variable each:** the first three rows hold the declaration fixed and move the kind across every date-bearing kind — they agree, so the kind is not read; rows one and four hold the kind fixed and move the format — they differ on every value, so the declaration is what is read. Comparing two models could not separate these, since two models differ in everything one did not think about.
+Empty stored text is present and value-free on all four, and the grid behind this table is **exhaustive over the admitted vocabulary**: all 8 formats (`yyyy-MM-dd`, `dd.MM.yyyy`, `HH:mm:ss`, the ISO datetime, `MM`, `yyyy`, `yyyy-MM`, `MM-dd`) × 3 date-bearing kinds are model-legal — 24 of 24 — and every format behaves identically on all three kinds for every value. **Year ZERO takes the format cause while year ONE takes the date cause**, on every date-bearing format and kind: an unreal component is settled before position in time, which is [KF207](#kf207)'s ordering reaching a case that entry did not run. **Two controls, one variable each:** the first three rows hold the declaration fixed and move the kind across every date-bearing kind — they agree, so the kind is not read; rows one and four hold the kind fixed and move the format — they differ on every value, so the declaration is what is read. Comparing two models could not separate these, since two models differ in everything one did not think about.
 
 **The read gates, on the same TIME field declared `yyyy-MM-dd`.** Each admitted arm is paired with a refusal differing in exactly one thing:
 
@@ -3630,6 +3630,8 @@ So the Gregorian floor, direct comparability, component extraction and the diffe
 
 This corrects [KF207](#kf207) above, whose "because a clock has no position in time" reasoned from the kind: the correct reading is that a *time-format declaration* exposes no position in time, and after [KF206](#kf206) a TIME field need not carry one.
 
-**What this does not say.** Storage and reading only. Rendering, computation targets, and aggregate extrema on such a declaration are untouched here. Our interpreter currently rejects **every** value of a date-declared TIME cell, which suppresses every referencing rule where the kernel evaluates one — the open gap IG144 in [INTERPRETER-GAPS.md](INTERPRETER-GAPS.md), for which these rows are the oracle. The typed rulekit surface cannot express a single condition in the second table (`m.time()` yields a `TimeRef` comparable only with another `TimeRef`; `m.date()` throws on a TIME field), which is the measured gap DG40 in [DEV-API-GAPS.md](DEV-API-GAPS.md).
+**What this does not say.** Storage and reading only. Rendering, computation targets, and aggregate extrema on such a declaration are untouched here. The typed rulekit surface could express none of the second table's conditions until these rows were measured — `m.date()` threw on a TIME field — and now keys its temporal handles on the declared format instead (API-FINDINGS finding 130).
 
-*(Locked: `adapter.laws.TemporalDeclaredFormatGateKernelTest` — four declarations × eight stored values, plus four admitted conditions × six operand pairs and two refusal controls, all on both kernel strategies; deliberately kernel-only while IG144 stands. A planted mutant re-declaring the TIME cell as `HH:mm:ss` is killed.)*
+Our interpreter keyed both its formal check and its value canonicalization on the KIND, so a date-declared TIME cell was malformed on every value — suppressing every rule the kernel evaluates on it — and a clock-declared DATE cell was refused a clock. Both are fixed, with the year-zero cause, in [IF314](INTERPRETER-FINDINGS.md#if314); this grid is what turned up the mirror and year zero, neither of which any report named.
+
+*(Locked: `adapter.laws.TemporalDeclaredFormatGateDiffTest` — four declarations × eight stored values, four admitted conditions × six operand pairs, two refusal controls, and a dotted-declaration arm where a decoded date and raw text disagree (`01.07.2024 > 15.06.2024` fires as a date, is silent as text), all on both kernel strategies AND the interpreter; the complete 24-cell grid and the year-zero class multiplatform in `interpreter … TemporalDeclaredFormatFormalTest`. A planted mutant re-declaring the TIME cell as `HH:mm:ss` is killed.)*

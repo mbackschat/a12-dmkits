@@ -81,6 +81,16 @@ public final class FieldInfo {
     }
 
     /**
+     * The declared temporal {@code format} (e.g. {@code yyyy-MM-dd}, {@code HH:mm:ss}); empty when the field
+     * declares none or is not temporal. This string, not the kind, is what decides how A12 classifies the
+     * cell's values and which operands accept it (KERNEL-FINDINGS KF211) — which is why the typed date/time
+     * handles below are obtained by it and not only by kind.
+     */
+    public java.util.Optional<String> format() {
+        return model.index().temporalFormat(path);
+    }
+
+    /**
      * The enumeration's allowed stored values in authored order. This is the values-only read surface:
      * it does not materialize category projections.
      *

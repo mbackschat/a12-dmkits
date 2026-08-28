@@ -1586,6 +1586,7 @@ public final class io.github.mbackschat.a12.dm.rulekit.dsl.FieldInfo
   public io.github.mbackschat.a12.dm.rulekit.dsl.EnumRef asEnum()
   public io.github.mbackschat.a12.dm.rulekit.dsl.NumberRef asNum()
   public io.github.mbackschat.a12.dm.rulekit.dsl.StringRef asStr()
+  public java.util.Optional<java.lang.String> format()
   public io.github.mbackschat.a12.dm.rulekit.dsl.GroupRef group()
   public java.lang.String groupPath()
   public io.github.mbackschat.a12.dm.core.ValueKind kind()

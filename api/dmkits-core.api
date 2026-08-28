@@ -151,6 +151,7 @@ public final class io.github.mbackschat.a12.dm.core.ModelIndex
   public java.util.OptionalInt stringMinLength(java.lang.String)
   public boolean stringNoValueValidation(java.lang.String)
   public java.util.Optional<java.lang.String> stringPattern(java.lang.String)
+  public java.util.Optional<java.lang.String> temporalFormat(java.lang.String)
   public java.util.Optional<java.lang.String> typeReferenceOf(java.lang.String)
   public java.util.Optional<java.lang.String> usageTypeOfGroup(java.lang.String)
 

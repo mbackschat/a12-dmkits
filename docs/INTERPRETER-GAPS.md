@@ -6,7 +6,7 @@
 >
 > **Section invariant (the placement rule):** every section holds exactly one **live** status — **§1 = open, §2 = deferred / ongoing-incremental, §3 = out-of-scope**. A FULLY-shipped/graduated entry belongs in **none** of them: completing it *deletes* its row (see the lifecycle). So §1 reads `_None open._` whenever nothing is open — the marker every `-GAPS` ledger uses, so one grep rolls up the whole family (`GapLedgerTemplateGuardTest`) — and a fully-FIXED entry **anywhere** in this ledger is a bug in *this doc* — git already records the fix. (A partially-shipped *ongoing* refactor in §2 is not "fixed" — it stays until all of it lands.)
 >
-> **Current state.** §1 carries one open row as of 2026-08-28 — **IG144** (a TIME field declared with a DATE format), which moved out of §2 the moment [KF211](KERNEL-FINDINGS.md#kf211) measured the kernel behaviour it was parked for; IG142 shipped as [IF313](INTERPRETER-FINDINGS.md#if313). §2 carries the deferred rows with their re-open trigger or remaining work: **IG143** (a hand-built interpreter document is a route hybrid), **IG141** (DateRange shared-format declaration order), **IG137** (performance tooling and reporting residuals), **IG139** (the `group-star expansion @8000` lane is too noisy to carry an absolute bar), and **IG83** (portable timezone-id support, Route A); §3 carries the out-of-scope decisions. A **shipped** gap appears nowhere here: its rationale graduated to a numbered `IF<n>` finding that names the `IGn` it came from, so a code comment citing `IGn` resolves by grepping [`INTERPRETER-FINDINGS.md`](INTERPRETER-FINDINGS.md), with one measured exception: **`IG30`** (cited in `adapter/.../laws/MultiFieldAggregateDiffTest.kt`) predates that convention and names no finding, so its citation site carries the contract and git holds the row. A cold review's enumeration on 2026-08-24 found it; do not assume the sweep that found it covered other families.
+> **Current state.** §1 carries **no open row** as of 2026-08-28 — IG142 shipped as [IF313](INTERPRETER-FINDINGS.md#if313), and IG144 as [IF314](INTERPRETER-FINDINGS.md#if314) on the same day it was measured: it had been parked for want of kernel value-tier rows, and the grid that supplied them also turned up its unreported mirror and one year-zero divergence. §2 carries the deferred rows with their re-open trigger or remaining work: **IG143** (a hand-built interpreter document is a route hybrid), **IG141** (DateRange shared-format declaration order), **IG137** (performance tooling and reporting residuals), **IG139** (the `group-star expansion @8000` lane is too noisy to carry an absolute bar), and **IG83** (portable timezone-id support, Route A); §3 carries the out-of-scope decisions. A **shipped** gap appears nowhere here: its rationale graduated to a numbered `IF<n>` finding that names the `IGn` it came from, so a code comment citing `IGn` resolves by grepping [`INTERPRETER-FINDINGS.md`](INTERPRETER-FINDINGS.md), with one measured exception: **`IG30`** (cited in `adapter/.../laws/MultiFieldAggregateDiffTest.kt`) predates that convention and names no finding, so its citation site carries the contract and git holds the row. A cold review's enumeration on 2026-08-24 found it; do not assume the sweep that found it covered other families.
 >
 > **Scope.** `:interpreter` only — the kernel-free Kotlin evaluator (parser, evaluation semantics, model loader, the differential/perf harnesses' interpreter side). dmkit (rulekit/modelkit/edit) authoring gaps go to [`DEV-API-GAPS.md`](DEV-API-GAPS.md); kernel-coverage classification stays in the MVK / RT-semantics / grammar ledgers.
 
@@ -14,20 +14,7 @@
 
 ## 1. Open
 
-- **IG144 — a TIME field declared with a DATE format is fully live in the kernel and rejected by us on every value (opened 2026-08-24 as `IG140`; renumbered 2026-08-28 on an id collision, see the [registry](INTERPRETER-GAP-ID-REGISTRY.md); moved from deferred to OPEN the same day, because the measurement it was parked for is done).** [KF206](KERNEL-FINDINGS.md#kf206) made `timeField("F").format("yyyy-MM-dd")` a kernel-legal declaration; [KF211](KERNEL-FINDINGS.md#kf211) measures what such a cell then DOES, on both kernel strategies. On the formal channel:
-
-  | stored value | kernel | interpreter |
-  |---|---|---|
-  | `2024-06-15` | admitted | `datumFormatFalsch` |
-  | `1583-10-16` | admitted (the floor itself) | `datumFormatFalsch` |
-  | `1583-10-15` | `datumFalsch` — the Gregorian floor rides the declared format | `datumFormatFalsch` |
-  | `10:30:00` | `datumFormatFalsch` | `datumFormatFalsch` |
-
-  The kernel additionally **admits** `[TimeAsDate] == [DateAsDate]`, `[TimeAsDate] > [DateAsDate]`, `YearFromDate(TimeAsDate)` and `DifferenceInDays(TimeAsDate, DateAsDate)` on that cell while refusing `HoursFromTime(TimeAsDate)`. So our unconditional rejection is not a mislabelled cause: it makes the cell formally invalid, which **suppresses every rule the kernel would have evaluated** — a silent false negative, not a loud wrong error. The mechanism is `FormalError.kt`'s `Kind.TIME -> parseTimeToIso(raw, format)`, whose parser returns null for any pattern carrying `y`/`M`/`d`.
-
-  **Scope of the fix:** route a temporal cell's formal check and value read by the **declared format's component set** rather than by `Kind`, in `FormalError.kt` and the temporal read path, and mirror it at the comparability and extractor gates. **Acceptance:** the KF211 matrix reproduced by the interpreter, which converts `adapter.laws.TemporalDeclaredFormatGateKernelTest` from a kernel-only lock into a tri-check, with every conventional-declaration row unchanged. **Non-goals:** rendering, computation targets, and aggregate extrema on such a declaration — unmeasured on the kernel side, so out of this slice by the same reasoning that parked the row in the first place.
-
-  *Not to be confused with [IG138](INTERPRETER-FINDINGS.md#if301) — that was a time-only DATE_TIME, the mirror case, and it was a defect because the kind's own conventional format was being refused.*
+_None open._
 
 ---
 

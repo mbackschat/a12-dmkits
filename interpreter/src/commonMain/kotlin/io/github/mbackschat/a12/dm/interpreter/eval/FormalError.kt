@@ -323,7 +323,7 @@ internal fun typeFormatErrorCached(
     patternMatches: (String, String) -> Boolean,
 ): FormalErrorCode? {
     if (raw.isEmpty()) return null
-    return when (kind) {
+    return when (temporalClassifier(kind, format)) {
         // Format-aware: a value valid for the field's DECLARED format is well-formed (a `dd.MM.yyyy` field's
         // `15.06.2024` is fine — not ISO, but valid for its format). Null format defaults to ISO (KERNEL-FINDINGS
         // plain-date locale handling, PlainDateDiffTest). Precision widens what "valid" means: partial DateType
@@ -364,6 +364,12 @@ internal fun typeFormatErrorCached(
             when {
                 invalidPartialShape -> FormalErrorCode.PARTIAL_DATE_INVALID
                 parts == null -> FormalErrorCode.DATE_FORMAT
+                // Year ZERO is an unreal component, not a date below the floor — reality is settled before
+                // position in time (KF207's ordering), so `0000` is `datumFormatFalsch` while `0001` is
+                // `datumFalsch`. Measured uniform across every date-bearing format and all three kinds; we
+                // reported the floor for it, which is the right polarity under the wrong code. A partial
+                // precision cannot reach here with a zero year: an omitted component is substituted above.
+                parts.first == 0 -> FormalErrorCode.DATE_FORMAT
                 // The kernel's always-on Gregorian floor (IF88): a real date before 1583-10-16 is `datumFalsch`.
                 beforeGregorianStart(parts.first, parts.second, parts.third) -> FormalErrorCode.DATE_TOO_EARLY
                 // The field-owned additional check runs after partial-date completion and the ordinary floor.
@@ -393,7 +399,10 @@ internal fun typeFormatErrorCached(
                 // A DateTime carries the SAME always-on Gregorian floor as a Date (KF207): the kernel has no
                 // DateTime-specific formal code and reports through the Date pair, so a date-bearing instant
                 // before 1583-10-16 is `datumFalsch`, not merely malformed. Only a date-bearing value can be
-                // below the floor — a time-only `HH:mm:ss` canonical names no calendar day.
+                // below the floor — a time-only `HH:mm:ss` canonical names no calendar day. Year ZERO is the
+                // unreal-component case and takes the format code instead, on the same measured ordering as the
+                // date classifier above.
+                isIsoDateTime(canonical) && canonical.startsWith("0000-") -> FormalErrorCode.DATE_FORMAT
                 isIsoDateTime(canonical) && dateParts(canonical.substring(0, 10))
                     ?.let { (y, m, d) -> beforeGregorianStart(y, m, d) } == true ->
                     FormalErrorCode.DATE_TOO_EARLY
@@ -685,4 +694,35 @@ fun formalErrorText(code: FormalErrorCode, locale: String, scale: Int? = null): 
 
 /** The default DATE rendering when a field declares none — the interpreter's canonical ISO form. */
 private const val ISO_FORMAT = "yyyy-MM-dd"
+
+/**
+ * The kind whose formal CLASSIFIER a temporal declaration selects — **the declared format decides, never the
+ * field's kind** (KF211). A12's format vocabulary is kind-independent, and the value tier follows: over the
+ * complete 8-format × 3-kind grid all 24 cells are model-legal and every format behaves identically on DATE,
+ * TIME and DATE_TIME. So a TIME field declared `yyyy-MM-dd` is classified as a date, carrying the Gregorian
+ * floor, and a DATE field declared `HH:mm:ss` is classified as a clock, which cannot reach that floor.
+ *
+ * The value's kind is unchanged; only which classifier reads it is. Every other kind maps to itself, and a
+ * field that declares no format maps to its own kind, because the DEFAULT format is the one thing the kind does
+ * own — which is why each branch's `format ?: <kind default>` stays correct after the re-keying.
+ *
+ * Keying this on the kind reported a date-declared TIME cell malformed on every value, so every rule reading it
+ * was silently suppressed where the kernel evaluated one (IG144), and refused a clock in a clock-declared DATE
+ * field (the mirror, unreported until the grid was measured).
+ */
+internal fun temporalClassifier(kind: Kind, format: String?): Kind = when (kind) {
+    Kind.DATE, Kind.TIME, Kind.DATE_TIME -> when (temporalFormatShape(format ?: defaultTemporalFormat(kind))) {
+        TemporalFormatShape.DATE -> Kind.DATE
+        TemporalFormatShape.TIME -> Kind.TIME
+        TemporalFormatShape.DATE_TIME -> Kind.DATE_TIME
+    }
+    Kind.NUMBER, Kind.STRING, Kind.BOOLEAN, Kind.CONFIRM, Kind.DATE_RANGE -> kind
+}
+
+/** The format a temporal field gets when it declares none. This is the kind's own default, not a restriction. */
+internal fun defaultTemporalFormat(kind: Kind): String = when (kind) {
+    Kind.TIME -> "HH:mm:ss"
+    Kind.DATE_TIME -> "yyyy-MM-dd'T'HH:mm:ss"
+    else -> ISO_FORMAT
+}
 private val DECIMAL = Regex("""-?\d+(\.\d+)?""")

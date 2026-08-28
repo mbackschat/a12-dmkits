@@ -4,7 +4,7 @@
 >
 > **Lifecycle.** §2 holds the live, unfinished work. **This ledger records only OPEN work** — a shipped gap is **deleted**, never kept as a "shipped" list, because such a list duplicates git (the *what/when*) and the finding (the *why*) and rots against both. A gap's durable *why* is its numbered finding in [`API-FINDINGS.md`](API-FINDINGS.md), which names the `DGn` it closed, so a code comment citing `DEV-API-GAPS DGn` — or a legacy `DEV-API-GAPS §N` — resolves **by topic**: grep `API-FINDINGS.md` for the id. Two deliberate exceptions: the editor-ergonomics pair **DG11/DG12** is shown in API-GUIDE [§5c](API-GUIDE.md#refs-and-editors) instead, and **DG16** was declined rather than built, so its decision lives in §3 here.
 >
-> **Current state.** §2 is empty as of 2026-08-24. A row lands here only when a new developer-facing authoring friction is both surfaced and queued.
+> **Current state.** §2 is empty as of 2026-08-28 — DG40 (the typed temporal handles were kind-keyed, so a kernel-legal cross-format condition was unrepresentable) shipped the day it was opened, as API-FINDINGS finding 130. A row lands here only when a new developer-facing authoring friction is both surfaced and queued.
 >
 > **Scope — the filter that matters.** dmkits has **model-authoring scope**: it defines, edits, validates, reads, and tests a document **model** — its fields/groups/type-defs/includes/config and its **rules + computations** (the condition-language DSL). It is **not** a runtime form engine, a document-instance data-binding layer, a rendering/UI toolkit, or a persistence/service layer. The kernel dev doc is ~80% about the *runtime consumer* (manipulating document *instances*); those concerns are deliberately **out of scope** (§3).
 
@@ -36,11 +36,7 @@ The gaps below were the **ergonomic and consistency remainder** — what added f
 
 ## 2. Open
 
-- **DG40 — the typed temporal surface is KIND-keyed, so a kernel-legal cross-format temporal condition is unrepresentable (opened 2026-08-28, measured).** [KF206](KERNEL-FINDINGS.md#kf206) makes `timeField("F").format("yyyy-MM-dd")` a legal declaration and [KF211](KERNEL-FINDINGS.md#kf211) measures that the kernel then treats that cell as a date at every gate: it **admits** `[TimeAsDate] == [DateAsDate]`, `[TimeAsDate] > [DateAsDate]`, `YearFromDate(TimeAsDate)` and `DifferenceInDays(TimeAsDate, DateAsDate)`, while refusing `HoursFromTime` on the same cell and `[TimeAsTime] == [DateAsDate]` on a clock-declared sibling. Our surface can express **none** of the admitted four: `m.time(path)` yields a `TimeRef` whose only comparison is `agreesWith(TimeRef)`, and `m.date(path)` **throws** on a TIME field (`BoundModel.date`, `kind != ValueKind.DATE`). So the gate we present is the field's `kind`; the kernel's is the declared format's component set.
-
-  This is the **type-level** form of an ungrounded client-side refusal — API-FINDINGS finding 128's shape, where there is no error to measure, only a missing factory, so the gap reads as "not a thing" rather than "refused". The refusal is *correct* for every conventional declaration (the kernel refuses `HH:mm:ss` TIME against a DATE, measured), which is exactly why it went unnoticed: kind and format agree everywhere except on the exotic declaration.
-
-  **Why it is a row rather than a fix.** Making the temporal refs format-keyed is a public-surface design decision with fan-out across `DateRef`/`TimeRef`/`DateTimeRef`/`DateFragmentRef`, the comparability laws, and the operator catalog, and the honest question — *should the typed surface model A12's component sets instead of its kinds?* — is the owner's, not a side effect of the task that found it. Until then `adapter.laws.TemporalDeclaredFormatGateKernelTest` authors these conditions as raw strings and says why. **What would settle it:** a decision on whether the kind-keyed accessors stay the front door with a format-aware escape hatch beside them, or the refs become format-keyed throughout.
+_None open._
 
 ---
 

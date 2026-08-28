@@ -21,7 +21,7 @@ This is the append-only registry for every `IAG<n>` and `IRG<n>` identifier issu
 | IAG13 <a id="iag13"></a> | shipped | concurrent misuse of one Interpreter corrupts instead of failing |
 | IAG14 <a id="iag14"></a> | deferred | per-entry cost surface for bounding a model cache in bytes |
 | IAG15 <a id="iag15"></a> | deferred | the published message-address policy has no home both publishing seams can reach |
-| IG144 <a id="ig144"></a> | open | a TIME field declared with a DATE format is live in the Kernel and rejected by the interpreter on every value |
+| IG144 <a id="ig144"></a> | shipped → [IF314](INTERPRETER-FINDINGS.md#if314) | a TIME field declared with a DATE format is live in the Kernel and rejected by the interpreter on every value |
 | IG143 <a id="ig143"></a> | deferred | a hand-built interpreter document is a route hybrid, so two cross-route laws are ungated |
 | IG140 <a id="ig140"></a> | shipped | which operands a `DateRange(start, finish)` construction admits, and the measured basis for `Dsl.dateRange`'s client-side refusals |
 | IG142 <a id="ig142"></a> | shipped → [IF313](INTERPRETER-FINDINGS.md#if313) | a computed TIME is never source-equal in the interpreter, so a re-apply rewrites the cell |

@@ -644,6 +644,21 @@ Condition orderDayNotAfterCompletion = m.date("/Order/OrderDate")
         .onOrBefore(m.dateTime("/Order/CompletedAt"));
 ```
 
+**A temporal field's DECLARED FORMAT decides which typed handle it has, not its kind.** A12's format vocabulary is kind-independent, and so is every gate below the declaration: a `TimeType` field declared `yyyy-MM-dd` carries the Gregorian floor, compares directly against a DATE, and answers `YearFromDate`, while its own kind's `HoursFromTime` is refused (KERNEL-FINDINGS [KF211](KERNEL-FINDINGS.md#kf211), measured across the complete format × kind grid on both codegen strategies). So `date(path)`/`time(path)`/`dateTime(path)` accept a field whose declared format carries that component set, **in addition to** the matching kind — additive on purpose, since refusing a kind-matching field on its format alone would be a client-side refusal with no measured kernel basis. `FieldInfo.format()` reads the declaration that decided it. You meet this on models you did not author: an imported or hand-edited model that stores a date in a `TimeType` field is legal, and before this its rules were authorable only as raw condition strings.
+
+<!-- snippet: temporal-declared-format -->
+```java
+// A12 reads a temporal field's DECLARED FORMAT and never its kind, at every gate below the
+// declaration — so a TimeType field declared `yyyy-MM-dd` IS a date: it carries the Gregorian floor,
+// compares against a DATE, and answers the date extractors. The typed handles follow the declaration,
+// so `date(...)` accepts it and no raw condition string is needed for a model that arrives this way.
+Condition promisedAfterShipping = fulfilment.date("/Fulfilment/PromisedDay")
+        .after(fulfilment.date("/Fulfilment/ShippedOn"));
+NumberExpr promisedYear = Dsl.yearFromDate(fulfilment.date("/Fulfilment/PromisedDay"));
+// Read the declaration that decided it; `HoursFromTime` on the same cell is refused by the kernel.
+String declared = fulfilment.fieldAt("/Fulfilment/PromisedDay").orElseThrow().format().orElseThrow();
+```
+
 **A constructed date range is an equality operand as well as a computation value.** `Dsl.dateRange` takes two `DateOperand` values but accepts only owner `entitySpec` shapes: a DATE or DATE_FRAGMENT field, directly, through a semantic index, or with the `$` outer-iteration marker. It does not require a *complete* date format, and it does not pre-check partial `datePrecision` — both are built and left to the kernel. It refuses calculated dates such as `Today` and date shifts before rendering; the kernel remains the format-compatibility oracle because DATE and DATE_FRAGMENT may be mixed when their date-component sets match. The kernel admits `==` and `!=` against a DATE_RANGE field in either direction and between two constructions; it rejects ordering and does not admit a nested construction inside the overlap predicates. `DateRangeOperand` exposes exactly that result domain, including `DateRangeExpr` results such as a date-range `FirstFilledValue`. A DATE_RANGE field is also a computation TARGET and a rule ERROR FIELD through its own typed handle — `m.computation(m.dateRange(path))` and `.errorField(m.dateRange(path))`, the peers of the other per-kind overloads (DEV-API-GAPS DG37). Those two surfaces are held in lockstep by `ErrorFieldComputationParityTest`: the first version of DG37's fix reached only the computation half, and the parity lock is what caught it. Two range operands must additionally expose the **same declared date-component set**, whichever side is stored, constructed, or computed: a `yyyy` range against a full `yyyy-MM-dd` one is `MVK_INVALID_COMPARE_TO_DATE_RANGE` in either order (`DateRangeComparabilityLawsTest`). The typed `FirstFilledValue` family also covers TIME and DATETIME (`firstFilledTime`/`firstFilledDateTime`); an empty selection produces a value only for NUMBER (zero), while every other admitted kind remains unspecified and clears a computation.
 
 <!-- snippet: date-range-equality -->

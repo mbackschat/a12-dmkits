@@ -262,31 +262,57 @@ public final class BoundModel {
         return new StringRef(field(path));
     }
 
-    /** A typed date handle. Throws if the field at {@code path} is not a date. */
+    /**
+     * A typed date handle — for a DATE field, or for any temporal field whose DECLARED FORMAT is date-bearing.
+     * Throws otherwise.
+     *
+     * <p>The second half exists because A12's temporal format vocabulary is kind-independent and everything
+     * below the declaration reads the format: a TIME field declared {@code yyyy-MM-dd} carries the Gregorian
+     * floor, compares directly against a DATE, and answers {@code YearFromDate}, while its own kind's
+     * {@code HoursFromTime} is refused (KERNEL-FINDINGS KF211, measured on both codegen strategies). Admitting
+     * it here is what makes that kernel-legal condition authorable at all; before, there was no error to read,
+     * only a missing factory, so the shape read as "not a thing" rather than "refused".
+     *
+     * <p>The kind test is kept as an alternative rather than replaced, deliberately: refusing a kind-matching
+     * field because its declared format disagrees would be a client-side refusal with no measured kernel basis,
+     * and the kernel's own authoring gate still reports any operand it does not accept.
+     */
     public DateRef date(String path) {
-        ValueKind kind = index.kindOf(path);
-        if (kind != ValueKind.DATE) {
-            throw new IllegalArgumentException(path + " is not a date field (kind=" + kind + ")");
-        }
+        requireTemporalShape(path, ValueKind.DATE, TemporalFormats.Shape.DATE, "date");
         return new DateRef(field(path));
     }
 
-    /** A typed time-of-day handle. Throws if the field at {@code path} is not a time. */
+    /** A typed time-of-day handle — a TIME field, or a temporal field declared with a clock format ({@link #date}). */
     public TimeRef time(String path) {
-        ValueKind kind = index.kindOf(path);
-        if (kind != ValueKind.TIME) {
-            throw new IllegalArgumentException(path + " is not a time field (kind=" + kind + ")");
-        }
+        requireTemporalShape(path, ValueKind.TIME, TemporalFormats.Shape.TIME, "time");
         return new TimeRef(field(path));
     }
 
-    /** A typed date-time handle (the source a date-time is decomposed from). Throws if not a date-time. */
+    /**
+     * A typed date-time handle (the source a date-time is decomposed from) — a DATE_TIME field, or a temporal
+     * field whose declared format carries both halves ({@link #date}).
+     */
     public DateTimeRef dateTime(String path) {
-        ValueKind kind = index.kindOf(path);
-        if (kind != ValueKind.DATE_TIME) {
-            throw new IllegalArgumentException(path + " is not a date-time field (kind=" + kind + ")");
-        }
+        requireTemporalShape(path, ValueKind.DATE_TIME, TemporalFormats.Shape.DATE_TIME, "date-time");
         return new DateTimeRef(field(path));
+    }
+
+    /** The admission shared by {@link #date}/{@link #time}/{@link #dateTime} — see {@link #date} for the why. */
+    private void requireTemporalShape(
+            String path, ValueKind wantedKind, TemporalFormats.Shape wantedShape, String label) {
+        ValueKind kind = index.kindOf(path);
+        if (kind == wantedKind) {
+            return;
+        }
+        if (TemporalFormats.isTemporal(kind)) {
+            String declared = index.temporalFormat(path).orElseGet(() -> TemporalFormats.defaultFormat(kind));
+            if (TemporalFormats.shapeOf(declared) == wantedShape) {
+                return;
+            }
+            throw new IllegalArgumentException(path + " is not a " + label + " field (kind=" + kind
+                    + ", declared format=" + declared + ")");
+        }
+        throw new IllegalArgumentException(path + " is not a " + label + " field (kind=" + kind + ")");
     }
 
     /** A typed date-fragment handle (a year-month partial date; an extraction source). Throws if not a date fragment. */

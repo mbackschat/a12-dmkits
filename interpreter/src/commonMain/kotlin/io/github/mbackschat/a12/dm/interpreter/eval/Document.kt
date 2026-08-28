@@ -1646,18 +1646,25 @@ class Document(internal val config: DocumentConfig) {
     private fun formallyInvalid(path: String, raw: String): Boolean {
         val kind = kindOf(path)
         val precision = datePrecisions[path] ?: DatePrecision.FULL
-        // The field's date-ish format for the formal check — DATE/TIME/DATE_TIME/DATE_RANGE each from their own
-        // map (so a malformed TIME/DATE_TIME/range also resolves to Unknown, not just DATE; KERNEL-FINDINGS §6).
-        val dateLikeFormat = when (kind) {
-            Kind.DATE -> dateFormats[path]
-            Kind.TIME -> timeFormats[path]
-            Kind.DATE_TIME -> dateTimeFormats[path]
-            Kind.DATE_RANGE -> rangeConfig[path]?.first
-            else -> null
-        }
-        return formalError(kind, raw, scales[path], dateLikeFormat, precision, rangeConfig[path]?.second,
+        return formalError(kind, raw, scales[path], declaredTemporalFormat(path, kind), precision,
+            rangeConfig[path]?.second,
             fieldConstraints[path] ?: FieldConstraints.NONE, baseYear = baseYear ?: 2000, timeZone = timeZone,
             rangeYearInterpretation = yearInterpretationOf(path)) != null
+    }
+
+    /**
+     * The field's own DECLARED temporal format string, read from its kind's map (each kind stores its formats
+     * separately), or null when it declares none. It is the *declaration* that decides how the value is then
+     * classified and canonicalized, never the kind ([temporalClassifier], KF211) — so this string must be
+     * resolved by the declaring kind and handed on, not re-looked-up from the classifier's map, where a
+     * date-declared TIME field's format does not live.
+     */
+    private fun declaredTemporalFormat(path: String, kind: Kind): String? = when (kind) {
+        Kind.DATE -> dateFormats[path]
+        Kind.TIME -> timeFormats[path]
+        Kind.DATE_TIME -> dateTimeFormats[path]
+        Kind.DATE_RANGE -> rangeConfig[path]?.first
+        else -> null
     }
 
     /** The DATE_RANGE field's declared `interpretationOfYear`, STANDARD when it declares none. */
@@ -1672,7 +1679,12 @@ class Document(internal val config: DocumentConfig) {
         // this, an aggregate would silently fold a `-0` as 0 and fire where the kernel suppresses.
         if (formallyInvalid(path, raw)) return Val.Unknown
         val precision = datePrecisions[path] ?: DatePrecision.FULL
-        return when (kind) {
+        // The DECLARED FORMAT decides which canonicalization a temporal cell gets, never the field's kind
+        // (KF211) — so a TIME field declared `dd.MM.yyyy` canonicalizes to ISO like any date and compares
+        // chronologically, where reading it as a clock left the raw text to compare lexically. The formal gate
+        // above routes on the same classifier, so the two cannot disagree about whether a cell is readable.
+        val declared = declaredTemporalFormat(path, kind)
+        return when (temporalClassifier(kind, declared)) {
             // A FRAGMENT-format range (`yyyy` year-range) completes its two endpoints ASYMMETRICALLY —
             // start to the interval's earliest date, end to its latest (IF118) — so a rule reading it
             // evaluates instead of going Unknown; a full-format range is unchanged. The base year fills a
@@ -1689,7 +1701,7 @@ class Document(internal val config: DocumentConfig) {
             //    concrete date → Unknown for a direct reference (`ValueAsDate` selects its boundary).
             //  - FULL: a plain full date.
             Kind.DATE -> {
-                val fmt = dateFormats[path] ?: "yyyy-MM-dd"
+                val fmt = declared ?: "yyyy-MM-dd"
                 when {
                     precision == DatePrecision.FRAGMENT ->
                         completeFragmentToIso(raw, fmt, baseYear ?: 2000)?.let { Val.Txt(it) } ?: Val.Unknown
@@ -1716,8 +1728,11 @@ class Document(internal val config: DocumentConfig) {
             // formal gate above admits such a cell, so resolution MUST produce a value for it; returning
             // Unknown made every referencing rule silently non-evaluable (IF301, the DATE_TIME sibling of the
             // IG110/IF250 class its sweep had ruled out).
-            Kind.DATE_TIME -> parseDeclaredDateTime(raw, dateTimeFormats[path] ?: "yyyy-MM-dd'T'HH:mm:ss")
+            Kind.DATE_TIME -> parseDeclaredDateTime(raw, declared ?: "yyyy-MM-dd'T'HH:mm:ss")
                 ?.let { Val.Txt(it) } ?: Val.Unknown
+            // A clock-shaped declaration canonicalizes through the same parser the formal gate used, so the two
+            // tiers agree by construction rather than by both happening to accept the raw text.
+            Kind.TIME -> parseTimeToIso(raw, declared ?: "HH:mm:ss")?.let { Val.Txt(it) } ?: Val.Unknown
             else -> typedValue(kind, raw)
         }
     }
