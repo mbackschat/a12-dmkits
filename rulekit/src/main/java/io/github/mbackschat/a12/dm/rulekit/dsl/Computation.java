@@ -227,6 +227,9 @@ public record Computation(
 
             String computedPath = computedField.path().value();
             for (Alternative a : alternatives) {
+                require(!isFalseConstant(a.operation()) || computedField.kind() != ValueKind.CONFIRM,
+                        "the computed CONFIRM field " + computedPath + " takes only the constant True — the"
+                                + " kernel rejects False with MVK_INVALID_COMPARE_TO_YES");
                 require(operationMatchesComputedKind(a.operation()),
                         "the operation '" + new DslRenderer().render(a.operation()) + "' yields "
                                 + a.operation().kind() + " but the computed field " + computedPath
@@ -303,11 +306,25 @@ public record Computation(
             }
         }
 
+        /**
+         * A CONFIRM field is the one asymmetric target: the kernel accepts the BOOLEAN constant {@code True}
+         * into it and rejects {@code False} with {@code MVK_INVALID_COMPARE_TO_YES} ("only ... equality or
+         * unequality with the constant True"). Measured on both kernel strategies through a raw-injected
+         * operation that bypasses this pre-check, so the basis is the kernel and not this file's own
+         * reasoning — {@code validate.laws.ConfirmComputationSourceKindLawsTest}. Plain kind equality refused
+         * both, which made the legal model unauthorable; the {@code False} half is refused separately above so
+         * it carries the kernel's own code instead of a kind-mismatch message.
+         */
         private boolean operationMatchesComputedKind(Calculation operation) {
             return operation.kind() == computedField.kind()
                     || operation instanceof FirstFilledValue
                             && FirstFilledValue.sameOwnerFamily(operation.kind(), computedField.kind())
-                    || operation instanceof BaseYear && computedField.kind() == ValueKind.NUMBER;
+                    || operation instanceof BaseYear && computedField.kind() == ValueKind.NUMBER
+                    || operation instanceof BoolLiteral && computedField.kind() == ValueKind.CONFIRM;
+        }
+
+        private static boolean isFalseConstant(Calculation operation) {
+            return operation instanceof BoolLiteral(boolean value) && !value;
         }
 
         /** Lifts an {@code MVK_*}/{@code RK_*} code out of a precheck message when it names one. */

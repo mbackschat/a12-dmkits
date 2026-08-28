@@ -1659,7 +1659,7 @@
     {
       "id": "True",
       "dslEntry": [],
-      "dslEntryNote": "No standalone factory — the True constant is emitted as the constant operand of a boolean/confirm comparison (BoolRef.isTrue / ConfirmRef.confirmed) or NumberOfValueInFields(true IN …).",
+      "dslEntryNote": "No standalone Dsl factory, but the constant is the BoolLiteral(true) node: as a comparison operand it is emitted by BoolRef.isTrue / ConfirmRef.confirmed or NumberOfValueInFields(true IN …), and as a computation operation it is passed directly to calc(...).",
       "opposite": [
         "False"
       ],
@@ -1672,7 +1672,8 @@
       "returns": "boolean-constant",
       "meaning": "The boolean/confirm constant 'true'. Boolean fields compare to True or False; confirm fields support equality and inequality with True.",
       "constraints": [
-        "usable in equality comparisons against boolean fields and confirm fields"
+        "usable in equality comparisons against boolean fields and confirm fields",
+        "also a computation OPERATION, not only a comparison operand: a BOOLEAN computed field admits it and so does a CONFIRM computed field"
       ],
       "gotchas": [
         {
@@ -1682,6 +1683,10 @@
         {
           "text": "an unset confirm counts as not confirmed, so [Confirm] != True is the idiom for 'not confirmed'",
           "kind": "SURPRISE"
+        },
+        {
+          "text": "a CONFIRM computed field admits only this constant, because a confirm has no false — so a computation can set a confirmation but never clear one; see False for what a CONFIRM target does with the other constant",
+          "kind": "AUTHORING"
         }
       ],
       "validExample": {
@@ -1698,7 +1703,7 @@
     {
       "id": "False",
       "dslEntry": [],
-      "dslEntryNote": "No standalone factory — the False constant is emitted as the constant operand of a boolean comparison (BoolRef.isFalse) or NumberOfValueInFields(false IN …).",
+      "dslEntryNote": "No standalone Dsl factory, but the constant is the BoolLiteral(false) node: as a comparison operand it is emitted by BoolRef.isFalse or NumberOfValueInFields(false IN …), and as a computation operation it is passed directly to calc(...).",
       "opposite": [
         "True"
       ],
@@ -1711,12 +1716,17 @@
       "returns": "boolean-constant",
       "meaning": "The boolean constant 'false'. Legal against boolean fields only — a confirm field never compares to False.",
       "constraints": [
-        "usable in equality comparisons against boolean fields only"
+        "usable in equality comparisons against boolean fields only",
+        "as a computation OPERATION it is legal on a BOOLEAN computed field only — a CONFIRM computed field rejects it with MVK_INVALID_COMPARE_TO_YES"
       ],
       "gotchas": [
         {
           "text": "confirm fields compare only to True — [Confirm] == False is rejected; use [Confirm] != True for 'not confirmed'",
           "kind": "SURPRISE"
+        },
+        {
+          "text": "as a computation operation this is confined to BOOLEAN computed fields: a CONFIRM computed field rejects it with MVK_INVALID_COMPARE_TO_YES, the same asymmetry the comparison side already has",
+          "kind": "AUTHORING"
         }
       ],
       "validExample": {

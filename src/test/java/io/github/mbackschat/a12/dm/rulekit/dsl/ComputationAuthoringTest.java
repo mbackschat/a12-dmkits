@@ -146,6 +146,49 @@ class ComputationAuthoringTest {
         assertTrue(ex.getMessage().contains("MVK_ERROR_EMPTY_PRECONDITION"), ex::getMessage);
     }
 
+    /**
+     * The kernel's confirm rule is asymmetric, and the pre-check has to be too. Measured on both strategies
+     * through a raw-injected operation that bypasses this very pre-check
+     * ({@code validate.laws.ConfirmComputationSourceKindLawsTest}): {@code True} into a CONFIRM target is
+     * ACCEPTED, while {@code False} into one draws {@code MVK_INVALID_COMPARE_TO_YES} — "only ... equality or
+     * unequality with the constant True". A plain kind-equality check refused both, so it made a legal model
+     * unauthorable.
+     */
+    @Test
+    void acceptsTheConstantTrueAsAConfirmComputation() {
+        var computation = m.computation(m.confirm("/Subscription/TermsAccepted"))
+                .name("TermsComp")
+                .calc(new BoolLiteral(true))
+                .message(en("Terms are accepted."), de("AGB akzeptiert."))
+                .build();
+        assertNotNull(computation);
+        ValidationResult kernel = new RuleValidator().check(modelJson, computation.draft());
+        assertTrue(kernel.ok(), () -> "the kernel must accept True into a CONFIRM target: " + kernel);
+    }
+
+    @Test
+    void rejectsTheConstantFalseAsAConfirmComputationWithTheKernelsOwnCode() {
+        var builder = m.computation(m.confirm("/Subscription/TermsAccepted"))
+                .name("TermsComp")
+                .calc(new BoolLiteral(false))
+                .message(en("nope"), de("nein"));
+        PrecheckException ex = assertThrows(PrecheckException.class, builder::build);
+        assertEquals(Optional.of("MVK_INVALID_COMPARE_TO_YES"), ex.diagnostic().code(), ex::getMessage);
+    }
+
+    @Test
+    void acceptsBothBooleanConstantsAsABooleanComputation() {
+        for (boolean value : new boolean[] {true, false}) {
+            var computation = m.computation(m.bool("/Subscription/AutoRenew"))
+                    .name("RenewComp")
+                    .calc(new BoolLiteral(value))
+                    .message(en("Renewal is derived."), de("Verlaengerung abgeleitet."))
+                    .build();
+            ValidationResult kernel = new RuleValidator().check(modelJson, computation.draft());
+            assertTrue(kernel.ok(), () -> "BOOLEAN target must accept " + value + ": " + kernel);
+        }
+    }
+
     @Test
     void rejectsAnOperationOfTheWrongKind() {
         var builder = m.computation(m.num("/Subscription/Billing/EffectiveFee"))
