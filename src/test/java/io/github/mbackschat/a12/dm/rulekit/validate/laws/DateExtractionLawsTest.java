@@ -79,4 +79,51 @@ class DateExtractionLawsTest {
                     "FieldFilled(ApproxYear) And " + c, "MVK_INVALID_DATE_TYPE");
         }
     }
+
+    // ── the operand-kind gate, and the two codes that place a wrong operand ────────────────────────
+
+    /**
+     * A non-temporal operand is {@code MVK_NO_DATE}, while a temporal operand of the WRONG temporal kind is
+     * {@code MVK_WRONG_DATE_FORMAT_FOR_OP} — two different refusals, so "the operand is wrong" is not one
+     * rule. Each row carries the admitted control that isolates the operand as the only variable; the typed
+     * peer is {@code dsl.operators.DateExtractionOperandKindTest}.
+     */
+    @Test
+    void aNonTemporalExtractionOperandIsNotADate() {
+        KernelLaws.rejectsOrder("/Order", "../CustomerName",
+                "FieldFilled(CustomerName) And YearFromDate(CustomerName) > 0", "MVK_NO_DATE");
+        KernelLaws.acceptsOrder("/Order", "../CustomerName",
+                "FieldFilled(CustomerName) And YearFromDate(OrderDate) > 0");
+    }
+
+    /** A date where a TIME is required is a format refusal, not a "not a date" one. */
+    @Test
+    void aWrongTemporalKindIsAFormatRefusal() {
+        KernelLaws.rejectsOrder("/Order", "../CustomerName",
+                "FieldFilled(CustomerName) And HoursFromTime(OrderDate) > 0",
+                "MVK_WRONG_DATE_FORMAT_FOR_OP");
+        KernelLaws.acceptsOrder("/Order", "../CustomerName",
+                "FieldFilled(CustomerName) And HoursFromTime(PickupTime) > 0");
+    }
+
+    /** The date/time SPLIT operators need a complete date-time; a plain date is the same format refusal. */
+    @Test
+    void splittingAPlainDateIntoItsDatePartIsAFormatRefusal() {
+        KernelLaws.rejectsOrder("/Order", "../CustomerName",
+                "FieldFilled(CustomerName) And DateFromDateTime(OrderDate) == Today",
+                "MVK_WRONG_DATE_FORMAT_FOR_OP");
+        KernelLaws.acceptsOrder("/Order", "../CustomerName",
+                "FieldFilled(CustomerName) And DateFromDateTime(ScheduledAt) == Today");
+    }
+
+    /** {@code FieldFilled} takes one field: a repetition list is MVK_NO_WILDCARDS_ALLOWED, plain is fine. */
+    @Test
+    void fieldPresenceTakesASingleFieldNotARepetitionList() {
+        KernelLaws.rejectsOrder("/Order", "../CustomerName",
+                "FieldFilled(CustomerName) And FieldFilled(Items*/Count)", "MVK_NO_WILDCARDS_ALLOWED");
+        KernelLaws.rejectsOrder("/Order", "../CustomerName",
+                "FieldFilled(CustomerName) And FieldNotFilled(Items*/Count)", "MVK_NO_WILDCARDS_ALLOWED");
+        KernelLaws.acceptsOrder("/Order", "../CustomerName",
+                "FieldFilled(CustomerName) And FieldFilled(ProductCode)");
+    }
 }

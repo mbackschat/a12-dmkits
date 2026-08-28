@@ -53,6 +53,31 @@ public final class Dsl {
         return new FieldPresenceCondition(field, false);
     }
 
+    /**
+     * The {@link FieldOperand} overload of {@link #fieldFilled(FieldRef)} — additive, for a caller that
+     * cannot type its operand as {@link FieldRef} up front (an AST-driven bridge, never a human author, who
+     * keeps the narrower, compiler-checked signature above). {@code FieldFilled} takes exactly one field,
+     * unlike {@code AllFieldsFilled}/{@code NoFieldFilled}, which legitimately admit a starred member — a
+     * {@link FieldListRef} here is the kernel's {@code MVK_NO_WILDCARDS_ALLOWED} (KERNEL-FINDINGS §9), stated
+     * here instead of erased by the type split {@link FieldOperand}'s own doc describes.
+     */
+    public static Condition fieldFilled(FieldOperand field) {
+        if (field instanceof FieldRef ref) {
+            return fieldFilled(ref);
+        }
+        throw new IllegalArgumentException("FieldFilled needs a single field, not the repetition list "
+                + field.renderedPath() + " (MVK_NO_WILDCARDS_ALLOWED)");
+    }
+
+    /** The {@link FieldOperand} overload of {@link #fieldNotFilled(FieldRef)} — see {@link #fieldFilled(FieldOperand)}. */
+    public static Condition fieldNotFilled(FieldOperand field) {
+        if (field instanceof FieldRef ref) {
+            return fieldNotFilled(ref);
+        }
+        throw new IllegalArgumentException("FieldNotFilled needs a single field, not the repetition list "
+                + field.renderedPath() + " (MVK_NO_WILDCARDS_ALLOWED)");
+    }
+
     /** {@code Length(field)} as a comparable numeric expression. catalog:Length */
     public static NumberExpr length(StringRef field) {
         return field.length();
