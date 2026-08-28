@@ -70,7 +70,11 @@ found=0
 for dir in "$ROOT"/build/test-results/*/ "$ROOT"/*/build/test-results/*/; do
   [[ -d "$dir" ]] || continue
   # -newer compares mtimes; an XML from a previous run is older than this run's log.
-  mapfile -t fresh < <(find "$dir" -name 'TEST-*.xml' -newer "$cutoff" 2>/dev/null)
+  # Read into an array the long way: macOS ships bash 3.2, which has no `mapfile`, and this script
+  # is most needed on the machine running the build.
+  fresh=()
+  while IFS= read -r xml; do fresh+=("$xml"); done \
+    < <(find "$dir" -name 'TEST-*.xml' -newer "$cutoff" 2>/dev/null)
   (( ${#fresh[@]} )) || continue
   found=1
   read -r t f e < <(python3 - "${fresh[@]}" <<'PY'
