@@ -245,7 +245,10 @@ private class ConditionParser(
             if (peek() == '"') {
                 Expr.EntityIndex.Literal(readString().v)
             } else {
-                val key = readRef() as Expr.Field
+                // EntitySource, not Field: a semantic-index key may carry a star (an Expr.Star), and
+                // `path`/`outer` are declared on the shared interface precisely so a key site need not
+                // know which of the two shapes it got.
+                val key = readRef() as Expr.EntitySource
                 Expr.EntityIndex.Field(key.path, key.outer)
             }
         } else null
