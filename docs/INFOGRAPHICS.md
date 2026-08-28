@@ -9,7 +9,7 @@ The full-resolution source assets live under `assets/infographics/`. Public-rele
 | Infographic | Canonical asset | Release-source copies | README sections |
 |---|---|---|---|
 | A12 dmkits toolchain | `assets/infographics/a12-dmkits-toolchain.png` | none | root introduction, after “What's in the box” |
-| dmtool safe editing | `assets/infographics/dmtool-safe-editing.png` | `plugin/assets/infographics/dmtool-safe-editing.png` | root and dmtool release “Why dmtool” |
+| dmtool DocumentModel workbench | `assets/infographics/dmtool-model-workbench.png` | `plugin/assets/infographics/dmtool-model-workbench.png` | root and dmtool release “Why dmtool” |
 | Interpreter runtime | `assets/infographics/a12-interpreter-runtime.png` | `interpreter/public-release/assets/infographics/a12-interpreter-runtime.png` | root “The interpreter” and Interpreter release “What ships” |
 | Interpreter vs Kernel | `assets/infographics/interpreter-vs-kernel.png` | `plugin/assets/infographics/interpreter-vs-kernel.png`, `interpreter/public-release/assets/infographics/interpreter-vs-kernel.png` | root and Interpreter release “Performance”, dmtool release “Runtime performance and memory” |
 
@@ -22,7 +22,7 @@ The canonical assets and their release-source copies must be byte-identical. The
 - Use case: `infographic-diagram`.
 - Audience: software engineers, A12 model developers, technical decision-makers, and coding-agent users with general software architecture knowledge.
 - Format: original ByteByteGo-inspired information design without ByteByteGo branding or copied compositions.
-- Canvas: high-resolution portrait with a warm off-white background. Use 4:5 by default, 2:3 for the two denser layered architectures, and the accepted near-5:6 composition for the dmtool workflow.
+- Canvas: high-resolution portrait with a warm off-white background. Use 4:5 by default and 2:3 for the denser layered architectures and dmtool workbench.
 - Header: large left-aligned title with a short mint vertical accent bar and a clean upper-right corner.
 - Typography: bold geometric sans-serif, horizontal text only, short labels, no paragraphs inside the image.
 - Shapes: dark outlined rounded rectangles, pills, compact circular stage numbers, pale grouping fields, and saturated focal nodes.
@@ -37,7 +37,7 @@ The canonical assets and their release-source copies must be byte-identical. The
 | Claim family | Current source | Regenerate when |
 |---|---|---|
 | Module roles, boundaries, entry points, and dependency direction | [ARCHITECTURE.md](ARCHITECTURE.md), [API-GUIDE.md](API-GUIDE.md), root [`README.md`](../README.md) | a module, public product name, dependency edge, entry point, or authoring/runtime boundary changes |
-| dmtool discovery, safe-editing, result, and MCP mechanisms | [CLI-SPEC.md](CLI-SPEC.md), [CLI-CONFORMANCE-SPEC.md](CLI-CONFORMANCE-SPEC.md), root [`README.md`](../README.md), public dmtool [`README.md`](../plugin/README.md) | a featured mechanism, contract, or product positioning changes |
+| dmtool discovery, model exchange, comprehension, authoring, review, runtime, result, and MCP mechanisms | [CLI-SPEC.md](CLI-SPEC.md), [CLI-CONFORMANCE-SPEC.md](CLI-CONFORMANCE-SPEC.md), root [`README.md`](../README.md), public dmtool [`README.md`](../plugin/README.md) | a featured mechanism, contract, or product positioning changes |
 | Interpreter preparation, request lifecycle, targets, and public features | [INTERPRETER-API-SPEC.md](INTERPRETER-API-SPEC.md), [INTERPRETER-ARCHITECTURE.md](INTERPRETER-ARCHITECTURE.md), public Interpreter [`README.md`](../interpreter/public-release/README.md) | the public lifecycle, target set, concurrency contract, or supported result family changes |
 | Kernel-conformance claims | [TESTING-SPEC.md](TESTING-SPEC.md), [CONFORMANCE-CORPUS-SPEC.md](CONFORMANCE-CORPUS-SPEC.md), [INTERPRETER-SPEC.md](INTERPRETER-SPEC.md) | the semantics target, oracle hierarchy, differential policy, or portable corpus contract changes |
 | Performance and resident memory | public [PERFORMANCE.md](../interpreter/public-release/PERFORMANCE.md), [INTERPRETER-PERFORMANCE.md](INTERPRETER-PERFORMANCE.md), [INTERPRETER-PERFORMANCE-RESULTS.md](INTERPRETER-PERFORMANCE-RESULTS.md) | a qualifying benchmark rerun changes any displayed number, machine/runtime identity, timing boundary, or eligibility rule |
@@ -170,116 +170,158 @@ Avoid:
 - No tiny paragraphs, illegible text, invented labels, duplicated words, random arrows, unlabeled crossings, ambiguous line endings, excessive nesting, inconsistent icons, or decorative charts.
 ```
 
-## Infographic 2: dmtool safe editing
+## Infographic 2: dmtool DocumentModel workbench
 
 ### Accepted output
 
 <p align="center">
-  <a href="../assets/infographics/dmtool-safe-editing.png">
-    <img src="../assets/infographics/dmtool-safe-editing.png" alt="dmtool discovery, typed authoring, Kernel gate, atomic write, and result mechanisms" width="540">
+  <a href="../assets/infographics/dmtool-model-workbench.png">
+    <img src="../assets/infographics/dmtool-model-workbench.png" alt="dmtool DocumentModel workbench for discovery, schema exchange, understanding, authoring, review, and runtime automation" width="540">
   </a>
 </p>
-<p align="center"><sub>1146 × 1373 PNG. Click the preview to open the full-resolution image.</sub></p>
+<p align="center"><sub>1024 × 1536 PNG. Click the preview to open the full-resolution image.</sub></p>
 
 ### Content map
 
-- Ten-second takeaway: dmtool turns intent into an atomic model edit through discovery, typed authoring mechanisms, the real Kernel acceptance gate, and Interpreter-backed runtime evaluation.
-- Exact title: `dmtool: From Intent to Safe Edit`
-- Primary layout: sequential storyboard.
-- Reading direction: top to bottom.
-- Focal mechanism: the six-stage agent workflow.
-- Major regions: intent, discovery, authoring, preflight, Kernel confirmation, runtime result.
-- Final output: a persisted model and a structured JSON result.
+- Ten-second takeaway: one self-describing tool covers the complete DocumentModel lifecycle, from plain-language intent or external schemas to verified models and executable Documents.
+- Exact title: `dmtool: The A12 DocumentModel Workbench`
+- Exact subtitle: `Create • translate • understand • evolve • verify • run`
+- Primary layout: hub-and-spoke workbench.
+- Reading direction: agent loop at the top, central hub, six numbered capability regions, then the bottom evidence rail.
+- Focal mechanism: `dmtool` around an `A12 DocumentModel`, available through `CLI • MCP • native`.
+- Major regions: discover, create and bridge, understand, author and transform, preview/review/verify, run and automate.
+- Visual priority: CREATE & BRIDGE gets the largest capability card because bidirectional JSON Schema/OpenAPI exchange distinguishes the originating workflow; the Kernel and Interpreter remain small assurance badges rather than dominant stages.
+- Density limit: at most six short feature labels in each capability region. Exact commands and detailed caveats stay in the READMEs.
+- Final output: a kernel-accepted DocumentModel, canonical A12 Documents, and structured evidence for the next agent iteration.
 
 ### Exact relationships
 
-- Plain-language intent -> starts -> discovery.
-- Discovery -> supplies -> model and operator facts.
-- modelkit + rulekit -> author -> candidate edit.
-- Preflight -> checks -> paths + types + polarity + scope.
-- Real A12 Kernel -> accepts or refuses -> complete edit.
-- Accepted edit -> persists atomically -> DocumentModel JSON.
-- Interpreter -> evaluates -> A12 Document.
-- Evaluation -> returns -> JSON result envelope.
+- Human intent -> is interpreted by -> Agent.
+- Agent -> invokes -> dmtool.
+- dmtool -> returns -> Structured evidence.
+- Structured evidence -> drives -> Agent iteration.
+- dmtool -> operates on -> A12 DocumentModel.
+- CLI + MCP + native -> expose -> dmtool.
+- DISCOVER -> supplies -> manifests, schemas, operators, patterns, diagnostics, and examples.
+- CREATE & BRIDGE -> originates -> a new DocumentModel.
+- JSON Schema -> imports through -> dmtool -> A12 DocumentModel.
+- OpenAPI 3.0 / 3.1 / 3.2 -> imports through -> dmtool -> A12 DocumentModel.
+- A12 DocumentModel -> exports through -> dmtool -> JSON Schema or OpenAPI.
+- Whole-bundle import -> creates -> connected models through includes.
+- Unsupported or ambiguous source semantics -> produce -> explicit decisions, with strict mode available.
+- Source constraints without a field-config home -> become -> A12 rules.
+- UNDERSTAND -> maps -> report + tree, plain-language glosses, dependencies, usage, and workspace graph.
+- AUTHOR & TRANSFORM -> evolves -> structure, configuration, rules, computations, patterns, and references.
+- rename + move -> rewrite -> affected references.
+- extract + inline -> refactor -> reusable model structure.
+- PREVIEW, REVIEW & VERIFY -> evaluates -> dry-run, semantic model diff, impact tiers, corrective diagnostics, safe refactor gates, and rollback.
+- Real A12 Kernel -> confirms -> complete model acceptance.
+- RUN & AUTOMATE -> creates and consumes -> canonical A12 Documents.
+- model seed -> creates -> canonical A12 Document JSON.
+- full or partial validation + compute/apply -> returns -> structured JSON result envelope.
+- A12 Interpreter -> provides -> runtime behavior differentially verified against the Kernel.
 
 ### Generation prompt
 
 ```text
 Use case: infographic-diagram
 Asset type: GitHub README technical infographic
-Primary request: Create an original, polished portrait technical infographic showing how dmtool turns plain-language intent into a safe A12 DocumentModel edit, using a clean ByteByteGo-inspired information-design language without copying an existing poster or using the ByteByteGo logo or wordmark.
+Primary request: Create an original, polished portrait technical infographic presenting dmtool as the complete A12 DocumentModel workbench, using a clean ByteByteGo-inspired information-design language without copying an existing poster or using the ByteByteGo logo or wordmark.
 
 Communication goal:
-- Audience: coding-agent users, business analysts, model developers, and software engineers.
-- Ten-second takeaway: dmtool discovers the contract, authors through modelkit and rulekit, checks the candidate, confirms the complete edit with the real A12 Kernel, writes atomically, and evaluates through the Interpreter.
-- Exact title: "dmtool: From Intent to Safe Edit".
-- Tone: technically precise, compact, approachable, and visually scannable.
+- Audience: coding-agent users, business analysts, model developers, software engineers, and technical decision-makers.
+- Ten-second takeaway: one self-describing tool covers the complete DocumentModel lifecycle, from plain-language intent or external schemas to verified models and executable Documents.
+- Exact title: "dmtool: The A12 DocumentModel Workbench".
+- Exact subtitle: "Create • translate • understand • evolve • verify • run".
+- Tone: technically precise, dense but orderly, approachable, and visually scannable.
 
 Canvas and header:
-- Portrait composition near 5:6 at high resolution.
-- Very light warm-gray background.
+- Tall 2:3 portrait composition at high resolution, preferably 1536 x 2304 or larger.
+- Fully opaque warm off-white background extending to every canvas edge.
 - Large bold sans-serif title at the top left.
 - Short mint-green vertical bar immediately left of the title.
 - Leave the opposite header corner clean.
+- Put the subtitle directly below the title in smaller bold type.
 - Reserve a clear gap between the header and the diagram body.
 
 Primary information structure:
-- Use a sequential storyboard as the single dominant layout skeleton.
-- Primary reading direction: top to bottom.
-- Focal mechanism: six numbered horizontal stage bands connected by one continuous route.
-- Major regions in reading order: STATE INTENT, DISCOVER, AUTHOR, CHECK, CONFIRM + WRITE, RUN.
-- Final output: a persisted DocumentModel and a structured JSON result.
+- Use a hub-and-spoke workbench as the single dominant layout skeleton.
+- Primary reading direction: the agent loop at the top, then the central dmtool hub, then six numbered capability cards arranged around it, then the evidence rail at the bottom.
+- Put a compact horizontal loop immediately below the subtitle: Human intent → Agent → dmtool → Structured evidence → Iterate.
+- Make the central saturated-purple hub the visual anchor. It contains "dmtool", "A12 DocumentModel", and the access pill "CLI • MCP • native".
+- Arrange six large rounded capability cards around the hub, three on the left and three on the right, with short clean spokes from the hub. Number them 1 through 6.
+- Give CREATE & BRIDGE visibly more area than the other cards. Its bidirectional exchange is the key differentiator.
+- Keep the two conformance assurances as small badges inside their owning cards. Do not make the Kernel or Interpreter separate stages or dominant nodes.
+- Final output: a kernel-accepted DocumentModel, canonical A12 Documents, and structured evidence that drives the next agent iteration.
 
 Exact content:
 - Use these labels exactly as written and add no other text.
-- Title: "dmtool: From Intent to Safe Edit"
-- Stage 1 title: "STATE INTENT"
-- Stage 1 caption: "Plain-language requirement"
-- Stage 2 title: "DISCOVER"
-- Stage 2 nodes: "manifest", "operators", "patterns", "schemas"
-- Stage 2 side pill: "Skill: judgment"
-- Stage 3 title: "AUTHOR"
-- Stage 3 nodes: "modelkit: structure" and "rulekit: logic"
-- Stage 4 title: "CHECK"
-- Stage 4 caption: "Paths • types • polarity • scope"
-- Stage 5 title: "CONFIRM + WRITE"
-- Stage 5 node: "Real A12 Kernel"
-- Stage 5 captions: "Atomic edit" and "No write on failure"
-- Stage 6 title: "RUN"
-- Stage 6 node: "A12 Interpreter"
-- Stage 6 output: "JSON result envelope"
-- Bottom assurance label: "AUTHORING: accepted by the Kernel"
-- Bottom assurance label: "RUNTIME: matched by differential verification"
-- Footer pills: "CLI", "MCP", "native binary"
-- Route labels: "describe", "guide", "build", "preflight", "confirm", "evaluate", "return"
+- Title: "dmtool: The A12 DocumentModel Workbench"
+- Subtitle: "Create • translate • understand • evolve • verify • run"
+- Agent-loop labels: "Human intent", "Agent", "dmtool", "Structured evidence", "Iterate"
+- Central hub label: "dmtool"
+- Central hub object: "A12 DocumentModel"
+- Central access pill: "CLI • MCP • native"
+- Card 1 title: "1  DISCOVER"
+- Card 1 labels: "manifest", "schemas", "operators", "patterns", "diagnostics", "worked examples"
+- Card 1 callout: "Live contract, not a hand-maintained catalog"
+- Card 2 title: "2  CREATE & BRIDGE"
+- Card 2 main bridge: "JSON Schema ⇄ A12 DocumentModel ⇄ OpenAPI"
+- Card 2 labels: "model new", "OpenAPI 3.0 / 3.1 / 3.2", "whole-bundle import", "connected models via includes", "best-effort + strict", "constraints → A12 rules"
+- Card 3 title: "3  UNDERSTAND"
+- Card 3 labels: "report + tree", "plain-language glosses", "explain + deps", "where-used + usage", "workspace graph", "multi-file resolution"
+- Card 3 output pill: "Actionable model map"
+- Card 4 title: "4  AUTHOR & TRANSFORM"
+- Card 4 labels: "structure + config", "rules + computations", "pattern scaffolds", "rename + move", "extract + inline", "atomic apply"
+- Card 4 foundation pill: "modelkit • rulekit • EditSession"
+- Card 5 title: "5  PREVIEW, REVIEW & VERIFY"
+- Card 5 labels: "dry-run", "semantic model diff", "impact tiers", "corrective diagnostics", "safe refactor gates", "rollback • no write"
+- Card 5 assurance badge: "Real A12 Kernel"
+- Card 5 assurance caption: "Complete model accepted"
+- Card 6 title: "6  RUN & AUTOMATE"
+- Card 6 labels: "seed canonical Documents", "full + partial validation", "compute + apply", "custom conditions + types", "explicit unsupported", "JSON result envelope"
+- Card 6 assurance badge: "A12 Interpreter"
+- Card 6 assurance caption: "Runtime differentially verified"
+- Bottom evidence pills: "Self-describing", "Machine-readable", "Atomic writes", "Reviewable changes", "Portable runtime", "Corrective diagnostics"
 
 Semantic mapping:
-- Intent = speech bubble icon + pale cyan + rounded band.
-- Discovery = compass and catalog icons + pale lavender + rounded band.
-- Authoring = paired model-tree and condition-tree icons + pale yellow + rounded band.
-- Check = checklist shield icon + pale green + rounded band.
-- Kernel confirmation = shield-check icon + saturated blue + rounded band.
-- Runtime = evaluator chip icon + mint + rounded band.
-- Required sequence = solid near-black arrow with numbered circles 1 through 6.
-- Verification assurance = dashed purple connector to the bottom assurance labels.
+- Human intent and Agent = speech-bubble and agent icons + pale cyan.
+- dmtool hub = workbench or command-terminal icon + saturated purple.
+- A12 DocumentModel = model-tree icon nested inside the hub.
+- DISCOVER = compass and catalog icons + pale lavender.
+- CREATE & BRIDGE = bidirectional schema/document arrows + pale cyan and pale yellow, with the main bridge set as the largest text inside the card.
+- UNDERSTAND = map, magnifier, and dependency-tree icons + pale green.
+- AUTHOR & TRANSFORM = model-tree, rule-node, and refactor icons + pale yellow.
+- PREVIEW, REVIEW & VERIFY = before/after panels, checklist, and shield-check icons + pale lavender.
+- RUN & AUTOMATE = document, evaluator chip, and result-envelope icons + mint.
+- Direct dmtool capability = one short solid near-black spoke from the central hub to the owning card. Spokes carry no text.
+- Kernel assurance = small saturated-blue shield badge inside card 5.
+- Interpreter assurance = small saturated-purple evaluator badge inside card 6.
 
 Layout-specific composition:
-- Stack six horizontal stage bands from top to bottom.
-- Put each stage number, title, and symbolic icon in a colored sidebar.
-- Use a neutral field for each stage's mechanics.
-- Carry one numbered connector through all six bands and show the artifact passed from one stage to the next.
-- Make the final band and bottom assurance labels visually conclusive.
+- Use a narrow top agent-loop rail, a strong central hub, and six capability cards balanced around it.
+- Keep card headings, label positions, icon sizes, padding, and borders consistent.
+- Make cards 1, 3, and 5 the left column; cards 2, 4, and 6 the right column. Give card 2 extra height and rebalance the others without crowding.
+- Render feature labels as compact chips or short one-line rows, never paragraphs.
+- In card 2, make "JSON Schema ⇄ A12 DocumentModel ⇄ OpenAPI" a clear bidirectional horizontal bridge, with the supporting labels beneath it.
+- In card 5, show dry-run feeding a two-panel semantic diff, then the safety and Kernel assurance badge.
+- In card 6, show a canonical Document entering validation and computation, then a JSON result envelope leaving.
+- Use only six hub spokes. Avoid connections between capability cards.
+- Finish with one aligned bottom rail of six evidence pills.
 
 Visual language:
-- Heavy near-black outlines, rounded rectangles, pill labels, simple circular step numbers, and generous gutters.
+- Heavy near-black outlines, rounded rectangles, pill labels, simple circular region numbers, and generous gutters.
 - Flat, colorful technical icons with consistent dark outlines and no realistic shading.
 - Neutral canvas with a mint accent, pale cyan, pale lavender, pale green, pale yellow, saturated purple, and saturated blue.
+- Use bold geometric sans-serif type. Keep titles prominent, card labels medium, and captions compact but fully readable at full resolution.
+- Preserve a strong hierarchy despite the density: title, hub, card headings, main bridge, labels, evidence pills.
 - Keep all text horizontal and fully legible.
 
 Avoid:
 - No ByteByteGo logo, wordmark, watermark, A12 logo, mgm branding, or copied poster composition.
 - No photorealistic imagery, 3D icons, gradients, neon glow, glassmorphism, blurred shadows, decorative textures, or generic stock art.
-- No shell commands, source code, invented CLI verbs, invented diagnostics, tiny paragraphs, illegible text, duplicated words, random arrows, unlabeled crossings, ambiguous line endings, excessive nesting, inconsistent icons, or decorative charts.
+- Do not present dmtool as only a safe editor, only a semantic-diff tool, or mainly a Kernel-versus-Interpreter wrapper.
+- No shell commands, source code, invented CLI verbs, invented diagnostics, invented versions, tiny paragraphs, illegible text, duplicated words, random arrows, unlabeled crossings, ambiguous line endings, excessive nesting, inconsistent icons, or decorative charts.
 ```
 
 ## Infographic 3: A12 Interpreter runtime
@@ -550,6 +592,7 @@ Add one row per accepted generation or targeted edit. Record rejected attempts o
 | Date | Infographic | Generation or edit | Accepted outcome and reusable refinement note |
 |---|---|---|---|
 | 2026-08-28 | A12 dmkits toolchain | Initial built-in ImageGen generation, then a background-only edit | Accepted at 1024 × 1536. Keep the 2:3 layered architecture, all exact labels, and the fully opaque warm off-white outer canvas. |
-| 2026-08-28 | dmtool safe editing | Initial built-in ImageGen generation, then a background-only edit | Accepted at 1146 × 1373. Keep the compact near-5:6 workflow, numbered stages, output chips, and fully opaque warm off-white outer canvas. |
+| 2026-08-28 | dmtool safe editing | Initial built-in ImageGen generation, then a background-only edit | Superseded by the broader workbench concept. The sequential workflow overemphasized safe editing and hid schema exchange, comprehension, semantic review, structural refactors, and runtime automation. |
+| 2026-08-28 | dmtool DocumentModel workbench | Fresh built-in ImageGen generation, then a focused RUN & AUTOMATE edit | Accepted at 1024 × 1536. Keep the hub-and-spoke lifecycle, the larger bidirectional schema bridge, each runtime capability listed once, small Kernel and Interpreter assurance badges, and the fully opaque warm off-white canvas. |
 | 2026-08-28 | A12 Interpreter runtime | Initial built-in ImageGen generation, then a background-only edit | Accepted at 1024 × 1536. Keep the 2:3 prepare-once and request-many architecture, verification rail, and fully opaque warm off-white outer canvas. |
 | 2026-08-28 | Interpreter vs A12 Kernel | Initial built-in ImageGen generation, then a background-only edit | Accepted at 1126 × 1397. Preserve every printed measurement and date, the timing-proportional bars, the comparison boundaries, and the fully opaque warm off-white outer canvas. |

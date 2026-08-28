@@ -35,8 +35,8 @@ It is built **agent-first** — the #1 use is inside a coding-agent session (Cla
 - **Safe by construction.** Envelope-producing operations share one standard result shape, while raw artifact/catalog and text-view modes are explicit in the operational profile; deletes and structural refactors are **gated** (a referenced field won't silently vanish); a multi-op `apply` session is **atomic** (rollback on any failure).
 
 <p align="center">
-  <a href="assets/infographics/dmtool-safe-editing.png">
-    <img src="assets/infographics/dmtool-safe-editing.png" alt="dmtool discovery, typed authoring, Kernel gate, atomic write, and result mechanisms" width="720">
+  <a href="assets/infographics/dmtool-model-workbench.png">
+    <img src="assets/infographics/dmtool-model-workbench.png" alt="dmtool DocumentModel workbench for discovery, schema exchange, understanding, authoring, review, and runtime automation" width="720">
   </a>
 </p>
 <p align="center"><sub>Click the infographic to open the full-resolution image.</sub></p>

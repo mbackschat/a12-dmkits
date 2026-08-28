@@ -125,7 +125,7 @@ done
 
 for canonical_asset in \
   a12-dmkits-toolchain.png \
-  dmtool-safe-editing.png \
+  dmtool-model-workbench.png \
   a12-interpreter-runtime.png \
   interpreter-vs-kernel.png; do
   [[ -f "$ROOT/assets/infographics/$canonical_asset" ]] \
@@ -133,20 +133,20 @@ for canonical_asset in \
 done
 
 check_preview "$ROOT/README.md" 'assets/infographics/a12-dmkits-toolchain.png' 720
-check_preview "$ROOT/README.md" 'assets/infographics/dmtool-safe-editing.png' 720
+check_preview "$ROOT/README.md" 'assets/infographics/dmtool-model-workbench.png' 720
 check_preview "$ROOT/README.md" 'assets/infographics/a12-interpreter-runtime.png' 720
 check_preview "$ROOT/README.md" 'assets/infographics/interpreter-vs-kernel.png' 720
-check_preview "$ROOT/plugin/README.md" 'assets/infographics/dmtool-safe-editing.png' 720
+check_preview "$ROOT/plugin/README.md" 'assets/infographics/dmtool-model-workbench.png' 720
 check_preview "$ROOT/plugin/README.md" 'assets/infographics/interpreter-vs-kernel.png' 720
 check_preview "$ROOT/interpreter/public-release/README.md" 'assets/infographics/a12-interpreter-runtime.png' 720
 check_preview "$ROOT/interpreter/public-release/README.md" 'assets/infographics/interpreter-vs-kernel.png' 720
 check_preview "$SPECIFICATION" '../assets/infographics/a12-dmkits-toolchain.png' 540
-check_preview "$SPECIFICATION" '../assets/infographics/dmtool-safe-editing.png' 540
+check_preview "$SPECIFICATION" '../assets/infographics/dmtool-model-workbench.png' 540
 check_preview "$SPECIFICATION" '../assets/infographics/a12-interpreter-runtime.png' 540
 check_preview "$SPECIFICATION" '../assets/infographics/interpreter-vs-kernel.png' 540
 
-cmp -s "$ROOT/assets/infographics/dmtool-safe-editing.png" \
-  "$ROOT/plugin/assets/infographics/dmtool-safe-editing.png" || fail "dmtool infographic release copy has drifted"
+cmp -s "$ROOT/assets/infographics/dmtool-model-workbench.png" \
+  "$ROOT/plugin/assets/infographics/dmtool-model-workbench.png" || fail "dmtool infographic release copy has drifted"
 cmp -s "$ROOT/assets/infographics/interpreter-vs-kernel.png" \
   "$ROOT/plugin/assets/infographics/interpreter-vs-kernel.png" || fail "dmtool performance infographic release copy has drifted"
 cmp -s "$ROOT/assets/infographics/a12-interpreter-runtime.png" \
