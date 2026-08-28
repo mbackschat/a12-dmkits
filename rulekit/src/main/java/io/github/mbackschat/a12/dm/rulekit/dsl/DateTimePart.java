@@ -8,8 +8,8 @@ import io.github.mbackschat.a12.dm.core.ValueKind;
  * {@code DateExtractionOperationName}. The source renders as a bare entity reference. Build via
  * {@link Dsl#dateFromDateTime} / {@link Dsl#timeFromDateTime} — both take a {@code DateTimeOperand}, so the
  * compact constructor's check is a no-op for them; it exists for a caller holding a bare {@link Calculation}.
- * The catalog requires a COMPLETE date-time source (catalog:DateFromDateTime: "a plain DATE field, like a
- * time-only DATE_TIME, is {@code MVK_WRONG_DATE_FORMAT_FOR_OP} at the operator").
+ * The catalog's {@code DateFromDateTime} entry requires a COMPLETE date-time source: a plain DATE field,
+ * like a time-only DATE_TIME, is {@code MVK_WRONG_DATE_FORMAT_FOR_OP} at the operator.
  */
 public record DateTimePart(Unit unit, Calculation source) implements Calculation {
 

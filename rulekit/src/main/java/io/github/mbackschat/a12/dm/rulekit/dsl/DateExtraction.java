@@ -11,7 +11,8 @@ import io.github.mbackschat.a12.dm.core.ValueKind;
  * {@link Dsl#yearFromDate} and friends — those typed entry points only ever pass an already-correct-kind
  * operand, so the compact constructor's check is a no-op for them; it exists for a caller (a bridge reading
  * a parsed AST) that holds a bare {@link Calculation} instead of a {@code DateOperand}/{@code TimeOperand}/
- * {@code DateTimeOperand}, catalog:SecondsFromTime's own {@code MVK_WRONG_DATE_FORMAT_FOR_OP} corrective.
+ * {@code DateTimeOperand} — the {@code MVK_WRONG_DATE_FORMAT_FOR_OP} corrective the catalog states on
+ * {@code SecondsFromTime} and its siblings.
  */
 public record DateExtraction(Unit unit, Calculation source) implements Calculation {
 
