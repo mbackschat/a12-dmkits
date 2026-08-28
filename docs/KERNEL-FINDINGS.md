@@ -3537,7 +3537,7 @@ Reconciliation of a12-kernel-lean `SPEC-2026-08-23-08` and `-11`, **both accepte
 
 **The gates run reality, then position in time, then precision.** An impossible month beside a legally omitted day (`2024-13-00` at `DAY_OPTIONAL`) is the **format** error — the omission is admitted and the month is not, so the month's cause wins — while `1583-10-00` at the same precision is the **date** error and `1583-11-00` is admitted. The peer records the trap that order creates: an implementation obtaining its partial value through a constructor that applies the floor internally reports the floor case as a format error, because the constructor's "no value" is indistinguishable from unreality.
 
-**Time and DateTime have no codes of their own.** Both report through the **Date** codes. A **Time** cell reaches only the format one — a width violation and every out-of-range component alike — because a clock has no position in time; and hour **24 is not an end-of-day spelling**: `24:00:00` is refused exactly as `25:00:00` is, while `00:00:00` and `23:59:59` are admitted, so the hour range is 0–23 inclusive. A **DateTime** cell reaches **both**, carries the same `1583-10-16` floor as a Date, and its `'T'` is part of the format rather than tolerated whitespace.
+**Time and DateTime have no codes of their own.** Both report through the **Date** codes. A **Time** cell reaches only the format one — a width violation and every out-of-range component alike. **Corrected 2026-08-28: the deciding variable is the DECLARATION, not the kind** — that holds for a TIME field declared with a *time* format, while one declared `yyyy-MM-dd` does reach `datumFalsch` ([KF211](#kf211)); and hour **24 is not an end-of-day spelling**: `24:00:00` is refused exactly as `25:00:00` is, while `00:00:00` and `23:59:59` are admitted, so the hour range is 0–23 inclusive. A **DateTime** cell reaches **both**, carries the same `1583-10-16` floor as a Date, and its `'T'` is part of the format rather than tolerated whitespace.
 
 *(Locked: `adapter.laws.TemporalInputFormalCauseDiffTest` — the precision pair, the five-row split, the reality-before-position triple, the seven Time rows, and the four DateTime rows, each on both kernel strategies and the interpreter; the DateTime floor additionally multiplatform in `interpreter … DateGregorianFloorFormalTest`.)*
 
@@ -3597,3 +3597,24 @@ The source mechanism predicts the separator. `IDateRangeType.getFormatOfDateRang
 The independent interpreter stays declaration-local and therefore produces the month-first result under both declaration orders. Encoding the peer clause would replace one measured divergence with an incorrect universal rule. The unresolved conformance work is tracked as [IG141](INTERPRETER-GAPS.md); this reconciliation does not widen it without the full shared-format denominator.
 
 *(Locked: `adapter.laws.DateRangeSharedFormatOrderDiffTest` on both kernel strategies and the independent interpreter, with the exact wrap validity and ordered computation outputs.)*
+
+## §6 supplement: a temporal cell's STORED-VALUE gate reads the declared format, never its kind (kernel, both strategies, 2026-08-28) <a id="kf211"></a>
+
+> Fold: pending — extends §6's stored-temporal account; fold together with [KF206](#kf206)'s declaration-tier correction, which it completes.
+
+[KF206](#kf206) established that the format *vocabulary* is kind-independent and stated explicitly that what such a declaration then STORES was a separate question. It is the same rule one tier down. Measured on one model whose four cells differ only in kind and declared format, on dynamic Groovy and generated Java alike:
+
+| declaration | `2024-06-15` | `1583-10-16` | `1583-10-15` | `2024-02-31` | `10:30:00` | `24:00:00` |
+|---|---|---|---|---|---|---|
+| TIME `yyyy-MM-dd` | admitted | admitted | **`datumFalsch`** | `datumFormatFalsch` | `datumFormatFalsch` | `datumFormatFalsch` |
+| DATE `yyyy-MM-dd` | admitted | admitted | `datumFalsch` | `datumFormatFalsch` | `datumFormatFalsch` | `datumFormatFalsch` |
+| DATE_TIME `yyyy-MM-dd` | admitted | admitted | `datumFalsch` | `datumFormatFalsch` | `datumFormatFalsch` | `datumFormatFalsch` |
+| TIME `HH:mm:ss` | `datumFormatFalsch` | `datumFormatFalsch` | `datumFormatFalsch` | `datumFormatFalsch` | admitted | `datumFormatFalsch` |
+
+Empty stored text is present and value-free on all four. **Two controls, one model, one variable each:** the first three rows hold the declaration fixed and move the kind across every date-bearing kind — they agree, so the kind is not read; rows one and four hold the kind fixed and move the format — they differ on every value, so the declaration is what is read. Comparing two models could not separate these, since two models differ in everything unnoticed.
+
+So the Gregorian floor rides the **declared format**: a date-declared TIME cell carries it, with `1583-10-16` its boundary exactly as on a DATE, and a clock spelling is the format error in that cell while a date spelling is the format error in a time-declared one. This is what corrects [KF207](#kf207) above, whose "because a clock has no position in time" reasoned from the kind — the correct reading is that a time-format declaration exposes no position in time, and after [KF206](#kf206) a TIME field need not carry one.
+
+**What this does not say.** The formal channel only. What such a cell resolves to as a VALUE — how it compares, sorts, or computes — is unmeasured, and our interpreter currently rejects every value of one (IG140 in [INTERPRETER-GAPS.md](INTERPRETER-GAPS.md)), so a differential arm would fail by design rather than measure the kernel.
+
+*(Locked: `adapter.laws.TemporalStoredValueGateFormalTest` — four declarations × eight stored values on both kernel strategies, deliberately kernel-only while IG140 stands.)*
