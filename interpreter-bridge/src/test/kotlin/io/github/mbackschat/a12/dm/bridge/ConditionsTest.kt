@@ -17,6 +17,7 @@ import io.github.mbackschat.a12.dm.rulekit.dsl.Condition
 import io.github.mbackschat.a12.dm.rulekit.dsl.CustomConditionRef
 import io.github.mbackschat.a12.dm.rulekit.dsl.DateLiteral
 import io.github.mbackschat.a12.dm.rulekit.dsl.DateTimeLiteral
+import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer
 import io.github.mbackschat.a12.dm.rulekit.dsl.FieldListEntityListCondition
 import io.github.mbackschat.a12.dm.rulekit.dsl.FieldListValueListCondition
 import io.github.mbackschat.a12.dm.rulekit.dsl.LogicCondition
@@ -32,6 +33,8 @@ import io.github.mbackschat.a12.dm.rulekit.dsl.TimeLiteral
  * test says so with [UnmappedConstructException], which is neither a pass nor a finding.
  */
 class ConditionsTest {
+
+    private val RENDER = DslRenderer()
 
     private val BASE = "/Order"
 
@@ -378,6 +381,7 @@ class ConditionsTest {
     fun dateRangeEqualityConverts() {
         val c = assertInstanceOf(ComparisonCondition::class.java, translate("[Items/ItemCoverage] == [CoverageWindow]"))
         assertEquals("Equal", c.operatorId())
+        assertEquals("[/Order/Items/ItemCoverage] == [/Order/CoverageWindow]", RENDER.render(c))
     }
 
     /**
@@ -411,18 +415,23 @@ class ConditionsTest {
     fun dateRangeInequalityConverts() {
         val c = assertInstanceOf(ComparisonCondition::class.java, translate("[Items/ItemCoverage] != [CoverageWindow]"))
         assertEquals("NotEqual", c.operatorId())
+        assertEquals("[/Order/Items/ItemCoverage] != [/Order/CoverageWindow]", RENDER.render(c))
     }
 
     /** A semantically-indexed date-range cell is its own arm of the operand, not a computed range. */
     @Test
     fun aKeyedDateRangeCellComparesForEquality() {
-        assertEquals("Equal", translate("[Items/ItemCoverage For \"a\"] == [CoverageWindow]").operatorId())
+        val c = translate("[Items/ItemCoverage For \"a\"] == [CoverageWindow]")
+        assertEquals("Equal", c.operatorId())
+        assertEquals("[/Order/Items/ItemCoverage For \"a\"] == [/Order/CoverageWindow]", RENDER.render(c))
     }
 
     /** The keyed cell is exactly as good an inequality operand as a plain field. */
     @Test
     fun aKeyedDateRangeCellComparesForInequality() {
-        assertEquals("NotEqual", translate("[Items/ItemCoverage For \"a\"] != [CoverageWindow]").operatorId())
+        val c = translate("[Items/ItemCoverage For \"a\"] != [CoverageWindow]")
+        assertEquals("NotEqual", c.operatorId())
+        assertEquals("[/Order/Items/ItemCoverage For \"a\"] != [/Order/CoverageWindow]", RENDER.render(c))
     }
 
     /** A date range compares to a date range and nothing else — the model's handle refuses the date. */
