@@ -14,13 +14,7 @@
 
 ## 1. Open
 
-### CG20 — A kits PrecheckException still becomes prose on the 22 read/report verbs <a id="cg20"></a>
-
-`PrecheckException` carries its own structured `Diagnostic` explicitly so a caller can publish it "instead of scraping the message" — and **no site in `cli/src/main` read it** until 2026-08-30, when the scaffolding route was fixed ([AP8](CLI-CONFORMANCE-SPEC.md)). The remaining **24** `failOrRethrowDomainRejection` call sites still turn one into prose. Measured basis: `grep -rn failOrRethrowDomainRejection cli/src/main` returns 24 sites, of which 22 are read/report verbs (`read`, `explain`, `format`, `describe`, `export`, `diff`, `usage`, `report`, `deps`, `profile`) and 2 are `patterns`, now fixed.
-
-**Deliberately not fixed here, and the reason is blast radius rather than merit.** One edit to that helper would change the output shape and exit code of 22 verbs at once, far beyond the reported class — the convergence gate's "stop when a slice keeps expanding". **What is not yet measured is whether it matters at all:** spot checks show `rule read`/`computation read` on a missing path already return a proper `refused` envelope with `RK_NO_SUCH_*`, i.e. their `PrecheckException`s are caught by dedicated paths upstream, so the prose branch may be largely unreachable. That measurement is the next step, not the fix.
-
-*Blocks: nothing today — no consumer has reported a read verb's refusal as unattributable, and the AP8 guard would catch it in-suite if one arose. Re-open trigger / what would close it: enumerate, per call site, whether a `PrecheckException` can actually reach it; fix only the reachable ones, or close this row with that enumeration as the evidence that the branch is dead.*
+_None open._
 
 ## 2. Deferred — with re-open triggers
 
