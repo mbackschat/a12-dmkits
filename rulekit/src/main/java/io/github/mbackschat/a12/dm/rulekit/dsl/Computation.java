@@ -21,10 +21,13 @@ import io.github.mbackschat.a12.dm.rulekit.validate.PrecheckException;
  * the element elsewhere — in an ancestor, or in a subtree that does not contain the computed field at all.
  * {@code computedFieldRelPath} is derived from the two paths either way, never written by the author.
  *
- * <p>Placement on its own never refuses; what can is the OPERAND. A computation declared in a repeatable group
- * and reading that group's per-row fields must compute a field inside it
- * ({@code MVK_ERROR_FIELD_NOT_IN_RULEGROUP}) — exactly as a rule reading the same fields must attach its error
- * there. Both tables are measured through {@code checkConsistency} in
+ * <p><b>The one refusal is containment under DERIVED ITERATION</b> ({@code MVK_ERROR_FIELD_NOT_IN_RULEGROUP}):
+ * whenever the computation iterates, the computed field must lie AT OR BELOW the declaring group — containment,
+ * not parenthood, so any ancestor of the target is fine. It iterates for either of two independent reasons: an
+ * operation reading a PER-ROW field of a repeatable declaring group, or a computed field that is itself in a
+ * repeatable group — the latter with no operand at all, so a bare constant into a repeating target is refused
+ * from an unrelated group. A rule shares the gate but cannot show the second reason alone, since its error field
+ * must be referenced by its condition. Measured through {@code checkConsistency} in
  * {@code validate.laws.ComputationDeclaringGroupLawsTest}.
  *
  * <p><strong>Kernel-verified slot rules pre-checked at {@code build()}:</strong> alternatives are

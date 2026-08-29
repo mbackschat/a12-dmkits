@@ -355,9 +355,9 @@ class NewShapesSnippetsTest {
         // tag::computation-group[]
         // A computation LIVES in one group and WRITES to another. `group(...)` declares the element in the
         // policy container while it computes the stock block's field; the stored computedFieldRelPath is
-        // derived from the pair, never authored. Placement on its own is never refused — what can be is an
-        // OPERAND: reading a repeatable declaring group's per-row fields pulls the computed field back
-        // inside it (MVK_ERROR_FIELD_NOT_IN_RULEGROUP), exactly as it would for a rule's error field.
+        // derived from the pair, never authored. The one refusal is CONTAINMENT UNDER DERIVED ITERATION:
+        // when the computation iterates, the computed field must lie at or below this group
+        // (MVK_ERROR_FIELD_NOT_IN_RULEGROUP). It iterates from a per-row operand OR from a repeatable target.
         Computation floorPolicy = depot.computation(depot.num("/Depot/Stock/StockLevel"))
                 .name("StockFloorPolicy")                        // → /Depot/Policy/StockFloorPolicy
                 .group(depot.group("/Depot/Policy"))

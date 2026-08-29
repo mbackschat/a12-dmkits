@@ -19,23 +19,32 @@ import io.github.mbackschat.a12.dm.rulekit.dsl.NumberLiteral;
 import io.github.mbackschat.a12.dm.rulekit.validate.ValidationResult;
 
 /**
- * KERNEL-FINDINGS — <b>{@code MVK_ERROR_FIELD_NOT_IN_RULEGROUP} is about ITERATION, not about placement.</b>
- * A computation's declaring group and a rule's group are both free of the field the construct writes to or
- * attaches its error to; containment is imposed only once the construct ITERATES, i.e. its group is a
- * repeatable group whose per-row fields it reads.
+ * KERNEL-FINDINGS — <b>{@code MVK_ERROR_FIELD_NOT_IN_RULEGROUP} fires exactly when iteration is DERIVED and the
+ * written field does not lie AT OR BELOW the declaring group.</b> The demand is containment, not parenthood: an
+ * ancestor of the target satisfies it, an unrelated sibling does not. Iteration is derived from either of two
+ * sources, independently — a per-row operand of a repeatable declaring group, or <b>the written field's own
+ * repeatable scope</b>, which needs no operand at all.
  *
- * <p><b>This was measured against the opposite expectation, twice.</b> The obvious reading — a rule's error
- * field must lie inside its rule group, a computation's computed field need not, so the two constructs differ —
- * is what this file was written to lock, and the kernel refused it in both directions: a non-iterating rule
- * whose error field sits in a sibling subtree is ADMITTED, and an iterating COMPUTATION whose computed field
- * leaves its declaring group is refused with the very same code. So the axis that decides is the operand, and
- * the two constructs behave alike on it. The tables below are kept in the shape that showed this, because a
- * single-row accept would have re-published the wrong mechanism.
+ * <p><b>This class asserted a false universal for one day, and the second source is why.</b> It read "placement
+ * alone never refuses"; every table in it pinned the written field NON-REPEATABLE, so with that variable held
+ * the operand was the only thing left that could vary, and the matrix could not see the other source. The
+ * counterexample — a bare string constant into a repeatable target from an unrelated fixed group, refused with
+ * this code and no operand anywhere — came from a12-kernel-lean ({@code SPEC-2026-08-29-01}, 2026-08-29) and is
+ * reproduced here as this repo's own measurement in
+ * {@link #aRepeatableTargetDerivesIterationBySelfAndReimposesContainment}. The earlier tables are kept, now
+ * saying only what they measure: with a non-repeatable target, no iteration is derived, so no placement refuses.
  *
- * <p><b>One variable per row.</b> Each table holds the target field fixed at {@link #STOCK_LEVEL} and varies the
- * declaring group; the operand axis is varied explicitly and separately (a constant vs a per-row reference),
- * because that is the variable that turned out to matter. A constant operation is what isolates placement:
- * an operand reference brings its own scope, which is {@link ComputationOperandScopeLawsTest}'s law.
+ * <p><b>The two constructs are NOT symmetric on the second source</b>, though they share the gate. A rule's error
+ * field must be REFERENCED by its condition ({@code MVK_ERROR_FIELD_NOT_REFERENCED}), so a repeatable error field
+ * is necessarily also a per-row operand and the two sources collapse into one; only a computation can pair a
+ * constant operand with a repeating target. That asymmetry is
+ * {@link #aRuleCannotSeparateTheTwoDerivationSourcesBecauseItsErrorFieldMustBeReferenced}, and it is why the
+ * counterexample could only have been found on the computation side.
+ *
+ * <p><b>One variable per row.</b> Each table varies the declaring group while holding the target field and the
+ * operand fixed, and the two axes that turned out to matter — operand kind, and target repeatability — each get
+ * their own table. A constant operation is what isolates the target axis: an operand reference brings its own
+ * scope, which is {@link ComputationOperandScopeLawsTest}'s law.
  *
  * <p><b>Accept/reject only.</b> {@code checkConsistency} settles whether the model LOADS. Where a cross-group
  * computation then fires, and at which context, is a runtime question this tier cannot answer; it is
@@ -80,7 +89,11 @@ class ComputationDeclaringGroupLawsTest {
     private static final String PER_ROW_FIELD = "/Depot/Shipments/Units";
 
     private static String computationVerdict(String group, Calculation operation) {
-        return KernelLaws.computationVerdict(DEPOT, M.computation(M.num(STOCK_LEVEL))
+        return computationVerdict(STOCK_LEVEL, group, operation);
+    }
+
+    private static String computationVerdict(String computedField, String group, Calculation operation) {
+        return KernelLaws.computationVerdict(DEPOT, M.computation(M.num(computedField))
                 .name("StockProbe")
                 .group(M.group(group))
                 .calc(operation)
@@ -96,14 +109,22 @@ class ComputationDeclaringGroupLawsTest {
      * all four, so a relativize that changed would fail there rather than silently re-defining both arms.
      */
     private static String ruleVerdict(String group, String condition) {
-        ValidationResult r = KernelLaws.checkModel(DEPOT, group, errorRelPath(group), condition);
+        return ruleVerdict(STOCK_LEVEL, group, condition);
+    }
+
+    private static String ruleVerdict(String errorField, String group, String condition) {
+        ValidationResult r = KernelLaws.checkModel(DEPOT, group, errorRelPath(group, errorField), condition);
         return r.ok() ? KernelLaws.ADMITTED : r.diagnostics().stream()
                 .map(d -> d.code().orElse("(no code: " + d.summary() + ")"))
                 .collect(Collectors.joining(","));
     }
 
     private static String errorRelPath(String group) {
-        return EntityPath.of(group + "/ProbeRule").relativize(EntityPath.of(STOCK_LEVEL));
+        return errorRelPath(group, STOCK_LEVEL);
+    }
+
+    private static String errorRelPath(String group, String errorField) {
+        return EntityPath.of(group + "/ProbeRule").relativize(EntityPath.of(errorField));
     }
 
     /** Pins what the rule arm actually hands the kernel, so its verdicts are not read off a derived unknown. */
@@ -146,7 +167,71 @@ class ComputationDeclaringGroupLawsTest {
         expected.put("an ancestor of the computed field", KernelLaws.ADMITTED);
         expected.put("a non-repeatable sibling subtree", KernelLaws.ADMITTED);
         expected.put("a repeatable sibling subtree", KernelLaws.ADMITTED);
-        assertEquals(expected, actual, "placement alone never refuses a computation");
+        assertEquals(expected, actual,
+                "with a NON-REPEATABLE target, no iteration is derived, so no placement is refused");
+    }
+
+    /**
+     * The row that falsifies "placement alone never refuses" — <b>iteration has a SECOND source</b>, and every
+     * table above is blind to it because all of them pin the target non-repeatable.
+     *
+     * <p>The operation here is a constant: no operand, nothing crossing a group, nothing iterating in the
+     * condition. The iteration is derived from the COMPUTED FIELD's own repeatable scope, through the generated
+     * rule anchored at that field — so an unrelated declaring group is refused with the same code an operand
+     * would have drawn. The root ancestor is admitted, which is the other half: the demand is CONTAINMENT, not
+     * parenthood, so any group the target lies at or below satisfies it.
+     *
+     * <p><b>Provenance.</b> Reported as a counterexample by a12-kernel-lean (`SPEC-2026-08-29-01`, 2026-08-29)
+     * against exactly the over-general claim this class used to assert, and reproduced here rather than adopted
+     * — all four rows below are this repo's own kernel measurement.
+     */
+    @Test
+    void aRepeatableTargetDerivesIterationBySelfAndReimposesContainment() {
+        Calculation constant = NumberLiteral.of(-1);
+        Map<String, String> actual = new LinkedHashMap<>();
+        actual.put("the target's own repeatable parent", computationVerdict(PER_ROW_FIELD, "/Depot/Shipments", constant));
+        actual.put("an ancestor of the repeatable target", computationVerdict(PER_ROW_FIELD, "/Depot", constant));
+        actual.put("an unrelated FIXED subtree", computationVerdict(PER_ROW_FIELD, "/Depot/Policy", constant));
+        actual.put("an unrelated REPEATABLE subtree", computationVerdict(PER_ROW_FIELD, "/Depot/Returns", constant));
+
+        Map<String, String> expected = new LinkedHashMap<>();
+        expected.put("the target's own repeatable parent", KernelLaws.ADMITTED);
+        expected.put("an ancestor of the repeatable target", KernelLaws.ADMITTED);
+        expected.put("an unrelated FIXED subtree", NOT_IN_RULEGROUP);
+        expected.put("an unrelated REPEATABLE subtree", NOT_IN_RULEGROUP);
+        assertEquals(expected, actual,
+                "a repeatable target derives iteration with no operand at all; containment then decides");
+    }
+
+    /**
+     * The rule twin, and it shows the two constructs are <b>not symmetric on this axis</b> — which is worth a
+     * test of its own, because the natural move after the row above is to assume they are.
+     *
+     * <p>A rule cannot exhibit the second derivation source independently: the kernel demands its error field be
+     * REFERENCED by the condition ({@code MVK_ERROR_FIELD_NOT_REFERENCED}, measured 2026-08-29 by writing this
+     * test the other way first), so a repeatable error field is necessarily also a per-row operand. The two
+     * sources collapse into one. A computation has no such demand — its operand may be a bare constant while its
+     * computed field repeats — which is exactly why the counterexample above is a computation and could not have
+     * been found on the rule side.
+     */
+    @Test
+    void aRuleCannotSeparateTheTwoDerivationSourcesBecauseItsErrorFieldMustBeReferenced() {
+        // FieldFilled, not FieldNotFilled: a negative condition inside an iteration is its own kernel
+        // refusal (MVK_NEG_CONDITION_IN_ITERATION) and would mask the gate under test.
+        String ownField = "FieldFilled(" + PER_ROW_FIELD + ")";
+        Map<String, String> actual = new LinkedHashMap<>();
+        actual.put("error field not referenced by the condition",
+                ruleVerdict(PER_ROW_FIELD, "/Depot/Shipments", "FieldNotFilled(" + STOCK_LEVEL + ")"));
+        actual.put("referenced, declared in its own repeatable parent",
+                ruleVerdict(PER_ROW_FIELD, "/Depot/Shipments", ownField));
+        actual.put("referenced, declared in an unrelated FIXED subtree",
+                ruleVerdict(PER_ROW_FIELD, "/Depot/Policy", ownField));
+
+        Map<String, String> expected = new LinkedHashMap<>();
+        expected.put("error field not referenced by the condition", "MVK_ERROR_FIELD_NOT_REFERENCED");
+        expected.put("referenced, declared in its own repeatable parent", KernelLaws.ADMITTED);
+        expected.put("referenced, declared in an unrelated FIXED subtree", NOT_IN_RULEGROUP);
+        assertEquals(expected, actual, "a rule's error field is always an operand, so the sources cannot split");
     }
 
     /**

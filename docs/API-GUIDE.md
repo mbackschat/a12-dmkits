@@ -930,9 +930,9 @@ Computation tiered = m.computation(m.num("/Subscription/Billing/EffectiveFee")) 
 ```java
 // A computation LIVES in one group and WRITES to another. `group(...)` declares the element in the
 // policy container while it computes the stock block's field; the stored computedFieldRelPath is
-// derived from the pair, never authored. Placement on its own is never refused — what can be is an
-// OPERAND: reading a repeatable declaring group's per-row fields pulls the computed field back
-// inside it (MVK_ERROR_FIELD_NOT_IN_RULEGROUP), exactly as it would for a rule's error field.
+// derived from the pair, never authored. The one refusal is CONTAINMENT UNDER DERIVED ITERATION:
+// when the computation iterates, the computed field must lie at or below this group
+// (MVK_ERROR_FIELD_NOT_IN_RULEGROUP). It iterates from a per-row operand OR from a repeatable target.
 Computation floorPolicy = depot.computation(depot.num("/Depot/Stock/StockLevel"))
         .name("StockFloorPolicy")                        // → /Depot/Policy/StockFloorPolicy
         .group(depot.group("/Depot/Policy"))
@@ -941,7 +941,7 @@ Computation floorPolicy = depot.computation(depot.num("/Depot/Stock/StockLevel")
         .build();
 ```
 
-Placement is an **iteration-scope** decision, not a filing one: the declaring group is the base the operand paths render against, and a runtime computation iterates where it *writes* rather than where it is declared ([kf19](KERNEL-FINDINGS.md#kf19)). The one refusal is the operand's, not the placement's, and it falls identically on rules and computations — the measured tables are [kf212](KERNEL-FINDINGS.md#kf212). *Test-backed: `ComputationDeclaringGroupLawsTest` (the kernel's verdict across four declaring-group relations), `ComputationDeclaringGroupTest`, `CrossGroupComputationReadTest` (the placement survives read → write-back).* The CLI peer is the computation-spec's optional `group` key.
+Placement is an **iteration-scope** decision, not a filing one: the declaring group is the base the operand paths render against, and a runtime computation iterates where it *writes* rather than where it is declared ([kf19](KERNEL-FINDINGS.md#kf19)). The one refusal is **containment under derived iteration** — when the computation iterates, the computed field must lie at or below the declaring group, so an ancestor is fine and an unrelated sibling is not. Iteration is derived from a per-row operand of a repeatable declaring group *or* from a repeatable computed field, independently; the second needs no operand at all, so even a bare constant into a repeating target is refused from an unrelated group. The gate falls identically on rules and computations, though only a computation can exhibit that second source alone — a rule's error field must be referenced by its condition, so it is always an operand too. The measured tables are [kf212](KERNEL-FINDINGS.md#kf212). *Test-backed: `ComputationDeclaringGroupLawsTest` (the kernel's verdict across four declaring-group relations), `ComputationDeclaringGroupTest`, `CrossGroupComputationReadTest` (the placement survives read → write-back).* The CLI peer is the computation-spec's optional `group` key.
 
 Off a `GroupEditor` the same override reads `editor.addComputation(target, c -> c.group(editor) …)` — `GroupEditor` **is** a `GroupReference`, so the path stays written once. It is an override there rather than the default, deliberately unlike `addRule`, which scopes to the editor's group: a rule's group *is* its iteration scope, while a computation's decides whether it runs once or per row, so defaulting to the editor would lift a computation authored over `editor.num("Lines/Amount")` out of a repeatable `Lines` and silently make it single. *Test-backed: `edit.GroupEditorComputationDeclaringGroupTest`.*
 

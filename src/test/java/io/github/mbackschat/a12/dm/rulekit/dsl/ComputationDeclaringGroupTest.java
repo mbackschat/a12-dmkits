@@ -21,11 +21,13 @@ import io.github.mbackschat.a12.dm.rulekit.validate.ValidationResult;
  * A computation's <b>declaring group</b> is independent of its computed field's parent — the A12 shape
  * {@code Computation.Builder.group(...)} exposes.
  *
- * <p><b>What the accepts below do and do not establish.</b> They show that PLACEMENT alone never refuses a
- * computation. They do <em>not</em> show a rule/computation asymmetry: {@code MVK_ERROR_FIELD_NOT_IN_RULEGROUP}
- * turns out to gate ITERATION rather than geometry, and it reaches both constructs alike — the tables are
- * {@code validate.laws.ComputationDeclaringGroupLawsTest} and [KF212]. Every operation here is a plain field
- * copy with no per-row operand, which is what keeps that axis out of these rows.
+ * <p><b>What the accepts below do and do not establish.</b> Every row here pairs a plain field-copy operation
+ * with a NON-REPEATABLE computed field, so nothing in them derives iteration and no placement is refused. They do
+ * <em>not</em> establish that placement never refuses: {@code MVK_ERROR_FIELD_NOT_IN_RULEGROUP} gates containment
+ * under derived iteration, and iteration comes from a per-row operand OR from the computed field's own repeatable
+ * scope — the second source is invisible to a table that pins the target non-repeatable, which is how this repo
+ * published a false universal for a day (see {@code validate.laws.ComputationDeclaringGroupLawsTest} and [KF212]
+ * for the corrected gate and the counterexample).
  *
  * <p>The stored consequence is the {@code computedFieldRelPath}, which stops being {@code "../<Field>"} and
  * becomes a walk out of the declaring group and back down — the form
