@@ -91,6 +91,17 @@ The whole verb surface arrives as tools, **derived from the same command tree th
 
 **A second bundled skill — `/a12-dmtool-bug-report`.** When something breaks, ask your agent to file a bug report. It isolates a **minimal reproduction**, tells a genuine **tool defect** apart from a rejected input (an internal error surfaces as a structured `error` envelope with `RK_INTERNAL_ERROR`, exit 70 — never a raw stack trace), captures the friction it hit, and writes a crisp report to **a folder you choose** — ready to attach to an issue or send however you like. Good reports help us fix the tool fast; it's the same report rigor we use to probe `dmtool` ourselves.
 
+## How the technology fits
+
+Kotlin Multiplatform supplies dmtool's portable runtime-evaluation engine. GraalVM compiles the JVM application stack into the self-contained per-OS executable. The embedded real A12 Kernel remains responsible for model acceptance, canonical read-back, and safe rewrites, while differential tests use the Kernel as the Interpreter's semantics oracle.
+
+<p align="center">
+  <a href="assets/infographics/kotlin-graalvm-kernel-roles.png">
+    <img src="assets/infographics/kotlin-graalvm-kernel-roles.png" alt="How Kotlin Multiplatform, GraalVM Native Image, and the A12 Kernel divide responsibilities inside dmtool" width="720">
+  </a>
+</p>
+<p align="center"><sub>Click the infographic to open the full-resolution image.</sub></p>
+
 ## Install — Claude Code
 
 ```
@@ -286,8 +297,8 @@ The shipped product. Counted from `core/src/main/java`, `rulekit/src/main/java`,
 
 | Language | Files | Lines | Code | Comments | Blanks |
 |---|---:|---:|---:|---:|---:|
-| Java | 475 | 67986 | 47474 | 13555 | 6957 |
-| Kotlin | 114 | 28645 | 18703 | 7575 | 2367 |
+| Java | 479 | 68872 | 47746 | 14096 | 7030 |
+| Kotlin | 115 | 29388 | 19068 | 7908 | 2412 |
 | JavaScript | 1 | 107 | 72 | 25 | 10 |
 
 ### Verification
@@ -296,8 +307,8 @@ Tests, laws, kernel differentials, fuzzers, conformance replay, and the external
 
 | Language | Files | Lines | Code | Comments | Blanks |
 |---|---:|---:|---:|---:|---:|
-| Java | 726 | 99182 | 72432 | 14392 | 12358 |
-| Kotlin | 695 | 97059 | 72228 | 14802 | 10029 |
+| Java | 770 | 107912 | 78062 | 16484 | 13366 |
+| Kotlin | 743 | 104715 | 77588 | 16313 | 10814 |
 
 Maintainers regenerate these tables with the local statistics updater; both release publishers compare them with fresh counts before any public mutation.
 <!-- source-statistics:dmtool:end -->

@@ -43,6 +43,17 @@ The package does not author models, render forms, persist Documents, provide a v
 </p>
 <p align="center"><sub>Click the infographic to open the full-resolution image.</sub></p>
 
+## How it fits the wider toolchain
+
+Kotlin Multiplatform lets this one evaluation engine serve JVM, Node.js, browser, and native dmtool consumers. GraalVM is the delivery mechanism for the separate dmtool executable, not the source of Interpreter semantics. The real A12 Kernel does not ship in this package; it remains the model-acceptance authority in dmtool and the external oracle for the differential tests that verify this clean-room implementation.
+
+<p align="center">
+  <a href="assets/infographics/kotlin-graalvm-kernel-roles.png">
+    <img src="assets/infographics/kotlin-graalvm-kernel-roles.png" alt="How Kotlin Multiplatform, GraalVM Native Image, and the A12 Kernel divide responsibilities around the A12 Interpreter" width="720">
+  </a>
+</p>
+<p align="center"><sub>Click the infographic to open the full-resolution image.</sub></p>
+
 ## Performance
 
 **[→ Performance and footprint](PERFORMANCE.md)** — what the package costs to ship, how fast it validates in the browser and on the JVM, what a resident model costs, and how each figure was measured.
@@ -213,7 +224,7 @@ The shipped product. Counted from `interpreter/src/commonMain/kotlin`, `interpre
 
 | Language | Files | Lines | Code | Comments | Blanks |
 |---|---:|---:|---:|---:|---:|
-| Kotlin | 114 | 28645 | 18703 | 7575 | 2367 |
+| Kotlin | 115 | 29388 | 19068 | 7908 | 2412 |
 | TypeScript | 17 | 3762 | 3209 | 274 | 279 |
 
 ### Verification
@@ -222,7 +233,7 @@ Tests, laws, kernel differentials, fuzzers, conformance replay, and the external
 
 | Language | Files | Lines | Code | Comments | Blanks |
 |---|---:|---:|---:|---:|---:|
-| Kotlin | 263 | 30485 | 24210 | 2904 | 3371 |
+| Kotlin | 273 | 31371 | 24822 | 3068 | 3481 |
 | TypeScript | 14 | 3285 | 3103 | 50 | 132 |
 
 Maintainers regenerate these tables with the local statistics updater; both release publishers compare them with fresh counts before any public mutation.

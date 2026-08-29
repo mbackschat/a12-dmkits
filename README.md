@@ -110,6 +110,17 @@ Prefer typed Java in your own JVM project? The same engine is a library — see 
 
 *(The kits — rulekit, modelkit, dm.edit, schemakit — are a **Java** library. The **interpreter** is Kotlin Multiplatform and its packed library is tested on JVM, Node.js, and Chrome.)*
 
+## Why Kotlin, GraalVM, and the A12 Kernel
+
+The three technologies have separate jobs. Kotlin Multiplatform carries one portable runtime-evaluation engine across JVM and JavaScript. GraalVM turns the JVM application stack into the self-contained per-OS `dmtool` executable. The real A12 Kernel remains the authority for model acceptance, canonical read-back, safe rewrites, and the differential evidence that keeps the clean-room Interpreter aligned.
+
+<p align="center">
+  <a href="assets/infographics/kotlin-graalvm-kernel-roles.png">
+    <img src="assets/infographics/kotlin-graalvm-kernel-roles.png" alt="How Kotlin Multiplatform, GraalVM Native Image, and the A12 Kernel divide responsibilities across a12-dmkits" width="720">
+  </a>
+</p>
+<p align="center"><sub>Click the infographic to open the full-resolution image.</sub></p>
+
 ---
 
 ## `dmtool` — the CLI
@@ -930,8 +941,8 @@ The shipped product. Counted from `core/src/main/java`, `rulekit/src/main/java`,
 
 | Language | Files | Lines | Code | Comments | Blanks |
 |---|---:|---:|---:|---:|---:|
-| Java | 475 | 67986 | 47474 | 13555 | 6957 |
-| Kotlin | 114 | 28645 | 18703 | 7575 | 2367 |
+| Java | 479 | 68872 | 47746 | 14096 | 7030 |
+| Kotlin | 115 | 29388 | 19068 | 7908 | 2412 |
 | TypeScript | 17 | 3762 | 3209 | 274 | 279 |
 | JavaScript | 1 | 107 | 72 | 25 | 10 |
 
@@ -941,8 +952,8 @@ Tests, laws, kernel differentials, fuzzers, conformance replay, and the external
 
 | Language | Files | Lines | Code | Comments | Blanks |
 |---|---:|---:|---:|---:|---:|
-| Java | 726 | 99182 | 72432 | 14392 | 12358 |
-| Kotlin | 695 | 97059 | 72228 | 14802 | 10029 |
+| Java | 770 | 107912 | 78062 | 16484 | 13366 |
+| Kotlin | 743 | 104715 | 77588 | 16313 | 10814 |
 | TypeScript | 14 | 3285 | 3103 | 50 | 132 |
 
 ### Tooling
@@ -953,7 +964,7 @@ Build scripts, build-time generators, and the evaluation harness — neither shi
 |---|---:|---:|---:|---:|---:|
 | Java | 1 | 70 | 52 | 10 | 8 |
 | Kotlin | 4 | 90 | 81 | 0 | 9 |
-| JavaScript | 6 | 1835 | 1573 | 129 | 133 |
+| JavaScript | 6 | 1838 | 1573 | 132 | 133 |
 
 Maintainers regenerate these tables with the local statistics updater; both release publishers compare them with fresh counts before any public mutation.
 <!-- source-statistics:root:end -->

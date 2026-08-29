@@ -3,7 +3,9 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 REPORT="$ROOT/interpreter/public-release/PERFORMANCE.md"
+ROOT_README="$ROOT/README.md"
 SPECIFICATION="$ROOT/docs/INFOGRAPHICS.md"
+SPECIFICATION_DIR="$ROOT/docs"
 CI_WORKFLOW="$ROOT/.github/workflows/ci.yml"
 
 fail() {
@@ -24,6 +26,30 @@ table_cell() {
     }
     END { if (!found) exit 1 }
   ' "$REPORT" || fail "missing performance-report table row: $label"
+}
+
+production_code_lines() {
+  local language="$1"
+  awk -F '|' -v language="$language" '
+    /<!-- source-statistics:root:start -->/ { in_statistics = 1; next }
+    in_statistics && /^### Verification$/ { exit }
+    in_statistics {
+      label = $2
+      gsub(/^[[:space:]]+|[[:space:]]+$/, "", label)
+      if (label == language) {
+        value = $5
+        gsub(/^[[:space:]]+|[[:space:]]+$/, "", value)
+        print value
+        found = 1
+        exit
+      }
+    }
+    END { if (!found) exit 1 }
+  ' "$ROOT_README" || fail "missing $language production code count in root Source statistics"
+}
+
+as_kloc() {
+  awk -v code_lines="$1" 'BEGIN { printf "%.1f kLOC", code_lines / 1000 }'
 }
 
 trim() {
@@ -84,6 +110,8 @@ dynamic_groovy_memory_ratio="$(table_cell 'A12 Kernel, dynamic Groovy' 4)"
 browser_first="$(table_cell '200 rows — representative' 4)"
 browser_first="${browser_first% median}"
 browser_warm="$(table_cell '200 rows — representative' 5)"
+java_kloc="$(as_kloc "$(production_code_lines Java)")"
+kotlin_kloc="$(as_kloc "$(production_code_lines Kotlin)")"
 
 comparison_line="$(grep -F -m 1 'the interpreter is about **' "$REPORT")"
 generated_ratio="$(sed -nE "s/.*interpreter is about \\*\\*([^ ]+) the A12 Kernel's generated Java\\*\\*.*/\\1/p" <<<"$comparison_line")"
@@ -117,43 +145,75 @@ prompt_lines=(
   "- Browser value: \"$browser_first first answer\""
   "- Browser value: \"$browser_warm warm\""
   "- Bottom evidence: \"Measured $measurement_date • $machine • $jdk • $browser\""
+  "- Java size: \"$java_kloc\""
+  "- Kotlin size: \"$kotlin_kloc\""
 )
 
 for prompt_line in "${prompt_lines[@]}"; do
   require_prompt_line "$prompt_line"
 done
 
-for canonical_asset in \
-  a12-dmkits-toolchain.png \
-  dmtool-model-workbench.png \
-  a12-interpreter-runtime.png \
-  interpreter-vs-kernel.png; do
-  [[ -f "$ROOT/assets/infographics/$canonical_asset" ]] \
-    || fail "missing canonical infographic: assets/infographics/$canonical_asset"
+declare -A registered_assets=()
+declare -A registered_placements=()
+registry_rows=0
+while IFS=$'\t' read -r canonical_relative document_target preview_relative preview_width; do
+  [[ "$canonical_relative" == assets/infographics/*.png ]] \
+    || fail "registry canonical asset must be under assets/infographics: $canonical_relative"
+
+  canonical="$ROOT/$canonical_relative"
+  document_candidate="$SPECIFICATION_DIR/$document_target"
+  document_dir="$(cd "$(dirname "$document_candidate")" && pwd -P)" \
+    || fail "registry document directory does not exist: $document_target"
+  document="$document_dir/$(basename "$document_candidate")"
+  linked_candidate="$(dirname "$document")/$preview_relative"
+  linked_dir="$(cd "$(dirname "$linked_candidate")" && pwd -P)" \
+    || fail "registry preview directory does not exist: $preview_relative"
+  linked="$linked_dir/$(basename "$linked_candidate")"
+
+  [[ -f "$canonical" ]] || fail "missing canonical infographic: $canonical_relative"
+  [[ -f "$document" ]] || fail "missing infographic preview document: $document_target"
+  [[ -f "$linked" ]] || fail "missing linked infographic: $document_target -> $preview_relative"
+  check_preview "$document" "$preview_relative" "$preview_width"
+
+  placement_key="$document:$preview_relative"
+  [[ -z "${registered_placements[$placement_key]:-}" ]] \
+    || fail "duplicate infographic registry placement: $document_target -> $preview_relative"
+  registered_placements["$placement_key"]=1
+  registered_assets["$canonical_relative"]=1
+  ((registry_rows += 1))
+
+  if [[ "$linked" != "$canonical" ]]; then
+    cmp -s "$canonical" "$linked" \
+      || fail "$linked has drifted from $canonical_relative"
+  fi
+done < <(
+  awk -F '|' '
+    /<!-- infographic-registry:start -->/ { in_registry = 1; next }
+    /<!-- infographic-registry:end -->/ { in_registry = 0 }
+    in_registry && /^\|/ {
+      canonical = $3
+      document = $4
+      preview = $5
+      width = $6
+      if (canonical !~ /\.png/) next
+      gsub(/^[[:space:]]+|[[:space:]]+$/, "", canonical)
+      gsub(/`/, "", canonical)
+      sub(/^.*\]\(/, "", document)
+      sub(/\).*$/, "", document)
+      gsub(/^[[:space:]]+|[[:space:]]+$/, "", preview)
+      gsub(/`/, "", preview)
+      gsub(/^[[:space:]]+|[[:space:]]+$/, "", width)
+      gsub(/`/, "", width)
+      print canonical "\t" document "\t" preview "\t" width
+    }
+  ' "$SPECIFICATION"
+)
+
+((registry_rows > 0)) || fail "INFOGRAPHICS.md contains no parseable infographic registry placements"
+for canonical in "$ROOT"/assets/infographics/*.png; do
+  canonical_relative="assets/infographics/$(basename "$canonical")"
+  [[ -n "${registered_assets[$canonical_relative]:-}" ]] \
+    || fail "canonical infographic is not registered in INFOGRAPHICS.md: $canonical_relative"
 done
-
-check_preview "$ROOT/README.md" 'assets/infographics/a12-dmkits-toolchain.png' 720
-check_preview "$ROOT/README.md" 'assets/infographics/dmtool-model-workbench.png' 720
-check_preview "$ROOT/README.md" 'assets/infographics/a12-interpreter-runtime.png' 720
-check_preview "$ROOT/README.md" 'assets/infographics/interpreter-vs-kernel.png' 720
-check_preview "$ROOT/plugin/README.md" 'assets/infographics/dmtool-model-workbench.png' 720
-check_preview "$ROOT/plugin/README.md" 'assets/infographics/interpreter-vs-kernel.png' 720
-check_preview "$ROOT/interpreter/public-release/README.md" 'assets/infographics/a12-interpreter-runtime.png' 720
-check_preview "$ROOT/interpreter/public-release/README.md" 'assets/infographics/interpreter-vs-kernel.png' 720
-check_preview "$SPECIFICATION" '../assets/infographics/a12-dmkits-toolchain.png' 540
-check_preview "$SPECIFICATION" '../assets/infographics/dmtool-model-workbench.png' 540
-check_preview "$SPECIFICATION" '../assets/infographics/a12-interpreter-runtime.png' 540
-check_preview "$SPECIFICATION" '../assets/infographics/interpreter-vs-kernel.png' 540
-
-cmp -s "$ROOT/assets/infographics/dmtool-model-workbench.png" \
-  "$ROOT/plugin/assets/infographics/dmtool-model-workbench.png" || fail "dmtool infographic release copy has drifted"
-cmp -s "$ROOT/assets/infographics/interpreter-vs-kernel.png" \
-  "$ROOT/plugin/assets/infographics/interpreter-vs-kernel.png" || fail "dmtool performance infographic release copy has drifted"
-cmp -s "$ROOT/assets/infographics/a12-interpreter-runtime.png" \
-  "$ROOT/interpreter/public-release/assets/infographics/a12-interpreter-runtime.png" \
-  || fail "Interpreter infographic release copy has drifted"
-cmp -s "$ROOT/assets/infographics/interpreter-vs-kernel.png" \
-  "$ROOT/interpreter/public-release/assets/infographics/interpreter-vs-kernel.png" \
-  || fail "Interpreter performance infographic release copy has drifted"
 
 echo "infographic freshness: OK"

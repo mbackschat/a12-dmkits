@@ -6,8 +6,10 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.HashSet;
 import java.util.List;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 import org.junit.jupiter.api.Test;
 
@@ -20,40 +22,14 @@ class InfographicAssetGuardTest {
 
     private static final Path ROOT = Path.of("..");
     private static final Path CANONICAL = ROOT.resolve("assets/infographics");
-
-    private static final List<Placement> PLACEMENTS = List.of(
-            new Placement("a12-dmkits-toolchain.png", ROOT.resolve("README.md"),
-                    "assets/infographics/a12-dmkits-toolchain.png", 720, null),
-            new Placement("dmtool-model-workbench.png", ROOT.resolve("README.md"),
-                    "assets/infographics/dmtool-model-workbench.png", 720, null),
-            new Placement("a12-interpreter-runtime.png", ROOT.resolve("README.md"),
-                    "assets/infographics/a12-interpreter-runtime.png", 720, null),
-            new Placement("interpreter-vs-kernel.png", ROOT.resolve("README.md"),
-                    "assets/infographics/interpreter-vs-kernel.png", 720, null),
-            new Placement("dmtool-model-workbench.png", ROOT.resolve("plugin/README.md"),
-                    "assets/infographics/dmtool-model-workbench.png", 720,
-                    ROOT.resolve("plugin/assets/infographics/dmtool-model-workbench.png")),
-            new Placement("interpreter-vs-kernel.png", ROOT.resolve("plugin/README.md"),
-                    "assets/infographics/interpreter-vs-kernel.png", 720,
-                    ROOT.resolve("plugin/assets/infographics/interpreter-vs-kernel.png")),
-            new Placement("a12-interpreter-runtime.png", ROOT.resolve("interpreter/public-release/README.md"),
-                    "assets/infographics/a12-interpreter-runtime.png", 720,
-                    ROOT.resolve("interpreter/public-release/assets/infographics/a12-interpreter-runtime.png")),
-            new Placement("interpreter-vs-kernel.png", ROOT.resolve("interpreter/public-release/README.md"),
-                    "assets/infographics/interpreter-vs-kernel.png", 720,
-                    ROOT.resolve("interpreter/public-release/assets/infographics/interpreter-vs-kernel.png")),
-            new Placement("a12-dmkits-toolchain.png", ROOT.resolve("docs/INFOGRAPHICS.md"),
-                    "../assets/infographics/a12-dmkits-toolchain.png", 540, null),
-            new Placement("dmtool-model-workbench.png", ROOT.resolve("docs/INFOGRAPHICS.md"),
-                    "../assets/infographics/dmtool-model-workbench.png", 540, null),
-            new Placement("a12-interpreter-runtime.png", ROOT.resolve("docs/INFOGRAPHICS.md"),
-                    "../assets/infographics/a12-interpreter-runtime.png", 540, null),
-            new Placement("interpreter-vs-kernel.png", ROOT.resolve("docs/INFOGRAPHICS.md"),
-                    "../assets/infographics/interpreter-vs-kernel.png", 540, null));
+    private static final Path SPECIFICATION = ROOT.resolve("docs/INFOGRAPHICS.md");
+    private static final Pattern REGISTRY_ROW = Pattern.compile(
+            "\\|\\s*[^|]+\\s*\\|\\s*`([^`]+\\.png)`\\s*\\|\\s*\\[[^]]+]\\(([^)]+\\.md)\\)\\s*\\|"
+                    + "\\s*`([^`]+\\.png)`\\s*\\|\\s*`?(\\d+)`?\\s*\\|");
 
     @Test
     void everyPlacementUsesTheExpectedPreviewLinkedToTheFullPng() throws IOException {
-        for (var placement : PLACEMENTS) {
+        for (var placement : placements()) {
             var document = Files.readString(placement.document());
             var relative = placement.relativePath();
             assertTrue(document.contains("<a href=\"" + relative + "\">"),
@@ -68,18 +44,41 @@ class InfographicAssetGuardTest {
     }
 
     @Test
-    void canonicalAssetsArePngsAndReleaseCopiesAreByteIdentical() throws IOException {
-        for (var placement : PLACEMENTS) {
+    void canonicalAssetsArePngsRegisteredAndEveryLinkedCopyIsByteIdentical() throws IOException {
+        var placements = placements();
+        var registered = placements.stream().map(Placement::fileName).collect(Collectors.toSet());
+        try (var assets = Files.list(CANONICAL)) {
+            var actual = assets.filter(path -> path.getFileName().toString().endsWith(".png"))
+                    .map(path -> path.getFileName().toString())
+                    .collect(Collectors.toSet());
+            assertTrue(actual.equals(registered),
+                    () -> "canonical infographic assets and the INFOGRAPHICS.md registry differ: actual=" + actual
+                            + ", registered=" + registered);
+        }
+
+        var placementKeys = new HashSet<String>();
+        var documented = new HashSet<String>();
+        for (var placement : placements) {
             var canonical = CANONICAL.resolve(placement.fileName());
             assertTrue(Files.isRegularFile(canonical), () -> "missing canonical infographic: " + canonical);
             assertTrue(isPng(canonical), () -> "infographic is not a PNG: " + canonical);
-            if (placement.releaseCopy() != null) {
-                assertTrue(Files.isRegularFile(placement.releaseCopy()),
-                        () -> "missing public-release infographic copy: " + placement.releaseCopy());
-                assertArrayEquals(Files.readAllBytes(canonical), Files.readAllBytes(placement.releaseCopy()),
-                        () -> placement.releaseCopy() + " has drifted from " + canonical);
+            assertTrue(placementKeys.add(placement.document() + "\0" + placement.relativePath()),
+                    () -> "duplicate infographic registry placement: " + placement.document() + " -> "
+                            + placement.relativePath());
+            if (placement.document().normalize().equals(SPECIFICATION.normalize())) {
+                documented.add(placement.fileName());
+            }
+
+            var linkedAsset = placement.document().getParent().resolve(placement.relativePath()).normalize();
+            assertTrue(Files.isRegularFile(linkedAsset), () -> "missing linked infographic: " + linkedAsset);
+            if (!linkedAsset.equals(canonical.normalize())) {
+                assertArrayEquals(Files.readAllBytes(canonical), Files.readAllBytes(linkedAsset),
+                        () -> linkedAsset + " has drifted from " + canonical);
             }
         }
+        assertTrue(documented.equals(registered),
+                () -> "every canonical infographic needs an accepted-output preview in INFOGRAPHICS.md: documented="
+                        + documented + ", registered=" + registered);
     }
 
     @Test
@@ -140,6 +139,25 @@ class InfographicAssetGuardTest {
         }
     }
 
+    @Test
+    void languageSizePromptTracksTheGeneratedRootProductionStatistics() throws IOException {
+        var readme = Files.readString(ROOT.resolve("README.md"));
+        var specification = Files.readString(SPECIFICATION);
+        var statistics = section(readme, "<!-- source-statistics:root:start -->", "### Verification");
+
+        var javaCode = Long.parseLong(plain(tableRow(statistics, "Java")[4]));
+        var kotlinCode = Long.parseLong(plain(tableRow(statistics, "Kotlin")[4]));
+        var expectedPromptLines = List.of(
+                "- Java size: \"" + kloc(javaCode) + "\"",
+                "- Kotlin size: \"" + kloc(kotlinCode) + "\"");
+
+        for (var expectedPromptLine : expectedPromptLines) {
+            assertTrue(specification.contains(expectedPromptLine),
+                    () -> "language-comparison infographic prompt has drifted from generated source statistics: "
+                            + expectedPromptLine);
+        }
+    }
+
     private static boolean isPng(Path file) throws IOException {
         var bytes = Files.readAllBytes(file);
         return bytes.length >= 8
@@ -151,6 +169,25 @@ class InfographicAssetGuardTest {
                 && bytes[5] == 0x0a
                 && bytes[6] == 0x1a
                 && bytes[7] == 0x0a;
+    }
+
+    private static List<Placement> placements() throws IOException {
+        var specification = Files.readString(SPECIFICATION);
+        var start = specification.indexOf("<!-- infographic-registry:start -->");
+        var end = specification.indexOf("<!-- infographic-registry:end -->");
+        assertTrue(start >= 0 && end > start, "INFOGRAPHICS.md must contain the guarded registry markers");
+
+        var matcher = REGISTRY_ROW.matcher(specification.substring(start, end));
+        var placements = new java.util.ArrayList<Placement>();
+        while (matcher.find()) {
+            placements.add(new Placement(
+                    Path.of(matcher.group(1)).getFileName().toString(),
+                    SPECIFICATION.getParent().resolve(matcher.group(2)).normalize(),
+                    matcher.group(3),
+                    Integer.parseInt(matcher.group(4))));
+        }
+        assertTrue(!placements.isEmpty(), "INFOGRAPHICS.md registry contains no parseable placements");
+        return List.copyOf(placements);
     }
 
     private static String[] tableRow(String markdown, String label) {
@@ -165,6 +202,18 @@ class InfographicAssetGuardTest {
         return cell.trim().replace("**", "");
     }
 
-    private record Placement(String fileName, Path document, String relativePath, int previewWidth, Path releaseCopy) {
+    private static String section(String document, String startMarker, String endMarker) {
+        var start = document.indexOf(startMarker);
+        var end = document.indexOf(endMarker, start + startMarker.length());
+        assertTrue(start >= 0 && end > start,
+                () -> "missing bounded document section: " + startMarker + " -> " + endMarker);
+        return document.substring(start, end);
+    }
+
+    private static String kloc(long codeLines) {
+        return String.format(java.util.Locale.ROOT, "%.1f kLOC", codeLines / 1000.0);
+    }
+
+    private record Placement(String fileName, Path document, String relativePath, int previewWidth) {
     }
 }

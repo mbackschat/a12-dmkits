@@ -1,21 +1,35 @@
 # README infographics
 
-This document is the regeneration and refinement source for the four raster infographics embedded in the main and public-release READMEs. It owns the content maps, exact generation prompts, asset registry, factual sources, placement map, visual acceptance gates, and refinement log. The PNG files are presentation artifacts derived from this document.
+This document is the regeneration and refinement source for the raster infographics embedded in the main and public-release READMEs. It owns the content maps, exact generation prompts, asset registry, factual sources, placement map, visual acceptance gates, and refinement log. The PNG files are presentation artifacts derived from this document.
 
 ## Asset registry and README placement
 
-The full-resolution source assets live under `assets/infographics/`. Public-release README copies use the same relative `assets/infographics/` path inside their own source roots so the Markdown remains valid after mirror assembly.
+The full-resolution source assets live under `assets/infographics/`. Each table row is one guarded preview placement. `Canonical asset` is repository-relative; `Preview document` links from this file; `Preview path` is relative to that document. When the preview path resolves outside the canonical directory, the linked release-source copy must be byte-identical to the canonical PNG.
 
-| Infographic | Canonical asset | Release-source copies | README sections |
-|---|---|---|---|
-| A12 dmkits toolchain | `assets/infographics/a12-dmkits-toolchain.png` | none | root introduction, after “What's in the box” |
-| dmtool DocumentModel workbench | `assets/infographics/dmtool-model-workbench.png` | `plugin/assets/infographics/dmtool-model-workbench.png` | root and dmtool release “Why dmtool” |
-| Interpreter runtime | `assets/infographics/a12-interpreter-runtime.png` | `interpreter/public-release/assets/infographics/a12-interpreter-runtime.png` | root “The interpreter” and Interpreter release “What ships” |
-| Interpreter vs Kernel | `assets/infographics/interpreter-vs-kernel.png` | `plugin/assets/infographics/interpreter-vs-kernel.png`, `interpreter/public-release/assets/infographics/interpreter-vs-kernel.png` | root and Interpreter release “Performance”, dmtool release “Runtime performance and memory” |
+<!-- infographic-registry:start -->
+| Infographic | Canonical asset | Preview document | Preview path | Width |
+|---|---|---|---|---:|
+| A12 dmkits toolchain | `assets/infographics/a12-dmkits-toolchain.png` | [root README](../README.md) | `assets/infographics/a12-dmkits-toolchain.png` | `720` |
+| A12 dmkits toolchain | `assets/infographics/a12-dmkits-toolchain.png` | [infographic source](INFOGRAPHICS.md) | `../assets/infographics/a12-dmkits-toolchain.png` | `540` |
+| dmtool DocumentModel workbench | `assets/infographics/dmtool-model-workbench.png` | [root README](../README.md) | `assets/infographics/dmtool-model-workbench.png` | `720` |
+| dmtool DocumentModel workbench | `assets/infographics/dmtool-model-workbench.png` | [dmtool release README](../plugin/README.md) | `assets/infographics/dmtool-model-workbench.png` | `720` |
+| dmtool DocumentModel workbench | `assets/infographics/dmtool-model-workbench.png` | [infographic source](INFOGRAPHICS.md) | `../assets/infographics/dmtool-model-workbench.png` | `540` |
+| Interpreter runtime | `assets/infographics/a12-interpreter-runtime.png` | [root README](../README.md) | `assets/infographics/a12-interpreter-runtime.png` | `720` |
+| Interpreter runtime | `assets/infographics/a12-interpreter-runtime.png` | [Interpreter release README](../interpreter/public-release/README.md) | `assets/infographics/a12-interpreter-runtime.png` | `720` |
+| Interpreter runtime | `assets/infographics/a12-interpreter-runtime.png` | [infographic source](INFOGRAPHICS.md) | `../assets/infographics/a12-interpreter-runtime.png` | `540` |
+| Interpreter vs Kernel | `assets/infographics/interpreter-vs-kernel.png` | [root README](../README.md) | `assets/infographics/interpreter-vs-kernel.png` | `720` |
+| Interpreter vs Kernel | `assets/infographics/interpreter-vs-kernel.png` | [dmtool release README](../plugin/README.md) | `assets/infographics/interpreter-vs-kernel.png` | `720` |
+| Interpreter vs Kernel | `assets/infographics/interpreter-vs-kernel.png` | [Interpreter release README](../interpreter/public-release/README.md) | `assets/infographics/interpreter-vs-kernel.png` | `720` |
+| Interpreter vs Kernel | `assets/infographics/interpreter-vs-kernel.png` | [infographic source](INFOGRAPHICS.md) | `../assets/infographics/interpreter-vs-kernel.png` | `540` |
+| Kotlin, GraalVM, and A12 Kernel roles | `assets/infographics/kotlin-graalvm-kernel-roles.png` | [root README](../README.md) | `assets/infographics/kotlin-graalvm-kernel-roles.png` | `720` |
+| Kotlin, GraalVM, and A12 Kernel roles | `assets/infographics/kotlin-graalvm-kernel-roles.png` | [dmtool release README](../plugin/README.md) | `assets/infographics/kotlin-graalvm-kernel-roles.png` | `720` |
+| Kotlin, GraalVM, and A12 Kernel roles | `assets/infographics/kotlin-graalvm-kernel-roles.png` | [Interpreter release README](../interpreter/public-release/README.md) | `assets/infographics/kotlin-graalvm-kernel-roles.png` | `720` |
+| Kotlin, GraalVM, and A12 Kernel roles | `assets/infographics/kotlin-graalvm-kernel-roles.png` | [infographic source](INFOGRAPHICS.md) | `../assets/infographics/kotlin-graalvm-kernel-roles.png` | `540` |
+<!-- infographic-registry:end -->
 
 Every README embeds a scaled preview using an HTML `img` element inside a link to the same full-resolution PNG. The preview width is `720`, the image has descriptive alt text, and the adjacent caption tells the reader that the full image opens on click.
 
-The canonical assets and their release-source copies must be byte-identical. The public dmtool mirror already copies the complete `plugin/` tree. The Interpreter mirror assembler copies `interpreter/public-release/assets/infographics/` beside its generated root README.
+The table above is the single source for placement and copy checks. Both `check-infographic-freshness.sh` and `InfographicAssetGuardTest` parse it; neither carries a second asset list. The guards also refuse an unregistered canonical PNG or a registered asset without an accepted-output preview in this document. The public dmtool mirror already copies the complete `plugin/` tree. The Interpreter mirror assembler copies `interpreter/public-release/assets/infographics/` beside its generated root README.
 
 ## Shared visual system
 
@@ -40,6 +54,7 @@ The canonical assets and their release-source copies must be byte-identical. The
 | dmtool discovery, model exchange, comprehension, authoring, review, runtime, result, and MCP mechanisms | [CLI-SPEC.md](CLI-SPEC.md), [CLI-CONFORMANCE-SPEC.md](CLI-CONFORMANCE-SPEC.md), root [`README.md`](../README.md), public dmtool [`README.md`](../plugin/README.md) | a featured mechanism, contract, or product positioning changes |
 | Interpreter preparation, request lifecycle, targets, and public features | [INTERPRETER-API-SPEC.md](INTERPRETER-API-SPEC.md), [INTERPRETER-ARCHITECTURE.md](INTERPRETER-ARCHITECTURE.md), public Interpreter [`README.md`](../interpreter/public-release/README.md) | the public lifecycle, target set, concurrency contract, or supported result family changes |
 | Kernel-conformance claims | [TESTING-SPEC.md](TESTING-SPEC.md), [CONFORMANCE-CORPUS-SPEC.md](CONFORMANCE-CORPUS-SPEC.md), [INTERPRETER-SPEC.md](INTERPRETER-SPEC.md) | the semantics target, oracle hierarchy, differential policy, or portable corpus contract changes |
+| Kotlin, Java, GraalVM, and Kernel roles | [ARCHITECTURE.md](ARCHITECTURE.md), [INTERPRETER-ARCHITECTURE.md](INTERPRETER-ARCHITECTURE.md), [INTERPRETER-SPEC.md](INTERPRETER-SPEC.md), [NATIVE-IMAGE-GRAALVM.md](NATIVE-IMAGE-GRAALVM.md), [RELEASE-SPEC.md](RELEASE-SPEC.md), and the generated root [Source statistics](../README.md#source-statistics) | a component boundary, compile target, shipped platform, runtime owner, Kernel responsibility, native-delivery decision, or Java/Kotlin production count changes |
 | Performance and resident memory | public [PERFORMANCE.md](../interpreter/public-release/PERFORMANCE.md), [INTERPRETER-PERFORMANCE.md](INTERPRETER-PERFORMANCE.md), [INTERPRETER-PERFORMANCE-RESULTS.md](INTERPRETER-PERFORMANCE-RESULTS.md) | a qualifying benchmark rerun changes any displayed number, machine/runtime identity, timing boundary, or eligibility rule |
 
 The performance poster is dated evidence. Its current figures were measured on 2026-08-17 on Apple M1, JDK 21, and Chrome 151. Re-run the owning benchmark protocols before replacing a number. Do not infer a new ratio from unrelated results or turn a bounded scenario into a universal claim.
@@ -50,7 +65,7 @@ The public Interpreter [`PERFORMANCE.md`](../interpreter/public-release/PERFORMA
 
 GitHub CI runs that shell-only check as the first step after the rulekit checkout already required by every build, before it checks out the Kernel bootstrap kit or installs Java and Gradle. Stale claims, broken previews, missing assets, or drifted public copies therefore stop the workflow before the expensive work begins. Keeping the check in the existing build job avoids paying for a second runner startup and duplicate repository checkout on every successful run. The committed [pre-push hook](../.githooks/pre-push) runs the same check locally and then runs `actionlint`, so any Git client gets the same pre-push verdict after `core.hooksPath` is configured. `InfographicAssetGuardTest` repeats the source-to-prompt and asset checks in the ordinary documentation suite, while `GateTierWiringTest` locks the early ordering and prevents a separate preflight job from being introduced silently.
 
-The PNG is intentionally not treated as machine-readable data. CI can prove that the report and the exact generation prompt agree, but reliable raster-text verification would require brittle OCR. When this guard fails after a benchmark refresh, update the content map and prompt, regenerate the performance image with built-in ImageGen, inspect it at full resolution, synchronize both public copies, and add a dated refinement-log row. The binary-copy check then proves that every public repository receives the accepted pixels.
+The PNG is intentionally not treated as machine-readable data. CI can prove that the owning reports and the exact generation prompts agree, but reliable raster-text verification would require brittle OCR. The public performance report owns the mutable benchmark figures. The generated root Source Statistics table owns the Java/Kotlin production counts; both guards derive the displayed one-decimal kLOC values from its `Code` column, while `update-code-statistics.sh --check` keeps that table measured before publication. When either guard fails after an owning-source refresh, update the content map and prompt, regenerate or focus-edit the image with built-in ImageGen, inspect it at full resolution, synchronize every public copy, and add a dated refinement-log row. The binary-copy check then proves that every public repository receives the accepted pixels.
 
 ## Infographic 1: A12 dmkits toolchain
 
@@ -575,6 +590,204 @@ Avoid:
 - No invented measurements, rounded substitutions, missing units, tiny footnotes, illegible text, duplicated words, decorative axes, random arrows, or inconsistent scales.
 ```
 
+## Infographic 5: Kotlin, GraalVM, and A12 Kernel roles
+
+### Accepted output
+
+<p align="center">
+  <a href="../assets/infographics/kotlin-graalvm-kernel-roles.png">
+    <img src="../assets/infographics/kotlin-graalvm-kernel-roles.png" alt="How Kotlin Multiplatform, GraalVM Native Image, and the A12 Kernel divide responsibilities across a12-dmkits" width="540">
+  </a>
+</p>
+<p align="center"><sub>1024 × 1536 PNG. Click the preview to open the full-resolution image.</sub></p>
+
+### Content map
+
+- Ten-second takeaway: Kotlin carries one portable evaluation engine, GraalVM delivers the complete JVM application as a native `dmtool`, and the real A12 Kernel remains the authority for model acceptance and conformance.
+- Exact title: `Kotlin, GraalVM & A12 Kernel`
+- Exact subtitle: `Portable engine • native delivery • authoritative acceptance`
+- Primary layout: comparative small multiples with one shared Kotlin-versus-Java table and one compact architectural-benefits band.
+- Reading direction: three role cards from left to right, the language table from top to bottom, then the benefits synthesis from left to right.
+- Focal mechanism: the three technology-role cards, supported by a compact structural and runtime comparison of the Java and Kotlin codebases.
+- Major regions: Kotlin Multiplatform, GraalVM Native Image, A12 Kernel, Kotlin versus Java, why this split scales.
+- Final output: a clear division of technology responsibilities, the Java/Kotlin component and runtime map, and the architectural leverage created by that separation.
+
+### Exact relationships
+
+- Kotlin common code -> compiles to -> sibling JVM + JavaScript targets.
+- One Kotlin common codebase -> branches into -> multiple target environments.
+- Kotlin/JVM Interpreter -> runs inside -> native dmtool.
+- Kotlin/JS Interpreter -> runs in -> Node.js + browser.
+- GraalVM Native Image -> AOT-compiles -> the `:cli` JVM application stack.
+- Per-OS native dmtool -> serves -> CLI + MCP + agent-plugin use cases without a Java installation.
+- Java dmkits -> authors + edits -> a DocumentModel.
+- Real A12 Kernel -> confirms -> the authored DocumentModel.
+- Kotlin/JVM Interpreter -> runs -> the accepted DocumentModel inside native dmtool.
+- A12 Kernel JVM -> verifies semantics through -> differential tests -> Kotlin Interpreter.
+- `:adapter` -> confines -> Kernel types behind data and SPI boundaries.
+- Java production code -> implements -> dmkits + adapter + cli.
+- Kotlin production code -> implements -> interpreter.
+- Kotlin test code -> implements -> adapter differential laws.
+- Java 21 -> compiles to -> JVM bytecode -> GraalVM Native Image.
+- Kotlin Multiplatform -> compiles to -> Kotlin/JVM + Kotlin/JS.
+- Portability -> enables -> more runtime integrations.
+- Native distribution -> enables -> easier automation and adoption.
+- One model authority -> enables -> safe evolution with conformance evidence.
+
+### Generation prompt
+
+```text
+Use case: infographic-diagram
+Asset type: GitHub README technical infographic
+Primary request: Create an original, polished portrait technical infographic explaining the distinct roles of Kotlin Multiplatform, GraalVM Native Image, and the A12 Kernel across a12-dmkits, using a clean ByteByteGo-inspired information-design language without copying an existing poster or using the ByteByteGo logo or wordmark.
+
+Communication goal:
+- Audience: software engineers, solution architects, A12 model developers, and technical decision-makers.
+- Ten-second takeaway: Kotlin carries one portable evaluation engine, GraalVM delivers the complete JVM application as a native dmtool, and the real A12 Kernel remains the authority for model acceptance and conformance.
+- Exact title: "Kotlin, GraalVM & A12 Kernel".
+- Exact subtitle: "Portable engine • native delivery • authoritative acceptance".
+- Tone: technically precise, compact, approachable, and visually scannable.
+
+Canvas and header:
+- Tall 2:3 portrait composition at high resolution.
+- Fully opaque warm off-white background extending to every canvas edge.
+- Large bold sans-serif title at the top left.
+- Short mint-green vertical bar immediately left of the title.
+- Put the subtitle directly below the title in smaller bold type.
+- Leave the opposite header corner clean.
+- Reserve a clear gap between the header and the diagram body.
+
+Primary information structure:
+- Use comparative small multiples as the single dominant layout skeleton.
+- Primary reading direction: scan the three equal technology cards from left to right, read the compact KOTLIN vs JAVA table from top to bottom, then scan WHY THIS SPLIT SCALES from left to right.
+- Put three equal-height rounded cards across the upper two-thirds: KOTLIN MULTIPLATFORM, GRAALVM NATIVE IMAGE, and A12 KERNEL.
+- Give every card the same row structure: role tag, components, environment or targets, use case, why, payoff, and one boundary or guardrail where required.
+- Use a compact wide lower table to compare Java and Kotlin by size, structure, function, technology derivation, and target runtime.
+- Use the remaining bottom space for a three-column benefits band that synthesizes architectural rationale and potential without introducing a process diagram.
+- Final output: the language table and benefits band complete the technology-role cards without repeating the toolchain, dmtool workflow, Interpreter internals, or performance topics of the other infographics.
+
+Exact content:
+- Use these labels exactly as written and add no other text.
+- Title: "Kotlin, GraalVM & A12 Kernel"
+- Subtitle: "Portable engine • native delivery • authoritative acceptance"
+- Card title: "KOTLIN MULTIPLATFORM"
+- Card role tag: "Portable runtime"
+- Row label: "COMPONENTS"
+- Row value: ":interpreter"
+- Row value: ":adapter differential tests"
+- Row label: "TARGETS"
+- Row value: "JVM • JavaScript"
+- Row label: "RUNS IN"
+- Row value: "JVM • Node.js • Browser • native dmtool"
+- Row label: "USE CASE"
+- Row value: "Validate • compute • apply"
+- Row label: "WHY"
+- Row value: "One common semantics engine"
+- Row label: "PAYOFF"
+- Row value: "Portable APIs • less runtime drift"
+- Card title: "GRAALVM NATIVE IMAGE"
+- Card role tag: "Native delivery"
+- Row label: "COMPONENT"
+- Row value: ":cli / dmtool"
+- Row label: "COMPILES"
+- Row value: "Java kits • :adapter • Kotlin/JVM Interpreter • A12 Kernel"
+- Row label: "SHIPS FOR"
+- Row value: "macOS arm64"
+- Row value: "Linux x64 + arm64"
+- Row value: "Windows x64"
+- Row label: "USE CASE"
+- Row value: "CLI • MCP • agent plugins"
+- Row label: "WHY"
+- Row value: "AOT compile the JVM stack"
+- Row label: "PAYOFF"
+- Row value: "Self-contained • fast start • no Java install"
+- Row label: "GUARDRAIL"
+- Row value: "Reflection + resources gated"
+- Card title: "A12 KERNEL"
+- Card role tag: "Domain authority"
+- Row label: "COMPONENTS"
+- Row value: ":adapter + embedded dmtool"
+- Row value: "root + :adapter tests"
+- Row label: "RUNS AS"
+- Row value: "JVM oracle • native structural tier"
+- Row label: "USE CASE"
+- Row value: "Check • parse • format • read • rewrite"
+- Row label: "WHY"
+- Row value: "A12 owns the model contract"
+- Row label: "PAYOFF"
+- Row value: "Kernel-accepted models • conformance evidence"
+- Row label: "BOUNDARY"
+- Row value: "Not the dmtool runtime evaluator"
+- Bottom table title: "KOTLIN vs JAVA"
+- Column header: "JAVA"
+- Column header: "KOTLIN"
+- Row label: "SIZE"
+- Java size: "47.7 kLOC"
+- Kotlin size: "19.1 kLOC"
+- Row label: "STRUCTURE"
+- Java structure: "dmkits • adapter • cli"
+- Kotlin structure: "interpreter • adapter laws (tests)"
+- Row label: "FUNCTION"
+- Java function: "Model tooling • Kernel integration • CLI/MCP"
+- Kotlin function: "Validation • computation"
+- Row label: "TECHNOLOGY"
+- Java technology: "Java 21 → JVM bytecode → GraalVM Native Image"
+- Kotlin technology: "Kotlin Multiplatform → Kotlin/JVM + Kotlin/JS"
+- Row label: "RUNTIME"
+- Java runtime: "JVM • native dmtool"
+- Kotlin runtime: "JVM • native dmtool • Node.js • Browser"
+- Bottom scope note: "Production code • Tokei • generated/build/fixtures/dependencies excluded"
+- Bottom band title: "WHY THIS SPLIT SCALES"
+- Benefits heading: "PORTABILITY"
+- Benefits line: "One semantics engine"
+- Benefits line: "More runtime integrations"
+- Benefits heading: "DISTRIBUTION"
+- Benefits line: "One native executable"
+- Benefits line: "Easier automation and adoption"
+- Benefits heading: "TRUST"
+- Benefits line: "One model authority"
+- Benefits line: "Safe evolution with conformance evidence"
+
+Semantic mapping:
+- Kotlin Multiplatform = one purple source circle on the left branching into three right-pointing arrow paths + pale lavender card + saturated purple role tag.
+- GraalVM Native Image = compact executable cube or chip icon + pale cyan card + saturated blue role tag.
+- A12 Kernel = shield-check engine icon + pale green card + saturated green role tag.
+- Java comparison column = pale yellow field + dark header pill.
+- Kotlin comparison column = pale lavender field + saturated purple header pill.
+- Technology derivation = inline horizontal arrows inside the owning table cells.
+- Portability benefit = pale lavender field + saturated purple heading.
+- Distribution benefit = pale cyan field + saturated blue heading.
+- Trust benefit = pale green field + saturated green heading.
+
+Layout-specific composition:
+- Give each technology its own pastel panel.
+- Repeat the same internal coordinate system and row hierarchy in all three cards.
+- Keep common row labels at matching vertical positions and use additions only for technology-specific boundary or guardrail details.
+- Keep the upper cards visually equal; do not imply that one technology owns the others.
+- Make KOTLIN vs JAVA one compact full-width comparison table with a narrow row-label column and two equal language columns. Minimize row padding while keeping every value comfortably legible.
+- Align equivalent cells exactly. Put 47.7 kLOC and 19.1 kLOC in the largest type within the table.
+- Keep each structure, function, technology, and runtime value to one or two lines. The technology arrows stay inside their own cells and never cross a column boundary.
+- Put the scope note in one restrained full-width footer inside the table boundary.
+- Put WHY THIS SPLIT SCALES in one compact full-width rounded band below the table. Use three equal columns with no arrows: portability, distribution, and trust.
+- Keep this final band about architectural rationale and future leverage. Do not depict a toolchain lifecycle, dmtool workflow, Interpreter internals, or performance comparison.
+
+Visual language:
+- Heavy near-black outlines, rounded rectangles, pill labels, simple section tabs, and generous gutters.
+- Flat, colorful technical icons with consistent dark outlines and no realistic shading.
+- Neutral canvas with a mint accent, pale cyan, pale lavender, pale green, pale yellow, saturated purple, saturated blue, and saturated green.
+- Use bold geometric sans-serif type. Keep titles prominent, row labels compact, and values fully readable at full resolution.
+- Keep all text horizontal and fully legible.
+
+Avoid:
+- No ByteByteGo logo, wordmark, watermark, A12 logo, mgm branding, Kotlin logo, GraalVM logo, or copied poster composition.
+- No photorealistic imagery, 3D icons, gradients, neon glow, glassmorphism, blurred shadows, decorative textures, or generic stock art.
+- Do not imply that GraalVM provides model semantics, that Kotlin validates model structure, that the Kernel is the dmtool runtime evaluator, or that the standalone JavaScript package embeds the Kernel.
+- Do not imply that adapter laws are production Kotlin or that the kLOC values include tests, generated code, fixtures, build output, or dependencies.
+- Do not reverse the Kotlin branching metaphor: it must show one source at the left branching into multiple right-pointing outputs.
+- Do not turn WHY THIS SPLIT SCALES into a workflow, runtime architecture, or benchmark panel.
+- No invented components, targets, platforms, performance numbers, tiny paragraphs, illegible text, duplicated words, random arrows, unlabeled crossings, ambiguous line endings, excessive nesting, inconsistent icons, or decorative charts.
+```
+
 ## Regeneration workflow
 
 1. Revalidate every factual input against the sources in the freshness table. Runtime behavior claims require the real Kernel differential; performance and memory figures require the owning measurement protocol and results record.
@@ -596,3 +809,7 @@ Add one row per accepted generation or targeted edit. Record rejected attempts o
 | 2026-08-28 | dmtool DocumentModel workbench | Fresh built-in ImageGen generation, then a focused RUN & AUTOMATE edit | Accepted at 1024 × 1536. Keep the hub-and-spoke lifecycle, the larger bidirectional schema bridge, each runtime capability listed once, small Kernel and Interpreter assurance badges, and the fully opaque warm off-white canvas. |
 | 2026-08-28 | A12 Interpreter runtime | Initial built-in ImageGen generation, then a background-only edit | Accepted at 1024 × 1536. Keep the 2:3 prepare-once and request-many architecture, verification rail, and fully opaque warm off-white outer canvas. |
 | 2026-08-28 | Interpreter vs A12 Kernel | Initial built-in ImageGen generation, then a background-only edit | Accepted at 1126 × 1397. Preserve every printed measurement and date, the timing-proportional bars, the comparison boundaries, and the fully opaque warm off-white outer canvas. |
+| 2026-08-29 | Kotlin, GraalVM, and A12 Kernel roles | Initial built-in ImageGen generation, then a focused composition-rail edit | Accepted at 1024 × 1536. Keep the three aligned role cards, treat Kotlin/JVM and Kotlin/JS as sibling targets, keep the GraalVM boundary around dmtool's JVM stack only, and render Kernel differential verification as a dashed evidence route. |
+| 2026-08-29 | Kotlin, GraalVM, and A12 Kernel roles | Replaced the composition rail with a focused Kotlin-versus-Java table edit | Accepted at 1024 × 1536. Keep the language comparison compact, express each build derivation inline, scope kLOC to production code, and bind both displayed sizes to the generated root Source Statistics table. |
+| 2026-08-29 | Kotlin, GraalVM, and A12 Kernel roles | Focused kLOC correction after refreshing the owning Source Statistics tables | Accepted at 1024 × 1536 with 47.7 kLOC Java and 19.1 kLOC Kotlin. Run `update-code-statistics.sh --check` before freezing a count; prompt-to-table synchronization cannot detect a stale owning table by itself. |
+| 2026-08-29 | Kotlin, GraalVM, and A12 Kernel roles | Corrected the Kotlin branching metaphor, compressed the language table, and added the architectural-benefits band | Accepted at 1024 × 1536. Keep the Kotlin icon as one source branching to multiple outputs and keep WHY THIS SPLIT SCALES focused on portability, distribution, and trust so this poster does not repeat the toolchain, workbench, Interpreter-runtime, or performance infographics. |
