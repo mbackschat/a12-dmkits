@@ -183,10 +183,19 @@ public final class ReadPayloads {
      * The full targeted {@code computation read} payload. Beyond the target field it echoes the FORMULA — the
      * common precondition and each alternative's (precondition?, operation) as DSL — so the computed value is
      * confirmable from a read alone rather than only through {@code computation format}.
+     *
+     * <p>{@code group} (where the computation LIVES) is reported beside {@code calculatedField} (where it
+     * WRITES) because A12 lets the two differ, and the pair is what a persisted-and-read-back check needs: with
+     * only the calculated field, placement was legible solely as a prefix of the computation's own name-path,
+     * so nothing confirmed that a declared group survived authoring. It is emitted unconditionally rather than
+     * only when it differs from the default — a key whose absence means "derive it yourself" puts the rule back
+     * in the reader, which is what made the round trip unconfirmable in the first place.
      */
     public static ObjectNode computation(KernelAdapter adapter, String computation) {
         ObjectNode data = MAPPER.createObjectNode();
         data.put("computation", computation);
+        // Structural, so it is present for an Opaque read too: a computation's full name IS its group + name.
+        data.put("group", computation.substring(0, computation.lastIndexOf('/')));
         ArrayNode suppressions = data.putArray("errorCodesToSuppress");
         adapter.computationErrorCodesToSuppress(computation).forEach(suppressions::add);
         ReadComputation read = adapter.readComputation(computation);

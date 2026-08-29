@@ -83,7 +83,7 @@ final class ComputationAddCommand extends BaseCommand {
         }
         ComputationSpec.Parsed parsed = ComputationSpec.parse(spec);
         if (!parsed.ok()) {
-            return fail(parsed.error());
+            return rejectSpecParse(parsed.problem());
         }
         ModelResolver resolver = workspace.resolverFor(model);
         // G5: proactive author-time lints (forbidden constructs, overlapping preconditions) — they ride the

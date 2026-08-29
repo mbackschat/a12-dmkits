@@ -7,7 +7,8 @@
   "additionalProperties": false,
   "required": ["computedField", "alternatives", "messages"],
   "properties": {
-    "computedField": { "type": "string", "description": "the calculated field's ABSOLUTE path; the computation is placed in its parent group (its iteration scope). A computation that reads per-row fields must compute a field INSIDE that repeatable group; to compute a non-repeatable field from per-row data, aggregate first (e.g. Sum(Group*/Field)) — else MVK_ERROR_FIELD_NOT_IN_RULEGROUP." },
+    "computedField": { "type": "string", "description": "the calculated field's ABSOLUTE path — the field this computation WRITES. It is also where the computation is PLACED, unless `group` says otherwise. A computation that reads per-row fields must compute a field INSIDE that repeatable group; to compute a non-repeatable field from per-row data, aggregate first (e.g. Sum(Group*/Field)) — else MVK_ERROR_FIELD_NOT_IN_RULEGROUP." },
+    "group": { "type": "string", "description": "OPTIONAL declaring group — an ABSOLUTE group path (a ROOT group is allowed); defaults to the computed field's parent. This is where the computation LIVES, which A12 lets differ from where it WRITES: the computed field may sit in an entirely different subtree, and the stored computedFieldRelPath then walks out of this group and back down. It is also the base the operand paths render against, so it is an iteration-scope choice, not a filing one — and that is where the one restriction comes from: if an operation reads a PER-ROW field of a repeatable declaring group, the computed field must lie INSIDE that group (else MVK_ERROR_FIELD_NOT_IN_RULEGROUP); aggregate first (e.g. Sum(Group*/Field)) to compute outward. Placement alone never refuses. A group that does not exist is refused with RK_NO_SUCH_GROUP." },
     "commonPrecondition": { "type": "string", "description": "optional guard (A12 DSL) shared by all alternatives" },
     "comment": { "type": "string", "description": "optional explanatory note, persisted as a leading ;; comment on the first operation" },
     "alternatives": {
@@ -59,6 +60,17 @@
       "messages": [
         { "locale": "en_US", "text": "Effective fee is one-third of base." },
         { "locale": "de_DE", "text": "Effektivgebühr ist ein Drittel der Basis." }
+      ]
+    },
+    {
+      "computedField": "/Subscription/Billing/EffectiveFee",
+      "group": "/Subscription",
+      "name": "EffectiveFeePolicy",
+      "comment": "the fee policy is owned at subscription level, not inside the billing block",
+      "alternatives": [ { "operation": "[/Subscription/Billing/BaseFee]" } ],
+      "messages": [
+        { "locale": "en_US", "text": "Effective fee follows the subscription-level fee policy." },
+        { "locale": "de_DE", "text": "Die Effektivgebühr folgt der Gebührenrichtlinie des Abonnements." }
       ]
     }
   ]

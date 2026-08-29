@@ -55,9 +55,13 @@ public enum RkCode {
             "make the alternatives' preconditions mutually exclusive; a later overlap cannot compute but can still make validation fire."),
 
     // --- build-time / structure prechecks (ERROR; PRECHECK) -------------------------------------
+    // Named for rules because Rule.Builder was its only emitter; the computation-spec parser now emits it too,
+    // so the meaning names both slot sets rather than sending a computation author looking for an error field.
     INCOMPLETE_RULE(Severity.ERROR, DiagnosticSource.PRECHECK,
-            "a rule is missing a required slot (name, error field, condition, code, or severity) — it cannot be built.",
-            "supply the missing slot before building the rule."),
+            "a rule or computation is missing a required slot — a rule needs a name, error field, condition, code"
+                    + " and severity; a computation needs a computed field, at least one alternative with an"
+                    + " operation, and at least one message. It cannot be built.",
+            "supply the missing slot before building it (see `schema rule add` / `schema computation add`)."),
     ERROR_FIELD_OUTSIDE_GROUP(Severity.ERROR, DiagnosticSource.PRECHECK,
             "the rule's error field is not inside the rule's scope group, so the error cannot attach.",
             "point the error field at a field within the rule's group subtree."),

@@ -27,9 +27,42 @@ public final class ModelPaths {
     /**
      * True when a value has the syntax required of a non-root model entity path. Checking only for a slash is
      * insufficient: {@code Order/Quantity} has one but is still relative.
+     *
+     * <p><b>An EMPTY segment is refused, and that is A12's own contract rather than a rule invented here.</b>
+     * {@code ElementPathUtils.splitAbsPath} — the kernel utility that owns absolute-path splitting — states it
+     * outright: <em>"must not end with '/', and must start with '/' unless empty; '/A/B/C' and '/A' are valid,
+     * '/A/B/' and '/' are not"</em>. Its implementation nonetheless splits with Java's default {@code split},
+     * which silently drops a trailing empty, so the kernel <em>accepts</em> such a path and resolves it to the
+     * same entity — measured 2026-08-29: {@code computedField:"/Probe/Store/StockLevel/"} previews
+     * {@code KERNEL_CONFIRMED}. Delegating would therefore let us persist a {@code computedFieldRelPath} A12
+     * itself would never write (a trailing empty segment), under a computation named {@code Comp} derived from
+     * the empty last segment.
+     *
+     * <p>This is checked here rather than left to the kernel because the accidental guard that used to catch it
+     * is gone: before the computation spec accepted a declaring {@code group}, a trailing slash made the derived
+     * group a FIELD path, which {@code RuleValidator.addPrecheck} refused as {@code RK_NO_SUCH_GROUP}. Supplying
+     * {@code group} bypasses that derivation, so the input class reached the kernel for the first time. The
+     * refusal is safe in the direction that matters: every caller applies it to a caller-authored SPEC value
+     * ({@code field} / {@code computedField}), never to a path read back out of a model, so no legal model
+     * becomes unreadable.
      */
     public static boolean isAbsoluteEntityPath(String path) {
-        return path != null && path.startsWith("/") && path.lastIndexOf('/') > 0;
+        if (path == null || !path.startsWith("/")) {
+            return false;
+        }
+        // segment 0 is the empty string ahead of the leading '/'; an entity below the root has at least two more.
+        var segments = io.github.mbackschat.a12.dm.core.EntityPath.of(path).segments();
+        return segments.size() >= 3 && segments.subList(1, segments.size()).stream().noneMatch(String::isEmpty);
+    }
+
+    /**
+     * The refusal message for a value {@link #isAbsoluteEntityPath} rejected, named by the spec KEY that
+     * carried it. It lives beside the predicate rather than at either call site so the two verbs applying it —
+     * {@code rule add}'s {@code field} and {@code computation add}'s {@code computedField} — cannot state the
+     * same contract two ways.
+     */
+    public static String notAnAbsoluteEntityPath(String key, String value) {
+        return key + " must be an absolute path with no empty segment (e.g. /Group/Field), got: " + value;
     }
 
     public static String fieldProblem(BoundModel model, String path) {

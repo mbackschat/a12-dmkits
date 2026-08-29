@@ -181,8 +181,8 @@ DSL text lives in several model slots, of two kinds:
 | Slot | Kind | Returns | Context needed | Slot-specific rules |
 |---|---|---|---|---|
 | `Rule.errorCondition` | **condition** | boolean | rule's group; error field | error field referenced; rule in a group; no negation |
-| `Computation.commonPrecondition` | **condition** | boolean | computed field's group | gates the whole table |
-| `ComputationAlternative.precondition` | **condition** | boolean | computed field's group | alternatives mutually exclusive; computed field not referenced; no `CustomCondition` |
+| `Computation.commonPrecondition` | **condition** | boolean | computation's declaring group | gates the whole table |
+| `ComputationAlternative.precondition` | **condition** | boolean | computation's declaring group | alternatives mutually exclusive; computed field not referenced; no `CustomCondition` |
 | `ComputationAlternative.operation` | **calculation** | computed field's type | computed field type **+ scale** | type & scale match; empty-input defaults; `Now` self-fires; no `RepetitionNotUnique` |
 
 One expression language, two kinds — **`Condition`** (boolean) and **`Calculation`** (typed value) — placed into slots through two authoring objects, **`Rule`** and **`Computation`**. Consequences: combinators reuse across slots for free (F5); model-awareness supplies each slot's context (§5a); slot-specific constraints are layered per-slot checks (§11). The kernel itself round-trips these slots snippet-wise (`parseConditionSnippet`/`parseOperationSnippet`, `formatConditionSnippet`/`formatOperationSnippet` — survey §4/§7), confirming the slot model.

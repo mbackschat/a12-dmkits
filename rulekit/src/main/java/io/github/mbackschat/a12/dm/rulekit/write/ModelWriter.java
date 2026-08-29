@@ -176,8 +176,13 @@ public final class ModelWriter {
     }
 
     /**
-     * Returns {@code modelJson} with {@code computation} added to its computed field's group. Typed fragments render
-     * in the destination model's declared condition language.
+     * Returns {@code modelJson} with {@code computation} added to its own DECLARING group, which A12 lets differ
+     * from the computed field's parent. Typed fragments render in the destination model's declared condition
+     * language, relative to that same declaring group.
+     *
+     * <p>Unvalidated: this is the raw writer, so it inserts wherever {@link Computation#groupPath()} points and
+     * checks nothing. {@link io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel#add(Computation)} is the gated
+     * path — it re-binds and re-validates.
      */
     public static String addComputation(String modelJson, Computation computation) {
         return insertTyped(modelJson, computation.groupPath(), language ->

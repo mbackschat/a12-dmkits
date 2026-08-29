@@ -28,6 +28,7 @@ The home of the *safety-gate* contract is [`CLI-SPEC.md`](CLI-SPEC.md) [§6](CLI
 - **Usage / IO errors** (bad CLI syntax, missing/unreadable `-m`) MAY stay plain text — they are picocli/IO concerns, not domain diagnoses.
 - **`refused`** = a pre-mutation safety-gate precondition failed (exit 2, nothing written). **`rejected`** = the kernel re-validate failed (exit 1). Never a bare `fail()` for a domain condition; never `outcome:applied`/exit 0 on invalid input (AP3).
 - Every **error-severity** diagnostic carries `code` + `where` + `fix`. `explain` (the *why*) is added where it helps.
+- **A JSON spec file's own shape is a domain error, not a usage error** — the exemption above covers picocli argument syntax, while a `<rule-spec.json>` / `<computation-spec.json>` key that is missing, non-path, or self-inconsistent is content the tool *read and judged*. It rides `rejected` with the offending spec KEY in `where.arg`. Most of the class never reaches the command: `rejectInvalidSpec` validates the spec against its published schema first and names every missing or ill-typed key at once, so a command's own parse guard answers only what the schema cannot state — `rule add`'s error-field-inside-group, `computation add`'s path form, and an empty `messages` array (`minItems` is declared but not enforced). Reading the usage exemption the other way is what kept `rule add` on plain stderr until 2026-08-29, one verb out of step with its own peer.
 
 ### 2. The self-explain contract (discoverability)
 

@@ -105,7 +105,7 @@ public final class BoundModel {
     }
 
     /**
-     * Adds {@code computation} to the model (in its computed field's group) and returns a <em>new</em>
+     * Adds {@code computation} to the model (in its own declaring group) and returns a <em>new</em>
      * binding over the updated DM-JSON; this binding is unchanged. Re-validated on re-bind (a write that
      * breaks the model fails loudly here), the computation twin of {@link #add(Rule)}.
      */
@@ -585,7 +585,8 @@ public final class BoundModel {
         return new Rule.Builder(group.ref(), index.locales());
     }
 
-    /** Start a computation for {@code computed}; the element is placed in the field's group. */
+    /** Start a computation for {@code computed}; the element lands in the field's group unless
+     *  {@link Computation.Builder#group(GroupReference)} declares it elsewhere. */
     public Computation.Builder computation(NumberRef computed) {
         return computation(computed.field());
     }

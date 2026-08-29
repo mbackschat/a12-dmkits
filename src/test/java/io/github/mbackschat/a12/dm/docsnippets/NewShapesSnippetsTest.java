@@ -60,6 +60,12 @@ class NewShapesSnippetsTest {
                     .dateField("ShippedOn", f -> f.format("yyyy-MM-dd")))
             .build().toJson();
     private static final BoundModel fulfilment = BoundModel.ofJson(FULFILMENT_JSON);
+    private static final String DEPOT_JSON = DocumentModelDraft.named("depot").locale("en_US")
+            .rootGroup("Depot", root -> root
+                    .group("Stock", stock -> stock.numberField("StockLevel", n -> n.fractionDigits(0)))
+                    .group("Policy", policy -> policy.numberField("MinimumOnHand", n -> n.fractionDigits(0))))
+            .build().toJson();
+    private static final BoundModel depot = BoundModel.ofJson(DEPOT_JSON);
 
     @Test
     void dateMinMaxSnippet() {
@@ -342,5 +348,25 @@ class NewShapesSnippetsTest {
                 .build();
         // end::computation-suppress[]
         assertTrue(new RuleValidator().check(Fixtures.orderJson(), comp.draft()).ok());
+    }
+
+    @Test
+    void computationDeclaringGroupSnippet() {
+        // tag::computation-group[]
+        // A computation LIVES in one group and WRITES to another. `group(...)` declares the element in the
+        // policy container while it computes the stock block's field; the stored computedFieldRelPath is
+        // derived from the pair, never authored. Placement on its own is never refused — what can be is an
+        // OPERAND: reading a repeatable declaring group's per-row fields pulls the computed field back
+        // inside it (MVK_ERROR_FIELD_NOT_IN_RULEGROUP), exactly as it would for a rule's error field.
+        Computation floorPolicy = depot.computation(depot.num("/Depot/Stock/StockLevel"))
+                .name("StockFloorPolicy")                        // → /Depot/Policy/StockFloorPolicy
+                .group(depot.group("/Depot/Policy"))
+                .calc(depot.num("/Depot/Policy/MinimumOnHand").value())
+                .message(Dsl.en("Stock level follows the depot's minimum-on-hand policy."))
+                .build();
+        // end::computation-group[]
+        assertEquals("/Depot/Policy", floorPolicy.groupPath());
+        assertEquals("../../Stock/StockLevel", floorPolicy.computedFieldRelPath());
+        assertTrue(new RuleValidator().check(DEPOT_JSON, floorPolicy.draft()).ok());
     }
 }

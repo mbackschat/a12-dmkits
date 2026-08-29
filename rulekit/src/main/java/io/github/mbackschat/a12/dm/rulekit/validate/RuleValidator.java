@@ -136,8 +136,10 @@ public final class RuleValidator {
             String alias = group == null ? null : group.path("Group").path("modelAlias").asText(null);
             if (alias != null && !alias.isBlank()) {
                 return Optional.of(Diagnostic.precheck(Optional.of("RK_MOUNT_NOT_EDITABLE"),
+                        // "error field" is the RULE's word for it; a computation has a computed field, and the
+                        // declaring `group` key made this branch directly reachable for one.
                         "'" + groupPath + "' is an include mount (alias '" + alias + "'), not an editable group — a "
-                                + kind + "'s error field cannot live inside an included sub-model",
+                                + kind + " cannot be declared inside an included sub-model",
                         Diagnostic.Where.path(groupPath),
                         Optional.of("anchor the " + kind + " on a NATIVE field/group of THIS model, and reference the "
                                 + "included field by its absolute path inside the condition (e.g. " + groupPath + "/<field>)"),

@@ -566,6 +566,16 @@ final class ApplyCommand extends BaseCommand {
                 if (parsed.error() != null) {
                     throw new IllegalArgumentException(parsed.error());
                 }
+                // The same identity gate the standalone verb applies. Without it a re-expression naming a
+                // different `group`/`computedField`/`name` REMOVES the located computation and adds another
+                // one elsewhere — a silent MOVE, which `computation modify` refuses by contract. Latent while
+                // only `computedField` could shift the derived name; the declaring `group` key makes it one key.
+                if (!parsed.fullName().equals(comp)) {
+                    throw new IllegalArgumentException("the op re-expresses " + parsed.fullName()
+                            + ", not the computation " + comp + " — a re-expression keeps the same computation"
+                            + " (match computedField/name, and `group` if it is declared outside the computed"
+                            + " field's parent); use remove + add to relocate one");
+                }
                 session.modifyComputation(comp, parsed.draft(), parsed.messages());
                 changed.put("modified", comp);
                 yield staged(which, changed, session);

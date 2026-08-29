@@ -113,6 +113,15 @@ public record Diagnostic(
     }
 
     /**
+     * A pre-check diagnostic whose code and corrective come from the {@link RkCode} itself — the common shape,
+     * so a call site names the code once instead of spelling {@code Optional.of(code.code())} beside
+     * {@code Optional.of(code.fix())} and risking a mismatched pair.
+     */
+    public static Diagnostic precheck(RkCode code, String summary, Where where) {
+        return precheck(Optional.of(code.code()), summary, where, Optional.of(code.fix()), Optional.empty());
+    }
+
+    /**
      * A <i>deferred</i> kernel-semantic pre-check (PRECHECK origin, WARNING) — advisory, not a
      * {@code build()} throw (F11): rulekit predicts a kernel judgment but lets the live kernel be the
      * authority, so a heuristic that drifts from a newer kernel can never be the sole reason a rule

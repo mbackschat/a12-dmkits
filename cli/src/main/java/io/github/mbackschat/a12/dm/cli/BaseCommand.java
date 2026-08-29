@@ -412,6 +412,28 @@ public abstract class BaseCommand implements Callable<Integer> {
     }
 
     /**
+     * Emit a {@code rejected} envelope for a spec the CLI's own PARSER refused — the second half of the input
+     * gate, after {@link #rejectInvalidSpec}'s key/shape check has passed and the parser found a value it cannot
+     * build from (a non-absolute path, a missing required slot, an unknown tolerance band).
+     *
+     * <p>Same shape as its sibling, deliberately: a {@link RejectionBasis#preflight()} rejection, because the
+     * CLI refused before the kernel was consulted and no kernel provenance may be claimed. It lives here rather
+     * than on the spec parser so the parser stays a parser — {@code apply} runs the same parse inside a
+     * transaction and must NOT produce an envelope from it.
+     */
+    protected int rejectSpecParse(Diagnostic problem) {
+        ResultEnvelope env = ResultEnvelope.rejected(resultIdentity(), problem.summary(), List.of(problem),
+                RejectionBasis.preflight());
+        out().print(env.toJsonString());
+        return env.exitCode();
+    }
+
+    /** The same refusal built from an {@link RkCode} + the spec KEY that carried the problem. */
+    protected int rejectSpecParse(RkCode code, String summary, String arg, String path) {
+        return rejectSpecParse(Diagnostic.precheck(code, summary, Diagnostic.Where.arg(path, arg)));
+    }
+
+    /**
      * Summarize a spec-validation rejection by the KIND of problem, so the {@code summary} tracks the actual
      * diagnostics — an unrecognized key vs a wrong-typed/shaped value — instead of always claiming "unrecognized
      * key" (probe 07: a JSON array handed to a single-object spec verb is an {@code RK_INVALID_VALUE}, not an

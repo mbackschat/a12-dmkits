@@ -79,6 +79,7 @@ class DocSnippetFreshnessTest {
             new Lock("navigation-annotations", "docs/API-GUIDE.md", STUDY_SNIPPETS),
             new Lock("study-fragments", "docs/API-GUIDE.md", STUDY_SNIPPETS),
             new Lock("computation", "docs/API-GUIDE.md", STUDY_SNIPPETS),
+            new Lock("computation-group", "docs/API-GUIDE.md", NEW_SHAPES),
             new Lock("pattern-instantiate", "docs/API-GUIDE.md", STUDY_SNIPPETS),
             new Lock("study-mirroring", "docs/API-GUIDE.md",
                     "src/test/java/io/github/mbackschat/a12/dm/rulekit/dsl/MirroringRuleStudyTest.java"),
