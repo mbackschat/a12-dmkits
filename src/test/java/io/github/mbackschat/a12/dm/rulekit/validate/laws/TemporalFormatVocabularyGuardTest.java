@@ -248,6 +248,26 @@ class TemporalFormatVocabularyGuardTest {
 
     // ── the guards ───────────────────────────────────────────────────────────────────────────────────────────
 
+    /**
+     * The positive control for every other arm here.
+     *
+     * <p>Three of them are satisfied by an EMPTY probe — no missing format, no split, no lost round trip — so
+     * without this a broken candidate generator or a probe that threw its way to nothing would read as green
+     * across the class. The numbers are deliberate floors well under the live counts (113 candidates, 12
+     * admitted, 101 refused at 2026-08-29): they answer "did the probe happen and does it discriminate", not
+     * "how big is the set", and a floor that tracked the live count would need editing whenever the kernel moved.
+     * Both verdicts must occur, because a probe that admitted everything would satisfy the containment arm too.
+     */
+    @Test
+    void theProbeRanAndDiscriminates() {
+        Map<String, Verdict> partition = partition();
+        assertTrue(partition.size() >= 100, () -> "the candidate universe collapsed: " + partition.size());
+        assertTrue(admittedFormats(partition).size() >= 10,
+                () -> "too few admissions to be a real probe: " + admittedFormats(partition));
+        assertTrue(partition.containsValue(Verdict.REFUSED),
+                "nothing was refused, so this measures acceptance of anything rather than a vocabulary");
+    }
+
     @Test
     void theCommittedVocabularyMatchesWhatTheKernelAdmits() throws IOException {
         Map<String, Verdict> partition = partition();
