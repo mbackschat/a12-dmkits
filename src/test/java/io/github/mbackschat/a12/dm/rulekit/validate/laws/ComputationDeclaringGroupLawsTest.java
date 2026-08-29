@@ -204,6 +204,40 @@ class ComputationDeclaringGroupLawsTest {
     }
 
     /**
+     * The same gate reached through an <b>operand</b>, on the route a12-kernel-lean's {@code SPEC-2026-08-29-02}
+     * corrects: a star aggregate over a sibling repeatable group, computed into a repeatable target. The earlier
+     * account of that shape (KERNEL-FINDINGS §11's sibling-star entry) measured only the target's own parent,
+     * and the sentence it produced — "declared at its target's own parent group" — reads as the sole admitted
+     * placement. It is not.
+     *
+     * <p><b>The four verdicts are cell-for-cell the bare constant's above, and that identity is the finding.</b>
+     * A star aggregate contributes no per-row read, so it derives no iteration of its own; the iteration still
+     * comes from the target's own repeatable scope, and an aggregating operand changes nothing about which
+     * placements survive. Read together with the constant table, the pair separates the two candidate accounts
+     * of the admission — "the star operand earns the ancestor" versus "containment alone decides" — because
+     * only the second predicts a row-for-row match.
+     */
+    @Test
+    void aStarAggregateOperandLeavesTheContainmentGateExactlyWhereTheConstantPutIt() {
+        Calculation starAggregate = Dsl.sum(M.flatten("/Depot/Returns*/Units")).expression();
+        Map<String, String> actual = new LinkedHashMap<>();
+        actual.put("the target's own repeatable parent",
+                computationVerdict(PER_ROW_FIELD, "/Depot/Shipments", starAggregate));
+        actual.put("an ancestor of the repeatable target",
+                computationVerdict(PER_ROW_FIELD, "/Depot", starAggregate));
+        actual.put("an unrelated FIXED subtree", computationVerdict(PER_ROW_FIELD, "/Depot/Policy", starAggregate));
+        actual.put("the starred source's own repeatable group",
+                computationVerdict(PER_ROW_FIELD, "/Depot/Returns", starAggregate));
+
+        Map<String, String> expected = new LinkedHashMap<>();
+        expected.put("the target's own repeatable parent", KernelLaws.ADMITTED);
+        expected.put("an ancestor of the repeatable target", KernelLaws.ADMITTED);
+        expected.put("an unrelated FIXED subtree", NOT_IN_RULEGROUP);
+        expected.put("the starred source's own repeatable group", NOT_IN_RULEGROUP);
+        assertEquals(expected, actual, "an aggregating operand neither adds nor removes a placement");
+    }
+
+    /**
      * The rule twin, and it shows the two constructs are <b>not symmetric on this axis</b> — which is worth a
      * test of its own, because the natural move after the row above is to assume they are.
      *

@@ -187,6 +187,87 @@ class ComputationDeclaringGroupCliTest {
     }
 
     /**
+     * A yard whose bins, primary and secondary extents are three repeatable siblings under one fixed
+     * intermediate group — so a declaring group can be the target's own parent, a NON-root ancestor, or the
+     * root, and a stale {@code ../} spelling can be tried against each.
+     */
+    private static Path yardModel(Path dir) throws Exception {
+        String json = DocumentModelDraft.named("Warehouse_DM").locale("en_US")
+                .rootGroup("Warehouse", w -> w
+                        .group("Yard", y -> y
+                                .group("Bins", b -> b.repeatable(20)
+                                        .numberField("SelectedCount", n -> n.fractionDigits(0)))
+                                .group("Primary", p -> p.repeatable(20)
+                                        .numberField("Candidate", n -> n.fractionDigits(0)))
+                                .group("Secondary", s -> s.repeatable(20)
+                                        .numberField("Fallback", n -> n.fractionDigits(0))))
+                        .group("Office", o -> o.numberField("OfficeMarker", n -> n.fractionDigits(0))))
+                .build().toJson();
+        Path model = dir.resolve("Warehouse_DM.json");
+        Files.writeString(model, json);
+        return model;
+    }
+
+    /**
+     * <b>The operand's base MOVES with the declaring group, and a stale relative spelling misattributes on two
+     * different codes.</b> This is the trap the containment widening exposes: an ancestor placement is admitted
+     * (KERNEL-FINDINGS §11), so an author who moves a computation upward keeps a working-looking spec whose
+     * {@code ../} now counts from somewhere else.
+     *
+     * <p>Which code you get depends on where the stale walk lands, which is why both ancestors are measured
+     * rather than one: from the non-root {@code /Warehouse/Yard} the walk stays inside the tree and resolves to
+     * a group that does not exist ({@code MVK_INVALID_ENTITY}); from the root it walks off the top of the model
+     * instead and is refused earlier, on arity ({@code MVK_TOO_MANY_PARENT_GROUPS}). a12-kernel-lean's
+     * {@code SPEC-2026-08-29-02} reports only the first, because its ancestor was not a root.
+     *
+     * <p>The re-spelled row is the control: the same placement, the same target, an operand written for the new
+     * base — admitted. So the refusals are the SPELLING's and never the placement's.
+     */
+    @Test
+    void aStaleRelativeOperandMisattributesOnTwoCodesWhenTheDeclaringGroupMovesUp(@TempDir Path dir)
+            throws Exception {
+        Path model = yardModel(dir);
+        String spec = """
+                { "computedField": "/Warehouse/Yard/Bins/SelectedCount",
+                  "group": "%s",
+                  "name": "SelectedComp",
+                  "alternatives": [ { "operation": "FirstFilledValue(%s)" } ],
+                  "messages": [ {"locale":"en_US","text":"The selected count follows the first filled extent."} ] }
+                """;
+        String stale = "../Primary*/Candidate, ../Secondary*/Fallback";
+
+        record Row(String label, String group, String operand) { }
+        List<Row> rows = List.of(
+                new Row("the base the operand was written for", "/Warehouse/Yard/Bins", stale),
+                new Row("a NON-root ancestor, spelling unchanged", "/Warehouse/Yard", stale),
+                new Row("the ROOT ancestor, spelling unchanged", "/Warehouse", stale),
+                new Row("the same non-root ancestor, re-spelled", "/Warehouse/Yard",
+                        "Primary*/Candidate, Secondary*/Fallback"),
+                new Row("the same root ancestor, re-spelled", "/Warehouse",
+                        "Yard/Primary*/Candidate, Yard/Secondary*/Fallback"));
+
+        var actual = new java.util.LinkedHashMap<String, String>();
+        for (Row row : rows) {
+            Path file = write(dir, "rebase-" + rows.indexOf(row) + ".json",
+                    spec.formatted(row.group(), row.operand()));
+            CliTestSupport.Result result = CliTestSupport.run(
+                    "-m", model.toString(), "computation", "add", file.toString(), "--dry-run");
+            JsonNode envelope = MAPPER.readTree(result.out());
+            actual.put(row.label(), "rejected".equals(envelope.path("outcome").asText())
+                    ? envelope.path("diagnostics").get(0).path("code").asText()
+                    : envelope.path("outcome").asText());
+        }
+
+        var expected = new java.util.LinkedHashMap<String, String>();
+        expected.put("the base the operand was written for", "preview");
+        expected.put("a NON-root ancestor, spelling unchanged", "MVK_INVALID_ENTITY");
+        expected.put("the ROOT ancestor, spelling unchanged", "MVK_TOO_MANY_PARENT_GROUPS");
+        expected.put("the same non-root ancestor, re-spelled", "preview");
+        expected.put("the same root ancestor, re-spelled", "preview");
+        assertEquals(expected, actual, "the declaring group is the operand's rendering base, not a filing label");
+    }
+
+    /**
      * The {@code apply} route refuses a relocating re-expression exactly as the standalone verb does.
      *
      * <p>Both surfaces run the same parser, and {@code modify} is remove-then-add at the draft's declaring

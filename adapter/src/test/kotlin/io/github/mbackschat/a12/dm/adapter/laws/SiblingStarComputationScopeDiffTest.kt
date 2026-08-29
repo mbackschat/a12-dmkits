@@ -20,9 +20,13 @@ import org.junit.jupiter.api.Test
  * codegen-rejected `MVK_ERROR_FIELD_NOT_IN_RULEGROUP`, and the prose called that shape "cross-group" — which
  * reads as "the operand crosses groups" but MEASURES "the computation is DECLARED outside its target's group"
  * (its `capacityModel` declares in `/HrRules` and targets `/Depots/Depot/Capacity`). The variable that decides
- * is the declaration relation, not the operand's: declared at its target's own parent — the only placement
- * `dmtool` can author — the sibling-star operand is admitted, measured 2026-08-28 for scale-0 Number, complete
- * DateTime, whole-second Time and one DateRange profile.
+ * is the declaration relation, not the operand's: declared at its target's own parent, the sibling-star operand
+ * is admitted, measured 2026-08-28 for scale-0 Number, complete DateTime, whole-second Time and one DateRange
+ * profile. That placement is one admitted choice of several rather than the only one — the gate is containment,
+ * so any ancestor of the target is admitted too, and `dmtool` authors any of them since the computation spec
+ * gained its own `group` key (corrected 2026-08-29 from a12-kernel-lean's `SPEC-2026-08-29-02`; the accept side
+ * is `validate.laws.ComputationDeclaringGroupLawsTest`). The runtime arms below are unaffected: they measure
+ * where the star BINDS, which this fixture holds fixed at the target's own parent.
  *
  * The runtime arms separate PARENT-LOCAL correlation from a global scan: two parents each carrying their own
  * source extents, so a global scan would leak parent 1's value into parent 2's target rows. They also separate
