@@ -1,7 +1,11 @@
 package io.github.mbackschat.a12.dm.rulekit.validate.laws;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 
+import java.util.LinkedHashMap;
+import java.util.Map;
+import io.github.mbackschat.a12.dm.rulekit.validate.ValidationResult;
 import org.junit.jupiter.api.Test;
 
 /**
@@ -168,6 +172,36 @@ class RuleGroupIterationLawsTest {
         String illegal = legal.replaceFirst("(\"maxFractionalDigits\"\\s*:\\s*)14", "$115");
         assertNotEquals(legal, illegal, "the emitted JSON must carry the scale for this patch to mean anything");
         KernelLaws.rejectsModel(illegal, SCALED_ITEMS, "../W", "[W] > 0.000000000000000");
+    }
+
+    /**
+     * What the cap's refusal LOOKS like, which is the half [KF216] rests on and this class did not carry: the
+     * kernel reports it with <b>no {@code MVK_*} class at all</b>, naming neither the property nor the bound —
+     * and that code-lessness is the whole reason {@code modelkit} refuses a scale above 14 correctively rather
+     * than delegating. An unlocked "there is no code" is one kernel upgrade away from being silently false.
+     *
+     * <p>The {@code min} arm and the both-keys arm are here for the same reason: the client-side refusal covers
+     * both keys, so a basis measured only on {@code max} is narrower than the check it licenses. Both-keys
+     * yields <b>one</b> diagnostic, not two — the gate does not enumerate.
+     */
+    @Test
+    void theScaleCapIsReportedWithoutAnyMvkClassOnEitherKey() {
+        String legal = scaledItems(14);
+        Map<String, String> actual = new LinkedHashMap<>();
+        for (Map.Entry<String, String> arm : Map.of(
+                "max above the cap", "\"maxFractionalDigits\" : 15",
+                "min above the cap", "\"minFractionalDigits\" : 15").entrySet()) {
+            String patched = legal.replaceFirst("\"maxFractionalDigits\"\\s*:\\s*14", arm.getValue());
+            assertNotEquals(legal, patched, () -> "the patch for '" + arm.getKey() + "' did not apply");
+            ValidationResult r = KernelLaws.checkModel(patched, SCALED_ITEMS, "../W", "FieldFilled(W)");
+            actual.put(arm.getKey(), r.diagnostics().size() + " diagnostic(s), code="
+                    + r.diagnostics().get(0).code().orElse("(none)"));
+        }
+
+        Map<String, String> expected = new LinkedHashMap<>();
+        expected.put("max above the cap", "1 diagnostic(s), code=(none)");
+        expected.put("min above the cap", "1 diagnostic(s), code=(none)");
+        assertEquals(expected, actual, "the cap gate carries no MVK class, on either key");
     }
 
     /** Control: the negative-admission classifier still runs at the maximum legal scale, so the wall below is

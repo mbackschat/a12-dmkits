@@ -671,7 +671,7 @@ An error message can splice in the **runtime value**, the **label**, or the **ro
 | `fieldLabel(ref)` | `$/Order/Items/Count$` | the field's localized **label** |
 | `repetitionIndex(groupRef)` | `$#/Order/Items$` | the repeatable group's 1-based **row number** |
 
-The group token is the one with a placement rule: the named group must **contain** the rule — its own group or any ancestor. A descendant, a sibling, or a group under another root is rejected `INVALID_GROUP`. Passing a `GroupRef` keeps you on the absolute spelling the position requires.
+The group token is the one with a placement rule: the named group must **contain** the rule — its own group or any ancestor. A descendant, a sibling, or a group under another root is rejected `INVALID_GROUP`. Take the `GroupRef` from the bound model (`m.group("/Order/Items")`, which refuses a path that does not resolve) and you are on the absolute spelling the position requires.
 
 ```java
 import static io.github.mbackschat.a12.dm.rulekit.dsl.Dsl.*;   // en, de, fieldValue, fieldLabel, repetitionIndex

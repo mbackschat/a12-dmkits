@@ -98,7 +98,10 @@ class PatternsVerbTest {
         var res = CliTestSupport.run("-m", model(dir).toString(), "patterns", "date-order",
                 "--arg", "earlier=/Order/OrderDate");   // no `later`
         assertNotEquals(0, res.code(), "a missing parameter must fail");
-        assertTrue(res.err().contains("later"), () -> "names the missing parameter: " + res.err());
+        // The corrective moved into the result envelope on 2026-08-30: scaffolding refusals share the input
+        // gate's contract with the spec verbs, because several of them carry MVK_* codes and prose on stderr
+        // cannot say who decided (SpecValueRefusalEnvelopeTest).
+        assertTrue(res.out().contains("later"), () -> "names the missing parameter: " + res.out() + res.err());
     }
 
     @Test

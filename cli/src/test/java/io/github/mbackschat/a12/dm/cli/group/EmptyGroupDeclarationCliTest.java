@@ -61,6 +61,10 @@ class EmptyGroupDeclarationCliTest {
         JsonNode refusal = MAPPER.readTree(named.out());
         assertEquals("MVK_GROUP_IS_EMPTY", refusal.path("diagnostics").get(0).path("code").asText(),
                 () -> "the declaration is legal; the OPERAND is what is refused: " + named.out());
-        assertTrue(Files.readString(model).contains("Empty"), "the group is still declared after the refusal");
+        // `rule check` is READ_ONLY, so this cannot fail for the reason a naive "nothing was written" check
+        // implies. What it does pin is the DECLARE half: the group is still there to be named, and the
+        // path form distinguishes it from the sibling EmptyRows, which a bare "Empty" substring would not.
+        assertTrue(Files.readString(model).contains("\"/Store/Empty\""),
+                "the declaration outlives the operand refusal");
     }
 }

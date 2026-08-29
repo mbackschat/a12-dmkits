@@ -120,6 +120,22 @@ class NonIteratingComputationFreedomLawsTest {
                 "an aggregate reads no row, so nothing derives iteration and nothing gates placement");
     }
 
+    /**
+     * The OPERATOR the peer clause actually names. a12-kernel-lean's {@code SPEC-2026-08-29-03} says a
+     * sibling-star <b>{@code FirstFilledValue}</b> is not a per-row operand; the table above measures
+     * {@code Sum}, and generalizing from one member to "a star aggregate" is not free in this repository —
+     * KERNEL-FINDINGS §11 treats sibling-star {@code FirstFilledValue} as its own specially-behaving route,
+     * and the {@code MVK_NO_WILDCARD} ledger row records that its unstarred spelling has a trigger of its own.
+     * So the named member is measured rather than assumed, and it matches {@code Sum} row for row.
+     */
+    @Test
+    void theStarredFirstFilledValueTheClauseNamesBehavesLikeTheSum() {
+        Calculation starredSelection = Dsl.firstFilledNumber(
+                M.flatten("/Catalogue/Lots*/Quantity"), M.flatten("/Catalogue/Batches*/Quantity")).expression();
+        assertEquals(allAdmitted(), across(FIXED_TARGET, starredSelection),
+                "the class generalizes because its named member was measured, not because Sum stood in for it");
+    }
+
     /** The control the table above is only meaningful against: the shape that provably cannot iterate. */
     @Test
     void aBareConstantIntoAFixedTargetMatchesTheStarAggregateRowForRow() {

@@ -1914,8 +1914,10 @@ public final class Dsl {
      * <p><b>The named group must CONTAIN the rule</b> — its own group, or any ancestor of it. A descendant, a
      * sibling, or anything under another root is refused {@code INVALID_GROUP}, and a first segment that names
      * no declared root is refused earlier still, {@code INVALID_ROOT_GROUP}
-     * (KERNEL-FINDINGS {@code KF214}). Passing a {@link GroupRef} is what keeps this side of the trap closed:
-     * the token is always emitted as an absolute path, and a relative spelling is the position's other refusal.
+     * (KERNEL-FINDINGS {@code KF214}). Acquiring the {@link GroupRef} from a BOUND model is what keeps this side of the trap closed:
+     * {@code BoundModel.group(String)} refuses a path that does not resolve, so the token is emitted absolute. The
+     * constructor is public and {@code EntityPath} is deliberately permissive, so a hand-built relative ref renders
+     * one verbatim — this method does not normalize, and nothing downstream refuses it before the kernel does.
      */
     public static String repetitionIndex(GroupRef group) {
         return "$#" + group.path() + "$";

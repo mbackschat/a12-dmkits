@@ -21,6 +21,7 @@ import io.github.mbackschat.a12.dm.rulekit.catalog.PatternCatalog;
 import io.github.mbackschat.a12.dm.rulekit.catalog.PatternEntry;
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Computation;
+import io.github.mbackschat.a12.dm.rulekit.validate.PrecheckException;
 import io.github.mbackschat.a12.dm.rulekit.dsl.LocalizedText;
 import io.github.mbackschat.a12.dm.cli.interp.TextConditionCorrective;
 import io.github.mbackschat.a12.dm.rulekit.validate.Diagnostic;
@@ -177,7 +178,18 @@ final class PatternsCommand extends BaseCommand {
             bound = BoundModel.ofJson(modelJson, resolver);
             inst = pattern.instantiate(bound, args);
         } catch (IllegalArgumentException bad) {
-            return fail(bad.getMessage());          // missing --arg, unresolved path, bad enum value, …
+            // The kits' own builders refuse here — a missing --arg, an unresolved path, a bad enum value, and
+            // (uniquely on this verb) `Computation.Builder.build()`'s pre-checks, since a pattern instantiates
+            // the TYPED object rather than a draft. That last class prints an MVK_* code, so a bare stderr line
+            // is indistinguishable from a kernel verdict to anything reading the process — the defect
+            // a12-kernel-lean reported on `field add` (2026-08-29), one verb over.
+            return rejectSpecValue(ResultIdentity.PATTERNS_SCAFFOLD, "pattern arguments", pattern.id(), bad);
+        } catch (PrecheckException refused) {
+            // The kits' typed builders refuse here — and uniquely on this verb, because a pattern instantiates
+            // the TYPED Rule/Computation rather than the raw draft the DSL-bearing verbs carry. Several of
+            // those pre-checks raise an MVK_* code, so prose on stderr reads as a kernel verdict to anything
+            // parsing the process. The exception already carries the structured diagnostic; publish it.
+            return rejectPrecheck(ResultIdentity.PATTERNS_SCAFFOLD, refused);
         } catch (RuntimeException e) {
             return failOrRethrowDomainRejection("cannot scaffold from '" + pattern.id() + "': ", e);
         }
@@ -282,7 +294,10 @@ final class PatternsCommand extends BaseCommand {
             FieldSpec.Parsed parsed = FieldSpec.parse(fieldSpec);
             doc.addField(parsed.group(), parsed.field());
         } catch (IllegalArgumentException bad) {
-            return fail(bad.getMessage());       // no such group, duplicate name, malformed config, …
+            // The same FieldSpec.parse the four spec verbs call, so it answers in the same shape: no such
+            // group, a duplicate name, or a config modelkit refuses (a scale above the cap, an unaligned enum
+            // category, an invalid pattern). Scaffolding is not exempt from the input-gate contract.
+            return rejectSpecValue(ResultIdentity.PATTERNS_SCAFFOLD, "field spec", pattern.id(), bad);
         }
 
         boolean valid;

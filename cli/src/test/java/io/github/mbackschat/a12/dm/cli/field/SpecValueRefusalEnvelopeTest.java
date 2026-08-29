@@ -50,7 +50,9 @@ class SpecValueRefusalEnvelopeTest {
     private static Path storeModel(Path dir) throws Exception {
         Path model = dir.resolve("Store_DM.json");
         Files.writeString(model, DocumentModelDraft.named("Store_DM").locale("en_US")
-                .rootGroup("Store", s -> s.field("Reference", FieldKind.STRING))
+                .rootGroup("Store", s -> s
+                        .field("Reference", FieldKind.STRING)
+                        .numberField("Amount", n -> n.fractionDigits(0)))
                 .build().toJson());
         return model;
     }
@@ -124,6 +126,37 @@ class SpecValueRefusalEnvelopeTest {
             expected.put(row, "RK_INVALID_VALUE");
         }
         assertEquals(expected, actual, "one input gate, one contract, whichever half of it refuses");
+    }
+
+    /**
+     * The scaffolding verb belongs to this class too, and it is the sharpest member: {@code patterns}
+     * instantiates the TYPED {@code Rule}/{@code Computation} rather than the raw draft the DSL-bearing verbs
+     * carry, so {@code Computation.Builder}'s pre-checks fire on it — and several of those raise an
+     * {@code MVK_*} code. Until 2026-08-30 it printed one as bare stderr prose with empty stdout, which is
+     * strictly worse than the reported {@code field add} case: the code IS the kernel's, so a consumer
+     * recording it files a local gate as a kernel verdict with no tell at all.
+     *
+     * <p>Found by cold review AFTER the first fix claimed the class was closed — which is why the sink-level
+     * net in {@code CliTestSupport} exists beside this named control.
+     */
+    @Test
+    void theScaffoldingVerbPublishesItsPrecheckInsteadOfPrintingAKernelCode(@TempDir Path dir) throws Exception {
+        Path model = storeModel(dir);
+        CliTestSupport.Result result = CliTestSupport.run("-m", model.toString(), "patterns", "tiered-amount",
+                "--arg", "computed=/Store/Amount", "--arg", "driver=/Store/Amount",
+                "--arg", "threshold=10", "--arg", "below=0", "--arg", "atOrAbove=5");
+
+        assertFalse(result.out().isBlank(),
+                () -> "the refusal must reach STDOUT as the envelope, not stderr prose: " + result.err());
+        JsonNode envelope = MAPPER.readTree(result.out());
+        JsonNode diagnostic = envelope.path("diagnostics").get(0);
+        assertEquals("rejected", envelope.path("outcome").asText(), envelope::toString);
+        assertEquals("MVK_ERROR_REFERENCE_TO_CALCULATED_FIELD", diagnostic.path("code").asText(),
+                envelope::toString);
+        assertEquals("PRECHECK", diagnostic.path("source").asText(),
+                () -> "the code is the KERNEL's vocabulary but the refusal is OURS, and only source says so: "
+                        + envelope);
+        assertFalse(envelope.path("written").asBoolean(), envelope::toString);
     }
 
     private static String code(JsonNode envelope) {

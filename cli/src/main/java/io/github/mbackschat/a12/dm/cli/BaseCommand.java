@@ -27,6 +27,7 @@ import io.github.mbackschat.a12.dm.interpreter.ModelPreparationError;
 import io.github.mbackschat.a12.dm.interpreter.model.UndeclaredReference;
 import io.github.mbackschat.a12.dm.modelkit.ModelTimeZoneContract;
 import io.github.mbackschat.a12.dm.rulekit.validate.Diagnostic;
+import io.github.mbackschat.a12.dm.rulekit.validate.PrecheckException;
 import io.github.mbackschat.a12.dm.rulekit.validate.KernelDiagnostics;
 import io.github.mbackschat.a12.dm.rulekit.validate.RkCode;
 import picocli.CommandLine.Command;
@@ -435,7 +436,15 @@ public abstract class BaseCommand implements Callable<Integer> {
      * transaction and must NOT produce an envelope from it.
      */
     protected int rejectSpecParse(Diagnostic problem) {
-        ResultEnvelope env = ResultEnvelope.rejected(resultIdentity(), problem.summary(), List.of(problem),
+        return rejectSpecParse(resultIdentity(), problem);
+    }
+
+    /**
+     * Identity-carrying counterpart, for a verb whose leaf is not target/op depth 2 — {@code patterns} is the
+     * one, and {@link ResultIdentity#from} refuses to derive an identity for it.
+     */
+    protected int rejectSpecParse(ResultIdentity identity, Diagnostic problem) {
+        ResultEnvelope env = ResultEnvelope.rejected(identity, problem.summary(), List.of(problem),
                 RejectionBasis.preflight());
         out().print(env.toJsonString());
         return env.exitCode();
@@ -459,9 +468,28 @@ public abstract class BaseCommand implements Callable<Integer> {
      * locator carries the input parameter, since the builders raise a message rather than a structured key.
      */
     protected int rejectSpecValue(String label, String specPath, IllegalArgumentException refused) {
-        return rejectSpecParse(Diagnostic.precheck(RkCode.INVALID_VALUE,
+        return rejectSpecValue(resultIdentity(), label, specPath, refused);
+    }
+
+    /** Identity-carrying counterpart — see {@link #rejectSpecParse(ResultIdentity, Diagnostic)}. */
+    protected int rejectSpecValue(ResultIdentity identity, String label, String source,
+            IllegalArgumentException refused) {
+        return rejectSpecParse(identity, Diagnostic.precheck(RkCode.INVALID_VALUE,
                 "invalid " + label + ": " + refused.getMessage(),
-                Diagnostic.Where.arg(specPath, "<spec.json>")));
+                Diagnostic.Where.arg(source, "<spec.json>")));
+    }
+
+    /**
+     * A kits {@link PrecheckException} published as the {@code rejected} envelope it was BUILT to produce.
+     *
+     * <p>That type carries its own structured {@link Diagnostic} precisely so a caller can publish it "instead
+     * of scraping the message" — and until 2026-08-30 <b>no CLI site read it</b>, so every one surfaced as
+     * prose. On the scaffolding route that mattered most: {@code Computation.Builder}'s pre-checks raise an
+     * {@code MVK_*} code, so a bare stderr line was indistinguishable from a kernel verdict — the defect
+     * a12-kernel-lean reported on {@code field add}, one verb over.
+     */
+    protected int rejectPrecheck(ResultIdentity identity, PrecheckException refused) {
+        return rejectSpecParse(identity, refused.diagnostic());
     }
 
     /** The same refusal built from an {@link RkCode} + the spec KEY that carried the problem. */

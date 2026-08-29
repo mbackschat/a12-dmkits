@@ -37,6 +37,11 @@ import io.github.mbackschat.a12.dm.rulekit.validate.PrecheckException;
  * {@code pre-checked} bucket describes the TYPED library surface ({@code build()} / handle creation). dmtool's
  * DSL-bearing authoring verbs bypass those pre-checks by construction, because they carry DSL text rather than
  * typed objects — so a ledger row saying "pre-checked" says nothing about what the CLI reports for that code.
+ *
+ * <p><b>One verb is the exception, and stating the rule without it was the review's finding:</b>
+ * {@code patterns} instantiates the typed object, so the same pre-check DOES fire there — see
+ * {@code field.SpecValueRefusalEnvelopeTest.theScaffoldingVerbPublishesItsPrecheckInsteadOfPrintingAKernelCode},
+ * which pins that it now publishes rather than prints.
  */
 class ComputationSelfReadBasisTest {
 
