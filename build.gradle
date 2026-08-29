@@ -141,6 +141,10 @@ tasks.named('test') {
     dependsOn 'catalogProseReviewGuardTest'
     dependsOn 'releaseGapGuardTest'
     dependsOn 'leakGuardTest'
+    // Same tier and for the stated reason: it binds docs/TEMPORAL-FORMAT-VOCABULARY.md to the kernel that
+    // decides it, declares its inputs, and costs ~3 s. It first hung off `check` alone, which CI does not run
+    // (`ci.yml` names `test`), so the guard would have been unreachable exactly where it matters.
+    dependsOn 'vocabularyGuardTest'
     if (!project.hasProperty('fast')) {
         dependsOn 'docGuardTest'
         dependsOn 'interpreterReleaseGuardTest'
@@ -800,7 +804,6 @@ tasks.register('vocabularyGuardTest', Test) {
                     'interpreter/src/commonTest/kotlin/io/github/mbackschat/a12/dm/interpreter/TemporalDeclaredFormatFormalTest.kt'),
     ])
 }
-tasks.named('check') { dependsOn 'vocabularyGuardTest' }
 
 // The temporal format vocabulary is DERIVED from the kernel, never authored: `dumpTemporalVocabulary` runs the
 // guard with `temporalVocabulary.fix=true` so it writes docs/TEMPORAL-FORMAT-VOCABULARY.md instead of asserting
