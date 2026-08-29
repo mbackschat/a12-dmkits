@@ -273,6 +273,8 @@ Research kernel facts by **SOURCE, never by jar** (the golden rule): the consult
 
 **Its structure is load-bearing, because the reader is an agent doing a delta.** Section 0 states the peer's last receipt and marks every section absorbed / sent-no-receipt / NEW, so they can skip what they hold; payload rows stay *(input → observed → oracle → status)*; mechanisms are quarantined in their own section and marked as hypotheses. Keep those three properties through any edit.
 
+**Name every SHIPPED surface that now carries one of their clauses** (requested by the peer, 2026-08-30). When a measurement of theirs lands in a schema description, a public javadoc, or help text — not just in a finding — say so in the handback, because that text is a copy of a rule they own and they cannot see it drift from their side. This is the reciprocal of the doc trigger table: internally a fact goes to its most self-describing surface, and externally the owner of the fact is told which surfaces now repeat it.
+
 Writing style (human voice; tables/diagrams over prose walls; formalize only when a consumer exists), the per-surface procedures (README, demos, indexes, `dmtool` call formatting), and the doc lifecycle (spec vs proposal vs `-GAPS` vs `-LEDGER`; the full-sweep checklist) are [`docs/DOC-DISCIPLINE.md`](docs/DOC-DISCIPLINE.md) §3–§6.
 
 ## Testing strategy
