@@ -118,8 +118,10 @@ class EmptyGroupOperandLawsTest {
     /**
      * The plain multi-group {@code NumberOfFilledGroups} — the carrier a12-kernel-lean measured as
      * {@code SPEC-2026-08-30-01}, extended past its stated limits. A shell is admitted at either position and
-     * at list length three; a field three levels down still counts as content; and a group whose only content
-     * is a repeatable descendant is admitted too.
+     * at list length three; a field three levels down still counts as content; a group whose only content is a
+     * repeatable descendant is admitted too; and a shell that is ITSELF repeatable behaves as the operator's
+     * ordinary wildcard rule says, refused unstarred and admitted starred — the last of that entry's four
+     * stated limits.
      *
      * <p>Three controls keep the table from reading green for the wrong reason: the EMPTY group on the same
      * carrier still refuses, so the gate is live here rather than absent; a single fixed group still draws the
@@ -142,6 +144,10 @@ class EmptyGroupOperandLawsTest {
         actual.put("one fixed group — arity control", verdict("NumberOfFilledGroups(/Store/Shell) > 0"));
         actual.put("a group under a repeatable extent — wildcard control",
                 verdict("NumberOfFilledGroups(/Store/ShellRows/Inner, /Store/Filled) > 0"));
+        actual.put("the shell itself REPEATABLE, unstarred",
+                verdict("NumberOfFilledGroups(/Store/ShellRows, /Store/Filled) > 0"));
+        actual.put("the shell itself REPEATABLE, starred",
+                verdict("NumberOfFilledGroups(/Store/ShellRows*, /Store/Filled) > 0"));
 
         Map<String, String> expected = new LinkedHashMap<>();
         expected.put("shell first", ADMITTED);
@@ -153,6 +159,8 @@ class EmptyGroupOperandLawsTest {
         expected.put("the EMPTY group on the same carrier — control", GROUP_IS_EMPTY);
         expected.put("one fixed group — arity control", "MVK_PARAMSIZE_INVALIDGN");
         expected.put("a group under a repeatable extent — wildcard control", "MVK_NO_WILDCARD");
+        expected.put("the shell itself REPEATABLE, unstarred", "MVK_NO_WILDCARD");
+        expected.put("the shell itself REPEATABLE, starred", ADMITTED);
         assertEquals(expected, actual, "the group count reads content over the whole subtree, at any depth");
     }
 
