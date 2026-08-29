@@ -3755,3 +3755,22 @@ So `FieldTypeSpec.EnumSpec`'s cardinality check is **exactly** the kernel's rule
 **The fractional-digit cap is a real kernel gate reported with NO code.** `maxFractionalDigits: 15` and `minFractionalDigits: 15` each draw one diagnostic reading *"Field with path '/Store/Scale14': Only values smaller than or equal to 14 are allowed."* — no `MVK_*` class, no property name, and **one** diagnostic even when both keys breach. That code-lessness is the reason `modelkit` refuses it correctively rather than delegating, which the code comment already said and can now cite.
 
 Consumer-visible consequence: both refusals now ride the `rejected` envelope with `RK_INVALID_VALUE` and `source: PRECHECK`, on all four spec verbs (`field add`/`modify`, `typedef add`/`modify`), and the cap message no longer attributes a local refusal to the kernel that never saw it. *(Locked: `validate.laws.EnumCategoryAlignmentLawsTest` — the positional table, built by editing the aligned model's own JSON since the kits refuse to construct the misaligned shape, with the per-element multiplicity asserted and a three-value row showing the pairing runs left-to-right; `validate.laws.RuleGroupIterationLawsTest.theScaleCapIsReportedWithoutAnyMvkClassOnEitherKey` — the cap's code-lessness on both keys, which this entry rests on and nothing pinned until 2026-08-30; `cli … SpecValueRefusalEnvelopeTest` — the envelope, the code, the `PRECHECK` source, and the de-attributed wording across the four spec verbs and the scaffolding verb.)*
+
+## §1 supplement: a nested-descendant group is not only an ADMITTED group-count operand, it COUNTS — over the whole subtree, on both arms (kernel runtime + static, 2026-08-30) <a id="kf217"></a>
+
+> Fold: pending — folds into §1's group-fill account beside [KF119](#kf119)'s repeatability split and [KF215](#kf215)'s subtree gate.
+
+a12-kernel-lean reported the static half as `SPEC-2026-08-30-01`: in the plain multi-group `NumberOfFilledGroups`, a fixed group whose only field lies in a **descendant subgroup** is an admitted operand, at first position, at second position, and in a three-group list. Reproduced here and extended past that entry's stated limits — a field **three levels down** is admitted too, and so is a group whose only content is a **repeatable descendant** — with three controls in the same table proving the carrier still refuses: the empty group draws `MVK_GROUP_IS_EMPTY`, a single fixed group `MVK_PARAMSIZE_INVALIDGN`, and a group under a repeatable extent `MVK_NO_WILDCARD` (locked in `validate.laws.EmptyGroupOperandLawsTest`).
+
+**The half that entry could not settle, and the reason it matters: admission is not contribution.** A legal operand may still contribute nothing, so "admitted" leaves both counting accounts alive — whole subtree, or direct children only. The discriminator is one document where they predict different numbers: a flat group filled *and* the shell's descendant filled. Whole-subtree predicts 2; direct-children predicts 1, because under that account a shell has no direct field and can never be filled.
+
+| document | count | whole-subtree | direct-children |
+|---|---|---|---|
+| flat filled + shell's descendant filled | **2** | 2 ✓ | 1 ✗ |
+| flat filled, descendant emptied — control | **1** | 1 ✓ | 1 ✓ |
+
+**Measured: 2. The count reads content over the whole subtree**, so the fill notion is [KF119](#kf119)'s non-repeatable "a filled descendant field", at any depth, and not a direct-child scan. The control is what makes the pair discriminating — a count stuck at 1 would satisfy the direct-children prediction for the wrong reason.
+
+**Both arms agree.** The computation arm's stored value and the validation arm's comparison against it are separately specified, and the plain multi-group count is the stricter of the two on erroneous operands ([KF120](#kf120)), so their agreement on the nested shape is measured rather than carried over. Locked in `adapter.laws.NestedGroupFillCountLawsTest` (kernel oracle: `RuntimeLaws.compute` and `RuntimeLaws.fires`).
+
+**Authoring trap the rule arm carries:** a condition that is *only* the count draws `MVK_ERROR_FIELD_NOT_REFERENCED`, because the operand names groups while the error field sits outside all of them — the same conjunct device [KF215](#kf215)'s table needs.

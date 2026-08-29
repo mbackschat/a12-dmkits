@@ -2734,6 +2734,10 @@
         {
           "text": "an unstarred repeatable group operand has no single diagnostic: NumberOfFilledGroups(Items) draws MVK_NO_WILDCARD from a rule whose error field sits OUTSIDE Items, and MVK_PARAMSIZE_INVALIDGN from one whose error field sits inside it, so the code depends on the rule's anchoring and not only on the operand; NumberOfFilledGroups(Items*) is admitted from either",
           "kind": "SURPRISE"
+        },
+        {
+          "text": "that content is read over the whole SUBTREE, not over direct fields: a group whose only field sits in a descendant subgroup is both an admitted operand and a counted one, at any depth and at either position",
+          "kind": "SURPRISE"
         }
       ],
       "validExample": {
