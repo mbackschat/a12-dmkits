@@ -233,6 +233,19 @@ public abstract class BaseCommand implements Callable<Integer> {
     }
 
     /**
+     * The same coded {@code refused} envelope, located by the OPTION that carried the bad value rather than by a
+     * model path — for a precheck on an {@code --option} argument, where {@code path} is often not a model locus
+     * at all (a relative {@code --field} is refused precisely because it is not one). Pass {@code path} only when
+     * the value IS a well-formed entity path; {@code null} leaves {@code where.path} unset rather than publishing
+     * a locus the model does not have.
+     */
+    protected int refuseOptionValue(RkCode code, String summary, String option, String path, String fix) {
+        Diagnostic diagnostic = Diagnostic.precheck(Optional.of(code.code()), summary,
+                Diagnostic.Where.arg(path, option), Optional.of(fix), Optional.empty());
+        return refuse(resultIdentity(), new Refusal(summary, null, diagnostic));
+    }
+
+    /**
      * Refuse a JSON input that could not be READ — a coded envelope on stdout, not a bare stderr line.
      *
      * <p>Single-sourced because there are eleven catch sites and the interesting half is what they must NOT do:
