@@ -161,6 +161,23 @@ Refused on all three kinds. Listed because without them, "the gate reads the str
 None. Every candidate answers identically on DATE, TIME and DATE_TIME, which is KF206's
 kind-independence re-derived over the whole universe rather than over its witnesses.
 
+## DATERANGE `(format, separator)` pairs admitted — 8
+
+A DATERANGE allowlists the PAIR, so this is a separate domain from the table above and not a
+projection of it — the two differ in both directions. Probed over the same candidate formats
+× the separators `/` `-` `.` `` `` ` - ` `:` `_`.
+
+| format | separator |
+|---|---|
+| `MM-dd` | `/` |
+| `MM` | *(empty)* |
+| `MM` | `/` |
+| `dd.MM.yyyy` | `-` |
+| `dd.MM` | `-` |
+| `yyyy-MM-dd` | `/` |
+| `yyyy-MM` | `/` |
+| `yyyy` | `/` |
+
 ## Candidate universe — 135
 
 Every format string put to the kernel, and **the denominator of every count above.** It is the

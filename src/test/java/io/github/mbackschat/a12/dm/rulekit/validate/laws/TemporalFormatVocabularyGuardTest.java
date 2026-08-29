@@ -182,6 +182,47 @@ class TemporalFormatVocabularyGuardTest {
         return out;
     }
 
+    // ── the second derived domain: the DATERANGE (format, separator) pair ────────────────────────────────────
+
+    /**
+     * The separators put to the kernel beside every candidate format. Four of these are the axis the existing
+     * finding measured; the rest are here because a separator set is a denominator too, and this one had never
+     * been widened.
+     */
+    private static final List<String> RANGE_SEPARATORS = List.of("/", "-", ".", "", " - ", ":", "_");
+
+    /**
+     * A DATERANGE declares a {@code format} and a {@code separator}, and the kernel allowlists the PAIR rather
+     * than each half — so this is its own domain, not a projection of the field-format vocabulary. The two
+     * axes genuinely differ in both directions: {@code dd.MM} is refused as a field format and admitted as a
+     * range format, while {@code yyyyMM} is admitted as a field format and refused as a range one at every
+     * separator.
+     */
+    private static boolean admitsRange(String format, String separator) {
+        String json = DocumentModelDraft.named("vocabulary").locale("en_US")
+                .rootGroup("Doc", d -> d.dateRangeField("F", r -> r.format(format).separator(separator)))
+                .build().toJson();
+        try {
+            BoundModel.ofJson(json);
+            return true;
+        } catch (ModelConsistencyException e) {
+            return false;
+        }
+    }
+
+    /** Admitted {@code (format, separator)} pairs, rendered {@code format + "|" + separator}. */
+    static Set<String> admittedRangePairs() {
+        Set<String> out = new TreeSet<>();
+        for (String format : candidates()) {
+            for (String separator : RANGE_SEPARATORS) {
+                if (admitsRange(format, separator)) {
+                    out.add(format + "|" + separator);
+                }
+            }
+        }
+        return out;
+    }
+
     static Set<String> admittedFormats(Map<String, Verdict> partition) {
         Set<String> out = new TreeSet<>();
         partition.forEach((format, verdict) -> {
@@ -246,6 +287,18 @@ class TemporalFormatVocabularyGuardTest {
             out.append("- `").append(format).append("`\n");
         }
 
+        Set<String> pairs = admittedRangePairs();
+        out.append("\n## DATERANGE `(format, separator)` pairs admitted — ").append(pairs.size()).append("\n\n");
+        out.append("A DATERANGE allowlists the PAIR, so this is a separate domain from the table above and not a\n");
+        out.append("projection of it — the two differ in both directions. Probed over the same candidate formats\n");
+        out.append("× the separators `/` `-` `.` `` `` ` - ` `:` `_`.\n\n");
+        out.append("| format | separator |\n|---|---|\n");
+        for (String pair : pairs) {
+            String[] halves = pair.split("\\|", -1);
+            out.append("| `").append(halves[0]).append("` | ")
+                    .append(halves[1].isEmpty() ? "*(empty)*" : "`" + halves[1] + "`").append(" |\n");
+        }
+
         out.append("\n## Candidate universe — ").append(partition.size()).append("\n\n");
         out.append("Every format string put to the kernel, and **the denominator of every count above.** It is the\n");
         out.append("union of the estate's existing probes with a generated set: each ordered selection of the date\n");
@@ -288,6 +341,12 @@ class TemporalFormatVocabularyGuardTest {
                 () -> "too few admissions to be a real probe: " + admittedFormats(partition));
         assertTrue(partition.containsValue(Verdict.REFUSED),
                 "nothing was refused, so this measures acceptance of anything rather than a vocabulary");
+
+        // The DATERANGE probe is a second backend call with its own failure mode: if `admitsRange` returned
+        // false throughout, the pair table would render empty and the regenerator would codify that silently.
+        Set<String> pairs = admittedRangePairs();
+        assertTrue(pairs.size() >= 5 && pairs.size() < RANGE_SEPARATORS.size() * partition.size(),
+                () -> "the range-pair probe did not discriminate: " + pairs.size() + " pairs");
     }
 
     @Test
