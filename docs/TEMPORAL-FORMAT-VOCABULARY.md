@@ -27,7 +27,7 @@
 - `yyyyMM`
 - `yyyyMMdd`
 
-## Refused — 101
+## Refused — 123
 
 Refused on all three kinds. Listed because without them, "the gate reads the string" and
 "there is no gate" are the same observation.
@@ -45,6 +45,28 @@ Refused on all three kinds. Listed because without them, "the gate reads the str
 - `yyyy-MM-dd HH:mm:ss`
 - `dd.MM.yyyy HH:mm:ss`
 - `yyyy-MM-dd HH:mm`
+- `yyyyMM-dd`
+- `yyyy-MMdd`
+- `yyyyMM.dd`
+- `yy`
+- `yyMM`
+- `MMyy`
+- `ddMMyy`
+- `dd.MM.yy`
+- `M`
+- `d`
+- `MMM`
+- `MMMM`
+- `yyyyMMddHHmmss`
+- `yyyy-MM-ddHH:mm:ss`
+- `yyyyMMdd HH:mm:ss`
+- `yyyy-MM-dd'T'HH:mm:ss.SSS`
+- `yyyyMMdd'T'HHmmss`
+- `yyyyMMdd'T'HH:mm:ss`
+- `yyyy-MM-dd'T'HH:mm:ssZ`
+- `yyyy-MM-dd'T'HH:mm:ss'Z'`
+- `yyyy/MM/dd HH:mm:ss`
+- `MM/dd/yyyy HH:mm:ss`
 - `yyyy.MM`
 - `yyyy.MM.dd`
 - `yyyy/MM/dd`
@@ -139,11 +161,18 @@ Refused on all three kinds. Listed because without them, "the gate reads the str
 None. Every candidate answers identically on DATE, TIME and DATE_TIME, which is KF206's
 kind-independence re-derived over the whole universe rather than over its witnesses.
 
-## Candidate universe — 113
+## Candidate universe — 135
 
-Every format string put to the kernel. It is the union of the estate's existing probes and
-every ordered selection of the date and time components at each separator — the axis KF196
-showed decides admission. **This list is the denominator of every count above.**
+Every format string put to the kernel, and **the denominator of every count above.** It is the
+union of the estate's existing probes with a generated set: each ordered selection of the date
+components `yyyy`/`MM`/`dd` joined by one of `` `` `-` `.` `/`, each ordered selection of the
+time components `HH`/`mm`/`ss` joined by one of `` `` `:` `-` `.`, and the two complete date
+forms joined to two clock forms by `'T'` or a space. Separators are generated because that is
+the axis KF196 showed decides admission.
+
+What it therefore does **not** reach, so a reader can judge the limit rather than infer it:
+a string mixing the two component pools, a mixed separator within one string, a component
+width this list does not name (`yy`, `M`, `MMM`), and any literal beyond `'T'`.
 
 - `yyyy`
 - `yyyy-MM`
@@ -167,6 +196,28 @@ showed decides admission. **This list is the denominator of every count above.**
 - `yyyy-MM-dd HH:mm:ss`
 - `dd.MM.yyyy HH:mm:ss`
 - `yyyy-MM-dd HH:mm`
+- `yyyyMM-dd`
+- `yyyy-MMdd`
+- `yyyyMM.dd`
+- `yy`
+- `yyMM`
+- `MMyy`
+- `ddMMyy`
+- `dd.MM.yy`
+- `M`
+- `d`
+- `MMM`
+- `MMMM`
+- `yyyyMMddHHmmss`
+- `yyyy-MM-ddHH:mm:ss`
+- `yyyyMMdd HH:mm:ss`
+- `yyyy-MM-dd'T'HH:mm:ss.SSS`
+- `yyyyMMdd'T'HHmmss`
+- `yyyyMMdd'T'HH:mm:ss`
+- `yyyy-MM-dd'T'HH:mm:ssZ`
+- `yyyy-MM-dd'T'HH:mm:ss'Z'`
+- `yyyy/MM/dd HH:mm:ss`
+- `MM/dd/yyyy HH:mm:ss`
 - `yyyy.MM`
 - `yyyyMMdd`
 - `yyyy.MM.dd`

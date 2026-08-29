@@ -67,7 +67,17 @@ class TemporalFormatVocabularyGuardTest {
             // TemporalFormatVocabularyLawsTest's witnesses and its nine refusals
             "HH:mm:ss", "yyyy-MM-dd'T'HH:mm:ss",
             "HH:mm", "H:mm:ss", "HH:mm:ss.SSS", "hh:mm:ss a", "HHmmss", "HH-mm-ss",
-            "yyyy-MM-dd HH:mm:ss", "dd.MM.yyyy HH:mm:ss", "yyyy-MM-dd HH:mm");
+            "yyyy-MM-dd HH:mm:ss", "dd.MM.yyyy HH:mm:ss", "yyyy-MM-dd HH:mm",
+            // Deliberate probes of what the generator below structurally CANNOT reach, so the shape of the
+            // limit is measured rather than reasoned about: a mixed separator within one string, a component
+            // width the pools do not name, and instant spellings beyond the two joins. A cold review ran these
+            // as a one-off and found none admitted (2026-08-29); they are kept here so that stays a published
+            // verdict re-derived on every run rather than a claim resting on a probe nobody repeats.
+            "yyyyMM-dd", "yyyy-MMdd", "yyyyMM.dd",
+            "yy", "yyMM", "MMyy", "ddMMyy", "dd.MM.yy", "M", "d", "MMM", "MMMM",
+            "yyyyMMddHHmmss", "yyyy-MM-ddHH:mm:ss", "yyyyMMdd HH:mm:ss", "yyyy-MM-dd'T'HH:mm:ss.SSS",
+            "yyyyMMdd'T'HHmmss", "yyyyMMdd'T'HH:mm:ss", "yyyy-MM-dd'T'HH:mm:ssZ", "yyyy-MM-dd'T'HH:mm:ss'Z'",
+            "yyyy/MM/dd HH:mm:ss", "MM/dd/yyyy HH:mm:ss");
 
     private static final List<String> DATE_COMPONENTS = List.of("yyyy", "MM", "dd");
     private static final List<String> TIME_COMPONENTS = List.of("HH", "mm", "ss");
@@ -237,9 +247,15 @@ class TemporalFormatVocabularyGuardTest {
         }
 
         out.append("\n## Candidate universe — ").append(partition.size()).append("\n\n");
-        out.append("Every format string put to the kernel. It is the union of the estate's existing probes and\n");
-        out.append("every ordered selection of the date and time components at each separator — the axis KF196\n");
-        out.append("showed decides admission. **This list is the denominator of every count above.**\n\n");
+        out.append("Every format string put to the kernel, and **the denominator of every count above.** It is the\n");
+        out.append("union of the estate's existing probes with a generated set: each ordered selection of the date\n");
+        out.append("components `yyyy`/`MM`/`dd` joined by one of `` `` `-` `.` `/`, each ordered selection of the\n");
+        out.append("time components `HH`/`mm`/`ss` joined by one of `` `` `:` `-` `.`, and the two complete date\n");
+        out.append("forms joined to two clock forms by `'T'` or a space. Separators are generated because that is\n");
+        out.append("the axis KF196 showed decides admission.\n\n");
+        out.append("What it therefore does **not** reach, so a reader can judge the limit rather than infer it:\n");
+        out.append("a string mixing the two component pools, a mixed separator within one string, a component\n");
+        out.append("width this list does not name (`yy`, `M`, `MMM`), and any literal beyond `'T'`.\n\n");
         for (String format : partition.keySet()) {
             out.append("- `").append(format).append("`\n");
         }
@@ -251,12 +267,18 @@ class TemporalFormatVocabularyGuardTest {
     /**
      * The positive control for every other arm here.
      *
-     * <p>Three of them are satisfied by an EMPTY probe — no missing format, no split, no lost round trip — so
-     * without this a broken candidate generator or a probe that threw its way to nothing would read as green
-     * across the class. The numbers are deliberate floors well under the live counts (113 candidates, 12
-     * admitted, 101 refused at 2026-08-29): they answer "did the probe happen and does it discriminate", not
-     * "how big is the set", and a floor that tracked the live count would need editing whenever the kernel moved.
-     * Both verdicts must occur, because a probe that admitted everything would satisfy the containment arm too.
+     * <p><b>What it actually protects, which is not what it looks like.</b> Three arms here are satisfied by an
+     * EMPTY probe — no missing format, no split, no lost round trip — but the class would still fail, because the
+     * artifact comparison would find a rendered set of zero against a committed twelve. The real exposure is the
+     * REGENERATOR: {@code dumpTemporalVocabulary} runs this same class with the fixer flag, and there the
+     * comparison does not run at all. A broken candidate generator would quietly rewrite the artifact to whatever
+     * it produced, and every consumer would then be checked against that. These floors are the only thing
+     * standing between a degraded probe and a codified one.
+     *
+     * <p>The numbers are deliberate floors well under the live counts (113 candidates, 12 admitted, 101 refused
+     * at 2026-08-29): they answer "did the probe happen and does it discriminate", not "how big is the set", and
+     * a floor that tracked the live count would need editing whenever the kernel moved. Both verdicts must occur,
+     * because a probe that admitted everything — a degraded backend, say — would satisfy the containment arm too.
      */
     @Test
     void theProbeRanAndDiscriminates() {
@@ -293,16 +315,30 @@ class TemporalFormatVocabularyGuardTest {
      * published set would be fiction assembled by our own serializer. It is asserted for every admitted format
      * rather than sampled, because the surprising members are exactly the ones a sampler would omit — the three
      * separator-free forms this guard turned up on its first run were named nowhere in the estate.
+     *
+     * <p><b>All three kinds, because they are three serializers, not one.</b> {@code DocumentModelDraft} writes
+     * the {@code format} property from a separate site per temporal kind, each with its own default, so checking
+     * DATE alone would leave a selective rewrite on TIME or DATE_TIME undetected while a verdict needs all three
+     * kinds to admit. The value is matched as the {@code format} property rather than as a bare substring, so a
+     * coincidental occurrence elsewhere in the model JSON cannot satisfy it.
      */
     @Test
     void everyAdmittedFormatSurvivesToTheKernelUnnormalized() {
         List<String> lost = new ArrayList<>();
         for (String format : admittedFormats(partition())) {
-            String json = DocumentModelDraft.named("vocabulary").locale("en_US")
-                    .rootGroup("Doc", d -> d.dateField("F", f -> f.format(format)))
-                    .build().toJson();
-            if (!json.contains("\"" + format + "\"")) {
-                lost.add(format + " → " + json);
+            for (Kind kind : Kind.values()) {
+                String json = DocumentModelDraft.named("vocabulary").locale("en_US")
+                        .rootGroup("Doc", d -> {
+                            switch (kind) {
+                                case DATE -> d.dateField("F", f -> f.format(format));
+                                case TIME -> d.timeField("F", f -> f.format(format));
+                                case DATE_TIME -> d.dateTimeField("F", f -> f.format(format));
+                            }
+                        })
+                        .build().toJson();
+                if (!json.replace(" ", "").contains("\"format\":\"" + format + "\"")) {
+                    lost.add(kind + " " + format + " → " + json);
+                }
             }
         }
         assertEquals(List.of(), lost, "an admitted format must be carried verbatim, or the verdict is not about it");
@@ -325,15 +361,44 @@ class TemporalFormatVocabularyGuardTest {
                     + "TemporalDeclaredFormatFormalTest.kt",
             "the multiplatform half of the same grid, whose KDoc states the cell count as a denominator");
 
+    private static final String REGION_START = "VOCABULARY-GRID-START";
+    private static final String REGION_END = "VOCABULARY-GRID-END";
+
     /**
-     * Every claimant names every admitted format.
+     * The claimant's enumeration itself, with commented-out lines removed.
      *
-     * <p><b>Containment, deliberately, not parsing.</b> The guard asks whether the file mentions each admitted
-     * format as a quoted literal — it does not try to understand the list. Parsing two languages' collection
-     * literals would be brittle in exactly the direction that matters (a guard that fails on formatting gets
-     * deleted), and containment is precise for the one failure mode with a record: a set that is SHORT. Its
-     * stated limit is that it cannot see an extra or unreached entry; the kernel probe above covers extras,
-     * because a format the kernel refuses never enters the admitted set to be claimed.
+     * <p><b>Why a marked region rather than the whole file.</b> Scanning the file was the first design and it was
+     * unsound in the direction that matters: a claimant mentions formats outside its grid — a {@code const val
+     * ISO}, a control field on a different model, a KDoc example — so a format DELETED from the grid still
+     * appeared elsewhere and the check passed. Measured on this very slice: dropping the {@code HH:mm:ss} row
+     * from one claimant, and commenting out the {@code ddMM} row in the other, both survived. Nine of twelve
+     * formats were protected in one claimant and six of twelve in the other, so the arm was mostly decorative.
+     * Delimiting the region binds the check to the thing the claim is about, and dropping {@code //} lines closes
+     * the comment-out variant, without parsing either language's collection literals.
+     */
+    private static String enumerationRegion(Path source, String text) {
+        int start = text.indexOf(REGION_START);
+        // Searched AFTER the opening marker: the first version scanned from position zero, so a start-marker
+        // comment that merely NAMED the closing one ended the region before the list began, and every format
+        // read as missing. Written down because the failure looked like a broken claimant, not a broken guard.
+        int end = start < 0 ? -1 : text.indexOf(REGION_END, start + REGION_START.length());
+        assertTrue(start >= 0 && end > start,
+                () -> "a registered claimant must delimit its enumeration with " + REGION_START + " … "
+                        + REGION_END + " comments so the check binds the grid rather than the file: " + source);
+        return text.substring(start, end).lines()
+                .filter(line -> !line.strip().startsWith("//"))
+                .reduce("", (a, b) -> a + "\n" + b);
+    }
+
+    /**
+     * Every claimant's enumeration names every admitted format.
+     *
+     * <p><b>Containment, deliberately, not parsing.</b> Within the marked region the guard asks whether each
+     * admitted format appears as a quoted literal; it does not try to understand the list. Parsing two languages'
+     * collection literals would be brittle in exactly the direction that matters — a guard that fails on
+     * formatting gets deleted — and containment is precise for the one failure mode with a record: a set that is
+     * SHORT. Its remaining limit is that it cannot see an entry that is present but unreached by any assertion;
+     * extras need no check, because a format the kernel refuses never enters the admitted set to be claimed.
      */
     @Test
     void everySiteClaimingTheWholeVocabularyNamesEveryAdmittedFormat() throws IOException {
@@ -344,8 +409,8 @@ class TemporalFormatVocabularyGuardTest {
             assertTrue(Files.exists(source),
                     () -> "a registered claimant no longer exists, so its entry is dead weight: " + source
                             + " — delete the row or repoint it. Reason on file: " + claimant.getValue());
-            String text = Files.readString(source);
-            List<String> absent = admitted.stream().filter(f -> !text.contains("\"" + f + "\"")).toList();
+            String region = enumerationRegion(source, Files.readString(source));
+            List<String> absent = admitted.stream().filter(f -> !region.contains("\"" + f + "\"")).toList();
             if (!absent.isEmpty()) {
                 missing.put(claimant.getKey(), absent);
             }
@@ -354,6 +419,26 @@ class TemporalFormatVocabularyGuardTest {
                 "these sites claim to cover the whole admitted vocabulary and do not. Add the formats, or — if "
                         + "the site should no longer claim completeness — remove it from COMPLETENESS_CLAIMANTS "
                         + "with its reason. The admitted set is in " + ARTIFACT);
+    }
+
+    /**
+     * Every claimant is a declared Gradle input of the task that hosts this guard.
+     *
+     * <p>The registry above and {@code build.gradle}'s {@code vocabulary consumers} list are two copies of one
+     * fact, and the copy that goes stale is silent: a claimant that is registered but undeclared can be edited
+     * while the lane stays UP-TO-DATE, so the containment check simply does not run. That is the same staleness
+     * this guard exists to catch, one level up, which is why it is asserted rather than trusted to a comment.
+     */
+    @Test
+    void everyClaimantIsADeclaredInputOfItsOwnGuardTask() throws IOException {
+        String build = Files.readString(Path.of("build.gradle"));
+        List<String> undeclared = COMPLETENESS_CLAIMANTS.keySet().stream()
+                .filter(path -> !build.contains("'" + path + "'"))
+                .toList();
+        assertEquals(List.of(), undeclared,
+                "registered as claimants but not declared as inputs of :vocabularyGuardTest — add each to the "
+                        + "'vocabulary consumers' files(...) block in build.gradle, or this guard can be left "
+                        + "unrun by the up-to-date check exactly when a claimant changes");
     }
 
     /**

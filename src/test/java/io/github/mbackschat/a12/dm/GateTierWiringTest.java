@@ -88,11 +88,14 @@ class GateTierWiringTest {
     /** The three {@code -Pfast} levers and their measured splits; the rationale is on {@link #assertFastLeverSplit}. */
     @Test
     void theCheapGuardsAreNotBehindTheFastLever() throws IOException {
-        // Root: the five that bind a committed artifact — API goldens, catalog prose-review digests, the
-        // JSON-construction classification, the release-gap ledger — against the three broad ones.
+        // Root: the six that bind a committed artifact — API goldens, catalog prose-review digests, the
+        // JSON-construction classification, the release-gap ledger, the kernel-derived temporal vocabulary —
+        // against the three broad ones. This list is a subset check, so a new always-on guard is unlocked until
+        // it is named here: `vocabularyGuardTest` was added 2026-08-29 after a cold review found its build
+        // comment claiming this tier with nothing asserting it.
         assertFastLeverSplit("build.gradle",
                 List.of("jsonConstructionGuardTest", "apiGuardTest", "catalogProseReviewGuardTest",
-                        "releaseGapGuardTest", "leakGuardTest"),
+                        "releaseGapGuardTest", "leakGuardTest", "vocabularyGuardTest"),
                 List.of("docGuardTest", "interpreterReleaseGuardTest", "deliveryGuardTest"));
         // :adapter — the four FIXTURE guards (6.6s) against the two broad ones (82.7s). A committed fixture
         // that silently stops matching what the code produces is the same class as a stale golden.
