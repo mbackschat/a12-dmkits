@@ -4,7 +4,7 @@
 >
 > **Lifecycle.** §3 stays OPEN-only. A gap lives here only while open; when it ships, **delete its row in the same commit** and record its *why* in its home. There is **no "shipped" list** anywhere in this doc — git is the *what/when*, the finding/spec is the *why*. Never leave a shipped item here, and never re-add a "shipped" sub-list.
 >
-> **Current state.** §3 is empty as of 2026-08-24. **Ids in use: G1–G46 and G52–G62, with G47–G51 free** — a retired id is never reused (§2). **Seven ids are cited in source with no `.md` home** — `G17`, `G38`, `G39`, `G44`, `G56`, `G58`, `G60` — because §2's "named by its `Gn` so code refs resolve" convention was applied unevenly; at those sites the comment states the contract and the id is provenance. Enumerated 2026-08-24; naming them in their graduation targets is the fix, not another list here. Deferred and out-of-scope decisions are in §4.
+> **Current state.** §3 carries one row, `G63`, opened 2026-08-29 out of the [KF212](KERNEL-FINDINGS.md#kf212) measurement: five rule-side loci refuse an error field the kernel admits, and narrowing them is a `rule add` contract change rather than a wording fix. **Ids in use: G1–G46, G52–G62 and G63, with G47–G51 free** — a retired id is never reused (§2). **Seven ids are cited in source with no `.md` home** — `G17`, `G38`, `G39`, `G44`, `G56`, `G58`, `G60` — because §2's "named by its `Gn` so code refs resolve" convention was applied unevenly; at those sites the comment states the contract and the id is provenance. Enumerated 2026-08-24; naming them in their graduation targets is the fix, not another list here. Deferred and out-of-scope decisions are in §4.
 >
 > **Section map.** Same `-GAPS` discipline as its siblings [`DEV-API-GAPS.md`](DEV-API-GAPS.md) and [`INTERPRETER-GAPS.md`](INTERPRETER-GAPS.md). What this doc keeps is the **review's framing** (§1), the no-history policy + how legacy `Gn`/`§N` refs resolve (§2), the **open backlog** (§3), and the **deferred / out-of-scope decisions** (§4 — the durable part).
 
@@ -31,7 +31,15 @@ So a code/doc comment citing **`FEATURE-GAPS §N`** / **`Gn`** (including legacy
 
 ## 3. Open
 
-_None open._
+### G63 — the rule-side containment check over-rejects: five loci refuse an error field the kernel admits <a id="g63"></a>
+
+`Rule.Builder.build()`, `RuleAddCommand`, `ApplyCommand`'s rule-add op, `RuleCheckCommand` and `ModelEvalCommand` each require the error field to lie strictly inside the rule group (`EntityPaths.isStrictlyInside` → `RK_ERROR_FIELD_OUTSIDE_GROUP`, or a plain-text refusal on the two `--field`/`--group` verbs). **The kernel imposes containment only once the rule ITERATES** ([KF212](KERNEL-FINDINGS.md#kf212)): a non-iterating rule whose error field sits in a sibling subtree is admitted, and so is any rule declared at an ancestor of its error field. All five refuse those shapes unconditionally, so a BA cannot author a kernel-legal rule through any dmtool path, and the typed builder cannot express it either.
+
+**Why it is still open rather than fixed with [KF212](KERNEL-FINDINGS.md#kf212).** Narrowing a live refusal changes `rule add`'s observable contract — input that returns exit 2 today would start persisting — which is a deliberate contract decision, not the wording fix the finding was. It also needs a decision on `Rule.errorEntityRelPath()`, whose substring arithmetic (`"../" + errorField.substring(group.length() + 1)`) has no defined result without containment; `EntityPath.relativize` is the general replacement and is already in `core`, used by the computation arm. The two questions are separable: the CLI loci could delegate to the kernel without touching the builder.
+
+**The reach is measured, not assumed.** Enumerated from source at `ab0553293` by `git grep isStrictlyInside` over main sources with every call site read: five rule-side loci, **zero** computation-side (`ComputationSpec` deliberately makes no containment check), and none in `:interpreter`, which anchors its implicit computation-validation rule at the target's parent and relies on the kernel rejecting cross-group repeatable targets rather than pre-checking placement itself. Disclosed to a12-kernel-lean 2026-08-29, who predicted the disagreement geometry independently and asked to be told whether any path pre-checks placement; the answer is this row.
+
+*Blocks: nothing today — every affected shape is authorable by moving the rule group. Re-open trigger is already live: it stays open until someone needs a non-iterating rule attached outside its group.* The conformance disposition is the `MVK_ERROR_FIELD_NOT_IN_RULEGROUP` row in [MVK-LEDGER](MVK-LEDGER.md), which cites this id.
 
 
 ---
