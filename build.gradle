@@ -158,9 +158,11 @@ tasks.named('test') {
     // `interpreterReleaseGuardTest` runs its own `releaseGuardTest` source set, so neither owns anything here.
     routeExclusivelyHostedTests(it, ['docGuardTest', 'jsonConstructionGuardTest', 'apiGuardTest',
                                      'catalogProseReviewGuardTest', 'deliveryGuardTest', 'releaseGapGuardTest',
-                                     'leakGuardTest'],
-            ['dumpKitApi'     : 'regenerator over apiGuardTest\'s class — writes the goldens instead of asserting',
-             'syncDocSnippets': 'regenerator over docGuardTest\'s class — writes the snippets instead of asserting'])
+                                     'leakGuardTest', 'vocabularyGuardTest'],
+            ['dumpKitApi'             : 'regenerator over apiGuardTest\'s class — writes the goldens instead of asserting',
+             'syncDocSnippets'        : 'regenerator over docGuardTest\'s class — writes the snippets instead of asserting',
+             'dumpTemporalVocabulary' : 'regenerator over vocabularyGuardTest\'s class — writes the derived '
+                     + 'vocabulary instead of asserting against it'])
 }
 
 // A12 JSON construction is a ROLE boundary, not a module boundary (API-FINDINGS 103 / IF228): this guard reads
@@ -776,6 +778,46 @@ tasks.register('interpreterReleaseGuardTest', Test) {
 
 // The fixer: regenerate the five kit goldens in place from the live dump. One command, no hand-copy. The
 // default run stays assert-only (CI catches a forgotten regenerate); only this task flips to the writer.
+// The vocabulary guard probes the KERNEL (a few hundred consistency checks, ~4 s) and reads the derived artifact
+// plus every consumer that claims to enumerate the admitted set. Its own task for the usual two reasons: an edit
+// to one of those consumers re-runs this guard alone rather than the broad root suite, and the inputs are
+// declared so a cached green cannot leave a consumer's enumeration unchecked.
+tasks.register('vocabularyGuardTest', Test) {
+    description = 'The admitted temporal format vocabulary is derived from the kernel, and every consumer that claims it agrees.'
+    group = 'verification'
+    useJUnitPlatform()
+    testClassesDirs = sourceSets.test.output.classesDirs
+    classpath = sourceSets.test.runtimeClasspath
+    filter {
+        includeTestsMatching 'io.github.mbackschat.a12.dm.rulekit.validate.laws.TemporalFormatVocabularyGuardTest'
+    }
+    guardInputs(it, [
+            'the derived vocabulary': file('docs/TEMPORAL-FORMAT-VOCABULARY.md'),
+            // Every registered consumer is read at runtime; undeclared, dropping a format from one would leave
+            // this lane UP-TO-DATE and the containment check unrun — the exact staleness the guard exists for.
+            'vocabulary consumers'  : files(
+                    'adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/TemporalDeclaredFormatGateDiffTest.kt',
+                    'interpreter/src/commonTest/kotlin/io/github/mbackschat/a12/dm/interpreter/TemporalDeclaredFormatFormalTest.kt'),
+    ])
+}
+tasks.named('check') { dependsOn 'vocabularyGuardTest' }
+
+// The temporal format vocabulary is DERIVED from the kernel, never authored: `dumpTemporalVocabulary` runs the
+// guard with `temporalVocabulary.fix=true` so it writes docs/TEMPORAL-FORMAT-VOCABULARY.md instead of asserting
+// against it — the same fixer shape as `dumpKitApi` and `:cli:dumpOperatorIndex`. It owns no class of its own.
+tasks.register('dumpTemporalVocabulary', Test) {
+    group = 'documentation'
+    description = 'Regenerate docs/TEMPORAL-FORMAT-VOCABULARY.md by probing the kernel over the candidate universe.'
+    useJUnitPlatform()
+    testClassesDirs = sourceSets.test.output.classesDirs
+    classpath = sourceSets.test.runtimeClasspath
+    systemProperty 'temporalVocabulary.fix', 'true'
+    outputs.upToDateWhen { false }
+    filter {
+        includeTestsMatching 'io.github.mbackschat.a12.dm.rulekit.validate.laws.TemporalFormatVocabularyGuardTest'
+    }
+}
+
 tasks.register('dumpKitApi', Test) {
     group = 'documentation'
     description = 'Regenerate the five kit public-API goldens under api/ from the live reflection dump (autonomous, in place).'

@@ -96,6 +96,13 @@ class TemporalDeclaredFormatGateDiffTest {
             Vocab("YearMonthCompact", "yyyyMM", listOf("202406", "158310", "2024-06", "202413", "000006", "")),
             Vocab("Month", "MM", listOf("06", "13", "00", "2024-06-15", "")),
             Vocab("MonthDay", "MM-dd", listOf("06-15", "02-29", "02-30", "04-31", "")),
+            // The three separator-free forms. None was named anywhere in this estate until the derived
+            // vocabulary guard probed for them, and they are not a compositional family: `ddMM` is admitted
+            // where `dd.MM` is refused, and `yyyyMMdd` where `ddMMyyyy` is refused.
+            Vocab("IsoCompact", "yyyyMMdd",
+                listOf("20240615", "15831016", "15831015", "00000615", "20240231", "10:30:00", "")),
+            Vocab("MonthDayCompact", "MMdd", listOf("0615", "0229", "0230", "0431", "06-15", "")),
+            Vocab("DayMonthCompact", "ddMM", listOf("1506", "2902", "3002", "3104", "15-06", "")),
         )
 
         /** Every admitted format declared on every date-bearing kind: nine by three, in one model. */
