@@ -1910,6 +1910,12 @@ public final class Dsl {
      * {@code $#<groupPath>$}, the kernel's placeholder for the 1-based row number of the repeatable
      * {@code group}'s current repetition. Pairs naturally with a uniqueness/per-row rule:
      * {@code en("Row #" + repetitionIndex(items) + " is invalid.")}.
+     *
+     * <p><b>The named group must CONTAIN the rule</b> — its own group, or any ancestor of it. A descendant, a
+     * sibling, or anything under another root is refused {@code INVALID_GROUP}, and a first segment that names
+     * no declared root is refused earlier still, {@code INVALID_ROOT_GROUP}
+     * (KERNEL-FINDINGS {@code KF214}). Passing a {@link GroupRef} is what keeps this side of the trap closed:
+     * the token is always emitted as an absolute path, and a relative spelling is the position's other refusal.
      */
     public static String repetitionIndex(GroupRef group) {
         return "$#" + group.path() + "$";

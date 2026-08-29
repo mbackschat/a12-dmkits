@@ -27,7 +27,7 @@
         "additionalProperties": false,
         "properties": {
           "locale": { "type": "string", "description": "a full locale code, e.g. en_US (bare 'en' is rejected by the kernel)" },
-          "text": { "type": "string", "description": "the message text; may interpolate kernel tokens, each using a model path: $<Field>.value$ (the field's runtime value), $<Field>$ (its localized label), $#<Group>$ (a repeatable group's 1-based row index). A LITERAL dollar sign is written $$." }
+          "text": { "type": "string", "description": "the message text; may interpolate kernel tokens, each using a model path: $<Field>.value$ (the field's runtime value), $<Field>$ (its localized label), $#<Group>$ (a repeatable group's 1-based row index). The group token takes an ABSOLUTE path and the named group must CONTAIN this rule \u2014 its own group or any ancestor; RuleGroup and RootGroup are shorthands for the two ends of that chain, a group elsewhere is INVALID_GROUP, and a first segment naming no declared root is INVALID_ROOT_GROUP. A LITERAL dollar sign is written $$." }
         }
       }
     },
