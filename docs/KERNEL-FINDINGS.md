@@ -3711,3 +3711,24 @@ Consumer-visible consequence: `Dsl.repetitionIndex(GroupRef)` emits `$#<absolute
 **Scope: static admission only.** What the position RENDERS — for a repeatable group, and for the non-repeatable ancestors admitted above — is not measured here and stays open; the peer carries it as `SG10`.
 
 *(Locked: `validate.laws.RuleMessageGroupParameterLawsTest` — the admitted set, the containment refusals, the two ordered gates with their case control, the quoting separator, the four lexical classes, the retired terminals with their non-terminal controls, and the two-root separator; kernel 30.8.1, 2026-08-29. Each row rides `KernelLaws.messageVerdict`'s plain-message control, so a row can only report on the message.)*
+
+## §1 supplement: declaring a group and NAMING one are separate questions, and emptiness is judged over the SUBTREE (kernel, 2026-08-29) <a id="kf215"></a>
+
+> Fold: pending — folds into §1's group/path account beside the group-list root classes ([KF185](#kf185)).
+
+A group carrying no fields is **legal to declare**, and the model stays kernel-valid — for a subgroup, for a repeatable group, and for an entirely unpopulated ROOT, all three in one model. Every operand that then names one is refused, on codes of their own rather than on the unknown-group class: `MVK_GROUP_IS_EMPTY` for a group, `MVK_ROOT_GROUP_IS_EMPTY` for a root. Reported as `SPEC-2026-08-29-05` by a12-kernel-lean and measured here on a retail store model with a second, unpopulated root.
+
+**The gate is over the SUBTREE, not the direct children** — the row the finding rests on, because without it "empty" and "childless" are the same claim. A group with no direct field but a field in a descendant subgroup is admitted everywhere an empty one is refused, in both repetition shapes:
+
+| carrier | empty | shell (no direct field, one populated descendant) | populated — control |
+|---|---|---|---|
+| `GroupFilled(G)` | `MVK_GROUP_IS_EMPTY` | **admitted** | admitted |
+| `NumberOfFilledGroups(G*)` | `MVK_GROUP_IS_EMPTY` | **admitted** | admitted |
+| `AllGroupsFilled(G, …)` | `MVK_GROUP_IS_EMPTY` | **admitted** | — |
+| `GroupsNotCollectivelyFilled(G, …)` | `MVK_GROUP_IS_EMPTY` | **admitted** | — |
+
+**The trap that eats the control rows.** The empty-group refusal reports *ahead of* `MVK_ERROR_FIELD_NOT_REFERENCED`, so a table whose conditions do not reference the error field reads correctly on every refusing row and reports the wrong code on every admitted one — measured here on the first attempt, which is why each condition carries a `FieldFilled(<error field>) And` conjunct.
+
+Consumer-visible consequence: this is the ordinary state of a model **mid-edit** — `group add` then `field add` — so refusing the declaration would make the obvious authoring order impossible. `dmtool` declares it, `model check` reports the model valid, and the refusal arrives only when a rule names the group; the group survives that refusal in the model. That separation is what the CLI lock asserts end to end.
+
+*(Locked: `validate.laws.EmptyGroupOperandLawsTest` — the four-carrier table with its shell and populated controls, and the root class beside a populated-root control; `cli … EmptyGroupDeclarationCliTest` — declare, `model check` valid, name-and-refuse, over the CLI. Kernel 30.8.1, 2026-08-29.)*
