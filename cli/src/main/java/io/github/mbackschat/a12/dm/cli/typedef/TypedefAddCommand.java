@@ -93,7 +93,7 @@ final class TypedefAddCommand extends BaseCommand {
                 doc.addTypeDefinition(id, kind);
             }
         } catch (IllegalArgumentException badSpec) {
-            return fail("invalid typedef spec: " + badSpec.getMessage());
+            return rejectSpecValue("typedef spec", specPath, badSpec);
         } catch (IOException e) {
             return refuseUnreadableInput("<spec.json>", specPath, e);
         }

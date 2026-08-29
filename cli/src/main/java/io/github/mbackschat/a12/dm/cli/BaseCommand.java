@@ -441,6 +441,29 @@ public abstract class BaseCommand implements Callable<Integer> {
         return env.exitCode();
     }
 
+    /**
+     * The same {@code rejected} envelope for a spec the kits' own <b>builders</b> refused — a value the schema
+     * gate admits as well-typed but that {@code modelkit}/{@code rulekit} will not build from (a scale above
+     * the kernel's cap, an enum category that does not classify every value).
+     *
+     * <p><b>Why this exists rather than a {@code fail()} line.</b> The schema half of the same verb's input gate
+     * already answers inside the envelope, so a spec carrying an unknown key got a coded, located, parseable
+     * refusal while a spec carrying an out-of-domain value got prose on stderr and an empty stdout — one input,
+     * two contracts, and the second one indistinguishable from a kernel verdict to a consumer that records the
+     * outcome without inspecting stdout. Reported by a12-kernel-lean (dmtool feedback, 2026-08-29), which came
+     * one step from filing a local gate as a kernel gate.
+     *
+     * <p>{@code RK_INVALID_VALUE} is deliberate rather than a new class: to a caller this is the same mistake
+     * the schema gate reports under that code — a recognized key carrying a value outside its domain — and the
+     * two halves of one gate should not need two vocabularies. The offending key is named in the message; the
+     * locator carries the input parameter, since the builders raise a message rather than a structured key.
+     */
+    protected int rejectSpecValue(String label, String specPath, IllegalArgumentException refused) {
+        return rejectSpecParse(Diagnostic.precheck(RkCode.INVALID_VALUE,
+                "invalid " + label + ": " + refused.getMessage(),
+                Diagnostic.Where.arg(specPath, "<spec.json>")));
+    }
+
     /** The same refusal built from an {@link RkCode} + the spec KEY that carried the problem. */
     protected int rejectSpecParse(RkCode code, String summary, String arg, String path) {
         return rejectSpecParse(Diagnostic.precheck(code, summary, Diagnostic.Where.arg(path, arg)));

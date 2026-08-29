@@ -159,12 +159,12 @@ public sealed interface FieldTypeSpec {
             // min above 14 would force an illegal max. Both links are kernel-locked in
             // rulekit.validate.laws.RuleGroupIterationLawsTest.
             if (maxFractionalDigits != null && maxFractionalDigits > MAX_SCALE) {
-                throw new IllegalArgumentException("maxFractionalDigits must be ≤ " + MAX_SCALE
-                        + " (the kernel's cap): " + maxFractionalDigits);
+                throw new IllegalArgumentException("maxFractionalDigits " + maxFractionalDigits
+                        + " is refused HERE, before the kernel is asked; the kernel's documented cap is " + MAX_SCALE);
             }
             if (minFractionalDigits != null && minFractionalDigits > MAX_SCALE) {
-                throw new IllegalArgumentException("minFractionalDigits must be ≤ " + MAX_SCALE
-                        + " (the kernel's scale cap): " + minFractionalDigits);
+                throw new IllegalArgumentException("minFractionalDigits " + minFractionalDigits
+                        + " is refused HERE, before the kernel is asked; the kernel's documented scale cap is " + MAX_SCALE);
             }
             if (minFractionalDigits != null && maxFractionalDigits != null && minFractionalDigits > maxFractionalDigits) {
                 throw new IllegalArgumentException("minFractionalDigits " + minFractionalDigits
@@ -331,6 +331,13 @@ public sealed interface FieldTypeSpec {
             categories = List.copyOf(categories);
             invalidValueMessages = invalidValueMessages == null ? Map.of()
                     : OrderedMap.copyOf(invalidValueMessages);
+            // Kernel basis (measured 2026-08-29, KERNEL-FINDINGS KF216): a category's `values` array pairs
+            // POSITIONALLY with the enum's — disjoint tokens of the same length are kernel-valid, so equal
+            // cardinality is the kernel's actual rule and not a proxy for set membership. The kernel reports
+            // the two halves separately and per element (MVK_MISSING_CATEGORY_VALUE for an internal value with
+            // no category token, MVK_MISSING_INTERNAL_VALUE for the reverse); this refusal collapses both into
+            // one message, which under-reports rather than over-rejects. Locked:
+            // rulekit.validate.laws.EnumCategoryAlignmentLawsTest.
             for (EnumCategory category : categories) {
                 if (category.values().size() != values.size()) {
                     throw new IllegalArgumentException("category '" + category.name() + "' classifies "

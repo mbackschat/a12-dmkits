@@ -137,9 +137,11 @@ class FieldAddSpecTest {
         Files.writeString(specFile, """
             {"group":"/Doc","name":"X","kind":"STRING","requiredMessages":{"en_US":"oops"}}""");
         var res = CliTestSupport.run("-m", model.toString(), "field", "add", specFile.toString());
-        assertEquals(2, res.code(), () -> "a required message without requiredness is a spec error: " + res.out() + res.err());
-        assertTrue(res.err().toLowerCase().contains("required"),
-                () -> "names the requiredness precondition: " + res.err());
+        // A rejection, in the envelope: this is the builder half of the input gate, which moved off stderr on
+        // 2026-08-29 so a consumer can tell a local refusal from a kernel verdict (SpecValueRefusalEnvelopeTest).
+        assertEquals(1, res.code(), () -> "a required message without requiredness is a spec error: " + res.out());
+        assertTrue(res.out().toLowerCase().contains("required"),
+                () -> "names the requiredness precondition: " + res.out());
     }
 
     @Test

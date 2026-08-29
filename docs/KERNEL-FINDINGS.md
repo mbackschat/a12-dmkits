@@ -3732,3 +3732,26 @@ A group carrying no fields is **legal to declare**, and the model stays kernel-v
 Consumer-visible consequence: this is the ordinary state of a model **mid-edit** — `group add` then `field add` — so refusing the declaration would make the obvious authoring order impossible. `dmtool` declares it, `model check` reports the model valid, and the refusal arrives only when a rule names the group; the group survives that refusal in the model. That separation is what the CLI lock asserts end to end.
 
 *(Locked: `validate.laws.EmptyGroupOperandLawsTest` — the four-carrier table with its shell and populated controls, and the root class beside a populated-root control; `cli … EmptyGroupDeclarationCliTest` — declare, `model check` valid, name-and-refuse, over the CLI. Kernel 30.8.1, 2026-08-29.)*
+
+## §8 supplement: an Enumeration category pairs POSITIONALLY with its values, and the fractional-digit cap is reported with no MVK code at all (kernel, 2026-08-29) <a id="kf216"></a>
+
+> Fold: pending — folds into §8's Enumeration account beside the category-suffix rendering ([KF198](#kf198)).
+
+Both facts are the measured basis for a `modelkit` constructor refusal, taken because a12-kernel-lean's dmtool feedback of 2026-08-29 observed — correctly — that a client-side refusal makes the kernel's own gate unobservable through the structured verbs. **The observation route it asked for already exists:** `model check` runs `checkConsistency` over a model file with no field-spec preflight in the way, so hand-writing the refused shape into DM-JSON and checking it reaches the kernel gate and returns its verdict in the standard envelope, `source: KERNEL`, `verification: KERNEL_CONFIRMED`. Every row below was taken that way.
+
+**A category's `values` array pairs with the enum's BY POSITION, so equal cardinality is the kernel's whole rule** — not a proxy for set membership, which is the account every misaligned row is equally consistent with. The discriminator is same-length **disjoint** tokens, and they are admitted:
+
+| category tokens over enum values `[BASIC, PLUS]` | verdict |
+|---|---|
+| `[STANDARD, HIGH]` — control | admitted |
+| `[X, Y]` — same length, **disjoint** | **admitted** |
+| `[HIGH, STANDARD]` — same length, reordered | admitted |
+| `[STANDARD]` — one short | `MVK_MISSING_CATEGORY_VALUE` |
+| `[STANDARD, HIGH, TOP]` — one too many | `MVK_MISSING_INTERNAL_VALUE` |
+| `[]` | `MVK_MISSING_CATEGORY_VALUE`, once per unclassified value |
+
+So `FieldTypeSpec.EnumSpec`'s cardinality check is **exactly** the kernel's rule rather than a conservative one, and its single message collapses a pair of per-element kernel diagnostics — under-reporting, never over-rejecting.
+
+**The fractional-digit cap is a real kernel gate reported with NO code.** `maxFractionalDigits: 15` and `minFractionalDigits: 15` each draw one diagnostic reading *"Field with path '/Store/Scale14': Only values smaller than or equal to 14 are allowed."* — no `MVK_*` class, no property name, and **one** diagnostic even when both keys breach. That code-lessness is the reason `modelkit` refuses it correctively rather than delegating, which the code comment already said and can now cite.
+
+Consumer-visible consequence: both refusals now ride the `rejected` envelope with `RK_INVALID_VALUE` and `source: PRECHECK`, on all four spec verbs (`field add`/`modify`, `typedef add`/`modify`), and the cap message no longer attributes a local refusal to the kernel that never saw it. *(Locked: `validate.laws.EnumCategoryAlignmentLawsTest` — the positional table, built by editing the aligned model's own JSON, since the kits refuse to construct the misaligned shape; `cli … SpecValueRefusalEnvelopeTest` — the envelope, the code, the `PRECHECK` source, and the de-attributed wording across all four verbs.)*

@@ -319,8 +319,8 @@ Caveats that hold across all four paths:
 | `MVK_MIN_LENGTH_BIGGER_MAX_LENGTH` | n/a-structural | string/number-type law: min length ≤ max length |
 | `MVK_MIN_LENGTH_TOO_BIG` | n/a-structural | number-type law: min length must fit the digit budget (incl. sign) |
 | `MVK_MIN_VALUE_BIGGER_THAN_MAX_VALUE` | n/a-structural | number-type law: min value ≤ max value |
-| `MVK_MISSING_CATEGORY_VALUE` | n/a-structural | enum-category law: a mapping row with an internal value needs its category value |
-| `MVK_MISSING_INTERNAL_VALUE` | n/a-structural | enum-category law: a mapping row with a category value needs its internal value |
+| `MVK_MISSING_CATEGORY_VALUE` | n/a-structural | enum-category law: a mapping row with an internal value needs its category value. **Measured 2026-08-29 ([KF216](KERNEL-FINDINGS.md#kf216)):** the word ROW is literal — the category's token array pairs positionally with the enum's, so same-length disjoint tokens are kernel-valid and equal cardinality is the whole rule. That is the basis for modelkit's constructor refusal, which collapses this pair into one message and so under-reports rather than over-rejects (locked: `validate.laws.EnumCategoryAlignmentLawsTest`) |
+| `MVK_MISSING_INTERNAL_VALUE` | n/a-structural | enum-category law: a mapping row with a category value needs its internal value. **Measured 2026-08-29 ([KF216](KERNEL-FINDINGS.md#kf216)):** the word ROW is literal — the category's token array pairs positionally with the enum's, so same-length disjoint tokens are kernel-valid and equal cardinality is the whole rule. That is the basis for modelkit's constructor refusal, which collapses this pair into one message and so under-reports rather than over-rejects (locked: `validate.laws.EnumCategoryAlignmentLawsTest`) |
 | `MVK_MISSING_VALUE_FOR_CATEGORY` | n/a-structural | enum-category law: a category must map every internal value |
 | `MVK_NAME_ENDS_WITH_COLON_H_DV` | n/a-structural | field law (legacy): names must not end with ":" |
 | `MVK_NAME_FIELDS_DUPLICATE` | n/a-structural | model law: field name+group pairs unique model-wide (new-world) |
