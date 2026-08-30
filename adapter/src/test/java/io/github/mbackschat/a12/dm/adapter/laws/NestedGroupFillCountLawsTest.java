@@ -352,6 +352,12 @@ class NestedGroupFillCountLawsTest {
      * while the sum says {@code OMISSION}. No account in terms of the operand's form can produce a split
      * between two operators reading the same group — the count cannot grow because capacity is exhausted, the
      * sum still can because a row's cell is empty. Two growth channels, tracked per quantity.
+     *
+     * <p>The last row completes a12-kernel-lean's witness in this same document: the WILDCARD-FREE count sits
+     * at {@code VALUE} beside the starred sum's {@code OMISSION}. Note it is the WEAKER of the two splits for
+     * ruling out an operand-form account — a fixed/starred pair is exactly what such an account predicts — so
+     * it is the starred-count-versus-starred-sum row above that does the refuting. It is carried because the
+     * peer's witness rested on a single project until now.
      */
     @Test
     void polarityTracksTheQuantitysOwnHeadroomAndNotTheStar() {
@@ -366,6 +372,8 @@ class NestedGroupFillCountLawsTest {
         actual.put("4/5 rows, cells filled — starred sum", typeOfTarget("TallySum", belowCapacityFilled));
         actual.put("5/5 rows, cells EMPTY — starred count", typeOfTarget("TallyStar", atCapacityEmpty));
         actual.put("5/5 rows, cells EMPTY — starred sum", typeOfTarget("TallySum", atCapacityEmpty));
+        // a12-kernel-lean's witness, completed here: the wildcard-free count in the SAME document/run
+        actual.put("5/5 rows, cells EMPTY — wildcard-free count", typeOfTarget("TallyFixed", atCapacityEmpty));
 
         Map<String, String> expected = new LinkedHashMap<>();
         expected.put("5/5 rows, cells filled — starred count", "VALUE_ERROR");
@@ -374,6 +382,7 @@ class NestedGroupFillCountLawsTest {
         expected.put("4/5 rows, cells filled — starred sum", "OMISSION_ERROR");
         expected.put("5/5 rows, cells EMPTY — starred count", "VALUE_ERROR");
         expected.put("5/5 rows, cells EMPTY — starred sum", "OMISSION_ERROR");
+        expected.put("5/5 rows, cells EMPTY — wildcard-free count", "VALUE_ERROR");
         assertEquals(expected, actual, "one row of capacity, and one document splitting count from sum");
     }
 

@@ -2738,6 +2738,10 @@
         {
           "text": "that content is read over the whole SUBTREE, not over direct fields: a group whose only field sits in a descendant subgroup is both an admitted operand and a counted one, at any depth and at either position",
           "kind": "SURPRISE"
+        },
+        {
+          "text": "mixing forms is admitted and silently changes the arithmetic: NumberOfFilledGroups(Contact, Riders*) adds a PRESENCE BIT for the fixed group to a ROW CARDINALITY for the starred one, so with Contact filled and three instantiated rows it is 4, not 2 — it is not a count of filled groups, and the spelling is statically admitted, so no diagnostic warns you",
+          "kind": "SURPRISE"
         }
       ],
       "validExample": {

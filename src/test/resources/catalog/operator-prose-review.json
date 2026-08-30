@@ -3484,6 +3484,28 @@
       ]
     },
     {
+      "operator": "NumberOfFilledGroups",
+      "lane": "GOTCHA",
+      "ordinal": 5,
+      "digest": "sha256:5a5cf6c146bfa7b4a0765b7f80c2db262be0b1697e7ca4d8fe3634c58815503b",
+      "classifications": [
+        "ADMISSION",
+        "RUNTIME"
+      ],
+      "evidence": [
+        {
+          "classification": "ADMISSION",
+          "type": "KERNEL_LAW",
+          "id": "EmptyGroupOperandLawsTest#theGROUPCOUNTAdmitsANestedShellAtEveryPositionDepthAndArity"
+        },
+        {
+          "classification": "RUNTIME",
+          "type": "TEST",
+          "id": "NestedGroupFillCountLawsTest#theMixedFormAddsAFixedPresenceBitToTheStarredRowCardinality"
+        }
+      ]
+    },
+    {
       "operator": "RepetitionNotUnique",
       "lane": "MEANING",
       "ordinal": 0,
