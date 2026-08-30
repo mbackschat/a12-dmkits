@@ -243,6 +243,31 @@ class NestedGroupFillCountLawsTest {
                 () -> "only Contact is filled; got " + counted);
     }
 
+    /**
+     * <b>a12-kernel-lean's {@code SPEC-2026-08-30-02} discriminator</b>, which is NOT the arm-divergence row
+     * above even though the outcome coincides. That row asks what an erroneous operand does to each arm; this
+     * one asks whether formally invalid content is <i>content</i> for the fill predicate at all — the same
+     * shell holding only a malformed value, against the same shell holding nothing.
+     *
+     * <p>Measured: it fills. So on the computation arm the count's notion of content is not the admitted-value
+     * cache [KF120] describes for {@code GroupFilled}, where invalid-only is FALSE.
+     */
+    @Test
+    void aShellWhoseONLYDescendantContentIsMalformedStillFillsIt() {
+        Optional<BigDecimal> malformedOnly = tally(RuntimeLaws.doc().group("/Catalogue", 1)
+                .field("/Catalogue/Reference", "CAT-1", 1, 1)
+                .field("/Catalogue/Contact/Email", "buyer@example.com", 1, 1, 1)
+                .field("/Catalogue/Warranty/Terms/Months", "abc", 1, 1, 1, 1));
+        Optional<BigDecimal> emptied = tally(RuntimeLaws.doc().group("/Catalogue", 1)
+                .field("/Catalogue/Reference", "CAT-1", 1, 1)
+                .field("/Catalogue/Contact/Email", "buyer@example.com", 1, 1, 1));
+
+        assertEquals(0, malformedOnly.orElseThrow().compareTo(BigDecimal.valueOf(2)),
+                () -> "invalid-only descendant content still fills the shell; got " + malformedOnly);
+        assertEquals(0, emptied.orElseThrow().compareTo(BigDecimal.ONE),
+                () -> "the same shell holding nothing does not — the control; got " + emptied);
+    }
+
     private static final String BUNDLE_MODEL = bundleModel();
 
     private static String bundleModel() {
