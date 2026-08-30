@@ -3839,15 +3839,28 @@ Locked in `adapter.laws.NestedGroupFillCountLawsTest.theMixedFormAddsAFixedPrese
 
 **Why this was measured rather than assumed, and it is the transferable part.** The exclusion had been stated arm-scoped precisely because these two arms diverge on this same operator for a formally invalid operand ([KF120](#kf120)), so agreement elsewhere proves nothing about it. a12-kernel-lean measured the compute arm independently on that flag (checkpoint `src-starred-group-count-computation`, row `over-limit`) and reports it caught a live defect in their own work: they had implemented the exclusion by reusing an in-capacity extent whose evidence was rule-arm only, a reuse that needed no new branch and so raised no question. **Reuse across an arm, carrier, phase, depth, or topology boundary is a claim, not an inheritance** — the general form is now a row in this project's oracle table. Three instances here inside one week, two of them silent: [KF120](#kf120)'s count sentence read as unscoped, `NumberOfFilledGroupsStarDiffTest`'s `validateFull` lock read as compute-arm coverage, and this one, which was flagged instead.
 
-## §9 supplement: a computation's self-validation polarity reads THE QUANTITY'S OWN HEADROOM, not starredness (kernel runtime, 2026-08-30) <a id="kf219"></a>
+## §9 supplement: a computation's self-validation polarity asks whether growth can still REACH the stored value (kernel runtime, 2026-08-30) <a id="kf219"></a>
 
 > Fold: pending — folds into §9 beside [KF218](#kf218)'s fold structure; the polarity channel itself is §"error typing".
 
 *Corrected 2026-08-30, before this entry had been read by anyone but its author: it first claimed the flip **follows the starred operand**, on rows that were all taken BELOW a repeatable group's declared capacity, where that account fits every row and is still false. a12-kernel-lean built the at-capacity discriminator and refuted it; the original rows stand as measured and are kept below.*
 
-A computation's implicit self-validation message — raised when the stored target value does not match the computed one — carries `OMISSION_ERROR` when **that quantity** could still grow, and `VALUE_ERROR` otherwise. The subject is the quantity's headroom, and a starred operand is only the ordinary instance of having some.
+A computation's implicit self-validation message — raised when the stored target value does not match the computed one — carries `OMISSION_ERROR` when **filling more could still reconcile the two**, and `VALUE_ERROR` otherwise. Two conditions, both necessary: the quantity must have headroom, **and** growth must move it *toward* the stored value. A starred operand is only the ordinary instance of having headroom.
 
-**The discriminator is capacity.** `Riders` is declared max 5, so filling it exhausts the growth channel a row count depends on:
+*Corrected twice, both times because a peer built the document our own rows could not distinguish. First reading, "the flip follows the starred operand": every row was taken below capacity, where it fits and is false. Second reading, "the quantity could still grow": every row either project held had the computed value BELOW its seed, so headroom and direction moved together and no row separated them. The rows themselves were right each time; the mechanism written on top of them was not, which is the failure the oracle table's mechanism row names.*
+
+**Each conjunct has its own discriminator, and neither alone suffices.**
+
+*Direction is necessary* — headroom without it is not enough. `Riders` is below capacity at three of five rows, every cell filled, so the count can still grow; the only variable is the stored seed:
+
+| document | stored seed | computed | message type |
+|---|---|---|---|
+| 3 of 5 rows, cells filled | **1** | 3 — *above* the seed | **`VALUE_ERROR`** |
+| the same document | 9 | 3 — below the seed, the control | `OMISSION_ERROR` |
+
+Growing moves the count further from 1, so no amount of filling reconciles them and the kernel says so. A pure headroom account predicts `OMISSION_ERROR` on both rows. *(Raised by a12-kernel-lean, who held only below-seed rows and could not reach this document; measured here.)*
+
+*Headroom is necessary* — direction without it is not enough either. `Riders` declared max 5, so filling it exhausts the growth channel a row count depends on:
 
 | document | starred count | starred `Sum` over the same group |
 |---|---|---|
@@ -3869,6 +3882,10 @@ They are consistent with the corrected rule: a fixed pair with every operand fil
 
 **What this does to the field-count reading**, and it is the interesting part: `adapter.laws.FilledCountLawsTest`'s rule — unfilled operands remaining ⇒ `OMISSION_ERROR`, every operand filled ⇒ `VALUE_ERROR` — is **not** a prior that happened to fit here. It is the same rule, and the sentence added on top of it, *"a starred operand can never reach all-filled"*, is the false part: it can, by exhausting capacity. Both projects had the mechanism right and the boundary wrong, because both measured only below capacity.
 
-Locked in `adapter.laws.NestedGroupFillCountLawsTest` — `polarityTracksTheQuantitysOwnHeadroomAndNotTheStar` (the capacity rows) and `aStarredOperandFlipsTheComputationSelfValidationPolarity` (the below-capacity rows, retained as the operand-form half).
+Locked in `adapter.laws.NestedGroupFillCountLawsTest` — `thePolarityIsDIRECTIONALAndNotMerelyWhetherTheQuantityCanStillMove` (the direction rows), `polarityTracksTheQuantitysOwnHeadroomAndNotTheStar` (the capacity rows) and `aStarredOperandFlipsTheComputationSelfValidationPolarity` (the below-capacity rows, retained as the operand-form half).
+
+**The same message's `fillToFix` channel is the whole `referenced` set or empty — never a proper subset**, so it is not a list of what is unfilled. a12-kernel-lean measured that across 30 message observations; reproduced here on a shape neither side had used for it, the computation's implicit self-validation, and on our kernel oracle. **The trap is a document with nothing empty in it:** four of five rows instantiated with *every* cell filled types `OMISSION_ERROR` on row headroom alone, and the channel is still non-empty and still equal to `referenced`. A consumer that filters it to unfilled cells therefore renders an empty hint for the one message whose purpose is saying what to fill.
+
+Our interpreter is not exposed to that: `DmInterpreter` sets `fillToFix` to `referenced` for an OMISSION and to empty otherwise, unconditionally, so it cannot emit a proper subset — an identity differentially locked against the kernel's `getRefOmissionErrorResponsiblePointers` in `RichMessageDiffTest`, which this adds the all-filled row to. Locked in `…NestedGroupFillCountLawsTest.anOmissionsFillToFixIsTheWholeReferencedSetEvenWhenEveryCellItNamesIsFilled`.
 
 **a12-kernel-lean's wildcard-free witness is now reproduced here too**, in the same at-capacity document: the wildcard-free `NumberOfFilledGroups(Contact, Warranty)` sits at `VALUE_ERROR` beside the starred `Sum`'s `OMISSION_ERROR`. Worth stating precisely, because it is the **weaker** of the two splits for refuting an operand-form account — a fixed-versus-starred pair is exactly what such an account predicts. The refutation is the starred-count-versus-starred-**Sum** row, where operand form is held constant and the two still differ. The wildcard-free row is carried because that witness had rested on one project.

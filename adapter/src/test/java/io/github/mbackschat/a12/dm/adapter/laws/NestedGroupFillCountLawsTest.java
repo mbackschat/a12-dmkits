@@ -317,10 +317,15 @@ class NestedGroupFillCountLawsTest {
 
     /** {@code rows} rows instantiated, each cell filled or left empty, with all four tallies seeded wrong. */
     private static RuntimeLaws.Doc capacityDoc(int rows, boolean cellsFilled) {
+        return capacityDoc(rows, cellsFilled, "9");
+    }
+
+    /** As above, with the starred count's stored seed chosen, so the computed value can sit on either side. */
+    private static RuntimeLaws.Doc capacityDoc(int rows, boolean cellsFilled, String starSeed) {
         RuntimeLaws.Doc d = RuntimeLaws.doc().group("/Catalogue", 1)
                 .field("/Catalogue/Reference", "CAT-1", 1, 1)
                 .field("/Catalogue/TallyFixed", "9", 1, 1)
-                .field("/Catalogue/TallyStar", "9", 1, 1)
+                .field("/Catalogue/TallyStar", starSeed, 1, 1)
                 .field("/Catalogue/TallySum", "9", 1, 1)
                 .field("/Catalogue/Contact/Email", "buyer@example.com", 1, 1, 1)
                 .field("/Catalogue/Warranty/Terms/Clause", "24 months", 1, 1, 1, 1);
@@ -384,6 +389,61 @@ class NestedGroupFillCountLawsTest {
         expected.put("5/5 rows, cells EMPTY — starred sum", "OMISSION_ERROR");
         expected.put("5/5 rows, cells EMPTY — wildcard-free count", "VALUE_ERROR");
         assertEquals(expected, actual, "one row of capacity, and one document splitting count from sum");
+    }
+
+    /**
+     * <b>Is the polarity DIRECTIONAL, or only "can this quantity move at all"?</b> Every row either project
+     * held sat on one side of the seed — the computed value BELOW its stored one — so both accounts fit them
+     * all and neither was tested. a12-kernel-lean raised the gap and could not reach the document; this is it.
+     *
+     * <p>A grow-only quantity whose computed value already EXCEEDS its seed splits them. {@code Riders} is
+     * below capacity, so the count can still grow: the coarse account reads headroom and predicts
+     * {@code OMISSION_ERROR}; a directional account notes that growing moves further from the seed, so filling
+     * can never reconcile them, and predicts {@code VALUE_ERROR}.
+     *
+     * <p>The control is the same document with the seed above the computed value, where both accounts predict
+     * {@code OMISSION_ERROR} — so the pair moves exactly one variable, the seed.
+     */
+    @Test
+    void thePolarityIsDIRECTIONALAndNotMerelyWhetherTheQuantityCanStillMove() {
+        Map<String, String> actual = new LinkedHashMap<>();
+        actual.put("3 of 5 rows, computed 3 ABOVE its seed of 1",
+                typeOfTarget("TallyStar", capacityDoc(3, true, "1")));
+        actual.put("3 of 5 rows, computed 3 below its seed of 9 — control",
+                typeOfTarget("TallyStar", capacityDoc(3, true, "9")));
+
+        Map<String, String> expected = new LinkedHashMap<>();
+        expected.put("3 of 5 rows, computed 3 ABOVE its seed of 1", "VALUE_ERROR");
+        expected.put("3 of 5 rows, computed 3 below its seed of 9 — control", "OMISSION_ERROR");
+        assertEquals(expected, actual, "headroom alone does not decide it — the direction to the seed does");
+    }
+
+    /**
+     * <b>An OMISSION can name only FILLED cells — so filtering {@code fillToFix} to empty ones shows nothing.</b>
+     * a12-kernel-lean measured the channel as the whole {@code referenced} set or empty, never a proper subset,
+     * across 30 message observations; this reproduces it on a shape neither of us had used for it, the
+     * computation's implicit self-validation, and on our kernel oracle.
+     *
+     * <p>The document is the trap: four of five rows instantiated with EVERY cell filled, so the target types
+     * {@code OMISSION_ERROR} on row headroom alone. There is no empty cell anywhere in an instantiated row, yet
+     * the channel is non-empty — a consumer that filters it to unfilled cells renders an empty hint for a
+     * message whose whole point is telling the user what to fill.
+     *
+     * <p>Our own interpreter is not exposed: {@code DmInterpreter} sets {@code fillToFix} to {@code referenced}
+     * for an OMISSION and to empty otherwise, unconditionally, so it cannot emit a proper subset. That identity
+     * is differentially locked against the kernel's {@code getRefOmissionErrorResponsiblePointers} in
+     * {@code RichMessageDiffTest}; this adds the all-filled row it lacked.
+     */
+    @Test
+    void anOmissionsFillToFixIsTheWholeReferencedSetEvenWhenEveryCellItNamesIsFilled() {
+        RuntimeLaws.Msg m = RuntimeLaws.messages(POLARITY_MODEL, capacityDoc(4, true)).stream()
+                .filter(x -> x.field() != null && x.field().contains("TallyStar"))
+                .findFirst().orElseThrow(() -> new AssertionError("no self-validation message for TallyStar"));
+
+        assertEquals("OMISSION_ERROR", m.type().toString(), "row headroom types it OMISSION though nothing is empty");
+        assertFalse(m.omissionResponsible().isEmpty(), "the channel is populated even with no empty cell to name");
+        assertEquals(m.referenced(), m.omissionResponsible(),
+                "the whole referenced set, never a proper subset — so it is not a list of what is unfilled");
     }
 
     /**
