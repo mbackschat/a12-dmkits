@@ -268,6 +268,58 @@ class NestedGroupFillCountLawsTest {
                 () -> "the same shell holding nothing does not — the control; got " + emptied);
     }
 
+    private static final String MIXED_MODEL = mixedModel();
+
+    /** {@code NumberOfFilledGroups(Contact, Coverage/Riders*)} — a FIXED operand beside a STARRED one. */
+    private static String mixedModel() {
+        Computation comp = M.computation(M.field(TALLY)).name("MixedTallyComp")
+                .calc(Dsl.numberOfFilledGroups(M.group("/Catalogue/Contact"),
+                        M.flattenGroup("/Catalogue/Coverage/Riders*").group()).expression())
+                .message(en("Mixed tally."))
+                .build();
+        return M.add(comp).toJson();
+    }
+
+    private static Optional<BigDecimal> mixedTally(RuntimeLaws.Doc doc) {
+        return RuntimeLaws.computedValue(RuntimeLaws.compute(MIXED_MODEL, doc), TALLY).map(BigDecimal::new);
+    }
+
+    private static RuntimeLaws.Doc mixed(boolean contactFilled, int rows) {
+        RuntimeLaws.Doc d = RuntimeLaws.doc().group("/Catalogue", 1)
+                .field("/Catalogue/Reference", "CAT-1", 1, 1);
+        if (contactFilled) {
+            d = d.field("/Catalogue/Contact/Email", "buyer@example.com", 1, 1, 1);
+        }
+        for (int r = 1; r <= rows; r++) {
+            d = d.group("/Catalogue/Coverage/Riders", 1, 1, r);
+        }
+        return d;
+    }
+
+    /**
+     * <b>The mixed form is an ADDITIVE fold, and the starred operand contributes a CARDINALITY.</b>
+     *
+     * <p>a12-kernel-lean's {@code SPEC-2026-08-30-04} reads the two operand forms as having separate result
+     * domains, so that the operator "cannot be folded by one presence question per operand". The first half is
+     * right and the second overshoots: the discriminator is a mixed list whose starred operand holds THREE
+     * instantiated empty rows. A presence bit for that operand caps the total at 2 whatever the fixed operand
+     * does; an additive fold with a cardinality contribution predicts 4.
+     *
+     * <p>The four rows are one model and one operand list, varying only the fixed operand's fill and the row
+     * count, so each is {@code [Contact filled] + |Riders rows|} if the fold is additive.
+     */
+    @Test
+    void theMixedFormAddsAFixedPresenceBitToTheStarredRowCardinality() {
+        assertEquals(0, mixedTally(mixed(true, 3)).orElseThrow().compareTo(BigDecimal.valueOf(4)),
+                "1 + 3: a presence bit for the starred operand cannot exceed 2 here");
+        assertEquals(0, mixedTally(mixed(false, 3)).orElseThrow().compareTo(BigDecimal.valueOf(3)),
+                "0 + 3: the fixed operand contributes nothing while the starred one still contributes every row");
+        assertEquals(0, mixedTally(mixed(true, 0)).orElseThrow().compareTo(BigDecimal.ONE),
+                "1 + 0");
+        assertEquals(0, mixedTally(mixed(false, 0)).orElseThrow().compareTo(BigDecimal.ZERO),
+                "0 + 0 — the control, so the rows above are not a constant");
+    }
+
     private static final String BUNDLE_MODEL = bundleModel();
 
     private static String bundleModel() {

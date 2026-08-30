@@ -3799,3 +3799,26 @@ Together they are exactly [KF119](#kf119)'s non-repeatable fill notion — "a fi
 **The two arms DIVERGE on a formally invalid operand** — which scopes [KF120](#kf120)'s "any erroneous group makes the count unavailable" to the validation arm, where its locks live. On the identical document: the **computation** arm stores the value and counts the group (2, at both depths); the **validation** arm is suppressed, and it is suppression rather than a different number, since neither `== 2` nor `== 1` fires. Static admission is untouched by this — it is a runtime split, so a `computation add --dry-run` or `model check` verdict is not affected.
 
 **Authoring trap the rule arm carries:** a condition that is *only* the count draws `MVK_ERROR_FIELD_NOT_REFERENCED`, because the operand names groups while the error field sits outside all of them — the same conjunct device [KF215](#kf215)'s table needs.
+
+## §9 supplement: the group count is an ADDITIVE fold whose per-operand contribution depends on the operand FORM (kernel runtime, 2026-08-30) <a id="kf218"></a>
+
+> Fold: pending — folds into §9 beside [KF217](#kf217)'s content account and the starred form's structural tally.
+
+a12-kernel-lean reported (`SPEC-2026-08-30-04`) that a starred operand contributes a **row count** rather than a presence bit, and read it as the two operand forms having *separate result domains*, so that the operator "cannot be folded by one presence question per operand". **The first half is already ours and locked; the second half overshoots, and their own mixed column refutes it.**
+
+**Not new here:** the starred single-group tally — every instantiated row counts, empty ones included — is the catalog's stated meaning and is locked tri-differentially in `adapter.laws.NumberOfFilledGroupsStarDiffTest` (`emptyInstantiatedRowStillCounts`, `soleEmptyAndAbsent`), which pins 0 rows → 0, one empty row → 1, and filled+empty+filled → 3.
+
+**New here: the MIXED form's arithmetic.** A sweep of all 24 runtime-tier `numberOfFilledGroups` sites in `:adapter` found every one to be either a single starred operand or an all-fixed pair; none mixed the forms in one list. Measured on a fixed `Contact` beside a starred `Coverage/Riders*`, one model, one operand list:
+
+| `Contact` | rows instantiated (all empty) | counted |
+|---|---|---|
+| filled | 3 | **4** |
+| empty | 3 | **3** |
+| filled | 0 | **1** |
+| empty | 0 | **0** — control |
+
+**The discriminator is the first row.** A presence bit for the starred operand caps the total at 2 whatever the fixed operand does; 4 is only reachable if that operand contributes a cardinality. So the operator **is** a per-operand fold — `Σ contribution(operand)` over one result domain (ℕ) — with an *indicator* contribution for a fixed operand and a *cardinality* contribution for a starred one. What cannot be done is fold it with **one presence question** for every operand; what can be done is fold it, which is the part the "separate result domains" reading denies. The distinction matters for a checker: one traversal with a form-dependent contribution suffices, no per-form result type is needed.
+
+Locked in `adapter.laws.NestedGroupFillCountLawsTest.theMixedFormAddsAFixedPresenceBitToTheStarredRowCardinality`.
+
+**Related, and answering one of that entry's stated non-measurements from the other arm:** an **over-limit** row is instantiated and `GroupFilled`-visible yet excluded from the starred count — `NumberOfFilledGroups(Coverages*)` over rows 1,2,3 with 3 beyond the declared range counts **2**, locked in `adapter.laws.OverRepetitionFormalGateDiffTest.numberOfFilledGroupsExcludesOverLimitRow`. That lock is on the **rule** arm; the compute arm is unmeasured here.
