@@ -447,6 +447,55 @@ class NestedGroupFillCountLawsTest {
     }
 
     /**
+     * <b>The {@code referenced} inventory follows the AUTHORED OPERAND, not what evaluation actually read.</b>
+     * a12-kernel-lean reported the shape (`SPEC-2026-08-30-07`); this is our kernel oracle on it, with the
+     * discriminator they named — a starred operand in a document holding no instantiated row.
+     *
+     * <p>The strong form is measurable here and settles it without argument: the set is <b>byte-identical</b>
+     * with zero rows and with four filled rows. A set built from cells evaluation reached would be empty in the
+     * first document and would enumerate eight pointers in the second. It does neither, because it is derived
+     * from the condition's AST — which is what our own {@code DmInterpreter} does too ({@code messageReferences}
+     * walks the {@code Cond} tree), so we are not exposed to the under-reporting this warns about.
+     *
+     * <p>Two further facts fall out of the same rows. The starred axis carries the coordinate <b>0</b> — not a
+     * row index, since no row 0 exists and four instantiated rows do not change it, so it reads as the UNBOUND
+     * wildcard axis; note this is the kernel pointer's own {@code repetitionIndexes()}, not a string parse of a
+     * rendered path. And the extent follows each operand's own reach: the group-count operand names its group's
+     * whole subtree (both row fields), while the {@code Sum} over one flattened field names only that field.
+     * Every message also names its computed target.
+     */
+    @Test
+    void theReferencedSetFollowsTheAuthoredOperandAndIsUnchangedByWhetherAnyRowExists() {
+        List<String> noRows = starTallyRefs(capacityDoc(0, false));
+        List<String> fourFilledRows = starTallyRefs(capacityDoc(4, true));
+
+        assertEquals(List.of(
+                "/Catalogue[1]/TallyStar",
+                "/Catalogue[1]/Coverage[1]/Riders[0]/RiderName",
+                "/Catalogue[1]/Coverage[1]/Riders[0]/RiderAmount"), noRows,
+                "with no row instantiated the operand's row fields are still named, at the unbound axis 0");
+        assertEquals(noRows, fourFilledRows,
+                "four instantiated filled rows do not change it — so it is not built from what was read");
+
+        assertEquals(List.of(
+                "/Catalogue[1]/TallySum",
+                "/Catalogue[1]/Coverage[1]/Riders[0]/RiderAmount"),
+                refsOf("TallySum", capacityDoc(4, true)),
+                "a Sum over one flattened field names that field alone, so the extent is the operand's own reach");
+    }
+
+    private static List<String> starTallyRefs(RuntimeLaws.Doc doc) {
+        return refsOf("TallyStar", doc);
+    }
+
+    private static List<String> refsOf(String targetName, RuntimeLaws.Doc doc) {
+        return RuntimeLaws.messages(POLARITY_MODEL, doc).stream()
+                .filter(x -> x.field() != null && x.field().contains(targetName))
+                .findFirst().orElseThrow(() -> new AssertionError("no message for " + targetName))
+                .referenced();
+    }
+
+    /**
      * <b>The COMPUTE arm excludes an over-limit row too — the gap this project flagged as unmeasured.</b>
      * Our {@code OverRepetitionFormalGateDiffTest.numberOfFilledGroupsExcludesOverLimitRow} locks the exclusion
      * on the RULE arm only, so [KF218] said so rather than assuming the arms agree; on this same operator they
