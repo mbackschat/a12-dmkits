@@ -3901,9 +3901,9 @@ Our interpreter is not exposed to either trap: `messageReferences` walks the con
 
 **a12-kernel-lean's wildcard-free witness is now reproduced here too**, in the same at-capacity document: the wildcard-free `NumberOfFilledGroups(Contact, Warranty)` sits at `VALUE_ERROR` beside the starred `Sum`'s `OMISSION_ERROR`. Worth stating precisely, because it is the **weaker** of the two splits for refuting an operand-form account — a fixed-versus-starred pair is exactly what such an account predicts. The refutation is the starred-count-versus-starred-**Sum** row, where operand form is held constant and the two still differ. The wildcard-free row is carried because that witness had rested on one project.
 
-## §17 supplement: the mandatory-information collectors read a numeric literal through a SENTINEL that a 32-bit narrowing can collide with (kernel SOURCE READ — hypothesis, not measured, 2026-08-30) <a id="kf220"></a>
+## The mandatory-information collectors read a numeric literal through a SENTINEL that a 32-bit narrowing can collide with (kernel SOURCE READ — hypothesis, not measured, 2026-08-30) <a id="kf220"></a>
 
-> Fold: pending — folds into §17 beside the rule-set analysis surface, once measured. **This entry is a source read.** No row here has been executed; nothing in our estate calls the interface, so we hold no observation of the derived output. It is written down because it is a trap for the first consumer of a surface our survey now marks verified, and because the enumeration below corrects the shape it was reported to us in.
+> Fold: not-foldable — a rule-set analysis TOOL-API internal, outside KERNEL-SEMANTICS's runtime-evaluation scope. **This entry is a source read.** No row here has been executed; nothing in our estate calls the interface, so we hold no observation of the derived output. It is written down because it is a trap for the first consumer of a surface our survey now marks verified, and because the enumeration below corrects the shape it was reported to us in.
 
 `FeldOperationUtil.getZahlKonstanteWert(IOperation)` returns `(int) Math.round(Double.parseDouble(value))` for a numeric constant and **`-1` for "not a numeric constant"** — one value carrying both meanings, after a rounding *and* a 32-bit narrowing. So `-1`, `4294967295`, `8589934591` and any decimal rounding onto `-1` all produce the sentinel.
 
