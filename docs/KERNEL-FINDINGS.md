@@ -3792,6 +3792,17 @@ This does **not** replace the subtree rule above: the rows at the top of this en
 
 Either constituent alone suffices and neither is necessary. The control is what makes the pair mean anything: without it, "counts either way" is indistinguishable from "counts unconditionally".
 
+**Repetition DEPTH does not bound the row constituent, and the half-instantiated shape says which rule that is** *(a12-kernel-lean `SPEC-2026-08-30-08` acceptance condition, measured here 2026-08-30 on our own fixture, plus the row their stated limit could not reach)*. Every row above has the repeatable descendant exactly ONE level below the operand, which cannot separate a **containment** rule — any instantiated row anywhere beneath the operand — from a **leaf-row** rule about the innermost repeatable. A shell whose only content is a repeatable `Pallets` containing a repeatable `Cartons` separates them:
+
+| document | counted |
+|---|---|
+| one `Cartons` leaf row instantiated, its cells empty | **2** |
+| the same, one cell filled | **2** |
+| **half-instantiated — a `Pallets` row with NO `Cartons` row beneath it** | **2** |
+| no row at either level — the control | **1** |
+
+**Containment.** The half-instantiated row is the discriminator: a leaf-row rule predicts 1 there, since no row of the innermost repeatable exists. Measured 2, so an instantiated row is content wherever it sits beneath the operand, and the rule is neither an axis count nor a statement about the deepest level. The peer had marked that row as their implementation's own reading and unmeasured on either estate; it is measured now. Locked in `adapter.laws.DeepRepeatableRowConstituentLawsTest`, which also asserts the static admission gate on the two-level shell, since running an engine and getting a number is not an `MVK_*` verdict.
+
 Together they are exactly [KF119](#kf119)'s non-repeatable fill notion — "a filled descendant field, **or** an instantiated repeatable descendant row" — now confirmed for the unstarred multi-group count carrier rather than only for `GroupFilled`. The peer reached it from the starred form's structural rule; the reconciliation is that both operand shapes share one notion of repeatable content, so a checker needs one predicate with two sufficient constituents, not a cell scan with a special case.
 
 **And on the computation arm, formally invalid content IS content for the fill predicate** *(a12-kernel-lean `SPEC-2026-08-30-02`, measured here 2026-08-30)*. This is a distinct question from the arm divergence below, though the two coincide in outcome: that one asks what an erroneous operand does to each arm, this one asks whether malformed content counts as content at all. Same shell holding **only** a malformed value → **2**; the same shell holding nothing → **1**. So the count's compute-arm notion of content is *not* the admitted-value cache [KF120](#kf120) describes for `GroupFilled`, where invalid-only is FALSE — a third way this carrier's "content" is wider than a cell-admission scan.
