@@ -3780,7 +3780,19 @@ a12-kernel-lean reported the static half as `SPEC-2026-08-30-01`: in the plain m
 | `Contact` filled, `Coverage/Riders` = one empty instantiated row | **2** |
 | `Contact` filled, `Coverage/Riders` = no rows — control | **1** |
 
-This does **not** replace the subtree rule above, and the two are independently measured: the rows at the top of this entry carry no repeatable group anywhere, so a filled descendant *cell* moves the count on its own. Both constituents are live, and together they are exactly [KF119](#kf119)'s non-repeatable fill notion — "a filled descendant field, **or** an instantiated repeatable descendant row" — now confirmed for the unstarred multi-group count carrier rather than only for `GroupFilled`. The peer reached it from the starred form's structural rule; the reconciliation is that both operand shapes share one notion of repeatable content.
+This does **not** replace the subtree rule above: the rows at the top of this entry carry no repeatable group anywhere, so a filled descendant *cell* moves the count on its own.
+
+**The disjunction itself is measured, in the one shape that can separate the constituents.** Neither project's original probe established it, and the reason is structural rather than an oversight: a shape with no repeatable descendant cannot exercise the row constituent, and *inside* a repeatable descendant a cell cannot exist without a row, so each side measured one constituent live exactly where the other could not fire. A group owning **both** a nonrepeatable `Notes/Text` and a repeatable `Items` separates them against one operand in one model:
+
+| document | counted |
+|---|---|
+| the nonrepeatable cell filled, **no row instantiated** | **2** |
+| one instantiated empty row, **no cell filled anywhere** | **2** |
+| neither — the control | **1** |
+
+Either constituent alone suffices and neither is necessary. The control is what makes the pair mean anything: without it, "counts either way" is indistinguishable from "counts unconditionally".
+
+Together they are exactly [KF119](#kf119)'s non-repeatable fill notion — "a filled descendant field, **or** an instantiated repeatable descendant row" — now confirmed for the unstarred multi-group count carrier rather than only for `GroupFilled`. The peer reached it from the starred form's structural rule; the reconciliation is that both operand shapes share one notion of repeatable content, so a checker needs one predicate with two sufficient constituents, not a cell scan with a special case.
 
 **The two arms DIVERGE on a formally invalid operand** — which scopes [KF120](#kf120)'s "any erroneous group makes the count unavailable" to the validation arm, where its locks live. On the identical document: the **computation** arm stores the value and counts the group (2, at both depths); the **validation** arm is suppressed, and it is suppression rather than a different number, since neither `== 2` nor `== 1` fires. Static admission is untouched by this — it is a runtime split, so a `computation add --dry-run` or `model check` verdict is not affected.
 

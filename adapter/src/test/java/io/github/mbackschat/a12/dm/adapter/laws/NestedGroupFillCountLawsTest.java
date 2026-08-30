@@ -58,7 +58,10 @@ class NestedGroupFillCountLawsTest {
                             .field("Clause", FieldKind.STRING)
                             .numberField("Months", n -> n.fractionDigits(0))))
                     .group("Coverage", cv -> cv.group("Riders", r -> r.repeatable(5)
-                            .field("RiderName", FieldKind.STRING))))
+                            .field("RiderName", FieldKind.STRING)))
+                    .group("Bundle", b -> b
+                            .group("Notes", n -> n.field("Text", FieldKind.STRING))
+                            .group("Items", i -> i.repeatable(5).field("ItemName", FieldKind.STRING))))
             .build().toJson();
 
     private static final BoundModel M = BoundModel.ofJson(CATALOGUE);
@@ -238,5 +241,54 @@ class NestedGroupFillCountLawsTest {
                 .field("/Catalogue/Contact/Email", "buyer@example.com", 1, 1, 1));
         assertEquals(0, counted.orElseThrow().compareTo(BigDecimal.ONE),
                 () -> "only Contact is filled; got " + counted);
+    }
+
+    private static final String BUNDLE_MODEL = bundleModel();
+
+    private static String bundleModel() {
+        Computation comp = M.computation(M.field(TALLY)).name("BundleTallyComp")
+                .calc(Dsl.numberOfFilledGroups(M.group("/Catalogue/Contact"), M.group("/Catalogue/Bundle"))
+                        .expression())
+                .message(en("Bundle tally."))
+                .build();
+        return M.add(comp).toJson();
+    }
+
+    private static Optional<BigDecimal> bundleTally(RuntimeLaws.Doc doc) {
+        return RuntimeLaws.computedValue(RuntimeLaws.compute(BUNDLE_MODEL, doc), TALLY).map(BigDecimal::new);
+    }
+
+    private static RuntimeLaws.Doc bundleBase() {
+        return RuntimeLaws.doc().group("/Catalogue", 1)
+                .field("/Catalogue/Reference", "CAT-1", 1, 1)
+                .field("/Catalogue/Contact/Email", "buyer@example.com", 1, 1, 1);
+    }
+
+    /**
+     * <b>The DISJUNCTION, in the one shape that can separate the two constituents.</b>
+     *
+     * <p>Neither earlier measurement established it: a shape with no repeatable descendant cannot show the row
+     * constituent, and inside a repeatable descendant a cell cannot exist without a row, so each of us measured
+     * one constituent live where the other could not fire. {@code Bundle} carries BOTH — a nonrepeatable
+     * {@code Notes/Text} and a repeatable {@code Items} — so each can be exercised alone, against the same
+     * operand, in the same model.
+     *
+     * <p>Three documents, and the third is what makes the first two mean anything: without it, "counts either
+     * way" is indistinguishable from "counts unconditionally".
+     */
+    @Test
+    void eitherConstituentAloneIsSufficientAndNeitherIsNecessary() {
+        Optional<BigDecimal> cellOnly = bundleTally(bundleBase()
+                .field("/Catalogue/Bundle/Notes/Text", "gift wrap", 1, 1, 1, 1));
+        Optional<BigDecimal> rowOnly = bundleTally(bundleBase()
+                .group("/Catalogue/Bundle/Items", 1, 1, 1));
+        Optional<BigDecimal> neither = bundleTally(bundleBase());
+
+        assertEquals(0, cellOnly.orElseThrow().compareTo(BigDecimal.valueOf(2)),
+                () -> "a nonrepeatable descendant cell, with NO row instantiated; got " + cellOnly);
+        assertEquals(0, rowOnly.orElseThrow().compareTo(BigDecimal.valueOf(2)),
+                () -> "an instantiated empty row, with NO cell filled anywhere; got " + rowOnly);
+        assertEquals(0, neither.orElseThrow().compareTo(BigDecimal.ONE),
+                () -> "NEITHER constituent — the control that makes the pair above meaningful; got " + neither);
     }
 }
