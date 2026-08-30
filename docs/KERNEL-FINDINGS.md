@@ -3823,23 +3823,36 @@ Locked in `adapter.laws.NestedGroupFillCountLawsTest.theMixedFormAddsAFixedPrese
 
 **Related, and answering one of that entry's stated non-measurements from the other arm:** an **over-limit** row is instantiated and `GroupFilled`-visible yet excluded from the starred count — `NumberOfFilledGroups(Coverages*)` over rows 1,2,3 with 3 beyond the declared range counts **2**, locked in `adapter.laws.OverRepetitionFormalGateDiffTest.numberOfFilledGroupsExcludesOverLimitRow`. That lock is on the **rule** arm; the compute arm is unmeasured here.
 
-## §9 supplement: a STARRED operand flips a computation's self-validation polarity, and the flip follows the operand rather than the operator (kernel runtime, 2026-08-30) <a id="kf219"></a>
+## §9 supplement: a computation's self-validation polarity reads THE QUANTITY'S OWN HEADROOM, not starredness (kernel runtime, 2026-08-30) <a id="kf219"></a>
 
 > Fold: pending — folds into §9 beside [KF218](#kf218)'s fold structure; the polarity channel itself is §"error typing".
 
-A computation's implicit self-validation message — the one raised when the stored target value does not match the computed one — carries `OMISSION_ERROR` when the shape could still be satisfied by filling more, and `VALUE_ERROR` otherwise. **Adding a starred operand flips it, with nothing else in the model or the document changing.** Reported by a12-kernel-lean (`SPEC-2026-08-30-04` follow-up) and reproduced here on our own fixture: two computations at the same group, over one document, differing only in operand form.
+*Corrected 2026-08-30, before this entry had been read by anyone but its author: it first claimed the flip **follows the starred operand**, on rows that were all taken BELOW a repeatable group's declared capacity, where that account fits every row and is still false. a12-kernel-lean built the at-capacity discriminator and refuted it; the original rows stand as measured and are kept below.*
+
+A computation's implicit self-validation message — raised when the stored target value does not match the computed one — carries `OMISSION_ERROR` when **that quantity** could still grow, and `VALUE_ERROR` otherwise. The subject is the quantity's headroom, and a starred operand is only the ordinary instance of having some.
+
+**The discriminator is capacity.** `Riders` is declared max 5, so filling it exhausts the growth channel a row count depends on:
+
+| document | starred count | starred `Sum` over the same group |
+|---|---|---|
+| 4 of 5 rows, every cell filled | `OMISSION_ERROR` | `OMISSION_ERROR` |
+| **5 of 5 rows, every cell filled** | **`VALUE_ERROR`** | **`VALUE_ERROR`** |
+| **5 of 5 rows, every cell EMPTY** | **`VALUE_ERROR`** | **`OMISSION_ERROR`** |
+
+**The third row is the one that settles it**: one document, one starred group, two operators disagreeing. No account in terms of the *operand's form* can split them — both read `Riders*`. The count cannot grow because capacity is exhausted; the sum still can because a row's cells are empty. **Two growth channels — add a row, fill a cell — tracked per quantity.**
+
+**The original rows, still valid and still useful**, showing the operand-form half below capacity (one row instantiated, so both channels open):
 
 | computation | its operands | message type |
 |---|---|---|
-| `NumberOfFilledGroups(Contact, Warranty)` | filled | **`VALUE_ERROR`** |
-| `NumberOfFilledGroups(Riders*)` | same document | **`OMISSION_ERROR`** |
+| `NumberOfFilledGroups(Contact, Warranty)` | filled | `VALUE_ERROR` |
+| `NumberOfFilledGroups(Riders*)` | same document | `OMISSION_ERROR` |
 | `NumberOfFilledGroups(Contact, Warranty)` | emptied — control | `OMISSION_ERROR` |
-| `NumberOfFilledGroups(Riders*)` | same emptied document — control | `OMISSION_ERROR` |
 
-The third row is what keeps this from being a constant: the wildcard-free computation's polarity **does** track its own cells, so the second row's difference is the star and not an inert default.
+They are consistent with the corrected rule: a fixed pair with every operand filled has no headroom, a starred group below capacity has some.
 
-**The flip follows the STARRED OPERAND, not the operator.** The peer's witness widens it past the group count in one run: `Sum(Rows*/RowValue)` takes `OMISSION_ERROR` in the same document while a wildcard-free `NumberOfFilledGroups(Flat, Other)` takes `VALUE_ERROR`. So this is a property of starred iteration in a computation, not of any one function.
+**What this does to the field-count reading**, and it is the interesting part: `adapter.laws.FilledCountLawsTest`'s rule — unfilled operands remaining ⇒ `OMISSION_ERROR`, every operand filled ⇒ `VALUE_ERROR` — is **not** a prior that happened to fit here. It is the same rule, and the sentence added on top of it, *"a starred operand can never reach all-filled"*, is the false part: it can, by exhausting capacity. Both projects had the mechanism right and the boundary wrong, because both measured only below capacity.
 
-**Consistent with the field-count reading already locked here**, which is why it is a coherent rule rather than a quirk: `adapter.laws.FilledCountLawsTest` pins that a count with unfilled operands remaining is `OMISSION_ERROR` and one with every operand filled is `VALUE_ERROR`. A starred operand can always gain another row, so it can never reach "all filled". *(That is the reading, not the measurement — the rows above are the measurement, and no claim is made here about the mechanism inside the kernel.)*
+Locked in `adapter.laws.NestedGroupFillCountLawsTest` — `polarityTracksTheQuantitysOwnHeadroomAndNotTheStar` (the capacity rows) and `aStarredOperandFlipsTheComputationSelfValidationPolarity` (the below-capacity rows, retained as the operand-form half).
 
-**Why it is a modelling trap worth stating:** the two computations above are the same author intent expressed over one repeatable group instead of two fixed ones, and the diagnostic an author sees changes kind. Locked in `adapter.laws.NestedGroupFillCountLawsTest.aStarredOperandFlipsTheComputationSelfValidationPolarity`.
+**Peer-measured, not reproduced here:** that the same split appears with a wildcard-free `NumberOfFilledGroups(Flat, Other)` at `VALUE_ERROR` beside a starred `Sum` at `OMISSION_ERROR` in one run (a12-kernel-lean's witness). Our rows establish the capacity boundary and the count/sum split; they do not establish that widening.

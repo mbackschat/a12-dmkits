@@ -55,6 +55,7 @@ class NestedGroupFillCountLawsTest {
                     .numberField("SectionTally", n -> n.fractionDigits(0))
                     .numberField("TallyFixed", n -> n.fractionDigits(0))
                     .numberField("TallyStar", n -> n.fractionDigits(0))
+                    .numberField("TallySum", n -> n.fractionDigits(0))
                     .group("Contact", g -> g
                             .field("Email", FieldKind.STRING)
                             .numberField("Rating", n -> n.fractionDigits(0)))
@@ -62,7 +63,8 @@ class NestedGroupFillCountLawsTest {
                             .field("Clause", FieldKind.STRING)
                             .numberField("Months", n -> n.fractionDigits(0))))
                     .group("Coverage", cv -> cv.group("Riders", r -> r.repeatable(5)
-                            .field("RiderName", FieldKind.STRING)))
+                            .field("RiderName", FieldKind.STRING)
+                            .numberField("RiderAmount", n -> n.fractionDigits(0))))
                     .group("Bundle", b -> b
                             .group("Notes", n -> n.field("Text", FieldKind.STRING))
                             .group("Items", i -> i.repeatable(5).field("ItemName", FieldKind.STRING))))
@@ -286,7 +288,10 @@ class NestedGroupFillCountLawsTest {
         Computation starred = M.computation(M.field("/Catalogue/TallyStar")).name("StarTallyComp")
                 .calc(Dsl.numberOfFilledGroups(M.flattenGroup("/Catalogue/Coverage/Riders*").group()).expression())
                 .message(en("Star tally.")).build();
-        return M.add(fixedOnly).add(starred).toJson();
+        Computation starredSum = M.computation(M.field("/Catalogue/TallySum")).name("StarSumComp")
+                .calc(Dsl.sum(M.flatten("/Catalogue/Coverage/Riders*/RiderAmount")).expression())
+                .message(en("Star sum.")).build();
+        return M.add(fixedOnly).add(starred).add(starredSum).toJson();
     }
 
     /** Both stored tallies are deliberately wrong, so both computations' implicit self-validation mismatches. */
@@ -308,6 +313,68 @@ class NestedGroupFillCountLawsTest {
                 .filter(m -> m.field() != null && m.field().contains(targetName))
                 .map(m -> m.type().toString())
                 .findFirst().orElse("(no message for " + targetName + ")");
+    }
+
+    /** {@code rows} rows instantiated, each cell filled or left empty, with all four tallies seeded wrong. */
+    private static RuntimeLaws.Doc capacityDoc(int rows, boolean cellsFilled) {
+        RuntimeLaws.Doc d = RuntimeLaws.doc().group("/Catalogue", 1)
+                .field("/Catalogue/Reference", "CAT-1", 1, 1)
+                .field("/Catalogue/TallyFixed", "9", 1, 1)
+                .field("/Catalogue/TallyStar", "9", 1, 1)
+                .field("/Catalogue/TallySum", "9", 1, 1)
+                .field("/Catalogue/Contact/Email", "buyer@example.com", 1, 1, 1)
+                .field("/Catalogue/Warranty/Terms/Clause", "24 months", 1, 1, 1, 1);
+        for (int r = 1; r <= rows; r++) {
+            d = d.group("/Catalogue/Coverage/Riders", 1, 1, r);
+            if (cellsFilled) {
+                d = d.field("/Catalogue/Coverage/Riders/RiderName", "R" + r, 1, 1, r, 1)
+                        .field("/Catalogue/Coverage/Riders/RiderAmount", "1", 1, 1, r, 1);
+            }
+        }
+        return d;
+    }
+
+    private static String typeOfTarget(String targetName, RuntimeLaws.Doc doc) {
+        return RuntimeLaws.messages(POLARITY_MODEL, doc).stream()
+                .filter(m -> m.field() != null && m.field().contains(targetName))
+                .map(m -> m.type().toString())
+                .findFirst().orElse("(none)");
+    }
+
+    /**
+     * <b>THE CAPACITY DISCRIMINATOR — polarity reads the QUANTITY'S HEADROOM, not starredness.</b>
+     *
+     * <p>Both projects first measured this below capacity, where "a starred operand types OMISSION" fits every
+     * row and is nonetheless false. {@code Riders} is declared max 5, so filling it exhausts the growth channel
+     * a starred count depends on.
+     *
+     * <p>The third row is the sharpest: in ONE document over ONE starred group, the count says {@code VALUE}
+     * while the sum says {@code OMISSION}. No account in terms of the operand's form can produce a split
+     * between two operators reading the same group — the count cannot grow because capacity is exhausted, the
+     * sum still can because a row's cell is empty. Two growth channels, tracked per quantity.
+     */
+    @Test
+    void polarityTracksTheQuantitysOwnHeadroomAndNotTheStar() {
+        Map<String, String> actual = new LinkedHashMap<>();
+        RuntimeLaws.Doc atCapacityFilled = capacityDoc(5, true);
+        RuntimeLaws.Doc belowCapacityFilled = capacityDoc(4, true);
+        RuntimeLaws.Doc atCapacityEmpty = capacityDoc(5, false);
+
+        actual.put("5/5 rows, cells filled — starred count", typeOfTarget("TallyStar", atCapacityFilled));
+        actual.put("5/5 rows, cells filled — starred sum", typeOfTarget("TallySum", atCapacityFilled));
+        actual.put("4/5 rows, cells filled — starred count", typeOfTarget("TallyStar", belowCapacityFilled));
+        actual.put("4/5 rows, cells filled — starred sum", typeOfTarget("TallySum", belowCapacityFilled));
+        actual.put("5/5 rows, cells EMPTY — starred count", typeOfTarget("TallyStar", atCapacityEmpty));
+        actual.put("5/5 rows, cells EMPTY — starred sum", typeOfTarget("TallySum", atCapacityEmpty));
+
+        Map<String, String> expected = new LinkedHashMap<>();
+        expected.put("5/5 rows, cells filled — starred count", "VALUE_ERROR");
+        expected.put("5/5 rows, cells filled — starred sum", "VALUE_ERROR");
+        expected.put("4/5 rows, cells filled — starred count", "OMISSION_ERROR");
+        expected.put("4/5 rows, cells filled — starred sum", "OMISSION_ERROR");
+        expected.put("5/5 rows, cells EMPTY — starred count", "VALUE_ERROR");
+        expected.put("5/5 rows, cells EMPTY — starred sum", "OMISSION_ERROR");
+        assertEquals(expected, actual, "one row of capacity, and one document splitting count from sum");
     }
 
     /**
