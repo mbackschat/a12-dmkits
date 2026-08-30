@@ -6,7 +6,9 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.math.BigDecimal;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 import org.junit.jupiter.api.Test;
@@ -51,6 +53,8 @@ class NestedGroupFillCountLawsTest {
             .rootGroup("Catalogue", c -> c
                     .field("Reference", FieldKind.STRING)
                     .numberField("SectionTally", n -> n.fractionDigits(0))
+                    .numberField("TallyFixed", n -> n.fractionDigits(0))
+                    .numberField("TallyStar", n -> n.fractionDigits(0))
                     .group("Contact", g -> g
                             .field("Email", FieldKind.STRING)
                             .numberField("Rating", n -> n.fractionDigits(0)))
@@ -266,6 +270,73 @@ class NestedGroupFillCountLawsTest {
                 () -> "invalid-only descendant content still fills the shell; got " + malformedOnly);
         assertEquals(0, emptied.orElseThrow().compareTo(BigDecimal.ONE),
                 () -> "the same shell holding nothing does not — the control; got " + emptied);
+    }
+
+    private static final String POLARITY_MODEL = polarityModel();
+
+    /**
+     * Two computations at the same group over the same document: one wildcard-free, one starred. Their targets
+     * differ so both can coexist; nothing else about them differs.
+     */
+    private static String polarityModel() {
+        Computation fixedOnly = M.computation(M.field("/Catalogue/TallyFixed")).name("FixedTallyComp")
+                .calc(Dsl.numberOfFilledGroups(M.group("/Catalogue/Contact"), M.group("/Catalogue/Warranty"))
+                        .expression())
+                .message(en("Fixed tally.")).build();
+        Computation starred = M.computation(M.field("/Catalogue/TallyStar")).name("StarTallyComp")
+                .calc(Dsl.numberOfFilledGroups(M.flattenGroup("/Catalogue/Coverage/Riders*").group()).expression())
+                .message(en("Star tally.")).build();
+        return M.add(fixedOnly).add(starred).toJson();
+    }
+
+    /** Both stored tallies are deliberately wrong, so both computations' implicit self-validation mismatches. */
+    private static RuntimeLaws.Doc polarityDoc(boolean fixedOperandsFilled) {
+        RuntimeLaws.Doc d = RuntimeLaws.doc().group("/Catalogue", 1)
+                .field("/Catalogue/Reference", "CAT-1", 1, 1)
+                .field("/Catalogue/TallyFixed", "9", 1, 1)
+                .field("/Catalogue/TallyStar", "9", 1, 1)
+                .group("/Catalogue/Coverage/Riders", 1, 1, 1);
+        if (fixedOperandsFilled) {
+            d = d.field("/Catalogue/Contact/Email", "buyer@example.com", 1, 1, 1)
+                    .field("/Catalogue/Warranty/Terms/Clause", "24 months", 1, 1, 1, 1);
+        }
+        return d;
+    }
+
+    private static String polarityOf(String targetName, boolean fixedOperandsFilled) {
+        return RuntimeLaws.messages(POLARITY_MODEL, polarityDoc(fixedOperandsFilled)).stream()
+                .filter(m -> m.field() != null && m.field().contains(targetName))
+                .map(m -> m.type().toString())
+                .findFirst().orElse("(no message for " + targetName + ")");
+    }
+
+    /**
+     * <b>a12-kernel-lean's polarity witness, on our fixture.</b> Adding a STARRED operand flips a computation's
+     * implicit self-validation message from {@code VALUE_ERROR} to {@code OMISSION_ERROR}, with nothing else in
+     * the model or document changing — a modelling trap, since the two computations differ only in operand form.
+     *
+     * <p>Our {@code FilledCountLawsTest} locks the same shape for the FIELD count, where the reading is that a
+     * count with unfilled operands remaining can still grow. A starred operand can always gain another row, so
+     * it can never be "all filled" — which predicts the flip. That reading is a hypothesis; the rows are the
+     * measurement.
+     *
+     * <p>The second row is the control that keeps this from being a constant: emptying the wildcard-free
+     * computation's own operands moves ITS polarity, so it tracks its cells rather than being fixed.
+     */
+    @Test
+    void aStarredOperandFlipsTheComputationSelfValidationPolarity() {
+        Map<String, String> actual = new LinkedHashMap<>();
+        actual.put("wildcard-free, its operands filled", polarityOf("TallyFixed", true));
+        actual.put("starred, same document", polarityOf("TallyStar", true));
+        actual.put("wildcard-free, its operands emptied — control", polarityOf("TallyFixed", false));
+        actual.put("starred, same emptied document — control", polarityOf("TallyStar", false));
+
+        Map<String, String> expected = new LinkedHashMap<>();
+        expected.put("wildcard-free, its operands filled", "VALUE_ERROR");
+        expected.put("starred, same document", "OMISSION_ERROR");
+        expected.put("wildcard-free, its operands emptied — control", "OMISSION_ERROR");
+        expected.put("starred, same emptied document — control", "OMISSION_ERROR");
+        assertEquals(expected, actual, "the flip follows the starred operand, not the operator");
     }
 
     private static final String MIXED_MODEL = mixedModel();

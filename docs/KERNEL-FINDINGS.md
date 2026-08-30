@@ -3822,3 +3822,24 @@ a12-kernel-lean reported (`SPEC-2026-08-30-04`) that a starred operand contribut
 Locked in `adapter.laws.NestedGroupFillCountLawsTest.theMixedFormAddsAFixedPresenceBitToTheStarredRowCardinality`.
 
 **Related, and answering one of that entry's stated non-measurements from the other arm:** an **over-limit** row is instantiated and `GroupFilled`-visible yet excluded from the starred count — `NumberOfFilledGroups(Coverages*)` over rows 1,2,3 with 3 beyond the declared range counts **2**, locked in `adapter.laws.OverRepetitionFormalGateDiffTest.numberOfFilledGroupsExcludesOverLimitRow`. That lock is on the **rule** arm; the compute arm is unmeasured here.
+
+## §9 supplement: a STARRED operand flips a computation's self-validation polarity, and the flip follows the operand rather than the operator (kernel runtime, 2026-08-30) <a id="kf219"></a>
+
+> Fold: pending — folds into §9 beside [KF218](#kf218)'s fold structure; the polarity channel itself is §"error typing".
+
+A computation's implicit self-validation message — the one raised when the stored target value does not match the computed one — carries `OMISSION_ERROR` when the shape could still be satisfied by filling more, and `VALUE_ERROR` otherwise. **Adding a starred operand flips it, with nothing else in the model or the document changing.** Reported by a12-kernel-lean (`SPEC-2026-08-30-04` follow-up) and reproduced here on our own fixture: two computations at the same group, over one document, differing only in operand form.
+
+| computation | its operands | message type |
+|---|---|---|
+| `NumberOfFilledGroups(Contact, Warranty)` | filled | **`VALUE_ERROR`** |
+| `NumberOfFilledGroups(Riders*)` | same document | **`OMISSION_ERROR`** |
+| `NumberOfFilledGroups(Contact, Warranty)` | emptied — control | `OMISSION_ERROR` |
+| `NumberOfFilledGroups(Riders*)` | same emptied document — control | `OMISSION_ERROR` |
+
+The third row is what keeps this from being a constant: the wildcard-free computation's polarity **does** track its own cells, so the second row's difference is the star and not an inert default.
+
+**The flip follows the STARRED OPERAND, not the operator.** The peer's witness widens it past the group count in one run: `Sum(Rows*/RowValue)` takes `OMISSION_ERROR` in the same document while a wildcard-free `NumberOfFilledGroups(Flat, Other)` takes `VALUE_ERROR`. So this is a property of starred iteration in a computation, not of any one function.
+
+**Consistent with the field-count reading already locked here**, which is why it is a coherent rule rather than a quirk: `adapter.laws.FilledCountLawsTest` pins that a count with unfilled operands remaining is `OMISSION_ERROR` and one with every operand filled is `VALUE_ERROR`. A starred operand can always gain another row, so it can never reach "all filled". *(That is the reading, not the measurement — the rows above are the measurement, and no claim is made here about the mechanism inside the kernel.)*
+
+**Why it is a modelling trap worth stating:** the two computations above are the same author intent expressed over one repeatable group instead of two fixed ones, and the diagnostic an author sees changes kind. Locked in `adapter.laws.NestedGroupFillCountLawsTest.aStarredOperandFlipsTheComputationSelfValidationPolarity`.
