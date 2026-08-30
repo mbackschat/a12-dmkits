@@ -3900,3 +3900,23 @@ Three facts fall out of the same rows. The starred axis carries coordinate **0**
 Our interpreter is not exposed to either trap: `messageReferences` walks the condition's `Cond` tree rather than the evaluation's reads, and `DmInterpreter` sets `fillToFix` to `referenced` for an OMISSION and to empty otherwise, unconditionally, so it cannot emit a proper subset — an identity differentially locked against the kernel's `getRefOmissionErrorResponsiblePointers` in `RichMessageDiffTest`, which this adds the all-filled row to. Locked in `…NestedGroupFillCountLawsTest.anOmissionsFillToFixIsTheWholeReferencedSetEvenWhenEveryCellItNamesIsFilled`.
 
 **a12-kernel-lean's wildcard-free witness is now reproduced here too**, in the same at-capacity document: the wildcard-free `NumberOfFilledGroups(Contact, Warranty)` sits at `VALUE_ERROR` beside the starred `Sum`'s `OMISSION_ERROR`. Worth stating precisely, because it is the **weaker** of the two splits for refuting an operand-form account — a fixed-versus-starred pair is exactly what such an account predicts. The refutation is the starred-count-versus-starred-**Sum** row, where operand form is held constant and the two still differ. The wildcard-free row is carried because that witness had rested on one project.
+
+## §17 supplement: the mandatory-information collectors read a numeric literal through a SENTINEL that a 32-bit narrowing can collide with (kernel SOURCE READ — hypothesis, not measured, 2026-08-30) <a id="kf220"></a>
+
+> Fold: pending — folds into §17 beside the rule-set analysis surface, once measured. **This entry is a source read.** No row here has been executed; nothing in our estate calls the interface, so we hold no observation of the derived output. It is written down because it is a trap for the first consumer of a surface our survey now marks verified, and because the enumeration below corrects the shape it was reported to us in.
+
+`FeldOperationUtil.getZahlKonstanteWert(IOperation)` returns `(int) Math.round(Double.parseDouble(value))` for a numeric constant and **`-1` for "not a numeric constant"** — one value carrying both meanings, after a rounding *and* a 32-bit narrowing. So `-1`, `4294967295`, `8589934591` and any decimal rounding onto `-1` all produce the sentinel.
+
+**The enumeration, so the next reader does not re-derive it.** `grep -rn 'getZahlKonstanteWert' <kernel>/kernel-tool/kernel-core-service/src/main/java/com/mgmtp/a12/kernel/core/service/internal/mandatoryinformation` → **6 call sites in 3 files, all 6 read**:
+
+| file | sites | guard | what the sentinel is confused with |
+|---|---|---|---|
+| `EvaluatorVisitor` | 83, 103 | `z != -1` / `z == -1` | only the sentinel |
+| `CollectorFuerGlobalePflichtmengenInfo` | 101, 109 | `z > 0` | the sentinel **and** every genuine constant ≤ 0 |
+| `CollectorFuerPflichtVordruckInfo` | 222, 230 | `z > 0`, assigned into a `double z` | as above — and the widening happens *after* the narrowing, so it does not undo it |
+
+*(a12-kernel-lean reported this as "the three visitors bail on `z == -1`". Only the first file does. The other two use `z > 0`, a weaker predicate that also swallows legitimate non-positive constants, so the corrective for a consumer differs per file.)*
+
+**Why most of it is probably unobservable, and where it might not be.** Every literal that collides is either negative — where `NumberOfFilledFields(…) >= -1` is vacuously true and "nothing mandatory" is the *correct* answer — or ≥ `4294967295`, which under the `<=`/`<` directions the `z > 0` sites test is equally vacuous. In those five sites the bug's answer and the right answer coincide, which is why no consumer would have noticed. The exception is `EvaluatorVisitor`'s `AnzahlFelder >= z` arm: there a colliding literal is **unsatisfiable-but-strong**, so a semantics-respecting collector and a narrowing-bugged one need not agree.
+
+**What would settle it** — and it is a design, not a run we have made: three rules over one two-field list, `>= 2` (satisfiable baseline), `>= 3` (**the control** — unsatisfiable, `z` valid) and `>= 4294967295` (unsatisfiable, `z` narrows to `-1`), comparing `getMandatory()` across them. The control is the load-bearing row: if `>= 3` already yields nothing, the shape cannot discriminate and the collision is unobservable here too. Blocked on a capability rather than on cost — the query takes kernel `IRule` objects and `KernelAdapter` deliberately lets no kernel type escape ([`ARCHITECTURE`](ARCHITECTURE.md) N8), so routing it means giving the adapter a typed mandatory-information capability first.
