@@ -549,14 +549,24 @@ class NestedGroupFillCountLawsTest {
      * the published phrasing and 3 if the carrier folds over distinct groups instead. Nothing in this project
      * exercised either shape — the 20-site sweep above found no list with two starred operands at all.
      *
-     * <p>a12-kernel-lean has the STATIC half pinned ({@code (Rows*, Others*)}, {@code (Flat, Rows*, Others*)}
-     * and {@code (Rows*, Rows*)} all admitted, matching the recorded rule that duplicate checking skips
-     * wildcarded operands); this is the runtime half, on our kernel oracle.
+     * <p>This is the RUNTIME half. The static half is ours too — all three shapes are {@code ADMITTED} by
+     * {@code checkConsistency} in {@code EmptyGroupOperandLawsTest}. An earlier version of this javadoc
+     * attributed the static half to a12-kernel-lean as pinned; they retracted that (the rows came from a
+     * window they could not certify clean and they had declined to cite them), so no claim here rests on
+     * them. Runtime acceptance would not have substituted: the kernel building an engine and computing a
+     * number is not an {@code MVK_*} authoring verdict.
      *
      * <p>The zero-row row is the control: it separates a real fold from a constant.
      */
     @Test
     void aRepeatedStarredOperandIsCountedTWICEAndTwoDistinctStarredOperandsAdd() {
+        // The authoring verdict on the very models these numbers come from: the kernel building an engine
+        // and computing a number is runtime acceptance, which is NOT an MVK_* verdict, so the gate is run.
+        assertEquals(List.of(), RuntimeLaws.consistencyMessages(TWO_STAR_MODEL),
+                "two distinct starred operands are statically admitted");
+        assertEquals(List.of(), RuntimeLaws.consistencyMessages(DUP_STAR_MODEL),
+                "the SAME starred group named twice is statically admitted");
+
         // The exact spelling both numbers rest on, pinned so the operand list cannot silently dedupe.
         assertEquals("NumberOfFilledGroups(/Catalogue/Coverage/Riders*, /Catalogue/Coverage/Riders*) == 0",
                 new DslRenderer().render(Dsl.numberOfFilledGroups(

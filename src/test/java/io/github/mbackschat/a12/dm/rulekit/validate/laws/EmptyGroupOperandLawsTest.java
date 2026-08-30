@@ -150,6 +150,10 @@ class EmptyGroupOperandLawsTest {
                 verdict("NumberOfFilledGroups(/Store/ShellRows*, /Store/Filled) > 0"));
         actual.put("the SAME starred group named twice",
                 verdict("NumberOfFilledGroups(/Store/ShellRows*, /Store/ShellRows*) > 0"));
+        actual.put("two DISTINCT starred groups",
+                verdict("NumberOfFilledGroups(/Store/ShellRows*, /Store/FilledRows*) > 0"));
+        actual.put("a fixed group beside two starred ones",
+                verdict("NumberOfFilledGroups(/Store/Filled, /Store/ShellRows*, /Store/FilledRows*) > 0"));
 
         Map<String, String> expected = new LinkedHashMap<>();
         expected.put("shell first", ADMITTED);
@@ -164,6 +168,8 @@ class EmptyGroupOperandLawsTest {
         expected.put("the shell itself REPEATABLE, unstarred", "MVK_NO_WILDCARD");
         expected.put("the shell itself REPEATABLE, starred", ADMITTED);
         expected.put("the SAME starred group named twice", ADMITTED);
+        expected.put("two DISTINCT starred groups", ADMITTED);
+        expected.put("a fixed group beside two starred ones", ADMITTED);
         assertEquals(expected, actual, "the group count reads content over the whole subtree, at any depth");
     }
 
