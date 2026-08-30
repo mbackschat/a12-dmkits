@@ -805,22 +805,22 @@ Avoid:
     <img src="../assets/infographics/json-schema-document-model.png" alt="How schemakit imports JSON Schema and OpenAPI into kernel-valid A12 DocumentModels and exports them with explicit fidelity" width="540">
   </a>
 </p>
-<p align="center"><sub>864 × 1821 PNG. Click the preview to open the full-resolution image.</sub></p>
+<p align="center"><sub>1536 × 1024 PNG. Click the preview to open the full-resolution image.</sub></p>
 
 ### Content map
 
 - Ten-second takeaway: schemakit imports broad JSON Schema and OpenAPI structure and constraints into a kernel-valid DocumentModel, while export distinguishes native projection, A12 carriage, and explicit loss.
 - Exact title: `JSON Schema ⇄ A12 DocumentModel`
 - Exact subtitle: `Import broadly • export honestly • report every decision`
-- Primary layout: split-screen bidirectional translation map.
-- Reading direction: source dialects, central bidirectional bridge, import and export columns, rule-synthesis band, fidelity contract.
-- Focal mechanism: the deliberately asymmetric IMPORT and EXPORT columns around the shared A12 DocumentModel.
-- Major regions: source dialects, import, A12 DocumentModel, export, synthesized rules, fidelity contract.
+- Primary layout: wide four-column bidirectional translation map.
+- Reading direction: left to right across one shared external-schema ↔ A12 bridge, four aligned capability columns, then the fidelity contract.
+- Focal mechanism: two parallel, oppositely directed arrows connecting the same external-schema node and A12 DocumentModel node.
+- Major regions: shared external schema endpoint, A12 DocumentModel, import resolution, model mapping, synthesized rules and reporting, export, fidelity contract.
 - Final output: an auditable translation in which every mapping decision or loss is visible.
 
 ### Exact relationships
 
-- JSON Schema or OpenAPI -> enters through -> `model import-jsonschema` -> A12 DocumentModel.
+- one shared JSON Schema or OpenAPI node -> enters through -> `model import-jsonschema` -> A12 DocumentModel.
 - `AUTO` -> detects -> JSON Schema or OpenAPI 3.0 / 3.1 / 3.2.
 - `$ref` and `$defs` -> resolve into -> typedefs, inlined groups, or bundle includes.
 - `object` -> maps to -> group.
@@ -830,7 +830,7 @@ Avoid:
 - constraints without a field-config home -> synthesize -> kernel-valid a12 rules.
 - uncertain choices -> follow -> best-effort MappingProfile or strict omission.
 - every guess or omission -> appears in -> transcoding report with corrective action.
-- A12 DocumentModel -> exits through -> `model export-jsonschema` -> JSON Schema or OpenAPI.
+- A12 DocumentModel -> exits through -> `model export-jsonschema` -> the same shared JSON Schema or OpenAPI node that supplies import.
 - groups, fields, requiredness, and typedefs -> export as -> native JSON Schema structure.
 - Tier-A rule shapes -> project to -> native JSON Schema keywords.
 - other rules and computations -> ride -> `x-a12-rule` and `x-a12-computation`.
@@ -842,7 +842,7 @@ Avoid:
 ```text
 Use case: infographic-diagram
 Asset type: GitHub README technical infographic
-Primary request: Create an original, polished portrait technical infographic explaining the built JSON Schema and OpenAPI transcoding functionality in a12-dmkits schemakit, using a clean ByteByteGo-inspired information-design language without copying an existing poster or using the ByteByteGo logo or wordmark.
+Primary request: Create an original, polished landscape technical infographic explaining the built JSON Schema and OpenAPI transcoding functionality in a12-dmkits schemakit, using a clean ByteByteGo-inspired information-design language without copying an existing poster or using the ByteByteGo logo or wordmark.
 
 Communication goal:
 - Audience: software engineers, API designers, A12 model developers, coding-agent users, and technical decision-makers.
@@ -852,7 +852,7 @@ Communication goal:
 - Tone: technically precise, compact, approachable, and visually scannable.
 
 Canvas and header:
-- Tall 2:3 portrait composition at high resolution, preferably 1024 × 1536 or larger.
+- Wide 3:2 landscape composition at high resolution, preferably 1536 × 1024 or larger.
 - Fully opaque warm off-white background extending to every canvas edge.
 - Large bold sans-serif title at the top left.
 - Short mint-green vertical bar immediately left of the title.
@@ -861,13 +861,13 @@ Canvas and header:
 - Reserve a clear gap between the header and the diagram body.
 
 Primary information structure:
-- Use a split-screen bidirectional translation map as the single dominant layout skeleton.
-- Primary reading direction: SOURCE DIALECTS at the top, the central bidirectional bridge, IMPORT and EXPORT columns from top to bottom, RULE SYNTHESIS, then FIDELITY CONTRACT.
+- Use a wide four-column bidirectional translation map as the single dominant layout skeleton.
+- Primary reading direction: left to right across the shared bridge, then across four aligned capability columns, then the FIDELITY CONTRACT footer.
 - Put one compact SOURCE DIALECTS rail below the subtitle.
-- Put a clear horizontal bridge below it: JSON Schema / OpenAPI on the left, A12 DocumentModel in the center, with one right-pointing import arrow and one left-pointing export arrow.
-- Under the bridge, place two equal rounded columns: IMPORT on the left and EXPORT on the right. Keep their stage rows aligned but make their different contracts unmistakable.
-- Put RULE SYNTHESIS in one full-width band below the two columns.
-- Finish with one compact three-column FIDELITY CONTRACT band.
+- Put one clear horizontal bridge below it with exactly two endpoint nodes: JSON Schema / OpenAPI on the left and A12 DocumentModel on the right.
+- Connect those same two nodes with two separate parallel arrows: a green right-pointing arrow labeled import-jsonschema from JSON Schema / OpenAPI to A12 DocumentModel, and a blue left-pointing arrow labeled export-jsonschema from A12 DocumentModel back to JSON Schema / OpenAPI. Both arrowheads must visibly terminate at their correct endpoint boxes.
+- Under the bridge, place four equal rounded columns from left to right: IMPORT with DETECT & RESOLVE, BUILD THE MODEL with MAP STRUCTURE and MAP CONSTRAINTS, RULE SYNTHESIS with the rule pills and REPORT, and EXPORT with its four compact stages.
+- Finish with one compact three-part FIDELITY CONTRACT band spanning the full width.
 - Final output: an auditable translation in which every mapping decision or loss is visible.
 
 Exact content:
@@ -880,18 +880,19 @@ Exact content:
 - Bridge center: "A12 DocumentModel"
 - Right-pointing bridge label: "import-jsonschema"
 - Left-pointing bridge label: "export-jsonschema"
-- Left column title: "IMPORT"
+- First column title: "IMPORT"
 - Left column tag: "BROAD COVERAGE"
 - Left stage title: "1  DETECT & RESOLVE"
 - Left stage lines: "AUTO dialect", "$ref • $defs", "component • whole bundle"
-- Left stage title: "2  MAP STRUCTURE"
+- Second column title: "BUILD THE MODEL"
+- Second column stage title: "2  MAP STRUCTURE"
 - Left stage lines: "object → group", "array<object> → repeatable group", "scalar → typed field", "leaf $ref → typedef", "bundle object ref → include"
-- Left stage title: "3  MAP CONSTRAINTS"
+- Second column stage title: "3  MAP CONSTRAINTS"
 - Left stage lines: "direct → requiredness + field config", "composed → a12 rules", "choices → MappingProfile"
-- Left stage title: "4  REPORT"
+- Third column title: "RULE SYNTHESIS"
+- Third column stage title: "4  REPORT"
 - Left stage lines: "mapped • omitted • notes", "corrective TO-DO", "never silent"
-- Left output pill: "Kernel-valid DocumentModel"
-- Right column title: "EXPORT"
+- Fourth column title: "EXPORT"
 - Right column tag: "BEST-EFFORT"
 - Right stage title: "1  EMIT NATIVE"
 - Right stage lines: "groups • fields • required", "typedefs → $defs + $ref"
@@ -901,8 +902,6 @@ Exact content:
 - Right stage lines: "rules → x-a12-rule", "computations → x-a12-computation"
 - Right stage title: "4  DISCLOSE"
 - Right stage lines: "temporal + custom → string", "diagnostic for every loss"
-- Right output pill: "JSON Schema / OpenAPI"
-- Full-width band title: "RULE SYNTHESIS"
 - Rule pills: "exclusive bounds", "multipleOf • const", "dependentRequired", "uniqueItems • minItems", "if / then / else", "not • contains", "union discriminators"
 - Bottom band title: "FIDELITY CONTRACT"
 - Bottom heading: "IMPORT"
@@ -922,11 +921,12 @@ Semantic mapping:
 - Native mapping = solid node or arrow; carriage = dashed purple container; explicit loss = amber diagnostic triangle.
 
 Layout-specific composition:
-- Divide the body into aligned import and export fields after the shared bridge.
-- Mirror the stage hierarchy and row positions across both columns while preserving the factual asymmetry.
-- Keep the bridge arrows separate, clearly directional, and labeled at their origins.
+- Use a wide landscape grid with four equal capability columns below one full-width bridge.
+- Keep the two bridge endpoint boxes identical in height and align them horizontally.
+- Draw the import and export arrows as separate parallel routes between those exact same boxes; do not leave either arrow floating or point export toward A12.
+- Keep IMPORT, BUILD THE MODEL, and RULE SYNTHESIS visually grouped as the broad import side while EXPORT remains a distinct blue field.
 - Render stage details as short rows or pills, never paragraphs.
-- Keep RULE SYNTHESIS subordinate to the import column even though it spans the full width.
+- Arrange the seven rule pills as a compact two-row grid inside the third column.
 - Keep FIDELITY CONTRACT visually conclusive and readable at README preview width.
 
 Visual language:
@@ -1122,3 +1122,4 @@ Add one row per accepted generation or targeted edit. Record rejected attempts o
 | 2026-08-29 | Kotlin, GraalVM, and A12 Kernel roles | Corrected the Kotlin branching metaphor, compressed the language table, and added the architectural-benefits band | Accepted at 1024 × 1536. Keep the Kotlin icon as one source branching to multiple outputs and keep WHY THIS SPLIT SCALES focused on portability, distribution, and trust so this poster does not repeat the toolchain, workbench, Interpreter-runtime, or performance infographics. |
 | 2026-08-30 | JSON Schema functionality | Initial built-in ImageGen generation, then focused source-icon and exact-token edits | Accepted at 864 × 1821. Keep the asymmetric import/export columns, use neutral schema-document symbols instead of product logos, and spell code-shaped labels such as `array<object>` and `dependentRequired` exactly. |
 | 2026-08-30 | Semantic model diff | Initial built-in ImageGen generation, then a focused header-contrast edit | Accepted at 1024 × 1536. Keep the sequential review pipeline, preserve the distinct structural-versus-text comparison boundary, and render the title against a light header so it remains legible at README preview width. |
+| 2026-08-30 | JSON Schema functionality | Rebuilt as a wide four-column layout, corrected the export endpoint, then restored the exact `array<object>` token | Accepted at 1536 × 1024. Wide infographics are valid when the topology benefits; connect import and export to the same external-schema node so both direction and target remain explicit. |
