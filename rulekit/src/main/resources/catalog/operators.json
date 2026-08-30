@@ -2742,6 +2742,10 @@
         {
           "text": "mixing forms is admitted and silently changes the arithmetic: NumberOfFilledGroups(Contact, Riders*) adds a PRESENCE BIT for the fixed group to a ROW CARDINALITY for the starred one, so with Contact filled and three instantiated rows it is 4, not 2 — it is not a count of filled groups, and the spelling is statically admitted, so no diagnostic warns you",
           "kind": "SURPRISE"
+        },
+        {
+          "text": "the list sums OPERAND POSITIONS, so naming one starred group twice counts it twice: NumberOfFilledGroups(Riders*, Riders*) over three instantiated rows is 6, not 3 — duplicate checking skips wildcarded operands, so this is statically admitted and no diagnostic warns you",
+          "kind": "SURPRISE"
         }
       ],
       "validExample": {

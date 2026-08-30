@@ -387,6 +387,49 @@ class NestedGroupFillCountLawsTest {
     }
 
     /**
+     * <b>The COMPUTE arm excludes an over-limit row too — the gap this project flagged as unmeasured.</b>
+     * Our {@code OverRepetitionFormalGateDiffTest.numberOfFilledGroupsExcludesOverLimitRow} locks the exclusion
+     * on the RULE arm only, so [KF218] said so rather than assuming the arms agree; on this same operator they
+     * demonstrably diverge for a formally invalid operand ([KF120]). a12-kernel-lean measured the compute arm
+     * independently (checkpoint {@code src-starred-group-count-computation}, row {@code over-limit}) after the
+     * flag; this is our own kernel oracle on the same question, so the observation rests on two estates rather
+     * than travelling across one.
+     *
+     * <p>{@code Riders} is declared max 5. Five, six and seven instantiated rows all count 5 and all sum 5, so
+     * the surplus rows contribute to neither quantity.
+     *
+     * <p>The four-row control is what makes that mean anything: without it, "5 everywhere" is equally consistent
+     * with the quantity being pinned at capacity regardless of content.
+     */
+    @Test
+    void theCOMPUTEArmExcludesAnOverLimitRowFromBothTheCountAndTheSum() {
+        Map<String, String> actual = new LinkedHashMap<>();
+        for (int rows : new int[] {4, 5, 6, 7}) {
+            List<RuntimeLaws.Computed> outcomes = RuntimeLaws.compute(POLARITY_MODEL, capacityDoc(rows, true));
+            actual.put(rows + " rows — starred count", computed(outcomes, "/Catalogue/TallyStar"));
+            actual.put(rows + " rows — starred sum", computed(outcomes, "/Catalogue/TallySum"));
+        }
+
+        Map<String, String> expected = new LinkedHashMap<>();
+        expected.put("4 rows — starred count", "4");
+        expected.put("4 rows — starred sum", "4");
+        expected.put("5 rows — starred count", "5");
+        expected.put("5 rows — starred sum", "5");
+        expected.put("6 rows — starred count", "5");
+        expected.put("6 rows — starred sum", "5");
+        expected.put("7 rows — starred count", "5");
+        expected.put("7 rows — starred sum", "5");
+        assertEquals(expected, actual, "both starred quantities stop at the declared capacity on the compute arm");
+    }
+
+    /** The computed value at {@code path}, normalised so a scale difference cannot read as a count difference. */
+    private static String computed(List<RuntimeLaws.Computed> outcomes, String path) {
+        return RuntimeLaws.computedValue(outcomes, path)
+                .map(v -> new BigDecimal(v).stripTrailingZeros().toPlainString())
+                .orElse("(none)");
+    }
+
+    /**
      * <b>a12-kernel-lean's polarity witness, on our fixture.</b> Adding a STARRED operand flips a computation's
      * implicit self-validation message from {@code VALUE_ERROR} to {@code OMISSION_ERROR}, with nothing else in
      * the model or document changing — a modelling trap, since the two computations differ only in operand form.
@@ -465,6 +508,81 @@ class NestedGroupFillCountLawsTest {
                 "1 + 0");
         assertEquals(0, mixedTally(mixed(false, 0)).orElseThrow().compareTo(BigDecimal.ZERO),
                 "0 + 0 — the control, so the rows above are not a constant");
+    }
+
+    private static final String TWO_STAR_MODEL = starListModel("TwoStarTallyComp", false);
+    private static final String DUP_STAR_MODEL = starListModel("DupStarTallyComp", true);
+
+    /** Two starred operands in one list — distinct groups, or the SAME group named twice. */
+    private static String starListModel(String name, boolean duplicate) {
+        var riders = M.flattenGroup("/Catalogue/Coverage/Riders*").group();
+        var second = duplicate ? M.flattenGroup("/Catalogue/Coverage/Riders*").group()
+                : M.flattenGroup("/Catalogue/Bundle/Items*").group();
+        Computation comp = M.computation(M.field(TALLY)).name(name)
+                .calc(Dsl.numberOfFilledGroups(riders, second).expression())
+                .message(en("Star list tally."))
+                .build();
+        return M.add(comp).toJson();
+    }
+
+    private static RuntimeLaws.Doc starRows(int riderRows, int itemRows) {
+        RuntimeLaws.Doc d = RuntimeLaws.doc().group("/Catalogue", 1)
+                .field("/Catalogue/Reference", "CAT-1", 1, 1);
+        for (int r = 1; r <= riderRows; r++) {
+            d = d.group("/Catalogue/Coverage/Riders", 1, 1, r);
+        }
+        for (int i = 1; i <= itemRows; i++) {
+            d = d.group("/Catalogue/Bundle/Items", 1, 1, i);
+        }
+        return d;
+    }
+
+    private static Optional<BigDecimal> starListTally(String model, RuntimeLaws.Doc doc) {
+        return RuntimeLaws.computedValue(RuntimeLaws.compute(model, doc), TALLY).map(BigDecimal::new);
+    }
+
+    /**
+     * <b>Two starred operands, and the DUPLICATE — the sharpest test of the fold this entry claims.</b>
+     *
+     * <p>[KF218] states the operator as {@code Σ contribution(operand)}. A repeated starred operand is where a
+     * per-OPERAND sum and a per-GROUP one predict different numbers: three rider rows named twice are 6 under
+     * the published phrasing and 3 if the carrier folds over distinct groups instead. Nothing in this project
+     * exercised either shape — the 20-site sweep above found no list with two starred operands at all.
+     *
+     * <p>a12-kernel-lean has the STATIC half pinned ({@code (Rows*, Others*)}, {@code (Flat, Rows*, Others*)}
+     * and {@code (Rows*, Rows*)} all admitted, matching the recorded rule that duplicate checking skips
+     * wildcarded operands); this is the runtime half, on our kernel oracle.
+     *
+     * <p>The zero-row row is the control: it separates a real fold from a constant.
+     */
+    @Test
+    void aRepeatedStarredOperandIsCountedTWICEAndTwoDistinctStarredOperandsAdd() {
+        // The exact spelling both numbers rest on, pinned so the operand list cannot silently dedupe.
+        assertEquals("NumberOfFilledGroups(/Catalogue/Coverage/Riders*, /Catalogue/Coverage/Riders*) == 0",
+                new DslRenderer().render(Dsl.numberOfFilledGroups(
+                        M.flattenGroup("/Catalogue/Coverage/Riders*").group(),
+                        M.flattenGroup("/Catalogue/Coverage/Riders*").group()).eq(0)),
+                "the duplicate operand survives rendering as two positions");
+
+        Map<String, String> actual = new LinkedHashMap<>();
+        actual.put("distinct: 3 riders + 2 items", starListTally(TWO_STAR_MODEL, starRows(3, 2))
+                .map(BigDecimal::toPlainString).orElse("(none)"));
+        actual.put("distinct: 3 riders + 0 items", starListTally(TWO_STAR_MODEL, starRows(3, 0))
+                .map(BigDecimal::toPlainString).orElse("(none)"));
+        actual.put("distinct: 0 + 0 — control", starListTally(TWO_STAR_MODEL, starRows(0, 0))
+                .map(BigDecimal::toPlainString).orElse("(none)"));
+        actual.put("duplicate: 3 riders named twice", starListTally(DUP_STAR_MODEL, starRows(3, 0))
+                .map(BigDecimal::toPlainString).orElse("(none)"));
+        actual.put("duplicate: 0 rows — control", starListTally(DUP_STAR_MODEL, starRows(0, 0))
+                .map(BigDecimal::toPlainString).orElse("(none)"));
+
+        Map<String, String> expected = new LinkedHashMap<>();
+        expected.put("distinct: 3 riders + 2 items", "5");
+        expected.put("distinct: 3 riders + 0 items", "3");
+        expected.put("distinct: 0 + 0 — control", "0");
+        expected.put("duplicate: 3 riders named twice", "6");
+        expected.put("duplicate: 0 rows — control", "0");
+        assertEquals(expected, actual, "the fold sums over OPERAND POSITIONS, not over distinct groups");
     }
 
     private static final String BUNDLE_MODEL = bundleModel();

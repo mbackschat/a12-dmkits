@@ -3506,6 +3506,28 @@
       ]
     },
     {
+      "operator": "NumberOfFilledGroups",
+      "lane": "GOTCHA",
+      "ordinal": 6,
+      "digest": "sha256:a56884529912cf0c783b61099073a97b59aae67097dadee45a2f99354bf6c1c1",
+      "classifications": [
+        "ADMISSION",
+        "RUNTIME"
+      ],
+      "evidence": [
+        {
+          "classification": "ADMISSION",
+          "type": "KERNEL_LAW",
+          "id": "EmptyGroupOperandLawsTest#theGROUPCOUNTAdmitsANestedShellAtEveryPositionDepthAndArity"
+        },
+        {
+          "classification": "RUNTIME",
+          "type": "TEST",
+          "id": "NestedGroupFillCountLawsTest#aRepeatedStarredOperandIsCountedTWICEAndTwoDistinctStarredOperandsAdd"
+        }
+      ]
+    },
+    {
       "operator": "RepetitionNotUnique",
       "lane": "MEANING",
       "ordinal": 0,

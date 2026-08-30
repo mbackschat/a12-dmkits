@@ -148,6 +148,8 @@ class EmptyGroupOperandLawsTest {
                 verdict("NumberOfFilledGroups(/Store/ShellRows, /Store/Filled) > 0"));
         actual.put("the shell itself REPEATABLE, starred",
                 verdict("NumberOfFilledGroups(/Store/ShellRows*, /Store/Filled) > 0"));
+        actual.put("the SAME starred group named twice",
+                verdict("NumberOfFilledGroups(/Store/ShellRows*, /Store/ShellRows*) > 0"));
 
         Map<String, String> expected = new LinkedHashMap<>();
         expected.put("shell first", ADMITTED);
@@ -161,6 +163,7 @@ class EmptyGroupOperandLawsTest {
         expected.put("a group under a repeatable extent — wildcard control", "MVK_NO_WILDCARD");
         expected.put("the shell itself REPEATABLE, unstarred", "MVK_NO_WILDCARD");
         expected.put("the shell itself REPEATABLE, starred", ADMITTED);
+        expected.put("the SAME starred group named twice", ADMITTED);
         assertEquals(expected, actual, "the group count reads content over the whole subtree, at any depth");
     }
 
