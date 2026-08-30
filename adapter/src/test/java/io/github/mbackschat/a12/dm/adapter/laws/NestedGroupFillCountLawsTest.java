@@ -51,11 +51,19 @@ class NestedGroupFillCountLawsTest {
             .rootGroup("Catalogue", c -> c
                     .field("Reference", FieldKind.STRING)
                     .numberField("SectionTally", n -> n.fractionDigits(0))
-                    .group("Contact", g -> g.field("Email", FieldKind.STRING))
-                    .group("Warranty", w -> w.group("Terms", t -> t.field("Clause", FieldKind.STRING))))
+                    .group("Contact", g -> g
+                            .field("Email", FieldKind.STRING)
+                            .numberField("Rating", n -> n.fractionDigits(0)))
+                    .group("Warranty", w -> w.group("Terms", t -> t
+                            .field("Clause", FieldKind.STRING)
+                            .numberField("Months", n -> n.fractionDigits(0))))
+                    .group("Coverage", cv -> cv.group("Riders", r -> r.repeatable(5)
+                            .field("RiderName", FieldKind.STRING))))
             .build().toJson();
 
     private static final BoundModel M = BoundModel.ofJson(CATALOGUE);
+
+    private static final String COMPUTATION_MODEL = computationModel();
 
     private static String computationModel() {
         Computation comp = M.computation(M.field(TALLY)).name("SectionTallyComp")
@@ -95,7 +103,7 @@ class NestedGroupFillCountLawsTest {
     }
 
     private static Optional<BigDecimal> tally(RuntimeLaws.Doc doc) {
-        List<RuntimeLaws.Computed> out = RuntimeLaws.compute(computationModel(), doc);
+        List<RuntimeLaws.Computed> out = RuntimeLaws.compute(COMPUTATION_MODEL, doc);
         return RuntimeLaws.computedValue(out, TALLY).map(BigDecimal::new);
     }
 
@@ -134,5 +142,101 @@ class NestedGroupFillCountLawsTest {
                 "the rule arm also sees 2 filled groups");
         assertFalse(RuntimeLaws.fires(ruleModel(1), "TALLY", bothFilled()),
                 "and does not see 1 — the arms agree on the nested shape");
+    }
+
+    /** A malformed value in a DIRECT child of an operand group: formally invalid, kernel-detected. */
+    private static RuntimeLaws.Doc malformedDirectChild() {
+        return RuntimeLaws.doc().group("/Catalogue", 1)
+                .field("/Catalogue/Reference", "CAT-1", 1, 1)
+                .field("/Catalogue/Contact/Rating", "abc", 1, 1, 1)
+                .field("/Catalogue/Warranty/Terms/Clause", "24 months", 1, 1, 1, 1);
+    }
+
+    /** The same malformed value one level deeper, in a nested descendant. */
+    private static RuntimeLaws.Doc malformedNestedDescendant() {
+        return RuntimeLaws.doc().group("/Catalogue", 1)
+                .field("/Catalogue/Reference", "CAT-1", 1, 1)
+                .field("/Catalogue/Contact/Email", "buyer@example.com", 1, 1, 1)
+                .field("/Catalogue/Warranty/Terms/Months", "abc", 1, 1, 1, 1);
+    }
+
+    /**
+     * <b>The arms DIVERGE on a formally invalid operand, and depth is not what decides it.</b>
+     *
+     * <p>[KF120] states the plain multi-group count is the strict carrier — <i>"any erroneous group makes the
+     * count unavailable rather than silently counting only the admitted subset"</i> — and locks it on the
+     * VALIDATION arm. Measured here on the COMPUTATION arm, that is not what happens: with a kernel-detected
+     * formal error in an operand group ({@code zahlHatUngueltigeZeichen}, VALUE_ERROR, reported by
+     * {@code computeWithFormalErrors} on the same run) the computation still stores a value, and stores the
+     * group as counted.
+     *
+     * <p>Both placements behave identically, which is the point for the nested question: whatever the arms do
+     * with an erroneous operand, they do it the same at depth 1 and at depth 2 — the subtree reading is not
+     * where they differ.
+     */
+    @Test
+    void theComputationArmStillCountsAnOperandGroupHoldingOnlyAMalformedValue() {
+        assertEquals(0, tally(malformedDirectChild()).orElseThrow().compareTo(BigDecimal.valueOf(2)),
+                () -> "measured: the computation arm counts it, contra a strict reading of KF120");
+        assertEquals(0, tally(malformedNestedDescendant()).orElseThrow().compareTo(BigDecimal.valueOf(2)),
+                () -> "and identically one level deeper, so depth is not the variable");
+    }
+
+    /**
+     * The other arm on the identical document — the discriminator that scopes [KF120] rather than
+     * contradicting it. The rule is suppressed, so the count never reaches a comparison.
+     */
+    @Test
+    void theValidationArmIsSuppressedByTheSameMalformedOperand() {
+        assertFalse(RuntimeLaws.fires(ruleModel(2), "TALLY", malformedDirectChild()),
+                "a formal error in a referenced group suppresses the rule");
+        assertFalse(RuntimeLaws.fires(ruleModel(1), "TALLY", malformedDirectChild()),
+                "and it is suppression, not a different count: no comparison value fires");
+    }
+
+    /** The clean control for all four rows above: the same shapes, well-formed, still compute. */
+    @Test
+    void theSameShapesWellFormedStillCompute() {
+        assertTrue(tally(bothFilled()).isPresent(), "the fixture computes when nothing is malformed");
+    }
+
+    private static final String COVERAGE_MODEL = coverageModel();
+
+    private static String coverageModel() {
+        Computation comp = M.computation(M.field(TALLY)).name("CoverageTallyComp")
+                .calc(Dsl.numberOfFilledGroups(M.group("/Catalogue/Contact"), M.group("/Catalogue/Coverage"))
+                        .expression())
+                .message(en("Coverage tally."))
+                .build();
+        return M.add(comp).toJson();
+    }
+
+    private static Optional<BigDecimal> coverageTally(RuntimeLaws.Doc doc) {
+        return RuntimeLaws.computedValue(RuntimeLaws.compute(COVERAGE_MODEL, doc), TALLY).map(BigDecimal::new);
+    }
+
+    /**
+     * <b>a12-kernel-lean's {@code SPEC-2026-08-30-03} discriminator, on our own fixture.</b> {@code Coverage}
+     * owns no field anywhere — its only content is the repeatable {@code Riders}. One INSTANTIATED BUT EMPTY
+     * row: a cell-content account predicts 1, since no cell is filled in the whole subtree.
+     */
+    @Test
+    void anInstantiatedButEmptyRepeatableRowIsItselfContentForTheCount() {
+        Optional<BigDecimal> counted = coverageTally(RuntimeLaws.doc().group("/Catalogue", 1)
+                .field("/Catalogue/Reference", "CAT-1", 1, 1)
+                .field("/Catalogue/Contact/Email", "buyer@example.com", 1, 1, 1)
+                .group("/Catalogue/Coverage/Riders", 1, 1, 1));
+        assertEquals(0, counted.orElseThrow().compareTo(BigDecimal.valueOf(2)),
+                () -> "the bare row is content, so Coverage counts with no filled cell anywhere; got " + counted);
+    }
+
+    /** The control: with no row instantiated the shell is not counted, so it is the ROW that moved it. */
+    @Test
+    void withNoRowInstantiatedTheSameShellIsNotCounted() {
+        Optional<BigDecimal> counted = coverageTally(RuntimeLaws.doc().group("/Catalogue", 1)
+                .field("/Catalogue/Reference", "CAT-1", 1, 1)
+                .field("/Catalogue/Contact/Email", "buyer@example.com", 1, 1, 1));
+        assertEquals(0, counted.orElseThrow().compareTo(BigDecimal.ONE),
+                () -> "only Contact is filled; got " + counted);
     }
 }
