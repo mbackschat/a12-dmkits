@@ -192,6 +192,13 @@ dmtool -m orders.dm.json field modify postal.spec.json
 
 Originate a model **from a JSON Schema or an OpenAPI document**, and export one back out — the same two verbs handle both, because OpenAPI's "Schema Object" *is* a dialect of JSON Schema:
 
+<p align="center">
+  <a href="assets/infographics/json-schema-document-model.png">
+    <img src="assets/infographics/json-schema-document-model.png" alt="How schemakit maps JSON Schema and OpenAPI to and from A12 DocumentModels with explicit fidelity" width="720">
+  </a>
+</p>
+<p align="center"><sub>Click the infographic to open the full-resolution image.</sub></p>
+
 ```sh
 # JSON Schema → kernel-valid model
 dmtool model import-jsonschema --schema order.schema.json > order.dm.json
@@ -272,6 +279,13 @@ dmtool --text -m order.dm.json model report --tree --root /Order --include rules
 ### Review what changed — a semantic diff
 
 When an agent has edited a model on your behalf, raw JSON diffs are unreadable. `model diff` compares two model files **structurally** (it parses and independently binds both, so a pure reformat is never reported) and reports field, group, rule, computation, typedef, authored include/import, and model-configuration changes with per-aspect deltas and a **review-impact tier**. Multi-model two-file diffs resolve each side from `-w` or its own folder; `--since` resolves the base model and dependencies at the Git ref, not from the edited worktree. Each delta keeps deterministic `before`/`after` strings and adds tagged `beforeValue`/`afterValue` scalars or string lists for typed consumers. Fields include complete typed config, requiredness, enum values, metadata, and flags; rules include their error entity, localized messages, and metadata. Removing or retyping a field still used by a rule/computation is HIGH and names `REFERENCED_ELEMENT_REMOVED`/`RETYPE_AFFECTS_READERS`. Groups cover repeatability, mounts, metadata, and mixed authored ordering; computations cover targets, preconditions, operations, tolerances, suppressions, and messages; typedefs carry full typed config and metadata; includes/imports carry their purpose and referenced model without conflating expanded content. The single `CONFIG model` element covers identity/version, locales, decimal/time-zone/language/short-name settings, supported characters, base year, labels, comment, annotations, and roles; set-like values are canonicalized so harmless ordering does not create noise. Review impact follows *loosening > tightening*: increasing a repetition cap, adding an enum value, expanding supported characters, or removing/loosening a rule is HIGH, while tightening is MEDIUM.
+
+<p align="center">
+  <a href="assets/infographics/semantic-model-diff.png">
+    <img src="assets/infographics/semantic-model-diff.png" alt="How dmtool compares two model snapshots structurally, classifies semantic changes, and ranks review impact" width="720">
+  </a>
+</p>
+<p align="center"><sub>Click the infographic to open the full-resolution image.</sub></p>
 
 When base and head contain different revisions of the same referenced model id, use repeatable `--base-workspace` and `--head-workspace` roots; shared `-w` remains the concise form for one common dependency snapshot.
 

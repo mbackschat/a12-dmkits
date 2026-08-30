@@ -25,6 +25,12 @@ The full-resolution source assets live under `assets/infographics/`. Each table 
 | Kotlin, GraalVM, and A12 Kernel roles | `assets/infographics/kotlin-graalvm-kernel-roles.png` | [dmtool release README](../plugin/README.md) | `assets/infographics/kotlin-graalvm-kernel-roles.png` | `720` |
 | Kotlin, GraalVM, and A12 Kernel roles | `assets/infographics/kotlin-graalvm-kernel-roles.png` | [Interpreter release README](../interpreter/public-release/README.md) | `assets/infographics/kotlin-graalvm-kernel-roles.png` | `720` |
 | Kotlin, GraalVM, and A12 Kernel roles | `assets/infographics/kotlin-graalvm-kernel-roles.png` | [infographic source](INFOGRAPHICS.md) | `../assets/infographics/kotlin-graalvm-kernel-roles.png` | `540` |
+| JSON Schema functionality | `assets/infographics/json-schema-document-model.png` | [root README](../README.md) | `assets/infographics/json-schema-document-model.png` | `720` |
+| JSON Schema functionality | `assets/infographics/json-schema-document-model.png` | [dmtool release README](../plugin/README.md) | `assets/infographics/json-schema-document-model.png` | `720` |
+| JSON Schema functionality | `assets/infographics/json-schema-document-model.png` | [infographic source](INFOGRAPHICS.md) | `../assets/infographics/json-schema-document-model.png` | `540` |
+| Semantic model diff | `assets/infographics/semantic-model-diff.png` | [root README](../README.md) | `assets/infographics/semantic-model-diff.png` | `720` |
+| Semantic model diff | `assets/infographics/semantic-model-diff.png` | [dmtool release README](../plugin/README.md) | `assets/infographics/semantic-model-diff.png` | `720` |
+| Semantic model diff | `assets/infographics/semantic-model-diff.png` | [infographic source](INFOGRAPHICS.md) | `../assets/infographics/semantic-model-diff.png` | `540` |
 <!-- infographic-registry:end -->
 
 Every README embeds a scaled preview using an HTML `img` element inside a link to the same full-resolution PNG. The preview width is `720`, the image has descriptive alt text, and the adjacent caption tells the reader that the full image opens on click.
@@ -52,6 +58,8 @@ The table above is the single source for placement and copy checks. Both `check-
 |---|---|---|
 | Module roles, boundaries, entry points, and dependency direction | [ARCHITECTURE.md](ARCHITECTURE.md), [API-GUIDE.md](API-GUIDE.md), root [`README.md`](../README.md) | a module, public product name, dependency edge, entry point, or authoring/runtime boundary changes |
 | dmtool discovery, model exchange, comprehension, authoring, review, runtime, result, and MCP mechanisms | [CLI-SPEC.md](CLI-SPEC.md), [CLI-CONFORMANCE-SPEC.md](CLI-CONFORMANCE-SPEC.md), root [`README.md`](../README.md), public dmtool [`README.md`](../plugin/README.md) | a featured mechanism, contract, or product positioning changes |
+| JSON Schema and OpenAPI transcoding | [SCHEMAKIT-SPEC.md](SCHEMAKIT-SPEC.md), the executable [JSON Schema walkthrough](../examples/cli-jsonschema.md), `dmtool model import-jsonschema --help`, and `dmtool model export-jsonschema --help` | a supported dialect, mapping tier, structural mapping, synthesized-rule family, MappingProfile choice, report contract, export projection/carriage rule, or verification gate changes |
+| Structural semantic diff | [MODEL-REVIEW-SPEC.md](MODEL-REVIEW-SPEC.md), the executable [review walkthrough](../examples/cli-review.md), `dmtool model diff --help`, and `dmtool schema model diff` | an input mode, independently resolved baseline rule, change family, delta type, condition-edit classifier, refactor matcher, review-impact tier, or output view changes |
 | Interpreter preparation, request lifecycle, targets, and public features | [INTERPRETER-API-SPEC.md](INTERPRETER-API-SPEC.md), [INTERPRETER-ARCHITECTURE.md](INTERPRETER-ARCHITECTURE.md), public Interpreter [`README.md`](../interpreter/public-release/README.md) | the public lifecycle, target set, concurrency contract, or supported result family changes |
 | Kernel-conformance claims | [TESTING-SPEC.md](TESTING-SPEC.md), [CONFORMANCE-CORPUS-SPEC.md](CONFORMANCE-CORPUS-SPEC.md), [INTERPRETER-SPEC.md](INTERPRETER-SPEC.md) | the semantics target, oracle hierarchy, differential policy, or portable corpus contract changes |
 | Kotlin, Java, GraalVM, and Kernel roles | [ARCHITECTURE.md](ARCHITECTURE.md), [INTERPRETER-ARCHITECTURE.md](INTERPRETER-ARCHITECTURE.md), [INTERPRETER-SPEC.md](INTERPRETER-SPEC.md), [NATIVE-IMAGE-GRAALVM.md](NATIVE-IMAGE-GRAALVM.md), [RELEASE-SPEC.md](RELEASE-SPEC.md), and the generated root [Source statistics](../README.md#source-statistics) | a component boundary, compile target, shipped platform, runtime owner, Kernel responsibility, native-delivery decision, or Java/Kotlin production count changes |
@@ -788,6 +796,305 @@ Avoid:
 - No invented components, targets, platforms, performance numbers, tiny paragraphs, illegible text, duplicated words, random arrows, unlabeled crossings, ambiguous line endings, excessive nesting, inconsistent icons, or decorative charts.
 ```
 
+## Infographic 6: JSON Schema functionality
+
+### Accepted output
+
+<p align="center">
+  <a href="../assets/infographics/json-schema-document-model.png">
+    <img src="../assets/infographics/json-schema-document-model.png" alt="How schemakit imports JSON Schema and OpenAPI into kernel-valid A12 DocumentModels and exports them with explicit fidelity" width="540">
+  </a>
+</p>
+<p align="center"><sub>864 × 1821 PNG. Click the preview to open the full-resolution image.</sub></p>
+
+### Content map
+
+- Ten-second takeaway: schemakit imports broad JSON Schema and OpenAPI structure and constraints into a kernel-valid DocumentModel, while export distinguishes native projection, A12 carriage, and explicit loss.
+- Exact title: `JSON Schema ⇄ A12 DocumentModel`
+- Exact subtitle: `Import broadly • export honestly • report every decision`
+- Primary layout: split-screen bidirectional translation map.
+- Reading direction: source dialects, central bidirectional bridge, import and export columns, rule-synthesis band, fidelity contract.
+- Focal mechanism: the deliberately asymmetric IMPORT and EXPORT columns around the shared A12 DocumentModel.
+- Major regions: source dialects, import, A12 DocumentModel, export, synthesized rules, fidelity contract.
+- Final output: an auditable translation in which every mapping decision or loss is visible.
+
+### Exact relationships
+
+- JSON Schema or OpenAPI -> enters through -> `model import-jsonschema` -> A12 DocumentModel.
+- `AUTO` -> detects -> JSON Schema or OpenAPI 3.0 / 3.1 / 3.2.
+- `$ref` and `$defs` -> resolve into -> typedefs, inlined groups, or bundle includes.
+- `object` -> maps to -> group.
+- `array<object>` -> maps to -> repeatable group.
+- scalar -> maps to -> typed field.
+- direct constraints -> map to -> requiredness and field config.
+- constraints without a field-config home -> synthesize -> kernel-valid a12 rules.
+- uncertain choices -> follow -> best-effort MappingProfile or strict omission.
+- every guess or omission -> appears in -> transcoding report with corrective action.
+- A12 DocumentModel -> exits through -> `model export-jsonschema` -> JSON Schema or OpenAPI.
+- groups, fields, requiredness, and typedefs -> export as -> native JSON Schema structure.
+- Tier-A rule shapes -> project to -> native JSON Schema keywords.
+- other rules and computations -> ride -> `x-a12-rule` and `x-a12-computation`.
+- temporal and custom fields without a native export mapping -> fall back to -> string plus diagnostic.
+- verification -> checks -> Kernel acceptance, structural round-trip, meta-schema validity, and report accuracy.
+
+### Generation prompt
+
+```text
+Use case: infographic-diagram
+Asset type: GitHub README technical infographic
+Primary request: Create an original, polished portrait technical infographic explaining the built JSON Schema and OpenAPI transcoding functionality in a12-dmkits schemakit, using a clean ByteByteGo-inspired information-design language without copying an existing poster or using the ByteByteGo logo or wordmark.
+
+Communication goal:
+- Audience: software engineers, API designers, A12 model developers, coding-agent users, and technical decision-makers.
+- Ten-second takeaway: schemakit imports broad JSON Schema and OpenAPI structure and constraints into a kernel-valid A12 DocumentModel, while export distinguishes native projection, A12 carriage, and explicit loss.
+- Exact title: "JSON Schema ⇄ A12 DocumentModel".
+- Exact subtitle: "Import broadly • export honestly • report every decision".
+- Tone: technically precise, compact, approachable, and visually scannable.
+
+Canvas and header:
+- Tall 2:3 portrait composition at high resolution, preferably 1024 × 1536 or larger.
+- Fully opaque warm off-white background extending to every canvas edge.
+- Large bold sans-serif title at the top left.
+- Short mint-green vertical bar immediately left of the title.
+- Put the subtitle directly below the title in smaller bold type.
+- Leave the opposite header corner clean.
+- Reserve a clear gap between the header and the diagram body.
+
+Primary information structure:
+- Use a split-screen bidirectional translation map as the single dominant layout skeleton.
+- Primary reading direction: SOURCE DIALECTS at the top, the central bidirectional bridge, IMPORT and EXPORT columns from top to bottom, RULE SYNTHESIS, then FIDELITY CONTRACT.
+- Put one compact SOURCE DIALECTS rail below the subtitle.
+- Put a clear horizontal bridge below it: JSON Schema / OpenAPI on the left, A12 DocumentModel in the center, with one right-pointing import arrow and one left-pointing export arrow.
+- Under the bridge, place two equal rounded columns: IMPORT on the left and EXPORT on the right. Keep their stage rows aligned but make their different contracts unmistakable.
+- Put RULE SYNTHESIS in one full-width band below the two columns.
+- Finish with one compact three-column FIDELITY CONTRACT band.
+- Final output: an auditable translation in which every mapping decision or loss is visible.
+
+Exact content:
+- Use these labels exactly as written and add no other text.
+- Title: "JSON Schema ⇄ A12 DocumentModel"
+- Subtitle: "Import broadly • export honestly • report every decision"
+- Top rail title: "SOURCE DIALECTS"
+- Top rail pills: "JSON Schema 2020-12", "Draft-07 read", "OpenAPI 3.0", "OpenAPI 3.1 / 3.2", "JSON • YAML"
+- Bridge source: "JSON Schema / OpenAPI"
+- Bridge center: "A12 DocumentModel"
+- Right-pointing bridge label: "import-jsonschema"
+- Left-pointing bridge label: "export-jsonschema"
+- Left column title: "IMPORT"
+- Left column tag: "BROAD COVERAGE"
+- Left stage title: "1  DETECT & RESOLVE"
+- Left stage lines: "AUTO dialect", "$ref • $defs", "component • whole bundle"
+- Left stage title: "2  MAP STRUCTURE"
+- Left stage lines: "object → group", "array<object> → repeatable group", "scalar → typed field", "leaf $ref → typedef", "bundle object ref → include"
+- Left stage title: "3  MAP CONSTRAINTS"
+- Left stage lines: "direct → requiredness + field config", "composed → a12 rules", "choices → MappingProfile"
+- Left stage title: "4  REPORT"
+- Left stage lines: "mapped • omitted • notes", "corrective TO-DO", "never silent"
+- Left output pill: "Kernel-valid DocumentModel"
+- Right column title: "EXPORT"
+- Right column tag: "BEST-EFFORT"
+- Right stage title: "1  EMIT NATIVE"
+- Right stage lines: "groups • fields • required", "typedefs → $defs + $ref"
+- Right stage title: "2  PROJECT"
+- Right stage line: "Tier-A rules → keywords"
+- Right stage title: "3  CARRY"
+- Right stage lines: "rules → x-a12-rule", "computations → x-a12-computation"
+- Right stage title: "4  DISCLOSE"
+- Right stage lines: "temporal + custom → string", "diagnostic for every loss"
+- Right output pill: "JSON Schema / OpenAPI"
+- Full-width band title: "RULE SYNTHESIS"
+- Rule pills: "exclusive bounds", "multipleOf • const", "dependentRequired", "uniqueItems • minItems", "if / then / else", "not • contains", "union discriminators"
+- Bottom band title: "FIDELITY CONTRACT"
+- Bottom heading: "IMPORT"
+- Bottom line: "Map or report • never silent"
+- Bottom heading: "EXPORT"
+- Bottom line: "Native where faithful • carriage otherwise"
+- Bottom heading: "VERIFY"
+- Bottom line: "Kernel accept • round-trip • meta-schema"
+
+Semantic mapping:
+- External schema = document-with-braces icon + pale cyan rounded node.
+- A12 DocumentModel = model-tree icon + saturated purple rounded node.
+- Import = right-pointing saturated green arrow + pale green column.
+- Export = left-pointing saturated blue arrow + pale blue column.
+- MappingProfile choices and transcoding report = sliders and checklist icons + pale yellow accents.
+- Synthesized rules = condition-tree icons + pale lavender band.
+- Native mapping = solid node or arrow; carriage = dashed purple container; explicit loss = amber diagnostic triangle.
+
+Layout-specific composition:
+- Divide the body into aligned import and export fields after the shared bridge.
+- Mirror the stage hierarchy and row positions across both columns while preserving the factual asymmetry.
+- Keep the bridge arrows separate, clearly directional, and labeled at their origins.
+- Render stage details as short rows or pills, never paragraphs.
+- Keep RULE SYNTHESIS subordinate to the import column even though it spans the full width.
+- Keep FIDELITY CONTRACT visually conclusive and readable at README preview width.
+
+Visual language:
+- Heavy near-black outlines, rounded rectangles, pill labels, simple stage numbers, and generous gutters.
+- Flat, colorful technical icons with consistent dark outlines and no realistic shading.
+- Neutral canvas with a mint accent, pale cyan, pale blue, pale green, pale lavender, pale yellow, saturated purple, saturated blue, and saturated green.
+- Use bold geometric sans-serif type. Keep the title prominent, stage headings strong, and detail rows compact but fully readable.
+- Keep all text horizontal and fully legible.
+
+Avoid:
+- No ByteByteGo logo, wordmark, watermark, A12 logo, mgm branding, JSON Schema logo, OpenAPI logo, or copied poster composition.
+- No photorealistic imagery, 3D icons, gradients, neon glow, glassmorphism, blurred shadows, decorative textures, or generic stock art.
+- Do not imply symmetric fidelity, silent omissions, universal lossless export, runtime validation by a stock JSON Schema validator, or direct schemakit coupling to raw Kernel types.
+- Do not imply that a feature omission aborts the rest of an import; entry-point selection and invalid input remain separate invocation preconditions.
+- Do not turn this into the broader dmtool lifecycle or repeat the workbench infographic.
+- No invented keywords, mapping tiers, dialects, constraints, commands, performance claims, tiny paragraphs, illegible text, duplicated words, random arrows, ambiguous direction, excessive nesting, or decorative charts.
+```
+
+## Infographic 7: Semantic model diff
+
+### Accepted output
+
+<p align="center">
+  <a href="../assets/infographics/semantic-model-diff.png">
+    <img src="../assets/infographics/semantic-model-diff.png" alt="How dmtool binds two model snapshots, ignores formatting noise, classifies semantic changes, and ranks review impact" width="540">
+  </a>
+</p>
+<p align="center"><sub>1024 × 1536 PNG. Click the preview to open the full-resolution image.</sub></p>
+
+### Content map
+
+- Ten-second takeaway: `model diff` independently binds two model snapshots, compares authored structure rather than text, recognizes rule and refactor meaning conservatively, and puts silent-risk changes first.
+- Exact title: `Semantic Model Diff`
+- Exact subtitle: `Compare model meaning • rank review impact`
+- Primary layout: sequential review pipeline with one impact-ranking conclusion.
+- Reading direction: baseline inputs, independent binding, noise gate, complete comparison, semantic classifiers, impact tiers, trusted outputs.
+- Focal mechanism: AST-level condition analysis and asymmetric HIGH / MEDIUM / LOW review-impact ranking.
+- Major regions: two snapshots, parse and bind, formatting-noise gate, complete authored state, condition and refactor analysis, impact ranking, outputs.
+- Final output: a tool-computed structural change-set and an impact-sorted human review view.
+
+### Exact relationships
+
+- base file and its dependency snapshot -> bind independently from -> head file and its dependency snapshot.
+- `--since <ref>` -> resolves -> base model and dependencies at the Git ref.
+- working tree -> supplies -> head model and dependencies.
+- parsed authored state -> removes -> formatting-only noise.
+- authored order -> remains -> semantic state.
+- model diff -> compares -> fields, groups, rules, computations, typedefs, includes/imports, configuration, and element position.
+- typed deltas -> preserve -> deterministic before/after strings plus typed values.
+- rule AST comparison -> classifies -> clause, reference, operator, and operand edits.
+- structural complement -> proves -> `POLARITY_INVERTED`.
+- conservative relocation matching -> recognizes -> rename or move.
+- rename or move plus rewritten references -> groups into -> one verifiable refactor overlay.
+- uncertainty -> remains -> removed plus added.
+- review-impact ranking -> places -> loosening and silent acceptance above tightening and loud failure.
+- JSON output -> provides -> trusted machine contract.
+- `--text` -> provides -> impact-sorted human review.
+- `schema model diff` -> describes -> the output contract and reason codes.
+
+### Generation prompt
+
+```text
+Use case: infographic-diagram
+Asset type: GitHub README technical infographic
+Primary request: Create an original, polished portrait technical infographic explaining dmtool's structural semantic model diff and review-impact engine, using a clean ByteByteGo-inspired information-design language without copying an existing poster or using the ByteByteGo logo or wordmark.
+
+Communication goal:
+- Audience: software engineers, A12 model reviewers, coding-agent users, business analysts, and technical decision-makers.
+- Ten-second takeaway: model diff independently binds two model snapshots, compares authored structure rather than text, recognizes rule and refactor meaning conservatively, and puts silent-risk changes first.
+- Exact title: "Semantic Model Diff".
+- Exact subtitle: "Compare model meaning • rank review impact".
+- Tone: technically precise, trust-focused, compact, approachable, and visually scannable.
+
+Canvas and header:
+- Tall 2:3 portrait composition at high resolution, preferably 1024 × 1536 or larger.
+- Fully opaque warm off-white background extending to every canvas edge.
+- Large bold sans-serif title at the top left.
+- Short mint-green vertical bar immediately left of the title.
+- Put the subtitle directly below the title in smaller bold type.
+- Leave the opposite header corner clean.
+- Reserve a clear gap between the header and the diagram body.
+
+Primary information structure:
+- Use a sequential review pipeline as the single dominant layout skeleton.
+- Primary reading direction: top to bottom through five numbered bands, then the trusted output rail.
+- Band 1 starts with two equal snapshots side by side and converges only after each has its own binding boundary.
+- Band 2 is a formatting-noise gate.
+- Band 3 is the complete authored-state comparison grid.
+- Band 4 contains two aligned semantic-analysis cards: RULE AST and REFACTOR.
+- Band 5 is the focal three-column HIGH / MEDIUM / LOW review-impact ranking.
+- Finish with a compact trusted-output rail.
+- Final output: a tool-computed structural change-set and an impact-sorted human review view.
+
+Exact content:
+- Use these labels exactly as written and add no other text.
+- Title: "Semantic Model Diff"
+- Subtitle: "Compare model meaning • rank review impact"
+- Band title: "1  BIND BOTH SNAPSHOTS"
+- Left snapshot title: "BASE"
+- Left snapshot lines: "file + dependency snapshot", "or Git ref via --since"
+- Right snapshot title: "HEAD"
+- Right snapshot lines: "file + dependency snapshot", "or working tree"
+- Binding pill: "Independently resolved"
+- Band title: "2  REMOVE TEXT NOISE"
+- Noise input: "JSON formatting"
+- Noise result: "not a change"
+- Order note: "Authored order stays semantic"
+- Band title: "3  COMPARE THE COMPLETE MODEL"
+- Family pills: "Fields", "Groups", "Rules", "Computations", "Typedefs", "Includes / imports", "Configuration", "Position"
+- Delta pill: "before / after + typed values"
+- Band title: "4  UNDERSTAND THE CHANGE"
+- Left analysis title: "RULE AST"
+- Left analysis lines: "clause • reference • operator • operand", "located edit script", "complement → POLARITY_INVERTED"
+- Right analysis title: "REFACTOR"
+- Right analysis lines: "rename • move", "group rewritten referrers", "unsure → removed + added"
+- Band title: "5  RANK REVIEW IMPACT"
+- High heading: "HIGH"
+- High lines: "constraint loosened or removed", "polarity inverted", "active reader affected"
+- Medium heading: "MEDIUM"
+- Medium lines: "constraint tightened", "computation or config changed", "element moved"
+- Low heading: "LOW"
+- Low lines: "message or metadata", "element renamed", "pure reorder"
+- Impact callout: "Loosening > tightening"
+- Impact explanation: "Silent acceptance deserves first review"
+- Bottom rail title: "TRUSTED OUTPUT"
+- Bottom output pills: "JSON truth contract", "--text impact view", "schema model diff"
+- Bottom benefit pills: "No formatting noise", "Danger first", "Tool-computed trust"
+
+Semantic mapping:
+- Base snapshot = document-stack icon + pale cyan rounded card.
+- Head snapshot = document-stack icon + pale lavender rounded card.
+- Independent binding = two separate dark-outlined resolver boxes that converge into the comparison engine.
+- Formatting noise = gray text-lines icon stopped by a filter gate.
+- Complete model = eight small aligned family pills in pale yellow and pale green.
+- Rule AST = branching condition-tree icon + pale lavender analysis card.
+- Refactor = path-relocation and linked-reference icon + pale cyan analysis card.
+- HIGH impact = saturated coral-red heading + pale coral field.
+- MEDIUM impact = saturated amber heading + pale yellow field.
+- LOW impact = saturated green heading + pale green field.
+- Trusted output = shield-check icon + saturated purple rail.
+
+Layout-specific composition:
+- Stack five full-width stage bands from top to bottom with consistent numbers, borders, and gutters.
+- Keep the BASE and HEAD paths separate until both independent binding boxes feed the semantic engine.
+- Make the formatting filter visually remove only text noise; never show authored order disappearing.
+- Render the eight compared families as a clean two-row grid, not a tree or lifecycle diagram.
+- Keep RULE AST and REFACTOR equal in visual weight and contained inside band 4.
+- Make the impact tier band the largest and strongest region. Align equivalent headings and detail rows across HIGH, MEDIUM, and LOW.
+- Place the asymmetric-impact callout across the impact band without obscuring any tier.
+- Make the trusted-output rail visually conclusive and readable at README preview width.
+
+Visual language:
+- Heavy near-black outlines, rounded rectangles, pill labels, compact circular stage numbers, and generous gutters.
+- Flat, colorful technical icons with consistent dark outlines and no realistic shading.
+- Neutral canvas with a mint accent, pale cyan, pale lavender, pale green, pale yellow, pale coral, saturated purple, saturated blue, saturated green, amber, and coral-red.
+- Use bold geometric sans-serif type. Keep the title prominent, stage titles strong, and all detail rows compact but fully readable.
+- Keep all text horizontal and fully legible.
+
+Avoid:
+- No ByteByteGo logo, wordmark, watermark, A12 logo, mgm branding, Git logo, or copied poster composition.
+- No photorealistic imagery, 3D icons, gradients, neon glow, glassmorphism, blurred shadows, decorative textures, or generic stock art.
+- Do not call this a textual diff, behavioral-equivalence proof, runtime differential, or agent-authored summary. It is a tool-computed structural semantic diff.
+- Do not imply that formatting changes are semantic, that authored reordering is ignored, that every removed-and-added pair is a rename or move, or that risk means probability.
+- Do not claim a Markdown output view; the built views shown here are JSON and --text.
+- Do not repeat the broader dmtool workbench, authoring lifecycle, Interpreter runtime, or performance topics of the other infographics.
+- No invented change families, impact reasons, commands, output formats, tiny paragraphs, illegible text, duplicated words, random arrows, ambiguous connectors, excessive nesting, or decorative charts.
+```
+
 ## Regeneration workflow
 
 1. Revalidate every factual input against the sources in the freshness table. Runtime behavior claims require the real Kernel differential; performance and memory figures require the owning measurement protocol and results record.
@@ -813,3 +1120,5 @@ Add one row per accepted generation or targeted edit. Record rejected attempts o
 | 2026-08-29 | Kotlin, GraalVM, and A12 Kernel roles | Replaced the composition rail with a focused Kotlin-versus-Java table edit | Accepted at 1024 × 1536. Keep the language comparison compact, express each build derivation inline, scope kLOC to production code, and bind both displayed sizes to the generated root Source Statistics table. |
 | 2026-08-29 | Kotlin, GraalVM, and A12 Kernel roles | Focused kLOC correction after refreshing the owning Source Statistics tables | Accepted at 1024 × 1536 with 47.7 kLOC Java and 19.1 kLOC Kotlin. Run `update-code-statistics.sh --check` before freezing a count; prompt-to-table synchronization cannot detect a stale owning table by itself. |
 | 2026-08-29 | Kotlin, GraalVM, and A12 Kernel roles | Corrected the Kotlin branching metaphor, compressed the language table, and added the architectural-benefits band | Accepted at 1024 × 1536. Keep the Kotlin icon as one source branching to multiple outputs and keep WHY THIS SPLIT SCALES focused on portability, distribution, and trust so this poster does not repeat the toolchain, workbench, Interpreter-runtime, or performance infographics. |
+| 2026-08-30 | JSON Schema functionality | Initial built-in ImageGen generation, then focused source-icon and exact-token edits | Accepted at 864 × 1821. Keep the asymmetric import/export columns, use neutral schema-document symbols instead of product logos, and spell code-shaped labels such as `array<object>` and `dependentRequired` exactly. |
+| 2026-08-30 | Semantic model diff | Initial built-in ImageGen generation, then a focused header-contrast edit | Accepted at 1024 × 1536. Keep the sequential review pipeline, preserve the distinct structural-versus-text comparison boundary, and render the title against a light header so it remains legible at README preview width. |

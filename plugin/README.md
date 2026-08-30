@@ -236,6 +236,13 @@ Envelope-producing invocations use the standard JSON result envelope (`{ok, vali
 
 `model diff` is a structural semantic diff: it independently binds both models, ignores formatting noise, and reports typed field, group, rule, computation, typedef, authored include/import, and model-configuration changes with per-aspect deltas, review-impact tiers, and reason codes. Multi-model two-file diffs resolve each side from `-w` or its own folder; `--since` resolves the base model and dependencies at the Git ref. Delta JSON preserves deterministic `before`/`after` strings and adds tagged `beforeValue`/`afterValue` scalars or string lists for typed consumers.
 
+<p align="center">
+  <a href="assets/infographics/semantic-model-diff.png">
+    <img src="assets/infographics/semantic-model-diff.png" alt="How dmtool compares two model snapshots structurally, classifies semantic changes, and ranks review impact" width="720">
+  </a>
+</p>
+<p align="center"><sub>Click the infographic to open the full-resolution image.</sub></p>
+
 When base and head contain different revisions of the same referenced model id, pass repeatable `--base-workspace` and `--head-workspace` roots; shared `-w` is for a common dependency snapshot.
 
 ```sh
@@ -249,6 +256,13 @@ A field diff covers complete typed config, requiredness, enum values, metadata, 
 ### From a JSON Schema or OpenAPI document
 
 Originate a model from an existing **JSON Schema** or **OpenAPI** spec (3.0 / 3.1 / 3.2), and export one back out — the same two verbs handle both, because OpenAPI's Schema Object *is* a JSON-Schema dialect:
+
+<p align="center">
+  <a href="assets/infographics/json-schema-document-model.png">
+    <img src="assets/infographics/json-schema-document-model.png" alt="How schemakit maps JSON Schema and OpenAPI to and from A12 DocumentModels with explicit fidelity" width="720">
+  </a>
+</p>
+<p align="center"><sub>Click the infographic to open the full-resolution image.</sub></p>
 
 ```sh
 # OpenAPI → model: --dialect AUTO-detects 3.0/3.1/3.2; --component picks the components/schemas entry
