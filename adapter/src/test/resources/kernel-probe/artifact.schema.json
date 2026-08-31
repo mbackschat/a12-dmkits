@@ -5,6 +5,7 @@
   "description": "The `-Pout=` output of `./gradlew :adapter:kernelProbe`: what the REAL A12 kernel's runtime entry points reported, per request row and PER KERNEL STRATEGY — `validateFull` always, and `compute` when the request asked for it. Deterministic by construction — messages and computed outcomes are totally ordered, the header carries no clock reading, and the renderer pins a `\\n` indenter — so two runs over identical input and an identical source tree produce identical bytes and a consumer can pin the artifact by SHA-256. The normative contract is docs/KERNEL-PROBE-SPEC.md.",
   "type": "object",
   "required": ["schemaVersion", "producer", "request", "rows"],
+  "$comment": "`rows` stays required and is [] for a model-level-only request: it is a key of schemaVersion 1 that consumers already read, so making it optional would change the shape of artifacts they pin.",
   "additionalProperties": false,
   "properties": {
     "schemaVersion": {
@@ -74,10 +75,32 @@
         }
       }
     },
+    "mandatoryInformation": {
+      "type": "object",
+      "required": ["mandatory", "mandatoryForRootGroup", "mandatoryRootGroups"],
+      "additionalProperties": false,
+      "description": "the kernel's mandatory-information derivation over the model's rule collection (`IRuleCollectionMetaInformation.getMandatoryInformationFromRules`) — a MODEL-level observation, so it appears once rather than per row or per strategy, and it reads no document. ABSENT unless the request asked for it, which is what keeps every already-pinned artifact byte-identical. The kernel derives these from rule CONDITIONS: `FieldNotFilled(/A/a)` makes `/A/a` mandatory, `GroupNotFilled(/A)` makes `/A` a mandatory root group, and a starred form makes neither because it does not hold for every repetition. Each list is sorted: the kernel returns `Set<String>`, which carries no order contract, so an artifact pinned by SHA-256 cannot depend on one. The rule collection is the kernel's own and unfiltered, so it includes the generated self-validation of every computation.",
+      "properties": {
+        "mandatory": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "`getMandatory()` — the fields the rule collection makes mandatory outright, sorted"
+        },
+        "mandatoryForRootGroup": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "`getMandatoryForRootGroup()` — the fields mandatory once their root group is present, sorted. A mandatory field is also mandatory regarding its root group."
+        },
+        "mandatoryRootGroups": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "`getMandatoryRootGroups()` — the root groups the collection makes mandatory, sorted"
+        }
+      }
+    },
     "rows": {
       "type": "array",
-      "minItems": 1,
-      "description": "one entry per request row, in request order",
+      "description": "one entry per request row, in request order; EMPTY when the request observed only model-level entry points, which read no document",
       "items": {
         "type": "object",
         "required": ["name", "enginesAgree", "engines"],

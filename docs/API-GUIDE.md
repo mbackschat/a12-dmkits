@@ -224,6 +224,13 @@ static Condition exceedsBaselineRow(GroupRef repeating, NumberRef amount, String
 static Condition uniqueBy(GroupRef repeating, FieldRef key) {
     return groupFilled(repeating).and(repetitionNotUnique(key));               // + .from(scope) for @From
 }
+
+/** Bulk authoring over a field set gathered by navigation — every fill quantifier and the filled COUNT
+ *  take the same `List`, so a caller holding one never unrolls it back into varargs. */
+static Condition partiallyCompleted(List<FieldRef> section) {
+    return Dsl.notAllFieldsFilled(section)                                     // the list peer of every
+            .and(Dsl.numberOfFilledFields(section).gt(0));                     // quantifier, count included
+}
 ```
 
 The fragments show how the shipped primitives compose into the **business idioms** the proposal's §2 names (`mandatory`, `withinTolerance`, per-row thresholds, `uniqueBy`) — each is 1–3 lines built from the operators in hand.

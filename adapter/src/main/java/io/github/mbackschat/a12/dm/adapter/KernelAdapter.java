@@ -552,6 +552,67 @@ public final class KernelAdapter {
     }
 
     /**
+     * Which of the three sets {@code IMandatoryInformation} derives. An enum rather than three positional
+     * record components: they are all {@code Set<String>}, so a keyed map makes a swap unrepresentable
+     * instead of merely unlikely, and the wire name is single-sourced for anything that serializes them.
+     */
+    public enum MandatorySet {
+
+        /** {@code getMandatory()} — fields the rule collection makes mandatory outright. */
+        MANDATORY("mandatory"),
+
+        /** {@code getMandatoryForRootGroup()} — fields mandatory once their root group is present. */
+        MANDATORY_FOR_ROOT_GROUP("mandatoryForRootGroup"),
+
+        /** {@code getMandatoryRootGroups()} — root groups the collection makes mandatory. */
+        MANDATORY_ROOT_GROUPS("mandatoryRootGroups");
+
+        private final String wireName;
+
+        MandatorySet(String wireName) {
+            this.wireName = wireName;
+        }
+
+        /** The kernel's own getter name, minus the {@code get} prefix — what a serialized observation spells. */
+        public String wireName() {
+            return wireName;
+        }
+    }
+
+    /**
+     * The kernel's <b>mandatory-information derivation</b> over this model's rule collection — read-only, no
+     * document, no evaluation ({@code IRuleCollectionMetaInformation.getMandatoryInformationFromRules}). The
+     * kernel derives mandatoriness from rule CONDITIONS: {@code FieldNotFilled(/A/a)} makes {@code /A/a}
+     * mandatory, {@code GroupNotFilled(/A)} makes {@code /A} a mandatory root group, and a starred form makes
+     * neither, because it does not hold for every repetition.
+     *
+     * <p><b>The rule collection is the kernel's own, unfiltered.</b> {@code getAllRules()} includes the
+     * generated self-validation of every computation, and {@link #readAll} filters those out for its own
+     * purpose. Filtering here would insert an editorial choice of ours into a kernel measurement, so the
+     * collection is passed as the kernel keeps it.
+     *
+     * <p><b>Sorted, because the kernel returns unordered sets.</b> {@code IMandatoryInformation} exposes
+     * {@code Set<String>}, which carries no order contract, so a consumer pinning an observation by hash
+     * would be pinning a hash-bucket layout. Sorting loses nothing that was ever guaranteed.
+     *
+     * <p>Problems the derivation reports are dropped: its precondition is that every rule's condition text is
+     * valid, which the consistency gate has already established for any model opened through {@link #checkAndOpen}.
+     */
+    public java.util.Map<MandatorySet, java.util.Set<String>> mandatoryInformation() {
+        var info = new ServiceFactory().getRuleCollectionMetaInformation(mvk)
+                .getMandatoryInformationFromRules(elements.getAllRules(), SILENT);
+        var out = new java.util.EnumMap<MandatorySet, java.util.Set<String>>(MandatorySet.class);
+        out.put(MandatorySet.MANDATORY, sorted(info.getMandatory()));
+        out.put(MandatorySet.MANDATORY_FOR_ROOT_GROUP, sorted(info.getMandatoryForRootGroup()));
+        out.put(MandatorySet.MANDATORY_ROOT_GROUPS, sorted(info.getMandatoryRootGroups()));
+        return java.util.Collections.unmodifiableMap(out);
+    }
+
+    private static java.util.Set<String> sorted(java.util.Set<String> names) {
+        return java.util.Collections.unmodifiableSet(new java.util.TreeSet<>(names));
+    }
+
+    /**
      * The error messages stored on a validation rule (locale → text), <b>raw and uninterpolated</b> — read
      * straight from the model, no runtime evaluation, so it is native-capable. Surfaced by {@code rule read}
      * (FEATURE-GAPS G10) so an agent/BA can audit a rule's wording, message length, and locale coverage

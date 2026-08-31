@@ -2,6 +2,7 @@ package io.github.mbackschat.a12.dm.adapter.laws;
 
 import java.util.Comparator;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 import com.fasterxml.jackson.core.util.DefaultIndenter;
@@ -9,6 +10,8 @@ import com.fasterxml.jackson.core.util.DefaultPrettyPrinter;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+
+import io.github.mbackschat.a12.dm.adapter.KernelAdapter;
 
 /**
  * The kernel-runtime probe's observation artifact: the value {@link KernelRuntimeProbe} produces and the exact
@@ -31,21 +34,29 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
  * <p>Contract + key meanings: {@code docs/KERNEL-PROBE-SPEC.md}; machine-readable shape:
  * {@code adapter/src/test/resources/kernel-probe/artifact.schema.json}.
  */
-public record KernelProbeArtifact(Header header, List<Row> rows) {
+public record KernelProbeArtifact(Header header, List<Row> rows,
+        Optional<Map<KernelAdapter.MandatorySet, List<String>>> mandatoryInformation) {
 
     /**
      * The artifact shape's own version, bumped when a key's presence or meaning changes.
      *
-     * <p><b>Why the optional {@code computations} block did NOT bump it.</b> A consumer only receives that block
-     * by asking for it ({@code observe: ["validateFull", "compute"]}), so no artifact any existing consumer can
-     * obtain changes shape, and no existing key changes meaning. Bumping would instead have broken the harder
-     * guarantee: a request that does not ask for compute must produce <em>byte-identical</em> output, because
-     * consumers pin these bytes by SHA-256, and the version rides in the first line of every artifact.
+     * <p><b>Why the optional {@code computations} block did NOT bump it, nor {@code mandatoryInformation}.</b>
+     * A consumer only receives either block by asking for it ({@code observe: ["validateFull", "compute"]},
+     * {@code observe: ["mandatoryInformation"]}), so no artifact any existing consumer can obtain changes
+     * shape, and no existing key changes meaning. Bumping would instead have broken the harder guarantee: a
+     * request that does not ask for them must produce <em>byte-identical</em> output, because consumers pin
+     * these bytes by SHA-256, and the version rides in the first line of every artifact.
      */
     public static final int SCHEMA_VERSION = 1;
 
     public KernelProbeArtifact {
         rows = List.copyOf(rows);
+        mandatoryInformation = mandatoryInformation.map(Map::copyOf);
+    }
+
+    /** The row-only artifact — every request that observes no model-level channel. */
+    public KernelProbeArtifact(Header header, List<Row> rows) {
+        this(header, rows, Optional.empty());
     }
 
     /**
@@ -256,6 +267,18 @@ public record KernelProbeArtifact(Header header, List<Row> rows) {
                         engineNode.putObject("computations"), computations));
             }
         }
+
+        // Written LAST and only when observed, so a request that does not ask for it keeps its bytes: the
+        // model-level block is not a row and belongs to the request as a whole, not to any document.
+        mandatoryInformation.ifPresent(sets -> {
+            ObjectNode node = root.putObject("mandatoryInformation");
+            // Iterated over the ENUM, not the map: the key order is then the declaration order whatever
+            // Map implementation reached here, which is what a SHA-256 pin needs.
+            for (KernelAdapter.MandatorySet set : KernelAdapter.MandatorySet.values()) {
+                ArrayNode names = node.putArray(set.wireName());
+                sets.getOrDefault(set, List.of()).forEach(names::add);
+            }
+        });
         return render(mapper, root);
     }
 

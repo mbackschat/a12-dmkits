@@ -4010,3 +4010,71 @@ A group's `repeatability` is admitted for any integer **greater than zero**, and
 **Our own builders are deliberately stricter, and now that is documented rather than merely true.** `DocumentModelDraft.GroupBuilder.repeatable` and `ModelDocument.addRepeatableGroup` both refuse below `2`, so they refuse `1` where the kernel admits it. That is an intentional API narrowing — `repeatable(1)` asks for a repeatable group that cannot repeat, i.e. a no-op the caller almost certainly did not mean, and the plain group builder already expresses it — but until this measurement the refusal had **no test and no kernel basis anywhere in the repository**, which is exactly the shape the standing client-side-refusal rule calls a defect waiting to be found. The narrowing stays; what changes is that its basis is measured and its one-step breadth is stated.
 
 *(Locked: `adapter.laws.GroupRepeatabilityDomainLawsTest` — both gates in one call, the refusal text pinned verbatim including the per-element repetition and both domain wordings.)*
+
+## §6 supplement — a bare constant's admission and its store are both decided by the target's declared FORMAT STRING, and the declared kind reaches neither (kernel `checkConsistency` + `compute`, 2026-08-31) <a id="kf222"></a>
+
+> Fold: pending — newly recorded constant-assignment fact; folds into §6 (dates and time) on the next canonical KERNEL-SEMANTICS pass.
+
+Confirms a12-kernel-lean's `SPEC-2026-08-31-02`, `-03` and `-04` on our own fixtures, independently built in a different domain, with a two-field group and a different Base Year value. Every cell they predicted reproduced on the first run.
+
+**Admission is a family gate keyed on the format string.** A TIME field declared `HH:mm:ss` admits `"12:30:00"` and refuses `"05.03.2024"`; a **DATE** field declared `HH:mm:ss` does exactly the same, and a TIME field declared `yyyy-MM-dd` inverts both. Each kind appears on both sides of both outcomes, so the kind is excluded as the cause rather than left unvaried. A family mismatch draws `MVK_INVALID_COMPARE_TO_DATE`; a String constant into a STRING field is the live control that keeps the refusals from reading as a dead gate.
+
+**The cross-kind cells STORE, so the format governs the runtime too.** A DATE-kind field declared `HH:mm:ss` stores `12:30:00`; a TIME-kind field declared `yyyy-MM-dd` stores `2024-03-05`. A peer keying its renderer on the kind stays green on the admission table and writes the wrong text here.
+
+**The store drops the components the format omits, silently.** One `"05.03.2024"` stores `05.03.2024` into `dd.MM.yyyy`, `2024-03-05` into `yyyy-MM-dd`, and `2024` into `yyyy` — nothing cleared, nothing errored, no message. A component-omitting target discards day and month with no signal at all, which is the most likely authoring mistake in this family.
+
+**A declared Base Year is an authoring gate and contributes nothing to the stored text.** With `baseYear` 2019 declared, one `"05.03.2024"` stores `03` for `MM`, `03-05` for `MM-dd`, `2024-03` for `yyyy-MM`, `2024` for `yyyy` and `2024-03-05` for `dd.MM.yyyy`. 2019 appears in no cell, so an admitted constant is not evidence that the Base Year's year survived into the value.
+
+**Our typed builder is stricter than the kernel here, and the narrowing is structural rather than a loose predicate.** `Computation.Builder` requires `operation.kind() == computedField.kind()`, so it refuses both cross-kind cells the kernel admits and stores. `FieldRef.kind()` does not carry the declared format, so conforming would be a typed-surface change; recorded as a measured over-rejection under the standing client-side-refusal rule rather than silently loosened. See [DEV-API-GAPS](DEV-API-GAPS.md).
+
+*(Locked: `adapter.laws.ConstantTargetFormatLawsTest` — the 2×2×2 family gate with its String control, both cross-kind stores, the component-omitting stores, the Base Year admission table across DATE and DATE_FRAGMENT, and the over-rejection's exact message.)*
+
+## §6 supplement — the omitted-year date and the DATETIME literal are both WITNESSED, and the Base Year is required exactly where constant and target disagree about the year (kernel `checkConsistency` + `compute`, 2026-08-31) <a id="kf223"></a>
+
+> Fold: pending — newly recorded temporal-literal vocabulary; folds into §6 (dates and time) on the next canonical KERNEL-SEMANTICS pass.
+
+**Corrects a12-kernel-lean's two "no witness found" records** (`SPEC-2026-08-31-02`'s `omitted-year` row, `-03`'s `inventory` row), and sharpens `-04`'s Base Year account from one quadrant to the whole grid.
+
+**A refusal code names the check that refused, never the input that reached it** — the reading a12-kernel-lean withdrew in `-03`, and it was drafted here too before a control refuted it. An unclassifiable `"HELLO"` draws the *same* code as a well-formed literal of the wrong family on every target measured, so a code shared with that control carries no information about classification. The only evidence a spelling classified is that it was **admitted**.
+
+**The omitted-year date literal exists: `"05.03."` and `"13.07."` are admitted; `"05.03"` and `"03.2024"` are not.** The trailing dot is load-bearing. It holds in both carriers — assigned as a constant to a computation target, and compared against a field, which is the carrier this project's own `DateLiteral` javadoc has always claimed and never measured.
+
+**A Base Year is required exactly when the constant and the target disagree about carrying a YEAR, in either direction.** Two constants × seven declared formats × Base Year present or absent, no cell omitted: a complete constant needs one for `MM` and `MM-dd` only; a yearless constant needs one for all five year-bearing formats and none for the two yearless ones. The year-leading targets are what make this specific rather than "any component disagreement" — `yyyy` differs from a complete constant in two components of three and needs no Base Year, while `MM-dd` differs in one and does. a12-kernel-lean's clause covers the first row; the second reverses it.
+
+**The DATETIME literal is the German date, `T`, and the clock: `"05.03.2024T12:30:00"`.** Against a DATETIME target declared `yyyy-MM-dd'T'HH:mm:ss` it is the only one of four spellings admitted — the ISO form the target's own declared format uses is refused — and it stores as `2024-03-05T12:30:00`. So the literal's spelling is a lexer convention owing nothing to the format the value is rendered into, the same two-rule composition [KF222](#kf222) records for dates.
+
+**The DATERANGE literal stays unwitnessed over six spellings**, and that is an absence over those six rather than a claim of unauthorability: `05.03.2024-31.03.2024`, `05.03.2024 - 31.03.2024`, `05.03.2024/31.03.2024`, `05.03.2024..31.03.2024`, `2024-03-05-2024-03-31`, `05.03.2024T31.03.2024`. All six share the negative control's code. A plain date literal on the same target draws a *different* code, which is the only reason to believe this gate discriminates its operand at all.
+
+*(Locked: `adapter.laws.TemporalConstantLiteralWitnessLawsTest` — both carriers, the complete 28-cell Base Year grid computed from the year-agreement rule, the DATETIME witness with its store, and every probed spelling listed in its assertion so the denominator is the finding.)*
+
+## §3 supplement — a formally erroneous field SUPPRESSES every quantifier over its list; it is not dropped from the list, and full validation behaves exactly as partial does (kernel `validateFull` + `validatePart`, 2026-08-31) <a id="kf224"></a>
+
+> Fold: pending — newly recorded formal-error fact; folds into §3 (formal errors and the "unknown" state) on the next canonical KERNEL-SEMANTICS pass.
+
+Answers a12-kernel-lean's `SPEC-2026-08-31-05`, which is source-grounded from the kernel's business documentation with no measurement of their own — they cannot reach `validatePart` on their accepted probe route, and we can, so the entry is settleable here. **One half confirms and one half is contradicted.**
+
+**Confirmed: the rule is not a partial-validation artefact.** Three documents through `validateFull` and through `validatePart` with the whole group relevant agree cell for cell, the malformed one included.
+
+**Contradicted: "dropped from the LIST rather than counted on either side" is not what happens, and it is not equivalent to "neither filled nor empty" as their consequence states.** Over a three-field list with one erroneous member, `AllFieldsFilled`, `NotAllFieldsFilled`, `NumberOfFilledFields == 3` and `== 2` are **all four silent**. Dropping predicts `AllFieldsFilled` firing over the two clean members; counting it filled predicts `== 3`; counting it empty predicts the negation and `== 2`. All three rival readings are excluded, and the erroneous member instead makes the quantifier itself undecidable.
+
+The all-silent row carries its own controls, because four rules that do not fire is also what a broken fixture looks like: two clean documents fix what filled and empty look like on the instrument, and a fifth rule reading only the untouched first member fires on **every** document including the malformed one — so the silence is scoped to the lists containing the error, not a document the kernel gave up on. Measured on two converters (a malformed NUMBER, an out-of-calendar DATE) so the result belongs to the class rather than to one converter.
+
+Consistent with [KF120](#kf120)'s group carrier ("leaving erroneous groups in neither bucket") and with `QuantifierMalformedDiffTest`, which held the discriminating `AllFieldsFilled` shape as a kernel↔interpreter *agreement* — it established that both engines behave the same and never stated which of the four readings the kernel holds.
+
+*(Locked: `adapter.laws.ErroneousFieldRelevanceLawsTest` — the four-rule signature with its liveness control, both converters, and the full/partial equality.)*
+
+## §4 supplement — the mandatory-information derivation reads rule CONDITION SHAPE, and its two channels spell paths differently (kernel `getMandatoryInformationFromRules`, 2026-08-31) <a id="kf225"></a>
+
+> Fold: pending — newly recorded model-level derivation; folds into §4 (the "required" property) on the next canonical KERNEL-SEMANTICS pass.
+
+`IRuleCollectionMetaInformation.getMandatoryInformationFromRules` derives three name sets from a rule collection with no document in play — the kernel's own answer to "which fields does this model require?", and the first MODEL-level observation this project can make. Reached through `KernelAdapter.mandatoryInformation`, which keeps the kernel types inside and returns plain `Set<String>`.
+
+**It reads condition SHAPE, not referenced fields.** On a five-rule claim model, a field named by two rules in ordinary comparisons (`[Amount] > 1000`) appears in no set, while `FieldNotFilled` and `GroupNotFilled` conditions do. A starred negative quantifier reaches nothing, matching the kernel's own note that it does not hold for every repetition.
+
+**Two shape facts that were predicted wrong before being measured, and both bite a consumer joining these names to model paths.** `GroupNotFilled(/Claim/Adjuster)` on a NESTED group yields the enclosing **root** group, not the group named. And the two channels spell paths differently: the field sets carry a leading slash (`/Claim/PolicyNumber`), `mandatoryRootGroups` does not (`Claim`).
+
+**What the `GroupFilled ∧ FieldNotFilled` shape does is measured but not explained.** The kernel's documentation offers it for "mandatory regarding its root group"; it puts the field in **both** field sets, which is also consistent with that documentation's other note that a mandatory field is mandatory regarding its root group too. This model does not separate those readings, so no mechanism is claimed.
+
+Built for a12-kernel-lean's `EXP-2026-08-30-01`, whose question — whether a rule literal that narrows to the kernel's absent-value sentinel silently drops a rule from this derivation ([KF220](#kf220)) — needs exactly this observation and cannot be reached by `validateFull` or `compute`. The derivation itself is not the answer to that question; it is the instrument.
+
+*(Locked: `adapter.laws.KernelProbeMandatoryInformationTest` — all three sets pinned exactly, the two negative controls, the schema/producer parity for the model-level request rules, and byte-identical repeat runs. Contract: [KERNEL-PROBE-SPEC](KERNEL-PROBE-SPEC.md) "The `mandatoryInformation` block".)*
