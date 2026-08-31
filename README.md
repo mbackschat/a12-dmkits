@@ -1011,6 +1011,10 @@ The A12 Kernel is resolved from your **local Maven repository** (`~/.m2`) — no
 
 This publishes kernel `30.8.1` (Java only) to `mavenLocal`. You also need **JDK 21** — the build toolchain is pinned to 21 (a newer JDK isn't used even if installed; [why](docs/BUILD-ENVIRONMENT.md) — Groovy 3.0.25 + the validated baseline). GraalVM 25 is used only for the native build.
 
+### Maintainer agent setup (optional)
+
+The build does not depend on personal agent configuration. To carry the maintainer's shared workflow defaults, including TDD and commit conventions, across machines, install the global instructions from [`mbackschat/coding-setup`](https://github.com/mbackschat/coding-setup): its guarded installer links `~/.claude/CLAUDE.md` for Claude Code and `~/.codex/AGENTS.md` for Codex to the same version-controlled source. This repository's tracked `AGENTS.md` → `CLAUDE.md` link remains the source of project-specific requirements for every contributor.
+
 ## Build & test
 
 Like the sibling repos, build with a **clean/isolated Gradle home** so the machine's global config (which may point at a private registry) is bypassed — `build.gradle` declares only `mavenLocal()` + `mavenCentral()`:
