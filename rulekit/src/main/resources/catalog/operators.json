@@ -2744,7 +2744,7 @@
           "kind": "SURPRISE"
         },
         {
-          "text": "the list sums OPERAND POSITIONS, so naming one starred group twice counts it twice: NumberOfFilledGroups(Riders*, Riders*) over three instantiated rows is 6, not 3 — duplicate checking skips wildcarded operands, so this is statically admitted and no diagnostic warns you",
+          "text": "the list sums OPERAND POSITIONS, so naming one starred group twice counts it twice: NumberOfFilledGroups(Riders*, Riders*) over three instantiated rows is 6, not 3 — that exact spelling is statically admitted, so no diagnostic warns you",
           "kind": "SURPRISE"
         }
       ],

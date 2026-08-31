@@ -154,6 +154,12 @@ class EmptyGroupOperandLawsTest {
                 verdict("NumberOfFilledGroups(/Store/ShellRows*, /Store/FilledRows*) > 0"));
         actual.put("a fixed group beside two starred ones",
                 verdict("NumberOfFilledGroups(/Store/Filled, /Store/ShellRows*, /Store/FilledRows*) > 0"));
+        // Identity vs strict CONTAINMENT: a12-kernel-lean's SPEC-2026-08-31-06 refutes the general claim
+        // that duplicate checking skips wildcarded operands. These two rows are what separate the cases.
+        actual.put("a fixed group beside a STAR INSIDE it",
+                verdict("NumberOfFilledGroups(/Store/RowShell, /Store/RowShell/Rows*) > 0"));
+        actual.put("that same pair, DISJOINT — the containment control",
+                verdict("NumberOfFilledGroups(/Store/RowShell, /Store/FilledRows*) > 0"));
 
         Map<String, String> expected = new LinkedHashMap<>();
         expected.put("shell first", ADMITTED);
@@ -170,6 +176,8 @@ class EmptyGroupOperandLawsTest {
         expected.put("the SAME starred group named twice", ADMITTED);
         expected.put("two DISTINCT starred groups", ADMITTED);
         expected.put("a fixed group beside two starred ones", ADMITTED);
+        expected.put("a fixed group beside a STAR INSIDE it", "MVK_DUPLICATE_PARAM2");
+        expected.put("that same pair, DISJOINT — the containment control", ADMITTED);
         assertEquals(expected, actual, "the group count reads content over the whole subtree, at any depth");
     }
 
