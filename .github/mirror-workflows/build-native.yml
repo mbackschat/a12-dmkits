@@ -41,7 +41,7 @@ jobs:
   # 1. Rebuild the kernel from public sources ONCE (Linux only — the bootstrap is bash) and publish the
   #    resulting mavenLocal JARs as an artifact the per-OS native jobs consume.
   bootstrap-kernel:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 60
     steps:
       - name: Checkout the kernel bootstrap kit (public)
@@ -93,7 +93,7 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - os: ubuntu-latest
+          - os: ubuntu-24.04
             target: linux-x64
             binary: dmtool
             asset: dmtool-linux-x64
@@ -210,7 +210,7 @@ jobs:
   publish:
     needs: build-native
     if: inputs.release_tag != ''
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     env:
       GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       TAG: ${{ inputs.release_tag }}

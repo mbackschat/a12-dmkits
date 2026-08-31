@@ -222,6 +222,9 @@ tasks.register('leakGuardTest', Test) {
         // declaring it, and a one-dialect `stat` spelling is invisible on this platform by construction
         // (docs/BUILD-ENVIRONMENT.md "`stat` has two dialects").
         includeTestsMatching 'io.github.mbackschat.a12.dm.ShellPortabilityGuardTest'
+        // A copied mirror workflow is as executable as a live workflow once published. Derive this denominator
+        // from Git as well, so neither tree can silently reintroduce a moving hosted-runner label.
+        includeTestsMatching 'io.github.mbackschat.a12.dm.RunnerImagePinGuardTest'
     }
 }
 

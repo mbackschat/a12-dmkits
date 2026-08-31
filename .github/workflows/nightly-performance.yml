@@ -28,7 +28,7 @@ permissions:
 
 jobs:
   performance:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 60
     env:
       GRADLE_USER_HOME: ${{ github.workspace }}/.gradle-isolated
