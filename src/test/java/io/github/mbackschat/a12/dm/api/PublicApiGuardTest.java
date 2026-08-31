@@ -50,17 +50,8 @@ import org.junit.jupiter.api.condition.EnabledIfSystemProperty;
  */
 class PublicApiGuardTest {
 
-    /**
-     * A published artifact: its Maven artifact id (= golden file stem), its Gradle module directory, and which
-     * compiler produced its classes — the two land in different output trees.
-     */
-    private record Kit(String artifact, String moduleDir, boolean kotlin) {
-
-        /** A Java module, whose classes land in the javac output. */
-        Kit(String artifact, String moduleDir) {
-            this(artifact, moduleDir, false);
-        }
-    }
+    /** A published artifact: its Maven artifact id (= golden file stem) and its Gradle module directory. */
+    private record Kit(String artifact, String moduleDir) { }
 
     private static final List<Kit> KITS = List.of(
             new Kit("dmkits-core", "core"),
@@ -72,7 +63,7 @@ class PublicApiGuardTest {
             // deliberate: read-back REFUSES a classpath carrying two providers, so registering one beside
             // :adapter's would fail every kernel-oracle test here on resolution rather than on its subject.
             // It is loaded for the dump alone, by classLoader below.
-            new Kit("dmkits-interpreter-bridge", "interpreter-bridge", true));
+            new Kit("dmkits-interpreter-bridge", "interpreter-bridge"));
 
     @Test
     @DisabledIfSystemProperty(named = "api.fix", matches = "true")
@@ -249,11 +240,26 @@ class PublicApiGuardTest {
         return repoRoot().resolve("api").resolve(k.artifact() + ".api");
     }
 
-    private static Path mainClasses(Kit k) {
+    /**
+     * Every compiler output of the module. Both are offered rather than one chosen by language: a Kotlin module
+     * that gains a single {@code .java} file would otherwise ship it in the jar while the golden never saw it,
+     * which is the one way "a surface change turns this red" can quietly stop being true.
+     */
+    private static List<Path> mainClasses(Kit k) {
         Path module = repoRoot().resolve(k.moduleDir());
-        return k.kotlin()
-                ? module.resolve("build/classes/kotlin/main")
-                : module.resolve("build/classes/java/main");
+        List<Path> dirs = new ArrayList<>();
+        for (Path candidate : List.of(
+                module.resolve("build/classes/java/main"),
+                module.resolve("build/classes/kotlin/main"))) {
+            if (Files.isDirectory(candidate)) {
+                dirs.add(candidate);
+            }
+        }
+        if (dirs.isEmpty()) {
+            throw new IllegalStateException("no compiled classes for " + k.artifact() + " under " + module
+                    + " — the module must be compiled before the API dump, or this guard passes vacuously");
+        }
+        return dirs;
     }
 
     /**
@@ -263,10 +269,13 @@ class PublicApiGuardTest {
      * resolving through the parent.
      */
     private static ClassLoader classLoader(Kit k) {
-        Path classes = mainClasses(k);
+        List<Path> classes = mainClasses(k);
         try {
-            return new java.net.URLClassLoader(
-                    new java.net.URL[] {classes.toUri().toURL()}, PublicApiGuardTest.class.getClassLoader());
+            java.net.URL[] urls = new java.net.URL[classes.size()];
+            for (int i = 0; i < classes.size(); i++) {
+                urls[i] = classes.get(i).toUri().toURL();
+            }
+            return new java.net.URLClassLoader(urls, PublicApiGuardTest.class.getClassLoader());
         } catch (java.net.MalformedURLException e) {
             throw new IllegalStateException("not a loadable classes directory: " + classes, e);
         }

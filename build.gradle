@@ -721,7 +721,7 @@ tasks.register('apiGuardTest', Test) {
     }
     guardInputs(it, [
             'api goldens'              : fileTree('api') { include '**/*.api' },
-            'bridge main sources'      : fileTree('interpreter-bridge/src/main') { include '**/*.kt' },
+            'bridge main sources'      : fileTree('interpreter-bridge/src/main') { include '**/*.kt', '**/*.java' },
     ])
 }
 

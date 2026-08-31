@@ -69,11 +69,13 @@ final class PublicApiDumper {
     /**
      * The deterministic public-API dump of one kit, read from its compiled main-classes tree.
      *
-     * @param mainClassesDir the kit's {@code build/classes/java/main} directory
-     * @param loader         a class loader that can resolve the kit (the test class loader)
+     * @param mainClassesDirs every compiler-output directory of the module — a module can have more than one
+     *                        (javac and kotlinc write separately), and a type missed here ships in the jar
+     *                        while staying invisible to the golden
+     * @param loader          a class loader that can resolve the kit (the test class loader)
      */
-    static String dump(Path mainClassesDir, ClassLoader loader) {
-        return apiTypes(mainClassesDir, loader).stream()
+    static String dump(List<Path> mainClassesDirs, ClassLoader loader) {
+        return apiTypes(mainClassesDirs, loader).stream()
                 .map(PublicApiDumper::renderType).collect(Collectors.joining("\n\n")) + "\n";
     }
 
@@ -82,9 +84,13 @@ final class PublicApiDumper {
      * third-party-signature guard ({@code PublicApiGuardTest}), so the two can never disagree on what "the
      * published surface" is.
      */
-    static List<Class<?>> apiTypes(Path mainClassesDir, ClassLoader loader) {
+    static List<Class<?>> apiTypes(List<Path> mainClassesDirs, ClassLoader loader) {
         List<Class<?>> types = new ArrayList<>();
-        for (String fqcn : binaryNames(mainClassesDir)) {
+        List<String> names = new ArrayList<>();
+        for (Path dir : mainClassesDirs) {
+            names.addAll(binaryNames(dir));
+        }
+        for (String fqcn : names) {
             Class<?> c;
             try {
                 c = Class.forName(fqcn, false, loader);
