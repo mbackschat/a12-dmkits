@@ -203,6 +203,48 @@ class NestedGroupFillCountLawsTest {
                 "and it is suppression, not a different count: no comparison value fires");
     }
 
+    /** {@code Contact} carries a VALID field and a malformed one, so its presence is decided despite the error. */
+    private static RuntimeLaws.Doc validPlusMalformed() {
+        return RuntimeLaws.doc().group("/Catalogue", 1)
+                .field("/Catalogue/Reference", "CAT-1", 1, 1)
+                .field("/Catalogue/Contact/Email", "buyer@example.com", 1, 1, 1)
+                .field("/Catalogue/Contact/Rating", "abc", 1, 1, 1)
+                .field("/Catalogue/Warranty/Terms/Clause", "24 months", 1, 1, 1, 1);
+    }
+
+    /**
+     * <b>An error does NOT make the count unavailable — an UNDECIDED PRESENCE does.</b> This contradicts a
+     * sentence this project published in [KF120] ("any erroneous group makes the count unavailable") and
+     * confirms a12-kernel-lean's `SPEC-2026-08-31-01`, which reports the same correction against their own
+     * `spec/02`. Measured here on our own fixture rather than taken from their rows.
+     *
+     * <p>The pair differs in exactly one thing — whether the erroneous operand also holds an admitted value:
+     *
+     * <ul>
+     *   <li>{@code Contact} holding <b>only</b> a malformed Number → the rule is suppressed at every
+     *       comparison value, because the group can be proved neither filled nor empty (the row already
+     *       locked above).</li>
+     *   <li>{@code Contact} holding a valid {@code Email} <b>and</b> the same malformed Number → the count
+     *       fires at 2, exactly as the clean control does.</li>
+     * </ul>
+     *
+     * <p>So a formal error blocks only the NEGATIVE answer. That restores the invariant the old wording broke:
+     * the count and the scalar {@code GroupFilled} predicate cannot disagree about an erroneous group, and
+     * [KF120]'s own matrix already had {@code GroupFilled} TRUE for valid-plus-invalid.
+     *
+     * <p>The {@code ruleModel(1)} row is the control that keeps this from being a constant: it must NOT fire,
+     * or "the rule fires" would carry no information about the number.
+     */
+    @Test
+    void anAdmittedValueBesideTheErrorKeepsTheCountAvailable() {
+        assertTrue(RuntimeLaws.fires(ruleModel(2), "TALLY", validPlusMalformed()),
+                "an operand with admitted content beside a formal error still counts");
+        assertFalse(RuntimeLaws.fires(ruleModel(1), "TALLY", validPlusMalformed()),
+                "and it counts 2, not 1 — the error does not drop the operand");
+        assertFalse(RuntimeLaws.fires(ruleModel(2), "TALLY", malformedDirectChild()),
+                "while the invalid-ONLY operand stays suppressed — the one variable between the two rows");
+    }
+
     /** The clean control for all four rows above: the same shapes, well-formed, still compute. */
     @Test
     void theSameShapesWellFormedStillCompute() {
