@@ -164,7 +164,10 @@ class ConditionReadBackParityTest {
      */
     @Test
     void theCorpusCoversDistinctConstructs() {
-        assertTrue(CORPUS.size() >= 15, () -> "corpus shrank to " + CORPUS.size() + " conditions");
+        // The EXACT count, not a floor: a floor of 15 let three constructs disappear while still passing,
+        // which is the shrink this assertion exists to catch. Adding a case updates this number deliberately.
+        assertEquals(18, CORPUS.size(),
+                "the corpus changed size — add the case's number here if that was intended");
         BoundModel m = BoundModel.ofJson(ORDER_JSON);
         assertEquals(CORPUS.size(),
                 CORPUS.stream().map(c -> RENDER.render(c.build().apply(m))).distinct().count(),

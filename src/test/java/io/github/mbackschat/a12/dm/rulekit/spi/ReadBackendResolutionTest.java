@@ -2,6 +2,7 @@ package io.github.mbackschat.a12.dm.rulekit.spi;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -106,17 +107,72 @@ class ReadBackendResolutionTest {
     @Test
     void preferSelectsTheNamedProviderAndBindsIt() {
         ConditionReadBack onlyOne = ReadBackends.require();
+        // Start from an injected ABSENCE, so a prefer that selects without binding leaves None behind and
+        // require() throws. Without this the lane's single provider answers either way and the test cannot
+        // tell a working bind from no bind at all.
+        ReadBackends.override(null);
         ReadBackends.prefer(onlyOne.getClass());
-        assertSame(onlyOne, ReadBackends.require(), "prefer must bind the instance discovery already built");
+        assertSame(onlyOne, ReadBackends.require(), "prefer must BIND the instance discovery already built");
     }
 
     /** Naming a provider that is not registered is a wiring error, and the message says what IS registered. */
     @Test
     void preferRefusesATypeThatIsNotRegistered() {
+        String registered = ReadBackends.require().getClass().getName();
         BackendRequiredException e = assertThrows(BackendRequiredException.class,
                 () -> ReadBackends.prefer(StubBackend.class));
         assertTrue(e.getMessage().contains(StubBackend.class.getName()), e.getMessage());
-        assertTrue(e.getMessage().contains("registered:"), e.getMessage());
+        // What IS registered, not just the type that was asked for — the javadoc promises the former, and
+        // asserting the latter passes even when the message names nothing at all.
+        assertTrue(e.getMessage().contains(registered),
+                () -> "the message must name the registered provider, got: " + e.getMessage());
+    }
+
+    /**
+     * {@code current()} is documented total, and the way to break that is concurrency rather than input: an
+     * injected choice held as a value beside an "is set" flag cannot be written atomically, so a reader
+     * interleaved with {@code reset()} could see the flag set and the value already cleared. This hammers that
+     * interleaving and asserts the property the javadoc claims — never null, never a throw.
+     */
+    @Test
+    void currentStaysTotalWhileAnotherThreadResets() throws InterruptedException {
+        int iterations = 200_000;
+        var failures = new java.util.concurrent.atomic.AtomicReference<String>();
+        var start = new java.util.concurrent.CountDownLatch(1);
+        Thread writer = new Thread(() -> {
+            await(start);
+            for (int i = 0; i < iterations; i++) {
+                ReadBackends.override(FIRST);
+                ReadBackends.reset();
+            }
+        });
+        Thread reader = new Thread(() -> {
+            await(start);
+            for (int i = 0; i < iterations; i++) {
+                try {
+                    if (ReadBackends.current() == null) {
+                        failures.compareAndSet(null, "current() returned null");
+                    }
+                } catch (RuntimeException e) {
+                    failures.compareAndSet(null, "current() threw " + e);
+                }
+            }
+        });
+        writer.start();
+        reader.start();
+        start.countDown();
+        writer.join();
+        reader.join();
+        assertNull(failures.get(), failures.get());
+    }
+
+    private static void await(java.util.concurrent.CountDownLatch latch) {
+        try {
+            latch.await();
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new IllegalStateException(e);
+        }
     }
 
     /** A handler written against the supertype keeps catching the ambiguous case. */
