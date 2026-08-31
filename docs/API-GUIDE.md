@@ -1120,6 +1120,8 @@ ModelDocument.read(charsetEdit.validate().toJson()).config().supportedCharacters
 // ["é"] — exactly one atomic list entry
 ```
 
+**The base year is settable and now clearable, on the same editor.** `EditSession.read(json).config().baseYear(2024)` declares the `modelInfo.baseYear` that resolves year-less dates, and `clearBaseYear()` removes it — the inverse that was missing through the whole stack until 2026-08-31, because `setBaseYear` took a primitive `int` while `baseYear()` returned an `Optional`, so absence was readable and unreachable. It matters to anyone building the *negative* control for a yearless-date experiment: a fresh model has no base year, but a model that has one could not be returned to that state without hand-editing its JSON. The CLI peer is `dmtool config modify --clear-base-year`.
+
 `SupportedCharactersContract` is the shared typed/CLI definition gate: it rejects an empty entry, a surrogate, a reversed range, a plain multi-character non-grapheme, a combined entry above three UTF-16 units, and the kernel's ambiguous-overlap shape before mutation. `config modify --supported-character` and its `apply` peer return the same `RK_INVALID_CONFIG_VALUE` corrective, while the IF151 differential proves the runtime admits the whole configured grapheme but rejects its base, combining mark, reverse, and repeated fragments (finding 78).
 
 ### Read & enumerate an existing model

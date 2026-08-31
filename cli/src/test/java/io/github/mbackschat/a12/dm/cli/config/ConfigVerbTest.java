@@ -111,6 +111,29 @@ class ConfigVerbTest {
         assertTrue(M.readTree(read.out()).path("data").path("comment").isMissingNode(), () -> "comment gone: " + read.out());
     }
 
+    /**
+     * The inverse of {@code --base-year}, which had no inverse anywhere in the stack: {@code setBaseYear}
+     * took a primitive {@code int} while {@code baseYear()} returned an {@code Optional}, so absence was
+     * readable and unreachable. A consumer needing the no-base-year negative control on an already-set model
+     * had to hand-edit the JSON. Raised by an a12-kernel-lean evidence route, 2026-08-31.
+     */
+    @Test
+    void clearBaseYearRemovesIt(@TempDir Path dir) throws Exception {
+        Path model = CliTestSupport.orderRuled(dir);
+        assertEquals(0, CliTestSupport.run("-m", model.toString(), "config", "modify", "--base-year", "2024").code());
+        var set = CliTestSupport.run("-m", model.toString(), "config", "read");
+        assertEquals(2024, M.readTree(set.out()).path("data").path("baseYear").asInt(-1),
+                () -> "precondition — the base year is set: " + set.out());
+
+        var res = CliTestSupport.run("-m", model.toString(), "config", "modify", "--clear-base-year");
+        assertEquals(0, res.code(), res.err());
+        assertTrue(M.readTree(res.out()).path("changed").path("baseYear").isNull(),
+                () -> "the change record reports the removal: " + res.out());
+        var read = CliTestSupport.run("-m", model.toString(), "config", "read");
+        assertTrue(M.readTree(read.out()).path("data").path("baseYear").isMissingNode(),
+                () -> "base year gone: " + read.out());
+    }
+
     // G35 — --remove-annotation <name> (the general form of --clear-roles).
     @Test
     void removeAnnotationUnsetsIt(@TempDir Path dir) throws Exception {

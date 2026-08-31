@@ -98,6 +98,11 @@ final class ConfigModifyCommand extends BaseCommand {
                     + "`config read` echoes the current value")
     Boolean fieldRefByShortName;
 
+    @Option(names = "--clear-base-year",
+            description = "remove the model's base year (the inverse of --base-year), so year-less dates lose "
+                    + "their resolution point")
+    boolean clearBaseYear;
+
     @Option(names = "--clear-comment", description = "remove the model-level comment (the inverse of --comment)")
     boolean clearComment;
 
@@ -137,7 +142,7 @@ final class ConfigModifyCommand extends BaseCommand {
         ConfigModification mod = ConfigModification.builder()
                 .decimalSeparator(decimalSeparator).timeZone(timeZone).conditionLanguage(conditionLanguage)
                 .labels(labels).annotations(annotations).supportedCharacters(supportedCharacters)
-                .comment(comment).clearComment(clearComment).baseYear(baseYear).fieldRefByShortName(fieldRefByShortName)
+                .comment(comment).clearComment(clearComment).clearBaseYear(clearBaseYear).baseYear(baseYear).fieldRefByShortName(fieldRefByShortName)
                 .addLocales(addLocales).removeLocales(removeLocales).roles(roles).clearRoles(clearRoles)
                 .removeAnnotations(removeAnnotations).build();
         if (mod.isEmpty()) {

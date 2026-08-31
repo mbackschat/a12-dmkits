@@ -52,6 +52,7 @@ class CliCoverageParityTest {
             Map.entry("setModelLabel", "config modify --label"),
             Map.entry("setModelId", "model rename"),
             Map.entry("setBaseYear", "config modify --base-year"),
+            Map.entry("clearBaseYear", "config modify --clear-base-year"),
             Map.entry("setFieldRefByShortNameAllowed", "config modify --field-ref-by-short-name (G32)"),
             Map.entry("setSupportedCharacters", "config modify --supported-character"),
             Map.entry("addLocale", "config modify --add-locale"),
