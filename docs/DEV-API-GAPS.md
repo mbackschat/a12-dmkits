@@ -36,7 +36,35 @@ The gaps below were the **ergonomic and consistency remainder** — what added f
 
 ## 2. Open
 
-_None open._
+- **DG40 — the interpreter-bridge's operator mapping is measured against the kernel for a fifth of its surface.**
+  The bridge maps ~84 operator names; `adapter.ConditionReadBackParityTest` — the ONLY place a mapping is checked
+  against the kernel rather than against our own expectation — covers 18 constructs, ~17 distinct ids. Seven names
+  have no mention in any test: `AtLeastOneFieldFilled`, `DifferenceInMinutes`, `MoreThanOneFieldFilled`,
+  `NotAllFieldsFilled`, `NotExactlyOneFieldFilled`, `RoundAccounting`, `RoundUpValue`. The shape matters more than
+  the ratio, and it is why unit coverage does not close this: the module's own tests assert the mapping against
+  **hand-authored rulekit types**, so a mapping that is self-consistently wrong — the bridge and its test agreeing,
+  the kernel disagreeing — is invisible to them by construction. Measured, not argued: a cold review mutated
+  `NotAllFieldsFilled` to `MoreThanOneFieldFilled` and `DifferenceInMinutes` to `SECONDS`, and both survived the
+  module's own suite *and* the parity net. Families the differential never reaches: semantic index (`For`), the
+  indexed field/group operands, date extraction, `FirstFilledValue`, `CountAggregate`, the `$` correlation,
+  group-list quantifiers, `Valid`/`Invalid`, value lists, the rounding family, `CurrentRepetition`. **Growth goes
+  into the parity corpus, not the module's unit tests** — only the corpus has the kernel as its oracle, and adding
+  a case is one entry naming its rule group and error field. The open design question is whether the corpus should
+  be generated from the operator catalog, so the denominator moves with the catalog instead of by hand. Recall
+  limit on the 84: a regex over `when`-branch literals, so it misses any dispatch not written as a quoted branch.
+
+- **DG41 — two guards state invariants broader than what they enforce.** Both hold today, and neither is enforced
+  by the oracle its citation implies, so a future change can falsify them silently.
+  `PublicApiGuardTest.noThirdPartyTypeOnAnyPublishedSignature` allows `java.`/`javax.`/`io.github.mbackschat.`,
+  which RELEASE-SPEC §11 justifies as stopping an `implementation`-scoped dependency from reaching a consumer's
+  compile classpath; `dmkits-interpreter-bridge` is the first published artifact whose signatures use a type
+  (`dm.interpreter.ast.Expr`) from a **separate publication** sharing that prefix and `runtime`-scoped in its POM,
+  so the letter passes while the purpose does not. Impact is bounded — those classes are Kotlin `internal`, hence
+  API only by JVM accident — and closing it means distinguishing "our kits" from "our other publications" in the
+  allowlist. Separately, `verifyInterpreterBridgePurity` (and its elder `verifySchemakitPurity`, same shape) greps
+  source text for `com.mgmtp.`/`groovy.`, so a `testImplementation project(':adapter')` would pass it while putting
+  the kernel on the classpath; the claim it is cited for holds today, and the oracle that shows it is
+  `:interpreter-bridge:dependencies --configuration testRuntimeClasspath`, which no guard runs.
 
 ---
 
