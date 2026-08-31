@@ -212,6 +212,16 @@ class GroupOperandOverLimitExtentDiffTest {
         b.field(FEE, "abc", 1, 1, 3, 1)
     }
 
+    /** Both values in capacity — the control that proves the operand sees a value it is allowed to see. */
+    private fun feeBothInCapacity(b: Both) {
+        b.field(REVIEWER, "yes", 1, 1)
+        b.field(FEE, "5", 1, 1, 1, 1)
+        b.field(FEE, "7", 1, 1, 2, 1)
+    }
+
+    /** No repeatable row at all under the Number shell — the empty-domain case. */
+    private fun noChargeRow(b: Both) = b.field(REVIEWER, "yes", 1, 1)
+
     // ---- the measurements ----
 
     /**
@@ -306,5 +316,120 @@ class GroupOperandOverLimitExtentDiffTest {
             actual,
             "an over-limit cell is outside the domain, not an excused member of it",
         )
+    }
+
+    /**
+     * **The STARRED operand answers identically to the fixed one** — closing this file's own stated limit rather
+     * than inheriting across it. a12-kernel-lean measured it first (`SPEC-2026-08-31-10`) and it cost them three
+     * conformance cases: they had split fixed from starred to claim only what our measurement covered, and the
+     * only thing supporting the starred side was a case written from their implementation.
+     *
+     * <p>Asserted as an EQUALITY between the two spellings in one run, not as two tables to be compared by
+     * memory. Each pair holds the document fixed and varies only the operand's spelling, which is the whole
+     * claim; the both-in-capacity control keeps `5` from reading as "the operand sees nothing".
+     */
+    @Test
+    fun aSTARREDGroupOperandHasTheSameExtentAsTheFixedOne() {
+        val counts = listOf("0", "1")
+        val sums = listOf("0", "5", "7", "12")
+        val pairs = listOf(
+            Triple("fill count — only content over-limit", ::onlyOverLimitOuter, counts),
+            Triple("fill count — in-capacity control", ::onlyInCapOuter, counts),
+        ).map { (label, doc, ladder) ->
+            label to Pair(read("NumberOfFilledFields(/Return/Notes)", ladder, doc),
+                read("NumberOfFilledFields(/Return/Notes/Parcels*)", ladder, doc))
+        } + listOf(
+            Triple("Sum — in-capacity 5, over-limit 7", ::feeInCapFiveOverLimitSeven, sums),
+            Triple("Sum — both in capacity, control", ::feeBothInCapacity, sums),
+            Triple("Sum — malformed in capacity", ::malformedInCap, sums),
+            Triple("Sum — malformed over limit", ::malformedOverLimit, sums),
+        ).map { (label, doc, ladder) ->
+            label to Pair(read("Sum(/Return/Amounts)", ladder, doc),
+                read("Sum(/Return/Amounts/Charges*)", ladder, doc))
+        }
+
+        val differing = pairs.filter { it.second.first != it.second.second }
+        assertEquals(emptyList<Pair<String, Pair<String, String>>>(), differing,
+            "the starred spelling must answer exactly as the fixed one — (fixed, starred) shown for each row")
+        assertEquals(
+            linkedMapOf(
+                "fill count — only content over-limit" to "0",
+                "fill count — in-capacity control" to "1",
+                "Sum — in-capacity 5, over-limit 7" to "5",
+                "Sum — both in capacity, control" to "12",
+                "Sum — malformed in capacity" to UNAVAILABLE,
+                "Sum — malformed over limit" to "5",
+            ),
+            LinkedHashMap(pairs.associate { it.first to it.second.first }),
+            "and both spellings answer what the fixed operand was already measured to answer",
+        )
+    }
+
+    /**
+     * **`Sum` over an EMPTY in-capacity domain is a definite zero, not unavailable** — the limit both projects
+     * stated and neither closed. Our earlier ladder deliberately avoided the empty domain by mixing values, and
+     * a12-kernel-lean's reproduction of the same rows carried no `== 0` member, so on three documents `Sum` read
+     * unavailable in exactly the way a definite `0` also would. One ladder member settles it.
+     *
+     * <p>The only-over-limit document is the row that matters: it is empty *after* the capacity projection while
+     * carrying content in the document, so it separates "nothing to add" from "something I refuse to add".
+     */
+    @Test
+    fun aSumOverAnEmptyInCapacityDomainIsADefiniteZero() {
+        val ladder = listOf("0", "5", "7", "12")
+        assertEquals(
+            linkedMapOf(
+                "no repeatable row at all — fixed" to "0",
+                "no repeatable row at all — starred" to "0",
+                "only content OVER LIMIT — fixed" to "0",
+                "only content OVER LIMIT — starred" to "0",
+            ),
+            linkedMapOf(
+                "no repeatable row at all — fixed" to read("Sum(/Return/Amounts)", ladder, ::noChargeRow),
+                "no repeatable row at all — starred"
+                    to read("Sum(/Return/Amounts/Charges*)", ladder, ::noChargeRow),
+                "only content OVER LIMIT — fixed" to read("Sum(/Return/Amounts)", ladder, ::onlyFeeOverLimit),
+                "only content OVER LIMIT — starred"
+                    to read("Sum(/Return/Amounts/Charges*)", ladder, ::onlyFeeOverLimit),
+            ),
+            "an empty domain sums to zero, so the over-limit row is excluded AND the result stays definite",
+        )
+    }
+
+    /**
+     * The malformed split on the COUNT carrier, which a12-kernel-lean asked for: its own conformance comment says
+     * outright that the count's behaviour there is its account of the shared extent rather than a measurement, and
+     * our row was on `Sum`. Same shape, different carrier — a claim that reuses a mechanism across carriers needs
+     * its own measurement, which is the rule that produced the request.
+     */
+    @Test
+    fun theMalformedSplitHoldsOnTheCOUNTCarrierToo() {
+        val ladder = listOf("0", "1", "2")
+        assertEquals(
+            linkedMapOf(
+                "malformed IN CAPACITY — fixed" to UNAVAILABLE,
+                "malformed IN CAPACITY — starred" to UNAVAILABLE,
+                "the same cell OVER LIMIT — fixed" to "1",
+                "the same cell OVER LIMIT — starred" to "1",
+            ),
+            linkedMapOf(
+                "malformed IN CAPACITY — fixed"
+                    to read("NumberOfFilledFields(/Return/Amounts)", ladder, ::malformedInCap),
+                "malformed IN CAPACITY — starred"
+                    to read("NumberOfFilledFields(/Return/Amounts/Charges*)", ladder, ::malformedInCap),
+                "the same cell OVER LIMIT — fixed"
+                    to read("NumberOfFilledFields(/Return/Amounts)", ladder, ::malformedOverLimit),
+                "the same cell OVER LIMIT — starred"
+                    to read("NumberOfFilledFields(/Return/Amounts/Charges*)", ladder, ::malformedOverLimit),
+            ),
+            "the count carrier splits where Sum splits — measured, not carried across from Sum",
+        )
+    }
+
+    /** The only-over-limit Number document: one value, above capacity, nothing in capacity. */
+    private fun onlyFeeOverLimit(b: Both) {
+        b.field(REVIEWER, "yes", 1, 1)
+        b.group(CHARGES, 1, 1, 1); b.group(CHARGES, 1, 1, 2)
+        b.field(FEE, "7", 1, 1, 3, 1)
     }
 }
