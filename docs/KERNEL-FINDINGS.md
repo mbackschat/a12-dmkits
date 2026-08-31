@@ -3985,3 +3985,28 @@ Our interpreter is not exposed to either trap: `messageReferences` walks the con
 **Why most of it is probably unobservable, and where it might not be.** Every literal that collides is either negative — where `NumberOfFilledFields(…) >= -1` is vacuously true and "nothing mandatory" is the *correct* answer — or ≥ `4294967295`, which under the `<=`/`<` directions the `z > 0` sites test is equally vacuous. In those five sites the bug's answer and the right answer coincide, which is why no consumer would have noticed. The exception is `EvaluatorVisitor`'s `AnzahlFelder >= z` arm: there a colliding literal is **unsatisfiable-but-strong**, so a semantics-respecting collector and a narrowing-bugged one need not agree.
 
 **What would settle it** — and it is a design, not a run we have made: three rules over one two-field list, `>= 2` (satisfiable baseline), `>= 3` (**the control** — unsatisfiable, `z` valid) and `>= 4294967295` (unsatisfiable, `z` narrows to `-1`), comparing `getMandatory()` across them. The control is the load-bearing row: if `>= 3` already yields nothing, the shape cannot discriminate and the collision is unobservable here too. Blocked on a capability rather than on cost — the query takes kernel `IRule` objects and `KernelAdapter` deliberately lets no kernel type escape ([`ARCHITECTURE`](ARCHITECTURE.md) N8), so routing it means giving the adapter a typed mandatory-information capability first.
+
+## §2 supplement — a repeatable group's `repeatability` domain is `> 0`, and the LOAD gate tolerates everything the MVK gate refuses (kernel `checkConsistency`, 2026-08-31) <a id="kf221"></a>
+
+> Fold: pending — it belongs beside the structural model-shape rows in §2, which have no folded home yet.
+
+A group's `repeatability` is admitted for any integer **greater than zero**, and refused below that by the MVK gate with `MVK_MAX_VALUES_INVALID`. The refusal is emitted **per element** — once for the group, once for each field beneath it — followed by one message naming the domain, and that last message has two distinct wordings: a zero or `null` draws *"Only values greater than 0 are allowed."* while a negative draws *"Only values without a sign are allowed."*
+
+| value | deserialize + expand | `checkConsistency` |
+|---|---|---|
+| `2`, `3` | loads | **admitted** |
+| **`1`** | loads | **admitted** |
+| `"2"` (the number as text) | loads | **admitted** |
+| key absent | loads | **admitted** — absence means non-repeatable |
+| `0` | loads | `MVK_MAX_VALUES_INVALID` + *greater than 0* |
+| `null` | loads | `MVK_MAX_VALUES_INVALID` + *greater than 0* |
+| `-1` | loads | `MVK_MAX_VALUES_INVALID` + *without a sign* |
+| `true` | **refused** | — |
+
+**The two gates are the finding, not a detail of the method.** Every rejected value above **loads cleanly**: deserialize + expand accept `null`, `0` and `-1` without complaint, and only the consistency check refuses them. So a table taken at the reader — which is what `WorkspaceIncludeStructureKernelTest` measures for the neighbouring MOUNT carrier, where the kernel really is tolerant — cannot speak for this question at all. This was measured the wrong way round first: a load-gate-only run reported every value admitted and was one sentence from being published as a contradiction of a12-kernel-lean's `SPEC-2026-08-31-07`, which had it right. Naming which gate a verdict comes from is what separated a correction from an error.
+
+**Their clause is right on `null` and `0` and one step too strong on the rest.** It states the domain as "a finite integer of **at least two**"; `1` is admitted at both gates, so the measured domain is `> 0`. A repeatability of `1` is simply a non-repeatable group spelled explicitly, which is why it is legal and why nothing downstream needs it.
+
+**Our own builders are deliberately stricter, and now that is documented rather than merely true.** `DocumentModelDraft.GroupBuilder.repeatable` and `ModelDocument.addRepeatableGroup` both refuse below `2`, so they refuse `1` where the kernel admits it. That is an intentional API narrowing — `repeatable(1)` asks for a repeatable group that cannot repeat, i.e. a no-op the caller almost certainly did not mean, and the plain group builder already expresses it — but until this measurement the refusal had **no test and no kernel basis anywhere in the repository**, which is exactly the shape the standing client-side-refusal rule calls a defect waiting to be found. The narrowing stays; what changes is that its basis is measured and its one-step breadth is stated.
+
+*(Locked: `adapter.laws.GroupRepeatabilityDomainLawsTest` — both gates in one call, the refusal text pinned verbatim including the per-element repetition and both domain wordings.)*
