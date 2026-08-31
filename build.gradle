@@ -706,15 +706,22 @@ tasks.register('docGuardTest', Test) {
 // `test` dependsOn this (below), so CI + a plain `:test` always drive it. `guardInputs` (root ext, kernel-decoupling §3b #17)
 // also fails LOUDLY if `api/` goes empty/missing — a moved golden dir can't silence the guard.
 tasks.register('apiGuardTest', Test) {
-    description = 'Golden-diff visibility lock for the five published kits\' public API (split out so a golden edit re-runs only this).'
+    description = 'Golden-diff visibility lock for the published artifacts\' public API (split out so a golden edit re-runs only this).'
     group = 'verification'
     useJUnitPlatform()
     testClassesDirs = sourceSets.test.output.classesDirs
     classpath = sourceSets.test.runtimeClasspath
+    // :interpreter-bridge is dumped but is NOT a dependency of this source set — a second ConditionReadBack
+    // provider on the runtime classpath would race :adapter's for ServiceLoader.findFirst(). So its classes are
+    // built for the dump to read and loaded by the guard itself.
+    dependsOn ':interpreter-bridge:classes'
     filter {
         includeTestsMatching 'io.github.mbackschat.a12.dm.api.PublicApiGuardTest'
     }
-    guardInputs(it, ['api goldens': fileTree('api') { include '**/*.api' }])
+    guardInputs(it, [
+            'api goldens'              : fileTree('api') { include '**/*.api' },
+            'bridge main sources'      : fileTree('interpreter-bridge/src/main') { include '**/*.kt' },
+    ])
 }
 
 // Its own source set, following the `noBackendTest` precedent above, because these two classes were the
@@ -775,10 +782,11 @@ tasks.register('interpreterReleaseGuardTest', Test) {
 // default run stays assert-only (CI catches a forgotten regenerate); only this task flips to the writer.
 tasks.register('dumpKitApi', Test) {
     group = 'documentation'
-    description = 'Regenerate the five kit public-API goldens under api/ from the live reflection dump (autonomous, in place).'
+    description = 'Regenerate the published public-API goldens under api/ from the live reflection dump (autonomous, in place).'
     useJUnitPlatform()
     testClassesDirs = sourceSets.test.output.classesDirs
     classpath = sourceSets.test.runtimeClasspath
+    dependsOn ':interpreter-bridge:classes'
     systemProperty 'api.fix', 'true'
     filter {
         includeTestsMatching 'io.github.mbackschat.a12.dm.api.PublicApiGuardTest'

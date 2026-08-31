@@ -24,8 +24,10 @@ import io.github.mbackschat.a12.dm.rulekit.spi.ConditionReadBack
  * for that, drive [ConditionBridge] directly, where a rejection and an unmapped construct are different
  * exceptions.
  *
- * This is the module's whole published surface: everything the mapping is built from is `internal`, so the
- * only thing a consumer can resolve is the port.
+ * The port is the module's only API. Everything the mapping is built from is `internal`, which the Kotlin
+ * compiler enforces against a Kotlin consumer — but `internal` classes are PUBLIC in JVM bytecode, so a Java
+ * consumer can still reach them. They are implementation detail and change without notice; what keeps that
+ * honest is the committed API golden, which makes any movement in the compiled surface a reviewed diff.
  */
 public class InterpreterConditionReadBack : ConditionReadBack {
 

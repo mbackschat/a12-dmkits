@@ -9,9 +9,11 @@
 plugins {
     id 'java-library'
     // Kotlin JVM — this module's own sources. The source AST it maps FROM is the interpreter's Kotlin AST, and
-    // Kotlin's `internal` is what keeps the mapping's helper surface module-visible rather than public: the port
-    // (InterpreterConditionReadBack) is the only type a consumer resolves, and Java has no visibility that says so.
+    // Kotlin's `internal` marks the mapping's helpers as module-scoped, which the Kotlin compiler enforces and
+    // Java has no equivalent for. It is a source-level boundary only: `internal` is JVM-public, so the compiled
+    // surface holds more than the port, and api/dmkits-interpreter-bridge.api is what keeps that under review.
     id 'org.jetbrains.kotlin.jvm'
+    id 'maven-publish'
 }
 
 base { archivesName = 'dmkits-interpreter-bridge' }
@@ -82,3 +84,24 @@ def verifyInterpreterBridgePurity = tasks.register('verifyInterpreterBridgePurit
     }
 }
 tasks.named('check') { dependsOn verifyInterpreterBridgePurity }
+
+// Publishing: io.github.mbackschat.a12.dm:dmkits-interpreter-bridge — MIT, and kernel-free by the lint above,
+// so its POM carries no kernel dependency. Deliberately NOT a member of the `dmkits` aggregator: that umbrella
+// is the kits, and this is a provider of one of their SPI ports — the same category as :adapter — which a
+// consumer opts into rather than receives transitively.
+publishing {
+    publications {
+        maven(MavenPublication) {
+            from components.java
+            artifactId = 'dmkits-interpreter-bridge'
+            pom {
+                name = 'dmkits-interpreter-bridge'
+                description = 'a12-dmkits — the kernel-free dm.rulekit.spi.ConditionReadBack provider: the '\
+                        + 'interpreter\'s condition AST mapped onto rulekit\'s typed Condition. Covers a subset '\
+                        + 'of the grammar and answers ReadResult.Opaque outside it; the kernel-backed provider '\
+                        + 'in :adapter remains the authoritative, total one. MIT.'
+                rootProject.dmkitsPom(delegate)
+            }
+        }
+    }
+}

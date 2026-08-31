@@ -50,15 +50,29 @@ import org.junit.jupiter.api.condition.EnabledIfSystemProperty;
  */
 class PublicApiGuardTest {
 
-    /** A published kit: its Maven artifact id (= golden file stem) and its Gradle module directory. */
-    private record Kit(String artifact, String moduleDir) {}
+    /**
+     * A published artifact: its Maven artifact id (= golden file stem), its Gradle module directory, and which
+     * compiler produced its classes — the two land in different output trees.
+     */
+    private record Kit(String artifact, String moduleDir, boolean kotlin) {
+
+        /** A Java module, whose classes land in the javac output. */
+        Kit(String artifact, String moduleDir) {
+            this(artifact, moduleDir, false);
+        }
+    }
 
     private static final List<Kit> KITS = List.of(
             new Kit("dmkits-core", "core"),
             new Kit("dmkits-rulekit", "rulekit"),
             new Kit("dmkits-modelkit", "modelkit"),
             new Kit("dmkits-edit", "edit"),
-            new Kit("dmkits-schemakit", "schemakit"));
+            new Kit("dmkits-schemakit", "schemakit"),
+            // The read-back provider is published but is NOT on this suite's runtime classpath, and that is
+            // deliberate: ReadBackends resolves its port with ServiceLoader.findFirst(), so a second provider
+            // beside :adapter's would silently decide which engine the kernel-oracle tests read through.
+            // It is loaded for the dump alone, by mainClassLoader below.
+            new Kit("dmkits-interpreter-bridge", "interpreter-bridge", true));
 
     @Test
     @DisabledIfSystemProperty(named = "api.fix", matches = "true")
@@ -68,7 +82,7 @@ class PublicApiGuardTest {
             assertTrue(Files.exists(golden), () ->
                     "missing API golden " + repoRoot().relativize(golden) + " — generate it once with "
                     + "`./gradlew dumpKitApi`, then commit it.");
-            String live = PublicApiDumper.dump(mainClasses(k), classLoader());
+            String live = PublicApiDumper.dump(mainClasses(k), classLoader(k));
             String committed = Files.readString(golden);
             assertEquals(committed, live, () ->
                     "The public API of " + k.artifact() + " has DRIFTED from its golden "
@@ -87,8 +101,8 @@ class PublicApiGuardTest {
     @DisabledIfSystemProperty(named = "api.fix", matches = "true")
     void theDumperIsDeterministic() {
         for (Kit k : KITS) {
-            String first = PublicApiDumper.dump(mainClasses(k), classLoader());
-            String second = PublicApiDumper.dump(mainClasses(k), classLoader());
+            String first = PublicApiDumper.dump(mainClasses(k), classLoader(k));
+            String second = PublicApiDumper.dump(mainClasses(k), classLoader(k));
             assertEquals(first, second, () ->
                     "PublicApiDumper is non-deterministic for " + k.artifact()
                     + " — two dumps of the same classes differ, so the golden guard would be flaky.");
@@ -115,7 +129,7 @@ class PublicApiGuardTest {
     void noThirdPartyTypeOnAnyPublishedSignature() {
         List<String> violations = new ArrayList<>();
         for (Kit k : KITS) {
-            for (Class<?> type : PublicApiDumper.apiTypes(mainClasses(k), classLoader())) {
+            for (Class<?> type : PublicApiDumper.apiTypes(mainClasses(k), classLoader(k))) {
                 collectForeignReferences(k, type, violations);
             }
         }
@@ -227,7 +241,7 @@ class PublicApiGuardTest {
         Path dir = repoRoot().resolve("api");
         Files.createDirectories(dir);
         for (Kit k : KITS) {
-            Files.writeString(goldenFile(k), PublicApiDumper.dump(mainClasses(k), classLoader()));
+            Files.writeString(goldenFile(k), PublicApiDumper.dump(mainClasses(k), classLoader(k)));
         }
     }
 
@@ -236,11 +250,26 @@ class PublicApiGuardTest {
     }
 
     private static Path mainClasses(Kit k) {
-        return repoRoot().resolve(k.moduleDir()).resolve("build/classes/java/main");
+        Path module = repoRoot().resolve(k.moduleDir());
+        return k.kotlin()
+                ? module.resolve("build/classes/kotlin/main")
+                : module.resolve("build/classes/java/main");
     }
 
-    private static ClassLoader classLoader() {
-        return PublicApiGuardTest.class.getClassLoader();
+    /**
+     * A loader that can see {@code k}'s classes. Parent-first over this suite's own loader, so a kit already on
+     * the test classpath resolves to exactly the same classes as before; a module that is deliberately absent
+     * from it (see the bridge, above) is read straight from its compiler output, with its dependencies still
+     * resolving through the parent.
+     */
+    private static ClassLoader classLoader(Kit k) {
+        Path classes = mainClasses(k);
+        try {
+            return new java.net.URLClassLoader(
+                    new java.net.URL[] {classes.toUri().toURL()}, PublicApiGuardTest.class.getClassLoader());
+        } catch (java.net.MalformedURLException e) {
+            throw new IllegalStateException("not a loadable classes directory: " + classes, e);
+        }
     }
 
     /** The repo root — the nearest ancestor holding {@code settings.gradle} (robust to the module working dir). */

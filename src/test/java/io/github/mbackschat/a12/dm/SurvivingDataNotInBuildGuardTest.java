@@ -86,7 +86,11 @@ class SurvivingDataNotInBuildGuardTest {
             "build/classes/java/main",
             new Declaration(BuildPathUse.READS_DERIVED_OUTPUT,
                     "the compiled main classes the public-API dump READS; the golden it compares against lives "
-                            + "in the committed api/ tree, which is the thing that must survive")));
+                            + "in the committed api/ tree, which is the thing that must survive"),
+            "build/classes/kotlin/main",
+            new Declaration(BuildPathUse.READS_DERIVED_OUTPUT,
+                    "the same dump, for the one published module the Kotlin compiler builds; its golden lives "
+                            + "beside the others in the committed api/ tree")));
 
     /**
      * A string literal naming a path under {@code build/}. Bare {@code "build/"} is excluded by the trailing
