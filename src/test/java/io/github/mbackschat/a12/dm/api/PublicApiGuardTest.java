@@ -69,9 +69,9 @@ class PublicApiGuardTest {
             new Kit("dmkits-edit", "edit"),
             new Kit("dmkits-schemakit", "schemakit"),
             // The read-back provider is published but is NOT on this suite's runtime classpath, and that is
-            // deliberate: ReadBackends resolves its port with ServiceLoader.findFirst(), so a second provider
-            // beside :adapter's would silently decide which engine the kernel-oracle tests read through.
-            // It is loaded for the dump alone, by mainClassLoader below.
+            // deliberate: read-back REFUSES a classpath carrying two providers, so registering one beside
+            // :adapter's would fail every kernel-oracle test here on resolution rather than on its subject.
+            // It is loaded for the dump alone, by classLoader below.
             new Kit("dmkits-interpreter-bridge", "interpreter-bridge", true));
 
     @Test

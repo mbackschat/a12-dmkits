@@ -1,0 +1,78 @@
+{
+    "header": {
+        "id": "warenkorb-de",
+        "modelType": "document",
+        "modelVersion": "28.4.0",
+        "locales": [
+            {
+                "code": "de_DE"
+            }
+        ],
+        "labels": [],
+        "annotations": [],
+        "modelReferences": []
+    },
+    "content": {
+        "modelInfo": {
+            "name": "warenkorb-de",
+            "variant": "cockpit",
+            "revision": "Arbeitsversion",
+            "baseYear": "2020",
+            "immutable": false
+        },
+        "modelConfig": {
+            "decimalSeparator": ",",
+            "timeZone": "Europe/Berlin",
+            "conditionLanguage": {
+                "code": "de_DE"
+            },
+            "fieldRefByShortNameAllowed": false
+        },
+        "modelRoot": {
+            "rootGroups": [
+                {
+                    "type": "Group",
+                    "id": "/Bestellung",
+                    "name": "Bestellung",
+                    "Group": {
+                        "repeatability": 1,
+                        "elements": [
+                            {
+                                "type": "Field",
+                                "id": "/Bestellung/Kundennummer",
+                                "name": "Kundennummer",
+                                "Field": {
+                                    "fieldType": {
+                                        "type": "StringType"
+                                    }
+                                }
+                            },
+                            {
+                                "type": "Field",
+                                "id": "/Bestellung/Bestellnummer",
+                                "name": "Bestellnummer",
+                                "Field": {
+                                    "fieldType": {
+                                        "type": "StringType"
+                                    }
+                                }
+                            },
+                            {
+                                "type": "Rule",
+                                "id": "/Bestellung/KundennummerAngegeben",
+                                "name": "KundennummerAngegeben",
+                                "Rule": {
+                                    "errorEntityRelPath": "../Kundennummer",
+                                    "errorCode": "KD_PFLICHT",
+                                    "errorCondition": "FeldAngegeben(Kundennummer) Und FeldNichtAngegeben(Bestellnummer)",
+                                    "errorType": "ERROR",
+                                    "messages": []
+                                }
+                            }
+                        ]
+                    }
+                }
+            ]
+        }
+    }
+}

@@ -99,7 +99,9 @@ publishing {
                 description = 'a12-dmkits — the kernel-free dm.rulekit.spi.ConditionReadBack provider: the '\
                         + 'interpreter\'s condition AST mapped onto rulekit\'s typed Condition. Covers a subset '\
                         + 'of the grammar and answers ReadResult.Opaque outside it; the kernel-backed provider '\
-                        + 'in :adapter remains the authoritative, total one. MIT.'
+                        + 'in :adapter remains the authoritative, total one. Put exactly one provider on the '\
+                        + 'classpath: with both, read-back throws AmbiguousBackendException rather than '\
+                        + 'choosing, and ReadBackends.prefer(<provider>.class) settles it. MIT.'
                 rootProject.dmkitsPom(delegate)
             }
         }

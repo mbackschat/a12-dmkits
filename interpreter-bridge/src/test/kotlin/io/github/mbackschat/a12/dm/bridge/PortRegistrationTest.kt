@@ -43,6 +43,26 @@ class PortRegistrationTest {
         readsTheRule(shipmentModel("// the carrier a shipment was booked with\n"))
     }
 
+    /**
+     * The provider reads the model's OWN authoring language out of `modelConfig.conditionLanguage`, and German
+     * is a supported target rather than an exotic one. Nothing else covers that mapping: every other model here
+     * is `en_US`, and the German cases elsewhere in this module hand [ConditionLanguage.DE] to
+     * [ConditionBridge] directly, so they never reach the code→language step. Get it wrong and a German model
+     * does not fail — every rule comes back [ReadResult.Opaque] with a parse message, which reads to a consumer
+     * as "this model uses constructs you do not support" rather than "you parsed it as the wrong language".
+     */
+    @Test
+    fun aGermanModelReadsThroughItsOwnConditionLanguage() {
+        val read = ReadBackends.require().readAll(resource("/warenkorb-de.json"), ReferenceResolvers.selfContained())
+        val rule = read["/Bestellung/KundennummerAngegeben"]
+        assertTrue(rule is ReadResult.Converted) { "the German rule reads back as a typed condition, got: $rule" }
+    }
+
+    private fun resource(name: String): String = String(
+        PortRegistrationTest::class.java.getResourceAsStream(name)!!.readAllBytes(),
+        java.nio.charset.StandardCharsets.UTF_8,
+    )
+
     private fun readsTheRule(model: String) {
         val read = ReadBackends.require().readAll(model, ReferenceResolvers.selfContained())
         val rule = read["/Shipment/CarrierNamed"]

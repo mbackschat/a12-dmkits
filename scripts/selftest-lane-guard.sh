@@ -43,7 +43,15 @@ with_paths "cli/src/main/java/Foo.java"
 check "cli source justifies :cli:check"                     "" "$(refused :cli:check)"
 with_paths "interpreter/src/commonMain/kotlin/Foo.kt"
 check "interpreter source justifies :adapter:test"          "" "$(refused :adapter:test)"
+check "…and the bridge lane, which maps its AST"            "" "$(refused :interpreter-bridge:test)"
 check "…and :cli:check, which ships it"                     "" "$(refused :cli:check)"
+
+# The parity differential between the two ConditionReadBack providers lives in :adapter, so a
+# bridge-only change must justify that lane. A `^interpreter/` pattern does not match it.
+with_paths "interpreter-bridge/src/main/kotlin/Foo.kt"
+check "bridge source justifies :adapter:test"               "" "$(refused :adapter:test)"
+check "…and its own lane"                                   "" "$(refused :interpreter-bridge:check)"
+check "…but not :cli:check"                                 ":cli:check" "$(refused :cli:check)"
 with_paths "rulekit/src/main/java/Foo.java"
 check "a shared kit justifies every lane"                   "" "$(refused :cli:check :adapter:test :interpreter:check)"
 with_paths "build.gradle"
