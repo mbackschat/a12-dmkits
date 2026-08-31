@@ -1,13 +1,12 @@
 #!/usr/bin/env bash
-# Native verification gate (docs/NATIVE-IMAGE-GRAALVM.md §8). Verifies the native binary against the
-# showboat demos byte-for-byte — but SKIPS demos that are legitimately JVM-only on the native subset,
-# so a known, expected non-applicability is reported as SKIP(reason), never a spurious FAIL.
+# Native verification gate (docs/NATIVE-IMAGE-GRAALVM.md §8). Verifies the native binary against every
+# showboat demo byte-for-byte. All current verbs are native-applicable, so an omitted demo would be a gap.
 #
 # Two gates, two targets:
 #   • JVM gate   — CI, the installDist launcher, ALL demos green (.github/workflows/ci.yml).
-#   • Native gate — THIS script, the native binary, the native-applicable subset green.
+#   • Native gate — THIS script, the native binary, ALL demos green.
 #
-# Exit non-zero only if a NATIVE-APPLICABLE demo fails (a real regression). Skips never fail the gate.
+# Exit non-zero if any demo or the native no-crash battery fails.
 #
 # Usage:  ./scripts/native-gate.sh [path-to-native-dmtool]
 #         (defaults to cli/build/native/nativeCompile/dmtool)
@@ -58,9 +57,7 @@ fi
 echo "----"
 "$ROOT/build.sh" --no-daemon -PdmtoolContractExecutable="$NATIVE" :cli:publicContractTest
 
-# Demos NOT byte-verifiable against the native binary, with WHY. Keep the reason here so a skip is never silent.
-#
-# As of 2026-06-24 the map is EMPTY — ALL demos are native-applicable. The two former skips are obsolete:
+# Every demo is native-applicable. The two former skips are obsolete:
 #   • cli-runtime.md — the runtime verbs (`model eval`/`rule eval`/`model compute`) used to run the kernel's
 #     Groovy codegen (JVM-only); they now DEFAULT to the native-safe `dm.interpreter`, so they run on the
 #     native binary. (`model expand`/`model eval`/`rule eval`/`model compute`/`model seed` are all interpreter-backed; the
@@ -69,15 +66,10 @@ echo "----"
 #     while `--help` can differ by picocli synopsis wrapping (CLI-TOUR-SPEC). Passes native.
 #   • cli-tour.md — the `manifest` verb list is no longer a native subset: `Cli.JVM_ONLY_VERBS` is empty (no
 #     verb is hidden), so the native manifest equals the JVM manifest. Verified: cli-tour passes native.
-declare -A NATIVE_SKIP=()
 
 fails=0
 for d in examples/cli-*.md; do
   base="$(basename "$d")"
-  if [[ -n "${NATIVE_SKIP[$base]:-}" ]]; then
-    printf 'SKIP  %-26s — %s\n' "$base" "${NATIVE_SKIP[$base]}"
-    continue
-  fi
   if out="$(DMTOOL_CLI="$NATIVE" uvx showboat@0.6.1 verify "$d" 2>&1)"; then
     printf 'PASS  %s\n' "$base"
   else
@@ -99,5 +91,5 @@ battery_fail=0
 
 echo "----"
 total=$(( fails + battery_fail ))
-if [[ $total -eq 0 ]]; then echo "native gate: GREEN (public contract clean; demos byte-match; no-crash battery clean; JVM-only demos skipped)"; else echo "native gate: $fails demo(s) FAILED + battery $([ $battery_fail -ne 0 ] && echo FAILED || echo ok)"; fi
+if [[ $total -eq 0 ]]; then echo "native gate: GREEN (public contract clean; all demos byte-match; no-crash battery clean)"; else echo "native gate: $fails demo(s) FAILED + battery $([ $battery_fail -ne 0 ] && echo FAILED || echo ok)"; fi
 exit $(( total > 0 ? 1 : 0 ))

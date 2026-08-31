@@ -56,7 +56,19 @@ verdict="$(grep -oE 'BUILD (SUCCESSFUL|FAILED)' "$LOG" | tail -1 || true)"
 # replacing it (that exact shape had left the pre-commit doc-guard check dead on Linux; docs/BUILD-ENVIRONMENT.md
 # "`stat` has two dialects"). `date -r` splits too: an epoch on BSD, a file on GNU.
 CUTOFF_MARGIN_SECONDS="${TEST_EVIDENCE_CUTOFF_MARGIN:-30}"
-cutoff_epoch="$(python3 - "$LOG" "$CUTOFF_MARGIN_SECONDS" <<'CUTOFF'
+temporary_files=()
+cleanup() {
+  local path
+  for path in "${temporary_files[@]:-}"; do
+    [[ -n "$path" ]] || continue
+    rm -f "$path"
+  done
+}
+trap cleanup EXIT
+
+cutoff_data="$(mktemp)"
+temporary_files+=("$cutoff_data")
+python3 - "$LOG" "$CUTOFF_MARGIN_SECONDS" > "$cutoff_data" <<'CUTOFF'
 import os, re, sys
 
 log, margin = sys.argv[1], float(sys.argv[2])
@@ -76,12 +88,10 @@ with open(log, "r", errors="replace") as handle:
                 seen = True
             if seen:
                 duration = total
-print(f"{max(birth, info.st_mtime - duration - margin) if duration is not None else birth:.6f}")
-print("derived" if duration is not None else "birth-only")
+cutoff = max(birth, info.st_mtime - duration - margin) if duration is not None else birth
+print(f"{cutoff:.6f}\t{'derived' if duration is not None else 'birth-only'}")
 CUTOFF
-)"
-cutoff_basis="$(printf '%s\n' "$cutoff_epoch" | tail -1)"
-cutoff_epoch="$(printf '%s\n' "$cutoff_epoch" | head -1)"
+IFS=$'\t' read -r cutoff_epoch cutoff_basis < "$cutoff_data"
 
 if (( PRINT_CUTOFF )); then
   printf '%s\n' "$cutoff_epoch"
@@ -89,7 +99,7 @@ if (( PRINT_CUTOFF )); then
 fi
 
 cutoff="$(mktemp)"
-trap 'rm -f "$cutoff"' EXIT
+temporary_files+=("$cutoff")
 python3 -c 'import os,sys; t=float(sys.argv[2]); os.utime(sys.argv[1], (t, t))' "$cutoff" "$cutoff_epoch"
 
 echo "verdict:   ${verdict:-(none — the build did not finish; the log may still be buffering)}"
@@ -99,7 +109,7 @@ echo "verdict:   ${verdict:-(none — the build did not finish; the log may stil
 # A task can appear twice (once bare, once with FAILED) — keep the most severe state, since reporting a
 # failed task as EXECUTED is precisely the misreading this script exists to prevent.
 states="$(mktemp)"
-trap 'rm -f "$cutoff" "$states"' EXIT
+temporary_files+=("$states")
 # `|| true` on the whole pipeline: a log naming no test task at all is a legitimate answer ("nothing ran"), and
 # under `pipefail` an empty grep would otherwise abort the script before it could say so.
 { grep -oE '^> Task :[A-Za-z:_-]*[Tt]est[A-Za-z]* ?(UP-TO-DATE|FROM-CACHE|NO-SOURCE|SKIPPED|FAILED)?' "$LOG" \
@@ -111,10 +121,12 @@ trap 'rm -f "$cutoff" "$states"' EXIT
            if (!(($1) in best) || r > bestrank[$1]) { best[$1] = st; bestrank[$1] = r } }
          END { for (t in best) printf "%s\t%s\n", t, best[t] }' | sort > "$states"; } || true
 
-declare -A STATE=()
-while IFS=$'\t' read -r task state; do
-  [[ -n "$task" ]] && STATE["$task"]="$state"
-done < "$states"
+state_for_task() {
+  awk -F'\t' -v wanted="$1" '
+    $1 == wanted { print $2; found = 1; exit }
+    END { if (!found) print "ABSENT" }
+  ' "$states"
+}
 
 echo
 printf '%-38s %-12s\n' "test task" "state"
@@ -133,7 +145,10 @@ withheld=()
 for dir in "$ROOT"/build/test-results/*/ "$ROOT"/*/build/test-results/*/; do
   [[ -d "$dir" ]] || continue
   # -newer compares mtimes; an XML from a previous run is older than this run's cutoff.
-  mapfile -t fresh < <(find "$dir" -name 'TEST-*.xml' -newer "$cutoff" 2>/dev/null)
+  fresh=()
+  while IFS= read -r result_file; do
+    fresh+=("$result_file")
+  done < <(find "$dir" -name 'TEST-*.xml' -newer "$cutoff" 2>/dev/null)
   (( ${#fresh[@]} )) || continue
 
   rel="${dir#"$ROOT"/}"
@@ -143,7 +158,7 @@ for dir in "$ROOT"/build/test-results/*/ "$ROOT"/*/build/test-results/*/; do
     build/test-results/*) task=":$leaf" ;;
     *) task=":${rel%%/*}:$leaf" ;;
   esac
-  state="${STATE[$task]:-ABSENT}"
+  state="$(state_for_task "$task")"
   if [[ "$state" != "EXECUTED" && "$state" != "FAILED" ]]; then
     withheld+=("$(printf '  %-46s %-12s %5s recent file(s) — NOT this run' "$rel/" "$state" "${#fresh[@]}")")
     continue

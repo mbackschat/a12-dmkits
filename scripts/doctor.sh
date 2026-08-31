@@ -20,8 +20,15 @@ note() { printf '        %s\n' "$1"; }
 
 printf '\nBuild environment for %s\n\n' "$ROOT"
 
-# 1 — JDK 21. build.sh pins it through java_home on macOS; elsewhere the caller owns JAVA_HOME.
+# 1 — the shell contract. The shebang resolves through PATH, so name the interpreter that actually won.
 printf 'Toolchain\n'
+if (( BASH_VERSINFO[0] > 3 || (BASH_VERSINFO[0] == 3 && BASH_VERSINFO[1] >= 2) )); then
+    pass "Bash interpreter meets the >= 3.2 baseline — $BASH_VERSION ($BASH)"
+else
+    fail "Bash $BASH_VERSION is older than the repository's >= 3.2 script baseline ($BASH)"
+fi
+
+# JDK 21. build.sh pins it through java_home on macOS; elsewhere the caller owns JAVA_HOME.
 if [[ -x /usr/libexec/java_home ]]; then
     if jdk21="$(a12_pinned_jdk21_home 2>/dev/null)" && [[ -n "$jdk21" ]]; then
         pass "JDK 21 available — $jdk21"

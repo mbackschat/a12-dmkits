@@ -3,11 +3,12 @@
 # selftest-test-evidence.sh — locks the evidence reporter in both directions.
 #
 # This script's whole value is that a reader BELIEVES its counts, so a wrong count here is worse than no tool
-# at all: it is a false green wearing the uniform of a check. Two defects of exactly that kind have now shipped
+# at all: it is a false green wearing the uniform of a check. Two defects of exactly that kind have shipped
 # in it — a cutoff that marked every file stale (its first version), and a cutoff taken from a birth time that
 # `>` does not reset, which on 2026-08-31 credited a 6-second run with 13 directories and 2016 tests from
 # earlier runs. Both were invisible in the output. Hence the does-count / does-NOT-count pairing below, and the
-# cutoff cases that drive the arithmetic directly through `--print-cutoff`.
+# cutoff cases that drive the arithmetic directly through `--print-cutoff`. A third regression made the
+# reporter abort under stock macOS Bash, so every reporter invocation below deliberately uses `/bin/bash`.
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -37,7 +38,7 @@ mk_tree() {
 }
 
 suite() { printf '<testsuite name="%s" tests="%s" failures="0" errors="0"/>\n' "$1" "$2"; }
-run() { bash "$1/scripts/test-evidence.sh" "$1/build/run.log" 2>&1; }
+run() { /bin/bash "$1/scripts/test-evidence.sh" "$1/build/run.log" 2>&1; }
 
 # ---- the measured incident: a directory whose task this log never mentions -----------------------------------
 echo "does NOT count — results the run did not produce"
@@ -104,14 +105,14 @@ printf '> Task :x\nBUILD SUCCESSFUL in 1s\n' > "$tmp/build/run.log"
 # A reused path keeps its birth time; only the mtime moves. Pushing the mtime far out is the same shape as a
 # month-old birth time, and it is the one of the two a test can set portably.
 touch -t 203001010000 "$tmp/build/run.log"
-cutoff="$(bash "$tmp/scripts/test-evidence.sh" --print-cutoff "$tmp/build/run.log")"
+cutoff="$(/bin/bash "$tmp/scripts/test-evidence.sh" --print-cutoff "$tmp/build/run.log")"
 check "a stale birth time cannot pin the cutoff — the verdict line wins" \
   "later" "$(awk -v c="$cutoff" -v n="$now" 'BEGIN { print (c > n + 31536000) ? "later" : "at-birth" }')"
 
 tmp="$(mk_tree)"
 mkdir -p "$tmp/build"
 printf '> Task :x\nBUILD SUCCESSFUL in 3600s\n' > "$tmp/build/run.log"
-cutoff="$(bash "$tmp/scripts/test-evidence.sh" --print-cutoff "$tmp/build/run.log")"
+cutoff="$(/bin/bash "$tmp/scripts/test-evidence.sh" --print-cutoff "$tmp/build/run.log")"
 check "…and on a freshly created log the birth time still wins, so a long run does not widen the window" \
   "at-birth" "$(awk -v c="$cutoff" -v n="$now" 'BEGIN { print (c > n - 60) ? "at-birth" : "widened" }')"
 

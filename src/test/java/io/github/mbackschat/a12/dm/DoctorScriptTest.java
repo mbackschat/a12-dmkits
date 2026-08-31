@@ -41,6 +41,7 @@ class DoctorScriptTest {
     void aMachineWithNoInitScriptIsClean(@TempDir Path home) throws Exception {
         var run = runDoctorWith(home);
 
+        assertTrue(run.output().contains("Bash interpreter meets the >= 3.2 baseline — "), run.output());
         assertTrue(run.output().contains("the machine-default home injects nothing into this build"),
                 run.output());
         assertEquals(0, run.exitCode(), "a clean machine must not fail the doctor:\n" + run.output());
@@ -138,7 +139,7 @@ class DoctorScriptTest {
     private static Run runDoctor(Path home, String actionlint, String hooksPath)
             throws IOException, InterruptedException {
         Path root = repositoryRoot();
-        var builder = new ProcessBuilder("bash", root.resolve("scripts/doctor.sh").toString());
+        var builder = new ProcessBuilder("/bin/bash", root.resolve("scripts/doctor.sh").toString());
         builder.directory(root.toFile());
         builder.redirectErrorStream(true);
         builder.environment().put("HOME", home.toString());

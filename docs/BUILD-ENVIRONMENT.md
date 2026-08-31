@@ -78,6 +78,16 @@ Every local run took the other branch, so the estate looked clean. Three things 
   branch. Note the one limit of that trick: it collides with the case that stubs the pin itself (its `sed`
   becomes a no-op and its commit finds nothing to do), so it validates everything up to that case, not past it.
 
+## Bash 3.2 is the script baseline (measured 2026-09-01)
+
+The repository's shell scripts must run on the Bash that ships with macOS: `/bin/bash` is **3.2.57** on the maintainer's machine. That is a compatibility contract, not a requirement to use exactly 3.2: newer Bash releases remain supported. The trap is interpreter selection — `command -v bash` resolves to Homebrew's `/opt/homebrew/bin/bash` 5.3 on that same machine, so every `#!/usr/bin/env bash` script looks healthy when invoked normally even if stock macOS cannot parse or execute it. Hosted Linux CI supplies a newer Bash too, so a green Linux run cannot prove the lower boundary.
+
+The 2026-09-01 sweep found **six active Bash-4-only constructs in four scripts**: associative-array declarations in `check-infographic-freshness.sh`, `native-gate.sh`, and `test-evidence.sh`, plus `mapfile` in `native-battery.sh` and `test-evidence.sh`. The introducing changes used them as convenient containers for duplicate detection, task-state lookup, skip reasons, or sorted file lists; none recorded a Bash-version decision. `release-perf-gate.sh` was also inspected because it explicitly documents the 3.2 baseline, but its live code already uses the compatible `while IFS= read -r` form and contained no forbidden construct.
+
+The lower boundary now has two enforcement layers. `ShellPortabilityGuardTest`, in the always-run `leakGuardTest` lane, scans every tracked shell script and rejects `mapfile`, `readarray`, and associative-array declarations, including a declaration split across backslash-continued physical lines; its own planted controls prove each spelling fires. Behaviour that needs a real interpreter is driven explicitly through `/bin/bash`: `TestEvidenceScriptTest` runs the evidence reporter's complete self-test there, while `DoctorScriptTest` runs the environment doctor there and requires the doctor to identify its actual Bash and the `>=3.2` contract. [`scripts/doctor.sh`](../scripts/doctor.sh) reports whichever Bash its shebang selected, so an unexpected Homebrew selection is visible without treating a newer compatible interpreter as a problem; it does not claim to test every Bash installed on the machine.
+
+The evidence-reporter boundary is load-bearing. Before `81e69c634`, Bash 3.2 silently treated its `mapfile` result as empty and printed that no result file belonged to the run; after that change, the same interpreter aborted before producing evidence. Both outcomes were wrong. The reporter now uses indexed arrays populated by `while IFS= read -r`, a file-backed task-state lookup, and a file-backed Python cutoff result, and its self-test exercises both the does-count and does-not-count arms under stock `/bin/bash`.
+
 ## `stat` has two dialects, and the wrong one does not fail cleanly (2026-08-22)
 
 The pre-commit doc-guard staleness check read mtimes as `stat -f %m F 2>/dev/null || stat -c %Y F 2>/dev/null || echo 0` — BSD spelling first, GNU as the fallback. Measured on one file, same second:

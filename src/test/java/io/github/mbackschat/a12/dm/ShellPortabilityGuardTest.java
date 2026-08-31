@@ -17,8 +17,7 @@ import java.util.regex.Pattern;
 import org.junit.jupiter.api.Test;
 
 /**
- * No committed shell script may read a file timestamp through a {@code stat} spelling only ONE dialect
- * understands, unless that script handles both.
+ * Guards the shell-portability contracts that every committed script must satisfy.
  *
  * <p><strong>Why this is a guard and not advice.</strong> CI is Linux and every development machine here is
  * macOS, so a one-dialect spelling is green locally and dead — or red — on CI. That is not hypothetical: the
@@ -41,6 +40,11 @@ import org.junit.jupiter.api.Test;
  * containing only one is flagged: use that probe shape, or take the timestamp somewhere dialect-free —
  * {@code find -newer} for a comparison, {@code python3}'s {@code os.stat} for a number (what
  * {@code scripts/test-evidence.sh} does).
+ *
+ * <p>The other contract is the stock-macOS Bash 3.2 baseline. A script using {@code mapfile},
+ * {@code readarray}, or an associative-array declaration only works in Bash 4+, while an
+ * {@code /usr/bin/env bash} shebang silently selects a Homebrew Bash when one is on {@code PATH}. The scanner
+ * therefore rejects those constructs directly; CI's newer Bash cannot exercise this compatibility boundary.
  *
  * <p><strong>Denominator + controls.</strong> {@code git ls-files} supplies the paths, so a script added
  * tomorrow is scanned without anyone declaring it; comment lines are excluded, since naming a spelling in
@@ -67,6 +71,28 @@ class ShellPortabilityGuardTest {
         @Override
         public String toString() {
             return file + ":" + line + "  " + dialect.description + "\n      " + source.strip();
+        }
+    }
+
+    private enum Bash4Construct {
+        BULK_READ(Pattern.compile("\\b(?:mapfile|readarray)\\b"), "mapfile/readarray (Bash 4+ only)"),
+        ASSOCIATIVE_ARRAY(
+                Pattern.compile("\\b(?:declare|local|typeset)\\b(?:\\s+-[A-Za-z]+)*\\s+-[A-Za-z]*A[A-Za-z]*(?:\\s|$)"),
+                "associative-array declaration (Bash 4+ only)");
+
+        private final Pattern spelling;
+        private final String description;
+
+        Bash4Construct(Pattern spelling, String description) {
+            this.spelling = spelling;
+            this.description = description;
+        }
+    }
+
+    private record Bash4Finding(String file, int line, Bash4Construct construct, String source) {
+        @Override
+        public String toString() {
+            return file + ":" + line + "  " + construct.description + "\n      " + source.strip();
         }
     }
 
@@ -97,6 +123,33 @@ class ShellPortabilityGuardTest {
     }
 
     @Test
+    void noTrackedShellScriptRequiresBash4() throws Exception {
+        Path root = repositoryRoot();
+        List<String> scripts = trackedShellScripts(root);
+        assertTrue(scripts.size() >= 40,
+                "only " + scripts.size() + " shell scripts found — the scanner lost its denominator, so a "
+                        + "green here would mean nothing");
+
+        var findings = new ArrayList<Bash4Finding>();
+        for (String relative : scripts) {
+            findings.addAll(scanBash4(relative, Files.readString(root.resolve(relative), StandardCharsets.UTF_8)));
+        }
+
+        assertEquals(List.of(), findings, () -> """
+                A tracked shell script requires Bash 4+, but stock macOS supplies Bash 3.2 and that is the
+                repository baseline. An `#!/usr/bin/env bash` shebang can hide this locally by selecting a
+                Homebrew Bash, while Linux CI's newer Bash accepts it.
+
+                %s
+
+                Replace mapfile/readarray with a `while IFS= read -r` loop and replace associative arrays with
+                parallel indexed arrays, a linear lookup, or a temporary file.
+                Contract and measurements: docs/BUILD-ENVIRONMENT.md "Bash 3.2 is the script baseline".""".formatted(
+                findings.stream().map(Bash4Finding::toString)
+                        .reduce("", (a, b) -> a.isEmpty() ? "  " + b : a + "\n  " + b)));
+    }
+
+    @Test
     void theScannerCatchesEitherSpellingOnItsOwn() {
         assertEquals(List.of(StatDialect.GNU),
                 dialectsFound("t=$(stat -c %Y \"$f\")"),
@@ -122,8 +175,56 @@ class ShellPortabilityGuardTest {
                 "the dialect-free reading must not be flagged");
     }
 
+    @Test
+    void theBashVersionScannerCatchesEveryForbiddenConstruct() {
+        assertEquals(List.of(Bash4Construct.BULK_READ), bash4ConstructsFound("mapfile -t files < list"));
+        assertEquals(List.of(Bash4Construct.BULK_READ), bash4ConstructsFound("readarray -d '' files < list"));
+        assertEquals(List.of(Bash4Construct.ASSOCIATIVE_ARRAY), bash4ConstructsFound("declare -A seen=()"));
+        assertEquals(List.of(Bash4Construct.ASSOCIATIVE_ARRAY), bash4ConstructsFound("local -rA labels=()"));
+        assertEquals(List.of(Bash4Construct.ASSOCIATIVE_ARRAY), bash4ConstructsFound("typeset -g -A cache=()"));
+        assertEquals(List.of(Bash4Construct.ASSOCIATIVE_ARRAY),
+                bash4ConstructsFound("declare " + '\\' + "\n  -A split=()"));
+    }
+
+    @Test
+    void theBashVersionScannerAllowsBash32FormsAndDocumentation() {
+        assertEquals(List.of(), bash4ConstructsFound("files=(); while IFS= read -r file; do files+=(\"$file\"); done"));
+        assertEquals(List.of(), bash4ConstructsFound("declare -a indexed=()"));
+        assertEquals(List.of(), bash4ConstructsFound("# mapfile and declare -A require Bash 4"));
+        assertEquals(List.of(), bash4ConstructsFound("mapfile_compat() { :; }"));
+    }
+
     private static List<StatDialect> dialectsFound(String script) {
         return scan("planted.sh", script).stream().map(Finding::dialect).distinct().toList();
+    }
+
+    private static List<Bash4Construct> bash4ConstructsFound(String script) {
+        return scanBash4("planted.sh", script).stream().map(Bash4Finding::construct).distinct().toList();
+    }
+
+    private static List<Bash4Finding> scanBash4(String file, String content) {
+        var findings = new ArrayList<Bash4Finding>();
+        List<String> lines = content.lines().toList();
+        for (int index = 0; index < lines.size(); index++) {
+            String line = lines.get(index);
+            int number = index + 1;
+            if (line.stripLeading().startsWith("#")) {
+                continue;
+            }
+            var logicalLine = new StringBuilder(line);
+            while (line.endsWith("\\") && index + 1 < lines.size()) {
+                logicalLine.setLength(logicalLine.length() - 1);
+                line = lines.get(++index);
+                logicalLine.append('\n').append(line);
+            }
+            String source = logicalLine.toString();
+            for (Bash4Construct construct : Bash4Construct.values()) {
+                if (construct.spelling.matcher(source).find()) {
+                    findings.add(new Bash4Finding(file, number, construct, source));
+                }
+            }
+        }
+        return findings;
     }
 
     /**

@@ -15,10 +15,12 @@ import org.junit.jupiter.api.Test;
  *
  * <p><b>Why this class exists.</b> {@code test-evidence.sh} is the tool a session reaches for when a build
  * result is about to be used as evidence, which makes a defect in it strictly worse than not having it: the
- * output is formatted as a check, so it is believed. Two have now shipped, both invisible in that output — a
+ * output is formatted as a check, so it is believed. Two silent defects have shipped — a
  * first version whose cutoff marked every file stale, and a cutoff read from the log's birth time, which
  * {@code >} does not reset when it truncates an existing path. The second credited a six-second run with 13
- * result directories and 2016 tests from earlier runs on 2026-08-31.
+ * result directories and 2016 tests from earlier runs on 2026-08-31. A third regression made the reporter
+ * abort under stock macOS Bash, so this wiring test deliberately selects {@code /bin/bash} rather than the
+ * newer Bash that may appear first on {@code PATH}.
  *
  * <p><b>What is asserted, and what deliberately is not.</b> This is a <i>wiring</i> test: it executes the
  * selftest and requires every case to pass. The cases live in the script, next to the behaviour they check,
@@ -33,7 +35,7 @@ class TestEvidenceScriptTest {
     @Test
     void everyEvidenceReporterSelftestCasePasses() throws Exception {
         Path root = repositoryRoot();
-        var builder = new ProcessBuilder("bash", root.resolve("scripts/selftest-test-evidence.sh").toString());
+        var builder = new ProcessBuilder("/bin/bash", root.resolve("scripts/selftest-test-evidence.sh").toString());
         builder.directory(root.toFile());
         builder.redirectErrorStream(true);
 

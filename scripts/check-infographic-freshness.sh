@@ -77,6 +77,15 @@ require_prompt_line() {
   grep -Fqx -- "$1" "$SPECIFICATION" || fail "performance prompt has drifted from its source: $1"
 }
 
+contains() {
+  local wanted="$1" candidate
+  shift
+  for candidate in "$@"; do
+    [[ "$candidate" == "$wanted" ]] && return 0
+  done
+  return 1
+}
+
 check_preview() {
   local document="$1" relative="$2" width="$3"
   grep -Fq "<a href=\"$relative\">" "$document" \
@@ -172,8 +181,8 @@ for prompt_line in "${prompt_lines[@]}"; do
   require_prompt_line "$prompt_line"
 done
 
-declare -A registered_assets=()
-declare -A registered_placements=()
+registered_assets=()
+registered_placements=()
 registry_rows=0
 while IFS=$'\t' read -r canonical_relative document_target preview_relative preview_width; do
   [[ "$canonical_relative" == assets/infographics/*.png ]] \
@@ -195,10 +204,11 @@ while IFS=$'\t' read -r canonical_relative document_target preview_relative prev
   check_preview "$document" "$preview_relative" "$preview_width"
 
   placement_key="$document:$preview_relative"
-  [[ -z "${registered_placements[$placement_key]:-}" ]] \
-    || fail "duplicate infographic registry placement: $document_target -> $preview_relative"
-  registered_placements["$placement_key"]=1
-  registered_assets["$canonical_relative"]=1
+  contains "$placement_key" "${registered_placements[@]:-}" \
+    && fail "duplicate infographic registry placement: $document_target -> $preview_relative"
+  registered_placements+=("$placement_key")
+  contains "$canonical_relative" "${registered_assets[@]:-}" \
+    || registered_assets+=("$canonical_relative")
   ((registry_rows += 1))
 
   if [[ "$linked" != "$canonical" ]]; then
@@ -231,7 +241,7 @@ done < <(
 ((registry_rows > 0)) || fail "INFOGRAPHICS.md contains no parseable infographic registry placements"
 for canonical in "$ROOT"/assets/infographics/*.png; do
   canonical_relative="assets/infographics/$(basename "$canonical")"
-  [[ -n "${registered_assets[$canonical_relative]:-}" ]] \
+  contains "$canonical_relative" "${registered_assets[@]:-}" \
     || fail "canonical infographic is not registered in INFOGRAPHICS.md: $canonical_relative"
 done
 
