@@ -185,6 +185,35 @@ class TemporalDeclaredFormatGateDiffTest {
      * cell for cell. Model consistency is asserted first, because a declaration the kernel refuses would make
      * every row below vacuous rather than false.
      */
+    /**
+     * <b>The separator-free formats read month-first (`MMdd`) and day-first (`ddMM`) — settled by VALIDITY,
+     * not by the spelling.</b> The grid test above asserts that the three engines *agree* on a classification;
+     * it never pinned what they agree on, so the component order was unmeasured here despite both formats
+     * being in the vocabulary. Raised by a12-kernel-lean, who flagged the order as an open assumption on
+     * their side, 2026-08-31.
+     *
+     * <p>Each pair is one impossible date in each direction, which is what makes it a discriminator rather
+     * than an example: under `MMdd`, `0229` is admitted while `0230` is refused, so the first pair is the
+     * MONTH — a day-first reading would refuse `0229` for naming month 29. Under `ddMM` the mirror holds:
+     * `2902` admitted, `3002` refused. The April rows are the same test at a 30-day month.
+     *
+     * <p>Note the cause: an out-of-range component in a compact format is reported {@code datumFormatFalsch}
+     * (format-wrong), not {@code datumFalsch} (date-wrong) — so the classifier treats it as a shape failure.
+     * The STORE direction is not measured here; nothing in this estate writes a compact fragment target.
+     */
+    @Test fun theSeparatorFreeFormatsReadMonthFirstAndDayFirstRespectively() {
+        assertEquals(
+            mapOf("0615" to emptyList<String>(), "0229" to emptyList(),
+                "0230" to listOf("datumFormatFalsch"), "0431" to listOf("datumFormatFalsch")),
+            formalCodes("/Grid/MonthDayCompactAsDate", GRID_MODEL, listOf("0615", "0229", "0230", "0431")),
+            "MMdd reads the leading pair as the MONTH")
+        assertEquals(
+            mapOf("1506" to emptyList<String>(), "2902" to emptyList(),
+                "3002" to listOf("datumFormatFalsch"), "3104" to listOf("datumFormatFalsch")),
+            formalCodes("/Grid/DayMonthCompactAsDate", GRID_MODEL, listOf("1506", "2902", "3002", "3104")),
+            "ddMM reads the leading pair as the DAY")
+    }
+
     @Test fun theCompleteFormatVocabularyIsClassifiedByItsDeclarationOnEveryKind() {
         assertEquals(emptyList<String>(), RuntimeLaws.consistencyMessages(GRID_MODEL),
             "all ${VOCABULARY.size * 3} declarations must be model-legal for the grid to measure anything")
