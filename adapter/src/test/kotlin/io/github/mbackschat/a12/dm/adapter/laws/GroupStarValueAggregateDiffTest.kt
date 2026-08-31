@@ -173,8 +173,11 @@ class GroupStarValueAggregateDiffTest {
             b.group("/Invoice", 1).field(TOTAL, "999.99", 1, 1).lines("10.50", "5.123")
         }
 
-    /** Reachability control: a `Having` on a GROUP star is REJECTED at codegen (`MVK_NO_GROUPS_ALLOWED` —
-     *  "At 'Having': It is not allowed to use a group"), so the interpreter's filtered path is unreachable on
+    /** Reachability control: a `Having` on a GROUP star is REJECTED (`MVK_NO_GROUPS_ALLOWED` —
+     *  "At 'Having': It is not allowed to use a group"). This path meets it as a codegen throw; static
+     *  arbitration refuses it as an ordinary diagnostic too, measured 2026-08-31 by
+     *  `validate.laws.GroupOperandFilterLawsTest.theSTATICArbitrationRefusesItOnTheCarriersOnlyMeasuredAtCodegenBefore`.
+     *  Either way the interpreter's filtered path is unreachable on
      *  a valid model for a group operand — only the unfiltered expansion is live. */
     @Test fun havingOnGroupStarIsRejectedByTheKernel() {
         val kModel = computeModel("Sum(/Invoice/Lines* Having [/Invoice/Lines/Amount] > 15)")
