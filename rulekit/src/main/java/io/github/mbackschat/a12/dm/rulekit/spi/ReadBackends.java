@@ -21,8 +21,14 @@ import io.github.mbackschat.a12.dm.rulekit.spi.ReadBackendResolution.Sole;
  */
 public final class ReadBackends {
 
-    private static volatile ReadBackendResolution override;
-    private static volatile boolean overridden;
+    /**
+     * The injected choice, or {@code null} when discovery decides. ONE field rather than a value beside an
+     * "is set" flag: two fields cannot be written atomically, so a reader could see the flag set and the value
+     * still null, and hand back a null {@link ReadBackendResolution} from a method documented never to.
+     */
+    private static volatile ReadBackendResolution injected;
+
+    /** The instantiated providers, or {@code null} before the first discovery. */
     private static volatile List<ConditionReadBack> discovered;
 
     private ReadBackends() {
@@ -30,10 +36,8 @@ public final class ReadBackends {
 
     /** What is registered for the port: no provider, exactly one, or several with no basis for choosing. */
     public static ReadBackendResolution current() {
-        if (overridden) {
-            return override;
-        }
-        return classify(discovered());
+        ReadBackendResolution choice = injected;
+        return choice != null ? choice : classify(discovered());
     }
 
     /** The read-back backend. Fails fast, naming what stands in the way and what to do about it. */
@@ -80,20 +84,17 @@ public final class ReadBackends {
         ConditionReadBack chosen = found.stream().filter(type::isInstance).findFirst().orElseThrow(
                 () -> new BackendRequiredException("no registered ConditionReadBack provider is a "
                         + type.getName() + " — registered: " + classNames(found)));
-        override = new Sole(chosen);
-        overridden = true;
+        injected = new Sole(chosen);
     }
 
     /** Inject a read-back backend for a test ({@code null} simulates its absence). Wins over discovery until {@link #reset}. */
     public static void override(ConditionReadBack impl) {
-        override = impl == null ? new None() : new Sole(impl);
-        overridden = true;
+        injected = impl == null ? new None() : new Sole(impl);
     }
 
     /** Clear any {@link #override} or {@link #prefer} choice, and the discovery cache. */
     public static void reset() {
-        override = null;
-        overridden = false;
+        injected = null;
         discovered = null;
     }
 
@@ -105,10 +106,12 @@ public final class ReadBackends {
     private static List<ConditionReadBack> discovered() {
         List<ConditionReadBack> found = discovered;
         if (found == null) {
-            found = new ArrayList<>();
-            ServiceLoader.load(ConditionReadBack.class).forEach(found::add);
-            discovered = List.copyOf(found);
-            found = discovered;
+            List<ConditionReadBack> loaded = new ArrayList<>();
+            ServiceLoader.load(ConditionReadBack.class).forEach(loaded::add);
+            // Publish the local, then return the LOCAL — re-reading the field here is what let a concurrent
+            // reset() null it between the write and the read, so this returned null.
+            found = List.copyOf(loaded);
+            discovered = found;
         }
         return found;
     }
