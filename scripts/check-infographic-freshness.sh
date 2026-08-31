@@ -1,6 +1,20 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+# This guard compares computed strings against ASCII text committed in the docs, so its arithmetic must format
+# the same everywhere. Measured 2026-08-31: under LANG=de_DE.UTF-8, awk's `printf "%.1f"` honours LC_NUMERIC and
+# emitted `47,7 kLOC` against the committed `47.7 kLOC`, so this guard REFUSED A CLEAN PUSH on a German-locale
+# machine while passing in CI, whose runners are C/UTF-8. A guard whose verdict depends on the developer's
+# environment is worse than none.
+#
+# ONLY the numeric category is forced, and that is deliberate: pinning LC_ALL=C instead traded this bug for its
+# mirror, because the evidence line below is split on `·` (U+00B7, two UTF-8 bytes) and a C LC_CTYPE splits it
+# bytewise into empty fields. LC_ALL is unset first because it would otherwise override LC_NUMERIC. The split
+# itself no longer relies on the character class either — see the evidence line — so neither category can decide
+# this guard's verdict. Locked by InfographicFreshnessLocaleTest.
+unset LC_ALL
+export LC_NUMERIC=C
+
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 REPORT="$ROOT/interpreter/public-release/PERFORMANCE.md"
 ROOT_README="$ROOT/README.md"
@@ -120,11 +134,16 @@ dynamic_ratio="$(sed -nE 's/.*and about \*\*([^ ]+) its dynamic Groovy\*\*.*/\1/
 
 evidence_line="$(grep -F '<sub>Measured ' "$REPORT" | tail -n 1)"
 evidence="${evidence_line#<sub>Measured }"
-IFS='·' read -r measurement_date machine browser jdk ignored <<<"$evidence"
-measurement_date="$(trim "$measurement_date")"
-machine="$(trim "$machine")"
-browser="$(trim "$browser")"
-jdk="$(trim "$jdk")"
+# Split on the literal separator rather than through IFS, whose members are BYTES: `·` is two UTF-8 bytes, so
+# an IFS split yields phantom empty fields wherever LC_CTYPE is not multibyte-aware.
+evidence_field() {
+  awk -v index_wanted="$1" 'BEGIN { RS = "\0" }
+    { n = split($0, parts, / *· */); if (index_wanted <= n) printf "%s", parts[index_wanted] }' <<<"$evidence"
+}
+measurement_date="$(trim "$(evidence_field 1)")"
+machine="$(trim "$(evidence_field 2)")"
+browser="$(trim "$(evidence_field 3)")"
+jdk="$(trim "$(evidence_field 4)")"
 
 prompt_lines=(
   "- Section title: \"WARM VALIDATION • $stress_rows • $stress_findings findings\""

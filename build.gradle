@@ -499,6 +499,7 @@ tasks.register('deliveryGuardTest', Test) {
         includeTestsMatching 'io.github.mbackschat.a12.dm.ReleasePerfGateRefusalTest'
         includeTestsMatching 'io.github.mbackschat.a12.dm.JdkPinScriptTest'
         includeTestsMatching 'io.github.mbackschat.a12.dm.LaneGuardScriptTest'
+        includeTestsMatching 'io.github.mbackschat.a12.dm.InfographicFreshnessLocaleTest'
     }
     guardInputs(it, [
             'release perf gate'       : file('scripts/release-perf-gate.sh'),
