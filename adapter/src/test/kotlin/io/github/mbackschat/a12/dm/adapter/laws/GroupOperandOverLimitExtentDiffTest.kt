@@ -10,6 +10,8 @@ import io.github.mbackschat.a12.dm.modelkit.FieldKind
 import java.util.Locale
 import java.util.function.Consumer
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertThrows
+import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 
 /**
@@ -29,7 +31,7 @@ import org.junit.jupiter.api.Test
  * **Why the conditions are raw strings here.** The typed surface offers no unstarred-`GroupRef` factory for four
  * of these six carriers (`numberOfValueInFields`, `sum`, `minValue`/`maxValue`, `numberOfDifferentValues` all take
  * an `AggregateOperand`, whose group arm is the STARRED `GroupListRef`), while the kernel admits all of them —
- * measured in this file's own admission ladder. That gap is recorded in `DEV-API-GAPS` and is a separate slice;
+ * asserted per probe model by [requireAdmitted]. That gap is recorded in `DEV-API-GAPS` and is a separate slice;
  * the shape under test is precisely one the typed surface cannot express, which is when the laws tiers use the
  * raw form.
  *
@@ -50,6 +52,10 @@ class GroupOperandOverLimitExtentDiffTest {
         const val FEE = "/Return/Amounts/Charges/Fee"
         const val CODE = "GOL"
         const val UNAVAILABLE = "no candidate fired — the carrier could not evaluate"
+
+        /** The starred FIELD list over the Number shell — the spelling the aggregate carriers are typed for. */
+        const val FEES = "/Return/Amounts/Charges*/Fee"
+        const val SUM_FEES = "Sum($FEES)"
     }
 
     /**
@@ -99,12 +105,33 @@ class GroupOperandOverLimitExtentDiffTest {
             "FieldFilled(Reviewer) And $condition")
 
     /**
+     * **The instrument's own admission control, and the ladder cannot be read without it.** `withRule` is a raw-JSON
+     * splice landing downstream of every gate, so a condition the kernel would REFUSE produces a model whose probe
+     * rule simply never runs — and a rule that never ran is silent, which on this ladder is indistinguishable from a
+     * carrier that evaluated and disagreed. Every [UNAVAILABLE] row would then be unfalsifiable.
+     *
+     * <p>a12-kernel-lean measured exactly this failure on their own instrument: one of twenty `rule add`s was lost
+     * and the missing member read as a kernel answer. Ours had the same hole, so admission is asserted per probe
+     * model rather than assumed — [theLadderRefusesAModelTheKernelWouldNotAdmit] is its positive control.
+     */
+    private fun requireAdmitted(model: String, condition: String) {
+        val refusals = RuntimeLaws.consistencyMessages(model)
+        if (refusals.isNotEmpty()) {
+            throw IllegalStateException(
+                "the kernel refused the probe model, so a silent rule cannot be read as a carrier's answer: " +
+                    "$condition — $refusals",
+            )
+        }
+    }
+
+    /**
      * Runs one condition on one document through all three engines and returns whether the probe rule fired,
      * failing if they disagree — on the COMPLETE (code @ pointer) message set, not merely on this rule's presence,
      * so a divergence in the accompanying formal messages cannot pass as agreement.
      */
     private fun fires(condition: String, build: (Both) -> Unit): Boolean {
         val model = modelWith(condition)
+        requireAdmitted(model, condition)
         val def = ModelLoader.load(model)
         val both = Both(model).also(build)
         val dynamic = RuntimeLaws.messages(model, both.kDoc).map { "${it.code()}@${it.field()}" }.sorted()
@@ -120,8 +147,25 @@ class GroupOperandOverLimitExtentDiffTest {
     /**
      * The exact value the carrier answers, read off a ladder of candidate equalities — or [UNAVAILABLE] when none
      * fires. Two firings would mean the ladder itself is broken, so it is reported rather than silently reduced.
+     *
+     * <p>**Every ladder must carry the identity member, and the check is per CARRIER rather than per row.** a12-
+     * kernel-lean published an extrema/distinct-count split against `Sum` on an emptied domain — extrema
+     * `UNAVAILABLE`, `Sum` a definite `0` — and retracted it: their `Sum` ladders carried a `== 0` member and
+     * their extrema ladders ran `5`/`7`, so the "split" was their own instrument's silence on the only value that
+     * could have been the answer. Two of the ladders in this file had the same shortfall
+     * ([theSameExclusionHoldsForTheValueCountBooleanAndAggregateCarriers]' extrema at `5`/`7`, its distinct count
+     * at `1`/`2`), and they read a value rather than a silence purely because those documents were non-empty.
+     *
+     * <p>So the coverage is enforced here rather than left to whoever picks the next ladder: a carrier that
+     * cannot express `0` cannot distinguish "the domain was empty" from "the carrier could not evaluate", which
+     * is precisely the distinction every [UNAVAILABLE] row in this file claims to have made. Every carrier here is
+     * numeric or a count; a future non-numeric one will trip this and must state its own identity value.
      */
     private fun read(expr: String, candidates: List<String>, build: (Both) -> Unit): String {
+        check("0" in candidates) {
+            "the ladder for '$expr' cannot express 0, so a silence could not be told from an empty domain: " +
+                candidates
+        }
         val fired = candidates.filter { fires("$expr == $it", build) }
         return when (fired.size) {
             0 -> UNAVAILABLE
@@ -266,13 +310,13 @@ class GroupOperandOverLimitExtentDiffTest {
             "value count, Boolean — in-capacity control"
                 to read("NumberOfValueInFields(True In Flags)", counts, ::boolInCap),
             "Sum — in-capacity 5, over-limit 7"
-                to read("Sum(Amounts)", listOf("5", "7", "12"), ::feeInCapFiveOverLimitSeven),
+                to read("Sum(Amounts)", listOf("0", "5", "7", "12"), ::feeInCapFiveOverLimitSeven),
             "MaxValue — in-capacity 5, over-limit 7"
-                to read("MaxValue(Amounts)", listOf("5", "7"), ::feeInCapFiveOverLimitSeven),
+                to read("MaxValue(Amounts)", listOf("0", "5", "7"), ::feeInCapFiveOverLimitSeven),
             "MinValue — in-capacity 7, over-limit 5"
-                to read("MinValue(Amounts)", listOf("5", "7"), ::feeInCapSevenOverLimitFive),
+                to read("MinValue(Amounts)", listOf("0", "5", "7"), ::feeInCapSevenOverLimitFive),
             "NumberOfDifferentValues — in-capacity 5, over-limit 7"
-                to read("NumberOfDifferentValues(Amounts)", listOf("1", "2"), ::feeInCapFiveOverLimitSeven),
+                to read("NumberOfDifferentValues(Amounts)", listOf("0", "1", "2"), ::feeInCapFiveOverLimitSeven),
         )
         assertEquals(
             linkedMapOf(
@@ -366,33 +410,58 @@ class GroupOperandOverLimitExtentDiffTest {
     }
 
     /**
-     * **`Sum` over an EMPTY in-capacity domain is a definite zero, not unavailable** — the limit both projects
-     * stated and neither closed. Our earlier ladder deliberately avoided the empty domain by mixing values, and
-     * a12-kernel-lean's reproduction of the same rows carried no `== 0` member, so on three documents `Sum` read
-     * unavailable in exactly the way a definite `0` also would. One ladder member settles it.
+     * **Over an EMPTY in-capacity domain every aggregate carrier is a definite zero, not unavailable** — the limit
+     * both projects stated, and the one place a plausible reading survived longest on both sides. Our earlier
+     * ladder deliberately avoided the empty domain by mixing values, and a12-kernel-lean's reproduction carried no
+     * `== 0` member, so `Sum` read unavailable in exactly the way a definite `0` also would.
+     *
+     * <p>The extrema are the sharper half and the reason this covers the whole family rather than `Sum` alone.
+     * a12-kernel-lean first reported an observed SPLIT here — `Sum` a definite `0`, the extrema and the distinct
+     * count `UNAVAILABLE` — then retracted it: the six extrema/distinct ladders had no zero member at all, so the
+     * split was one instrument's silence. That reading is also the *plausible* one, since an extremum over an
+     * empty set is undefined in most languages, which is why it drew no scrutiny on either side. It is measured
+     * here rather than adopted from their report, on our own fixture and through our own three engines.
      *
      * <p>The only-over-limit document is the row that matters: it is empty *after* the capacity projection while
      * carrying content in the document, so it separates "nothing to add" from "something I refuse to add".
      */
     @Test
-    fun aSumOverAnEmptyInCapacityDomainIsADefiniteZero() {
-        val ladder = listOf("0", "5", "7", "12")
+    fun everyAggregateOverAnEmptyInCapacityDomainIsADefiniteZero() {
+        val sums = listOf("0", "5", "7", "12")
+        val counts = listOf("0", "1", "2")
+        val carriers = linkedMapOf(
+            "Sum" to Pair(SUM_FEES, sums),
+            "MaxValue" to Pair("MaxValue($FEES)", sums),
+            "MinValue" to Pair("MinValue($FEES)", sums),
+            "NumberOfDifferentValues" to Pair("NumberOfDifferentValues($FEES)", counts),
+            "NumberOfFilledFields" to Pair("NumberOfFilledFields($FEES)", counts),
+            "NumberOfValueInFields" to Pair("NumberOfValueInFields(5 In $FEES)", counts),
+        )
+        val documents = linkedMapOf<String, (Both) -> Unit>(
+            "no repeatable row at all" to ::noChargeRow,
+            "only content OVER LIMIT" to ::onlyFeeOverLimit,
+        )
+        val actual = LinkedHashMap<String, String>()
+        carriers.forEach { (carrier, probe) ->
+            documents.forEach { (label, doc) ->
+                actual["$carrier — $label"] = read(probe.first, probe.second, doc)
+            }
+        }
+        assertEquals(
+            LinkedHashMap(carriers.keys.flatMap { c -> documents.keys.map { d -> "$c — $d" to "0" } }.toMap()),
+            actual,
+            "an emptied domain answers zero on every carrier — so the over-limit row is excluded AND definite",
+        )
         assertEquals(
             linkedMapOf(
-                "no repeatable row at all — fixed" to "0",
-                "no repeatable row at all — starred" to "0",
-                "only content OVER LIMIT — fixed" to "0",
-                "only content OVER LIMIT — starred" to "0",
+                "Sum — fixed group spelling" to "0",
+                "Sum — starred group spelling" to "0",
             ),
             linkedMapOf(
-                "no repeatable row at all — fixed" to read("Sum(/Return/Amounts)", ladder, ::noChargeRow),
-                "no repeatable row at all — starred"
-                    to read("Sum(/Return/Amounts/Charges*)", ladder, ::noChargeRow),
-                "only content OVER LIMIT — fixed" to read("Sum(/Return/Amounts)", ladder, ::onlyFeeOverLimit),
-                "only content OVER LIMIT — starred"
-                    to read("Sum(/Return/Amounts/Charges*)", ladder, ::onlyFeeOverLimit),
+                "Sum — fixed group spelling" to read("Sum(/Return/Amounts)", sums, ::onlyFeeOverLimit),
+                "Sum — starred group spelling" to read("Sum(/Return/Amounts/Charges*)", sums, ::onlyFeeOverLimit),
             ),
-            "an empty domain sums to zero, so the over-limit row is excluded AND the result stays definite",
+            "and the group spellings answer as the field one, on the document the capacity projection empties",
         )
     }
 
@@ -423,6 +492,78 @@ class GroupOperandOverLimitExtentDiffTest {
                     to read("NumberOfFilledFields(/Return/Amounts/Charges*)", ladder, ::malformedOverLimit),
             ),
             "the count carrier splits where Sum splits — measured, not carried across from Sum",
+        )
+    }
+
+    /**
+     * **The starred FIELD operand — the form these carriers are actually designed for, and the one every row above
+     * skipped.** This file's rows are group operands, fixed and starred, and "group operand" was allowed to stand
+     * for "operand". The substitution is not a near miss: the catalog types all five carriers over a *field* list
+     * (`Sum` takes a `number-field-list`, the extrema a `sortable-field-list`, `NumberOfDifferentValues` a
+     * `homogeneous-field-list`), and the typed surface's `AggregateOperand` reaches a group only via the starred
+     * `GroupListRef` — so `Charges*` + `Fee` is the primary spelling and the group operand is the variant.
+     *
+     * <p>Each row's ladder is chosen so the two readings differ. The value count needs the REVERSED document
+     * (in-capacity 7, over-limit 5) because counting `5` over the forward one answers `1` whether or not the
+     * over-limit cell is in the extent, and a row that cannot distinguish them measures nothing.
+     */
+    @Test
+    fun theSTARREDFIELDOperandExcludesTheOverLimitCellOnEveryAggregateCarrier() {
+        val sums = listOf("0", "5", "7", "12")
+        val counts = listOf("0", "1", "2")
+        assertEquals(
+            linkedMapOf(
+                "Sum — in-capacity 5, over-limit 7" to "5",
+                "Sum — both in capacity, control" to "12",
+                "MaxValue — in-capacity 5, over-limit 7" to "5",
+                "MaxValue — both in capacity, control" to "7",
+                "MinValue — in-capacity 7, over-limit 5" to "7",
+                "MinValue — both in capacity, control" to "5",
+                "NumberOfDifferentValues — in-capacity 5, over-limit 7" to "1",
+                "NumberOfDifferentValues — both in capacity, control" to "2",
+                "NumberOfValueInFields 5 — in-capacity 7, over-limit 5" to "0",
+                "NumberOfValueInFields 5 — both in capacity, control" to "1",
+                "Sum — malformed in capacity" to UNAVAILABLE,
+                "Sum — the same cell over limit" to "5",
+            ),
+            linkedMapOf(
+                "Sum — in-capacity 5, over-limit 7" to read(SUM_FEES, sums, ::feeInCapFiveOverLimitSeven),
+                "Sum — both in capacity, control" to read(SUM_FEES, sums, ::feeBothInCapacity),
+                "MaxValue — in-capacity 5, over-limit 7"
+                    to read("MaxValue($FEES)", sums, ::feeInCapFiveOverLimitSeven),
+                "MaxValue — both in capacity, control" to read("MaxValue($FEES)", sums, ::feeBothInCapacity),
+                "MinValue — in-capacity 7, over-limit 5"
+                    to read("MinValue($FEES)", sums, ::feeInCapSevenOverLimitFive),
+                "MinValue — both in capacity, control" to read("MinValue($FEES)", sums, ::feeBothInCapacity),
+                "NumberOfDifferentValues — in-capacity 5, over-limit 7"
+                    to read("NumberOfDifferentValues($FEES)", counts, ::feeInCapFiveOverLimitSeven),
+                "NumberOfDifferentValues — both in capacity, control"
+                    to read("NumberOfDifferentValues($FEES)", counts, ::feeBothInCapacity),
+                "NumberOfValueInFields 5 — in-capacity 7, over-limit 5"
+                    to read("NumberOfValueInFields(5 In $FEES)", counts, ::feeInCapSevenOverLimitFive),
+                "NumberOfValueInFields 5 — both in capacity, control"
+                    to read("NumberOfValueInFields(5 In $FEES)", counts, ::feeBothInCapacity),
+                "Sum — malformed in capacity" to read(SUM_FEES, sums, ::malformedInCap),
+                "Sum — the same cell over limit" to read(SUM_FEES, sums, ::malformedOverLimit),
+            ),
+            "the extent belongs to the operand, and the field spelling answers exactly as the group spelling did",
+        )
+    }
+
+    /**
+     * **The positive control for [requireAdmitted]** — without it every [UNAVAILABLE] row above is unfalsifiable,
+     * so the guard needs a case proving it actually fires. `Sum` over the all-String group is refused by the
+     * kernel's model gate, and it is refused in exactly the shape the ladder walks: a group operand under an
+     * aggregate carrier, which is why a silent rule here would have read as "the carrier could not evaluate".
+     */
+    @Test
+    fun theLadderRefusesAModelTheKernelWouldNotAdmit() {
+        val refused = assertThrows(IllegalStateException::class.java) {
+            fires("Sum(Notes) == 0", ::feeBothInCapacity)
+        }
+        assertTrue(
+            refused.message!!.contains("Sum(Notes)"),
+            "the refusal must name the condition it refused, or the ladder cannot say which row is unmeasured",
         )
     }
 
