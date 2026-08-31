@@ -107,7 +107,18 @@ So the rule has two halves, and the second is the durable one:
 - **Force only the category you need** — `unset LC_ALL` (it overrides everything else) then `export LC_NUMERIC=C`. Pinning `LC_ALL` reaches `LC_CTYPE` and `LC_COLLATE` as well, which is almost never what a numeric-formatting problem wants.
 - **Never byte-split on a multi-byte separator.** `IFS='<multibyte>'` is fragile by construction; split on the literal string instead (an `awk` field separator, `sed`, `tr`). Once the split no longer reads the character class, no locale category can decide the verdict.
 
-`InfographicFreshnessLocaleTest` runs the real script under `C` and under `de_DE.UTF-8` and requires the same exit status **and** the same output. It is a property test rather than a pinned pass on purpose: asserting the guard *passes* would couple it to the docs being fresh, which is the guard's own job, and an honest drift would then fail here too. Both bugs above were demonstrated to fail it independently before the fix.
+`InfographicFreshnessLocaleTest` runs the real script under `C` and under a comma-decimal locale and requires the same exit status **and** the same output. It is a property test rather than a pinned pass on purpose: asserting the guard *passes* would couple it to the docs being fresh, which is the guard's own job, and an honest drift would then fail here too. Both bugs above were demonstrated to fail it independently before the fix.
+
+### …and the test that locks it must ESTABLISH the locale, not name one (measured 2026-08-31, one push later)
+
+That test first hard-coded `de_DE.UTF-8` and **went red on CI**, where the locale is not generated: bash prints `setlocale: cannot change locale` to stderr and then runs in C regardless. Two distinct defects in one line, and the second is the dangerous one — the run *fails*, and filtering the warning away to make it pass would leave both arms executing the same C run and agreeing with itself, so the guard would read green while testing nothing. A missing environment premise does not announce itself as a missing premise; it announces itself as a passing test.
+
+So an environment-dependent guard test carries two arms:
+
+- **Establish the premise by measurement, never by name or by `locale -a`.** The candidate list is probed by asking `awk` to format `1.5` and keeping the first locale that answers `1,5` — the exact mechanism under test, rather than a directory listing that says a locale is generated. Where none answers, the behavioural arm is **skipped with the probe result in the message**, because that machine cannot express the hazard at all.
+- **Keep an always-on arm that fails everywhere.** The fix is one line in a shell script, and on a runner that cannot run the behavioural arm nothing else would notice it being deleted; `theGuardPinsTheNumericLocaleItselfRatherThanInheritingIt` asserts the script still pins `LC_NUMERIC`. It is a source-text check and weak by design — it claims only that the variable is still pinned, not that the guard is locale-invariant.
+
+The general form, for any guard that reads the machine: **a test whose premise the environment may not supply must measure the premise and skip loudly, and must leave behind an assertion that still bites where it skipped.** The failure mode is not a red build — it is a green one.
 
 ## Offline and bootstrap limits
 
