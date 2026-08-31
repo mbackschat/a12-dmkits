@@ -2575,15 +2575,41 @@ public static record io.github.mbackschat.a12.dm.rulekit.read.ReadResult.Opaque 
   public java.lang.String reason()
   public final java.lang.String toString()
 
+public class io.github.mbackschat.a12.dm.rulekit.spi.AmbiguousBackendException extends io.github.mbackschat.a12.dm.rulekit.spi.BackendRequiredException
+  public AmbiguousBackendException(java.util.List<? extends io.github.mbackschat.a12.dm.rulekit.spi.ConditionReadBack>)
+
 public class io.github.mbackschat.a12.dm.rulekit.spi.BackendRequiredException extends java.lang.RuntimeException
   public BackendRequiredException(java.lang.String)
 
 public interface io.github.mbackschat.a12.dm.rulekit.spi.ConditionReadBack
   public abstract java.util.Map<java.lang.String, io.github.mbackschat.a12.dm.rulekit.read.ReadResult> readAll(java.lang.String, io.github.mbackschat.a12.dm.core.ModelResolver)
 
+public sealed interface io.github.mbackschat.a12.dm.rulekit.spi.ReadBackendResolution
+
+public static record io.github.mbackschat.a12.dm.rulekit.spi.ReadBackendResolution.None implements io.github.mbackschat.a12.dm.rulekit.spi.ReadBackendResolution
+  public None()
+  public final boolean equals(java.lang.Object)
+  public final int hashCode()
+  public final java.lang.String toString()
+
+public static record io.github.mbackschat.a12.dm.rulekit.spi.ReadBackendResolution.Several implements io.github.mbackschat.a12.dm.rulekit.spi.ReadBackendResolution
+  public Several(java.util.List<io.github.mbackschat.a12.dm.rulekit.spi.ConditionReadBack>)
+  public final boolean equals(java.lang.Object)
+  public final int hashCode()
+  public java.util.List<io.github.mbackschat.a12.dm.rulekit.spi.ConditionReadBack> providers()
+  public final java.lang.String toString()
+
+public static record io.github.mbackschat.a12.dm.rulekit.spi.ReadBackendResolution.Sole implements io.github.mbackschat.a12.dm.rulekit.spi.ReadBackendResolution
+  public Sole(io.github.mbackschat.a12.dm.rulekit.spi.ConditionReadBack)
+  public final boolean equals(java.lang.Object)
+  public final int hashCode()
+  public io.github.mbackschat.a12.dm.rulekit.spi.ConditionReadBack provider()
+  public final java.lang.String toString()
+
 public final class io.github.mbackschat.a12.dm.rulekit.spi.ReadBackends
-  public static java.util.Optional<io.github.mbackschat.a12.dm.rulekit.spi.ConditionReadBack> current()
+  public static io.github.mbackschat.a12.dm.rulekit.spi.ReadBackendResolution current()
   public static void override(io.github.mbackschat.a12.dm.rulekit.spi.ConditionReadBack)
+  public static void prefer(java.lang.Class<? extends io.github.mbackschat.a12.dm.rulekit.spi.ConditionReadBack>)
   public static io.github.mbackschat.a12.dm.rulekit.spi.ConditionReadBack require()
   public static void reset()
 

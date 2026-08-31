@@ -2,6 +2,7 @@ package io.github.mbackschat.a12.dm;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -14,6 +15,7 @@ import io.github.mbackschat.a12.dm.core.Verification;
 import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft;
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel;
 import io.github.mbackschat.a12.dm.rulekit.spi.BackendRequiredException;
+import io.github.mbackschat.a12.dm.rulekit.spi.ReadBackendResolution;
 import io.github.mbackschat.a12.dm.rulekit.spi.ReadBackends;
 import io.github.mbackschat.a12.dm.rulekit.validate.DraftRule;
 import io.github.mbackschat.a12.dm.rulekit.validate.RuleValidator;
@@ -140,7 +142,8 @@ class NoBackendLaneTest {
     /** §2c row 5 — condition read-back has no honest structural-only answer: it fails fast. */
     @Test
     void readBackFailsFast() {
-        assertTrue(ReadBackends.current().isEmpty(), "no ConditionReadBack provider is discovered");
+        assertInstanceOf(ReadBackendResolution.None.class, ReadBackends.current(),
+                "no ConditionReadBack provider is discovered");
         BackendRequiredException ex = assertThrows(BackendRequiredException.class, ReadBackends::require,
                 "read-back with no backend must fail fast, not degrade");
         assertTrue(ex.getMessage().contains("read-back") || ex.getMessage().contains("read conditions"),
