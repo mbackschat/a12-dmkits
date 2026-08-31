@@ -225,8 +225,10 @@ class NestedOverLimitAbsorptionDiffTest {
      * <p>The consequence is a differential blind spot, not merely an ugly address: an engine attributing a
      * group-node finding to the wrong descendant row would compare equal. This test pins the kernel's own
      * addresses across both codegen strategies so the class is covered while the rendering question is decided
-     * separately — changing the format moves a published address shape, including one an external consumer of the
-     * probe artifact already reads, so it is not folded into a measurement commit.
+     * separately: the projection is tool-owned ([MessagePointerProjection] says so) but 23 committed corpus case
+     * files store its spelling, so changing it is a regeneration sweep rather than a line in a measurement
+     * commit. It reaches no published address — `A12Pointers` and `KernelRuntimeProbe` both prefer A12's
+     * canonical exact form, which distinguishes these three rows.
      */
     @Test
     fun theKernelAddressesEachDescendantRowDistinctlyWhereOurFormattedAddressCollapsesThem() {
