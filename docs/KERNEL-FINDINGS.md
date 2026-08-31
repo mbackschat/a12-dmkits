@@ -4088,6 +4088,16 @@ Measured on two converters (a malformed NUMBER, an out-of-calendar DATE) so the 
 
 **What the `GroupFilled ∧ FieldNotFilled` shape does is measured but not explained.** The kernel's documentation offers it for "mandatory regarding its root group"; it puts the field in **both** field sets, which is also consistent with that documentation's other note that a mandatory field is mandatory regarding its root group too. This model does not separate those readings, so no mechanism is claimed.
 
+**A COUNT shape names no field at all, and reaches the root group only in the `<` direction.** One rule per model so an empty set can be attributed, over a two-field `NumberOfFilledFields`:
+
+| the model's single rule | `mandatory` | `mandatoryForRootGroup` | `mandatoryRootGroups` |
+|---|---|---|---|
+| `NumberOfFilledFields(PolicyNumber, Amount) < 2` | — | — | `Claim` |
+| `NumberOfFilledFields(PolicyNumber, Amount) >= 2` | — | — | — |
+| `FieldNotFilled(PolicyNumber)` — presence control | `/Claim/PolicyNumber` | `/Claim/PolicyNumber` | `Claim` |
+
+The pair varies direction and nothing else: both comparisons are satisfiable and non-trivial over two fields, where `< 3` against `>= 3` would have moved satisfiability too and given an empty result two explanations. The presence control is what makes the count row readable — it reaches the root group as well, so the root group is not a count-shape peculiarity, and the count row's content is the two **empty field sets** beside a root group the kernel still reports: it knows the group cannot be left alone and cannot name which field settles it. a12-kernel-lean reported both facts from their own run of this capability; they are recorded here as our rows because they were re-measured here, on our fixtures, and the presence control corrected the prediction that only a count shape would move the root-group set.
+
 Built for a12-kernel-lean's `EXP-2026-08-30-01`, whose question — whether a rule literal that narrows to the kernel's absent-value sentinel silently drops a rule from this derivation ([KF220](#kf220)) — needs exactly this observation and cannot be reached by `validateFull` or `compute`. The derivation itself is not the answer to that question; it is the instrument.
 
-*(Locked: `adapter.laws.KernelProbeMandatoryInformationTest` — all three sets pinned exactly, the two negative controls, the schema/producer parity for the model-level request rules, and byte-identical repeat runs. Contract: [KERNEL-PROBE-SPEC](KERNEL-PROBE-SPEC.md) "The `mandatoryInformation` block".)*
+*(Locked: `adapter.laws.KernelProbeMandatoryInformationTest` — all three sets pinned exactly, the two negative controls, the count-shape direction pair with its presence control, the schema/producer parity for the model-level request rules, and byte-identical repeat runs. Contract: [KERNEL-PROBE-SPEC](KERNEL-PROBE-SPEC.md) "The `mandatoryInformation` block".)*

@@ -83,6 +83,47 @@ class KernelProbeMandatoryInformationTest {
         )
     }
 
+    /**
+     * **A count shape names no FIELD, reaching only `mandatoryRootGroups`, and only in the `<` direction.**
+     * Measured after a12-kernel-lean reported both facts from their own `EXP-2026-08-30-01` run; re-derived here
+     * rather than carried on their report, because it is our capability's documentation that would otherwise
+     * imply a count shape behaves like a presence one.
+     *
+     * **The pair varies direction and nothing else.** `< 2` and `>= 2` over a two-field count share the
+     * literal, and both are satisfiable and non-trivial there — `< 2` is false at two filled, `>= 2` is false
+     * at none. Comparing `< 3` against `>= 3` would have moved satisfiability too, since `>= 3` cannot hold
+     * over two fields, and an empty result would then have had two explanations.
+     *
+     * **The presence control is what makes the count row readable, and it corrected a prediction.** A single
+     * `FieldNotFilled` rule reaches all three sets, root group included — so `mandatoryRootGroups` is not a
+     * count-shape peculiarity, and the count row's real content is the two EMPTY field sets beside a root group
+     * the kernel still reports. It knows the group cannot be left alone; it cannot name which field settles it.
+     */
+    @Test
+    fun aCountShapeNamesNoFieldAndReachesTheRootGroupOnlyInTheLessThanDirection() {
+        assertEquals(
+            mapOf(
+                "NumberOfFilledFields(…) < 2" to mapOf(
+                    "mandatory" to emptyList(),
+                    "mandatoryForRootGroup" to emptyList(),
+                    "mandatoryRootGroups" to listOf("Claim"),
+                ),
+                "NumberOfFilledFields(…) >= 2" to mapOf(
+                    "mandatory" to emptyList<String>(),
+                    "mandatoryForRootGroup" to emptyList(),
+                    "mandatoryRootGroups" to emptyList(),
+                ),
+                "FieldNotFilled(…) — live control" to mapOf(
+                    "mandatory" to listOf("/Claim/PolicyNumber"),
+                    "mandatoryForRootGroup" to listOf("/Claim/PolicyNumber"),
+                    "mandatoryRootGroups" to listOf("Claim"),
+                ),
+            ),
+            singleRuleModels.mapValues { (_, artifact) -> artifact.mandatorySets() },
+            "a count shape contributes no FIELD at all, and reverses to nothing when the comparison does",
+        )
+    }
+
     /** A model-level request needs no document at all — the whole point of the capability. */
     @Test
     fun aModelLevelRequestCarriesNoRowsAndStillObserves() {
@@ -214,22 +255,25 @@ class KernelProbeMandatoryInformationTest {
          * the kernel's own documented shape for "mandatory regarding its root group"; `AttachmentReferences`
          * and `AmountCap` are the two negative controls.
          */
+        /** The rule-free claim model, shared by the five-rule fixture and the single-rule shape probes. */
+        private val claimModel: String by lazy {
+            DocumentModelDraft.named("probe-mandatory").locale("en_US")
+                .rootGroup("Claim") { claim ->
+                    claim.field("PolicyNumber", FieldKind.STRING)
+                        .numberField("Amount") { it.fractionDigits(2, 2) }
+                        .group("Adjuster") { adjuster ->
+                            adjuster.field("Name", FieldKind.STRING).field("Phone", FieldKind.STRING)
+                        }
+                        .group("Attachments") { attachments ->
+                            attachments.repeatable(4)
+                                .field("Reference", FieldKind.STRING)
+                                .field("Kind", FieldKind.STRING)
+                        }
+                }.build().toJson()
+        }
+
         private val model: String by lazy {
-            val base = BoundModel.ofJson(
-                DocumentModelDraft.named("probe-mandatory").locale("en_US")
-                    .rootGroup("Claim") { claim ->
-                        claim.field("PolicyNumber", FieldKind.STRING)
-                            .numberField("Amount") { it.fractionDigits(2, 2) }
-                            .group("Adjuster") { adjuster ->
-                                adjuster.field("Name", FieldKind.STRING).field("Phone", FieldKind.STRING)
-                            }
-                            .group("Attachments") { attachments ->
-                                attachments.repeatable(4)
-                                    .field("Reference", FieldKind.STRING)
-                                    .field("Kind", FieldKind.STRING)
-                            }
-                    }.build().toJson(),
-            )
+            val base = BoundModel.ofJson(claimModel)
             val policyNumber = base.field("/Claim/PolicyNumber")
             val adjuster = base.group("/Claim/Adjuster")
             val adjusterName = base.field("/Claim/Adjuster/Name")
@@ -285,5 +329,26 @@ class KernelProbeMandatoryInformationTest {
         }
 
         private val artifact: JsonNode by lazy { probe(mandatoryRequest, "mandatory-artifact.json") }
+
+        /**
+         * One model per rule, so a set that stays empty names the rule that failed to reach it. A single model
+         * carrying all three would report their union and could not attribute anything.
+         */
+        private val singleRuleModels: Map<String, JsonNode> by lazy {
+            val base = BoundModel.ofJson(claimModel)
+            val counted = listOf(base.field("/Claim/PolicyNumber"), base.field("/Claim/Amount"))
+            mapOf(
+                "NumberOfFilledFields(…) < 2" to Dsl.numberOfFilledFields(counted).lt(2),
+                "NumberOfFilledFields(…) >= 2" to Dsl.numberOfFilledFields(counted).ge(2),
+                "FieldNotFilled(…) — live control" to Dsl.fieldNotFilled(base.field("/Claim/PolicyNumber")),
+            ).entries.withIndex().associate { (index, entry) ->
+                val model = base.add(
+                    rule(base, "Shape$index", base.field("/Claim/PolicyNumber"), entry.value),
+                ).toJson()
+                entry.key to probe(
+                    request("shape-$index", model, observe = MANDATORY_ONLY), "shape-$index-artifact.json",
+                )
+            }
+        }
     }
 }
