@@ -499,6 +499,7 @@ tasks.register('deliveryGuardTest', Test) {
         includeTestsMatching 'io.github.mbackschat.a12.dm.ReleasePerfGateRefusalTest'
         includeTestsMatching 'io.github.mbackschat.a12.dm.JdkPinScriptTest'
         includeTestsMatching 'io.github.mbackschat.a12.dm.LaneGuardScriptTest'
+        includeTestsMatching 'io.github.mbackschat.a12.dm.TestEvidenceScriptTest'
         includeTestsMatching 'io.github.mbackschat.a12.dm.InfographicFreshnessLocaleTest'
     }
     guardInputs(it, [
@@ -528,6 +529,11 @@ tasks.register('deliveryGuardTest', Test) {
             // every invocation, so a break here breaks every build, not just this lane.
             'lane guard'              : file('scripts/lane-guard.sh'),
             'lane guard self-test'    : file('scripts/selftest-lane-guard.sh'),
+            // TestEvidenceScriptTest executes this selftest, which copies test-evidence.sh into fabricated
+            // repos — BOTH are runtime inputs, the same pairing as the lane guard above. This tool's output is
+            // read AS evidence, so a silent break in it is believed rather than noticed.
+            'evidence reporter'       : file('scripts/test-evidence.sh'),
+            'evidence self-test'      : file('scripts/selftest-test-evidence.sh'),
             'native build contract'   : file('cli/build.gradle'),
             'native no-Java smoke'    : file('scripts/native-no-java-smoke.sh'),
             'Codex activation smoke'  : file('scripts/codex-plugin-activation-smoke.sh'),
