@@ -411,6 +411,8 @@ public final class KernelRuntimeProbe {
         if (args.length != 2) {
             throw new IllegalArgumentException(USAGE);
         }
+        requirePinnedSource(System.getProperty(SOURCE_STATE_PROPERTY, UNDETERMINED_STATE),
+                Boolean.parseBoolean(System.getProperty(REQUIRE_PINNED_PROPERTY, "false")));
         Path requestFile = Path.of(args[0]);
         Path out = Path.of(args[1]);
 
@@ -418,6 +420,43 @@ public final class KernelRuntimeProbe {
         KernelProbeArtifact artifact = run(request, header(request));
         write(out, artifact.toJson());
         System.out.println("[kernel-probe] " + request.rows().size() + " row(s) → " + out.toAbsolutePath());
+    }
+
+    /**
+     * The system property carrying the measured working-tree state. Named as a constant because two things read
+     * it and they must not diverge: the header that STAMPS it and the gate that REFUSES on it.
+     */
+    static final String SOURCE_STATE_PROPERTY = "a12.probe.sourceState";
+
+    /**
+     * Set by the Gradle task to say that this artifact is meant to be handed over and pinned. Deliberately
+     * explicit rather than inferred from the state property's absence: the in-process callers in
+     * {@code KernelRuntimeProbeTest} supply no provenance at all, so "absent means refuse" would break every one
+     * of them and "absent means allow" would be a loophole nobody re-reads.
+     */
+    static final String REQUIRE_PINNED_PROPERTY = "a12.probe.requirePinnedSource";
+
+    /** The state's own "we could not tell" spelling — a member of the closed domain, unlike {@code (unknown)}. */
+    private static final String UNDETERMINED_STATE = "UNKNOWN";
+
+    private static final String PINNED_STATE = "CLEAN";
+
+    /**
+     * Refuses to produce a hand-over artifact whose {@code sourceRevision} names a tree that did not produce it.
+     *
+     * <p>The header's revision is only meaningful as an address a consumer can check out. On a dirty tree it
+     * addresses a tree that never existed anywhere, and on an undetermined one it addresses nothing at all — both
+     * are unpinnable, so both refuse. The escape exists because local exploration is legitimate; it permits the
+     * run and leaves the stamp alone, so an artifact produced under it still declares what it is.
+     */
+    static void requirePinnedSource(String sourceState, boolean requirePinned) {
+        if (requirePinned && !PINNED_STATE.equals(sourceState)) {
+            throw new IllegalStateException("kernel-probe refuses to write a hand-over artifact from a "
+                    + sourceState + " working tree: its sourceRevision would name a tree that did not produce "
+                    + "these rows. Commit (or stash) first, then re-run. For a local exploration run whose "
+                    + "artifact you will not hand over, pass -PprobeAllowUnpinned=true — the artifact still "
+                    + "stamps state=" + sourceState + ".");
+        }
     }
 
     /** The producer header, from the build-supplied properties plus the kernel actually on the classpath. */
@@ -429,7 +468,7 @@ public final class KernelRuntimeProbe {
                 property("a12.probe.sourceRevision"),
                 // The state's own "we could not tell" spelling, not the generic one: it is a closed domain,
                 // shared with dmtool's version surface, and `(unknown)` is not a member of it.
-                System.getProperty("a12.probe.sourceState", "UNKNOWN"),
+                System.getProperty(SOURCE_STATE_PROPERTY, UNDETERMINED_STATE),
                 request.modelRef(),
                 request.locale().getLanguage() + "_" + request.locale().getCountry(),
                 request.clock().map(clock -> clock.toInstant().toString()));

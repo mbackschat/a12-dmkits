@@ -850,6 +850,9 @@ def probeProvenance = probeProvenanceExec.standardOutput.asText.zip(probeProvena
 }
 def probeRequest = providers.gradleProperty('request')
 def probeOut = providers.gradleProperty('out')
+// A task-produced artifact is meant to be handed over and pinned, so the probe refuses a non-CLEAN tree
+// (KernelProbePinnedSourceTest). Opt out for a local exploration run; the artifact still stamps the real state.
+def probeAllowUnpinned = providers.gradleProperty('probeAllowUnpinned')
 def probeUsage = 'usage: ./gradlew :adapter:kernelProbe -Prequest=<request.json> -Pout=<artifact.json>'
 tasks.register('kernelProbe', JavaExec) {
     description = 'Observe the real kernel runtime over a supplied model + documents; write a JSON artifact.'
@@ -866,7 +869,8 @@ tasks.register('kernelProbe', JavaExec) {
         ["-Da12.probe.dmtoolVersion=${probeVersion}".toString(),
          "-Da12.probe.kernelBuiltAgainst=${kernelVersion}".toString(),
          "-Da12.probe.sourceRevision=${provenance.revision}".toString(),
-         "-Da12.probe.sourceState=${provenance.state}".toString()]
+         "-Da12.probe.sourceState=${provenance.state}".toString(),
+         "-Da12.probe.requirePinnedSource=${!probeAllowUnpinned.getOrElse('false').toBoolean()}".toString()]
     } as CommandLineArgumentProvider)
     // A measurement, never a restorable result: the kernel on the classpath and the request's own files decide
     // the answer, and neither is expressible as a task input here.
