@@ -132,6 +132,11 @@ class GroupOperandFilterLawsTest {
                 "NumberOfFilledFields(Counts*/CounterInitials" + COUNTS_FILTER + ") > 0"));
         actual.put("the second filter over ITS field list — well-formedness control", verdict(
                 "NumberOfFilledFields(Recounts*/RecounterInitials" + RECOUNTS_FILTER + ") > 0"));
+        // The operator-level spelling: a filter AFTER the operand list, which would filter the carrier rather
+        // than an operand. a12-kernel-lean's SPEC-2026-08-31-09 claims it is a parse error, so there is no
+        // spelling that attaches a filter to a group-operand carrier at all.
+        actual.put("a filter after the operand LIST — the operator-level spelling", verdict(
+                "NumberOfFilledGroups(Counts*, Recounts*)" + COUNTS_FILTER + " > 0"));
 
         Map<String, String> expected = new LinkedHashMap<>();
         expected.put("the unfiltered pair — control", ADMITTED);
@@ -139,6 +144,7 @@ class GroupOperandFilterLawsTest {
         expected.put("filter on the SECOND operand", NO_GROUPS);
         expected.put("the first filter over ITS field list — well-formedness control", ADMITTED);
         expected.put("the second filter over ITS field list — well-formedness control", ADMITTED);
+        expected.put("a filter after the operand LIST — the operator-level spelling", "MVK_UNEXPECTED_TOKEN");
         assertEquals(expected, actual, "the filter site is refused wherever it sits in the operand list");
     }
 
