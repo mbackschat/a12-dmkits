@@ -21,6 +21,7 @@ This is the append-only registry for every `IAG<n>` and `IRG<n>` identifier issu
 | IAG13 <a id="iag13"></a> | shipped | concurrent misuse of one Interpreter corrupts instead of failing |
 | IAG14 <a id="iag14"></a> | deferred | per-entry cost surface for bounding a model cache in bytes |
 | IAG15 <a id="iag15"></a> | deferred | the published message-address policy has no home both publishing seams can reach |
+| IG146 <a id="ig146"></a> | shipped → [IF315](INTERPRETER-FINDINGS.md#if315) | the compute path's over-repetition relevance tested group paths against a set of field paths, so the over-limit ROW code never reached the operand channel |
 | IG145 <a id="ig145"></a> | open | `formatPointer` drops a repeatable GROUP node's own row index, collapsing addresses the Kernel distinguishes |
 | IG144 <a id="ig144"></a> | shipped → [IF314](INTERPRETER-FINDINGS.md#if314) | a TIME field declared with a DATE format is live in the Kernel and rejected by the interpreter on every value |
 | IG143 <a id="ig143"></a> | deferred | a hand-built interpreter document is a route hybrid, so two cross-route laws are ungated |

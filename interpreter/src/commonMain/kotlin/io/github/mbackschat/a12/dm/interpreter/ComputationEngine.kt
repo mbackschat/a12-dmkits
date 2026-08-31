@@ -155,13 +155,32 @@ internal class ComputationEngine(
         val operands = operandSelection(comps)
         val operandRelevant: Relevance = { path, _ -> path in operands.fields }
         val selectedIndexRelevant: Relevance = { path, _ -> path in operands.indexFields }
+        // Over-repetition is the one formal check that speaks about GROUP paths as well as field paths: its
+        // second walk reports the over-limit ROW (`zuGrosseZeile`) at the group itself. `operandRelevant` holds
+        // operand FIELD paths, so testing a group against it was a category error rather than a filter — the row
+        // walk could never fire under compute for any model, and the channel was silently short one code on
+        // every over-limit operand. Both halves of the scope are measured, not inferred: the kernel reports
+        // nothing for an over-limit row in a group no computation reads, and does report an over-limit ANCESTOR
+        // two levels above the operand (OverLimitOperandComputeArmDiffTest, 2026-08-31).
+        //
+        // The set is the COMPLETE ancestry, non-repeatable groups included, mirroring the kernel's own complete
+        // walk (KERNEL-FINDINGS KF58). Those carry `zuGrosseLfdNummer` rather than `zuGrosseZeile` and are NOT
+        // separately measured, because no input to the public compute surface can reach one: it accepts only a
+        // DocumentSnapshot, whose sole public constructors are `readDocument` and `seedDocument`, and A12
+        // Document JSON has no shape for a non-repeatable group row above 1 — our own writer refuses that state
+        // (A12DocumentJson, DocumentEncodeError), while `seedDocument` instantiates one row per repeatable group.
+        // So the extra breadth is deliberate and unobservable here; narrowing it to `model.repeatable` would be
+        // the same never-fires predicate this comment exists to record, one kind smaller.
+        val operandAncestorGroups = operands.fields.flatMapTo(HashSet(), ::ancestorGroups)
+        val operandOverRepetitionRelevant: Relevance =
+            { path, _ -> path in operands.fields || path in operandAncestorGroups }
         val unsupported = checks.customTypeUnsupported(doc, operandRelevant).toMutableList()
         val formalErrorsInOperands = LinkedHashMap<Pair<String, String>, Message>()
         (
             checks.formalErrors(doc, locale, operandRelevant, formalResults, unsupported) +
                 checks.mandatoryErrors(doc, locale, selectedIndexRelevant, formalResults, unsupported) +
                 checks.uniquenessMessages(doc, dup, locale, selectedIndexRelevant) +
-                checks.overRepetitionMessages(doc, locale, operandRelevant, gateNeeded)
+                checks.overRepetitionMessages(doc, locale, operandOverRepetitionRelevant, gateNeeded)
         ).forEach { formalErrorsInOperands[it.code to it.errorPath] = it }
         val computedErrors = LinkedHashMap<Pair<String, List<Int>>, Message>()
         // The compute-invariant config, built once for every instance's Interpreter (computeMode; no
