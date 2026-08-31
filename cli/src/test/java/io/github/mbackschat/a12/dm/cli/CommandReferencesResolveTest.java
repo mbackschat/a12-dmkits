@@ -80,6 +80,28 @@ class CommandReferencesResolveTest {
             // verifying a claim (`dmtool manifest`, `rule check`, `model eval`, …); those must resolve.
             Path.of("../CLAUDE.md"));
 
+    /**
+     * Spec/design markdown scanned in its FENCED BLOCKS ONLY — a copyable example must resolve, while the prose
+     * around it is left alone.
+     *
+     * <p><b>Why the split exists, measured 2026-08-31.</b> The verb contract itself was unscanned and shipped
+     * `apply --ops <file>` for an unknown period — a phantom flag on a verb whose ops file is a positional. The
+     * flag check that catches exactly that already existed and worked; the miss was purely the DENOMINATOR, so
+     * the obvious repair was to add the file to {@link #MD_FILES}. Doing that produced <b>13 violations, of which
+     * one was the real defect</b>: the other 12 are a spec doing its job — naming retired verbs
+     * (`model validate`, `workspace validate`, `rule test`), a rejected rename (`doc` → `model`), a deferred verb
+     * (`rule`/`computation move`), and a deliberate counter-example (`config modify --lang EN`, in a sentence
+     * that calls it a category error). At that precision the guard fails honest content, and a guard that fails
+     * honest content gets switched off — the estate's own recorded lesson.
+     *
+     * <p><b>The discriminator is the fence, and it was measured rather than assumed.</b> All 12 legitimate
+     * mentions are prose; the real defect sat inside a fenced block presented as a copyable invocation. Restricting
+     * this file to its fences takes 13 violations to 1, and that one was an ASCII diagram row whose `dmtool`
+     * happened to be followed by a bareword — reworded in the same change rather than exempted, because a diagram
+     * inside a fence really should not read as an invocation.
+     */
+    private static final List<Path> FENCED_ONLY_MD_FILES = List.of(Path.of("../docs/CLI-SPEC.md"));
+
     /** Command-bearing JS an agent harness EXECUTES: the eval workflow embeds {@code ${CLI} …} command
      *  forms ({@code ${CLI}} = its {@code bin/dmtool} handle) — the exact surface where the task-17 recheck
      *  drifted post-baseline (a positional rule passed as {@code --rule}, whose usage error the harness read
@@ -143,7 +165,12 @@ class CommandReferencesResolveTest {
         }
         for (Path md : MD_FILES) {
             if (Files.isRegularFile(md)) {
-                scanMarkdown(md, root, invocation, violations, invocationCount);
+                scanMarkdown(md, root, invocation, violations, invocationCount, false);
+            }
+        }
+        for (Path md : FENCED_ONLY_MD_FILES) {
+            if (Files.isRegularFile(md)) {
+                scanMarkdown(md, root, invocation, violations, invocationCount, true);
             }
         }
         int[] jsInvocationCount = {0};
@@ -185,11 +212,49 @@ class CommandReferencesResolveTest {
 
         List<String> violations = new ArrayList<>();
         int[] count = {0};
-        scanMarkdown(md, root, invocation, violations, count);
+        scanMarkdown(md, root, invocation, violations, count, false);
 
         assertEquals(1, violations.size(),
                 () -> "expected exactly the stale `rule frobnicate` to fire, got: " + violations);
         assertTrue(violations.get(0).contains("frobnicate"), violations::toString);
+    }
+
+    /**
+     * Does-fire AND does-not-fire proof for {@link #FENCED_ONLY_MD_FILES}, on one fixture carrying both — the
+     * phantom flag that shipped in a fence, and each kind of legitimate prose mention that made the full scan
+     * unusable on a spec. Both halves are needed: the fenced-only mode is worthless if it stops catching the
+     * defect, and it is worse than nothing if it resumes failing honest prose.
+     */
+    @Test
+    void theFencedOnlyModeCatchesAPhantomFlagInACodeBlockAndLeavesSpecProseAlone(@TempDir Path dir)
+            throws IOException {
+        CommandLine root = new CommandLine(new RootCommand());
+        Pattern invocation = Pattern.compile("\\b" + Pattern.quote(root.getCommandName()) + "\\b([^`}\"\\n]*)");
+        Path md = dir.resolve("spec.md");
+        Files.writeString(md, """
+                A spec legitimately names retired verbs — `model validate` became `model check` — and a
+                deferred one, `computation move`, and a rejected rename, `dmtool doc <op>`. It also states
+                deliberate counter-examples: `config modify --lang EN` would be a category error.
+
+                ```
+                dmtool -m order.dm.json apply --ops edits.json
+                ```
+                """);
+
+        List<String> violations = new ArrayList<>();
+        int[] count = {0};
+        scanMarkdown(md, root, invocation, violations, count, true);
+
+        assertEquals(1, violations.size(),
+                () -> "the fence must fire and the prose must not — got: " + violations);
+        assertTrue(violations.get(0).contains("--ops"),
+                () -> "the surviving violation must be the phantom flag: " + violations);
+
+        List<String> full = new ArrayList<>();
+        scanMarkdown(md, root, invocation, full, new int[] {0}, false);
+        assertTrue(full.size() > violations.size(),
+                () -> "positive control: the full scan must fire on this spec prose, else the fenced-only mode "
+                        + "is not what is being measured and this test would pass without it: " + full);
     }
 
     /** Does-fire proof for the JS surface: a stale op and a phantom flag in a {@code ${CLI} …} command must
@@ -235,7 +300,7 @@ class CommandReferencesResolveTest {
 
         List<String> violations = new ArrayList<>();
         int[] count = {0};
-        scanMarkdown(md, root, invocation, violations, count);
+        scanMarkdown(md, root, invocation, violations, count, false);
 
         assertEquals(1, violations.size(),
                 () -> "expected exactly the bare `validate` to fire, got: " + violations);
@@ -298,7 +363,7 @@ class CommandReferencesResolveTest {
      *  command; outside one, only inline-code spans count — so a bare prose mention ("dmtool guidance") is
      *  ignored while {@code `rule read`} and fenced {@code dmtool …} lines are checked. */
     private static void scanMarkdown(Path file, CommandLine root, Pattern invocation,
-            List<String> violations, int[] invocationCount) {
+            List<String> violations, int[] invocationCount, boolean fencedOnly) {
         List<String> lines = readLines(file);
         boolean inFence = false;
         for (int i = 0; i < lines.size(); i++) {
@@ -310,7 +375,7 @@ class CommandReferencesResolveTest {
             }
             if (inFence) {
                 matchInvocations(line, file, lineNo, root, invocation, violations, invocationCount);
-            } else {
+            } else if (!fencedOnly) {
                 Matcher b = BACKTICK.matcher(line);
                 while (b.find()) {
                     String span = b.group(1);

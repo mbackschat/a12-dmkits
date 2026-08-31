@@ -19,7 +19,7 @@ The tool exists to be driven by a cold LLM agent. Two properties, above all else
 
 ```
 BA → (talks to) Agent → (runs) dmtool      #1 path; the agent renders results in NL
-BA → (runs) dmtool directly                secondary; --text serves this path
+BA → (runs) dmtool                         #2 path, direct; --text serves it
 ```
 
 **The read-when map — three layers, cheapest first.** A cold consumer orients in layers ordered by precision and audience; the standing rule is that **discoverability lives in the tool** (the precision layer, derived + gated) while the **skill stays minimal** (judgment, not catalog):
@@ -97,7 +97,7 @@ The model file is **context**, named once with `-m/--model`, like `git -C <dir>`
 
 ```
 single:  dmtool -m order.dm.json field add --group /Order --name PromoCode --kind STRING
-batch:   dmtool -m order.dm.json apply --ops edits.json      # edits.json = [ {target,op,args}, … ]
+batch:   dmtool -m order.dm.json apply edits.json             # edits.json = [ {target,op,args}, … ]
 ```
 
 `-m` is an **inherited, position-tolerant** option (accepted before or after the verb). If it is **missing**, the refusal is the coded `RK_MODEL_NOT_NAMED` envelope on stdout; if it names a file that cannot be **read**, it is `RK_INPUT_UNREADABLE`, the same code the JSON inputs beside it use. Two codes rather than one because there is no path to check when nothing was named, and a corrective that says "check the path" would send an agent to a file it never supplied. Both are stdout envelopes, not stderr lines — a refusal an agent cannot parse leaves it with an empty stream and no reason (G61; `UnreadableModelRefusalTest` sweeps every verb that reads a model). We deliberately keep the model **explicit per call** rather than an ambient "use this model" state — a fully-specified, stateless invocation is easier for an agent to generate and to reproduce/debug.
