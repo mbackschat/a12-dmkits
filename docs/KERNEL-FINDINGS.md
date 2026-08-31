@@ -210,6 +210,8 @@ All four claims below are canonical in §1 "How the fill quantifiers count"; the
 
 `NoGroupFilled(G*)` / `AtLeastOneGroupFilled(G*)` (the kernel's selection idiom) tally the group's **instantiated** repetitions — a created-but-empty row is content — so they fire iff **zero** / **≥ 1** rows; polarity OMISSION / VALUE. Only these two admit the starred single-group form. *(IF68; locked `adapter.laws.StarredGroupQuantifierDiffTest` + multiplatform `interpreter.StarredGroupQuantifierTest`.)*
 
+**"Instantiated" means EVERY instantiated row, over-limit ones included — measured 2026-08-31, and the absence of a capacity qualifier above is correct rather than an omission.** a12-kernel-lean read the unqualified wording as a gap and reported (`SPEC-2026-08-31-17`) that these quantifiers read the in-capacity extent; on our fixture they do not. A `Lines` group declared `repeatability: 2` with only row **3** instantiated draws `zuGrosseZeile` *and* fires `AtLeastOneGroupFilled(Lines*)`; the over-repetition report is asserted in the same call as the quantifier's answer, so "row 3 exceeds the capacity" is observed rather than assumed. The empty control flips the pair (`NoGroupFilled` fires, `AtLeastOneGroupFilled` does not), so the agreement between rows 1 and 3 is a positive reading. Our interpreter agrees on both rows. This **bounds** rather than contradicts [IF27](INTERPRETER-FINDINGS.md#if27)'s exclusion of over-limit rows from the star aggregate/quantifier domain: the carrier measured here is the starred SINGLE-GROUP form these two operators alone admit, and nothing is claimed about the field-level star quantifiers from these rows. *(Locked: `adapter.laws.StarredGroupQuantifierCapacityDiffTest`.)*
+
 **A field-fill quantifier over a GROUP SCOPE = "the fields inside the group", recursively — and the runtime uses TWO iteration ranges (source `RuntimeController` + `ExpandService`, probe-confirmed 2026-07-06).** `ExpandService` rewrites a group operand to a field-list quantifier over `getAllContainedFields(group)` (recursive; a repeatable group carries its `*` onto each descendant). `AllFieldsFilled`/`NotAllFieldsFilled` iterate the **full declared range** (`EntityIterator` over `1..repeatability`, no `setzeEndIndicesAufMaxGesetzt` clamp — an un-instantiated rep reads empty); `AtLeastOneFieldFilled`/`NoFieldFilled`/`MoreThanOneFieldFilled`/`NotExactlyOneFieldFilled` clamp to the **instantiated** rows; `FieldsNotCollectivelyFilled` mixes the two. *(IF49; locked `adapter.laws.GroupScopedFieldFillDiffTest` — bare/starred × both ranges × firing + polarity.)*
 
 **…and a VALUE AGGREGATE accepts a GROUP operand the same way (differential, both strategies, 2026-07-10).** `Sum`/`MinValue`/`MaxValue`/`NumberOfDifferentValues` over a starred group feed the combiner every contained field's cells, recursively; a malformed contained cell poisons like a field-star cell; an empty group is the empty-selection 0 (`NumberOfDifferentValues`'s static scale is 0 — a non-scale-0 target draws `MVK_INVALID_COMPARE_DEC_PLACES`). A `Having` on a group star is codegen-rejected (`MVK_NO_GROUPS_ALLOWED`), so only the unfiltered expansion is reachable. *(IF99; locked `adapter.laws.GroupStarValueAggregateDiffTest` + multiplatform `interpreter … GroupStarValueAggregateTest`.)*
@@ -4129,3 +4131,26 @@ The homogeneity gate reads the **leading** operand and judges the rest against i
 Our `CountAggregate.checkValueComparable` pre-check already classified by `fields.getFirst()` and therefore already agreed with the kernel — but nothing had measured that agreement, so it was coincidence rather than evidence until now.
 
 *(Locked: `validate.laws.NumberOfDifferentValuesOperandClassLawsTest` — the order-flip pair on all three classes, the gate-selection pair, and the homogeneous live control; each flip row pins the rival code as ABSENT via `rejectsModelInsteadOf`.)*
+
+## §12 supplement — under PARTIAL coverage the group operators split three ways, and only a settled member decides a quantifier (kernel `validatePart`, 2026-08-31) <a id="kf227"></a>
+
+> Fold: pending — a partial-validation law; folds into §12 beside the other coverage rows on the next canonical pass.
+
+Reachable only through `validatePart`, because it is a property of the CALLER'S coverage rather than of the document: the same document answers differently depending on what was declared relevant, and `validateFull` fires everything it satisfies. Measured on one `/Order` holding two non-repeatable address groups of two fields each, `Billing/Street` filled and everything else empty, with all four rules over the **same** operand groups so the operator is the only variable.
+
+| coverage | fires |
+|---|---|
+| full validation — control | `GroupFilled`, `AtLeastOneGroupFilled`, `NotAllGroupsFilled`, `NumberOfFilledGroups` |
+| `Billing/Street` only | `GroupFilled`, `AtLeastOneGroupFilled` |
+| all of `Shipping` + `Billing/Street` (`Billing/City` still uncovered) | `GroupFilled`, `AtLeastOneGroupFilled`, **`NotAllGroupsFilled`** |
+| every operand field | all four |
+
+**Three behaviours, not two.** `GroupFilled` and `AtLeastOneGroupFilled` decide from the content inside the coverage. `NumberOfFilledGroups` needs **every field of every operand group** covered. `NotAllGroupsFilled` is neither: it is an ordinary three-valued quantifier, decided as soon as the coverage settles **one member as unfilled** — which is why row 3 fires it while an operand field is still uncovered, and row 2 does not.
+
+**The third row is the discriminator and it was built to be one.** After row 2 two accounts fitted equally — that `NotAllGroupsFilled` needs total coverage like the count, or that it needs a settled false member — and they differ exactly where an operand field is uncovered but a member is decided. It fires there, so the second account holds and the first is excluded. Without that row the operator would have been filed with the count on a silence that both accounts predict.
+
+a12-kernel-lean reported this as `SPEC-2026-08-31-18` and grouped `NotAllGroupsFilled` with the two content-reading quantifiers, predicting it fires under a cover-one-field coverage. On our carrier — a **two-group operand list** — it does not. Their fixture is described as "a group holding a filled A and an empty B", which is a different operand shape, so this is reported to them as a carrier difference to reconcile rather than as a flat refutation.
+
+Both engines agree on every coverage above, so this is a shared law rather than a kernel behaviour we tolerate.
+
+*(Locked: `adapter.laws.PartialCoverageGroupOperandDiffTest` — the four coverages, the full-validation control, the discriminating third row, and kernel-vs-interpreter agreement on each.)*
