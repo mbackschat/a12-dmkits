@@ -1,41 +1,85 @@
 package io.github.mbackschat.a12.dm.cli;
 
-import java.util.Set;
+import java.io.IOException;
+import java.io.UncheckedIOException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
- * <b>Directories that are never this repository's content, for a guard that walks the whole tree.</b>
+ * <b>The repository's own files, for a guard that scans all of them.</b> The set is what <b>git tracks</b>, not
+ * what happens to be on disk.
  *
- * <p><b>Why this is shared rather than repeated.</b> Each whole-repo walker used to carry its own skip set, and
- * they drifted: {@code .claude} was added to one of them on 2026-08-16 after a cold review found that guard
- * descending into {@code .claude/worktrees/}, and the other two kept descending. That is not a hypothetical —
- * this project's own review workflow creates a full checkout at {@code .claude/worktrees/<agent>/} while a review
- * runs, so a guard that walks into it counts the repository <b>twice</b>. It cost a real false red: with one
- * review agent live, {@code QuotedTitleCitationRatchetTest} reported 18 quoted-title citations against a ceiling
- * of 9 when the true repo-wide count was 10 and the edit under test had changed it by zero.
+ * <p><b>Why git decides.</b> A guard that walks the working directory takes every tool's output as its input.
+ * This one enumerated exclusions instead — {@code build}, {@code .git}, {@code node_modules}, {@code .claude} —
+ * and the list only ever grew, because the set of things that write into a checkout is open-ended: an IDE's
+ * compiled output and its copies of non-Java sources, a coverage run, an editor's swap file, this project's own
+ * review worktrees. Each addition arrived the same way, as a guard failing on a file nobody wrote. Tracked
+ * files are the exact, closed set, and they are also what CI asserts over, so a local run and a CI run finally
+ * scan the same thing.
  *
- * <p>The double-count is the mild failure. The dangerous one is the opposite direction: a vacuity floor or a
- * fully-used assertion can be satisfied <b>entirely by the worktree copy</b> while the primary scan is broken,
- * which is precisely the hole those floors exist to close.
+ * <p>Measured, on the checkout that motivated this: an Eclipse-derived language server recreated
+ * {@code <module>/bin/} for all eight modules within 180 seconds of an idle tree, having been deleted, with no
+ * edit to provoke it. Those directories carry copies of every non-Java source in a source folder, so a
+ * {@code .kt}-scanning guard counted the repository twice and a citation ratchet failed on an edit that had
+ * changed its count by zero. No exclusion list closes that class; asking git does.
  *
- * <p>A walker that resolves a specific subdirectory ({@code docs/}, {@code examples/}, a module's {@code src/})
- * is unaffected and needs nothing from here — {@code .claude} is not under any of them.
+ * <p>A walker that resolves a specific subdirectory ({@code docs/}, a module's {@code src/}) is unaffected and
+ * needs nothing from here.
  */
 final class RepoWalk {
+
+    private static volatile List<Path> tracked;
 
     private RepoWalk() {
     }
 
     /**
-     * Never repository content: build output, VCS and tool state, dependency trees, and this project's own agent
-     * worktrees. Add to this set rather than to a caller's private copy.
+     * Every file git tracks, as absolute paths under {@code root}. Cached — the set is stable for a run.
      *
-     * <p>{@code bin} is the same double-count one tool over: an Eclipse-derived IDE (Buildship, the VS Code Java
-     * extension) compiles each Gradle source set into {@code <module>/bin/<sourceSet>/}, so every scanned source
-     * file appears twice while that IDE is open on the checkout. It is gitignored (a per-module {@code bin} entry) and CI never
-     * has it, which is what makes it the worst shape of false red — reproducible only on the machine that is
-     * editing. The one tracked path under any {@code bin/} is the {@code bin/dmtool} launcher, which carries no
-     * scanned suffix, so skipping the name costs no real content.
+     * @throws IllegalStateException if git cannot answer, which is a broken environment rather than a finding:
+     *     a guard that silently scanned nothing would pass vacuously.
      */
-    static final Set<String> SKIPPED_DIRECTORIES =
-            Set.of("build", "bin", ".git", ".gradle", "node_modules", ".claude");
+    static List<Path> trackedFiles(Path root) {
+        List<Path> cached = tracked;
+        if (cached == null) {
+            cached = List.copyOf(readTrackedFiles(root));
+            tracked = cached;
+        }
+        return cached;
+    }
+
+    private static List<Path> readTrackedFiles(Path root) {
+        try {
+            Process git = new ProcessBuilder("git", "-C", root.toString(), "ls-files", "-z")
+                    .redirectErrorStream(true)
+                    .start();
+            String out = new String(git.getInputStream().readAllBytes(), StandardCharsets.UTF_8);
+            int exit = git.waitFor();
+            if (exit != 0) {
+                throw new IllegalStateException("git ls-files failed (" + exit + ") in " + root + ": " + out);
+            }
+            List<Path> files = new ArrayList<>();
+            for (String name : out.split("\0")) {
+                if (!name.isEmpty()) {
+                    Path p = root.resolve(name);
+                    // A tracked path can be absent from the worktree (a sparse checkout, a pending delete).
+                    if (Files.isRegularFile(p)) {
+                        files.add(p);
+                    }
+                }
+            }
+            if (files.isEmpty()) {
+                throw new IllegalStateException("git tracks no files under " + root + " — the scan would be vacuous");
+            }
+            return files;
+        } catch (IOException e) {
+            throw new UncheckedIOException("could not ask git which files " + root + " tracks", e);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new IllegalStateException("interrupted asking git which files " + root + " tracks", e);
+        }
+    }
 }
