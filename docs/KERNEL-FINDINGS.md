@@ -4047,21 +4047,34 @@ Confirms a12-kernel-lean's `SPEC-2026-08-31-02`, `-03` and `-04` on our own fixt
 
 *(Locked: `adapter.laws.TemporalConstantLiteralWitnessLawsTest` — both carriers, the complete 28-cell Base Year grid computed from the year-agreement rule, the DATETIME witness with its store, and every probed spelling listed in its assertion so the denominator is the finding.)*
 
-## §3 supplement — a formally erroneous field SUPPRESSES every quantifier over its list; it is not dropped from the list, and full validation behaves exactly as partial does (kernel `validateFull` + `validatePart`, 2026-08-31) <a id="kf224"></a>
+## §3 supplement — a formally erroneous field contributes NEITHER TRUE NOR FALSE to a quantifier over its list, so only what needed it is undecided; full validation behaves exactly as partial does (kernel `validateFull` + `validatePart`, 2026-08-31) <a id="kf224"></a>
 
 > Fold: pending — newly recorded formal-error fact; folds into §3 (formal errors and the "unknown" state) on the next canonical KERNEL-SEMANTICS pass.
 
 Answers a12-kernel-lean's `SPEC-2026-08-31-05`, which is source-grounded from the kernel's business documentation with no measurement of their own — they cannot reach `validatePart` on their accepted probe route, and we can, so the entry is settleable here. **One half confirms and one half is contradicted.**
 
-**Confirmed: the rule is not a partial-validation artefact.** Three documents through `validateFull` and through `validatePart` with the whole group relevant agree cell for cell, the malformed one included.
+**Confirmed: the rule is not a partial-validation artefact.** Four documents through `validateFull` and through `validatePart` with the whole group relevant agree cell for cell, both malformed ones included.
 
-**Contradicted: "dropped from the LIST rather than counted on either side" is not what happens, and it is not equivalent to "neither filled nor empty" as their consequence states.** Over a three-field list with one erroneous member, `AllFieldsFilled`, `NotAllFieldsFilled`, `NumberOfFilledFields == 3` and `== 2` are **all four silent**. Dropping predicts `AllFieldsFilled` firing over the two clean members; counting it filled predicts `== 3`; counting it empty predicts the negation and `== 2`. All three rival readings are excluded, and the erroneous member instead makes the quantifier itself undecidable.
+**Contradicted: "dropped from the LIST rather than counted on either side" is not what happens, and it is not equivalent to "neither filled nor empty" as their consequence states.** Over a three-member list with one erroneous member and two filled, `AllFieldsFilled` does **not** fire — dropping predicts that it would, counting the member filled predicts `count == 3`, counting it empty predicts the negation and `count == 2`, and none of the three occurs. The erroneous member is in the list and settles nothing.
 
-The all-silent row carries its own controls, because four rules that do not fire is also what a broken fixture looks like: two clean documents fix what filled and empty look like on the instrument, and a fifth rule reading only the untouched first member fires on **every** document including the malformed one — so the silence is scoped to the lists containing the error, not a document the kernel gave up on. Measured on two converters (a malformed NUMBER, an out-of-calendar DATE) so the result belongs to the class rather than to one converter.
+**Corrected 2026-08-31, same day, and the correction is worth more than the entry.** This first read "a formally erroneous field SUPPRESSES every quantifier over its list", measured on four rules over one malformed document — `AllFieldsFilled`, its negation, and the count at two values. **a12-kernel-lean re-derived the result independently and reported the row that refutes that wording: `AtLeastOneFieldFilled` fires on the very same document.** Every rule in the original set needed the erroneous member's state to reach a verdict, so the account fitted every row and was still false; nothing in the set sat on the other side of that axis. This is the set-level confound the oracle rules name, in a set of RULES rather than of documents or fixtures — a shape the rule's existing instances had not covered.
 
-Consistent with [KF120](#kf120)'s group carrier ("leaving erroneous groups in neither bucket") and with `QuantifierMalformedDiffTest`, which held the discriminating `AllFieldsFilled` shape as a kernel↔interpreter *agreement* — it established that both engines behave the same and never stated which of the four readings the kernel holds.
+The measured law is symmetric, and needs both malformed documents to state:
 
-*(Locked: `adapter.laws.ErroneousFieldRelevanceLawsTest` — the four-rule signature with its liveness control, both converters, and the full/partial equality.)*
+| the three-member list holds | `ALL` | `NOT_ALL` | `AT_LEAST_ONE` | `NO_FIELD` | `count == 3` | `count == 2` |
+|---|---|---|---|---|---|---|
+| three valid — control | fires | — | fires | — | fires | — |
+| one empty, two valid — control | — | fires | fires | — | — | fires |
+| **one erroneous, two valid** | — | — | **fires** | — | — | — |
+| **one erroneous, two empty** | — | **fires** | — | — | — | — |
+
+So a quantifier is decided exactly when the members whose state is KNOWN already settle it: a known TRUE settles the existential, a known FALSE settles the negation, and only a verdict that would need the erroneous member's own state is left undecided. Consistent with [KF120](#kf120)'s group carrier ("leaving erroneous groups in neither bucket") and with `QuantifierMalformedDiffTest`, which holds the row where `AtLeastOneFieldFilled` does NOT fire because no known member is filled — the fourth row above, reached one rule at a time as a kernel↔interpreter differential.
+
+What no row here can see is the clause's own subject: whether the kernel's internal *relevant set* excludes the field. The observable behaviour is only inconsistent with it being dropped from the **quantifier's operand list**.
+
+Measured on two converters (a malformed NUMBER, an out-of-calendar DATE) so the result belongs to the class rather than to one converter, with a liveness control reading a field OUTSIDE every quantified list — the first version read the list's own first member, which the fourth document leaves empty, so the control would have gone silent exactly where it was needed.
+
+*(Locked: `adapter.laws.ErroneousFieldRelevanceLawsTest` — six quantifier rules × four documents × two converters, plus the full/partial equality.)*
 
 ## §4 supplement — the mandatory-information derivation reads rule CONDITION SHAPE, and its two channels spell paths differently (kernel `getMandatoryInformationFromRules`, 2026-08-31) <a id="kf225"></a>
 
