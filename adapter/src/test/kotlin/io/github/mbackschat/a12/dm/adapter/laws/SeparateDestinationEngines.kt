@@ -90,7 +90,13 @@ internal class SeparateDestinationEngines(
         return dynamic
     }
 
-    /** The standalone route's own later validation over the SAME applied snapshot — no second computation. */
+    /**
+     * The standalone route's own later validation over the SAME applied snapshot — no second computation.
+     *
+     * Every caller compares exact cell addresses. `(inexact)` is deliberately a failure sentinel for that
+     * precondition, not a message-address fallback and not a corpus key; a root or unresolved pointer must make
+     * the comparison fail rather than acquire a publishable spelling here.
+     */
     fun interpreterLaterValidation(source: RuntimeLaws.Doc, destination: RuntimeLaws.Doc): List<String> {
         val interpreter = prepared.createInterpreter()
         val applied = interpreter.compute(snapshot(source)).applyTo(snapshot(destination))

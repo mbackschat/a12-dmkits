@@ -30,12 +30,10 @@ import com.mgmtp.a12.kernel.md.rt.api.IMessage;
 
 import io.github.mbackschat.a12.dm.adapter.KernelAdapter;
 import io.github.mbackschat.a12.dm.adapter.KernelConsistencyOracle;
+import io.github.mbackschat.a12.dm.adapter.testing.KernelMessageAddressProjector;
 import io.github.mbackschat.a12.dm.core.Notification;
 import io.github.mbackschat.a12.dm.core.Severity;
 import io.github.mbackschat.a12.dm.interpreter.A12PartiallyKnownMultiPointer;
-import io.github.mbackschat.a12.dm.interpreter.A12Pointer;
-import io.github.mbackschat.a12.dm.interpreter.A12PointerFormat;
-import io.github.mbackschat.a12.dm.interpreter.eval.PointerKt;
 import io.github.mbackschat.a12.dm.rulekit.validate.KernelVersion;
 
 /**
@@ -526,9 +524,8 @@ public final class KernelRuntimeProbe {
      * typed value rather than by re-reading a string.
      *
      * <p>The policy owner is {@code cli.interp.A12Pointers.canonical}, whose Javadoc carries the full reasoning.
-     * It cannot be called from here — {@code :cli} depends on {@code :adapter}, not the reverse — so this is a
-     * second implementation of a one-branch policy, recorded as {@code IAG15} in
-     * {@code docs/INTERPRETER-API-GAPS.md} rather than left as silent duplication.
+     * The independent projector is a {@code java-test-fixtures} surface: this test-source probe can reach it,
+     * and {@code :cli} tests cross-check it without reversing the production dependency.
      */
     private static String address(PartiallyKnownDocumentMultiPointer pointer) {
         return address(pointer.fullName(), pointer.repetitionIndexes());
@@ -546,11 +543,8 @@ public final class KernelRuntimeProbe {
     }
 
     private static String address(String fullName, List<Integer> repetitionIndexes) {
-        A12PartiallyKnownMultiPointer typed =
-                A12PartiallyKnownMultiPointer.Companion.of(fullName, repetitionIndexes);
-        A12Pointer exact = typed.getRepetitionIndexes().isEmpty() ? null : typed.toExactPointer();
-        return exact != null ? A12PointerFormat.INSTANCE.render(exact)
-                : PointerKt.formatPointer(fullName, repetitionIndexes);
+        return KernelMessageAddressProjector.address(
+                A12PartiallyKnownMultiPointer.Companion.of(fullName, repetitionIndexes));
     }
 
     // ---- entry point -----------------------------------------------------------------------------

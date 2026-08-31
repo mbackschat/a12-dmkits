@@ -1,5 +1,6 @@
 plugins {
     id 'java-library'
+    id 'java-test-fixtures'
     // Kotlin JVM — for the interpreter↔kernel differential tests (laws/*DiffTest.kt) + the KernelCustomConditions
     // bridge in main; consumes :interpreter. See docs/INTERPRETER-ARCHITECTURE.md (the kernel-as-oracle approach).
     id 'org.jetbrains.kotlin.jvm'
@@ -110,6 +111,7 @@ dependencies {
     // reasons: (1) MAIN — KernelCustomConditions bridges a kernel core ICustomCondition onto the interpreter's
     // CustomCondition SPI; (2) TEST — the kernel oracle (RuntimeLaws) runs the differential comparison.
     implementation project(':interpreter')
+    testFixturesImplementation project(':interpreter')
 
     // Custom-field-type SPI (predefined types) — TEST-ONLY: lets the differential register a project type
     // (e.g. a pattern-based "EMail") in the kernel oracle, so `Valid(field, "EMail")` does a REAL check (the

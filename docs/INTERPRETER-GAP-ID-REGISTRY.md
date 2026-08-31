@@ -20,7 +20,7 @@ This is the append-only registry for every `IAG<n>` and `IRG<n>` identifier issu
 | IAG12 <a id="iag12"></a> | shipped | `A12PointerFormat` is not on the npm surface |
 | IAG13 <a id="iag13"></a> | shipped | concurrent misuse of one Interpreter corrupts instead of failing |
 | IAG14 <a id="iag14"></a> | deferred | per-entry cost surface for bounding a model cache in bytes |
-| IAG15 <a id="iag15"></a> | deferred | the published message-address policy has no home both publishing seams can reach |
+| IAG15 <a id="iag15"></a> | shipped | cross-check the two published message-address projections without adding interpreter API |
 | IG146 <a id="ig146"></a> | shipped → [IF315](INTERPRETER-FINDINGS.md#if315) | the compute path's over-repetition relevance tested group paths against a set of field paths, so the over-limit ROW code never reached the operand channel |
 | IG145 <a id="ig145"></a> | open | `formatPointer` drops a repeatable GROUP node's own row index, collapsing addresses the Kernel distinguishes |
 | IG144 <a id="ig144"></a> | shipped → [IF314](INTERPRETER-FINDINGS.md#if314) | a TIME field declared with a DATE format is live in the Kernel and rejected by the interpreter on every value |
@@ -33,4 +33,4 @@ This is the append-only registry for every `IAG<n>` and `IRG<n>` identifier issu
 | IRG4 <a id="irg4"></a> | shipped | demonstrate per-row computed identity in the browser showcase |
 | IRG5 <a id="irg5"></a> | deferred | a scripted documentation-only mirror refresh |
 
-The corrected identifiers are provenance labels, not live work. `IAG12` shipped with the npm pointer export and was subsequently corrected to the two owner-shaped pointer contracts in [IF242](INTERPRETER-FINDINGS.md#if242). `IRG4` shipped as the repeated permit-model computation in [INTERPRETER-RELEASE-SPEC](INTERPRETER-RELEASE-SPEC.md). `IAG11` closed by keeping the lossy house spelling tool-owned and removing the accidental public `MessagePointers` façade; it is not an A12 format.
+The corrected identifiers are provenance labels, not live work. `IAG12` shipped with the npm pointer export and was subsequently corrected to the two owner-shaped pointer contracts in [IF242](INTERPRETER-FINDINGS.md#if242). `IRG4` shipped as the repeated permit-model computation in [INTERPRETER-RELEASE-SPEC](INTERPRETER-RELEASE-SPEC.md). `IAG11` closed by keeping the lossy house spelling tool-owned and removing the accidental public `MessagePointers` façade; it is not an A12 format. `IAG15` closed without reopening that surface: the adapter projector is a test fixture consumed by the CLI equivalence guard, not interpreter production API.

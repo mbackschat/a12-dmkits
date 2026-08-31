@@ -60,6 +60,7 @@ dependencies {
     testImplementation platform('org.junit:junit-bom:5.11.4')
     testImplementation 'org.junit.jupiter:junit-jupiter'
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+    testImplementation(testFixtures(project(':adapter')))
 
     // the native-safe runtime evaluator — dmtool's DEFAULT engine for the runtime verbs (model eval/compute,
     // rule eval): it loads a DM-JSON model into the kernel-free interpreter and evaluates rules/computations
