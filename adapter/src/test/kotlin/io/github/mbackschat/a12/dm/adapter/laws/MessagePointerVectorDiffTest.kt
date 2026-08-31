@@ -13,18 +13,19 @@ import org.junit.jupiter.api.Test
 /**
  * The raw repetition VECTOR behind a kernel message's pointers — the channel our own renderer flattens.
  *
- * **Why this exists.** a12-kernel-lean records two message-address spellings (`SPEC-2026-08-31-16`): an
- * *instance* form (`Order/Lines[2]/Produced`, bare, repetition one elided) and a *declaration* form
+ * **Why this exists.** a12-kernel-lean reported two message-address spellings (`SPEC-2026-08-31-16`): an
+ * *instance* form (`Order/Lines[2]/Produced`, bare, repetition one elided) against a *declaration* form
  * (`/Order[1]/Lines[0]/Entries[0]/Choice`, slash-led, eliding nothing, `[0]` at each repeatable level the
- * rule's iteration left unbound). Our `formatPointer` is slash-led and emits an index on every group segment,
- * so it destroys the elision difference and we cannot corroborate the spellings themselves.
+ * rule's iteration left unbound). Their sharper hypothesis was that these are two pointer KINDS — exact and
+ * partially known — with an *unbound repeatable level* being what makes a reference partially known.
  *
- * **But a `0` survives that transformation, and the vector survives it entirely.** Their sharper hypothesis is
- * that the two spellings are two pointer KINDS — exact and partially known — with an *unbound repeatable level*
- * being what makes a reference partially known. That predicts a `0` in the vector exactly where the rule's
- * iteration leaves a repeatable level free, and no `0` where it is bound. They cannot read a vector; we can,
- * because `fmtPointer` already reads `repetitionIndexes()` off the kernel's own pointer and only the RENDERING
- * discards it.
+ * **The KIND half is real and is what this file measures; the SPELLING half was never kernel output.** Both
+ * strings came from the `address` column of our own probe artifact, whose two-arm policy renders canonical A12
+ * when `toExactPointer()` succeeds and `formatPointer` when it does not, so the arm is *selected* by the very
+ * coordinate property the spellings were being correlated with — an analytic relation, not a measurement
+ * (retracted by them, and in `docs/KERNEL-FINDINGS.md` `kf228`, on 2026-08-31). The coordinate itself
+ * survives every rendering, which is why this reads the raw vector:
+ * `repetitionIndexes()` off the kernel's own pointer, before any renderer of ours touches it.
  *
  * **The pair is the measurement.** One rule iterates at the ROOT scope and references the flatten of `Lines*`
  * then `Sku`, leaving the repeatable level free; its twin iterates at `Lines` and references the same field
