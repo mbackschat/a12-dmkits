@@ -83,6 +83,55 @@ class GroupRepeatabilityDomainLawsTest {
     }
 
     /**
+     * <b>A repeatability of {@code 1} is NOT REPEATABLE to the kernel, which is what makes our builders'
+     * {@code >= 2} bound a correct narrowing rather than a lag behind the {@code > 0} domain above.</b>
+     * The admitted-integer domain and the set of values that make a group a repetition LIST are two different
+     * questions, and the row above answers only the first — {@code 1} is admitted there, so nothing in this
+     * file distinguished "legal value" from "iterable group" until this case.
+     *
+     * <p>The discriminator is a star, because a wildcard is the one construct that requires repeatability
+     * rather than merely tolerating it. The control at {@code 3} is what makes the refusal mean "not
+     * repeatable" instead of "this rule is malformed".
+     */
+    @Test
+    void aRepeatabilityOfOneIsReadAsNonRepeatableSoAStarOverItIsRefused() {
+        Map<String, String> actual = new LinkedHashMap<>();
+        actual.put("1 — our non-repeatable encoding", starVerdict(1));
+        actual.put("3 — a real repetition list, control", starVerdict(3));
+
+        Map<String, String> expected = new LinkedHashMap<>();
+        expected.put("1 — our non-repeatable encoding",
+                "ERROR: Rule with path '/Order/Starred': Since 'Lines' is not repeatable, it is not allowed "
+                        + "to specify an asterisk. [MVK_INVALID_WILDCARD]");
+        expected.put("3 — a real repetition list, control", ADMITTED);
+
+        assertEquals(expected, actual,
+                "the kernel agrees with our encoding that 1 means non-repeatable, so repeatable(1) would ask "
+                        + "for a list the kernel then refuses to iterate");
+    }
+
+    /**
+     * A model at the given repeatability carrying one starred rule over {@code Lines}. It needs its own
+     * fixture rather than {@link #baseModel()}'s: the rule's error field must sit directly under
+     * {@code /Order}, and the shared model deliberately carries nothing there.
+     */
+    private static String starVerdict(int repeatability) {
+        // Built at 2 and then mutated, because repeatable(1) is exactly the builder refusal under test here.
+        String json = DocumentModelDraft.named("orders").locale("en_US")
+                .rootGroup("Order", order -> order
+                        .field("Reference", FieldKind.STRING)
+                        .group("Lines", lines -> lines.repeatable(2).field("Sku", FieldKind.STRING)))
+                .build()
+                .toJson();
+        JsonNode model = tree(json);
+        groupBody(model).set("repeatability", MAPPER.getNodeFactory().numberNode(repeatability));
+        String withRule = RuntimeLaws.withRule(model.toString(), "/Order", "Starred", "../Reference",
+                "STARRED", "FieldFilled(Reference) And NumberOfFilledFields(Lines*/Sku) > 0");
+        List<String> notifications = RuntimeLaws.consistencyMessages(withRule);
+        return notifications.isEmpty() ? ADMITTED : String.join(", ", notifications);
+    }
+
+    /**
      * The consistency gate's refusal, verbatim. It reports the invalid maxima **per element** — the group and
      * every field beneath it — and then one message naming the actual domain violation, which is where the two
      * distinct wordings live: a zero is "greater than 0", a negative is "without a sign".

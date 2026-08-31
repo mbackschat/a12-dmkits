@@ -43,7 +43,9 @@ final class GroupAddCommand extends BaseCommand {
 
     @ParamKind(ParamKind.Kind.SCALAR)
     @Option(names = "--repeatable", paramLabel = "<max>",
-            description = "make the group a repetition list with this max repetitions (≥2)")
+            description = "make the group a repetition list with this max repetitions (≥2 — 1 IS the "
+                    + "non-repeatable encoding, which the kernel reads as not repeatable, so omit the flag "
+                    + "rather than passing 1)")
     Integer repeatable;
 
     @Option(names = {"--output", "-o"}, paramLabel = "<file>",

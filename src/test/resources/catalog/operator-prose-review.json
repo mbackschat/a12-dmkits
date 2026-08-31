@@ -4864,7 +4864,7 @@
       "operator": "NumberOfDifferentValues",
       "lane": "CONSTRAINT",
       "ordinal": 0,
-      "digest": "sha256:b78e39242bf9697c72d38bbca8542cba024531d086ed5a2df9e00a5d48895571",
+      "digest": "sha256:36b2b4323599f3998435f1301bc48cf363b5b83d0f783fcf9ca52d65513d2fbc",
       "classifications": [
         "REJECTION"
       ],
@@ -4884,7 +4884,7 @@
       "operator": "NumberOfDifferentValues",
       "lane": "CONSTRAINT",
       "ordinal": 2,
-      "digest": "sha256:20ce4ef987afd782466180e46306f8d2b42a42959ce0d9eede3b361a69458aee",
+      "digest": "sha256:c96d5fe4153dbe7836e933f550ab81decd7aa08a17897c08d52428429eb18332",
       "classifications": [
         "REJECTION"
       ],
@@ -4905,6 +4905,16 @@
       "lane": "GOTCHA",
       "ordinal": 0,
       "digest": "sha256:85eea8dda52a0234f26c834aa986a85a3ec5ee6e5a9ee80ea14c7079050639ef",
+      "classifications": [
+        "REJECTION"
+      ],
+      "evidence": []
+    },
+    {
+      "operator": "NumberOfDifferentValues",
+      "lane": "GOTCHA",
+      "ordinal": 1,
+      "digest": "sha256:79e20e88a25b771b46b662a935185480e9f501e55babceb1bd354d43f015d194",
       "classifications": [
         "REJECTION"
       ],
@@ -9707,6 +9717,10 @@
         {
           "lane": "CONSTRAINT",
           "ordinal": 0
+        },
+        {
+          "lane": "GOTCHA",
+          "ordinal": 1
         }
       ],
       "expected": {
@@ -9727,6 +9741,10 @@
         {
           "lane": "CONSTRAINT",
           "ordinal": 0
+        },
+        {
+          "lane": "GOTCHA",
+          "ordinal": 1
         }
       ],
       "expected": {
@@ -9791,6 +9809,10 @@
         {
           "lane": "CONSTRAINT",
           "ordinal": 2
+        },
+        {
+          "lane": "GOTCHA",
+          "ordinal": 1
         }
       ],
       "expected": {

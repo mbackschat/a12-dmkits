@@ -3906,3 +3906,15 @@ The zero-row row also corrected a prediction written into the test file before i
 **The fix's scope is measured on both sides, because two rules fit the reported case.** The relevance now admits an operand field path or any **ancestor group** of one. The two rivals were "every over-repetition in the document" and "the operand's parent group only", and each is refuted by its own document: an over-limit row in a group no computation reads draws **nothing** in the operand channel (so the channel is operand-scoped, not document-wide), and an over-limit row two repetition levels *above* the operand draws three messages — `zuGrosseZeile` at the outer group plus `zuGrosseKontextnummer` at both the intermediate row and the operand cell (so the parent group is not the bound). Neither document existed before the fix was written.
 
 *Locked by:* `adapter.laws.OverLimitOperandComputeArmDiffTest` (all three engines held to `code@pointer`, not merely to the code set — the ancestry case draws one code at two sites, so a code-only agreement would let a message attached to the wrong cell pass)
+
+### IF316: `FieldValuesNotUnique` cannot observe whether an over-limit cell is excluded from the extent or kept as unavailable, so our route there is a FREE CHOICE and not a divergence (2026-08-31) <a id="if316"></a>
+
+The operator skips a formally unavailable operand exactly as it skips an empty one — `Aggregates.distinctKeyOrNull` returns `null` and the scan `continue`s — so an over-limit cell **removed from the extent** and one **kept in the extent as unavailable** produce the same verdict on every document. There is no discriminating case, which makes this dimension unfalsifiable from outside for this operator.
+
+Our route is the exclusion: `comparedCells`' starred arm goes through `filteredStarCells` → `EvalContext.star`/`rowContexts`, which carry [IF27](#if27)'s cache-admission gate, so an over-limit row is not in the domain at all. That is inherited from the shared star path rather than decided here, and nothing about this operator required it.
+
+**Why it is worth an entry despite being unobservable.** A future differential that reaches this dimension by some other construct will find our behaviour definite and may read a mismatch as a defect. It is not one until a discriminating case exists — and the same reasoning says our choice is not *evidence* about the kernel either, so it must not be cited as a measured kernel fact.
+
+Reported by a12-kernel-lean from their `EXP-2026-08-31-03` sweep, where their two uniqueness call sites are deliberately unchanged and claim nothing. Their observation is the absence of a discriminator; the route above is ours, read from our source.
+
+*Locked by:* nothing, deliberately — a lock would pin a choice the kernel does not constrain, and the next measurement that *does* constrain it should be free to move us. [IF27](#if27) already locks the extent rule this inherits.

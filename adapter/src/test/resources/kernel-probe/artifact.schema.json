@@ -10,7 +10,7 @@
   "properties": {
     "schemaVersion": {
       "const": 1,
-      "description": "this artifact shape's version; bumped when a key's presence or meaning changes. An artifact stays readable after the producer moves on because it carries its own version. The optional `computations` block did NOT bump it: a consumer receives that block only by asking for it, so no artifact any existing consumer can obtain changes shape and no existing key changes meaning — while bumping would have broken the harder guarantee, that an unchanged request keeps producing byte-identical output that an already-pinned SHA-256 still matches."
+      "description": "this artifact shape's version; bumped when a key's presence or meaning changes. An artifact stays readable after the producer moves on because it carries its own version. The optional `computations` and `partialMessages` blocks did NOT bump it, for the same reason in both cases: a consumer receives such a block only by asking for it, so no artifact any existing consumer can obtain changes shape and no existing key changes meaning — while bumping would have broken the harder guarantee, that an unchanged request keeps producing byte-identical output that an already-pinned SHA-256 still matches."
     },
     "producer": {
       "type": "object",
@@ -109,7 +109,7 @@
           "name": { "type": "string", "description": "the request row's name" },
           "enginesAgree": {
             "type": "boolean",
-            "description": "whether every strategy in `engines` produced the identical observation — EVERY channel its block reports, `messages` and `computations` alike, not the messages alone. DERIVED from `engines`, never asserted independently — the per-strategy blocks are always both present, so a disagreement is visible in full rather than merged away. A strategy observed for compute never agrees with one that was not. `false` is a KERNEL FACT to record: the production-normative strategy is `kernel-groovy-dynamic` and a `kernel-java-static` split is characterized, never adopted (docs/CONFORMANCE-CORPUS-SPEC.md §11)."
+            "description": "whether every strategy in `engines` produced the identical observation — EVERY channel its block reports — `messages`, `computations` and `partialMessages` alike — not the messages alone. DERIVED from `engines`, never asserted independently — the per-strategy blocks are always both present, so a disagreement is visible in full rather than merged away. A strategy observed for compute never agrees with one that was not. `false` is a KERNEL FACT to record: the production-normative strategy is `kernel-groovy-dynamic` and a `kernel-java-static` split is characterized, never adopted (docs/CONFORMANCE-CORPUS-SPEC.md §11)."
           },
           "engines": {
             "type": "array",
@@ -127,6 +127,11 @@
                 "messages": {
                   "type": "array",
                   "description": "every message this strategy's `validateFull` raised, in a total order over the published channels. Ordering is by `code`, then `field`, `type`, `severity`, `referenced`, `fillToFix`, `message` — never kernel emission order, which nothing guarantees to be stable. Duplicates are retained, so a per-row rule firing on K rows appears K times.",
+                  "items": { "$ref": "#/$defs/message" }
+                },
+                "partialMessages": {
+                  "type": "array",
+                  "description": "every message this strategy's `validatePart` raised under the row's declared `relevant` coverage, in the same total order as `messages`. PRESENT exactly when the request asked for `validatePart`; ABSENT otherwise. Unlike `messages`, an EMPTY array here is a measurement rather than a shape artifact: the `noneRelevant` coverage legitimately produces one, and that is one of the two things this observation exists to reach. Compare against `messages` on the same row to read what the caller's coverage gated: `validateFull` answers the document, `validatePart` answers the document AS SEEN BY a caller, and only the second can express a call-local partial coverage.",
                   "items": { "$ref": "#/$defs/message" }
                 },
                 "computations": {

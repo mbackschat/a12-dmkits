@@ -95,7 +95,8 @@ public record KernelProbeArtifact(Header header, List<Row> rows,
     }
 
     /** What a strategy reported, minus which strategy reported it — the value {@link Row#enginesAgree} compares. */
-    private record Observation(List<Message> messages, Optional<Computations> computations) {
+    private record Observation(List<Message> messages, Optional<Computations> computations,
+            Optional<List<Message>> partialMessages) {
     }
 
     /**
@@ -106,20 +107,35 @@ public record KernelProbeArtifact(Header header, List<Row> rows,
      * <b>not</b> "nothing computed": it is "not observed", and the distinction is the same one the probe's
      * refusal of an inconsistent model protects — an empty observation that reads as an answer is worse than no
      * answer. So the block is omitted from the JSON entirely rather than rendered empty.
+     *
+     * <p>{@code partialMessages} follows the same rule for {@code validatePart}: present exactly when the
+     * request asked for it, and omitted otherwise so an artifact pinned before the observation existed stays
+     * byte-identical. Here the distinction bites hardest, because the {@code noneRelevant} coverage legitimately
+     * produces an EMPTY list — which is a measurement, not an absence.
      */
-    public record Engine(String engine, List<Message> messages, Optional<Computations> computations) {
+    public record Engine(String engine, List<Message> messages, Optional<Computations> computations,
+            Optional<List<Message>> partialMessages) {
 
         public Engine {
             messages = messages.stream().sorted().toList();
+            partialMessages = partialMessages.map(list -> list.stream().sorted().toList());
         }
 
         /** The strategy observed for validation only — the shape every request produced before compute existed. */
         public Engine(String engine, List<Message> messages) {
-            this(engine, messages, Optional.empty());
+            this(engine, messages, Optional.empty(), Optional.empty());
         }
 
+        /** The pre-{@code validatePart} three-arg shape, kept so existing callers do not all have to change. */
+        public Engine(String engine, List<Message> messages, Optional<Computations> computations) {
+            this(engine, messages, computations, Optional.empty());
+        }
+
+        // partialMessages joins the agreement comparison deliberately: whether the static-JAVA codegen path
+        // gates a relevant set identically to dynamic-Groovy is exactly the kind of split this probe exists to
+        // surface, and leaving it out would report enginesAgree=true over an unread channel.
         private Observation observation() {
-            return new Observation(messages, computations);
+            return new Observation(messages, computations, partialMessages);
         }
     }
 
@@ -265,6 +281,11 @@ public record KernelProbeArtifact(Header header, List<Row> rows,
                 engine.messages().forEach(message -> write(messageNodes.addObject(), message));
                 engine.computations().ifPresent(computations -> write(
                         engineNode.putObject("computations"), computations));
+                // Rendered even when EMPTY: under noneRelevant coverage an empty list is the measurement.
+                engine.partialMessages().ifPresent(partial -> {
+                    ArrayNode partialNodes = engineNode.putArray("partialMessages");
+                    partial.forEach(message -> write(partialNodes.addObject(), message));
+                });
             }
         }
 

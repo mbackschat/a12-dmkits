@@ -90,8 +90,20 @@ public final class KernelRuntimeProbe {
     private KernelRuntimeProbe() {
     }
 
-    /** One named row of the request: a document, evaluated on every strategy. */
-    public record Row(String name, String documentJson) {
+    /**
+     * One named row of the request: a document, evaluated on every strategy.
+     *
+     * <p>{@code relevant} is the caller's coverage for {@link Observation#VALIDATE_PART} and is present exactly
+     * when that observation was asked for. {@link Optional#empty()} means "not observed"; an empty SET means
+     * {@code noneRelevant}, which is a distinct and deliberate request. Conflating those two is why this is an
+     * {@code Optional<Set<…>>} rather than a set that happens to be empty.
+     */
+    public record Row(String name, String documentJson, Optional<Set<RuntimeLaws.Relevant>> relevant) {
+
+        /** A row observing no relevant set — the shape every pre-{@code validatePart} request has. */
+        public Row(String name, String documentJson) {
+            this(name, documentJson, Optional.empty());
+        }
     }
 
     /**
@@ -105,6 +117,15 @@ public final class KernelRuntimeProbe {
 
         /** {@code IDocumentRtService.compute} — the computed-field outcomes and the operand formal errors. */
         COMPUTE("compute", Scope.ROW),
+
+        /**
+         * {@code IDocumentRtService.validatePart} — the message channel under a CALLER-SUPPLIED relevant set,
+         * which is the whole point: two shapes are unreachable through {@code validateFull} because they are
+         * properties of the caller's coverage rather than of the document — a call-local PARTIAL coverage, and
+         * the empty ({@code noneRelevant}) set. Each row supplies its own {@code relevant}; an empty array is a
+         * legitimate request for the second shape, not an omission.
+         */
+        VALIDATE_PART("validatePart", Scope.ROW),
 
         /**
          * {@code IRuleCollectionMetaInformation.getMandatoryInformationFromRules} — the three name sets the
@@ -186,6 +207,20 @@ public final class KernelRuntimeProbe {
                         : "'rows' must be absent or empty: " + observe + " names only model-level "
                                 + "observations, which read no document, so a row would be observed by nothing");
             }
+            // A relevant set and the observation that reads it must agree, in BOTH directions: without the
+            // observation the key is one nothing looks at (the same silent no-op as an unobserved row), and
+            // without the key validatePart has no coverage to run under and would silently become validateFull.
+            boolean partial = observe.contains(Observation.VALIDATE_PART);
+            for (Row row : rows) {
+                if (partial != row.relevant().isPresent()) {
+                    throw new IllegalArgumentException(partial
+                            ? "row '" + row.name() + "' must carry 'relevant' because " + observe
+                                    + " names validatePart; write [] for the noneRelevant coverage, which is a "
+                                    + "deliberate request rather than an omission"
+                            : "row '" + row.name() + "' carries 'relevant' but " + observe
+                                    + " does not name validatePart, so nothing would read it");
+                }
+            }
             observe = Collections.unmodifiableSet(EnumSet.copyOf(observe));
             rows = List.copyOf(rows);
         }
@@ -245,7 +280,7 @@ public final class KernelRuntimeProbe {
                 throw new IllegalArgumentException("duplicate row name '" + name
                         + "'; a row name identifies an observation and must be unique");
             }
-            rows.add(new Row(name, document(rowNode, base, name)));
+            rows.add(new Row(name, document(rowNode, base, name), relevant(rowNode, name)));
         }
         return new Request(modelRef, read(base, modelRef), locale, clock, observe, rows);
     }
@@ -280,6 +315,57 @@ public final class KernelRuntimeProbe {
                     + "Received '" + text + "'");
         }
         return Locale.of(parts[0], parts[1]);
+    }
+
+    /**
+     * A row's caller-supplied relevant set for {@code validatePart}, or {@link Optional#empty()} when the key
+     * is absent. The empty ARRAY is kept distinct from the absent key: it is the {@code noneRelevant} coverage,
+     * one of the two shapes the observation exists to reach.
+     *
+     * <p>Each entry is a {@code path} plus its 1-based repetition indices — <b>one per path PART, not per
+     * repeatable part</b>: {@code DocumentPointerImpl.parsePathParts} refuses a mismatch outright with
+     * {@code "fullName and repetition have different length"}. {@code 0} is the kernel's own wildcard
+     * ({@code IEntityInstance.ALL_SEMANTIC}) meaning "every repetition of that element".
+     *
+     * <p>An omitted {@code reps} therefore defaults to <b>all wildcards of the right length</b> rather than to
+     * an empty list, which would be the length error above for every path but a one-part one. Hand-counting
+     * path parts to write {@code [0, 0]} is a footgun with no upside: the coverage a consumer wants is almost
+     * always "this element, every repetition", and the length is derivable from the path.
+     */
+    private static Optional<Set<RuntimeLaws.Relevant>> relevant(JsonNode rowNode, String name) {
+        if (!rowNode.hasNonNull("relevant")) {
+            return Optional.empty();
+        }
+        JsonNode node = rowNode.get("relevant");
+        if (!node.isArray()) {
+            throw new IllegalArgumentException("row '" + name + "': 'relevant' must be an array of "
+                    + "{path, reps} entries; write [] for the noneRelevant coverage");
+        }
+        Set<RuntimeLaws.Relevant> relevant = new LinkedHashSet<>();
+        for (JsonNode entry : node) {
+            String path = required(entry, "path").asText();
+            long parts = path.chars().filter(c -> c == '/').count();
+            List<Integer> reps = new ArrayList<>();
+            if (entry.hasNonNull("reps")) {
+                if (!entry.get("reps").isArray()) {
+                    throw new IllegalArgumentException("row '" + name + "': 'reps' must be an array of "
+                            + "1-based repetition indices, or 0 for every repetition of that element");
+                }
+                entry.get("reps").forEach(rep -> reps.add(rep.asInt()));
+                if (reps.size() != parts) {
+                    throw new IllegalArgumentException("row '" + name + "': 'reps' for '" + path + "' must "
+                            + "carry one entry per path PART (" + parts + "), not per repeatable part; got "
+                            + reps.size() + ". Use 0 for every repetition of an element, or omit 'reps' "
+                            + "entirely for the all-wildcard coverage.");
+                }
+            } else {
+                for (long i = 0; i < parts; i++) {
+                    reps.add(0);
+                }
+            }
+            relevant.add(new RuntimeLaws.Relevant(path, List.copyOf(reps)));
+        }
+        return Optional.of(Collections.unmodifiableSet(relevant));
     }
 
     /** Exactly one of {@code document} (a path) or {@code documentInline} (an embedded A12 Document JSON). */
@@ -357,11 +443,15 @@ public final class KernelRuntimeProbe {
                     new KernelProbeArtifact.Engine(GROOVY_DYNAMIC,
                             project(groovyDynamic.validationMessages(groovyInstance, clock, locale)),
                             compute ? Optional.of(project(groovyDynamic.computation(groovyInstance, clock, locale)))
-                                    : Optional.empty()),
+                                    : Optional.empty(),
+                            row.relevant().map(rel -> project(groovyDynamic
+                                    .partialValidationMessages(groovyInstance, rel, clock, locale)))),
                     new KernelProbeArtifact.Engine(JAVA_STATIC,
                             project(javaStatic.validationMessages(javaInstance, clock, locale)),
                             compute ? Optional.of(project(javaStatic.computation(javaInstance, clock, locale)))
-                                    : Optional.empty()))));
+                                    : Optional.empty(),
+                            row.relevant().map(rel -> project(javaStatic
+                                    .partialValidationMessages(javaInstance, rel, clock, locale)))))));
         }
         return new KernelProbeArtifact(header, rows, mandatory);
     }

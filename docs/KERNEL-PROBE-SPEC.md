@@ -13,7 +13,7 @@ The JVM-only, non-shipped route by which an external consumer asks the **real A1
 | Request shape | [`adapter/src/test/resources/kernel-probe/request.schema.json`](../adapter/src/test/resources/kernel-probe/request.schema.json) |
 | Artifact shape | [`adapter/src/test/resources/kernel-probe/artifact.schema.json`](../adapter/src/test/resources/kernel-probe/artifact.schema.json) |
 | Implementation | `adapter/src/test/java/…/adapter/laws/KernelRuntimeProbe.java` + `KernelProbeArtifact.java` |
-| Locks | `adapter.laws.KernelRuntimeProbeTest` + `KernelProbeComputeTest` + `KernelProbeMandatoryInformationTest` (kernel-backed), `adapter.laws.KernelProbeArtifactTest` + `KernelProbeComputeShapeTest` (shape), `GateTierWiringTest` (the task stays a measurement) |
+| Locks | `adapter.laws.KernelRuntimeProbeTest` + `KernelProbeComputeTest` + `KernelProbeMandatoryInformationTest` + `KernelProbeValidatePartTest` (kernel-backed), `adapter.laws.KernelProbeArtifactTest` + `KernelProbeComputeShapeTest` (shape), `GateTierWiringTest` (the task stays a measurement) |
 
 ## 1. Why a Gradle task and not a verb
 
@@ -38,6 +38,7 @@ Kernel runtime entry points over the supplied document, on **both** kernel codeg
 |---|---|---|---|
 | `validateFull` | per row | `IDocumentRtService.validateFull` | each engine block's `messages` |
 | `compute` | per row | `IDocumentRtService.compute` | each engine block's `computations` |
+| `validatePart` | per row | `IDocumentRtService.validatePart` | each engine block's `partialMessages` |
 | `mandatoryInformation` | **per model** | `IRuleCollectionMetaInformation.getMandatoryInformationFromRules` | the top-level `mandatoryInformation` |
 
 Not `validatePart` — a probe that guessed at more surface than it was asked for would be inventing contract (§7).
@@ -109,6 +110,18 @@ So it is an **inventory, not a causal attribution** — emitted whether or not a
 - **A formal error here does not imply anything was skipped.** In the worked artifact, `Order/ShippingFee`'s error sits in this channel while `Order/LineTotal` — which does not read it — computes normally.
 
 **The `schemaVersion` stayed `1`, deliberately.** A consumer receives `computations` only by asking for it, so no artifact an existing consumer can obtain changes shape and no existing key changes meaning — while bumping would have broken the harder guarantee, that an unchanged request keeps producing bytes an already-pinned SHA-256 matches. **What that costs, stated rather than glossed:** `schemaVersion: 1` no longer determines the artifact's *shape*, only its key meanings, so §6's "an artifact carries its own version header" now means a consumer must also know what it asked for. The schema document itself was edited in place under an unversioned `$id`, so a cached copy and a re-fetched one differ. Both were judged cheaper than breaking a pin.
+
+### The `partialMessages` block
+
+Present exactly when the request asked for `validatePart`, beside `messages` inside each engine block. It carries what that strategy's `validatePart` raised under the row's own `relevant` coverage, sorted on the same total order as `messages`.
+
+**What it reaches that `validateFull` cannot.** Two shapes, and both are properties of the CALLER rather than of the document — the same document answers differently depending on what was declared relevant, which is exactly why no full validation can express them: a **call-local partial coverage** (a set that admits some rules and excludes others), and the empty **`noneRelevant`** coverage. Added 2026-08-31 for a12-kernel-lean, whose filled-group-count unavailability rows are blocked on those two and nothing else.
+
+**A row's `relevant` is required exactly when the observation is asked for, and refused otherwise** — the same both-directions rule the other observations carry. Without the coverage a `validatePart` would silently behave as a `validateFull`; without the observation the key is one nothing reads. An **empty array is not an omission**: it is the `noneRelevant` request, so `partialMessages` renders even when empty, and `Row.relevant` is an `Optional<Set<…>>` end to end rather than a set that happens to be empty.
+
+**`reps` is one entry per path PART, not per repeatable part.** `DocumentPointerImpl.parsePathParts` refuses a mismatch with `fullName and repetition have different length`, so `/Order/Lines/Amount` needs three entries even though only `Lines` repeats; `0` is the kernel's wildcard for "every repetition of that element". **Omit `reps` entirely** for the all-wildcard coverage of the right length — the probe derives it from the path, which is what a consumer almost always wants and removes a hand-counting footgun that cost one measurement here.
+
+`enginesAgree` covers this channel too: whether the static-JAVA codegen path gates a relevant set identically to dynamic-Groovy is precisely the kind of split this probe exists to surface, and omitting it would report agreement over an unread channel.
 
 ### The `mandatoryInformation` block
 
