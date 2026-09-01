@@ -22,6 +22,7 @@ class TypeScriptRuntimeLauncherTest {
         for (String relative : List.of(
                 "scripts/run-typescript.sh",
                 "scripts/check-infographic-freshness.sh",
+                "scripts/sync-plugin-assets.sh",
                 "scripts/test-evidence.sh")) {
             String source = Files.readString(root.resolve(relative));
             assertTrue(source.startsWith("#!/bin/sh\n"), relative + " must use the portable runtime interface");
@@ -37,6 +38,23 @@ class TypeScriptRuntimeLauncherTest {
         Run prerelease = runSelected(fakeNode(temporary.resolve("prerelease"), "24.12.0-rc.1"));
         assertEquals(2, prerelease.exitCode(), prerelease.output());
         assertTrue(prerelease.output().contains("pre-release"), prerelease.output());
+    }
+
+    @Test
+    void testModeDelegatesToNodesNativeTestRunner(@TempDir Path temporary) throws Exception {
+        Path testSource = temporary.resolve("tool.test.ts");
+        Files.writeString(testSource, "// planted TypeScript test\n");
+        Path fakeNode = recordingNode(temporary.resolve("node"), "24.20.0");
+        Path launcher = repositoryRoot().resolve("scripts/run-typescript.sh");
+
+        var builder = new ProcessBuilder("/bin/dash", launcher.toString(), "--test", testSource.toString());
+        builder.redirectErrorStream(true);
+        builder.environment().put("A12_NODE", fakeNode.toString());
+        Process process = builder.start();
+        String output = new String(process.getInputStream().readAllBytes(), StandardCharsets.UTF_8);
+
+        assertEquals(0, process.waitFor(), output);
+        assertEquals("--test\n" + testSource + "\n", output);
     }
 
     @Test
@@ -82,6 +100,19 @@ class TypeScriptRuntimeLauncherTest {
     private static Path fakeNode(Path path, String version) throws IOException {
         Files.createDirectories(path.getParent());
         Files.writeString(path, "#!/bin/sh\nprintf '%s\\n' '" + version + "'\n");
+        assertTrue(path.toFile().setExecutable(true), "could not make fake Node executable: " + path);
+        return path;
+    }
+
+    private static Path recordingNode(Path path, String version) throws IOException {
+        Files.writeString(path, """
+                #!/bin/sh
+                if [ "$1" = "-p" ]; then
+                  printf '%s\\n' 'VERSION'
+                  exit 0
+                fi
+                printf '%s\\n' "$@"
+                """.replace("VERSION", version));
         assertTrue(path.toFile().setExecutable(true), "could not make fake Node executable: " + path);
         return path;
     }

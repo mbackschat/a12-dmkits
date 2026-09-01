@@ -132,7 +132,6 @@ class ShellPortabilityGuardTest {
             "scripts/selftest-test-evidence.sh",
             "scripts/smoke-interpreter-public-release.sh",
             "scripts/smoke-mcp-endpoint.sh",
-            "scripts/sync-plugin-assets.sh",
             "scripts/update-code-statistics.sh",
             "scripts/verify-build-cache.sh",
             "scripts/verify-demos.sh");

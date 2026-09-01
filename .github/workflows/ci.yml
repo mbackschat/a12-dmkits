@@ -52,6 +52,10 @@ jobs:
         with:
           node-version: '24.20.0'
 
+      - name: Run repository TypeScript tool tests
+        working-directory: a12-dmkits
+        run: ./scripts/run-typescript.sh --test scripts/typescript/*.test.ts
+
       # First repository check after its one required runtime setup. A failure still stops before Kernel checkout,
       # JDK and Gradle setup, cache restore, or bootstrap, without paying for a second job and duplicate checkout.
       - name: Verify infographic claims, placements, and public copies

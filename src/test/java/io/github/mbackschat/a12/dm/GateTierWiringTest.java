@@ -85,6 +85,20 @@ class GateTierWiringTest {
     }
 
     @Test
+    void ciRunsEverySourceAdjacentTypeScriptToolTestBeforeHeavySetup() throws IOException {
+        String ci = Files.readString(locate(".github/workflows/ci.yml"));
+        int nodeSetup = ci.indexOf("- name: Set up Node for repository TypeScript tools");
+        int toolTests = ci.indexOf("- name: Run repository TypeScript tool tests");
+        int kernelCheckout = ci.indexOf("- name: Checkout the kernel bootstrap kit");
+
+        assertTrue(nodeSetup >= 0 && nodeSetup < toolTests && toolTests < kernelCheckout,
+                "source-adjacent TypeScript tests must reuse pinned Node and fail before Kernel/toolchain setup");
+        assertTrue(ci.substring(toolTests, kernelCheckout)
+                        .contains("run: ./scripts/run-typescript.sh --test scripts/typescript/*.test.ts"),
+                "CI must discover TypeScript tool tests by suffix rather than maintain a second test list");
+    }
+
+    @Test
     void infographicBehavioralGuardDeclaresItsCompleteLiveInputSet() throws IOException {
         String delivery = gradleTask(Files.readString(locate("build.gradle")), "deliveryGuardTest");
         for (String input : List.of(

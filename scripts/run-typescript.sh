@@ -48,6 +48,21 @@ if [ "${1:-}" = "--check" ]; then
   exit 0
 fi
 
+if [ "${1:-}" = "--test" ]; then
+  shift
+  if [ "$#" -eq 0 ]; then
+    echo "TypeScript tools: --test requires at least one test source" >&2
+    exit 2
+  fi
+  for source do
+    if [ ! -f "$source" ]; then
+      echo "TypeScript tools: test source is missing: $source" >&2
+      exit 2
+    fi
+  done
+  exec "$node_command" --test "$@"
+fi
+
 tool="${1:-TypeScript tool}"
 source="${2:-}"
 if [ -z "$source" ] || [ ! -f "$source" ]; then
