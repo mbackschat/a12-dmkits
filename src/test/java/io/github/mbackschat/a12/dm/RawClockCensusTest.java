@@ -92,7 +92,7 @@ class RawClockCensusTest {
     void everyClockReadingTestSitsInALaneThatCanMeasure() throws IOException {
         var offenders = new TreeMap<String, String>();
         for (Path source : CHECKOUT.testSources()) {
-            String text = uncommented(Files.readString(source));
+            String text = SourceText.uncommented(source);
             if (!CLOCK.matcher(text).find()) {
                 continue;
             }
@@ -126,7 +126,7 @@ class RawClockCensusTest {
         for (Path source : CHECKOUT.testSources()) {
             String name = source.getFileName().toString();
             if (ALLOWED.containsKey(name)) {
-                seen.merge(name, CLOCK.matcher(uncommented(Files.readString(source))).find(), Boolean::logicalOr);
+                seen.merge(name, CLOCK.matcher(SourceText.uncommented(source)).find(), Boolean::logicalOr);
             }
         }
         ALLOWED.forEach((name, reason) -> {
@@ -140,21 +140,10 @@ class RawClockCensusTest {
                         + "outlives its reason. Found: " + stale);
     }
 
-    /**
-     * Source with comments removed, so a file that DOCUMENTS a clock API does not read as one that calls it.
-     * This class and {@code PerfLaneGate} both name {@code System.nanoTime()} in prose to explain the bypass they
-     * exist to close, and the first version of the census duly reported both as offenders.
-     */
-    private static String uncommented(String source) {
-        String withoutBlocks = Pattern.compile("/\\*.*?\\*/", Pattern.DOTALL).matcher(source).replaceAll("");
-        return withoutBlocks.lines()
-                .filter(line -> !line.strip().startsWith("//"))
-                .collect(java.util.stream.Collectors.joining("\n"));
-    }
 
     /** A short excerpt of the offending line, so the failure points somewhere rather than merely naming a file. */
     private static String firstMatch(String text) {
-        return uncommented(text).lines()
+        return text.lines()
                 .filter(line -> CLOCK.matcher(line).find())
                 .findFirst().orElse("?").strip();
     }

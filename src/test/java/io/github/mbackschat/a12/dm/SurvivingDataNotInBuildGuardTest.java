@@ -155,7 +155,7 @@ class SurvivingDataNotInBuildGuardTest {
             // this very repository — drives the depth to 2, so the closing `*/` only returns it to 1 and the
             // REST OF THE FILE is treated as comment. Measured before the fix: 10 Java files ended in a
             // non-neutral state and 1,179 lines of real code were blanked, any write site among them invisible.
-            String code = withoutComments(Files.readString(source), source.getFileName().toString().endsWith(".kt"));
+            String code = SourceText.uncommented(source);
             Matcher found = BUILD_PATH_LITERAL.matcher(code);
             while (found.find()) {
                 if (looksLikeAPath(found.group(1)) && constructedAsPath(code, found.start())) {
@@ -215,90 +215,6 @@ class SurvivingDataNotInBuildGuardTest {
         return PATH_APIS.stream().anyMatch(window::contains);
     }
 
-    /**
-     * Blank out comments, keeping string literals and every character position intact.
-     *
-     * <p>Stripping is what lets the rule apply to CODE only: without it, a doc comment illustrating the pattern is
-     * indistinguishable from a write, and the previous guard had to delete its own illustration to stay green.
-     * Kotlin block comments nest, so the depth is counted rather than closed on the first {@code *}{@code /}.
-     */
-    static String withoutComments(String source, boolean nestsBlockComments) {
-        var out = new StringBuilder(source.length());
-        int blockDepth = 0;
-        boolean lineComment = false;
-        boolean inString = false;
-        boolean inRawString = false;
-        boolean inChar = false;
-        for (int i = 0; i < source.length(); i++) {
-            char c = source.charAt(i);
-            String rest2 = i + 2 <= source.length() ? source.substring(i, i + 2) : "";
-            boolean rest3IsTripleQuote = i + 3 <= source.length() && source.startsWith("\"\"\"", i);
-            if (lineComment) {
-                if (c == '\n') {
-                    lineComment = false;
-                    out.append(c);
-                } else {
-                    out.append(' ');
-                }
-            } else if (blockDepth > 0) {
-                if (nestsBlockComments && "/*".equals(rest2)) {
-                    blockDepth++;
-                    out.append("  ");
-                    i++;
-                } else if ("*/".equals(rest2)) {
-                    blockDepth--;
-                    out.append("  ");
-                    i++;
-                } else {
-                    out.append(c == '\n' ? c : ' ');
-                }
-            } else if (inRawString) {
-                out.append(c);
-                if (rest3IsTripleQuote) {
-                    out.append("\"\"");
-                    i += 2;
-                    inRawString = false;
-                }
-            } else if (inString) {
-                out.append(c);
-                if (c == '\\' && i + 1 < source.length()) {
-                    out.append(source.charAt(i + 1));
-                    i++;
-                } else if (c == '"') {
-                    inString = false;
-                }
-            } else if (inChar) {
-                out.append(c);
-                if (c == '\\' && i + 1 < source.length()) {
-                    out.append(source.charAt(i + 1));
-                    i++;
-                } else if (c == '\'') {
-                    inChar = false;
-                }
-            } else if ("//".equals(rest2)) {
-                lineComment = true;
-                out.append("  ");
-                i++;
-            } else if ("/*".equals(rest2)) {
-                blockDepth = 1;
-                out.append("  ");
-                i++;
-            } else if (rest3IsTripleQuote) {
-                inRawString = true;
-                out.append("\"\"\"");
-                i += 2;
-            } else if (c == '"') {
-                inString = true;
-                out.append(c);
-            } else if (c == '\'') {
-                inChar = true;
-                out.append(c);
-            } else {
-                out.append(c);
-            }
-        }
-        return out.toString();
-    }
 
     /**
      * The discriminator for the language rule, because getting it wrong is silent in the dangerous direction.
@@ -316,9 +232,9 @@ class SurvivingDataNotInBuildGuardTest {
         String planted = "\"build" + "/planted.txt\"";
         String source = "/** {@code build" + "/*-red.log} */\nclass X { void m() { Path.of(" + planted + "); } }";
 
-        assertTrue(withoutComments(source, false).contains(planted),
+        assertTrue(SourceText.uncommentedFragment(source, false).contains(planted),
                 "under Java's rule the code after the Javadoc must survive, or a write site there is invisible");
-        assertTrue(!withoutComments(source, true).contains(planted),
+        assertTrue(!SourceText.uncommentedFragment(source, true).contains(planted),
                 "…and Kotlin's rule is what hid it: this half pins the discriminator, so the fix cannot be "
                         + "undone without the test noticing");
     }

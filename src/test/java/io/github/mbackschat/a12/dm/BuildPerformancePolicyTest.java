@@ -113,7 +113,7 @@ class BuildPerformancePolicyTest {
     @Test
     void publicRepositoriesComeFirstAndTheOptOutMarkerIsCommitted() throws IOException {
         Path repositoryRoot = locate("settings.gradle").getParent();
-        String settings = uncommented(Files.readString(locate("settings.gradle")));
+        String settings = SourceText.uncommented(locate("settings.gradle"));
 
         int declaration = settings.indexOf("pluginManagement {");
         assertTrue(declaration >= 0,
@@ -207,7 +207,7 @@ class BuildPerformancePolicyTest {
         String digest = closureBody(Files.readString(locate("cli/build.gradle")), "nativeCaptureStampDigest");
         assertTrue(digest.contains("MessageDigest"), "the capture stamp digest closure must be found intact");
 
-        String code = uncommented(digest);
+        String code = SourceText.uncommentedFragment(digest, false);
         for (String read : AMBIENT_READS) {
             assertFalse(code.contains(read), "the capture stamp digest must hash only repository inputs; '"
                     + read + "' reads ambient state, which makes the stamp unverifiable on any other machine, "
@@ -218,7 +218,7 @@ class BuildPerformancePolicyTest {
         // closure and hashing the name inside it is the same defect and passed a check for the call alone. So
         // collect every file-scope name bound to an ambient read — `def x =`, `ext.x =`, a bare `x =`, or a
         // method whose body performs one — and require the digest to mention none of them.
-        String build = uncommented(Files.readString(locate("cli/build.gradle")));
+        String build = SourceText.uncommented(locate("cli/build.gradle"));
         for (String name : namesBoundToAmbientState(build)) {
             assertFalse(Pattern.compile("\\b" + Pattern.quote(name) + "\\b").matcher(code).find(),
                     "the capture stamp digest reads '" + name + "', which is bound from ambient state earlier "
@@ -302,10 +302,6 @@ class BuildPerformancePolicyTest {
         return names;
     }
 
-    /** Source with comment lines dropped, so a guard matches CODE and never a comment that quotes it. */
-    private static String uncommented(String source) {
-        return source.lines().filter(line -> !line.strip().startsWith("//")).collect(Collectors.joining("\n"));
-    }
 
     /**
      * A release binary must never name a commit it was not built from. The project-wide runtimeClasspath
@@ -329,7 +325,7 @@ class BuildPerformancePolicyTest {
                         + "up-to-date checks; if it is gone, re-derive whether the explicit input is still needed");
         // Comment-stripped: this asserts the declaration EXISTS, and a commented-out line carrying the same
         // text would otherwise satisfy it while the input is gone — the failure mode the guard is for.
-        String nativeCompile = uncommented(namedTaskBlock(build, "nativeCompile"));
+        String nativeCompile = SourceText.uncommentedFragment(namedTaskBlock(build, "nativeCompile"), false);
         assertFalse(nativeCompile.isBlank(), "cli/build.gradle must configure nativeCompile");
         assertTrue(nativeCompile.contains("inputs.file(generateVersionProperties"),
                 "nativeCompile must declare the generated version.properties as an input, or the native image "

@@ -192,7 +192,7 @@ class PerfTestClassificationTest {
         // Comment-stripped: `contains` cannot tell live configuration from a line that quotes it, and this task's
         // block is heavily commented — commenting out the selection while leaving the text would otherwise pass.
         String buildScript = Files.readString(CHECKOUT.resolve("adapter/build.gradle"));
-        String gate = uncommented(gradleTask(buildScript, "perfGateTest"));
+        String gate = SourceText.uncommentedFragment(gradleTask(buildScript, "perfGateTest"), false);
 
         assertTrue(gate.contains("useJUnitPlatform { includeTags 'perf' }"),
                 "perfGateTest must select the routine tier by tag; an includeTestsMatching list is how a "
@@ -223,7 +223,7 @@ class PerfTestClassificationTest {
         String build = Files.readString(CHECKOUT.resolve("adapter/build.gradle"));
         int test = build.indexOf("tasks.named('test')");
         assertTrue(test >= 0, "adapter/build.gradle must configure its broad test task");
-        String broad = uncommented(build.substring(test, build.indexOf("\ntasks.register(", test)));
+        String broad = SourceText.uncommentedFragment(build.substring(test, build.indexOf("\ntasks.register(", test)), false);
 
         for (String tag : new TreeSet<>(PERF_TAGS)) {
             assertTrue(broad.contains("excludeTags '" + tag + "'"),
@@ -285,19 +285,6 @@ class PerfTestClassificationTest {
         return tag.find() ? tag.group(1) : null;
     }
 
-    /**
-     * Source with comments dropped, so a check matches LIVE configuration and never a line quoting it.
-     *
-     * <p><b>Both comment forms.</b> Line comments alone left a bypass a review constructed: wrapping the live
-     * selection in {@code /* … *}{@code /} keeps the text present, so a {@code contains} check on it passes while
-     * the configuration is dead. Block comments are stripped first, since a block may open and close mid-line.
-     */
-    private static String uncommented(String source) {
-        String withoutBlocks = Pattern.compile("/\\*.*?\\*/", Pattern.DOTALL).matcher(source).replaceAll("");
-        return withoutBlocks.lines()
-                .filter(line -> !line.strip().startsWith("//"))
-                .collect(java.util.stream.Collectors.joining("\n"));
-    }
 
     private static String gradleTask(String build, String name) {
         String marker = "tasks.register('" + name + "', Test)";
