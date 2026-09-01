@@ -8,16 +8,16 @@ import io.github.mbackschat.a12.dm.core.ValueKind;
  * {@code DateExtractionOperationName}. The source renders as a bare entity reference. Build via
  * {@link Dsl#dateFromDateTime} / {@link Dsl#timeFromDateTime} — both take a {@code DateTimeOperand}, so the
  * compact constructor's check is a no-op for them; it exists for a caller holding a bare {@link Calculation}.
- * The catalog's {@code DateFromDateTime} entry requires a COMPLETE date-time source: a plain DATE field,
- * like a time-only DATE_TIME, is {@code MVK_WRONG_DATE_FORMAT_FOR_OP} at the operator.
+ *
+ * <p>The catalog's entry requires a COMPLETE date-time source, and completeness is a property of the
+ * DECLARED FORMAT rather than of the kind — see {@link TemporalOperands}, which is why the gate here states
+ * only that the source is a point in time. Handing this a temporal operand whose declaration carries no
+ * date-and-time halves is {@code MVK_WRONG_DATE_FORMAT_FOR_OP} at the kernel.
  */
 public record DateTimePart(Unit unit, Calculation source) implements Calculation {
 
     public DateTimePart {
-        if (source.kind() != ValueKind.DATE_TIME) {
-            throw new IllegalArgumentException(unit.operatorId() + " needs a complete date-time operand, but"
-                    + " the source is " + source.kind() + " (MVK_WRONG_DATE_FORMAT_FOR_OP)");
-        }
+        TemporalOperands.requirePointInTime(unit.operatorId(), source);
     }
 
     /** The value-valued date-time decompositions, each carrying its catalog operator-id and result kind. */

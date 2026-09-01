@@ -36,6 +36,19 @@ The gaps below were the **ergonomic and consistency remainder** — what added f
 
 ## 2. Open
 
+- **DG46 — the date/time extraction gate refuses a CUSTOM-kind operand, and nothing has measured that the
+  kernel does** (surfaced 2026-09-01 while narrowing that gate to its measured basis). `TemporalOperands`
+  admits the four point-in-time kinds, so a `CustomFieldType` field is refused `MVK_NO_DATE` before the kernel
+  is asked. That refusal predates the narrowing and is unchanged by it — it is filed rather than fixed because
+  it is unmeasured in **both** directions, which is precisely the shape the client-side-refusal rule exists to
+  catch. The question is whether A12 admits a custom type over a temporal base at all, and if so whether the
+  extraction family reads its declared format the way [KF211](KERNEL-FINDINGS.md#kf211) says every other gate
+  does. **What would settle it:** a fixture declaring a custom type whose base is a DATE, then one
+  `KernelLaws.rejectsModel`/`acceptsModel` row for `YearFromDate` over it — the existing custom-type fixture
+  (`cli/src/test/resources/models/payment-customtype.dm.json`) is not on the root laws tier and does not carry
+  a temporal base, so this needs a fixture rather than a single run, which is why it is a row and not a
+  measurement. Related open row: DG43, the same kind-vs-declared-format axis in `Computation.Builder`.
+
 - **DG44 — the interpreter-bridge's operator mapping is measured against the kernel for a fifth of its surface.**
   The bridge maps ~84 operator names; `adapter.ConditionReadBackParityTest` — the ONLY place a mapping is checked
   against the kernel rather than against our own expectation — covers 18 constructs, ~17 distinct ids. Seven names

@@ -96,7 +96,14 @@ class DateExtractionLawsTest {
                 "FieldFilled(CustomerName) And YearFromDate(OrderDate) > 0");
     }
 
-    /** A date where a TIME is required is a format refusal, not a "not a date" one. */
+    /**
+     * A date where a TIME is required is a format refusal, not a "not a date" one — <b>and the variable it
+     * moves is the DECLARED FORMAT, not the kind</b>. {@code OrderDate} is a DATE field declared with a date
+     * format, so this row holds both fixed and cannot license a kind-keyed rule: a TIME-kind field declared
+     * {@code yyyy-MM-dd} answers the date extractions and is refused {@code HoursFromTime}, measured in
+     * KERNEL-FINDINGS KF211 and locked in {@code adapter.laws.TemporalDeclaredFormatGateDiffTest}. What the
+     * kit can state from an operand alone is therefore only {@link #aNonTemporalExtractionOperandIsNotADate}.
+     */
     @Test
     void aWrongTemporalKindIsAFormatRefusal() {
         KernelLaws.rejectsOrder("/Order", "../CustomerName",
@@ -104,6 +111,20 @@ class DateExtractionLawsTest {
                 "MVK_WRONG_DATE_FORMAT_FOR_OP");
         KernelLaws.acceptsOrder("/Order", "../CustomerName",
                 "FieldFilled(CustomerName) And HoursFromTime(PickupTime) > 0");
+    }
+
+    /** A date RANGE is not a point in time: it carries no component to extract, under the non-temporal code. */
+    @Test
+    void aDateRangeExtractionOperandIsNotADate() {
+        KernelLaws.rejectsOrder("/Order", "../CustomerName",
+                "FieldFilled(CustomerName) And YearFromDate(CoverageWindow) > 0", "MVK_NO_DATE");
+    }
+
+    /** The split family places a non-temporal operand under the same code the extractions do. */
+    @Test
+    void aNonTemporalSplitOperandIsNotADate() {
+        KernelLaws.rejectsOrder("/Order", "../CustomerName",
+                "FieldFilled(CustomerName) And DateFromDateTime(CustomerName) == Today", "MVK_NO_DATE");
     }
 
     /** The date/time SPLIT operators need a complete date-time; a plain date is the same format refusal. */
