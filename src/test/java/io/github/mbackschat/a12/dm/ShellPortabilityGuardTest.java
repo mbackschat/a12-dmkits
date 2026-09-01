@@ -91,7 +91,6 @@ class ShellPortabilityGuardTest {
             "scripts/ensure-dmtool.sh",
             "scripts/gap.sh",
             "scripts/gen-native-reflect-metadata.sh",
-            "scripts/gen-scenarios.sh",
             "scripts/gradle-environment.sh",
             "scripts/interpreter-delivery-footprint.sh",
             "scripts/interpreter-footprint.sh",

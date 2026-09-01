@@ -529,6 +529,7 @@ tasks.register('deliveryGuardTest', Test) {
             'infographic implementation': file('scripts/typescript/check-infographic-freshness.ts'),
             'TypeScript launcher'     : file('scripts/run-typescript.sh'),
             'TypeScript runtime consumers': files(
+                    'scripts/gen-scenarios.sh',
                     'scripts/sync-plugin-assets.sh',
                     'scripts/verify-demos.sh',
                     'scripts/native-gate.sh',
