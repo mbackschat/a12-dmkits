@@ -526,13 +526,14 @@ class FunctionsTest {
     }
 
     /**
-     * `MVK_WRONG_DATE_FORMAT_FOR_OP` (the corrective the catalog states on `SecondsFromTime`, same code for every
-     * extraction operand-kind mismatch) — [DateExtraction]'s compact constructor now runs this, so a
-     * wrong-kind operand is a rulekit rejection rather than an absence.
+     * The one operand rule [DateExtraction] can state from condition text: a source that is not a point in
+     * time has no component to extract under any declaration. `MVK_NO_DATE` is the code the kernel reports
+     * for it — measured in `validate.laws.DateExtractionLawsTest.aNonTemporalExtractionOperandIsNotADate`,
+     * not the format code the catalog states for a temporal source whose declaration lacks the component.
      */
     @Test
     fun aStringDayFromDateOperandIsRejected() {
-        assertRejectedWith("MVK_WRONG_DATE_FORMAT_FOR_OP") { translate("DayFromDate(CustomerName) > 1") }
+        assertRejectedWith("MVK_NO_DATE") { translate("DayFromDate(CustomerName) > 1") }
     }
 
     @Test
@@ -554,19 +555,25 @@ class FunctionsTest {
         assertEquals(DateExtraction.Unit.SECONDS, extraction.unit())
     }
 
-    /** A plain date has no time component; the same code as `DayFromDate`'s twin. */
-    @Test
-    fun aDateSecondsFromTimeOperandIsRejected() {
-        assertRejectedWith("MVK_WRONG_DATE_FORMAT_FOR_OP") { translate("SecondsFromTime(OrderDate) == 0") }
-    }
-
     /**
-     * `BaseYear` resolves to a DATE-kind [Calculation] (the catalog's `BaseYear` entry / `Dsl#baseYear`), so feeding it
-     * to a time-only extractor is the same rejection as an ordinary DATE field, one operator over.
+     * Which extraction a TEMPORAL source answers is decided by its declared FORMAT, which condition text does
+     * not carry, so this boundary maps the shape and leaves the verdict to the kernel — a TIME field declared
+     * `yyyy-MM-dd` answers the date extractions and is refused the time ones, the mirror of what its kind
+     * says (KERNEL-FINDINGS KF211). Refusing on kind here made a stored rule of the legal shape UNREADABLE,
+     * which is the sharper half of API-FINDINGS 127. The kernel-side refusal of this particular pair is
+     * locked in `validate.laws.DateExtractionLawsTest.aWrongTemporalKindIsAFormatRefusal`.
      */
     @Test
-    fun aBaseYearSecondsFromTimeOperandIsRejected() {
-        assertRejectedWith("MVK_WRONG_DATE_FORMAT_FOR_OP") { translate("SecondsFromTime(BaseYear) == 0") }
+    fun aDateSecondsFromTimeOperandIsLeftToTheKernel() {
+        val extraction = assertInstanceOf(DateExtraction::class.java, left("SecondsFromTime(OrderDate) == 0"))
+        assertEquals(DateExtraction.Unit.SECONDS, extraction.unit())
+    }
+
+    /** `BaseYear` resolves to a DATE-kind [Calculation], so it rides the same delegation, one operator over. */
+    @Test
+    fun aBaseYearSecondsFromTimeOperandIsLeftToTheKernel() {
+        val extraction = assertInstanceOf(DateExtraction::class.java, left("SecondsFromTime(BaseYear) == 0"))
+        assertEquals(DateExtraction.Unit.SECONDS, extraction.unit())
     }
 
     // --- DateFromDateTime / TimeFromDateTime --------------------------------------------------------
@@ -587,35 +594,46 @@ class FunctionsTest {
     }
 
     /**
-     * `MVK_WRONG_DATE_FORMAT_FOR_OP` — [DateTimePart]'s compact constructor now runs the check
-     * its own javadoc already named (`DateFromDateTime`: "a plain DATE field … is
-     * MVK_WRONG_DATE_FORMAT_FOR_OP at the operator").
+     * Completeness is a property of the DECLARED FORMAT too, so the split family delegates on the same
+     * grounds as the extractions above; the kernel-side refusal of a plain date is locked in
+     * `validate.laws.DateExtractionLawsTest.splittingAPlainDateIntoItsDatePartIsAFormatRefusal`.
      */
     @Test
-    fun aPlainDateDateFromDateTimeOperandIsRejected() {
-        assertRejectedWith("MVK_WRONG_DATE_FORMAT_FOR_OP") { translate("DateFromDateTime(OrderDate) > Today") }
+    fun aPlainDateDateFromDateTimeOperandIsLeftToTheKernel() {
+        val part = assertInstanceOf(DateTimePart::class.java, left("DateFromDateTime(OrderDate) > Today"))
+        assertEquals(DateTimePart.Unit.DATE, part.unit())
     }
 
-    /** A plain time is not a complete date-time either — the same code, same constructor. */
+    /** But a NON-temporal split operand is still refused here, under the code the kernel reports for it. */
     @Test
-    fun aPlainTimeTimeFromDateTimeOperandIsRejected() {
-        assertRejectedWith("MVK_WRONG_DATE_FORMAT_FOR_OP") {
-            translate("TimeFromDateTime(PickupTime) > TimeFromDateTime(ScheduledAt)")
-        }
+    fun aStringDateFromDateTimeOperandIsRejected() {
+        assertRejectedWith("MVK_NO_DATE") { translate("DateFromDateTime(CustomerName) > Today") }
     }
 
-    /** `BaseYear` (kind DATE) is not a complete date-time either. */
+    /** A plain time rides the same delegation. */
     @Test
-    fun aBaseYearDateFromDateTimeOperandIsRejected() {
-        assertRejectedWith("MVK_WRONG_DATE_FORMAT_FOR_OP") { translate("DateFromDateTime(BaseYear) > Today") }
+    fun aPlainTimeTimeFromDateTimeOperandIsLeftToTheKernel() {
+        val part = assertInstanceOf(
+            DateTimePart::class.java,
+            left("TimeFromDateTime(PickupTime) > TimeFromDateTime(ScheduledAt)"),
+        )
+        assertEquals(DateTimePart.Unit.TIME, part.unit())
     }
 
-    /** The `TimeFromDateTime` side of the same gate. */
+    /** `BaseYear` (kind DATE) likewise, on both sides of the split. */
     @Test
-    fun aBaseYearTimeFromDateTimeOperandIsRejected() {
-        assertRejectedWith("MVK_WRONG_DATE_FORMAT_FOR_OP") {
-            translate("TimeFromDateTime(BaseYear) > TimeFromDateTime(ScheduledAt)")
-        }
+    fun aBaseYearDateFromDateTimeOperandIsLeftToTheKernel() {
+        val part = assertInstanceOf(DateTimePart::class.java, left("DateFromDateTime(BaseYear) > Today"))
+        assertEquals(DateTimePart.Unit.DATE, part.unit())
+    }
+
+    @Test
+    fun aBaseYearTimeFromDateTimeOperandIsLeftToTheKernel() {
+        val part = assertInstanceOf(
+            DateTimePart::class.java,
+            left("TimeFromDateTime(BaseYear) > TimeFromDateTime(ScheduledAt)"),
+        )
+        assertEquals(DateTimePart.Unit.TIME, part.unit())
     }
 
     // --- ValueAsDate ---------------------------------------------------------------------------------
