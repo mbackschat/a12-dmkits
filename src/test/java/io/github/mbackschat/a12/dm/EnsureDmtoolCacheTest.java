@@ -28,7 +28,7 @@ class EnsureDmtoolCacheTest {
         assumeTrue(!System.getProperty("os.name", "").toLowerCase().contains("win"),
                 "POSIX-only self-test (bash release-server stubs)");
         Path script = CHECKOUT.requireFile("scripts/selftest-ensure-dmtool.sh");
-        Process process = new ProcessBuilder("bash", script.toString())
+        Process process = new ProcessBuilder("/bin/bash", script.toString())
                 .redirectErrorStream(true).start();
         String output = new String(process.getInputStream().readAllBytes());
         int code = process.waitFor();

@@ -37,7 +37,7 @@ class LaneGuardScriptTest {
 
     @Test
     void everyLaneGuardSelftestCheckPasses() throws Exception {
-        var builder = CHECKOUT.command(List.of("bash", CHECKOUT.resolve("scripts/selftest-lane-guard.sh").toString()));
+        var builder = CHECKOUT.command(List.of("/bin/bash", CHECKOUT.resolve("scripts/selftest-lane-guard.sh").toString()));
         builder.redirectErrorStream(true);
 
         Process process = builder.start();

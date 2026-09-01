@@ -8,12 +8,12 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Properties;
 import java.util.Set;
 
 import com.fasterxml.jackson.databind.JsonNode;
@@ -34,11 +34,9 @@ class DmtoolPublicContractTest {
     @Test
     void packagedVersionIdentifiesItsBaseRevisionAndDivergence(@TempDir Path dir) throws Exception {
         PackagedDmtool dmtool = new PackagedDmtool(dir);
-        String revision = git("rev-parse", "HEAD").output().strip();
-        boolean trackedDirty = git("diff", "--quiet", "--ignore-submodules=none").code() != 0
-                || git("diff", "--cached", "--quiet", "--ignore-submodules=none").code() != 0;
-        boolean untrackedDirty = !git("ls-files", "--others", "--exclude-standard").output().isBlank();
-        String state = trackedDirty || untrackedDirty ? "DIRTY" : "CLEAN";
+        Properties build = packagedVersionProperties();
+        String revision = build.getProperty("sourceRevision");
+        String state = build.getProperty("sourceState");
 
         PackagedDmtool.Result human = dmtool.run("--version");
         assertEquals(0, human.code(), human::err);
@@ -412,22 +410,18 @@ class DmtoolPublicContractTest {
         return target;
     }
 
-    private record ProcessResult(int code, String output) { }
-
-    private static ProcessResult git(String... args) throws Exception {
-        List<String> command = new ArrayList<>();
-        command.add("git");
-        command.addAll(List.of(args));
-        Process process = new ProcessBuilder(command)
-                .directory(Path.of("..").toFile())
-                .redirectErrorStream(true)
-                .start();
-        String output = new String(process.getInputStream().readAllBytes(), StandardCharsets.UTF_8);
-        int code = process.waitFor();
-        if (!List.of("diff").contains(args[0])) {
-            assertEquals(0, code, () -> command + ": " + output);
+    private static Properties packagedVersionProperties() throws Exception {
+        Path snapshot = Path.of(System.getProperty("dmtool.versionProperties", "")).toAbsolutePath();
+        assertTrue(Files.isRegularFile(snapshot),
+                () -> "publicContractTest needs -Ddmtool.versionProperties from the packaged build, got "
+                        + snapshot);
+        Properties properties = new Properties();
+        try (InputStream input = Files.newInputStream(snapshot)) {
+            properties.load(input);
         }
-        return new ProcessResult(code, output);
+        assertTrue(properties.containsKey("sourceRevision"), () -> snapshot + " lacks sourceRevision");
+        assertTrue(properties.containsKey("sourceState"), () -> snapshot + " lacks sourceState");
+        return properties;
     }
 
     private static JsonNode manifestVerb(JsonNode manifest, String name) {

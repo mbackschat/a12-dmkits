@@ -343,8 +343,9 @@ ext.routeExclusivelyHostedTests = { Test broad, List<String> owningTaskNames,
     // both the capture and the gate's trip-wire. During a capture the exclusion is therefore not applied at all,
     // so the traced set stays a superset of what it was before this derivation existed. Capture is release-only.
     // NOTE for whoever absorbs a lane's classes here: absorbing the CLASSES without the owning task's RUNTIME
-    // INPUTS is a defect, and it shipped once. `publicContractTest` supplies `-Ddmtool.executable`; during a
-    // capture its four classes run in this lane, which did not, so all 13 tried to exec the module directory.
+    // INPUTS is a defect, and it shipped once. `publicContractTest` supplies the selected executable and its
+    // build-time version snapshot; during a capture its four classes run in this lane, which originally supplied
+    // neither, so all 13 tried to exec the module directory.
     // Two of them additionally drive the CLI IN-PROCESS, so excluding them instead would have silently shrunk
     // the captured metadata — measured: 5 committed entries lost, including the picocli field injections for
     // `rule eval` and `batch`. The traced lane must therefore SUPPLY what it absorbs (see cli/build.gradle).

@@ -24,7 +24,7 @@ class DmtoolLauncherTest {
         if (nativeOutput.isBlank()) {
             throw new IllegalStateException("deliveryGuardTest did not provide nativeCompile.outputFile");
         }
-        Process process = new ProcessBuilder("bash", script.toString(), nativeOutput)
+        Process process = new ProcessBuilder("/bin/bash", script.toString(), nativeOutput)
                 .redirectErrorStream(true).start();
         String output = new String(process.getInputStream().readAllBytes());
         int code = process.waitFor();
@@ -36,7 +36,7 @@ class DmtoolLauncherTest {
         assumeTrue(!System.getProperty("os.name", "").toLowerCase().contains("win"),
                 "POSIX-only source-preparation self-test");
         Path script = CHECKOUT.requireFile("scripts/selftest-prepare-dmtool-source.sh");
-        Process process = new ProcessBuilder("bash", script.toString())
+        Process process = new ProcessBuilder("/bin/bash", script.toString())
                 .redirectErrorStream(true).start();
         String output = new String(process.getInputStream().readAllBytes());
         int code = process.waitFor();
@@ -52,7 +52,7 @@ class DmtoolLauncherTest {
     void thePreCommitHookRefusesACommitWhoseDocGuardEvidenceIsStale() throws IOException, InterruptedException {
         assumeTrue(!System.getProperty("os.name", "").toLowerCase().contains("win"), "POSIX-only hook self-test");
         Path script = CHECKOUT.requireFile("scripts/selftest-precommit-doc-guards.sh");
-        Process process = new ProcessBuilder("bash", script.toString())
+        Process process = new ProcessBuilder("/bin/bash", script.toString())
                 .redirectErrorStream(true).start();
         String output = new String(process.getInputStream().readAllBytes());
         int code = process.waitFor();
@@ -63,7 +63,7 @@ class DmtoolLauncherTest {
     void thePrePushHookRunsTheCheapCiGuardsAndRefusesBlindValidation() throws IOException, InterruptedException {
         assumeTrue(!System.getProperty("os.name", "").toLowerCase().contains("win"), "POSIX-only hook self-test");
         Path script = CHECKOUT.requireFile("scripts/selftest-prepush-ci.sh");
-        Process process = new ProcessBuilder("bash", script.toString())
+        Process process = new ProcessBuilder("/bin/bash", script.toString())
                 .redirectErrorStream(true).start();
         String output = new String(process.getInputStream().readAllBytes());
         int code = process.waitFor();
