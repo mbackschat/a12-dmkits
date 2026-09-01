@@ -39,19 +39,11 @@ jobs:
         with:
           path: a12-dmkits
 
-      # `/bin/sh` is Bash in sh-mode on macOS and accepts extensions that Ubuntu's Dash rejects. ShellCheck
-      # supplies the POSIX language oracle; Dash supplies the executable syntax oracle before any setup cost.
-      - name: Verify POSIX TypeScript launcher boundary
+      # `/bin/sh` is Bash in sh-mode on macOS and accepts extensions that Ubuntu's Dash rejects. The committed
+      # command discovers every POSIX entrypoint and applies both the ShellCheck language oracle and Dash parser.
+      - name: Verify POSIX shell entrypoints
         working-directory: a12-dmkits
-        run: |
-          shellcheck -s sh \
-            scripts/run-typescript.sh \
-            scripts/check-infographic-freshness.sh \
-            scripts/test-evidence.sh
-          dash -n \
-            scripts/run-typescript.sh \
-            scripts/check-infographic-freshness.sh \
-            scripts/test-evidence.sh
+        run: ./scripts/check-shell-portability.sh
 
       # Repository TypeScript tools execute directly through Node's stable type stripping. Pin the exact LTS
       # patch here once; the same runtime is reused by interpreter JS tests and the custom-JS demo later.

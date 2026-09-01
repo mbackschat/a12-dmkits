@@ -74,22 +74,14 @@ class GateTierWiringTest {
     }
 
     @Test
-    void ciStaticallyAndExecutablyChecksThePosixTypeScriptLaunchers() throws IOException {
+    void ciChecksEveryPosixEntrypointThroughTheRepositoryWidePortabilityCommand() throws IOException {
         String ci = Files.readString(locate(".github/workflows/ci.yml"));
-        String[] launchers = {
-                "scripts/run-typescript.sh",
-                "scripts/check-infographic-freshness.sh",
-                "scripts/test-evidence.sh"
-        };
 
-        assertTrue(ci.contains("shellcheck -s sh"),
-                "the POSIX contract needs ShellCheck because Dash accepts some non-POSIX extensions");
-        assertTrue(ci.contains("dash -n"),
-                "the POSIX contract needs an executable parser stricter than macOS /bin/sh");
-        for (String launcher : launchers) {
-            assertTrue(ci.contains(launcher), launcher + " must stay in both POSIX checks until the gate becomes "
-                    + "repository-wide");
-        }
+        assertTrue(ci.contains("run: ./scripts/check-shell-portability.sh"),
+                "CI must discover every POSIX entrypoint through the committed portability command; an enumerated "
+                        + "launcher list silently misses the next script");
+        assertFalse(ci.contains("shellcheck -s sh \\"),
+                "the CI workflow must not carry a second, hand-maintained POSIX-script denominator");
     }
 
     @Test

@@ -34,6 +34,14 @@ In prose, user interfaces, and document-level APIs, a **DocumentModel** validate
 
 Automatically commit each finished, verified feature set unless the user explicitly asks not to commit. Never commit partial, failing, or unrelated work. A prompt shortcut that explicitly forbids committing, such as the global `F:` shortcut, remains an exception.
 
+## POSIX shell and TypeScript tooling (standing requirement, 2026-09-01)
+
+**New shell entrypoints use `#!/bin/sh`; Bash is migration-only.** Shell is for environment discovery, exported variables, redirection/pipelines that are the command's actual purpose, and a thin stable path that `exec`s one implementation. Use `set -eu`; do not add `pipefail`, arrays, `[[ … ]]`, `local`, process substitution, or another Bash-only spelling. A sourced shell fragment follows the same contract as its callers.
+
+**Move application logic to erasable TypeScript under `scripts/typescript/`.** Structured parsing, accumulated state, registries, sorting/deduplication, report rendering, and bounded concurrency are application logic, not shell glue. Internal-only tools may be invoked directly through [`scripts/run-typescript.sh`](scripts/run-typescript.sh); keep a POSIX wrapper only when an existing public command path or a shell-native boundary needs one. Do not create one wrapper per TypeScript module by default. Use Node built-ins and syntax supported by native type stripping so repository tooling keeps its no-package-install contract.
+
+**Test both layers that carry behavior.** Give isolated TypeScript logic a source-adjacent `*.test.ts` using `node:test`; when a stable shell path exists, retain an end-to-end guard that invokes that public path through Dash. Run [`scripts/check-shell-portability.sh`](scripts/check-shell-portability.sh) for every shell change: it discovers all tracked and newly-created `#!/bin/sh` entrypoints and applies both `shellcheck -s sh` and `dash -n`. `ShellPortabilityGuardTest` independently refuses a new Bash entrypoint and requires every legacy exemption to disappear in the same change that migrates it.
+
 ## Eat your own dogfood (the #1 standing requirement, 2026-06-26)
 
 **Be your own consumer of the dmkits, feel the friction, and improve the library on the fly.** Every piece of *internal* code that touches a document model — tests, fixtures, benchmarks, demos, the CLI, the eval harness, the interpreter's differential — is a **first-class consumer of rulekit/modelkit/`dm.edit`** and MUST author through the typed surface a real user would reach for, never reach *around* it for low-level strings. This is the project's central discipline: the kits earn their design by being *used* by their own author.

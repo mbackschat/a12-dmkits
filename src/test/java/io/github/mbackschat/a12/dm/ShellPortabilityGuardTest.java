@@ -15,6 +15,8 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.TreeSet;
 import java.util.regex.Pattern;
 
 import org.junit.jupiter.api.Test;
@@ -45,12 +47,11 @@ import org.junit.jupiter.api.Test;
  * {@code find -newer} for a comparison, or a cross-platform runtime filesystem API once the stateful logic has
  * moved out of shell (what the typed {@code scripts/test-evidence.sh} implementation does).
  *
- * <p>The other contract is the stock-macOS Bash 3.2 baseline. A {@code /usr/bin/env bash} shebang silently
- * selects a Homebrew Bash when one is on {@code PATH}, so the scanner rejects the measured runtime constructs
- * that Bash 3.2 parses but cannot execute correctly: bulk reads, associative/global/nameref declarations,
- * globstar, {@code wait -n}, negative array indexes, and fractional read timeouts. Every tracked Bash script is
- * additionally parsed with {@code /bin/bash -n}; every Java/Kotlin behavior-test launcher is source-guarded to
- * select that same path explicitly. CI's newer system Bash still exercises forward compatibility.
+ * <p>The other contract is POSIX shell for every new entrypoint. The exact legacy Bash set is a migration
+ * ratchet: an added non-POSIX script fails, and a migrated path fails until its exemption is deleted. While that
+ * set is non-empty, its scripts retain the stock-macOS Bash 3.2 floor. The scanner rejects measured constructs
+ * that Bash 3.2 parses but cannot execute correctly; {@code /bin/bash -n} guards its syntax, while Dash parses
+ * every POSIX entrypoint. Java/Kotlin behavior-test launchers must select the applicable absolute oracle path.
  *
  * <p><strong>Denominator + controls.</strong> {@code git ls-files} supplies the paths, so a script added
  * tomorrow is scanned without anyone declaring it; conventional shell extensions and every shell shebang are
@@ -62,6 +63,79 @@ import org.junit.jupiter.api.Test;
 class ShellPortabilityGuardTest {
 
     private static final int TRACKED_SHELL_SCRIPT_FLOOR = 70;
+    private static final Set<String> LEGACY_BASH_SCRIPTS = Set.of(
+            ".claude/hooks/guard-long-run-antipatterns.sh",
+            ".githooks/pre-commit",
+            ".githooks/pre-push",
+            "bin/dmtool",
+            "build.sh",
+            "eval/prep-sandbox.sh",
+            "plugin-codex/skills/a12-dmtool/ensure-dmtool.sh",
+            "plugin-codex/skills/a12-dmtool/release-assets.sh",
+            "plugin/skills/a12-dmtool/ensure-dmtool.sh",
+            "plugin/skills/a12-dmtool/release-assets.sh",
+            "probe/audit-probe.sh",
+            "probe/digest-probe.sh",
+            "probe/prep-probe.sh",
+            "scripts/assemble-interpreter-release-repo.sh",
+            "scripts/assemble-release-repo.sh",
+            "scripts/bump-version.sh",
+            "scripts/capture-native-config.sh",
+            "scripts/check-interpreter-release-repo.sh",
+            "scripts/check-native-metadata-removals.sh",
+            "scripts/check-release-assets.sh",
+            "scripts/check-release-gaps.sh",
+            "scripts/codex-plugin-activation-smoke.sh",
+            "scripts/contract-consumers.sh",
+            "scripts/doctor.sh",
+            "scripts/ensure-dmtool.sh",
+            "scripts/gap.sh",
+            "scripts/gen-native-reflect-metadata.sh",
+            "scripts/gen-scenarios.sh",
+            "scripts/gradle-environment.sh",
+            "scripts/interpreter-delivery-footprint.sh",
+            "scripts/interpreter-footprint.sh",
+            "scripts/interpreter-performance.sh",
+            "scripts/interpreter-release-assets.sh",
+            "scripts/interpreter-release-github.sh",
+            "scripts/interpreter-release-publisher-core.sh",
+            "scripts/interpreter-release-rehearsal-host.sh",
+            "scripts/lane-guard.sh",
+            "scripts/mutant.sh",
+            "scripts/native-battery.sh",
+            "scripts/native-gate.sh",
+            "scripts/native-no-java-smoke.sh",
+            "scripts/obligations.sh",
+            "scripts/perf-anchor.sh",
+            "scripts/perf-history.sh",
+            "scripts/perf-keys.sh",
+            "scripts/perf-report.sh",
+            "scripts/perf-trend.sh",
+            "scripts/perf.sh",
+            "scripts/prepare-dmtool-source.sh",
+            "scripts/publish-interpreter-release.sh",
+            "scripts/publish-release.sh",
+            "scripts/rehearse-interpreter-release.sh",
+            "scripts/release-assets.sh",
+            "scripts/release-git-identity.sh",
+            "scripts/release-mirror-common.sh",
+            "scripts/release-perf-gate.sh",
+            "scripts/selftest-dmtool-launcher.sh",
+            "scripts/selftest-ensure-dmtool.sh",
+            "scripts/selftest-jdk-pin.sh",
+            "scripts/selftest-lane-guard.sh",
+            "scripts/selftest-obligations.sh",
+            "scripts/selftest-precommit-doc-guards.sh",
+            "scripts/selftest-prepare-dmtool-source.sh",
+            "scripts/selftest-prepush-ci.sh",
+            "scripts/selftest-release-perf-gate.sh",
+            "scripts/selftest-test-evidence.sh",
+            "scripts/smoke-interpreter-public-release.sh",
+            "scripts/smoke-mcp-endpoint.sh",
+            "scripts/sync-plugin-assets.sh",
+            "scripts/update-code-statistics.sh",
+            "scripts/verify-build-cache.sh",
+            "scripts/verify-demos.sh");
     private static final Pattern PATH_SELECTED_BASH =
             Pattern.compile("(?:new\\s+)?ProcessBuilder\\s*\\(\\s*\"bash\"");
 
@@ -167,9 +241,6 @@ class ShellPortabilityGuardTest {
     void noTrackedShellScriptRequiresBash4() throws Exception {
         Path root = repositoryRoot();
         List<String> scripts = trackedBashScripts(root);
-        assertTrue(scripts.size() >= TRACKED_SHELL_SCRIPT_FLOOR,
-                "only " + scripts.size() + " shell scripts found — the scanner lost its denominator, so a "
-                        + "green here would mean nothing");
 
         var findings = new ArrayList<Bash4Finding>();
         for (String relative : scripts) {
@@ -208,6 +279,62 @@ class ShellPortabilityGuardTest {
         assertEquals(List.of(), findings, () -> """
                 A tracked Bash script does not parse under `/bin/bash`. On macOS that path is the stock Bash 3.2
                 lower boundary; Linux keeps exercising the same scripts with its newer system Bash.
+
+                %s""".formatted(String.join("\n\n", findings)));
+    }
+
+    @Test
+    void shellEntrypointsArePosixUnlessTheyBelongToTheShrinkingMigrationSet() throws Exception {
+        Path root = repositoryRoot();
+        var actualBash = new TreeSet<>(trackedBashScripts(root));
+        var unexpected = new TreeSet<String>();
+        for (String relative : trackedShellScripts(root)) {
+            if (!LEGACY_BASH_SCRIPTS.contains(relative)
+                    && !firstLine(root.resolve(relative)).equals("#!/bin/sh")) {
+                unexpected.add(relative);
+            }
+        }
+        var migrated = new TreeSet<>(LEGACY_BASH_SCRIPTS);
+        migrated.removeAll(actualBash);
+
+        assertEquals(List.of(), unexpected.stream().toList(), () -> """
+                A new non-POSIX shell script bypasses the repository contract:
+
+                %s
+
+                New shell entrypoints use `#!/bin/sh`. Keep only environment setup and process handoff in shell;
+                move stateful parsing, registries, and report logic to TypeScript under `scripts/typescript/`.
+                """.formatted(String.join("\n", unexpected)));
+        assertEquals(List.of(), migrated.stream().toList(), () -> """
+                These legacy Bash scripts have migrated, but their temporary exemptions remain:
+
+                %s
+
+                Delete the exemptions in the same change so the Bash denominator can only shrink.
+                """.formatted(String.join("\n", migrated)));
+    }
+
+    @Test
+    void everyTrackedPosixScriptParsesWithDash() throws Exception {
+        Path root = repositoryRoot();
+        var findings = new ArrayList<String>();
+        for (String relative : trackedShellScripts(root)) {
+            if (!firstLine(root.resolve(relative)).equals("#!/bin/sh")) {
+                continue;
+            }
+            var builder = new ProcessBuilder("/bin/dash", "-n", root.resolve(relative).toString());
+            builder.directory(root.toFile());
+            builder.redirectErrorStream(true);
+            Process process = builder.start();
+            String output = new String(process.getInputStream().readAllBytes(), StandardCharsets.UTF_8);
+            int status = process.waitFor();
+            if (status != 0) {
+                findings.add(relative + " (exit " + status + ")\n" + output.strip());
+            }
+        }
+        assertEquals(List.of(), findings, () -> """
+                A tracked `#!/bin/sh` script does not parse with Dash, the executable POSIX oracle used on macOS
+                and Ubuntu. macOS `/bin/sh` accepts Bash extensions, so its success is not portability evidence.
 
                 %s""".formatted(String.join("\n\n", findings)));
     }
