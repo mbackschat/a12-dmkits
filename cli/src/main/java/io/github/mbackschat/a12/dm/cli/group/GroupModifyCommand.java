@@ -53,7 +53,8 @@ final class GroupModifyCommand extends BaseCommand {
     String group;
 
     @Option(names = "--repeatable", paramLabel = "<max>",
-            description = "make it a repetition list with this maximum number of rows (>= 2)")
+            description = "make it a repetition list with this maximum number of rows (>= 2 — 1 IS the "
+                    + "non-repeatable encoding, so use --non-repeatable rather than passing 1)")
     Integer repeatable;
 
     @Option(names = "--non-repeatable", description = "make it a single (non-repeating) group")

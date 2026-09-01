@@ -13,6 +13,13 @@ Author, read, and safely edit the **rules** and **structure** of A12 Kernel docu
 - **the interpreter** — **[PUBLIC RELEASE REPOSITORY →](https://github.com/mbackschat/a12-interpreter-releases)** — kernel-free runtime evaluation (validate / compute); one engine for the JVM, native binary, Node.js, and browser, with a production browser JavaScript entry of about 250 kB gzip
 - **`dmtool`** — **[PUBLIC RELEASE REPOSITORY →](https://github.com/mbackschat/a12-dmtool-releases)** — the CLI over all of it: self-describing, machine-readable by default, explicitly profiled artifacts, agent-first
 
+<p align="center">
+  <a href="assets/infographics/a12-dmkits-toolchain.png">
+    <img src="assets/infographics/a12-dmkits-toolchain.png" alt="A12 dmkits toolchain from typed authoring through Kernel acceptance to runtime evaluation" width="720">
+  </a>
+</p>
+<p align="center"><sub>Click the infographic to open the full-resolution image.</sub></p>
+
 ---
 
 <!-- shared:dmtool-story — canonical HERE; mirrored verbatim into plugin/README.md (guarded by SharedReadmeRegionTest). Keep it link-light: NO docs/ links (the public mirror has no docs/ tree). -->
@@ -33,6 +40,13 @@ It is built **agent-first** — the #1 use is inside a coding-agent session (Cla
 - **Self-describing — a cold agent needs no external docs.** `manifest` lists every verb × parameter with a worked example; `operators` / `patterns` / `diagnostics` / `schema` expose the DSL vocabulary, the validation idioms, each diagnostic code, and the exact I/O shape — all from the binary itself.
 - **Judgment where `--help` can't reach.** A bundled skill teaches what the catalog can't — condition *polarity*, error-field paths, iteration scope — so a scaffolded rule has the right shape before the kernel ever sees it.
 - **Safe by construction.** Envelope-producing operations share one standard result shape, while raw artifact/catalog and text-view modes are explicit in the operational profile; deletes and structural refactors are **gated** (a referenced field won't silently vanish); a multi-op `apply` session is **atomic** (rollback on any failure).
+
+<p align="center">
+  <a href="assets/infographics/dmtool-model-workbench.png">
+    <img src="assets/infographics/dmtool-model-workbench.png" alt="dmtool DocumentModel workbench for discovery, schema exchange, understanding, authoring, review, and runtime automation" width="720">
+  </a>
+</p>
+<p align="center"><sub>Click the infographic to open the full-resolution image.</sub></p>
 
 ### A session, in natural language
 
@@ -95,6 +109,17 @@ Prefer typed Java in your own JVM project? The same engine is a library — see 
 | a **host that cannot execute a binary** — a web client, a hosted agent platform, a sandboxed integration | **`dmtool mcp`**, the MCP server ([contract](docs/MCP-SPEC.md)) | the same verbs as tools derived from the same command tree; every call carries its content both ways and the server keeps nothing |
 
 *(The kits — rulekit, modelkit, dm.edit, schemakit — are a **Java** library. The **interpreter** is Kotlin Multiplatform and its packed library is tested on JVM, Node.js, and Chrome.)*
+
+## Why Kotlin, GraalVM, and the A12 Kernel
+
+The three technologies have separate jobs. Kotlin Multiplatform carries one portable runtime-evaluation engine across JVM and JavaScript. GraalVM turns the JVM application stack into the self-contained per-OS `dmtool` executable. The real A12 Kernel remains the authority for model acceptance, canonical read-back, safe rewrites, and the differential evidence that keeps the clean-room Interpreter aligned.
+
+<p align="center">
+  <a href="assets/infographics/kotlin-graalvm-kernel-roles.png">
+    <img src="assets/infographics/kotlin-graalvm-kernel-roles.png" alt="How Kotlin Multiplatform, GraalVM Native Image, and the A12 Kernel divide responsibilities across a12-dmkits" width="720">
+  </a>
+</p>
+<p align="center"><sub>Click the infographic to open the full-resolution image.</sub></p>
 
 ---
 
@@ -166,6 +191,13 @@ dmtool -m orders.dm.json field modify postal.spec.json
 ### JSON Schema & OpenAPI
 
 Originate a model **from a JSON Schema or an OpenAPI document**, and export one back out — the same two verbs handle both, because OpenAPI's "Schema Object" *is* a dialect of JSON Schema:
+
+<p align="center">
+  <a href="assets/infographics/json-schema-document-model.png">
+    <img src="assets/infographics/json-schema-document-model.png" alt="How schemakit maps JSON Schema and OpenAPI to and from A12 DocumentModels with explicit fidelity" width="720">
+  </a>
+</p>
+<p align="center"><sub>Click the infographic to open the full-resolution image.</sub></p>
 
 ```sh
 # JSON Schema → kernel-valid model
@@ -247,6 +279,13 @@ dmtool --text -m order.dm.json model report --tree --root /Order --include rules
 ### Review what changed — a semantic diff
 
 When an agent has edited a model on your behalf, raw JSON diffs are unreadable. `model diff` compares two model files **structurally** (it parses and independently binds both, so a pure reformat is never reported) and reports field, group, rule, computation, typedef, authored include/import, and model-configuration changes with per-aspect deltas and a **review-impact tier**. Multi-model two-file diffs resolve each side from `-w` or its own folder; `--since` resolves the base model and dependencies at the Git ref, not from the edited worktree. Each delta keeps deterministic `before`/`after` strings and adds tagged `beforeValue`/`afterValue` scalars or string lists for typed consumers. Fields include complete typed config, requiredness, enum values, metadata, and flags; rules include their error entity, localized messages, and metadata. Removing or retyping a field still used by a rule/computation is HIGH and names `REFERENCED_ELEMENT_REMOVED`/`RETYPE_AFFECTS_READERS`. Groups cover repeatability, mounts, metadata, and mixed authored ordering; computations cover targets, preconditions, operations, tolerances, suppressions, and messages; typedefs carry full typed config and metadata; includes/imports carry their purpose and referenced model without conflating expanded content. The single `CONFIG model` element covers identity/version, locales, decimal/time-zone/language/short-name settings, supported characters, base year, labels, comment, annotations, and roles; set-like values are canonicalized so harmless ordering does not create noise. Review impact follows *loosening > tightening*: increasing a repetition cap, adding an enum value, expanding supported characters, or removing/loosening a rule is HIGH, while tightening is MEDIUM.
+
+<p align="center">
+  <a href="assets/infographics/semantic-model-diff.png">
+    <img src="assets/infographics/semantic-model-diff.png" alt="How dmtool compares two model snapshots structurally, classifies semantic changes, and ranks review impact" width="720">
+  </a>
+</p>
+<p align="center"><sub>Click the infographic to open the full-resolution image.</sub></p>
 
 When base and head contain different revisions of the same referenced model id, use repeatable `--base-workspace` and `--head-workspace` roots; shared `-w` remains the concise form for one common dependency snapshot.
 
@@ -646,6 +685,8 @@ An error message can splice in the **runtime value**, the **label**, or the **ro
 | `fieldLabel(ref)` | `$/Order/Items/Count$` | the field's localized **label** |
 | `repetitionIndex(groupRef)` | `$#/Order/Items$` | the repeatable group's 1-based **row number** |
 
+The group token is the one with a placement rule: the named group must **contain** the rule — its own group or any ancestor. A descendant, a sibling, or a group under another root is rejected `INVALID_GROUP`. Take the `GroupRef` from the bound model (`m.group("/Order/Items")`, which refuses a path that does not resolve) and you are on the absolute spelling the position requires.
+
 ```java
 import static io.github.mbackschat.a12.dm.rulekit.dsl.Dsl.*;   // en, de, fieldValue, fieldLabel, repetitionIndex
 
@@ -861,11 +902,26 @@ Runtime evaluation — *which rules fire on this document, what does each comput
 - **Kernel-exact, by verification.** Its results are checked rule-for-rule against the real A12 kernel by a **differential test suite** plus a model-driven fuzzer, and it replays a **conformance corpus** of kernel-verified expected outcomes — captured tri-verified against the kernel's two evaluation strategies — on both JVM and JS.
 - **A standalone library, not just the CLI's engine.** One common engine serves **JVM, Node.js, and browser** applications. The public TypeScript, Kotlin, and Java API prepares finite or provider-backed workspaces, resolves includes and imported type definitions, reads Documents, reuses a prepared interpreter across form changes, runs full or partial validation, computes derived values, and hosts project field/condition callbacks.
 - **A developer-facing public release.** Start with the [public interpreter repository](https://github.com/mbackschat/a12-interpreter-releases), [try the live browser showcase](https://mbackschat.github.io/a12-interpreter-releases/showcase/), or browse the [version-matched API guide and references](https://mbackschat.github.io/a12-interpreter-releases/api/latest/). The packed-artifact-tested [source guide](docs/INTERPRETER-API-GUIDE.md) and [showcase source](interpreter/consumer-tests/browser/) remain here for contributors.
+
+<p align="center">
+  <a href="assets/infographics/a12-interpreter-runtime.png">
+    <img src="assets/infographics/a12-interpreter-runtime.png" alt="A12 Interpreter preparation, reusable request lifecycle, outputs, and Kernel conformance evidence" width="720">
+  </a>
+</p>
+<p align="center"><sub>Click the infographic to open the full-resolution image.</sub></p>
+
 ### Performance and footprint
 
 The same engine runs on the JVM, Node.js and in the browser, and the figures below come from two runtimes — latency measured in system Chrome, cross-engine comparison and memory measured on the JVM.
 
 Small enough to ship to a browser — the production JavaScript entry is **250 kB gzip**, with no A12 Kernel bytecode — and quick enough to re-run on every keystroke.
+
+<p align="center">
+  <a href="assets/infographics/interpreter-vs-kernel.png">
+    <img src="assets/infographics/interpreter-vs-kernel.png" alt="Measured A12 Interpreter performance and resident memory compared with the A12 Kernel" width="720">
+  </a>
+</p>
+<p align="center"><sub>Click the infographic to open the full-resolution image.</sub></p>
 
 Measured in system Chrome against the packed npm package, the same artifact consumers install, over the two Documents the collector defines. Each is timed **two ways**, because an application experiences both: the **first answer** a user waits for when a form opens, which includes building the interpreter, and the **warm** cost of revalidating after every keystroke, which does not.
 
@@ -901,8 +957,8 @@ The shipped product. Counted from `core/src/main/java`, `rulekit/src/main/java`,
 
 | Language | Files | Lines | Code | Comments | Blanks |
 |---|---:|---:|---:|---:|---:|
-| Java | 475 | 67986 | 47474 | 13555 | 6957 |
-| Kotlin | 114 | 28645 | 18703 | 7575 | 2367 |
+| Java | 479 | 68872 | 47746 | 14096 | 7030 |
+| Kotlin | 115 | 29388 | 19068 | 7908 | 2412 |
 | TypeScript | 17 | 3762 | 3209 | 274 | 279 |
 | JavaScript | 1 | 107 | 72 | 25 | 10 |
 
@@ -912,8 +968,8 @@ Tests, laws, kernel differentials, fuzzers, conformance replay, and the external
 
 | Language | Files | Lines | Code | Comments | Blanks |
 |---|---:|---:|---:|---:|---:|
-| Java | 726 | 99182 | 72432 | 14392 | 12358 |
-| Kotlin | 695 | 97059 | 72228 | 14802 | 10029 |
+| Java | 770 | 107912 | 78062 | 16484 | 13366 |
+| Kotlin | 743 | 104715 | 77588 | 16313 | 10814 |
 | TypeScript | 14 | 3285 | 3103 | 50 | 132 |
 
 ### Tooling
@@ -924,7 +980,7 @@ Build scripts, build-time generators, and the evaluation harness — neither shi
 |---|---:|---:|---:|---:|---:|
 | Java | 1 | 70 | 52 | 10 | 8 |
 | Kotlin | 4 | 90 | 81 | 0 | 9 |
-| JavaScript | 6 | 1835 | 1573 | 129 | 133 |
+| JavaScript | 6 | 1838 | 1573 | 132 | 133 |
 
 Maintainers regenerate these tables with the local statistics updater; both release publishers compare them with fresh counts before any public mutation.
 <!-- source-statistics:root:end -->
@@ -953,7 +1009,11 @@ The A12 Kernel is resolved from your **local Maven repository** (`~/.m2`) — no
 ./bootstrap.sh
 ```
 
-This publishes kernel `30.8.1` (Java only) to `mavenLocal`. You also need **JDK 21** — the build toolchain is pinned to 21 (a newer JDK isn't used even if installed; [why](docs/BUILD-ENVIRONMENT.md) — Groovy 3.0.25 + the validated baseline). GraalVM 25 is used only for the native build.
+This publishes kernel `30.8.1` (Java only) to `mavenLocal`. You also need **JDK 21** — the build toolchain is pinned to 21 (a newer JDK isn't used even if installed; [why](docs/BUILD-ENVIRONMENT.md) — Groovy 3.0.25 + the validated baseline) — and **Node >=24.12.0** for the repository's checked-in TypeScript tools and Node-backed demos. GraalVM 25 is used only for the native build. Run [`scripts/doctor.sh`](scripts/doctor.sh) to check the selected Bash, Node, Java, Gradle-home, hook, and local-Kernel state together.
+
+### Maintainer agent setup (optional)
+
+The build does not depend on personal agent configuration. To carry the maintainer's shared workflow defaults, including TDD and commit conventions, across machines, install the global instructions from [`mbackschat/coding-setup`](https://github.com/mbackschat/coding-setup): its guarded installer links `~/.claude/CLAUDE.md` for Claude Code and `~/.codex/AGENTS.md` for Codex to the same version-controlled source. This repository's tracked `AGENTS.md` → `CLAUDE.md` link remains the source of project-specific requirements for every contributor.
 
 ## Build & test
 
@@ -990,17 +1050,18 @@ Other useful tasks:
 
 `./gradlew :test` runs the cross-kit library suite (root `:` is the integration-test host over the four kernel-free kit modules `:core`/`:rulekit`/`:modelkit`/`:edit`); the kits' main stays kernel-free and the kernel enters only as a test-scope oracle. See [`docs/CLI-SPEC.md`](docs/CLI-SPEC.md) for the CLI.
 
-## Commit hooks
+## Commit and push hooks
 
-The committed hooks enforce the commit-message convention and two pre-commit checks. Enable them once per clone:
+The committed hooks enforce the commit-message convention, two pre-commit checks, and a pre-push CI check. Install the workflow validator and enable all hooks once per clone:
 
 ```sh
+brew install actionlint
 git config core.hooksPath .githooks
 ```
 
-The `commit-msg` hook hard-rejects mechanical convention violations and reminds on the judgment rule. The `pre-commit` hook refuses to stage build output or log files, and refuses a commit whose staged files can drift a CI-gated doc unless the doc guards have run since — the latter because `-Pfast` skips those guards by design, so the inner loop cannot otherwise see that class of drift.
+The `commit-msg` hook hard-rejects mechanical convention violations and reminds on the judgment rule. The `pre-commit` hook refuses to stage build output or log files, and refuses a commit whose staged files can drift a CI-gated doc unless the doc guards have run since — the latter because `-Pfast` skips those guards by design, so the inner loop cannot otherwise see that class of drift. The `pre-push` hook runs the typed infographic freshness and CI-cost-ordering check through its stable shell launcher, then validates every GitHub Actions workflow with `actionlint`; it refuses when Node or `actionlint` is missing instead of claiming a check it could not perform. Native Git hooks make this neutral to the caller: terminal Git, an IDE, Claude Code, and Codex CLI all trigger the same gate.
 
-**Both pre-commit checks are the early, local half of a defence, never the whole of one.** They are unwired in a fresh clone until you run the command above, and `--no-verify` bypasses them on purpose. That is deliberate: a local hook must not be the only thing standing between a mistake and the repository, so each has an authoritative counterpart that runs in CI where no hook can be assumed — `TrackedOutputGuardTest` for staged build output, and the doc guards themselves for doc drift. `scripts/doctor.sh` reports whether you wired them. Source statistics are intentionally not a push or CI concern: the maintainer-only Tokei updater is run locally, and each release assembler checks the README it publishes. To apply the commit-message check across all your repos, point your global Git template at it — copy that hook into `~/.git-template/hooks` and set `git config --global init.templateDir ~/.git-template`.
+**The local hooks are the early half of a defence, never the whole of one.** They are unwired in a fresh clone until you run the command above, and `--no-verify` bypasses them on purpose. That is deliberate: a local hook must not be the only thing standing between a mistake and the repository, so each has an authoritative counterpart in the test and CI estate. `scripts/doctor.sh` reports both hook wiring and `actionlint` availability. Source statistics are intentionally not a push or CI concern: the maintainer-only Tokei updater is run locally, and each release assembler checks the README it publishes. To apply the commit-message check across all your repos, point your global Git template at it — copy that hook into `~/.git-template/hooks` and set `git config --global init.templateDir ~/.git-template`.
 
 ## License
 

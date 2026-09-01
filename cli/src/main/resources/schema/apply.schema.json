@@ -106,6 +106,22 @@
         "errorCodesToSuppress": ["MVK_INVALID_COMPARE_DEC_PLACES"],
         "messages": [ { "locale": "en_US", "text": "Effective fee is one-third of base." },
                       { "locale": "de_DE", "text": "Effektivgebühr ist ein Drittel der Basis." } ] }
+    ],
+    [
+      { "target": "computation", "op": "add",
+        "computedField": "/Subscription/Billing/EffectiveFee",
+        "alternatives": [ { "operation": "[/Subscription/Billing/BaseFee] / 3" } ],
+        "errorCodesToSuppress": ["MVK_INVALID_COMPARE_DEC_PLACES"],
+        "messages": [ { "locale": "en_US", "text": "Effective fee is one-third of base." },
+                      { "locale": "de_DE", "text": "Effektivgebühr ist ein Drittel der Basis." } ] },
+      { "target": "computation", "op": "read", "computationPathInModel": "/Subscription/Billing/EffectiveFeeComp" },
+      { "target": "computation", "op": "remove", "computationPathInModel": "/Subscription/Billing/EffectiveFeeComp" },
+      { "target": "computation", "op": "add",
+        "computedField": "/Subscription/Billing/EffectiveFee",
+        "alternatives": [ { "operation": "[/Subscription/Billing/BaseFee] / 2" } ],
+        "errorCodesToSuppress": ["MVK_INVALID_COMPARE_DEC_PLACES"],
+        "messages": [ { "locale": "en_US", "text": "Effective fee is half of base." },
+                      { "locale": "de_DE", "text": "Effektivgebühr ist die Hälfte der Basis." } ] }
     ]
   ]
 }

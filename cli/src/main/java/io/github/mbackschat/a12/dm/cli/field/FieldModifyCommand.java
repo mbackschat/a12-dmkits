@@ -127,7 +127,7 @@ final class FieldModifyCommand extends BaseCommand {
             ArrayNode aspects = changed.putArray("aspects");
             mod.changedAspects().forEach(aspects::add);
         } catch (IllegalArgumentException badSpec) {
-            return fail("invalid field spec: " + badSpec.getMessage());
+            return rejectSpecValue("field spec", specPath, badSpec);
         } catch (IOException e) {
             return refuseUnreadableInput("<spec.json>", specPath, e);
         }

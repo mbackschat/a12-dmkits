@@ -54,6 +54,8 @@ class InterpreterReleaseMirrorAssemblerTest {
                         + "/dm-interpreter-" + VERSION + ".pom"));
         assertTrue(Files.readString(firstMirror.resolve("README.md")).contains(VERSION));
         assertTrue(Files.readString(firstMirror.resolve("PERFORMANCE.md")).contains(VERSION));
+        assertEquals("interpreter infographic\n", Files.readString(firstMirror.resolve(
+                "assets/infographics/a12-interpreter-runtime.png")));
         assertTrue(Files.readString(firstMirror.resolve("site/privacy.html"))
                 .contains("Martin Backschat"));
         assertTrue(Files.readString(firstMirror.resolve("site/privacy.html"))
@@ -159,6 +161,8 @@ class InterpreterReleaseMirrorAssemblerTest {
                 "# A12 Interpreter releases\n\nVersion @VERSION@ for developers.\n");
         write(root.resolve("public-sources/PERFORMANCE.md"),
                 "# Performance\n\nMeasurements for version @VERSION@.\n");
+        write(root.resolve("public-sources/assets/infographics/a12-interpreter-runtime.png"),
+                "interpreter infographic\n");
         write(root.resolve("public-sources/CHANGELOG.md"),
                 "# Changelog\n\n## [@VERSION@]\n\nInitial release.\n");
         write(root.resolve("public-sources/DISCLAIMER.md"),

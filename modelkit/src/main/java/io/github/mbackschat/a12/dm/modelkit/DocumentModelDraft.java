@@ -923,7 +923,17 @@ public final class DocumentModelDraft {
             return this;
         }
 
-        /** Make this group a repeatable list with the given maximum (≥ 2; {@code 1} is the single default). */
+        /**
+         * Make this group a repeatable list with the given maximum (≥ 2; {@code 1} is the single default).
+         *
+         * <p>The {@code ≥ 2} bound is <b>not</b> the kernel's {@code repeatability} domain, which is any
+         * integer {@code > 0} ([KF221](docs/KERNEL-FINDINGS.md#kf221)) — it is this builder refusing a
+         * self-contradictory instruction. A non-repeatable group serializes as {@code "repeatability": 1},
+         * and the kernel reads that value as not repeatable: starring such a group draws
+         * {@code MVK_INVALID_WILDCARD} with the message "Since '…' is not repeatable, it is not allowed to
+         * specify an asterisk" (measured 2026-08-31). So {@code repeatable(1)} would ask for a repetition
+         * list the kernel would then refuse to iterate; leave the group non-repeatable instead.
+         */
         public GroupBuilder repeatable(int max) {
             if (max < 2) {
                 throw new IllegalArgumentException("a repeatable group needs max ≥ 2 (1 is non-repeating): " + max);

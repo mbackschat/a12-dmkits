@@ -417,6 +417,7 @@ dmtool -m /tmp/edit2-sub.json computation read /Subscription/Billing/EffectiveFe
   "summary" : "read /Subscription/Billing/EffectiveFeeComp",
   "data" : {
     "computation" : "/Subscription/Billing/EffectiveFeeComp",
+    "group" : "/Subscription/Billing",
     "errorCodesToSuppress" : [ ],
     "converted" : true,
     "calculatedField" : "/Subscription/Billing/EffectiveFee",
@@ -437,6 +438,8 @@ dmtool -m /tmp/edit2-sub.json computation read /Subscription/Billing/EffectiveFe
 ```
 
 → `outcome: "read"`, `ok: true`, and `.data` carries `converted: true` (the kernel construct round-tripped into rulekit's typed form cleanly), `calculatedField` — the `/Subscription/Billing/EffectiveFee` this computation assigns — and the exact A12 `errorCodesToSuppress` list (empty here). `read` writes nothing (`written: false`); it's the verification half of the add we just made.
+
+→ `group` and `calculatedField` are reported as a **pair** because A12 lets them differ: `group` is where the computation *lives*, `calculatedField` is where it *writes*. `group` defaults to the computed field's parent, so the two coincide unless the spec's optional `group` names another one — declaring the computation in a different subtree, say a policy container that owns a computation writing into the billing block. Reading the pair back is what confirms such a placement survived authoring.
 
 ## computation remove — drop a computation
 

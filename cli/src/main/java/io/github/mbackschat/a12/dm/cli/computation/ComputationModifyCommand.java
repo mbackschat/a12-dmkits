@@ -26,6 +26,7 @@ import io.github.mbackschat.a12.dm.rulekit.read.ReadComputation;
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel;
 import io.github.mbackschat.a12.dm.rulekit.dsl.RenderedDiff;
 import io.github.mbackschat.a12.dm.rulekit.validate.Diagnostic;
+import io.github.mbackschat.a12.dm.rulekit.validate.RkCode;
 import io.github.mbackschat.a12.dm.rulekit.write.ModelWriter;
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Mixin;
@@ -90,11 +91,14 @@ final class ComputationModifyCommand extends BaseCommand {
         }
         ComputationSpec.Parsed parsed = ComputationSpec.parse(spec);
         if (!parsed.ok()) {
-            return fail(parsed.error());
+            return rejectSpecParse(parsed.problem());
         }
         if (!parsed.fullName().equals(computation)) {
-            return fail("the --spec re-expresses " + parsed.fullName() + ", not the computation " + computation
-                    + " (a re-expression keeps the same computation — match computedField/name)");
+            return refusePrecheck(RkCode.INVALID_VALUE,
+                    "the --spec re-expresses " + parsed.fullName() + ", not the computation " + computation,
+                    computation,
+                    "a re-expression keeps the same computation — match the spec's computedField/name (and its"
+                            + " `group`, if the computation is declared outside the computed field's parent)");
         }
 
         String modifiedJson;

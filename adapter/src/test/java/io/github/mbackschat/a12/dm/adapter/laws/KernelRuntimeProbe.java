@@ -12,10 +12,12 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Date;
+import java.util.EnumMap;
 import java.util.EnumSet;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -26,13 +28,12 @@ import com.mgmtp.a12.kernel.md.document.apiV2.DocumentPointer;
 import com.mgmtp.a12.kernel.md.document.apiV2.PartiallyKnownDocumentMultiPointer;
 import com.mgmtp.a12.kernel.md.rt.api.IMessage;
 
+import io.github.mbackschat.a12.dm.adapter.KernelAdapter;
 import io.github.mbackschat.a12.dm.adapter.KernelConsistencyOracle;
+import io.github.mbackschat.a12.dm.adapter.testing.KernelMessageAddressProjector;
 import io.github.mbackschat.a12.dm.core.Notification;
 import io.github.mbackschat.a12.dm.core.Severity;
 import io.github.mbackschat.a12.dm.interpreter.A12PartiallyKnownMultiPointer;
-import io.github.mbackschat.a12.dm.interpreter.A12Pointer;
-import io.github.mbackschat.a12.dm.interpreter.A12PointerFormat;
-import io.github.mbackschat.a12.dm.interpreter.eval.PointerKt;
 import io.github.mbackschat.a12.dm.rulekit.validate.KernelVersion;
 
 /**
@@ -41,9 +42,11 @@ import io.github.mbackschat.a12.dm.rulekit.validate.KernelVersion;
  * question without a bespoke Kotlin test per question. Driven by {@code ./gradlew :adapter:kernelProbe
  * -Prequest=<request.json> -Pout=<artifact.json>}.
  *
- * <p><b>What is observed is the request's choice</b> ({@link Observation}): {@code validateFull} always, and
- * {@code compute} when asked for. A request that does not ask for compute produces the artifact it always
- * produced, byte for byte, because consumers pin these bytes by SHA-256.
+ * <p><b>What is observed is the request's choice</b> ({@link Observation}), and each observation is either
+ * per-ROW or per-MODEL. The row observations are {@code validateFull} — required whenever any row is observed
+ * — and {@code compute}; the model observation is {@code mandatoryInformation}, which reads no document and may
+ * be asked for alone, with no {@code rows} at all. A request that does not ask for an optional block produces
+ * the artifact it always produced, byte for byte, because consumers pin these bytes by SHA-256.
  *
  * <p><b>It is a measurement instrument, not a verb.</b> Kernel runtime evaluation does Groovy runtime code
  * generation and is not AOT-compilable, which is exactly why dmtool's runtime verbs run the kernel-free
@@ -85,8 +88,20 @@ public final class KernelRuntimeProbe {
     private KernelRuntimeProbe() {
     }
 
-    /** One named row of the request: a document, evaluated on every strategy. */
-    public record Row(String name, String documentJson) {
+    /**
+     * One named row of the request: a document, evaluated on every strategy.
+     *
+     * <p>{@code relevant} is the caller's coverage for {@link Observation#VALIDATE_PART} and is present exactly
+     * when that observation was asked for. {@link Optional#empty()} means "not observed"; an empty SET means
+     * {@code noneRelevant}, which is a distinct and deliberate request. Conflating those two is why this is an
+     * {@code Optional<Set<…>>} rather than a set that happens to be empty.
+     */
+    public record Row(String name, String documentJson, Optional<Set<RuntimeLaws.Relevant>> relevant) {
+
+        /** A row observing no relevant set — the shape every pre-{@code validatePart} request has. */
+        public Row(String name, String documentJson) {
+            this(name, documentJson, Optional.empty());
+        }
     }
 
     /**
@@ -95,16 +110,42 @@ public final class KernelRuntimeProbe {
      */
     public enum Observation {
 
-        /** {@code IDocumentRtService.validateFull} — the message channel, always observed. */
-        VALIDATE_FULL("validateFull"),
+        /** {@code IDocumentRtService.validateFull} — the message channel, observed for every row. */
+        VALIDATE_FULL("validateFull", Scope.ROW),
 
         /** {@code IDocumentRtService.compute} — the computed-field outcomes and the operand formal errors. */
-        COMPUTE("compute");
+        COMPUTE("compute", Scope.ROW),
+
+        /**
+         * {@code IDocumentRtService.validatePart} — the message channel under a CALLER-SUPPLIED relevant set,
+         * which is the whole point: two shapes are unreachable through {@code validateFull} because they are
+         * properties of the caller's coverage rather than of the document — a call-local PARTIAL coverage, and
+         * the empty ({@code noneRelevant}) set. Each row supplies its own {@code relevant}; an empty array is a
+         * legitimate request for the second shape, not an omission.
+         */
+        VALIDATE_PART("validatePart", Scope.ROW),
+
+        /**
+         * {@code IRuleCollectionMetaInformation.getMandatoryInformationFromRules} — the three name sets the
+         * kernel derives from the model's rule CONDITIONS. Model-level: it reads no document, runs no
+         * evaluation, and is reported once for the request rather than per row or per strategy.
+         */
+        MANDATORY_INFORMATION("mandatoryInformation", Scope.MODEL);
+
+        /** Whether an observation needs a document. The request contract is derived from this, never listed. */
+        enum Scope { ROW, MODEL }
 
         private final String wireName;
+        private final Scope scope;
 
-        Observation(String wireName) {
+        Observation(String wireName, Scope scope) {
             this.wireName = wireName;
+            this.scope = scope;
+        }
+
+        /** Whether this observation evaluates a document row. */
+        boolean isRowLevel() {
+            return scope == Scope.ROW;
         }
 
         /** The name a request spells. */
@@ -135,18 +176,48 @@ public final class KernelRuntimeProbe {
             Set<Observation> observe, List<Row> rows) {
 
         /**
-         * The {@code validateFull} invariant lives HERE, not in the request parser, because this record is
-         * public: a caller that built one directly would otherwise produce engine blocks whose {@code messages}
-         * was empty because nobody looked — indistinguishable from a row where nothing fired, which is the
-         * failure mode §5's refusal exists to prevent. Checked before {@code EnumSet.copyOf}, whose own
-         * "Collection is empty" would otherwise speak in place of the domain rule.
+         * The request contract lives HERE, not in the parser, because this record is public: a caller that
+         * built one directly would otherwise produce engine blocks whose {@code messages} was empty because
+         * nobody looked — indistinguishable from a row where nothing fired, which is the failure mode §5's
+         * refusal exists to prevent. Checked before {@code EnumSet.copyOf}, whose own "Collection is empty"
+         * would otherwise speak in place of the domain rule.
+         *
+         * <p>Two halves, both derived from {@link Observation.Scope} rather than from a list of names:
+         * a request that observes any ROW-level channel must observe {@code validateFull} and must carry
+         * rows; a request that observes only MODEL-level channels must carry none, because a row nothing
+         * looks at is the same silent no-op the first half refuses.
          */
         public Request {
-            if (!observe.contains(Observation.VALIDATE_FULL)) {
+            if (observe.isEmpty()) {
+                throw new IllegalArgumentException("'observe' must name at least one of " + Observation.names());
+            }
+            boolean anyRowLevel = observe.stream().anyMatch(Observation::isRowLevel);
+            if (anyRowLevel && !observe.contains(Observation.VALIDATE_FULL)) {
                 throw new IllegalArgumentException("'observe' must include '"
-                        + Observation.VALIDATE_FULL.wireName() + "': the artifact carries no key saying a "
-                        + "channel went unobserved, so an empty message list nobody looked at would be "
-                        + "indistinguishable from one where nothing fired. Received " + observe);
+                        + Observation.VALIDATE_FULL.wireName() + "' whenever it names a per-row observation: "
+                        + "the artifact carries no key saying a channel went unobserved, so an empty message "
+                        + "list nobody looked at would be indistinguishable from one where nothing fired. "
+                        + "Received " + observe);
+            }
+            if (anyRowLevel == rows.isEmpty()) {
+                throw new IllegalArgumentException(anyRowLevel
+                        ? "'rows' must be a non-empty array: " + observe + " names a per-row observation"
+                        : "'rows' must be absent or empty: " + observe + " names only model-level "
+                                + "observations, which read no document, so a row would be observed by nothing");
+            }
+            // A relevant set and the observation that reads it must agree, in BOTH directions: without the
+            // observation the key is one nothing looks at (the same silent no-op as an unobserved row), and
+            // without the key validatePart has no coverage to run under and would silently become validateFull.
+            boolean partial = observe.contains(Observation.VALIDATE_PART);
+            for (Row row : rows) {
+                if (partial != row.relevant().isPresent()) {
+                    throw new IllegalArgumentException(partial
+                            ? "row '" + row.name() + "' must carry 'relevant' because " + observe
+                                    + " names validatePart; write [] for the noneRelevant coverage, which is a "
+                                    + "deliberate request rather than an omission"
+                            : "row '" + row.name() + "' carries 'relevant' but " + observe
+                                    + " does not name validatePart, so nothing would read it");
+                }
             }
             observe = Collections.unmodifiableSet(EnumSet.copyOf(observe));
             rows = List.copyOf(rows);
@@ -193,19 +264,21 @@ public final class KernelRuntimeProbe {
         // not masked by whichever document path happens to be missing too.
         Set<Observation> observe = observe(root);
 
-        JsonNode rowNodes = required(root, "rows");
-        if (!rowNodes.isArray() || rowNodes.isEmpty()) {
-            throw new IllegalArgumentException("'rows' must be a non-empty array of named rows");
+        // Whether rows are required is the Request's rule, derived from what is observed; here only the
+        // wire-level shape is decided, so a model-level-only request may simply omit the key.
+        JsonNode rowNodes = root.hasNonNull("rows") ? root.get("rows") : null;
+        if (rowNodes != null && !rowNodes.isArray()) {
+            throw new IllegalArgumentException("'rows' must be an array of named rows");
         }
         Set<String> names = new LinkedHashSet<>();
         List<Row> rows = new ArrayList<>();
-        for (JsonNode rowNode : rowNodes) {
+        for (JsonNode rowNode : rowNodes == null ? List.<JsonNode>of() : rowNodes) {
             String name = required(rowNode, "name").asText();
             if (!names.add(name)) {
                 throw new IllegalArgumentException("duplicate row name '" + name
                         + "'; a row name identifies an observation and must be unique");
             }
-            rows.add(new Row(name, document(rowNode, base, name)));
+            rows.add(new Row(name, document(rowNode, base, name), relevant(rowNode, name)));
         }
         return new Request(modelRef, read(base, modelRef), locale, clock, observe, rows);
     }
@@ -240,6 +313,57 @@ public final class KernelRuntimeProbe {
                     + "Received '" + text + "'");
         }
         return Locale.of(parts[0], parts[1]);
+    }
+
+    /**
+     * A row's caller-supplied relevant set for {@code validatePart}, or {@link Optional#empty()} when the key
+     * is absent. The empty ARRAY is kept distinct from the absent key: it is the {@code noneRelevant} coverage,
+     * one of the two shapes the observation exists to reach.
+     *
+     * <p>Each entry is a {@code path} plus its 1-based repetition indices — <b>one per path PART, not per
+     * repeatable part</b>: {@code DocumentPointerImpl.parsePathParts} refuses a mismatch outright with
+     * {@code "fullName and repetition have different length"}. {@code 0} is the kernel's own wildcard
+     * ({@code IEntityInstance.ALL_SEMANTIC}) meaning "every repetition of that element".
+     *
+     * <p>An omitted {@code reps} therefore defaults to <b>all wildcards of the right length</b> rather than to
+     * an empty list, which would be the length error above for every path but a one-part one. Hand-counting
+     * path parts to write {@code [0, 0]} is a footgun with no upside: the coverage a consumer wants is almost
+     * always "this element, every repetition", and the length is derivable from the path.
+     */
+    private static Optional<Set<RuntimeLaws.Relevant>> relevant(JsonNode rowNode, String name) {
+        if (!rowNode.hasNonNull("relevant")) {
+            return Optional.empty();
+        }
+        JsonNode node = rowNode.get("relevant");
+        if (!node.isArray()) {
+            throw new IllegalArgumentException("row '" + name + "': 'relevant' must be an array of "
+                    + "{path, reps} entries; write [] for the noneRelevant coverage");
+        }
+        Set<RuntimeLaws.Relevant> relevant = new LinkedHashSet<>();
+        for (JsonNode entry : node) {
+            String path = required(entry, "path").asText();
+            long parts = path.chars().filter(c -> c == '/').count();
+            List<Integer> reps = new ArrayList<>();
+            if (entry.hasNonNull("reps")) {
+                if (!entry.get("reps").isArray()) {
+                    throw new IllegalArgumentException("row '" + name + "': 'reps' must be an array of "
+                            + "1-based repetition indices, or 0 for every repetition of that element");
+                }
+                entry.get("reps").forEach(rep -> reps.add(rep.asInt()));
+                if (reps.size() != parts) {
+                    throw new IllegalArgumentException("row '" + name + "': 'reps' for '" + path + "' must "
+                            + "carry one entry per path PART (" + parts + "), not per repeatable part; got "
+                            + reps.size() + ". Use 0 for every repetition of an element, or omit 'reps' "
+                            + "entirely for the all-wildcard coverage.");
+                }
+            } else {
+                for (long i = 0; i < parts; i++) {
+                    reps.add(0);
+                }
+            }
+            relevant.add(new RuntimeLaws.Relevant(path, List.copyOf(reps)));
+        }
+        return Optional.of(Collections.unmodifiableSet(relevant));
     }
 
     /** Exactly one of {@code document} (a path) or {@code documentInline} (an embedded A12 Document JSON). */
@@ -280,12 +404,22 @@ public final class KernelRuntimeProbe {
     // ---- observation -----------------------------------------------------------------------------
 
     /**
-     * Evaluate every row on both kernel strategies.
+     * Evaluate every row on both kernel strategies, and derive whatever model-level observation was asked for.
      *
      * @throws Refused if the kernel's consistency oracle reports an {@code ERROR} on the request's model
      */
     public static KernelProbeArtifact run(Request request, KernelProbeArtifact.Header header) {
         refuseInconsistentModel(request);
+
+        Optional<Map<KernelAdapter.MandatorySet, List<String>>> mandatory =
+                request.observe().contains(Observation.MANDATORY_INFORMATION)
+                        ? Optional.of(mandatoryInformation(request.modelJson()))
+                        : Optional.empty();
+        if (request.rows().isEmpty()) {
+            // No engine is built at all. Generating and compiling the kernel's Java validator is the expensive
+            // half of a run, and a model-level query reads the rule collection rather than generated code.
+            return new KernelProbeArtifact(header, List.of(), mandatory);
+        }
 
         // Built once for the whole request: generating and compiling the kernel's Java validator is the
         // expensive half, and every row shares one model.
@@ -307,13 +441,30 @@ public final class KernelRuntimeProbe {
                     new KernelProbeArtifact.Engine(GROOVY_DYNAMIC,
                             project(groovyDynamic.validationMessages(groovyInstance, clock, locale)),
                             compute ? Optional.of(project(groovyDynamic.computation(groovyInstance, clock, locale)))
-                                    : Optional.empty()),
+                                    : Optional.empty(),
+                            row.relevant().map(rel -> project(groovyDynamic
+                                    .partialValidationMessages(groovyInstance, rel, clock, locale)))),
                     new KernelProbeArtifact.Engine(JAVA_STATIC,
                             project(javaStatic.validationMessages(javaInstance, clock, locale)),
                             compute ? Optional.of(project(javaStatic.computation(javaInstance, clock, locale)))
-                                    : Optional.empty()))));
+                                    : Optional.empty(),
+                            row.relevant().map(rel -> project(javaStatic
+                                    .partialValidationMessages(javaInstance, rel, clock, locale)))))));
         }
-        return new KernelProbeArtifact(header, rows);
+        return new KernelProbeArtifact(header, rows, mandatory);
+    }
+
+    /**
+     * The kernel's mandatory-information derivation over the request's model, as a sorted name list per set.
+     * Delegates to {@code KernelAdapter.mandatoryInformation}, which is where the kernel types stay: this is a
+     * MODEL-and-rule query with no document, so neither {@code validateFull} nor {@code compute} can expose it
+     * and it is reported once for the request rather than per row or per strategy.
+     */
+    private static Map<KernelAdapter.MandatorySet, List<String>> mandatoryInformation(String modelJson) {
+        var derived = KernelAdapter.ofJson(modelJson).mandatoryInformation();
+        var out = new EnumMap<KernelAdapter.MandatorySet, List<String>>(KernelAdapter.MandatorySet.class);
+        derived.forEach((set, names) -> out.put(set, List.copyOf(names)));
+        return out;
     }
 
     /** The consistency gate — the same oracle {@code rule check} reports {@code KERNEL_CONFIRMED} from. */
@@ -373,9 +524,8 @@ public final class KernelRuntimeProbe {
      * typed value rather than by re-reading a string.
      *
      * <p>The policy owner is {@code cli.interp.A12Pointers.canonical}, whose Javadoc carries the full reasoning.
-     * It cannot be called from here — {@code :cli} depends on {@code :adapter}, not the reverse — so this is a
-     * second implementation of a one-branch policy, recorded as {@code IAG15} in
-     * {@code docs/INTERPRETER-API-GAPS.md} rather than left as silent duplication.
+     * The independent projector is a {@code java-test-fixtures} surface: this test-source probe can reach it,
+     * and {@code :cli} tests cross-check it without reversing the production dependency.
      */
     private static String address(PartiallyKnownDocumentMultiPointer pointer) {
         return address(pointer.fullName(), pointer.repetitionIndexes());
@@ -393,11 +543,8 @@ public final class KernelRuntimeProbe {
     }
 
     private static String address(String fullName, List<Integer> repetitionIndexes) {
-        A12PartiallyKnownMultiPointer typed =
-                A12PartiallyKnownMultiPointer.Companion.of(fullName, repetitionIndexes);
-        A12Pointer exact = typed.getRepetitionIndexes().isEmpty() ? null : typed.toExactPointer();
-        return exact != null ? A12PointerFormat.INSTANCE.render(exact)
-                : PointerKt.formatPointer(fullName, repetitionIndexes);
+        return KernelMessageAddressProjector.address(
+                A12PartiallyKnownMultiPointer.Companion.of(fullName, repetitionIndexes));
     }
 
     // ---- entry point -----------------------------------------------------------------------------
@@ -411,6 +558,8 @@ public final class KernelRuntimeProbe {
         if (args.length != 2) {
             throw new IllegalArgumentException(USAGE);
         }
+        requirePinnedSource(System.getProperty(SOURCE_STATE_PROPERTY, UNDETERMINED_STATE),
+                Boolean.parseBoolean(System.getProperty(REQUIRE_PINNED_PROPERTY, "false")));
         Path requestFile = Path.of(args[0]);
         Path out = Path.of(args[1]);
 
@@ -418,6 +567,43 @@ public final class KernelRuntimeProbe {
         KernelProbeArtifact artifact = run(request, header(request));
         write(out, artifact.toJson());
         System.out.println("[kernel-probe] " + request.rows().size() + " row(s) → " + out.toAbsolutePath());
+    }
+
+    /**
+     * The system property carrying the measured working-tree state. Named as a constant because two things read
+     * it and they must not diverge: the header that STAMPS it and the gate that REFUSES on it.
+     */
+    static final String SOURCE_STATE_PROPERTY = "a12.probe.sourceState";
+
+    /**
+     * Set by the Gradle task to say that this artifact is meant to be handed over and pinned. Deliberately
+     * explicit rather than inferred from the state property's absence: the in-process callers in
+     * {@code KernelRuntimeProbeTest} supply no provenance at all, so "absent means refuse" would break every one
+     * of them and "absent means allow" would be a loophole nobody re-reads.
+     */
+    static final String REQUIRE_PINNED_PROPERTY = "a12.probe.requirePinnedSource";
+
+    /** The state's own "we could not tell" spelling — a member of the closed domain, unlike {@code (unknown)}. */
+    private static final String UNDETERMINED_STATE = "UNKNOWN";
+
+    private static final String PINNED_STATE = "CLEAN";
+
+    /**
+     * Refuses to produce a hand-over artifact whose {@code sourceRevision} names a tree that did not produce it.
+     *
+     * <p>The header's revision is only meaningful as an address a consumer can check out. On a dirty tree it
+     * addresses a tree that never existed anywhere, and on an undetermined one it addresses nothing at all — both
+     * are unpinnable, so both refuse. The escape exists because local exploration is legitimate; it permits the
+     * run and leaves the stamp alone, so an artifact produced under it still declares what it is.
+     */
+    static void requirePinnedSource(String sourceState, boolean requirePinned) {
+        if (requirePinned && !PINNED_STATE.equals(sourceState)) {
+            throw new IllegalStateException("kernel-probe refuses to write a hand-over artifact from a "
+                    + sourceState + " working tree: its sourceRevision would name a tree that did not produce "
+                    + "these rows. Commit (or stash) first, then re-run. For a local exploration run whose "
+                    + "artifact you will not hand over, pass -PprobeAllowUnpinned=true — the artifact still "
+                    + "stamps state=" + sourceState + ".");
+        }
     }
 
     /** The producer header, from the build-supplied properties plus the kernel actually on the classpath. */
@@ -429,7 +615,7 @@ public final class KernelRuntimeProbe {
                 property("a12.probe.sourceRevision"),
                 // The state's own "we could not tell" spelling, not the generic one: it is a closed domain,
                 // shared with dmtool's version surface, and `(unknown)` is not a member of it.
-                System.getProperty("a12.probe.sourceState", "UNKNOWN"),
+                System.getProperty(SOURCE_STATE_PROPERTY, UNDETERMINED_STATE),
                 request.modelRef(),
                 request.locale().getLanguage() + "_" + request.locale().getCountry(),
                 request.clock().map(clock -> clock.toInstant().toString()));

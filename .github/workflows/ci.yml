@@ -27,7 +27,7 @@ permissions:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 60
     env:
       # Hosted runners have no private init scripts, but retain the repo's explicit isolated-home contract.
@@ -38,6 +38,19 @@ jobs:
         uses: actions/checkout@v4
         with:
           path: a12-dmkits
+
+      # Repository TypeScript tools execute directly through Node's stable type stripping. Pin the exact LTS
+      # patch here once; the same runtime is reused by interpreter JS tests and the custom-JS demo later.
+      - name: Set up Node for repository TypeScript tools
+        uses: actions/setup-node@v6
+        with:
+          node-version: '24.20.0'
+
+      # First repository check after its one required runtime setup. A failure still stops before Kernel checkout,
+      # JDK and Gradle setup, cache restore, or bootstrap, without paying for a second job and duplicate checkout.
+      - name: Verify infographic claims, placements, and public copies
+        working-directory: a12-dmkits
+        run: ./scripts/check-infographic-freshness.sh
 
       # The bootstrap clones the kernel sources as siblings under its parent dir, so checking it out
       # next to rulekit makes A12_ROOT = the workspace (the layout the script expects locally).
@@ -121,11 +134,6 @@ jobs:
       # and verifies them IN PARALLEL. Needs Node (the --custom-*-js worker demo) + uv (`uvx showboat`);
       # jq is on the runner. verify-demos.sh puts the repo bin/ shim on PATH so the demos' bare `dmtool`
       # resolves to the freshly-built JVM launcher.
-      - name: Set up Node (for the --custom-conditions-js / --custom-field-types-js worker + its demo)
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-
       - name: Set up uv (for uvx showboat)
         uses: astral-sh/setup-uv@v6
         with:

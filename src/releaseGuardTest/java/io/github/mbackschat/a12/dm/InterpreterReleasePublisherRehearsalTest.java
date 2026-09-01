@@ -138,6 +138,9 @@ class InterpreterReleasePublisherRehearsalTest {
         assertTrue(
                 assemblerTask.contains("file('public-release/PERFORMANCE.md'),"),
                 "the Gradle assembler task must track performance-document content as an input");
+        assertTrue(
+                assemblerTask.contains("fileTree('public-release/assets/infographics')"),
+                "the Gradle assembler task must track public README infographic content as an input");
     }
 
     @Test

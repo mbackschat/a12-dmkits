@@ -36,7 +36,10 @@ run(){ # run(label, args...) — invoke native, fail only on a native-image sign
 }
 
 echo "== fixture sweep (every committed model × read/validate verbs) =="
-mapfile -t FIXTURES < <(find cli/src/test/resources/models examples/models -name "*.dm.json" 2>/dev/null | sort)
+FIXTURES=()
+while IFS= read -r fixture; do
+  FIXTURES+=("$fixture")
+done < <(find cli/src/test/resources/models examples/models -name "*.dm.json" 2>/dev/null | sort)
 for m in "${FIXTURES[@]}"; do
   short="${m#*/models/}"
   for op in "model check" "model describe" "rule read" "computation read" "where-used"; do

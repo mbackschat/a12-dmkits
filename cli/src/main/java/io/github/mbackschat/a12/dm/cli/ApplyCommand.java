@@ -48,7 +48,7 @@ import picocli.CommandLine.Parameters;
  * only at the end. Each op emits a per-op result envelope ({@code staged} until the terminal gate commits the
  * whole sequence); a batch summary {@code {ops, committed, failedAt, written, results[]}} wraps them. A
  * mid-sequence op failure rolls back (nothing written). The op surface (the {@link Op} enum) covers the
- * <b>Local</b> ops — field/group/typedef/include add·remove, rule/computation add·modify, config modify, and
+ * <b>Local</b> ops — field/group/typedef/include add·remove, rule/computation add·modify·remove·read, config modify, and
  * the structure reads (a {@code group remove} takes the same {@code cascade} safe-delete gate as the
  * standalone verb, and {@code rule remove} deletes a rule) — plus the reference-rewriting <b>Refactor</b>
  * ops field/group rename·move, rule rename,
@@ -82,6 +82,7 @@ final class ApplyCommand extends BaseCommand {
         RULE_REMOVE("rule", "remove", Set.of("rulePathInModel")),
         COMPUTATION_ADD("computation", "add", ComputationSpec.KEYS),
         COMPUTATION_MODIFY("computation", "modify", withLocator("computationPathInModel", ComputationSpec.KEYS)),
+        COMPUTATION_REMOVE("computation", "remove", Set.of("computationPathInModel")),
         TYPEDEF_ADD("typedef", "add", Set.of("id", "kind", "string", "number", "enum", "custom",
                 "date", "time", "dateTime", "dateRange", "dateFragment")),
         TYPEDEF_MODIFY("typedef", "modify", Set.of("id", "kind", "string", "number", "enum", "custom",
@@ -102,6 +103,8 @@ final class ApplyCommand extends BaseCommand {
         TYPEDEF_RENAME("typedef", "rename", Set.of("typeDefId", "to")),
         FIELD_READ("field", "read", Set.of("fieldPathInModel")),
         GROUP_READ("group", "read", Set.of("groupPathInModel")),
+        RULE_READ("rule", "read", Set.of("rulePathInModel")),
+        COMPUTATION_READ("computation", "read", Set.of("computationPathInModel")),
         TYPEDEF_READ("typedef", "read", Set.of()),
         INCLUDE_READ("include", "read", Set.of()),
         CONFIG_READ("config", "read", Set.of());
@@ -563,8 +566,28 @@ final class ApplyCommand extends BaseCommand {
                 if (parsed.error() != null) {
                     throw new IllegalArgumentException(parsed.error());
                 }
+                // The same identity gate the standalone verb applies. Without it a re-expression naming a
+                // different `group`/`computedField`/`name` REMOVES the located computation and adds another
+                // one elsewhere — a silent MOVE, which `computation modify` refuses by contract. Latent while
+                // only `computedField` could shift the derived name; the declaring `group` key makes it one key.
+                if (!parsed.fullName().equals(comp)) {
+                    throw new IllegalArgumentException("the op re-expresses " + parsed.fullName()
+                            + ", not the computation " + comp + " — a re-expression keeps the same computation"
+                            + " (match computedField/name, and `group` if it is declared outside the computed"
+                            + " field's parent); use remove + add to relocate one");
+                }
                 session.modifyComputation(comp, parsed.draft(), parsed.messages());
                 changed.put("modified", comp);
+                yield staged(which, changed, session);
+            }
+            case COMPUTATION_REMOVE -> {
+                // a computation has no dependents of its own (its computed field may, but removing the
+                // computation leaves the field in place), so no cascade gate — the peer of RULE_REMOVE. The
+                // standalone verb's existence gate is redundant here: an unknown name throws out of
+                // removeComputation, which fails this op and rolls the whole sequence back.
+                String comp = req(op, "computationPathInModel");
+                session.removeComputation(comp);
+                changed.put("removed", comp);
                 yield staged(which, changed, session);
             }
             case TYPEDEF_ADD -> {
@@ -698,6 +721,23 @@ final class ApplyCommand extends BaseCommand {
                 }
                 // T3: the same shared shape the standalone `group read` emits (was a {group,repeatable} subset)
                 yield readEnv(which, ReadPayloads.group(doc, path), session);
+            }
+            case RULE_READ -> {
+                String path = req(op, "rulePathInModel");
+                KernelAdapter adapter = KernelAdapter.ofJson(session.toJson(), resolver);
+                if (!adapter.ruleFullNames().contains(path)) {
+                    throw new IllegalArgumentException("no rule '" + path + "' in the model");
+                }
+                yield readEnv(which, ReadPayloads.rule(adapter, ModelDocument.read(session.toJson()), path),
+                        session);
+            }
+            case COMPUTATION_READ -> {
+                String path = req(op, "computationPathInModel");
+                KernelAdapter adapter = KernelAdapter.ofJson(session.toJson(), resolver);
+                if (!adapter.computationFullNames().contains(path)) {
+                    throw new IllegalArgumentException("no computation '" + path + "' in the model");
+                }
+                yield readEnv(which, ReadPayloads.computation(adapter, path), session);
             }
             case TYPEDEF_READ -> {
                 // T3: the shared no-arg list shape (typedefs + importedFrom), was ids-only here

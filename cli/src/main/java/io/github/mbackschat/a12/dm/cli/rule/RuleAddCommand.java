@@ -29,6 +29,7 @@ import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel;
 import io.github.mbackschat.a12.dm.rulekit.dsl.LocalizedText;
 import io.github.mbackschat.a12.dm.rulekit.validate.Diagnostic;
 import io.github.mbackschat.a12.dm.rulekit.validate.DraftRule;
+import io.github.mbackschat.a12.dm.rulekit.validate.RkCode;
 import io.github.mbackschat.a12.dm.rulekit.validate.RuleValidator;
 import io.github.mbackschat.a12.dm.rulekit.validate.ValidationResult;
 import io.github.mbackschat.a12.dm.rulekit.write.ModelWriter;
@@ -44,6 +45,12 @@ import picocli.CommandLine.Parameters;
  * {@code rejected} envelope, carrying that checker's own class and locus (nothing written);
  * a kernel-valid persist yields {@code applied}, with the {@code RK_INVERTED_REQUIREDNESS} / unguarded-number
  * lint findings carried as advisory diagnostics so the polarity trap surfaces here too.
+ *
+ * <p>The spec's own shape refusals — a missing {@code field}/{@code condition}/{@code code}, no message, a
+ * non-path {@code field}, an error field outside the group — ride that same {@code rejected} envelope, coded
+ * and located by the spec key that carried the mistake. They used to be prose on stderr with an empty stdout,
+ * so an agent parsing the contract for a result got nothing at all for the commonest class of mistake, and the
+ * peer verb {@code computation add} answered it in a different shape (was CLI-CONFORMANCE-GAPS {@code CG19}).
  */
 @Command(name = "add", mixinStandardHelpOptions = true,
         description = "Persist a rule from a JSON rule-spec (kernel-validated before + after). See `schema rule add`.")
@@ -90,8 +97,14 @@ final class RuleAddCommand extends BaseCommand {
         String field = text(spec, "field");
         String condition = text(spec, "condition");
         String code = text(spec, "code");
+        // A BACKSTOP, not the refusal a caller meets: all three keys are `required` in rule-add.schema.json, so
+        // the gate above answers this class first and names every missing key at once (measured 2026-08-29,
+        // RuleAddSpecRefusalEnvelopeTest). It stays because the code below dereferences all three, and it is
+        // enveloped like the rest so a schema edit that drops a `required` entry cannot reopen the stderr shape.
         if (field == null || condition == null || code == null) {
-            return fail("rule-spec needs field, condition, and code (see `schema rule add`)");
+            String missing = field == null ? "field" : condition == null ? "condition" : "code";
+            return rejectSpecParse(RkCode.INCOMPLETE_RULE,
+                    "rule-spec needs field, condition, and code (see `schema rule add`)", missing, null);
         }
         // an explanatory ;; comment, attached as a leading line on the condition (the kernel tolerates it)
         condition = io.github.mbackschat.a12.dm.rulekit.dsl.Comments.withLeadingComment(text(spec, "comment"), condition);
@@ -102,19 +115,25 @@ final class RuleAddCommand extends BaseCommand {
         }
         List<LocalizedText> messages = messages(spec);
         if (messages.isEmpty()) {
-            return fail("rule-spec needs at least one message {locale,text} (see `schema rule add`)");
+            return rejectSpecParse(RkCode.INCOMPLETE_RULE,
+                    "rule-spec needs at least one message {locale,text} (see `schema rule add`)",
+                    "messages", null);
         }
         String severity = spec.hasNonNull("severity") ? spec.get("severity").asText() : "ERROR";
         String name = spec.hasNonNull("name") ? spec.get("name").asText() : code;
         int slash = field.lastIndexOf('/');
         if (!ModelPaths.isAbsoluteEntityPath(field)) {
-            return fail("field must be an absolute path (e.g. /Group/Field)");
+            return rejectSpecParse(RkCode.INVALID_VALUE,
+                    ModelPaths.notAnAbsoluteEntityPath("field", field), "field", null);
         }
         // the rule group (iteration scope) defaults to the error field's parent; `group` overrides it (mirrors
         // `rule check --group`) for an operator that must sit at the PARENT of a repeated group — RepetitionNotUnique.
         String group = spec.hasNonNull("group") ? spec.get("group").asText() : field.substring(0, slash);
         if (!EntityPaths.isStrictlyInside(field, group)) {
-            return fail("field " + field + " must be inside the rule group " + group);
+            // Unlike the refusals above, `where.path` IS set: this value is a well-formed model entity path
+            // (it passed the form check), so naming it as the locus is honest rather than an invented one.
+            return rejectSpecParse(RkCode.ERROR_FIELD_OUTSIDE_GROUP,
+                    "field " + field + " must be inside the rule group " + group, "field", field);
         }
         String errorEntityRelPath = "../" + field.substring(group.length() + 1);
         ModelResolver resolver = workspace.resolverFor(model);

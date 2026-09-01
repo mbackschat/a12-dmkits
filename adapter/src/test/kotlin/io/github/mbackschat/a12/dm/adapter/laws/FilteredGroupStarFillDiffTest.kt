@@ -28,9 +28,14 @@ import org.junit.jupiter.api.Test
  * assertion passing.
  *
  * **MEASURED 2026-08-14: the kernel REFUSES the shape** — `MVK_NO_GROUPS_ALLOWED`, "At 'Having': It is not
- * allowed to use a group" — and it refuses at CODE GENERATION, throwing rather than reporting a message, which
- * is why this file catches instead of reading a diagnostic list. So the divergence is **unreachable by
+ * allowed to use a group" — and this file's path reaches it as a THROW at code generation rather than as a
+ * message, which is why it catches instead of reading a diagnostic list. So the divergence is **unreachable by
  * authoring** and there is no runtime defect here; the finding is the refusal itself.
+ *
+ * **The layer is not exclusive, measured 2026-08-31:** static arbitration refuses the same shape as an ordinary
+ * `MVK_NO_GROUPS_ALLOWED` diagnostic, on this carrier among others
+ * (`validate.laws.GroupOperandFilterLawsTest.theSTATICArbitrationRefusesItOnTheCarriersOnlyMeasuredAtCodegenBefore`).
+ * Read the throw above as how THIS path meets the refusal, never as the only layer that carries it.
  *
  * Two things follow, and they are the reason this file is kept rather than deleted. The `having` our shared
  * expansion carries onto each expanded field is **dead for the group case**, so no test can pin what duplicating

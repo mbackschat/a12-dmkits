@@ -6,6 +6,7 @@ import java.util.Optional;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import io.github.mbackschat.a12.dm.core.EntityPath;
 import io.github.mbackschat.a12.dm.core.ValueKind;
 import io.github.mbackschat.a12.dm.rulekit.validate.Diagnostic;
 import io.github.mbackschat.a12.dm.rulekit.validate.DraftComputation;
@@ -13,8 +14,21 @@ import io.github.mbackschat.a12.dm.rulekit.validate.PrecheckException;
 
 /**
  * A typed computation — the F2 authoring object (study §4.3): a computed field + optional
- * {@code commonPrecondition} + alternatives. The computation element is placed in the computed
- * field's group, so {@code computedFieldRelPath} is computed, never written.
+ * {@code commonPrecondition} + alternatives.
+ *
+ * <p><strong>The declaring group is independent of the computed field's parent.</strong> It defaults to that
+ * parent, which is the shape almost every computation wants, and {@link Builder#group(GroupReference)} places
+ * the element elsewhere — in an ancestor, or in a subtree that does not contain the computed field at all.
+ * {@code computedFieldRelPath} is derived from the two paths either way, never written by the author.
+ *
+ * <p><b>The one refusal is containment under DERIVED ITERATION</b> ({@code MVK_ERROR_FIELD_NOT_IN_RULEGROUP}):
+ * whenever the computation iterates, the computed field must lie AT OR BELOW the declaring group — containment,
+ * not parenthood, so any ancestor of the target is fine. It iterates for either of two independent reasons: an
+ * operation reading a PER-ROW field of a repeatable declaring group, or a computed field that is itself in a
+ * repeatable group — the latter with no operand at all, so a bare constant into a repeating target is refused
+ * from an unrelated group. A rule shares the gate but cannot show the second reason alone, since its error field
+ * must be referenced by its condition. Measured through {@code checkConsistency} in
+ * {@code validate.laws.ComputationDeclaringGroupLawsTest}.
  *
  * <p><strong>Kernel-verified slot rules pre-checked at {@code build()}:</strong> alternatives are
  * either exactly one <em>unconditional</em> {@code calc(...)} or all <em>preconditioned</em>
@@ -73,11 +87,18 @@ public record Computation(
 
     // Builders are created via BoundModel#computation(...) — model-aware so messages can be checked
     // against the model's DECLARED locales (which are arbitrary; en/de are not special). The
-    // computation element is placed in the computed field's group.
+    // computation element is placed in the computed field's group unless Builder#group says otherwise.
 
-    /** The computed field's path relative to the computation element (a sibling in the group). */
+    /**
+     * The computed field's path <em>relative to the computation element</em> — {@code ../Field} for the common
+     * case where the element sits beside the field, and a walk out of the declaring group and back down when
+     * {@link Builder#group(GroupReference)} put it elsewhere.
+     *
+     * <p>Relative to the ELEMENT, not to the group: the leading {@code ..} climbs off the computation itself,
+     * which is how {@code ModelReader.resolveRelPath} reads the stored reference back.
+     */
     public String computedFieldRelPath() {
-        return "../" + computedField.path().value().substring(groupPath.length() + 1);
+        return EntityPath.of(groupPath + "/" + name).relativize(computedField.path());
     }
 
     /** The kernel-measured domain accepted by A12's {@code IComputation.errorCodesToSuppress}. */
@@ -117,6 +138,7 @@ public record Computation(
         private final FieldRef computedField;
         private final List<String> declaredLocales;
         private String name;
+        private GroupRef group;
         private Condition commonPrecondition;
         private final List<Alternative> alternatives = new ArrayList<>();
         private final List<LocalizedText> messages = new ArrayList<>();
@@ -131,6 +153,25 @@ public record Computation(
 
         public Builder name(String name) {
             this.name = name;
+            return this;
+        }
+
+        /**
+         * Declare the computation in {@code group} instead of in the computed field's parent — A12's own
+         * independence between where a computation <em>lives</em> and where it <em>writes</em>.
+         *
+         * <p>The computed field may sit in an entirely different subtree; the derived
+         * {@link #computedFieldRelPath()} walks out and back down. Taking a {@link GroupReference} rather than
+         * a path string is what keeps the group model-resolved — a {@code GroupRef} only exists for a path
+         * {@code BoundModel} found to be a group.
+         *
+         * <p>Placement is an iteration-scope decision, not a filing one: this group is the base the operand
+         * paths render against, so a repeatable group's per-row operand pulls the computed field back inside it
+         * (see the class doc), and the runtime scope question it raises is the subject of
+         * {@code adapter/.../laws/CrossGroupConstantComputeScopeDiffTest}.
+         */
+        public Builder group(GroupReference group) {
+            this.group = group == null ? null : group.ref();
             return this;
         }
 
@@ -227,6 +268,9 @@ public record Computation(
 
             String computedPath = computedField.path().value();
             for (Alternative a : alternatives) {
+                require(!isFalseConstant(a.operation()) || computedField.kind() != ValueKind.CONFIRM,
+                        "the computed CONFIRM field " + computedPath + " takes only the constant True — the"
+                                + " kernel rejects False with MVK_INVALID_COMPARE_TO_YES");
                 require(operationMatchesComputedKind(a.operation()),
                         "the operation '" + new DslRenderer().render(a.operation()) + "' yields "
                                 + a.operation().kind() + " but the computed field " + computedPath
@@ -240,7 +284,8 @@ public record Computation(
                 requireNoCustomCondition(commonPrecondition);
             }
 
-            String groupPath = computedPath.substring(0, computedPath.lastIndexOf('/'));
+            String groupPath = group != null ? group.path().value()
+                    : computedPath.substring(0, computedPath.lastIndexOf('/'));
             // a whole-computation comment leads the first operation (always present — checked above)
             Comments finalComments = rootComment == null ? comments
                     : comments.before(alternatives.get(0).operation(), rootComment);
@@ -303,11 +348,25 @@ public record Computation(
             }
         }
 
+        /**
+         * A CONFIRM field is the one asymmetric target: the kernel accepts the BOOLEAN constant {@code True}
+         * into it and rejects {@code False} with {@code MVK_INVALID_COMPARE_TO_YES} ("only ... equality or
+         * unequality with the constant True"). Measured on both kernel strategies through a raw-injected
+         * operation that bypasses this pre-check, so the basis is the kernel and not this file's own
+         * reasoning — {@code validate.laws.ConfirmComputationSourceKindLawsTest}. Plain kind equality refused
+         * both, which made the legal model unauthorable; the {@code False} half is refused separately above so
+         * it carries the kernel's own code instead of a kind-mismatch message.
+         */
         private boolean operationMatchesComputedKind(Calculation operation) {
             return operation.kind() == computedField.kind()
                     || operation instanceof FirstFilledValue
                             && FirstFilledValue.sameOwnerFamily(operation.kind(), computedField.kind())
-                    || operation instanceof BaseYear && computedField.kind() == ValueKind.NUMBER;
+                    || operation instanceof BaseYear && computedField.kind() == ValueKind.NUMBER
+                    || operation instanceof BoolLiteral && computedField.kind() == ValueKind.CONFIRM;
+        }
+
+        private static boolean isFalseConstant(Calculation operation) {
+            return operation instanceof BoolLiteral(boolean value) && !value;
         }
 
         /** Lifts an {@code MVK_*}/{@code RK_*} code out of a precheck message when it names one. */

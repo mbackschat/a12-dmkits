@@ -3170,6 +3170,9 @@ def assembleInterpreterPublicMirror = tasks.register(
         interpreterApiDocsArchive,
         file('public-release/README.md'),
         file('public-release/PERFORMANCE.md'),
+        fileTree('public-release/assets/infographics') {
+            include '*.png'
+        },
         file('CHANGELOG.md'),
         rootProject.file('LICENSE'),
         file('public-release/DISCLAIMER.md'),

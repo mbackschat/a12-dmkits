@@ -93,6 +93,7 @@ class SeparateDestinationClearDiffTest {
         expectedState: String,
         label: String,
     ) {
+        CrossRouteSourceGate.requireRouteAgnostic(model, prepared, source)
         val expected = listOf("$AMOUNT|$expectedState")
         val dynamic = RuntimeLaws.appliedStatesToDestination(model, source, destination, probe)
         val generated = java.appliedStatesToDestination(source, destination, probe)

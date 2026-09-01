@@ -38,7 +38,7 @@ public record ConfigModification(
         String decimalSeparator, String timeZone, String conditionLanguage,
         Map<String, String> labels, Map<String, String> annotations,
         List<String> supportedCharacters, String comment, boolean clearComment,
-        Integer baseYear, Boolean fieldRefByShortName,
+        Integer baseYear, boolean clearBaseYear, Boolean fieldRefByShortName,
         List<String> addLocales, List<String> removeLocales,
         List<String> roles, boolean clearRoles, List<String> removeAnnotations) {
 
@@ -55,7 +55,7 @@ public record ConfigModification(
     /** The {@code CONFIG_MODIFY} op-record keys (single-sourced for the apply op's key set). */
     public static final Set<String> KEYS = Set.of("decimal-separator", "time-zone", "condition-language",
             "label", "annotation", "comment", "clear-comment", "add-locale", "remove-locale", "role", "clear-roles",
-            "supported-character", "base-year", "field-ref-by-short-name", "remove-annotation");
+            "supported-character", "base-year", "clear-base-year", "field-ref-by-short-name", "remove-annotation");
 
     public static Builder builder() {
         return new Builder();
@@ -70,6 +70,7 @@ public record ConfigModification(
                 .supportedCharacters(stringValues(op, "supported-character")).comment(text(op, "comment"))
                 .clearComment(op.path("clear-comment").asBoolean(false))
                 .baseYear(op.hasNonNull("base-year") ? op.get("base-year").asInt() : null)
+                .clearBaseYear(op.path("clear-base-year").asBoolean(false))
                 .fieldRefByShortName(op.hasNonNull("field-ref-by-short-name")
                         ? op.get("field-ref-by-short-name").asBoolean() : null)
                 .addLocales(stringValues(op, "add-locale")).removeLocales(stringValues(op, "remove-locale"))
@@ -83,7 +84,8 @@ public record ConfigModification(
         return decimalSeparator == null && timeZone == null && conditionLanguage == null
                 && labels.isEmpty() && annotations.isEmpty() && supportedCharacters.isEmpty() && comment == null
                 && addLocales.isEmpty() && removeLocales.isEmpty() && roles.isEmpty() && !clearRoles
-                && baseYear == null && fieldRefByShortName == null && !clearComment && removeAnnotations.isEmpty();
+                && baseYear == null && !clearBaseYear && fieldRefByShortName == null && !clearComment
+                && removeAnnotations.isEmpty();
     }
 
     /** The first authoring-contract refusal shared by standalone {@code config modify} and atomic {@code apply}. */
@@ -134,6 +136,10 @@ public record ConfigModification(
         if (fieldRefByShortName != null) {
             session.setFieldRefByShortNameAllowed(fieldRefByShortName);
             changed.put("fieldRefByShortNameAllowed", fieldRefByShortName);
+        }
+        if (clearBaseYear) {
+            session.clearBaseYear();
+            changed.putNull("baseYear");
         }
         if (clearComment) {
             session.clearModelComment();
@@ -243,6 +249,7 @@ public record ConfigModification(
         private List<String> supportedCharacters;
         private String comment;
         private boolean clearComment;
+        private boolean clearBaseYear;
         private Integer baseYear;
         private Boolean fieldRefByShortName;
         private List<String> addLocales;
@@ -258,6 +265,8 @@ public record ConfigModification(
         public Builder annotations(Map<String, String> v) { this.annotations = v; return this; }
         public Builder supportedCharacters(List<String> v) { this.supportedCharacters = v; return this; }
         public Builder comment(String v) { this.comment = v; return this; }
+        public Builder clearBaseYear(boolean v) { this.clearBaseYear = v; return this; }
+
         public Builder clearComment(boolean v) { this.clearComment = v; return this; }
         public Builder baseYear(Integer v) { this.baseYear = v; return this; }
         public Builder fieldRefByShortName(Boolean v) { this.fieldRefByShortName = v; return this; }
@@ -269,7 +278,7 @@ public record ConfigModification(
 
         public ConfigModification build() {
             return new ConfigModification(decimalSeparator, timeZone, conditionLanguage, labels, annotations,
-                    supportedCharacters, comment, clearComment, baseYear, fieldRefByShortName,
+                    supportedCharacters, comment, clearComment, baseYear, clearBaseYear, fieldRefByShortName,
                     addLocales, removeLocales, roles, clearRoles, removeAnnotations);
         }
     }

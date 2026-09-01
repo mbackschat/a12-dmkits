@@ -29,11 +29,61 @@ public final class CliTestSupport {
     public record Result(int code, String out, String err) {
     }
 
+    /**
+     * A kernel-vocabulary class, as it appears in text. Deliberately not anchored to the live {@code MVK_*}
+     * inventory: the point is the SHAPE a reader recognizes as the kernel's, so a code retired upstream or one
+     * invented by a future pre-check is caught the same way.
+     */
+    private static final java.util.regex.Pattern KERNEL_VOCABULARY =
+            java.util.regex.Pattern.compile("\\bMVK_[A-Z0-9_]+");
+
     public static Result run(String... args) {
         StringBuilder out = new StringBuilder();
         StringBuilder err = new StringBuilder();
         int code = Cli.run(args, out, err);
-        return new Result(code, out.toString(), err.toString());
+        Result result = new Result(code, out.toString(), err.toString());
+        refuseUnattributedKernelVocabulary(args, result);
+        return result;
+    }
+
+    /**
+     * <b>An {@code MVK_*} code must never reach the ATTRIBUTION-FREE channel.</b> dmtool has two ways to refuse:
+     * the result envelope, where every diagnostic carries a {@code source} saying who decided, and
+     * {@code BaseCommand.fail(...)} prose on stderr, which carries no attribution at all. A refusal that knows
+     * a kernel code and is routed to the second one is indistinguishable from a kernel verdict — which is the
+     * defect a12-kernel-lean reported twice: {@code field add} attributing a local cap to "the kernel's cap"
+     * (2026-08-29), and {@code patterns} printing a bare {@code MVK_ERROR_REFERENCE_TO_CALCULATED_FIELD} from
+     * {@code Computation.Builder}'s pre-check (2026-08-30, found by review after the first fix claimed the
+     * class was closed).
+     *
+     * <p><b>Why it lives HERE rather than in a test of its own.</b> A dedicated probe needs a corpus of
+     * refusing inputs and can only ever cover the ones someone thought of — which is exactly how the second
+     * instance survived the first fix. Every in-process CLI test in the estate goes through this method, so
+     * putting the invariant at the shared sink makes the whole suite the detector, including tests written
+     * later for unrelated reasons. Carrying an {@code MVK_*} code is fine and often right; carrying it with no
+     * {@code source} beside it is not, so the envelope route is unaffected.
+     *
+     * <p>Locked both ways by {@code UnattributedKernelVocabularyGuardTest}.
+     */
+    static void refuseUnattributedKernelVocabulary(String[] args, Result result) {
+        java.util.regex.Matcher token = KERNEL_VOCABULARY.matcher(result.err());
+        if (!token.find() || result.out().contains("\"source\"")) {
+            return;
+        }
+        // Two carve-outs, both about text that MENTIONS a code rather than reporting one as a verdict. They
+        // are shaped by what the channel is FOR, not by which cases happened to trip: help must be free to
+        // document the reject it prevents, and one verb's whole contract is explaining the vocabulary.
+        if (result.err().contains("Usage: dmtool")) {
+            return;     // picocli usage/help — `--suggest-error-field`'s help text names the code it avoids
+        }
+        if (java.util.List.of(args).contains("diagnostics")) {
+            return;     // the code-explaining verb; naming MVK_* codes as catalog entries is its job
+        }
+        throw new AssertionError("`dmtool " + String.join(" ", args) + "` put the kernel-vocabulary token "
+                + token.group() + " on STDERR with no envelope to attribute it, so a consumer cannot tell this "
+                + "local refusal from a kernel verdict. Publish it instead — rejectPrecheck(...) for a "
+                + "PrecheckException, which already carries the structured diagnostic, or rejectSpecValue(...) "
+                + "for a builder refusal. stderr was: " + result.err().strip());
     }
 
     /** Obtain a test identity from the live command tree; tests do not get a raw production identity factory. */

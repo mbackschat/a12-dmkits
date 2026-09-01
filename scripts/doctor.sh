@@ -20,8 +20,24 @@ note() { printf '        %s\n' "$1"; }
 
 printf '\nBuild environment for %s\n\n' "$ROOT"
 
-# 1 — JDK 21. build.sh pins it through java_home on macOS; elsewhere the caller owns JAVA_HOME.
+# 1 — the shell contract. The shebang resolves through PATH, so name the interpreter that actually won.
 printf 'Toolchain\n'
+if (( BASH_VERSINFO[0] > 3 || (BASH_VERSINFO[0] == 3 && BASH_VERSINFO[1] >= 2) )); then
+    pass "Bash interpreter meets the >= 3.2 baseline — $BASH_VERSION ($BASH)"
+else
+    fail "Bash $BASH_VERSION is older than the repository's >= 3.2 script baseline ($BASH)"
+fi
+
+# Node 24.12 made direct TypeScript type stripping stable. The evidence and infographic tools execute their
+# checked-in .ts sources directly, so absence or an older runtime is a hard build-tool failure, not optional.
+if node_version="$(/bin/bash "$ROOT/scripts/run-typescript.sh" --check 2>&1)"; then
+    pass "Node.js runtime meets the >= 24.12.0 baseline — $node_version (${A12_NODE:-node})"
+else
+    fail "$node_version"
+    note "install the Node 24 LTS line on macOS with: brew install node@24"
+fi
+
+# JDK 21. build.sh pins it through java_home on macOS; elsewhere the caller owns JAVA_HOME.
 if [[ -x /usr/libexec/java_home ]]; then
     if jdk21="$(a12_pinned_jdk21_home 2>/dev/null)" && [[ -n "$jdk21" ]]; then
         pass "JDK 21 available — $jdk21"
@@ -91,14 +107,20 @@ report_home "the machine-default home" "$HOME/.gradle"
 [[ "$(cd "$home" 2>/dev/null && pwd)" != "$(cd "$HOME/.gradle" 2>/dev/null && pwd)" ]] \
     && report_home "the home this build would use" "$home"
 
-# 3b — the staging hook. Ignored files can still be force-added, so .gitignore is not the defence here.
+# 3b — committed Git hooks. Ignored files can still be force-added, and CI changes need a local push gate.
 hooks_path="$(git -C "$ROOT" config --get core.hooksPath || true)"
 if [[ "$hooks_path" == ".githooks" ]]; then
-    pass "the pre-commit hook is wired (core.hooksPath=.githooks)"
+    pass "the commit and push hooks are wired (core.hooksPath=.githooks)"
 else
-    warn "the pre-commit hook is not wired in this clone"
+    warn "the committed Git hooks are not wired in this clone"
     note "run: git -C \"$ROOT\" config core.hooksPath .githooks"
-    note "it refuses staged build output and logs; TrackedOutputGuardTest still catches them in CI"
+    note "the hooks guard commit messages, staged output/doc drift, and the pre-push CI preflight"
+fi
+if actionlint_command="$(command -v "${ACTIONLINT:-actionlint}" 2>/dev/null)"; then
+    pass "actionlint is available for the pre-push workflow check ($actionlint_command)"
+else
+    warn "actionlint is unavailable, so the pre-push hook will refuse rather than skip workflow validation"
+    note "install it on macOS with: brew install actionlint"
 fi
 
 # 4 — the kernel, which no public repository serves.
@@ -122,13 +144,6 @@ if command -v direnv >/dev/null 2>&1; then
 else
     note "direnv not installed; optional — ./build.sh sets the same two variables explicitly"
 fi
-if command -v node >/dev/null 2>&1; then
-    pass "node on PATH — $(node --version)"
-else
-    warn "node not on PATH; the JS lanes and verify-demos.sh need it"
-    note "a missing node reads as demo DRIFT rather than a missing tool, so check here first"
-fi
-
 printf '\n'
 if ((failures > 0)); then
     printf '%d check(s) failed. See docs/BUILD-ENVIRONMENT.md.\n\n' "$failures"

@@ -264,9 +264,21 @@ public final class GroupEditor extends ElementMetadataEditor<GroupEditor> implem
     }
 
     /**
-     * Author a computation for {@code computed} (a number field of this group, obtained via {@link
-     * #num(String)}): {@code body} receives a {@link Computation.Builder} already scoped to that field
+     * Author a computation for {@code computed} (a number field of this group or below it, obtained via
+     * {@link #num(String)}): {@code body} receives a {@link Computation.Builder} already scoped to that field
      * and returns the built computation. Chains.
+     *
+     * <p><b>The DECLARING group — where the computation lives — defaults to the computed field's parent, not to
+     * this editor's group,</b> and that asymmetry with {@link #addRule} is deliberate. For a rule the group IS
+     * the iteration scope, so scoping it here is the only sensible reading; for a computation the group decides
+     * whether it runs once or per row, so imposing the editor's group would move a computation authored over a
+     * descendant field ({@code editor.num("Lines/Amount")}) out of a repeatable {@code Lines} and silently turn
+     * a per-row computation into a single one.
+     *
+     * <p>To declare it <em>here</em> anyway — the cross-group shape A12 admits, where a computation lives in one
+     * group and writes into another — hand this editor to {@link Computation.Builder#group}, which takes a
+     * {@link io.github.mbackschat.a12.dm.rulekit.dsl.GroupReference} and which {@code GroupEditor} is:
+     * {@code editor.addComputation(target, c -> c.group(editor)…)}. The path is still written once, as a ref.
      */
     public GroupEditor addComputation(NumberRef computed, Function<Computation.Builder, Computation> body) {
         session.addComputation(m -> body.apply(m.computation(computed)));
@@ -299,9 +311,14 @@ public final class GroupEditor extends ElementMetadataEditor<GroupEditor> implem
     }
 
     /**
-     * BUILD a computation for {@code computed} (a number field of this group, via {@link #num(String)}) and
-     * RETURN it (not added) — the compose peer of {@link #addComputation}. {@link Computation#computedFieldRelPath()}
-     * is derived from the ref; the session is left unchanged.
+     * BUILD a computation for {@code computed} (a number field of this group or below it, via
+     * {@link #num(String)}) and RETURN it (not added) — the compose peer of {@link #addComputation}.
+     * {@link Computation#computedFieldRelPath()} is derived from the ref, relative to the computation
+     * ELEMENT; the session is left unchanged.
+     *
+     * <p>The declaring group defaults to the computed field's parent and is overridden by handing this editor
+     * to {@link Computation.Builder#group} — see {@link #addComputation(NumberRef, Function)} for why the
+     * default differs from {@link #addRule}'s.
      */
     public Computation computation(NumberRef computed, Function<Computation.Builder, Computation> body) {
         return body.apply(session.boundModel().computation(computed));

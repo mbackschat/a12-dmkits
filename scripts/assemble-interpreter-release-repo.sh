@@ -33,6 +33,7 @@ PRIVACY_SOURCE=""
 LANDING_PAGE_SOURCE=""
 MAVEN_LANDING_PAGE_SOURCE=""
 WORKFLOW_DIRECTORY=""
+INFOGRAPHIC_DIRECTORY=""
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -59,6 +60,8 @@ while [[ $# -gt 0 ]]; do
     *) echo "unknown argument: $1" >&2; exit 2 ;;
   esac
 done
+
+INFOGRAPHIC_DIRECTORY="$(dirname "$README_SOURCE")/assets/infographics"
 
 [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+([.-][0-9A-Za-z.-]+)?$ ]] || {
   echo "version must be SemVer-compatible: $VERSION" >&2; exit 2
@@ -87,9 +90,13 @@ for file in \
   "$MAVEN_LANDING_PAGE_SOURCE"; do
   [[ -f "$file" ]] || { echo "required release input not found: $file" >&2; exit 2; }
 done
-for directory in "$MAVEN_REPOSITORY" "$API_DOCUMENTATION" "$SHOWCASE" "$WORKFLOW_DIRECTORY"; do
+for directory in "$MAVEN_REPOSITORY" "$API_DOCUMENTATION" "$SHOWCASE" "$WORKFLOW_DIRECTORY" "$INFOGRAPHIC_DIRECTORY"; do
   [[ -d "$directory" ]] || { echo "required release input directory not found: $directory" >&2; exit 2; }
 done
+find "$INFOGRAPHIC_DIRECTORY" -maxdepth 1 -type f -name '*.png' -print -quit | grep -q . || {
+  echo "interpreter public README infographic directory contains no PNG assets: $INFOGRAPHIC_DIRECTORY" >&2
+  exit 2
+}
 for workflow in build-release.yml deploy-pages.yml; do
   [[ -f "$WORKFLOW_DIRECTORY/$workflow" ]] || {
     echo "required public workflow not found: $WORKFLOW_DIRECTORY/$workflow" >&2
@@ -149,6 +156,8 @@ mkdir -p "$MIRROR_STAGE/.github/workflows" "$MIRROR_STAGE/site/api" "$MIRROR_STA
 render_versioned_source "$README_SOURCE" "$MIRROR_STAGE/README.md"
 # The README links PERFORMANCE.md as a sibling, so the mirror must carry it or that link 404s.
 render_versioned_source "$PERFORMANCE_SOURCE" "$MIRROR_STAGE/PERFORMANCE.md"
+mkdir -p "$MIRROR_STAGE/assets/infographics"
+cp "$INFOGRAPHIC_DIRECTORY"/*.png "$MIRROR_STAGE/assets/infographics/"
 render_versioned_source "$CHANGELOG_SOURCE" "$MIRROR_STAGE/CHANGELOG.md"
 cp "$LICENSE_SOURCE" "$MIRROR_STAGE/LICENSE"
 cp "$DISCLAIMER_SOURCE" "$MIRROR_STAGE/DISCLAIMER.md"

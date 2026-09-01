@@ -139,4 +139,77 @@ class EntityPathTest {
         assertEquals(EntityPath.of("/Order/Shipping"), EntityPath.of("/Order/Shipping"));
         assertEquals(EntityPath.of("/Order/Shipping").hashCode(), EntityPath.of("/Order/Shipping").hashCode());
     }
+
+    // ── relativize: the stored-reference direction (the inverse of ModelReader.resolveRelPath) ──────
+
+    /**
+     * The two forms A12 actually stores, both pinned as exact text because they are written into DM-JSON.
+     *
+     * <p>The first is what every computation carried before a declaring group could differ from the computed
+     * field's parent — {@code "../" + fieldName} — so it is the byte-identity the default path must keep. The
+     * second is the cross-group walk measured to be kernel-accepted in
+     * {@code CrossGroupConstantComputeScopeDiffTest}, which is why the general algebra had to produce it rather
+     * than an absolute path.
+     */
+    @Test
+    void relativizeProducesTheStoredComputationReferenceForms() {
+        assertEquals("../Total",
+                EntityPath.of("/Order/TotalComp").relativize(EntityPath.of("/Order/Total")),
+                "a computation beside its computed field — the pre-existing '../<Field>' form");
+        assertEquals("../../Store/StockLevel",
+                EntityPath.of("/Rules/StockComp").relativize(EntityPath.of("/Store/StockLevel")),
+                "declared under one root group, computing into another");
+        assertEquals("../../Store/StockLevel",
+                EntityPath.of("/Probe/Rules/StockComp").relativize(EntityPath.of("/Probe/Store/StockLevel")),
+                "…and the same walk between two sibling subtrees");
+    }
+
+    /** A target below the base descends without climbing, and an identical path is the empty reference. */
+    @Test
+    void relativizeDescendsWithoutClimbingAndIsEmptyForItself() {
+        assertEquals("B/C", EntityPath.of("/A").relativize(EntityPath.of("/A/B/C")));
+        assertEquals("..", EntityPath.of("/A/B").relativize(EntityPath.of("/A")));
+        assertEquals("", EntityPath.of("/A/B").relativize(EntityPath.of("/A/B")));
+    }
+
+    /**
+     * The round trip is NOT total over arbitrary text, and the boundary is pinned rather than assumed away.
+     *
+     * <p>A target carrying an empty segment relativizes to a reference the resolver reads as the path without
+     * it, so relativize+resolve is not the identity there. Both gates that stand in front of the production
+     * call sites refuse such a path — {@code ModelPaths.isAbsoluteEntityPath} on the CLI spec side, and A12's
+     * own {@code ElementPathUtils.splitAbsPath} contract — which is why the javadoc states the limit instead of
+     * claiming a totality the next test measures over well-formed paths only.
+     */
+    @Test
+    void anEmptySegmentIsWhereTheRoundTripStops() {
+        assertEquals("../", EntityPath.of("/A/B").relativize(EntityPath.of("/A/")));
+        assertEquals("/A", ModelReader.resolveRelPath("/A/B", "../"),
+                "the resolver drops the empty segment, so the pair is not an identity");
+    }
+
+    /**
+     * The contract, executed rather than asserted: over every ordered pair of these paths, resolving the
+     * relativized reference against the base must land back on the target. {@code ModelReader.resolveRelPath} is
+     * the oracle because it is the code that actually reads a stored {@code computedFieldRelPath} back, so a
+     * relativize it cannot invert would write a reference the reader resolves elsewhere.
+     *
+     * <p>The inputs are deliberately all WELL-FORMED absolute paths — that is the domain the gates admit, and
+     * {@link #anEmptySegmentIsWhereTheRoundTripStops} pins what lies outside it.
+     */
+    @Test
+    void everyPairRoundTripsThroughTheResolverThatReadsItBack() {
+        List<String> inputs = Arrays.asList(
+                "/Order", "/Order/Total", "/Order/TotalComp", "/Order/Billing/Fee", "/Order/Shipping/Street",
+                "/Rules/StockComp", "/Store/StockLevel", "/Probe/Rules/StockComp", "/Probe/Store/StockLevel",
+                "/A/B/C/D", "/Items*/Amount");
+
+        for (String base : inputs) {
+            for (String target : inputs) {
+                String relative = EntityPath.of(base).relativize(EntityPath.of(target));
+                assertEquals(target, ModelReader.resolveRelPath(base, relative),
+                        () -> "relativize(\"" + base + "\", \"" + target + "\") = \"" + relative + "\"");
+            }
+        }
+    }
 }

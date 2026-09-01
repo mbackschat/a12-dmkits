@@ -151,7 +151,7 @@ final class FieldAddCommand extends BaseCommand {
                 changed.put("kind", doc.fieldKind(target).orElseThrow());
             }
         } catch (IllegalArgumentException badSpec) {
-            return fail("invalid field spec: " + badSpec.getMessage());
+            return rejectSpecValue("field spec", specPath, badSpec);
         } catch (IOException e) {
             return refuseUnreadableInput("<spec.json>", specPath, e);
         }

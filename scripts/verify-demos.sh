@@ -24,13 +24,14 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT"
 
 # PREFLIGHT the demos' environment prerequisites — loud, never a hidden shim, BEFORE the build. A
-# missing prerequisite must NOT read as a demo DRIFT: the cli-custom-types JS-worker blocks
+# missing or obsolete prerequisite must NOT read as a demo DRIFT: the cli-custom-types JS-worker blocks
 # (`--custom-field-types-js`) degrade LENIENTLY without `node` (the construct reports `unsupported`,
 # fired stays empty), so the verifier would diff a well-formed-but-different output and report a false
 # "DRIFT" — the mechanism is then invisible in the failure (it cost a stash-bisect to find, 2026-07-18;
 # node was nvm-only and off the non-interactive PATH). Fail fast and name the fix instead.
-if ! command -v node >/dev/null 2>&1; then
-  echo "verify-demos: 'node' is not on PATH — the cli-custom-types demo's JS-worker blocks would" >&2
+if ! node_version="$(A12_NODE=node /bin/bash "$ROOT/scripts/run-typescript.sh" --check 2>&1)"; then
+  echo "verify-demos: $node_version" >&2
+  echo "the cli-custom-types demo's JS-worker blocks would" >&2
   echo "degrade to 'unsupported' and read as a false DRIFT. Put a Node.js on PATH first" >&2
   echo "(e.g. 'export PATH=\"\$HOME/.nvm/versions/node/<version>/bin:\$PATH\"'), then re-run." >&2
   exit 1

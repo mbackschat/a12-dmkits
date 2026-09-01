@@ -501,6 +501,7 @@ public final class io.github.mbackschat.a12.dm.modelkit.ModelDocument
   public java.util.Map<io.github.mbackschat.a12.dm.modelkit.ModelDocument.ReferencePurpose, java.util.Map<java.lang.String, java.lang.String>> authoredReferences()
   public io.github.mbackschat.a12.dm.modelkit.ModelDocument.AuthoredState authoredState()
   public java.util.Optional<java.lang.Integer> baseYear()
+  public io.github.mbackschat.a12.dm.modelkit.ModelDocument clearBaseYear()
   public io.github.mbackschat.a12.dm.modelkit.ModelDocument clearIndexField(java.lang.String)
   public io.github.mbackschat.a12.dm.modelkit.ModelDocument clearModelComment()
   public io.github.mbackschat.a12.dm.modelkit.ModelDocument clearSortFields(java.lang.String)

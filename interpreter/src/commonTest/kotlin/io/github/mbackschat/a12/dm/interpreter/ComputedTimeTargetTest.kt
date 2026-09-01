@@ -88,8 +88,13 @@ class ComputedTimeTargetTest {
         assertEquals(StoredCellState.PresentValue("10:30:45"), applied.cellStateAt(PROJECTED, CELL))
     }
 
+    /**
+     * The application surface is SOURCE-relative, so a clock the source already holds leaves the destination's
+     * own value alone. The kernel's String-kind analogue is `ComputeResultChannelsLawsTest`, whose unchanged
+     * `DisplaySku` keeps the destination sentinel; Time behaves the same way once it stops being special-cased.
+     */
     @Test
-    fun evenASourceEqualClockRemainsARetainedValueAction() {
+    fun aSourceEqualClockRetainsNoActionAndLeavesTheDestinationAlone() {
         val model = model(ModelTimeZone.EUROPE_BERLIN)
         val source = validDocument(model, target = "10:30:45", projected = "10:30:45")
         val destination = validDocument(model, target = "08:15:00", projected = "08:15:00")
@@ -97,13 +102,42 @@ class ComputedTimeTargetTest {
         val retained = DmInterpreter(model).retainedComputations(source)
         val applied = retained.applyTo(destination)
 
-        assertTrue(
+        assertEquals(
+            emptyList<String>(),
             retained.applications.filter { it.path == TARGET || it.path == PROJECTED }
-                .all { it.outcome == ComputeOutcome.VALUE },
-            "Time is the measured same-clock exception to ordinary typed source equality",
+                .map { "${it.path}|${it.outcome}" }.sorted(),
+            "a source-equal clock mints no action",
         )
-        assertEquals(StoredCellState.PresentValue("10:30:45"), applied.cellStateAt(TARGET, CELL))
-        assertEquals(StoredCellState.PresentValue("10:30:45"), applied.cellStateAt(PROJECTED, CELL))
+        // The destination keeps its OWN clock: nothing was applied over it.
+        assertEquals(StoredCellState.PresentValue("08:15:00"), applied.cellStateAt(TARGET, CELL))
+        assertEquals(StoredCellState.PresentValue("08:15:00"), applied.cellStateAt(PROJECTED, CELL))
+    }
+
+    /**
+     * A re-apply retains NOTHING: the stored Time cell IS this computation's own previous output, so it is
+     * source-identical and no action is minted. Both kernel strategies agree on the typed route this
+     * interpreter's public transport corresponds to — see `adapter.laws.SourceIdentityIngressRouteDiffTest`,
+     * which measures every kind on both of A12's ingress routes, and `ComputedTimeTargetDiffTest`'s
+     * discriminator, whose successful channel confirms the second pass actually ran.
+     *
+     * This is the assertion the retired IG142 inverted. The old `Kind.TIME -> false` was calibrated against
+     * the kernel's V1-STRING seed route, where a typed cell holds an unconverted String and therefore never
+     * compares equal — a route with no public counterpart here.
+     */
+    @Test
+    fun aReapplyOverTheInterpretersOwnAppliedClockRetainsNothing() {
+        val model = model(ModelTimeZone.EUROPE_BERLIN)
+        val interpreter = DmInterpreter(model)
+        val applied = interpreter.applyComputations(validDocument(model))
+        val secondPass = interpreter.retainedComputations(applied).applications
+            .filter { it.path == TARGET || it.path == PROJECTED }
+            .map { "${it.path}|${it.outcome}" }
+            .sorted()
+        assertEquals(
+            emptyList<String>(),
+            secondPass,
+            "a source-identical Time cell is not re-applied — the kernel's typed-route answer",
+        )
     }
 
     private fun validDocument(

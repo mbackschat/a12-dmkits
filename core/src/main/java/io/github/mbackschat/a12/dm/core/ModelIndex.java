@@ -136,6 +136,24 @@ public final class ModelIndex {
         return pattern.isEmpty() ? Optional.empty() : Optional.of(pattern);
     }
 
+    /**
+     * The declared temporal {@code format} of the field at {@code fieldPath} — the DateType/TimeType/
+     * DateTimeType/DateRangeType/DateFragmentType {@code format} string — or empty when the field carries none
+     * (a non-temporal kind, or a temporal one that declares no format and so takes its kind's default).
+     *
+     * <p>Worth reading rather than inferring from the kind: A12's temporal format vocabulary is
+     * kind-independent, and so is everything below the declaration — the stored-value gate, comparability and
+     * component extraction all key on this string's component set, never on the field's kind
+     * (KERNEL-FINDINGS KF211). A read-only config accessor like {@link #numberMin}: no throw on a non-temporal
+     * field, so any field can be probed.
+     */
+    public Optional<String> temporalFormat(String fieldPath) {
+        JsonNode fieldType = fieldTypeNode(fieldPath);
+        String discriminator = fieldType.path(DmKeys.TYPE).asText("");
+        String format = fieldType.path(discriminator).path("format").asText("");
+        return format.isEmpty() ? Optional.empty() : Optional.of(format);
+    }
+
     /** Whether the string field declares {@code noValueValidation}; false for other kinds and an ordinary string. */
     public boolean stringNoValueValidation(String fieldPath) {
         JsonNode string = stringTypeOf(fieldPath);

@@ -1,5 +1,6 @@
 package io.github.mbackschat.a12.dm.core;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
@@ -74,6 +75,57 @@ public record EntityPath(List<String> segments) {
             return false;
         }
         return segments.subList(0, theirs.size()).equals(theirs);
+    }
+
+    /**
+     * The <b>relative reference from this path to {@code target}</b> — {@code ../} for each segment of this path
+     * past the shared prefix, then the target's remaining segments.
+     *
+     * <p><b>A12 owns this operation and we match it rather than inventing one.</b> The counterpart is
+     * {@code NodePath.relativize} → {@code ElementPathUtils.relPath(absPath, basePath)} ("the minimal relative
+     * path from {@code basePath} to {@code absPath}"), and it is what PRODUCED every stored
+     * {@code computedFieldRelPath} in existence: the {@code computedFieldId → computedFieldRelPath} migration
+     * calls {@code absolutePathInDM.relativize(elem.path())} where {@code elem.path()} is the computation
+     * ELEMENT's absolute path ({@code ReferenceViaPathStep.migrateComputedFields}), and the serializer writes
+     * {@code getComputedField().getRelativePath()} back out ({@code ComputationSerializer}). Its algebra —
+     * {@code ..} repeated {@code base.size() - commonAncestorLevel - 1} times, then the target's tail — agrees
+     * with the code below segment for segment on well-formed absolute paths, cross-root pairs included (A12
+     * returns {@code commonAncestorLevel = -1} there and emits the full walk; our leading {@code ""} segment
+     * always matches, which yields the same count). <b>Trap: the argument order is mirrored.</b> A12 writes
+     * {@code target.relativize(base)}; this writes {@code base.relativize(target)}, following
+     * {@code java.nio.file.Path}, which is what a Java caller reaches for.
+     *
+     * <p><b>The base is an ELEMENT, not a directory.</b> A computation's {@code ../Field} names a field in the
+     * computation's own group, because the first {@code ..} climbs off the computation element itself — which
+     * is why A12's own producer passes the element path even though the comment beside it says "starting from
+     * current group".
+     *
+     * <p><b>Round trip.</b> {@code ModelReader.resolveRelPath} is how a stored reference is read back, and it
+     * inverts this for every path pair the callers can produce — pinned over an 11-path cross-product in
+     * {@code EntityPathTest}. The inversion is NOT total over arbitrary text: a target carrying an empty segment
+     * ({@code /A/}) relativizes to a reference the resolver then reads as {@code /A}. That input cannot arise
+     * here, because both the CLI spec gate ({@code ModelPaths.isAbsoluteEntityPath}) and A12's own
+     * {@code splitAbsPath} contract refuse an empty segment; it is stated rather than assumed away.
+     *
+     * <p>Identical paths relativize to the empty reference, which resolves back to the base. Nothing guards that
+     * degenerate case in this class: a computation reaches it when its NAME equals its computed field's last
+     * segment in the same group, and what refuses it is {@code RuleValidator.addPrecheck}'s
+     * {@code RK_NAME_EXISTS} — so the raw {@code ModelWriter.addComputation} static, which skips that gate,
+     * would persist an empty reference.
+     */
+    public String relativize(EntityPath target) {
+        List<String> theirs = Objects.requireNonNull(target, "target").segments;
+        int common = 0;
+        while (common < segments.size() && common < theirs.size()
+                && segments.get(common).equals(theirs.get(common))) {
+            common++;
+        }
+        List<String> steps = new ArrayList<>();
+        for (int i = common; i < segments.size(); i++) {
+            steps.add("..");
+        }
+        steps.addAll(theirs.subList(common, theirs.size()));
+        return String.join("/", steps);
     }
 
     @Override

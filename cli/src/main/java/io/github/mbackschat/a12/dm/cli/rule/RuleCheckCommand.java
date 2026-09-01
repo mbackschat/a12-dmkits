@@ -57,7 +57,8 @@ final class RuleCheckCommand extends BaseCommand {
     String code;
 
     @Option(names = "--group", paramLabel = "<groupPathInModel>",
-            description = "the rule's iteration scope (group path inside the model); defaults to the field's parent")
+            description = "the rule's iteration scope (group path inside the model); defaults to the field's parent"
+                    + "; this verb additionally requires the error field to lie INSIDE it, which is stricter than the kernel — the kernel demands containment only once the rule ITERATES, so a non-iterating rule it would admit is refused here (a deliberate narrowing, not a kernel law)")
     String group;
 
     @Option(names = "--severity", defaultValue = "ERROR", paramLabel = "ERROR|WARNING|INFO",
@@ -91,7 +92,9 @@ final class RuleCheckCommand extends BaseCommand {
     public Integer call() {
         String model = model();
         if (!ModelPaths.isAbsoluteEntityPath(field)) {
-            return fail("--field must be an absolute path (e.g. /Group/Field)");
+            return refuseOptionValue(RkCode.INVALID_VALUE,
+                    "--field must be an absolute path (e.g. /Group/Field), got: " + field,
+                    "--field", null, RkCode.INVALID_VALUE.fix());
         }
         String effectiveGroup = group;
         if (effectiveGroup == null) {
@@ -99,7 +102,9 @@ final class RuleCheckCommand extends BaseCommand {
             effectiveGroup = field.substring(0, slash);
         }
         if (!EntityPaths.isStrictlyInside(field, effectiveGroup)) {
-            return fail("--field " + field + " must be inside --group " + effectiveGroup);
+            return refuseOptionValue(RkCode.ERROR_FIELD_OUTSIDE_GROUP,
+                    "--field " + field + " must be inside --group " + effectiveGroup,
+                    "--field", field, RkCode.ERROR_FIELD_OUTSIDE_GROUP.fix());
         }
         String errorEntityRelPath = "../" + field.substring(effectiveGroup.length() + 1);
 

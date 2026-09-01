@@ -755,7 +755,7 @@ class Interpreter(
      * Yielded lazily so a compute-mode consumer that decides early never reads (and never poisons on) a later
      * operand — the kernel's ordered `…EntityAngegeben` read.
      */
-    private fun groupFillStates(args: List<Expr>): Sequence<Tri> = sequence {
+    internal fun groupFillStates(args: List<Expr>): Sequence<Tri> = sequence {
         for (arg in args) when {
             arg is Expr.Star -> {
                 for (rc in ctxOf(arg).groupListEnvironments(arg.path, arg.bindDepth)) {

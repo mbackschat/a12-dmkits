@@ -3462,6 +3462,72 @@
       ]
     },
     {
+      "operator": "NumberOfFilledGroups",
+      "lane": "GOTCHA",
+      "ordinal": 4,
+      "digest": "sha256:c1a44400764d2afd5abe6c036f2e1e6c368eea188894e95f609e73331ea73888",
+      "classifications": [
+        "ADMISSION",
+        "RUNTIME"
+      ],
+      "evidence": [
+        {
+          "classification": "ADMISSION",
+          "type": "KERNEL_LAW",
+          "id": "EmptyGroupOperandLawsTest#theGROUPCOUNTAdmitsANestedShellAtEveryPositionDepthAndArity"
+        },
+        {
+          "classification": "RUNTIME",
+          "type": "TEST",
+          "id": "NestedGroupFillCountLawsTest#aShellWhoseOnlyFieldIsADescendantCountsAsFilled"
+        }
+      ]
+    },
+    {
+      "operator": "NumberOfFilledGroups",
+      "lane": "GOTCHA",
+      "ordinal": 5,
+      "digest": "sha256:5a5cf6c146bfa7b4a0765b7f80c2db262be0b1697e7ca4d8fe3634c58815503b",
+      "classifications": [
+        "ADMISSION",
+        "RUNTIME"
+      ],
+      "evidence": [
+        {
+          "classification": "ADMISSION",
+          "type": "KERNEL_LAW",
+          "id": "EmptyGroupOperandLawsTest#theGROUPCOUNTAdmitsANestedShellAtEveryPositionDepthAndArity"
+        },
+        {
+          "classification": "RUNTIME",
+          "type": "TEST",
+          "id": "NestedGroupFillCountLawsTest#theMixedFormAddsAFixedPresenceBitToTheStarredRowCardinality"
+        }
+      ]
+    },
+    {
+      "operator": "NumberOfFilledGroups",
+      "lane": "GOTCHA",
+      "ordinal": 6,
+      "digest": "sha256:2e9d881c0131f13308ccccc435889a6ae556340e438fa61694a7855cad6a423f",
+      "classifications": [
+        "ADMISSION",
+        "RUNTIME"
+      ],
+      "evidence": [
+        {
+          "classification": "ADMISSION",
+          "type": "KERNEL_LAW",
+          "id": "EmptyGroupOperandLawsTest#theGROUPCOUNTAdmitsANestedShellAtEveryPositionDepthAndArity"
+        },
+        {
+          "classification": "RUNTIME",
+          "type": "TEST",
+          "id": "NestedGroupFillCountLawsTest#aRepeatedStarredOperandIsCountedTWICEAndTwoDistinctStarredOperandsAdd"
+        }
+      ]
+    },
+    {
       "operator": "RepetitionNotUnique",
       "lane": "MEANING",
       "ordinal": 0,
@@ -4798,7 +4864,7 @@
       "operator": "NumberOfDifferentValues",
       "lane": "CONSTRAINT",
       "ordinal": 0,
-      "digest": "sha256:d18d98e644f1caf7479b64fb08f6f8660559bb9f7d38cf909ef212e7b9dda51e",
+      "digest": "sha256:9dd4215a73696ec97ba3ed86f1c74539639b8fe8ba3e98e850bc5ae57f5eb7da",
       "classifications": [
         "REJECTION"
       ],
@@ -4818,7 +4884,7 @@
       "operator": "NumberOfDifferentValues",
       "lane": "CONSTRAINT",
       "ordinal": 2,
-      "digest": "sha256:20ce4ef987afd782466180e46306f8d2b42a42959ce0d9eede3b361a69458aee",
+      "digest": "sha256:c96d5fe4153dbe7836e933f550ab81decd7aa08a17897c08d52428429eb18332",
       "classifications": [
         "REJECTION"
       ],
@@ -4839,6 +4905,16 @@
       "lane": "GOTCHA",
       "ordinal": 0,
       "digest": "sha256:85eea8dda52a0234f26c834aa986a85a3ec5ee6e5a9ee80ea14c7079050639ef",
+      "classifications": [
+        "REJECTION"
+      ],
+      "evidence": []
+    },
+    {
+      "operator": "NumberOfDifferentValues",
+      "lane": "GOTCHA",
+      "ordinal": 1,
+      "digest": "sha256:79e20e88a25b771b46b662a935185480e9f501e55babceb1bd354d43f015d194",
       "classifications": [
         "REJECTION"
       ],
@@ -7935,6 +8011,64 @@
           "id": "adapter.laws.ConstructedRangeFragmentDiffTest"
         }
       ]
+    },
+    {
+      "operator": "True",
+      "lane": "CONSTRAINT",
+      "ordinal": 1,
+      "digest": "sha256:dcdee6f29823f0aaa2d66adbbf86ab4d6e5c6492a73ec01e3ce36fb3ff2fa9f6",
+      "classifications": [
+        "ADMISSION"
+      ],
+      "evidence": [
+        {
+          "classification": "ADMISSION",
+          "type": "CLAIM_PROBE",
+          "id": "True.confirm-computation-target",
+          "expected": {
+            "verdict": "ACCEPTED"
+          }
+        }
+      ]
+    },
+    {
+      "operator": "True",
+      "lane": "GOTCHA",
+      "ordinal": 2,
+      "digest": "sha256:0eb9db2d7dc874482c41553adbacbfd09793e800ced20588a5a43baac36e02ff",
+      "classifications": [
+        "ADMISSION"
+      ],
+      "evidence": [
+        {
+          "classification": "ADMISSION",
+          "type": "CLAIM_PROBE",
+          "id": "True.confirm-computation-target",
+          "expected": {
+            "verdict": "ACCEPTED"
+          }
+        }
+      ]
+    },
+    {
+      "operator": "False",
+      "lane": "CONSTRAINT",
+      "ordinal": 1,
+      "digest": "sha256:cb5b16dd7527201898a354ec1fbe817f5ddc7b792a1d7d8e58d3f80bbe10ee64",
+      "classifications": [
+        "REJECTION"
+      ],
+      "evidence": []
+    },
+    {
+      "operator": "False",
+      "lane": "GOTCHA",
+      "ordinal": 1,
+      "digest": "sha256:15ae03fba6e49a91233300584a563a31cd3055b67f8902669d99c8b63ca5102c",
+      "classifications": [
+        "REJECTION"
+      ],
+      "evidence": []
     }
   ],
   "claims": [
@@ -9583,6 +9717,10 @@
         {
           "lane": "CONSTRAINT",
           "ordinal": 0
+        },
+        {
+          "lane": "GOTCHA",
+          "ordinal": 1
         }
       ],
       "expected": {
@@ -9603,6 +9741,10 @@
         {
           "lane": "CONSTRAINT",
           "ordinal": 0
+        },
+        {
+          "lane": "GOTCHA",
+          "ordinal": 1
         }
       ],
       "expected": {
@@ -9667,6 +9809,10 @@
         {
           "lane": "CONSTRAINT",
           "ordinal": 2
+        },
+        {
+          "lane": "GOTCHA",
+          "ordinal": 1
         }
       ],
       "expected": {
@@ -26314,6 +26460,55 @@
           "type": "CLAIM_PROBE",
           "id": "TimeFromDateTime.plain-date-source",
           "side": "CONTROL"
+        }
+      ]
+    },
+    {
+      "id": "admission.True.confirm-computation-target",
+      "operator": "True",
+      "kind": "COMPUTATION",
+      "units": [
+        {
+          "lane": "CONSTRAINT",
+          "ordinal": 1
+        },
+        {
+          "lane": "GOTCHA",
+          "ordinal": 2
+        }
+      ],
+      "expected": {
+        "verdict": "ACCEPTED"
+      },
+      "evidence": [
+        {
+          "type": "CLAIM_PROBE",
+          "id": "True.confirm-computation-target"
+        }
+      ]
+    },
+    {
+      "id": "rejection.False.confirm-computation-target",
+      "operator": "False",
+      "kind": "COMPUTATION",
+      "units": [
+        {
+          "lane": "CONSTRAINT",
+          "ordinal": 1
+        },
+        {
+          "lane": "GOTCHA",
+          "ordinal": 1
+        }
+      ],
+      "expected": {
+        "verdict": "REJECTED",
+        "code": "MVK_INVALID_COMPARE_TO_YES"
+      },
+      "evidence": [
+        {
+          "type": "CLAIM_PROBE",
+          "id": "False.confirm-computation-target"
         }
       ]
     }

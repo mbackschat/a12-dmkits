@@ -4,7 +4,7 @@
 >
 > **Lifecycle.** §2 holds the live, unfinished work. **This ledger records only OPEN work** — a shipped gap is **deleted**, never kept as a "shipped" list, because such a list duplicates git (the *what/when*) and the finding (the *why*) and rots against both. A gap's durable *why* is its numbered finding in [`API-FINDINGS.md`](API-FINDINGS.md), which names the `DGn` it closed, so a code comment citing `DEV-API-GAPS DGn` — or a legacy `DEV-API-GAPS §N` — resolves **by topic**: grep `API-FINDINGS.md` for the id. Two deliberate exceptions: the editor-ergonomics pair **DG11/DG12** is shown in API-GUIDE [§5c](API-GUIDE.md#refs-and-editors) instead, and **DG16** was declined rather than built, so its decision lives in §3 here.
 >
-> **Current state.** §2 is empty as of 2026-08-24. A row lands here only when a new developer-facing authoring friction is both surfaced and queued.
+> **Current state.** §2 lists what is open; read it rather than this paragraph. A row lands there only when a new developer-facing authoring friction is both surfaced and queued, and it is deleted when it ships — so a closed gap's *why* is its [API-FINDINGS](API-FINDINGS.md) finding, not a line here.
 >
 > **Scope — the filter that matters.** dmkits has **model-authoring scope**: it defines, edits, validates, reads, and tests a document **model** — its fields/groups/type-defs/includes/config and its **rules + computations** (the condition-language DSL). It is **not** a runtime form engine, a document-instance data-binding layer, a rendering/UI toolkit, or a persistence/service layer. The kernel dev doc is ~80% about the *runtime consumer* (manipulating document *instances*); those concerns are deliberately **out of scope** (§3).
 
@@ -36,7 +36,7 @@ The gaps below were the **ergonomic and consistency remainder** — what added f
 
 ## 2. Open
 
-- **DG40 — the interpreter-bridge's operator mapping is measured against the kernel for a fifth of its surface.**
+- **DG44 — the interpreter-bridge's operator mapping is measured against the kernel for a fifth of its surface.**
   The bridge maps ~84 operator names; `adapter.ConditionReadBackParityTest` — the ONLY place a mapping is checked
   against the kernel rather than against our own expectation — covers 18 constructs, ~17 distinct ids. Seven names
   have no mention in any test: `AtLeastOneFieldFilled`, `DifferenceInMinutes`, `MoreThanOneFieldFilled`,
@@ -53,7 +53,7 @@ The gaps below were the **ergonomic and consistency remainder** — what added f
   be generated from the operator catalog, so the denominator moves with the catalog instead of by hand. Recall
   limit on the 84: a regex over `when`-branch literals, so it misses any dispatch not written as a quoted branch.
 
-- **DG41 — two guards state invariants broader than what they enforce.** Both hold today, and neither is enforced
+- **DG45 — two guards state invariants broader than what they enforce.** Both hold today, and neither is enforced
   by the oracle its citation implies, so a future change can falsify them silently.
   `PublicApiGuardTest.noThirdPartyTypeOnAnyPublishedSignature` allows `java.`/`javax.`/`io.github.mbackschat.`,
   which RELEASE-SPEC §11 justifies as stopping an `implementation`-scoped dependency from reaching a consumer's
@@ -65,6 +65,10 @@ The gaps below were the **ergonomic and consistency remainder** — what added f
   source text for `com.mgmtp.`/`groovy.`, so a `testImplementation project(':adapter')` would pass it while putting
   the kernel on the classpath; the claim it is cited for holds today, and the oracle that shows it is
   `:interpreter-bridge:dependencies --configuration testRuntimeClasspath`, which no guard runs.
+
+- **DG43 — `Computation.Builder` gates a constant against the target's declared KIND, and the kernel gates it against the declared FORMAT STRING** (found 2026-08-31 while measuring a12-kernel-lean's `SPEC-2026-08-31-03`; measured in [KF222](KERNEL-FINDINGS.md#kf222), locked in `adapter.laws.ConstantTargetFormatLawsTest.ourTypedBuilderIsStricterThanTheKernelOnTheCrossKindCells`). `build()` requires `operation.kind() == computedField.kind()`, so it refuses `Dsl.timeValue("12:30:00")` into a DATE-kind field — a cell the kernel both **admits and stores** when that field is declared `HH:mm:ss`, and symmetrically for a date constant into a TIME-kind field declared `yyyy-MM-dd`. This is a measured over-rejection under the standing client-side-refusal rule, and the fix is not a loosened predicate: the kernel's input is the declared format, which `FieldRef.kind()` does not carry, so a conforming check needs the format on the ref (or a format-aware `ValueKind` derivation) and reaches every constant-assignment site. Blast radius and whether the kind check should become format-aware everywhere or only for constants is a design call, so it is filed rather than fixed in passing. Until then the narrowing is documented in [KF222](KERNEL-FINDINGS.md#kf222) rather than merely true.
+
+- **DG42 — the entity-list aggregates have no UNSTARRED group-operand factory, and the kernel admits one** (found 2026-08-31 while measuring a12-kernel-lean's `EXP-2026-08-31-02`). `AggregateOperand` permits `FieldOperand` and the **starred** `GroupListRef` only, so `Sum`, `MinValue`, `MaxValue`, `NumberOfDifferentValues` and every `numberOfValueInFields` overload can take a starred group but not a plain `GroupRef` — while `numberOfFilledFields(GroupRef first, GroupRef... rest)` already has exactly that overload, backed by `CountAggregate`'s separate `groups` list. Measured on kernel 30.8.1 over a nonrepeatable shell: `Sum(Shell)`, `MinValue(Shell)`, `MaxValue(Shell)`, `NumberOfDifferentValues(Shell)`, `NumberOfValueInFields("x" In Shell)` and `NumberOfValueInFields(True In Shell)` are **all admitted**, so this is a type-level erasure over a legal shape rather than a refusal — the shape reads as "not a thing" instead of "refused", which is the harder half to see. **The cost it imposed:** `adapter.laws.GroupOperandOverLimitExtentDiffTest` had to author its conditions as raw strings, so a probe of a kernel-legal shape could not be driven from the typed surface. **Shape of the fix:** give `ListAggregate` a `groups` list beside its operands, exactly as `CountAggregate` already carries one, and add the `GroupRef` overloads; the kind gate stays kernel-delegated for the same reason `AggregateOperand` already delegates it (the expansion's extent is not ours to re-derive). **What must be measured before widening further:** the admission matrix above covers six carriers on one fixture at `en_US`; a `GroupRef` overload on a carrier not in it would be an unmeasured widening.
 
 ---
 

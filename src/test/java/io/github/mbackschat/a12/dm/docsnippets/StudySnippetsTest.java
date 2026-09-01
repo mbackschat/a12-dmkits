@@ -196,6 +196,13 @@ class StudySnippetsTest {
     static Condition uniqueBy(GroupRef repeating, FieldRef key) {
         return groupFilled(repeating).and(repetitionNotUnique(key));               // + .from(scope) for @From
     }
+
+    /** Bulk authoring over a field set gathered by navigation — every fill quantifier and the filled COUNT
+     *  take the same `List`, so a caller holding one never unrolls it back into varargs. */
+    static Condition partiallyCompleted(List<FieldRef> section) {
+        return Dsl.notAllFieldsFilled(section)                                     // the list peer of every
+                .and(Dsl.numberOfFilledFields(section).gt(0));                     // quantifier, count included
+    }
     // end::study-fragments[]
 
     @Test

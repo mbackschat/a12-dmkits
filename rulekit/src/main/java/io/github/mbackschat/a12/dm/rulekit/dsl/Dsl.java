@@ -109,6 +109,28 @@ public final class Dsl {
     }
 
     /**
+     * {@code NumberOfFilledFields(f1, …)} over a built list — the list peer of the varargs form above, for
+     * bulk authoring (a field set gathered by navigation, then asked both "are they all filled" and "how many
+     * are"). The eight fill quantifiers have carried such a peer since they were added; this one had not,
+     * which forced a consumer holding a list to unroll it.
+     *
+     * <p>The arity law is the varargs form's, checked here because a list makes it a runtime question: fewer
+     * than two operands is an {@link IllegalArgumentException}. A single repetition list or group scope is
+     * genuinely valid alone and reaches the kernel through {@link #numberOfFilledFields(FieldListRef)} and
+     * {@link #numberOfFilledFields(GroupListRef)}, whose separate declarations are what keep a lone bare
+     * field from silently becoming legal.
+     */
+    public static NumberExpr numberOfFilledFields(List<? extends AggregateOperand> fields) {
+        if (fields.size() < 2) {
+            throw new IllegalArgumentException(
+                    "NumberOfFilledFields over a list needs at least two operands, got " + fields.size()
+                            + " — a single repetition list or group scope has its own overload");
+        }
+        return new NumberExpr(new CountAggregate(CountAggregate.CountOp.FILLED_FIELDS,
+                java.util.List.copyOf(fields), java.util.List.of()));
+    }
+
+    /**
      * {@code NumberOfFilledFields(scope)} over a single flattened repetition list — counts the filled
      * fields across one wildcard scope (e.g. the flatten of {@code IndexFields*} then {@code indexField}).
      * The single-list form is valid on its own (the param law exempts a repetition list, verified — see
@@ -1949,6 +1971,14 @@ public final class Dsl {
      * {@code $#<groupPath>$}, the kernel's placeholder for the 1-based row number of the repeatable
      * {@code group}'s current repetition. Pairs naturally with a uniqueness/per-row rule:
      * {@code en("Row #" + repetitionIndex(items) + " is invalid.")}.
+     *
+     * <p><b>The named group must CONTAIN the rule</b> — its own group, or any ancestor of it. A descendant, a
+     * sibling, or anything under another root is refused {@code INVALID_GROUP}, and a first segment that names
+     * no declared root is refused earlier still, {@code INVALID_ROOT_GROUP}
+     * (KERNEL-FINDINGS {@code KF214}). Acquiring the {@link GroupRef} from a BOUND model is what keeps this side of the trap closed:
+     * {@code BoundModel.group(String)} refuses a path that does not resolve, so the token is emitted absolute. The
+     * constructor is public and {@code EntityPath} is deliberately permissive, so a hand-built relative ref renders
+     * one verbatim — this method does not normalize, and nothing downstream refuses it before the kernel does.
      */
     public static String repetitionIndex(GroupRef group) {
         return "$#" + group.path() + "$";

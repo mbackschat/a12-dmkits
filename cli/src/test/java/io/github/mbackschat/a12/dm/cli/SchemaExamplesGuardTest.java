@@ -1,6 +1,7 @@
 package io.github.mbackschat.a12.dm.cli;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.InputStream;
@@ -60,10 +61,20 @@ class SchemaExamplesGuardTest {
     void computationSpecExamplesAlsoDriveTheModifyRouteAndChangeItsCandidate(@TempDir Path dir) throws Exception {
         Path model = CliTestSupport.modelWithRuleAndComputation(dir);
         String before = Files.readString(model);
-        JsonNode examples = schema("computation-add").path("examples");
-        assertEquals(1, examples.size(), "the shared computation input schema has one canonical example");
+        // The modify route re-expresses an EXISTING computation, so only an example that lands on the fixture's
+        // own computation can drive it: one declaring a `group` synthesizes a different full name and would be
+        // refused for naming another computation, which is correct behaviour and a useless demonstration.
+        JsonNode candidate = null;
+        for (JsonNode ex : schema("computation-add").path("examples")) {
+            if (!ex.hasNonNull("group")) {
+                candidate = ex;
+                break;
+            }
+        }
+        assertNotNull(candidate, "one computation example must place the computation in its computed field's"
+                + " own group, so the modify route has a candidate to re-express");
         Path spec = dir.resolve("computation-modify.json");
-        Files.writeString(spec, examples.get(0).toString());
+        Files.writeString(spec, candidate.toString());
 
         CliTestSupport.Result preview = CliTestSupport.run("-m", model.toString(), "computation", "modify",
                 CliTestSupport.COMPUTATION_FULL_NAME, "--spec", spec.toString(), "--dry-run");

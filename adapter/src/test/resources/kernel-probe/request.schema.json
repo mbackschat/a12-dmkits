@@ -4,7 +4,8 @@
   "title": "KernelProbeRequest",
   "description": "The `-Prequest=` input of `./gradlew :adapter:kernelProbe`: one document model plus one or more named documents to observe the REAL kernel's runtime validation over. Relative `model`/`document` references resolve against THIS FILE'S directory, so a request and its inputs form one movable bundle. The probe grows no authoring surface: the model is authored with dmtool's structured verbs (`rule add`, `computation add`, …) and passed here already complete, self-contained, and expanded — it is loaded exactly as the kernel's own deserializer does, with no reference resolution, so an unexpanded model is refused. The normative contract is docs/KERNEL-PROBE-SPEC.md.",
   "type": "object",
-  "required": ["model", "rows"],
+  "required": ["model"],
+  "$comment": "`rows` is conditionally required rather than always: see the allOf at the end, which mirrors the producer's own rule that a per-row observation needs rows and validateFull, and that a model-level-only request needs neither.",
   "additionalProperties": false,
   "properties": {
     "model": {
@@ -26,17 +27,16 @@
       "type": "array",
       "minItems": 1,
       "default": ["validateFull"],
-      "contains": { "const": "validateFull" },
       "items": {
-        "enum": ["validateFull", "compute"],
-        "description": "a kernel runtime entry point, named as the kernel names the method: `validateFull` produces each engine block's `messages`, `compute` its `computations`."
+        "enum": ["validateFull", "compute", "validatePart", "mandatoryInformation"],
+        "description": "a kernel entry point, named as the kernel names the method. Three are PER-ROW: `validateFull` produces each engine block's `messages`, `compute` its `computations`, `validatePart` its `partialMessages`. One is PER-MODEL: `mandatoryInformation` (`IRuleCollectionMetaInformation.getMandatoryInformationFromRules`) reads the model's rule conditions, needs no document, and produces the top-level `mandatoryInformation` block once for the request. `validatePart` additionally requires every row to carry `relevant`, because a partial validation with no declared coverage would silently be a full one."
       },
-      "description": "which kernel runtime entry points to observe. OMIT IT for validation alone — that is the default, and a request without this key produces a BYTE-IDENTICAL artifact to the one it produced before `compute` was observable, so an already-pinned SHA-256 stays valid. `validateFull` may not be dropped: an engine block's `messages` is a REQUIRED key of schemaVersion 1, so a list left empty because nobody looked would be indistinguishable from one where nothing fired. (`computations` avoids that ambiguity by being absent when unobserved; `messages` was not given the same treatment because making a required key optional changes the shape of artifacts consumers already pin. The refusal is therefore a compatibility decision, and it costs a compute-only consumer a validation pass per row per strategy.) Duplicates are accepted — this is a set. An explicit empty array is refused: omitting the key means the default, writing `[]` means a mistake."
+      "description": "which kernel entry points to observe. OMIT IT for validation alone — that is the default, and a request without this key produces a BYTE-IDENTICAL artifact to the one it produced before `compute` was observable, so an already-pinned SHA-256 stays valid. `validateFull` may not be dropped WHENEVER ANY ROW IS OBSERVED: an engine block's `messages` is a REQUIRED key of schemaVersion 1, so a list left empty because nobody looked would be indistinguishable from one where nothing fired. (`computations` avoids that ambiguity by being absent when unobserved; `messages` was not given the same treatment because making a required key optional changes the shape of artifacts consumers already pin. The refusal is therefore a compatibility decision, and it costs a compute-only consumer a validation pass per row per strategy.) A request naming ONLY model-level observations observes no row, so it neither needs nor accepts `rows`, and `validateFull` does not apply. Duplicates are accepted — this is a set. An explicit empty array is refused: omitting the key means the default, writing `[]` means a mistake."
     },
     "rows": {
       "type": "array",
       "minItems": 1,
-      "description": "the ordered observations. Each row's document is evaluated on every kernel strategy; the artifact keeps the row order.",
+      "description": "the ordered observations. Each row's document is evaluated on every kernel strategy; the artifact keeps the row order. REQUIRED whenever `observe` names a per-row entry point, and REFUSED when it names only model-level ones — a row nothing looks at is the same silent no-op the `validateFull` rule refuses.",
       "items": {
         "type": "object",
         "required": ["name"],
@@ -53,6 +53,26 @@
           "documentInline": {
             "type": "object",
             "description": "the A12 canonical Document JSON embedded directly, for a self-contained single-file request. Exactly one of `document` / `documentInline` is required."
+          },
+          "relevant": {
+            "type": "array",
+            "description": "this row's CALLER-SUPPLIED relevant set for `validatePart` — required exactly when `observe` names it, and refused otherwise (a key nothing reads). An EMPTY array is not an omission: it is the kernel's `noneRelevant` coverage, one of the two shapes `validateFull` cannot express. A relevant group makes all its descendants relevant.",
+            "items": {
+              "type": "object",
+              "required": ["path"],
+              "additionalProperties": false,
+              "properties": {
+                "path": {
+                  "type": "string",
+                  "description": "the model path of the relevant element, e.g. /Order/Lines/Amount"
+                },
+                "reps": {
+                  "type": "array",
+                  "items": { "type": "integer", "minimum": 0 },
+                  "description": "the 1-based repetition index of each part of `path`, in order — ONE PER PATH PART, not per repeatable part. The kernel refuses a mismatch outright (`fullName and repetition have different length`), so `/Order/Lines/Amount` needs three entries even when only `Lines` repeats. `0` is the kernel's own wildcard (`IEntityInstance.ALL_SEMANTIC`) meaning every repetition of that element. OMIT the key for the all-wildcard coverage of the right length, which is what almost every consumer wants and removes the need to count parts by hand."
+                }
+              }
+            }
           }
         }
       }
@@ -74,6 +94,81 @@
       "rows": [
         { "name": "shipping-fee-malformed", "document": "shipping-fee-malformed.json" }
       ]
+    },
+    {
+      "model": "order.dm.json",
+      "observe": ["mandatoryInformation"]
+    },
+    {
+      "model": "order.dm.json",
+      "observe": ["validateFull", "validatePart"],
+      "rows": [
+        {
+          "name": "whole-order-relevant",
+          "document": "billing-filled.json",
+          "relevant": [{ "path": "/Order" }]
+        },
+        {
+          "name": "second-line-relevant",
+          "document": "billing-filled.json",
+          "relevant": [{ "path": "/Order/Lines/Amount", "reps": [0, 2, 0] }]
+        },
+        {
+          "name": "none-relevant",
+          "document": "billing-filled.json",
+          "relevant": []
+        }
+      ]
+    }
+  ],
+  "allOf": [
+    {
+      "$comment": "no `observe` means the default ['validateFull'], which is per-row",
+      "if": { "not": { "required": ["observe"] } },
+      "then": { "required": ["rows"] }
+    },
+    {
+      "$comment": "any per-row observation requires both `rows` and `validateFull`",
+      "if": {
+        "required": ["observe"],
+        "properties": { "observe": { "contains": { "enum": ["validateFull", "compute", "validatePart"] } } }
+      },
+      "then": {
+        "required": ["rows"],
+        "properties": { "observe": { "contains": { "const": "validateFull" } } }
+      }
+    },
+    {
+      "$comment": "only model-level observations read no document, so a row would be observed by nothing",
+      "if": {
+        "required": ["observe"],
+        "properties": {
+          "observe": { "not": { "contains": { "enum": ["validateFull", "compute", "validatePart"] } } }
+        }
+      },
+      "then": { "not": { "required": ["rows"] } }
+    },
+    {
+      "$comment": "validatePart needs a declared coverage per row; without one it would silently be validateFull",
+      "if": {
+        "required": ["observe"],
+        "properties": { "observe": { "contains": { "const": "validatePart" } } }
+      },
+      "then": {
+        "properties": { "rows": { "items": { "required": ["relevant"] } } }
+      }
+    },
+    {
+      "$comment": "…and a relevant set nothing reads is the same silent no-op the rules above refuse",
+      "if": {
+        "anyOf": [
+          { "not": { "required": ["observe"] } },
+          { "properties": { "observe": { "not": { "contains": { "const": "validatePart" } } } } }
+        ]
+      },
+      "then": {
+        "properties": { "rows": { "items": { "not": { "required": ["relevant"] } } } }
+      }
     }
   ]
 }

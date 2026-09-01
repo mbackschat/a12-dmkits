@@ -90,6 +90,7 @@ public record io.github.mbackschat.a12.dm.core.EntityPath
   public boolean isInside(io.github.mbackschat.a12.dm.core.EntityPath)
   public boolean isStrictlyInside(io.github.mbackschat.a12.dm.core.EntityPath)
   public static io.github.mbackschat.a12.dm.core.EntityPath of(java.lang.String)
+  public java.lang.String relativize(io.github.mbackschat.a12.dm.core.EntityPath)
   public java.util.List<java.lang.String> segments()
   public java.lang.String toString()
   public java.lang.String value()
@@ -151,6 +152,7 @@ public final class io.github.mbackschat.a12.dm.core.ModelIndex
   public java.util.OptionalInt stringMinLength(java.lang.String)
   public boolean stringNoValueValidation(java.lang.String)
   public java.util.Optional<java.lang.String> stringPattern(java.lang.String)
+  public java.util.Optional<java.lang.String> temporalFormat(java.lang.String)
   public java.util.Optional<java.lang.String> typeReferenceOf(java.lang.String)
   public java.util.Optional<java.lang.String> usageTypeOfGroup(java.lang.String)
 

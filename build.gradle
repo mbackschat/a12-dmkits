@@ -141,6 +141,10 @@ tasks.named('test') {
     dependsOn 'catalogProseReviewGuardTest'
     dependsOn 'releaseGapGuardTest'
     dependsOn 'leakGuardTest'
+    // Same tier and for the stated reason: it binds docs/TEMPORAL-FORMAT-VOCABULARY.md to the kernel that
+    // decides it, declares its inputs, and costs ~3 s. It first hung off `check` alone, which CI does not run
+    // (`ci.yml` names `test`), so the guard would have been unreachable exactly where it matters.
+    dependsOn 'vocabularyGuardTest'
     if (!project.hasProperty('fast')) {
         dependsOn 'docGuardTest'
         dependsOn 'interpreterReleaseGuardTest'
@@ -158,9 +162,11 @@ tasks.named('test') {
     // `interpreterReleaseGuardTest` runs its own `releaseGuardTest` source set, so neither owns anything here.
     routeExclusivelyHostedTests(it, ['docGuardTest', 'jsonConstructionGuardTest', 'apiGuardTest',
                                      'catalogProseReviewGuardTest', 'deliveryGuardTest', 'releaseGapGuardTest',
-                                     'leakGuardTest'],
-            ['dumpKitApi'     : 'regenerator over apiGuardTest\'s class — writes the goldens instead of asserting',
-             'syncDocSnippets': 'regenerator over docGuardTest\'s class — writes the snippets instead of asserting'])
+                                     'leakGuardTest', 'vocabularyGuardTest'],
+            ['dumpKitApi'             : 'regenerator over apiGuardTest\'s class — writes the goldens instead of asserting',
+             'syncDocSnippets'        : 'regenerator over docGuardTest\'s class — writes the snippets instead of asserting',
+             'dumpTemporalVocabulary' : 'regenerator over vocabularyGuardTest\'s class — writes the derived '
+                     + 'vocabulary instead of asserting against it'])
 }
 
 // A12 JSON construction is a ROLE boundary, not a module boundary (API-FINDINGS 103 / IF228): this guard reads
@@ -216,6 +222,10 @@ tasks.register('leakGuardTest', Test) {
         // declaring it, and a one-dialect `stat` spelling is invisible on this platform by construction
         // (docs/BUILD-ENVIRONMENT.md "`stat` has two dialects").
         includeTestsMatching 'io.github.mbackschat.a12.dm.ShellPortabilityGuardTest'
+        // A copied mirror workflow is as executable as a live workflow once published. Derive this denominator
+        // from Git as well, so neither tree can silently reintroduce a moving hosted-runner label.
+        includeTestsMatching 'io.github.mbackschat.a12.dm.RunnerImagePinGuardTest'
+        includeTestsMatching 'io.github.mbackschat.a12.dm.NodeRuntimePinGuardTest'
     }
 }
 
@@ -493,6 +503,9 @@ tasks.register('deliveryGuardTest', Test) {
         includeTestsMatching 'io.github.mbackschat.a12.dm.ReleasePerfGateRefusalTest'
         includeTestsMatching 'io.github.mbackschat.a12.dm.JdkPinScriptTest'
         includeTestsMatching 'io.github.mbackschat.a12.dm.LaneGuardScriptTest'
+        includeTestsMatching 'io.github.mbackschat.a12.dm.TestEvidenceScriptTest'
+        includeTestsMatching 'io.github.mbackschat.a12.dm.InfographicFreshnessLocaleTest'
+        includeTestsMatching 'io.github.mbackschat.a12.dm.TypeScriptRuntimeLauncherTest'
     }
     guardInputs(it, [
             'release perf gate'       : file('scripts/release-perf-gate.sh'),
@@ -509,6 +522,27 @@ tasks.register('deliveryGuardTest', Test) {
             // "verified" locally against a task that had not run, and only reading the task state caught it.
             'pre-commit hook'         : file('.githooks/pre-commit'),
             'doc-guard hook self-test': file('scripts/selftest-precommit-doc-guards.sh'),
+            'pre-push hook'           : file('.githooks/pre-push'),
+            'pre-push hook self-test' : file('scripts/selftest-prepush-ci.sh'),
+            'infographic preflight'   : file('scripts/check-infographic-freshness.sh'),
+            'infographic implementation': file('scripts/typescript/check-infographic-freshness.ts'),
+            'TypeScript launcher'     : file('scripts/run-typescript.sh'),
+            'TypeScript runtime consumers': files(
+                    'scripts/verify-demos.sh',
+                    'scripts/native-gate.sh',
+                    'cli/src/main/java/io/github/mbackschat/a12/dm/cli/interp/CustomJsWorker.java'),
+            'infographic live documents': files(
+                    'README.md',
+                    'docs/INFOGRAPHICS.md',
+                    'interpreter/public-release/PERFORMANCE.md',
+                    'plugin/README.md',
+                    'interpreter/public-release/README.md',
+                    '.github/workflows/ci.yml'),
+            'infographic live assets': fileTree('.') {
+                include 'assets/infographics/*.png'
+                include 'plugin/assets/infographics/*.png'
+                include 'interpreter/public-release/assets/infographics/*.png'
+            },
             'Gradle environment'      : file('scripts/gradle-environment.sh'),
             // JdkPinScriptTest executes this selftest, which sources gradle-environment.sh — so BOTH are
             // runtime inputs, the same pairing as the doc-guard hook above.
@@ -518,6 +552,12 @@ tasks.register('deliveryGuardTest', Test) {
             // every invocation, so a break here breaks every build, not just this lane.
             'lane guard'              : file('scripts/lane-guard.sh'),
             'lane guard self-test'    : file('scripts/selftest-lane-guard.sh'),
+            // TestEvidenceScriptTest executes this selftest, which copies the shell command, shared Node gate,
+            // and TypeScript implementation into fabricated repos — all are runtime inputs. This tool's output
+            // is read AS evidence, so a silent break in it is believed rather than noticed.
+            'evidence reporter'       : file('scripts/test-evidence.sh'),
+            'evidence implementation': file('scripts/typescript/test-evidence.ts'),
+            'evidence self-test'      : file('scripts/selftest-test-evidence.sh'),
             'native build contract'   : file('cli/build.gradle'),
             'native no-Java smoke'    : file('scripts/native-no-java-smoke.sh'),
             'Codex activation smoke'  : file('scripts/codex-plugin-activation-smoke.sh'),
@@ -672,6 +712,7 @@ tasks.register('docGuardTest', Test) {
             'cache smoke'      : file('scripts/verify-build-cache.sh'),
             'demo verifier'    : file('scripts/verify-demos.sh'),
             'CI workflow'      : file('.github/workflows/ci.yml'),
+            'infographic specification': file('docs/INFOGRAPHICS.md'),
             'nightly workflow' : file('.github/workflows/nightly-performance.yml'),
             'perf launcher'    : file('scripts/perf.sh'),
             // Both joined the JDK-pin denominator when they stopped re-encoding `java_home -v 21`. The JS one
@@ -688,6 +729,7 @@ tasks.register('docGuardTest', Test) {
             // script would leave the lane UP-TO-DATE with its verdicts unchecked — which is how its first
             // version shipped with two wrong ones.
             'doctor'           : file('scripts/doctor.sh'),
+            'TypeScript runtime gate': file('scripts/run-typescript.sh'),
             // ObligationsScriptTest executes the selftest, which copies obligations.sh into fabricated repos —
             // so BOTH are runtime inputs. Declared together: with only the selftest declared, editing the rule
             // it checks would leave this lane UP-TO-DATE and the new behaviour unverified.
@@ -781,6 +823,45 @@ tasks.register('interpreterReleaseGuardTest', Test) {
 
 // The fixer: regenerate the five kit goldens in place from the live dump. One command, no hand-copy. The
 // default run stays assert-only (CI catches a forgotten regenerate); only this task flips to the writer.
+// The vocabulary guard probes the KERNEL (a few hundred consistency checks, ~4 s) and reads the derived artifact
+// plus every consumer that claims to enumerate the admitted set. Its own task for the usual two reasons: an edit
+// to one of those consumers re-runs this guard alone rather than the broad root suite, and the inputs are
+// declared so a cached green cannot leave a consumer's enumeration unchecked.
+tasks.register('vocabularyGuardTest', Test) {
+    description = 'The admitted temporal format vocabulary is derived from the kernel, and every consumer that claims it agrees.'
+    group = 'verification'
+    useJUnitPlatform()
+    testClassesDirs = sourceSets.test.output.classesDirs
+    classpath = sourceSets.test.runtimeClasspath
+    filter {
+        includeTestsMatching 'io.github.mbackschat.a12.dm.rulekit.validate.laws.TemporalFormatVocabularyGuardTest'
+    }
+    guardInputs(it, [
+            'the derived vocabulary': file('docs/TEMPORAL-FORMAT-VOCABULARY.md'),
+            // Every registered consumer is read at runtime; undeclared, dropping a format from one would leave
+            // this lane UP-TO-DATE and the containment check unrun — the exact staleness the guard exists for.
+            'vocabulary consumers'  : files(
+                    'adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/TemporalDeclaredFormatGateDiffTest.kt',
+                    'interpreter/src/commonTest/kotlin/io/github/mbackschat/a12/dm/interpreter/TemporalDeclaredFormatFormalTest.kt'),
+    ])
+}
+
+// The temporal format vocabulary is DERIVED from the kernel, never authored: `dumpTemporalVocabulary` runs the
+// guard with `temporalVocabulary.fix=true` so it writes docs/TEMPORAL-FORMAT-VOCABULARY.md instead of asserting
+// against it — the same fixer shape as `dumpKitApi` and `:cli:dumpOperatorIndex`. It owns no class of its own.
+tasks.register('dumpTemporalVocabulary', Test) {
+    group = 'documentation'
+    description = 'Regenerate docs/TEMPORAL-FORMAT-VOCABULARY.md by probing the kernel over the candidate universe.'
+    useJUnitPlatform()
+    testClassesDirs = sourceSets.test.output.classesDirs
+    classpath = sourceSets.test.runtimeClasspath
+    systemProperty 'temporalVocabulary.fix', 'true'
+    outputs.upToDateWhen { false }
+    filter {
+        includeTestsMatching 'io.github.mbackschat.a12.dm.rulekit.validate.laws.TemporalFormatVocabularyGuardTest'
+    }
+}
+
 tasks.register('dumpKitApi', Test) {
     group = 'documentation'
     description = 'Regenerate the published public-API goldens under api/ from the live reflection dump (autonomous, in place).'

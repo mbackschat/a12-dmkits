@@ -334,12 +334,13 @@ class DmInterpreter private constructor(
 
     /**
      * Whether a STARRED operation has complete extent in PARTIAL mode (IF42, IF262). The kernel evaluates an
-     * all-rows aggregate (`Sum`/`Max`/`Min`/`NumberOfDifferentValues`, but NOT `SumOfProducts`) only when its reduced
-     * relevant identifiers wildcard every repeatable level traversed by the star. Relevant ancestor groups first
+     * all-rows aggregate (`Sum`/`Max`/`Min`/`NumberOfDifferentValues`, but NOT `SumOfProducts`) and the direct
+     * filled-field/group counts only when its reduced relevant identifiers wildcard every repeatable level
+     * traversed by the star. Relevant ancestor groups first
      * expand to the operand path, and a broader wildcard identifier removes every narrower identifier it encompasses.
      * After that reduction, ANY remaining concrete coordinate at a starred level makes the extent unknown.
-     * `FirstFilled` does not use this path because it is order-aware. The same fact also gates a starred VALUE-LIST
-     * quantifier's complete extent (`No` either side / `NotAll` values side, SPEC-2026-07-22-09).
+     * `FirstFilled` does not use this path because it is order-aware. Starred value-list quantifiers and
+     * `NumberOfValueInFields` use the existential [starExtentKnownOf] instead.
      */
     private fun starRelevantOf(relevant: Set<RelevantEntity>): (String, Int, List<Int>) -> Boolean {
         val candidates = wellFormed(relevant)
@@ -360,9 +361,9 @@ class DmInterpreter private constructor(
     }
 
     /**
-     * A starred VALUE-LIST entry's complete-extent gate — the same star anchor and per-iteration-row scope as
-     * [starRelevantOf], but **EXISTENTIAL**: one covering relevant identifier that wildcards every reopened
-     * level establishes the extent, and concrete siblings surviving beside it do NOT suppress it.
+     * A starred VALUE-LIST or `NumberOfValueInFields` entry's complete-extent gate uses the same star anchor and
+     * per-iteration-row scope as [starRelevantOf], but **EXISTENTIAL**: one covering relevant identifier that
+     * wildcards every reopened level establishes the extent, and concrete siblings surviving beside it do NOT suppress it.
      *
      * The two gates were briefly one predicate, on the reasoning that they answer the same structural question.
      * They do not. On `{field wildcard} + {concrete group rows}` the kernel FIRES a starred `No` and is SILENT

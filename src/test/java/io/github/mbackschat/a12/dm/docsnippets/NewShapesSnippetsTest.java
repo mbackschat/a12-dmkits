@@ -52,6 +52,20 @@ class NewShapesSnippetsTest {
                             .dateRangeField("RunWindow", r -> r.format("yyyy-MM-dd").separator("/"))))
             .build().toJson();
     private static final BoundModel promo = BoundModel.ofJson(PROMO_JSON);
+    private static final String FULFILMENT_JSON = DocumentModelDraft.named("fulfilment").locale("en_US")
+            .rootGroup("Fulfilment", root -> root
+                    // A TimeType field declaring a DATE format: model-legal, and the shape an imported or
+                    // hand-edited model really does arrive in. It stores and compares as a date.
+                    .timeField("PromisedDay", f -> f.format("yyyy-MM-dd"))
+                    .dateField("ShippedOn", f -> f.format("yyyy-MM-dd")))
+            .build().toJson();
+    private static final BoundModel fulfilment = BoundModel.ofJson(FULFILMENT_JSON);
+    private static final String DEPOT_JSON = DocumentModelDraft.named("depot").locale("en_US")
+            .rootGroup("Depot", root -> root
+                    .group("Stock", stock -> stock.numberField("StockLevel", n -> n.fractionDigits(0)))
+                    .group("Policy", policy -> policy.numberField("MinimumOnHand", n -> n.fractionDigits(0))))
+            .build().toJson();
+    private static final BoundModel depot = BoundModel.ofJson(DEPOT_JSON);
 
     @Test
     void dateMinMaxSnippet() {
@@ -215,6 +229,28 @@ class NewShapesSnippetsTest {
                 new DslRenderer().render(attachment));
     }
 
+    @Test
+    void temporalDeclaredFormatSnippet() {
+        // tag::temporal-declared-format[]
+        // A12 reads a temporal field's DECLARED FORMAT and never its kind, at every gate below the
+        // declaration — so a TimeType field declared `yyyy-MM-dd` IS a date: it carries the Gregorian floor,
+        // compares against a DATE, and answers the date extractors. The typed handles follow the declaration,
+        // so `date(...)` accepts it and no raw condition string is needed for a model that arrives this way.
+        Condition promisedAfterShipping = fulfilment.date("/Fulfilment/PromisedDay")
+                .after(fulfilment.date("/Fulfilment/ShippedOn"));
+        NumberExpr promisedYear = Dsl.yearFromDate(fulfilment.date("/Fulfilment/PromisedDay"));
+        // Read the declaration that decided it; `HoursFromTime` on the same cell is refused by the kernel.
+        String declared = fulfilment.fieldAt("/Fulfilment/PromisedDay").orElseThrow().format().orElseThrow();
+        // end::temporal-declared-format[]
+        assertEquals("[/Fulfilment/PromisedDay] > [/Fulfilment/ShippedOn]",
+                new DslRenderer().render(promisedAfterShipping));
+        assertEquals("YearFromDate(/Fulfilment/PromisedDay) == 2024",
+                new DslRenderer().render(promisedYear.eq(2024)));
+        assertEquals("yyyy-MM-dd", declared);
+        assertKernelAccepts(FULFILMENT_JSON, "/Fulfilment", promisedAfterShipping, "../PromisedDay");
+        assertKernelAccepts(FULFILMENT_JSON, "/Fulfilment", promisedYear.eq(2024), "../PromisedDay");
+    }
+
     private static void assertKernelAccepts(Condition condition, String errorField) {
         assertKernelAccepts(Fixtures.orderJson(), "/Order", condition, errorField);
     }
@@ -312,5 +348,25 @@ class NewShapesSnippetsTest {
                 .build();
         // end::computation-suppress[]
         assertTrue(new RuleValidator().check(Fixtures.orderJson(), comp.draft()).ok());
+    }
+
+    @Test
+    void computationDeclaringGroupSnippet() {
+        // tag::computation-group[]
+        // A computation LIVES in one group and WRITES to another. `group(...)` declares the element in the
+        // policy container while it computes the stock block's field; the stored computedFieldRelPath is
+        // derived from the pair, never authored. The one refusal is CONTAINMENT UNDER DERIVED ITERATION:
+        // when the computation iterates, the computed field must lie at or below this group
+        // (MVK_ERROR_FIELD_NOT_IN_RULEGROUP). It iterates from a per-row operand OR from a repeatable target.
+        Computation floorPolicy = depot.computation(depot.num("/Depot/Stock/StockLevel"))
+                .name("StockFloorPolicy")                        // → /Depot/Policy/StockFloorPolicy
+                .group(depot.group("/Depot/Policy"))
+                .calc(depot.num("/Depot/Policy/MinimumOnHand").value())
+                .message(Dsl.en("Stock level follows the depot's minimum-on-hand policy."))
+                .build();
+        // end::computation-group[]
+        assertEquals("/Depot/Policy", floorPolicy.groupPath());
+        assertEquals("../../Stock/StockLevel", floorPolicy.computedFieldRelPath());
+        assertTrue(new RuleValidator().check(DEPOT_JSON, floorPolicy.draft()).ok());
     }
 }

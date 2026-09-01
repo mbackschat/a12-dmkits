@@ -23,9 +23,11 @@ import org.junit.jupiter.api.Test
  * result channels and apply owners: no temporal value, representation, or differential harness is added.
  *
  * Dynamic Groovy is normative and generated Java is checked independently. The interpreter comparison uses its
- * deliberate report-all computation contract. Time's source-identical change classification is checked on both
- * kernel strategies through the five-channel owner; the existing generic computation-channel law retains the
- * ordinary unchanged control and the general source-relative application contract.
+ * deliberate report-all computation contract. The change classification is checked on both kernel strategies
+ * through the five-channel owner, in the two constructions that answer different questions: a SEEDED identical
+ * clock on the V1 String route (reported as changed) and a RE-APPLY over the computation's own output
+ * (reported as unchanged). Only the second establishes source identity. What separates them is the INGRESS
+ * ROUTE rather than anything about Time, measured per kind by `SourceIdentityIngressRouteDiffTest`.
  */
 class ComputedTimeTargetDiffTest {
 
@@ -161,8 +163,53 @@ class ComputedTimeTargetDiffTest {
             "applying the poisoned result clears the stale target")
     }
 
+    /**
+     * The discriminator SPEC-2026-08-27-03 forced: is the nonrepeatable constructor's source-identical change a
+     * POLICY, or an artefact of a hand-written Time cell not being bit-identical to the constructed carrier?
+     * Re-apply is the only construction where identity is beyond doubt — the stored cell IS the computation's
+     * own previous output. Both strategies, because a one-strategy answer would state a generator's behaviour.
+     */
     @Test
-    fun evenTheSameClockIsSourceClassifiedAsChangedAndApplied() {
+    fun aReapplyOverTheConstructedNonrepeatableTargetIsTheIdentityDiscriminator() {
+        val fixture = Fixture("Europe/Berlin")
+        val input = Input(target = null, projected = null)
+        val dynamicEngine = RuntimeLaws.kernelEngine(fixture.json)
+        val appliedDynamic = dynamicEngine.computeAndApply(dynamicEngine.instance(input.kernel()))
+        val appliedStatic = fixture.java.computeAndApply(fixture.java.instance(input.kernel()))
+        assertEquals(
+            dynamicEngine.resultChannels(appliedDynamic).withChanges().sorted(),
+            fixture.java.resultChannels(appliedStatic).withChanges().sorted(),
+            "groovy-dynamic vs java-static changed projection on re-apply",
+        )
+        assertEquals(
+            listOf("/Clock[1]/Projected", "/Clock[1]/Target"),
+            dynamicEngine.resultChannels(appliedDynamic).withoutErrors().sorted(),
+            "the control that makes the next assertion mean something: the second pass RAN both computations "
+                + "and both succeeded, so an empty changed set is equality and not an absent result",
+        )
+        assertEquals(
+            emptyList<String>(),
+            dynamicEngine.resultChannels(appliedDynamic).withChanges().sorted(),
+            "a genuinely source-identical NONREPEATABLE constructed Time reports NO change — so the change "
+                + "reported for a hand-seeded identical clock is a property of the seeded document, not an "
+                + "always-changed policy of Time construction",
+        )
+    }
+
+    /**
+     * On the **V1 String ingress route** a seeded cell holding the same clock is reported as changed and
+     * overwrites the destination — because that route leaves a Time cell holding unconverted text, which can
+     * never equal a converted Instant. That is a property of the ROUTE and of every non-STRING kind, not of
+     * `Time(...)`: `SourceIdentityIngressRouteDiffTest` moves only the ingress route and shows the same seed
+     * text comparing equal on the typed route, for all six kinds at once.
+     *
+     * Kept as its own arm because `RuntimeLaws.Doc` is the profile every ordinary runtime law here seeds
+     * through, so this is the classification those laws actually observe. The consumer-facing consequence is
+     * unchanged: a seeded value is not evidence of source identity, so an apply-fidelity claim must be built
+     * on a re-apply.
+     */
+    @Test
+    fun aSeededIdenticalClockIsChangedAndAppliedOnTheV1StringRoute() {
         val fixture = Fixture("Europe/Berlin")
         assertChangedClassification(fixture, Input(target = "09:00:00"))
         assertChangedClassification(fixture, Input(target = "10:30:45"))
@@ -193,7 +240,7 @@ class ComputedTimeTargetDiffTest {
                 destination.kernel(),
                 listOf(RuntimeLaws.CellProbe(TARGET, CELL)),
             ),
-            "kernel 30.8.1 classifies an identical source Time as changed and therefore overwrites the destination",
+            "a hand-seeded identical source Time is reported as changed and overwrites the destination",
         )
     }
 
@@ -204,7 +251,7 @@ class ComputedTimeTargetDiffTest {
             assertTrue(channels.withoutErrors().any { it.contains("Target") },
                 "every clean Time result is in the successful channel: ${channels.withoutErrors()}")
             assertTrue(channels.withChanges().any { it.contains("Target") },
-                "kernel 30.8.1 classifies the Time result as changed: ${channels.withChanges()}")
+                "a hand-seeded source document reports the Time result as changed: ${channels.withChanges()}")
             assertFalse(channels.withErrors().any { it.contains("Target") },
                 "a real exact Time is not errored: ${channels.withErrors()}")
         }

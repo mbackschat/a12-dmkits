@@ -1,0 +1,518 @@
+package io.github.mbackschat.a12.dm.rulekit.validate.laws;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.TreeSet;
+
+import org.junit.jupiter.api.Test;
+
+import io.github.mbackschat.a12.dm.core.ModelConsistencyException;
+import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft;
+import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel;
+
+/**
+ * The admitted temporal format vocabulary is DERIVED from the kernel and published, so no consumer has to
+ * assemble it from the members it happens to have used.
+ *
+ * <p><b>The defect this exists to stop.</b> Three law tests independently ask the kernel "is this format
+ * admitted?", each over its own hand-picked candidate list, and none publishes the answer — so the admitted set
+ * was nobody's output and downstream sites copied members. A copied set is short in a way that reads complete,
+ * and the copy's own test stays green because it asserts only what it lists. Measured twice: {@code MM-dd} was
+ * missing from the incomplete-format whitelist until 2026-08-19 and three published schema descriptions
+ * inherited a two-format DATE allowlist; {@code yyyyMM} was missing from the declared-format grid until
+ * 2026-08-29 and reached an outbound handback to a peer project, who caught it. Neither needed new measurement
+ * — both sets were already wrong when written.
+ *
+ * <p><b>Why derivation rather than a shared constant.</b> Sharing one list propagates a short list faithfully;
+ * it cannot catch the case where the list was short at its origin, which is both incidents. The kernel is the
+ * only thing that knows, so the set is recomputed from it and committed as a derived artifact, the same shape
+ * {@code docs/OPERATOR-INDEX.md} already uses. Regenerate with {@code ./build.sh :dumpTemporalVocabulary}.
+ *
+ * <p><b>What the published claim actually is, stated because it is the whole subject.</b> Not "these are the
+ * legal formats" — that is unknowable without enumerating an infinite string domain. It is "over THIS candidate
+ * universe, the kernel admits exactly these", and the artifact prints the universe beside the verdicts so the
+ * denominator travels with the answer. A format nobody imagined is still undiscoverable; what changes is that
+ * the boundary is written down instead of implied.
+ */
+class TemporalFormatVocabularyGuardTest {
+
+    private static final Path ARTIFACT = Path.of("docs/TEMPORAL-FORMAT-VOCABULARY.md");
+
+    private enum Kind { DATE, TIME, DATE_TIME }
+
+    /** Where a candidate lands once all three kinds have answered. */
+    private enum Verdict { ADMITTED, REFUSED, SPLIT }
+
+    // ── the candidate universe ───────────────────────────────────────────────────────────────────────────────
+
+    /**
+     * Every format string the estate's existing probes name, admitted and refused alike. Refused candidates earn
+     * their place: without them "the kernel admits everything" and "the gate reads the string" are the same
+     * observation.
+     */
+    private static final List<String> FROM_EXISTING_PROBES = List.of(
+            // IncompleteDateFormatAdmissionLawsTest's eleven
+            "yyyy", "yyyy-MM", "yyyyMM", "MM", "MM-dd", "yyyy-MM-dd", "dd.MM.yyyy",
+            "MM.yyyy", "MM-yyyy", "yyyy/MM", "dd.MM",
+            // TemporalFormatVocabularyLawsTest's witnesses and its nine refusals
+            "HH:mm:ss", "yyyy-MM-dd'T'HH:mm:ss",
+            "HH:mm", "H:mm:ss", "HH:mm:ss.SSS", "hh:mm:ss a", "HHmmss", "HH-mm-ss",
+            "yyyy-MM-dd HH:mm:ss", "dd.MM.yyyy HH:mm:ss", "yyyy-MM-dd HH:mm",
+            // Deliberate probes of what the generator below structurally CANNOT reach, so the shape of the
+            // limit is measured rather than reasoned about: a mixed separator within one string, a component
+            // width the pools do not name, and instant spellings beyond the two joins. A cold review ran these
+            // as a one-off and found none admitted (2026-08-29); they are kept here so that stays a published
+            // verdict re-derived on every run rather than a claim resting on a probe nobody repeats.
+            "yyyyMM-dd", "yyyy-MMdd", "yyyyMM.dd",
+            "yy", "yyMM", "MMyy", "ddMMyy", "dd.MM.yy", "M", "d", "MMM", "MMMM",
+            "yyyyMMddHHmmss", "yyyy-MM-ddHH:mm:ss", "yyyyMMdd HH:mm:ss", "yyyy-MM-dd'T'HH:mm:ss.SSS",
+            "yyyyMMdd'T'HHmmss", "yyyyMMdd'T'HH:mm:ss", "yyyy-MM-dd'T'HH:mm:ssZ", "yyyy-MM-dd'T'HH:mm:ss'Z'",
+            "yyyy/MM/dd HH:mm:ss", "MM/dd/yyyy HH:mm:ss");
+
+    private static final List<String> DATE_COMPONENTS = List.of("yyyy", "MM", "dd");
+    private static final List<String> TIME_COMPONENTS = List.of("HH", "mm", "ss");
+    private static final List<String> DATE_SEPARATORS = List.of("", "-", ".", "/");
+    private static final List<String> TIME_SEPARATORS = List.of("", ":", "-", ".");
+
+    /**
+     * The universe: the probes above plus every ordered non-empty selection of the date and time components at
+     * each separator. The generated half exists because the two incidents were both a MISSING member, and a
+     * hand-written candidate list cannot miss what it does not think of — the permutations do think of it. The
+     * separator axis is generated rather than sampled because it is the one KF196 proved discriminating: the
+     * same two components flip verdict on their separator alone.
+     */
+    private static Set<String> candidates() {
+        Set<String> all = new LinkedHashSet<>(FROM_EXISTING_PROBES);
+        all.addAll(permutations(DATE_COMPONENTS, DATE_SEPARATORS));
+        all.addAll(permutations(TIME_COMPONENTS, TIME_SEPARATORS));
+        for (String date : List.of("yyyy-MM-dd", "dd.MM.yyyy")) {
+            for (String time : List.of("HH:mm:ss", "HH:mm")) {
+                all.add(date + "'T'" + time);
+                all.add(date + " " + time);
+            }
+        }
+        return all;
+    }
+
+    /** Every ordered non-empty selection of [components], joined by each separator (singles joined by none). */
+    private static Set<String> permutations(List<String> components, List<String> separators) {
+        Set<String> out = new LinkedHashSet<>();
+        for (List<String> sequence : orderedSelections(components)) {
+            if (sequence.size() == 1) {
+                out.add(sequence.get(0));
+                continue;
+            }
+            for (String separator : separators) {
+                out.add(String.join(separator, sequence));
+            }
+        }
+        return out;
+    }
+
+    private static List<List<String>> orderedSelections(List<String> components) {
+        List<List<String>> out = new ArrayList<>();
+        permute(components, new ArrayList<>(), out);
+        return out;
+    }
+
+    private static void permute(List<String> remaining, List<String> prefix, List<List<String>> out) {
+        for (int i = 0; i < remaining.size(); i++) {
+            List<String> next = new ArrayList<>(prefix);
+            next.add(remaining.get(i));
+            out.add(next);
+            List<String> rest = new ArrayList<>(remaining);
+            rest.remove(i);
+            permute(rest, next, out);
+        }
+    }
+
+    // ── the kernel probe ─────────────────────────────────────────────────────────────────────────────────────
+
+    /**
+     * Bind a one-field model through the kernel's consistency gate, which is what decides admission —
+     * {@code build()} does not, since the draft serializes any string it is handed.
+     *
+     * <p>A client-side refusal is deliberately NOT caught: our own builder throwing would otherwise be published
+     * as a kernel verdict, which is the exact confusion "a client-side refusal needs a measured kernel basis"
+     * exists to prevent. If one ever fires here it fails the run, and that is the correct outcome.
+     */
+    private static boolean admits(Kind kind, String format) {
+        String json = DocumentModelDraft.named("vocabulary").locale("en_US")
+                .rootGroup("Doc", d -> {
+                    switch (kind) {
+                        case DATE -> d.dateField("F", f -> f.format(format));
+                        case TIME -> d.timeField("F", f -> f.format(format));
+                        case DATE_TIME -> d.dateTimeField("F", f -> f.format(format));
+                    }
+                })
+                .build().toJson();
+        try {
+            BoundModel.ofJson(json);
+            return true;
+        } catch (ModelConsistencyException e) {
+            return false;
+        }
+    }
+
+    private static Map<String, Verdict> partition() {
+        Map<String, Verdict> out = new LinkedHashMap<>();
+        for (String format : candidates()) {
+            int admitted = 0;
+            for (Kind kind : Kind.values()) {
+                if (admits(kind, format)) {
+                    admitted++;
+                }
+            }
+            out.put(format, switch (admitted) {
+                case 3 -> Verdict.ADMITTED;
+                case 0 -> Verdict.REFUSED;
+                default -> Verdict.SPLIT;
+            });
+        }
+        return out;
+    }
+
+    // ── the second derived domain: the DATERANGE (format, separator) pair ────────────────────────────────────
+
+    /**
+     * The separators put to the kernel beside every candidate format. Four of these are the axis the existing
+     * finding measured; the rest are here because a separator set is a denominator too, and this one had never
+     * been widened.
+     */
+    private static final List<String> RANGE_SEPARATORS = List.of("/", "-", ".", "", " - ", ":", "_");
+
+    /**
+     * A DATERANGE declares a {@code format} and a {@code separator}, and the kernel allowlists the PAIR rather
+     * than each half — so this is its own domain, not a projection of the field-format vocabulary. The two
+     * axes genuinely differ in both directions: {@code dd.MM} is refused as a field format and admitted as a
+     * range format, while {@code yyyyMM} is admitted as a field format and refused as a range one at every
+     * separator.
+     */
+    private static boolean admitsRange(String format, String separator) {
+        String json = DocumentModelDraft.named("vocabulary").locale("en_US")
+                .rootGroup("Doc", d -> d.dateRangeField("F", r -> r.format(format).separator(separator)))
+                .build().toJson();
+        try {
+            BoundModel.ofJson(json);
+            return true;
+        } catch (ModelConsistencyException e) {
+            return false;
+        }
+    }
+
+    /** Admitted {@code (format, separator)} pairs, rendered {@code format + "|" + separator}. */
+    static Set<String> admittedRangePairs() {
+        Set<String> out = new TreeSet<>();
+        for (String format : candidates()) {
+            for (String separator : RANGE_SEPARATORS) {
+                if (admitsRange(format, separator)) {
+                    out.add(format + "|" + separator);
+                }
+            }
+        }
+        return out;
+    }
+
+    static Set<String> admittedFormats(Map<String, Verdict> partition) {
+        Set<String> out = new TreeSet<>();
+        partition.forEach((format, verdict) -> {
+            if (verdict == Verdict.ADMITTED) {
+                out.add(format);
+            }
+        });
+        return out;
+    }
+
+    // ── the published artifact ───────────────────────────────────────────────────────────────────────────────
+
+    private static String render(Map<String, Verdict> partition) {
+        Set<String> admitted = admittedFormats(partition);
+        List<String> refused = new ArrayList<>();
+        List<String> split = new ArrayList<>();
+        partition.forEach((format, verdict) -> {
+            if (verdict == Verdict.REFUSED) {
+                refused.add(format);
+            } else if (verdict == Verdict.SPLIT) {
+                split.add(format);
+            }
+        });
+
+        StringBuilder out = new StringBuilder();
+        out.append("""
+                # Temporal format vocabulary — derived from the kernel
+
+                > **Generated, never hand-edited.** Regenerate with `./build.sh :dumpTemporalVocabulary`;
+                > `TemporalFormatVocabularyGuardTest` fails the build when this file and the kernel disagree.
+                >
+                > **What this claims.** Over the candidate universe listed at the bottom, the kernel admits exactly
+                > the formats in the first table — on all three date-bearing kinds, since the vocabulary is
+                > kind-independent ([KF206](KERNEL-FINDINGS.md#kf206)). It does **not** claim the admitted set is
+                > closed: a format outside the universe is undiscovered, not refused. The universe is printed
+                > precisely so that limit travels with the answer.
+                >
+                > **Cite this file** rather than re-listing formats. A site that legitimately covers a subset says
+                > which subset and why, in the guard's registry.
+
+                """);
+
+        out.append("## Admitted — ").append(admitted.size()).append("\n\n");
+        for (String format : admitted) {
+            out.append("- `").append(format).append("`\n");
+        }
+
+        out.append("\n## Refused — ").append(refused.size()).append("\n\n");
+        out.append("Refused on all three kinds. Listed because without them, \"the gate reads the string\" and\n");
+        out.append("\"there is no gate\" are the same observation.\n\n");
+        for (String format : refused) {
+            out.append("- `").append(format).append("`\n");
+        }
+
+        out.append("\n## Kind-split — ").append(split.size()).append("\n\n");
+        out.append(split.isEmpty()
+                ? "None. Every candidate answers identically on DATE, TIME and DATE_TIME, which is KF206's\n"
+                        + "kind-independence re-derived over the whole universe rather than over its witnesses.\n"
+                : "**A candidate answered differently per kind, which contradicts KF206.** Investigate before\n"
+                        + "trusting any row above.\n\n");
+        for (String format : split) {
+            out.append("- `").append(format).append("`\n");
+        }
+
+        Set<String> pairs = admittedRangePairs();
+        out.append("\n## DATERANGE `(format, separator)` pairs admitted — ").append(pairs.size()).append("\n\n");
+        out.append("A DATERANGE allowlists the PAIR, so this is a separate domain from the table above and not a\n");
+        out.append("projection of it — the two differ in both directions. Probed over the same candidate formats\n");
+        out.append("× the separators `/` `-` `.` `` `` ` - ` `:` `_`.\n\n");
+        out.append("| format | separator |\n|---|---|\n");
+        for (String pair : pairs) {
+            String[] halves = pair.split("\\|", -1);
+            out.append("| `").append(halves[0]).append("` | ")
+                    .append(halves[1].isEmpty() ? "*(empty)*" : "`" + halves[1] + "`").append(" |\n");
+        }
+
+        out.append("\n## Candidate universe — ").append(partition.size()).append("\n\n");
+        out.append("Every format string put to the kernel, and **the denominator of every count above.** It is the\n");
+        out.append("union of the estate's existing probes with a generated set: each ordered selection of the date\n");
+        out.append("components `yyyy`/`MM`/`dd` joined by one of `` `` `-` `.` `/`, each ordered selection of the\n");
+        out.append("time components `HH`/`mm`/`ss` joined by one of `` `` `:` `-` `.`, and the two complete date\n");
+        out.append("forms joined to two clock forms by `'T'` or a space. Separators are generated because that is\n");
+        out.append("the axis KF196 showed decides admission.\n\n");
+        out.append("What it therefore does **not** reach, so a reader can judge the limit rather than infer it:\n");
+        out.append("a string mixing the two component pools, a mixed separator within one string, a component\n");
+        out.append("width this list does not name (`yy`, `M`, `MMM`), and any literal beyond `'T'`.\n\n");
+        for (String format : partition.keySet()) {
+            out.append("- `").append(format).append("`\n");
+        }
+        return out.toString();
+    }
+
+    // ── the guards ───────────────────────────────────────────────────────────────────────────────────────────
+
+    /**
+     * The positive control for every other arm here.
+     *
+     * <p><b>What it actually protects, which is not what it looks like.</b> Three arms here are satisfied by an
+     * EMPTY probe — no missing format, no split, no lost round trip — but the class would still fail, because the
+     * artifact comparison would find a rendered set of zero against a committed twelve. The real exposure is the
+     * REGENERATOR: {@code dumpTemporalVocabulary} runs this same class with the fixer flag, and there the
+     * comparison does not run at all. A broken candidate generator would quietly rewrite the artifact to whatever
+     * it produced, and every consumer would then be checked against that. These floors are the only thing
+     * standing between a degraded probe and a codified one.
+     *
+     * <p>The numbers are deliberate floors well under the live counts (113 candidates, 12 admitted, 101 refused
+     * at 2026-08-29): they answer "did the probe happen and does it discriminate", not "how big is the set", and
+     * a floor that tracked the live count would need editing whenever the kernel moved. Both verdicts must occur,
+     * because a probe that admitted everything — a degraded backend, say — would satisfy the containment arm too.
+     */
+    @Test
+    void theProbeRanAndDiscriminates() {
+        Map<String, Verdict> partition = partition();
+        assertTrue(partition.size() >= 100, () -> "the candidate universe collapsed: " + partition.size());
+        assertTrue(admittedFormats(partition).size() >= 10,
+                () -> "too few admissions to be a real probe: " + admittedFormats(partition));
+        assertTrue(partition.containsValue(Verdict.REFUSED),
+                "nothing was refused, so this measures acceptance of anything rather than a vocabulary");
+
+        // The DATERANGE probe is a second backend call with its own failure mode: if `admitsRange` returned
+        // false throughout, the pair table would render empty and the regenerator would codify that silently.
+        Set<String> pairs = admittedRangePairs();
+        assertTrue(pairs.size() >= 5 && pairs.size() < RANGE_SEPARATORS.size() * partition.size(),
+                () -> "the range-pair probe did not discriminate: " + pairs.size() + " pairs");
+    }
+
+    @Test
+    void theCommittedVocabularyMatchesWhatTheKernelAdmits() throws IOException {
+        Map<String, Verdict> partition = partition();
+        String rendered = render(partition);
+
+        if (Boolean.getBoolean("temporalVocabulary.fix")) {
+            Files.writeString(ARTIFACT, rendered);
+            return;
+        }
+
+        assertTrue(Files.exists(ARTIFACT), () -> ARTIFACT + " is missing — run ./build.sh :dumpTemporalVocabulary");
+        assertEquals(rendered, Files.readString(ARTIFACT),
+                "the committed vocabulary no longer matches the kernel. If a kernel upgrade moved it, "
+                        + "regenerate with ./build.sh :dumpTemporalVocabulary and read the diff — a format "
+                        + "entering or leaving this set is a finding, not a refresh");
+    }
+
+    /**
+     * Every admitted format reaches the kernel as the string this file names it by.
+     *
+     * <p>Without this the whole artifact could be measuring a normalization: a draft builder that rewrote
+     * {@code ddMM} into something else would report an admission for a format the kernel never saw, and the
+     * published set would be fiction assembled by our own serializer. It is asserted for every admitted format
+     * rather than sampled, because the surprising members are exactly the ones a sampler would omit — the three
+     * separator-free forms this guard turned up on its first run were named nowhere in the estate.
+     *
+     * <p><b>All three kinds, because they are three serializers, not one.</b> {@code DocumentModelDraft} writes
+     * the {@code format} property from a separate site per temporal kind, each with its own default, so checking
+     * DATE alone would leave a selective rewrite on TIME or DATE_TIME undetected while a verdict needs all three
+     * kinds to admit. The value is matched as the {@code format} property rather than as a bare substring, so a
+     * coincidental occurrence elsewhere in the model JSON cannot satisfy it.
+     */
+    @Test
+    void everyAdmittedFormatSurvivesToTheKernelUnnormalized() {
+        List<String> lost = new ArrayList<>();
+        for (String format : admittedFormats(partition())) {
+            for (Kind kind : Kind.values()) {
+                String json = DocumentModelDraft.named("vocabulary").locale("en_US")
+                        .rootGroup("Doc", d -> {
+                            switch (kind) {
+                                case DATE -> d.dateField("F", f -> f.format(format));
+                                case TIME -> d.timeField("F", f -> f.format(format));
+                                case DATE_TIME -> d.dateTimeField("F", f -> f.format(format));
+                            }
+                        })
+                        .build().toJson();
+                if (!json.replace(" ", "").contains("\"format\":\"" + format + "\"")) {
+                    lost.add(kind + " " + format + " → " + json);
+                }
+            }
+        }
+        assertEquals(List.of(), lost, "an admitted format must be carried verbatim, or the verdict is not about it");
+    }
+
+    /**
+     * A site that claims to enumerate the whole admitted vocabulary, and the reason it makes that claim.
+     *
+     * <p>Only sites claiming COMPLETENESS belong here. A site that deliberately covers a subset — the
+     * incomplete-format whitelist, a witness table — is not registered, because forcing it to name every format
+     * would destroy the thing it is testing. That asymmetry is the point: completeness is the claim that goes
+     * wrong silently, and a subset that says which subset is already honest.
+     */
+    private static final Map<String, String> COMPLETENESS_CLAIMANTS = Map.of(
+            "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/"
+                    + "TemporalDeclaredFormatGateDiffTest.kt",
+            "its VOCABULARY grid asserts the kind does not move the classifier FOR EVERY admitted format, so a "
+                    + "missing one silently narrows a published kernel claim",
+            "interpreter/src/commonTest/kotlin/io/github/mbackschat/a12/dm/interpreter/"
+                    + "TemporalDeclaredFormatFormalTest.kt",
+            "the multiplatform half of the same grid, whose KDoc states the cell count as a denominator");
+
+    private static final String REGION_START = "VOCABULARY-GRID-START";
+    private static final String REGION_END = "VOCABULARY-GRID-END";
+
+    /**
+     * The claimant's enumeration itself, with commented-out lines removed.
+     *
+     * <p><b>Why a marked region rather than the whole file.</b> Scanning the file was the first design and it was
+     * unsound in the direction that matters: a claimant mentions formats outside its grid — a {@code const val
+     * ISO}, a control field on a different model, a KDoc example — so a format DELETED from the grid still
+     * appeared elsewhere and the check passed. Measured on this very slice: dropping the {@code HH:mm:ss} row
+     * from one claimant, and commenting out the {@code ddMM} row in the other, both survived. Nine of twelve
+     * formats were protected in one claimant and six of twelve in the other, so the arm was mostly decorative.
+     * Delimiting the region binds the check to the thing the claim is about, and dropping {@code //} lines closes
+     * the comment-out variant, without parsing either language's collection literals.
+     */
+    private static String enumerationRegion(Path source, String text) {
+        int start = text.indexOf(REGION_START);
+        // Searched AFTER the opening marker: the first version scanned from position zero, so a start-marker
+        // comment that merely NAMED the closing one ended the region before the list began, and every format
+        // read as missing. Written down because the failure looked like a broken claimant, not a broken guard.
+        int end = start < 0 ? -1 : text.indexOf(REGION_END, start + REGION_START.length());
+        assertTrue(start >= 0 && end > start,
+                () -> "a registered claimant must delimit its enumeration with " + REGION_START + " … "
+                        + REGION_END + " comments so the check binds the grid rather than the file: " + source);
+        return text.substring(start, end).lines()
+                .filter(line -> !line.strip().startsWith("//"))
+                .reduce("", (a, b) -> a + "\n" + b);
+    }
+
+    /**
+     * Every claimant's enumeration names every admitted format.
+     *
+     * <p><b>Containment, deliberately, not parsing.</b> Within the marked region the guard asks whether each
+     * admitted format appears as a quoted literal; it does not try to understand the list. Parsing two languages'
+     * collection literals would be brittle in exactly the direction that matters — a guard that fails on
+     * formatting gets deleted — and containment is precise for the one failure mode with a record: a set that is
+     * SHORT. Its remaining limit is that it cannot see an entry that is present but unreached by any assertion;
+     * extras need no check, because a format the kernel refuses never enters the admitted set to be claimed.
+     */
+    @Test
+    void everySiteClaimingTheWholeVocabularyNamesEveryAdmittedFormat() throws IOException {
+        Set<String> admitted = admittedFormats(partition());
+        Map<String, List<String>> missing = new LinkedHashMap<>();
+        for (Map.Entry<String, String> claimant : COMPLETENESS_CLAIMANTS.entrySet()) {
+            Path source = Path.of(claimant.getKey());
+            assertTrue(Files.exists(source),
+                    () -> "a registered claimant no longer exists, so its entry is dead weight: " + source
+                            + " — delete the row or repoint it. Reason on file: " + claimant.getValue());
+            String region = enumerationRegion(source, Files.readString(source));
+            List<String> absent = admitted.stream().filter(f -> !region.contains("\"" + f + "\"")).toList();
+            if (!absent.isEmpty()) {
+                missing.put(claimant.getKey(), absent);
+            }
+        }
+        assertEquals(Map.of(), missing,
+                "these sites claim to cover the whole admitted vocabulary and do not. Add the formats, or — if "
+                        + "the site should no longer claim completeness — remove it from COMPLETENESS_CLAIMANTS "
+                        + "with its reason. The admitted set is in " + ARTIFACT);
+    }
+
+    /**
+     * Every claimant is a declared Gradle input of the task that hosts this guard.
+     *
+     * <p>The registry above and {@code build.gradle}'s {@code vocabulary consumers} list are two copies of one
+     * fact, and the copy that goes stale is silent: a claimant that is registered but undeclared can be edited
+     * while the lane stays UP-TO-DATE, so the containment check simply does not run. That is the same staleness
+     * this guard exists to catch, one level up, which is why it is asserted rather than trusted to a comment.
+     */
+    @Test
+    void everyClaimantIsADeclaredInputOfItsOwnGuardTask() throws IOException {
+        String build = Files.readString(Path.of("build.gradle"));
+        List<String> undeclared = COMPLETENESS_CLAIMANTS.keySet().stream()
+                .filter(path -> !build.contains("'" + path + "'"))
+                .toList();
+        assertEquals(List.of(), undeclared,
+                "registered as claimants but not declared as inputs of :vocabularyGuardTest — add each to the "
+                        + "'vocabulary consumers' files(...) block in build.gradle, or this guard can be left "
+                        + "unrun by the up-to-date check exactly when a claimant changes");
+    }
+
+    /**
+     * A candidate that answers differently per kind would falsify KF206's kind-independence, so it is asserted
+     * here rather than merely rendered: the artifact is read by consumers that key on one verdict per format.
+     */
+    @Test
+    void noCandidateAnswersDifferentlyPerKind() {
+        Map<String, Verdict> split = new LinkedHashMap<>();
+        partition().forEach((format, verdict) -> {
+            if (verdict == Verdict.SPLIT) {
+                split.put(format, verdict);
+            }
+        });
+        assertEquals(Map.of(), split,
+                "KF206 says the temporal format gate reads the string, not the kind — a split contradicts it");
+    }
+}

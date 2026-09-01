@@ -224,6 +224,13 @@ static Condition exceedsBaselineRow(GroupRef repeating, NumberRef amount, String
 static Condition uniqueBy(GroupRef repeating, FieldRef key) {
     return groupFilled(repeating).and(repetitionNotUnique(key));               // + .from(scope) for @From
 }
+
+/** Bulk authoring over a field set gathered by navigation — every fill quantifier and the filled COUNT
+ *  take the same `List`, so a caller holding one never unrolls it back into varargs. */
+static Condition partiallyCompleted(List<FieldRef> section) {
+    return Dsl.notAllFieldsFilled(section)                                     // the list peer of every
+            .and(Dsl.numberOfFilledFields(section).gt(0));                     // quantifier, count included
+}
 ```
 
 The fragments show how the shipped primitives compose into the **business idioms** the proposal's §2 names (`mandatory`, `withinTolerance`, per-row thresholds, `uniqueBy`) — each is 1–3 lines built from the operators in hand.
@@ -644,6 +651,21 @@ Condition orderDayNotAfterCompletion = m.date("/Order/OrderDate")
         .onOrBefore(m.dateTime("/Order/CompletedAt"));
 ```
 
+**A temporal field's DECLARED FORMAT decides which typed handle it has, not its kind.** A12's format vocabulary is kind-independent, and so is every gate below the declaration: a `TimeType` field declared `yyyy-MM-dd` carries the Gregorian floor, compares directly against a DATE, and answers `YearFromDate`, while its own kind's `HoursFromTime` is refused (KERNEL-FINDINGS [KF211](KERNEL-FINDINGS.md#kf211), measured across the complete format × kind grid on both codegen strategies). So `date(path)`/`time(path)`/`dateTime(path)` accept a field whose declared format carries that component set, **in addition to** the matching kind — additive on purpose, since refusing a kind-matching field on its format alone would be a client-side refusal with no measured kernel basis. `FieldInfo.format()` reads the declaration that decided it. You meet this on models you did not author: an imported or hand-edited model that stores a date in a `TimeType` field is legal, and before this its rules were authorable only as raw condition strings.
+
+<!-- snippet: temporal-declared-format -->
+```java
+// A12 reads a temporal field's DECLARED FORMAT and never its kind, at every gate below the
+// declaration — so a TimeType field declared `yyyy-MM-dd` IS a date: it carries the Gregorian floor,
+// compares against a DATE, and answers the date extractors. The typed handles follow the declaration,
+// so `date(...)` accepts it and no raw condition string is needed for a model that arrives this way.
+Condition promisedAfterShipping = fulfilment.date("/Fulfilment/PromisedDay")
+        .after(fulfilment.date("/Fulfilment/ShippedOn"));
+NumberExpr promisedYear = Dsl.yearFromDate(fulfilment.date("/Fulfilment/PromisedDay"));
+// Read the declaration that decided it; `HoursFromTime` on the same cell is refused by the kernel.
+String declared = fulfilment.fieldAt("/Fulfilment/PromisedDay").orElseThrow().format().orElseThrow();
+```
+
 **A constructed date range is an equality operand as well as a computation value.** `Dsl.dateRange` takes two `DateOperand` values but accepts only owner `entitySpec` shapes: a DATE or DATE_FRAGMENT field, directly, through a semantic index, or with the `$` outer-iteration marker. It does not require a *complete* date format, and it does not pre-check partial `datePrecision` — both are built and left to the kernel. It refuses calculated dates such as `Today` and date shifts before rendering; the kernel remains the format-compatibility oracle because DATE and DATE_FRAGMENT may be mixed when their date-component sets match. The kernel admits `==` and `!=` against a DATE_RANGE field in either direction and between two constructions; it rejects ordering and does not admit a nested construction inside the overlap predicates. `DateRangeOperand` exposes exactly that result domain, including `DateRangeExpr` results such as a date-range `FirstFilledValue`. A DATE_RANGE field is also a computation TARGET and a rule ERROR FIELD through its own typed handle — `m.computation(m.dateRange(path))` and `.errorField(m.dateRange(path))`, the peers of the other per-kind overloads (DEV-API-GAPS DG37). Those two surfaces are held in lockstep by `ErrorFieldComputationParityTest`: the first version of DG37's fix reached only the computation half, and the parity lock is what caught it. Two range operands must additionally expose the **same declared date-component set**, whichever side is stored, constructed, or computed: a `yyyy` range against a full `yyyy-MM-dd` one is `MVK_INVALID_COMPARE_TO_DATE_RANGE` in either order (`DateRangeComparabilityLawsTest`). The typed `FirstFilledValue` family also covers TIME and DATETIME (`firstFilledTime`/`firstFilledDateTime`); an empty selection produces a value only for NUMBER (zero), while every other admitted kind remains unspecified and clears a computation.
 
 <!-- snippet: date-range-equality -->
@@ -909,7 +931,30 @@ Computation tiered = m.computation(m.num("/Subscription/Billing/EffectiveFee")) 
 
 **The original sketch here used `.otherwise(...)` — that was kernel-illegal** (verified: mixing preconditioned and unconditional alternatives draws `MVK_ERROR_EMPTY_PRECONDITION`), so the API doesn't offer it: either one unconditional `calc(...)` or all-preconditioned `when(...).calc(...)`. The optional `ToleranceBand` overload carries one of the kernel's four closed `toleranceRangeOp` values on that alternative; it changes the computation's implicit validation from strict inequality to “difference exceeds N” and round-trips through read/modify/write. Further slot rules pre-checked at `build()` with the code named: the computed field must not appear in preconditions *or* operations (`MVK_ERROR_REFERENCE_TO_CALCULATED_FIELD` — both verified; a self-read carrying an enum category or a semantic index is the kernel's own separate class `MVK_ERROR_SEMANTIC_INDEX_OR_CATEGORY_FOR_ERRORFIELD`, so the pre-check names that one instead and the repair is to drop the projection — [kf182](KERNEL-FINDINGS.md#kf182), finding 120), operation **kind** must match the computed field (`Calculation.kind()` — the typed AST now carries the §5b lattice), message required. Keep tier preconditions mutually exclusive: computation takes the first holding alternative in declaration order, but the generated validation rule retains every holding alternative's mismatch. With overlapping guards, the first operation can supply the computed value while a later operation still makes that stored value invalid. The linter warns on the always-overlapping identical-precondition case; true logical overlap remains the author/kernel's judgment. Result *scale* stays the kernel's call (D13).
 
+**A computation LIVES in one group and WRITES to another.** `group(...)` declares the element outside the computed field's parent — the A12 shape a `*_Rules`-style container uses, where the policy is owned in one place and the value lands in another. It takes a `GroupReference`, so the group is model-resolved rather than a path string, and the stored `computedFieldRelPath` is derived from the element/target pair in both directions (`../Field` beside the field, a walk out and back down elsewhere). The default is unchanged: omit it and the computation lands beside its computed field exactly as before.
+
+<!-- snippet: computation-group -->
+```java
+// A computation LIVES in one group and WRITES to another. `group(...)` declares the element in the
+// policy container while it computes the stock block's field; the stored computedFieldRelPath is
+// derived from the pair, never authored. The one refusal is CONTAINMENT UNDER DERIVED ITERATION:
+// when the computation iterates, the computed field must lie at or below this group
+// (MVK_ERROR_FIELD_NOT_IN_RULEGROUP). It iterates from a per-row operand OR from a repeatable target.
+Computation floorPolicy = depot.computation(depot.num("/Depot/Stock/StockLevel"))
+        .name("StockFloorPolicy")                        // → /Depot/Policy/StockFloorPolicy
+        .group(depot.group("/Depot/Policy"))
+        .calc(depot.num("/Depot/Policy/MinimumOnHand").value())
+        .message(Dsl.en("Stock level follows the depot's minimum-on-hand policy."))
+        .build();
+```
+
+Placement is an **iteration-scope** decision, not a filing one: the declaring group is the base the operand paths render against, and a runtime computation iterates where it *writes* rather than where it is declared ([kf19](KERNEL-FINDINGS.md#kf19)). The one refusal is **containment under derived iteration** — when the computation iterates, the computed field must lie at or below the declaring group, so an ancestor is fine and an unrelated sibling is not. Iteration is derived from a per-row operand of a repeatable declaring group *or* from a repeatable computed field, independently; the second needs no operand at all, so even a bare constant into a repeating target is refused from an unrelated group. The gate falls identically on rules and computations, though only a computation can exhibit that second source alone — a rule's error field must be referenced by its condition, so it is always an operand too. The measured tables are [kf212](KERNEL-FINDINGS.md#kf212). *Test-backed: `ComputationDeclaringGroupLawsTest` (the kernel's verdict across four declaring-group relations), `ComputationDeclaringGroupTest`, `CrossGroupComputationReadTest` (the placement survives read → write-back).* The CLI peer is the computation-spec's optional `group` key.
+
+Off a `GroupEditor` the same override reads `editor.addComputation(target, c -> c.group(editor) …)` — `GroupEditor` **is** a `GroupReference`, so the path stays written once. It is an override there rather than the default, deliberately unlike `addRule`, which scopes to the editor's group: a rule's group *is* its iteration scope, while a computation's decides whether it runs once or per row, so defaulting to the editor would lift a computation authored over `editor.num("Lines/Amount")` out of a repeatable `Lines` and silently make it single. *Test-backed: `edit.GroupEditorComputationDeclaringGroupTest`.*
+
 **Cross-slot reuse for free:** `SubscriptionIdioms.paidTier(tier)` drops unchanged into a rule `errorCondition` *or* a computation `precondition` — one expression language, many slots (§5). That is the concrete payoff of combinators + the slot model.
+
+**The boolean constants are computation operations too, and CONFIRM is asymmetric.** `BoolLiteral` is an ordinary `Calculation`, so a boolean flag is computed through the same typed surface as any other kind — `m.computation(m.bool("/Claim/Escalated")).calc(new BoolLiteral(true))`. A **CONFIRM** target accepts only `True`: a confirm has no false, and the kernel rejects a `False` operation on one with `MVK_INVALID_COMPARE_TO_YES`, so "clear the confirmation" cannot be expressed as a computation. The builder used to refuse *both* constants into a CONFIRM target on plain operation-kind equality, which made the legal model unauthorable; it now permits `True` and refuses `False` carrying the kernel's own code rather than a kind-mismatch message. *Test-backed: `ConfirmComputationSourceKindLawsTest` (the kernel measured through raw operations that bypass the pre-check, plus a BOOLEAN polarity control and the both-directions agreement of the typed builder), `ComputationAuthoringTest`.*
 
 When the model declares a base year, its numeric role is also a normal numeric operand: `Dsl.baseYearNumber().plus(1)`, `Dsl.roundDown(Dsl.baseYearNumber())`, and `Dsl.abs(Dsl.baseYearNumber())` produce the configured scale-0 year through arithmetic or wrappers. The same constant remains date-valued through `Dsl.baseYear()` in explicitly temporal expressions; a derived numeric component such as `Dsl.yearFromDate(Dsl.baseYear())` can be wrapped in the same way. Omitting the model configuration is rejected as `MVK_NO_BASE_YEAR`. *Test-backed: `BaseYearArithmeticDiffTest`, `TemporalNumericWrapperDiffTest`, `BaseYearComputationTest`, `TemporalNumericWrapperTest`, and `BaseYearArithmeticLawsTest`.*
 
@@ -1081,6 +1126,8 @@ charsetEdit.config().supportedCharacters(decomposedEAcute);
 ModelDocument.read(charsetEdit.validate().toJson()).config().supportedCharacters();
 // ["é"] — exactly one atomic list entry
 ```
+
+**The base year is settable and now clearable, on the same editor.** `EditSession.read(json).config().baseYear(2024)` declares the `modelInfo.baseYear` that resolves year-less dates, and `clearBaseYear()` removes it — the inverse that was missing through the whole stack until 2026-08-31, because `setBaseYear` took a primitive `int` while `baseYear()` returned an `Optional`, so absence was readable and unreachable. It matters to anyone building the *negative* control for a yearless-date experiment: a fresh model has no base year, but a model that has one could not be returned to that state without hand-editing its JSON. The CLI peer is `dmtool config modify --clear-base-year`.
 
 `SupportedCharactersContract` is the shared typed/CLI definition gate: it rejects an empty entry, a surrogate, a reversed range, a plain multi-character non-grapheme, a combined entry above three UTF-16 units, and the kernel's ambiguous-overlap shape before mutation. `config modify --supported-character` and its `apply` peer return the same `RK_INVALID_CONFIG_VALUE` corrective, while the IF151 differential proves the runtime admits the whole configured grapheme but rejects its base, combining mark, reverse, and repeated fragments (finding 78).
 

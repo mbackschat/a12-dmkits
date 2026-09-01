@@ -248,7 +248,7 @@ class KernelProbeComputeShapeTest {
         listOf(
             """ "observe": ["compute"], """ to "dropping validateFull",
             """ "observe": [], """ to "an explicit empty array",
-            """ "observe": ["validateFull", "validatePart"], """ to "an unknown observation",
+            """ "observe": ["validateFull", "validateWhole"], """ to "an unknown observation",
         ).forEach { (observe, what) ->
             assertTrue(schema.validate(requestJson(observe)).isNotEmpty(), "the schema must refuse $what")
             assertThrows(IllegalArgumentException::class.java, { parse(observe) }, "the producer must refuse $what")
@@ -261,10 +261,10 @@ class KernelProbeComputeShapeTest {
             "the refusal must name the key and its reason: ${dropped.message}",
         )
         val unknown = assertThrows(IllegalArgumentException::class.java) {
-            parse(""" "observe": ["validateFull", "validatePart"], """)
+            parse(""" "observe": ["validateFull", "validateWhole"], """)
         }
         assertTrue(
-            "validatePart" in unknown.message.orEmpty() && "compute" in unknown.message.orEmpty(),
+            "validateWhole" in unknown.message.orEmpty() && "compute" in unknown.message.orEmpty(),
             "an unknown observation must be named back, with the ones that exist: ${unknown.message}",
         )
     }

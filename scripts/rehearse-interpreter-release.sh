@@ -115,8 +115,8 @@ create_fixture() {
 
   cp "$ROOT/LICENSE" "$SOURCE/LICENSE"
   cp "$ROOT/interpreter/CHANGELOG.md" "$SOURCE/interpreter/CHANGELOG.md"
-  cp "$ROOT/interpreter/public-release/"* "$SOURCE/interpreter/public-release/"
-  cp "$ROOT/.github/interpreter-mirror-workflows/"* "$SOURCE/.github/interpreter-mirror-workflows/"
+  cp -R "$ROOT/interpreter/public-release/." "$SOURCE/interpreter/public-release/"
+  cp -R "$ROOT/.github/interpreter-mirror-workflows/." "$SOURCE/.github/interpreter-mirror-workflows/"
   for script in \
     assemble-interpreter-release-repo.sh \
     check-interpreter-release-repo.sh \

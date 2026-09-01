@@ -1659,7 +1659,7 @@
     {
       "id": "True",
       "dslEntry": [],
-      "dslEntryNote": "No standalone factory — the True constant is emitted as the constant operand of a boolean/confirm comparison (BoolRef.isTrue / ConfirmRef.confirmed) or NumberOfValueInFields(true IN …).",
+      "dslEntryNote": "No standalone Dsl factory, but the constant is the BoolLiteral(true) node: as a comparison operand it is emitted by BoolRef.isTrue / ConfirmRef.confirmed or NumberOfValueInFields(true IN …), and as a computation operation it is passed directly to calc(...).",
       "opposite": [
         "False"
       ],
@@ -1672,7 +1672,8 @@
       "returns": "boolean-constant",
       "meaning": "The boolean/confirm constant 'true'. Boolean fields compare to True or False; confirm fields support equality and inequality with True.",
       "constraints": [
-        "usable in equality comparisons against boolean fields and confirm fields"
+        "usable in equality comparisons against boolean fields and confirm fields",
+        "also a computation OPERATION, not only a comparison operand: a BOOLEAN computed field admits it and so does a CONFIRM computed field"
       ],
       "gotchas": [
         {
@@ -1682,6 +1683,10 @@
         {
           "text": "an unset confirm counts as not confirmed, so [Confirm] != True is the idiom for 'not confirmed'",
           "kind": "SURPRISE"
+        },
+        {
+          "text": "a CONFIRM computed field admits only this constant, because a confirm has no false — so a computation can set a confirmation but never clear one; see False for what a CONFIRM target does with the other constant",
+          "kind": "AUTHORING"
         }
       ],
       "validExample": {
@@ -1698,7 +1703,7 @@
     {
       "id": "False",
       "dslEntry": [],
-      "dslEntryNote": "No standalone factory — the False constant is emitted as the constant operand of a boolean comparison (BoolRef.isFalse) or NumberOfValueInFields(false IN …).",
+      "dslEntryNote": "No standalone Dsl factory, but the constant is the BoolLiteral(false) node: as a comparison operand it is emitted by BoolRef.isFalse or NumberOfValueInFields(false IN …), and as a computation operation it is passed directly to calc(...).",
       "opposite": [
         "True"
       ],
@@ -1711,12 +1716,17 @@
       "returns": "boolean-constant",
       "meaning": "The boolean constant 'false'. Legal against boolean fields only — a confirm field never compares to False.",
       "constraints": [
-        "usable in equality comparisons against boolean fields only"
+        "usable in equality comparisons against boolean fields only",
+        "as a computation OPERATION it is legal on a BOOLEAN computed field only — a CONFIRM computed field rejects it with MVK_INVALID_COMPARE_TO_YES"
       ],
       "gotchas": [
         {
           "text": "confirm fields compare only to True — [Confirm] == False is rejected; use [Confirm] != True for 'not confirmed'",
           "kind": "SURPRISE"
+        },
+        {
+          "text": "as a computation operation this is confined to BOOLEAN computed fields: a CONFIRM computed field rejects it with MVK_INVALID_COMPARE_TO_YES, the same asymmetry the comparison side already has",
+          "kind": "AUTHORING"
         }
       ],
       "validExample": {
@@ -2723,6 +2733,18 @@
         },
         {
           "text": "an unstarred repeatable group operand has no single diagnostic: NumberOfFilledGroups(Items) draws MVK_NO_WILDCARD from a rule whose error field sits OUTSIDE Items, and MVK_PARAMSIZE_INVALIDGN from one whose error field sits inside it, so the code depends on the rule's anchoring and not only on the operand; NumberOfFilledGroups(Items*) is admitted from either",
+          "kind": "SURPRISE"
+        },
+        {
+          "text": "that content is read over the whole SUBTREE, not over direct fields: a group whose only field sits in a descendant subgroup is both an admitted operand and a counted one, at any depth and at either position",
+          "kind": "SURPRISE"
+        },
+        {
+          "text": "mixing forms is admitted and silently changes the arithmetic: NumberOfFilledGroups(Contact, Riders*) adds a PRESENCE BIT for the fixed group to a ROW CARDINALITY for the starred one, so with Contact filled and three instantiated rows it is 4, not 2 — it is not a count of filled groups, and the spelling is statically admitted, so no diagnostic warns you",
+          "kind": "SURPRISE"
+        },
+        {
+          "text": "the list sums OPERAND POSITIONS, so naming one starred group twice counts it twice: NumberOfFilledGroups(Riders*, Riders*) over three instantiated rows is 6, not 3 — that exact spelling is statically admitted, so no diagnostic warns you",
           "kind": "SURPRISE"
         }
       ],
@@ -3996,9 +4018,9 @@
       "returns": "number",
       "meaning": "Counts the distinct values among the listed fields (the count/number of different values), typically over a repetition list.",
       "constraints": [
-        "operands must be type-homogeneous, in one of three classes: string/enum/custom together, all numbers, or all date-like — DATE/DATEFRAGMENT/TIME/DATETIME (MVK_STRING_ENUM_AND_NON_STRING_ENUM / MVK_NUMBER_AND_NON_NUMBER / MVK_DATE_AND_NONDATE)",
+        "operands must be type-homogeneous, in one of three classes: string/enum/custom together, all numbers, or all date-like — DATE/DATEFRAGMENT/TIME/DATETIME. The FIRST operand fixes the expected class and the reported code names THAT class, not the offender's: (Weight, Label) reports MVK_NUMBER_AND_NON_NUMBER while (Label, Weight) over the same two fields reports MVK_STRING_ENUM_AND_NON_STRING_ENUM (MVK_STRING_ENUM_AND_NON_STRING_ENUM / MVK_NUMBER_AND_NON_NUMBER / MVK_DATE_AND_NONDATE)",
         "date-like operands must additionally share one declared COMPONENT SET — two date-like fields are not enough (MVK_DATEFORMATS_NOT_COMPATIBLE)",
-        "no booleans/confirms (MVK_ONLY_STRING_ENUM_NUMBER_CMP_DATE_ALLOWED)",
+        "no booleans/confirms — but this code is reachable only from the LEADING slot: a boolean behind a string is reported as a homogeneity mismatch instead (MVK_ONLY_STRING_ENUM_NUMBER_CMP_DATE_ALLOWED)",
         "more than one field or a repetition list; no repeated direct field, but a wildcarded (starred) operand may repeat (MVK_DUPLICATE_PARAM1)"
       ],
       "gotchas": [
@@ -4008,6 +4030,13 @@
           "seeAlso": [
             "MaxValue",
             "MinValue"
+          ]
+        },
+        {
+          "text": "the rejection code names the FIRST operand's class, not the offending operand's, so reordering the same two fields changes the error you get: (Weight, Label) reports MVK_NUMBER_AND_NON_NUMBER and (Label, Weight) reports MVK_STRING_ENUM_AND_NON_STRING_ENUM. The kernel's message text names the offender ('Corrupt: ...') while the code names the class the list was judged against, so do not switch on the code to find the bad operand. It goes further than naming: the leading operand selects which gate runs at all, so MVK_ONLY_STRING_ENUM_NUMBER_CMP_DATE_ALLOWED appears only when the INADMISSIBLE kind leads — a boolean behind a string is reported as a homogeneity mismatch instead. FieldValuesNotUnique is the opposite and its gates span the whole list; do not carry either operator's rule to the other",
+          "kind": "SURPRISE",
+          "seeAlso": [
+            "FieldValuesNotUnique"
           ]
         }
       ],

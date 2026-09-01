@@ -336,6 +336,11 @@ public final class EditSession {
         return editStructure(d -> d.setBaseYear(year));
     }
 
+    /** Remove the model base year — the inverse of {@link #setBaseYear}. */
+    public EditSession clearBaseYear() {
+        return editStructure(ModelDocument::clearBaseYear);
+    }
+
     public EditSession addInclude(String alias, String reference, String parentPath, String name) {
         return editStructure(d -> d.addInclude(alias, reference).mount(parentPath, name, alias));
     }

@@ -248,7 +248,7 @@ private class ConditionParser(
             if (peek() == '"') {
                 Expr.EntityIndex.Literal(readString().v)
             } else {
-                val key = readRef() as Expr.Field
+                val key = readRef()
                 Expr.EntityIndex.Field(key.path, key.outer)
             }
         } else null
@@ -279,8 +279,13 @@ private class ConditionParser(
      * the grammar's `relativeUp` turning-point form (`relUp? '..' idName?`): `Name` merely NAMES the ancestor
      * landed on (the kernel validates it equals that group's short name; the target is set purely by the
      * up-count), so it is ignored for resolution — `..Name/rest` ≡ `../rest`, `..Name` ≡ the ancestor group.
+     *
+     * Returns [Expr.EntitySource], not [Expr]: every form above is a [Expr.Field] or a [Expr.Star], so declaring
+     * the shared shape lets a consumer that needs only `path`/`outer` — the semantic-index key in [entitySuffix] —
+     * read them without a cast the compiler cannot check. A key may carry a star, and narrowing that site to
+     * [Expr.Field] by hand threw `ClassCastException` on the starred shape (`StarredSemanticIndexKeyParseTest`).
      */
-    private fun readRef(outer: Boolean = false): Expr {
+    private fun readRef(outer: Boolean = false): Expr.EntitySource {
         // `RuleGroup` (the kernel's RegelKontext) is the rule's OWN group — the [base] itself. It is a reserved
         // group-context keyword (KERNEL: `REGEL_KONTEXT`), the only such self-reference in the condition grammar,
         // and never a path prefix (a star on it is authoring-rejected `MVK_INVALID_WILDCARD_FOR_RULEGROUP`, and it
@@ -335,7 +340,8 @@ private class ConditionParser(
      * path resolves against the rule's group [base] walked up [ups] levels (0 = the group itself); an
      * [absolute] path (a leading `/`) is used as-is — the kernel allows all three forms in conditions.
      */
-    private fun pathFrom(firstSeg: String, absolute: Boolean = false, ups: Int = 0, outer: Boolean = false): Expr {
+    private fun pathFrom(firstSeg: String, absolute: Boolean = false, ups: Int = 0,
+                         outer: Boolean = false): Expr.EntitySource {
         val segs = mutableListOf(firstSeg)
         var firstStar = if (skipWsAndMatch('*')) 1 else -1   // 1-based index of the FIRST `*`-marked segment
         while (skipWsAndMatch('/')) {

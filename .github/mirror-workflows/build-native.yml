@@ -41,7 +41,7 @@ jobs:
   # 1. Rebuild the kernel from public sources ONCE (Linux only — the bootstrap is bash) and publish the
   #    resulting mavenLocal JARs as an artifact the per-OS native jobs consume.
   bootstrap-kernel:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 60
     steps:
       - name: Checkout the kernel bootstrap kit (public)
@@ -93,7 +93,7 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - os: ubuntu-latest
+          - os: ubuntu-24.04
             target: linux-x64
             binary: dmtool
             asset: dmtool-linux-x64
@@ -158,6 +158,14 @@ jobs:
         with:
           enable-cache: false
 
+      # cli-custom-types.md invokes the bundled custom-JS worker through system Node. Pin it explicitly so the
+      # native gate cannot inherit a different worker runtime from a hosted-image refresh.
+      - name: Set up Node.js for the native custom-JS demo
+        if: startsWith(matrix.target, 'linux-')
+        uses: actions/setup-node@v6
+        with:
+          node-version: '24.20.0'
+
       - name: Native verification gate (Linux)
         if: startsWith(matrix.target, 'linux-')
         working-directory: a12-dmkits
@@ -210,7 +218,7 @@ jobs:
   publish:
     needs: build-native
     if: inputs.release_tag != ''
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     env:
       GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       TAG: ${{ inputs.release_tag }}

@@ -1,6 +1,6 @@
 # Kernel-runtime observation probe
 
-The JVM-only, non-shipped route by which an external consumer asks the **real A12 kernel** a *runtime* question — what fires on this document, with what polarity, at what coordinates, and what its computations made of it — and gets back a deterministic JSON artifact it can pin by SHA-256 and replay as evidence. It exists so a runtime question does not cost a purpose-written Kotlin test.
+The JVM-only, non-shipped route by which an external consumer asks the **real A12 kernel** a question and gets back a deterministic JSON artifact it can pin by SHA-256 and replay as evidence. Two kinds: a *runtime* question about a document — what fires, with what polarity, at what coordinates, and what its computations made of it — and a *model-level* question about the rule collection itself, which reads no document. It exists so either does not cost a purpose-written Kotlin test.
 
 ```
 ./gradlew :adapter:kernelProbe -Prequest=<request.json> -Pout=<artifact.json>
@@ -13,7 +13,7 @@ The JVM-only, non-shipped route by which an external consumer asks the **real A1
 | Request shape | [`adapter/src/test/resources/kernel-probe/request.schema.json`](../adapter/src/test/resources/kernel-probe/request.schema.json) |
 | Artifact shape | [`adapter/src/test/resources/kernel-probe/artifact.schema.json`](../adapter/src/test/resources/kernel-probe/artifact.schema.json) |
 | Implementation | `adapter/src/test/java/…/adapter/laws/KernelRuntimeProbe.java` + `KernelProbeArtifact.java` |
-| Locks | `adapter.laws.KernelRuntimeProbeTest` + `KernelProbeComputeTest` (kernel-backed), `adapter.laws.KernelProbeArtifactTest` + `KernelProbeComputeShapeTest` (shape), `GateTierWiringTest` (the task stays a measurement) |
+| Locks | `adapter.laws.KernelRuntimeProbeTest` + `KernelProbeComputeTest` + `KernelProbeMandatoryInformationTest` + `KernelProbeValidatePartTest` (kernel-backed), `adapter.laws.KernelProbeArtifactTest` + `KernelProbeComputeShapeTest` (shape), `GateTierWiringTest` (the task stays a measurement) |
 
 ## 1. Why a Gradle task and not a verb
 
@@ -34,12 +34,16 @@ Kernel runtime entry points over the supplied document, on **both** kernel codeg
 
 **Which entry points is the request's choice** (`observe`, §3), because adding an observation must not change what an existing request produces:
 
-| `observe` entry | kernel call | artifact block |
-|---|---|---|
-| `validateFull` (always) | `IDocumentRtService.validateFull` | `messages` |
-| `compute` (optional) | `IDocumentRtService.compute` | `computations` |
+| `observe` entry | scope | kernel call | artifact block |
+|---|---|---|---|
+| `validateFull` | per row | `IDocumentRtService.validateFull` | each engine block's `messages` |
+| `compute` | per row | `IDocumentRtService.compute` | each engine block's `computations` |
+| `validatePart` | per row | `IDocumentRtService.validatePart` | each engine block's `partialMessages` |
+| `mandatoryInformation` | **per model** | `IRuleCollectionMetaInformation.getMandatoryInformationFromRules` | the top-level `mandatoryInformation` |
 
 Not `validatePart` — a probe that guessed at more surface than it was asked for would be inventing contract (§7).
+
+**A model-level observation reads no document, and the request contract follows from that rather than from a list.** `mandatoryInformation` derives its three name sets from the model's rule CONDITIONS, so it runs once for the whole request — not per row, not per strategy — and a request may ask for it with no `rows` at all. Its scope is carried on the `Observation` enum, and both halves of the request rule are derived from that: a request naming any per-row observation must carry rows and must observe `validateFull`; a request naming only model-level ones must carry none, because a row nothing looks at is the same silent no-op the `validateFull` rule refuses. Built for a12-kernel-lean's `EXP-2026-08-30-01`, which needs to compare the derived sets across two models differing in one rule literal — a question no document evaluation can reach. The kernel types stay behind `KernelAdapter.mandatoryInformation`, which returns plain `Set<String>`, so nothing about dmtool's kernel boundary or its native build changes.
 
 **A strategy split is the finding, so it is never merged away.** Each row keeps one block per strategy and `enginesAgree` is *derived* from them; no caller can author it. On a legal-input split the ratified oracle is dynamic Groovy and the static-Java result is characterized, never adopted (INTERPRETER-FINDINGS IF136, [CONFORMANCE-CORPUS-SPEC](CONFORMANCE-CORPUS-SPEC.md) §11). It is derived from **every** channel a block reports, not from the messages alone: two strategies that agree on every message and disagree on one computed outcome are a split, and a flag computed from one channel would have reported agreement its own row contradicts.
 
@@ -64,15 +68,19 @@ Documents are **A12's canonical Document JSON** — the same shape `dmtool model
 
 **`observe` exists so that adding an observation costs an existing consumer nothing.** Omitted, the probe observes validation alone and writes the artifact it wrote before `compute` was observable — *byte for byte*, so an already-pinned SHA-256 stays valid. `KernelProbeComputeShapeTest` pins that against output captured from the pre-change producer, not against a re-run of the current one.
 
-**`validateFull` cannot be dropped.** An engine block's `messages` is a **required** key of `schemaVersion` 1, so a block whose list was empty *because nobody looked* would be indistinguishable from one where nothing fired — §5's failure mode, an empty observation that reads as an answer. `computations` avoids that by being **absent** when unobserved, and `messages` could have been made optional the same way; it was not, because that changes the shape of an artifact existing consumers already pin, which is the one thing this change is not allowed to do. So the refusal is a **compatibility** decision, not a claim that the ambiguity is unsolvable — and its cost is real: a consumer that wants only compute pays `validateFull` on both strategies for every row. `observe: ["compute"]` is refused with that reason, as is an unknown entry and an explicit empty array (an omitted key means "the default"; an empty one means a mistake).
+**`validateFull` cannot be dropped whenever any row is observed.** An engine block's `messages` is a **required** key of `schemaVersion` 1, so a block whose list was empty *because nobody looked* would be indistinguishable from one where nothing fired — §5's failure mode, an empty observation that reads as an answer. `computations` avoids that by being **absent** when unobserved, and `messages` could have been made optional the same way; it was not, because that changes the shape of an artifact existing consumers already pin, which is the one thing this change is not allowed to do. So the refusal is a **compatibility** decision, not a claim that the ambiguity is unsolvable — and its cost is real: a consumer that wants only compute pays `validateFull` on both strategies for every row. `observe: ["compute"]` is refused with that reason, as is an unknown entry and an explicit empty array (an omitted key means "the default"; an empty one means a mistake). The rule is scoped to per-row observations because a model-level-only request observes no row at all — `observe: ["mandatoryInformation"]` with no `rows` is the shape that capability exists for, and supplying a row to it is refused from the other side. The published request schema encodes the same three cases, and `KernelProbeMandatoryInformationTest.theSchemaAndTheProducerAgreeOnTheModelLevelRules` fails if the two ever drift: an agent reads the schema before it runs the probe, so a schema that accepts what the producer rejects teaches the wrong shape.
 
 **`locale` is not cosmetic.** The kernel refuses a locale the model has not *declared*, outright — measured 2026-08-11: probing a `de_DE`-only model at the default gives `IllegalArgumentException: Locale 'en_US' is not supported in the document model '…'`. So a German-only model is unobservable without this key rather than merely reported in English. Only the `message` channel is locale-dependent; `code`, `type`, `severity`, and every address are not. Both directions are locked by `KernelRuntimeProbeTest.theRequestPinsAnEvaluationLocaleBecauseTheKernelRefusesAnUndeclaredOne`.
 
 ## 4. The artifact
 
-A header naming the producer, then one entry per row in request order, then one block per strategy carrying that strategy's complete observation: its message list always, and its `computations` when the request asked for one. Each message uses the **key names of a `model eval` `messages[]` entry** — `code`, `field`, `severity`, `type`, `message`, `referenced`, `fillToFix` — so one parser reads dmtool's runtime output and this artifact alike.
+A header naming the producer, then one entry per row in request order, then one block per strategy carrying that strategy's complete observation: its message list always, and its `computations` when the request asked for one. A model-level observation sits beside `rows` rather than inside it — see "The `mandatoryInformation` block" below — and `rows` is then the empty array, because it is a required key of `schemaVersion` 1 that consumers already read. Each message uses the **key names of a `model eval` `messages[]` entry** — `code`, `field`, `severity`, `type`, `message`, `referenced`, `fillToFix` — so one parser reads dmtool's runtime output and this artifact alike.
 
 Addresses keep dmtool's published **`a12-message-address`** contract, decided per address on the typed pointer: canonical A12 when it names exactly one cell (no leading slash, the implicit `[1]` omitted), and the interpreter house form when it does not, because A12 defines no pointer string for an address carrying a wildcard or an unresolved level ([CLI-SPEC](CLI-SPEC.md) [§5](CLI-SPEC.md#verb-surface)). **Test the leading slash to tell them apart.** Nothing is lost: only A12's own implicit `[1]` goes unwritten, so every wildcard and every row above the first survives verbatim — which is what makes the probe able to answer a coordinate question at all (`/Order[1]/Items[0]/Count` from a starred group operand beside `Order/Billing/Street` from an unstarred one).
+
+The probe's projector stays test-only and independent from the CLI implementation, but no longer drifts unchecked across the module boundary. `:adapter` publishes that projector through Gradle test fixtures, and `:cli`'s `MessageAddressPolicyEquivalenceTest` passes one shared table of typed pointers to it and to `A12Pointers.canonical`. This test-only edge avoids both bad alternatives: reversing the production dependency or publishing the house fallback as interpreter API.
+
+**The arm is a projection of the coordinate, so never correlate the two.** The house arm is chosen exactly when `toExactPointer()` returns `null`, which is exactly when a non-final level carries a wildcard or an unresolved index — so "slash-led addresses are the ones with an unbound level" is true of every artifact this probe will ever write, by construction, and measures nothing. Read the vector, not the spelling, whenever the question is about coordinates. *(Written 2026-08-31, after a12-kernel-lean derived an address-KIND rule from that correlation across its artifacts and this project then recorded the agreement as corroboration in [KERNEL-FINDINGS](KERNEL-FINDINGS.md#kf228); the rule itself holds — it was independently measured off `repetitionIndexes()` — but the correlation was never evidence for it.)*
 
 ### The `computations` block
 
@@ -107,6 +115,34 @@ So it is an **inventory, not a causal attribution** — emitted whether or not a
 
 **The `schemaVersion` stayed `1`, deliberately.** A consumer receives `computations` only by asking for it, so no artifact an existing consumer can obtain changes shape and no existing key changes meaning — while bumping would have broken the harder guarantee, that an unchanged request keeps producing bytes an already-pinned SHA-256 matches. **What that costs, stated rather than glossed:** `schemaVersion: 1` no longer determines the artifact's *shape*, only its key meanings, so §6's "an artifact carries its own version header" now means a consumer must also know what it asked for. The schema document itself was edited in place under an unversioned `$id`, so a cached copy and a re-fetched one differ. Both were judged cheaper than breaking a pin.
 
+### The `partialMessages` block
+
+Present exactly when the request asked for `validatePart`, beside `messages` inside each engine block. It carries what that strategy's `validatePart` raised under the row's own `relevant` coverage, sorted on the same total order as `messages`.
+
+**What it reaches that `validateFull` cannot.** Two shapes, and both are properties of the CALLER rather than of the document — the same document answers differently depending on what was declared relevant, which is exactly why no full validation can express them: a **call-local partial coverage** (a set that admits some rules and excludes others), and the empty **`noneRelevant`** coverage. Added 2026-08-31 for a12-kernel-lean, whose filled-group-count unavailability rows are blocked on those two and nothing else.
+
+**A row's `relevant` is required exactly when the observation is asked for, and refused otherwise** — the same both-directions rule the other observations carry. Without the coverage a `validatePart` would silently behave as a `validateFull`; without the observation the key is one nothing reads. An **empty array is not an omission**: it is the `noneRelevant` request, so `partialMessages` renders even when empty, and `Row.relevant` is an `Optional<Set<…>>` end to end rather than a set that happens to be empty.
+
+**`reps` is one entry per path PART, not per repeatable part.** `DocumentPointerImpl.parsePathParts` refuses a mismatch with `fullName and repetition have different length`, so `/Order/Lines/Amount` needs three entries even though only `Lines` repeats; `0` is the kernel's wildcard for "every repetition of that element". **Omit `reps` entirely** for the all-wildcard coverage of the right length — the probe derives it from the path, which is what a consumer almost always wants and removes a hand-counting footgun that cost one measurement here.
+
+`enginesAgree` covers this channel too: whether the static-JAVA codegen path gates a relevant set identically to dynamic-Groovy is precisely the kind of split this probe exists to surface, and omitting it would report agreement over an unread channel.
+
+### The `mandatoryInformation` block
+
+Present exactly when the request asked for it, at the artifact's top level rather than inside a row, because it is a property of the model's rule collection and not of any document. Three sorted name lists, keyed by the kernel's own getter names:
+
+| key | kernel getter | what it holds |
+|---|---|---|
+| `mandatory` | `getMandatory()` | the fields the rule collection makes mandatory outright |
+| `mandatoryForRootGroup` | `getMandatoryForRootGroup()` | the fields mandatory once their root group is present |
+| `mandatoryRootGroups` | `getMandatoryRootGroups()` | the root groups the collection makes mandatory |
+
+The kernel derives these from rule **conditions**, not from the fields a rule references: `FieldNotFilled(/A/a)` makes `/A/a` mandatory, `GroupNotFilled(/A)` makes a root group mandatory, and a starred negative quantifier makes neither, because it does not hold for every repetition. A field named only in an ordinary comparison appears nowhere. A **count** shape (`NumberOfFilledFields(…) < n`) names no field either, reaching only `mandatoryRootGroups` — and only in the `<` direction — so a consumer must not read an empty field set as "this model requires nothing in that group".
+
+**Two shape facts a consumer joining these names against model paths needs, both measured rather than assumed** ([KF225](KERNEL-FINDINGS.md#kf225), locked in `KernelProbeMandatoryInformationTest`): the field sets spell paths with a leading slash and `mandatoryRootGroups` does not; and `GroupNotFilled` on a nested group yields the enclosing ROOT group, not the group named. The rule collection passed in is the kernel's own and **unfiltered**, so it includes the generated self-validation of every computation — filtering would insert an editorial choice of ours into a kernel measurement.
+
+Each list is sorted. `IMandatoryInformation` exposes `Set<String>`, which carries no order contract, so an artifact pinned by SHA-256 cannot depend on one; nothing guaranteed is lost.
+
 ### Determinism is structural
 
 Two runs over identical input and an identical source tree produce **byte-identical** artifacts, which is what lets a consumer pin one by SHA-256. It is arranged rather than hoped for:
@@ -119,6 +155,8 @@ Two runs over identical input and an identical source tree produce **byte-identi
 `producer.source.state` says whether the **revision** or the **worktree** produced the observation: `CLEAN` means the tree matched `revision` exactly, `DIRTY` that it did not and the artifact is therefore not reproducible from `revision` alone. It is measured by [`scripts/SourceProvenance.java`](../scripts/SourceProvenance.java), the same program that stamps dmtool's own version resource.
 
 ## 5. Refusal
+
+**A non-`CLEAN` working tree fails the run before anything else happens, and nothing is written.** A `DIRTY` artifact's `revision` addresses a tree that never existed anywhere and an `UNKNOWN` one addresses nothing at all, so neither can be pinned — which is the only thing the revision is for. Both refuse; `UNKNOWN` is deliberately not the lenient case, or the class stays open through the state that means "we could not tell". For a local exploration run whose artifact will not be handed over, `-PprobeAllowUnpinned=true` permits it and **leaves the stamp alone**: the artifact still declares the state it was produced under, so the escape cannot launder one. *(Enforced by `KernelRuntimeProbe.requirePinnedSource`, locked does-fire and does-not-fire by `adapter.laws.KernelProbePinnedSourceTest`; the Gradle task sets the enforcement flag explicitly rather than the probe inferring it from an absent property, so the in-process callers in `KernelRuntimeProbeTest` are unaffected. Added 2026-08-31 after a12-kernel-lean discarded a probe round on a `DIRTY` artifact — a window it cannot close from its side, since writing into this checkout is outside what its instructions permit.)*
 
 A model the kernel's consistency oracle reports an `ERROR` on **fails the run with those diagnostics and writes nothing**, whatever the request asked to observe. This is the load-bearing failure mode: an inconsistent model evaluates to no messages at all, and a written artifact full of empty message lists would read as "nothing fired" — a wrong answer that looks like an answer. The gate is `KernelConsistencyOracle`, the same oracle `rule check` reports `KERNEL_CONFIRMED` from, so anything the probe accepts is something `rule check` accepts.
 

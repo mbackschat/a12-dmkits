@@ -6,6 +6,7 @@ public final class io.github.mbackschat.a12.dm.edit.ComputationEditor extends io
 public final class io.github.mbackschat.a12.dm.edit.ConfigEditor
   public io.github.mbackschat.a12.dm.edit.ConfigEditor annotation(java.lang.String, java.lang.String)
   public io.github.mbackschat.a12.dm.edit.ConfigEditor baseYear(int)
+  public io.github.mbackschat.a12.dm.edit.ConfigEditor clearBaseYear()
   public io.github.mbackschat.a12.dm.edit.ConfigEditor comment(java.lang.String)
   public io.github.mbackschat.a12.dm.edit.ConfigEditor conditionLanguage(java.lang.String)
   public io.github.mbackschat.a12.dm.edit.ConfigEditor decimalSeparator(java.lang.String)
@@ -33,6 +34,7 @@ public final class io.github.mbackschat.a12.dm.edit.EditSession
   public io.github.mbackschat.a12.dm.edit.EditSession addTypeDefinition(java.lang.String, io.github.mbackschat.a12.dm.modelkit.FieldKind)
   public io.github.mbackschat.a12.dm.edit.EditSession addTypeDefinition(java.lang.String, io.github.mbackschat.a12.dm.modelkit.FieldTypeSpec)
   public io.github.mbackschat.a12.dm.edit.EditSession addTypedefField(java.lang.String, java.lang.String, java.lang.String)
+  public io.github.mbackschat.a12.dm.edit.EditSession clearBaseYear()
   public io.github.mbackschat.a12.dm.edit.EditSession clearIndexField(java.lang.String)
   public io.github.mbackschat.a12.dm.edit.EditSession clearModelComment()
   public io.github.mbackschat.a12.dm.edit.EditSession clearSortFields(java.lang.String)

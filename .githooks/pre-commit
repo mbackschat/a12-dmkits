@@ -112,6 +112,12 @@ Run them — WITHOUT -Pfast, which skips them by design:
 
   ./build.sh --console=plain :docGuardTest :cli:docGuardTest
 
+If a task reports UP-TO-DATE, its result files are NOT refreshed and this check still refuses — that
+happens for a markdown file no guard declares as an input (CLAUDE.md and docs/CLAUDE.md among them).
+Append `--rerun` to the task that stayed up-to-date:
+
+  ./build.sh --console=plain :docGuardTest --rerun :cli:docGuardTest --rerun
+
 Then commit again. If a demo drifted, the failing guard prints the exact regeneration command.
 
 `git commit --no-verify` bypasses this; CI will still fail, which is deliberate — a local bypass must not be

@@ -572,6 +572,16 @@ public final class RuntimeLaws {
         }
     }
 
+    /**
+     * The kernel-side form of a relevant set. Extracted 2026-08-31 after the same three-line conversion had
+     * been written out at five call sites; a sixth was about to be added for the probe's {@code validatePart}
+     * observation.
+     */
+    static Set<DocumentMultiPointer> relevantPointers(Set<Relevant> relevant) {
+        return relevant.stream()
+                .map(r -> DocumentMultiPointer.of(r.path(), r.reps())).collect(Collectors.toSet());
+    }
+
     /** Partial validation: the kernel's {@code validatePart(DocumentV2, relevantEntities, config)} (codes only). */
     static Set<String> firedCodesPart(String modelJson, Doc doc, Set<Relevant> relevant) {
         return messagesPart(modelJson, doc, relevant).stream().map(Msg::code)
@@ -590,8 +600,7 @@ public final class RuntimeLaws {
             Map<String, ICustomCondition> customConditions) {
         KernelEngine engine = sharedKernelEngine(modelJson);
         DocumentV2 v2 = engine.instance(doc);
-        Set<DocumentMultiPointer> relevantPointers = relevant.stream()
-                .map(r -> DocumentMultiPointer.of(r.path(), r.reps())).collect(Collectors.toSet());
+        Set<DocumentMultiPointer> relevantPointers = relevantPointers(relevant);
         DocumentProcessingConfig config = DocumentProcessingConfig.builder(Locale.US)
                 .customConditionFactory(ICustomConditionFactory.fromMap(customConditions))
                 .build();
@@ -851,8 +860,7 @@ public final class RuntimeLaws {
     /** Groovy-dynamic {@code validatePart(DocumentV2, relevant, config)} — clock-pinnable. */
     static List<Msg> messagesPartModern(String modelJson, Doc doc, Set<Relevant> relevant, Date clock) {
         KernelEngine engine = sharedKernelEngine(modelJson);
-        Set<DocumentMultiPointer> rel = relevant.stream()
-                .map(r -> DocumentMultiPointer.of(r.path(), r.reps())).collect(Collectors.toSet());
+        Set<DocumentMultiPointer> rel = relevantPointers(relevant);
         return engine.rt.validatePart(engine.instance(doc), rel, config(clock)).getMessages().stream()
                 .map(RuntimeLaws::toMsg).toList();
     }
@@ -934,6 +942,26 @@ public final class RuntimeLaws {
         DocumentV2 destinationV2 = engine.instance(destination);
         DocumentV2 applied = engine.rt.compute(sourceV2, config(null, Locale.US)).applyTo(destinationV2);
         return probes.stream().map(p -> p.path() + "|" + appliedStateAt(applied, p)).toList();
+    }
+
+    /**
+     * The APPLIED document itself for the separate-destination route — the same {@code compute → applyTo} pair
+     * {@link #appliedStatesToDestination} probes, handed back whole. Deliberately NOT a projection: the two
+     * things a cell probe cannot answer are how many repetitions the applied document holds and what a later
+     * validation over it reports, and both decide the applied state rather than describing it
+     * (a12-kernel-lean {@code EXP-2026-08-25-01}). The caller owns the normalization, so this adds no topology
+     * vocabulary to the harness.
+     */
+    static DocumentV2 appliedDocumentToDestination(String modelJson, Doc source, Doc destination) {
+        KernelEngine engine = sharedKernelEngine(modelJson);
+        return engine.rt.compute(engine.instance(source), config(null, Locale.US))
+                .applyTo(engine.instance(destination));
+    }
+
+    /** Full validation of an ALREADY-APPLIED document on the groovy-dynamic leg — the later-validation half of
+     *  {@link #appliedDocumentToDestination}, with no second computation in between. */
+    static List<String> appliedValidationSignaturesSorted(String modelJson, DocumentV2 applied) {
+        return sharedKernelEngine(modelJson).validationSignaturesSorted(applied);
     }
 
     /** Walk the applied document to {@code probe} — absent / presentEmpty / presentValue|text kept distinct. */
@@ -1046,6 +1074,18 @@ public final class RuntimeLaws {
         }
 
         /**
+         * The {@code validatePart} twin of {@link #validationMessages}, <b>unprojected</b>, over an
+         * already-built instance. An EMPTY relevant set is meaningful and not a no-op request: it is the
+         * kernel's {@code noneRelevant} coverage, which is one of the two shapes {@code validateFull} cannot
+         * express at all.
+         */
+        List<IMessage> partialValidationMessages(DocumentV2 instance, Set<Relevant> relevant, Date clock,
+                Locale locale) {
+            return List.copyOf(
+                    rt.validatePart(instance, relevantPointers(relevant), config(clock, locale)).getMessages());
+        }
+
+        /**
          * One {@code compute()} over an already-built instance, <b>unprojected</b> — the compute twin of
          * {@link #validationMessages}, with {@link JavaKernelEngine#computation} as its static-JAVA counterpart,
          * and it exists for the same reason ({@link ComputationObservation}).
@@ -1129,8 +1169,7 @@ public final class RuntimeLaws {
          * the comparison symmetric rather than merely fast.
          */
         public int partialMessageCount(DocumentV2 instance, Set<Relevant> relevant) {
-            Set<DocumentMultiPointer> pointers = relevant.stream()
-                    .map(r -> DocumentMultiPointer.of(r.path(), r.reps())).collect(Collectors.toSet());
+            Set<DocumentMultiPointer> pointers = relevantPointers(relevant);
             return rt.validatePart(instance, pointers, config(null, Locale.US)).getMessages().size();
         }
 
@@ -1296,6 +1335,17 @@ public final class RuntimeLaws {
             return List.copyOf(rt.validateFull(instance, config(clock, locale)).getMessages());
         }
 
+        /**
+         * The static-JAVA twin of {@link KernelEngine#partialValidationMessages} — same contract, same reason.
+         * Whether this codegen path supports {@code validatePart} at all is pinned separately by
+         * {@code JavaStaticPartialBaselineDiffTest}; this method does not assume it does.
+         */
+        List<IMessage> partialValidationMessages(DocumentV2 instance, Set<Relevant> relevant, Date clock,
+                Locale locale) {
+            return List.copyOf(
+                    rt.validatePart(instance, relevantPointers(relevant), config(clock, locale)).getMessages());
+        }
+
         /** The static-JAVA twin of {@link KernelEngine#computation} — same contract, same reason. */
         ComputationObservation computation(DocumentV2 instance, Date clock, Locale locale) {
             return observationOf(rt.compute(instance, config(clock, locale)));
@@ -1343,6 +1393,18 @@ public final class RuntimeLaws {
         /** The full five-channel computation result over an already-built typed source document. */
         ResultChannels resultChannels(DocumentV2 instance) {
             return resultChannelsOf(rt.compute(instance, config(null, Locale.US)));
+        }
+
+        /**
+         * The static-JAVA twin of {@link KernelEngine#computeAndApply} — {@code compute()} then
+         * {@code applyTo}. It exists because a re-apply observation (compute over a document whose stored cell
+         * IS this computation's own previous output) is the only construction in which "source-identical" is
+         * beyond doubt, and a one-strategy version of that claim would state a generator's behaviour as the
+         * kernel's ({@code RepeatableTimeConstructionChangedDiffTest}).
+         */
+        public DocumentV2 computeAndApply(DocumentV2 instance) {
+            DocumentProcessingConfig cfg = config(null, Locale.US);
+            return rt.compute(instance, cfg).applyTo(instance);
         }
 
         /**
@@ -1426,6 +1488,12 @@ public final class RuntimeLaws {
             return probes.stream().map(p -> p.path() + "|" + appliedStateAt(applied, p)).toList();
         }
 
+        /** The applied document itself over the static-JAVA strategy — the twin of
+         *  {@link RuntimeLaws#appliedDocumentToDestination(String, Doc, Doc)}. */
+        DocumentV2 appliedDocumentToDestination(Doc source, Doc destination) {
+            return rt.compute(instance(source), config(null, Locale.US)).applyTo(instance(destination));
+        }
+
         /** The form-engine flow ({@code compute → applyTo → validateFull}) over the static-JAVA strategy —
          *  the twin of {@link RuntimeLaws#messagesAfterCompute(String, Doc, Locale)}. */
         List<Msg> messagesAfterCompute(Doc doc) {
@@ -1450,8 +1518,7 @@ public final class RuntimeLaws {
         List<Msg> messagesPart(
                 Doc doc, Set<Relevant> relevant, Map<String, ICustomCondition> customConditions) {
             DocumentV2 v2 = instance(doc);
-            Set<DocumentMultiPointer> relevantPointers = relevant.stream()
-                    .map(r -> DocumentMultiPointer.of(r.path(), r.reps())).collect(Collectors.toSet());
+            Set<DocumentMultiPointer> relevantPointers = relevantPointers(relevant);
             DocumentProcessingConfig config = DocumentProcessingConfig.builder(Locale.US)
                     .customConditionFactory(ICustomConditionFactory.fromMap(customConditions)).build();
             return rt.validatePart(v2, relevantPointers, config).getMessages().stream().map(RuntimeLaws::toMsg).toList();
@@ -1471,8 +1538,7 @@ public final class RuntimeLaws {
 
         /** Static-JAVA {@code validatePart(DocumentV2, relevant, config)} — clock-pinnable. */
         List<Msg> messagesPartModern(Doc doc, Set<Relevant> relevant, Date clock) {
-            Set<DocumentMultiPointer> rel = relevant.stream()
-                    .map(r -> DocumentMultiPointer.of(r.path(), r.reps())).collect(Collectors.toSet());
+            Set<DocumentMultiPointer> rel = relevantPointers(relevant);
             return rt.validatePart(instance(doc), rel, config(clock)).getMessages().stream().map(RuntimeLaws::toMsg).toList();
         }
 

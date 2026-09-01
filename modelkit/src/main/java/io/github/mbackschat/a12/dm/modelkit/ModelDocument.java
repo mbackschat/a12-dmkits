@@ -1318,6 +1318,13 @@ public final class ModelDocument {
         return this;
     }
 
+    /** Remove the model base year, so year-less dates lose their resolution point — the inverse of
+     *  {@link #setBaseYear}. Absence was always readable and, until 2026-08-31, unreachable. */
+    public ModelDocument clearBaseYear() {
+        modelInfo().remove(DmKeys.BASE_YEAR);
+        return this;
+    }
+
     /** The model's base year ({@code modelInfo.baseYear}), if set — the read peer of {@link #setBaseYear}
      *  (the kernel stores it as a string, so tolerate both textual and numeric). */
     public Optional<Integer> baseYear() {

@@ -2725,9 +2725,14 @@ final class ConditionConverter {
                     convertOperation(operation, kind),
                     Optional.ofNullable(toleranceBand(operation))));
         }
-        String groupPath = computedPath.substring(0, computedPath.lastIndexOf('/'));
-        // info.getName() is the computation's full path; Computation.name is the short (last-segment) name
-        String name = info.getName().substring(info.getName().lastIndexOf('/') + 1);
+        // Both halves come from info.getName(), the computation ELEMENT's own full path — the group is where the
+        // computation LIVES, which A12 lets differ from where it WRITES. Deriving it from computedPath instead
+        // read every cross-group computation back into the target's parent, and since groupPath is both the
+        // operand-rendering base and the group a write-back inserts into, re-persisting what was read MOVED the
+        // element (CrossGroupComputationReadTest). Computation.name is the short (last-segment) name.
+        String elementPath = info.getName();
+        String groupPath = elementPath.substring(0, elementPath.lastIndexOf('/'));
+        String name = elementPath.substring(elementPath.lastIndexOf('/') + 1);
         // a read computation carries no comments on the AST (concrete syntax stays in the stored slot
         // texts); authoring/preservation populate the side-channel, not the converter.
         return new Computation(groupPath, name, computed, common, alternatives, messages, Comments.none(),

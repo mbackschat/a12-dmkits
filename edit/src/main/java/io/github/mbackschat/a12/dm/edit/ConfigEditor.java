@@ -60,6 +60,12 @@ public final class ConfigEditor {
         return this;
     }
 
+    /** Remove the model base year — the inverse of {@link #baseYear(int)}. */
+    public ConfigEditor clearBaseYear() {
+        session.clearBaseYear();
+        return this;
+    }
+
     /** Upsert one per-locale model header label (the model's localized display name). Chains. */
     public ConfigEditor label(String locale, String text) {
         session.setModelLabel(locale, text);

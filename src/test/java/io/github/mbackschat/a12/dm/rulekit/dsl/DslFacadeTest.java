@@ -113,6 +113,35 @@ class DslFacadeTest {
                 new DslRenderer().render(Dsl.atLeastOneFieldFilled(fields)));
     }
 
+    /**
+     * The filled-COUNT had no list peer while all eight fill quantifiers did, so a consumer that gathers a
+     * field list by navigation could ask "are they all filled" but not "how many are" without unrolling the
+     * list back into varargs. Found authoring {@code adapter.laws.ErroneousFieldRelevanceLawsTest}, which
+     * needs both shapes over one list.
+     */
+    @Test
+    void theFilledCountHasTheSameListPeerAsTheFillQuantifiers() {
+        var fields = java.util.List.of(m.field(NAME), m.field(MONTHLY_FEE));
+        assertEquals(
+                new DslRenderer().render(
+                        Dsl.numberOfFilledFields(m.field(NAME), m.field(MONTHLY_FEE)).expression()),
+                new DslRenderer().render(Dsl.numberOfFilledFields(fields).expression()));
+    }
+
+    /**
+     * Its arity law is the varargs form's, enforced where a list makes it a runtime question. One bare field
+     * is not a count the kernel accepts, and the single-scope overloads
+     * ({@code numberOfFilledFields(FieldListRef)} / {@code (GroupListRef)}) are the exemption — reachable by
+     * their own declarations, so widening this one to admit a singleton would erase the distinction.
+     */
+    @Test
+    void theFilledCountsListPeerRefusesFewerThanTwoOperands() {
+        org.junit.jupiter.api.Assertions.assertThrows(IllegalArgumentException.class,
+                () -> Dsl.numberOfFilledFields(java.util.List.of(m.field(NAME))));
+        org.junit.jupiter.api.Assertions.assertThrows(IllegalArgumentException.class,
+                () -> Dsl.numberOfFilledFields(java.util.List.<AggregateOperand>of()));
+    }
+
     @Test
     void lengthFactoryMatchesTheHandleForm() {
         Condition viaDsl = length(m.str(NAME)).gt(10);
