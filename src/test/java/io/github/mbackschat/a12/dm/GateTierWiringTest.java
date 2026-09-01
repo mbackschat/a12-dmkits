@@ -342,6 +342,19 @@ class GateTierWiringTest {
                 "the classification must state why omitting concurrency cannot shrink native reachability");
         assertTrue(task.contains("systemProperty 'dmtool.executable', dmtoolContractExecutable"),
                 "dmtool.executable is a real absorbed-class runtime input and must remain supplied separately");
+        assertTrue(task.contains("systemProperty 'dmtool.versionProperties', dmtoolContractVersionProperties"),
+                "the packaged version oracle must be the selected artifact's build snapshot, not live Git state");
+        assertTrue(task.contains("inputs.file(file(dmtoolContractVersionProperties))"),
+                "a changed packaged provenance snapshot must invalidate the public-contract lane");
+
+        String versionContract = Files.readString(locate(
+                "cli/src/test/java/io/github/mbackschat/a12/dm/cli/DmtoolPublicContractTest.java"));
+        assertTrue(versionContract.contains("System.getProperty(\"dmtool.versionProperties\""),
+                "the version contract must read the immutable snapshot supplied for the selected executable");
+        assertFalse(versionContract.contains("git(\"rev-parse\"")
+                        || versionContract.contains("git(\"ls-files\"")
+                        || versionContract.contains("git(\"diff\""),
+                "an artifact's build identity must never be compared with a later test-time working tree");
 
         for (String className : new String[] {
                 "CommandRouteEquivalenceTest",

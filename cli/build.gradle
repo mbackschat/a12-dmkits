@@ -93,6 +93,7 @@ application {
 // resource, which prevents an installDist launcher from silently retaining the provenance of an older build.
 // The kernel *runtime* version is read separately from the kernel jar; the catalog floor from operators.json.
 def generatedVersionDir = layout.buildDirectory.dir('generated/version-resources')
+def packagedVersionSnapshotName = 'dmtool-version.properties'
 def sourceProvenanceProgram = rootProject.file('scripts/SourceProvenance.java')
 def javaExecutable = new File(System.getProperty('java.home'), 'bin/'
         + (System.getProperty('os.name').toLowerCase(java.util.Locale.ROOT).contains('win') ? 'java.exe' : 'java'))
@@ -120,6 +121,26 @@ def generateVersionProperties = tasks.register('generateVersionProperties', Writ
 }
 sourceSets.main.resources.srcDir(generatedVersionDir)
 tasks.named('processResources') { dependsOn generateVersionProperties }
+
+// The packaged contract must compare an artifact with the tree snapshot that artifact actually consumed, not
+// with a later working tree. Keep the exact generated properties beside each launcher so the same black-box
+// suite can oracle both installDist and native artifacts without reopening Git at test time (measured 2026-09-01:
+// an untracked file created after packaging changed only the old test-time expectation and produced a false red).
+def installDistVersionSnapshot = layout.buildDirectory.file(
+        "install/dmtool/bin/${packagedVersionSnapshotName}")
+def nativeVersionSnapshot = layout.buildDirectory.file(
+        "native/nativeCompile/${packagedVersionSnapshotName}")
+def copyVersionSnapshot = { targetProvider ->
+    def source = generateVersionProperties.get().destinationFile.get().asFile.toPath()
+    def target = targetProvider.get().asFile.toPath()
+    java.nio.file.Files.createDirectories(target.parent)
+    java.nio.file.Files.copy(source, target, java.nio.file.StandardCopyOption.REPLACE_EXISTING)
+}
+tasks.named('installDist') {
+    inputs.file(generateVersionProperties.map { it.destinationFile })
+    outputs.file(installDistVersionSnapshot)
+    doLast { copyVersionSnapshot(installDistVersionSnapshot) }
+}
 
 // …but keep that deliberate per-commit invalidation OFF the test runtime classpath. The resource above is a
 // main resource, so it rides `sourceSets.test.runtimeClasspath` — the `classpath` of `test` and of all six
@@ -151,6 +172,8 @@ normalization {
 // is not a check.
 tasks.named('nativeCompile') {
     inputs.file(generateVersionProperties.map { it.destinationFile })
+    outputs.file(nativeVersionSnapshot)
+    doLast { copyVersionSnapshot(nativeVersionSnapshot) }
 }
 
 // --- Native reflection-metadata FRESHNESS STAMP (docs/NATIVE-IMAGE-GRAALVM.md §5.1) ----------------------
@@ -328,6 +351,8 @@ tasks.withType(Test).configureEach {
 // capture below must hand the same value to the traced lane (see the -PrkNativeAgent block).
 def dmtoolContractExecutable = project.findProperty('dmtoolContractExecutable')
         ?: layout.buildDirectory.file('install/dmtool/bin/dmtool').get().asFile.absolutePath
+def dmtoolContractVersionProperties = project.findProperty('dmtoolContractVersionProperties')
+        ?: new File(file(dmtoolContractExecutable).parentFile, packagedVersionSnapshotName).absolutePath
 
 tasks.named('test', Test) {
     // Native-image reflection capture (docs/NATIVE-IMAGE-GRAALVM.md §5) — TEST-SUITE driven, opt-in.
@@ -357,13 +382,14 @@ tasks.named('test', Test) {
         // already-running Gradle daemon can otherwise reintroduce the environment it started with.
         ['NO_COLOR', 'CLICOLOR', 'CLICOLOR_FORCE', 'ANSICON', 'ConEmuANSI'].each { environment.remove(it) }
         // A capture DISABLES the exclusive-lane exclusion (root build.gradle), so this lane absorbs the four
-        // `publicContractTest` classes — and must therefore also supply that lane's RUNTIME INPUT. Absorbing
-        // the classes without it is what made the first capture after both features existed die on 13 execs of
-        // the module directory. Excluding them instead is NOT the fix: two of the four also drive the CLI
+        // `publicContractTest` classes — and must therefore also supply that lane's RUNTIME INPUTS. Absorbing
+        // the classes without its executable is what made the first capture after both features existed die on
+        // 13 execs of the module directory. Excluding them instead is NOT the fix: two of the four also drive the CLI
         // IN-PROCESS, so dropping them silently loses committed metadata (measured: 5 entries, including the
         // picocli field injections behind `rule eval` and `batch`).
         dependsOn tasks.named('installDist')
         systemProperty 'dmtool.executable', dmtoolContractExecutable
+        systemProperty 'dmtool.versionProperties', dmtoolContractVersionProperties
         outputs.upToDateWhen { false }   // always re-run; a cached (skipped) test run captures nothing
     }
 }
@@ -611,7 +637,9 @@ tasks.register('publicContractTest', Test) {
     testClassesDirs = sourceSets.test.output.classesDirs
     classpath = sourceSets.test.runtimeClasspath
     systemProperty 'dmtool.executable', dmtoolContractExecutable
+    systemProperty 'dmtool.versionProperties', dmtoolContractVersionProperties
     inputs.file(file(dmtoolContractExecutable))
+    inputs.file(file(dmtoolContractVersionProperties))
     inputs.file(rootProject.file('skill/SKILL.md'))
     // Every method owns an independent @TempDir and PackagedDmtool instance. The expensive work is waiting for
     // separate launcher processes, so run methods concurrently without replacing or batching away that public
@@ -632,13 +660,10 @@ tasks.register('publicContractTest', Test) {
             'junit.jupiter.execution.parallel.config.fixed.parallelism':
                     'worker count affects wall time only',
     ])
-    // The ONE place the version-resource normalization above must not reach. This lane asserts the PACKAGED
-    // launcher's reported revision equals `git rev-parse HEAD`, so provenance is a genuine input to it and a
-    // bare commit MUST re-run it — otherwise the stale-launcher property stops being checked per commit, and
-    // that property is the whole reason the resource is regenerated. Declared as a plain file input, which is
-    // not classpath-normalized, so the `ignore` does not apply here. `dependsOn installDist` alone is not
-    // enough: it orders the rebuild but never makes this task out-of-date.
-    inputs.file(generateVersionProperties.map { it.destinationFile })
+    // The snapshot above is a plain, non-classpath-normalized input. A bare commit or CLEAN↔DIRTY transition
+    // rebuilds installDist and changes that artifact-owned file, so this lane re-runs even though the launcher
+    // script's bytes stay constant. With an external native executable, both inputs remain tied to that prior
+    // build and a later unrelated tree mutation cannot rewrite the test's oracle.
     filter {
         includeTestsMatching 'io.github.mbackschat.a12.dm.cli.DmtoolPublicContractTest'
         includeTestsMatching 'io.github.mbackschat.a12.dm.cli.DmtoolMutationSafetyTest'
