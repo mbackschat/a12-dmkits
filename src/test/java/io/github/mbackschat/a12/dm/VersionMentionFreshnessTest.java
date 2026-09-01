@@ -23,6 +23,8 @@ import org.junit.jupiter.api.Test;
  */
 class VersionMentionFreshnessTest {
 
+    private static final Checkout CHECKOUT = Checkout.locate();
+
     /** Files that state the targeted versions in hand-written text and must track the build pins. */
     private static final List<String> VERSION_MENTIONING_FILES = List.of(
             "README.md",
@@ -36,12 +38,12 @@ class VersionMentionFreshnessTest {
 
     @Test
     void everyVersionMentionMatchesTheBuildPins() throws IOException {
-        String build = Files.readString(repoFile("build.gradle"));
+        String build = Files.readString(CHECKOUT.requireFile("build.gradle"));
         String kernel = pin(build, "kernelVersion");
         String a12 = pin(build, "a12Distribution");
 
         for (String relative : VERSION_MENTIONING_FILES) {
-            String text = Files.readString(repoFile(relative));
+            String text = Files.readString(CHECKOUT.requireFile(relative));
             if (!text.contains(kernel)) {
                 fail(relative + " must mention the pinned kernel version " + kernel
                         + " (single-sourced in build.gradle ext.kernelVersion) — it drifted");
@@ -60,14 +62,4 @@ class VersionMentionFreshnessTest {
         return m.group(1);
     }
 
-    /** Locate a repo-root file regardless of the module working dir (mirrors {@code DocSnippetFreshnessTest}). */
-    private static Path repoFile(String relative) {
-        for (String base : List.of(".", "..", "../..")) {
-            Path p = Path.of(base, relative);
-            if (Files.exists(p)) {
-                return p;
-            }
-        }
-        throw new IllegalStateException(relative + " not found from " + Path.of("").toAbsolutePath());
-    }
-}
+    /** Locate a repo-root file regardless of the module working dir (mirrors {@code DocSnippetFreshnessTest}). */}

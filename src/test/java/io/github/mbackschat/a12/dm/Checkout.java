@@ -132,6 +132,26 @@ public final class Checkout {
         return new ProcessBuilder(command).directory(root.toFile());
     }
 
+    /**
+     * A file this checkout must contain, resolved and asserted in one step.
+     *
+     * <p>The idiom this replaces probed {@code .}, {@code ..} and {@code ../..} for the first existing match, so a
+     * file MISSING from the checkout resolved to a same-named file outside it instead of failing — silently, and
+     * differently on every machine, depending on what sits beside the clone. Resolution here is anchored to the
+     * checkout, so absence is absence.
+     *
+     * @throws IllegalArgumentException if {@code relative} would leave the checkout
+     * @throws IllegalStateException if it names no regular file
+     */
+    Path requireFile(String relative) {
+        Path resolved = resolve(relative);
+        if (!Files.isRegularFile(resolved)) {
+            throw new IllegalStateException(
+                    relative + " is not a file in this checkout — looked at " + resolved);
+        }
+        return resolved;
+    }
+
     /** {@code absolute} as a checkout-relative path, with forward slashes on every platform. */
     public String relative(Path absolute) {
         return root.relativize(absolute).toString().replace('\\', '/');

@@ -29,6 +29,8 @@ import org.junit.jupiter.api.Test;
  */
 class PluginInstallerVersionTest {
 
+    private static final Checkout CHECKOUT = Checkout.locate();
+
     /** The canonical installer and its two copy-synced plugin instances — all three carry the download pin. */
     private static final List<String> INSTALLER_FILES = List.of(
             "scripts/ensure-dmtool.sh",
@@ -41,7 +43,7 @@ class PluginInstallerVersionTest {
     void everyInstallerDownloadPinMatchesTheProjectVersion() throws IOException {
         String project = projectVersion();
         for (String relative : INSTALLER_FILES) {
-            String text = Files.readString(repoFile(relative));
+            String text = Files.readString(CHECKOUT.requireFile(relative));
             Matcher m = INSTALLER_VERSION.matcher(text);
             if (!m.find()) {
                 fail(relative + " must declare VERSION=\"vX.Y.Z\" (the release tag to download the binary from)");
@@ -58,20 +60,10 @@ class PluginInstallerVersionTest {
 
     /** Read {@code version = 'X.Y.Z'} from build.gradle — the project's single source of truth. */
     private static String projectVersion() throws IOException {
-        String build = Files.readString(repoFile("build.gradle"));
+        String build = Files.readString(CHECKOUT.requireFile("build.gradle"));
         Matcher m = Pattern.compile("^version = '([^']+)'", Pattern.MULTILINE).matcher(build);
         assertTrue(m.find(), "build.gradle must declare version = '…'");
         return m.group(1);
     }
 
-    /** Locate a repo-root file regardless of the module working dir (mirrors {@link VersionMentionFreshnessTest}). */
-    private static Path repoFile(String relative) {
-        for (String base : List.of(".", "..", "../..")) {
-            Path p = Path.of(base, relative);
-            if (Files.exists(p)) {
-                return p;
-            }
-        }
-        throw new IllegalStateException(relative + " not found from " + Path.of("").toAbsolutePath());
-    }
-}
+    /** Locate a repo-root file regardless of the module working dir (mirrors {@link VersionMentionFreshnessTest}). */}

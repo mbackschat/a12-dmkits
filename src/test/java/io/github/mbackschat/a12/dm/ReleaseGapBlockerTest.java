@@ -16,6 +16,8 @@ import org.junit.jupiter.api.io.TempDir;
 /** Proves that publication is blocked by any live open gap, while deferred work remains non-blocking. */
 class ReleaseGapBlockerTest {
 
+    private static final Checkout CHECKOUT = Checkout.locate();
+
     @TempDir
     Path temporaryDirectory;
 
@@ -68,21 +70,11 @@ class ReleaseGapBlockerTest {
     }
 
     private static Result run(Path docs) throws IOException, InterruptedException {
-        Path script = repoFile("scripts/check-release-gaps.sh");
+        Path script = CHECKOUT.requireFile("scripts/check-release-gaps.sh");
         Process process = new ProcessBuilder("bash", script.toString(), docs.toString())
                 .redirectErrorStream(true).start();
         String output = new String(process.getInputStream().readAllBytes());
         return new Result(process.waitFor(), output);
-    }
-
-    private static Path repoFile(String relative) {
-        for (String base : List.of(".", "..", "../..")) {
-            Path candidate = Path.of(base, relative);
-            if (Files.exists(candidate)) {
-                return candidate.toAbsolutePath().normalize();
-            }
-        }
-        throw new IllegalStateException(relative + " not found from " + Path.of("").toAbsolutePath());
     }
 
     private record Result(int code, String output) {}

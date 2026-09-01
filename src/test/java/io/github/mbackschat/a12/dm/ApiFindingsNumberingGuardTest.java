@@ -45,6 +45,8 @@ import org.junit.jupiter.api.io.TempDir;
  */
 class ApiFindingsNumberingGuardTest {
 
+    private static final Checkout CHECKOUT = Checkout.locate();
+
     /**
      * A findings item: an ordinal at line start, then the doc's <b>bolded claim</b> convention
      * ({@code 103. **A DM-JSON mapper is a semantic decision** — …}). Anchoring on the bold is deliberate:
@@ -59,7 +61,7 @@ class ApiFindingsNumberingGuardTest {
 
     @Test
     void ordinalsAreDenseUniqueAndAligned() throws IOException {
-        List<Integer> ordinals = ordinals(Files.readString(repoFile("docs/API-FINDINGS.md")));
+        List<Integer> ordinals = ordinals(Files.readString(CHECKOUT.requireFile("docs/API-FINDINGS.md")));
 
         assertTrue(ordinals.size() >= MIN_FINDINGS,
                 () -> "found only " + ordinals.size() + " findings in docs/API-FINDINGS.md (floor " + MIN_FINDINGS
@@ -121,14 +123,4 @@ class ApiFindingsNumberingGuardTest {
         return out;
     }
 
-    /** Locate a repo-root file regardless of the module working dir (mirrors {@code DocSnippetFreshnessTest}). */
-    private static Path repoFile(String relative) {
-        for (String base : List.of(".", "..", "../..")) {
-            Path p = Path.of(base, relative);
-            if (Files.exists(p)) {
-                return p;
-            }
-        }
-        throw new IllegalStateException(relative + " not found from " + Path.of("").toAbsolutePath());
-    }
-}
+    /** Locate a repo-root file regardless of the module working dir (mirrors {@code DocSnippetFreshnessTest}). */}

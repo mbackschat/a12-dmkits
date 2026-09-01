@@ -41,6 +41,8 @@ import org.junit.jupiter.api.condition.EnabledIfSystemProperty;
  */
 class DocSnippetFreshnessTest {
 
+    private static final Checkout CHECKOUT = Checkout.locate();
+
     private static final Pattern SNIPPET_MARKER = Pattern.compile("<!-- snippet: ([a-z0-9-]+) -->");
 
     /** One locked snippet: a fenced {@code ```java} block in {@code doc} mirrors a tagged region of {@code testSource}. */
@@ -146,7 +148,7 @@ class DocSnippetFreshnessTest {
     @Test
     @DisabledIfSystemProperty(named = "snippets.fix", matches = "true")
     void everyDocSnippetIsLockedOrTeaserMarked() throws IOException {
-        List<String> lines = Files.readAllLines(repoFile(STUDY));
+        List<String> lines = Files.readAllLines(CHECKOUT.requireFile(STUDY));
         List<String> unclassified = new ArrayList<>();
         for (int i = 0; i < lines.size(); i++) {
             if (lines.get(i).startsWith("```java")) {
@@ -166,7 +168,7 @@ class DocSnippetFreshnessTest {
     @DisabledIfSystemProperty(named = "snippets.fix", matches = "true")
     void everySnippetMarkerHasExactlyOneLock() throws IOException {
         Set<String> marked = new HashSet<>();
-        Matcher matcher = SNIPPET_MARKER.matcher(Files.readString(repoFile(STUDY)));
+        Matcher matcher = SNIPPET_MARKER.matcher(Files.readString(CHECKOUT.requireFile(STUDY)));
         while (matcher.find()) {
             assertTrue(marked.add(matcher.group(1)),
                     () -> "duplicate snippet marker '" + matcher.group(1) + "' in " + STUDY);
@@ -206,8 +208,8 @@ class DocSnippetFreshnessTest {
     @DisabledIfSystemProperty(named = "snippets.fix", matches = "true")
     void everyLockedDocSnippetMatchesItsRunTestVerbatim() throws IOException {
         for (Lock l : LOCKS) {
-            String docBlock = normalize(docFence(repoFile(l.doc()), l.id()));
-            String srcBlock = normalize(taggedRegion(repoFile(l.testSource()), l.id()));
+            String docBlock = normalize(docFence(CHECKOUT.requireFile(l.doc()), l.id()));
+            String srcBlock = normalize(taggedRegion(CHECKOUT.requireFile(l.testSource()), l.id()));
             assertEquals(srcBlock, docBlock, () ->
                     "Doc snippet '" + l.id() + "' in " + l.doc() + " has DRIFTED from its source of truth — "
                     + "the `// tag::" + l.id() + "[]` region of " + l.testSource() + " (which compiles and runs "
@@ -225,8 +227,8 @@ class DocSnippetFreshnessTest {
     @EnabledIfSystemProperty(named = "snippets.fix", matches = "true")
     void regenerateLockedDocSnippetsFromTheirRunTests() throws IOException {
         for (Lock l : LOCKS) {
-            String region = normalize(taggedRegion(repoFile(l.testSource()), l.id()));
-            rewriteDocFence(repoFile(l.doc()), l.id(), region);
+            String region = normalize(taggedRegion(CHECKOUT.requireFile(l.testSource()), l.id()));
+            rewriteDocFence(CHECKOUT.requireFile(l.doc()), l.id(), region);
         }
     }
 
@@ -325,14 +327,4 @@ class DocSnippetFreshnessTest {
         return s.substring(0, end);
     }
 
-    /** Locate a repo-root file regardless of the module working dir (mirrors {@code CliTourFreshnessTest}). */
-    private static Path repoFile(String relative) {
-        for (String base : List.of(".", "..", "../..")) {
-            Path p = Path.of(base, relative);
-            if (Files.exists(p)) {
-                return p;
-            }
-        }
-        throw new IllegalStateException(relative + " not found from " + Path.of("").toAbsolutePath());
-    }
-}
+    /** Locate a repo-root file regardless of the module working dir (mirrors {@code CliTourFreshnessTest}). */}

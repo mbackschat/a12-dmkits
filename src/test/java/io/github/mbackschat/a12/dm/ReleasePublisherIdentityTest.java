@@ -18,6 +18,8 @@ import org.junit.jupiter.api.io.TempDir;
  */
 class ReleasePublisherIdentityTest {
 
+    private static final Checkout CHECKOUT = Checkout.locate();
+
     @TempDir
     Path temporaryDirectory;
 
@@ -26,8 +28,8 @@ class ReleasePublisherIdentityTest {
             throws IOException, InterruptedException {
         assumeTrue(!System.getProperty("os.name", "").toLowerCase().contains("win"),
                 "POSIX-only release publisher");
-        Path identityScript = repoFile("scripts/release-git-identity.sh");
-        Path publisher = repoFile("scripts/publish-release.sh");
+        Path identityScript = CHECKOUT.requireFile("scripts/release-git-identity.sh");
+        Path publisher = CHECKOUT.requireFile("scripts/publish-release.sh");
         String publisherSource = Files.readString(publisher);
         assertTrue(publisherSource.contains(". \"$ROOT/scripts/release-git-identity.sh\""));
         assertTrue(publisherSource.contains("configure_release_git_identity \"$CLONE\""));
@@ -52,15 +54,5 @@ class ReleasePublisherIdentityTest {
         int exitCode = process.waitFor();
         assertEquals(0, exitCode, () -> String.join(" ", command) + " failed:\n" + output);
         return output;
-    }
-
-    private static Path repoFile(String relative) {
-        for (String base : List.of(".", "..", "../..")) {
-            Path candidate = Path.of(base, relative);
-            if (Files.exists(candidate)) {
-                return candidate.toAbsolutePath().normalize();
-            }
-        }
-        throw new IllegalStateException(relative + " not found from " + Path.of("").toAbsolutePath());
     }
 }

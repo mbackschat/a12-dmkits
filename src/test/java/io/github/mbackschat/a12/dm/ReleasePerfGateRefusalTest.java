@@ -32,11 +32,13 @@ import org.junit.jupiter.api.Test;
  */
 class ReleasePerfGateRefusalTest {
 
+    private static final Checkout CHECKOUT = Checkout.locate();
+
     @Test
     void everyReleasePerformanceGateRefusalFires() throws IOException, InterruptedException {
         assumeTrue(!System.getProperty("os.name", "").toLowerCase().contains("win"),
                 "POSIX-only self-test (bash gate stubs)");
-        Path script = repoFile("scripts/selftest-release-perf-gate.sh");
+        Path script = CHECKOUT.requireFile("scripts/selftest-release-perf-gate.sh");
         Process process = new ProcessBuilder("bash", script.toString())
                 .redirectErrorStream(true).start();
         String output = new String(process.getInputStream().readAllBytes());
@@ -52,7 +54,7 @@ class ReleasePerfGateRefusalTest {
      */
     @Test
     void thePublishPathDelegatesToTheGuardedGate() throws IOException {
-        String publish = Files.readString(repoFile("scripts/publish-release.sh"));
+        String publish = Files.readString(CHECKOUT.requireFile("scripts/publish-release.sh"));
 
         assertTrue(publish.contains("./scripts/release-perf-gate.sh"),
                 "publish-release.sh must run the performance gate through scripts/release-perf-gate.sh, whose "
@@ -62,14 +64,4 @@ class ReleasePerfGateRefusalTest {
                         + "script is one the self-test cannot drive");
     }
 
-    /** Locate a repo-root file regardless of the module working dir (mirrors {@link EnsureDmtoolCacheTest}). */
-    private static Path repoFile(String relative) {
-        for (String base : List.of(".", "..", "../..")) {
-            Path candidate = Path.of(base, relative);
-            if (Files.isRegularFile(candidate)) {
-                return candidate.toAbsolutePath().normalize();
-            }
-        }
-        throw new IllegalStateException("could not locate " + relative);
-    }
-}
+    /** Locate a repo-root file regardless of the module working dir (mirrors {@link EnsureDmtoolCacheTest}). */}
