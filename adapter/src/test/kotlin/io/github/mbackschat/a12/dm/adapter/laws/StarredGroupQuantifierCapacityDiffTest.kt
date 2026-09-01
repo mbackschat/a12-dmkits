@@ -1,8 +1,11 @@
 package io.github.mbackschat.a12.dm.adapter.laws
 
+import io.github.mbackschat.a12.dm.adapter.laws.RuntimeLaws.Relevant
 import io.github.mbackschat.a12.dm.interpreter.DmInterpreter
 import io.github.mbackschat.a12.dm.interpreter.eval.newDocument
 import io.github.mbackschat.a12.dm.interpreter.load.ModelLoader
+import io.github.mbackschat.a12.dm.interpreter.model.ModelDef
+import io.github.mbackschat.a12.dm.interpreter.model.RelevantEntity
 import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft
 import io.github.mbackschat.a12.dm.modelkit.FieldKind
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel
@@ -13,8 +16,8 @@ import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 
 /**
- * Differential — the filled-group COUNT reads the **in-capacity** extent, and why this fixture cannot decide
- * the same question for the two starred QUANTIFIERS.
+ * Differential — the filled-group COUNT and the two starred threshold QUANTIFIERS read the **in-capacity**
+ * extent (`SPEC-2026-08-31-17`).
  *
  * **This file carried the opposite conclusion for one commit, and it was wrong.** It instantiated `Lines[3]` in
  * a capacity-2 group, saw `AtLeastOneGroupFilled` fire beside the kernel's own `zuGrosseZeile`, and concluded
@@ -28,11 +31,12 @@ import org.junit.jupiter.api.Test
  * because of them. A boolean quantifier could never have shown this; the ladder is what makes the tally visible,
  * which is the transferable half — a silent operator needs a quantity beside it, not another silence.
  *
- * **What stays open, stated as the limit of two routes rather than as unreachability.** Deciding whether the
- * QUANTIFIERS admit an over-limit row needs a document where the over-limit row exists and the prefix does not.
- * This builder cannot express one, because it materializes the prefix; a12-kernel-lean's route cannot either,
- * since it seeds from canonical Document JSON whose repeatable rows are a positional array. Two routes failing
- * is not proof that no route exists, so this is recorded as **unreached**, never as impossible.
+ * **The third route does not need a sparse positional document.** The repeatable parent remains dense, while a
+ * nonrepeatable child can exist only below one chosen parent row. One full-validation document carries two
+ * symmetric child groups: one filled only below in-capacity row 2, the other filled only below over-limit row 3.
+ * Both kernel strategies fire `AtLeastOneGroupFilled` for the first and `NoGroupFilled` for the second. Partial
+ * validation independently separates row 2 from row 3 by relevance. The interpreter already matched both
+ * observations, so reconciliation requires a law and corrected documentation rather than a runtime change.
  */
 class StarredGroupQuantifierCapacityDiffTest {
 
@@ -83,6 +87,44 @@ class StarredGroupQuantifierCapacityDiffTest {
         )
     }
 
+    /** Partial validation confirms the same capacity boundary when exactly one parent row is relevant. */
+    @Test
+    fun partialValidationExcludesTheOverLimitRowFromTheThresholdQuantifiers() {
+        assertEquals(emptySet<String>(), partialKernelFired(coveredRow = null), "no group row is relevant")
+        assertEquals(setOf(AT_LEAST_ONE), partialKernelFired(coveredRow = 2), "in-capacity control")
+        assertEquals(
+            emptySet<String>(),
+            partialKernelFired(coveredRow = 3),
+            "an over-limit row does not enter the quantifier's relevant extent",
+        )
+    }
+
+    /** Both engines preserve the kernel's capacity boundary under the discriminating partial coverage. */
+    @Test
+    fun theInterpreterExcludesTheOverLimitRowWhenItIsTheOnlyRelevantGroupRow() {
+        assertEquals(
+            partialKernelFired(coveredRow = 3),
+            partialInterpreterFired(coveredRow = 3),
+            "over-limit-only coverage — kernel vs interpreter",
+        )
+    }
+
+    /**
+     * **THE FULL-VALIDATION DISCRIMINATOR.** A positional document must materialize parent rows 1 and 2 before
+     * over-limit row 3, but it need not materialize the SAME descendant below them. Two symmetric nonrepeatable
+     * children therefore separate the threshold pair in one document: `InCapacityMarker` is filled only below
+     * row 2 and `OverCapacityMarker` only below row 3. The first fires `AtLeastOneGroupFilled`; the second fires
+     * `NoGroupFilled`. If the threshold quantifiers read every instantiated parent row, those two answers swap
+     * to the same positive result. The symmetric carriers differ only by the parent repetition holding their
+     * filled witness.
+     */
+    @Test
+    fun aDescendantPresentOnlyBelowTheOverLimitParentIsOutsideBothThresholdQuantifiers() {
+        val expected = setOf(IN_CAP_PRESENT, OVER_CAP_ABSENT)
+        assertEquals(expected, descendantKernelFired(), "full validation — normative kernel")
+        assertEquals(expected, descendantInterpreterFired(), "full validation — interpreter")
+    }
+
     /** Both engines agree, so the extent rule is shared rather than a kernel behaviour we merely tolerate. */
     @Test
     fun theInterpreterAgreesWithTheKernel() {
@@ -100,14 +142,7 @@ class StarredGroupQuantifierCapacityDiffTest {
     private fun allKernelCodes(row: Int, sku: String? = null): Set<String> = kernelCodes(row, sku).toSortedSet()
 
     private fun kernelCodes(row: Int, sku: String?): Set<String> {
-        val doc = RuntimeLaws.doc()
-        doc.group(ORDER, 1)
-        doc.field(REF, "R-1", 1, 1)
-        doc.group(LINES, 1, row)
-        if (sku != null) {
-            doc.field(SKU, sku, 1, row, 1)
-        }
-        return RuntimeLaws.firedCodes(model, doc).toSortedSet()
+        return RuntimeLaws.firedCodes(model, kernelDocument(row, sku)).toSortedSet()
     }
 
     private fun kernelCodesWithNoRow(): Set<String> {
@@ -121,15 +156,78 @@ class StarredGroupQuantifierCapacityDiffTest {
      *  types; the coordinates are the parameter, so the two builders cannot drift on what they describe. */
     private fun interpreterFired(row: Int, sku: String? = null): Set<String> {
         val def = ModelLoader.load(model)
-        val doc = def.newDocument()
-        doc.group(ORDER, 1)
-        doc.field(REF, "R-1", 1, 1)
-        doc.group(LINES, 1, row)
-        if (sku != null) {
-            doc.field(SKU, sku, 1, row, 1)
-        }
+        val doc = interpreterDocument(def, row, sku)
         return DmInterpreter(def).validate(doc).messages.map { it.code }.filterTo(sortedSetOf()) { it in CODES }
     }
+
+    private fun partialKernelFired(coveredRow: Int?): Set<String> {
+        val document = kernelDocument(row = 3)
+        val relevant = buildSet {
+            add(Relevant.of(REF, 0, 0))
+            if (coveredRow != null) add(Relevant.of(LINES, 1, coveredRow))
+        }
+        val dynamic = RuntimeLaws.messagesPart(model, document, relevant).map { it.code() }
+            .filterTo(sortedSetOf()) { it in CODES }
+        val static = staticEngine.messagesPart(document, relevant).map { it.code() }
+            .filterTo(sortedSetOf()) { it in CODES }
+        assertEquals(dynamic, static, "partial row $coveredRow — dynamic-Groovy vs static-Java")
+        return dynamic
+    }
+
+    private fun partialInterpreterFired(coveredRow: Int): Set<String> {
+        val def = ModelLoader.load(model)
+        val relevant = setOf(
+            RelevantEntity.anyRep(REF),
+            RelevantEntity(LINES, listOf(1, coveredRow)),
+        )
+        return DmInterpreter(def).validatePart(interpreterDocument(def, row = 3), relevant).messages
+            .map { it.code }.filterTo(sortedSetOf()) { it in CODES }
+    }
+
+    private fun descendantKernelFired(): Set<String> {
+        val document = descendantKernelDocument()
+        val dynamic = RuntimeLaws.messages(descendantModel, document).map { it.code() }
+            .filterTo(sortedSetOf()) { it in DESCENDANT_CODES }
+        val static = descendantStaticEngine.messages(descendantStaticEngine.instance(document)).map { it.code() }
+            .filterTo(sortedSetOf()) { it in DESCENDANT_CODES }
+        assertEquals(dynamic, static, "descendant separator — dynamic-Groovy vs static-Java")
+        return dynamic
+    }
+
+    private fun descendantInterpreterFired(): Set<String> {
+        val def = ModelLoader.load(descendantModel)
+        return DmInterpreter(def).validateFull(descendantInterpreterDocument(def)).map { it.code }
+            .filterTo(sortedSetOf()) { it in DESCENDANT_CODES }
+    }
+
+    private fun descendantKernelDocument(): RuntimeLaws.Doc = kernelDocument(row = 3)
+        .group(IN_CAP_MARKER, 1, 2, 1)
+        .field(IN_CAP_VALUE, "yes", 1, 2, 1, 1)
+        .group(OVER_CAP_MARKER, 1, 3, 1)
+        .field(OVER_CAP_VALUE, "yes", 1, 3, 1, 1)
+
+    private fun descendantInterpreterDocument(def: ModelDef) =
+        interpreterDocument(def, row = 3)
+            .group(IN_CAP_MARKER, 1, 2, 1)
+            .field(IN_CAP_VALUE, "yes", 1, 2, 1, 1)
+            .group(OVER_CAP_MARKER, 1, 3, 1)
+            .field(OVER_CAP_VALUE, "yes", 1, 3, 1, 1)
+
+    private fun kernelDocument(row: Int, sku: String? = null): RuntimeLaws.Doc = RuntimeLaws.doc()
+        .group(ORDER, 1)
+        .field(REF, "R-1", 1, 1)
+        .group(LINES, 1, row)
+        .also { document -> if (sku != null) document.field(SKU, sku, 1, row, 1) }
+
+    private fun interpreterDocument(
+        def: ModelDef,
+        row: Int,
+        sku: String? = null,
+    ) = def.newDocument()
+        .group(ORDER, 1)
+        .field(REF, "R-1", 1, 1)
+        .group(LINES, 1, row)
+        .also { document -> if (sku != null) document.field(SKU, sku, 1, row, 1) }
 
     private companion object {
 
@@ -137,6 +235,10 @@ class StarredGroupQuantifierCapacityDiffTest {
         const val LINES = "/Order/Lines"
         const val REF = "/Order/Reference"
         const val SKU = "/Order/Lines/Sku"
+        const val IN_CAP_MARKER = "/Order/Lines/InCapacityMarker"
+        const val IN_CAP_VALUE = "$IN_CAP_MARKER/Value"
+        const val OVER_CAP_MARKER = "/Order/Lines/OverCapacityMarker"
+        const val OVER_CAP_VALUE = "$OVER_CAP_MARKER/Value"
 
         const val NONE_FILLED = "NONE_FILLED"
         const val AT_LEAST_ONE = "AT_LEAST_ONE"
@@ -144,12 +246,23 @@ class StarredGroupQuantifierCapacityDiffTest {
         const val COUNT_IS_0 = "COUNT_IS_0"
         const val COUNT_IS_1 = "COUNT_IS_1"
         const val COUNT_IS_2 = "COUNT_IS_2"
+        const val IN_CAP_PRESENT = "IN_CAP_PRESENT"
+        const val OVER_CAP_PRESENT = "OVER_CAP_PRESENT"
+        const val OVER_CAP_ABSENT = "OVER_CAP_ABSENT"
         val CODES = setOf(NONE_FILLED, AT_LEAST_ONE)
+        val DESCENDANT_CODES = setOf(IN_CAP_PRESENT, OVER_CAP_PRESENT, OVER_CAP_ABSENT)
+        val staticEngine by lazy { RuntimeLaws.kernelJavaEngine(model) }
+        val descendantStaticEngine by lazy { RuntimeLaws.kernelJavaEngine(descendantModel) }
 
         private val baseModel: String = DocumentModelDraft.named("capacity").locale("en_US")
             .rootGroup("Order") { order ->
                 order.field("Reference", FieldKind.STRING)
-                    .group("Lines") { lines -> lines.repeatable(2).field("Sku", FieldKind.STRING) }
+                    .group("Lines") { lines ->
+                        lines.repeatable(2)
+                            .field("Sku", FieldKind.STRING)
+                            .group("InCapacityMarker") { marker -> marker.field("Value", FieldKind.STRING) }
+                            .group("OverCapacityMarker") { marker -> marker.field("Value", FieldKind.STRING) }
+                    }
             }.build().toJson()
 
         /** Both starred quantifiers plus the count ladder over one scope, so the operator is the only variable. */
@@ -167,6 +280,24 @@ class StarredGroupQuantifierCapacityDiffTest {
                 COUNT_IS_0 to render(guard.and(Dsl.numberOfFilledGroups(counted).eq(0))),
                 COUNT_IS_1 to render(guard.and(Dsl.numberOfFilledGroups(counted).eq(1))),
                 COUNT_IS_2 to render(guard.and(Dsl.numberOfFilledGroups(counted).eq(2))),
+            ).forEach { (code, condition) ->
+                json = RuntimeLaws.withRule(json, ORDER, code, "../Reference", code, condition)
+            }
+            json
+        }
+
+        /** The descendant-only separator layered over the original count/quantifier fixture. */
+        val descendantModel: String = run {
+            val base = BoundModel.ofJson(baseModel)
+            val guard = Dsl.fieldFilled(base.field(REF))
+            val inCapacityMarker = base.flattenGroup("$LINES*/InCapacityMarker")
+            val overCapacityMarker = base.flattenGroup("$LINES*/OverCapacityMarker")
+            fun render(c: Condition) = DslRenderer().render(c)
+            var json = model
+            listOf(
+                IN_CAP_PRESENT to render(guard.and(Dsl.atLeastOneGroupFilled(inCapacityMarker))),
+                OVER_CAP_PRESENT to render(guard.and(Dsl.atLeastOneGroupFilled(overCapacityMarker))),
+                OVER_CAP_ABSENT to render(guard.and(Dsl.noGroupFilled(overCapacityMarker))),
             ).forEach { (code, condition) ->
                 json = RuntimeLaws.withRule(json, ORDER, code, "../Reference", code, condition)
             }
