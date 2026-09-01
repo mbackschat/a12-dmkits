@@ -10,8 +10,8 @@ import java.nio.file.Path;
 import org.junit.jupiter.api.Test;
 
 /**
- * Runs {@code scripts/selftest-jdk-pin.sh}, so the build's OpenJDK-21 selection policy is executed by the build
- * rather than only by whoever remembers to run it.
+ * Runs {@code scripts/selftest-jdk-pin.sh} through Dash, so the build's OpenJDK-21 selection policy and its
+ * sourced environment helper are executed at the repository's POSIX lower boundary.
  *
  * <p><b>Why this class exists.</b> {@code a12_pinned_jdk21_home} was {@code java_home -v 21}, which returns the
  * HIGHEST-versioned JDK 21 installed. Installing Homebrew's {@code openjdk@21} 21.0.12.1 therefore displaced
@@ -36,7 +36,7 @@ class JdkPinScriptTest {
     @Test
     void everyJdkPinSelftestCheckPasses() throws Exception {
         Path root = repositoryRoot();
-        var builder = new ProcessBuilder("/bin/bash", root.resolve("scripts/selftest-jdk-pin.sh").toString());
+        var builder = new ProcessBuilder("/bin/dash", root.resolve("scripts/selftest-jdk-pin.sh").toString());
         builder.directory(root.toFile());
         builder.redirectErrorStream(true);
 
