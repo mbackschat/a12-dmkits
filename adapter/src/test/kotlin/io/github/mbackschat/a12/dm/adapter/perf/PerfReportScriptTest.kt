@@ -125,7 +125,7 @@ class PerfReportScriptTest {
     private class Run(val status: Int, val output: String)
 
     private fun run(resultsDir: Path): Run {
-        val builder = ProcessBuilder("bash", script.toString())
+        val builder = ProcessBuilder("/bin/bash", script.toString())
             .directory(script.parent.parent.toFile())
             .redirectErrorStream(true)
         builder.environment()["PERF_RESULTS_DIR"] = resultsDir.toString()

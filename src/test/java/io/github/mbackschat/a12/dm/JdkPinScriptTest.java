@@ -36,7 +36,7 @@ class JdkPinScriptTest {
     @Test
     void everyJdkPinSelftestCheckPasses() throws Exception {
         Path root = repositoryRoot();
-        var builder = new ProcessBuilder("bash", root.resolve("scripts/selftest-jdk-pin.sh").toString());
+        var builder = new ProcessBuilder("/bin/bash", root.resolve("scripts/selftest-jdk-pin.sh").toString());
         builder.directory(root.toFile());
         builder.redirectErrorStream(true);
 

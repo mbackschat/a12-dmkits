@@ -22,7 +22,7 @@ class ReleaseAssetsManifestTest {
         assumeTrue(!System.getProperty("os.name", "").toLowerCase().contains("win"),
                 "POSIX-only shell guard");
         Path script = repoFile("scripts/check-release-assets.sh");
-        Process process = new ProcessBuilder("bash", script.toString())
+        Process process = new ProcessBuilder("/bin/bash", script.toString())
                 .redirectErrorStream(true).start();
         String output = new String(process.getInputStream().readAllBytes());
         int code = process.waitFor();

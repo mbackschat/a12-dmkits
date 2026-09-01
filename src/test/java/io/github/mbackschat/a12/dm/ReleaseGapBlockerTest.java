@@ -69,7 +69,7 @@ class ReleaseGapBlockerTest {
 
     private static Result run(Path docs) throws IOException, InterruptedException {
         Path script = repoFile("scripts/check-release-gaps.sh");
-        Process process = new ProcessBuilder("bash", script.toString(), docs.toString())
+        Process process = new ProcessBuilder("/bin/bash", script.toString(), docs.toString())
                 .redirectErrorStream(true).start();
         String output = new String(process.getInputStream().readAllBytes());
         return new Result(process.waitFor(), output);

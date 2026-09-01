@@ -163,7 +163,7 @@ class PerfHistoryScriptTest {
     private fun run(resultsDir: Path): Run {
         // The script resolves its record relative to the repo root, so the seam is the argument-free RESULTS path
         // it already honours via its own `results` variable: point it by working directory instead.
-        val builder = ProcessBuilder("bash", script.toString())
+        val builder = ProcessBuilder("/bin/bash", script.toString())
             .directory(script.parent.parent.toFile())
             .redirectErrorStream(true)
         builder.environment()["PERF_RESULTS_DIR"] = resultsDir.toString()

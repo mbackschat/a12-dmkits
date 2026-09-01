@@ -36,7 +36,7 @@ class ObligationsScriptTest {
     @Test
     void everyObligationSelftestCasePasses() throws Exception {
         Path root = repositoryRoot();
-        var builder = new ProcessBuilder("bash", root.resolve("scripts/selftest-obligations.sh").toString());
+        var builder = new ProcessBuilder("/bin/bash", root.resolve("scripts/selftest-obligations.sh").toString());
         builder.directory(root.toFile());
         builder.redirectErrorStream(true);
 

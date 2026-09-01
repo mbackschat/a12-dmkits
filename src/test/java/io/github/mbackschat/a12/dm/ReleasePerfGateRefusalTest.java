@@ -37,7 +37,7 @@ class ReleasePerfGateRefusalTest {
         assumeTrue(!System.getProperty("os.name", "").toLowerCase().contains("win"),
                 "POSIX-only self-test (bash gate stubs)");
         Path script = repoFile("scripts/selftest-release-perf-gate.sh");
-        Process process = new ProcessBuilder("bash", script.toString())
+        Process process = new ProcessBuilder("/bin/bash", script.toString())
                 .redirectErrorStream(true).start();
         String output = new String(process.getInputStream().readAllBytes());
         int code = process.waitFor();
