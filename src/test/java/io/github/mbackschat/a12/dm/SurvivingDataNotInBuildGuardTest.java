@@ -336,8 +336,11 @@ class SurvivingDataNotInBuildGuardTest {
         // Asked of a real record FILE, not of the directory. `git check-ignore perf-results` exits 1 ("not
         // ignored") even when a rule such as `perf-results/**/*.jsonl` ignores everything inside it, so the
         // directory-level question passes in precisely the state this assertion exists to catch.
-        // The FILESYSTEM is the right denominator here, uniquely: this assertion is about whether records are
-        // ignorable, so taking the set from git would answer the question with itself.
+        // The FILESYSTEM is the right denominator here, uniquely among this file's scans: both assertions below
+        // are ABOUT untracked records. The un-ignorable check must reach the record a rule would swallow NEXT,
+        // and the tracked-at-least-once check is deliberately satisfied by a minority, since most gate runs leave
+        // their record untracked. Taking the set from git would make the second trivially true and hide from the
+        // first exactly the file it exists to protect.
         List<Path> records;
         try (Stream<Path> walk = Files.walk(results)) {
             records = walk.filter(p -> p.getFileName().toString().endsWith(".jsonl")).toList();

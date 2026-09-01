@@ -59,6 +59,15 @@ class RawClockCensusTest {
      * {@code @EnabledIfSystemProperty} are JUnit annotations, and those source sets run on {@code kotlin.test},
      * so the two derived escape hatches below are unreachable for them and an entry is the sole disposition.
      */
+    /**
+     * A measurement lane in a Kotlin-Multiplatform test source set, derived from its package. Those source sets
+     * run on {@code kotlin.test}, so neither annotation hatch below can exist there and an entry in
+     * {@link #ALLOWED} would otherwise be the only disposition — one that grows with the estate and whose reason
+     * nothing re-checks. The package is the lane, so it is derived instead.
+     */
+    private static final Pattern MULTIPLATFORM_MEASUREMENT_PACKAGE =
+            Pattern.compile("/src/(commonTest|jvmTest|jsTest)/kotlin/.*/(performance|footprint)/");
+
     private static final Map<String, String> ALLOWED = Map.ofEntries(
             Map.entry("PerfHarness.kt",
                     "the measurement harness itself"),
@@ -82,13 +91,7 @@ class RawClockCensusTest {
                     "measures and PRINTS; every assertion is on a fired-rule count, so no verdict depends on the duration "
                     + "and contention cannot move it"),
             Map.entry("InterpreterMultiplatformTest.kt",
-                    "measures and PRINTS; asserts firing counts only, so the timing is a reporting aid rather than a bar"),
-            Map.entry("FootprintJvmWorkerTest.kt",
-                    "reads the allocation bean, not a clock, and asserts the footprint worker's protocol"),
-            Map.entry("PerformanceJvmWorkerTest.kt",
-                    "implements the clock the worker under test consumes, asserting that protocol rather than a duration"),
-            Map.entry("PerformanceNodeWorkerTest.kt",
-                    "the same clock implementation on the JS side, asserting the worker protocol"));
+                    "measures and PRINTS; asserts firing counts only, so the timing is a reporting aid rather than a bar"));
 
     @Test
     void everyClockReadingTestSitsInALaneThatCanMeasure() throws IOException {
@@ -100,6 +103,7 @@ class RawClockCensusTest {
             }
             String name = source.getFileName().toString();
             if (ALLOWED.containsKey(name)
+                    || MULTIPLATFORM_MEASUREMENT_PACKAGE.matcher(CHECKOUT.relative(source)).find()
                     || LANE_TAG.matcher(text).find()
                     || PROPERTY_GATED.matcher(text).find()) {
                 continue;
