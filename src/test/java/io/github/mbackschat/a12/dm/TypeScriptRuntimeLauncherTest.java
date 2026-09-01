@@ -22,6 +22,7 @@ class TypeScriptRuntimeLauncherTest {
         for (String relative : List.of(
                 "scripts/run-typescript.sh",
                 "scripts/check-infographic-freshness.sh",
+                "scripts/doctor.sh",
                 "scripts/gen-scenarios.sh",
                 "scripts/sync-plugin-assets.sh",
                 "scripts/test-evidence.sh",

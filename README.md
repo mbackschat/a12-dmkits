@@ -1009,7 +1009,7 @@ The A12 Kernel is resolved from your **local Maven repository** (`~/.m2`) — no
 ./bootstrap.sh
 ```
 
-This publishes kernel `30.8.1` (Java only) to `mavenLocal`. You also need **JDK 21** — the build toolchain is pinned to 21 (a newer JDK isn't used even if installed; [why](docs/BUILD-ENVIRONMENT.md) — Groovy 3.0.25 + the validated baseline) — and **Node >=24.12.0** for the repository's checked-in TypeScript tools and Node-backed demos. GraalVM 25 is used only for the native build. Run [`scripts/doctor.sh`](scripts/doctor.sh) to check the selected Bash, Node, Java, Gradle-home, hook, and local-Kernel state together.
+This publishes kernel `30.8.1` (Java only) to `mavenLocal`. You also need **JDK 21** — the build toolchain is pinned to 21 (a newer JDK isn't used even if installed; [why](docs/BUILD-ENVIRONMENT.md) — Groovy 3.0.25 + the validated baseline) — and **Node >=24.12.0** for the repository's checked-in TypeScript tools and Node-backed demos. GraalVM 25 is used only for the native build. Run [`scripts/doctor.sh`](scripts/doctor.sh) to check the POSIX/TypeScript tooling boundary, Node, Java, Gradle-home, hook, and local-Kernel state together.
 
 ### Maintainer agent setup (optional)
 

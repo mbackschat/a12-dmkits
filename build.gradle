@@ -529,6 +529,7 @@ tasks.register('deliveryGuardTest', Test) {
             'infographic implementation': file('scripts/typescript/check-infographic-freshness.ts'),
             'TypeScript launcher'     : file('scripts/run-typescript.sh'),
             'TypeScript runtime consumers': files(
+                    'scripts/doctor.sh',
                     'scripts/gen-scenarios.sh',
                     'scripts/sync-plugin-assets.sh',
                     'scripts/verify-demos.sh',
@@ -729,10 +730,13 @@ tasks.register('docGuardTest', Test) {
             // BuildPerformancePolicyTest reads the removal classifier at runtime too; undeclared since it was
             // added, so a script-only edit could leave this lane UP-TO-DATE and the assertion unrun.
             'native removals'  : file('scripts/check-native-metadata-removals.sh'),
-            // DoctorScriptTest executes this script against fabricated machines; undeclared, editing the
-            // script would leave the lane UP-TO-DATE with its verdicts unchecked — which is how its first
-            // version shipped with two wrong ones.
+            // DoctorScriptTest executes the public wrapper and typed implementation against fabricated machines;
+            // undeclared, editing either would leave the lane UP-TO-DATE with its verdicts unchecked — which is
+            // how the doctor's first version shipped with two wrong ones. The source-adjacent test is an input too
+            // so a test-only edit cannot restore stale doc-guard evidence while CI owns its wildcard execution.
             'doctor'           : file('scripts/doctor.sh'),
+            'doctor implementation': file('scripts/typescript/doctor.ts'),
+            'doctor implementation tests': file('scripts/typescript/doctor.test.ts'),
             'TypeScript runtime gate': file('scripts/run-typescript.sh'),
             // ObligationsScriptTest executes the selftest, which copies obligations.sh into fabricated repos —
             // so BOTH are runtime inputs. Declared together: with only the selftest declared, editing the rule

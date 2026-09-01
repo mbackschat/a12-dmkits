@@ -80,7 +80,6 @@ class ShellPortabilityGuardTest {
             "scripts/check-release-gaps.sh",
             "scripts/codex-plugin-activation-smoke.sh",
             "scripts/contract-consumers.sh",
-            "scripts/doctor.sh",
             "scripts/gap.sh",
             "scripts/gen-native-reflect-metadata.sh",
             "scripts/interpreter-delivery-footprint.sh",

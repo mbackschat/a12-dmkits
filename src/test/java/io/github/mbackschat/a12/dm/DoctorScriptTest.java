@@ -41,7 +41,7 @@ class DoctorScriptTest {
     void aMachineWithNoInitScriptIsClean(@TempDir Path home) throws Exception {
         var run = runDoctorWith(home);
 
-        assertTrue(run.output().contains("Bash interpreter meets the >= 3.2 baseline — "), run.output());
+        assertTrue(run.output().contains("POSIX shell launcher reached the typed doctor — "), run.output());
         assertTrue(run.output().contains("Node.js runtime meets the >= 24.12.0 baseline — "), run.output());
         assertTrue(run.output().contains("the machine-default home injects nothing into this build"),
                 run.output());
@@ -92,6 +92,19 @@ class DoctorScriptTest {
 
         assertTrue(run.output().contains("no kernel in"), run.output());
         assertEquals(1, run.exitCode(), "an unpublished kernel must fail, it is the first-run trap:\n" + run.output());
+    }
+
+    @Test
+    void theKernelRepositoryMarkerMustBeADirectory(@TempDir Path home) throws Exception {
+        Path marker = home.resolve(".m2/repository/com/mgmtp");
+        Files.createDirectories(marker.getParent());
+        Files.writeString(marker, "not a Maven repository\n");
+
+        var run = runDoctor(home);
+
+        assertTrue(run.output().contains("no kernel in"), run.output());
+        assertEquals(1, run.exitCode(), "a file at the repository path must not satisfy the kernel check:\n"
+                + run.output());
     }
 
     @Test
@@ -165,7 +178,7 @@ class DoctorScriptTest {
     private static Run runDoctor(Path home, String actionlint, String hooksPath, String node)
             throws IOException, InterruptedException {
         Path root = repositoryRoot();
-        var builder = new ProcessBuilder("/bin/bash", root.resolve("scripts/doctor.sh").toString());
+        var builder = new ProcessBuilder("/bin/dash", root.resolve("scripts/doctor.sh").toString());
         builder.directory(root.toFile());
         builder.redirectErrorStream(true);
         builder.environment().put("HOME", home.toString());
