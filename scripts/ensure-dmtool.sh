@@ -112,7 +112,7 @@ ASSETS_FILE="$SCRIPT_DIR/release-assets.sh"
 [ -f "$ASSETS_FILE" ] || { warn "release asset manifest missing: $ASSETS_FILE"; exit 0; }
 # shellcheck source=./scripts/release-assets.sh
 . "$ASSETS_FILE"
-asset="$(rk_release_asset_for_platform)" \
+asset="$(rk_release_asset_for_platform "$(uname -s)" "$(uname -m)")" \
   || { warn "no prebuilt binary for $(uname -s)/$(uname -m) yet — install dmtool manually"; exit 0; }
 
 base="https://github.com/$REPO/releases/download/$VERSION"
