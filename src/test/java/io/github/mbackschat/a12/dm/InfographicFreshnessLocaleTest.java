@@ -36,9 +36,10 @@ import org.junit.jupiter.api.io.TempDir;
  * {@code setlocale: cannot change locale} on stderr and then runs in C anyway. Both halves of that matter —
  * the run fails, and it would be VACUOUS if the warning were merely filtered out, because then both arms would
  * be the same C run agreeing with itself. So the premise is established by measurement rather than assumed
- * ({@link #firstCommaDecimalLocale} asks Node's default formatter for a number and keeps the first locale that
- * actually answers with a comma), the arm is skipped where no such locale exists, and the runtime-refusal plus
- * source-wiring arms keep the command path visible everywhere — including runners that cannot express the hazard.
+ * ({@link #firstCommaDecimalLocale} intersects the operating system's generated locales with Node's default
+ * formatter and keeps the first locale that actually answers with a comma), the arm is skipped where no such
+ * locale exists, and the runtime-refusal plus source-wiring arms keep the command path visible everywhere —
+ * including runners that cannot express the hazard.
  */
 class InfographicFreshnessLocaleTest {
 
@@ -88,6 +89,13 @@ class InfographicFreshnessLocaleTest {
                         + "while the exit status agrees");
     }
 
+    @Test
+    void nodeIcuSupportCannotStandInForAnInstalledShellLocale() throws Exception {
+        assertEquals(Optional.empty(), firstCommaDecimalLocale(List.of()),
+                "a locale that Node can format through bundled ICU is not usable by the public Bash launcher "
+                        + "unless the operating system has generated it too");
+    }
+
     /**
      * The always-on structural half. A machine without a comma-decimal locale cannot run the arm above, so CI
      * would notice a return to default-locale formatting. This source-text arm is deliberately narrow: the
@@ -110,13 +118,29 @@ class InfographicFreshnessLocaleTest {
     }
 
     /**
-     * The first candidate this machine can actually format a comma with — the premise the behavioural arm
-     * needs, established rather than inferred. {@code locale -a} is deliberately not the oracle: it lists what
-     * is generated, while what matters is whether Node's default locale really differs — the ambient input a
-     * future {@code Intl.NumberFormat} regression would consume.
+     * The first candidate this machine can activate in Bash and actually format with a comma in Node — both
+     * premises the behavioural arm needs, established rather than inferred. Neither check can stand alone:
+     * {@code locale -a} says whether the launcher can activate the locale, while Node's bundled ICU says whether
+     * its default formatter really differs — the ambient input a future {@code Intl.NumberFormat} regression
+     * would consume.
      */
     private static Optional<String> firstCommaDecimalLocale() throws Exception {
+        Process process = new ProcessBuilder("locale", "-a").start();
+        List<String> installed = new String(process.getInputStream().readAllBytes(), StandardCharsets.UTF_8)
+                .lines()
+                .map(String::trim)
+                .toList();
+        if (process.waitFor() != 0) {
+            return Optional.empty();
+        }
+        return firstCommaDecimalLocale(installed);
+    }
+
+    private static Optional<String> firstCommaDecimalLocale(List<String> installedLocales) throws Exception {
         for (String locale : COMMA_DECIMAL_LOCALES) {
+            if (!installedLocales.contains(locale)) {
+                continue;
+            }
             var builder = new ProcessBuilder("node", "-e", "process.stdout.write(new Intl.NumberFormat().format(1.5))");
             builder.environment().put("LANG", locale);
             builder.environment().put("LC_ALL", locale);
