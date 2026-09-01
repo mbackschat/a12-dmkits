@@ -86,12 +86,7 @@ class RawClockCensusTest {
                     + "wall time, so both of its assertions move further into passing"),
             Map.entry("RawClockCensusTest.java",
                     "this census matches its own pattern literal — the same self-match that made every helper-name "
-                    + "detector report KernelParityCoverageGuardTest, which scans the perf sources as text"),
-            Map.entry("DocumentScaleTest.kt",
-                    "measures and PRINTS; every assertion is on a fired-rule count, so no verdict depends on the duration "
-                    + "and contention cannot move it"),
-            Map.entry("InterpreterMultiplatformTest.kt",
-                    "measures and PRINTS; asserts firing counts only, so the timing is a reporting aid rather than a bar"));
+                    + "detector report KernelParityCoverageGuardTest, which scans the perf sources as text"));
 
     @Test
     void everyClockReadingTestSitsInALaneThatCanMeasure() throws IOException {

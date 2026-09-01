@@ -17,7 +17,6 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
-import kotlin.time.measureTime
 
 /**
  * Runs the SAME commonMain interpreter on EVERY KMP target (JVM + JS via Node) with hand-asserted
@@ -141,24 +140,19 @@ class InterpreterMultiplatformTest {
     @Test
     fun scalesToManyRepetitionRows() {
         // Correctness at scale: a per-row rule over N rows + a starred aggregate, on JVM and JS (Node). The
-        // timing is PRINTED, never asserted — the comment here claimed "no hard bound" while the method ended in
-        // `elapsed < 5.seconds`, and a cold review caught the contradiction (IF295, 2026-08-13). Growth is
-        // measured where it can be: `:adapter`'s isolated routine tier, as a paired N/4N ratio.
+        // method reads no clock: growth is measured where it can be, as a paired N/4N ratio in `:adapter`'s
+        // isolated routine tier (IF295, 2026-08-13). Reading one here would need a census exemption keyed by file
+        // name, which would also hide a reintroduced `elapsed < 5.seconds` — the bound this method used to carry.
         val n = 20_000
         val rows = (1..n).map { mapOf(ic to (it % 100).toString()) }
         val rep = RepDoc("/Order", "/Order/Items", mapOf(cn to "Acme"), rows, kinds)
         val perRow = Cond.Cmp(CmpOp.GT, Expr.Field(ic), Expr.NumLit(dec(50)))
         val sumNonNeg = Cond.Cmp(CmpOp.GE, Expr.Func("Sum", listOf(Expr.Star(ic))), Expr.NumLit(dec(0)))
 
-        var firing = 0
-        var sumFires = false
-        val elapsed = measureTime {
-            firing = rep.rowContexts().count { Interpreter(it).fires(perRow) }
-            sumFires = Interpreter(rep.outerContext()).fires(sumNonNeg)
-        }
+        val firing = rep.rowContexts().count { Interpreter(it).fires(perRow) }
+        val sumFires = Interpreter(rep.outerContext()).fires(sumNonNeg)
         assertEquals(n / 100 * 49, firing, "rows with Count in 51..99 fire (49 per 100)")
         assertTrue(sumFires)
-        println("[interpreter] interpreted $n rows (per-row + Sum aggregate) in $elapsed")
     }
 
     @Test
